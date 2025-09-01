@@ -1,0 +1,899 @@
+specs:
+  - name: ProgramHeader
+    className: Program
+    headerOffset: 1
+    fields:
+      # n: field name;
+      # f: field function name root (used for generated write and read functions)
+      # l: field label;
+      # d: field description;
+      # s: field size (default: 1);
+      # t: field type (default: number);
+      - n: 'KGRP1'
+        d: "Block address of first keygroup (internal use)"
+        s: 2
+
+      - n: 'PRNAME'
+        f: 'programName'
+        l: 'Program Name'
+        t: 'string'
+        d: "Name of program"
+        s: 12
+
+      - n: 'PRGNUM'
+        f: 'programNumber'
+        l: 'Program Number'
+        d: "MIDI program number; Range: 0 to 128; After sending data to this parameter, Miscellaneous function BTSORT should be triggered to resort the list of programs into order and to flag active programs."
+
+      - n: 'PMCHAN'
+        f: 'midiChannel'
+        l: 'MIDI Channel'
+        d: "MIDI channel; Range: 255 signifies OMNI, 0 to 15 indicate MIDI channel"
+
+      - n: 'POLYPH'
+        f: 'polyphony'
+        l: 'Polyphony'
+        d: "Depth of polyphony; Range: 0 to 31 (these represent polyphony values of 1 to 32)"
+
+      - n: 'PRIORT'
+        f: 'voicePriority'
+        l: 'Voice Priority'
+        d: 'Priority of voices playing this program; Range: 0=low, 1=norm, 2=high, 3=hold'
+
+      - n: 'PLAYLO'
+        f: 'lowNote'
+        l: 'Low Note'
+        d: 'Lower limit of play range; Range: 21 to 127 represents A1 to G8'
+
+      - n: 'PLAYHI'
+        f: 'highNote'
+        l: 'High Note'
+        d: 'Upper limit of play range'
+
+      - n: 'OSHIFT'
+        d: 'Not used'
+
+      - n: 'OUTPUT'
+        f: 'output'
+        l: 'Output'
+        d: 'Individual output routing. This parameter also controls send to effects section.'
+
+      - n: 'STEREO'
+        f: 'outputLevel'
+        l: 'Stereo Output Lvl'
+        d: 'Left and right output levels; Range: 0 to 99'
+
+      - n: 'PANPOS'
+        f: 'pan'
+        l: 'Pan'
+        d: 'Balance between left and right outputs; Range: -50 to +50'
+
+      - n: 'PRLOUD'
+        f: 'programLevel'
+        l: 'Program Level'
+        d: 'Basic loudness of this program; Range: 0 to 99'
+
+      - n: 'V_LOUD'
+        f: 'velocityToAmp'
+        l: 'Vel -> Amp'
+        d: 'Note-on velocity dependence of loudness; Range: -50 to +50'
+
+      - n: 'K_LOUD'
+        d: 'Not used'
+
+      - n: 'P_LOUD'
+        d: 'Not used'
+
+      - n: 'PANRAT'
+        f: 'lfo2Rate'
+        l: 'Pan (LFO2) Rate'
+        d: 'Speed of LFO2; 0 to 99'
+
+      - n: 'PANDEP'
+        f: 'lfo2Depth'
+        l: 'Pan (LFO2) Depth'
+        d: 'Depth of LFO2'
+
+      - n: 'PANDEL'
+        f: 'lfo2Delay'
+        l: 'Pan (LFO2) Delay'
+        d: 'Delay in growth of LFO2'
+
+      - n: 'K_PANP'
+        d: 'Not used'
+
+      - n: 'LFORAT'
+        l: 'LFO1 Rate'
+        d: 'Speed of LFO1'
+
+      - n: 'LFODEP'
+        l: 'LFO1 Depth'
+        d: 'Depth of LFO1'
+
+      - n: 'LFODEL'
+        l: 'LFO1 Delay'
+        d: 'Delay in growth of LFO1'
+
+      - n: 'MWLDEP'
+        l: 'Modwheel -> LFO1'
+        d: 'Amount of control of LFO1 depth by Modwheel'
+
+      - n: 'PRSDEP'
+        l: 'After -> LFO1'
+        d: 'Amount of control of LFO1 depth by Aftertouch'
+
+      - n: 'VELDEP'
+        l: 'Vel -> LFO1'
+        d: 'Amount of control of LFO1 depth by Note-On velocity'
+
+      - n: 'B_PTCH'
+        l: 'Bend Up -> Pitch'
+        d: 'Range of increase of Pitch by bendwheel'
+
+      - n: 'P_PTCH'
+        l: 'Pressure -> Pitch'
+        d: 'Amount of control of Pitch by Pressure'
+
+      - n: 'KXFADE'
+        l: 'Crossfade [on | off]'
+        d: 'Keygroup crossfade enable'
+
+      - n: 'GROUPS'
+        l: 'Keygroup Count'
+        d: 'Number of keygroups. To change the number of keygroups in a program, the KDATA and DELK commands should be used.'
+
+      - n: 'TPNUM'
+        d: 'Temporary program number (internal use)'
+
+      - n: 'TEMPER'
+        l: 'Key'
+        d: 'Key temperament C, C#, D, D# etc.'
+        t: 'string'
+        s: 12
+
+      - n: 'ECHOUT'
+        d: 'Not used'
+
+      - n: 'MW_PAN'
+        d: 'Not used'
+
+      - n: 'COHERE'
+        d: 'Not used'
+
+      - n: 'DESYNC'
+        l: 'LFO desync [on | off]'
+        d: 'Enable de-synchronisation of LFO1 across notes;  0 represents OFF, 1 represents ON'
+
+      - n: 'PLAW'
+        d: 'Not used'
+
+      - n: 'VASSOQ'
+        l: 'Stealing [age | vel]'
+        d: 'Criterion by which voices are stolen; 0 represents OLDEST, 1 represents QUIETEST'
+
+      - n: 'SPLOUD'
+        l: 'Pedal -> Amp'
+        d: 'Reduction in loudness due to soft pedal'
+
+      - n: 'SPATT'
+        l: 'Pedal -> Attack'
+        d: 'Stretch of attack due to soft pedal'
+
+      - n: 'SPFILT'
+        l: 'Pedal -> Cutoff'
+        d: 'Reduction of filter frequency due to soft pedal'
+
+      - n: 'PTUNO'
+        l: 'Tuning'
+        d: 'Tuning offset of program; -50.00 to +50.00 (fraction is binary)'
+        s: 2
+
+      - n: 'K_LRAT'
+        d: 'Not used'
+
+      - n: 'K_LDEP'
+        d: 'Not used'
+
+      - n: 'K_LDEL'
+        d: 'Not used'
+
+      - n: 'VOSCL'
+        l: 'VOSCL'
+        d: 'Level sent to Individual outputs/effects'
+
+      - n: 'VSSCL'
+        d: 'Not used'
+
+      - n: 'LEGATO'
+        l: 'Legato [on | off]'
+        d: 'Mono legato mode enable; 0 represents OFF, 1 represents ON'
+
+      - n: 'B_PTCHD'
+        l: 'Bend Down -> Pitch'
+        d: 'Range of decrease of Pitch by bendwheel'
+
+      - n: 'B_MODE'
+        d: 'Bending of held notes; 0 represents NORMAL mode, 1 represents HELD mode'
+
+      - n: 'TRANSPOSE'
+        d: 'Shift pitch of incoming MIDI'
+
+      - n: 'MODSPAN1'
+        d: 'First source of assignable modulation of pan position'
+
+      - n: 'MODSPAN2'
+        d: 'Second source of assignable modulation of pan'
+
+      - n: 'MODSPAN3'
+        d: 'Third source of assignable modulation of pan'
+
+      - n: 'MODSAMP1'
+        d: 'First source of assignable modulation of loudness'
+
+      - n: 'MODSAMP2'
+        d: 'Second source of assignable modulation of loudness'
+
+      - n: 'MODSLFOT'
+        d: 'Source of assignable modulation of LFO1 speed'
+
+      - n: 'MODSLFOL'
+        d: 'Source of assignable modulation of LFO1 depth'
+
+      - n: 'MODSLFOD'
+        d: 'Source of assignable modulation of LFO1 delay'
+
+      - n: 'MODSFILT1'
+        d: 'First source of assignable modulation of filter frequency'
+
+      - n: 'MODSFILT2'
+        d: 'Second source of assignable modulation of filter frequency'
+
+      - n: 'MODSFILT3'
+        d: 'Third source of assignable modulation of filter frequency'
+
+      - n: 'MODSPITCH'
+        d: 'Source of assignable modulation of pitch'
+
+      - n: 'MODSAMP3'
+        d: 'Third source of assignable modulation of loudness'
+
+      - n: 'MODVPAN1'
+        d: 'Amount of control of pan by assignable source 1'
+
+      - n: 'MODVPAN2'
+        d: 'Amount of control of pan by assignable source 2'
+
+      - n: 'MODVPAN3'
+        d: 'Amount of control of pan by assignable source 3'
+
+      - n: 'MODVAMP1'
+        d: 'Amount of control of loudness by assignable source 1'
+
+      - n: 'MODVAMP2'
+        d: 'Amount of control of loudness by assignable source 2'
+
+      - n: 'MODVLFOR'
+        d: 'Amount of control of LFO1 speed'
+
+      - n: 'MODVLVOL'
+        d: 'Amount of control of LFO1 depth'
+
+      - n: 'MODVLFOD'
+        d: 'Amount of control of LFO1 delay'
+
+      - n: 'LFO1WAVE'
+        d: 'LFO1 waveform; 0 represents Triangle, 1 represents Sawtooth, 2 represents Square'
+
+      - n: 'LFO2WAVE'
+        d: 'LFO2 waveform'
+
+      - n: 'MODSLFLT2_1'
+        d: 'First source of assignable modulation of filter 2 frequency (only used on S3200).'
+
+      - n: 'MODSLFLT2_2'
+        d: 'Second source of assignable modulation of filter 2 frequency (only used on S3200).'
+
+      - n: 'MODSLFLT2_3'
+        d: 'Third source of assignable modulation of filter 2 frequency (only used on S3200).'
+
+      - n: 'LFO2TRIG'
+        d: 'Retrigger mode for LFO2'
+
+      - n: 'RESERVED_1'
+        d: 'Not used'
+        s: 7
+
+      - n: 'PORTIME'
+        d: 'PORTAMENTO TIME'
+
+      - n: 'PORTYPE'
+        d: 'PORTAMENTO TYPE'
+
+      - n: 'PORTEN'
+        d: 'PORTAMENTO ON/OFF'
+
+      - n: 'PFXCHAN'
+        d: 'Effects Bus Select; 0 to 4'
+
+  - name: SampleHeader
+    className: Sample
+    headerOffset: 0
+    fields:
+      # n: field name;
+      # f: field function name root (used for generated write and read functions)
+      # l: field label;
+      # d: field description;
+      # s: field size (default: 1);
+      # t: field type (default: number);
+      - n: 'SHIDENT'
+        d: 'Block identifier; Range: 3 (Fixed)'
+
+      - n: 'SBANDW'
+        f: 'bandwidth'
+        d: 'Sample bandwidth; Range: 0 represents 10kHz, 1 represents 20kHz'
+
+      - n: 'SPITCH'
+        f: 'pitch'
+        d: 'Original pitch; Range: 21 to 127 represents A1 to G8'
+
+      - n: 'SHNAME'
+        f: 'sampleName'
+        d: 'Sample name'
+        t: 'string'
+        s: 12
+
+      - n: 'SSRVLD'
+        d: 'Sample rate validity; 0 indicates rate is invalid, 128 indicates rate is valid'
+
+      - n: 'SLOOPS'
+        f: 'loopCount'
+        d: 'Number of loops'
+
+      - n: 'SALOOP'
+        d: 'First active loop (internal use)'
+
+      - n: 'SHLOOP'
+        d: 'Highest loop (internal use)'
+
+      - n: 'SPTYPE'
+        f: 'playbackType'
+        d: 'Playback type; 0 = Normal looping, 1 = Loop until release, 2 = No looping, 3 = Play to sample end'
+
+      - n: 'STUNO'
+        d: 'Sample tuning offset cent:semi'
+        s: 2
+
+      - n: 'SLOCAT'
+        d: 'Absolute start address in memory of sample'
+        s: 4
+
+      - n: 'SLNGTH'
+        f: 'sampleLength'
+        d: 'Length of sample'
+        s: 4
+
+      - n: 'SSTART'
+        f: 'sampleStart'
+        d: 'Offset from start of sample from which playback commences'
+        s: 4
+
+      - n: 'SMPEND'
+        f: 'sampleEnd'
+        d: 'Offset from start of sample from which playback ceases'
+        s: 4
+
+      - n: 'LOOPAT1'
+        f: 'loop1At'
+        d: 'Position in sample of first loop point'
+        s: 4
+
+      - n: 'LLNGTH1'
+        f: 'loop1Length'
+        d: 'First loop length'
+        s: 6
+
+      - n: 'LDWELL1'
+        f: 'loop1Dwell'
+        d: 'Dwell time of first loop; Range: 0 represents No Loop, 9999 = Hold, 1 to 9998 represents Dwell time in milliseconds'
+        s: 2
+
+      - n: 'LOOPAT2'
+        f: 'loop2At'
+        d: 'Position in sample of second loop point'
+        s: 4
+
+      - n: 'LLNGTH2'
+        f: 'loop2Length'
+        d: 'Second loop length'
+        s: 6
+
+      - n: 'LDWELL2'
+        f: 'loop2Dwell'
+        d: 'Dwell time of second loop; 0 represents No Loop, 9999 = Hold, 1 to 9998 represents Dwell time in milliseconds'
+        s: 2
+
+      - n: 'LOOPAT3'
+        f: 'loop3At'
+        d: 'Position in sample of third loop point'
+        s: 4
+
+      - n: 'LLNGTH3'
+        f: 'loop3Length'
+        d: 'Third loop length'
+        s: 6
+
+      - n: 'LDWELL3'
+        f: 'loop3Dwell'
+        d: 'Dwell time of third loop; 0 represents No Loop, 9999 = Hold, 1 to 9998 represents Dwell time in milliseconds'
+        s: 2
+
+      - n: 'LOOPAT4'
+        f: 'loop4At'
+        d: 'Position in sample of fourth loop point'
+        s: 4
+
+      - n: 'LLNGTH4'
+        f: 'loop4Length'
+        d: 'Fourth loop length'
+        s: 6
+
+      - n: 'LDWELL4'
+        f: 'loop4Dwell'
+        d: 'Dwell time of fourth loop; 0 represents No Loop, 9999 = Hold, 1 to 9998 represents Dwell time in milliseconds'
+        s: 2
+
+      - n: 'SLXY1'
+        d: 'Relative loop factors for loop 1'
+        s: 12
+
+      - n: 'SLXY2'
+        d: 'Relative loop factors for loop 2'
+        s: 12
+
+      - n: 'SLXY3'
+        d: 'Relative loop factors for loop 3'
+        s: 12
+
+      - n: 'SLXY4'
+        d: 'Relative loop factors for loop 4'
+        s: 12
+
+      - n: 'SSPARE'
+        d: 'Used internally'
+
+      - n: 'SWCOMM'
+        d: 'Not used'
+
+      - n: 'SSPAIR'
+        d: 'Address of stereo partner (internal use)'
+        s: 2
+
+      - n: 'SSRATE'
+        f: 'sampleRate'
+        d: 'Sample rate'
+        s: 2
+
+      - n: 'SHLTO'
+        d: 'Tuning offset of hold loop; Range: -50 to +50'
+  - name: KeygroupHeader
+    className: Keygroup
+    headerOffset: 0
+    fields:
+      - n: 'KGIDENT'
+        d: 'Block identifier (internal use); Should equal 2'
+
+      - n: 'NXTKG'
+        d: 'Next keygroup block address (internal use)'
+        s: 2
+
+      - n: 'LONOTE'
+        d: 'Lower limit of keyrange; Range: 21 to 127 represents A1 to G8'
+
+      - n: 'HINOTE'
+        d: 'Upper limit of keyrange'
+
+      - n: 'KGTUNO'
+        d: 'Keygroup tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
+        s: 2
+
+      - n: 'FILFRQ'
+        d: 'Basic filter frequency; Range: 0 to 99'
+
+      - n: 'K_FREQ'
+        d: 'Key follow of filter frequency'
+
+      - n: 'V_FREQ'
+        d: 'Not used'
+
+      - n: 'P_FREQ'
+        d: 'Note used'
+
+      - n: 'E_FREQ'
+        d: 'Not used'
+
+      - n: 'ATTAK1'
+        d: 'Attack rate of envelope 1; 0-99'
+
+      - n: 'DECAY1'
+        d: 'Decay rate of envelope 1; 0-99'
+
+      - n: 'SUSTN1'
+        d: 'Sustain level of envelope 1'
+
+      - n: 'RELSE1'
+        d: 'Release rate of envelope 1'
+
+      - n: 'V_ATT1'
+        d: 'Note-on velocity dependence of envelope 1 attack rate; Range: -50 to +50'
+
+      - n: 'V_REL1'
+        d: 'Note-on velocity dependence of envelope 1 release rate'
+
+      - n: 'O_REL1'
+        d: 'Note-off velocity dependence of envelope 1 release rate'
+
+      - n: 'K_DAR1'
+        d: 'Dependence of envelope 2 decay and release rates on key'
+
+      - n: 'ENV2R1'
+        d: 'Attack rate of envelope 2: 0-99'
+
+      - n: 'ENV2R3'
+        d: 'Decay rate of envelope 2'
+
+      - n: 'ENV2L3'
+        d: 'Sustain level of envelope 2'
+
+      - n: 'ENV2R4'
+        d: 'Release rate of envelope 2'
+
+      - n: 'V_ATT2'
+        d: 'Dependence of envelope 2 attack on note-on velocity; Range: -50 to 50'
+
+      - n: 'V_REL2'
+        d: 'Dependence of envelope 2 release on note-on velocity'
+
+      - n: 'O_REL2'
+        d: 'Dependence of envelope 2 release on note-off velocity'
+
+      - n: 'K_DAR2'
+        d: 'Dependence of envelope 2 decay and release rates on key'
+
+      - n: 'V_ENV2'
+        d: 'Scaling of envelope 2 by note-on velocity'
+
+      - n: 'E_PTCH'
+        d: 'Not used'
+
+      - n: 'VXFADE'
+        d: 'Velocity zone crossfade; Range: 0 represents OFF, 1 represents ON'
+
+      - n: 'VZONES'
+        d: 'Not used'
+
+      - n: 'LKXF'
+        d: 'Calculated left keygroup crossfade factor (internal)'
+
+      - n: 'RKXF'
+        d: 'Calculated right keygroup crossfade factor (internal)'
+
+      - n: 'SNAME1'
+        d: 'Sample name used in velocity zone 1'
+        s: 12
+        t: 'string'
+
+      - n: 'LOVEL1'
+        d: 'Lower limit of velocity range; 0-127'
+
+      - n: 'HIVEL1'
+        d: 'Upper limit of velocity range'
+
+      - n: 'VTUNO1'
+        d: 'Velocity zone 1 tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
+        s: 2
+
+      - n: 'VLOUD1'
+        d: 'Velocity zone 1 loudness offset; Range: -50 to +50'
+
+      - n: 'VFREQ1'
+        d: 'Velocity zone 1 filter frequency offset'
+
+      - n: 'VPANO1'
+        d: 'Velocity zone 1 pan offset'
+
+      - n: 'ZPLAY1'
+        d: 'Type of sample playback in velocity zone 1; 0 = As sample, 1 = Loop in release, 2 = Loop til release, 3 = No loops, 4 = Play to sample end'
+
+      - n: 'LVXF1'
+        d: 'Low velocity crossfade factor (internal use)'
+
+      - n: 'HVXF1'
+        d: 'High velocity crossfade factor (internal use)'
+
+      - n: 'SBADD1'
+        d: 'Calculated sample header block address (internal)'
+        s: 2
+
+      - n: 'SNAME2'
+        d: 'Sample name used in velocity zone 2'
+        s: 12
+        t: 'string'
+
+      - n: 'LOVEL2'
+        d: 'Lower limit of velocity range 2'
+
+      - n: 'HIVEL2'
+        d: 'Upper limit of velocity range 2'
+
+      - n: 'VTUNO2'
+        d: 'Velocity zone 2 tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
+        s: 2
+
+      - n: 'VLOUD2'
+        d: 'Velocity zone 2 loudness offset'
+
+      - n: 'VFREQ2'
+        d: 'Velocity zone 2 filter frequency offset'
+
+      - n: 'VPANO2'
+        d: 'Velocity zone 2 pan offset'
+
+      - n: 'ZPLAY2'
+        d: 'Type of sample playback in velocity zone 2; see ZPLAY1'
+
+      - n: 'LVXF2'
+        d: 'Low velocity crossfade factor (internal use)'
+
+      - n: 'HVXF2'
+        d: 'High velocity crossfade factor (internal use)'
+
+      - n: 'SBADD2'
+        d: 'Calculated sample header block address (internal)'
+        s: 2
+
+      - n: 'SNAME3'
+        d: 'Sample name used in velocity zone 3'
+        s: 12
+        t: 'string'
+
+      - n: 'LOVEL3'
+        d: 'Lower limit of velocity range 3'
+
+      - n: 'HIVEL3'
+        d: 'Upper limit of velocity range 3'
+
+      - n: 'VTUNO3'
+        d: 'Velocity zone 3 tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
+        s: 2
+
+      - n: 'VLOUD3'
+        d: 'Velocity zone 3 loudness offset; -50 to +50'
+
+      - n: 'VFREQ3'
+        d: 'Velocity zone 3 filter frequency offset'
+
+      - n: 'VPANO3'
+        d: 'Velocity zone 3 pan offset'
+
+      - n: 'ZPLAY3'
+        d: 'Type of sample playback in velocity zone 3; See ZPLAY1'
+
+      - n: 'LVXF3'
+        d: 'Low velocity crossfade factor (internal use)'
+
+      - n: 'HVXF3'
+        d: 'High velocity crossfade factor (internal use)'
+
+      - n: 'SBADD3'
+        d: 'Calculated sample header block address (internal)'
+        s: 2
+
+      - n: 'SNAME4'
+        d: 'Sample name used in velocity zone 4'
+        s: 12
+        t: 'string'
+
+      - n: 'LOVEL4'
+        d: 'Lower limit of velocity range 4'
+
+      - n: 'HIVEL4'
+        d: 'Upper limit of velocity range 4'
+
+      - n: 'VTUNO4'
+        d: 'Velocity zone 4 tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
+        s: 2
+
+      - n: 'VLOUD4'
+        d: 'Velocity zone 4 loudness offset'
+
+      - n: 'VFREQ4'
+        d: 'Velocity zone 4 filter frequency offset'
+
+      - n: 'VPANO4'
+        d: 'Velocity zone 4 pan offset'
+
+      - n: 'ZPLAY4'
+        d: 'Type of sample playback in velocity zone 4; See ZPLAY1'
+
+      - n: 'LVXF4'
+        d: 'Low velocity crossfade factor (internal use)'
+
+      - n: 'HVXF4'
+        d: 'High velocity crossfade factor (internal use)'
+
+      - n: 'SBADD4'
+        d: 'Calculated sample header block address (internal)'
+        s: 2
+
+      - n: 'KBEAT'
+        d: 'Fixed rate detune; -50 to 50'
+
+      - n: 'AHOLD'
+        d: 'Remain in attack phase until first loop encountered; Range: 0 represents OFF, 1 represents ON'
+
+      - n: 'CP1'
+        d: 'Constant pitch flag for velocity zone 1; 0 represents TRACK, 1 represents CONST'
+
+      - n: 'CP2'
+        d: 'Constant pitch flag for velocity zone 2'
+
+      - n: 'CP3'
+        d: 'Constant pitch flag for velocity zone 3'
+
+      - n: 'CP4'
+        d: 'Constant pitch flag for velocity zone 4'
+
+      - n: 'VZOUT1'
+        d: 'Individual output offset for velocity zone 1'
+
+      - n: 'VZOUT2'
+        d: 'Individual output offset for velocity zone 2'
+
+      - n: 'VZOUT3'
+        d: 'Individual output offset for velocity zone 3'
+
+      - n: 'VZOUT4'
+        d: 'Individual output offset for velocity zone 4'
+
+      - n: 'VSS1'
+        d: 'Start point dependence on note-on velocity for sample in velocity zone 1; Range: -9999 to +9999 data points'
+        s: 2
+
+      - n: 'VSS2'
+        d: 'Start point dependence on note-on velocity for sample in velocity zone 2'
+        s: 2
+
+      - n: 'VSS3'
+        d: 'Start point dependence on note-on velocity for sample in velocity zone 3'
+        s: 2
+
+      - n: 'VSS4'
+        d: 'Start point dependence on note-on velocity for sample in velocity zone 4'
+        s: 2
+
+      - n: 'KV_LO'
+        d: 'Not used'
+
+      - n: 'FILQ'
+        d: 'Resonance of filter 1; Range: 0 to 15'
+
+      - n: 'L_PTCH'
+        d: 'Amount of control of pitch by LFO1; -50 to +50'
+
+      - n: 'MODVFILT1'
+        d: 'Amount of control of filter frequency by assignable source 1'
+
+      - n: 'MODVFILT2'
+        d: 'Amount of control of filter frequency by assignable source 2'
+
+      - n: 'MODVFILT3'
+        d: 'Amount of control of filter frequency by assignable source 3'
+
+      - n: 'MODVPITCH'
+        d: 'Amount of control of pitch by assignable source'
+
+      - n: 'MODVAMP3'
+        d: 'Amount of control of loudness by assignable keygroup source'
+
+      - n: 'ENV2L1'
+        d: 'Level of envelope 2 at end attack phase (phase 1); 0-99'
+
+      - n: 'ENV2R2'
+        d: 'Rate during phase 2 of envelope 2'
+
+      - n: 'ENV2L2'
+        d: 'Level of envelope 2 at end of phase 1'
+
+      - n: 'ENV2L4'
+        d: 'Final envelope 2 level'
+
+      - n: 'KGMUTE'
+        d: 'Keygroup mute group; Range: 0ffh = off, mute groups 0 to 31'
+
+      - n: 'PFXCHAN'
+        d: 'Effects bus select'
+
+      - n: 'PFXSLEV'
+        d: 'Effects send level'
+
+      - n: 'Reserved_1'
+        d: 'Not used'
+        s: 5
+
+      - n: 'LSI2_ON'
+        d: 'Route audio through second LSI; Range: 0 = -6dB, 1 = 0dB'
+
+      - n: 'FLT2GAIN'
+        d: 'Make-up gain of second filter; Range: 0 = -6dB, 1 = 0dB'
+
+      - n: 'FLT2MODE'
+        d: 'Mode of second filter; Range: 0 = Low-pass, 1 = Band-pass, 2 = High-pass, 3 = EQ'
+
+      - n: 'FLT2Q'
+        d: 'Resonance of second filter; Range: 0 to 31'
+
+      - n: 'TONEFREQ'
+        d: 'Center frequency of tone section'
+
+      - n: 'TONESLOP'
+        d: 'Slope of tone section'
+
+      - n: 'MODVFLT2_1'
+        d: 'Amount of control of second filter frequency by source 1'
+
+      - n: 'MODVFLT2_2'
+        d: 'Amount of control of second filter frequency by source 2'
+
+      - n: 'MODVFLT2_3'
+        d: 'Amount of control of second filter frequency by source 3'
+
+      - n: 'FIL2FR'
+        d: 'Basic second filter frequency; 0-99'
+
+      - n: 'K_FRQ2'
+        d: 'Second filter key follow; Range: -24 to +24 semitones'
+
+      - n: 'ATTAK3'
+        d: 'Attack rate of envelope 3'
+
+      - n: 'ENV3L1'
+        d: 'Final level of attack phase (phase 1) of envelope 3'
+
+      - n: 'ENV3R2'
+        d: 'Rate of phase 2 of envelope 3'
+
+      - n: 'ENV3L2'
+        d: 'Final level of phase 2 of envelope 3'
+
+      - n: 'ENV3R3'
+        d: 'Rate of phase 3 of envelope 3'
+
+      - n: 'ENV3L3'
+        d: 'Final level of phase 3 of envelope 3'
+
+      - n: 'ENV3R4'
+        d: 'Rate of release phase (phase 4) of envelope 3'
+
+      - n: 'ENV3L4'
+        d: 'Final target level of envelope 3'
+
+      - n: 'V_ATT3'
+        d: 'Dependence of envelope 3 attack rate on note-on velocity'
+
+      - n: 'V_REL3'
+        d: 'Dependence of envelope 3 release rate on note-on velocity'
+
+      - n: 'O_REL3'
+        d: 'Dependence of envelope 3 release rate on note-off velocity'
+
+      - n: 'K_DAR3'
+        d: 'Dependence of envelope 3 release and decay rate on key'
+
+      - n: 'V_ENV3'
+        d: 'Scaling of envelope 3 by note-on velocity'
+
+      - n: 'KFXCHAN'
+        d: 'Keygroup override Effects Bus select; Range: 0 to 5'
+
+      - n: 'KFXSLEV'
+        d: 'Keygroup override Effects Send level; Range: 0 to 99'

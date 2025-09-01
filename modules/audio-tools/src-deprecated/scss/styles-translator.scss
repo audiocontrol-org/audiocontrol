@@ -1,0 +1,156 @@
+$cream: #F1DAC4;
+$orange: #F55436;
+$green: #606C38;
+
+//$light-gray: #A69CAC;
+$light-gray: var(--sl-color-gray-600);
+//$dark-gray: #292F36;
+$dark-gray: var(--sl-color-gray-200);
+$highlight: $orange;
+
+$primary: $dark-gray;
+
+$success: $green;
+$danger: $orange;
+$dark: $dark-gray;
+$light: $light-gray;
+// Shoelace
+
+// MPC colors
+$cream: #E9E9DD;
+$light-gray: #c3c5b2;
+//$light-gray: --sl-color-gray-300;
+$dark-gray: #5a5f5c;
+$light-green: #7a7f6b;
+$red: #cf2a25;
+//$red: var(--sl-color-red-300);
+$blue: #1C627AFF; //var(--sl-color-cyan-200);
+$light-blue: #1896B7FF;//var(--sl-color-cyan-400);
+$yellow: #E3D26F;
+
+:root,
+:host,
+.sl-theme-light {
+  /* your custom styles here */
+  --sl-color-primary-50: var(--sl-color-cyan-50);
+  --sl-color-primary-100: var(--sl-color-cyan-100);
+  --sl-color-primary-200: var(--sl-color-cyan-200);
+  --sl-color-primary-300: var(--sl-color-cyan-300);
+  --sl-color-primary-400: var(--sl-color-cyan-400);
+  --sl-color-primary-500: var(--sl-color-cyan-500);
+  --sl-color-primary-600: var(--sl-color-cyan-600);
+  --sl-color-primary-700: var(--sl-color-cyan-700);
+  --sl-color-primary-800: var(--sl-color-cyan-800);
+  --sl-color-primary-900: var(--sl-color-cyan-900);
+  --sl-color-primary-950: var(--sl-color-cyan-950);
+
+  --sl-font-sans: Inter, sans-serif;
+}
+$font-family-base: var(--sl-font-sans);
+$font-size-base: .875rem;
+
+$primary: $blue;
+$secondary: $light-green;
+$success: $green;
+$danger: $red;
+$warning: $yellow;
+$light: $light-gray;
+$info: $light-blue;
+$dark: $dark-gray;
+
+//@import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css");
+@import url("https://fonts.googleapis.com/icon?family=Material+Icons");
+@import "../../node_modules/bootstrap/scss/bootstrap";
+
+body {
+  background-color: $cream;
+}
+
+h1 {
+  margin-top: 1rem;
+  color: $red;
+}
+
+.monospace {
+  font-family: Inconsolata, monospace;
+}
+
+.as-list-col label {
+  color: $light-gray;
+}
+
+.as-breadcrumb {
+  font-family: Inconsolata, monospace;
+  color: $light-gray;
+}
+
+.as-list-container {
+  background-color: $light-gray;
+}
+
+
+.as-from-list-col, .as-to-list-col {
+  background-color: $dark-gray;
+  min-height: 40rem;
+}
+
+
+.mpc-program {
+  //color: $primary;
+  //background-color: $light-green;
+}
+
+.as-list-view {
+  //max-height: 28rem;
+  min-height: 20rem;
+  max-height: 20rem;
+
+  li, a {
+    font-family: Inconsolata, monospace;
+    font-size: .9rem;
+  }
+
+  .as-list-view-dir {
+    font-weight: bold;
+  }
+
+  .as-list-view-program {
+    color: $green;
+  }
+
+  .disabled {
+    color: $light-gray
+  }
+
+}
+
+#as-list-view-controls {
+  font-weight: normal;
+  font-family: sans-serif;
+  font-style: italic;
+
+  .as-list-view-control-active {
+    color: $primary;
+    font-weight: bold;
+  }
+}
+
+#terminal {
+  padding: 1rem;
+  background-color: $black;
+  color: $light-gray;
+  font-family: Inconsolata, monospace;
+  min-height: 5rem;
+  max-height: 5rem;
+}
+
+$info-panel-height: 25rem;
+
+.info-panel {
+  max-height: $info-panel-height;
+  .list-group {
+    max-height: $info-panel-height;
+  }
+}
+
+
