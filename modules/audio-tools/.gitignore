@@ -8,3 +8,5 @@
 **/dist
 **/mochawesome-report
 **/node_modules
+.next/
+*.tsbuildinfo
