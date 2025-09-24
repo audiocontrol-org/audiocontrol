@@ -1,0 +1,12 @@
+**/*~
+**/*.DS_Store
+**/*storybook.log
+**/.idea
+**/.tsup
+**/build
+**/coverage
+**/dist
+**/mochawesome-report
+**/node_modules
+.next/
+*.tsbuildinfo

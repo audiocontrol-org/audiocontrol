@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<DecentSampler minVersion="1.11">
+    <groups>
+        <group ampVelTrack="1.0" name="Layer 1">
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="50112.000" hiNote="36" hiVel="127" loNote="36" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="36" start="0.000" sustain="1.000" volume="6.0dB"/>
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="91008.000" hiNote="37" hiVel="127" loNote="37" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="37" start="50112.000" sustain="1.000" volume="6.0dB"/>
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="129500.000" hiNote="38" hiVel="127" loNote="38" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="38" start="91008.000" sustain="1.000" volume="6.0dB"/>
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="166700.000" hiNote="39" hiVel="127" loNote="39" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="39" start="129500.000" sustain="1.000" volume="6.0dB"/>
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="201600.000" hiNote="40" hiVel="127" loNote="40" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="40" start="166700.000" sustain="1.000" volume="6.0dB"/>
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="243264.000" hiNote="41" hiVel="127" loNote="41" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="41" start="201600.000" sustain="1.000" volume="6.0dB"/>
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="279552.000" hiNote="42" hiVel="127" loNote="42" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="42" start="243264.000" sustain="1.000" volume="6.0dB"/>
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="319488.000" hiNote="43" hiVel="127" loNote="43" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="43" start="279552.000" sustain="1.000" volume="6.0dB"/>
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="357312.000" hiNote="44" hiVel="127" loNote="44" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="44" start="319488.000" sustain="1.000" volume="6.0dB"/>
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="397248.000" hiNote="45" hiVel="127" loNote="45" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="45" start="357312.000" sustain="1.000" volume="6.0dB"/>
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="436992.000" hiNote="46" hiVel="127" loNote="46" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="46" start="397248.000" sustain="1.000" volume="6.0dB"/>
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="474624.000" hiNote="47" hiVel="127" loNote="47" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="47" start="436992.000" sustain="1.000" volume="6.0dB"/>
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="502600.000" hiNote="48" hiVel="127" loNote="48" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="48" start="474624.000" sustain="1.000" volume="6.0dB"/>
+            <sample attack="0.001" attackCurve="-25.000" decay="0.002" decayCurve="-25.000" end="571193.000" hiNote="49" hiVel="127" loNote="49" loVel="0" pan="0" path="Samples/Oscar1.wav" pitchKeyTrack="1.0000" release="0.001" releaseCurve="-25.000" rootNote="49" start="509952.000" sustain="1.000" volume="6.0dB"/>
+            <effects>
+                <effect frequency="20000.00" resonance="0.700" type="lowpass_4pl"/>
+            </effects>
+        </group>
+    </groups>
+    <ui>
+        <tab name="main">
+            <labeled-knob label="Reverb Wet Level" maxValue="1000" minValue="0" textColor="FF000000" type="float" value="0.0" x="200" y="0">
+                <binding level="instrument" parameter="FX_REVERB_WET_LEVEL" position="1" translation="linear" translationOutputMax="1" translationOutputMin="0.0" type="effect"/>
+            </labeled-knob>
+            <labeled-knob label="Reverb Room Size" maxValue="1000" minValue="0" textColor="FF000000" type="float" value="0.0" x="300" y="0">
+                <binding level="instrument" parameter="FX_REVERB_ROOM_SIZE" position="1" translation="linear" translationOutputMax="1" translationOutputMin="0.0" type="effect"/>
+            </labeled-knob>
+        </tab>
+    </ui>
+    <modulators/>
+    <effects>
+        <effect type="reverb"/>
+    </effects>
+</DecentSampler>
