@@ -19,13 +19,16 @@
  */
 
 import { spawn } from 'child_process';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
 
 interface PluginInfo {
   format: string;
   name: string;
 }
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const PLUGHOST_PATH = join(__dirname, '../../../cmake-build/modules/juce/host/plughost_artefacts/plughost');
 
 function parseArgs(): { mode: 'list' | 'single' | 'all'; pluginName?: string; json: boolean; help: boolean } {
@@ -294,7 +297,8 @@ async function main(): Promise<void> {
   }
 }
 
-if (require.main === module) {
+// ES module equivalent of require.main === module
+if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(console.error);
 }
 
