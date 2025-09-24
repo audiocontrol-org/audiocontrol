@@ -1,0 +1,156 @@
+name: audio-control
+description: TypeScript monorepo for audio device control and MIDI mapping utilities
+version: 1.0.0
+type: library
+
+metadata:
+  created: 2024-01-15
+  team_size: small
+  complexity: high
+  domain: audio-engineering
+
+technology_stack:
+  languages:
+    - typescript
+    - javascript
+  frameworks:
+    - node.js
+  build_tools:
+    - pnpm
+    - typescript
+    - esbuild
+  testing:
+    - vitest
+  validation:
+    - zod
+  formats:
+    - yaml
+    - xml
+    - json
+
+agents:
+  - id: orchestrator
+    role: Workflow Coordinator
+    priority: essential
+
+  - id: typescript-pro
+    role: TypeScript Expert
+    priority: essential
+    focus:
+      - Type safety
+      - Monorepo architecture
+      - Module interfaces
+
+  - id: javascript-pro
+    role: JavaScript Expert
+    priority: high
+    focus:
+      - Node.js APIs
+      - Module bundling
+      - Performance optimization
+
+  - id: api-designer
+    role: API Design Specialist
+    priority: essential
+    focus:
+      - Library APIs
+      - TypeScript interfaces
+      - Fluent builder patterns
+
+  - id: embedded-systems
+    role: Hardware Interface Expert
+    priority: high
+    focus:
+      - MIDI protocol
+      - Audio device control
+      - Real-time constraints
+
+  - id: architect-reviewer
+    role: Architecture Reviewer
+    priority: high
+    focus:
+      - Monorepo structure
+      - Module boundaries
+      - Dependency management
+
+  - id: documentation-engineer
+    role: Documentation Specialist
+    priority: high
+    focus:
+      - API documentation
+      - README files
+      - Usage examples
+
+  - id: test-automator
+    role: Testing Specialist
+    priority: high
+    focus:
+      - Unit tests
+      - Integration tests
+      - Validation testing
+
+  - id: code-reviewer
+    role: Code Quality Guardian
+    priority: essential
+    focus:
+      - Code reviews
+      - Best practices
+      - Performance
+
+workflows:
+  main:
+    trigger: project_start
+    agents: all
+
+  feature_development:
+    trigger: new_feature
+    agents:
+      - orchestrator
+      - typescript-pro
+      - api-designer
+      - test-automator
+      - documentation-engineer
+
+  library_design:
+    trigger: api_design
+    agents:
+      - api-designer
+      - typescript-pro
+      - architect-reviewer
+      - documentation-engineer
+
+  midi_implementation:
+    trigger: midi_feature
+    agents:
+      - embedded-systems
+      - typescript-pro
+      - test-automator
+      - code-reviewer
+
+  testing:
+    trigger: test_suite
+    agents:
+      - test-automator
+      - typescript-pro
+      - code-reviewer
+
+  documentation:
+    trigger: docs_update
+    agents:
+      - documentation-engineer
+      - api-designer
+      - typescript-pro
+
+settings:
+  code_review: enabled
+  auto_testing: enabled
+  documentation_required: true
+  type_checking: strict
+  monorepo_mode: true
+
+project_specific:
+  midi_focus: true
+  audio_protocols: true
+  real_time_constraints: true
+  library_development: true
+  canonical_formats: true

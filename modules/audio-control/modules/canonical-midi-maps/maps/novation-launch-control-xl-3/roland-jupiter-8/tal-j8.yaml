@@ -1,0 +1,442 @@
+version: 1.0.0
+device:
+  manufacturer: Novation
+  model: Launch Control XL 3
+  firmware: ">=1.0"
+metadata:
+  name: TAL-J-8 Jupiter 8 Mapping
+  description: Optimized MIDI CC mapping for TAL-J-8 Jupiter 8 emulation plugin
+  author: Audio Control System
+  date: 2025-09-23
+  tags:
+    - synthesizer
+    - jupiter-8
+    - TAL-J-8
+    - analog
+    - roland
+
+plugin:
+  manufacturer: TAL Software
+  name: TAL-J-8
+  type: VST/AU
+  version: ">=1.0"
+  descriptor: plugin-descriptors/tal-togu-audio-line-tal-j-8.json
+
+# Reference to centralized MIDI channel registry for this device
+midi_channel_registry: ../midi-channel-registry.yaml
+
+controls:
+  # Top Row - Main Synthesis Controls (Encoders 1-8)
+  - id: encoder_1
+    name: VCF Cutoff
+    type: encoder
+    cc: 13
+    channel: global
+    range: [0, 127]
+    description: VCF cutoff frequency
+    plugin_parameter: 105
+
+  - id: encoder_2
+    name: HPF Cutoff
+    type: encoder
+    cc: 14
+    channel: global
+    range: [0, 127]
+    description: High-pass filter cutoff
+    plugin_parameter: 103
+
+  - id: encoder_3
+    name: Portamento
+    type: encoder
+    cc: 15
+    channel: global
+    range: [0, 127]
+    description: Portamento/glide time
+    plugin_parameter: 11
+
+  - id: encoder_4
+    name: PWM Amount
+    type: encoder
+    cc: 16
+    channel: global
+    range: [0, 127]
+    description: Pulse width modulation amount
+    plugin_parameter: 59
+
+  - id: encoder_5
+    name: Cross Mod
+    type: encoder
+    cc: 17
+    channel: global
+    range: [0, 127]
+    description: Cross modulation amount
+    plugin_parameter: 87
+
+  - id: encoder_6
+    name: Noise Level
+    type: encoder
+    cc: 18
+    channel: global
+    range: [0, 127]
+    description: Noise generator level
+    plugin_parameter: 91
+
+  - id: encoder_7
+    name: Chorus Mix
+    type: encoder
+    cc: 19
+    channel: global
+    range: [0, 127]
+    description: Chorus effect mix
+    plugin_parameter: 137
+
+  - id: encoder_8
+    name: Delay Mix
+    type: encoder
+    cc: 41
+    channel: global
+    range: [0, 127]
+    description: Delay effect mix
+    plugin_parameter: 139
+
+  # Middle Row - Oscillator & Modulation (Encoders 9-16)
+  - id: encoder_9
+    name: Resonance
+    type: encoder
+    cc: 21
+    channel: global
+    range: [0, 127]
+    description: VCF resonance/emphasis
+    plugin_parameter: 107
+
+  - id: encoder_10
+    name: LFO Rate
+    type: encoder
+    cc: 22
+    channel: global
+    range: [0, 127]
+    description: LFO 1 frequency/rate
+    plugin_parameter: 43
+
+  - id: encoder_11
+    name: Osc 1 Range
+    type: encoder
+    cc: 23
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1 octave range
+    plugin_parameter: 89
+
+  - id: encoder_12
+    name: Osc 1 Waveform
+    type: encoder
+    cc: 24
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1 waveform selection
+    plugin_parameter: 91
+
+  - id: encoder_13
+    name: Osc 1 Fine
+    type: encoder
+    cc: 25
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1 fine tune
+    plugin_parameter: 24
+
+  - id: encoder_14
+    name: VCO Mix
+    type: encoder
+    cc: 26
+    channel: global
+    range: [0, 127]
+    description: Oscillator mix balance
+    plugin_parameter: 85
+
+  - id: encoder_15
+    name: LFO 2 Rate
+    type: encoder
+    cc: 27
+    channel: global
+    range: [0, 127]
+    description: LFO 2 rate
+    plugin_parameter: 44
+
+  - id: encoder_16
+    name: Key Follow
+    type: encoder
+    cc: 28
+    channel: global
+    range: [0, 127]
+    description: Filter keyboard tracking
+    plugin_parameter: 117
+
+  # Third Row - More Synthesis Parameters (Encoders 17-24)
+  - id: encoder_17
+    name: Env Amt
+    type: encoder
+    cc: 29
+    channel: global
+    range: [0, 127]
+    description: Envelope amount to filter
+    plugin_parameter: 111
+
+  - id: encoder_18
+    name: LFO Delay
+    type: encoder
+    cc: 30
+    channel: global
+    range: [0, 127]
+    description: LFO 1 delay/fade-in time
+    plugin_parameter: 47
+
+  - id: encoder_19
+    name: Osc 2 Range
+    type: encoder
+    cc: 31
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 octave range
+    plugin_parameter: 93
+
+  - id: encoder_20
+    name: Osc 2 Waveform
+    type: encoder
+    cc: 61
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 waveform selection
+    plugin_parameter: 95
+
+  - id: encoder_21
+    name: Osc 2 Fine
+    type: encoder
+    cc: 33
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 fine tune
+    plugin_parameter: 97
+
+  - id: encoder_22
+    name: Osc 2 Detune
+    type: encoder
+    cc: 34
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 detune
+    plugin_parameter: 98
+
+  - id: encoder_23
+    name: Bend Range
+    type: encoder
+    cc: 35
+    channel: global
+    range: [0, 127]
+    description: Pitch bend range
+    plugin_parameter: 14
+
+  - id: encoder_24
+    name: Velocity Sens
+    type: encoder
+    cc: 36
+    channel: global
+    range: [0, 127]
+    description: Velocity sensitivity
+    plugin_parameter: 125
+
+  # Sliders - ADSR & Mix Controls
+  - id: slider_1
+    name: Attack
+    type: slider
+    cc: 53
+    channel: global
+    range: [0, 127]
+    description: VCF envelope attack time
+    plugin_parameter: 65
+
+  - id: slider_2
+    name: Decay
+    type: slider
+    cc: 54
+    channel: global
+    range: [0, 127]
+    description: VCF envelope decay time
+    plugin_parameter: 67
+
+  - id: slider_3
+    name: Sustain
+    type: slider
+    cc: 55
+    channel: global
+    range: [0, 127]
+    description: VCF envelope sustain level
+    plugin_parameter: 69
+
+  - id: slider_4
+    name: Release
+    type: slider
+    cc: 56
+    channel: global
+    range: [0, 127]
+    description: VCF envelope release time
+    plugin_parameter: 71
+
+  - id: slider_5
+    name: Osc Mix
+    type: slider
+    cc: 57
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1/2 mix balance
+    plugin_parameter: 85
+
+  - id: slider_6
+    name: LFO Filter
+    type: slider
+    cc: 58
+    channel: global
+    range: [0, 127]
+    description: LFO 1 to filter modulation amount
+    plugin_parameter: 115
+
+  - id: slider_7
+    name: LFO VCA
+    type: slider
+    cc: 59
+    channel: global
+    range: [0, 127]
+    description: LFO 1 to VCA modulation amount
+    plugin_parameter: 123
+
+  - id: slider_8
+    name: Master Volume
+    type: slider
+    cc: 60
+    channel: global
+    range: [0, 127]
+    description: Master output volume
+    plugin_parameter: 1
+
+  # Buttons - Mode Selection & Features
+  - id: button_row_1
+    name: Oscillator Controls
+    type: button_group
+    buttons:
+      - id: button_1
+        name: Osc 1 Sync
+        cc: 37
+        channel: global
+        mode: toggle
+        plugin_parameter: 99
+      - id: button_2
+        name: Osc 2 Sync
+        cc: 37
+        channel: global
+        mode: toggle
+        plugin_parameter: 99
+      - id: button_3
+        name: PWM LFO
+        cc: 37
+        channel: global
+        mode: toggle
+        plugin_parameter: 61
+      - id: button_4
+        name: PWM ENV
+        cc: 37
+        channel: global
+        mode: toggle
+        plugin_parameter: 55
+      - id: button_5
+        name: Arpeggiator
+        cc: 41
+        channel: global
+        mode: toggle
+        plugin_parameter: 40
+      - id: button_6
+        name: Arp Hold
+        cc: 41
+        channel: global
+        mode: toggle
+        plugin_parameter: 9
+      - id: button_7
+        name: Arp Up
+        cc: 41
+        channel: global
+        mode: momentary
+        plugin_parameter: 40
+      - id: button_8
+        name: Arp Down
+        cc: 41
+        channel: global
+        mode: momentary
+        plugin_parameter: 40
+
+  - id: button_row_2
+    name: Voice Mode & Filter Controls
+    type: button_group
+    buttons:
+      - id: button_9
+        name: Solo
+        cc: 45
+        channel: global
+        mode: toggle
+        plugin_parameter: 5
+      - id: button_10
+        name: Unison
+        cc: 45
+        channel: global
+        mode: toggle
+        plugin_parameter: 5
+      - id: button_11
+        name: Poly 1
+        cc: 45
+        channel: global
+        mode: toggle
+        plugin_parameter: 5
+      - id: button_12
+        name: Poly 2
+        cc: 45
+        channel: global
+        mode: toggle
+        plugin_parameter: 5
+      - id: button_13
+        name: 24dB Mode
+        cc: 49
+        channel: global
+        mode: toggle
+        plugin_parameter: 109
+      - id: button_14
+        name: Env Invert
+        cc: 50
+        channel: global
+        mode: toggle
+        plugin_parameter: 113
+      - id: button_15
+        name: Vintage
+        cc: 51
+        channel: global
+        mode: toggle
+        plugin_parameter: 7
+      - id: button_16
+        name: Hold
+        cc: 52
+        channel: global
+        mode: momentary
+        plugin_parameter: 9
+
+notes: |
+  TAL-J-8 specific mapping for Novation Launch Control XL 3
+
+  This mapping is optimized for the TAL-J-8 plugin which provides
+  a faithful emulation of the Roland Jupiter 8 synthesizer.
+
+  Key features:
+  - All main synthesis parameters mapped to encoders
+  - ADSR envelope on sliders for real-time control
+  - Oscillator sync and modulation controls on buttons
+  - Arpeggiator controls mapped to second button row
+  - Effects (chorus/delay) accessible via top row encoders
+
+  The plugin_parameter fields reference the internal parameter names
+  used by TAL-J-8 for automation mapping.

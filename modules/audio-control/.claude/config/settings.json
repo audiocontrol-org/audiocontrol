@@ -1,0 +1,35 @@
+{
+  "features": {
+    "code_review": true,
+    "auto_testing": true,
+    "documentation_generation": true,
+    "type_checking": true,
+    "performance_monitoring": true,
+    "midi_validation": true
+  },
+  "development": {
+    "monorepo_mode": true,
+    "package_manager": "pnpm",
+    "typescript_strict": true,
+    "test_framework": "vitest",
+    "build_tool": "tsc"
+  },
+  "quality": {
+    "min_test_coverage": 80,
+    "require_jsdoc": true,
+    "enforce_types": true,
+    "lint_on_save": true
+  },
+  "domain": {
+    "audio_focus": true,
+    "midi_protocol": true,
+    "real_time_constraints": true,
+    "hardware_integration": true,
+    "daw_compatibility": true
+  },
+  "workflows": {
+    "auto_select": true,
+    "parallel_agents": true,
+    "review_required": true
+  }
+}

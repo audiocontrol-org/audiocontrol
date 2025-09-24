@@ -1,0 +1,451 @@
+version: 1.0.0
+device:
+  manufacturer: Novation
+  model: Launch Control XL 3
+  firmware: ">=1.0"
+metadata:
+  name: Arturia Jup-8 V4 Mapping
+  description: MIDI CC mapping for Arturia Jup-8 V4 Jupiter-8 emulation
+  author: Audio Control System
+  date: 2025-09-23
+  tags:
+    - synthesizer
+    - jupiter-8
+    - arturia
+    - jup-8-v
+    - analog
+
+plugin:
+  manufacturer: Arturia
+  name: Jup-8 V4
+  type: VST/AU/AAX
+  version: ">=4.0"
+
+# Reference to centralized MIDI channel registry for this device
+midi_channel_registry: ../midi-channel-registry.yaml
+
+controls:
+  # Top Row - Main Synthesis Controls (Encoders 1-8)
+  - id: encoder_1
+    name: VCF Cutoff
+    type: encoder
+    cc: 13
+    channel: global
+    range: [0, 127]
+    description: VCF cutoff frequency
+    plugin_parameter: Cutoff
+
+  - id: encoder_2
+    name: HPF
+    type: encoder
+    cc: 14
+    channel: global
+    range: [0, 127]
+    description: High-pass filter
+    plugin_parameter: HPF
+
+  - id: encoder_3
+    name: Glide
+    type: encoder
+    cc: 15
+    channel: global
+    range: [0, 127]
+    description: Portamento/glide time
+    plugin_parameter: Glide_Time
+
+  - id: encoder_4
+    name: Modulation
+    type: encoder
+    cc: 16
+    channel: global
+    range: [0, 127]
+    description: Modulation wheel amount
+    plugin_parameter: Mod_Wheel
+
+  - id: encoder_5
+    name: Cross Mod
+    type: encoder
+    cc: 17
+    channel: global
+    range: [0, 127]
+    description: Cross modulation depth
+    plugin_parameter: Cross_Mod
+
+  - id: encoder_6
+    name: Noise
+    type: encoder
+    cc: 18
+    channel: global
+    range: [0, 127]
+    description: Noise generator level
+    plugin_parameter: Noise_Level
+
+  - id: encoder_7
+    name: Brilliance
+    type: encoder
+    cc: 19
+    channel: global
+    range: [0, 127]
+    description: Brilliance/presence control
+    plugin_parameter: Brilliance
+
+  - id: encoder_8
+    name: Voice Detune
+    type: encoder
+    cc: 41
+    channel: global
+    range: [0, 127]
+    description: Voice detune amount
+    plugin_parameter: Voice_Detune
+
+  # Middle Row - Oscillator & Modulation (Encoders 9-16)
+  - id: encoder_9
+    name: Resonance
+    type: encoder
+    cc: 21
+    channel: global
+    range: [0, 127]
+    description: VCF resonance
+    plugin_parameter: Resonance
+
+  - id: encoder_10
+    name: LFO Rate
+    type: encoder
+    cc: 22
+    channel: global
+    range: [0, 127]
+    description: LFO frequency/rate
+    plugin_parameter: LFO_Rate
+
+  - id: encoder_11
+    name: OSC1 Range
+    type: encoder
+    cc: 23
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1 octave range
+    plugin_parameter: OSC1_Range
+
+  - id: encoder_12
+    name: OSC1 Wave
+    type: encoder
+    cc: 24
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1 waveform
+    plugin_parameter: OSC1_Wave
+
+  - id: encoder_13
+    name: OSC1 PW
+    type: encoder
+    cc: 25
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1 pulse width
+    plugin_parameter: OSC1_PW
+
+  - id: encoder_14
+    name: OSC1 PWM
+    type: encoder
+    cc: 26
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1 PWM amount
+    plugin_parameter: OSC1_PWM
+
+  - id: encoder_15
+    name: Sync
+    type: encoder
+    cc: 27
+    channel: global
+    range: [0, 127]
+    description: Oscillator sync amount
+    plugin_parameter: Sync
+
+  - id: encoder_16
+    name: Key Follow
+    type: encoder
+    cc: 28
+    channel: global
+    range: [0, 127]
+    description: Filter keyboard tracking
+    plugin_parameter: Key_Follow
+
+  # Third Row - More Synthesis Parameters (Encoders 17-24)
+  - id: encoder_17
+    name: ENV Amount
+    type: encoder
+    cc: 29
+    channel: global
+    range: [0, 127]
+    description: ENV1 to VCF amount
+    plugin_parameter: ENV1_Amount
+
+  - id: encoder_18
+    name: LFO Delay
+    type: encoder
+    cc: 30
+    channel: global
+    range: [0, 127]
+    description: LFO delay/fade-in
+    plugin_parameter: LFO_Delay
+
+  - id: encoder_19
+    name: OSC2 Range
+    type: encoder
+    cc: 31
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 octave range
+    plugin_parameter: OSC2_Range
+
+  - id: encoder_20
+    name: OSC2 Wave
+    type: encoder
+    cc: 61
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 waveform
+    plugin_parameter: OSC2_Wave
+
+  - id: encoder_21
+    name: OSC2 Fine
+    type: encoder
+    cc: 33
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 fine tune
+    plugin_parameter: OSC2_Fine
+
+  - id: encoder_22
+    name: OSC2 Coarse
+    type: encoder
+    cc: 34
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 coarse tune
+    plugin_parameter: OSC2_Coarse
+
+  - id: encoder_23
+    name: OSC2 PW
+    type: encoder
+    cc: 35
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 pulse width
+    plugin_parameter: OSC2_PW
+
+  - id: encoder_24
+    name: OSC2 PWM
+    type: encoder
+    cc: 36
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 PWM amount
+    plugin_parameter: OSC2_PWM
+
+  # Sliders - ADSR & Mix Controls
+  - id: slider_1
+    name: Attack
+    type: slider
+    cc: 53
+    channel: global
+    range: [0, 127]
+    description: ENV1 attack time
+    plugin_parameter: ENV1_Attack
+
+  - id: slider_2
+    name: Decay
+    type: slider
+    cc: 54
+    channel: global
+    range: [0, 127]
+    description: ENV1 decay time
+    plugin_parameter: ENV1_Decay
+
+  - id: slider_3
+    name: Sustain
+    type: slider
+    cc: 55
+    channel: global
+    range: [0, 127]
+    description: ENV1 sustain level
+    plugin_parameter: ENV1_Sustain
+
+  - id: slider_4
+    name: Release
+    type: slider
+    cc: 56
+    channel: global
+    range: [0, 127]
+    description: ENV1 release time
+    plugin_parameter: ENV1_Release
+
+  - id: slider_5
+    name: OSC Balance
+    type: slider
+    cc: 57
+    channel: global
+    range: [0, 127]
+    description: OSC1/OSC2 balance
+    plugin_parameter: OSC_Balance
+
+  - id: slider_6
+    name: LFO to VCF
+    type: slider
+    cc: 58
+    channel: global
+    range: [0, 127]
+    description: LFO to filter modulation
+    plugin_parameter: LFO_VCF
+
+  - id: slider_7
+    name: LFO to VCA
+    type: slider
+    cc: 59
+    channel: global
+    range: [0, 127]
+    description: LFO to amplifier modulation
+    plugin_parameter: LFO_VCA
+
+  - id: slider_8
+    name: Volume
+    type: slider
+    cc: 60
+    channel: global
+    range: [0, 127]
+    description: Master volume
+    plugin_parameter: Master_Volume
+
+  # Buttons - Advanced Features & Modes
+  - id: button_row_1
+    name: Performance Controls
+    type: button_group
+    buttons:
+      - id: button_1
+        name: Arpeggiator
+        cc: 37
+        channel: global
+        mode: toggle
+        plugin_parameter: Arp_On
+      - id: button_2
+        name: Arp Mode
+        cc: 37
+        channel: global
+        mode: toggle
+        plugin_parameter: Arp_Mode
+      - id: button_3
+        name: Arp Octave
+        cc: 37
+        channel: global
+        mode: toggle
+        plugin_parameter: Arp_Octave
+      - id: button_4
+        name: Hold
+        cc: 37
+        channel: global
+        mode: momentary
+        plugin_parameter: Hold
+      - id: button_5
+        name: Sequencer
+        cc: 41
+        channel: global
+        mode: toggle
+        plugin_parameter: Seq_On
+      - id: button_6
+        name: Seq Play
+        cc: 41
+        channel: global
+        mode: momentary
+        plugin_parameter: Seq_Play
+      - id: button_7
+        name: Galaxy
+        cc: 41
+        channel: global
+        mode: toggle
+        plugin_parameter: Galaxy_On
+      - id: button_8
+        name: Effects
+        cc: 41
+        channel: global
+        mode: toggle
+        plugin_parameter: Effects_On
+
+  - id: button_row_2
+    name: Voice & Filter Modes
+    type: button_group
+    buttons:
+      - id: button_9
+        name: Solo
+        cc: 45
+        channel: global
+        mode: toggle
+        plugin_parameter: Voice_Solo
+      - id: button_10
+        name: Unison
+        cc: 45
+        channel: global
+        mode: toggle
+        plugin_parameter: Voice_Unison
+      - id: button_11
+        name: Poly 1
+        cc: 45
+        channel: global
+        mode: toggle
+        plugin_parameter: Voice_Poly1
+      - id: button_12
+        name: Poly 2
+        cc: 45
+        channel: global
+        mode: toggle
+        plugin_parameter: Voice_Poly2
+      - id: button_13
+        name: Filter LP/HP
+        cc: 49
+        channel: global
+        mode: toggle
+        plugin_parameter: Filter_Mode
+      - id: button_14
+        name: ENV Invert
+        cc: 50
+        channel: global
+        mode: toggle
+        plugin_parameter: ENV1_Invert
+      - id: button_15
+        name: Vintage
+        cc: 51
+        channel: global
+        mode: toggle
+        plugin_parameter: Vintage_Mode
+      - id: button_16
+        name: Upper/Lower
+        cc: 52
+        channel: global
+        mode: toggle
+        plugin_parameter: Upper_Lower
+
+notes: |
+  Arturia Jup-8 V4 specific mapping for Novation Launch Control XL 3
+
+  This mapping is optimized for Arturia's Jup-8 V4 plugin, which includes
+  additional features beyond the original hardware.
+
+  Key features:
+  - Complete oscillator control with sync and cross-modulation
+  - Full envelope control on sliders for expressive performance
+  - Advanced Arturia features: Galaxy, Sequencer, Effects
+  - Voice modes including the extended polyphony options
+  - Vintage mode for authentic analog behavior
+
+  Special Arturia additions:
+  - Galaxy: Creates evolving pad textures
+  - Built-in sequencer with play control
+  - Effects section (chorus, delay, reverb)
+  - Extended polyphony modes
+  - Voice detune for thicker sounds
+
+  The plugin_parameter fields correspond to Arturia's automation
+  parameter naming scheme for the Jup-8 V4 plugin.
+
+  Note: Some advanced features like the modulation matrix and extended
+  effects parameters may need to be controlled via the plugin GUI.

@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.base.json",
+  "files": [],
+  "references": [
+    {
+      "path": "./modules/ardour-midi-maps"
+    },
+    {
+      "path": "./modules/canonical-midi-maps"
+    }
+  ]
+}

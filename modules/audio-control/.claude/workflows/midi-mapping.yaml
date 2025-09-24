@@ -1,0 +1,60 @@
+name: midi-mapping
+description: Specialized workflow for MIDI mapping development
+trigger: midi_feature
+
+phases:
+  - name: protocol_analysis
+    description: Analyze MIDI requirements
+    agents:
+      - embedded-systems
+      - api-designer
+    tasks:
+      - Define MIDI message types
+      - Identify control surfaces
+      - Map plugin parameters
+
+  - name: interface_design
+    description: Design MIDI interfaces
+    agents:
+      - api-designer
+      - typescript-pro
+    tasks:
+      - Create TypeScript types
+      - Design builder patterns
+      - Define validation schemas
+
+  - name: implementation
+    description: Implement MIDI functionality
+    agents:
+      - embedded-systems
+      - typescript-pro
+      - javascript-pro
+    tasks:
+      - Implement MIDI parsers
+      - Create mapping builders
+      - Build serializers
+
+  - name: validation
+    description: Validate MIDI operations
+    agents:
+      - test-automator
+      - embedded-systems
+    tasks:
+      - Test MIDI messages
+      - Validate mappings
+      - Check DAW compatibility
+
+  - name: optimization
+    description: Optimize performance
+    agents:
+      - code-reviewer
+      - javascript-pro
+    tasks:
+      - Optimize parsing
+      - Reduce latency
+      - Improve memory usage
+
+outputs:
+  - MIDI mapping utilities
+  - Validated configurations
+  - Performance metrics

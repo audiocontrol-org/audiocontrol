@@ -1,0 +1,69 @@
+name: feature-development
+description: Workflow for adding new features to audio-control modules
+trigger: new_feature_request
+
+phases:
+  - name: requirements
+    description: Gather and analyze feature requirements
+    agents:
+      - orchestrator
+      - api-designer
+    tasks:
+      - Define feature scope
+      - Identify affected modules
+      - Plan integration approach
+
+  - name: design
+    description: Design feature implementation
+    agents:
+      - api-designer
+      - typescript-pro
+      - embedded-systems
+    tasks:
+      - Design TypeScript interfaces
+      - Plan module updates
+      - Define MIDI/audio protocols
+
+  - name: development
+    description: Implement the feature
+    agents:
+      - typescript-pro
+      - javascript-pro
+    tasks:
+      - Write TypeScript code
+      - Update module exports
+      - Implement validations
+
+  - name: testing
+    description: Test the new feature
+    agents:
+      - test-automator
+      - typescript-pro
+    tasks:
+      - Write unit tests
+      - Create integration tests
+      - Test MIDI operations
+
+  - name: documentation
+    description: Document the feature
+    agents:
+      - documentation-engineer
+    tasks:
+      - Update API docs
+      - Add usage examples
+      - Update changelog
+
+  - name: review
+    description: Review implementation
+    agents:
+      - code-reviewer
+      - architect-reviewer
+    tasks:
+      - Code review
+      - API review
+      - Integration check
+
+outputs:
+  - New feature implementation
+  - Updated tests
+  - Complete documentation

@@ -1,0 +1,116 @@
+version: 1.0.0
+device:
+  manufacturer: Novation
+  model: Launch Control XL 3
+  firmware: ">=1.0"
+
+metadata:
+  name: MIDI Channel Registry
+  description: Canonical MIDI channel assignments for all plugin mappings on this device
+  author: Audio Control System
+  date: 2025-09-23
+  notes: |
+    This registry prevents MIDI channel drift and conflicts by establishing
+    canonical channel assignments for each plugin mapping. All plugin mapping
+    files should reference this registry instead of defining their own channels.
+
+# MIDI Channel Assignments (1-16 available)
+# Format: channel_number: plugin-mapping-filename (without .yaml extension)
+channels:
+  4:
+    path: channel-strips/analog-obsession-channev
+    description: "Analog Obsession CHANNEV - Channel strip plugin"
+    manufacturer: "Analog Obsession"
+    type: "Channel Strip"
+
+  2:
+    path: roland-jupiter-8/arturia-jup8v
+    description: "Arturia Jup-8 V4 - Jupiter-8 emulation with extended features"
+    manufacturer: "Arturia"
+    type: "Synthesizer"
+
+  3:
+    path: roland-jupiter-8/jupiter-8-base
+    description: "Jupiter-8 Base Template - Generic Jupiter-8 mapping template"
+    manufacturer: "Generic"
+    type: "Template"
+
+  1:
+    path: roland-jupiter-8/tal-j8
+    description: "TAL-J-8 - Jupiter-8 emulation with analog character"
+    manufacturer: "TAL Software"
+    type: "Synthesizer"
+
+  5:
+    path: moog-minimoog/arturia-mini-v4
+    description: "Arturia Mini V4 - Minimoog emulation"
+    manufacturer: "Arturia"
+    type: "Synthesizer"
+
+# Available channels for new plugins: 6-16
+available_channels: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+
+# Channel allocation guidelines
+guidelines:
+  - "Channels 1-5: Currently assigned plugins"
+  - "Channels 6-16: Available for new plugin mappings"
+  - "Channel assignments should be stable across regenerations"
+  - "Similar plugin types should be grouped when possible"
+  - "Template files (like jupiter-8-base) use generic DAW functions, not plugin parameters"
+
+# Plugin categories and their channel ranges
+categories:
+  channel_strips:
+    range: [1]
+    description: "Audio processing and channel strip plugins"
+
+  synthesizers:
+    range: [2, 4, 5]
+    description: "Synthesizer and virtual instrument plugins"
+
+  templates:
+    range: [3]
+    description: "Generic templates that use DAW functions instead of plugin parameters"
+
+  future_expansion:
+    range: [6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+    description: "Reserved for future plugin mappings"
+
+# Usage instructions
+usage:
+  lookup_channel: |
+    To find the MIDI channel for a plugin mapping:
+    1. Look up the plugin path (subdirectory/filename without .yaml) in the channels section
+    2. The channel number is the key
+
+  add_new_plugin: |
+    To add a new plugin mapping:
+    1. Choose an available channel from available_channels list
+    2. Add entry to channels section with plugin details
+    3. Remove channel from available_channels list
+    4. Update plugin mapping file to reference this registry
+
+  prevent_conflicts: |
+    This registry ensures:
+    - No two plugins use the same MIDI channel
+    - Channel assignments remain stable across Ardour map regenerations
+    - Easy visibility into channel allocation
+    - Clear process for adding new plugins
+
+# Integration notes
+integration:
+  plugin_files: |
+    Plugin mapping files should reference this registry instead of
+    defining their own midi_channel field:
+
+    # Instead of: midi_channel: 5
+    # Use: midi_channel_registry: ../midi-channel-registry.yaml
+
+    Note: Files in subdirectories should use ../ to reference the registry
+
+  ardour_generation: |
+    The Ardour map generation script should:
+    1. Load this registry file
+    2. Look up each plugin's assigned channel
+    3. Use the registry channel instead of auto-assignment
+    4. Validate no conflicts exist before generation

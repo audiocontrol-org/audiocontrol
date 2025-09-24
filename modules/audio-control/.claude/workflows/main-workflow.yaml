@@ -1,0 +1,74 @@
+name: main-workflow
+description: Primary workflow for audio-control monorepo development
+trigger: project_initialization
+
+phases:
+  - name: analysis
+    description: Analyze project requirements and architecture
+    agents:
+      - orchestrator
+      - architect-reviewer
+      - typescript-pro
+    tasks:
+      - Review monorepo structure
+      - Analyze module dependencies
+      - Identify integration points
+
+  - name: design
+    description: Design APIs and interfaces
+    agents:
+      - api-designer
+      - typescript-pro
+      - embedded-systems
+    tasks:
+      - Design TypeScript interfaces
+      - Create module APIs
+      - Plan MIDI/audio integrations
+
+  - name: implementation
+    description: Implement features and functionality
+    agents:
+      - typescript-pro
+      - javascript-pro
+      - embedded-systems
+    tasks:
+      - Implement core functionality
+      - Create MIDI mappings
+      - Build validation logic
+
+  - name: testing
+    description: Test all components
+    agents:
+      - test-automator
+      - typescript-pro
+      - code-reviewer
+    tasks:
+      - Write unit tests
+      - Create integration tests
+      - Validate MIDI operations
+
+  - name: documentation
+    description: Document APIs and usage
+    agents:
+      - documentation-engineer
+      - api-designer
+    tasks:
+      - Write API documentation
+      - Create usage examples
+      - Update README files
+
+  - name: review
+    description: Final review and quality assurance
+    agents:
+      - code-reviewer
+      - architect-reviewer
+      - orchestrator
+    tasks:
+      - Code review
+      - Architecture review
+      - Performance analysis
+
+outputs:
+  - Tested modules
+  - Complete documentation
+  - Validated MIDI mappings

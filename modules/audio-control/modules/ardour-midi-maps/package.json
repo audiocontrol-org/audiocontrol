@@ -1,0 +1,47 @@
+{
+  "name": "@audio-control/ardour-midi-maps",
+  "version": "0.1.0",
+  "description": "MIDI map configuration utilities for Ardour DAW",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "dev": "tsc -b --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "lint": "eslint . --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "generate": "tsx scripts/generate-ardour-maps.ts",
+    "generate:install": "tsx scripts/generate-ardour-maps.ts --install"
+  },
+  "keywords": [
+    "ardour",
+    "midi",
+    "daw",
+    "audio",
+    "control-surface"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  }
+}

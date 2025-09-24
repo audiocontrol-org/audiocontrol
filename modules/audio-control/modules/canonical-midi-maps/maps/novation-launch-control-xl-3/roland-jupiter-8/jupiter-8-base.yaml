@@ -1,0 +1,461 @@
+version: 1.0.0
+device:
+  manufacturer: Novation
+  model: Launch Control XL 3
+  firmware: ">=1.0"
+metadata:
+  name: Jupiter-8 Base Template
+  description: Canonical MIDI CC mapping for Jupiter-8 synthesizer architecture, extracted from Novation Components editor
+  author: Audio Control System
+  date: 2025-09-23
+  tags:
+    - synthesizer
+    - jupiter-8
+    - base-template
+    - analog
+    - roland
+
+# This is a base template - plugin-specific implementations should inherit these CC assignments
+# and map plugin_parameter fields to their specific plugin parameters
+
+# Reference to centralized MIDI channel registry for this device
+midi_channel_registry: ../midi-channel-registry.yaml
+
+controls:
+  # Top Row - Main Synthesis Controls (Encoders 1-8)
+  # CC 13-19, 41 from Novation Components template
+  - id: encoder_1
+    name: Cutoff
+    type: encoder
+    cc: 13
+    channel: global
+    range: [0, 127]
+    description: VCF cutoff frequency
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_2
+    name: HPF Cutoff
+    type: encoder
+    cc: 14
+    channel: global
+    range: [0, 127]
+    description: High-pass filter cutoff
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_3
+    name: Portamento
+    type: encoder
+    cc: 15
+    channel: global
+    range: [0, 127]
+    description: Portamento/glide time
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_4
+    name: Plugin Specific 1
+    type: encoder
+    cc: 16
+    channel: global
+    range: [0, 127]
+    description: Plugin-specific parameter 1
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_5
+    name: Plugin Specific 2
+    type: encoder
+    cc: 17
+    channel: global
+    range: [0, 127]
+    description: Plugin-specific parameter 2
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_6
+    name: Plugin Specific 3
+    type: encoder
+    cc: 18
+    channel: global
+    range: [0, 127]
+    description: Plugin-specific parameter 3
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_7
+    name: Plugin Specific 4
+    type: encoder
+    cc: 19
+    channel: global
+    range: [0, 127]
+    description: Plugin-specific parameter 4
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_8
+    name: Plugin Specific 5
+    type: encoder
+    cc: 41
+    channel: global
+    range: [0, 127]
+    description: Plugin-specific parameter 5
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  # Middle Row - Core Synthesis Parameters (Encoders 9-16)
+  # CC 21-28 from Novation Components template
+  - id: encoder_9
+    name: Resonance
+    type: encoder
+    cc: 21
+    channel: global
+    range: [0, 127]
+    description: VCF resonance/emphasis
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_10
+    name: LFO Rate
+    type: encoder
+    cc: 22
+    channel: global
+    range: [0, 127]
+    description: LFO frequency/rate
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_11
+    name: Osc 1 Range
+    type: encoder
+    cc: 23
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1 octave range selector
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_12
+    name: Osc 1 Shape
+    type: encoder
+    cc: 24
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1 waveform selection
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_13
+    name: Plugin Specific 6
+    type: encoder
+    cc: 25
+    channel: global
+    range: [0, 127]
+    description: Plugin-specific parameter 6
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_14
+    name: Plugin Specific 7
+    type: encoder
+    cc: 26
+    channel: global
+    range: [0, 127]
+    description: Plugin-specific parameter 7
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_15
+    name: Plugin Specific 8
+    type: encoder
+    cc: 27
+    channel: global
+    range: [0, 127]
+    description: Plugin-specific parameter 8
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_16
+    name: Plugin Specific 9
+    type: encoder
+    cc: 28
+    channel: global
+    range: [0, 127]
+    description: Plugin-specific parameter 9
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  # Bottom Row - Extended Parameters (Encoders 17-24)
+  # CC 29-36, 61 from Novation Components template
+  - id: encoder_17
+    name: Env Amt
+    type: encoder
+    cc: 29
+    channel: global
+    range: [0, 127]
+    description: Envelope amount to filter
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_18
+    name: LFO Delay
+    type: encoder
+    cc: 30
+    channel: global
+    range: [0, 127]
+    description: LFO delay/fade-in time
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_19
+    name: Osc 2 Range
+    type: encoder
+    cc: 31
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 octave range selector
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_20
+    name: Osc 2 Shape
+    type: encoder
+    cc: 61
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 waveform selection
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_21
+    name: Plugin Specific 10
+    type: encoder
+    cc: 33
+    channel: global
+    range: [0, 127]
+    description: Plugin-specific parameter 10
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_22
+    name: Plugin Specific 11
+    type: encoder
+    cc: 34
+    channel: global
+    range: [0, 127]
+    description: Plugin-specific parameter 11
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_23
+    name: Plugin Specific 12
+    type: encoder
+    cc: 35
+    channel: global
+    range: [0, 127]
+    description: Plugin-specific parameter 12
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: encoder_24
+    name: Plugin Specific 13
+    type: encoder
+    cc: 36
+    channel: global
+    range: [0, 127]
+    description: Plugin-specific parameter 13
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  # Sliders - ADSR & Core Mix Controls (CC 53-60)
+  # These assignments are consistent across all Jupiter-8 implementations
+  - id: slider_1
+    name: Attack
+    type: slider
+    cc: 53
+    channel: global
+    range: [0, 127]
+    description: Envelope attack time
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: slider_2
+    name: Decay
+    type: slider
+    cc: 54
+    channel: global
+    range: [0, 127]
+    description: Envelope decay time
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: slider_3
+    name: Sustain
+    type: slider
+    cc: 55
+    channel: global
+    range: [0, 127]
+    description: Envelope sustain level
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: slider_4
+    name: Release
+    type: slider
+    cc: 56
+    channel: global
+    range: [0, 127]
+    description: Envelope release time
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: slider_5
+    name: Osc Mix
+    type: slider
+    cc: 57
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1/2 mix balance
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: slider_6
+    name: LFO Filt Amount
+    type: slider
+    cc: 58
+    channel: global
+    range: [0, 127]
+    description: LFO to filter modulation amount
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: slider_7
+    name: LFO VCA Amt
+    type: slider
+    cc: 59
+    channel: global
+    range: [0, 127]
+    description: LFO to VCA/amplifier modulation amount
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: slider_8
+    name: Level
+    type: slider
+    cc: 60
+    channel: global
+    range: [0, 127]
+    description: Master output volume/level
+    # plugin_parameter: (to be defined by specific plugin implementation)
+
+  # Buttons - Mode Selection & Features
+  # These CCs are shared but button functions vary by plugin
+  - id: button_row_1
+    name: Arpeggiator Controls
+    type: button_group
+    buttons:
+      - id: button_1
+        name: Arp Function 1
+        cc: 37
+        channel: global
+        mode: toggle
+        # plugin_parameter: (to be defined by specific plugin implementation)
+      - id: button_2
+        name: Arp Function 2
+        cc: 37
+        channel: global
+        mode: toggle
+        # plugin_parameter: (to be defined by specific plugin implementation)
+      - id: button_3
+        name: Arp Function 3
+        cc: 37
+        channel: global
+        mode: toggle
+        # plugin_parameter: (to be defined by specific plugin implementation)
+      - id: button_4
+        name: Arp Function 4
+        cc: 37
+        channel: global
+        mode: momentary
+        # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: button_row_2
+    name: Additional Functions
+    type: button_group
+    buttons:
+      - id: button_5
+        name: Function 1
+        cc: 41
+        channel: global
+        mode: toggle
+        # plugin_parameter: (to be defined by specific plugin implementation)
+      - id: button_6
+        name: Function 2
+        cc: 41
+        channel: global
+        mode: toggle
+        # plugin_parameter: (to be defined by specific plugin implementation)
+      - id: button_7
+        name: Function 3
+        cc: 41
+        channel: global
+        mode: momentary
+        # plugin_parameter: (to be defined by specific plugin implementation)
+      - id: button_8
+        name: Function 4
+        cc: 41
+        channel: global
+        mode: momentary
+        # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: button_row_3
+    name: Voice Mode Controls
+    type: button_group
+    buttons:
+      - id: button_9
+        name: Voice Mode 1
+        cc: 45
+        channel: global
+        mode: toggle
+        # plugin_parameter: (to be defined by specific plugin implementation)
+      - id: button_10
+        name: Voice Mode 2
+        cc: 45
+        channel: global
+        mode: toggle
+        # plugin_parameter: (to be defined by specific plugin implementation)
+      - id: button_11
+        name: Voice Mode 3
+        cc: 45
+        channel: global
+        mode: toggle
+        # plugin_parameter: (to be defined by specific plugin implementation)
+      - id: button_12
+        name: Voice Mode 4
+        cc: 45
+        channel: global
+        mode: toggle
+        # plugin_parameter: (to be defined by specific plugin implementation)
+
+  - id: button_row_4
+    name: Filter & Control Modes
+    type: button_group
+    buttons:
+      - id: button_13
+        name: Filter Mode
+        cc: 49
+        channel: global
+        mode: toggle
+        # plugin_parameter: (to be defined by specific plugin implementation)
+      - id: button_14
+        name: Env Control
+        cc: 50
+        channel: global
+        mode: toggle
+        # plugin_parameter: (to be defined by specific plugin implementation)
+      - id: button_15
+        name: Special Mode
+        cc: 51
+        channel: global
+        mode: toggle
+        # plugin_parameter: (to be defined by specific plugin implementation)
+      - id: button_16
+        name: Hold/Latch
+        cc: 52
+        channel: global
+        mode: momentary
+        # plugin_parameter: (to be defined by specific plugin implementation)
+
+notes: |
+  Jupiter-8 Base Template for Novation Launch Control XL 3
+
+  This template defines the canonical CC mapping layout extracted from
+  Novation Components editor. All Jupiter-8 plugin implementations should
+  inherit these CC assignments to ensure consistent hardware control.
+
+  Core Jupiter-8 Architecture Controls:
+  - Filter: Cutoff (CC 13), Resonance (CC 21), HPF (CC 14)
+  - Oscillators: Osc1 Range/Shape (CC 23/24), Osc2 Range/Shape (CC 31/61)
+  - Envelope: ADSR on sliders (CC 53-56), Env Amount (CC 29)
+  - LFO: Rate (CC 22), Delay (CC 30), Filter Mod (CC 58), VCA Mod (CC 59)
+  - Mix: Osc Mix (CC 57), Master Level (CC 60)
+  - Glide: Portamento (CC 15)
+
+  Plugin-specific controls should use the "Plugin Specific" encoders
+  while maintaining conceptual compatibility where possible.
+
+  Button assignments vary by plugin but should follow similar groupings:
+  - Row 1: Arpeggiator functions
+  - Row 2: Additional features (effects, modes, etc.)
+  - Row 3: Voice modes (Solo/Unison/Poly variations)
+  - Row 4: Filter modes and control options

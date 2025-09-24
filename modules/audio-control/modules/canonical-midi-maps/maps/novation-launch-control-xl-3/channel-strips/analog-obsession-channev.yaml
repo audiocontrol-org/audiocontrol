@@ -1,0 +1,444 @@
+version: 1.0.0
+device:
+  manufacturer: Novation
+  model: Launch Control XL 3
+  firmware: ">=1.0"
+metadata:
+  name: Analog Obsession CHANNEV Mapping
+  description: Professional channel strip plugin control with Launch Control XL 3's default CC layout
+  author: Audio Control Team
+  date: 2025-09-23
+  tags:
+    - channel-strip
+    - analog-obsession
+    - channev
+    - eq
+    - compressor
+    - preamp
+
+plugin:
+  manufacturer: Analog Obsession
+  name: CHANNEV
+  type: VST3
+  version: ">=1.0"
+
+# Reference to centralized MIDI channel registry for this device
+midi_channel_registry: ../midi-channel-registry.yaml
+
+controls:
+  # Top Row - Preamp & High Pass (Encoders 1-8)
+  - id: encoder_1
+    name: High Pass
+    type: encoder
+    cc: 13
+    channel: global
+    range: [0, 127]
+    description: High pass filter frequency (20-500Hz)
+    plugin_parameter: "5"
+
+  - id: encoder_2
+    name: EQ High Pass
+    type: encoder
+    cc: 14
+    channel: global
+    range: [0, 127]
+    description: EQ section high pass frequency
+    plugin_parameter: "19"
+
+  - id: encoder_3
+    name: Mic Pre Gain
+    type: encoder
+    cc: 5
+    channel: global
+    range: [0, 127]
+    description: Microphone preamp gain
+    plugin_parameter: "2"
+
+  - id: encoder_4
+    name: Line Amp
+    type: encoder
+    cc: 6
+    channel: global
+    range: [0, 127]
+    description: Line amplifier gain
+    plugin_parameter: "10"
+
+  - id: encoder_5
+    name: Comp Dry/Wet
+    type: encoder
+    cc: 17
+    channel: global
+    range: [0, 127]
+    description: Compressor dry/wet mix
+    plugin_parameter: "25"
+
+  - id: encoder_6
+    name: Comp Ratio
+    type: encoder
+    cc: 18
+    channel: global
+    range: [0, 127]
+    description: Compressor ratio (1:1 to 20:1)
+    plugin_parameter: "22"
+
+  - id: encoder_7
+    name: Limit Mix
+    type: encoder
+    cc: 19
+    channel: global
+    range: [0, 127]
+    description: Limiter wet/dry mix
+    plugin_parameter: "29"
+
+  - id: encoder_8
+    name: Tape Drive
+    type: encoder
+    cc: 20
+    channel: global
+    range: [0, 127]
+    description: Tape saturation drive amount
+    plugin_parameter: "30"
+
+  # Middle Row - EQ Frequencies (Encoders 9-16)
+  - id: encoder_9
+    name: EQ Low Freq
+    type: encoder
+    cc: 22
+    channel: global
+    range: [0, 127]
+    description: EQ low frequency (20-500Hz)
+    plugin_parameter: "12"
+
+  - id: encoder_10
+    name: EQ Low-Mid Freq
+    type: encoder
+    cc: 23
+    channel: global
+    range: [0, 127]
+    description: EQ low-mid frequency (200-2000Hz)
+    plugin_parameter: "14"
+
+  - id: encoder_11
+    name: EQ High-Mid Freq
+    type: encoder
+    cc: 24
+    channel: global
+    range: [0, 127]
+    description: EQ high-mid frequency (1-10kHz)
+    plugin_parameter: "16"
+
+  - id: encoder_12
+    name: EQ High Freq
+    type: encoder
+    cc: 25
+    channel: global
+    range: [0, 127]
+    description: EQ high frequency (5-20kHz)
+    plugin_parameter: "18"
+
+  - id: encoder_13
+    name: Comp Release
+    type: encoder
+    cc: 26
+    channel: global
+    range: [0, 127]
+    description: Compressor release time (0.1-5s)
+    plugin_parameter: "23"
+
+  - id: encoder_14
+    name: Limit Release
+    type: encoder
+    cc: 27
+    channel: global
+    range: [0, 127]
+    description: Limiter release time (0.01-1s)
+    plugin_parameter: "27"
+
+  - id: encoder_15
+    name: Encoder 15
+    type: encoder
+    cc: 28
+    channel: global
+    range: [0, 127]
+    description: Unassigned - map to plugin-specific parameter
+
+  - id: encoder_16
+    name: Low Shelf
+    type: encoder
+    cc: 29
+    channel: global
+    range: [0, 127]
+    description: Low frequency shelf filter
+    plugin_parameter: "3"
+
+  # Third Row - EQ Gains & Controls (Encoders 17-24)
+  - id: encoder_17
+    name: EQ Low Gain
+    type: encoder
+    cc: 30
+    channel: global
+    range: [0, 127]
+    description: EQ low gain (-15 to +15dB)
+    plugin_parameter: "11"
+
+  - id: encoder_18
+    name: EQ Low-Mid Gain
+    type: encoder
+    cc: 31
+    channel: global
+    range: [0, 127]
+    description: EQ low-mid gain (-15 to +15dB)
+    plugin_parameter: "13"
+
+  - id: encoder_19
+    name: EQ High-Mid Gain
+    type: encoder
+    cc: 32
+    channel: global
+    range: [0, 127]
+    description: EQ high-mid gain (-15 to +15dB)
+    plugin_parameter: "15"
+
+  - id: encoder_20
+    name: EQ High Gain
+    type: encoder
+    cc: 33
+    channel: global
+    range: [0, 127]
+    description: EQ high gain (-15 to +15dB)
+    plugin_parameter: "17"
+
+  - id: encoder_21
+    name: Comp Gain
+    type: encoder
+    cc: 34
+    channel: global
+    range: [0, 127]
+    description: Compressor makeup gain (0-20dB)
+    plugin_parameter: "24"
+
+  - id: encoder_22
+    name: Limit Gain
+    type: encoder
+    cc: 35
+    channel: global
+    range: [0, 127]
+    description: Limiter output gain (-10 to +10dB)
+    plugin_parameter: "28"
+
+  - id: encoder_23
+    name: Encoder 23
+    type: encoder
+    cc: 36
+    channel: global
+    range: [0, 127]
+    description: Unassigned - map to plugin-specific parameter
+
+  - id: encoder_24
+    name: Encoder 24
+    type: encoder
+    cc: 37
+    channel: global
+    range: [0, 127]
+    description: Unassigned - map to plugin-specific parameter
+
+  # Sliders - Main Section Controls
+  - id: slider_1
+    name: Comp Threshold
+    type: slider
+    cc: 10
+    channel: global
+    range: [0, 127]
+    description: Compressor threshold (-40 to 0dB)
+    plugin_parameter: "21"
+
+  - id: slider_2
+    name: Limit Threshold
+    type: slider
+    cc: 11
+    channel: global
+    range: [0, 127]
+    description: Limiter threshold (-20 to 0dB)
+    plugin_parameter: "26"
+
+  - id: slider_3
+    name: Tape Output
+    type: slider
+    cc: 12
+    channel: global
+    range: [0, 127]
+    description: Tape output level (-10 to +10dB)
+    plugin_parameter: "31"
+
+  - id: slider_4
+    name: EQ Low-Mid Q
+    type: slider
+    cc: 39
+    channel: global
+    range: [0, 127]
+    description: EQ low-mid Q factor (0.1-10)
+    plugin_parameter: "40"
+
+  - id: slider_5
+    name: EQ High-Mid Q
+    type: slider
+    cc: 40
+    channel: global
+    range: [0, 127]
+    description: EQ high-mid Q factor (0.1-10)
+    plugin_parameter: "41"
+
+  - id: slider_6
+    name: Slider 6
+    type: slider
+    cc: 42
+    channel: global
+    range: [0, 127]
+    description: Unassigned - map to plugin-specific parameter
+
+  - id: slider_7
+    name: Slider 7
+    type: slider
+    cc: 43
+    channel: global
+    range: [0, 127]
+    description: Unassigned - map to plugin-specific parameter
+
+  - id: slider_8
+    name: High Shelf
+    type: slider
+    cc: 53
+    channel: global
+    range: [0, 127]
+    description: High frequency shelf filter
+    plugin_parameter: "4"
+
+  # Buttons - Section Enables & Modes
+  - id: button_row_1
+    name: Section Controls Row 1
+    type: button_group
+    buttons:
+      - id: button_1
+        name: Mic Pre Polarity
+        cc: 37
+        channel: global
+        mode: toggle
+        plugin_parameter: "33"
+      - id: button_2
+        name: EQ Low Peak
+        cc: 38
+        channel: global
+        mode: toggle
+        plugin_parameter: "39"
+      - id: button_3
+        name: EQ High Peak
+        cc: 41
+        channel: global
+        mode: toggle
+        plugin_parameter: "42"
+      - id: button_4
+        name: Edit Window
+        cc: 44
+        channel: global
+        mode: toggle
+        plugin_parameter: "window"
+      - id: button_5
+        name: Mic Pre Enable
+        cc: 45
+        channel: global
+        mode: toggle
+        plugin_parameter: "35"
+      - id: button_6
+        name: EQ Enable
+        cc: 46
+        channel: global
+        mode: toggle
+        plugin_parameter: "43"
+      - id: button_7
+        name: Button 7
+        cc: 47
+        channel: global
+        mode: momentary
+      - id: button_8
+        name: Button 8
+        cc: 48
+        channel: global
+        mode: momentary
+
+  - id: button_row_2
+    name: Section Controls Row 2
+    type: button_group
+    buttons:
+      - id: button_9
+        name: Button 9
+        cc: 49
+        channel: global
+        mode: momentary
+      - id: button_10
+        name: Comp Enable
+        cc: 50
+        channel: global
+        mode: toggle
+        plugin_parameter: "44"
+      - id: button_11
+        name: Limit Enable
+        cc: 51
+        channel: global
+        mode: toggle
+        plugin_parameter: "46"
+      - id: button_12
+        name: Plugin Bypass
+        cc: 52
+        channel: global
+        mode: toggle
+        plugin_parameter: "bypass"
+      - id: button_13
+        name: Button 13
+        cc: 53
+        channel: global
+        mode: momentary
+      - id: button_14
+        name: Button 14
+        cc: 54
+        channel: global
+        mode: momentary
+      - id: button_15
+        name: Button 15
+        cc: 55
+        channel: global
+        mode: momentary
+      - id: button_16
+        name: Button 16
+        cc: 56
+        channel: global
+        mode: momentary
+
+notes: |
+  Analog Obsession CHANNEV mapping for Novation Launch Control XL 3
+
+  This mapping is optimized for the CHANNEV Neve-style channel strip plugin,
+  providing comprehensive control over all major sections:
+
+  Key sections:
+  - Microphone Preamp: Gain, polarity, enable
+  - Line Amplifier: Independent gain control
+  - EQ Section: 4-band EQ with frequency, gain, and Q controls
+  - Compressor: Threshold, ratio, release, makeup gain, dry/wet
+  - Limiter: Threshold, release, output gain, wet/dry mix
+  - Tape Saturation: Drive and output level controls
+  - Filters: High-pass and shelf filters
+
+  The mapping follows the original Launch Control XL 3 CC assignments
+  from the legacy format while providing intuitive control layout:
+
+  - Top row encoders: Input stages and dynamics processing
+  - Middle row encoders: EQ frequencies and timing controls
+  - Bottom row encoders: EQ gains and output controls
+  - Sliders: Main level controls and Q factors
+  - Buttons: Section enables, modes, and utility functions
+
+  Plugin-specific features:
+  - Neve-style musical EQ curves
+  - Vintage-modeled compression and limiting
+  - Tape saturation for analog warmth
+  - Individual section bypass controls

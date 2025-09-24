@@ -1,0 +1,452 @@
+version: 1.0.0
+device:
+  manufacturer: Novation
+  model: Launch Control XL 3
+  firmware: ">=1.0"
+metadata:
+  name: Arturia Mini V4 Mapping
+  description: MIDI CC mapping for Arturia Mini V4 Minimoog emulation plugin
+  author: Audio Control System
+  date: 2025-09-23
+  tags:
+    - synthesizer
+    - minimoog
+    - arturia
+    - mini-v4
+    - analog
+
+plugin:
+  manufacturer: Arturia
+  name: Mini V4
+  type: VST/AU/AAX
+  version: ">=4.0"
+
+# Reference to centralized MIDI channel registry for this device
+midi_channel_registry: ../midi-channel-registry.yaml
+
+controls:
+  # Top Row - Filter & Oscillator Controls (Encoders 1-8)
+  - id: encoder_1
+    name: VCF Cutoff
+    type: encoder
+    cc: 13
+    channel: global
+    range: [0, 127]
+    description: VCF cutoff frequency
+    plugin_parameter: VCF_Cutoff
+
+  - id: encoder_2
+    name: HPF
+    type: encoder
+    cc: 14
+    channel: global
+    range: [0, 127]
+    description: High-pass filter
+    plugin_parameter: HPF
+
+  - id: encoder_3
+    name: Glide
+    type: encoder
+    cc: 15
+    channel: global
+    range: [0, 127]
+    description: Portamento/glide time
+    plugin_parameter: Glide_Time
+
+  - id: encoder_4
+    name: Osc 1 Range
+    type: encoder
+    cc: 16
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1 octave range
+    plugin_parameter: OSC1_Range
+
+  - id: encoder_5
+    name: Osc 1 Waveform
+    type: encoder
+    cc: 17
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1 waveform selector
+    plugin_parameter: OSC1_Wave
+
+  - id: encoder_6
+    name: Mod Mix
+    type: encoder
+    cc: 18
+    channel: global
+    range: [0, 127]
+    description: Modulation mix amount
+    plugin_parameter: Mod_Mix
+
+  - id: encoder_7
+    name: Brilliance
+    type: encoder
+    cc: 19
+    channel: global
+    range: [0, 127]
+    description: Brilliance/presence control
+    plugin_parameter: Brilliance
+
+  - id: encoder_8
+    name: Voice Detune
+    type: encoder
+    cc: 45
+    channel: global
+    range: [0, 127]
+    description: Voice detune amount (unison mode)
+    plugin_parameter: Voice_Detune
+
+  # Middle Row - Filter & Modulation (Encoders 9-16)
+  - id: encoder_9
+    name: Resonance
+    type: encoder
+    cc: 21
+    channel: global
+    range: [0, 127]
+    description: VCF resonance/emphasis
+    plugin_parameter: VCF_Resonance
+
+  - id: encoder_10
+    name: LFO Rate
+    type: encoder
+    cc: 22
+    channel: global
+    range: [0, 127]
+    description: LFO frequency/rate
+    plugin_parameter: LFO_Rate
+
+  - id: encoder_11
+    name: Osc 2 Tune
+    type: encoder
+    cc: 23
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 fine tune
+    plugin_parameter: OSC2_Fine
+
+  - id: encoder_12
+    name: Osc 2 Range
+    type: encoder
+    cc: 24
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 octave range
+    plugin_parameter: OSC2_Range
+
+  - id: encoder_13
+    name: Osc 2 Waveform
+    type: encoder
+    cc: 25
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 waveform selector
+    plugin_parameter: OSC2_Wave
+
+  - id: encoder_14
+    name: Key Follow
+    type: encoder
+    cc: 26
+    channel: global
+    range: [0, 127]
+    description: Filter keyboard tracking
+    plugin_parameter: Key_Follow
+
+  - id: encoder_15
+    name: Velocity
+    type: encoder
+    cc: 27
+    channel: global
+    range: [0, 127]
+    description: Velocity sensitivity
+    plugin_parameter: Velocity_Sens
+
+  - id: encoder_16
+    name: Aftertouch
+    type: encoder
+    cc: 28
+    channel: global
+    range: [0, 127]
+    description: Aftertouch amount
+    plugin_parameter: Aftertouch
+
+  # Third Row - Oscillator 3 & Advanced Controls (Encoders 17-24)
+  - id: encoder_17
+    name: Env Amount
+    type: encoder
+    cc: 29
+    channel: global
+    range: [0, 127]
+    description: Envelope to filter amount
+    plugin_parameter: ENV_Amount
+
+  - id: encoder_18
+    name: LFO Delay
+    type: encoder
+    cc: 30
+    channel: global
+    range: [0, 127]
+    description: LFO delay/fade-in time
+    plugin_parameter: LFO_Delay
+
+  - id: encoder_19
+    name: Osc 3 Tune
+    type: encoder
+    cc: 31
+    channel: global
+    range: [0, 127]
+    description: Oscillator 3 fine tune
+    plugin_parameter: OSC3_Fine
+
+  - id: encoder_20
+    name: Osc 3 Range
+    type: encoder
+    cc: 61
+    channel: global
+    range: [0, 127]
+    description: Oscillator 3 octave range
+    plugin_parameter: OSC3_Range
+
+  - id: encoder_21
+    name: Osc 3 Waveform
+    type: encoder
+    cc: 33
+    channel: global
+    range: [0, 127]
+    description: Oscillator 3 waveform selector
+    plugin_parameter: OSC3_Wave
+
+  - id: encoder_22
+    name: Galaxy Amount
+    type: encoder
+    cc: 34
+    channel: global
+    range: [0, 127]
+    description: Galaxy effect amount
+    plugin_parameter: Galaxy_Amount
+
+  - id: encoder_23
+    name: Chorus Mix
+    type: encoder
+    cc: 35
+    channel: global
+    range: [0, 127]
+    description: Chorus effect mix
+    plugin_parameter: Chorus_Mix
+
+  - id: encoder_24
+    name: Delay Mix
+    type: encoder
+    cc: 36
+    channel: global
+    range: [0, 127]
+    description: Delay effect mix
+    plugin_parameter: Delay_Mix
+
+  # Sliders - ADSR & Oscillator Mix
+  - id: slider_1
+    name: Attack
+    type: slider
+    cc: 53
+    channel: global
+    range: [0, 127]
+    description: Envelope attack time
+    plugin_parameter: ENV_Attack
+
+  - id: slider_2
+    name: Decay
+    type: slider
+    cc: 54
+    channel: global
+    range: [0, 127]
+    description: Envelope decay time
+    plugin_parameter: ENV_Decay
+
+  - id: slider_3
+    name: Sustain
+    type: slider
+    cc: 55
+    channel: global
+    range: [0, 127]
+    description: Envelope sustain level
+    plugin_parameter: ENV_Sustain
+
+  - id: slider_4
+    name: Osc 1 Level
+    type: slider
+    cc: 56
+    channel: global
+    range: [0, 127]
+    description: Oscillator 1 output level
+    plugin_parameter: OSC1_Level
+
+  - id: slider_5
+    name: Osc 2 Level
+    type: slider
+    cc: 57
+    channel: global
+    range: [0, 127]
+    description: Oscillator 2 output level
+    plugin_parameter: OSC2_Level
+
+  - id: slider_6
+    name: Osc 3 Level
+    type: slider
+    cc: 58
+    channel: global
+    range: [0, 127]
+    description: Oscillator 3 output level
+    plugin_parameter: OSC3_Level
+
+  - id: slider_7
+    name: Noise Level
+    type: slider
+    cc: 59
+    channel: global
+    range: [0, 127]
+    description: White/Pink noise level
+    plugin_parameter: Noise_Level
+
+  - id: slider_8
+    name: Master Volume
+    type: slider
+    cc: 60
+    channel: global
+    range: [0, 127]
+    description: Master output volume
+    plugin_parameter: Master_Volume
+
+  # Buttons - Performance & Effects
+  - id: button_row_1
+    name: Performance Controls
+    type: button_group
+    buttons:
+      - id: button_1
+        name: Arpeggiator
+        cc: 37
+        channel: global
+        mode: toggle
+        plugin_parameter: Arp_On
+      - id: button_2
+        name: Arp Hold
+        cc: 37
+        channel: global
+        mode: toggle
+        plugin_parameter: Arp_Hold
+      - id: button_3
+        name: Arp Up
+        cc: 37
+        channel: global
+        mode: toggle
+        plugin_parameter: Arp_Up
+      - id: button_4
+        name: Arp Down
+        cc: 37
+        channel: global
+        mode: toggle
+        plugin_parameter: Arp_Down
+      - id: button_5
+        name: Sequencer
+        cc: 41
+        channel: global
+        mode: toggle
+        plugin_parameter: Seq_On
+      - id: button_6
+        name: Galaxy
+        cc: 41
+        channel: global
+        mode: toggle
+        plugin_parameter: Galaxy_On
+      - id: button_7
+        name: Chorus
+        cc: 41
+        channel: global
+        mode: toggle
+        plugin_parameter: Chorus_On
+      - id: button_8
+        name: Delay
+        cc: 41
+        channel: global
+        mode: toggle
+        plugin_parameter: Delay_On
+
+  - id: button_row_2
+    name: Voice & Filter Modes
+    type: button_group
+    buttons:
+      - id: button_9
+        name: Solo
+        cc: 45
+        channel: global
+        mode: toggle
+        plugin_parameter: Voice_Solo
+      - id: button_10
+        name: Unison
+        cc: 45
+        channel: global
+        mode: toggle
+        plugin_parameter: Voice_Unison
+      - id: button_11
+        name: Poly 1 (4v)
+        cc: 45
+        channel: global
+        mode: toggle
+        plugin_parameter: Voice_Poly1
+      - id: button_12
+        name: Poly 2 (8v)
+        cc: 45
+        channel: global
+        mode: toggle
+        plugin_parameter: Voice_Poly2
+      - id: button_13
+        name: LP/HP Mode
+        cc: 49
+        channel: global
+        mode: toggle
+        plugin_parameter: Filter_Mode
+      - id: button_14
+        name: Env Invert
+        cc: 50
+        channel: global
+        mode: toggle
+        plugin_parameter: ENV_Invert
+      - id: button_15
+        name: Vintage
+        cc: 51
+        channel: global
+        mode: toggle
+        plugin_parameter: Vintage_Mode
+      - id: button_16
+        name: Lower/Upper
+        cc: 52
+        channel: global
+        mode: toggle
+        plugin_parameter: Lower_Upper
+
+notes: |
+  Arturia Mini V4 specific mapping for Novation Launch Control XL 3
+
+  This mapping is optimized for the Arturia Mini V4 plugin, which provides
+  an enhanced emulation of the classic Moog Minimoog Model D synthesizer.
+
+  Key features:
+  - Classic 3-oscillator Minimoog architecture
+  - Individual oscillator level sliders for precise mixing
+  - Arturia's enhanced features: Galaxy, Sequencer, Chorus, Delay
+  - Voice modes including extended polyphony (up to 32 voices)
+  - Vintage mode for authentic analog behavior
+  - Brilliance control for high-frequency emphasis
+
+  Special Arturia additions:
+  - Galaxy: Creates evolving pad textures and ambient sounds
+  - Built-in step sequencer with transport sync
+  - Effects section with vintage-modeled chorus and delay
+  - Extended polyphony beyond the original monophonic design
+  - Voice detune for thick unison sounds
+
+  The plugin_parameter fields correspond to Arturia's automation
+  parameter naming scheme for the Mini V4 plugin.
+
+  Note: The classic Minimoog used ADS envelope (no Release stage),
+  but the Mini V4 plugin includes a full ADSR envelope.
