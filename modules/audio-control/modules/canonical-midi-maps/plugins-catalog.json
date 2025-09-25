@@ -1,0 +1,898 @@
+{
+  "version": "1.0",
+  "scan_started": "2025-09-25T02:06:29.671Z",
+  "total_plugins_found": 142,
+  "plugins": [
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Auburn Sounds Panagement 2.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.084Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/FrankCS.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.084Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/ReLife.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.084Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Prophet V3.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.084Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/RoughRider3.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/ARP 2600 V3.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/PECS.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/TRAX.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/SPL Transient Designer Plus.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/BucketPops.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/BritPre.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/KV-Element-FX.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/ADSR Sample Manager.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/FB7999.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Fury800.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/VUMTdeluxe.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Chopa.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Distox.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/ConsoleXChannel.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/AudioGridder.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/TILTA.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.085Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Wurli V2.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Rare.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Tricent.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/OB-Xd.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/TAL-Filter-2.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/BLENDEQ.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/TAL-Reverb-2.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/DragonflyRoomReverb.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/SPECOMP.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/BrokenMini.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/FB3200.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Roland/SP-404MKII.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/sfizz.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/RevO.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Surge XT.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/DragonflyEarlyReflections.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Surge XT Effects.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/RareSE.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "timeout",
+      "error": "Timeout after 15000ms"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/HLQSE.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/POORTEC.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.086Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/DecentSampler.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/STEQ.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Jup-8 V3.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/ATONE.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/SEM V2.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/SSQ.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/PEDALz.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/KV-Element.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/SPL DrumXchanger.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/FETish.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/NEQME.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Stigma.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/GrapHack.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/SweetDrums.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/TAL-Reverb-4.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/NY.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/SDRR2.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.087Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Stage-73 V.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Frank.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Modular V3.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Solina V2.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Kolin.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/MonoFury.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/TAL-Chorus-LX.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/DragonflyPlateReverb.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Bertom_EQCurveAnalyzer2.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/VariMoon.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/TREQ.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Buchla Easel V.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/FetCB.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Synclavier V.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/AHEAD.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/ValhallaSupermassive.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/MJUC.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Curvature.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.088Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Matrix-12 V2.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/COMPER.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/BucketOne.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Nabla.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/FB3100.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/DC8C3.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/FetSnap.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Farfisa V.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/TUBA.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/FetDrive.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/MBPhillyDI.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Analog Lab V.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/OAQ.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/FB3300.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Oxid.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Piano V2.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/TAL-J-8.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.089Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/TDR Nova.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Synthi V.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Paralogy.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/MAXBAX.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/ZL Equalizer.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/CITE.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/YALA.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/TX16Wx.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/LALA.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/UREQ.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/VOX Continental V2.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/CZ V.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/DX7 V.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/MPReq.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/ATTRACTOR.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/SixTraq.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Harqules.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.090Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Analog Lab 4.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/AudioGridderInst.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/ConsoleXBuss.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/CS-80 V3.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/dBComp.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/AudioGridderMidi.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/KABIN.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/CMI V.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/FBDelay.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/LOADES.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Britpressor.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/TAL-NoiseMaker.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/DrGate.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/PreBOX.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/CHANNEV.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.091Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/FBVC.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/BUSTERse.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/DragonflyHallReverb.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/GGGGa.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/DrumTraqs.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Elektron/Digitakt.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/TuPRE.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Pigments.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Clavinet V.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/MythPre.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Mellotron V.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Airwindows Consolidated.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/MoMa.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/BritChannel.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/Mini V3.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.092Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/B-3 V2.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.093Z",
+      "interrogation_status": "pending"
+    },
+    {
+      "name": "/Library/Audio/Plug-Ins/VST3/OSS.vst3",
+      "format": "VST3",
+      "scanned_at": "2025-09-25T02:06:47.093Z",
+      "interrogation_status": "pending"
+    }
+  ]
+}

@@ -33,7 +33,9 @@
     "plugin:interrogate": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx ../../tools/plugin-interrogator.ts",
     "plugin:interrogate:text": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx ../../tools/plugin-interrogator.ts --text",
     "plugin:interrogate:all": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx ../../tools/plugin-interrogator.ts --all",
-    "plugin:interrogate:all:text": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx ../../tools/plugin-interrogator.ts --all --text"
+    "plugin:interrogate:all:text": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx ../../tools/plugin-interrogator.ts --all --text",
+    "plugin:scan-incremental": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx src/tools/incremental-plugin-scanner.ts",
+    "plugin:generate-batch": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx src/tools/batch-plugin-generator.ts"
   },
   "keywords": [
     "midi",
