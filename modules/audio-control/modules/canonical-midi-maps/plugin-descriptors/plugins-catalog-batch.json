@@ -1,0 +1,7 @@
+{
+  "version": "1.0",
+  "created": "2025-09-25T03:38:54.851Z",
+  "total_plugins": 1,
+  "source_log": "./plugin-descriptors/test-batch.log",
+  "description": "Plugin catalog generated from batch interrogation"
+}

@@ -8,23 +8,45 @@
 
 import { spawn } from 'child_process';
 import { join, dirname } from 'path';
-import { writeFileSync } from 'fs';
+import { writeFileSync, createWriteStream, existsSync, statSync, createReadStream } from 'fs';
 import { fileURLToPath } from 'url';
+import { createInterface } from 'readline';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const PLUGHOST_PATH = join(__dirname, '../../../../../../cmake-build/modules/juce/host/plughost_artefacts/plughost');
 const OUTPUT_DIR = join(__dirname, '../../plugin-descriptors');
+const LOG_CACHE_EXPIRY_HOURS = 24; // Cache log file for 24 hours
 
 class BatchPluginGenerator {
+  constructor(private forceRegenerate: boolean = false) {}
+
   async generateSpecs() {
     console.log('🚀 Starting batch plugin spec generation...');
     console.log(`📁 Output directory: ${OUTPUT_DIR}`);
 
-    const args = ['--batch-interrogate', '--format-filter', 'VST3'];
+    const logFile = join(OUTPUT_DIR, 'batch-interrogation.log');
 
-    console.log('🔧 Running plughost in batch mode...');
+    // Check if we have a recent log file to reuse
+    if (!this.forceRegenerate && existsSync(logFile)) {
+      const logStat = statSync(logFile);
+      const logAge = Date.now() - logStat.mtime.getTime();
+      const cacheExpiryMs = LOG_CACHE_EXPIRY_HOURS * 60 * 60 * 1000;
+
+      if (logAge < cacheExpiryMs) {
+        console.log(`📋 Using cached log file (${Math.round(logAge / (60 * 60 * 1000))}h old): ${logFile}`);
+        return this.processLogFile(logFile);
+      } else {
+        console.log(`⏰ Log file is stale (${Math.round(logAge / (60 * 60 * 1000))}h old), regenerating...`);
+      }
+    } else if (this.forceRegenerate) {
+      console.log(`🔄 Force regenerate flag set, ignoring cache`);
+    }
+
+    const args = ['--batch-interrogate', '--format-filter', 'VST3'];
+    console.log(`🔧 Running plughost in batch mode...`);
+    console.log(`📋 Logging to: ${logFile}`);
 
     return new Promise((resolve, reject) => {
       const env = {
@@ -37,104 +59,247 @@ class BatchPluginGenerator {
         env
       });
 
-      let stdout = '';
-      let stderr = '';
+      let successCount = 0;
+      let errorCount = 0;
+      let currentJsonBuffer = '';
+      let braceCount = 0;
+      let inJsonStanza = false;
+
+      // Create log file for tee functionality
+      const logStream = createWriteStream(logFile);
+
+      let lineBuffer = '';
 
       child.stdout?.on('data', (data) => {
-        stdout += data.toString();
-        // Show progress as we get data
-        process.stdout.write('.');
-      });
+        const chunk = data.toString();
 
-      child.stderr?.on('data', (data) => {
-        stderr += data.toString();
-      });
+        // Tee to log file
+        logStream.write(chunk);
 
-      child.on('close', (code) => {
-        console.log('\n'); // New line after progress dots
+        // Add to line buffer and process complete lines
+        lineBuffer += chunk;
+        const lines = lineBuffer.split('\n');
 
-        if (code === 0) {
-          console.log('✅ Batch interrogation completed successfully');
+        // Keep the last line in buffer (might be incomplete)
+        lineBuffer = lines.pop() || '';
 
-          // Parse and process the JSON output
-          try {
-            // Extract JSON from stdout (skip initial setup messages)
-            const lines = stdout.split('\n');
-            let jsonStarted = false;
-            const jsonLines: string[] = [];
+        for (const line of lines) {
+          const trimmedLine = line.trim();
 
-            for (const line of lines) {
-              if (line.trim().startsWith('{"plugins":')) {
-                jsonStarted = true;
-              }
-              if (jsonStarted) {
-                jsonLines.push(line);
-              }
+          if (trimmedLine === '{') {
+            if (!inJsonStanza) {
+              inJsonStanza = true;
+              braceCount = 1;
+              currentJsonBuffer = '{\n';
+            } else {
+              braceCount++;
+              currentJsonBuffer += line + '\n';
             }
+          } else if (trimmedLine === '}') {
+            braceCount--;
+            currentJsonBuffer += line + '\n';
 
-            if (jsonLines.length > 0) {
-              const jsonStr = jsonLines.join('\n');
-              const pluginData = JSON.parse(jsonStr);
+            if (inJsonStanza && braceCount === 0) {
+              // Complete JSON stanza found
+              try {
+                const pluginData = JSON.parse(currentJsonBuffer.trim());
 
-              console.log(`📊 Found ${pluginData.plugins.length} plugins`);
-
-              // Save the complete catalog
-              const catalogPath = join(OUTPUT_DIR, 'plugins-catalog-batch.json');
-              writeFileSync(catalogPath, JSON.stringify(pluginData, null, 2));
-              console.log(`💾 Saved catalog to: ${catalogPath}`);
-
-              // Now generate individual plugin spec files
-              let successCount = 0;
-              let errorCount = 0;
-
-              for (const plugin of pluginData.plugins) {
-                if (plugin.error) {
+                if (pluginData.error) {
                   errorCount++;
-                  console.log(`❌ ${plugin.plugin.name}: ${plugin.error}`);
-                  continue;
-                }
-
-                try {
-                  // Convert to plugin spec format and save individual file
-                  const spec = this.convertToPluginSpec(plugin);
-                  const filename = this.generateFilename(plugin.plugin);
+                  console.log(`❌ ${pluginData.plugin.name}: ${pluginData.error}`);
+                } else {
+                  // Convert to plugin spec and save immediately
+                  const spec = this.convertToPluginSpec(pluginData);
+                  const filename = this.generateFilename(pluginData.plugin);
                   const filepath = join(OUTPUT_DIR, filename);
 
                   writeFileSync(filepath, JSON.stringify(spec, null, 2));
-                  console.log(`✅ ${plugin.plugin.name}: ${filename} (${plugin.metadata.parameter_count} params)`);
+                  console.log(`✅ ${pluginData.plugin.name}: ${filename} (${pluginData.metadata.parameter_count} params)`);
                   successCount++;
-
-                } catch (error) {
-                  console.error(`❌ Failed to process ${plugin.plugin.name}:`, error instanceof Error ? error.message : error);
-                  errorCount++;
                 }
+
+              } catch (parseError) {
+                console.error(`❌ Failed to parse JSON stanza: ${parseError instanceof Error ? parseError.message : parseError}`);
+                console.error(`   Problem JSON: ${currentJsonBuffer.substring(0, 100)}...`);
+                errorCount++;
               }
 
-              console.log(`\n📊 Generation Summary:`);
-              console.log(`   ✅ Success: ${successCount} plugins`);
-              console.log(`   ❌ Errors: ${errorCount} plugins`);
-              console.log(`   📁 Output: ${OUTPUT_DIR}`);
-
-              resolve(successCount);
-            } else {
-              reject(new Error('No JSON output found'));
+              // Reset for next stanza
+              currentJsonBuffer = '';
+              inJsonStanza = false;
+              braceCount = 0;
             }
-
-          } catch (error) {
-            reject(new Error(`Failed to parse JSON output: ${error instanceof Error ? error.message : error}`));
+          } else if (inJsonStanza) {
+            currentJsonBuffer += line + '\n';
+            // Count braces in this line for nested objects
+            for (const char of line) {
+              if (char === '{') braceCount++;
+              if (char === '}') braceCount--;
+            }
           }
-
-        } else {
-          reject(new Error(`plughost exited with code ${code}: ${stderr}`));
         }
       });
 
-      // Kill after 10 minutes to prevent hanging
+      child.stderr?.on('data', (data) => {
+        // Progress and error messages go to stderr, just pass them through
+        process.stderr.write(data);
+      });
+
+      child.on('close', (code) => {
+        // Process any remaining data in line buffer
+        if (lineBuffer.trim() && inJsonStanza) {
+          currentJsonBuffer += lineBuffer;
+          // Try to parse if we think we have a complete JSON
+          if (currentJsonBuffer.trim().endsWith('}')) {
+            try {
+              const pluginData = JSON.parse(currentJsonBuffer.trim());
+              if (!pluginData.error) {
+                const spec = this.convertToPluginSpec(pluginData);
+                const filename = this.generateFilename(pluginData.plugin);
+                const filepath = join(OUTPUT_DIR, filename);
+                writeFileSync(filepath, JSON.stringify(spec, null, 2));
+                console.log(`✅ ${pluginData.plugin.name}: ${filename} (${pluginData.metadata.parameter_count} params)`);
+                successCount++;
+              }
+            } catch (parseError) {
+              errorCount++;
+            }
+          }
+        }
+
+        logStream.end();
+
+        if (code === 0) {
+          console.log('\n📊 Generation Summary:');
+          console.log(`   ✅ Success: ${successCount} plugins`);
+          console.log(`   ❌ Errors: ${errorCount} plugins`);
+          console.log(`   📁 Output: ${OUTPUT_DIR}`);
+          console.log(`   📋 Log: ${logFile}`);
+
+          // Update catalog from log file
+          this.updateCatalogFromLog(logFile, successCount + errorCount);
+
+          resolve(successCount);
+        } else {
+          reject(new Error(`plughost exited with code ${code}`));
+        }
+      });
+
+      // Kill after 15 minutes to prevent hanging
       setTimeout(() => {
         child.kill();
-        reject(new Error('plughost timed out after 10 minutes'));
-      }, 10 * 60 * 1000);
+        reject(new Error('plughost timed out after 15 minutes'));
+      }, 15 * 60 * 1000);
     });
+  }
+
+  private async processLogFile(logFile: string): Promise<number> {
+    console.log('📖 Processing existing log file for JSON stanzas...');
+
+    let successCount = 0;
+    let errorCount = 0;
+    let currentJsonBuffer = '';
+    let braceCount = 0;
+    let inJsonStanza = false;
+    let linesProcessed = 0;
+    let jsonStanzasFound = 0;
+
+    const fileStream = createReadStream(logFile);
+    const rl = createInterface({
+      input: fileStream,
+      crlfDelay: Infinity
+    });
+
+    for await (const line of rl) {
+      linesProcessed++;
+      const trimmedLine = line.trim();
+
+      if (trimmedLine === '{') {
+        if (!inJsonStanza) {
+          jsonStanzasFound++;
+          console.log(`🔍 Found JSON stanza #${jsonStanzasFound} at line ${linesProcessed}`);
+        }
+        if (!inJsonStanza) {
+          inJsonStanza = true;
+          braceCount = 1;
+          currentJsonBuffer = '{\n';
+        } else {
+          braceCount++;
+          currentJsonBuffer += line + '\n';
+        }
+      } else if (trimmedLine === '}') {
+        braceCount--;
+        currentJsonBuffer += line + '\n';
+
+        if (inJsonStanza && braceCount === 0) {
+          // Complete JSON stanza found
+          try {
+            const pluginData = JSON.parse(currentJsonBuffer.trim());
+
+            if (pluginData.error) {
+              errorCount++;
+              console.log(`❌ ${pluginData.plugin.name}: ${pluginData.error}`);
+            } else if (pluginData.plugin) {
+              // Convert to plugin spec and save immediately
+              const spec = this.convertToPluginSpec(pluginData);
+              const filename = this.generateFilename(pluginData.plugin);
+              const filepath = join(OUTPUT_DIR, filename);
+
+              writeFileSync(filepath, JSON.stringify(spec, null, 2));
+              console.log(`✅ ${pluginData.plugin.name}: ${filename} (${pluginData.metadata.parameter_count} params)`);
+              successCount++;
+            }
+
+          } catch (parseError) {
+            console.error(`❌ Failed to parse JSON stanza: ${parseError instanceof Error ? parseError.message : parseError}`);
+            console.error(`   Problem JSON: ${currentJsonBuffer.substring(0, 100)}...`);
+            errorCount++;
+          }
+
+          // Reset for next stanza
+          currentJsonBuffer = '';
+          inJsonStanza = false;
+          braceCount = 0;
+        }
+      } else if (inJsonStanza) {
+        currentJsonBuffer += line + '\n';
+        // Count braces in this line for nested objects
+        for (const char of line) {
+          if (char === '{') braceCount++;
+          if (char === '}') braceCount--;
+        }
+      }
+    }
+
+    console.log('\n📊 Processing Summary:');
+    console.log(`   📄 Lines processed: ${linesProcessed}`);
+    console.log(`   🔍 JSON stanzas found: ${jsonStanzasFound}`);
+    console.log(`   ✅ Success: ${successCount} plugins`);
+    console.log(`   ❌ Errors: ${errorCount} plugins`);
+    console.log(`   📁 Output: ${OUTPUT_DIR}`);
+
+    // Update catalog
+    this.updateCatalogFromLog(logFile, successCount + errorCount);
+
+    return successCount;
+  }
+
+  private updateCatalogFromLog(logFile: string, totalPlugins: number) {
+    try {
+      const catalogPath = join(OUTPUT_DIR, 'plugins-catalog-batch.json');
+      const catalog = {
+        version: '1.0',
+        created: new Date().toISOString(),
+        total_plugins: totalPlugins,
+        source_log: logFile,
+        description: 'Plugin catalog generated from batch interrogation'
+      };
+
+      writeFileSync(catalogPath, JSON.stringify(catalog, null, 2));
+      console.log(`💾 Updated catalog: ${catalogPath}`);
+    } catch (error) {
+      console.error(`⚠️  Failed to update catalog: ${error instanceof Error ? error.message : error}`);
+    }
   }
 
   private convertToPluginSpec(pluginData: any): any {
@@ -222,7 +387,8 @@ class BatchPluginGenerator {
 
 // Run if called directly
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const generator = new BatchPluginGenerator();
+  const forceRegenerate = process.argv.includes('--force');
+  const generator = new BatchPluginGenerator(forceRegenerate);
   generator.generateSpecs().catch(error => {
     console.error('❌ Fatal error:', error instanceof Error ? error.message : error);
     process.exit(1);
