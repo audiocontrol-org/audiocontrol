@@ -1,0 +1,102 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "CITE",
+    "version": "1.0.0",
+    "format": "VST3",
+    "uid": "-1043716432"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.760Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for CITE",
+    "parameter_count": 6,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Amount",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 2,
+      "name": "Area",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 3,
+      "name": "Mix",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 4,
+      "name": "Volume",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 5,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        3,
+        5
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        4
+      ]
+    }
+  }
+}

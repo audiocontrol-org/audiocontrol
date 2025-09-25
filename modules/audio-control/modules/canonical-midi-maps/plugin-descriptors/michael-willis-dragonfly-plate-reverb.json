@@ -1,0 +1,175 @@
+{
+  "plugin": {
+    "manufacturer": "Michael Willis",
+    "name": "Dragonfly Plate Reverb",
+    "version": "3.2.10",
+    "format": "VST3",
+    "uid": "835378939"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.880Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for Dragonfly Plate Reverb",
+    "parameter_count": 11,
+    "tags": [
+      "vst3",
+      "reverb"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Buffer Size",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": false,
+      "label": "frames"
+    },
+    {
+      "index": 1,
+      "name": "Sample Rate",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": false,
+      "label": "frames"
+    },
+    {
+      "index": 2,
+      "name": "Dry Level",
+      "min": 0,
+      "max": 1,
+      "default": 0.8,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 3,
+      "name": "Wet Level",
+      "min": 0,
+      "max": 1,
+      "default": 0.2,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 4,
+      "name": "Algorithm",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 5,
+      "name": "Width",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 6,
+      "name": "Predelay",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "effects",
+      "type": "continuous",
+      "automatable": true,
+      "label": "ms"
+    },
+    {
+      "index": 7,
+      "name": "Decay",
+      "min": 0,
+      "max": 1,
+      "default": 0.030303,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "s"
+    },
+    {
+      "index": 8,
+      "name": "Low Cut",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 9,
+      "name": "High Cut",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 10,
+      "name": "Dampen",
+      "min": 0,
+      "max": 1,
+      "default": 0.8,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        4,
+        5,
+        8,
+        9,
+        10
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        2,
+        3
+      ]
+    },
+    "effects": {
+      "name": "effects",
+      "parameters": [
+        6
+      ]
+    },
+    "envelope": {
+      "name": "envelope",
+      "parameters": [
+        7
+      ]
+    }
+  }
+}

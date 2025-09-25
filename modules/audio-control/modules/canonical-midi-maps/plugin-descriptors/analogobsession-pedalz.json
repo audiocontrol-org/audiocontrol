@@ -1,0 +1,121 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "PEDALz",
+    "version": "2.0.0",
+    "format": "VST3",
+    "uid": "-825938768"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.916Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for PEDALz",
+    "parameter_count": 8,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.316228,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 2,
+      "name": "Model",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 3,
+      "name": "Tone",
+      "min": 0,
+      "max": 1,
+      "default": 0.7,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 4,
+      "name": "Bass",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 5,
+      "name": "Treble",
+      "min": 0,
+      "max": 1,
+      "default": 0.7,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 6,
+      "name": "Out",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 7,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        1
+      ]
+    }
+  }
+}

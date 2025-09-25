@@ -1,0 +1,140 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "MythPre",
+    "version": "1.0.0",
+    "format": "VST3",
+    "uid": "-872790352"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.588Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for MythPre",
+    "parameter_count": 10,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "BOOST",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 2,
+      "name": "OUTPUT",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 3,
+      "name": "MODE",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 4,
+      "name": "BYPASS",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 5,
+      "name": "HPF",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 6,
+      "name": "LPF",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 7,
+      "name": "PAD",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 8,
+      "name": "PHASE INVERT",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 9,
+      "name": "Oversampling",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ]
+    }
+  }
+}

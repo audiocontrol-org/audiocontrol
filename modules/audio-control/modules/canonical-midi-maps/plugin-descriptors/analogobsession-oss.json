@@ -1,0 +1,228 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "OSS",
+    "version": "6.0.0",
+    "format": "VST3",
+    "uid": "-841734736"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.544Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for OSS",
+    "parameter_count": 16,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Input",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 2,
+      "name": "Output",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 3,
+      "name": "Attack",
+      "min": 0,
+      "max": 1,
+      "default": 0.458831,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "ms"
+    },
+    {
+      "index": 4,
+      "name": "Release",
+      "min": 0,
+      "max": 1,
+      "default": 0.365985,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "ms"
+    },
+    {
+      "index": 5,
+      "name": "Ratio",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 6,
+      "name": "Highpass Filter",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "filter",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 7,
+      "name": "Mix",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 8,
+      "name": "Mid Freq",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 9,
+      "name": "Mid Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 10,
+      "name": "High Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 11,
+      "name": "",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 12,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 13,
+      "name": "Interstage",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 14,
+      "name": "Oversampling",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 15,
+      "name": "Sidechain",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        5,
+        7,
+        8,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    },
+    "envelope": {
+      "name": "envelope",
+      "parameters": [
+        3,
+        4
+      ]
+    },
+    "filter": {
+      "name": "filter",
+      "parameters": [
+        6
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        9
+      ]
+    }
+  }
+}

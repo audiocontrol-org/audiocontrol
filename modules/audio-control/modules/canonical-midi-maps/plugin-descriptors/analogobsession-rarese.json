@@ -1,0 +1,294 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "RareSE",
+    "version": "1.0.0",
+    "format": "VST3",
+    "uid": "-791406672"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.936Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for RareSE",
+    "parameter_count": 24,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "L/M Low Boost",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 2,
+      "name": "R/S Low Boost",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 3,
+      "name": " L/M Low Atten",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 4,
+      "name": " R/S Low Atten",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 5,
+      "name": "L/M High Boost",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 6,
+      "name": "R/S High Boost",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 7,
+      "name": "L/M High Atten",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 8,
+      "name": "R/S High Atten",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 9,
+      "name": "L/M High Bandwidth",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 10,
+      "name": "R/S High Bandwidth",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 11,
+      "name": "L/M Output",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 12,
+      "name": "R/S Output",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 13,
+      "name": "L/M Low Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 14,
+      "name": "R/S Low Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 15,
+      "name": "L/M High Freqency",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 16,
+      "name": "R/S High Freqency",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 17,
+      "name": "L/M High Atten Freqency",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 18,
+      "name": "R/S High Atten Freqency",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 19,
+      "name": "L/M Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 20,
+      "name": "R/S Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 21,
+      "name": "LM/RS Link",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 22,
+      "name": "Mid/Side",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 23,
+      "name": "Oversampling",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ]
+    }
+  }
+}

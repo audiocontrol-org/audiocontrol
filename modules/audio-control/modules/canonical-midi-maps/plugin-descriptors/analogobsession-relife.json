@@ -1,0 +1,121 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "ReLife",
+    "version": "2.0.0",
+    "format": "VST3",
+    "uid": "-791865168"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:19.030Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for ReLife",
+    "parameter_count": 8,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Life",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 2,
+      "name": "Input",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 3,
+      "name": "Output",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 4,
+      "name": "Shape",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 5,
+      "name": "Mix",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 6,
+      "name": "Oversampling",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 7,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7
+      ]
+    }
+  }
+}

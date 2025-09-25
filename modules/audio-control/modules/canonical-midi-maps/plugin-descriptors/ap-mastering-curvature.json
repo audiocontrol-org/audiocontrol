@@ -1,0 +1,329 @@
+{
+  "plugin": {
+    "manufacturer": "AP Mastering",
+    "name": "Curvature",
+    "version": "1",
+    "format": "VST3",
+    "uid": "2054407031"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.855Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for Curvature",
+    "parameter_count": 26,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Input Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Output Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 2,
+      "name": "Mix Wet",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 3,
+      "name": "Attack Time",
+      "min": 0,
+      "max": 1,
+      "default": 0.2,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 4,
+      "name": "Release Time",
+      "min": 0,
+      "max": 1,
+      "default": 0.16,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 5,
+      "name": "Algorithm",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 6,
+      "name": "Kappa",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 7,
+      "name": "Theta",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 8,
+      "name": "Gamma",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 9,
+      "name": "Lambda",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 10,
+      "name": "Stereo Link",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 11,
+      "name": "Ceiling",
+      "min": 0,
+      "max": 1,
+      "default": 0.310345,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 12,
+      "name": "Side Chain Mode",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 13,
+      "name": "Ext Side Chain",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 14,
+      "name": "SC EQ to Main",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 15,
+      "name": "Side Chain Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 16,
+      "name": "Preset",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 17,
+      "name": "Feedback",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 18,
+      "name": "Feedback Tilt",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 19,
+      "name": "Oversampling",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 20,
+      "name": "Theme",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 21,
+      "name": "Allow Feedback",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 22,
+      "name": "Filter DC",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "filter",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 23,
+      "name": "Filter Ultrasonics",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "filter",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 24,
+      "name": "Internal Trim",
+      "min": 0,
+      "max": 1,
+      "default": 0.473684,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 25,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        0,
+        1,
+        15
+      ]
+    },
+    "general": {
+      "name": "general",
+      "parameters": [
+        2,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        24,
+        25
+      ]
+    },
+    "envelope": {
+      "name": "envelope",
+      "parameters": [
+        3,
+        4
+      ]
+    },
+    "filter": {
+      "name": "filter",
+      "parameters": [
+        22,
+        23
+      ]
+    }
+  }
+}

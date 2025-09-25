@@ -1,0 +1,83 @@
+{
+  "plugin": {
+    "manufacturer": "Metric Halo",
+    "name": "MBPhillyDI",
+    "version": "4.0.69.233",
+    "format": "VST3",
+    "uid": "-801750803"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.812Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for MBPhillyDI",
+    "parameter_count": 5,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Master Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Drive",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 2,
+      "name": "Comp",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 3,
+      "name": "AB Blend",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 4,
+      "name": "OS Ratio",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": false
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        3,
+        4
+      ]
+    }
+  }
+}

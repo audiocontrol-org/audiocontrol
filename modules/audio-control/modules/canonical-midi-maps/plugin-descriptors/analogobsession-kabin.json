@@ -1,0 +1,94 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "KABIN",
+    "version": "3.0.0",
+    "format": "VST3",
+    "uid": "-907922256"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.666Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for KABIN",
+    "parameter_count": 6,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Cabinet Size",
+      "min": 0,
+      "max": 1,
+      "default": 0.4,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 2,
+      "name": "Cabinet Character",
+      "min": 0,
+      "max": 1,
+      "default": 0.3,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 3,
+      "name": "Microphone Position",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 4,
+      "name": "Output",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 5,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5
+      ]
+    }
+  }
+}

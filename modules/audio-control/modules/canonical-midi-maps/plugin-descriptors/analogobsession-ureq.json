@@ -1,0 +1,194 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "UREQ",
+    "version": "1.0.0",
+    "format": "VST3",
+    "uid": "-741137488"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.737Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for UREQ",
+    "parameter_count": 14,
+    "tags": [
+      "vst3",
+      "equalizer"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Low Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 2,
+      "name": "Low Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 3,
+      "name": "Low Mid Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 4,
+      "name": "Low Mid Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 5,
+      "name": "High Mid Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 6,
+      "name": "High Mid Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 7,
+      "name": "High Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 8,
+      "name": "High Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 9,
+      "name": "Input",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 10,
+      "name": "Output",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 11,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 12,
+      "name": "HPF",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 13,
+      "name": "LPF",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        1,
+        3,
+        5,
+        7
+      ]
+    }
+  }
+}

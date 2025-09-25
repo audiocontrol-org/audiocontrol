@@ -1,0 +1,284 @@
+{
+  "plugin": {
+    "manufacturer": "Michael Willis and Rob vd Berg",
+    "name": "Dragonfly Hall Reverb",
+    "version": "3.2.10",
+    "format": "VST3",
+    "uid": "-200745221"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.635Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for Dragonfly Hall Reverb",
+    "parameter_count": 20,
+    "tags": [
+      "vst3",
+      "reverb"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Buffer Size",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": false,
+      "label": "frames"
+    },
+    {
+      "index": 1,
+      "name": "Sample Rate",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": false,
+      "label": "frames"
+    },
+    {
+      "index": 2,
+      "name": "Dry Level",
+      "min": 0,
+      "max": 1,
+      "default": 0.8,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 3,
+      "name": "Early Level",
+      "min": 0,
+      "max": 1,
+      "default": 0.1,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 4,
+      "name": "Late Level",
+      "min": 0,
+      "max": 1,
+      "default": 0.2,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 5,
+      "name": "Size",
+      "min": 0,
+      "max": 1,
+      "default": 0.28,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "m"
+    },
+    {
+      "index": 6,
+      "name": "Width",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 7,
+      "name": "Predelay",
+      "min": 0,
+      "max": 1,
+      "default": 0.04,
+      "group": "effects",
+      "type": "continuous",
+      "automatable": true,
+      "label": "ms"
+    },
+    {
+      "index": 8,
+      "name": "Diffuse",
+      "min": 0,
+      "max": 1,
+      "default": 0.9,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 9,
+      "name": "Low Cut",
+      "min": 0,
+      "max": 1,
+      "default": 0.02,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 10,
+      "name": "Low Cross",
+      "min": 0,
+      "max": 1,
+      "default": 0.3,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 11,
+      "name": "Low Mult",
+      "min": 0,
+      "max": 1,
+      "default": 0.4,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "X"
+    },
+    {
+      "index": 12,
+      "name": "High Cut",
+      "min": 0,
+      "max": 1,
+      "default": 0.44,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 13,
+      "name": "High Cross",
+      "min": 0,
+      "max": 1,
+      "default": 0.3,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 14,
+      "name": "High Mult",
+      "min": 0,
+      "max": 1,
+      "default": 0.3,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "X"
+    },
+    {
+      "index": 15,
+      "name": "Spin",
+      "min": 0,
+      "max": 1,
+      "default": 0.33,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 16,
+      "name": "Wander",
+      "min": 0,
+      "max": 1,
+      "default": 0.375,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "ms"
+    },
+    {
+      "index": 17,
+      "name": "Decay",
+      "min": 0,
+      "max": 1,
+      "default": 0.121212,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "s"
+    },
+    {
+      "index": 18,
+      "name": "Early Send",
+      "min": 0,
+      "max": 1,
+      "default": 0.2,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 19,
+      "name": "Modulation",
+      "min": 0,
+      "max": 1,
+      "default": 0.15,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        5,
+        6,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        18,
+        19
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        2,
+        3,
+        4
+      ]
+    },
+    "effects": {
+      "name": "effects",
+      "parameters": [
+        7
+      ]
+    },
+    "envelope": {
+      "name": "envelope",
+      "parameters": [
+        17
+      ]
+    }
+  }
+}

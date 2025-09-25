@@ -1,0 +1,272 @@
+{
+  "plugin": {
+    "manufacturer": "Michael Willis",
+    "name": "Dragonfly Room Reverb",
+    "version": "3.2.10",
+    "format": "VST3",
+    "uid": "319348475"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.964Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for Dragonfly Room Reverb",
+    "parameter_count": 19,
+    "tags": [
+      "vst3",
+      "reverb"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Buffer Size",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": false,
+      "label": "frames"
+    },
+    {
+      "index": 1,
+      "name": "Sample Rate",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": false,
+      "label": "frames"
+    },
+    {
+      "index": 2,
+      "name": "Dry Level",
+      "min": 0,
+      "max": 1,
+      "default": 0.8,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 3,
+      "name": "Early Level",
+      "min": 0,
+      "max": 1,
+      "default": 0.1,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 4,
+      "name": "Early Send",
+      "min": 0,
+      "max": 1,
+      "default": 0.2,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 5,
+      "name": "Late Level",
+      "min": 0,
+      "max": 1,
+      "default": 0.2,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 6,
+      "name": "Size",
+      "min": 0,
+      "max": 1,
+      "default": 0.166667,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "m"
+    },
+    {
+      "index": 7,
+      "name": "Width",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 8,
+      "name": "Predelay",
+      "min": 0,
+      "max": 1,
+      "default": 0.08,
+      "group": "effects",
+      "type": "continuous",
+      "automatable": true,
+      "label": "ms"
+    },
+    {
+      "index": 9,
+      "name": "Decay",
+      "min": 0,
+      "max": 1,
+      "default": 0.030303,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "s"
+    },
+    {
+      "index": 10,
+      "name": "Diffuse",
+      "min": 0,
+      "max": 1,
+      "default": 0.7,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 11,
+      "name": "Spin",
+      "min": 0,
+      "max": 1,
+      "default": 0.16,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 12,
+      "name": "Wander",
+      "min": 0,
+      "max": 1,
+      "default": 0.4,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 13,
+      "name": "High Cut",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 14,
+      "name": "Early Damp",
+      "min": 0,
+      "max": 1,
+      "default": 0.6,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 15,
+      "name": "Late Damp",
+      "min": 0,
+      "max": 1,
+      "default": 0.56,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 16,
+      "name": "Low Boost",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 17,
+      "name": "Boost Freq",
+      "min": 0,
+      "max": 1,
+      "default": 0.55,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 18,
+      "name": "Low Cut",
+      "min": 0,
+      "max": 1,
+      "default": 0.02,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        4,
+        6,
+        7,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        2,
+        3,
+        5
+      ]
+    },
+    "effects": {
+      "name": "effects",
+      "parameters": [
+        8
+      ]
+    },
+    "envelope": {
+      "name": "envelope",
+      "parameters": [
+        9
+      ]
+    }
+  }
+}

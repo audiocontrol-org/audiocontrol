@@ -1,0 +1,155 @@
+{
+  "plugin": {
+    "manufacturer": "Bertom",
+    "name": "EQ Curve Analyzer 2",
+    "version": "2.1.2",
+    "format": "VST3",
+    "uid": "-1616409617"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.880Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for EQ Curve Analyzer 2",
+    "parameter_count": 11,
+    "tags": [
+      "vst3",
+      "equalizer"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Group",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Auto",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 2,
+      "name": "Set as generator",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 3,
+      "name": "Signal level",
+      "min": 0,
+      "max": 1,
+      "default": 0.7,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 4,
+      "name": "Calibration",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 5,
+      "name": "Latency",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 6,
+      "name": "FFT size",
+      "min": 0,
+      "max": 1,
+      "default": 0.333333,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 7,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 8,
+      "name": "Underlay freeze",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 9,
+      "name": "Signal type",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 10,
+      "name": "Allow offline rendering",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        3
+      ]
+    }
+  }
+}

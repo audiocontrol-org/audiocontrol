@@ -1,0 +1,265 @@
+{
+  "plugin": {
+    "manufacturer": "TAL-Togu Audio Line",
+    "name": "TAL Reverb 4 Plugin",
+    "version": "4.0.4",
+    "format": "VST3",
+    "uid": "1700346114"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.905Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for TAL Reverb 4 Plugin",
+    "parameter_count": 21,
+    "tags": [
+      "vst3",
+      "reverb"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "On / Off",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Wet",
+      "min": 0,
+      "max": 1,
+      "default": 0.2,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 2,
+      "name": "Dry",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 3,
+      "name": "Delay",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "effects",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 4,
+      "name": "Size",
+      "min": 0,
+      "max": 1,
+      "default": 0.85,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 5,
+      "name": "High Cut Freq",
+      "min": 0,
+      "max": 1,
+      "default": 0.8,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 6,
+      "name": "Low Cut Freq",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 7,
+      "name": "Peak Freq",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 8,
+      "name": "Peak Amount",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 9,
+      "name": "Modulation Rate",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 10,
+      "name": "Modulation Depth",
+      "min": 0,
+      "max": 1,
+      "default": 0.2,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 11,
+      "name": "Diffuse",
+      "min": 0,
+      "max": 1,
+      "default": 0.9,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 12,
+      "name": "Harmonic Tune",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 13,
+      "name": "Harmonic Amount",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 14,
+      "name": "Stereo width",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 15,
+      "name": "Ducking",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 16,
+      "name": "Side Chain",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 17,
+      "name": "Damp",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 18,
+      "name": "Bits",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 19,
+      "name": "Sample Rate Divider",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 20,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20
+      ]
+    },
+    "effects": {
+      "name": "effects",
+      "parameters": [
+        3
+      ]
+    }
+  }
+}

@@ -1,0 +1,227 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "ATONE",
+    "version": "1.0.0",
+    "format": "VST3",
+    "uid": "-1076551504"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.927Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for ATONE",
+    "parameter_count": 16,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 2,
+      "name": "Low Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 3,
+      "name": "Mid Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 4,
+      "name": "High Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 5,
+      "name": "HPF",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 6,
+      "name": "LPF",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "kHz"
+    },
+    {
+      "index": 7,
+      "name": "Attack",
+      "min": 0,
+      "max": 1,
+      "default": 0.301511,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "ms"
+    },
+    {
+      "index": 8,
+      "name": "Release",
+      "min": 0,
+      "max": 1,
+      "default": 0.356284,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "sec"
+    },
+    {
+      "index": 9,
+      "name": "Compression Amount",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 10,
+      "name": "Output",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 11,
+      "name": "",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 12,
+      "name": "Filter Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "filter",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 13,
+      "name": "EQ Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 14,
+      "name": "Compressor Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 15,
+      "name": "System Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        5,
+        6,
+        9,
+        10,
+        11,
+        13,
+        14,
+        15
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        1,
+        2,
+        3,
+        4
+      ]
+    },
+    "envelope": {
+      "name": "envelope",
+      "parameters": [
+        7,
+        8
+      ]
+    },
+    "filter": {
+      "name": "filter",
+      "parameters": [
+        12
+      ]
+    }
+  }
+}

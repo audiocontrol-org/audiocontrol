@@ -1,0 +1,204 @@
+{
+  "plugin": {
+    "manufacturer": "TAL-Togu Audio Line",
+    "name": "TAL-Reverb-2",
+    "version": "2.3.0",
+    "format": "VST3",
+    "uid": "-1142942369"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.965Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for TAL-Reverb-2",
+    "parameter_count": 15,
+    "tags": [
+      "vst3",
+      "reverb"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "dry",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 2,
+      "name": "wet",
+      "min": 0,
+      "max": 1,
+      "default": 0.161,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 3,
+      "name": "room size",
+      "min": 0,
+      "max": 1,
+      "default": 0.752,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 4,
+      "name": "pre delay",
+      "min": 0,
+      "max": 1,
+      "default": 0.132,
+      "group": "effects",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 5,
+      "name": "low shelf frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.024,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 6,
+      "name": "high shelf frequency",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 7,
+      "name": "peak frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.492,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 8,
+      "name": "low shelf gain",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 9,
+      "name": "high shelf gain",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 10,
+      "name": "peak gain",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 11,
+      "name": "stereo",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 12,
+      "name": "stereo input",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 13,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 14,
+      "name": "Program",
+      "min": 0,
+      "max": 1,
+      "default": 0.222222,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        3,
+        5,
+        6,
+        7,
+        11,
+        12,
+        13,
+        14
+      ]
+    },
+    "effects": {
+      "name": "effects",
+      "parameters": [
+        4
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        8,
+        9,
+        10
+      ]
+    }
+  }
+}

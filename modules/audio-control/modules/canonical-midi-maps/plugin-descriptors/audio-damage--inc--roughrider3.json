@@ -1,0 +1,174 @@
+{
+  "plugin": {
+    "manufacturer": "Audio Damage, Inc.",
+    "name": "RoughRider3",
+    "version": "3.2.1",
+    "format": "VST3",
+    "uid": "-1913811847"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:19.018Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for RoughRider3",
+    "parameter_count": 12,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "SC HPF",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 1,
+      "name": "Input Lvl",
+      "min": 0,
+      "max": 1,
+      "default": 0.923077,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 2,
+      "name": "Sensitivity",
+      "min": 0,
+      "max": 1,
+      "default": 0.666667,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 3,
+      "name": "Ratio",
+      "min": 0,
+      "max": 1,
+      "default": 0.273744,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": ":1"
+    },
+    {
+      "index": 4,
+      "name": "Attack",
+      "min": 0,
+      "max": 1,
+      "default": 0.09991,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "ms"
+    },
+    {
+      "index": 5,
+      "name": "Release",
+      "min": 0,
+      "max": 1,
+      "default": 0.242424,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "ms"
+    },
+    {
+      "index": 6,
+      "name": "Makeup",
+      "min": 0,
+      "max": 1,
+      "default": 0.166667,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 7,
+      "name": "Mix",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 8,
+      "name": "Output Lvl",
+      "min": 0,
+      "max": 1,
+      "default": 0.923077,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 9,
+      "name": "SC Active",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 10,
+      "name": "Full Bandwidth",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 11,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        3,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ]
+    },
+    "envelope": {
+      "name": "envelope",
+      "parameters": [
+        4,
+        5
+      ]
+    }
+  }
+}

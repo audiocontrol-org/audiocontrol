@@ -1,7 +1,7 @@
 {
   "version": "1.0",
-  "created": "2025-09-25T03:38:54.851Z",
-  "total_plugins": 1,
-  "source_log": "./plugin-descriptors/test-batch.log",
+  "created": "2025-09-25T03:46:19.030Z",
+  "total_plugins": 139,
+  "source_log": "/Users/orion/work/ol_dsp/modules/audio-control/modules/canonical-midi-maps/plugin-descriptors/batch-interrogation.log",
   "description": "Plugin catalog generated from batch interrogation"
 }

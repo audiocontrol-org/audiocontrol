@@ -1,0 +1,214 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "Britpressor",
+    "version": "3.0.0",
+    "format": "VST3",
+    "uid": "-1059904848"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.647Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for Britpressor",
+    "parameter_count": 16,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Compressor Threshold",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 2,
+      "name": "Limit Level",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "mixer",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 3,
+      "name": "Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "mixer",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 4,
+      "name": "Mix",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 5,
+      "name": "Ratio",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 6,
+      "name": "High",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 7,
+      "name": "Mid",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 8,
+      "name": "High Pass Filter",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "filter",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 9,
+      "name": "Compressor Recovery Time",
+      "min": 0,
+      "max": 1,
+      "default": 0.2,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 10,
+      "name": "Level Recovery Time",
+      "min": 0,
+      "max": 1,
+      "default": 0.2,
+      "group": "mixer",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 11,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 12,
+      "name": "External Sidechain",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 13,
+      "name": "",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 14,
+      "name": "",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 15,
+      "name": "Oversample",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        4,
+        5,
+        6,
+        7,
+        9,
+        11,
+        12,
+        13,
+        14,
+        15
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        2,
+        3,
+        10
+      ]
+    },
+    "filter": {
+      "name": "filter",
+      "parameters": [
+        8
+      ]
+    }
+  }
+}

@@ -1,0 +1,225 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "Harqules",
+    "version": "5.0.0",
+    "format": "VST3",
+    "uid": "-958249808"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.700Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for Harqules",
+    "parameter_count": 16,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "HPF",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 2,
+      "name": "LPF",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "kHz"
+    },
+    {
+      "index": 3,
+      "name": "Low Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 4,
+      "name": "Low Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.107143,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 5,
+      "name": "Low Mid Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 6,
+      "name": "Low Mid Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.0689655,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "kHz"
+    },
+    {
+      "index": 7,
+      "name": "High Mid Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 8,
+      "name": "High Mid Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.464286,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "kHz"
+    },
+    {
+      "index": 9,
+      "name": "High Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 10,
+      "name": "High Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.503546,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "kHz"
+    },
+    {
+      "index": 11,
+      "name": "Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 12,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 13,
+      "name": "Low Bell",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 14,
+      "name": "Filters",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "filter",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 15,
+      "name": "Oversampling",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        4,
+        6,
+        8,
+        10,
+        12,
+        13,
+        15
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        3,
+        5,
+        7,
+        9,
+        11
+      ]
+    },
+    "filter": {
+      "name": "filter",
+      "parameters": [
+        14
+      ]
+    }
+  }
+}

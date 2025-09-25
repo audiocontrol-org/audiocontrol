@@ -1,0 +1,197 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "Room041",
+    "version": "2.0.0",
+    "format": "VST3",
+    "uid": "-792319824"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.949Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for Room041",
+    "parameter_count": 13,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Dry Gain",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 2,
+      "name": "Wet Gain",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 3,
+      "name": "Stereo Seperation",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 4,
+      "name": "Decay Time",
+      "min": 0,
+      "max": 1,
+      "default": 0.152542,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "sec"
+    },
+    {
+      "index": 5,
+      "name": "Pre-Delay",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "effects",
+      "type": "continuous",
+      "automatable": true,
+      "label": "ms"
+    },
+    {
+      "index": 6,
+      "name": "Drive",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 7,
+      "name": "HPF",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 8,
+      "name": "Low Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 9,
+      "name": "High Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 10,
+      "name": "Low Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 11,
+      "name": "High Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 12,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        3,
+        6,
+        7,
+        8,
+        9,
+        12
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        1,
+        2,
+        10,
+        11
+      ]
+    },
+    "envelope": {
+      "name": "envelope",
+      "parameters": [
+        4
+      ]
+    },
+    "effects": {
+      "name": "effects",
+      "parameters": [
+        5
+      ]
+    }
+  }
+}

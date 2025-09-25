@@ -1,0 +1,461 @@
+{
+  "plugin": {
+    "manufacturer": "Plugin Alliance",
+    "name": "SPL DrumXchanger",
+    "version": "1.15.1.0",
+    "format": "VST3",
+    "uid": "725567508"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.907Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for SPL DrumXchanger",
+    "parameter_count": 36,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Preset",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Input Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 2,
+      "name": "Original Solo",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 3,
+      "name": "Original Lowpass Cutoff",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "filter",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 4,
+      "name": "Original Highpass Cutoff",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "filter",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 5,
+      "name": "Original Attack",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 6,
+      "name": "Original Sustain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 7,
+      "name": "TD To Trigger",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 8,
+      "name": "Ducking Active",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 9,
+      "name": "Ducking Threshold",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 10,
+      "name": "Trigger Solo",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 11,
+      "name": "Trigger Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 12,
+      "name": "Trigger Q",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 13,
+      "name": "SC Extern",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 14,
+      "name": "Trans Trigger Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 15,
+      "name": "Peak Trigger Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 16,
+      "name": "Transient Threshold",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 17,
+      "name": "Trigger Threshold",
+      "min": 0,
+      "max": 1,
+      "default": 0.75,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 18,
+      "name": "Rim Trigger Threshold",
+      "min": 0,
+      "max": 1,
+      "default": 0.85,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 19,
+      "name": "Rim Blend Level",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 20,
+      "name": "Kit Select",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 21,
+      "name": "Piece Select",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 22,
+      "name": "Phase Invert",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 23,
+      "name": "Playback Offset",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "ms"
+    },
+    {
+      "index": 24,
+      "name": "Dynamics",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 25,
+      "name": "Playback Solo",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 26,
+      "name": "Playback Lowpass Cutoff",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "filter",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 27,
+      "name": "Playback Highpass Cutoff",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "filter",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 28,
+      "name": "Playback Attack",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 29,
+      "name": "Playback Sustain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 30,
+      "name": "Tune",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "st"
+    },
+    {
+      "index": 31,
+      "name": "Output Lowpass Cutoff",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "filter",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 32,
+      "name": "Output Highpass Cutoff",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "filter",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 33,
+      "name": "Dry/Wet Mix",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 34,
+      "name": "Output Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 35,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        2,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        16,
+        17,
+        18,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        30,
+        33,
+        35
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        1,
+        14,
+        15,
+        19,
+        34
+      ]
+    },
+    "filter": {
+      "name": "filter",
+      "parameters": [
+        3,
+        4,
+        26,
+        27,
+        31,
+        32
+      ]
+    },
+    "envelope": {
+      "name": "envelope",
+      "parameters": [
+        5,
+        6,
+        28,
+        29
+      ]
+    }
+  }
+}

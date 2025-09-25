@@ -1,0 +1,270 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "SSQ",
+    "version": "7.0.0",
+    "format": "VST3",
+    "uid": "-774626384"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.916Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for SSQ",
+    "parameter_count": 20,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Input",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 2,
+      "name": "High Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.448276,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "kHz"
+    },
+    {
+      "index": 3,
+      "name": "High Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 4,
+      "name": "High Mid Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.375,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "kHz"
+    },
+    {
+      "index": 5,
+      "name": "High Mid Bandwidth",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 6,
+      "name": "High Mid Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 7,
+      "name": "Highpass Filter",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "filter",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 8,
+      "name": "Low Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.46291,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 9,
+      "name": "Low Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 10,
+      "name": "Low Mid Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.361158,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "kHz"
+    },
+    {
+      "index": 11,
+      "name": "Low Mid Bandwidth",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 12,
+      "name": "Low Mid Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 13,
+      "name": "Lowpass Filter",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "filter",
+      "type": "continuous",
+      "automatable": true,
+      "label": "kHz"
+    },
+    {
+      "index": 14,
+      "name": "Output",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 15,
+      "name": "EQ Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 16,
+      "name": "Filter Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "filter",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 17,
+      "name": "Low Bell",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 18,
+      "name": "High Bell",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 19,
+      "name": "Oversampling",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        4,
+        5,
+        8,
+        10,
+        11,
+        14,
+        15,
+        17,
+        18,
+        19
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        3,
+        6,
+        9,
+        12
+      ]
+    },
+    "filter": {
+      "name": "filter",
+      "parameters": [
+        7,
+        13,
+        16
+      ]
+    }
+  }
+}

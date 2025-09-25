@@ -1,0 +1,106 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "TILTA",
+    "version": "2.0.0",
+    "format": "VST3",
+    "uid": "-758307152"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.984Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for TILTA",
+    "parameter_count": 6,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 2,
+      "name": "Center Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.496403,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 3,
+      "name": "Highpass Filter",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "filter",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 4,
+      "name": "Lowpass Filter",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "filter",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 5,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        2,
+        5
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        1
+      ]
+    },
+    "filter": {
+      "name": "filter",
+      "parameters": [
+        3,
+        4
+      ]
+    }
+  }
+}

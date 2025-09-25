@@ -1,0 +1,204 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "ATTRACTOR",
+    "version": "1.0.0",
+    "format": "VST3",
+    "uid": "-1076550480"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.702Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for ATTRACTOR",
+    "parameter_count": 14,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Attack Low",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 2,
+      "name": "Attack High",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 3,
+      "name": "Attack Compression",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 4,
+      "name": "Attack Saturation",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 5,
+      "name": "Attack Volume",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 6,
+      "name": "Release Low",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 7,
+      "name": "Release High",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 8,
+      "name": "Release Compression",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 9,
+      "name": "Release Saturation",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 10,
+      "name": "Release Volume",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 11,
+      "name": "Master Mix",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 12,
+      "name": "Master Volume",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 13,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        11,
+        13
+      ]
+    },
+    "envelope": {
+      "name": "envelope",
+      "parameters": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        12
+      ]
+    }
+  }
+}

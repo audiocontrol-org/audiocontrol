@@ -1,0 +1,184 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "SPECOMP",
+    "version": "2.0.0",
+    "format": "VST3",
+    "uid": "-774826576"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.964Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for SPECOMP",
+    "parameter_count": 13,
+    "tags": [
+      "vst3",
+      "compressor"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 2,
+      "name": "Ratio",
+      "min": 0,
+      "max": 1,
+      "default": 0.503268,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": ":1"
+    },
+    {
+      "index": 3,
+      "name": "Make-Up",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 4,
+      "name": "Release",
+      "min": 0,
+      "max": 1,
+      "default": 0.0769231,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "sec"
+    },
+    {
+      "index": 5,
+      "name": "Attack",
+      "min": 0,
+      "max": 1,
+      "default": 0.0862944,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true,
+      "label": "ms"
+    },
+    {
+      "index": 6,
+      "name": "Knee",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 7,
+      "name": "Mix",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 8,
+      "name": "Threshold",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 9,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 10,
+      "name": "External Sidechain",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 11,
+      "name": "Oversample",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 12,
+      "name": "",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        3,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ]
+    },
+    "envelope": {
+      "name": "envelope",
+      "parameters": [
+        4,
+        5
+      ]
+    }
+  }
+}

@@ -1,0 +1,321 @@
+{
+  "plugin": {
+    "manufacturer": "AnalogObsession",
+    "name": "FrankCS",
+    "version": "2.0.0",
+    "format": "VST3",
+    "uid": "-993778256"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:19.030Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for FrankCS",
+    "parameter_count": 24,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Input",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 2,
+      "name": "Output",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 3,
+      "name": "Highpass Filter",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "filter",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 4,
+      "name": "Low Boost",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 5,
+      "name": "Low Atten",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 6,
+      "name": "Low Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "Hz"
+    },
+    {
+      "index": 7,
+      "name": "Mid Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 8,
+      "name": "Mid Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.338656,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "kHz"
+    },
+    {
+      "index": 9,
+      "name": "High Gain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "mixer",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 10,
+      "name": "High Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 0.57265,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "kHz"
+    },
+    {
+      "index": 11,
+      "name": "High Atten",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 12,
+      "name": "High Atten Frequency",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "kHz"
+    },
+    {
+      "index": 13,
+      "name": "Threshold",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "dB"
+    },
+    {
+      "index": 14,
+      "name": "Compressor Mix",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true,
+      "label": "%"
+    },
+    {
+      "index": 15,
+      "name": "Attack",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 16,
+      "name": "Release",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 17,
+      "name": "Ratio",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 18,
+      "name": "EQ Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 19,
+      "name": "Compressor Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 20,
+      "name": "Preamp Model",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 21,
+      "name": "Compressor Model",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 22,
+      "name": "Oversampling",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    },
+    {
+      "index": 23,
+      "name": "",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        4,
+        5,
+        6,
+        8,
+        10,
+        11,
+        12,
+        13,
+        14,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23
+      ]
+    },
+    "filter": {
+      "name": "filter",
+      "parameters": [
+        3
+      ]
+    },
+    "mixer": {
+      "name": "mixer",
+      "parameters": [
+        7,
+        9
+      ]
+    },
+    "envelope": {
+      "name": "envelope",
+      "parameters": [
+        15,
+        16
+      ]
+    }
+  }
+}

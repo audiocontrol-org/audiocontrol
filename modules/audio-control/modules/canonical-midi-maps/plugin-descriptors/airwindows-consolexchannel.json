@@ -1,0 +1,456 @@
+{
+  "plugin": {
+    "manufacturer": "Airwindows",
+    "name": "ConsoleXChannel",
+    "version": "0.0.6",
+    "format": "VST3",
+    "uid": "-604426309"
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-09-25T03:46:18.994Z",
+    "author": "plughost-batch",
+    "description": "Auto-generated plugin spec for ConsoleXChannel",
+    "parameter_count": 38,
+    "tags": [
+      "vst3"
+    ]
+  },
+  "parameters": [
+    {
+      "index": 0,
+      "name": "Highpass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 1,
+      "name": "Lowpass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 2,
+      "name": "Air",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 3,
+      "name": "Fire",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 4,
+      "name": "Stone",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 5,
+      "name": "Range",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 6,
+      "name": "FC Threshold",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 7,
+      "name": "SC Threshold",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 8,
+      "name": "FC Ratio",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 9,
+      "name": "SC Ratio",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 10,
+      "name": "FC Attack",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 11,
+      "name": "SC ATtack",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 12,
+      "name": "FC Release",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 13,
+      "name": "SC Release",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 14,
+      "name": "FG Threshold",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 15,
+      "name": "SG Threshold",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 16,
+      "name": "FG Ratio",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 17,
+      "name": "SG Ratio",
+      "min": 0,
+      "max": 1,
+      "default": 1,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 18,
+      "name": "FG Sustain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 19,
+      "name": "SG Sustain",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 20,
+      "name": "FG Release",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 21,
+      "name": "SG Release",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "envelope",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 22,
+      "name": "Treble Freq",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 23,
+      "name": "Treble",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 24,
+      "name": "Treble Reso",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 25,
+      "name": "HighMid Freq",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 26,
+      "name": "HighMid",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 27,
+      "name": "HighMid Reso",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 28,
+      "name": "LowMid Freq",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 29,
+      "name": "LowMid",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 30,
+      "name": "LowMid Reso",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 31,
+      "name": "Bass Freq",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 32,
+      "name": "Bass",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 33,
+      "name": "Bass Reso",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 34,
+      "name": "Top dB",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 35,
+      "name": "Pan",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "panning",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 36,
+      "name": "Fader",
+      "min": 0,
+      "max": 1,
+      "default": 0.5,
+      "group": "general",
+      "type": "continuous",
+      "automatable": true
+    },
+    {
+      "index": 37,
+      "name": "Bypass",
+      "min": 0,
+      "max": 1,
+      "default": 0,
+      "group": "general",
+      "type": "discrete",
+      "automatable": true
+    }
+  ],
+  "groups": {
+    "general": {
+      "name": "general",
+      "parameters": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        14,
+        15,
+        16,
+        17,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        32,
+        33,
+        34,
+        36,
+        37
+      ]
+    },
+    "envelope": {
+      "name": "envelope",
+      "parameters": [
+        10,
+        11,
+        12,
+        13,
+        18,
+        19,
+        20,
+        21
+      ]
+    },
+    "panning": {
+      "name": "panning",
+      "parameters": [
+        35
+      ]
+    }
+  }
+}
