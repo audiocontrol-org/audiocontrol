@@ -25,10 +25,15 @@
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "validate-maps": "node dist/cli/validate-maps.js",
-    "generate:plugin-specs": "tsx src/tools/generate-plugin-specs.ts",
-    "generate:plugin-specs:quick": "tsx src/tools/generate-plugin-specs.ts --quick",
-    "generate:plugin-specs:au": "tsx src/tools/generate-plugin-specs.ts --format AudioUnit",
-    "generate:plugin-specs:vst3": "tsx src/tools/generate-plugin-specs.ts --format VST3"
+    "generate:plugin-specs": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx src/tools/generate-plugin-specs.ts",
+    "generate:plugin-specs:quick": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx src/tools/generate-plugin-specs.ts --quick",
+    "generate:plugin-specs:au": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx src/tools/generate-plugin-specs.ts --format AudioUnit",
+    "generate:plugin-specs:vst3": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx src/tools/generate-plugin-specs.ts --format VST3",
+    "plugin:list": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx ../../tools/plugin-interrogator.ts --list",
+    "plugin:interrogate": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx ../../tools/plugin-interrogator.ts",
+    "plugin:interrogate:text": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx ../../tools/plugin-interrogator.ts --text",
+    "plugin:interrogate:all": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx ../../tools/plugin-interrogator.ts --all",
+    "plugin:interrogate:all:text": "JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING=1 tsx ../../tools/plugin-interrogator.ts --all --text"
   },
   "keywords": [
     "midi",

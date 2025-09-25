@@ -84,6 +84,14 @@ class PluginSpecGenerator {
     help: boolean;
   };
 
+  // Known problematic plugins that cause scanning issues
+  private readonly problematicPlugins = [
+    'ZamVerb', 'ZamTube', 'ZamAutoSat', 'ZamNoise', 'ZaMaximX2',
+    'ZamPhono', 'ZaMultiComp', 'ZaMultiCompX2', 'ZamGrains',
+    'ZamDynamicEQ', 'ZamDelay', 'ZamHeadX2', 'ZamGateX2',
+    'ZamGate', 'ZamGEQ31', 'ZamEQ2', 'ZamCompX2', 'ZamComp'
+  ];
+
   constructor() {
     this.args = this.parseArgs();
   }
@@ -134,40 +142,122 @@ Output:
 
   private async runPlughost(args: string[], timeoutMs = 60000): Promise<string> {
     return new Promise((resolve, reject) => {
+      console.log(`🔧 Running: plughost ${args.join(' ')}`);
+
       const child = spawn(PLUGHOST_PATH, args, {
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['pipe', 'pipe', 'pipe'],
+        env: {
+          ...process.env,
+          PLUGHOST_SAMPLE_RATE: '48000', // Match plugin expectations
+          JUCE_DISABLE_AUDIOUNIT_PLUGIN_SCANNING: '1' // Prevent UAD plugin conflicts
+        }
       });
 
       let stdout = '';
       let stderr = '';
+      let lastProgress = Date.now();
 
       child.stdout?.on('data', (data) => {
         stdout += data.toString();
+        lastProgress = Date.now();
+        // Show some progress for long operations
+        if (args.includes('--list')) {
+          process.stdout.write('.');
+        }
       });
 
       child.stderr?.on('data', (data) => {
         stderr += data.toString();
+        lastProgress = Date.now();
       });
 
       child.on('close', (code) => {
         if (code === 0) {
           resolve(stdout);
         } else {
-          reject(new Error(`plughost exited with code ${code}: ${stderr}`));
+          const errorMsg = `plughost exited with code ${code}${stderr ? `: ${stderr.slice(0, 500)}...` : ''}`;
+          reject(new Error(errorMsg));
         }
       });
 
-      // Configurable timeout
+      child.on('error', (error) => {
+        reject(new Error(`plughost process error: ${error.message}`));
+      });
+
+      // Progressive timeout with progress checking
+      const checkProgress = setInterval(() => {
+        if (Date.now() - lastProgress > timeoutMs) {
+          clearInterval(checkProgress);
+          child.kill('SIGKILL');
+          reject(new Error(`plughost timed out after ${timeoutMs}ms with no progress`));
+        }
+      }, 5000);
+
+      // Final timeout
       setTimeout(() => {
-        child.kill();
-        reject(new Error(`plughost timed out after ${timeoutMs}ms`));
+        clearInterval(checkProgress);
+        if (!child.killed) {
+          child.kill('SIGKILL');
+          reject(new Error(`plughost killed after ${timeoutMs}ms maximum timeout`));
+        }
       }, timeoutMs);
     });
+  }
+
+  private isProblematicPlugin(pluginName: string): boolean {
+    return this.problematicPlugins.some(problem =>
+      pluginName.includes(problem)
+    );
+  }
+
+  private async getPluginListFallback(): Promise<PluginInfo[]> {
+    console.log('🔄 Falling back to basic plugin listing...');
+
+    try {
+      const output = await this.runPlughost(['--list'], 120000); // 2 minute timeout
+
+      const plugins: PluginInfo[] = [];
+      const lines = output.split('\n');
+
+      for (const line of lines) {
+        const match = line.match(/Next Plugin: <Format:([^>]+)>, <Name: ([^>]+)>/);
+        if (match) {
+          const format = match[1];
+          const name = match[2];
+
+          // Apply format filter if specified
+          if (this.args.format && format !== this.args.format) {
+            continue;
+          }
+
+          // Skip problematic plugins in quick mode
+          if (this.args.quick && this.isProblematicPlugin(name)) {
+            console.log(`⏭️  Skipping problematic plugin: ${name}`);
+            continue;
+          }
+
+          plugins.push({
+            manufacturer: 'Unknown', // Basic listing doesn't provide manufacturer
+            name,
+            version: '1.0.0',
+            format,
+            uid: '',
+            category: 'Effect'
+          });
+        }
+      }
+
+      return plugins;
+    } catch (error) {
+      console.error('❌ Fallback listing also failed:', error instanceof Error ? error.message : error);
+      return [];
+    }
   }
 
   private async getPluginList(): Promise<PluginInfo[]> {
     console.log(`🔍 Scanning for plugins${this.args.format ? ` (${this.args.format} only)` : ''}...`);
 
+    // Try batch JSON approach first
     const plughostArgs = ['--list', '--skip-instantiation', '--batch-json'];
     if (this.args.quick) {
       plughostArgs.push('--quick-scan');
@@ -177,21 +267,25 @@ Output:
     }
 
     try {
-      const output = await this.runPlughost(plughostArgs, 120000); // 2 minute timeout for listing
+      console.log('🚀 Attempting batch JSON plugin listing...');
+      const output = await this.runPlughost(plughostArgs, 180000); // 3 minute timeout for batch
+      console.log('\n✅ Batch listing completed');
 
       // Extract JSON from output
       const jsonMatch = output.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        throw new Error('No valid JSON found in plughost output');
+        console.log('⚠️  No JSON found in batch output, trying fallback...');
+        return await this.getPluginListFallback();
       }
 
       const pluginData = JSON.parse(jsonMatch[0]);
 
       if (!pluginData.plugins || !Array.isArray(pluginData.plugins)) {
-        throw new Error('Invalid plugin data format');
+        console.log('⚠️  Invalid JSON structure, trying fallback...');
+        return await this.getPluginListFallback();
       }
 
-      return pluginData.plugins.map((p: any) => ({
+      let plugins = pluginData.plugins.map((p: any) => ({
         manufacturer: p.manufacturer || 'Unknown',
         name: p.name,
         version: p.version || '1.0.0',
@@ -200,9 +294,22 @@ Output:
         category: p.category || 'Effect'
       }));
 
+      // Filter problematic plugins in quick mode
+      if (this.args.quick) {
+        const originalCount = plugins.length;
+        plugins = plugins.filter((p: PluginInfo) => !this.isProblematicPlugin(p.name));
+        const filteredCount = originalCount - plugins.length;
+        if (filteredCount > 0) {
+          console.log(`⏭️  Filtered out ${filteredCount} problematic plugins in quick mode`);
+        }
+      }
+
+      return plugins;
+
     } catch (error) {
-      console.error('❌ Failed to get plugin list:', error instanceof Error ? error.message : error);
-      return [];
+      console.log('⚠️  Batch JSON listing failed, trying fallback approach...');
+      console.log(`Error: ${error instanceof Error ? error.message : error}`);
+      return await this.getPluginListFallback();
     }
   }
 
@@ -254,16 +361,25 @@ Output:
   }
 
   private async generatePluginSpec(plugin: PluginInfo): Promise<PluginSpec | null> {
-    const safeManufacturer = plugin.manufacturer.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const safeManufacturer = plugin.manufacturer.toLowerCase().replace(/[^a-z0-9]/g, '-');
 
     console.log(`📋 Generating spec: ${plugin.name} (${plugin.manufacturer})`);
 
+    // Skip known problematic plugins unless explicitly requested
+    if (this.args.quick && this.isProblematicPlugin(plugin.name)) {
+      console.log(`⏭️  Skipping problematic plugin in quick mode: ${plugin.name}`);
+      return null;
+    }
+
     try {
-      const output = await this.runPlughost([
+      const interrogateArgs = [
         '--interrogate', plugin.name,
         '--json',
         ...(this.args.quick ? ['--quick-scan'] : [])
-      ], 45000); // 45 second timeout per plugin
+      ];
+
+      const timeout = this.isProblematicPlugin(plugin.name) ? 20000 : 45000; // Shorter timeout for problematic plugins
+      const output = await this.runPlughost(interrogateArgs, timeout);
 
       // Extract JSON from output
       const jsonMatch = output.match(/\{[\s\S]*\}/);
@@ -337,9 +453,9 @@ Output:
   }
 
   private savePluginSpec(plugin: PluginInfo, spec: PluginSpec): string {
-    const safeManufacturer = plugin.manufacturer.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const safeName = plugin.name.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const filename = `${safeManufacturer}_${safeName}.json`;
+    const safeManufacturer = plugin.manufacturer.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const safeName = plugin.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const filename = `${safeManufacturer}-${safeName}.json`;
     const filepath = join(OUTPUT_DIR, filename);
 
     writeFileSync(filepath, JSON.stringify(spec, null, 2));
@@ -379,7 +495,7 @@ Output:
 
     for (let i = 0; i < plugins.length; i++) {
       const plugin = plugins[i]!; // We know this exists since i < plugins.length
-      console.log(`[${i + 1}/${plugins.length}] ${plugin.name}`);
+      console.log(`\n[${i + 1}/${plugins.length}] ${plugin.name} (${plugin.format})`);
 
       // Skip system plugins
       if (plugin.name.match(/^(AU|AUAudio|AUNet|AUMatrix|AUSample)/)) {
@@ -388,15 +504,30 @@ Output:
         continue;
       }
 
-      const spec = await this.generatePluginSpec(plugin);
+      // Progress tracking
+      const startTime = Date.now();
 
-      if (spec) {
-        const filepath = this.savePluginSpec(plugin, spec);
-        console.log(`  ✅ Saved: ${filepath.replace(OUTPUT_DIR, '.')}`);
-        successCount++;
-      } else {
-        console.log(`  ⚠️  Skipped (no parameters or failed)`);
+      try {
+        const spec = await this.generatePluginSpec(plugin);
+
+        if (spec) {
+          const filepath = this.savePluginSpec(plugin, spec);
+          const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+          console.log(`  ✅ Saved: ${filepath.replace(OUTPUT_DIR, '.')} (${elapsed}s)`);
+          successCount++;
+        } else {
+          console.log(`  ⚠️  Skipped (no parameters or failed)`);
+          skippedCount++;
+        }
+      } catch (error) {
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`  ❌ Error: ${error instanceof Error ? error.message : error} (${elapsed}s)`);
         skippedCount++;
+      }
+
+      // Show progress summary every 10 plugins
+      if ((i + 1) % 10 === 0) {
+        console.log(`\n📊 Progress: ${i + 1}/${plugins.length} processed, ${successCount} specs generated, ${skippedCount} skipped`);
       }
     }
 

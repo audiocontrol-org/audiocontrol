@@ -18,9 +18,9 @@
     "generate:ardour:install": "cd modules/ardour-midi-maps && pnpm generate:install",
     "plugin:list": "../../cmake-build/modules/juce/host/plughost_artefacts/plughost --list",
     "plugin:interrogate": "tsx tools/plugin-interrogator.ts",
-    "plugin:interrogate:json": "tsx tools/plugin-interrogator.ts --json",
+    "plugin:interrogate:text": "tsx tools/plugin-interrogator.ts --text",
     "plugin:interrogate:all": "tsx tools/plugin-interrogator.ts --all",
-    "plugin:interrogate:all:json": "tsx tools/plugin-interrogator.ts --all --json"
+    "plugin:interrogate:all:text": "tsx tools/plugin-interrogator.ts --all --text"
   },
   "keywords": ["audio", "midi", "daw", "control-surface"],
   "author": "",

@@ -37,7 +37,7 @@ function parseArgs(): { mode: 'list' | 'single' | 'all'; pluginName?: string; js
   const result = {
     mode: 'single' as const,
     pluginName: undefined as string | undefined,
-    json: false,
+    json: true,  // Default to JSON output
     help: false
   };
 
@@ -46,8 +46,8 @@ function parseArgs(): { mode: 'list' | 'single' | 'all'; pluginName?: string; js
 
     if (arg === '--help' || arg === '-h') {
       result.help = true;
-    } else if (arg === '--json') {
-      result.json = true;
+    } else if (arg === '--text') {
+      result.json = false;  // Switch to text output
     } else if (arg === '--list') {
       result.mode = 'list';
     } else if (arg === '--all') {
@@ -70,13 +70,13 @@ Options:
   --help, -h     Show this help message
   --list         List all available plugins
   --all          Interrogate all installed plugins
-  --json         Output in JSON format
+  --text         Output in human-readable text format (default is JSON)
 
 Examples:
-  plugin-interrogator.ts "Jup-8 V3"           # Interrogate specific plugin
-  plugin-interrogator.ts "Jup-8 V3" --json   # JSON output for specific plugin
-  plugin-interrogator.ts --all               # Interrogate all plugins
-  plugin-interrogator.ts --all --json        # JSON output for all plugins
+  plugin-interrogator.ts "Jup-8 V3"           # Interrogate specific plugin (JSON output)
+  plugin-interrogator.ts "Jup-8 V3" --text   # Text output for specific plugin
+  plugin-interrogator.ts --all               # Interrogate all plugins (JSON output)
+  plugin-interrogator.ts --all --text        # Text output for all plugins
   plugin-interrogator.ts --list              # List available plugins
 
 Note: This tool wraps the enhanced plughost executable with additional functionality.`);
