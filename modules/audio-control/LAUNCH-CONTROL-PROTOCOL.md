@@ -128,9 +128,11 @@ Raw Custom Mode Data
 
 Messages follow standard MIDI SysEx format:
 - **Start**: `F0` (240 decimal)
-- **Manufacturer ID**: Novation-specific identifier
-- **Device ID**: Launch Control XL 3 identifier
-- **Command/Data**: Encoded custom mode configuration
+- **Manufacturer ID**: `00 20 29` (Focusrite/Novation)
+- **Device ID**: `02` (Launch Control XL 3)
+- **Command**: `15` (Write Custom Mode)
+- **Sub-Command**: `05` (Custom Mode Data)
+- **Data**: Encoded custom mode configuration
 - **End**: `F7` (247 decimal)
 
 ## Technical Architecture
@@ -175,12 +177,129 @@ Messages follow standard MIDI SysEx format:
 - **Web MIDI API**: W3C standard for browser MIDI access
 - **USB MIDI Device Class**: Device enumeration and communication
 
+## Detailed SysEx Protocol Specification
+
+### SysEx Message Structure
+
+Based on captured MIDI traffic analysis, the Launch Control XL 3 uses the following SysEx format:
+
+#### Message Header
+```
+F0 00 20 29 02 15 05 00 45 [SLOT] 02 20 05 [NAME...]
+```
+
+- `F0` - SysEx start
+- `00 20 29` - Manufacturer ID (Focusrite/Novation)
+- `02` - Device ID (Launch Control XL 3)
+- `15` - Command (Write Custom Mode)
+- `05` - Sub-command (Custom Mode Data)
+- `00` - Reserved byte
+- `45` - Data type identifier
+- `[SLOT]` - Target slot number (00-0E for slots 1-15)
+- `02 20 05` - Additional header bytes
+- `[NAME...]` - ASCII mode name (e.g., "Serum")
+
+### Custom Mode Data Structure
+
+The custom mode configuration is sent in multiple SysEx messages containing:
+
+#### Control Assignments
+Each control (knob, fader, button) has a structure like:
+```
+49 [CONTROL_ID] 02 [TYPE] [CHANNEL] [PARAMS...] 48 00 [CC_NUM] 7F 00
+```
+
+- `49` - Control definition marker
+- `[CONTROL_ID]` - Control identifier (10-3F range)
+- `02` - Definition type
+- `[TYPE]` - Control type (19=encoder, 11=button, etc.)
+- `[CHANNEL]` - MIDI channel (00-0F)
+- `[CC_NUM]` - MIDI CC number
+- `7F` - Max value
+- `00` - Min value
+
+#### Control Names
+ASCII text labels for controls are embedded:
+```
+[LENGTH] [ASCII_TEXT...]
+```
+
+Example control names found:
+- "A WT Pos" - Wavetable Position
+- "A Detune" - Detune control
+- "Filter Pan" - Filter panning
+- "LFO 1 Rate" - LFO rate control
+- "Env 1 Attack" - Envelope attack
+- "Sub On" - Sub oscillator enable
+
+### Multiple Message Transfer
+
+Large custom modes are split across multiple SysEx messages:
+1. First message (517 bytes): Contains initial control mappings
+2. Second message (492 bytes): Contains additional controls and names
+3. Messages use continuation markers in bytes 8-9
+
+### Slot Numbering
+
+The slot number appears at byte position 9:
+- Slot 1: `00`
+- Slot 2: `01`
+- Slot 3: `02`
+- ...
+- Slot 15: `0E`
+
+## Implementation Example
+
+### Sending a Custom Mode
+
+```javascript
+// Example SysEx message construction
+const createCustomModeSysEx = (slot, modeName, controls) => {
+  const header = [
+    0xF0,        // SysEx start
+    0x00, 0x20, 0x29,  // Novation manufacturer ID
+    0x02,        // Device ID
+    0x15,        // Write command
+    0x05,        // Custom mode sub-command
+    0x00,        // Reserved
+    0x45,        // Data type
+    slot,        // Target slot (0-14)
+    0x02, 0x20, 0x05  // Additional header
+  ];
+
+  // Add mode name as ASCII
+  const nameBytes = Array.from(modeName).map(c => c.charCodeAt(0));
+
+  // Add control definitions...
+  // Add 0xF7 end byte
+
+  return new Uint8Array([...header, ...nameBytes, /* controls */, 0xF7]);
+};
+```
+
+## Captured Examples
+
+### Serum Preset (Slot 3)
+
+**Message 1 (517 bytes):**
+- Header: `F0 00 20 29 02 15 05 00 45 00 02 20 05`
+- Mode name: "Serum"
+- Contains 24 control definitions
+- Control types: Encoders (19), Buttons (11), Faders (31)
+- MIDI CCs used: 15-4F range
+
+**Message 2 (492 bytes):**
+- Continuation: `F0 00 20 29 02 15 05 00 45 03 02 20 05`
+- Additional 16 controls
+- Effect controls: Distortion, Flanger, Phaser, Chorus, Delay, Reverb
+- Filter controls: Cutoff, Resonance, Drive
+
 ## Future Research
 
-- Reverse engineer the exact SysEx command format
-- Analyze bidirectional communication patterns
-- Document complete custom mode data structure
-- Investigate DAW-specific port usage
+- Analyze response messages from device
+- Document firmware update protocol
+- Investigate real-time parameter feedback
+- Map all possible command codes
 
 ---
 
