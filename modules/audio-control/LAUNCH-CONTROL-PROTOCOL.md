@@ -294,9 +294,48 @@ const createCustomModeSysEx = (slot, modeName, controls) => {
 - Effect controls: Distortion, Flanger, Phaser, Chorus, Delay, Reverb
 - Filter controls: Cutoff, Resonance, Drive
 
+## Read Operation Protocol
+
+### Reading Custom Modes from Device
+
+The device supports reading custom mode configurations using a different data type byte:
+
+**Read Request Format:**
+```
+F0 00 20 29 02 15 05 00 40 [SLOT] 02 F7
+```
+
+- `F0` - SysEx start
+- `00 20 29` - Manufacturer ID (Focusrite/Novation)
+- `02` - Device ID (Launch Control XL 3)
+- `15` - Command (same as write)
+- `05` - Sub-command (Custom Mode Data)
+- `00` - Reserved byte
+- `40` - Data type for READ (vs `45` for WRITE)
+- `[SLOT]` - Target slot number (00-0E for slots 1-15)
+- `02` - Additional parameter
+- `F7` - SysEx end
+
+### Read Operation Behavior
+
+1. **Double Query**: The web editor sends two read requests:
+   - First to slot 0 (possibly checking device state)
+   - Then to the selected slot (e.g., slot 3)
+
+2. **Response**: The device responds with the custom mode data which the editor then loads into the interface
+
+### Command Type Summary
+
+| Operation | Data Type Byte | Message Length |
+|-----------|---------------|----------------|
+| Write     | `45`          | 500+ bytes     |
+| Read      | `40`          | 12 bytes       |
+
 ## Future Research
 
-- Analyze response messages from device
+- Capture and analyze device response messages for read operations
+- Document LED control protocol for button feedback
+- Investigate template/mode switching commands
 - Document firmware update protocol
 - Investigate real-time parameter feedback
 - Map all possible command codes
