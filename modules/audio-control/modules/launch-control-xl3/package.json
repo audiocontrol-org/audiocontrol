@@ -6,7 +6,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "xl3-cli": "./dist/cli/index.js"
+    "lcxl3": "./dist/cli/cli.js"
   },
   "exports": {
     ".": {
@@ -32,7 +32,11 @@
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "typecheck": "tsc --noEmit",
-    "cli": "tsx src/cli/index.ts",
+    "cli": "tsx src/cli/cli.ts",
+    "example:basic": "tsx examples/basic-connection.ts",
+    "example:leds": "tsx examples/led-animations.ts",
+    "example:modes": "tsx examples/custom-modes.ts",
+    "example:mapping": "tsx examples/control-mapping.ts",
     "prepublishOnly": "npm run build"
   },
   "keywords": [
@@ -53,6 +57,9 @@
   },
   "dependencies": {
     "commander": "^11.1.0",
+    "chalk": "^5.3.0",
+    "ora": "^7.0.1",
+    "inquirer": "^9.2.12",
     "zod": "^3.22.4"
   },
   "devDependencies": {
