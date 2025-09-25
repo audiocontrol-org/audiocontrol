@@ -1,0 +1,74 @@
+{
+  "name": "@ol-dsp/launch-control-xl3",
+  "version": "0.1.0",
+  "description": "TypeScript library for Novation Launch Control XL 3 device control and MIDI mapping",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "xl3-cli": "./dist/cli/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./cli": {
+      "types": "./dist/cli/index.d.ts",
+      "import": "./dist/cli/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -b && vite build",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "dev": "tsc -b --watch",
+    "test": "vitest",
+    "test:coverage": "vitest --coverage",
+    "test:watch": "vitest --watch",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "eslint . --ext .ts,.tsx --fix",
+    "typecheck": "tsc --noEmit",
+    "cli": "tsx src/cli/index.ts",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "novation",
+    "launch-control",
+    "xl3",
+    "midi",
+    "controller",
+    "sysex",
+    "audio",
+    "daw",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "commander": "^11.1.0",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^1.2.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.0",
+    "vitest": "^1.2.0"
+  },
+  "peerDependencies": {
+    "midi": "^2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "midi": {
+      "optional": true
+    }
+  }
+}
