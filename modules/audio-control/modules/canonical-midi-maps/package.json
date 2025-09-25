@@ -24,7 +24,11 @@
     "test:coverage": "vitest --coverage",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "validate-maps": "node dist/cli/validate-maps.js"
+    "validate-maps": "node dist/cli/validate-maps.js",
+    "generate:plugin-specs": "tsx src/tools/generate-plugin-specs.ts",
+    "generate:plugin-specs:quick": "tsx src/tools/generate-plugin-specs.ts --quick",
+    "generate:plugin-specs:au": "tsx src/tools/generate-plugin-specs.ts --format AudioUnit",
+    "generate:plugin-specs:vst3": "tsx src/tools/generate-plugin-specs.ts --format VST3"
   },
   "keywords": [
     "midi",
@@ -45,6 +49,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0"
   }
