@@ -294,51 +294,137 @@ const createCustomModeSysEx = (slot, modeName, controls) => {
 - Effect controls: Distortion, Flanger, Phaser, Chorus, Delay, Reverb
 - Filter controls: Cutoff, Resonance, Drive
 
-## Read Operation Protocol
+## Read/Write Operation Protocol
 
 ### Reading Custom Modes from Device
 
-The device supports reading custom mode configurations using a different data type byte:
-
 **Read Request Format:**
 ```
-F0 00 20 29 02 15 05 00 40 [SLOT] 02 F7
+F0 00 20 29 02 15 05 00 15 [SLOT] 06 F7
 ```
+- `15` - Read command identifier
+- `[SLOT]` - Target slot (00 for slot 1, 03 for slot 4, etc.)
+- `06` - Read operation parameter
 
-- `F0` - SysEx start
-- `00 20 29` - Manufacturer ID (Focusrite/Novation)
-- `02` - Device ID (Launch Control XL 3)
-- `15` - Command (same as write)
-- `05` - Sub-command (Custom Mode Data)
-- `00` - Reserved byte
-- `40` - Data type for READ (vs `45` for WRITE)
-- `[SLOT]` - Target slot number (00-0E for slots 1-15)
-- `02` - Additional parameter
-- `F7` - SysEx end
+**Read Response Format:**
+```
+F0 00 20 29 02 15 05 00 10 [SLOT] 06 20 10 [NAME...] [CONTROL_DATA...] F7
+```
+- `10` - Response identifier
+- `[SLOT]` - Slot number echoed back
+- `06 20 10` - Response header
+- `[NAME]` - ASCII mode name (e.g., "Default Custom M")
+- `[CONTROL_DATA]` - Control definitions (CC mappings, etc.)
 
-### Read Operation Behavior
+### Writing Custom Modes to Device
 
-1. **Double Query**: The web editor sends two read requests:
-   - First to slot 0 (possibly checking device state)
-   - Then to the selected slot (e.g., slot 3)
+**Write Message Format:**
+```
+F0 00 20 29 02 15 05 00 10 [SLOT] 06 20 10 [NAME...] [CONTROL_DATA...] F7
+```
+- Same format as read response but sent TO the device
+- Can be split into multiple messages for large configurations
+- Message continuations use different byte patterns at position 8-9
 
-2. **Response**: The device responds with the custom mode data which the editor then loads into the interface
+### Control Data Structure
+Each control in the data uses pattern:
+```
+48 [ID] 02 [TYPE] [PARAMS] 48 00 [CC] 7F
+```
+- `48` - Control marker
+- `[ID]` - Control identifier (10-3F)
+- `02` - Definition type
+- `[TYPE]` - Control type (05=button, 09=encoder, etc.)
+- `[CC]` - MIDI CC number
+- `7F` - Max value
 
 ### Command Type Summary
 
-| Operation | Data Type Byte | Message Length |
-|-----------|---------------|----------------|
-| Write     | `45`          | 500+ bytes     |
-| Read      | `40`          | 12 bytes       |
+| Operation | Command Byte | Data Type | Message Length |
+|-----------|-------------|-----------|----------------|
+| Read Req  | `15`        | `15`      | 12 bytes       |
+| Read Resp | `15`        | `10`      | 300+ bytes     |
+| Write     | `15`        | `10`      | 300+ bytes     |
+
+## Device Identification Protocol
+
+### Device Initialization Sequence (Power-On/USB Connect)
+
+When the Launch Control XL 3 is connected via USB, it sends the following initialization sequence:
+
+1. **Device Serial Number (sent 3 times)**:
+```
+F0 00 20 29 00 42 02 [Serial Number ASCII] F7
+```
+- Manufacturer: `00 20 29` (Novation/Focusrite)
+- Command: `00 42` (Device ID broadcast)
+- Device Type: `02` (Launch Control XL 3)
+- Serial Number: ASCII encoded (e.g., "LX280935400469")
+
+2. **Universal Device Identity Reply (sent 3 times)**:
+```
+F0 7E 00 06 02 00 20 29 48 01 00 00 01 00 0A 54 F7
+```
+- `7E 00` - Universal Non-Real Time, Device ID 0
+- `06 02` - Identity Reply
+- `00 20 29` - Manufacturer ID (Novation)
+- `48 01` - Product Family/Model ID
+- `00 00 01 00` - Software version (1.0)
+- `0A 54` - Additional version info (firmware 2644)
+
+### Initialization Behavior
+- Device sends each message 3 times for reliability
+- No host acknowledgment required
+- Device is ready for operation after sending these messages
+- No LED initialization sequences observed (LEDs may initialize via hardware)
+
+## Control Mappings
+
+The Launch Control XL 3 has 24 encoders (3x8), 8 sliders, and 16 buttons (2x8).
+
+### Encoder CC Assignments
+- **Row 1 (Send A)**: CC 21, 85, 22, 19, 18, 17, 16, 23
+- **Row 2 (Send B)**: CC 24, 15, 25, 14, 49, 50, 51, 26
+- **Row 3 (Pan/Device)**: CC 29-34, 27-28
+
+### Slider CC Assignments
+- **Sliders 1-8**: CC 77, 78, 71-76
+
+### Button Behavior
+- Buttons can operate in CC mode or Note mode
+- In CC mode: Send CC values 36-48 for various functions
+- In Note mode: Would send Note On/Off messages (not captured in current mode)
+
+## LED Control
+- Encoder ring LEDs respond automatically to CC value changes
+- Button LEDs likely controlled via:
+  - Note messages on specific channels (when in Note mode)
+  - CC values when in CC mode
+  - Possible SysEx commands for direct LED control
+
+## Template/Custom Mode Behavior
+
+### Template Switching
+- **No MIDI messages sent** when switching between custom modes on device
+- Device maintains internal state for 16 custom mode slots
+- Template selection is handled entirely within the device hardware
+- Each template can have different CC/Note mappings stored in device memory
+- Host software must use Read/Write SysEx commands to query or change templates
+
+### Implications
+- Device operates independently of host software for template management
+- LED patterns and control mappings change internally without host notification
+- To synchronize with device state, host must:
+  1. Query current template using Read command
+  2. Store template configurations locally
+  3. Listen for CC/Note messages to infer active template
 
 ## Future Research
 
-- Capture and analyze device response messages for read operations
-- Document LED control protocol for button feedback
-- Investigate template/mode switching commands
-- Document firmware update protocol
-- Investigate real-time parameter feedback
-- Map all possible command codes
+- Complete Phase 4: Real-time parameter feedback testing
+- Test bidirectional communication (host → device)
+- Document LED color values and control methods
+- Test firmware update protocol (with caution)
 
 ---
 
