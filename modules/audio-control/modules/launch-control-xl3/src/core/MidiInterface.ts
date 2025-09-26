@@ -284,15 +284,76 @@ export class MidiInterface extends EventEmitter {
       this.messageBuffer.shift();
     }
 
-    // Emit message event
-    this.emit('message', message);
+    // Parse and emit typed MIDI events
+    const data = message.data;
+    if (data.length > 0) {
+      const statusByte = data[0];
+      const channel = statusByte & 0x0F;
+      const messageType = statusByte & 0xF0;
+
+      const parsedMessage: MidiMessage = {
+        timestamp: message.timestamp,
+        data: data,
+        type: 'unknown',
+        channel
+      };
+
+      switch (messageType) {
+        case 0xB0: // Control Change
+          parsedMessage.type = 'controlchange';
+          parsedMessage.controller = data[1];
+          parsedMessage.value = data[2];
+          this.emit('controlchange', parsedMessage);
+          break;
+
+        case 0x90: // Note On
+          parsedMessage.type = 'noteon';
+          parsedMessage.note = data[1];
+          parsedMessage.velocity = data[2];
+          this.emit('noteon', parsedMessage);
+          break;
+
+        case 0x80: // Note Off
+          parsedMessage.type = 'noteoff';
+          parsedMessage.note = data[1];
+          parsedMessage.velocity = data[2];
+          this.emit('noteoff', parsedMessage);
+          break;
+
+        case 0xF0: // System Exclusive
+          if (data[data.length - 1] === 0xF7) {
+            parsedMessage.type = 'sysex';
+            this.emit('sysex', parsedMessage);
+          }
+          break;
+      }
+
+      // Always emit the generic message event
+      this.emit('message', message);
+    }
   }
 
   /**
    * Auto-detect available MIDI backend
    */
   private async autoDetectBackend(): Promise<MidiBackendInterface> {
-    // Try Web MIDI API first (browser environment)
+    // Try node-midi first (Node.js environment)
+    try {
+      const { NodeMidiBackend } = await import('./backends/NodeMidiBackend');
+      return new NodeMidiBackend();
+    } catch (err) {
+      console.debug('node-midi not available:', err);
+    }
+
+    // Try MidiVal (works in both Node and browser)
+    try {
+      const { MidiValBackend } = await import('./backends/MidiValBackend');
+      return new MidiValBackend();
+    } catch (err) {
+      console.debug('MidiVal not available:', err);
+    }
+
+    // Try Web MIDI API (browser environment)
     if (typeof window !== 'undefined' && 'navigator' in window) {
       try {
         const { WebMidiBackend } = await import('./backends/WebMidiBackend');
@@ -300,14 +361,6 @@ export class MidiInterface extends EventEmitter {
       } catch {
         // Fall through to next option
       }
-    }
-
-    // Try node-midi (Node.js environment)
-    try {
-      const { NodeMidiBackend } = await import('./backends/NodeMidiBackend');
-      return new NodeMidiBackend();
-    } catch {
-      // Fall through to next option
     }
 
     // Try JZZ as fallback

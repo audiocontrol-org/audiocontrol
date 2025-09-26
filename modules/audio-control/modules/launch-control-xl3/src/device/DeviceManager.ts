@@ -122,14 +122,22 @@ export class DeviceManager extends EventEmitter {
       this.inputPortId = inputPort.id;
       this.outputPortId = outputPort.id;
 
-      // Query device identity
-      const deviceInfo = await this.queryDeviceIdentity();
-
-      if (!deviceInfo) {
-        throw new Error('Failed to identify device');
+      // Query device identity (optional - some devices don't respond)
+      try {
+        const deviceInfo = await this.queryDeviceIdentity();
+        if (deviceInfo) {
+          this.deviceInfo = this.parseDeviceInfo(deviceInfo);
+        }
+      } catch (error) {
+        console.warn('Device inquiry failed, continuing anyway:', error);
+        // Create default device info
+        this.deviceInfo = {
+          name: 'Launch Control XL 3',
+          firmwareVersion: 'Unknown',
+          serialNumber: undefined,
+          deviceId: 0x11
+        } as any;
       }
-
-      this.deviceInfo = this.parseDeviceInfo(deviceInfo);
 
       // Initialize device settings
       await this.initializeDevice();
@@ -182,13 +190,36 @@ export class DeviceManager extends EventEmitter {
     const inputPorts = await this.midi.getInputPorts();
     const outputPorts = await this.midi.getOutputPorts();
 
-    const inputPort = inputPorts.find(port =>
-      port.name.includes(this.options.deviceNameFilter)
+    // For LCXL3, we need:
+    // - Input: "LCXL3 1 MIDI Out" (for control changes)
+    // - Output: "LCXL3 1 DAW In" (for SysEx/LED control)
+
+    // First try to find the specific ports we need
+    let inputPort = inputPorts.find(port =>
+      port.name === 'LCXL3 1 MIDI Out'
     );
 
-    const outputPort = outputPorts.find(port =>
-      port.name.includes(this.options.deviceNameFilter)
+    let outputPort = outputPorts.find(port =>
+      port.name === 'LCXL3 1 DAW In'
     );
+
+    // Fall back to filter-based search if specific ports not found
+    if (!inputPort) {
+      inputPort = inputPorts.find(port =>
+        port.name.includes(this.options.deviceNameFilter)
+      );
+    }
+
+    if (!outputPort) {
+      outputPort = outputPorts.find(port =>
+        port.name.includes(this.options.deviceNameFilter)
+      );
+    }
+
+    console.log('[DeviceManager] Found ports:', {
+      input: inputPort?.name,
+      output: outputPort?.name
+    });
 
     return { inputPort, outputPort };
   }
@@ -397,10 +428,7 @@ export class DeviceManager extends EventEmitter {
       throw new Error('Device not connected');
     }
 
-    await this.midi.sendMessage({
-      type: 'sysex',
-      data,
-    });
+    await this.midi.sendMessage(data);
   }
 
   /**
@@ -411,12 +439,9 @@ export class DeviceManager extends EventEmitter {
       throw new Error('Device not connected');
     }
 
-    await this.midi.sendMessage({
-      type: 'controlchange',
-      channel,
-      controller,
-      value,
-    });
+    // Build CC message: status byte (0xB0 + channel), controller, value
+    const data = [0xB0 | (channel & 0x0F), controller, value];
+    await this.midi.sendMessage(data);
   }
 
   /**
