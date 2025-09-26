@@ -7,8 +7,8 @@
  */
 
 import { Command } from 'commander';
-import { LaunchControlXL3 } from '../LaunchControlXL3';
-import { LED_COLOR_VALUES } from '../led/LedController';
+import { LaunchControlXL3 } from '../LaunchControlXL3.js';
+import { LED_COLOR_VALUES } from '../led/LedController.js';
 
 const program = new Command();
 const VERSION = '0.1.0';
@@ -38,7 +38,7 @@ async function connect(): Promise<LaunchControlXL3> {
     console.log('✓ Connected successfully');
 
     // Setup basic event listeners
-    controller.on('control:change', (controlId, value) => {
+    controller.on('control:change', (controlId: string, value: number) => {
       console.log(`[Control] ${controlId}: ${value}`);
     });
 
@@ -151,7 +151,7 @@ program
       console.log('Monitoring controls (Ctrl+C to exit)...');
       console.log('─'.repeat(30));
 
-      ctrl.on('control:change', (controlId, value) => {
+      ctrl.on('control:change', (controlId: string, value: number) => {
         const bar = '█'.repeat(Math.round((value / 127) * 20));
         const empty = '░'.repeat(20 - bar.length);
         console.log(`${controlId.padEnd(12)} [${bar}${empty}] ${value}`);

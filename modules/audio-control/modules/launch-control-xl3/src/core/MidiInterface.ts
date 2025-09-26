@@ -6,10 +6,16 @@
 
 import { EventEmitter } from 'events';
 
-// MIDI Message type
+// Base MIDI Message type
 export interface MidiMessage {
   readonly timestamp: number;
   readonly data: readonly number[];
+  type?: string;
+  channel?: number;
+  controller?: number;
+  value?: number;
+  note?: number;
+  velocity?: number;
 }
 
 // Port information
@@ -31,7 +37,7 @@ export interface MidiPort {
 // Input port with message handler
 export interface MidiInputPort extends MidiPort {
   readonly type: 'input';
-  onMessage?: (message: MidiMessage) => void;
+  onMessage?: ((message: MidiMessage) => void) | undefined;
 }
 
 // Output port
@@ -64,9 +70,9 @@ export interface MidiInterfaceEvents {
  * Manages MIDI connections and message routing
  */
 export class MidiInterface extends EventEmitter {
-  private backend?: MidiBackendInterface;
-  private inputPort?: MidiInputPort;
-  private outputPort?: MidiOutputPort;
+  private backend?: MidiBackendInterface | undefined;
+  private inputPort?: MidiInputPort | undefined;
+  private outputPort?: MidiOutputPort | undefined;
   private isInitialized = false;
   private messageBuffer: MidiMessage[] = [];
   private readonly maxBufferSize = 1000;
@@ -288,6 +294,7 @@ export class MidiInterface extends EventEmitter {
     const data = message.data;
     if (data.length > 0) {
       const statusByte = data[0];
+      if (statusByte === undefined) return;
       const channel = statusByte & 0x0F;
       const messageType = statusByte & 0xF0;
 
@@ -301,22 +308,22 @@ export class MidiInterface extends EventEmitter {
       switch (messageType) {
         case 0xB0: // Control Change
           parsedMessage.type = 'controlchange';
-          parsedMessage.controller = data[1];
-          parsedMessage.value = data[2];
+          parsedMessage.controller = data[1] ?? 0;
+          parsedMessage.value = data[2] ?? 0;
           this.emit('controlchange', parsedMessage);
           break;
 
         case 0x90: // Note On
           parsedMessage.type = 'noteon';
-          parsedMessage.note = data[1];
-          parsedMessage.velocity = data[2];
+          parsedMessage.note = data[1] ?? 0;
+          parsedMessage.velocity = data[2] ?? 0;
           this.emit('noteon', parsedMessage);
           break;
 
         case 0x80: // Note Off
           parsedMessage.type = 'noteoff';
-          parsedMessage.note = data[1];
-          parsedMessage.velocity = data[2];
+          parsedMessage.note = data[1] ?? 0;
+          parsedMessage.velocity = data[2] ?? 0;
           this.emit('noteoff', parsedMessage);
           break;
 
@@ -339,7 +346,7 @@ export class MidiInterface extends EventEmitter {
   private async autoDetectBackend(): Promise<MidiBackendInterface> {
     // Try node-midi first (Node.js environment)
     try {
-      const { NodeMidiBackend } = await import('./backends/NodeMidiBackend');
+      const { NodeMidiBackend } = await import('./backends/NodeMidiBackend.js');
       return new NodeMidiBackend();
     } catch (err) {
       console.debug('node-midi not available:', err);
@@ -347,32 +354,17 @@ export class MidiInterface extends EventEmitter {
 
     // Try MidiVal (works in both Node and browser)
     try {
-      const { MidiValBackend } = await import('./backends/MidiValBackend');
+      const { MidiValBackend } = await import('./backends/MidiValBackend.js');
       return new MidiValBackend();
     } catch (err) {
       console.debug('MidiVal not available:', err);
     }
 
-    // Try Web MIDI API (browser environment)
-    if (typeof window !== 'undefined' && 'navigator' in window) {
-      try {
-        const { WebMidiBackend } = await import('./backends/WebMidiBackend');
-        return new WebMidiBackend();
-      } catch {
-        // Fall through to next option
-      }
-    }
-
-    // Try JZZ as fallback
-    try {
-      const { JzzBackend } = await import('./backends/JzzBackend');
-      return new JzzBackend();
-    } catch {
-      // Fall through to mock
-    }
+    // Browser-based backends are not implemented yet
+    // TODO: Implement WebMidiBackend and JzzBackend
 
     // Use mock backend as last resort (for testing)
-    const { MockMidiBackend } = await import('./backends/MockMidiBackend');
+    const { MockMidiBackend } = await import('./backends/MockMidiBackend.js');
     return new MockMidiBackend();
   }
 }
@@ -387,8 +379,7 @@ export function createMockBackend(): MidiBackendInterface {
       id: portId,
       name: 'Mock Input',
       type: 'input' as const,
-      close: async () => {},
-      onMessage: undefined
+      close: async () => {}
     }),
     openOutput: async (portId: string) => ({
       id: portId,

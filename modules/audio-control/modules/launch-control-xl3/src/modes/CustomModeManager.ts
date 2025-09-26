@@ -7,18 +7,14 @@
  */
 
 import { EventEmitter } from 'events';
-import { DeviceManager } from '@/device/DeviceManager';
-import { SysExParser, CustomModeMessage, ControlMapping, ColorMapping } from '@/core/SysExParser';
-import { Midimunge, MidimungeBitField } from '@/core/Midimunge';
+import { DeviceManager } from '../device/DeviceManager.js';
+import { ControlMapping, ColorMapping } from '../types/CustomMode.js';
 import {
   CustomMode,
   CustomModeSlot,
   ControlBehaviour,
-  LedColor,
-  LedBehaviour,
-  ControlId,
   ControlType
-} from '@/types';
+} from '../types/index.js';
 
 export interface CustomModeManagerOptions {
   deviceManager: DeviceManager;
@@ -182,14 +178,14 @@ export class CustomModeManager extends EventEmitter {
   /**
    * Parse custom mode response from device
    */
-  private parseCustomModeResponse(slot: number, response: CustomMode): CustomMode {
+  private parseCustomModeResponse(slot: number, response: any): CustomMode {
     // The response from DeviceManager is already partially parsed
     // We need to enhance it with our type system
 
     const mode: CustomMode = {
       name: response.name || `Custom ${slot + 1}`,
       controls: {},
-      leds: {},
+      leds: new Map(),
       metadata: {
         slot,
         createdAt: new Date(),
@@ -218,11 +214,11 @@ export class CustomModeManager extends EventEmitter {
     if (response.colors) {
       for (const color of response.colors) {
         const controlId = this.getControlIdName(color.controlId);
-        if (controlId) {
-          mode.leds[controlId] = {
-            color: color.color as LedColor,
-            behaviour: color.behaviour as LedBehaviour,
-          };
+        if (controlId && mode.leds) {
+          mode.leds.set(color.controlId, {
+            color: color.color,
+            behaviour: color.behaviour ?? 'static',
+          });
         }
       }
     }
@@ -351,7 +347,7 @@ export class CustomModeManager extends EventEmitter {
     const mode: CustomMode = {
       name: name || 'Default Mode',
       controls: {},
-      leds: {},
+      leds: new Map(),
       metadata: {
         createdAt: new Date(),
         modifiedAt: new Date(),
@@ -413,15 +409,15 @@ export class CustomModeManager extends EventEmitter {
 
     // Setup default LED colors
     for (let i = 0; i < 8; i++) {
-      mode.leds![`FOCUS${i + 1}`] = {
+      mode.leds!.set(i + 0x10, { // Focus buttons start at 0x10
         color: LED_COLORS.AMBER_LOW as any,
         behaviour: 'static',
-      };
+      });
 
-      mode.leds![`CONTROL${i + 1}`] = {
+      mode.leds!.set(i + 0x28, { // Control buttons start at 0x28
         color: LED_COLORS.GREEN_LOW as any,
         behaviour: 'static',
-      };
+      });
     }
 
     return mode;

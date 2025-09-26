@@ -86,6 +86,10 @@ export interface DeviceInquiryResponse {
   readonly deviceModel: number;
   readonly firmwareVersion: readonly number[];
   readonly serialNumber?: readonly number[];
+  // Additional properties used in code
+  readonly familyCode?: number;
+  readonly familyMember?: number;
+  readonly softwareRevision?: readonly number[];
 }
 
 export interface ModeReadResponse {

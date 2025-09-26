@@ -9,7 +9,7 @@ import type {
   MidiOutputPort,
   MidiPort,
   MidiMessage
-} from '../MidiInterface';
+} from '../MidiInterface.js';
 
 /**
  * MidiVal backend implementation
@@ -161,7 +161,7 @@ export class MidiValBackend implements MidiBackendInterface {
 
   async cleanup(): Promise<void> {
     // Close all open ports
-    for (const [id, input] of this.inputs.entries()) {
+    for (const [_id, input] of this.inputs.entries()) {
       input.onmidimessage = null;
     }
     this.inputs.clear();

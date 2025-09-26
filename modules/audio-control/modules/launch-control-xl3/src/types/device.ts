@@ -103,3 +103,62 @@ export interface DeviceCapabilities {
   readonly serialNumber?: string;
   readonly modelName: string;
 }
+
+// Launch Control XL 3 device information
+export interface LaunchControlXL3Info {
+  readonly manufacturerId: string;
+  readonly deviceFamily: number;
+  readonly modelNumber: number;
+  readonly firmwareVersion: string;
+  readonly serialNumber?: string;
+  readonly deviceName?: string;
+  readonly portInfo?: MidiPortInfo;
+}
+
+// Launch Control XL 3 configuration options
+export interface LaunchControlXL3Config {
+  readonly midiBackend?: unknown; // MidiBackendInterface but avoiding circular dependency
+  readonly autoConnect?: boolean;
+  readonly enableLedControl?: boolean;
+  readonly enableCustomModes?: boolean;
+  readonly enableValueSmoothing?: boolean;
+  readonly smoothingFactor?: number;
+  readonly deviceNameFilter?: string;
+  readonly reconnectOnError?: boolean;
+  readonly reconnectDelay?: number;
+  readonly maxReconnectAttempts?: number;
+  readonly inquiryTimeout?: number;
+  readonly retryAttempts?: number;
+  readonly retryDelay?: number;
+}
+
+// Device modes (factory presets and user modes)
+export type DeviceMode =
+  | 'factory_1'
+  | 'factory_2'
+  | 'factory_3'
+  | 'factory_4'
+  | 'factory_5'
+  | 'factory_6'
+  | 'factory_7'
+  | 'factory_8'
+  | 'user_1'
+  | 'user_2'
+  | 'user_3'
+  | 'user_4'
+  | 'user_5'
+  | 'user_6'
+  | 'user_7'
+  | 'user_8'
+  | 'unknown'
+  | { type: string; slot: number };
+
+// Device connection states
+export type DeviceConnectionState =
+  | 'disconnected'
+  | 'connecting'
+  | 'connected'
+  | 'initializing'
+  | 'ready'
+  | 'error'
+  | 'reconnecting';

@@ -9,12 +9,15 @@ import { EventEmitter } from 'events';
 import {
   ControlMapping,
   ControlBehaviour,
-  MidiMessage,
+  ControlChangeMessage,
   ControlType,
   ValueTransform,
-  MidiChannel,
-  CCNumber
-} from '@/types';
+  CCNumber,
+  createCCNumber,
+  createMidiChannel,
+  createMidiValue
+} from '../types/index.js';
+import { MidiMessage } from '../core/MidiInterface.js';
 
 export interface ControlMapperOptions {
   defaultChannel?: number;
@@ -176,7 +179,8 @@ export class ControlMapper extends EventEmitter {
     }
 
     // Initialize relative accumulator if needed
-    if (this.isRelativeBehaviour(mapping.behaviour)) {
+    const behaviour = (mapping.behaviour ?? mapping.behavior ?? 'absolute') as ControlBehaviour;
+    if (this.isRelativeBehaviour(behaviour)) {
       this.relativeAccumulators.set(controlId, 64); // Middle value
     }
 
@@ -243,14 +247,19 @@ export class ControlMapper extends EventEmitter {
 
     // Apply value transform if specified
     if (mapped.mapping.transform) {
-      outputValue = this.applyTransform(outputValue, mapped.mapping.transform);
+      if (typeof mapped.mapping.transform === 'function') {
+        outputValue = mapped.mapping.transform(outputValue);
+      } else if (typeof mapped.mapping.transform === 'object') {
+        outputValue = this.applyTransform(outputValue, mapped.mapping.transform);
+      }
+      // If it's a string, we could add string-based transform handling here
     }
 
     // Scale to min/max range
     outputValue = ValueTransformers.linear(
       outputValue,
-      mapped.mapping.min,
-      mapped.mapping.max
+      mapped.mapping.min ?? mapped.mapping.minValue ?? 0,
+      mapped.mapping.max ?? mapped.mapping.maxValue ?? 127
     );
 
     // Update state
@@ -262,11 +271,13 @@ export class ControlMapper extends EventEmitter {
     this.emit('value:changed', controlId, outputValue, mapped.mapping);
 
     // Create MIDI message
-    const message: MidiMessage = {
-      type: 'controlchange',
-      channel: mapped.mapping.channel,
-      controller: mapped.mapping.cc,
-      value: outputValue,
+    const message: ControlChangeMessage = {
+      type: 'controlChange',
+      timestamp: Date.now(),
+      channel: createMidiChannel(mapped.mapping.midiChannel ?? mapped.mapping.channel ?? 0),
+      cc: createCCNumber(mapped.mapping.ccNumber ?? mapped.mapping.cc ?? 0),
+      value: createMidiValue(outputValue),
+      data: [0xB0 | ((mapped.mapping.midiChannel ?? mapped.mapping.channel ?? 0) - 1), mapped.mapping.ccNumber ?? mapped.mapping.cc ?? 0, outputValue],
     };
 
     this.emit('midi:out', message);
@@ -277,7 +288,7 @@ export class ControlMapper extends EventEmitter {
   /**
    * Process absolute value
    */
-  private processAbsoluteValue(value: number, mapping: ControlMapping): number {
+  private processAbsoluteValue(value: number, _mapping: ControlMapping): number {
     // For absolute mode, just pass through the value
     return value;
   }
@@ -322,7 +333,7 @@ export class ControlMapper extends EventEmitter {
           value,
           0,
           127,
-          transform.curve ?? 2
+          typeof transform.curve === 'number' ? transform.curve : 2
         );
 
       case 'logarithmic':
@@ -505,7 +516,9 @@ export class ControlMapper extends EventEmitter {
     // Load control mappings
     if (mode.controls) {
       for (const [controlId, control] of Object.entries(mode.controls)) {
-        this.mapControl(controlId, control.type as ControlType, control as ControlMapping);
+        const mapping = control as ControlMapping;
+        const controlType = (mapping.type ?? mapping.controlType ?? 'knob') as ControlType;
+        this.mapControl(controlId, controlType, mapping);
       }
     }
   }
