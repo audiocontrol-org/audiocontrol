@@ -1,3 +1,110 @@
+# Launch Control XL 3 - SysEx Implementation Fix Plan
+
+## ✅ Investigation Complete
+
+Successfully uploaded CHANNEV custom mode to device using exact web editor protocol.
+
+### Key Discoveries
+
+1. **Direct Binary Format**: NO Midimunge encoding - use direct binary values
+2. **Control Markers Differ**: Write uses 0x49, Read returns 0x48
+3. **Control ID Offset**: Add 0x28 to control IDs when writing
+4. **Label/Color Data Required**: Device rejects messages without this section
+5. **Exact Format Required**: Even small deviations cause rejection
+
+## 📋 Implementation Tasks
+
+### 1. Clean Up Test Files
+- [ ] Remove one-off test scripts from root directory
+- [ ] Move valuable test scripts to `tests/integration/` or `examples/`
+- [ ] Delete temporary test files that are no longer needed
+
+Files to clean up:
+- `send-exact-web-message.ts`
+- `send-complete-channev.ts`
+- `send-channev-to-slot-1.ts`
+- `test-simple-mode.ts`
+- `read-and-parse-channev.ts`
+- Other test-*.ts files in root
+
+### 2. Update SysExParser Implementation
+
+#### Fix encodeCustomModeData() method:
+- [ ] Remove Midimunge encoding
+- [ ] Use 0x49 control marker for write
+- [ ] Add 0x28 offset to control IDs
+- [ ] Include mandatory label/color sections
+- [ ] Use correct 11-byte control structure
+
+#### Fix parseCustomModeData() method:
+- [ ] Handle 0x48 control marker for read
+- [ ] Parse 10-byte control structure
+- [ ] Correctly extract mode name with terminator
+- [ ] Handle label/color data sections
+
+#### Update builder methods:
+- [ ] Fix buildCustomModeWriteRequest() with correct format
+- [ ] Verify buildCustomModeReadRequest() uses correct protocol
+
+### 3. Create Proper Test Suite
+
+#### Integration tests:
+- [ ] Test reading factory custom modes
+- [ ] Test writing simple custom mode
+- [ ] Test writing complex multi-control mode
+- [ ] Test acknowledgment handling
+- [ ] Test error cases
+
+#### Unit tests:
+- [ ] Test control encoding with offset
+- [ ] Test label/color data encoding
+- [ ] Test parsing of various response formats
+- [ ] Test mode name handling
+
+### 4. Update Documentation
+
+- [x] Update PROTOCOL-CORRECTED.md with discoveries
+- [ ] Create examples/ directory with working examples
+- [ ] Document label/color data format
+- [ ] Add troubleshooting guide
+
+### 5. Implement High-Level API
+
+Create user-friendly interface:
+```typescript
+const customMode = new CustomModeBuilder()
+  .name("MYMODE")
+  .addFader(1, { cc: 10, channel: 1 })
+  .addEncoder(1, 1, { cc: 13, channel: 1 })
+  .addLabel(1, "Volume")
+  .addColor(1, Color.RED)
+  .build();
+
+await lcxl3.writeCustomMode(0, customMode);
+```
+
+### 6. Archive Investigation Files
+
+Move to `docs/investigation/`:
+- MIDI capture files (.syx)
+- Protocol analysis notes
+- Working message examples
+
+## 🎯 Success Criteria
+
+- [ ] Can programmatically create custom modes
+- [ ] Can read and parse existing custom modes
+- [ ] All tests pass
+- [ ] Clean repository structure
+- [ ] Complete documentation
+
+## 📝 Notes
+
+The device is very particular about message format. Even with correct protocol, missing label/color data causes the device to acknowledge but not store the controls. The working implementation must include all required sections exactly as the web editor does.
+
+
+__END__ (the following is for historical purposes, only)
+
 The device isn't even acknowledging our write! This suggests our message format is still fundamentally wrong. Let me check if there's an issue with the slot 1 vs slot 2.
 Also, I notice the web editor's message is much longer - it includes label data after the controls. This might be required.
 

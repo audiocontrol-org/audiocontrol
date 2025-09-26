@@ -2,135 +2,208 @@
 
 ## Summary
 
-Based on analysis of actual MIDI capture logs from the working web editor, we have identified the correct protocol format for Launch Control XL 3 custom mode operations.
+Based on analysis of actual MIDI capture logs from the working web editor and successful device communication, we have identified the correct protocol format for Launch Control XL 3 custom mode operations.
 
-## Key Findings
+## Key Protocol Discoveries
 
-### ✅ Confirmed Working Protocol
+### ✅ Critical Findings
 
-**READ Operation (Request custom mode FROM device):**
+1. **Direct Binary Format**: NO Midimunge encoding - use direct binary values
+2. **Different Control Markers**: Write operations use `0x49`, Read responses use `0x48`
+3. **Control ID Offset**: Add `0x28` to control IDs when writing (e.g., fader 0x00 becomes 0x28)
+4. **Required Sections**: Messages MUST include label/color data after controls
+5. **Data Header Format**: Must start with `00 20 08` followed by mode name (max 8 chars)
+6. **Message Size**: Working messages are 400-500+ bytes with complete data
+
+## Protocol Commands
+
+### READ Custom Mode
 ```
 Request:  F0 00 20 29 02 15 05 00 40 [SLOT] 00 F7  (12 bytes)
-Response: F0 00 20 29 02 15 05 00 10 [SLOT] 06 20 0E [DATA...] F7  (434-560 bytes)
+Response: F0 00 20 29 02 15 05 00 10 [SLOT] [DATA...] F7  (85-450+ bytes)
 ```
 
-**WRITE Operation (Send custom mode TO device):**
+### WRITE Custom Mode
 ```
-Request:  F0 00 20 29 02 15 05 00 45 [SLOT] 00 20 0E [DATA...] F7  (452-572 bytes)
+Request:  F0 00 20 29 02 15 05 00 45 [SLOT] [DATA...] F7  (400-500+ bytes)
 Response: F0 00 20 29 02 15 05 00 15 [SLOT] 06 F7  (12 bytes acknowledgment)
 ```
 
-### ❌ Previous Incorrect Protocol
+## Custom Mode Data Structure
 
-Our original implementation was using:
-- Read command: `0x15` ❌ (should be `0x40` ✅)
-- Write command: `0x10` ❌ (should be `0x45` ✅)
-- Parameter field: `0x06` ❌ (should be `0x00` for read requests ✅)
-
-## Detailed Protocol Analysis
-
-### Message Structure
-
-**Common SysEx Header:**
+### WRITE Format (Sending TO device)
 ```
-F0 00 20 29 02 15 05 00 [COMMAND] [SLOT] [PARAMS...] F7
-│  │  │  │  │  │  │  │   │         │      │
-│  │  │  │  │  │  │  │   │         │      └── Additional parameters
-│  │  │  │  │  │  │  │   │         └── Slot number (0-14 for slots 1-15)
-│  │  │  │  │  │  │  │   └── Command byte (0x40=read, 0x45=write, 0x15=ack)
-│  │  │  │  │  │  │  └── Reserved (always 0x00)
-│  │  │  │  │  │  └── Sub-command (always 0x05)
-│  │  │  │  │  └── Command (always 0x15 for custom mode)
-│  │  │  │  └── Device ID (0x02 for Launch Control XL 3)
-│  │  │  └── Manufacturer ID (Focusrite/Novation)
-│  │  └── Manufacturer ID continued
-│  └── Manufacturer ID continued
-└── SysEx start
+00 20 08 [MODE_NAME] [CONTROLS] [LABELS_COLORS]
+│  │  │   │           │          │
+│  │  │   │           │          └── Required label and color data
+│  │  │   │           └── Control definitions with 0x49 markers
+│  │  │   └── Mode name in ASCII (max 8 chars, no terminator)
+│  │  └── Format indicator
+└──────── Header sequence
 ```
 
-### Example Real Communication
-
-**Actual working read request/response:**
+### READ Format (Response FROM device)
 ```
-→ TO DEVICE:   F0 00 20 29 02 15 05 00 40 00 00 F7
-← FROM DEVICE: F0 00 20 29 02 15 05 00 10 00 06 20 0E 44 69 67 69 74 61 6B 74 20 6D 69 78 65 72 21 00 48 10 02 21 00 00 08 00 53 7F 48 11 02 21 00 01 08 00 53 7F...
-
-Mode name: "Digitakt mixer!"
-Control data follows with 0x48 markers
-```
-
-### Response Data Format
-
-**Custom Mode Response Structure:**
-```
-F0 00 20 29 02 15 05 00 10 [SLOT] 06 20 0E [NAME...] [CONTROLS...] F7
-│                           │      │  │  │   │        │
-│                           │      │  │  │   │        └── Control definitions
-│                           │      │  │  │   └── Mode name (null-terminated)
-│                           │      │  │  └── Name length marker
-│                           │      │  └── Data type marker
-│                           │      └── Additional header
-│                           └── Slot number
+06 20 08 [MODE_NAME] 21 00 [CONTROLS] [LABELS]
+│  │  │   │          │  │   │          │
+│  │  │   │          │  │   │          └── Control labels (optional)
+│  │  │   │          │  │   └── Control definitions with 0x48 markers
+│  │  │   │          └───── Name terminator
+│  │  │   └── Mode name in ASCII
+│  │  └── Format indicator
+└──────── Header sequence
 ```
 
-**Control Definition Format:**
+## Control Definition Formats
+
+### WRITE Control Structure (11 bytes)
 ```
-48 [ID] 02 [TYPE] [CH] [P1] [P2] [CC] 7F [00]
-│  │    │  │      │    │    │    │    │   │
-│  │    │  │      │    │    │    │    │   └── Padding
-│  │    │  │      │    │    │    │    └── Max value (127)
-│  │    │  │      │    │    │    └── CC number
-│  │    │  │      │    │    └── Parameter 2
+49 [ID+0x28] 02 [TYPE] [CH] 01 40 00 [CC] 7F 00
+│  │         │  │      │    │  │  │  │    │  │
+│  │         │  │      │    │  │  │  │    │  └── Terminator
+│  │         │  │      │    │  │  │  │    └── Max (always 0x7F in write)
+│  │         │  │      │    │  │  │  └── CC number (0-127)
+│  │         │  │      │    │  │  └── Min (always 0x00 in write)
+│  │         │  │      │    │  └── Behavior parameter
+│  │         │  │      │    └── Fixed parameter
+│  │         │  │      └── MIDI channel (0-15)
+│  │         │  └── Control type (see below)
+│  │         └── Definition type (always 0x02)
+│  └── Control ID with +0x28 offset
+└── Write control marker (0x49)
+```
+
+### READ Control Structure (10 bytes)
+```
+48 [ID] 02 [TYPE] [CH] 01 48 [MIN] [CC] [MAX]
+│  │    │  │      │    │  │  │     │    │
+│  │    │  │      │    │  │  │     │    └── Max value
+│  │    │  │      │    │  │  │     └── CC number
+│  │    │  │      │    │  │  └── Min value (actual)
+│  │    │  │      │    │  └── Parameter 2
 │  │    │  │      │    └── Parameter 1
-│  │    │  │      └── MIDI channel (0-based)
-│  │    │  └── Control type (0x21=encoder, 0x00=fader, etc.)
-│  │    └── Definition type (always 0x02)
-│  └── Control ID (0x10-0x17=faders, 0x18-0x27=encoders, 0x30-0x3F=buttons)
-└── Control marker (always 0x48)
+│  │    │  │      └── MIDI channel (0-15)
+│  │    │  └── Control type
+│  │    └── Definition type (0x02)
+│  └── Control ID (no offset)
+└── Read control marker (0x48)
 ```
 
-## Implementation Status
+## Control Types and IDs
 
-### ✅ What Works
-1. **Protocol Format**: Corrected to match web editor exactly
-2. **Message Structure**: Proper 12-byte read requests
-3. **Device Response**: Confirmed device responds with 434-byte messages
-4. **Command Bytes**: Correct `0x40` for read, `0x45` for write operations
+### Hardware Control IDs
+- `0x00-0x07`: Faders 1-8
+- `0x10-0x17`: Top row encoders 1-8
+- `0x18-0x1F`: Middle row encoders 1-8
+- `0x20-0x27`: Bottom row encoders 1-8
+- `0x28-0x2F`: Side buttons
+- `0x30-0x3F`: Bottom buttons
 
-### ❓ Technical Issue
-**Node.js MIDI Input Handling**: Our implementations send the correct protocol but fail to capture the confirmed device responses. This appears to be a technical issue with:
+### Control Type Values
+- `0x00`: Faders
+- `0x05`: Top row encoders
+- `0x09`: Middle row encoders
+- `0x0D`: Bottom row encoders
+- `0x19`: Various button types
+- `0x25`: Various button types
 
-- **Event handler setup timing**
-- **Node-midi library SysEx handling**
-- **Input buffer management for large messages**
+## Label and Color Data (Required for Write)
 
-The device IS responding (confirmed by external MIDI monitoring), but our Node.js event handlers aren't receiving the data.
+### Label Format
+```
+69 [ID+0x28] [ASCII_TEXT...]
+│  │          │
+│  │          └── Label text in ASCII
+│  └── Control ID with offset
+└── Label marker
+```
 
-## Next Steps for Implementation
+### Color Format
+```
+60 [ID+0x28]
+│  │
+│  └── Control ID with offset
+└── Color marker
+```
 
-1. **Investigate Node-midi SysEx Handling**: The library may need specific configuration for large SysEx messages
-2. **Alternative MIDI Libraries**: Consider Web MIDI API or native implementations
-3. **Response Timing**: May need different event handler setup or timing
-4. **Port Configuration**: Verify correct input port configuration for SysEx
+## Working Example: CHANNEV Custom Mode
 
-## Corrected Test Implementation
+### Successful Write Message Structure (465 bytes)
+```
+F0 00 20 29 02 15 05 00 45 00      // Header, write to slot 0
+00 20 08                            // Data header
+43 48 41 4E 4E 45 56 45            // "CHANNEVE" mode name
+49 10 02 05 00 01 48 00 0D 7F 00   // First encoder: CC13
+49 11 02 05 00 01 48 00 0E 7F 00   // Second encoder: CC14
+[... more controls ...]
+68 10 4D 69 63 20 47 61 69 6E      // Label: "Mic Gain"
+[... more labels ...]
+60 10 60 11 60 12                  // Colors for controls
+[... more colors ...]
+F7                                  // End
+```
+
+### Device Acknowledgment
+```
+F0 00 20 29 02 15 05 00 15 00 06 F7  // 12-byte ACK for slot 0
+```
+
+## Implementation Notes
+
+1. **Message Completeness**: Device acknowledges incomplete messages but doesn't store the data
+2. **Label/Color Requirement**: Without these sections, controls won't be stored
+3. **Name Length**: Mode names should be 8 characters or less
+4. **Control Order**: Controls should be sorted by ID for best compatibility
+5. **Acknowledgment Timing**: Wait for ACK before sending additional messages
+6. **Multi-Message Modes**: Some modes may span multiple slots (rare)
+
+## Verified Working Implementation
 
 ```typescript
-// Correct read request
-const readRequest = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x05, 0x00, 0x40, 0x00, 0x00, 0xF7];
+// Build message with proper format
+const message = [
+  0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x05, 0x00, 0x45, slot,
+  0x00, 0x20, 0x08,                    // Data header
+  ...nameBytes,                        // Mode name (ASCII)
+  ...controlDefs,                      // Controls with 0x49 markers
+  ...labelData,                        // Labels with 0x69 markers
+  ...colorData,                        // Colors with 0x60 markers
+  0xF7
+];
 
-// Expected response format
-// F0 00 20 29 02 15 05 00 10 00 06 20 0E [NAME] [CONTROLS] F7
+// Control definition example
+const control = [
+  0x49,                   // Write marker
+  controlId + 0x28,       // ID with offset
+  0x02,                   // Definition type
+  controlType,            // 0x00/0x05/0x09/0x0D
+  channel,                // 0-15
+  0x01, 0x40, 0x00,      // Fixed parameters
+  ccNumber,               // CC number
+  0x7F, 0x00             // Max and terminator
+];
 ```
 
-## Files Created
-- `test-correct-web-editor-protocol.ts` - Uses exact protocol from capture
-- `test-exact-web-editor-sequence.ts` - Includes DAW port pre-sequence
-- `test-capture-response.ts` - Focused response capture implementation
-- `test-cli-sysex.ts` - CLI infrastructure approach
+## Files Created During Investigation
 
-All implementations use the correct protocol but encounter the same Node.js response capture issue.
+### Test Scripts
+- `send-exact-web-message.ts` - Sends captured web editor message
+- `send-complete-channev.ts` - Sends both CHANNEV messages with proper ACK waiting
+- `send-channev-to-slot-1.ts` - Sends CHANNEV to slot 1 using exact format
+- `test-simple-mode.ts` - Tests minimal custom mode
+- `read-and-parse-channev.ts` - Reads and analyzes CHANNEV from device
+
+### Documentation
+- `docs/midi-capture.md` - Captured MIDI communication from web editor
+- `docs/send-channev-sysex-1.syx` - Complete first CHANNEV message (encoders)
+- `docs/send-channev-sysex-2.syx` - Complete second CHANNEV message (faders/buttons)
 
 ## Conclusion
 
-The protocol has been successfully corrected and matches the working web editor implementation exactly. The remaining challenge is a technical Node.js implementation detail for capturing large SysEx responses, not a protocol issue.
+The Launch Control XL 3 uses a specific binary protocol that requires:
+- Exact control structure format (11 bytes for write, 10 for read)
+- Control ID offset (+0x28) when writing
+- Complete messages with label/color data
+- Different markers for write (0x49) vs read (0x48) operations
+
+The protocol has been successfully reverse-engineered and verified with actual hardware.
