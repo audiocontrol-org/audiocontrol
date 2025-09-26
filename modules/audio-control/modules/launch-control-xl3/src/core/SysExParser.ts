@@ -9,7 +9,8 @@
  * - Configuration management
  */
 
-import { Midimunge } from '@/core/Midimunge';
+import { Midimunge } from '@/core/Midimunge.js';
+import type { CustomMode, Control } from '@/types/CustomMode.js';
 
 // Novation/Focusrite manufacturer ID
 export const MANUFACTURER_ID = [0x00, 0x20, 0x29];
@@ -293,12 +294,24 @@ export class SysExParser {
     if (nameStart > 0) {
       const nameBytes = [];
       for (let i = nameStart; i < data.length - 1; i++) {
-        // Stop at terminator 0x21 0x00 or first control marker
-        if ((data[i] === 0x21 && data[i + 1] === 0x00) ||
-            (data[i] === 0x48 && i > nameStart + 2)) {
+        // FIXED: Stop at explicit terminator 0x21 0x00 first
+        if (data[i] === 0x21 && data[i + 1] === 0x00) {
           nameEnd = i;
           break;
         }
+
+        // Only break on control marker if we haven't found a name terminator
+        // and we're at least 8 bytes past the start (max mode name length)
+        if (data[i] === 0x48 && i >= nameStart + 8) {
+          // Double-check this is actually a control marker by validating structure
+          if (i + 9 < data.length &&
+              data[i + 2] === 0x02 && // Definition type
+              data[i + 1] <= 0x3F) {  // Valid control ID range
+            nameEnd = i;
+            break;
+          }
+        }
+
         if (data[i] >= 32 && data[i] <= 126) { // Printable ASCII
           nameBytes.push(data[i]);
         }
@@ -436,6 +449,96 @@ export class SysExParser {
   }
 
   /**
+   * Build custom mode write message from CustomMode object
+   */
+  static buildCustomModeWriteMessage(slot: number, customMode: CustomMode): number[] {
+    if (slot < 0 || slot > 15) {
+      throw new Error('Custom mode slot must be 0-15');
+    }
+
+    const rawData: number[] = [];
+
+    // Header: Mode data format indicator
+    rawData.push(0x00, 0x20, 0x08);
+
+    // Mode name: Direct ASCII encoding (max 8 chars)
+    const nameBytes = customMode.name.substring(0, 8);
+    for (let i = 0; i < nameBytes.length; i++) {
+      rawData.push(nameBytes.charCodeAt(i));
+    }
+
+    // Sort controls by ID for consistency
+    const sortedControls = [...customMode.controls].sort((a, b) => a.controlId - b.controlId);
+
+    // Add control definitions with 0x49 marker and offset
+    for (const control of sortedControls) {
+      // Write control structure: 11 bytes
+      rawData.push(0x49); // Write control marker
+      rawData.push(control.controlId + 0x28); // Control ID with offset
+      rawData.push(0x02); // Definition type
+      rawData.push(control.controlType); // Control type
+      rawData.push(control.midiChannel); // MIDI channel (0-15)
+      rawData.push(0x01); // Parameter 1
+      rawData.push(0x40); // Parameter 2
+      rawData.push(0x00); // Min value (always 0 in write)
+      rawData.push(control.ccNumber); // CC number
+      rawData.push(0x7F); // Max value (always 0x7F in write)
+      rawData.push(0x00); // Terminator
+    }
+
+    // Add label data if present
+    if (customMode.labels && customMode.labels.size > 0) {
+      for (const [controlId, label] of customMode.labels) {
+        rawData.push(0x69); // Label marker
+        rawData.push(controlId + 0x28); // Control ID with offset
+        // Add label text
+        for (let i = 0; i < label.length; i++) {
+          rawData.push(label.charCodeAt(i));
+        }
+      }
+    } else {
+      // Generate default labels for controls
+      for (const control of sortedControls) {
+        rawData.push(0x69); // Label marker
+        rawData.push(control.controlId + 0x28); // Control ID with offset
+        const label = this.generateControlLabel(control.controlId);
+        for (let i = 0; i < label.length; i++) {
+          rawData.push(label.charCodeAt(i));
+        }
+      }
+    }
+
+    // Add color data if present
+    if (customMode.colors && customMode.colors.size > 0) {
+      for (const [controlId, color] of customMode.colors) {
+        rawData.push(0x60); // Color marker
+        rawData.push(controlId + 0x28); // Control ID with offset
+        rawData.push(color); // Color value
+      }
+    } else {
+      // Add default colors (off) for all controls
+      for (const control of sortedControls) {
+        rawData.push(0x60); // Color marker
+        rawData.push(control.controlId + 0x28); // Control ID with offset
+      }
+    }
+
+    // Build complete message
+    return [
+      0xF0,             // SysEx start
+      0x00, 0x20, 0x29, // Manufacturer ID (Novation)
+      0x02,             // Device ID (Launch Control XL 3)
+      0x15,             // Command (Custom mode)
+      0x05,             // Sub-command
+      0x00,             // Reserved
+      0x45,             // Write operation
+      slot,             // Slot number
+      ...rawData,       // Custom mode data
+      0xF7              // SysEx end
+    ];
+  }
+
+  /**
    * Build custom mode write request
    */
   static buildCustomModeWriteRequest(slot: number, modeData: CustomModeMessage): number[] {
@@ -562,15 +665,25 @@ export class SysExParser {
       rawData.push(0x00); // Terminator
     }
 
-    // CRITICAL: Add color/label data after controls - REQUIRED by device!
+    // CRITICAL: Add label/color data after controls - REQUIRED by device!
     // Without this section, the device rejects the message
 
-    // Add minimal color data for each control (required)
+    // Add label data for each control (recommended for usability)
+    for (const control of sortedControls) {
+      rawData.push(0x69); // Label marker
+      rawData.push(control.controlId + 0x28); // Control ID with offset
+
+      // Add a simple label based on control type and ID
+      const labelText = this.generateControlLabel(control.controlId);
+      for (let i = 0; i < labelText.length; i++) {
+        rawData.push(labelText.charCodeAt(i));
+      }
+    }
+
+    // Add color data for each control (required for device acceptance)
     for (const control of sortedControls) {
       rawData.push(0x60); // Color marker
       rawData.push(control.controlId + 0x28); // Control ID with offset
-
-      // You can also add label data with 0x69 marker, but colors seem to be minimum requirement
     }
 
     return rawData;
@@ -601,6 +714,25 @@ export class SysExParser {
     };
 
     return behaviourMap[behaviour] ?? 0;
+  }
+
+  /**
+   * Generate a simple label for a control based on its ID and type
+   */
+  private static generateControlLabel(controlId: number): string {
+    if (controlId >= 0x00 && controlId <= 0x07) {
+      return `Fader ${controlId + 1}`;
+    } else if (controlId >= 0x10 && controlId <= 0x17) {
+      return `Top ${controlId - 0x10 + 1}`;
+    } else if (controlId >= 0x18 && controlId <= 0x1F) {
+      return `Mid ${controlId - 0x18 + 1}`;
+    } else if (controlId >= 0x20 && controlId <= 0x27) {
+      return `Bot ${controlId - 0x20 + 1}`;
+    } else if (controlId >= 0x28 && controlId <= 0x3F) {
+      return `Btn ${controlId - 0x28 + 1}`;
+    } else {
+      return `Ctrl ${controlId}`;
+    }
   }
 
   /**

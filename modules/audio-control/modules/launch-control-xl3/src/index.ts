@@ -22,6 +22,9 @@ export * from './device/DeviceManager';
 // Custom modes
 export * from './modes/CustomModeManager';
 
+// Builders
+export { CustomModeBuilder, Color } from './builders/CustomModeBuilder.js';
+
 // Control mapping
 export * from './mapping/ControlMapper';
 
