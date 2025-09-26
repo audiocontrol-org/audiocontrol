@@ -1,6 +1,6 @@
 {
-  "name": "@audio-control/canonical-midi-maps",
-  "version": "0.1.0",
+  "name": "@oletizi/canonical-midi-maps",
+  "version": "1.0.0",
   "description": "Canonical MIDI map definitions for controller-to-plugin mappings",
   "type": "module",
   "main": "./dist/index.js",
