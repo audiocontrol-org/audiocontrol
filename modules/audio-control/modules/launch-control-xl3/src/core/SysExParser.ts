@@ -266,6 +266,8 @@ export class SysExParser {
 
   /**
    * Parse custom mode data from raw bytes
+   * Updated to handle Launch Control XL 3 format (not Midimunge)
+   * Note: Device uses 0x48 in READ responses, 0x49 in WRITE commands
    */
   private static parseCustomModeData(data: number[]): {
     controls: ControlMapping[];
@@ -276,10 +278,13 @@ export class SysExParser {
     const colors: ColorMapping[] = [];
     let modeName: string | undefined;
 
-    // Parse mode name (after 06 20 0E pattern)
+    // Parse mode name - look for ASCII after header pattern
     let nameStart = -1;
+    let nameEnd = -1;
+
+    // Look for the 0x06 0x20 0x08 or 0x00 0x20 0x08 header pattern first
     for (let i = 0; i < data.length - 3; i++) {
-      if (data[i] === 0x06 && data[i + 1] === 0x20 && data[i + 2] === 0x0E) {
+      if ((data[i] === 0x06 || data[i] === 0x00) && data[i + 1] === 0x20 && data[i + 2] === 0x08) {
         nameStart = i + 3;
         break;
       }
@@ -288,8 +293,13 @@ export class SysExParser {
     if (nameStart > 0) {
       const nameBytes = [];
       for (let i = nameStart; i < data.length - 1; i++) {
-        if (data[i] === 0x00 || data[i] === 0x48 || data[i] === 0xF7) break;
-        if (data[i] >= 32 && data[i] <= 126) {
+        // Stop at terminator 0x21 0x00 or first control marker
+        if ((data[i] === 0x21 && data[i + 1] === 0x00) ||
+            (data[i] === 0x48 && i > nameStart + 2)) {
+          nameEnd = i;
+          break;
+        }
+        if (data[i] >= 32 && data[i] <= 126) { // Printable ASCII
           nameBytes.push(data[i]);
         }
       }
@@ -299,40 +309,70 @@ export class SysExParser {
       }
     }
 
-    // Parse control definitions (marked with 0x48)
-    for (let i = 0; i < data.length - 10; i++) {
-      if (data[i] === 0x48) { // Control marker
-        const controlId = data[i + 1];
-        const defType = data[i + 2];
-        const controlType = data[i + 3];
-        const channel = data[i + 4];
-        const param1 = data[i + 5];
-        const param2 = data[i + 6];
-        const ccNumber = data[i + 7];
-        const maxValue = data[i + 8];
+    // Parse control definitions
+    // In READ responses: 0x48 [ID] 0x02 [TYPE] [CH] 0x01 0x48 [MIN] [CC] [MAX]
+    // In WRITE commands: 0x49 [ID] 0x02 [TYPE] [CH] 0x01 0x40 [MIN] [CC] [MAX] 0x00
 
-        // Determine control behavior based on type
-        let behaviour: 'absolute' | 'relative1' | 'relative2' | 'relative3' = 'absolute';
-        if (controlType === 0x21 || controlType === 0x2D) {
-          // Encoder - might be relative
-          behaviour = 'relative1'; // Default for encoders
+    // Find where controls actually start (after name and terminator)
+    let controlsStart = nameEnd > 0 ? nameEnd + 2 : 0; // Skip 0x21 0x00 after name
+
+    for (let i = controlsStart; i < data.length - 9; i++) {
+      // Handle both 0x48 (read) and 0x49 (write) markers
+      if (data[i] === 0x48 || data[i] === 0x49) {
+        if (i + 9 < data.length) {
+          const controlId = data[i + 1];
+          const defType = data[i + 2];
+          const controlType = data[i + 3];
+          const channel = data[i + 4];
+          const param1 = data[i + 5];
+
+          // Validate it's a control structure (not part of name or other data)
+          const isValidControl = defType === 0x02 &&
+                                (param1 === 0x01 || param1 === 0x00) &&
+                                controlId <= 0x3F; // Valid control ID range
+
+          if (isValidControl) {
+            const param2 = data[i + 6];
+            const minValue = data[i + 7];
+            const ccNumber = data[i + 8];
+            const maxValue = data[i + 9];
+
+            // Determine control behavior
+            let behaviour: 'absolute' | 'relative1' | 'relative2' | 'relative3' = 'absolute';
+
+            controls.push({
+              controlId,
+              channel,
+              ccNumber,
+              minValue,
+              maxValue,
+              behaviour,
+            });
+
+            // Create color mapping based on control ID
+            let color = 0x3F; // Default
+            if (controlId >= 0x10 && controlId <= 0x17) {
+              color = 0x60; // Blue for top row encoders
+            } else if (controlId >= 0x18 && controlId <= 0x1F) {
+              color = 0x48; // Yellow for middle row encoders
+            } else if (controlId >= 0x20 && controlId <= 0x27) {
+              color = 0x3C; // Green for bottom row encoders
+            } else if (controlId >= 0x28 && controlId <= 0x3F) {
+              color = 0x0F; // Red for buttons/other controls
+            } else if (controlId <= 0x07) {
+              color = 0x0F; // Red for faders
+            }
+
+            colors.push({
+              controlId,
+              color,
+              behaviour: 'static',
+            });
+
+            // Skip to next potential control (9 bytes processed)
+            i += 9;
+          }
         }
-
-        controls.push({
-          controlId,
-          channel,
-          ccNumber,
-          minValue: 0,
-          maxValue,
-          behaviour,
-        });
-
-        // For now, create a default color mapping
-        colors.push({
-          controlId,
-          color: 0x3F, // Default color
-          behaviour: 'static',
-        });
       }
     }
 
@@ -469,37 +509,71 @@ export class SysExParser {
   }
 
   /**
-   * Encode custom mode data for transmission
+   * Encode custom mode data for Launch Control XL 3 transmission
+   * Based on actual web editor protocol analysis
    */
   private static encodeCustomModeData(modeData: CustomModeMessage): number[] {
-    // Build the raw custom mode data
     const rawData: number[] = [];
 
-    // TODO: Implement actual encoding based on Launch Control XL 3 format
-    // This is a placeholder implementation
+    // Header: Mode data format indicator
+    rawData.push(0x00, 0x20, 0x08);
 
-    // For now, we'll just encode the control count and basic data
-    rawData.push(modeData.controls.length);
-
-    for (const control of modeData.controls) {
-      rawData.push(control.controlId);
-      rawData.push(control.channel);
-      rawData.push(control.ccNumber);
-      rawData.push(control.minValue);
-      rawData.push(control.maxValue);
-      rawData.push(this.encodeBehaviour(control.behaviour));
+    // Mode name: Direct ASCII encoding (not Midimunge!)
+    if (modeData.name) {
+      for (let i = 0; i < modeData.name.length && i < 16; i++) {
+        rawData.push(modeData.name.charCodeAt(i));
+      }
     }
 
-    rawData.push(modeData.colors.length);
+    // Add control definitions - must be in specific order for device to accept
+    // Sort controls by ID to ensure proper order
+    const sortedControls = [...modeData.controls].sort((a, b) => a.controlId - b.controlId);
 
-    for (const color of modeData.colors) {
-      rawData.push(color.controlId);
-      rawData.push(color.color);
-      rawData.push(this.encodeColorBehaviour(color.behaviour));
+    for (const control of sortedControls) {
+      // Control format from web editor for WRITE operation:
+      // Faders: 0x49 [ID] 0x02 0x00 [CH] 0x01 0x40 0x00 [CC] 0x7F 0x00
+      // Top encoders: 0x49 [ID] 0x02 0x05 [CH] 0x01 0x40 0x00 [CC] 0x7F 0x00
+      // Mid encoders: 0x49 [ID] 0x02 0x09 [CH] 0x01 0x40 0x00 [CC] 0x7F 0x00
+      // Bot encoders: 0x49 [ID] 0x02 0x0D [CH] 0x01 0x40 0x00 [CC] 0x7F 0x00
+
+      rawData.push(0x49); // Control marker for WRITE
+      rawData.push(control.controlId + 0x28); // IMPORTANT: Add 0x28 offset for controls!
+      rawData.push(0x02); // Control definition type
+
+      // Control type based on hardware position
+      let controlType = 0x00;
+      if (control.controlId >= 0x10 && control.controlId <= 0x17) {
+        controlType = 0x05; // Top row encoders
+      } else if (control.controlId >= 0x18 && control.controlId <= 0x1F) {
+        controlType = 0x09; // Middle row encoders
+      } else if (control.controlId >= 0x20 && control.controlId <= 0x27) {
+        controlType = 0x0D; // Bottom row encoders
+      } else if (control.controlId >= 0x00 && control.controlId <= 0x07) {
+        controlType = 0x00; // Faders
+      }
+
+      rawData.push(controlType);
+      rawData.push(control.channel); // Channel (0-based)
+      rawData.push(0x01); // Parameter 1
+      rawData.push(0x40); // Parameter 2 (behavior)
+      rawData.push(0x00); // Min value (always 0x00 in write)
+      rawData.push(control.ccNumber); // CC number
+      rawData.push(0x7F); // Max value (always 0x7F in write)
+      rawData.push(0x00); // Terminator
     }
 
-    // Encode using Midimunge
-    return Midimunge.encode(rawData);
+    // CRITICAL: Add color/label data after controls - REQUIRED by device!
+    // Without this section, the device rejects the message
+
+    // Add minimal color data for each control (required)
+    for (const control of sortedControls) {
+      rawData.push(0x60); // Color marker
+      rawData.push(control.controlId + 0x28); // Control ID with offset
+
+      // You can also add label data with 0x69 marker, but colors seem to be minimum requirement
+    }
+
+    return rawData;
   }
 
   /**
