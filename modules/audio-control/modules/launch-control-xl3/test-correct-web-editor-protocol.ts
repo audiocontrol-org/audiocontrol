@@ -1,8 +1,8 @@
 #!/usr/bin/env tsx
 
 /**
- * Test reading custom mode from Launch Control XL 3 using correct protocol
- * Based on LAUNCH-CONTROL-PROTOCOL.md read operation specification
+ * Test Launch Control XL 3 protocol based on ACTUAL web editor MIDI capture
+ * Using the exact protocol from docs/midi-capture.md
  */
 
 import { createRequire } from 'module';
@@ -10,7 +10,7 @@ import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 const midi = require('midi');
 
-console.log('Testing Launch Control XL 3 read operation...\n');
+console.log('Testing Launch Control XL 3 with ACTUAL web editor protocol...\n');
 
 // Create input and output
 const input = new midi.Input();
@@ -53,7 +53,8 @@ if (inputIndex >= 0 && outputIndex >= 0) {
     const timestamp = new Date().toISOString().split('T')[1].substring(0, 12);
 
     console.log(`[${timestamp}] Response (${message.length} bytes):`,
-      message.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      message.slice(0, 20).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '),
+      message.length > 20 ? '...' : '');
 
     // Check for Novation response
     if (message.length >= 6 &&
@@ -70,17 +71,14 @@ if (inputIndex >= 0 && outputIndex >= 0) {
         console.log('  -> Custom mode operation response!');
         if (message.length > 8) {
           const operation = message[8];
-          console.log(`  -> Operation type: 0x${operation.toString(16)}`);
+          const slot = message[9];
+          console.log(`  -> Operation: 0x${operation.toString(16)}, Slot: ${slot}`);
 
           if (operation === 0x10) {
-            console.log('  -> Read response data received!');
+            console.log('  -> READ response data received!');
 
-            // Extract slot number
-            const slot = message[9];
-            console.log(`  -> Slot: ${slot}`);
-
-            // Look for mode name (starts after header: 06 20 10)
-            const headerPattern = [0x06, 0x20, 0x10];
+            // Look for mode name (after header: 06 20 0E)
+            const headerPattern = [0x06, 0x20, 0x0E];
             let nameStart = -1;
             for (let i = 10; i < message.length - 3; i++) {
               if (message[i] === headerPattern[0] &&
@@ -92,7 +90,7 @@ if (inputIndex >= 0 && outputIndex >= 0) {
             }
 
             if (nameStart > 0) {
-              // Extract name (null-terminated or until next control marker 0x48)
+              // Extract name
               const nameBytes = [];
               for (let i = nameStart; i < message.length - 1; i++) {
                 if (message[i] === 0x00 || message[i] === 0x48 || message[i] === 0xF7) break;
@@ -107,12 +105,14 @@ if (inputIndex >= 0 && outputIndex >= 0) {
               }
             }
 
-            // Look for control data markers (0x48)
+            // Count control definitions (0x48 markers from capture)
             let controlCount = 0;
             for (let i = 0; i < message.length; i++) {
               if (message[i] === 0x48) controlCount++;
             }
-            console.log(`  -> Found ${controlCount} control markers`);
+            console.log(`  -> Found ${controlCount} control markers (0x48)`);
+          } else if (operation === 0x15) {
+            console.log('  -> WRITE acknowledgment received!');
           }
         }
       }
@@ -127,18 +127,20 @@ if (inputIndex >= 0 && outputIndex >= 0) {
 
   console.log('✓ Ports opened, monitoring for responses...\n');
 
-  // Test reading from slot 0 (should contain our custom mode)
-  console.log('Sending read request for slot 0...');
+  // Test 1: READ from slot 0 using ACTUAL web editor protocol
+  console.log('Step 1: Reading from slot 0 using web editor protocol...');
+
+  // FROM CAPTURE: F0 00 20 29 02 15 05 00 40 00 00 F7
   const readMessage = [
     0xF0,             // SysEx start
     0x00, 0x20, 0x29, // Manufacturer ID
-    0x02,             // Device ID (correct: 02 not 11)
-    0x15,             // Command (custom mode)
+    0x02,             // Device ID
+    0x15,             // Command
     0x05,             // Sub-command
     0x00,             // Reserved
-    0x15,             // Read command identifier
+    0x40,             // READ command (from capture - NOT 0x15!)
     0x00,             // Slot 0
-    0x06,             // Read operation parameter
+    0x00,             // Parameter (from capture - NOT 0x06!)
     0xF7              // SysEx end
   ];
 
@@ -146,7 +148,7 @@ if (inputIndex >= 0 && outputIndex >= 0) {
 
   try {
     output.sendMessage(readMessage);
-    console.log('✓ Read request sent');
+    console.log('✓ Read request sent using web editor protocol');
   } catch (error) {
     console.error('Failed to send read request:', error);
   }
@@ -155,26 +157,52 @@ if (inputIndex >= 0 && outputIndex >= 0) {
   setTimeout(() => {
     if (responseReceived) {
       console.log('\n✅ Device responded to read request!');
-      console.log('This confirms bidirectional communication is working.');
+      console.log('Web editor protocol is working correctly!');
       if (fullResponse.length > 50) {
         console.log('\n📊 Response analysis:');
         console.log(`  - Total response length: ${fullResponse.length} bytes`);
-        console.log(`  - First 20 bytes: ${fullResponse.slice(0, 20).map(b => '0x' + b.toString(16)).join(' ')}`);
-        console.log(`  - Last 10 bytes: ${fullResponse.slice(-10).map(b => '0x' + b.toString(16)).join(' ')}`);
+        console.log(`  - Response header: ${fullResponse.slice(0, 15).map(b => '0x' + b.toString(16)).join(' ')}`);
       }
     } else {
       console.log('\n❌ No response received from read request');
-      console.log('This could indicate:');
-      console.log('  - The read protocol format is incorrect');
-      console.log('  - The device needs to be in a specific mode');
-      console.log('  - Slot 0 is empty or uninitialized');
-    }
+      console.log('Even with the web editor protocol format.');
 
-    // Cleanup
-    input.closePort();
-    output.closePort();
-    console.log('\n✓ Ports closed');
-  }, 5000);
+      // Try reading from slot 3 as well (second request from capture)
+      console.log('\nTrying slot 3 (second request from capture)...');
+      const readMessage3 = [
+        0xF0,             // SysEx start
+        0x00, 0x20, 0x29, // Manufacturer ID
+        0x02,             // Device ID
+        0x15,             // Command
+        0x05,             // Sub-command
+        0x00,             // Reserved
+        0x40,             // READ command
+        0x03,             // Slot 3
+        0x00,             // Parameter
+        0xF7              // SysEx end
+      ];
+
+      try {
+        output.sendMessage(readMessage3);
+        console.log('✓ Read request for slot 3 sent');
+      } catch (error) {
+        console.error('Failed to send read request for slot 3:', error);
+      }
+
+      setTimeout(() => {
+        if (responseReceived) {
+          console.log('✅ Got response from slot 3!');
+        } else {
+          console.log('❌ Still no response - device may need different state/mode');
+        }
+
+        // Cleanup
+        input.closePort();
+        output.closePort();
+        console.log('✓ Ports closed');
+      }, 3000);
+    }
+  }, 3000);
 
 } else {
   console.log('Required ports not found:');

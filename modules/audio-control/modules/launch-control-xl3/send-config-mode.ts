@@ -125,6 +125,44 @@ function buildCustomModeData(config: CustomModeConfig): number[] {
   return data;
 }
 
+// Build custom mode data using correct protocol format
+function buildCustomModeDataCorrect(config: CustomModeConfig): number[] {
+  const data: number[] = [];
+
+  // Mode name (8 bytes, padded with zeros)
+  const nameBytes = Buffer.from(config.name.slice(0, 8), 'ascii');
+  data.push(...nameBytes);
+  // Pad to 8 bytes
+  while (data.length < 8) {
+    data.push(0x00);
+  }
+
+  // Add control mappings using proper format with 0x48 markers
+  const addControlsCorrect = (controls: ControlMapping[], controlIdBase: number) => {
+    controls?.forEach(control => {
+      data.push(
+        0x48,                                     // Control marker
+        controlIdBase + (control.position - 1),  // Control ID
+        0x02,                                     // Definition type
+        controlIdBase === 0x10 ? 0x31 : (controlIdBase === 0x20 ? 0x09 : 0x30), // Control type (fader=0x31, encoder=0x09, button=0x30)
+        control.channel - 1,                      // MIDI channel (0-based)
+        0x48, 0x00,                              // Parameter separator
+        control.cc,                              // CC number
+        0x7F                                     // Max value
+      );
+    });
+  };
+
+  // Add all controls with correct control IDs
+  addControlsCorrect(config.controls.faders || [], 0x10);          // Faders: 0x10-0x17
+  addControlsCorrect(config.controls.knobs_top || [], 0x20);       // Top knobs: 0x20-0x27
+  addControlsCorrect(config.controls.knobs_middle || [], 0x28);    // Middle knobs: 0x28-0x2F
+  addControlsCorrect(config.controls.knobs_bottom || [], 0x30);    // Bottom knobs: 0x30-0x37
+  addControlsCorrect(config.controls.buttons || [], 0x38);         // Buttons: 0x38-0x3F
+
+  return data;
+}
+
 // Send to device
 const output = new midi.Output();
 const outputCount = output.getPortCount();
@@ -143,18 +181,23 @@ for (let i = 0; i < outputCount; i++) {
 if (outputIndex >= 0) {
   output.openPort(outputIndex);
 
-  // Build SysEx message
+  // Build correct SysEx message using proper LCXL3 protocol
   const MANUFACTURER_ID = [0x00, 0x20, 0x29];
-  const DEVICE_ID = 0x11;
-  const CUSTOM_MODE_WRITE = 0x63;
+  const DEVICE_ID = 0x02;
+  const CUSTOM_MODE_WRITE = 0x15;
+  const SUB_COMMAND = 0x05;
 
-  const customModeData = buildCustomModeData(config);
+  const customModeData = buildCustomModeDataCorrect(config);
   const sysexMessage = [
     0xF0,                    // SysEx start
     ...MANUFACTURER_ID,      // 00 20 29
-    DEVICE_ID,              // 11
-    CUSTOM_MODE_WRITE,      // 63
+    DEVICE_ID,              // 02 (not 11)
+    CUSTOM_MODE_WRITE,      // 15 (not 63)
+    SUB_COMMAND,            // 05
+    0x00,                   // Reserved
+    0x10,                   // Write operation
     config.slot,            // Slot number
+    0x06, 0x20, 0x10,       // Additional header
     ...customModeData,      // Mode data
     0xF7                    // SysEx end
   ];
