@@ -146,13 +146,29 @@ export class SysExParser {
    * Parse Novation-specific message
    */
   private static parseNovationMessage(data: number[]): SysExMessage {
-    // Skip manufacturer ID
+    // Skip manufacturer ID (first 3 bytes: 00 20 29)
     const messageData = data.slice(3);
 
     if (messageData.length < 2) {
       throw new Error('Invalid Novation SysEx message');
     }
 
+    // Check for Launch Control XL 3 format: 02 15 05 00 [operation] [slot]
+    if (messageData.length >= 7 &&
+        messageData[0] === 0x02 &&  // Device ID (Launch Control XL 3)
+        messageData[1] === 0x15 &&  // Command (Custom mode)
+        messageData[2] === 0x05 &&  // Sub-command
+        messageData[3] === 0x00) {  // Reserved
+
+      const operation = messageData[4];
+
+      // Check if this is a custom mode response (operation 0x10)
+      if (operation === 0x10) {
+        return this.parseCustomModeResponseXL3(messageData); // Pass message data (F0/F7 and manufacturer ID stripped)
+      }
+    }
+
+    // Fallback to legacy format parsing
     const deviceId = messageData[0];
     const messageType = messageData[1];
 
@@ -161,7 +177,7 @@ export class SysExParser {
         return this.parseTemplateChange(messageData);
 
       case SysExMessageType.CUSTOM_MODE_RESPONSE:
-        return this.parseCustomModeResponse(messageData);
+        return this.parseCustomModeResponse(data);
 
       default:
         return {
@@ -189,7 +205,40 @@ export class SysExParser {
   }
 
   /**
-   * Parse custom mode response
+   * Parse Launch Control XL 3 custom mode response (expects messageData without F0/F7 and manufacturer ID)
+   */
+  private static parseCustomModeResponseXL3(data: number[]): CustomModeMessage {
+    if (data.length < 6) {
+      throw new Error('Invalid Launch Control XL 3 custom mode response');
+    }
+
+    // Expected format after F0/F7 and manufacturer ID stripped by parseNovationMessage:
+    // 02 15 05 00 10 [SLOT] [419 bytes of data]
+    // Positions: 0  1  2  3  4     5
+    const operation = data[4];
+    const slot = data[5];
+
+    if (operation !== 0x10) {
+      throw new Error(`Unexpected operation in Launch Control XL 3 response: 0x${operation.toString(16)}`);
+    }
+
+    // Parse the actual custom mode data (starts after slot byte at position 6)
+    const rawModeData = data.slice(6);
+    const { controls, colors, name } = this.parseCustomModeData(rawModeData);
+
+    return {
+      type: 'custom_mode_response',
+      manufacturerId: MANUFACTURER_ID,
+      slot,
+      name,
+      controls,
+      colors,
+      data,
+    };
+  }
+
+  /**
+   * Parse legacy custom mode response (for older devices)
    */
   private static parseCustomModeResponse(data: number[]): CustomModeMessage {
     if (data.length < 4) {
@@ -216,20 +265,78 @@ export class SysExParser {
   }
 
   /**
-   * Parse custom mode data from decoded bytes
+   * Parse custom mode data from raw bytes
    */
   private static parseCustomModeData(data: number[]): {
     controls: ControlMapping[];
     colors: ColorMapping[];
+    name?: string;
   } {
     const controls: ControlMapping[] = [];
     const colors: ColorMapping[] = [];
+    let modeName: string | undefined;
 
-    // The actual data format would need to be determined from the device
-    // This is a placeholder implementation
-    // TODO: Implement actual parsing based on Launch Control XL 3 format
+    // Parse mode name (after 06 20 0E pattern)
+    let nameStart = -1;
+    for (let i = 0; i < data.length - 3; i++) {
+      if (data[i] === 0x06 && data[i + 1] === 0x20 && data[i + 2] === 0x0E) {
+        nameStart = i + 3;
+        break;
+      }
+    }
 
-    return { controls, colors };
+    if (nameStart > 0) {
+      const nameBytes = [];
+      for (let i = nameStart; i < data.length - 1; i++) {
+        if (data[i] === 0x00 || data[i] === 0x48 || data[i] === 0xF7) break;
+        if (data[i] >= 32 && data[i] <= 126) {
+          nameBytes.push(data[i]);
+        }
+      }
+
+      if (nameBytes.length > 0) {
+        modeName = String.fromCharCode(...nameBytes);
+      }
+    }
+
+    // Parse control definitions (marked with 0x48)
+    for (let i = 0; i < data.length - 10; i++) {
+      if (data[i] === 0x48) { // Control marker
+        const controlId = data[i + 1];
+        const defType = data[i + 2];
+        const controlType = data[i + 3];
+        const channel = data[i + 4];
+        const param1 = data[i + 5];
+        const param2 = data[i + 6];
+        const ccNumber = data[i + 7];
+        const maxValue = data[i + 8];
+
+        // Determine control behavior based on type
+        let behaviour: 'absolute' | 'relative1' | 'relative2' | 'relative3' = 'absolute';
+        if (controlType === 0x21 || controlType === 0x2D) {
+          // Encoder - might be relative
+          behaviour = 'relative1'; // Default for encoders
+        }
+
+        controls.push({
+          controlId,
+          channel,
+          ccNumber,
+          minValue: 0,
+          maxValue,
+          behaviour,
+        });
+
+        // For now, create a default color mapping
+        colors.push({
+          controlId,
+          color: 0x3F, // Default color
+          behaviour: 'static',
+        });
+      }
+    }
+
+    return { controls, colors, name: modeName };
   }
 
   /**
@@ -272,13 +379,19 @@ export class SysExParser {
       throw new Error('Custom mode slot must be 0-15');
     }
 
+    // CORRECTED PROTOCOL: Based on working MIDI capture from web editor
+    // Format: F0 00 20 29 02 15 05 00 40 [SLOT] 00 F7
     return [
-      0xF0, // SysEx start
-      ...MANUFACTURER_ID,
-      0x11, // Device ID
-      SysExMessageType.CUSTOM_MODE_READ,
-      slot,
-      0xF7, // SysEx end
+      0xF0,             // SysEx start
+      0x00, 0x20, 0x29, // Manufacturer ID (Novation)
+      0x02,             // Device ID (Launch Control XL 3)
+      0x15,             // Command (Custom mode)
+      0x05,             // Sub-command
+      0x00,             // Reserved
+      0x40,             // Read operation (CORRECTED from 0x15)
+      slot,             // Slot number (0-14 for slots 1-15)
+      0x00,             // Parameter (CORRECTED from nothing)
+      0xF7              // SysEx end
     ];
   }
 
@@ -296,14 +409,19 @@ export class SysExParser {
     // Encode the custom mode data
     const encodedData = this.encodeCustomModeData(modeData);
 
+    // CORRECTED PROTOCOL: Based on Launch Control XL 3 format
+    // Format: F0 00 20 29 02 15 05 00 45 [SLOT] [encoded data] F7
     return [
-      0xF0, // SysEx start
-      ...MANUFACTURER_ID,
-      0x11, // Device ID
-      SysExMessageType.CUSTOM_MODE_WRITE,
-      slot,
-      ...encodedData,
-      0xF7, // SysEx end
+      0xF0,             // SysEx start
+      0x00, 0x20, 0x29, // Manufacturer ID (Novation)
+      0x02,             // Device ID (Launch Control XL 3)
+      0x15,             // Command (Custom mode)
+      0x05,             // Sub-command
+      0x00,             // Reserved
+      0x45,             // Write operation (assumed based on pattern)
+      slot,             // Slot number (0-14 for slots 1-15)
+      ...encodedData,   // Encoded custom mode data
+      0xF7              // SysEx end
     ];
   }
 

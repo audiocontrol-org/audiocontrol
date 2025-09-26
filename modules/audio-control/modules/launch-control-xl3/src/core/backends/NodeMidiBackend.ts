@@ -130,6 +130,10 @@ export class NodeMidiBackend implements MidiBackendInterface {
       onMessage: undefined
     };
 
+    // CRITICAL FIX: Enable SysEx message reception
+    // By default, node-midi ignores SysEx messages
+    input.ignoreTypes(false, false, false); // Don't ignore SysEx, timing, active sensing
+
     // Set up message handler
     input.on('message', (deltaTime: number, message: number[]) => {
       if (port.onMessage) {
