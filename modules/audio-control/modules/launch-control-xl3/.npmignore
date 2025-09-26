@@ -1,0 +1,38 @@
+# Source files (only ship built files)
+src/
+test/
+examples/
+docs/
+
+# Configuration files
+.github/
+.vscode/
+*.config.ts
+*.config.js
+tsconfig*.json
+.eslintrc*
+.prettierrc*
+
+# Development files
+*.test.ts
+*.spec.ts
+__tests__/
+coverage/
+.nyc_output/
+
+# Build artifacts
+*.tsbuildinfo
+*.log
+
+# Documentation source
+WORKPLAN*.md
+CONTRIBUTING.md
+
+# Examples and demos
+examples/
+
+# Keep only dist and necessary files
+!dist/
+!README.md
+!LICENSE
+!package.json

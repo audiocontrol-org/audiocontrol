@@ -90,16 +90,19 @@ export class SysExParser {
    * Parse a SysEx message
    */
   static parse(data: number[]): SysExMessage {
-    if (data.length < 5) {
-      throw new Error('Invalid SysEx message: too short');
-    }
-
-    if (data[0] !== 0xF0) {
+    // Check start byte first
+    if (data.length === 0 || data[0] !== 0xF0) {
       throw new Error('Invalid SysEx message: missing start byte');
     }
 
+    // Then check end byte
     if (data[data.length - 1] !== 0xF7) {
       throw new Error('Invalid SysEx message: missing end byte');
+    }
+
+    // Finally check minimum length
+    if (data.length < 5) {
+      throw new Error('Invalid SysEx message: too short');
     }
 
     // Remove start and end bytes

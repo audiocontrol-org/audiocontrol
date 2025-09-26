@@ -241,13 +241,14 @@ export class CustomModeManager extends EventEmitter {
     for (const [key, control] of Object.entries(mode.controls)) {
       const controlId = this.getControlIdValue(key);
       if (controlId !== undefined) {
+        const ctrl = control as any;
         controls.push({
           controlId,
-          channel: control.channel,
-          ccNumber: control.cc,
-          minValue: control.min,
-          maxValue: control.max,
-          behaviour: control.behaviour,
+          channel: ctrl.channel,
+          ccNumber: ctrl.cc,
+          minValue: ctrl.min,
+          maxValue: ctrl.max,
+          behaviour: ctrl.behaviour,
         });
       }
     }
@@ -256,10 +257,11 @@ export class CustomModeManager extends EventEmitter {
     for (const [key, led] of Object.entries(mode.leds || {})) {
       const controlId = this.getControlIdValue(key);
       if (controlId !== undefined) {
+        const ledConfig = led as any;
         colors.push({
           controlId,
-          color: led.color as number,
-          behaviour: led.behaviour,
+          color: ledConfig.color as number,
+          behaviour: ledConfig.behaviour,
         });
       }
     }
@@ -468,23 +470,25 @@ export class CustomModeManager extends EventEmitter {
         throw new Error(`Invalid control ID: ${key}`);
       }
 
-      if (control.channel < 0 || control.channel > 15) {
-        throw new Error(`Invalid channel for ${key}: ${control.channel}`);
+      const ctrl = control as any; // Type assertion for validation
+
+      if (ctrl.channel < 0 || ctrl.channel > 15) {
+        throw new Error(`Invalid channel for ${key}: ${ctrl.channel}`);
       }
 
-      if (control.cc < 0 || control.cc > 127) {
-        throw new Error(`Invalid CC for ${key}: ${control.cc}`);
+      if (ctrl.cc !== undefined && (ctrl.cc < 0 || ctrl.cc > 127)) {
+        throw new Error(`Invalid CC for ${key}: ${ctrl.cc}`);
       }
 
-      if (control.min < 0 || control.min > 127) {
-        throw new Error(`Invalid min value for ${key}: ${control.min}`);
+      if (ctrl.min !== undefined && (ctrl.min < 0 || ctrl.min > 127)) {
+        throw new Error(`Invalid min value for ${key}: ${ctrl.min}`);
       }
 
-      if (control.max < 0 || control.max > 127) {
-        throw new Error(`Invalid max value for ${key}: ${control.max}`);
+      if (ctrl.max !== undefined && (ctrl.max < 0 || ctrl.max > 127)) {
+        throw new Error(`Invalid max value for ${key}: ${ctrl.max}`);
       }
 
-      if (control.min > control.max) {
+      if (ctrl.min !== undefined && ctrl.max !== undefined && ctrl.min > ctrl.max) {
         throw new Error(`Min value greater than max for ${key}`);
       }
     }
@@ -496,9 +500,10 @@ export class CustomModeManager extends EventEmitter {
           throw new Error(`Invalid LED control ID: ${key}`);
         }
 
+        const ledConfig = led as any; // Type assertion for validation
         const validBehaviours = ['static', 'flash', 'pulse'];
-        if (!validBehaviours.includes(led.behaviour)) {
-          throw new Error(`Invalid LED behaviour for ${key}: ${led.behaviour}`);
+        if (ledConfig.behaviour && !validBehaviours.includes(ledConfig.behaviour)) {
+          throw new Error(`Invalid LED behaviour for ${key}: ${ledConfig.behaviour}`);
         }
       }
     }

@@ -27,6 +27,8 @@
     "clean": "rm -rf dist *.tsbuildinfo",
     "dev": "tsc -b --watch",
     "test": "vitest",
+    "test:unit": "vitest run test/core test/utils",
+    "test:integration": "vitest run test/integration",
     "test:coverage": "vitest --coverage",
     "test:watch": "vitest --watch",
     "lint": "eslint . --ext .ts,.tsx",
@@ -37,7 +39,7 @@
     "example:leds": "tsx examples/led-animations.ts",
     "example:modes": "tsx examples/custom-modes.ts",
     "example:mapping": "tsx examples/control-mapping.ts",
-    "prepublishOnly": "npm run build"
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
     "novation",
