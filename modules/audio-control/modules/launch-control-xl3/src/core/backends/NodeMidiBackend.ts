@@ -10,7 +10,7 @@ import type {
   MidiOutputPort,
   MidiPort,
   MidiMessage
-} from '../MidiInterface';
+} from '../MidiInterface.js';
 
 // Create require function for ESM compatibility
 const require = createRequire(import.meta.url);
@@ -135,7 +135,7 @@ export class NodeMidiBackend implements MidiBackendInterface {
     input.ignoreTypes(false, false, false); // Don't ignore SysEx, timing, active sensing
 
     // Set up message handler
-    input.on('message', (deltaTime: number, message: number[]) => {
+    input.on('message', (_deltaTime: number, message: number[]) => {
       if (port.onMessage) {
         port.onMessage({
           timestamp: Date.now(),
@@ -241,12 +241,12 @@ export class NodeMidiBackend implements MidiBackendInterface {
 
   async cleanup(): Promise<void> {
     // Close all open ports
-    for (const [id, input] of this.inputs.entries()) {
+    for (const [_id, input] of this.inputs.entries()) {
       input.closePort();
     }
     this.inputs.clear();
 
-    for (const [id, output] of this.outputs.entries()) {
+    for (const [_id, output] of this.outputs.entries()) {
       output.closePort();
     }
     this.outputs.clear();

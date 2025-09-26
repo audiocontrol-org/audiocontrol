@@ -26,8 +26,9 @@ export class Midimunge {
   static encode(data: number[]): number[] {
     // Validate input
     for (let i = 0; i < data.length; i++) {
-      if (data[i] > 255 || data[i] < 0) {
-        throw new Error(`Invalid data value at index ${i}: ${data[i]}. Must be 0-255.`);
+      const value = data[i];
+      if (value === undefined || value > 255 || value < 0) {
+        throw new Error(`Invalid data value at index ${i}: ${value}. Must be 0-255.`);
       }
     }
 
@@ -42,7 +43,7 @@ export class Midimunge {
       // Collect MSBs into header byte
       for (let i = 0; i < chunkSize; i++) {
         const value = data[index + i];
-        if (value & 0x80) {
+        if (value !== undefined && (value & 0x80)) {
           headerByte |= (1 << i);
         }
       }
@@ -52,7 +53,8 @@ export class Midimunge {
 
       // Add 7-bit data bytes
       for (let i = 0; i < chunkSize; i++) {
-        encoded.push(data[index + i] & 0x7F);
+        const value = data[index + i];
+        encoded.push((value ?? 0) & 0x7F);
       }
 
       index += chunkSize;
@@ -70,8 +72,9 @@ export class Midimunge {
   static decode(data: number[]): number[] {
     // Validate input
     for (let i = 0; i < data.length; i++) {
-      if (data[i] > 127 || data[i] < 0) {
-        throw new Error(`Invalid 7-bit value at index ${i}: ${data[i]}. Must be 0-127.`);
+      const value = data[i];
+      if (value === undefined || value > 127 || value < 0) {
+        throw new Error(`Invalid 7-bit value at index ${i}: ${value}. Must be 0-127.`);
       }
     }
 
@@ -97,10 +100,15 @@ export class Midimunge {
           throw new Error('Unexpected end of data during decode');
         }
 
-        let value = data[index] & 0x7F;
+        const dataByte = data[index];
+        if (dataByte === undefined) {
+          throw new Error('Unexpected end of data during decode');
+        }
+
+        let value = dataByte & 0x7F;
 
         // Restore MSB if set in header
-        if (headerByte & (1 << i)) {
+        if (headerByte !== undefined && (headerByte & (1 << i))) {
           value |= 0x80;
         }
 
@@ -259,9 +267,9 @@ export class MidimungeBitField {
     }
 
     if (value) {
-      this.data[byteIndex] |= (1 << bitIndex);
+      this.data[byteIndex] = (this.data[byteIndex] ?? 0) | (1 << bitIndex);
     } else {
-      this.data[byteIndex] &= ~(1 << bitIndex);
+      this.data[byteIndex] = (this.data[byteIndex] ?? 0) & ~(1 << bitIndex);
     }
   }
 
@@ -276,7 +284,7 @@ export class MidimungeBitField {
       throw new Error(`Bit index ${index} out of range`);
     }
 
-    return (this.data[byteIndex] & (1 << bitIndex)) !== 0;
+    return ((this.data[byteIndex] ?? 0) & (1 << bitIndex)) !== 0;
   }
 
   /**

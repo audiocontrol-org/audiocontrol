@@ -11,18 +11,18 @@ import {
   MidiPortInfo,
   MidiMessage,
   MidiBackendInterface
-} from '@/core/MidiInterface';
-import { SysExParser, DeviceInquiryResponse } from '@/core/SysExParser';
+} from '../core/MidiInterface.js';
+import { SysExParser } from '../core/SysExParser.js';
 import {
   LaunchControlXL3Info,
   DeviceMode,
   DeviceConnectionState,
-  DeviceConfiguration,
-  CustomMode
-} from '@/types';
+  CustomMode,
+  DeviceInquiryResponse
+} from '../types/index.js';
 
 export interface DeviceManagerOptions {
-  midiBackend?: MidiBackendInterface;
+  midiBackend?: MidiBackendInterface | undefined;
   autoConnect?: boolean;
   deviceNameFilter?: string;
   inquiryTimeout?: number;
@@ -33,8 +33,8 @@ export interface DeviceManagerOptions {
 export interface DeviceStatus {
   connected: boolean;
   state: DeviceConnectionState;
-  deviceInfo?: LaunchControlXL3Info;
-  currentMode?: DeviceMode;
+  deviceInfo?: LaunchControlXL3Info | undefined;
+  currentMode?: DeviceMode | undefined;
   lastSeen?: Date;
   error?: string;
 }
@@ -54,14 +54,14 @@ export interface DeviceEvents {
  */
 export class DeviceManager extends EventEmitter {
   private midi: MidiInterface;
-  private options: Required<DeviceManagerOptions>;
-  private deviceInfo?: LaunchControlXL3Info;
+  private options: Required<Omit<DeviceManagerOptions, 'midiBackend'>> & { midiBackend?: MidiBackendInterface | undefined };
+  private deviceInfo?: LaunchControlXL3Info | undefined;
   private connectionState: DeviceConnectionState = 'disconnected';
-  private inputPortId?: string;
-  private outputPortId?: string;
-  private currentMode?: DeviceMode;
-  private inquiryTimer?: NodeJS.Timeout;
-  private reconnectTimer?: NodeJS.Timeout;
+  private inputPortId?: string | undefined;
+  private outputPortId?: string | undefined;
+  private currentMode?: DeviceMode | undefined;
+  private inquiryTimer?: NodeJS.Timeout | undefined;
+  private reconnectTimer?: NodeJS.Timeout | undefined;
   private isInitializing = false;
 
   constructor(options: DeviceManagerOptions = {}) {
@@ -162,12 +162,12 @@ export class DeviceManager extends EventEmitter {
     this.clearTimers();
 
     if (this.inputPortId) {
-      await this.midi.closeInput(this.inputPortId);
+      await this.midi.closeInput();
       this.inputPortId = undefined;
     }
 
     if (this.outputPortId) {
-      await this.midi.closeOutput(this.outputPortId);
+      await this.midi.closeOutput();
       this.outputPortId = undefined;
     }
 
@@ -184,8 +184,8 @@ export class DeviceManager extends EventEmitter {
    * Find Launch Control XL 3 ports
    */
   private async findDevicePorts(): Promise<{
-    inputPort?: MidiPortInfo;
-    outputPort?: MidiPortInfo;
+    inputPort?: MidiPortInfo | undefined;
+    outputPort?: MidiPortInfo | undefined;
   }> {
     const inputPorts = await this.midi.getInputPorts();
     const outputPorts = await this.midi.getOutputPorts();
@@ -237,12 +237,12 @@ export class DeviceManager extends EventEmitter {
       const handleResponse = (message: MidiMessage) => {
         if (message.type === 'sysex') {
           try {
-            const parsed = SysExParser.parse(message.data);
+            const parsed = SysExParser.parse([...message.data]);
 
             if (parsed.type === 'device_inquiry_response') {
               clearTimeout(timeout);
               this.midi.removeListener('sysex', handleResponse);
-              resolve(parsed as DeviceInquiryResponse);
+              resolve(parsed as unknown as DeviceInquiryResponse);
             }
           } catch {
             // Ignore parse errors for non-matching messages
@@ -266,9 +266,11 @@ export class DeviceManager extends EventEmitter {
       manufacturerId: response.manufacturerId.map(b =>
         b.toString(16).padStart(2, '0')
       ).join(' '),
-      deviceFamily: response.familyCode,
-      modelNumber: response.familyMember,
-      firmwareVersion: `${response.softwareRevision[0]}.${response.softwareRevision[1]}.${response.softwareRevision[2]}.${response.softwareRevision[3]}`,
+      deviceFamily: response.familyCode ?? 0,
+      modelNumber: response.familyMember ?? 0,
+      firmwareVersion: response.softwareRevision ?
+        `${response.softwareRevision[0]}.${response.softwareRevision[1]}.${response.softwareRevision[2]}.${response.softwareRevision[3]}` :
+        'unknown',
     };
   }
 
@@ -297,7 +299,7 @@ export class DeviceManager extends EventEmitter {
     this.midi.on('sysex', (message: MidiMessage) => {
       if (!this.isInitializing && this.connectionState === 'connected') {
         this.emit('sysex:received', message.data);
-        this.handleSysExMessage(message.data);
+        this.handleSysExMessage([...message.data]);
       }
     });
 
@@ -333,7 +335,7 @@ export class DeviceManager extends EventEmitter {
   /**
    * Get human-readable control name
    */
-  private getControlName(controller: number, channel: number): string {
+  private getControlName(controller: number, _channel: number): string {
     // Map CC numbers to control names based on Launch Control XL 3 layout
     const controlMap: Record<number, string> = {
       // Send A knobs
@@ -410,12 +412,12 @@ export class DeviceManager extends EventEmitter {
    */
   private clearTimers(): void {
     if (this.inquiryTimer) {
-      clearTimeout(this.inquiryTimer);
+      clearTimeout(this.inquiryTimer as NodeJS.Timeout);
       this.inquiryTimer = undefined;
     }
 
     if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
+      clearTimeout(this.reconnectTimer as NodeJS.Timeout);
       this.reconnectTimer = undefined;
     }
   }
@@ -481,7 +483,7 @@ export class DeviceManager extends EventEmitter {
       const handleResponse = (message: MidiMessage) => {
         if (message.type === 'sysex') {
           try {
-            const parsed = SysExParser.parse(message.data);
+            const parsed = SysExParser.parse([...message.data]);
 
             if (parsed.type === 'custom_mode_response') {
               clearTimeout(timeout);
@@ -532,13 +534,18 @@ export class DeviceManager extends EventEmitter {
    * Get current device status
    */
   getStatus(): DeviceStatus {
-    return {
+    const status: DeviceStatus = {
       connected: this.connectionState === 'connected',
       state: this.connectionState,
       deviceInfo: this.deviceInfo,
       currentMode: this.currentMode,
-      lastSeen: this.deviceInfo ? new Date() : undefined,
     };
+
+    if (this.deviceInfo) {
+      status.lastSeen = new Date();
+    }
+
+    return status;
   }
 
   /**

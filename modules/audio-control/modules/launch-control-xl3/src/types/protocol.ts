@@ -88,10 +88,12 @@ export interface MidiTarget {
 }
 
 export interface ValueTransform {
-  readonly type: 'linear' | 'logarithmic' | 'exponential' | 'curve';
+  readonly type: 'linear' | 'logarithmic' | 'exponential' | 'curve' | 'stepped' | 'toggle' | 'invert' | 'bipolar';
   readonly inputRange: [number, number];
   readonly outputRange: [number, number];
   readonly curve?: readonly number[]; // For custom curve transforms
+  readonly steps?: number; // For stepped transforms
+  readonly threshold?: number; // For toggle transforms
 }
 
 // Device layout constants

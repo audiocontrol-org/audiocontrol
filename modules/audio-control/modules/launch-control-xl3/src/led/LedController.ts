@@ -6,9 +6,9 @@
  */
 
 import { EventEmitter } from 'events';
-import { DeviceManager } from '@/device/DeviceManager';
-import { SysExParser } from '@/core/SysExParser';
-import { LedColor, LedBehaviour, ControlId } from '@/types';
+import { DeviceManager } from '../device/DeviceManager.js';
+import { SysExParser } from '../core/SysExParser.js';
+import { LedColor, LedBehaviour } from '../types/index.js';
 
 export interface LedControllerOptions {
   deviceManager: DeviceManager;
@@ -96,7 +96,7 @@ export class LedController extends EventEmitter {
   private options: Required<LedControllerOptions>;
   private ledStates: Map<string, LedState> = new Map();
   private animations: Map<string, LedAnimation> = new Map();
-  private animationTimers: Map<string, NodeJS.Timer> = new Map();
+  private animationTimers: Map<string, NodeJS.Timeout> = new Map();
   private animationFrames: Map<string, number> = new Map();
 
   constructor(options: LedControllerOptions) {
@@ -118,7 +118,7 @@ export class LedController extends EventEmitter {
    */
   private initializeLedStates(): void {
     // Initialize all button LEDs as off
-    for (const [controlId, noteValue] of Object.entries(LED_NOTE_MAP)) {
+    for (const [controlId, _noteValue] of Object.entries(LED_NOTE_MAP)) {
       this.ledStates.set(controlId, {
         controlId,
         color: LED_COLOR_VALUES.OFF as any,
@@ -204,7 +204,7 @@ export class LedController extends EventEmitter {
     await this.deviceManager.sendSysEx(message);
 
     // Update all states to off
-    for (const [controlId, state] of this.ledStates.entries()) {
+    for (const [_controlId, state] of this.ledStates.entries()) {
       state.color = LED_COLOR_VALUES.OFF as any;
       state.behaviour = 'static';
       state.active = false;
@@ -295,31 +295,31 @@ export class LedController extends EventEmitter {
   /**
    * Process animation frame
    */
-  private processAnimationFrame(id: string, animation: LedAnimation, frame: number): void {
+  private processAnimationFrame(_id: string, animation: LedAnimation, _frame: number): void {
     switch (animation.type) {
       case 'fade':
-        this.processFadeAnimation(animation, frame);
+        this.processFadeAnimation(animation, _frame);
         break;
 
       case 'pulse':
-        this.processPulseAnimation(animation, frame);
+        this.processPulseAnimation(animation, _frame);
         break;
 
       case 'flash':
-        this.processFlashAnimation(animation, frame);
+        this.processFlashAnimation(animation, _frame);
         break;
 
       case 'rainbow':
-        this.processRainbowAnimation(animation, frame);
+        this.processRainbowAnimation(animation, _frame);
         break;
 
       case 'chase':
-        this.processChaseAnimation(animation, frame);
+        this.processChaseAnimation(animation, _frame);
         break;
 
       case 'custom':
         if (animation.callback) {
-          animation.callback(frame);
+          animation.callback(_frame);
         }
         break;
     }
@@ -341,14 +341,16 @@ export class LedController extends EventEmitter {
     const color = progress < 0.5 ? fromColor : toColor;
 
     for (const controlId of animation.controls) {
-      this.setLed(controlId, color, 'static').catch(() => {});
+      if (color !== undefined) {
+        this.setLed(controlId, color, 'static').catch(() => {});
+      }
     }
   }
 
   /**
    * Process pulse animation
    */
-  private processPulseAnimation(animation: LedAnimation, frame: number): void {
+  private processPulseAnimation(animation: LedAnimation, _frame: number): void {
     if (!animation.controls || !animation.colors) {
       return;
     }
@@ -396,7 +398,9 @@ export class LedController extends EventEmitter {
     const color = colors[colorIndex];
 
     for (const controlId of animation.controls) {
-      this.setLed(controlId, color, 'static').catch(() => {});
+      if (color !== undefined) {
+        this.setLed(controlId, color, 'static').catch(() => {});
+      }
     }
   }
 
@@ -413,6 +417,7 @@ export class LedController extends EventEmitter {
 
     for (let i = 0; i < animation.controls.length; i++) {
       const controlId = animation.controls[i];
+      if (!controlId) continue; // Skip undefined controlIds
       const isActive = i === activeIndex;
 
       this.setLed(
@@ -512,7 +517,7 @@ export class LedController extends EventEmitter {
       type: 'chase',
       duration: 2000,
       controls: focusButtons,
-      colors: [LED_COLOR_VALUES.GREEN_FULL],
+      colors: [LED_COLOR_VALUES.GREEN_FULL.toString()],
     });
 
     // Chase animation on control buttons (delayed)
@@ -521,7 +526,7 @@ export class LedController extends EventEmitter {
         type: 'chase',
         duration: 2000,
         controls: controlButtons,
-        colors: [LED_COLOR_VALUES.AMBER_FULL],
+        colors: [LED_COLOR_VALUES.AMBER_FULL.toString()],
       });
     }, 500);
 

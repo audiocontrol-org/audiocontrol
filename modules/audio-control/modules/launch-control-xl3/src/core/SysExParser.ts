@@ -9,8 +9,8 @@
  * - Configuration management
  */
 
-import { Midimunge } from '@/core/Midimunge.js';
-import type { CustomMode, Control } from '@/types/CustomMode.js';
+import { Midimunge } from './Midimunge.js';
+import type { CustomMode, ControlMapping, ColorMapping } from '../types/CustomMode.js';
 
 // Novation/Focusrite manufacturer ID
 export const MANUFACTURER_ID = [0x00, 0x20, 0x29];
@@ -67,21 +67,7 @@ export interface CustomModeMessage extends SysExMessage {
 }
 
 // Control mapping for custom modes
-export interface ControlMapping {
-  controlId: number;
-  channel: number;
-  ccNumber: number;
-  minValue: number;
-  maxValue: number;
-  behaviour: 'absolute' | 'relative1' | 'relative2' | 'relative3';
-}
-
-// LED color mapping
-export interface ColorMapping {
-  controlId: number;
-  color: number;
-  behaviour: 'static' | 'flash' | 'pulse';
-}
+// ControlMapping and ColorMapping interfaces are now imported from types/CustomMode.ts
 
 /**
  * SysEx message parser and builder
@@ -135,10 +121,10 @@ export class SysExParser {
 
     return {
       type: 'device_inquiry_response',
-      manufacturerId: [data[4], data[5], data[6]],
-      familyCode: (data[7] << 8) | data[8],
-      familyMember: (data[9] << 8) | data[10],
-      softwareRevision: [data[11], data[12], data[13], data[14]],
+      manufacturerId: [data[4] ?? 0, data[5] ?? 0, data[6] ?? 0],
+      familyCode: ((data[7] ?? 0) << 8) | (data[8] ?? 0),
+      familyMember: ((data[9] ?? 0) << 8) | (data[10] ?? 0),
+      softwareRevision: [data[11] ?? 0, data[12] ?? 0, data[13] ?? 0, data[14] ?? 0],
       data,
     };
   }
@@ -170,7 +156,6 @@ export class SysExParser {
     }
 
     // Fallback to legacy format parsing
-    const deviceId = messageData[0];
     const messageType = messageData[1];
 
     switch (messageType) {
@@ -200,7 +185,7 @@ export class SysExParser {
     return {
       type: 'template_change',
       manufacturerId: MANUFACTURER_ID,
-      templateNumber: data[2],
+      templateNumber: data[2] ?? 0,
       data,
     };
   }
@@ -217,25 +202,30 @@ export class SysExParser {
     // 02 15 05 00 10 [SLOT] [419 bytes of data]
     // Positions: 0  1  2  3  4     5
     const operation = data[4];
-    const slot = data[5];
+    const slot = data[5] ?? 0;
 
     if (operation !== 0x10) {
-      throw new Error(`Unexpected operation in Launch Control XL 3 response: 0x${operation.toString(16)}`);
+      throw new Error(`Unexpected operation in Launch Control XL 3 response: 0x${(operation ?? 0).toString(16)}`);
     }
 
     // Parse the actual custom mode data (starts after slot byte at position 6)
     const rawModeData = data.slice(6);
     const { controls, colors, name } = this.parseCustomModeData(rawModeData);
 
-    return {
+    const message: CustomModeMessage = {
       type: 'custom_mode_response',
       manufacturerId: MANUFACTURER_ID,
       slot,
-      name,
       controls,
       colors,
       data,
     };
+
+    if (name !== undefined) {
+      message.name = name;
+    }
+
+    return message;
   }
 
   /**
@@ -247,6 +237,9 @@ export class SysExParser {
     }
 
     const slot = data[2];
+    if (slot === undefined) {
+      throw new Error('Invalid slot in custom mode response');
+    }
     const encodedData = data.slice(3);
 
     // Decode the Midimunge-encoded custom mode data
@@ -306,14 +299,15 @@ export class SysExParser {
           // Double-check this is actually a control marker by validating structure
           if (i + 9 < data.length &&
               data[i + 2] === 0x02 && // Definition type
-              data[i + 1] <= 0x3F) {  // Valid control ID range
+              data[i + 1] !== undefined && data[i + 1]! <= 0x3F) {  // Valid control ID range
             nameEnd = i;
             break;
           }
         }
 
-        if (data[i] >= 32 && data[i] <= 126) { // Printable ASCII
-          nameBytes.push(data[i]);
+        const byte = data[i];
+        if (byte !== undefined && byte >= 32 && byte <= 126) { // Printable ASCII
+          nameBytes.push(byte);
         }
       }
 
@@ -335,52 +329,55 @@ export class SysExParser {
         if (i + 9 < data.length) {
           const controlId = data[i + 1];
           const defType = data[i + 2];
-          const controlType = data[i + 3];
+          const _controlType = data[i + 3];
           const channel = data[i + 4];
           const param1 = data[i + 5];
 
           // Validate it's a control structure (not part of name or other data)
           const isValidControl = defType === 0x02 &&
                                 (param1 === 0x01 || param1 === 0x00) &&
-                                controlId <= 0x3F; // Valid control ID range
+                                controlId !== undefined && controlId <= 0x3F; // Valid control ID range
 
-          if (isValidControl) {
-            const param2 = data[i + 6];
+          if (isValidControl && controlId !== undefined) {
             const minValue = data[i + 7];
             const ccNumber = data[i + 8];
             const maxValue = data[i + 9];
 
-            // Determine control behavior
-            let behaviour: 'absolute' | 'relative1' | 'relative2' | 'relative3' = 'absolute';
+            // Ensure all required values are defined
+            if (minValue !== undefined && ccNumber !== undefined && maxValue !== undefined &&
+                channel !== undefined && _controlType !== undefined) {
+              // Determine control behavior
+              let behaviour = 'absolute';
 
-            controls.push({
-              controlId,
-              channel,
-              ccNumber,
-              minValue,
-              maxValue,
-              behaviour,
-            });
+              controls.push({
+                controlId,
+                channel,
+                ccNumber,
+                minValue,
+                maxValue,
+                behaviour: behaviour as any,
+              });
 
-            // Create color mapping based on control ID
-            let color = 0x3F; // Default
-            if (controlId >= 0x10 && controlId <= 0x17) {
-              color = 0x60; // Blue for top row encoders
-            } else if (controlId >= 0x18 && controlId <= 0x1F) {
-              color = 0x48; // Yellow for middle row encoders
-            } else if (controlId >= 0x20 && controlId <= 0x27) {
-              color = 0x3C; // Green for bottom row encoders
-            } else if (controlId >= 0x28 && controlId <= 0x3F) {
-              color = 0x0F; // Red for buttons/other controls
-            } else if (controlId <= 0x07) {
-              color = 0x0F; // Red for faders
+              // Create color mapping based on control ID
+              let color = 0x3F; // Default
+              if (controlId >= 0x10 && controlId <= 0x17) {
+                color = 0x60; // Blue for top row encoders
+              } else if (controlId >= 0x18 && controlId <= 0x1F) {
+                color = 0x48; // Yellow for middle row encoders
+              } else if (controlId >= 0x20 && controlId <= 0x27) {
+                color = 0x3C; // Green for bottom row encoders
+              } else if (controlId >= 0x28 && controlId <= 0x3F) {
+                color = 0x0F; // Red for buttons/other controls
+              } else if (controlId <= 0x07) {
+                color = 0x0F; // Red for faders
+              }
+
+              colors.push({
+                controlId,
+                color,
+                behaviour: 'static', // Default behavior
+              });
             }
-
-            colors.push({
-              controlId,
-              color,
-              behaviour: 'static',
-            });
 
             // Skip to next potential control (9 bytes processed)
             i += 9;
@@ -389,7 +386,16 @@ export class SysExParser {
       }
     }
 
-    return { controls, colors, name: modeName };
+    const result: { controls: ControlMapping[]; colors: ColorMapping[]; name?: string } = {
+      controls,
+      colors
+    };
+
+    if (modeName !== undefined) {
+      result.name = modeName;
+    }
+
+    return result;
   }
 
   /**
@@ -468,20 +474,27 @@ export class SysExParser {
     }
 
     // Sort controls by ID for consistency
-    const sortedControls = [...customMode.controls].sort((a, b) => a.controlId - b.controlId);
+    const sortedControls = Object.values(customMode.controls)
+      .filter(control => control.controlId !== undefined)
+      .sort((a, b) => (a.controlId ?? 0) - (b.controlId ?? 0));
 
     // Add control definitions with 0x49 marker and offset
     for (const control of sortedControls) {
       // Write control structure: 11 bytes
       rawData.push(0x49); // Write control marker
-      rawData.push(control.controlId + 0x28); // Control ID with offset
+      rawData.push((control.controlId ?? 0) + 0x28); // Control ID with offset
       rawData.push(0x02); // Definition type
-      rawData.push(control.controlType); // Control type
-      rawData.push(control.midiChannel); // MIDI channel (0-15)
+      // Convert control type to number if it's a string
+      const controlType = control.controlType ?? control.type ?? 0x00;
+      const controlTypeNum = typeof controlType === 'string' ?
+        (controlType === 'knob' ? 0x05 : controlType === 'fader' ? 0x00 : controlType === 'button' ? 0x09 : 0x00) :
+        controlType;
+      rawData.push(controlTypeNum); // Control type
+      rawData.push(control.midiChannel ?? control.channel ?? 0); // MIDI channel (0-15)
       rawData.push(0x01); // Parameter 1
       rawData.push(0x40); // Parameter 2
       rawData.push(0x00); // Min value (always 0 in write)
-      rawData.push(control.ccNumber); // CC number
+      rawData.push(control.ccNumber ?? control.cc ?? 0); // CC number
       rawData.push(0x7F); // Max value (always 0x7F in write)
       rawData.push(0x00); // Terminator
     }
@@ -499,9 +512,10 @@ export class SysExParser {
     } else {
       // Generate default labels for controls
       for (const control of sortedControls) {
+        const controlId = control.controlId ?? 0;
         rawData.push(0x69); // Label marker
-        rawData.push(control.controlId + 0x28); // Control ID with offset
-        const label = this.generateControlLabel(control.controlId);
+        rawData.push(controlId + 0x28); // Control ID with offset
+        const label = this.generateControlLabel(controlId);
         for (let i = 0; i < label.length; i++) {
           rawData.push(label.charCodeAt(i));
         }
@@ -518,8 +532,9 @@ export class SysExParser {
     } else {
       // Add default colors (off) for all controls
       for (const control of sortedControls) {
+        const controlId = control.controlId ?? 0;
         rawData.push(0x60); // Color marker
-        rawData.push(control.controlId + 0x28); // Control ID with offset
+        rawData.push(controlId + 0x28); // Control ID with offset
       }
     }
 
@@ -582,23 +597,27 @@ export class SysExParser {
 
     // Validate each control mapping
     for (const control of modeData.controls) {
-      if (control.ccNumber < 0 || control.ccNumber > 127) {
+      const ccNumber = control.ccNumber ?? control.cc ?? 0;
+      if (ccNumber < 0 || ccNumber > 127) {
         throw new Error('CC number must be 0-127');
       }
 
-      if (control.channel < 0 || control.channel > 15) {
+      const channel = control.channel ?? control.midiChannel ?? 0;
+      if (channel < 0 || channel > 15) {
         throw new Error('Channel must be 0-15');
       }
 
-      if (control.minValue < 0 || control.minValue > 127) {
+      const minValue = control.minValue ?? control.min ?? 0;
+      if (minValue < 0 || minValue > 127) {
         throw new Error('Min value must be 0-127');
       }
 
-      if (control.maxValue < 0 || control.maxValue > 127) {
+      const maxValue = control.maxValue ?? control.max ?? 127;
+      if (maxValue < 0 || maxValue > 127) {
         throw new Error('Max value must be 0-127');
       }
 
-      if (control.minValue > control.maxValue) {
+      if (minValue > maxValue) {
         throw new Error('Min value cannot be greater than max value');
       }
     }
@@ -630,7 +649,9 @@ export class SysExParser {
 
     // Add control definitions - must be in specific order for device to accept
     // Sort controls by ID to ensure proper order
-    const sortedControls = [...modeData.controls].sort((a, b) => a.controlId - b.controlId);
+    const sortedControls = [...modeData.controls]
+      .filter(control => control.controlId !== undefined)
+      .sort((a, b) => (a.controlId ?? 0) - (b.controlId ?? 0));
 
     for (const control of sortedControls) {
       // Control format from web editor for WRITE operation:
@@ -639,28 +660,32 @@ export class SysExParser {
       // Mid encoders: 0x49 [ID] 0x02 0x09 [CH] 0x01 0x40 0x00 [CC] 0x7F 0x00
       // Bot encoders: 0x49 [ID] 0x02 0x0D [CH] 0x01 0x40 0x00 [CC] 0x7F 0x00
 
+      const controlId = control.controlId ?? 0;
+      const channel = control.channel ?? control.midiChannel ?? 0;
+      const ccNumber = control.ccNumber ?? control.cc ?? 0;
+
       rawData.push(0x49); // Control marker for WRITE
-      rawData.push(control.controlId + 0x28); // IMPORTANT: Add 0x28 offset for controls!
+      rawData.push(controlId + 0x28); // IMPORTANT: Add 0x28 offset for controls!
       rawData.push(0x02); // Control definition type
 
       // Control type based on hardware position
       let controlType = 0x00;
-      if (control.controlId >= 0x10 && control.controlId <= 0x17) {
+      if (controlId >= 0x10 && controlId <= 0x17) {
         controlType = 0x05; // Top row encoders
-      } else if (control.controlId >= 0x18 && control.controlId <= 0x1F) {
+      } else if (controlId >= 0x18 && controlId <= 0x1F) {
         controlType = 0x09; // Middle row encoders
-      } else if (control.controlId >= 0x20 && control.controlId <= 0x27) {
+      } else if (controlId >= 0x20 && controlId <= 0x27) {
         controlType = 0x0D; // Bottom row encoders
-      } else if (control.controlId >= 0x00 && control.controlId <= 0x07) {
+      } else if (controlId >= 0x00 && controlId <= 0x07) {
         controlType = 0x00; // Faders
       }
 
       rawData.push(controlType);
-      rawData.push(control.channel); // Channel (0-based)
+      rawData.push(channel); // Channel (0-based)
       rawData.push(0x01); // Parameter 1
       rawData.push(0x40); // Parameter 2 (behavior)
       rawData.push(0x00); // Min value (always 0x00 in write)
-      rawData.push(control.ccNumber); // CC number
+      rawData.push(ccNumber); // CC number
       rawData.push(0x7F); // Max value (always 0x7F in write)
       rawData.push(0x00); // Terminator
     }
@@ -670,11 +695,12 @@ export class SysExParser {
 
     // Add label data for each control (recommended for usability)
     for (const control of sortedControls) {
+      const controlId = control.controlId ?? 0;
       rawData.push(0x69); // Label marker
-      rawData.push(control.controlId + 0x28); // Control ID with offset
+      rawData.push(controlId + 0x28); // Control ID with offset
 
       // Add a simple label based on control type and ID
-      const labelText = this.generateControlLabel(control.controlId);
+      const labelText = this.generateControlLabel(controlId);
       for (let i = 0; i < labelText.length; i++) {
         rawData.push(labelText.charCodeAt(i));
       }
@@ -682,39 +708,14 @@ export class SysExParser {
 
     // Add color data for each control (required for device acceptance)
     for (const control of sortedControls) {
+      const controlId = control.controlId ?? 0;
       rawData.push(0x60); // Color marker
-      rawData.push(control.controlId + 0x28); // Control ID with offset
+      rawData.push(controlId + 0x28); // Control ID with offset
     }
 
     return rawData;
   }
 
-  /**
-   * Encode control behaviour
-   */
-  private static encodeBehaviour(behaviour: string): number {
-    const behaviourMap: Record<string, number> = {
-      'absolute': 0,
-      'relative1': 1,
-      'relative2': 2,
-      'relative3': 3,
-    };
-
-    return behaviourMap[behaviour] ?? 0;
-  }
-
-  /**
-   * Encode color behaviour
-   */
-  private static encodeColorBehaviour(behaviour: string): number {
-    const behaviourMap: Record<string, number> = {
-      'static': 0,
-      'flash': 1,
-      'pulse': 2,
-    };
-
-    return behaviourMap[behaviour] ?? 0;
-  }
 
   /**
    * Generate a simple label for a control based on its ID and type
@@ -738,7 +739,7 @@ export class SysExParser {
   /**
    * Build LED control message
    */
-  static buildLedControl(controlId: number, color: number, behaviour: 'static' | 'flash' | 'pulse' = 'static'): number[] {
+  static buildLedControl(controlId: number, color: number, behaviour: 'static' | 'flash' | 'pulse' | 'flashing' | 'pulsing' = 'static'): number[] {
     if (controlId < 0 || controlId > 127) {
       throw new Error('Control ID must be 0-127');
     }
@@ -749,9 +750,9 @@ export class SysExParser {
 
     let behaviorByte = color;
 
-    if (behaviour === 'flash') {
+    if (behaviour === 'flash' || behaviour === 'flashing') {
       behaviorByte |= 0x08;
-    } else if (behaviour === 'pulse') {
+    } else if (behaviour === 'pulse' || behaviour === 'pulsing') {
       behaviorByte |= 0x10;
     }
 
@@ -800,17 +801,22 @@ export class SysExParser {
     }
 
     // Universal messages don't have manufacturer ID
-    if (data[1] === 0x7E || data[1] === 0x7F) {
+    const manufacturerByte = data[1];
+    if (manufacturerByte === undefined) {
+      return null;
+    }
+
+    if (manufacturerByte === 0x7E || manufacturerByte === 0x7F) {
       return null;
     }
 
     // Extract 3-byte manufacturer ID
-    if (data[1] === 0x00) {
+    if (manufacturerByte === 0x00) {
       return data.slice(1, 4);
     }
 
     // Single byte manufacturer ID
-    return [data[1]];
+    return [manufacturerByte];
   }
 }
 

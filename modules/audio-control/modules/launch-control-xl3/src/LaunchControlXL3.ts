@@ -7,24 +7,22 @@
  */
 
 import { EventEmitter } from 'events';
-import { MidiInterface, MidiBackendInterface, MidiMessage } from '@/core/MidiInterface';
-import { DeviceManager, DeviceStatus } from '@/device/DeviceManager';
-import { CustomModeManager, CONTROL_IDS, LED_COLORS } from '@/modes/CustomModeManager';
-import { ControlMapper, ValueTransformers } from '@/mapping/ControlMapper';
-import { LedController, LED_COLOR_VALUES } from '@/led/LedController';
+import { MidiBackendInterface, MidiMessage } from './core/MidiInterface.js';
+import { DeviceManager, DeviceStatus } from './device/DeviceManager.js';
+import { CustomModeManager, CONTROL_IDS, LED_COLORS } from './modes/CustomModeManager.js';
+import { ControlMapper, ValueTransformers } from './mapping/ControlMapper.js';
+import { LedController, LED_COLOR_VALUES } from './led/LedController.js';
 import {
-  LaunchControlXL3Config,
   LaunchControlXL3Info,
   CustomMode,
   CustomModeSlot,
   ControlMapping,
-  ControlBehaviour,
+  ControlType,
   LedColor,
   LedBehaviour,
-  DeviceConnectionState,
   MidiChannel,
   CCNumber,
-} from '@/types';
+} from './types/index.js';
 
 export interface LaunchControlXL3Options {
   midiBackend?: MidiBackendInterface;
@@ -67,14 +65,14 @@ export interface LaunchControlXL3Events {
  * Main Launch Control XL 3 Controller
  */
 export class LaunchControlXL3 extends EventEmitter {
-  private options: Required<LaunchControlXL3Options>;
+  private options: Required<Omit<LaunchControlXL3Options, 'midiBackend'>> & { midiBackend?: MidiBackendInterface | undefined };
   private deviceManager: DeviceManager;
-  private customModeManager?: CustomModeManager;
+  private customModeManager?: CustomModeManager | undefined;
   private controlMapper: ControlMapper;
-  private ledController?: LedController;
+  private ledController?: LedController | undefined;
   private isInitialized = false;
-  private currentMode?: CustomMode;
-  private currentSlot?: CustomModeSlot;
+  private currentMode?: CustomMode | undefined;
+  private currentSlot?: CustomModeSlot | undefined;
 
   // Public static exports
   static readonly CONTROL_IDS = CONTROL_IDS;
@@ -284,7 +282,8 @@ export class LaunchControlXL3 extends EventEmitter {
     const defaultMappings = ControlMapper.createDefaultMappings();
 
     for (const [controlId, mapping] of defaultMappings.entries()) {
-      this.controlMapper.mapControl(controlId, mapping.type, mapping);
+      const type = mapping.type ?? mapping.controlType ?? 'knob';
+      this.controlMapper.mapControl(controlId, type as ControlType, mapping);
     }
   }
 
@@ -352,15 +351,18 @@ export class LaunchControlXL3 extends EventEmitter {
   exportCurrentAsCustomMode(name: string): CustomMode {
     const controls = this.controlMapper.exportToCustomMode();
 
-    const leds: Record<string, any> = {};
+    const leds = new Map<number, { color: number; behaviour: string }>();
     if (this.ledController) {
       const ledStates = this.ledController.getAllLedStates();
       for (const [controlId, state] of ledStates.entries()) {
         if (state.active) {
-          leds[controlId] = {
-            color: state.color,
-            behaviour: state.behaviour,
-          };
+          const numericId = parseInt(controlId, 10);
+          if (!isNaN(numericId)) {
+            leds.set(numericId, {
+              color: typeof state.color === 'string' ? parseInt(state.color, 16) : state.color,
+              behaviour: state.behaviour,
+            });
+          }
         }
       }
     }
@@ -389,17 +391,18 @@ export class LaunchControlXL3 extends EventEmitter {
     cc: CCNumber,
     options?: Partial<ControlMapping>
   ): void {
+    const controlType = this.getControlType(controlId);
     const mapping: ControlMapping = {
-      type: this.getControlType(controlId),
+      type: controlType,
       channel,
       cc,
       min: options?.min ?? 0,
       max: options?.max ?? 127,
       behaviour: options?.behaviour ?? 'absolute',
-      transform: options?.transform,
+      ...(options?.transform && { transform: options.transform }),
     };
 
-    this.controlMapper.mapControl(controlId, mapping.type, mapping);
+    this.controlMapper.mapControl(controlId, controlType ?? 'knob', mapping);
   }
 
   /**
@@ -586,13 +589,6 @@ export class LaunchControlXL3 extends EventEmitter {
 }
 
 // Export everything for convenience
-export * from '@/types';
-export * from '@/core/MidiInterface';
-export * from '@/core/SysExParser';
-export * from '@/core/Midimunge';
-export * from '@/device/DeviceManager';
-export * from '@/modes/CustomModeManager';
-export * from '@/mapping/ControlMapper';
-export * from '@/led/LedController';
+export * from './types/index.js';
 
 export default LaunchControlXL3;

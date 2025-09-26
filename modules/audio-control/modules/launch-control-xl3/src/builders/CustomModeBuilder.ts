@@ -243,12 +243,15 @@ export class CustomModeBuilder {
       throw new Error('At least one control mapping is required');
     }
 
-    // Sort controls by ID for consistency
-    const sortedControls = [...this.controls].sort((a, b) => a.controlId - b.controlId);
+    // Convert controls array to Record for CustomMode interface
+    const controlsRecord: Record<string, any> = {};
+    for (const control of this.controls) {
+      controlsRecord[`control_${control.controlId}`] = control;
+    }
 
     return {
       name: this.modeName,
-      controls: sortedControls,
+      controls: controlsRecord,
       labels: this.labelData.labels,
       colors: this.labelData.colors
     };

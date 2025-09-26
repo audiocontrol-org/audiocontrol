@@ -9,7 +9,7 @@ import type {
   MidiOutputPort,
   MidiPort,
   MidiMessage
-} from '../MidiInterface';
+} from '../MidiInterface.js';
 
 /**
  * Mock MIDI backend implementation for testing
@@ -155,7 +155,7 @@ export class MockMidiBackend implements MidiBackendInterface {
     this.inputPorts.clear();
     this.outputPorts.clear();
     this.sentMessages = [];
-    this.simulateIncomingMessage = undefined;
+    delete this.simulateIncomingMessage;
     this.isInitialized = false;
   }
 

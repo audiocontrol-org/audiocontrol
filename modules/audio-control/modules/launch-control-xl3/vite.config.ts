@@ -11,7 +11,26 @@ export default defineConfig({
       formats: ['es']
     },
     rollupOptions: {
-      external: ['midi', 'commander', 'zod', 'fs', 'path', 'util'],
+      external: [
+        'midi',
+        '@midival/core',
+        'commander',
+        'inquirer',
+        'ora',
+        'chalk',
+        'js-yaml',
+        'zod',
+        // Node.js built-ins
+        'module',
+        'events',
+        'fs',
+        'path',
+        'util',
+        'os',
+        'stream',
+        'buffer',
+        'process'
+      ],
       output: {
         preserveModules: false,
         entryFileNames: '[name].js'
