@@ -1,0 +1,148 @@
+# Launch Control XL 3 Custom Mode Configuration
+# This defines a custom mode that can be sent to the device
+
+name: "My DAW Mode"
+slot: 0
+description: "Custom mode for DAW control with organized CC assignments"
+
+# Control mappings
+controls:
+  # Faders - Channel 1 for track volumes
+  faders:
+    - position: 1
+      channel: 1
+      cc: 77
+      name: "Track 1 Volume"
+      color: green
+
+    - position: 2
+      channel: 1
+      cc: 78
+      name: "Track 2 Volume"
+      color: green
+
+    - position: 3
+      channel: 1
+      cc: 79
+      name: "Track 3 Volume"
+      color: green
+
+    - position: 4
+      channel: 1
+      cc: 80
+      name: "Track 4 Volume"
+      color: green
+
+    - position: 5
+      channel: 1
+      cc: 81
+      name: "Track 5 Volume"
+      color: amber
+
+    - position: 6
+      channel: 1
+      cc: 82
+      name: "Track 6 Volume"
+      color: amber
+
+    - position: 7
+      channel: 1
+      cc: 83
+      name: "Track 7 Volume"
+      color: amber
+
+    - position: 8
+      channel: 1
+      cc: 84
+      name: "Track 8 Volume"
+      color: amber
+
+  # Top row knobs - Channel 2 for sends
+  knobs_top:
+    - position: 1
+      channel: 2
+      cc: 13
+      name: "Send A1"
+      color: red
+
+    - position: 2
+      channel: 2
+      cc: 14
+      name: "Send A2"
+      color: red
+
+    - position: 3
+      channel: 2
+      cc: 15
+      name: "Send A3"
+      color: red
+
+    - position: 4
+      channel: 2
+      cc: 16
+      name: "Send A4"
+      color: red
+
+  # Middle row knobs - Channel 3 for EQ
+  knobs_middle:
+    - position: 1
+      channel: 3
+      cc: 29
+      name: "EQ High"
+      color: yellow
+
+    - position: 2
+      channel: 3
+      cc: 30
+      name: "EQ Mid"
+      color: yellow
+
+    - position: 3
+      channel: 3
+      cc: 31
+      name: "EQ Low"
+      color: yellow
+
+  # Bottom row knobs - Channel 4 for pan
+  knobs_bottom:
+    - position: 1
+      channel: 4
+      cc: 49
+      name: "Pan 1"
+      color: blue
+
+    - position: 2
+      channel: 4
+      cc: 50
+      name: "Pan 2"
+      color: blue
+
+  # Buttons - Channel 5 for mute/solo
+  buttons:
+    - position: 1
+      channel: 5
+      cc: 104
+      name: "Mute 1"
+      color: red
+      behavior: toggle
+
+    - position: 2
+      channel: 5
+      cc: 105
+      name: "Mute 2"
+      color: red
+      behavior: toggle
+
+# Global settings
+global:
+  base_channel: 1
+  velocity_curve: linear
+  led_brightness: full
+
+# Metadata
+metadata:
+  author: "User"
+  version: "1.0"
+  created: "2025-01-26"
+  daw: "Generic DAW"
+  notes: "Basic setup for 8-track DAW control"

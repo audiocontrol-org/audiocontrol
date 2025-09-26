@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Launch Control XL 3 Protocol Capture</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .capture-section { margin: 20px 0; padding: 10px; border: 1px solid #ccc; }
+        .midi-log { height: 400px; overflow-y: auto; border: 1px solid #333; padding: 10px; background: #000; color: #0f0; }
+        .phase-button { margin: 5px; padding: 10px; font-size: 16px; }
+        .status { padding: 10px; margin: 10px 0; }
+        .ready { background: #e8f5e8; border: 1px solid #4caf50; }
+        .capturing { background: #fff3cd; border: 1px solid #ffc107; }
+        .complete { background: #d4edda; border: 1px solid #28a745; }
+    </style>
+</head>
+<body>
+    <h1>Launch Control XL 3 Protocol Capture</h1>
+
+    <div class="capture-section" style="background: #f5f5f5; padding: 15px;">
+        <h3>Device Layout Reference</h3>
+        <pre style="font-size: 12px; line-height: 1.4;">
+╔═══════════════════════════════════════════════════════════════╗
+║  ENCODERS Row 1 (Send A):  [⊕] [⊕] [⊕] [⊕] [⊕] [⊕] [⊕] [⊕]   ║  ← Each encoder has ring LEDs
+║  ENCODERS Row 2 (Send B):  [⊕] [⊕] [⊕] [⊕] [⊕] [⊕] [⊕] [⊕]   ║  ← Each encoder has ring LEDs
+║  ENCODERS Row 3 (Pan/Dev): [⊕] [⊕] [⊕] [⊕] [⊕] [⊕] [⊕] [⊕]   ║  ← Each encoder has ring LEDs
+║                                                               ║
+║  BUTTONS Row 1 (Track Focus): [●] [●] [●] [●] [●] [●] [●] [●] ║  ← Each button has embedded LED
+║  BUTTONS Row 2 (Track Ctrl):  [●] [●] [●] [●] [●] [●] [●] [●] ║  ← Each button has embedded LED
+║                                                               ║
+║  SLIDERS (Volume):     [│] [│] [│] [│] [│] [│] [│] [│]        ║  ← NO LEDs on sliders
+╚═══════════════════════════════════════════════════════════════╝
+
+Total: 24 encoders (with LEDs), 16 buttons (with LEDs), 8 sliders (no LEDs)
+        </pre>
+    </div>
+
+    <div class="capture-section">
+        <h2>Current Phase: <span id="current-phase">Ready</span></h2>
+        <div id="status" class="status ready">Ready to begin protocol capture</div>
+
+        <button class="phase-button" onclick="startPhase('led-control')">Phase 1: LED Control</button>
+        <button class="phase-button" onclick="startPhase('initialization')">Phase 2: Device Init</button>
+        <button class="phase-button" onclick="startPhase('templates')">Phase 3: Templates</button>
+        <button class="phase-button" onclick="startPhase('feedback')">Phase 4: Real-time Feedback</button>
+        <button class="phase-button" onclick="clearLog()">Clear Log</button>
+        <button class="phase-button" onclick="exportCapturedData()">Export Data</button>
+    </div>
+
+    <div class="capture-section">
+        <h3>MIDI Message Log</h3>
+        <div id="midi-log" class="midi-log"></div>
+    </div>
+
+    <div class="capture-section">
+        <h3>Captured Data Summary</h3>
+        <pre id="summary">No data captured yet</pre>
+    </div>
+
+    <script>
+        let midiAccess = null;
+        let midiInput = null;
+        let midiOutput = null;
+        let currentPhase = 'ready';
+        let capturedData = {
+            ledControl: [],
+            initialization: [],
+            templates: [],
+            feedback: []
+        };
+
+        // Initialize MIDI
+        async function initMIDI() {
+            try {
+                midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+                console.log('MIDI access granted');
+
+                // Find Launch Control XL 3 ports
+                for (let input of midiAccess.inputs.values()) {
+                    console.log(`Found input: ${input.name}`);
+                    if (input.name.includes('LCXL3')) {
+                        midiInput = input;
+                        input.onmidimessage = handleMIDIMessage;
+                        console.log(`Connected to Launch Control XL 3 input: ${input.name}`);
+                    }
+                }
+
+                for (let output of midiAccess.outputs.values()) {
+                    console.log(`Found output: ${output.name}`);
+                    if (output.name.includes('LCXL3')) {
+                        midiOutput = output;
+                        console.log(`Connected to Launch Control XL 3 output: ${output.name}`);
+                    }
+                }
+
+                if (midiInput || midiOutput) {
+                    updateStatus('Launch Control XL 3 connected! Ready for protocol capture.', 'ready');
+                } else {
+                    updateStatus('MIDI initialized but Launch Control XL 3 not found. Check connections.', 'ready');
+                }
+            } catch (error) {
+                console.error('Failed to get MIDI access:', error);
+                updateStatus('ERROR: Could not access MIDI. Check browser permissions.', 'error');
+            }
+        }
+
+        function handleMIDIMessage(message) {
+            const timestamp = Date.now();
+            const data = Array.from(message.data);
+            const hex = data.map(b => b.toString(16).padStart(2, '0')).join(' ');
+
+            const logEntry = {
+                timestamp,
+                phase: currentPhase,
+                data: data,
+                hex: hex,
+                type: getMIDIMessageType(data[0]),
+                channel: (data[0] & 0x0F) + 1,
+                portName: message.target.name
+            };
+
+            // Special handling for different message types
+            if ((data[0] & 0xF0) === 0x90) {
+                // Note On - likely button press/LED control
+                logEntry.note = data[1];
+                logEntry.velocity = data[2];
+                logEntry.description = `Button/LED: Note ${data[1]}, Velocity ${data[2]}`;
+            } else if ((data[0] & 0xF0) === 0xB0) {
+                // Control Change
+                logEntry.cc = data[1];
+                logEntry.value = data[2];
+                logEntry.description = `CC ${data[1]}: Value ${data[2]}`;
+            } else if (data[0] === 0xF0) {
+                // SysEx
+                logEntry.description = `SysEx: ${data.length} bytes`;
+            }
+
+            // Store in appropriate phase
+            if (currentPhase !== 'ready') {
+                capturedData[currentPhase].push(logEntry);
+            }
+
+            // Display in log
+            const logDiv = document.getElementById('midi-log');
+            const entry = document.createElement('div');
+            entry.innerHTML = `[${new Date(timestamp).toLocaleTimeString()}] <span style="color: yellow">${currentPhase.toUpperCase()}</span>: ${hex} <span style="color: cyan">(${logEntry.type}${logEntry.description ? ' - ' + logEntry.description : ''})</span>`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+
+            updateSummary();
+        }
+
+        function getMIDIMessageType(statusByte) {
+            const type = statusByte & 0xF0;
+            switch(type) {
+                case 0x80: return 'Note Off';
+                case 0x90: return 'Note On';
+                case 0xB0: return 'Control Change';
+                case 0xC0: return 'Program Change';
+                case 0xD0: return 'Channel Pressure';
+                case 0xE0: return 'Pitch Bend';
+                case 0xF0:
+                    if (statusByte === 0xF0) return 'SysEx Start';
+                    if (statusByte === 0xF7) return 'SysEx End';
+                    return 'System';
+                default: return `Unknown (0x${statusByte.toString(16)})`;
+            }
+        }
+
+        function startPhase(phase) {
+            currentPhase = phase.replace('-', '');
+            document.getElementById('current-phase').textContent = phase.toUpperCase();
+
+            const instructions = {
+                'led-control': 'Test LED control for different control types:\n1. ENCODERS (3 rows x 8): Turn each encoder and check if ring LEDs change\n2. BUTTONS Row 1 (8 buttons): Press each button, observe embedded LED colors\n3. BUTTONS Row 2 (8 buttons): Press each button, observe embedded LED colors\n4. SLIDERS: Move each slider (no LEDs expected)\n5. Try Template/User mode switches if present',
+                'initialization': 'Disconnect and reconnect the USB cable. Wait 30 seconds after reconnection to capture full init sequence.',
+                'templates': 'Use Template buttons to cycle through all factory presets. Spend 5 seconds on each template. Try User templates too.',
+                'feedback': 'Physical control test:\n1. Turn all 24 encoders slowly (3 rows x 8)\n2. Move all 8 sliders from bottom to top\n3. Press all 16 buttons (2 rows x 8)\n4. Check if web app responds to physical controls.'
+            };
+
+            updateStatus(`CAPTURING: ${instructions[phase]}`, 'capturing');
+
+            // Clear log for this phase
+            if (confirm('Clear log for new phase?')) {
+                capturedData[currentPhase] = [];
+            }
+        }
+
+        function updateStatus(message, type) {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        function updateSummary() {
+            const summary = document.getElementById('summary');
+            let summaryText = 'Messages captured:\n';
+
+            Object.keys(capturedData).forEach(phase => {
+                const messages = capturedData[phase];
+                summaryText += `\n${phase.toUpperCase()}: ${messages.length} messages\n`;
+
+                if (messages.length > 0) {
+                    // Count message types
+                    const types = {};
+                    messages.forEach(msg => {
+                        types[msg.type] = (types[msg.type] || 0) + 1;
+                    });
+
+                    Object.keys(types).forEach(type => {
+                        summaryText += `  - ${type}: ${types[type]}\n`;
+                    });
+                }
+            });
+
+            summary.textContent = summaryText;
+        }
+
+        function clearLog() {
+            if (confirm('Clear all captured data?')) {
+                document.getElementById('midi-log').innerHTML = '';
+                capturedData = {
+                    ledControl: [],
+                    initialization: [],
+                    templates: [],
+                    feedback: []
+                };
+                updateSummary();
+                currentPhase = 'ready';
+                document.getElementById('current-phase').textContent = 'Ready';
+                updateStatus('Log cleared. Ready for new capture session.', 'ready');
+            }
+        }
+
+        // Export captured data function
+        function exportCapturedData() {
+            const dataStr = JSON.stringify(capturedData, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `launch-control-xl3-protocol-${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Make data accessible from console
+        window.getCapturedData = () => capturedData;
+        window.exportCapturedData = exportCapturedData;
+
+        // Auto-initialize when page loads
+        window.addEventListener('load', initMIDI);
+    </script>
+</body>
+</html>
