@@ -4,7 +4,7 @@
  * Provides abstraction layer for different MIDI backends (node-midi, Web MIDI API, etc.)
  */
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'eventemitter3';
 
 // Base MIDI Message type
 export interface MidiMessage {
@@ -352,6 +352,16 @@ export class MidiInterface extends EventEmitter {
       console.debug('node-midi not available:', err);
     }
 
+    // Try Web MIDI API (browser environment)
+    try {
+      const { WebMidiBackend } = await import('./backends/WebMidiBackend.js');
+      if (WebMidiBackend.isAvailable()) {
+        return new WebMidiBackend();
+      }
+    } catch (err) {
+      console.debug('Web MIDI API not available:', err);
+    }
+
     // Try MidiVal (works in both Node and browser)
     try {
       const { MidiValBackend } = await import('./backends/MidiValBackend.js');
@@ -359,9 +369,6 @@ export class MidiInterface extends EventEmitter {
     } catch (err) {
       console.debug('MidiVal not available:', err);
     }
-
-    // Browser-based backends are not implemented yet
-    // TODO: Implement WebMidiBackend and JzzBackend
 
     // Use mock backend as last resort (for testing)
     const { MockMidiBackend } = await import('./backends/MockMidiBackend.js');

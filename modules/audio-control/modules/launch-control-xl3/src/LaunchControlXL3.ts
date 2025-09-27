@@ -6,7 +6,7 @@
  * mapping, LED control, and custom modes.
  */
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'eventemitter3';
 import { MidiBackendInterface, MidiMessage } from './core/MidiInterface.js';
 import { DeviceManager, DeviceStatus } from './device/DeviceManager.js';
 import { CustomModeManager, CONTROL_IDS, LED_COLORS } from './modes/CustomModeManager.js';
