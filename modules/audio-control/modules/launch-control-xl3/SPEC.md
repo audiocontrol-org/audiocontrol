@@ -47,8 +47,8 @@ features should be deferred to later phases.
     - [x] Install and configure essential dependencies
 
 ### Feature MVP.1: Multiple Environment Support with a Common API
-- [ ] The library API supports MIDI communication in node execution environments
-- [ ] The library API supports MIDI communication in WebMIDI browser execution environments 
+- [x] The library API supports MIDI communication in node execution environments
+- [x] The library API supports MIDI communication in WebMIDI browser execution environments 
 
 ### Feature MVP.2: Device Handshake
 
