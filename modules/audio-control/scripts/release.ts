@@ -51,17 +51,38 @@ ${modules.map(name => `- ${name}@${version}`).join('\n')}
 
 Published to npm with Apache-2.0 license.
 
-**Module**: \`modules/audio-control\` within the ol_dsp monorepo`;
+**Module**: \`modules/audio-control\` within the ol_dsp monorepo
+
+## Installation
+
+\`\`\`bash
+npm install ${modules[0]}
+\`\`\`
+
+See individual package READMEs for usage details.`;
+
+  console.log(`\nCreating module tarball...`);
+  const tarballName = `audio-control-${version}.tar.gz`;
+  const tarballPath = join(rootDir, tarballName);
+
+  // Create tarball of just this module directory
+  execCommand(`tar -czf "${tarballPath}" --exclude node_modules --exclude dist --exclude '*.tsbuildinfo' .`, rootDir);
+  console.log(`✓ Created ${tarballName}`);
 
   console.log(`\nCreating GitHub release ${tag}...`);
 
   try {
-    execCommand(`gh release create "${tag}" --title "${title}" --notes "${notes}"`, rootDir);
+    execCommand(`gh release create "${tag}" --title "${title}" --notes "${notes}" "${tarballPath}"`, rootDir);
     console.log(`✓ GitHub release created: ${tag}`);
+
+    // Clean up tarball
+    execCommand(`rm -f "${tarballPath}"`, rootDir);
   } catch (error) {
     console.error('⚠️  Failed to create GitHub release');
     console.error('You can create it manually with:');
-    console.error(`  gh release create "${tag}" --title "${title}" --notes "${notes}"`);
+    console.error(`  gh release create "${tag}" --title "${title}" --notes "${notes}" "${tarballPath}"`);
+    // Clean up tarball even on error
+    execCommand(`rm -f "${tarballPath}"`, rootDir);
     throw error;
   }
 }
