@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/ardour-midi-maps",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "MIDI map configuration utilities for Ardour DAW",
   "type": "module",
   "main": "./dist/index.js",
