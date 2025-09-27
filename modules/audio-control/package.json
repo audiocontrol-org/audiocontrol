@@ -14,6 +14,7 @@
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
+    "prepublishOnly": "tsx scripts/copy-license.ts",
     "generate:ardour": "cd modules/ardour-midi-maps && pnpm generate",
     "generate:ardour:install": "cd modules/ardour-midi-maps && pnpm generate:install",
     "plugin:list": "../../cmake-build/modules/juce/host/plughost_artefacts/plughost --list",
@@ -24,7 +25,7 @@
   },
   "keywords": ["audio", "midi", "daw", "control-surface"],
   "author": "",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "engines": {
     "node": ">=18",
     "pnpm": ">=8"

@@ -30,3 +30,6 @@ pnpm-lock.yamltmp/
 
 # Garbage
 tmp/
+# Generated license files
+modules/*/LICENSE
+*~

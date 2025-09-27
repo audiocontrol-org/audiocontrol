@@ -14,7 +14,8 @@
   "files": [
     "dist",
     "src",
-    "maps"
+    "maps",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -b",
@@ -46,7 +47,7 @@
     "canonical"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "engines": {
     "node": ">=18"
   },
