@@ -20,7 +20,8 @@
   },
   "files": [
     "dist",
-    "src"
+    "src",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsc -b && vite build",
@@ -53,7 +54,7 @@
     "typescript"
   ],
   "author": "",
-  "license": "MIT",
+  "license": "Apache-2.0",
   "engines": {
     "node": ">=18"
   },
