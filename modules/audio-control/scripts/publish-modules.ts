@@ -73,10 +73,6 @@ function publishModules() {
   }
 
   console.log('\n=== Publish Complete ===');
-  console.log('\nNext steps:');
-  console.log('  git add .');
-  console.log(`  git commit -m "chore(release): publish v${getVersion(rootDir)}"`);
-  console.log('  git push');
 }
 
 function getVersion(rootDir: string): string {

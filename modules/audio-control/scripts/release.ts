@@ -42,7 +42,6 @@ function getPublishedModules(rootDir: string): string[] {
 }
 
 function createGitHubRelease(rootDir: string, version: string, modules: string[]): void {
-  console.log('\nStep 3: Create GitHub release');
 
   const tag = `audio-control@${version}`;
   const title = `audio-control ${version}`;
@@ -92,10 +91,19 @@ function release() {
   console.log('\nStep 2: Publish modules');
   execCommand('tsx scripts/publish-modules.ts', rootDir);
 
+  console.log('\nStep 3: Commit version changes');
+  execCommand('git add .', rootDir);
+  execCommand(`git commit -m "chore(release): publish audio-control@${version}"`, rootDir);
+  console.log(`✓ Committed version ${version}`);
+
+  console.log('\nStep 4: Create GitHub release and push');
   createGitHubRelease(rootDir, version, modules);
+  execCommand('git push origin HEAD --follow-tags', rootDir);
+  console.log('✓ Pushed commits and tags to remote');
 
   console.log('\n=== Release Complete ===');
   console.log(`\n✓ Published ${modules.length} modules at v${version}`);
+  console.log(`✓ Committed and pushed audio-control@${version}`);
   console.log(`✓ Created GitHub release: audio-control@${version}`);
 }
 
