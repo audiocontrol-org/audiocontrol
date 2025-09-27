@@ -44,13 +44,15 @@ function getPublishedModules(rootDir: string): string[] {
 function createGitHubRelease(rootDir: string, version: string, modules: string[]): void {
   console.log('\nStep 3: Create GitHub release');
 
-  const tag = `v${version}`;
-  const title = `Release ${version}`;
+  const tag = `audio-control@${version}`;
+  const title = `audio-control ${version}`;
   const notes = `## Published Modules
 
 ${modules.map(name => `- ${name}@${version}`).join('\n')}
 
-Published to npm with Apache-2.0 license.`;
+Published to npm with Apache-2.0 license.
+
+**Module**: \`modules/audio-control\` within the ol_dsp monorepo`;
 
   console.log(`\nCreating GitHub release ${tag}...`);
 
@@ -94,7 +96,7 @@ function release() {
 
   console.log('\n=== Release Complete ===');
   console.log(`\n✓ Published ${modules.length} modules at v${version}`);
-  console.log(`✓ Created GitHub release: v${version}`);
+  console.log(`✓ Created GitHub release: audio-control@${version}`);
 }
 
 release();
