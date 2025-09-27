@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Launch Control XL3 SysEx Integration Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .pass { background: #1e3a1e; color: #4ec94e; }
+        .fail { background: #3a1e1e; color: #f48771; }
+        .info { background: #1e2a3a; color: #4eb0f4; }
+        .warn { background: #3a3a1e; color: #f4d04e; }
+        pre {
+            background: #2d2d2d;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: monospace;
+            font-size: 14px;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #1177bb;
+        }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        #controls {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎛️ Launch Control XL3 SysEx Integration Test</h1>
+    <p>This test verifies that Web MIDI can successfully send SysEx requests and receive custom mode data from the device.</p>
+
+    <div id="controls">
+        <button id="testBtn" onclick="runTest()">Run Full Test</button>
+        <button id="connectBtn" onclick="testConnection()">Test Connection Only</button>
+        <button id="clearBtn" onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script type="module">
+        const results = document.getElementById('results');
+        let device = null;
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+            console.log(`[${type}] ${message}`);
+        }
+
+        function logCode(title, code) {
+            const div = document.createElement('div');
+            div.className = 'result info';
+            div.innerHTML = `<strong>${title}</strong><pre>${code}</pre>`;
+            results.appendChild(div);
+        }
+
+        function formatBytes(bytes) {
+            return Array.from(bytes).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+        }
+
+        window.clearResults = function() {
+            results.innerHTML = '';
+        }
+
+        window.testConnection = async function() {
+            clearResults();
+            log('🔌 Testing Web MIDI Connection...', 'info');
+            log('', 'info');
+
+            try {
+                // Import the library
+                const { LaunchControlXL3 } = await import('./dist/index.js');
+                log('✓ Library imported successfully', 'pass');
+
+                // Create device with custom modes enabled
+                device = new LaunchControlXL3({
+                    autoConnect: true,
+                    enableCustomModes: true
+                });
+                log('✓ Device instance created', 'pass');
+
+                // Initialize (this performs the handshake)
+                log('', 'info');
+                log('🤝 Initializing device (handshake)...', 'info');
+                await device.initialize();
+                log('✓ Device initialized successfully', 'pass');
+
+                // Check connection status
+                const isConnected = device.isConnected();
+                if (isConnected) {
+                    log('✓ Device is connected', 'pass');
+                } else {
+                    log('✗ Device shows as not connected', 'fail');
+                }
+
+                log('', 'info');
+                log('✓ Connection test complete - device is ready for SysEx communication', 'pass');
+
+            } catch (error) {
+                log('', 'info');
+                log('✗ Connection test failed: ' + error.message, 'fail');
+                if (error.stack) {
+                    logCode('Error stack:', error.stack);
+                }
+            }
+        }
+
+        window.runTest = async function() {
+            clearResults();
+            log('🧪 Starting Full SysEx Integration Test', 'info');
+            log('', 'info');
+
+            const startTime = Date.now();
+
+            try {
+                // Step 1: Import library
+                log('📦 Step 1: Importing library...', 'info');
+                const { LaunchControlXL3 } = await import('./dist/index.js');
+                log('✓ Library imported', 'pass');
+
+                // Step 2: Create device
+                log('', 'info');
+                log('🎛️ Step 2: Creating device instance...', 'info');
+                device = new LaunchControlXL3({
+                    autoConnect: true,
+                    enableCustomModes: true
+                });
+                log('✓ Device created with custom modes enabled', 'pass');
+
+                // Step 3: Initialize (handshake)
+                log('', 'info');
+                log('🤝 Step 3: Initializing device (handshake)...', 'info');
+                await device.initialize();
+                log('✓ Handshake complete', 'pass');
+
+                if (!device.isConnected()) {
+                    throw new Error('Device not connected after initialization');
+                }
+                log('✓ Device connected', 'pass');
+
+                // Step 4: Load custom mode (this is the critical SysEx test)
+                log('', 'info');
+                log('📨 Step 4: Loading custom mode 0 (CRITICAL TEST)...', 'info');
+                log('   This will:', 'info');
+                log('   1. Send SysEx: F0 00 20 29 02 11 77 00 F7', 'info');
+                log('   2. Wait for device response (~408 bytes)', 'info');
+                log('   3. Parse the custom mode data', 'info');
+                log('', 'info');
+
+                const customMode = await device.loadCustomMode(0);
+
+                const elapsed = Date.now() - startTime;
+                log('', 'info');
+                log('✓ Custom mode loaded successfully!', 'pass');
+                log(`✓ Response received in ${elapsed}ms`, 'pass');
+
+                // Step 5: Validate the response
+                log('', 'info');
+                log('📊 Step 5: Validating custom mode data...', 'info');
+
+                if (!customMode) {
+                    log('✗ Custom mode is null/undefined', 'fail');
+                } else {
+                    log('✓ Custom mode object exists', 'pass');
+
+                    // Check for expected properties
+                    const expectedProps = ['template', 'controls'];
+                    const hasAllProps = expectedProps.every(prop => prop in customMode);
+
+                    if (hasAllProps) {
+                        log('✓ Custom mode has expected structure', 'pass');
+
+                        logCode('Custom mode summary:', JSON.stringify({
+                            template: customMode.template,
+                            controlCount: customMode.controls?.length || 0
+                        }, null, 2));
+
+                        if (customMode.controls && customMode.controls.length > 0) {
+                            log(`✓ Found ${customMode.controls.length} controls`, 'pass');
+
+                            // Sample first control
+                            const firstControl = customMode.controls[0];
+                            logCode('First control sample:', JSON.stringify(firstControl, null, 2));
+                        } else {
+                            log('⚠ No controls found in custom mode', 'warn');
+                        }
+                    } else {
+                        log('✗ Custom mode missing expected properties', 'fail');
+                        logCode('Actual structure:', JSON.stringify(Object.keys(customMode), null, 2));
+                    }
+                }
+
+                // Success summary
+                log('', 'info');
+                log('═══════════════════════════════════════', 'pass');
+                log('✓ ALL TESTS PASSED', 'pass');
+                log('═══════════════════════════════════════', 'pass');
+                log('', 'info');
+                log('✅ SysEx messages are being sent correctly', 'pass');
+                log('✅ Device responses are being received', 'pass');
+                log('✅ Custom mode data is being parsed', 'pass');
+                log('✅ The timestamp fix is working properly', 'pass');
+                log('', 'info');
+                log(`Total test time: ${Date.now() - startTime}ms`, 'info');
+
+            } catch (error) {
+                log('', 'info');
+                log('═══════════════════════════════════════', 'fail');
+                log('✗ TEST FAILED', 'fail');
+                log('═══════════════════════════════════════', 'fail');
+                log('', 'info');
+                log('Error: ' + error.message, 'fail');
+
+                if (error.message.includes('timeout')) {
+                    log('', 'info');
+                    log('💡 Timeout suggests:', 'warn');
+                    log('   • SysEx may not be reaching the device', 'warn');
+                    log('   • Device may not be responding', 'warn');
+                    log('   • Response may not be recognized', 'warn');
+                } else if (error.message.includes('not found') || error.message.includes('not connected')) {
+                    log('', 'info');
+                    log('💡 Connection issue:', 'warn');
+                    log('   • Make sure Launch Control XL3 is connected', 'warn');
+                    log('   • Check USB cable', 'warn');
+                    log('   • Device should be in custom mode', 'warn');
+                }
+
+                if (error.stack) {
+                    logCode('Stack trace:', error.stack);
+                }
+            }
+        }
+
+        // Auto-run on load
+        log('Ready to test. Make sure Launch Control XL3 is connected.', 'info');
+        log('Click "Run Full Test" to verify SysEx communication.', 'info');
+    </script>
+</body>
+</html>

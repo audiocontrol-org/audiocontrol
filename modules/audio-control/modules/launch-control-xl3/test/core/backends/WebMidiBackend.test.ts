@@ -486,18 +486,20 @@ describe('WebMidiBackend', () => {
       expect(mockPort.send).toHaveBeenCalledWith([0x90, 0x40, 0x7F]);
     });
 
-    it('should send MIDI message with timestamp', async () => {
+    it('should send MIDI message ignoring timestamp (Web MIDI incompatibility)', async () => {
       const port = await backend.openOutput('output-1');
       const mockPort = mockMIDIAccess.outputs.get('output-1')!;
 
       const message: MidiMessage = {
         data: [0x90, 0x40, 0x7F],
-        timestamp: 12345
+        timestamp: Date.now() // Date.now() incompatible with Web MIDI timestamps
       };
 
       await backend.sendMessage(port, message);
 
-      expect(mockPort.send).toHaveBeenCalledWith([0x90, 0x40, 0x7F], 12345);
+      // Should NOT pass timestamp to Web MIDI (Date.now() vs performance.now() incompatibility)
+      expect(mockPort.send).toHaveBeenCalledWith([0x90, 0x40, 0x7F]);
+      expect(mockPort.send).not.toHaveBeenCalledWith(expect.anything(), expect.any(Number));
     });
 
     it('should send SysEx message successfully', async () => {

@@ -196,12 +196,11 @@ export class WebMidiBackend implements MidiBackendInterface {
         ? message.data as number[]
         : Array.from(message.data);
 
-      // Send message with timestamp (if provided)
-      if (message.timestamp) {
-        midiOutput.send(data, message.timestamp);
-      } else {
-        midiOutput.send(data);
-      }
+      // Send message immediately (no timestamp)
+      // Note: We don't pass message.timestamp because it uses Date.now()
+      // which is incompatible with Web MIDI's performance.now() timestamps.
+      // Web MIDI expects timestamps relative to page load, not Unix epoch.
+      midiOutput.send(data);
     } catch (error: any) {
       throw new Error(`Failed to send message to port ${port.id}: ${error.message}`);
     }
