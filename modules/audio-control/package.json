@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/audio-control",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "private": true,
   "description": "Monorepo for audio device control utilities",
   "type": "module",
@@ -15,6 +15,9 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
     "prepublishOnly": "tsx scripts/copy-license.ts",
+    "version:bump": "tsx scripts/bump-version.ts",
+    "publish:modules": "tsx scripts/publish-modules.ts",
+    "release": "tsx scripts/release.ts",
     "generate:ardour": "cd modules/ardour-midi-maps && pnpm generate",
     "generate:ardour:install": "cd modules/ardour-midi-maps && pnpm generate:install",
     "plugin:list": "../../cmake-build/modules/juce/host/plughost_artefacts/plughost --list",
@@ -23,7 +26,12 @@
     "plugin:interrogate:all": "tsx tools/plugin-interrogator.ts --all",
     "plugin:interrogate:all:text": "tsx tools/plugin-interrogator.ts --all --text"
   },
-  "keywords": ["audio", "midi", "daw", "control-surface"],
+  "keywords": [
+    "audio",
+    "midi",
+    "daw",
+    "control-surface"
+  ],
   "author": "",
   "license": "Apache-2.0",
   "engines": {
