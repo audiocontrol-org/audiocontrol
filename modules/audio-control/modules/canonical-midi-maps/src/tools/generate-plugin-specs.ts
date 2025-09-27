@@ -222,8 +222,8 @@ Output:
       for (const line of lines) {
         const match = line.match(/Next Plugin: <Format:([^>]+)>, <Name: ([^>]+)>/);
         if (match) {
-          const format = match[1];
-          const name = match[2];
+          const format = match[1]!;
+          const name = match[2]!;
 
           // Apply format filter if specified
           if (this.args.format && format !== this.args.format) {
