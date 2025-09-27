@@ -1,6 +1,13 @@
 #!/usr/bin/env tsx
 import { execSync } from 'child_process';
 import { join } from 'path';
+import { readFileSync, readdirSync, statSync } from 'fs';
+
+interface PackageJson {
+  name: string;
+  version: string;
+  private?: boolean;
+}
 
 function execCommand(command: string, cwd?: string): void {
   console.log(`\n→ ${command}`);
@@ -9,6 +16,53 @@ function execCommand(command: string, cwd?: string): void {
     stdio: 'inherit',
     encoding: 'utf-8',
   });
+}
+
+function getVersion(rootDir: string): string {
+  const pkg: PackageJson = JSON.parse(readFileSync(join(rootDir, 'package.json'), 'utf-8'));
+  return pkg.version;
+}
+
+function getPublishedModules(rootDir: string): string[] {
+  const modulesDir = join(rootDir, 'modules');
+  const modules = readdirSync(modulesDir).filter((name) => {
+    const modulePath = join(modulesDir, name);
+    return statSync(modulePath).isDirectory();
+  });
+
+  const published: string[] = [];
+  for (const moduleName of modules) {
+    const packagePath = join(modulesDir, moduleName, 'package.json');
+    const pkg: PackageJson = JSON.parse(readFileSync(packagePath, 'utf-8'));
+    if (!pkg.private) {
+      published.push(pkg.name);
+    }
+  }
+  return published;
+}
+
+function createGitHubRelease(rootDir: string, version: string, modules: string[]): void {
+  console.log('\nStep 3: Create GitHub release');
+
+  const tag = `v${version}`;
+  const title = `Release ${version}`;
+  const notes = `## Published Modules
+
+${modules.map(name => `- ${name}@${version}`).join('\n')}
+
+Published to npm with Apache-2.0 license.`;
+
+  console.log(`\nCreating GitHub release ${tag}...`);
+
+  try {
+    execCommand(`gh release create "${tag}" --title "${title}" --notes "${notes}"`, rootDir);
+    console.log(`✓ GitHub release created: ${tag}`);
+  } catch (error) {
+    console.error('⚠️  Failed to create GitHub release');
+    console.error('You can create it manually with:');
+    console.error(`  gh release create "${tag}" --title "${title}" --notes "${notes}"`);
+    throw error;
+  }
 }
 
 function release() {
@@ -30,10 +84,17 @@ function release() {
   console.log('Step 1: Bump version');
   execCommand(`tsx scripts/bump-version.ts ${bumpType}`, rootDir);
 
+  const version = getVersion(rootDir);
+  const modules = getPublishedModules(rootDir);
+
   console.log('\nStep 2: Publish modules');
   execCommand('tsx scripts/publish-modules.ts', rootDir);
 
+  createGitHubRelease(rootDir, version, modules);
+
   console.log('\n=== Release Complete ===');
+  console.log(`\n✓ Published ${modules.length} modules at v${version}`);
+  console.log(`✓ Created GitHub release: v${version}`);
 }
 
 release();
