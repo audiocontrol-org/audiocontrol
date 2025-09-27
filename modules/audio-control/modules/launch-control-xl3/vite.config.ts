@@ -22,7 +22,6 @@ export default defineConfig({
         'zod',
         // Node.js built-ins
         'module',
-        'events',
         'fs',
         'path',
         'util',

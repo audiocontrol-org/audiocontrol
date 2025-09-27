@@ -410,6 +410,85 @@ npm run test:coverage
 - ✅ **Linux** (Ubuntu 20.04+ tested)
 - ✅ **Browser** (Chrome 90+, Edge 90+)
 
+## 🌐 Browser Support
+
+As of v2.0.0, `@ol-dsp/launch-control-xl3` supports browser environments using the Web MIDI API!
+
+### Browser Requirements
+
+- Chrome 43+ or Edge 79+ (Chromium-based)
+- Opera 30+
+- HTTPS required (or localhost for development)
+- User permission for MIDI access
+
+**Note**: Safari does not currently support Web MIDI API.
+
+### Browser Usage Example
+
+```typescript
+import { LaunchControlXL3 } from '@ol-dsp/launch-control-xl3';
+
+// Auto-detects Web MIDI API in browser
+const device = new LaunchControlXL3({
+  autoConnect: true,
+  enableCustomModes: true
+});
+
+// Request permission and initialize
+await device.initialize();
+
+// Use just like in Node.js!
+device.on('device:connected', () => {
+  console.log('LCXL3 connected!');
+});
+
+// Load custom mode from device
+const mode = await device.loadCustomMode(0);
+console.log('Current mode:', mode);
+```
+
+### React Example
+
+```typescript
+import { useEffect, useState } from 'react';
+import { LaunchControlXL3 } from '@ol-dsp/launch-control-xl3';
+
+function useLCXL3Device() {
+  const [device] = useState(() => new LaunchControlXL3({
+    autoConnect: true,
+    enableCustomModes: true
+  }));
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    device.on('device:connected', () => setConnected(true));
+    device.on('device:disconnected', () => setConnected(false));
+
+    device.initialize().catch(console.error);
+
+    return () => device.cleanup();
+  }, [device]);
+
+  return { device, connected };
+}
+```
+
+### Troubleshooting Browser Usage
+
+**Permission Denied**
+- Web MIDI requires user permission on first access
+- Must be served over HTTPS (localhost is ok for dev)
+- Some browsers may block in iframes
+
+**Device Not Found**
+- Ensure LCXL3 is connected before initializing
+- Check browser's MIDI permission settings
+- Try refreshing the page after connecting device
+
+**SysEx Not Working**
+- Ensure you're requesting SysEx permission (done automatically)
+- Some browsers may have additional SysEx restrictions
+
 ## 🐛 Troubleshooting
 
 ### Device Not Found

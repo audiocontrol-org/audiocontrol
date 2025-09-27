@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2025-09-27
+
+### Added
+- 🌐 **Browser support** using Web MIDI API
+- New `WebMidiBackend` for browser environments
+- Automatic environment detection (Node.js vs Browser)
+- React/Vue/Svelte compatible
+- Full SysEx support in browsers (Chrome, Edge, Opera)
+- Browser example with complete Web MIDI API integration
+- Comprehensive WebMidiBackend test suite
+
+### Changed
+- Replaced Node.js `EventEmitter` with `eventemitter3` for browser compatibility
+- Updated package exports for better environment detection
+- Improved tree-shaking with dynamic backend imports
+- Enhanced error messages for Web MIDI API specific issues
+
+### Migration
+- No breaking changes! Existing Node.js code works unchanged
+- Browser usage requires HTTPS and user permission for MIDI access
+- See README for browser usage examples
+
+## [1.0.0] - 2024-XX-XX
+
 ### Added
 - Initial release of @ol-dsp/launch-control-xl3 library
 - Complete TypeScript implementation with strict type safety

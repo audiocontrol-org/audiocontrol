@@ -5,7 +5,7 @@
  * on the Launch Control XL 3 device.
  */
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'eventemitter3';
 import { DeviceManager } from '../device/DeviceManager.js';
 import { SysExParser } from '../core/SysExParser.js';
 import { LedColor, LedBehaviour } from '../types/index.js';

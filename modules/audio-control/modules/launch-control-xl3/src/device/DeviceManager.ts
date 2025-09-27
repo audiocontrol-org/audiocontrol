@@ -5,7 +5,7 @@
  * with the Launch Control XL 3 hardware via MIDI and SysEx.
  */
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'eventemitter3';
 import {
   MidiInterface,
   MidiPortInfo,

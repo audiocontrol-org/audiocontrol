@@ -5,7 +5,7 @@
  * scaling, and behavior management for different control types.
  */
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'eventemitter3';
 import {
   ControlMapping,
   ControlBehaviour,

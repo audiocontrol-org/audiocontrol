@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Launch Control XL3 - Browser Example</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .status {
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+      font-weight: bold;
+    }
+    .status.disconnected {
+      background: #ffe6e6;
+      color: #d63031;
+      border: 1px solid #fab1a0;
+    }
+    .status.connected {
+      background: #e6f8e6;
+      color: #00b894;
+      border: 1px solid #81ecec;
+    }
+    .status.connecting {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffd93d;
+    }
+    button {
+      background: #0984e3;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 5px;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #74b9ff;
+    }
+    button:disabled {
+      background: #ddd;
+      cursor: not-allowed;
+    }
+    .output {
+      background: #2d3436;
+      color: #ddd;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 15px 0;
+      font-family: 'Courier New', monospace;
+      white-space: pre-wrap;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 10px;
+      margin: 20px 0;
+    }
+    .error {
+      background: #ffe6e6;
+      color: #d63031;
+      border: 1px solid #fab1a0;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+    .info {
+      background: #e3f2fd;
+      color: #1976d2;
+      border: 1px solid #bbdefb;
+      padding: 10px;
+      border-radius: 4px;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎛️ Launch Control XL3 Browser Test</h1>
+
+    <div class="info">
+      <strong>Requirements:</strong>
+      <ul>
+        <li>Chrome 43+, Edge 79+, or Opera 30+</li>
+        <li>HTTPS connection (or localhost for development)</li>
+        <li>Launch Control XL3 connected via USB</li>
+        <li>User permission for MIDI access</li>
+      </ul>
+    </div>
+
+    <div id="status" class="status disconnected">Not connected</div>
+
+    <div class="controls">
+      <button id="connectBtn">Connect to LCXL3</button>
+      <button id="disconnectBtn" disabled>Disconnect</button>
+      <button id="loadModeBtn" disabled>Load Current Mode</button>
+      <button id="ledTestBtn" disabled>Test LEDs</button>
+      <button id="clearOutputBtn">Clear Output</button>
+    </div>
+
+    <div id="error" class="error" style="display: none;"></div>
+
+    <h3>Output:</h3>
+    <pre id="output" class="output">Ready to connect to Launch Control XL3...
+Make sure your device is connected and click "Connect to LCXL3".</pre>
+  </div>
+
+  <!-- Import the library from CDN or your built dist -->
+  <script type="module">
+    // In a real project, you would import from your dist folder or CDN
+    // import { LaunchControlXL3 } from './dist/index.js';
+
+    // For this example, we'll create a minimal mock for demonstration
+    // Replace this with the actual import in your project
+    class LaunchControlXL3 {
+      constructor(options = {}) {
+        this.options = options;
+        this.connected = false;
+        this.listeners = {};
+      }
+
+      on(event, callback) {
+        if (!this.listeners[event]) {
+          this.listeners[event] = [];
+        }
+        this.listeners[event].push(callback);
+      }
+
+      emit(event, ...args) {
+        if (this.listeners[event]) {
+          this.listeners[event].forEach(callback => callback(...args));
+        }
+      }
+
+      async initialize() {
+        log('Initializing Web MIDI API...');
+
+        if (!navigator.requestMIDIAccess) {
+          throw new Error('Web MIDI API not available. Please use Chrome, Edge, or Opera.');
+        }
+
+        try {
+          const midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+          log('Web MIDI API initialized successfully');
+          log(`SysEx enabled: ${midiAccess.sysexEnabled}`);
+
+          // List available ports
+          const inputs = Array.from(midiAccess.inputs.values());
+          const outputs = Array.from(midiAccess.outputs.values());
+
+          log(`Found ${inputs.length} input ports and ${outputs.length} output ports`);
+
+          inputs.forEach((port, index) => {
+            log(`Input ${index}: ${port.name} (${port.manufacturer || 'Unknown'})`);
+          });
+
+          outputs.forEach((port, index) => {
+            log(`Output ${index}: ${port.name} (${port.manufacturer || 'Unknown'})`);
+          });
+
+          this.midiAccess = midiAccess;
+          return midiAccess;
+        } catch (error) {
+          if (error.name === 'SecurityError') {
+            throw new Error('MIDI access denied. Please allow MIDI permissions and ensure HTTPS.');
+          } else if (error.name === 'NotSupportedError') {
+            throw new Error('Web MIDI API not supported in this browser.');
+          } else {
+            throw new Error(`Failed to initialize Web MIDI API: ${error.message}`);
+          }
+        }
+      }
+
+      async connect() {
+        if (!this.midiAccess) {
+          throw new Error('Not initialized. Call initialize() first.');
+        }
+
+        log('Searching for Launch Control XL3...');
+
+        // Look for LCXL3 in available ports
+        const inputs = Array.from(this.midiAccess.inputs.values());
+        const outputs = Array.from(this.midiAccess.outputs.values());
+
+        const lcxlInput = inputs.find(port =>
+          port.name && port.name.toLowerCase().includes('launch control')
+        );
+
+        const lcxlOutput = outputs.find(port =>
+          port.name && port.name.toLowerCase().includes('launch control')
+        );
+
+        if (!lcxlInput || !lcxlOutput) {
+          throw new Error('Launch Control XL3 not found. Please check connection.');
+        }
+
+        try {
+          await lcxlInput.open();
+          await lcxlOutput.open();
+
+          this.inputPort = lcxlInput;
+          this.outputPort = lcxlOutput;
+          this.connected = true;
+
+          // Set up message handler
+          lcxlInput.onmidimessage = (event) => {
+            const data = Array.from(event.data);
+            log(`MIDI In: [${data.map(b => `0x${b.toString(16).padStart(2, '0')}`).join(', ')}]`);
+            this.emit('midi:in', { data, timestamp: event.timeStamp });
+          };
+
+          log(`Connected to: ${lcxlInput.name}`);
+          this.emit('device:connected', {
+            name: lcxlInput.name,
+            manufacturer: lcxlInput.manufacturer || 'Novation'
+          });
+
+        } catch (error) {
+          throw new Error(`Failed to open MIDI ports: ${error.message}`);
+        }
+      }
+
+      disconnect() {
+        if (this.inputPort) {
+          this.inputPort.close();
+          this.inputPort = null;
+        }
+        if (this.outputPort) {
+          this.outputPort.close();
+          this.outputPort = null;
+        }
+        this.connected = false;
+        log('Disconnected from device');
+        this.emit('device:disconnected', 'User disconnection');
+      }
+
+      async loadCustomMode(slot) {
+        if (!this.connected) {
+          throw new Error('Device not connected');
+        }
+
+        log(`Loading custom mode from slot ${slot}...`);
+
+        // Simulate mode loading
+        const mockMode = {
+          name: `Custom Mode ${slot}`,
+          slot,
+          controls: {
+            FADER1: { channel: 0, cc: 7, min: 0, max: 127 },
+            FADER2: { channel: 0, cc: 1, min: 0, max: 127 }
+          },
+          colors: {
+            FOCUS1: { color: 'GREEN_FULL', behaviour: 'static' }
+          }
+        };
+
+        log(`Loaded mode: ${mockMode.name}`);
+        return mockMode;
+      }
+
+      async testLeds() {
+        if (!this.connected) {
+          throw new Error('Device not connected');
+        }
+
+        log('Starting LED test...');
+
+        // Simulate LED test sequence
+        const colors = ['RED_FULL', 'AMBER_FULL', 'YELLOW_FULL', 'GREEN_FULL'];
+        const controls = ['FOCUS1', 'FOCUS2', 'FOCUS3', 'FOCUS4'];
+
+        for (let i = 0; i < colors.length; i++) {
+          log(`Setting ${controls[i]} to ${colors[i]}`);
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        log('LED test completed');
+      }
+
+      cleanup() {
+        this.disconnect();
+        this.listeners = {};
+        log('Cleanup completed');
+      }
+    }
+
+    // UI Elements
+    const statusEl = document.getElementById('status');
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const loadModeBtn = document.getElementById('loadModeBtn');
+    const ledTestBtn = document.getElementById('ledTestBtn');
+    const clearOutputBtn = document.getElementById('clearOutputBtn');
+    const outputEl = document.getElementById('output');
+    const errorEl = document.getElementById('error');
+
+    // Create device instance
+    const device = new LaunchControlXL3({
+      autoConnect: false,
+      enableCustomModes: true,
+      enableLedControl: true
+    });
+
+    // Utility functions
+    function log(message) {
+      const timestamp = new Date().toLocaleTimeString();
+      outputEl.textContent += `[${timestamp}] ${message}\n`;
+      outputEl.scrollTop = outputEl.scrollHeight;
+    }
+
+    function showError(message) {
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      log(`ERROR: ${message}`);
+    }
+
+    function hideError() {
+      errorEl.style.display = 'none';
+    }
+
+    function updateStatus(status, message) {
+      statusEl.className = `status ${status}`;
+      statusEl.textContent = message;
+    }
+
+    function updateButtons(connected) {
+      connectBtn.disabled = connected;
+      disconnectBtn.disabled = !connected;
+      loadModeBtn.disabled = !connected;
+      ledTestBtn.disabled = !connected;
+    }
+
+    // Event listeners
+    device.on('device:connected', (info) => {
+      updateStatus('connected', `Connected: ${info.name}`);
+      updateButtons(true);
+      hideError();
+      log(`Device ready: ${info.name} (${info.manufacturer})`);
+    });
+
+    device.on('device:disconnected', (reason) => {
+      updateStatus('disconnected', 'Disconnected');
+      updateButtons(false);
+      log(`Device disconnected: ${reason}`);
+    });
+
+    device.on('device:error', (error) => {
+      showError(error.message);
+      updateStatus('disconnected', 'Error occurred');
+      updateButtons(false);
+    });
+
+    device.on('midi:in', (message) => {
+      // Log MIDI messages (already logged in the mock)
+    });
+
+    // Button handlers
+    connectBtn.addEventListener('click', async () => {
+      try {
+        hideError();
+        updateStatus('connecting', 'Connecting...');
+        connectBtn.disabled = true;
+
+        await device.initialize();
+        await device.connect();
+
+      } catch (error) {
+        showError(error.message);
+        updateStatus('disconnected', 'Connection failed');
+        updateButtons(false);
+      }
+    });
+
+    disconnectBtn.addEventListener('click', () => {
+      device.disconnect();
+    });
+
+    loadModeBtn.addEventListener('click', async () => {
+      try {
+        hideError();
+        const mode = await device.loadCustomMode(0);
+        log(`Mode loaded successfully:`);
+        log(JSON.stringify(mode, null, 2));
+      } catch (error) {
+        showError(`Failed to load mode: ${error.message}`);
+      }
+    });
+
+    ledTestBtn.addEventListener('click', async () => {
+      try {
+        hideError();
+        await device.testLeds();
+      } catch (error) {
+        showError(`LED test failed: ${error.message}`);
+      }
+    });
+
+    clearOutputBtn.addEventListener('click', () => {
+      outputEl.textContent = 'Output cleared.\n';
+    });
+
+    // Check Web MIDI API availability on load
+    window.addEventListener('load', () => {
+      if (!navigator.requestMIDIAccess) {
+        showError('Web MIDI API not available. Please use Chrome, Edge, or Opera with HTTPS.');
+        connectBtn.disabled = true;
+      } else {
+        log('Web MIDI API available');
+
+        // Check HTTPS
+        if (location.protocol !== 'https:' && location.hostname !== 'localhost') {
+          showError('HTTPS required for Web MIDI API (except on localhost)');
+        }
+      }
+    });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+      device.cleanup();
+    });
+  </script>
+</body>
+</html>

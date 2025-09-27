@@ -6,7 +6,7 @@
  * controls map to MIDI messages and LED states.
  */
 
-import { EventEmitter } from 'events';
+import { EventEmitter } from 'eventemitter3';
 import { DeviceManager } from '../device/DeviceManager.js';
 import { ControlMapping, ColorMapping } from '../types/CustomMode.js';
 import {
