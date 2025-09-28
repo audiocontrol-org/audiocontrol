@@ -123,46 +123,12 @@ export class DeviceManager extends EventEmitter {
       this.inputPortId = inputPort.id;
       this.outputPortId = outputPort.id;
 
-      // Query device identity - handshake is critical for device verification
-      try {
-        const deviceInfo = await this.queryDeviceIdentity();
-        if (deviceInfo) {
-          this.deviceInfo = this.parseDeviceInfo(deviceInfo);
-        } else {
-          throw new Error('Device inquiry returned null response. Device may not be compatible or may be in an invalid state.');
-        }
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-
-        // Only use fallback in development mode
-        if (process.env['NODE_ENV'] === 'development') {
-          console.warn('Device inquiry failed in development mode, using fallback device info:', errorMessage);
-          this.deviceInfo = this.createFallbackDeviceInfo();
-        } else {
-          // In production, provide actionable error handling
-          if (errorMessage.includes('timeout')) {
-            throw new Error(
-              `Device handshake timeout after ${this.options.inquiryTimeout}ms. ` +
-              'Troubleshooting steps: 1) Check device is powered on and connected, ' +
-              '2) Verify MIDI drivers are installed, 3) Try reconnecting the device, ' +
-              '4) Check for conflicting MIDI applications.'
-            );
-          } else if (errorMessage.includes('permission') || errorMessage.includes('access')) {
-            throw new Error(
-              `MIDI permission denied: ${errorMessage}. ` +
-              'Troubleshooting steps: 1) Grant MIDI access in browser settings, ' +
-              '2) Ensure you\'re using HTTPS in production, 3) Try refreshing the page, ' +
-              '4) Check browser MIDI support.'
-            );
-          } else {
-            throw new Error(
-              `Device handshake failed: ${errorMessage}. ` +
-              'Troubleshooting steps: 1) Verify device compatibility, ' +
-              '2) Check device is not in use by another application, ' +
-              '3) Try power cycling the device.'
-            );
-          }
-        }
+      // Query device identity using complete 4-message handshake (NO FALLBACK)
+      const deviceInfo = await this.queryDeviceIdentity();
+      if (deviceInfo) {
+        this.deviceInfo = this.parseDeviceInfo(deviceInfo);
+      } else {
+        throw new Error('Device inquiry returned null response. Device may not be compatible or may be in an invalid state.');
       }
 
       // Initialize device settings
@@ -251,44 +217,96 @@ export class DeviceManager extends EventEmitter {
   }
 
   /**
-   * Query device identity using SysEx
+   * Query device identity using the complete 4-message handshake protocol
    */
   private async queryDeviceIdentity(): Promise<DeviceInquiryResponse | null> {
+    let serialNumber: string | undefined;
+
+    // Step 1: Send Novation SYN
+    console.log('[DeviceManager] Handshake Step 1: Sending Novation SYN...');
+    const synMessage = SysExParser.buildNovationSyn();
+    await this.sendSysEx(synMessage);
+
+    // Step 2: Wait for SYN-ACK response
+    try {
+      const synAckData = await this.waitForMessage(
+        (data) => {
+          const result = SysExParser.parseNovationSynAck(data);
+          return result.valid;
+        },
+        this.options.inquiryTimeout,
+        'SYN-ACK'
+      );
+
+      const synAckResult = SysExParser.parseNovationSynAck(synAckData);
+      serialNumber = synAckResult.serialNumber;
+      console.log('[DeviceManager] Handshake Step 2: Received SYN-ACK with serial:', serialNumber);
+    } catch (error) {
+      throw new Error(
+        `Handshake failed at SYN-ACK step: ${(error as Error).message}. ` +
+        'Device may not support complete handshake protocol.'
+      );
+    }
+
+    // Step 3: Send Universal Device Inquiry (ACK) with correct device ID
+    console.log('[DeviceManager] Handshake Step 3: Sending Universal Device Inquiry (ACK)...');
+    const ackMessage = SysExParser.buildUniversalDeviceInquiry();
+    await this.sendSysEx(ackMessage);
+
+    // Step 4: Wait for Device Response
+    try {
+      const deviceResponseData = await this.waitForMessage(
+        (data) => SysExParser.isDeviceInquiryResponse(data),
+        this.options.inquiryTimeout,
+        'Device Response'
+      );
+
+      console.log('[DeviceManager] Handshake Step 4: Received device response');
+      const parsed = SysExParser.parse(deviceResponseData);
+
+      if (parsed.type === 'device_inquiry_response') {
+        // Create response with serial number
+        const response = {
+          ...parsed,
+          ...(serialNumber ? { serialNumber } : {}),
+        } as DeviceInquiryResponse;
+        const validatedResponse = this.validateDeviceInquiryResponse(response);
+        return validatedResponse;
+      }
+
+      throw new Error('Invalid device response type');
+    } catch (error) {
+      throw new Error(
+        `Handshake failed at device response step: ${(error as Error).message}. ` +
+        'Troubleshooting steps: 1) Verify device is powered and connected, ' +
+        '2) Check MIDI cable/USB connection, 3) Ensure device firmware is up to date.'
+      );
+    }
+  }
+
+  /**
+   * Wait for a specific MIDI message with timeout
+   */
+  private async waitForMessage(
+    validator: (data: number[]) => boolean,
+    timeoutMs: number,
+    messageName: string
+  ): Promise<number[]> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.midi.removeListener('sysex', handleResponse);
-        reject(new Error(
-          `Device inquiry timeout after ${this.options.inquiryTimeout}ms. ` +
-          'The device may not support SysEx handshake or may be unresponsive. ' +
-          'Troubleshooting steps: 1) Verify device is powered and connected, ' +
-          '2) Check MIDI cable/USB connection, 3) Ensure device supports identity inquiry, ' +
-          '4) Try increasing inquiry timeout in options.'
-        ));
-      }, this.options.inquiryTimeout);
+        reject(new Error(`Handshake timeout waiting for ${messageName} after ${timeoutMs}ms`));
+      }, timeoutMs);
 
       const handleResponse = (message: MidiMessage) => {
-        if (message.type === 'sysex') {
-          try {
-            const parsed = SysExParser.parse([...message.data]);
-
-            if (parsed.type === 'device_inquiry_response') {
-              clearTimeout(timeout);
-              this.midi.removeListener('sysex', handleResponse);
-              const validatedResponse = this.validateDeviceInquiryResponse(parsed);
-              resolve(validatedResponse);
-            }
-          } catch {
-            // Ignore parse errors for non-matching messages
-          }
+        if (message.type === 'sysex' && validator([...message.data])) {
+          clearTimeout(timeout);
+          this.midi.removeListener('sysex', handleResponse);
+          resolve([...message.data]);
         }
       };
 
       this.midi.on('sysex', handleResponse);
-
-      // Send device inquiry
-      const inquiryMessage = SysExParser.buildDeviceQuery();
-      console.log('[DeviceManager] Sending device inquiry:', inquiryMessage.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
-      this.sendSysEx(inquiryMessage);
     });
   }
 
@@ -305,7 +323,9 @@ export class DeviceManager extends EventEmitter {
       firmwareVersion: response.softwareRevision ?
         `${response.softwareRevision[0]}.${response.softwareRevision[1]}.${response.softwareRevision[2]}.${response.softwareRevision[3]}` :
         (response.firmwareVersion ? Array.from(response.firmwareVersion).join('.') : 'unknown'),
-      serialNumber: response.serialNumber ? Array.from(response.serialNumber).join('') : undefined,
+      serialNumber: typeof response.serialNumber === 'string' ?
+        response.serialNumber :
+        (response.serialNumber ? Array.from(response.serialNumber).join('') : undefined),
     });
 
     return validatedInfo;
@@ -592,17 +612,6 @@ export class DeviceManager extends EventEmitter {
     return status;
   }
 
-  /**
-   * Create fallback device info for development mode
-   */
-  private createFallbackDeviceInfo(): LaunchControlXL3Info {
-    return {
-      manufacturerId: '00 20 29', // Novation manufacturer ID
-      deviceFamily: 2,
-      modelNumber: 13, // Launch Control XL 3
-      firmwareVersion: 'Unknown',
-    };
-  }
 
   /**
    * Validate device inquiry response with proper type checking
@@ -617,21 +626,22 @@ export class DeviceManager extends EventEmitter {
       familyMember: z.number().optional(),
       firmwareVersion: z.array(z.number()).optional(),
       softwareRevision: z.array(z.number()).optional(),
-      serialNumber: z.array(z.number()).optional(),
+      serialNumber: z.union([z.string(), z.array(z.number())]).optional(),
     });
 
     try {
       const validated = schema.parse(response);
-      return {
+      const result = {
+        type: 'device_inquiry_response' as const,
         manufacturerId: validated.manufacturerId,
-        deviceFamily: validated.deviceFamily ?? validated.familyCode ?? 0,
-        deviceModel: validated.deviceModel ?? validated.familyMember ?? 0,
-        firmwareVersion: validated.firmwareVersion ?? validated.softwareRevision ?? [],
-        ...(validated.serialNumber && { serialNumber: validated.serialNumber }),
-        ...(validated.familyCode !== undefined && { familyCode: validated.familyCode }),
-        ...(validated.familyMember !== undefined && { familyMember: validated.familyMember }),
-        ...(validated.softwareRevision && { softwareRevision: validated.softwareRevision }),
-      };
+        data: [],
+        familyCode: validated.familyCode ?? validated.deviceFamily ?? 0,
+        familyMember: validated.familyMember ?? validated.deviceModel ?? 0,
+        softwareRevision: validated.softwareRevision ?? validated.firmwareVersion ?? [],
+        ...(validated.serialNumber ? { serialNumber: validated.serialNumber } : {}),
+      } satisfies DeviceInquiryResponse;
+
+      return result;
     } catch (error) {
       throw new Error(`Invalid device inquiry response format: ${error instanceof Error ? error.message : String(error)}`);
     }
