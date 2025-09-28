@@ -26,7 +26,6 @@ import {
 
 export interface LaunchControlXL3Options {
   midiBackend?: MidiBackendInterface;
-  autoConnect?: boolean;
   enableLedControl?: boolean;
   enableCustomModes?: boolean;
   enableValueSmoothing?: boolean;
@@ -65,7 +64,9 @@ export interface LaunchControlXL3Events {
  * Main Launch Control XL 3 Controller
  */
 export class LaunchControlXL3 extends EventEmitter {
-  private options: Required<Omit<LaunchControlXL3Options, 'midiBackend'>> & { midiBackend?: MidiBackendInterface | undefined };
+  private options: Required<Omit<LaunchControlXL3Options, 'midiBackend'>> & {
+    midiBackend?: MidiBackendInterface | undefined;
+  };
   private deviceManager: DeviceManager;
   private customModeManager?: CustomModeManager | undefined;
   private controlMapper: ControlMapper;
@@ -85,7 +86,6 @@ export class LaunchControlXL3 extends EventEmitter {
 
     this.options = {
       midiBackend: options.midiBackend,
-      autoConnect: options.autoConnect ?? true,
       enableLedControl: options.enableLedControl ?? true,
       enableCustomModes: options.enableCustomModes ?? true,
       enableValueSmoothing: options.enableValueSmoothing ?? false,
@@ -124,12 +124,6 @@ export class LaunchControlXL3 extends EventEmitter {
     try {
       // Initialize device manager
       await this.deviceManager.initialize();
-
-      // Auto-connect if enabled
-      if (this.options.autoConnect) {
-        await this.connect();
-      }
-
       this.isInitialized = true;
     } catch (error) {
       this.emit('device:error', error as Error);
@@ -206,12 +200,12 @@ export class LaunchControlXL3 extends EventEmitter {
       this.emit('device:disconnected', reason);
     });
 
-    this.deviceManager.on('device:error', (error) => {
+    this.deviceManager.on('device:error', (error: Error) => {
       this.handleError(error);
     });
 
     // Control events
-    this.deviceManager.on('control:change', (controlId, value, channel) => {
+    this.deviceManager.on('control:change', (controlId: string, value: number, channel) => {
       // Process through control mapper
       const message = this.controlMapper.processControlValue(controlId, value);
 
@@ -389,7 +383,7 @@ export class LaunchControlXL3 extends EventEmitter {
     controlId: string,
     channel: MidiChannel,
     cc: CCNumber,
-    options?: Partial<ControlMapping>
+    options?: Partial<ControlMapping>,
   ): void {
     const controlType = this.getControlType(controlId);
     const mapping: ControlMapping = {
@@ -437,7 +431,7 @@ export class LaunchControlXL3 extends EventEmitter {
   async setLed(
     controlId: string,
     color: LedColor | number,
-    behaviour?: LedBehaviour
+    behaviour?: LedBehaviour,
   ): Promise<void> {
     if (!this.ledController) {
       throw new Error('LED control not enabled');
@@ -471,11 +465,7 @@ export class LaunchControlXL3 extends EventEmitter {
   /**
    * Flash LED
    */
-  async flashLed(
-    controlId: string,
-    color: LedColor | number,
-    duration?: number
-  ): Promise<void> {
+  async flashLed(controlId: string, color: LedColor | number, duration?: number): Promise<void> {
     if (!this.ledController) {
       throw new Error('LED control not enabled');
     }
@@ -529,7 +519,7 @@ export class LaunchControlXL3 extends EventEmitter {
     await this.deviceManager.sendCC(
       message.controller ?? 0,
       message.value ?? 0,
-      message.channel ?? 0
+      message.channel ?? 0,
     );
   }
 
@@ -588,7 +578,9 @@ export class LaunchControlXL3 extends EventEmitter {
 
     const status = this.getStatus();
     if (!status.deviceInfo) {
-      throw new Error('Device connected but device information not available. Device handshake may have failed.');
+      throw new Error(
+        'Device connected but device information not available. Device handshake may have failed.',
+      );
     }
 
     // Perform fresh device identity query to verify current connection
@@ -601,7 +593,9 @@ export class LaunchControlXL3 extends EventEmitter {
 
       const updatedStatus = this.getStatus();
       if (!updatedStatus.deviceInfo) {
-        throw new Error('Device verification failed: Unable to retrieve device information after reconnection.');
+        throw new Error(
+          'Device verification failed: Unable to retrieve device information after reconnection.',
+        );
       }
 
       return updatedStatus.deviceInfo;

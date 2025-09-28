@@ -4,177 +4,181 @@ import type {
   MidiInputPort,
   MidiOutputPort,
   MidiPort,
-  MidiMessage
-} from '../MidiInterface.js';
+  MidiMessage,
+} from '@/core/MidiInterface.js';
+import type { Logger } from '@/core/Logger.js';
+import { ConsoleLogger } from '@/core/Logger.js';
+
+import { ControlChange, getInputs, getOutputs, Input, Note, Output, Sysex } from 'easymidi';
 
 export class EasyMidiBackend implements MidiBackendInterface {
-  private easymidi: any;
-  private inputs: Map<string, any> = new Map();
-  private outputs: Map<string, any> = new Map();
+  private inputs: Map<string, Input> = new Map();
+  private outputs: Map<string, Output> = new Map();
   private portWrappers: Map<string, MidiPort> = new Map();
   private isInitialized = false;
+  private readonly logger: Logger;
+
+  constructor(logger: Logger = new ConsoleLogger({ prefix: 'EasyMidiBackend' })) {
+    this.logger = logger;
+  }
 
   async initialize(): Promise<void> {
-    if (this.isInitialized) return;
-
-    try {
-      const module = await import('easymidi');
-      this.easymidi = module.default || module;
-      this.isInitialized = true;
-    } catch (error) {
-      throw new Error(`easymidi not available: ${(error as Error).message}. Install with: npm install easymidi`);
-    }
+    this.logger.info(`Initializing!`)
+    this.isInitialized = true;
+    return Promise.resolve();
   }
 
-  async getInputPorts(): Promise<MidiPortInfo[]> {
+  getInputPorts(): Promise<MidiPortInfo[]> {
     if (!this.isInitialized) {
       throw new Error('Backend not initialized');
     }
 
     try {
-      const inputs = this.easymidi.getInputs();
-      return inputs.map((name: string) => ({
+      const inputs = getInputs();
+      return Promise.resolve(inputs.map((name: string) => ({
         id: name,
-        name: name
-      }));
+        name: name,
+      })));
     } catch (error) {
-      throw new Error(`Failed to get input ports: ${(error as Error).message}`);
+      return Promise.reject(new Error(`Failed to get input ports: ${(error as Error).message}`));
     }
   }
 
-  async getOutputPorts(): Promise<MidiPortInfo[]> {
-    if (!this.isInitialized) {
-      throw new Error('Backend not initialized');
-    }
+  getOutputPorts(): Promise<MidiPortInfo[]> {
 
     try {
-      const outputs = this.easymidi.getOutputs();
-      return outputs.map((name: string) => ({
+      const outputs = getOutputs();
+      return Promise.resolve(outputs.map((name: string) => ({
         id: name,
-        name: name
-      }));
+        name: name,
+      })));
     } catch (error) {
-      throw new Error(`Failed to get output ports: ${(error as Error).message}`);
+      return Promise.reject(new Error(`Failed to get output ports: ${(error as Error).message}`));
     }
   }
 
-  async openInput(portId: string): Promise<MidiInputPort> {
-    if (!this.isInitialized) {
-      throw new Error('Backend not initialized');
-    }
-
+  openInput(portId: string): Promise<MidiInputPort> {
     try {
-      const easyInput = new this.easymidi.Input(portId);
+      const easyInput = new Input(portId);
 
       const port: MidiInputPort = {
         id: portId,
         name: portId,
         type: 'input',
-        close: async () => {
+        close: () => {
           if (easyInput && easyInput.close) {
             easyInput.close();
           }
           this.inputs.delete(portId);
           this.portWrappers.delete(portId);
+          return Promise.resolve();
         },
-        onMessage: undefined
+        onMessage: undefined,
       };
 
-      easyInput.on('sysex', (bytes: number[]) => {
-        console.log('[EasyMidiBackend] Received SysEx:', bytes.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      easyInput.on('sysex', (sysex: Sysex) => {
+        this.logger.debug(
+          'Received SysEx:',
+          sysex.bytes.map((b) => '0x' + b.toString(16).padStart(2, '0')).join(' '),
+        );
         if (port.onMessage) {
           port.onMessage({
             timestamp: Date.now(),
-            data: bytes
+            data: sysex.bytes,
           });
         }
       });
 
-      easyInput.on('cc', (msg: any) => {
-        console.log('[EasyMidiBackend] Received CC:', msg);
+      easyInput.on('cc', (msg: ControlChange) => {
+        this.logger.debug('Received CC:', msg);
         if (port.onMessage) {
-          const data = [0xB0 | (msg.channel & 0x0F), msg.controller, msg.value];
+          const data = [0xb0 | (msg.channel & 0x0f), msg.controller, msg.value];
           port.onMessage({
             timestamp: Date.now(),
-            data
+            data,
           });
         }
       });
 
-      easyInput.on('noteon', (msg: any) => {
+      easyInput.on('noteon', (msg: Note) => {
         if (port.onMessage) {
-          const data = [0x90 | (msg.channel & 0x0F), msg.note, msg.velocity];
+          const data = [0x90 | (msg.channel & 0x0f), msg.note, msg.velocity];
           port.onMessage({
             timestamp: Date.now(),
-            data
+            data,
           });
         }
       });
 
-      easyInput.on('noteoff', (msg: any) => {
+      easyInput.on('noteoff', (msg: Note) => {
         if (port.onMessage) {
-          const data = [0x80 | (msg.channel & 0x0F), msg.note, msg.velocity];
+          const data = [0x80 | (msg.channel & 0x0f), msg.note, msg.velocity];
           port.onMessage({
             timestamp: Date.now(),
-            data
+            data,
           });
         }
       });
 
       this.inputs.set(portId, easyInput);
       this.portWrappers.set(portId, port);
-      return port;
+      return Promise.resolve(port);
     } catch (error) {
-      throw new Error(`Failed to open input port ${portId}: ${(error as Error).message}`);
+      return Promise.reject(new Error(`Failed to open input port ${portId}: ${(error as Error).message}`));
     }
   }
 
-  async openOutput(portId: string): Promise<MidiOutputPort> {
+  openOutput(portId: string): Promise<MidiOutputPort> {
     if (!this.isInitialized) {
       throw new Error('Backend not initialized');
     }
 
     try {
-      const easyOutput = new this.easymidi.Output(portId);
+      const easyOutput = new Output(portId);
 
       const port: MidiOutputPort = {
         id: portId,
         name: portId,
         type: 'output',
-        close: async () => {
+        close: () => {
           if (easyOutput && easyOutput.close) {
             easyOutput.close();
           }
           this.outputs.delete(portId);
           this.portWrappers.delete(portId);
-        }
+          return Promise.resolve();
+        },
       };
 
       this.outputs.set(portId, easyOutput);
       this.portWrappers.set(portId, port);
-      return port;
+      return Promise.resolve(port);
     } catch (error) {
-      throw new Error(`Failed to open output port ${portId}: ${(error as Error).message}`);
+      return Promise.reject(new Error(`Failed to open output port ${portId}: ${(error as Error).message}`));
     }
   }
 
-  async sendMessage(port: MidiOutputPort, message: MidiMessage): Promise<void> {
+  sendMessage(port: MidiOutputPort, message: MidiMessage): Promise<void> {
     const easyOutput = this.outputs.get(port.id);
     if (!easyOutput) {
       throw new Error(`Output port not open: ${port.id}`);
     }
 
     try {
-      const data = Array.isArray(message.data) ? message.data : Array.from(message.data);
+      const data: Array<number> = Array.from(message.data);
 
-      if (data[0] === 0xF0 && data[data.length - 1] === 0xF7) {
-        console.log('[EasyMidiBackend] Sending SysEx:', data.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
+      if (data[0] === 0xf0 && data[data.length - 1] === 0xf7) {
+        this.logger.debug(
+          'Sending SysEx:',
+          data.map((b) => '0x' + b.toString(16).padStart(2, '0')).join(' '),
+        );
         easyOutput.send('sysex', data);
+        return Promise.resolve();
       } else {
-        throw new Error('Only SysEx messages are currently supported by EasyMidiBackend');
+        return Promise.reject(new Error('Only SysEx messages are currently supported by EasyMidiBackend'));
       }
     } catch (error) {
-      throw new Error(`Failed to send message to port ${port.id}: ${(error as Error).message}`);
+      return Promise.reject(new Error(`Failed to send message to port ${port.id}: ${(error as Error).message}`));
     }
   }
 

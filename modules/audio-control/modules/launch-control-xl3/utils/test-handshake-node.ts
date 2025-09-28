@@ -25,7 +25,8 @@
  */
 
 import chalk from 'chalk';
-import { LaunchControlXL3 } from '../src/index.js';
+import { LaunchControlXL3 } from '../src';
+import { EasyMidiBackend } from '../src/core/backends/EasyMidiBackend.js';
 
 // Console formatting helpers
 const log = {
@@ -42,24 +43,31 @@ async function testHandshake(): Promise<void> {
   log.title('Launch Control XL 3 - Node.js Handshake Test');
   console.log('='.repeat(50));
 
-  log.info('Testing device handshake functionality using NodeMidiBackend');
+  log.info('Testing device handshake functionality using EasyMidiBackend');
   console.log();
 
   let controller: LaunchControlXL3 | null = null;
+  let backend: EasyMidiBackend | null = null;
   let success = false;
 
   try {
-    // Step 1: Create LaunchControlXL3 instance (will auto-detect JzzBackend in Node.js)
-    log.step('Creating LaunchControlXL3 instance...');
+    // Step 1: Create and initialize EasyMidiBackend
+    log.step('Creating EasyMidiBackend instance...');
+    backend = new EasyMidiBackend();
+
+    log.step('Initializing EasyMidiBackend...');
+    await backend.initialize();
+    log.success('EasyMidiBackend initialized successfully!');
+
+    // Step 2: Create LaunchControlXL3 instance with EasyMidiBackend
+    log.step('Creating LaunchControlXL3 instance with EasyMidiBackend...');
     controller = new LaunchControlXL3({
-      autoConnect: true,
-      enableLedControl: false,
+      midiBackend: backend,
+      enableLedControl: true,
       enableCustomModes: true,
     });
 
-    log.info('Library will auto-detect JzzBackend for Node.js environment');
-
-    // Step 2: Setup event handlers to monitor the process
+    // Step 3: Setup event handlers to monitor the process
     log.step('Setting up event handlers...');
 
     controller.on('device:connected', (device) => {
