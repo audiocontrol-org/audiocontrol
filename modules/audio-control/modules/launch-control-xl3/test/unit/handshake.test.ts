@@ -8,14 +8,19 @@
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { LaunchControlXL3 } from '@/LaunchControlXL3.js';
-import type { MidiBackendInterface, MidiMessage, MidiPortInfo, MidiInputPort, MidiOutputPort } from '@/core/MidiInterface.js';
+import { MockMidiBackend } from '../mocks/MockMidiBackend.js';
 import type { Logger } from '@/core/Logger.js';
 
 describe('LaunchControlXL3 - Device Handshake', () => {
   let controller: LaunchControlXL3;
   let mockBackend: MockMidiBackend;
+  let mockTime: number;
 
   beforeEach(() => {
+    vi.useFakeTimers();
+    mockTime = 1704067200000; // 2024-01-01T00:00:00Z
+    vi.setSystemTime(mockTime);
+
     mockBackend = new MockMidiBackend();
     const noopLogger: Logger = {
       debug: vi.fn(),
@@ -31,7 +36,9 @@ describe('LaunchControlXL3 - Device Handshake', () => {
 
   afterEach(async () => {
     vi.clearAllTimers();
+    vi.useRealTimers();
     await controller.cleanup();
+    mockBackend.resetTestState();
     vi.clearAllMocks();
   });
 
@@ -41,18 +48,16 @@ describe('LaunchControlXL3 - Device Handshake', () => {
       mockBackend.shouldRespondToSyn = false;
       mockBackend.shouldRespondToInquiry = true;
 
-      const sendSpy = vi.spyOn(mockBackend, 'sendMessage');
-
       const connectionPromise = controller.connect();
-      mockBackend.simulateDeviceResponse();
+
+      // Process queued responses synchronously
+      mockBackend.processQueuedResponses();
+
       await connectionPromise;
 
       const deviceInquiryMessage = [0xF0, 0x7E, 0x00, 0x06, 0x01, 0xF7];
-      const calls = sendSpy.mock.calls;
-      const inquirySent = calls.some(call => {
-        const message = call[1];
-        return arraysEqual(Array.from(message.data), deviceInquiryMessage);
-      });
+      const sentMessages = mockBackend.sentMessages.map(msg => Array.from(msg.data));
+      const inquirySent = sentMessages.some(msg => arraysEqual(msg, deviceInquiryMessage));
 
       expect(inquirySent).toBe(true);
     });
@@ -74,7 +79,7 @@ describe('LaunchControlXL3 - Device Handshake', () => {
       const connectionPromise = controller.connect();
 
       mockBackend.simulateIncomingMessage({
-        timestamp: Date.now(),
+        timestamp: mockTime,
         data: validResponse,
         type: 'sysex',
       });
@@ -84,7 +89,6 @@ describe('LaunchControlXL3 - Device Handshake', () => {
     });
 
     it('should timeout if no response received (legacy mode)', async () => {
-      vi.useFakeTimers();
       const noopLogger: Logger = {
         debug: vi.fn(),
         info: vi.fn(),
@@ -104,8 +108,6 @@ describe('LaunchControlXL3 - Device Handshake', () => {
       await vi.advanceTimersByTimeAsync(5000);
 
       await expect(connectionPromise).rejects.toThrow(/timeout/i);
-      vi.clearAllTimers();
-      vi.useRealTimers();
     });
   });
 
@@ -117,42 +119,19 @@ describe('LaunchControlXL3 - Device Handshake', () => {
     });
 
     it('should perform full 4-message handshake sequence', async () => {
-      const sendSpy = vi.spyOn(mockBackend, 'sendMessage');
-
       const connectionPromise = controller.connect();
 
-      // Simulate the complete handshake flow
-      await vi.waitFor(() => {
-        // Check if SYN was sent
-        const calls = sendSpy.mock.calls;
-        const synSent = calls.some(call => {
-          const message = Array.from(call[1].data);
-          return arraysEqual(message, [0xF0, 0x00, 0x20, 0x29, 0x00, 0x42, 0x02, 0xF7]);
-        });
-        if (synSent) {
-          // Simulate SYN-ACK response
-          mockBackend.simulateNovationSynAck();
-        }
-      });
-
-      await vi.waitFor(() => {
-        // Check if Universal Device Inquiry (ACK) was sent with correct device ID
-        const calls = sendSpy.mock.calls;
-        const ackSent = calls.some(call => {
-          const message = Array.from(call[1].data);
-          return arraysEqual(message, [0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7]);
-        });
-        if (ackSent) {
-          // Simulate device response
-          mockBackend.simulateDeviceInquiryResponse();
-        }
-      });
+      // Process the handshake step by step deterministically
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.processQueuedResponses();
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.processQueuedResponses();
 
       await connectionPromise;
       expect(controller.isConnected()).toBe(true);
 
       // Verify all expected messages were sent
-      const sentMessages = sendSpy.mock.calls.map(call => Array.from(call[1].data));
+      const sentMessages = mockBackend.sentMessages.map(msg => Array.from(msg.data));
 
       // Should contain SYN message
       expect(sentMessages.some(msg =>
@@ -169,7 +148,15 @@ describe('LaunchControlXL3 - Device Handshake', () => {
       const deviceHandler = vi.fn();
       controller.on('device:connected', deviceHandler);
 
-      await controller.connect();
+      const connectionPromise = controller.connect();
+
+      // Process queued responses synchronously
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.processQueuedResponses();
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.processQueuedResponses();
+
+      await connectionPromise;
 
       expect(deviceHandler).toHaveBeenCalled();
       const deviceInfo = deviceHandler.mock.calls[0][0];
@@ -180,8 +167,6 @@ describe('LaunchControlXL3 - Device Handshake', () => {
     });
 
     it('should fallback to simple handshake when SYN-ACK times out', async () => {
-      vi.useFakeTimers();
-
       const noopLogger: Logger = {
         debug: vi.fn(),
         info: vi.fn(),
@@ -197,29 +182,24 @@ describe('LaunchControlXL3 - Device Handshake', () => {
       mockBackend.shouldRespondToSyn = false;
       mockBackend.shouldRespondToInquiry = true;
 
-      const sendSpy = vi.spyOn(mockBackend, 'sendMessage');
       const connectionPromise = controller.connect();
 
       // Advance time to trigger SYN timeout
       await vi.advanceTimersByTimeAsync(2000);
+      mockBackend.processQueuedResponses();
 
       // Should fall back to simple inquiry and succeed
       await connectionPromise;
       expect(controller.isConnected()).toBe(true);
 
       // Verify fallback message was sent (legacy device inquiry with 0x00 device ID)
-      const sentMessages = sendSpy.mock.calls.map(call => Array.from(call[1].data));
+      const sentMessages = mockBackend.sentMessages.map(msg => Array.from(msg.data));
       expect(sentMessages.some(msg =>
         arraysEqual(msg, [0xF0, 0x7E, 0x00, 0x06, 0x01, 0xF7])
       )).toBe(true);
-
-      vi.clearAllTimers();
-      vi.useRealTimers();
     });
 
     it('should timeout if SYN-ACK not received', async () => {
-      vi.useFakeTimers();
-
       const noopLogger: Logger = {
         debug: vi.fn(),
         info: vi.fn(),
@@ -239,14 +219,9 @@ describe('LaunchControlXL3 - Device Handshake', () => {
       await vi.advanceTimersByTimeAsync(5000);
 
       await expect(connectionPromise).rejects.toThrow(/timeout/i);
-
-      vi.clearAllTimers();
-      vi.useRealTimers();
     });
 
     it('should timeout if device response not received after ACK', async () => {
-      vi.useFakeTimers();
-
       const noopLogger: Logger = {
         debug: vi.fn(),
         info: vi.fn(),
@@ -266,9 +241,6 @@ describe('LaunchControlXL3 - Device Handshake', () => {
       await vi.advanceTimersByTimeAsync(5000);
 
       await expect(connectionPromise).rejects.toThrow(/timeout/i);
-
-      vi.clearAllTimers();
-      vi.useRealTimers();
     });
 
     it('should reject invalid SYN-ACK message format', async () => {
@@ -280,6 +252,12 @@ describe('LaunchControlXL3 - Device Handshake', () => {
     it('should handle concurrent connection attempts gracefully', async () => {
       const connection1 = controller.connect();
       const connection2 = controller.connect();
+
+      // Process queued responses for both attempts
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.processQueuedResponses();
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.processQueuedResponses();
 
       // Only one should succeed, the other should reject
       const results = await Promise.allSettled([connection1, connection2]);
@@ -294,11 +272,17 @@ describe('LaunchControlXL3 - Device Handshake', () => {
 
   describe('Message Ordering and Validation', () => {
     it('should send messages in correct order', async () => {
-      const sendSpy = vi.spyOn(mockBackend, 'sendMessage');
+      const connectionPromise = controller.connect();
 
-      await controller.connect();
+      // Process queued responses synchronously
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.processQueuedResponses();
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.processQueuedResponses();
 
-      const sentMessages = sendSpy.mock.calls.map(call => Array.from(call[1].data));
+      await connectionPromise;
+
+      const sentMessages = mockBackend.sentMessages.map(msg => Array.from(msg.data));
 
       // Find indices of key messages
       const synIndex = sentMessages.findIndex(msg =>
@@ -326,7 +310,15 @@ describe('LaunchControlXL3 - Device Handshake', () => {
       const connectedHandler = vi.fn();
       controller.on('device:connected', connectedHandler);
 
-      await controller.connect();
+      const connectionPromise = controller.connect();
+
+      // Process queued responses synchronously
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.processQueuedResponses();
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.processQueuedResponses();
+
+      await connectionPromise;
 
       expect(connectedHandler).toHaveBeenCalled();
       expect(connectedHandler.mock.calls[0][0]).toMatchObject({
@@ -363,161 +355,4 @@ describe('LaunchControlXL3 - Device Handshake', () => {
 function arraysEqual(a: number[], b: number[]): boolean {
   if (a.length !== b.length) return false;
   return a.every((val, idx) => val === b[idx]);
-}
-
-class MockMidiBackend implements MidiBackendInterface {
-  inputPort?: MidiInputPort;
-  outputPort?: MidiOutputPort;
-  shouldRespondToInquiry = true;
-  shouldRespondToSyn = true;
-  invalidSynAck = false;
-  corruptManufacturerId = false;
-  private initCount = 0;
-
-  async initialize(): Promise<void> {
-    this.initCount++;
-  }
-
-  async getInputPorts(): Promise<MidiPortInfo[]> {
-    return [
-      { id: 'test-input', name: 'Launch Control XL' },
-    ];
-  }
-
-  async getOutputPorts(): Promise<MidiPortInfo[]> {
-    return [
-      { id: 'test-output', name: 'Launch Control XL' },
-    ];
-  }
-
-  async openInput(portId: string): Promise<MidiInputPort> {
-    this.inputPort = {
-      id: portId,
-      name: 'Launch Control XL',
-      type: 'input',
-      onMessage: undefined,
-      close: async () => {
-        this.inputPort = undefined;
-      },
-    };
-    return this.inputPort;
-  }
-
-  async openOutput(portId: string): Promise<MidiOutputPort> {
-    this.outputPort = {
-      id: portId,
-      name: 'Launch Control XL',
-      type: 'output',
-      close: async () => {
-        this.outputPort = undefined;
-      },
-    };
-    return this.outputPort;
-  }
-
-  async sendMessage(_port: MidiOutputPort, message: MidiMessage): Promise<void> {
-    const data = Array.isArray(message.data) ? message.data : Array.from(message.data);
-
-    // Handle Novation SYN message
-    if (this.isNovationSyn(data)) {
-      if (this.shouldRespondToSyn) {
-        queueMicrotask(() => {
-          this.simulateNovationSynAck();
-        });
-      }
-      return;
-    }
-
-    // Handle Universal Device Inquiry
-    if (this.shouldRespondToInquiry && this.isDeviceInquiry(data)) {
-      queueMicrotask(() => {
-        this.simulateDeviceResponse();
-      });
-    }
-  }
-
-  private isNovationSyn(data: number[]): boolean {
-    const synPattern = [0xF0, 0x00, 0x20, 0x29, 0x00, 0x42, 0x02, 0xF7];
-    return arraysEqual(data, synPattern);
-  }
-
-  private isDeviceInquiry(data: number[]): boolean {
-    // Accept both legacy (0x00) and new (0x7F) device IDs
-    const legacyInquiryPattern = [0xF0, 0x7E, 0x00, 0x06, 0x01, 0xF7];
-    const newInquiryPattern = [0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7];
-    return arraysEqual(data, legacyInquiryPattern) || arraysEqual(data, newInquiryPattern);
-  }
-
-  simulateNovationSynAck(): void {
-    if (!this.inputPort || !this.inputPort.onMessage) {
-      return;
-    }
-
-    const serialNumber = 'LX21234567890123'; // 14 character serial
-    let response: number[] = [
-      0xF0, 0x00, 0x20, 0x29,  // Start + Novation manufacturer ID
-      0x00, 0x42, 0x02,        // Device model + command + sub-command
-      ...Array.from(serialNumber).map(c => c.charCodeAt(0)), // Serial number
-      0xF7                     // End
-    ];
-
-    // Corrupt message if requested
-    if (this.invalidSynAck) {
-      response[6] = 0xFF; // Corrupt sub-command byte
-    }
-
-    if (this.corruptManufacturerId) {
-      response[1] = 0xFF; // Corrupt manufacturer ID
-    }
-
-    this.inputPort.onMessage({
-      timestamp: Date.now(),
-      data: response,
-      type: 'sysex',
-    });
-  }
-
-  simulateDeviceResponse(): void {
-    if (!this.inputPort || !this.inputPort.onMessage) {
-      return;
-    }
-
-    const response: number[] = [
-      0xF0, 0x7E, 0x00, 0x06, 0x02,
-      0x00, 0x20, 0x29,
-      0x48, 0x01,
-      0x00, 0x00,
-      0x01, 0x00, 0x0A, 0x54,
-      0xF7
-    ];
-
-    this.inputPort.onMessage({
-      timestamp: Date.now(),
-      data: response,
-      type: 'sysex',
-    });
-  }
-
-  simulateDeviceInquiryResponse(): void {
-    this.simulateDeviceResponse(); // Same as device response
-  }
-
-  simulateIncomingMessage(message: MidiMessage): void {
-    if (this.inputPort && this.inputPort.onMessage) {
-      this.inputPort.onMessage(message);
-    }
-  }
-
-  async closePort(port: { close: () => Promise<void> }): Promise<void> {
-    await port.close();
-  }
-
-  async cleanup(): Promise<void> {
-    if (this.inputPort) {
-      await this.inputPort.close();
-    }
-    if (this.outputPort) {
-      await this.outputPort.close();
-    }
-  }
 }

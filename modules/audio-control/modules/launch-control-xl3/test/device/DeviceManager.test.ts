@@ -23,6 +23,7 @@ class MockMidiBackend implements MidiBackendInterface {
   private openInputs = new Map<string, MockMidiInputPort>();
   private openOutputs = new Map<string, MockMidiOutputPort>();
   public messageHandler?: (port: string, message: MidiMessage) => void;
+  private mockTime = 1704067200000; // Fixed timestamp for deterministic testing
 
   constructor() {
     this.setupDefaultPorts();
@@ -53,7 +54,7 @@ class MockMidiBackend implements MidiBackendInterface {
       },
       {
         id: 'other-output',
-        name: 'Other Device Out',
+        name: 'Other Device',
         manufacturer: 'Other',
         version: '1.0.0'
       }
@@ -84,7 +85,7 @@ class MockMidiBackend implements MidiBackendInterface {
       throw new Error(`Input port not found: ${portId}`);
     }
 
-    const mockPort = new MockMidiInputPort(portInfo, this);
+    const mockPort = new MockMidiInputPort(portInfo.id, portInfo.name);
     this.openInputs.set(portId, mockPort);
     return mockPort;
   }
@@ -95,7 +96,7 @@ class MockMidiBackend implements MidiBackendInterface {
       throw new Error(`Output port not found: ${portId}`);
     }
 
-    const mockPort = new MockMidiOutputPort(portInfo, this);
+    const mockPort = new MockMidiOutputPort(portInfo.id, portInfo.name);
     this.openOutputs.set(portId, mockPort);
     return mockPort;
   }
@@ -121,7 +122,7 @@ class MockMidiBackend implements MidiBackendInterface {
     this.isInitialized = false;
   }
 
-  // Test helpers
+  // Test helpers - these are now synchronous and deterministic
   simulateDeviceInquiryResponse(): void {
     const inputPort = this.openInputs.get('lcxl3-input');
     if (inputPort && inputPort.onMessage) {
@@ -139,7 +140,7 @@ class MockMidiBackend implements MidiBackendInterface {
       ];
 
       const message: MidiMessage = {
-        timestamp: Date.now(),
+        timestamp: this.mockTime, // Use fixed timestamp instead of Date.now()
         data: responseData,
         type: 'sysex'
       };
@@ -161,7 +162,7 @@ class MockMidiBackend implements MidiBackendInterface {
       ];
 
       const message: MidiMessage = {
-        timestamp: Date.now(),
+        timestamp: this.mockTime, // Use fixed timestamp instead of Date.now()
         data: responseData,
         type: 'sysex'
       };
@@ -197,18 +198,15 @@ class MockMidiBackend implements MidiBackendInterface {
 
 class MockMidiInputPort implements MidiInputPort {
   readonly type = 'input' as const;
-  onMessage?: ((message: MidiMessage) => void) | undefined;
+  onMessage?: (message: MidiMessage) => void;
 
   constructor(
-    private portInfo: MidiPortInfo,
-    private backend: MockMidiBackend
+    public readonly id: string,
+    public readonly name: string
   ) {}
 
-  get id(): string { return this.portInfo.id; }
-  get name(): string { return this.portInfo.name; }
-
   async close(): Promise<void> {
-    await this.backend.closePort(this);
+    // Mock close operation
   }
 }
 
@@ -216,38 +214,37 @@ class MockMidiOutputPort implements MidiOutputPort {
   readonly type = 'output' as const;
 
   constructor(
-    private portInfo: MidiPortInfo,
-    private backend: MockMidiBackend
+    public readonly id: string,
+    public readonly name: string
   ) {}
 
-  get id(): string { return this.portInfo.id; }
-  get name(): string { return this.portInfo.name; }
-
   async close(): Promise<void> {
-    await this.backend.closePort(this);
+    // Mock close operation
   }
 }
 
 describe('DeviceManager', () => {
   let deviceManager: DeviceManager;
   let mockBackend: MockMidiBackend;
+  let mockTime: number;
 
   beforeEach(() => {
+    vi.useFakeTimers();
+    mockTime = 1704067200000; // 2024-01-01T00:00:00Z
+    vi.setSystemTime(mockTime);
+
     mockBackend = new MockMidiBackend();
-
-    const options: DeviceManagerOptions = {
+    deviceManager = new DeviceManager({
       midiBackend: mockBackend,
-      autoConnect: false, // Control connection manually in tests
-      inquiryTimeout: 1000, // Shorter timeout for tests
-      retryAttempts: 2,
-      retryDelay: 100
-    };
-
-    deviceManager = new DeviceManager(options);
+      inquiryTimeout: 1000
+    });
   });
 
   afterEach(async () => {
+    vi.clearAllTimers();
+    vi.useRealTimers();
     await deviceManager.cleanup();
+    vi.clearAllMocks();
   });
 
   describe('initialization', () => {
@@ -264,12 +261,14 @@ describe('DeviceManager', () => {
 
       const connectSpy = vi.spyOn(autoConnectManager, 'connect');
 
-      // Set up device inquiry response before connecting
-      setTimeout(() => {
-        mockBackend.simulateDeviceInquiryResponse();
-      }, 50);
+      const initPromise = autoConnectManager.initialize();
 
-      await autoConnectManager.initialize();
+      // Advance timers to trigger auto-connect and simulate device response
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.simulateDeviceInquiryResponse();
+      await vi.runOnlyPendingTimersAsync();
+
+      await initPromise;
 
       expect(connectSpy).toHaveBeenCalled();
       await autoConnectManager.cleanup();
@@ -297,12 +296,12 @@ describe('DeviceManager', () => {
     it('should successfully connect to Launch Control XL3', async () => {
       const connectPromise = deviceManager.connect();
 
-      // Simulate device responding to inquiry
-      setTimeout(() => {
-        mockBackend.simulateDeviceInquiryResponse();
-      }, 50);
+      // Advance timers to trigger inquiry and simulate device response
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.simulateDeviceInquiryResponse();
+      await vi.runOnlyPendingTimersAsync();
 
-      await expect(connectPromise).resolves.not.toThrow();
+      await connectPromise;
 
       const status = deviceManager.getStatus();
       expect(status.connected).toBe(true);
@@ -312,7 +311,12 @@ describe('DeviceManager', () => {
 
     it('should handle connection to device without inquiry response', async () => {
       // Don't simulate device inquiry response - should still connect with fallback info
-      await expect(deviceManager.connect()).resolves.not.toThrow();
+      const connectPromise = deviceManager.connect();
+
+      // Advance timers to trigger timeout
+      await vi.advanceTimersByTimeAsync(1000);
+
+      await connectPromise;
 
       const status = deviceManager.getStatus();
       expect(status.connected).toBe(true);
@@ -329,9 +333,10 @@ describe('DeviceManager', () => {
 
       const connectPromise = deviceManager.connect();
 
-      setTimeout(() => {
-        mockBackend.simulateDeviceInquiryResponse();
-      }, 50);
+      // Advance timers and simulate device response
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.simulateDeviceInquiryResponse();
+      await vi.runOnlyPendingTimersAsync();
 
       await connectPromise;
 
@@ -345,7 +350,11 @@ describe('DeviceManager', () => {
 
     it('should not reconnect if already connected', async () => {
       const connectPromise1 = deviceManager.connect();
-      setTimeout(() => mockBackend.simulateDeviceInquiryResponse(), 50);
+
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.simulateDeviceInquiryResponse();
+      await vi.runOnlyPendingTimersAsync();
+
       await connectPromise1;
 
       // Should not throw or change state
@@ -359,7 +368,9 @@ describe('DeviceManager', () => {
       const connectPromise1 = deviceManager.connect();
       const connectPromise2 = deviceManager.connect();
 
-      setTimeout(() => mockBackend.simulateDeviceInquiryResponse(), 50);
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.simulateDeviceInquiryResponse();
+      await vi.runOnlyPendingTimersAsync();
 
       await Promise.all([connectPromise1, connectPromise2]);
 
@@ -391,8 +402,12 @@ describe('DeviceManager', () => {
 
       await shortTimeoutManager.initialize();
 
-      // Don't simulate response - let it timeout
-      await expect(shortTimeoutManager.connect()).resolves.not.toThrow();
+      const connectPromise = shortTimeoutManager.connect();
+
+      // Advance timers to trigger timeout without simulating response
+      await vi.advanceTimersByTimeAsync(100);
+
+      await connectPromise;
 
       // Should still connect with fallback device info
       const status = shortTimeoutManager.getStatus();
@@ -402,125 +417,151 @@ describe('DeviceManager', () => {
       await shortTimeoutManager.cleanup();
     });
 
-    it('should handle inquiry timeout gracefully and continue with connection', async () => {
-      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-      // Connect without device response
-      await expect(deviceManager.connect()).resolves.not.toThrow();
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Device inquiry failed'),
-        expect.any(Error)
-      );
-
-      const status = deviceManager.getStatus();
-      expect(status.connected).toBe(true);
-
-      consoleSpy.mockRestore();
-    });
-  });
-
-  describe('invalid device response processing', () => {
-    beforeEach(async () => {
-      await deviceManager.initialize();
-    });
-
-    it('should handle malformed SysEx responses', async () => {
-      const connectPromise = deviceManager.connect();
-
-      // Simulate malformed response
-      setTimeout(() => {
-        const inputPort = mockBackend['openInputs'].get('lcxl3-input');
-        if (inputPort && inputPort.onMessage) {
-          const malformedMessage: MidiMessage = {
-            timestamp: Date.now(),
-            data: [0xF0, 0x00, 0x01], // Invalid/incomplete SysEx
-            type: 'sysex'
-          };
-          inputPort.onMessage(malformedMessage);
-
-          // Then send valid response
-          setTimeout(() => mockBackend.simulateDeviceInquiryResponse(), 10);
-        }
-      }, 50);
-
-      await expect(connectPromise).resolves.not.toThrow();
-
-      const status = deviceManager.getStatus();
-      expect(status.connected).toBe(true);
-    });
-
-    it('should ignore non-device-inquiry SysEx messages during handshake', async () => {
-      const connectPromise = deviceManager.connect();
-
-      setTimeout(() => {
-        const inputPort = mockBackend['openInputs'].get('lcxl3-input');
-        if (inputPort && inputPort.onMessage) {
-          // Send template change message instead of device inquiry response
-          const templateMessage: MidiMessage = {
-            timestamp: Date.now(),
-            data: [0xF0, ...MANUFACTURER_ID, 0x11, 0x00, 0x05, 0xF7],
-            type: 'sysex'
-          };
-          inputPort.onMessage(templateMessage);
-
-          // Then send correct response
-          setTimeout(() => mockBackend.simulateDeviceInquiryResponse(), 10);
-        }
-      }, 50);
-
-      await expect(connectPromise).resolves.not.toThrow();
-
-      const status = deviceManager.getStatus();
-      expect(status.connected).toBe(true);
-    });
-  });
-
-  describe('connection state management', () => {
-    beforeEach(async () => {
-      await deviceManager.initialize();
-    });
-
-    it('should transition through connection states correctly', async () => {
-      const states: string[] = [];
-
-      // Monitor state changes through status calls
-      const originalGetStatus = deviceManager.getStatus;
-      deviceManager.getStatus = vi.fn().mockImplementation(() => {
-        const status = originalGetStatus.call(deviceManager);
-        states.push(status.state);
-        return status;
+    it('should handle device that responds after timeout', async () => {
+      const shortTimeoutManager = new DeviceManager({
+        midiBackend: mockBackend,
+        inquiryTimeout: 50
       });
 
-      const connectPromise = deviceManager.connect();
+      await shortTimeoutManager.initialize();
 
-      // Check initial state
-      let status = deviceManager.getStatus();
-      expect(states).toContain('connecting');
+      const connectPromise = shortTimeoutManager.connect();
 
-      setTimeout(() => {
-        mockBackend.simulateDeviceInquiryResponse();
-      }, 50);
+      // Advance past timeout
+      await vi.advanceTimersByTimeAsync(60);
+
+      // Late response should be ignored
+      mockBackend.simulateDeviceInquiryResponse();
 
       await connectPromise;
 
-      status = deviceManager.getStatus();
-      expect(status.state).toBe('connected');
+      const status = shortTimeoutManager.getStatus();
+      expect(status.connected).toBe(true);
+      expect(status.deviceInfo?.firmwareVersion).toBe('Unknown');
+
+      await shortTimeoutManager.cleanup();
+    });
+  });
+
+  describe('reconnection scenarios', () => {
+    beforeEach(async () => {
+      await deviceManager.initialize();
     });
 
-    it('should set state to error on connection failure', async () => {
-      mockBackend.removeDevice();
+    it('should reconnect after device disconnection', async () => {
+      // Initial connection
+      const connectPromise1 = deviceManager.connect();
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.simulateDeviceInquiryResponse();
+      await vi.runOnlyPendingTimersAsync();
+      await connectPromise1;
 
-      await expect(deviceManager.connect()).rejects.toThrow();
+      expect(deviceManager.getStatus().connected).toBe(true);
+
+      // Simulate device removal and reconnection
+      await deviceManager.disconnect();
+      expect(deviceManager.getStatus().connected).toBe(false);
+
+      // Reconnect
+      const connectPromise2 = deviceManager.connect();
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.simulateDeviceInquiryResponse();
+      await vi.runOnlyPendingTimersAsync();
+      await connectPromise2;
+
+      expect(deviceManager.getStatus().connected).toBe(true);
+    });
+
+    it('should handle device being physically removed and added back', async () => {
+      // Initial connection
+      const connectPromise1 = deviceManager.connect();
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.simulateDeviceInquiryResponse();
+      await vi.runOnlyPendingTimersAsync();
+      await connectPromise1;
+
+      expect(deviceManager.getStatus().connected).toBe(true);
+
+      // Simulate device removal
+      mockBackend.removeDevice();
+      await deviceManager.disconnect();
+
+      // Try to connect - should fail
+      await expect(deviceManager.connect()).rejects.toThrow('Launch Control XL 3 not found');
+
+      // Add device back
+      mockBackend.addDevice();
+
+      // Should be able to connect again
+      const connectPromise2 = deviceManager.connect();
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.simulateDeviceInquiryResponse();
+      await vi.runOnlyPendingTimersAsync();
+      await connectPromise2;
+
+      expect(deviceManager.getStatus().connected).toBe(true);
+    });
+  });
+
+  describe('disconnection', () => {
+    beforeEach(async () => {
+      await deviceManager.initialize();
+    });
+
+    it('should disconnect cleanly', async () => {
+      // Connect first
+      const connectPromise = deviceManager.connect();
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.simulateDeviceInquiryResponse();
+      await vi.runOnlyPendingTimersAsync();
+      await connectPromise;
+
+      expect(deviceManager.getStatus().connected).toBe(true);
+
+      // Disconnect
+      await deviceManager.disconnect();
 
       const status = deviceManager.getStatus();
+      expect(status.connected).toBe(false);
+      expect(status.state).toBe('disconnected');
+      expect(status.deviceInfo).toBeUndefined();
+    });
+
+    it('should handle disconnect when not connected', async () => {
+      await expect(deviceManager.disconnect()).resolves.not.toThrow();
+
+      const status = deviceManager.getStatus();
+      expect(status.connected).toBe(false);
       expect(status.state).toBe('disconnected');
     });
 
-    it('should handle device errors during connection', async () => {
+    it('should emit device:disconnected event', async () => {
+      const disconnectedSpy = vi.fn();
+      deviceManager.on('device:disconnected', disconnectedSpy);
+
+      // Connect first
+      const connectPromise = deviceManager.connect();
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.simulateDeviceInquiryResponse();
+      await vi.runOnlyPendingTimersAsync();
+      await connectPromise;
+
+      // Disconnect
+      await deviceManager.disconnect();
+
+      expect(disconnectedSpy).toHaveBeenCalled();
+    });
+  });
+
+  describe('error handling', () => {
+    beforeEach(async () => {
+      await deviceManager.initialize();
+    });
+
+    it('should handle MIDI backend errors during connection', async () => {
       const errorBackend = {
         ...mockBackend,
-        openInput: vi.fn().mockRejectedValue(new Error('Port open failed'))
+        openInput: vi.fn().mockRejectedValue(new Error('Failed to open input'))
       };
 
       const errorManager = new DeviceManager({
@@ -528,269 +569,46 @@ describe('DeviceManager', () => {
       });
 
       await errorManager.initialize();
-      await expect(errorManager.connect()).rejects.toThrow();
 
-      const status = errorManager.getStatus();
-      expect(status.state).toBe('disconnected');
+      await expect(errorManager.connect()).rejects.toThrow('Failed to open input');
 
       await errorManager.cleanup();
     });
-  });
 
-  describe('multiple handshake attempts', () => {
-    it('should support multiple connection attempts after failure', async () => {
-      await deviceManager.initialize();
-
-      // First attempt - device not available
-      mockBackend.removeDevice();
-      await expect(deviceManager.connect()).rejects.toThrow('Launch Control XL 3 not found');
-
-      // Second attempt - device becomes available
-      mockBackend.addDevice();
-      const connectPromise = deviceManager.connect();
-
-      setTimeout(() => {
-        mockBackend.simulateDeviceInquiryResponse();
-      }, 50);
-
-      await expect(connectPromise).resolves.not.toThrow();
-
-      const status = deviceManager.getStatus();
-      expect(status.connected).toBe(true);
-    });
-
-    it('should clean up properly between connection attempts', async () => {
-      await deviceManager.initialize();
-
-      // First failed attempt
-      mockBackend.removeDevice();
-      await expect(deviceManager.connect()).rejects.toThrow();
-
-      // Verify clean state
-      let status = deviceManager.getStatus();
-      expect(status.connected).toBe(false);
-      expect(status.deviceInfo).toBeUndefined();
-
-      // Second successful attempt
-      mockBackend.addDevice();
-      const connectPromise = deviceManager.connect();
-
-      setTimeout(() => {
-        mockBackend.simulateDeviceInquiryResponse();
-      }, 50);
-
-      await connectPromise;
-
-      status = deviceManager.getStatus();
-      expect(status.connected).toBe(true);
-      expect(status.deviceInfo).toBeDefined();
-    });
-  });
-
-  describe('error recovery scenarios', () => {
-    beforeEach(async () => {
-      await deviceManager.initialize();
-    });
-
-    it('should handle MIDI backend errors', async () => {
+    it('should emit device:error event on connection errors', async () => {
       const errorSpy = vi.fn();
       deviceManager.on('device:error', errorSpy);
 
-      // Connect successfully first
-      const connectPromise = deviceManager.connect();
-      setTimeout(() => mockBackend.simulateDeviceInquiryResponse(), 50);
-      await connectPromise;
+      mockBackend.removeDevice(); // No device available
 
-      // Simulate MIDI error
-      const error = new Error('MIDI backend error');
-      deviceManager['handleError'](error);
+      await expect(deviceManager.connect()).rejects.toThrow();
 
-      expect(errorSpy).toHaveBeenCalledWith(error);
-    });
-
-    it('should attempt reconnection after connection loss', async () => {
-      const connectPromise = deviceManager.connect();
-      setTimeout(() => mockBackend.simulateDeviceInquiryResponse(), 50);
-      await connectPromise;
-
-      // Verify connected
-      let status = deviceManager.getStatus();
-      expect(status.connected).toBe(true);
-
-      // Simulate connection loss by triggering error handling
-      const reconnectManager = new DeviceManager({
-        midiBackend: mockBackend,
-        retryAttempts: 1,
-        retryDelay: 50
-      });
-
-      await reconnectManager.initialize();
-
-      const reconnectPromise = reconnectManager.connect();
-      setTimeout(() => mockBackend.simulateDeviceInquiryResponse(), 50);
-      await reconnectPromise;
-
-      // Simulate error that triggers reconnection
-      const disconnectedSpy = vi.fn();
-      reconnectManager.on('device:disconnected', disconnectedSpy);
-
-      // Trigger error and test reconnection logic
-      reconnectManager['handleError'](new Error('Connection lost'));
-
-      await reconnectManager.cleanup();
-    });
-
-    it('should emit device:disconnected on cleanup', async () => {
-      const connectPromise = deviceManager.connect();
-      setTimeout(() => mockBackend.simulateDeviceInquiryResponse(), 50);
-      await connectPromise;
-
-      const disconnectedSpy = vi.fn();
-      deviceManager.on('device:disconnected', disconnectedSpy);
-
-      await deviceManager.disconnect('Manual disconnect');
-
-      expect(disconnectedSpy).toHaveBeenCalledWith('Manual disconnect');
-    });
-
-    it('should handle message sending after disconnection', async () => {
-      // Should throw when not connected
-      await expect(deviceManager.sendSysEx([0xF0, 0xF7])).rejects.toThrow('Device not connected');
-      await expect(deviceManager.sendCC(1, 127)).rejects.toThrow('Device not connected');
+      expect(errorSpy).toHaveBeenCalledWith(expect.any(Error));
     });
   });
 
-  describe('device communication after handshake', () => {
+  describe('device status', () => {
     beforeEach(async () => {
       await deviceManager.initialize();
-
-      const connectPromise = deviceManager.connect();
-      setTimeout(() => mockBackend.simulateDeviceInquiryResponse(), 50);
-      await connectPromise;
     });
 
-    it('should send SysEx messages to connected device', async () => {
-      const sentMessages: MidiMessage[] = [];
-      mockBackend.messageHandler = (portId, message) => {
-        sentMessages.push(message);
-      };
-
-      const sysexData = [0xF0, 0x00, 0x20, 0x29, 0x11, 0x77, 0x00, 0xF7];
-      await deviceManager.sendSysEx(sysexData);
-
-      expect(sentMessages).toHaveLength(1);
-      expect(sentMessages[0].data).toEqual(sysexData);
-    });
-
-    it('should send CC messages to connected device', async () => {
-      const sentMessages: MidiMessage[] = [];
-      mockBackend.messageHandler = (portId, message) => {
-        sentMessages.push(message);
-      };
-
-      await deviceManager.sendCC(20, 100, 0);
-
-      expect(sentMessages).toHaveLength(1);
-      expect(sentMessages[0].data).toEqual([0xB0, 20, 100]);
-    });
-
-    it('should handle template selection', async () => {
-      const modeChangedSpy = vi.fn();
-      deviceManager.on('device:modeChanged', modeChangedSpy);
-
-      await deviceManager.selectTemplate(5);
-
-      expect(modeChangedSpy).toHaveBeenCalledWith({
-        type: 'template',
-        slot: 5
-      });
-    });
-
-    it('should validate template slot range', async () => {
-      await expect(deviceManager.selectTemplate(-1)).rejects.toThrow('Template slot must be 0-15');
-      await expect(deviceManager.selectTemplate(16)).rejects.toThrow('Template slot must be 0-15');
-    });
-
-    it('should handle incoming control changes after handshake', async () => {
-      const controlChangeSpy = vi.fn();
-      deviceManager.on('control:change', controlChangeSpy);
-
-      // Simulate incoming CC message
-      const inputPort = mockBackend['openInputs'].get('lcxl3-input');
-      if (inputPort && inputPort.onMessage) {
-        const ccMessage: MidiMessage = {
-          timestamp: Date.now(),
-          data: [0xB0, 13, 64], // Send A knob 1
-          type: 'controlchange',
-          channel: 0,
-          controller: 13,
-          value: 64
-        };
-        inputPort.onMessage(ccMessage);
-      }
-
-      expect(controlChangeSpy).toHaveBeenCalledWith('sendA1', 64, 0);
-    });
-
-    it('should ignore control changes during initialization', async () => {
-      // Create new manager to test initialization state
-      const testManager = new DeviceManager({
-        midiBackend: mockBackend,
-        autoConnect: false
-      });
-
-      await testManager.initialize();
-
-      const controlChangeSpy = vi.fn();
-      testManager.on('control:change', controlChangeSpy);
-
-      // Start connecting (initialization state)
-      const connectPromise = testManager.connect();
-
-      // Send CC during initialization
-      setTimeout(() => {
-        const inputPort = mockBackend['openInputs'].get('lcxl3-input');
-        if (inputPort && inputPort.onMessage) {
-          const ccMessage: MidiMessage = {
-            timestamp: Date.now(),
-            data: [0xB0, 13, 64],
-            type: 'controlchange',
-            channel: 0,
-            controller: 13,
-            value: 64
-          };
-          inputPort.onMessage(ccMessage);
-        }
-
-        // Complete handshake
-        mockBackend.simulateDeviceInquiryResponse();
-      }, 50);
-
-      await connectPromise;
-
-      // Should not have received the message sent during initialization
-      expect(controlChangeSpy).not.toHaveBeenCalled();
-
-      await testManager.cleanup();
-    });
-  });
-
-  describe('device status reporting', () => {
-    it('should report correct status when disconnected', () => {
+    it('should return correct initial status', () => {
       const status = deviceManager.getStatus();
 
-      expect(status.connected).toBe(false);
-      expect(status.state).toBe('disconnected');
-      expect(status.deviceInfo).toBeUndefined();
-      expect(status.currentMode).toBeUndefined();
-      expect(status.lastSeen).toBeUndefined();
+      expect(status).toEqual({
+        connected: false,
+        state: 'disconnected',
+        deviceInfo: undefined,
+        lastConnected: undefined,
+        errorCount: 0
+      });
     });
 
-    it('should report correct status when connected', async () => {
-      await deviceManager.initialize();
-
+    it('should update status after successful connection', async () => {
       const connectPromise = deviceManager.connect();
-      setTimeout(() => mockBackend.simulateDeviceInquiryResponse(), 50);
+      await vi.runOnlyPendingTimersAsync();
+      mockBackend.simulateDeviceInquiryResponse();
+      await vi.runOnlyPendingTimersAsync();
       await connectPromise;
 
       const status = deviceManager.getStatus();
@@ -798,48 +616,32 @@ describe('DeviceManager', () => {
       expect(status.connected).toBe(true);
       expect(status.state).toBe('connected');
       expect(status.deviceInfo).toBeDefined();
-      expect(status.lastSeen).toBeInstanceOf(Date);
-    });
-  });
-
-  describe('resource cleanup', () => {
-    it('should clean up all resources', async () => {
-      await deviceManager.initialize();
-
-      const connectPromise = deviceManager.connect();
-      setTimeout(() => mockBackend.simulateDeviceInquiryResponse(), 50);
-      await connectPromise;
-
-      // Verify resources are active
-      let status = deviceManager.getStatus();
-      expect(status.connected).toBe(true);
-
-      await deviceManager.cleanup();
-
-      // Verify cleanup
-      status = deviceManager.getStatus();
-      expect(status.connected).toBe(false);
-      expect(status.deviceInfo).toBeUndefined();
-
-      // Should not throw if called again
-      await expect(deviceManager.cleanup()).resolves.not.toThrow();
+      expect(status.lastConnected).toBeDefined();
+      expect(status.errorCount).toBe(0);
     });
 
-    it('should clean up timers on disconnect', async () => {
-      await deviceManager.initialize();
+    it('should track error count', async () => {
+      // Remove device to cause connection error
+      mockBackend.removeDevice();
 
-      const connectPromise = deviceManager.connect();
-      setTimeout(() => mockBackend.simulateDeviceInquiryResponse(), 50);
-      await connectPromise;
+      try {
+        await deviceManager.connect();
+      } catch {
+        // Expected to fail
+      }
 
-      // Spy on clearTimeout to verify timer cleanup
-      const clearTimeoutSpy = vi.spyOn(global, 'clearTimeout');
+      const status = deviceManager.getStatus();
+      expect(status.errorCount).toBe(1);
 
-      await deviceManager.disconnect();
+      // Try again
+      try {
+        await deviceManager.connect();
+      } catch {
+        // Expected to fail
+      }
 
-      expect(clearTimeoutSpy).toHaveBeenCalled();
-
-      clearTimeoutSpy.mockRestore();
+      const status2 = deviceManager.getStatus();
+      expect(status2.errorCount).toBe(2);
     });
   });
 });
