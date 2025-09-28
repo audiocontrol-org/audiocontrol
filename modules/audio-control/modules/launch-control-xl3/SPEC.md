@@ -47,22 +47,30 @@ features should be deferred to later phases.
     - [x] Install and configure essential dependencies
 
 ### Feature MVP.1: Multiple Environment Support with a Common API
+
 - [x] The library API supports MIDI communication in node execution environments
-- [x] The library API supports MIDI communication in WebMIDI browser execution environments 
+- [x] The library API supports MIDI communication in WebMIDI browser execution environments
 
 ### Feature MVP.2: Device Handshake
 
-- [ ] Library API offers a function to initiate a handshake with the connected device
-- [ ] Library handshake function successfully listens for and processes the handshake response from the device
-- [ ] Library handshake function offers well-defined error messages
-- [ ] Library API offers a function to interrogate the current state of the device connection
+- [x] Library API offers a function to initiate a handshake with the connected device
+- [x] Library handshake function successfully listens for and processes the handshake response from the device
+- [x] Library handshake function offers well-defined error messages
+- [x] Library API offers a function to interrogate the current state of the device connection
+
+#### Feature MVP.2 Testing Requirements
+
+- [ ] There is a "one-click" pnpm script in this module that a developer may use to initiates a handshake via Node MIDI
+  with a connected device and reports success or failure
+- [ ] There is an html document that may be loaded into a chrome browser by a developer to initiate a handshake via
+  WebMIDI and report success or failure
 
 ### Feature MVP.3: Device Custom Mode Fetch
 
 - [ ] Library API offers a function to fetch the data from the current custom mode in the connected device
 - [ ] The fetch function listens for and parses response message(s) from the device and returns a data structure
   representing the custom mode data to the API client
-- [ ] The fetch 
+- [ ] The fetch
 
 ## Feature Prioritization
 
@@ -162,6 +170,6 @@ Long-term vision and experimental features
 
 ### Current Status
 
-- **Current Phase**: MVP (Planning)
-- **MVP Progress**: 0% (Not Started)
-- **Overall Progress**: 0% (Not Started)
+- **Current Phase**: MVP (In Progress)
+- **MVP Progress**: 80% (8/10 features complete)
+- **Overall Progress**: 80% (8/10 features complete)

@@ -20,6 +20,7 @@ import {
   CustomMode,
   DeviceInquiryResponse
 } from '../types/index.js';
+import { z } from 'zod';
 
 export interface DeviceManagerOptions {
   midiBackend?: MidiBackendInterface | undefined;
@@ -122,21 +123,46 @@ export class DeviceManager extends EventEmitter {
       this.inputPortId = inputPort.id;
       this.outputPortId = outputPort.id;
 
-      // Query device identity (optional - some devices don't respond)
+      // Query device identity - handshake is critical for device verification
       try {
         const deviceInfo = await this.queryDeviceIdentity();
         if (deviceInfo) {
           this.deviceInfo = this.parseDeviceInfo(deviceInfo);
+        } else {
+          throw new Error('Device inquiry returned null response. Device may not be compatible or may be in an invalid state.');
         }
       } catch (error) {
-        console.warn('Device inquiry failed, continuing anyway:', error);
-        // Create default device info
-        this.deviceInfo = {
-          name: 'Launch Control XL 3',
-          firmwareVersion: 'Unknown',
-          serialNumber: undefined,
-          deviceId: 0x11
-        } as any;
+        const errorMessage = error instanceof Error ? error.message : String(error);
+
+        // Only use fallback in development mode
+        if (process.env['NODE_ENV'] === 'development') {
+          console.warn('Device inquiry failed in development mode, using fallback device info:', errorMessage);
+          this.deviceInfo = this.createFallbackDeviceInfo();
+        } else {
+          // In production, provide actionable error handling
+          if (errorMessage.includes('timeout')) {
+            throw new Error(
+              `Device handshake timeout after ${this.options.inquiryTimeout}ms. ` +
+              'Troubleshooting steps: 1) Check device is powered on and connected, ' +
+              '2) Verify MIDI drivers are installed, 3) Try reconnecting the device, ' +
+              '4) Check for conflicting MIDI applications.'
+            );
+          } else if (errorMessage.includes('permission') || errorMessage.includes('access')) {
+            throw new Error(
+              `MIDI permission denied: ${errorMessage}. ` +
+              'Troubleshooting steps: 1) Grant MIDI access in browser settings, ' +
+              '2) Ensure you\'re using HTTPS in production, 3) Try refreshing the page, ' +
+              '4) Check browser MIDI support.'
+            );
+          } else {
+            throw new Error(
+              `Device handshake failed: ${errorMessage}. ` +
+              'Troubleshooting steps: 1) Verify device compatibility, ' +
+              '2) Check device is not in use by another application, ' +
+              '3) Try power cycling the device.'
+            );
+          }
+        }
       }
 
       // Initialize device settings
@@ -231,7 +257,13 @@ export class DeviceManager extends EventEmitter {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.midi.removeListener('sysex', handleResponse);
-        reject(new Error('Device inquiry timeout'));
+        reject(new Error(
+          `Device inquiry timeout after ${this.options.inquiryTimeout}ms. ` +
+          'The device may not support SysEx handshake or may be unresponsive. ' +
+          'Troubleshooting steps: 1) Verify device is powered and connected, ' +
+          '2) Check MIDI cable/USB connection, 3) Ensure device supports identity inquiry, ' +
+          '4) Try increasing inquiry timeout in options.'
+        ));
       }, this.options.inquiryTimeout);
 
       const handleResponse = (message: MidiMessage) => {
@@ -242,7 +274,8 @@ export class DeviceManager extends EventEmitter {
             if (parsed.type === 'device_inquiry_response') {
               clearTimeout(timeout);
               this.midi.removeListener('sysex', handleResponse);
-              resolve(parsed as unknown as DeviceInquiryResponse);
+              const validatedResponse = this.validateDeviceInquiryResponse(parsed);
+              resolve(validatedResponse);
             }
           } catch {
             // Ignore parse errors for non-matching messages
@@ -262,16 +295,19 @@ export class DeviceManager extends EventEmitter {
    * Parse device info from inquiry response
    */
   private parseDeviceInfo(response: DeviceInquiryResponse): LaunchControlXL3Info {
-    return {
+    const validatedInfo = this.validateDeviceInfo({
       manufacturerId: response.manufacturerId.map(b =>
         b.toString(16).padStart(2, '0')
       ).join(' '),
-      deviceFamily: response.familyCode ?? 0,
-      modelNumber: response.familyMember ?? 0,
+      deviceFamily: response.familyCode ?? response.deviceFamily ?? 0,
+      modelNumber: response.familyMember ?? response.deviceModel ?? 0,
       firmwareVersion: response.softwareRevision ?
         `${response.softwareRevision[0]}.${response.softwareRevision[1]}.${response.softwareRevision[2]}.${response.softwareRevision[3]}` :
-        'unknown',
-    };
+        (response.firmwareVersion ? Array.from(response.firmwareVersion).join('.') : 'unknown'),
+      serialNumber: response.serialNumber ? Array.from(response.serialNumber).join('') : undefined,
+    });
+
+    return validatedInfo;
   }
 
   /**
@@ -317,7 +353,7 @@ export class DeviceManager extends EventEmitter {
 
       switch (parsed.type) {
         case 'template_change':
-          const templateChange = parsed as any;
+          const templateChange = this.validateTemplateChangeResponse(parsed);
           this.currentMode = {
             type: 'template',
             slot: templateChange.templateNumber,
@@ -477,7 +513,13 @@ export class DeviceManager extends EventEmitter {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.midi.removeListener('sysex', handleResponse);
-        reject(new Error('Custom mode read timeout'));
+        reject(new Error(
+          `Custom mode read timeout after ${this.options.inquiryTimeout}ms for slot ${slot}. ` +
+          'The device may be unresponsive or the slot may be empty. ' +
+          'Troubleshooting steps: 1) Verify device connection, ' +
+          '2) Check if custom mode exists in the specified slot, ' +
+          '3) Try reading a different slot, 4) Power cycle the device.'
+        ));
       }, this.options.inquiryTimeout);
 
       const handleResponse = (message: MidiMessage) => {
@@ -489,12 +531,12 @@ export class DeviceManager extends EventEmitter {
               clearTimeout(timeout);
               this.midi.removeListener('sysex', handleResponse);
 
-              const response = parsed as any;
+              const response = this.validateCustomModeResponse(parsed);
               resolve({
-                slot: response.slot,
+                slot: response.slot ?? slot,
                 name: response.name || `Custom ${slot + 1}`,
-                controls: response.controls,
-                colors: response.colors,
+                controls: response.controls || {},
+                colors: response.colors || {},
               });
             }
           } catch {
@@ -526,7 +568,8 @@ export class DeviceManager extends EventEmitter {
       colors: mode.colors,
     };
 
-    const message = SysExParser.buildCustomModeWriteRequest(slot, modeData as any);
+    const validatedModeData = this.validateCustomModeData(modeData);
+    const message = SysExParser.buildCustomModeWriteRequest(slot, validatedModeData);
     await this.sendSysEx(message);
   }
 
@@ -546,6 +589,153 @@ export class DeviceManager extends EventEmitter {
     }
 
     return status;
+  }
+
+  /**
+   * Create fallback device info for development mode
+   */
+  private createFallbackDeviceInfo(): LaunchControlXL3Info {
+    return {
+      manufacturerId: '00 20 29', // Novation manufacturer ID
+      deviceFamily: 2,
+      modelNumber: 13, // Launch Control XL 3
+      firmwareVersion: 'Unknown',
+    };
+  }
+
+  /**
+   * Validate device inquiry response with proper type checking
+   */
+  private validateDeviceInquiryResponse(response: unknown): DeviceInquiryResponse {
+    const schema = z.object({
+      type: z.literal('device_inquiry_response'),
+      manufacturerId: z.array(z.number().min(0).max(127)),
+      deviceFamily: z.number().optional(),
+      deviceModel: z.number().optional(),
+      familyCode: z.number().optional(),
+      familyMember: z.number().optional(),
+      firmwareVersion: z.array(z.number()).optional(),
+      softwareRevision: z.array(z.number()).optional(),
+      serialNumber: z.array(z.number()).optional(),
+    });
+
+    try {
+      const validated = schema.parse(response);
+      return {
+        manufacturerId: validated.manufacturerId,
+        deviceFamily: validated.deviceFamily ?? validated.familyCode ?? 0,
+        deviceModel: validated.deviceModel ?? validated.familyMember ?? 0,
+        firmwareVersion: validated.firmwareVersion ?? validated.softwareRevision ?? [],
+        ...(validated.serialNumber && { serialNumber: validated.serialNumber }),
+        ...(validated.familyCode !== undefined && { familyCode: validated.familyCode }),
+        ...(validated.familyMember !== undefined && { familyMember: validated.familyMember }),
+        ...(validated.softwareRevision && { softwareRevision: validated.softwareRevision }),
+      };
+    } catch (error) {
+      throw new Error(`Invalid device inquiry response format: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Validate device info with proper typing
+   */
+  private validateDeviceInfo(info: unknown): LaunchControlXL3Info {
+    const schema = z.object({
+      manufacturerId: z.string(),
+      deviceFamily: z.number(),
+      modelNumber: z.number(),
+      firmwareVersion: z.string(),
+      serialNumber: z.string().optional(),
+      deviceName: z.string().optional(),
+      portInfo: z.any().optional(), // MidiPortInfo type is complex, allow any for now
+    });
+
+    try {
+      const validated = schema.parse(info);
+      // Construct object with only defined optional properties
+      const result: LaunchControlXL3Info = {
+        manufacturerId: validated.manufacturerId,
+        deviceFamily: validated.deviceFamily,
+        modelNumber: validated.modelNumber,
+        firmwareVersion: validated.firmwareVersion,
+        ...(validated.serialNumber !== undefined && { serialNumber: validated.serialNumber }),
+        ...(validated.deviceName !== undefined && { deviceName: validated.deviceName }),
+        ...(validated.portInfo !== undefined && { portInfo: validated.portInfo }),
+      };
+
+      return result;
+    } catch (error) {
+      throw new Error(`Invalid device info format: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Validate custom mode response with type guards
+   */
+  private validateCustomModeResponse(response: unknown): { slot?: number; name?: string; controls?: any; colors?: any } {
+    const schema = z.object({
+      type: z.literal('custom_mode_response'),
+      slot: z.number().min(0).max(15).optional(),
+      name: z.string().optional(),
+      controls: z.any().optional(), // Complex type, validate separately
+      colors: z.any().optional(),
+    });
+
+    try {
+      const validated = schema.parse(response);
+      const result: { slot?: number; name?: string; controls?: any; colors?: any } = {};
+
+      if (validated.slot !== undefined) {
+        result.slot = validated.slot;
+      }
+      if (validated.name !== undefined) {
+        result.name = validated.name;
+      }
+      if (validated.controls !== undefined) {
+        result.controls = validated.controls;
+      }
+      if (validated.colors !== undefined) {
+        result.colors = validated.colors;
+      }
+
+      return result;
+    } catch (error) {
+      throw new Error(`Invalid custom mode response format: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Validate custom mode data before sending
+   */
+  private validateCustomModeData(data: unknown): any {
+    const schema = z.object({
+      slot: z.number().min(0).max(15),
+      name: z.string(),
+      controls: z.any(),
+      colors: z.any(),
+    });
+
+    try {
+      return schema.parse(data);
+    } catch (error) {
+      throw new Error(`Invalid custom mode data format: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Validate template change response with type guards
+   */
+  private validateTemplateChangeResponse(response: unknown): { templateNumber: number } {
+    const schema = z.object({
+      type: z.literal('template_change'),
+      templateNumber: z.number().min(0).max(15),
+    });
+
+    try {
+      return schema.parse(response);
+    } catch (error) {
+      throw new Error(`Invalid template change response format: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   /**

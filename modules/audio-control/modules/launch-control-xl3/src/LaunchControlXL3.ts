@@ -577,6 +577,41 @@ export class LaunchControlXL3 extends EventEmitter {
   }
 
   /**
+   * Verify device identity and retrieve hardware information
+   * @returns Device information
+   * @throws Error if not connected or handshake fails
+   */
+  async verifyDevice(): Promise<LaunchControlXL3Info> {
+    if (!this.isConnected()) {
+      throw new Error('Device not connected. Call connect() first before verifying device.');
+    }
+
+    const status = this.getStatus();
+    if (!status.deviceInfo) {
+      throw new Error('Device connected but device information not available. Device handshake may have failed.');
+    }
+
+    // Perform fresh device identity query to verify current connection
+    try {
+      // Access private method through device manager's queryDeviceIdentity
+      // Since DeviceManager doesn't expose this publicly, we'll trigger a reconnection
+      // which forces a fresh handshake
+      await this.disconnect();
+      await this.connect();
+
+      const updatedStatus = this.getStatus();
+      if (!updatedStatus.deviceInfo) {
+        throw new Error('Device verification failed: Unable to retrieve device information after reconnection.');
+      }
+
+      return updatedStatus.deviceInfo;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      throw new Error(`Device verification failed: ${errorMessage}`);
+    }
+  }
+
+  /**
    * Clean up resources
    */
   async cleanup(): Promise<void> {
