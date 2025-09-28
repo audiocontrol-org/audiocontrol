@@ -117,10 +117,14 @@ describe('SysExParser', () => {
 
       expect(message[0]).toBe(0xF0);
       expect(message.slice(1, 4)).toEqual(MANUFACTURER_ID);
-      expect(message[4]).toBe(0x11);
-      expect(message[5]).toBe(SysExMessageType.CUSTOM_MODE_READ);
-      expect(message[6]).toBe(3); // Slot number
-      expect(message[7]).toBe(0xF7);
+      expect(message[4]).toBe(0x02); // Device ID
+      expect(message[5]).toBe(0x15); // Command (Custom mode)
+      expect(message[6]).toBe(0x05); // Sub-command
+      expect(message[7]).toBe(0x00); // Reserved
+      expect(message[8]).toBe(0x40); // Read operation
+      expect(message[9]).toBe(3); // Slot number
+      expect(message[10]).toBe(0x00); // Parameter
+      expect(message[11]).toBe(0xF7);
     });
 
     it('should validate slot number range', () => {

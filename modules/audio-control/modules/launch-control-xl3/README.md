@@ -45,14 +45,14 @@ npm install jzz
 ```typescript
 import { LaunchControlXL3 } from '@ol-dsp/launch-control-xl3';
 
-// Create and initialize controller
+// Create controller
 const controller = new LaunchControlXL3({
-  autoConnect: true,
   enableLedControl: true,
   enableCustomModes: true,
 });
 
-await controller.initialize();
+// Connect to device
+await controller.connect();
 
 // Listen for control changes
 controller.on('control:change', (controlId, value) => {
@@ -279,8 +279,7 @@ Creates a new controller instance.
 #### Device Control
 | Method | Description |
 |--------|-------------|
-| `initialize()` | Initialize the controller |
-| `connect()` | Connect to device |
+| `connect()` | Connect to device (automatically initializes) |
 | `disconnect()` | Disconnect from device |
 | `getStatus()` | Get device status |
 | `isConnected()` | Check connection state |
@@ -430,12 +429,11 @@ import { LaunchControlXL3 } from '@ol-dsp/launch-control-xl3';
 
 // Auto-detects Web MIDI API in browser
 const device = new LaunchControlXL3({
-  autoConnect: true,
   enableCustomModes: true
 });
 
-// Request permission and initialize
-await device.initialize();
+// Request permission and connect
+await device.connect();
 
 // Use just like in Node.js!
 device.on('device:connected', () => {
@@ -464,7 +462,7 @@ function useLCXL3Device() {
     device.on('device:connected', () => setConnected(true));
     device.on('device:disconnected', () => setConnected(false));
 
-    device.initialize().catch(console.error);
+    device.connect().catch(console.error);
 
     return () => device.cleanup();
   }, [device]);

@@ -49,6 +49,7 @@ export interface DeviceInquiryResponse extends SysExMessage {
   familyCode: number;
   familyMember: number;
   softwareRevision: number[];
+  serialNumber?: string | number[];
 }
 
 // Template change message
@@ -400,6 +401,9 @@ export class SysExParser {
 
   /**
    * Build device inquiry request
+   * @deprecated Use the complete handshake sequence with buildNovationSyn()
+   * and buildUniversalDeviceInquiry() instead. This method only performs
+   * partial handshake and uses incorrect device ID.
    */
   static buildDeviceQuery(): number[] {
     return [
@@ -410,6 +414,104 @@ export class SysExParser {
       0x01, // Identity request
       0xF7, // SysEx end
     ];
+  }
+
+  /**
+   * Build Novation SYN message for complete handshake sequence
+   *
+   * This is the first message in the 4-message handshake protocol.
+   * The device will respond with a SYN-ACK containing its serial number.
+   *
+   * Message format: F0 00 20 29 00 42 02 F7 (8 bytes)
+   *
+   * @returns {number[]} SysEx message bytes for Novation SYN request
+   */
+  static buildNovationSyn(): number[] {
+    return [
+      0xF0,              // SysEx start
+      0x00, 0x20, 0x29,  // Novation manufacturer ID
+      0x00,              // Device model (Launch Control)
+      0x42,              // Command (handshake)
+      0x02,              // Sub-command (SYN)
+      0xF7               // SysEx end
+    ];
+  }
+
+  /**
+   * Build Universal Device Inquiry message with correct device ID
+   *
+   * This is the third message in the 4-message handshake protocol (ACK).
+   * Uses the correct broadcast device ID (0x7F) instead of 0x00.
+   *
+   * Message format: F0 7E 7F 06 01 F7 (6 bytes)
+   *
+   * @returns {number[]} SysEx message bytes for Universal Device Inquiry
+   */
+  static buildUniversalDeviceInquiry(): number[] {
+    return [
+      0xF0,              // SysEx start
+      0x7E,              // Universal Non-Realtime
+      0x7F,              // Device ID (broadcast)
+      0x06,              // Sub-ID 1 (Device Inquiry)
+      0x01,              // Sub-ID 2 (Inquiry Request)
+      0xF7               // SysEx end
+    ];
+  }
+
+  /**
+   * Parse Novation SYN-ACK response and extract serial number
+   *
+   * This parses the second message in the 4-message handshake protocol.
+   * The SYN-ACK response contains the device's serial number.
+   *
+   * Expected format: F0 00 20 29 00 42 02 [SERIAL_NUMBER] F7 (22 bytes)
+   * Serial number is 14 ASCII characters at bytes 7-20.
+   *
+   * @param {number[]} data - Raw SysEx message bytes including F0/F7
+   * @returns {object} Parsing result with validity flag and optional serial number
+   * @returns {boolean} returns.valid - True if message is valid SYN-ACK
+   * @returns {string} [returns.serialNumber] - Device serial number if valid
+   */
+  static parseNovationSynAck(data: number[]): { valid: boolean; serialNumber?: string } {
+    // Validate message length (should be exactly 22 bytes)
+    if (data.length !== 22) {
+      return { valid: false };
+    }
+
+    // Validate SysEx start and end bytes
+    if (data[0] !== 0xF0 || data[data.length - 1] !== 0xF7) {
+      return { valid: false };
+    }
+
+    // Verify Novation manufacturer ID (bytes 1-3)
+    if (data[1] !== 0x00 || data[2] !== 0x20 || data[3] !== 0x29) {
+      return { valid: false };
+    }
+
+    // Verify command bytes (bytes 4-6)
+    if (data[4] !== 0x00 || data[5] !== 0x42 || data[6] !== 0x02) {
+      return { valid: false };
+    }
+
+    // Extract serial number (bytes 7-20, 14 characters)
+    const serialBytes = data.slice(7, 21);
+
+    // Validate that all serial bytes are printable ASCII
+    for (const byte of serialBytes) {
+      if (byte < 32 || byte > 126) {
+        return { valid: false };
+      }
+    }
+
+    const serialNumber = String.fromCharCode(...serialBytes);
+
+    // Basic validation of Launch Control XL3 serial number format
+    // Should start with "LX2" followed by digits
+    if (!serialNumber.startsWith('LX2') || serialNumber.length !== 14) {
+      return { valid: false };
+    }
+
+    return { valid: true, serialNumber };
   }
 
   /**
@@ -779,6 +881,53 @@ export class SysExParser {
       0x00, // Reset all LEDs
       0xF7, // SysEx end
     ];
+  }
+
+  /**
+   * Check if SysEx message is a device inquiry response
+   *
+   * This validates the fourth message in the 4-message handshake protocol.
+   * Device inquiry responses follow the Universal Non-Realtime format.
+   *
+   * Expected format: F0 7E [device_id] 06 02 [manufacturer_id] [device_info] F7
+   *
+   * @param {number[]} data - Raw SysEx message bytes including F0/F7
+   * @returns {boolean} True if message is a valid device inquiry response
+   */
+  static isDeviceInquiryResponse(data: number[]): boolean {
+    // Minimum length check (F0 7E XX 06 02 + at least 3 bytes manufacturer ID + F7)
+    if (data.length < 9) {
+      return false;
+    }
+
+    // Validate SysEx start and end bytes
+    if (data[0] !== 0xF0 || data[data.length - 1] !== 0xF7) {
+      return false;
+    }
+
+    // Check Universal Non-Realtime header
+    if (data[1] !== 0x7E) {
+      return false;
+    }
+
+    // Device ID can be any value (data[2])
+
+    // Check Sub-ID1 (General Information)
+    if (data[3] !== 0x06) {
+      return false;
+    }
+
+    // Check Sub-ID2 (Identity Reply)
+    if (data[4] !== 0x02) {
+      return false;
+    }
+
+    // Must have at least manufacturer ID (3 bytes minimum)
+    if (data.length < 9) {
+      return false;
+    }
+
+    return true;
   }
 
   /**

@@ -28,13 +28,12 @@ async function connect(): Promise<LaunchControlXL3> {
 
   try {
     controller = new LaunchControlXL3({
-      autoConnect: true,
       enableLedControl: true,
       enableCustomModes: true,
       deviceNameFilter: 'LCXL3 1'  // Use LCXL3 ports
     });
 
-    await controller.initialize();
+    await controller.connect();
     console.log('✓ Connected successfully');
 
     // Setup basic event listeners

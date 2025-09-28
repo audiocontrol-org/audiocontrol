@@ -31,6 +31,7 @@ export interface MidiPort {
   readonly id: string;
   readonly name: string;
   readonly type: 'input' | 'output';
+
   close(): Promise<void>;
 }
 
@@ -48,21 +49,28 @@ export interface MidiOutputPort extends MidiPort {
 // Backend interface that different MIDI implementations must satisfy
 export interface MidiBackendInterface {
   initialize(): Promise<void>;
+
   getInputPorts(): Promise<MidiPortInfo[]>;
+
   getOutputPorts(): Promise<MidiPortInfo[]>;
+
   openInput(portId: string): Promise<MidiInputPort>;
+
   openOutput(portId: string): Promise<MidiOutputPort>;
+
   sendMessage(port: MidiOutputPort, message: MidiMessage): Promise<void>;
+
   closePort(port: MidiPort): Promise<void>;
+
   cleanup(): Promise<void>;
 }
 
 // Events emitted by MidiInterface
 export interface MidiInterfaceEvents {
-  'message': (message: MidiMessage) => void;
-  'connected': (port: MidiPort) => void;
-  'disconnected': (port: MidiPort) => void;
-  'error': (error: Error) => void;
+  message: (message: MidiMessage) => void;
+  connected: (port: MidiPort) => void;
+  disconnected: (port: MidiPort) => void;
+  error: (error: Error) => void;
 }
 
 /**
@@ -76,6 +84,7 @@ export class MidiInterface extends EventEmitter {
   private isInitialized = false;
   private messageBuffer: MidiMessage[] = [];
   private readonly maxBufferSize = 1000;
+  private messageListeners: Set<(message: MidiMessage) => void> = new Set();
 
   constructor(backend?: MidiBackendInterface) {
     super();
@@ -90,18 +99,14 @@ export class MidiInterface extends EventEmitter {
       return;
     }
 
-    try {
-      // If no backend provided, try to auto-detect
-      if (!this.backend) {
-        this.backend = await this.autoDetectBackend();
-      }
-
-      await this.backend.initialize();
-      this.isInitialized = true;
-    } catch (error) {
-      this.emit('error', error as Error);
-      throw error;
+    // If no backend provided, try to auto-detect
+    if (!this.backend) {
+      throw new Error('MIDI backend is not initialized');
+      //this.backend = await this.autoDetectBackend();
     }
+
+    await this.backend.initialize();
+    this.isInitialized = true;
   }
 
   /**
@@ -153,7 +158,7 @@ export class MidiInterface extends EventEmitter {
 
     // Find port
     const ports = await this.backend.getInputPorts();
-    const port = ports.find(p => p.id === portIdOrName || p.name === portIdOrName);
+    const port = ports.find((p) => p.id === portIdOrName || p.name === portIdOrName);
 
     if (!port) {
       throw new Error(`Input port not found: ${portIdOrName}`);
@@ -189,7 +194,7 @@ export class MidiInterface extends EventEmitter {
 
     // Find port
     const ports = await this.backend.getOutputPorts();
-    const port = ports.find(p => p.id === portIdOrName || p.name === portIdOrName);
+    const port = ports.find((p) => p.id === portIdOrName || p.name === portIdOrName);
 
     if (!port) {
       throw new Error(`Output port not found: ${portIdOrName}`);
@@ -214,7 +219,7 @@ export class MidiInterface extends EventEmitter {
 
     const message: MidiMessage = {
       timestamp: Date.now(),
-      data
+      data,
     };
 
     await this.backend.sendMessage(this.outputPort, message);
@@ -295,18 +300,18 @@ export class MidiInterface extends EventEmitter {
     if (data.length > 0) {
       const statusByte = data[0];
       if (statusByte === undefined) return;
-      const channel = statusByte & 0x0F;
-      const messageType = statusByte & 0xF0;
+      const channel = statusByte & 0x0f;
+      const messageType = statusByte & 0xf0;
 
       const parsedMessage: MidiMessage = {
         timestamp: message.timestamp,
         data: data,
         type: 'unknown',
-        channel
+        channel,
       };
 
       switch (messageType) {
-        case 0xB0: // Control Change
+        case 0xb0: // Control Change
           parsedMessage.type = 'controlchange';
           parsedMessage.controller = data[1] ?? 0;
           parsedMessage.value = data[2] ?? 0;
@@ -327,8 +332,8 @@ export class MidiInterface extends EventEmitter {
           this.emit('noteoff', parsedMessage);
           break;
 
-        case 0xF0: // System Exclusive
-          if (data[data.length - 1] === 0xF7) {
+        case 0xf0: // System Exclusive
+          if (data[data.length - 1] === 0xf7) {
             parsedMessage.type = 'sysex';
             this.emit('sysex', parsedMessage);
           }
@@ -343,59 +348,43 @@ export class MidiInterface extends EventEmitter {
   /**
    * Auto-detect available MIDI backend
    */
-  private async autoDetectBackend(): Promise<MidiBackendInterface> {
-    // Try node-midi first (Node.js environment)
-    try {
-      const { NodeMidiBackend } = await import('./backends/NodeMidiBackend.js');
-      return new NodeMidiBackend();
-    } catch (err) {
-      console.debug('node-midi not available:', err);
-    }
-
-    // Try Web MIDI API (browser environment)
-    try {
-      const { WebMidiBackend } = await import('./backends/WebMidiBackend.js');
-      if (WebMidiBackend.isAvailable()) {
-        return new WebMidiBackend();
-      }
-    } catch (err) {
-      console.debug('Web MIDI API not available:', err);
-    }
-
-    // Try MidiVal (works in both Node and browser)
-    try {
-      const { MidiValBackend } = await import('./backends/MidiValBackend.js');
-      return new MidiValBackend();
-    } catch (err) {
-      console.debug('MidiVal not available:', err);
-    }
-
-    // Use mock backend as last resort (for testing)
-    const { MockMidiBackend } = await import('./backends/MockMidiBackend.js');
-    return new MockMidiBackend();
-  }
-}
-
-// Helper function to create a mock backend for testing
-export function createMockBackend(): MidiBackendInterface {
-  return {
-    initialize: async () => {},
-    getInputPorts: async () => [],
-    getOutputPorts: async () => [],
-    openInput: async (portId: string) => ({
-      id: portId,
-      name: 'Mock Input',
-      type: 'input' as const,
-      close: async () => {}
-    }),
-    openOutput: async (portId: string) => ({
-      id: portId,
-      name: 'Mock Output',
-      type: 'output' as const,
-      close: async () => {}
-    }),
-    sendMessage: async () => {},
-    closePort: async () => {},
-    cleanup: async () => {}
-  };
+  // private async autoDetectBackend(): Promise<MidiBackendInterface> {
+  //   // Try Web MIDI API first (browser environment with native support)
+  //   try {
+  //     const { WebMidiBackend } = await import('./backends/WebMidiBackend.js');
+  //     if (WebMidiBackend.isAvailable()) {
+  //       return new WebMidiBackend();
+  //     }
+  //   } catch (err) {
+  //     console.debug('Web MIDI API not available:', err);
+  //   }
+  //
+  //   // Try easymidi (Node.js with native bindings)
+  //   try {
+  //     const { EasyMidiBackend } = await import('./backends/EasyMidiBackend.js');
+  //     const backend = new EasyMidiBackend();
+  //     await backend.initialize();
+  //     return backend;
+  //   } catch (err) {
+  //     console.debug('easymidi not available:', err);
+  //   }
+  //
+  //   // Try JZZ (pure JavaScript, works in Node.js and browsers)
+  //   try {
+  //     const { JzzBackend } = await import('./backends/JzzBackend.js');
+  //     const backend = new JzzBackend();
+  //     await backend.initialize();
+  //     return backend;
+  //   } catch (err) {
+  //     console.debug('JZZ not available:', err);
+  //   }
+  //
+  //   // Try node-midi (Node.js with native bindings - fallback if easymidi unavailable)
+  //   try {
+  //     const { NodeMidiBackend } = await import('./backends/NodeMidiBackend.js');
+  //     return new NodeMidiBackend();
+  //   } catch (err) {
+  //     console.debug('node-midi not available:', err);
+  //   }
+  // }
 }

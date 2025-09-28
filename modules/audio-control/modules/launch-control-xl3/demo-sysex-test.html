@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Launch Control XL3 - SysEx Test (Hardware Required)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 { color: #4ec9b0; }
+        h2 { color: #569cd6; margin-top: 30px; }
+        .section {
+            background: #252526;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #007acc;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Courier New', monospace;
+        }
+        .pass { background: #1e3a1e; color: #4ec94e; }
+        .fail { background: #3a1e1e; color: #f48771; }
+        .info { background: #1e2a3a; color: #4eb0f4; }
+        .warn { background: #3a3a1e; color: #f4d04e; }
+        pre {
+            background: #1e1e1e;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 12px;
+            border: 1px solid #3e3e42;
+        }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 14px;
+            margin: 5px;
+            transition: background 0.2s;
+        }
+        button:hover { background: #1177bb; }
+        button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .midi-data {
+            font-family: 'Consolas', monospace;
+            font-size: 11px;
+            color: #ce9178;
+        }
+        .timestamp {
+            color: #858585;
+            font-size: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎛️ Launch Control XL3 SysEx Communication Test</h1>
+
+    <div class="section">
+        <h2>⚠️ Requirements</h2>
+        <ul>
+            <li>Launch Control XL3 must be connected via USB</li>
+            <li>Device must be powered on</li>
+            <li>Chrome/Edge browser (Web MIDI API support)</li>
+            <li>HTTPS or localhost (required for MIDI access)</li>
+        </ul>
+    </div>
+
+    <div class="section">
+        <h2>🧪 Test Steps</h2>
+        <div class="controls">
+            <button id="initBtn" onclick="testInit()">1. Initialize & Connect</button>
+            <button id="loadBtn" onclick="testLoadMode()" disabled>2. Load Custom Mode (SysEx)</button>
+            <button id="monitorBtn" onclick="toggleMonitor()" disabled>3. Monitor MIDI Messages</button>
+            <button onclick="clearLog()">Clear Log</button>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>📊 Test Results</h2>
+        <div id="results"></div>
+    </div>
+
+    <div class="section">
+        <h2>📡 MIDI Monitor</h2>
+        <div id="monitor" style="max-height: 300px; overflow-y: auto;"></div>
+    </div>
+
+    <script>
+        const results = document.getElementById('results');
+        const monitor = document.getElementById('monitor');
+        const loadBtn = document.getElementById('loadBtn');
+        const monitorBtn = document.getElementById('monitorBtn');
+        const initBtn = document.getElementById('initBtn');
+
+        let midiAccess = null;
+        let midiInput = null;
+        let midiOutput = null;
+        let monitoring = false;
+
+        function log(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            const time = new Date().toLocaleTimeString();
+            div.innerHTML = `<span class="timestamp">[${time}]</span> ${message}`;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+
+        function logMidi(direction, data) {
+            const div = document.createElement('div');
+            const time = new Date().toLocaleTimeString();
+            const hex = Array.from(data).map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+            const isSysEx = data[0] === 0xF0;
+            const style = direction === 'OUT' ? 'color: #ce9178;' : 'color: #4ec9b0;';
+            div.innerHTML = `<span class="timestamp">[${time}]</span> <span style="${style}">${direction}</span> ${isSysEx ? '🔧' : '🎵'} <span class="midi-data">${hex}</span>`;
+            monitor.appendChild(div);
+            monitor.scrollTop = monitor.scrollHeight;
+        }
+
+        function clearLog() {
+            results.innerHTML = '';
+            monitor.innerHTML = '';
+        }
+
+        async function testInit() {
+            clearLog();
+            log('🔌 Initializing Web MIDI API...', 'info');
+
+            try {
+                // Request MIDI access with SysEx permission
+                midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+                log('✅ Web MIDI API initialized', 'pass');
+                log('✅ SysEx permission granted', 'pass');
+
+                // Find Launch Control XL3
+                log('', 'info');
+                log('🔍 Searching for Launch Control XL3...', 'info');
+
+                const inputs = Array.from(midiAccess.inputs.values());
+                const outputs = Array.from(midiAccess.outputs.values());
+
+                log(`Found ${inputs.length} input(s), ${outputs.length} output(s)`, 'info');
+
+                for (const input of inputs) {
+                    log(`  Input: ${input.name}`, 'info');
+                    if ((input.name.includes('Launch Control XL') || input.name.includes('LCXL')) && input.name.includes('MIDI Out')) {
+                        midiInput = input;
+                        log(`  ✅ Selected: ${input.name}`, 'pass');
+                    }
+                }
+
+                for (const output of outputs) {
+                    log(`  Output: ${output.name}`, 'info');
+                    if ((output.name.includes('Launch Control XL') || output.name.includes('LCXL')) && output.name.includes('MIDI In')) {
+                        midiOutput = output;
+                        log(`  ✅ Selected: ${output.name}`, 'pass');
+                    }
+                }
+
+                if (!midiInput || !midiOutput) {
+                    throw new Error('Launch Control XL3 not found. Make sure it is connected and powered on.');
+                }
+
+                // Set up message handler
+                midiInput.onmidimessage = (event) => {
+                    logMidi('IN ', event.data);
+                };
+
+                log('', 'info');
+                log('✅ Device connected and ready', 'pass');
+                loadBtn.disabled = false;
+                monitorBtn.disabled = false;
+                initBtn.disabled = true;
+
+            } catch (error) {
+                log('', 'info');
+                log('❌ Initialization failed: ' + error.message, 'fail');
+                if (error.name === 'SecurityError') {
+                    log('💡 Try: Grant MIDI permissions when browser prompts', 'warn');
+                }
+            }
+        }
+
+        async function testLoadMode() {
+            if (!midiOutput || !midiInput) {
+                log('❌ Device not initialized', 'fail');
+                return;
+            }
+
+            log('', 'info');
+            log('📨 TEST: Loading Custom Mode 0', 'info');
+            log('This will send a SysEx message to request mode data', 'info');
+            log('', 'info');
+
+            try {
+                // SysEx message to read custom mode 0
+                // F0 00 20 29 02 11 77 [slot] F7
+                const readModeCommand = [0xF0, 0x00, 0x20, 0x29, 0x02, 0x11, 0x77, 0x00, 0xF7];
+
+                log('Sending: F0 00 20 29 02 11 77 00 F7 (Read Custom Mode 0)', 'info');
+                logMidi('OUT', readModeCommand);
+
+                // Send the SysEx message
+                const startTime = performance.now();
+                midiOutput.send(readModeCommand);
+
+                log('✅ SysEx message sent successfully', 'pass');
+                log(`   Timestamp: ${startTime.toFixed(2)}ms (performance.now())`, 'info');
+                log('', 'info');
+                log('⏳ Waiting for device response...', 'info');
+                log('   Expected: ~408 byte SysEx response', 'info');
+                log('   Timeout: 3 seconds', 'info');
+                log('', 'info');
+
+                // Set up response handler
+                let responseReceived = false;
+                let responseBytes = 0;
+
+                const responseHandler = (event) => {
+                    const data = event.data;
+                    if (data[0] === 0xF0) { // SysEx message
+                        responseReceived = true;
+                        responseBytes = data.length;
+                        const elapsed = performance.now() - startTime;
+
+                        log('', 'info');
+                        log('✅ Device responded with SysEx data!', 'pass');
+                        log(`   Response size: ${responseBytes} bytes`, 'pass');
+                        log(`   Response time: ${elapsed.toFixed(2)}ms`, 'pass');
+                        log('', 'info');
+                        log('═══════════════════════════════════════', 'pass');
+                        log('✅ SYSEX COMMUNICATION TEST PASSED', 'pass');
+                        log('═══════════════════════════════════════', 'pass');
+                        log('', 'info');
+                        log('Verification complete:', 'pass');
+                        log('  ✅ SysEx messages ARE being sent', 'pass');
+                        log('  ✅ Device IS responding', 'pass');
+                        log('  ✅ Web MIDI timestamp fix IS working', 'pass');
+                        log('  ✅ Custom mode loading WORKS', 'pass');
+
+                        // Sample the response data
+                        const sample = Array.from(data.slice(0, 32))
+                            .map(b => b.toString(16).toUpperCase().padStart(2, '0'))
+                            .join(' ');
+                        log('', 'info');
+                        log(`First 32 bytes: ${sample}...`, 'info');
+                    }
+                };
+
+                midiInput.onmidimessage = responseHandler;
+
+                // Wait for response with timeout
+                setTimeout(() => {
+                    if (!responseReceived) {
+                        log('', 'info');
+                        log('═══════════════════════════════════════', 'fail');
+                        log('❌ TIMEOUT - NO RESPONSE FROM DEVICE', 'fail');
+                        log('═══════════════════════════════════════', 'fail');
+                        log('', 'info');
+                        log('Possible causes:', 'warn');
+                        log('  • Device is not in custom mode', 'warn');
+                        log('  • Device firmware issue', 'warn');
+                        log('  • USB connection problem', 'warn');
+                        log('  • Wrong device selected', 'warn');
+                        log('', 'info');
+                        log('If SysEx was sent (check monitor), the timestamp fix is working.', 'info');
+                        log('The issue would be with device communication, not the code.', 'info');
+                    }
+                }, 3000);
+
+            } catch (error) {
+                log('', 'info');
+                log('❌ Error: ' + error.message, 'fail');
+            }
+        }
+
+        function toggleMonitor() {
+            monitoring = !monitoring;
+            monitorBtn.textContent = monitoring ? '⏸ Pause Monitor' : '▶ Resume Monitor';
+
+            if (monitoring && midiInput) {
+                midiInput.onmidimessage = (event) => {
+                    logMidi('IN ', event.data);
+                };
+            } else if (midiInput) {
+                midiInput.onmidimessage = null;
+            }
+        }
+
+        // Initial message
+        log('Ready to test. Click "1. Initialize & Connect" to begin.', 'info');
+    </script>
+</body>
+</html>

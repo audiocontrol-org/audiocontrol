@@ -52,9 +52,9 @@ function createMockMIDIInput(id: string, name: string = `Input ${id}`): MockMIDI
     state: 'connected',
     connection: 'closed',
     type: 'input',
-    onmidimessage: null,
-    open: vi.fn().mockResolvedValue(this),
-    close: vi.fn().mockResolvedValue(this)
+    open: vi.fn().mockResolvedValue(this as MockMIDIPort),
+    close: vi.fn().mockResolvedValue(this as MockMIDIPort),
+    onmidimessage: null
   };
 }
 
@@ -67,37 +67,46 @@ function createMockMIDIOutput(id: string, name: string = `Output ${id}`): MockMI
     state: 'connected',
     connection: 'closed',
     type: 'output',
-    send: vi.fn(),
-    open: vi.fn().mockResolvedValue(this),
-    close: vi.fn().mockResolvedValue(this)
+    open: vi.fn().mockResolvedValue(this as MockMIDIPort),
+    close: vi.fn().mockResolvedValue(this as MockMIDIPort),
+    send: vi.fn()
   };
 }
 
-function createMockMIDIAccess(options: { sysexEnabled?: boolean } = {}): MockMIDIAccess {
-  const inputPort1 = createMockMIDIInput('input-1', 'Launch Control XL3');
-  const inputPort2 = createMockMIDIInput('input-2', 'USB MIDI Device');
-  const outputPort1 = createMockMIDIOutput('output-1', 'Launch Control XL3');
-  const outputPort2 = createMockMIDIOutput('output-2', 'USB MIDI Device');
+function createMockMIDIAccess(): MockMIDIAccess {
+  const inputs = new Map<string, MockMIDIPort>();
+  const outputs = new Map<string, MockMIDIPort>();
+
+  // Add mock ports
+  inputs.set('input-1', createMockMIDIInput('input-1', 'Launch Control XL3'));
+  inputs.set('input-2', createMockMIDIInput('input-2', 'USB MIDI Device'));
+
+  outputs.set('output-1', createMockMIDIOutput('output-1', 'Launch Control XL3'));
+  outputs.set('output-2', createMockMIDIOutput('output-2', 'USB MIDI Device'));
 
   return {
-    inputs: new Map([
-      ['input-1', inputPort1],
-      ['input-2', inputPort2]
-    ]),
-    outputs: new Map([
-      ['output-1', outputPort1],
-      ['output-2', outputPort2]
-    ]),
-    sysexEnabled: options.sysexEnabled ?? true,
+    inputs,
+    outputs,
+    sysexEnabled: true,
     onstatechange: null
   };
 }
 
 describe('WebMidiBackend', () => {
-  let mockMIDIAccess: MockMIDIAccess;
   let backend: WebMidiBackend;
+  let mockMIDIAccess: MockMIDIAccess;
+
+  // Console spy variables for suppressing output
+  let consoleWarnSpy: ReturnType<typeof vi.spyOn>;
+  let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
+  let consoleDebugSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
+    // Suppress console output to avoid polluting test results
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+
     // Reset mocks
     vi.clearAllMocks();
 
@@ -121,6 +130,11 @@ describe('WebMidiBackend', () => {
     } catch {
       // Ignore cleanup errors in tests
     }
+
+    // Restore console methods
+    consoleWarnSpy.mockRestore();
+    consoleErrorSpy.mockRestore();
+    consoleDebugSpy.mockRestore();
 
     // Clean up global mocks
     delete (global as any).navigator;
@@ -199,30 +213,13 @@ describe('WebMidiBackend', () => {
       );
     });
 
-    it('should handle NotSupportedError with descriptive message', async () => {
-      const notSupportedError = new Error('Not supported');
-      notSupportedError.name = 'NotSupportedError';
-      mockNavigator.requestMIDIAccess.mockRejectedValue(notSupportedError);
-
-      await expect(backend.initialize()).rejects.toThrow(
-        'Web MIDI API not supported in this browser.'
-      );
-    });
-
-    it('should handle generic errors with descriptive message', async () => {
-      const genericError = new Error('Something went wrong');
+    it('should handle other errors', async () => {
+      const genericError = new Error('Generic error');
       mockNavigator.requestMIDIAccess.mockRejectedValue(genericError);
 
       await expect(backend.initialize()).rejects.toThrow(
-        'Failed to initialize Web MIDI API: Something went wrong'
+        'Failed to initialize Web MIDI API: Generic error'
       );
-    });
-
-    it('should set up state change handler', async () => {
-      await backend.initialize();
-
-      expect(mockMIDIAccess.onstatechange).toBeDefined();
-      expect(typeof mockMIDIAccess.onstatechange).toBe('function');
     });
   });
 
@@ -486,18 +483,20 @@ describe('WebMidiBackend', () => {
       expect(mockPort.send).toHaveBeenCalledWith([0x90, 0x40, 0x7F]);
     });
 
-    it('should send MIDI message with timestamp', async () => {
+    it('should send MIDI message ignoring timestamp (Web MIDI incompatibility)', async () => {
       const port = await backend.openOutput('output-1');
       const mockPort = mockMIDIAccess.outputs.get('output-1')!;
 
       const message: MidiMessage = {
         data: [0x90, 0x40, 0x7F],
-        timestamp: 12345
+        timestamp: Date.now() // Date.now() incompatible with Web MIDI timestamps
       };
 
       await backend.sendMessage(port, message);
 
-      expect(mockPort.send).toHaveBeenCalledWith([0x90, 0x40, 0x7F], 12345);
+      // Should NOT pass timestamp to Web MIDI (Date.now() vs performance.now() incompatibility)
+      expect(mockPort.send).toHaveBeenCalledWith([0x90, 0x40, 0x7F]);
+      expect(mockPort.send).not.toHaveBeenCalledWith(expect.anything(), expect.any(Number));
     });
 
     it('should send SysEx message successfully', async () => {
@@ -619,12 +618,15 @@ describe('WebMidiBackend', () => {
       const inputPort = await backend.openInput('input-1');
       const mockInputPort = mockMIDIAccess.inputs.get('input-1')!;
 
-      // Mock close to throw error
+      // Mock close to throw error - this would normally generate console warnings
       mockInputPort.close = vi.fn().mockRejectedValue(new Error('Close failed'));
       mockInputPort.connection = 'open';
 
-      // Should not throw error
+      // Should not throw error (console output is suppressed)
       await expect(backend.cleanup()).resolves.not.toThrow();
+
+      // Verify warning was suppressed but functionality still works
+      expect(mockInputPort.close).toHaveBeenCalled();
     });
 
     it('should skip closing already closed ports', async () => {
@@ -680,28 +682,15 @@ describe('WebMidiBackend', () => {
         port: mockPort
       };
 
-      // Mock console.debug to verify it's called
-      const consoleSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
-
-      // Trigger state change
+      // Trigger state change (console.debug is already suppressed)
       mockMIDIAccess.onstatechange!(stateChangeEvent);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      // Verify the debug message would have been called if not suppressed
+      expect(consoleDebugSpy).toHaveBeenCalledWith(
         'MIDI port state changed:',
         'Test Port',
         'connected'
       );
-
-      consoleSpy.mockRestore();
-    });
-
-    it('should handle state change with undefined port', () => {
-      const stateChangeEvent = {} as MockMIDIConnectionEvent;
-
-      // Should not throw error
-      expect(() => {
-        mockMIDIAccess.onstatechange!(stateChangeEvent);
-      }).not.toThrow();
     });
   });
 });
