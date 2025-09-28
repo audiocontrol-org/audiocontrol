@@ -1,5 +1,5 @@
 /**
- * LaunchControlXL3 Handshake Integration Tests
+ * LaunchControlXL3 Handshake Unit Tests
  *
  * Tests that the controller properly facilitates the device handshake
  * according to the MIDI-PROTOCOL.md specification.
@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { LaunchControlXL3 } from '@/LaunchControlXL3.js';
 import type { MidiBackendInterface, MidiMessage, MidiPortInfo, MidiInputPort, MidiOutputPort } from '@/core/MidiInterface.js';
-import { NoOpLogger } from '@/core/Logger.js';
+import { ConsoleLogger } from '@/core/Logger.js';
 
 describe('LaunchControlXL3 - Device Handshake', () => {
   let controller: LaunchControlXL3;
@@ -18,7 +18,7 @@ describe('LaunchControlXL3 - Device Handshake', () => {
     mockBackend = new MockMidiBackend();
     controller = new LaunchControlXL3({
       midiBackend: mockBackend,
-      logger: new NoOpLogger(),
+      logger: new ConsoleLogger(),
     });
   });
 

@@ -30,7 +30,7 @@ The complete handshake should be a 4-message sequence:
 ### Affected Files
 - `src/core/SysExParser.ts` - Contains `buildDeviceQuery()` at line 404
 - `src/device/DeviceManager.ts` - Handles connection and handshake coordination
-- `test/LaunchControlXL3.handshake.test.ts` - Unit tests need updates
+- `test/handshake.test.ts` - Unit tests need updates
 
 ### Current Implementation Location
 ```typescript
@@ -224,7 +224,7 @@ export interface MidiInterface {
 
 **Task 3.1: Update handshake unit tests**
 
-Update `test/LaunchControlXL3.handshake.test.ts`:
+Update `test/handshake.test.ts`:
 
 ```typescript
 describe('Complete Handshake Sequence', () => {
@@ -387,7 +387,7 @@ Update `package.json` with new test script:
 {
   "scripts": {
     "test:handshake:node": "tsx utils/test-complete-handshake.ts",
-    "test:handshake:unit": "vitest run test/LaunchControlXL3.handshake.test.ts"
+    "test:handshake:unit": "vitest run test/handshake.test.ts"
   }
 }
 ```
