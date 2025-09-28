@@ -93,8 +93,8 @@ async function testHandshake(): Promise<void> {
       log.success('Device is ready for operation!');
     });
 
-    // Initialize (autoConnect: true will trigger connection automatically)
-    log.step('Initializing controller (autoConnect: true)...');
+    // Connect to device (automatically initializes if needed)
+    log.step('Connecting to device...');
 
     // Wait for device:connected event
     const connectionPromise = new Promise<void>((resolve, reject) => {
@@ -114,7 +114,7 @@ async function testHandshake(): Promise<void> {
       });
     });
 
-    await controller.initialize();
+    await controller.connect();
     await connectionPromise;
 
     // Display results

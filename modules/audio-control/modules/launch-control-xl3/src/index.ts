@@ -139,13 +139,12 @@ export const SUPPORTED_DEVICE = 'Novation Launch Control XL 3';
  *
  * // Create controller instance
  * const controller = new LaunchControlXL3({
- *   autoConnect: true,
  *   enableLedControl: true,
  *   enableCustomModes: true,
  * });
  *
- * // Initialize and connect
- * await controller.initialize();
+ * // Connect to device
+ * await controller.connect();
  *
  * // Listen for control changes
  * controller.on('control:change', (controlId, value) => {

@@ -114,27 +114,22 @@ export class LaunchControlXL3 extends EventEmitter {
   }
 
   /**
-   * Initialize the controller
-   */
-  async initialize(): Promise<void> {
-    if (this.isInitialized) {
-      return;
-    }
-
-    try {
-      // Initialize device manager
-      await this.deviceManager.initialize();
-      this.isInitialized = true;
-    } catch (error) {
-      this.emit('device:error', error as Error);
-      throw error;
-    }
-  }
-
-  /**
    * Connect to device
+   *
+   * Automatically initializes the controller if needed.
    */
   async connect(): Promise<void> {
+    // Initialize if needed
+    if (!this.isInitialized) {
+      try {
+        await this.deviceManager.initialize();
+        this.isInitialized = true;
+      } catch (error) {
+        this.emit('device:error', error as Error);
+        throw error;
+      }
+    }
+
     try {
       await this.deviceManager.connect();
 

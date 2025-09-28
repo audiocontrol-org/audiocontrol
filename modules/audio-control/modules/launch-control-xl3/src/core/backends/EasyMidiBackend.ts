@@ -29,6 +29,7 @@ export class EasyMidiBackend implements MidiBackendInterface {
   }
 
   getInputPorts(): Promise<MidiPortInfo[]> {
+
     if (!this.isInitialized) {
       throw new Error('Backend not initialized');
     }
@@ -60,7 +61,7 @@ export class EasyMidiBackend implements MidiBackendInterface {
   openInput(portId: string): Promise<MidiInputPort> {
     try {
       const easyInput = new Input(portId);
-
+      this.logger.info(`Opening input: ${easyInput.name}`);
       const port: MidiInputPort = {
         id: portId,
         name: portId,

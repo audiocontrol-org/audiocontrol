@@ -30,11 +30,6 @@ describe.skipIf(SKIP_HARDWARE_TESTS)('Device Integration', () => {
   });
 
   describe('Connection', () => {
-    it('should initialize without connecting', async () => {
-      await controller.initialize();
-      expect(controller.isConnected()).toBe(false);
-    });
-
     it('should connect to device', async () => {
       await controller.connect();
       expect(controller.isConnected()).toBe(true);
@@ -276,8 +271,6 @@ describe('Device Mock Tests', () => {
       maxReconnectAttempts: 1,
       reconnectDelay: 100,
     });
-
-    await controller.initialize();
 
     await expect(controller.connect()).rejects.toThrow();
   });

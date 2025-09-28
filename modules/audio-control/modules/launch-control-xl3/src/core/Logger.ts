@@ -10,13 +10,6 @@ export interface LoggerOptions {
   includeTimestamp?: boolean;
 }
 
-export class NoOpLogger implements Logger {
-  debug(): void {}
-  info(): void {}
-  warn(): void {}
-  error(): void {}
-}
-
 export class ConsoleLogger implements Logger {
   private readonly prefix: string | undefined;
   private readonly includeTimestamp: boolean;
