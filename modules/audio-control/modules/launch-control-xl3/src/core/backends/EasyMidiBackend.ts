@@ -201,13 +201,4 @@ export class EasyMidiBackend implements MidiBackendInterface {
     this.portWrappers.clear();
     this.isInitialized = false;
   }
-
-  static async isAvailable(): Promise<boolean> {
-    try {
-      const module = await import('easymidi');
-      return !!(module.default || module);
-    } catch {
-      return false;
-    }
-  }
 }

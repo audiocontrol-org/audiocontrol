@@ -7,6 +7,8 @@
  */
 
 import { EventEmitter } from 'eventemitter3';
+import type { Logger } from './core/Logger.js';
+import { ConsoleLogger } from './core/Logger.js';
 import { MidiBackendInterface, MidiMessage } from './core/MidiInterface.js';
 import { DeviceManager, DeviceStatus } from './device/DeviceManager.js';
 import { CustomModeManager, CONTROL_IDS, LED_COLORS } from './modes/CustomModeManager.js';
@@ -26,6 +28,7 @@ import {
 
 export interface LaunchControlXL3Options {
   midiBackend?: MidiBackendInterface;
+  logger?: Logger;
   enableLedControl?: boolean;
   enableCustomModes?: boolean;
   enableValueSmoothing?: boolean;
@@ -64,9 +67,11 @@ export interface LaunchControlXL3Events {
  * Main Launch Control XL 3 Controller
  */
 export class LaunchControlXL3 extends EventEmitter {
-  private options: Required<Omit<LaunchControlXL3Options, 'midiBackend'>> & {
+  private options: Required<Omit<LaunchControlXL3Options, 'midiBackend' | 'logger'>> & {
     midiBackend?: MidiBackendInterface | undefined;
+    logger?: Logger | undefined;
   };
+  private readonly logger: Logger;
   private deviceManager: DeviceManager;
   private customModeManager?: CustomModeManager | undefined;
   private controlMapper: ControlMapper;
@@ -84,8 +89,11 @@ export class LaunchControlXL3 extends EventEmitter {
   constructor(options: LaunchControlXL3Options = {}) {
     super();
 
+    this.logger = options.logger ?? new ConsoleLogger({ prefix: 'LaunchControlXL3' });
+
     this.options = {
       midiBackend: options.midiBackend,
+      logger: options.logger,
       enableLedControl: options.enableLedControl ?? true,
       enableCustomModes: options.enableCustomModes ?? true,
       enableValueSmoothing: options.enableValueSmoothing ?? false,
@@ -119,12 +127,17 @@ export class LaunchControlXL3 extends EventEmitter {
    * Automatically initializes the controller if needed.
    */
   async connect(): Promise<void> {
+    this.logger.info('Connecting to device...');
+
     // Initialize if needed
     if (!this.isInitialized) {
       try {
+        this.logger.debug('Initializing device manager...');
         await this.deviceManager.initialize();
         this.isInitialized = true;
+        this.logger.debug('Device manager initialized');
       } catch (error) {
+        this.logger.error('Failed to initialize device manager:', (error as Error).message);
         this.emit('device:error', error as Error);
         throw error;
       }
@@ -133,8 +146,11 @@ export class LaunchControlXL3 extends EventEmitter {
     try {
       await this.deviceManager.connect();
 
+      this.logger.info('Device connected successfully');
+
       // Initialize optional components after connection
       if (this.options.enableCustomModes) {
+        this.logger.debug('Initializing custom mode manager...');
         this.customModeManager = new CustomModeManager({
           deviceManager: this.deviceManager,
           autoSync: true,
@@ -142,6 +158,7 @@ export class LaunchControlXL3 extends EventEmitter {
       }
 
       if (this.options.enableLedControl) {
+        this.logger.debug('Initializing LED controller...');
         this.ledController = new LedController({
           deviceManager: this.deviceManager,
           enableAnimations: true,
@@ -154,8 +171,10 @@ export class LaunchControlXL3 extends EventEmitter {
       // Load default mappings
       this.loadDefaultMappings();
 
+      this.logger.info('Device ready');
       this.emit('device:ready');
     } catch (error) {
+      this.logger.error('Connection failed:', (error as Error).message);
       this.emit('device:error', error as Error);
       throw error;
     }
@@ -165,6 +184,8 @@ export class LaunchControlXL3 extends EventEmitter {
    * Disconnect from device
    */
   async disconnect(): Promise<void> {
+    this.logger.info('Disconnecting from device...');
+
     await this.deviceManager.disconnect();
 
     if (this.customModeManager) {
@@ -180,6 +201,8 @@ export class LaunchControlXL3 extends EventEmitter {
     this.controlMapper.resetAll();
     this.currentMode = undefined;
     this.currentSlot = undefined;
+
+    this.logger.info('Disconnected from device');
   }
 
   /**
@@ -187,11 +210,14 @@ export class LaunchControlXL3 extends EventEmitter {
    */
   private setupEventHandlers(): void {
     // Device events
+
     this.deviceManager.on('device:connected', (device) => {
+      this.logger.debug('Device connected event received', device);
       this.emit('device:connected', device);
     });
 
     this.deviceManager.on('device:disconnected', (reason) => {
+      this.logger.info('Device disconnected', reason ? `Reason: ${reason}` : '');
       this.emit('device:disconnected', reason);
     });
 
@@ -251,14 +277,15 @@ export class LaunchControlXL3 extends EventEmitter {
    * Handle errors
    */
   private handleError(error: Error): void {
-    console.error('[LaunchControlXL3] Error:', error.message);
+    this.logger.error('Error:', error.message);
     this.emit('device:error', error);
 
     // Attempt reconnection if enabled
     if (this.options.reconnectOnError && this.isInitialized) {
+      this.logger.info(`Attempting reconnection in ${this.options.reconnectDelay}ms...`);
       setTimeout(() => {
         this.connect().catch((e) => {
-          console.error('[LaunchControlXL3] Reconnection failed:', e.message);
+          this.logger.error('Reconnection failed:', e.message);
         });
       }, this.options.reconnectDelay);
     }
@@ -604,11 +631,13 @@ export class LaunchControlXL3 extends EventEmitter {
    * Clean up resources
    */
   async cleanup(): Promise<void> {
+    this.logger.info('Cleaning up resources...');
     await this.disconnect();
     await this.deviceManager.cleanup();
     this.controlMapper.cleanup();
     this.removeAllListeners();
     this.isInitialized = false;
+    this.logger.info('Cleanup complete');
   }
 }
 
