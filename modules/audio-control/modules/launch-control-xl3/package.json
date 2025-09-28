@@ -31,7 +31,7 @@
     "build": "tsc -b && vite build",
     "clean": "rm -rf dist *.tsbuildinfo",
     "dev": "tsc -b --watch",
-    "test": "vitest run",
+    "test": "vitest run --coverage",
     "test:fast": "vitest run --run",
     "test:parallel": "vitest run --reporter=verbose --threads",
     "test:all": "vitest run --config vitest.all.config.ts",
