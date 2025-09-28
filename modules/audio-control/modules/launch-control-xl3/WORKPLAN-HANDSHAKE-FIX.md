@@ -2,40 +2,49 @@
 
 ## Problem Statement
 
-The current handshake implementation in `LaunchControlXL3` does not follow the complete protocol documented in `MIDI-PROTOCOL.md`. Specifically:
+The current handshake implementation in `LaunchControlXL3` does not follow the complete protocol documented in
+`MIDI-PROTOCOL.md`. Specifically:
 
 ### Current Behavior
+
 - Only sends Universal Device Inquiry: `F0 7E 00 06 01 F7` (6 bytes)
 - Uses wrong device ID (`0x00` instead of `0x7F`)
 - Skips Novation-specific SYN/SYN-ACK exchange
 - Missing proper sequence coordination
 
 ### Expected Behavior (per MIDI-PROTOCOL.md)
+
 The complete handshake should be a 4-message sequence:
 
 1. **SYN Request**: `F0 00 20 29 00 42 02 F7` (8 bytes)
-   - Novation-specific initialization message
+    - Novation-specific initialization message
 
 2. **SYN-ACK Response**: `F0 00 20 29 00 42 02 [SERIAL_NUMBER] F7` (22 bytes)
-   - Device responds with serial number
+    - Device responds with serial number
 
 3. **ACK Request**: `F0 7E 7F 06 01 F7` (6 bytes)
-   - Universal Device Inquiry with correct device ID (`0x7F` for broadcast)
+    - Universal Device Inquiry with correct device ID (`0x7F` for broadcast)
 
 4. **Device Response**: `F0 7E 00 06 02 00 20 29 48 01 00 00 01 00 0A 54 F7` (17 bytes)
-   - Device identification information
+    - Device identification information
 
 ## Technical Analysis
 
 ### Affected Files
+
 - `src/core/SysExParser.ts` - Contains `buildDeviceQuery()` at line 404
 - `src/device/DeviceManager.ts` - Handles connection and handshake coordination
 - `test/handshake.test.ts` - Unit tests need updates
 
 ### Current Implementation Location
+
 ```typescript
 // src/core/SysExParser.ts:404
-static buildDeviceQuery(): number[] {
+static
+buildDeviceQuery()
+:
+number[]
+{
   return [
     0xF0, 0x7E, 0x00, 0x06, 0x01, 0xF7  // ❌ Incomplete, wrong device ID
   ];
@@ -43,6 +52,7 @@ static buildDeviceQuery(): number[] {
 ```
 
 ### Protocol Constants
+
 ```typescript
 // Novation Manufacturer ID
 const NOVATION_MANUFACTURER_ID = [0x00, 0x20, 0x29];
@@ -65,7 +75,11 @@ const DEVICE_INQUIRY_REPLY = 0x02;
 Create new static methods in `SysExParser`:
 
 ```typescript
-static buildNovationSyn(): number[] {
+static
+buildNovationSyn()
+:
+number[]
+{
   return [
     0xF0,              // SysEx start
     0x00, 0x20, 0x29,  // Novation manufacturer ID
@@ -76,7 +90,11 @@ static buildNovationSyn(): number[] {
   ];
 }
 
-static buildUniversalDeviceInquiry(): number[] {
+static
+buildUniversalDeviceInquiry()
+:
+number[]
+{
   return [
     0xF0,              // SysEx start
     0x7E,              // Universal Non-Realtime
@@ -87,10 +105,16 @@ static buildUniversalDeviceInquiry(): number[] {
   ];
 }
 
-static parseNovationSynAck(data: number[]): {
+static
+parseNovationSynAck(data
+:
+number[]
+):
+{
   valid: boolean;
-  serialNumber?: string;
-} {
+  serialNumber ? : string;
+}
+{
   if (data.length !== 22) {
     return { valid: false };
   }
@@ -127,7 +151,11 @@ Keep the existing method but add JSDoc warning:
  * and buildUniversalDeviceInquiry() instead. This method only performs
  * partial handshake and uses incorrect device ID.
  */
-static buildDeviceQuery(): number[] {
+static
+buildDeviceQuery()
+:
+number[]
+{
   return [
     0xF0, 0x7E, 0x00, 0x06, 0x01, 0xF7
   ];
@@ -141,7 +169,10 @@ static buildDeviceQuery(): number[] {
 Update `DeviceManager.ts` to implement the 4-message protocol:
 
 ```typescript
-private async performHandshake(): Promise<DeviceInfo> {
+private async
+performHandshake()
+:
+Promise < DeviceInfo > {
   const logger = this.logger;
   const timeout = this.config.handshakeTimeout ?? 5000;
 
@@ -183,11 +214,19 @@ private async performHandshake(): Promise<DeviceInfo> {
   return deviceInfo;
 }
 
-private async waitForMessage(
-  validator: (data: number[]) => boolean,
-  timeoutMs: number,
-  messageName: string
-): Promise<number[]> {
+private async
+waitForMessage(
+  validator
+:
+(data: number[]) => boolean,
+  timeoutMs
+:
+number,
+  messageName
+:
+string
+):
+Promise < number[] > {
   return new Promise<number[]>((resolve, reject) => {
     const timeout = setTimeout(() => {
       this.midiInterface.removeMessageListener(handler);
@@ -216,6 +255,7 @@ export interface MidiInterface {
   // ... existing methods ...
 
   addMessageListener(handler: (message: MidiMessage) => void): void;
+
   removeMessageListener(handler: (message: MidiMessage) => void): void;
 }
 ```
@@ -399,20 +439,29 @@ Update `package.json` with new test script:
 If the complete handshake fails, fall back to simple Universal Device Inquiry:
 
 ```typescript
-private async performHandshake(): Promise<DeviceInfo> {
+private async
+performHandshake()
+:
+Promise < DeviceInfo > {
   try {
     return await this.performCompleteHandshake();
-  } catch (error) {
+  } catch(error) {
     this.logger.warn('Complete handshake failed, trying fallback:', (error as Error).message);
     return await this.performSimpleHandshake();
   }
 }
 
-private async performCompleteHandshake(): Promise<DeviceInfo> {
+private async
+performCompleteHandshake()
+:
+Promise < DeviceInfo > {
   // 4-message sequence as documented above
 }
 
-private async performSimpleHandshake(): Promise<DeviceInfo> {
+private async
+performSimpleHandshake()
+:
+Promise < DeviceInfo > {
   // Original implementation (Universal Inquiry only)
   this.logger.debug('Using simple handshake (Universal Inquiry only)');
   const inquiryMessage = SysExParser.buildDeviceQuery();
@@ -497,6 +546,7 @@ const controller = new LaunchControlXL3({
   handshakeTimeout: 5000,      // milliseconds
 });
 ```
+
 ```
 
 ### Task 5.3: Update JSDoc
@@ -527,6 +577,7 @@ private async performHandshake(): Promise<DeviceInfo>
 ## Testing Strategy
 
 ### Unit Tests
+
 - ✅ Test each message builder function
 - ✅ Test SYN-ACK parser with valid/invalid data
 - ✅ Test complete 4-message sequence
@@ -535,12 +586,14 @@ private async performHandshake(): Promise<DeviceInfo>
 - ✅ Test serial number extraction
 
 ### Integration Tests
+
 - ✅ Test with real hardware (Launch Control XL3)
 - ✅ Test with MIDI loopback (software simulation)
 - ✅ Test with modified timeout values
 - ✅ Verify logging output at each step
 
 ### Performance Tests
+
 - ✅ Measure handshake completion time
 - ✅ Verify timeout behavior under load
 - ✅ Test concurrent connection attempts
@@ -548,21 +601,25 @@ private async performHandshake(): Promise<DeviceInfo>
 ## Risk Assessment
 
 ### Low Risk
+
 - Adding new message builders (no breaking changes)
 - Adding SYN-ACK parser (new functionality)
 - Logging improvements (visibility only)
 
 ### Medium Risk
+
 - Changing handshake sequence (mitigated by fallback)
 - Timeout handling (need careful testing)
 - Message listener management (ensure proper cleanup)
 
 ### High Risk
+
 - None (fallback ensures backwards compatibility)
 
 ## Success Criteria
 
 ### Functional Requirements
+
 - ✅ Controller sends all 4 messages in correct order
 - ✅ Controller validates SYN-ACK response
 - ✅ Controller extracts serial number correctly
@@ -570,11 +627,13 @@ private async performHandshake(): Promise<DeviceInfo>
 - ✅ Fallback works when complete handshake unavailable
 
 ### Performance Requirements
+
 - ✅ Handshake completes within 2 seconds (typical)
 - ✅ Timeout occurs within configured duration
 - ✅ No memory leaks in message listeners
 
 ### Quality Requirements
+
 - ✅ All unit tests pass
 - ✅ Integration test passes with real hardware
 - ✅ Code coverage ≥ 80%
@@ -584,26 +643,31 @@ private async performHandshake(): Promise<DeviceInfo>
 ## Timeline
 
 ### Phase 1: SysExParser Updates
+
 - Estimated: 2-3 hours
 - Priority: High
 - Blocking: Yes (required for subsequent phases)
 
 ### Phase 2: DeviceManager Updates
+
 - Estimated: 3-4 hours
 - Priority: High
 - Blocking: Yes (core functionality)
 
 ### Phase 3: Test Updates
+
 - Estimated: 2-3 hours
 - Priority: High
 - Blocking: No (can parallel with Phase 4)
 
 ### Phase 4: Integration Testing
+
 - Estimated: 2-3 hours
 - Priority: Medium
 - Blocking: No (validation only)
 
 ### Phase 5: Documentation
+
 - Estimated: 1-2 hours
 - Priority: Low
 - Blocking: No (can be done last)
