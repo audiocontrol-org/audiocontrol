@@ -265,11 +265,21 @@ export class DeviceManager extends EventEmitter {
       const parsed = SysExParser.parse(deviceResponseData);
 
       if (parsed.type === 'device_inquiry_response') {
+        // Cast parsed to DeviceInquiryResponse from SysExParser
+        const parsedResponse = parsed as any; // Type from SysExParser
+
         // Create response with serial number
-        const response = {
-          ...parsed,
-          ...(serialNumber ? { serialNumber } : {}),
-        } as DeviceInquiryResponse;
+        const response: DeviceInquiryResponse = {
+          manufacturerId: parsedResponse.manufacturerId || [],
+          deviceFamily: parsedResponse.familyCode || 0,
+          deviceModel: parsedResponse.familyMember || 0,
+          firmwareVersion: parsedResponse.softwareRevision || [],
+          ...(serialNumber ? { serialNumber: serialNumber.split('') .map(c => c.charCodeAt(0)) } : {}),
+          // Include optional properties if present
+          ...(parsedResponse.familyCode !== undefined ? { familyCode: parsedResponse.familyCode } : {}),
+          ...(parsedResponse.familyMember !== undefined ? { familyMember: parsedResponse.familyMember } : {}),
+          ...(parsedResponse.softwareRevision !== undefined ? { softwareRevision: parsedResponse.softwareRevision } : {}),
+        };
         const validatedResponse = this.validateDeviceInquiryResponse(response);
         return validatedResponse;
       }
@@ -631,15 +641,24 @@ export class DeviceManager extends EventEmitter {
 
     try {
       const validated = schema.parse(response);
-      const result = {
-        type: 'device_inquiry_response' as const,
+      // Ensure serialNumber is in the correct format (number array)
+      const serialNumberArray = validated.serialNumber
+        ? (typeof validated.serialNumber === 'string'
+          ? validated.serialNumber.split('').map(c => c.charCodeAt(0))
+          : validated.serialNumber)
+        : undefined;
+
+      const result: DeviceInquiryResponse = {
         manufacturerId: validated.manufacturerId,
-        data: [],
-        familyCode: validated.familyCode ?? validated.deviceFamily ?? 0,
-        familyMember: validated.familyMember ?? validated.deviceModel ?? 0,
-        softwareRevision: validated.softwareRevision ?? validated.firmwareVersion ?? [],
-        ...(validated.serialNumber ? { serialNumber: validated.serialNumber } : {}),
-      } satisfies DeviceInquiryResponse;
+        deviceFamily: validated.deviceFamily ?? validated.familyCode ?? 0,
+        deviceModel: validated.deviceModel ?? validated.familyMember ?? 0,
+        firmwareVersion: validated.firmwareVersion ?? validated.softwareRevision ?? [],
+        ...(serialNumberArray ? { serialNumber: serialNumberArray } : {}),
+        // Include optional properties
+        ...(validated.familyCode !== undefined ? { familyCode: validated.familyCode } : {}),
+        ...(validated.familyMember !== undefined ? { familyMember: validated.familyMember } : {}),
+        ...(validated.softwareRevision !== undefined ? { softwareRevision: validated.softwareRevision } : {}),
+      };
 
       return result;
     } catch (error) {

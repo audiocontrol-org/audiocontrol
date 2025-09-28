@@ -84,7 +84,6 @@ export class MidiInterface extends EventEmitter {
   private isInitialized = false;
   private messageBuffer: MidiMessage[] = [];
   private readonly maxBufferSize = 1000;
-  private messageListeners: Set<(message: MidiMessage) => void> = new Set();
 
   constructor(backend?: MidiBackendInterface) {
     super();
