@@ -344,15 +344,7 @@ export class MidiInterface extends EventEmitter {
    * Auto-detect available MIDI backend
    */
   private async autoDetectBackend(): Promise<MidiBackendInterface> {
-    // Try node-midi first (Node.js environment)
-    try {
-      const { NodeMidiBackend } = await import('./backends/NodeMidiBackend.js');
-      return new NodeMidiBackend();
-    } catch (err) {
-      console.debug('node-midi not available:', err);
-    }
-
-    // Try Web MIDI API (browser environment)
+    // Try Web MIDI API first (browser environment with native support)
     try {
       const { WebMidiBackend } = await import('./backends/WebMidiBackend.js');
       if (WebMidiBackend.isAvailable()) {
@@ -362,12 +354,32 @@ export class MidiInterface extends EventEmitter {
       console.debug('Web MIDI API not available:', err);
     }
 
-    // Try MidiVal (works in both Node and browser)
+    // Try easymidi (Node.js with native bindings)
     try {
-      const { MidiValBackend } = await import('./backends/MidiValBackend.js');
-      return new MidiValBackend();
+      const { EasyMidiBackend } = await import('./backends/EasyMidiBackend.js');
+      const backend = new EasyMidiBackend();
+      await backend.initialize();
+      return backend;
     } catch (err) {
-      console.debug('MidiVal not available:', err);
+      console.debug('easymidi not available:', err);
+    }
+
+    // Try JZZ (pure JavaScript, works in Node.js and browsers)
+    try {
+      const { JzzBackend } = await import('./backends/JzzBackend.js');
+      const backend = new JzzBackend();
+      await backend.initialize();
+      return backend;
+    } catch (err) {
+      console.debug('JZZ not available:', err);
+    }
+
+    // Try node-midi (Node.js with native bindings - fallback if easymidi unavailable)
+    try {
+      const { NodeMidiBackend } = await import('./backends/NodeMidiBackend.js');
+      return new NodeMidiBackend();
+    } catch (err) {
+      console.debug('node-midi not available:', err);
     }
 
     // Use mock backend as last resort (for testing)

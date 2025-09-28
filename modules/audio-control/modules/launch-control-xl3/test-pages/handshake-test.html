@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Launch Control XL 3 - Handshake Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 20px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      color: #333;
+    }
+
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #f0f0f0;
+    }
+
+    .header h1 {
+      color: #2c3e50;
+      margin: 0 0 10px 0;
+      font-size: 2.2rem;
+      font-weight: 700;
+    }
+
+    .header p {
+      color: #666;
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .requirements {
+      background: #e8f4fd;
+      border: 1px solid #bee5eb;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 25px;
+    }
+
+    .requirements h3 {
+      color: #0c5460;
+      margin: 0 0 15px 0;
+      font-size: 1.2rem;
+    }
+
+    .requirements ul {
+      margin: 0;
+      padding-left: 20px;
+      color: #155724;
+    }
+
+    .requirements li {
+      margin-bottom: 8px;
+    }
+
+    .controls {
+      display: flex;
+      gap: 15px;
+      margin-bottom: 25px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      min-width: 180px;
+    }
+
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+
+    .status {
+      padding: 15px;
+      border-radius: 8px;
+      margin: 15px 0;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status.disconnected {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .status.connected {
+      background: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+
+    .status.connecting {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffeaa7;
+    }
+
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+
+    .status-icon {
+      font-size: 1.2em;
+    }
+
+    .device-info, .log-container {
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+
+    .device-info h3, .log-container h3 {
+      margin: 0 0 15px 0;
+      color: #495057;
+      font-size: 1.2rem;
+    }
+
+    .device-info-grid {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 10px 20px;
+      align-items: center;
+    }
+
+    .device-info-label {
+      font-weight: 600;
+      color: #495057;
+    }
+
+    .device-info-value {
+      font-family: 'Courier New', monospace;
+      color: #28a745;
+      background: #f8f9fa;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+    }
+
+    .log {
+      background: #1e1e1e;
+      color: #f8f8f2;
+      font-family: 'Courier New', monospace;
+      padding: 15px;
+      border-radius: 6px;
+      height: 300px;
+      overflow-y: auto;
+      font-size: 14px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      border: 2px solid #333;
+    }
+
+    .log::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .log::-webkit-scrollbar-track {
+      background: #2e2e2e;
+    }
+
+    .log::-webkit-scrollbar-thumb {
+      background: #555;
+      border-radius: 4px;
+    }
+
+    .error-container {
+      background: #fee;
+      border: 1px solid #fcc;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+      display: none;
+    }
+
+    .error-container h3 {
+      color: #c33;
+      margin: 0 0 15px 0;
+    }
+
+    .error-details {
+      font-family: monospace;
+      background: #f8f8f8;
+      padding: 10px;
+      border-radius: 4px;
+      color: #333;
+      margin-bottom: 15px;
+    }
+
+    .troubleshooting {
+      color: #666;
+    }
+
+    .troubleshooting h4 {
+      color: #333;
+      margin: 15px 0 10px 0;
+    }
+
+    .troubleshooting ul {
+      margin: 0;
+      padding-left: 20px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+
+      .container {
+        padding: 20px;
+      }
+
+      .controls {
+        flex-direction: column;
+      }
+
+      button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>🎛️ Launch Control XL 3</h1>
+      <p>Browser Handshake Test - Web MIDI API</p>
+    </div>
+
+    <div class="requirements">
+      <h3>📋 Requirements & Setup</h3>
+      <ul>
+        <li><strong>Browser:</strong> Chrome, Edge, or any Chromium-based browser with Web MIDI API support</li>
+        <li><strong>HTTPS:</strong> This page must be served over HTTPS or localhost for Web MIDI to work</li>
+        <li><strong>Device:</strong> Launch Control XL 3 connected via USB and powered on</li>
+        <li><strong>SysEx:</strong> When prompted, allow SysEx (System Exclusive) messages for full functionality</li>
+        <li><strong>Permissions:</strong> Grant MIDI device access when requested by the browser</li>
+      </ul>
+    </div>
+
+    <div class="controls">
+      <button id="connectBtn">🔌 Connect & Test Handshake</button>
+      <button id="disconnectBtn" disabled>🔌 Disconnect</button>
+      <button id="clearLogBtn">🗑️ Clear Log</button>
+    </div>
+
+    <div id="statusContainer">
+      <div class="status disconnected" id="statusIndicator">
+        <span class="status-icon">⚪</span>
+        <span id="statusText">Disconnected - Click "Connect & Test Handshake" to begin</span>
+      </div>
+    </div>
+
+    <div class="device-info hidden" id="deviceInfo">
+      <h3>📱 Device Information</h3>
+      <div class="device-info-grid" id="deviceInfoGrid">
+        <!-- Device info will be populated here -->
+      </div>
+    </div>
+
+    <div class="log-container">
+      <h3>📝 Console Log</h3>
+      <div class="log" id="log"></div>
+    </div>
+
+    <div class="error-container" id="errorContainer">
+      <h3>❌ Error Details</h3>
+      <div class="error-details" id="errorDetails"></div>
+      <div class="troubleshooting">
+        <h4>🔧 Troubleshooting:</h4>
+        <ul id="troubleshootingList">
+          <!-- Troubleshooting tips will be added here -->
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Import the library from the built distribution -->
+  <script type="module">
+    // Import the Launch Control XL 3 library
+    import { LaunchControlXL3 } from '../dist/index.js';
+
+    // DOM elements
+    const connectBtn = document.getElementById('connectBtn');
+    const disconnectBtn = document.getElementById('disconnectBtn');
+    const clearLogBtn = document.getElementById('clearLogBtn');
+    const statusIndicator = document.getElementById('statusIndicator');
+    const statusText = document.getElementById('statusText');
+    const deviceInfo = document.getElementById('deviceInfo');
+    const deviceInfoGrid = document.getElementById('deviceInfoGrid');
+    const logEl = document.getElementById('log');
+    const errorContainer = document.getElementById('errorContainer');
+    const errorDetails = document.getElementById('errorDetails');
+    const troubleshootingList = document.getElementById('troubleshootingList');
+
+    // State
+    let device = null;
+    let isConnecting = false;
+
+    // Utility functions
+    function log(message, type = 'info') {
+      const timestamp = new Date().toLocaleTimeString();
+      const prefix = type === 'error' ? '❌' : type === 'warning' ? '⚠️' : type === 'success' ? '✅' : 'ℹ️';
+      const formattedMessage = `[${timestamp}] ${prefix} ${message}`;
+      logEl.textContent += formattedMessage + '\n';
+      logEl.scrollTop = logEl.scrollHeight;
+      console.log(formattedMessage);
+    }
+
+    function updateStatus(status, message, type = 'info') {
+      statusIndicator.className = `status ${status}`;
+      statusText.textContent = message;
+
+      const icons = {
+        disconnected: '⚪',
+        connecting: '🟡',
+        connected: '🟢',
+        error: '🔴'
+      };
+
+      statusIndicator.querySelector('.status-icon').textContent = icons[status] || '⚪';
+    }
+
+    function showError(error, troubleshooting = []) {
+      errorDetails.textContent = error;
+      troubleshootingList.innerHTML = troubleshooting.map(tip => `<li>${tip}</li>`).join('');
+      errorContainer.style.display = 'block';
+    }
+
+    function hideError() {
+      errorContainer.style.display = 'none';
+    }
+
+    function showDeviceInfo(info) {
+      deviceInfoGrid.innerHTML = `
+        <span class="device-info-label">Manufacturer ID:</span>
+        <span class="device-info-value">0x${info.manufacturerId.toString(16).padStart(2, '0').toUpperCase()}</span>
+        <span class="device-info-label">Family Code:</span>
+        <span class="device-info-value">0x${info.familyCode.toString(16).padStart(4, '0').toUpperCase()}</span>
+        <span class="device-info-label">Model Number:</span>
+        <span class="device-info-value">0x${info.modelNumber.toString(16).padStart(4, '0').toUpperCase()}</span>
+        <span class="device-info-label">Firmware Version:</span>
+        <span class="device-info-value">${info.firmwareVersion}</span>
+        ${info.serialNumber ? `
+          <span class="device-info-label">Serial Number:</span>
+          <span class="device-info-value">${info.serialNumber}</span>
+        ` : ''}
+      `;
+      deviceInfo.classList.remove('hidden');
+    }
+
+    function hideDeviceInfo() {
+      deviceInfo.classList.add('hidden');
+    }
+
+    // Check Web MIDI API availability
+    function checkWebMidiSupport() {
+      if (!navigator.requestMIDIAccess) {
+        throw new Error('Web MIDI API not supported in this browser. Please use Chrome, Edge, or another Chromium-based browser.');
+      }
+
+      if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        log('⚠️ Warning: Web MIDI API requires HTTPS or localhost. SysEx may not work properly.', 'warning');
+      }
+    }
+
+    // Main connection and test function
+    async function connectAndTest() {
+      if (isConnecting) return;
+
+      try {
+        isConnecting = true;
+        connectBtn.disabled = true;
+        hideError();
+        hideDeviceInfo();
+
+        log('🚀 Starting Launch Control XL 3 handshake test...');
+        updateStatus('connecting', 'Checking Web MIDI API support...', 'info');
+
+        // Check browser support
+        checkWebMidiSupport();
+        log('✅ Web MIDI API is supported');
+
+        // Create device instance (will auto-detect WebMidiBackend in browser)
+        updateStatus('connecting', 'Creating device instance...', 'info');
+        log('🎛️ Creating LaunchControlXL3 instance...');
+        log('ℹ️ Library will auto-detect WebMidiBackend for browser environment');
+        device = new LaunchControlXL3({
+          autoConnect: false,
+          enableLedControl: true,
+          enableCustomModes: true,
+        });
+
+        // Setup event handlers
+        log('🔗 Setting up event handlers...');
+
+        device.on('device:connected', (deviceInfo) => {
+          log('✅ Device connected successfully!', 'success');
+          log(`📱 Manufacturer ID: 0x${deviceInfo.manufacturerId.toString(16).padStart(2, '0').toUpperCase()}`);
+          log(`📱 Family Code: 0x${deviceInfo.familyCode.toString(16).padStart(4, '0').toUpperCase()}`);
+          log(`📱 Model Number: 0x${deviceInfo.modelNumber.toString(16).padStart(4, '0').toUpperCase()}`);
+          log(`📱 Firmware Version: ${deviceInfo.firmwareVersion}`);
+          if (deviceInfo.serialNumber) {
+            log(`📱 Serial Number: ${deviceInfo.serialNumber}`);
+          }
+        });
+
+        device.on('device:disconnected', (reason) => {
+          log(`⚠️ Device disconnected: ${reason || 'Unknown reason'}`, 'warning');
+          updateStatus('disconnected', 'Device disconnected', 'warning');
+          disconnectBtn.disabled = true;
+          connectBtn.disabled = false;
+          hideDeviceInfo();
+        });
+
+        device.on('device:error', (error) => {
+          log(`❌ Device error: ${error.message}`, 'error');
+        });
+
+        device.on('device:ready', () => {
+          log('✅ Device is ready for operation!', 'success');
+          updateStatus('connected', 'Device ready - Handshake successful!', 'success');
+        });
+
+        // Initialize
+        updateStatus('connecting', 'Initializing controller...', 'info');
+        log('🔄 Initializing controller...');
+        await device.initialize();
+
+        // Connect
+        updateStatus('connecting', 'Connecting to Launch Control XL 3...', 'info');
+        log('🔌 Connecting to Launch Control XL 3...');
+        await device.connect();
+
+        // Wait for stabilization
+        log('⏱️ Waiting for connection to stabilize...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        // Verify device
+        updateStatus('connecting', 'Performing device handshake verification...', 'info');
+        log('🤝 Performing device handshake verification...');
+        const deviceInfo = await device.verifyDevice();
+
+        // Success!
+        log('🎉 Device handshake verification completed successfully!', 'success');
+        updateStatus('connected', 'Connected - Handshake verified!', 'success');
+        showDeviceInfo(deviceInfo);
+
+        // Enable disconnect button
+        disconnectBtn.disabled = false;
+
+        // Test device status
+        log('📊 Checking device status...');
+        const status = device.getStatus();
+        log(`📊 Status - Connected: ${status.connected}, State: ${status.state}`);
+
+        log('✅ All tests passed! Device handshake is working correctly.', 'success');
+
+      } catch (error) {
+        console.error('Handshake test failed:', error);
+        log(`❌ Handshake test failed: ${error.message}`, 'error');
+        updateStatus('error', `Error: ${error.message}`, 'error');
+
+        // Provide troubleshooting guidance
+        let troubleshooting = [];
+
+        if (error.message.includes('User denied')) {
+          troubleshooting = [
+            'You denied MIDI access. Please refresh and allow MIDI access when prompted.',
+            'Make sure to allow SysEx (System Exclusive) messages for full functionality.',
+            'Check your browser\'s site permissions and enable MIDI if disabled.'
+          ];
+        } else if (error.message.includes('No MIDI') || error.message.includes('not found')) {
+          troubleshooting = [
+            'Launch Control XL 3 device not found. Check USB connection.',
+            'Ensure the device is powered on and recognized by your system.',
+            'Try unplugging and reconnecting the USB cable.',
+            'Check if the device appears in your system\'s audio/MIDI settings.',
+            'Make sure no other application is using the device exclusively.'
+          ];
+        } else if (error.message.includes('Web MIDI')) {
+          troubleshooting = [
+            'Use Chrome, Edge, or another Chromium-based browser.',
+            'Firefox and Safari have limited Web MIDI API support.',
+            'Ensure you\'re accessing this page via HTTPS or localhost.',
+            'Update your browser to the latest version.'
+          ];
+        } else if (error.message.includes('SysEx') || error.message.includes('handshake')) {
+          troubleshooting = [
+            'Make sure you allowed SysEx messages when prompted.',
+            'Try refreshing the page and allowing all MIDI permissions.',
+            'Power cycle the device (disconnect and reconnect USB).',
+            'Ensure the device firmware is up to date.',
+            'Check that the device is not in template mode.'
+          ];
+        } else {
+          troubleshooting = [
+            'Try refreshing the page and testing again.',
+            'Power cycle the device (disconnect and reconnect USB).',
+            'Check browser console for additional error details.',
+            'Ensure no other application is using the MIDI device.',
+            'Try using a different USB port or cable.'
+          ];
+        }
+
+        showError(error.message, troubleshooting);
+
+        // Reset connection state
+        if (device) {
+          try {
+            await device.cleanup();
+          } catch (cleanupError) {
+            log(`⚠️ Cleanup warning: ${cleanupError.message}`, 'warning');
+          }
+          device = null;
+        }
+
+        connectBtn.disabled = false;
+        disconnectBtn.disabled = true;
+      } finally {
+        isConnecting = false;
+      }
+    }
+
+    // Disconnect function
+    async function disconnect() {
+      if (!device) return;
+
+      try {
+        log('🔌 Disconnecting from device...');
+        updateStatus('disconnected', 'Disconnecting...', 'info');
+
+        await device.cleanup();
+        device = null;
+
+        log('✅ Disconnected successfully', 'success');
+        updateStatus('disconnected', 'Disconnected', 'info');
+        hideDeviceInfo();
+        hideError();
+
+        connectBtn.disabled = false;
+        disconnectBtn.disabled = true;
+      } catch (error) {
+        log(`❌ Error during disconnect: ${error.message}`, 'error');
+      }
+    }
+
+    // Clear log function
+    function clearLog() {
+      logEl.textContent = '';
+      hideError();
+      log('🗑️ Log cleared');
+    }
+
+    // Event listeners
+    connectBtn.addEventListener('click', connectAndTest);
+    disconnectBtn.addEventListener('click', disconnect);
+    clearLogBtn.addEventListener('click', clearLog);
+
+    // Handle page unload
+    window.addEventListener('beforeunload', () => {
+      if (device) {
+        device.cleanup();
+      }
+    });
+
+    // Initial log message
+    log('🎛️ Launch Control XL 3 Handshake Test ready');
+    log('📋 Please ensure your device is connected and click "Connect & Test Handshake"');
+    log('ℹ️ This test will verify the device handshake functionality using Web MIDI API');
+  </script>
+</body>
+</html>

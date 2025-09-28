@@ -217,8 +217,8 @@ export class DeviceManager extends EventEmitter {
     const outputPorts = await this.midi.getOutputPorts();
 
     // For LCXL3, we need:
-    // - Input: "LCXL3 1 MIDI Out" (for control changes)
-    // - Output: "LCXL3 1 DAW In" (for SysEx/LED control)
+    // - Input: "LCXL3 1 MIDI Out" (for receiving control changes from device)
+    // - Output: "LCXL3 1 MIDI In" (for sending SysEx/LED control to device)
 
     // First try to find the specific ports we need
     let inputPort = inputPorts.find(port =>
@@ -226,7 +226,7 @@ export class DeviceManager extends EventEmitter {
     );
 
     let outputPort = outputPorts.find(port =>
-      port.name === 'LCXL3 1 DAW In'
+      port.name === 'LCXL3 1 MIDI In'
     );
 
     // Fall back to filter-based search if specific ports not found
@@ -287,6 +287,7 @@ export class DeviceManager extends EventEmitter {
 
       // Send device inquiry
       const inquiryMessage = SysExParser.buildDeviceQuery();
+      console.log('[DeviceManager] Sending device inquiry:', inquiryMessage.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' '));
       this.sendSysEx(inquiryMessage);
     });
   }

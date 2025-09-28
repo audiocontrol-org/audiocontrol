@@ -60,9 +60,9 @@ features should be deferred to later phases.
 
 #### Feature MVP.2 Testing Requirements
 
-- [ ] There is a "one-click" pnpm script in this module that a developer may use to initiates a handshake via Node MIDI
+- [x] There is a "one-click" pnpm script in this module that a developer may use to initiates a handshake via Node MIDI
   with a connected device and reports success or failure
-- [ ] There is an html document that may be loaded into a chrome browser by a developer to initiate a handshake via
+- [x] There is an html document that may be loaded into a chrome browser by a developer to initiate a handshake via
   WebMIDI and report success or failure
 
 ### Feature MVP.3: Device Custom Mode Fetch
