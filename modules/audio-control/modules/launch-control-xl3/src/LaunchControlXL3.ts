@@ -362,6 +362,30 @@ export class LaunchControlXL3 extends EventEmitter {
   }
 
   /**
+   * Read a custom mode from the device
+   * @param slot - Slot number (0-14 for slots 1-15)
+   * @returns Promise resolving to the custom mode or null if slot is empty
+   */
+  async readCustomMode(slot: number): Promise<CustomMode | null> {
+    if (!this.isConnected()) {
+      throw new Error('Device is not connected');
+    }
+    return this.deviceManager.readCustomMode(slot);
+  }
+
+  /**
+   * Write a custom mode to the device
+   * @param slot - Slot number (0-14 for slots 1-15)
+   * @param mode - Custom mode to write
+   */
+  async writeCustomMode(slot: number, mode: CustomMode): Promise<void> {
+    if (!this.isConnected()) {
+      throw new Error('Device is not connected');
+    }
+    return this.deviceManager.writeCustomMode(slot, mode);
+  }
+
+  /**
    * Export current mappings as custom mode
    */
   exportCurrentAsCustomMode(name: string): CustomMode {
