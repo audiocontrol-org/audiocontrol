@@ -884,11 +884,13 @@ export class SysExParser {
     // Add label data for each control (recommended for usability)
     for (const control of sortedControls) {
       const controlId = control.controlId ?? 0;
-      rawData.push(0x69); // Label marker
+      rawData.push(0x68); // Label marker
       rawData.push(controlId + 0x28); // Control ID with offset
 
-      // Add a simple label based on control type and ID
-      const labelText = this.generateControlLabel(controlId);
+      // Use actual control name if available, otherwise generate generic label
+      const labelText = control.name && control.name.trim() !== ''
+        ? control.name.substring(0, 12) // Truncate to max 12 chars for device compatibility
+        : this.generateControlLabel(controlId);
       for (let i = 0; i < labelText.length; i++) {
         rawData.push(labelText.charCodeAt(i));
       }
@@ -897,8 +899,14 @@ export class SysExParser {
     // Add color data for each control (required for device acceptance)
     for (const control of sortedControls) {
       const controlId = control.controlId ?? 0;
+
+      // Find the corresponding color for this control
+      const colorEntry = modeData.colors?.find(c => c.controlId === controlId);
+      const colorValue = colorEntry?.color ?? 0x0C; // Default color if not specified
+
       rawData.push(0x60); // Color marker
       rawData.push(controlId + 0x28); // Control ID with offset
+      rawData.push(colorValue); // Actual color value
     }
 
     return rawData;

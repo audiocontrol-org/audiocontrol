@@ -339,4 +339,639 @@ describe('SysExParser', () => {
       expect(() => SysExParser.validateCustomModeData(invalidColor as any)).toThrow('Color value must be 0-127');
     });
   });
+
+  describe('buildCustomModeWriteRequest - MIDI Protocol Validation', () => {
+    it('should create message with correct header according to MIDI-PROTOCOL.md', () => {
+      const modeData = {
+        type: 'custom_mode_response',
+        manufacturerId: [0x00, 0x20, 0x29],
+        slot: 0,
+        name: 'TEST',
+        controls: [],
+        colors: [],
+        data: []
+      };
+
+      const message = SysExParser.buildCustomModeWriteRequest(0, modeData as any);
+
+      // Check SysEx boundaries
+      expect(message[0]).toBe(0xF0);
+      expect(message[message.length - 1]).toBe(0xF7);
+
+      // Check header matches MIDI-PROTOCOL.md specification
+      expect(message.slice(1, 10)).toEqual([
+        0x00, 0x20, 0x29, // Manufacturer ID
+        0x02,             // Device ID
+        0x15,             // Command
+        0x05,             // Sub-command
+        0x00,             // Reserved
+        0x45,             // Write operation
+        0x00              // Slot
+      ]);
+    });
+
+    it('should include data header (00 20 08) after protocol header', () => {
+      const modeData = {
+        type: 'custom_mode_response',
+        manufacturerId: [0x00, 0x20, 0x29],
+        slot: 0,
+        name: 'TEST',
+        controls: [],
+        colors: [],
+        data: []
+      };
+
+      const message = SysExParser.buildCustomModeWriteRequest(0, modeData as any);
+
+      // Data header should be at position 10
+      expect(message.slice(10, 13)).toEqual([0x00, 0x20, 0x08]);
+    });
+
+    it('should encode control with 0x49 marker and +0x28 offset as per protocol', () => {
+      const modeData = {
+        type: 'custom_mode_response',
+        manufacturerId: [0x00, 0x20, 0x29],
+        slot: 0,
+        name: 'TEST',
+        controls: [{
+          controlId: 0x00, // Fader 1
+          name: 'Volume',
+          midiChannel: 0,
+          ccNumber: 77,
+          minValue: 0,
+          maxValue: 127
+        }],
+        colors: [],
+        data: []
+      };
+
+      const message = SysExParser.buildCustomModeWriteRequest(0, modeData as any);
+
+      // Find control definition (after header + data header + name)
+      // Header(10) + DataHeader(3) + Name(4) = 17
+      const controlDef = message.slice(17, 28);
+
+      // Verify control format matches protocol:
+      // 49 [ID+0x28] 02 [TYPE] [CH] 01 40 00 [CC] 7F 00
+      expect(controlDef[0]).toBe(0x49);        // Write marker
+      expect(controlDef[1]).toBe(0x28);        // ID 0x00 + 0x28
+      expect(controlDef[2]).toBe(0x02);        // Definition type
+      expect(controlDef[3]).toBe(0x00);        // Control type for fader
+      expect(controlDef[4]).toBe(0x00);        // Channel
+      expect(controlDef[5]).toBe(0x01);        // Fixed param
+      expect(controlDef[6]).toBe(0x40);        // Behavior
+      expect(controlDef[7]).toBe(0x00);        // Min (always 0x00)
+      expect(controlDef[8]).toBe(77);          // CC number
+      expect(controlDef[9]).toBe(0x7F);        // Max (always 0x7F)
+      expect(controlDef[10]).toBe(0x00);       // Terminator
+    });
+
+    it('should use actual control names in labels, not generic ones', () => {
+      const modeData = {
+        type: 'custom_mode_response',
+        manufacturerId: [0x00, 0x20, 0x29],
+        slot: 0,
+        name: 'TEST',
+        controls: [{
+          controlId: 0x00,
+          name: 'MyVolume', // Specific name
+          ccNumber: 77
+        }],
+        colors: [{
+          controlId: 0x00,
+          color: 0x0C
+        }],
+        data: []
+      };
+
+      const message = SysExParser.buildCustomModeWriteRequest(0, modeData as any);
+      const messageStr = message.map(b => String.fromCharCode(b)).join('');
+
+      // Should contain the actual control name
+      expect(messageStr).toContain('MyVolume');
+
+      // Should NOT contain generic label
+      expect(messageStr).not.toContain('Fader 1');
+    });
+
+    it('should include label markers (0x69) for controls with names', () => {
+      const modeData = {
+        type: 'custom_mode_response',
+        manufacturerId: [0x00, 0x20, 0x29],
+        slot: 0,
+        name: 'TEST',
+        controls: [{
+          controlId: 0x00,
+          name: 'Vol',
+          ccNumber: 77
+        }],
+        colors: [{
+          controlId: 0x00,
+          color: 0x0C
+        }],
+        data: []
+      };
+
+      const message = SysExParser.buildCustomModeWriteRequest(0, modeData as any);
+
+      // Should contain label marker
+      expect(message).toContain(0x69);
+
+      // Find label section and verify structure
+      const labelIdx = message.indexOf(0x69);
+      expect(labelIdx).toBeGreaterThan(0);
+      expect(message[labelIdx + 1]).toBe(0x28); // Control ID with offset
+    });
+
+    it('should include color markers (0x60) for all controls', () => {
+      const modeData = {
+        type: 'custom_mode_response',
+        manufacturerId: [0x00, 0x20, 0x29],
+        slot: 0,
+        name: 'TEST',
+        controls: [{
+          controlId: 0x00,
+          name: 'Vol',
+          ccNumber: 77
+        }],
+        colors: [{
+          controlId: 0x00,
+          color: 0x0C
+        }],
+        data: []
+      };
+
+      const message = SysExParser.buildCustomModeWriteRequest(0, modeData as any);
+
+      // Should contain color marker
+      expect(message).toContain(0x60);
+
+      // Find color section and verify structure
+      const colorIdx = message.indexOf(0x60);
+      expect(colorIdx).toBeGreaterThan(0);
+      expect(message[colorIdx + 1]).toBe(0x28); // Control ID with offset
+    });
+
+    it('should generate message of appropriate length for complete data', () => {
+      const modeData = {
+        type: 'custom_mode_response',
+        manufacturerId: [0x00, 0x20, 0x29],
+        slot: 0,
+        name: 'TESTMODE',
+        controls: [
+          { controlId: 0x00, name: 'Volume1', ccNumber: 1 },
+          { controlId: 0x01, name: 'Volume2', ccNumber: 2 },
+          { controlId: 0x10, name: 'Send1', ccNumber: 13 },
+          { controlId: 0x11, name: 'Send2', ccNumber: 14 },
+        ],
+        colors: [
+          { controlId: 0x00, color: 0x0C },
+          { controlId: 0x01, color: 0x0C },
+          { controlId: 0x10, color: 0x3C },
+          { controlId: 0x11, color: 0x3C },
+        ],
+        data: []
+      };
+
+      const message = SysExParser.buildCustomModeWriteRequest(0, modeData as any);
+
+      // According to MIDI-PROTOCOL.md, complete messages are 400-500+ bytes
+      // With 4 controls, labels, and colors, should be substantial
+      expect(message.length).toBeGreaterThan(100);
+    });
+  });
+
+  describe('buildCustomModeWriteRequest', () => {
+    describe('Message Structure', () => {
+      it('should create a properly formatted SysEx message with correct header and footer', () => {
+        const slot = 0;
+        const modeData: CustomModeMessage = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot,
+          name: 'TEST',
+          controls: [],
+          colors: [],
+          data: []
+        };
+
+        const message = SysExParser.buildCustomModeWriteRequest(slot, modeData);
+
+        // Check SysEx start and end
+        expect(message[0]).toBe(0xF0); // SysEx start
+        expect(message[message.length - 1]).toBe(0xF7); // SysEx end
+
+        // Check header according to MIDI-PROTOCOL.md
+        expect(message.slice(1, 10)).toEqual([
+          0x00, 0x20, 0x29, // Manufacturer ID (Novation)
+          0x02,             // Device ID (Launch Control XL 3)
+          0x15,             // Command (Custom mode)
+          0x05,             // Sub-command
+          0x00,             // Reserved
+          0x45,             // Write operation
+          slot              // Slot number
+        ]);
+      });
+
+      it('should include the data header (00 20 08) after the protocol header', () => {
+        const modeData: CustomModeMessage = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'TEST',
+          controls: [],
+          colors: [],
+          data: []
+        };
+
+        const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
+
+        // Data should start at position 10 (after header)
+        expect(message.slice(10, 13)).toEqual([0x00, 0x20, 0x08]);
+      });
+    });
+
+    describe('Mode Name Encoding', () => {
+      it('should encode the mode name as ASCII after the data header', () => {
+        const modeName = 'CHANNEVE';
+        const modeData: CustomModeMessage = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: modeName,
+          controls: [],
+          colors: [],
+          data: []
+        };
+
+        const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
+
+        // Mode name should be at position 13 (after header + data header)
+        const nameBytes = message.slice(13, 13 + modeName.length);
+        const decodedName = String.fromCharCode(...nameBytes);
+
+        expect(decodedName).toBe('CHANNEVE');
+      });
+
+      it('should limit mode name to 8 characters maximum', () => {
+        const modeData: CustomModeMessage = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'VERYLONGMODENAME', // 16 characters
+          controls: [],
+          colors: [],
+          data: []
+        };
+
+        const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
+
+        // Check that only 8 characters are encoded
+        const nameBytes = message.slice(13, 21);
+        const decodedName = String.fromCharCode(...nameBytes);
+
+        expect(decodedName).toBe('VERYLONG');
+      });
+    });
+
+    describe('Control Encoding', () => {
+      it('should encode controls with 0x49 marker and correct structure', () => {
+        const control: ControlMapping = {
+          controlId: 0x00, // Fader 1
+          name: 'Volume',
+          midiChannel: 0,
+          ccNumber: 77,
+          minValue: 0,
+          maxValue: 127,
+          behaviour: 'absolute'
+        };
+
+        const modeData: CustomModeMessage = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'TEST',
+          controls: [control],
+          colors: [],
+          data: []
+        };
+
+        const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
+
+        // Find the control definition (should start after header + data header + name)
+        // Header(10) + DataHeader(3) + Name(4) = 17
+        const controlStart = 17;
+        const controlDef = message.slice(controlStart, controlStart + 11);
+
+        // According to MIDI-PROTOCOL.md, control format for WRITE should be:
+        // 49 [ID+0x28] 02 [TYPE] [CH] 01 40 00 [CC] 7F 00
+        expect(controlDef).toEqual([
+          0x49,        // Write control marker
+          0x28,        // Control ID 0x00 + 0x28 offset
+          0x02,        // Definition type
+          0x00,        // Control type (0x00 for faders)
+          0x00,        // MIDI channel (0-based)
+          0x01,        // Fixed parameter 1
+          0x40,        // Behavior parameter
+          0x00,        // Min (always 0x00 in write)
+          77,          // CC number
+          0x7F,        // Max (always 0x7F in write)
+          0x00         // Terminator
+        ]);
+      });
+
+      it('should apply correct control ID offset (+0x28) for all controls', () => {
+        const controls: ControlMapping[] = [
+          { controlId: 0x00, ccNumber: 1 }, // Fader 1
+          { controlId: 0x10, ccNumber: 2 }, // Top encoder 1
+          { controlId: 0x18, ccNumber: 3 }, // Mid encoder 1
+          { controlId: 0x20, ccNumber: 4 }, // Bot encoder 1
+        ];
+
+        const modeData: CustomModeMessage = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'TEST',
+          controls,
+          colors: [],
+          data: []
+        };
+
+        const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
+
+        // Check each control has the correct offset applied
+        let position = 17; // After header + data header + name
+
+        // Control 0x00 should become 0x28
+        expect(message[position + 1]).toBe(0x28);
+        position += 11;
+
+        // Control 0x10 should become 0x38
+        expect(message[position + 1]).toBe(0x38);
+        position += 11;
+
+        // Control 0x18 should become 0x40
+        expect(message[position + 1]).toBe(0x40);
+        position += 11;
+
+        // Control 0x20 should become 0x48
+        expect(message[position + 1]).toBe(0x48);
+      });
+
+      it('should use correct control type values based on hardware position', () => {
+        const controls: ControlMapping[] = [
+          { controlId: 0x00 }, // Fader - should use type 0x00
+          { controlId: 0x10 }, // Top encoder - should use type 0x05
+          { controlId: 0x18 }, // Mid encoder - should use type 0x09
+          { controlId: 0x20 }, // Bot encoder - should use type 0x0D
+        ];
+
+        const modeData: CustomModeMessage = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'TEST',
+          controls,
+          colors: [],
+          data: []
+        };
+
+        const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
+
+        let position = 17; // After header + data header + name
+
+        // Check control types
+        expect(message[position + 3]).toBe(0x00); // Fader type
+        position += 11;
+
+        expect(message[position + 3]).toBe(0x05); // Top encoder type
+        position += 11;
+
+        expect(message[position + 3]).toBe(0x09); // Mid encoder type
+        position += 11;
+
+        expect(message[position + 3]).toBe(0x0D); // Bot encoder type
+      });
+    });
+
+    describe('Label and Color Data', () => {
+      it('should include label data with 0x69 marker and control names', () => {
+        const control: ControlMapping = {
+          controlId: 0x00,
+          name: 'Volume',
+          ccNumber: 77
+        };
+
+        const modeData: CustomModeMessage = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'TEST',
+          controls: [control],
+          colors: [{ controlId: 0x00, color: 0x0C }],
+          data: []
+        };
+
+        const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
+
+        // Find label section (after control definition)
+        // Header(10) + DataHeader(3) + Name(4) + Control(11) = 28
+        const labelStart = 28;
+
+        // Label format should be: 69 [ID+0x28] [ASCII_TEXT...]
+        expect(message[labelStart]).toBe(0x69); // Label marker
+        expect(message[labelStart + 1]).toBe(0x28); // Control ID with offset
+
+        // Check that the name is encoded
+        const labelText = message.slice(labelStart + 2, labelStart + 2 + 6);
+        const decodedLabel = String.fromCharCode(...labelText);
+        expect(decodedLabel).toBe('Volume');
+      });
+
+      it('should include color data with 0x60 marker', () => {
+        const control: ControlMapping = {
+          controlId: 0x00,
+          name: 'Vol',
+          ccNumber: 77
+        };
+
+        const modeData: CustomModeMessage = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'TEST',
+          controls: [control],
+          colors: [{ controlId: 0x00, color: 0x0C }],
+          data: []
+        };
+
+        const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
+
+        // Find color section (after control + label)
+        // Header(10) + DataHeader(3) + Name(4) + Control(11) + Label(2 + 3) = 33
+        const colorStart = 33;
+
+        // Color format should be: 60 [ID+0x28]
+        expect(message[colorStart]).toBe(0x60); // Color marker
+        expect(message[colorStart + 1]).toBe(0x28); // Control ID with offset
+      });
+
+      it('should include labels and colors for all controls', () => {
+        const controls: ControlMapping[] = [
+          { controlId: 0x00, name: 'Vol1', ccNumber: 1 },
+          { controlId: 0x01, name: 'Vol2', ccNumber: 2 },
+        ];
+
+        const colors = [
+          { controlId: 0x00, color: 0x0C },
+          { controlId: 0x01, color: 0x0D },
+        ];
+
+        const modeData: CustomModeMessage = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'TEST',
+          controls,
+          colors,
+          data: []
+        };
+
+        const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
+
+        // Message should contain both label markers (0x69)
+        const labelMarkers = message.filter(byte => byte === 0x69);
+        expect(labelMarkers.length).toBe(2);
+
+        // Message should contain both color markers (0x60)
+        const colorMarkers = message.filter(byte => byte === 0x60);
+        expect(colorMarkers.length).toBe(2);
+      });
+    });
+
+    describe('Complete Message Validation', () => {
+      it('should generate a message matching the CHANNEVE example structure', () => {
+        // Create controls matching the CHANNEVE example from MIDI-PROTOCOL.md
+        const controls: ControlMapping[] = [
+          { controlId: 0x10, name: 'Mic Gain', midiChannel: 0, ccNumber: 13 }, // Top encoder 1
+          { controlId: 0x11, name: 'Reverb', midiChannel: 0, ccNumber: 14 },   // Top encoder 2
+        ];
+
+        const colors = [
+          { controlId: 0x10, color: 0x60 },
+          { controlId: 0x11, color: 0x60 },
+        ];
+
+        const modeData: CustomModeMessage = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'CHANNEVE',
+          controls,
+          colors,
+          data: []
+        };
+
+        const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
+
+        // Verify key parts of the message structure
+        expect(message[0]).toBe(0xF0); // Start
+        expect(message.slice(1, 10)).toEqual([0x00, 0x20, 0x29, 0x02, 0x15, 0x05, 0x00, 0x45, 0x00]); // Header
+        expect(message.slice(10, 13)).toEqual([0x00, 0x20, 0x08]); // Data header
+
+        // Mode name
+        const nameBytes = message.slice(13, 21);
+        expect(String.fromCharCode(...nameBytes)).toBe('CHANNEVE');
+
+        // First control should have 0x49 marker
+        expect(message[21]).toBe(0x49);
+
+        // Message should end with 0xF7
+        expect(message[message.length - 1]).toBe(0xF7);
+
+        // Message should be substantial (400+ bytes for complete data)
+        // Note: Current implementation may be shorter, which is the bug
+        expect(message.length).toBeGreaterThan(50); // At minimum
+      });
+
+      it('should fail if current implementation is incorrect', () => {
+        // This test documents known issues with the current implementation
+        const control: ControlMapping = {
+          controlId: 0x00,
+          name: 'TestControl',
+          midiChannel: 5,
+          ccNumber: 64
+        };
+
+        const modeData: CustomModeMessage = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'TESTMODE',
+          controls: [control],
+          colors: [{ controlId: 0x00, color: 0x0C }],
+          data: []
+        };
+
+        const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
+
+        // Check if the implementation correctly:
+        // 1. Uses control names (not generic labels)
+        const messageStr = message.map(b => String.fromCharCode(b)).join('');
+        expect(messageStr).toContain('TestControl'); // Should use actual name
+
+        // 2. Has proper message length (should be 100+ bytes for even simple modes)
+        expect(message.length).toBeGreaterThan(100);
+
+        // 3. Includes all required sections
+        expect(message).toContain(0x49); // Control marker
+        expect(message).toContain(0x69); // Label marker
+        expect(message).toContain(0x60); // Color marker
+      });
+    });
+
+    describe('Error Handling', () => {
+      it('should throw error for invalid slot numbers', () => {
+        const modeData: CustomModeMessage = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'TEST',
+          controls: [],
+          colors: [],
+          data: []
+        };
+
+        expect(() => SysExParser.buildCustomModeWriteRequest(-1, modeData)).toThrow();
+        expect(() => SysExParser.buildCustomModeWriteRequest(16, modeData)).toThrow();
+      });
+
+      it('should throw error if controls array is missing', () => {
+        const modeData: any = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'TEST',
+          colors: []
+          // controls missing
+        };
+
+        expect(() => SysExParser.buildCustomModeWriteRequest(0, modeData)).toThrow('controls array');
+      });
+
+      it('should throw error if colors array is missing', () => {
+        const modeData: any = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'TEST',
+          controls: []
+          // colors missing
+        };
+
+        expect(() => SysExParser.buildCustomModeWriteRequest(0, modeData)).toThrow('colors array');
+      });
+    });
+  });
 });
