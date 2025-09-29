@@ -821,6 +821,10 @@ export class SysExParser {
   /**
    * Encode custom mode data for Launch Control XL 3 transmission
    * Based on actual web editor protocol analysis
+   *
+   * IMPORTANT: This creates a complete message with ALL hardware controls,
+   * not just the ones specified in modeData.controls. The device expects
+   * definitions for all possible control IDs.
    */
   private static encodeCustomModeData(modeData: CustomModeMessage): number[] {
     const rawData: number[] = [];
@@ -828,32 +832,47 @@ export class SysExParser {
     // Header: Mode data format indicator
     rawData.push(0x00, 0x20, 0x08);
 
-    // Mode name: Direct ASCII encoding (not Midimunge!)
-    if (modeData.name) {
-      for (let i = 0; i < modeData.name.length && i < 16; i++) {
-        rawData.push(modeData.name.charCodeAt(i));
+    // Mode name: Direct ASCII encoding (max 8 chars according to protocol)
+    const modeName = modeData.name || 'CUSTOM';
+    const nameToUse = modeName.substring(0, 8);
+    for (let i = 0; i < nameToUse.length; i++) {
+      rawData.push(nameToUse.charCodeAt(i));
+    }
+
+    // Create a mapping of provided controls for lookup
+    const controlMap = new Map<number, ControlMapping>();
+    for (const control of modeData.controls) {
+      if (control.controlId !== undefined) {
+        controlMap.set(control.controlId, control);
       }
     }
 
-    // Add control definitions - must be in specific order for device to accept
-    // Sort controls by ID to ensure proper order
-    const sortedControls = [...modeData.controls]
-      .filter(control => control.controlId !== undefined)
-      .sort((a, b) => (a.controlId ?? 0) - (b.controlId ?? 0));
+    // Define ALL hardware control IDs that need to be included
+    // Based on Launch Control XL 3 hardware layout
+    const allControlIds = [
+      // Faders (0x00-0x07)
+      0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+      // Top row encoders (0x10-0x17)
+      0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+      // Middle row encoders (0x18-0x1F)
+      0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
+      // Bottom row encoders (0x20-0x27)
+      0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+      // Side buttons (0x28-0x2F)
+      0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
+      // Bottom buttons (0x30-0x37)
+      0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37
+    ];
 
-    for (const control of sortedControls) {
-      // Control format from web editor for WRITE operation:
-      // Faders: 0x49 [ID] 0x02 0x00 [CH] 0x01 0x40 0x00 [CC] 0x7F 0x00
-      // Top encoders: 0x49 [ID] 0x02 0x05 [CH] 0x01 0x40 0x00 [CC] 0x7F 0x00
-      // Mid encoders: 0x49 [ID] 0x02 0x09 [CH] 0x01 0x40 0x00 [CC] 0x7F 0x00
-      // Bot encoders: 0x49 [ID] 0x02 0x0D [CH] 0x01 0x40 0x00 [CC] 0x7F 0x00
-
-      const controlId = control.controlId ?? 0;
-      const channel = control.channel ?? control.midiChannel ?? 0;
-      const ccNumber = control.ccNumber ?? control.cc ?? 0;
+    // Add control definitions for ALL hardware controls
+    for (const controlId of allControlIds) {
+      // Get user-defined control or create default
+      const userControl = controlMap.get(controlId);
+      const channel = userControl?.channel ?? userControl?.midiChannel ?? 0;
+      const ccNumber = userControl?.ccNumber ?? userControl?.cc ?? controlId; // Default CC = control ID
 
       rawData.push(0x49); // Control marker for WRITE
-      rawData.push(controlId + 0x28); // IMPORTANT: Add 0x28 offset for controls!
+      rawData.push(controlId + 0x28); // Add 0x28 offset for controls
       rawData.push(0x02); // Control definition type
 
       // Control type based on hardware position
@@ -866,6 +885,8 @@ export class SysExParser {
         controlType = 0x0D; // Bottom row encoders
       } else if (controlId >= 0x00 && controlId <= 0x07) {
         controlType = 0x00; // Faders
+      } else if (controlId >= 0x28 && controlId <= 0x3F) {
+        controlType = 0x19; // Buttons (typical button type)
       }
 
       rawData.push(controlType);
@@ -881,25 +902,23 @@ export class SysExParser {
     // CRITICAL: Add label/color data after controls - REQUIRED by device!
     // Without this section, the device rejects the message
 
-    // Add label data for each control (recommended for usability)
-    for (const control of sortedControls) {
-      const controlId = control.controlId ?? 0;
-      rawData.push(0x68); // Label marker
+    // Add label data for ALL controls
+    for (const controlId of allControlIds) {
+      const userControl = controlMap.get(controlId);
+      rawData.push(0x69); // Label marker
       rawData.push(controlId + 0x28); // Control ID with offset
 
       // Use actual control name if available, otherwise generate generic label
-      const labelText = control.name && control.name.trim() !== ''
-        ? control.name.substring(0, 12) // Truncate to max 12 chars for device compatibility
+      const labelText = userControl?.name && userControl.name.trim() !== ''
+        ? userControl.name.substring(0, 12) // Truncate to max 12 chars for device compatibility
         : this.generateControlLabel(controlId);
       for (let i = 0; i < labelText.length; i++) {
         rawData.push(labelText.charCodeAt(i));
       }
     }
 
-    // Add color data for each control (required for device acceptance)
-    for (const control of sortedControls) {
-      const controlId = control.controlId ?? 0;
-
+    // Add color data for ALL controls (required for device acceptance)
+    for (const controlId of allControlIds) {
       // Find the corresponding color for this control
       const colorEntry = modeData.colors?.find(c => c.controlId === controlId);
       const colorValue = colorEntry?.color ?? 0x0C; // Default color if not specified

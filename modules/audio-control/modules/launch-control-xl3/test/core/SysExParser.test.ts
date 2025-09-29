@@ -700,23 +700,25 @@ describe('SysExParser', () => {
 
         const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
 
-        // Check each control has the correct offset applied
+        // Now the implementation includes ALL hardware controls, not just user-defined ones
+        // Check that specific controls have the correct offset applied
         let position = 17; // After header + data header + name
 
-        // Control 0x00 should become 0x28
+        // First control (0x00) should become 0x28
         expect(message[position + 1]).toBe(0x28);
-        position += 11;
 
-        // Control 0x10 should become 0x38
-        expect(message[position + 1]).toBe(0x38);
-        position += 11;
+        // Find control 0x10 (it will be at position for control index 8 since we have 0x00-0x07, then 0x10)
+        // Skip 8 fader controls (0x00-0x07) = 8 * 11 = 88 bytes
+        const control10Position = position + (8 * 11);
+        expect(message[control10Position + 1]).toBe(0x38); // 0x10 + 0x28
 
-        // Control 0x18 should become 0x40
-        expect(message[position + 1]).toBe(0x40);
-        position += 11;
+        // Find control 0x18 (index 16: 8 faders + 8 top encoders)
+        const control18Position = position + (16 * 11);
+        expect(message[control18Position + 1]).toBe(0x40); // 0x18 + 0x28
 
-        // Control 0x20 should become 0x48
-        expect(message[position + 1]).toBe(0x48);
+        // Find control 0x20 (index 24: 8 faders + 8 top + 8 mid encoders)
+        const control20Position = position + (24 * 11);
+        expect(message[control20Position + 1]).toBe(0x48); // 0x20 + 0x28
       });
 
       it('should use correct control type values based on hardware position', () => {
@@ -741,17 +743,20 @@ describe('SysExParser', () => {
 
         let position = 17; // After header + data header + name
 
-        // Check control types
-        expect(message[position + 3]).toBe(0x00); // Fader type
-        position += 11;
+        // Check control types - now with ALL controls included
+        expect(message[position + 3]).toBe(0x00); // First fader type (0x00)
 
-        expect(message[position + 3]).toBe(0x05); // Top encoder type
-        position += 11;
+        // Find control 0x10 (first top encoder) - skip 8 faders
+        const control10Position = position + (8 * 11);
+        expect(message[control10Position + 3]).toBe(0x05); // Top encoder type
 
-        expect(message[position + 3]).toBe(0x09); // Mid encoder type
-        position += 11;
+        // Find control 0x18 (first mid encoder) - skip 8 faders + 8 top encoders
+        const control18Position = position + (16 * 11);
+        expect(message[control18Position + 3]).toBe(0x09); // Mid encoder type
 
-        expect(message[position + 3]).toBe(0x0D); // Bot encoder type
+        // Find control 0x20 (first bot encoder) - skip 8 faders + 8 top + 8 mid encoders
+        const control20Position = position + (24 * 11);
+        expect(message[control20Position + 3]).toBe(0x0D); // Bot encoder type
       });
     });
 
@@ -775,15 +780,16 @@ describe('SysExParser', () => {
 
         const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
 
-        // Find label section (after control definition)
-        // Header(10) + DataHeader(3) + Name(4) + Control(11) = 28
-        const labelStart = 28;
+        // Find label section (after ALL control definitions)
+        // Header(10) + DataHeader(3) + Name(4) + AllControls(48*11) = 545
+        const allControlsSize = 48 * 11; // 48 controls * 11 bytes each
+        const labelStart = 17 + allControlsSize; // After header + data header + name + all controls
 
         // Label format should be: 69 [ID+0x28] [ASCII_TEXT...]
-        expect(message[labelStart]).toBe(0x69); // Label marker
-        expect(message[labelStart + 1]).toBe(0x28); // Control ID with offset
+        expect(message[labelStart]).toBe(0x69); // Label marker for first control (0x00)
+        expect(message[labelStart + 1]).toBe(0x28); // Control ID 0x00 with offset
 
-        // Check that the name is encoded
+        // Check that the custom name is encoded (not the default 'Fader 1')
         const labelText = message.slice(labelStart + 2, labelStart + 2 + 6);
         const decodedLabel = String.fromCharCode(...labelText);
         expect(decodedLabel).toBe('Volume');
@@ -808,13 +814,15 @@ describe('SysExParser', () => {
 
         const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
 
-        // Find color section (after control + label)
-        // Header(10) + DataHeader(3) + Name(4) + Control(11) + Label(2 + 3) = 33
-        const colorStart = 33;
+        // Find color section (after all controls + all labels)
+        // Easier approach: search for the first 0x60 marker
+        const colorMarkerIndex = message.findIndex(byte => byte === 0x60);
+        expect(colorMarkerIndex).toBeGreaterThan(0);
 
-        // Color format should be: 60 [ID+0x28]
-        expect(message[colorStart]).toBe(0x60); // Color marker
-        expect(message[colorStart + 1]).toBe(0x28); // Control ID with offset
+        // Color format should be: 60 [ID+0x28] [COLOR]
+        expect(message[colorMarkerIndex]).toBe(0x60); // Color marker
+        expect(message[colorMarkerIndex + 1]).toBe(0x28); // Control ID 0x00 with offset
+        expect(message[colorMarkerIndex + 2]).toBe(0x0C); // Custom color value
       });
 
       it('should include labels and colors for all controls', () => {
@@ -840,13 +848,13 @@ describe('SysExParser', () => {
 
         const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
 
-        // Message should contain both label markers (0x69)
+        // Message should contain label markers (there might be extras from label text)
         const labelMarkers = message.filter(byte => byte === 0x69);
-        expect(labelMarkers.length).toBe(2);
+        expect(labelMarkers.length).toBeGreaterThanOrEqual(48); // At least 48 hardware controls
 
-        // Message should contain both color markers (0x60)
+        // Message should contain color markers for ALL 48 hardware controls (0x60)
         const colorMarkers = message.filter(byte => byte === 0x60);
-        expect(colorMarkers.length).toBe(2);
+        expect(colorMarkers.length).toBe(48); // All hardware controls
       });
     });
 
