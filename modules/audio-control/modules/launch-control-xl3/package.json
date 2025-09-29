@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/launch-control-xl3",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "TypeScript library for Novation Launch Control XL 3 device control and MIDI mapping",
   "type": "module",
   "main": "./dist/index.js",
