@@ -98,6 +98,15 @@ export class MidiMonitor {
       throw new Error('No MIDI input ports available');
     }
 
+    // Show ALL available ports for transparency
+    console.log('📋 All available ports:');
+    availablePorts.forEach((port, i) => {
+      const portType = port.includes('DAW') ? ' (DAW Port)' :
+                       port.includes('MIDI In') ? ' (MIDI Input)' :
+                       port.includes('MIDI Out') ? ' (MIDI Output)' : '';
+      console.log(`   ${i + 1}. ${port}${portType}`);
+    });
+
     // Filter ports if device filter is specified
     const portsToMonitor = this.config.deviceFilter
       ? availablePorts.filter(port =>
@@ -112,7 +121,7 @@ export class MidiMonitor {
       throw new Error(`No MIDI input ports found${filterMsg}`);
     }
 
-    console.log(`🎯 Monitoring ${portsToMonitor.length} port(s):`);
+    console.log(`\n🎯 Monitoring ${portsToMonitor.length} port(s) (including DAW ports):`);
     portsToMonitor.forEach((port, i) => {
       console.log(`   ${i + 1}. ${port}`);
     });
@@ -249,8 +258,12 @@ export class MidiMonitor {
    */
   private logMessage(message: CapturedMessage): void {
     const timeStr = new Date(message.timestamp).toISOString().split('T')[1]?.split('.')[0] || '';
-    const portStr = message.portName.padEnd(20);
+    const portStr = message.portName.padEnd(25);
     const typeStr = message.messageType.padEnd(12);
+
+    // Determine port type for special highlighting
+    const isDawPort = message.portName.includes('DAW');
+    const portIcon = isDawPort ? '🎹' : '  ';
 
     if (message.messageType === 'sysex') {
       // Highlight SysEx messages - these are critical for protocol analysis
@@ -262,6 +275,9 @@ export class MidiMonitor {
         const manIdHex = manufacturerId.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
         console.log(`   └─ Manufacturer ID: ${manIdHex} | Length: ${message.rawData.length} bytes`);
       }
+    } else if (isDawPort) {
+      // Highlight DAW port messages
+      console.log(`${portIcon} ${timeStr} [${portStr}] ${typeStr} ${message.hexData}`);
     } else {
       console.log(`   ${timeStr} [${portStr}] ${typeStr} ${message.hexData}`);
     }
