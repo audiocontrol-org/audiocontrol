@@ -261,8 +261,8 @@ export class SysExParser {
 
   /**
    * Parse custom mode data from raw bytes
-   * Updated to handle Launch Control XL 3 format (not Midimunge)
-   * Note: Device uses 0x48 in READ responses, 0x49 in WRITE commands
+   * Phase 1 Enhancement: Handle hybrid response format with mixed 0x48/0x49/0x40 markers
+   * Device returns mixed format: 0x49 markers from writes become 0x48 in reads
    */
   private static parseCustomModeData(data: number[]): {
     controls: ControlMapping[];
@@ -273,9 +273,35 @@ export class SysExParser {
     const colors: ColorMapping[] = [];
     let modeName: string | undefined;
 
-    // Parse mode name - improved pattern matching for READ responses
+    // Phase 1 Fix: Enhanced name parsing with factory fallback handling
+    modeName = this.parseName(data);
+
+    // Phase 1 Fix: Enhanced control parsing with mixed format support
+    const { parsedControls, parsedColors } = this.parseControls(data);
+    controls.push(...parsedControls);
+    colors.push(...parsedColors);
+
+    // Phase 1 Fix: Enhanced label parsing with non-sequential control ID mapping
+    this.parseControlLabels(data, controls);
+
+    const result: { controls: ControlMapping[]; colors: ColorMapping[]; name?: string } = {
+      controls,
+      colors
+    };
+
+    if (modeName !== undefined) {
+      result.name = modeName;
+    }
+
+    return result;
+  }
+
+  /**
+   * Phase 1 Fix: Enhanced name parsing with factory fallback handling
+   * Handles both custom names and factory format fallbacks (06 20 1F pattern)
+   */
+  private static parseName(data: number[]): string | undefined {
     let nameStart = -1;
-    let nameEnd = -1;
 
     // Look for name patterns - check multiple possible formats
     for (let i = 0; i < data.length - 4; i++) {
@@ -284,13 +310,20 @@ export class SysExParser {
         nameStart = i + 4;
         break;
       }
-      // Format 2: 0x06 0x20 followed by length - read format
+      // Format 2: 0x06 0x20 followed by length - factory fallback format
       if (data[i] === 0x06 && data[i + 1] === 0x20) {
+        const lengthByte = data[i + 2];
+        // Check for factory pattern: 06 20 1F (indicates factory data)
+        if (lengthByte === 0x1F) {
+          // This is factory data, use slot-based fallback name
+          return undefined; // Let caller use default slot name
+        }
         nameStart = i + 3;
         break;
       }
       // Format 3: Direct ASCII after control sections - fallback
-      if (i > 10 && data[i] >= 0x41 && data[i] <= 0x5A) { // Capital letters
+      const currentByte = data[i];
+      if (i > 10 && currentByte !== undefined && currentByte >= 0x41 && currentByte <= 0x5A) { // Capital letters
         // Check if this looks like start of a mode name
         let possibleName = '';
         for (let j = i; j < Math.min(i + 20, data.length); j++) {
@@ -322,14 +355,12 @@ export class SysExParser {
           const next1 = data[i + 1];
           const next2 = data[i + 2];
           if (next1 === 0x21 && next2 === 0x00) {
-            nameEnd = i;
             break;
           }
         }
 
         // Stop at control markers
         if ((byte === 0x48 || byte === 0x69) && nameBytes.length > 0) {
-          nameEnd = i;
           break;
         }
 
@@ -338,28 +369,35 @@ export class SysExParser {
           nameBytes.push(byte);
           // Safety limit
           if (nameBytes.length >= 20) {
-            nameEnd = i + 1;
             break;
           }
         } else if (nameBytes.length > 0) {
           // Non-printable after we've started collecting - likely end of name
-          nameEnd = i;
           break;
         }
       }
 
       if (nameBytes.length > 0) {
-        modeName = String.fromCharCode(...nameBytes).trim();
+        return String.fromCharCode(...nameBytes).trim();
       }
     }
 
-    // Parse control definitions
-    // In READ responses: 0x48 [ID] 0x02 [TYPE] [CH] 0x01 0x48 [MIN] [CC] [MAX]
-    // In WRITE responses: different format with 0x40 markers
+    return undefined;
+  }
+
+  /**
+   * Phase 1 Fix: Enhanced control parsing with mixed format support
+   * Handles hybrid format with mixed 0x48/0x49/0x40 markers
+   */
+  private static parseControls(data: number[]): {
+    parsedControls: ControlMapping[];
+    parsedColors: ColorMapping[];
+  } {
+    const controls: ControlMapping[] = [];
+    const colors: ColorMapping[] = [];
 
     // Find where controls actually start (after name)
-    let controlsStart = nameEnd > 0 ? nameEnd : 0;
-    let controlNamesStart = -1;
+    let controlsStart = 0;
 
     // Handle response format after WRITE operation
     // Look for pattern: 0x49 0x21 0x00 followed by 0x40 control data
@@ -372,266 +410,274 @@ export class SysExParser {
     }
 
     if (writeResponseStart > 0) {
-      // Parse write response format: series of 0x40 [cc_number] pairs
-      // The control IDs are inferred from the sequence position
-      let controlIndex = 0;
-      const expectedControls = [
-        // Top row encoders (0x10-0x17)
+      // Phase 1 Fix: Parse write response format with 0x40 markers
+      this.parseWriteResponseFormat(data, writeResponseStart, controls, colors);
+    } else {
+      // Phase 1 Fix: Enhanced parsing for READ responses with mixed formats
+      this.parseReadResponseFormat(data, controlsStart, controls, colors);
+    }
+
+    return { parsedControls: controls, parsedColors: colors };
+  }
+
+  /**
+   * Parse write response format: series of 0x40 [cc_number] pairs
+   */
+  private static parseWriteResponseFormat(
+    data: number[],
+    startPos: number,
+    controls: ControlMapping[],
+    colors: ColorMapping[]
+  ): void {
+    let controlIndex = 0;
+    const expectedControls = [
+      // Top row encoders (0x10-0x17)
+      0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+      // Middle row encoders (0x18-0x1F)
+      0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
+      // Bottom row encoders (0x20-0x27)
+      0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27
+    ];
+
+    for (let i = startPos; i < data.length - 1; i += 2) {
+      if (data[i] === 0x40) {
+        const ccNumber = data[i + 1];
+
+        if (ccNumber !== undefined && controlIndex < expectedControls.length) {
+          const controlId = expectedControls[controlIndex];
+
+          if (controlId === undefined) {
+            controlIndex++;
+            continue;
+          }
+
+          controls.push({
+            controlId,
+            channel: 0, // Default channel
+            ccNumber,
+            minValue: 0,
+            maxValue: 127,
+            behaviour: 'absolute' as any,
+          });
+
+          // Create color mapping based on control ID
+          const color = this.getDefaultColorForControl(controlId);
+          colors.push({
+            controlId,
+            color,
+            behaviour: 'static', // Default behavior
+          });
+
+          controlIndex++;
+        }
+      } else {
+        // Stop parsing if we don't find expected 0x40 marker
+        break;
+      }
+    }
+  }
+
+  /**
+   * Parse read response format with mixed 0x48/0x40 markers
+   */
+  private static parseReadResponseFormat(
+    data: number[],
+    startPos: number,
+    controls: ControlMapping[],
+    colors: ColorMapping[]
+  ): void {
+    // Step 1: Parse any 0x40 CC data sections first (from mixed response)
+    const ccData: { ccNumber: number, position: number }[] = [];
+    for (let i = startPos; i < data.length - 1; i++) {
+      if (data[i] === 0x40 && data[i + 1] !== undefined) {
+        const ccNumber = data[i + 1];
+        if (ccNumber !== undefined) {
+          ccData.push({ ccNumber, position: ccData.length });
+        }
+        i++; // Skip the CC number byte
+      }
+    }
+
+    // Step 2: Parse 0x48 control definition sections (device stores as 0x48, not 0x49)
+    for (let i = startPos; i < data.length - 9; i++) {
+      if (data[i] === 0x48) {
+        const controlId = data[i + 1];
+        const defType = data[i + 2];
+        const channel = data[i + 4];
+        const param1 = data[i + 5];
+        const minValue = data[i + 7];
+        const ccNumber = data[i + 8];
+        const maxValue = data[i + 9];
+
+        // Validate it's a control structure
+        const isValidControl = defType === 0x02 &&
+                              (param1 === 0x01 || param1 === 0x00) &&
+                              controlId !== undefined && controlId <= 0x3F;
+
+        if (isValidControl && controlId !== undefined &&
+            minValue !== undefined && ccNumber !== undefined &&
+            maxValue !== undefined && channel !== undefined) {
+
+          controls.push({
+            controlId,
+            channel,
+            ccNumber,
+            minValue,
+            maxValue,
+            behaviour: 'absolute' as any,
+          });
+
+          // Create color mapping
+          const color = this.getDefaultColorForControl(controlId);
+          colors.push({
+            controlId,
+            color,
+            behaviour: 'static',
+          });
+
+          // Skip ahead to avoid re-parsing this control
+          i += 9;
+        }
+      }
+    }
+
+    // Step 3: If we have CC data but no control definitions, create controls from CC data
+    if (controls.length === 0 && ccData.length > 0) {
+      const controlIdSequence = [
+        // Top row encoders
         0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-        // Middle row encoders (0x18-0x1F)
+        // Middle row encoders
         0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
-        // Bottom row encoders (0x20-0x27)
-        0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27
+        // Bottom row encoders
+        0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
+        // Faders
+        0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
+        // Buttons row 1
+        0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+        // Buttons row 2
+        0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F
       ];
 
-      for (let i = writeResponseStart; i < data.length - 1; i += 2) {
-        if (data[i] === 0x40) {
-          const ccNumber = data[i + 1];
+      for (let i = 0; i < ccData.length && i < controlIdSequence.length; i++) {
+        const controlId = controlIdSequence[i];
+        const ccNumber = ccData[i]?.ccNumber;
 
-          if (ccNumber !== undefined && controlIndex < expectedControls.length) {
-            const controlId = expectedControls[controlIndex];
+        if (controlId !== undefined && ccNumber !== undefined) {
+          controls.push({
+            controlId,
+            channel: 0,
+            ccNumber,
+            minValue: 0,
+            maxValue: 127,
+            behaviour: 'absolute' as any,
+          });
 
-            if (controlId === undefined) {
-              continue;
-            }
-
-            controls.push({
-              controlId,
-              channel: 0, // Default channel
-              ccNumber,
-              minValue: 0,
-              maxValue: 127,
-              behaviour: 'absolute' as any,
-            });
-
-            // Create color mapping based on control ID - PHASE 1 FIX
-            let color = 0x3F; // Default
-            if (controlId >= 0x10 && controlId <= 0x17) {
-              color = 0x60; // Blue for top row encoders
-            } else if (controlId >= 0x18 && controlId <= 0x1F) {
-              color = 0x48; // Yellow for middle row encoders
-            } else if (controlId >= 0x20 && controlId <= 0x27) {
-              color = 0x3C; // Green for bottom row encoders
-            } else if (controlId >= 0x28 && controlId <= 0x2F) {
-              color = 0x0F; // Red for faders
-            } else if (controlId >= 0x30 && controlId <= 0x3F) {
-              color = 0x0F; // Red for buttons
-            }
-
-            colors.push({
-              controlId,
-              color,
-              behaviour: 'static', // Default behavior
-            });
-
-            controlIndex++;
-          }
-        } else {
-          // Stop parsing if we don't find expected 0x40 marker
-          break;
+          colors.push({
+            controlId,
+            color: 0x0C,
+            behaviour: 'static',
+          });
         }
       }
-    } else {
-      // Enhanced parsing for READ responses that handles mixed formats
-      // The read response can contain multiple sections with different formats
+    }
+  }
 
-      let currentPos = controlsStart;
+  /**
+   * Get default color for a control based on its ID range
+   */
+  private static getDefaultColorForControl(controlId: number): number {
+    if (controlId >= 0x10 && controlId <= 0x17) {
+      return 0x60; // Blue for top row encoders
+    } else if (controlId >= 0x18 && controlId <= 0x1F) {
+      return 0x48; // Yellow for middle row encoders
+    } else if (controlId >= 0x20 && controlId <= 0x27) {
+      return 0x3C; // Green for bottom row encoders
+    } else if (controlId >= 0x28 && controlId <= 0x2F) {
+      return 0x0F; // Red for faders
+    } else if (controlId >= 0x30 && controlId <= 0x3F) {
+      return 0x0F; // Red for buttons
+    }
+    return 0x0C; // Default off
+  }
 
-      // Step 1: Parse any 0x40 CC data sections first (from mixed response)
-      const ccData: { ccNumber: number, position: number }[] = [];
-      for (let i = currentPos; i < data.length - 1; i++) {
-        if (data[i] === 0x40 && data[i + 1] !== undefined) {
-          ccData.push({ ccNumber: data[i + 1], position: ccData.length });
-          i++; // Skip the CC number byte
-        }
-      }
+  /**
+   * Phase 1 Fix: Enhanced control label parsing with non-sequential control ID mapping
+   * Handles labels with arbitrary control ID ordering and maps them correctly
+   */
+  private static parseControlLabels(data: number[], controls: ControlMapping[]): void {
+    if (controls.length === 0) {
+      return;
+    }
 
-      // Step 2: Parse 0x48 control definition sections
-      for (let i = currentPos; i < data.length - 9; i++) {
-        if (data[i] === 0x48) {
-          const controlId = data[i + 1];
-          const defType = data[i + 2];
-          const _controlType = data[i + 3];
-          const channel = data[i + 4];
-          const param1 = data[i + 5];
-          const param2 = data[i + 6];
-          const minValue = data[i + 7];
-          const ccNumber = data[i + 8];
-          const maxValue = data[i + 9];
+    // Scan entire response for control name sections
+    const controlNames: Map<number, string> = new Map();
 
-          // Validate it's a control structure
-          const isValidControl = defType === 0x02 &&
-                                (param1 === 0x01 || param1 === 0x00) &&
-                                controlId !== undefined && controlId <= 0x3F;
+    for (let i = 0; i < data.length - 3; i++) {
+      const byte = data[i];
 
-          if (isValidControl && controlId !== undefined &&
-              minValue !== undefined && ccNumber !== undefined &&
-              maxValue !== undefined && channel !== undefined) {
+      // Look for label marker 0x69 followed by control ID
+      if (byte === 0x69) {
+        const labelControlId = data[i + 1];
+        const nextByte = data[i + 2];
 
-            controls.push({
-              controlId,
-              channel,
-              ccNumber,
-              minValue,
-              maxValue,
-              behaviour: 'absolute' as any,
-            });
+        // Validate this is a control name section
+        if (labelControlId !== undefined && nextByte !== undefined &&
+            labelControlId >= 0x10 && labelControlId <= 0x3F &&
+            nextByte >= 0x20 && nextByte <= 0x7E) { // ASCII printable range
 
-            // Create color mapping
-            let color = 0x0C; // Default off
-            if (controlId >= 0x10 && controlId <= 0x17) {
-              color = 0x60; // Blue for top row encoders
-            } else if (controlId >= 0x18 && controlId <= 0x1F) {
-              color = 0x48; // Yellow for middle row encoders
-            } else if (controlId >= 0x20 && controlId <= 0x27) {
-              color = 0x3C; // Green for bottom row encoders
-            } else if (controlId >= 0x28 && controlId <= 0x2F) {
-              color = 0x0F; // Red for faders
-            } else if (controlId >= 0x30 && controlId <= 0x3F) {
-              color = 0x0F; // Red for buttons
+          // Extract the name following the control ID
+          let nameBytes = [];
+          let j = i + 2;
+
+          // Read ASCII characters until we hit a non-printable or next marker
+          while (j < data.length) {
+            const nameByte = data[j];
+
+            if (nameByte === undefined) break;
+
+            // Stop at next control marker or non-ASCII
+            if (nameByte === 0x69 || nameByte === 0x60 ||
+                nameByte < 0x20 || nameByte > 0x7E) {
+              break;
             }
 
-            colors.push({
-              controlId,
-              color,
-              behaviour: 'static',
-            });
-
-            // Skip ahead to avoid re-parsing this control
-            i += 9;
+            nameBytes.push(nameByte);
+            j++;
           }
-        }
-      }
 
-      // Step 3: If we have CC data but no control definitions, create controls from CC data
-      if (controls.length === 0 && ccData.length > 0) {
-        const controlIdSequence = [
-          // Top row encoders
-          0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-          // Middle row encoders
-          0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
-          // Bottom row encoders
-          0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
-          // Faders
-          0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
-          // Buttons row 1
-          0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-          // Buttons row 2
-          0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F
-        ];
-
-        for (let i = 0; i < ccData.length && i < controlIdSequence.length; i++) {
-          const controlId = controlIdSequence[i];
-          const ccNumber = ccData[i]?.ccNumber;
-
-          if (controlId !== undefined && ccNumber !== undefined) {
-            controls.push({
-              controlId,
-              channel: 0,
-              ccNumber,
-              minValue: 0,
-              maxValue: 127,
-              behaviour: 'absolute' as any,
-            });
-
-            colors.push({
-              controlId,
-              color: 0x0C,
-              behaviour: 'static',
-            });
+          if (nameBytes.length > 0) {
+            const name = String.fromCharCode(...nameBytes).trim();
+            // Phase 1 Fix: Map potentially offset control IDs back to canonical IDs
+            // The device may use different control IDs in labels vs definitions
+            const canonicalControlId = this.mapLabelControlId(labelControlId);
+            controlNames.set(canonicalControlId, name);
           }
+
+          // Skip past processed name
+          i = j - 1;
         }
       }
     }
 
-    // Parse control names - they can appear in multiple places in the response
-    // Look for label markers (0x69) followed by control ID and ASCII text
-    if (controls.length > 0) {
-      // Scan entire response for control name sections
-      for (let i = 0; i < data.length - 3; i++) {
-        const byte = data[i];
-
-        // Look for label marker 0x69 followed by control ID
-        if (byte === 0x69) {
-          const potentialControlId = data[i + 1];
-          const nextByte = data[i + 2];
-
-          // Validate this is a control name section
-          if (potentialControlId !== undefined && nextByte !== undefined &&
-              potentialControlId >= 0x10 && potentialControlId <= 0x3F &&
-              nextByte >= 0x20 && nextByte <= 0x7E) { // ASCII printable range
-
-            controlNamesStart = i;
-            break;
-          }
-        }
-      }
-
-      if (controlNamesStart >= 0) {
-        // Parse control names with improved logic
-        const controlNames: Map<number, string> = new Map();
-
-        for (let i = controlNamesStart; i < data.length - 1; i++) {
-          const byte = data[i];
-
-          // Look for label marker 0x69
-          if (byte === 0x69) {
-            const controlId = data[i + 1];
-
-            if (controlId !== undefined && controlId >= 0x10 && controlId <= 0x3F) {
-              // Extract the name following the control ID
-              let nameBytes = [];
-              let j = i + 2;
-
-              // Read ASCII characters until we hit a non-printable or next marker
-              while (j < data.length) {
-                const nameByte = data[j];
-
-                if (nameByte === undefined) break;
-
-                // Stop at next control marker or non-ASCII
-                if (nameByte === 0x69 || nameByte === 0x60 ||
-                    nameByte < 0x20 || nameByte > 0x7E) {
-                  break;
-                }
-
-                nameBytes.push(nameByte);
-                j++;
-              }
-
-              if (nameBytes.length > 0) {
-                const name = String.fromCharCode(...nameBytes).trim();
-                controlNames.set(controlId, name);
-              }
-
-              // Skip past processed name
-              i = j - 1;
-            }
-          }
-        }
-
-        // Apply names to controls
-        for (const control of controls) {
-          if (control.controlId !== undefined) {
-            const name = controlNames.get(control.controlId);
-            if (name) {
-              control.name = name;
-            }
-          }
+    // Apply names to controls based on their actual control IDs
+    for (const control of controls) {
+      if (control.controlId !== undefined) {
+        const name = controlNames.get(control.controlId);
+        if (name) {
+          control.name = name;
         }
       }
     }
+  }
 
-    const result: { controls: ControlMapping[]; colors: ColorMapping[]; name?: string } = {
-      controls,
-      colors
-    };
-
-    if (modeName !== undefined) {
-      result.name = modeName;
-    }
-
-    return result;
+  /**
+   * Phase 1 Fix: Map label control IDs to canonical control IDs
+   * Handles cases where labels use different control IDs than definitions
+   */
+  private static mapLabelControlId(labelControlId: number): number {
+    // For now, assume direct mapping, but this can be enhanced if we discover
+    // systematic offset patterns in device responses
+    return labelControlId;
   }
 
   /**
@@ -981,83 +1027,54 @@ export class SysExParser {
     const nameEncoded = this.encodeName(modeName);
     rawData.push(...nameEncoded);
 
-    // Create a mapping of provided controls for lookup
-    const controlMap = new Map<number, ControlMapping>();
-    for (const control of modeData.controls) {
-      if (control.controlId !== undefined) {
-        controlMap.set(control.controlId, control);
-      }
-    }
+    // Sort controls by ID for consistency
+    const sortedControls = Object.values(modeData.controls)
+      .filter(control => control.controlId !== undefined)
+      .sort((a, b) => (a.controlId ?? 0) - (b.controlId ?? 0));
 
-    // Define ALL hardware control IDs that need to be included
-    // PHASE 1 FIX: Updated to match web editor control ID mapping
-    // Based on web editor protocol analysis from workplan
-    const allControlIds = [
-      // Top row encoders (0x10-0x17)
-      0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-      // Middle row encoders (0x18-0x1F)
-      0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
-      // Bottom row encoders (0x20-0x27)
-      0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
-      // Faders (0x28-0x2F) - FIXED: was 0x00-0x07
-      0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
-      // First row buttons (0x30-0x37) - FIXED: was side buttons
-      0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-      // Second row buttons (0x38-0x3F) - FIXED: added missing second row
-      0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F
-    ];
-
-    // Add control definitions for ALL hardware controls
-    for (const controlId of allControlIds) {
-      // Get user-defined control or create default
-      const userControl = controlMap.get(controlId);
-      const channel = userControl?.channel ?? userControl?.midiChannel ?? 0;
-      const ccNumber = userControl?.ccNumber ?? userControl?.cc ?? controlId; // Default CC = control ID
-
-      rawData.push(0x49); // Control marker for WRITE
-      rawData.push(controlId); // Control ID without offset (web editor confirmed)
-      rawData.push(0x02); // Control definition type
-
-      // Control type based on actual control type and index/position
-      // Phase 3 fix: Assign type based on control type AND index as per workplan
-      const controlType = this.getControlType(userControl, controlId);
-
-      rawData.push(controlType);
-      rawData.push(channel); // Channel (0-based)
+    // Add control definitions with 0x49 marker and offset
+    for (const control of sortedControls) {
+      // Write control structure: 11 bytes
+      rawData.push(0x49); // Write control marker
+      rawData.push((control.controlId ?? 0) + 0x28); // Control ID with offset
+      rawData.push(0x02); // Definition type
+      // Convert control type to number if it's a string
+      const controlType = control.controlType ?? control.type ?? 0x00;
+      const controlTypeNum = typeof controlType === 'string' ?
+        (controlType === 'knob' ? 0x05 : controlType === 'fader' ? 0x00 : controlType === 'button' ? 0x09 : 0x00) :
+        controlType;
+      rawData.push(controlTypeNum); // Control type
+      rawData.push(control.midiChannel ?? control.channel ?? 0); // MIDI channel (0-15)
       rawData.push(0x01); // Parameter 1
-      rawData.push(0x40); // Parameter 2 (behavior)
-      rawData.push(0x00); // Min value (always 0x00 in write)
-      rawData.push(ccNumber); // CC number
+      rawData.push(0x40); // Parameter 2
+      rawData.push(0x00); // Min value (always 0 in write)
+      rawData.push(control.ccNumber ?? control.cc ?? 0); // CC number
       rawData.push(0x7F); // Max value (always 0x7F in write)
       rawData.push(0x00); // Terminator
     }
 
-    // CRITICAL: Add label/color data after controls - REQUIRED by device!
-    // Without this section, the device rejects the message
-
-    // Add label data for ALL controls
-    for (const controlId of allControlIds) {
-      const userControl = controlMap.get(controlId);
+    // Generate labels for controls with names
+    for (const control of sortedControls) {
+      const controlId = control.controlId ?? 0;
       rawData.push(0x69); // Label marker
-      rawData.push(controlId); // Control ID without offset (web editor confirmed)
+      rawData.push(controlId + 0x28); // Control ID with offset
 
-      // Use actual control name if available, otherwise generate generic label
-      const labelText = userControl?.name && userControl.name.trim() !== ''
-        ? userControl.name.substring(0, 12) // Truncate to max 12 chars for device compatibility
-        : this.generateControlLabel(controlId);
-      for (let i = 0; i < labelText.length; i++) {
-        rawData.push(labelText.charCodeAt(i));
+      // Use control name if available, otherwise generate default label
+      const label = control.name || this.generateControlLabel(controlId);
+      for (let i = 0; i < label.length; i++) {
+        rawData.push(label.charCodeAt(i));
       }
     }
 
-    // Add color data for ALL controls (required for device acceptance)
-    for (const controlId of allControlIds) {
+    // Add color data for controls
+    for (const control of sortedControls) {
+      const controlId = control.controlId ?? 0;
       // Find the corresponding color for this control
       const colorEntry = modeData.colors?.find(c => c.controlId === controlId);
       const colorValue = colorEntry?.color ?? 0x0C; // Default color if not specified
 
       rawData.push(0x60); // Color marker
-      rawData.push(controlId); // Control ID without offset (web editor confirmed)
+      rawData.push(controlId + 0x28); // Control ID with offset
       rawData.push(colorValue); // Actual color value
     }
 
@@ -1065,72 +1082,6 @@ export class SysExParser {
   }
 
 
-  /**
-   * Get control type byte based on control type and index/position
-   *
-   * Phase 3 fix: Implements correct control type mapping per workplan:
-   * - Encoder top row (index 0-7): 0x05
-   * - Encoder middle row (index 8-15): 0x09
-   * - Encoder bottom row (index 16-23): 0x0D
-   * - Fader: 0x00
-   * - Button first row (index 0-7): 0x19
-   * - Button second row (index 8-15): 0x25
-   */
-  private static getControlType(control: ControlMapping | undefined, controlId: number): number {
-    // First priority: Determine control type based on hardware control ID ranges
-    // This ensures we always get the correct type for the hardware position
-    // regardless of user input, which is critical for proper device communication
-
-    // Top row encoders (0x10-0x17)
-    if (controlId >= 0x10 && controlId <= 0x17) {
-      return 0x05;
-    }
-
-    // Middle row encoders (0x18-0x1F)
-    if (controlId >= 0x18 && controlId <= 0x1F) {
-      return 0x09;
-    }
-
-    // Bottom row encoders (0x20-0x27)
-    if (controlId >= 0x20 && controlId <= 0x27) {
-      return 0x0D;
-    }
-
-    // Faders (0x28-0x2F) - FIXED: was incorrectly treated as buttons
-    if (controlId >= 0x28 && controlId <= 0x2F) {
-      return 0x00;
-    }
-
-    // First row buttons (0x30-0x37) - FIXED: updated range
-    if (controlId >= 0x30 && controlId <= 0x37) {
-      return 0x19;
-    }
-
-    // Second row buttons (0x38-0x3F) - FIXED: updated range
-    if (controlId >= 0x38 && controlId <= 0x3F) {
-      return 0x25;
-    }
-
-    // Secondary fallback: Check user-provided control type for out-of-range IDs
-    const controlType = control?.controlType ?? control?.type;
-
-    if (controlType === 'knob' || controlType === 0x05 || controlType === 0x09 || controlType === 0x0D) {
-      // Default to top row encoder type if controlId doesn't match expected ranges
-      return 0x05;
-    }
-
-    if (controlType === 'fader' || controlType === 0x00) {
-      return 0x00;
-    }
-
-    if (controlType === 'button' || controlType === 0x19 || controlType === 0x25) {
-      // Default to first row button type
-      return 0x19;
-    }
-
-    // Final fallback - default to fader type for unknown controls
-    return 0x00;
-  }
 
   /**
    * Encode a name string with the correct Launch Control XL3 prefix
