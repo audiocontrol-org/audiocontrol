@@ -21,63 +21,87 @@ This workplan outlines creating a comprehensive MIDI spy harness that will:
 ## Architecture Overview
 
 ```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Web Browser   │    │  MIDI Spy Tool  │    │ Launch Control  │
-│  (Playwright)   │────│   (Intercept)   │────│      XL 3       │
-│                 │    │                 │    │                 │
-│ Novation Editor │    │ Log Messages    │    │    Device       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-          │                        │
-          │                        │
-          ▼                        ▼
-┌─────────────────┐    ┌─────────────────┐
-│ Action Scripts  │    │  Message Log    │
-│ (Automated)     │    │  (Analysis)     │
-└─────────────────┘    └─────────────────┘
+┌─────────────────┐                    ┌─────────────────┐
+│   Web Browser   │────────────────────│ Launch Control  │
+│  (Playwright)   │    Direct MIDI     │      XL 3       │
+│                 │    Connection      │                 │
+│ Novation Editor │                    │    Device       │
+└─────────────────┘                    └─────────────────┘
+          │                                      │
+          │                                      │
+          ▼                                      ▼
+┌─────────────────┐                    ┌─────────────────┐
+│ Action Scripts  │                    │ Passive Monitor │
+│ (Automated)     │                    │ (All MIDI I/O) │
+└─────────────────┘                    └─────────────────┘
+                                                 │
+                                                 ▼
+                                       ┌─────────────────┐
+                                       │  Message Log    │
+                                       │  (Analysis)     │
+                                       └─────────────────┘
 ```
 
-## Phase 1: MIDI Interception Infrastructure
+## Phase 1: Passive MIDI Monitoring Infrastructure
 
 ### Objective
-Set up a robust MIDI message interception system that can capture all communication between the web editor and device.
+Set up a passive MIDI monitoring system that observes all MIDI traffic on the system without interfering with the direct connection between the web editor and device.
 
 ### Technical Approach
 
-#### Option A: Virtual MIDI Port (Recommended)
-- Create virtual MIDI ports using `IAC Driver` (macOS) or `loopMIDI` (Windows)
-- Route web editor → virtual port → spy tool → device
-- Provides clean separation and guaranteed message capture
-
-#### Option B: Native MIDI Monitoring
-- Use system-level MIDI monitoring tools
-- Less intrusive but may miss some messages
-- Platform-dependent implementation
+#### Core MIDI Passive Monitoring
+- Leverage macOS Core MIDI's hub-based architecture
+- Subscribe to all MIDI sources simultaneously
+- No virtual ports or routing needed - just passive observation
+- Web MIDI API and Node.js both support this natively
 
 ### Implementation Tasks
 
-1. **Set up Virtual MIDI Environment**
-   ```bash
-   # macOS: Enable IAC Driver in Audio MIDI Setup
-   # Create virtual ports: "SPY_IN" and "SPY_OUT"
-   ```
-
-2. **Create MIDI Spy Tool**
+1. **Create Passive MIDI Monitor**
    ```typescript
-   // utils/midi-spy.ts
-   class MidiSpy {
-     private inputPort: MidiPort;
-     private outputPort: MidiPort;
-     private logFile: FileHandle;
+   // utils/midi-passive-monitor.ts
+   import { Input } from 'midi';
 
-     async startSpying(options: {
-       inputPortName: string;
-       outputPortName: string;
+   class PassiveMidiMonitor {
+     private inputs: Input[] = [];
+     private isMonitoring = false;
+     private logFile: string;
+     private capturedMessages: CaptureEntry[] = [];
+
+     async startMonitoring(options: {
        logPath: string;
        timestampFormat: 'relative' | 'absolute';
-     }): Promise<void>;
+       filterToDevice?: string; // Optional: only log specific device
+     }): Promise<void> {
+       // Subscribe to ALL MIDI inputs on the system
+       // No routing or virtual ports needed
+     }
 
-     private onMidiMessage(message: MidiMessage): void;
-     private logMessage(direction: 'IN' | 'OUT', message: MidiMessage): void;
+     private onMidiMessage(portName: string, message: number[]): void {
+       // Log all MIDI traffic passively
+     }
+
+     stopMonitoring(): CaptureEntry[] {
+       // Return captured messages for analysis
+     }
+   }
+   ```
+
+2. **Web MIDI API Monitor (Alternative)**
+   ```typescript
+   // utils/web-midi-monitor.ts
+   class WebMidiMonitor {
+     async startMonitoring(): Promise<void> {
+       const midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+
+       // Monitor ALL inputs without interfering
+       midiAccess.inputs.forEach(input => {
+         console.log(`Monitoring: ${input.name}`);
+         input.onmidimessage = (event) => {
+           this.logMessage(input.name, Array.from(event.data));
+         };
+       });
+     }
    }
    ```
 
@@ -104,12 +128,12 @@ Set up a robust MIDI message interception system that can capture all communicat
    ```
 
 ### Deliverables
-- [ ] Virtual MIDI port configuration guide
-- [ ] MIDI spy tool implementation
+- [ ] Passive MIDI monitoring tool implementation
 - [ ] Message logging and parsing utilities
-- [ ] Test verification that spy captures our own library's messages
+- [ ] Test verification that monitor captures our own library's messages
+- [ ] Cross-platform compatibility (Node.js + Web MIDI API)
 
-**Estimated Time**: 8 hours
+**Estimated Time**: 4 hours (reduced due to simpler approach)
 
 ## Phase 2: Playwright Web Editor Automation
 
@@ -120,7 +144,7 @@ Create systematic automation of the Novation web editor to trigger known actions
 
 #### Target URL
 - Official Novation Launch Control XL 3 web editor
-- Likely at: `https://components.novationmusic.com/` or similar
+- At: `https://components.novationmusic.com/launch-control-xl-3/custom-modes`
 - Need to identify the exact URL and access requirements
 
 #### Key Functions to Automate
@@ -505,23 +529,23 @@ npm install --save midi jzz-midi-gear
 
 | Phase | Duration | Dependencies | Deliverables |
 |-------|----------|--------------|-------------|
-| **Phase 1**: MIDI Interception | 2 days | Hardware setup | Spy tool, virtual MIDI |
+| **Phase 1**: Passive MIDI Monitoring | 1 day | Hardware setup | Monitor tool |
 | **Phase 2**: Web Automation | 3 days | Phase 1, web editor access | Playwright scripts |
 | **Phase 3**: Analysis | 2.5 days | Phases 1-2, captured data | Protocol fixes |
 | **Phase 4**: Implementation | 2 days | Phase 3 analysis | Working SysEx writes |
 | **Phase 5**: Test Automation | 1.5 days | Phase 4 fixes | CI validation |
 
-**Total Estimated Duration**: 11 days (44 hours)
+**Total Estimated Duration**: 10 days (40 hours)
 
 ## Next Steps
 
 1. **Immediate Actions** (Next 2 hours):
-   - Set up virtual MIDI ports on development machine
    - Locate and access Novation web editor
-   - Create basic MIDI spy tool structure
+   - Create basic passive MIDI monitor structure
+   - Test monitoring with existing device communication
 
-2. **Phase 1 Implementation** (Next 2 days):
-   - Complete MIDI interception infrastructure
+2. **Phase 1 Implementation** (Next 1 day):
+   - Complete passive MIDI monitoring tool
    - Test with our current library to verify capture works
    - Document setup process for team members
 
