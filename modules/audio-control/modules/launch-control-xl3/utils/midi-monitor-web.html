@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MIDI Monitor - Web MIDI API</title>
+    <style>
+        body {
+            font-family: 'Monaco', 'Consolas', monospace;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.4;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+        }
+
+        .header h1 {
+            color: #ff6b35;
+            margin: 0;
+            font-size: 2.5em;
+        }
+
+        .header p {
+            color: #888;
+            margin: 10px 0 0 0;
+            font-size: 1.1em;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .control-panel {
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .control-panel h3 {
+            margin-top: 0;
+            color: #ff6b35;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+
+        .btn {
+            background: #ff6b35;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #e55a2b;
+        }
+
+        .btn:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+
+        .btn.stop {
+            background: #dc3545;
+        }
+
+        .btn.stop:hover {
+            background: #c82333;
+        }
+
+        .btn.clear {
+            background: #6c757d;
+        }
+
+        .btn.clear:hover {
+            background: #5a6268;
+        }
+
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #dc3545;
+            transition: background 0.3s;
+        }
+
+        .status-indicator.active {
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .filter-controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .filter-controls input {
+            background: #333;
+            border: 1px solid #555;
+            color: #e0e0e0;
+            padding: 8px;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+        }
+
+        .stat-item {
+            background: #333;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.5em;
+            font-weight: bold;
+            color: #ff6b35;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #888;
+        }
+
+        .output {
+            background: #000;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 20px;
+            height: 500px;
+            overflow-y: auto;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 13px;
+            line-height: 1.3;
+        }
+
+        .message {
+            margin: 2px 0;
+            padding: 2px 0;
+        }
+
+        .message.sysex {
+            color: #ff6b35;
+            font-weight: bold;
+        }
+
+        .message.cc {
+            color: #4dabf7;
+        }
+
+        .message.note {
+            color: #51cf66;
+        }
+
+        .message.other {
+            color: #ffd43b;
+        }
+
+        .timestamp {
+            color: #666;
+            margin-right: 10px;
+        }
+
+        .port-name {
+            color: #ff8cc8;
+            margin-right: 10px;
+            display: inline-block;
+            min-width: 200px;
+        }
+
+        .message-type {
+            color: #74c0fc;
+            margin-right: 10px;
+            display: inline-block;
+            min-width: 80px;
+        }
+
+        .hex-data {
+            color: #e0e0e0;
+        }
+
+        .sysex-analysis {
+            color: #888;
+            margin-left: 20px;
+            font-size: 11px;
+        }
+
+        .error {
+            color: #ff4757;
+            background: #2d1b1b;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .ports-list {
+            background: #333;
+            border-radius: 4px;
+            padding: 10px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .port-item {
+            padding: 5px;
+            margin: 2px 0;
+            background: #444;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+
+        .port-item.monitoring {
+            background: #1a4c96;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 MIDI Monitor</h1>
+            <p>Web MIDI API - Launch Control XL 3 Protocol Analysis</p>
+        </div>
+
+        <div class="controls">
+            <div class="control-panel">
+                <h3>Monitor Control</h3>
+                <div class="status">
+                    <div class="status-indicator" id="statusIndicator"></div>
+                    <span id="statusText">Not Connected</span>
+                </div>
+                <button class="btn" id="startBtn" onclick="startMonitoring()">Start Monitoring</button>
+                <button class="btn stop" id="stopBtn" onclick="stopMonitoring()" disabled>Stop Monitoring</button>
+                <button class="btn clear" onclick="clearOutput()">Clear Output</button>
+            </div>
+
+            <div class="control-panel">
+                <h3>Filter Settings</h3>
+                <div class="filter-controls">
+                    <label>Device Filter:</label>
+                    <input type="text" id="deviceFilter" placeholder="e.g., LCXL3" value="LCXL3">
+                    <button class="btn" onclick="applyFilter()">Apply</button>
+                </div>
+                <label>
+                    <input type="checkbox" id="captureAll" checked> Monitor All Ports
+                </label>
+            </div>
+
+            <div class="control-panel">
+                <h3>Statistics</h3>
+                <div class="stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="totalMessages">0</div>
+                        <div class="stat-label">Total</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="sysexMessages">0</div>
+                        <div class="stat-label">SysEx</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="ccMessages">0</div>
+                        <div class="stat-label">CC</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="noteMessages">0</div>
+                        <div class="stat-label">Notes</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="control-panel">
+                <h3>Available Ports</h3>
+                <div class="ports-list" id="portsList">
+                    <div class="error">Web MIDI API not initialized</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <h3>MIDI Messages</h3>
+            <div class="output" id="output">
+                <div style="color: #666; text-align: center; margin-top: 200px;">
+                    🔍 Waiting for MIDI messages...<br>
+                    💡 Use the Novation web editor to generate traffic<br>
+                    📡 https://components.novationmusic.com/launch-control-xl-3/custom-modes
+                </div>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <h3>Session Management</h3>
+            <button class="btn" onclick="downloadSession()">Download Session JSON</button>
+            <button class="btn clear" onclick="clearSession()">Clear Session</button>
+            <div style="margin-top: 10px; color: #888; font-size: 12px;">
+                Session ID: <span id="sessionId">-</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class WebMidiMonitor {
+            constructor() {
+                this.midiAccess = null;
+                this.monitoredPorts = new Map();
+                this.capturedMessages = [];
+                this.isMonitoring = false;
+                this.sessionId = this.generateSessionId();
+                this.startTime = null;
+                this.deviceFilter = 'LCXL3';
+                this.stats = {
+                    total: 0,
+                    sysex: 0,
+                    cc: 0,
+                    notes: 0,
+                    other: 0
+                };
+
+                document.getElementById('sessionId').textContent = this.sessionId;
+                this.initWebMidiAPI();
+            }
+
+            async initWebMidiAPI() {
+                try {
+                    if (!navigator.requestMIDIAccess) {
+                        throw new Error('Web MIDI API not supported in this browser');
+                    }
+
+                    this.midiAccess = await navigator.requestMIDIAccess({ sysex: true });
+                    this.updatePortsList();
+                    this.log('✅ Web MIDI API initialized successfully');
+
+                    // Listen for port changes
+                    this.midiAccess.onstatechange = () => {
+                        this.updatePortsList();
+                    };
+
+                } catch (error) {
+                    this.logError(`❌ Failed to initialize Web MIDI API: ${error.message}`);
+                }
+            }
+
+            updatePortsList() {
+                const portsList = document.getElementById('portsList');
+                const inputs = Array.from(this.midiAccess.inputs.values());
+
+                if (inputs.length === 0) {
+                    portsList.innerHTML = '<div class="error">No MIDI input ports available</div>';
+                    return;
+                }
+
+                portsList.innerHTML = '';
+                inputs.forEach(port => {
+                    const div = document.createElement('div');
+                    div.className = 'port-item';
+                    if (this.monitoredPorts.has(port.id)) {
+                        div.className += ' monitoring';
+                    }
+
+                    div.innerHTML = `
+                        <strong>${port.name}</strong><br>
+                        <small>ID: ${port.id} | State: ${port.state}</small>
+                    `;
+                    portsList.appendChild(div);
+                });
+            }
+
+            async startMonitoring() {
+                if (this.isMonitoring) return;
+
+                try {
+                    if (!this.midiAccess) {
+                        throw new Error('Web MIDI API not initialized');
+                    }
+
+                    const inputs = Array.from(this.midiAccess.inputs.values());
+                    const captureAll = document.getElementById('captureAll').checked;
+                    const filter = document.getElementById('deviceFilter').value.trim();
+
+                    let portsToMonitor = inputs;
+                    if (!captureAll && filter) {
+                        portsToMonitor = inputs.filter(port =>
+                            port.name.toLowerCase().includes(filter.toLowerCase())
+                        );
+                    }
+
+                    if (portsToMonitor.length === 0) {
+                        throw new Error(`No ports found${filter ? ` matching filter "${filter}"` : ''}`);
+                    }
+
+                    this.isMonitoring = true;
+                    this.startTime = Date.now();
+                    this.deviceFilter = filter;
+
+                    // Start monitoring each port
+                    for (const port of portsToMonitor) {
+                        await this.monitorPort(port);
+                    }
+
+                    this.updateUI();
+                    this.log(`🎯 Monitoring ${portsToMonitor.length} port(s)`);
+                    this.log('🔍 Passive monitoring active...');
+
+                } catch (error) {
+                    this.logError(`❌ Failed to start monitoring: ${error.message}`);
+                    this.isMonitoring = false;
+                }
+            }
+
+            async monitorPort(port) {
+                try {
+                    await port.open();
+                    this.monitoredPorts.set(port.id, port);
+
+                    port.onmidimessage = (event) => {
+                        this.handleMidiMessage(port.name, event);
+                    };
+
+                    this.log(`✅ Started monitoring: ${port.name}`);
+                } catch (error) {
+                    this.logError(`❌ Failed to monitor port ${port.name}: ${error.message}`);
+                }
+            }
+
+            handleMidiMessage(portName, event) {
+                const timestamp = event.timeStamp || Date.now();
+                const data = Array.from(event.data);
+                const messageType = this.identifyMessageType(data);
+
+                const message = {
+                    timestamp,
+                    portName,
+                    messageType,
+                    rawData: data,
+                    hexData: data.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')
+                };
+
+                this.capturedMessages.push(message);
+                this.updateStats(messageType);
+                this.displayMessage(message);
+            }
+
+            identifyMessageType(data) {
+                if (data.length === 0) return 'empty';
+
+                const statusByte = data[0];
+
+                if (statusByte === 0xF0) return 'sysex';
+
+                const messageType = statusByte & 0xF0;
+                switch (messageType) {
+                    case 0xB0: return 'cc';
+                    case 0x90: return 'noteon';
+                    case 0x80: return 'noteoff';
+                    case 0xE0: return 'pitch';
+                    case 0xC0: return 'program';
+                    case 0xA0: return 'poly_aftertouch';
+                    case 0xD0: return 'channel_aftertouch';
+                    default: return 'other';
+                }
+            }
+
+            updateStats(messageType) {
+                this.stats.total++;
+
+                if (messageType === 'sysex') this.stats.sysex++;
+                else if (messageType === 'cc') this.stats.cc++;
+                else if (messageType === 'noteon' || messageType === 'noteoff') this.stats.notes++;
+                else this.stats.other++;
+
+                document.getElementById('totalMessages').textContent = this.stats.total;
+                document.getElementById('sysexMessages').textContent = this.stats.sysex;
+                document.getElementById('ccMessages').textContent = this.stats.cc;
+                document.getElementById('noteMessages').textContent = this.stats.notes;
+            }
+
+            displayMessage(message) {
+                const output = document.getElementById('output');
+                const timeStr = new Date(message.timestamp).toISOString().split('T')[1]?.split('.')[0] || '';
+
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${message.messageType}`;
+
+                let content = `<span class="timestamp">${timeStr}</span>`;
+                content += `<span class="port-name">[${message.portName}]</span>`;
+                content += `<span class="message-type">${message.messageType}</span>`;
+                content += `<span class="hex-data">${message.hexData}</span>`;
+
+                // Special handling for SysEx messages
+                if (message.messageType === 'sysex' && message.rawData.length >= 3) {
+                    const manufacturerId = message.rawData.slice(1, 3);
+                    const manIdHex = manufacturerId.map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ');
+                    content += `<br><span class="sysex-analysis">└─ Manufacturer ID: ${manIdHex} | Length: ${message.rawData.length} bytes</span>`;
+                }
+
+                messageDiv.innerHTML = content;
+                output.appendChild(messageDiv);
+
+                // Auto-scroll to bottom
+                output.scrollTop = output.scrollHeight;
+
+                // Limit output to prevent memory issues
+                if (output.children.length > 1000) {
+                    output.removeChild(output.firstChild);
+                }
+            }
+
+            async stopMonitoring() {
+                if (!this.isMonitoring) return;
+
+                this.log('⏹️ Stopping MIDI monitor...');
+
+                for (const [portId, port] of this.monitoredPorts) {
+                    try {
+                        port.onmidimessage = null;
+                        await port.close();
+                    } catch (error) {
+                        this.logError(`❌ Error closing port: ${error.message}`);
+                    }
+                }
+
+                this.monitoredPorts.clear();
+                this.isMonitoring = false;
+                this.updateUI();
+                this.updatePortsList();
+
+                this.log(`💾 Session complete: ${this.capturedMessages.length} messages captured`);
+            }
+
+            updateUI() {
+                const statusIndicator = document.getElementById('statusIndicator');
+                const statusText = document.getElementById('statusText');
+                const startBtn = document.getElementById('startBtn');
+                const stopBtn = document.getElementById('stopBtn');
+
+                if (this.isMonitoring) {
+                    statusIndicator.classList.add('active');
+                    statusText.textContent = `Monitoring ${this.monitoredPorts.size} port(s)`;
+                    startBtn.disabled = true;
+                    stopBtn.disabled = false;
+                } else {
+                    statusIndicator.classList.remove('active');
+                    statusText.textContent = 'Not Monitoring';
+                    startBtn.disabled = false;
+                    stopBtn.disabled = true;
+                }
+            }
+
+            clearOutput() {
+                document.getElementById('output').innerHTML = '<div style="color: #666; text-align: center; margin-top: 200px;">🔍 Output cleared - waiting for MIDI messages...</div>';
+            }
+
+            clearSession() {
+                this.capturedMessages = [];
+                this.stats = { total: 0, sysex: 0, cc: 0, notes: 0, other: 0 };
+                this.sessionId = this.generateSessionId();
+                document.getElementById('sessionId').textContent = this.sessionId;
+                this.updateStats('');
+                this.clearOutput();
+                this.log('🗑️ Session cleared');
+            }
+
+            downloadSession() {
+                const session = {
+                    sessionId: this.sessionId,
+                    startTime: this.startTime,
+                    endTime: Date.now(),
+                    deviceFilter: this.deviceFilter,
+                    messages: this.capturedMessages,
+                    statistics: this.stats,
+                    platform: 'web-midi-api'
+                };
+
+                const blob = new Blob([JSON.stringify(session, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `midi-session-${this.sessionId}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+
+                this.log(`📁 Session downloaded: midi-session-${this.sessionId}.json`);
+            }
+
+            log(message) {
+                console.log(message);
+                // Optionally display in UI
+            }
+
+            logError(message) {
+                console.error(message);
+                const output = document.getElementById('output');
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error';
+                errorDiv.textContent = message;
+                output.appendChild(errorDiv);
+                output.scrollTop = output.scrollHeight;
+            }
+
+            generateSessionId() {
+                const timestamp = Date.now().toString(36);
+                const random = Math.random().toString(36).substring(2, 8);
+                return `${timestamp}-${random}`;
+            }
+        }
+
+        // Global instance
+        let monitor;
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            monitor = new WebMidiMonitor();
+        });
+
+        // Global functions for UI
+        function startMonitoring() {
+            monitor.startMonitoring();
+        }
+
+        function stopMonitoring() {
+            monitor.stopMonitoring();
+        }
+
+        function clearOutput() {
+            monitor.clearOutput();
+        }
+
+        function clearSession() {
+            monitor.clearSession();
+        }
+
+        function downloadSession() {
+            monitor.downloadSession();
+        }
+
+        function applyFilter() {
+            // Filter will be applied on next start
+            console.log('Filter will be applied when monitoring starts');
+        }
+    </script>
+</body>
+</html>
