@@ -2,11 +2,14 @@
 
 ## Executive Summary
 
-Analysis of the captured MIDI conversation between the Novation web editor and Launch Control XL3 reveals critical differences in our library's SysEx implementation. While we use the correct command bytes (0x45 for write, 0x40 for read), the data encoding format differs significantly from the web editor's implementation.
+Analysis of the captured MIDI conversation between the Novation web editor and Launch Control XL3 reveals critical
+differences in our library's SysEx implementation. While we use the correct command bytes (0x45 for write, 0x40 for
+read), the data encoding format differs significantly from the web editor's implementation.
 
 ## Current Status
 
 ### What's Working
+
 - ✅ Command byte 0x45 for writes is correct
 - ✅ Command byte 0x40 for reads is correct
 - ✅ Basic SysEx structure is correct
@@ -14,6 +17,7 @@ Analysis of the captured MIDI conversation between the Novation web editor and L
 - ✅ Device acknowledges our write commands
 
 ### What's Broken
+
 - ❌ Written data cannot be read back correctly
 - ❌ Slot 0 returns corrupted data
 - ❌ Other slots timeout on read after write
@@ -24,17 +28,21 @@ Analysis of the captured MIDI conversation between the Novation web editor and L
 ### 1. Name Encoding Structure
 
 #### Web Editor (Known Good)
+
 ```
 0x01 0x20 0x10 0x2A "New Custom Mode"
 ```
+
 - Prefix: `0x01 0x20`
 - Length/Type: `0x10 0x2A`
 - Followed by ASCII text
 
 #### Our Library (Current)
+
 ```
 0x00 0x20 0x08 "ROUND_TRIP_TEST"
 ```
+
 - Prefix: `0x00 0x20`
 - Length: `0x08`
 - Different structure
@@ -42,6 +50,7 @@ Analysis of the captured MIDI conversation between the Novation web editor and L
 ### 2. Control ID Mapping
 
 #### Web Editor Control IDs
+
 ```
 Encoders 1-8:   0x10-0x17  (top row)
 Encoders 9-16:  0x18-0x1F  (middle row)
@@ -52,6 +61,7 @@ Buttons 9-16:   0x38-0x3F  (second row)
 ```
 
 #### Our Library Control IDs
+
 ```
 Faders 1-8:     0x28-0x2F  (matches!)
 Encoders 1-8:   0x38-0x3F  (wrong - these are buttons in web editor)
@@ -65,6 +75,7 @@ Buttons 1-16:   0x50-0x5F  (wrong)
 The web editor uses different type bytes depending on the slot:
 
 #### Slot 0 (First write)
+
 ```
 Encoders top:    0x05
 Encoders middle: 0x09
@@ -73,6 +84,7 @@ Buttons:         0x19
 ```
 
 #### Slot 3 (Second write)
+
 ```
 Faders:          0x00
 Buttons row 1:   0x19
@@ -82,6 +94,7 @@ Buttons row 2:   0x25
 ### 4. CC Number Assignments
 
 #### Web Editor
+
 ```
 Encoders start at CC 13 (0x0D)
 Faders start at CC 5 (0x05)
@@ -89,6 +102,7 @@ Buttons start at CC 37 (0x25)
 ```
 
 #### Our Library
+
 ```
 Different CC numbering scheme
 Starting from CC 0 for some controls
@@ -97,6 +111,7 @@ Starting from CC 0 for some controls
 ### 5. Data Field Differences
 
 #### Web Editor Control Definition
+
 ```
 49 [ID] 02 [TYPE] 00 01 40 00 [CC] 7F 00
         ^^        ^^^^^^^
@@ -104,14 +119,17 @@ Starting from CC 0 for some controls
 ```
 
 #### Our Library
+
 ```
 49 [ID] 02 [TYPE] 00 01 40 00 [CC] 7F 00
 ```
+
 Structure matches but IDs and types are wrong.
 
 ## Root Cause Analysis
 
 The primary issue is that our library uses:
+
 1. **Wrong control ID assignments** - We're mixing up encoder/button IDs
 2. **Incorrect name encoding prefix** - Using 0x00 instead of 0x01
 3. **Wrong control type mapping** - Not matching web editor's type system
@@ -184,29 +202,33 @@ The primary issue is that our library uses:
 **File:** `src/types.ts` and default configurations
 
 1. Update default CC assignments to match web editor:
-   - Encoders: Start at CC 13
-   - Faders: Start at CC 5
-   - Buttons: Start at CC 37
+    - Encoders: Start at CC 13
+    - Faders: Start at CC 5
+    - Buttons: Start at CC 37
 
 ### Phase 5: Implement Dual-Slot Writing (Priority: LOW)
 
-The web editor writes the same custom mode to multiple slots (0 and 3 in our capture). Consider if this is necessary for proper operation.
+The web editor writes the same custom mode to multiple slots (0 and 3 in our capture). Consider if this is necessary for
+proper operation.
 
 ## Testing Strategy
 
 ### Test 1: Exact Replication Test
+
 1. Create a custom mode with exact same data as web editor
 2. Write using our fixed implementation
 3. Verify device acknowledgment matches (0x15 response)
 4. Read back and verify data integrity
 
 ### Test 2: Round-Trip Verification
+
 1. Write custom data to each slot
 2. Read back immediately
 3. Compare written vs read data
 4. All 15 slots should work
 
 ### Test 3: Web Editor Compatibility
+
 1. Write custom mode with our library
 2. Open web editor and verify it can read our data
 3. Modify in web editor
@@ -223,31 +245,31 @@ The web editor writes the same custom mode to multiple slots (0 and 3 in our cap
 ## Implementation Order
 
 1. **Immediate fixes** (can test quickly):
-   - Fix control ID mapping
-   - Fix name encoding prefix
-   - Fix control type bytes
+    - Fix control ID mapping
+    - Fix name encoding prefix
+    - Fix control type bytes
 
 2. **Test and verify**:
-   - Run round-trip test
-   - Check for improvements
+    - Run round-trip test
+    - Check for improvements
 
 3. **Secondary fixes** (if needed):
-   - Adjust CC defaults
-   - Implement dual-slot writing
+    - Adjust CC defaults
+    - Implement dual-slot writing
 
 ## Files to Modify
 
 1. **src/core/SysExParser.ts**
-   - `getControlId()` - Fix ID mapping
-   - `encodeName()` - Fix name prefix
-   - `encodeControl()` - Fix type bytes
+    - `getControlId()` - Fix ID mapping
+    - `encodeName()` - Fix name prefix
+    - `encodeControl()` - Fix type bytes
 
 2. **src/types.ts**
-   - Update default CC assignments
+    - Update default CC assignments
 
 3. **tests/SysExParser.test.ts**
-   - Add tests for new encoding format
-   - Verify against captured web editor data
+    - Add tests for new encoding format
+    - Verify against captured web editor data
 
 ## Risk Assessment
 
@@ -265,6 +287,7 @@ The web editor writes the same custom mode to multiple slots (0 and 3 in our cap
 ## Appendix: Captured Reference Data
 
 ### Known Good Write (Web Editor to Slot 0)
+
 ```
 F0 00 20 29 02 15 05 00 45 00 01 20 10 2A 4E 65
 77 20 43 75 73 74 6F 6D 20 4D 6F 64 65 49 10 02
@@ -273,6 +296,7 @@ F0 00 20 29 02 15 05 00 45 00 01 20 10 2A 4E 65
 ```
 
 ### Our Current Write (Needs Fixing)
+
 ```
 F0 00 20 29 02 15 05 00 45 00 00 20 08 52 4F 55
 4E 44 5F 54 52 49 28 02 00 00 01 40 00 00 7F 00
@@ -282,7 +306,6 @@ F0 00 20 29 02 15 05 00 45 00 00 20 08 52 4F 55
 
 ## Next Steps
 
-1. Create a backup of current implementation
 2. Implement Phase 1-3 fixes
 3. Test with device
 4. Document results

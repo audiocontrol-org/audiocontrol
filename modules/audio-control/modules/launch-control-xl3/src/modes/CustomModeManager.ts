@@ -32,33 +32,42 @@ export interface CustomModeEvents {
 
 /**
  * Control ID mapping for Launch Control XL 3
+ * PHASE 1 FIX: Updated to match web editor control ID mapping
+ *
+ * Based on web editor analysis:
+ * - Encoders 1-8 (top row): 0x10-0x17
+ * - Encoders 9-16 (middle row): 0x18-0x1F
+ * - Encoders 17-24 (bottom row): 0x20-0x27
+ * - Faders 1-8: 0x28-0x2F
+ * - Buttons 1-8: 0x30-0x37
+ * - Buttons 9-16: 0x38-0x3F
  */
 export const CONTROL_IDS = {
-  // Send A knobs (top row)
-  SEND_A1: 0x0D, SEND_A2: 0x0E, SEND_A3: 0x0F, SEND_A4: 0x10,
-  SEND_A5: 0x11, SEND_A6: 0x12, SEND_A7: 0x13, SEND_A8: 0x14,
+  // Send A knobs (top row) - FIXED: 0x10-0x17 (was 0x0D-0x14)
+  SEND_A1: 0x10, SEND_A2: 0x11, SEND_A3: 0x12, SEND_A4: 0x13,
+  SEND_A5: 0x14, SEND_A6: 0x15, SEND_A7: 0x16, SEND_A8: 0x17,
 
-  // Send B knobs (middle row)
-  SEND_B1: 0x1D, SEND_B2: 0x1E, SEND_B3: 0x1F, SEND_B4: 0x20,
-  SEND_B5: 0x21, SEND_B6: 0x22, SEND_B7: 0x23, SEND_B8: 0x24,
+  // Send B knobs (middle row) - FIXED: 0x18-0x1F (was 0x1D-0x24)
+  SEND_B1: 0x18, SEND_B2: 0x19, SEND_B3: 0x1A, SEND_B4: 0x1B,
+  SEND_B5: 0x1C, SEND_B6: 0x1D, SEND_B7: 0x1E, SEND_B8: 0x1F,
 
-  // Pan/Device knobs (bottom row)
-  PAN1: 0x31, PAN2: 0x32, PAN3: 0x33, PAN4: 0x34,
-  PAN5: 0x35, PAN6: 0x36, PAN7: 0x37, PAN8: 0x38,
+  // Pan/Device knobs (bottom row) - FIXED: 0x20-0x27 (was 0x31-0x38)
+  PAN1: 0x20, PAN2: 0x21, PAN3: 0x22, PAN4: 0x23,
+  PAN5: 0x24, PAN6: 0x25, PAN7: 0x26, PAN8: 0x27,
 
-  // Faders
-  FADER1: 0x4D, FADER2: 0x4E, FADER3: 0x4F, FADER4: 0x50,
-  FADER5: 0x51, FADER6: 0x52, FADER7: 0x53, FADER8: 0x54,
+  // Faders - FIXED: 0x28-0x2F (was 0x4D-0x54)
+  FADER1: 0x28, FADER2: 0x29, FADER3: 0x2A, FADER4: 0x2B,
+  FADER5: 0x2C, FADER6: 0x2D, FADER7: 0x2E, FADER8: 0x2F,
 
-  // Track focus buttons
-  FOCUS1: 0x29, FOCUS2: 0x2A, FOCUS3: 0x2B, FOCUS4: 0x2C,
-  FOCUS5: 0x2D, FOCUS6: 0x2E, FOCUS7: 0x2F, FOCUS8: 0x30,
+  // Track focus buttons - FIXED: 0x30-0x37 (was 0x29-0x30)
+  FOCUS1: 0x30, FOCUS2: 0x31, FOCUS3: 0x32, FOCUS4: 0x33,
+  FOCUS5: 0x34, FOCUS6: 0x35, FOCUS7: 0x36, FOCUS8: 0x37,
 
-  // Track control buttons
-  CONTROL1: 0x39, CONTROL2: 0x3A, CONTROL3: 0x3B, CONTROL4: 0x3C,
-  CONTROL5: 0x3D, CONTROL6: 0x3E, CONTROL7: 0x3F, CONTROL8: 0x40,
+  // Track control buttons - FIXED: 0x38-0x3F (was 0x39-0x40)
+  CONTROL1: 0x38, CONTROL2: 0x39, CONTROL3: 0x3A, CONTROL4: 0x3B,
+  CONTROL5: 0x3C, CONTROL6: 0x3D, CONTROL7: 0x3E, CONTROL8: 0x3F,
 
-  // Side buttons
+  // Side buttons - These will need further analysis in future phases
   DEVICE: 0x69, MUTE: 0x6A, SOLO: 0x6B, RECORD: 0x6C,
   UP: 0x68, DOWN: 0x6D, LEFT: 0x6E, RIGHT: 0x6F,
 } as const;
@@ -291,13 +300,19 @@ export class CustomModeManager extends EventEmitter {
 
   /**
    * Get control type from control ID
+   * PHASE 1 FIX: Updated ranges to match corrected control ID mapping
    */
   private getControlType(controlId: number): ControlType {
-    if (controlId >= 0x0D && controlId <= 0x38) {
+    // Encoders: 0x10-0x27 (top, middle, bottom rows)
+    if (controlId >= 0x10 && controlId <= 0x27) {
       return 'knob';
-    } else if (controlId >= 0x4D && controlId <= 0x54) {
+    }
+    // Faders: 0x28-0x2F
+    else if (controlId >= 0x28 && controlId <= 0x2F) {
       return 'fader';
-    } else {
+    }
+    // Buttons: 0x30-0x3F and other button ranges
+    else {
       return 'button';
     }
   }
