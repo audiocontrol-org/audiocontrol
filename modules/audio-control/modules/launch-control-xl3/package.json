@@ -41,6 +41,7 @@
     "test:watch": "vitest --watch",
     "test:handshake:node": "tsx utils/test-handshake-node.ts",
     "test:fetch-mode:node": "tsx utils/test-fetch-custom-mode-node.ts",
+    "test:round-trip:node": "tsx utils/test-round-trip-node.ts",
     "lint": "eslint . --ext .ts,.tsx",
     "lint:fix": "eslint . --ext .ts,.tsx --fix",
     "typecheck": "tsc --noEmit",
