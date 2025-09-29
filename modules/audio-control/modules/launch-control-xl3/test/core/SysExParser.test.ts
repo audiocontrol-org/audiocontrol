@@ -383,8 +383,8 @@ describe('SysExParser', () => {
 
       const message = SysExParser.buildCustomModeWriteRequest(0, modeData as any);
 
-      // Data header should be at position 10
-      expect(message.slice(10, 13)).toEqual([0x00, 0x20, 0x08]);
+      // Data header should be at position 10 (Phase 2: new format)
+      expect(message.slice(10, 14)).toEqual([0x01, 0x20, 0x10, 0x2A]);
     });
 
     it('should encode control with 0x49 marker and +0x28 offset as per protocol', () => {
@@ -408,8 +408,8 @@ describe('SysExParser', () => {
       const message = SysExParser.buildCustomModeWriteRequest(0, modeData as any);
 
       // Find control definition (after header + data header + name)
-      // Header(10) + DataHeader(3) + Name(4) = 17
-      const controlDef = message.slice(17, 28);
+      // Header(10) + DataHeader(4) + Name(4) = 18
+      const controlDef = message.slice(18, 29);
 
       // Verify control format matches protocol:
       // 49 [ID+0x28] 02 [TYPE] [CH] 01 40 00 [CC] 7F 00
@@ -586,8 +586,8 @@ describe('SysExParser', () => {
 
         const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
 
-        // Data should start at position 10 (after header)
-        expect(message.slice(10, 13)).toEqual([0x00, 0x20, 0x08]);
+        // Data should start at position 10 (after header) (Phase 2: new format)
+        expect(message.slice(10, 14)).toEqual([0x01, 0x20, 0x10, 0x2A]);
       });
     });
 
@@ -606,8 +606,8 @@ describe('SysExParser', () => {
 
         const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
 
-        // Mode name should be at position 13 (after header + data header)
-        const nameBytes = message.slice(13, 13 + modeName.length);
+        // Mode name should be at position 14 (after header + new 4-byte data header)
+        const nameBytes = message.slice(14, 14 + modeName.length);
         const decodedName = String.fromCharCode(...nameBytes);
 
         expect(decodedName).toBe('CHANNEVE');
@@ -626,11 +626,11 @@ describe('SysExParser', () => {
 
         const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
 
-        // Check that only 8 characters are encoded
-        const nameBytes = message.slice(13, 21);
+        // Check that up to 16 characters are encoded (Phase 2: new format)
+        const nameBytes = message.slice(14, 30); // 4-byte header + 16 chars
         const decodedName = String.fromCharCode(...nameBytes);
 
-        expect(decodedName).toBe('VERYLONG');
+        expect(decodedName).toBe('VERYLONGMODENAME');
       });
     });
 
@@ -659,8 +659,8 @@ describe('SysExParser', () => {
         const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
 
         // Find the control definition (should start after header + data header + name)
-        // Header(10) + DataHeader(3) + Name(4) = 17
-        const controlStart = 17;
+        // Header(10) + DataHeader(4) + Name(4) = 18
+        const controlStart = 18;
         const controlDef = message.slice(controlStart, controlStart + 11);
 
         // According to MIDI-PROTOCOL.md, control format for WRITE should be:
@@ -702,7 +702,7 @@ describe('SysExParser', () => {
 
         // Now the implementation includes ALL hardware controls, not just user-defined ones
         // Check that specific controls have the correct offset applied
-        let position = 17; // After header + data header + name
+        let position = 18; // After header + data header + name (Phase 2: 4-byte header)
 
         // First control (0x00) should become 0x28
         expect(message[position + 1]).toBe(0x28);
@@ -741,7 +741,7 @@ describe('SysExParser', () => {
 
         const message = SysExParser.buildCustomModeWriteRequest(0, modeData);
 
-        let position = 17; // After header + data header + name
+        let position = 18; // After header + data header + name (Phase 2: 4-byte header)
 
         // Check control types - now with ALL controls included
         expect(message[position + 3]).toBe(0x00); // First fader type (0x00)
@@ -783,7 +783,7 @@ describe('SysExParser', () => {
         // Find label section (after ALL control definitions)
         // Header(10) + DataHeader(3) + Name(4) + AllControls(48*11) = 545
         const allControlsSize = 48 * 11; // 48 controls * 11 bytes each
-        const labelStart = 17 + allControlsSize; // After header + data header + name + all controls
+        const labelStart = 18 + allControlsSize; // After header + data header + name + all controls (Phase 2: 4-byte header)
 
         // Label format should be: 69 [ID+0x28] [ASCII_TEXT...]
         expect(message[labelStart]).toBe(0x69); // Label marker for first control (0x00)
@@ -886,14 +886,14 @@ describe('SysExParser', () => {
         // Verify key parts of the message structure
         expect(message[0]).toBe(0xF0); // Start
         expect(message.slice(1, 10)).toEqual([0x00, 0x20, 0x29, 0x02, 0x15, 0x05, 0x00, 0x45, 0x00]); // Header
-        expect(message.slice(10, 13)).toEqual([0x00, 0x20, 0x08]); // Data header
+        expect(message.slice(10, 14)).toEqual([0x01, 0x20, 0x10, 0x2A]); // Data header (Phase 2 format)
 
         // Mode name
-        const nameBytes = message.slice(13, 21);
+        const nameBytes = message.slice(14, 22);
         expect(String.fromCharCode(...nameBytes)).toBe('CHANNEVE');
 
-        // First control should have 0x49 marker
-        expect(message[21]).toBe(0x49);
+        // First control should have 0x49 marker (position shifted by +1 due to 4-byte header)
+        expect(message[22]).toBe(0x49);
 
         // Message should end with 0xF7
         expect(message[message.length - 1]).toBe(0xF7);
