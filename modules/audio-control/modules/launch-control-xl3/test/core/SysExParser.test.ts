@@ -982,4 +982,72 @@ describe('SysExParser', () => {
       });
     });
   });
+
+  describe('Custom Mode Response Parsing - Real Device Data', () => {
+    it('should parse actual write response from device correctly', () => {
+      // This test uses actual response data from device after a write operation
+      // The device response format is different from read responses
+      const actualDeviceResponse = [
+        0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x05, 0x00, 0x10, 0x00, 0x06, 0x20, 0x08,
+        // Mode name: "RT Test" in ASCII
+        0x52, 0x54, 0x20, 0x54, 0x65, 0x73, 0x74,
+        // Start of write response format
+        0x49, 0x21, 0x00,
+        // Control data in 0x40 format
+        0x40, 0x10, 0x40, 0x11, 0x40, 0x12, 0x40, 0x13, 0x40, 0x14, 0x40, 0x15, 0x40, 0x16, 0x40, 0x17,
+        0x40, 0x18, 0x40, 0x19, 0x40, 0x1A, 0x40, 0x1B, 0x40, 0x1C, 0x40, 0x1D, 0x40, 0x1E, 0x40, 0x1F,
+        0x40, 0x20, 0x40, 0x21, 0x40, 0x22, 0x40, 0x23, 0x40, 0x24, 0x40, 0x25, 0x40, 0x26, 0x40, 0x27,
+        0xF7
+      ];
+
+      const result = SysExParser.parse(actualDeviceResponse);
+
+      expect(result.type).toBe('custom_mode_response');
+      expect((result as any).slot).toBe(0);
+      expect((result as any).name).toBe('RT Test'); // Should parse correctly without "I"
+
+      const customModeResult = result as any;
+      expect(customModeResult.controls).toBeDefined();
+      expect(customModeResult.controls.length).toBeGreaterThan(0);
+
+      // Verify first few controls are parsed correctly
+      const firstControl = customModeResult.controls[0];
+      expect(firstControl.controlId).toBe(0x10); // First control should be 0x10 (top row encoder)
+      expect(firstControl.ccNumber).toBe(0x10);
+
+      // Check that we have the expected number of controls based on the data
+      expect(customModeResult.controls.length).toBe(24); // Based on the 0x40 patterns in response
+
+      // Verify color mappings are created
+      expect(customModeResult.colors).toBeDefined();
+      expect(customModeResult.colors.length).toBe(customModeResult.controls.length);
+    });
+
+    it('should handle edge case where mode name is followed directly by control data', () => {
+      // Test minimal response with just name and one control
+      const minimalResponse = [
+        0xF0, 0x00, 0x20, 0x29, 0x02, 0x15, 0x05, 0x00, 0x10, 0x00, 0x06, 0x20, 0x08,
+        // Short mode name: "Test"
+        0x54, 0x65, 0x73, 0x74,
+        // Immediate control data
+        0x49, 0x21, 0x00,
+        // Single control
+        0x40, 0x28, 0x01,
+        0xF7
+      ];
+
+      const result = SysExParser.parse(minimalResponse);
+
+      expect(result.type).toBe('custom_mode_response');
+      expect((result as any).name).toBe('Test');
+
+      const customModeResult = result as any;
+      expect(customModeResult.controls).toBeDefined();
+      expect(customModeResult.controls.length).toBe(1);
+
+      const control = customModeResult.controls[0];
+      expect(control.controlId).toBe(0x10); // First control in sequence should be 0x10
+      expect(control.ccNumber).toBe(0x28); // Based on the test data: 0x40 0x28
+    });
+  });
 });

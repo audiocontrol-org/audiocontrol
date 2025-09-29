@@ -287,102 +287,183 @@ export class SysExParser {
 
     if (nameStart > 0) {
       const nameBytes = [];
-      for (let i = nameStart; i < data.length - 1; i++) {
-        // FIXED: Stop at explicit terminator 0x21 0x00 first
-        if (data[i] === 0x21 && data[i + 1] === 0x00) {
+      for (let i = nameStart; i < data.length - 2; i++) {
+        const byte = data[i];
+        const nextByte = data[i + 1];
+        const thirdByte = data[i + 2];
+
+        // Stop at specific pattern: 0x49 0x21 0x00 (write response control section start)
+        if (byte === 0x49 && nextByte === 0x21 && thirdByte === 0x00) {
           nameEnd = i;
           break;
         }
 
-        // Only break on control marker if we haven't found a name terminator
-        // and we're at least 8 bytes past the start (max mode name length)
-        if (data[i] === 0x48 && i >= nameStart + 8) {
-          // Double-check this is actually a control marker by validating structure
-          if (i + 9 < data.length &&
-              data[i + 2] === 0x02 && // Definition type
-              data[i + 1] !== undefined && data[i + 1]! <= 0x3F) {  // Valid control ID range
+        // Stop when we encounter non-printable ASCII
+        if (byte === undefined || byte < 32 || byte > 126) {
+          nameEnd = i;
+          break;
+        }
+
+        // Stop at control markers (0x48 or 0x49) that look like valid control structures
+        if ((byte === 0x48 || byte === 0x49) && i >= nameStart + 1) {
+          // Validate this is actually a control marker by checking next few bytes
+          const defType = data[i + 2];
+          if (nextByte !== undefined && defType === 0x02 && nextByte >= 0x20 && nextByte <= 0x7F) {
             nameEnd = i;
             break;
           }
         }
 
-        const byte = data[i];
-        if (byte !== undefined && byte >= 32 && byte <= 126) { // Printable ASCII
-          nameBytes.push(byte);
+        // Add printable ASCII to name
+        nameBytes.push(byte);
+
+        // Safety limit: mode names shouldn't exceed 16 characters
+        if (nameBytes.length >= 16) {
+          nameEnd = i + 1;
+          break;
         }
       }
 
       if (nameBytes.length > 0) {
-        modeName = String.fromCharCode(...nameBytes);
+        modeName = String.fromCharCode(...nameBytes).trim();
       }
     }
 
     // Parse control definitions
     // In READ responses: 0x48 [ID] 0x02 [TYPE] [CH] 0x01 0x48 [MIN] [CC] [MAX]
-    // In WRITE commands: 0x49 [ID] 0x02 [TYPE] [CH] 0x01 0x40 [MIN] [CC] [MAX] 0x00
+    // In WRITE responses: different format with 0x40 markers
 
-    // Find where controls actually start (after name and terminator)
-    let controlsStart = nameEnd > 0 ? nameEnd + 2 : 0; // Skip 0x21 0x00 after name
+    // Find where controls actually start (after name)
+    let controlsStart = nameEnd > 0 ? nameEnd : 0;
     let controlNamesStart = -1;
 
-    for (let i = controlsStart; i < data.length - 9; i++) {
-      // Handle both 0x48 (read) and 0x49 (write) markers
-      if (data[i] === 0x48 || data[i] === 0x49) {
-        if (i + 9 < data.length) {
-          const controlId = data[i + 1];
-          const defType = data[i + 2];
-          const _controlType = data[i + 3];
-          const channel = data[i + 4];
-          const param1 = data[i + 5];
+    // Handle response format after WRITE operation
+    // Look for pattern: 0x49 0x21 0x00 followed by 0x40 control data
+    let writeResponseStart = -1;
+    for (let i = controlsStart; i < data.length - 2; i++) {
+      if (data[i] === 0x49 && data[i + 1] === 0x21 && data[i + 2] === 0x00) {
+        writeResponseStart = i + 3;
+        break;
+      }
+    }
 
-          // Validate it's a control structure (not part of name or other data)
-          const isValidControl = defType === 0x02 &&
-                                (param1 === 0x01 || param1 === 0x00) &&
-                                controlId !== undefined && controlId <= 0x3F; // Valid control ID range
+    if (writeResponseStart > 0) {
+      // Parse write response format: series of 0x40 [cc_number] pairs
+      // The control IDs are inferred from the sequence position
+      let controlIndex = 0;
+      const expectedControls = [
+        // Top row encoders (0x10-0x17)
+        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
+        // Middle row encoders (0x18-0x1F)
+        0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
+        // Bottom row encoders (0x20-0x27)
+        0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27
+      ];
 
-          if (isValidControl && controlId !== undefined) {
-            const minValue = data[i + 7];
-            const ccNumber = data[i + 8];
-            const maxValue = data[i + 9];
+      for (let i = writeResponseStart; i < data.length - 1; i += 2) {
+        if (data[i] === 0x40) {
+          const ccNumber = data[i + 1];
 
-            // Ensure all required values are defined
-            if (minValue !== undefined && ccNumber !== undefined && maxValue !== undefined &&
-                channel !== undefined && _controlType !== undefined) {
-              // Determine control behavior
-              let behaviour = 'absolute';
+          if (ccNumber !== undefined && controlIndex < expectedControls.length) {
+            const controlId = expectedControls[controlIndex];
 
-              controls.push({
-                controlId,
-                channel,
-                ccNumber,
-                minValue,
-                maxValue,
-                behaviour: behaviour as any,
-              });
+            controls.push({
+              controlId,
+              channel: 0, // Default channel
+              ccNumber,
+              minValue: 0,
+              maxValue: 127,
+              behaviour: 'absolute' as any,
+            });
 
-              // Create color mapping based on control ID
-              let color = 0x3F; // Default
-              if (controlId >= 0x10 && controlId <= 0x17) {
-                color = 0x60; // Blue for top row encoders
-              } else if (controlId >= 0x18 && controlId <= 0x1F) {
-                color = 0x48; // Yellow for middle row encoders
-              } else if (controlId >= 0x20 && controlId <= 0x27) {
-                color = 0x3C; // Green for bottom row encoders
-              } else if (controlId >= 0x28 && controlId <= 0x3F) {
-                color = 0x0F; // Red for buttons/other controls
-              } else if (controlId <= 0x07) {
-                color = 0x0F; // Red for faders
-              }
-
-              colors.push({
-                controlId,
-                color,
-                behaviour: 'static', // Default behavior
-              });
+            // Create color mapping based on control ID
+            let color = 0x3F; // Default
+            if (controlId >= 0x10 && controlId <= 0x17) {
+              color = 0x60; // Blue for top row encoders
+            } else if (controlId >= 0x18 && controlId <= 0x1F) {
+              color = 0x48; // Yellow for middle row encoders
+            } else if (controlId >= 0x20 && controlId <= 0x27) {
+              color = 0x3C; // Green for bottom row encoders
+            } else if (controlId >= 0x28 && controlId <= 0x3F) {
+              color = 0x0F; // Red for buttons/other controls
+            } else if (controlId <= 0x07) {
+              color = 0x0F; // Red for faders
             }
 
-            // Skip to next potential control (9 bytes processed)
-            i += 9;
+            colors.push({
+              controlId,
+              color,
+              behaviour: 'static', // Default behavior
+            });
+
+            controlIndex++;
+          }
+        } else {
+          // Stop parsing if we don't find expected 0x40 marker
+          break;
+        }
+      }
+    } else {
+      // Fall back to original parsing for READ responses
+      for (let i = controlsStart; i < data.length - 9; i++) {
+        // Handle both 0x48 (read) and 0x49 (write) markers
+        if (data[i] === 0x48 || data[i] === 0x49) {
+          if (i + 9 < data.length) {
+            const controlId = data[i + 1];
+            const defType = data[i + 2];
+            const _controlType = data[i + 3];
+            const channel = data[i + 4];
+            const param1 = data[i + 5];
+
+            // Validate it's a control structure (not part of name or other data)
+            const isValidControl = defType === 0x02 &&
+                                  (param1 === 0x01 || param1 === 0x00) &&
+                                  controlId !== undefined && controlId <= 0x3F; // Valid control ID range
+
+            if (isValidControl && controlId !== undefined) {
+              const minValue = data[i + 7];
+              const ccNumber = data[i + 8];
+              const maxValue = data[i + 9];
+
+              // Ensure all required values are defined
+              if (minValue !== undefined && ccNumber !== undefined && maxValue !== undefined &&
+                  channel !== undefined && _controlType !== undefined) {
+                // Determine control behavior
+                let behaviour = 'absolute';
+
+                controls.push({
+                  controlId,
+                  channel,
+                  ccNumber,
+                  minValue,
+                  maxValue,
+                  behaviour: behaviour as any,
+                });
+
+                // Create color mapping based on control ID
+                let color = 0x3F; // Default
+                if (controlId >= 0x10 && controlId <= 0x17) {
+                  color = 0x60; // Blue for top row encoders
+                } else if (controlId >= 0x18 && controlId <= 0x1F) {
+                  color = 0x48; // Yellow for middle row encoders
+                } else if (controlId >= 0x20 && controlId <= 0x27) {
+                  color = 0x3C; // Green for bottom row encoders
+                } else if (controlId >= 0x28 && controlId <= 0x3F) {
+                  color = 0x0F; // Red for buttons/other controls
+                } else if (controlId <= 0x07) {
+                  color = 0x0F; // Red for faders
+                }
+
+                colors.push({
+                  controlId,
+                  color,
+                  behaviour: 'static', // Default behavior
+                });
+              }
+
+              // Skip to next potential control (9 bytes processed)
+              i += 9;
+            }
           }
         }
       }
