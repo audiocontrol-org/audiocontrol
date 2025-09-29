@@ -74,10 +74,25 @@ features should be deferred to later phases.
 
 #### Feature MVP.3 Testing Requirements
 
-- [x] There is a "one-click" pnpm script (test:fetch-mode:node) that a developer may use to fetch custom modes via Node MIDI
-  with a connected device and reports success or failure
+- [x] There is a "one-click" pnpm script (test:fetch-mode:node) that a developer may use to fetch custom modes via Node
+  MIDI with a connected device and reports success or failure
 - [x] The test script displays custom mode details including control mappings, LED colors, and labels
 - [x] Error handling provides clear troubleshooting guidance for common issues
+
+### Feature MVP.4: Device Custom Mode Send
+
+- [ ] The library API offers a function to send data to update the custom mode in the connected device
+- [ ] The fetch function listens for and parses response message(s) from the device and returns a response to the API
+  client indicating success or failure
+- [ ] The send function handles timeouts and error cases gracefully
+
+#### Feature MVP.4 Testing Requirements
+
+- [ ] There is a "one-click" pnpm script (test:send-mode:node) that a developer may use to send custom mode data via
+  MIDI in a node context to a connected device
+- [ ] There is also a "one-click" pnpm script (test:round-trip:node) that a developer may use to send custom mode data
+  via MIDI in a node context to a connected device; then, on success, it fetches the same data from the connected
+  device (via the fetch function) and ensures the fetched data is the same as the sent data
 
 ## Feature Prioritization
 
@@ -181,8 +196,8 @@ Long-term vision and experimental features
 - **MVP Progress**: 100% (11/11 features complete)
 - **Overall Progress**: 100% (11/11 features complete)
 - **Key Achievements**:
-  - ✅ 4-message handshake protocol fully implemented
-  - ✅ Custom mode fetching working with all 15 slots
-  - ✅ Both Node.js and browser environments supported
-  - ✅ Comprehensive error handling and troubleshooting
-  - ✅ Test utilities for both handshake and custom mode operations
+    - ✅ 4-message handshake protocol fully implemented
+    - ✅ Custom mode fetching working with all 15 slots
+    - ✅ Both Node.js and browser environments supported
+    - ✅ Comprehensive error handling and troubleshooting
+    - ✅ Test utilities for both handshake and custom mode operations
