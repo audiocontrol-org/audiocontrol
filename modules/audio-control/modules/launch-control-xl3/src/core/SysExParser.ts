@@ -862,18 +862,14 @@ export class SysExParser {
     for (const control of sortedControls) {
       // Write control structure: 11 bytes
       rawData.push(0x49); // Write control marker
-      rawData.push((control.controlId ?? 0) + 0x28); // Control ID with offset
+      rawData.push(this.getControlId(control)); // Control ID (no offset - direct mapping)
       rawData.push(0x02); // Definition type
-      // Convert control type to number if it's a string
-      const controlType = control.controlType ?? control.type ?? 0x00;
-      const controlTypeNum = typeof controlType === 'string' ?
-        (controlType === 'knob' ? 0x05 : controlType === 'fader' ? 0x00 : controlType === 'button' ? 0x09 : 0x00) :
-        controlType;
-      rawData.push(controlTypeNum); // Control type
-      rawData.push(control.midiChannel ?? control.channel ?? 0); // MIDI channel (0-15)
-      rawData.push(0x01); // Parameter 1
-      rawData.push(0x40); // Parameter 2
-      rawData.push(0x00); // Min value (always 0 in write)
+      // Get control type based on position and type
+      rawData.push(this.getControlType(control)); // Control type based on position
+      rawData.push(0x00); // Always 0x00 (not channel)
+      rawData.push(0x01); // Always 0x01
+      rawData.push(0x40); // Always 0x40 (was 0x48 in some versions)
+      rawData.push(0x00); // Always 0x00
       rawData.push(control.ccNumber ?? control.cc ?? 0); // CC number
       rawData.push(0x7F); // Max value (always 0x7F in write)
       rawData.push(0x00); // Terminator
@@ -883,7 +879,7 @@ export class SysExParser {
     if (customMode.labels && customMode.labels.size > 0) {
       for (const [controlId, label] of customMode.labels) {
         rawData.push(0x69); // Label marker
-        rawData.push(controlId + 0x28); // Control ID with offset
+        rawData.push(controlId); // Control ID (no offset)
         // Add label text
         for (let i = 0; i < label.length; i++) {
           rawData.push(label.charCodeAt(i));
@@ -894,7 +890,7 @@ export class SysExParser {
       for (const control of sortedControls) {
         const controlId = control.controlId ?? 0;
         rawData.push(0x69); // Label marker
-        rawData.push(controlId + 0x28); // Control ID with offset
+        rawData.push(controlId); // Control ID (no offset)
         const label = this.generateControlLabel(controlId);
         for (let i = 0; i < label.length; i++) {
           rawData.push(label.charCodeAt(i));
@@ -906,7 +902,7 @@ export class SysExParser {
     if (customMode.colors && customMode.colors.size > 0) {
       for (const [controlId, color] of customMode.colors) {
         rawData.push(0x60); // Color marker
-        rawData.push(controlId + 0x28); // Control ID with offset
+        rawData.push(controlId); // Control ID (no offset)
         rawData.push(color); // Color value
       }
     } else {
@@ -914,7 +910,7 @@ export class SysExParser {
       for (const control of sortedControls) {
         const controlId = control.controlId ?? 0;
         rawData.push(0x60); // Color marker
-        rawData.push(controlId + 0x28); // Control ID with offset
+        rawData.push(controlId); // Control ID (no offset)
       }
     }
 
@@ -1028,26 +1024,27 @@ export class SysExParser {
     rawData.push(...nameEncoded);
 
     // Sort controls by ID for consistency
+    // FIX: Accept both 'id' and 'controlId' fields to handle different formats
     const sortedControls = Object.values(modeData.controls)
-      .filter(control => control.controlId !== undefined)
-      .sort((a, b) => (a.controlId ?? 0) - (b.controlId ?? 0));
+      .filter((control: any) => control.id !== undefined || control.controlId !== undefined)
+      .map((control: any) => ({
+        ...control,
+        controlId: control.controlId ?? control.id ?? 0
+      }))
+      .sort((a: any, b: any) => (a.controlId ?? 0) - (b.controlId ?? 0));
 
     // Add control definitions with 0x49 marker and offset
     for (const control of sortedControls) {
       // Write control structure: 11 bytes
       rawData.push(0x49); // Write control marker
-      rawData.push((control.controlId ?? 0) + 0x28); // Control ID with offset
+      rawData.push(this.getControlId(control)); // Control ID (no offset - direct mapping)
       rawData.push(0x02); // Definition type
-      // Convert control type to number if it's a string
-      const controlType = control.controlType ?? control.type ?? 0x00;
-      const controlTypeNum = typeof controlType === 'string' ?
-        (controlType === 'knob' ? 0x05 : controlType === 'fader' ? 0x00 : controlType === 'button' ? 0x09 : 0x00) :
-        controlType;
-      rawData.push(controlTypeNum); // Control type
-      rawData.push(control.midiChannel ?? control.channel ?? 0); // MIDI channel (0-15)
-      rawData.push(0x01); // Parameter 1
-      rawData.push(0x40); // Parameter 2
-      rawData.push(0x00); // Min value (always 0 in write)
+      // Get control type based on position and type
+      rawData.push(this.getControlType(control)); // Control type based on position
+      rawData.push(0x00); // Always 0x00 (not channel)
+      rawData.push(0x01); // Always 0x01
+      rawData.push(0x40); // Always 0x40 (was 0x48 in some versions)
+      rawData.push(0x00); // Always 0x00
       rawData.push(control.ccNumber ?? control.cc ?? 0); // CC number
       rawData.push(0x7F); // Max value (always 0x7F in write)
       rawData.push(0x00); // Terminator
@@ -1055,12 +1052,11 @@ export class SysExParser {
 
     // Generate labels for controls with names
     for (const control of sortedControls) {
-      const controlId = control.controlId ?? 0;
       rawData.push(0x69); // Label marker
-      rawData.push(controlId + 0x28); // Control ID with offset
+      rawData.push(this.getControlId(control)); // Control ID (no offset)
 
       // Use control name if available, otherwise generate default label
-      const label = control.name || this.generateControlLabel(controlId);
+      const label = control.name || this.generateControlLabel(this.getControlId(control));
       for (let i = 0; i < label.length; i++) {
         rawData.push(label.charCodeAt(i));
       }
@@ -1068,13 +1064,12 @@ export class SysExParser {
 
     // Add color data for controls
     for (const control of sortedControls) {
-      const controlId = control.controlId ?? 0;
-      // Find the corresponding color for this control
-      const colorEntry = modeData.colors?.find(c => c.controlId === controlId);
-      const colorValue = colorEntry?.color ?? 0x0C; // Default color if not specified
+      const controlId = this.getControlId(control);
+      // Use control's color property directly or default
+      const colorValue = control.color ?? 0x0C; // Default color if not specified
 
       rawData.push(0x60); // Color marker
-      rawData.push(controlId + 0x28); // Control ID with offset
+      rawData.push(controlId); // Control ID (no offset)
       rawData.push(colorValue); // Actual color value
     }
 
@@ -1082,6 +1077,60 @@ export class SysExParser {
   }
 
 
+
+  /**
+   * Get control ID based on control type and index
+   * Maps controls to their protocol ID range (0x10-0x3F)
+   */
+  private static getControlId(control: any): number {
+    const type = control.type ?? control.controlType;
+    const index = control.index ?? 0;
+
+    // Use explicit controlId if provided and in valid range
+    if (control.controlId !== undefined && control.controlId >= 0x10 && control.controlId <= 0x3F) {
+      return control.controlId;
+    }
+
+    // Map based on type and index
+    if (type === 'encoder' || type === 'knob') {
+      // Encoders: 0x10-0x27 (24 total, 3 rows of 8)
+      return 0x10 + Math.min(23, index);
+    } else if (type === 'fader') {
+      // Faders: 0x28-0x2F (8 total)
+      return 0x28 + Math.min(7, index);
+    } else if (type === 'button') {
+      // Buttons: 0x30-0x3F (16 total, 2 rows of 8)
+      return 0x30 + Math.min(15, index);
+    }
+
+    return 0x10; // Default to first encoder
+  }
+
+  /**
+   * Get control type byte based on control position and type
+   * Web editor analysis shows position-based type assignment
+   */
+  private static getControlType(control: any): number {
+    const type = control.type ?? control.controlType;
+    const index = control.index ?? 0;
+
+    if (type === 'encoder' || type === 'knob') {
+      // Encoders have different types per row
+      if (index < 8) return 0x05;      // Top row (0-7)
+      if (index < 16) return 0x09;     // Middle row (8-15)
+      return 0x0D;                      // Bottom row (16-23)
+    }
+    if (type === 'fader') {
+      return 0x00;  // All faders use type 0x00
+    }
+    if (type === 'button') {
+      // Buttons have different types per row
+      if (index < 8) return 0x19;      // First row (0-7)
+      return 0x25;                      // Second row (8-15)
+    }
+
+    return 0x00; // Default
+  }
 
   /**
    * Encode a name string with the correct Launch Control XL3 prefix
