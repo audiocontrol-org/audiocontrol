@@ -556,6 +556,97 @@ npm install --save midi jzz-midi-gear
 
 ---
 
+## Critical Findings - Session 3
+
+### Major Discovery: Excessive LED Control Messages
+
+During live testing with Playwright automation and MIDI monitoring, we discovered a critical implementation issue:
+
+#### The Problem
+Our library sends **hundreds of excessive LED control messages** after SysEx operations:
+- Pattern: `0x11 0x78` messages repeated 200+ times
+- These messages flood the MIDI communication channel
+- Likely causing device to ignore or fail processing legitimate commands
+- The web editor does NOT send these messages
+
+#### Evidence Captured
+```json
+{
+  "timestamp": 1759157043879,
+  "portName": "Launch Control XL3",
+  "messageType": "cc",
+  "rawData": [177, 120, 0],
+  "hexData": "0xb1 0x78 0x00",
+  "parsedData": {
+    "channel": 1,
+    "controller": 120,
+    "value": 0,
+    "_type": "cc"
+  }
+}
+// ... repeated 200+ times
+```
+
+#### Web Editor Protocol (Correct Implementation)
+The official web editor sends clean, minimal SysEx messages:
+```
+Write command: 0xf0 0x00 0x20 0x29 0x02 0x15 0x05 0x00 0x15 0x00 0x06 0xf7
+```
+- No excessive LED messages
+- Clean, focused communication
+- Device responds correctly
+
+### Test Session Details
+
+Successfully automated the Novation web editor using Playwright MCP:
+1. Navigated to https://components.novationmusic.com/launch-control-xl-3/custom-modes
+2. Created new custom mode
+3. Named Encoder 1 as "TestVolume1"
+4. Sent configuration to device slot 1
+5. Captured all MIDI traffic during operation
+
+### Root Cause Analysis
+
+The excessive `0x11 0x78` messages appear to be:
+- **Controller 120 (0x78)**: All Sound Off MIDI message
+- **Channel 2 (0xb1)**: Being sent on MIDI channel 2
+- **Unnecessary repetition**: Sent hundreds of times after each operation
+- **Blocking legitimate traffic**: Flooding prevents proper SysEx processing
+
+### Required Fixes
+
+1. **Remove excessive LED control messages** from SysEx operations
+2. **Audit all MIDI message sending** to ensure no unnecessary traffic
+3. **Match web editor's clean protocol** - only send required messages
+4. **Test with monitoring** to verify clean communication
+
+### Implementation Recommendations
+
+Based on our spy harness findings, the following changes are required:
+
+1. **Locate and Remove LED Flooding Code**
+   - Search for code sending CC 120 (0x78) messages
+   - Remove or comment out the loop causing repetition
+   - Likely in LED update or device sync functions
+
+2. **Review SysEx Write Implementation**
+   - Compare our SysEx format with captured web editor format
+   - Web editor uses: `0xf0 0x00 0x20 0x29 0x02 0x15 0x05 0x00 0x15 0x00 0x06 0xf7`
+   - Ensure we're not adding unnecessary wrapper messages
+
+3. **Testing Protocol**
+   - Run MIDI monitor during all tests
+   - Verify only necessary messages are sent
+   - Compare message count with web editor (should be minimal)
+
+4. **Code Locations to Check**
+   - `src/device/LaunchControlXL3Device.ts` - Device communication
+   - `src/core/SysExParser.ts` - SysEx message building
+   - Any LED or control update functions
+   - Factory reset or sync operations that might trigger bulk updates
+
+---
+
 ## Progress Update - Session 2
 
 ### Completed Tasks (Session 2)
@@ -619,7 +710,7 @@ npm install --save midi jzz-midi-gear
 
 ---
 
-**Document Version**: 1.2
-**Last Updated**: 2024-01-15 (End of Session 2)
+**Document Version**: 1.3
+**Last Updated**: 2025-01-29 (End of Session 3)
 **Author**: Claude AI Assistant
-**Status**: In Progress - Phases 1-3 Complete, Ready for Phase 4
+**Status**: Critical Issue Identified - Excessive LED Messages Blocking Communication

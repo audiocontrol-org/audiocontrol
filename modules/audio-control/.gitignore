@@ -34,3 +34,5 @@ tmp/
 modules/*/LICENSE
 *~
 .playwright-mcp/
+/modules/launch-control-xl3/midi-captures/
+/modules/launch-control-xl3/test-captures/
