@@ -355,11 +355,26 @@ async function testRoundTrip(): Promise<void> {
 
     // Step 4: Connect to device
     log.step('Attempting to connect to Launch Control XL 3...');
-    const connected = await controller.connect(10000); // 10 second timeout
 
-    if (!connected) {
-      throw new Error('Failed to connect to device within timeout period');
-    }
+    // Wait for device to be ready with timeout
+    const connectPromise = new Promise<void>((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('Failed to connect to device within timeout period'));
+      }, 10000);
+
+      controller.once('device:ready', () => {
+        clearTimeout(timeout);
+        resolve();
+      });
+
+      controller.once('device:error', (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+    });
+
+    await controller.connect();
+    await connectPromise;
 
     log.success('Connected to Launch Control XL 3!');
     console.log();
@@ -386,7 +401,21 @@ async function testRoundTrip(): Promise<void> {
     log.section(' STEP 2: WRITE TO DEVICE ');
     log.step(`Writing test mode to slot ${targetSlot}...`);
 
-    await controller.writeCustomMode(targetSlot, testMode);
+    // Convert controls object to array format for writing
+    const controlsArray = Object.values(testMode.controls);
+    const colorsArray = testMode.colors ? Array.from(testMode.colors.entries()).map(([controlId, color]) => ({
+      controlId,
+      color,
+      behaviour: 'static'
+    })) : [];
+
+    const modeToWrite = {
+      ...testMode,
+      controls: controlsArray,
+      colors: colorsArray
+    };
+
+    await controller.writeCustomMode(targetSlot, modeToWrite as any);
     log.success(`Custom mode written to slot ${targetSlot}!`);
 
     // Small delay to ensure write is complete
