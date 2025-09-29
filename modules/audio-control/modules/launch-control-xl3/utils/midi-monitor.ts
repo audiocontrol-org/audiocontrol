@@ -64,6 +64,11 @@ export class MidiMonitor {
   private sessionId: string;
   private startTime: number = 0;
   private isRunning = false;
+  // Virtual port interception
+  private virtualIn?: easymidi.Input;
+  private virtualOut?: easymidi.Output;
+  private realIn?: easymidi.Input;
+  private realOut?: easymidi.Output;
 
   constructor(config: MonitorConfig = {}) {
     this.config = {
@@ -77,6 +82,107 @@ export class MidiMonitor {
     };
 
     this.sessionId = this.generateSessionId();
+  }
+
+  /**
+   * Start virtual port interception mode
+   * This creates virtual ports that intercept traffic between web editor and device
+   */
+  async startInterceptionMode(): Promise<void> {
+    if (this.isRunning) {
+      throw new Error('Monitor is already running');
+    }
+
+    console.log('🎵 Starting MIDI Monitor - Interception Mode');
+    console.log('═'.repeat(60));
+
+    // Create virtual ports
+    this.virtualIn = new easymidi.Input();
+    this.virtualOut = new easymidi.Output();
+
+    // Open virtual ports with names that web editor will connect to
+    this.virtualIn.openVirtualPort('LCXL3 Virtual MIDI In');
+    this.virtualOut.openVirtualPort('LCXL3 Virtual MIDI Out');
+
+    console.log('✅ Created virtual ports:');
+    console.log('   - LCXL3 Virtual MIDI In (web editor sends here)');
+    console.log('   - LCXL3 Virtual MIDI Out (web editor reads from here)');
+
+    // Connect to real device ports
+    const inputs = easymidi.getInputs();
+    const outputs = easymidi.getOutputs();
+
+    const realInIdx = inputs.findIndex(p => p.includes('LCXL3 1 MIDI Out'));
+    const realOutIdx = outputs.findIndex(p => p.includes('LCXL3 1 MIDI In'));
+
+    if (realInIdx >= 0 && realOutIdx >= 0) {
+      this.realIn = new easymidi.Input();
+      this.realIn.openPort(realInIdx);
+      this.realOut = new easymidi.Output();
+      this.realOut.openPort(realOutIdx);
+
+      console.log('✅ Connected to real device:');
+      console.log(`   - ${inputs[realInIdx]}`);
+      console.log(`   - ${outputs[realOutIdx]}`);
+    } else {
+      throw new Error('Could not find real LCXL3 device ports');
+    }
+
+    this.startTime = Date.now();
+    this.isRunning = true;
+
+    // Set up message forwarding and capture
+    this.setupInterception();
+
+    console.log('\n🔍 Interception active!');
+    console.log('⚠️  Configure web editor to use:');
+    console.log('   Input: LCXL3 Virtual MIDI Out');
+    console.log('   Output: LCXL3 Virtual MIDI In');
+    console.log('\n⏹️  Press Ctrl+C to stop and save session');
+    console.log('─'.repeat(60));
+
+    this.setupGracefulShutdown();
+  }
+
+  /**
+   * Set up message interception and forwarding
+   */
+  private setupInterception(): void {
+    // Intercept messages FROM web editor TO device
+    this.virtualIn!.on('message', (deltaTime: number, message: number[]) => {
+      this.captureMessage('WEB→DEVICE', 'message', message, { direction: 'TO_DEVICE' });
+      // Forward to real device
+      if (this.realOut) {
+        this.realOut.sendMessage(message);
+      }
+    });
+
+    this.virtualIn!.on('sysex', (msg: any) => {
+      const data = msg.bytes || msg.data || [];
+      this.captureMessage('WEB→DEVICE', 'sysex', data, { direction: 'TO_DEVICE' });
+      // Forward to real device
+      if (this.realOut && data.length > 0) {
+        this.realOut.sendMessage(data);
+      }
+    });
+
+    // Intercept messages FROM device TO web editor
+    this.realIn!.on('message', (deltaTime: number, message: number[]) => {
+      this.captureMessage('DEVICE→WEB', 'message', message, { direction: 'FROM_DEVICE' });
+      // Forward to web editor
+      if (this.virtualOut) {
+        this.virtualOut.sendMessage(message);
+      }
+    });
+
+    this.realIn!.on('sysex', (msg: any) => {
+      const data = msg.bytes || msg.data || [];
+      this.captureMessage('DEVICE→WEB', 'sysex', data, { direction: 'FROM_DEVICE' });
+      // Forward to web editor
+      if (this.virtualOut && data.length > 0) {
+        this.virtualOut.sendMessage(data);
+      }
+    });
   }
 
   /**
@@ -293,7 +399,25 @@ export class MidiMonitor {
 
     console.log('\n⏹️  Stopping MIDI monitor...');
 
-    // Close all input ports
+    // Close virtual ports if in interception mode
+    if (this.virtualIn) {
+      this.virtualIn.closePort();
+      console.log('✅ Closed virtual input port');
+    }
+    if (this.virtualOut) {
+      this.virtualOut.closePort();
+      console.log('✅ Closed virtual output port');
+    }
+    if (this.realIn) {
+      this.realIn.closePort();
+      console.log('✅ Closed real input connection');
+    }
+    if (this.realOut) {
+      this.realOut.closePort();
+      console.log('✅ Closed real output connection');
+    }
+
+    // Close all regular input ports
     for (const [portName, input] of Array.from(this.inputs.entries())) {
       try {
         input.close();
@@ -425,6 +549,26 @@ if (process.argv[1] && process.argv[1].endsWith('midi-monitor.ts')) {
   const outputDir = args.find(arg => arg.startsWith('--output='))?.split('=')[1];
   const sessionName = args.find(arg => arg.startsWith('--session='))?.split('=')[1];
   const verbose = args.includes('--verbose');
+  const intercept = args.includes('--intercept');
+
+  if (args.includes('--help')) {
+    console.log('MIDI Monitor - Capture MIDI traffic for analysis');
+    console.log('\nUsage:');
+    console.log('  npx tsx utils/midi-monitor.ts [options]');
+    console.log('\nOptions:');
+    console.log('  --intercept        Enable interception mode (creates virtual ports)');
+    console.log('  --device=NAME      Filter to specific device name');
+    console.log('  --output=DIR       Output directory for captures');
+    console.log('  --session=NAME     Session name for capture file');
+    console.log('  --verbose          Enable verbose logging');
+    console.log('  --help             Show this help message');
+    console.log('\nInterception mode:');
+    console.log('  Creates virtual MIDI ports to intercept traffic between');
+    console.log('  web editor and device. Configure web editor to use:');
+    console.log('  - Input: LCXL3 Virtual MIDI Out');
+    console.log('  - Output: LCXL3 Virtual MIDI In');
+    process.exit(0);
+  }
 
   const config: MonitorConfig = {
     deviceFilter,
@@ -435,8 +579,15 @@ if (process.argv[1] && process.argv[1].endsWith('midi-monitor.ts')) {
 
   const monitor = new MidiMonitor(config);
 
-  monitor.startMonitoring().catch((error: any) => {
-    console.error(`❌ Failed to start monitor: ${error.message}`);
-    process.exit(1);
-  });
+  if (intercept) {
+    monitor.startInterceptionMode().catch((error: any) => {
+      console.error(`❌ Failed to start interception: ${error.message}`);
+      process.exit(1);
+    });
+  } else {
+    monitor.startMonitoring().catch((error: any) => {
+      console.error(`❌ Failed to start monitor: ${error.message}`);
+      process.exit(1);
+    });
+  }
 }
