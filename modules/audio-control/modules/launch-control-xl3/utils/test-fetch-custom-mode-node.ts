@@ -86,7 +86,8 @@ function displayCustomMode(slot: number, mode: CustomMode): void {
     console.log(chalk.yellow('  Faders:'));
     faders.forEach(control => {
       const id = control.controlId ?? 0;
-      log.data(`    Fader ${id + 1}`, formatControlMapping(control));
+      const label = control.name ? chalk.cyan(control.name) : chalk.gray(`Fader ${id + 1}`);
+      log.data(`    ${label}`, formatControlMapping(control));
     });
   }
 
@@ -94,7 +95,8 @@ function displayCustomMode(slot: number, mode: CustomMode): void {
     console.log(chalk.yellow('  Top Row Encoders:'));
     topEncoders.forEach(control => {
       const id = (control.controlId ?? 0) - 0x10 + 1;
-      log.data(`    Encoder ${id}`, formatControlMapping(control));
+      const label = control.name ? chalk.cyan(control.name) : chalk.gray(`Encoder ${id}`);
+      log.data(`    ${label}`, formatControlMapping(control));
     });
   }
 
@@ -102,7 +104,8 @@ function displayCustomMode(slot: number, mode: CustomMode): void {
     console.log(chalk.yellow('  Middle Row Encoders:'));
     midEncoders.forEach(control => {
       const id = (control.controlId ?? 0) - 0x18 + 1;
-      log.data(`    Encoder ${id}`, formatControlMapping(control));
+      const label = control.name ? chalk.cyan(control.name) : chalk.gray(`Encoder ${id}`);
+      log.data(`    ${label}`, formatControlMapping(control));
     });
   }
 
@@ -110,7 +113,8 @@ function displayCustomMode(slot: number, mode: CustomMode): void {
     console.log(chalk.yellow('  Bottom Row Encoders:'));
     botEncoders.forEach(control => {
       const id = (control.controlId ?? 0) - 0x20 + 1;
-      log.data(`    Encoder ${id}`, formatControlMapping(control));
+      const label = control.name ? chalk.cyan(control.name) : chalk.gray(`Encoder ${id}`);
+      log.data(`    ${label}`, formatControlMapping(control));
     });
   }
 
@@ -118,7 +122,8 @@ function displayCustomMode(slot: number, mode: CustomMode): void {
     console.log(chalk.yellow('  Buttons:'));
     buttons.forEach(control => {
       const id = (control.controlId ?? 0) - 0x28 + 1;
-      log.data(`    Button ${id}`, formatControlMapping(control));
+      const label = control.name ? chalk.cyan(control.name) : chalk.gray(`Button ${id}`);
+      log.data(`    ${label}`, formatControlMapping(control));
     });
   }
 
@@ -156,6 +161,8 @@ function displayCustomMode(slot: number, mode: CustomMode): void {
   // Statistics
   console.log(chalk.gray('  Statistics:'));
   log.data('    Total controls', controls.length);
+  const namedControls = controls.filter(c => c.name && c.name.length > 0);
+  log.data('    Named controls', `${namedControls.length}/${controls.length}`);
   log.data('    Colors defined', mode.colors?.size || 0);
   log.data('    Labels defined', mode.labels?.size || 0);
 }

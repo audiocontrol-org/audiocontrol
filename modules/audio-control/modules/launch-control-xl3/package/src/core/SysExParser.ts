@@ -323,7 +323,6 @@ export class SysExParser {
 
     // Find where controls actually start (after name and terminator)
     let controlsStart = nameEnd > 0 ? nameEnd + 2 : 0; // Skip 0x21 0x00 after name
-    let controlNamesStart = -1;
 
     for (let i = controlsStart; i < data.length - 9; i++) {
       // Handle both 0x48 (read) and 0x49 (write) markers
@@ -383,91 +382,6 @@ export class SysExParser {
 
             // Skip to next potential control (9 bytes processed)
             i += 9;
-          }
-        }
-      }
-    }
-
-    // Parse control names - they appear after all control definitions
-    // Look for the control names section which starts with byte patterns like 0x62, 0x68, 0x69
-    if (controls.length > 0) {
-      // Find where control names section starts - usually after last control definition
-      // Look for patterns like 0x62, 0x68, 0x69 followed by ASCII text
-      for (let i = controlsStart; i < data.length - 2; i++) {
-        // Check if we've passed all control definitions and found name markers
-        const byte = data[i];
-        if ((byte === 0x62 || byte === 0x68 || byte === 0x69 || byte === 0x60 || byte === 0x6A || byte === 0x6F) &&
-            data[i + 1] !== undefined && data[i + 1]! >= 0x30) { // Followed by ASCII
-          controlNamesStart = i;
-          break;
-        }
-      }
-
-      if (controlNamesStart >= 0) {
-        // Parse control names
-        const controlNames: Map<number, string> = new Map();
-        let currentControlId = -1;
-        let currentName = '';
-
-        for (let i = controlNamesStart; i < data.length; i++) {
-          const byte = data[i];
-
-          // Check for control ID markers (0x60-0x6F range often used)
-          if (byte !== undefined && byte >= 0x60 && byte <= 0x6F) {
-            // Save previous name if exists
-            if (currentControlId >= 0 && currentName.length > 0) {
-              controlNames.set(currentControlId, currentName.trim());
-            }
-
-            // Map marker to control ID (this mapping may need adjustment)
-            // Based on hex dump: 0x69 = control 0x28-0x2F range, 0x62 = 0x30 range, etc.
-            if (byte === 0x69) {
-              // Next byte after 0x69 is the control index
-              const nextByte = data[i + 1];
-              if (nextByte !== undefined && nextByte >= 0x28 && nextByte <= 0x3F) {
-                currentControlId = nextByte;
-                i++; // Skip the control ID byte
-              }
-            } else if (byte === 0x62 || byte === 0x68 || byte === 0x6A || byte === 0x6F) {
-              // These seem to be followed by control index
-              const nextByte = data[i + 1];
-              if (nextByte !== undefined && nextByte >= 0x30 && nextByte <= 0x3F) {
-                currentControlId = nextByte;
-                i++; // Skip the control ID byte
-              }
-            } else if (byte === 0x60) {
-              // 0x60 followed by control ID
-              const nextByte = data[i + 1];
-              if (nextByte !== undefined && (nextByte >= 0x28 && nextByte <= 0x3F)) {
-                currentControlId = nextByte;
-                i++; // Skip the control ID byte
-              }
-            }
-            currentName = '';
-          } else if (byte !== undefined && byte >= 32 && byte <= 126) {
-            // ASCII printable character - part of name
-            currentName += String.fromCharCode(byte);
-          } else if (currentName.length > 0 && (byte === 0x60 || byte === 0x00 || byte === 0xF7)) {
-            // End of current name
-            if (currentControlId >= 0 && currentName.length > 0) {
-              controlNames.set(currentControlId, currentName.trim());
-              currentName = '';
-            }
-          }
-        }
-
-        // Save last name if exists
-        if (currentControlId >= 0 && currentName.length > 0) {
-          controlNames.set(currentControlId, currentName.trim());
-        }
-
-        // Apply names to controls
-        for (const control of controls) {
-          if (control.controlId !== undefined) {
-            const name = controlNames.get(control.controlId);
-            if (name) {
-              control.name = name;
-            }
           }
         }
       }

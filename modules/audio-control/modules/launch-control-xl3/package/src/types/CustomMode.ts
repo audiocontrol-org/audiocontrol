@@ -49,7 +49,6 @@ export interface ColorMapping {
 
 export interface ControlMapping {
   controlId?: number; // Optional - can use string keys in Record instead
-  name?: string; // User-configurable control name
   type?: ControlType; // Optional control type
   controlType?: ControlType; // Legacy compatibility
   midiChannel?: number; // Required OR use 'channel' alternative
