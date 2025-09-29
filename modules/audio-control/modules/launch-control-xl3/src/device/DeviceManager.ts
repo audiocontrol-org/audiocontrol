@@ -268,13 +268,14 @@ export class DeviceManager extends EventEmitter {
         // Cast parsed to DeviceInquiryResponse from SysExParser
         const parsedResponse = parsed as any; // Type from SysExParser
 
-        // Create response with serial number
-        const response: DeviceInquiryResponse = {
+        // Create response object for validation with type field
+        const response = {
+          type: 'device_inquiry_response' as const,
           manufacturerId: parsedResponse.manufacturerId || [],
           deviceFamily: parsedResponse.familyCode || 0,
           deviceModel: parsedResponse.familyMember || 0,
           firmwareVersion: parsedResponse.softwareRevision || [],
-          ...(serialNumber ? { serialNumber: serialNumber.split('') .map(c => c.charCodeAt(0)) } : {}),
+          ...(serialNumber ? { serialNumber: serialNumber.split('').map(c => c.charCodeAt(0)) } : {}),
           // Include optional properties if present
           ...(parsedResponse.familyCode !== undefined ? { familyCode: parsedResponse.familyCode } : {}),
           ...(parsedResponse.familyMember !== undefined ? { familyMember: parsedResponse.familyMember } : {}),
