@@ -836,8 +836,9 @@ export class SysExParser {
     // Encode the custom mode data
     const encodedData = this.encodeCustomModeData(modeData);
 
-    // CORRECTED PROTOCOL: Based on Launch Control XL 3 format
-    // Format: F0 00 20 29 02 15 05 00 45 [SLOT] [encoded data] F7
+    // CORRECTED PROTOCOL: Based on actual device communication analysis
+    // Format: F0 00 20 29 02 15 05 00 10 [SLOT] [encoded data] F7
+    // Note: 0x10 indicates data transfer (matches read response format)
     return [
       0xF0,             // SysEx start
       0x00, 0x20, 0x29, // Manufacturer ID (Novation)
@@ -845,7 +846,7 @@ export class SysExParser {
       0x15,             // Command (Custom mode)
       0x05,             // Sub-command
       0x00,             // Reserved
-      0x45,             // Write operation (assumed based on pattern)
+      0x10,             // Data transfer operation (was incorrectly 0x45)
       slot,             // Slot number (0-14 for slots 1-15)
       ...encodedData,   // Encoded custom mode data
       0xF7              // SysEx end
