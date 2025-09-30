@@ -302,15 +302,17 @@ export class SysExParser {
    */
   private static parseName(data: number[]): string | undefined {
     let nameStart = -1;
+    let nameLength = -1;
 
     // Look for name patterns - check multiple possible formats
     for (let i = 0; i < data.length - 4; i++) {
       // Format 1: 0x01 0x20 0x10 0x2A (4 bytes + name) - write format
       if (data[i] === 0x01 && data[i + 1] === 0x20 && data[i + 2] === 0x10 && data[i + 3] === 0x2A) {
         nameStart = i + 4;
+        // No explicit length, will read until terminator
         break;
       }
-      // Format 2: 0x06 0x20 followed by length - factory fallback format
+      // Format 2: 0x06 0x20 [length] [name bytes] - read response format
       if (data[i] === 0x06 && data[i + 1] === 0x20) {
         const lengthByte = data[i + 2];
         // Check for factory pattern: 06 20 1F (indicates factory data)
@@ -318,6 +320,8 @@ export class SysExParser {
           // This is factory data, use slot-based fallback name
           return undefined; // Let caller use default slot name
         }
+        // Use the length byte to know exactly how many characters to read
+        nameLength = lengthByte ?? 0;
         nameStart = i + 3;
         break;
       }
@@ -345,35 +349,47 @@ export class SysExParser {
 
     if (nameStart >= 0) {
       const nameBytes = [];
-      for (let i = nameStart; i < data.length; i++) {
-        const byte = data[i];
 
-        if (byte === undefined) break;
-
-        // Stop at control structure patterns
-        if (byte === 0x49 && i < data.length - 2) {
-          const next1 = data[i + 1];
-          const next2 = data[i + 2];
-          if (next1 === 0x21 && next2 === 0x00) {
-            break;
+      // If we have an explicit length from the header, use it
+      if (nameLength > 0) {
+        for (let i = 0; i < nameLength && nameStart + i < data.length; i++) {
+          const byte = data[nameStart + i];
+          if (byte !== undefined && byte >= 0x20 && byte <= 0x7E) {
+            nameBytes.push(byte);
           }
         }
+      } else {
+        // Fall back to terminator-based parsing for formats without length
+        for (let i = nameStart; i < data.length; i++) {
+          const byte = data[i];
 
-        // Stop at control markers
-        if ((byte === 0x48 || byte === 0x69) && nameBytes.length > 0) {
-          break;
-        }
+          if (byte === undefined) break;
 
-        // Add printable ASCII characters
-        if (byte >= 0x20 && byte <= 0x7E) {
-          nameBytes.push(byte);
-          // Safety limit
-          if (nameBytes.length >= 20) {
+          // Stop at control structure patterns
+          if (byte === 0x49 && i < data.length - 2) {
+            const next1 = data[i + 1];
+            const next2 = data[i + 2];
+            if (next1 === 0x21 && next2 === 0x00) {
+              break;
+            }
+          }
+
+          // Stop at terminator 0x21 (!)
+          if (byte === 0x21) {
             break;
           }
-        } else if (nameBytes.length > 0) {
-          // Non-printable after we've started collecting - likely end of name
-          break;
+
+          // Add printable ASCII characters
+          if (byte >= 0x20 && byte <= 0x7E) {
+            nameBytes.push(byte);
+            // Safety limit
+            if (nameBytes.length >= 20) {
+              break;
+            }
+          } else if (nameBytes.length > 0) {
+            // Non-printable after we've started collecting - likely end of name
+            break;
+          }
         }
       }
 
@@ -612,52 +628,128 @@ export class SysExParser {
     // Scan entire response for control name sections
     const controlNames: Map<number, string> = new Map();
 
+    console.log('[DEBUG] parseControlLabels: Starting label parsing');
+    console.log('[DEBUG] Total data length:', data.length);
+
+    // Dump raw bytes for label sections (positions 250-420)
+    if (data.length > 250) {
+      console.log('\n[DEBUG] Raw bytes 250-420:');
+      for (let i = 250; i < Math.min(420, data.length); i++) {
+        const byte = data[i];
+        if (byte !== undefined) {
+          const hex = `0x${byte.toString(16).padStart(2, '0')}`;
+          const ascii = byte >= 0x20 && byte <= 0x7E ? String.fromCharCode(byte) : '.';
+          const markers: string[] = [];
+          if (byte >= 0x60 && byte <= 0x6F) markers.push('MKR');
+          if (byte >= 0x10 && byte <= 0x3F) markers.push('CID');
+          if (byte === 0x60) markers.push('TERM');
+          const tags = markers.length > 0 ? ` [${markers.join(',')}]` : '';
+          console.log(`  ${i}: ${hex} '${ascii}'${tags}`);
+        }
+      }
+      console.log('');
+    }
+
     for (let i = 0; i < data.length - 3; i++) {
       const byte = data[i];
 
-      // Look for label marker 0x69 followed by control ID
-      if (byte === 0x69) {
-        const labelControlId = data[i + 1];
-        const nextByte = data[i + 2];
+      // Look for label marker (0x60-0x6F)
+      // The format is: [marker] [control_id] [name_bytes] [0x60] [control_id] [name_bytes] [0x60] ...
+      // Where 0x60 acts as terminator between labels
+      if (byte !== undefined && byte >= 0x60 && byte <= 0x6F) {
+        console.log(`[DEBUG] Found potential marker 0x${byte.toString(16)} at position ${i}`);
 
-        // Validate this is a control name section
-        if (labelControlId !== undefined && nextByte !== undefined &&
-            labelControlId >= 0x10 && labelControlId <= 0x3F &&
-            nextByte >= 0x20 && nextByte <= 0x7E) { // ASCII printable range
+        const nextByte = data[i + 1];
 
-          // Extract the name following the control ID
-          let nameBytes = [];
-          let j = i + 2;
+        // Check if this looks like a label start: marker followed by control ID in valid range
+        if (nextByte !== undefined && nextByte >= 0x10 && nextByte <= 0x3F) {
+          console.log(`[DEBUG]   Confirmed label section starting at position ${i}`);
 
-          // Read ASCII characters until we hit a non-printable or next marker
+          let j = i + 1;
+
+          // Parse all consecutive [control_id, name, 0x60_terminator] triples
           while (j < data.length) {
-            const nameByte = data[j];
+            const controlId = data[j];
 
-            if (nameByte === undefined) break;
-
-            // Stop at next control marker or non-ASCII
-            if (nameByte === 0x69 || nameByte === 0x60 ||
-                nameByte < 0x20 || nameByte > 0x7E) {
+            // Validate control ID is in valid range
+            if (controlId === undefined || controlId < 0x10 || controlId > 0x3F) {
+              console.log(`[DEBUG]   Invalid control ID 0x${controlId?.toString(16)} at position ${j}, exiting label section`);
+              i = j - 1;
               break;
             }
 
-            nameBytes.push(nameByte);
-            j++;
-          }
+            console.log(`[DEBUG]   Processing control ID 0x${controlId.toString(16)} at position ${j}`);
 
-          if (nameBytes.length > 0) {
-            const name = String.fromCharCode(...nameBytes).trim();
-            // Phase 1 Fix: Map potentially offset control IDs back to canonical IDs
-            // The device may use different control IDs in labels vs definitions
-            const canonicalControlId = this.mapLabelControlId(labelControlId);
-            controlNames.set(canonicalControlId, name);
-          }
+            // Read name bytes until termination
+            // Termination: (1) 0x60 byte, OR (2) marker (0x61-0x6F) + control ID (0x10-0x1F)
+            let nameBytes: number[] = [];
+            let k = j + 1;
 
-          // Skip past processed name
-          i = j - 1;
+            while (k < data.length) {
+              const nameByte = data[k];
+
+              if (nameByte === undefined) {
+                console.log(`[DEBUG]     Stopped at position ${k}: undefined byte`);
+                break;
+              }
+
+              // Stop at 0x60 terminator
+              if (nameByte === 0x60) {
+                console.log(`[DEBUG]     Stopped at position ${k}: terminator 0x60`);
+                k++; // Move past the terminator
+                break;
+              }
+
+              // Check for new section: marker (0x61-0x6F) + control ID (0x10-0x1F)
+              // Restricting to 0x10-0x1F avoids false positives with space (0x20)
+              if (nameByte >= 0x61 && nameByte <= 0x6F) {
+                const nextByte = data[k + 1];
+                if (nextByte !== undefined && nextByte >= 0x10 && nextByte < 0x20) {
+                  console.log(`[DEBUG]     Stopped at position ${k}: marker 0x${nameByte.toString(16)} + control ID 0x${nextByte.toString(16)}`);
+                  // Don't increment k - outer loop will handle the marker
+                  break;
+                }
+                console.log(`[DEBUG]     Byte 0x${nameByte.toString(16)} is ASCII '${String.fromCharCode(nameByte)}'`);
+              }
+
+              // Accept all printable ASCII (0x20-0x7E)
+              if (nameByte >= 0x20 && nameByte <= 0x7E) {
+                nameBytes.push(nameByte);
+                console.log(`[DEBUG]     Added byte 0x${nameByte.toString(16)} '${String.fromCharCode(nameByte)}' at position ${k}`);
+                k++;
+              } else {
+                // Stop at non-printable character
+                console.log(`[DEBUG]     Stopped at position ${k}: non-printable 0x${nameByte.toString(16)}`);
+                break;
+              }
+            }
+
+            // Store the name if we found any bytes
+            if (nameBytes.length > 0) {
+              const name = String.fromCharCode(...nameBytes).trim();
+              console.log(`[DEBUG]   Extracted name "${name}" for control 0x${controlId.toString(16)}`);
+              const canonicalControlId = this.mapLabelControlId(controlId);
+              controlNames.set(canonicalControlId, name);
+            } else {
+              console.log(`[DEBUG]   No name bytes for control 0x${controlId.toString(16)}`);
+            }
+
+            // Move to next position (either next control ID or end of section)
+            j = k;
+
+            // Check if we've moved past the end or hit invalid data
+            if (j >= data.length || data[j] === undefined) {
+              console.log(`[DEBUG]   Reached end of data at position ${j}`);
+              i = j - 1;
+              break;
+            }
+          }
         }
       }
     }
+
+    console.log('[DEBUG] parseControlLabels: Found', controlNames.size, 'control names');
+    console.log('[DEBUG] Control names map:', Array.from(controlNames.entries()).map(([id, name]) => `0x${id.toString(16)}: "${name}"`));
 
     // Apply names to controls based on their actual control IDs
     for (const control of controls) {
