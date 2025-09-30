@@ -844,12 +844,12 @@ export class DeviceManager extends EventEmitter {
         if (!resolved && predicate(message.data)) {
           resolved = true;
           clearTimeout(timeoutId);
-          this.midi.off('message', handler);
+          this.dawMidi.off('message', handler);
           resolve(Array.from(message.data));
         }
       };
 
-      this.midi.on('message', handler);
+      this.dawMidi.on('message', handler);
     });
   }
 
@@ -869,6 +869,7 @@ export class DeviceManager extends EventEmitter {
     this.clearTimers();
     await this.disconnect();
     await this.midi.cleanup();
+    await this.dawMidi.cleanup(); // Clean up DAW MIDI interface
     this.removeAllListeners();
   }
 }
