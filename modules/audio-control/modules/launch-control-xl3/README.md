@@ -2,6 +2,8 @@
 
 TypeScript library for controlling the Novation Launch Control XL 3 MIDI controller. Focuses on custom mode management and device communication.
 
+**Repository:** https://github.com/oletizi/ol_dsp/tree/main/modules/audio-control/modules/launch-control-xl3
+
 ## Installation
 
 ```bash
