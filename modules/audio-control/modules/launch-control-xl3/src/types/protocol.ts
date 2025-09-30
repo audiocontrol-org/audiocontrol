@@ -3,7 +3,6 @@
  */
 
 import type { CCNumber, MidiChannel } from './midi.js';
-import type { SlotNumber } from './device.js';
 
 // Control types and behaviors
 export type ControlType =
@@ -49,18 +48,10 @@ export interface ControlRange {
   readonly default?: number;
 }
 
-// Complete custom mode configuration
-export interface CustomMode {
-  readonly slot: SlotNumber;
-  readonly name: string;
-  readonly controls: readonly ControlConfig[];
-  readonly globalChannel?: MidiChannel;
-  readonly description?: string;
-  readonly createdAt?: Date;
-  readonly modifiedAt?: Date;
-}
+// Note: CustomMode interface removed to eliminate confusion.
+// Use CustomMode from types/CustomMode.ts as the canonical type.
 
-// Template for creating custom modes
+// Template for creating device modes (future use)
 export interface ModeTemplate {
   readonly name: string;
   readonly description?: string;
@@ -131,11 +122,11 @@ export const DEFAULT_FADER_CONFIG: Omit<ControlConfig, 'id'> = {
 } as const;
 
 // Factory preset mode definitions
+// Factory preset definition (future use)
 export interface FactoryPreset {
   readonly id: string;
   readonly name: string;
   readonly description: string;
-  readonly mode: Omit<CustomMode, 'slot'>;
   readonly category: PresetCategory;
 }
 
@@ -147,9 +138,8 @@ export type PresetCategory =
   | 'utility'
   | 'custom';
 
-// Protocol validation schemas (runtime types)
+// Protocol validation schemas (runtime types - future use)
 export interface ProtocolValidation {
-  readonly customMode: (data: unknown) => data is CustomMode;
   readonly controlConfig: (data: unknown) => data is ControlConfig;
   readonly modeTemplate: (data: unknown) => data is ModeTemplate;
 }

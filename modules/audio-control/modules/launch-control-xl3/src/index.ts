@@ -30,8 +30,9 @@ export { CustomModeBuilder, Color } from './builders/CustomModeBuilder.js';
 export * from './mapping/ControlMapper.js';
 
 
-// Type definitions (exclude types already exported by core modules)
+// Type definitions
 export type {
+  // MIDI types
   CCNumber,
   MidiChannel,
   MidiValue,
@@ -44,6 +45,7 @@ export type {
   ParsedMidiMessage,
   MidiParseResult,
   MidiEventHandlers,
+  // Device types
   SlotNumber,
   DeviceState,
   DeviceOptions,
@@ -59,6 +61,7 @@ export type {
   LaunchControlXL3Config,
   DeviceMode,
   DeviceConnectionState,
+  // Protocol types
   ControlId,
   ControlConfig,
   ControlColor,
@@ -71,23 +74,25 @@ export type {
   FactoryPreset,
   PresetCategory,
   ProtocolValidation,
+  ProtocolControlType,
   KnobPosition,
   KnobRow,
   ButtonPosition,
   FaderPosition,
-  LowLevelControlType,
-  LowLevelCustomMode,
+  // Custom mode types (canonical)
   CustomMode,
+  ControlType,
   ControlBehavior,
   Control,
   CustomModeResponse,
-  ProtocolCustomMode,
-  ProtocolControlType,
+  CustomModeMessage,
+  ControlMapping,
+  ColorMapping,
+  // Convenience types
   CustomModeSlot,
   LedColor,
   LedBehaviour,
-  ControlBehaviour,
-  ControlType
+  ControlBehaviour
 } from './types/index.js';
 
 export {
