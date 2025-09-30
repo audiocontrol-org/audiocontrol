@@ -1,0 +1,217 @@
+{
+  "metadata": {
+    "physicalSlot": 1,
+    "apiSlot": 0,
+    "timestamp": "2025-09-30T05-03-24-247Z",
+    "backupDate": "2025-09-30T05:03:24.501Z",
+    "deviceInfo": {
+      "manufacturerId": "00 20 29",
+      "deviceFamily": 18433,
+      "modelNumber": 0,
+      "firmwareVersion": "1.0.10.84",
+      "serialNumber": "7688505648575153524848525457"
+    }
+  },
+  "mode": {
+    "name": "C",
+    "controls": {
+      "0": {
+        "ccNumber": 13,
+        "controlId": 16,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute",
+        "name": "H"
+      },
+      "1": {
+        "ccNumber": 14,
+        "controlId": 17,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "2": {
+        "ccNumber": 15,
+        "controlId": 18,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "3": {
+        "ccNumber": 16,
+        "controlId": 19,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "4": {
+        "ccNumber": 17,
+        "controlId": 20,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "5": {
+        "ccNumber": 18,
+        "controlId": 21,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "6": {
+        "ccNumber": 19,
+        "controlId": 22,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "7": {
+        "ccNumber": 20,
+        "controlId": 23,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "8": {
+        "ccNumber": 53,
+        "controlId": 24,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "9": {
+        "ccNumber": 22,
+        "controlId": 25,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "10": {
+        "ccNumber": 23,
+        "controlId": 26,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "11": {
+        "ccNumber": 24,
+        "controlId": 27,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "12": {
+        "ccNumber": 25,
+        "controlId": 28,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute",
+        "name": "H"
+      },
+      "13": {
+        "ccNumber": 26,
+        "controlId": 29,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "14": {
+        "ccNumber": 27,
+        "controlId": 30,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "15": {
+        "ccNumber": 28,
+        "controlId": 31,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "16": {
+        "ccNumber": 29,
+        "controlId": 32,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute",
+        "name": "Low Shelfh!Low Ga"
+      },
+      "17": {
+        "ccNumber": 30,
+        "controlId": 33,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "18": {
+        "ccNumber": 31,
+        "controlId": 34,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "19": {
+        "ccNumber": 32,
+        "controlId": 35,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "20": {
+        "ccNumber": 33,
+        "controlId": 36,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute",
+        "name": "H"
+      },
+      "21": {
+        "ccNumber": 34,
+        "controlId": 37,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "22": {
+        "ccNumber": 35,
+        "controlId": 38,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      },
+      "23": {
+        "ccNumber": 36,
+        "controlId": 39,
+        "channel": 0,
+        "minValue": 0,
+        "maxValue": 127,
+        "behaviour": "absolute"
+      }
+    },
+    "leds": {}
+  }
+}

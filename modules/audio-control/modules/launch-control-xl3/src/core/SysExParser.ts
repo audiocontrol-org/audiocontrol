@@ -839,97 +839,6 @@ export class SysExParser {
     ];
   }
 
-  /**
-   * Build custom mode write message from CustomMode object
-   */
-  static buildCustomModeWriteMessage(slot: number, customMode: CustomMode): number[] {
-    if (slot < 0 || slot > 15) {
-      throw new Error('Custom mode slot must be 0-15');
-    }
-
-    const rawData: number[] = [];
-
-    // Add encoded name with correct prefix (Phase 2 implementation)
-    const nameEncoded = this.encodeName(customMode.name);
-    rawData.push(...nameEncoded);
-
-    // Name encoding handled by encodeName method above
-
-    // Sort controls by ID for consistency
-    const sortedControls = Object.values(customMode.controls)
-      .filter(control => control.controlId !== undefined)
-      .sort((a, b) => (a.controlId ?? 0) - (b.controlId ?? 0));
-
-    // Add control definitions with 0x49 marker and offset
-    for (const control of sortedControls) {
-      // Write control structure: 11 bytes
-      rawData.push(0x49); // Write control marker
-      rawData.push(this.getControlId(control)); // Control ID (no offset - direct mapping)
-      rawData.push(0x02); // Definition type
-      // Get control type based on position and type
-      rawData.push(this.getControlType(control)); // Control type based on position
-      rawData.push(0x00); // Always 0x00 (not channel)
-      rawData.push(0x01); // Always 0x01
-      rawData.push(0x40); // Always 0x40 (was 0x48 in some versions)
-      rawData.push(0x00); // Always 0x00
-      rawData.push(control.ccNumber ?? control.cc ?? 0); // CC number
-      rawData.push(0x7F); // Max value (always 0x7F in write)
-      rawData.push(0x00); // Terminator
-    }
-
-    // Add label data if present
-    if (customMode.labels && customMode.labels.size > 0) {
-      for (const [controlId, label] of customMode.labels) {
-        rawData.push(0x69); // Label marker
-        rawData.push(controlId); // Control ID (no offset)
-        // Add label text
-        for (let i = 0; i < label.length; i++) {
-          rawData.push(label.charCodeAt(i));
-        }
-      }
-    } else {
-      // Generate default labels for controls
-      for (const control of sortedControls) {
-        const controlId = control.controlId ?? 0;
-        rawData.push(0x69); // Label marker
-        rawData.push(controlId); // Control ID (no offset)
-        const label = this.generateControlLabel(controlId);
-        for (let i = 0; i < label.length; i++) {
-          rawData.push(label.charCodeAt(i));
-        }
-      }
-    }
-
-    // Add color data if present
-    if (customMode.colors && customMode.colors.size > 0) {
-      for (const [controlId, color] of customMode.colors) {
-        rawData.push(0x60); // Color marker
-        rawData.push(controlId); // Control ID (no offset)
-        rawData.push(color); // Color value
-      }
-    } else {
-      // Add default colors (off) for all controls
-      for (const control of sortedControls) {
-        const controlId = control.controlId ?? 0;
-        rawData.push(0x60); // Color marker
-        rawData.push(controlId); // Control ID (no offset)
-      }
-    }
-
-    // Build complete message
-    return [
-      0xF0,             // SysEx start
-      0x00, 0x20, 0x29, // Manufacturer ID (Novation)
-      0x02,             // Device ID (Launch Control XL 3)
-      0x15,             // Command (Custom mode)
-      0x05,             // Sub-command
-      0x00,             // Reserved
-      0x45,             // Write operation
-      slot,             // Slot number (0-14 for slots 1-15)
-      ...rawData,       // Custom mode data
-      0xF7              // SysEx end
-    ];
-  }
 
   /**
    * Build custom mode write request
@@ -1028,7 +937,7 @@ export class SysExParser {
   private static encodeCustomModeData(modeData: CustomModeMessage): number[] {
     const rawData: number[] = [];
 
-    // Add encoded name with correct prefix (Phase 2 implementation)
+    // Add encoded name with correct prefix
     const modeName = modeData.name || 'CUSTOM';
     const nameEncoded = this.encodeName(modeName);
     rawData.push(...nameEncoded);
@@ -1042,30 +951,12 @@ export class SysExParser {
       }
     }
 
-    // CRITICAL: Device requires ALL 48 controls to be defined
-    // We must send definitions for all hardware control IDs (0x10-0x3F)
-    // even if the user didn't specify them
+    // Web editor format: ONLY send controls that are actually specified
+    // Sort control IDs for consistent output
+    const specifiedControlIds = Array.from(userControls.keys()).sort((a, b) => a - b);
 
-    // Generate all 48 control definitions in order
-    const allControlIds: number[] = [];
-
-    // Encoders: 0x10-0x27 (24 total)
-    for (let i = 0x10; i <= 0x27; i++) {
-      allControlIds.push(i);
-    }
-
-    // Faders: 0x28-0x2F (8 total)
-    for (let i = 0x28; i <= 0x2F; i++) {
-      allControlIds.push(i);
-    }
-
-    // Buttons: 0x30-0x3F (16 total)
-    for (let i = 0x30; i <= 0x3F; i++) {
-      allControlIds.push(i);
-    }
-
-    // Write control definitions for ALL hardware controls
-    for (const controlId of allControlIds) {
+    // Write control definitions ONLY for user-specified controls
+    for (const controlId of specifiedControlIds) {
       const userControl = userControls.get(controlId);
 
       // Determine control type based on ID range
@@ -1101,7 +992,7 @@ export class SysExParser {
       // Use user-provided CC if available, otherwise use default
       const cc = userControl ? (userControl.ccNumber ?? userControl.cc ?? defaultCC) : defaultCC;
 
-      // Write control structure: 11 bytes (matching web editor format)
+      // Write control structure: 11 bytes (matching web editor format exactly)
       rawData.push(0x49); // Write control marker
       rawData.push(controlId); // Control ID
       rawData.push(0x02); // Definition type
@@ -1115,31 +1006,11 @@ export class SysExParser {
       rawData.push(0x00); // Terminator
     }
 
-    // DISABLED: The web editor doesn't send control labels, so we skip them
-    // to match the known-good protocol format
-    /*
-    // Generate labels for controls with names
-    for (const control of sortedControls) {
-      rawData.push(0x69); // Label marker
-      rawData.push(this.getControlId(control)); // Control ID (no offset)
-
-      // Use control name if available, otherwise generate default label
-      const label = control.name || this.generateControlLabel(this.getControlId(control));
-      for (let i = 0; i < label.length; i++) {
-        rawData.push(label.charCodeAt(i));
-      }
-    }
-    */
-
-    // Generate color commands for ALL controls (required by device)
-    for (const controlId of allControlIds) {
-      const userControl = userControls.get(controlId);
-
+    // Web editor format: Color markers ONLY for specified controls, 2 bytes each
+    for (const controlId of specifiedControlIds) {
       rawData.push(0x60); // LED color marker
       rawData.push(controlId); // Control ID
-      // Use color from user control if specified, otherwise default (off)
-      const color = userControl?.color ?? 0x00;
-      rawData.push(color); // Color value
+      // Note: Web editor format is exactly 2 bytes - no color value byte
     }
 
     return rawData;

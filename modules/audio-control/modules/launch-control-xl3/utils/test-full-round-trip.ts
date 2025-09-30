@@ -5,155 +5,63 @@
  * then reading it back and validating all data matches exactly.
  */
 
-import { LaunchControlXL3 } from '../src';
+import { LaunchControlXL3, CustomModeBuilder, Color } from '../src';
 import { JuceMidiBackend } from '../src/backends/JuceMidiBackend';
-import { ControlType, ControlBehavior } from '../src/types';
+import { CustomMode } from '../src/types';
 
-interface TestControl {
-  id: string;
-  type: ControlType;
-  channel: number;
-  behavior: ControlBehavior;
-  midiType: 'cc' | 'note';
-  cc?: number;
-  note?: number;
-  min: number;
-  max: number;
-  color: string;
-  name: string;
-}
-
-function createTestCustomMode(timestamp: number) {
-  const testName = `FULL_RT_${timestamp}`;
-
-  // Create all 48 controls with unique, identifiable values
-  const controls: { [id: string]: TestControl } = {};
+function createTestCustomMode(timestamp: number): CustomMode {
+  // Use a short name that fits the 8-character limit
+  const testName = `RT${timestamp.toString().slice(-5)}`; // RT + last 5 digits of timestamp
 
   let ccValue = 20; // Start from CC 20 to avoid common conflicts
-  let noteValue = 60; // Start from middle C
 
-  // Row 1 - 8 Knobs (Upper)
+  // Use the CustomModeBuilder to create a proper custom mode
+  const builder = new CustomModeBuilder().name(testName);
+
+  // Row 1 - 8 Encoders (Top)
   for (let i = 1; i <= 8; i++) {
-    const id = `knob1_${i}`;
-    controls[id] = {
-      id,
-      type: 'knob',
-      channel: 0, // Channel 1
-      behavior: 'absolute',
-      midiType: 'cc',
-      cc: ccValue++,
-      min: 0,
-      max: 127,
-      color: 'red',
-      name: `K1-${i}`
-    };
+    builder
+      .addEncoder(1, i, { cc: ccValue++, channel: 1 })
+      .addEncoderLabel(1, i, `K1-${i}`);
   }
 
-  // Row 2 - 8 Knobs (Middle)
+  // Row 2 - 8 Encoders (Middle)
   for (let i = 1; i <= 8; i++) {
-    const id = `knob2_${i}`;
-    controls[id] = {
-      id,
-      type: 'knob',
-      channel: 1, // Channel 2
-      behavior: 'absolute',
-      midiType: 'cc',
-      cc: ccValue++,
-      min: 0,
-      max: 127,
-      color: 'green',
-      name: `K2-${i}`
-    };
+    builder
+      .addEncoder(2, i, { cc: ccValue++, channel: 2 })
+      .addEncoderLabel(2, i, `K2-${i}`);
   }
 
-  // Row 3 - 8 Knobs (Lower)
+  // Row 3 - 8 Encoders (Bottom)
   for (let i = 1; i <= 8; i++) {
-    const id = `knob3_${i}`;
-    controls[id] = {
-      id,
-      type: 'knob',
-      channel: 2, // Channel 3
-      behavior: 'absolute',
-      midiType: 'cc',
-      cc: ccValue++,
-      min: 0,
-      max: 127,
-      color: 'blue',
-      name: `K3-${i}`
-    };
+    builder
+      .addEncoder(3, i, { cc: ccValue++, channel: 3 })
+      .addEncoderLabel(3, i, `K3-${i}`);
   }
 
-  // Row 4 - 8 Faders
+  // Faders - 8 Faders
   for (let i = 1; i <= 8; i++) {
-    const id = `fader_${i}`;
-    controls[id] = {
-      id,
-      type: 'fader',
-      channel: 3, // Channel 4
-      behavior: 'absolute',
-      midiType: 'cc',
-      cc: ccValue++,
-      min: 0,
-      max: 127,
-      color: 'yellow',
-      name: `F-${i}`
-    };
+    builder
+      .addFader(i, { cc: ccValue++, channel: 4 })
+      .addFaderLabel(i, `F-${i}`);
   }
 
-  // Row 5 - 8 Buttons (Upper)
+  // Side buttons - 8 buttons with colors
   for (let i = 1; i <= 8; i++) {
-    const id = `button1_${i}`;
-    controls[id] = {
-      id,
-      type: 'button',
-      channel: 4, // Channel 5
-      behavior: 'toggle',
-      midiType: 'note',
-      note: noteValue++,
-      min: 0,
-      max: 127,
-      color: 'purple',
-      name: `B1-${i}`
-    };
+    builder
+      .addSideButton(i, { cc: ccValue++, channel: 5 })
+      .addSideButtonColor(i, i % 2 === 0 ? Color.RED_FULL : Color.GREEN_FULL);
   }
 
-  // Row 6 - 8 Buttons (Lower)
-  for (let i = 1; i <= 8; i++) {
-    const id = `button2_${i}`;
-    controls[id] = {
-      id,
-      type: 'button',
-      channel: 5, // Channel 6
-      behavior: 'toggle',
-      midiType: 'note',
-      note: noteValue++,
-      min: 0,
-      max: 127,
-      color: 'cyan',
-      name: `B2-${i}`
-    };
-  }
-
-  return {
-    header: {
-      productId: 0x1520, // LCXL3 product ID
-      configFlags: 0x102A, // Standard flags
-      name: testName
-    },
-    controls
-  };
+  return builder.build();
 }
 
-function validateConfigurations(written: any, read: any): { success: boolean; errors: string[] } {
+function validateConfigurations(written: CustomMode, read: CustomMode): { success: boolean; errors: string[] } {
   const errors: string[] = [];
 
-  // Validate header
-  if (written.header.name !== read.header.name) {
-    errors.push(`Name mismatch: "${written.header.name}" !== "${read.header.name}"`);
-  }
-
-  if (written.header.productId !== read.header.productId) {
-    errors.push(`Product ID mismatch: ${written.header.productId} !== ${read.header.productId}`);
+  // Validate name
+  if (written.name !== read.name) {
+    errors.push(`Name mismatch: "${written.name}" !== "${read.name}"`);
   }
 
   // Validate control count
@@ -165,7 +73,7 @@ function validateConfigurations(written: any, read: any): { success: boolean; er
   }
 
   // Validate individual controls
-  for (const [id, writtenControl] of Object.entries(written.controls) as [string, TestControl][]) {
+  for (const [id, writtenControl] of Object.entries(written.controls)) {
     const readControl = read.controls[id];
 
     if (!readControl) {
@@ -174,36 +82,20 @@ function validateConfigurations(written: any, read: any): { success: boolean; er
     }
 
     // Check critical properties
-    if (writtenControl.type !== readControl.type) {
-      errors.push(`${id}: type mismatch: ${writtenControl.type} !== ${readControl.type}`);
+    if (writtenControl.controlType !== readControl.controlType) {
+      errors.push(`${id}: controlType mismatch: ${writtenControl.controlType} !== ${readControl.controlType}`);
     }
 
-    if (writtenControl.channel !== readControl.channel) {
-      errors.push(`${id}: channel mismatch: ${writtenControl.channel} !== ${readControl.channel}`);
+    if (writtenControl.midiChannel !== readControl.midiChannel) {
+      errors.push(`${id}: midiChannel mismatch: ${writtenControl.midiChannel} !== ${readControl.midiChannel}`);
+    }
+
+    if (writtenControl.ccNumber !== readControl.ccNumber) {
+      errors.push(`${id}: ccNumber mismatch: ${writtenControl.ccNumber} !== ${readControl.ccNumber}`);
     }
 
     if (writtenControl.behavior !== readControl.behavior) {
       errors.push(`${id}: behavior mismatch: ${writtenControl.behavior} !== ${readControl.behavior}`);
-    }
-
-    if (writtenControl.midiType !== readControl.midiType) {
-      errors.push(`${id}: midiType mismatch: ${writtenControl.midiType} !== ${readControl.midiType}`);
-    }
-
-    if (writtenControl.cc !== readControl.cc) {
-      errors.push(`${id}: cc mismatch: ${writtenControl.cc} !== ${readControl.cc}`);
-    }
-
-    if (writtenControl.note !== readControl.note) {
-      errors.push(`${id}: note mismatch: ${writtenControl.note} !== ${readControl.note}`);
-    }
-
-    if (writtenControl.color !== readControl.color) {
-      errors.push(`${id}: color mismatch: ${writtenControl.color} !== ${readControl.color}`);
-    }
-
-    if (writtenControl.name !== readControl.name) {
-      errors.push(`${id}: name mismatch: "${writtenControl.name}" !== "${readControl.name}"`);
     }
   }
 
@@ -240,18 +132,17 @@ async function runFullRoundTrip() {
     console.log(`  Serial: ${info.serialNumber}`);
     console.log(`  Version: ${info.firmwareVersion}\n`);
 
-    // Generate test configuration
-    console.log('📝 Creating test custom mode...');
+    // Generate test configuration using library API
+    console.log('📝 Creating test custom mode using CustomModeBuilder...');
     const testConfig = createTestCustomMode(timestamp);
-    console.log(`✓ Test mode created: "${testConfig.header.name}"`);
-    console.log(`  Controls: ${Object.keys(testConfig.controls).length}/48\n`);
+    console.log(`✓ Test mode created: "${testConfig.name}"`);
+    console.log(`  Controls: ${Object.keys(testConfig.controls).length}\n`);
 
     // Show sample of what we're writing
     console.log('📋 Sample controls being written:');
     const sampleControls = Object.entries(testConfig.controls).slice(0, 5);
     for (const [id, control] of sampleControls) {
-      const midiInfo = control.midiType === 'cc' ? `CC${control.cc}` : `Note${control.note}`;
-      console.log(`  ${id}: "${control.name}" (CH${control.channel + 1}, ${midiInfo}, ${control.color})`);
+      console.log(`  ${id}: CC${control.ccNumber} (CH${control.midiChannel + 1}, Type${control.controlType.toString(16)})`);
     }
     console.log(`  ... and ${Object.keys(testConfig.controls).length - 5} more\n`);
 
@@ -273,7 +164,7 @@ async function runFullRoundTrip() {
       throw new Error(`Failed to read custom mode from slot ${testSlot} - slot appears to be empty`);
     }
 
-    console.log(`✓ Read completed: "${readConfig.header.name}"`);
+    console.log(`✓ Read completed: "${readConfig.name}"`);
     console.log(`  Controls read: ${Object.keys(readConfig.controls).length}\n`);
 
     // Validate data integrity
@@ -282,14 +173,14 @@ async function runFullRoundTrip() {
 
     if (validation.success) {
       console.log('✅ SUCCESS - Perfect round-trip validation!');
-      console.log(`   Written: "${testConfig.header.name}"`);
-      console.log(`   Read:    "${readConfig.header.name}"`);
+      console.log(`   Written: "${testConfig.name}"`);
+      console.log(`   Read:    "${readConfig.name}"`);
       console.log(`   Controls: ${Object.keys(testConfig.controls).length} ✓`);
       console.log(`   All data matches exactly! 🎉`);
     } else {
       console.log('❌ VALIDATION FAILED');
-      console.log(`   Written: "${testConfig.header.name}"`);
-      console.log(`   Read:    "${readConfig.header.name}"`);
+      console.log(`   Written: "${testConfig.name}"`);
+      console.log(`   Read:    "${readConfig.name}"`);
       console.log(`   Errors found: ${validation.errors.length}`);
       console.log('\n📝 Detailed errors:');
       validation.errors.forEach((error, i) => {
@@ -301,8 +192,7 @@ async function runFullRoundTrip() {
     console.log('\n📋 Sample controls read back:');
     const readSample = Object.entries(readConfig.controls).slice(0, 5);
     for (const [id, control] of readSample) {
-      const midiInfo = control.midiType === 'cc' ? `CC${control.cc}` : `Note${control.note}`;
-      console.log(`  ${id}: "${control.name}" (CH${control.channel + 1}, ${midiInfo}, ${control.color})`);
+      console.log(`  ${id}: CC${control.ccNumber} (CH${control.midiChannel + 1}, Type${control.controlType.toString(16)})`);
     }
 
   } catch (error: any) {

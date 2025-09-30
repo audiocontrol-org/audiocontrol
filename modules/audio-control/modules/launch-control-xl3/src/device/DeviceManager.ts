@@ -750,21 +750,68 @@ export class DeviceManager extends EventEmitter {
   }
 
   /**
-   * Validate custom mode data before sending
+   * Convert CustomMode to CustomModeMessage format and validate
    */
-  private validateCustomModeData(data: unknown): any {
-    const schema = z.object({
-      slot: z.number().min(0).max(15),
-      name: z.string(),
-      controls: z.any(),
-      colors: z.any(),
-    });
+  private validateCustomModeData(data: { slot: number; name: string; controls: any; colors: any }): any {
+    // Convert controls from Record<string, ControlMapping> to Control[]
+    const controls: any[] = [];
+    if (data.controls && typeof data.controls === 'object') {
+      for (const [key, controlMapping] of Object.entries(data.controls)) {
+        const mapping = controlMapping as any;
 
-    try {
-      return schema.parse(data);
-    } catch (error) {
-      throw new Error(`Invalid custom mode data format: ${error instanceof Error ? error.message : String(error)}`);
+        // Convert ControlMapping to Control format
+        const control = {
+          controlId: mapping.controlId || parseInt(key.replace('control_', ''), 10) || 0,
+          controlType: mapping.controlType || mapping.type || 0x05,
+          midiChannel: mapping.midiChannel || (mapping.channel ? mapping.channel - 1 : 0),
+          ccNumber: mapping.ccNumber || mapping.cc || 0,
+          minValue: mapping.minValue || mapping.min || 0,
+          maxValue: mapping.maxValue || mapping.max || 127,
+          behavior: mapping.behavior || mapping.behaviour || 'absolute'
+        };
+
+        controls.push(control);
+      }
     }
+
+    // Convert colors from Map<number, Color> to ColorMapping[]
+    const colors: any[] = [];
+    if (data.colors) {
+      if (data.colors instanceof Map) {
+        for (const [controlId, color] of data.colors.entries()) {
+          colors.push({
+            controlId,
+            color: typeof color === 'number' ? color : 0x0C,
+            behaviour: 'static'
+          });
+        }
+      } else if (Array.isArray(data.colors)) {
+        colors.push(...data.colors);
+      }
+    }
+
+    const converted = {
+      slot: data.slot,
+      name: data.name,
+      controls,
+      colors
+    };
+
+    // Basic validation
+    if (converted.slot < 0 || converted.slot > 15) {
+      throw new Error('Custom mode slot must be 0-15');
+    }
+    if (!converted.name || typeof converted.name !== 'string') {
+      throw new Error('Custom mode name is required');
+    }
+    if (!Array.isArray(converted.controls)) {
+      throw new Error('Custom mode must have controls array');
+    }
+    if (!Array.isArray(converted.colors)) {
+      throw new Error('Custom mode must have colors array');
+    }
+
+    return converted;
   }
 
   /**

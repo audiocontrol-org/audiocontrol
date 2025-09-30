@@ -2,7 +2,9 @@
 
 ## Executive Summary
 
-**UPDATE (2025-09-29)**: Critical fixes have been implemented. The library now sends the full control structure (1500+ bytes instead of 30 bytes). All 48 controls are being sent with correct structure. Some slots still timeout on read-back which may be a device-specific issue.
+**UPDATE (2025-09-29)**: Critical fixes have been implemented. The library now sends the full control structure (1500+
+bytes instead of 30 bytes). All 48 controls are being sent with correct structure. Some slots still timeout on read-back
+which may be a device-specific issue.
 
 ## Implementation Status
 
@@ -19,6 +21,7 @@
 **Problem**: The library sends ONLY the name (about 30 bytes), not the full control structure (should be ~800 bytes)
 
 **Root Cause**: Control filtering bug in `SysExParser.encodeCustomModeData()`:
+
 ```typescript
 // This filters out ALL controls because they have 'id' not 'controlId'!
 const sortedControls = Object.values(modeData.controls)
@@ -26,10 +29,12 @@ const sortedControls = Object.values(modeData.controls)
 ```
 
 **Evidence**:
+
 - Test sends: `0xf0...0x45 0x01 0x01 0x20 0x10 0x2a [NAME] 0xf7` (only ~30 bytes)
 - Should send: Full 342-800 byte message with all control definitions
 
 **Fix Required**:
+
 1. Change filter to use correct field name (`id` or make consistent)
 2. OR add `controlId` mapping when converting from test format
 
@@ -40,6 +45,7 @@ const sortedControls = Object.values(modeData.controls)
 **Problem**: Code adds incorrect 0x28 offset to control IDs
 
 **Location**: `SysExParser.encodeCustomModeData()` line ~587:
+
 ```typescript
 rawData.push((control.controlId ?? 0) + 0x28); // WRONG! Should not add offset
 ```
@@ -53,6 +59,7 @@ rawData.push((control.controlId ?? 0) + 0x28); // WRONG! Should not add offset
 **Problem**: Control types are being mapped incorrectly from string to number
 
 **Current Code**:
+
 ```typescript
 const controlTypeNum = typeof controlType === 'string' ?
   (controlType === 'knob' ? 0x05 : controlType === 'fader' ? 0x00 : controlType === 'button' ? 0x09 : 0x00) :
@@ -60,6 +67,7 @@ const controlTypeNum = typeof controlType === 'string' ?
 ```
 
 **Should Be** (based on web editor capture):
+
 - Encoders row 1 (0-7): type 0x05
 - Encoders row 2 (8-15): type 0x09
 - Encoders row 3 (16-23): type 0x0D
@@ -74,6 +82,7 @@ const controlTypeNum = typeof controlType === 'string' ?
 **Problem**: Control structure incomplete - missing required fields
 
 **Web Editor Format** (per control):
+
 ```
 49 [ID] 02 [TYPE] 00 01 40 00 [CC] 7F 00
 ```
@@ -89,6 +98,7 @@ const controlTypeNum = typeof controlType === 'string' ?
 **File**: `src/core/SysExParser.ts`
 
 **Change**:
+
 ```typescript
 // FROM:
 const sortedControls = Object.values(modeData.controls)
@@ -108,6 +118,7 @@ const sortedControls = Object.values(modeData.controls)
 **File**: `src/core/SysExParser.ts`
 
 **Change**:
+
 ```typescript
 // FROM:
 rawData.push((control.controlId ?? 0) + 0x28);
@@ -121,8 +132,15 @@ rawData.push(control.controlId ?? 0);
 **File**: `src/core/SysExParser.ts`
 
 **Replace entire type mapping with**:
+
 ```typescript
-private static getControlType(control: any): number {
+private static
+getControlType(control
+:
+any
+):
+number
+{
   const index = control.index ?? 0;
   const type = control.type ?? control.controlType;
 
@@ -145,6 +163,7 @@ private static getControlType(control: any): number {
 **File**: `src/core/SysExParser.ts`
 
 **Update control encoding to match web editor**:
+
 ```typescript
 // For each control, write exactly 11 bytes:
 rawData.push(0x49);                          // Control marker
@@ -163,6 +182,7 @@ rawData.push(0x00);                          // Reserved
 ### Task 5: Add Control Labels and Colors (MEDIUM)
 
 **Add after control definitions**:
+
 ```typescript
 // Add control labels (0x69 markers)
 for (const control of sortedControls) {
@@ -184,8 +204,15 @@ for (const control of sortedControls) {
 ### Task 6: Fix Control ID Mapping (HIGH)
 
 **Implement proper control ID assignment**:
+
 ```typescript
-private static getControlId(control: any): number {
+private static
+getControlId(control
+:
+any
+):
+number
+{
   const type = control.type ?? control.controlType;
   const index = control.index ?? 0;
 
@@ -207,14 +234,17 @@ private static getControlId(control: any): number {
 ## Verification Tests
 
 ### Test 1: Message Length Verification
+
 - After fixes, write message should be 300+ bytes minimum
 - Should contain 48 control definitions (11 bytes each)
 
 ### Test 2: Control Data Presence
+
 - Hex dump should show 0x49 markers for each control
 - Should see incrementing control IDs from 0x10 to 0x3F
 
 ### Test 3: Round-Trip Success
+
 - Slot 1 should no longer timeout
 - Read-back data should contain control names and CC values
 
@@ -247,4 +277,6 @@ private static getControlId(control: any): number {
 
 ## Note on Previous Implementation Claims
 
-The previous implementation by the agents focused on creating NEW files (enhanced parsers, timing optimizations) but did NOT fix the core issues in the existing code paths that are actually being used by the tests. This workplan addresses the ACTUAL bugs in the ACTUAL code path.
+The previous implementation by the agents focused on creating NEW files (enhanced parsers, timing optimizations) but did
+NOT fix the core issues in the existing code paths that are actually being used by the tests. This workplan addresses
+the ACTUAL bugs in the ACTUAL code path.
