@@ -10,7 +10,16 @@
 
 ## For Maintainers & AI Assistants
 
-Start here when working on the codebase:
+### ⚠️ MANDATORY FIRST READ
+
+**[MAINTENANCE.md](./MAINTENANCE.md)** - Documentation maintenance requirements
+- **READ THIS BEFORE MAKING ANY PROTOCOL CHANGES**
+- How to keep docs synchronized
+- Version history requirements
+- Discovery methodology documentation
+- Update checklist
+
+### Start Here When Working on the Codebase
 
 1. **[ARCHITECTURE.md](./ARCHITECTURE.md)** - System architecture overview
    - Component responsibilities
@@ -27,7 +36,7 @@ Start here when working on the codebase:
 3. **[../formats/launch_control_xl3.ksy](../formats/launch_control_xl3.ksy)** - Formal binary format specification
    - Kaitai Struct format (machine + human readable)
    - Exact byte layouts
-   - Used as formal documentation (not code generation)
+   - Single source of truth for protocol
 
 ## Quick Navigation
 
