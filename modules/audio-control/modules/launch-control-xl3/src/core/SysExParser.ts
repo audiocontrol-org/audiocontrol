@@ -1114,12 +1114,15 @@ export class SysExParser {
       // Use user-provided CC if available, otherwise use default
       const cc = userControl ? (userControl.ccNumber ?? userControl.cc ?? defaultCC) : defaultCC;
 
+      // Use user-provided channel if available, otherwise default to 0 (channel 1)
+      const channel = userControl ? (userControl.midiChannel ?? userControl.channel ?? 0) : 0;
+
       // Write control structure: 11 bytes (matching web editor format exactly)
       rawData.push(0x49); // Write control marker
       rawData.push(controlId); // Control ID
       rawData.push(0x02); // Definition type
       rawData.push(controlType); // Control type based on position
-      rawData.push(0x00); // Always 0x00
+      rawData.push(channel); // MIDI channel (0-15)
       rawData.push(0x01); // Always 0x01
       rawData.push(0x48); // Always 0x48 (verified from web editor MIDI captures)
       rawData.push(0x00); // Always 0x00

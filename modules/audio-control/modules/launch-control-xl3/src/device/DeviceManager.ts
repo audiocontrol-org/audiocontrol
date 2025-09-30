@@ -827,7 +827,9 @@ export class DeviceManager extends EventEmitter {
       await this.sendSysEx(page3Message);
 
       // Wait for page 3 acknowledgement
-      await this.waitForWriteAcknowledgement(3, 100); // Wait up to 100ms for page 3 ACK
+      // WORKAROUND: JUCE backend sometimes doesn't forward page 3 ACKs immediately
+      // Device sends ACK within 24-80ms, but backend may delay delivery
+      await this.waitForWriteAcknowledgement(3, 2000); // Wait up to 2000ms for page 3 ACK
     }
 
     // Allow device time to process and persist the write

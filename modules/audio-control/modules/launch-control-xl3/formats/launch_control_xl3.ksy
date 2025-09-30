@@ -17,6 +17,7 @@ doc: |
   Empirically discovered format through MIDI traffic analysis.
 
   Version History:
+  - v1.3 (2025-09-30): Documented read slot byte behavior for DAW port integration
   - v1.2 (2025-09-30): Added write acknowledgement message format (command 0x15)
   - v1.1 (2025-09-30): Documented write protocol format (command 0x45)
   - v1.0 (2025-09-30): Initial read protocol specification

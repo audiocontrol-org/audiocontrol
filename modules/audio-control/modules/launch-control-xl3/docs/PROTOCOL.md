@@ -1,6 +1,6 @@
 # Launch Control XL3 Protocol Specification
 
-**Version:** 1.2
+**Version:** 1.3
 **Last Updated:** 2025-09-30
 **Status:** Verified with hardware
 
@@ -61,6 +61,24 @@ The `.ksy` file is a Kaitai Struct specification that defines the **exact byte l
    - Request page 0 (controls 0-15 + mode name + labels)
    - Request page 1 (controls 16-31 + labels)
    - Request page 2 (controls 32-47 + labels)
+
+### Read Request Slot Byte Behavior ⭐
+
+**Critical Discovery (2025-09-30):** The read request contains a slot byte, but its behavior differs from intuitive expectations:
+
+- **Slot byte = 0x00:** Reads from DAW-port-selected slot (CORRECT for write/read round-trip)
+- **Slot byte > 0x00:** Reads from explicit slot, IGNORING DAW port selection
+
+**Discovery Method:** MIDI spy analysis during write/read round-trip testing revealed mismatch when using explicit slot bytes.
+
+**Implication:** When using DAW port protocol for slot selection, read requests MUST use slot byte `0x00` to read from the selected slot. Using explicit slot values (1-15) will read from those slots regardless of DAW port state.
+
+**Example:**
+```
+DAW port selects slot 2 (CC value 0x07)
+Read with slot byte 0x00 → Returns slot 2 data ✓
+Read with slot byte 0x01 → Returns slot 1 data (ignores DAW port) ✗
+```
 
 ### Multi-Page Structure
 
