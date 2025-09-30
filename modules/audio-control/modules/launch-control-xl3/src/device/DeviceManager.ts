@@ -689,10 +689,16 @@ export class DeviceManager extends EventEmitter {
       // Normalize property names to match Control interface
       const controlsRecord: Record<string, any> = {};
       for (const control of allControls) {
+        // Derive controlType from controlId if not present (parser doesn't extract this field)
+        let controlType = control.controlType ?? control.type;
+        if (controlType === undefined && control.controlId !== undefined) {
+          controlType = this.deriveControlType(control.controlId);
+        }
+
         // Ensure consistent property names (handle ControlMapping alternatives)
         const normalizedControl = {
           controlId: control.controlId,
-          controlType: control.controlType ?? control.type,
+          controlType,
           midiChannel: control.midiChannel ?? control.channel,
           ccNumber: control.ccNumber ?? control.cc,
           minValue: control.minValue ?? control.min ?? 0,
@@ -729,10 +735,16 @@ export class DeviceManager extends EventEmitter {
 
         const controlsRecord: Record<string, any> = {};
         for (const control of controls) {
+          // Derive controlType from controlId if not present (parser doesn't extract this field)
+          let controlType = control.controlType ?? control.type;
+          if (controlType === undefined && control.controlId !== undefined) {
+            controlType = this.deriveControlType(control.controlId);
+          }
+
           // Ensure consistent property names (handle ControlMapping alternatives)
           const normalizedControl = {
             controlId: control.controlId,
-            controlType: control.controlType ?? control.type,
+            controlType,
             midiChannel: control.midiChannel ?? control.channel,
             ccNumber: control.ccNumber ?? control.cc,
             minValue: control.minValue ?? control.min ?? 0,
@@ -1110,6 +1122,27 @@ export class DeviceManager extends EventEmitter {
     if (this.dawPortController) {
       await this.dawPortController.selectSlot(slot);
     }
+  }
+
+  /**
+   * Derive controlType from controlId based on hardware layout
+   * The parser doesn't extract this field, so we derive it from the ID
+   */
+  private deriveControlType(controlId: number): number {
+    if (controlId >= 0x10 && controlId <= 0x17) {
+      return 0x05; // Top row encoders
+    } else if (controlId >= 0x18 && controlId <= 0x1F) {
+      return 0x09; // Middle row encoders
+    } else if (controlId >= 0x20 && controlId <= 0x27) {
+      return 0x0D; // Bottom row encoders
+    } else if (controlId >= 0x28 && controlId <= 0x2F) {
+      return 0x09; // Faders
+    } else if (controlId >= 0x30 && controlId <= 0x37) {
+      return 0x19; // Side buttons (track focus)
+    } else if (controlId >= 0x38 && controlId <= 0x3F) {
+      return 0x25; // Bottom buttons (track control)
+    }
+    return 0x00; // Default/unknown
   }
 
   /**
