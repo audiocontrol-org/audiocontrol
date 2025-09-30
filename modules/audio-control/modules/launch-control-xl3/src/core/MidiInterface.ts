@@ -62,15 +62,6 @@ export interface MidiBackendInterface {
 
   closePort(port: MidiPort): Promise<void>;
 
-  // DAW port support (optional, for backends that support it)
-  openDawInput?(portId: string): Promise<MidiInputPort>;
-
-  openDawOutput?(portId: string): Promise<MidiOutputPort>;
-
-  getDawInputPorts?(): Promise<MidiPortInfo[]>;
-
-  getDawOutputPorts?(): Promise<MidiPortInfo[]>;
-
   cleanup(): Promise<void>;
 }
 
@@ -90,8 +81,6 @@ export class MidiInterface extends EventEmitter {
   private backend?: MidiBackendInterface | undefined;
   private inputPort?: MidiInputPort | undefined;
   private outputPort?: MidiOutputPort | undefined;
-  private dawInputPort?: MidiInputPort | undefined;
-  private dawOutputPort?: MidiOutputPort | undefined;
   private isInitialized = false;
   private messageBuffer: MidiMessage[] = [];
   private readonly maxBufferSize = 1000;
@@ -257,113 +246,6 @@ export class MidiInterface extends EventEmitter {
     }
   }
 
-  /**
-   * Open DAW input port (for out-of-band communication)
-   */
-  async openDawInput(portIdOrName: string): Promise<void> {
-    if (!this.backend) {
-      throw new Error('MIDI backend not initialized');
-    }
-
-    if (!this.backend.openDawInput || !this.backend.getDawInputPorts) {
-      throw new Error('DAW port support not available in this backend');
-    }
-
-    // Close existing DAW input if open
-    if (this.dawInputPort) {
-      await this.closeDawInput();
-    }
-
-    // Find port
-    const ports = await this.backend.getDawInputPorts();
-    const port = ports.find((p) => p.id === portIdOrName || p.name === portIdOrName);
-
-    if (!port) {
-      throw new Error(`DAW input port not found: ${portIdOrName}`);
-    }
-
-    // Open port
-    this.dawInputPort = await this.backend.openDawInput(port.id);
-
-    // Setup message handler
-    this.dawInputPort.onMessage = (message) => {
-      this.handleIncomingMessage(message);
-    };
-
-    this.emit('connected', this.dawInputPort);
-  }
-
-  /**
-   * Open DAW output port (for out-of-band communication)
-   */
-  async openDawOutput(portIdOrName: string): Promise<void> {
-    if (!this.backend) {
-      throw new Error('MIDI backend not initialized');
-    }
-
-    if (!this.backend.openDawOutput || !this.backend.getDawOutputPorts) {
-      throw new Error('DAW port support not available in this backend');
-    }
-
-    // Close existing DAW output if open
-    if (this.dawOutputPort) {
-      await this.closeDawOutput();
-    }
-
-    // Find port
-    const ports = await this.backend.getDawOutputPorts();
-    const port = ports.find((p) => p.id === portIdOrName || p.name === portIdOrName);
-
-    if (!port) {
-      throw new Error(`DAW output port not found: ${portIdOrName}`);
-    }
-
-    // Open port
-    this.dawOutputPort = await this.backend.openDawOutput(port.id);
-    this.emit('connected', this.dawOutputPort);
-  }
-
-  /**
-   * Send message to DAW port
-   */
-  async sendDawMessage(data: number[]): Promise<void> {
-    if (!this.dawOutputPort) {
-      throw new Error('No DAW output port open');
-    }
-
-    if (!this.backend) {
-      throw new Error('No MIDI backend available');
-    }
-
-    const message: MidiMessage = {
-      timestamp: Date.now(),
-      data,
-    };
-
-    await this.backend.sendMessage(this.dawOutputPort, message);
-  }
-
-  /**
-   * Close DAW input port
-   */
-  async closeDawInput(): Promise<void> {
-    if (this.dawInputPort && this.backend) {
-      await this.backend.closePort(this.dawInputPort);
-      this.emit('disconnected', this.dawInputPort);
-      this.dawInputPort = undefined;
-    }
-  }
-
-  /**
-   * Close DAW output port
-   */
-  async closeDawOutput(): Promise<void> {
-    if (this.dawOutputPort && this.backend) {
-      await this.backend.closePort(this.dawOutputPort);
-      this.emit('disconnected', this.dawOutputPort);
-      this.dawOutputPort = undefined;
-    }
-  }
 
   /**
    * Close all ports and cleanup
@@ -371,8 +253,6 @@ export class MidiInterface extends EventEmitter {
   async cleanup(): Promise<void> {
     await this.closeInput();
     await this.closeOutput();
-    await this.closeDawInput();
-    await this.closeDawOutput();
 
     if (this.backend) {
       await this.backend.cleanup();

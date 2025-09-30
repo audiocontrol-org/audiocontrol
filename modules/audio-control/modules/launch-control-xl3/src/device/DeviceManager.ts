@@ -56,6 +56,7 @@ export interface DeviceEvents {
  */
 export class DeviceManager extends EventEmitter {
   private midi: MidiInterface;
+  private dawMidi: MidiInterface; // Separate MIDI interface for DAW communication
   private options: Required<Omit<DeviceManagerOptions, 'midiBackend'>> & { midiBackend?: MidiBackendInterface | undefined };
   private deviceInfo?: LaunchControlXL3Info | undefined;
   private connectionState: DeviceConnectionState = 'disconnected';
@@ -80,6 +81,7 @@ export class DeviceManager extends EventEmitter {
     };
 
     this.midi = new MidiInterface(this.options.midiBackend);
+    this.dawMidi = new MidiInterface(this.options.midiBackend); // Separate instance for DAW communication
     this.setupMidiHandlers();
   }
 
@@ -89,6 +91,7 @@ export class DeviceManager extends EventEmitter {
   async initialize(): Promise<void> {
     try {
       await this.midi.initialize();
+      await this.dawMidi.initialize(); // Initialize DAW MIDI interface
 
       if (this.options.autoConnect) {
         await this.connect();
@@ -781,19 +784,24 @@ export class DeviceManager extends EventEmitter {
   }
 
   /**
-   * Initialize DAW port for slot selection
+   * Initialize DAW port for slot selection using separate MIDI interface
    */
   private async initializeDawPort(): Promise<void> {
     try {
-      // Try to open DAW output port first
-      await this.midi.openDawOutput('LCXL3 1 DAW In');
+      console.log('[DeviceManager] Initializing DAW port using separate MIDI interface...');
+
+      // Open DAW output port using separate MIDI interface
+      await this.dawMidi.openOutput('LCXL3 1 DAW In');
+      console.log('[DeviceManager] DAW output port opened successfully');
 
       // Try to open DAW input for bidirectional communication
       // This may fail on some backends, so we handle it gracefully
       let waitForMessageFunc: ((predicate: (data: number[]) => boolean, timeout: number) => Promise<number[]>) | undefined;
 
       try {
-        await this.midi.openDawInput('LCXL3 1 DAW Out');
+        console.log('[DeviceManager] Attempting to open DAW input port...');
+        await this.dawMidi.openInput('LCXL3 1 DAW Out');
+        console.log('[DeviceManager] DAW input port opened successfully');
         waitForMessageFunc = async (predicate: (data: number[]) => boolean, timeout: number) => {
           return this.waitForDawMessage(predicate, timeout);
         };
@@ -802,16 +810,19 @@ export class DeviceManager extends EventEmitter {
         // Continue without input port - output-only mode
       }
 
-      // Create DAW port controller (with or without response handling)
+      console.log('[DeviceManager] Creating DAW port controller...');
+      // Create DAW port controller using the separate MIDI interface
       this.dawPortController = new DawPortControllerImpl(
         async (message: number[]) => {
-          await this.midi.sendDawMessage(message);
+          console.log('[DeviceManager] Sending DAW message via separate MIDI interface');
+          await this.dawMidi.sendMessage(message);
         },
         waitForMessageFunc  // May be undefined if input port failed
       );
+      console.log('[DeviceManager] DAW port controller created successfully');
     } catch (error) {
-      console.warn('DAW port initialization failed (slot selection will not work):', error);
-      // Don't throw - DAW port is optional, device can still work without it
+      console.error('DAW port initialization failed - device will not function properly:', error);
+      throw new Error(`Failed to initialize DAW port: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
