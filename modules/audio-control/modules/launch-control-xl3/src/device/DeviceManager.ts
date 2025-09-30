@@ -785,20 +785,61 @@ export class DeviceManager extends EventEmitter {
    */
   private async initializeDawPort(): Promise<void> {
     try {
-      // Try to open DAW output port for slot selection
-      // Use the correct port name pattern: "LCXL3 1 DAW In"
+      // Try to open DAW output port first
       await this.midi.openDawOutput('LCXL3 1 DAW In');
 
-      // Create DAW port controller
+      // Try to open DAW input for bidirectional communication
+      // This may fail on some backends, so we handle it gracefully
+      let waitForMessageFunc: ((predicate: (data: number[]) => boolean, timeout: number) => Promise<number[]>) | undefined;
+
+      try {
+        await this.midi.openDawInput('LCXL3 1 DAW Out');
+        waitForMessageFunc = async (predicate: (data: number[]) => boolean, timeout: number) => {
+          return this.waitForDawMessage(predicate, timeout);
+        };
+      } catch (inputError) {
+        console.warn('DAW input port not available - response handling disabled:', inputError);
+        // Continue without input port - output-only mode
+      }
+
+      // Create DAW port controller (with or without response handling)
       this.dawPortController = new DawPortControllerImpl(
         async (message: number[]) => {
           await this.midi.sendDawMessage(message);
-        }
+        },
+        waitForMessageFunc  // May be undefined if input port failed
       );
     } catch (error) {
       console.warn('DAW port initialization failed (slot selection will not work):', error);
       // Don't throw - DAW port is optional, device can still work without it
     }
+  }
+
+  /**
+   * Wait for a DAW port message matching the predicate
+   */
+  private async waitForDawMessage(predicate: (data: number[]) => boolean, timeout: number): Promise<number[]> {
+    return new Promise((resolve, reject) => {
+      let resolved = false;
+      const timeoutId = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          reject(new Error('DAW message timeout'));
+        }
+      }, timeout);
+
+      // Set up message listener on DAW input
+      const handler = (message: any) => {
+        if (!resolved && predicate(message.data)) {
+          resolved = true;
+          clearTimeout(timeoutId);
+          this.midi.off('message', handler);
+          resolve(Array.from(message.data));
+        }
+      };
+
+      this.midi.on('message', handler);
+    });
   }
 
   /**

@@ -821,8 +821,10 @@ export class SysExParser {
       throw new Error('Custom mode slot must be 0-15');
     }
 
-    // CORRECTED PROTOCOL: Based on working MIDI capture from web editor
-    // Format: F0 00 20 29 02 15 05 00 40 [SLOT] 00 F7
+    // MATCHING WEB EDITOR PATTERN:
+    // Use same slot encoding as write: slot byte 0x00, flag byte for actual slot
+    // Format: F0 00 20 29 02 15 05 00 40 00 [FLAG] F7
+    // Where FLAG = slot number (0-based API slot)
     return [
       0xF0,             // SysEx start
       0x00, 0x20, 0x29, // Manufacturer ID (Novation)
@@ -830,9 +832,9 @@ export class SysExParser {
       0x15,             // Command (Custom mode)
       0x05,             // Sub-command
       0x00,             // Reserved
-      0x40,             // Read operation (CORRECTED from 0x15)
-      slot,             // Slot number (0-14 for slots 1-15)
-      0x00,             // Parameter (CORRECTED from nothing)
+      0x40,             // Read operation
+      0x00,             // Slot byte (always 0x00 per web editor pattern)
+      slot,             // Flag byte (actual slot indicator, 0-14)
       0xF7              // SysEx end
     ];
   }
@@ -943,12 +945,15 @@ export class SysExParser {
     // Encode the custom mode data
     const encodedData = this.encodeCustomModeData(modeData);
 
-    // VERIFIED PROTOCOL: Based on actual web editor traffic capture
-    // Format: F0 00 20 29 02 15 05 00 45 [SLOT] [encoded data] F7
-    // The web editor DOES use 0x45 for write operations with full data payload
-    // CONFIRMED: Slot byte 0x00 writes to physical slot 2
-    // This means API slot 0 -> wire slot 0x00 -> physical slot 2
-    // There appears to be an intentional offset in the device firmware
+    // NEW DISCOVERY FROM WEB EDITOR ANALYSIS:
+    // The web editor uses a unique slot encoding pattern:
+    // - Always sends slot byte as 0x00
+    // - Uses a flag byte after command 0x45 to indicate actual slot:
+    //   Physical Slot 1 (API slot 0): 45 00 00
+    //   Physical Slot 2 (API slot 1): 45 00 01
+    //   Physical Slot 3 (API slot 2): 45 00 02
+    // Format: F0 00 20 29 02 15 05 00 45 00 [FLAG] [encoded data] F7
+    // Where FLAG = slot number (0-based API slot)
 
     return [
       0xF0,             // SysEx start
@@ -957,8 +962,9 @@ export class SysExParser {
       0x15,             // Command (Custom mode)
       0x05,             // Sub-command
       0x00,             // Reserved
-      0x45,             // Write operation with data (confirmed from web editor)
-      slot,             // Slot number (0-14), maps to physical slots with offset
+      0x45,             // Write operation with data
+      0x00,             // Slot byte (always 0x00 per web editor)
+      slot,             // Flag byte (actual slot indicator, 0-14)
       ...encodedData,   // Encoded custom mode data
       0xF7              // SysEx end
     ];
