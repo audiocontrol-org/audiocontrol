@@ -920,15 +920,13 @@ export class SysExParser {
     // Encode the custom mode data
     const encodedData = this.encodeCustomModeData(modeData);
 
-    // NEW DISCOVERY FROM WEB EDITOR ANALYSIS:
-    // The web editor uses a unique slot encoding pattern:
-    // - Always sends slot byte as 0x00
-    // - Uses a flag byte after command 0x45 to indicate actual slot:
-    //   Physical Slot 1 (API slot 0): 45 00 00
-    //   Physical Slot 2 (API slot 1): 45 00 01
-    //   Physical Slot 3 (API slot 2): 45 00 02
-    // Format: F0 00 20 29 02 15 05 00 45 00 [FLAG] [encoded data] F7
-    // Where FLAG = slot number (0-based API slot)
+    // CRITICAL DISCOVERY FROM WEB EDITOR ANALYSIS:
+    // The SysEx message ALWAYS uses 0x00 for both slot byte and flag byte.
+    // Slot selection is done EXCLUSIVELY via the DAW port protocol.
+    // Format: F0 00 20 29 02 15 05 00 45 00 00 [encoded data] F7
+    //
+    // The `slot` parameter is kept for API compatibility but not used in the message.
+    // DeviceManager.writeCustomMode() handles slot selection via DAW port before sending.
 
     return [
       0xF0,             // SysEx start
@@ -938,8 +936,8 @@ export class SysExParser {
       0x05,             // Sub-command
       0x00,             // Reserved
       0x45,             // Write operation with data
-      0x00,             // Slot byte (always 0x00 per web editor)
-      slot,             // Flag byte (actual slot indicator, 0-14)
+      0x00,             // Slot byte (always 0x00)
+      0x00,             // Flag byte (always 0x00) - slot selection via DAW port
       ...encodedData,   // Encoded custom mode data
       0xF7              // SysEx end
     ];
@@ -1065,7 +1063,7 @@ export class SysExParser {
       rawData.push(controlType); // Control type based on position
       rawData.push(0x00); // Always 0x00
       rawData.push(0x01); // Always 0x01
-      rawData.push(0x40); // Always 0x40
+      rawData.push(0x48); // Always 0x48 (verified from web editor MIDI captures)
       rawData.push(0x00); // Always 0x00
       rawData.push(cc); // CC number
       rawData.push(0x7F); // Max value (always 0x7F in write)
