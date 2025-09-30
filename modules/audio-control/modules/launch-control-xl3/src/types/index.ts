@@ -46,7 +46,7 @@ export type {
   DeviceInquiryResponse
 } from './sysex.js';
 
-// Re-export protocol types (high-level API)
+// Re-export protocol types (device control definitions)
 export type {
   ControlId,
   ControlConfig,
@@ -63,7 +63,8 @@ export type {
   KnobPosition,
   KnobRow,
   ButtonPosition,
-  FaderPosition
+  FaderPosition,
+  ControlType as ProtocolControlType
 } from './protocol.js';
 
 export {
@@ -73,10 +74,9 @@ export {
   DEFAULT_FADER_CONFIG
 } from './protocol.js';
 
-// Re-export custom mode types (low-level protocol)
+// Re-export custom mode types (THE canonical CustomMode definition)
 export type {
-  ControlType as LowLevelControlType,
-  CustomMode as LowLevelCustomMode,
+  ControlType,
   CustomMode,
   ControlBehavior,
   Control,
@@ -86,19 +86,8 @@ export type {
   ColorMapping
 } from './CustomMode.js';
 
-// Export convenient aliases for commonly used types
-export type { CustomMode as ProtocolCustomMode } from './protocol.js';
-export type { ControlType as ProtocolControlType } from './protocol.js';
-
-// Additional missing exports
+// Additional convenience types
 export type CustomModeSlot = number; // 0-15
 export type LedColor = string;
 export type LedBehaviour = 'static' | 'flash' | 'pulse' | 'flashing' | 'pulsing';
 export type ControlBehaviour = 'absolute' | 'relative' | 'toggle';
-
-// Note: These types are already exported above from device.js and sysex.js
-
-// Export control type from CustomMode
-export type {
-  ControlType
-} from './CustomMode.js';

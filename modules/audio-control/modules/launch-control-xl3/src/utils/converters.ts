@@ -2,74 +2,10 @@
  * Format converters with type guards for data transformation
  */
 
-import type { CustomMode, ControlConfig } from '@/types/protocol.js';
+import type { ControlConfig } from '@/types/protocol.js';
 import type { ParsedMidiMessage } from '@/types/midi.js';
 
-/**
- * Convert custom mode to JSON-serializable format
- */
-export function customModeToJSON(mode: CustomMode): string {
-  return JSON.stringify(
-    {
-      ...mode,
-      createdAt: mode.createdAt?.toISOString(),
-      modifiedAt: mode.modifiedAt?.toISOString(),
-    },
-    null,
-    2
-  );
-}
-
-/**
- * Convert JSON back to CustomMode with proper Date objects
- */
-export function customModeFromJSON(json: string): CustomMode {
-  const parsed = JSON.parse(json);
-
-  return {
-    ...parsed,
-    createdAt: parsed.createdAt ? new Date(parsed.createdAt) : undefined,
-    modifiedAt: parsed.modifiedAt ? new Date(parsed.modifiedAt) : undefined,
-  };
-}
-
-/**
- * Convert CustomMode to YAML-compatible object
- */
-export function customModeToYAML(mode: CustomMode): Record<string, unknown> {
-  return {
-    slot: mode.slot,
-    name: mode.name,
-    description: mode.description,
-    globalChannel: mode.globalChannel,
-    controls: mode.controls.map(controlToYAML),
-    metadata: {
-      createdAt: mode.createdAt?.toISOString(),
-      modifiedAt: mode.modifiedAt?.toISOString(),
-    },
-  };
-}
-
-/**
- * Convert ControlConfig to YAML-compatible object
- */
-function controlToYAML(control: ControlConfig): Record<string, unknown> {
-  return {
-    id: {
-      type: control.id.type,
-      position: control.id.position,
-      row: control.id.row,
-    },
-    midi: {
-      channel: control.midiChannel,
-      cc: control.ccNumber,
-    },
-    behavior: control.controlType.behavior,
-    name: control.name,
-    color: control.color,
-    range: control.range,
-  };
-}
+// Note: CustomMode converters removed - use CustomModeManager.exportMode/importMode instead
 
 /**
  * Convert MIDI message to human-readable string
@@ -114,18 +50,7 @@ export function hexToMidiData(hex: string): number[] {
     .filter(byte => !isNaN(byte) && byte >= 0 && byte <= 255);
 }
 
-/**
- * Type guard to check if data represents a valid CustomMode
- */
-export function isCustomModeData(data: unknown): data is CustomMode {
-  return (
-    typeof data === 'object' &&
-    data !== null &&
-    'slot' in data &&
-    'name' in data &&
-    'controls' in data
-  );
-}
+// Note: isCustomModeData removed - use validators.ts instead
 
 /**
  * Type guard to check if data represents a valid ControlConfig
