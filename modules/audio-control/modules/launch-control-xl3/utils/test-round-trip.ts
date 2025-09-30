@@ -44,8 +44,18 @@ async function testRoundTrip() {
 
       const color = i % 4; // Cycle through colors
 
+      // Calculate proper control ID based on type and index
+      let controlId: number;
+      if (controlType === 'encoder') {
+        controlId = 0x10 + controlIndex; // 0x10-0x27 for encoders
+      } else if (controlType === 'fader') {
+        controlId = 0x28 + controlIndex; // 0x28-0x2F for faders
+      } else {
+        controlId = 0x30 + controlIndex; // 0x30-0x3F for buttons
+      }
+
       testMode.controls.push({
-        id: i,
+        id: controlId,  // Use proper control ID instead of sequential index
         type: controlType as 'encoder' | 'fader' | 'button',
         index: controlIndex,
         name: testName,

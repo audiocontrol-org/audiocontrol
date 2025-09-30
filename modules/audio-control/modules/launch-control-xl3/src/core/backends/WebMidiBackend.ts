@@ -21,6 +21,8 @@ export class WebMidiBackend implements MidiBackendInterface {
   private midiAccess?: MIDIAccess;
   private openInputs: Map<string, MIDIInput> = new Map();
   private openOutputs: Map<string, MIDIOutput> = new Map();
+  private dawInputs: Map<string, MIDIInput> = new Map();
+  private dawOutputs: Map<string, MIDIOutput> = new Map();
   private portWrappers: Map<string, MidiInputPort | MidiOutputPort> = new Map();
   private isInitialized = false;
 
@@ -185,7 +187,12 @@ export class WebMidiBackend implements MidiBackendInterface {
   }
 
   async sendMessage(port: MidiOutputPort, message: MidiMessage): Promise<void> {
-    const midiOutput = this.openOutputs.get(port.id);
+    // Check both regular outputs and DAW outputs
+    let midiOutput = this.openOutputs.get(port.id);
+    if (!midiOutput) {
+      midiOutput = this.dawOutputs.get(port.id);
+    }
+
     if (!midiOutput) {
       throw new Error(`Output port not open: ${port.id}`);
     }
@@ -210,6 +217,148 @@ export class WebMidiBackend implements MidiBackendInterface {
     await port.close();
   }
 
+  /**
+   * Get DAW input ports
+   */
+  async getDawInputPorts(): Promise<MidiPortInfo[]> {
+    if (!this.isInitialized || !this.midiAccess) {
+      throw new Error('Backend not initialized');
+    }
+
+    const ports: MidiPortInfo[] = [];
+    this.midiAccess.inputs.forEach((port, id) => {
+      if (port.name && port.name.includes('DAW Out')) {
+        ports.push({
+          id,
+          name: port.name || `DAW Input ${id}`,
+          ...(port.manufacturer && { manufacturer: port.manufacturer }),
+          ...(port.version && { version: port.version })
+        });
+      }
+    });
+
+    return ports;
+  }
+
+  /**
+   * Get DAW output ports
+   */
+  async getDawOutputPorts(): Promise<MidiPortInfo[]> {
+    if (!this.isInitialized || !this.midiAccess) {
+      throw new Error('Backend not initialized');
+    }
+
+    const ports: MidiPortInfo[] = [];
+    this.midiAccess.outputs.forEach((port, id) => {
+      if (port.name && port.name.includes('DAW In')) {
+        ports.push({
+          id,
+          name: port.name || `DAW Output ${id}`,
+          ...(port.manufacturer && { manufacturer: port.manufacturer }),
+          ...(port.version && { version: port.version })
+        });
+      }
+    });
+
+    return ports;
+  }
+
+  /**
+   * Open DAW input port
+   */
+  async openDawInput(portId: string): Promise<MidiInputPort> {
+    if (!this.isInitialized || !this.midiAccess) {
+      throw new Error('Backend not initialized');
+    }
+
+    let midiInput: MIDIInput | undefined;
+    this.midiAccess.inputs.forEach((input, id) => {
+      if (id === portId) {
+        midiInput = input;
+      }
+    });
+
+    if (!midiInput) {
+      throw new Error(`DAW input port not found: ${portId}`);
+    }
+
+    try {
+      await midiInput.open();
+
+      const port: MidiInputPort = {
+        id: portId,
+        name: midiInput.name || `DAW Input ${portId}`,
+        type: 'input',
+        close: async () => {
+          await this.closeWebMidiPort(midiInput!);
+          this.dawInputs.delete(portId);
+          this.portWrappers.delete(portId);
+        },
+        onMessage: undefined
+      };
+
+      // Set up message handler
+      midiInput.onmidimessage = (event: any) => {
+        if (port.onMessage) {
+          const data: number[] = Array.from(event.data as Uint8Array);
+          port.onMessage({
+            timestamp: event.timeStamp,
+            data
+          });
+        }
+      };
+
+      this.dawInputs.set(portId, midiInput);
+      this.portWrappers.set(portId, port);
+
+      return port;
+    } catch (error: any) {
+      throw new Error(`Failed to open DAW input port ${portId}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Open DAW output port
+   */
+  async openDawOutput(portId: string): Promise<MidiOutputPort> {
+    if (!this.isInitialized || !this.midiAccess) {
+      throw new Error('Backend not initialized');
+    }
+
+    let midiOutput: MIDIOutput | undefined;
+    this.midiAccess.outputs.forEach((output, id) => {
+      if (id === portId) {
+        midiOutput = output;
+      }
+    });
+
+    if (!midiOutput) {
+      throw new Error(`DAW output port not found: ${portId}`);
+    }
+
+    try {
+      await midiOutput.open();
+
+      const port: MidiOutputPort = {
+        id: portId,
+        name: midiOutput.name || `DAW Output ${portId}`,
+        type: 'output',
+        close: async () => {
+          await this.closeWebMidiPort(midiOutput!);
+          this.dawOutputs.delete(portId);
+          this.portWrappers.delete(portId);
+        }
+      };
+
+      this.dawOutputs.set(portId, midiOutput);
+      this.portWrappers.set(portId, port);
+
+      return port;
+    } catch (error: any) {
+      throw new Error(`Failed to open DAW output port ${portId}: ${error.message}`);
+    }
+  }
+
   async cleanup(): Promise<void> {
     // Close all open ports
     const closePromises: Promise<void>[] = [];
@@ -222,11 +371,21 @@ export class WebMidiBackend implements MidiBackendInterface {
       closePromises.push(this.closeWebMidiPort(midiOutput));
     }
 
+    for (const [_id, dawInput] of this.dawInputs.entries()) {
+      closePromises.push(this.closeWebMidiPort(dawInput));
+    }
+
+    for (const [_id, dawOutput] of this.dawOutputs.entries()) {
+      closePromises.push(this.closeWebMidiPort(dawOutput));
+    }
+
     await Promise.all(closePromises);
 
     // Clear all maps
     this.openInputs.clear();
     this.openOutputs.clear();
+    this.dawInputs.clear();
+    this.dawOutputs.clear();
     this.portWrappers.clear();
 
     // Remove event handlers

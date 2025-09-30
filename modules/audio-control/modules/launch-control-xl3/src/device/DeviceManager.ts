@@ -13,6 +13,7 @@ import {
   MidiBackendInterface
 } from '../core/MidiInterface.js';
 import { SysExParser } from '../core/SysExParser.js';
+import { DawPortControllerImpl, type DawPortController } from '../core/DawPortController.js';
 import {
   LaunchControlXL3Info,
   DeviceMode,
@@ -64,6 +65,7 @@ export class DeviceManager extends EventEmitter {
   private inquiryTimer?: NodeJS.Timeout | undefined;
   private reconnectTimer?: NodeJS.Timeout | undefined;
   private isInitializing = false;
+  private dawPortController?: DawPortController | undefined;
 
   constructor(options: DeviceManagerOptions = {}) {
     super();
@@ -133,6 +135,9 @@ export class DeviceManager extends EventEmitter {
 
       // Initialize device settings
       await this.initializeDevice();
+
+      // Initialize DAW port for slot selection
+      await this.initializeDawPort();
 
       this.setConnectionState('connected');
       this.emit('device:connected', this.deviceInfo);
@@ -542,6 +547,9 @@ export class DeviceManager extends EventEmitter {
       throw new Error('Custom mode slot must be 0-15');
     }
 
+    // Select the slot first via DAW port (if available) for consistency
+    await this.selectSlot(slot);
+
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.midi.removeListener('sysex', handleResponse);
@@ -592,6 +600,9 @@ export class DeviceManager extends EventEmitter {
     if (slot < 0 || slot > 15) {
       throw new Error('Custom mode slot must be 0-15');
     }
+
+    // Select the slot first via DAW port (if available)
+    await this.selectSlot(slot);
 
     const modeData = {
       slot,
@@ -766,6 +777,36 @@ export class DeviceManager extends EventEmitter {
       return schema.parse(response);
     } catch (error) {
       throw new Error(`Invalid template change response format: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Initialize DAW port for slot selection
+   */
+  private async initializeDawPort(): Promise<void> {
+    try {
+      // Try to open DAW output port for slot selection
+      const deviceName = this.deviceInfo?.name || 'Launch Control XL';
+      await this.midi.openDawOutput(`${deviceName} DAW In`);
+
+      // Create DAW port controller
+      this.dawPortController = new DawPortControllerImpl(
+        async (message: number[]) => {
+          await this.midi.sendDawMessage(message);
+        }
+      );
+    } catch (error) {
+      console.warn('DAW port initialization failed (slot selection will not work):', error);
+      // Don't throw - DAW port is optional, device can still work without it
+    }
+  }
+
+  /**
+   * Select slot before write operations (if DAW port is available)
+   */
+  private async selectSlot(slot: number): Promise<void> {
+    if (this.dawPortController) {
+      await this.dawPortController.selectSlot(slot);
     }
   }
 

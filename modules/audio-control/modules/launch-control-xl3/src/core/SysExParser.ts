@@ -923,7 +923,7 @@ export class SysExParser {
       0x05,             // Sub-command
       0x00,             // Reserved
       0x45,             // Write operation
-      slot,             // Slot number
+      slot,             // Slot number (0-14 for slots 1-15)
       ...rawData,       // Custom mode data
       0xF7              // SysEx end
     ];
@@ -946,6 +946,10 @@ export class SysExParser {
     // VERIFIED PROTOCOL: Based on actual web editor traffic capture
     // Format: F0 00 20 29 02 15 05 00 45 [SLOT] [encoded data] F7
     // The web editor DOES use 0x45 for write operations with full data payload
+    // CONFIRMED: Slot byte 0x00 writes to physical slot 2
+    // This means API slot 0 -> wire slot 0x00 -> physical slot 2
+    // There appears to be an intentional offset in the device firmware
+
     return [
       0xF0,             // SysEx start
       0x00, 0x20, 0x29, // Manufacturer ID (Novation)
@@ -954,7 +958,7 @@ export class SysExParser {
       0x05,             // Sub-command
       0x00,             // Reserved
       0x45,             // Write operation with data (confirmed from web editor)
-      slot,             // Slot number (0-14 for slots 1-15)
+      slot,             // Slot number (0-14), maps to physical slots with offset
       ...encodedData,   // Encoded custom mode data
       0xF7              // SysEx end
     ];
@@ -1023,33 +1027,91 @@ export class SysExParser {
     const nameEncoded = this.encodeName(modeName);
     rawData.push(...nameEncoded);
 
-    // Sort controls by ID for consistency
-    // FIX: Accept both 'id' and 'controlId' fields to handle different formats
-    const sortedControls = Object.values(modeData.controls)
-      .filter((control: any) => control.id !== undefined || control.controlId !== undefined)
-      .map((control: any) => ({
-        ...control,
-        controlId: control.controlId ?? control.id ?? 0
-      }))
-      .sort((a: any, b: any) => (a.controlId ?? 0) - (b.controlId ?? 0));
+    // Create a map of user-provided controls by ID
+    const userControls = new Map<number, any>();
+    for (const control of modeData.controls) {
+      const controlId = control.id ?? control.controlId;
+      if (controlId !== undefined) {
+        userControls.set(controlId, control);
+      }
+    }
 
-    // Add control definitions with 0x49 marker and offset
-    for (const control of sortedControls) {
-      // Write control structure: 11 bytes
+    // CRITICAL: Device requires ALL 48 controls to be defined
+    // We must send definitions for all hardware control IDs (0x10-0x3F)
+    // even if the user didn't specify them
+
+    // Generate all 48 control definitions in order
+    const allControlIds: number[] = [];
+
+    // Encoders: 0x10-0x27 (24 total)
+    for (let i = 0x10; i <= 0x27; i++) {
+      allControlIds.push(i);
+    }
+
+    // Faders: 0x28-0x2F (8 total)
+    for (let i = 0x28; i <= 0x2F; i++) {
+      allControlIds.push(i);
+    }
+
+    // Buttons: 0x30-0x3F (16 total)
+    for (let i = 0x30; i <= 0x3F; i++) {
+      allControlIds.push(i);
+    }
+
+    // Write control definitions for ALL hardware controls
+    for (const controlId of allControlIds) {
+      const userControl = userControls.get(controlId);
+
+      // Determine control type based on ID range
+      let controlType: number;
+      let defaultCC: number;
+
+      if (controlId >= 0x10 && controlId <= 0x17) {
+        // Top row encoders
+        controlType = 0x05;
+        defaultCC = 0x0D + (controlId - 0x10); // CC 13-20
+      } else if (controlId >= 0x18 && controlId <= 0x1F) {
+        // Middle row encoders
+        controlType = 0x09;
+        defaultCC = 0x15 + (controlId - 0x18); // CC 21-28
+      } else if (controlId >= 0x20 && controlId <= 0x27) {
+        // Bottom row encoders
+        controlType = 0x0D;
+        defaultCC = 0x1D + (controlId - 0x20); // CC 29-36
+      } else if (controlId >= 0x28 && controlId <= 0x2F) {
+        // Faders
+        controlType = 0x00;
+        defaultCC = 0x05 + (controlId - 0x28); // CC 5-12
+      } else if (controlId >= 0x30 && controlId <= 0x37) {
+        // First row buttons
+        controlType = 0x19;
+        defaultCC = 0x25 + (controlId - 0x30); // CC 37-44
+      } else {
+        // Second row buttons (0x38-0x3F)
+        controlType = 0x25;
+        defaultCC = 0x2D + (controlId - 0x38); // CC 45-52
+      }
+
+      // Use user-provided CC if available, otherwise use default
+      const cc = userControl ? (userControl.ccNumber ?? userControl.cc ?? defaultCC) : defaultCC;
+
+      // Write control structure: 11 bytes (matching web editor format)
       rawData.push(0x49); // Write control marker
-      rawData.push(this.getControlId(control)); // Control ID (no offset - direct mapping)
+      rawData.push(controlId); // Control ID
       rawData.push(0x02); // Definition type
-      // Get control type based on position and type
-      rawData.push(this.getControlType(control)); // Control type based on position
-      rawData.push(0x00); // Always 0x00 (not channel)
-      rawData.push(0x01); // Always 0x01
-      rawData.push(0x40); // Always 0x40 (was 0x48 in some versions)
+      rawData.push(controlType); // Control type based on position
       rawData.push(0x00); // Always 0x00
-      rawData.push(control.ccNumber ?? control.cc ?? 0); // CC number
+      rawData.push(0x01); // Always 0x01
+      rawData.push(0x40); // Always 0x40
+      rawData.push(0x00); // Always 0x00
+      rawData.push(cc); // CC number
       rawData.push(0x7F); // Max value (always 0x7F in write)
       rawData.push(0x00); // Terminator
     }
 
+    // DISABLED: The web editor doesn't send control labels, so we skip them
+    // to match the known-good protocol format
+    /*
     // Generate labels for controls with names
     for (const control of sortedControls) {
       rawData.push(0x69); // Label marker
@@ -1061,16 +1123,17 @@ export class SysExParser {
         rawData.push(label.charCodeAt(i));
       }
     }
+    */
 
-    // Add color data for controls
-    for (const control of sortedControls) {
-      const controlId = this.getControlId(control);
-      // Use control's color property directly or default
-      const colorValue = control.color ?? 0x0C; // Default color if not specified
+    // Generate color commands for ALL controls (required by device)
+    for (const controlId of allControlIds) {
+      const userControl = userControls.get(controlId);
 
-      rawData.push(0x60); // Color marker
-      rawData.push(controlId); // Control ID (no offset)
-      rawData.push(colorValue); // Actual color value
+      rawData.push(0x60); // LED color marker
+      rawData.push(controlId); // Control ID
+      // Use color from user control if specified, otherwise default (off)
+      const color = userControl?.color ?? 0x00;
+      rawData.push(color); // Color value
     }
 
     return rawData;
@@ -1094,6 +1157,9 @@ export class SysExParser {
     // Map based on type and index
     if (type === 'encoder' || type === 'knob') {
       // Encoders: 0x10-0x27 (24 total, 3 rows of 8)
+      // Top row (0-7): 0x10-0x17
+      // Middle row (8-15): 0x18-0x1F
+      // Bottom row (16-23): 0x20-0x27
       return 0x10 + Math.min(23, index);
     } else if (type === 'fader') {
       // Faders: 0x28-0x2F (8 total)

@@ -169,6 +169,7 @@ export class EasyMidiBackend implements MidiBackendInterface {
       const data: Array<number> = Array.from(message.data);
 
       if (data[0] === 0xf0 && data[data.length - 1] === 0xf7) {
+        // SysEx message
         this.logger.debug(
           'Sending SysEx:',
           data.map((b) => '0x' + b.toString(16).padStart(2, '0')).join(' '),
@@ -176,10 +177,141 @@ export class EasyMidiBackend implements MidiBackendInterface {
         easyOutput.send('sysex', data);
         return Promise.resolve();
       } else {
-        return Promise.reject(new Error('Only SysEx messages are currently supported by EasyMidiBackend'));
+        // Handle other MIDI messages for DAW port
+        const statusByte = data[0];
+        const channel = statusByte & 0x0F;
+
+        if ((statusByte & 0xF0) === 0x90) {
+          // Note On
+          easyOutput.send('noteon', {
+            note: data[1],
+            velocity: data[2],
+            channel
+          });
+        } else if ((statusByte & 0xF0) === 0xB0) {
+          // Control Change
+          easyOutput.send('cc', {
+            controller: data[1],
+            value: data[2],
+            channel
+          });
+        } else if ((statusByte & 0xF0) === 0x80) {
+          // Note Off
+          easyOutput.send('noteoff', {
+            note: data[1],
+            velocity: data[2],
+            channel
+          });
+        } else {
+          return Promise.reject(new Error(`Unsupported MIDI message type: 0x${statusByte.toString(16)}`));
+        }
+        return Promise.resolve();
       }
     } catch (error) {
       return Promise.reject(new Error(`Failed to send message to port ${port.id}: ${(error as Error).message}`));
+    }
+  }
+
+  /**
+   * Get DAW input ports
+   */
+  async getDawInputPorts(): Promise<MidiPortInfo[]> {
+    const inputNames = getInputs();
+    const dawPorts: MidiPortInfo[] = [];
+
+    for (const name of inputNames) {
+      if (name.includes('DAW Out')) {
+        dawPorts.push({
+          id: name,
+          name
+        });
+      }
+    }
+
+    return dawPorts;
+  }
+
+  /**
+   * Get DAW output ports
+   */
+  async getDawOutputPorts(): Promise<MidiPortInfo[]> {
+    const outputNames = getOutputs();
+    const dawPorts: MidiPortInfo[] = [];
+
+    for (const name of outputNames) {
+      if (name.includes('DAW In')) {
+        dawPorts.push({
+          id: name,
+          name
+        });
+      }
+    }
+
+    return dawPorts;
+  }
+
+  /**
+   * Open DAW input port
+   */
+  async openDawInput(portId: string): Promise<MidiInputPort> {
+    try {
+      const input = new Input(portId);
+
+      const port: MidiInputPort = {
+        id: portId,
+        name: portId,
+        type: 'input',
+        close: async () => {
+          if (input.close) {
+            input.close();
+          }
+          this.portWrappers.delete(portId);
+        },
+        onMessage: undefined
+      };
+
+      // Set up message handler for all MIDI message types
+      input.on('message', (deltaTime: number, message: number[]) => {
+        if (port.onMessage) {
+          port.onMessage({
+            timestamp: Date.now(),
+            data: message
+          });
+        }
+      });
+
+      this.portWrappers.set(portId, port);
+      return port;
+    } catch (error: any) {
+      throw new Error(`Failed to open DAW input port ${portId}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Open DAW output port
+   */
+  async openDawOutput(portId: string): Promise<MidiOutputPort> {
+    try {
+      const output = new Output(portId);
+
+      const port: MidiOutputPort = {
+        id: portId,
+        name: portId,
+        type: 'output',
+        close: async () => {
+          if (output.close) {
+            output.close();
+          }
+          this.outputs.delete(portId);
+          this.portWrappers.delete(portId);
+        }
+      };
+
+      this.outputs.set(portId, output);
+      this.portWrappers.set(portId, port);
+      return port;
+    } catch (error: any) {
+      throw new Error(`Failed to open DAW output port ${portId}: ${error.message}`);
     }
   }
 

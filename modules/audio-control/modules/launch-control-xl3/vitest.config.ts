@@ -33,6 +33,7 @@ export default defineConfig({
       'test/utils/**/*.test.ts',
       'test/core/SysExParser.test.ts',
       'test/core/backends/WebMidiBackend.test.ts',
+      'test/core/DawPortController.test.ts',
     ],
 
     // Exclude everything else for now (focus on optimization)
