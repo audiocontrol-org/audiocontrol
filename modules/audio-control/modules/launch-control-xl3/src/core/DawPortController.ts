@@ -65,8 +65,10 @@ export class DawPortControllerImpl implements DawPortController {
           },
           100 // 100ms timeout
         );
-        const currentSlot = response[2] - 5; // Convert CC value back to 0-based slot
-        console.log(`[DawPortController] Device reports current slot: ${currentSlot}`);
+        if (response && response.length > 2 && response[2] !== undefined) {
+          const currentSlot = response[2] - 5; // Convert CC value back to 0-based slot
+          console.log(`[DawPortController] Device reports current slot: ${currentSlot}`);
+        }
       } catch (error) {
         console.log('[DawPortController] No response from device (might not be in interactive mode)');
       }

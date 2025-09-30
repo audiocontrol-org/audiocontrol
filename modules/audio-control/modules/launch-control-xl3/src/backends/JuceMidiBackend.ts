@@ -207,11 +207,7 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackendInterfac
                   data: new Uint8Array(messageData),
                   timestamp: Date.now()
                 };
-                // Call the port's onMessage callback if set
-                if (port.onMessage) {
-                  port.onMessage(message);
-                }
-                // Also emit for any backend-level listeners
+                // Emit for backend-level listeners
                 this.emit('message', port, message);
               }
             }

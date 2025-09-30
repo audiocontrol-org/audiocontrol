@@ -724,7 +724,6 @@ export class DeviceManager extends EventEmitter {
         name,
         controls: controlsRecord,
         colors: colorsMap,
-        leds: new Map(),
       };
     } catch (error) {
       // If we fail to read both pages, try reading just page 0 for backward compatibility
@@ -766,7 +765,6 @@ export class DeviceManager extends EventEmitter {
           name: page0Response.name || `Custom ${slot + 1}`,
           controls: controlsRecord,
           colors: colorsMap,
-          leds: new Map(),
         };
       } catch {
         throw error; // Re-throw the original error

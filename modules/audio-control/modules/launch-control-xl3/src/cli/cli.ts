@@ -8,7 +8,6 @@
 
 import { Command } from 'commander';
 import { LaunchControlXL3 } from '../LaunchControlXL3.js';
-import { LED_COLOR_VALUES } from '../led/LedController.js';
 
 const program = new Command();
 const VERSION = '0.1.0';
@@ -28,7 +27,6 @@ async function connect(): Promise<LaunchControlXL3> {
 
   try {
     controller = new LaunchControlXL3({
-      enableLedControl: true,
       enableCustomModes: true,
       deviceNameFilter: 'LCXL3 1'  // Use LCXL3 ports
     });
@@ -102,38 +100,6 @@ program
       if (status.deviceInfo) {
         console.log(`Firmware: ${status.deviceInfo.firmwareVersion}`);
       }
-    } catch (error) {
-      console.error(`Error: ${(error as Error).message}`);
-      process.exit(1);
-    }
-  });
-
-// LED test command
-program
-  .command('led-test')
-  .description('Run LED test pattern')
-  .action(async () => {
-    try {
-      const ctrl = await connect();
-      console.log('Running LED test...');
-
-      // Test focus buttons
-      for (let i = 1; i <= 8; i++) {
-        await ctrl.setLed(`FOCUS${i}`, LED_COLOR_VALUES.GREEN_FULL);
-        await new Promise(r => setTimeout(r, 100));
-      }
-
-      // Test control buttons
-      for (let i = 1; i <= 8; i++) {
-        await ctrl.setLed(`CONTROL${i}`, LED_COLOR_VALUES.AMBER_FULL);
-        await new Promise(r => setTimeout(r, 100));
-      }
-
-      // Turn off
-      await new Promise(r => setTimeout(r, 500));
-      await ctrl.turnOffAllLeds();
-
-      console.log('✓ LED test complete');
     } catch (error) {
       console.error(`Error: ${(error as Error).message}`);
       process.exit(1);
