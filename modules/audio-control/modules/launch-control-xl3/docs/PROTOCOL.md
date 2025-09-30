@@ -1,6 +1,6 @@
 # Launch Control XL3 Protocol Specification
 
-**Version:** 1.0
+**Version:** 1.1
 **Last Updated:** 2025-09-30
 **Status:** Verified with hardware
 
@@ -12,6 +12,7 @@ The Launch Control XL3 communicates via MIDI SysEx messages. Custom modes are fe
 
 - [Quick Reference](#quick-reference)
 - [Custom Mode Fetch Protocol](#custom-mode-fetch-protocol)
+- [Custom Mode Write Protocol](#custom-mode-write-protocol)
 - [Data Structures](#data-structures)
 - [Examples](#examples)
 - [Discovery Methodology](#discovery-methodology)
@@ -72,6 +73,59 @@ Custom mode data is split across **3 SysEx response pages** due to MIDI message 
 | 2    | 32-47    | No | 0x30-0x3F |
 
 Each page follows the same structure defined in `launch_control_xl3.ksy`.
+
+---
+
+## Custom Mode Write Protocol
+
+### Overview
+
+Writing a custom mode to the device uses command `0x45` with a different data format than the read response.
+
+**Discovery Method:** Web editor MIDI traffic capture using CoreMIDI spy (2025-09-30)
+
+### SysEx Message Format
+
+```
+F0 00 20 29 02 15 05 00 45 [page] 00 [mode_data] F7
+│  └─ Novation ID       │  │  │  └─ Write command
+│                       │  │  └─ Sub-command
+│                       │  └─ Command (Custom mode)
+│                       └─ Device ID
+└─ SysEx start
+```
+
+**Key Differences from Read Protocol:**
+- Command byte: `0x45` (write) vs `0x40` (read request) / `0x10` (read response)
+- Page byte followed by `0x00` flag
+- Mode name format: `20 [length] [bytes]` (no `06` prefix)
+
+### Mode Name Encoding
+
+**Write format:**
+```
+20 [length] [name_bytes...]
+```
+
+**Example:**
+```
+20 08 43 48 41 4E 54 45 53 54
+│  │  └─ "CHANTEST" (8 ASCII bytes)
+│  └─ Length (8)
+└─ Prefix
+```
+
+**Read format (for comparison):**
+```
+06 20 [length] [name_bytes...]
+```
+
+**Discovery:** By comparing MIDI captures of web editor write operations with different mode names:
+1. Captured write with "CHANNEVE": `20 08 43 48 41 4E 4E 45 56 45`
+2. Captured write with "CHANTEST": `20 08 43 48 41 4E 54 45 53 54`
+3. Pattern identified: `0x20` prefix, length byte, raw ASCII
+
+**Validation:** 2025-09-30 - Verified with Novation Components web editor v1.60.0
 
 ---
 
@@ -393,6 +447,7 @@ The parser follows the protocol specification exactly:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.1 | 2025-09-30 | Documented write protocol (command 0x45) with mode name format discovery |
 | 1.0 | 2025-09-30 | Initial documented protocol after empirical discovery |
 
 ---

@@ -16,6 +16,10 @@ doc: |
 
   Empirically discovered format through MIDI traffic analysis.
 
+  Version History:
+  - v1.1 (2025-09-30): Documented write protocol format (command 0x45)
+  - v1.0 (2025-09-30): Initial read protocol specification
+
 seq:
   - id: page_1
     type: custom_mode_page
@@ -68,6 +72,15 @@ types:
         type: str
         encoding: ASCII
         if: name_length > 0
+    doc: |
+      Mode name format (READ/response):
+        06 20 [length] [name_bytes]
+
+      Mode name format (WRITE/request):
+        20 [length] [name_bytes]
+
+      Discovery: Web editor MIDI capture (2025-09-30)
+      Example: 20 08 43 48 41 4E 54 45 53 54 = "CHANTEST" (8 chars)
 
   control_definition:
     seq:

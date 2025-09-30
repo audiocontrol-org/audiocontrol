@@ -1149,10 +1149,13 @@ export class SysExParser {
    * @returns Encoded name bytes with prefix
    */
   private static encodeName(name: string): number[] {
+    // Truncate to 16 characters and convert to bytes
     const nameBytes = Array.from(name.substring(0, 16)).map(c => c.charCodeAt(0));
+
+    // Web editor format: 0x20 [length] [name_bytes]
     return [
-      0x01, 0x20,  // Correct prefix (was 0x00 0x20)
-      0x10, 0x2A,  // Length/type identifier
+      0x20,              // Prefix byte
+      nameBytes.length,  // Length byte
       ...nameBytes
     ];
   }
