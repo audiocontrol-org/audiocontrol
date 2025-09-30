@@ -10,7 +10,7 @@
  */
 
 import { Midimunge } from './Midimunge.js';
-import type { CustomMode, ControlMapping, ColorMapping } from '../types/CustomMode.js';
+import type { ControlMapping, ColorMapping } from '../types/CustomMode.js';
 
 // Novation/Focusrite manufacturer ID
 export const MANUFACTURER_ID = [0x00, 0x20, 0x29];
@@ -1067,7 +1067,7 @@ export class SysExParser {
     // Create a map of user-provided controls by ID
     const userControls = new Map<number, any>();
     for (const control of modeData.controls) {
-      const controlId = control.id ?? control.controlId;
+      const controlId = control.controlId;
       if (controlId !== undefined) {
         userControls.set(controlId, control);
       }
@@ -1141,65 +1141,6 @@ export class SysExParser {
     return rawData;
   }
 
-
-
-  /**
-   * Get control ID based on control type and index
-   * Maps controls to their protocol ID range (0x10-0x3F)
-   */
-  private static getControlId(control: any): number {
-    const type = control.type ?? control.controlType;
-    const index = control.index ?? 0;
-
-    // Use explicit controlId if provided and in valid range
-    if (control.controlId !== undefined && control.controlId >= 0x10 && control.controlId <= 0x3F) {
-      return control.controlId;
-    }
-
-    // Map based on type and index
-    if (type === 'encoder' || type === 'knob') {
-      // Encoders: 0x10-0x27 (24 total, 3 rows of 8)
-      // Top row (0-7): 0x10-0x17
-      // Middle row (8-15): 0x18-0x1F
-      // Bottom row (16-23): 0x20-0x27
-      return 0x10 + Math.min(23, index);
-    } else if (type === 'fader') {
-      // Faders: 0x28-0x2F (8 total)
-      return 0x28 + Math.min(7, index);
-    } else if (type === 'button') {
-      // Buttons: 0x30-0x3F (16 total, 2 rows of 8)
-      return 0x30 + Math.min(15, index);
-    }
-
-    return 0x10; // Default to first encoder
-  }
-
-  /**
-   * Get control type byte based on control position and type
-   * Web editor analysis shows position-based type assignment
-   */
-  private static getControlType(control: any): number {
-    const type = control.type ?? control.controlType;
-    const index = control.index ?? 0;
-
-    if (type === 'encoder' || type === 'knob') {
-      // Encoders have different types per row
-      if (index < 8) return 0x05;      // Top row (0-7)
-      if (index < 16) return 0x09;     // Middle row (8-15)
-      return 0x0D;                      // Bottom row (16-23)
-    }
-    if (type === 'fader') {
-      return 0x00;  // All faders use type 0x00
-    }
-    if (type === 'button') {
-      // Buttons have different types per row
-      if (index < 8) return 0x19;      // First row (0-7)
-      return 0x25;                      // Second row (8-15)
-    }
-
-    return 0x00; // Default
-  }
-
   /**
    * Encode a name string with the correct Launch Control XL3 prefix
    * Phase 2 implementation: Uses 0x01 0x20 0x10 0x2A prefix as per web editor analysis
@@ -1217,28 +1158,6 @@ export class SysExParser {
       nameBytes.length,  // Length byte
       ...nameBytes
     ];
-  }
-
-  /**
-   * Generate a simple label for a control based on its ID and type
-   * PHASE 1 FIX: Updated to match corrected control ID ranges
-   */
-  private static generateControlLabel(controlId: number): string {
-    if (controlId >= 0x10 && controlId <= 0x17) {
-      return `Top ${controlId - 0x10 + 1}`;
-    } else if (controlId >= 0x18 && controlId <= 0x1F) {
-      return `Mid ${controlId - 0x18 + 1}`;
-    } else if (controlId >= 0x20 && controlId <= 0x27) {
-      return `Bot ${controlId - 0x20 + 1}`;
-    } else if (controlId >= 0x28 && controlId <= 0x2F) {
-      return `Fader ${controlId - 0x28 + 1}`;
-    } else if (controlId >= 0x30 && controlId <= 0x37) {
-      return `Btn1 ${controlId - 0x30 + 1}`;
-    } else if (controlId >= 0x38 && controlId <= 0x3F) {
-      return `Btn2 ${controlId - 0x38 + 1}`;
-    } else {
-      return `Ctrl ${controlId}`;
-    }
   }
 
   /**

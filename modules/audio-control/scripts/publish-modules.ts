@@ -25,11 +25,15 @@ function getModules(modulesDir: string): string[] {
   });
 }
 
-function publishModules() {
+function publishModules(dryRun: boolean = false) {
   const rootDir = join(import.meta.dirname, '..');
   const modulesDir = join(rootDir, 'modules');
 
-  console.log('=== Publishing Modules ===\n');
+  if (dryRun) {
+    console.log('=== Publishing Modules (DRY RUN) ===\n');
+  } else {
+    console.log('=== Publishing Modules ===\n');
+  }
 
   console.log('Step 1: Clean and build all modules');
   execCommand('pnpm clean', rootDir);
@@ -50,7 +54,11 @@ function publishModules() {
 
   const modules = getModules(modulesDir);
 
-  console.log(`\nStep 5: Publishing ${modules.length} modules to npm...`);
+  if (dryRun) {
+    console.log(`\nStep 5: Would publish ${modules.length} modules to npm (DRY RUN)...`);
+  } else {
+    console.log(`\nStep 5: Publishing ${modules.length} modules to npm...`);
+  }
 
   for (const moduleName of modules) {
     const modulePath = join(modulesDir, moduleName);
@@ -62,17 +70,26 @@ function publishModules() {
       continue;
     }
 
-    console.log(`\n  Publishing ${pkg.name}@${pkg.version}...`);
-    try {
-      execCommand('npm publish --access public', modulePath);
-      console.log(`  ✓ ${pkg.name}@${pkg.version} published`);
-    } catch (error) {
-      console.error(`  ✗ Failed to publish ${pkg.name}`);
-      throw error;
+    if (dryRun) {
+      console.log(`\n  Would publish ${pkg.name}@${pkg.version}`);
+      console.log(`  → npm publish --access public (DRY RUN)`);
+    } else {
+      console.log(`\n  Publishing ${pkg.name}@${pkg.version}...`);
+      try {
+        execCommand('npm publish --access public', modulePath);
+        console.log(`  ✓ ${pkg.name}@${pkg.version} published`);
+      } catch (error) {
+        console.error(`  ✗ Failed to publish ${pkg.name}`);
+        throw error;
+      }
     }
   }
 
-  console.log('\n=== Publish Complete ===');
+  if (dryRun) {
+    console.log('\n=== Publish Dry Run Complete ===');
+  } else {
+    console.log('\n=== Publish Complete ===');
+  }
 }
 
 function getVersion(rootDir: string): string {
@@ -80,4 +97,5 @@ function getVersion(rootDir: string): string {
   return pkg.version;
 }
 
-publishModules();
+const dryRun = process.argv.includes('--dry-run');
+publishModules(dryRun);

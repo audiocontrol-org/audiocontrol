@@ -194,7 +194,6 @@ export class CustomModeManager extends EventEmitter {
     const mode: CustomMode = {
       name: response.name || `Custom ${slot + 1}`,
       controls: {},
-      leds: new Map(),
       metadata: {
         slot,
         createdAt: new Date(),
@@ -214,19 +213,6 @@ export class CustomModeManager extends EventEmitter {
           max: control.maxValue,
           behaviour: control.behaviour as ControlBehaviour,
         };
-      }
-    }
-
-    // Parse LED mappings
-    if (response.colors) {
-      for (const color of response.colors) {
-        const controlId = this.getControlIdName(color.controlId);
-        if (mode.leds) {
-          mode.leds.set(color.controlId, {
-            color: color.color,
-            behaviour: color.behaviour ?? 'static',
-          });
-        }
       }
     }
 
@@ -252,19 +238,6 @@ export class CustomModeManager extends EventEmitter {
           minValue: ctrl.min,
           maxValue: ctrl.max,
           behaviour: ctrl.behaviour,
-        });
-      }
-    }
-
-    // Convert LED mappings
-    for (const [key, led] of Object.entries(mode.leds || {})) {
-      const controlId = this.getControlIdValue(key);
-      if (controlId !== undefined) {
-        const ledConfig = led as any;
-        colors.push({
-          controlId,
-          color: ledConfig.color as number,
-          behaviour: ledConfig.behaviour,
         });
       }
     }
@@ -365,7 +338,6 @@ export class CustomModeManager extends EventEmitter {
     const mode: CustomMode = {
       name: name || 'Default Mode',
       controls: {},
-      leds: new Map(),
       metadata: {
         createdAt: new Date(),
         modifiedAt: new Date(),
@@ -423,19 +395,6 @@ export class CustomModeManager extends EventEmitter {
         max: 127,
         behaviour: 'absolute',
       };
-    }
-
-    // Setup default LED colors
-    for (let i = 0; i < 8; i++) {
-      mode.leds!.set(i + 0x10, { // Focus buttons start at 0x10
-        color: LED_COLORS.AMBER_LOW as any,
-        behaviour: 'static',
-      });
-
-      mode.leds!.set(i + 0x28, { // Control buttons start at 0x28
-        color: LED_COLORS.GREEN_LOW as any,
-        behaviour: 'static',
-      });
     }
 
     return mode;
@@ -504,21 +463,6 @@ export class CustomModeManager extends EventEmitter {
 
       if (ctrl.min !== undefined && ctrl.max !== undefined && ctrl.min > ctrl.max) {
         throw new Error(`Min value greater than max for ${key}`);
-      }
-    }
-
-    // Validate LED mappings if present
-    if (mode.leds) {
-      for (const [key, led] of Object.entries(mode.leds)) {
-        if (!this.getControlIdValue(key)) {
-          throw new Error(`Invalid LED control ID: ${key}`);
-        }
-
-        const ledConfig = led as any; // Type assertion for validation
-        const validBehaviours = ['static', 'flash', 'pulse'];
-        if (ledConfig.behaviour && !validBehaviours.includes(ledConfig.behaviour)) {
-          throw new Error(`Invalid LED behaviour for ${key}: ${ledConfig.behaviour}`);
-        }
       }
     }
   }

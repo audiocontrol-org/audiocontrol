@@ -89,28 +89,44 @@ See individual package READMEs for usage details.`;
 
 function release() {
   const bumpType = process.argv[2];
+  const dryRun = process.argv.includes('--dry-run');
 
   if (!bumpType || !['major', 'minor', 'patch'].includes(bumpType)) {
-    console.error('Usage: pnpm release <major|minor|patch>');
+    console.error('Usage: pnpm release <major|minor|patch> [--dry-run]');
     console.error('\nExample:');
-    console.error('  pnpm release patch  # 1.0.1 → 1.0.2');
-    console.error('  pnpm release minor  # 1.0.1 → 1.1.0');
-    console.error('  pnpm release major  # 1.0.1 → 2.0.0');
+    console.error('  pnpm release patch            # 1.0.1 → 1.0.2');
+    console.error('  pnpm release minor            # 1.0.1 → 1.1.0');
+    console.error('  pnpm release major            # 1.0.1 → 2.0.0');
+    console.error('  pnpm release minor --dry-run  # Test release without changes');
     process.exit(1);
   }
 
   const rootDir = join(import.meta.dirname, '..');
 
-  console.log('=== Release Process ===\n');
+  if (dryRun) {
+    console.log('=== DRY RUN - No Changes Will Be Made ===\n');
+  } else {
+    console.log('=== Release Process ===\n');
+  }
 
   console.log('Step 1: Bump version');
-  execCommand(`tsx scripts/bump-version.ts ${bumpType}`, rootDir);
+  execCommand(`tsx scripts/bump-version.ts ${bumpType}${dryRun ? ' --dry-run' : ''}`, rootDir);
 
   const version = getVersion(rootDir);
   const modules = getPublishedModules(rootDir);
 
   console.log('\nStep 2: Publish modules');
-  execCommand('tsx scripts/publish-modules.ts', rootDir);
+  execCommand(`tsx scripts/publish-modules.ts${dryRun ? ' --dry-run' : ''}`, rootDir);
+
+  if (dryRun) {
+    console.log('\n=== Dry Run Complete ===');
+    console.log(`\nWould have:`);
+    console.log(`  • Published ${modules.length} modules at v${version}`);
+    console.log(`  • Committed audio-control@${version}`);
+    console.log(`  • Created GitHub release: audio-control@${version}`);
+    console.log(`\nNo changes were made.`);
+    return;
+  }
 
   console.log('\nStep 3: Commit version changes');
   execCommand('git add .', rootDir);

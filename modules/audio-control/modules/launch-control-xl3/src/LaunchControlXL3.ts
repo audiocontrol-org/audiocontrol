@@ -349,12 +349,9 @@ export class LaunchControlXL3 extends EventEmitter {
   exportCurrentAsCustomMode(name: string): CustomMode {
     const controls = this.controlMapper.exportToCustomMode();
 
-    const leds = new Map<number, { color: number; behaviour: string }>();
-
     return {
       name,
       controls,
-      leds,
       metadata: {
         createdAt: new Date(),
         modifiedAt: new Date(),
