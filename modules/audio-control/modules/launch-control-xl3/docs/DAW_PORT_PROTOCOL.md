@@ -234,9 +234,26 @@ The partial data suggests the SysEx encoding change is working but:
 2. **Web Editor Integration**: Use web editor's JavaScript API if available
 3. **Manual Slot Selection**: Require users to manually select slots on the device before operations
 
-## Testing Tools
+## Testing Status (Latest - December 30, 2024)
+
+### Confirmed Working
+1. **DAW Port Bidirectional Communication**: JZZ successfully handles DAW port messages
+2. **Device SysEx Responses**: Confirmed with ReceiveMIDI that device sends proper responses:
+   - Novation SYN ACK with serial number
+   - Universal Device Inquiry response
+   - Read data responses
+3. **Slot Selection Protocol**: Device correctly responds to two-phase negotiation
+
+### Current Limitations
+1. **JZZ SysEx Reception Bug**: JZZ library cannot receive SysEx messages on input ports despite `{ sysex: true }` configuration
+2. **EasyMidi Multi-Port Crash**: Backend crashes with NAPI exception when opening multiple ports
+3. **WebMidi Not Available**: Playwright doesn't provide WebMidi API access
+
+### Testing Tools
 
 Several utilities are available for testing and debugging:
+- `utils/test-jzz-with-handshake.ts` - Full bidirectional test with JZZ (DAW works, SysEx send works, receive doesn't)
+- `utils/test-sysex-with-receivemidi.ts` - Simple SysEx test to use with ReceiveMIDI monitoring
 - `utils/test-daw-port-monitor.ts` - Monitor DAW port messages
 - `utils/test-slot-selection.ts` - Test slot selection via DAW port
 - `utils/test-daw-port-integration.ts` - Full integration test with library
