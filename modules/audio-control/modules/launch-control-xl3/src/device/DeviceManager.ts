@@ -13,6 +13,7 @@ import {
   MidiBackendInterface
 } from '../core/MidiInterface.js';
 import { SysExParser } from '../core/SysExParser.js';
+import { DawPortControllerImpl, type DawPortController } from '../core/DawPortController.js';
 import {
   LaunchControlXL3Info,
   DeviceMode,
@@ -55,6 +56,7 @@ export interface DeviceEvents {
  */
 export class DeviceManager extends EventEmitter {
   private midi: MidiInterface;
+  private dawMidi: MidiInterface; // Separate MIDI interface for DAW communication
   private options: Required<Omit<DeviceManagerOptions, 'midiBackend'>> & { midiBackend?: MidiBackendInterface | undefined };
   private deviceInfo?: LaunchControlXL3Info | undefined;
   private connectionState: DeviceConnectionState = 'disconnected';
@@ -64,6 +66,14 @@ export class DeviceManager extends EventEmitter {
   private inquiryTimer?: NodeJS.Timeout | undefined;
   private reconnectTimer?: NodeJS.Timeout | undefined;
   private isInitializing = false;
+  private dawPortController?: DawPortController | undefined;
+
+  // Write acknowledgement handling (persistent listener approach)
+  private pendingAcknowledgements = new Map<number, {
+    resolve: () => void;
+    reject: (error: Error) => void;
+    timeout: NodeJS.Timeout;
+  }>();
 
   constructor(options: DeviceManagerOptions = {}) {
     super();
@@ -78,6 +88,7 @@ export class DeviceManager extends EventEmitter {
     };
 
     this.midi = new MidiInterface(this.options.midiBackend);
+    this.dawMidi = new MidiInterface(this.options.midiBackend); // Separate instance for DAW communication
     this.setupMidiHandlers();
   }
 
@@ -87,6 +98,7 @@ export class DeviceManager extends EventEmitter {
   async initialize(): Promise<void> {
     try {
       await this.midi.initialize();
+      await this.dawMidi.initialize(); // Initialize DAW MIDI interface
 
       if (this.options.autoConnect) {
         await this.connect();
@@ -133,6 +145,9 @@ export class DeviceManager extends EventEmitter {
 
       // Initialize device settings
       await this.initializeDevice();
+
+      // Initialize DAW port for slot selection
+      await this.initializeDawPort();
 
       this.setConnectionState('connected');
       this.emit('device:connected', this.deviceInfo);
@@ -322,6 +337,33 @@ export class DeviceManager extends EventEmitter {
   }
 
   /**
+   * Wait for write acknowledgement from device (persistent listener pattern)
+   *
+   * Discovery: Playwright + CoreMIDI spy (2025-09-30)
+   * Device sends acknowledgement SysEx after receiving each page write:
+   * Format: F0 00 20 29 02 15 05 00 15 [page] [status] F7
+   * Example: F0 00 20 29 02 15 05 00 15 00 06 F7 (page 0, status 0x06 success)
+   *
+   * CRITICAL: Uses persistent listener set up during handshake.
+   * Registers promise in queue; acknowledgement handler resolves it.
+   * This avoids race conditions from rapid device responses (24-27ms).
+   *
+   * @param expectedPage - Page number to wait acknowledgement for (0 or 3)
+   * @param timeoutMs - Timeout in milliseconds (typical ACK arrives within 24-27ms)
+   */
+  private async waitForWriteAcknowledgement(expectedPage: number, timeoutMs: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pendingAcknowledgements.delete(expectedPage);
+        reject(new Error(`Write acknowledgement timeout for page ${expectedPage} after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      // Register in queue - persistent listener will route acknowledgement here
+      this.pendingAcknowledgements.set(expectedPage, { resolve, reject, timeout });
+    });
+  }
+
+  /**
    * Parse device info from inquiry response
    */
   private parseDeviceInfo(response: DeviceInquiryResponse): LaunchControlXL3Info {
@@ -364,10 +406,15 @@ export class DeviceManager extends EventEmitter {
       }
     });
 
+    // CRITICAL: SysEx listener must ALWAYS be active (persistent connection)
+    // Acknowledgements and other responses can arrive during ANY state
     this.midi.on('sysex', (message: MidiMessage) => {
+      // Always handle SysEx messages for acknowledgements/responses
+      this.handleSysExMessage([...message.data]);
+
+      // Only emit event when fully connected (not during handshake)
       if (!this.isInitializing && this.connectionState === 'connected') {
         this.emit('sysex:received', message.data);
-        this.handleSysExMessage([...message.data]);
       }
     });
 
@@ -391,6 +438,21 @@ export class DeviceManager extends EventEmitter {
             slot: templateChange.templateNumber,
           };
           this.emit('device:modeChanged', this.currentMode);
+          break;
+
+        case 'write_acknowledgement':
+          // Route acknowledgement to pending promise (persistent listener pattern)
+          const ack = parsed as any; // WriteAcknowledgementMessage
+          const pending = this.pendingAcknowledgements.get(ack.page);
+          if (pending) {
+            clearTimeout(pending.timeout);
+            this.pendingAcknowledgements.delete(ack.page);
+            if (ack.status === 0x06) {
+              pending.resolve();
+            } else {
+              pending.reject(new Error(`Write failed for page ${ack.page}: status 0x${ack.status.toString(16)}`));
+            }
+          }
           break;
 
         // Add more SysEx message handlers as needed
@@ -498,6 +560,27 @@ export class DeviceManager extends EventEmitter {
       throw new Error('Device not connected');
     }
 
+    // Validate SysEx message format
+    if (!data || data.length < 2) {
+      throw new Error('Invalid SysEx message: too short');
+    }
+
+    if (data[0] !== 0xF0) {
+      throw new Error(`Invalid SysEx message: must start with 0xF0, got 0x${data[0]?.toString(16)}`);
+    }
+
+    if (data[data.length - 1] !== 0xF7) {
+      throw new Error(`Invalid SysEx message: must end with 0xF7, got 0x${data[data.length - 1]?.toString(16)}`);
+    }
+
+    // Ensure all bytes between F0 and F7 are 7-bit values
+    for (let i = 1; i < data.length - 1; i++) {
+      const byte = data[i];
+      if (byte === undefined || byte > 127 || byte < 0) {
+        throw new Error(`Invalid SysEx message: byte ${i} value 0x${byte?.toString(16)} is not a valid 7-bit value`);
+      }
+    }
+
     await this.midi.sendMessage(data);
   }
 
@@ -535,54 +618,160 @@ export class DeviceManager extends EventEmitter {
   }
 
   /**
-   * Read custom mode from device
+   * Read custom mode from device (fetches both pages)
    */
   async readCustomMode(slot: number): Promise<CustomMode> {
     if (slot < 0 || slot > 15) {
       throw new Error('Custom mode slot must be 0-15');
     }
 
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.midi.removeListener('sysex', handleResponse);
-        reject(new Error(
-          `Custom mode read timeout after ${this.options.inquiryTimeout}ms for slot ${slot}. ` +
-          'The device may be unresponsive or the slot may be empty. ' +
-          'Troubleshooting steps: 1) Verify device connection, ' +
-          '2) Check if custom mode exists in the specified slot, ' +
-          '3) Try reading a different slot, 4) Power cycle the device.'
-        ));
-      }, this.options.inquiryTimeout);
+    // Select the slot first via DAW port (if available) for consistency
+    await this.selectSlot(slot);
 
-      const handleResponse = (message: MidiMessage) => {
-        if (message.type === 'sysex') {
-          try {
-            const parsed = SysExParser.parse([...message.data]);
+    // Helper function to read a single page
+    const readPage = (page: number): Promise<any> => {
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          this.midi.removeListener('sysex', handleResponse);
+          reject(new Error(
+            `Custom mode read timeout after ${this.options.inquiryTimeout}ms for slot ${slot}, page ${page}. ` +
+            'The device may be unresponsive or the slot may be empty.'
+          ));
+        }, this.options.inquiryTimeout);
 
-            if (parsed.type === 'custom_mode_response') {
-              clearTimeout(timeout);
-              this.midi.removeListener('sysex', handleResponse);
+        const handleResponse = (message: MidiMessage) => {
+          if (message.type === 'sysex') {
+            try {
+              const parsed = SysExParser.parse([...message.data]);
 
-              const response = this.validateCustomModeResponse(parsed);
-              resolve({
-                slot: response.slot ?? slot,
-                name: response.name || `Custom ${slot + 1}`,
-                controls: response.controls || {},
-                colors: response.colors || {},
-              });
+              if (parsed.type === 'custom_mode_response') {
+                clearTimeout(timeout);
+                this.midi.removeListener('sysex', handleResponse);
+                const response = this.validateCustomModeResponse(parsed);
+                resolve(response);
+              }
+            } catch {
+              // Ignore parse errors
             }
-          } catch {
-            // Ignore parse errors
+          }
+        };
+
+        this.midi.on('sysex', handleResponse);
+
+        // Send custom mode read request for this page
+        const message = SysExParser.buildCustomModeReadRequest(slot, page);
+        this.sendSysEx(message).catch(reject);
+      });
+    };
+
+    try {
+      // Read pages SEQUENTIALLY (not in parallel) to match web editor behavior
+      // Web editor analysis shows device expects sequential requests:
+      // 1. Send page 0 request
+      // 2. Wait for page 0 response
+      // 3. Send page 1 request (no ACK needed)
+      // 4. Wait for page 1 response
+      const page0Response = await readPage(0); // Page 0: Controls 0x10-0x27 (encoders)
+      const page1Response = await readPage(1); // Page 1: Controls 0x28-0x3F (faders/buttons)
+
+      // Combine the responses from both pages
+      // Note: responses contain arrays that need to be combined
+      const page0Controls = Array.isArray(page0Response.controls) ? page0Response.controls : [];
+      const page1Controls = Array.isArray(page1Response.controls) ? page1Response.controls : [];
+      const allControls = [...page0Controls, ...page1Controls];
+
+      const page0Colors = Array.isArray(page0Response.colors) ? page0Response.colors : [];
+      const page1Colors = Array.isArray(page1Response.colors) ? page1Response.colors : [];
+      const allColors = [...page0Colors, ...page1Colors];
+
+      // Convert arrays to Record format expected by CustomMode type
+      // Use control_XX format to match CustomModeBuilder.build()
+      // Normalize property names to match Control interface
+      const controlsRecord: Record<string, any> = {};
+      for (const control of allControls) {
+        // Derive controlType from controlId if not present (parser doesn't extract this field)
+        let controlType = control.controlType ?? control.type;
+        if (controlType === undefined && control.controlId !== undefined) {
+          controlType = this.deriveControlType(control.controlId);
+        }
+
+        // Ensure consistent property names (handle ControlMapping alternatives)
+        const normalizedControl = {
+          controlId: control.controlId,
+          controlType,
+          midiChannel: control.midiChannel ?? control.channel,
+          ccNumber: control.ccNumber ?? control.cc,
+          minValue: control.minValue ?? control.min ?? 0,
+          maxValue: control.maxValue ?? control.max ?? 127,
+          behavior: (control.behavior ?? control.behaviour ?? 'absolute') as any
+        };
+        controlsRecord[`control_${control.controlId}`] = normalizedControl;
+      }
+
+      // Convert colors array to Map format expected by CustomMode type
+      const colorsMap = new Map<number, number>();
+      for (const colorMapping of allColors) {
+        if (colorMapping.controlId !== undefined) {
+          colorsMap.set(colorMapping.controlId, colorMapping.color);
+        }
+      }
+
+      // Use the name from the first page (they should be the same)
+      const name = page0Response.name || page1Response.name || `Custom ${slot + 1}`;
+
+      return {
+        slot: page0Response.slot ?? slot,
+        name,
+        controls: controlsRecord,
+        colors: colorsMap,
+        leds: new Map(),
+      };
+    } catch (error) {
+      // If we fail to read both pages, try reading just page 0 for backward compatibility
+      try {
+        const page0Response = await readPage(0);
+        const controls = Array.isArray(page0Response.controls) ? page0Response.controls : [];
+        const colors = Array.isArray(page0Response.colors) ? page0Response.colors : [];
+
+        const controlsRecord: Record<string, any> = {};
+        for (const control of controls) {
+          // Derive controlType from controlId if not present (parser doesn't extract this field)
+          let controlType = control.controlType ?? control.type;
+          if (controlType === undefined && control.controlId !== undefined) {
+            controlType = this.deriveControlType(control.controlId);
+          }
+
+          // Ensure consistent property names (handle ControlMapping alternatives)
+          const normalizedControl = {
+            controlId: control.controlId,
+            controlType,
+            midiChannel: control.midiChannel ?? control.channel,
+            ccNumber: control.ccNumber ?? control.cc,
+            minValue: control.minValue ?? control.min ?? 0,
+            maxValue: control.maxValue ?? control.max ?? 127,
+            behavior: (control.behavior ?? control.behaviour ?? 'absolute') as any
+          };
+          controlsRecord[`control_${control.controlId}`] = normalizedControl;
+        }
+
+        const colorsMap = new Map<number, number>();
+        for (const colorMapping of colors) {
+          if (colorMapping.controlId !== undefined) {
+            colorsMap.set(colorMapping.controlId, colorMapping.color);
           }
         }
-      };
 
-      this.midi.on('sysex', handleResponse);
-
-      // Send custom mode read request
-      const message = SysExParser.buildCustomModeReadRequest(slot);
-      this.sendSysEx(message);
-    });
+        return {
+          slot: page0Response.slot ?? slot,
+          name: page0Response.name || `Custom ${slot + 1}`,
+          controls: controlsRecord,
+          colors: colorsMap,
+          leds: new Map(),
+        };
+      } catch {
+        throw error; // Re-throw the original error
+      }
+    }
   }
 
   /**
@@ -593,6 +782,9 @@ export class DeviceManager extends EventEmitter {
       throw new Error('Custom mode slot must be 0-15');
     }
 
+    // Select the slot first via DAW port (if available)
+    await this.selectSlot(slot);
+
     const modeData = {
       slot,
       name: mode.name,
@@ -601,8 +793,47 @@ export class DeviceManager extends EventEmitter {
     };
 
     const validatedModeData = this.validateCustomModeData(modeData);
-    const message = SysExParser.buildCustomModeWriteRequest(slot, validatedModeData);
-    await this.sendSysEx(message);
+
+    // CRITICAL: Write protocol requires TWO pages (verified from web editor MIDI captures)
+    // Page 0: Mode name + controls 0x10-0x27 (IDs 16-39, first 24 controls)
+    // Page 3: Mode name + controls 0x28-0x3F (IDs 40-63, remaining 24 controls)
+    // Note: Control IDs 0x00-0x0F do not exist on the device
+
+    // Split controls by page
+    const page0Controls = validatedModeData.controls.filter((c: any) => {
+      const id = c.id ?? c.controlId;
+      return id >= 0x10 && id <= 0x27;
+    });
+
+    const page3Controls = validatedModeData.controls.filter((c: any) => {
+      const id = c.id ?? c.controlId;
+      return id >= 0x28 && id <= 0x3F;
+    });
+
+    // Send page 0
+    const page0Data = { ...validatedModeData, controls: page0Controls };
+    const page0Message = SysExParser.buildCustomModeWriteRequest(0, page0Data);
+    await this.sendSysEx(page0Message);
+
+    // CRITICAL: Wait for device acknowledgement before sending next page
+    // Discovery: Playwright + CoreMIDI spy (2025-09-30)
+    // Device sends ACK (0x15 00 06) within 24-27ms after receiving page 0
+    await this.waitForWriteAcknowledgement(0, 100); // Wait up to 100ms for page 0 ACK
+
+    // Send page 3 (only if there are controls in this range)
+    if (page3Controls.length > 0) {
+      const page3Data = { ...validatedModeData, controls: page3Controls };
+      const page3Message = SysExParser.buildCustomModeWriteRequest(3, page3Data);
+      await this.sendSysEx(page3Message);
+
+      // Wait for page 3 acknowledgement
+      // WORKAROUND: JUCE backend sometimes doesn't forward page 3 ACKs immediately
+      // Device sends ACK within 24-80ms, but backend may delay delivery
+      await this.waitForWriteAcknowledgement(3, 2000); // Wait up to 2000ms for page 3 ACK
+    }
+
+    // Allow device time to process and persist the write
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
 
   /**
@@ -736,21 +967,68 @@ export class DeviceManager extends EventEmitter {
   }
 
   /**
-   * Validate custom mode data before sending
+   * Convert CustomMode to CustomModeMessage format and validate
    */
-  private validateCustomModeData(data: unknown): any {
-    const schema = z.object({
-      slot: z.number().min(0).max(15),
-      name: z.string(),
-      controls: z.any(),
-      colors: z.any(),
-    });
+  private validateCustomModeData(data: { slot: number; name: string; controls: any; colors: any }): any {
+    // Convert controls from Record<string, ControlMapping> to Control[]
+    const controls: any[] = [];
+    if (data.controls && typeof data.controls === 'object') {
+      for (const [key, controlMapping] of Object.entries(data.controls)) {
+        const mapping = controlMapping as any;
 
-    try {
-      return schema.parse(data);
-    } catch (error) {
-      throw new Error(`Invalid custom mode data format: ${error instanceof Error ? error.message : String(error)}`);
+        // Convert ControlMapping to Control format
+        const control = {
+          controlId: mapping.controlId || parseInt(key.replace('control_', ''), 10) || 0,
+          controlType: mapping.controlType || mapping.type || 0x05,
+          midiChannel: mapping.midiChannel || (mapping.channel ? mapping.channel - 1 : 0),
+          ccNumber: mapping.ccNumber || mapping.cc || 0,
+          minValue: mapping.minValue || mapping.min || 0,
+          maxValue: mapping.maxValue || mapping.max || 127,
+          behavior: mapping.behavior || mapping.behaviour || 'absolute'
+        };
+
+        controls.push(control);
+      }
     }
+
+    // Convert colors from Map<number, Color> to ColorMapping[]
+    const colors: any[] = [];
+    if (data.colors) {
+      if (data.colors instanceof Map) {
+        for (const [controlId, color] of data.colors.entries()) {
+          colors.push({
+            controlId,
+            color: typeof color === 'number' ? color : 0x0C,
+            behaviour: 'static'
+          });
+        }
+      } else if (Array.isArray(data.colors)) {
+        colors.push(...data.colors);
+      }
+    }
+
+    const converted = {
+      slot: data.slot,
+      name: data.name,
+      controls,
+      colors
+    };
+
+    // Basic validation
+    if (converted.slot < 0 || converted.slot > 15) {
+      throw new Error('Custom mode slot must be 0-15');
+    }
+    if (!converted.name || typeof converted.name !== 'string') {
+      throw new Error('Custom mode name is required');
+    }
+    if (!Array.isArray(converted.controls)) {
+      throw new Error('Custom mode must have controls array');
+    }
+    if (!Array.isArray(converted.colors)) {
+      throw new Error('Custom mode must have colors array');
+    }
+
+    return converted;
   }
 
   /**
@@ -770,12 +1048,113 @@ export class DeviceManager extends EventEmitter {
   }
 
   /**
+   * Initialize DAW port for slot selection using separate MIDI interface
+   */
+  private async initializeDawPort(): Promise<void> {
+    try {
+      console.log('[DeviceManager] Initializing DAW port using separate MIDI interface...');
+
+      // Open DAW output port using separate MIDI interface
+      await this.dawMidi.openOutput('LCXL3 1 DAW In');
+      console.log('[DeviceManager] DAW output port opened successfully');
+
+      // Try to open DAW input for bidirectional communication
+      // This may fail on some backends, so we handle it gracefully
+      let waitForMessageFunc: ((predicate: (data: number[]) => boolean, timeout: number) => Promise<number[]>) | undefined;
+
+      try {
+        console.log('[DeviceManager] Attempting to open DAW input port...');
+        await this.dawMidi.openInput('LCXL3 1 DAW Out');
+        console.log('[DeviceManager] DAW input port opened successfully');
+        waitForMessageFunc = async (predicate: (data: number[]) => boolean, timeout: number) => {
+          return this.waitForDawMessage(predicate, timeout);
+        };
+      } catch (inputError) {
+        console.warn('DAW input port not available - response handling disabled:', inputError);
+        // Continue without input port - output-only mode
+      }
+
+      console.log('[DeviceManager] Creating DAW port controller...');
+      // Create DAW port controller using the separate MIDI interface
+      this.dawPortController = new DawPortControllerImpl(
+        async (message: number[]) => {
+          console.log('[DeviceManager] Sending DAW message via separate MIDI interface');
+          await this.dawMidi.sendMessage(message);
+        },
+        waitForMessageFunc  // May be undefined if input port failed
+      );
+      console.log('[DeviceManager] DAW port controller created successfully');
+    } catch (error) {
+      console.error('DAW port initialization failed - device will not function properly:', error);
+      throw new Error(`Failed to initialize DAW port: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  /**
+   * Wait for a DAW port message matching the predicate
+   */
+  private async waitForDawMessage(predicate: (data: number[]) => boolean, timeout: number): Promise<number[]> {
+    return new Promise((resolve, reject) => {
+      let resolved = false;
+      const timeoutId = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          reject(new Error('DAW message timeout'));
+        }
+      }, timeout);
+
+      // Set up message listener on DAW input
+      const handler = (message: any) => {
+        if (!resolved && predicate(message.data)) {
+          resolved = true;
+          clearTimeout(timeoutId);
+          this.dawMidi.off('message', handler);
+          resolve(Array.from(message.data));
+        }
+      };
+
+      this.dawMidi.on('message', handler);
+    });
+  }
+
+  /**
+   * Select slot before write operations (if DAW port is available)
+   */
+  private async selectSlot(slot: number): Promise<void> {
+    if (this.dawPortController) {
+      await this.dawPortController.selectSlot(slot);
+    }
+  }
+
+  /**
+   * Derive controlType from controlId based on hardware layout
+   * The parser doesn't extract this field, so we derive it from the ID
+   */
+  private deriveControlType(controlId: number): number {
+    if (controlId >= 0x10 && controlId <= 0x17) {
+      return 0x05; // Top row encoders
+    } else if (controlId >= 0x18 && controlId <= 0x1F) {
+      return 0x09; // Middle row encoders
+    } else if (controlId >= 0x20 && controlId <= 0x27) {
+      return 0x0D; // Bottom row encoders
+    } else if (controlId >= 0x28 && controlId <= 0x2F) {
+      return 0x09; // Faders
+    } else if (controlId >= 0x30 && controlId <= 0x37) {
+      return 0x19; // Side buttons (track focus)
+    } else if (controlId >= 0x38 && controlId <= 0x3F) {
+      return 0x25; // Bottom buttons (track control)
+    }
+    return 0x00; // Default/unknown
+  }
+
+  /**
    * Clean up resources
    */
   async cleanup(): Promise<void> {
     this.clearTimers();
     await this.disconnect();
     await this.midi.cleanup();
+    await this.dawMidi.cleanup(); // Clean up DAW MIDI interface
     this.removeAllListeners();
   }
 }

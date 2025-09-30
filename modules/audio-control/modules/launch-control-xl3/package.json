@@ -58,6 +58,7 @@
     "example:leds": "tsx examples/led-animations.ts",
     "example:modes": "tsx examples/custom-modes.ts",
     "example:mapping": "tsx examples/control-mapping.ts",
+    "backup": "tsx utils/backup-current-mode.ts",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
@@ -77,7 +78,10 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@julusian/midi": "^3.6.1",
+    "@types/axios": "^0.9.36",
     "@types/js-yaml": "^4.0.9",
+    "axios": "^1.12.2",
     "chalk": "^5.3.0",
     "commander": "^11.1.0",
     "eventemitter3": "^5.0.1",

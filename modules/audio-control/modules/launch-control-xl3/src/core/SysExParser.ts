@@ -67,6 +67,13 @@ export interface CustomModeMessage extends SysExMessage {
   colors: ColorMapping[];
 }
 
+// Write acknowledgement message
+export interface WriteAcknowledgementMessage extends SysExMessage {
+  type: 'write_acknowledgement';
+  page: number;
+  status: number;
+}
+
 // Control mapping for custom modes
 // ControlMapping and ColorMapping interfaces are now imported from types/CustomMode.ts
 
@@ -141,7 +148,7 @@ export class SysExParser {
       throw new Error('Invalid Novation SysEx message');
     }
 
-    // Check for Launch Control XL 3 format: 02 15 05 00 [operation] [slot]
+    // Check for Launch Control XL 3 format: 02 15 05 00 [operation] [slot/page]
     if (messageData.length >= 7 &&
         messageData[0] === 0x02 &&  // Device ID (Launch Control XL 3)
         messageData[1] === 0x15 &&  // Command (Custom mode)
@@ -153,6 +160,11 @@ export class SysExParser {
       // Check if this is a custom mode response (operation 0x10)
       if (operation === 0x10) {
         return this.parseCustomModeResponseXL3(messageData); // Pass message data (F0/F7 and manufacturer ID stripped)
+      }
+
+      // Check if this is a write acknowledgement (operation 0x15)
+      if (operation === 0x15) {
+        return this.parseWriteAcknowledgement(messageData);
       }
     }
 
@@ -230,6 +242,42 @@ export class SysExParser {
   }
 
   /**
+   * Parse write acknowledgement message
+   *
+   * Format: 02 15 05 00 15 [page] [status]
+   *
+   * Discovery: Playwright + CoreMIDI spy (2025-09-30)
+   * Device sends ACK 24-27ms after receiving each page write.
+   * Status 0x06 indicates successful receipt.
+   *
+   * Example: 02 15 05 00 15 00 06 = ACK for page 0, status success
+   */
+  private static parseWriteAcknowledgement(data: number[]): WriteAcknowledgementMessage {
+    if (data.length < 7) {
+      throw new Error('Invalid write acknowledgement message');
+    }
+
+    // Expected format after F0/F7 and manufacturer ID stripped:
+    // 02 15 05 00 15 [PAGE] [STATUS]
+    // Positions: 0  1  2  3  4     5      6
+    const operation = data[4];
+    const page = data[5] ?? 0;
+    const status = data[6] ?? 0;
+
+    if (operation !== 0x15) {
+      throw new Error(`Unexpected operation in write acknowledgement: 0x${(operation ?? 0).toString(16)}`);
+    }
+
+    return {
+      type: 'write_acknowledgement',
+      manufacturerId: MANUFACTURER_ID,
+      page,
+      status,
+      data,
+    };
+  }
+
+  /**
    * Parse legacy custom mode response (for older devices)
    */
   private static parseCustomModeResponse(data: number[]): CustomModeMessage {
@@ -302,15 +350,17 @@ export class SysExParser {
    */
   private static parseName(data: number[]): string | undefined {
     let nameStart = -1;
+    let nameLength = -1;
 
     // Look for name patterns - check multiple possible formats
     for (let i = 0; i < data.length - 4; i++) {
       // Format 1: 0x01 0x20 0x10 0x2A (4 bytes + name) - write format
       if (data[i] === 0x01 && data[i + 1] === 0x20 && data[i + 2] === 0x10 && data[i + 3] === 0x2A) {
         nameStart = i + 4;
+        // No explicit length, will read until terminator
         break;
       }
-      // Format 2: 0x06 0x20 followed by length - factory fallback format
+      // Format 2: 0x06 0x20 [length] [name bytes] - read response format
       if (data[i] === 0x06 && data[i + 1] === 0x20) {
         const lengthByte = data[i + 2];
         // Check for factory pattern: 06 20 1F (indicates factory data)
@@ -318,6 +368,8 @@ export class SysExParser {
           // This is factory data, use slot-based fallback name
           return undefined; // Let caller use default slot name
         }
+        // Use the length byte to know exactly how many characters to read
+        nameLength = lengthByte ?? 0;
         nameStart = i + 3;
         break;
       }
@@ -345,35 +397,47 @@ export class SysExParser {
 
     if (nameStart >= 0) {
       const nameBytes = [];
-      for (let i = nameStart; i < data.length; i++) {
-        const byte = data[i];
 
-        if (byte === undefined) break;
-
-        // Stop at control structure patterns
-        if (byte === 0x49 && i < data.length - 2) {
-          const next1 = data[i + 1];
-          const next2 = data[i + 2];
-          if (next1 === 0x21 && next2 === 0x00) {
-            break;
+      // If we have an explicit length from the header, use it
+      if (nameLength > 0) {
+        for (let i = 0; i < nameLength && nameStart + i < data.length; i++) {
+          const byte = data[nameStart + i];
+          if (byte !== undefined && byte >= 0x20 && byte <= 0x7E) {
+            nameBytes.push(byte);
           }
         }
+      } else {
+        // Fall back to terminator-based parsing for formats without length
+        for (let i = nameStart; i < data.length; i++) {
+          const byte = data[i];
 
-        // Stop at control markers
-        if ((byte === 0x48 || byte === 0x69) && nameBytes.length > 0) {
-          break;
-        }
+          if (byte === undefined) break;
 
-        // Add printable ASCII characters
-        if (byte >= 0x20 && byte <= 0x7E) {
-          nameBytes.push(byte);
-          // Safety limit
-          if (nameBytes.length >= 20) {
+          // Stop at control structure patterns
+          if (byte === 0x49 && i < data.length - 2) {
+            const next1 = data[i + 1];
+            const next2 = data[i + 2];
+            if (next1 === 0x21 && next2 === 0x00) {
+              break;
+            }
+          }
+
+          // Stop at terminator 0x21 (!)
+          if (byte === 0x21) {
             break;
           }
-        } else if (nameBytes.length > 0) {
-          // Non-printable after we've started collecting - likely end of name
-          break;
+
+          // Add printable ASCII characters
+          if (byte >= 0x20 && byte <= 0x7E) {
+            nameBytes.push(byte);
+            // Safety limit
+            if (nameBytes.length >= 20) {
+              break;
+            }
+          } else if (nameBytes.length > 0) {
+            // Non-printable after we've started collecting - likely end of name
+            break;
+          }
         }
       }
 
@@ -601,63 +665,100 @@ export class SysExParser {
   }
 
   /**
-   * Phase 1 Fix: Enhanced control label parsing with non-sequential control ID mapping
-   * Handles labels with arbitrary control ID ordering and maps them correctly
+   * Phase 2 Fix: Parse control labels using length-encoding scheme
+   *
+   * Format discovered through empirical testing:
+   * [0x60 + length] [controlID] [name_bytes] [0x60_terminator]
+   *
+   * The marker byte encodes the string length:
+   * - 0x60 = empty string (0 chars)
+   * - 0x65 = 5 chars (e.g., "TEST1")
+   * - 0x69 = 9 chars (e.g., "High Pass")
+   * - 0x6F = 15 chars (maximum length)
    */
   private static parseControlLabels(data: number[], controls: ControlMapping[]): void {
     if (controls.length === 0) {
       return;
     }
 
-    // Scan entire response for control name sections
     const controlNames: Map<number, string> = new Map();
 
-    for (let i = 0; i < data.length - 3; i++) {
-      const byte = data[i];
+    console.log('[DEBUG] parseControlLabels: Starting label parsing with length-encoding');
+    console.log('[DEBUG] Total data length:', data.length);
 
-      // Look for label marker 0x69 followed by control ID
-      if (byte === 0x69) {
-        const labelControlId = data[i + 1];
-        const nextByte = data[i + 2];
+    // Dump raw bytes for label sections (positions 250-420) to help with debugging
+    if (data.length > 250) {
+      console.log('\n[DEBUG] Raw bytes 250-420:');
+      for (let i = 250; i < Math.min(420, data.length); i++) {
+        const byte = data[i];
+        if (byte !== undefined) {
+          const hex = `0x${byte.toString(16).padStart(2, '0')}`;
+          const ascii = byte >= 0x20 && byte <= 0x7E ? String.fromCharCode(byte) : '.';
+          const markers: string[] = [];
+          if (byte >= 0x60 && byte <= 0x6F) {
+            const length = byte - 0x60;
+            markers.push(`LEN=${length}`);
+          }
+          if (byte >= 0x10 && byte <= 0x3F) markers.push('CID');
+          const tags = markers.length > 0 ? ` [${markers.join(',')}]` : '';
+          console.log(`  ${i}: ${hex} '${ascii}'${tags}`);
+        }
+      }
+      console.log('');
+    }
 
-        // Validate this is a control name section
-        if (labelControlId !== undefined && nextByte !== undefined &&
-            labelControlId >= 0x10 && labelControlId <= 0x3F &&
-            nextByte >= 0x20 && nextByte <= 0x7E) { // ASCII printable range
+    // Scan for label entries
+    for (let i = 0; i < data.length - 2; i++) {
+      const markerByte = data[i];
 
-          // Extract the name following the control ID
-          let nameBytes = [];
-          let j = i + 2;
+      // Look for marker byte that encodes length (0x60-0x6F)
+      if (markerByte !== undefined && markerByte >= 0x60 && markerByte <= 0x6F) {
+        const length = markerByte - 0x60;
+        const controlId = data[i + 1];
 
-          // Read ASCII characters until we hit a non-printable or next marker
-          while (j < data.length) {
-            const nameByte = data[j];
+        // Verify this is a valid control ID (0x10-0x3F)
+        if (controlId !== undefined && controlId >= 0x10 && controlId <= 0x3F) {
+          console.log(`[DEBUG] Found label at position ${i}: marker=0x${markerByte.toString(16)}, length=${length}, controlId=0x${controlId.toString(16)}`);
 
-            if (nameByte === undefined) break;
-
-            // Stop at next control marker or non-ASCII
-            if (nameByte === 0x69 || nameByte === 0x60 ||
-                nameByte < 0x20 || nameByte > 0x7E) {
-              break;
+          // Read exactly `length` bytes as the name
+          const nameBytes: number[] = [];
+          for (let j = 0; j < length; j++) {
+            const nameByte = data[i + 2 + j];
+            if (nameByte !== undefined && nameByte >= 0x20 && nameByte <= 0x7E) {
+              nameBytes.push(nameByte);
+            } else {
+              console.log(`[DEBUG]   Warning: unexpected byte 0x${nameByte?.toString(16)} at position ${i + 2 + j} (expected printable ASCII)`);
             }
-
-            nameBytes.push(nameByte);
-            j++;
           }
 
+          // Verify terminator (should be 0x60 or another marker)
+          const terminatorPos = i + 2 + length;
+          const terminator = data[terminatorPos];
+          if (terminator !== undefined && terminator >= 0x60 && terminator <= 0x6F) {
+            console.log(`[DEBUG]   Verified terminator/next-marker 0x${terminator.toString(16)} at position ${terminatorPos}`);
+          } else {
+            console.log(`[DEBUG]   Warning: expected terminator at position ${terminatorPos}, got 0x${terminator?.toString(16)}`);
+          }
+
+          // Store the name
           if (nameBytes.length > 0) {
             const name = String.fromCharCode(...nameBytes).trim();
-            // Phase 1 Fix: Map potentially offset control IDs back to canonical IDs
-            // The device may use different control IDs in labels vs definitions
-            const canonicalControlId = this.mapLabelControlId(labelControlId);
+            console.log(`[DEBUG]   Extracted name "${name}" for control 0x${controlId.toString(16)}`);
+            const canonicalControlId = this.mapLabelControlId(controlId);
             controlNames.set(canonicalControlId, name);
+          } else if (length > 0) {
+            console.log(`[DEBUG]   Warning: expected ${length} name bytes but got ${nameBytes.length}`);
           }
 
-          // Skip past processed name
-          i = j - 1;
+          // Skip past this label entry (marker + controlID + name bytes + terminator)
+          // But don't skip the terminator itself as it might be the marker for the next label
+          i += 1 + length; // Will be incremented by loop, so this positions us at the terminator
         }
       }
     }
+
+    console.log('[DEBUG] parseControlLabels: Found', controlNames.size, 'control names');
+    console.log('[DEBUG] Control names map:', Array.from(controlNames.entries()).map(([id, name]) => `0x${id.toString(16)}: "${name}"`));
 
     // Apply names to controls based on their actual control IDs
     for (const control of controls) {
@@ -671,12 +772,19 @@ export class SysExParser {
   }
 
   /**
-   * Phase 1 Fix: Map label control IDs to canonical control IDs
+   * Phase 2 Fix: Map label control IDs to canonical control IDs
    * Handles cases where labels use different control IDs than definitions
+   *
+   * Discovered mapping through empirical testing:
+   * - Label IDs 0x19-0x1c (25-28) map to control IDs 26-29 (+1 offset)
+   * - All other label IDs map directly to control IDs
    */
   private static mapLabelControlId(labelControlId: number): number {
-    // For now, assume direct mapping, but this can be enhanced if we discover
-    // systematic offset patterns in device responses
+    // Special case: label IDs 25-28 map to control IDs 26-29
+    if (labelControlId >= 25 && labelControlId <= 28) {
+      return labelControlId + 1;
+    }
+    // Default: direct mapping
     return labelControlId;
   }
 
@@ -814,15 +922,31 @@ export class SysExParser {
   }
 
   /**
-   * Build custom mode read request
+   * Build custom mode read request with page support
+   * Web editor sends two requests:
+   * - Page 0 (0x00): Gets controls 0x10-0x27 (encoders)
+   * - Page 1 (0x03): Gets controls 0x28-0x3F (faders/buttons)
+   *
+   * CRITICAL: Slot selection is done via DAW port BEFORE calling this.
+   * The slot byte in the read command MUST be 0 to read from the DAW-port-selected slot.
+   * If slot byte > 0, the device reads from that explicit slot instead, ignoring DAW port.
    */
-  static buildCustomModeReadRequest(slot: number): number[] {
+  static buildCustomModeReadRequest(slot: number, page: number = 0): number[] {
     if (slot < 0 || slot > 15) {
       throw new Error('Custom mode slot must be 0-15');
     }
+    if (page < 0 || page > 1) {
+      throw new Error('Page must be 0 (encoders) or 1 (faders/buttons)');
+    }
 
-    // CORRECTED PROTOCOL: Based on working MIDI capture from web editor
-    // Format: F0 00 20 29 02 15 05 00 40 [SLOT] 00 F7
+    // Web editor pattern:
+    // Format: F0 00 20 29 02 15 05 00 40 [PAGE] [SLOT] F7
+    // Where PAGE = 0x00 for first 24 controls, 0x03 for second 24 controls
+    // And SLOT = MUST BE 0 to read from DAW-port-selected slot
+    //
+    // Discovery (2025-09-30): Slot byte behavior for reads:
+    // - slot = 0: Reads from DAW-port-selected slot (CORRECT)
+    // - slot > 0: Reads from explicit slot, ignoring DAW port (WRONG for write/read round-trip)
     return [
       0xF0,             // SysEx start
       0x00, 0x20, 0x29, // Manufacturer ID (Novation)
@@ -830,111 +954,20 @@ export class SysExParser {
       0x15,             // Command (Custom mode)
       0x05,             // Sub-command
       0x00,             // Reserved
-      0x40,             // Read operation (CORRECTED from 0x15)
-      slot,             // Slot number (0-14 for slots 1-15)
-      0x00,             // Parameter (CORRECTED from nothing)
+      0x40,             // Read operation
+      page === 0 ? 0x00 : 0x03, // Page byte: 0x00 for encoders, 0x03 for faders/buttons
+      0x00,             // Slot byte: ALWAYS 0 to read from DAW-port-selected slot
       0xF7              // SysEx end
     ];
   }
 
-  /**
-   * Build custom mode write message from CustomMode object
-   */
-  static buildCustomModeWriteMessage(slot: number, customMode: CustomMode): number[] {
-    if (slot < 0 || slot > 15) {
-      throw new Error('Custom mode slot must be 0-15');
-    }
-
-    const rawData: number[] = [];
-
-    // Add encoded name with correct prefix (Phase 2 implementation)
-    const nameEncoded = this.encodeName(customMode.name);
-    rawData.push(...nameEncoded);
-
-    // Name encoding handled by encodeName method above
-
-    // Sort controls by ID for consistency
-    const sortedControls = Object.values(customMode.controls)
-      .filter(control => control.controlId !== undefined)
-      .sort((a, b) => (a.controlId ?? 0) - (b.controlId ?? 0));
-
-    // Add control definitions with 0x49 marker and offset
-    for (const control of sortedControls) {
-      // Write control structure: 11 bytes
-      rawData.push(0x49); // Write control marker
-      rawData.push(this.getControlId(control)); // Control ID (no offset - direct mapping)
-      rawData.push(0x02); // Definition type
-      // Get control type based on position and type
-      rawData.push(this.getControlType(control)); // Control type based on position
-      rawData.push(0x00); // Always 0x00 (not channel)
-      rawData.push(0x01); // Always 0x01
-      rawData.push(0x40); // Always 0x40 (was 0x48 in some versions)
-      rawData.push(0x00); // Always 0x00
-      rawData.push(control.ccNumber ?? control.cc ?? 0); // CC number
-      rawData.push(0x7F); // Max value (always 0x7F in write)
-      rawData.push(0x00); // Terminator
-    }
-
-    // Add label data if present
-    if (customMode.labels && customMode.labels.size > 0) {
-      for (const [controlId, label] of customMode.labels) {
-        rawData.push(0x69); // Label marker
-        rawData.push(controlId); // Control ID (no offset)
-        // Add label text
-        for (let i = 0; i < label.length; i++) {
-          rawData.push(label.charCodeAt(i));
-        }
-      }
-    } else {
-      // Generate default labels for controls
-      for (const control of sortedControls) {
-        const controlId = control.controlId ?? 0;
-        rawData.push(0x69); // Label marker
-        rawData.push(controlId); // Control ID (no offset)
-        const label = this.generateControlLabel(controlId);
-        for (let i = 0; i < label.length; i++) {
-          rawData.push(label.charCodeAt(i));
-        }
-      }
-    }
-
-    // Add color data if present
-    if (customMode.colors && customMode.colors.size > 0) {
-      for (const [controlId, color] of customMode.colors) {
-        rawData.push(0x60); // Color marker
-        rawData.push(controlId); // Control ID (no offset)
-        rawData.push(color); // Color value
-      }
-    } else {
-      // Add default colors (off) for all controls
-      for (const control of sortedControls) {
-        const controlId = control.controlId ?? 0;
-        rawData.push(0x60); // Color marker
-        rawData.push(controlId); // Control ID (no offset)
-      }
-    }
-
-    // Build complete message
-    return [
-      0xF0,             // SysEx start
-      0x00, 0x20, 0x29, // Manufacturer ID (Novation)
-      0x02,             // Device ID (Launch Control XL 3)
-      0x15,             // Command (Custom mode)
-      0x05,             // Sub-command
-      0x00,             // Reserved
-      0x45,             // Write operation
-      slot,             // Slot number
-      ...rawData,       // Custom mode data
-      0xF7              // SysEx end
-    ];
-  }
 
   /**
    * Build custom mode write request
    */
-  static buildCustomModeWriteRequest(slot: number, modeData: CustomModeMessage): number[] {
-    if (slot < 0 || slot > 15) {
-      throw new Error('Custom mode slot must be 0-15');
+  static buildCustomModeWriteRequest(page: number, modeData: CustomModeMessage): number[] {
+    if (page < 0 || page > 3) {
+      throw new Error('Page must be 0-3');
     }
 
     // Validate the custom mode data
@@ -943,9 +976,16 @@ export class SysExParser {
     // Encode the custom mode data
     const encodedData = this.encodeCustomModeData(modeData);
 
-    // VERIFIED PROTOCOL: Based on actual web editor traffic capture
-    // Format: F0 00 20 29 02 15 05 00 45 [SLOT] [encoded data] F7
-    // The web editor DOES use 0x45 for write operations with full data payload
+    // CRITICAL DISCOVERY FROM WEB EDITOR ANALYSIS:
+    // Write protocol requires multiple pages. The page parameter specifies which page.
+    // Page 0: Controls 0x10-0x27 (IDs 16-39, first 24 hardware controls)
+    // Page 3: Controls 0x28-0x3F (IDs 40-63, remaining 24 hardware controls)
+    // Note: Control IDs 0x00-0x0F do not exist on the device hardware
+    //
+    // Format: F0 00 20 29 02 15 05 00 45 [page] 00 [encoded data] F7
+    //
+    // Slot selection is done via DAW port BEFORE sending any pages.
+
     return [
       0xF0,             // SysEx start
       0x00, 0x20, 0x29, // Manufacturer ID (Novation)
@@ -953,8 +993,9 @@ export class SysExParser {
       0x15,             // Command (Custom mode)
       0x05,             // Sub-command
       0x00,             // Reserved
-      0x45,             // Write operation with data (confirmed from web editor)
-      slot,             // Slot number (0-14 for slots 1-15)
+      0x45,             // Write operation with data
+      page,             // Page number (0 or 3 for write operations)
+      0x00,             // Flag byte (always 0x00)
       ...encodedData,   // Encoded custom mode data
       0xF7              // SysEx end
     ];
@@ -1018,59 +1059,83 @@ export class SysExParser {
   private static encodeCustomModeData(modeData: CustomModeMessage): number[] {
     const rawData: number[] = [];
 
-    // Add encoded name with correct prefix (Phase 2 implementation)
+    // Add encoded name with correct prefix
     const modeName = modeData.name || 'CUSTOM';
     const nameEncoded = this.encodeName(modeName);
     rawData.push(...nameEncoded);
 
-    // Sort controls by ID for consistency
-    // FIX: Accept both 'id' and 'controlId' fields to handle different formats
-    const sortedControls = Object.values(modeData.controls)
-      .filter((control: any) => control.id !== undefined || control.controlId !== undefined)
-      .map((control: any) => ({
-        ...control,
-        controlId: control.controlId ?? control.id ?? 0
-      }))
-      .sort((a: any, b: any) => (a.controlId ?? 0) - (b.controlId ?? 0));
+    // Create a map of user-provided controls by ID
+    const userControls = new Map<number, any>();
+    for (const control of modeData.controls) {
+      const controlId = control.id ?? control.controlId;
+      if (controlId !== undefined) {
+        userControls.set(controlId, control);
+      }
+    }
 
-    // Add control definitions with 0x49 marker and offset
-    for (const control of sortedControls) {
-      // Write control structure: 11 bytes
+    // Web editor format: ONLY send controls that are actually specified
+    // Sort control IDs for consistent output
+    const specifiedControlIds = Array.from(userControls.keys()).sort((a, b) => a - b);
+
+    // Write control definitions ONLY for user-specified controls
+    for (const controlId of specifiedControlIds) {
+      const userControl = userControls.get(controlId);
+
+      // Determine control type based on ID range
+      let controlType: number;
+      let defaultCC: number;
+
+      if (controlId >= 0x10 && controlId <= 0x17) {
+        // Top row encoders
+        controlType = 0x05;
+        defaultCC = 0x0D + (controlId - 0x10); // CC 13-20
+      } else if (controlId >= 0x18 && controlId <= 0x1F) {
+        // Middle row encoders
+        controlType = 0x09;
+        defaultCC = 0x15 + (controlId - 0x18); // CC 21-28
+      } else if (controlId >= 0x20 && controlId <= 0x27) {
+        // Bottom row encoders
+        controlType = 0x0D;
+        defaultCC = 0x1D + (controlId - 0x20); // CC 29-36
+      } else if (controlId >= 0x28 && controlId <= 0x2F) {
+        // Faders
+        controlType = 0x00;
+        defaultCC = 0x05 + (controlId - 0x28); // CC 5-12
+      } else if (controlId >= 0x30 && controlId <= 0x37) {
+        // First row buttons
+        controlType = 0x19;
+        defaultCC = 0x25 + (controlId - 0x30); // CC 37-44
+      } else {
+        // Second row buttons (0x38-0x3F)
+        controlType = 0x25;
+        defaultCC = 0x2D + (controlId - 0x38); // CC 45-52
+      }
+
+      // Use user-provided CC if available, otherwise use default
+      const cc = userControl ? (userControl.ccNumber ?? userControl.cc ?? defaultCC) : defaultCC;
+
+      // Use user-provided channel if available, otherwise default to 0 (channel 1)
+      const channel = userControl ? (userControl.midiChannel ?? userControl.channel ?? 0) : 0;
+
+      // Write control structure: 11 bytes (matching web editor format exactly)
       rawData.push(0x49); // Write control marker
-      rawData.push(this.getControlId(control)); // Control ID (no offset - direct mapping)
+      rawData.push(controlId); // Control ID
       rawData.push(0x02); // Definition type
-      // Get control type based on position and type
-      rawData.push(this.getControlType(control)); // Control type based on position
-      rawData.push(0x00); // Always 0x00 (not channel)
+      rawData.push(controlType); // Control type based on position
+      rawData.push(channel); // MIDI channel (0-15)
       rawData.push(0x01); // Always 0x01
-      rawData.push(0x40); // Always 0x40 (was 0x48 in some versions)
+      rawData.push(0x48); // Always 0x48 (verified from web editor MIDI captures)
       rawData.push(0x00); // Always 0x00
-      rawData.push(control.ccNumber ?? control.cc ?? 0); // CC number
+      rawData.push(cc); // CC number
       rawData.push(0x7F); // Max value (always 0x7F in write)
       rawData.push(0x00); // Terminator
     }
 
-    // Generate labels for controls with names
-    for (const control of sortedControls) {
-      rawData.push(0x69); // Label marker
-      rawData.push(this.getControlId(control)); // Control ID (no offset)
-
-      // Use control name if available, otherwise generate default label
-      const label = control.name || this.generateControlLabel(this.getControlId(control));
-      for (let i = 0; i < label.length; i++) {
-        rawData.push(label.charCodeAt(i));
-      }
-    }
-
-    // Add color data for controls
-    for (const control of sortedControls) {
-      const controlId = this.getControlId(control);
-      // Use control's color property directly or default
-      const colorValue = control.color ?? 0x0C; // Default color if not specified
-
-      rawData.push(0x60); // Color marker
-      rawData.push(controlId); // Control ID (no offset)
-      rawData.push(colorValue); // Actual color value
+    // Web editor format: Color markers ONLY for specified controls, 2 bytes each
+    for (const controlId of specifiedControlIds) {
+      rawData.push(0x60); // LED color marker
+      rawData.push(controlId); // Control ID
+      // Note: Web editor format is exactly 2 bytes - no color value byte
     }
 
     return rawData;
@@ -1094,6 +1159,9 @@ export class SysExParser {
     // Map based on type and index
     if (type === 'encoder' || type === 'knob') {
       // Encoders: 0x10-0x27 (24 total, 3 rows of 8)
+      // Top row (0-7): 0x10-0x17
+      // Middle row (8-15): 0x18-0x1F
+      // Bottom row (16-23): 0x20-0x27
       return 0x10 + Math.min(23, index);
     } else if (type === 'fader') {
       // Faders: 0x28-0x2F (8 total)
@@ -1140,10 +1208,13 @@ export class SysExParser {
    * @returns Encoded name bytes with prefix
    */
   private static encodeName(name: string): number[] {
+    // Truncate to 16 characters and convert to bytes
     const nameBytes = Array.from(name.substring(0, 16)).map(c => c.charCodeAt(0));
+
+    // Web editor format: 0x20 [length] [name_bytes]
     return [
-      0x01, 0x20,  // Correct prefix (was 0x00 0x20)
-      0x10, 0x2A,  // Length/type identifier
+      0x20,              // Prefix byte
+      nameBytes.length,  // Length byte
       ...nameBytes
     ];
   }

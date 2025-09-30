@@ -246,6 +246,7 @@ export class MidiInterface extends EventEmitter {
     }
   }
 
+
   /**
    * Close all ports and cleanup
    */

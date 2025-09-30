@@ -29,8 +29,6 @@ export { CustomModeBuilder, Color } from './builders/CustomModeBuilder.js';
 // Control mapping
 export * from './mapping/ControlMapper.js';
 
-// LED control
-export * from './led/LedController.js';
 
 // Type definitions (exclude types already exported by core modules)
 export type {
@@ -116,10 +114,6 @@ export {
   LED_COLORS,
 } from './modes/CustomModeManager.js';
 
-export {
-  LED_COLOR_VALUES,
-  LED_NOTE_MAP,
-} from './led/LedController.js';
 
 export {
   ValueTransformers,
@@ -139,7 +133,6 @@ export const SUPPORTED_DEVICE = 'Novation Launch Control XL 3';
  *
  * // Create controller instance
  * const controller = new LaunchControlXL3({
- *   enableLedControl: true,
  *   enableCustomModes: true,
  * });
  *
@@ -151,8 +144,6 @@ export const SUPPORTED_DEVICE = 'Novation Launch Control XL 3';
  *   console.log(`Control ${controlId} changed to ${value}`);
  * });
  *
- * // Set LED colors
- * await controller.setLed('FOCUS1', 'GREEN_FULL');
  *
  * // Load custom mode
  * const mode = await controller.loadCustomMode(0);

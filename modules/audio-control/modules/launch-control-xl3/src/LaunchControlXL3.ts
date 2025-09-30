@@ -13,15 +13,12 @@ import { MidiBackendInterface, MidiMessage } from './core/MidiInterface.js';
 import { DeviceManager, DeviceStatus } from './device/DeviceManager.js';
 import { CustomModeManager, CONTROL_IDS, LED_COLORS } from './modes/CustomModeManager.js';
 import { ControlMapper, ValueTransformers } from './mapping/ControlMapper.js';
-import { LedController, LED_COLOR_VALUES } from './led/LedController.js';
 import {
   LaunchControlXL3Info,
   CustomMode,
   CustomModeSlot,
   ControlMapping,
   ControlType,
-  LedColor,
-  LedBehaviour,
   MidiChannel,
   CCNumber,
 } from './types/index.js';
@@ -29,7 +26,6 @@ import {
 export interface LaunchControlXL3Options {
   midiBackend?: MidiBackendInterface;
   logger?: Logger;
-  enableLedControl?: boolean;
   enableCustomModes?: boolean;
   enableValueSmoothing?: boolean;
   smoothingFactor?: number;
@@ -58,9 +54,6 @@ export interface LaunchControlXL3Events {
   'mode:changed': (slot: number, mode: CustomMode) => void;
   'mode:loaded': (slot: number, mode: CustomMode) => void;
   'mode:saved': (slot: number, mode: CustomMode) => void;
-
-  // LED events
-  'led:changed': (controlId: string, color: LedColor, behaviour: LedBehaviour) => void;
 }
 
 /**
@@ -75,7 +68,6 @@ export class LaunchControlXL3 extends EventEmitter {
   private deviceManager: DeviceManager;
   private customModeManager?: CustomModeManager | undefined;
   private controlMapper: ControlMapper;
-  private ledController?: LedController | undefined;
   private isInitialized = false;
   private currentMode?: CustomMode | undefined;
   private currentSlot?: CustomModeSlot | undefined;
@@ -83,7 +75,6 @@ export class LaunchControlXL3 extends EventEmitter {
   // Public static exports
   static readonly CONTROL_IDS = CONTROL_IDS;
   static readonly LED_COLORS = LED_COLORS;
-  static readonly LED_COLOR_VALUES = LED_COLOR_VALUES;
   static readonly ValueTransformers = ValueTransformers;
 
   constructor(options: LaunchControlXL3Options = {}) {
@@ -94,7 +85,6 @@ export class LaunchControlXL3 extends EventEmitter {
     this.options = {
       midiBackend: options.midiBackend,
       logger: options.logger,
-      enableLedControl: options.enableLedControl ?? true,
       enableCustomModes: options.enableCustomModes ?? true,
       enableValueSmoothing: options.enableValueSmoothing ?? false,
       smoothingFactor: options.smoothingFactor ?? 3,
@@ -157,17 +147,6 @@ export class LaunchControlXL3 extends EventEmitter {
         });
       }
 
-      if (this.options.enableLedControl) {
-        this.logger.debug('Initializing LED controller...');
-        this.ledController = new LedController({
-          deviceManager: this.deviceManager,
-          enableAnimations: true,
-        });
-
-        // Play startup animation
-        await this.ledController.playStartupAnimation();
-      }
-
       // Load default mappings
       this.loadDefaultMappings();
 
@@ -191,11 +170,6 @@ export class LaunchControlXL3 extends EventEmitter {
     if (this.customModeManager) {
       this.customModeManager.cleanup();
       this.customModeManager = undefined;
-    }
-
-    if (this.ledController) {
-      this.ledController.cleanup();
-      this.ledController = undefined;
     }
 
     this.controlMapper.resetAll();
@@ -257,12 +231,6 @@ export class LaunchControlXL3 extends EventEmitter {
       });
     }
 
-    // LED controller events
-    if (this.ledController) {
-      this.ledController.on('led:changed', (controlId, state) => {
-        this.emit('led:changed', controlId, state.color, state.behaviour);
-      });
-    }
 
     // MIDI input events
     this.deviceManager.on('sysex:received', (data) => {
@@ -320,16 +288,6 @@ export class LaunchControlXL3 extends EventEmitter {
     // Apply control mappings
     this.controlMapper.loadFromCustomMode(mode);
 
-    // Apply LED settings
-    if (this.ledController && mode.leds) {
-      const updates = Object.entries(mode.leds).map(([controlId, led]) => ({
-        controlId,
-        color: led.color,
-        behaviour: led.behaviour,
-      }));
-
-      await this.ledController.setMultipleLeds(updates);
-    }
 
     this.currentMode = mode;
     this.currentSlot = slot;
@@ -392,20 +350,6 @@ export class LaunchControlXL3 extends EventEmitter {
     const controls = this.controlMapper.exportToCustomMode();
 
     const leds = new Map<number, { color: number; behaviour: string }>();
-    if (this.ledController) {
-      const ledStates = this.ledController.getAllLedStates();
-      for (const [controlId, state] of ledStates.entries()) {
-        if (state.active) {
-          const numericId = parseInt(controlId, 10);
-          if (!isNaN(numericId)) {
-            leds.set(numericId, {
-              color: typeof state.color === 'string' ? parseInt(state.color, 16) : state.color,
-              behaviour: state.behaviour,
-            });
-          }
-        }
-      }
-    }
 
     return {
       name,
@@ -467,79 +411,6 @@ export class LaunchControlXL3 extends EventEmitter {
     this.controlMapper.updateMapping(controlId, updates);
   }
 
-  // ============================================
-  // LED Control
-  // ============================================
-
-  /**
-   * Set LED color
-   */
-  async setLed(
-    controlId: string,
-    color: LedColor | number,
-    behaviour?: LedBehaviour,
-  ): Promise<void> {
-    if (!this.ledController) {
-      throw new Error('LED control not enabled');
-    }
-
-    await this.ledController.setLed(controlId, color, behaviour);
-  }
-
-  /**
-   * Turn off LED
-   */
-  async turnOffLed(controlId: string): Promise<void> {
-    if (!this.ledController) {
-      throw new Error('LED control not enabled');
-    }
-
-    await this.ledController.turnOff(controlId);
-  }
-
-  /**
-   * Turn off all LEDs
-   */
-  async turnOffAllLeds(): Promise<void> {
-    if (!this.ledController) {
-      throw new Error('LED control not enabled');
-    }
-
-    await this.ledController.turnOffAll();
-  }
-
-  /**
-   * Flash LED
-   */
-  async flashLed(controlId: string, color: LedColor | number, duration?: number): Promise<void> {
-    if (!this.ledController) {
-      throw new Error('LED control not enabled');
-    }
-
-    await this.ledController.flashLed(controlId, color, duration);
-  }
-
-  /**
-   * Start LED animation
-   */
-  startLedAnimation(id: string, animation: any): void {
-    if (!this.ledController) {
-      throw new Error('LED control not enabled');
-    }
-
-    this.ledController.startAnimation(id, animation);
-  }
-
-  /**
-   * Stop LED animation
-   */
-  stopLedAnimation(id: string): void {
-    if (!this.ledController) {
-      throw new Error('LED control not enabled');
-    }
-
-    this.ledController.stopAnimation(id);
-  }
 
   // ============================================
   // Utility Methods
@@ -629,26 +500,9 @@ export class LaunchControlXL3 extends EventEmitter {
       );
     }
 
-    // Perform fresh device identity query to verify current connection
-    try {
-      // Access private method through device manager's queryDeviceIdentity
-      // Since DeviceManager doesn't expose this publicly, we'll trigger a reconnection
-      // which forces a fresh handshake
-      await this.disconnect();
-      await this.connect();
-
-      const updatedStatus = this.getStatus();
-      if (!updatedStatus.deviceInfo) {
-        throw new Error(
-          'Device verification failed: Unable to retrieve device information after reconnection.',
-        );
-      }
-
-      return updatedStatus.deviceInfo;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      throw new Error(`Device verification failed: ${errorMessage}`);
-    }
+    // Return the existing device info since the device is already connected and verified
+    // The handshake has already been performed during connect()
+    return status.deviceInfo;
   }
 
   /**
