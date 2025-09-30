@@ -6,7 +6,6 @@
  */
 
 import { MidiBackend, MidiPortInfo } from '../types/MidiBackend';
-import axios from 'axios';
 import { EventEmitter } from 'events';
 
 interface JuceServerConfig {
@@ -31,8 +30,9 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
   async initialize(): Promise<void> {
     // Check if server is running
     try {
-      const response = await axios.get(`${this.baseUrl}/health`);
-      if (response.data.status !== 'ok') {
+      const response = await fetch(`${this.baseUrl}/health`);
+      const data = await response.json();
+      if (data.status !== 'ok') {
         throw new Error('JUCE MIDI server not healthy');
       }
     } catch (error: any) {
@@ -42,8 +42,9 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
 
   async getInputs(): Promise<MidiPortInfo[]> {
     try {
-      const response = await axios.get(`${this.baseUrl}/ports`);
-      return response.data.inputs.map((name: string, index: number) => ({
+      const response = await fetch(`${this.baseUrl}/ports`);
+      const data = await response.json();
+      return data.inputs.map((name: string, index: number) => ({
         id: `input_${index}`,
         name
       }));
@@ -55,8 +56,9 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
 
   async getOutputs(): Promise<MidiPortInfo[]> {
     try {
-      const response = await axios.get(`${this.baseUrl}/ports`);
-      return response.data.outputs.map((name: string, index: number) => ({
+      const response = await fetch(`${this.baseUrl}/ports`);
+      const data = await response.json();
+      return data.outputs.map((name: string, index: number) => ({
         id: `output_${index}`,
         name
       }));
@@ -69,12 +71,17 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
   async openInput(portName: string): Promise<void> {
     const portId = `midi_in`;
     try {
-      const response = await axios.post(`${this.baseUrl}/port/${portId}`, {
-        name: portName,
-        type: 'input'
+      const response = await fetch(`${this.baseUrl}/port/${portId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: portName,
+          type: 'input'
+        })
       });
+      const data = await response.json();
 
-      if (!response.data.success) {
+      if (!data.success) {
         throw new Error(`Failed to open input port: ${portName}`);
       }
 
@@ -90,12 +97,17 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
   async openOutput(portName: string): Promise<void> {
     const portId = `midi_out`;
     try {
-      const response = await axios.post(`${this.baseUrl}/port/${portId}`, {
-        name: portName,
-        type: 'output'
+      const response = await fetch(`${this.baseUrl}/port/${portId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: portName,
+          type: 'output'
+        })
       });
+      const data = await response.json();
 
-      if (!response.data.success) {
+      if (!data.success) {
         throw new Error(`Failed to open output port: ${portName}`);
       }
 
@@ -108,12 +120,17 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
   async openDawInput(portName: string): Promise<void> {
     const portId = `daw_in`;
     try {
-      const response = await axios.post(`${this.baseUrl}/port/${portId}`, {
-        name: portName,
-        type: 'input'
+      const response = await fetch(`${this.baseUrl}/port/${portId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: portName,
+          type: 'input'
+        })
       });
+      const data = await response.json();
 
-      if (!response.data.success) {
+      if (!data.success) {
         throw new Error(`Failed to open DAW input port: ${portName}`);
       }
 
@@ -129,12 +146,17 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
   async openDawOutput(portName: string): Promise<void> {
     const portId = `daw_out`;
     try {
-      const response = await axios.post(`${this.baseUrl}/port/${portId}`, {
-        name: portName,
-        type: 'output'
+      const response = await fetch(`${this.baseUrl}/port/${portId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: portName,
+          type: 'output'
+        })
       });
+      const data = await response.json();
 
-      if (!response.data.success) {
+      if (!data.success) {
         throw new Error(`Failed to open DAW output port: ${portName}`);
       }
 
@@ -151,8 +173,12 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
     }
 
     try {
-      await axios.post(`${this.baseUrl}/port/${portId}/send`, {
-        message: data
+      await fetch(`${this.baseUrl}/port/${portId}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: data
+        })
       });
     } catch (error: any) {
       throw new Error(`Failed to send MIDI message: ${error.message}`);
@@ -166,8 +192,12 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
     }
 
     try {
-      await axios.post(`${this.baseUrl}/port/${portId}/send`, {
-        message: data
+      await fetch(`${this.baseUrl}/port/${portId}/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: data
+        })
       });
     } catch (error: any) {
       throw new Error(`Failed to send DAW message: ${error.message}`);
@@ -182,9 +212,10 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
       const midiInPort = this.openPorts.get('midi_in');
       if (midiInPort) {
         try {
-          const response = await axios.get(`${this.baseUrl}/port/${midiInPort}/messages?timeout=0`);
-          if (response.data.messages && response.data.messages.length > 0) {
-            for (const message of response.data.messages) {
+          const response = await fetch(`${this.baseUrl}/port/${midiInPort}/messages?timeout=0`);
+          const data = await response.json();
+          if (data.messages && data.messages.length > 0) {
+            for (const message of data.messages) {
               this.emit('message', message);
             }
           }
@@ -197,9 +228,10 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
       const dawInPort = this.openPorts.get('daw_in');
       if (dawInPort) {
         try {
-          const response = await axios.get(`${this.baseUrl}/port/${dawInPort}/messages?timeout=0`);
-          if (response.data.messages && response.data.messages.length > 0) {
-            for (const message of response.data.messages) {
+          const response = await fetch(`${this.baseUrl}/port/${dawInPort}/messages?timeout=0`);
+          const data = await response.json();
+          if (data.messages && data.messages.length > 0) {
+            for (const message of data.messages) {
               this.emit('dawMessage', message);
             }
           }
@@ -223,7 +255,7 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
     // Close all open ports
     for (const [_, portId] of this.openPorts) {
       try {
-        await axios.delete(`${this.baseUrl}/port/${portId}`);
+        await fetch(`${this.baseUrl}/port/${portId}`, { method: 'DELETE' });
       } catch (error) {
         console.error(`Error closing port ${portId}:`, error);
       }
