@@ -78,7 +78,9 @@
   },
   "dependencies": {
     "@julusian/midi": "^3.6.1",
+    "@types/axios": "^0.9.36",
     "@types/js-yaml": "^4.0.9",
+    "axios": "^1.12.2",
     "chalk": "^5.3.0",
     "commander": "^11.1.0",
     "eventemitter3": "^5.0.1",
