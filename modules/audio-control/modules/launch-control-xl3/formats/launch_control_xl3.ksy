@@ -17,6 +17,7 @@ doc: |
   Empirically discovered format through MIDI traffic analysis.
 
   Version History:
+  - v1.2 (2025-09-30): Added write acknowledgement message format (command 0x15)
   - v1.1 (2025-09-30): Documented write protocol format (command 0x45)
   - v1.0 (2025-09-30): Initial read protocol specification
 
@@ -141,7 +142,41 @@ types:
         value: length_marker < 0x60 or control_id < 0x10
         doc: Check if this marks end of labels section
 
+  write_acknowledgement:
+    doc: |
+      Write acknowledgement message sent by device after receiving a page write.
+
+      Complete SysEx format:
+        F0 00 20 29 02 15 05 00 15 [page] [status] F7
+
+      This specification covers the payload after the SysEx header.
+
+      Discovery: Playwright + CoreMIDI spy (2025-09-30)
+      Observed device sending ACK 24-27ms after each page write.
+      Web editor waits for ACK before sending next page.
+
+      Example (Page 0 ACK):
+        15 00 06 = Command 0x15, Page 0, Status 0x06 (success)
+
+      Example (Page 3 ACK):
+        15 03 06 = Command 0x15, Page 3, Status 0x06 (success)
+    seq:
+      - id: command
+        contents: [0x15]
+        doc: Acknowledgement command byte
+      - id: page_number
+        type: u1
+        doc: Page number being acknowledged (0 or 3 for writes)
+      - id: status
+        type: u1
+        enum: ack_status
+        doc: Acknowledgement status (0x06 = success)
+
 enums:
+  ack_status:
+    0x06: success
+    doc: Status codes for write acknowledgements
+
   control_behavior:
     0x0C: absolute
     0x0D: relative

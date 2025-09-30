@@ -1,6 +1,6 @@
 # Launch Control XL3 Protocol Specification
 
-**Version:** 1.1
+**Version:** 1.2
 **Last Updated:** 2025-09-30
 **Status:** Verified with hardware
 
@@ -80,12 +80,38 @@ Each page follows the same structure defined in `launch_control_xl3.ksy`.
 
 ### Overview
 
-Writing a custom mode to the device uses command `0x45` with a different data format than the read response.
+Writing a custom mode to the device uses command `0x45` with a multi-page protocol and acknowledgement handshake.
 
 **Discovery Method:** Web editor MIDI traffic capture using CoreMIDI spy (2025-09-30)
 
+### Write Flow with Acknowledgements ⭐
+
+**Critical Discovery (2025-09-30):** The device sends acknowledgement SysEx messages after receiving each page. The client MUST wait for these acknowledgements before sending the next page.
+
+**Complete Write Sequence:**
+1. Send page 0 write command (`0x45 00`)
+2. **Wait for device acknowledgement** (`0x15 00 06`)
+3. Send page 3 write command (`0x45 03`)
+4. **Wait for device acknowledgement** (`0x15 03 06`)
+
+**Timing:** Device typically responds within 24-27ms. Web editor waits for acknowledgement before proceeding.
+
+**Discovery Method:** Playwright browser automation + CoreMIDI spy, observing [DEST] and [SRC] traffic during web editor write operations.
+
+### Multi-Page Write Protocol
+
+Custom modes require **TWO pages** to be written (not three like reads):
+
+| Page | Control IDs | Contains Mode Name? |
+|------|-------------|---------------------|
+| 0    | 0x10-0x27 (16-39) | Yes |
+| 3    | 0x28-0x3F (40-63) | Yes |
+
+**Note:** Control IDs 0x00-0x0F do not exist on the device hardware. Only IDs 0x10-0x3F (48 controls total).
+
 ### SysEx Message Format
 
+**Write Command:**
 ```
 F0 00 20 29 02 15 05 00 45 [page] 00 [mode_data] F7
 │  └─ Novation ID       │  │  │  └─ Write command
@@ -95,10 +121,20 @@ F0 00 20 29 02 15 05 00 45 [page] 00 [mode_data] F7
 └─ SysEx start
 ```
 
+**Acknowledgement Response:**
+```
+F0 00 20 29 02 15 05 00 15 [page] 06 F7
+│                       │  │  │  └─ Status (0x06 = success)
+│                       │  │  └─ Page number acknowledged
+│                       │  └─ Acknowledgement command
+│                       └─ Command group
+```
+
 **Key Differences from Read Protocol:**
 - Command byte: `0x45` (write) vs `0x40` (read request) / `0x10` (read response)
 - Page byte followed by `0x00` flag
 - Mode name format: `20 [length] [bytes]` (no `06` prefix)
+- **Requires waiting for acknowledgements between pages**
 
 ### Mode Name Encoding
 
@@ -126,6 +162,43 @@ F0 00 20 29 02 15 05 00 45 [page] 00 [mode_data] F7
 3. Pattern identified: `0x20` prefix, length byte, raw ASCII
 
 **Validation:** 2025-09-30 - Verified with Novation Components web editor v1.60.0
+
+### Example: Complete Write Sequence with Acknowledgements
+
+**Captured from web editor (2025-09-30 at 37:06):**
+
+```
+37:06.052  [→ Device] Page 0 Write
+F0 00 20 29 02 15 05 00 45 00 00 20 08 43 48 41 4E 4E 45 56 45 ...
+                           │  │  │  Mode name: "CHANNEVE"
+                           │  │  └─ Flag 0x00
+                           │  └─ Page 0
+                           └─ Write command 0x45
+
+37:06.079  [← Device] Page 0 Acknowledgement (27ms later)
+F0 00 20 29 02 15 05 00 15 00 06 F7
+                           │  │  └─ Status 0x06 (success)
+                           │  └─ Page 0 acknowledged
+                           └─ Acknowledgement command 0x15
+
+37:06.079  [→ Device] Page 3 Write (sent immediately after ACK)
+F0 00 20 29 02 15 05 00 45 03 00 20 08 43 48 41 4E 4E 45 56 45 ...
+                           │  │
+                           │  └─ Flag 0x00
+                           └─ Page 3
+
+37:06.103  [← Device] Page 3 Acknowledgement (24ms later)
+F0 00 20 29 02 15 05 00 15 03 06 F7
+                           │  │  └─ Status 0x06 (success)
+                           │  └─ Page 3 acknowledged
+                           └─ Acknowledgement command 0x15
+```
+
+**Key Observations:**
+- Web editor waits for acknowledgement before sending next page
+- Acknowledgements arrive 24-27ms after write command
+- Status byte `0x06` indicates successful receipt
+- Page number in acknowledgement matches write command page number
 
 ---
 
@@ -447,6 +520,7 @@ The parser follows the protocol specification exactly:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2 | 2025-09-30 | **Critical:** Discovered write acknowledgement protocol (command 0x15). Device sends ACK after each page write. Client must wait for ACK before sending next page. |
 | 1.1 | 2025-09-30 | Documented write protocol (command 0x45) with mode name format discovery |
 | 1.0 | 2025-09-30 | Initial documented protocol after empirical discovery |
 

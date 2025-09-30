@@ -68,6 +68,13 @@ export class DeviceManager extends EventEmitter {
   private isInitializing = false;
   private dawPortController?: DawPortController | undefined;
 
+  // Write acknowledgement handling (persistent listener approach)
+  private pendingAcknowledgements = new Map<number, {
+    resolve: () => void;
+    reject: (error: Error) => void;
+    timeout: NodeJS.Timeout;
+  }>();
+
   constructor(options: DeviceManagerOptions = {}) {
     super();
 
@@ -330,6 +337,33 @@ export class DeviceManager extends EventEmitter {
   }
 
   /**
+   * Wait for write acknowledgement from device (persistent listener pattern)
+   *
+   * Discovery: Playwright + CoreMIDI spy (2025-09-30)
+   * Device sends acknowledgement SysEx after receiving each page write:
+   * Format: F0 00 20 29 02 15 05 00 15 [page] [status] F7
+   * Example: F0 00 20 29 02 15 05 00 15 00 06 F7 (page 0, status 0x06 success)
+   *
+   * CRITICAL: Uses persistent listener set up during handshake.
+   * Registers promise in queue; acknowledgement handler resolves it.
+   * This avoids race conditions from rapid device responses (24-27ms).
+   *
+   * @param expectedPage - Page number to wait acknowledgement for (0 or 3)
+   * @param timeoutMs - Timeout in milliseconds (typical ACK arrives within 24-27ms)
+   */
+  private async waitForWriteAcknowledgement(expectedPage: number, timeoutMs: number): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        this.pendingAcknowledgements.delete(expectedPage);
+        reject(new Error(`Write acknowledgement timeout for page ${expectedPage} after ${timeoutMs}ms`));
+      }, timeoutMs);
+
+      // Register in queue - persistent listener will route acknowledgement here
+      this.pendingAcknowledgements.set(expectedPage, { resolve, reject, timeout });
+    });
+  }
+
+  /**
    * Parse device info from inquiry response
    */
   private parseDeviceInfo(response: DeviceInquiryResponse): LaunchControlXL3Info {
@@ -372,10 +406,15 @@ export class DeviceManager extends EventEmitter {
       }
     });
 
+    // CRITICAL: SysEx listener must ALWAYS be active (persistent connection)
+    // Acknowledgements and other responses can arrive during ANY state
     this.midi.on('sysex', (message: MidiMessage) => {
+      // Always handle SysEx messages for acknowledgements/responses
+      this.handleSysExMessage([...message.data]);
+
+      // Only emit event when fully connected (not during handshake)
       if (!this.isInitializing && this.connectionState === 'connected') {
         this.emit('sysex:received', message.data);
-        this.handleSysExMessage([...message.data]);
       }
     });
 
@@ -399,6 +438,21 @@ export class DeviceManager extends EventEmitter {
             slot: templateChange.templateNumber,
           };
           this.emit('device:modeChanged', this.currentMode);
+          break;
+
+        case 'write_acknowledgement':
+          // Route acknowledgement to pending promise (persistent listener pattern)
+          const ack = parsed as any; // WriteAcknowledgementMessage
+          const pending = this.pendingAcknowledgements.get(ack.page);
+          if (pending) {
+            clearTimeout(pending.timeout);
+            this.pendingAcknowledgements.delete(ack.page);
+            if (ack.status === 0x06) {
+              pending.resolve();
+            } else {
+              pending.reject(new Error(`Write failed for page ${ack.page}: status 0x${ack.status.toString(16)}`));
+            }
+          }
           break;
 
         // Add more SysEx message handlers as needed
@@ -705,8 +759,45 @@ export class DeviceManager extends EventEmitter {
     };
 
     const validatedModeData = this.validateCustomModeData(modeData);
-    const message = SysExParser.buildCustomModeWriteRequest(slot, validatedModeData);
-    await this.sendSysEx(message);
+
+    // CRITICAL: Write protocol requires TWO pages (verified from web editor MIDI captures)
+    // Page 0: Mode name + controls 0x10-0x27 (IDs 16-39, first 24 controls)
+    // Page 3: Mode name + controls 0x28-0x3F (IDs 40-63, remaining 24 controls)
+    // Note: Control IDs 0x00-0x0F do not exist on the device
+
+    // Split controls by page
+    const page0Controls = validatedModeData.controls.filter((c: any) => {
+      const id = c.id ?? c.controlId;
+      return id >= 0x10 && id <= 0x27;
+    });
+
+    const page3Controls = validatedModeData.controls.filter((c: any) => {
+      const id = c.id ?? c.controlId;
+      return id >= 0x28 && id <= 0x3F;
+    });
+
+    // Send page 0
+    const page0Data = { ...validatedModeData, controls: page0Controls };
+    const page0Message = SysExParser.buildCustomModeWriteRequest(0, page0Data);
+    await this.sendSysEx(page0Message);
+
+    // CRITICAL: Wait for device acknowledgement before sending next page
+    // Discovery: Playwright + CoreMIDI spy (2025-09-30)
+    // Device sends ACK (0x15 00 06) within 24-27ms after receiving page 0
+    await this.waitForWriteAcknowledgement(0, 100); // Wait up to 100ms for page 0 ACK
+
+    // Send page 3 (only if there are controls in this range)
+    if (page3Controls.length > 0) {
+      const page3Data = { ...validatedModeData, controls: page3Controls };
+      const page3Message = SysExParser.buildCustomModeWriteRequest(3, page3Data);
+      await this.sendSysEx(page3Message);
+
+      // Wait for page 3 acknowledgement
+      await this.waitForWriteAcknowledgement(3, 100); // Wait up to 100ms for page 3 ACK
+    }
+
+    // Allow device time to process and persist the write
+    await new Promise(resolve => setTimeout(resolve, 50));
   }
 
   /**

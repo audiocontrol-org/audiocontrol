@@ -67,6 +67,13 @@ export interface CustomModeMessage extends SysExMessage {
   colors: ColorMapping[];
 }
 
+// Write acknowledgement message
+export interface WriteAcknowledgementMessage extends SysExMessage {
+  type: 'write_acknowledgement';
+  page: number;
+  status: number;
+}
+
 // Control mapping for custom modes
 // ControlMapping and ColorMapping interfaces are now imported from types/CustomMode.ts
 
@@ -141,7 +148,7 @@ export class SysExParser {
       throw new Error('Invalid Novation SysEx message');
     }
 
-    // Check for Launch Control XL 3 format: 02 15 05 00 [operation] [slot]
+    // Check for Launch Control XL 3 format: 02 15 05 00 [operation] [slot/page]
     if (messageData.length >= 7 &&
         messageData[0] === 0x02 &&  // Device ID (Launch Control XL 3)
         messageData[1] === 0x15 &&  // Command (Custom mode)
@@ -153,6 +160,11 @@ export class SysExParser {
       // Check if this is a custom mode response (operation 0x10)
       if (operation === 0x10) {
         return this.parseCustomModeResponseXL3(messageData); // Pass message data (F0/F7 and manufacturer ID stripped)
+      }
+
+      // Check if this is a write acknowledgement (operation 0x15)
+      if (operation === 0x15) {
+        return this.parseWriteAcknowledgement(messageData);
       }
     }
 
@@ -227,6 +239,42 @@ export class SysExParser {
     }
 
     return message;
+  }
+
+  /**
+   * Parse write acknowledgement message
+   *
+   * Format: 02 15 05 00 15 [page] [status]
+   *
+   * Discovery: Playwright + CoreMIDI spy (2025-09-30)
+   * Device sends ACK 24-27ms after receiving each page write.
+   * Status 0x06 indicates successful receipt.
+   *
+   * Example: 02 15 05 00 15 00 06 = ACK for page 0, status success
+   */
+  private static parseWriteAcknowledgement(data: number[]): WriteAcknowledgementMessage {
+    if (data.length < 7) {
+      throw new Error('Invalid write acknowledgement message');
+    }
+
+    // Expected format after F0/F7 and manufacturer ID stripped:
+    // 02 15 05 00 15 [PAGE] [STATUS]
+    // Positions: 0  1  2  3  4     5      6
+    const operation = data[4];
+    const page = data[5] ?? 0;
+    const status = data[6] ?? 0;
+
+    if (operation !== 0x15) {
+      throw new Error(`Unexpected operation in write acknowledgement: 0x${(operation ?? 0).toString(16)}`);
+    }
+
+    return {
+      type: 'write_acknowledgement',
+      manufacturerId: MANUFACTURER_ID,
+      page,
+      status,
+      data,
+    };
   }
 
   /**
@@ -909,9 +957,9 @@ export class SysExParser {
   /**
    * Build custom mode write request
    */
-  static buildCustomModeWriteRequest(slot: number, modeData: CustomModeMessage): number[] {
-    if (slot < 0 || slot > 15) {
-      throw new Error('Custom mode slot must be 0-15');
+  static buildCustomModeWriteRequest(page: number, modeData: CustomModeMessage): number[] {
+    if (page < 0 || page > 3) {
+      throw new Error('Page must be 0-3');
     }
 
     // Validate the custom mode data
@@ -921,12 +969,14 @@ export class SysExParser {
     const encodedData = this.encodeCustomModeData(modeData);
 
     // CRITICAL DISCOVERY FROM WEB EDITOR ANALYSIS:
-    // The SysEx message ALWAYS uses 0x00 for both slot byte and flag byte.
-    // Slot selection is done EXCLUSIVELY via the DAW port protocol.
-    // Format: F0 00 20 29 02 15 05 00 45 00 00 [encoded data] F7
+    // Write protocol requires multiple pages. The page parameter specifies which page.
+    // Page 0: Controls 0x10-0x27 (IDs 16-39, first 24 hardware controls)
+    // Page 3: Controls 0x28-0x3F (IDs 40-63, remaining 24 hardware controls)
+    // Note: Control IDs 0x00-0x0F do not exist on the device hardware
     //
-    // The `slot` parameter is kept for API compatibility but not used in the message.
-    // DeviceManager.writeCustomMode() handles slot selection via DAW port before sending.
+    // Format: F0 00 20 29 02 15 05 00 45 [page] 00 [encoded data] F7
+    //
+    // Slot selection is done via DAW port BEFORE sending any pages.
 
     return [
       0xF0,             // SysEx start
@@ -936,8 +986,8 @@ export class SysExParser {
       0x05,             // Sub-command
       0x00,             // Reserved
       0x45,             // Write operation with data
-      0x00,             // Slot byte (always 0x00)
-      0x00,             // Flag byte (always 0x00) - slot selection via DAW port
+      page,             // Page number (0 or 3 for write operations)
+      0x00,             // Flag byte (always 0x00)
       ...encodedData,   // Encoded custom mode data
       0xF7              // SysEx end
     ];
