@@ -611,22 +611,38 @@ export class DeviceManager extends EventEmitter {
     };
 
     try {
-      // Read both pages (encoders and faders/buttons)
-      const [page0Response, page1Response] = await Promise.all([
-        readPage(0), // Page 0: Controls 0x10-0x27 (encoders)
-        readPage(1)  // Page 1: Controls 0x28-0x3F (faders/buttons)
-      ]);
+      // Read pages SEQUENTIALLY (not in parallel) to match web editor behavior
+      // Web editor analysis shows device expects sequential requests:
+      // 1. Send page 0 request
+      // 2. Wait for page 0 response
+      // 3. Send page 1 request (no ACK needed)
+      // 4. Wait for page 1 response
+      const page0Response = await readPage(0); // Page 0: Controls 0x10-0x27 (encoders)
+      const page1Response = await readPage(1); // Page 1: Controls 0x28-0x3F (faders/buttons)
 
       // Combine the responses from both pages
-      const combinedControls = {
-        ...(page0Response.controls || {}),
-        ...(page1Response.controls || {})
-      };
+      // Note: responses contain arrays that need to be combined
+      const page0Controls = Array.isArray(page0Response.controls) ? page0Response.controls : [];
+      const page1Controls = Array.isArray(page1Response.controls) ? page1Response.controls : [];
+      const allControls = [...page0Controls, ...page1Controls];
 
-      const combinedColors = {
-        ...(page0Response.colors || {}),
-        ...(page1Response.colors || {})
-      };
+      const page0Colors = Array.isArray(page0Response.colors) ? page0Response.colors : [];
+      const page1Colors = Array.isArray(page1Response.colors) ? page1Response.colors : [];
+      const allColors = [...page0Colors, ...page1Colors];
+
+      // Convert arrays to Record format expected by CustomMode type
+      const controlsRecord: Record<string, any> = {};
+      for (let i = 0; i < allControls.length; i++) {
+        controlsRecord[i.toString()] = allControls[i];
+      }
+
+      // Convert colors array to Map format expected by CustomMode type
+      const colorsMap = new Map<number, number>();
+      for (const colorMapping of allColors) {
+        if (colorMapping.controlId !== undefined) {
+          colorsMap.set(colorMapping.controlId, colorMapping.color);
+        }
+      }
 
       // Use the name from the first page (they should be the same)
       const name = page0Response.name || page1Response.name || `Custom ${slot + 1}`;
@@ -634,18 +650,35 @@ export class DeviceManager extends EventEmitter {
       return {
         slot: page0Response.slot ?? slot,
         name,
-        controls: combinedControls,
-        colors: combinedColors,
+        controls: controlsRecord,
+        colors: colorsMap,
+        leds: new Map(),
       };
     } catch (error) {
       // If we fail to read both pages, try reading just page 0 for backward compatibility
       try {
         const page0Response = await readPage(0);
+        const controls = Array.isArray(page0Response.controls) ? page0Response.controls : [];
+        const colors = Array.isArray(page0Response.colors) ? page0Response.colors : [];
+
+        const controlsRecord: Record<string, any> = {};
+        for (let i = 0; i < controls.length; i++) {
+          controlsRecord[i.toString()] = controls[i];
+        }
+
+        const colorsMap = new Map<number, number>();
+        for (const colorMapping of colors) {
+          if (colorMapping.controlId !== undefined) {
+            colorsMap.set(colorMapping.controlId, colorMapping.color);
+          }
+        }
+
         return {
           slot: page0Response.slot ?? slot,
           name: page0Response.name || `Custom ${slot + 1}`,
-          controls: page0Response.controls || {},
-          colors: page0Response.colors || {},
+          controls: controlsRecord,
+          colors: colorsMap,
+          leds: new Map(),
         };
       } catch {
         throw error; // Re-throw the original error
