@@ -58,6 +58,7 @@
     "example:leds": "tsx examples/led-animations.ts",
     "example:modes": "tsx examples/custom-modes.ts",
     "example:mapping": "tsx examples/control-mapping.ts",
+    "backup": "tsx utils/backup-current-mode.ts",
     "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
