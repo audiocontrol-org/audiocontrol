@@ -5,7 +5,7 @@
  * all MIDI operations, avoiding the limitations of Node.js MIDI libraries.
  */
 
-import { MidiBackend, MidiPortInfo } from '../types/MidiBackend';
+import { MidiBackendInterface, MidiPortInfo, MidiInputPort, MidiOutputPort, MidiMessage, MidiPort } from '../core/MidiInterface.js';
 import { EventEmitter } from 'events';
 
 interface JuceServerConfig {
@@ -13,10 +13,38 @@ interface JuceServerConfig {
   port: number;
 }
 
-export class JuceMidiBackend extends EventEmitter implements MidiBackend {
+class JuceMidiInputPort implements MidiInputPort {
+  readonly type = 'input' as const;
+
+  constructor(
+    readonly id: string,
+    readonly name: string,
+    private backend: JuceMidiBackend
+  ) {}
+
+  async close(): Promise<void> {
+    await this.backend.closePort(this);
+  }
+}
+
+class JuceMidiOutputPort implements MidiOutputPort {
+  readonly type = 'output' as const;
+
+  constructor(
+    readonly id: string,
+    readonly name: string,
+    private backend: JuceMidiBackend
+  ) {}
+
+  async close(): Promise<void> {
+    await this.backend.closePort(this);
+  }
+}
+
+export class JuceMidiBackend extends EventEmitter implements MidiBackendInterface {
   private config: JuceServerConfig;
   private pollInterval: NodeJS.Timeout | null = null;
-  private openPorts: Map<string, string> = new Map(); // portType -> portId
+  private openPorts: Map<string, MidiPort> = new Map(); // portId -> MidiPort
 
   constructor(config: JuceServerConfig = { host: 'localhost', port: 7777 }) {
     super();
@@ -40,12 +68,12 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
     }
   }
 
-  async getInputs(): Promise<MidiPortInfo[]> {
+  async getInputPorts(): Promise<MidiPortInfo[]> {
     try {
       const response = await fetch(`${this.baseUrl}/ports`);
       const data = await response.json();
-      return data.inputs.map((name: string, index: number) => ({
-        id: `input_${index}`,
+      return data.inputs.map((name: string) => ({
+        id: name,
         name
       }));
     } catch (error: any) {
@@ -54,12 +82,12 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
     }
   }
 
-  async getOutputs(): Promise<MidiPortInfo[]> {
+  async getOutputPorts(): Promise<MidiPortInfo[]> {
     try {
       const response = await fetch(`${this.baseUrl}/ports`);
       const data = await response.json();
-      return data.outputs.map((name: string, index: number) => ({
-        id: `output_${index}`,
+      return data.outputs.map((name: string) => ({
+        id: name,
         name
       }));
     } catch (error: any) {
@@ -68,116 +96,68 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
     }
   }
 
-  async openInput(portName: string): Promise<void> {
-    const portId = `midi_in`;
+  async openInput(portId: string): Promise<MidiInputPort> {
     try {
       const response = await fetch(`${this.baseUrl}/port/${portId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: portName,
+          name: portId,
           type: 'input'
         })
       });
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(`Failed to open input port: ${portName}`);
+        throw new Error(`Failed to open input port: ${portId}`);
       }
 
-      this.openPorts.set('midi_in', portId);
+      const port = new JuceMidiInputPort(portId, portId, this);
+      this.openPorts.set(portId, port);
 
       // Start polling for messages
       this.startPolling();
+
+      return port;
     } catch (error: any) {
-      throw new Error(`Failed to open MIDI input ${portName}: ${error.message}`);
+      throw new Error(`Failed to open MIDI input ${portId}: ${error.message}`);
     }
   }
 
-  async openOutput(portName: string): Promise<void> {
-    const portId = `midi_out`;
+  async openOutput(portId: string): Promise<MidiOutputPort> {
     try {
       const response = await fetch(`${this.baseUrl}/port/${portId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: portName,
+          name: portId,
           type: 'output'
         })
       });
       const data = await response.json();
 
       if (!data.success) {
-        throw new Error(`Failed to open output port: ${portName}`);
+        throw new Error(`Failed to open output port: ${portId}`);
       }
 
-      this.openPorts.set('midi_out', portId);
+      const port = new JuceMidiOutputPort(portId, portId, this);
+      this.openPorts.set(portId, port);
+
+      return port;
     } catch (error: any) {
-      throw new Error(`Failed to open MIDI output ${portName}: ${error.message}`);
+      throw new Error(`Failed to open MIDI output ${portId}: ${error.message}`);
     }
   }
 
-  async openDawInput(portName: string): Promise<void> {
-    const portId = `daw_in`;
+
+
+  async sendMessage(port: MidiOutputPort, message: MidiMessage): Promise<void> {
     try {
-      const response = await fetch(`${this.baseUrl}/port/${portId}`, {
+      await fetch(`${this.baseUrl}/port/${port.id}/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: portName,
-          type: 'input'
-        })
-      });
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(`Failed to open DAW input port: ${portName}`);
-      }
-
-      this.openPorts.set('daw_in', portId);
-
-      // Start polling if not already
-      this.startPolling();
-    } catch (error: any) {
-      throw new Error(`Failed to open DAW input ${portName}: ${error.message}`);
-    }
-  }
-
-  async openDawOutput(portName: string): Promise<void> {
-    const portId = `daw_out`;
-    try {
-      const response = await fetch(`${this.baseUrl}/port/${portId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: portName,
-          type: 'output'
-        })
-      });
-      const data = await response.json();
-
-      if (!data.success) {
-        throw new Error(`Failed to open DAW output port: ${portName}`);
-      }
-
-      this.openPorts.set('daw_out', portId);
-    } catch (error: any) {
-      throw new Error(`Failed to open DAW output ${portName}: ${error.message}`);
-    }
-  }
-
-  async sendMessage(data: number[]): Promise<void> {
-    const portId = this.openPorts.get('midi_out');
-    if (!portId) {
-      throw new Error('MIDI output port not open');
-    }
-
-    try {
-      await fetch(`${this.baseUrl}/port/${portId}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: data
+          message: Array.from(message.data)
         })
       });
     } catch (error: any) {
@@ -185,53 +165,68 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
     }
   }
 
-  async sendDawMessage(data: number[]): Promise<void> {
-    const portId = this.openPorts.get('daw_out');
-    if (!portId) {
-      throw new Error('DAW output port not open');
-    }
-
+  async closePort(port: MidiPort): Promise<void> {
     try {
-      await fetch(`${this.baseUrl}/port/${portId}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: data
-        })
-      });
+      await fetch(`${this.baseUrl}/port/${port.id}`, { method: 'DELETE' });
+      this.openPorts.delete(port.id);
     } catch (error: any) {
-      throw new Error(`Failed to send DAW message: ${error.message}`);
+      throw new Error(`Failed to close port ${port.id}: ${error.message}`);
     }
   }
+
+  async cleanup(): Promise<void> {
+    this.stopPolling();
+
+    // Close all open ports
+    for (const port of Array.from(this.openPorts.values())) {
+      try {
+        await this.closePort(port);
+      } catch (error) {
+        console.error(`Error closing port ${port.id}:`, error);
+      }
+    }
+
+    this.openPorts.clear();
+    this.removeAllListeners();
+  }
+
 
   private startPolling(): void {
     if (this.pollInterval) return;
 
     this.pollInterval = setInterval(async () => {
-      // Poll MIDI input
-      const midiInPort = this.openPorts.get('midi_in');
-      if (midiInPort) {
-        try {
-          const response = await fetch(`${this.baseUrl}/port/${midiInPort}/messages?timeout=0`);
-          const data = await response.json();
-          if (data.messages && data.messages.length > 0) {
-            for (const message of data.messages) {
-              this.emit('message', message);
+      // Poll all open input ports
+      for (const [portId, port] of Array.from(this.openPorts.entries())) {
+        if (port.type === 'input') {
+          try {
+            const response = await fetch(`${this.baseUrl}/port/${portId}/messages?timeout=0`);
+            const data = await response.json();
+            if (data.messages && data.messages.length > 0) {
+              for (const messageData of data.messages) {
+                const message = {
+                  data: new Uint8Array(messageData),
+                  timestamp: Date.now()
+                };
+                this.emit('message', port, message);
+              }
             }
+          } catch (error) {
+            console.error(`Error polling MIDI input ${portId}:`, error);
           }
-        } catch (error) {
-          console.error('Error polling MIDI input:', error);
         }
       }
 
-      // Poll DAW input
-      const dawInPort = this.openPorts.get('daw_in');
-      if (dawInPort) {
+      // Poll DAW input if open
+      if (this.openPorts.has('daw_in')) {
         try {
-          const response = await fetch(`${this.baseUrl}/port/${dawInPort}/messages?timeout=0`);
+          const response = await fetch(`${this.baseUrl}/port/daw_in/messages?timeout=0`);
           const data = await response.json();
           if (data.messages && data.messages.length > 0) {
-            for (const message of data.messages) {
+            for (const messageData of data.messages) {
+              const message = {
+                data: new Uint8Array(messageData),
+                timestamp: Date.now()
+              };
               this.emit('dawMessage', message);
             }
           }
@@ -253,13 +248,14 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackend {
     this.stopPolling();
 
     // Close all open ports
-    for (const [_, portId] of this.openPorts) {
+    for (const [portId, _] of Array.from(this.openPorts.entries())) {
       try {
         await fetch(`${this.baseUrl}/port/${portId}`, { method: 'DELETE' });
       } catch (error) {
         console.error(`Error closing port ${portId}:`, error);
       }
     }
+
 
     this.openPorts.clear();
     this.removeAllListeners();
