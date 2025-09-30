@@ -21,7 +21,8 @@ export interface CustomMode {
   controls: Record<string, ControlMapping>;    // Control mappings by ID
   labels?: Map<number, string>;  // Control labels by ID
   colors?: Map<number, number>;  // Control colors by ID
-  leds?: Map<number, { color: number; behaviour: string }>; // LED mappings
+  // Note: LED states are controlled via real-time MIDI messages (0x78),
+  // not stored in custom mode configurations
   metadata?: {
     name?: string;
     description?: string;

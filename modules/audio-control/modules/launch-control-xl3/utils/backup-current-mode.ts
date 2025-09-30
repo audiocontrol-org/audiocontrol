@@ -38,7 +38,6 @@ async function backupCurrentMode() {
 
     console.log(`✓ Successfully read mode: "${currentMode.name}"`);
     console.log(`  Controls: ${Object.keys(currentMode.controls).length}`);
-    console.log(`  LEDs: ${currentMode.leds ? currentMode.leds.size : 0}`);
 
     // Store in JSON format for examination
     const jsonFilename = `backup/slot-${physicalSlot}-${timestamp}.json`;
@@ -65,7 +64,6 @@ async function backupCurrentMode() {
             }
           ])
         ),
-        leds: currentMode.leds ? Object.fromEntries(currentMode.leds) : {},
         metadata: currentMode.metadata
       }
     };
