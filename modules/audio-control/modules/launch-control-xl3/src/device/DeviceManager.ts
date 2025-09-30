@@ -506,6 +506,27 @@ export class DeviceManager extends EventEmitter {
       throw new Error('Device not connected');
     }
 
+    // Validate SysEx message format
+    if (!data || data.length < 2) {
+      throw new Error('Invalid SysEx message: too short');
+    }
+
+    if (data[0] !== 0xF0) {
+      throw new Error(`Invalid SysEx message: must start with 0xF0, got 0x${data[0]?.toString(16)}`);
+    }
+
+    if (data[data.length - 1] !== 0xF7) {
+      throw new Error(`Invalid SysEx message: must end with 0xF7, got 0x${data[data.length - 1]?.toString(16)}`);
+    }
+
+    // Ensure all bytes between F0 and F7 are 7-bit values
+    for (let i = 1; i < data.length - 1; i++) {
+      const byte = data[i];
+      if (byte === undefined || byte > 127 || byte < 0) {
+        throw new Error(`Invalid SysEx message: byte ${i} value 0x${byte?.toString(16)} is not a valid 7-bit value`);
+      }
+    }
+
     await this.midi.sendMessage(data);
   }
 
@@ -543,7 +564,7 @@ export class DeviceManager extends EventEmitter {
   }
 
   /**
-   * Read custom mode from device
+   * Read custom mode from device (fetches both pages)
    */
   async readCustomMode(slot: number): Promise<CustomMode> {
     if (slot < 0 || slot > 15) {
@@ -553,47 +574,83 @@ export class DeviceManager extends EventEmitter {
     // Select the slot first via DAW port (if available) for consistency
     await this.selectSlot(slot);
 
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.midi.removeListener('sysex', handleResponse);
-        reject(new Error(
-          `Custom mode read timeout after ${this.options.inquiryTimeout}ms for slot ${slot}. ` +
-          'The device may be unresponsive or the slot may be empty. ' +
-          'Troubleshooting steps: 1) Verify device connection, ' +
-          '2) Check if custom mode exists in the specified slot, ' +
-          '3) Try reading a different slot, 4) Power cycle the device.'
-        ));
-      }, this.options.inquiryTimeout);
+    // Helper function to read a single page
+    const readPage = (page: number): Promise<any> => {
+      return new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          this.midi.removeListener('sysex', handleResponse);
+          reject(new Error(
+            `Custom mode read timeout after ${this.options.inquiryTimeout}ms for slot ${slot}, page ${page}. ` +
+            'The device may be unresponsive or the slot may be empty.'
+          ));
+        }, this.options.inquiryTimeout);
 
-      const handleResponse = (message: MidiMessage) => {
-        if (message.type === 'sysex') {
-          try {
-            const parsed = SysExParser.parse([...message.data]);
+        const handleResponse = (message: MidiMessage) => {
+          if (message.type === 'sysex') {
+            try {
+              const parsed = SysExParser.parse([...message.data]);
 
-            if (parsed.type === 'custom_mode_response') {
-              clearTimeout(timeout);
-              this.midi.removeListener('sysex', handleResponse);
-
-              const response = this.validateCustomModeResponse(parsed);
-              resolve({
-                slot: response.slot ?? slot,
-                name: response.name || `Custom ${slot + 1}`,
-                controls: response.controls || {},
-                colors: response.colors || {},
-              });
+              if (parsed.type === 'custom_mode_response') {
+                clearTimeout(timeout);
+                this.midi.removeListener('sysex', handleResponse);
+                const response = this.validateCustomModeResponse(parsed);
+                resolve(response);
+              }
+            } catch {
+              // Ignore parse errors
             }
-          } catch {
-            // Ignore parse errors
           }
-        }
+        };
+
+        this.midi.on('sysex', handleResponse);
+
+        // Send custom mode read request for this page
+        const message = SysExParser.buildCustomModeReadRequest(slot, page);
+        this.sendSysEx(message).catch(reject);
+      });
+    };
+
+    try {
+      // Read both pages (encoders and faders/buttons)
+      const [page0Response, page1Response] = await Promise.all([
+        readPage(0), // Page 0: Controls 0x10-0x27 (encoders)
+        readPage(1)  // Page 1: Controls 0x28-0x3F (faders/buttons)
+      ]);
+
+      // Combine the responses from both pages
+      const combinedControls = {
+        ...(page0Response.controls || {}),
+        ...(page1Response.controls || {})
       };
 
-      this.midi.on('sysex', handleResponse);
+      const combinedColors = {
+        ...(page0Response.colors || {}),
+        ...(page1Response.colors || {})
+      };
 
-      // Send custom mode read request
-      const message = SysExParser.buildCustomModeReadRequest(slot);
-      this.sendSysEx(message);
-    });
+      // Use the name from the first page (they should be the same)
+      const name = page0Response.name || page1Response.name || `Custom ${slot + 1}`;
+
+      return {
+        slot: page0Response.slot ?? slot,
+        name,
+        controls: combinedControls,
+        colors: combinedColors,
+      };
+    } catch (error) {
+      // If we fail to read both pages, try reading just page 0 for backward compatibility
+      try {
+        const page0Response = await readPage(0);
+        return {
+          slot: page0Response.slot ?? slot,
+          name: page0Response.name || `Custom ${slot + 1}`,
+          controls: page0Response.controls || {},
+          colors: page0Response.colors || {},
+        };
+      } catch {
+        throw error; // Re-throw the original error
+      }
+    }
   }
 
   /**

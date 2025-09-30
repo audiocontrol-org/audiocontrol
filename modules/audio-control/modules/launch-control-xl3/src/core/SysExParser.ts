@@ -814,17 +814,23 @@ export class SysExParser {
   }
 
   /**
-   * Build custom mode read request
+   * Build custom mode read request with page support
+   * Web editor sends two requests:
+   * - Page 0 (0x00): Gets controls 0x10-0x27 (encoders)
+   * - Page 1 (0x03): Gets controls 0x28-0x3F (faders/buttons)
    */
-  static buildCustomModeReadRequest(slot: number): number[] {
+  static buildCustomModeReadRequest(slot: number, page: number = 0): number[] {
     if (slot < 0 || slot > 15) {
       throw new Error('Custom mode slot must be 0-15');
     }
+    if (page < 0 || page > 1) {
+      throw new Error('Page must be 0 (encoders) or 1 (faders/buttons)');
+    }
 
-    // MATCHING WEB EDITOR PATTERN:
-    // Use same slot encoding as write: slot byte 0x00, flag byte for actual slot
-    // Format: F0 00 20 29 02 15 05 00 40 00 [FLAG] F7
-    // Where FLAG = slot number (0-based API slot)
+    // Web editor pattern:
+    // Format: F0 00 20 29 02 15 05 00 40 [PAGE] [SLOT] F7
+    // Where PAGE = 0x00 for first 24 controls, 0x03 for second 24 controls
+    // And SLOT = slot number (0-based API slot)
     return [
       0xF0,             // SysEx start
       0x00, 0x20, 0x29, // Manufacturer ID (Novation)
@@ -833,8 +839,8 @@ export class SysExParser {
       0x05,             // Sub-command
       0x00,             // Reserved
       0x40,             // Read operation
-      0x00,             // Slot byte (always 0x00 per web editor pattern)
-      slot,             // Flag byte (actual slot indicator, 0-14)
+      page === 0 ? 0x00 : 0x03, // Page byte: 0x00 for encoders, 0x03 for faders/buttons
+      slot,             // Slot byte (actual slot indicator, 0-14)
       0xF7              // SysEx end
     ];
   }
