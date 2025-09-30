@@ -22,11 +22,13 @@ The Launch Control XL3 communicates via MIDI SysEx messages. Custom modes are fe
 
 **Canonical Protocol Specification:** See [`../formats/launch_control_xl3.ksy`](../formats/launch_control_xl3.ksy)
 
-The `.ksy` file is a Kaitai Struct specification that defines the **exact byte layout** of all protocol structures. It is:
-- Machine-readable (can generate parsers)
-- Human-readable (declarative format)
-- Unambiguous (specifies exact byte positions, types, and sizes)
-- Version-controlled (tracks protocol changes)
+The `.ksy` file is a Kaitai Struct specification that defines the **exact byte layout** of all protocol structures. It serves as:
+- Formal specification (unambiguous binary format)
+- Documentation (declarative, human-readable)
+- Validation tool (can verify parser correctness)
+- Version control (tracks protocol changes)
+
+**Note:** The library uses a hand-written parser in `SysExParser.ts` (90 lines, highly readable). The `.ksy` file serves as formal documentation, not for code generation.
 
 **Why .ksy?** It eliminates ambiguity. Instead of prose like "a length byte followed by name bytes", the spec states:
 ```yaml
@@ -50,12 +52,9 @@ The `.ksy` file is a Kaitai Struct specification that defines the **exact byte l
    - Client sends Universal Device Inquiry (ACK)
    - Device responds with device info
 
-2. **Slot Selection** (via DAW port)
-   - Send Note On Ch16
-   - Send CC query on Ch8
-   - Device responds with current slot
-   - Send CC selection on Ch7
-   - Send Note Off Ch16
+2. **Slot Selection** (via DAW port - see [DAW Port Protocol](#daw-port-protocol))
+   - Phase 1: Query current slot (6-message sequence)
+   - Phase 2: Set target slot (3-message sequence)
 
 3. **Mode Fetch** (3 SysEx pages)
    - Request page 0 (controls 0-15 + mode name + labels)
@@ -243,6 +242,99 @@ function mapLabelControlId(labelId: number): number {
 1. Created Kaitai Struct specification (`.ksy` file)
 2. Validated spec by generating parser and comparing output
 3. Documented control ID mapping exception (25-28 → 26-29)
+
+---
+
+## DAW Port Protocol
+
+### Overview
+
+The Launch Control XL3 uses a **dual-port MIDI system**:
+- **MIDI Port**: SysEx data transfers (read/write custom modes, device info)
+- **DAW Port**: Out-of-band control (slot selection, mode switching)
+
+**Critical Discovery:** The slot byte in SysEx messages does NOT control target slot. Instead, the device uses an out-of-band slot selection protocol via the DAW port.
+
+### Two-Phase Slot Selection Protocol
+
+Slot selection requires a bidirectional negotiation with the device:
+
+#### Phase 1: Query Current Slot (6 messages)
+```
+1. Client → Device: Note On  (Ch16, Note 11, Vel 127)  [0x9F, 0x0B, 0x7F]
+2. Client → Device: CC Query (Ch8,  CC 30,  Val 0)     [0xB7, 0x1E, 0x00]
+3. Device → Client: Note On echo
+4. Device → Client: CC Response (Ch7, CC 30, current_slot)
+5. Client → Device: Note Off (Ch16, Note 11, Vel 0)    [0x8F, 0x0B, 0x00]
+6. Device → Client: Note Off echo
+```
+
+#### Phase 2: Set Target Slot (3 messages)
+```
+1. Client → Device: Note On  (Ch16, Note 11, Vel 127)  [0x9F, 0x0B, 0x7F]
+2. Client → Device: CC Set   (Ch7,  CC 30,  target_slot) [0xB6, 0x1E, value]
+3. Client → Device: Note Off (Ch16, Note 11, Vel 0)    [0x8F, 0x0B, 0x00]
+```
+
+### Channel Mapping
+
+- **Channel 16 (0x0F)**: Note On/Off wrapper messages
+- **Channel 8 (0x07)**: Query messages (CC value = 0)
+- **Channel 7 (0x06)**: Set commands and device responses
+
+### Slot Value Encoding
+
+CC values map to physical slots with an offset:
+
+| Physical Slot | API Slot | CC Value |
+|---------------|----------|----------|
+| 1 | 0 | 6 |
+| 2 | 1 | 7 |
+| 3 | 2 | 8 |
+| ... | ... | ... |
+| 15 | 14 | 20 |
+
+**Formula:**
+```
+CC_Value = Physical_Slot + 5
+CC_Value = API_Slot + 6
+```
+
+### Implementation Example
+
+```typescript
+async selectSlot(apiSlot: number): Promise<void> {
+  const ccValue = apiSlot + 6;  // Convert API slot to CC value
+
+  // Phase 1: Query current slot
+  await sendDAW([0x9F, 0x0B, 0x7F]);  // Note On Ch16
+  await sendDAW([0xB7, 0x1E, 0x00]);  // CC Query Ch8
+  const response = await waitForResponse();  // Device sends current slot
+  await sendDAW([0x8F, 0x0B, 0x00]);  // Note Off Ch16
+
+  await delay(10);  // Inter-phase delay
+
+  // Phase 2: Set target slot
+  await sendDAW([0x9F, 0x0B, 0x7F]);        // Note On Ch16
+  await sendDAW([0xB6, 0x1E, ccValue]);     // CC Set Ch7
+  await sendDAW([0x8F, 0x0B, 0x00]);        // Note Off Ch16
+
+  await delay(50);  // Allow device to process
+}
+```
+
+### Complete Read/Write Flow
+
+**Writing to a specific slot:**
+1. Execute two-phase slot selection protocol (DAW port)
+2. Wait ~50ms for device to process
+3. Send SysEx write command (MIDI port)
+4. Device writes to the selected slot
+
+**Reading from a specific slot:**
+1. Execute two-phase slot selection protocol (DAW port)
+2. Send SysEx read command (MIDI port)
+3. Device returns data from the selected slot
 
 ---
 
