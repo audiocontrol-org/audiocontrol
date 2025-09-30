@@ -786,8 +786,8 @@ export class DeviceManager extends EventEmitter {
   private async initializeDawPort(): Promise<void> {
     try {
       // Try to open DAW output port for slot selection
-      const deviceName = this.deviceInfo?.name || 'Launch Control XL';
-      await this.midi.openDawOutput(`${deviceName} DAW In`);
+      // Use the correct port name pattern: "LCXL3 1 DAW In"
+      await this.midi.openDawOutput('LCXL3 1 DAW In');
 
       // Create DAW port controller
       this.dawPortController = new DawPortControllerImpl(

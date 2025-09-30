@@ -25,28 +25,32 @@ The Novation Components web editor uses the DAW port to select slots before writ
 3. Device writes to the previously selected slot
 ```
 
-## DAW Port Slot Selection Protocol
+## DAW Port Slot Selection Protocol (Updated)
 
-### Message Sequence
-The complete protocol for selecting a slot consists of three MIDI messages sent to the DAW port:
+### Two-Phase Negotiation Protocol
 
-1. **Note On** - Start signal
-   - Note: 11
-   - Velocity: 127
-   - Channel: 15 (0x0F)
-   - Status byte: 0x9F
+**IMPORTANT UPDATE**: Analysis of web editor transcripts reveals a more complex bidirectional protocol:
 
-2. **Control Change** - Slot selection
-   - Controller: 30 (0x1E)
-   - Value: Physical slot number + 5
-   - Channel: 6 (0x05)
-   - Status byte: 0xB5
+#### Phase 1: Query Current Slot
+1. **Editor → Device**: Note On (channel 16, note 11, velocity 127)
+2. **Editor → Device**: CC (channel 8, controller 30, value 0) - Query request
+3. **Device → Editor**: Note On echo
+4. **Device → Editor**: CC (channel 7, controller 30, current_value) - Current slot response
+5. **Editor → Device**: Note Off (channel 16, note 11, velocity 0)
+6. **Device → Editor**: Note Off echo
 
-3. **Note Off** - End signal
-   - Note: 11
-   - Velocity: 0
-   - Channel: 15 (0x0F)
-   - Status byte: 0x9F (with velocity 0)
+#### Phase 2: Set Target Slot
+1. **Editor → Device**: Note On (channel 16, note 11, velocity 127)
+2. **Editor → Device**: CC (channel 7, controller 30, target_value) - Set slot
+3. **Editor → Device**: Note Off (channel 16, note 11, velocity 0)
+4. **Device → Editor**: Echoes all messages
+
+### Channel Usage (Corrected)
+- **Channel 16** (0x0F/15): Note On/Off messages
+- **Channel 8** (0x07/7): CC query messages (value = 0)
+- **Channel 7** (0x06/6): CC slot selection and device responses
+
+**Note**: Previous documentation incorrectly stated channel 6 for CC messages. The correct channels are 7 and 8.
 
 ### Slot Value Mapping
 The CC value maps to physical slots as follows:
@@ -58,86 +62,143 @@ The CC value maps to physical slots as follows:
 
 Formula: `CC_Value = Physical_Slot + 5` or `CC_Value = API_Slot + 6`
 
-## Implementation Example
+## Critical Discovery: SysEx Slot Encoding Pattern
 
-### Using easymidi
-```typescript
-import easymidi from 'easymidi';
+**NEW FINDING**: The web editor uses a unique slot encoding in SysEx commands:
 
-// Open DAW port
-const dawOutput = new easymidi.Output('LCXL3 1 DAW In');
+| Physical Slot | DAW CC Value | SysEx Bytes | Interpretation |
+|--------------|--------------|-------------|----------------|
+| Slot 1 | 6 | `45 00 00` | Write cmd, slot 0, flag 0 |
+| Slot 2 | 7 | `45 00 01` | Write cmd, slot 0, flag 1 |
+| Slot 3 | 8 | `45 00 02` | Write cmd, slot 0, flag 2 |
 
-// Select physical slot 1 (API slot 0)
-function selectSlot(apiSlot: number) {
-  const physicalSlot = apiSlot + 1;
-  const ccValue = physicalSlot + 5;
+The web editor **always uses slot byte 00** but varies the third byte (flag) to indicate the target slot!
 
-  // Note On
-  dawOutput.send('noteon', {
-    note: 11,
-    velocity: 127,
-    channel: 15
-  });
+## Implementation Status
 
-  // CC for slot selection
-  dawOutput.send('cc', {
-    controller: 30,
-    value: ccValue,
-    channel: 6
-  });
+### Architectural Changes (Completed)
+The slot selection logic has been properly moved from the MIDI backend layer to the protocol layer:
 
-  // Note Off
-  dawOutput.send('noteon', {
-    note: 11,
-    velocity: 0,  // velocity 0 = Note Off
-    channel: 15
-  });
-}
+```
+┌─────────────────────────────┐
+│     LaunchControlXL3        │  Application Layer
+└──────────┬──────────────────┘
+           │
+┌──────────▼──────────────────┐
+│     DeviceManager           │  Protocol Layer
+│   (DawPortController)       │  ← Slot selection logic here
+└──────────┬──────────────────┘
+           │
+┌──────────▼──────────────────┐
+│     MidiInterface           │  Interface Layer
+│  (DAW port management)      │
+└──────────┬──────────────────┘
+           │
+┌──────────▼──────────────────┐
+│   MIDI Backend              │  Transport Layer
+│ (EasyMidi/WebMidi)          │  ← No device-specific logic
+└─────────────────────────────┘
 ```
 
-### Raw MIDI Bytes
+### Implementation Example (Updated)
+
 ```typescript
-// Select physical slot 2 (API slot 1)
-const messages = [
-  [0x9F, 11, 127],  // Note On, channel 15
-  [0xB5, 30, 7],    // CC 30, value 7, channel 5 (6 in 1-based)
-  [0x9F, 11, 0]     // Note Off, channel 15
-];
+// DawPortController with two-phase protocol
+class DawPortControllerImpl {
+  async selectSlot(slot: number): Promise<void> {
+    const physicalSlot = slot + 1;
+    const ccValue = physicalSlot + 5;
+
+    // Phase 1: Query current slot
+    await this.sendMessage([0x9F, 11, 127]);  // Note On ch16
+    await this.sendMessage([0xB7, 30, 0]);    // CC ch8, query
+    // Wait for device response (CC ch7)...
+    await this.sendMessage([0x9F, 11, 0]);    // Note Off ch16
+
+    // Small delay between phases
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Phase 2: Set target slot
+    await this.sendMessage([0x9F, 11, 127]);  // Note On ch16
+    await this.sendMessage([0xB6, 30, ccValue]); // CC ch7, set slot
+    await this.sendMessage([0x9F, 11, 0]);    // Note Off ch16
+
+    // Give device time to process
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
+}
 ```
 
 ## Complete Read/Write Flow
 
 ### Writing to a Specific Slot
-1. Send slot selection messages to DAW port
-2. Wait ~50ms for device to process
-3. Send SysEx write command to MIDI port (slot byte can be 0x00)
+1. Send two-phase slot selection protocol to DAW port
+2. Wait for device to process (~50ms)
+3. Send SysEx write command to MIDI port
+   - Use slot byte 0x00
+   - Use flag byte to indicate actual slot (0x00 for slot 1, 0x01 for slot 2, etc.)
 4. Device writes to the selected slot
 
 ### Reading from a Specific Slot
-1. Send slot selection messages to DAW port (optional - device may remember)
+1. Send two-phase slot selection protocol to DAW port
 2. Send SysEx read command to MIDI port
 3. Device returns data from the selected slot
 
-## Web Editor Behavior
+## Web Editor Behavior (Detailed Analysis)
 
-The Novation Components web editor follows this exact protocol:
-1. When user clicks "Send to Launch Control XL 3", a slot selection dialog appears
-2. When user selects a slot and clicks "Overwrite Custom Mode":
-   - Sends the 3-message sequence to DAW port
-   - Sends SysEx write command with only 24 encoders (342 bytes)
-   - Slot byte in SysEx is always 0x00
+Based on captured transcripts, the web editor:
+
+1. **Slot Selection Dialog**: User selects target slot
+2. **Phase 1 - Query**:
+   - Sends Note On ch16 + CC ch8 value 0
+   - Receives current slot from device (CC ch7)
+3. **Phase 2 - Set**:
+   - Sends Note On ch16 + CC ch7 with target slot value
+4. **SysEx Write**:
+   - Always uses slot byte 0x00
+   - Uses flag byte (third byte) to encode actual slot
+   - Sends 342-byte payload for 24 encoders
+
+Example transcript for writing to Slot 1:
+```
+17:14:59.055  To DAW    Note On  16  B-2  127
+17:14:59.056  To DAW    Control  8   30   0     # Query
+17:14:59.061  From DAW  Control  7   30   7     # Device reports slot 2
+17:14:59.084  To DAW    Note Off 16  B-2  0
+17:15:01.531  To DAW    Note On  16  B-2  127
+17:15:01.531  To DAW    Control  7   30   6     # Set slot 1
+17:15:01.531  To DAW    Note Off 16  B-2  0
+17:15:01.538  To MIDI   SysEx    ... 45 00 00 ... # Write with flag 00
+```
+
+## Testing Results
+
+### Current Implementation Status
+- ✅ Architectural refactoring complete (slot selection at protocol layer)
+- ✅ Two-phase negotiation protocol implemented
+- ✅ Correct channels used (16, 8, 7)
+- ✅ DAW port messages confirmed being sent
+- ❌ Device not responding to slot selection
+- ❌ SysEx encoding doesn't match web editor pattern
+
+### Round-Trip Test Observations
+The test shows DAW port messages are sent correctly but device still reads wrong slot:
+- Write "SLOT0_TEST_MODE" to slot 0
+- Read back gets "Default Custom M!" (from different slot)
 
 ## Important Notes
 
-1. **Slot State Persistence**: The device appears to remember the last selected slot
-2. **Default Behavior**: Without DAW port selection, writes may go to slot 2 by default
-3. **Acknowledgment**: The device sends a 12-byte acknowledgment after successful write:
-   ```
-   F0 00 20 29 02 15 05 00 15 00 07 F7
-   ```
-   The second-to-last byte (0x07) appears to echo status information
+1. **Bidirectional Communication**: Device responds to queries - implementation needs to handle responses
+2. **SysEx Flag Byte**: The third byte after command 0x45 determines actual slot, not the slot byte
+3. **Timing Critical**: Small delays needed between protocol phases
+4. **Channel Confusion**: Monitor may report channels differently than MIDI spec (0-based vs 1-based)
 
-4. **Backwards Compatibility**: Libraries that don't use the DAW port will have unpredictable slot behavior
+## Next Steps
+
+1. **Fix SysEx Encoding**: Implement slot=0 with flag byte pattern
+2. **Add Response Handling**: DawPortController needs to process device responses
+3. **Verify Timing**: Match web editor's timing between messages
+4. **Test All Slots**: Comprehensive testing with all 15 slots
 
 ## Testing Tools
 
@@ -145,9 +206,12 @@ Several utilities are available for testing and debugging:
 - `utils/test-daw-port-monitor.ts` - Monitor DAW port messages
 - `utils/test-slot-selection.ts` - Test slot selection via DAW port
 - `utils/test-daw-port-integration.ts` - Full integration test with library
+- `utils/test-slot-0-round-trip.ts` - Round-trip test for slot 0
 
 ## References
 
 - Discovered through reverse engineering the Novation Components web editor
 - Confirmed via Playwright automation and MIDI monitoring
 - Tested with Launch Control XL3 firmware v1.0.10.84
+- Web editor transcripts analyzed for slots 1, 2, and 3
+- Implementation: `src/core/DawPortController.ts`, `src/device/DeviceManager.ts`

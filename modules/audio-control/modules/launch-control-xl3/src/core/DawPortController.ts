@@ -4,6 +4,17 @@
  * Handles out-of-band communication via the DAW port for:
  * - Slot selection before writing custom modes
  * - Mode switching and other control messages
+ *
+ * Protocol discovered from web editor:
+ * 1. Send Note On (ch16, note 11, vel 127)
+ * 2. Send CC query (ch8, controller 30, value 0) to request current slot
+ * 3. Device responds with current slot via CC (ch7, controller 30, value)
+ * 4. Send Note Off
+ * 5. Send Note On again
+ * 6. Send CC selection (ch7, controller 30, target slot value)
+ * 7. Send Note Off
+ *
+ * Slot values: Slot 1 = 6, Slot 2 = 7, Slot 3 = 8, etc.
  */
 
 export interface DawPortController {
@@ -13,7 +24,8 @@ export interface DawPortController {
 
 export class DawPortControllerImpl implements DawPortController {
   constructor(
-    private sendMessage: (message: number[]) => Promise<void>
+    private sendMessage: (message: number[]) => Promise<void>,
+    private waitForMessage?: (predicate: (data: number[]) => boolean, timeout: number) => Promise<number[]>
   ) {}
 
   /**
@@ -25,23 +37,60 @@ export class DawPortControllerImpl implements DawPortController {
       throw new Error(`Invalid slot: ${slot}. Must be 0-14`);
     }
 
-    // The web editor sends:
-    // 1. Note On (note 11, velocity 127, channel 15)
-    // 2. CC 30 on channel 6, value = physical slot + 5
-    // 3. Note Off (note 11, velocity 0, channel 15)
-
     // Physical slot is 1-based, so add 1 to the 0-based slot
     const physicalSlot = slot + 1;
     const ccValue = physicalSlot + 5; // Slot 1 = CC value 6, Slot 2 = CC value 7, etc.
 
-    // Note On: note 11, velocity 127, channel 15
-    await this.sendMessage([0x9F, 11, 127]); // 0x9F = Note On channel 15
+    console.log(`[DawPortController] Selecting slot ${slot} (physical ${physicalSlot}, CC value ${ccValue})`);
 
-    // CC: controller 30, value, channel 6
-    await this.sendMessage([0xB5, 30, ccValue]); // 0xB5 = CC channel 5 (0-based)
+    // Phase 1: Query current slot
+    // Note On: note 11, velocity 127, channel 16
+    console.log('[DawPortController] Phase 1: Sending Note On ch16');
+    await this.sendMessage([0x9F, 11, 127]); // 0x9F = Note On channel 16 (15 in 0-based)
 
-    // Note Off: note 11, velocity 0, channel 15
-    await this.sendMessage([0x9F, 11, 0]); // Velocity 0 = Note Off
+    // CC Query: controller 30, value 0, channel 8
+    console.log('[DawPortController] Phase 1: Sending CC query on ch8');
+    await this.sendMessage([0xB7, 30, 0]); // 0xB7 = CC channel 8 (7 in 0-based)
+
+    // Wait for device response if we have a wait function
+    if (this.waitForMessage) {
+      try {
+        console.log('[DawPortController] Waiting for device CC response...');
+        const response = await this.waitForMessage(
+          (data) => {
+            // Looking for CC on channel 7, controller 30
+            return data.length === 3 &&
+                   data[0] === 0xB6 && // CC channel 7
+                   data[1] === 30;
+          },
+          100 // 100ms timeout
+        );
+        const currentSlot = response[2] - 5; // Convert CC value back to 0-based slot
+        console.log(`[DawPortController] Device reports current slot: ${currentSlot}`);
+      } catch (error) {
+        console.log('[DawPortController] No response from device (might not be in interactive mode)');
+      }
+    }
+
+    // Note Off: note 11, velocity 0, channel 16
+    console.log('[DawPortController] Phase 1: Sending Note Off ch16');
+    await this.sendMessage([0x9F, 11, 0]);
+
+    // Small delay between phases
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Phase 2: Set target slot
+    // Note On again
+    console.log('[DawPortController] Phase 2: Sending Note On ch16');
+    await this.sendMessage([0x9F, 11, 127]);
+
+    // CC Selection: controller 30, target value, channel 7
+    console.log(`[DawPortController] Phase 2: Sending CC selection on ch7, value ${ccValue}`);
+    await this.sendMessage([0xB6, 30, ccValue]); // 0xB6 = CC channel 7 (6 in 0-based)
+
+    // Note Off
+    console.log('[DawPortController] Phase 2: Sending Note Off ch16');
+    await this.sendMessage([0x9F, 11, 0]);
 
     // Give the device time to process the selection
     await new Promise(resolve => setTimeout(resolve, 50));
