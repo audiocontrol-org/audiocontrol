@@ -685,9 +685,21 @@ export class DeviceManager extends EventEmitter {
       const allColors = [...page0Colors, ...page1Colors];
 
       // Convert arrays to Record format expected by CustomMode type
+      // Use control_XX format to match CustomModeBuilder.build()
+      // Normalize property names to match Control interface
       const controlsRecord: Record<string, any> = {};
-      for (let i = 0; i < allControls.length; i++) {
-        controlsRecord[i.toString()] = allControls[i];
+      for (const control of allControls) {
+        // Ensure consistent property names (handle ControlMapping alternatives)
+        const normalizedControl = {
+          controlId: control.controlId,
+          controlType: control.controlType ?? control.type,
+          midiChannel: control.midiChannel ?? control.channel,
+          ccNumber: control.ccNumber ?? control.cc,
+          minValue: control.minValue ?? control.min ?? 0,
+          maxValue: control.maxValue ?? control.max ?? 127,
+          behavior: (control.behavior ?? control.behaviour ?? 'absolute') as any
+        };
+        controlsRecord[`control_${control.controlId}`] = normalizedControl;
       }
 
       // Convert colors array to Map format expected by CustomMode type
@@ -716,8 +728,18 @@ export class DeviceManager extends EventEmitter {
         const colors = Array.isArray(page0Response.colors) ? page0Response.colors : [];
 
         const controlsRecord: Record<string, any> = {};
-        for (let i = 0; i < controls.length; i++) {
-          controlsRecord[i.toString()] = controls[i];
+        for (const control of controls) {
+          // Ensure consistent property names (handle ControlMapping alternatives)
+          const normalizedControl = {
+            controlId: control.controlId,
+            controlType: control.controlType ?? control.type,
+            midiChannel: control.midiChannel ?? control.channel,
+            ccNumber: control.ccNumber ?? control.cc,
+            minValue: control.minValue ?? control.min ?? 0,
+            maxValue: control.maxValue ?? control.max ?? 127,
+            behavior: (control.behavior ?? control.behaviour ?? 'absolute') as any
+          };
+          controlsRecord[`control_${control.controlId}`] = normalizedControl;
         }
 
         const colorsMap = new Map<number, number>();

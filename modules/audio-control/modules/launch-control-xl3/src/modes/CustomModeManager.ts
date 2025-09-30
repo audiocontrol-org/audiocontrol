@@ -206,16 +206,14 @@ export class CustomModeManager extends EventEmitter {
     if (response.controls) {
       for (const control of response.controls) {
         const controlId = this.getControlIdName(control.controlId);
-        if (controlId) {
-          mode.controls[controlId] = {
-            type: this.getControlType(control.controlId),
-            channel: control.channel,
-            cc: control.ccNumber,
-            min: control.minValue,
-            max: control.maxValue,
-            behaviour: control.behaviour as ControlBehaviour,
-          };
-        }
+        mode.controls[controlId] = {
+          type: this.getControlType(control.controlId),
+          channel: control.channel,
+          cc: control.ccNumber,
+          min: control.minValue,
+          max: control.maxValue,
+          behaviour: control.behaviour as ControlBehaviour,
+        };
       }
     }
 
@@ -223,7 +221,7 @@ export class CustomModeManager extends EventEmitter {
     if (response.colors) {
       for (const color of response.colors) {
         const controlId = this.getControlIdName(color.controlId);
-        if (controlId && mode.leds) {
+        if (mode.leds) {
           mode.leds.set(color.controlId, {
             color: color.color,
             behaviour: color.behaviour ?? 'static',
@@ -288,14 +286,19 @@ export class CustomModeManager extends EventEmitter {
 
   /**
    * Get control ID name from value
+   * Returns either a named constant (SEND_A1, etc.) or control_XX format
    */
-  private getControlIdName(value: number): string | undefined {
+  private getControlIdName(value: number): string {
+    // First try to find a named constant
     for (const [key, val] of Object.entries(CONTROL_IDS)) {
       if (val === value) {
         return key;
       }
     }
-    return undefined;
+
+    // If no named constant exists, generate control_XX format
+    // This matches the CustomModeBuilder.build() format
+    return `control_${value}`;
   }
 
   /**

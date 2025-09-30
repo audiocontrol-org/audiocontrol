@@ -167,6 +167,11 @@ async function runFullRoundTrip() {
     console.log(`✓ Read completed: "${readConfig.name}"`);
     console.log(`  Controls read: ${Object.keys(readConfig.controls).length}\n`);
 
+    // Debug: Show control IDs in both configs
+    console.log('🔍 Debug: Control IDs comparison:');
+    console.log(`  Written control IDs: ${Object.keys(testConfig.controls).sort().join(', ')}`);
+    console.log(`  Read control IDs: ${Object.keys(readConfig.controls).sort().join(', ')}\n`);
+
     // Validate data integrity
     console.log('🔍 Validating data integrity...');
     const validation = validateConfigurations(testConfig, readConfig);

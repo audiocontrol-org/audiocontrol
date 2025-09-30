@@ -61,8 +61,8 @@ export class CustomModeBuilder {
       throw new Error('Fader number must be 1-8');
     }
 
-    const controlId = faderNumber - 1; // 0x00-0x07
-    this.addControl(controlId, 0x00, config);
+    const controlId = 0x28 + (faderNumber - 1); // 0x28-0x2F
+    this.addControl(controlId, 0x09, config);
     return this;
   }
 
@@ -117,7 +117,7 @@ export class CustomModeBuilder {
   }
 
   /**
-   * Add a side button control mapping
+   * Add a side button control mapping (track focus buttons)
    * @param buttonNumber 1-8
    * @param config Control configuration
    */
@@ -126,7 +126,7 @@ export class CustomModeBuilder {
       throw new Error('Side button number must be 1-8');
     }
 
-    const controlId = 0x28 + (buttonNumber - 1); // 0x28-0x2F
+    const controlId = 0x30 + (buttonNumber - 1); // 0x30-0x37
     this.addControl(controlId, 0x19, config);
     return this;
   }
@@ -165,7 +165,7 @@ export class CustomModeBuilder {
     if (faderNumber < 1 || faderNumber > 8) {
       throw new Error('Fader number must be 1-8');
     }
-    return this.addLabel(faderNumber - 1, label);
+    return this.addLabel(0x28 + (faderNumber - 1), label);
   }
 
   /**
@@ -216,7 +216,7 @@ export class CustomModeBuilder {
     if (buttonNumber < 1 || buttonNumber > 8) {
       throw new Error('Side button number must be 1-8');
     }
-    return this.addColor(0x28 + (buttonNumber - 1), color);
+    return this.addColor(0x30 + (buttonNumber - 1), color);
   }
 
   /**
