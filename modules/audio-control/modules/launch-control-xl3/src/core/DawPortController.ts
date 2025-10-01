@@ -94,25 +94,25 @@ export class DawPortControllerImpl implements DawPortController {
     console.log('[DawPortController] Phase 2: Sending Note Off ch16');
     await this.sendMessage([0x9F, 11, 0]);
 
-    // Wait for device acknowledgment if we have a wait function
+    // Wait for Note Off echo from device (acknowledgement that slot change is complete)
     if (this.waitForMessage) {
       try {
-        console.log('[DawPortController] Waiting for slot change acknowledgment...');
-        const ackResponse = await this.waitForMessage(
+        console.log('[DawPortController] Waiting for Note Off echo (slot change acknowledgement)...');
+        const noteOffEcho = await this.waitForMessage(
           (data) => {
-            // Looking for CC on channel 7, controller 30, with our target value
+            // Looking for Note Off echo on channel 16, note 11
             return data.length === 3 &&
-                   data[0] === 0xB6 && // CC channel 7
-                   data[1] === 30 &&
-                   data[2] === ccValue; // Should match our selection
+                   data[0] === 0x9F && // Note On/Off channel 16 (velocity determines on/off)
+                   data[1] === 11 &&
+                   data[2] === 0;       // Velocity 0 = Note Off
           },
           200 // 200ms timeout
         );
-        if (ackResponse && ackResponse.length > 2) {
-          console.log(`[DawPortController] Slot change confirmed: ${slot} (CC ${ccValue})`);
+        if (noteOffEcho) {
+          console.log(`[DawPortController] Slot change confirmed via Note Off echo: ${slot} (CC ${ccValue})`);
         }
       } catch (error) {
-        console.log('[DawPortController] No acknowledgment received (proceeding anyway)');
+        console.log('[DawPortController] No Note Off echo received (slot change may not be complete)');
       }
     }
   }

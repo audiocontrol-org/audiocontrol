@@ -55,13 +55,12 @@ The `.ksy` file is a Kaitai Struct specification that defines the **exact byte l
    - Device responds with device info
 
 2. **Slot Selection** (via DAW port - see [DAW Port Protocol](#daw-port-protocol))
-   - Phase 1: Query current slot (6-message sequence)
-   - Phase 2: Set target slot (3-message sequence)
+   - Phase 1: Query current slot (6-message bidirectional sequence)
+   - Phase 2: Set target slot (6-message bidirectional sequence, skipped if already on target slot)
 
-3. **Mode Fetch** (3 SysEx pages)
-   - Request page 0 (controls 0-15 + mode name + labels)
-   - Request page 1 (controls 16-31 + labels)
-   - Request page 2 (controls 32-47 + labels)
+3. **Mode Fetch** (2 SysEx pages)
+   - Request page 0x00 (controls 0x10-0x27 + mode name + labels)
+   - Request page 0x03 (controls 0x28-0x3F + mode name + labels)
 
 ### Read Request Slot Byte Behavior ⭐
 
@@ -83,15 +82,18 @@ Read with slot byte 0x01 → Returns slot 1 data (ignores DAW port) ✗
 
 ### Multi-Page Structure
 
-Custom mode data is split across **3 SysEx response pages** due to MIDI message size limits:
+Custom mode data is split across **2 SysEx response pages** due to MIDI message size limits:
 
-| Page | Controls | Contains Mode Name? | Label Control IDs |
-|------|----------|---------------------|-------------------|
-| 0    | 0-15     | Yes (first page only) | 0x10-0x1F |
-| 1    | 16-31    | No | 0x20-0x2F |
-| 2    | 32-47    | No | 0x30-0x3F |
+| Page Byte | Controls | Contains Mode Name? | Label Control IDs |
+|-----------|----------|---------------------|-------------------|
+| 0x00      | 0x10-0x27 (24 controls) | Yes (both pages) | 0x10-0x27 |
+| 0x03      | 0x28-0x3F (24 controls) | Yes (both pages) | 0x28-0x3F |
+
+**Total: 48 controls** (0x10-0x3F)
 
 Each page follows the same structure defined in `launch_control_xl3.ksy`.
+
+**Discovery Method:** MIDI spy capture (2025-10-01) - Web editor slot 14 fetch revealed page bytes 0x00 and 0x03, not 0x00, 0x01, 0x02 as previously assumed.
 
 ---
 

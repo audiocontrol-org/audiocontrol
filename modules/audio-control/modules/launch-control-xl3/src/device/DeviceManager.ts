@@ -802,6 +802,27 @@ export class DeviceManager extends EventEmitter {
 
     const validatedModeData = this.validateCustomModeData(modeData);
 
+    // CRITICAL: Web editor always writes ALL 48 controls (0x10-0x3F)
+    // If a control is not in the mode data, it must still be written with empty/default values
+    // Otherwise the device will leave those controls in an undefined state
+    const existingControlIds = new Set(validatedModeData.controls.map((c: any) => c.controlId));
+
+    // Add missing controls with CH0/CC0 (empty/unconfigured state)
+    for (let controlId = 0x10; controlId <= 0x3F; controlId++) {
+      if (!existingControlIds.has(controlId)) {
+        const controlType = this.deriveControlType(controlId);
+        validatedModeData.controls.push({
+          controlId,
+          controlType,
+          midiChannel: 0,
+          ccNumber: 0,
+          minValue: 0,
+          maxValue: 127,
+          behavior: 'absolute'
+        });
+      }
+    }
+
     // CRITICAL: Write protocol requires TWO pages (verified from web editor MIDI captures)
     // Page 0: Mode name + controls 0x10-0x27 (IDs 16-39, first 24 controls)
     // Page 3: Mode name + controls 0x28-0x3F (IDs 40-63, remaining 24 controls)
@@ -818,8 +839,22 @@ export class DeviceManager extends EventEmitter {
       return id >= 0x28 && id <= 0x3F;
     });
 
+    // Split labels by page
+    const page0Labels = new Map<number, string>();
+    const page3Labels = new Map<number, string>();
+
+    if (validatedModeData.labels) {
+      for (const [controlId, label] of validatedModeData.labels.entries()) {
+        if (controlId >= 0x10 && controlId <= 0x27) {
+          page0Labels.set(controlId, label);
+        } else if (controlId >= 0x28 && controlId <= 0x3F) {
+          page3Labels.set(controlId, label);
+        }
+      }
+    }
+
     // Send page 0
-    const page0Data = { ...validatedModeData, controls: page0Controls };
+    const page0Data = { ...validatedModeData, controls: page0Controls, labels: page0Labels };
     const page0Message = SysExParser.buildCustomModeWriteRequest(0, page0Data);
     await this.sendSysEx(page0Message);
 
@@ -830,7 +865,7 @@ export class DeviceManager extends EventEmitter {
 
     // Send page 3 (only if there are controls in this range)
     if (page3Controls.length > 0) {
-      const page3Data = { ...validatedModeData, controls: page3Controls };
+      const page3Data = { ...validatedModeData, controls: page3Controls, labels: page3Labels };
       const page3Message = SysExParser.buildCustomModeWriteRequest(3, page3Data);
       await this.sendSysEx(page3Message);
 
@@ -990,13 +1025,14 @@ export class DeviceManager extends EventEmitter {
 
         // Convert ControlMapping to Control format
         const control = {
-          controlId: mapping.controlId || parseInt(key.replace('control_', ''), 10) || 0,
-          controlType: mapping.controlType || mapping.type || 0x05,
-          midiChannel: mapping.midiChannel || (mapping.channel ? mapping.channel - 1 : 0),
-          ccNumber: mapping.ccNumber || mapping.cc || 0,
-          minValue: mapping.minValue || mapping.min || 0,
-          maxValue: mapping.maxValue || mapping.max || 127,
-          behavior: mapping.behavior || mapping.behaviour || 'absolute'
+          controlId: mapping.controlId ?? parseInt(key.replace('control_', ''), 10) ?? 0,
+          controlType: mapping.controlType ?? mapping.type ?? 0x05,
+          // Both midiChannel and channel are 0-based, no conversion needed
+          midiChannel: mapping.midiChannel ?? mapping.channel ?? 0,
+          ccNumber: mapping.ccNumber ?? mapping.cc ?? 0,
+          minValue: mapping.minValue ?? mapping.min ?? 0,
+          maxValue: mapping.maxValue ?? mapping.max ?? 127,
+          behavior: mapping.behavior ?? mapping.behaviour ?? 'absolute'
         };
 
         controls.push(control);

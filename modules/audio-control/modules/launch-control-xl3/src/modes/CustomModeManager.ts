@@ -231,11 +231,12 @@ export class CustomModeManager extends EventEmitter {
         const ctrl = control as any;
         controls.push({
           controlId,
-          channel: ctrl.channel,
-          ccNumber: ctrl.cc,
-          minValue: ctrl.min,
-          maxValue: ctrl.max,
-          behaviour: ctrl.behaviour,
+          // Support both property names, prefer primary names
+          channel: ctrl.midiChannel ?? ctrl.channel,
+          ccNumber: ctrl.ccNumber ?? ctrl.cc,
+          minValue: ctrl.minValue ?? ctrl.min,
+          maxValue: ctrl.maxValue ?? ctrl.max,
+          behaviour: ctrl.behavior ?? ctrl.behaviour,
         });
 
         // Extract label if present

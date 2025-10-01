@@ -461,6 +461,8 @@ export class SysExParser {
     const controls: ControlMapping[] = [];
     const colors: ColorMapping[] = [];
 
+    console.log(`[SysExParser] parseControls: Raw data length = ${data.length} bytes`);
+
     // Find where controls actually start (after name)
     let controlsStart = 0;
 
@@ -475,12 +477,16 @@ export class SysExParser {
     }
 
     if (writeResponseStart > 0) {
+      console.log('[SysExParser] Detected WRITE response format');
       // Phase 1 Fix: Parse write response format with 0x40 markers
       this.parseWriteResponseFormat(data, writeResponseStart, controls, colors);
     } else {
+      console.log('[SysExParser] Detected READ response format');
       // Phase 1 Fix: Enhanced parsing for READ responses with mixed formats
       this.parseReadResponseFormat(data, controlsStart, controls, colors);
     }
+
+    console.log(`[SysExParser] Parsed ${controls.length} controls from device data`);
 
     return { parsedControls: controls, parsedColors: colors };
   }
@@ -551,6 +557,8 @@ export class SysExParser {
     controls: ControlMapping[],
     colors: ColorMapping[]
   ): void {
+    console.log(`[parseReadResponseFormat] Starting parse from position ${startPos}, data length ${data.length}`);
+
     // Step 1: Parse any 0x40 CC data sections first (from mixed response)
     const ccData: { ccNumber: number, position: number }[] = [];
     for (let i = startPos; i < data.length - 1; i++) {
@@ -563,7 +571,11 @@ export class SysExParser {
       }
     }
 
+    console.log(`[parseReadResponseFormat] Found ${ccData.length} 0x40 CC data entries`);
+
     // Step 2: Parse 0x48 control definition sections (device stores as 0x48, not 0x49)
+    let controlsFound = 0;
+    let lastPosition = startPos;
     for (let i = startPos; i < data.length - 9; i++) {
       if (data[i] === 0x48) {
         const controlId = data[i + 1];
@@ -582,6 +594,13 @@ export class SysExParser {
         if (isValidControl && controlId !== undefined &&
             minValue !== undefined && ccNumber !== undefined &&
             maxValue !== undefined && channel !== undefined) {
+
+          controlsFound++;
+          lastPosition = i;
+
+          if (controlsFound <= 5) {
+            console.log(`[parseReadResponseFormat] Control ${controlsFound}: ID=0x${controlId.toString(16)}, CH=${channel}, CC=${ccNumber}, pos=${i}`);
+          }
 
           controls.push({
             controlId,
@@ -606,32 +625,40 @@ export class SysExParser {
       }
     }
 
-    // Step 3: If we have CC data but no control definitions, create controls from CC data
-    if (controls.length === 0 && ccData.length > 0) {
-      const controlIdSequence = [
-        // Top row encoders
-        0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-        // Middle row encoders
-        0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F,
-        // Bottom row encoders
-        0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27,
-        // Faders
-        0x28, 0x29, 0x2A, 0x2B, 0x2C, 0x2D, 0x2E, 0x2F,
-        // Buttons row 1
-        0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-        // Buttons row 2
-        0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F
-      ];
+    console.log(`[parseReadResponseFormat] Parsed ${controlsFound} controls (last at position ${lastPosition}, loop ended at ${data.length - 9})`);
 
-      for (let i = 0; i < ccData.length && i < controlIdSequence.length; i++) {
-        const controlId = controlIdSequence[i];
-        const ccNumber = ccData[i]?.ccNumber;
+    // Step 3: Process 0x40 short-format controls (unconfigured controls with default CH0/CC0)
+    // These appear mixed with 0x48 controls in the device response
+    if (ccData.length > 0) {
+      // Build set of control IDs we already have from 0x48 parsing
+      const existingControlIds = new Set(controls.map(c => c.controlId));
 
-        if (controlId !== undefined && ccNumber !== undefined) {
+      console.log(`[parseReadResponseFormat] Found ${ccData.length} 0x40 entries, ${existingControlIds.size} already parsed from 0x48`);
+
+      // Parse 0x40 markers to get control IDs
+      const shortFormatControls: number[] = [];
+      for (let i = 0; i < data.length - 1; i++) {
+        if (data[i] === 0x40 && data[i + 1] !== undefined) {
+          const possibleControlId = data[i + 1];
+          // Valid control IDs are 0x10-0x3F
+          if (possibleControlId >= 0x10 && possibleControlId <= 0x3F) {
+            shortFormatControls.push(possibleControlId);
+          }
+        }
+      }
+
+      console.log(`[parseReadResponseFormat] Found ${shortFormatControls.length} valid 0x40 control IDs`);
+
+      // Add controls for 0x40 entries that aren't already in our list
+      let addedCount = 0;
+      for (const controlId of shortFormatControls) {
+        if (!existingControlIds.has(controlId)) {
+          const controlType = this.deriveControlTypeFromId(controlId);
+
           controls.push({
             controlId,
-            channel: 0,
-            ccNumber,
+            channel: 0,  // Default/unconfigured
+            ccNumber: 0, // Default/unconfigured
             minValue: 0,
             maxValue: 127,
             behaviour: 'absolute' as any,
@@ -639,11 +666,16 @@ export class SysExParser {
 
           colors.push({
             controlId,
-            color: 0x0C,
+            color: this.getDefaultColorForControl(controlId),
             behaviour: 'static',
           });
+
+          existingControlIds.add(controlId);
+          addedCount++;
         }
       }
+
+      console.log(`[parseReadResponseFormat] Added ${addedCount} controls from 0x40 short format`);
     }
   }
 
@@ -663,6 +695,26 @@ export class SysExParser {
       return 0x0F; // Red for buttons
     }
     return 0x0C; // Default off
+  }
+
+  /**
+   * Derive control type from control ID
+   */
+  private static deriveControlTypeFromId(controlId: number): number {
+    if (controlId >= 0x10 && controlId <= 0x17) {
+      return 0x05; // Top row encoders
+    } else if (controlId >= 0x18 && controlId <= 0x1F) {
+      return 0x09; // Middle row encoders
+    } else if (controlId >= 0x20 && controlId <= 0x27) {
+      return 0x0D; // Bottom row encoders
+    } else if (controlId >= 0x28 && controlId <= 0x2F) {
+      return 0x00; // Faders
+    } else if (controlId >= 0x30 && controlId <= 0x37) {
+      return 0x19; // First row buttons
+    } else if (controlId >= 0x38 && controlId <= 0x3F) {
+      return 0x25; // Second row buttons
+    }
+    return 0x00; // Default
   }
 
   /**

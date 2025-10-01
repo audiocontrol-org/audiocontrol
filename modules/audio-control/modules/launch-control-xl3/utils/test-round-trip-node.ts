@@ -322,6 +322,41 @@ async function testRoundTrip(): Promise<void> {
     log.data('Source Mode Name', sourceMode.name);
     log.data('Source Control Count', Object.keys(sourceMode.controls).length);
 
+    // CRITICAL: Validate factory defaults are complete
+    console.log(chalk.gray('\n  Validating factory defaults...'));
+
+    const expectedControlCount = 48; // Device has 48 controls
+    const actualControlCount = Object.keys(sourceMode.controls).length;
+
+    if (actualControlCount !== expectedControlCount) {
+      throw new Error(
+        `❌ INVALID FACTORY DATA: Expected ${expectedControlCount} controls, got ${actualControlCount}.\n` +
+        `Factory default slot must contain ALL controls with valid MIDI parameters.\n` +
+        `This slot appears to have incomplete data.`
+      );
+    }
+
+    // Validate each control has valid MIDI parameters (not CH0/CC0 which is non-functional)
+    const invalidControls: string[] = [];
+    for (const [id, control] of Object.entries(sourceMode.controls)) {
+      // CH0/CC0 means the control is not configured (non-functional)
+      if (control.midiChannel === 0 && control.ccNumber === 0) {
+        invalidControls.push(`${id} (CH0/CC0)`);
+      }
+    }
+
+    if (invalidControls.length > 0) {
+      console.log(chalk.red('\n  Invalid controls found:'));
+      invalidControls.forEach(ctrl => console.log(chalk.red(`    ${ctrl}`)));
+      throw new Error(
+        `❌ INVALID FACTORY DATA: ${invalidControls.length} controls have CH0/CC0 (non-functional).\n` +
+        `Factory defaults must have valid MIDI channel and CC numbers for all controls.\n` +
+        `This slot does not contain proper factory defaults.`
+      );
+    }
+
+    log.success('Factory defaults validated: All 48 controls present with valid MIDI parameters');
+
     console.log();
 
     // Step 2: Modify mode (only 2 controls)
@@ -369,9 +404,9 @@ async function testRoundTrip(): Promise<void> {
 
     console.log();
 
-    // Step 6: Compare ONLY the modified controls
+    // Step 6: Compare ALL controls from the source mode
     log.section(' STEP 6: VERIFY CHANGES ');
-    log.step('Comparing modified controls...');
+    log.step('Comparing ALL controls from baseline...');
 
     const errors: string[] = [];
 
@@ -383,23 +418,32 @@ async function testRoundTrip(): Promise<void> {
       log.comparison('Mode Name', testMode.name, readMode.name, true);
     }
 
-    // Check FADER1
-    const fader1Sent = testMode.controls['FADER1'];
-    const fader1Received = readMode.controls['FADER1'];
-    if (fader1Sent && fader1Received) {
-      const fader1Match = compareControlMapping('FADER1', fader1Sent, fader1Received);
-      if (!fader1Match.matches) {
-        errors.push(...fader1Match.details);
-      }
+    // Check control count
+    const sentControlCount = Object.keys(testMode.controls).length;
+    const receivedControlCount = Object.keys(readMode.controls).length;
+
+    if (sentControlCount !== receivedControlCount) {
+      errors.push(`Control count mismatch: sent=${sentControlCount}, received=${receivedControlCount}`);
+      log.comparison('Control Count', sentControlCount.toString(), receivedControlCount.toString(), false);
+    } else {
+      log.comparison('Control Count', sentControlCount.toString(), receivedControlCount.toString(), true);
     }
 
-    // Check SEND_A1
-    const sendA1Sent = testMode.controls['SEND_A1'];
-    const sendA1Received = readMode.controls['SEND_A1'];
-    if (sendA1Sent && sendA1Received) {
-      const sendA1Match = compareControlMapping('SEND_A1', sendA1Sent, sendA1Received);
-      if (!sendA1Match.matches) {
-        errors.push(...sendA1Match.details);
+    // Check ALL controls that were sent
+    console.log();
+    console.log(chalk.gray('  Verifying all controls:'));
+
+    for (const [controlId, sentControl] of Object.entries(testMode.controls)) {
+      const receivedControl = readMode.controls[controlId];
+
+      if (!receivedControl) {
+        errors.push(`Control ${controlId} missing from device`);
+        console.log(chalk.red(`    ✗ ${controlId}: MISSING`));
+      } else {
+        const match = compareControlMapping(controlId, sentControl, receivedControl);
+        if (!match.matches) {
+          errors.push(...match.details);
+        }
       }
     }
 
@@ -407,7 +451,7 @@ async function testRoundTrip(): Promise<void> {
 
     if (errors.length === 0) {
       log.success('🎉 ROUND-TRIP TEST PASSED! 🎉');
-      log.success('All modified data matches!');
+      log.success('All controls match!');
       testPassed = true;
     } else {
       log.error('❌ ROUND-TRIP TEST FAILED! ❌');
