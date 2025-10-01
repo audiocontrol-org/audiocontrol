@@ -10,9 +10,58 @@ import { writeFileSync } from 'fs';
 import { LaunchControlXL3 } from '../src';
 import { JuceMidiBackend } from '../src/backends/JuceMidiBackend';
 
+/**
+ * Check if test environment is ready
+ */
+async function checkEnvironment(): Promise<boolean> {
+  console.log('🔍 Checking test environment...');
+
+  try {
+    const response = await fetch('http://localhost:7777/health', { signal: AbortSignal.timeout(2000) });
+    const data = await response.json();
+
+    if (data.status === 'ok') {
+      console.log('✓ JUCE MIDI server is running');
+      return true;
+    }
+  } catch (error) {
+    console.log('✗ JUCE MIDI server not running!');
+    console.log();
+    console.log('═'.repeat(60));
+    console.log('Integration Test Environment Not Ready');
+    console.log('═'.repeat(60));
+    console.log();
+    console.log('Required setup:');
+    console.log('  1. Start JUCE MIDI server:');
+    console.log('     pnpm env:juce-server');
+    console.log();
+    console.log('  2. Connect Launch Control XL3 via USB');
+    console.log('  3. Power on the device');
+    console.log();
+    console.log('Quick check environment:');
+    console.log('     pnpm env:check');
+    console.log();
+    console.log('For more help:');
+    console.log('     pnpm env:help');
+    console.log();
+    return false;
+  }
+
+  return false;
+}
+
 async function backupCurrentMode() {
   console.log('🔧 Backing up current mode from physical slot 1');
   console.log('═══════════════════════════════════════════════');
+  console.log();
+
+  // Check environment first
+  const envReady = await checkEnvironment();
+  if (!envReady) {
+    process.exit(1);
+  }
+
+  console.log();
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const physicalSlot = 1;

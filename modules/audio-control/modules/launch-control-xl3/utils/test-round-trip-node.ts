@@ -34,18 +34,18 @@
  *
  * Requirements:
  *   - Launch Control XL 3 device connected via USB
- *   - Native MIDI bindings built successfully (node-midi OR jazz-midi)
- *   - Python 3.11 or earlier + build tools (for native bindings)
+ *   - JUCE MIDI server running on http://localhost:7777
  *   - Device should be powered on and ready
  *
- * IMPORTANT: All Node.js MIDI libraries require native bindings. There is no pure
- * JavaScript solution for Node.js MIDI access. If native bindings fail to build,
- * use the browser test instead.
+ * To start the JUCE MIDI server:
+ *   cd ../../../modules/juce/midi-server
+ *   make run
+ *   # Server will run on http://localhost:7777
  */
 
 import chalk from 'chalk';
 import { LaunchControlXL3 } from '../src';
-import { EasyMidiBackend } from '../src/core/backends/EasyMidiBackend.js';
+import { JuceMidiBackend } from '../src/backends/JuceMidiBackend.js';
 import type { CustomMode, ControlMapping } from '../src/types/CustomMode.js';
 
 // Console formatting helpers
@@ -319,6 +319,46 @@ function compareControlMapping(controlKey: string, sent: ControlMapping, receive
 }
 
 /**
+ * Check if test environment is ready
+ */
+async function checkEnvironment(): Promise<boolean> {
+  log.step('Checking test environment...');
+
+  try {
+    const response = await fetch('http://localhost:7777/health', { signal: AbortSignal.timeout(2000) });
+    const data = await response.json();
+
+    if (data.status === 'ok') {
+      log.success('JUCE MIDI server is running');
+      return true;
+    }
+  } catch (error) {
+    log.error('JUCE MIDI server not running!');
+    console.log();
+    log.warning('═'.repeat(60));
+    log.warning('Integration Test Environment Not Ready');
+    log.warning('═'.repeat(60));
+    console.log();
+    log.info('Required setup:');
+    log.info('  1. Start JUCE MIDI server:');
+    console.log(chalk.white('     pnpm env:juce-server'));
+    console.log();
+    log.info('  2. Connect Launch Control XL3 via USB');
+    log.info('  3. Power on the device');
+    console.log();
+    log.info('Quick check environment:');
+    console.log(chalk.white('     pnpm env:check'));
+    console.log();
+    log.info('For more help:');
+    console.log(chalk.white('     pnpm env:help'));
+    console.log();
+    return false;
+  }
+
+  return false;
+}
+
+/**
  * Main round-trip test function
  */
 async function testRoundTrip(): Promise<void> {
@@ -329,18 +369,26 @@ async function testRoundTrip(): Promise<void> {
   log.data('Target Slot', `${targetSlot} (slot ${targetSlot + 1})`);
   console.log();
 
+  // Check environment first
+  const envReady = await checkEnvironment();
+  if (!envReady) {
+    process.exit(1);
+  }
+
+  console.log();
+
   let controller: LaunchControlXL3 | null = null;
-  let backend: EasyMidiBackend | null = null;
+  let backend: JuceMidiBackend | null = null;
   let testPassed = false;
 
   try {
-    // Step 1: Create and initialize EasyMidiBackend
-    log.step('Creating EasyMidiBackend instance...');
-    backend = new EasyMidiBackend();
+    // Step 1: Create and initialize JuceMidiBackend
+    log.step('Creating JuceMidiBackend instance...');
+    backend = new JuceMidiBackend();
 
-    log.step('Initializing EasyMidiBackend...');
+    log.step('Initializing JuceMidiBackend...');
     await backend.initialize();
-    log.success('EasyMidiBackend initialized successfully!');
+    log.success('JuceMidiBackend initialized successfully!');
 
     // Step 2: Create LaunchControlXL3 instance
     log.step('Creating LaunchControlXL3 instance...');
@@ -492,20 +540,20 @@ async function testRoundTrip(): Promise<void> {
     log.error('Test failed with error:');
     log.error(error.message);
 
-    if (error.message.includes('Cannot find MIDI devices')) {
+    if (error.message.includes('ECONNREFUSED') || error.message.includes('fetch failed')) {
+      log.warning('');
+      log.warning('TROUBLESHOOTING:');
+      log.warning('• Start the JUCE MIDI server:');
+      log.warning('  cd ../../../modules/juce/midi-server');
+      log.warning('  make run');
+      log.warning('• Server should be running on http://localhost:7777');
+    } else if (error.message.includes('Cannot find MIDI devices')) {
       log.warning('');
       log.warning('TROUBLESHOOTING:');
       log.warning('• Ensure Launch Control XL 3 is connected via USB');
       log.warning('• Check that the device is powered on');
       log.warning('• Verify MIDI drivers are installed');
       log.warning('• Try disconnecting and reconnecting the device');
-    } else if (error.message.includes('native bindings')) {
-      log.warning('');
-      log.warning('TROUBLESHOOTING:');
-      log.warning('• Install Python 3.11 or earlier');
-      log.warning('• Install build tools: npm install -g node-gyp');
-      log.warning('• Try: npm rebuild');
-      log.warning('• Use browser test if native bindings fail');
     }
   } finally {
     // Cleanup
@@ -521,7 +569,7 @@ async function testRoundTrip(): Promise<void> {
 
     if (backend) {
       log.step('Cleaning up MIDI backend...');
-      // EasyMidiBackend doesn't have explicit cleanup, but connections should close
+      // JuceMidiBackend cleanup handled by server
     }
   }
 
