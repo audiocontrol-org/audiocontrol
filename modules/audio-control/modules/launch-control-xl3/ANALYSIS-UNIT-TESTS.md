@@ -921,4 +921,111 @@ describe('Device Integration (REQUIRES HARDWARE)', () => {
 
 **Document Author:** Test Automation Analysis
 **Last Updated:** 2025-09-30
-**Status:** Analysis Complete - Awaiting Implementation
+**Status:** In Progress - Implementing Fixes
+
+---
+
+## Implementation Progress
+
+### Bugs Fixed
+
+#### 1. ✅ "controls is not iterable" Bug (FIXED)
+**Date:** 2025-09-30
+**Location:** `src/modes/CustomModeManager.ts:204-222`
+**Issue:** Parser expected array format but device returns object format
+**Solution:** Added format detection to handle both:
+```typescript
+const controlsArray = Array.isArray(response.controls)
+  ? response.controls
+  : Object.values(response.controls);
+```
+
+#### 2. ✅ Label Extraction Bug (FIXED)
+**Date:** 2025-09-30
+**Location:** `src/modes/CustomModeManager.ts:230-263`
+**Issue:** `convertToDeviceFormat()` ignored control labels
+**Solution:** Added label extraction and Map population:
+```typescript
+const labels = new Map<number, string>();
+
+// In loop:
+if (ctrl.name) {
+  labels.set(controlId, ctrl.name);
+}
+
+// In return:
+return { slot, name: mode.name, controls, colors, labels };
+```
+
+#### 3. ✅ Control ID Test Assertions (FIXED)
+**Date:** 2025-09-30
+**Location:** `test/unit/CustomModeManager.test.ts:886-917`
+**Issue:** Tests used outdated control ID values
+**Solution:** Updated all assertions to Phase 1 corrected values:
+- Send A: 0x10-0x17 (was 0x0D-0x14)
+- Send B: 0x18-0x1F (was 0x1D-0x24)
+- Pan: 0x20-0x27 (was 0x31-0x38)
+- Faders: 0x28-0x2F (was 0x4D-0x54)
+- Focus: 0x30-0x37 (was 0x29-0x30)
+- Control: 0x38-0x3F (was 0x39-0x40)
+
+#### 4. ✅ Object Format Test Coverage (FIXED)
+**Date:** 2025-09-30
+**Location:** `test/unit/CustomModeManager.test.ts:201-238`
+**Issue:** Only array format tested, object format untested
+**Solution:** Added test case for object format with keyed controls
+
+#### 5. ✅ Unit Tests Re-enabled (FIXED)
+**Date:** 2025-09-30
+**Location:** `vitest.config.ts:37`
+**Issue:** Unit tests excluded from test suite
+**Solution:** Added `test/unit/**/*.test.ts` back to include list
+
+### Build Verification
+
+All fixes verified in built code:
+- ✅ `dist/index.js` contains `Array.isArray(response.controls)` check
+- ✅ `dist/index.js` contains `labels.set(controlId, ctrl.name)`
+- ✅ TypeScript compilation succeeds
+- ✅ Build completes without errors
+
+### Test Status
+
+**Passing:**
+- ✅ Control ID constants test (with corrected values)
+- ✅ Object format parsing test
+- ✅ Array format parsing test (original)
+- ✅ 35+ other unit tests
+
+**Known Issues:**
+- ❌ Some LED behavior tests failing (pre-existing)
+- ❌ Unknown control ID handling needs review
+- ❌ Some device write tests need fixture updates
+
+---
+
+## Next Steps (Updated Action Items)
+
+### Completed ✅
+- [x] Fix "controls is not iterable" bug
+- [x] Fix label extraction in convertToDeviceFormat
+- [x] Fix control ID test assertions
+- [x] Add object format test case
+- [x] Re-enable unit tests in vitest config
+
+### In Progress 🔄
+- [ ] Create RealDeviceFixtures.test.ts
+- [ ] Add protocol compliance test section
+- [ ] Update remaining mock data to match real device format
+
+### Pending 📋
+- [ ] Capture test fixtures: `npm run backup` for all 16 slots
+- [ ] Document parsed response format in PROTOCOL.md
+- [ ] Update MAINTENANCE.md with test data requirements
+- [ ] Fix remaining 7 test failures
+
+---
+
+**Document Author:** Test Automation Analysis
+**Last Updated:** 2025-09-30
+**Status:** Actively Implementing - 5 of 10 immediate fixes complete
