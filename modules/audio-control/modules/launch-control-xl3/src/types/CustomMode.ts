@@ -39,6 +39,7 @@ export interface CustomModeMessage {
   name?: string;
   controls: Control[];
   colors: ColorMapping[];
+  labels?: Map<number, string>;  // Control labels by ID
   data: number[];         // Complete message bytes
 }
 

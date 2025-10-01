@@ -65,6 +65,7 @@ export interface CustomModeMessage extends SysExMessage {
   name?: string;
   controls: ControlMapping[];
   colors: ColorMapping[];
+  labels?: Map<number, string>;  // Control labels by ID
 }
 
 // Write acknowledgement message
@@ -1136,6 +1137,32 @@ export class SysExParser {
       rawData.push(0x60); // LED color marker
       rawData.push(controlId); // Control ID
       // Note: Web editor format is exactly 2 bytes - no color value byte
+    }
+
+    // Encode labels if provided
+    // Format: [0x60 + length] [controlID] [name_bytes]
+    // The marker byte encodes the string length: 0x60=0 chars, 0x65=5 chars, 0x6F=15 chars (max)
+    if (modeData.labels && modeData.labels.size > 0) {
+      // Sort labels by control ID for consistent output
+      const sortedLabels = Array.from(modeData.labels.entries()).sort((a, b) => a[0] - b[0]);
+
+      for (const [controlId, label] of sortedLabels) {
+        if (label && label.length > 0) {
+          // Truncate to 15 characters max (0x6F - 0x60 = 15)
+          const truncatedLabel = label.substring(0, 15);
+          const labelBytes = Array.from(truncatedLabel).map(c => c.charCodeAt(0));
+
+          // Marker byte: 0x60 + length
+          rawData.push(0x60 + labelBytes.length);
+          // Control ID
+          rawData.push(controlId);
+          // Label bytes
+          rawData.push(...labelBytes);
+        }
+      }
+
+      // Terminator: 0x60 (empty marker) to end label section
+      rawData.push(0x60);
     }
 
     return rawData;
