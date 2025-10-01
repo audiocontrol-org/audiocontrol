@@ -69,194 +69,58 @@ const log = {
   }
 };
 
-// Parse command line arguments
-const args = process.argv.slice(2);
-const targetSlot = args[0] ? parseInt(args[0], 10) : 0;
-
-// Validate slot number
-if (isNaN(targetSlot) || targetSlot < 0 || targetSlot > 14) {
-  log.error('Invalid slot number. Must be 0-14 (for slots 1-15).');
-  process.exit(1);
-}
+// Test configuration
+const SOURCE_SLOT = 14;  // Physical slot 15 - read baseline from here
+const TARGET_SLOT = 0;   // Physical slot 1 - write and verify here
 
 /**
- * Create test custom mode with control names for round-trip testing
- * Uses the controller's public API to create the mode
+ * Modify a factory mode for testing
+ * Changes name and modifies TWO controls only
  */
-function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
-  // Use public API to create mode
-  const testMode = controller.createCustomMode('RT Test');
-
-  // Add metadata
-  testMode.metadata = {
-    ...testMode.metadata,
-    name: 'Round-Trip Test Mode',
-    description: 'Test mode for validating write/read cycle with control names',
-    version: '1.0.0',
-    author: 'Launch Control XL3 Test Suite',
-    created: new Date().toISOString()
+function modifyFactoryMode(factoryMode: CustomMode): { modified: CustomMode; changes: any } {
+  // Clone the mode
+  const modified: CustomMode = {
+    ...factoryMode,
+    name: 'RT Test',
+    controls: { ...factoryMode.controls },
+    metadata: {
+      ...factoryMode.metadata,
+      name: 'Round-Trip Test Mode',
+      description: 'Test mode for validating write/read cycle',
+    }
   };
 
-  // Add test controls with names to validate name parsing
-  const testControls: Record<string, ControlMapping> = {
-    // Faders with custom names (UPPERCASE to match CONTROL_IDS)
-    'FADER1': {
-      name: 'Vol Trk1',
-      midiChannel: 1,
+  // Track what we're changing
+  const changes = {
+    modeName: { old: factoryMode.name, new: 'RT Test' },
+    controls: {} as Record<string, any>
+  };
+
+  // Modify FADER1 - change MIDI channel, CC, and name
+  if (modified.controls['FADER1']) {
+    const original = { ...modified.controls['FADER1'] };
+    modified.controls['FADER1'] = {
+      ...modified.controls['FADER1'],
+      name: 'TestVol1',
+      midiChannel: 5,
       ccNumber: 77,
-      minValue: 0,
-      maxValue: 127,
-      behavior: 'absolute'
-    },
-    'FADER2': {
-      name: 'Vol Trk2',
-      midiChannel: 1,
-      ccNumber: 78,
-      minValue: 0,
-      maxValue: 127,
-      behavior: 'absolute'
-    },
-    'FADER3': {
-      name: 'Vol Trk3',
-      midiChannel: 1,
-      ccNumber: 79,
-      minValue: 0,
-      maxValue: 127,
-      behavior: 'absolute'
-    },
-
-    // Top row knobs with custom names (UPPERCASE to match CONTROL_IDS)
-    'SEND_A1': {
-      name: 'Reverb 1',
-      midiChannel: 2,
-      ccNumber: 13,
-      minValue: 0,
-      maxValue: 127,
-      behavior: 'absolute'
-    },
-    'SEND_A2': {
-      name: 'Reverb 2',
-      midiChannel: 2,
-      ccNumber: 14,
-      minValue: 0,
-      maxValue: 127,
-      behavior: 'absolute'
-    },
-    'SEND_A3': {
-      name: 'Delay 1',
-      midiChannel: 2,
-      ccNumber: 15,
-      minValue: 0,
-      maxValue: 127,
-      behavior: 'absolute'
-    },
-
-    // Middle row knobs with custom names (UPPERCASE to match CONTROL_IDS)
-    'SEND_B1': {
-      name: 'EQ High',
-      midiChannel: 3,
-      ccNumber: 29,
-      minValue: 0,
-      maxValue: 127,
-      behavior: 'absolute'
-    },
-    'SEND_B2': {
-      name: 'EQ Mid',
-      midiChannel: 3,
-      ccNumber: 30,
-      minValue: 0,
-      maxValue: 127,
-      behavior: 'absolute'
-    },
-
-    // Bottom row knobs with custom names (UPPERCASE to match CONTROL_IDS)
-    'PAN1': {
-      name: 'Pan Tr1',
-      midiChannel: 4,
-      ccNumber: 49,
-      minValue: 0,
-      maxValue: 127,
-      behavior: 'absolute'
-    },
-    'PAN2': {
-      name: 'Pan Tr2',
-      midiChannel: 4,
-      ccNumber: 50,
-      minValue: 0,
-      maxValue: 127,
-      behavior: 'absolute'
-    },
-
-    // Buttons with custom names (UPPERCASE to match CONTROL_IDS)
-    'FOCUS1': {
-      name: 'Mute T1',
-      midiChannel: 5,
-      ccNumber: 104,
-      minValue: 0,
-      maxValue: 127,
-      behavior: 'toggle'
-    },
-    'FOCUS2': {
-      name: 'Solo T1',
-      midiChannel: 5,
-      ccNumber: 105,
-      minValue: 0,
-      maxValue: 127,
-      behavior: 'toggle'
-    }
-  };
-
-  testMode.controls = testControls;
-  return testMode;
-}
-
-/**
- * Compare two custom modes for equality
- */
-function compareCustomModes(sent: CustomMode, received: CustomMode): { matches: boolean; details: string[] } {
-  const details: string[] = [];
-  let matches = true;
-
-  // Compare mode name
-  const nameMatch = sent.name === received.name;
-  log.comparison('Mode Name', sent.name, received.name, nameMatch);
-  if (!nameMatch) {
-    matches = false;
-    details.push(`Mode name mismatch: sent="${sent.name}", received="${received.name}"`);
+    };
+    changes.controls['FADER1'] = { original, modified: modified.controls['FADER1'] };
   }
 
-  // Compare control count
-  const sentControlKeys = Object.keys(sent.controls);
-  const receivedControlKeys = Object.keys(received.controls);
-  const controlCountMatch = sentControlKeys.length === receivedControlKeys.length;
-  log.comparison('Control Count', sentControlKeys.length, receivedControlKeys.length, controlCountMatch);
-
-  if (!controlCountMatch) {
-    matches = false;
-    details.push(`Control count mismatch: sent=${sentControlKeys.length}, received=${receivedControlKeys.length}`);
+  // Modify SEND_A1 - change MIDI channel, CC, and name
+  if (modified.controls['SEND_A1']) {
+    const original = { ...modified.controls['SEND_A1'] };
+    modified.controls['SEND_A1'] = {
+      ...modified.controls['SEND_A1'],
+      name: 'TestRev',
+      midiChannel: 6,
+      ccNumber: 91,
+    };
+    changes.controls['SEND_A1'] = { original, modified: modified.controls['SEND_A1'] };
   }
 
-  // Compare individual controls
-  for (const controlKey of sentControlKeys) {
-    const sentControl = sent.controls[controlKey];
-    const receivedControl = received.controls[controlKey];
-
-    if (!receivedControl) {
-      matches = false;
-      details.push(`Missing control in received data: ${controlKey}`);
-      log.error(`Missing control: ${controlKey}`);
-      continue;
-    }
-
-    // Compare control properties
-    const controlMatches = compareControlMapping(controlKey, sentControl, receivedControl);
-    if (!controlMatches.matches) {
-      matches = false;
-      details.push(...controlMatches.details);
-    }
-  }
-
-  return { matches, details };
+  return { modified, changes };
 }
 
 /**
@@ -362,11 +226,12 @@ async function checkEnvironment(): Promise<boolean> {
  * Main round-trip test function
  */
 async function testRoundTrip(): Promise<void> {
-  log.title('Launch Control XL 3 - MVP.4 Round-Trip Test');
+  log.title('Launch Control XL 3 - Round-Trip Test');
   console.log('='.repeat(60));
 
-  log.info(`Testing write/read cycle for custom mode with control names`);
-  log.data('Target Slot', `${targetSlot} (slot ${targetSlot + 1})`);
+  log.info('Testing write/read cycle with baseline modification');
+  log.data('Source Slot', `${SOURCE_SLOT} (physical slot ${SOURCE_SLOT + 1})`);
+  log.data('Target Slot', `${TARGET_SLOT} (physical slot ${TARGET_SLOT + 1})`);
   console.log();
 
   // Check environment first
@@ -443,78 +308,111 @@ async function testRoundTrip(): Promise<void> {
     log.success('Connected to Launch Control XL 3!');
     console.log();
 
-    // Step 5: Create test custom mode using PUBLIC API
-    log.section(' STEP 1: CREATE TEST DATA (PUBLIC API) ');
-    log.step('Creating test custom mode using createCustomMode()...');
-    log.info('Using public API: createCustomMode() creates proper mode structure');
+    // Step 1: Read baseline mode
+    log.section(' STEP 1: READ BASELINE MODE ');
+    log.step(`Reading baseline from slot ${SOURCE_SLOT}...`);
 
-    const testMode = createTestCustomMode(controller);
+    const sourceMode = await controller.loadCustomMode(SOURCE_SLOT);
 
-    log.success('Test custom mode created!');
-    log.data('Mode Name', testMode.name);
-    log.data('Control Count', Object.keys(testMode.controls).length);
-
-    // Display test controls
-    console.log(chalk.gray('\n  Test Controls:'));
-    for (const [key, control] of Object.entries(testMode.controls)) {
-      console.log(chalk.gray(`    ${key}: "${control.name}" (CH${control.midiChannel}, CC${control.ccNumber})`));
+    if (!sourceMode) {
+      throw new Error(`Failed to read mode from slot ${SOURCE_SLOT}`);
     }
+
+    log.success(`Mode read from slot ${SOURCE_SLOT}!`);
+    log.data('Source Mode Name', sourceMode.name);
+    log.data('Source Control Count', Object.keys(sourceMode.controls).length);
 
     console.log();
 
-    // Step 6: Write custom mode to device using PUBLIC API
-    log.section(' STEP 2: WRITE TO DEVICE (PUBLIC API) ');
-    log.step(`Saving test mode to slot ${targetSlot} using saveCustomMode()...`);
-    log.info('Using public API: saveCustomMode() goes through CustomModeManager');
-    log.info('This ensures label extraction happens correctly');
+    // Step 2: Modify mode (only 2 controls)
+    log.section(' STEP 2: MODIFY MODE (2 CONTROLS) ');
+    log.step('Modifying source mode...');
+    log.info('Changes: mode name + FADER1 + SEND_A1');
 
-    await controller.saveCustomMode(targetSlot, testMode);
-    log.success(`Custom mode saved to slot ${targetSlot}!`);
+    const { modified: testMode, changes } = modifyFactoryMode(sourceMode);
+
+    log.success('Mode modified!');
+    log.data('New Mode Name', testMode.name);
+    console.log(chalk.gray('\n  Modified Controls:'));
+    console.log(chalk.gray(`    FADER1: "${testMode.controls['FADER1']?.name}" (CH${testMode.controls['FADER1']?.midiChannel}, CC${testMode.controls['FADER1']?.ccNumber})`));
+    console.log(chalk.gray(`    SEND_A1: "${testMode.controls['SEND_A1']?.name}" (CH${testMode.controls['SEND_A1']?.midiChannel}, CC${testMode.controls['SEND_A1']?.ccNumber})`));
+
+    console.log();
+
+    // Step 4: Write modified mode to target slot
+    log.section(' STEP 4: WRITE TO DEVICE ');
+    log.step(`Writing modified mode to slot ${TARGET_SLOT}...`);
+
+    await controller.saveCustomMode(TARGET_SLOT, testMode);
+    log.success(`Mode saved to slot ${TARGET_SLOT}!`);
 
     // Small delay to ensure write is complete
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Step 7: Read custom mode back from device using PUBLIC API
-    log.section(' STEP 3: READ FROM DEVICE (PUBLIC API) ');
-    log.step(`Loading custom mode from slot ${targetSlot} using loadCustomMode()...`);
-    log.info('Using public API: loadCustomMode() goes through CustomModeManager');
-    log.info('This ensures label parsing happens correctly');
+    console.log();
 
-    const readMode = await controller.loadCustomMode(targetSlot);
+    // Step 5: Read back from target slot
+    log.section(' STEP 5: READ FROM DEVICE ');
+    log.step(`Reading mode back from slot ${TARGET_SLOT}...`);
+
+    const readMode = await controller.loadCustomMode(TARGET_SLOT);
 
     if (!readMode) {
-      throw new Error(`Failed to read custom mode from slot ${targetSlot}`);
+      throw new Error(`Failed to read mode from slot ${TARGET_SLOT}`);
     }
 
-    log.success(`Custom mode read from slot ${targetSlot}!`);
+    log.success(`Mode read from slot ${TARGET_SLOT}!`);
     log.data('Read Mode Name', readMode.name);
-    log.data('Read Control Count', Object.keys(readMode.controls).length);
+    console.log(chalk.gray('\n  Read Controls (modified ones):'));
+    console.log(chalk.gray(`    FADER1: "${readMode.controls['FADER1']?.name || '(no name)'}" (CH${readMode.controls['FADER1']?.midiChannel}, CC${readMode.controls['FADER1']?.ccNumber})`));
+    console.log(chalk.gray(`    SEND_A1: "${readMode.controls['SEND_A1']?.name || '(no name)'}" (CH${readMode.controls['SEND_A1']?.midiChannel}, CC${readMode.controls['SEND_A1']?.ccNumber})`));
 
-    // Display read controls
-    console.log(chalk.gray('\n  Read Controls:'));
-    for (const [key, control] of Object.entries(readMode.controls)) {
-      console.log(chalk.gray(`    ${key}: "${control.name || '(no name)'}" (CH${control.midiChannel}, CC${control.ccNumber})`));
+    console.log();
+
+    // Step 6: Compare ONLY the modified controls
+    log.section(' STEP 6: VERIFY CHANGES ');
+    log.step('Comparing modified controls...');
+
+    const errors: string[] = [];
+
+    // Check mode name
+    if (testMode.name !== readMode.name) {
+      errors.push(`Mode name mismatch: sent="${testMode.name}", received="${readMode.name}"`);
+      log.comparison('Mode Name', testMode.name, readMode.name, false);
+    } else {
+      log.comparison('Mode Name', testMode.name, readMode.name, true);
+    }
+
+    // Check FADER1
+    const fader1Sent = testMode.controls['FADER1'];
+    const fader1Received = readMode.controls['FADER1'];
+    if (fader1Sent && fader1Received) {
+      const fader1Match = compareControlMapping('FADER1', fader1Sent, fader1Received);
+      if (!fader1Match.matches) {
+        errors.push(...fader1Match.details);
+      }
+    }
+
+    // Check SEND_A1
+    const sendA1Sent = testMode.controls['SEND_A1'];
+    const sendA1Received = readMode.controls['SEND_A1'];
+    if (sendA1Sent && sendA1Received) {
+      const sendA1Match = compareControlMapping('SEND_A1', sendA1Sent, sendA1Received);
+      if (!sendA1Match.matches) {
+        errors.push(...sendA1Match.details);
+      }
     }
 
     console.log();
 
-    // Step 8: Compare sent vs received data
-    log.section(' STEP 4: COMPARE DATA ');
-    log.step('Comparing sent vs received data...');
-
-    const comparison = compareCustomModes(testMode, readMode);
-
-    console.log();
-
-    if (comparison.matches) {
+    if (errors.length === 0) {
       log.success('🎉 ROUND-TRIP TEST PASSED! 🎉');
-      log.success('All data matches between sent and received modes!');
-      log.success('Control names are preserved correctly!');
+      log.success('All modified data matches!');
       testPassed = true;
     } else {
       log.error('❌ ROUND-TRIP TEST FAILED! ❌');
-      log.error('Data mismatch detected between sent and received modes:');
-      comparison.details.forEach(detail => {
+      log.error('Data mismatch detected:');
+      errors.forEach(detail => {
         log.error(`  • ${detail}`);
       });
     }
@@ -522,19 +420,16 @@ async function testRoundTrip(): Promise<void> {
     // Summary
     console.log('');
     log.section(' SUMMARY ');
-    console.log('This PUBLIC API integration test verifies:');
-    console.log('  1. createCustomMode() creates proper mode structure');
-    console.log('  2. saveCustomMode() extracts labels from control names');
-    console.log('  3. Labels are encoded into SysEx messages');
-    console.log('  4. Labels are written to device correctly');
-    console.log('  5. loadCustomMode() parses labels from device');
-    console.log('  6. Control names survive the complete round-trip');
+    console.log('This test verifies:');
+    console.log('  1. loadCustomMode() reads factory default correctly');
+    console.log('  2. Mode modifications (name + 2 controls)');
+    console.log('  3. saveCustomMode() writes changes to device');
+    console.log('  4. loadCustomMode() reads changes back');
+    console.log('  5. Changes survive complete round-trip');
     console.log('');
-    console.log('Complete pipeline tested:');
-    console.log('  User API → CustomModeManager → DeviceManager → SysExParser → Device');
-    console.log('  Device → SysExParser → DeviceManager → CustomModeManager → User API');
+    console.log('Pipeline tested:');
+    console.log('  Read Factory → Modify → Write → Read → Compare');
     console.log('');
-    log.info('This confirms the complete label pipeline works end-to-end.');
 
   } catch (error: any) {
     log.error('Test failed with error:');

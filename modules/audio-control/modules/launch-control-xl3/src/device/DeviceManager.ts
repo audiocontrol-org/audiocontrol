@@ -684,6 +684,14 @@ export class DeviceManager extends EventEmitter {
       const page1Colors = Array.isArray(page1Response.colors) ? page1Response.colors : [];
       const allColors = [...page0Colors, ...page1Colors];
 
+      // Extract labels from control objects into a Map
+      const allLabels = new Map<number, string>();
+      for (const control of allControls) {
+        if (control.name && control.controlId !== undefined) {
+          allLabels.set(control.controlId, control.name);
+        }
+      }
+
       // Convert arrays to Record format expected by CustomMode type
       // Use control_XX format to match CustomModeBuilder.build()
       // Normalize property names to match Control interface
@@ -699,11 +707,11 @@ export class DeviceManager extends EventEmitter {
         const normalizedControl = {
           controlId: control.controlId,
           controlType,
-          midiChannel: control.midiChannel ?? control.channel,
+          midiChannel: control.channel ?? control.midiChannel,
           ccNumber: control.ccNumber ?? control.cc,
           minValue: control.minValue ?? control.min ?? 0,
           maxValue: control.maxValue ?? control.max ?? 127,
-          behavior: (control.behavior ?? control.behaviour ?? 'absolute') as any
+          behavior: (control.behaviour ?? control.behavior ?? 'absolute') as any
         };
         controlsRecord[`control_${control.controlId}`] = normalizedControl;
       }
@@ -724,6 +732,7 @@ export class DeviceManager extends EventEmitter {
         name,
         controls: controlsRecord,
         colors: colorsMap,
+        labels: allLabels,
       };
     } catch (error) {
       // If we fail to read both pages, try reading just page 0 for backward compatibility
@@ -933,18 +942,19 @@ export class DeviceManager extends EventEmitter {
   /**
    * Validate custom mode response with type guards
    */
-  private validateCustomModeResponse(response: unknown): { slot?: number; name?: string; controls?: any; colors?: any } {
+  private validateCustomModeResponse(response: unknown): { slot?: number; name?: string; controls?: any; colors?: any; labels?: any } {
     const schema = z.object({
       type: z.literal('custom_mode_response'),
       slot: z.number().min(0).max(15).optional(),
       name: z.string().optional(),
       controls: z.any().optional(), // Complex type, validate separately
       colors: z.any().optional(),
+      labels: z.any().optional(),
     });
 
     try {
       const validated = schema.parse(response);
-      const result: { slot?: number; name?: string; controls?: any; colors?: any } = {};
+      const result: { slot?: number; name?: string; controls?: any; colors?: any; labels?: any } = {};
 
       if (validated.slot !== undefined) {
         result.slot = validated.slot;
@@ -957,6 +967,9 @@ export class DeviceManager extends EventEmitter {
       }
       if (validated.colors !== undefined) {
         result.colors = validated.colors;
+      }
+      if (validated.labels !== undefined) {
+        result.labels = validated.labels;
       }
 
       return result;

@@ -187,6 +187,9 @@ export class CustomModeManager extends EventEmitter {
       }
     };
 
+    // Extract labels Map if present
+    const labelsMap = response.labels instanceof Map ? response.labels : new Map();
+
     // Parse control mappings
     // Handle both array and object formats for controls
     if (response.controls) {
@@ -196,13 +199,16 @@ export class CustomModeManager extends EventEmitter {
 
       for (const control of controlsArray) {
         const controlId = this.getControlIdName(control.controlId);
+        const label = labelsMap.get(control.controlId);
+
         mode.controls[controlId] = {
+          name: label,
           type: this.getControlType(control.controlId),
-          channel: control.channel,
-          cc: control.ccNumber,
-          min: control.minValue,
-          max: control.maxValue,
-          behaviour: control.behaviour as ControlBehaviour,
+          midiChannel: control.midiChannel,
+          ccNumber: control.ccNumber,
+          minValue: control.minValue,
+          maxValue: control.maxValue,
+          behavior: control.behavior as ControlBehaviour,
         };
       }
     }

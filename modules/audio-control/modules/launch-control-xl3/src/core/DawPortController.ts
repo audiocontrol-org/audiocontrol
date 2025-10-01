@@ -94,8 +94,27 @@ export class DawPortControllerImpl implements DawPortController {
     console.log('[DawPortController] Phase 2: Sending Note Off ch16');
     await this.sendMessage([0x9F, 11, 0]);
 
-    // Give the device time to process the selection
-    await new Promise(resolve => setTimeout(resolve, 50));
+    // Wait for device acknowledgment if we have a wait function
+    if (this.waitForMessage) {
+      try {
+        console.log('[DawPortController] Waiting for slot change acknowledgment...');
+        const ackResponse = await this.waitForMessage(
+          (data) => {
+            // Looking for CC on channel 7, controller 30, with our target value
+            return data.length === 3 &&
+                   data[0] === 0xB6 && // CC channel 7
+                   data[1] === 30 &&
+                   data[2] === ccValue; // Should match our selection
+          },
+          200 // 200ms timeout
+        );
+        if (ackResponse && ackResponse.length > 2) {
+          console.log(`[DawPortController] Slot change confirmed: ${slot} (CC ${ccValue})`);
+        }
+      } catch (error) {
+        console.log('[DawPortController] No acknowledgment received (proceeding anyway)');
+      }
+    }
   }
 
   /**
