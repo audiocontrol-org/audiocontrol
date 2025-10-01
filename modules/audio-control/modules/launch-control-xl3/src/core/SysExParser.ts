@@ -992,14 +992,13 @@ export class SysExParser {
       throw new Error('Page must be 0 (encoders) or 1 (faders/buttons)');
     }
 
-    // Web editor pattern:
     // Format: F0 00 20 29 02 15 05 00 40 [PAGE] [SLOT] F7
     // Where PAGE = 0x00 for first 24 controls, 0x03 for second 24 controls
-    // And SLOT = MUST BE 0 to read from DAW-port-selected slot
+    // And SLOT = slot number (0-15)
     //
-    // Discovery (2025-09-30): Slot byte behavior for reads:
-    // - slot = 0: Reads from DAW-port-selected slot (CORRECT)
-    // - slot > 0: Reads from explicit slot, ignoring DAW port (WRONG for write/read round-trip)
+    // Discovery (2025-10-01): The SysEx message includes a slot parameter.
+    // Using the slot number directly (0-15) works correctly.
+    // DAW port protocol is NOT required for slot selection.
     return [
       0xF0,             // SysEx start
       0x00, 0x20, 0x29, // Manufacturer ID (Novation)
@@ -1009,7 +1008,7 @@ export class SysExParser {
       0x00,             // Reserved
       0x40,             // Read operation
       page === 0 ? 0x00 : 0x03, // Page byte: 0x00 for encoders, 0x03 for faders/buttons
-      0x00,             // Slot byte: ALWAYS 0 to read from DAW-port-selected slot
+      slot,             // Slot byte: slot number (0-15)
       0xF7              // SysEx end
     ];
   }

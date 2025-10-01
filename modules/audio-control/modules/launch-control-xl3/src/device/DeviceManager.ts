@@ -625,8 +625,8 @@ export class DeviceManager extends EventEmitter {
       throw new Error('Custom mode slot must be 0-15');
     }
 
-    // Select the slot first via DAW port (if available) for consistency
-    await this.selectSlot(slot);
+    // TEMPORARY: Testing if SysEx slot byte works without DAW port
+    // await this.selectSlot(slot);
 
     // Helper function to read a single page
     const readPage = (page: number): Promise<any> => {
@@ -789,8 +789,8 @@ export class DeviceManager extends EventEmitter {
       throw new Error('Custom mode slot must be 0-15');
     }
 
-    // Select the slot first via DAW port (if available)
-    await this.selectSlot(slot);
+    // TEMPORARY: Testing if SysEx slot byte works without DAW port
+    // await this.selectSlot(slot);
 
     const modeData = {
       slot,

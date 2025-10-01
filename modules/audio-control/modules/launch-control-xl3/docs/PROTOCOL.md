@@ -1,6 +1,6 @@
 # Launch Control XL3 Protocol Specification
 
-**Version:** 1.4
+**Version:** 1.6
 **Last Updated:** 2025-10-01
 **Status:** Verified with hardware
 
@@ -62,23 +62,30 @@ The `.ksy` file is a Kaitai Struct specification that defines the **exact byte l
    - Request page 0x00 (controls 0x10-0x27 + mode name + labels)
    - Request page 0x03 (controls 0x28-0x3F + mode name + labels)
 
-### Read Request Slot Byte Behavior ⭐
+### Read Request Format ⭐
 
-**Critical Discovery (2025-09-30):** The read request contains a slot byte, but its behavior differs from intuitive expectations:
+**Critical Discovery (2025-10-01):** The SysEx read request DOES have a slot parameter. The slot byte is simply the slot number (0-15).
 
-- **Slot byte = 0x00:** Reads from DAW-port-selected slot (CORRECT for write/read round-trip)
-- **Slot byte > 0x00:** Reads from explicit slot, IGNORING DAW port selection
-
-**Discovery Method:** MIDI spy analysis during write/read round-trip testing revealed mismatch when using explicit slot bytes.
-
-**Implication:** When using DAW port protocol for slot selection, read requests MUST use slot byte `0x00` to read from the selected slot. Using explicit slot values (1-15) will read from those slots regardless of DAW port state.
-
-**Example:**
+**SysEx Read Request:**
 ```
-DAW port selects slot 2 (CC value 0x07)
-Read with slot byte 0x00 → Returns slot 2 data ✓
-Read with slot byte 0x01 → Returns slot 1 data (ignores DAW port) ✗
+F0 00 20 29 02 15 05 00 40 [PAGE] [SLOT] F7
 ```
+
+Where:
+- `F0` = SysEx start
+- `00 20 29` = Novation manufacturer ID
+- `02` = Device ID (Launch Control XL 3)
+- `15` = Command (Custom mode)
+- `05` = Sub-command
+- `00` = Reserved
+- `40` = Read operation
+- `[PAGE]` = Page byte (0x00 or 0x03)
+- `[SLOT]` = **Slot number (0-15)**
+- `F7` = SysEx end
+
+**Discovery Method:** Empirical testing (2025-10-01). Initially thought DAW port was required, but testing with SysEx slot byte alone proved it works correctly. Using slot number directly (0-15) in the SysEx message successfully reads from that slot.
+
+**Implication:** To read from a specific slot, simply include the slot number in the SysEx message. DAW port protocol is NOT required for slot selection.
 
 ### Multi-Page Structure
 
@@ -602,6 +609,8 @@ The parser follows the protocol specification exactly:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.6 | 2025-10-01 | **DEFINITIVE:** SysEx read/write DOES have slot parameter. Format is `F0 00 20 29 02 15 05 00 40 [PAGE] [SLOT] F7` where `[SLOT]` is slot number 0-15. DAW port protocol is NOT required for slot selection. Earlier versions incorrectly thought DAW port was mandatory - empirical testing proved SysEx slot byte works independently. |
+| 1.5 | 2025-10-01 | **RETRACTED:** Incorrectly stated SysEx has no slot parameter. |
 | 1.4 | 2025-10-01 | **Critical:** Corrected read protocol - uses 2 pages (0x00, 0x03), not 3 pages (0, 1, 2). Documented complete DAW port bidirectional protocol with device echoes. Phase 1 Note Off echo is slot query acknowledgement. Phase 2 Note Off echo is slot change acknowledgement. Phase 2 skipped if already on target slot. |
 | 1.3 | 2025-09-30 | Added Parsed Response Format section documenting both array and object control formats |
 | 1.2 | 2025-09-30 | **Critical:** Discovered write acknowledgement protocol (command 0x15). Device sends ACK after each page write. Client must wait for ACK before sending next page. |
