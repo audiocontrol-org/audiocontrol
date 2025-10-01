@@ -6,10 +6,10 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { CustomModeManager, CONTROL_IDS, LED_COLORS } from '@/src/modes/CustomModeManager.js';
-import { DeviceManager } from '@/src/device/DeviceManager.js';
-import { CustomMode, CustomModeSlot, ControlBehaviour, ControlType } from '@/src/types/index.js';
-import { setupFakeTimers, DeterministicMidiBackend } from '@/test/helpers/test-utils.js';
+import { CustomModeManager, CONTROL_IDS, LED_COLORS } from '@/modes/CustomModeManager.js';
+import { DeviceManager } from '@/device/DeviceManager.js';
+import { CustomMode, CustomModeSlot, ControlBehaviour, ControlType } from '@/types/index.js';
+import { setupFakeTimers, DeterministicMidiBackend } from '../../test/helpers/test-utils.js';
 
 describe('CustomModeManager', () => {
   setupFakeTimers();
@@ -196,6 +196,45 @@ describe('CustomModeManager', () => {
       expect(mode.controls.SEND_A1.type).toBe('knob');
       expect(mode.controls.FADER3.type).toBe('fader');
       expect(mode.controls.FOCUS2.type).toBe('button');
+    });
+
+    it('should handle controls in object format (real device format)', async () => {
+      // Real device returns controls as an object keyed by control ID, not an array
+      const mockDeviceResponse = {
+        name: 'Object Format Test',
+        controls: {  // Object format, keyed by control ID
+          '0x10': {
+            controlId: CONTROL_IDS.SEND_A1,
+            channel: 5,
+            ccNumber: 100,
+            minValue: 0,
+            maxValue: 127,
+            behaviour: 'absolute',
+          },
+          '0x18': {
+            controlId: CONTROL_IDS.SEND_B1,
+            channel: 3,
+            ccNumber: 50,
+            minValue: 0,
+            maxValue: 127,
+            behaviour: 'relative1',
+          },
+        },
+        colors: [],
+      };
+
+      readCustomModeSpy.mockResolvedValue(mockDeviceResponse);
+
+      const mode = await customModeManager.readMode(1);
+
+      // Should successfully parse object format
+      expect(mode.controls.SEND_A1).toBeDefined();
+      expect(mode.controls.SEND_A1.channel).toBe(5);
+      expect(mode.controls.SEND_A1.cc).toBe(100);
+
+      expect(mode.controls.SEND_B1).toBeDefined();
+      expect(mode.controls.SEND_B1.channel).toBe(3);
+      expect(mode.controls.SEND_B1.cc).toBe(50);
     });
 
     it('should handle device read errors', async () => {
@@ -885,29 +924,29 @@ describe('CustomModeManager', () => {
 
 describe('CONTROL_IDS Constants', () => {
   it('should have all expected control IDs', () => {
-    // Send A knobs
-    expect(CONTROL_IDS.SEND_A1).toBe(0x0D);
-    expect(CONTROL_IDS.SEND_A8).toBe(0x14);
+    // Send A knobs (top row): 0x10-0x17 (PHASE 1 FIX)
+    expect(CONTROL_IDS.SEND_A1).toBe(0x10);
+    expect(CONTROL_IDS.SEND_A8).toBe(0x17);
 
-    // Send B knobs
-    expect(CONTROL_IDS.SEND_B1).toBe(0x1D);
-    expect(CONTROL_IDS.SEND_B8).toBe(0x24);
+    // Send B knobs (middle row): 0x18-0x1F (PHASE 1 FIX)
+    expect(CONTROL_IDS.SEND_B1).toBe(0x18);
+    expect(CONTROL_IDS.SEND_B8).toBe(0x1F);
 
-    // Pan knobs
-    expect(CONTROL_IDS.PAN1).toBe(0x31);
-    expect(CONTROL_IDS.PAN8).toBe(0x38);
+    // Pan/Device knobs (bottom row): 0x20-0x27 (PHASE 1 FIX)
+    expect(CONTROL_IDS.PAN1).toBe(0x20);
+    expect(CONTROL_IDS.PAN8).toBe(0x27);
 
-    // Faders
-    expect(CONTROL_IDS.FADER1).toBe(0x4D);
-    expect(CONTROL_IDS.FADER8).toBe(0x54);
+    // Faders: 0x28-0x2F (PHASE 1 FIX)
+    expect(CONTROL_IDS.FADER1).toBe(0x28);
+    expect(CONTROL_IDS.FADER8).toBe(0x2F);
 
-    // Focus buttons
-    expect(CONTROL_IDS.FOCUS1).toBe(0x29);
-    expect(CONTROL_IDS.FOCUS8).toBe(0x30);
+    // Track focus buttons: 0x30-0x37 (PHASE 1 FIX)
+    expect(CONTROL_IDS.FOCUS1).toBe(0x30);
+    expect(CONTROL_IDS.FOCUS8).toBe(0x37);
 
-    // Control buttons
-    expect(CONTROL_IDS.CONTROL1).toBe(0x39);
-    expect(CONTROL_IDS.CONTROL8).toBe(0x40);
+    // Track control buttons: 0x38-0x3F (PHASE 1 FIX)
+    expect(CONTROL_IDS.CONTROL1).toBe(0x38);
+    expect(CONTROL_IDS.CONTROL8).toBe(0x3F);
 
     // Side buttons
     expect(CONTROL_IDS.DEVICE).toBe(0x69);
