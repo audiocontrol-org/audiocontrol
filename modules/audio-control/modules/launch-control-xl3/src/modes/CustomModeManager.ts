@@ -202,8 +202,13 @@ export class CustomModeManager extends EventEmitter {
     };
 
     // Parse control mappings
+    // Handle both array and object formats for controls
     if (response.controls) {
-      for (const control of response.controls) {
+      const controlsArray = Array.isArray(response.controls)
+        ? response.controls
+        : Object.values(response.controls);
+
+      for (const control of controlsArray) {
         const controlId = this.getControlIdName(control.controlId);
         mode.controls[controlId] = {
           type: this.getControlType(control.controlId),
