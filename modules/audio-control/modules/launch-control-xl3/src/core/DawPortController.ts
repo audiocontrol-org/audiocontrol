@@ -39,11 +39,11 @@ export class DawPortControllerImpl implements DawPortController {
 
     // Physical slot is 1-based, so add 1 to the 0-based slot
     const physicalSlot = slot + 1;
-    const ccValue = physicalSlot + 5; // Slot 1 = CC value 6, Slot 2 = CC value 7, etc.
+    const ccValue = slot + 6; // Slot 0 = CC value 6, Slot 1 = CC value 7, etc.
 
     console.log(`[DawPortController] Selecting slot ${slot} (physical ${physicalSlot}, CC value ${ccValue})`);
 
-    // Phase 1: Query current slot
+    // Phase 1: Query current slot (6-message bidirectional sequence)
     // Note On: note 11, velocity 127, channel 16
     console.log('[DawPortController] Phase 1: Sending Note On ch16');
     await this.sendMessage([0x9F, 11, 127]); // 0x9F = Note On channel 16 (15 in 0-based)
@@ -52,7 +52,8 @@ export class DawPortControllerImpl implements DawPortController {
     console.log('[DawPortController] Phase 1: Sending CC query on ch8');
     await this.sendMessage([0xB7, 30, 0]); // 0xB7 = CC channel 8 (7 in 0-based)
 
-    // Wait for device response if we have a wait function
+    // Wait for device CC response
+    let currentSlot = -1;
     if (this.waitForMessage) {
       try {
         console.log('[DawPortController] Waiting for device CC response...');
@@ -63,14 +64,14 @@ export class DawPortControllerImpl implements DawPortController {
                    data[0] === 0xB6 && // CC channel 7
                    data[1] === 30;
           },
-          100 // 100ms timeout
+          200 // 200ms timeout
         );
         if (response && response.length > 2 && response[2] !== undefined) {
-          const currentSlot = response[2] - 5; // Convert CC value back to 0-based slot
-          console.log(`[DawPortController] Device reports current slot: ${currentSlot}`);
+          currentSlot = response[2] - 6; // Convert CC value to 0-based slot (CC 6 = slot 0)
+          console.log(`[DawPortController] Device reports current slot: ${currentSlot} (CC ${response[2]})`);
         }
       } catch (error) {
-        console.log('[DawPortController] No response from device (might not be in interactive mode)');
+        console.log('[DawPortController] No CC response from device');
       }
     }
 
@@ -78,10 +79,34 @@ export class DawPortControllerImpl implements DawPortController {
     console.log('[DawPortController] Phase 1: Sending Note Off ch16');
     await this.sendMessage([0x9F, 11, 0]);
 
-    // Small delay between phases
-    await new Promise(resolve => setTimeout(resolve, 10));
+    // Wait for Phase 1 Note Off echo (acknowledgement that query is complete)
+    if (this.waitForMessage) {
+      try {
+        console.log('[DawPortController] Waiting for Phase 1 Note Off echo...');
+        await this.waitForMessage(
+          (data) => {
+            return data.length === 3 &&
+                   data[0] === 0x9F &&
+                   data[1] === 11 &&
+                   data[2] === 0;
+          },
+          200 // 200ms timeout
+        );
+        console.log('[DawPortController] Phase 1 complete');
+      } catch (error) {
+        console.log('[DawPortController] No Phase 1 Note Off echo received');
+      }
+    }
 
-    // Phase 2: Set target slot
+    // Phase 2: Set target slot (conditional - skip if already on target slot)
+    if (currentSlot === slot) {
+      console.log(`[DawPortController] Already on target slot ${slot}, skipping Phase 2`);
+      return;
+    }
+
+    console.log(`[DawPortController] Need to change from slot ${currentSlot} to ${slot}, executing Phase 2`);
+
+    // Phase 2: Set target slot (6-message bidirectional sequence)
     // Note On again
     console.log('[DawPortController] Phase 2: Sending Note On ch16');
     await this.sendMessage([0x9F, 11, 127]);
@@ -94,25 +119,22 @@ export class DawPortControllerImpl implements DawPortController {
     console.log('[DawPortController] Phase 2: Sending Note Off ch16');
     await this.sendMessage([0x9F, 11, 0]);
 
-    // Wait for Note Off echo from device (acknowledgement that slot change is complete)
+    // Wait for Phase 2 Note Off echo (acknowledgement that slot change is complete)
     if (this.waitForMessage) {
       try {
-        console.log('[DawPortController] Waiting for Note Off echo (slot change acknowledgement)...');
-        const noteOffEcho = await this.waitForMessage(
+        console.log('[DawPortController] Waiting for Phase 2 Note Off echo (slot change acknowledgement)...');
+        await this.waitForMessage(
           (data) => {
-            // Looking for Note Off echo on channel 16, note 11
             return data.length === 3 &&
-                   data[0] === 0x9F && // Note On/Off channel 16 (velocity determines on/off)
+                   data[0] === 0x9F &&
                    data[1] === 11 &&
-                   data[2] === 0;       // Velocity 0 = Note Off
+                   data[2] === 0;
           },
           200 // 200ms timeout
         );
-        if (noteOffEcho) {
-          console.log(`[DawPortController] Slot change confirmed via Note Off echo: ${slot} (CC ${ccValue})`);
-        }
+        console.log(`[DawPortController] Slot change confirmed via Phase 2 Note Off echo: ${slot} (CC ${ccValue})`);
       } catch (error) {
-        console.log('[DawPortController] No Note Off echo received (slot change may not be complete)');
+        console.log('[DawPortController] No Phase 2 Note Off echo received (slot change may not be complete)');
       }
     }
   }

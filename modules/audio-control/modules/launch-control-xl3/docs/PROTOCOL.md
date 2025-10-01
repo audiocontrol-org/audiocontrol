@@ -1,7 +1,7 @@
 # Launch Control XL3 Protocol Specification
 
-**Version:** 1.3
-**Last Updated:** 2025-09-30
+**Version:** 1.6
+**Last Updated:** 2025-10-01
 **Status:** Verified with hardware
 
 ## Overview
@@ -62,23 +62,30 @@ The `.ksy` file is a Kaitai Struct specification that defines the **exact byte l
    - Request page 0x00 (controls 0x10-0x27 + mode name + labels)
    - Request page 0x03 (controls 0x28-0x3F + mode name + labels)
 
-### Read Request Slot Byte Behavior ⭐
+### Read Request Format ⭐
 
-**Critical Discovery (2025-09-30):** The read request contains a slot byte, but its behavior differs from intuitive expectations:
+**Critical Discovery (2025-10-01):** The SysEx read request DOES have a slot parameter. The slot byte is simply the slot number (0-14). Slot 15 (0x0F) is reserved for immutable factory content and cannot be read or written.
 
-- **Slot byte = 0x00:** Reads from DAW-port-selected slot (CORRECT for write/read round-trip)
-- **Slot byte > 0x00:** Reads from explicit slot, IGNORING DAW port selection
-
-**Discovery Method:** MIDI spy analysis during write/read round-trip testing revealed mismatch when using explicit slot bytes.
-
-**Implication:** When using DAW port protocol for slot selection, read requests MUST use slot byte `0x00` to read from the selected slot. Using explicit slot values (1-15) will read from those slots regardless of DAW port state.
-
-**Example:**
+**SysEx Read Request:**
 ```
-DAW port selects slot 2 (CC value 0x07)
-Read with slot byte 0x00 → Returns slot 2 data ✓
-Read with slot byte 0x01 → Returns slot 1 data (ignores DAW port) ✗
+F0 00 20 29 02 15 05 00 40 [PAGE] [SLOT] F7
 ```
+
+Where:
+- `F0` = SysEx start
+- `00 20 29` = Novation manufacturer ID
+- `02` = Device ID (Launch Control XL 3)
+- `15` = Command (Custom mode)
+- `05` = Sub-command
+- `00` = Reserved
+- `40` = Read operation
+- `[PAGE]` = Page byte (0x00 or 0x03)
+- `[SLOT]` = **Slot number (0-14)** - Slot 15 (0x0F) is reserved and immutable
+- `F7` = SysEx end
+
+**Discovery Method:** Empirical testing (2025-10-01). Initially thought DAW port was required, but testing with SysEx slot byte alone proved it works correctly. Using slot number directly (0-14) in the SysEx message successfully reads from that slot. Slot 15 is reserved for immutable factory content.
+
+**Implication:** To read from a specific slot, simply include the slot number in the SysEx message. DAW port protocol is NOT required for slot selection.
 
 ### Multi-Page Structure
 
@@ -456,22 +463,34 @@ The Launch Control XL3 uses a **dual-port MIDI system**:
 
 Slot selection requires a bidirectional negotiation with the device:
 
-#### Phase 1: Query Current Slot (6 messages)
+#### Phase 1: Query Current Slot (6 messages bidirectional)
 ```
 1. Client → Device: Note On  (Ch16, Note 11, Vel 127)  [0x9F, 0x0B, 0x7F]
 2. Client → Device: CC Query (Ch8,  CC 30,  Val 0)     [0xB7, 0x1E, 0x00]
-3. Device → Client: Note On echo
-4. Device → Client: CC Response (Ch7, CC 30, current_slot)
-5. Client → Device: Note Off (Ch16, Note 11, Vel 0)    [0x8F, 0x0B, 0x00]
-6. Device → Client: Note Off echo
+3. Device → Client: Note On echo                       [0x9F, 0x0B, 0x7F]
+4. Device → Client: CC Response (Ch7, CC 30, current_slot) [0xB6, 0x1E, value]
+5. Client → Device: Note Off (Ch16, Note 11, Vel 0)    [0x9F, 0x0B, 0x00]
+6. Device → Client: Note Off echo ⭐                    [0x9F, 0x0B, 0x00]
 ```
 
-#### Phase 2: Set Target Slot (3 messages)
+**Note:** The Note Off echo (message 6) is the acknowledgement that Phase 1 is complete.
+
+#### Phase 2: Set Target Slot (6 messages bidirectional, conditional)
 ```
 1. Client → Device: Note On  (Ch16, Note 11, Vel 127)  [0x9F, 0x0B, 0x7F]
 2. Client → Device: CC Set   (Ch7,  CC 30,  target_slot) [0xB6, 0x1E, value]
-3. Client → Device: Note Off (Ch16, Note 11, Vel 0)    [0x8F, 0x0B, 0x00]
+3. Device → Client: Note On echo                       [0x9F, 0x0B, 0x7F]
+4. Device → Client: CC echo (Ch7, CC 30, target_slot)  [0xB6, 0x1E, value]
+5. Client → Device: Note Off (Ch16, Note 11, Vel 0)    [0x9F, 0x0B, 0x00]
+6. Device → Client: Note Off echo ⭐                    [0x9F, 0x0B, 0x00]
 ```
+
+**Important:**
+- Phase 2 is **SKIPPED** if device is already on target slot (discovered from Phase 1 CC response)
+- The Note Off echo (message 6) is the acknowledgement that slot change is complete
+- Client MUST wait for Note Off echo before proceeding to SysEx read/write operations
+
+**Discovery Method:** MIDI spy capture (2025-10-01) - Web editor skipped Phase 2 when device already on slot 14
 
 ### Channel Mapping
 
@@ -590,6 +609,9 @@ The parser follows the protocol specification exactly:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.6 | 2025-10-01 | **DEFINITIVE:** SysEx read/write DOES have slot parameter. Format is `F0 00 20 29 02 15 05 00 40 [PAGE] [SLOT] F7` where `[SLOT]` is slot number 0-14 (slot 15 reserved and immutable). DAW port protocol is NOT required for slot selection. Earlier versions incorrectly thought DAW port was mandatory - empirical testing proved SysEx slot byte works independently. |
+| 1.5 | 2025-10-01 | **RETRACTED:** Incorrectly stated SysEx has no slot parameter. |
+| 1.4 | 2025-10-01 | **Critical:** Corrected read protocol - uses 2 pages (0x00, 0x03), not 3 pages (0, 1, 2). Documented complete DAW port bidirectional protocol with device echoes. Phase 1 Note Off echo is slot query acknowledgement. Phase 2 Note Off echo is slot change acknowledgement. Phase 2 skipped if already on target slot. |
 | 1.3 | 2025-09-30 | Added Parsed Response Format section documenting both array and object control formats |
 | 1.2 | 2025-09-30 | **Critical:** Discovered write acknowledgement protocol (command 0x15). Device sends ACK after each page write. Client must wait for ACK before sending next page. |
 | 1.1 | 2025-09-30 | Documented write protocol (command 0x45) with mode name format discovery |
