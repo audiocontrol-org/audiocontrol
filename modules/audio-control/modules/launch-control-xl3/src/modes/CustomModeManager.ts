@@ -19,15 +19,12 @@ import {
 export interface CustomModeManagerOptions {
   deviceManager: DeviceManager;
   autoSync?: boolean;
-  cacheTimeout?: number;
 }
 
 export interface CustomModeEvents {
   'mode:loaded': (slot: number, mode: CustomMode) => void;
   'mode:saved': (slot: number, mode: CustomMode) => void;
   'mode:error': (error: Error) => void;
-  'cache:updated': (slot: number) => void;
-  'cache:cleared': () => void;
 }
 
 /**
@@ -92,7 +89,6 @@ export const LED_COLORS = {
 export class CustomModeManager extends EventEmitter {
   private deviceManager: DeviceManager;
   private options: Required<CustomModeManagerOptions>;
-  private modeCache: Map<number, { mode: CustomMode; timestamp: number }> = new Map();
   private pendingOperations: Map<number, Promise<CustomMode>> = new Map();
 
   constructor(options: CustomModeManagerOptions) {
@@ -102,7 +98,6 @@ export class CustomModeManager extends EventEmitter {
     this.options = {
       deviceManager: options.deviceManager,
       autoSync: options.autoSync ?? true,
-      cacheTimeout: options.cacheTimeout ?? 300000, // 5 minutes
     };
 
     this.setupEventHandlers();
@@ -122,7 +117,7 @@ export class CustomModeManager extends EventEmitter {
     });
 
     this.deviceManager.on('device:disconnected', () => {
-      this.clearCache();
+      // Cleanup on disconnect
     });
   }
 
@@ -138,19 +133,12 @@ export class CustomModeManager extends EventEmitter {
       return pending;
     }
 
-    // Check cache
-    const cached = this.getCachedMode(slot);
-    if (cached) {
-      return cached;
-    }
-
     // Create read operation
     const operation = this.performReadMode(slot);
     this.pendingOperations.set(slot, operation);
 
     try {
       const mode = await operation;
-      this.cacheMode(slot, mode);
       this.emit('mode:loaded', slot, mode);
       return mode;
     } finally {
@@ -179,8 +167,6 @@ export class CustomModeManager extends EventEmitter {
     // Send to device
     await this.deviceManager.writeCustomMode(slot, deviceMode);
 
-    // Update cache
-    this.cacheMode(slot, mode);
     this.emit('mode:saved', slot, mode);
   }
 
@@ -480,66 +466,9 @@ export class CustomModeManager extends EventEmitter {
   }
 
   /**
-   * Get cached mode
-   */
-  private getCachedMode(slot: number): CustomMode | null {
-    const cached = this.modeCache.get(slot);
-
-    if (!cached) {
-      return null;
-    }
-
-    // Check if cache has expired
-    const now = Date.now();
-    if (now - cached.timestamp > this.options.cacheTimeout) {
-      this.modeCache.delete(slot);
-      return null;
-    }
-
-    return cached.mode;
-  }
-
-  /**
-   * Cache a mode
-   */
-  private cacheMode(slot: number, mode: CustomMode): void {
-    this.modeCache.set(slot, {
-      mode,
-      timestamp: Date.now(),
-    });
-
-    this.emit('cache:updated', slot);
-  }
-
-  /**
-   * Clear cache
-   */
-  clearCache(): void {
-    this.modeCache.clear();
-    this.emit('cache:cleared');
-  }
-
-  /**
-   * Get all cached modes
-   */
-  getCachedModes(): Map<number, CustomMode> {
-    const modes = new Map<number, CustomMode>();
-
-    for (const [slot, cached] of this.modeCache.entries()) {
-      const now = Date.now();
-      if (now - cached.timestamp <= this.options.cacheTimeout) {
-        modes.set(slot, cached.mode);
-      }
-    }
-
-    return modes;
-  }
-
-  /**
    * Clean up resources
    */
   cleanup(): void {
-    this.clearCache();
     this.pendingOperations.clear();
     this.removeAllListeners();
   }
