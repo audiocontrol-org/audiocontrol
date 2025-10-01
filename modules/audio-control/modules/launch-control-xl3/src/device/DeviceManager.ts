@@ -788,6 +788,7 @@ export class DeviceManager extends EventEmitter {
       name: mode.name,
       controls: mode.controls,
       colors: mode.colors,
+      labels: mode.labels,
     };
 
     const validatedModeData = this.validateCustomModeData(modeData);
