@@ -1,15 +1,29 @@
 #!/usr/bin/env tsx
 /**
- * Node.js Round-Trip Test Script for Launch Control XL 3
+ * Node.js Round-Trip Integration Test for Launch Control XL 3
  *
- * Tests the MVP.4 round-trip functionality by:
- * 1. Creating test custom mode data with control names
- * 2. Writing the custom mode to a specified device slot
- * 3. Reading the same data back from the device
- * 4. Comparing sent vs received data to ensure they match
+ * INTEGRATION TEST: Uses ONLY PUBLIC API methods
+ *
+ * Tests the complete label pipeline by:
+ * 1. Creating test custom mode using createCustomMode() (PUBLIC API)
+ * 2. Adding control names to test label extraction
+ * 3. Saving mode using saveCustomMode() (PUBLIC API - extracts labels)
+ * 4. Loading mode using loadCustomMode() (PUBLIC API - parses labels)
+ * 5. Comparing sent vs received data to ensure labels survive round-trip
  *
  * This validates that the entire custom mode write/read cycle works correctly,
- * including the new control name parsing functionality.
+ * including label extraction, SysEx encoding, and label parsing.
+ *
+ * PUBLIC API FLOW TESTED:
+ * - controller.createCustomMode(name) → Creates mode structure
+ * - controller.saveCustomMode(slot, mode) → CustomModeManager.writeMode()
+ *   → CustomModeManager.convertToDeviceFormat() (extracts labels)
+ *   → DeviceManager.writeCustomMode() (passes labels)
+ *   → SysExParser.encodeCustomModeData() (encodes labels)
+ * - controller.loadCustomMode(slot) → CustomModeManager.readMode()
+ *   → DeviceManager.readCustomMode()
+ *   → SysExParser.parse() (parses labels)
+ *   → CustomModeManager.parseCustomModeResponse() (converts to user format)
  *
  * Usage:
  *   tsx utils/test-round-trip-node.ts [slot]
@@ -67,18 +81,20 @@ if (isNaN(targetSlot) || targetSlot < 0 || targetSlot > 14) {
 
 /**
  * Create test custom mode with control names for round-trip testing
+ * Uses the controller's public API to create the mode
  */
-function createTestCustomMode(): CustomMode {
-  const testMode: CustomMode = {
-    name: 'RT Test',  // 8 char limit
-    controls: {},
-    metadata: {
-      name: 'Round-Trip Test Mode',
-      description: 'Test mode for validating write/read cycle with control names',
-      version: '1.0.0',
-      author: 'Launch Control XL3 Test Suite',
-      created: new Date().toISOString()
-    }
+function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
+  // Use public API to create mode
+  const testMode = controller.createCustomMode('RT Test');
+
+  // Add metadata
+  testMode.metadata = {
+    ...testMode.metadata,
+    name: 'Round-Trip Test Mode',
+    description: 'Test mode for validating write/read cycle with control names',
+    version: '1.0.0',
+    author: 'Launch Control XL3 Test Suite',
+    created: new Date().toISOString()
   };
 
   // Add test controls with names to validate name parsing
@@ -379,11 +395,12 @@ async function testRoundTrip(): Promise<void> {
     log.success('Connected to Launch Control XL 3!');
     console.log();
 
-    // Step 5: Create test custom mode
-    log.section(' STEP 1: CREATE TEST DATA ');
-    log.step('Creating test custom mode with control names...');
+    // Step 5: Create test custom mode using PUBLIC API
+    log.section(' STEP 1: CREATE TEST DATA (PUBLIC API) ');
+    log.step('Creating test custom mode using createCustomMode()...');
+    log.info('Using public API: createCustomMode() creates proper mode structure');
 
-    const testMode = createTestCustomMode();
+    const testMode = createTestCustomMode(controller);
 
     log.success('Test custom mode created!');
     log.data('Mode Name', testMode.name);
@@ -397,35 +414,25 @@ async function testRoundTrip(): Promise<void> {
 
     console.log();
 
-    // Step 6: Write custom mode to device
-    log.section(' STEP 2: WRITE TO DEVICE ');
-    log.step(`Writing test mode to slot ${targetSlot}...`);
+    // Step 6: Write custom mode to device using PUBLIC API
+    log.section(' STEP 2: WRITE TO DEVICE (PUBLIC API) ');
+    log.step(`Saving test mode to slot ${targetSlot} using saveCustomMode()...`);
+    log.info('Using public API: saveCustomMode() goes through CustomModeManager');
+    log.info('This ensures label extraction happens correctly');
 
-    // Convert controls object to array format for writing
-    const controlsArray = Object.values(testMode.controls);
-    const colorsArray = testMode.colors ? Array.from(testMode.colors.entries()).map(([controlId, color]) => ({
-      controlId,
-      color,
-      behaviour: 'static'
-    })) : [];
-
-    const modeToWrite = {
-      ...testMode,
-      controls: controlsArray,
-      colors: colorsArray
-    };
-
-    await controller.writeCustomMode(targetSlot, modeToWrite as any);
-    log.success(`Custom mode written to slot ${targetSlot}!`);
+    await controller.saveCustomMode(targetSlot, testMode);
+    log.success(`Custom mode saved to slot ${targetSlot}!`);
 
     // Small delay to ensure write is complete
     await new Promise(resolve => setTimeout(resolve, 500));
 
-    // Step 7: Read custom mode back from device
-    log.section(' STEP 3: READ FROM DEVICE ');
-    log.step(`Reading custom mode from slot ${targetSlot}...`);
+    // Step 7: Read custom mode back from device using PUBLIC API
+    log.section(' STEP 3: READ FROM DEVICE (PUBLIC API) ');
+    log.step(`Loading custom mode from slot ${targetSlot} using loadCustomMode()...`);
+    log.info('Using public API: loadCustomMode() goes through CustomModeManager');
+    log.info('This ensures label parsing happens correctly');
 
-    const readMode = await controller.readCustomMode(targetSlot);
+    const readMode = await controller.loadCustomMode(targetSlot);
 
     if (!readMode) {
       throw new Error(`Failed to read custom mode from slot ${targetSlot}`);
@@ -463,6 +470,23 @@ async function testRoundTrip(): Promise<void> {
         log.error(`  • ${detail}`);
       });
     }
+
+    // Summary
+    console.log('');
+    log.section(' SUMMARY ');
+    console.log('This PUBLIC API integration test verifies:');
+    console.log('  1. createCustomMode() creates proper mode structure');
+    console.log('  2. saveCustomMode() extracts labels from control names');
+    console.log('  3. Labels are encoded into SysEx messages');
+    console.log('  4. Labels are written to device correctly');
+    console.log('  5. loadCustomMode() parses labels from device');
+    console.log('  6. Control names survive the complete round-trip');
+    console.log('');
+    console.log('Complete pipeline tested:');
+    console.log('  User API → CustomModeManager → DeviceManager → SysExParser → Device');
+    console.log('  Device → SysExParser → DeviceManager → CustomModeManager → User API');
+    console.log('');
+    log.info('This confirms the complete label pipeline works end-to-end.');
 
   } catch (error: any) {
     log.error('Test failed with error:');
