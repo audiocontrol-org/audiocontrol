@@ -304,6 +304,77 @@ If Novation's official documentation conflicts:
 
 ---
 
+## Test Data Requirements
+
+### Unit Test Fixtures
+
+**MANDATORY**: All parser and protocol tests MUST use real device fixtures.
+
+#### Capturing Test Fixtures
+
+```bash
+# Capture from all 16 slots
+for slot in {0..15}; do
+  SLOT=$slot npm run backup
+  sleep 2
+done
+```
+
+Fixtures are stored in `backup/` directory with timestamps.
+
+#### Using Fixtures in Tests
+
+```typescript
+// Load real device fixture
+const backupDir = join(__dirname, '../../backup');
+const files = await fs.readdir(backupDir);
+const latestFixture = files.filter(f => f.endsWith('.json')).sort().reverse()[0];
+const fixtureData = JSON.parse(await fs.readFile(join(backupDir, latestFixture), 'utf-8'));
+```
+
+### Test Data Validation
+
+**All mock data MUST**:
+1. Match actual device response format (array OR object for controls)
+2. Include source documentation (real device vs synthetic)
+3. Follow protocol specifications:
+   - Mode name: max 8 characters
+   - Control IDs: 0x10-0x3F (main), 0x68-0x6F (side buttons)
+   - Channel: 0-15
+   - CC: 0-127
+   - Max 48 controls
+
+### Test Coverage Requirements
+
+**Before merging parser changes**:
+- [ ] Test both array and object control formats
+- [ ] Validate against protocol specification (PROTOCOL.md)
+- [ ] At least one test uses real device fixture from `backup/`
+- [ ] Run `npm run backup` to capture fresh fixture
+- [ ] Protocol compliance tests passing
+
+### Integration Test Requirements
+
+**Manual validation before release**:
+1. Connect real Launch Control XL3 device
+2. Run: `npm run backup` for all 16 slots
+3. Verify parser handles all captured data
+4. Compare with web editor behavior (if changes affect mapping)
+
+### Anti-Patterns to Avoid
+
+❌ **DON'T** create hand-crafted mock data without validation
+❌ **DON'T** assume array format - device may return objects
+❌ **DON'T** commit changes without real device testing
+❌ **DON'T** skip fixture capture before protocol changes
+
+✅ **DO** use real fixtures from `backup/` directory
+✅ **DO** test both array and object formats
+✅ **DO** validate against protocol specifications
+✅ **DO** document data source (real vs synthetic)
+
+---
+
 ## For New AI Agents
 
 **First time working on this codebase?**

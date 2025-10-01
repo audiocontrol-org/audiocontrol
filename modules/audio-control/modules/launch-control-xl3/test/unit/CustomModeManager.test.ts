@@ -920,6 +920,86 @@ describe('CustomModeManager', () => {
       expect(customModeManager.getCachedModes().size).toBe(0);
     });
   });
+
+  describe('Protocol Compliance', () => {
+    it('should validate control ID ranges per protocol spec', async () => {
+      const mockResponse = {
+        name: 'Protocol Test',
+        controls: [
+          // Valid range: 0x10-0x3F per PROTOCOL.md
+          { controlId: 0x10, channel: 0, ccNumber: 10, minValue: 0, maxValue: 127, behaviour: 'absolute' },
+          { controlId: 0x3F, channel: 0, ccNumber: 20, minValue: 0, maxValue: 127, behaviour: 'absolute' },
+        ],
+        colors: [],
+      };
+
+      readCustomModeSpy.mockResolvedValue(mockResponse);
+      const mode = await customModeManager.readMode(0);
+
+      // All control IDs should be in valid range
+      for (const controlKey of Object.keys(mode.controls)) {
+        const id = (customModeManager as any).getControlIdValue(controlKey);
+        expect(id).toBeGreaterThanOrEqual(0x10);
+        expect(id).toBeLessThanOrEqual(0x6F); // Including side buttons
+      }
+    });
+
+    it('should handle 48 controls (protocol maximum)', async () => {
+      const controls = [];
+      for (let id = 0x10; id <= 0x3F; id++) {
+        controls.push({
+          controlId: id,
+          channel: 0,
+          ccNumber: id - 0x10,
+          minValue: 0,
+          maxValue: 127,
+          behaviour: 'absolute',
+        });
+      }
+
+      const mockResponse = {
+        name: 'Full Mode',
+        controls,
+        colors: [],
+      };
+
+      readCustomModeSpy.mockResolvedValue(mockResponse);
+      const mode = await customModeManager.readMode(0);
+
+      expect(Object.keys(mode.controls).length).toBe(48);
+    });
+
+    it('should correctly map control types per protocol ranges', async () => {
+      const mockResponse = {
+        name: 'Type Test',
+        controls: [
+          // Encoders: 0x10-0x27
+          { controlId: 0x10, channel: 0, ccNumber: 10, minValue: 0, maxValue: 127, behaviour: 'absolute' },
+          { controlId: 0x27, channel: 0, ccNumber: 11, minValue: 0, maxValue: 127, behaviour: 'absolute' },
+
+          // Faders: 0x28-0x2F
+          { controlId: 0x28, channel: 0, ccNumber: 20, minValue: 0, maxValue: 127, behaviour: 'absolute' },
+          { controlId: 0x2F, channel: 0, ccNumber: 21, minValue: 0, maxValue: 127, behaviour: 'absolute' },
+
+          // Buttons: 0x30-0x3F
+          { controlId: 0x30, channel: 0, ccNumber: 30, minValue: 0, maxValue: 127, behaviour: 'toggle' },
+          { controlId: 0x3F, channel: 0, ccNumber: 31, minValue: 0, maxValue: 127, behaviour: 'toggle' },
+        ],
+        colors: [],
+      };
+
+      readCustomModeSpy.mockResolvedValue(mockResponse);
+      const mode = await customModeManager.readMode(0);
+
+      // Find controls by ID range and verify types
+      const controls = Object.values(mode.controls);
+
+      // Should have knobs, faders, and buttons
+      expect(controls.some(c => c.type === 'knob')).toBe(true);
+      expect(controls.some(c => c.type === 'fader')).toBe(true);
+      expect(controls.some(c => c.type === 'button')).toBe(true);
+    });
+  });
 });
 
 describe('CONTROL_IDS Constants', () => {

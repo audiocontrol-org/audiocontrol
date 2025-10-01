@@ -14,6 +14,7 @@ The Launch Control XL3 communicates via MIDI SysEx messages. Custom modes are fe
 - [Custom Mode Fetch Protocol](#custom-mode-fetch-protocol)
 - [Custom Mode Write Protocol](#custom-mode-write-protocol)
 - [Data Structures](#data-structures)
+- [Parsed Response Format](#parsed-response-format)
 - [Examples](#examples)
 - [Discovery Methodology](#discovery-methodology)
 
@@ -292,6 +293,55 @@ length = marker_byte - 0x60
 
 ---
 
+## Parsed Response Format (JavaScript/TypeScript)
+
+After SysEx parsing, the `DeviceManager.readCustomMode()` returns data in one of two formats:
+
+### Array Format (Legacy/Fallback)
+```javascript
+{
+  name: "MODE_NAME",  // String, max 8 characters
+  controls: [
+    {
+      controlId: 0x10,       // number: 0x10-0x3F main controls, 0x68-0x6F side buttons
+      channel: 0,            // number: 0-15
+      ccNumber: 13,          // number: 0-127
+      minValue: 0,           // number: 0-127 (optional)
+      maxValue: 127,         // number: 0-127 (optional)
+      behaviour: 'absolute'  // string: 'absolute' | 'relative1' | 'relative2' | 'toggle'
+    }
+    // ... up to 48 controls
+  ],
+  colors: [],               // Color mappings (optional)
+  labels: Map<number, string>  // Control labels keyed by control ID
+}
+```
+
+### Object Format (Real Device Response)
+```javascript
+{
+  name: "MODE_NAME",
+  controls: {
+    "0x10": { controlId: 0x10, channel: 0, ccNumber: 13, ... },
+    "0x11": { controlId: 0x11, channel: 1, ccNumber: 14, ... },
+    // ... keyed by control ID (hex string)
+  },
+  colors: [],
+  labels: Map<number, string>
+}
+```
+
+**Note**: The `CustomModeManager.parseCustomModeResponse()` handles both formats automatically using:
+```typescript
+const controlsArray = Array.isArray(response.controls)
+  ? response.controls
+  : Object.values(response.controls);
+```
+
+This defensive coding ensures compatibility with device firmware variations.
+
+---
+
 ## Examples
 
 ### Example 1: "TEST1" Label
@@ -538,6 +588,7 @@ The parser follows the protocol specification exactly:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.3 | 2025-09-30 | Added Parsed Response Format section documenting both array and object control formats |
 | 1.2 | 2025-09-30 | **Critical:** Discovered write acknowledgement protocol (command 0x15). Device sends ACK after each page write. Client must wait for ACK before sending next page. |
 | 1.1 | 2025-09-30 | Documented write protocol (command 0x45) with mode name format discovery |
 | 1.0 | 2025-09-30 | Initial documented protocol after empirical discovery |
@@ -551,6 +602,7 @@ The parser follows the protocol specification exactly:
 3. **Control ID mapping exception** (25-28 → 26-29) is hardware-specific, not a bug
 4. **Length-encoding is critical** - marker byte `0x60 + length` determines string size
 5. **No LED data in custom modes** - don't waste time looking for it
+6. **Device returns controls in both array and object format** - parser must handle both
 
 If protocol changes are needed:
 1. Update `.ksy` file first
