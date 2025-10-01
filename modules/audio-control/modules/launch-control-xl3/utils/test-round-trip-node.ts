@@ -99,8 +99,8 @@ function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
 
   // Add test controls with names to validate name parsing
   const testControls: Record<string, ControlMapping> = {
-    // Faders with custom names
-    'fader1': {
+    // Faders with custom names (UPPERCASE to match CONTROL_IDS)
+    'FADER1': {
       name: 'Vol Trk1',
       midiChannel: 1,
       ccNumber: 77,
@@ -108,7 +108,7 @@ function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
       maxValue: 127,
       behavior: 'absolute'
     },
-    'fader2': {
+    'FADER2': {
       name: 'Vol Trk2',
       midiChannel: 1,
       ccNumber: 78,
@@ -116,7 +116,7 @@ function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
       maxValue: 127,
       behavior: 'absolute'
     },
-    'fader3': {
+    'FADER3': {
       name: 'Vol Trk3',
       midiChannel: 1,
       ccNumber: 79,
@@ -125,8 +125,8 @@ function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
       behavior: 'absolute'
     },
 
-    // Top row knobs with custom names
-    'send_a1': {
+    // Top row knobs with custom names (UPPERCASE to match CONTROL_IDS)
+    'SEND_A1': {
       name: 'Reverb 1',
       midiChannel: 2,
       ccNumber: 13,
@@ -134,7 +134,7 @@ function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
       maxValue: 127,
       behavior: 'absolute'
     },
-    'send_a2': {
+    'SEND_A2': {
       name: 'Reverb 2',
       midiChannel: 2,
       ccNumber: 14,
@@ -142,7 +142,7 @@ function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
       maxValue: 127,
       behavior: 'absolute'
     },
-    'send_a3': {
+    'SEND_A3': {
       name: 'Delay 1',
       midiChannel: 2,
       ccNumber: 15,
@@ -151,8 +151,8 @@ function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
       behavior: 'absolute'
     },
 
-    // Middle row knobs with custom names
-    'send_b1': {
+    // Middle row knobs with custom names (UPPERCASE to match CONTROL_IDS)
+    'SEND_B1': {
       name: 'EQ High',
       midiChannel: 3,
       ccNumber: 29,
@@ -160,7 +160,7 @@ function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
       maxValue: 127,
       behavior: 'absolute'
     },
-    'send_b2': {
+    'SEND_B2': {
       name: 'EQ Mid',
       midiChannel: 3,
       ccNumber: 30,
@@ -169,8 +169,8 @@ function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
       behavior: 'absolute'
     },
 
-    // Bottom row knobs with custom names
-    'pan1': {
+    // Bottom row knobs with custom names (UPPERCASE to match CONTROL_IDS)
+    'PAN1': {
       name: 'Pan Tr1',
       midiChannel: 4,
       ccNumber: 49,
@@ -178,7 +178,7 @@ function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
       maxValue: 127,
       behavior: 'absolute'
     },
-    'pan2': {
+    'PAN2': {
       name: 'Pan Tr2',
       midiChannel: 4,
       ccNumber: 50,
@@ -187,8 +187,8 @@ function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
       behavior: 'absolute'
     },
 
-    // Buttons with custom names
-    'focus1': {
+    // Buttons with custom names (UPPERCASE to match CONTROL_IDS)
+    'FOCUS1': {
       name: 'Mute T1',
       midiChannel: 5,
       ccNumber: 104,
@@ -196,7 +196,7 @@ function createTestCustomMode(controller: LaunchControlXL3): CustomMode {
       maxValue: 127,
       behavior: 'toggle'
     },
-    'focus2': {
+    'FOCUS2': {
       name: 'Solo T1',
       midiChannel: 5,
       ccNumber: 105,

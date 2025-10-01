@@ -968,7 +968,7 @@ export class DeviceManager extends EventEmitter {
   /**
    * Convert CustomMode to CustomModeMessage format and validate
    */
-  private validateCustomModeData(data: { slot: number; name: string; controls: any; colors: any }): any {
+  private validateCustomModeData(data: { slot: number; name: string; controls: any; colors: any; labels?: any }): any {
     // Convert controls from Record<string, ControlMapping> to Control[]
     const controls: any[] = [];
     if (data.controls && typeof data.controls === 'object') {
@@ -1010,7 +1010,8 @@ export class DeviceManager extends EventEmitter {
       slot: data.slot,
       name: data.name,
       controls,
-      colors
+      colors,
+      labels: data.labels
     };
 
     // Basic validation
