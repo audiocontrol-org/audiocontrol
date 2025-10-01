@@ -230,6 +230,7 @@ export class CustomModeManager extends EventEmitter {
   private convertToDeviceFormat(slot: number, mode: CustomMode): CustomMode {
     const controls: ControlMapping[] = [];
     const colors: ColorMapping[] = [];
+    const labels = new Map<number, string>();
 
     // Convert control mappings
     for (const [key, control] of Object.entries(mode.controls)) {
@@ -244,6 +245,11 @@ export class CustomModeManager extends EventEmitter {
           maxValue: ctrl.max,
           behaviour: ctrl.behaviour,
         });
+
+        // Extract label if present
+        if (ctrl.name) {
+          labels.set(controlId, ctrl.name);
+        }
       }
     }
 
@@ -252,6 +258,7 @@ export class CustomModeManager extends EventEmitter {
       name: mode.name,
       controls,
       colors,
+      labels,
     } as any;
   }
 
