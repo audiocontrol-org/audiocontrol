@@ -64,7 +64,7 @@ The `.ksy` file is a Kaitai Struct specification that defines the **exact byte l
 
 ### Read Request Format ⭐
 
-**Critical Discovery (2025-10-01):** The SysEx read request DOES have a slot parameter. The slot byte is simply the slot number (0-15).
+**Critical Discovery (2025-10-01):** The SysEx read request DOES have a slot parameter. The slot byte is simply the slot number (0-14). Slot 15 (0x0F) is reserved for immutable factory content and cannot be read or written.
 
 **SysEx Read Request:**
 ```
@@ -80,10 +80,10 @@ Where:
 - `00` = Reserved
 - `40` = Read operation
 - `[PAGE]` = Page byte (0x00 or 0x03)
-- `[SLOT]` = **Slot number (0-15)**
+- `[SLOT]` = **Slot number (0-14)** - Slot 15 (0x0F) is reserved and immutable
 - `F7` = SysEx end
 
-**Discovery Method:** Empirical testing (2025-10-01). Initially thought DAW port was required, but testing with SysEx slot byte alone proved it works correctly. Using slot number directly (0-15) in the SysEx message successfully reads from that slot.
+**Discovery Method:** Empirical testing (2025-10-01). Initially thought DAW port was required, but testing with SysEx slot byte alone proved it works correctly. Using slot number directly (0-14) in the SysEx message successfully reads from that slot. Slot 15 is reserved for immutable factory content.
 
 **Implication:** To read from a specific slot, simply include the slot number in the SysEx message. DAW port protocol is NOT required for slot selection.
 
@@ -609,7 +609,7 @@ The parser follows the protocol specification exactly:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.6 | 2025-10-01 | **DEFINITIVE:** SysEx read/write DOES have slot parameter. Format is `F0 00 20 29 02 15 05 00 40 [PAGE] [SLOT] F7` where `[SLOT]` is slot number 0-15. DAW port protocol is NOT required for slot selection. Earlier versions incorrectly thought DAW port was mandatory - empirical testing proved SysEx slot byte works independently. |
+| 1.6 | 2025-10-01 | **DEFINITIVE:** SysEx read/write DOES have slot parameter. Format is `F0 00 20 29 02 15 05 00 40 [PAGE] [SLOT] F7` where `[SLOT]` is slot number 0-14 (slot 15 reserved and immutable). DAW port protocol is NOT required for slot selection. Earlier versions incorrectly thought DAW port was mandatory - empirical testing proved SysEx slot byte works independently. |
 | 1.5 | 2025-10-01 | **RETRACTED:** Incorrectly stated SysEx has no slot parameter. |
 | 1.4 | 2025-10-01 | **Critical:** Corrected read protocol - uses 2 pages (0x00, 0x03), not 3 pages (0, 1, 2). Documented complete DAW port bidirectional protocol with device echoes. Phase 1 Note Off echo is slot query acknowledgement. Phase 2 Note Off echo is slot change acknowledgement. Phase 2 skipped if already on target slot. |
 | 1.3 | 2025-09-30 | Added Parsed Response Format section documenting both array and object control formats |

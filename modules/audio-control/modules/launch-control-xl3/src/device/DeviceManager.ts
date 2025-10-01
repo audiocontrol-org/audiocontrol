@@ -13,7 +13,6 @@ import {
   MidiBackendInterface
 } from '../core/MidiInterface.js';
 import { SysExParser } from '../core/SysExParser.js';
-import { DawPortControllerImpl, type DawPortController } from '../core/DawPortController.js';
 import {
   LaunchControlXL3Info,
   DeviceMode,
@@ -66,7 +65,6 @@ export class DeviceManager extends EventEmitter {
   private inquiryTimer?: NodeJS.Timeout | undefined;
   private reconnectTimer?: NodeJS.Timeout | undefined;
   private isInitializing = false;
-  private dawPortController?: DawPortController | undefined;
 
   // Write acknowledgement handling (persistent listener approach)
   private pendingAcknowledgements = new Map<number, {
@@ -621,12 +619,12 @@ export class DeviceManager extends EventEmitter {
    * Read custom mode from device (fetches both pages)
    */
   async readCustomMode(slot: number): Promise<CustomMode> {
-    if (slot < 0 || slot > 15) {
-      throw new Error('Custom mode slot must be 0-15');
+    if (slot < 0 || slot > 14) {
+      throw new Error('Custom mode slot must be 0-14 (slot 15 is reserved for immutable factory content)');
     }
 
-    // TEMPORARY: Testing if SysEx slot byte works without DAW port
-    // await this.selectSlot(slot);
+    // Slot selection is handled by the SysEx slot byte parameter.
+    // DAW port protocol is NOT required for slot selection.
 
     // Helper function to read a single page
     const readPage = (page: number): Promise<any> => {
@@ -785,12 +783,12 @@ export class DeviceManager extends EventEmitter {
    * Write custom mode to device
    */
   async writeCustomMode(slot: number, mode: CustomMode): Promise<void> {
-    if (slot < 0 || slot > 15) {
-      throw new Error('Custom mode slot must be 0-15');
+    if (slot < 0 || slot > 14) {
+      throw new Error('Custom mode slot must be 0-14 (slot 15 is reserved for immutable factory content)');
     }
 
-    // TEMPORARY: Testing if SysEx slot byte works without DAW port
-    // await this.selectSlot(slot);
+    // Slot selection is handled by the SysEx slot byte parameter.
+    // DAW port protocol is NOT required for slot selection.
 
     const modeData = {
       slot,
@@ -1107,71 +1105,11 @@ export class DeviceManager extends EventEmitter {
       await this.dawMidi.openOutput('LCXL3 1 DAW In');
       console.log('[DeviceManager] DAW output port opened successfully');
 
-      // Try to open DAW input for bidirectional communication
-      // This may fail on some backends, so we handle it gracefully
-      let waitForMessageFunc: ((predicate: (data: number[]) => boolean, timeout: number) => Promise<number[]>) | undefined;
-
-      try {
-        console.log('[DeviceManager] Attempting to open DAW input port...');
-        await this.dawMidi.openInput('LCXL3 1 DAW Out');
-        console.log('[DeviceManager] DAW input port opened successfully');
-        waitForMessageFunc = async (predicate: (data: number[]) => boolean, timeout: number) => {
-          return this.waitForDawMessage(predicate, timeout);
-        };
-      } catch (inputError) {
-        console.warn('DAW input port not available - response handling disabled:', inputError);
-        // Continue without input port - output-only mode
-      }
-
-      console.log('[DeviceManager] Creating DAW port controller...');
-      // Create DAW port controller using the separate MIDI interface
-      this.dawPortController = new DawPortControllerImpl(
-        async (message: number[]) => {
-          console.log('[DeviceManager] Sending DAW message via separate MIDI interface');
-          await this.dawMidi.sendMessage(message);
-        },
-        waitForMessageFunc  // May be undefined if input port failed
-      );
-      console.log('[DeviceManager] DAW port controller created successfully');
+      // DAW port controller infrastructure removed - slot selection uses SysEx slot byte directly
+      console.log('[DeviceManager] DAW port initialized (slot selection via SysEx, not DAW port protocol)');
     } catch (error) {
       console.error('DAW port initialization failed - device will not function properly:', error);
       throw new Error(`Failed to initialize DAW port: ${error instanceof Error ? error.message : String(error)}`);
-    }
-  }
-
-  /**
-   * Wait for a DAW port message matching the predicate
-   */
-  private async waitForDawMessage(predicate: (data: number[]) => boolean, timeout: number): Promise<number[]> {
-    return new Promise((resolve, reject) => {
-      let resolved = false;
-      const timeoutId = setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          reject(new Error('DAW message timeout'));
-        }
-      }, timeout);
-
-      // Set up message listener on DAW input
-      const handler = (message: any) => {
-        if (!resolved && predicate(message.data)) {
-          resolved = true;
-          clearTimeout(timeoutId);
-          this.dawMidi.off('message', handler);
-          resolve(Array.from(message.data));
-        }
-      };
-
-      this.dawMidi.on('message', handler);
-    });
-  }
-
-  /**
-   * Select slot before write operations (if DAW port is available)
-   */
-  private async selectSlot(slot: number): Promise<void> {
-    if (this.dawPortController) {
-      await this.dawPortController.selectSlot(slot);
     }
   }
 

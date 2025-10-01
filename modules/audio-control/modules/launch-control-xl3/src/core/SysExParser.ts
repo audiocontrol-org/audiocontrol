@@ -638,10 +638,10 @@ export class SysExParser {
       // Parse 0x40 markers to get control IDs
       const shortFormatControls: number[] = [];
       for (let i = 0; i < data.length - 1; i++) {
-        if (data[i] === 0x40 && data[i + 1] !== undefined) {
+        if (data[i] === 0x40) {
           const possibleControlId = data[i + 1];
           // Valid control IDs are 0x10-0x3F
-          if (possibleControlId >= 0x10 && possibleControlId <= 0x3F) {
+          if (possibleControlId !== undefined && possibleControlId >= 0x10 && possibleControlId <= 0x3F) {
             shortFormatControls.push(possibleControlId);
           }
         }
@@ -653,8 +653,6 @@ export class SysExParser {
       let addedCount = 0;
       for (const controlId of shortFormatControls) {
         if (!existingControlIds.has(controlId)) {
-          const controlType = this.deriveControlTypeFromId(controlId);
-
           controls.push({
             controlId,
             channel: 0,  // Default/unconfigured
@@ -697,25 +695,6 @@ export class SysExParser {
     return 0x0C; // Default off
   }
 
-  /**
-   * Derive control type from control ID
-   */
-  private static deriveControlTypeFromId(controlId: number): number {
-    if (controlId >= 0x10 && controlId <= 0x17) {
-      return 0x05; // Top row encoders
-    } else if (controlId >= 0x18 && controlId <= 0x1F) {
-      return 0x09; // Middle row encoders
-    } else if (controlId >= 0x20 && controlId <= 0x27) {
-      return 0x0D; // Bottom row encoders
-    } else if (controlId >= 0x28 && controlId <= 0x2F) {
-      return 0x00; // Faders
-    } else if (controlId >= 0x30 && controlId <= 0x37) {
-      return 0x19; // First row buttons
-    } else if (controlId >= 0x38 && controlId <= 0x3F) {
-      return 0x25; // Second row buttons
-    }
-    return 0x00; // Default
-  }
 
   /**
    * Phase 2 Fix: Parse control labels using length-encoding scheme
@@ -976,17 +955,17 @@ export class SysExParser {
 
   /**
    * Build custom mode read request with page support
-   * Web editor sends two requests:
+   * Two requests are sent for a complete mode fetch:
    * - Page 0 (0x00): Gets controls 0x10-0x27 (encoders)
    * - Page 1 (0x03): Gets controls 0x28-0x3F (faders/buttons)
    *
-   * CRITICAL: Slot selection is done via DAW port BEFORE calling this.
-   * The slot byte in the read command MUST be 0 to read from the DAW-port-selected slot.
-   * If slot byte > 0, the device reads from that explicit slot instead, ignoring DAW port.
+   * The slot byte in the SysEx message directly selects the target slot (0-14).
+   * Slot 15 is reserved for immutable factory content and cannot be read or written.
+   * DAW port protocol is NOT required for slot selection.
    */
   static buildCustomModeReadRequest(slot: number, page: number = 0): number[] {
-    if (slot < 0 || slot > 15) {
-      throw new Error('Custom mode slot must be 0-15');
+    if (slot < 0 || slot > 14) {
+      throw new Error('Custom mode slot must be 0-14 (slot 15 is reserved for immutable factory content)');
     }
     if (page < 0 || page > 1) {
       throw new Error('Page must be 0 (encoders) or 1 (faders/buttons)');
@@ -994,10 +973,11 @@ export class SysExParser {
 
     // Format: F0 00 20 29 02 15 05 00 40 [PAGE] [SLOT] F7
     // Where PAGE = 0x00 for first 24 controls, 0x03 for second 24 controls
-    // And SLOT = slot number (0-15)
+    // And SLOT = slot number (0-14) - slot 15 is reserved for immutable factory content
     //
     // Discovery (2025-10-01): The SysEx message includes a slot parameter.
-    // Using the slot number directly (0-15) works correctly.
+    // Using the slot number directly (0-14) works correctly.
+    // Slot 15 (0x0F) is reserved and cannot be read or written.
     // DAW port protocol is NOT required for slot selection.
     return [
       0xF0,             // SysEx start
@@ -1008,7 +988,7 @@ export class SysExParser {
       0x00,             // Reserved
       0x40,             // Read operation
       page === 0 ? 0x00 : 0x03, // Page byte: 0x00 for encoders, 0x03 for faders/buttons
-      slot,             // Slot byte: slot number (0-15)
+      slot,             // Slot byte: slot number (0-14, slot 15 reserved)
       0xF7              // SysEx end
     ];
   }
