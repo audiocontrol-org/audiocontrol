@@ -1,7 +1,7 @@
 # Launch Control XL3 Protocol Specification
 
-**Version:** 1.3
-**Last Updated:** 2025-09-30
+**Version:** 1.4
+**Last Updated:** 2025-10-01
 **Status:** Verified with hardware
 
 ## Overview
@@ -456,22 +456,34 @@ The Launch Control XL3 uses a **dual-port MIDI system**:
 
 Slot selection requires a bidirectional negotiation with the device:
 
-#### Phase 1: Query Current Slot (6 messages)
+#### Phase 1: Query Current Slot (6 messages bidirectional)
 ```
 1. Client → Device: Note On  (Ch16, Note 11, Vel 127)  [0x9F, 0x0B, 0x7F]
 2. Client → Device: CC Query (Ch8,  CC 30,  Val 0)     [0xB7, 0x1E, 0x00]
-3. Device → Client: Note On echo
-4. Device → Client: CC Response (Ch7, CC 30, current_slot)
-5. Client → Device: Note Off (Ch16, Note 11, Vel 0)    [0x8F, 0x0B, 0x00]
-6. Device → Client: Note Off echo
+3. Device → Client: Note On echo                       [0x9F, 0x0B, 0x7F]
+4. Device → Client: CC Response (Ch7, CC 30, current_slot) [0xB6, 0x1E, value]
+5. Client → Device: Note Off (Ch16, Note 11, Vel 0)    [0x9F, 0x0B, 0x00]
+6. Device → Client: Note Off echo ⭐                    [0x9F, 0x0B, 0x00]
 ```
 
-#### Phase 2: Set Target Slot (3 messages)
+**Note:** The Note Off echo (message 6) is the acknowledgement that Phase 1 is complete.
+
+#### Phase 2: Set Target Slot (6 messages bidirectional, conditional)
 ```
 1. Client → Device: Note On  (Ch16, Note 11, Vel 127)  [0x9F, 0x0B, 0x7F]
 2. Client → Device: CC Set   (Ch7,  CC 30,  target_slot) [0xB6, 0x1E, value]
-3. Client → Device: Note Off (Ch16, Note 11, Vel 0)    [0x8F, 0x0B, 0x00]
+3. Device → Client: Note On echo                       [0x9F, 0x0B, 0x7F]
+4. Device → Client: CC echo (Ch7, CC 30, target_slot)  [0xB6, 0x1E, value]
+5. Client → Device: Note Off (Ch16, Note 11, Vel 0)    [0x9F, 0x0B, 0x00]
+6. Device → Client: Note Off echo ⭐                    [0x9F, 0x0B, 0x00]
 ```
+
+**Important:**
+- Phase 2 is **SKIPPED** if device is already on target slot (discovered from Phase 1 CC response)
+- The Note Off echo (message 6) is the acknowledgement that slot change is complete
+- Client MUST wait for Note Off echo before proceeding to SysEx read/write operations
+
+**Discovery Method:** MIDI spy capture (2025-10-01) - Web editor skipped Phase 2 when device already on slot 14
 
 ### Channel Mapping
 
@@ -590,6 +602,7 @@ The parser follows the protocol specification exactly:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.4 | 2025-10-01 | **Critical:** Corrected read protocol - uses 2 pages (0x00, 0x03), not 3 pages (0, 1, 2). Documented complete DAW port bidirectional protocol with device echoes. Phase 1 Note Off echo is slot query acknowledgement. Phase 2 Note Off echo is slot change acknowledgement. Phase 2 skipped if already on target slot. |
 | 1.3 | 2025-09-30 | Added Parsed Response Format section documenting both array and object control formats |
 | 1.2 | 2025-09-30 | **Critical:** Discovered write acknowledgement protocol (command 0x15). Device sends ACK after each page write. Client must wait for ACK before sending next page. |
 | 1.1 | 2025-09-30 | Documented write protocol (command 0x45) with mode name format discovery |
