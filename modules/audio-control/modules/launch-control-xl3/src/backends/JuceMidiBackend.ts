@@ -15,6 +15,7 @@ interface JuceServerConfig {
 
 class JuceMidiInputPort implements MidiInputPort {
   readonly type = 'input' as const;
+  onMessage?: ((message: MidiMessage) => void) | undefined;
 
   constructor(
     readonly id: string,
@@ -207,6 +208,11 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackendInterfac
                   data: new Uint8Array(messageData),
                   timestamp: Date.now()
                 };
+                // Call the onMessage callback if set
+                const inputPort = port as JuceMidiInputPort;
+                if (inputPort.onMessage) {
+                  inputPort.onMessage(message);
+                }
                 // Emit for backend-level listeners
                 this.emit('message', port, message);
               }
