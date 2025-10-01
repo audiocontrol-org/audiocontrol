@@ -34,6 +34,7 @@ export default defineConfig({
       'test/core/SysExParser.test.ts',
       'test/core/backends/WebMidiBackend.test.ts',
       'test/core/DawPortController.test.ts',
+      'test/unit/**/*.test.ts',  // Re-enabled after fixing control ID constants and format handling
     ],
 
     // Exclude everything else for now (focus on optimization)
@@ -48,8 +49,7 @@ export default defineConfig({
       '**/test/e2e/**',
       '**/*.integration.test.ts',
       '**/*.e2e.test.ts',
-      // Exclude problematic unit tests temporarily
-      '**/test/unit/**',
+      // Exclude problematic device tests temporarily
       '**/test/device/**',
     ],
 
