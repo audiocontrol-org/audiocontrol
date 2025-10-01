@@ -205,7 +205,7 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackendInterfac
             if (data.messages && data.messages.length > 0) {
               for (const messageData of data.messages) {
                 const message = {
-                  data: new Uint8Array(messageData),
+                  data: Array.from(messageData) as readonly number[],
                   timestamp: Date.now()
                 };
                 // Call the onMessage callback if set
@@ -231,7 +231,7 @@ export class JuceMidiBackend extends EventEmitter implements MidiBackendInterfac
           if (data.messages && data.messages.length > 0) {
             for (const messageData of data.messages) {
               const message = {
-                data: new Uint8Array(messageData),
+                data: Array.from(messageData) as readonly number[],
                 timestamp: Date.now()
               };
               this.emit('dawMessage', message);
