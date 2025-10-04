@@ -292,6 +292,9 @@ importers:
       music-metadata:
         specifier: ^10.9.0
         version: 10.9.1
+      pathe:
+        specifier: ^2.0.2
+        version: 2.0.3
       wavefile:
         specifier: ^11.0.0
         version: 11.0.0
