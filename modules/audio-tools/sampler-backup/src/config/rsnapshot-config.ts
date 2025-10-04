@@ -37,7 +37,7 @@ export function getDefaultRsnapshotConfig(): RsnapshotConfig {
             {
                 type: "s5k",
                 host: "pi-scsi2.local",
-                sourcePath: "/home/pi/images/",
+                sourcePath: "/home/orion/images/",
                 backupSubdir: "pi-scsi2",
             },
         ],
