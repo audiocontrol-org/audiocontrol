@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/sampler-midi",
-  "version": "3.0.0",
+  "version": "6.0.0",
   "description": "MIDI communication clients for hardware samplers",
   "main": "./dist/index.js",
   "exports": {
@@ -41,8 +41,8 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
-    "@oletizi/sampler-devices": "^3.0.0",
-    "@oletizi/sampler-lib": "^1.0.11",
+    "@oletizi/sampler-devices": "workspace:*",
+    "@oletizi/sampler-lib": "workspace:*",
     "easymidi": "^3.1.0",
     "pathe": "^2.0.2"
   }
