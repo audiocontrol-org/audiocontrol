@@ -57,6 +57,7 @@ export interface Akaitools {
     akaiWrite: (sourcePath: string, targetPath: string, partition?: number) => Promise<ExecutionResult>
     akaiRead: (sourcePath: string, targetPath: string, partition?: number, recursive?: boolean) => Promise<ExecutionResult>
     wav2Akai: (sourcePath: string, targetPath: string, targetName: string) => Promise<ExecutionResult>
+    akai2Wav: (sourcePath: string) => Promise<ExecutionResult>
     akaiList: (akaiPath: string, partition?: number) => Promise<AkaiRecordResult>
     remoteSync: () => Promise<ExecutionResult>
 
@@ -129,6 +130,10 @@ class BasicAkaiTools implements Akaitools {
 
     wav2Akai(sourcePath: string, targetPath: string, targetName: string): Promise<ExecutionResult> {
         return wav2Akai(this.c, sourcePath, targetPath, targetName);
+    }
+
+    akai2Wav(sourcePath: string): Promise<ExecutionResult> {
+        return akai2Wav(this.c, sourcePath);
     }
 
     akaiList(akaiPath: string, partition?: number): Promise<AkaiRecordResult> {
@@ -411,6 +416,20 @@ async function wav2Akai(c: AkaiToolsConfig, sourcePath: string, targetPath: stri
     return doSpawn(
         path.join(c.akaiToolsPath, 'wav2akai'),
         ['-n', targetName, '-d', `"${targetPath}"`, `"${sourcePath}"`]
+    )
+}
+
+/**
+ * Convert an Akai .a3s sample file to WAV format
+ * Note: Outputs to current working directory with same basename + .wav extension
+ * @param c Akai tools configuration
+ * @param sourcePath path to .a3s file
+ */
+async function akai2Wav(c: AkaiToolsConfig, sourcePath: string) {
+    process.env['PERL5LIB'] = c.akaiToolsPath
+    return doSpawn(
+        path.join(c.akaiToolsPath, 'akai2wav'),
+        [`"${sourcePath}"`]
     )
 }
 
