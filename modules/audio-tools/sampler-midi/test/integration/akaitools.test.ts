@@ -3,7 +3,7 @@ import {
     CHUNK_LENGTH, newAkaitools,
     newAkaiToolsConfig,
     readAkaiData,
-} from "@/client/akaitools.js";
+} from "@oletizi/sampler-devices";
 import path from "path";
 import {expect} from "chai";
 import fs from "fs/promises";

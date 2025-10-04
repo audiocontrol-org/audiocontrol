@@ -11,7 +11,7 @@ import {
 } from "@oletizi/sampler-devices/s3k";
 import * as easymidi from "easymidi";
 type MidiMessage = number[];
-import {ExecutionResult} from "@/client/akaitools.js";
+import {ExecutionResult} from "@oletizi/sampler-devices";
 import EventEmitter from "events";
 
 export interface Device {

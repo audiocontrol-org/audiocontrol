@@ -6,30 +6,20 @@ import {
     KeygroupHeader,
     parseKeygroupHeader,
     parseProgramHeader,
-    ProgramHeader, SampleHeader
-} from "@oletizi/sampler-devices/s3k";
-import {Program, Keygroup} from "@/client/client-akai-s3000xl.js";
-
-import {
+    ProgramHeader,
+    SampleHeader,
     AkaiDisk,
     AkaiDiskResult,
     AkaiPartition,
-    AkaiProgramFile as AkaiProgramFileBase,
+    AkaiProgramFile,
     AkaiRecord,
     AkaiRecordResult,
     AkaiRecordType,
     AkaiToolsConfig,
     RemoteDisk,
     RemoteVolumeResult
-} from "@oletizi/sampler-devices/s3k";
-
-// Local version with wrapper classes instead of headers
-interface AkaiProgramFile {
-    program: Program
-    keygroups: Keygroup[]
-}
+} from "@/index.js";
 import {Writable} from "stream";
-import {Device} from "@/client/client-akai-s3000xl.js";
 
 
 export const CHUNK_LENGTH = 384
@@ -344,19 +334,18 @@ async function readAkaiProgram(file: string): Promise<AkaiProgramFile> {
         keygroups.push(kg)
     }
 
-    const device = {} as Device
     const rv: AkaiProgramFile = {
-        keygroups: keygroups.map(kg => new Keygroup(device, kg)),
-        program: new Program(device, program)
+        keygroups: keygroups,
+        program: program
     }
     return rv
 }
 
 async function writeAkaiProgram(file: string, p: AkaiProgramFile) {
 
-    const nibbles = p.program.getHeader().raw.slice(RAW_LEADER)
+    const nibbles = p.program.raw.slice(RAW_LEADER)
     for (let i = 0; i < p.keygroups.length; i++) {
-        const kgData = p.keygroups[i].getHeader().raw.slice(RAW_LEADER)
+        const kgData = p.keygroups[i].raw.slice(RAW_LEADER)
         for (let j = 0; j < kgData.length; j++) {
             // nibbles[KEYGROUP1_START_OFFSET + KEYGROUP_LENGTH * i  + j] = kgData[j]
             nibbles[CHUNK_LENGTH + CHUNK_LENGTH * i + j] = kgData[j]

@@ -3,7 +3,7 @@ import path from "pathe"
 import {newServerOutput} from "@oletizi/sampler-lib";
 import {expect} from "chai";
 import {newDevice} from "@/client/client-akai-s3000xl.js";
-import {newAkaitools, newAkaiToolsConfig, RAW_LEADER, readAkaiData} from "@/client/akaitools.js";
+import {newAkaitools, newAkaiToolsConfig, RAW_LEADER, readAkaiData} from "@oletizi/sampler-devices";
 import {tmpdir} from "node:os"
 import {parseSampleHeader, SampleHeader, SampleHeader_writeSPITCH} from "@oletizi/sampler-devices/s3k";
 
