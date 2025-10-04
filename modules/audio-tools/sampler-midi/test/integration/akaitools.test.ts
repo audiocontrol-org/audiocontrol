@@ -13,11 +13,11 @@ import {
     parseProgramHeader,
     parseSampleHeader,
     ProgramHeader, ProgramHeader_writeGROUPS, ProgramHeader_writePRNAME,
-    SampleHeader
-} from "@/devices/s3000xl.js";
+    SampleHeader,
+    AkaiRecordResult, AkaiRecordType, AkaiToolsConfig, RemoteDisk,
+    akaiByte2String, nextByte
+} from "@oletizi/sampler-devices/s3k";
 import {byte2nibblesLE, nibbles2byte} from "@oletizi/sampler-lib";
-import {akaiByte2String, nextByte} from "@/client/client-akai-s3000xl.js";
-import {AkaiRecordResult, AkaiRecordType, AkaiToolsConfig, RemoteDisk} from "@/model/model-akai-s3000xl.js";
 
 
 describe(`Read akai disk image.`, async () => {

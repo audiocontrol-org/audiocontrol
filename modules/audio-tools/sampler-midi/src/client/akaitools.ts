@@ -8,7 +8,7 @@ import {
     parseKeygroupHeader,
     parseProgramHeader, Program,
     ProgramHeader, SampleHeader
-} from "@/devices/s3000xl.js";
+} from "@oletizi/sampler-devices/s3k";
 
 import {
     AkaiDisk,
@@ -21,7 +21,7 @@ import {
     AkaiToolsConfig,
     RemoteDisk,
     RemoteVolumeResult
-} from "@/model/model-akai-s3000xl.js";
+} from "@oletizi/sampler-devices/s3k";
 import {Writable} from "stream";
 import {Device} from "@/client/client-akai-s3000xl.js";
 

@@ -220,14 +220,17 @@ importers:
   sampler-midi:
     dependencies:
       '@oletizi/sampler-devices':
-        specifier: ^0.0.19
-        version: 0.0.19
+        specifier: ^3.0.0
+        version: link:../sampler-devices
       '@oletizi/sampler-lib':
         specifier: ^1.0.11
         version: 1.0.11
-      midi:
-        specifier: ^2.0.0
-        version: 2.0.0
+      easymidi:
+        specifier: ^3.1.0
+        version: 3.1.0
+      pathe:
+        specifier: ^2.0.2
+        version: 2.0.3
     devDependencies:
       '@tsconfig/recommended':
         specifier: ^1.0.8
@@ -235,9 +238,6 @@ importers:
       '@types/chai':
         specifier: ^5.0.1
         version: 5.2.2
-      '@types/midi':
-        specifier: ^2.0.3
-        version: 2.0.3
       '@types/mocha':
         specifier: ^10.0.10
         version: 10.0.10
@@ -1024,6 +1024,15 @@ packages:
       '@jridgewell/resolve-uri': 3.1.2
       '@jridgewell/sourcemap-codec': 1.5.5
 
+  /@julusian/midi@3.6.1:
+    resolution: {integrity: sha512-sC6tTMAMZsHOQILAv/R0On5tKKhzBQUjdyYWzh9l0UQeNry12CFIyRWK1Mep5xCHWCTUB0w4gxngpciA5PgN/Q==}
+    engines: {node: '>=14.15'}
+    requiresBuild: true
+    dependencies:
+      node-addon-api: 6.1.0
+      pkg-prebuilds: 1.0.0
+    dev: false
+
   /@next/env@15.5.4:
     resolution: {integrity: sha512-27SQhYp5QryzIT5uO8hq99C69eLQ7qkzkDPsk3N+GuS2XgOgoYEeOav7Pf8Tn4drECOVDsDg8oj+/DVy8qQL2A==}
     dev: false
@@ -1642,7 +1651,6 @@ packages:
       string-width: 4.2.3
       strip-ansi: 6.0.1
       wrap-ansi: 7.0.0
-    dev: true
 
   /color-convert@2.0.1:
     resolution: {integrity: sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ==}
@@ -1751,6 +1759,13 @@ packages:
   /eastasianwidth@0.2.0:
     resolution: {integrity: sha512-I88TYZWc9XiYHRQ4/3c5rjjfgkjhLyW2luGIheGERbNQ6OY7yTybanSpDXZa8y7VUP9YmDcYa+eyq4ca7iLqWA==}
     dev: true
+
+  /easymidi@3.1.0:
+    resolution: {integrity: sha512-bxEwfPysM1L+SO/qwHaYu9dvTxw2QHFjGV9EMzqGQJbhEP2MupKpg6eJMkj+uoXN0Ep1JhVPLbNLPmt3UkZRTw==}
+    engines: {node: '>=14.15'}
+    dependencies:
+      '@julusian/midi': 3.6.1
+    dev: false
 
   /electron-to-chromium@1.5.230:
     resolution: {integrity: sha512-A6A6Fd3+gMdaed9wX83CvHYJb4UuapPD5X5SLq72VZJzxHSY0/LUweGXRWmQlh2ln7KV7iw7jnwXK7dlPoOnHQ==}
@@ -2484,6 +2499,10 @@ packages:
       path-to-regexp: 8.3.0
     dev: true
 
+  /node-addon-api@6.1.0:
+    resolution: {integrity: sha512-+eawOlIgy680F0kBzPUNFhMZGtJ1YmqM6l4+Crf4IkImjYrO/mqPwRMh352g23uIaQKFItcQ64I7KMaJxHgAVA==}
+    dev: false
+
   /node-path@0.0.3:
     resolution: {integrity: sha512-S+n5Gb8mQHr8AAzrLo/VD+6gq+45b8B/U0o0/Cnx+vBctvC9EvzapdV5Jem5rJT95mNrweZnxAuQErlTWSDjiA==}
     dev: false
@@ -2655,6 +2674,14 @@ packages:
     engines: {node: '>=8'}
     dependencies:
       find-up: 4.1.0
+
+  /pkg-prebuilds@1.0.0:
+    resolution: {integrity: sha512-D9wlkXZCmjxj2kBHTw3fGSyjoahr33breGBoJcoezpi7ouYS59DJVOHMZ+dgqacSrZiJo4qtkXxLQTE+BqXJmQ==}
+    engines: {node: '>= 14.15.0'}
+    hasBin: true
+    dependencies:
+      yargs: 17.7.2
+    dev: false
 
   /pkg-types@1.3.1:
     resolution: {integrity: sha512-/Jm5M4RvtBFVkKWRu2BLUTNP8/M2a+UwuAX+ae4770q1qVGtfjG+WTCupoZixokjmHiry8uI+dlY8KXYV5HVVQ==}
@@ -3299,7 +3326,6 @@ packages:
       ansi-styles: 4.3.0
       string-width: 4.2.3
       strip-ansi: 6.0.1
-    dev: true
 
   /wrap-ansi@8.1.0:
     resolution: {integrity: sha512-si7QWI6zUMq56bESFvagtmzMdGOtoxfR+Sez11Mobfc7tm+VkUckk9bW2UeffTGVUbOksxmSw0AA2gs8g71NCQ==}
@@ -3327,7 +3353,6 @@ packages:
   /y18n@5.0.8:
     resolution: {integrity: sha512-0pfFzegeDWJHJIAmTLRP2DwHjdF5s7jo9tuztdQxAhINCdvS+3nGINqPd00AphqJR/0LhANUS6/+7SCb98YOfA==}
     engines: {node: '>=10'}
-    dev: true
 
   /yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
@@ -3353,7 +3378,6 @@ packages:
   /yargs-parser@21.1.1:
     resolution: {integrity: sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw==}
     engines: {node: '>=12'}
-    dev: true
 
   /yargs-unparser@2.0.0:
     resolution: {integrity: sha512-7pRTIA9Qc1caZ0bZ6RYRGbHJthJWuakf+WmHK0rVeLkNrrGhfoabBNdue6kdINI6r4if7ocq9aD/n7xwKOdzOA==}
@@ -3392,7 +3416,6 @@ packages:
       string-width: 4.2.3
       y18n: 5.0.8
       yargs-parser: 21.1.1
-    dev: true
 
   /yocto-queue@0.1.0:
     resolution: {integrity: sha512-rVksvsnNCdJ/ohGc6xgPwyN8eheCxsiLM8mxuE/t/mOVqJewPuO1miLpTHQiRgTKCLexL4MeAFVagts7HmNZ2Q==}

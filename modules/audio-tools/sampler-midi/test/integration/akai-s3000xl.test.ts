@@ -1,39 +1,45 @@
-import midi from 'midi'
+import * as easymidi from 'easymidi'
 import {expect} from "chai";
-import {string2AkaiBytes, akaiByte2String} from "@/s3k"
+import {string2AkaiBytes, akaiByte2String} from "@oletizi/sampler-devices/s3k"
 
-function listenForMessage(input: midi.Input) {
-    return new Promise<midi.MidiMessage>((resolve, reject) => {
-        input.on('message', function (deltaTime, message) {
-            resolve(message)
+type MidiMessage = number[];
+
+function listenForMessage(input: easymidi.Input) {
+    return new Promise<MidiMessage>((resolve, reject) => {
+        input.on('sysex', function (msg) {
+            resolve(msg.bytes)
         })
         setTimeout(() => reject(), 2 * 1000)
     })
 }
 
-function init<T extends midi.Input | midi.Output>(io: T): T {
-    for (let i = 0; i < io.getPortCount(); i++) {
-        if (io.getPortName(i).startsWith('IAC')) {
-            continue
+function findPort(ports: string[]): string | undefined {
+    for (const port of ports) {
+        if (!port.startsWith('IAC')) {
+            console.log(`Opening port ${port}`)
+            return port
         }
-        console.log(`Opening port ${io.getPortName(i)}`)
-        io.openPort(i)
-        break
     }
-    return io
+    return undefined
 }
 
-let input: midi.Input, output: midi.Output
+let input: easymidi.Input, output: easymidi.Output
 
 function midiSetup() {
-    output = init(new midi.Output())
-    input = init(new midi.Input())
-    input.ignoreTypes(false, false, false)
+    const outputPort = findPort(easymidi.getOutputs())
+    const inputPort = findPort(easymidi.getInputs())
+
+    if (!outputPort || !inputPort) {
+        throw new Error('No MIDI ports found')
+    }
+
+    output = new easymidi.Output(outputPort)
+    input = new easymidi.Input(inputPort)
 }
 
 function midiTeardown() {
-    input?.closePort()
-    output?.closePort()
+    input?.close()
+    output?.close()
 }
 
 describe('akai-s3000xl tests', () => {
@@ -231,7 +237,7 @@ describe('basic sysex tests', () => {
         let listener = listenForMessage(input)
         data = [0xF0, 0x47, 0x00, 0x04, 0x48, 0xF7]
         console.log(`Requesting names of resident samples...`)
-        output.sendMessage(data as [number, number, number])
+        output.send('sysex', {bytes: data})
 
         let message = await listener
         console.log(`Received message.`)
@@ -241,59 +247,57 @@ describe('basic sysex tests', () => {
         listener = listenForMessage(input)
         data = [0xF0, 0x47, 0x00, 0x0a, 0x48, 0x09, 0x00, 0xf7]
         console.log(`Requesting header for sample 0x09...`)
-        output.sendMessage(data as [number, number, number])
+        output.send('sysex', {bytes: data})
         message = await listener
         console.log(`Received message:`)
         console.log(message)
     })
 })
 
-describe('basic node midi tests', () => {
-    it('gets a midi input', () => {
-        const input = new midi.Input()
-        expect(input).to.exist
-        expect(input.getPortCount()).gte(1)
-        for (let i = 0; i < input.getPortCount(); i++) {
-            console.log(`Input [${i}]: ${input.getPortName(i)}`)
+describe('basic easymidi tests', () => {
+    it('gets midi inputs', () => {
+        const inputs = easymidi.getInputs()
+        expect(inputs).to.exist
+        expect(inputs.length).gte(1)
+        for (let i = 0; i < inputs.length; i++) {
+            console.log(`Input [${i}]: ${inputs[i]}`)
         }
     })
 
-    it('gets a midi output', () => {
-        const output = new midi.Output()
-        expect(output).to.exist
-        expect(output.getPortCount()).gte(1)
-        for (let i = 0; i < output.getPortCount(); i++) {
-            console.log(`Output [${i}]: ${output.getPortName(i)}`)
+    it('gets midi outputs', () => {
+        const outputs = easymidi.getOutputs()
+        expect(outputs).to.exist
+        expect(outputs.length).gte(1)
+        for (let i = 0; i < outputs.length; i++) {
+            console.log(`Output [${i}]: ${outputs[i]}`)
         }
     })
 
     it('sends and receives messages...', async () => {
-        const input = new midi.Input()
-        const output = new midi.Output()
+        // on MacOS, this will be the IAC bus; other platforms, YMMV
+        const inputPorts = easymidi.getInputs()
+        const outputPorts = easymidi.getOutputs()
 
-        input.ignoreTypes(false, false, false)
+        expect(inputPorts.length).gte(1)
+        expect(outputPorts.length).gte(1)
 
-        const received = new Promise<midi.MidiMessage>((resolve) => {
+        const input = new easymidi.Input(inputPorts[0])
+        const output = new easymidi.Output(outputPorts[0])
 
-            input.on('message', (deltaTime, message) => {
-                input.closePort()
-                output.closePort()
-                resolve(message)
+        const received = new Promise<{controller: number, value: number, channel: number}>((resolve) => {
+            input.on('cc', (msg) => {
+                input.close()
+                output.close()
+                resolve(msg)
             })
-
         })
 
-        // on MacOS, this will be the IAC bus; other platforms, YMMMV
-        input.openPort(0)
-        output.openPort(0)
-
-        const data = [176, 22, 1];
-        output.sendMessage(data as [number, number, number])
+        // Send CC message: channel 0, controller 22, value 1
+        output.send('cc', {controller: 22, value: 1, channel: 0})
 
         const m = await received
-        for (let i = 0; i < data.length; i++) {
-            expect(m[i]).eq(data[i])
-        }
-
+        expect(m.controller).eq(22)
+        expect(m.value).eq(1)
+        expect(m.channel).eq(0)
     })
 })

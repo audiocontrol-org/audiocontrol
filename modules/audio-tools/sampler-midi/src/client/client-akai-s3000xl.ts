@@ -4,9 +4,13 @@ import {
     parseProgramHeader,
     parseSampleHeader, Program,
     ProgramHeader, AkaiS3kSample,
-    SampleHeader
-} from "@/devices/s3000xl.js";
-import midi, {MidiMessage} from "midi";
+    SampleHeader,
+    akaiByte2String,
+    string2AkaiBytes,
+    nextByte
+} from "@oletizi/sampler-devices/s3k";
+import * as easymidi from "easymidi";
+type MidiMessage = number[];
 import {ExecutionResult} from "@/client/akaitools.js";
 import EventEmitter from "events";
 
@@ -47,7 +51,7 @@ export interface Device {
     format(partitionSize: number, partitionCount: number): Promise<ExecutionResult>
 }
 
-export function newDevice(input: midi.Input, output: midi.Output, out: ProcessOutput = newClientOutput()): Device {
+export function newDevice(input: easymidi.Input, output: easymidi.Output, out: ProcessOutput = newClientOutput()): Device {
     return new s3000xl(input, output, out)
 }
 
@@ -107,8 +111,8 @@ enum Opcode {
 
 
 class s3000xl implements Device {
-    private readonly midiInput: midi.Input;
-    private readonly midiOutput: midi.Output;
+    private readonly midiInput: easymidi.Input;
+    private readonly midiOutput: easymidi.Output;
     private readonly programNames: string[] = []
     private readonly programs = new Map<string, ProgramHeader>()
     private readonly sampleNames: string[] = []
@@ -116,7 +120,7 @@ class s3000xl implements Device {
 
     private readonly out: ProcessOutput
 
-    constructor(input: midi.Input, output: midi.Output, out: ProcessOutput) {
+    constructor(input: easymidi.Input, output: easymidi.Output, out: ProcessOutput) {
         this.midiInput = input
         this.midiOutput = output
         this.out = out
@@ -322,18 +326,17 @@ class s3000xl implements Device {
         const input = this.midiInput
         const output = this.midiOutput
         const response = new Promise<number[]>((resolve) => {
-            function listener(delta: number, message: midi.MidiMessage) {
-                // This is some weird TypeScript nonsense to satisfy tsup.
-                ((input as unknown) as EventEmitter).removeListener('message', listener)
+            function listener(msg: {bytes: MidiMessage}) {
+                input.removeListener('sysex', listener)
                 // TODO: make sure the opcode in the response message is correct
-                resolve(message)
+                resolve(msg.bytes)
             }
 
-            input.on('message', listener)
+            input.on('sysex', listener)
         })
 
         out.log(`Sending message...`)
-        output.sendMessage(message as MidiMessage)
+        output.send('sysex', {bytes: message})
         return response
     }
 
@@ -349,40 +352,4 @@ function getOpcode(message: number[]) {
         rv = message[3]
     }
     return rv
-}
-
-const ALPHABET = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ' ', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q',
-    'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '#', '+', '-', '.']
-
-export function akaiByte2String(bytes: number[]) {
-    let rv = ''
-    for (let v of bytes) {
-        rv += v < ALPHABET.length ? ALPHABET[v] : '?'
-    }
-    return rv
-
-}
-
-export function string2AkaiBytes(s: string) {
-    s = s.toUpperCase()
-    const data = []
-    for (let i = 0; i < 12; i++) {
-        let akaiValue = 10 // default value is ' '
-        if (s.length > i) {
-            const c = s.charAt(i)
-            for (let j = 0; j < ALPHABET.length; j++) {
-                if (ALPHABET[j] === c) {
-                    akaiValue = j
-                }
-            }
-        }
-        data.push(akaiValue)
-    }
-    return data
-}
-
-export function nextByte(nibbles: number[], v: { value: number, offset: number }) {
-    v.value = nibbles2byte(nibbles[v.offset], nibbles[v.offset + 1])
-    v.offset += 2
-    return v
 }
