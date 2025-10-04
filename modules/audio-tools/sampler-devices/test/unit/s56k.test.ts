@@ -22,13 +22,21 @@ import {
     ProgramChunk,
     Tune,
     Zone
-} from "@/lib/lib-akai-s56k";
+} from "@/devices/s56k.js";
 import path from "path";
 
 async function loadTestFile() {
-    // const testFile = 'test/data/Sx000/BASS.AKP'
     const testFile = path.join('test', 'data', 'Sx000', 'BASS.AKP')
     return await fs.readFile(testFile);
+}
+
+async function ensureBuildDir() {
+    const buildDir = path.join('build')
+    try {
+        await fs.mkdir(buildDir, { recursive: true })
+    } catch (err) {
+        // ignore if already exists
+    }
 }
 
 describe('Basics...', async () => {
@@ -327,8 +335,9 @@ describe('BinaryProgram', async () => {
         const checkProgram = newProgramFromBuffer(out)
         const modProgram = newProgramFromBuffer(out)
 
-        await fs.writeFile('build/TEST.AKP', buf)
-        await fs.writeFile('build/CHECK.AKP', out)
+        await ensureBuildDir()
+        await fs.writeFile(path.join('build', 'TEST.AKP'), buf)
+        await fs.writeFile(path.join('build', 'CHECK.AKP'), out)
 
         // expect(out).to.eq(buf)
 
@@ -354,13 +363,14 @@ describe('BinaryProgram', async () => {
         modProgram.getOutput().loudness = 70
         const mod = Buffer.alloc(out.length)
         modProgram.writeToBuffer(mod,0)
-        await fs.writeFile( 'build/MOD.AKP', mod)
+        await ensureBuildDir()
+        await fs.writeFile(path.join('build', 'MOD.AKP'), mod)
     })
 })
 
 describe('JSON Program', async () => {
     it('reads the default json', async () => {
-        const json = await fs.readFile('data/default-program.json')
+        const json = await fs.readFile(path.join('test', 'data', 'default-program.json'))
         const program = newProgramFromJson(json.toString())
         expect(program.getProgramNumber()).to.eq(0)
         expect(program.getKeygroupCount()).to.eq(1)
@@ -504,7 +514,7 @@ describe('JSON Program', async () => {
 
 
     it('Reads a json file and writes a valid binary file', async () => {
-        const json = (await fs.readFile('data/default-program.json')).toString()
+        const json = (await fs.readFile(path.join('test', 'data', 'default-program.json'))).toString()
         const program = newProgramFromJson(json)
         const output = program.getOutput()
         output.loudness = 95
@@ -513,8 +523,9 @@ describe('JSON Program', async () => {
         keygroup.filter.resonance = 5
         const buf = Buffer.alloc(1024 * 2)
         const written = program.writeToBuffer(buf, 0)
-        await fs.writeFile('build/default-program.akp',  Buffer.copyBytesFrom(buf, 0, written))
-        const inbuf = await fs.readFile('build/default-program.akp')
+        await ensureBuildDir()
+        await fs.writeFile(path.join('build', 'default-program.akp'),  Buffer.copyBytesFrom(buf, 0, written))
+        const inbuf = await fs.readFile(path.join('build', 'default-program.akp'))
         const checkProgram = newProgramFromBuffer(inbuf)
 
         expect(checkProgram.getKeygroupCount()).to.eq(1)
@@ -547,7 +558,7 @@ describe('JSON Program', async () => {
                 }
             ]
         }
-        const input = await fs.readFile('data/DEFAULT.AKP')
+        const input = await fs.readFile(path.join('test', 'data', 'DEFAULT.AKP'))
         const program = newProgramFromBuffer(input)
         expect(program.getOutput().loudness).to.eq(85)
         expect(program.getKeygroups()).to.exist
@@ -559,13 +570,14 @@ describe('JSON Program', async () => {
         expect(program.getKeygroupCount()).to.eq(2)
         expect(program.getKeygroups()[0].zone1.sampleName).to.eq(newName)
 
-        const outFile = 'build/MOD4.AKP'
+        await ensureBuildDir()
+        const outFile = path.join('build', 'MOD4.AKP')
         const output = Buffer.alloc(1024 * 2)
         const bufferSize = program.writeToBuffer(output, 0)
         await fs.writeFile(outFile, Buffer.copyBytesFrom(output, 0, bufferSize))
 
-        const originalSample = await fs.readFile(`data/${originalName}.WAV`)
-        await fs.writeFile(`build/${newName}.WAV`, originalSample)
+        const originalSample = await fs.readFile(path.join('test', 'data', 'Sx000', `${originalName}.wav`))
+        await fs.writeFile(path.join('build', `${newName}.WAV`), originalSample)
 
         const mod4Buffer = await fs.readFile(outFile)
         const mod4Program = newProgramFromBuffer(mod4Buffer)
