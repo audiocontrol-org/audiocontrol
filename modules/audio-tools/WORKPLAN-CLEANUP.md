@@ -452,8 +452,76 @@ done
 
 ### Objectives
 - Eliminate `src-deprecated/` directory completely
-- Migrate necessary code to appropriate packages
-- Document decisions for future reference
+- Move uncertain/deferred code to `sampler-attic` package
+- Migrate clear, necessary code to appropriate packages
+- Document all decisions for future reference
+
+### Task 2.0: Create Attic Package
+**Agent**: `typescript-pro`
+**Duration**: 1 day
+**Priority**: FIRST TASK - Must complete before other Phase 2 tasks
+
+**Deliverables**:
+- New `sampler-attic` package created in monorepo
+- Uncertain/deferred code moved to attic
+- Attic README documenting what's stored and why
+- Package properly configured but not for distribution
+
+**Code to Move to Attic** (~1,250 lines):
+1. **Web Interface Code** (916 lines):
+   - Next.js API routes (14 files from `app/api/`)
+   - Express server (`ts/app/server.ts`, `ts/app/brain.ts`, `ts/app/api.ts`)
+   - Session management (`lib/lib-session.ts`)
+   - UI files (`theme.ts`, `middleware.ts`)
+   - **Reason**: Will be refactored to Vite stack in separate `sampler-web-ui` project
+2. **Roland JV-1080 Support** (331 lines):
+   - `midi/roland-jv-1080.ts`
+   - **Reason**: Uncertain if needed, preserve for potential future use
+3. **Other Uncertain Files**:
+   - Any files marked "UNCERTAIN" in Phase 1 audit
+   - **Reason**: Need more investigation before migration or deletion
+
+**Attic Package Structure**:
+```
+sampler-attic/
+├── README.md          # Documentation of stored code
+├── package.json       # Not for distribution
+├── src/
+│   ├── web/          # Web interface code
+│   │   ├── nextjs/   # Next.js routes
+│   │   ├── express/  # Express server
+│   │   └── ui/       # UI components/theme
+│   ├── midi/         # JV-1080 support
+│   └── uncertain/    # Other uncertain files
+└── ATTIC-NOTES.md    # Migration/refactoring notes
+```
+
+**Attic README Must Document**:
+- What code is stored and why
+- Original file locations
+- Why deferred (web refactor, uncertain need, etc.)
+- Future refactoring plans
+- How to extract code when needed
+
+**Process**:
+1. Create `sampler-attic` package directory
+2. Set up package.json (private: true, not for distribution)
+3. Move web interface code to `src/web/`
+4. Move JV-1080 code to `src/midi/`
+5. Move other uncertain files to `src/uncertain/`
+6. Create comprehensive README.md
+7. Create ATTIC-NOTES.md with refactoring guidance
+8. Verify attic package builds (but don't publish)
+
+**Acceptance Criteria**:
+- [ ] sampler-attic package exists in workspace
+- [ ] All uncertain code moved from src-deprecated/ to attic
+- [ ] README documents all stored code with reasoning
+- [ ] ATTIC-NOTES.md provides future refactoring guidance
+- [ ] Package builds successfully
+- [ ] Package marked as private (not for npm distribution)
+
+---
 
 ### Task 2.1: Priority Code Migration
 **Agent**: `typescript-pro`
@@ -463,41 +531,91 @@ done
 - Critical deprecated code migrated to packages
 - Migration commits with clear descriptions
 - Updated package exports
+- Tests for migrated code
+
+**Clear Migrations** (~2,100 lines):
+
+**Priority 1 - Critical Libraries** (804 lines → sampler-lib):
+1. `akaitools/akaitools.ts` (414 lines) → `sampler-lib/src/io/akaitools.ts`
+2. `lib/lib-core.ts` (142 lines) → `sampler-lib/src/lib-core.ts`
+3. `model/akai.ts` (62 lines) → `sampler-lib/src/model/akai.ts`
+4. `model/sample.ts` (186 lines) → `sampler-lib/src/model/sample.ts`
+
+**Priority 2 - Translation** (503 lines → sampler-translate):
+5. `lib/lib-translate-s56k.ts` (251 lines)
+6. `lib/lib-decent.ts` (108 lines)
+7. `lib/lib-akai-mpc.ts` (144 lines)
+
+**Priority 3 - MIDI Infrastructure** (1,286 lines → sampler-midi/sampler-devices):
+8. `midi/device.ts` (529 lines) → sampler-midi
+9. `midi/midi.ts` (131 lines) → sampler-midi
+10. `midi/devices/devices.ts` (159 lines) → sampler-devices
+11. `midi/devices/specs.ts` (105 lines) → sampler-devices
+12. `midi/instrument.ts` (31 lines) → sampler-midi
 
 **Process**:
-1. Start with high-priority files from Task 1.2
+1. Migrate Priority 1 files (critical libraries)
 2. Refactor as needed to fit current architecture
-3. Add tests for migrated code
+3. Add tests for each migrated module
 4. Update package.json exports
 5. Verify no regressions
+6. Migrate Priority 2 files (translation)
+7. Migrate Priority 3 files (MIDI)
+8. Update all cross-package imports
 
 **Acceptance Criteria**:
-- All "needs-migration" files from audit moved to packages
-- Each migration has tests
-- All packages still build and pass tests
-- Migration documented in CHANGELOG
+- [ ] All clear-migration files moved to appropriate packages
+- [ ] Each migrated module has tests (80%+ coverage)
+- [ ] All packages still build and pass tests
+- [ ] Package exports updated
+- [ ] Migration documented in each package's CHANGELOG
+- [ ] No regressions in existing functionality
 
 ---
 
-### Task 2.2: Deprecated Code Archival
+### Task 2.2: Deprecated Code Cleanup
 **Agent**: `architect-reviewer`
 **Duration**: 1 day
 
 **Deliverables**:
-- Archive of truly obsolete code (separate branch/tag)
-- Documentation explaining what was archived and why
-- Clean `src-deprecated/` removal
+- Verification that migrated files work in new locations
+- Deletion of empty/obsolete files
+- Complete removal of `src-deprecated/` directory
+- Archive branch for audit trail
+
+**Files to Delete Immediately** (~6,842 lines):
+
+**Already Migrated** (verify first - 6,310 lines):
+1. `midi/devices/s3000xl.ts` (5,364 lines) → Already in sampler-devices
+2. `midi/akai-s3000xl.ts` (383 lines) → Already in sampler-devices
+3. `midi/akai-s56k-sysex.ts` (237 lines) → Already in sampler-devices
+4. `lib/lib-translate-s3k.ts` (148 lines) → Already in sampler-translate
+5. `gen/gen-s3000xl-device.ts` (178 lines) → Already in sampler-devices
+
+**Empty/Stub Files** (11 lines):
+6. `model/progress.ts` (0 lines)
+7. `midi/sysex.ts` (0 lines)
+8. `app/mapper/map-app.ts` (2 lines)
+9. `ts/main.ts` (3 lines)
+10. `ts/info.ts` (6 lines)
 
 **Process**:
-1. Create `archive/deprecated-2025-10` branch
-2. Move obsolete files to archive
-3. Document reasoning in archive README
-4. Delete `src-deprecated/` from main branch
+1. **VERIFY migrated files work** - Run tests, check imports
+2. Create archive branch `archive/src-deprecated-2025-10`
+3. Delete verified migrated files from src-deprecated/
+4. Delete empty/stub files
+5. Verify remaining src-deprecated/ is ONLY attic + empty dirs
+6. Delete entire `src-deprecated/` directory
+7. Update root tsconfig.json to remove deprecated paths
+8. Document archive location in project README
 
 **Acceptance Criteria**:
-- `src-deprecated/` directory removed from main branch
-- Archive accessible via Git tag/branch
-- Clear documentation of archival decisions
+- [ ] All migrated code verified working in new locations
+- [ ] Archive branch created with full src-deprecated/ history
+- [ ] `src-deprecated/` directory completely removed
+- [ ] No broken imports anywhere in codebase
+- [ ] Root tsconfig.json cleaned up
+- [ ] Archive documented in README
 
 ---
 
@@ -509,17 +627,33 @@ done
 - Integration test results
 - Regression test report
 - Migration validation document
+- Build verification
 
 **Tests to Run**:
-- All package builds
-- All existing tests pass
-- Cross-package dependencies work
-- Binary bundling still functional
+```bash
+# Full clean build
+pnpm clean
+pnpm install
+pnpm run build --recursive
+
+# Run all tests
+pnpm test --recursive
+
+# Verify cross-package dependencies
+pnpm exec tsc --noEmit
+
+# Verify no deprecated imports remain
+grep -r "src-deprecated" . --exclude-dir=node_modules || echo "Clean!"
+```
 
 **Acceptance Criteria**:
-- Zero regressions from migration
-- All tests pass
-- Build succeeds for all packages
+- [ ] Zero regressions from migration
+- [ ] All tests pass (existing + new)
+- [ ] Build succeeds for all packages (including sampler-attic)
+- [ ] No references to src-deprecated/ in code
+- [ ] Cross-package dependencies work
+- [ ] Binary bundling still functional
+- [ ] Migration validation report completed
 
 ---
 
