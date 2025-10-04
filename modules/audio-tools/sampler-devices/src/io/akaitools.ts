@@ -6,30 +6,20 @@ import {
     KeygroupHeader,
     parseKeygroupHeader,
     parseProgramHeader,
-    ProgramHeader, SampleHeader
-} from "@oletizi/sampler-devices/s3k";
-import {Program, Keygroup} from "@/client/client-akai-s3000xl.js";
-
-import {
+    ProgramHeader,
+    SampleHeader,
     AkaiDisk,
     AkaiDiskResult,
     AkaiPartition,
-    AkaiProgramFile as AkaiProgramFileBase,
+    AkaiProgramFile,
     AkaiRecord,
     AkaiRecordResult,
     AkaiRecordType,
     AkaiToolsConfig,
     RemoteDisk,
     RemoteVolumeResult
-} from "@oletizi/sampler-devices/s3k";
-
-// Local version with wrapper classes instead of headers
-interface AkaiProgramFile {
-    program: Program
-    keygroups: Keygroup[]
-}
+} from "@/index.js";
 import {Writable} from "stream";
-import {Device} from "@/client/client-akai-s3000xl.js";
 
 
 export const CHUNK_LENGTH = 384
@@ -67,6 +57,7 @@ export interface Akaitools {
     akaiWrite: (sourcePath: string, targetPath: string, partition?: number) => Promise<ExecutionResult>
     akaiRead: (sourcePath: string, targetPath: string, partition?: number, recursive?: boolean) => Promise<ExecutionResult>
     wav2Akai: (sourcePath: string, targetPath: string, targetName: string) => Promise<ExecutionResult>
+    akai2Wav: (sourcePath: string) => Promise<ExecutionResult>
     akaiList: (akaiPath: string, partition?: number) => Promise<AkaiRecordResult>
     remoteSync: () => Promise<ExecutionResult>
 
@@ -139,6 +130,10 @@ class BasicAkaiTools implements Akaitools {
 
     wav2Akai(sourcePath: string, targetPath: string, targetName: string): Promise<ExecutionResult> {
         return wav2Akai(this.c, sourcePath, targetPath, targetName);
+    }
+
+    akai2Wav(sourcePath: string): Promise<ExecutionResult> {
+        return akai2Wav(this.c, sourcePath);
     }
 
     akaiList(akaiPath: string, partition?: number): Promise<AkaiRecordResult> {
@@ -282,7 +277,7 @@ async function readAkaiDisk(c: AkaiToolsConfig, listFunction: Function) {
     // const rv: AkaiDiskResult = {data: disk}
 
     for (let i = 1; i < 50; i++) { // partitions start at 1. Asking for partition 0 is the same as asking for partition 1
-        const result = await listFunction(c, '/', i)//akaiList(c, '/', i)
+        const result = await listFunction('/', i)//akaiList(c, '/', i)
         if (result.errors.length > 0) {
             // This is what akailist does when the partition doesn't exist
             if (result.errors[0].message.includes('Operation not supported by device')) {
@@ -344,19 +339,18 @@ async function readAkaiProgram(file: string): Promise<AkaiProgramFile> {
         keygroups.push(kg)
     }
 
-    const device = {} as Device
     const rv: AkaiProgramFile = {
-        keygroups: keygroups.map(kg => new Keygroup(device, kg)),
-        program: new Program(device, program)
+        keygroups: keygroups,
+        program: program
     }
     return rv
 }
 
 async function writeAkaiProgram(file: string, p: AkaiProgramFile) {
 
-    const nibbles = p.program.getHeader().raw.slice(RAW_LEADER)
+    const nibbles = p.program.raw.slice(RAW_LEADER)
     for (let i = 0; i < p.keygroups.length; i++) {
-        const kgData = p.keygroups[i].getHeader().raw.slice(RAW_LEADER)
+        const kgData = p.keygroups[i].raw.slice(RAW_LEADER)
         for (let j = 0; j < kgData.length; j++) {
             // nibbles[KEYGROUP1_START_OFFSET + KEYGROUP_LENGTH * i  + j] = kgData[j]
             nibbles[CHUNK_LENGTH + CHUNK_LENGTH * i + j] = kgData[j]
@@ -422,6 +416,20 @@ async function wav2Akai(c: AkaiToolsConfig, sourcePath: string, targetPath: stri
     return doSpawn(
         path.join(c.akaiToolsPath, 'wav2akai'),
         ['-n', targetName, '-d', `"${targetPath}"`, `"${sourcePath}"`]
+    )
+}
+
+/**
+ * Convert an Akai .a3s sample file to WAV format
+ * Note: Outputs to current working directory with same basename + .wav extension
+ * @param c Akai tools configuration
+ * @param sourcePath path to .a3s file
+ */
+async function akai2Wav(c: AkaiToolsConfig, sourcePath: string) {
+    process.env['PERL5LIB'] = c.akaiToolsPath
+    return doSpawn(
+        path.join(c.akaiToolsPath, 'akai2wav'),
+        [`"${sourcePath}"`]
     )
 }
 
