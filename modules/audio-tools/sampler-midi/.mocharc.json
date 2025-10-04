@@ -2,5 +2,5 @@
   "require": "tsx",
   "extensions": ["ts", "tsx"],
   "spec": "test/**/*.test.{ts,tsx}",
-  "node-option": ["import=tsx", "loader=tsx"]
+  "node-option": ["import=tsx"]
 }

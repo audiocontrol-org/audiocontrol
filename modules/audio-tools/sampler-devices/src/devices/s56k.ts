@@ -26,7 +26,7 @@ function writeByte(buf: Buffer, n: number, offset: number): number {
     return 1
 }
 
-function readByte(buf, offset): number {
+function readByte(buf: Buffer, offset: number): number {
     return buf.readInt8(offset)
 }
 
@@ -208,7 +208,7 @@ const programSpec = ["pad1", "programNumber", "keygroupCount", "pad2", "pad3", "
 export function newProgramChunk(): ProgramChunk {
     const chunkName = [0x70, 0x72, 0x67, 0x20] // 'prg '
     const chunk = newChunkFromSpec(chunkName, 6, programSpec)
-    return chunk as ProgramChunk
+    return chunk as unknown as ProgramChunk
 }
 
 export interface Output {
@@ -229,7 +229,7 @@ const outputSpec = ['pad1', 'loudness', 'ampMod1', 'ampMod2', 'panMod1', 'panMod
 export function newOutputChunk(): OutputChunk {
     const chunkName = [0x6f, 0x75, 0x74, 0x20]   // 'out '
     const chunk = newChunkFromSpec(chunkName, 8, outputSpec)
-    return chunk as OutputChunk
+    return chunk as unknown as OutputChunk
 }
 
 export interface Tune {
@@ -283,7 +283,7 @@ export function newTuneChunk(): TuneChunk {
         'pad4'
     ])
 
-    return chunk as TuneChunk
+    return chunk as unknown as TuneChunk
 }
 
 export interface Lfo1 {
@@ -306,7 +306,7 @@ export function newLfo1Chunk(): Lfo1Chunk {
     const chunkName = [0x6c, 0x66, 0x6f, 0x20] // 'lfo '
     const chunk = newChunkFromSpec(chunkName, 14, ['pad1', 'waveform', 'rate', 'delay', 'depth', 'sync', 'pad2', 'modwheel', 'aftertouch',
         'rateMod', 'delayMod', 'depthMod'])
-    return chunk as Lfo1Chunk
+    return chunk as unknown as Lfo1Chunk
 }
 
 
@@ -340,7 +340,7 @@ export function newLfo2Chunk(): Lfo2Chunk {
         'delayMod',
         'depthMod'
     ])
-    return chunk as Lfo2Chunk
+    return chunk as unknown as Lfo2Chunk
 }
 
 export interface Mods {
@@ -412,7 +412,7 @@ export function newModsChunk(): ModsChunk {
         'pad20',
         'filterModInput3'
     ])
-    return chunk as ModsChunk
+    return chunk as unknown as ModsChunk
 }
 
 
@@ -664,12 +664,14 @@ export function newKeygroupChunk() {
     // const keygroupLength = 344
     const keygroupLength = 352
     return {
+        chunkName: keygroupChunkName,
+        name: bytes2String(keygroupChunkName),
         lengthInBytes: keygroupLength,
-        kloc: newChunkFromSpec(klocChunkName, 16, klocChunkSpec) as KlocChunk,
-        ampEnvelope: newChunkFromSpec(envChunkName, 18, ampEnvelopeChunkSpec) as AmpEnvelopeChunk,
-        filterEnvelope: newChunkFromSpec(envChunkName, 18, filterEnvelopeChunkName) as FilterEnvelopeChunk,
-        auxEnvelope: newChunkFromSpec(envChunkName, 18, auxEnvelopeChunkSpec) as AuxEnvelopeChunk,
-        filter: newChunkFromSpec(filterChunkName, 10, filterChunkSpec) as FilterChunk,
+        kloc: newChunkFromSpec(klocChunkName, 16, klocChunkSpec) as unknown as KlocChunk,
+        ampEnvelope: newChunkFromSpec(envChunkName, 18, ampEnvelopeChunkSpec) as unknown as AmpEnvelopeChunk,
+        filterEnvelope: newChunkFromSpec(envChunkName, 18, filterEnvelopeChunkName) as unknown as FilterEnvelopeChunk,
+        auxEnvelope: newChunkFromSpec(envChunkName, 18, auxEnvelopeChunkSpec) as unknown as AuxEnvelopeChunk,
+        filter: newChunkFromSpec(filterChunkName, 10, filterChunkSpec) as unknown as FilterChunk,
         zone1: zones[0],
         zone2: zones[1],
         zone3: zones[2],
@@ -776,7 +778,7 @@ export interface AkaiS56kProgram {
     apply(mods: any): void;
 }
 
-export function newProgramFromBuffer(buf): AkaiS56kProgram {
+export function newProgramFromBuffer(buf: Buffer): AkaiS56kProgram {
     const program = new BasicProgram()
     program.parse(buf)
     return program
@@ -797,8 +799,8 @@ class BasicProgram implements AkaiS56kProgram {
     private readonly lfo2: Lfo2Chunk
     private readonly mods: ModsChunk
     private readonly keygroups: KeygroupChunk[] = []
-    private originalBuffer: Buffer;
-    private firstKeygroupOffset: number;
+    private originalBuffer!: Buffer;
+    private firstKeygroupOffset!: number;
 
     constructor() {
         this.header = newHeaderChunk()

@@ -10,7 +10,7 @@ import fs from "fs";
 import path from "path";
 
 const out = fs.createWriteStream(path.join('src', 'devices', 's3000xl.ts'))
-const specFile = 'src-deprecated/gen/akai-s3000xl.spec.yaml'
+const specFile = 'src/gen/akai-s3000xl.spec.yaml'
 
 doIt().catch((e) => console.error(e))
 
@@ -25,8 +25,6 @@ async function doIt() {
         out.write(await genParser(spec))
         out.write('\n\n')
         out.write(await genSetters(spec))
-        out.write('\n\n')
-        out.write(await genClass(spec))
         out.write('\n\n')
     }
 }

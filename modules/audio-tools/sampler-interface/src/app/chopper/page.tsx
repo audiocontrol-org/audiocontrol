@@ -1,7 +1,6 @@
 "use client"
 import {SampleSelectScreen} from "@/app/chopper/sample-select-screen";
-import {newClientConfig} from "@oletizi/sampler-lib"
-import {newClientOutput} from "@/lib/process-output";
+import {newClientConfig, newClientOutput} from "@oletizi/sampler-lib"
 import {ChopApp} from "@/app/chopper/chop-app";
 import {ChopDetailScreen} from "@/app/chopper/chop-detail-screen";
 import React, {useState} from "react";

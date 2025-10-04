@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/sampler-interface",
-  "version": "0.0.1",
+  "version": "2.0.0",
   "description": "UI for interacting with old samplers",
   "main": "src/index.js",
   "type": "module",

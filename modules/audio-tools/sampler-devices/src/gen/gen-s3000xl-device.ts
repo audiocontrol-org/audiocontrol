@@ -26,10 +26,10 @@ export async function readSpecs(file: string) {
 export function genImports() {
     return `//
 // GENERATED ${new Date()}. DO NOT EDIT.
-//    
+//
 import {byte2nibblesLE, bytes2numberLE, nibbles2byte, newClientOutput} from "@oletizi/sampler-lib"
-import {Device, nextByte, akaiByte2String, string2AkaiBytes} from "@/client/client-akai-s3000xl.js"
-    
+import {nextByte, akaiByte2String, string2AkaiBytes} from "@/utils/akai-utils.js"
+
 `
 }
 

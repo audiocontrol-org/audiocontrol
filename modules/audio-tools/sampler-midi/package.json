@@ -1,6 +1,7 @@
 {
   "name": "@oletizi/sampler-midi",
-  "version": "0.0.1",
+  "version": "2.0.0",
+  "private": true,
   "description": "MIDI communication clients for hardware samplers",
   "main": "./dist/index.js",
   "exports": {

@@ -1,5 +1,5 @@
-import {NextRequest, NextResponse} from 'next/server.js';
-import {getSessionData, getSessionId} from '@/lib-session.js';
+import {NextRequest, NextResponse} from 'next/server';
+import {getSessionData, getSessionId} from '@/lib-session';
 import {newServerConfig} from "@oletizi/sampler-lib"
 import path from "path";
 import fs from "fs/promises";
