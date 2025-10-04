@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/sampler-devices",
-  "version": "6.0.0",
+  "version": "7.0.0",
   "description": "Module for communicating with old midi devices",
   "main": "./dist/index.js",
   "exports": {
