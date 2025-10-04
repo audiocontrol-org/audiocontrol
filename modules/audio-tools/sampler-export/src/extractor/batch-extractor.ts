@@ -56,32 +56,71 @@ export interface BatchExtractionResult {
  * Get default source directory
  */
 function getDefaultSourceDir(): string {
-    return resolve(homedir(), ".audio-tools", "disk-images");
+    return resolve(homedir(), ".audiotools", "backup");
 }
 
 /**
  * Get default destination directory
  */
 function getDefaultDestDir(): string {
-    return resolve(homedir(), ".audio-tools", "extracted");
+    return resolve(homedir(), ".audiotools", "sampler-export", "extracted");
 }
 
 /**
- * Find all disk images in a directory
+ * Get the most recent date-based subdirectory
  */
-function findDiskImages(dir: string): string[] {
+function getMostRecentDateDir(parentDir: string): string | null {
+    if (!existsSync(parentDir)) {
+        return null;
+    }
+
+    try {
+        const entries = readdirSync(parentDir, { withFileTypes: true });
+        const dateDirs = entries
+            .filter((e) => e.isDirectory() && /^\d{4}-\d{2}-\d{2}$/.test(e.name))
+            .map((e) => e.name)
+            .sort()
+            .reverse(); // Most recent first
+
+        return dateDirs.length > 0 ? join(parentDir, dateDirs[0]) : null;
+    } catch (err) {
+        return null;
+    }
+}
+
+/**
+ * Map sampler type to backup directory name
+ */
+function getSamplerBackupDir(samplerType: SamplerType): string {
+    // Map s5k to pi-scsi2 (S5000/S6000 connected via PiSCSI)
+    return samplerType === "s5k" ? "pi-scsi2" : "s3k";
+}
+
+/**
+ * Find all disk images in a directory (handles date-based subdirectories)
+ */
+function findDiskImages(sourceDir: string, samplerType: SamplerType): string[] {
     const results: string[] = [];
 
-    if (!existsSync(dir)) {
+    const backupDir = getSamplerBackupDir(samplerType);
+    const typeDir = join(sourceDir, backupDir);
+
+    if (!existsSync(typeDir)) {
+        return results;
+    }
+
+    // Get most recent date directory
+    const recentDir = getMostRecentDateDir(typeDir);
+    if (!recentDir) {
         return results;
     }
 
     try {
-        const files = readdirSync(dir);
+        const files = readdirSync(recentDir);
         for (const file of files) {
             const ext = extname(file).toLowerCase();
             if (ext === ".hds" || ext === ".img") {
-                results.push(join(dir, file));
+                results.push(join(recentDir, file));
             }
         }
     } catch (err) {
@@ -163,8 +202,7 @@ export async function extractBatch(
     const disks: DiskInfo[] = [];
 
     for (const samplerType of samplerTypes) {
-        const typeDir = join(sourceDir, samplerType);
-        const diskFiles = findDiskImages(typeDir);
+        const diskFiles = findDiskImages(sourceDir, samplerType);
 
         for (const diskPath of diskFiles) {
             const diskStat = statSync(diskPath);
@@ -182,7 +220,8 @@ export async function extractBatch(
     if (disks.length === 0) {
         console.log("No disk images found.");
         console.log(`  Looking in: ${sourceDir}`);
-        console.log(`  Expected structure: ${sourceDir}/s5k/ and ${sourceDir}/s3k/`);
+        console.log(`  Expected structure: ${sourceDir}/pi-scsi2/YYYY-MM-DD/*.hds (for S5K)`);
+        console.log(`  Default location: ~/.audiotools/backup/`);
         return result;
     }
 

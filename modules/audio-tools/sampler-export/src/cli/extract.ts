@@ -59,9 +59,9 @@ program
 // Batch extraction command
 program
     .command("batch")
-    .description("Extract all disk images from well-known directories")
-    .option("--source <path>", "Source directory (default: ~/.audio-tools/disk-images)")
-    .option("--dest <path>", "Destination directory (default: ~/.audio-tools/extracted)")
+    .description("Extract all disk images from backup directories")
+    .option("--source <path>", "Source directory (default: ~/.audiotools/backup)")
+    .option("--dest <path>", "Destination directory (default: ~/.audiotools/sampler-export/extracted)")
     .option("--samplers <types>", "Comma-separated sampler types: s5k,s3k (default: s5k,s3k)")
     .option("--force", "Force re-extraction of all disks")
     .option("--no-sfz", "Skip SFZ conversion")
