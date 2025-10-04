@@ -2,8 +2,8 @@ import {byte2nibblesLE, bytes2numberLE, nibbles2byte, newClientOutput, ProcessOu
 import {
     KeygroupHeader, parseKeygroupHeader,
     parseProgramHeader,
-    parseSampleHeader, Program,
-    ProgramHeader, AkaiS3kSample,
+    parseSampleHeader,
+    ProgramHeader,
     SampleHeader,
     akaiByte2String,
     string2AkaiBytes,
@@ -353,3 +353,72 @@ function getOpcode(message: number[]) {
     }
     return rv
 }
+
+export class Program {
+    private readonly device: Device
+    private readonly header: ProgramHeader
+
+    constructor(device: Device, header: ProgramHeader) {
+        this.device = device
+        this.header = header
+    }
+
+    getHeader(): ProgramHeader {
+        return this.header
+    }
+
+    async save() {
+        return this.device.sendRaw(this.header.raw)
+    }
+
+    getProgramName(): string {
+        return this.header.PRNAME
+    }
+}
+
+export class Keygroup {
+    private readonly device: Device
+    private readonly header: KeygroupHeader
+
+    constructor(device: Device, header: KeygroupHeader) {
+        this.device = device
+        this.header = header
+    }
+
+    getHeader(): KeygroupHeader {
+        return this.header
+    }
+
+    async save() {
+        return this.device.sendRaw(this.header.raw)
+    }
+}
+
+export class AkaiS3kSample {
+    private readonly device: Device
+    private readonly header: SampleHeader
+
+    constructor(device: Device, header: SampleHeader) {
+        this.device = device
+        this.header = header
+    }
+
+    getHeader(): SampleHeader {
+        return this.header
+    }
+
+    async save() {
+        return this.device.sendRaw(this.header.raw)
+    }
+
+    getSampleName(): string {
+        return this.header.SHNAME
+    }
+
+    getPitch(): number {
+        return this.header.SPITCH
+    }
+}
+
+// Alias for backward compatibility
+export const Sample = AkaiS3kSample

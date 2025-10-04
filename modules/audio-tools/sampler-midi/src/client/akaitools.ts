@@ -3,18 +3,18 @@ import {ChildProcess, spawn} from 'child_process'
 import path from "pathe";
 import {byte2nibblesLE, nibbles2byte, newServerConfig} from "@oletizi/sampler-lib"
 import {
-    Keygroup,
     KeygroupHeader,
     parseKeygroupHeader,
-    parseProgramHeader, Program,
+    parseProgramHeader,
     ProgramHeader, SampleHeader
 } from "@oletizi/sampler-devices/s3k";
+import {Program, Keygroup} from "@/client/client-akai-s3000xl.js";
 
 import {
     AkaiDisk,
     AkaiDiskResult,
     AkaiPartition,
-    AkaiProgramFile,
+    AkaiProgramFile as AkaiProgramFileBase,
     AkaiRecord,
     AkaiRecordResult,
     AkaiRecordType,
@@ -22,6 +22,12 @@ import {
     RemoteDisk,
     RemoteVolumeResult
 } from "@oletizi/sampler-devices/s3k";
+
+// Local version with wrapper classes instead of headers
+interface AkaiProgramFile {
+    program: Program
+    keygroups: Keygroup[]
+}
 import {Writable} from "stream";
 import {Device} from "@/client/client-akai-s3000xl.js";
 
