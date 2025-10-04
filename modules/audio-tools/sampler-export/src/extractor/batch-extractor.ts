@@ -67,25 +67,10 @@ function getDefaultDestDir(): string {
 }
 
 /**
- * Get the most recent date-based subdirectory
+ * Get the rsnapshot interval directory (defaults to daily.0 which is most recent)
  */
-function getMostRecentDateDir(parentDir: string): string | null {
-    if (!existsSync(parentDir)) {
-        return null;
-    }
-
-    try {
-        const entries = readdirSync(parentDir, { withFileTypes: true });
-        const dateDirs = entries
-            .filter((e) => e.isDirectory() && /^\d{4}-\d{2}-\d{2}$/.test(e.name))
-            .map((e) => e.name)
-            .sort()
-            .reverse(); // Most recent first
-
-        return dateDirs.length > 0 ? join(parentDir, dateDirs[0]) : null;
-    } catch (err) {
-        return null;
-    }
+function getRsnapshotIntervalDir(backupRoot: string, interval: string = "daily.0"): string {
+    return join(backupRoot, interval);
 }
 
 /**
@@ -97,30 +82,26 @@ function getSamplerBackupDir(samplerType: SamplerType): string {
 }
 
 /**
- * Find all disk images in a directory (handles date-based subdirectories)
+ * Find all disk images in rsnapshot backup structure
  */
 function findDiskImages(sourceDir: string, samplerType: SamplerType): string[] {
     const results: string[] = [];
 
+    // Rsnapshot structure: sourceDir/daily.0/pi-scsi2/*.hds
+    const intervalDir = getRsnapshotIntervalDir(sourceDir);
     const backupDir = getSamplerBackupDir(samplerType);
-    const typeDir = join(sourceDir, backupDir);
+    const diskDir = join(intervalDir, backupDir);
 
-    if (!existsSync(typeDir)) {
-        return results;
-    }
-
-    // Get most recent date directory
-    const recentDir = getMostRecentDateDir(typeDir);
-    if (!recentDir) {
+    if (!existsSync(diskDir)) {
         return results;
     }
 
     try {
-        const files = readdirSync(recentDir);
+        const files = readdirSync(diskDir);
         for (const file of files) {
             const ext = extname(file).toLowerCase();
             if (ext === ".hds" || ext === ".img") {
-                results.push(join(recentDir, file));
+                results.push(join(diskDir, file));
             }
         }
     } catch (err) {
@@ -220,8 +201,9 @@ export async function extractBatch(
     if (disks.length === 0) {
         console.log("No disk images found.");
         console.log(`  Looking in: ${sourceDir}`);
-        console.log(`  Expected structure: ${sourceDir}/pi-scsi2/YYYY-MM-DD/*.hds (for S5K)`);
-        console.log(`  Default location: ~/.audiotools/backup/`);
+        console.log(`  Expected structure: ${sourceDir}/daily.0/pi-scsi2/*.hds (for S5K)`);
+        console.log(`  Default location: ~/.audiotools/backup/ (rsnapshot backup root)`);
+        console.log(`  Run 'akai-backup batch' to create backups first`);
         return result;
     }
 

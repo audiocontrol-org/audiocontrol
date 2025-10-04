@@ -1,0 +1,56 @@
+{
+  "name": "@oletizi/sampler-backup",
+  "version": "1.0.0",
+  "description": "Akai sampler backup utilities for hardware samplers via PiSCSI",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "bin": {
+    "akai-backup": "./dist/cli/backup.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest --watch",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "typecheck": "tsc --noEmit",
+    "backup:batch": "node dist/cli/backup.js batch"
+  },
+  "keywords": [
+    "akai",
+    "sampler",
+    "backup",
+    "piscsi",
+    "s5000",
+    "s6000",
+    "s3000xl",
+    "midi"
+  ],
+  "author": "Orion Letizi",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@oletizi/sampler-devices": "^7.0.0",
+    "@oletizi/sampler-lib": "^7.0.0",
+    "commander": "^12.1.0",
+    "pathe": "^1.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "@vitest/coverage-v8": "^1.2.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^5.0.0",
+    "vite-plugin-dts": "^4.5.4",
+    "vitest": "^1.2.0"
+  }
+}

@@ -17,7 +17,8 @@
     "version:bump": "tsx scripts/bump-version.ts",
     "publish:modules": "tsx scripts/publish-modules.ts",
     "release": "tsx scripts/release.ts",
-    "dev": "next dev"
+    "dev": "next dev",
+    "backup-and-extract": "pnpm --filter sampler-backup backup:batch && pnpm --filter sampler-export extract:batch"
   },
   "keywords": [
     "audio",

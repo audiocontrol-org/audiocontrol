@@ -22,7 +22,8 @@
   "scripts": {
     "test": "c8 mocha",
     "build": "npm test && tsup",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "extract:batch": "node dist/cli/extract.cjs batch"
   },
   "author": "Orion Letizi",
   "license": "Apache-2.0",

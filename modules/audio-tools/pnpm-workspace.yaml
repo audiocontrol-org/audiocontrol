@@ -4,5 +4,6 @@ packages:
   - 'sampler-midi'
   - 'sampler-translate'
   - 'sampler-export'
+  - 'sampler-backup'
   - 'lib-runtime'
   # sampler-interface excluded - UI app with missing dependencies
