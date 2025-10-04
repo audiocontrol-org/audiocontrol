@@ -28,7 +28,7 @@ export interface DiskInfo {
     mtime: Date;
 }
 
-export type ExtractionStatus = "success" | "skipped" | "updated" | "failed";
+export type ExtractionStatus = "success" | "skipped" | "updated" | "failed" | "warning";
 
 export interface DiskExtractionStatus {
     disk: DiskInfo;
@@ -43,6 +43,7 @@ export interface BatchExtractionResult {
     updated: number;
     skipped: number;
     failed: number;
+    warnings: number;
     aggregateStats: {
         totalSamples: number;
         totalPrograms: number;
@@ -128,7 +129,25 @@ function findDiskImages(sourceDir: string, samplerType: SamplerType): string[] {
 }
 
 /**
- * Determine if a disk needs extraction based on timestamps
+ * Check if output directory has extracted content
+ */
+function hasExtractedContent(outputDir: string): boolean {
+    try {
+        // Check if raw subdirectory exists and has files
+        const rawDir = join(outputDir, "raw");
+        if (!existsSync(rawDir)) {
+            return false;
+        }
+
+        const files = readdirSync(rawDir);
+        return files.length > 0;
+    } catch (err) {
+        return false;
+    }
+}
+
+/**
+ * Determine if a disk needs extraction based on timestamps and content
  */
 function needsExtraction(
     diskPath: string,
@@ -143,6 +162,11 @@ function needsExtraction(
     // Check if output exists
     if (!existsSync(outputDir)) {
         return { extract: true, reason: "new" };
+    }
+
+    // Check if output directory has actual content
+    if (!hasExtractedContent(outputDir)) {
+        return { extract: true, reason: "empty (no content)" };
     }
 
     // Compare timestamps
@@ -184,6 +208,7 @@ export async function extractBatch(
         updated: 0,
         skipped: 0,
         failed: 0,
+        warnings: 0,
         aggregateStats: {
             totalSamples: 0,
             totalPrograms: 0,
@@ -304,12 +329,28 @@ export async function extractBatch(
                         result.aggregateStats.totalDecentSampler +=
                             extractResult.stats.dspresetCreated;
                     } else {
-                        status.status = "failed";
-                        status.reason = extractResult.errors[0] || "unknown error";
-                        result.failed++;
-                        console.log(
-                            `  [${i + 1}/${typeDisks.length}] ${disk.name} ✗ failed (${status.reason})`
-                        );
+                        // Check if this is an unsupported format (warning) vs actual error (failure)
+                        const errorMsg = extractResult.errors[0] || "unknown error";
+                        const isUnsupportedFormat =
+                            errorMsg.includes("non DOS media") ||
+                            errorMsg.includes("not supported") ||
+                            errorMsg.includes("DR16 format");
+
+                        if (isUnsupportedFormat) {
+                            status.status = "warning";
+                            status.reason = errorMsg;
+                            result.warnings++;
+                            console.log(
+                                `  [${i + 1}/${typeDisks.length}] ${disk.name} ⚠ unsupported format (${status.reason})`
+                            );
+                        } else {
+                            status.status = "failed";
+                            status.reason = errorMsg;
+                            result.failed++;
+                            console.log(
+                                `  [${i + 1}/${typeDisks.length}] ${disk.name} ✗ failed (${status.reason})`
+                            );
+                        }
                     }
                 } catch (err: any) {
                     status.status = "failed";
@@ -337,6 +378,9 @@ export async function extractBatch(
     }
     if (result.skipped > 0) {
         console.log(`  Unchanged: ${result.skipped}`);
+    }
+    if (result.warnings > 0) {
+        console.log(`  Warnings: ${result.warnings} (unsupported formats)`);
     }
     if (result.failed > 0) {
         console.log(`  Failed: ${result.failed}`);

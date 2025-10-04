@@ -17,7 +17,8 @@
     "akai-extract": "./dist/cli/extract.cjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "bin"
   ],
   "scripts": {
     "test": "c8 mocha",

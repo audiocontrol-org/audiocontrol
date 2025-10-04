@@ -81,6 +81,7 @@ program
                 convertToDecentSampler: options.decentsampler !== false,
             });
 
+            // Exit with error code only for actual failures, not warnings
             if (result.failed > 0) {
                 process.exit(1);
             }

@@ -12,6 +12,7 @@ import { convertA3PToSFZ } from "@/converters/s3k-to-sfz.js";
 import { convertA3PToDecentSampler } from "@/converters/s3k-to-decentsampler.js";
 import { convertAKPToSFZ } from "@/converters/s5k-to-sfz.js";
 import { convertAKPToDecentSampler } from "@/converters/s5k-to-decentsampler.js";
+import { isDosDisk, extractDosDisk } from "@/extractor/dos-disk-extractor.js";
 
 export interface ExtractionOptions {
     diskImage: string;
@@ -65,66 +66,111 @@ export async function extractAkaiDisk(
         const diskName = basename(diskImage, extname(diskImage));
         result.diskName = diskName;
 
-        // Create output directories under disk-specific subdirectory
-        const diskOutputDir = join(outputDir, diskName);
-        result.outputDir = diskOutputDir;
+        // Check if this is a DOS/FAT disk
+        if (isDosDisk(diskImage)) {
+            if (!quiet) {
+                console.log(`Detected DOS/FAT32 formatted disk: ${diskName}`);
+            }
 
+            // Use DOS extractor for FAT-formatted disks
+            const dosResult = await extractDosDisk(diskImage, diskName, outputDir, quiet);
+
+            // Copy results from DOS extraction
+            result.outputDir = dosResult.outputDir;
+            result.errors = dosResult.errors;
+            result.stats = dosResult.stats;  // Preserve sample stats from DOS extraction
+
+            // If DOS extraction succeeded, continue with format conversions
+            if (!dosResult.success) {
+                return dosResult;
+            }
+
+            // Continue to convert samples and programs below
+            // (using the same logic as Akai native disks)
+        } else {
+            // Native Akai format disk - use akaitools
+            if (!quiet) {
+                console.log(`Reading Akai disk: ${diskImage}`);
+            }
+
+            // Create output directories under disk-specific subdirectory
+            const diskOutputDir = join(outputDir, diskName);
+            result.outputDir = diskOutputDir;
+
+            const rawDir = join(diskOutputDir, "raw");
+            const wavDir = join(diskOutputDir, "wav");
+            const sfzDir = join(diskOutputDir, "sfz");
+            const dsDir = join(diskOutputDir, "decentsampler");
+
+            mkdirSync(rawDir, { recursive: true });
+            mkdirSync(wavDir, { recursive: true });
+            mkdirSync(sfzDir, { recursive: true });
+            mkdirSync(dsDir, { recursive: true });
+
+            // Initialize akaitools
+            const config = await newAkaiToolsConfig();
+            config.diskFile = diskImage;
+            const akaitools: Akaitools = newAkaitools(config);
+
+            // Read disk contents
+            const diskResult = await akaitools.readAkaiDisk();
+
+            if (diskResult.errors.length > 0) {
+                result.errors.push(...diskResult.errors.map((e) => e.message));
+                return result;
+            }
+
+            // Extract all files from the disk
+            if (!quiet) {
+                console.log("Extracting files from disk...");
+            }
+            const extractResult = await akaitools.akaiRead("/", rawDir, undefined, true);
+
+            if (extractResult.errors.length > 0) {
+                result.errors.push(...extractResult.errors.map((e) => e.message));
+            }
+        }
+
+        // Common conversion logic for both DOS and Akai disks
+        const diskOutputDir = result.outputDir;
         const rawDir = join(diskOutputDir, "raw");
         const wavDir = join(diskOutputDir, "wav");
         const sfzDir = join(diskOutputDir, "sfz");
         const dsDir = join(diskOutputDir, "decentsampler");
 
-        mkdirSync(rawDir, { recursive: true });
-        mkdirSync(wavDir, { recursive: true });
-        mkdirSync(sfzDir, { recursive: true });
-        mkdirSync(dsDir, { recursive: true });
-
-        // Initialize akaitools
-        const config = await newAkaiToolsConfig();
-        config.diskFile = diskImage;
-        const akaitools: Akaitools = newAkaitools(config);
-
-        // Read disk contents
-        if (!quiet) {
-            console.log(`Reading Akai disk: ${diskImage}`);
-        }
-        const diskResult = await akaitools.readAkaiDisk();
-
-        if (diskResult.errors.length > 0) {
-            result.errors.push(...diskResult.errors.map((e) => e.message));
-            return result;
-        }
-
-        // Extract all files from the disk
-        if (!quiet) {
-            console.log("Extracting files from disk...");
-        }
-        const extractResult = await akaitools.akaiRead("/", rawDir, undefined, true);
-
-        if (extractResult.errors.length > 0) {
-            result.errors.push(...extractResult.errors.map((e) => e.message));
-        }
-
-        // Convert .a3s samples to WAV
-        if (!quiet) {
-            console.log("Converting Akai samples to WAV...");
-        }
+        // Convert .a3s samples to WAV (only for native Akai disks)
         const a3sFiles = findFiles(rawDir, ".a3s");
-        result.stats.samplesExtracted = a3sFiles.length;
 
-        for (const a3sFile of a3sFiles) {
-            try {
-                // akai2wav outputs to cwd, so we need to cd to wavDir first
-                const origCwd = process.cwd();
-                process.chdir(wavDir);
-
-                await akaitools.akai2Wav(a3sFile);
-                result.stats.samplesConverted++;
-
-                process.chdir(origCwd);
-            } catch (err: any) {
-                result.errors.push(`Failed to convert ${basename(a3sFile)}: ${err.message}`);
+        if (a3sFiles.length > 0) {
+            // Native Akai disk with .a3s files - convert using akaitools
+            if (!quiet) {
+                console.log("Converting Akai samples to WAV...");
             }
+
+            // Akaitools is only available for native Akai disks
+            const config = await newAkaiToolsConfig();
+            config.diskFile = diskImage;
+            const akaitools: Akaitools = newAkaitools(config);
+
+            result.stats.samplesExtracted = a3sFiles.length;
+
+            for (const a3sFile of a3sFiles) {
+                try {
+                    // akai2wav outputs to cwd, so we need to cd to wavDir first
+                    const origCwd = process.cwd();
+                    process.chdir(wavDir);
+
+                    await akaitools.akai2Wav(a3sFile);
+                    result.stats.samplesConverted++;
+
+                    process.chdir(origCwd);
+                } catch (err: any) {
+                    result.errors.push(`Failed to convert ${basename(a3sFile)}: ${err.message}`);
+                }
+            }
+        } else if (isDosDisk(diskImage)) {
+            // DOS disk stats already set by DOS extractor
+            // (samplesExtracted and samplesConverted already populated)
         }
 
         // Find and convert programs
