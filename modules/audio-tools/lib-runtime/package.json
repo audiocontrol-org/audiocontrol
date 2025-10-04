@@ -11,11 +11,11 @@
   ],
   "scripts": {
     "test": "c8 mocha",
-    "build": "npm test & tsup",
-    "do:publish": "npm run build && npm version patch && npm publish --access=public --auth=legacy"
+    "build": "npm test && tsup",
+    "clean": "rm -rf dist"
   },
   "author": "Orion Letizi",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.8",
     "@types/chai": "^5.0.1",

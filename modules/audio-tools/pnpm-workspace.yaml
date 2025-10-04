@@ -1,0 +1,7 @@
+packages:
+  - 'sampler-lib'
+  - 'sampler-devices'
+  - 'sampler-midi'
+  - 'sampler-translate'
+  - 'sampler-interface'
+  - 'lib-runtime'

@@ -12,11 +12,11 @@
   "scripts": {
     "test": "c8 mocha",
     "build": "tsup",
-    "test:integration": "npm run build && ",
-    "do:publish": "npm test && npm version patch && npm publish --access=public --auth=legacy"
+    "test:integration": "npm run build",
+    "clean": "rm -rf dist"
   },
   "author": "Orion Letizi",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "dependencies": {
     "@oletizi/sampler-devices": "^0.0.19",
     "chai-as-promised": "^8.0.1",

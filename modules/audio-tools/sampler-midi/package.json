@@ -20,10 +20,10 @@
     "test": "c8 mocha",
     "integration": "c8 mocha test/integration/**/*.test.ts",
     "build": "npm test && tsup",
-    "do:publish": "npm run build && npm version patch && npm publish --access=public --auth=legacy"
+    "clean": "rm -rf dist"
   },
   "author": "Orion Letizi",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.8",
     "@types/chai": "^5.0.1",
