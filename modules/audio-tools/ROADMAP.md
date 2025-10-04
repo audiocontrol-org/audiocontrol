@@ -35,6 +35,22 @@ Provide zero-configuration, user-friendly tools for backing up and extracting Ak
 
 ---
 
+## Code Cleanup
+
+**Goal:** Clean up and complete ongoing refactoring before wider distribution
+
+**Requirements:**
+- [ ] Complete ongoing refactoring work
+- [ ] Improve code organization and modularity
+- [ ] Add comprehensive error handling
+- [ ] Improve logging and user feedback
+- [ ] Add tests for critical paths
+- [ ] Document public APIs
+- [ ] Remove dead code and unused dependencies
+- [ ] Standardize file and directory structure
+
+---
+
 ## Local Media Support
 
 **Target Users:** Most sampler users don't have networked PiSCSI. They use:
