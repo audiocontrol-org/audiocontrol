@@ -31,10 +31,10 @@
     "test": "c8 mocha",
     "integration": "c8 mocha test/integration/**/*.test.ts",
     "build": "npm test && tsup",
-    "do:publish": "npm run build && npm version patch && npm publish --access=public --auth=legacy"
+    "clean": "rm -rf dist"
   },
   "author": "Orion Letizi",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.8",
     "@types/midi": "^2.0.3",
@@ -54,7 +54,6 @@
   "dependencies": {
     "@oletizi/sampler-lib": "^1.0.11",
     "@types/chai": "^5.0.1",
-    "@types/mocha": "^10.0.10",
-    "midi": "^2.0.0"
+    "@types/mocha": "^10.0.10"
   }
 }

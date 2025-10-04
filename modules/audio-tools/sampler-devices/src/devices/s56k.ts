@@ -1,7 +1,4 @@
-import {newServerOutput} from "@/lib/process-output";
-import {Result} from "@/lib/lib-core";
-
-const out = newServerOutput(false)
+import {Result} from "@oletizi/sampler-lib";
 
 export interface AkaiS56ProgramResult extends Result {
     data: AkaiS56kProgram[]
@@ -108,29 +105,15 @@ export function parseChunkHeader(buf: Buffer, chunk: Chunk, offset: number): num
 }
 
 function readFromSpec(buf, obj: any, spec: string[], offset): number {
-    const chunkNameString = bytes2String(obj.chunkName)
     const checkpoint = offset
-    const verbose = chunkNameString === 'zone'
-    if (verbose) {
-        out.log(`START READING ${chunkNameString} @ offset ${offset}`)
-    }
     for (let i = 0; i < spec.length; i++, offset++) {
         try {
-            if (verbose) {
-                out.log(`  reading at offset: ${offset}: spec[${spec[i]}]: ${readByte(buf, offset)}`)
-            }
             obj[spec[i]] = readByte(buf, offset)
         } catch (err) {
-            out.log(`Error: i: ${i}; spec[${i}]: ${spec[i]}; offset: ${offset}`)
-            out.log(`spec: ${spec}`)
-            throw err
+            const chunkNameString = bytes2String(obj.chunkName)
+            throw new Error(`Failed to read spec field '${spec[i]}' at index ${i}, offset ${offset} for chunk '${chunkNameString}': ${err.message}`)
         }
     }
-    const bytesRead = offset - checkpoint
-    if (verbose) {
-        out.log(`END READING ${chunkNameString} @ offset ${offset}; bytes read: ${bytesRead}; reporting bytes read: ${spec.length}`)
-    }
-    // XXX: This should probably report the actual bytes read
     return spec.length
 }
 
@@ -138,36 +121,23 @@ function readFromSpec(buf, obj: any, spec: string[], offset): number {
 function writeFromSpec(buf, chunk, spec, offset): number {
     const chunkNameString = bytes2String(chunk.chunkName)
     const checkpoint = offset
-    const verbose = chunkNameString === 'zone'
     const zeroPad = chunkNameString === 'zone'
-    if (verbose) {
-        out.log(`START WRITING ${chunkNameString} @ offset ${offset}`)
-    }
+
     for (let i = 0; i < chunk.chunkName.length; i++, offset++) {
-        if (verbose) {
-            out.log(`  writing at offset: ${offset}: chunk.chunkName[${i}]: ${chunk.chunkName[i]}`)
-        }
         writeByte(buf, chunk.chunkName[i], offset)
     }
-    if (verbose) {
-        out.log(`  writing at offset ${offset}: chunk.length: ${chunk.length}`)
-    }
 
-    // !!!: This is weird. Buffer returns the offset + the bytes written, not the bytes written.
+    // Note: Buffer.writeInt32LE returns the offset + bytes written, not the bytes written
     offset = buf.writeInt32LE(chunk.length, offset)
+
     for (let i = 0; i < spec.length; i++, offset++) {
-        // XXX: Clumsy way to zero out padded bytes
+        // Zero out padded bytes for zone chunks
         if (zeroPad && spec[i].startsWith('pad')) {
             chunk[spec[i]] = 0
         }
-        if (verbose) {
-            out.log(`  writing at offset ${offset}: chunk[${spec[i]}] = ${chunk[spec[i]]}`)
-        }
         writeByte(buf, chunk[spec[i]], offset)
     }
-    if (verbose) {
-        out.log(`END WRITING ${chunkNameString} @ offset ${offset}; Returning ${offset - checkpoint} bytes written`)
-    }
+
     return offset - checkpoint
 }
 
@@ -180,8 +150,7 @@ function newChunkFromSpec(chunkName: number[], chunkLength: number, spec: string
             try {
                 checkOrThrow(buf, chunkName, offset)
             } catch (err) {
-                out.error(`Chunk name: ${chunkName} ("${chunkNameString}"), chunkLength: ${chunkLength}, spec: ${spec}`)
-                throw err
+                throw new Error(`Failed to parse chunk '${chunkNameString}': expected chunk name ${chunkName} but got mismatch at offset ${offset}: ${err.message}`)
             }
             offset += parseChunkHeader(buf, this, offset)
             readFromSpec(buf, this, spec, offset)
@@ -908,9 +877,7 @@ class BasicProgram implements AkaiS56kProgram {
             try {
                 offset += keygroup.parse(buf, offset)
             } catch (err) {
-                out.error(`Barf parsing keygroup; i: ${i}, offset: ${offset}, this.keygroupCount: ${this.getKeygroupCount()}`)
-                out.error(`  this.keygroups.length: ${this.keygroups.length}`)
-                throw err
+                throw new Error(`Failed to parse keygroup ${i + 1} of ${this.getKeygroupCount()} at offset ${offset}: ${err.message}`)
             }
         }
     }

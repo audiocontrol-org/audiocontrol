@@ -9,10 +9,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "clean": "rm -rf .next"
   },
   "author": "Orion Letizi",
-  "license": "ISC",
+  "license": "Apache-2.0",
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.8",
     "@types/chai": "^5.0.1",
