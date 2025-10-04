@@ -2,8 +2,9 @@
 
 **Status**: Ready for Approval
 **Created**: 2025-10-04
+**Updated**: 2025-10-04 (added auto-generated code handling)
 **Duration**: 5-6 weeks
-**Total Tasks**: 45+ discrete tasks across 6 phases
+**Total Tasks**: 46+ discrete tasks across 6 phases
 **Agents Involved**: 8 specialized agents
 
 ---
@@ -31,8 +32,8 @@ This work plan systematically addresses the code cleanup phase described in ROAD
 
 Before distribution, the codebase must achieve:
 - ✅ Zero files in `src-deprecated/` (migrated or archived)
-- ✅ All files < 500 lines (300-500 line target)
-- ✅ 100% imports use `@/` pattern
+- ✅ All **hand-written** files < 500 lines (300-500 line target, auto-generated files exempt)
+- ✅ 100% imports use `@/` pattern (hand-written code)
 - ✅ 80%+ test coverage across all packages
 - ✅ README.md in every package with examples
 - ✅ JSDoc comments on all public APIs
@@ -40,6 +41,34 @@ Before distribution, the codebase must achieve:
 - ✅ All quality gates passed (TypeScript strict, tests, linting)
 - ✅ Cross-platform binary bundling verified
 - ✅ Package sizes < 5MB total
+- ✅ Auto-generated code properly marked and documented
+
+---
+
+## Auto-Generated Code Handling
+
+### Known Auto-Generated Files
+- `sampler-devices/src/devices/s3000xl.ts` (4,868 lines) - Generated with header markers
+- Files in `sampler-devices/src/gen/` directory
+- Files in `src-deprecated/gen/` directory (to be archived)
+
+### Code Generators
+- `gen-s3000xl.ts` - Generates S3000XL device code
+- `gen-s56k.ts` - Generates S56K device code with "GENERATED" and "DO NOT EDIT" markers
+- `sampler-devices/src/gen/gen-s3000xl-device.ts` - Generator implementation
+
+### Special Rules for Auto-Generated Code
+1. **NEVER manually refactor auto-generated files** - They will be overwritten
+2. **Auto-generated files are EXEMPT** from file size limits (e.g., s3000xl.ts at 4,868 lines is acceptable)
+3. **Auto-generated files are EXEMPT** from import pattern requirements (if generated differently)
+4. **If generated code has issues** → Fix the generator, not the output
+5. **All generated files MUST have header markers**:
+   ```typescript
+   // GENERATED: <timestamp>
+   // DO NOT EDIT. YOUR CHANGES WILL BE OVERWRITTEN.
+   ```
+6. **Document the generation process** in package READMEs
+7. **Generators themselves** should follow all code quality guidelines (< 500 lines, testable, documented)
 
 ---
 
@@ -49,6 +78,7 @@ Before distribution, the codebase must achieve:
 - Establish comprehensive baseline metrics
 - Map deprecated code to current packages
 - Identify all quality issues
+- **Inventory auto-generated code and create exclusion lists**
 - Create prioritized task list
 
 ### Task 1.1: Codebase Metrics Analysis
@@ -204,6 +234,44 @@ Additional requirements:
 
 ---
 
+### Task 1.6: Auto-Generated Code Inventory
+**Agent**: `code-reviewer`
+**Duration**: 2 hours
+
+**Deliverables**:
+- Complete inventory of all auto-generated files
+- Verification that generated files have proper header markers
+- List of generators and their outputs
+- Exclusion list for refactoring tasks
+
+**Process**:
+```bash
+# Search for files with auto-generated markers
+grep -r "GENERATED\|DO NOT EDIT\|auto-generated\|@generated" packages/ \
+  --include="*.ts" -l
+
+# Check known generators
+ls -la gen-*.ts
+ls -la */src/gen/
+
+# Verify header markers in generated files
+for file in <generated-files>; do
+  head -5 "$file"
+done
+```
+
+**Acceptance Criteria**:
+- Complete list of all auto-generated files with line counts
+- All generated files confirmed to have proper header markers
+- Missing markers flagged for addition
+- Exclusion list created for:
+  - File size checks (Task 1.1)
+  - Import pattern checks (Task 3.2)
+  - Manual refactoring (Task 3.1)
+- Generators documented with their purpose and output locations
+
+---
+
 ## Phase 2: Deprecated Code Resolution (5-7 days)
 
 ### Objectives
@@ -291,20 +359,27 @@ Additional requirements:
 **Duration**: 3 days
 
 **Deliverables**:
-- All files refactored to < 500 lines
+- All **hand-written** files refactored to < 500 lines
 - New helper modules created as needed
 - Refactoring documented
 
 **Process for Each Large File**:
-1. Analyze file structure and responsibilities
-2. Identify logical boundaries for splitting
-3. Extract to separate modules with clear interfaces
-4. Update imports using `@/` pattern
-5. Add/update tests for new modules
-6. Verify no functionality lost
+1. **SKIP auto-generated files** (use exclusion list from Task 1.6)
+2. Analyze file structure and responsibilities
+3. Identify logical boundaries for splitting
+4. Extract to separate modules with clear interfaces
+5. Update imports using `@/` pattern
+6. Add/update tests for new modules
+7. Verify no functionality lost
+
+**Example Files to Refactor** (hand-written only):
+- Any files in `packages/*/src/` that are > 500 lines
+- EXCLUDE: `sampler-devices/src/devices/s3000xl.ts` (4,868 lines, auto-generated)
+- EXCLUDE: Any files with "GENERATED" or "DO NOT EDIT" markers
 
 **Acceptance Criteria**:
-- Zero files > 500 lines
+- Zero **hand-written** files > 500 lines
+- Auto-generated files documented as exempt
 - All new modules have tests
 - Build and tests pass
 - Code reviewer approval
@@ -498,12 +573,24 @@ Brief description
 ## API Reference
 ## Configuration
 ## Examples
+## Code Generation (if applicable)
+  - What files are auto-generated
+  - How to regenerate them
+  - Generator scripts and spec files
 ## Troubleshooting
 ## Contributing
 ```
 
+**Special Requirements for Packages with Generators**:
+- `sampler-devices` package MUST document:
+  - Which files are auto-generated (e.g., `src/devices/s3000xl.ts`)
+  - How to run generators (e.g., `npm run generate` or `node gen-s3000xl.ts`)
+  - Location of spec files (e.g., `src/gen/akai-s3000xl.spec.yaml`)
+  - That generated files should NEVER be manually edited
+
 **Acceptance Criteria**:
 - All 7 packages have complete READMEs
+- Packages with auto-generated code have "Code Generation" section
 - Examples are runnable and tested
 - Documentation reviewed and approved
 
