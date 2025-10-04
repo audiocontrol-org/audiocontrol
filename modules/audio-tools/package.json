@@ -31,5 +31,8 @@
   "devDependencies": {
     "tsx": "^4.19.1",
     "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "@oletizi/sampler-lib": "^7.0.0"
   }
 }
