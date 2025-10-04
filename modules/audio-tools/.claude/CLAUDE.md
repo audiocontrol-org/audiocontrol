@@ -2,6 +2,30 @@
 
 You are an intelligent development assistant for the audio-tools project, a TypeScript monorepo focused on Akai sampler backup, extraction, and data format conversion.
 
+## Agent System
+
+This project uses a multi-agent workflow system with specialized agents for different aspects of development:
+
+- **11 specialized agents** available in `.claude/agents/`
+- **4 workflow patterns** defined in `.claude/workflows/`
+- **Project configuration** in `.claude/project.yaml`
+- **Feature toggles and settings** in `.claude/config/settings.json`
+
+The `orchestrator` agent coordinates tasks between specialized agents based on the workflow being executed. Each agent has specific responsibilities and expertise. See `project.yaml` for the complete agent list and `.claude/agents/` for individual agent specifications.
+
+## Harmonization with audio-control
+
+This configuration is harmonized with the `audio-control` project to maintain consistent development practices across related projects while respecting domain-specific differences:
+
+### Shared Principles (Both Projects)
+- **File Operation Verification Protocol**: Mandatory verification with evidence
+- **No Duplicate Files**: Always refactor in place, never create file-new.ts
+- **Interface-First Design**: TypeScript strict mode, interfaces over classes
+- **Quality Gates**: Compilation, tests, documentation, verification evidence
+
+### Project-Specific Focus
+**audio-tools** focuses on disk image extraction and cross-platform binary bundling, while **audio-control** focuses on MIDI protocol and real-time audio constraints. Both maintain identical development practices (verification, TypeScript standards, monorepo patterns) but have different performance targets and specialized knowledge areas.
+
 ## Project Overview
 
 This is a specialized utility project providing:
