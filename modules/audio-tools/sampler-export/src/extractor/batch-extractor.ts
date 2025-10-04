@@ -82,32 +82,48 @@ function getSamplerBackupDir(samplerType: SamplerType): string {
 }
 
 /**
+ * Recursively find disk images in a directory
+ */
+function findDiskImagesRecursive(dir: string, results: string[] = []): string[] {
+    try {
+        const entries = readdirSync(dir, { withFileTypes: true });
+
+        for (const entry of entries) {
+            const fullPath = join(dir, entry.name);
+
+            if (entry.isDirectory()) {
+                // Recurse into subdirectories
+                findDiskImagesRecursive(fullPath, results);
+            } else if (entry.isFile()) {
+                const ext = extname(entry.name).toLowerCase();
+                if (ext === ".hds" || ext === ".img") {
+                    results.push(fullPath);
+                }
+            }
+        }
+    } catch (err) {
+        // Directory not readable, skip
+    }
+
+    return results;
+}
+
+/**
  * Find all disk images in rsnapshot backup structure
+ * Rsnapshot preserves full path structure, so we need to search recursively
  */
 function findDiskImages(sourceDir: string, samplerType: SamplerType): string[] {
-    const results: string[] = [];
-
-    // Rsnapshot structure: sourceDir/daily.0/pi-scsi2/*.hds
+    // Rsnapshot structure: sourceDir/daily.0/pi-scsi2/home/orion/images/*.hds
     const intervalDir = getRsnapshotIntervalDir(sourceDir);
     const backupDir = getSamplerBackupDir(samplerType);
     const diskDir = join(intervalDir, backupDir);
 
     if (!existsSync(diskDir)) {
-        return results;
+        return [];
     }
 
-    try {
-        const files = readdirSync(diskDir);
-        for (const file of files) {
-            const ext = extname(file).toLowerCase();
-            if (ext === ".hds" || ext === ".img") {
-                results.push(join(diskDir, file));
-            }
-        }
-    } catch (err) {
-        // Directory not readable, return empty
-    }
-
+    // Recursively search for disk images
+    const results = findDiskImagesRecursive(diskDir);
     return results.sort();
 }
 
@@ -201,7 +217,8 @@ export async function extractBatch(
     if (disks.length === 0) {
         console.log("No disk images found.");
         console.log(`  Looking in: ${sourceDir}`);
-        console.log(`  Expected structure: ${sourceDir}/daily.0/pi-scsi2/*.hds (for S5K)`);
+        console.log(`  Expected structure: ${sourceDir}/daily.0/pi-scsi2/**/*.hds (for S5K)`);
+        console.log(`  Note: rsnapshot preserves full remote path structure`);
         console.log(`  Default location: ~/.audiotools/backup/ (rsnapshot backup root)`);
         console.log(`  Run 'akai-backup batch' to create backups first`);
         return result;
