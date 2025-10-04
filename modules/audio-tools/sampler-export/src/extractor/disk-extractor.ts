@@ -18,6 +18,7 @@ export interface ExtractionOptions {
     outputDir: string;
     convertToSFZ?: boolean;
     convertToDecentSampler?: boolean;
+    quiet?: boolean;
 }
 
 export interface ExtractionResult {
@@ -43,7 +44,7 @@ export interface ExtractionResult {
 export async function extractAkaiDisk(
     options: ExtractionOptions
 ): Promise<ExtractionResult> {
-    const { diskImage, outputDir, convertToSFZ = true, convertToDecentSampler = true } = options;
+    const { diskImage, outputDir, convertToSFZ = true, convertToDecentSampler = true, quiet = false } = options;
 
     const result: ExtractionResult = {
         success: false,
@@ -84,7 +85,9 @@ export async function extractAkaiDisk(
         const akaitools: Akaitools = newAkaitools(config);
 
         // Read disk contents
-        console.log(`Reading Akai disk: ${diskImage}`);
+        if (!quiet) {
+            console.log(`Reading Akai disk: ${diskImage}`);
+        }
         const diskResult = await akaitools.readAkaiDisk();
 
         if (diskResult.errors.length > 0) {
@@ -93,7 +96,9 @@ export async function extractAkaiDisk(
         }
 
         // Extract all files from the disk
-        console.log("Extracting files from disk...");
+        if (!quiet) {
+            console.log("Extracting files from disk...");
+        }
         const extractResult = await akaitools.akaiRead("/", rawDir, undefined, true);
 
         if (extractResult.errors.length > 0) {
@@ -101,7 +106,9 @@ export async function extractAkaiDisk(
         }
 
         // Convert .a3s samples to WAV
-        console.log("Converting Akai samples to WAV...");
+        if (!quiet) {
+            console.log("Converting Akai samples to WAV...");
+        }
         const a3sFiles = findFiles(rawDir, ".a3s");
         result.stats.samplesExtracted = a3sFiles.length;
 
@@ -127,7 +134,9 @@ export async function extractAkaiDisk(
 
         // Convert S3K programs (.a3p)
         if (a3pFiles.length > 0) {
-            console.log(`Converting ${a3pFiles.length} S3K programs...`);
+            if (!quiet) {
+                console.log(`Converting ${a3pFiles.length} S3K programs...`);
+            }
 
             for (const a3pFile of a3pFiles) {
                 try {
@@ -147,7 +156,9 @@ export async function extractAkaiDisk(
 
         // Convert S5K programs (.akp)
         if (akpFiles.length > 0) {
-            console.log(`Converting ${akpFiles.length} S5K programs...`);
+            if (!quiet) {
+                console.log(`Converting ${akpFiles.length} S5K programs...`);
+            }
 
             for (const akpFile of akpFiles) {
                 try {
@@ -166,11 +177,13 @@ export async function extractAkaiDisk(
         }
 
         result.success = true;
-        console.log("Extraction complete!");
-        console.log(`  Samples: ${result.stats.samplesConverted}/${result.stats.samplesExtracted}`);
-        console.log(`  Programs: ${result.stats.programsFound}`);
-        console.log(`  SFZ files: ${result.stats.sfzCreated}`);
-        console.log(`  DecentSampler presets: ${result.stats.dspresetCreated}`);
+        if (!quiet) {
+            console.log("Extraction complete!");
+            console.log(`  Samples: ${result.stats.samplesConverted}/${result.stats.samplesExtracted}`);
+            console.log(`  Programs: ${result.stats.programsFound}`);
+            console.log(`  SFZ files: ${result.stats.sfzCreated}`);
+            console.log(`  DecentSampler presets: ${result.stats.dspresetCreated}`);
+        }
 
     } catch (err: any) {
         result.errors.push(`Extraction failed: ${err.message}`);

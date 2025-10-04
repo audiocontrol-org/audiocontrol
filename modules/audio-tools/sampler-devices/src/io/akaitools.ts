@@ -277,7 +277,7 @@ async function readAkaiDisk(c: AkaiToolsConfig, listFunction: Function) {
     // const rv: AkaiDiskResult = {data: disk}
 
     for (let i = 1; i < 50; i++) { // partitions start at 1. Asking for partition 0 is the same as asking for partition 1
-        const result = await listFunction(c, '/', i)//akaiList(c, '/', i)
+        const result = await listFunction('/', i)//akaiList(c, '/', i)
         if (result.errors.length > 0) {
             // This is what akailist does when the partition doesn't exist
             if (result.errors[0].message.includes('Operation not supported by device')) {

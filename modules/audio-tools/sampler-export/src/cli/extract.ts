@@ -8,6 +8,7 @@
 
 import { Command } from "commander";
 import { extractAkaiDisk } from "@/extractor/disk-extractor.js";
+import { extractBatch } from "@/extractor/batch-extractor.js";
 import { convertA3PToSFZ } from "@/converters/s3k-to-sfz.js";
 import { convertA3PToDecentSampler } from "@/converters/s3k-to-decentsampler.js";
 import { convertAKPToSFZ } from "@/converters/s5k-to-sfz.js";
@@ -48,6 +49,40 @@ program
             if (result.errors.length > 0) {
                 console.warn("Extraction completed with warnings:");
                 result.errors.forEach((err) => console.warn(`  - ${err}`));
+            }
+        } catch (err: any) {
+            console.error(`Error: ${err.message}`);
+            process.exit(1);
+        }
+    });
+
+// Batch extraction command
+program
+    .command("batch")
+    .description("Extract all disk images from well-known directories")
+    .option("--source <path>", "Source directory (default: ~/.audio-tools/disk-images)")
+    .option("--dest <path>", "Destination directory (default: ~/.audio-tools/extracted)")
+    .option("--samplers <types>", "Comma-separated sampler types: s5k,s3k (default: s5k,s3k)")
+    .option("--force", "Force re-extraction of all disks")
+    .option("--no-sfz", "Skip SFZ conversion")
+    .option("--no-decentsampler", "Skip DecentSampler conversion")
+    .action(async (options: any) => {
+        try {
+            const samplerTypes = options.samplers
+                ? options.samplers.split(",").map((s: string) => s.trim())
+                : undefined;
+
+            const result = await extractBatch({
+                sourceDir: options.source,
+                destDir: options.dest,
+                samplerTypes,
+                force: options.force || false,
+                convertToSFZ: options.sfz !== false,
+                convertToDecentSampler: options.decentsampler !== false,
+            });
+
+            if (result.failed > 0) {
+                process.exit(1);
             }
         } catch (err: any) {
             console.error(`Error: ${err.message}`);

@@ -16,3 +16,6 @@ export * from "@/converters/s5k-to-decentsampler.js";
 
 // Disk Extractor
 export * from "@/extractor/disk-extractor.js";
+
+// Batch Extractor
+export * from "@/extractor/batch-extractor.js";
