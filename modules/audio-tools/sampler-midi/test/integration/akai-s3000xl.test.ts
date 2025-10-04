@@ -1,6 +1,7 @@
 import * as easymidi from 'easymidi'
 import {expect} from "chai";
-import {string2AkaiBytes, akaiByte2String} from "@oletizi/sampler-devices/s3k"
+import {string2AkaiBytes, akaiByte2String, SampleHeader, ProgramHeader, KeygroupHeader, ProgramHeader_writePLAYLO} from "@oletizi/sampler-devices/s3k"
+import {newDevice, Program} from "@/client/client-akai-s3000xl.js"
 
 type MidiMessage = number[];
 

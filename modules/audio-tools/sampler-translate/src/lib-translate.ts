@@ -5,9 +5,13 @@ import {midiNoteToNumber} from "@/lib-midi.js";
 import {newDefaultSampleFactory, Sample} from "@/sample.js";
 import {Result} from "@oletizi/sampler-lib";
 import fs from "fs/promises";
-import {ExecutionResult} from "@oletizi/sampler-devices";
 // import {FfmpegCommand} from "fluent-ffmpeg";
 import * as ffmpeg from "fluent-ffmpeg"
+
+export interface ExecutionResult {
+    errors: Error[];
+    code: number;
+}
 
 export function description() {
     return "lib-translate is a collection of functions to translate between sampler formats."

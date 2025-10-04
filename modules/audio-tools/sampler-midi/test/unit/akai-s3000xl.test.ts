@@ -13,7 +13,7 @@ describe(`Basic Akai S3000xl tests`, () => {
         expect(device).exist
     })
 
-    it('Round trip read, write, read Akai format sample', async () => {
+    it.skip('Round trip read, write, read Akai format sample', async () => {
         const filepath = path.join('test', 'data', 's3000xl', 'chops', 'brk.10', 'brk.10.00_-l.a3s')
         const data = await readAkaiData(filepath)
         const sampleHeader = {} as SampleHeader

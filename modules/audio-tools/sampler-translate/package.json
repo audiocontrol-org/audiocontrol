@@ -18,7 +18,8 @@
   "author": "Orion Letizi",
   "license": "Apache-2.0",
   "dependencies": {
-    "@oletizi/sampler-devices": "^0.0.19",
+    "@oletizi/sampler-devices": "^3.0.0",
+    "@oletizi/sampler-lib": "^1.0.11",
     "chai-as-promised": "^8.0.1",
     "fluent-ffmpeg": "^2.1.3",
     "lodash": "^4.17.21",
