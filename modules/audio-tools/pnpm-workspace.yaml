@@ -3,5 +3,6 @@ packages:
   - 'sampler-devices'
   - 'sampler-midi'
   - 'sampler-translate'
+  - 'sampler-export'
   - 'lib-runtime'
   # sampler-interface excluded - UI app with missing dependencies
