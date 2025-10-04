@@ -40,6 +40,12 @@ export function getDefaultRsnapshotConfig(): RsnapshotConfig {
                 sourcePath: "/home/orion/images/",
                 backupSubdir: "pi-scsi2",
             },
+            {
+                type: "s3k",
+                host: "s3k.local",
+                sourcePath: "/home/orion/images/",
+                backupSubdir: "s3k",
+            },
         ],
         options: {
             rsyncShortArgs: "-a",

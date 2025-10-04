@@ -116,94 +116,100 @@ async function executeDirectRsync(
     configPath: string,
     interval: RsnapshotInterval
 ): Promise<{ success: boolean; output: string; error?: string }> {
-    return new Promise((resolve) => {
-        const snapshotRoot = parseSnapshotRoot(configPath);
-        const intervalDir = join(snapshotRoot, `${interval}.0`);
+    const snapshotRoot = parseSnapshotRoot(configPath);
+    const intervalDir = join(snapshotRoot, `${interval}.0`);
 
-        // Parse config to get backup sources
-        const configContent = readFileSync(configPath, 'utf-8');
-        const backupLines = configContent.split('\n').filter(line => line.match(/^backup\s+/));
+    // Parse config to get backup sources
+    const configContent = readFileSync(configPath, 'utf-8');
+    const backupLines = configContent.split('\n').filter(line => line.match(/^backup\s+/));
 
-        if (backupLines.length === 0) {
-            resolve({
-                success: false,
-                output: '',
-                error: 'No backup sources found in config'
-            });
-            return;
-        }
+    if (backupLines.length === 0) {
+        return {
+            success: false,
+            output: '',
+            error: 'No backup sources found in config'
+        };
+    }
 
-        // Get rsync options from config
-        const rsyncShortMatch = configContent.match(/^rsync_short_args\s+(.+)$/m);
-        const rsyncLongMatch = configContent.match(/^rsync_long_args\s+(.+)$/m);
-        const sshArgsMatch = configContent.match(/^ssh_args\s+(.+)$/m);
+    // Get rsync options from config
+    const rsyncShortMatch = configContent.match(/^rsync_short_args\s+(.+)$/m);
+    const rsyncLongMatch = configContent.match(/^rsync_long_args\s+(.+)$/m);
+    const sshArgsMatch = configContent.match(/^ssh_args\s+(.+)$/m);
 
-        const rsyncArgs: string[] = [];
-        if (rsyncShortMatch) rsyncArgs.push(rsyncShortMatch[1].trim());
-        if (rsyncLongMatch) rsyncArgs.push(...rsyncLongMatch[1].trim().split(/\s+/));
+    const rsyncArgs: string[] = [];
+    if (rsyncShortMatch) rsyncArgs.push(rsyncShortMatch[1].trim());
+    if (rsyncLongMatch) rsyncArgs.push(...rsyncLongMatch[1].trim().split(/\s+/));
 
-        // Parse first backup line (for now, handle single source)
-        const backupMatch = backupLines[0].match(/^backup\s+(\S+)\s+(\S+)/);
+    const sshArg = sshArgsMatch
+        ? `--rsh=ssh ${sshArgsMatch[1].trim()}`
+        : '--rsh=/usr/bin/ssh';
+
+    console.log(`Resuming backup to existing snapshot: ${intervalDir}`);
+    console.log(`Processing ${backupLines.length} backup source(s)\n`);
+
+    let allStdout = "";
+    let allStderr = "";
+
+    // Process each backup source sequentially
+    for (let i = 0; i < backupLines.length; i++) {
+        const backupMatch = backupLines[i].match(/^backup\s+(\S+)\s+(\S+)/);
         if (!backupMatch) {
-            resolve({
-                success: false,
-                output: '',
-                error: 'Failed to parse backup source'
-            });
-            return;
+            continue; // Skip malformed lines
         }
 
         const [, source, destSubdir] = backupMatch;
         const destination = join(intervalDir, destSubdir);
 
-        // Build rsync command
-        const args = [...rsyncArgs, '--partial'];
-        if (sshArgsMatch) {
-            args.push(`--rsh=ssh ${sshArgsMatch[1].trim()}`);
-        } else {
-            args.push('--rsh=/usr/bin/ssh');
-        }
-        args.push(source, destination);
+        console.log(`[${i + 1}/${backupLines.length}] Syncing ${source} -> ${destSubdir}/`);
 
-        console.log(`Resuming backup to existing snapshot: ${intervalDir}`);
+        // Build rsync command for this source
+        const args = [...rsyncArgs, '--partial', sshArg, source, destination];
 
-        const proc = spawn('rsync', args);
+        // Execute rsync synchronously for this source
+        await new Promise<void>((resolveSource) => {
+            const proc = spawn('rsync', args);
 
-        let stdout = "";
-        let stderr = "";
+            let stdout = "";
+            let stderr = "";
 
-        proc.stdout?.on("data", (data) => {
-            const output = data.toString();
-            stdout += output;
-            process.stdout.write(output);
-        });
+            proc.stdout?.on("data", (data) => {
+                const output = data.toString();
+                stdout += output;
+                allStdout += output;
+                process.stdout.write(output);
+            });
 
-        proc.stderr?.on("data", (data) => {
-            const output = data.toString();
-            stderr += output;
-            process.stderr.write(output);
-        });
+            proc.stderr?.on("data", (data) => {
+                const output = data.toString();
+                stderr += output;
+                allStderr += output;
+                process.stderr.write(output);
+            });
 
-        proc.on("close", (code) => {
-            if (code === 0) {
-                resolve({ success: true, output: stdout });
-            } else {
-                resolve({
-                    success: false,
-                    output: stdout,
-                    error: `rsync exited with code ${code}: ${stderr}`,
-                });
-            }
-        });
+            proc.on("close", (code) => {
+                if (code !== 0) {
+                    allStderr += `\nrsync failed for ${source} with code ${code}`;
+                }
+                resolveSource();
+            });
 
-        proc.on("error", (err) => {
-            resolve({
-                success: false,
-                output: stdout,
-                error: `Failed to execute rsync: ${err.message}`,
+            proc.on("error", (err) => {
+                allStderr += `\nFailed to execute rsync for ${source}: ${err.message}`;
+                resolveSource();
             });
         });
-    });
+    }
+
+    // Check if any errors occurred
+    if (allStderr.trim()) {
+        return {
+            success: false,
+            output: allStdout,
+            error: allStderr,
+        };
+    } else {
+        return { success: true, output: allStdout };
+    }
 }
 
 /**
