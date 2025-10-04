@@ -1,0 +1,76 @@
+name: Testing Workflow
+description: Comprehensive testing strategy for audio-tools project
+
+stages:
+  - name: Test Planning
+    agents:
+      - qa-expert
+      - orchestrator
+    tasks:
+      - Define test scope
+      - Identify critical paths
+      - Plan cross-platform testing
+      - Determine performance targets
+    outputs:
+      - Test plan
+      - Success criteria
+
+  - name: Unit Testing
+    agents:
+      - qa-expert
+      - typescript-pro
+    tasks:
+      - Test all public functions
+      - Test error handling
+      - Test edge cases
+      - Verify file operation handling
+    coverage_target: 80%
+    outputs:
+      - Unit test suite
+
+  - name: Integration Testing
+    agents:
+      - qa-expert
+      - backend-developer
+    tasks:
+      - Test module interactions
+      - Test external binary execution
+      - Test batch processing
+      - Test format conversions
+    outputs:
+      - Integration test suite
+
+  - name: Platform Testing
+    agents:
+      - qa-expert
+      - build-engineer
+    tasks:
+      - Test on darwin-arm64
+      - Test on darwin-x64
+      - Test on linux-x64
+      - Test binary fallbacks
+    outputs:
+      - Platform test results
+
+  - name: Performance Testing
+    agents:
+      - qa-expert
+      - backend-developer
+    benchmarks:
+      - Disk format detection < 100ms
+      - Sample conversion < 5s
+      - Batch extraction ~30s per disk
+      - Memory usage < 500MB
+    outputs:
+      - Performance metrics
+
+  - name: Test Review
+    agents:
+      - code-reviewer
+      - qa-expert
+    tasks:
+      - Review test coverage
+      - Review test quality
+      - Identify gaps
+    outputs:
+      - Test quality report

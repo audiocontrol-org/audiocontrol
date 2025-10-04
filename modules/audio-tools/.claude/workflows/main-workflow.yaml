@@ -1,0 +1,79 @@
+name: Main Development Workflow
+description: Standard workflow for feature development and bug fixes
+
+stages:
+  - name: Analysis
+    agents:
+      - orchestrator
+      - typescript-pro
+    tasks:
+      - Understand requirements
+      - Review existing code
+      - Plan implementation approach
+    outputs:
+      - Implementation plan
+      - Affected modules identified
+
+  - name: Implementation
+    agents:
+      - typescript-pro
+      - javascript-pro
+      - cli-developer
+      - backend-developer
+      - build-engineer
+    tasks:
+      - Implement features/fixes
+      - Follow interface-first design
+      - Verify file operations
+      - Handle cross-platform concerns
+    outputs:
+      - Code changes
+      - File operation evidence
+
+  - name: Testing
+    agents:
+      - qa-expert
+      - typescript-pro
+    tasks:
+      - Write/update tests
+      - Verify test coverage
+      - Test cross-platform behavior
+      - Performance validation
+    outputs:
+      - Test suite
+      - Coverage report
+
+  - name: Review
+    agents:
+      - code-reviewer
+      - orchestrator
+    tasks:
+      - Code quality review
+      - Verify file operations evidence
+      - Check TypeScript compliance
+      - Performance review
+    outputs:
+      - Review feedback
+      - Approval/revision requests
+
+  - name: Documentation
+    agents:
+      - documentation-engineer
+    tasks:
+      - Update API documentation
+      - Update README if needed
+      - Document platform-specific behavior
+    outputs:
+      - Updated documentation
+
+  - name: Quality Gates
+    agents:
+      - orchestrator
+      - qa-expert
+    checks:
+      - TypeScript compilation succeeds
+      - All tests pass
+      - File operations verified
+      - Documentation updated
+    outputs:
+      - Ready for merge/Ready for revision
