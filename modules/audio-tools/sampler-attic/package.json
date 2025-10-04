@@ -1,0 +1,15 @@
+{
+  "name": "@oletizi/sampler-attic",
+  "version": "0.0.1",
+  "description": "Temporary storage for code pending refactoring - NOT FOR DISTRIBUTION",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo 'Attic code not built - dependencies missing by design'",
+    "test": "echo 'No tests for attic code'"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

@@ -65,6 +65,12 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  sampler-attic:
+    devDependencies:
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   sampler-backup:
     dependencies:
       '@oletizi/sampler-devices':
