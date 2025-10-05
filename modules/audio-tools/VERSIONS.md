@@ -1,8 +1,35 @@
 # Versioning History
 
-## Why is the version at 7.0.0?
+## Version Reset (October 2025)
 
-The audio-tools monorepo uses semantic versioning, and the current v7.0.0 reflects **aggressive major version bumping during active refactoring**, not the age or maturity of the codebase.
+**Current Status**: All core packages are at **v1.0.0** after version reset on October 4, 2025.
+
+Before initial npm publish, versions were reset from v7.0.0 to v1.0.0.
+
+**Why?** The v7.0.0 versions were artifacts of aggressive major version bumping during pre-release refactoring (7 breaking changes in ~1 hour). Since packages were never published to npm, we reset to v1.0.0 to accurately signal "first stable public release" rather than "seven major releases."
+
+**Safe?** Yes - no packages were published to npm, so no users were affected.
+
+**Backup**: The v7.0.0 state is preserved in git tag `audio-tools-v7.0.0-backup`.
+
+### Current Versions (Post-Reset)
+
+| Package | Version | Status |
+|---------|---------|--------|
+| sampler-devices | 1.0.0 | Reset from v7.0.0 |
+| sampler-lib | 1.0.0 | Reset from v7.0.0 |
+| sampler-midi | 1.0.0 | Reset from v7.0.0 |
+| sampler-translate | 1.0.0 | Reset from v7.0.0 |
+| sampler-interface | 1.0.0 | Reset from v3.0.0 |
+| sampler-export | 1.0.0 | Unchanged ✓ |
+| sampler-backup | 1.0.0 | Unchanged ✓ |
+| sampler-attic | 0.0.1 | Private, not for distribution |
+
+---
+
+## Historical Context: Why Was It v7.0.0?
+
+The audio-tools monorepo uses semantic versioning, and the v7.0.0 version (now reset to v1.0.0) reflected **aggressive major version bumping during active refactoring**, not the age or maturity of the codebase.
 
 ## Version Timeline
 
@@ -85,40 +112,54 @@ v0.0.19 → v2.0.0 → v6.0.0 → v7.0.0 (first release)
 - v7.0.0 represents "stable, ready for distribution"
 - Timeline: hours during intensive refactoring session
 
-## Package-Specific Versions
+## Package-Specific Versions (Historical - Before Reset)
 
-Not all packages are at v7.0.0:
+Before the reset, not all packages were at v7.0.0:
 
-| Package | Version | Status |
-|---------|---------|--------|
-| sampler-devices | 7.0.0 | Core package, synchronized |
-| sampler-lib | 7.0.0 | Core package, synchronized |
-| sampler-midi | 7.0.0 | Core package, synchronized |
-| sampler-translate | 7.0.0 | Core package, synchronized |
-| sampler-export | 1.0.0 | Independent release cycle |
-| sampler-backup | 1.0.0 | Independent release cycle |
-| sampler-interface | 3.0.0 | Independent release cycle |
-| sampler-attic | 0.0.1 | Private, not for distribution |
+| Package | Version (Pre-Reset) | Version (Post-Reset) |
+|---------|---------------------|---------------------|
+| sampler-devices | 7.0.0 | 1.0.0 |
+| sampler-lib | 7.0.0 | 1.0.0 |
+| sampler-midi | 7.0.0 | 1.0.0 |
+| sampler-translate | 7.0.0 | 1.0.0 |
+| sampler-interface | 3.0.0 | 1.0.0 |
+| sampler-export | 1.0.0 | 1.0.0 (unchanged) |
+| sampler-backup | 1.0.0 | 1.0.0 (unchanged) |
+| sampler-attic | 0.0.1 | 0.0.1 (unchanged) |
 
 ## Future Versioning Strategy
 
-Going forward from v7.0.0:
+Going forward from v1.0.0, we'll use **conservative semver**:
 
-- **Patch releases (v7.0.x)**: Bug fixes, documentation updates, internal refactoring
-- **Minor releases (v7.x.0)**: New features with backward compatibility
-- **Major releases (v8.0.0+)**: Breaking API changes (expected to be rare now that cleanup is complete)
+- **Patch releases (v1.0.x)**: Bug fixes, documentation updates, internal refactoring without API changes
+- **Minor releases (v1.x.0)**: New features with backward compatibility
+- **Major releases (v2.0.0+)**: Only for significant, intentional breaking changes to public APIs
+  - Not for internal refactoring
+  - Not for dependency updates
+  - Only when we *intend* to break the API for users
+
+### Pre-release Versions
+
+For experimental breaking changes, we'll use pre-release versions:
+
+```
+v1.0.0 → v2.0.0-alpha.1 → v2.0.0-alpha.2 → v2.0.0-beta.1 → v2.0.0
+```
+
+This allows iteration without inflating major version numbers.
 
 ## Key Takeaway
 
-**Version 7.0.0 does not indicate:**
-- Project age (this is a new project)
-- API maturity over years of development
-- Seven major releases to users
+**Version 1.0.0 (current) indicates:**
+- First stable public release
+- Ready for npm distribution
+- Clean, tested, documented codebase
+- Commitment to conservative versioning going forward
 
-**Version 7.0.0 indicates:**
+**Version 7.0.0 (historical, reset) indicated:**
 - Seven iterations of breaking changes during pre-release refactoring
-- Strict adherence to semantic versioning
+- Strict adherence to semantic versioning during cleanup
 - Completion of aggressive cleanup phase
-- Ready for public distribution
+- The project **broke its own API seven times in a few hours** during cleanup
 
-The version number is high because the project **broke its own API seven times in a few hours** during cleanup, not because it's been around for years.
+The reset from v7.0.0 to v1.0.0 provides a clean start for public distribution with sensible version numbers that don't mislead users about the project's maturity or history.
