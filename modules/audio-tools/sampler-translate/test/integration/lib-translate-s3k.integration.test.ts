@@ -8,7 +8,10 @@ import {tmpdir} from "node:os";
 import {newServerConfig} from "@oletizi/sampler-lib";
 
 describe(`lib-translate-s3k integration test`, () => {
-    it(`maps samples`, async () => {
+    // Skipping: Requires external test data at /Users/orion/.audiotools/source/auto/MOOGC
+    // This test depends on user-specific sample data that is not part of the repository.
+    // To enable this test, ensure the required test data directory exists.
+    it.skip(`maps samples`, async () => {
         const prefix = 'MOOGC'
         const cfg = await newServerConfig()
         const source = path.join(cfg.sourceRoot, 'auto', prefix)

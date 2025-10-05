@@ -18,9 +18,11 @@
   ],
   "scripts": {
     "test": "vitest run",
+    "test:unit": "vitest run test/unit",
+    "test:integration": "vitest run test/integration",
+    "test:all": "vitest run test",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
-    "integration": "vitest run test/integration",
     "build": "vite build",
     "clean": "rm -rf dist *.tsbuildinfo",
     "typecheck": "tsc --noEmit"

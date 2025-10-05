@@ -6,6 +6,8 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     css: false,
+    include: ['test/unit/**/*.test.ts'], // Only unit tests by default
+    exclude: ['test/integration/**'],    // Exclude integration tests
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json'],

@@ -116,7 +116,7 @@ describe("lib-akai-mpc", () => {
 
             expect(program.layers[1].number).toBe(2);
             expect(program.layers[1].sampleName).toBe('Snare.WAV');
-            expect(program.layers[1].start).toBe(0);
+            expect(program.layers[1].sliceStart).toBe(0);
             expect(program.layers[1].sliceEnd).toBe(2000);
         });
 
