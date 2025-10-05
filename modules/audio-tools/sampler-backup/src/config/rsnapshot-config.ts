@@ -11,7 +11,11 @@ import { execSync } from "child_process";
 import type { RsnapshotConfig, SamplerConfig } from "@/types/index.js";
 
 /**
- * Find command path using 'which'
+ * Find command path using 'which' command
+ * @param command - Command name to locate
+ * @param fallback - Fallback path if command not found
+ * @returns Full path to command or fallback
+ * @internal
  */
 function findCommandPath(command: string, fallback: string): string {
     try {
@@ -23,7 +27,22 @@ function findCommandPath(command: string, fallback: string): string {
 }
 
 /**
- * Get default rsnapshot configuration
+ * Get default rsnapshot configuration for sampler backups.
+ *
+ * Returns a sensible default configuration with:
+ * - Backup root in ~/.audiotools/backup
+ * - Retention: 7 daily, 4 weekly, 12 monthly
+ * - Default sampler configurations for S5K and S3K
+ *
+ * @returns RsnapshotConfig with default settings
+ * @public
+ *
+ * @example
+ * ```typescript
+ * const config = getDefaultRsnapshotConfig();
+ * config.samplers[0].host = "my-sampler.local";
+ * writeRsnapshotConfig(config, "/path/to/rsnapshot.conf");
+ * ```
  */
 export function getDefaultRsnapshotConfig(): RsnapshotConfig {
     return {
@@ -56,7 +75,32 @@ export function getDefaultRsnapshotConfig(): RsnapshotConfig {
 }
 
 /**
- * Generate rsnapshot.conf content
+ * Generate rsnapshot.conf file content from configuration.
+ *
+ * Creates a properly formatted rsnapshot configuration file with:
+ * - Header and config version
+ * - Snapshot root directory
+ * - External command paths (cp, rm, rsync, ssh, logger)
+ * - Retention intervals (daily, weekly, monthly)
+ * - Rsync and SSH options
+ * - Backup source definitions for each sampler
+ *
+ * @param config - Rsnapshot configuration object
+ * @returns String containing complete rsnapshot.conf file content
+ * @public
+ *
+ * @example
+ * ```typescript
+ * const config = getDefaultRsnapshotConfig();
+ * const confContent = generateRsnapshotConfig(config);
+ * console.log(confContent); // Shows rsnapshot.conf content
+ * ```
+ *
+ * @remarks
+ * - Uses 'which' to detect command paths on current system
+ * - Falls back to standard paths if 'which' fails
+ * - Adds tab separators as required by rsnapshot format
+ * - Includes comments for readability
  */
 export function generateRsnapshotConfig(config: RsnapshotConfig): string {
     const lines: string[] = [];
@@ -130,7 +174,22 @@ export function generateRsnapshotConfig(config: RsnapshotConfig): string {
 }
 
 /**
- * Write rsnapshot configuration to file
+ * Write rsnapshot configuration to file.
+ *
+ * Generates configuration content and writes it to the specified path.
+ * Creates parent directories if they don't exist.
+ *
+ * @param config - Rsnapshot configuration object
+ * @param configPath - Path where configuration file should be written
+ * @throws Error if file cannot be written
+ * @public
+ *
+ * @example
+ * ```typescript
+ * const config = getDefaultRsnapshotConfig();
+ * config.samplers[0].host = "sampler.local";
+ * writeRsnapshotConfig(config, "/etc/rsnapshot.conf");
+ * ```
  */
 export function writeRsnapshotConfig(
     config: RsnapshotConfig,
@@ -141,7 +200,19 @@ export function writeRsnapshotConfig(
 }
 
 /**
- * Get default config file path
+ * Get default configuration file path.
+ *
+ * Returns the standard path for rsnapshot configuration file:
+ * ~/.audiotools/rsnapshot.conf
+ *
+ * @returns Absolute path to default config file location
+ * @public
+ *
+ * @example
+ * ```typescript
+ * const configPath = getDefaultConfigPath();
+ * // Returns: "/Users/username/.audiotools/rsnapshot.conf"
+ * ```
  */
 export function getDefaultConfigPath(): string {
     return resolve(homedir(), ".audiotools", "rsnapshot.conf");

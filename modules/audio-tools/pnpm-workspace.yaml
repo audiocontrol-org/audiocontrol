@@ -5,5 +5,6 @@ packages:
   - 'sampler-translate'
   - 'sampler-export'
   - 'sampler-backup'
+  - 'sampler-attic'    # Temporary storage for deferred code - NOT FOR DISTRIBUTION
   - 'lib-runtime'
   # sampler-interface excluded - UI app with missing dependencies

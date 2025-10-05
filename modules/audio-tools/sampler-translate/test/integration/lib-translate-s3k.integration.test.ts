@@ -1,15 +1,17 @@
 import {newAkaitools, newAkaiToolsConfig} from "@oletizi/sampler-devices/s3k";
 import path from "pathe";
 import {chop, ChopOpts, map, newDefaultTranslateContext} from "@/lib-translate-s3k.js";
-import {expect} from "chai";
+import { describe, it, expect } from 'vitest';
 import fs from "fs/promises";
 import {mapLogicAutoSampler} from "@/lib-translate.js";
 import {tmpdir} from "node:os";
 import {newServerConfig} from "@oletizi/sampler-lib";
 
 describe(`lib-translate-s3k integration test`, () => {
-    it(`maps samples`, async function () {
-        this.timeout(10 * 1000)
+    // Skipping: Requires external test data at /Users/orion/.audiotools/source/auto/MOOGC
+    // This test depends on user-specific sample data that is not part of the repository.
+    // To enable this test, ensure the required test data directory exists.
+    it.skip(`maps samples`, async () => {
         const prefix = 'MOOGC'
         const cfg = await newServerConfig()
         const source = path.join(cfg.sourceRoot, 'auto', prefix)
@@ -21,13 +23,13 @@ describe(`lib-translate-s3k integration test`, () => {
             {source: source, target: target, prefix: prefix, partition: 0, wipeDisk: true})
 
         console.log(result.errors)
-        expect(result.errors.length).eq(0)
-        expect(result.data).exist
+        expect(result.errors.length).toBe(0)
+        expect(result.data).toBeDefined()
         const program = result.data
-        expect(program?.length).gte(1)
-    })
+        expect(program?.length).toBeGreaterThanOrEqual(1)
+    }, { timeout: 10000 })
 
-    it(`chops samples`, async function () {
+    it(`chops samples`, async () => {
         const c = await newAkaiToolsConfig()
         const root = path.join('build', 'chop')
         try {
@@ -53,7 +55,6 @@ describe(`lib-translate-s3k integration test`, () => {
         }
         const result = await chop(await newServerConfig(), newAkaitools(c), opts)
         result.errors.forEach(e => console.error(e))
-        expect(result.errors.length).eq(0)
-    })
+        expect(result.errors.length).toBe(0)
+    }, { timeout: 10000 })
 })
-

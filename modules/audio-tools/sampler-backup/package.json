@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/sampler-backup",
-  "version": "1.0.0",
+  "version": "1.0.0-alpha.4",
   "description": "Akai sampler backup utilities for hardware samplers via PiSCSI",
   "main": "./dist/index.js",
   "exports": {
@@ -15,7 +15,8 @@
     "akai-backup": "./dist/cli/backup.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "scripts": {
     "build": "vite build",
@@ -39,8 +40,8 @@
   "author": "Orion Letizi",
   "license": "Apache-2.0",
   "dependencies": {
-    "@oletizi/sampler-devices": "^7.0.0",
-    "@oletizi/sampler-lib": "^7.0.0",
+    "@oletizi/sampler-devices": "workspace:*",
+    "@oletizi/sampler-lib": "workspace:*",
     "commander": "^12.1.0",
     "pathe": "^1.1.2"
   },

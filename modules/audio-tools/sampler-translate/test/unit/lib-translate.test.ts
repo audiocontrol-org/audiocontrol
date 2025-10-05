@@ -1,6 +1,5 @@
-import {expect} from "chai";
-import {stub} from "sinon";
-import path from "pathe";
+import { describe, it, expect, vi } from 'vitest';
+import path from 'pathe';
 import {midiNoteToNumber} from "@/lib-midi.js"
 import {
     AbstractKeygroup,
@@ -27,17 +26,17 @@ describe(`default audio factory`, async () => {
     it(`Creates a default audio factory`, async () => {
         const factory = newDefaultAudioFactory()
         const source = await factory.loadFromFile(path.join('test', 'data', 'decent', 'Samples', 'Oscar.wav'))
-        expect(source).to.exist
+        expect(source).toBeDefined()
 
         const meta = source.meta
-        expect(meta.sampleRate).to.equal(44100)
-        expect(meta.bitDepth).to.equal(24)
-        expect(meta.channelCount).to.equal(2)
-        expect(meta.container).to.equal('WAVE')
-        expect(meta.codec).to.equal("PCM")
+        expect(meta.sampleRate).toBe(44100)
+        expect(meta.bitDepth).toBe(24)
+        expect(meta.channelCount).toBe(2)
+        expect(meta.container).toBe('WAVE')
+        expect(meta.codec).toBe("PCM")
 
         const sample = await source.getSample()
-        expect(sample).to.exist
+        expect(sample).toBeDefined()
     })
 })
 
@@ -46,44 +45,44 @@ describe(`Core translator mapper tests`, async () => {
     it(`Handles empty arguments`, async () => {
         // @ts-ignore
         const result = await mapProgram(undefined, undefined, undefined)
-        expect(result.errors.length).to.equal(3)
+        expect(result.errors.length).toBe(3)
     })
 
     it(`Checks for empty audio factory`, async () => {
         // @ts-ignore
-        const result = await mapProgram({audioFactory: undefined, fs: stub()}, stub(), {source: stub(), target: stub()})
-        expect(result.errors.length).to.equal(1)
+        const result = await mapProgram({audioFactory: undefined, fs: vi.fn()}, vi.fn(), {source: vi.fn(), target: vi.fn()})
+        expect(result.errors.length).toBe(1)
     })
 
     it(`Checks for empty fileio`, async () => {
         // @ts-ignore
-        const result = await mapProgram({audioFactory: stub(), fs: undefined}, stub(), {source: stub(), target: stub()})
-        expect(result.errors.length).to.equal(1)
+        const result = await mapProgram({audioFactory: vi.fn(), fs: undefined}, vi.fn(), {source: vi.fn(), target: vi.fn()})
+        expect(result.errors.length).toBe(1)
     })
 
     it(`Checks for empty map function`, async () => {
         // @ts-ignore
-        const ctx: TranslateContext = {fs: stub(), audioFactory: stub()}
+        const ctx: TranslateContext = {fs: vi.fn(), audioFactory: vi.fn()}
         // @ts-ignore
-        const result = await mapProgram(ctx, undefined, {source: stub(), target: stub()})
-        expect(result.errors.length).to.equal(1)
+        const result = await mapProgram(ctx, undefined, {source: vi.fn(), target: vi.fn()})
+        expect(result.errors.length).toBe(1)
 
     })
 
     it(`Checks for empty source`, async () => {
         // @ts-ignore
-        const ctx: TranslateContext = {fs: stub(), audioFactory: stub()}
+        const ctx: TranslateContext = {fs: vi.fn(), audioFactory: vi.fn()}
         // @ts-ignore
-        const result = await mapProgram(ctx, stub(), {source: undefined, target: stub()})
-        expect(result.errors.length).to.equal(1)
+        const result = await mapProgram(ctx, vi.fn(), {source: undefined, target: vi.fn()})
+        expect(result.errors.length).toBe(1)
     })
 
     it(`Checks for empty target`, async () => {
         // @ts-ignore
-        const ctx: TranslateContext = {fs: stub(), audioFactory: stub()}
+        const ctx: TranslateContext = {fs: vi.fn(), audioFactory: vi.fn()}
         // @ts-ignore
-        const result = await mapProgram(ctx, stub(), {source: stub(), target: undefined})
-        expect(result.errors.length).to.equal(1)
+        const result = await mapProgram(ctx, vi.fn(), {source: vi.fn(), target: undefined})
+        expect(result.errors.length).toBe(1)
     })
 
     it(`Maps samples to a program`, async () => {
@@ -108,10 +107,10 @@ describe(`Core translator mapper tests`, async () => {
         const source = path.join('test', 'data', 'auto', 'J8.01')
         const target = path.join('build')
         const program = await mapProgram(newDefaultTranslateContext(), mapFunction, {source: source, target: target})
-        expect(mapFunctionCalls.length).eq(1)
-        expect(program).to.exist
-        expect(program.data).to.exist
-        expect(program.data?.length).eq(11)
+        expect(mapFunctionCalls.length).toBe(1)
+        expect(program).toBeDefined()
+        expect(program.data).toBeDefined()
+        expect(program.data?.length).toBe(11)
     })
 
     it(`Maps multiple Logic auto-sample output files to a set of keygroups`, async () => {
@@ -139,26 +138,26 @@ describe(`Core translator mapper tests`, async () => {
             return rv
         })
         const keygroups = mapLogicAutoSampler(sources);
-        expect(keygroups).to.exist
-        expect(keygroups.length).to.eq(11)
+        expect(keygroups).toBeDefined()
+        expect(keygroups.length).toBe(11)
         const kg1 = keygroups[0]
-        expect(kg1).to.exist
-        expect(kg1.zones).to.exist
-        expect(kg1.zones.length).to.eq(1)
+        expect(kg1).toBeDefined()
+        expect(kg1.zones).toBeDefined()
+        expect(kg1.zones.length).toBe(1)
         const zone1 = kg1.zones[0]
-        expect(zone1).to.exist
+        expect(zone1).toBeDefined()
         expect(zone1.audioSource.filepath.endsWith(files[0]))
-        expect(zone1?.lowNote).to.eq(midiNoteToNumber('C0') - 12)
-        expect(zone1.highNote).eq(midiNoteToNumber('C1'))
+        expect(zone1?.lowNote).toBe(midiNoteToNumber('C0') - 12)
+        expect(zone1.highNote).toBe(midiNoteToNumber('C1'))
 
         const k2 = keygroups[1]
-        expect(k2).to.exist
-        expect(k2.zones).to.exist
-        expect(k2.zones.length).to.eq(1)
+        expect(k2).toBeDefined()
+        expect(k2.zones).toBeDefined()
+        expect(k2.zones.length).toBe(1)
         const zone2 = k2.zones[0]
-        expect(zone2).to.exist
-        expect(zone2.lowNote).eq(midiNoteToNumber('C#1'))
-        expect(zone2.highNote).eq(midiNoteToNumber('F#1'))
+        expect(zone2).toBeDefined()
+        expect(zone2.lowNote).toBe(midiNoteToNumber('C#1'))
+        expect(zone2.highNote).toBe(midiNoteToNumber('F#1'))
     })
 })
 
@@ -166,12 +165,10 @@ describe('mapProgram', () => {
 
     it('handles empty directory', async () => {
         const result = await mapProgram(newDefaultTranslateContext(), () => [], {source: tmpdir(), target: tmpdir()});
-        expect(result.data).to.deep.equal([]);
+        expect(result.data).toEqual([]);
     });
 
     it('processes audio files correctly', async function () {
-
-        this.timeout(10 * 1000)
 
         const mapFunction: MapFunction = (sources: AudioSource[]) => sources.map(s => {
 
@@ -193,13 +190,13 @@ describe('mapProgram', () => {
             source: sourceDir,
             target: targetDir
         });
-        expect(result.data).to.have.lengthOf(11);
+        expect(result.data).toHaveLength(11);
         // @ts-ignore
-        expect(result.data[0].zones[0].lowNote).to.equal(0);
+        expect(result.data[0].zones[0].lowNote).toBe(0);
         // @ts-ignore
-        expect(result.data[0].zones[0].highNote).to.equal(127);
+        expect(result.data[0].zones[0].highNote).toBe(127);
 
-    });
+    }, { timeout: 10000 });
 })
 
 describe('AudioTranslate', async () => {
@@ -209,12 +206,12 @@ describe('AudioTranslate', async () => {
         const source = path.join('test', 'data', 'auto', 'J8.01', 'J8-1DY0.01-C4-V64.aif')
         const target = path.join(tmpdir(), 'translate.mp3')
         const result = await t.translate(source, target)
-        expect(result).to.exist
-        expect(result.errors.length).to.eq(0)
+        expect(result).toBeDefined()
+        expect(result.errors.length).toBe(0)
 
         const meta = await parseFile(target)
-        expect(meta.format.container).to.eq("MPEG")
-        expect(meta.format.codec).eq('MPEG 1 Layer 3')
+        expect(meta.format.container).toBe("MPEG")
+        expect(meta.format.codec).toBe('MPEG 1 Layer 3')
     })
 
     it(`Converts Aiff to Wav`, async () => {
@@ -222,12 +219,12 @@ describe('AudioTranslate', async () => {
         const source = path.join('test', 'data', 'auto', 'J8.01', 'J8-1DY0.01-C4-V64.aif')
         const target = path.join(tmpdir(), 'translated.wav')
         const result = await t.translate(source, target)
-        expect(result).to.exist
-        expect(result.errors.length).to.equal(0)
+        expect(result).toBeDefined()
+        expect(result.errors.length).toBe(0)
 
         const meta = await parseFile(target);
-        expect(meta.format.container).to.equals('WAVE')
-        expect(meta.format.bitsPerSample).to.eq(16)
-        expect(meta.format.sampleRate).to.eq(44100)
+        expect(meta.format.container).toBe('WAVE')
+        expect(meta.format.bitsPerSample).toBe(16)
+        expect(meta.format.sampleRate).toBe(44100)
     })
 })

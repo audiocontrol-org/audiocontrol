@@ -1,49 +1,49 @@
+import { describe, it, expect } from 'vitest';
 import {newClientOutput, newServerOutput, newStreamOutput} from "@/lib-io";
-import {expect} from "chai";
 
 describe(`Input output functions`, () => {
     it(`stream output`, () => {
-        const stdoutWrites = []
+        const stdoutWrites: string[] = []
         const stdout = {
-            write: (v) => {
+            write: (v: string) => {
                 stdoutWrites.push(v)
             }
         }
 
-        const stderrWrites = []
+        const stderrWrites: string[] = []
         const stderr = {
-            write: (v) => {
+            write: (v: string) => {
                 stderrWrites.push(v)
             }
         }
 
         const out = newStreamOutput(stdout, stderr)
-        expect(out).to.exist
+        expect(out).toBeDefined()
 
-        expect(stdoutWrites.length).eq(0)
+        expect(stdoutWrites.length).toBe(0)
         out.log(`Test`)
-        expect(stdoutWrites[0].endsWith('Test\n'))
+        expect(stdoutWrites[0].endsWith('Test\n')).toBe(true)
 
         out.write(`Test 2`)
-        expect(stdoutWrites[1].endsWith('Test 2'))
+        expect(stdoutWrites[1].endsWith('Test 2')).toBe(true)
 
-        expect(stderrWrites.length).eq(0)
+        expect(stderrWrites.length).toBe(0)
         out.error('Error')
-        expect(stderrWrites[0].endsWith('Error'))
+        expect(stderrWrites[0].endsWith('Error')).toBe(true)
 
         stdoutWrites.length = 0
         const outNoDebug = newStreamOutput(stdout, stderr, false)
         outNoDebug.log('Test')
-        expect(stdoutWrites.length).eq(0)
+        expect(stdoutWrites.length).toBe(0)
 
         outNoDebug.write('Test')
-        expect(stdoutWrites.length).eq(1)
-        expect(stdoutWrites[0]).eq('Test')
+        expect(stdoutWrites.length).toBe(1)
+        expect(stdoutWrites[0]).toBe('Test')
 
         const serverOut = newServerOutput()
-        expect(serverOut).to.exist
+        expect(serverOut).toBeDefined()
 
         const clientOut = newClientOutput()
-        expect(clientOut).to.exist
+        expect(clientOut).toBeDefined()
     })
 })

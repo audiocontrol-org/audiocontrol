@@ -1,7 +1,10 @@
 /**
  * MTools Binary Management
  *
- * Locates mtools mcopy binary for current platform, with fallback to system installation.
+ * Locates mtools mcopy binary for current platform with fallback to system installation.
+ * Supports bundled binaries for zero-configuration cross-platform deployment.
+ *
+ * @module utils/mtools-binary
  */
 
 import { resolve, join, dirname } from "pathe";
@@ -11,6 +14,21 @@ import { execSync } from "child_process";
 
 /**
  * Detect current platform identifier
+ *
+ * Maps Node.js platform and architecture to binary naming scheme used in bin/ directory.
+ *
+ * @returns Platform identifier string (e.g., "darwin-arm64", "linux-x64")
+ * @throws Error if platform/architecture combination is unsupported
+ *
+ * @remarks
+ * Supported platforms:
+ * - darwin-arm64: macOS Apple Silicon
+ * - darwin-x64: macOS Intel
+ * - linux-x64: Linux 64-bit
+ * - linux-arm64: Linux ARM64 (Raspberry Pi, etc.)
+ * - win32-x64: Windows 64-bit
+ *
+ * @internal
  */
 function detectPlatform(): string {
     const platform = process.platform;
@@ -32,6 +50,33 @@ function detectPlatform(): string {
 
 /**
  * Get path to bundled mcopy binary for current platform
+ *
+ * Searches for platform-specific mcopy binary in package bin/ directory.
+ * Works correctly from both dist/ build output and source locations.
+ *
+ * @returns Absolute path to bundled binary if found, null otherwise
+ *
+ * @remarks
+ * Binary directory structure:
+ * ```
+ * bin/
+ *   mtools/
+ *     darwin-arm64/
+ *       mcopy
+ *     darwin-x64/
+ *       mcopy
+ *     linux-x64/
+ *       mcopy
+ *     win32-x64/
+ *       mcopy.exe
+ * ```
+ *
+ * Path resolution handles multiple scenarios:
+ * - Running from dist/ (built code)
+ * - Running from src/ (development)
+ * - ESM module imports
+ *
+ * @internal
  */
 function getBundledBinaryPath(): string | null {
     try {
@@ -62,6 +107,20 @@ function getBundledBinaryPath(): string | null {
 
 /**
  * Find system mcopy binary using 'which' command
+ *
+ * Searches for mcopy in system PATH using platform-appropriate command.
+ *
+ * @returns Absolute path to system mcopy if found, null otherwise
+ *
+ * @remarks
+ * Uses platform-specific commands:
+ * - Unix/macOS: `which mcopy`
+ * - Windows: `where mcopy.exe`
+ *
+ * Returns first match if multiple installations exist.
+ * Silent failure (returns null) if binary not found.
+ *
+ * @internal
  */
 function getSystemBinaryPath(): string | null {
     try {
@@ -89,8 +148,36 @@ function getSystemBinaryPath(): string | null {
  * 2. System-installed mcopy
  * 3. Error if neither found
  *
+ * This function implements the binary resolution strategy for zero-configuration
+ * deployment while supporting development and custom installations.
+ *
  * @returns Absolute path to mcopy executable
- * @throws Error if mcopy binary cannot be found
+ * @throws Error if mcopy binary cannot be found, with installation instructions
+ *
+ * @remarks
+ * Resolution order (fail-fast):
+ * 1. **Bundled binary**: Checked first for zero-config deployment
+ * 2. **System binary**: Fallback for development or custom installations
+ * 3. **Error with instructions**: Provides platform-specific installation guidance
+ *
+ * Error message includes installation commands for:
+ * - macOS: `brew install mtools`
+ * - Linux (Debian/Ubuntu): `sudo apt install mtools`
+ * - Linux (RHEL/CentOS): `sudo yum install mtools`
+ * - Windows: Link to GNU mtools website
+ *
+ * @example
+ * ```typescript
+ * try {
+ *   const mcopyPath = getMcopyBinary();
+ *   console.log(`Using mcopy: ${mcopyPath}`);
+ *   // Execute mcopy operations...
+ * } catch (err) {
+ *   console.error(err.message); // Installation instructions
+ * }
+ * ```
+ *
+ * @public
  */
 export function getMcopyBinary(): string {
     // Try bundled binary first
@@ -118,6 +205,34 @@ export function getMcopyBinary(): string {
 
 /**
  * Check if mcopy is available
+ *
+ * Non-throwing availability check for conditional functionality.
+ * Useful for feature detection or graceful degradation.
+ *
+ * @returns True if mcopy binary is available (bundled or system), false otherwise
+ *
+ * @example
+ * ```typescript
+ * if (isMcopyAvailable()) {
+ *   console.log('DOS disk extraction supported');
+ *   await extractDosDisk(...);
+ * } else {
+ *   console.warn('DOS disk extraction not available - mtools not found');
+ *   console.log('Native Akai disk extraction only');
+ * }
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // Conditional feature enablement
+ * const features = {
+ *   nativeAkai: true,
+ *   dosFat: isMcopyAvailable(),
+ *   conversion: true
+ * };
+ * ```
+ *
+ * @public
  */
 export function isMcopyAvailable(): boolean {
     try {

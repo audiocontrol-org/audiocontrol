@@ -1,12 +1,7 @@
 import {chop, ChopOpts, ProgramOpts, S3kTranslateContext} from '@/lib-translate-s3k.js';
-import * as chai from 'chai';
-import chaiAsPromised from 'chai-as-promised';
-
-chai.use(chaiAsPromised);
-const expect = chai.expect;
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fsp from 'fs/promises';
 import fs from 'fs'
-import {stub} from 'sinon';
 import {newAkaiToolsConfig, newAkaitools, Akaitools} from "@oletizi/sampler-devices/s3k";
 import {newServerConfig, ServerConfig} from "@oletizi/sampler-lib";
 import {ExecutionResult} from "@oletizi/sampler-devices";
@@ -18,7 +13,6 @@ import {
     AbstractKeygroup,
     AbstractZone, AudioTranslate, AudioMetadata, AudioSource
 } from "@/lib-translate.js";
-import {afterEach} from "mocha";
 
 describe(`map`,
     async () => {
@@ -40,7 +34,11 @@ describe(`map`,
             loadFromFileStub: any,
             meta: AudioMetadata,
             audioTranslate: AudioTranslate,
-            translateStub: any
+            translateStub: any,
+            akaiWriteStub: any,
+            writeAkaiProgramStub: any,
+            writeAkaiSampleStub: any,
+            readAkaiDataStub: any
 
         beforeEach(async () => {
             fsStub = {
@@ -48,33 +46,42 @@ describe(`map`,
                 readdir: () => {
                 }
             }
-            readdirStub = stub(fsStub, 'readdir')
+            readdirStub = vi.spyOn(fsStub, 'readdir')
             audioFactory = {
                 // @ts-ignore
-                loadFromFile: loadFromFileStub = stub()
+                loadFromFile: loadFromFileStub = vi.fn()
             }
 
             akaiTools = {
-                wav2Akai: wav2AkaiStub = stub(),
-                readAkaiProgram: readAkaiProgramStub = stub(),
+                wav2Akai: wav2AkaiStub = vi.fn(),
+                readAkaiProgram: readAkaiProgramStub = vi.fn(),
+                akaiWrite: akaiWriteStub = vi.fn(),
+                writeAkaiProgram: writeAkaiProgramStub = vi.fn(),
+                writeAkaiSample: writeAkaiSampleStub = vi.fn(),
             }
 
-            programHeader = {}
+            // Create a proper mock with raw array for ProgramHeader
+            programHeader = {
+                raw: new Array(1000).fill(0) // Allocate sufficient space
+            }
             akaiProgramFile = {
-                program: programHeader
+                program: programHeader,
+                keygroups: [{
+                    raw: new Array(1000).fill(0)
+                }]
             }
 
             audioTranslate = {
-                translate: translateStub = stub(),
+                translate: translateStub = vi.fn(),
             }
             ctx = {
-                getS3kDefaultProgramPath: getS3kDefaultProgramPathStub = stub(),
+                getS3kDefaultProgramPath: getS3kDefaultProgramPathStub = vi.fn(),
                 audioTranslate: audioTranslate,
                 akaiTools: akaiTools,
                 audioFactory: audioFactory,
                 fs: fsStub
             }
-            mapFunctionStub = stub()
+            mapFunctionStub = vi.fn()
             source = ""
             target = ""
             options = {partition: 0, wipeDisk: false, source: source, target: target, prefix: "prefix"}
@@ -89,20 +96,13 @@ describe(`map`,
                 meta: meta
             }
         })
-        afterEach(async () => {
-            // fsStub.restore()
-            // audioFactoryStub.restore()
-            // mapFunctionStub.restore()
-            // sourceStub.restore()
-            // targetStub.restore()
-        })
 
         it(`maps sample to an S3000XL program`, async () => {
-            expect(ctx.audioFactory).exist
+            expect(ctx.audioFactory).toBeDefined()
             options.source = '/path/to/source/dir'
             options.target = '/path/to/target/dir'
 
-            readdirStub.withArgs(options.source).resolves(['a nice sample', 'another nice sample'])
+            readdirStub.mockResolvedValue(['a nice sample', 'another nice sample'])
 
             const zone: AbstractZone = {
                 audioSource: audioSource,
@@ -117,28 +117,35 @@ describe(`map`,
             }
 
             const keygroups: AbstractKeygroup[] = [kg]
-            mapFunctionStub.returns(keygroups)
+            mapFunctionStub.mockReturnValue(keygroups)
 
 
-            loadFromFileStub.resolves(audioSource)
+            loadFromFileStub.mockResolvedValue(audioSource)
 
             let successResult: ExecutionResult = {
                 errors: [],
                 code: 0
             }
-            translateStub.resolves(successResult)
-            wav2AkaiStub.resolves(successResult)
-            readAkaiProgramStub.resolves(akaiProgramFile)
+            translateStub.mockResolvedValue(successResult)
+            wav2AkaiStub.mockResolvedValue(successResult)
+            readAkaiProgramStub.mockResolvedValue(akaiProgramFile)
+            akaiWriteStub.mockResolvedValue(successResult)
+            writeAkaiProgramStub.mockResolvedValue(undefined)
+            writeAkaiSampleStub.mockResolvedValue(undefined)
+
+            // Mock readAkaiData to return valid data
+            const readAkaiData = await import('@oletizi/sampler-devices/s3k')
+            vi.spyOn(readAkaiData, 'readAkaiData').mockResolvedValue(new Array(1000).fill(0))
 
 
             const result = await map(ctx, mapFunctionStub, options)
-            expect(result.errors.length).to.equal(0)
+            expect(result.errors.length).toBe(0)
             expect(result.data && result.data.length > 0)
 
             const kgs = result.data
-            expect(kgs).to.deep.equal(keygroups)
+            expect(kgs).toEqual(keygroups)
 
-            expect(akaiTools.wav2Akai.callCount).to.equal(keygroups.length)
+            expect(akaiTools.wav2Akai).toHaveBeenCalledTimes(keygroups.length)
         })
     })
 
@@ -146,19 +153,15 @@ describe('chop error conditions', () => {
     let statStub: any, mkdirStub: any, readFileStub: any, writefileStub: any, readdirStub: any
 
     beforeEach(async () => {
-        statStub = stub(fsp, 'stat');
-        mkdirStub = stub(fsp, 'mkdir');
-        readFileStub = stub(fsp, 'readFile');
-        writefileStub = stub(fsp, 'writeFile');
-        readdirStub = stub(fsp, 'readdir');
+        statStub = vi.spyOn(fsp, 'stat');
+        mkdirStub = vi.spyOn(fsp, 'mkdir');
+        readFileStub = vi.spyOn(fsp, 'readFile');
+        writefileStub = vi.spyOn(fsp, 'writeFile');
+        readdirStub = vi.spyOn(fsp, 'readdir');
     });
 
     afterEach(() => {
-        statStub.restore();
-        mkdirStub.restore();
-        writefileStub.restore();
-        readFileStub.restore();
-        readdirStub.restore()
+        vi.restoreAllMocks();
     });
 
     it('throws an error for invalid options (negative samplesPerBeat)', async () => {
@@ -176,7 +179,7 @@ describe('chop error conditions', () => {
     });
 
     it('throws an error when the source is not a valid file', async () => {
-        statStub.withArgs('invalid.wav').rejects(new Error("ENOENT: no such file or directory"));
+        statStub.mockRejectedValue(new Error("ENOENT: no such file or directory"));
 
         const opts: ChopOpts = {
             source: 'invalid.wav',
@@ -188,7 +191,7 @@ describe('chop error conditions', () => {
             wipeDisk: false,
         };
 
-        await expect(chop({} as ServerConfig, {} as Akaitools, opts)).to.be.eventually.rejectedWith('ENOENT: no such file or directory');
+        await expect(chop({} as ServerConfig, {} as Akaitools, opts)).rejects.toThrow('ENOENT: no such file or directory');
     });
 })
 
@@ -196,17 +199,14 @@ describe(`chop happy path`, async () => {
 
     let statStub: any, mkdirStub: any, readFileStub: any, readdirStub: any, createWriteStreamStub: any
     beforeEach(async () => {
-        statStub = stub(fsp, 'stat')
-        mkdirStub = stub(fsp, 'mkdir')
-        readFileStub = stub(fsp, 'readFile')
-        readdirStub = stub(fsp, 'readdir')
+        statStub = vi.spyOn(fsp, 'stat')
+        mkdirStub = vi.spyOn(fsp, 'mkdir')
+        readFileStub = vi.spyOn(fsp, 'readFile')
+        readdirStub = vi.spyOn(fsp, 'readdir')
     });
 
     afterEach(() => {
-        statStub.restore();
-        mkdirStub.restore();
-        readFileStub.restore();
-        readdirStub.restore()
+        vi.restoreAllMocks();
     });
 
     it('chops', async () => {
@@ -216,13 +216,22 @@ describe(`chop happy path`, async () => {
         const beatsPerChop = 10
         const sampleCount = 100
 
-        createWriteStreamStub = stub(fs, 'createWriteStream')
+        createWriteStreamStub = vi.spyOn(fs, 'createWriteStream')
 
-        statStub.withArgs('source.wav').resolves({isFile: () => true})
-        statStub.withArgs(targetDir).onCall(0).rejects(new Error("ENOENT: no such file or directory"))
-        statStub.withArgs(targetDir).onCall(1).resolves({isFile: () => false})
-        mkdirStub.resolves();
-        createWriteStreamStub.returns({write: () => true})
+        statStub.mockImplementation((path: string) => {
+            if (path === 'source.wav') {
+                return Promise.resolve({isFile: () => true})
+            } else if (path === targetDir) {
+                // First call rejects, second call resolves
+                if (statStub.mock.calls.filter((c: any) => c[0] === targetDir).length === 1) {
+                    return Promise.reject(new Error("ENOENT: no such file or directory"))
+                }
+                return Promise.resolve({isFile: () => false})
+            }
+            return Promise.reject(new Error("Unexpected path"))
+        })
+        mkdirStub.mockResolvedValue(undefined);
+        createWriteStreamStub.mockReturnValue({write: () => true} as any)
 
         const opts: ChopOpts = {
             source: 'source.wav',
@@ -234,14 +243,14 @@ describe(`chop happy path`, async () => {
             wipeDisk: false,
         };
 
-        readFileStub.resolves(Buffer.alloc(1024)); // Simulate file data
+        readFileStub.mockResolvedValue(Buffer.alloc(1024)); // Simulate file data
 
         // You can stub other functions here to emulate successful operation
 
-        const to16BitStub = stub()
-        const to441Stub = stub()
-        const trimStub = stub()
-        const writeToStreamStub = stub()
+        const to16BitStub = vi.fn()
+        const to441Stub = vi.fn()
+        const trimStub = vi.fn()
+        const writeToStreamStub = vi.fn()
         const s: Sample = {
             getBitDepth(): number {
                 return 24;
@@ -257,44 +266,44 @@ describe(`chop happy path`, async () => {
             }, write(_buf: Buffer, _offset?: number): number {
                 return 0;
             },
-            getMetadata: stub().returns({sampleRate: 48000, bitDepth: 24}),
-            getSampleCount: stub().returns(sampleCount),
-            getChannelCount: stub().returns(2),
-            getSampleRate: stub().returns(44100),
+            getMetadata: vi.fn().mockReturnValue({sampleRate: 48000, bitDepth: 24}),
+            getSampleCount: vi.fn().mockReturnValue(sampleCount),
+            getChannelCount: vi.fn().mockReturnValue(2),
+            getSampleRate: vi.fn().mockReturnValue(44100),
             trim: trimStub,
             to441: to441Stub,
             to16Bit: to16BitStub,
             writeToStream: writeToStreamStub,
         };
-        trimStub.returns(s)
-        to441Stub.resolves(s)
-        to16BitStub.resolves(s)
-        writeToStreamStub.resolves()
+        trimStub.mockReturnValue(s)
+        to441Stub.mockResolvedValue(s)
+        to16BitStub.mockResolvedValue(s)
+        writeToStreamStub.mockResolvedValue(undefined)
 
-        readdirStub.resolves([]);
+        readdirStub.mockResolvedValue([]);
         const cfg = await newServerConfig()
         const c = await newAkaiToolsConfig()
         const tools = newAkaitools(c)
         const sampleFactory = newDefaultSampleFactory()
-        stub(tools, 'writeAkaiProgram').resolves()
-        stub(tools, 'wav2Akai').resolves({errors: [], code: 0} as ExecutionResult)
-        stub(tools, 'akaiWrite').resolves({errors: [], code: 0} as ExecutionResult)
-        stub(sampleFactory, 'newSampleFromFile').resolves(s)
+        vi.spyOn(tools, 'writeAkaiProgram').mockResolvedValue(undefined as any)
+        vi.spyOn(tools, 'wav2Akai').mockResolvedValue({errors: [], code: 0} as ExecutionResult)
+        vi.spyOn(tools, 'akaiWrite').mockResolvedValue({errors: [], code: 0} as ExecutionResult)
+        vi.spyOn(sampleFactory, 'newSampleFromFile').mockResolvedValue(s)
 
         const result = await chop(cfg, tools, opts, sampleFactory)
 
         const mkdirArgs = []
-        for (const call of mkdirStub.getCalls()) {
-            mkdirArgs.push(call.args[0])
+        for (const call of mkdirStub.mock.calls) {
+            mkdirArgs.push(call[0])
         }
         expect(mkdirArgs.includes('/some/dir'))
 
-        expect(to16BitStub.callCount).to.equal(1)
-        expect(to441Stub.callCount).to.equal(1)
-        expect(trimStub.callCount).to.equal(sampleCount / (samplesPerBeat * beatsPerChop))
+        expect(to16BitStub).toHaveBeenCalledTimes(1)
+        expect(to441Stub).toHaveBeenCalledTimes(1)
+        expect(trimStub).toHaveBeenCalledTimes(sampleCount / (samplesPerBeat * beatsPerChop))
 
-        expect(result.code).to.equal(0);
+        expect(result.code).toBe(0);
 
-        expect(createWriteStreamStub.callCount).to.equal(10)
+        expect(createWriteStreamStub).toHaveBeenCalledTimes(10)
     });
 });

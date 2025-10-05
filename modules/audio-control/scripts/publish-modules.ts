@@ -9,6 +9,29 @@ interface PackageJson {
   private?: boolean;
 }
 
+function getDistTag(version: string): string {
+  // Check if version has a prerelease identifier (e.g., 1.0.0-alpha.1)
+  const hasPrerelease = version.includes('-');
+
+  if (!hasPrerelease) {
+    return 'latest';
+  }
+
+  // Extract prerelease identifier (e.g., "alpha" from "1.0.0-alpha.1")
+  const prereleaseMatch = version.match(/-([a-z]+)/);
+  if (prereleaseMatch && prereleaseMatch[1]) {
+    const identifier = prereleaseMatch[1];
+    // Common prerelease identifiers
+    if (['alpha', 'beta', 'rc', 'next'].includes(identifier)) {
+      return identifier;
+    }
+    // Default to 'next' for other prerelease versions
+    return 'next';
+  }
+
+  return 'next';
+}
+
 function execCommand(command: string, cwd?: string): void {
   console.log(`\n→ ${command}`);
   execSync(command, {
@@ -70,14 +93,18 @@ function publishModules(dryRun: boolean = false) {
       continue;
     }
 
+    const distTag = getDistTag(pkg.version);
+    const publishCmd = `npm publish --access public --tag ${distTag}`;
+
     if (dryRun) {
       console.log(`\n  Would publish ${pkg.name}@${pkg.version}`);
-      console.log(`  → npm publish --access public (DRY RUN)`);
+      console.log(`  → ${publishCmd} (DRY RUN)`);
+      console.log(`  → dist-tag: ${distTag}`);
     } else {
-      console.log(`\n  Publishing ${pkg.name}@${pkg.version}...`);
+      console.log(`\n  Publishing ${pkg.name}@${pkg.version} with tag '${distTag}'...`);
       try {
-        execCommand('npm publish --access public', modulePath);
-        console.log(`  ✓ ${pkg.name}@${pkg.version} published`);
+        execCommand(publishCmd, modulePath);
+        console.log(`  ✓ ${pkg.name}@${pkg.version} published (tag: ${distTag})`);
       } catch (error) {
         console.error(`  ✗ Failed to publish ${pkg.name}`);
         throw error;

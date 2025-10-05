@@ -1,7 +1,0 @@
-{
-  "require": "tsx",
-  "extensions": ["ts", "tsx"],
-  "spec": "test/unit/**/*.test.{ts,tsx}",
-  "node-option": ["import=tsx"],
-  "exit": true
-}
