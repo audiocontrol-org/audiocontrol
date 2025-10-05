@@ -15,7 +15,8 @@
     "akai-backup": "./dist/cli/backup.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "scripts": {
     "build": "vite build",

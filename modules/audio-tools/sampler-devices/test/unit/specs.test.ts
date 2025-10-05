@@ -10,7 +10,7 @@ import {
   programPitchBendSpec,
   programLfosSpec,
   getDeviceSpecs
-} from '@/devices/specs';
+} from '@/devices/specs.js';
 
 describe('Device Specifications', () => {
   describe('DeviceSpec Interface', () => {

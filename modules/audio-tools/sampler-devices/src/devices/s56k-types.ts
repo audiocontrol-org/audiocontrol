@@ -572,9 +572,30 @@ export interface Keygroup {
 /**
  * Keygroup chunk combining Keygroup interface with Chunk.
  *
+ * @remarks
+ * Overrides the Keygroup properties to use Chunk types for proper serialization.
+ *
  * @public
  */
-export interface KeygroupChunk extends Chunk, Keygroup {
+export interface KeygroupChunk extends Chunk {
+    /** Keygroup location and global settings */
+    kloc: KlocChunk
+    /** Amplitude envelope */
+    ampEnvelope: AmpEnvelopeChunk
+    /** Filter envelope */
+    filterEnvelope: FilterEnvelopeChunk
+    /** Auxiliary envelope */
+    auxEnvelope: AuxEnvelopeChunk
+    /** Filter settings */
+    filter: FilterChunk
+    /** Sample zone 1 */
+    zone1: ZoneChunk
+    /** Sample zone 2 */
+    zone2: ZoneChunk
+    /** Sample zone 3 */
+    zone3: ZoneChunk
+    /** Sample zone 4 */
+    zone4: ZoneChunk
 }
 
 /**

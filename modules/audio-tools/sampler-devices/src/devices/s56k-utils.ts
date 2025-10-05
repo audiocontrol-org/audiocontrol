@@ -82,9 +82,10 @@ export function readFromSpec(buf: Buffer, obj: any, spec: string[], offset: numb
     for (let i = 0; i < spec.length; i++, offset++) {
         try {
             obj[spec[i]] = readByte(buf, offset)
-        } catch (err) {
+        } catch (err: unknown) {
             const chunkNameString = bytes2String(obj.chunkName)
-            throw new Error(`Failed to read spec field '${spec[i]}' at index ${i}, offset ${offset} for chunk '${chunkNameString}': ${err.message}`)
+            const errorMessage = err instanceof Error ? err.message : String(err)
+            throw new Error(`Failed to read spec field '${spec[i]}' at index ${i}, offset ${offset} for chunk '${chunkNameString}': ${errorMessage}`)
         }
     }
     return spec.length
@@ -117,12 +118,15 @@ export function newChunkFromSpec(chunkName: number[], chunkLength: number, spec:
     const chunkNameString = bytes2String(chunkName)
     return {
         chunkName: chunkName,
-        length: chunkLength,
+        lengthInBytes: chunkLength,
+        name: chunkNameString,
+        length: chunkLength, // Keep for backward compatibility
         parse(buf: Buffer, offset: number): number {
             try {
                 checkOrThrow(buf, chunkName, offset)
-            } catch (err) {
-                throw new Error(`Failed to parse chunk '${chunkNameString}': expected chunk name ${chunkName} but got mismatch at offset ${offset}: ${err.message}`)
+            } catch (err: unknown) {
+                const errorMessage = err instanceof Error ? err.message : String(err)
+                throw new Error(`Failed to parse chunk '${chunkNameString}': expected chunk name ${chunkName} but got mismatch at offset ${offset}: ${errorMessage}`)
             }
             offset += parseChunkHeader(buf, this, offset)
             readFromSpec(buf, this, spec, offset)

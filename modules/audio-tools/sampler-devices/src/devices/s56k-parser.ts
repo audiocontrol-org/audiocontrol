@@ -6,7 +6,8 @@ import type {
     OutputChunk,
     ProgramChunk,
     TuneChunk,
-    KeygroupChunk
+    KeygroupChunk,
+    ZoneChunk
 } from '@/devices/s56k-types.js';
 import {
     newHeaderChunk,
@@ -49,6 +50,19 @@ export interface S56kParserState {
     originalBuffer?: Buffer;
     /** Byte offset where first keygroup starts (optional) */
     firstKeygroupOffset?: number;
+}
+
+/**
+ * Helper to get zone by index from keygroup
+ */
+function getZone(keygroup: KeygroupChunk, index: number): ZoneChunk {
+    switch (index) {
+        case 1: return keygroup.zone1;
+        case 2: return keygroup.zone2;
+        case 3: return keygroup.zone3;
+        case 4: return keygroup.zone4;
+        default: throw new Error(`Invalid zone index: ${index}`);
+    }
 }
 
 /**
@@ -124,8 +138,9 @@ export function parseProgram(buf: Buffer, state: S56kParserState, offset: number
         state.keygroups.push(keygroup);
         try {
             offset += keygroup.parse(buf, offset);
-        } catch (err) {
-            throw new Error(`Failed to parse keygroup ${i + 1} of ${state.program.keygroupCount} at offset ${offset}: ${err.message}`);
+        } catch (err: unknown) {
+            const errorMessage = err instanceof Error ? err.message : String(err);
+            throw new Error(`Failed to parse keygroup ${i + 1} of ${state.program.keygroupCount} at offset ${offset}: ${errorMessage}`);
         }
     }
 }
@@ -296,10 +311,11 @@ export function parseFromJson(json: string, state: S56kParserState): void {
         destFilt.modInput3 = srcFilt.modInput3;
         destFilt.headroom = srcFilt.headroom;
 
+        // Copy zones using helper function
         for (let j = 1; j <= 4; j++) {
-            let zoneName = `zone${j}`;
+            const zoneName = `zone${j}`;
             const srcZone = obj.keygroups[i][zoneName];
-            const destZone = keygroup[zoneName];
+            const destZone = getZone(keygroup, j);
             destZone.sampleName = srcZone.sampleName;
             destZone.sampleNameLength = destZone.sampleName.length;
             destZone.lowVelocity = srcZone.lowVelocity;

@@ -171,12 +171,20 @@ export function newModsChunk(): ModsChunk {
 }
 
 /**
+ * Extended zone chunk interface with index signature for dynamic character properties
+ */
+interface ZoneChunkWithIndex extends ZoneChunk {
+    [key: string]: any;
+}
+
+/**
  * Parse sample name from zone chunk's character fields
  */
 function parseSampleName(zone: ZoneChunk) {
+    const zoneWithIndex = zone as ZoneChunkWithIndex;
     zone.sampleName = ''
     for (let i = 0; i < zone.sampleNameLength; i++) {
-        zone.sampleName += String.fromCharCode(zone[`character${i}`])
+        zone.sampleName += String.fromCharCode(zoneWithIndex[`character${i}`])
     }
 }
 
@@ -184,16 +192,17 @@ function parseSampleName(zone: ZoneChunk) {
  * Write sample name to zone chunk's character fields
  */
 function writeSampleName(zone: ZoneChunk) {
+    const zoneWithIndex = zone as ZoneChunkWithIndex;
     zone.sampleNameLength = zone.sampleName.length
     // Zero out all character fields first
     for(const name of Object.getOwnPropertyNames(zone)) {
         if (name.startsWith('character')) {
-            zone[name] = 0
+            zoneWithIndex[name] = 0
         }
     }
     // Write sample name characters
     for (let i = 0; i < zone.sampleNameLength; i++) {
-        zone[`character${i}`] = zone.sampleName.charCodeAt(i)
+        zoneWithIndex[`character${i}`] = zone.sampleName.charCodeAt(i)
     }
 }
 
@@ -321,9 +330,9 @@ export function newKeygroupChunk(): KeygroupChunk {
         'velocity2StartMsb'
     ]);
 
-    const zones = []
+    const zones: ZoneChunk[] = []
     for (let i = 0; i < 4; i++) {
-        zones[i] = newChunkFromSpec(zoneChunkName, 48, zoneChunkSpec)
+        zones[i] = newChunkFromSpec(zoneChunkName, 48, zoneChunkSpec) as unknown as ZoneChunk
     }
 
     const keygroupLength = 352
@@ -340,7 +349,7 @@ export function newKeygroupChunk(): KeygroupChunk {
         zone2: zones[1],
         zone3: zones[2],
         zone4: zones[3],
-        parse(buf, offset): number {
+        parse(buf: Buffer, offset: number): number {
             checkOrThrow(buf, keygroupChunkName, offset)
             offset += parseChunkHeader(buf, this, offset)
 
@@ -369,7 +378,7 @@ export function newKeygroupChunk(): KeygroupChunk {
             for (let i = 0; i < keygroupChunkName.length; i++) {
                 offset += writeByte(buf, keygroupChunkName[i], offset)
             }
-            buf.writeInt32LE(this.length, offset)
+            buf.writeInt32LE(this.lengthInBytes, offset)
             offset += 4
 
             offset += this.kloc.write(buf, offset)

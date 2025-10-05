@@ -6,11 +6,33 @@ import type {
     Mods,
     Output,
     Tune,
-    Zone
+    Zone,
+    ZoneChunk,
+    KeygroupChunk
 } from '@/devices/s56k-types.js';
 import { createParserState, parseFromJson, parseProgram, type S56kParserState } from '@/devices/s56k-parser.js';
 import { writeProgram } from '@/devices/s56k-writer.js';
 import { newKeygroupChunk } from '@/devices/s56k-chunks.js';
+
+/**
+ * Helper to get zone by index from keygroup chunk
+ */
+function getZone(keygroup: KeygroupChunk, index: number): ZoneChunk {
+    switch (index) {
+        case 0: return keygroup.zone1;
+        case 1: return keygroup.zone2;
+        case 2: return keygroup.zone3;
+        case 3: return keygroup.zone4;
+        default: throw new Error(`Invalid zone index: ${index}`);
+    }
+}
+
+/**
+ * Helper to get zone by name from keygroup (for reading from JSON)
+ */
+function getZoneFromObject(keygroup: any, zoneName: string): any {
+    return keygroup[zoneName];
+}
 
 /**
  * Basic implementation of S5000/S6000 program
@@ -54,9 +76,9 @@ class BasicProgram implements AkaiS56kProgram {
                     const myKeygroup = this.state.keygroups[i];
                     for (let j = 0; j < 4; j++) {
                         const zoneName = 'zone' + (j + 1);
-                        const modZone: Zone = modKeygroup[zoneName];
+                        const modZone = getZoneFromObject(modKeygroup, zoneName);
                         if (modZone) {
-                            const myZone: Zone = myKeygroup[zoneName];
+                            const myZone = getZone(myKeygroup, j);
                             myZone.sampleName = modZone.sampleName;
                             myZone.sampleNameLength = myZone.sampleName.length;
                             myZone.semiToneTune = modZone.semiToneTune;

@@ -496,7 +496,7 @@ describe('JSON Program', async () => {
         expect(filter.headroom).toBe(0)
         expect(keygroup.zone1.sampleName).toBe('smp1')
         expect(keygroup.zone1.sampleNameLength).toBe(4)
-        for (const zone: Zone of [keygroup.zone1, keygroup.zone2, keygroup.zone3, keygroup.zone4]) {
+        for (const zone of [keygroup.zone1, keygroup.zone2, keygroup.zone3, keygroup.zone4]) {
             expect(zone.lowVelocity).toBe(21)
             expect(zone.highVelocity).toBe(127)
             expect(zone.fineTune).toBe(0)

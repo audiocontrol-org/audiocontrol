@@ -24,7 +24,8 @@
   "types": "./dist/index.d.ts",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "LICENSE"
   ],
   "scripts": {
     "gen": "tsx src/gen-s3000xl.ts src/devices",

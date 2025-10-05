@@ -31,7 +31,7 @@ export function doSpawn(
     return new Promise<ExecutionResult>((resolve, reject) => {
         const rv: ExecutionResult = { errors: [], code: -1 };
         console.log(`akaitools: ${bin} ${args.join(' ')}`);
-        const child = spawn(bin, args, { shell: true });
+        const child = spawn(bin, args as string[]);
         child.stdout.setEncoding('utf8');
         opts.onStart(child);
 
