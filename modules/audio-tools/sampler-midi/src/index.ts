@@ -12,3 +12,5 @@ export {
 } from "@oletizi/sampler-devices"
 
 export * from "@/client/client-akai-s3000xl.js"
+export * from "@/midi"
+export * from "@/instrument"

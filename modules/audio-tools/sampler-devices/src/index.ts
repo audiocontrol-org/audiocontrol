@@ -1,4 +1,6 @@
 export * from "@/devices/s3000xl.js"
+export * from "@/devices/specs.js"
 export * from "@/model/model-akai-s3000xl.js"
 export * from "@/utils/akai-utils.js"
 export * from "@/io/akaitools.js"
+export * from "@/s5k.js"

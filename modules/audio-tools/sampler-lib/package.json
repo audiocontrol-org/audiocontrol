@@ -30,8 +30,10 @@
     "typescript": "^5.7.3"
   },
   "dependencies": {
+    "@oletizi/sampler-devices": "workspace:*",
     "dayjs": "^1.11.13",
     "pathe": "^2.0.2",
-    "tar": "^7.4.3"
+    "tar": "^7.4.3",
+    "wavefile": "^11.0.0"
   }
 }
