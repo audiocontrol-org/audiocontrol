@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/sampler-backup",
-  "version": "1.0.0-alpha.3",
+  "version": "1.0.0-alpha.4",
   "description": "Akai sampler backup utilities for hardware samplers via PiSCSI",
   "main": "./dist/index.js",
   "exports": {
