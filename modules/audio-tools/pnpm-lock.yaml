@@ -83,11 +83,11 @@ importers:
   sampler-backup:
     dependencies:
       '@oletizi/sampler-devices':
-        specifier: ^7.0.0
-        version: 7.0.0
+        specifier: workspace:*
+        version: link:../sampler-devices
       '@oletizi/sampler-lib':
-        specifier: ^7.0.0
-        version: 7.0.0
+        specifier: workspace:*
+        version: link:../sampler-lib
       commander:
         specifier: ^12.1.0
         version: 12.1.0
@@ -154,8 +154,8 @@ importers:
   sampler-export:
     dependencies:
       '@oletizi/sampler-devices':
-        specifier: ^7.0.0
-        version: 7.0.0
+        specifier: workspace:*
+        version: link:../sampler-devices
       '@oletizi/sampler-lib':
         specifier: ^1.0.11
         version: 1.0.11
@@ -962,14 +962,6 @@ packages:
     resolution: {integrity: sha512-4aErSrCR/On/e5G2hDP0wjooqDdauzEbIq8hIkIe5pXV0rtWJZvdCEKL0ykZxex+IxIwBp0eGeV48hQN07dXtw==}
     dev: true
 
-  /@oletizi/sampler-devices@7.0.0:
-    resolution: {integrity: sha512-crpz+HW5BkWte/LTtEOMW8TE5gljlrqBIz9XbHjKKc8jJWfFdaAAk/iDjvy1ZycCWaGll/VpHUQ3yw8g+ZG40A==}
-    dependencies:
-      '@oletizi/sampler-lib': 1.0.11
-      '@types/chai': 5.2.2
-      '@types/mocha': 10.0.10
-    dev: false
-
   /@oletizi/sampler-lib@1.0.11:
     resolution: {integrity: sha512-p3pUl1A9vBEAy20j/vkff7TVLN1Uf3SLwYWuhK+rWJsQZXlVXoCIVjmCOIVjzOvMdjhEQv60T5lTa8AdBqBSvQ==}
     dependencies:
@@ -1298,9 +1290,11 @@ packages:
     resolution: {integrity: sha512-8kB30R7Hwqf40JPiKhVzodJs2Qc1ZJ5zuT3uzw5Hq/dhNCl3G3l83jfpdI1e20BP348+fV7VIL/+FxaXkqBmWg==}
     dependencies:
       '@types/deep-eql': 4.0.2
+    dev: true
 
   /@types/deep-eql@4.0.2:
     resolution: {integrity: sha512-c9h9dVVMigMPc4bwTvC5dxqtqJZwQPePsWjPlpSOnojbor6pGqdk541lfA7AqFQr5pB1BRdq0juY9db81BwyFw==}
+    dev: true
 
   /@types/estree@1.0.8:
     resolution: {integrity: sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w==}
@@ -1322,6 +1316,7 @@ packages:
 
   /@types/mocha@10.0.10:
     resolution: {integrity: sha512-xPyYSz1cMPnJQhl0CLMH68j3gprKZaTjG3s5Vi+fDgx+uhG9NOXwbVt52eFS8ECyXhyKcjDLCBEqBExKuiZb7Q==}
+    dev: true
 
   /@types/node@22.18.8:
     resolution: {integrity: sha512-pAZSHMiagDR7cARo/cch1f3rXy0AEXwsVsVH09FcyeJVAzCnGgmYis7P3JidtTUjyadhTeSo8TgRPswstghDaw==}

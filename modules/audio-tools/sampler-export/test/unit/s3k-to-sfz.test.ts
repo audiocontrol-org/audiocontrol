@@ -2,17 +2,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { parseA3P, findSampleFile, createSFZ, convertA3PToSFZ } from "@/converters/s3k-to-sfz.js";
 import type { S3KProgramData } from "@/converters/s3k-to-sfz.js";
 import * as fs from "fs";
-import * as samplerDevices from "@oletizi/sampler-devices";
 import * as s3k from "@oletizi/sampler-devices/s3k";
 import { glob } from "glob";
 
 // Mock modules
 vi.mock("fs");
 vi.mock("glob");
-vi.mock("@oletizi/sampler-devices", () => ({
-  readAkaiData: vi.fn(),
-}));
 vi.mock("@oletizi/sampler-devices/s3k", () => ({
+  readAkaiData: vi.fn(),
   parseProgramHeader: vi.fn(),
   parseKeygroupHeader: vi.fn(),
 }));
@@ -25,7 +22,7 @@ describe("S3K to SFZ Converter", () => {
   describe("parseA3P", () => {
     it("should parse .a3p file and extract program data", async () => {
       const mockData = Buffer.alloc(1000);
-      vi.mocked(samplerDevices.readAkaiData).mockResolvedValue(mockData);
+      vi.mocked(s3k.readAkaiData).mockResolvedValue(mockData);
 
       vi.mocked(s3k.parseProgramHeader).mockImplementation((data, offset, program: any) => {
         program.PRNAME = "TestProgram";
@@ -75,7 +72,7 @@ describe("S3K to SFZ Converter", () => {
 
     it("should stop parsing when data length exceeded", async () => {
       const mockData = Buffer.alloc(200); // Too small for 2 keygroups
-      vi.mocked(samplerDevices.readAkaiData).mockResolvedValue(mockData);
+      vi.mocked(s3k.readAkaiData).mockResolvedValue(mockData);
 
       vi.mocked(s3k.parseProgramHeader).mockImplementation((data, offset, program: any) => {
         program.PRNAME = "Test";
@@ -273,7 +270,7 @@ describe("S3K to SFZ Converter", () => {
   describe("convertA3PToSFZ", () => {
     beforeEach(() => {
       const mockData = Buffer.alloc(1000);
-      vi.mocked(samplerDevices.readAkaiData).mockResolvedValue(mockData);
+      vi.mocked(s3k.readAkaiData).mockResolvedValue(mockData);
       vi.mocked(fs.writeFileSync).mockImplementation(() => {});
       vi.mocked(fs.existsSync).mockReturnValue(true);
 
@@ -303,12 +300,12 @@ describe("S3K to SFZ Converter", () => {
       const result = await convertA3PToSFZ("/source/test.a3p", "/output", "/samples");
 
       expect(result).toBe("/output/test.sfz");
-      expect(vi.mocked(samplerDevices.readAkaiData)).toHaveBeenCalledWith("/source/test.a3p");
+      expect(vi.mocked(s3k.readAkaiData)).toHaveBeenCalledWith("/source/test.a3p");
       expect(vi.mocked(fs.writeFileSync)).toHaveBeenCalledOnce();
     });
 
     it("should propagate parsing errors", async () => {
-      vi.mocked(samplerDevices.readAkaiData).mockRejectedValue(new Error("Read failed"));
+      vi.mocked(s3k.readAkaiData).mockRejectedValue(new Error("Read failed"));
 
       await expect(
         convertA3PToSFZ("/source/bad.a3p", "/output", "/samples")

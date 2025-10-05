@@ -39,8 +39,8 @@
   "author": "Orion Letizi",
   "license": "Apache-2.0",
   "dependencies": {
-    "@oletizi/sampler-devices": "^7.0.0",
-    "@oletizi/sampler-lib": "^7.0.0",
+    "@oletizi/sampler-devices": "workspace:*",
+    "@oletizi/sampler-lib": "workspace:*",
     "commander": "^12.1.0",
     "pathe": "^1.1.2"
   },

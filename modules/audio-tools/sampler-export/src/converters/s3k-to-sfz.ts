@@ -15,8 +15,8 @@ import {
     parseKeygroupHeader,
     ProgramHeader,
     KeygroupHeader,
+    readAkaiData,
 } from "@oletizi/sampler-devices/s3k";
-import { readAkaiData } from "@oletizi/sampler-devices";
 
 /**
  * Keygroup data extracted from S3K program
