@@ -2,8 +2,6 @@
 
 Format translation and conversion utilities for hardware samplers. Convert between DecentSampler, Akai MPC, and Akai S3000/S5000/S6000 formats, with support for sample chopping, velocity layer mapping, and automatic program generation.
 
-![sampler-translate](https://github.com/oletizi/ol_dsp/actions/workflows/sampler-translate.yml/badge.svg)
-
 ## Installation
 
 ```bash

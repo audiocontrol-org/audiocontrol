@@ -2,7 +2,6 @@
 
 Core library providing shared utilities, binary format parsing, and data models for Akai sampler interaction. This package serves as the foundation for the audio-tools monorepo, offering essential tools for working with Akai sampler formats and MIDI data.
 
-![sampler-lib](https://github.com/oletizi/ol_dsp/actions/workflows/sampler-lib.yml/badge.svg)
 
 ## Features
 

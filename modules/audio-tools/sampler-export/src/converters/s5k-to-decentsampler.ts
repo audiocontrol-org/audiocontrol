@@ -1,7 +1,10 @@
 /**
  * Akai S5000/S6000 Program to DecentSampler Converter
  *
- * Converts Akai .AKP program files to DecentSampler .dspreset format.
+ * Converts Akai .AKP program files to DecentSampler .dspreset format with
+ * XML structure including multi-zone support and envelope parameters.
+ *
+ * @module converters/s5k-to-decentsampler
  */
 
 import { readFileSync, writeFileSync } from "fs";
@@ -13,10 +16,67 @@ import type { AkaiS56kProgram } from "@oletizi/sampler-devices/s5k";
 /**
  * Convert an Akai S5000/S6000 .AKP program file to DecentSampler format
  *
+ * Parses S5K/S6K program file and generates DecentSampler preset with
+ * complete parameter mapping including global tuning, multi-zone keygroups,
+ * and amplitude envelopes.
+ *
  * @param akpPath - Path to .AKP file
  * @param dsOutputDir - Output directory for dspreset file
  * @param wavOutputDir - Directory containing WAV samples
  * @returns Path to created dspreset file
+ *
+ * @throws Error if file cannot be read, parsed, or written
+ *
+ * @remarks
+ * Parameter mapping from S5K to DecentSampler:
+ * - Global tune → group tuning attribute (semitones)
+ * - Output loudness → group volume (0-1 normalized)
+ * - Keygroup → group element
+ * - Zones → sample elements with velocity layers
+ * - Tuning → combined semitone + fine tune
+ * - Pan: Akai (-50 to +50) → DecentSampler (-1 to +1)
+ * - Volume: Akai level (-100 to +100) → dB offset * 0.2
+ * - Envelope: Akai values / 100 → seconds
+ *
+ * DecentSampler XML structure:
+ * ```xml
+ * <DecentSampler>
+ *   <ui>...</ui>
+ *   <groups>
+ *     <group tuning="..." volume="...">
+ *       <sample path="..." rootNote="..." loNote="..." hiNote="..."
+ *               loVel="..." hiVel="..." tuning="..." volume="..." pan="..."
+ *               attack="..." decay="..." sustain="..." release="..."/>
+ *     </group>
+ *   </groups>
+ * </DecentSampler>
+ * ```
+ *
+ * A basic UI is included with a volume control.
+ * Empty zones (no sample name) are automatically skipped.
+ *
+ * @example
+ * ```typescript
+ * const dsPath = convertAKPToDecentSampler(
+ *   '/disks/s5k/raw/synth.akp',
+ *   '/disks/s5k/decentsampler',
+ *   '/disks/s5k/wav'
+ * );
+ * console.log(`Created DecentSampler preset: ${dsPath}`);
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // Batch convert directory
+ * import { glob } from 'glob';
+ *
+ * const akpFiles = glob.sync('/raw/**\/*.akp');
+ * for (const akp of akpFiles) {
+ *   convertAKPToDecentSampler(akp, '/decentsampler', '/wav');
+ * }
+ * ```
+ *
+ * @public
  */
 export function convertAKPToDecentSampler(
     akpPath: string,

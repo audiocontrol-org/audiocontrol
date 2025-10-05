@@ -2,13 +2,14 @@
 
 MIDI communication library for hardware samplers with interface-first dependency injection architecture.
 
-![sampler-midi](https://github.com/oletizi/ol_dsp/actions/workflows/sampler-midi.yml/badge.svg)
-
 ## Overview
 
-`@oletizi/sampler-midi` provides a clean, testable interface for MIDI communication with hardware samplers, particularly Akai S3000XL series devices. The package uses dependency injection to enable testing without hardware and supports multiple MIDI backends.
+`@oletizi/sampler-midi` provides a clean, testable interface for MIDI communication with hardware samplers, particularly
+Akai S3000XL series devices. The package uses dependency injection to enable testing without hardware and supports
+multiple MIDI backends.
 
 **Key Features**:
+
 - Interface-first design with explicit dependency injection
 - Multiple backend support (EasyMidi, Web MIDI API, custom backends)
 - Akai S3000XL MIDI SysEx protocol implementation
@@ -32,6 +33,7 @@ yarn add @oletizi/sampler-midi
 ### Dependencies
 
 This package requires:
+
 - `easymidi` - Default MIDI backend for Node.js
 - `@oletizi/sampler-devices` - Akai device abstractions
 - `@oletizi/sampler-lib` - Core utilities
@@ -41,14 +43,14 @@ This package requires:
 ### Basic MIDI System Setup
 
 ```typescript
-import { MidiSystem, EasyMidiBackend } from '@oletizi/sampler-midi';
+import {MidiSystem, EasyMidiBackend} from '@oletizi/sampler-midi';
 
 // Create MIDI system with explicit backend injection
 const backend = new EasyMidiBackend();
 const midiSystem = new MidiSystem(backend);
 
 // Start the system (auto-selects first available ports)
-await midiSystem.start({ enableSysex: true, debug: true });
+await midiSystem.start({enableSysex: true, debug: true});
 
 // List available ports
 console.log('Inputs:', midiSystem.getInputs());
@@ -57,8 +59,8 @@ console.log('Outputs:', midiSystem.getOutputs());
 // Send a note
 const output = midiSystem.getCurrentOutput();
 if (output) {
-  output.sendNoteOn(60, 100, 0); // Middle C, velocity 100, channel 0
-  setTimeout(() => output.sendNoteOff(60, 0, 0), 1000);
+    output.sendNoteOn(60, 100, 0); // Middle C, velocity 100, channel 0
+    setTimeout(() => output.sendNoteOff(60, 0, 0), 1000);
 }
 
 // Cleanup
@@ -69,9 +71,9 @@ await midiSystem.stop();
 
 ```typescript
 import {
-  MidiSystem,
-  EasyMidiBackend,
-  createMidiInstrument
+    MidiSystem,
+    EasyMidiBackend,
+    createMidiInstrument
 } from '@oletizi/sampler-midi';
 
 const backend = new EasyMidiBackend();
@@ -92,10 +94,10 @@ console.log(`Playing on MIDI channel ${instrument.getChannel()}`);
 
 ```typescript
 import {
-  MidiSystem,
-  EasyMidiBackend
+    MidiSystem,
+    EasyMidiBackend
 } from '@oletizi/sampler-midi';
-import { newDevice } from '@oletizi/sampler-midi';
+import {newDevice} from '@oletizi/sampler-midi';
 import * as easymidi from 'easymidi';
 
 // Setup MIDI system
@@ -119,7 +121,7 @@ console.log('Available programs:', programNames);
 // Get current program
 const program = device.getCurrentProgram();
 if (program) {
-  console.log('Current program:', program.getProgramName());
+    console.log('Current program:', program.getProgramName());
 }
 
 // Fetch sample information
@@ -137,10 +139,14 @@ The core MIDI system class with dependency injection.
 #### Constructor
 
 ```typescript
-constructor(backend: MidiBackend, out?: ProcessOutput)
+constructor(backend
+:
+MidiBackend, out ? : ProcessOutput
+)
 ```
 
 **Parameters**:
+
 - `backend` (required): `MidiBackend` - MIDI backend implementation
 - `out` (optional): `ProcessOutput` - Output handler for logging
 
@@ -154,8 +160,8 @@ Initialize the MIDI system and auto-select first available ports.
 
 ```typescript
 await midiSystem.start({
-  enableSysex: true,  // Enable SysEx message handling
-  debug: true         // Enable debug logging
+    enableSysex: true,  // Enable SysEx message handling
+    debug: true         // Enable debug logging
 });
 ```
 
@@ -197,7 +203,7 @@ Add an event listener for MIDI messages.
 
 ```typescript
 midiSystem.addListener('sysex', (msg) => {
-  console.log('Received SysEx:', msg);
+    console.log('Received SysEx:', msg);
 });
 ```
 
@@ -264,10 +270,13 @@ Backend abstraction for platform-specific MIDI implementations.
 
 ```typescript
 interface MidiBackend {
-  getInputs(): MidiPortInfo[];
-  getOutputs(): MidiPortInfo[];
-  createInput(name: string, virtual?: boolean): RawMidiInput;
-  createOutput(name: string, virtual?: boolean): RawMidiOutput;
+    getInputs(): MidiPortInfo[];
+
+    getOutputs(): MidiPortInfo[];
+
+    createInput(name: string, virtual?: boolean): RawMidiInput;
+
+    createOutput(name: string, virtual?: boolean): RawMidiOutput;
 }
 ```
 
@@ -276,7 +285,7 @@ interface MidiBackend {
 Default backend implementation using the `easymidi` library.
 
 ```typescript
-import { EasyMidiBackend } from '@oletizi/sampler-midi';
+import {EasyMidiBackend} from '@oletizi/sampler-midi';
 
 const backend = new EasyMidiBackend();
 const inputs = backend.getInputs();
@@ -319,7 +328,7 @@ High-level interface for Akai S3000XL sampler communication.
 #### Factory Function
 
 ```typescript
-import { newDevice } from '@oletizi/sampler-midi';
+import {newDevice} from '@oletizi/sampler-midi';
 import * as easymidi from 'easymidi';
 
 const input = new easymidi.Input('S3000XL MIDI In');
@@ -373,8 +382,8 @@ Configuration options for the MIDI system.
 
 ```typescript
 interface MidiConfig {
-  enableSysex?: boolean;  // Enable SysEx message handling (default: true)
-  debug?: boolean;        // Enable debug logging (default: false)
+    enableSysex?: boolean;  // Enable SysEx message handling (default: true)
+    debug?: boolean;        // Enable debug logging (default: false)
 }
 ```
 
@@ -405,23 +414,23 @@ const virtualOutput = backend.createOutput('My Virtual Output', true);
 ### Example 1: MIDI Monitor
 
 ```typescript
-import { MidiSystem, EasyMidiBackend } from '@oletizi/sampler-midi';
+import {MidiSystem, EasyMidiBackend} from '@oletizi/sampler-midi';
 
 const backend = new EasyMidiBackend();
 const midiSystem = new MidiSystem(backend);
-await midiSystem.start({ debug: true });
+await midiSystem.start({debug: true});
 
 // Monitor all MIDI events
 midiSystem.addListener('noteon', (msg) => {
-  console.log('Note On:', msg);
+    console.log('Note On:', msg);
 });
 
 midiSystem.addListener('noteoff', (msg) => {
-  console.log('Note Off:', msg);
+    console.log('Note Off:', msg);
 });
 
 midiSystem.addListener('sysex', (msg) => {
-  console.log('SysEx:', msg);
+    console.log('SysEx:', msg);
 });
 ```
 
@@ -430,33 +439,37 @@ midiSystem.addListener('sysex', (msg) => {
 Implement your own backend for testing or alternative MIDI libraries:
 
 ```typescript
-import { MidiBackend, MidiPortInfo, RawMidiInput, RawMidiOutput } from '@oletizi/sampler-midi';
+import {MidiBackend, MidiPortInfo, RawMidiInput, RawMidiOutput} from '@oletizi/sampler-midi';
 
 class MockMidiBackend implements MidiBackend {
-  getInputs(): MidiPortInfo[] {
-    return [{ name: 'Mock Input 1' }, { name: 'Mock Input 2' }];
-  }
+    getInputs(): MidiPortInfo[] {
+        return [{name: 'Mock Input 1'}, {name: 'Mock Input 2'}];
+    }
 
-  getOutputs(): MidiPortInfo[] {
-    return [{ name: 'Mock Output 1' }];
-  }
+    getOutputs(): MidiPortInfo[] {
+        return [{name: 'Mock Output 1'}];
+    }
 
-  createInput(name: string): RawMidiInput {
-    return {
-      on: (event: string, callback: any) => {},
-      removeListener: (event: string, callback: any) => {},
-      close: () => {}
-    };
-  }
+    createInput(name: string): RawMidiInput {
+        return {
+            on: (event: string, callback: any) => {
+            },
+            removeListener: (event: string, callback: any) => {
+            },
+            close: () => {
+            }
+        };
+    }
 
-  createOutput(name: string): RawMidiOutput {
-    return {
-      send: (type: string, data: any) => {
-        console.log(`Sending ${type}:`, data);
-      },
-      close: () => {}
-    };
-  }
+    createOutput(name: string): RawMidiOutput {
+        return {
+            send: (type: string, data: any) => {
+                console.log(`Sending ${type}:`, data);
+            },
+            close: () => {
+            }
+        };
+    }
 }
 
 // Use mock backend for testing
@@ -467,7 +480,7 @@ const midiSystem = new MidiSystem(mockBackend);
 ### Example 3: Multi-Channel Performance
 
 ```typescript
-import { MidiSystem, EasyMidiBackend, createMidiInstrument } from '@oletizi/sampler-midi';
+import {MidiSystem, EasyMidiBackend, createMidiInstrument} from '@oletizi/sampler-midi';
 
 const backend = new EasyMidiBackend();
 const midiSystem = new MidiSystem(backend);
@@ -487,18 +500,18 @@ strings.noteOn(60, 60);    // C3
 
 // Release after 2 seconds
 setTimeout(() => {
-  bass.noteOff(36, 0);
-  piano.noteOff(48, 0);
-  piano.noteOff(52, 0);
-  piano.noteOff(55, 0);
-  strings.noteOff(60, 0);
+    bass.noteOff(36, 0);
+    piano.noteOff(48, 0);
+    piano.noteOff(52, 0);
+    piano.noteOff(55, 0);
+    strings.noteOff(60, 0);
 }, 2000);
 ```
 
 ### Example 4: Akai S3000XL Program Browser
 
 ```typescript
-import { newDevice } from '@oletizi/sampler-midi';
+import {newDevice} from '@oletizi/sampler-midi';
 import * as easymidi from 'easymidi';
 
 const input = new easymidi.Input('S3000XL MIDI In');
@@ -513,7 +526,7 @@ await device.fetchProgramNames(programNames);
 
 console.log('Available Programs:');
 programNames.forEach((name, index) => {
-  console.log(`  ${index}: ${name}`);
+    console.log(`  ${index}: ${name}`);
 });
 
 // Get details for first program
@@ -531,7 +544,7 @@ await device.fetchSampleNames(sampleNames);
 
 console.log('\nAvailable Samples:');
 sampleNames.forEach((name, index) => {
-  console.log(`  ${index}: ${name}`);
+    console.log(`  ${index}: ${name}`);
 });
 ```
 
@@ -539,7 +552,8 @@ sampleNames.forEach((name, index) => {
 
 ### Migrating from v6.x to v7.x (BREAKING CHANGES)
 
-**v7.0.0** introduces a complete refactoring to interface-first dependency injection architecture. This is a **breaking change**.
+**v7.0.0** introduces a complete refactoring to interface-first dependency injection architecture. This is a **breaking
+change**.
 
 #### Removed APIs
 
@@ -547,25 +561,27 @@ The following legacy APIs have been **REMOVED**:
 
 ```typescript
 // ❌ REMOVED: Legacy Midi class
-import { Midi } from '@oletizi/sampler-midi';
+import {Midi} from '@oletizi/sampler-midi';
 
 // ❌ REMOVED: createMidiSystem factory
-import { createMidiSystem } from '@oletizi/sampler-midi';
+import {createMidiSystem} from '@oletizi/sampler-midi';
 ```
 
 #### Migration Path
 
 **Before (v6.x)**:
+
 ```typescript
-import { createMidiSystem } from '@oletizi/sampler-midi';
+import {createMidiSystem} from '@oletizi/sampler-midi';
 
 const midi = createMidiSystem(); // Backend created implicitly
 await midi.start();
 ```
 
 **After (v7.x)**:
+
 ```typescript
-import { MidiSystem, EasyMidiBackend } from '@oletizi/sampler-midi';
+import {MidiSystem, EasyMidiBackend} from '@oletizi/sampler-midi';
 
 const backend = new EasyMidiBackend(); // Backend injection required
 const midiSystem = new MidiSystem(backend);
@@ -601,8 +617,8 @@ The v7.x architecture provides:
    ```
 
 4. **Replace factory calls**:
-   - Replace `createMidiSystem()` with `new MidiSystem(backend)`
-   - Replace `newMidiInstrument()` with `createMidiInstrument()`
+    - Replace `createMidiSystem()` with `new MidiSystem(backend)`
+    - Replace `newMidiInstrument()` with `createMidiInstrument()`
 
 5. **Update tests**:
    ```typescript
@@ -621,6 +637,7 @@ The v7.x architecture provides:
 **Problem**: `getInputs()` or `getOutputs()` returns empty arrays.
 
 **Solutions**:
+
 1. Ensure MIDI devices are connected and powered on
 2. Check operating system MIDI settings
 3. On macOS, verify Audio MIDI Setup recognizes devices
@@ -632,6 +649,7 @@ The v7.x architecture provides:
 **Problem**: SysEx listener not firing.
 
 **Solutions**:
+
 1. Enable SysEx in config: `await midiSystem.start({ enableSysex: true })`
 2. Check if device sends SysEx (some devices need configuration)
 3. Verify device is on correct MIDI channel
@@ -642,6 +660,7 @@ The v7.x architecture provides:
 **Problem**: Error when opening MIDI port.
 
 **Solutions**:
+
 1. Close other applications using the MIDI port
 2. Call `stop()` on previous MidiSystem instance
 3. Check for zombie processes holding the port
@@ -652,6 +671,7 @@ The v7.x architecture provides:
 **Problem**: Device methods timeout or fail.
 
 **Solutions**:
+
 1. Verify MIDI cables (In/Out correctly connected)
 2. Check Akai's MIDI channel setting (default: channel 0)
 3. Enable SysEx transmission in Akai's MIDI settings
@@ -663,6 +683,7 @@ The v7.x architecture provides:
 **Problem**: Type errors after upgrading to v7.x.
 
 **Solutions**:
+
 1. Import `EasyMidiBackend` explicitly
 2. Remove `createMidiSystem` imports (no longer exists)
 3. Update to TypeScript 5.7+ for best compatibility
@@ -674,6 +695,7 @@ The v7.x architecture provides:
 **Problem**: Virtual ports fail to create.
 
 **Solutions**:
+
 1. Virtual ports only work on macOS and Linux (not Windows)
 2. Check if another app already has a virtual port with same name
 3. Use unique names for virtual ports
@@ -702,44 +724,44 @@ pnpm test:unit
 ### Writing Tests with Mock Backend
 
 ```typescript
-import { describe, it, expect } from 'vitest';
-import { MidiSystem, MidiBackend, MidiPortInfo, RawMidiInput, RawMidiOutput } from '@oletizi/sampler-midi';
+import {describe, it, expect} from 'vitest';
+import {MidiSystem, MidiBackend, MidiPortInfo, RawMidiInput, RawMidiOutput} from '@oletizi/sampler-midi';
 
 class TestMidiBackend implements MidiBackend {
-  getInputs(): MidiPortInfo[] {
-    return [{ name: 'Test Input' }];
-  }
+    getInputs(): MidiPortInfo[] {
+        return [{name: 'Test Input'}];
+    }
 
-  getOutputs(): MidiPortInfo[] {
-    return [{ name: 'Test Output' }];
-  }
+    getOutputs(): MidiPortInfo[] {
+        return [{name: 'Test Output'}];
+    }
 
-  createInput(name: string): RawMidiInput {
-    return {
-      on: vi.fn(),
-      removeListener: vi.fn(),
-      close: vi.fn()
-    };
-  }
+    createInput(name: string): RawMidiInput {
+        return {
+            on: vi.fn(),
+            removeListener: vi.fn(),
+            close: vi.fn()
+        };
+    }
 
-  createOutput(name: string): RawMidiOutput {
-    return {
-      send: vi.fn(),
-      close: vi.fn()
-    };
-  }
+    createOutput(name: string): RawMidiOutput {
+        return {
+            send: vi.fn(),
+            close: vi.fn()
+        };
+    }
 }
 
 describe('MidiSystem', () => {
-  it('should list available ports', async () => {
-    const backend = new TestMidiBackend();
-    const system = new MidiSystem(backend);
+    it('should list available ports', async () => {
+        const backend = new TestMidiBackend();
+        const system = new MidiSystem(backend);
 
-    await system.start();
+        await system.start();
 
-    expect(system.getInputs()).toHaveLength(1);
-    expect(system.getOutputs()).toHaveLength(1);
-  });
+        expect(system.getInputs()).toHaveLength(1);
+        expect(system.getOutputs()).toHaveLength(1);
+    });
 });
 ```
 
@@ -777,6 +799,7 @@ pnpm clean
 ### Reporting Issues
 
 When reporting issues, please include:
+
 - Operating system and version
 - Node.js version
 - MIDI device make/model
@@ -807,6 +830,7 @@ This package follows interface-first design with explicit dependency injection:
 ```
 
 **Key Design Principles**:
+
 - **Interface-first**: All dependencies defined as interfaces
 - **Explicit injection**: No hidden dependencies or singletons
 - **Testability**: Easy to inject mocks for testing
@@ -823,6 +847,7 @@ See [CHANGELOG.md](./CHANGELOG.md) for detailed version history.
 **Current Version**: 7.0.0
 
 **Major Changes in 7.0.0**:
+
 - Interface-first dependency injection architecture
 - Removed legacy `Midi` class
 - Removed `createMidiSystem()` factory
@@ -845,4 +870,5 @@ See [CHANGELOG.md](./CHANGELOG.md) for detailed version history.
 
 ## Acknowledgments
 
-This package is part of the audio-tools monorepo, focused on providing modern tooling for vintage hardware samplers. Special thanks to the easymidi library maintainers for providing cross-platform MIDI support.
+This package is part of the audio-tools monorepo, focused on providing modern tooling for vintage hardware samplers.
+Special thanks to the easymidi library maintainers for providing cross-platform MIDI support.
