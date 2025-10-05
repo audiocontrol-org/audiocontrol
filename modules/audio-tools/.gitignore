@@ -10,3 +10,5 @@
 **/node_modules
 .next/
 *.tsbuildinfo
+.release-notes.tmp
+*.tar.gz

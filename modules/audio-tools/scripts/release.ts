@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 import { execSync } from 'child_process';
 import { join } from 'path';
-import { readFileSync, readdirSync, statSync } from 'fs';
+import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
 
 interface PackageJson {
   name: string;
@@ -92,16 +92,20 @@ See individual package READMEs for usage details.`;
 
   console.log(`\nCreating GitHub release ${tag}...`);
 
+  // Write notes to temporary file to avoid shell escaping issues
+  const notesFile = join(rootDir, '.release-notes.tmp');
+  writeFileSync(notesFile, notes, 'utf-8');
+
   try {
-    execCommand(`gh release create "${tag}" --title "${title}" --notes "${notes}" "${tarballPath}"`, rootDir);
+    execCommand(`gh release create "${tag}" --title "${title}" --notes-file "${notesFile}" "${tarballPath}"`, rootDir);
     console.log(`✓ GitHub release created: ${tag}`);
 
-    execCommand(`rm -f "${tarballPath}"`, rootDir);
+    execCommand(`rm -f "${tarballPath}" "${notesFile}"`, rootDir);
   } catch (error) {
     console.error('⚠️  Failed to create GitHub release');
     console.error('You can create it manually with:');
-    console.error(`  gh release create "${tag}" --title "${title}" --notes "${notes}" "${tarballPath}"`);
-    execCommand(`rm -f "${tarballPath}"`, rootDir);
+    console.error(`  gh release create "${tag}" --title "${title}" --notes-file "${notesFile}" "${tarballPath}"`);
+    execCommand(`rm -f "${tarballPath}" "${notesFile}"`, rootDir);
     throw error;
   }
 }
