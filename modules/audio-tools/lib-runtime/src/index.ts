@@ -5,22 +5,19 @@ export interface ExecutionResult {
     code: number;
 }
 
-function voidFunction() {
-}
-
 export function execute(bin: string, args: readonly string[],
                         opts: {
-                            onData: (buf: Buffer, child: ChildProcess) => void,
-                            onStart: (child: ChildProcess) => void
-                        } = {onData: voidFunction, onStart: voidFunction}) {
+                            onData?: (buf: Buffer, child: ChildProcess) => void,
+                            onStart?: (child: ChildProcess) => void
+                        } = {}) {
     return new Promise<ExecutionResult>((resolve, reject) => {
         const rv: ExecutionResult = {errors: [], code: -1}
         console.log(`execute: ${bin} ${args.join(' ')}`)
-        const child = spawn(bin, args, {shell: true})
+        const child = spawn(bin, args)
         child.stdout.setEncoding('utf8')
-        opts.onStart(child)
+        opts.onStart?.(child)
         child.stdout.on('data', data => {
-            opts.onData(data, child)
+            opts.onData?.(data, child)
         })
 
         child.on('error', (e) => {
