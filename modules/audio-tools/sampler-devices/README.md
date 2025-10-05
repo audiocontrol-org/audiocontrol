@@ -1,8 +1,7 @@
 # @oletizi/sampler-devices
 
-Device abstraction layer for communicating with Akai hardware samplers via MIDI SysEx. Provides TypeScript interfaces for S3000XL and S5000/S6000 series samplers, including disk operations, program/sample management, and remote control.
-
-![sampler-devices](https://github.com/oletizi/ol_dsp/actions/workflows/sampler-devices.yml/badge.svg)
+Device abstraction layer for communicating with Akai hardware samplers via MIDI SysEx. Provides TypeScript interfaces
+for S3000XL and S5000/S6000 series samplers, including disk operations, program/sample management, and remote control.
 
 ## Table of Contents
 
@@ -23,6 +22,7 @@ npm install @oletizi/sampler-devices
 ```
 
 **Dependencies:**
+
 - `@oletizi/sampler-lib` - Core Akai format handling
 - External `akaitools` binary (for disk operations)
 
@@ -31,12 +31,12 @@ npm install @oletizi/sampler-devices
 ### Working with S3000XL
 
 ```typescript
-import { newAkaitools, AkaiToolsConfig } from '@oletizi/sampler-devices/s3k';
+import {newAkaitools, AkaiToolsConfig} from '@oletizi/sampler-devices/s3k';
 
 // Create configuration for local disk
 const config: AkaiToolsConfig = {
-  diskPath: '/dev/disk4',  // Local disk or disk image
-  verbose: true
+    diskPath: '/dev/disk4',  // Local disk or disk image
+    verbose: true
 };
 
 const tools = newAkaitools(config);
@@ -56,7 +56,7 @@ console.log(`Keygroups: ${program.keygroups.length}`);
 ### Working with S5000/S6000
 
 ```typescript
-import { parseS56kChunk, BasicProgram, Chunk } from '@oletizi/sampler-devices/s5k';
+import {parseS56kChunk, BasicProgram, Chunk} from '@oletizi/sampler-devices/s5k';
 
 // Parse S5K/S6K chunk data
 const chunk: Chunk = parseS56kChunk(rawData);
@@ -70,17 +70,17 @@ console.log(`Program name: ${program.getName()}`);
 ### Remote Operations (PiSCSI/SSH)
 
 ```typescript
-import { newAkaitools } from '@oletizi/sampler-devices/s3k';
+import {newAkaitools} from '@oletizi/sampler-devices/s3k';
 
 // Configure for remote sampler via SSH
 const config = {
-  serverConfig: {
-    host: 'piscsi.local',
-    user: 'pi',
-    sshKeyPath: '~/.ssh/id_rsa'
-  },
-  remote: true,
-  verbose: true
+    serverConfig: {
+        host: 'piscsi.local',
+        user: 'pi',
+        sshKeyPath: '~/.ssh/id_rsa'
+    },
+    remote: true,
+    verbose: true
 };
 
 const tools = newAkaitools(config);
@@ -88,7 +88,7 @@ const tools = newAkaitools(config);
 // List remote volumes
 const volumes = await tools.remoteVolumes();
 volumes.disks.forEach(disk => {
-  console.log(`${disk.id}: ${disk.name} (${disk.mounted ? 'mounted' : 'unmounted'})`);
+    console.log(`${disk.id}: ${disk.name} (${disk.mounted ? 'mounted' : 'unmounted'})`);
 });
 
 // Mount a volume
@@ -136,25 +136,36 @@ The core interface for all disk and device operations:
 
 ```typescript
 interface Akaitools {
-  // Disk operations
-  readAkaiDisk(): Promise<AkaiDiskResult>;
-  akaiFormat(partitionSize?: number, partitionCount?: number): Promise<ExecutionResult>;
-  akaiWrite(sourcePath: string, targetPath: string, partition?: number): Promise<ExecutionResult>;
-  akaiRead(sourcePath: string, targetPath: string, partition?: number, recursive?: boolean): Promise<ExecutionResult>;
-  akaiList(akaiPath: string, partition?: number): Promise<AkaiRecordResult>;
+    // Disk operations
+    readAkaiDisk(): Promise<AkaiDiskResult>;
 
-  // Program/sample operations
-  readAkaiProgram(file: string): Promise<AkaiProgramFile>;
-  writeAkaiProgram(file: string, program: AkaiProgramFile): Promise<void>;
-  writeAkaiSample(file: string, sample: SampleHeader): Promise<void>;
-  wav2Akai(sourcePath: string, targetPath: string, targetName: string): Promise<ExecutionResult>;
-  akai2Wav(sourcePath: string): Promise<ExecutionResult>;
+    akaiFormat(partitionSize?: number, partitionCount?: number): Promise<ExecutionResult>;
 
-  // Remote operations (SSH/PiSCSI)
-  remoteSync(): Promise<ExecutionResult>;
-  remoteVolumes(): Promise<RemoteVolumeResult>;
-  remoteUnmount(volume: RemoteDisk): Promise<ExecutionResult>;
-  remoteMount(volume: RemoteDisk): Promise<ExecutionResult>;
+    akaiWrite(sourcePath: string, targetPath: string, partition?: number): Promise<ExecutionResult>;
+
+    akaiRead(sourcePath: string, targetPath: string, partition?: number, recursive?: boolean): Promise<ExecutionResult>;
+
+    akaiList(akaiPath: string, partition?: number): Promise<AkaiRecordResult>;
+
+    // Program/sample operations
+    readAkaiProgram(file: string): Promise<AkaiProgramFile>;
+
+    writeAkaiProgram(file: string, program: AkaiProgramFile): Promise<void>;
+
+    writeAkaiSample(file: string, sample: SampleHeader): Promise<void>;
+
+    wav2Akai(sourcePath: string, targetPath: string, targetName: string): Promise<ExecutionResult>;
+
+    akai2Wav(sourcePath: string): Promise<ExecutionResult>;
+
+    // Remote operations (SSH/PiSCSI)
+    remoteSync(): Promise<ExecutionResult>;
+
+    remoteVolumes(): Promise<RemoteVolumeResult>;
+
+    remoteUnmount(volume: RemoteDisk): Promise<ExecutionResult>;
+
+    remoteMount(volume: RemoteDisk): Promise<ExecutionResult>;
 }
 ```
 
@@ -174,11 +185,11 @@ function newAkaiToolsConfig(): AkaiToolsConfig;
 
 ```typescript
 interface AkaiToolsConfig {
-  diskPath?: string;           // Path to disk or disk image
-  serverConfig?: ServerConfig; // SSH configuration for remote operations
-  remote?: boolean;            // Enable remote mode
-  verbose?: boolean;           // Verbose logging
-  partition?: number;          // Default partition number
+    diskPath?: string;           // Path to disk or disk image
+    serverConfig?: ServerConfig; // SSH configuration for remote operations
+    remote?: boolean;            // Enable remote mode
+    verbose?: boolean;           // Verbose logging
+    partition?: number;          // Default partition number
 }
 ```
 
@@ -186,9 +197,9 @@ interface AkaiToolsConfig {
 
 ```typescript
 interface AkaiDiskResult {
-  volumes: AkaiVolume[];       // Disk volumes
-  programs: AkaiProgramFile[]; // Programs on disk
-  samples: SampleHeader[];     // Samples on disk
+    volumes: AkaiVolume[];       // Disk volumes
+    programs: AkaiProgramFile[]; // Programs on disk
+    samples: SampleHeader[];     // Samples on disk
 }
 ```
 
@@ -196,9 +207,9 @@ interface AkaiDiskResult {
 
 ```typescript
 interface AkaiProgramFile {
-  header: ProgramHeader;       // Program metadata
-  keygroups: KeyGroup[];       // Keygroups (zones)
-  zones: Zone[];               // Individual zones
+    header: ProgramHeader;       // Program metadata
+    keygroups: KeyGroup[];       // Keygroups (zones)
+    zones: Zone[];               // Individual zones
 }
 ```
 
@@ -208,11 +219,11 @@ interface AkaiProgramFile {
 
 ```typescript
 const config: AkaiToolsConfig = {
-  diskPath: '/dev/disk4',      // macOS: /dev/diskN
-                               // Linux: /dev/sdX
-                               // Windows: \\.\\PhysicalDriveN
-  verbose: true,
-  partition: 1                 // Optional: specify partition
+    diskPath: '/dev/disk4',      // macOS: /dev/diskN
+                                 // Linux: /dev/sdX
+                                 // Windows: \\.\\PhysicalDriveN
+    verbose: true,
+    partition: 1                 // Optional: specify partition
 };
 ```
 
@@ -220,14 +231,14 @@ const config: AkaiToolsConfig = {
 
 ```typescript
 const config: AkaiToolsConfig = {
-  serverConfig: {
-    host: 'piscsi.local',
-    port: 22,
-    user: 'pi',
-    sshKeyPath: '~/.ssh/id_rsa'
-  },
-  remote: true,
-  verbose: true
+    serverConfig: {
+        host: 'piscsi.local',
+        port: 22,
+        user: 'pi',
+        sshKeyPath: '~/.ssh/id_rsa'
+    },
+    remote: true,
+    verbose: true
 };
 ```
 
@@ -235,8 +246,8 @@ const config: AkaiToolsConfig = {
 
 ```typescript
 const config: AkaiToolsConfig = {
-  diskPath: './backups/sampler-disk.img',
-  verbose: true
+    diskPath: './backups/sampler-disk.img',
+    verbose: true
 };
 ```
 
@@ -246,12 +257,13 @@ const config: AkaiToolsConfig = {
 
 **DO NOT MANUALLY EDIT** the following auto-generated files. Your changes WILL be overwritten.
 
-| File | Lines | Generator | Purpose |
-|------|-------|-----------|---------|
-| `src/devices/s3000xl.ts` | 4,868 | `src/gen-s3000xl.ts` | S3000XL device interfaces |
-| Files in `src/gen/` | Varies | Various generators | Generator implementations |
+| File                     | Lines  | Generator            | Purpose                   |
+|--------------------------|--------|----------------------|---------------------------|
+| `src/devices/s3000xl.ts` | 4,868  | `src/gen-s3000xl.ts` | S3000XL device interfaces |
+| Files in `src/gen/`      | Varies | Various generators   | Generator implementations |
 
 **All auto-generated files have headers like:**
+
 ```typescript
 //
 // GENERATED Fri Oct 03 2025 22:37:37 GMT-0700 (Pacific Daylight Time). DO NOT EDIT.
@@ -260,12 +272,15 @@ const config: AkaiToolsConfig = {
 
 ### Why Code Generation?
 
-The Akai S3000XL has hundreds of parameters across multiple data structures (ProgramHeader, KeyGroup, Zone, SampleHeader, etc.). Hand-writing parsers and serializers for these structures would be:
+The Akai S3000XL has hundreds of parameters across multiple data structures (ProgramHeader, KeyGroup, Zone,
+SampleHeader, etc.). Hand-writing parsers and serializers for these structures would be:
+
 - Error-prone (easy to get byte offsets wrong)
 - Tedious (repetitive boilerplate)
 - Hard to maintain (changes require updating multiple places)
 
 Code generation solves this by:
+
 - Single source of truth (YAML specification)
 - Guaranteed consistency between parsers/writers
 - Easy to extend (add fields to spec, regenerate)
@@ -283,6 +298,7 @@ npm run gen
 ```
 
 Or manually:
+
 ```bash
 tsx src/gen-s3000xl.ts src/devices
 ```
@@ -292,17 +308,20 @@ This will regenerate `src/devices/s3000xl.ts` with a new timestamp.
 #### Specification File
 
 The generator reads from:
+
 ```
 src/gen/akai-s3000xl.spec.yaml
 ```
 
 This YAML file defines:
+
 - Interface structures (ProgramHeader, KeyGroup, Zone, etc.)
 - Field types and descriptions
 - Byte offsets and data layouts
 - MIDI SysEx message structures
 
 **Example from spec:**
+
 ```yaml
 - name: ProgramHeader
   className: ProgramHeaderClient
@@ -334,50 +353,60 @@ Located at `src/gen/gen-s3000xl-device.ts`, the generator:
 The generator produces **4,868 lines** of TypeScript code including:
 
 **Interfaces** (data structures):
+
 ```typescript
 export interface ProgramHeader {
-  PRNAME: string    // Name of program
-  PRNAMELabel: string
-  PRGNUM: number    // MIDI program number; Range: 0 to 128
-  PRGNUMLabel: string
-  // ... 50+ more fields
-  raw: number[]     // Raw sysex message data
+    PRNAME: string    // Name of program
+    PRNAMELabel: string
+    PRGNUM: number    // MIDI program number; Range: 0 to 128
+    PRGNUMLabel: string
+    // ... 50+ more fields
+    raw: number[]     // Raw sysex message data
 }
 ```
 
 **Parser functions** (binary → objects):
+
 ```typescript
 export function parseProgramHeader(
-  raw: number[],
-  headerOffset: number,
-  header: ProgramHeader
+    raw: number[],
+    headerOffset: number,
+    header: ProgramHeader
 ): void {
-  // Parses bytes and populates header object
+    // Parses bytes and populates header object
 }
 ```
 
 **Writer functions** (objects → binary):
+
 ```typescript
 export function ProgramHeader_writePRNAME(
-  header: ProgramHeader,
-  value: string
+    header: ProgramHeader,
+    value: string
 ): void {
-  // Updates header.raw with new value
+    // Updates header.raw with new value
 }
 ```
 
 **Classes** (with save methods):
+
 ```typescript
 export class ProgramHeaderClient {
-  constructor(device: Device, header: ProgramHeader) { }
+    constructor(device: Device, header: ProgramHeader) {
+    }
 
-  async save(): Promise<void> {
-    return this.device.sendRaw(this.header.raw);
-  }
+    async save(): Promise<void> {
+        return this.device.sendRaw(this.header.raw);
+    }
 
-  getName(): string { return this.header.PRNAME; }
-  setName(v: string): void { /* ... */ }
-  // ... getters/setters for all fields
+    getName(): string {
+        return this.header.PRNAME;
+    }
+
+    setName(v: string): void { /* ... */
+    }
+
+    // ... getters/setters for all fields
 }
 ```
 
@@ -395,8 +424,8 @@ export class ProgramHeaderClient {
    ```
 
 2. **Update the generator** (if needed): Edit `src/gen/gen-s3000xl-device.ts`
-   - Only needed for structural changes
-   - Most changes only require spec updates
+    - Only needed for structural changes
+    - Most changes only require spec updates
 
 3. **Regenerate**: Run `npm run gen`
    ```bash
@@ -420,6 +449,7 @@ export class ProgramHeaderClient {
 #### S56K Generator
 
 Located at the repository root:
+
 ```bash
 tsx gen-s56k.ts
 ```
@@ -475,6 +505,7 @@ After regenerating, verify:
 ### Akai S3000XL
 
 **Full support** for:
+
 - Disk operations (read, write, format, list)
 - Program management (read, write, parse)
 - Sample operations (WAV conversion, read, write)
@@ -482,6 +513,7 @@ After regenerating, verify:
 - MIDI SysEx communication
 
 **Supported operations:**
+
 - Read entire disk structure
 - Parse program files (.AKP)
 - Parse sample files (.AKS)
@@ -492,6 +524,7 @@ After regenerating, verify:
 ### Akai S5000/S6000
 
 **Partial support** for:
+
 - Chunk-based data parsing
 - Program structure handling
 - Basic data operations
@@ -504,20 +537,22 @@ Device specifications are defined in `src/devices/specs.ts`:
 
 ```typescript
 export const programOutputSpec: DeviceSpec = {
-  specName: 'programOutputSpec',
-  className: 'ProgramOutput',
-  sectionCode: Section.PROGRAM,
-  items: [
-    ["Loudness", "number|0|100|1", /* ... */],
-    ["VelocitySensitivity", "number|-100|100|1", /* ... */],
-    // ... more parameters
-  ]
+    specName: 'programOutputSpec',
+    className: 'ProgramOutput',
+    sectionCode: Section.PROGRAM,
+    items: [
+        ["Loudness", "number|0|100|1", /* ... */],
+        ["VelocitySensitivity", "number|-100|100|1", /* ... */],
+        // ... more parameters
+    ]
 };
 ```
 
 Access all specs:
+
 ```typescript
-import { getDeviceSpecs } from '@oletizi/sampler-devices';
+import {getDeviceSpecs} from '@oletizi/sampler-devices';
+
 const specs = getDeviceSpecs();
 ```
 
@@ -526,22 +561,22 @@ const specs = getDeviceSpecs();
 ### Example 1: Backup All Programs
 
 ```typescript
-import { newAkaitools } from '@oletizi/sampler-devices/s3k';
+import {newAkaitools} from '@oletizi/sampler-devices/s3k';
 
 async function backupAllPrograms(diskPath: string, outputDir: string) {
-  const tools = newAkaitools({ diskPath, verbose: true });
-  const disk = await tools.readAkaiDisk();
+    const tools = newAkaitools({diskPath, verbose: true});
+    const disk = await tools.readAkaiDisk();
 
-  for (const program of disk.programs) {
-    const filename = `${program.header.PRNAME}.akp`;
-    await tools.akaiRead(
-      filename,                    // Source: program on disk
-      `${outputDir}/${filename}`,  // Target: local file
-      1,                           // Partition
-      false                        // Not recursive
-    );
-    console.log(`Backed up: ${filename}`);
-  }
+    for (const program of disk.programs) {
+        const filename = `${program.header.PRNAME}.akp`;
+        await tools.akaiRead(
+            filename,                    // Source: program on disk
+            `${outputDir}/${filename}`,  // Target: local file
+            1,                           // Partition
+            false                        // Not recursive
+        );
+        console.log(`Backed up: ${filename}`);
+    }
 }
 
 await backupAllPrograms('/dev/disk4', './backup');
@@ -550,22 +585,22 @@ await backupAllPrograms('/dev/disk4', './backup');
 ### Example 2: Convert WAV to Akai Sample
 
 ```typescript
-import { newAkaitools } from '@oletizi/sampler-devices/s3k';
+import {newAkaitools} from '@oletizi/sampler-devices/s3k';
 
 async function importWavSample(wavPath: string, diskPath: string, sampleName: string) {
-  const tools = newAkaitools({ diskPath, verbose: true });
+    const tools = newAkaitools({diskPath, verbose: true});
 
-  const result = await tools.wav2Akai(
-    wavPath,           // Source WAV file
-    diskPath,          // Target disk
-    sampleName         // Akai sample name (8.3 format)
-  );
+    const result = await tools.wav2Akai(
+        wavPath,           // Source WAV file
+        diskPath,          // Target disk
+        sampleName         // Akai sample name (8.3 format)
+    );
 
-  if (result.code === 0) {
-    console.log(`Imported ${sampleName} successfully`);
-  } else {
-    console.error(`Import failed: ${result.errors.join(', ')}`);
-  }
+    if (result.code === 0) {
+        console.log(`Imported ${sampleName} successfully`);
+    } else {
+        console.error(`Import failed: ${result.errors.join(', ')}`);
+    }
 }
 
 await importWavSample('./samples/kick.wav', '/dev/disk4', 'KICK001');
@@ -574,27 +609,27 @@ await importWavSample('./samples/kick.wav', '/dev/disk4', 'KICK001');
 ### Example 3: List Remote Volumes
 
 ```typescript
-import { newAkaitools } from '@oletizi/sampler-devices/s3k';
+import {newAkaitools} from '@oletizi/sampler-devices/s3k';
 
 async function listRemoteVolumes() {
-  const tools = newAkaitools({
-    serverConfig: {
-      host: 'piscsi.local',
-      user: 'pi',
-      sshKeyPath: '~/.ssh/id_rsa'
-    },
-    remote: true,
-    verbose: true
-  });
+    const tools = newAkaitools({
+        serverConfig: {
+            host: 'piscsi.local',
+            user: 'pi',
+            sshKeyPath: '~/.ssh/id_rsa'
+        },
+        remote: true,
+        verbose: true
+    });
 
-  const volumes = await tools.remoteVolumes();
+    const volumes = await tools.remoteVolumes();
 
-  console.log('Available volumes:');
-  volumes.disks.forEach(disk => {
-    console.log(`  ${disk.id}: ${disk.name}`);
-    console.log(`    Mounted: ${disk.mounted ? 'Yes' : 'No'}`);
-    console.log(`    Device: ${disk.devicePath || 'N/A'}`);
-  });
+    console.log('Available volumes:');
+    volumes.disks.forEach(disk => {
+        console.log(`  ${disk.id}: ${disk.name}`);
+        console.log(`    Mounted: ${disk.mounted ? 'Yes' : 'No'}`);
+        console.log(`    Device: ${disk.devicePath || 'N/A'}`);
+    });
 }
 
 await listRemoteVolumes();
@@ -603,37 +638,37 @@ await listRemoteVolumes();
 ### Example 4: Parse S5K/S6K Data
 
 ```typescript
-import { parseS56kChunk, BasicProgram } from '@oletizi/sampler-devices/s5k';
+import {parseS56kChunk, BasicProgram} from '@oletizi/sampler-devices/s5k';
 
 async function parseS6KProgram(data: Uint8Array) {
-  const chunk = parseS56kChunk(data);
+    const chunk = parseS56kChunk(data);
 
-  if (chunk.type === 'PROGRAM') {
-    const program = new BasicProgram(chunk.data);
-    console.log(`Program: ${program.getName()}`);
-    console.log(`Zones: ${program.getZoneCount()}`);
-  }
+    if (chunk.type === 'PROGRAM') {
+        const program = new BasicProgram(chunk.data);
+        console.log(`Program: ${program.getName()}`);
+        console.log(`Zones: ${program.getZoneCount()}`);
+    }
 }
 ```
 
 ### Example 5: Modify and Save Program
 
 ```typescript
-import { newAkaitools } from '@oletizi/sampler-devices/s3k';
+import {newAkaitools} from '@oletizi/sampler-devices/s3k';
 
 async function setProgramVolume(diskPath: string, programFile: string, loudness: number) {
-  const tools = newAkaitools({ diskPath, verbose: true });
+    const tools = newAkaitools({diskPath, verbose: true});
 
-  // Read program
-  const program = await tools.readAkaiProgram(programFile);
+    // Read program
+    const program = await tools.readAkaiProgram(programFile);
 
-  // Modify (requires working with generated S3000XL interfaces)
-  // Note: This is a simplified example
-  program.header.OUTLEV = loudness; // Output level
+    // Modify (requires working with generated S3000XL interfaces)
+    // Note: This is a simplified example
+    program.header.OUTLEV = loudness; // Output level
 
-  // Write back
-  await tools.writeAkaiProgram(programFile, program);
-  console.log(`Updated ${programFile} loudness to ${loudness}`);
+    // Write back
+    await tools.writeAkaiProgram(programFile, program);
+    console.log(`Updated ${programFile} loudness to ${loudness}`);
 }
 
 await setProgramVolume('/dev/disk4', 'BASS001.AKP', 80);
@@ -646,6 +681,7 @@ await setProgramVolume('/dev/disk4', 'BASS001.AKP', 80);
 **Problem**: External `akaitools` binary not installed or not in PATH.
 
 **Solution**:
+
 1. Install akaitools: https://github.com/philburk/akaitools
 2. Ensure it's in your system PATH
 3. Or specify full path in configuration
@@ -660,6 +696,7 @@ process.env.PATH += ':/usr/local/bin:/opt/homebrew/bin';
 **Problem**: Insufficient permissions to access disk device.
 
 **Solution** (macOS/Linux):
+
 ```bash
 # Run with sudo
 sudo node your-script.js
@@ -669,6 +706,7 @@ sudo usermod -a -G disk $USER
 ```
 
 **Solution** (macOS - unmount disk first):
+
 ```bash
 diskutil list                    # Find your disk
 diskutil unmountDisk /dev/disk4  # Unmount before accessing
@@ -679,6 +717,7 @@ diskutil unmountDisk /dev/disk4  # Unmount before accessing
 **Problem**: SSH connection times out or fails.
 
 **Solution**:
+
 1. Verify SSH connectivity: `ssh pi@piscsi.local`
 2. Check SSH key permissions: `chmod 600 ~/.ssh/id_rsa`
 3. Increase timeout in configuration:
@@ -699,6 +738,7 @@ diskutil unmountDisk /dev/disk4  # Unmount before accessing
 **Problem**: Specified partition doesn't exist or is invalid.
 
 **Solution**:
+
 1. List partitions first:
    ```typescript
    const disk = await tools.readAkaiDisk();
@@ -712,6 +752,7 @@ diskutil unmountDisk /dev/disk4  # Unmount before accessing
 **Problem**: Changes to spec files don't take effect.
 
 **Solution**:
+
 1. Regenerate code: `npm run gen`
 2. Rebuild package: `npm run build`
 3. Check generator ran successfully (no errors)
@@ -722,6 +763,7 @@ diskutil unmountDisk /dev/disk4  # Unmount before accessing
 **Problem**: Generated code doesn't compile.
 
 **Solution**:
+
 1. Check YAML spec syntax: `yamllint src/gen/akai-s3000xl.spec.yaml`
 2. Verify generator script has no errors
 3. Run tests to identify issues: `npm test`
@@ -732,18 +774,20 @@ diskutil unmountDisk /dev/disk4  # Unmount before accessing
 **Problem**: `Cannot find module '@oletizi/sampler-devices/s3k'`
 
 **Solution**:
+
 1. Ensure package is installed: `npm install @oletizi/sampler-devices`
 2. Check package.json exports are correct
 3. Use correct import paths:
-   - `@oletizi/sampler-devices` (default)
-   - `@oletizi/sampler-devices/s3k` (S3000XL)
-   - `@oletizi/sampler-devices/s5k` (S5000/S6000)
+    - `@oletizi/sampler-devices` (default)
+    - `@oletizi/sampler-devices/s3k` (S3000XL)
+    - `@oletizi/sampler-devices/s5k` (S5000/S6000)
 
 ### "No such file" when reading program
 
 **Problem**: Program file doesn't exist on disk.
 
 **Solution**:
+
 1. List disk contents first:
    ```typescript
    const records = await tools.akaiList('/', 1);
@@ -800,6 +844,7 @@ npm run test:watch
 ### Generator Modifications
 
 If modifying code generators:
+
 1. Update generator script (`src/gen/*.ts`)
 2. Update specification file (`src/gen/*.yaml`)
 3. Regenerate code: `npm run gen`
@@ -833,7 +878,8 @@ If modifying code generators:
 ## Special Thanks
 
 - [Hiroyuki Ohsaki for akaitools](https://www.lsnl.jp/~ohsaki/software/akaitools/) - Essential disk operation tools
-- [Seb Francis for reverse engineering the Akai S5000/S6000 program format](https://burnit.co.uk/AKPspec/) - Comprehensive S5K/S6K documentation
+- [Seb Francis for reverse engineering the Akai S5000/S6000 program format](https://burnit.co.uk/AKPspec/) -
+  Comprehensive S5K/S6K documentation
 
 ## License
 

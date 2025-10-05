@@ -1,5 +1,39 @@
 // XXX: Does this library belong in a higher-level module?
 
+/**
+ * Converts a MIDI note name to its corresponding MIDI note number.
+ *
+ * Supports standard note names (C-G), accidentals (# or b), and octaves (-1 to 9).
+ * The octave -1 is the lowest MIDI octave, where C-1 = MIDI note 0.
+ *
+ * @param note - The note name in the format: note + optional accidental + octave (e.g., "C4", "F#3", "Bb-1")
+ * @returns The MIDI note number (0-127), or -1 if the note format is invalid or out of range
+ * @public
+ *
+ * @example
+ * ```typescript
+ * // Middle C (MIDI note 60)
+ * const c4 = midiNoteToNumber("C4");  // Returns 60
+ *
+ * // F# in octave 3
+ * const fSharp3 = midiNoteToNumber("F#3");  // Returns 54
+ *
+ * // B-flat in octave 2
+ * const bFlat2 = midiNoteToNumber("Bb2");  // Returns 46
+ *
+ * // Invalid note
+ * const invalid = midiNoteToNumber("X9");  // Returns -1
+ *
+ * // Out of range
+ * const tooHigh = midiNoteToNumber("C10");  // Returns -1
+ * ```
+ *
+ * @remarks
+ * - MIDI note range is 0-127 (C-1 to G9)
+ * - Note names are case-insensitive (C4 and c4 are equivalent)
+ * - Accidentals: # (sharp) adds 1 semitone, b (flat) subtracts 1 semitone
+ * - Returns -1 for invalid formats or out-of-range notes
+ */
 export function midiNoteToNumber(note: string): number {
     // MIDI note range is 0-127 (C-1 to G9)
     const MIN_MIDI_NOTE = 0;

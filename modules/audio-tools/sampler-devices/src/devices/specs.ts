@@ -1,3 +1,12 @@
+/**
+ * S5000/S6000 MIDI SysEx section codes.
+ *
+ * @remarks
+ * These codes identify different sections in Akai S5000/S6000 MIDI SysEx messages.
+ * Each section code corresponds to a specific device function or data type.
+ *
+ * @internal
+ */
 enum Section {
   SYSEX_CONFIG = 0x00,
   SYSTEM_SETUP = 0x02,
@@ -18,13 +27,41 @@ enum Section {
   ALT_FX = 0x32
 }
 
+/**
+ * Device specification defining MIDI parameter structure.
+ *
+ * @remarks
+ * Device specs define how to encode/decode MIDI SysEx messages for specific
+ * S5000/S6000 parameters. Each spec includes parameter metadata and encoding rules.
+ *
+ * @public
+ */
 export interface DeviceSpec {
+  /** Unique name identifying this specification */
   specName: string;
+  /** Class name for generated code */
   className: string;
+  /** MIDI SysEx section code (see Section enum) */
   sectionCode: number;
+  /** Array of parameter specifications (name, type, encoding rules) */
   items: unknown[];
 }
 
+/**
+ * Program output specification for S5000/S6000.
+ *
+ * @remarks
+ * Defines output parameters including loudness, velocity sensitivity, and modulation routing.
+ * Parameters use MIDI SysEx encoding with item codes for get/set operations.
+ *
+ * Format: [paramName, typeSpec, getCode, getParams, getType, getLength, setCode, setParams]
+ * - typeSpec: "number|min|max|step" or "string|maxLength"
+ * - getCode: MIDI item code for parameter retrieval
+ * - setCode: MIDI item code for parameter setting
+ * - getType/setParams: Data type encoding (uint8, int8sign+int8abs, etc.)
+ *
+ * @public
+ */
 export const programOutputSpec: DeviceSpec = {
   specName: 'programOutputSpec',
   className: "ProgramOutput",
@@ -49,6 +86,15 @@ export const programOutputSpec: DeviceSpec = {
   ]
 };
 
+/**
+ * Program MIDI tune specification for S5000/S6000.
+ *
+ * @remarks
+ * Defines tuning parameters including semitone/fine tune, tune templates, and key selection.
+ * All parameters use standard MIDI SysEx encoding.
+ *
+ * @public
+ */
 export const programMidTuneSpec: DeviceSpec = {
   specName: 'programMidTuneSpec',
   className: "ProgramMidiTune",
@@ -61,6 +107,14 @@ export const programMidTuneSpec: DeviceSpec = {
   ]
 };
 
+/**
+ * Program pitch bend specification for S5000/S6000.
+ *
+ * @remarks
+ * Defines pitch bend parameters including bend range, aftertouch, legato, and portamento settings.
+ *
+ * @public
+ */
 export const programPitchBendSpec: DeviceSpec = {
   specName: 'programPitchBendSpec',
   className: "ProgramPitchBend",
@@ -77,6 +131,15 @@ export const programPitchBendSpec: DeviceSpec = {
   ]
 };
 
+/**
+ * Program LFO specification for S5000/S6000.
+ *
+ * @remarks
+ * Defines LFO1 and LFO2 parameters including rate, delay, depth, waveform, and modulation routing.
+ * Each LFO has independent settings with shared parameter structure.
+ *
+ * @public
+ */
 export const programLfosSpec: DeviceSpec = {
   specName: 'programLfosSpec',
   className: "ProgramLfos",
@@ -96,6 +159,17 @@ export const programLfosSpec: DeviceSpec = {
   ]
 };
 
+/**
+ * Get all device specifications.
+ *
+ * @remarks
+ * Returns array of all defined device specs for S5000/S6000 MIDI parameter handling.
+ * Used for code generation and MIDI message encoding/decoding.
+ *
+ * @returns Array of all device specifications
+ *
+ * @public
+ */
 export function getDeviceSpecs(): DeviceSpec[] {
   return [
     programOutputSpec,

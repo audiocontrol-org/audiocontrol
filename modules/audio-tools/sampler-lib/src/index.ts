@@ -1,3 +1,9 @@
+/**
+ * @module sampler-lib
+ * @description Core library for sampler operations, including utilities, I/O, configuration management,
+ * and data models for Akai samplers and audio samples.
+ */
+
 export * from "./lib-core"
 export * from "./lib-io"
 export * from "./lib-config-client"

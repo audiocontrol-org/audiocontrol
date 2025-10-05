@@ -1,73 +1,201 @@
 import { WaveFile } from "wavefile";
 import { WriteStream } from "fs";
 
+/**
+ * Creates a Sample instance from a WAV file buffer.
+ *
+ * @param buf - Buffer containing WAV file data
+ * @returns Sample interface for manipulating the audio data
+ *
+ * @example
+ * ```typescript
+ * const wavData = await fs.readFile('sample.wav');
+ * const sample = newSampleFromBuffer(new Uint8Array(wavData));
+ * console.log(sample.getSampleRate()); // 44100
+ * ```
+ */
 export function newSampleFromBuffer(buf: Uint8Array): Sample {
     return new WavSample(buf)
 }
 
-// https://www.recordingblogs.com/wiki/sample-chunk-of-a-wave-file
-//
-//   dwManufacturer: 16777287,
-//   dwProduct: 94,
-//   dwSamplePeriod: 20833,
-//   dwMIDIUnityNote: 60,
-//   dwMIDIPitchFraction: 0,
-//   dwSMPTEFormat: 0,
-//   dwSMPTEOffset: 0,
-//   dwNumSampleLoops: 0,
-//   dwSamplerData: 18,
-//   loops: []
+/**
+ * Complete metadata for an audio sample.
+ *
+ * @remarks
+ * Based on the WAV file 'smpl' chunk specification.
+ * See: https://www.recordingblogs.com/wiki/sample-chunk-of-a-wave-file
+ */
 export interface SampleMetadata {
+    /** MIDI manufacturer ID */
     manufacturerId: number
+    /** MIDI product ID */
     productId: number
+    /** Sample period in nanoseconds */
     samplePeriod: number
+    /** MIDI root note (0-127) */
     rootNote: number
+    /** Pitch fraction for fine tuning */
     pitchFraction: number
+    /** SMPTE format code */
     smpteFormat: number
+    /** SMPTE offset */
     smpteOffset: number
+    /** Number of loop points defined */
     loopCount: number
+    /** Total number of sample frames */
     sampleLength: number
+    /** Number of audio channels (1=mono, 2=stereo) */
     channelCount: number
+    /** Bit depth (8, 16, 24, 32) */
     bitDepth: number
+    /** Sample rate in Hz (e.g., 44100, 48000) */
     sampleRate: number
 }
 
-
+/**
+ * Interface for audio sample manipulation and I/O.
+ *
+ * @remarks
+ * Provides methods for reading metadata, converting formats,
+ * trimming samples, and writing audio data.
+ */
 export interface Sample {
-
+    /**
+     * Retrieves complete sample metadata.
+     *
+     * @returns Sample metadata including format and MIDI information
+     */
     getMetadata(): SampleMetadata
 
+    /**
+     * Gets the total number of sample frames.
+     *
+     * @returns Number of samples (per channel)
+     */
     getSampleCount(): number
 
+    /**
+     * Gets the number of audio channels.
+     *
+     * @returns Channel count (1=mono, 2=stereo, etc.)
+     */
     getChannelCount(): number
 
+    /**
+     * Gets the sample rate.
+     *
+     * @returns Sample rate in Hz
+     */
     getSampleRate(): number
 
+    /**
+     * Gets the bit depth.
+     *
+     * @returns Bit depth (8, 16, 24, or 32)
+     */
     getBitDepth(): number
 
+    /**
+     * Sets the MIDI root note for the sample.
+     *
+     * @param r - MIDI note number (0-127)
+     */
     setRootNote(r: number): void
 
+    /**
+     * Trims the sample to a specific range.
+     *
+     * @param start - Start sample frame index
+     * @param end - End sample frame index
+     * @returns New trimmed Sample instance
+     *
+     * @example
+     * ```typescript
+     * // Trim to first second at 44.1kHz
+     * const trimmed = sample.trim(0, 44100);
+     * ```
+     */
     trim(start: number, end: number): Sample
 
+    /**
+     * Converts the sample to 16-bit depth.
+     *
+     * @returns This Sample instance (for chaining)
+     *
+     * @remarks
+     * Modifies the sample in-place. Use for reducing file size
+     * or ensuring compatibility with 16-bit samplers.
+     */
     to16Bit(): Sample
 
+    /**
+     * Converts the sample to 44.1kHz sample rate.
+     *
+     * @returns This Sample instance (for chaining)
+     *
+     * @remarks
+     * Modifies the sample in-place. Performs resampling
+     * with quality optimized for audio.
+     */
     to441(): Sample
 
+    /**
+     * Cleans up WAV file metadata.
+     *
+     * @returns This Sample instance (for chaining)
+     *
+     * @remarks
+     * Ensures the fact chunk is correctly formatted.
+     * Call before writing to ensure valid WAV files.
+     */
     cleanup(): Sample
 
+    /**
+     * Writes sample data to a buffer at a specific offset.
+     *
+     * @param buf - Target buffer
+     * @param offset - Offset in bytes where data should be written
+     * @returns Number of bytes written
+     */
     write(buf: Buffer, offset: number): number
 
     /**
-     * Writes sample data to stream; returns the number of bytes written
-     * @param stream
+     * Writes sample data to a stream.
+     *
+     * @param stream - Writable stream to output WAV data
+     * @returns Promise resolving to the number of bytes written
+     *
+     * @example
+     * ```typescript
+     * const stream = fs.createWriteStream('output.wav');
+     * const bytesWritten = await sample.writeToStream(stream);
+     * ```
      */
     writeToStream(stream: WriteStream): Promise<number>
 
+    /**
+     * Gets sample data as Float64 array.
+     *
+     * @returns Float64Array containing interleaved sample data
+     *
+     * @remarks
+     * For stereo files, samples are interleaved: [L, R, L, R, ...]
+     */
     getSampleData(): Float64Array;
 
+    /**
+     * Gets the raw WAV file data.
+     *
+     * @returns Uint8Array containing complete WAV file bytes
+     */
     getRawData(): Uint8Array
 }
 
+/**
+ * WaveFile-based implementation of the Sample interface.
+ *
+ * @internal
+ */
 class WavSample implements Sample {
     private readonly wav: WaveFile;
     private buf: Uint8Array;
@@ -79,15 +207,6 @@ class WavSample implements Sample {
         this.wav = wav
     }
 
-    //   dwManufacturer: 16777287,
-    //   dwProduct: 94,
-    //   dwSamplePeriod: 20833,
-    //   dwMIDIUnityNote: 60,
-    //   dwMIDIPitchFraction: 0,
-    //   dwSMPTEFormat: 0,
-    //   dwSMPTEOffset: 0,
-    //   dwNumSampleLoops: 0,
-    //   dwSamplerData: 18,
     getMetadata(): SampleMetadata {
         const rv = {} as SampleMetadata
         const smpl = this.wav.smpl as any

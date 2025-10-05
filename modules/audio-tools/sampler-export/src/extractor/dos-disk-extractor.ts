@@ -2,6 +2,9 @@
  * DOS/FAT Disk Image Extractor
  *
  * Extracts files from DOS/FAT32 formatted Akai disk images using mtools.
+ * Handles partition offset detection and file organization.
+ *
+ * @module extractor/dos-disk-extractor
  */
 
 import { mkdirSync, readFileSync, openSync, readSync, closeSync } from "fs";
@@ -12,7 +15,20 @@ import type { ExtractionResult } from "@/types/index.js";
 
 /**
  * Detect DOS partition offset from MBR
- * Reads the partition table to find the start sector of the first partition
+ *
+ * Reads the partition table to find the start sector of the first partition.
+ * The MBR partition table entry for the first partition is at offset 0x1BE,
+ * with the start sector stored at offset 0x1C6 (4 bytes, little-endian).
+ *
+ * @param diskImage - Path to disk image file
+ * @returns Byte offset to first partition, defaults to 32256 (sector 63) if detection fails
+ *
+ * @remarks
+ * Common DOS partition offsets:
+ * - 32256 bytes (sector 63) - Traditional DOS partition start
+ * - 1048576 bytes (sector 2048) - Modern partition alignment
+ *
+ * @internal
  */
 function detectPartitionOffset(diskImage: string): number {
     try {
@@ -39,6 +55,22 @@ function detectPartitionOffset(diskImage: string): number {
 
 /**
  * Execute mcopy to extract files from DOS disk
+ *
+ * Uses the mtools mcopy utility to recursively copy files from a DOS/FAT filesystem.
+ * Supports partition offset specification using mtools' "@@offset" syntax.
+ *
+ * @param diskImage - Path to disk image file
+ * @param outputDir - Destination directory for extracted files
+ * @param partitionOffset - Byte offset to partition start
+ * @returns Promise resolving to execution result with output/error information
+ *
+ * @throws Never throws - errors are returned in result object
+ *
+ * @remarks
+ * The MTOOLS_SKIP_CHECK environment variable is set to bypass mtools.conf validation.
+ * mcopy warnings are filtered from stderr as they don't indicate actual failures.
+ *
+ * @internal
  */
 async function executeMcopy(
     diskImage: string,
@@ -115,6 +147,45 @@ async function executeMcopy(
 
 /**
  * Extract a DOS/FAT formatted Akai disk image
+ *
+ * Performs complete extraction of a DOS/FAT32 formatted disk image, including:
+ * - Automatic partition offset detection
+ * - Recursive file extraction using mcopy
+ * - Audio file organization (WAV, AIF, AIFF files copied to wav/ directory)
+ * - Directory structure creation matching native Akai disk layout
+ *
+ * @param diskImage - Path to disk image file
+ * @param diskName - Name to use for output directory
+ * @param outputDir - Parent output directory
+ * @param quiet - Suppress console output (default: false)
+ * @returns Promise resolving to extraction result with statistics
+ *
+ * @remarks
+ * DOS/FAT disks already contain WAV files, unlike native Akai disks which use
+ * proprietary .a3s format. Therefore, samplesExtracted equals samplesConverted.
+ *
+ * Output directory structure:
+ * ```
+ * outputDir/
+ *   diskName/
+ *     raw/          - All files from DOS filesystem
+ *     wav/          - WAV/AIF audio files (copies from raw/)
+ *     sfz/          - Empty, populated by caller
+ *     decentsampler/ - Empty, populated by caller
+ * ```
+ *
+ * @example
+ * ```typescript
+ * const result = await extractDosDisk(
+ *   '/path/to/disk.hds',
+ *   'my-disk',
+ *   '/output',
+ *   false
+ * );
+ * console.log(`Extracted ${result.stats.samplesExtracted} audio files`);
+ * ```
+ *
+ * @public
  */
 export async function extractDosDisk(
     diskImage: string,
@@ -233,7 +304,33 @@ export async function extractDosDisk(
 
 /**
  * Check if a disk image is DOS/FAT formatted
- * Only reads the first 512 bytes (boot sector) for efficiency
+ *
+ * Efficiently detects DOS/FAT filesystems by reading only the first 512 bytes
+ * (boot sector) and checking for DOS boot signatures and filesystem markers.
+ *
+ * @param diskImage - Path to disk image file
+ * @returns True if disk appears to be DOS/FAT formatted, false otherwise
+ *
+ * @remarks
+ * Detection checks:
+ * 1. Boot signature 0x55AA at offset 0x1FE (mandatory for valid boot sectors)
+ * 2. FAT16 filesystem marker at offset 0x36-0x3B
+ * 3. FAT32 filesystem marker at offset 0x52-0x5A
+ *
+ * Only reads first 512 bytes for performance - critical for handling large disk images.
+ *
+ * @example
+ * ```typescript
+ * if (isDosDisk('/path/to/disk.hds')) {
+ *   console.log('DOS/FAT disk detected');
+ *   await extractDosDisk(...);
+ * } else {
+ *   console.log('Native Akai disk detected');
+ *   await extractAkaiDisk(...);
+ * }
+ * ```
+ *
+ * @public
  */
 export function isDosDisk(diskImage: string): boolean {
     try {

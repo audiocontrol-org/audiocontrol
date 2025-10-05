@@ -2,6 +2,9 @@
  * Akai Disk Image Extractor
  *
  * Orchestrates extraction of Akai disk images and conversion to modern formats.
+ * Supports both native Akai format disks and DOS/FAT32 formatted disks.
+ *
+ * @module extractor/disk-extractor
  */
 
 import { mkdirSync, existsSync, readdirSync } from "fs";
@@ -14,33 +17,113 @@ import { convertAKPToSFZ } from "@/converters/s5k-to-sfz.js";
 import { convertAKPToDecentSampler } from "@/converters/s5k-to-decentsampler.js";
 import { isDosDisk, extractDosDisk } from "@/extractor/dos-disk-extractor.js";
 
+/**
+ * Configuration options for disk extraction
+ *
+ * @public
+ */
 export interface ExtractionOptions {
+    /** Path to the disk image file (.hds, .img, etc.) */
     diskImage: string;
+
+    /** Output directory for extracted files */
     outputDir: string;
+
+    /** Whether to convert programs to SFZ format (default: true) */
     convertToSFZ?: boolean;
+
+    /** Whether to convert programs to DecentSampler format (default: true) */
     convertToDecentSampler?: boolean;
+
+    /** Suppress console output (default: false) */
     quiet?: boolean;
 }
 
+/**
+ * Result of a disk extraction operation
+ *
+ * @public
+ */
 export interface ExtractionResult {
+    /** Whether extraction completed successfully */
     success: boolean;
+
+    /** Name of the disk (derived from filename) */
     diskName: string;
+
+    /** Absolute path to output directory */
     outputDir: string;
+
+    /** Statistics about extracted content */
     stats: {
+        /** Number of samples extracted from disk */
         samplesExtracted: number;
+
+        /** Number of samples successfully converted to WAV */
         samplesConverted: number;
+
+        /** Number of program files found */
         programsFound: number;
+
+        /** Number of SFZ files created */
         sfzCreated: number;
+
+        /** Number of DecentSampler presets created */
         dspresetCreated: number;
     };
+
+    /** Array of error messages encountered during extraction */
     errors: string[];
 }
 
 /**
  * Extract an Akai disk image and convert programs to modern formats
  *
- * @param options - Extraction options
- * @returns Extraction result with statistics
+ * This function automatically detects whether the disk is in native Akai format
+ * or DOS/FAT32 format and uses the appropriate extraction method.
+ *
+ * The extraction creates the following directory structure:
+ * ```
+ * outputDir/
+ *   diskName/
+ *     raw/          - Original files from disk
+ *     wav/          - Converted WAV samples
+ *     sfz/          - SFZ instrument files
+ *     decentsampler/ - DecentSampler preset files
+ * ```
+ *
+ * @param options - Extraction configuration options
+ * @returns Promise resolving to extraction result with statistics
+ *
+ * @throws Error if disk image file doesn't exist or is unreadable
+ *
+ * @example
+ * ```typescript
+ * // Extract with all conversions enabled
+ * const result = await extractAkaiDisk({
+ *   diskImage: '/path/to/disk.hds',
+ *   outputDir: '/path/to/output',
+ *   convertToSFZ: true,
+ *   convertToDecentSampler: true
+ * });
+ *
+ * console.log(`Extracted ${result.stats.samplesConverted} samples`);
+ * console.log(`Created ${result.stats.sfzCreated} SFZ files`);
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // Extract without conversion (raw files only)
+ * const result = await extractAkaiDisk({
+ *   diskImage: '/backup/s5k-disk.hds',
+ *   outputDir: '/output',
+ *   convertToSFZ: false,
+ *   convertToDecentSampler: false,
+ *   quiet: true
+ * });
+ * ```
+ *
+ * @public
  */
 export async function extractAkaiDisk(
     options: ExtractionOptions
@@ -241,6 +324,12 @@ export async function extractAkaiDisk(
 
 /**
  * Recursively find files with a specific extension
+ *
+ * @param dir - Directory to search
+ * @param extension - File extension to match (e.g., ".a3p", ".wav")
+ * @returns Array of absolute file paths
+ *
+ * @internal
  */
 function findFiles(dir: string, extension: string): string[] {
     const results: string[] = [];
