@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [7.0.0] - 2025-10-04
+## [1.0.0] - 2025-10-04
 
 ### Added
 - **Core library modules migrated** from deprecated code (Phase 2.1)
@@ -132,4 +132,4 @@ See the [README](./README.md) for comprehensive documentation and examples.
 
 ---
 
-[7.0.0]: https://github.com/oletizi/audio-tools/releases/tag/sampler-lib-v7.0.0
+[1.0.0]: https://github.com/oletizi/audio-tools/releases/tag/sampler-lib-v1.0.0

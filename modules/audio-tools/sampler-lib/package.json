@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/sampler-lib",
-  "version": "7.0.0",
+  "version": "1.0.0",
   "description": "Library code for sampler stuff",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

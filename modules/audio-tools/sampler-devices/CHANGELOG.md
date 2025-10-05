@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [7.0.0] - 2025-10-04
+## [1.0.0] - 2025-10-04
 
 ### Added
 - **Comprehensive JSDoc/TSDoc documentation** for all public APIs (42e1be4, f5a95ae)
@@ -101,4 +101,4 @@ See the [README Code Generation section](./README.md#code-generation) for detail
 
 ---
 
-[7.0.0]: https://github.com/oletizi/audio-tools/releases/tag/sampler-devices-v7.0.0
+[1.0.0]: https://github.com/oletizi/audio-tools/releases/tag/sampler-devices-v1.0.0
