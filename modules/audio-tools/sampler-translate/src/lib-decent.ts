@@ -56,22 +56,22 @@ export namespace decent {
                         const sample = {} as Sample
                         group.samples.push(sample)
                         sample.path = attribs.path
-                        sample.attack = Number.parseFloat(attribs.attack)
-                        sample.attackCurve = Number.parseFloat(attribs.attackcurve)
-                        sample.decay = Number.parseFloat(attribs.decay)
-                        sample.decayCurve = Number.parseFloat(attribs.decaycurve)
-                        sample.end = Number.parseFloat(attribs.end)
-                        sample.hiNote = parseNote(attribs.hinote)
-                        sample.hiVel = Number.parseInt(attribs.hivel)
-                        sample.loNote = parseNote(attribs.lonote)
-                        sample.loVel = Number.parseInt(attribs.lovel)
-                        sample.pan = Number.parseFloat(attribs.pan)
-                        sample.pitchKeyTrack = Number.parseFloat(attribs.pitchkeytrack)
-                        sample.release = Number.parseFloat(attribs.release)
-                        sample.releaseCurve = Number.parseFloat(attribs.releasecurve)
-                        sample.rootNote = parseNote(attribs.rootnote)
-                        sample.start = Number.parseFloat(attribs.start)
-                        sample.sustain = Number.parseFloat(attribs.sustain)
+                        sample.attack = attribs.attack ? Number.parseFloat(attribs.attack) : NaN
+                        sample.attackCurve = attribs.attackcurve ? Number.parseFloat(attribs.attackcurve) : NaN
+                        sample.decay = attribs.decay ? Number.parseFloat(attribs.decay) : NaN
+                        sample.decayCurve = attribs.decaycurve ? Number.parseFloat(attribs.decaycurve) : NaN
+                        sample.end = attribs.end ? Number.parseFloat(attribs.end) : NaN
+                        sample.hiNote = attribs.hinote ? parseNote(attribs.hinote) : NaN
+                        sample.hiVel = attribs.hivel ? Number.parseInt(attribs.hivel) : NaN
+                        sample.loNote = attribs.lonote ? parseNote(attribs.lonote) : NaN
+                        sample.loVel = attribs.lovel ? Number.parseInt(attribs.lovel) : NaN
+                        sample.pan = attribs.pan ? Number.parseFloat(attribs.pan) : NaN
+                        sample.pitchKeyTrack = attribs.pitchkeytrack ? Number.parseFloat(attribs.pitchkeytrack) : NaN
+                        sample.release = attribs.release ? Number.parseFloat(attribs.release) : NaN
+                        sample.releaseCurve = attribs.releasecurve ? Number.parseFloat(attribs.releasecurve) : NaN
+                        sample.rootNote = attribs.rootnote ? parseNote(attribs.rootnote) : NaN
+                        sample.start = attribs.start ? Number.parseFloat(attribs.start) : NaN
+                        sample.sustain = attribs.sustain ? Number.parseFloat(attribs.sustain) : NaN
                         sample.volume = attribs.volume
                         if (Number.isNaN(sample.rootNote)) {
                             if (!Number.isNaN(sample.loNote)) {

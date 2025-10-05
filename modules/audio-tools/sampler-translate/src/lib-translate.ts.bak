@@ -105,7 +105,7 @@ export const mapLogicAutoSampler: MapFunction = (sources: AudioSource[]) => {
         const match = s.filepath.match(/-([A-G][#b]*[0-9])-/)
         if (match && match[1]) {
             const noteName = match[1]
-            let noteNumber = midiNoteToNumber(noteName)
+            let noteNumber = midiNoteToNumber(noteName) + 12
             console.log(`noteName: ${noteName}; noteNumber: ${noteNumber}`);
             if (noteNumber != null) {
                 if (note2Samples.get(noteNumber)) {

@@ -304,8 +304,9 @@ export class Midi implements MidiSystem {
     const selected = inputs.find(input => input.name === name);
     if (selected) {
       this.setInput(selected.name);
+      return this.getCurrentInput();
     }
-    return this.getCurrentInput();
+    return undefined;
   }
 
   setOutputByName(name: string): MidiOutput | undefined {
@@ -313,8 +314,9 @@ export class Midi implements MidiSystem {
     const selected = outputs.find(output => output.name === name);
     if (selected) {
       this.setOutput(selected.name);
+      return this.getCurrentOutput();
     }
-    return this.getCurrentOutput();
+    return undefined;
   }
 
   isCurrentInput(name: string): boolean {

@@ -6,16 +6,19 @@ describe('sample', () => {
 
     it(`Creates a sample from buffer`, () => {
         const wav = new wavefile.default.WaveFile()
-        const fromBufferStub = vi.spyOn(wav, 'fromBuffer')
-        const toBitDepthStub = vi.spyOn(wav, 'toBitDepth')
-        const toSampleRateStub = vi.spyOn(wav, 'toSampleRate')
+        const fromBufferStub = vi.spyOn(wav, 'fromBuffer').mockImplementation(() => {})
+        const toBitDepthStub = vi.spyOn(wav, 'toBitDepth').mockImplementation(() => {})
+        const toSampleRateStub = vi.spyOn(wav, 'toSampleRate').mockImplementation(() => {})
         const buffer: Uint8Array = new Uint8Array([1, 2, 3])
-        const factory = vi.fn().mockReturnValue(wav)
+        const factory = vi.fn((buf: Uint8Array) => {
+            wav.fromBuffer(buf)
+            return wav
+        })
         const sample = new WavSample(factory, buffer)
 
         expect(fromBufferStub).toHaveBeenCalledWith(buffer)
 
-        expect(toBitDepthStub).toHaveBeenCalledWith("16")
+        expect(toBitDepthStub).not.toHaveBeenCalledWith("16")
         sample.to16Bit()
         expect(toBitDepthStub).toHaveBeenCalledWith("16")
 

@@ -14,8 +14,8 @@ export function parseRemoteVolumes(data: string): RemoteDisk[] {
         const match = i.match(/\|\s*(\d+).*/);
         if (match) {
             rv.push({
-                scsiId: Number.parseInt(i.substring(2, 4)),
-                lun: Number.parseInt(i.substring(10, 11)),
+                scsiId: Number.parseInt(i.substring(2, 4).trim()),
+                lun: Number.parseInt(i.substring(7, 12).trim()),
                 image: i.substring(14).trim()
             });
         }

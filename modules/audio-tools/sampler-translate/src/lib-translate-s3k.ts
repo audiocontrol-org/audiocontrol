@@ -4,20 +4,25 @@ import fs from 'fs'
 import _ from 'lodash'
 import {newServerConfig, ServerConfig} from '@oletizi/sampler-lib'
 import {
-    Akaitools, Keygroup,
+    Akaitools,
+    KeygroupHeader,
     KeygroupHeader_writeCP1,
     KeygroupHeader_writeCP2,
     KeygroupHeader_writeHINOTE,
+    KeygroupHeader_writeHIVEL1,
     KeygroupHeader_writeHIVEL2,
     KeygroupHeader_writeLONOTE,
+    KeygroupHeader_writeLOVEL1,
     KeygroupHeader_writeSNAME1,
-    KeygroupHeader_writeSNAME2, newAkaitools,
+    KeygroupHeader_writeSNAME2,
+    newAkaitools,
     newAkaiToolsConfig,
     parseSampleHeader,
     ProgramHeader_writePRNAME,
     RAW_LEADER,
     readAkaiData,
-    SampleHeader, SampleHeader_writeSPITCH
+    SampleHeader,
+    SampleHeader_writeSPITCH
 } from "@oletizi/sampler-devices/s3k"
 
 import {
@@ -147,13 +152,12 @@ export async function map(ctx: S3kTranslateContext, mapFunction: MapFunction, op
 
     const p = await tools.readAkaiProgram(await ctx.getS3kDefaultProgramPath(specs.length))
     const program = p.program
-    // ProgramHeader_writePRNAME(p.program, opts.prefix)
-    program.setProgramName(opts.prefix)
+    ProgramHeader_writePRNAME(program, opts.prefix)
 
 
     for (let i = 0; i < specs.length; i++) {
         const spec = specs[i]
-        const keygroup: Keygroup = p.keygroups[i]
+        const keygroup: KeygroupHeader = p.keygroups[i]
 
         for (const sampleName of [spec.sample1, spec.sample2]) {
             console.log(`Writing sample ${sampleName}`)
@@ -169,26 +173,16 @@ export async function map(ctx: S3kTranslateContext, mapFunction: MapFunction, op
                 tools.writeAkaiSample(sampleFilepath, sampleHeader)
                 console.log(`Writing keygroup sample: ${sampleHeader.SHNAME}`)
                 if (sampleHeader.SHNAME.endsWith('-R')) {
-                    // KeygroupHeader_writeSNAME2(keygroup, sampleHeader.SHNAME)
-                    // KeygroupHeader_writeVPANO1(keygroup, 0)
-                    // KeygroupHeader_writeVPANO2(keygroup, 127)
-                    // KeygroupHeader_writeHIVEL2(keygroup, 127)
-                    // TODO: figure out negative numbers for pan
-                    keygroup.setSampleName2(sampleHeader.SHNAME)
-                    keygroup.setLowVelocity1(spec.lowVelocity)
-                    keygroup.setHighVelocity2(spec.highVelocity)
+                    KeygroupHeader_writeSNAME2(keygroup, sampleHeader.SHNAME)
+                    KeygroupHeader_writeLOVEL1(keygroup, spec.lowVelocity)
+                    KeygroupHeader_writeHIVEL2(keygroup, spec.highVelocity)
                 } else {
-                    // KeygroupHeader_writeSNAME1(keygroup, sampleHeader.SHNAME)
-                    keygroup.setSampleName1(sampleHeader.SHNAME)
+                    KeygroupHeader_writeSNAME1(keygroup, sampleHeader.SHNAME)
                 }
-                // KeygroupHeader_writeLONOTE(keygroup, spec.lowNote)
-                // KeygroupHeader_writeHINOTE(keygroup, spec.highNote)
-                // KeygroupHeader_writeLOVEL1(keygroup, spec.lowVelocity)
-                // KeygroupHeader_writeHIVEL1(keygroup, spec.highVelocity)
-                keygroup.setLowNote(spec.lowNote)
-                keygroup.setHighNote(spec.highNote)
-                keygroup.setLowVelocity1(spec.lowVelocity)
-                keygroup.setHighVelocity1(spec.highVelocity)
+                KeygroupHeader_writeLONOTE(keygroup, spec.lowNote)
+                KeygroupHeader_writeHINOTE(keygroup, spec.highNote)
+                KeygroupHeader_writeLOVEL1(keygroup, spec.lowVelocity)
+                KeygroupHeader_writeHIVEL1(keygroup, spec.highVelocity)
 
                 const result = await writeSample(sampleName)
                 rv.errors = rv.errors.concat(result.errors)
@@ -289,10 +283,10 @@ export async function chop(cfg: ServerConfig, tools: Akaitools, opts: ChopOpts, 
             rv.errors.push(new Error(`Keygroup count does not match. Program keygroups: ${p.keygroups.length}; expected keygroups: ${keygroupSpec.length}`))
             return rv
         } else {
-            ProgramHeader_writePRNAME(p.program.getHeader(), opts.prefix)
+            ProgramHeader_writePRNAME(p.program, opts.prefix)
 
             for (let i = 0; i < p.keygroups.length; i++) {
-                const kg = p.keygroups[i].getHeader()
+                const kg = p.keygroups[i]
                 const spec = keygroupSpec[i]
                 KeygroupHeader_writeLONOTE(kg, 60 + i)
                 KeygroupHeader_writeHINOTE(kg, 60 + i)

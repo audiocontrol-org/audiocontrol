@@ -34,7 +34,11 @@ describe(`map`,
             loadFromFileStub: any,
             meta: AudioMetadata,
             audioTranslate: AudioTranslate,
-            translateStub: any
+            translateStub: any,
+            akaiWriteStub: any,
+            writeAkaiProgramStub: any,
+            writeAkaiSampleStub: any,
+            readAkaiDataStub: any
 
         beforeEach(async () => {
             fsStub = {
@@ -51,11 +55,20 @@ describe(`map`,
             akaiTools = {
                 wav2Akai: wav2AkaiStub = vi.fn(),
                 readAkaiProgram: readAkaiProgramStub = vi.fn(),
+                akaiWrite: akaiWriteStub = vi.fn(),
+                writeAkaiProgram: writeAkaiProgramStub = vi.fn(),
+                writeAkaiSample: writeAkaiSampleStub = vi.fn(),
             }
 
-            programHeader = {}
+            // Create a proper mock with raw array for ProgramHeader
+            programHeader = {
+                raw: new Array(1000).fill(0) // Allocate sufficient space
+            }
             akaiProgramFile = {
-                program: programHeader
+                program: programHeader,
+                keygroups: [{
+                    raw: new Array(1000).fill(0)
+                }]
             }
 
             audioTranslate = {
@@ -116,6 +129,13 @@ describe(`map`,
             translateStub.mockResolvedValue(successResult)
             wav2AkaiStub.mockResolvedValue(successResult)
             readAkaiProgramStub.mockResolvedValue(akaiProgramFile)
+            akaiWriteStub.mockResolvedValue(successResult)
+            writeAkaiProgramStub.mockResolvedValue(undefined)
+            writeAkaiSampleStub.mockResolvedValue(undefined)
+
+            // Mock readAkaiData to return valid data
+            const readAkaiData = await import('@oletizi/sampler-devices/s3k')
+            vi.spyOn(readAkaiData, 'readAkaiData').mockResolvedValue(new Array(1000).fill(0))
 
 
             const result = await map(ctx, mapFunctionStub, options)
