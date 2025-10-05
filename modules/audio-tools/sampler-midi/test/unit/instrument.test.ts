@@ -1,23 +1,52 @@
 /**
  * Tests for MIDI Instrument abstraction
  *
- * Note: These tests work with the actual easymidi library since it doesn't
- * support stubbing. Tests are designed to work without real MIDI hardware.
+ * Uses mock backend to avoid hardware dependencies while testing instrument behavior.
  */
 
-import { describe, it, beforeEach, afterEach, expect } from 'vitest';
+import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
 import {
   createMidiInstrument,
   newMidiInstrument,
   MidiInstrument
-} from '@/instrument';
-import { createMidiSystem, MidiSystem } from '@/midi';
+} from '@/instrument.js';
+import { MidiSystem } from '@/midi.js';
+import type { MidiBackend, RawMidiInput, RawMidiOutput } from '@/backend.js';
+
+/**
+ * Create a mock MIDI backend for testing
+ */
+function createMockBackend(): MidiBackend {
+  const mockInput: RawMidiInput = {
+    on: vi.fn(),
+    removeListener: vi.fn(),
+    close: vi.fn()
+  };
+
+  const mockOutput: RawMidiOutput = {
+    send: vi.fn(),
+    close: vi.fn()
+  };
+
+  return {
+    getInputs: vi.fn().mockReturnValue([
+      { name: 'Mock Input 1' }
+    ]),
+    getOutputs: vi.fn().mockReturnValue([
+      { name: 'Mock Output 1' }
+    ]),
+    createInput: vi.fn().mockReturnValue(mockInput),
+    createOutput: vi.fn().mockReturnValue(mockOutput)
+  };
+}
 
 describe('MIDI Instrument', () => {
   let midiSystem: MidiSystem;
+  let backend: MidiBackend;
 
   beforeEach(() => {
-    midiSystem = createMidiSystem();
+    backend = createMockBackend();
+    midiSystem = new MidiSystem(backend);
   });
 
   afterEach(async () => {
@@ -87,7 +116,9 @@ describe('MIDI Instrument', () => {
     describe('noteOn', () => {
       it('should throw error when no output available', async () => {
         // Create a fresh system with no outputs selected
-        const freshSystem = createMidiSystem();
+        const noOutputBackend = createMockBackend();
+        (noOutputBackend.getOutputs as any).mockReturnValue([]);
+        const freshSystem = new MidiSystem(noOutputBackend);
         const freshInstrument = createMidiInstrument(freshSystem, 0);
 
         expect(() => freshInstrument.noteOn(60, 127)).toThrow(
@@ -121,12 +152,25 @@ describe('MIDI Instrument', () => {
           expect(() => instrument.noteOn(60, 127)).not.toThrow();
         }
       });
+
+      it('should send note on with correct channel', () => {
+        instrument.noteOn(60, 127);
+
+        const mockOutput = (backend as any).createOutput.mock.results[0].value;
+        expect(mockOutput.send).toHaveBeenCalledWith('noteon', {
+          note: 60,
+          velocity: 127,
+          channel: testChannel
+        });
+      });
     });
 
     describe('noteOff', () => {
       it('should throw error when no output available', async () => {
         // Create a fresh system with no outputs selected
-        const freshSystem = createMidiSystem();
+        const noOutputBackend = createMockBackend();
+        (noOutputBackend.getOutputs as any).mockReturnValue([]);
+        const freshSystem = new MidiSystem(noOutputBackend);
         const freshInstrument = createMidiInstrument(freshSystem, 0);
 
         expect(() => freshInstrument.noteOff(60, 64)).toThrow(
@@ -159,6 +203,17 @@ describe('MIDI Instrument', () => {
           expect(() => instrument.noteOff(60, 64)).not.toThrow();
           expect(() => instrument.noteOff(60, 127)).not.toThrow();
         }
+      });
+
+      it('should send note off with correct channel', () => {
+        instrument.noteOff(60, 64);
+
+        const mockOutput = (backend as any).createOutput.mock.results[0].value;
+        expect(mockOutput.send).toHaveBeenCalledWith('noteoff', {
+          note: 60,
+          velocity: 64,
+          channel: testChannel
+        });
       });
     });
   });

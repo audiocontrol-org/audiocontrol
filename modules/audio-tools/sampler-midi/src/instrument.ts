@@ -5,7 +5,7 @@
  * with channel management.
  */
 
-import { MidiSystem, MidiOutput } from "./midi";
+import type { MidiSystemInterface, MidiOutput } from "@/midi.js";
 
 export interface MidiInstrument {
   noteOn(note: number, velocity: number): void;
@@ -14,11 +14,15 @@ export interface MidiInstrument {
 }
 
 class BasicMidiInstrument implements MidiInstrument {
-  private readonly midiSystem: MidiSystem;
+  private readonly midiSystem: MidiSystemInterface;
   private output?: MidiOutput;
   private readonly channel: number;
 
-  constructor(midiSystem: MidiSystem, channel: number) {
+  constructor(midiSystem: MidiSystemInterface, channel: number) {
+    if (channel < 0 || channel > 15) {
+      throw new Error(`Invalid MIDI channel: ${channel}. Must be between 0 and 15.`);
+    }
+
     this.midiSystem = midiSystem;
     this.channel = channel;
     this.output = midiSystem.getCurrentOutput();
@@ -26,25 +30,15 @@ class BasicMidiInstrument implements MidiInstrument {
 
   noteOn(note: number, velocity: number): void {
     if (!this.output) {
-      this.output = this.midiSystem.getCurrentOutput();
-    }
-
-    if (!this.output) {
       throw new Error('No MIDI output available for instrument');
     }
-
     this.output.sendNoteOn(note, velocity, this.channel);
   }
 
   noteOff(note: number, velocity: number): void {
     if (!this.output) {
-      this.output = this.midiSystem.getCurrentOutput();
-    }
-
-    if (!this.output) {
       throw new Error('No MIDI output available for instrument');
     }
-
     this.output.sendNoteOff(note, velocity, this.channel);
   }
 
@@ -55,28 +49,20 @@ class BasicMidiInstrument implements MidiInstrument {
 
 /**
  * Factory function to create a MIDI instrument
- *
- * @param midiSystem - The MIDI system to use for communication
- * @param channel - The MIDI channel (0-15)
- * @returns A MIDI instrument instance
  */
 export function createMidiInstrument(
-  midiSystem: MidiSystem,
+  midiSystem: MidiSystemInterface,
   channel: number
 ): MidiInstrument {
-  if (channel < 0 || channel > 15) {
-    throw new Error(`Invalid MIDI channel: ${channel}. Must be 0-15.`);
-  }
-
   return new BasicMidiInstrument(midiSystem, channel);
 }
 
 /**
- * Legacy compatibility function
+ * Legacy factory function alias
  * @deprecated Use createMidiInstrument() instead
  */
 export function newMidiInstrument(
-  midiSystem: MidiSystem,
+  midiSystem: MidiSystemInterface,
   channel: number
 ): MidiInstrument {
   return createMidiInstrument(midiSystem, channel);

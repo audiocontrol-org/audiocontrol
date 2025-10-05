@@ -3,10 +3,13 @@
  *
  * This module provides a unified interface for MIDI I/O operations,
  * supporting both input and output port management with listener registration.
+ *
+ * Architecture: Interface-first design with dependency injection.
+ * The MidiSystem class requires a MidiBackend to be explicitly injected.
  */
 
 import { ProcessOutput, newClientOutput } from "@oletizi/sampler-lib";
-import * as easymidi from "easymidi";
+import { MidiBackend, RawMidiInput, RawMidiOutput } from "@/backend.js";
 
 export interface MidiPort {
   readonly name: string;
@@ -32,7 +35,7 @@ export interface MidiConfig {
   debug?: boolean;
 }
 
-export interface MidiSystem {
+export interface MidiSystemInterface {
   start(config?: MidiConfig): Promise<void>;
   stop(): Promise<void>;
 
@@ -54,14 +57,14 @@ interface ListenerSpec {
   eventListener: (message: unknown) => void;
 }
 
-class EasyMidiInput implements MidiInput {
+class BackendMidiInput implements MidiInput {
   readonly name: string;
   readonly manufacturer?: string;
-  private port: easymidi.Input;
+  private port: RawMidiInput;
 
-  constructor(name: string) {
+  constructor(name: string, port: RawMidiInput) {
     this.name = name;
-    this.port = new easymidi.Input(name);
+    this.port = port;
   }
 
   addListener(event: string, callback: (message: unknown) => void): void {
@@ -77,14 +80,14 @@ class EasyMidiInput implements MidiInput {
   }
 }
 
-class EasyMidiOutput implements MidiOutput {
+class BackendMidiOutput implements MidiOutput {
   readonly name: string;
   readonly manufacturer?: string;
-  private port: easymidi.Output;
+  private port: RawMidiOutput;
 
-  constructor(name: string) {
+  constructor(name: string, port: RawMidiOutput) {
     this.name = name;
-    this.port = new easymidi.Output(name);
+    this.port = port;
   }
 
   send(eventType: string, message: unknown): void {
@@ -110,14 +113,35 @@ class EasyMidiOutput implements MidiOutput {
   }
 }
 
-class BasicMidiSystem implements MidiSystem {
+/**
+ * MIDI system with dependency injection
+ *
+ * This class requires explicit injection of a MidiBackend implementation.
+ * No default backend is provided - users must choose their backend explicitly.
+ *
+ * @example
+ * ```typescript
+ * import { MidiSystem } from '@oletizi/sampler-midi';
+ * import { EasyMidiBackend } from '@oletizi/sampler-midi';
+ *
+ * const backend = new EasyMidiBackend();
+ * const system = new MidiSystem(backend);
+ * await system.start();
+ * ```
+ */
+export class MidiSystem implements MidiSystemInterface {
   private currentInput?: MidiInput;
   private currentOutput?: MidiOutput;
   private listeners: ListenerSpec[] = [];
   private readonly out: ProcessOutput;
+  private readonly backend: MidiBackend;
   private config: MidiConfig = {};
 
-  constructor(out: ProcessOutput = newClientOutput(false)) {
+  constructor(
+    backend: MidiBackend,
+    out: ProcessOutput = newClientOutput(false)
+  ) {
+    this.backend = backend;
     this.out = out;
   }
 
@@ -160,11 +184,11 @@ class BasicMidiSystem implements MidiSystem {
   }
 
   getInputs(): MidiPort[] {
-    return easymidi.getInputs().map(name => ({ name }));
+    return this.backend.getInputs();
   }
 
   getOutputs(): MidiPort[] {
-    return easymidi.getOutputs().map(name => ({ name }));
+    return this.backend.getOutputs();
   }
 
   getCurrentInput(): MidiInput | undefined {
@@ -186,8 +210,9 @@ class BasicMidiSystem implements MidiSystem {
       this.currentInput.close();
     }
 
-    // Create new input
-    this.currentInput = new EasyMidiInput(inputName);
+    // Create new input using backend
+    const rawInput = this.backend.createInput(inputName);
+    this.currentInput = new BackendMidiInput(inputName, rawInput);
 
     // Attach listeners to new input
     for (const spec of this.listeners) {
@@ -206,7 +231,9 @@ class BasicMidiSystem implements MidiSystem {
       this.currentOutput.close();
     }
 
-    this.currentOutput = new EasyMidiOutput(outputName);
+    // Create new output using backend
+    const rawOutput = this.backend.createOutput(outputName);
+    this.currentOutput = new BackendMidiOutput(outputName, rawOutput);
 
     if (this.config.debug) {
       this.out.log(`Set MIDI output: ${outputName}`);
@@ -236,120 +263,6 @@ class BasicMidiSystem implements MidiSystem {
       if (this.config.debug) {
         this.out.log(`Removed MIDI listener: ${event} from ${this.currentInput.name}`);
       }
-    }
-  }
-}
-
-/**
- * Factory function to create a MIDI system instance
- */
-export function createMidiSystem(out?: ProcessOutput): MidiSystem {
-  return new BasicMidiSystem(out);
-}
-
-/**
- * Legacy compatibility: Midi class
- * @deprecated Use createMidiSystem() instead
- */
-export class Midi implements MidiSystem {
-  private system: MidiSystem;
-
-  constructor() {
-    this.system = createMidiSystem();
-  }
-
-  async start(config?: MidiConfig): Promise<void> {
-    await this.system.start(config);
-  }
-
-  async stop(): Promise<void> {
-    await this.system.stop();
-  }
-
-  getInputs(): MidiPort[] {
-    return this.system.getInputs();
-  }
-
-  getOutputs(): MidiPort[] {
-    return this.system.getOutputs();
-  }
-
-  getCurrentInput(): MidiInput | undefined {
-    return this.system.getCurrentInput();
-  }
-
-  getCurrentOutput(): MidiOutput | undefined {
-    return this.system.getCurrentOutput();
-  }
-
-  setInput(input: MidiInput | string): void {
-    this.system.setInput(input);
-  }
-
-  setOutput(output: MidiOutput | string): void {
-    this.system.setOutput(output);
-  }
-
-  addListener(event: string, callback: (message: unknown) => void): void {
-    this.system.addListener(event, callback);
-  }
-
-  removeListener(event: string, callback: (message: unknown) => void): void {
-    this.system.removeListener(event, callback);
-  }
-
-  // Legacy convenience methods
-  setInputByName(name: string): MidiInput | undefined {
-    const inputs = this.getInputs();
-    const selected = inputs.find(input => input.name === name);
-    if (selected) {
-      this.setInput(selected.name);
-      return this.getCurrentInput();
-    }
-    return undefined;
-  }
-
-  setOutputByName(name: string): MidiOutput | undefined {
-    const outputs = this.getOutputs();
-    const selected = outputs.find(output => output.name === name);
-    if (selected) {
-      this.setOutput(selected.name);
-      return this.getCurrentOutput();
-    }
-    return undefined;
-  }
-
-  isCurrentInput(name: string): boolean {
-    return this.getCurrentInput()?.name === name;
-  }
-
-  isCurrentOutput(name: string): boolean {
-    return this.getCurrentOutput()?.name === name;
-  }
-
-  sendSysex(identifier: number | number[], data: number[]): Midi {
-    const output = this.getCurrentOutput();
-    if (!output) {
-      throw new Error('No MIDI output selected');
-    }
-
-    const sysexData = Array.isArray(identifier)
-      ? [...identifier, ...data]
-      : [identifier, ...data];
-
-    output.sendSysex(sysexData);
-    return this;
-  }
-
-  noteOn(channels: number | number[], note: number, velocity: number): void {
-    const output = this.getCurrentOutput();
-    if (!output) {
-      throw new Error('No MIDI output selected');
-    }
-
-    const channelArray = Array.isArray(channels) ? channels : [channels];
-    for (const channel of channelArray) {
-      output.sendNoteOn(note, velocity, channel);
     }
   }
 }

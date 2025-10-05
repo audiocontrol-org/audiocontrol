@@ -1,37 +1,67 @@
 /**
  * Tests for MIDI system abstraction
  *
- * Note: These tests work with the actual easymidi library since it doesn't
- * support stubbing. Tests are designed to work without real MIDI hardware.
+ * These tests use a mock backend to avoid hardware dependencies and
+ * easymidi's strict validation issues.
  */
 
-import { describe, it, beforeEach, afterEach, expect } from 'vitest';
-import {
-  createMidiSystem,
-  Midi,
-  MidiSystem
-} from '@/midi';
+import { describe, it, beforeEach, afterEach, expect, vi } from 'vitest';
+import { MidiSystem } from '@/midi.js';
+import type { MidiBackend, RawMidiInput, RawMidiOutput } from '@/backend.js';
 import { newClientOutput } from '@oletizi/sampler-lib';
 
+/**
+ * Create a mock MIDI backend for testing
+ */
+function createMockBackend(): MidiBackend {
+  const mockInput: RawMidiInput = {
+    on: vi.fn(),
+    removeListener: vi.fn(),
+    close: vi.fn()
+  };
+
+  const mockOutput: RawMidiOutput = {
+    send: vi.fn(),
+    close: vi.fn()
+  };
+
+  return {
+    getInputs: vi.fn().mockReturnValue([
+      { name: 'Mock Input 1' },
+      { name: 'Mock Input 2' }
+    ]),
+    getOutputs: vi.fn().mockReturnValue([
+      { name: 'Mock Output 1' },
+      { name: 'Mock Output 2' }
+    ]),
+    createInput: vi.fn().mockReturnValue(mockInput),
+    createOutput: vi.fn().mockReturnValue(mockOutput)
+  };
+}
+
 describe('MIDI System', () => {
-  describe('createMidiSystem', () => {
-    it('should create a MIDI system instance', () => {
-      const system = createMidiSystem();
+  describe('MidiSystem Constructor', () => {
+    it('should create a MIDI system instance with backend', () => {
+      const backend = createMockBackend();
+      const system = new MidiSystem(backend);
       expect(system).toBeDefined();
     });
 
     it('should accept a custom ProcessOutput', () => {
       const customOut = newClientOutput(true);
-      const system = createMidiSystem(customOut);
+      const backend = createMockBackend();
+      const system = new MidiSystem(backend, customOut);
       expect(system).toBeDefined();
     });
   });
 
   describe('MidiSystem Interface', () => {
     let system: MidiSystem;
+    let backend: MidiBackend;
 
     beforeEach(() => {
-      system = createMidiSystem();
+      backend = createMockBackend();
+      system = new MidiSystem(backend);
     });
 
     afterEach(async () => {
@@ -44,9 +74,15 @@ describe('MIDI System', () => {
       });
 
       it('should accept configuration options', async () => {
-        await (
-          system.start({ enableSysex: true, debug: false })
-        );
+        await system.start({ enableSysex: true, debug: false });
+      });
+
+      it('should auto-select first ports if available', async () => {
+        await system.start();
+        expect(backend.getInputs).toHaveBeenCalled();
+        expect(backend.getOutputs).toHaveBeenCalled();
+        expect(backend.createInput).toHaveBeenCalledWith('Mock Input 1');
+        expect(backend.createOutput).toHaveBeenCalledWith('Mock Output 1');
       });
     });
 
@@ -59,6 +95,17 @@ describe('MIDI System', () => {
       it('should stop without errors even if not started', async () => {
         await system.stop();
       });
+
+      it('should close input and output ports', async () => {
+        await system.start();
+        const input = system.getCurrentInput();
+        const output = system.getCurrentOutput();
+
+        await system.stop();
+
+        expect(system.getCurrentInput()).toBeUndefined();
+        expect(system.getCurrentOutput()).toBeUndefined();
+      });
     });
 
     describe('getInputs', () => {
@@ -69,10 +116,16 @@ describe('MIDI System', () => {
 
       it('should return ports with name property', () => {
         const inputs = system.getInputs();
+        expect(inputs).toHaveLength(2);
         inputs.forEach(input => {
           expect(input).toHaveProperty('name');
           expect(typeof input.name).toBe('string');
         });
+      });
+
+      it('should delegate to backend', () => {
+        system.getInputs();
+        expect(backend.getInputs).toHaveBeenCalled();
       });
     });
 
@@ -84,10 +137,16 @@ describe('MIDI System', () => {
 
       it('should return ports with name property', () => {
         const outputs = system.getOutputs();
+        expect(outputs).toHaveLength(2);
         outputs.forEach(output => {
           expect(output).toHaveProperty('name');
           expect(typeof output.name).toBe('string');
         });
+      });
+
+      it('should delegate to backend', () => {
+        system.getOutputs();
+        expect(backend.getOutputs).toHaveBeenCalled();
       });
     });
 
@@ -98,10 +157,9 @@ describe('MIDI System', () => {
 
       it('should return input after start if available', async () => {
         await system.start();
-        const inputs = system.getInputs();
-        if (inputs.length > 0) {
-          expect(system.getCurrentInput()).not.toBeUndefined();
-        }
+        const input = system.getCurrentInput();
+        expect(input).toBeDefined();
+        expect(input?.name).toBe('Mock Input 1');
       });
     });
 
@@ -112,10 +170,9 @@ describe('MIDI System', () => {
 
       it('should return output after start if available', async () => {
         await system.start();
-        const outputs = system.getOutputs();
-        if (outputs.length > 0) {
-          expect(system.getCurrentOutput()).not.toBeUndefined();
-        }
+        const output = system.getCurrentOutput();
+        expect(output).toBeDefined();
+        expect(output?.name).toBe('Mock Output 1');
       });
     });
 
@@ -123,9 +180,26 @@ describe('MIDI System', () => {
       it('should accept string input name', async () => {
         await system.start();
         const inputs = system.getInputs();
-        if (inputs.length > 0) {
-          expect(() => system.setInput(inputs[0].name)).not.toThrow();
-        }
+        expect(() => system.setInput(inputs[0].name)).not.toThrow();
+      });
+
+      it('should create input using backend', async () => {
+        await system.start();
+        vi.clearAllMocks(); // Clear start's createInput call
+
+        system.setInput('Mock Input 2');
+        expect(backend.createInput).toHaveBeenCalledWith('Mock Input 2');
+      });
+
+      it('should close previous input before setting new one', async () => {
+        await system.start();
+        const firstInput = system.getCurrentInput();
+
+        system.setInput('Mock Input 2');
+
+        // Backend mock's close should have been called
+        const mockInput = (backend as any).createInput.mock.results[0].value;
+        expect(mockInput.close).toHaveBeenCalled();
       });
     });
 
@@ -133,175 +207,36 @@ describe('MIDI System', () => {
       it('should accept string output name', async () => {
         await system.start();
         const outputs = system.getOutputs();
-        if (outputs.length > 0) {
-          expect(() => system.setOutput(outputs[0].name)).not.toThrow();
-        }
-      });
-    });
-  });
-
-  describe('Legacy Midi Class', () => {
-    let midi: Midi;
-
-    beforeEach(() => {
-      midi = new Midi();
-    });
-
-    afterEach(async () => {
-      await midi.stop();
-    });
-
-    it('should create instance', () => {
-      expect(midi).toBeDefined();
-    });
-
-    it('should start and stop', async () => {
-      await midi.start();
-      await midi.stop();
-    });
-
-    it('should get inputs and outputs', () => {
-      expect(midi.getInputs()).toBeInstanceOf(Array);
-      expect(midi.getOutputs()).toBeInstanceOf(Array);
-    });
-
-    describe('setInputByName', () => {
-      it('should return undefined if input does not exist', async () => {
-        await midi.start();
-        const result = midi.setInputByName('Nonexistent Input');
-        expect(result).toBeUndefined();
+        expect(() => system.setOutput(outputs[0].name)).not.toThrow();
       });
 
-      it('should set input if it exists', async () => {
-        await midi.start();
-        const inputs = midi.getInputs();
-        if (inputs.length > 0) {
-          const result = midi.setInputByName(inputs[0].name);
-          expect(result).not.toBeUndefined();
-        }
-      });
-    });
+      it('should create output using backend', async () => {
+        await system.start();
+        vi.clearAllMocks();
 
-    describe('setOutputByName', () => {
-      it('should return undefined if output does not exist', async () => {
-        await midi.start();
-        const result = midi.setOutputByName('Nonexistent Output');
-        expect(result).toBeUndefined();
+        system.setOutput('Mock Output 2');
+        expect(backend.createOutput).toHaveBeenCalledWith('Mock Output 2');
       });
 
-      it('should set output if it exists', async () => {
-        await midi.start();
-        const outputs = midi.getOutputs();
-        if (outputs.length > 0) {
-          const result = midi.setOutputByName(outputs[0].name);
-          expect(result).not.toBeUndefined();
-        }
-      });
-    });
+      it('should close previous output before setting new one', async () => {
+        await system.start();
+        const firstOutput = system.getCurrentOutput();
 
-    describe('isCurrentInput', () => {
-      it('should return false when no input selected', () => {
-        expect(midi.isCurrentInput('Any Input')).toBe(false);
-      });
+        system.setOutput('Mock Output 2');
 
-      it('should return true for current input', async () => {
-        await midi.start();
-        const inputs = midi.getInputs();
-        if (inputs.length > 0) {
-          midi.setInputByName(inputs[0].name);
-          expect(midi.isCurrentInput(inputs[0].name)).toBe(true);
-        }
-      });
-
-      it('should return false for non-current input', async () => {
-        await midi.start();
-        expect(midi.isCurrentInput('Wrong Input')).toBe(false);
-      });
-    });
-
-    describe('isCurrentOutput', () => {
-      it('should return false when no output selected', () => {
-        expect(midi.isCurrentOutput('Any Output')).toBe(false);
-      });
-
-      it('should return true for current output', async () => {
-        await midi.start();
-        const outputs = midi.getOutputs();
-        if (outputs.length > 0) {
-          midi.setOutputByName(outputs[0].name);
-          expect(midi.isCurrentOutput(outputs[0].name)).toBe(true);
-        }
-      });
-
-      it('should return false for non-current output', async () => {
-        await midi.start();
-        expect(midi.isCurrentOutput('Wrong Output')).toBe(false);
-      });
-    });
-
-    describe('sendSysex', () => {
-      it('should throw error when no output selected', () => {
-        expect(() => midi.sendSysex(0x47, [0x5E, 0x00])).toThrow(
-          'No MIDI output selected'
-        );
-      });
-
-      it('should not throw when output is available', async () => {
-        await midi.start();
-        const outputs = midi.getOutputs();
-        if (outputs.length > 0) {
-          expect(() => midi.sendSysex(0x47, [0x5E, 0x00])).not.toThrow();
-        }
-      });
-
-      it('should accept array identifier', async () => {
-        await midi.start();
-        const outputs = midi.getOutputs();
-        if (outputs.length > 0) {
-          expect(() => midi.sendSysex([0x47, 0x5E], [0x00])).not.toThrow();
-        }
-      });
-
-      it('should return self for chaining', async () => {
-        await midi.start();
-        const outputs = midi.getOutputs();
-        if (outputs.length > 0) {
-          const result = midi.sendSysex(0x47, [0x5E, 0x00]);
-          expect(result).toBe(midi);
-        }
-      });
-    });
-
-    describe('noteOn', () => {
-      it('should throw error when no output selected', () => {
-        expect(() => midi.noteOn(1, 60, 127)).toThrow(
-          'No MIDI output selected'
-        );
-      });
-
-      it('should accept single channel', async () => {
-        await midi.start();
-        const outputs = midi.getOutputs();
-        if (outputs.length > 0) {
-          expect(() => midi.noteOn(1, 60, 127)).not.toThrow();
-        }
-      });
-
-      it('should accept multiple channels', async () => {
-        await midi.start();
-        const outputs = midi.getOutputs();
-        if (outputs.length > 0) {
-          expect(() => midi.noteOn([1, 2, 3], 60, 127)).not.toThrow();
-        }
+        const mockOutput = (backend as any).createOutput.mock.results[0].value;
+        expect(mockOutput.close).toHaveBeenCalled();
       });
     });
   });
 
   describe('Listener Management', () => {
     let system: MidiSystem;
+    let backend: MidiBackend;
 
     beforeEach(() => {
-      system = createMidiSystem();
+      backend = createMockBackend();
+      system = new MidiSystem(backend);
     });
 
     afterEach(async () => {
@@ -310,41 +245,58 @@ describe('MIDI System', () => {
 
     it('should add listeners without error', async () => {
       await system.start();
-      const callback = () => {};
+      const callback = vi.fn();
       expect(() => system.addListener('sysex', callback)).not.toThrow();
+
+      const mockInput = (backend as any).createInput.mock.results[0].value;
+      expect(mockInput.on).toHaveBeenCalledWith('sysex', callback);
     });
 
     it('should remove listeners without error', async () => {
       await system.start();
-      const callback = () => {};
+      const callback = vi.fn();
       system.addListener('sysex', callback);
       expect(() => system.removeListener('sysex', callback)).not.toThrow();
+
+      const mockInput = (backend as any).createInput.mock.results[0].value;
+      expect(mockInput.removeListener).toHaveBeenCalledWith('sysex', callback);
     });
 
     it('should handle adding listener before start', () => {
-      const callback = () => {};
+      const callback = vi.fn();
       expect(() => system.addListener('sysex', callback)).not.toThrow();
     });
 
     it('should persist listeners when changing inputs', async () => {
       await system.start();
-      const callback = () => {};
+      const callback = vi.fn();
       const inputs = system.getInputs();
 
       system.addListener('sysex', callback);
 
-      if (inputs.length > 0) {
-        system.setInput(inputs[0].name);
-        expect(() => system.removeListener('sysex', callback)).not.toThrow();
-      }
+      // Should be added to first input
+      const mockInput1 = (backend as any).createInput.mock.results[0].value;
+      expect(mockInput1.on).toHaveBeenCalledWith('sysex', callback);
+
+      // Change input
+      system.setInput(inputs[1].name);
+
+      // Should be removed from first input
+      expect(mockInput1.removeListener).toHaveBeenCalledWith('sysex', callback);
+
+      // Should be added to second input
+      const mockInput2 = (backend as any).createInput.mock.results[1].value;
+      expect(mockInput2.on).toHaveBeenCalledWith('sysex', callback);
     });
   });
 
   describe('Error Handling', () => {
     let system: MidiSystem;
+    let backend: MidiBackend;
 
     beforeEach(() => {
-      system = createMidiSystem();
+      backend = createMockBackend();
+      system = new MidiSystem(backend);
     });
 
     afterEach(async () => {
@@ -352,8 +304,13 @@ describe('MIDI System', () => {
     });
 
     it('should handle start when no ports available', async () => {
-      // Even with no ports, start should not throw
+      (backend.getInputs as any).mockReturnValue([]);
+      (backend.getOutputs as any).mockReturnValue([]);
+
       await system.start();
+
+      expect(system.getCurrentInput()).toBeUndefined();
+      expect(system.getCurrentOutput()).toBeUndefined();
     });
 
     it('should handle stop when not started', async () => {
@@ -374,6 +331,11 @@ describe('MIDI System', () => {
 
   describe('Configuration', () => {
     let system: MidiSystem;
+    let backend: MidiBackend;
+
+    beforeEach(() => {
+      backend = createMockBackend();
+    });
 
     afterEach(async () => {
       if (system) {
@@ -382,20 +344,85 @@ describe('MIDI System', () => {
     });
 
     it('should accept debug configuration', async () => {
-      system = createMidiSystem();
+      system = new MidiSystem(backend);
       await system.start({ debug: true });
     });
 
     it('should accept sysex configuration', async () => {
-      system = createMidiSystem();
+      system = new MidiSystem(backend);
       await system.start({ enableSysex: true });
     });
 
     it('should accept combined configuration', async () => {
-      system = createMidiSystem();
-      await (
-        system.start({ debug: true, enableSysex: true })
-      );
+      system = new MidiSystem(backend);
+      await system.start({ debug: true, enableSysex: true });
+    });
+  });
+
+  describe('MidiOutput Methods', () => {
+    let system: MidiSystem;
+    let backend: MidiBackend;
+
+    beforeEach(async () => {
+      backend = createMockBackend();
+      system = new MidiSystem(backend);
+      await system.start();
+    });
+
+    afterEach(async () => {
+      await system.stop();
+    });
+
+    it('should send sysex messages', () => {
+      const output = system.getCurrentOutput();
+      expect(output).toBeDefined();
+
+      output!.sendSysex([0x47, 0x5E, 0x00]);
+
+      const mockOutput = (backend as any).createOutput.mock.results[0].value;
+      expect(mockOutput.send).toHaveBeenCalledWith('sysex', {
+        bytes: [0xF0, 0x47, 0x5E, 0x00, 0xF7]
+      });
+    });
+
+    it('should not double-wrap sysex data', () => {
+      const output = system.getCurrentOutput();
+      expect(output).toBeDefined();
+
+      output!.sendSysex([0xF0, 0x47, 0x5E, 0x00, 0xF7]);
+
+      const mockOutput = (backend as any).createOutput.mock.results[0].value;
+      expect(mockOutput.send).toHaveBeenCalledWith('sysex', {
+        bytes: [0xF0, 0x47, 0x5E, 0x00, 0xF7]
+      });
+    });
+
+    it('should send note on messages', () => {
+      const output = system.getCurrentOutput();
+      expect(output).toBeDefined();
+
+      output!.sendNoteOn(60, 127, 1);
+
+      const mockOutput = (backend as any).createOutput.mock.results[0].value;
+      expect(mockOutput.send).toHaveBeenCalledWith('noteon', {
+        note: 60,
+        velocity: 127,
+        channel: 1
+      });
+    });
+
+    it('should send note off messages', () => {
+      const output = system.getCurrentOutput();
+      expect(output).toBeDefined();
+
+      output!.sendNoteOff(60, 64, 1);
+
+      const mockOutput = (backend as any).createOutput.mock.results[0].value;
+      expect(mockOutput.send).toHaveBeenCalledWith('noteoff', {
+        note: 60,
+        velocity: 64,
+        channel: 1
+      });
     });
   });
 });

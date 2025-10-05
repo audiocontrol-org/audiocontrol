@@ -11,6 +11,28 @@ export {
     type ExecutionResult
 } from "@oletizi/sampler-devices"
 
+// Export client implementations
 export * from "@/client/client-akai-s3000xl.js"
-export * from "@/midi"
-export * from "@/instrument"
+
+// Export MIDI system
+export { MidiSystem } from "@/midi.js"
+export type {
+  MidiSystemInterface,
+  MidiPort,
+  MidiInput,
+  MidiOutput,
+  MidiConfig
+} from "@/midi.js"
+
+// Export instrument abstraction
+export * from "@/instrument.js"
+
+// Export backend interfaces and implementations
+export type {
+  MidiBackend,
+  MidiPortInfo,
+  RawMidiInput,
+  RawMidiOutput
+} from "@/backend.js"
+
+export { EasyMidiBackend } from "@/easymidi-backend.js"
