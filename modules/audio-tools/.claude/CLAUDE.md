@@ -346,3 +346,4 @@ Before committing changes, ensure:
 - User satisfaction (GitHub stars, feedback)
 
 Remember: This is a specialized sampler backup/extraction tool. Prioritize reliability, cross-platform compatibility, and ease of use. The code should be production-grade, suitable for use by musicians and audio engineers with minimal technical expertise.
+- don't call what you have built "production-ready," especially in documentation  You are often wrong about production readiness and it's misleading

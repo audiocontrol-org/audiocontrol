@@ -1,1085 +1,146 @@
 # @oletizi/sampler-backup
 
-Rsnapshot-based backup utility for Akai hardware samplers via PiSCSI/SSH. Provides automated, incremental backups with intelligent same-day resume capability.
+**Automated, incremental backups for Akai hardware samplers via rsnapshot.**
 
-## Features
+## Purpose
 
-- **Rsnapshot-powered backups**: Leverages rsnapshot for space-efficient incremental backups
-- **Smart rotation logic**: Automatically resumes same-day backups instead of creating duplicates
-- **Hard-linking**: Multiple snapshots share unchanged files, minimizing disk usage
-- **Configurable retention**: 7 daily, 4 weekly, 12 monthly snapshots (configurable)
-- **SSH-based transfer**: Secure remote backup via rsync over SSH
-- **Partial transfer resume**: Interrupted transfers resume from where they left off
-- **Local media support**: Backup from SD cards, USB drives, or any mounted media
-- **Batch processing**: One-click backup for multiple samplers
+The `sampler-backup` package provides reliable, space-efficient backups for vintage Akai hardware samplers. It wraps rsnapshot to create automated incremental backups from remote devices (via SSH/PiSCSI) or local media (SD cards, USB drives), ensuring decades of sampled instruments are preserved safely.
 
-## Installation
+## Philosophy
 
-### From Monorepo
+**Incremental preservation with minimal space.** Rather than copying entire disk images repeatedly, this library provides:
 
-```bash
-# Install dependencies
-pnpm install
+- **Hard-linked snapshots**: Multiple backup intervals share unchanged files automatically
+- **Intelligent rotation**: Same-day resume logic prevents duplicate backups
+- **Remote-first design**: SSH-based backup from hardware via PiSCSI or similar SCSI emulators
+- **Local media support**: Direct backup from SD cards and USB drives for floppy/SCSI emulators
+- **Configurable retention**: Daily, weekly, and monthly intervals with customizable retention policies
 
-# Build the package
-pnpm --filter @oletizi/sampler-backup build
-```
+## Design Approach
 
-### From npm (when published)
+### rsnapshot Integration
 
-```bash
-npm install -g @oletizi/sampler-backup
-```
+Built on proven rsnapshot technology rather than reimplementing backup rotation:
 
-## Requirements
+- **Hard-linking filesystem snapshots**: rsync with `--link-dest` shares unchanged files across backups
+- **Configurable intervals**: Traditional daily/weekly/monthly rotation or custom schedules
+- **rsnapshot.conf generation**: Creates optimized configurations for sampler backups
+- **Preserves rsnapshot semantics**: Users familiar with rsnapshot can customize directly
 
-- **rsnapshot** - Install via Homebrew: `brew install rsnapshot`
-- **rsync** - Usually pre-installed on macOS/Linux
-- **SSH access** to PiSCSI host (for remote backups)
-- **Node.js** >= 18
+### Smart Rotation Logic
 
-## Quick Start
+Backups are expensive (time, disk I/O, network transfer). The rotation strategy optimizes for:
 
-```bash
-# 1. Generate default configuration
-akai-backup config --test
+- **Same-day resume**: If backup interrupted, resume rather than rotate intervals
+- **Timestamp-based detection**: Uses mtime to identify today's backups
+- **Graceful degradation**: Falls back to standard rotation if detection fails
+- **Manual override**: Force new rotation with `--force-rotate` flag
 
-# 2. Customize samplers in ~/.audiotools/rsnapshot.conf (optional)
+### Dual-Mode Backup
 
-# 3. Run daily backup
-akai-backup batch
-
-# Configuration will be at: ~/.audiotools/rsnapshot.conf
-# Backups will be at: ~/.audiotools/backup/
-```
-
-## CLI Commands
-
-### `akai-backup config`
-
-Generate rsnapshot configuration file.
-
-```bash
-akai-backup config [options]
-```
-
-**Options:**
-- `-c, --config <path>` - Config file path (default: `~/.audiotools/rsnapshot.conf`)
-- `--test` - Test the configuration after generating
-
-**Example:**
-```bash
-# Generate and test configuration
-akai-backup config --test
-
-# Generate to custom location
-akai-backup config -c ~/my-backup.conf
-```
-
-### `akai-backup test`
-
-Test rsnapshot configuration validity.
-
-```bash
-akai-backup test [options]
-```
-
-**Options:**
-- `-c, --config <path>` - Config file path (default: `~/.audiotools/rsnapshot.conf`)
-
-**Example:**
-```bash
-# Test default configuration
-akai-backup test
-
-# Test custom configuration
-akai-backup test -c ~/my-backup.conf
-```
-
-### `akai-backup backup`
-
-Run rsnapshot backup with specified interval.
-
-```bash
-akai-backup backup [interval] [options]
-```
-
-**Arguments:**
-- `interval` - Backup interval: `daily`, `weekly`, `monthly` (default: `daily`)
-
-**Options:**
-- `-c, --config <path>` - Config file path (default: `~/.audiotools/rsnapshot.conf`)
-
-**Example:**
-```bash
-# Run daily backup
-akai-backup backup daily
-
-# Run weekly backup (promotes daily.6 → weekly.0)
-akai-backup backup weekly
-
-# Run monthly backup (promotes weekly.3 → monthly.0)
-akai-backup backup monthly
-
-# Use custom config
-akai-backup backup daily -c ~/my-backup.conf
-```
-
-### `akai-backup batch`
-
-Alias for `backup daily`. Designed for easy one-click operation.
-
-```bash
-akai-backup batch [options]
-```
-
-**Options:**
-- `-c, --config <path>` - Config file path (default: `~/.audiotools/rsnapshot.conf`)
-
-**Example:**
-```bash
-# Quick daily backup
-akai-backup batch
-
-# Perfect for cron jobs or scheduled tasks
-```
-
-## Smart Rotation Logic
-
-The backup system intelligently handles multiple invocations per day:
-
-### Same-day behavior
-- Checks if `daily.0` snapshot is from today
-- **Resumes backup in-place** without rotation
-- Rsync's `--partial` flag enables resuming interrupted transfers
-- No duplicate partial files are created
-- Perfect for large disk images that take hours to transfer
-
-### Next-day behavior
-- Detects snapshot is from previous day
-- **Rotates snapshots**: `daily.0` → `daily.1`, `daily.1` → `daily.2`, etc.
-- Creates fresh `daily.0` for new backup
-- Hard-links unchanged files from previous snapshot (space-efficient)
-
-**Real-world example:**
-```bash
-# Monday 10am: Start backup of 22GB disk
-akai-backup batch
-# Transfer interrupted at 50% (11GB transferred)
-
-# Monday 2pm: Resume backup (continues from 11GB)
-akai-backup batch
-# Transfer completes successfully
-
-# Tuesday 10am: New backup (rotates Monday → daily.1)
-akai-backup batch
-# Creates fresh daily.0, hard-links unchanged files
-```
-
-This design allows you to run `akai-backup batch` multiple times throughout the day - it will always resume where it left off.
-
-## Configuration
-
-Default configuration is generated at `~/.audiotools/rsnapshot.conf`:
-
-```conf
-#################################################
-# rsnapshot.conf - rsnapshot configuration file #
-#################################################
-# Generated by @oletizi/sampler-backup
-#
-
-config_version	1.2
-
-# Backup destination
-snapshot_root	/Users/you/.audiotools/backup/
-
-# External programs
-cmd_cp		/bin/cp
-cmd_rm		/bin/rm
-cmd_rsync	/usr/bin/rsync
-cmd_ssh		/usr/bin/ssh
-cmd_logger	/usr/bin/logger
-
-# Backup intervals and retention
-retain		daily	7
-retain		weekly	4
-retain		monthly	12
-
-# Logging
-verbose		2
-loglevel	3
-
-# Rsync options
-rsync_short_args	-a
-rsync_long_args		--delete --numeric-ids --relative --delete-excluded
-
-# Backup points / sources
-
-# S5K Sampler
-backup		pi-scsi2.local:/home/orion/images/	pi-scsi2/
-
-# S3K Sampler
-backup		s3k.local:/home/orion/images/	s3k/
-```
-
-### Configuration Options
-
-#### Retention Policy
-
-Control how many snapshots to keep:
-
-```conf
-retain    daily    7     # Keep 7 daily snapshots
-retain    weekly   4     # Keep 4 weekly snapshots
-retain    monthly  12    # Keep 12 monthly snapshots
-```
-
-#### Rsync Options
-
-Customize transfer behavior:
-
-```conf
-# Short args (-a = archive mode: recursive, preserve permissions/timestamps)
-rsync_short_args    -a
-
-# Long args
-rsync_long_args    --delete --numeric-ids --relative --delete-excluded
-
-# SSH arguments (for remote backups)
-ssh_args    -p 22 -i ~/.ssh/id_rsa
-```
-
-#### Verbosity
-
-Control logging detail:
-
-```conf
-verbose     2    # 1-5, higher = more verbose
-loglevel    3    # 1-5, syslog level
-```
-
-### Customizing Backup Sources
-
-#### Using the API
-
-```typescript
-import { getDefaultRsnapshotConfig, writeRsnapshotConfig } from '@oletizi/sampler-backup';
-
-const config = getDefaultRsnapshotConfig();
-
-// Add S3000XL sampler
-config.samplers.push({
-    type: "s3k",
-    host: "s3000xl.local",
-    sourcePath: "/home/pi/images/",
-    backupSubdir: "s3000xl"
-});
-
-// Add local media (SD card, USB drive)
-config.samplers.push({
-    type: "s5k",
-    host: "localhost",  // Local backup
-    sourcePath: "/Volumes/SD-CARD/images/",
-    backupSubdir: "local-sd-card"
-});
-
-// Customize retention
-config.retain.daily = 14;   // Keep 2 weeks of daily snapshots
-config.retain.weekly = 8;   // Keep 2 months of weekly snapshots
-config.retain.monthly = 24; // Keep 2 years of monthly snapshots
-
-// Write to custom location
-writeRsnapshotConfig(config, '~/.audiotools/rsnapshot.conf');
-```
-
-#### Manual Configuration
-
-Edit `~/.audiotools/rsnapshot.conf` directly:
-
-```conf
-# Local media backup (SD card)
-backup    /Volumes/AKAI-SD/images/    sd-card/
-
-# Remote PiSCSI backup
-backup    pi-scsi.local:/home/pi/images/    piscsi/
-
-# Multiple samplers
-backup    s5000.local:/home/pi/images/    s5000/
-backup    s3000xl.local:/home/pi/images/    s3000xl/
-```
-
-## Directory Structure
-
-Rsnapshot creates time-based snapshot directories:
+Supports both traditional SSH-based remote backup and modern local media workflows:
 
 ```
-~/.audiotools/backup/
-├── daily.0/           # Most recent daily snapshot (today)
-│   ├── pi-scsi2/      # S5000/S6000 sampler
-│   │   └── home/orion/images/
-│   │       ├── HD0.hds
-│   │       ├── HD1.hds
-│   │       └── ...
-│   └── s3k/           # S3000XL sampler
-│       └── home/orion/images/
-│           ├── HD0.img
-│           └── ...
-├── daily.1/           # Yesterday's snapshot
-├── daily.2/           # 2 days ago
-├── ...
-├── daily.6/           # 6 days ago
-├── weekly.0/          # Most recent weekly snapshot
-├── weekly.1/
-├── ...
-├── weekly.3/
-├── monthly.0/         # Most recent monthly snapshot
-├── monthly.1/
-├── ...
-└── monthly.11/
+┌─────────────────┐      ┌──────────────────┐
+│ SSH/PiSCSI      │      │ Local Media      │
+│                 │      │                  │
+│ S5000 → PiSCSI  │      │ S3000 → SD Card  │
+│     ↓  SSH      │      │     ↓  USB       │
+│ backup host     │      │ backup host      │
+└─────────────────┘      └──────────────────┘
+        │                         │
+        └─────────┬───────────────┘
+                  ↓
+         rsnapshot rotation
+    (daily.0, weekly.0, monthly.0)
 ```
 
-**Space efficiency example:**
-- Daily.0: 22GB (full size)
-- Daily.1-6: ~100MB each (only changed files)
-- Total: ~23GB for 7 days of snapshots (vs 154GB if full copies)
+## Architecture
 
-Hard-linking means unchanged files consume no additional space.
-
-## Retention Policy
-
-Default retention:
-- **7 daily snapshots** (last 7 days)
-- **4 weekly snapshots** (last 4 weeks)
-- **12 monthly snapshots** (last year)
-
-### How Rotation Works
-
-**Daily backups:**
-```bash
-akai-backup backup daily
-# Rotates: daily.6 → (deleted), daily.5 → daily.6, ..., daily.0 → daily.1
-# Creates: New daily.0
+```
+┌─────────────────────────┐
+│ akai-backup batch       │  CLI orchestration
+└───────────┬─────────────┘
+            │
+     ┌──────▼───────┐
+     │ RsnaphotConfigGenerator │  Generate rsnapshot.conf
+     └──────┬───────┘
+            │
+     ┌──────▼───────┐
+     │ RsnaphotWrapper │  Execute rsnapshot with rotation logic
+     │  - Same-day resume
+     │  - Timestamp detection
+     │  - Interval selection
+     └──────┬───────┘
+            │
+     ┌──────▼───────┐
+     │  rsnapshot    │  System rsnapshot binary
+     │  - rsync      │  (installed via Homebrew/apt)
+     │  - hard links │
+     └───────────────┘
 ```
 
-**Weekly backups:**
-```bash
-akai-backup backup weekly
-# Promotes: daily.6 → weekly.0
-# Rotates: weekly.3 → (deleted), weekly.2 → weekly.3, ..., weekly.0 → weekly.1
-```
-
-**Monthly backups:**
-```bash
-akai-backup backup monthly
-# Promotes: weekly.3 → monthly.0
-# Rotates: monthly.11 → (deleted), monthly.10 → monthly.11, ..., monthly.0 → monthly.1
-```
-
-## Examples
-
-### Example 1: Basic Daily Backup
-
-```bash
-# One-time setup
-akai-backup config --test
-
-# Daily backup (run via cron, launchd, or manually)
-akai-backup batch
-```
-
-### Example 2: Multiple Samplers with Custom Retention
-
-```typescript
-import {
-  getDefaultRsnapshotConfig,
-  writeRsnapshotConfig,
-  runBackup
-} from '@oletizi/sampler-backup';
-
-// Custom configuration
-const config = getDefaultRsnapshotConfig();
-
-// Override defaults
-config.snapshotRoot = '/Volumes/Backup/samplers';
-config.retain.daily = 14;    // 2 weeks
-config.retain.weekly = 8;    // 2 months
-config.retain.monthly = 24;  // 2 years
-
-// Multiple samplers
-config.samplers = [
-  {
-    type: "s5k",
-    host: "s5000.local",
-    sourcePath: "/home/pi/scsi/",
-    backupSubdir: "akai-s5000"
-  },
-  {
-    type: "s3k",
-    host: "s3000xl.local",
-    sourcePath: "/home/pi/scsi/",
-    backupSubdir: "akai-s3000xl"
-  }
-];
-
-// Write configuration
-const configPath = '/Users/me/.audiotools/custom-backup.conf';
-writeRsnapshotConfig(config, configPath);
-
-// Run backup
-const result = await runBackup({
-  interval: 'daily',
-  configPath
-});
-
-if (result.success) {
-  console.log(`Backup complete: ${result.snapshotPath}/daily.0`);
-}
-```
-
-### Example 3: Programmatic Backup with Error Handling
-
-```typescript
-import { runBackup, getLatestSnapshotDir } from '@oletizi/sampler-backup';
-
-async function backupWithNotification() {
-  const result = await runBackup({
-    interval: 'daily',
-    configPath: '~/.audiotools/rsnapshot.conf'
-  });
-
-  if (result.success) {
-    console.log('✓ Backup completed successfully');
-
-    // Get latest snapshot path for further processing
-    const latestSnapshot = getLatestSnapshotDir(
-      result.snapshotPath!,
-      'daily'
-    );
-
-    console.log(`Latest snapshot: ${latestSnapshot}`);
-
-    // Could now extract disk images with @oletizi/sampler-export
-    // extractDiskImages(latestSnapshot);
-  } else {
-    console.error('✗ Backup failed:');
-    result.errors.forEach(err => console.error(`  - ${err}`));
-
-    // Send notification, alert, etc.
-    sendAlert('Backup failed', result.errors);
-    process.exit(1);
-  }
-}
-
-backupWithNotification();
-```
-
-### Example 4: Integration with sampler-export
-
-Combined backup and extraction workflow:
-
-```bash
-#!/bin/bash
-# backup-and-extract.sh
-
-# 1. Backup samplers
-echo "Starting backup..."
-akai-backup batch
-
-if [ $? -ne 0 ]; then
-  echo "Backup failed!"
-  exit 1
-fi
-
-# 2. Extract latest backup
-echo "Extracting disk images..."
-akai-extract batch --source ~/.audiotools/backup/daily.0
-
-if [ $? -eq 0 ]; then
-  echo "✓ Backup and extraction complete!"
-else
-  echo "✗ Extraction failed"
-  exit 1
-fi
-```
-
-### Example 5: Local Media Backup (SD Card, USB)
-
-```typescript
-import { getDefaultRsnapshotConfig, writeRsnapshotConfig } from '@oletizi/sampler-backup';
-
-const config = getDefaultRsnapshotConfig();
-
-// Add local SD card as backup source
-config.samplers.push({
-  type: "s5k",
-  host: "localhost",  // Local, no SSH needed
-  sourcePath: "/Volumes/AKAI-SD/",
-  backupSubdir: "sd-card"
-});
-
-// Add USB drive
-config.samplers.push({
-  type: "s3k",
-  host: "localhost",
-  sourcePath: "/Volumes/USB-SCSI/",
-  backupSubdir: "usb-drive"
-});
-
-writeRsnapshotConfig(config, '~/.audiotools/rsnapshot.conf');
-```
-
-## API Reference
-
-### Types
-
-#### `SamplerType`
-
-```typescript
-type SamplerType = "s5k" | "s3k";
-```
-
-Supported sampler types:
-- `"s5k"`: Akai S5000/S6000 series
-- `"s3k"`: Akai S3000/S3000XL series
-
-#### `RsnapshotInterval`
-
-```typescript
-type RsnapshotInterval = "daily" | "weekly" | "monthly";
-```
-
-Backup intervals for rotation.
-
-#### `SamplerConfig`
-
-```typescript
-interface SamplerConfig {
-  /** Sampler type identifier */
-  type: SamplerType;
-
-  /** Remote host (e.g., "pi-scsi2.local") or "localhost" for local media */
-  host: string;
-
-  /** Remote source path to backup (e.g., "/home/pi/images/") */
-  sourcePath: string;
-
-  /** Local backup subdirectory name (e.g., "pi-scsi2") */
-  backupSubdir: string;
-}
-```
-
-#### `RsnapshotConfig`
-
-```typescript
-interface RsnapshotConfig {
-  /** Root directory for snapshots */
-  snapshotRoot: string;
-
-  /** Retention policy: interval => count */
-  retain: Record<RsnapshotInterval, number>;
-
-  /** Samplers to backup */
-  samplers: SamplerConfig[];
-
-  /** Additional rsnapshot options */
-  options?: {
-    rsyncShortArgs?: string;
-    rsyncLongArgs?: string;
-    sshArgs?: string;
-    verbose?: number;
-  };
-}
-```
-
-#### `BackupOptions`
-
-```typescript
-interface BackupOptions {
-  /** Rsnapshot interval to run (default: "daily") */
-  interval?: RsnapshotInterval;
-
-  /** Config file path (default: ~/.audiotools/rsnapshot.conf) */
-  configPath?: string;
-
-  /** Generate config only, don't run backup */
-  configOnly?: boolean;
-
-  /** Test mode (rsnapshot configtest) */
-  test?: boolean;
-}
-```
-
-#### `BackupResult`
-
-```typescript
-interface BackupResult {
-  /** Whether backup succeeded */
-  success: boolean;
-
-  /** Interval that was run */
-  interval: RsnapshotInterval;
-
-  /** Configuration file path used */
-  configPath: string;
-
-  /** Snapshot root path (if successful) */
-  snapshotPath?: string;
-
-  /** Error messages (if failed) */
-  errors: string[];
-}
-```
-
-### Functions
-
-#### `getDefaultRsnapshotConfig()`
-
-Get default rsnapshot configuration.
-
-```typescript
-function getDefaultRsnapshotConfig(): RsnapshotConfig;
-```
-
-**Returns:** Default configuration with 2 samplers (pi-scsi2, s3k)
-
-**Example:**
-```typescript
-const config = getDefaultRsnapshotConfig();
-console.log(config.snapshotRoot); // ~/.audiotools/backup
-console.log(config.retain.daily); // 7
-```
-
-#### `generateRsnapshotConfig(config)`
-
-Generate rsnapshot.conf file content from configuration object.
-
-```typescript
-function generateRsnapshotConfig(config: RsnapshotConfig): string;
-```
-
-**Parameters:**
-- `config` - Configuration object
-
-**Returns:** rsnapshot.conf file content as string
-
-**Example:**
-```typescript
-const config = getDefaultRsnapshotConfig();
-const content = generateRsnapshotConfig(config);
-console.log(content); // Prints rsnapshot.conf content
-```
-
-#### `writeRsnapshotConfig(config, configPath)`
-
-Write rsnapshot configuration to file.
-
-```typescript
-function writeRsnapshotConfig(config: RsnapshotConfig, configPath: string): void;
-```
-
-**Parameters:**
-- `config` - Configuration object
-- `configPath` - Destination file path
-
-**Throws:** Error if write fails
-
-**Example:**
-```typescript
-const config = getDefaultRsnapshotConfig();
-writeRsnapshotConfig(config, '~/.audiotools/rsnapshot.conf');
-```
-
-#### `getDefaultConfigPath()`
-
-Get default configuration file path.
-
-```typescript
-function getDefaultConfigPath(): string;
-```
-
-**Returns:** `~/.audiotools/rsnapshot.conf`
-
-#### `testRsnapshotConfig(configPath)`
-
-Test rsnapshot configuration validity.
-
-```typescript
-async function testRsnapshotConfig(
-  configPath: string
-): Promise<{ valid: boolean; error?: string }>;
-```
-
-**Parameters:**
-- `configPath` - Configuration file to test
-
-**Returns:** Promise with validation result
-
-**Example:**
-```typescript
-const result = await testRsnapshotConfig('~/.audiotools/rsnapshot.conf');
-if (result.valid) {
-  console.log('✓ Configuration is valid');
-} else {
-  console.error(`✗ Invalid: ${result.error}`);
-}
-```
-
-#### `runBackup(options)`
-
-Run rsnapshot backup with smart rotation logic.
-
-```typescript
-async function runBackup(options?: BackupOptions): Promise<BackupResult>;
-```
-
-**Parameters:**
-- `options` - Backup options (optional)
-
-**Returns:** Promise with backup result
-
-**Example:**
-```typescript
-const result = await runBackup({
-  interval: 'daily',
-  configPath: '~/.audiotools/rsnapshot.conf'
-});
-
-if (result.success) {
-  console.log('Backup complete');
-} else {
-  console.error('Errors:', result.errors);
-}
-```
-
-#### `getLatestSnapshotDir(snapshotRoot, interval)`
-
-Get the latest snapshot directory for given interval.
-
-```typescript
-function getLatestSnapshotDir(
-  snapshotRoot: string,
-  interval?: RsnapshotInterval
-): string;
-```
-
-**Parameters:**
-- `snapshotRoot` - Snapshot root directory
-- `interval` - Backup interval (default: "daily")
-
-**Returns:** Path to latest snapshot (e.g., `~/.audiotools/backup/daily.0`)
-
-**Example:**
-```typescript
-const latest = getLatestSnapshotDir('~/.audiotools/backup', 'daily');
-console.log(latest); // ~/.audiotools/backup/daily.0
-```
-
-## Troubleshooting
-
-### "rsnapshot command not found"
-
-**Problem:** rsnapshot is not installed or not in PATH
-
-**Solution:**
-```bash
-# macOS
-brew install rsnapshot
-
-# Linux (Debian/Ubuntu)
-sudo apt-get install rsnapshot
-
-# Linux (RedHat/CentOS)
-sudo yum install rsnapshot
-
-# Verify installation
-which rsnapshot
-rsnapshot --version
-```
-
-### "Source directory doesn't exist"
-
-**Problem:** Remote path is incorrect or SSH connection fails
-
-**Solution:**
-```bash
-# 1. Verify SSH access
-ssh pi-scsi2.local
-# Should connect without password (use SSH keys)
-
-# 2. Check remote path
-ssh pi-scsi2.local "ls -la ~/images/"
-# Should list disk images
-
-# 3. Update sourcePath in configuration if path is different
-akai-backup config
-# Edit ~/.audiotools/rsnapshot.conf manually
-```
-
-### "Permission denied" on remote host
-
-**Problem:** SSH key authentication not set up
-
-**Solution:**
-```bash
-# 1. Generate SSH key (if you don't have one)
-ssh-keygen -t rsa -b 4096
-
-# 2. Copy key to remote host
-ssh-copy-id pi-scsi2.local
-
-# 3. Test passwordless login
-ssh pi-scsi2.local
-# Should connect without password prompt
-```
-
-### Partial transfers not resuming
-
-**Problem:** Using raw rsnapshot command instead of CLI wrapper
-
-**Solution:**
-```bash
-# ✗ WRONG - No smart rotation
-rsnapshot daily
-
-# ✓ CORRECT - Smart rotation + resume
-akai-backup batch
-```
-
-The smart rotation logic only works when using `akai-backup` CLI commands.
-
-### "Config file has errors"
-
-**Problem:** Invalid rsnapshot.conf syntax
-
-**Solution:**
-```bash
-# Test configuration
-akai-backup test
-
-# Common issues:
-# - Missing tabs (rsnapshot requires TABS, not spaces)
-# - Trailing slash on snapshot_root is required
-# - Command paths must be absolute
-# - Backup source paths must end with /
-
-# Regenerate clean configuration
-akai-backup config --test
-```
-
-### Backup is slow
-
-**Problem:** Large disk images take time to transfer
-
-**Solutions:**
-```bash
-# 1. Use compression (edit ~/.audiotools/rsnapshot.conf)
-# Add to rsync_long_args:
-rsync_long_args    --delete --numeric-ids --relative --delete-excluded -z
-
-# 2. Run backup overnight via cron
-crontab -e
-# Add: 0 2 * * * /usr/local/bin/akai-backup batch
-
-# 3. Resume interrupted transfers (automatic with akai-backup batch)
-akai-backup batch  # Run multiple times, it will resume
-```
-
-### "No space left on device"
-
-**Problem:** Backup destination is full
-
-**Solution:**
-```bash
-# 1. Check disk space
-df -h ~/.audiotools/backup
-
-# 2. Reduce retention policy
-# Edit ~/.audiotools/rsnapshot.conf:
-retain    daily    3     # Reduce from 7 to 3
-retain    weekly   2     # Reduce from 4 to 2
-retain    monthly  6     # Reduce from 12 to 6
-
-# 3. Manually delete old snapshots
-rm -rf ~/.audiotools/backup/monthly.*
-rm -rf ~/.audiotools/backup/weekly.3
-
-# 4. Move backup to larger drive
-# Edit snapshot_root in ~/.audiotools/rsnapshot.conf
-```
-
-### Multiple samplers, some fail
-
-**Problem:** One sampler is offline but backup continues
-
-**Solution:**
-This is expected behavior. Rsnapshot will continue backing up available samplers even if one fails. Check logs for specific errors:
-
-```bash
-# Run with verbose output
-akai-backup backup daily
-
-# Check for specific sampler errors
-# Example output:
-#   ✓ pi-scsi2.local: Success
-#   ✗ s3k.local: Connection refused
-```
-
-To exclude offline samplers, comment them out in configuration:
-
-```conf
-# S3K offline for maintenance
-# backup    s3k.local:/home/orion/images/    s3k/
-```
-
-### SSH connection timeout
-
-**Problem:** Remote host is slow to respond
-
-**Solution:**
-```bash
-# Edit ~/.audiotools/rsnapshot.conf
-# Add SSH timeout to ssh_args:
-ssh_args    -o ConnectTimeout=10 -o ServerAliveInterval=60
-```
-
-### Backup verification
-
-**Problem:** Want to verify backup integrity
-
-**Solution:**
-```bash
-# 1. List latest snapshot contents
-ls -lh ~/.audiotools/backup/daily.0/pi-scsi2/home/orion/images/
-
-# 2. Compare file sizes
-du -sh ~/.audiotools/backup/daily.0/pi-scsi2/
-
-# 3. Verify with rsync dry-run
-rsync -avn pi-scsi2.local:/home/orion/images/ \
-  ~/.audiotools/backup/daily.0/pi-scsi2/home/orion/images/
-# Should show "no changes" if backup is complete
-
-# 4. Check specific disk image
-file ~/.audiotools/backup/daily.0/pi-scsi2/home/orion/images/HD0.hds
-# Should identify as valid disk image
-```
+## Version 1.0
+
+Version 1.0 provides rsnapshot integration with intelligent same-day resume and dual-mode backup support.
+
+**Key Features:**
+- Generate rsnapshot.conf for Akai sampler backups
+- SSH-based remote backup via PiSCSI
+- Local media backup (SD cards, USB drives)
+- Smart same-day resume (no duplicate daily backups)
+- Configurable retention (7 daily, 4 weekly, 12 monthly by default)
+- Batch processing for multiple samplers
+
+**Supported Platforms:**
+- macOS (darwin-arm64, darwin-x64)
+- Linux (x64, ARM64)
+- Windows via WSL2
+
+**Documentation:**
+
+- 📦 [Installation Guide](./docs/1.0/installation.md)
+- 🚀 [Quick Start](./docs/1.0/quick-start.md)
+- 📟 [CLI Commands](./docs/1.0/cli-commands.md)
+- ⚙️ [Configuration](./docs/1.0/configuration.md)
+- 💡 [Examples](./docs/1.0/examples.md)
+- 📚 [API Reference](./docs/1.0/api-reference.md)
+- 🔧 [Troubleshooting](./docs/1.0/troubleshooting.md)
+- 📖 [Complete v1.0 Documentation](./docs/1.0/README.md)
 
 ## Contributing
 
-Contributions are welcome! Please follow these guidelines:
+We welcome contributions! Please see [CONTRIBUTING.md](../../CONTRIBUTING.md) for development guidelines.
 
-### Development Setup
-
+**Development Setup:**
 ```bash
-# Clone repository
 git clone https://github.com/yourusername/audio-tools.git
 cd audio-tools/sampler-backup
-
-# Install dependencies
 pnpm install
-
-# Build package
-pnpm build
-
-# Run tests
+pnpm run build
 pnpm test
-
-# Run tests with coverage
-pnpm test:coverage
-
-# Type-check
-pnpm typecheck
 ```
-
-### Code Quality Standards
-
-- **TypeScript strict mode**: All code must pass strict type checking
-- **Test coverage**: Maintain 80%+ coverage (current: ~30%, working toward target)
-- **No module stubbing**: Use dependency injection for testability
-- **Import pattern**: Use `@/` for internal imports
-- **File size limit**: Keep files under 500 lines
-- **Error handling**: Throw descriptive errors, no silent failures
-
-### Testing
-
-```bash
-# Run unit tests
-pnpm test
-
-# Run tests in watch mode
-pnpm test:watch
-
-# Generate coverage report
-pnpm test:coverage
-```
-
-### Submitting Changes
-
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Make your changes following code quality standards
-4. Add tests for new functionality
-5. Ensure all tests pass: `pnpm test`
-6. Commit with descriptive message: `git commit -m "feat: add X feature"`
-7. Push to your fork: `git push origin feature/my-feature`
-8. Open a Pull Request with:
-   - Clear description of changes
-   - Link to related issues
-   - Test results
-   - Breaking changes (if any)
-
-### Reporting Issues
-
-When reporting issues, include:
-
-- **Environment**: OS, Node.js version, rsnapshot version
-- **Configuration**: Your rsnapshot.conf (sanitize hostnames/paths)
-- **Steps to reproduce**: Exact commands run
-- **Expected behavior**: What should happen
-- **Actual behavior**: What actually happened
-- **Logs**: Full command output (use `--verbose` flag)
-
-Example:
-```
-Environment:
-- macOS 14.5
-- Node.js 20.11.0
-- rsnapshot 1.4.5
-
-Steps to reproduce:
-1. akai-backup config --test
-2. akai-backup batch
-
-Expected: Backup completes successfully
-Actual: Error "rsync exited with code 23"
-
-Logs:
-[paste full output here]
-```
-
-## Related Packages
-
-This package works seamlessly with other audio-tools packages:
-
-- **[@oletizi/sampler-export](../sampler-export)** - Extract and convert disk images
-- **[@oletizi/sampler-devices](../sampler-devices)** - Device abstraction layer
-- **[@oletizi/sampler-lib](../sampler-lib)** - Core sampler utilities
 
 ## License
 
 Apache-2.0
 
-## Authors
+## Credits
 
-- Orion Letizi
+**Author:** Orion Letizi
 
-## Changelog
+**Related Projects:**
+- [@oletizi/sampler-export](https://www.npmjs.com/package/@oletizi/sampler-export) - Disk image extraction and format conversion
+- [@oletizi/sampler-devices](https://www.npmjs.com/package/@oletizi/sampler-devices) - Akai device abstraction
 
-See [CHANGELOG.md](./CHANGELOG.md) for version history.
+**External Dependencies:**
+- [rsnapshot](https://rsnapshot.org/) - Filesystem snapshot utility
+- [rsync](https://rsync.samba.org/) - Incremental file transfer
 
-## Support
+---
 
-- **Issues**: [GitHub Issues](https://github.com/yourusername/audio-tools/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/audio-tools/discussions)
-- **Email**: support@yourdomain.com
+**Need Help?**
+
+- 📖 [Documentation](./docs/1.0/README.md)
+- 🐛 [Report Issues](https://github.com/yourusername/audio-tools/issues)
+- 💬 [Discussions](https://github.com/yourusername/audio-tools/discussions)
