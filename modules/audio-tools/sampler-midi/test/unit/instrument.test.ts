@@ -5,8 +5,7 @@
  * support stubbing. Tests are designed to work without real MIDI hardware.
  */
 
-import { describe, it, beforeEach, afterEach } from 'mocha';
-import { expect } from 'chai';
+import { describe, it, beforeEach, afterEach, expect } from 'vitest';
 import {
   createMidiInstrument,
   newMidiInstrument,
@@ -29,19 +28,19 @@ describe('MIDI Instrument', () => {
     it('should create a MIDI instrument', async () => {
       await midiSystem.start();
       const instrument = createMidiInstrument(midiSystem, 0);
-      expect(instrument).to.exist;
+      expect(instrument).toBeDefined();
     });
 
     it('should throw error for invalid channel (negative)', async () => {
       await midiSystem.start();
-      expect(() => createMidiInstrument(midiSystem, -1)).to.throw(
+      expect(() => createMidiInstrument(midiSystem, -1)).toThrow(
         'Invalid MIDI channel'
       );
     });
 
     it('should throw error for invalid channel (too high)', async () => {
       await midiSystem.start();
-      expect(() => createMidiInstrument(midiSystem, 16)).to.throw(
+      expect(() => createMidiInstrument(midiSystem, 16)).toThrow(
         'Invalid MIDI channel'
       );
     });
@@ -49,7 +48,7 @@ describe('MIDI Instrument', () => {
     it('should accept valid channels 0-15', async () => {
       await midiSystem.start();
       for (let channel = 0; channel <= 15; channel++) {
-        expect(() => createMidiInstrument(midiSystem, channel)).to.not.throw();
+        expect(() => createMidiInstrument(midiSystem, channel)).not.toThrow();
       }
     });
   });
@@ -58,7 +57,7 @@ describe('MIDI Instrument', () => {
     it('should create a MIDI instrument', async () => {
       await midiSystem.start();
       const instrument = newMidiInstrument(midiSystem, 0);
-      expect(instrument).to.exist;
+      expect(instrument).toBeDefined();
     });
 
     it('should behave identically to createMidiInstrument', async () => {
@@ -66,7 +65,7 @@ describe('MIDI Instrument', () => {
       const instrument1 = createMidiInstrument(midiSystem, 5);
       const instrument2 = newMidiInstrument(midiSystem, 5);
 
-      expect(instrument1.getChannel()).to.equal(instrument2.getChannel());
+      expect(instrument1.getChannel()).toBe(instrument2.getChannel());
     });
   });
 
@@ -81,7 +80,7 @@ describe('MIDI Instrument', () => {
 
     describe('getChannel', () => {
       it('should return the configured channel', () => {
-        expect(instrument.getChannel()).to.equal(testChannel);
+        expect(instrument.getChannel()).toBe(testChannel);
       });
     });
 
@@ -91,7 +90,7 @@ describe('MIDI Instrument', () => {
         const freshSystem = createMidiSystem();
         const freshInstrument = createMidiInstrument(freshSystem, 0);
 
-        expect(() => freshInstrument.noteOn(60, 127)).to.throw(
+        expect(() => freshInstrument.noteOn(60, 127)).toThrow(
           'No MIDI output available for instrument'
         );
 
@@ -101,25 +100,25 @@ describe('MIDI Instrument', () => {
       it('should not throw when output is available', () => {
         const outputs = midiSystem.getOutputs();
         if (outputs.length > 0) {
-          expect(() => instrument.noteOn(60, 127)).to.not.throw();
+          expect(() => instrument.noteOn(60, 127)).not.toThrow();
         }
       });
 
       it('should accept different note values', () => {
         const outputs = midiSystem.getOutputs();
         if (outputs.length > 0) {
-          expect(() => instrument.noteOn(0, 127)).to.not.throw();
-          expect(() => instrument.noteOn(60, 127)).to.not.throw();
-          expect(() => instrument.noteOn(127, 127)).to.not.throw();
+          expect(() => instrument.noteOn(0, 127)).not.toThrow();
+          expect(() => instrument.noteOn(60, 127)).not.toThrow();
+          expect(() => instrument.noteOn(127, 127)).not.toThrow();
         }
       });
 
       it('should accept different velocity values', () => {
         const outputs = midiSystem.getOutputs();
         if (outputs.length > 0) {
-          expect(() => instrument.noteOn(60, 0)).to.not.throw();
-          expect(() => instrument.noteOn(60, 64)).to.not.throw();
-          expect(() => instrument.noteOn(60, 127)).to.not.throw();
+          expect(() => instrument.noteOn(60, 0)).not.toThrow();
+          expect(() => instrument.noteOn(60, 64)).not.toThrow();
+          expect(() => instrument.noteOn(60, 127)).not.toThrow();
         }
       });
     });
@@ -130,7 +129,7 @@ describe('MIDI Instrument', () => {
         const freshSystem = createMidiSystem();
         const freshInstrument = createMidiInstrument(freshSystem, 0);
 
-        expect(() => freshInstrument.noteOff(60, 64)).to.throw(
+        expect(() => freshInstrument.noteOff(60, 64)).toThrow(
           'No MIDI output available for instrument'
         );
 
@@ -140,25 +139,25 @@ describe('MIDI Instrument', () => {
       it('should not throw when output is available', () => {
         const outputs = midiSystem.getOutputs();
         if (outputs.length > 0) {
-          expect(() => instrument.noteOff(60, 64)).to.not.throw();
+          expect(() => instrument.noteOff(60, 64)).not.toThrow();
         }
       });
 
       it('should accept different note values', () => {
         const outputs = midiSystem.getOutputs();
         if (outputs.length > 0) {
-          expect(() => instrument.noteOff(0, 64)).to.not.throw();
-          expect(() => instrument.noteOff(60, 64)).to.not.throw();
-          expect(() => instrument.noteOff(127, 64)).to.not.throw();
+          expect(() => instrument.noteOff(0, 64)).not.toThrow();
+          expect(() => instrument.noteOff(60, 64)).not.toThrow();
+          expect(() => instrument.noteOff(127, 64)).not.toThrow();
         }
       });
 
       it('should accept different velocity values', () => {
         const outputs = midiSystem.getOutputs();
         if (outputs.length > 0) {
-          expect(() => instrument.noteOff(60, 0)).to.not.throw();
-          expect(() => instrument.noteOff(60, 64)).to.not.throw();
-          expect(() => instrument.noteOff(60, 127)).to.not.throw();
+          expect(() => instrument.noteOff(60, 0)).not.toThrow();
+          expect(() => instrument.noteOff(60, 64)).not.toThrow();
+          expect(() => instrument.noteOff(60, 127)).not.toThrow();
         }
       });
     });
@@ -172,9 +171,9 @@ describe('MIDI Instrument', () => {
       const instrument2 = createMidiInstrument(midiSystem, 1);
       const instrument3 = createMidiInstrument(midiSystem, 2);
 
-      expect(instrument1.getChannel()).to.equal(0);
-      expect(instrument2.getChannel()).to.equal(1);
-      expect(instrument3.getChannel()).to.equal(2);
+      expect(instrument1.getChannel()).toBe(0);
+      expect(instrument2.getChannel()).toBe(1);
+      expect(instrument3.getChannel()).toBe(2);
     });
 
     it('should allow instruments to play notes independently', async () => {
@@ -190,7 +189,7 @@ describe('MIDI Instrument', () => {
           drums.noteOn(36, 127); // Kick drum
           bass.noteOn(40, 100); // E2
           keys.noteOn(60, 80); // Middle C
-        }).to.not.throw();
+        }).not.toThrow();
       }
     });
   });
@@ -208,7 +207,7 @@ describe('MIDI Instrument', () => {
             instrument.noteOn(60, 127);
             instrument.noteOff(60, 64);
           }
-        }).to.not.throw();
+        }).not.toThrow();
       }
     });
 
@@ -223,7 +222,7 @@ describe('MIDI Instrument', () => {
           expect(() => {
             instrument.noteOn(note, 127);
             instrument.noteOff(note, 64);
-          }).to.not.throw();
+          }).not.toThrow();
         }
       }
     });
@@ -239,7 +238,7 @@ describe('MIDI Instrument', () => {
           expect(() => {
             instrument.noteOn(60, velocity);
             instrument.noteOff(60, velocity);
-          }).to.not.throw();
+          }).not.toThrow();
         }
       }
     });
@@ -247,23 +246,23 @@ describe('MIDI Instrument', () => {
 
   describe('Channel Validation', () => {
     it('should reject channel -1', () => {
-      expect(() => createMidiInstrument(midiSystem, -1)).to.throw();
+      expect(() => createMidiInstrument(midiSystem, -1)).toThrow();
     });
 
     it('should reject channel 16', () => {
-      expect(() => createMidiInstrument(midiSystem, 16)).to.throw();
+      expect(() => createMidiInstrument(midiSystem, 16)).toThrow();
     });
 
     it('should accept channel 0', () => {
-      expect(() => createMidiInstrument(midiSystem, 0)).to.not.throw();
+      expect(() => createMidiInstrument(midiSystem, 0)).not.toThrow();
     });
 
     it('should accept channel 15', () => {
-      expect(() => createMidiInstrument(midiSystem, 15)).to.not.throw();
+      expect(() => createMidiInstrument(midiSystem, 15)).not.toThrow();
     });
 
     it('should reject channel 100', () => {
-      expect(() => createMidiInstrument(midiSystem, 100)).to.throw();
+      expect(() => createMidiInstrument(midiSystem, 100)).toThrow();
     });
   });
 });

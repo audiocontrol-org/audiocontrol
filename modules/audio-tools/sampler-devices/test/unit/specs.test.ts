@@ -2,8 +2,7 @@
  * Tests for Device Specifications
  */
 
-import { describe, it } from 'mocha';
-import { expect } from 'chai';
+import { describe, it, expect } from 'vitest';
 import {
   DeviceSpec,
   programOutputSpec,
@@ -23,39 +22,39 @@ describe('Device Specifications', () => {
         items: []
       };
 
-      expect(spec).to.have.property('specName');
-      expect(spec).to.have.property('className');
-      expect(spec).to.have.property('sectionCode');
-      expect(spec).to.have.property('items');
+      expect(spec).toHaveProperty('specName');
+      expect(spec).toHaveProperty('className');
+      expect(spec).toHaveProperty('sectionCode');
+      expect(spec).toHaveProperty('items');
     });
   });
 
   describe('programOutputSpec', () => {
     it('should have correct metadata', () => {
-      expect(programOutputSpec.specName).to.equal('programOutputSpec');
-      expect(programOutputSpec.className).to.equal('ProgramOutput');
-      expect(programOutputSpec.sectionCode).to.equal(0x0A);
+      expect(programOutputSpec.specName).toBe('programOutputSpec');
+      expect(programOutputSpec.className).toBe('ProgramOutput');
+      expect(programOutputSpec.sectionCode).toBe(0x0A);
     });
 
     it('should contain items array', () => {
-      expect(programOutputSpec.items).to.be.an('array');
-      expect(programOutputSpec.items.length).to.be.greaterThan(0);
+      expect(programOutputSpec.items).toBeInstanceOf(Array);
+      expect(programOutputSpec.items.length).toBeGreaterThan(0);
     });
 
     it('should have Loudness item', () => {
       const loudness = programOutputSpec.items.find(
         (item: unknown[]) => item[0] === 'Loudness'
       );
-      expect(loudness).to.exist;
-      expect(loudness![1]).to.equal('number|0|100|1');
+      expect(loudness).toBeDefined();
+      expect(loudness![1]).toBe('number|0|100|1');
     });
 
     it('should have VelocitySensitivity item', () => {
       const velocitySens = programOutputSpec.items.find(
         (item: unknown[]) => item[0] === 'VelocitySensitivity'
       );
-      expect(velocitySens).to.exist;
-      expect(velocitySens![1]).to.equal('number|-100|100|1');
+      expect(velocitySens).toBeDefined();
+      expect(velocitySens![1]).toBe('number|-100|100|1');
     });
 
     it('should have all expected items', () => {
@@ -78,21 +77,21 @@ describe('Device Specifications', () => {
         const item = programOutputSpec.items.find(
           (i: unknown[]) => i[0] === expectedItem
         );
-        expect(item, `Missing item: ${expectedItem}`).to.exist;
+        expect(item, `Missing item: ${expectedItem}`).toBeDefined();
       }
     });
   });
 
   describe('programMidTuneSpec', () => {
     it('should have correct metadata', () => {
-      expect(programMidTuneSpec.specName).to.equal('programMidTuneSpec');
-      expect(programMidTuneSpec.className).to.equal('ProgramMidiTune');
-      expect(programMidTuneSpec.sectionCode).to.equal(0x0A);
+      expect(programMidTuneSpec.specName).toBe('programMidTuneSpec');
+      expect(programMidTuneSpec.className).toBe('ProgramMidiTune');
+      expect(programMidTuneSpec.sectionCode).toBe(0x0A);
     });
 
     it('should contain items array', () => {
-      expect(programMidTuneSpec.items).to.be.an('array');
-      expect(programMidTuneSpec.items.length).to.be.greaterThan(0);
+      expect(programMidTuneSpec.items).toBeInstanceOf(Array);
+      expect(programMidTuneSpec.items.length).toBeGreaterThan(0);
     });
 
     it('should have all expected items', () => {
@@ -107,7 +106,7 @@ describe('Device Specifications', () => {
         const item = programMidTuneSpec.items.find(
           (i: unknown[]) => i[0] === expectedItem
         );
-        expect(item, `Missing item: ${expectedItem}`).to.exist;
+        expect(item, `Missing item: ${expectedItem}`).toBeDefined();
       }
     });
 
@@ -115,20 +114,20 @@ describe('Device Specifications', () => {
       const semitoneTune = programMidTuneSpec.items.find(
         (item: unknown[]) => item[0] === 'SemitoneTune'
       );
-      expect(semitoneTune![1]).to.equal('number|-36|36|1');
+      expect(semitoneTune![1]).toBe('number|-36|36|1');
     });
   });
 
   describe('programPitchBendSpec', () => {
     it('should have correct metadata', () => {
-      expect(programPitchBendSpec.specName).to.equal('programPitchBendSpec');
-      expect(programPitchBendSpec.className).to.equal('ProgramPitchBend');
-      expect(programPitchBendSpec.sectionCode).to.equal(0x0A);
+      expect(programPitchBendSpec.specName).toBe('programPitchBendSpec');
+      expect(programPitchBendSpec.className).toBe('ProgramPitchBend');
+      expect(programPitchBendSpec.sectionCode).toBe(0x0A);
     });
 
     it('should contain items array', () => {
-      expect(programPitchBendSpec.items).to.be.an('array');
-      expect(programPitchBendSpec.items.length).to.be.greaterThan(0);
+      expect(programPitchBendSpec.items).toBeInstanceOf(Array);
+      expect(programPitchBendSpec.items.length).toBeGreaterThan(0);
     });
 
     it('should have all expected items', () => {
@@ -147,7 +146,7 @@ describe('Device Specifications', () => {
         const item = programPitchBendSpec.items.find(
           (i: unknown[]) => i[0] === expectedItem
         );
-        expect(item, `Missing item: ${expectedItem}`).to.exist;
+        expect(item, `Missing item: ${expectedItem}`).toBeDefined();
       }
     });
 
@@ -155,20 +154,20 @@ describe('Device Specifications', () => {
       const pitchBendUp = programPitchBendSpec.items.find(
         (item: unknown[]) => item[0] === 'PitchBendUp'
       );
-      expect(pitchBendUp![1]).to.equal('number|0|24|1');
+      expect(pitchBendUp![1]).toBe('number|0|24|1');
     });
   });
 
   describe('programLfosSpec', () => {
     it('should have correct metadata', () => {
-      expect(programLfosSpec.specName).to.equal('programLfosSpec');
-      expect(programLfosSpec.className).to.equal('ProgramLfos');
-      expect(programLfosSpec.sectionCode).to.equal(0x0A);
+      expect(programLfosSpec.specName).toBe('programLfosSpec');
+      expect(programLfosSpec.className).toBe('ProgramLfos');
+      expect(programLfosSpec.sectionCode).toBe(0x0A);
     });
 
     it('should contain items array', () => {
-      expect(programLfosSpec.items).to.be.an('array');
-      expect(programLfosSpec.items.length).to.be.greaterThan(0);
+      expect(programLfosSpec.items).toBeInstanceOf(Array);
+      expect(programLfosSpec.items.length).toBeGreaterThan(0);
     });
 
     it('should have all expected items', () => {
@@ -190,7 +189,7 @@ describe('Device Specifications', () => {
         const item = programLfosSpec.items.find(
           (i: unknown[]) => i[0] === expectedItem
         );
-        expect(item, `Missing item: ${expectedItem}`).to.exist;
+        expect(item, `Missing item: ${expectedItem}`).toBeDefined();
       }
     });
 
@@ -198,34 +197,34 @@ describe('Device Specifications', () => {
       const lfo1Rate = programLfosSpec.items.find(
         (item: unknown[]) => item[0] === 'Lfo1Rate'
       );
-      expect(lfo1Rate![1]).to.equal('number|0|100|1');
+      expect(lfo1Rate![1]).toBe('number|0|100|1');
     });
   });
 
   describe('getDeviceSpecs', () => {
     it('should return array of all device specs', () => {
       const specs = getDeviceSpecs();
-      expect(specs).to.be.an('array');
-      expect(specs).to.have.length(4);
+      expect(specs).toBeInstanceOf(Array);
+      expect(specs).toHaveLength(4);
     });
 
     it('should return specs in correct order', () => {
       const specs = getDeviceSpecs();
-      expect(specs[0]).to.equal(programOutputSpec);
-      expect(specs[1]).to.equal(programMidTuneSpec);
-      expect(specs[2]).to.equal(programPitchBendSpec);
-      expect(specs[3]).to.equal(programLfosSpec);
+      expect(specs[0]).toBe(programOutputSpec);
+      expect(specs[1]).toBe(programMidTuneSpec);
+      expect(specs[2]).toBe(programPitchBendSpec);
+      expect(specs[3]).toBe(programLfosSpec);
     });
 
     it('should return all specs with valid structure', () => {
       const specs = getDeviceSpecs();
 
       for (const spec of specs) {
-        expect(spec).to.have.property('specName');
-        expect(spec).to.have.property('className');
-        expect(spec).to.have.property('sectionCode');
-        expect(spec).to.have.property('items');
-        expect(spec.items).to.be.an('array');
+        expect(spec).toHaveProperty('specName');
+        expect(spec).toHaveProperty('className');
+        expect(spec).toHaveProperty('sectionCode');
+        expect(spec).toHaveProperty('items');
+        expect(spec.items).toBeInstanceOf(Array);
       }
     });
   });
@@ -237,25 +236,25 @@ describe('Device Specifications', () => {
       for (const spec of allSpecs) {
         for (const item of spec.items as unknown[][]) {
           // Each item should be an array
-          expect(item).to.be.an('array');
+          expect(item).toBeInstanceOf(Array);
 
           // First element should be method name (string)
-          expect(item[0]).to.be.a('string');
+          expect(item[0]).toEqual(expect.any(String));
 
           // Second element should be data type spec (string)
-          expect(item[1]).to.be.a('string');
+          expect(item[1]).toEqual(expect.any(String));
 
           // Third element should be getter item code (number)
-          expect(item[2]).to.be.a('number');
+          expect(item[2]).toEqual(expect.any(Number));
 
           // Fourth element should be getter request data (array)
-          expect(item[3]).to.be.an('array');
+          expect(item[3]).toBeInstanceOf(Array);
 
           // Fifth element should be response type (string)
-          expect(item[4]).to.be.a('string');
+          expect(item[4]).toEqual(expect.any(String));
 
           // Sixth element should be response size (number)
-          expect(item[5]).to.be.a('number');
+          expect(item[5]).toEqual(expect.any(Number));
         }
       }
     });
@@ -274,7 +273,7 @@ describe('Device Specifications', () => {
             pattern.test(dataTypeSpec)
           );
 
-          expect(isValid, `Invalid data type spec: ${dataTypeSpec}`).to.be.true;
+          expect(isValid, `Invalid data type spec: ${dataTypeSpec}`).toBe(true);
         }
       }
     });
@@ -289,7 +288,7 @@ describe('Device Specifications', () => {
           expect(
             validResponseTypes,
             `Invalid response type: ${responseType}`
-          ).to.include(responseType);
+          ).toContain(responseType);
         }
       }
     });
@@ -300,7 +299,7 @@ describe('Device Specifications', () => {
       const specs = getDeviceSpecs();
 
       for (const spec of specs) {
-        expect(spec.sectionCode).to.equal(0x0A);
+        expect(spec.sectionCode).toBe(0x0A);
       }
     });
   });

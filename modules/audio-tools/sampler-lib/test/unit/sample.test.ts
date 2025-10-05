@@ -1,5 +1,4 @@
-import { describe, it, beforeEach } from 'mocha';
-import { expect } from 'chai';
+import { describe, it, beforeEach, expect } from 'vitest';
 import { newSampleFromBuffer, Sample, SampleMetadata } from '@/model/sample';
 import { WaveFile } from 'wavefile';
 
@@ -23,43 +22,43 @@ describe('Sample Model', () => {
 
     describe('newSampleFromBuffer', () => {
         it('should create a Sample from buffer', () => {
-            expect(sample).to.not.be.undefined;
-            expect(sample.getSampleRate()).to.equal(44100);
+            expect(sample).toBeDefined();
+            expect(sample.getSampleRate()).toBe(44100);
         });
     });
 
     describe('getMetadata', () => {
         it('should return metadata with basic sample info', () => {
             const metadata: SampleMetadata = sample.getMetadata();
-            expect(metadata.sampleRate).to.equal(44100);
-            expect(metadata.channelCount).to.equal(1);
-            expect(metadata.bitDepth).to.equal(16);
-            expect(metadata.sampleLength).to.be.greaterThan(0);
+            expect(metadata.sampleRate).toBe(44100);
+            expect(metadata.channelCount).toBe(1);
+            expect(metadata.bitDepth).toBe(16);
+            expect(metadata.sampleLength).toBeGreaterThan(0);
         });
     });
 
     describe('getSampleCount', () => {
         it('should return correct sample count', () => {
             const count = sample.getSampleCount();
-            expect(count).to.equal(44100); // 1 second at 44.1kHz
+            expect(count).toBe(44100); // 1 second at 44.1kHz
         });
     });
 
     describe('getChannelCount', () => {
         it('should return correct channel count', () => {
-            expect(sample.getChannelCount()).to.equal(1);
+            expect(sample.getChannelCount()).toBe(1);
         });
     });
 
     describe('getSampleRate', () => {
         it('should return correct sample rate', () => {
-            expect(sample.getSampleRate()).to.equal(44100);
+            expect(sample.getSampleRate()).toBe(44100);
         });
     });
 
     describe('getBitDepth', () => {
         it('should return correct bit depth', () => {
-            expect(sample.getBitDepth()).to.equal(16);
+            expect(sample.getBitDepth()).toBe(16);
         });
     });
 
@@ -83,22 +82,22 @@ describe('Sample Model', () => {
             const sampleWithSmpl = newSampleFromBuffer(wavWithSmpl.toBuffer());
             sampleWithSmpl.setRootNote(48);
             const metadata = sampleWithSmpl.getMetadata();
-            expect(metadata.rootNote).to.equal(48);
+            expect(metadata.rootNote).toBe(48);
         });
     });
 
     describe('trim', () => {
         it('should trim sample to specified range', () => {
             const trimmed = sample.trim(0, 22050); // First 0.5 seconds
-            expect(trimmed.getSampleCount()).to.equal(22050);
-            expect(trimmed.getSampleRate()).to.equal(44100);
+            expect(trimmed.getSampleCount()).toBe(22050);
+            expect(trimmed.getSampleRate()).toBe(44100);
         });
 
         it('should preserve other metadata when trimming', () => {
             const trimmed = sample.trim(0, 10000);
-            expect(trimmed.getChannelCount()).to.equal(1);
-            expect(trimmed.getSampleRate()).to.equal(44100);
-            expect(trimmed.getBitDepth()).to.equal(16);
+            expect(trimmed.getChannelCount()).toBe(1);
+            expect(trimmed.getSampleRate()).toBe(44100);
+            expect(trimmed.getBitDepth()).toBe(16);
         });
     });
 
@@ -109,9 +108,9 @@ describe('Sample Model', () => {
             wav24.fromScratch(1, 44100, '24', new Array(1000).fill(0));
             const sample24 = newSampleFromBuffer(wav24.toBuffer());
 
-            expect(sample24.getBitDepth()).to.equal(24);
+            expect(sample24.getBitDepth()).toBe(24);
             sample24.to16Bit();
-            expect(sample24.getBitDepth()).to.equal(16);
+            expect(sample24.getBitDepth()).toBe(16);
         });
     });
 
@@ -122,25 +121,25 @@ describe('Sample Model', () => {
             wav48.fromScratch(1, 48000, '16', new Array(1000).fill(0));
             const sample48 = newSampleFromBuffer(wav48.toBuffer());
 
-            expect(sample48.getSampleRate()).to.equal(48000);
+            expect(sample48.getSampleRate()).toBe(48000);
             sample48.to441();
-            expect(sample48.getSampleRate()).to.equal(44100);
+            expect(sample48.getSampleRate()).toBe(44100);
         });
     });
 
     describe('getSampleData', () => {
         it('should return sample data as Float64Array', () => {
             const data = sample.getSampleData();
-            expect(data).to.be.instanceOf(Float64Array);
-            expect(data.length).to.equal(44100);
+            expect(data).toBeInstanceOf(Float64Array);
+            expect(data.length).toBe(44100);
         });
     });
 
     describe('getRawData', () => {
         it('should return original buffer', () => {
             const rawData = sample.getRawData();
-            expect(rawData).to.be.instanceOf(Uint8Array);
-            expect(rawData.length).to.equal(testBuffer.length);
+            expect(rawData).toBeInstanceOf(Uint8Array);
+            expect(rawData.length).toBe(testBuffer.length);
         });
     });
 
@@ -148,16 +147,16 @@ describe('Sample Model', () => {
         it('should write to Node.js Buffer at offset', () => {
             const targetBuffer = Buffer.alloc(100000);
             const bytesWritten = sample.write(targetBuffer, 1000);
-            expect(bytesWritten).to.be.greaterThan(0);
+            expect(bytesWritten).toBeGreaterThan(0);
             // Verify some data was written (WAV files start with 'RIFF')
-            expect(targetBuffer.toString('ascii', 1000, 1004)).to.equal('RIFF');
+            expect(targetBuffer.toString('ascii', 1000, 1004)).toBe('RIFF');
         });
     });
 
     describe('cleanup', () => {
         it('should add fact chunk', () => {
             const cleaned = sample.cleanup();
-            expect(cleaned).to.equal(sample); // Should return same instance
+            expect(cleaned).toBe(sample); // Should return same instance
             // The cleanup function modifies the wav internally
         });
     });

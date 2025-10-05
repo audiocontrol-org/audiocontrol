@@ -1,5 +1,5 @@
-import { expect } from "chai";
-import { decent } from "../../src/lib-decent";
+import { describe, it, expect } from 'vitest';
+import { decent } from '../../src/lib-decent';
 
 describe("lib-decent", () => {
     describe("decent.newProgramFromBuffer", () => {
@@ -33,30 +33,30 @@ describe("lib-decent", () => {
             const buffer = Buffer.from(xml);
             const program = await decent.newProgramFromBuffer(buffer);
 
-            expect(program).to.exist;
-            expect(program.groups).to.have.length(1);
-            expect(program.groups[0].name).to.equal("Group1");
-            expect(program.groups[0].samples).to.have.length(1);
+            expect(program).toBeDefined();
+            expect(program.groups).toHaveLength(1);
+            expect(program.groups[0].name).toBe("Group1");
+            expect(program.groups[0].samples).toHaveLength(1);
 
             const sample = program.groups[0].samples[0];
-            expect(sample.path).to.equal("sample1.wav");
-            expect(sample.rootNote).to.equal(60); // C3
-            expect(sample.loNote).to.equal(48); // C2
-            expect(sample.hiNote).to.equal(72); // C4
-            expect(sample.loVel).to.equal(0);
-            expect(sample.hiVel).to.equal(127);
-            expect(sample.attack).to.equal(0.01);
-            expect(sample.attackCurve).to.equal(0);
-            expect(sample.decay).to.equal(0.1);
-            expect(sample.decayCurve).to.equal(0);
-            expect(sample.sustain).to.equal(1.0);
-            expect(sample.release).to.equal(0.5);
-            expect(sample.releaseCurve).to.equal(0);
-            expect(sample.pan).to.equal(0);
-            expect(sample.pitchKeyTrack).to.equal(1);
-            expect(sample.volume).to.equal("0dB");
-            expect(sample.start).to.equal(0);
-            expect(sample.end).to.equal(1);
+            expect(sample.path).toBe("sample1.wav");
+            expect(sample.rootNote).toBe(60); // C3
+            expect(sample.loNote).toBe(48); // C2
+            expect(sample.hiNote).toBe(72); // C4
+            expect(sample.loVel).toBe(0);
+            expect(sample.hiVel).toBe(127);
+            expect(sample.attack).toBe(0.01);
+            expect(sample.attackCurve).toBe(0);
+            expect(sample.decay).toBe(0.1);
+            expect(sample.decayCurve).toBe(0);
+            expect(sample.sustain).toBe(1.0);
+            expect(sample.release).toBe(0.5);
+            expect(sample.releaseCurve).toBe(0);
+            expect(sample.pan).toBe(0);
+            expect(sample.pitchKeyTrack).toBe(1);
+            expect(sample.volume).toBe("0dB");
+            expect(sample.start).toBe(0);
+            expect(sample.end).toBe(1);
         });
 
         it("should handle multiple groups", async () => {
@@ -75,9 +75,9 @@ describe("lib-decent", () => {
             const buffer = Buffer.from(xml);
             const program = await decent.newProgramFromBuffer(buffer);
 
-            expect(program.groups).to.have.length(2);
-            expect(program.groups[0].name).to.equal("Group1");
-            expect(program.groups[1].name).to.equal("Group2");
+            expect(program.groups).toHaveLength(2);
+            expect(program.groups[0].name).toBe("Group1");
+            expect(program.groups[1].name).toBe("Group2");
         });
 
         it("should handle multiple samples in a group", async () => {
@@ -94,10 +94,10 @@ describe("lib-decent", () => {
             const buffer = Buffer.from(xml);
             const program = await decent.newProgramFromBuffer(buffer);
 
-            expect(program.groups).to.have.length(1);
-            expect(program.groups[0].samples).to.have.length(2);
-            expect(program.groups[0].samples[0].path).to.equal("soft.wav");
-            expect(program.groups[0].samples[1].path).to.equal("loud.wav");
+            expect(program.groups).toHaveLength(1);
+            expect(program.groups[0].samples).toHaveLength(2);
+            expect(program.groups[0].samples[0].path).toBe("soft.wav");
+            expect(program.groups[0].samples[1].path).toBe("loud.wav");
         });
 
         it("should use default group name if not provided", async () => {
@@ -113,8 +113,8 @@ describe("lib-decent", () => {
             const buffer = Buffer.from(xml);
             const program = await decent.newProgramFromBuffer(buffer);
 
-            expect(program.groups).to.have.length(1);
-            expect(program.groups[0].name).to.equal("01");
+            expect(program.groups).toHaveLength(1);
+            expect(program.groups[0].name).toBe("01");
         });
 
         it("should fallback rootNote to loNote if rootNote is NaN", async () => {
@@ -131,7 +131,7 @@ describe("lib-decent", () => {
             const program = await decent.newProgramFromBuffer(buffer);
 
             const sample = program.groups[0].samples[0];
-            expect(sample.rootNote).to.equal(60); // Falls back to loNote (C3)
+            expect(sample.rootNote).toBe(60); // Falls back to loNote (C3)
         });
 
         it("should fallback rootNote to hiNote if both rootNote and loNote are NaN", async () => {
@@ -148,7 +148,7 @@ describe("lib-decent", () => {
             const program = await decent.newProgramFromBuffer(buffer);
 
             const sample = program.groups[0].samples[0];
-            expect(sample.rootNote).to.equal(72); // Falls back to hiNote (C4)
+            expect(sample.rootNote).toBe(72); // Falls back to hiNote (C4)
         });
 
         it("should parse numeric note values", async () => {
@@ -165,9 +165,9 @@ describe("lib-decent", () => {
             const program = await decent.newProgramFromBuffer(buffer);
 
             const sample = program.groups[0].samples[0];
-            expect(sample.rootNote).to.equal(60);
-            expect(sample.loNote).to.equal(48);
-            expect(sample.hiNote).to.equal(72);
+            expect(sample.rootNote).toBe(60);
+            expect(sample.loNote).toBe(48);
+            expect(sample.hiNote).toBe(72);
         });
 
         it("should handle empty groups section", async () => {
@@ -180,7 +180,7 @@ describe("lib-decent", () => {
             const buffer = Buffer.from(xml);
             const program = await decent.newProgramFromBuffer(buffer);
 
-            expect(program.groups).to.have.length(0);
+            expect(program.groups).toHaveLength(0);
         });
 
         it("should parse note names with sharps and flats", async () => {
@@ -197,9 +197,9 @@ describe("lib-decent", () => {
             const program = await decent.newProgramFromBuffer(buffer);
 
             const sample = program.groups[0].samples[0];
-            expect(sample.rootNote).to.equal(61); // C#3 / Db3
-            expect(sample.loNote).to.equal(61); // Db3
-            expect(sample.hiNote).to.equal(62); // D3
+            expect(sample.rootNote).toBe(61); // C#3 / Db3
+            expect(sample.loNote).toBe(61); // Db3
+            expect(sample.hiNote).toBe(62); // D3
         });
     });
 });

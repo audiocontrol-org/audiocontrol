@@ -1,11 +1,10 @@
-import {stub} from 'sinon'
+import { describe, it, expect, afterEach, vi } from 'vitest';
 import {
     CHUNK_LENGTH, newAkaitools,
     newAkaiToolsConfig,
     readAkaiData,
 } from "@oletizi/sampler-devices";
 import path from "path";
-import {expect} from "chai";
 import fs from "fs/promises";
 import {
     KeygroupHeader, KeygroupHeader_writeSNAME1,
@@ -24,37 +23,36 @@ describe(`Read akai disk image.`, async () => {
     let tools = newAkaitools(await newAkaiToolsConfig())
 
     it(`Reads an akai disk image`, async function () {
-        this.timeout(2 * 1000)
         const diskFile = path.join('build', `akai-${new Date().getTime()}.img`)
         let partitionCount = 3
         let c = await newAkaiToolsConfig()
         c.diskFile = diskFile
         let er = await tools.akaiFormat(1, partitionCount)
         er.errors.forEach(e => console.error(e))
-        expect(er.errors.length).eq(0)
+        expect(er.errors.length).toBe(0)
 
         for (let i = 0; i < partitionCount; i++) {
             let sourcePath = path.join('test', 'data', 's3000xl', 'instruments', 'test_program.a3p');
             er = await tools.akaiWrite(sourcePath, '/vol 1', i + 1)
             er.errors.forEach(e => console.error(e))
-            expect(er.errors.length).eq(0)
+            expect(er.errors.length).toBe(0)
         }
 
         const result = await tools.readAkaiDisk()
         result.errors.forEach(e => console.error(e))
-        expect(result.errors.length).eq(0)
+        expect(result.errors.length).toBe(0)
 
         const akaiDisk = result.data
-        expect(akaiDisk).to.exist
-        expect(akaiDisk.partitions.length).eq(partitionCount)
+        expect(akaiDisk).toBeDefined()
+        expect(akaiDisk.partitions.length).toBe(partitionCount)
         for (const partition of akaiDisk.partitions) {
-            expect(partition.volumes.length).gte(1)
+            expect(partition.volumes.length).toBeGreaterThanOrEqual(1)
             for (const volume of partition.volumes) {
-                expect(volume.records.length).gte(1)
+                expect(volume.records.length).toBeGreaterThanOrEqual(1)
             }
         }
         await fs.writeFile(path.join('build', `akai-disk-${new Date().getTime()}.json`), JSON.stringify(akaiDisk))
-    })
+    }, { timeout: 2000 })
 })
 
 
@@ -91,60 +89,60 @@ S3000 SAMPLE         372    211872 /chop.01/chop.01.03-l
 S3000 SAMPLE         398    211872 /chop.01/chop.01.03-r
 S3000 PROGRAM        424       960 /chop.01/chop.01`
         const parsed = tools.parseAkaiList(output);
-        expect(parsed).to.exist
-        expect(parsed.length).eq(20)
-        expect(parsed[0].type).eq(AkaiRecordType.VOLUME)
-        expect(parsed[1].type).eq(AkaiRecordType.VOLUME)
+        expect(parsed).toBeDefined()
+        expect(parsed.length).toBe(20)
+        expect(parsed[0].type).toBe(AkaiRecordType.VOLUME)
+        expect(parsed[1].type).toBe(AkaiRecordType.VOLUME)
 
         function listFunction() {
             const result: AkaiRecordResult = {data: parsed, errors: []}
             return Promise.resolve(result)
         }
 
-        stub(tools, 'akaiList').callsFake(listFunction)
+        vi.spyOn(tools, 'akaiList').mockImplementation(listFunction)
 
         const diskResult = await tools.readAkaiDisk()
-        expect(diskResult).to.exist
-        expect(diskResult.errors.length).eq(0)
+        expect(diskResult).toBeDefined()
+        expect(diskResult.errors.length).toBe(0)
 
         const disk = diskResult.data
-        expect(disk).to.exist
-        expect(disk.partitions).to.exist
-        expect(disk.partitions.length).gte(1)
+        expect(disk).toBeDefined()
+        expect(disk.partitions).toBeDefined()
+        expect(disk.partitions.length).toBeGreaterThanOrEqual(1)
 
         const partition = disk.partitions[0]
-        expect(partition.volumes).to.exist
-        expect(partition.volumes.length).eq(2)
+        expect(partition.volumes).toBeDefined()
+        expect(partition.volumes.length).toBe(2)
 
         const volume1 = partition.volumes[0]
-        expect(volume1).to.exist
-        expect(volume1.records).to.exist
-        expect(volume1.records.length).to.eq(9)
+        expect(volume1).toBeDefined()
+        expect(volume1.records).toBeDefined()
+        expect(volume1.records.length).toBe(9)
 
         const volume2 = partition.volumes[1]
-        expect(volume2.records.length).to.eq(9)
+        expect(volume2.records.length).toBe(9)
 
     })
 
     it(`Formats an Akai disk image`, async function () {
         let result = await tools.akaiFormat()
         result.errors.forEach(e => console.error(e))
-        expect(result.errors.length).eq(0)
-        expect(result.code).eq(0)
+        expect(result.errors.length).toBe(0)
+        expect(result.code).toBe(0)
     })
 
     it(`Writes to an Akai disk image and lists its contents`, async function () {
         let result = await tools.akaiFormat()
-        expect(result.code).eq(0)
-        expect(result.errors.length).eq(0)
+        expect(result.code).toBe(0)
+        expect(result.errors.length).toBe(0)
 
         for (const n of ['saw.a3p', 'sawtooth.a3s', 'sine.a3s', 'square.a3s', 'test_program.a3p']) {
             const file = path.join('test', 'data', 's3000xl', 'instruments', n)
             const s = await fs.stat(file)
             expect(s.isFile())
             result = await tools.akaiWrite(file, `/VOLUME 1/`)
-            expect(result.code).eq(0)
-            expect(result.errors.length).eq(0)
+            expect(result.code).toBe(0)
+            expect(result.errors.length).toBe(0)
         }
 
         let listResult = await tools.akaiList('/some/path')
@@ -153,14 +151,14 @@ S3000 PROGRAM        424       960 /chop.01/chop.01`
         }
 
         // the first entry should be a volume
-        expect(listResult.errors).empty
-        expect(listResult.data.length).eq(1)
-        expect(listResult.data[0].type).eq(AkaiRecordType.VOLUME)
+        expect(listResult.errors).toHaveLength(0)
+        expect(listResult.data.length).toBe(1)
+        expect(listResult.data[0].type).toBe(AkaiRecordType.VOLUME)
 
         // listing the volume should return some Akai objects
         listResult = await tools.akaiList(listResult.data[0].name)
-        expect(listResult.errors).empty
-        expect(listResult.data.length).eq(5)
+        expect(listResult.errors).toHaveLength(0)
+        expect(listResult.data.length).toBe(5)
     })
     it(`Converts wav files to Akai sample format`, async () => {
         const source = path.join('test', 'data', 's3000xl', 'samples', 'kit.wav')
@@ -168,12 +166,12 @@ S3000 PROGRAM        424       960 /chop.01/chop.01`
         expect(stat.isFile())
         const targetDir = path.join('build')
         let result = await tools.akaiFormat()
-        expect(result.code).eq(0)
-        expect(result.errors.length).eq(0)
+        expect(result.code).toBe(0)
+        expect(result.errors.length).toBe(0)
         result = await tools.wav2Akai(source, targetDir, 'kit'.padEnd(12, ' '))
 
         expect(!result.code)
-        expect(result.errors).empty
+        expect(result.errors).toHaveLength(0)
     })
 })
 
@@ -191,7 +189,7 @@ describe(`Test parsing Akai objects read by akaitools`, async () => {
         }
         let header = {} as ProgramHeader;
         parseProgramHeader(data, 1, header)
-        expect(header.PRNAME).eq('TEST PROGRAM')
+        expect(header.PRNAME).toBe('TEST PROGRAM')
     })
 
     it(`Parses Akai sample header from file`, async () => {
@@ -199,7 +197,7 @@ describe(`Test parsing Akai objects read by akaitools`, async () => {
         const data = await readAkaiData(samplePath);
         let header = {} as SampleHeader
         parseSampleHeader(data, 0, header)
-        expect(header.SHNAME).equal('SINE        ')
+        expect(header.SHNAME).toBe('SINE        ')
     })
 
     it(`Parses Akai program header from file`, async () => {
@@ -209,8 +207,8 @@ describe(`Test parsing Akai objects read by akaitools`, async () => {
         parseProgramHeader(data, 1, programHeader)
         console.log(`data size : ${data.length}`)
         console.log(`Keygroup count: ${programHeader.GROUPS}`)
-        expect(programHeader.PRNAME).equal('TEST 4 KGS  ')
-        expect(programHeader.GROUPS).eq(4)
+        expect(programHeader.PRNAME).toBe('TEST 4 KGS  ')
+        expect(programHeader.GROUPS).toBe(4)
 
         const kg1 = {} as KeygroupHeader
         // parseKeygroupHeader(data.slice(KEYGROUP1_START_OFFSET), 0, kg1)
@@ -231,10 +229,10 @@ describe(`Test parsing Akai objects read by akaitools`, async () => {
             keygroups.push(kg)
         }
 
-        expect(keygroups[0].SNAME1).eq('SINE        ')
-        expect(keygroups[1].SNAME1).eq('SQUARE      ')
-        expect(keygroups[2].SNAME1).eq('SAWTOOTH    ')
-        expect(keygroups[3].SNAME1).eq('PULSE       ')
+        expect(keygroups[0].SNAME1).toBe('SINE        ')
+        expect(keygroups[1].SNAME1).toBe('SQUARE      ')
+        expect(keygroups[2].SNAME1).toBe('SAWTOOTH    ')
+        expect(keygroups[3].SNAME1).toBe('PULSE       ')
         // for (let i = 0; i < data.length; i += 2) {
         //
         //     const kg = {} as KeygroupHeader
@@ -253,22 +251,22 @@ describe(`Test parsing Akai objects read by akaitools`, async () => {
     it(`Reads akai program files`, async () => {
         const programPath = path.join('test', 'data', 's3000xl', 'instruments', 'test_4_kgs.a3p')
         const programData = await tools.readAkaiProgram(programPath)
-        expect(programData.program.getHeader().PRNAME).eq('TEST 4 KGS  ')
+        expect(programData.program.getHeader().PRNAME).toBe('TEST 4 KGS  ')
 
         const keygroups = programData.keygroups
-        expect(keygroups.length).eq(4)
+        expect(keygroups.length).toBe(4)
 
-        expect(keygroups[0].getHeader().SNAME1).eq('SINE        ')
-        expect(keygroups[1].getHeader().SNAME1).eq('SQUARE      ')
-        expect(keygroups[2].getHeader().SNAME1).eq('SAWTOOTH    ')
-        expect(keygroups[3].getHeader().SNAME1).eq('PULSE       ')
+        expect(keygroups[0].getHeader().SNAME1).toBe('SINE        ')
+        expect(keygroups[1].getHeader().SNAME1).toBe('SQUARE      ')
+        expect(keygroups[2].getHeader().SNAME1).toBe('SAWTOOTH    ')
+        expect(keygroups[3].getHeader().SNAME1).toBe('PULSE       ')
     })
 
     it(`Creates akaiprogram files`, async () => {
         const protoPath = path.join('data', 'test_program.a3p')
         const programData = await tools.readAkaiProgram(protoPath)
-        expect(programData.program.getHeader().PRNAME).eq('TEST PROGRAM')
-        expect(programData.keygroups.length).eq(1)
+        expect(programData.program.getHeader().PRNAME).toBe('TEST PROGRAM')
+        expect(programData.keygroups.length).toBe(1)
         // the number of bytes the program header starts writing to (bc it thinks its writing
         // to raw sysex data.). This should all be baked into the auto-generated parser somehow.
         const rawLeader = 7
@@ -292,7 +290,7 @@ describe(`Test parsing Akai objects read by akaitools`, async () => {
         parseKeygroupHeader(keygroup2raw.slice(rawLeader), 0, keygroup2)
 
 
-        expect(keygroup2.SNAME1).eq('MODIFIED    ')
+        expect(keygroup2.SNAME1).toBe('MODIFIED    ')
         KeygroupHeader_writeSNAME1(keygroup2, 'KEYGROUP 2')
         const keygroup2data: number[] = keygroup2raw.slice(rawLeader)
 
@@ -324,16 +322,16 @@ describe(`Test parsing Akai objects read by akaitools`, async () => {
         console.log(`outdata lenght: ${outData.length}`)
         const p = {} as ProgramHeader
         parseProgramHeader(nibbles, 1, p)
-        expect(p.PRNAME).eq('SYNTHETIC   ')
+        expect(p.PRNAME).toBe('SYNTHETIC   ')
 
         const outfile = path.join('build', 'synthetic.a3p')
         await fs.writeFile(outfile, Buffer.from(outData))
 
         const parsed = await tools.readAkaiProgram(outfile)
-        expect(parsed.program.getHeader().PRNAME).eq('SYNTHETIC   ')
-        expect(parsed.keygroups[0].getHeader().SNAME1).eq('MODIFIED    ')
-        expect(parsed.keygroups.length).eq(2)
-        expect(parsed.keygroups[1].getHeader().SNAME1).eq('KEYGROUP 2  ')
+        expect(parsed.program.getHeader().PRNAME).toBe('SYNTHETIC   ')
+        expect(parsed.keygroups[0].getHeader().SNAME1).toBe('MODIFIED    ')
+        expect(parsed.keygroups.length).toBe(2)
+        expect(parsed.keygroups[1].getHeader().SNAME1).toBe('KEYGROUP 2  ')
     })
 
     it(`Reads and writes a program file with multiple keygroups unchanged`, async () => {
@@ -357,7 +355,7 @@ describe(`Test parsing Akai objects read by akaitools`, async () => {
         await tools.writeAkaiProgram(outpath, good)
 
         const suspect = await tools.readAkaiProgram(outpath)
-        expect(suspect.program.getHeader().PRNAME).eq(good.program.getHeader().PRNAME)
+        expect(suspect.program.getHeader().PRNAME).toBe(good.program.getHeader().PRNAME)
 
         for (let i = 0; i < good.keygroups.length; i++) {
             const goodkg = good.keygroups[i]
@@ -365,7 +363,7 @@ describe(`Test parsing Akai objects read by akaitools`, async () => {
             console.log(`good[${i}]: SNAME1: ${goodkg.getHeader().SNAME1}`)
             console.log(`sus[${i}] : SNAME1: ${suskg.getHeader().SNAME1}`)
             console.log()
-            expect(suskg.getHeader().SNAME1).eq(goodkg.getHeader().SNAME1)
+            expect(suskg.getHeader().SNAME1).toBe(goodkg.getHeader().SNAME1)
         }
 
         // write the program to a disk, extract it, then read it
@@ -376,14 +374,14 @@ describe(`Test parsing Akai objects read by akaitools`, async () => {
         await tools.akaiWrite(outpath, '/test')
 
         const result = await tools.akaiList('/test')
-        expect(result.data).to.exist
-        expect(result.data.length).gte(1)
+        expect(result.data).toBeDefined()
+        expect(result.data.length).toBeGreaterThanOrEqual(1)
         for (const record of result.data) {
             console.log(`record:`)
             console.log(record)
         }
         const record = result.data[0]
-        expect(record.type).eq(AkaiRecordType.PROGRAM)
+        expect(record.type).toBe(AkaiRecordType.PROGRAM)
         expect(record.name.endsWith(path.parse(outpath).name))
 
 
@@ -394,16 +392,16 @@ describe(`Test parsing Akai objects read by akaitools`, async () => {
 
         const refried = await tools.readAkaiProgram(refriedPath)
         console.log(`refried name: ${refried.program.getHeader().PRNAME}`)
-        expect(refried).to.exist
-        expect(refried.keygroups).to.exist
-        expect(refried.keygroups.length).eq(good.keygroups.length)
+        expect(refried).toBeDefined()
+        expect(refried.keygroups).toBeDefined()
+        expect(refried.keygroups.length).toBe(good.keygroups.length)
         for (let i = 0; i < good.keygroups.length; i++) {
             const goodkg = good.keygroups[i]
             const refkg = refried.keygroups[i]
             console.log(`good[${i}]  : SNAME1: ${goodkg.getHeader().SNAME1}`)
             console.log(`refried[${i}] : SNAME1: ${refkg.getHeader().SNAME1}`)
             console.log()
-            expect(refkg.getHeader().SNAME1).eq(goodkg.getHeader().SNAME1)
+            expect(refkg.getHeader().SNAME1).toBe(goodkg.getHeader().SNAME1)
         }
 
     })
@@ -471,49 +469,45 @@ describe(`Synchronizing data w/ a piscsi host`, async () => {
         //     }
         // })
         const parsed = tools.parseRemoteVolumes(table)
-        expect(parsed).exist
-        expect(parsed.length).eq(4)
-        expect(parsed[0].scsiId).eq(1)
-        expect(parsed[0].lun).eq(0)
-        expect(parsed[0].image).eq('/home/orion/images/HD1.hds')
+        expect(parsed).toBeDefined()
+        expect(parsed.length).toBe(4)
+        expect(parsed[0].scsiId).toBe(1)
+        expect(parsed[0].lun).toBe(0)
+        expect(parsed[0].image).toBe('/home/orion/images/HD1.hds')
     })
 
     it(`Lists mounted volumes`, async function () {
-        this.timeout(5000)
         const c = await newAkaiToolsConfig()
         expect(c.piscsiHost)
         expect(c.scsiId)
 
         const result = await tools.remoteVolumes()
         result.data.forEach(v => console.log(v))
-        expect(result.errors.length).eq(0)
-        expect(result.data.length).gte(1)
+        expect(result.errors.length).toBe(0)
+        expect(result.data.length).toBeGreaterThanOrEqual(1)
 
-    })
+    }, { timeout: 5000 })
 
     it(`Unmounts a volume`, async function () {
-        this.timeout(5000)
         const v: RemoteDisk = {image: "/home/orion/images/HD4.hds", scsiId: 4}
         const result = await tools.remoteUnmount(v)
         result.errors.forEach(e => console.error(e))
-        expect(result.code).eq(0)
-        expect(result.errors.length).eq(0)
-    })
+        expect(result.code).toBe(0)
+        expect(result.errors.length).toBe(0)
+    }, { timeout: 5000 })
 
     it('Mounts a volume', async function () {
-        this.timeout(5000)
         const v: RemoteDisk = {image: "/home/orion/images/HD4.hds", scsiId: 4}
         const result = await tools.remoteMount(v)
         result.errors.forEach(e => console.error(e))
-        expect(result.code).eq(0)
-        expect(result.errors.length).eq(0)
-    })
+        expect(result.code).toBe(0)
+        expect(result.errors.length).toBe(0)
+    }, { timeout: 5000 })
 
     it('Syncs akai data', async function () {
-        this.timeout(30000)
         const result = await tools.remoteSync()
         result.errors.forEach(e => console.error(e))
-        expect(result.code).eq(0)
-        expect(result.errors.length).eq(0)
-    })
+        expect(result.code).toBe(0)
+        expect(result.errors.length).toBe(0)
+    }, { timeout: 30000 })
 })

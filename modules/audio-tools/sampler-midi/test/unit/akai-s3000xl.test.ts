@@ -1,7 +1,7 @@
 import * as easymidi from "easymidi"
 import path from "pathe"
 import {newServerOutput} from "@oletizi/sampler-lib";
-import {expect} from "chai";
+import { describe, it, expect } from 'vitest';
 import {newDevice} from "@/client/client-akai-s3000xl.js";
 import {newAkaitools, newAkaiToolsConfig, RAW_LEADER, readAkaiData} from "@oletizi/sampler-devices";
 import {tmpdir} from "node:os"
@@ -10,7 +10,7 @@ import {parseSampleHeader, SampleHeader, SampleHeader_writeSPITCH} from "@oletiz
 describe(`Basic Akai S3000xl tests`, () => {
     it('Compiles', () => {
         const device = newDevice(new easymidi.Input('test', true), new easymidi.Output('test', true), newServerOutput())
-        expect(device).exist
+        expect(device).toBeDefined()
     })
 
     it.skip('Round trip read, write, read Akai format sample', async () => {
@@ -19,7 +19,7 @@ describe(`Basic Akai S3000xl tests`, () => {
         const sampleHeader = {} as SampleHeader
         parseSampleHeader(data, 0, sampleHeader)
         sampleHeader.raw = new Array(RAW_LEADER).fill(0).concat(data)
-        expect(sampleHeader.SPITCH).eq(60)
+        expect(sampleHeader.SPITCH).toBe(60)
         SampleHeader_writeSPITCH(sampleHeader, 12)
 
         const outfile = path.join(tmpdir(), 'out.a3s')
@@ -32,7 +32,7 @@ describe(`Basic Akai S3000xl tests`, () => {
         parseSampleHeader(lazarusData, 0, lazarusSampleHeader)
         lazarusSampleHeader.raw = new Array(RAW_LEADER).fill(0).concat(data)
 
-        expect(lazarusSampleHeader.SPITCH).eq(12)
+        expect(lazarusSampleHeader.SPITCH).toBe(12)
 
     })
 })

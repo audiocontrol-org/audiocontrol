@@ -1,5 +1,5 @@
 import * as easymidi from 'easymidi'
-import {expect} from "chai";
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import {string2AkaiBytes, akaiByte2String, SampleHeader, ProgramHeader, KeygroupHeader, ProgramHeader_writePLAYLO} from "@oletizi/sampler-devices/s3k"
 import {newDevice, Program} from "@/client/client-akai-s3000xl.js"
 
@@ -44,27 +44,27 @@ function midiTeardown() {
 }
 
 describe('akai-s3000xl tests', () => {
-    before(midiSetup)
-    after(midiTeardown)
+    beforeAll(midiSetup)
+    afterAll(midiTeardown)
 
     it('Reads and writes akai-formatted strings', () => {
         let v = 'a nice strin' // max 12 chars
         let data = string2AkaiBytes(v)
         let vv = akaiByte2String(data)
-        expect(vv).eq(v.toUpperCase())
+        expect(vv).toBe(v.toUpperCase())
 
         v = 'shorty'
         data = string2AkaiBytes(v)
         vv = akaiByte2String(data)
         console.log(`vv: <${vv}>`)
-        expect(vv).eq(v.toUpperCase() + '      ')
+        expect(vv).toBe(v.toUpperCase() + '      ')
     })
 
     it('fetches resident sample names', async () => {
         const device = newDevice(input, output)
         const names: string[] = []
         await device.fetchSampleNames(names)
-        expect(names).not.empty
+        expect(names.length).toBeGreaterThan(0)
     })
 
     it('fetches sample header', async () => {
@@ -73,9 +73,9 @@ describe('akai-s3000xl tests', () => {
         const sampleNumber = 8
         await device.fetchSampleHeader(sampleNumber, header)
         console.log(header)
-        expect((header as any)['SNUMBER']).eq(sampleNumber)
-        expect(header.SHIDENT).eq(3) // Akai magic value
-        expect(header.SSRVLD).eq(0x80) // Akai magic value
+        expect((header as any)['SNUMBER']).toBe(sampleNumber)
+        expect(header.SHIDENT).toBe(3) // Akai magic value
+        expect(header.SSRVLD).toBe(0x80) // Akai magic value
     })
 
     it('fetches resident program names', async () => {
@@ -85,9 +85,9 @@ describe('akai-s3000xl tests', () => {
         await device.fetchProgramNames(names)
         console.log(`Sample names:`)
         console.log(names)
-        expect(names).not.empty
+        expect(names.length).toBeGreaterThan(0)
 
-        expect(names).deep.eq(device.getProgramNames([]))
+        expect(names).toEqual(device.getProgramNames([]))
     })
 
     it('fetches program header', async () => {
@@ -130,9 +130,9 @@ describe('akai-s3000xl tests', () => {
         await program.save()
 
         let newName = 'a new name'
-        expect(program.getProgramName().trim()).not.eq(newName.toUpperCase())
+        expect(program.getProgramName().trim()).not.toBe(newName.toUpperCase())
         program.setProgramName('a new name')
-        expect(program.getProgramName().trim()).eq(newName.toUpperCase())
+        expect(program.getProgramName().trim()).toBe(newName.toUpperCase())
 
         // await device.writeProgram(header)
         await program.save()
@@ -141,7 +141,7 @@ describe('akai-s3000xl tests', () => {
         await device.fetchProgramHeader(programNumber, h2)
 
         const p2 = new Program(device, h2)
-        expect(p2.getProgramName()).eq(program.getProgramName())
+        expect(p2.getProgramName()).toBe(program.getProgramName())
     })
 
     it(`writes program level via generated class`, async () => {
@@ -155,14 +155,14 @@ describe('akai-s3000xl tests', () => {
         const level = program.getProgramLevel()
 
         program.setProgramLevel(level - 1)
-        expect(program.getProgramLevel()).eq(level - 1)
+        expect(program.getProgramLevel()).toBe(level - 1)
         await program.save()
 
         const h2 = {} as ProgramHeader
         await device.fetchProgramHeader(programNumber, h2)
         const p2 = new Program(device, h2)
 
-        expect(p2.getProgramLevel()).eq(program.getProgramLevel())
+        expect(p2.getProgramLevel()).toBe(program.getProgramLevel())
     })
 
     it(`writes program polyphony`, async () => {
@@ -171,7 +171,7 @@ describe('akai-s3000xl tests', () => {
         const programNumber = 0
         const header = {} as ProgramHeader
         await device.fetchProgramHeader(programNumber, header)
-        expect(header.POLYPH).not.eq(polyphony)
+        expect(header.POLYPH).not.toBe(polyphony)
 
         await device.writeProgramPolyphony(header, polyphony)
 
@@ -189,7 +189,7 @@ describe('akai-s3000xl tests', () => {
             }
         }
 
-        expect(h2.POLYPH).eq(polyphony)
+        expect(h2.POLYPH).toBe(polyphony)
     })
 
     it(`writes low note`, async () => {
@@ -207,7 +207,7 @@ describe('akai-s3000xl tests', () => {
 
         const h2 = {} as ProgramHeader
         await device.fetchProgramHeader(programNumber, h2)
-        expect(h2.PLAYLO).eq(lowNote)
+        expect(h2.PLAYLO).toBe(lowNote)
     })
 
     it('fetches keygroup header', async () => {
@@ -216,21 +216,21 @@ describe('akai-s3000xl tests', () => {
         const keygroupNumber = 1
         const header = {} as KeygroupHeader
         await device.fetchKeygroupHeader(programNumber, keygroupNumber, header)
-        expect((header as any)['PNUMBER']).equal(programNumber)
-        expect((header as any)['KNUMBER']).equal(keygroupNumber)
-        expect(header.KGIDENT).equal(2) // magic Akai number
+        expect((header as any)['PNUMBER']).toBe(programNumber)
+        expect((header as any)['KNUMBER']).toBe(keygroupNumber)
+        expect(header.KGIDENT).toBe(2) // magic Akai number
         console.log(header)
     })
 })
 
 describe('basic sysex tests', () => {
-    before(midiSetup)
-    after(midiTeardown)
+    beforeAll(midiSetup)
+    afterAll(midiTeardown)
 
 
     it('Initializes midi', () => {
-        expect(output).to.exist
-        expect(input).to.exist
+        expect(output).toBeDefined()
+        expect(input).toBeDefined()
     })
 
     it(`Sends sysex`, async () => {
@@ -258,8 +258,8 @@ describe('basic sysex tests', () => {
 describe('basic easymidi tests', () => {
     it('gets midi inputs', () => {
         const inputs = easymidi.getInputs()
-        expect(inputs).to.exist
-        expect(inputs.length).gte(1)
+        expect(inputs).toBeDefined()
+        expect(inputs.length).toBeGreaterThanOrEqual(1)
         for (let i = 0; i < inputs.length; i++) {
             console.log(`Input [${i}]: ${inputs[i]}`)
         }
@@ -267,8 +267,8 @@ describe('basic easymidi tests', () => {
 
     it('gets midi outputs', () => {
         const outputs = easymidi.getOutputs()
-        expect(outputs).to.exist
-        expect(outputs.length).gte(1)
+        expect(outputs).toBeDefined()
+        expect(outputs.length).toBeGreaterThanOrEqual(1)
         for (let i = 0; i < outputs.length; i++) {
             console.log(`Output [${i}]: ${outputs[i]}`)
         }
@@ -279,8 +279,8 @@ describe('basic easymidi tests', () => {
         const inputPorts = easymidi.getInputs()
         const outputPorts = easymidi.getOutputs()
 
-        expect(inputPorts.length).gte(1)
-        expect(outputPorts.length).gte(1)
+        expect(inputPorts.length).toBeGreaterThanOrEqual(1)
+        expect(outputPorts.length).toBeGreaterThanOrEqual(1)
 
         const input = new easymidi.Input(inputPorts[0])
         const output = new easymidi.Output(outputPorts[0])
@@ -297,8 +297,8 @@ describe('basic easymidi tests', () => {
         output.send('cc', {controller: 22, value: 1, channel: 0})
 
         const m = await received
-        expect(m.controller).eq(22)
-        expect(m.value).eq(1)
-        expect(m.channel).eq(0)
+        expect(m.controller).toBe(22)
+        expect(m.value).toBe(1)
+        expect(m.channel).toBe(0)
     })
 })

@@ -5,8 +5,7 @@
  * support stubbing. Tests are designed to work without real MIDI hardware.
  */
 
-import { describe, it, beforeEach, afterEach } from 'mocha';
-import { expect } from 'chai';
+import { describe, it, beforeEach, afterEach, expect } from 'vitest';
 import {
   createMidiSystem,
   Midi,
@@ -18,13 +17,13 @@ describe('MIDI System', () => {
   describe('createMidiSystem', () => {
     it('should create a MIDI system instance', () => {
       const system = createMidiSystem();
-      expect(system).to.exist;
+      expect(system).toBeDefined();
     });
 
     it('should accept a custom ProcessOutput', () => {
       const customOut = newClientOutput(true);
       const system = createMidiSystem(customOut);
-      expect(system).to.exist;
+      expect(system).toBeDefined();
     });
   });
 
@@ -65,14 +64,14 @@ describe('MIDI System', () => {
     describe('getInputs', () => {
       it('should return an array', () => {
         const inputs = system.getInputs();
-        expect(inputs).to.be.an('array');
+        expect(inputs).toBeInstanceOf(Array);
       });
 
       it('should return ports with name property', () => {
         const inputs = system.getInputs();
         inputs.forEach(input => {
-          expect(input).to.have.property('name');
-          expect(input.name).to.be.a('string');
+          expect(input).toHaveProperty('name');
+          expect(typeof input.name).toBe('string');
         });
       });
     });
@@ -80,42 +79,42 @@ describe('MIDI System', () => {
     describe('getOutputs', () => {
       it('should return an array', () => {
         const outputs = system.getOutputs();
-        expect(outputs).to.be.an('array');
+        expect(outputs).toBeInstanceOf(Array);
       });
 
       it('should return ports with name property', () => {
         const outputs = system.getOutputs();
         outputs.forEach(output => {
-          expect(output).to.have.property('name');
-          expect(output.name).to.be.a('string');
+          expect(output).toHaveProperty('name');
+          expect(typeof output.name).toBe('string');
         });
       });
     });
 
     describe('getCurrentInput', () => {
       it('should return undefined when no input selected', () => {
-        expect(system.getCurrentInput()).to.be.undefined;
+        expect(system.getCurrentInput()).toBeUndefined();
       });
 
       it('should return input after start if available', async () => {
         await system.start();
         const inputs = system.getInputs();
         if (inputs.length > 0) {
-          expect(system.getCurrentInput()).to.not.be.undefined;
+          expect(system.getCurrentInput()).not.toBeUndefined();
         }
       });
     });
 
     describe('getCurrentOutput', () => {
       it('should return undefined when no output selected', () => {
-        expect(system.getCurrentOutput()).to.be.undefined;
+        expect(system.getCurrentOutput()).toBeUndefined();
       });
 
       it('should return output after start if available', async () => {
         await system.start();
         const outputs = system.getOutputs();
         if (outputs.length > 0) {
-          expect(system.getCurrentOutput()).to.not.be.undefined;
+          expect(system.getCurrentOutput()).not.toBeUndefined();
         }
       });
     });
@@ -125,7 +124,7 @@ describe('MIDI System', () => {
         await system.start();
         const inputs = system.getInputs();
         if (inputs.length > 0) {
-          expect(() => system.setInput(inputs[0].name)).to.not.throw();
+          expect(() => system.setInput(inputs[0].name)).not.toThrow();
         }
       });
     });
@@ -135,7 +134,7 @@ describe('MIDI System', () => {
         await system.start();
         const outputs = system.getOutputs();
         if (outputs.length > 0) {
-          expect(() => system.setOutput(outputs[0].name)).to.not.throw();
+          expect(() => system.setOutput(outputs[0].name)).not.toThrow();
         }
       });
     });
@@ -153,7 +152,7 @@ describe('MIDI System', () => {
     });
 
     it('should create instance', () => {
-      expect(midi).to.exist;
+      expect(midi).toBeDefined();
     });
 
     it('should start and stop', async () => {
@@ -162,15 +161,15 @@ describe('MIDI System', () => {
     });
 
     it('should get inputs and outputs', () => {
-      expect(midi.getInputs()).to.be.an('array');
-      expect(midi.getOutputs()).to.be.an('array');
+      expect(midi.getInputs()).toBeInstanceOf(Array);
+      expect(midi.getOutputs()).toBeInstanceOf(Array);
     });
 
     describe('setInputByName', () => {
       it('should return undefined if input does not exist', async () => {
         await midi.start();
         const result = midi.setInputByName('Nonexistent Input');
-        expect(result).to.be.undefined;
+        expect(result).toBeUndefined();
       });
 
       it('should set input if it exists', async () => {
@@ -178,7 +177,7 @@ describe('MIDI System', () => {
         const inputs = midi.getInputs();
         if (inputs.length > 0) {
           const result = midi.setInputByName(inputs[0].name);
-          expect(result).to.not.be.undefined;
+          expect(result).not.toBeUndefined();
         }
       });
     });
@@ -187,7 +186,7 @@ describe('MIDI System', () => {
       it('should return undefined if output does not exist', async () => {
         await midi.start();
         const result = midi.setOutputByName('Nonexistent Output');
-        expect(result).to.be.undefined;
+        expect(result).toBeUndefined();
       });
 
       it('should set output if it exists', async () => {
@@ -195,14 +194,14 @@ describe('MIDI System', () => {
         const outputs = midi.getOutputs();
         if (outputs.length > 0) {
           const result = midi.setOutputByName(outputs[0].name);
-          expect(result).to.not.be.undefined;
+          expect(result).not.toBeUndefined();
         }
       });
     });
 
     describe('isCurrentInput', () => {
       it('should return false when no input selected', () => {
-        expect(midi.isCurrentInput('Any Input')).to.be.false;
+        expect(midi.isCurrentInput('Any Input')).toBe(false);
       });
 
       it('should return true for current input', async () => {
@@ -210,19 +209,19 @@ describe('MIDI System', () => {
         const inputs = midi.getInputs();
         if (inputs.length > 0) {
           midi.setInputByName(inputs[0].name);
-          expect(midi.isCurrentInput(inputs[0].name)).to.be.true;
+          expect(midi.isCurrentInput(inputs[0].name)).toBe(true);
         }
       });
 
       it('should return false for non-current input', async () => {
         await midi.start();
-        expect(midi.isCurrentInput('Wrong Input')).to.be.false;
+        expect(midi.isCurrentInput('Wrong Input')).toBe(false);
       });
     });
 
     describe('isCurrentOutput', () => {
       it('should return false when no output selected', () => {
-        expect(midi.isCurrentOutput('Any Output')).to.be.false;
+        expect(midi.isCurrentOutput('Any Output')).toBe(false);
       });
 
       it('should return true for current output', async () => {
@@ -230,19 +229,19 @@ describe('MIDI System', () => {
         const outputs = midi.getOutputs();
         if (outputs.length > 0) {
           midi.setOutputByName(outputs[0].name);
-          expect(midi.isCurrentOutput(outputs[0].name)).to.be.true;
+          expect(midi.isCurrentOutput(outputs[0].name)).toBe(true);
         }
       });
 
       it('should return false for non-current output', async () => {
         await midi.start();
-        expect(midi.isCurrentOutput('Wrong Output')).to.be.false;
+        expect(midi.isCurrentOutput('Wrong Output')).toBe(false);
       });
     });
 
     describe('sendSysex', () => {
       it('should throw error when no output selected', () => {
-        expect(() => midi.sendSysex(0x47, [0x5E, 0x00])).to.throw(
+        expect(() => midi.sendSysex(0x47, [0x5E, 0x00])).toThrow(
           'No MIDI output selected'
         );
       });
@@ -251,7 +250,7 @@ describe('MIDI System', () => {
         await midi.start();
         const outputs = midi.getOutputs();
         if (outputs.length > 0) {
-          expect(() => midi.sendSysex(0x47, [0x5E, 0x00])).to.not.throw();
+          expect(() => midi.sendSysex(0x47, [0x5E, 0x00])).not.toThrow();
         }
       });
 
@@ -259,7 +258,7 @@ describe('MIDI System', () => {
         await midi.start();
         const outputs = midi.getOutputs();
         if (outputs.length > 0) {
-          expect(() => midi.sendSysex([0x47, 0x5E], [0x00])).to.not.throw();
+          expect(() => midi.sendSysex([0x47, 0x5E], [0x00])).not.toThrow();
         }
       });
 
@@ -268,14 +267,14 @@ describe('MIDI System', () => {
         const outputs = midi.getOutputs();
         if (outputs.length > 0) {
           const result = midi.sendSysex(0x47, [0x5E, 0x00]);
-          expect(result).to.equal(midi);
+          expect(result).toBe(midi);
         }
       });
     });
 
     describe('noteOn', () => {
       it('should throw error when no output selected', () => {
-        expect(() => midi.noteOn(1, 60, 127)).to.throw(
+        expect(() => midi.noteOn(1, 60, 127)).toThrow(
           'No MIDI output selected'
         );
       });
@@ -284,7 +283,7 @@ describe('MIDI System', () => {
         await midi.start();
         const outputs = midi.getOutputs();
         if (outputs.length > 0) {
-          expect(() => midi.noteOn(1, 60, 127)).to.not.throw();
+          expect(() => midi.noteOn(1, 60, 127)).not.toThrow();
         }
       });
 
@@ -292,7 +291,7 @@ describe('MIDI System', () => {
         await midi.start();
         const outputs = midi.getOutputs();
         if (outputs.length > 0) {
-          expect(() => midi.noteOn([1, 2, 3], 60, 127)).to.not.throw();
+          expect(() => midi.noteOn([1, 2, 3], 60, 127)).not.toThrow();
         }
       });
     });
@@ -312,19 +311,19 @@ describe('MIDI System', () => {
     it('should add listeners without error', async () => {
       await system.start();
       const callback = () => {};
-      expect(() => system.addListener('sysex', callback)).to.not.throw();
+      expect(() => system.addListener('sysex', callback)).not.toThrow();
     });
 
     it('should remove listeners without error', async () => {
       await system.start();
       const callback = () => {};
       system.addListener('sysex', callback);
-      expect(() => system.removeListener('sysex', callback)).to.not.throw();
+      expect(() => system.removeListener('sysex', callback)).not.toThrow();
     });
 
     it('should handle adding listener before start', () => {
       const callback = () => {};
-      expect(() => system.addListener('sysex', callback)).to.not.throw();
+      expect(() => system.addListener('sysex', callback)).not.toThrow();
     });
 
     it('should persist listeners when changing inputs', async () => {
@@ -336,7 +335,7 @@ describe('MIDI System', () => {
 
       if (inputs.length > 0) {
         system.setInput(inputs[0].name);
-        expect(() => system.removeListener('sysex', callback)).to.not.throw();
+        expect(() => system.removeListener('sysex', callback)).not.toThrow();
       }
     });
   });

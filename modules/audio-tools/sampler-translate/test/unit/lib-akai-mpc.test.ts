@@ -1,5 +1,5 @@
-import { expect } from "chai";
-import { mpc } from "../../src/lib-akai-mpc";
+import { describe, it, expect } from 'vitest';
+import { mpc } from '../../src/lib-akai-mpc';
 
 describe("lib-akai-mpc", () => {
     describe("mpc.newSampleSliceDataFromBuffer", () => {
@@ -42,14 +42,14 @@ describe("lib-akai-mpc", () => {
 
             const result = mpc.newSampleSliceDataFromBuffer(buffer);
 
-            expect(result).to.exist;
-            expect(result.slices).to.have.length(2);
-            expect(result.slices[0].name).to.equal('Slice1');
-            expect(result.slices[0].start).to.equal(0);
-            expect(result.slices[0].end).to.equal(1000);
-            expect(result.slices[1].name).to.equal('Slice2');
-            expect(result.slices[1].start).to.equal(1000);
-            expect(result.slices[1].end).to.equal(2000);
+            expect(result).toBeDefined();
+            expect(result.slices).toHaveLength(2);
+            expect(result.slices[0].name).toBe('Slice1');
+            expect(result.slices[0].start).toBe(0);
+            expect(result.slices[0].end).toBe(1000);
+            expect(result.slices[1].name).toBe('Slice2');
+            expect(result.slices[1].start).toBe(1000);
+            expect(result.slices[1].end).toBe(2000);
         });
 
         it("should return empty slices if atem chunk not found", () => {
@@ -67,19 +67,19 @@ describe("lib-akai-mpc", () => {
 
             const result = mpc.newSampleSliceDataFromBuffer(buffer);
 
-            expect(result).to.exist;
-            expect(result.slices).to.have.length(0);
+            expect(result).toBeDefined();
+            expect(result.slices).toHaveLength(0);
         });
 
         it("should initialize default values correctly", () => {
             const buffer = Buffer.from('RIFF\x04\x00\x00\x00WAVE');
             const result = mpc.newSampleSliceDataFromBuffer(buffer);
 
-            expect(result.version).to.equal(-1);
-            expect(result.note).to.equal("");
-            expect(result.scale).to.equal("");
-            expect(result.barCount).to.equal(-1);
-            expect(result.slices).to.be.an('array').that.is.empty;
+            expect(result.version).toBe(-1);
+            expect(result.note).toBe("");
+            expect(result.scale).toBe("");
+            expect(result.barCount).toBe(-1);
+            expect(result.slices).toEqual([]);
         });
     });
 
@@ -105,19 +105,19 @@ describe("lib-akai-mpc", () => {
             const buffer = Buffer.from(xml);
             const program = mpc.newProgramFromBuffer(buffer);
 
-            expect(program).to.exist;
-            expect(program.programName).to.equal('TestProgram');
-            expect(program.layers).to.have.length(2);
+            expect(program).toBeDefined();
+            expect(program.programName).toBe('TestProgram');
+            expect(program.layers).toHaveLength(2);
 
-            expect(program.layers[0].number).to.equal(1);
-            expect(program.layers[0].sampleName).to.equal('Kick.WAV');
-            expect(program.layers[0].sliceStart).to.equal(0);
-            expect(program.layers[0].sliceEnd).to.equal(1000);
+            expect(program.layers[0].number).toBe(1);
+            expect(program.layers[0].sampleName).toBe('Kick.WAV');
+            expect(program.layers[0].sliceStart).toBe(0);
+            expect(program.layers[0].sliceEnd).toBe(1000);
 
-            expect(program.layers[1].number).to.equal(2);
-            expect(program.layers[1].sampleName).to.equal('Snare.WAV');
-            expect(program.layers[1].sliceStart).to.equal(0);
-            expect(program.layers[1].sliceEnd).to.equal(2000);
+            expect(program.layers[1].number).toBe(2);
+            expect(program.layers[1].sampleName).toBe('Snare.WAV');
+            expect(program.layers[1].start).toBe(0);
+            expect(program.layers[1].sliceEnd).toBe(2000);
         });
 
         it("should only include layers with sample names", () => {
@@ -140,9 +140,9 @@ describe("lib-akai-mpc", () => {
             const buffer = Buffer.from(xml);
             const program = mpc.newProgramFromBuffer(buffer);
 
-            expect(program.layers).to.have.length(2);
-            expect(program.layers[0].sampleName).to.equal('Sample1.WAV');
-            expect(program.layers[1].sampleName).to.equal('Sample3.WAV');
+            expect(program.layers).toHaveLength(2);
+            expect(program.layers[0].sampleName).toBe('Sample1.WAV');
+            expect(program.layers[1].sampleName).toBe('Sample3.WAV');
         });
 
         it("should handle empty program", () => {
@@ -156,8 +156,8 @@ describe("lib-akai-mpc", () => {
             const buffer = Buffer.from(xml);
             const program = mpc.newProgramFromBuffer(buffer);
 
-            expect(program.programName).to.equal('EmptyProgram');
-            expect(program.layers).to.have.length(0);
+            expect(program.programName).toBe('EmptyProgram');
+            expect(program.layers).toHaveLength(0);
         });
 
         it("should handle layers without slice data", () => {
@@ -174,10 +174,10 @@ describe("lib-akai-mpc", () => {
             const buffer = Buffer.from(xml);
             const program = mpc.newProgramFromBuffer(buffer);
 
-            expect(program.layers).to.have.length(1);
-            expect(program.layers[0].sampleName).to.equal('Sample.WAV');
-            expect(program.layers[0].sliceStart).to.be.undefined;
-            expect(program.layers[0].sliceEnd).to.be.undefined;
+            expect(program.layers).toHaveLength(1);
+            expect(program.layers[0].sampleName).toBe('Sample.WAV');
+            expect(program.layers[0].sliceStart).toBeUndefined();
+            expect(program.layers[0].sliceEnd).toBeUndefined();
         });
 
         it("should parse layer numbers correctly", () => {
@@ -197,8 +197,8 @@ describe("lib-akai-mpc", () => {
             const buffer = Buffer.from(xml);
             const program = mpc.newProgramFromBuffer(buffer);
 
-            expect(program.layers[0].number).to.equal(10);
-            expect(program.layers[1].number).to.equal(25);
+            expect(program.layers[0].number).toBe(10);
+            expect(program.layers[1].number).toBe(25);
         });
 
         it("should handle multiple instruments", () => {
@@ -220,9 +220,9 @@ describe("lib-akai-mpc", () => {
             const buffer = Buffer.from(xml);
             const program = mpc.newProgramFromBuffer(buffer);
 
-            expect(program.layers).to.have.length(2);
-            expect(program.layers[0].sampleName).to.equal('Inst1.WAV');
-            expect(program.layers[1].sampleName).to.equal('Inst2.WAV');
+            expect(program.layers).toHaveLength(2);
+            expect(program.layers[0].sampleName).toBe('Inst1.WAV');
+            expect(program.layers[1].sampleName).toBe('Inst2.WAV');
         });
     });
 
@@ -235,10 +235,10 @@ describe("lib-akai-mpc", () => {
                 loopStart: 150
             };
 
-            expect(slice.name).to.equal("TestSlice");
-            expect(slice.start).to.equal(100);
-            expect(slice.end).to.equal(200);
-            expect(slice.loopStart).to.equal(150);
+            expect(slice.name).toBe("TestSlice");
+            expect(slice.start).toBe(100);
+            expect(slice.end).toBe(200);
+            expect(slice.loopStart).toBe(150);
         });
     });
 
@@ -256,8 +256,8 @@ describe("lib-akai-mpc", () => {
                 ]
             };
 
-            expect(program.programName).to.equal("TestProgram");
-            expect(program.layers).to.have.length(1);
+            expect(program.programName).toBe("TestProgram");
+            expect(program.layers).toHaveLength(1);
         });
     });
 });

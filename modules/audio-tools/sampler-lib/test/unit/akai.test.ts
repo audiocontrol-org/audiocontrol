@@ -1,5 +1,4 @@
-import { describe, it } from 'mocha';
-import { expect } from 'chai';
+import { describe, it, expect } from 'vitest';
 import {
     AkaiRecordType,
     AkaiRecord,
@@ -12,11 +11,11 @@ import {
 describe('Akai Model Types', () => {
     describe('AkaiRecordType enum', () => {
         it('should have correct values', () => {
-            expect(AkaiRecordType.NULL).to.equal('NULL');
-            expect(AkaiRecordType.PARTITION).to.equal('S3000 PARTITION');
-            expect(AkaiRecordType.VOLUME).to.equal('S3000 VOLUME');
-            expect(AkaiRecordType.PROGRAM).to.equal('S3000 PROGRAM');
-            expect(AkaiRecordType.SAMPLE).to.equal('S3000 SAMPLE');
+            expect(AkaiRecordType.NULL).toBe('NULL');
+            expect(AkaiRecordType.PARTITION).toBe('S3000 PARTITION');
+            expect(AkaiRecordType.VOLUME).toBe('S3000 VOLUME');
+            expect(AkaiRecordType.PROGRAM).toBe('S3000 PROGRAM');
+            expect(AkaiRecordType.SAMPLE).toBe('S3000 SAMPLE');
         });
     });
 
@@ -28,10 +27,10 @@ describe('Akai Model Types', () => {
                 block: 100,
                 size: 1024
             };
-            expect(record.type).to.equal(AkaiRecordType.SAMPLE);
-            expect(record.name).to.equal('Test Sample');
-            expect(record.block).to.equal(100);
-            expect(record.size).to.equal(1024);
+            expect(record.type).toBe(AkaiRecordType.SAMPLE);
+            expect(record.name).toBe('Test Sample');
+            expect(record.block).toBe(100);
+            expect(record.size).toBe(1024);
         });
     });
 
@@ -51,9 +50,9 @@ describe('Akai Model Types', () => {
                     }
                 ]
             };
-            expect(volume.records).to.be.an('array');
-            expect(volume.records).to.have.length(1);
-            expect(volume.records[0].name).to.equal('Sample 1');
+            expect(volume.records).toBeInstanceOf(Array);
+            expect(volume.records).toHaveLength(1);
+            expect(volume.records[0].name).toBe('Sample 1');
         });
     });
 
@@ -74,9 +73,9 @@ describe('Akai Model Types', () => {
                     }
                 ]
             };
-            expect(partition.volumes).to.be.an('array');
-            expect(partition.volumes).to.have.length(1);
-            expect(partition.volumes[0].name).to.equal('Volume 1');
+            expect(partition.volumes).toBeInstanceOf(Array);
+            expect(partition.volumes).toHaveLength(1);
+            expect(partition.volumes[0].name).toBe('Volume 1');
         });
     });
 
@@ -95,10 +94,10 @@ describe('Akai Model Types', () => {
                     }
                 ]
             };
-            expect(disk.timestamp).to.be.a('number');
-            expect(disk.name).to.equal('Test Disk');
-            expect(disk.partitions).to.be.an('array');
-            expect(disk.partitions).to.have.length(1);
+            expect(typeof disk.timestamp).toBe('number');
+            expect(disk.name).toBe('Test Disk');
+            expect(disk.partitions).toBeInstanceOf(Array);
+            expect(disk.partitions).toHaveLength(1);
         });
     });
 
@@ -108,8 +107,8 @@ describe('Akai Model Types', () => {
                 scsiId: 3,
                 image: '/path/to/image.hda'
             };
-            expect(remoteDisk.scsiId).to.equal(3);
-            expect(remoteDisk.image).to.equal('/path/to/image.hda');
+            expect(remoteDisk.scsiId).toBe(3);
+            expect(remoteDisk.image).toBe('/path/to/image.hda');
         });
 
         it('should accept optional lun parameter', () => {
@@ -118,7 +117,7 @@ describe('Akai Model Types', () => {
                 lun: 0,
                 image: '/path/to/image.hda'
             };
-            expect(remoteDiskWithLun.lun).to.equal(0);
+            expect(remoteDiskWithLun.lun).toBe(0);
         });
     });
 
@@ -130,10 +129,10 @@ describe('Akai Model Types', () => {
                 piscsiHost: '192.168.1.100',
                 scsiId: 3
             };
-            expect(config.diskFile).to.equal('/path/to/disk.hda');
-            expect(config.akaiToolsPath).to.equal('/usr/local/bin/akaitools');
-            expect(config.piscsiHost).to.equal('192.168.1.100');
-            expect(config.scsiId).to.equal(3);
+            expect(config.diskFile).toBe('/path/to/disk.hda');
+            expect(config.akaiToolsPath).toBe('/usr/local/bin/akaitools');
+            expect(config.piscsiHost).toBe('192.168.1.100');
+            expect(config.scsiId).toBe(3);
         });
     });
 });

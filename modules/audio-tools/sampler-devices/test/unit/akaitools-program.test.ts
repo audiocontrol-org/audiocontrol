@@ -1,4 +1,4 @@
-import { expect } from "chai";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { readAkaiData, writeAkaiData } from "@/io/akaitools-program.js";
 import fs from 'fs/promises';
 import path from 'path';
@@ -27,7 +27,7 @@ describe('akaitools-program', () => {
             await writeAkaiData(testFile, nibbles);
 
             const result = await readAkaiData(testFile);
-            expect(result).to.deep.equal(nibbles);
+            expect(result).toEqual(nibbles);
         });
 
         it('should handle empty nibble array', async () => {
@@ -35,7 +35,8 @@ describe('akaitools-program', () => {
             await writeAkaiData(testFile, nibbles);
 
             const result = await readAkaiData(testFile);
-            expect(result).to.be.an('array').with.length(0);
+            expect(result).toBeInstanceOf(Array);
+            expect(result).toHaveLength(0);
         });
 
         it('should preserve nibble values', async () => {
@@ -43,7 +44,7 @@ describe('akaitools-program', () => {
             await writeAkaiData(testFile, nibbles);
 
             const result = await readAkaiData(testFile);
-            expect(result).to.deep.equal(nibbles);
+            expect(result).toEqual(nibbles);
         });
 
         it('should handle large nibble arrays', async () => {
@@ -51,7 +52,7 @@ describe('akaitools-program', () => {
             await writeAkaiData(testFile, nibbles);
 
             const result = await readAkaiData(testFile);
-            expect(result).to.deep.equal(nibbles);
+            expect(result).toEqual(nibbles);
         });
     });
 });
