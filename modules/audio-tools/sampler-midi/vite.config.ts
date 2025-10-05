@@ -48,8 +48,10 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['test/unit/**/*.test.ts'], // Only unit tests by default
-    exclude: ['test/integration/**'],    // Exclude integration tests
+    // Use include pattern that can be overridden by CLI filters
+    include: ['test/**/*.test.ts'],
+    // Exclude integration by default
+    exclude: ['node_modules/**', 'dist/**', 'test/integration/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],

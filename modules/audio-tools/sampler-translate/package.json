@@ -12,8 +12,8 @@
   "scripts": {
     "test": "vitest run",
     "test:unit": "vitest run test/unit",
-    "test:integration": "vitest run test/integration",
-    "test:all": "vitest run test",
+    "test:integration": "vitest run --config vite.config.integration.ts",
+    "test:all": "vitest run --exclude=",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "build": "tsup",
