@@ -1,7 +1,10 @@
 /**
  * Akai S3000/S1000 Program to DecentSampler Converter
  *
- * Converts Akai .a3p program files to DecentSampler .dspreset format.
+ * Converts Akai .a3p program files to DecentSampler .dspreset format with
+ * XML-based configuration including groups, samples, and effects.
+ *
+ * @module converters/s3k-to-decentsampler
  */
 
 import { writeFileSync } from "fs";
@@ -13,11 +16,36 @@ import type { S3KProgramData } from "@/converters/s3k-to-sfz.js";
 /**
  * Create DecentSampler XML document from program data
  *
- * @param program - Parsed program data
+ * Generates complete DecentSampler preset XML with proper structure:
+ * groups, samples with all parameters, and basic effects chain.
+ *
+ * @param program - Parsed S3K program data
  * @param outputDir - Output directory for dspreset file
  * @param wavDir - Directory containing WAV samples
  * @param sourcePath - Path to source .a3p file
- * @returns XML string
+ * @returns XML string with pretty formatting
+ *
+ * @remarks
+ * DecentSampler XML structure:
+ * ```xml
+ * <DecentSampler minVersion="1.0.0">
+ *   <groups attack="0.0" decay="0.0" sustain="1.0" release="0.1">
+ *     <group name="program-name">
+ *       <sample path="..." rootNote="..." loNote="..." hiNote="..." .../>
+ *     </group>
+ *   </groups>
+ *   <effects>
+ *     <effect type="lowpass" frequency="22000.0"/>
+ *     <effect type="reverb" wetLevel="0.0"/>
+ *   </effects>
+ * </DecentSampler>
+ * ```
+ *
+ * Pan conversion: Akai (-50 to +50) → DecentSampler (-100 to +100)
+ * Tuning: Akai semitones → DecentSampler tuning attribute
+ * Volume: Akai dB offset → DecentSampler volume="XdB"
+ *
+ * @internal
  */
 function createDecentSamplerXML(
     program: S3KProgramData,
@@ -143,11 +171,29 @@ function createDecentSamplerXML(
 /**
  * Create DecentSampler .dspreset file from program data
  *
- * @param program - Parsed program data
+ * Wrapper function that generates XML and writes to .dspreset file.
+ *
+ * @param program - Parsed S3K program data
  * @param outputDir - Output directory for dspreset file
  * @param wavDir - Directory containing WAV samples
  * @param sourcePath - Path to source .a3p file
  * @returns Path to created dspreset file
+ *
+ * @throws Error if unable to write file
+ *
+ * @example
+ * ```typescript
+ * const program = await parseA3P('/path/to/program.a3p');
+ * const dsPath = createDecentSampler(
+ *   program,
+ *   '/output/decentsampler',
+ *   '/output/wav',
+ *   '/path/to/program.a3p'
+ * );
+ * console.log(`DecentSampler preset: ${dsPath}`);
+ * ```
+ *
+ * @public
  */
 export function createDecentSampler(
     program: S3KProgramData,
@@ -167,10 +213,38 @@ export function createDecentSampler(
 /**
  * Convert an Akai .a3p program file to DecentSampler format
  *
+ * Complete conversion pipeline from S3K program to DecentSampler preset.
+ * Parses program file and generates .dspreset XML with sample references.
+ *
  * @param a3pFile - Path to .a3p file
  * @param outputDir - Output directory for dspreset file
  * @param wavDir - Directory containing WAV samples
- * @returns Path to created dspreset file
+ * @returns Promise resolving to path of created dspreset file
+ *
+ * @throws Error if parsing or file writing fails
+ *
+ * @remarks
+ * DecentSampler is a free sampler plugin that uses XML-based preset files.
+ * This converter creates presets compatible with DecentSampler 1.0.0+.
+ *
+ * Generated features:
+ * - Sample regions with key/velocity mapping
+ * - Root note and tuning
+ * - Pan and volume settings
+ * - Basic lowpass filter
+ * - Reverb effect (disabled by default)
+ *
+ * @example
+ * ```typescript
+ * const dsPath = await convertA3PToDecentSampler(
+ *   '/disks/mydisk/raw/program.a3p',
+ *   '/disks/mydisk/decentsampler',
+ *   '/disks/mydisk/wav'
+ * );
+ * console.log(`DecentSampler preset: ${dsPath}`);
+ * ```
+ *
+ * @public
  */
 export async function convertA3PToDecentSampler(
     a3pFile: string,

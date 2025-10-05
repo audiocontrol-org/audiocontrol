@@ -9,21 +9,58 @@ import {mkdir} from "@/lib-fs-server"
 const DEFAULT_DATA_DIR: string = path.join(process.env.HOME ? process.env.HOME : "/", '.audiotools')
 const out: ProcessOutput = newServerOutput(false)
 
+/**
+ * Server-side configuration for sampler operations.
+ *
+ * @remarks
+ * Manages paths for source files, target files, sessions, jobs, and
+ * integration with PiSCSI and Akai tools.
+ */
 export interface ServerConfig {
+    /** PiSCSI host address */
     piscsiHost: string;
+    /** SCSI ID of the S3000XL sampler */
     s3kScsiId: number;
+    /** Path to akaitools installation */
     akaiTools: string
+    /** Path to Akai disk image */
     akaiDisk: string
+    /** Root directory for S3000XL data */
     s3k: string
+    /** Root directory for source files */
     sourceRoot: string
+    /** Root directory for target/output files */
     targetRoot: string
+    /** Root directory for session data */
     sessionRoot: string
+    /** Root directory for job data */
     jobsRoot: string
+    /** Path to log file */
     logfile: string
 
+    /**
+     * Gets the path to the default program file for a given keygroup count.
+     *
+     * @param keygroupCount - Number of keygroups in the program (1-99)
+     * @returns Path to the default program template file
+     *
+     * @example
+     * ```typescript
+     * const templatePath = config.getS3kDefaultProgramPath(8);
+     * // Returns: 'data/s3000xl/defaults/kg_08.a3p'
+     * ```
+     */
     getS3kDefaultProgramPath(keygroupCount: number): string;
 }
 
+/**
+ * Validates server configuration and ensures required directories exist.
+ *
+ * @param cfg - Server configuration to validate
+ * @throws {Error} If configuration is invalid or required fields are missing
+ *
+ * @internal
+ */
 async function validate(cfg: ServerConfig) {
     if (!cfg) {
         throw new Error('Config is undefined')
@@ -40,6 +77,27 @@ async function validate(cfg: ServerConfig) {
     await mkdir(cfg.s3k)
 }
 
+/**
+ * Creates a server configuration with defaults and optional persistence.
+ *
+ * @param dataDir - Data directory path (default: ~/.audiotools)
+ * @returns Promise resolving to validated ServerConfig
+ * @throws {Error} If configuration validation fails
+ *
+ * @example
+ * ```typescript
+ * const config = await newServerConfig();
+ * console.log('PiSCSI host:', config.piscsiHost);
+ * console.log('S3K SCSI ID:', config.s3kScsiId);
+ * ```
+ *
+ * @remarks
+ * - Creates default configuration
+ * - Attempts to load stored configuration from server-config.json
+ * - Merges stored values with defaults
+ * - Creates required directories
+ * - Validates configuration before returning
+ */
 export async function newServerConfig(dataDir = DEFAULT_DATA_DIR): Promise<ServerConfig> {
     const targetDir = path.join(dataDir, 'target')
     const sourceDir = path.join(dataDir, 'source')
@@ -70,6 +128,23 @@ export async function newServerConfig(dataDir = DEFAULT_DATA_DIR): Promise<Serve
     return rv
 }
 
+/**
+ * Saves client configuration to disk.
+ *
+ * @param cfg - Client configuration to save
+ * @param dataDir - Data directory path (default: ~/.audiotools)
+ * @returns Promise resolving to the path where config was saved
+ * @throws {Error} If directory creation or file write fails
+ *
+ * @example
+ * ```typescript
+ * const config = newClientConfig();
+ * config.midiInput = 'IAC Driver Bus 1';
+ * config.midiOutput = 'S3000XL';
+ * const savedPath = await saveClientConfig(config);
+ * console.log('Config saved to:', savedPath);
+ * ```
+ */
 export function saveClientConfig(cfg: ClientConfig, dataDir = DEFAULT_DATA_DIR): Promise<string> {
     const configPath = path.join(dataDir, 'config.json')
     out.log(`Saving config to   : ${configPath}`)
@@ -83,6 +158,23 @@ export function saveClientConfig(cfg: ClientConfig, dataDir = DEFAULT_DATA_DIR):
     )
 }
 
+/**
+ * Loads client configuration from disk.
+ *
+ * @param dataDir - Data directory path (default: ~/.audiotools)
+ * @returns Promise resolving to ClientConfig (defaults if file doesn't exist)
+ *
+ * @example
+ * ```typescript
+ * const config = await loadClientConfig();
+ * console.log('MIDI input:', config.midiInput);
+ * console.log('MIDI output:', config.midiOutput);
+ * ```
+ *
+ * @remarks
+ * Returns default configuration if config file doesn't exist or cannot be read.
+ * Does not throw errors - logs warnings and returns defaults on failure.
+ */
 export async function loadClientConfig(dataDir = DEFAULT_DATA_DIR): Promise<ClientConfig> {
     const rv: ClientConfig = newClientConfig()
     const configPath = path.join(dataDir, 'config.json');
@@ -98,6 +190,15 @@ export async function loadClientConfig(dataDir = DEFAULT_DATA_DIR): Promise<Clie
     return rv
 }
 
+/**
+ * Ensures the data directory exists, creating it if necessary.
+ *
+ * @param dataDir - Data directory path (default: ~/.audiotools)
+ * @returns Promise resolving when directory exists or has been created
+ * @throws {Error} If path exists but is not a directory
+ *
+ * @internal
+ */
 function ensureDataDir(dataDir = DEFAULT_DATA_DIR) {
     return fs.stat(dataDir)
         .then(stats => {

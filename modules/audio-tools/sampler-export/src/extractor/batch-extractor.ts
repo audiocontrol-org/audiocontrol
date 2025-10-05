@@ -2,7 +2,9 @@
  * Batch Akai Disk Extractor
  *
  * Automatically discovers and extracts Akai disk images from well-known directories,
- * with smart timestamp-based change detection.
+ * with smart timestamp-based change detection and rsnapshot integration.
+ *
+ * @module extractor/batch-extractor
  */
 
 import { existsSync, readdirSync, statSync } from "fs";
@@ -10,65 +12,162 @@ import { join, basename, extname, resolve } from "pathe";
 import { homedir } from "os";
 import { extractAkaiDisk, ExtractionResult } from "@/extractor/disk-extractor.js";
 
+/**
+ * Supported Akai sampler types
+ *
+ * @public
+ */
 export type SamplerType = "s5k" | "s3k";
 
+/**
+ * Configuration options for batch extraction
+ *
+ * @public
+ */
 export interface BatchExtractionOptions {
+    /** Source directory containing disk images (default: ~/.audiotools/backup) */
     sourceDir?: string;
+
+    /** Destination directory for extracted files (default: ~/.audiotools/sampler-export/extracted) */
     destDir?: string;
+
+    /** Sampler types to process (default: ["s5k", "s3k"]) */
     samplerTypes?: SamplerType[];
+
+    /** Force re-extraction even if unchanged (default: false) */
     force?: boolean;
+
+    /** Convert programs to SFZ format (default: true) */
     convertToSFZ?: boolean;
+
+    /** Convert programs to DecentSampler format (default: true) */
     convertToDecentSampler?: boolean;
 }
 
+/**
+ * Information about a discovered disk image
+ *
+ * @public
+ */
 export interface DiskInfo {
+    /** Absolute path to disk image file */
     path: string;
+
+    /** Disk name (filename without extension) */
     name: string;
+
+    /** Sampler type this disk belongs to */
     samplerType: SamplerType;
+
+    /** Last modification time of disk image */
     mtime: Date;
 }
 
+/**
+ * Status of individual disk extraction
+ *
+ * @public
+ */
 export type ExtractionStatus = "success" | "skipped" | "updated" | "failed" | "warning";
 
+/**
+ * Result of extracting a single disk
+ *
+ * @public
+ */
 export interface DiskExtractionStatus {
+    /** Information about the disk */
     disk: DiskInfo;
+
+    /** Extraction status */
     status: ExtractionStatus;
+
+    /** Human-readable reason for status */
     reason: string;
+
+    /** Detailed extraction result (if extraction was attempted) */
     result?: ExtractionResult;
 }
 
+/**
+ * Result of batch extraction operation
+ *
+ * @public
+ */
 export interface BatchExtractionResult {
+    /** Total number of disks found */
     totalDisks: number;
+
+    /** Number of successfully extracted new disks */
     successful: number;
+
+    /** Number of updated disks (re-extracted due to changes) */
     updated: number;
+
+    /** Number of skipped disks (unchanged) */
     skipped: number;
+
+    /** Number of failed extractions */
     failed: number;
+
+    /** Number of warnings (unsupported formats) */
     warnings: number;
+
+    /** Aggregate statistics across all extractions */
     aggregateStats: {
+        /** Total samples extracted */
         totalSamples: number;
+
+        /** Total programs found */
         totalPrograms: number;
+
+        /** Total SFZ files created */
         totalSFZ: number;
+
+        /** Total DecentSampler presets created */
         totalDecentSampler: number;
     };
+
+    /** Detailed status for each disk */
     details: DiskExtractionStatus[];
 }
 
 /**
- * Get default source directory
+ * Get default source directory for batch extraction
+ *
+ * @returns Path to default backup directory (~/.audiotools/backup)
+ *
+ * @internal
  */
 function getDefaultSourceDir(): string {
     return resolve(homedir(), ".audiotools", "backup");
 }
 
 /**
- * Get default destination directory
+ * Get default destination directory for extracted files
+ *
+ * @returns Path to default extraction directory (~/.audiotools/sampler-export/extracted)
+ *
+ * @internal
  */
 function getDefaultDestDir(): string {
     return resolve(homedir(), ".audiotools", "sampler-export", "extracted");
 }
 
 /**
- * Get the rsnapshot interval directory (defaults to daily.0 which is most recent)
+ * Get the rsnapshot interval directory
+ *
+ * @param backupRoot - Root backup directory
+ * @param interval - rsnapshot interval name (default: "daily.0" for most recent)
+ * @returns Path to interval directory
+ *
+ * @remarks
+ * rsnapshot uses rotating interval directories:
+ * - daily.0 - Most recent daily backup
+ * - daily.1 - Previous daily backup
+ * - weekly.0 - Most recent weekly backup
+ *
+ * @internal
  */
 function getRsnapshotIntervalDir(backupRoot: string, interval: string = "daily.0"): string {
     return join(backupRoot, interval);
@@ -76,6 +175,16 @@ function getRsnapshotIntervalDir(backupRoot: string, interval: string = "daily.0
 
 /**
  * Map sampler type to backup directory name
+ *
+ * @param samplerType - Sampler type identifier
+ * @returns Backup directory name used in rsnapshot structure
+ *
+ * @remarks
+ * Maps logical sampler types to actual backup directory names:
+ * - "s5k" → "pi-scsi2" (S5000/S6000 connected via PiSCSI)
+ * - "s3k" → "s3k" (S3000 sampler)
+ *
+ * @internal
  */
 function getSamplerBackupDir(samplerType: SamplerType): string {
     // Map s5k to pi-scsi2 (S5000/S6000 connected via PiSCSI)
@@ -84,6 +193,17 @@ function getSamplerBackupDir(samplerType: SamplerType): string {
 
 /**
  * Recursively find disk images in a directory
+ *
+ * @param dir - Directory to search
+ * @param results - Accumulator array for results (used in recursion)
+ * @returns Array of absolute paths to disk image files (.hds, .img)
+ *
+ * @remarks
+ * Searches recursively for files with extensions:
+ * - .hds - Hard disk image format
+ * - .img - Generic disk image format
+ *
+ * @internal
  */
 function findDiskImagesRecursive(dir: string, results: string[] = []): string[] {
     try {
@@ -111,7 +231,18 @@ function findDiskImagesRecursive(dir: string, results: string[] = []): string[] 
 
 /**
  * Find all disk images in rsnapshot backup structure
- * Rsnapshot preserves full path structure, so we need to search recursively
+ *
+ * @param sourceDir - Root backup directory
+ * @param samplerType - Type of sampler to search for
+ * @returns Sorted array of disk image paths
+ *
+ * @remarks
+ * Rsnapshot preserves full remote path structure, so disk images may be deeply nested.
+ * Example structure: sourceDir/daily.0/pi-scsi2/home/orion/images/*.hds
+ *
+ * Returns empty array if backup directory doesn't exist.
+ *
+ * @internal
  */
 function findDiskImages(sourceDir: string, samplerType: SamplerType): string[] {
     // Rsnapshot structure: sourceDir/daily.0/pi-scsi2/home/orion/images/*.hds
@@ -130,6 +261,15 @@ function findDiskImages(sourceDir: string, samplerType: SamplerType): string[] {
 
 /**
  * Check if output directory has extracted content
+ *
+ * @param outputDir - Output directory to check
+ * @returns True if directory contains extracted files, false otherwise
+ *
+ * @remarks
+ * Checks for presence of files in the raw/ subdirectory, which indicates
+ * a successful previous extraction.
+ *
+ * @internal
  */
 function hasExtractedContent(outputDir: string): boolean {
     try {
@@ -148,6 +288,21 @@ function hasExtractedContent(outputDir: string): boolean {
 
 /**
  * Determine if a disk needs extraction based on timestamps and content
+ *
+ * @param diskPath - Path to disk image file
+ * @param outputDir - Path to output directory
+ * @param force - Force extraction regardless of timestamps
+ * @returns Object with extraction decision and reason
+ *
+ * @remarks
+ * Decision logic:
+ * 1. If force=true: always extract (reason: "forced")
+ * 2. If output doesn't exist: extract (reason: "new")
+ * 3. If output is empty: extract (reason: "empty (no content)")
+ * 4. If disk mtime > output mtime: extract (reason: "modified (disk updated: YYYY-MM-DD)")
+ * 5. Otherwise: skip (reason: "unchanged (last: YYYY-MM-DD)")
+ *
+ * @internal
  */
 function needsExtraction(
     diskPath: string,
@@ -188,7 +343,86 @@ function needsExtraction(
 }
 
 /**
- * Extract a batch of Akai disk images
+ * Extract a batch of Akai disk images with smart change detection
+ *
+ * Automatically discovers disk images in rsnapshot backup structure and extracts
+ * only changed disks using timestamp comparison. Supports both S3K and S5K samplers.
+ *
+ * The function performs:
+ * 1. Disk discovery from rsnapshot backup directories
+ * 2. Timestamp-based change detection
+ * 3. Parallel extraction of changed disks
+ * 4. Aggregate statistics reporting
+ * 5. Detailed per-disk status tracking
+ *
+ * @param options - Batch extraction configuration options
+ * @returns Promise resolving to batch extraction results with statistics
+ *
+ * @remarks
+ * Expected rsnapshot directory structure:
+ * ```
+ * ~/.audiotools/backup/
+ *   daily.0/
+ *     pi-scsi2/          # S5K/S6K backups
+ *       home/orion/images/*.hds
+ *     s3k/               # S3K backups
+ *       *.hds
+ * ```
+ *
+ * Output directory structure:
+ * ```
+ * ~/.audiotools/sampler-export/extracted/
+ *   s5k/                 # S5K disks
+ *     disk-name/
+ *       raw/
+ *       wav/
+ *       sfz/
+ *       decentsampler/
+ *   s3k/                 # S3K disks
+ *     disk-name/
+ *       ...
+ * ```
+ *
+ * Status icons in output:
+ * - ✓ New disk extracted
+ * - ↻ Updated disk (modified since last extraction)
+ * - ⊘ Skipped (unchanged)
+ * - ⚠ Warning (unsupported format)
+ * - ✗ Failed (extraction error)
+ *
+ * @example
+ * ```typescript
+ * // Extract all changed disks with default settings
+ * const result = await extractBatch();
+ * console.log(`Processed ${result.totalDisks} disks:`);
+ * console.log(`  New: ${result.successful}`);
+ * console.log(`  Updated: ${result.updated}`);
+ * console.log(`  Skipped: ${result.skipped}`);
+ * console.log(`  Total samples: ${result.aggregateStats.totalSamples}`);
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // Force re-extraction of all S5K disks only
+ * const result = await extractBatch({
+ *   samplerTypes: ['s5k'],
+ *   force: true,
+ *   convertToSFZ: true,
+ *   convertToDecentSampler: false
+ * });
+ * ```
+ *
+ * @example
+ * ```typescript
+ * // Extract from custom backup location
+ * const result = await extractBatch({
+ *   sourceDir: '/mnt/backups/samplers',
+ *   destDir: '/mnt/extracted',
+ *   samplerTypes: ['s3k']
+ * });
+ * ```
+ *
+ * @public
  */
 export async function extractBatch(
     options: BatchExtractionOptions = {}

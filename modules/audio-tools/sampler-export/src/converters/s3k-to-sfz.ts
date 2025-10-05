@@ -2,6 +2,9 @@
  * Akai S3000/S1000 Program to SFZ Converter
  *
  * Converts Akai .a3p program files to SFZ format for use with modern samplers.
+ * Handles keygroup mapping, velocity layers, tuning, and pan/volume settings.
+ *
+ * @module converters/s3k-to-sfz
  */
 
 import { readFileSync, writeFileSync, existsSync } from "fs";
@@ -15,32 +18,91 @@ import {
 } from "@oletizi/sampler-devices/s3k";
 import { readAkaiData } from "@oletizi/sampler-devices";
 
+/**
+ * Keygroup data extracted from S3K program
+ *
+ * @public
+ */
 export interface S3KKeygroupData {
+    /** Lowest MIDI note number in key range (0-127) */
     lowKey: number;
+
+    /** Highest MIDI note number in key range (0-127) */
     highKey: number;
+
+    /** Fine tuning in semitones */
     tune: number;
+
+    /** Name of sample file (Akai format) */
     sampleName: string;
+
+    /** Lowest velocity value (0-127) */
     lowVel: number;
+
+    /** Highest velocity value (0-127) */
     highVel: number;
+
+    /** Volume offset in dB */
     volOffset: number;
+
+    /** Pan offset (-50 to +50) */
     panOffset: number;
+
+    /** Root pitch/note number */
     pitch: number;
 }
 
+/**
+ * Complete S3K program data
+ *
+ * @public
+ */
 export interface S3KProgramData {
+    /** Program name */
     name: string;
+
+    /** MIDI program number (0-127) */
     midiProg: number;
+
+    /** MIDI channel (0-15) */
     midiChan: number;
+
+    /** Program low key limit */
     lowKey: number;
+
+    /** Program high key limit */
     highKey: number;
+
+    /** Array of keygroup configurations */
     keygroups: S3KKeygroupData[];
 }
 
 /**
  * Parse an Akai .a3p program file
  *
+ * Reads and parses S3000/S1000 program file format, extracting program header
+ * and all keygroup definitions.
+ *
  * @param filepath - Path to the .a3p file
- * @returns Parsed program data
+ * @returns Promise resolving to parsed program data
+ *
+ * @throws Error if file cannot be read or parsed
+ *
+ * @remarks
+ * S3K program file structure:
+ * - Bytes 0x00-0xBF: Program header
+ * - Bytes 0xC0+: Keygroup headers (0xC2 bytes each)
+ *
+ * Tuning values are stored as fixed-point (divide by 256 for semitones).
+ *
+ * @example
+ * ```typescript
+ * const program = await parseA3P('/path/to/program.a3p');
+ * console.log(`Program: ${program.name}`);
+ * console.log(`Keygroups: ${program.keygroups.length}`);
+ * ```
+ *
+ * @public
  */
 export async function parseA3P(filepath: string): Promise<S3KProgramData> {
     const data = await readAkaiData(filepath);
@@ -95,10 +157,29 @@ export async function parseA3P(filepath: string): Promise<S3KProgramData> {
 /**
  * Find sample file with various naming patterns
  *
- * @param sampleName - Base sample name
+ * Searches for sample files using multiple naming strategies to handle
+ * different conversion scenarios (stereo pairs, name transformations, etc.).
+ *
+ * @param sampleName - Base sample name from program file
  * @param wavDir - Directory containing WAV files
  * @param baseName - Base name of the source .a3p file
- * @returns Sample filename or null if not found
+ * @returns Sample filename if found, null otherwise
+ *
+ * @remarks
+ * Search strategy:
+ * 1. Direct match: samplename.wav
+ * 2. Stereo pairs: samplename_-l.wav, samplename_-r.wav
+ * 3. Pattern match: basename*_-l.wav
+ *
+ * Sample names are normalized (lowercase, spaces to underscores).
+ *
+ * @example
+ * ```typescript
+ * const wavFile = findSampleFile('Piano C3', '/samples/wav', 'piano-program');
+ * // Returns: 'piano_c3.wav' or 'piano_c3_-l.wav' if found
+ * ```
+ *
+ * @public
  */
 export function findSampleFile(
     sampleName: string,
@@ -134,11 +215,45 @@ export function findSampleFile(
 /**
  * Create SFZ file from program data
  *
+ * Generates SFZ instrument definition from parsed S3K program data.
+ * Creates region definitions with proper key/velocity mapping, tuning,
+ * pan, and volume settings.
+ *
  * @param program - Parsed program data
  * @param outputDir - Output directory for SFZ file
  * @param wavDir - Directory containing WAV samples
  * @param sourcePath - Path to source .a3p file
  * @returns Path to created SFZ file
+ *
+ * @throws Error if unable to write SFZ file
+ *
+ * @remarks
+ * SFZ features generated:
+ * - Region key ranges (lokey/hikey)
+ * - Velocity layers (lovel/hivel)
+ * - Pitch center (pitch_keycenter)
+ * - Fine tuning (tune in cents)
+ * - Volume (volume in dB)
+ * - Pan (pan -100 to +100)
+ *
+ * Invalid keygroups are automatically filtered:
+ * - hikey=0 with lokey>0 (unused keygroup)
+ * - Invalid key ranges (lokey > hikey)
+ * - Missing sample files
+ *
+ * @example
+ * ```typescript
+ * const program = await parseA3P('/path/to/program.a3p');
+ * const sfzPath = createSFZ(
+ *   program,
+ *   '/output/sfz',
+ *   '/output/wav',
+ *   '/path/to/program.a3p'
+ * );
+ * console.log(`Created: ${sfzPath}`);
+ * ```
+ *
+ * @public
  */
 export function createSFZ(
     program: S3KProgramData,
@@ -243,10 +358,27 @@ export function createSFZ(
 /**
  * Convert an Akai .a3p program file to SFZ format
  *
+ * Complete conversion pipeline from S3K program to SFZ instrument.
+ * Parses program file and generates SFZ with sample references.
+ *
  * @param a3pFile - Path to .a3p file
  * @param outputDir - Output directory for SFZ file
  * @param wavDir - Directory containing WAV samples
- * @returns Path to created SFZ file
+ * @returns Promise resolving to path of created SFZ file
+ *
+ * @throws Error if parsing or file writing fails
+ *
+ * @example
+ * ```typescript
+ * const sfzPath = await convertA3PToSFZ(
+ *   '/disks/mydisk/raw/program.a3p',
+ *   '/disks/mydisk/sfz',
+ *   '/disks/mydisk/wav'
+ * );
+ * console.log(`SFZ created: ${sfzPath}`);
+ * ```
+ *
+ * @public
  */
 export async function convertA3PToSFZ(
     a3pFile: string,
