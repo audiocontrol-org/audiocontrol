@@ -3,6 +3,21 @@
  *
  * Provides tools for extracting Akai disk images and converting
  * sampler programs to SFZ and DecentSampler formats.
+ *
+ * @packageDocumentation
+ * @module @oletizi/sampler-export
+ *
+ * @example
+ * ```typescript
+ * import { extractAkaiDisk } from '@oletizi/sampler-export';
+ *
+ * const result = await extractAkaiDisk({
+ *   diskImage: '/path/to/disk.hds',
+ *   outputDir: '/path/to/output',
+ *   convertToSFZ: true,
+ *   convertToDecentSampler: true
+ * });
+ * ```
  */
 
 // Utilities
