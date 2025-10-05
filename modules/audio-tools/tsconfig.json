@@ -8,8 +8,7 @@
     "skipLibCheck": true,
     "paths": {
       "@/*": [
-        "./src/ts/*",
-        "./src/*",
+        "./src/ts/*"
       ]
     },
     "lib": [
@@ -28,7 +27,6 @@
     ]
   },
   "include": [
-    "src-deprecated/**/*",
     ".next/types/**/*.ts"
   ],
   "exclude": [
