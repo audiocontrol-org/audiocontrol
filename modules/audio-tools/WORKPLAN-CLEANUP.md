@@ -1585,6 +1585,137 @@ export default defineConfig({
 
 ---
 
+## 🔴 CRITICAL TECHNICAL DEBT - Must Fix Before Distribution
+
+### Issue 1: sampler-midi Violates Dependency Injection Architecture
+
+**Severity**: CRITICAL
+**Status**: BLOCKING distribution
+**Discovery Date**: 2025-10-04 (Phase 4 completion)
+
+**Problem Description**:
+
+The `sampler-midi` package directly instantiates `easymidi.Input` and `easymidi.Output` objects, violating the project's core architecture principles defined in CLAUDE.md and TYPESCRIPT-ARCHITECTURE.md.
+
+**Architecture Violations**:
+- ❌ **No interface abstraction** for MIDI backend
+- ❌ **Direct instantiation** of third-party library (easymidi)
+- ❌ **Impossible to mock** in unit tests
+- ❌ **Violates CLAUDE.md**: "Always use interfaces and factories, never concrete class dependencies"
+- ❌ **Violates TYPESCRIPT-ARCHITECTURE.md**: "Dependency injection - Constructor injection with interface types"
+
+**Current Code** (in `sampler-midi/src/midi.ts`):
+```typescript
+// ❌ WRONG - Direct coupling to easymidi
+setInput(name: string): void {
+  this.currentInput = new easymidi.Input(name, virtual);
+}
+
+setOutput(name: string): void {
+  this.currentOutput = new easymidi.Output(name, virtual);
+}
+```
+
+**Impact on Testing**:
+- **16 test failures** due to easymidi's strict sysex validation (cannot mock)
+- **Cannot unit test** MIDI message building logic in isolation
+- **Requires real MIDI hardware** for integration tests (impractical for CI/CD)
+- **Low code coverage**: ~70% instead of 80%+ target
+- **False negatives**: Code works in production but fails in tests
+
+**Why easymidi Cannot Be Easily Mocked**:
+1. Native Node.js module (not pure JavaScript)
+2. Strict sysex validation: requires `0xF0` start byte and `0xF7` end byte
+3. Tests want to test business logic (building messages), not protocol compliance
+4. Throws errors when testing partial messages: "SysEx status byte was not found"
+
+**Correct Architecture** (DI-based):
+
+```typescript
+// 1. Define MidiBackend interface
+export interface MidiBackend {
+  getInputs(): MidiPortInfo[]
+  getOutputs(): MidiPortInfo[]
+  createInput(name: string, virtual?: boolean): MidiInput
+  createOutput(name: string, virtual?: boolean): MidiOutput
+  closeInput(input: MidiInput): void
+  closeOutput(output: MidiOutput): void
+}
+
+// 2. Create EasyMidiBackend implementation
+export class EasyMidiBackend implements MidiBackend {
+  getInputs(): MidiPortInfo[] {
+    return easymidi.getInputs().map(name => ({ name }));
+  }
+
+  createInput(name: string, virtual?: boolean): MidiInput {
+    return new easymidi.Input(name, virtual);
+  }
+  // ... rest of implementation
+}
+
+// 3. Inject backend via constructor
+export class MidiSystem {
+  constructor(private backend: MidiBackend = new EasyMidiBackend()) {}
+
+  setInput(name: string): void {
+    this.currentInput = this.backend.createInput(name, virtual);  // ✓ Uses injected backend
+  }
+}
+
+// 4. Factory function for backward compatibility
+export function createMidiSystem(backend?: MidiBackend): MidiSystem {
+  return new MidiSystem(backend ?? new EasyMidiBackend());
+}
+
+// 5. Tests use mock backend
+const mockBackend: MidiBackend = {
+  createInput: vi.fn().mockReturnValue(mockInput),
+  createOutput: vi.fn().mockReturnValue(mockOutput),
+  getInputs: vi.fn().mockReturnValue([{ name: 'Test Input' }]),
+  // ...
+};
+const system = new MidiSystem(mockBackend);
+```
+
+**Benefits of Fix**:
+- ✅ **Fully unit testable** - Mock MIDI backend in all tests
+- ✅ **No easymidi test failures** - Tests independent of library validation
+- ✅ **80%+ test coverage achievable** - Can test all logic paths
+- ✅ **Follows project standards** - Interface-first, dependency injection
+- ✅ **Easier to swap backends** - Could use different MIDI library in future
+- ✅ **Better error handling** - Can test error paths with mock failures
+- ✅ **CI/CD friendly** - No MIDI hardware required for tests
+
+**Effort Estimate**: 1-2 days
+1. Define `MidiBackend` interface (2 hours)
+2. Create `EasyMidiBackend` implementation (3 hours)
+3. Refactor `MidiSystem` to use injected backend (3 hours)
+4. Update factory function for backward compatibility (1 hour)
+5. Update all tests to use mock backend (4 hours)
+6. Verify all tests pass (2 hours)
+7. Update documentation (1 hour)
+
+**Acceptance Criteria**:
+- [ ] `MidiBackend` interface defined in `sampler-midi/src/backend.ts`
+- [ ] `EasyMidiBackend` implementation created
+- [ ] `MidiSystem` uses constructor-injected backend
+- [ ] Factory function `createMidiSystem(backend?)` maintains backward compatibility
+- [ ] All unit tests use mock backend (no easymidi dependency)
+- [ ] Test coverage increases from ~70% to 80%+
+- [ ] All 16 easymidi-related test failures resolved
+- [ ] Integration tests still work with real `EasyMidiBackend`
+- [ ] Documentation updated to show DI pattern
+
+**Related Files**:
+- `/Users/orion/work/ol_dsp/modules/audio-tools/sampler-midi/src/midi.ts` - Needs refactoring
+- `/Users/orion/work/ol_dsp/modules/audio-tools/sampler-midi/test/unit/midi.test.ts` - Needs mock backend
+- `/Users/orion/work/ol_dsp/modules/audio-tools/sampler-midi/test/integration/akai-s3000xl.test.ts` - Needs mock backend
+
+**Priority**: **MUST FIX** before Phase 5 (Documentation) completion and npm publication
+
+---
+
 ## Phase 5: Documentation (5-7 days)
 
 ### Objectives
