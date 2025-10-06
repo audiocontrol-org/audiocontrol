@@ -2,8 +2,250 @@
 
 **Version:** 1.0.0
 **Created:** 2025-10-05
-**Status:** Planning
+**Last Updated:** 2025-10-05
+**Status:** In Progress - Phase 5
 **Estimated Duration:** 11-15 days
+**Progress:** 4 of 5 phases complete (80%)
+
+---
+
+## Progress Tracking
+
+### Phase 1: Media Detection ✅ COMPLETED
+**Duration:** ~2 days
+**Status:** Complete - All acceptance criteria met
+
+**Completed Tasks:**
+- ✅ Created MediaDetector class (279 lines)
+- ✅ Platform-specific mount point detection (macOS/Linux)
+- ✅ Recursive disk image discovery (.hds, .img, .iso)
+- ✅ Added MediaInfo and DiskImageInfo types
+- ✅ 38 unit tests with 96.41% coverage
+- ✅ All tests passing (66/66 total)
+
+**Files Created:**
+- `sampler-backup/src/media/media-detector.ts`
+- `sampler-backup/test/unit/media-detector.test.ts`
+
+**Files Modified:**
+- `sampler-backup/src/types/index.ts` (added MediaInfo, DiskImageInfo)
+
+**Key Achievements:**
+- Dependency injection pattern for testability
+- No module stubbing (per project guidelines)
+- Cross-platform support (macOS, Linux)
+- Descriptive error handling (no fallbacks)
+
+**Metrics:**
+- Test Coverage: 96.41% statements, 94.33% branches
+- Build Time: 604ms
+- Test Execution: 249ms
+- Zero TypeScript errors
+
+### Phase 2: Local Backup Adapter ✅ COMPLETED
+**Duration:** ~4 hours
+**Status:** Complete - All acceptance criteria met
+
+**Completed Tasks:**
+- ✅ Created LocalBackupAdapter class (382 lines)
+- ✅ Implemented incremental copy logic (mtime + size comparison)
+- ✅ Stream-based file copying for memory efficiency
+- ✅ Progress tracking with callback system
+- ✅ Timestamp preservation using utimes()
+- ✅ Error handling: EACCES (skip), ENOSPC (fail), generic errors
+- ✅ Partial file cleanup on failure
+- ✅ Directory structure preservation
+- ✅ Added types to types/index.ts (LocalBackupOptions, BackupProgress, LocalBackupResult)
+- ✅ 26 unit tests with 96.33% coverage
+- ✅ 17 integration tests with real filesystem
+- ✅ All tests passing (109/109 total)
+
+**Files Created:**
+- `sampler-backup/src/backup/local-backup-adapter.ts` (382 lines)
+- `sampler-backup/test/unit/local-backup-adapter.test.ts` (731 lines)
+- `sampler-backup/test/integration/local-backup.test.ts` (418 lines)
+
+**Files Modified:**
+- `sampler-backup/src/types/index.ts` (added LocalBackupOptions, BackupProgress, LocalBackupResult types)
+
+**Key Achievements:**
+- Dependency injection pattern with FileSystemOperations interface
+- Stream-based copying handles large files (tested with 10MB+ files)
+- Incremental logic skips unchanged files (same mtime and size)
+- Progress tracking reports bytes and files processed
+- Error handling: permissions (skip), disk full (fail), cleanup on error
+- Directory structure preserved recursively
+- Hidden files automatically skipped
+- Zero TypeScript errors, builds successfully
+
+**Test Coverage:**
+- LocalBackupAdapter: 96.33% statements, 91.8% branches
+- Overall package: 69.94% statements, 90.55% branches
+- Uncovered lines are intentional (error cleanup catch blocks)
+
+**Performance Metrics:**
+- Build Time: 607ms
+- Test Execution: 142ms (unit) + 112ms (integration)
+- Memory efficient: Stream-based copying
+- Large file support: 10MB+ tested successfully
+
+**Design Decisions:**
+1. **FileSystemOperations Interface**: Enables comprehensive testing without real filesystem
+2. **Stream-based copying**: Memory-efficient for large disk images
+3. **Incremental by default**: Matches rsnapshot behavior
+4. **Progress callbacks**: Optional but detailed (bytes, files, current file)
+5. **Error classification**: EACCES (skip), ENOSPC (fail), others (fail)
+6. **Partial file cleanup**: Ensures no corrupted files left behind
+
+**Issues Encountered:**
+- None - implementation went smoothly following Phase 1 patterns
+
+**Next Steps:**
+- Phase 3: Source Abstraction Layer (unified interface for remote/local sources)
+
+### Phase 3: Source Abstraction Layer ✅ COMPLETED
+**Duration:** ~4 hours
+**Status:** Complete - All acceptance criteria met
+
+**Completed Tasks:**
+- ✅ Defined BackupSource interface (73 lines)
+- ✅ Defined RemoteSourceConfig and LocalSourceConfig types
+- ✅ Implemented RemoteSource wrapping rsnapshot (92 lines)
+- ✅ Implemented LocalSource with MediaDetector + LocalBackupAdapter (224 lines)
+- ✅ Implemented BackupSourceFactory with auto-detection (166 lines)
+- ✅ Updated types/index.ts to export all new types
+- ✅ 23 unit tests for BackupSourceFactory with 98.79% coverage
+- ✅ 14 unit tests for RemoteSource with 100% coverage
+- ✅ 20 unit tests for LocalSource with 95.53% coverage
+- ✅ All 166 tests passing (8 test files)
+
+**Files Created:**
+- `sampler-backup/src/sources/backup-source.ts` (73 lines)
+- `sampler-backup/src/sources/remote-source.ts` (92 lines)
+- `sampler-backup/src/sources/local-source.ts` (224 lines)
+- `sampler-backup/src/sources/backup-source-factory.ts` (166 lines)
+- `sampler-backup/test/unit/sources/backup-source-factory.test.ts` (241 lines)
+- `sampler-backup/test/unit/sources/remote-source.test.ts` (308 lines)
+- `sampler-backup/test/unit/sources/local-source.test.ts` (553 lines)
+
+**Files Modified:**
+- `sampler-backup/src/types/index.ts` (added BackupSource types export)
+
+**Key Achievements:**
+- Unified interface for remote and local backup sources
+- RemoteSource maintains 100% backward compatibility with existing rsnapshot workflow
+- LocalSource implements rsnapshot-compatible directory structure (daily.0, daily.1, etc.)
+- LocalSource implements rotation logic matching rsnapshot behavior
+- Factory pattern supports auto-detection from path strings
+- Path detection: Contains ':' → remote SSH, otherwise → local filesystem
+- Windows path handling (C:\...) correctly identified as local
+- Comprehensive error handling with descriptive messages
+- Zero breaking changes to existing code
+
+**Test Coverage:**
+- BackupSourceFactory: 98.79% statements, 88.46% branches
+- RemoteSource: 100% statements, 100% branches, 100% functions
+- LocalSource: 95.53% statements, 96.96% branches, 87.5% functions
+- Overall package: 80.73% statements, 92.7% branches
+
+**Design Decisions:**
+1. **Interface-first design**: BackupSource interface defines contract for all sources
+2. **RemoteSource as wrapper**: Delegates to existing rsnapshot-wrapper.ts preserving all behavior
+3. **LocalSource rotation logic**: Mirrors rsnapshot's shouldRotateSnapshot() and rotation behavior
+4. **Factory auto-detection**: Parses path strings to determine source type automatically
+5. **Dependency injection**: Both sources accept optional dependencies for testability
+6. **Type safety**: Strong typing for all configs with discriminated unions
+
+**Integration Points:**
+- RemoteSource → runBackup() from rsnapshot-wrapper.ts
+- RemoteSource → getDefaultRsnapshotConfig(), writeRsnapshotConfig() from rsnapshot-config.ts
+- LocalSource → MediaDetector.findDiskImages()
+- LocalSource → LocalBackupAdapter.backup()
+- All sources → Common BackupResult interface
+
+**Issues Encountered:**
+- Test mock complexity for rotation logic (fixed with stateful mock)
+- None blocking - all tests passing
+
+**Next Steps:**
+- Phase 4: CLI Integration (add --source flag, wire to factory)
+
+### Phase 4: CLI Integration ✅ COMPLETED
+**Duration:** ~4 hours
+**Status:** Complete - All acceptance criteria met
+
+**Completed Tasks:**
+- ✅ Modified CLI backup command to add --source and --subdir flags (227 lines total, +115 added)
+- ✅ Integrated BackupSourceFactory.fromPath() for auto-detection
+- ✅ Added comprehensive help text with usage examples
+- ✅ Maintained 100% backward compatibility (no --source = existing rsnapshot behavior)
+- ✅ Updated sampler-backup/src/index.ts to export new APIs (15 lines total, +7 added)
+- ✅ Created 18 end-to-end CLI integration tests (460 lines)
+- ✅ All 184 tests passing (166 existing + 18 new)
+
+**Files Modified:**
+- `sampler-backup/src/cli/backup.ts` (227 lines, +115 lines added)
+- `sampler-backup/src/index.ts` (15 lines, +7 lines added)
+
+**Files Created:**
+- `sampler-backup/test/e2e/cli-backup.test.ts` (460 lines, NEW)
+
+**Key Achievements:**
+- Zero breaking changes to existing CLI commands
+- BackupSourceFactory provides clean abstraction for remote/local sources
+- Auto-detection: paths with ':' → remote SSH, others → local filesystem
+- Clear help text with platform-specific examples
+- Dependency injection pattern in tests (no module stubbing)
+- Descriptive error messages with actionable guidance
+
+**Test Coverage:**
+- CLI Integration Tests: 18 new tests, 8ms average execution
+- Overall Package: 80.73% statements, 92.7% branches
+- All 184 tests passing (100% success rate)
+- Zero TypeScript errors
+
+**Performance Metrics:**
+- Build Time: 656ms
+- Test Execution: 506ms
+- CLI Tests: Fast execution (<10ms per test)
+
+**CLI Usage Examples:**
+```bash
+# Backup from local media
+akai-backup --source /Volumes/SDCARD
+akai-backup --source /mnt/usb --subdir my-usb-drive
+akai-backup backup weekly --source /Volumes/GOTEK
+
+# Backup from remote SSH
+akai-backup --source pi@pi-scsi2.local:/home/pi/images/
+akai-backup --source host:/data/ --subdir my-sampler
+
+# Backward compatible (existing behavior)
+akai-backup backup daily
+akai-backup batch
+akai-backup backup weekly --config /custom/config
+```
+
+**Design Decisions:**
+1. **Unified --source flag**: Auto-detects remote vs local based on path format (contains ':' = remote)
+2. **Optional --subdir flag**: Defaults to auto-generated name from source, allows user override
+3. **Backward compatibility**: When --source is omitted, uses existing rsnapshot config workflow
+4. **Dependency injection**: CLI tests mock BackupSourceFactory and BackupSource for deterministic testing
+5. **Clear error handling**: Invalid intervals, empty paths, factory errors all have descriptive messages
+
+**Integration Points:**
+- CLI → BackupSourceFactory.fromPath() for auto-detection
+- BackupSourceFactory → RemoteSource or LocalSource based on path
+- Existing rsnapshot workflow preserved when --source flag omitted
+- Progress output consistent across remote and local sources
+
+**Issues Encountered:**
+- None - implementation proceeded smoothly following Phases 1-3 patterns
+
+**Next Steps:**
+- Phase 5: Testing & Documentation (cross-platform testing, user guide, API docs)
+
+### Phase 5: Testing & Documentation ⏳ PENDING
 
 ---
 

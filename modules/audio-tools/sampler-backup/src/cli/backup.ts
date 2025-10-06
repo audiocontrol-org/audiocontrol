@@ -7,15 +7,32 @@
 
 import { Command } from "commander";
 import { runBackup } from "@/backup/rsnapshot-wrapper.js";
-import { getDefaultConfigPath } from "@/config/rsnapshot-config.js";
+import { getDefaultConfigPath, getDefaultRsnapshotConfig } from "@/config/rsnapshot-config.js";
+import { BackupSourceFactory } from "@/sources/backup-source-factory.js";
 import type { RsnapshotInterval } from "@/types/index.js";
 
 const program = new Command();
 
 program
     .name("akai-backup")
-    .description("Backup Akai sampler disk images using rsnapshot")
-    .version("1.0.0");
+    .description("Backup Akai sampler disk images from remote hosts or local media")
+    .version("1.0.0")
+    .addHelpText('after', `
+Examples:
+  $ akai-backup backup daily              Backup using rsnapshot config (remote)
+  $ akai-backup --source /Volumes/SDCARD  Backup from local SD card
+  $ akai-backup --source pi@pi.local:/images  Backup from remote SSH host
+  $ akai-backup --source /mnt/usb --subdir my-usb  Custom backup subdirectory
+  $ akai-backup batch                     Daily backup (alias for 'backup daily')
+  $ akai-backup batch --source /Volumes/GOTEK  Daily backup from local source
+  $ akai-backup config                    Generate rsnapshot configuration file
+  $ akai-backup test                      Test rsnapshot configuration
+
+Source Detection:
+  - Paths with ':' are treated as remote SSH sources (e.g., user@host:/path)
+  - Other paths are treated as local filesystem sources (e.g., /Volumes/SDCARD)
+  - Backup subdirectory is auto-generated from source if not specified
+`);
 
 // Generate config command
 program
@@ -85,13 +102,13 @@ program
 // Backup command
 program
     .command("backup")
-    .description("Run rsnapshot backup")
+    .description("Run backup from remote host or local media")
     .argument("[interval]", "Backup interval: daily, weekly, monthly (default: daily)", "daily")
     .option("-c, --config <path>", "Config file path (default: ~/.audiotools/rsnapshot.conf)")
+    .option("-s, --source <path>", "Local or remote source path (e.g., /Volumes/SDCARD or pi@host:/path)")
+    .option("--subdir <name>", "Backup subdirectory name (default: auto-generated from source)")
     .action(async (interval: string, options) => {
         try {
-            const configPath = options.config || getDefaultConfigPath();
-
             // Validate interval
             const validIntervals = ["daily", "weekly", "monthly"];
             if (!validIntervals.includes(interval)) {
@@ -100,15 +117,48 @@ program
                 process.exit(1);
             }
 
-            const result = await runBackup({
-                interval: interval as RsnapshotInterval,
-                configPath,
-            });
+            const typedInterval = interval as RsnapshotInterval;
 
-            if (!result.success) {
-                console.error("\nBackup failed:");
-                result.errors.forEach((err) => console.error(`  - ${err}`));
-                process.exit(1);
+            // If --source is provided, use BackupSourceFactory
+            if (options.source) {
+                console.log(`Backing up from source: ${options.source}`);
+
+                const defaultConfig = getDefaultRsnapshotConfig();
+                const source = BackupSourceFactory.fromPath(options.source, {
+                    snapshotRoot: defaultConfig.snapshotRoot,
+                    backupSubdir: options.subdir,
+                    configPath: options.config,
+                });
+
+                const config = source.getConfig();
+                console.log(`Source type: ${config.type}`);
+                console.log(`Backup subdirectory: ${config.backupSubdir}`);
+                console.log(`Snapshot root: ${defaultConfig.snapshotRoot}`);
+                console.log("");
+
+                const result = await source.backup(typedInterval);
+
+                if (!result.success) {
+                    console.error("\nBackup failed:");
+                    result.errors.forEach((err) => console.error(`  - ${err}`));
+                    process.exit(1);
+                }
+
+                console.log("\n✓ Backup complete");
+            } else {
+                // Existing rsnapshot workflow (backward compatible)
+                const configPath = options.config || getDefaultConfigPath();
+
+                const result = await runBackup({
+                    interval: typedInterval,
+                    configPath,
+                });
+
+                if (!result.success) {
+                    console.error("\nBackup failed:");
+                    result.errors.forEach((err) => console.error(`  - ${err}`));
+                    process.exit(1);
+                }
             }
         } catch (err: any) {
             console.error(`Error: ${err.message}`);
@@ -121,19 +171,52 @@ program
     .command("batch")
     .description("Run daily backup (alias for 'backup daily')")
     .option("-c, --config <path>", "Config file path (default: ~/.audiotools/rsnapshot.conf)")
+    .option("-s, --source <path>", "Local or remote source path (e.g., /Volumes/SDCARD or pi@host:/path)")
+    .option("--subdir <name>", "Backup subdirectory name (default: auto-generated from source)")
     .action(async (options) => {
         try {
-            const configPath = options.config || getDefaultConfigPath();
+            const typedInterval: RsnapshotInterval = "daily";
 
-            const result = await runBackup({
-                interval: "daily",
-                configPath,
-            });
+            // If --source is provided, use BackupSourceFactory
+            if (options.source) {
+                console.log(`Backing up from source: ${options.source}`);
 
-            if (!result.success) {
-                console.error("\nBackup failed:");
-                result.errors.forEach((err) => console.error(`  - ${err}`));
-                process.exit(1);
+                const defaultConfig = getDefaultRsnapshotConfig();
+                const source = BackupSourceFactory.fromPath(options.source, {
+                    snapshotRoot: defaultConfig.snapshotRoot,
+                    backupSubdir: options.subdir,
+                    configPath: options.config,
+                });
+
+                const config = source.getConfig();
+                console.log(`Source type: ${config.type}`);
+                console.log(`Backup subdirectory: ${config.backupSubdir}`);
+                console.log(`Snapshot root: ${defaultConfig.snapshotRoot}`);
+                console.log("");
+
+                const result = await source.backup(typedInterval);
+
+                if (!result.success) {
+                    console.error("\nBackup failed:");
+                    result.errors.forEach((err) => console.error(`  - ${err}`));
+                    process.exit(1);
+                }
+
+                console.log("\n✓ Backup complete");
+            } else {
+                // Existing rsnapshot workflow (backward compatible)
+                const configPath = options.config || getDefaultConfigPath();
+
+                const result = await runBackup({
+                    interval: typedInterval,
+                    configPath,
+                });
+
+                if (!result.success) {
+                    console.error("\nBackup failed:");
+                    result.errors.forEach((err) => console.error(`  - ${err}`));
+                    process.exit(1);
+                }
             }
         } catch (err: any) {
             console.error(`Error: ${err.message}`);

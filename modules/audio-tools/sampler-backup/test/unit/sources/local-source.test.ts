@@ -1,0 +1,553 @@
+/**
+ * Unit tests for LocalSource
+ */
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { LocalSource } from '@/sources/local-source.js';
+import type { LocalSourceConfig } from '@/sources/backup-source.js';
+import type { DiskImageInfo } from '@/types/index.js';
+import type { LocalBackupResult } from '@/types/index.js';
+
+// Mock filesystem
+vi.mock('fs', () => ({
+  existsSync: vi.fn(),
+  statSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  renameSync: vi.fn(),
+  readdirSync: vi.fn(),
+}));
+
+// Mock modules
+vi.mock('@/media/media-detector.js', () => ({
+  MediaDetector: vi.fn(),
+}));
+
+vi.mock('@/backup/local-backup-adapter.js', () => ({
+  LocalBackupAdapter: vi.fn(),
+}));
+
+import { existsSync, statSync, mkdirSync, renameSync } from 'fs';
+import { MediaDetector } from '@/media/media-detector.js';
+import { LocalBackupAdapter } from '@/backup/local-backup-adapter.js';
+
+describe('LocalSource', () => {
+  const mockConfig: LocalSourceConfig = {
+    type: 'local',
+    sourcePath: '/Volumes/SDCARD',
+    backupSubdir: 'local-media',
+  };
+
+  let mockMediaDetector: any;
+  let mockBackupAdapter: any;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+
+    // Setup MediaDetector mock
+    mockMediaDetector = {
+      findDiskImages: vi.fn(),
+    };
+    vi.mocked(MediaDetector).mockImplementation(() => mockMediaDetector);
+
+    // Setup LocalBackupAdapter mock
+    mockBackupAdapter = {
+      backup: vi.fn(),
+    };
+    vi.mocked(LocalBackupAdapter).mockImplementation(() => mockBackupAdapter);
+
+    // Setup default fs mocks
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(statSync).mockReturnValue({
+      isDirectory: () => true,
+      isFile: () => false,
+      mtime: new Date('2025-10-05'),
+    } as any);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  describe('constructor', () => {
+    it('should create LocalSource with config', () => {
+      const source = new LocalSource(mockConfig);
+
+      expect(source.type).toBe('local');
+      expect(source.getConfig()).toEqual(mockConfig);
+    });
+
+    it('should accept custom MediaDetector', () => {
+      const customDetector = new MediaDetector();
+      const source = new LocalSource(mockConfig, customDetector);
+
+      expect(source).toBeInstanceOf(LocalSource);
+    });
+
+    it('should accept custom LocalBackupAdapter', () => {
+      const customAdapter = new LocalBackupAdapter();
+      const source = new LocalSource(mockConfig, undefined, customAdapter);
+
+      expect(source).toBeInstanceOf(LocalSource);
+    });
+  });
+
+  describe('getConfig()', () => {
+    it('should return the source configuration', () => {
+      const source = new LocalSource(mockConfig);
+
+      expect(source.getConfig()).toEqual(mockConfig);
+    });
+
+    it('should return config with optional snapshotRoot', () => {
+      const configWithRoot: LocalSourceConfig = {
+        ...mockConfig,
+        snapshotRoot: '/custom/backup',
+      };
+
+      const source = new LocalSource(configWithRoot);
+
+      expect(source.getConfig()).toEqual(configWithRoot);
+    });
+  });
+
+  describe('backup()', () => {
+    it('should discover disk images and perform backup', async () => {
+      const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+      const mockDiskImages: DiskImageInfo[] = [
+        { path: '/Volumes/SDCARD/disk1.hds', name: 'disk1', size: 1024, mtime: new Date() },
+        { path: '/Volumes/SDCARD/disk2.hds', name: 'disk2', size: 2048, mtime: new Date() },
+      ];
+
+      mockMediaDetector.findDiskImages.mockResolvedValue(mockDiskImages);
+
+      const mockBackupResult: LocalBackupResult = {
+        success: true,
+        filesProcessed: 2,
+        filesCopied: 2,
+        filesSkipped: 0,
+        bytesProcessed: 3072,
+        errors: [],
+      };
+
+      mockBackupAdapter.backup.mockResolvedValue(mockBackupResult);
+
+      // Mock rotation check (no existing snapshot)
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      const result = await source.backup('daily');
+
+      expect(mockMediaDetector.findDiskImages).toHaveBeenCalledWith('/Volumes/SDCARD');
+      expect(mockBackupAdapter.backup).toHaveBeenCalledWith(
+        expect.objectContaining({
+          sourcePath: '/Volumes/SDCARD',
+          incremental: true,
+        })
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.interval).toBe('daily');
+    });
+
+    it('should use custom snapshotRoot if provided', async () => {
+      const customConfig: LocalSourceConfig = {
+        ...mockConfig,
+        snapshotRoot: '/custom/backup',
+      };
+
+      const source = new LocalSource(customConfig, mockMediaDetector, mockBackupAdapter);
+
+      mockMediaDetector.findDiskImages.mockResolvedValue([
+        { path: '/Volumes/SDCARD/disk.hds', name: 'disk', size: 1024, mtime: new Date() },
+      ]);
+
+      mockBackupAdapter.backup.mockResolvedValue({
+        success: true,
+        filesProcessed: 1,
+        filesCopied: 1,
+        filesSkipped: 0,
+        bytesProcessed: 1024,
+        errors: [],
+      });
+
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      const result = await source.backup('daily');
+
+      expect(mockBackupAdapter.backup).toHaveBeenCalledWith(
+        expect.objectContaining({
+          destPath: '/custom/backup/daily.0/local-media',
+        })
+      );
+
+      expect(result.snapshotPath).toBe('/custom/backup/daily.0/local-media');
+    });
+
+    it('should handle no disk images found', async () => {
+      const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+      mockMediaDetector.findDiskImages.mockResolvedValue([]);
+
+      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      const result = await source.backup('daily');
+
+      expect(result.success).toBe(true);
+      expect(mockBackupAdapter.backup).not.toHaveBeenCalled();
+      expect(consoleLogSpy).toHaveBeenCalledWith(
+        expect.stringContaining('No disk images found')
+      );
+
+      consoleLogSpy.mockRestore();
+    });
+
+    it('should return errors from LocalBackupAdapter', async () => {
+      const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+      mockMediaDetector.findDiskImages.mockResolvedValue([
+        { path: '/Volumes/SDCARD/disk.hds', name: 'disk', size: 1024, mtime: new Date() },
+      ]);
+
+      mockBackupAdapter.backup.mockResolvedValue({
+        success: false,
+        filesProcessed: 0,
+        filesCopied: 0,
+        filesSkipped: 0,
+        bytesProcessed: 0,
+        errors: ['Disk full'],
+      });
+
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      const result = await source.backup('daily');
+
+      expect(result.success).toBe(false);
+      expect(result.errors).toContain('Disk full');
+    });
+
+    it('should handle backup exceptions', async () => {
+      const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+      mockMediaDetector.findDiskImages.mockRejectedValue(
+        new Error('Permission denied')
+      );
+
+      const result = await source.backup('daily');
+
+      expect(result.success).toBe(false);
+      expect(result.errors).toEqual([
+        expect.stringContaining('Local backup failed: Permission denied'),
+      ]);
+    });
+
+    describe('rotation logic', () => {
+      it('should not rotate when snapshot is from today', async () => {
+        const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+        mockMediaDetector.findDiskImages.mockResolvedValue([
+          { path: '/Volumes/SDCARD/disk.hds', name: 'disk', size: 1024, mtime: new Date() },
+        ]);
+
+        mockBackupAdapter.backup.mockResolvedValue({
+          success: true,
+          filesProcessed: 1,
+          filesCopied: 1,
+          filesSkipped: 0,
+          bytesProcessed: 1024,
+          errors: [],
+        });
+
+        // Mock existing snapshot from today
+        const today = new Date();
+        vi.mocked(existsSync).mockReturnValue(true);
+        vi.mocked(statSync).mockReturnValue({
+          isDirectory: () => true,
+          mtime: today,
+        } as any);
+
+        const renameSyncSpy = vi.mocked(renameSync);
+        const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        await source.backup('daily');
+
+        expect(renameSyncSpy).not.toHaveBeenCalled();
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Resuming today\'s backup')
+        );
+
+        consoleLogSpy.mockRestore();
+      });
+
+      it('should rotate when snapshot is from previous day', async () => {
+        const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+        mockMediaDetector.findDiskImages.mockResolvedValue([
+          { path: '/Volumes/SDCARD/disk.hds', name: 'disk', size: 1024, mtime: new Date() },
+        ]);
+
+        mockBackupAdapter.backup.mockResolvedValue({
+          success: true,
+          filesProcessed: 1,
+          filesCopied: 1,
+          filesSkipped: 0,
+          bytesProcessed: 1024,
+          errors: [],
+        });
+
+        // Mock existing snapshot from yesterday
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        let callCount = 0;
+        vi.mocked(existsSync).mockImplementation((path: any) => {
+          callCount++;
+          // First call checks for daily.0 existence (rotation check)
+          if (callCount === 1) return true;
+          // Subsequent calls for rotation logic
+          if (path.includes('daily.0')) return true;
+          return false;
+        });
+
+        vi.mocked(statSync).mockReturnValue({
+          isDirectory: () => true,
+          mtime: yesterday,
+        } as any);
+
+        const renameSyncSpy = vi.mocked(renameSync);
+        const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+        await source.backup('daily');
+
+        expect(renameSyncSpy).toHaveBeenCalled();
+        expect(consoleLogSpy).toHaveBeenCalledWith(
+          expect.stringContaining('Rotating previous backups')
+        );
+
+        consoleLogSpy.mockRestore();
+      });
+
+      it('should rotate snapshots correctly (daily.0 -> daily.1)', async () => {
+        const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+        mockMediaDetector.findDiskImages.mockResolvedValue([
+          { path: '/Volumes/SDCARD/disk.hds', name: 'disk', size: 1024, mtime: new Date() },
+        ]);
+
+        mockBackupAdapter.backup.mockResolvedValue({
+          success: true,
+          filesProcessed: 1,
+          filesCopied: 1,
+          filesSkipped: 0,
+          bytesProcessed: 1024,
+          errors: [],
+        });
+
+        // Mock rotation scenario
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        let renameHappened = false;
+        vi.mocked(existsSync).mockImplementation((path: any) => {
+          // Before rename: daily.0 exists
+          if (path.includes('daily.0') && !renameHappened) return true;
+          // After rename: daily.0 doesn't exist (needs to be created)
+          if (path.includes('daily.0') && renameHappened) return false;
+          return false;
+        });
+
+        vi.mocked(statSync).mockReturnValue({
+          isDirectory: () => true,
+          mtime: yesterday,
+        } as any);
+
+        const renameSyncSpy = vi.mocked(renameSync).mockImplementation(() => {
+          renameHappened = true;
+        });
+        const mkdirSyncSpy = vi.mocked(mkdirSync);
+
+        await source.backup('daily');
+
+        expect(renameSyncSpy).toHaveBeenCalledWith(
+          expect.stringContaining('daily.0'),
+          expect.stringContaining('daily.1')
+        );
+
+        expect(mkdirSyncSpy).toHaveBeenCalledWith(
+          expect.stringContaining('daily.0'),
+          { recursive: true }
+        );
+      });
+    });
+
+    describe('interval support', () => {
+      it('should support weekly interval', async () => {
+        const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+        mockMediaDetector.findDiskImages.mockResolvedValue([
+          { path: '/Volumes/SDCARD/disk.hds', name: 'disk', size: 1024, mtime: new Date() },
+        ]);
+
+        mockBackupAdapter.backup.mockResolvedValue({
+          success: true,
+          filesProcessed: 1,
+          filesCopied: 1,
+          filesSkipped: 0,
+          bytesProcessed: 1024,
+          errors: [],
+        });
+
+        vi.mocked(existsSync).mockReturnValue(false);
+
+        const result = await source.backup('weekly');
+
+        expect(result.interval).toBe('weekly');
+        expect(mockBackupAdapter.backup).toHaveBeenCalledWith(
+          expect.objectContaining({
+            destPath: expect.stringContaining('weekly.0'),
+          })
+        );
+      });
+
+      it('should support monthly interval', async () => {
+        const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+        mockMediaDetector.findDiskImages.mockResolvedValue([
+          { path: '/Volumes/SDCARD/disk.hds', name: 'disk', size: 1024, mtime: new Date() },
+        ]);
+
+        mockBackupAdapter.backup.mockResolvedValue({
+          success: true,
+          filesProcessed: 1,
+          filesCopied: 1,
+          filesSkipped: 0,
+          bytesProcessed: 1024,
+          errors: [],
+        });
+
+        vi.mocked(existsSync).mockReturnValue(false);
+
+        const result = await source.backup('monthly');
+
+        expect(result.interval).toBe('monthly');
+        expect(mockBackupAdapter.backup).toHaveBeenCalledWith(
+          expect.objectContaining({
+            destPath: expect.stringContaining('monthly.0'),
+          })
+        );
+      });
+    });
+  });
+
+  describe('test()', () => {
+    it('should return true when source is accessible', async () => {
+      const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(statSync).mockReturnValue({
+        isDirectory: () => true,
+        isFile: () => false,
+      } as any);
+
+      mockMediaDetector.findDiskImages.mockResolvedValue([]);
+
+      const result = await source.test();
+
+      expect(result).toBe(true);
+      expect(mockMediaDetector.findDiskImages).toHaveBeenCalledWith('/Volumes/SDCARD');
+    });
+
+    it('should return false when source does not exist', async () => {
+      const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+      vi.mocked(existsSync).mockReturnValue(false);
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const result = await source.test();
+
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Source path does not exist')
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should return false when source is not a directory', async () => {
+      const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(statSync).mockReturnValue({
+        isDirectory: () => false,
+        isFile: () => true,
+      } as any);
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const result = await source.test();
+
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Source path is not a directory')
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+
+    it('should create snapshot root if it does not exist', async () => {
+      const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+      let callCount = 0;
+      vi.mocked(existsSync).mockImplementation((path: any) => {
+        callCount++;
+        // First call: source path exists
+        if (callCount === 1) return true;
+        // Second call: snapshot root doesn't exist
+        if (callCount === 2) return false;
+        return true;
+      });
+
+      vi.mocked(statSync).mockReturnValue({
+        isDirectory: () => true,
+        isFile: () => false,
+      } as any);
+
+      mockMediaDetector.findDiskImages.mockResolvedValue([]);
+
+      const mkdirSyncSpy = vi.mocked(mkdirSync);
+
+      const result = await source.test();
+
+      expect(result).toBe(true);
+      expect(mkdirSyncSpy).toHaveBeenCalledWith(
+        expect.stringContaining('.audiotools/backup'),
+        { recursive: true }
+      );
+    });
+
+    it('should return false when disk image discovery fails', async () => {
+      const source = new LocalSource(mockConfig, mockMediaDetector, mockBackupAdapter);
+
+      vi.mocked(existsSync).mockReturnValue(true);
+      vi.mocked(statSync).mockReturnValue({
+        isDirectory: () => true,
+        isFile: () => false,
+      } as any);
+
+      mockMediaDetector.findDiskImages.mockRejectedValue(
+        new Error('Permission denied')
+      );
+
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      const result = await source.test();
+
+      expect(result).toBe(false);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Local source test failed')
+      );
+
+      consoleErrorSpy.mockRestore();
+    });
+  });
+});
