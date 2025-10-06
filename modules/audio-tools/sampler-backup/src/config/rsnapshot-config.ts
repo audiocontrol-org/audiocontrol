@@ -68,7 +68,7 @@ export function getDefaultRsnapshotConfig(): RsnapshotConfig {
         ],
         options: {
             rsyncShortArgs: "-a",
-            rsyncLongArgs: "--delete --numeric-ids --relative --delete-excluded",
+            rsyncLongArgs: "--whole-file --delete --numeric-ids --relative --delete-excluded",
             verbose: 2,
         },
     };
