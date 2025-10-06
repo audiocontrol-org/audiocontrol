@@ -21,8 +21,8 @@ const DEFAULT_SNAPSHOT_ROOT = join(homedir(), '.audiotools', 'backup');
  * Default backup sources (pi-scsi2.local and s3k.local)
  */
 const DEFAULT_SOURCES = [
-  'pi@pi-scsi2.local:/home/orion/images/',
-  'pi@s3k.local:/home/orion/images/'
+  'pi-scsi2.local:/home/orion/images/',
+  // 's3k.local:/home/orion/images/'  // Temporarily disabled - host is broken
 ];
 
 /**

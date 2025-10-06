@@ -54,7 +54,6 @@ export class BorgBackupAdapter implements IBorgBackupAdapter {
 
     const repoPath = expandPath(config.repoPath);
     const args = [
-      'init',
       '--encryption', config.encryption || 'none',
       '--make-parent-dirs',
       repoPath
