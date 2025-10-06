@@ -227,7 +227,7 @@ export class BackupSourceFactory {
       backupSubdir,
     };
 
-    return new RemoteSource(config, options.configPath);
+    return new RemoteSource(config);
   }
 
   /**

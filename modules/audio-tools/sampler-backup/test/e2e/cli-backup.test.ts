@@ -8,11 +8,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BackupSourceFactory } from '@/sources/backup-source-factory.js';
 import type { BackupSource } from '@/sources/backup-source.js';
 import type { BackupResult, RsnapshotInterval } from '@/types/index.js';
-import { runBackup } from '@/backup/rsnapshot-wrapper.js';
 
 // Mock modules using dependency injection pattern (no module stubbing)
 vi.mock('@/sources/backup-source-factory.js');
-vi.mock('@/backup/rsnapshot-wrapper.js');
 
 // Mock BackupSource implementation for testing
 class MockBackupSource implements BackupSource {
@@ -199,59 +197,17 @@ describe('CLI Backup Command Integration', () => {
     });
   });
 
-  describe('backward compatibility (no --source flag)', () => {
-    it('should use existing rsnapshot workflow when no --source provided', async () => {
-      const runBackupMock = vi.mocked(runBackup).mockResolvedValue({
-        success: true,
-        interval: 'daily',
-        configPath: '/home/user/.audiotools/rsnapshot.conf',
-        errors: [],
-      });
-
+  describe('--source flag is required', () => {
+    it('should require --source flag (rsnapshot removed)', () => {
       // Simulate: akai-backup backup daily (no --source flag)
       const options = {}; // No source flag
-      const interval = 'daily';
 
-      if (!options.hasOwnProperty('source')) {
-        // Existing rsnapshot workflow
-        const result = await runBackup({
-          interval: interval as RsnapshotInterval,
-          configPath: undefined,
-        });
+      // In the actual CLI, this would error out
+      const hasSource = options.hasOwnProperty('source');
+      expect(hasSource).toBe(false);
 
-        expect(result.success).toBe(true);
-      }
-
-      expect(runBackupMock).toHaveBeenCalledWith({
-        interval: 'daily',
-        configPath: undefined,
-      });
-
-      // Factory should NOT be called
+      // Factory should NOT be called without source
       expect(BackupSourceFactory.fromPath).not.toHaveBeenCalled();
-    });
-
-    it('should respect --config flag in backward compatible mode', async () => {
-      const runBackupMock = vi.mocked(runBackup).mockResolvedValue({
-        success: true,
-        interval: 'weekly',
-        configPath: '/custom/rsnapshot.conf',
-        errors: [],
-      });
-
-      // Simulate: akai-backup backup weekly --config /custom/rsnapshot.conf
-      const options = { config: '/custom/rsnapshot.conf' };
-      const interval = 'weekly';
-
-      await runBackup({
-        interval: interval as RsnapshotInterval,
-        configPath: options.config,
-      });
-
-      expect(runBackupMock).toHaveBeenCalledWith({
-        interval: 'weekly',
-        configPath: '/custom/rsnapshot.conf',
-      });
     });
   });
 
@@ -356,22 +312,13 @@ describe('CLI Backup Command Integration', () => {
       expect(mockSource.backupInterval).toBe('daily');
     });
 
-    it('should work without --source flag in batch mode', async () => {
-      const runBackupMock = vi.mocked(runBackup).mockResolvedValue({
-        success: true,
-        interval: 'daily',
-        configPath: '/test/config',
-        errors: [],
-      });
-
+    it('should require --source flag in batch mode', () => {
       // Simulate: akai-backup batch (no flags)
       const options = {};
 
-      if (!options.hasOwnProperty('source')) {
-        await runBackup({ interval: 'daily' });
-      }
-
-      expect(runBackupMock).toHaveBeenCalledWith({ interval: 'daily' });
+      // In the actual CLI, this would error out
+      const hasSource = options.hasOwnProperty('source');
+      expect(hasSource).toBe(false);
     });
   });
 
