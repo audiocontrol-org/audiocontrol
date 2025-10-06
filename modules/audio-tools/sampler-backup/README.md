@@ -16,6 +16,59 @@ The `sampler-backup` package provides reliable, space-efficient backups for vint
 - **Local media support**: Direct backup from SD cards and USB drives for floppy/SCSI emulators
 - **Configurable retention**: Daily, weekly, and monthly intervals with customizable retention policies
 
+## Local Media Support
+
+**Version 1.0 includes local media backup!** You can now backup disk images directly from SD cards, USB drives, and other mounted storage media.
+
+### Quick Start - Local Media
+
+**1. Insert SD card or USB drive**
+
+Your media will auto-mount:
+- macOS: `/Volumes/SDCARD`
+- Linux: `/media/$USER/SDCARD`
+
+**2. Backup disk images**
+
+```bash
+akai-backup --source /Volumes/SDCARD
+```
+
+**3. Done!**
+
+Disk images are incrementally backed up to `~/.audiotools/backup/daily.0/sdcard/`
+
+### Use Cases
+
+**Gotek Floppy Emulator:**
+```bash
+# Remove SD card from Gotek, insert into computer
+akai-backup --source /Volumes/GOTEK --subdir gotek-s3000xl
+```
+
+**ZuluSCSI SCSI Emulator:**
+```bash
+# Remove SD card from ZuluSCSI, insert into computer
+akai-backup --source /Volumes/ZULUSCSI --subdir zulu-s5000
+```
+
+**USB Drive:**
+```bash
+# Direct backup from any USB drive with disk images
+akai-backup --source /Volumes/USB_DRIVE --subdir my-backups
+```
+
+### Features
+
+- **Auto-detection**: Finds `.hds`, `.img`, and `.iso` files automatically
+- **Incremental**: Skip unchanged files (same as remote backups)
+- **Intervals**: Daily, weekly, monthly (same retention as rsnapshot)
+- **Cross-platform**: macOS and Linux supported
+
+For comprehensive documentation, see:
+- **[Local Media User Guide](./docs/1.0.0/local-media-support/user-guide.md)**
+- **[Platform Compatibility](./docs/1.0.0/local-media-support/platform-compatibility.md)**
+
 ## Design Approach
 
 ### rsnapshot Integration

@@ -8,30 +8,108 @@ import { LocalSource } from '@/sources/local-source.js';
 import type { BackupSource, BackupSourceConfig, RemoteSourceConfig, LocalSourceConfig } from '@/sources/backup-source.js';
 
 /**
- * Options for creating a backup source from a path
+ * Options for creating a backup source from a path string
+ *
+ * @example
+ * ```typescript
+ * const options: BackupSourceFromPathOptions = {
+ *   backupSubdir: 'my-sampler',
+ *   snapshotRoot: '/custom/backup/location'
+ * };
+ * ```
  */
 export interface BackupSourceFromPathOptions {
-  /** Backup subdirectory name (default: auto-generated from path) */
+  /**
+   * Backup subdirectory name (default: auto-generated from path)
+   * @example 'gotek-s3000xl', 'zulu-s5000', 'local-media'
+   */
   backupSubdir?: string;
-  /** Snapshot root directory (for local sources only) */
+
+  /**
+   * Snapshot root directory (for local sources only)
+   * @default '~/.audiotools/backup'
+   */
   snapshotRoot?: string;
-  /** Config file path (for remote sources only) */
+
+  /**
+   * Config file path (for remote sources only)
+   * @default '~/.audiotools/rsnapshot.conf'
+   */
   configPath?: string;
 }
 
 /**
  * BackupSourceFactory - Factory for creating BackupSource instances
  *
- * Provides two creation methods:
- * 1. create() - From explicit BackupSourceConfig
- * 2. fromPath() - Auto-detect source type from path string
+ * Provides unified interface for creating backup sources from either explicit
+ * configuration objects or path strings with automatic type detection.
+ *
+ * @remarks
+ * The factory automatically detects whether a path is a remote SSH source or
+ * local filesystem path based on the presence of a colon (`:`) in the path.
+ *
+ * Path detection logic:
+ * - Contains `:` and not a Windows path → Remote SSH source (e.g., `host:/path`)
+ * - Otherwise → Local filesystem source (e.g., `/Volumes/SDCARD`)
+ *
+ * @example
+ * Create from explicit configuration
+ * ```typescript
+ * const config: LocalSourceConfig = {
+ *   type: 'local',
+ *   sourcePath: '/Volumes/SDCARD',
+ *   backupSubdir: 'sdcard'
+ * };
+ * const source = BackupSourceFactory.create(config);
+ * ```
+ *
+ * @example
+ * Create from local path with auto-detection
+ * ```typescript
+ * const source = BackupSourceFactory.fromPath('/Volumes/SDCARD', {
+ *   backupSubdir: 'gotek',
+ *   snapshotRoot: '~/.audiotools/backup'
+ * });
+ * await source.backup('daily');
+ * ```
+ *
+ * @example
+ * Create from remote SSH path with auto-detection
+ * ```typescript
+ * const source = BackupSourceFactory.fromPath('pi@host:/home/pi/images/', {
+ *   backupSubdir: 'pi-scsi2'
+ * });
+ * await source.backup('daily');
+ * ```
  */
 export class BackupSourceFactory {
   /**
    * Create a BackupSource from explicit configuration
    *
-   * @param config - Backup source configuration
+   * @param config - Backup source configuration (RemoteSourceConfig or LocalSourceConfig)
    * @returns BackupSource instance (RemoteSource or LocalSource)
+   *
+   * @example
+   * Create a remote source
+   * ```typescript
+   * const source = BackupSourceFactory.create({
+   *   type: 'remote',
+   *   host: 'pi@pi-scsi2.local',
+   *   sourcePath: '/home/pi/images/',
+   *   backupSubdir: 'pi-scsi2'
+   * });
+   * ```
+   *
+   * @example
+   * Create a local source
+   * ```typescript
+   * const source = BackupSourceFactory.create({
+   *   type: 'local',
+   *   sourcePath: '/Volumes/SDCARD',
+   *   backupSubdir: 'sdcard',
+   *   snapshotRoot: '~/.audiotools/backup'
+   * });
+   * ```
    */
   static create(config: BackupSourceConfig): BackupSource {
     if (config.type === 'remote') {
@@ -42,16 +120,53 @@ export class BackupSourceFactory {
   }
 
   /**
-   * Create a BackupSource from a path string with auto-detection
+   * Create a BackupSource from a path string with automatic type detection
    *
-   * Detection logic:
-   * - Contains ':' → Remote SSH source (e.g., "host:/path")
-   * - Otherwise → Local filesystem source (e.g., "/Volumes/SDCARD")
+   * This is the recommended method for CLI integration and simple use cases.
+   * The factory automatically determines whether the path is a remote SSH
+   * source or local filesystem path.
    *
    * @param path - Source path (local or remote SSH syntax)
-   * @param options - Optional configuration
-   * @returns BackupSource instance
-   * @throws Error if path format is invalid
+   * @param options - Optional configuration overrides
+   * @returns BackupSource instance (RemoteSource or LocalSource)
+   *
+   * @throws Error if path is empty or invalid format
+   *
+   * @remarks
+   * Detection logic:
+   * - Contains `:` and not a Windows path → Remote SSH source (e.g., `host:/path`)
+   * - Otherwise → Local filesystem source (e.g., `/Volumes/SDCARD`)
+   *
+   * Subdirectory naming:
+   * - Remote: Generated from hostname (e.g., `pi-scsi2.local` → `pi-scsi2`)
+   * - Local: Generated from last path component (e.g., `/Volumes/SDCARD` → `sdcard`)
+   * - Override with `options.backupSubdir` for custom naming
+   *
+   * @example
+   * Auto-detect local filesystem path
+   * ```typescript
+   * const source = BackupSourceFactory.fromPath('/Volumes/SDCARD');
+   * await source.backup('daily');
+   * // Backs up to: ~/.audiotools/backup/daily.0/sdcard/
+   * ```
+   *
+   * @example
+   * Auto-detect remote SSH path
+   * ```typescript
+   * const source = BackupSourceFactory.fromPath('pi@host:/images/');
+   * await source.backup('daily');
+   * // Backs up to: ~/.audiotools/backup/daily.0/host/
+   * ```
+   *
+   * @example
+   * Override subdirectory name
+   * ```typescript
+   * const source = BackupSourceFactory.fromPath('/Volumes/GOTEK', {
+   *   backupSubdir: 'gotek-s3000xl'
+   * });
+   * await source.backup('daily');
+   * // Backs up to: ~/.audiotools/backup/daily.0/gotek-s3000xl/
+   * ```
    */
   static fromPath(path: string, options: BackupSourceFromPathOptions = {}): BackupSource {
     if (!path || path.trim().length === 0) {
