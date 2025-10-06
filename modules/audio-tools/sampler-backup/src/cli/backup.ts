@@ -202,13 +202,75 @@ program
     .option("--subdir <name>", "Backup subdirectory name (default: auto-generated from source)")
     .action(async (options) => {
         try {
-            // Just call backup command with daily interval
-            const backupCmd = program.commands.find(cmd => cmd.name() === 'backup');
-            if (backupCmd) {
-                await backupCmd.parseAsync(['node', 'akai-backup', 'backup', 'daily',
-                    ...(options.source ? ['-s', options.source] : []),
-                    ...(options.subdir ? ['--subdir', options.subdir] : [])
-                ], { from: 'user' });
+            const typedInterval: RsnapshotInterval = "daily";
+
+            // If --source provided, use it; otherwise use defaults
+            if (options.source) {
+                console.log(`Backing up from source: ${options.source}`);
+                console.log("");
+
+                const source = BackupSourceFactory.fromPath(options.source, {
+                    snapshotRoot: DEFAULT_SNAPSHOT_ROOT,
+                    backupSubdir: options.subdir,
+                });
+
+                const config = source.getConfig();
+                console.log(`Source type: ${config.type}`);
+                console.log(`Backup subdirectory: ${config.backupSubdir}`);
+                console.log(`Repository: ${DEFAULT_REPO_PATH}`);
+                console.log("");
+
+                const result = await source.backup(typedInterval);
+
+                if (!result.success) {
+                    console.error("\nBackup failed:");
+                    result.errors.forEach((err) => console.error(`  - ${err}`));
+                    process.exit(1);
+                }
+
+                console.log("\n✓ Backup complete");
+            } else {
+                // Use default sources
+                console.log("Backing up from default sources:");
+                DEFAULT_SOURCES.forEach(src => console.log(`  - ${src}`));
+                console.log(`Repository: ${DEFAULT_REPO_PATH}`);
+                console.log("");
+
+                let hasErrors = false;
+                const errors: string[] = [];
+
+                for (const sourcePath of DEFAULT_SOURCES) {
+                    try {
+                        console.log(`\n--- Backing up ${sourcePath} ---`);
+                        const source = BackupSourceFactory.fromPath(sourcePath, {
+                            snapshotRoot: DEFAULT_SNAPSHOT_ROOT,
+                        });
+
+                        const result = await source.backup(typedInterval);
+
+                        if (!result.success) {
+                            hasErrors = true;
+                            result.errors.forEach(err => errors.push(err));
+                            console.error("\nBackup failed for this source:");
+                            result.errors.forEach((err) => console.error(`  - ${err}`));
+                        } else {
+                            console.log("\n✓ Backup complete for this source");
+                        }
+                    } catch (err: any) {
+                        hasErrors = true;
+                        const errorMsg = `Failed to backup ${sourcePath}: ${err.message}`;
+                        errors.push(errorMsg);
+                        console.error(`\nError: ${errorMsg}`);
+                    }
+                }
+
+                if (hasErrors) {
+                    console.error("\n\nSome backups failed:");
+                    errors.forEach(err => console.error(`  - ${err}`));
+                    process.exit(1);
+                }
+
+                console.log("\n\n✓ All backups complete");
             }
         } catch (err: any) {
             console.error(`Error: ${err.message}`);

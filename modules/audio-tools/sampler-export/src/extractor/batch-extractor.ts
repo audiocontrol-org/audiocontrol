@@ -2,7 +2,11 @@
  * Batch Akai Disk Extractor
  *
  * Automatically discovers and extracts Akai disk images from well-known directories,
- * with smart timestamp-based change detection and rsnapshot integration.
+ * with smart timestamp-based change detection and BorgBackup integration.
+ *
+ * Supports both traditional directory-based backups and BorgBackup repositories.
+ * When a Borg repository is detected, automatically restores the latest archives
+ * before extraction.
  *
  * @module extractor/batch-extractor
  */
@@ -10,6 +14,7 @@
 import { existsSync, readdirSync, statSync } from "fs";
 import { join, basename, extname, resolve } from "pathe";
 import { homedir } from "os";
+import { execSync } from "child_process";
 import { extractAkaiDisk, ExtractionResult } from "@/extractor/disk-extractor.js";
 
 /**
@@ -343,23 +348,136 @@ function needsExtraction(
 }
 
 /**
+ * Check if a directory is a Borg repository
+ *
+ * @param path - Path to check
+ * @returns True if path is a Borg repository
+ *
+ * @remarks
+ * Checks for Borg repository metadata by running `borg info` command
+ *
+ * @internal
+ */
+function isBorgRepository(path: string): boolean {
+    try {
+        // Check if borg is installed
+        execSync('which borg', { stdio: 'ignore' });
+
+        // Check if path is a valid Borg repository
+        execSync(`borg info "${path}"`, { stdio: 'ignore' });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Find the most recent daily archive for a specific source
+ *
+ * @param repoPath - Path to Borg repository
+ * @param sourceId - Source identifier (e.g., "pi-scsi2", "s3k", "local-media")
+ * @returns Archive name or null if not found
+ *
+ * @remarks
+ * Archive names are in format: daily-2025-10-06T12:34:56-pi-scsi2
+ * Searches for archives matching the source ID and returns the most recent
+ *
+ * @internal
+ */
+function findLatestBorgArchive(repoPath: string, sourceId: string): string | null {
+    try {
+        // List all archives in JSON format
+        const output = execSync(`borg list --json "${repoPath}"`, {
+            encoding: 'utf-8',
+            stdio: ['ignore', 'pipe', 'ignore']
+        });
+
+        const data = JSON.parse(output);
+        const archives = data.archives || [];
+
+        // Filter for daily archives matching this source
+        const matching = archives
+            .filter((arch: any) => {
+                const name = arch.name;
+                return name.startsWith('daily-') && name.endsWith(`-${sourceId}`);
+            })
+            .sort((a: any, b: any) => {
+                // Sort by timestamp (newest first)
+                return new Date(b.time).getTime() - new Date(a.time).getTime();
+            });
+
+        if (matching.length > 0) {
+            return matching[0].name;
+        }
+
+        return null;
+    } catch (error: any) {
+        console.warn(`Warning: Failed to list Borg archives: ${error.message}`);
+        return null;
+    }
+}
+
+/**
+ * Restore a Borg archive to the expected daily.0 directory structure
+ *
+ * @param repoPath - Path to Borg repository
+ * @param archiveName - Archive name to restore
+ * @param destDir - Destination directory (daily.0 parent)
+ * @returns True if restore succeeded
+ *
+ * @remarks
+ * Restores archive to destDir/daily.0/ to match rsnapshot structure
+ *
+ * @internal
+ */
+function restoreBorgArchive(repoPath: string, archiveName: string, destDir: string): boolean {
+    try {
+        const daily0Dir = join(destDir, 'daily.0');
+
+        console.log(`Restoring Borg archive: ${archiveName}`);
+        console.log(`  Destination: ${daily0Dir}`);
+
+        // Create destination directory
+        execSync(`mkdir -p "${daily0Dir}"`, { stdio: 'inherit' });
+
+        // Restore archive (borg extract extracts to current directory)
+        execSync(`cd "${daily0Dir}" && borg extract "${repoPath}::${archiveName}"`, {
+            stdio: 'inherit',
+            shell: '/bin/bash'
+        });
+
+        console.log('  Restore complete\n');
+        return true;
+    } catch (error: any) {
+        console.error(`Failed to restore Borg archive: ${error.message}`);
+        return false;
+    }
+}
+
+/**
  * Extract a batch of Akai disk images with smart change detection
  *
- * Automatically discovers disk images in rsnapshot backup structure and extracts
+ * Automatically discovers disk images in backup directory structure and extracts
  * only changed disks using timestamp comparison. Supports both S3K and S5K samplers.
  *
  * The function performs:
- * 1. Disk discovery from rsnapshot backup directories
- * 2. Timestamp-based change detection
- * 3. Parallel extraction of changed disks
- * 4. Aggregate statistics reporting
- * 5. Detailed per-disk status tracking
+ * 1. BorgBackup detection and automatic restore (if applicable)
+ * 2. Disk discovery from backup directories
+ * 3. Timestamp-based change detection
+ * 4. Parallel extraction of changed disks
+ * 5. Aggregate statistics reporting
+ * 6. Detailed per-disk status tracking
  *
  * @param options - Batch extraction configuration options
  * @returns Promise resolving to batch extraction results with statistics
  *
  * @remarks
- * Expected rsnapshot directory structure:
+ * BorgBackup Integration:
+ * If ~/.audiotools/borg-repo exists and is a valid Borg repository, the function
+ * automatically restores the latest daily archives for each sampler type to
+ * ~/.audiotools/backup/daily.0/ before extraction.
+ *
+ * Expected directory structure after restore:
  * ```
  * ~/.audiotools/backup/
  *   daily.0/
@@ -451,6 +569,30 @@ export async function extractBatch(
         },
         details: [],
     };
+
+    // Check if backup directory is a Borg repository
+    const borgRepoPath = resolve(homedir(), ".audiotools", "borg-repo");
+    if (isBorgRepository(borgRepoPath)) {
+        console.log("Detected BorgBackup repository");
+        console.log(`Repository: ${borgRepoPath}\n`);
+
+        // Restore latest archives for each sampler type
+        for (const samplerType of samplerTypes) {
+            const sourceId = getSamplerBackupDir(samplerType);
+            const archiveName = findLatestBorgArchive(borgRepoPath, sourceId);
+
+            if (archiveName) {
+                console.log(`Found latest archive for ${samplerType}: ${archiveName}`);
+                const restored = restoreBorgArchive(borgRepoPath, archiveName, sourceDir);
+
+                if (!restored) {
+                    console.error(`Failed to restore ${samplerType} archive, skipping this sampler type`);
+                }
+            } else {
+                console.log(`No archives found for ${samplerType} (source: ${sourceId})`);
+            }
+        }
+    }
 
     console.log("Scanning for disk images...");
 
