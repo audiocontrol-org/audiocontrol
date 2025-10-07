@@ -1,151 +1,166 @@
 /**
- * Unit tests for LocalSource (BorgBackup implementation)
+ * Unit tests for LocalSource (RsyncAdapter implementation)
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { LocalSource } from '@/sources/local-source.js';
 import type { LocalSourceConfig } from '@/sources/backup-source.js';
-import type { DiskImageInfo } from '@/types/index.js';
-import type { IBorgBackupAdapter, BorgArchive } from '@/types/borg.js';
+import type { RsyncConfig } from '@/backup/rsync-adapter.js';
 
-// Mock MediaDetector
-class MockMediaDetector {
-  findDiskImages = vi.fn();
+// Mock RsyncAdapter
+class MockRsyncAdapter {
+  syncCalled = false;
+  lastSyncConfig: RsyncConfig | null = null;
+
+  async sync(config: RsyncConfig): Promise<void> {
+    this.syncCalled = true;
+    this.lastSyncConfig = config;
+  }
+
+  async checkRsyncAvailable(): Promise<boolean> {
+    return true;
+  }
 }
 
-// Mock BorgBackup adapter
-class MockBorgAdapter implements IBorgBackupAdapter {
-  createArchiveCalled = false;
-  pruneArchivesCalled = false;
+// Mock existsSync
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn(),
+}));
 
-  async initRepository(): Promise<void> {}
-  async createArchive(): Promise<BorgArchive> {
-    this.createArchiveCalled = true;
-    return {
-      name: 'test-archive',
-      id: 'abc123',
-      stats: {
-        nfiles: 10,
-        originalSize: 1024 * 1024,
-        compressedSize: 512 * 1024,
-        dedupedSize: 256 * 1024,
-      },
-    };
-  }
-  async listArchives(): Promise<BorgArchive[]> {
-    return [];
-  }
-  async pruneArchives(): Promise<void> {
-    this.pruneArchivesCalled = true;
-  }
-  async getRepositoryInfo(): Promise<any> {
-    return { location: '/mock/repo' };
-  }
-  async hasArchiveForToday(): Promise<boolean> {
-    return false;
-  }
-}
+// Mock mkdir
+vi.mock('node:fs/promises', () => ({
+  mkdir: vi.fn(),
+}));
 
 describe('LocalSource', () => {
   const mockConfig: LocalSourceConfig = {
     type: 'local',
     sourcePath: '/Volumes/SDCARD',
+    sampler: 's5k-studio',
+    device: 'floppy',
     backupSubdir: 'local-media',
   };
 
-  let mockMediaDetector: MockMediaDetector;
-  let mockBorgAdapter: MockBorgAdapter;
+  let mockRsyncAdapter: MockRsyncAdapter;
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
   let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
-  beforeEach(() => {
-    mockMediaDetector = new MockMediaDetector();
-    mockBorgAdapter = new MockBorgAdapter();
+  beforeEach(async () => {
+    mockRsyncAdapter = new MockRsyncAdapter();
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+    // Reset mocks
+    const { existsSync } = await import('node:fs');
+    const { mkdir } = await import('node:fs/promises');
+    vi.mocked(existsSync).mockReturnValue(true);
+    vi.mocked(mkdir).mockResolvedValue(undefined);
   });
 
   afterEach(() => {
     consoleLogSpy.mockRestore();
     consoleErrorSpy.mockRestore();
+    vi.clearAllMocks();
   });
 
   describe('constructor', () => {
-    it('should create LocalSource with config and BorgBackup adapter', () => {
-      const source = new LocalSource(mockConfig, mockMediaDetector, mockBorgAdapter);
+    it('should create LocalSource with config and RsyncAdapter', () => {
+      const source = new LocalSource(mockConfig, mockRsyncAdapter);
 
       expect(source.type).toBe('local');
       expect(source.getConfig()).toEqual(mockConfig);
+    });
+
+    it('should throw error when sampler is missing', () => {
+      const invalidConfig = {
+        type: 'local' as const,
+        sourcePath: '/Volumes/SDCARD',
+        device: 'floppy',
+        backupSubdir: 'local-media',
+      } as any;
+
+      expect(() => {
+        new LocalSource(invalidConfig, mockRsyncAdapter);
+      }).toThrow('Sampler name is required for local sources');
+    });
+
+    it('should throw error when device is missing', () => {
+      const invalidConfig = {
+        type: 'local' as const,
+        sourcePath: '/Volumes/SDCARD',
+        sampler: 's5k-studio',
+        backupSubdir: 'local-media',
+      } as any;
+
+      expect(() => {
+        new LocalSource(invalidConfig, mockRsyncAdapter);
+      }).toThrow('Device name is required');
     });
   });
 
   describe('getConfig()', () => {
     it('should return the source configuration', () => {
-      const source = new LocalSource(mockConfig, mockMediaDetector, mockBorgAdapter);
+      const source = new LocalSource(mockConfig, mockRsyncAdapter);
 
       expect(source.getConfig()).toEqual(mockConfig);
     });
   });
 
+  describe('getBackupPath()', () => {
+    it('should return the resolved backup path', () => {
+      const source = new LocalSource(mockConfig, mockRsyncAdapter);
+      const backupPath = source.getBackupPath();
+
+      expect(backupPath).toContain('.audiotools/backup');
+      expect(backupPath).toContain('s5k-studio');
+      expect(backupPath).toContain('floppy');
+    });
+  });
+
   describe('backup()', () => {
-    it('should discover disk images and create Borg archive', async () => {
-      const source = new LocalSource(mockConfig, mockMediaDetector, mockBorgAdapter);
-
-      const mockDiskImages: DiskImageInfo[] = [
-        { path: '/Volumes/SDCARD/disk1.hds', name: 'disk1', size: 1024, mtime: new Date() },
-        { path: '/Volumes/SDCARD/disk2.hds', name: 'disk2', size: 2048, mtime: new Date() },
-      ];
-
-      mockMediaDetector.findDiskImages.mockResolvedValue(mockDiskImages);
+    it('should sync files using rsync adapter', async () => {
+      const source = new LocalSource(mockConfig, mockRsyncAdapter);
 
       const result = await source.backup('daily');
 
-      expect(mockMediaDetector.findDiskImages).toHaveBeenCalledWith('/Volumes/SDCARD');
-      expect(mockBorgAdapter.createArchiveCalled).toBe(true);
-      expect(mockBorgAdapter.pruneArchivesCalled).toBe(true);
+      expect(mockRsyncAdapter.syncCalled).toBe(true);
+      expect(mockRsyncAdapter.lastSyncConfig).toMatchObject({
+        sourcePath: '/Volumes/SDCARD',
+        destPath: expect.stringContaining('s5k-studio/floppy'),
+      });
       expect(result.success).toBe(true);
       expect(result.interval).toBe('daily');
     });
 
-    it('should handle no disk images found', async () => {
-      const source = new LocalSource(mockConfig, mockMediaDetector, mockBorgAdapter);
+    it('should create backup directory before syncing', async () => {
+      const source = new LocalSource(mockConfig, mockRsyncAdapter);
+      const { mkdir } = await import('node:fs/promises');
 
-      mockMediaDetector.findDiskImages.mockResolvedValue([]);
+      await source.backup('daily');
 
-      const result = await source.backup('daily');
-
-      expect(result.success).toBe(true);
-      expect(mockBorgAdapter.createArchiveCalled).toBe(false);
-      expect(consoleLogSpy).toHaveBeenCalledWith(
-        expect.stringContaining('No disk images found')
+      expect(mkdir).toHaveBeenCalledWith(
+        expect.stringContaining('s5k-studio/floppy'),
+        { recursive: true }
       );
     });
 
     it('should handle backup errors', async () => {
-      const errorAdapter = new MockBorgAdapter();
-      errorAdapter.createArchive = async () => {
-        throw new Error('Borg backup failed');
+      const errorAdapter = new MockRsyncAdapter();
+      errorAdapter.sync = async () => {
+        throw new Error('rsync failed with code 1');
       };
 
-      const source = new LocalSource(mockConfig, mockMediaDetector, errorAdapter);
-
-      mockMediaDetector.findDiskImages.mockResolvedValue([
-        { path: '/Volumes/SDCARD/disk.hds', name: 'disk', size: 1024, mtime: new Date() },
-      ]);
+      const source = new LocalSource(mockConfig, errorAdapter);
 
       const result = await source.backup('daily');
 
       expect(result.success).toBe(false);
       expect(result.errors.length).toBeGreaterThan(0);
-      expect(result.errors[0]).toContain('Borg backup failed');
+      expect(result.errors[0]).toContain('rsync failed with code 1');
     });
 
     it('should support weekly interval', async () => {
-      const source = new LocalSource(mockConfig, mockMediaDetector, mockBorgAdapter);
-
-      mockMediaDetector.findDiskImages.mockResolvedValue([
-        { path: '/Volumes/SDCARD/disk.hds', name: 'disk', size: 1024, mtime: new Date() },
-      ]);
+      const source = new LocalSource(mockConfig, mockRsyncAdapter);
 
       const result = await source.backup('weekly');
 
@@ -154,57 +169,78 @@ describe('LocalSource', () => {
     });
 
     it('should support monthly interval', async () => {
-      const source = new LocalSource(mockConfig, mockMediaDetector, mockBorgAdapter);
-
-      mockMediaDetector.findDiskImages.mockResolvedValue([
-        { path: '/Volumes/SDCARD/disk.hds', name: 'disk', size: 1024, mtime: new Date() },
-      ]);
+      const source = new LocalSource(mockConfig, mockRsyncAdapter);
 
       const result = await source.backup('monthly');
 
       expect(result.success).toBe(true);
       expect(result.interval).toBe('monthly');
     });
+
+    it('should set snapshotPath to backup directory on success', async () => {
+      const source = new LocalSource(mockConfig, mockRsyncAdapter);
+
+      const result = await source.backup('daily');
+
+      expect(result.success).toBe(true);
+      expect(result.snapshotPath).toContain('s5k-studio/floppy');
+    });
   });
 
   describe('test()', () => {
-    it('should return true when source is accessible', async () => {
-      const source = new LocalSource(mockConfig, mockMediaDetector, mockBorgAdapter);
+    it('should return true when source path exists', async () => {
+      const { existsSync } = await import('node:fs');
+      vi.mocked(existsSync).mockReturnValue(true);
 
-      mockMediaDetector.findDiskImages.mockResolvedValue([]);
-
+      const source = new LocalSource(mockConfig, mockRsyncAdapter);
       const result = await source.test();
 
       expect(result).toBe(true);
+      expect(existsSync).toHaveBeenCalledWith('/Volumes/SDCARD');
     });
 
-    it('should return false when source is not accessible', async () => {
-      const errorDetector = new MockMediaDetector();
-      errorDetector.findDiskImages = vi.fn().mockRejectedValue(new Error('Source not found'));
+    it('should return false when source path does not exist', async () => {
+      const { existsSync } = await import('node:fs');
+      vi.mocked(existsSync).mockReturnValue(false);
 
-      const source = new LocalSource(mockConfig, errorDetector, mockBorgAdapter);
-
+      const source = new LocalSource(mockConfig, mockRsyncAdapter);
       const result = await source.test();
 
       expect(result).toBe(false);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Local source test failed')
-      );
     });
+  });
 
-    it('should return false when Borg repository is not accessible', async () => {
-      const errorAdapter = new MockBorgAdapter();
-      errorAdapter.listArchives = async () => {
-        throw new Error('Repository not found');
+  describe('hierarchical repository paths', () => {
+    it('should use correct repository path for s5k-studio floppy', () => {
+      const config: LocalSourceConfig = {
+        type: 'local',
+        sourcePath: '/Volumes/FLOPPY',
+        sampler: 's5k-studio',
+        device: 'floppy',
+        backupSubdir: 'floppy',
       };
 
-      const source = new LocalSource(mockConfig, mockMediaDetector, errorAdapter);
+      const source = new LocalSource(config, mockRsyncAdapter);
+      const backupPath = source.getBackupPath();
 
-      mockMediaDetector.findDiskImages.mockResolvedValue([]);
+      expect(backupPath).toContain('s5k-studio');
+      expect(backupPath).toContain('floppy');
+    });
 
-      const result = await source.test();
+    it('should use correct repository path for s3k-zulu scsi0', () => {
+      const config: LocalSourceConfig = {
+        type: 'local',
+        sourcePath: '/Volumes/SCSI0',
+        sampler: 's3k-zulu',
+        device: 'scsi0',
+        backupSubdir: 'scsi0',
+      };
 
-      expect(result).toBe(false);
+      const source = new LocalSource(config, mockRsyncAdapter);
+      const backupPath = source.getBackupPath();
+
+      expect(backupPath).toContain('s3k-zulu');
+      expect(backupPath).toContain('scsi0');
     });
   });
 });

@@ -15,8 +15,12 @@ export interface RemoteSourceConfig {
   host: string;
   /** Remote source path to backup (e.g., "/home/pi/images/") */
   sourcePath: string;
-  /** Local backup subdirectory name (e.g., "pi-scsi2") */
-  backupSubdir: string;
+  /** Device name (REQUIRED: scsi0, scsi1, floppy, etc.) */
+  device: string;
+  /** Optional sampler name override (defaults to hostname) */
+  sampler?: string;
+  /** @deprecated Use device instead - will be removed in 2.0 */
+  backupSubdir?: string;
 }
 
 /**
@@ -27,9 +31,13 @@ export interface LocalSourceConfig {
   type: 'local';
   /** Local source path to backup from (e.g., "/Volumes/SDCARD") */
   sourcePath: string;
-  /** Local backup subdirectory name (e.g., "local-media") */
+  /** Sampler name (REQUIRED: s5k-studio, s3k-zulu, etc.) */
+  sampler: string;
+  /** Device name (REQUIRED: scsi0, scsi1, floppy, etc.) */
+  device: string;
+  /** Local backup subdirectory name (DEPRECATED: use device instead) */
   backupSubdir: string;
-  /** Optional override for snapshot root directory (default: ~/.audiotools/backup) */
+  /** Optional override for snapshot root directory (DEPRECATED: not used with Borg) */
   snapshotRoot?: string;
 }
 

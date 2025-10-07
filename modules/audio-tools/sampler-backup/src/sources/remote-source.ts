@@ -1,155 +1,85 @@
 /**
  * Remote SSH-based backup source
- * Uses SSHFS + BorgBackup for efficient incremental backups
+ * Uses rsync for simple file synchronization over SSH
  *
- * Architecture: Mount remote directory via SSHFS, then backup with Borg to local repository.
- * This allows Borg's incremental deduplication to work efficiently over SSH.
+ * Architecture: Direct rsync sync from remote host to local backup directory.
+ * Simple, fast, and efficient - just syncs changed files.
  */
 
-import { homedir } from 'os';
-import { join } from 'pathe';
-import { BorgBackupAdapter } from '@/backup/borg-backup-adapter.js';
-import { SSHFSManager } from '@/backup/sshfs-manager.js';
-import { ensureSSHFSInstalled } from '@/utils/sshfs-check.js';
+import { spawn } from 'node:child_process';
+import { mkdir } from 'node:fs/promises';
+import { RsyncAdapter } from '@/backup/rsync-adapter.js';
+import { resolveRepositoryPath } from '@/backup/repo-path-resolver.js';
 import type { BackupSource, RemoteSourceConfig } from '@/sources/backup-source.js';
 import type { BackupResult, RsnapshotInterval } from '@/types/index.js';
-import type { BorgRetentionPolicy, IBorgBackupAdapter } from '@/types/borg.js';
 
 /**
- * Default retention policy matching rsnapshot defaults
- */
-const DEFAULT_RETENTION: BorgRetentionPolicy = {
-  daily: 7,
-  weekly: 4,
-  monthly: 12,
-};
-
-/**
- * Default Borg repository path (local)
- */
-const DEFAULT_REPO_PATH = join(homedir(), '.audiotools', 'borg-repo');
-
-/**
- * RemoteSource - SSH-based backup source using SSHFS + BorgBackup
+ * RemoteSource - SSH-based backup source using rsync
  *
- * Implements BackupSource interface using SSHFS to mount remote directories,
- * then Borg to back them up to a local repository with full incremental efficiency.
+ * Implements BackupSource interface using rsync to sync remote directories
+ * to local backup storage with hierarchical organization.
  */
 export class RemoteSource implements BackupSource {
   readonly type = 'remote' as const;
-  private readonly borgAdapter: IBorgBackupAdapter;
-  private readonly sshfsManager: SSHFSManager;
-  private readonly retentionPolicy: BorgRetentionPolicy;
+  private readonly rsyncAdapter: RsyncAdapter;
+  private readonly backupPath: string;
 
   constructor(
     private readonly config: RemoteSourceConfig,
-    borgAdapter?: IBorgBackupAdapter,
-    sshfsManager?: SSHFSManager,
-    repoPath?: string,
-    retentionPolicy?: BorgRetentionPolicy
+    rsyncAdapter?: RsyncAdapter
   ) {
-    this.retentionPolicy = retentionPolicy ?? DEFAULT_RETENTION;
-    this.sshfsManager = sshfsManager ?? new SSHFSManager();
+    // Validate required fields
+    if (!config.device) {
+      throw new Error('Device name is required (e.g., scsi0, scsi1, floppy)');
+    }
 
-    // Borg adapter with LOCAL repository
-    this.borgAdapter = borgAdapter ?? new BorgBackupAdapter({
-      repoPath: repoPath ?? DEFAULT_REPO_PATH,
-      compression: 'zstd',
-      encryption: 'none',
+    this.rsyncAdapter = rsyncAdapter ?? new RsyncAdapter();
+
+    // Resolve backup path: ~/.audiotools/backup/{sampler}/{device}/
+    this.backupPath = resolveRepositoryPath({
+      sourceType: 'remote',
+      host: this.config.host,
+      sampler: this.config.sampler, // Optional override
+      device: this.config.device, // Required
     });
   }
 
   /**
-   * Execute remote backup using SSHFS + BorgBackup
+   * Execute remote backup using rsync
    *
-   * 1. Mount remote directory via SSHFS
-   * 2. Backup mounted path with Borg to local repository
-   * 3. Unmount SSHFS
+   * Simple synchronization: user@host:/path → ~/.audiotools/backup/{sampler}/{device}/
    */
   async backup(interval: RsnapshotInterval): Promise<BackupResult> {
     const result: BackupResult = {
       success: false,
       interval,
-      configPath: '', // Not used with Borg
+      configPath: '', // Not used with rsync
       errors: [],
     };
 
-    let mountPoint: string | undefined;
-
     try {
-      // Ensure SSHFS is installed
-      await ensureSSHFSInstalled();
+      // Ensure backup directory exists
+      await mkdir(this.backupPath, { recursive: true });
 
-      // Initialize repository if needed
-      await this.initializeRepositoryIfNeeded();
+      // Build source path: user@host:/path or just host:/path
+      const source = `${this.config.host}:${this.config.sourcePath}`;
 
-      // Check for same-day resume
-      const hasToday = await this.borgAdapter.hasArchiveForToday(
-        interval,
-        this.config.backupSubdir
-      );
+      console.log(`Syncing ${source} → ${this.backupPath}`);
 
-      if (hasToday) {
-        console.log(`Archive already exists for today's ${interval} backup`);
-        result.success = true;
-        return result;
-      }
-
-      // Mount remote filesystem via SSHFS
-      console.log(`Mounting ${this.config.host}:${this.config.sourcePath}...`);
-      mountPoint = await this.sshfsManager.mount({
-        host: this.config.host,
-        remotePath: this.config.sourcePath,
+      // Simple rsync: user@host:/source → ~/.audiotools/backup/{sampler}/{device}/
+      await this.rsyncAdapter.sync({
+        sourcePath: source,
+        destPath: this.backupPath,
       });
 
-      // Generate archive name
-      const timestamp = new Date().toISOString().split('T')[0];
-      const archiveName = `${interval}-${timestamp}-${this.config.backupSubdir}`;
-
-      console.log(`Creating Borg archive: ${archiveName}`);
-      console.log(`Source: ${mountPoint} (via SSHFS)`);
-
-      // Backup mounted path
-      const archive = await this.borgAdapter.createArchive(
-        [mountPoint],
-        archiveName,
-        (progress) => {
-          if (progress.filesProcessed % 10 === 0 || progress.filesProcessed === progress.totalFiles) {
-            const mbProcessed = Math.round(progress.bytesProcessed / 1024 / 1024);
-            console.log(
-              `Progress: ${progress.filesProcessed}/${progress.totalFiles} files, ${mbProcessed}MB`
-            );
-          }
-        }
-      );
-
-      console.log('\n✓ Backup complete:');
-      console.log(`  Archive: ${archive.name}`);
-      console.log(`  Files: ${archive.stats.nfiles}`);
-      console.log(`  Original: ${Math.round(archive.stats.originalSize / 1024 / 1024)}MB`);
-      console.log(`  Compressed: ${Math.round(archive.stats.compressedSize / 1024 / 1024)}MB`);
-      console.log(`  Deduplicated: ${Math.round(archive.stats.dedupedSize / 1024 / 1024)}MB`);
-
-      // Prune old archives
-      console.log('\nPruning old archives...');
-      await this.borgAdapter.pruneArchives(this.retentionPolicy);
+      console.log(`✓ Backup complete: ${this.backupPath}`);
 
       result.success = true;
-      result.snapshotPath = archiveName;
+      result.snapshotPath = this.backupPath;
     } catch (error: any) {
       const errorMessage = `Remote backup failed for ${this.config.host}: ${error.message}`;
       console.error(errorMessage);
       result.errors.push(errorMessage);
-    } finally {
-      // ALWAYS unmount, even on error
-      if (mountPoint) {
-        try {
-          console.log('\nUnmounting SSHFS...');
-          await this.sshfsManager.unmount(mountPoint);
-        } catch (error: any) {
-          console.error(`Failed to unmount: ${error.message}`);
-        }
-      }
     }
 
     return result;
@@ -158,42 +88,35 @@ export class RemoteSource implements BackupSource {
   /**
    * Test if remote source is accessible
    *
-   * Tests SSHFS mounting capability and SSH connectivity.
+   * Tests SSH connectivity to remote host.
    */
   async test(): Promise<boolean> {
-    let mountPoint: string | undefined;
-
     try {
-      // Check SSHFS availability
-      await ensureSSHFSInstalled();
+      console.log(`Testing SSH connection to ${this.config.host}...`);
 
-      // Test mount
-      console.log(`Testing mount of ${this.config.host}:${this.config.sourcePath}...`);
-      mountPoint = await this.sshfsManager.mount({
-        host: this.config.host,
-        remotePath: this.config.sourcePath,
+      // Test SSH connection
+      const connected = await new Promise<boolean>((resolve) => {
+        const ssh = spawn('ssh', [this.config.host, 'echo', 'ok']);
+
+        ssh.on('close', (code: number | null) => {
+          resolve(code === 0);
+        });
+
+        ssh.on('error', () => {
+          resolve(false);
+        });
       });
 
-      // Verify mount is accessible
-      const accessible = await this.sshfsManager.isMounted(mountPoint);
-
-      if (accessible) {
-        console.log(`✓ Successfully mounted ${this.config.host}:${this.config.sourcePath}`);
+      if (connected) {
+        console.log(`✓ Successfully connected to ${this.config.host}`);
+      } else {
+        console.error(`✗ Failed to connect to ${this.config.host}`);
       }
 
-      return accessible;
+      return connected;
     } catch (error: any) {
       console.error(`Remote source test failed: ${error.message}`);
       return false;
-    } finally {
-      // Unmount test mount
-      if (mountPoint) {
-        try {
-          await this.sshfsManager.unmount(mountPoint);
-        } catch (error: any) {
-          console.error(`Failed to unmount test mount: ${error.message}`);
-        }
-      }
     }
   }
 
@@ -205,19 +128,9 @@ export class RemoteSource implements BackupSource {
   }
 
   /**
-   * Initialize repository if it doesn't exist
+   * Get the backup path for this source
    */
-  private async initializeRepositoryIfNeeded(): Promise<void> {
-    try {
-      await this.borgAdapter.getRepositoryInfo();
-    } catch {
-      // Repository doesn't exist, initialize it
-      console.log('Initializing Borg repository...');
-      await this.borgAdapter.initRepository({
-        repoPath: DEFAULT_REPO_PATH,
-        compression: 'zstd',
-        encryption: 'none',
-      });
-    }
+  getBackupPath(): string {
+    return this.backupPath;
   }
 }

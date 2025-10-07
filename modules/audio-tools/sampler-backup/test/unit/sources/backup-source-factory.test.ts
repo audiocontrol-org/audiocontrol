@@ -15,7 +15,7 @@ describe('BackupSourceFactory', () => {
         type: 'remote',
         host: 'pi-scsi2.local',
         sourcePath: '/home/pi/images/',
-        backupSubdir: 'pi-scsi2',
+        device: 'scsi0',
       };
 
       const source = BackupSourceFactory.create(config);
@@ -29,7 +29,9 @@ describe('BackupSourceFactory', () => {
       const config: LocalSourceConfig = {
         type: 'local',
         sourcePath: '/Volumes/SDCARD',
-        backupSubdir: 'local-media',
+        sampler: 's5k-studio',
+        device: 'floppy',
+        backupSubdir: 'floppy',
       };
 
       const source = BackupSourceFactory.create(config);
@@ -43,7 +45,9 @@ describe('BackupSourceFactory', () => {
       const config: LocalSourceConfig = {
         type: 'local',
         sourcePath: '/Volumes/SDCARD',
-        backupSubdir: 'local-media',
+        sampler: 's5k-studio',
+        device: 'floppy',
+        backupSubdir: 'floppy',
         snapshotRoot: '/custom/backup/path',
       };
 
@@ -57,7 +61,10 @@ describe('BackupSourceFactory', () => {
   describe('fromPath()', () => {
     describe('remote path detection', () => {
       it('should detect remote path with user@host:path format', () => {
-        const source = BackupSourceFactory.fromPath('pi@pi-scsi2.local:/home/pi/images/');
+        const source = BackupSourceFactory.fromPath(
+          'pi@pi-scsi2.local:/home/pi/images/',
+          { device: 'scsi0' }
+        );
 
         expect(source).toBeInstanceOf(RemoteSource);
         expect(source.type).toBe('remote');
@@ -65,11 +72,14 @@ describe('BackupSourceFactory', () => {
         const config = source.getConfig() as RemoteSourceConfig;
         expect(config.host).toBe('pi@pi-scsi2.local');
         expect(config.sourcePath).toBe('/home/pi/images/');
-        expect(config.backupSubdir).toBe('pi-scsi2');
+        expect(config.device).toBe('scsi0');
       });
 
       it('should detect remote path with host:path format', () => {
-        const source = BackupSourceFactory.fromPath('sampler.local:/data/images/');
+        const source = BackupSourceFactory.fromPath(
+          'sampler.local:/data/images/',
+          { device: 'scsi1' }
+        );
 
         expect(source).toBeInstanceOf(RemoteSource);
         expect(source.type).toBe('remote');
@@ -77,93 +87,105 @@ describe('BackupSourceFactory', () => {
         const config = source.getConfig() as RemoteSourceConfig;
         expect(config.host).toBe('sampler.local');
         expect(config.sourcePath).toBe('/data/images/');
+        expect(config.device).toBe('scsi1');
       });
 
-      it('should generate backup subdir from hostname', () => {
-        const source = BackupSourceFactory.fromPath('pi-scsi2.local:/images/');
-        const config = source.getConfig() as RemoteSourceConfig;
-
-        expect(config.backupSubdir).toBe('pi-scsi2');
-      });
-
-      it('should use custom backupSubdir if provided', () => {
+      it('should use custom backupSubdir as device fallback', () => {
         const source = BackupSourceFactory.fromPath(
           'host:/path/',
           { backupSubdir: 'custom-name' }
         );
 
         const config = source.getConfig() as RemoteSourceConfig;
+        expect(config.device).toBe('custom-name');
         expect(config.backupSubdir).toBe('custom-name');
       });
 
       it('should pass configPath option to RemoteSource', () => {
         const source = BackupSourceFactory.fromPath(
           'host:/path/',
-          { configPath: '/custom/rsnapshot.conf' }
+          { device: 'scsi0', configPath: '/custom/rsnapshot.conf' }
         );
 
         expect(source).toBeInstanceOf(RemoteSource);
+      });
+
+      it('should pass optional sampler override to RemoteSource', () => {
+        const source = BackupSourceFactory.fromPath(
+          'pi@host:/path/',
+          { device: 'scsi0', sampler: 'custom-sampler' }
+        );
+
+        const config = source.getConfig() as RemoteSourceConfig;
+        expect(config.sampler).toBe('custom-sampler');
       });
     });
 
     describe('local path detection', () => {
       it('should detect local absolute path', () => {
-        const source = BackupSourceFactory.fromPath('/Volumes/SDCARD');
+        const source = BackupSourceFactory.fromPath(
+          '/Volumes/SDCARD',
+          { sampler: 's5k-studio', device: 'floppy' }
+        );
 
         expect(source).toBeInstanceOf(LocalSource);
         expect(source.type).toBe('local');
 
         const config = source.getConfig() as LocalSourceConfig;
         expect(config.sourcePath).toBe('/Volumes/SDCARD');
-        expect(config.backupSubdir).toBe('sdcard');
+        expect(config.sampler).toBe('s5k-studio');
+        expect(config.device).toBe('floppy');
       });
 
       it('should detect local relative path', () => {
-        const source = BackupSourceFactory.fromPath('local-media');
+        const source = BackupSourceFactory.fromPath(
+          'local-media',
+          { sampler: 's3k-zulu', device: 'floppy' }
+        );
 
         expect(source).toBeInstanceOf(LocalSource);
 
         const config = source.getConfig() as LocalSourceConfig;
         expect(config.sourcePath).toBe('local-media');
-        expect(config.backupSubdir).toBe('local-media');
+        expect(config.sampler).toBe('s3k-zulu');
+        expect(config.device).toBe('floppy');
       });
 
-      it('should generate backup subdir from path', () => {
-        const testCases = [
-          { path: '/Volumes/SDCARD', expected: 'sdcard' },
-          { path: '/media/user/USB', expected: 'usb' },
-          { path: '/mnt/external-drive', expected: 'external-drive' },
-          { path: 'gotek-backups', expected: 'gotek-backups' },
-        ];
+      it('should use custom backupSubdir as device fallback', () => {
+        const source = BackupSourceFactory.fromPath(
+          '/Volumes/SDCARD',
+          { sampler: 's5k-studio', backupSubdir: 'custom-backup' }
+        );
 
-        for (const { path, expected } of testCases) {
-          const source = BackupSourceFactory.fromPath(path);
-          const config = source.getConfig() as LocalSourceConfig;
-          expect(config.backupSubdir).toBe(expected);
-        }
+        const config = source.getConfig() as LocalSourceConfig;
+        expect(config.device).toBe('custom-backup');
+        expect(config.backupSubdir).toBe('custom-backup');
       });
 
       it('should handle paths with spaces', () => {
-        const source = BackupSourceFactory.fromPath('/Volumes/My SD Card');
-        const config = source.getConfig() as LocalSourceConfig;
+        const source = BackupSourceFactory.fromPath(
+          '/Volumes/My Disk',
+          { sampler: 's5k-studio', device: 'floppy' }
+        );
 
-        expect(config.backupSubdir).toBe('my-sd-card');
+        const config = source.getConfig() as LocalSourceConfig;
+        expect(config.sourcePath).toBe('/Volumes/My Disk');
       });
 
       it('should use custom backupSubdir if provided', () => {
         const source = BackupSourceFactory.fromPath(
           '/Volumes/SDCARD',
-          { backupSubdir: 'custom-backup' }
+          { sampler: 's5k-studio', backupSubdir: 'my-custom-dir' }
         );
 
         const config = source.getConfig() as LocalSourceConfig;
-        expect(config.backupSubdir).toBe('custom-backup');
+        expect(config.device).toBe('my-custom-dir');
       });
 
       it('should pass snapshotRoot option to LocalSource', () => {
         const source = BackupSourceFactory.fromPath(
           '/Volumes/SDCARD',
-          { snapshotRoot: '/custom/backup' }
+          { sampler: 's5k-studio', device: 'floppy', snapshotRoot: '/custom/backup' }
         );
 
         const config = source.getConfig() as LocalSourceConfig;
@@ -173,14 +195,20 @@ describe('BackupSourceFactory', () => {
 
     describe('Windows path handling', () => {
       it('should not treat Windows paths as remote', () => {
-        const source = BackupSourceFactory.fromPath('C:\\Users\\Documents');
+        const source = BackupSourceFactory.fromPath(
+          'C:\\Users\\Documents',
+          { sampler: 's5k-studio', device: 'floppy' }
+        );
 
         expect(source).toBeInstanceOf(LocalSource);
         expect(source.type).toBe('local');
       });
 
       it('should handle Windows UNC paths', () => {
-        const source = BackupSourceFactory.fromPath('D:\\backup\\files');
+        const source = BackupSourceFactory.fromPath(
+          'D:\\backup\\files',
+          { sampler: 's3k-zulu', device: 'floppy' }
+        );
 
         expect(source).toBeInstanceOf(LocalSource);
       });
@@ -201,40 +229,68 @@ describe('BackupSourceFactory', () => {
 
       it('should throw on invalid remote path format (missing path)', () => {
         expect(() => {
-          BackupSourceFactory.fromPath('host:');
+          BackupSourceFactory.fromPath('host:', { device: 'scsi0' });
         }).toThrow('Invalid remote path format');
       });
 
       it('should throw on invalid remote path format (missing host)', () => {
         expect(() => {
-          BackupSourceFactory.fromPath(':/path');
+          BackupSourceFactory.fromPath(':/path', { device: 'scsi0' });
         }).toThrow('Invalid remote path format');
+      });
+
+      it('should throw when remote source missing device', () => {
+        expect(() => {
+          BackupSourceFactory.fromPath('host:/path/');
+        }).toThrow('Device name is required (use --device flag)');
+      });
+
+      it('should throw when local source missing sampler', () => {
+        expect(() => {
+          BackupSourceFactory.fromPath('/Volumes/SDCARD', { device: 'floppy' });
+        }).toThrow('Sampler name is required for local sources (use --sampler flag)');
+      });
+
+      it('should throw when local source missing device', () => {
+        expect(() => {
+          BackupSourceFactory.fromPath('/Volumes/SDCARD', { sampler: 's5k-studio' });
+        }).toThrow('Device name is required (use --device flag)');
       });
     });
 
     describe('edge cases', () => {
       it('should handle paths ending with slash', () => {
-        const source = BackupSourceFactory.fromPath('/Volumes/SDCARD/');
-        const config = source.getConfig() as LocalSourceConfig;
+        const source = BackupSourceFactory.fromPath(
+          '/Volumes/SDCARD/',
+          { sampler: 's5k-studio', device: 'floppy' }
+        );
 
+        const config = source.getConfig() as LocalSourceConfig;
         expect(config.sourcePath).toBe('/Volumes/SDCARD/');
-        expect(config.backupSubdir).toBe('sdcard');
+        expect(config.device).toBe('floppy');
       });
 
       it('should handle complex hostnames', () => {
-        const source = BackupSourceFactory.fromPath('user@sub.domain.example.com:/path/');
-        const config = source.getConfig() as RemoteSourceConfig;
+        const source = BackupSourceFactory.fromPath(
+          'user@sub.domain.example.com:/path/',
+          { device: 'scsi0' }
+        );
 
+        const config = source.getConfig() as RemoteSourceConfig;
         expect(config.host).toBe('user@sub.domain.example.com');
-        expect(config.backupSubdir).toBe('sub-domain-example-com');
+        expect(config.device).toBe('scsi0');
       });
 
       it('should handle IP addresses in remote paths', () => {
-        const source = BackupSourceFactory.fromPath('192.168.1.100:/data/');
-        const config = source.getConfig() as RemoteSourceConfig;
+        const source = BackupSourceFactory.fromPath(
+          '192.168.1.100:/data/',
+          { device: 'scsi1' }
+        );
 
+        const config = source.getConfig() as RemoteSourceConfig;
         expect(config.host).toBe('192.168.1.100');
         expect(config.sourcePath).toBe('/data/');
+        expect(config.device).toBe('scsi1');
       });
     });
   });

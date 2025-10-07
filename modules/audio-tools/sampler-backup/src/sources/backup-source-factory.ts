@@ -20,20 +20,32 @@ import type { BackupSource, BackupSourceConfig, RemoteSourceConfig, LocalSourceC
  */
 export interface BackupSourceFromPathOptions {
   /**
-   * Backup subdirectory name (default: auto-generated from path)
-   * @example 'gotek-s3000xl', 'zulu-s5000', 'local-media'
+   * Sampler name (REQUIRED for local sources, optional for remote)
+   * @example 's5k-studio', 's3k-zulu', 'my-sampler'
+   */
+  sampler?: string;
+
+  /**
+   * Device name (REQUIRED for all sources)
+   * @example 'scsi0', 'scsi1', 'floppy'
+   */
+  device?: string;
+
+  /**
+   * Backup subdirectory name (DEPRECATED: use device instead)
+   * @deprecated Use device parameter instead
    */
   backupSubdir?: string;
 
   /**
-   * Snapshot root directory (for local sources only)
-   * @default '~/.audiotools/backup'
+   * Snapshot root directory (DEPRECATED)
+   * @deprecated No longer used with rsync
    */
   snapshotRoot?: string;
 
   /**
-   * Config file path (for remote sources only)
-   * @default '~/.audiotools/rsnapshot.conf'
+   * Config file path (DEPRECATED)
+   * @deprecated No longer used with rsync
    */
   configPath?: string;
 }
@@ -217,14 +229,19 @@ export class BackupSourceFactory {
     // Extract host (strip user@ if present)
     const host = hostPart.includes('@') ? hostPart.split('@')[1] : hostPart;
 
-    // Generate backup subdirectory name from host if not provided
-    const backupSubdir = options.backupSubdir ?? this.generateSubdirFromHost(host);
+    // Device is required
+    const device = options.device ?? options.backupSubdir;
+    if (!device) {
+      throw new Error('Device name is required (use --device flag)');
+    }
 
     const config: RemoteSourceConfig = {
       type: 'remote',
       host: hostPart, // Keep user@ prefix if present
       sourcePath,
-      backupSubdir,
+      device,
+      sampler: options.sampler, // Optional override
+      backupSubdir: device, // DEPRECATED: for backward compatibility
     };
 
     return new RemoteSource(config);
@@ -237,13 +254,23 @@ export class BackupSourceFactory {
     path: string,
     options: BackupSourceFromPathOptions
   ): BackupSource {
-    // Generate backup subdirectory name from path if not provided
-    const backupSubdir = options.backupSubdir ?? this.generateSubdirFromPath(path);
+    // Sampler is required for local sources
+    if (!options.sampler) {
+      throw new Error('Sampler name is required for local sources (use --sampler flag)');
+    }
+
+    // Device is required
+    const device = options.device ?? options.backupSubdir;
+    if (!device) {
+      throw new Error('Device name is required (use --device flag)');
+    }
 
     const config: LocalSourceConfig = {
       type: 'local',
       sourcePath: path,
-      backupSubdir,
+      sampler: options.sampler,
+      device,
+      backupSubdir: device, // DEPRECATED: for backward compatibility
       snapshotRoot: options.snapshotRoot,
     };
 
