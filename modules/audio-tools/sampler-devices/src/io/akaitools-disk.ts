@@ -121,7 +121,7 @@ export async function akaiList(
     await validateConfig(c);
     const rv: AkaiRecordResult = { data: [], errors: [] };
     const bin = path.join(c.akaiToolsPath, 'akailist');
-    const args = ['-f', `${c.diskFile}`, '-l', '-R', '-p', String(partition), '-u', `"${akaiPath}"`];
+    const args = ['-f', `${c.diskFile}`, '-l', '-R', '-p', String(partition), '-u', akaiPath];
     process.env['PERL5LIB'] = c.akaiToolsPath;
 
     const result = await doSpawn(bin, args, {
@@ -184,7 +184,7 @@ export async function akaiWrite(
     console.log(`akaiwrite: targetPath: ${targetPath}`);
     return doSpawn(
         path.join(c.akaiToolsPath, 'akaiwrite'),
-        ['-f', c.diskFile, '-p', String(partition), '-d', `"${targetPath}"`, `"${sourcePath}"`]
+        ['-f', c.diskFile, '-p', String(partition), '-d', targetPath, sourcePath]
     );
 }
 
@@ -209,7 +209,7 @@ export async function akaiRead(
     console.log(`akairead: targetPath: ${targetPath}`);
     return doSpawn(
         path.join(c.akaiToolsPath, 'akairead'),
-        ['-f', c.diskFile, '-p', String(partition), '-d', `"${targetPath}"`, recursive ? '-R' : '', `"${sourcePath}"`]
+        ['-f', c.diskFile, '-p', String(partition), '-d', targetPath, recursive ? '-R' : '', sourcePath]
     );
 }
 

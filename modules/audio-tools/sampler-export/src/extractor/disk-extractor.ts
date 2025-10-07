@@ -7,8 +7,8 @@
  * @module extractor/disk-extractor
  */
 
-import { mkdirSync, existsSync, readdirSync } from "fs";
-import { join, basename, extname } from "pathe";
+import { mkdirSync, existsSync, readdirSync, statSync, readFileSync } from "fs";
+import { join, basename, extname, dirname, relative } from "pathe";
 import { newAkaitools, newAkaiToolsConfig } from "@oletizi/sampler-devices";
 import type { Akaitools } from "@oletizi/sampler-devices";
 import { convertA3PToSFZ } from "@/converters/s3k-to-sfz.js";
@@ -16,6 +16,7 @@ import { convertA3PToDecentSampler } from "@/converters/s3k-to-decentsampler.js"
 import { convertAKPToSFZ } from "@/converters/s5k-to-sfz.js";
 import { convertAKPToDecentSampler } from "@/converters/s5k-to-decentsampler.js";
 import { isDosDisk, extractDosDisk } from "@/extractor/dos-disk-extractor.js";
+import { getAuditLogger } from "@/utils/audit-logger.js";
 
 /**
  * Configuration options for disk extraction
@@ -144,10 +145,17 @@ export async function extractAkaiDisk(
         errors: [],
     };
 
+    const auditLogger = getAuditLogger();
+
     try {
         // Extract disk name from filename
         const diskName = basename(diskImage, extname(diskImage));
         result.diskName = diskName;
+
+        auditLogger.info('EXTRACTION_START', `Starting extraction of disk image`, diskName, {
+            diskImage,
+            outputDir
+        });
 
         // Check if this is a DOS/FAT disk
         if (isDosDisk(diskImage)) {
@@ -163,9 +171,18 @@ export async function extractAkaiDisk(
             result.errors = dosResult.errors;
             result.stats = dosResult.stats;  // Preserve sample stats from DOS extraction
 
-            // If DOS extraction succeeded, continue with format conversions
+            // If DOS extraction failed, check if we have existing raw files to convert
             if (!dosResult.success) {
-                return dosResult;
+                const rawDir = join(dosResult.outputDir, "raw");
+                if (!existsSync(rawDir) || !hasExtractedContent(rawDir)) {
+                    // No existing files, can't proceed
+                    return dosResult;
+                }
+                // Has existing raw files - log warning but continue with conversion
+                if (!quiet) {
+                    console.log(`Warning: Disk extraction failed, but found existing raw files. Proceeding with conversion...`);
+                }
+                dosResult.errors.push("Disk extraction failed, but converted existing raw files");
             }
 
             // Continue to convert samples and programs below
@@ -239,9 +256,32 @@ export async function extractAkaiDisk(
 
             for (const a3sFile of a3sFiles) {
                 try {
-                    // akai2wav outputs to cwd, so we need to cd to wavDir first
+                    // Preserve directory structure from raw/ in wav/
+                    const relPath = relative(rawDir, a3sFile);
+                    const relDir = dirname(relPath);
+                    const sampleName = basename(a3sFile, extname(a3sFile));
+
+                    // Create corresponding subdirectory in wav/
+                    const wavSubDir = join(wavDir, relDir);
+                    mkdirSync(wavSubDir, { recursive: true });
+
+                    const wavFile = join(wavSubDir, `${sampleName}.wav`);
+
+                    if (existsSync(wavFile)) {
+                        // Check if WAV is newer than source .a3s file
+                        const a3sStat = statSync(a3sFile);
+                        const wavStat = statSync(wavFile);
+
+                        if (wavStat.mtime >= a3sStat.mtime) {
+                            // WAV file is up-to-date, skip conversion
+                            result.stats.samplesConverted++;
+                            continue;
+                        }
+                    }
+
+                    // akai2wav outputs to cwd, so we need to cd to the target subdirectory
                     const origCwd = process.cwd();
-                    process.chdir(wavDir);
+                    process.chdir(wavSubDir);
 
                     await akaitools.akai2Wav(a3sFile);
                     result.stats.samplesConverted++;
@@ -261,57 +301,131 @@ export async function extractAkaiDisk(
         const akpFiles = findFiles(rawDir, ".akp");
         result.stats.programsFound = a3pFiles.length + akpFiles.length;
 
+        // Check existing conversions
+        const existingSfz = convertToSFZ ? findFiles(sfzDir, ".sfz") : [];
+        const existingDs = convertToDecentSampler ? findFiles(dsDir, ".dspreset") : [];
+
         // Convert S3K programs (.a3p)
         if (a3pFiles.length > 0) {
-            if (!quiet) {
-                console.log(`Converting ${a3pFiles.length} S3K programs...`);
+            const toConvert = findMissingConversions(a3pFiles, existingSfz, existingDs, rawDir, sfzDir, dsDir, convertToSFZ, convertToDecentSampler);
+
+            if (toConvert.length > 0 && !quiet) {
+                console.log(`Converting ${toConvert.length} S3K programs (${existingSfz.length} SFZ, ${existingDs.length} DS already exist)...`);
             }
 
-            for (const a3pFile of a3pFiles) {
+            for (const a3pFile of toConvert) {
                 try {
+                    // Preserve directory structure from raw/ in sfz/ and decentsampler/
+                    const relPath = relative(rawDir, a3pFile);
+                    const relDir = dirname(relPath);
+
                     if (convertToSFZ) {
-                        await convertA3PToSFZ(a3pFile, sfzDir, wavDir);
+                        const sfzSubDir = join(sfzDir, relDir);
+                        mkdirSync(sfzSubDir, { recursive: true });
+
+                        // WAV files are in corresponding subdirectory
+                        const wavSubDir = join(wavDir, relDir);
+
+                        await convertA3PToSFZ(a3pFile, sfzSubDir, wavSubDir);
                         result.stats.sfzCreated++;
                     }
                     if (convertToDecentSampler) {
-                        await convertA3PToDecentSampler(a3pFile, dsDir, wavDir);
+                        const dsSubDir = join(dsDir, relDir);
+                        mkdirSync(dsSubDir, { recursive: true });
+
+                        // WAV files are in corresponding subdirectory
+                        const wavSubDir = join(wavDir, relDir);
+
+                        await convertA3PToDecentSampler(a3pFile, dsSubDir, wavSubDir);
                         result.stats.dspresetCreated++;
                     }
                 } catch (err: any) {
-                    result.errors.push(`Failed to convert ${basename(a3pFile)}: ${err.message}`);
+                    const errorMsg = `Failed to convert ${basename(a3pFile)}: ${err.message}`;
+                    result.errors.push(errorMsg);
+
+                    // Read file header for audit log
+                    try {
+                        const header = readFileSync(a3pFile).slice(0, 16);
+                        const headerHex = Array.from(header).map(b => b.toString(16).padStart(2, '0')).join(' ');
+                        auditLogger.conversionFailure(diskName, a3pFile, err.message, headerHex);
+                    } catch {
+                        auditLogger.conversionFailure(diskName, a3pFile, err.message);
+                    }
                 }
             }
         }
 
         // Convert S5K programs (.akp)
         if (akpFiles.length > 0) {
-            if (!quiet) {
-                console.log(`Converting ${akpFiles.length} S5K programs...`);
+            const toConvert = findMissingConversions(akpFiles, existingSfz, existingDs, rawDir, sfzDir, dsDir, convertToSFZ, convertToDecentSampler);
+
+            if (toConvert.length > 0 && !quiet) {
+                console.log(`Converting ${toConvert.length} S5K programs (${existingSfz.length} SFZ, ${existingDs.length} DS already exist)...`);
             }
 
-            for (const akpFile of akpFiles) {
+            for (const akpFile of toConvert) {
                 try {
+                    // Preserve directory structure from raw/ in sfz/ and decentsampler/
+                    const relPath = relative(rawDir, akpFile);
+                    const relDir = dirname(relPath);
+
                     if (convertToSFZ) {
-                        convertAKPToSFZ(akpFile, sfzDir, wavDir);
+                        const sfzSubDir = join(sfzDir, relDir);
+                        mkdirSync(sfzSubDir, { recursive: true });
+
+                        // WAV files are in corresponding subdirectory
+                        const wavSubDir = join(wavDir, relDir);
+
+                        convertAKPToSFZ(akpFile, sfzSubDir, wavSubDir);
                         result.stats.sfzCreated++;
                     }
                     if (convertToDecentSampler) {
-                        convertAKPToDecentSampler(akpFile, dsDir, wavDir);
+                        const dsSubDir = join(dsDir, relDir);
+                        mkdirSync(dsSubDir, { recursive: true });
+
+                        // WAV files are in corresponding subdirectory
+                        const wavSubDir = join(wavDir, relDir);
+
+                        convertAKPToDecentSampler(akpFile, dsSubDir, wavSubDir);
                         result.stats.dspresetCreated++;
                     }
                 } catch (err: any) {
-                    result.errors.push(`Failed to convert ${basename(akpFile)}: ${err.message}`);
+                    const errorMsg = `Failed to convert ${basename(akpFile)}: ${err.message}`;
+                    result.errors.push(errorMsg);
+
+                    // Read file header for audit log
+                    try {
+                        const header = readFileSync(akpFile).slice(0, 16);
+                        const headerHex = Array.from(header).map(b => b.toString(16).padStart(2, '0')).join(' ');
+                        auditLogger.conversionFailure(diskName, akpFile, err.message, headerHex);
+                    } catch {
+                        auditLogger.conversionFailure(diskName, akpFile, err.message);
+                    }
                 }
             }
         }
 
+        // Add existing conversions to the count
+        result.stats.sfzCreated += existingSfz.length;
+        result.stats.dspresetCreated += existingDs.length;
+
         result.success = true;
+
+        // Log extraction summary to audit log
+        auditLogger.extractionSummary(diskName, {
+            programsFound: result.stats.programsFound,
+            programsConverted: Math.max(result.stats.sfzCreated, result.stats.dspresetCreated),
+            programsFailed: result.stats.programsFound - Math.max(result.stats.sfzCreated, result.stats.dspresetCreated),
+            samplesFound: result.stats.samplesExtracted,
+            samplesConverted: result.stats.samplesConverted
+        });
+
         if (!quiet) {
             console.log("Extraction complete!");
             console.log(`  Samples: ${result.stats.samplesConverted}/${result.stats.samplesExtracted}`);
             console.log(`  Programs: ${result.stats.programsFound}`);
-            console.log(`  SFZ files: ${result.stats.sfzCreated}`);
-            console.log(`  DecentSampler presets: ${result.stats.dspresetCreated}`);
+            console.log(`  SFZ files: ${result.stats.sfzCreated}${result.stats.sfzCreated !== result.stats.programsFound && convertToSFZ ? ` (${result.stats.programsFound - result.stats.sfzCreated} missing)` : ""}`);
+            console.log(`  DecentSampler presets: ${result.stats.dspresetCreated}${result.stats.dspresetCreated !== result.stats.programsFound && convertToDecentSampler ? ` (${result.stats.programsFound - result.stats.dspresetCreated} missing)` : ""}`);
         }
 
     } catch (err: any) {
@@ -351,4 +465,77 @@ function findFiles(dir: string, extension: string): string[] {
     }
 
     return results;
+}
+
+/**
+ * Check if a directory has extracted content
+ *
+ * @param dir - Directory to check
+ * @returns true if directory exists and has files
+ *
+ * @internal
+ */
+function hasExtractedContent(dir: string): boolean {
+    try {
+        if (!existsSync(dir)) {
+            return false;
+        }
+        const files = readdirSync(dir);
+        return files.length > 0;
+    } catch (err) {
+        return false;
+    }
+}
+
+/**
+ * Find programs that need conversion by checking which conversions are missing
+ *
+ * @param programFiles - Source program files (.a3p or .akp)
+ * @param existingSfz - Existing SFZ files
+ * @param existingDs - Existing DecentSampler files
+ * @param rawDir - Raw extraction directory
+ * @param sfzDir - SFZ output directory
+ * @param dsDir - DecentSampler output directory
+ * @param needsSfz - Whether SFZ conversion is enabled
+ * @param needsDs - Whether DecentSampler conversion is enabled
+ * @returns Array of program files that need conversion
+ *
+ * @internal
+ */
+function findMissingConversions(
+    programFiles: string[],
+    existingSfz: string[],
+    existingDs: string[],
+    rawDir: string,
+    sfzDir: string,
+    dsDir: string,
+    needsSfz: boolean | undefined,
+    needsDs: boolean | undefined
+): string[] {
+    const missing: string[] = [];
+
+    for (const programFile of programFiles) {
+        const relPath = relative(rawDir, programFile);
+        const programName = basename(programFile, extname(programFile));
+        const relDir = dirname(relPath);
+
+        let hasSfz = !needsSfz;
+        let hasDs = !needsDs;
+
+        if (needsSfz) {
+            const expectedSfz = join(sfzDir, relDir, `${programName}.sfz`);
+            hasSfz = existingSfz.some(sfz => sfz === expectedSfz);
+        }
+
+        if (needsDs) {
+            const expectedDs = join(dsDir, relDir, `${programName}.dspreset`);
+            hasDs = existingDs.some(ds => ds === expectedDs);
+        }
+
+        if (!hasSfz || !hasDs) {
+            missing.push(programFile);
+        }
+    }
+
+    return missing;
 }

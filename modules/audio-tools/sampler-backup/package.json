@@ -12,7 +12,8 @@
   "types": "./dist/index.d.ts",
   "type": "module",
   "bin": {
-    "akai-backup": "./dist/cli/backup.js"
+    "akai-backup": "./dist/cli/backup.js",
+    "sampler-migrate": "./dist/cli/migrate.js"
   },
   "files": [
     "dist",
@@ -25,7 +26,7 @@
     "test:watch": "vitest --watch",
     "clean": "rm -rf dist *.tsbuildinfo",
     "typecheck": "tsc --noEmit",
-    "backup:batch": "node dist/cli/backup.js batch"
+    "backup:batch": "node dist/cli/backup.js sync --source pi-scsi2.local:/home/orion/images/ --device images"
   },
   "keywords": [
     "akai",

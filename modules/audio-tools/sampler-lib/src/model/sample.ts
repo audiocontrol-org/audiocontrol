@@ -1,4 +1,6 @@
-import { WaveFile } from "wavefile";
+import wavefilePkg from "wavefile";
+const { WaveFile } = wavefilePkg;
+type WaveFile = InstanceType<typeof WaveFile>;
 import { WriteStream } from "fs";
 
 /**

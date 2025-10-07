@@ -15,7 +15,8 @@ export default defineConfig({
     lib: {
       entry: {
         index: resolve(__dirname, 'src/index.ts'),
-        'cli/backup': resolve(__dirname, 'src/cli/backup.ts')
+        'cli/backup': resolve(__dirname, 'src/cli/backup.ts'),
+        'cli/migrate': resolve(__dirname, 'src/cli/migrate.ts')
       },
       formats: ['es']
     },
@@ -25,7 +26,7 @@ export default defineConfig({
         'pathe',
         '@oletizi/sampler-devices',
         '@oletizi/sampler-lib',
-        // Node.js built-ins
+        // Node.js built-ins (both with and without node: prefix)
         'module',
         'fs',
         'fs/promises',
@@ -35,7 +36,17 @@ export default defineConfig({
         'stream',
         'buffer',
         'process',
-        'child_process'
+        'child_process',
+        'node:module',
+        'node:fs',
+        'node:fs/promises',
+        'node:path',
+        'node:util',
+        'node:os',
+        'node:stream',
+        'node:buffer',
+        'node:process',
+        'node:child_process'
       ],
       output: {
         preserveModules: false,

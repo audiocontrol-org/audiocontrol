@@ -1,51 +1,83 @@
 # sampler-backup v1.0 Documentation
 
-## Overview
+## Documentation Structure
 
-Version 1.0 provides rsnapshot-based incremental backups for Akai samplers. Supports both remote backup (via SSH/PiSCSI) and local media (SD cards, USB drives).
+Documentation is organized by feature/implementation:
 
-## Key Capabilities
+### Active Implementations
 
-- **Incremental Backups**: rsnapshot with hard-linking for space efficiency
-- **Smart Rotation**: Same-day resume logic prevents duplicate backups
-- **Remote & Local**: SSH-based remote backup or direct media access
-- **Configurable Retention**: Daily/weekly/monthly snapshot intervals
-- **Batch Processing**: One-command backup for multiple samplers
+- **[rsync-simple-sync/](./rsync-simple-sync/)** - Simple rsync-based file sync (CURRENT ✅)
+  - Current solution: simple file-level sync using rsync
+  - Hierarchical directory structure: `~/.audiotools/backup/{sampler}/{device}/`
+  - No snapshots, no rotation, just fast sync
+  - See implementation workplan for architecture and details
 
-## Documentation
+### Deprecated/Research
 
-1. **[Installation](./installation.md)** - Package and rsnapshot setup
-2. **[Quick Start](./quick-start.md)** - First backup in 5 minutes
-3. **[CLI Commands](./cli-commands.md)** - Command-line interface reference
-4. **[Configuration](./configuration.md)** - rsnapshot.conf customization
-5. **[Examples](./examples.md)** - Common backup scenarios
-6. **[API Reference](./api-reference.md)** - Programmatic usage
-7. **[Troubleshooting](./troubleshooting.md)** - Common issues and solutions
+- **[borg-native-ssh/](./borg-native-ssh/)** - BorgBackup + SSHFS implementation (DEPRECATED ⚠️)
+  - Abandoned: too slow and complex for simple sync needs
+  - Replaced by simple rsync-based approach
 
-## Backup Strategy
+- **[backup-parallel/](./backup-parallel/)** - Parallel backup with hierarchical repos (DEPRECATED ⚠️)
+  - Design work for BorgBackup parallel backups
+  - Abandoned along with BorgBackup
+  - Hierarchical directory structure concept retained for rsync approach
 
-v1.0 implements a traditional rsnapshot rotation strategy:
+- **[restic/](./restic/)** - Restic migration research (DEPRECATED ⚠️)
+  - Research document for potential Restic migration
+  - Never implemented; superseded by simpler approaches
 
-- **Daily backups**: 7 retained (daily.0 through daily.6)
-- **Weekly backups**: 4 retained (weekly.0 through weekly.3)
-- **Monthly backups**: 12 retained (monthly.0 through monthly.11)
+- **[deprecated-rsnapshot/](./deprecated-rsnapshot/)** - Old rsnapshot documentation (DEPRECATED ⚠️)
+  - Original implementation using rsnapshot
+  - Replaced multiple times
+  - Kept for historical reference only
 
-Hard-linking ensures snapshots share unchanged files, minimizing disk usage.
+## Current Implementation
 
-## Getting Started
+**sampler-backup v1.0** uses **simple rsync-based file synchronization**.
 
-```bash
-npm install -g @oletizi/sampler-backup
-brew install rsnapshot
-akai-backup batch
+See the [rsync-simple-sync implementation workplan](./rsync-simple-sync/implementation/workplan.md) for complete documentation.
+
+### Directory Structure
+
+```
+~/.audiotools/backup/
+├── pi-scsi2/              # Remote sampler (hostname)
+│   ├── scsi0/             # SCSI device 0
+│   ├── scsi1/             # SCSI device 1
+│   └── floppy/            # Floppy emulator
+├── s5k-studio/            # Local sampler (via --sampler)
+│   ├── scsi0/
+│   └── floppy/
+└── s3k-zulu/
+    └── scsi0/
 ```
 
-See [Quick Start](./quick-start.md) for detailed setup.
+### Quick Commands
 
-## Contributing
+```bash
+# Sync from remote source
+akai-backup sync --source pi-scsi2.local:/home/orion/images/ --device scsi0
 
-See main [CONTRIBUTING.md](../../CONTRIBUTING.md) for development guidelines.
+# Sync from local media
+akai-backup sync --source /Volumes/DSK0 --sampler s5k-studio --device floppy
 
-## License
+# List synced data
+akai-backup list --all
+```
 
-Apache-2.0
+## Migration from Previous Versions
+
+### From BorgBackup
+
+Old BorgBackup repositories in `~/.audiotools/borg/` can be deleted or archived. The new rsync-based system uses `~/.audiotools/backup/` with plain directory structure.
+
+### From rsnapshot
+
+Old rsnapshot backups in `~/.audiotools/backup/` may conflict with new structure. Consider moving to `~/.audiotools/backup.old/` before using new system.
+
+## See Also
+
+- [rsync-simple-sync Implementation](./rsync-simple-sync/implementation/workplan.md) - Current implementation
+- [Deprecated BorgBackup docs](./borg-native-ssh/DEPRECATED.md) - Why we abandoned BorgBackup
+- [Deprecated rsnapshot docs](./deprecated-rsnapshot/) - Historical reference

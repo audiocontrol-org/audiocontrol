@@ -1,8 +1,11 @@
 /**
  * Batch Akai Disk Extractor
  *
- * Automatically discovers and extracts Akai disk images from well-known directories,
- * with smart timestamp-based change detection and rsnapshot integration.
+ * Automatically discovers and extracts Akai disk images from rsync-based backups
+ * with smart timestamp-based change detection.
+ *
+ * Works with hierarchical rsync backup structure:
+ * ~/.audiotools/backup/{sampler}/{device}/*.hds
  *
  * @module extractor/batch-extractor
  */
@@ -11,13 +14,20 @@ import { existsSync, readdirSync, statSync } from "fs";
 import { join, basename, extname, resolve } from "pathe";
 import { homedir } from "os";
 import { extractAkaiDisk, ExtractionResult } from "@/extractor/disk-extractor.js";
+import {
+  discoverBackupSamplers,
+  findBackupDiskImages,
+  detectSamplerType,
+  DEFAULT_PATH_CONVENTIONS,
+  type SamplerType,
+} from "@oletizi/sampler-lib";
 
 /**
  * Supported Akai sampler types
  *
  * @public
  */
-export type SamplerType = "s5k" | "s3k";
+export type { SamplerType };
 
 /**
  * Configuration options for batch extraction
@@ -154,110 +164,61 @@ function getDefaultDestDir(): string {
     return resolve(homedir(), ".audiotools", "sampler-export", "extracted");
 }
 
-/**
- * Get the rsnapshot interval directory
- *
- * @param backupRoot - Root backup directory
- * @param interval - rsnapshot interval name (default: "daily.0" for most recent)
- * @returns Path to interval directory
- *
- * @remarks
- * rsnapshot uses rotating interval directories:
- * - daily.0 - Most recent daily backup
- * - daily.1 - Previous daily backup
- * - weekly.0 - Most recent weekly backup
- *
- * @internal
- */
-function getRsnapshotIntervalDir(backupRoot: string, interval: string = "daily.0"): string {
-    return join(backupRoot, interval);
-}
 
 /**
- * Map sampler type to backup directory name
- *
- * @param samplerType - Sampler type identifier
- * @returns Backup directory name used in rsnapshot structure
- *
- * @remarks
- * Maps logical sampler types to actual backup directory names:
- * - "s5k" → "pi-scsi2" (S5000/S6000 connected via PiSCSI)
- * - "s3k" → "s3k" (S3000 sampler)
- *
- * @internal
- */
-function getSamplerBackupDir(samplerType: SamplerType): string {
-    // Map s5k to pi-scsi2 (S5000/S6000 connected via PiSCSI)
-    return samplerType === "s5k" ? "pi-scsi2" : "s3k";
-}
-
-/**
- * Recursively find disk images in a directory
- *
- * @param dir - Directory to search
- * @param results - Accumulator array for results (used in recursion)
- * @returns Array of absolute paths to disk image files (.hds, .img)
- *
- * @remarks
- * Searches recursively for files with extensions:
- * - .hds - Hard disk image format
- * - .img - Generic disk image format
- *
- * @internal
- */
-function findDiskImagesRecursive(dir: string, results: string[] = []): string[] {
-    try {
-        const entries = readdirSync(dir, { withFileTypes: true });
-
-        for (const entry of entries) {
-            const fullPath = join(dir, entry.name);
-
-            if (entry.isDirectory()) {
-                // Recurse into subdirectories
-                findDiskImagesRecursive(fullPath, results);
-            } else if (entry.isFile()) {
-                const ext = extname(entry.name).toLowerCase();
-                if (ext === ".hds" || ext === ".img") {
-                    results.push(fullPath);
-                }
-            }
-        }
-    } catch (err) {
-        // Directory not readable, skip
-    }
-
-    return results;
-}
-
-/**
- * Find all disk images in rsnapshot backup structure
+ * Discover all disk images with dynamic sampler detection
  *
  * @param sourceDir - Root backup directory
- * @param samplerType - Type of sampler to search for
- * @returns Sorted array of disk image paths
+ * @returns Array of discovered disk information
  *
  * @remarks
- * Rsnapshot preserves full remote path structure, so disk images may be deeply nested.
- * Example structure: sourceDir/daily.0/pi-scsi2/home/orion/images/*.hds
- *
- * Returns empty array if backup directory doesn't exist.
+ * Dynamically discovers all samplers and their disk images.
+ * Detects sampler type from disk format, not directory name.
  *
  * @internal
  */
-function findDiskImages(sourceDir: string, samplerType: SamplerType): string[] {
-    // Rsnapshot structure: sourceDir/daily.0/pi-scsi2/home/orion/images/*.hds
-    const intervalDir = getRsnapshotIntervalDir(sourceDir);
-    const backupDir = getSamplerBackupDir(samplerType);
-    const diskDir = join(intervalDir, backupDir);
+function discoverAllDiskImages(sourceDir: string): DiskInfo[] {
+    const disks: DiskInfo[] = [];
 
-    if (!existsSync(diskDir)) {
-        return [];
+    // Discover all sampler directories in backup root
+    const samplerNames = discoverBackupSamplers({
+        backupRoot: sourceDir,
+        defaultSubdirectory: 'images',
+        legacySubdirectories: ['scsi0', 'scsi1', 'scsi2', 'scsi3', 'scsi4', 'scsi5', 'scsi6', 'floppy']
+    });
+
+    for (const samplerName of samplerNames) {
+        // Find disk images for this sampler (handles new and legacy paths)
+        const diskImages = findBackupDiskImages(samplerName, {
+            backupRoot: sourceDir,
+            defaultSubdirectory: 'images',
+            legacySubdirectories: ['scsi0', 'scsi1', 'scsi2', 'scsi3', 'scsi4', 'scsi5', 'scsi6', 'floppy']
+        });
+
+        for (const diskPath of diskImages) {
+            try {
+                const diskStat = statSync(diskPath);
+
+                // Detect sampler type from disk format, not directory name
+                const samplerType = detectSamplerType(diskPath);
+
+                // Include all disk types - let the extractor handle format detection
+                disks.push({
+                    path: diskPath,
+                    name: basename(diskPath, extname(diskPath)),
+                    samplerType,
+                    mtime: diskStat.mtime,
+                });
+            } catch {
+                // Skip unreadable disks
+            }
+        }
     }
 
-    // Recursively search for disk images
-    const results = findDiskImagesRecursive(diskDir);
-    return results.sort();
+    return disks.sort((a, b) => a.path.localeCompare(b.path));
 }
+
+
 
 /**
  * Check if output directory has extracted content
@@ -283,6 +244,62 @@ function hasExtractedContent(outputDir: string): boolean {
         return files.length > 0;
     } catch (err) {
         return false;
+    }
+}
+
+/**
+ * Check if conversions are incomplete (programs found but not all converted)
+ *
+ * @param outputDir - Path to output directory
+ * @returns true if there are programs that haven't been converted
+ *
+ * @internal
+ */
+function hasIncompleteConversions(outputDir: string): boolean {
+    try {
+        const rawDir = join(outputDir, "raw");
+        const sfzDir = join(outputDir, "sfz");
+        const dsDir = join(outputDir, "decentsampler");
+
+        if (!existsSync(rawDir)) {
+            return false;
+        }
+
+        // Count program files (case-insensitive)
+        let programCount = 0;
+        const countPrograms = (dir: string): number => {
+            let count = 0;
+            if (!existsSync(dir)) return 0;
+
+            const entries = readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = join(dir, entry.name);
+                if (entry.isDirectory()) {
+                    count += countPrograms(fullPath);
+                } else {
+                    const lower = entry.name.toLowerCase();
+                    if (lower.endsWith(".a3p") || lower.endsWith(".akp")) {
+                        count++;
+                    }
+                }
+            }
+            return count;
+        };
+
+        programCount = countPrograms(rawDir);
+
+        if (programCount === 0) {
+            return false; // No programs to convert
+        }
+
+        // Count converted files
+        const sfzCount = existsSync(sfzDir) ? countPrograms(sfzDir) : 0;
+        const dsCount = existsSync(dsDir) ? countPrograms(dsDir) : 0;
+
+        // If we have programs but no conversions, or conversions are fewer than programs
+        return (sfzCount < programCount) || (dsCount < programCount);
+    } catch (err) {
+        return false; // If we can't check, assume complete
     }
 }
 
@@ -324,6 +341,11 @@ function needsExtraction(
         return { extract: true, reason: "empty (no content)" };
     }
 
+    // Check if conversions are incomplete
+    if (hasIncompleteConversions(outputDir)) {
+        return { extract: true, reason: "incomplete conversions" };
+    }
+
     // Compare timestamps
     try {
         const diskStat = statSync(diskPath);
@@ -342,14 +364,15 @@ function needsExtraction(
     }
 }
 
+
 /**
  * Extract a batch of Akai disk images with smart change detection
  *
- * Automatically discovers disk images in rsnapshot backup structure and extracts
+ * Automatically discovers disk images in rsync backup directory structure and extracts
  * only changed disks using timestamp comparison. Supports both S3K and S5K samplers.
  *
  * The function performs:
- * 1. Disk discovery from rsnapshot backup directories
+ * 1. Disk discovery from rsync backup directories
  * 2. Timestamp-based change detection
  * 3. Parallel extraction of changed disks
  * 4. Aggregate statistics reporting
@@ -359,14 +382,13 @@ function needsExtraction(
  * @returns Promise resolving to batch extraction results with statistics
  *
  * @remarks
- * Expected rsnapshot directory structure:
+ * Expected rsync backup structure:
  * ```
  * ~/.audiotools/backup/
- *   daily.0/
- *     pi-scsi2/          # S5K/S6K backups
- *       home/orion/images/*.hds
- *     s3k/               # S3K backups
- *       *.hds
+ *   pi-scsi2/            # S5K/S6K backups
+ *     images/*.hds
+ *   s3k/                 # S3K backups
+ *     floppy/*.img
  * ```
  *
  * Output directory structure:
@@ -454,32 +476,17 @@ export async function extractBatch(
 
     console.log("Scanning for disk images...");
 
-    // Discover all disks
-    const disks: DiskInfo[] = [];
-
-    for (const samplerType of samplerTypes) {
-        const diskFiles = findDiskImages(sourceDir, samplerType);
-
-        for (const diskPath of diskFiles) {
-            const diskStat = statSync(diskPath);
-            disks.push({
-                path: diskPath,
-                name: basename(diskPath, extname(diskPath)),
-                samplerType,
-                mtime: diskStat.mtime,
-            });
-        }
-    }
+    // Discover all disks dynamically
+    const disks = discoverAllDiskImages(sourceDir);
 
     result.totalDisks = disks.length;
 
     if (disks.length === 0) {
         console.log("No disk images found.");
         console.log(`  Looking in: ${sourceDir}`);
-        console.log(`  Expected structure: ${sourceDir}/daily.0/pi-scsi2/**/*.hds (for S5K)`);
-        console.log(`  Note: rsnapshot preserves full remote path structure`);
-        console.log(`  Default location: ~/.audiotools/backup/ (rsnapshot backup root)`);
-        console.log(`  Run 'akai-backup batch' to create backups first`);
+        console.log(`  Expected structure: ${sourceDir}/{sampler-name}/images/*.hds`);
+        console.log(`  Default location: ~/.audiotools/backup/`);
+        console.log(`  Run 'pnpm backup:batch' in sampler-backup to create backups first`);
         return result;
     }
 
@@ -490,7 +497,8 @@ export async function extractBatch(
 
     // Group by sampler type for organized output
     const disksByType = new Map<SamplerType, DiskInfo[]>();
-    for (const samplerType of samplerTypes) {
+    const detectedTypes = Array.from(new Set(disks.map(d => d.samplerType)));
+    for (const samplerType of detectedTypes) {
         disksByType.set(
             samplerType,
             disks.filter((d) => d.samplerType === samplerType)

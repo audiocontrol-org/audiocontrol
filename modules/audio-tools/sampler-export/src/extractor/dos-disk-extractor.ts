@@ -7,7 +7,7 @@
  * @module extractor/dos-disk-extractor
  */
 
-import { mkdirSync, readFileSync, openSync, readSync, closeSync } from "fs";
+import { mkdirSync, readFileSync, openSync, readSync, closeSync, existsSync, readdirSync } from "fs";
 import { join } from "pathe";
 import { spawn } from "child_process";
 import { getMcopyBinary } from "@/utils/mtools-binary.js";
@@ -124,8 +124,23 @@ async function executeMcopy(
         });
 
         proc.on("close", (code) => {
-            if (code === 0 || stderr.trim() === "") {
-                resolve({ success: true, output: stdout });
+            // mcopy may report non-fatal errors but still copy files successfully
+            // Check if files were actually copied before marking as failed
+            const filesExist = existsSync(outputDir) && readdirSync(outputDir).length > 0;
+
+            if (code === 0 || stderr.trim() === "" || filesExist) {
+                // Success if: clean exit, no errors, OR files were copied
+                const success = code === 0 || stderr.trim() === "";
+                if (!success && filesExist) {
+                    // Files copied but mcopy reported errors - treat as warning
+                    resolve({
+                        success: true,
+                        output: stdout,
+                        error: `Warning: mcopy reported errors but files were copied successfully: ${stderr}`
+                    });
+                } else {
+                    resolve({ success: true, output: stdout });
+                }
             } else {
                 resolve({
                     success: false,
@@ -278,8 +293,18 @@ export async function extractDosDisk(
 
         for (const audioFile of audioFiles) {
             try {
-                const filename = audioFile.split('/').pop() || 'unknown';
-                const destPath = joinPath(wavDir, filename);
+                // Preserve directory structure relative to rawDir
+                const relativePath = audioFile.substring(rawDir.length + 1);
+                const destPath = joinPath(wavDir, relativePath);
+
+                // Create parent directory if it doesn't exist
+                const { mkdirSync, existsSync } = await import("fs");
+                const { dirname } = await import("pathe");
+                const parentDir = dirname(destPath);
+                if (!existsSync(parentDir)) {
+                    mkdirSync(parentDir, { recursive: true });
+                }
+
                 copyFile(audioFile, destPath);
             } catch (err) {
                 // Skip copy errors
