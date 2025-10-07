@@ -274,6 +274,62 @@ function hasExtractedContent(outputDir: string): boolean {
 }
 
 /**
+ * Check if conversions are incomplete (programs found but not all converted)
+ *
+ * @param outputDir - Path to output directory
+ * @returns true if there are programs that haven't been converted
+ *
+ * @internal
+ */
+function hasIncompleteConversions(outputDir: string): boolean {
+    try {
+        const rawDir = join(outputDir, "raw");
+        const sfzDir = join(outputDir, "sfz");
+        const dsDir = join(outputDir, "decentsampler");
+
+        if (!existsSync(rawDir)) {
+            return false;
+        }
+
+        // Count program files (case-insensitive)
+        let programCount = 0;
+        const countPrograms = (dir: string): number => {
+            let count = 0;
+            if (!existsSync(dir)) return 0;
+
+            const entries = readdirSync(dir, { withFileTypes: true });
+            for (const entry of entries) {
+                const fullPath = join(dir, entry.name);
+                if (entry.isDirectory()) {
+                    count += countPrograms(fullPath);
+                } else {
+                    const lower = entry.name.toLowerCase();
+                    if (lower.endsWith(".a3p") || lower.endsWith(".akp")) {
+                        count++;
+                    }
+                }
+            }
+            return count;
+        };
+
+        programCount = countPrograms(rawDir);
+
+        if (programCount === 0) {
+            return false; // No programs to convert
+        }
+
+        // Count converted files
+        const sfzCount = existsSync(sfzDir) ? countPrograms(sfzDir) : 0;
+        const dsCount = existsSync(dsDir) ? countPrograms(dsDir) : 0;
+
+        // If we have programs but no conversions, or conversions are fewer than programs
+        return (sfzCount < programCount) || (dsCount < programCount);
+    } catch (err) {
+        return false; // If we can't check, assume complete
+    }
+}
+
+/**
  * Determine if a disk needs extraction based on timestamps and content
  *
  * @param diskPath - Path to disk image file
@@ -309,6 +365,11 @@ function needsExtraction(
     // Check if output directory has actual content
     if (!hasExtractedContent(outputDir)) {
         return { extract: true, reason: "empty (no content)" };
+    }
+
+    // Check if conversions are incomplete
+    if (hasIncompleteConversions(outputDir)) {
+        return { extract: true, reason: "incomplete conversions" };
     }
 
     // Compare timestamps
