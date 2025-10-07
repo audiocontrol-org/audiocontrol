@@ -7,7 +7,7 @@
  * @module extractor/disk-extractor
  */
 
-import { mkdirSync, existsSync, readdirSync } from "fs";
+import { mkdirSync, existsSync, readdirSync, statSync } from "fs";
 import { join, basename, extname } from "pathe";
 import { newAkaitools, newAkaiToolsConfig } from "@oletizi/sampler-devices";
 import type { Akaitools } from "@oletizi/sampler-devices";
@@ -239,6 +239,22 @@ export async function extractAkaiDisk(
 
             for (const a3sFile of a3sFiles) {
                 try {
+                    // Check if WAV file already exists and is up-to-date
+                    const sampleName = basename(a3sFile, extname(a3sFile));
+                    const wavFile = join(wavDir, `${sampleName}.wav`);
+
+                    if (existsSync(wavFile)) {
+                        // Check if WAV is newer than source .a3s file
+                        const a3sStat = statSync(a3sFile);
+                        const wavStat = statSync(wavFile);
+
+                        if (wavStat.mtime >= a3sStat.mtime) {
+                            // WAV file is up-to-date, skip conversion
+                            result.stats.samplesConverted++;
+                            continue;
+                        }
+                    }
+
                     // akai2wav outputs to cwd, so we need to cd to wavDir first
                     const origCwd = process.cwd();
                     process.chdir(wavDir);
