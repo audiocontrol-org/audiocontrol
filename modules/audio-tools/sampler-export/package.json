@@ -31,6 +31,27 @@
   },
   "author": "Orion Letizi",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oletizi/ol_dsp.git",
+    "directory": "modules/audio-tools/sampler-export"
+  },
+  "homepage": "https://github.com/oletizi/ol_dsp/tree/main/modules/audio-tools/sampler-export",
+  "bugs": {
+    "url": "https://github.com/oletizi/ol_dsp/issues"
+  },
+  "keywords": [
+    "akai",
+    "sampler",
+    "extraction",
+    "conversion",
+    "s5000",
+    "s6000",
+    "s3000xl",
+    "sfz",
+    "decentsampler",
+    "disk-image"
+  ],
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.8",
     "@types/chai": "^5.0.1",

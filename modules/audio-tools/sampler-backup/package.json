@@ -36,10 +36,20 @@
     "s5000",
     "s6000",
     "s3000xl",
-    "midi"
+    "midi",
+    "rsnapshot"
   ],
   "author": "Orion Letizi",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oletizi/ol_dsp.git",
+    "directory": "modules/audio-tools/sampler-backup"
+  },
+  "homepage": "https://github.com/oletizi/ol_dsp/tree/main/modules/audio-tools/sampler-backup",
+  "bugs": {
+    "url": "https://github.com/oletizi/ol_dsp/issues"
+  },
   "dependencies": {
     "@oletizi/sampler-devices": "workspace:*",
     "@oletizi/sampler-lib": "workspace:*",

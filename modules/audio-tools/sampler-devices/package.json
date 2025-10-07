@@ -36,8 +36,27 @@
     "build": "npm test && tsup",
     "clean": "rm -rf dist"
   },
+  "keywords": [
+    "akai",
+    "sampler",
+    "midi",
+    "s5000",
+    "s6000",
+    "s3000xl",
+    "hardware-sampler",
+    "device-communication"
+  ],
   "author": "Orion Letizi",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oletizi/ol_dsp.git",
+    "directory": "modules/audio-tools/sampler-devices"
+  },
+  "homepage": "https://github.com/oletizi/ol_dsp/tree/main/modules/audio-tools/sampler-devices",
+  "bugs": {
+    "url": "https://github.com/oletizi/ol_dsp/issues"
+  },
   "devDependencies": {
     "@tsconfig/recommended": "^1.0.8",
     "@types/node": "^22.13.1",
