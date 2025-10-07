@@ -7,7 +7,7 @@
  * @module extractor/disk-extractor
  */
 
-import { mkdirSync, existsSync, readdirSync, statSync } from "fs";
+import { mkdirSync, existsSync, readdirSync, statSync, readFileSync } from "fs";
 import { join, basename, extname, dirname, relative } from "pathe";
 import { newAkaitools, newAkaiToolsConfig } from "@oletizi/sampler-devices";
 import type { Akaitools } from "@oletizi/sampler-devices";
@@ -16,6 +16,7 @@ import { convertA3PToDecentSampler } from "@/converters/s3k-to-decentsampler.js"
 import { convertAKPToSFZ } from "@/converters/s5k-to-sfz.js";
 import { convertAKPToDecentSampler } from "@/converters/s5k-to-decentsampler.js";
 import { isDosDisk, extractDosDisk } from "@/extractor/dos-disk-extractor.js";
+import { getAuditLogger } from "@/utils/audit-logger.js";
 
 /**
  * Configuration options for disk extraction
@@ -144,10 +145,17 @@ export async function extractAkaiDisk(
         errors: [],
     };
 
+    const auditLogger = getAuditLogger();
+
     try {
         // Extract disk name from filename
         const diskName = basename(diskImage, extname(diskImage));
         result.diskName = diskName;
+
+        auditLogger.info('EXTRACTION_START', `Starting extraction of disk image`, diskName, {
+            diskImage,
+            outputDir
+        });
 
         // Check if this is a DOS/FAT disk
         if (isDosDisk(diskImage)) {
@@ -332,7 +340,17 @@ export async function extractAkaiDisk(
                         result.stats.dspresetCreated++;
                     }
                 } catch (err: any) {
-                    result.errors.push(`Failed to convert ${basename(a3pFile)}: ${err.message}`);
+                    const errorMsg = `Failed to convert ${basename(a3pFile)}: ${err.message}`;
+                    result.errors.push(errorMsg);
+
+                    // Read file header for audit log
+                    try {
+                        const header = readFileSync(a3pFile).slice(0, 16);
+                        const headerHex = Array.from(header).map(b => b.toString(16).padStart(2, '0')).join(' ');
+                        auditLogger.conversionFailure(diskName, a3pFile, err.message, headerHex);
+                    } catch {
+                        auditLogger.conversionFailure(diskName, a3pFile, err.message);
+                    }
                 }
             }
         }
@@ -372,7 +390,17 @@ export async function extractAkaiDisk(
                         result.stats.dspresetCreated++;
                     }
                 } catch (err: any) {
-                    result.errors.push(`Failed to convert ${basename(akpFile)}: ${err.message}`);
+                    const errorMsg = `Failed to convert ${basename(akpFile)}: ${err.message}`;
+                    result.errors.push(errorMsg);
+
+                    // Read file header for audit log
+                    try {
+                        const header = readFileSync(akpFile).slice(0, 16);
+                        const headerHex = Array.from(header).map(b => b.toString(16).padStart(2, '0')).join(' ');
+                        auditLogger.conversionFailure(diskName, akpFile, err.message, headerHex);
+                    } catch {
+                        auditLogger.conversionFailure(diskName, akpFile, err.message);
+                    }
                 }
             }
         }
@@ -382,6 +410,16 @@ export async function extractAkaiDisk(
         result.stats.dspresetCreated += existingDs.length;
 
         result.success = true;
+
+        // Log extraction summary to audit log
+        auditLogger.extractionSummary(diskName, {
+            programsFound: result.stats.programsFound,
+            programsConverted: Math.max(result.stats.sfzCreated, result.stats.dspresetCreated),
+            programsFailed: result.stats.programsFound - Math.max(result.stats.sfzCreated, result.stats.dspresetCreated),
+            samplesFound: result.stats.samplesExtracted,
+            samplesConverted: result.stats.samplesConverted
+        });
+
         if (!quiet) {
             console.log("Extraction complete!");
             console.log(`  Samples: ${result.stats.samplesConverted}/${result.stats.samplesExtracted}`);
