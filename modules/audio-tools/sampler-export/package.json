@@ -49,7 +49,7 @@
   },
   "dependencies": {
     "@oletizi/sampler-devices": "workspace:*",
-    "@oletizi/sampler-lib": "^1.0.11",
+    "@oletizi/sampler-lib": "workspace:*",
     "commander": "^12.1.0",
     "glob": "^11.0.0",
     "pathe": "^1.1.2",

@@ -14,13 +14,20 @@ import { existsSync, readdirSync, statSync } from "fs";
 import { join, basename, extname, resolve } from "pathe";
 import { homedir } from "os";
 import { extractAkaiDisk, ExtractionResult } from "@/extractor/disk-extractor.js";
+import {
+  discoverBackupSamplers,
+  findBackupDiskImages,
+  detectSamplerType,
+  DEFAULT_PATH_CONVENTIONS,
+  type SamplerType,
+} from "@oletizi/sampler-lib";
 
 /**
  * Supported Akai sampler types
  *
  * @public
  */
-export type SamplerType = "s5k" | "s3k";
+export type { SamplerType };
 
 /**
  * Configuration options for batch extraction
@@ -159,92 +166,60 @@ function getDefaultDestDir(): string {
 
 
 /**
- * Map sampler type to backup directory and device
- *
- * @param samplerType - Sampler type identifier
- * @returns Object with sampler and device directory names
- *
- * @remarks
- * Maps logical sampler types to actual backup directory structure:
- * - "s5k" → { sampler: "pi-scsi2", device: "images" } (S5000/S6000 connected via PiSCSI)
- * - "s3k" → { sampler: "s3k", device: "floppy" } (S3000 sampler with floppy)
- *
- * @internal
- */
-function getSamplerBackupPath(samplerType: SamplerType): { sampler: string; device: string } {
-    // Map s5k to pi-scsi2/images (S5000/S6000 connected via PiSCSI)
-    // Map s3k to s3k/floppy (S3000 sampler with floppy emulator)
-    return samplerType === "s5k"
-        ? { sampler: "pi-scsi2", device: "images" }
-        : { sampler: "s3k", device: "floppy" };
-}
-
-/**
- * Recursively find disk images in a directory
- *
- * @param dir - Directory to search
- * @param results - Accumulator array for results (used in recursion)
- * @returns Array of absolute paths to disk image files (.hds, .img)
- *
- * @remarks
- * Searches recursively for files with extensions:
- * - .hds - Hard disk image format
- * - .img - Generic disk image format
- *
- * @internal
- */
-function findDiskImagesRecursive(dir: string, results: string[] = []): string[] {
-    try {
-        const entries = readdirSync(dir, { withFileTypes: true });
-
-        for (const entry of entries) {
-            const fullPath = join(dir, entry.name);
-
-            if (entry.isDirectory()) {
-                // Recurse into subdirectories
-                findDiskImagesRecursive(fullPath, results);
-            } else if (entry.isFile()) {
-                const ext = extname(entry.name).toLowerCase();
-                if (ext === ".hds" || ext === ".img") {
-                    results.push(fullPath);
-                }
-            }
-        }
-    } catch (err) {
-        // Directory not readable, skip
-    }
-
-    return results;
-}
-
-/**
- * Find all disk images in rsync backup structure
+ * Discover all disk images with dynamic sampler detection
  *
  * @param sourceDir - Root backup directory
- * @param samplerType - Type of sampler to search for
- * @returns Sorted array of disk image paths
+ * @returns Array of discovered disk information
  *
  * @remarks
- * Rsync structure: sourceDir/{sampler}/{device}/*.hds
- * Example: ~/.audiotools/backup/pi-scsi2/images/*.hds
- *
- * Returns empty array if backup directory doesn't exist.
+ * Dynamically discovers all samplers and their disk images.
+ * Detects sampler type from disk format, not directory name.
  *
  * @internal
  */
-function findDiskImages(sourceDir: string, samplerType: SamplerType): string[] {
-    // Rsync structure: sourceDir/{sampler}/{device}/*.hds
-    const { sampler, device } = getSamplerBackupPath(samplerType);
-    const diskDir = join(sourceDir, sampler, device);
+function discoverAllDiskImages(sourceDir: string): DiskInfo[] {
+    const disks: DiskInfo[] = [];
 
-    if (!existsSync(diskDir)) {
-        return [];
+    // Discover all sampler directories in backup root
+    const samplerNames = discoverBackupSamplers({
+        backupRoot: sourceDir,
+        defaultSubdirectory: 'images',
+        legacySubdirectories: ['scsi0', 'scsi1', 'scsi2', 'scsi3', 'scsi4', 'scsi5', 'scsi6', 'floppy']
+    });
+
+    for (const samplerName of samplerNames) {
+        // Find disk images for this sampler (handles new and legacy paths)
+        const diskImages = findBackupDiskImages(samplerName, {
+            backupRoot: sourceDir,
+            defaultSubdirectory: 'images',
+            legacySubdirectories: ['scsi0', 'scsi1', 'scsi2', 'scsi3', 'scsi4', 'scsi5', 'scsi6', 'floppy']
+        });
+
+        for (const diskPath of diskImages) {
+            try {
+                const diskStat = statSync(diskPath);
+
+                // Detect sampler type from disk format, not directory name
+                const samplerType = detectSamplerType(diskPath);
+
+                if (samplerType !== 'unknown') {
+                    disks.push({
+                        path: diskPath,
+                        name: basename(diskPath, extname(diskPath)),
+                        samplerType,
+                        mtime: diskStat.mtime,
+                    });
+                }
+            } catch {
+                // Skip unreadable disks
+            }
+        }
     }
 
-    // Recursively search for disk images
-    const results = findDiskImagesRecursive(diskDir);
-    return results.sort();
+    return disks.sort((a, b) => a.path.localeCompare(b.path));
 }
+
+
 
 /**
  * Check if output directory has extracted content
@@ -502,30 +477,15 @@ export async function extractBatch(
 
     console.log("Scanning for disk images...");
 
-    // Discover all disks
-    const disks: DiskInfo[] = [];
-
-    for (const samplerType of samplerTypes) {
-        const diskFiles = findDiskImages(sourceDir, samplerType);
-
-        for (const diskPath of diskFiles) {
-            const diskStat = statSync(diskPath);
-            disks.push({
-                path: diskPath,
-                name: basename(diskPath, extname(diskPath)),
-                samplerType,
-                mtime: diskStat.mtime,
-            });
-        }
-    }
+    // Discover all disks dynamically
+    const disks = discoverAllDiskImages(sourceDir);
 
     result.totalDisks = disks.length;
 
     if (disks.length === 0) {
         console.log("No disk images found.");
         console.log(`  Looking in: ${sourceDir}`);
-        console.log(`  Expected structure: ${sourceDir}/pi-scsi2/images/*.hds (for S5K)`);
-        console.log(`                      ${sourceDir}/s3k/floppy/*.img (for S3K)`);
+        console.log(`  Expected structure: ${sourceDir}/{sampler-name}/images/*.hds`);
         console.log(`  Default location: ~/.audiotools/backup/`);
         console.log(`  Run 'pnpm backup:batch' in sampler-backup to create backups first`);
         return result;
@@ -538,7 +498,8 @@ export async function extractBatch(
 
     // Group by sampler type for organized output
     const disksByType = new Map<SamplerType, DiskInfo[]>();
-    for (const samplerType of samplerTypes) {
+    const detectedTypes = Array.from(new Set(disks.map(d => d.samplerType)));
+    for (const samplerType of detectedTypes) {
         disksByType.set(
             samplerType,
             disks.filter((d) => d.samplerType === samplerType)
