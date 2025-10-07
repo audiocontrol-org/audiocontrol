@@ -293,8 +293,18 @@ export async function extractDosDisk(
 
         for (const audioFile of audioFiles) {
             try {
-                const filename = audioFile.split('/').pop() || 'unknown';
-                const destPath = joinPath(wavDir, filename);
+                // Preserve directory structure relative to rawDir
+                const relativePath = audioFile.substring(rawDir.length + 1);
+                const destPath = joinPath(wavDir, relativePath);
+
+                // Create parent directory if it doesn't exist
+                const { mkdirSync, existsSync } = await import("fs");
+                const { dirname } = await import("pathe");
+                const parentDir = dirname(destPath);
+                if (!existsSync(parentDir)) {
+                    mkdirSync(parentDir, { recursive: true });
+                }
+
                 copyFile(audioFile, destPath);
             } catch (err) {
                 // Skip copy errors
