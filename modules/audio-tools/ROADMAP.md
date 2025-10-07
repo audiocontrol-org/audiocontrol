@@ -17,7 +17,7 @@ Provide zero-configuration, user-friendly tools for backing up and extracting Ak
 - Smart rotation (same-day resume vs. next-day rotation)
 - Multi-sampler support (S5K, S3K)
 - SSH-based remote backup from PiSCSI devices
-- ⚠️ **Missing:** Local media support (SD cards, USB drives)
+- Local media support (SD cards, USB drives) - MVP complete
 
 **Extraction System** (`@oletizi/sampler-export`)
 - Native Akai format extraction (akaitools integration)
@@ -28,6 +28,7 @@ Provide zero-configuration, user-friendly tools for backing up and extracting Ak
 - Batch extraction with timestamp-based change detection
 - Smart content detection (skip empty disks)
 - Warning vs. error distinction (exit code 0 for unsupported formats)
+- Dynamic sampler discovery (no hardcoded paths)
 
 **Platform Support**
 - ✅ macOS Apple Silicon (darwin-arm64) - Full support
@@ -48,30 +49,6 @@ Provide zero-configuration, user-friendly tools for backing up and extracting Ak
 - [ ] Document public APIs
 - [ ] Remove dead code and unused dependencies
 - [ ] Standardize file and directory structure
-
----
-
-## Local Media Support
-
-**Target Users:** Most sampler users don't have networked PiSCSI. They use:
-- Floppy emulators (Gotek, HxC)
-- Non-networked SCSI emulators (ZuluSCSI, SCSI2SD)
-- Direct SD card/USB access on modern computers
-
-**Requirements:**
-- [ ] Auto-detect mounted SD cards/USB drives containing disk images
-- [ ] Support reading disk images directly from mounted filesystems
-- [ ] Backup: copy disk images from removable media to local storage
-- [ ] Extract: process disk images from removable media
-- [ ] Handle common SD card filesystem formats (FAT32, exFAT)
-- [ ] Detect disk image files (*.hds, *.img, *.iso)
-- [ ] Optional: Monitor for newly inserted media (hot-plug detection)
-
-**User Workflow:**
-1. Remove SD card from sampler/emulator
-2. Insert into laptop/desktop
-3. Run `akai-tools backup --source /Volumes/SDCARD`
-4. Run `akai-tools extract --source ~/.audiotools/backup`
 
 ---
 
@@ -191,6 +168,16 @@ See [DISTRIBUTION.md](./DISTRIBUTION.md) for detailed analysis.
 - [ ] Favorite samples
 - [ ] Export sample collections
 - [ ] Share sample libraries
+
+### Local Media Support Enhancements
+
+**MVP complete for v1.0.0.** Future enhancements:
+
+- [ ] Auto-detect mounted SD cards/USB drives containing disk images
+- [ ] Monitor for newly inserted media (hot-plug detection)
+- [ ] Automatic backup on media insertion
+- [ ] Validation and integrity checking
+- [ ] Media eject automation after backup
 
 ---
 
