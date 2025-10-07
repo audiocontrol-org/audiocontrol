@@ -50,7 +50,7 @@ function formatBytes(bytes: number): string {
 
 program
     .name("akai-backup")
-    .description("Backup Akai sampler disk images using BorgBackup")
+    .description("Backup Akai sampler disk images using SSHFS + BorgBackup")
     .version("1.0.0-alpha.1")
     .addHelpText('after', `
 Examples:
@@ -74,6 +74,21 @@ Repository:
   - Default location: ~/.audiotools/borg-repo
   - Compression: zstd (balanced speed/ratio)
   - Encryption: none (local trust model)
+
+Requirements:
+  - BorgBackup: brew install borgbackup (or apt install borgbackup)
+  - SSHFS (macOS):
+      1. Download macFUSE from https://macfuse.github.io/
+      2. Allow in System Preferences → Privacy & Security
+      3. Restart Mac
+      4. brew install sshfs
+  - SSHFS (Linux): sudo apt install sshfs
+  - SSH access to remote hosts (passwordless keys recommended)
+
+How It Works:
+  Remote backups use SSHFS to mount remote directories locally, then Borg
+  backs them up with full incremental deduplication efficiency. Only changed
+  data chunks are transferred over SSH after the initial backup.
 `);
 
 // Generate config command (deprecated - rsnapshot removed)

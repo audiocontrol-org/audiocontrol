@@ -565,7 +565,7 @@ export async function ensureSSHFSInstalled(): Promise<void> {
   if (!await checkSSHFSInstalled()) {
     throw new Error(
       'SSHFS not installed. Please install:\n' +
-      '  macOS: brew install macfuse sshfs\n' +
+      '  macOS: Download macFUSE from https://macfuse.github.io/, then: brew install sshfs\n' +
       '  Linux: sudo apt install sshfs'
     );
   }
@@ -779,7 +779,8 @@ program
   .addHelpText('after', `
 Requirements:
   - BorgBackup: brew install borgbackup (or apt install borgbackup)
-  - SSHFS: brew install macfuse sshfs (or apt install sshfs)
+  - SSHFS (macOS): Download macFUSE from https://macfuse.github.io/, then: brew install sshfs
+  - SSHFS (Linux): sudo apt install sshfs
   - SSH access to remote hosts (passwordless keys recommended)
 
 For remote backups, SSHFS mounts remote directories locally, then Borg
@@ -810,7 +811,7 @@ try {
   console.error('\nTroubleshooting:');
   console.error('  1. Check SSH connectivity: ssh user@host');
   console.error('  2. Verify SSHFS installed: which sshfs');
-  console.error('  3. On macOS, install macFUSE: brew install macfuse');
+  console.error('  3. On macOS, download macFUSE from https://macfuse.github.io/');
   console.error('  4. Check remote path exists: ssh user@host ls /path');
 
   throw error;
@@ -1081,16 +1082,24 @@ describe('SSHFS + Borg Integration', () => {
 
 **macOS:**
 ```bash
-# Install macFUSE (required for SSHFS)
-brew install macfuse
+# 1. Download and install macFUSE manually
+# Visit https://macfuse.github.io/ and download the latest release
+# Double-click the .dmg and run the installer
 
-# Install SSHFS
+# 2. Allow macFUSE in System Preferences
+# Go to System Preferences → Privacy & Security
+# Click "Allow" next to the macFUSE system extension message
+
+# 3. Restart your Mac
+# This is required for the kernel extension to load
+
+# 4. Install SSHFS via Homebrew
 brew install sshfs
 
-# Install BorgBackup
+# 5. Install BorgBackup
 brew install borgbackup
 
-# Verify
+# Verify installation
 sshfs --version
 borg --version
 ```
@@ -1258,9 +1267,13 @@ crontab -e
 
 Solution:
 ```bash
-# macOS: macFUSE not loaded
-# Allow macFUSE in System Preferences → Privacy & Security
-# Restart may be required after installing macFUSE
+# macOS: macFUSE not installed or not approved
+# 1. Download macFUSE from https://macfuse.github.io/
+# 2. Install the .dmg package
+# 3. Allow macFUSE in System Preferences → Privacy & Security
+# 4. Restart your Mac
+# 5. Install SSHFS: brew install sshfs
+# 6. Try mounting again
 ```
 
 **Problem: "Transport endpoint is not connected"**
