@@ -15,7 +15,8 @@ export default defineConfig({
     lib: {
       entry: {
         index: resolve(__dirname, 'src/index.ts'),
-        'cli/backup': resolve(__dirname, 'src/cli/backup.ts')
+        'cli/backup': resolve(__dirname, 'src/cli/backup.ts'),
+        'cli/migrate': resolve(__dirname, 'src/cli/migrate.ts')
       },
       formats: ['es']
     },
