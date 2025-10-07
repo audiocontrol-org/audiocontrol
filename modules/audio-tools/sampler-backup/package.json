@@ -25,7 +25,7 @@
     "test:watch": "vitest --watch",
     "clean": "rm -rf dist *.tsbuildinfo",
     "typecheck": "tsc --noEmit",
-    "backup:batch": "node dist/cli/backup.js sync --source pi-scsi2.local:/home/orion/images/ --device scsi0"
+    "backup:batch": "node dist/cli/backup.js sync --source pi-scsi2.local:/home/orion/images/ --device images"
   },
   "keywords": [
     "akai",

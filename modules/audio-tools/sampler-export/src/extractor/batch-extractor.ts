@@ -1,12 +1,11 @@
 /**
  * Batch Akai Disk Extractor
  *
- * Automatically discovers and extracts Akai disk images from well-known directories,
- * with smart timestamp-based change detection and BorgBackup integration.
+ * Automatically discovers and extracts Akai disk images from rsync-based backups
+ * with smart timestamp-based change detection.
  *
- * Supports both traditional directory-based backups and BorgBackup repositories.
- * When a Borg repository is detected, automatically restores the latest archives
- * before extraction.
+ * Works with hierarchical rsync backup structure:
+ * ~/.audiotools/backup/{sampler}/{device}/*.hds
  *
  * @module extractor/batch-extractor
  */
@@ -14,7 +13,6 @@
 import { existsSync, readdirSync, statSync } from "fs";
 import { join, basename, extname, resolve } from "pathe";
 import { homedir } from "os";
-import { execSync } from "child_process";
 import { extractAkaiDisk, ExtractionResult } from "@/extractor/disk-extractor.js";
 
 /**
@@ -159,41 +157,26 @@ function getDefaultDestDir(): string {
     return resolve(homedir(), ".audiotools", "sampler-export", "extracted");
 }
 
-/**
- * Get the rsnapshot interval directory
- *
- * @param backupRoot - Root backup directory
- * @param interval - rsnapshot interval name (default: "daily.0" for most recent)
- * @returns Path to interval directory
- *
- * @remarks
- * rsnapshot uses rotating interval directories:
- * - daily.0 - Most recent daily backup
- * - daily.1 - Previous daily backup
- * - weekly.0 - Most recent weekly backup
- *
- * @internal
- */
-function getRsnapshotIntervalDir(backupRoot: string, interval: string = "daily.0"): string {
-    return join(backupRoot, interval);
-}
 
 /**
- * Map sampler type to backup directory name
+ * Map sampler type to backup directory and device
  *
  * @param samplerType - Sampler type identifier
- * @returns Backup directory name used in rsnapshot structure
+ * @returns Object with sampler and device directory names
  *
  * @remarks
- * Maps logical sampler types to actual backup directory names:
- * - "s5k" → "pi-scsi2" (S5000/S6000 connected via PiSCSI)
- * - "s3k" → "s3k" (S3000 sampler)
+ * Maps logical sampler types to actual backup directory structure:
+ * - "s5k" → { sampler: "pi-scsi2", device: "images" } (S5000/S6000 connected via PiSCSI)
+ * - "s3k" → { sampler: "s3k", device: "floppy" } (S3000 sampler with floppy)
  *
  * @internal
  */
-function getSamplerBackupDir(samplerType: SamplerType): string {
-    // Map s5k to pi-scsi2 (S5000/S6000 connected via PiSCSI)
-    return samplerType === "s5k" ? "pi-scsi2" : "s3k";
+function getSamplerBackupPath(samplerType: SamplerType): { sampler: string; device: string } {
+    // Map s5k to pi-scsi2/images (S5000/S6000 connected via PiSCSI)
+    // Map s3k to s3k/floppy (S3000 sampler with floppy emulator)
+    return samplerType === "s5k"
+        ? { sampler: "pi-scsi2", device: "images" }
+        : { sampler: "s3k", device: "floppy" };
 }
 
 /**
@@ -235,25 +218,24 @@ function findDiskImagesRecursive(dir: string, results: string[] = []): string[] 
 }
 
 /**
- * Find all disk images in rsnapshot backup structure
+ * Find all disk images in rsync backup structure
  *
  * @param sourceDir - Root backup directory
  * @param samplerType - Type of sampler to search for
  * @returns Sorted array of disk image paths
  *
  * @remarks
- * Rsnapshot preserves full remote path structure, so disk images may be deeply nested.
- * Example structure: sourceDir/daily.0/pi-scsi2/home/orion/images/*.hds
+ * Rsync structure: sourceDir/{sampler}/{device}/*.hds
+ * Example: ~/.audiotools/backup/pi-scsi2/images/*.hds
  *
  * Returns empty array if backup directory doesn't exist.
  *
  * @internal
  */
 function findDiskImages(sourceDir: string, samplerType: SamplerType): string[] {
-    // Rsnapshot structure: sourceDir/daily.0/pi-scsi2/home/orion/images/*.hds
-    const intervalDir = getRsnapshotIntervalDir(sourceDir);
-    const backupDir = getSamplerBackupDir(samplerType);
-    const diskDir = join(intervalDir, backupDir);
+    // Rsync structure: sourceDir/{sampler}/{device}/*.hds
+    const { sampler, device } = getSamplerBackupPath(samplerType);
+    const diskDir = join(sourceDir, sampler, device);
 
     if (!existsSync(diskDir)) {
         return [];
@@ -347,144 +329,31 @@ function needsExtraction(
     }
 }
 
-/**
- * Check if a directory is a Borg repository
- *
- * @param path - Path to check
- * @returns True if path is a Borg repository
- *
- * @remarks
- * Checks for Borg repository metadata by running `borg info` command
- *
- * @internal
- */
-function isBorgRepository(path: string): boolean {
-    try {
-        // Check if borg is installed
-        execSync('which borg', { stdio: 'ignore' });
-
-        // Check if path is a valid Borg repository
-        execSync(`borg info "${path}"`, { stdio: 'ignore' });
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-/**
- * Find the most recent daily archive for a specific source
- *
- * @param repoPath - Path to Borg repository
- * @param sourceId - Source identifier (e.g., "pi-scsi2", "s3k", "local-media")
- * @returns Archive name or null if not found
- *
- * @remarks
- * Archive names are in format: daily-2025-10-06T12:34:56-pi-scsi2
- * Searches for archives matching the source ID and returns the most recent
- *
- * @internal
- */
-function findLatestBorgArchive(repoPath: string, sourceId: string): string | null {
-    try {
-        // List all archives in JSON format
-        const output = execSync(`borg list --json "${repoPath}"`, {
-            encoding: 'utf-8',
-            stdio: ['ignore', 'pipe', 'ignore']
-        });
-
-        const data = JSON.parse(output);
-        const archives = data.archives || [];
-
-        // Filter for daily archives matching this source
-        const matching = archives
-            .filter((arch: any) => {
-                const name = arch.name;
-                return name.startsWith('daily-') && name.endsWith(`-${sourceId}`);
-            })
-            .sort((a: any, b: any) => {
-                // Sort by timestamp (newest first)
-                return new Date(b.time).getTime() - new Date(a.time).getTime();
-            });
-
-        if (matching.length > 0) {
-            return matching[0].name;
-        }
-
-        return null;
-    } catch (error: any) {
-        console.warn(`Warning: Failed to list Borg archives: ${error.message}`);
-        return null;
-    }
-}
-
-/**
- * Restore a Borg archive to the expected daily.0 directory structure
- *
- * @param repoPath - Path to Borg repository
- * @param archiveName - Archive name to restore
- * @param destDir - Destination directory (daily.0 parent)
- * @returns True if restore succeeded
- *
- * @remarks
- * Restores archive to destDir/daily.0/ to match rsnapshot structure
- *
- * @internal
- */
-function restoreBorgArchive(repoPath: string, archiveName: string, destDir: string): boolean {
-    try {
-        const daily0Dir = join(destDir, 'daily.0');
-
-        console.log(`Restoring Borg archive: ${archiveName}`);
-        console.log(`  Destination: ${daily0Dir}`);
-
-        // Create destination directory
-        execSync(`mkdir -p "${daily0Dir}"`, { stdio: 'inherit' });
-
-        // Restore archive (borg extract extracts to current directory)
-        execSync(`cd "${daily0Dir}" && borg extract "${repoPath}::${archiveName}"`, {
-            stdio: 'inherit',
-            shell: '/bin/bash'
-        });
-
-        console.log('  Restore complete\n');
-        return true;
-    } catch (error: any) {
-        console.error(`Failed to restore Borg archive: ${error.message}`);
-        return false;
-    }
-}
 
 /**
  * Extract a batch of Akai disk images with smart change detection
  *
- * Automatically discovers disk images in backup directory structure and extracts
+ * Automatically discovers disk images in rsync backup directory structure and extracts
  * only changed disks using timestamp comparison. Supports both S3K and S5K samplers.
  *
  * The function performs:
- * 1. BorgBackup detection and automatic restore (if applicable)
- * 2. Disk discovery from backup directories
- * 3. Timestamp-based change detection
- * 4. Parallel extraction of changed disks
- * 5. Aggregate statistics reporting
- * 6. Detailed per-disk status tracking
+ * 1. Disk discovery from rsync backup directories
+ * 2. Timestamp-based change detection
+ * 3. Parallel extraction of changed disks
+ * 4. Aggregate statistics reporting
+ * 5. Detailed per-disk status tracking
  *
  * @param options - Batch extraction configuration options
  * @returns Promise resolving to batch extraction results with statistics
  *
  * @remarks
- * BorgBackup Integration:
- * If ~/.audiotools/borg-repo exists and is a valid Borg repository, the function
- * automatically restores the latest daily archives for each sampler type to
- * ~/.audiotools/backup/daily.0/ before extraction.
- *
- * Expected directory structure after restore:
+ * Expected rsync backup structure:
  * ```
  * ~/.audiotools/backup/
- *   daily.0/
- *     pi-scsi2/          # S5K/S6K backups
- *       home/orion/images/*.hds
- *     s3k/               # S3K backups
- *       *.hds
+ *   pi-scsi2/            # S5K/S6K backups
+ *     images/*.hds
+ *   s3k/                 # S3K backups
+ *     floppy/*.img
  * ```
  *
  * Output directory structure:
@@ -570,30 +439,6 @@ export async function extractBatch(
         details: [],
     };
 
-    // Check if backup directory is a Borg repository
-    const borgRepoPath = resolve(homedir(), ".audiotools", "borg-repo");
-    if (isBorgRepository(borgRepoPath)) {
-        console.log("Detected BorgBackup repository");
-        console.log(`Repository: ${borgRepoPath}\n`);
-
-        // Restore latest archives for each sampler type
-        for (const samplerType of samplerTypes) {
-            const sourceId = getSamplerBackupDir(samplerType);
-            const archiveName = findLatestBorgArchive(borgRepoPath, sourceId);
-
-            if (archiveName) {
-                console.log(`Found latest archive for ${samplerType}: ${archiveName}`);
-                const restored = restoreBorgArchive(borgRepoPath, archiveName, sourceDir);
-
-                if (!restored) {
-                    console.error(`Failed to restore ${samplerType} archive, skipping this sampler type`);
-                }
-            } else {
-                console.log(`No archives found for ${samplerType} (source: ${sourceId})`);
-            }
-        }
-    }
-
     console.log("Scanning for disk images...");
 
     // Discover all disks
@@ -618,10 +463,10 @@ export async function extractBatch(
     if (disks.length === 0) {
         console.log("No disk images found.");
         console.log(`  Looking in: ${sourceDir}`);
-        console.log(`  Expected structure: ${sourceDir}/daily.0/pi-scsi2/**/*.hds (for S5K)`);
-        console.log(`  Note: rsnapshot preserves full remote path structure`);
-        console.log(`  Default location: ~/.audiotools/backup/ (rsnapshot backup root)`);
-        console.log(`  Run 'akai-backup batch' to create backups first`);
+        console.log(`  Expected structure: ${sourceDir}/pi-scsi2/images/*.hds (for S5K)`);
+        console.log(`                      ${sourceDir}/s3k/floppy/*.img (for S3K)`);
+        console.log(`  Default location: ~/.audiotools/backup/`);
+        console.log(`  Run 'pnpm backup:batch' in sampler-backup to create backups first`);
         return result;
     }
 

@@ -200,13 +200,13 @@ program
     .version("1.0.0")
     .addHelpText('after', `
 Examples:
-  Remote (SSH) backup:
-    $ akai-backup sync --source pi-scsi2.local:/home/orion/images/ --device scsi0
-    $ akai-backup sync --source pi@host:/images --device scsi1
+  Remote (SSH) backup - PiSCSI:
+    $ akai-backup sync --source pi-scsi2.local:/home/orion/images/ --device images
+    $ akai-backup sync --source pi@host:/data/images --device images
 
   Local media backup:
     $ akai-backup sync --source /Volumes/DSK0 --sampler s5k-studio --device floppy
-    $ akai-backup sync --source /Volumes/GOTEK --sampler s3k-zulu --device scsi0
+    $ akai-backup sync --source /Volumes/GOTEK --sampler s3k-zulu --device floppy
 
   List synced backups:
     $ akai-backup list --all
@@ -216,18 +216,13 @@ Examples:
 Directory Structure:
   ~/.audiotools/backup/
   ├── pi-scsi2/              # Remote sampler (hostname)
-  │   ├── scsi0/             # SCSI ID 0
-  │   │   ├── HD1.hds
-  │   │   └── HD2.hds
-  │   ├── scsi1/             # SCSI ID 1
-  │   │   └── HD3.hds
-  │   └── floppy/            # Floppy emulator
-  │       └── DSK0.img
+  │   └── images/            # PiSCSI disk images directory
+  │       ├── HD0.hds
+  │       ├── HD1.hds
+  │       └── akai.img
   └── s5k-studio/            # Local sampler (via --sampler)
-      ├── scsi0/
-      │   └── samples.hds
-      └── floppy/
-          └── sounds.img
+      └── floppy/            # Floppy emulator
+          └── DSK0.img
 
 Requirements:
   - rsync: Installed by default on macOS and most Linux systems
