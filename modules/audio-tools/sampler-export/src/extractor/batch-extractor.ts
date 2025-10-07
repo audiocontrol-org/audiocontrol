@@ -202,14 +202,13 @@ function discoverAllDiskImages(sourceDir: string): DiskInfo[] {
                 // Detect sampler type from disk format, not directory name
                 const samplerType = detectSamplerType(diskPath);
 
-                if (samplerType !== 'unknown') {
-                    disks.push({
-                        path: diskPath,
-                        name: basename(diskPath, extname(diskPath)),
-                        samplerType,
-                        mtime: diskStat.mtime,
-                    });
-                }
+                // Include all disk types - let the extractor handle format detection
+                disks.push({
+                    path: diskPath,
+                    name: basename(diskPath, extname(diskPath)),
+                    samplerType,
+                    mtime: diskStat.mtime,
+                });
             } catch {
                 // Skip unreadable disks
             }
