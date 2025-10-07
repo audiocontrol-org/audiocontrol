@@ -173,22 +173,9 @@ export class SSHFSManager {
    */
   async isMounted(mountPoint: string): Promise<boolean> {
     try {
-      // Try to access the mount point
-      await fs.access(mountPoint);
-
-      // On Linux, check /proc/mounts
-      if (process.platform === 'linux') {
-        try {
-          const mounts = await fs.readFile('/proc/mounts', 'utf-8');
-          return mounts.includes(mountPoint);
-        } catch {
-          // /proc/mounts not accessible, fall back to stat check
-        }
-      }
-
-      // Check if directory is accessible (basic test)
-      const stat = await fs.stat(mountPoint);
-      return stat.isDirectory();
+      // Check mount table on all platforms
+      const { stdout } = await this.executeCommandWithOutput('mount', []);
+      return stdout.includes(mountPoint);
     } catch {
       return false;
     }
@@ -254,6 +241,42 @@ export class SSHFSManager {
       proc.on('close', (code) => {
         if (code === 0) {
           resolve();
+        } else {
+          reject(new Error(`${command} failed with exit code ${code}: ${stderr}`));
+        }
+      });
+
+      proc.on('error', (error) => {
+        reject(error);
+      });
+    });
+  }
+
+  /**
+   * Execute command and return stdout
+   *
+   * @param command Command to execute
+   * @param args Command arguments
+   * @returns Promise that resolves with stdout
+   */
+  private executeCommandWithOutput(command: string, args: string[]): Promise<{ stdout: string }> {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(command, args);
+
+      let stdout = '';
+      let stderr = '';
+
+      proc.stdout.on('data', (data) => {
+        stdout += data.toString();
+      });
+
+      proc.stderr.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      proc.on('close', (code) => {
+        if (code === 0) {
+          resolve({ stdout });
         } else {
           reject(new Error(`${command} failed with exit code ${code}: ${stderr}`));
         }
