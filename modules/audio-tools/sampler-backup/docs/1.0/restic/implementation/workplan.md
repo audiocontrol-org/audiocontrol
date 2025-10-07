@@ -1,8 +1,27 @@
 # Restic Implementation Workplan
 
 **Version:** 1.0
-**Status:** Research Complete - Implementation Pending
+**Status:** ⚠️ DEPRECATED - Not Implemented
 **Date:** 2025-10-06
+**Deprecation Date:** 2025-10-06
+
+---
+
+## ⚠️ DEPRECATION NOTICE
+
+**This implementation plan has been DEPRECATED and will not be implemented.**
+
+**Reason:** We chose **BorgBackup with SSHFS** (Option 3) instead of Restic for the following reasons:
+1. BorgBackup is already integrated and working
+2. SSHFS + Borg provides excellent incremental efficiency
+3. Simpler architecture with fewer moving parts
+4. No need to install additional tools on remote hosts
+
+**See instead:** [BorgBackup with SSHFS Implementation](../borg-native-ssh/implementation/workplan.md) (IMPLEMENTED)
+
+---
+
+## Original Document (For Historical Reference)
 
 ## Executive Summary
 
