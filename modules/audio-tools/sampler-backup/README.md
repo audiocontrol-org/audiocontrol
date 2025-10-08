@@ -1,6 +1,6 @@
 # @oletizi/sampler-backup
 
-**Efficient, deduplicated backups for Akai hardware samplers via BorgBackup.**
+**Simple, reliable backups for Akai hardware samplers via rsync.**
 
 ## Installation
 
@@ -20,29 +20,28 @@ See the [Installation Guide](../docs/1.0/INSTALLATION.md) for more options, trou
 
 ## Purpose
 
-The `sampler-backup` package provides reliable, space-efficient backups for vintage Akai hardware samplers. It uses BorgBackup to create automated incremental backups from remote devices (via SSH/PiSCSI) or local media (SD cards, USB drives), ensuring decades of sampled instruments are preserved safely with block-level deduplication and compression.
+The `sampler-backup` package provides reliable backups for vintage Akai hardware samplers. It uses rsync to create synchronized backups from remote devices (via SSH/PiSCSI) or local media (SD cards, USB drives), ensuring decades of sampled instruments are preserved safely with efficient file-level synchronization.
 
 ## Philosophy
 
-**Incremental preservation with minimal space.** Rather than copying entire disk images repeatedly, this library provides:
+**Simple, reliable file synchronization.** Rather than complex archiving systems, this library provides:
 
-- **Block-level deduplication**: Borg automatically deduplicates identical data blocks across all backups
-- **Efficient compression**: zstd compression provides excellent balance of speed and ratio
-- **Intelligent same-day resume**: Prevents duplicate backups if interrupted and resumed
+- **File-level synchronization**: rsync transfers only changed files efficiently
+- **Fast delta transfers**: Only differences in modified files are transmitted
+- **Simple directory structure**: Organized by sampler name and device for easy access
 - **Remote-first design**: SSH-based backup from hardware via PiSCSI or similar SCSI emulators
 - **Local media support**: Direct backup from SD cards and USB drives for floppy/SCSI emulators
-- **Configurable retention**: Daily, weekly, and monthly intervals with customizable retention policies
-- **Extreme efficiency**: Block-level deduplication means unchanged disk images transfer only metadata
+- **Zero configuration**: No repository initialization or complex setup required
+- **Universal availability**: rsync is pre-installed on macOS and most Linux systems
 
 ## Quick Start
 
 ### Installation
 
 ```bash
-# Install BorgBackup (required dependency)
-brew install borgbackup          # macOS
-# or
-sudo apt install borgbackup      # Linux
+# rsync is pre-installed on macOS and most Linux distributions
+# Verify installation:
+rsync --version
 
 # Install package from monorepo
 pnpm --filter @oletizi/sampler-backup build
@@ -51,29 +50,20 @@ pnpm --filter @oletizi/sampler-backup build
 ### Basic Usage
 
 ```bash
-# Backup from default remote sources (pi-scsi2.local, s3k.local)
-akai-backup backup
+# Sync from remote PiSCSI device
+akai-backup sync --source pi-scsi2.local:/home/orion/images/ --device images
 
-# Backup from local SD card
-akai-backup backup --source /Volumes/SDCARD
+# Sync from local SD card (Gotek/ZuluSCSI)
+akai-backup sync --source /Volumes/SDCARD --sampler s5k-studio --device floppy
 
-# Backup from custom SSH host
-akai-backup backup --source pi@myhost.local:/home/orion/images/
+# List all synced backups
+akai-backup list --all
 
-# List all backup archives
-akai-backup list
+# List specific sampler
+akai-backup list --sampler pi-scsi2
 
-# Show repository statistics
-akai-backup info
-
-# Restore an archive
-akai-backup restore daily-2025-10-06-pi-scsi2 /tmp/restored
-
-# Check repository integrity
-akai-backup check
-
-# Prune old archives manually
-akai-backup prune
+# List specific device
+akai-backup list --sampler s5k-studio --device floppy
 ```
 
 ### Local Media Support
@@ -85,67 +75,62 @@ akai-backup prune
 **Gotek Floppy Emulator:**
 ```bash
 # Remove SD card from Gotek, insert into computer
-akai-backup backup --source /Volumes/GOTEK --subdir gotek-s3000xl
+akai-backup sync --source /Volumes/GOTEK --sampler s3k-gotek --device floppy
 ```
 
 **ZuluSCSI SCSI Emulator:**
 ```bash
 # Remove SD card from ZuluSCSI, insert into computer
-akai-backup backup --source /Volumes/ZULUSCSI --subdir zulu-s5000
+akai-backup sync --source /Volumes/ZULUSCSI --sampler s5k-zulu --device scsi0
 ```
 
 **USB Drive:**
 ```bash
 # Direct backup from any USB drive with disk images
-akai-backup backup --source /Volumes/USB_DRIVE --subdir my-backups
+akai-backup sync --source /Volumes/USB_DRIVE --sampler my-sampler --device usb
 ```
 
 **Features:**
 - Auto-detects `.hds`, `.img`, and `.iso` files
-- Block-level deduplication (unchanged files = near-zero transfer)
-- Compression with zstd
+- Efficient delta transfers (only changed bytes transmitted)
+- Simple directory structure for easy access
 - Cross-platform (macOS and Linux)
 
-## Why BorgBackup?
+## Why rsync?
 
-**Migration from rsnapshot:** Version 1.0 migrated from rsnapshot to BorgBackup for superior efficiency and features:
+**Simple and reliable:** rsync provides straightforward file synchronization without complex setup:
 
 ### Key Advantages
 
-- **Block-level deduplication**: Borg deduplicates at the chunk level, not file level. Unchanged 4GB disk images transfer only a few KB of metadata.
-- **Efficient compression**: zstd compression provides excellent balance of speed and compression ratio
-- **Single repository**: All archives stored in one repository with automatic deduplication across all backups
-- **Integrity verification**: Built-in `borg check` ensures repository consistency
-- **Encryption support**: Optional encryption for sensitive data (disabled by default for simplicity)
-- **SSH-native**: Direct SSH support without requiring remote rsync installation
+- **File-level delta transfers**: Only changed portions of files are transmitted
+- **Universal availability**: Pre-installed on macOS and most Linux distributions
+- **Simple directory structure**: Direct access to files without extraction or restore commands
+- **Zero configuration**: No repository initialization or setup required
+- **SSH-native**: Efficient remote synchronization over SSH
+- **Proven reliability**: Decades of use in backup systems worldwide
 
-### Efficiency Gains
+### Efficiency
 
-BorgBackup's block-level deduplication provides dramatic efficiency improvements:
+rsync's delta-transfer algorithm provides efficient backups:
 
-- **Unchanged disk images**: Transfer ~10KB metadata instead of 4GB
-- **Small changes**: Only modified blocks transferred (e.g., 5MB change in 4GB image = 5MB transfer)
-- **Cross-archive deduplication**: Identical blocks shared across all archives automatically
-- **Compression**: zstd typically achieves 20-40% compression on disk images
+- **Unchanged files**: Skipped entirely (no transfer)
+- **Modified files**: Only changed bytes transferred using rolling checksums
+- **Direct access**: Files stored in normal directories, no special tools needed
+- **Incremental by default**: Only differences transferred on each run
 
-**Example:** Backing up 100GB of mostly-unchanged disk images daily:
-- **rsnapshot**: ~100GB storage per backup (hard links help but still copy changed files entirely)
-- **BorgBackup**: ~100GB for first backup, then ~100MB-1GB per day for typical changes
+**Example:** Syncing 100GB of mostly-unchanged disk images:
+- **First sync**: Full 100GB transfer
+- **Subsequent syncs**: Only modified bytes (typically 100MB-1GB for daily changes)
+- **Storage**: Latest version always available in simple directory structure
 
 ## Architecture
 
 ```
 ┌──────────────────────┐
 │ akai-backup CLI      │  Command-line interface
-│  backup              │  - backup, batch, list, info
-│  list, info          │  - restore, check, prune
-│  restore, check      │
-│  prune               │
+│  sync / backup       │  - sync, backup (alias)
+│  list                │  - list backups
 └──────────┬───────────┘
-           │
-    ┌──────▼──────────────┐
-    │ BackupSourceFactory │  Create appropriate source
-    └──────┬──────────────┘
            │
      ┌─────┴──────┐
      │            │
@@ -157,31 +142,26 @@ BorgBackup's block-level deduplication provides dramatic efficiency improvements
      └─────┬─────┘
            │
     ┌──────▼───────────┐
-    │ BorgBackupAdapter│  Core Borg integration
-    │  - initRepository│  - Execute borg commands
-    │  - createArchive │  - Handle progress
-    │  - listArchives  │  - Parse statistics
-    │  - restoreArchive│
-    │  - pruneArchives │
-    │  - checkRepository│
+    │ rsync            │  Synchronize files
+    │  - delta xfer    │  - Only changed bytes
+    │  - SSH support   │  - Direct file access
+    │  - checksum      │
     └──────┬───────────┘
            │
-    ┌──────▼───────┐
-    │ BorgBackup   │  System borg binary
-    │  - dedupe    │  (installed via brew/apt)
-    │  - compress  │
-    │  - encrypt   │
-    └──────────────┘
+    ┌──────▼───────────┐
+    │ Backup Directory │  Simple directory structure
+    │  ~/.audiotools/  │  - sampler/device/files
+    │  backup/         │  - Direct access
+    └──────────────────┘
 ```
 
 ### Component Overview
 
-- **CLI** (`src/cli/backup.ts`): Commander-based interface with all commands
-- **BackupSourceFactory** (`src/sources/backup-source-factory.ts`): Creates RemoteSource or LocalSource based on path
-- **RemoteSource** (`src/sources/remote-source.ts`): SSH-based backup using Borg over SSH
+- **CLI** (`src/cli/backup.ts`): Commander-based interface with sync and list commands
+- **RemoteSource** (`src/sources/remote-source.ts`): SSH-based backup using rsync over SSH
 - **LocalSource** (`src/sources/local-source.ts`): Local media backup with MediaDetector for auto-discovery
-- **BorgBackupAdapter** (`src/backup/borg-backup-adapter.ts`): Core Borg integration with full API
 - **MediaDetector** (`src/media/media-detector.ts`): Auto-discovers disk images on local media
+- **rsync**: System rsync binary (pre-installed on macOS/Linux)
 
 ## Configuration
 
@@ -189,122 +169,97 @@ BorgBackup's block-level deduplication provides dramatic efficiency improvements
 
 ```typescript
 {
-  repoPath: '~/.audiotools/borg-repo',
-  compression: 'zstd',              // Balanced speed/ratio
-  encryption: 'none',               // Local trust model
-  retention: {
-    daily: 7,                       // Keep last 7 daily backups
-    weekly: 4,                      // Keep last 4 weekly backups
-    monthly: 12                     // Keep last 12 monthly backups
-  }
+  backupRoot: '~/.audiotools/backup',  // Root backup directory
 }
 ```
 
-### Default Remote Sources
+### Directory Structure
 
-```typescript
-[
-  'pi@pi-scsi2.local:/home/orion/images/',
-  'pi@s3k.local:/home/orion/images/'
-]
+Backups are organized hierarchically:
+
+```
+~/.audiotools/backup/
+├── pi-scsi2/              # Sampler name (from hostname or --sampler)
+│   └── images/            # Device name (from --device)
+│       ├── HD0.hds
+│       ├── HD1.hds
+│       └── akai.img
+└── s5k-studio/            # Another sampler
+    └── floppy/            # Floppy emulator device
+        └── DSK0.img
 ```
 
-### Custom Configuration
-
-Override defaults with command-line flags:
+### Command-Line Options
 
 ```bash
-# Use custom source
-akai-backup backup --source /custom/path
+# Sync with required options
+akai-backup sync --source <path> --device <name>
 
-# Use custom subdirectory name
-akai-backup backup --source /Volumes/SD --subdir my-backup
+# Optional sampler name (required for local, auto-detected for remote)
+akai-backup sync --source /Volumes/SD --sampler my-sampler --device floppy
 
-# Custom retention policy
-akai-backup prune --daily 14 --weekly 8 --monthly 24
+# Dry run to preview changes
+akai-backup sync --source <path> --device <name> --dry-run
 ```
 
 ## CLI Commands
 
-### `akai-backup backup [interval]`
+### `akai-backup sync`
 
-Run backup from remote hosts or local media.
+Synchronize disk images from source to backup directory.
 
 ```bash
-# Default sources, daily interval
-akai-backup backup
+# Remote PiSCSI backup
+akai-backup sync --source pi-scsi2.local:/home/orion/images/ --device images
 
-# Weekly backup (promotes daily archives)
-akai-backup backup weekly
+# Remote with custom sampler name
+akai-backup sync --source pi@host:/data --device scsi0 --sampler my-s5000
 
-# Monthly backup (promotes weekly archives)
-akai-backup backup monthly
+# Local SD card backup
+akai-backup sync --source /Volumes/SDCARD --sampler s5k-studio --device floppy
 
-# Custom source
-akai-backup backup --source /Volumes/SDCARD --subdir my-s3000
+# Dry run (preview only)
+akai-backup sync --source /Volumes/USB --sampler test --device usb --dry-run
 ```
 
-### `akai-backup batch`
+**Required Options:**
+- `--source <path>`: Source path (local directory or remote SSH path)
+- `--device <name>`: Device identifier (images, scsi0, floppy, etc.)
 
-Alias for `akai-backup backup daily`. Perfect for cron jobs.
+**Optional:**
+- `--sampler <name>`: Sampler identifier (required for local, auto-detected for remote)
+- `--dry-run`: Preview changes without actually syncing
+
+### `akai-backup backup`
+
+Alias for `sync` command. Same options and behavior.
 
 ```bash
-akai-backup batch
+akai-backup backup --source <path> --device <name>
 ```
 
-### `akai-backup list [--json]`
+### `akai-backup list`
 
-List all backup archives in repository.
+List all synced backups with file counts and sizes.
 
 ```bash
-# Human-readable list
-akai-backup list
+# List all samplers and devices
+akai-backup list --all
+
+# List specific sampler
+akai-backup list --sampler pi-scsi2
+
+# List specific device
+akai-backup list --sampler s5k-studio --device floppy
 
 # JSON output
 akai-backup list --json
 ```
 
-### `akai-backup info`
-
-Show repository statistics and information.
-
-```bash
-akai-backup info
-```
-
-Output includes:
-- Repository ID and path
-- Archive count
-- Total size (original, compressed, deduplicated)
-- Compression and deduplication ratios
-
-### `akai-backup restore <archive> <destination>`
-
-Restore a specific archive to destination directory.
-
-```bash
-akai-backup restore daily-2025-10-06-pi-scsi2 /tmp/restored
-```
-
-### `akai-backup check`
-
-Verify repository integrity and consistency.
-
-```bash
-akai-backup check
-```
-
-### `akai-backup prune`
-
-Manually prune old archives based on retention policy.
-
-```bash
-# Use default retention
-akai-backup prune
-
-# Custom retention
-akai-backup prune --daily 14 --weekly 8 --monthly 24
-```
+**Output includes:**
+- Directory paths
+- File counts
+- Total sizes (formatted and raw)
 
 ## Supported Platforms
 
@@ -314,22 +269,11 @@ akai-backup prune --daily 14 --weekly 8 --monthly 24
 
 ## Requirements
 
-- **BorgBackup** >= 1.2.0 - Install via `brew install borgbackup` or `apt install borgbackup`
+- **rsync** - Pre-installed on macOS and most Linux distributions
 - **SSH access** to remote hosts (for remote backups)
 - **Node.js** >= 18
 
 ## Troubleshooting
-
-### Repository is locked
-
-```
-Error: Repository is locked by another process
-```
-
-**Solution:** Wait for other backup to complete, or if stuck:
-```bash
-borg break-lock ~/.audiotools/borg-repo
-```
 
 ### Cannot connect to remote host
 
@@ -341,6 +285,7 @@ Error: Cannot connect to remote host
 - Verify SSH connection: `ssh pi@pi-scsi2.local`
 - Check SSH config in `~/.ssh/config`
 - Ensure remote host is powered on and reachable
+- Test with password-less SSH keys: `ssh-copy-id pi@host`
 
 ### No space left on device
 
@@ -350,20 +295,31 @@ Error: Not enough disk space for backup
 
 **Solutions:**
 - Free up disk space on backup destination
-- Prune old archives: `akai-backup prune`
-- Change repository location to disk with more space
+- Check backup directory size: `du -sh ~/.audiotools/backup`
+- Delete old backups manually if needed
 
-### BorgBackup not installed
+### rsync not found
 
 ```
-Error: BorgBackup binary not found
+Error: rsync command not found
 ```
 
-**Solution:** Install BorgBackup:
+**Solution:** rsync should be pre-installed, but if missing:
 ```bash
-brew install borgbackup          # macOS
-sudo apt install borgbackup      # Linux
+brew install rsync          # macOS
+sudo apt install rsync      # Linux
 ```
+
+### Permission denied
+
+```
+Error: Permission denied
+```
+
+**Solutions:**
+- Verify file permissions on source directory
+- For remote hosts, ensure SSH user has read access
+- For local media, ensure mount point is readable
 
 ### No disk images found
 
@@ -375,35 +331,55 @@ No disk images found in source path
 - Verify source path is correct and mounted
 - Check for supported extensions: `.hds`, `.img`, `.iso`
 - Ensure SD card or USB drive is properly connected
+- List source directory: `ls -la /Volumes/SDCARD`
 
-## Migration from rsnapshot
+## Backup Strategy
 
-**IMPORTANT:** Version 1.0 completely replaced rsnapshot with BorgBackup. The old rsnapshot-based implementation is no longer supported.
+### How rsync Works
 
-### What Changed
+rsync uses a delta-transfer algorithm to efficiently synchronize files:
 
-- **Removed commands**: `akai-backup config` and `akai-backup test` (rsnapshot-specific)
-- **New backend**: BorgBackup instead of rsnapshot
-- **New commands**: `list`, `info`, `restore`, `check`, `prune`
-- **Configuration**: No more rsnapshot.conf, settings are now command-line flags
-- **Repository format**: Borg repositories (not rsnapshot directories)
+1. **File comparison**: Compares source and destination using size and modification time
+2. **Delta transfer**: For modified files, transfers only the changed bytes
+3. **Direct writes**: Updates files in place in the backup directory
+4. **Simple structure**: Files stored in regular directories, no special format
 
-### Migration Steps
+### Recommended Workflow
 
-If you have existing rsnapshot backups:
+**For Remote PiSCSI devices:**
+```bash
+# Regular syncs (weekly or after major changes)
+akai-backup sync --source pi-scsi2.local:/home/orion/images/ --device images
+```
 
-1. **Keep your old rsnapshot backups** - They're still valid for restoration
-2. **Start fresh with Borg** - Run `akai-backup backup` to create new Borg repository
-3. **Verify new backups** - Use `akai-backup list` to confirm archives
-4. **Archive old rsnapshot data** - After verifying Borg backups work, you can archive old `~/.audiotools/backup/` directory
+**For Local Media (Gotek/ZuluSCSI):**
+```bash
+# After each session, sync the SD card
+akai-backup sync --source /Volumes/GOTEK --sampler s3k-studio --device floppy
+```
 
-### Why Migrate?
+### Accessing Backed-Up Files
 
-- **Block-level deduplication**: Save massive amounts of storage and bandwidth
-- **Better compression**: zstd compression is faster and more efficient
-- **Simpler configuration**: No config files to manage
-- **Built-in integrity checks**: `borg check` verifies backup integrity
-- **Better error handling**: Clearer error messages and recovery
+Files are stored in a simple directory structure and can be accessed directly:
+
+```bash
+# Navigate to backups
+cd ~/.audiotools/backup
+
+# Copy a disk image
+cp pi-scsi2/images/HD0.hds /tmp/
+
+# Use with sampler-export
+akai-export extract ~/.audiotools/backup/pi-scsi2/images/HD0.hds
+```
+
+### Storage Considerations
+
+- **First sync**: Full copy of all files
+- **Subsequent syncs**: Only changed bytes transferred
+- **Storage usage**: One copy of each file (latest version)
+- **No versioning**: Previous versions are overwritten
+- **Manual snapshots**: Use `cp -R` or Time Machine for versioning if needed
 
 **Documentation:**
 
@@ -442,7 +418,7 @@ Apache-2.0
 - [@oletizi/sampler-devices](https://www.npmjs.com/package/@oletizi/sampler-devices) - Akai device abstraction
 
 **External Dependencies:**
-- [BorgBackup](https://www.borgbackup.org/) - Deduplicating backup program with compression and encryption
+- [rsync](https://rsync.samba.org/) - Fast and versatile file copying tool with delta-transfer algorithm
 
 ---
 
