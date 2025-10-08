@@ -117,7 +117,7 @@ verify_binaries() {
   done
 
   if [ ${#missing[@]} -gt 0 ]; then
-    error "Binaries not found in PATH: ${missing[*]}"
+    warn "Binaries not found in PATH: ${missing[*]}"
     echo ""
     echo "Troubleshooting:"
     echo ""
@@ -141,7 +141,7 @@ verify_binaries() {
     if [[ "$add_to_path" =~ ^[Yy] ]]; then
       add_npm_to_path "$npm_prefix"
     else
-      exit 1
+      error "Installation incomplete. Please add npm bin directory to PATH and try again."
     fi
   fi
 
