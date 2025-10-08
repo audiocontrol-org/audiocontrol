@@ -319,10 +319,10 @@ run_installation() {
     success "Platform: $PLATFORM"
 
     # Check Node.js
-    check_nodejs
+    check_node
 
-    # Check BorgBackup
-    check_borgbackup
+    # Check npm
+    check_npm
 
     # Check disk space
     check_disk_space
