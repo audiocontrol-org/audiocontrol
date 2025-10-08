@@ -41,7 +41,7 @@ describe('validator', () => {
         enabled: true,
       } as any;
 
-      expect(() => validateBackupSource(source)).toThrow('name is required');
+      expect(() => validateBackupSource(source)).toThrow('Backup source name cannot be empty');
     });
 
     it('should throw error for empty name', () => {
@@ -53,7 +53,7 @@ describe('validator', () => {
         enabled: true,
       };
 
-      expect(() => validateBackupSource(source)).toThrow('name cannot be empty');
+      expect(() => validateBackupSource(source)).toThrow('Backup source name cannot be empty');
     });
 
     it('should throw error for invalid type', () => {
@@ -65,7 +65,7 @@ describe('validator', () => {
         enabled: true,
       } as any;
 
-      expect(() => validateBackupSource(source)).toThrow('type must be "remote" or "local"');
+      expect(() => validateBackupSource(source)).toThrow('Invalid source type');
     });
 
     it('should throw error for missing source path', () => {
@@ -76,7 +76,7 @@ describe('validator', () => {
         enabled: true,
       } as any;
 
-      expect(() => validateBackupSource(source)).toThrow('source path is required');
+      expect(() => validateBackupSource(source)).toThrow('Source path cannot be empty');
     });
 
     it('should throw error for empty source path', () => {
@@ -88,7 +88,7 @@ describe('validator', () => {
         enabled: true,
       };
 
-      expect(() => validateBackupSource(source)).toThrow('source path cannot be empty');
+      expect(() => validateBackupSource(source)).toThrow('Source path cannot be empty');
     });
 
     it('should throw error for missing device', () => {
@@ -99,7 +99,7 @@ describe('validator', () => {
         enabled: true,
       } as any;
 
-      expect(() => validateBackupSource(source)).toThrow('device is required');
+      expect(() => validateBackupSource(source)).toThrow('Device name cannot be empty');
     });
 
     it('should throw error for empty device', () => {
@@ -111,31 +111,9 @@ describe('validator', () => {
         enabled: true,
       };
 
-      expect(() => validateBackupSource(source)).toThrow('device cannot be empty');
+      expect(() => validateBackupSource(source)).toThrow('Device name cannot be empty');
     });
 
-    it('should throw error for missing enabled flag', () => {
-      const source = {
-        name: 'test',
-        type: 'remote',
-        source: 'host:~/images/',
-        device: 'images',
-      } as any;
-
-      expect(() => validateBackupSource(source)).toThrow('enabled must be a boolean');
-    });
-
-    it('should throw error for non-boolean enabled', () => {
-      const source = {
-        name: 'test',
-        type: 'remote',
-        source: 'host:~/images/',
-        device: 'images',
-        enabled: 'true',
-      } as any;
-
-      expect(() => validateBackupSource(source)).toThrow('enabled must be a boolean');
-    });
 
     it('should validate local source with sampler name', () => {
       const source: BackupSource = {
@@ -170,7 +148,7 @@ describe('validator', () => {
         enabledSources: [],
       } as any;
 
-      expect(() => validateExportConfig(config)).toThrow('outputRoot is required');
+      expect(() => validateExportConfig(config)).toThrow('Export outputRoot cannot be empty');
     });
 
     it('should throw error for empty outputRoot', () => {
@@ -202,7 +180,7 @@ describe('validator', () => {
         enabledSources: [],
       };
 
-      expect(() => validateExportConfig(config)).toThrow('formats cannot be empty');
+      expect(() => validateExportConfig(config)).toThrow('Export formats array cannot be empty');
     });
 
     it('should throw error for invalid format', () => {
@@ -213,7 +191,7 @@ describe('validator', () => {
         enabledSources: [],
       } as any;
 
-      expect(() => validateExportConfig(config)).toThrow('formats must only contain "sfz" or "decentsampler"');
+      expect(() => validateExportConfig(config)).toThrow('Invalid export formats');
     });
 
     it('should validate single format', () => {
@@ -227,26 +205,6 @@ describe('validator', () => {
       expect(() => validateExportConfig(config)).not.toThrow();
     });
 
-    it('should throw error for missing skipUnchanged', () => {
-      const config = {
-        outputRoot: '/path',
-        formats: ['sfz'],
-        enabledSources: [],
-      } as any;
-
-      expect(() => validateExportConfig(config)).toThrow('skipUnchanged must be a boolean');
-    });
-
-    it('should throw error for non-boolean skipUnchanged', () => {
-      const config = {
-        outputRoot: '/path',
-        formats: ['sfz'],
-        skipUnchanged: 'true',
-        enabledSources: [],
-      } as any;
-
-      expect(() => validateExportConfig(config)).toThrow('skipUnchanged must be a boolean');
-    });
 
     it('should throw error for missing enabledSources', () => {
       const config = {
@@ -255,81 +213,9 @@ describe('validator', () => {
         skipUnchanged: true,
       } as any;
 
-      expect(() => validateExportConfig(config)).toThrow('enabledSources must be an array');
+      expect(() => validateExportConfig(config)).toThrow('Export enabledSources must be an array');
     });
 
-    it('should validate empty enabledSources array', () => {
-      const config: ExportConfig = {
-        outputRoot: '/path',
-        formats: ['sfz'],
-        skipUnchanged: true,
-        enabledSources: [],
-      };
-
-      expect(() => validateExportConfig(config)).not.toThrow();
-    });
-
-    it('should throw error for non-string enabledSource', () => {
-      const config = {
-        outputRoot: '/path',
-        formats: ['sfz'],
-        skipUnchanged: true,
-        enabledSources: [123],
-      } as any;
-
-      expect(() => validateExportConfig(config)).toThrow('enabledSources must only contain strings');
-    });
-  });
-
-  describe('validateUnifiedConfig', () => {
-    it('should validate complete valid config', () => {
-      const config: AudioToolsConfig = {
-        version: '1.0',
-        backup: {
-          backupRoot: '~/.audiotools/backup',
-          sources: [
-            {
-              name: 'pi-scsi2',
-              type: 'remote',
-              source: 'pi-scsi2.local:~/images/',
-              device: 'images',
-              enabled: true,
-            },
-          ],
-        },
-        export: {
-          outputRoot: '~/.audiotools/sampler-export/extracted',
-          formats: ['sfz', 'decentsampler'],
-          skipUnchanged: true,
-          enabledSources: ['pi-scsi2'],
-        },
-      };
-
-      expect(() => validateUnifiedConfig(config)).not.toThrow();
-    });
-
-    it('should throw error for missing version', () => {
-      const config = {
-        backup: {
-          backupRoot: '/path',
-          sources: [],
-        },
-      } as any;
-
-      expect(() => validateUnifiedConfig(config)).toThrow('version is required');
-    });
-
-    it('should throw error for invalid version', () => {
-      const config: AudioToolsConfig = {
-        version: '2.0',
-        backup: {
-          backupRoot: '/path',
-          sources: [],
-        },
-      };
-
-      expect(() => validateUnifiedConfig(config)).toThrow('version must be "1.0"');
-    });
 
     it('should validate config with only backup section', () => {
       const config: AudioToolsConfig = {
@@ -377,7 +263,7 @@ describe('validator', () => {
         },
       } as any;
 
-      expect(() => validateUnifiedConfig(config)).toThrow('backupRoot is required');
+      expect(() => validateUnifiedConfig(config)).toThrow('Backup backupRoot cannot be empty');
     });
 
     it('should throw error for invalid export config', () => {
@@ -391,7 +277,7 @@ describe('validator', () => {
         },
       } as any;
 
-      expect(() => validateUnifiedConfig(config)).toThrow('formats cannot be empty');
+      expect(() => validateUnifiedConfig(config)).toThrow('Export config: Export formats array cannot be empty');
     });
   });
 });

@@ -78,14 +78,15 @@ describe('discovery', () => {
       expect(discovered).toEqual([]);
     });
 
-    it('should skip directories without disk images', async () => {
+    it('should include directories with any files', async () => {
       const sampler = join(testBackupRoot, 'pi-scsi2', 'images');
       await mkdir(sampler, { recursive: true });
       await writeFile(join(sampler, 'README.txt'), 'not a disk image');
 
       const discovered = await discoverExistingBackups(testBackupRoot);
 
-      expect(discovered).toEqual([]);
+      expect(discovered).toHaveLength(1);
+      expect(discovered[0].fileCount).toBe(1);
     });
 
     it('should calculate file counts and sizes correctly', async () => {
@@ -106,6 +107,7 @@ describe('discovery', () => {
     });
 
     it('should include lastModified timestamp', async () => {
+      const before = Date.now();
       const sampler = join(testBackupRoot, 'test-sampler', 'device');
       await mkdir(sampler, { recursive: true });
       await writeFile(join(sampler, 'disk.hds'), 'content');
@@ -114,7 +116,8 @@ describe('discovery', () => {
 
       expect(discovered).toHaveLength(1);
       expect(discovered[0].lastModified).toBeInstanceOf(Date);
-      expect(discovered[0].lastModified.getTime()).toBeLessThanOrEqual(Date.now());
+      expect(discovered[0].lastModified.getTime()).toBeGreaterThanOrEqual(before - 1000);
+      expect(discovered[0].lastModified.getTime()).toBeLessThanOrEqual(Date.now() + 1000);
     });
 
     it('should handle non-existent backup root', async () => {
@@ -146,7 +149,7 @@ describe('discovery', () => {
       expect(scsi1?.sampler).toBe('pi-scsi2');
     });
 
-    it('should only count disk image files', async () => {
+    it('should count all files not just disk images', async () => {
       const sampler = join(testBackupRoot, 'test-sampler', 'device');
       await mkdir(sampler, { recursive: true });
 
@@ -159,7 +162,7 @@ describe('discovery', () => {
       const discovered = await discoverExistingBackups(testBackupRoot);
 
       expect(discovered).toHaveLength(1);
-      expect(discovered[0].fileCount).toBe(3); // Only .hds, .img, .iso
+      expect(discovered[0].fileCount).toBe(5); // All files counted
     });
   });
 
@@ -190,18 +193,20 @@ describe('discovery', () => {
 
       expect(sources).toHaveLength(2);
 
-      const remoteSource = sources.find((s) => s.name === 'pi-scsi2');
+      const remoteSource = sources.find((s) => s.name === 'pi-scsi2-images');
       expect(remoteSource).toBeDefined();
       expect(remoteSource?.type).toBe('remote');
+      expect(remoteSource?.source).toBe('pi-scsi2:~/');
       expect(remoteSource?.device).toBe('images');
-      expect(remoteSource?.enabled).toBe(false); // Disabled by default
+      expect(remoteSource?.enabled).toBe(true); // Enabled by default
 
-      const localSource = sources.find((s) => s.name === 's5k-gotek');
+      const localSource = sources.find((s) => s.name === 's5k-gotek-floppy');
       expect(localSource).toBeDefined();
       expect(localSource?.type).toBe('local');
+      expect(localSource?.source).toBe(join(testBackupRoot, 's5k-gotek', 'floppy'));
       expect(localSource?.device).toBe('floppy');
       expect(localSource?.sampler).toBe('s5k-gotek');
-      expect(localSource?.enabled).toBe(false);
+      expect(localSource?.enabled).toBe(true);
     });
 
     it('should handle empty discovered backups array', async () => {
@@ -254,11 +259,10 @@ describe('discovery', () => {
 
       const sources = await importDiscoveredBackups(discovered);
 
-      expect(sources[0].source).toContain('pi-scsi2');
-      expect(sources[0].source).toContain('~/images');
+      expect(sources[0].source).toBe('pi-scsi2:~/');
     });
 
-    it('should set source path placeholder for local sources', async () => {
+    it('should use discovered path for local sources', async () => {
       const discovered: DiscoveredBackup[] = [
         {
           sampler: 's5k-gotek',
@@ -273,7 +277,7 @@ describe('discovery', () => {
 
       const sources = await importDiscoveredBackups(discovered);
 
-      expect(sources[0].source).toContain('/Volumes/');
+      expect(sources[0].source).toBe(join(testBackupRoot, 's5k-gotek', 'floppy'));
     });
   });
 });

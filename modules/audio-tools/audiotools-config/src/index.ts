@@ -38,7 +38,6 @@ export {
 } from './config.js';
 
 // Export validation utilities
-export type { ValidationResult } from './validator.js';
 export {
   validateBackupSource,
   validateExportConfig,

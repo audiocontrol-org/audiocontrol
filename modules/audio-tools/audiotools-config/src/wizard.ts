@@ -376,11 +376,11 @@ export async function addBackupSourceWizard(
     enabled: answers.enableBackup,
   };
 
-  // Validate the source
-  const validation = validateBackupSource(newSource);
-  if (!validation.valid) {
-    console.error('\nValidation errors:');
-    validation.errors.forEach((error) => console.error(`  - ${error}`));
+  // Validate the source (will throw if invalid)
+  try {
+    validateBackupSource(newSource);
+  } catch (error) {
+    console.error('\nValidation error:', error instanceof Error ? error.message : String(error));
     throw new Error('Invalid backup source configuration');
   }
 
@@ -470,13 +470,13 @@ export async function editBackupSourceWizard(
   // Update the config
   const updatedConfig = updateBackupSource(config, sourceName, updates);
 
-  // Validate
+  // Validate updated source (will throw if invalid)
   const updatedSource = updatedConfig.backup?.sources.find((s) => s.name === sourceName);
   if (updatedSource) {
-    const validation = validateBackupSource(updatedSource);
-    if (!validation.valid) {
-      console.error('\nValidation errors:');
-      validation.errors.forEach((error) => console.error(`  - ${error}`));
+    try {
+      validateBackupSource(updatedSource);
+    } catch (error) {
+      console.error('\nValidation error:', error instanceof Error ? error.message : String(error));
       throw new Error('Invalid backup source configuration');
     }
   }

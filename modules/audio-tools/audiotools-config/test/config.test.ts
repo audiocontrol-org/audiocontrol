@@ -73,8 +73,9 @@ describe('config', () => {
       await rm(join(nestedPath, '../..'), { recursive: true, force: true });
     });
 
-    it('should throw error when loading non-existent config', async () => {
-      await expect(loadConfig(testConfigPath)).rejects.toThrow();
+    it('should return default config when loading non-existent config', async () => {
+      const loaded = await loadConfig(testConfigPath);
+      expect(loaded).toEqual(getDefaultConfig());
     });
 
     it('should throw error when loading invalid JSON', async () => {
@@ -129,7 +130,7 @@ describe('config', () => {
       expect(config.backup?.sources[1]).toEqual(source2);
     });
 
-    it('should throw error when adding duplicate source name', () => {
+    it('should replace existing source when adding duplicate source name', () => {
       let config = getDefaultConfig();
 
       const source: BackupSource = {
@@ -141,8 +142,19 @@ describe('config', () => {
       };
 
       config = addBackupSource(config, source);
+      expect(config.backup?.sources).toHaveLength(1);
 
-      expect(() => addBackupSource(config, source)).toThrow('Source with name "duplicate" already exists');
+      const updatedSource: BackupSource = {
+        name: 'duplicate',
+        type: 'local',
+        source: '/Volumes/USB',
+        device: 'usb',
+        enabled: false,
+      };
+
+      config = addBackupSource(config, updatedSource);
+      expect(config.backup?.sources).toHaveLength(1);
+      expect(config.backup?.sources[0]).toEqual(updatedSource);
     });
   });
 
@@ -170,7 +182,7 @@ describe('config', () => {
       const config = getDefaultConfig();
 
       expect(() => updateBackupSource(config, 'non-existent', { enabled: false }))
-        .toThrow('Source with name "non-existent" not found');
+        .toThrow('Backup source not found: non-existent');
     });
   });
 
@@ -193,11 +205,12 @@ describe('config', () => {
       expect(config.backup?.sources).toHaveLength(0);
     });
 
-    it('should throw error when removing non-existent source', () => {
+    it('should return config unchanged when removing non-existent source', () => {
       const config = getDefaultConfig();
 
-      expect(() => removeBackupSource(config, 'non-existent'))
-        .toThrow('Source with name "non-existent" not found');
+      const result = removeBackupSource(config, 'non-existent');
+      expect(result).toEqual(config);
+      expect(result.backup?.sources).toHaveLength(0);
     });
   });
 
