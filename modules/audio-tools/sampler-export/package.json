@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/sampler-export",
-  "version": "1.0.0-alpha.8",
+  "version": "1.0.0-alpha.9",
   "description": "Akai sampler disk extraction and format conversion tools",
   "main": "./dist/index.js",
   "exports": {
