@@ -2,6 +2,22 @@
 
 **Efficient, deduplicated backups for Akai hardware samplers via BorgBackup.**
 
+## Installation
+
+**Recommended: Use the installer (installs both backup and export packages)**
+
+```bash
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/latest/download/install.sh | bash
+```
+
+**Alternative: Install this package only**
+
+```bash
+npm install -g @oletizi/sampler-backup
+```
+
+See the [Installation Guide](../docs/1.0/INSTALLATION.md) for more options, troubleshooting, and system requirements.
+
 ## Purpose
 
 The `sampler-backup` package provides reliable, space-efficient backups for vintage Akai hardware samplers. It uses BorgBackup to create automated incremental backups from remote devices (via SSH/PiSCSI) or local media (SD cards, USB drives), ensuring decades of sampled instruments are preserved safely with block-level deduplication and compression.

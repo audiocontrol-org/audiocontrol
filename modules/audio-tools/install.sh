@@ -14,7 +14,24 @@ set -euo pipefail
 # =============================================================================
 
 # Installation version
-INSTALLER_VERSION="1.0.0"
+INSTALLER_VERSION="1.0.0-alpha.4"
+
+# =============================================================================
+# Version Compatibility
+# =============================================================================
+
+# Minimum compatible package version
+MIN_PACKAGE_VERSION="1.0.0-alpha.4"
+
+# Maximum compatible package version (empty = no max)
+MAX_PACKAGE_VERSION=""
+
+# Minimum Node.js version required
+MIN_NODE_VERSION="18"
+
+# GitHub repository for downloads
+GITHUB_REPO="oletizi/ol_dsp"
+INSTALLER_BASE_URL="https://github.com/${GITHUB_REPO}/releases/latest/download"
 
 # Base directory for audio tools
 export AUDIOTOOLS_DIR="${AUDIOTOOLS_DIR:-$HOME/.audiotools}"
@@ -88,6 +105,73 @@ clear_install_state() {
 }
 
 # =============================================================================
+# Version Compatibility Checks
+# =============================================================================
+
+verify_package_compatibility() {
+  local installed_version=$1
+
+  # Extract version components (strip prerelease tags for comparison)
+  local installed_major=$(echo "$installed_version" | cut -d. -f1 | sed 's/[^0-9]//g')
+  local min_major=$(echo "$MIN_PACKAGE_VERSION" | cut -d. -f1 | sed 's/[^0-9]//g')
+
+  if [ "$installed_major" -lt "$min_major" ]; then
+    error "Package version $installed_version is too old for this installer"
+    echo "Minimum required version: $MIN_PACKAGE_VERSION"
+    echo "Please download a newer installer version from:"
+    echo "  $INSTALLER_BASE_URL/install.sh"
+    return 1
+  fi
+
+  # Check maximum version if set
+  if [ -n "$MAX_PACKAGE_VERSION" ]; then
+    local max_major=$(echo "$MAX_PACKAGE_VERSION" | cut -d. -f1 | sed 's/[^0-9]//g')
+    if [ "$installed_major" -gt "$max_major" ]; then
+      warn "Package version $installed_version may not be compatible with this installer"
+      echo "Maximum tested version: $MAX_PACKAGE_VERSION"
+      echo "Consider downloading the latest installer from:"
+      echo "  $INSTALLER_BASE_URL/install.sh"
+
+      if ! confirm "Continue anyway?" "n"; then
+        return 1
+      fi
+    fi
+  fi
+
+  success "Package version $installed_version is compatible"
+  return 0
+}
+
+check_installer_version() {
+  # Check if newer installer version is available
+  local latest_installer_url="$INSTALLER_BASE_URL/install.sh"
+
+  echo "Checking for installer updates..."
+
+  # Download latest installer version line (first 30 lines should contain it)
+  local latest_version=$(curl -fsSL "$latest_installer_url" 2>/dev/null | head -n 30 | grep '^INSTALLER_VERSION=' | cut -d'"' -f2)
+
+  if [ -z "$latest_version" ]; then
+    warn "Could not check for installer updates (network issue or GitHub rate limit)"
+    return 0
+  fi
+
+  if [ "$latest_version" != "$INSTALLER_VERSION" ]; then
+    warn "Newer installer version available: $latest_version (current: $INSTALLER_VERSION)"
+    echo "Download the latest installer:"
+    echo "  curl -fsSL $latest_installer_url | bash"
+    echo ""
+
+    if ! confirm "Continue with current installer?" "y"; then
+      echo "Installation cancelled. Please download the latest installer."
+      exit 0
+    fi
+  else
+    success "Installer is up to date ($INSTALLER_VERSION)"
+  fi
+}
+
+# =============================================================================
 # Error Recovery
 # =============================================================================
 
@@ -148,16 +232,19 @@ check_resume() {
 show_banner() {
   section "Audio Tools Installer"
 
-  echo "Version: $INSTALLER_VERSION"
+  echo "Installer Version: $INSTALLER_VERSION"
+  echo "Target Packages: $MIN_PACKAGE_VERSION"
+  echo "Minimum Node.js: $MIN_NODE_VERSION"
   echo "Target: PiSCSI owners and hardware sampler enthusiasts"
   echo ""
   echo "This installer will:"
   echo "  1. Verify system requirements"
-  echo "  2. Install npm packages globally"
-  echo "  3. Configure backup sources (PiSCSI, local media)"
-  echo "  4. Set up extraction workflow"
-  echo "  5. Test configuration with dry run"
-  echo "  6. Provide quick start guide"
+  echo "  2. Check for installer updates"
+  echo "  3. Install npm packages globally"
+  echo "  4. Configure backup sources (PiSCSI, local media)"
+  echo "  5. Set up extraction workflow"
+  echo "  6. Test configuration with dry run"
+  echo "  7. Provide quick start guide"
   echo ""
   echo "Installation takes approximately 2-5 minutes."
   echo "You can press Ctrl+C at any time to cancel."
@@ -189,6 +276,9 @@ run_installation() {
   # Phase 1: Environment Discovery
   if [ -z "$resume_phase" ] || [ "$resume_phase" = "" ]; then
     section "Phase 1: Environment Discovery"
+
+    # Check installer version FIRST
+    check_installer_version
 
     # Detect platform
     echo "Detecting platform..."

@@ -2,11 +2,19 @@
 import { execSync } from 'child_process';
 import { join } from 'path';
 import { readFileSync, writeFileSync, readdirSync, statSync } from 'fs';
+import { createHash } from 'crypto';
 
 interface PackageJson {
   name: string;
   version: string;
   private?: boolean;
+}
+
+interface InstallerAsset {
+  path: string;
+  name: string;
+  checksumPath: string;
+  checksumName: string;
 }
 
 function execCommand(command: string, cwd?: string): void {
@@ -64,9 +72,61 @@ function getPublishedModules(rootDir: string): string[] {
   return published;
 }
 
+function prepareInstallerAsset(rootDir: string, version: string): InstallerAsset {
+  const installerSource = join(rootDir, 'install.sh');
+  const assetsDir = join(rootDir, '.release-assets');
+
+  // Create assets directory
+  execCommand(`mkdir -p "${assetsDir}"`, rootDir);
+
+  // Read installer content
+  const installerContent = readFileSync(installerSource, 'utf-8');
+
+  // Update INSTALLER_VERSION to match package version
+  const versionedInstaller = installerContent.replace(
+    /^INSTALLER_VERSION="[^"]*"$/m,
+    `INSTALLER_VERSION="${version}"`
+  );
+
+  // Write versioned installer
+  const installerAssetPath = join(assetsDir, 'install.sh');
+  writeFileSync(installerAssetPath, versionedInstaller, 'utf-8');
+
+  // Make installer executable
+  execCommand(`chmod +x "${installerAssetPath}"`, rootDir);
+
+  // Generate SHA256 checksum
+  const hash = createHash('sha256');
+  hash.update(versionedInstaller);
+  const checksum = hash.digest('hex');
+
+  // Write checksum file (format: <hash>  <filename>)
+  const checksumContent = `${checksum}  install.sh\n`;
+  const checksumPath = join(assetsDir, 'install.sh.sha256');
+  writeFileSync(checksumPath, checksumContent, 'utf-8');
+
+  console.log(`✓ Prepared installer asset with SHA256: ${checksum.substring(0, 16)}...`);
+
+  return {
+    path: installerAssetPath,
+    name: 'install.sh',
+    checksumPath: checksumPath,
+    checksumName: 'install.sh.sha256',
+  };
+}
+
+function cleanupInstallerAssets(rootDir: string): void {
+  const assetsDir = join(rootDir, '.release-assets');
+  execCommand(`rm -rf "${assetsDir}"`, rootDir);
+}
+
 function createGitHubRelease(rootDir: string, version: string, modules: string[]): void {
   const tag = `audio-tools@${version}`;
   const title = `audio-tools ${version}`;
+
+  // Prepare installer asset
+  const installerAsset = prepareInstallerAsset(rootDir, version);
+
   const notes = `## Published Modules
 
 ${modules.map(name => `- ${name}@${version}`).join('\n')}
@@ -77,17 +137,46 @@ Published to npm with Apache-2.0 license.
 
 ## Installation
 
+### Quick Install (Recommended)
+\`\`\`bash
+# Install from this release
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/${tag}/install.sh | bash
+
+# Or download and inspect first
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/${tag}/install.sh -o install.sh
+chmod +x install.sh
+./install.sh
+\`\`\`
+
+### Verify Installer (Optional)
+\`\`\`bash
+# Download checksum
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/${tag}/install.sh.sha256 -o install.sh.sha256
+
+# Verify (macOS/Linux)
+shasum -a 256 -c install.sh.sha256
+\`\`\`
+
+### npm Installation
 \`\`\`bash
 npm install ${modules[0]}
 \`\`\`
 
-See individual package READMEs for usage details.`;
+See individual package READMEs for usage details.
+
+## Installer Version Compatibility
+
+- **Installer Version**: \`${version}\`
+- **Minimum Package Version**: \`${version}\`
+- **Tested Package Versions**: \`${version}\`
+
+This installer is specifically tested with packages at version \`${version}\`. For other package versions, download the matching installer release.`;
 
   console.log(`\nCreating module tarball...`);
   const tarballName = `audio-tools-${version}.tar.gz`;
   const tarballPath = join(rootDir, tarballName);
 
-  execCommand(`tar -czf "${tarballPath}" --exclude node_modules --exclude dist --exclude '*.tsbuildinfo' .`, rootDir);
+  execCommand(`tar -czf "${tarballPath}" --exclude node_modules --exclude dist --exclude '*.tsbuildinfo' --exclude .release-assets .`, rootDir);
   console.log(`✓ Created ${tarballName}`);
 
   console.log(`\nCreating GitHub release ${tag}...`);
@@ -97,15 +186,29 @@ See individual package READMEs for usage details.`;
   writeFileSync(notesFile, notes, 'utf-8');
 
   try {
-    execCommand(`gh release create "${tag}" --title "${title}" --notes-file "${notesFile}" "${tarballPath}"`, rootDir);
+    // Create release with multiple assets
+    execCommand(
+      `gh release create "${tag}" ` +
+      `--title "${title}" ` +
+      `--notes-file "${notesFile}" ` +
+      `"${tarballPath}" ` +
+      `"${installerAsset.path}#Installer Script" ` +
+      `"${installerAsset.checksumPath}#Installer SHA256 Checksum"`,
+      rootDir
+    );
     console.log(`✓ GitHub release created: ${tag}`);
+    console.log(`✓ Installer attached: ${installerAsset.name}`);
+    console.log(`✓ Checksum attached: ${installerAsset.checksumName}`);
 
+    // Cleanup
     execCommand(`rm -f "${tarballPath}" "${notesFile}"`, rootDir);
+    cleanupInstallerAssets(rootDir);
   } catch (error) {
     console.error('⚠️  Failed to create GitHub release');
     console.error('You can create it manually with:');
-    console.error(`  gh release create "${tag}" --title "${title}" --notes-file "${notesFile}" "${tarballPath}"`);
+    console.error(`  gh release create "${tag}" --title "${title}" --notes-file "${notesFile}" "${tarballPath}" "${installerAsset.path}" "${installerAsset.checksumPath}"`);
     execCommand(`rm -f "${tarballPath}" "${notesFile}"`, rootDir);
+    cleanupInstallerAssets(rootDir);
     throw error;
   }
 }

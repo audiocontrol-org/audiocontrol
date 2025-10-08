@@ -11,4 +11,5 @@
 .next/
 *.tsbuildinfo
 .release-notes.tmp
+.release-assets/
 *.tar.gz

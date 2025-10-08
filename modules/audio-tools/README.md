@@ -2,6 +2,67 @@
 
 Monorepo of experimental tools for manipulating software and hardware audio devices.
 
+## Installation
+
+### Quick Install (Recommended)
+
+Install the latest stable version directly from GitHub Releases:
+
+```bash
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/latest/download/install.sh | bash
+```
+
+**Or download and inspect first:**
+
+```bash
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/latest/download/install.sh -o install.sh
+chmod +x install.sh
+./install.sh
+```
+
+**Verify installer integrity (optional):**
+
+```bash
+# Download checksum
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/latest/download/install.sh.sha256 -o install.sh.sha256
+
+# Verify checksum (macOS/Linux)
+shasum -a 256 -c install.sh.sha256
+```
+
+### Version-Specific Installation
+
+To install a specific version:
+
+```bash
+# Replace VERSION with desired version (e.g., 1.0.0-alpha.4)
+VERSION="1.0.0-alpha.4"
+curl -fsSL "https://github.com/oletizi/ol_dsp/releases/download/audio-tools@${VERSION}/install.sh" | bash
+```
+
+### Alternative: npm Installation
+
+Install packages individually via npm:
+
+```bash
+npm install -g @oletizi/sampler-backup @oletizi/sampler-export
+```
+
+**Note:** This method requires manual configuration. See individual package READMEs.
+
+### What the Installer Does
+
+The installer will:
+1. Verify system requirements (Node.js 18+, disk space)
+2. Install npm packages globally (`@oletizi/sampler-backup`, `@oletizi/sampler-export`)
+3. Provide quick start guide for backup and extraction
+
+**Installation takes approximately 2-5 minutes.**
+
+See the [Installation Guide](./docs/1.0/INSTALLATION.md) for detailed instructions, troubleshooting, and system requirements.
+
+---
+
 ## Sampler Lib
 ![sampler-lib](https://github.com/oletizi/ol_dsp/actions/workflows/sampler-lib.yml/badge.svg)
 

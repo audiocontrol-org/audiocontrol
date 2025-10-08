@@ -2,6 +2,22 @@
 
 **Extract and convert Akai sampler disk images to modern, open formats.**
 
+## Installation
+
+**Recommended: Use the installer (installs both backup and export packages)**
+
+```bash
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/latest/download/install.sh | bash
+```
+
+**Alternative: Install this package only**
+
+```bash
+npm install -g @oletizi/sampler-export
+```
+
+See the [Installation Guide](../docs/1.0/INSTALLATION.md) for more options, troubleshooting, and system requirements.
+
 ## Purpose
 
 The `sampler-export` package bridges vintage Akai sampler hardware (S1000, S3000, S5000, S6000) with modern music production workflows. It provides automated extraction of disk images and intelligent conversion to contemporary sampler formats (SFZ, DecentSampler), enabling musicians to preserve and reuse decades of sampled instruments.
