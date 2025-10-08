@@ -124,8 +124,8 @@ wizard_remote_config() {
   read -p "SSH username [pi]: " ssh_user
   CONFIG_SSH_USER=${ssh_user:-"pi"}
 
-  read -p "Remote disk image path [/home/orion/images/]: " remote_path
-  CONFIG_REMOTE_PATH=${remote_path:-"/home/orion/images/"}
+  read -p "Remote disk image path [~/images/]: " remote_path
+  CONFIG_REMOTE_PATH=${remote_path:-"~/images/"}
 
   # Build source URIs
   IFS=',' read -ra PISCSI_HOSTS <<< "$piscsi_hosts"

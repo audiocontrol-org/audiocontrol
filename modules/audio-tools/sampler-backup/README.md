@@ -51,7 +51,7 @@ pnpm --filter @oletizi/sampler-backup build
 
 ```bash
 # Sync from remote PiSCSI device
-akai-backup sync --source pi-scsi2.local:/home/orion/images/ --device images
+akai-backup sync --source pi-scsi2.local:~/images/ --device images
 
 # Sync from local SD card (Gotek/ZuluSCSI)
 akai-backup sync --source /Volumes/SDCARD --sampler s5k-studio --device floppy
@@ -210,7 +210,7 @@ Synchronize disk images from source to backup directory.
 
 ```bash
 # Remote PiSCSI backup
-akai-backup sync --source pi-scsi2.local:/home/orion/images/ --device images
+akai-backup sync --source pi-scsi2.local:~/images/ --device images
 
 # Remote with custom sampler name
 akai-backup sync --source pi@host:/data --device scsi0 --sampler my-s5000
@@ -349,7 +349,7 @@ rsync uses a delta-transfer algorithm to efficiently synchronize files:
 **For Remote PiSCSI devices:**
 ```bash
 # Regular syncs (weekly or after major changes)
-akai-backup sync --source pi-scsi2.local:/home/orion/images/ --device images
+akai-backup sync --source pi-scsi2.local:~/images/ --device images
 ```
 
 **For Local Media (Gotek/ZuluSCSI):**

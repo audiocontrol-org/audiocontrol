@@ -201,7 +201,7 @@ program
     .addHelpText('after', `
 Examples:
   Remote (SSH) backup - PiSCSI:
-    $ akai-backup sync --source pi-scsi2.local:/home/orion/images/ --device images
+    $ akai-backup sync --source pi-scsi2.local:~/images/ --device images
     $ akai-backup sync --source pi@host:/data/images --device images
 
   Local media backup:

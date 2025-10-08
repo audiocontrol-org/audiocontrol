@@ -57,7 +57,7 @@ See the [rsync-simple-sync implementation workplan](./rsync-simple-sync/implemen
 
 ```bash
 # Sync from remote source
-akai-backup sync --source pi-scsi2.local:/home/orion/images/ --device scsi0
+akai-backup sync --source pi-scsi2.local:~/images/ --device scsi0
 
 # Sync from local media
 akai-backup sync --source /Volumes/DSK0 --sampler s5k-studio --device floppy
