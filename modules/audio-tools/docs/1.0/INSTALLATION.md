@@ -62,8 +62,10 @@ Complete installation guide for audio-tools packages (sampler-backup and sampler
 Install the latest stable version directly from GitHub Releases:
 
 ```bash
-curl -fsSL https://github.com/oletizi/ol_dsp/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.4/install.sh | bash
 ```
+
+**Note:** This is the audio-tools module within the ol_dsp monorepo. See [all audio-tools releases](https://github.com/oletizi/ol_dsp/releases?q=audio-tools) for version history.
 
 **What this does:**
 1. Checks installer version and updates if needed
@@ -89,7 +91,7 @@ For security-conscious users who want to review the installer first:
 
 ```bash
 # Download installer
-curl -fsSL https://github.com/oletizi/ol_dsp/releases/latest/download/install.sh -o install.sh
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.4/install.sh -o install.sh
 
 # Review the installer
 less install.sh
@@ -170,8 +172,8 @@ Verify installer integrity using SHA256 checksums:
 
 ```bash
 # Download installer and checksum
-curl -fsSL https://github.com/oletizi/ol_dsp/releases/latest/download/install.sh -o install.sh
-curl -fsSL https://github.com/oletizi/ol_dsp/releases/latest/download/install.sh.sha256 -o install.sh.sha256
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.4/install.sh -o install.sh
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.4/install.sh.sha256 -o install.sh.sha256
 
 # Verify checksum (macOS/Linux)
 shasum -a 256 -c install.sh.sha256
@@ -392,9 +394,9 @@ curl -fsSL https://github.com/oletizi/ol_dsp/releases/latest/download/install.sh
    Maximum tested version: 1.0.0
 ```
 
-**Solution:** Download the latest installer:
+**Solution:** Download the latest installer (see [all releases](https://github.com/oletizi/ol_dsp/releases?q=audio-tools)):
 ```bash
-curl -fsSL https://github.com/oletizi/ol_dsp/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.4/install.sh | bash
 ```
 
 ---
@@ -499,7 +501,7 @@ echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
 source ~/.bashrc
 
 # Retry installation
-curl -fsSL https://github.com/oletizi/ol_dsp/releases/latest/download/install.sh | bash
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.4/install.sh | bash
 ```
 
 **Option 2: Use sudo (not recommended):**

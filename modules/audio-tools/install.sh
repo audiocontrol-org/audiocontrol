@@ -31,7 +31,7 @@ MIN_NODE_VERSION="18"
 
 # GitHub repository for downloads
 GITHUB_REPO="oletizi/ol_dsp"
-INSTALLER_BASE_URL="https://github.com/${GITHUB_REPO}/releases/latest/download"
+INSTALLER_BASE_URL="https://github.com/${GITHUB_REPO}/releases/download"
 
 # Base directory for audio tools
 export AUDIOTOOLS_DIR="${AUDIOTOOLS_DIR:-$HOME/.audiotools}"
@@ -143,18 +143,22 @@ verify_package_compatibility() {
 }
 
 check_installer_version() {
-  # Check if newer installer version is available
-  local latest_installer_url="$INSTALLER_BASE_URL/install.sh"
-
+  # Check if newer installer version is available by querying GitHub API for latest audio-tools release
   echo "Checking for installer updates..."
 
-  # Download latest installer version line (first 30 lines should contain it)
-  local latest_version=$(curl -fsSL "$latest_installer_url" 2>/dev/null | head -n 30 | grep '^INSTALLER_VERSION=' | cut -d'"' -f2)
+  # Query GitHub API for latest audio-tools@* release tag
+  local latest_tag=$(curl -fsSL "https://api.github.com/repos/${GITHUB_REPO}/releases" 2>/dev/null | \
+    grep -m1 '"tag_name": "audio-tools@' | \
+    cut -d'"' -f4)
 
-  if [ -z "$latest_version" ]; then
+  if [ -z "$latest_tag" ]; then
     warn "Could not check for installer updates (network issue or GitHub rate limit)"
     return 0
   fi
+
+  # Extract version from tag (audio-tools@1.0.0-alpha.4 -> 1.0.0-alpha.4)
+  local latest_version="${latest_tag#audio-tools@}"
+  local latest_installer_url="${INSTALLER_BASE_URL}/${latest_tag}/install.sh"
 
   if [ "$latest_version" != "$INSTALLER_VERSION" ]; then
     warn "Newer installer version available: $latest_version (current: $INSTALLER_VERSION)"
