@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/sampler-devices",
-  "version": "1.0.0-alpha.17",
+  "version": "1.0.0-alpha.20",
   "description": "Module for communicating with old midi devices",
   "main": "./dist/index.js",
   "exports": {
@@ -33,7 +33,7 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "integration": "vitest run test/integration",
-    "build": "npm test && tsup",
+    "build": "pnpm test && tsup",
     "clean": "rm -rf dist"
   },
   "keywords": [
