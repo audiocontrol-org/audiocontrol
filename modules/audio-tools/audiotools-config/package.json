@@ -12,7 +12,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc-alias",
     "test": "vitest"
   },
   "dependencies": {
@@ -23,6 +23,7 @@
     "@tsconfig/recommended": "^1.0.8",
     "@types/inquirer": "^9.0.0",
     "@types/node": "^20.0.0",
+    "tsc-alias": "^1.8.16",
     "typescript": "^5.0.0",
     "vitest": "^1.0.0"
   }

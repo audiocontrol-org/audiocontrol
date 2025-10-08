@@ -1,4 +1,6 @@
 packages:
+  - 'audiotools-config'
+  - 'audiotools-cli'
   - 'sampler-lib'
   - 'sampler-devices'
   - 'sampler-midi'

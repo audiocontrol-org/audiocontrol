@@ -1,0 +1,60 @@
+{
+  "name": "@oletizi/audiotools",
+  "version": "1.0.0",
+  "description": "Unified CLI for audio-tools - backup, extract, and convert Akai sampler data",
+  "type": "module",
+  "bin": {
+    "audiotools": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc && tsc-alias",
+    "test": "vitest",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "akai",
+    "sampler",
+    "backup",
+    "extraction",
+    "conversion",
+    "cli",
+    "audio-tools"
+  ],
+  "author": "Orion Letizi",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oletizi/ol_dsp.git",
+    "directory": "modules/audio-tools/audiotools-cli"
+  },
+  "homepage": "https://github.com/oletizi/ol_dsp/tree/main/modules/audio-tools/audiotools-cli",
+  "bugs": {
+    "url": "https://github.com/oletizi/ol_dsp/issues"
+  },
+  "dependencies": {
+    "@oletizi/audiotools-config": "workspace:*",
+    "@oletizi/sampler-backup": "workspace:*",
+    "@oletizi/sampler-export": "workspace:*",
+    "commander": "^12.1.0",
+    "pathe": "^1.1.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "tsc-alias": "^1.8.16",
+    "typescript": "^5.7.3",
+    "vitest": "^1.2.0"
+  }
+}
