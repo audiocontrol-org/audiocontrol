@@ -96,6 +96,94 @@ akai-backup sync --source /Volumes/USB_DRIVE --sampler my-sampler --device usb
 - Simple directory structure for easy access
 - Cross-platform (macOS and Linux)
 
+## Unified Configuration System
+
+**NEW:** This package supports the unified audio-tools configuration system for zero-flag workflows.
+
+### Using with Unified CLI
+
+If you installed `@oletizi/audiotools`, you can use the unified CLI:
+
+```bash
+# Configure once
+audiotools config
+
+# Run backups without flags
+audiotools backup                 # Backup all enabled sources
+audiotools backup pi-scsi2        # Backup specific source
+```
+
+See the [Unified CLI Guide](../audiotools-cli/README.md) for complete documentation.
+
+### Using Config-Based Workflows
+
+Even when using `akai-backup` directly, you can use configuration:
+
+```bash
+# Create configuration
+audiotools config
+# Or use the backup command's config wizard
+akai-backup config
+
+# Run config-based backup
+akai-backup backup                # Backup all enabled sources
+akai-backup backup pi-scsi2       # Backup specific source by name
+```
+
+### Configuration File
+
+Configuration is stored in `~/.audiotools/config.json`:
+
+```json
+{
+  "version": "1.0",
+  "backup": {
+    "backupRoot": "~/.audiotools/backup",
+    "sources": [
+      {
+        "name": "pi-scsi2",
+        "type": "remote",
+        "source": "pi-scsi2.local:~/images/",
+        "device": "images",
+        "enabled": true
+      },
+      {
+        "name": "s5k-gotek",
+        "type": "local",
+        "source": "/Volumes/GOTEK",
+        "device": "floppy",
+        "sampler": "s5k-studio",
+        "enabled": true
+      }
+    ]
+  }
+}
+```
+
+### Dual Workflow Support
+
+Both workflows are supported:
+
+**Flag-based (original):**
+```bash
+akai-backup sync --source pi-scsi2.local:~/images/ --device images
+```
+
+**Config-based (new):**
+```bash
+akai-backup backup                # All enabled sources
+akai-backup backup pi-scsi2       # Specific source by name
+```
+
+**Benefits of config-based workflow:**
+- No flags needed for regular backups
+- Manage multiple sources easily
+- Enable/disable sources without changing commands
+- Shared configuration with export tool
+- Auto-discovery of existing backups
+
+See [@oletizi/audiotools-config](../audiotools-config/README.md) for configuration API documentation.
+
 ## Why rsync?
 
 **Simple and reliable:** rsync provides straightforward file synchronization without complex setup:
@@ -128,8 +216,9 @@ rsync's delta-transfer algorithm provides efficient backups:
 ```
 ┌──────────────────────┐
 │ akai-backup CLI      │  Command-line interface
-│  sync / backup       │  - sync, backup (alias)
+│  sync / backup       │  - sync, backup (config-based)
 │  list                │  - list backups
+│  config              │  - configure backups
 └──────────┬───────────┘
            │
      ┌─────┴──────┐
@@ -157,10 +246,10 @@ rsync's delta-transfer algorithm provides efficient backups:
 
 ### Component Overview
 
-- **CLI** (`src/cli/backup.ts`): Commander-based interface with sync and list commands
-- **RemoteSource** (`src/sources/remote-source.ts`): SSH-based backup using rsync over SSH
-- **LocalSource** (`src/sources/local-source.ts`): Local media backup with MediaDetector for auto-discovery
-- **MediaDetector** (`src/media/media-detector.ts`): Auto-discovers disk images on local media
+- **CLI** (`src/cli/backup.ts`): Commander-based interface with sync, backup, and list commands
+- **RemoteSource** (`src/lib/sources/remote-source.ts`): SSH-based backup using rsync over SSH
+- **LocalSource** (`src/lib/sources/local-source.ts`): Local media backup with MediaDetector for auto-discovery
+- **MediaDetector** (`src/lib/media/media-detector.ts`): Auto-discovers disk images on local media
 - **rsync**: System rsync binary (pre-installed on macOS/Linux)
 
 ## Configuration
@@ -204,9 +293,39 @@ akai-backup sync --source <path> --device <name> --dry-run
 
 ## CLI Commands
 
+### `akai-backup backup [source] [options]`
+
+**NEW:** Config-based backup command. Runs backups using configuration from `~/.audiotools/config.json`.
+
+```bash
+# Backup all enabled sources
+akai-backup backup
+
+# Backup specific source by name
+akai-backup backup pi-scsi2
+akai-backup backup s5k-gotek
+
+# Override with flags
+akai-backup backup --source pi-scsi2.local:~/images/ --device images
+```
+
+**Arguments:**
+- `[source]` - Optional: specific source name from configuration
+
+**Options:**
+- `--source <path>`: Override: source path (falls back to flag-based mode)
+- `--device <name>`: Override: device name (required with --source)
+- `--sampler <name>`: Override: sampler name
+- `--dry-run`: Preview changes without syncing
+
+**How it works:**
+1. If no `--source` flag, loads configuration from `~/.audiotools/config.json`
+2. Runs enabled sources (or specific source if named)
+3. Falls back to flag-based mode if `--source` provided
+
 ### `akai-backup sync`
 
-Synchronize disk images from source to backup directory.
+Original flag-based sync command. Requires explicit flags.
 
 ```bash
 # Remote PiSCSI backup
@@ -230,14 +349,6 @@ akai-backup sync --source /Volumes/USB --sampler test --device usb --dry-run
 - `--sampler <name>`: Sampler identifier (required for local, auto-detected for remote)
 - `--dry-run`: Preview changes without actually syncing
 
-### `akai-backup backup`
-
-Alias for `sync` command. Same options and behavior.
-
-```bash
-akai-backup backup --source <path> --device <name>
-```
-
 ### `akai-backup list`
 
 List all synced backups with file counts and sizes.
@@ -260,6 +371,23 @@ akai-backup list --json
 - Directory paths
 - File counts
 - Total sizes (formatted and raw)
+
+### `akai-backup config`
+
+**NEW:** Launch interactive configuration wizard.
+
+```bash
+# Interactive configuration
+akai-backup config
+
+# Display current configuration
+akai-backup config --list
+
+# Reset to defaults
+akai-backup config --reset
+```
+
+Delegates to the unified configuration system. See [@oletizi/audiotools-config](../audiotools-config/README.md) for details.
 
 ## Supported Platforms
 
@@ -333,6 +461,15 @@ No disk images found in source path
 - Ensure SD card or USB drive is properly connected
 - List source directory: `ls -la /Volumes/SDCARD`
 
+### Configuration not found
+
+```
+Error: No configuration found
+Run: akai-backup config
+```
+
+**Solution:** Run `akai-backup config` to create configuration, or use flag-based `sync` command.
+
 ## Backup Strategy
 
 ### How rsync Works
@@ -348,14 +485,22 @@ rsync uses a delta-transfer algorithm to efficiently synchronize files:
 
 **For Remote PiSCSI devices:**
 ```bash
+# Configure once
+akai-backup config
+# Add remote source: pi-scsi2.local:~/images/
+
 # Regular syncs (weekly or after major changes)
-akai-backup sync --source pi-scsi2.local:~/images/ --device images
+akai-backup backup
 ```
 
 **For Local Media (Gotek/ZuluSCSI):**
 ```bash
+# Configure local source
+akai-backup config
+# Add local source: /Volumes/GOTEK
+
 # After each session, sync the SD card
-akai-backup sync --source /Volumes/GOTEK --sampler s3k-studio --device floppy
+akai-backup backup s5k-gotek
 ```
 
 ### Accessing Backed-Up Files
@@ -381,7 +526,14 @@ akai-export extract ~/.audiotools/backup/pi-scsi2/images/HD0.hds
 - **No versioning**: Previous versions are overwritten
 - **Manual snapshots**: Use `cp -R` or Time Machine for versioning if needed
 
-**Documentation:**
+## Related Packages
+
+- **[@oletizi/audiotools](../audiotools-cli/README.md)** - Unified CLI for all audio-tools
+- **[@oletizi/audiotools-config](../audiotools-config/README.md)** - Shared configuration system
+- **[@oletizi/sampler-export](../sampler-export/README.md)** - Disk image extraction and format conversion
+- **[@oletizi/sampler-devices](../sampler-devices/README.md)** - Akai device abstraction
+
+## Documentation
 
 - 📦 [Installation Guide](./docs/1.0/installation.md)
 - 🚀 [Quick Start](./docs/1.0/quick-start.md)
@@ -391,6 +543,7 @@ akai-export extract ~/.audiotools/backup/pi-scsi2/images/HD0.hds
 - 📚 [API Reference](./docs/1.0/api-reference.md)
 - 🔧 [Troubleshooting](./docs/1.0/troubleshooting.md)
 - 📖 [Complete v1.0 Documentation](./docs/1.0/README.md)
+- 🔗 [Unified CLI Guide](../docs/1.0/unified-cli/README.md)
 
 ## Contributing
 
