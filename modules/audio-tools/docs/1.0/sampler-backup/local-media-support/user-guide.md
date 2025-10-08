@@ -1036,8 +1036,8 @@ crontab -e
 
 ## Next Steps
 
-- **[API Reference](./api-reference.md)** - Programmatic usage for integration
-- **[Platform Compatibility](./platform-compatibility.md)** - Platform-specific details
+- **[API Reference](api-reference.md)** - Programmatic usage for integration
+- **[Platform Compatibility](platform-compatibility.md)** - Platform-specific details
 - **[Troubleshooting Guide](../../troubleshooting.md)** - More troubleshooting help
 - **[Examples](../../examples.md)** - More workflow examples
 

@@ -1004,9 +1004,9 @@ await adapter.backup({
 
 ## Related Documentation
 
-- **[User Guide](./user-guide.md)** - End-user documentation and workflows
-- **[Platform Compatibility](./platform-compatibility.md)** - Platform-specific details
-- **[Implementation Workplan](./implementation/workplan.md)** - Technical implementation details
+- **[User Guide](user-guide.md)** - End-user documentation and workflows
+- **[Platform Compatibility](platform-compatibility.md)** - Platform-specific details
+- **[Implementation Workplan](implementation/workplan.md)** - Technical implementation details
 
 ---
 
