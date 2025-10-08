@@ -4,12 +4,12 @@
 
 set -euo pipefail
 
-# Package list
+# Package list - install with @alpha tag to get latest prerelease
 readonly PACKAGES=(
-  "@oletizi/sampler-backup"
-  "@oletizi/sampler-export"
-  "@oletizi/sampler-lib"
-  "@oletizi/sampler-devices"
+  "@oletizi/sampler-backup@alpha"
+  "@oletizi/sampler-export@alpha"
+  "@oletizi/sampler-lib@alpha"
+  "@oletizi/sampler-devices@alpha"
 )
 
 # Binary verification list
