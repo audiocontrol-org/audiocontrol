@@ -49,15 +49,44 @@ if [ -t 0 ]; then
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   INSTALL_SCRIPTS_DIR="$SCRIPT_DIR/scripts/install"
 else
-  # Being piped from curl, need to download scripts
+  # Being piped from curl, download scripts from GitHub
   INSTALL_SCRIPTS_DIR="/tmp/audio-tools-install-$$"
   mkdir -p "$INSTALL_SCRIPTS_DIR"
 
-  # TODO: Download install scripts from GitHub
-  # For now, this will fail with a clear error
-  echo "ERROR: Remote installation not yet implemented."
-  echo "Please clone the repository and run ./install.sh"
-  exit 1
+  echo "Downloading installation scripts..."
+
+  # Determine tag from installer version
+  DOWNLOAD_TAG="audio-tools@${INSTALLER_VERSION}"
+  SCRIPTS_BASE_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/${DOWNLOAD_TAG}/modules/audio-tools/scripts/install"
+
+  # Download all required scripts
+  SCRIPTS=("utils.sh" "platform.sh" "checks.sh" "npm-install.sh" "wizard.sh" "config-generator.sh" "test-runner.sh" "completion.sh" "main.sh")
+
+  for script in "${SCRIPTS[@]}"; do
+    if ! curl -fsSL "${SCRIPTS_BASE_URL}/${script}" -o "${INSTALL_SCRIPTS_DIR}/${script}" 2>/dev/null; then
+      echo "ERROR: Failed to download ${script}"
+      echo "Please try again or clone the repository and run ./install.sh"
+      rm -rf "$INSTALL_SCRIPTS_DIR"
+      exit 1
+    fi
+    chmod +x "${INSTALL_SCRIPTS_DIR}/${script}"
+  done
+
+  # Download template files
+  TEMPLATES_DIR="${INSTALL_SCRIPTS_DIR}/../templates"
+  mkdir -p "$TEMPLATES_DIR"
+  TEMPLATES_BASE_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/${DOWNLOAD_TAG}/modules/audio-tools/scripts/templates"
+  TEMPLATES=("backup-wrapper.template.sh" "config.template.json" "cron.template" "launchd.template.plist")
+
+  for template in "${TEMPLATES[@]}"; do
+    if ! curl -fsSL "${TEMPLATES_BASE_URL}/${template}" -o "${TEMPLATES_DIR}/${template}" 2>/dev/null; then
+      echo "ERROR: Failed to download ${template}"
+      rm -rf "$INSTALL_SCRIPTS_DIR"
+      exit 1
+    fi
+  done
+
+  echo "✓ Installation scripts downloaded"
 fi
 
 # =============================================================================
