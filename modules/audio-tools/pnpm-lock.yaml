@@ -12,6 +12,9 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0
     devDependencies:
+      '@types/node':
+        specifier: ^22.13.1
+        version: 22.18.8
       tsx:
         specifier: ^4.19.1
         version: 4.20.6
