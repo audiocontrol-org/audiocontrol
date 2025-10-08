@@ -32,12 +32,14 @@ function getDistTag(version: string): string {
   return 'next';
 }
 
-function execCommand(command: string, cwd?: string): void {
+function execCommand(command: string, cwd?: string, interactive: boolean = false): void {
   console.log(`\n→ ${command}`);
   execSync(command, {
     cwd,
-    stdio: 'inherit',
+    stdio: interactive ? 'inherit' : 'inherit',
     encoding: 'utf-8',
+    // Ensure stdin is available for interactive commands
+    ...(interactive ? { input: undefined } : {}),
   });
 }
 
@@ -107,7 +109,7 @@ function publishModules(dryRun: boolean = false) {
     }
 
     const distTag = getDistTag(pkg.version);
-    const publishCmd = `npm publish --access public --tag ${distTag}`;
+    const publishCmd = `pnpm publish --access public --tag ${distTag} --no-git-checks`;
 
     if (dryRun) {
       console.log(`\n  Would publish ${pkg.name}@${pkg.version}`);
