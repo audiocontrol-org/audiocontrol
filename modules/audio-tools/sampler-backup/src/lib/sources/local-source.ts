@@ -5,10 +5,10 @@
 
 import { existsSync } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
-import { RsyncAdapter } from '@/backup/rsync-adapter.js';
-import { resolveRepositoryPath } from '@/backup/repo-path-resolver.js';
-import type { BackupSource, LocalSourceConfig } from '@/sources/backup-source.js';
-import type { BackupResult, RsnapshotInterval } from '@/types/index.js';
+import { RsyncAdapter } from '@/lib/backup/rsync-adapter.js';
+import { resolveRepositoryPath } from '@/lib/backup/repo-path-resolver.js';
+import type { BackupSource, LocalSourceConfig } from '@/lib/sources/backup-source.js';
+import type { BackupResult, RsnapshotInterval } from '@/lib/types/index.js';
 
 /**
  * LocalSource - File-based backup source for local media

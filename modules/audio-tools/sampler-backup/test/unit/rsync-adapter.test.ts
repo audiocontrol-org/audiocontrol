@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
-import { RsyncAdapter, type RsyncConfig } from '@/backup/rsync-adapter';
+import { RsyncAdapter, type RsyncConfig } from '@/lib/backup/rsync-adapter';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 

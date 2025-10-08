@@ -14,7 +14,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: {
-        index: resolve(__dirname, 'src/index.ts'),
+        'lib/index': resolve(__dirname, 'src/lib/index.ts'),
         'cli/backup': resolve(__dirname, 'src/cli/backup.ts'),
         'cli/migrate': resolve(__dirname, 'src/cli/migrate.ts')
       },
@@ -26,6 +26,7 @@ export default defineConfig({
         'pathe',
         '@oletizi/sampler-devices',
         '@oletizi/sampler-lib',
+        '@oletizi/audiotools-config',
         // Node.js built-ins (both with and without node: prefix)
         'module',
         'fs',

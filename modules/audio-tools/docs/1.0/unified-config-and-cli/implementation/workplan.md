@@ -498,7 +498,7 @@ export const configCommand = new Command('config')
 - **Total:** 578 lines of TypeScript implementing unified CLI
 - **Commands verified:** `audiotools backup`, `audiotools export`, `audiotools config` all working
 
-### Phase 3: Update sampler-backup (2 hours)
+### Phase 3: Update sampler-backup (2 hours) ✅ COMPLETED
 
 **3.1 Refactor into lib and CLI**
 
@@ -552,7 +552,16 @@ if (!options.source) {
 }
 ```
 
-### Phase 4: Update sampler-export (2 hours)
+**Phase 3 Completion Summary:**
+- ✅ Refactored sampler-backup into lib/ and cli/ structure
+- ✅ Updated package.json with audiotools-config dependency and lib exports
+- ✅ Added `backup` command with config support (alongside existing `sync` command)
+- ✅ Config-based workflow: `akai-backup backup` runs all enabled sources
+- ✅ Source-specific backup: `akai-backup backup <name>` for individual sources
+- ✅ Full backward compatibility maintained with flag-based `sync` command
+- ✅ TypeScript compilation successful, all imports updated to `@/lib/` pattern
+
+### Phase 4: Update sampler-export (2 hours) ✅ COMPLETED
 
 **4.1 Refactor into lib and CLI**
 
@@ -604,6 +613,16 @@ if (!options.input) {
   // ... flag-based (existing logic)
 }
 ```
+
+**Phase 4 Completion Summary:**
+- ✅ Refactored sampler-export into lib/ and cli/ structure
+- ✅ Updated package.json with audiotools-config dependency and lib exports
+- ✅ Added `extract` command with config support (alongside existing commands)
+- ✅ Config-based workflow: `akai-extract extract` runs all enabled sources
+- ✅ Source-specific extraction: `akai-extract extract <name>` for individual sources
+- ✅ Auto-discovers disk images in backup directories for each source
+- ✅ Full backward compatibility maintained with existing disk/batch/converter commands
+- ✅ TypeScript compilation successful, all imports updated to `@/lib/` pattern
 
 ### Phase 5: Testing (2-3 hours)
 

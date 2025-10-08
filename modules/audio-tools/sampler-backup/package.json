@@ -2,14 +2,14 @@
   "name": "@oletizi/sampler-backup",
   "version": "1.0.0-alpha.16",
   "description": "Akai sampler backup utilities for hardware samplers via PiSCSI",
-  "main": "./dist/index.js",
+  "main": "./dist/lib/index.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "types": "./dist/lib/index.d.ts",
+      "import": "./dist/lib/index.js"
     }
   },
-  "types": "./dist/index.d.ts",
+  "types": "./dist/lib/index.d.ts",
   "type": "module",
   "bin": {
     "akai-backup": "./dist/cli/backup.js",
@@ -51,6 +51,7 @@
     "url": "https://github.com/oletizi/ol_dsp/issues"
   },
   "dependencies": {
+    "@oletizi/audiotools-config": "workspace:*",
     "@oletizi/sampler-devices": "workspace:*",
     "@oletizi/sampler-lib": "workspace:*",
     "commander": "^12.1.0",

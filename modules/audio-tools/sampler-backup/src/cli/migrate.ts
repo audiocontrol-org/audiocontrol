@@ -21,7 +21,7 @@ import {
   DEFAULT_PATH_CONVENTIONS,
   getActualSubdirectory,
   type BackupPathConventions,
-} from '@/backup/path-conventions.js';
+} from '@/lib/backup/path-conventions.js';
 
 interface MigrationCandidate {
   sampler: string;

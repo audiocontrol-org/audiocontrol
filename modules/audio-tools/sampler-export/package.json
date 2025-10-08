@@ -2,16 +2,16 @@
   "name": "@oletizi/sampler-export",
   "version": "1.0.0-alpha.16",
   "description": "Akai sampler disk extraction and format conversion tools",
-  "main": "./dist/index.js",
+  "main": "./dist/lib/index.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "types": "./dist/lib/index.d.ts",
+      "import": "./dist/lib/index.js",
+      "require": "./dist/lib/index.cjs"
     }
   },
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
+  "module": "./dist/lib/index.mjs",
+  "types": "./dist/lib/index.d.ts",
   "type": "module",
   "bin": {
     "akai-extract": "./dist/cli/extract.cjs"
@@ -69,6 +69,7 @@
     "vitest": "^1.2.0"
   },
   "dependencies": {
+    "@oletizi/audiotools-config": "workspace:*",
     "@oletizi/sampler-devices": "workspace:*",
     "@oletizi/sampler-lib": "workspace:*",
     "commander": "^12.1.0",

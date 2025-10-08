@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { LocalBackupAdapter, type FileSystemOperations, type LocalBackupOptions, type BackupProgress } from '@/backup/local-backup-adapter';
+import { LocalBackupAdapter, type FileSystemOperations, type LocalBackupOptions, type BackupProgress } from '@/lib/backup/local-backup-adapter';
 import { Readable, Writable } from 'stream';
 
 /**

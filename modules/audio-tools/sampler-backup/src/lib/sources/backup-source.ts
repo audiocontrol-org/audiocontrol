@@ -3,7 +3,7 @@
  * Provides abstraction over different backup mechanisms
  */
 
-import type { BackupResult, RsnapshotInterval } from '@/types/index.js';
+import type { BackupResult, RsnapshotInterval } from '@/lib/types/index.js';
 
 /**
  * Configuration for remote SSH-based backup sources

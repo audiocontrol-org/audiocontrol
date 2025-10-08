@@ -11,12 +11,12 @@ import { mkdirSync, existsSync, readdirSync, statSync, readFileSync } from "fs";
 import { join, basename, extname, dirname, relative } from "pathe";
 import { newAkaitools, newAkaiToolsConfig } from "@oletizi/sampler-devices";
 import type { Akaitools } from "@oletizi/sampler-devices";
-import { convertA3PToSFZ } from "@/converters/s3k-to-sfz.js";
-import { convertA3PToDecentSampler } from "@/converters/s3k-to-decentsampler.js";
-import { convertAKPToSFZ } from "@/converters/s5k-to-sfz.js";
-import { convertAKPToDecentSampler } from "@/converters/s5k-to-decentsampler.js";
-import { isDosDisk, extractDosDisk } from "@/extractor/dos-disk-extractor.js";
-import { getAuditLogger } from "@/utils/audit-logger.js";
+import { convertA3PToSFZ } from "@/lib/converters/s3k-to-sfz.js";
+import { convertA3PToDecentSampler } from "@/lib/converters/s3k-to-decentsampler.js";
+import { convertAKPToSFZ } from "@/lib/converters/s5k-to-sfz.js";
+import { convertAKPToDecentSampler } from "@/lib/converters/s5k-to-decentsampler.js";
+import { isDosDisk, extractDosDisk } from "@/lib/extractor/dos-disk-extractor.js";
+import { getAuditLogger } from "@/lib/utils/audit-logger.js";
 
 /**
  * Configuration options for disk extraction

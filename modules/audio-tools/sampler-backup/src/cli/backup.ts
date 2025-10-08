@@ -6,9 +6,10 @@
  */
 
 import { Command } from "commander";
-import { RemoteSource } from "@/sources/remote-source.js";
-import { LocalSource } from "@/sources/local-source.js";
-import type { RemoteSourceConfig, LocalSourceConfig } from "@/sources/backup-source.js";
+import { RemoteSource } from "@/lib/sources/remote-source.js";
+import { LocalSource } from "@/lib/sources/local-source.js";
+import type { RemoteSourceConfig, LocalSourceConfig } from "@/lib/sources/backup-source.js";
+import { loadConfig, getEnabledBackupSources, type BackupSource } from "@oletizi/audiotools-config";
 import { homedir } from 'os';
 import { join } from 'pathe';
 import { readdir, stat } from 'node:fs/promises';
@@ -123,7 +124,56 @@ function samplerNameFromHost(host: string): string {
 }
 
 /**
- * Shared sync/backup action handler
+ * Create a backup source instance from BackupSource config
+ */
+function createSourceFromConfig(sourceConfig: BackupSource): RemoteSource | LocalSource {
+  if (sourceConfig.type === 'remote') {
+    const config: RemoteSourceConfig = {
+      type: 'remote',
+      host: sourceConfig.source.split(':')[0],
+      sourcePath: sourceConfig.source.split(':')[1] || '~/',
+      device: sourceConfig.device,
+      sampler: sourceConfig.sampler || samplerNameFromHost(sourceConfig.source.split(':')[0]),
+    };
+    return new RemoteSource(config);
+  } else {
+    const config: LocalSourceConfig = {
+      type: 'local',
+      sourcePath: sourceConfig.source,
+      sampler: sourceConfig.sampler || 'unknown',
+      device: sourceConfig.device,
+      backupSubdir: sourceConfig.sampler || 'unknown',
+    };
+    return new LocalSource(config);
+  }
+}
+
+/**
+ * Backup a single source
+ */
+async function backupSource(source: RemoteSource | LocalSource, dryRun: boolean = false): Promise<void> {
+  console.log(`Syncing to: ${source.getBackupPath()}`);
+  console.log("");
+
+  if (dryRun) {
+    console.log("Mode: DRY RUN (no changes will be made)");
+    return;
+  }
+
+  // Execute sync
+  const result = await source.backup('daily'); // interval not used with rsync
+
+  if (!result.success) {
+    console.error("\nSync failed:");
+    result.errors.forEach((err) => console.error(`  - ${err}`));
+    throw new Error('Backup failed');
+  }
+
+  console.log("\n✓ Sync complete");
+}
+
+/**
+ * Shared sync/backup action handler (flag-based)
  */
 async function handleSyncCommand(options: any): Promise<void> {
   try {
@@ -175,19 +225,84 @@ async function handleSyncCommand(options: any): Promise<void> {
       source = new LocalSource(config);
     }
 
-    console.log(`Syncing to: ${source.getBackupPath()}`);
-    console.log("");
+    await backupSource(source, options.dryRun);
+  } catch (err: any) {
+    console.error(`Error: ${err.message}`);
+    process.exit(1);
+  }
+}
 
-    // Execute sync
-    const result = await source.backup('daily'); // interval not used with rsync
+/**
+ * Config-based backup command handler
+ */
+async function handleBackupCommand(sourceName: string | undefined, options: any): Promise<void> {
+  try {
+    // If --source flag is provided, use flag-based logic (backward compatibility)
+    if (options.source) {
+      return handleSyncCommand(options);
+    }
 
-    if (!result.success) {
-      console.error("\nSync failed:");
-      result.errors.forEach((err) => console.error(`  - ${err}`));
+    // Load config
+    const config = await loadConfig();
+    if (!config.backup) {
+      console.error("Error: No backup configuration found");
+      console.error("Run 'audiotools config' or 'akai-backup config' to set up configuration");
       process.exit(1);
     }
 
-    console.log("\n✓ Sync complete");
+    const enabledSources = getEnabledBackupSources(config);
+
+    if (enabledSources.length === 0) {
+      console.error("Error: No enabled backup sources found in configuration");
+      console.error("Run 'audiotools config' or 'akai-backup config' to add backup sources");
+      process.exit(1);
+    }
+
+    // If sourceName is provided, backup only that source
+    if (sourceName) {
+      const sourceConfig = enabledSources.find(s => s.name === sourceName);
+      if (!sourceConfig) {
+        console.error(`Error: Source '${sourceName}' not found or not enabled in configuration`);
+        console.error(`Available sources: ${enabledSources.map(s => s.name).join(', ')}`);
+        process.exit(1);
+      }
+
+      console.log(`Backing up source: ${sourceConfig.name}`);
+      console.log(`Type: ${sourceConfig.type}`);
+      console.log(`Source: ${sourceConfig.source}`);
+      console.log(`Device: ${sourceConfig.device}`);
+      console.log("");
+
+      const source = createSourceFromConfig(sourceConfig);
+      await backupSource(source, options.dryRun);
+      return;
+    }
+
+    // Backup all enabled sources
+    console.log(`Found ${enabledSources.length} enabled backup source(s)\n`);
+
+    for (let i = 0; i < enabledSources.length; i++) {
+      const sourceConfig = enabledSources[i];
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`[${i + 1}/${enabledSources.length}] ${sourceConfig.name}`);
+      console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+      console.log(`Type: ${sourceConfig.type}`);
+      console.log(`Source: ${sourceConfig.source}`);
+      console.log(`Device: ${sourceConfig.device}`);
+      console.log("");
+
+      try {
+        const source = createSourceFromConfig(sourceConfig);
+        await backupSource(source, options.dryRun);
+      } catch (err: any) {
+        console.error(`Failed to backup ${sourceConfig.name}: ${err.message}`);
+        // Continue with next source
+      }
+
+      console.log("");
+    }
+
+    console.log("✓ All backups complete");
   } catch (err: any) {
     console.error(`Error: ${err.message}`);
     process.exit(1);
@@ -200,13 +315,18 @@ program
     .version("1.0.0")
     .addHelpText('after', `
 Examples:
-  Remote (SSH) backup - PiSCSI:
-    $ akai-backup sync --source pi-scsi2.local:~/images/ --device images
-    $ akai-backup sync --source pi@host:/data/images --device images
+  Config-based backup (NEW):
+    $ akai-backup backup                    # Backup all enabled sources from config
+    $ akai-backup backup pi-scsi2          # Backup specific source by name
 
-  Local media backup:
-    $ akai-backup sync --source /Volumes/DSK0 --sampler s5k-studio --device floppy
-    $ akai-backup sync --source /Volumes/GOTEK --sampler s3k-zulu --device floppy
+  Flag-based backup (backward compatible):
+    Remote (SSH) backup - PiSCSI:
+      $ akai-backup sync --source pi-scsi2.local:~/images/ --device images
+      $ akai-backup sync --source pi@host:/data/images --device images
+
+    Local media backup:
+      $ akai-backup sync --source /Volumes/DSK0 --sampler s5k-studio --device floppy
+      $ akai-backup sync --source /Volumes/GOTEK --sampler s3k-zulu --device floppy
 
   List synced backups:
     $ akai-backup list --all
@@ -224,6 +344,10 @@ Directory Structure:
       └── floppy/            # Floppy emulator
           └── DSK0.img
 
+Configuration:
+  Run 'audiotools config' or 'akai-backup config' to set up backup sources.
+  Config file: ~/.audiotools/config.json
+
 Requirements:
   - rsync: Installed by default on macOS and most Linux systems
   - SSH access to remote hosts (passwordless keys recommended)
@@ -234,20 +358,20 @@ How It Works:
   No snapshots, no archives - just fast, simple sync.
 `);
 
-// Sync command (main backup command)
+// Backup command (NEW - config-based with optional source name argument)
+program
+    .command("backup [source]")
+    .description("Backup from config (all enabled sources or specific source by name)")
+    .option("-s, --source <path>", "Override: use flag-based source path instead of config")
+    .option("-d, --device <name>", "Override: device name (requires --source)")
+    .option("--sampler <name>", "Override: sampler name (for local sources with --source)")
+    .option("--dry-run", "Show what would be synced without actually syncing")
+    .action(handleBackupCommand);
+
+// Sync command (backward compatible - flag-based)
 program
     .command("sync")
-    .description("Sync sampler disk images from remote or local source")
-    .requiredOption("-s, --source <path>", "Source path (local or remote SSH)")
-    .requiredOption("-d, --device <name>", "Device name (scsi0, scsi1, floppy, etc.)")
-    .option("--sampler <name>", "Sampler name (required for local sources, optional for remote)")
-    .option("--dry-run", "Show what would be synced without actually syncing")
-    .action(handleSyncCommand);
-
-// Backup command (alias for sync)
-program
-    .command("backup")
-    .description("Alias for 'sync' command")
+    .description("Sync sampler disk images from remote or local source (flag-based)")
     .requiredOption("-s, --source <path>", "Source path (local or remote SSH)")
     .requiredOption("-d, --device <name>", "Device name (scsi0, scsi1, floppy, etc.)")
     .option("--sampler <name>", "Sampler name (required for local sources, optional for remote)")

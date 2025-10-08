@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { LocalBackupAdapter } from '@/backup/local-backup-adapter';
+import { LocalBackupAdapter } from '@/lib/backup/local-backup-adapter';
 import { mkdir, writeFile, readFile, stat, rm, utimes } from 'fs/promises';
 import { join } from 'pathe';
 import { tmpdir } from 'os';

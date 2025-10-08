@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MediaDetector, type FileSystemOperations } from '@/media/media-detector.js';
+import { MediaDetector, type FileSystemOperations } from '@/lib/media/media-detector.js';
 
 /**
  * Mock filesystem for testing MediaDetector

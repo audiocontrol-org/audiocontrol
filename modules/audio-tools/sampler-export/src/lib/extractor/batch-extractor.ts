@@ -13,7 +13,7 @@
 import { existsSync, readdirSync, statSync } from "fs";
 import { join, basename, extname, resolve } from "pathe";
 import { homedir } from "os";
-import { extractAkaiDisk, ExtractionResult } from "@/extractor/disk-extractor.js";
+import { extractAkaiDisk, ExtractionResult } from "@/lib/extractor/disk-extractor.js";
 import {
   discoverBackupSamplers,
   findBackupDiskImages,

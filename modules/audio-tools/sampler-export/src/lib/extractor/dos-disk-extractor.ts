@@ -10,7 +10,7 @@
 import { mkdirSync, readFileSync, openSync, readSync, closeSync, existsSync, readdirSync } from "fs";
 import { join } from "pathe";
 import { spawn } from "child_process";
-import { getMcopyBinary } from "@/utils/mtools-binary.js";
+import { getMcopyBinary } from "@/lib/utils/mtools-binary.js";
 import type { ExtractionResult } from "@/types/index.js";
 
 /**

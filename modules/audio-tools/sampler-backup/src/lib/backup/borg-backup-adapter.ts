@@ -12,14 +12,14 @@ import type {
   BorgProgress,
   BorgRepositoryInfo,
   IBorgBackupAdapter
-} from '@/types/borg.js';
+} from '@/lib/types/borg.js';
 import {
   executeBorgCommand,
   parseProgress,
   expandPath,
   ensureBorgInstalled,
   checkBorgVersion
-} from '@/backup/borg-command.js';
+} from '@/lib/backup/borg-command.js';
 
 /**
  * BorgBackup adapter for efficient incremental backups

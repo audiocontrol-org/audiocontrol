@@ -5,9 +5,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { BackupSourceFactory } from '@/sources/backup-source-factory.js';
-import type { BackupSource } from '@/sources/backup-source.js';
-import type { BackupResult, RsnapshotInterval } from '@/types/index.js';
+import { BackupSourceFactory } from '@/lib/sources/backup-source-factory.js';
+import type { BackupSource } from '@/lib/sources/backup-source.js';
+import type { BackupResult, RsnapshotInterval } from '@/lib/types/index.js';
 
 // Mock modules using dependency injection pattern (no module stubbing)
 vi.mock('@/sources/backup-source-factory.js');

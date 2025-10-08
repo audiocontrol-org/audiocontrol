@@ -3,10 +3,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { BackupSourceFactory } from '@/sources/backup-source-factory.js';
-import { RemoteSource } from '@/sources/remote-source.js';
-import { LocalSource } from '@/sources/local-source.js';
-import type { RemoteSourceConfig, LocalSourceConfig } from '@/sources/backup-source.js';
+import { BackupSourceFactory } from '@/lib/sources/backup-source-factory.js';
+import { RemoteSource } from '@/lib/sources/remote-source.js';
+import { LocalSource } from '@/lib/sources/local-source.js';
+import type { RemoteSourceConfig, LocalSourceConfig } from '@/lib/sources/backup-source.js';
 
 describe('BackupSourceFactory', () => {
   describe('create()', () => {

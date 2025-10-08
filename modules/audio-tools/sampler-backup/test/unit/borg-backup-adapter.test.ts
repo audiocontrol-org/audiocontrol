@@ -8,8 +8,8 @@ import type {
   BorgRetentionPolicy,
   BorgProgress,
   BorgCommandResult
-} from '@/types/borg';
-import * as borgCommand from '@/backup/borg-command.js';
+} from '@/lib/types/borg';
+import * as borgCommand from '@/lib/backup/borg-command.js';
 
 // Mock fs/promises at module level
 vi.mock('fs/promises', () => ({

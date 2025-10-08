@@ -5,9 +5,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-import { RemoteSource } from '@/sources/remote-source.js';
-import type { RemoteSourceConfig } from '@/sources/backup-source.js';
-import type { RsyncConfig } from '@/backup/rsync-adapter.js';
+import { RemoteSource } from '@/lib/sources/remote-source.js';
+import type { RemoteSourceConfig } from '@/lib/sources/backup-source.js';
+import type { RsyncConfig } from '@/lib/backup/rsync-adapter.js';
 
 // Mock RsyncAdapter
 class MockRsyncAdapter {

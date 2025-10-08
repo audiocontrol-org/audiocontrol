@@ -8,10 +8,10 @@
 
 import { spawn } from 'node:child_process';
 import { mkdir } from 'node:fs/promises';
-import { RsyncAdapter } from '@/backup/rsync-adapter.js';
-import { resolveRepositoryPath } from '@/backup/repo-path-resolver.js';
-import type { BackupSource, RemoteSourceConfig } from '@/sources/backup-source.js';
-import type { BackupResult, RsnapshotInterval } from '@/types/index.js';
+import { RsyncAdapter } from '@/lib/backup/rsync-adapter.js';
+import { resolveRepositoryPath } from '@/lib/backup/repo-path-resolver.js';
+import type { BackupSource, RemoteSourceConfig } from '@/lib/sources/backup-source.js';
+import type { BackupResult, RsnapshotInterval } from '@/lib/types/index.js';
 
 /**
  * RemoteSource - SSH-based backup source using rsync

@@ -2,7 +2,7 @@
  * Type definitions for BorgBackup integration
  */
 
-import type { RsnapshotInterval } from '@/types/index.js';
+import type { RsnapshotInterval } from '@/lib/types/index.js';
 
 /**
  * Borg repository configuration

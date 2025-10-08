@@ -144,6 +144,9 @@ importers:
 
   sampler-backup:
     dependencies:
+      '@oletizi/audiotools-config':
+        specifier: workspace:*
+        version: link:../audiotools-config
       '@oletizi/sampler-devices':
         specifier: workspace:*
         version: link:../sampler-devices
@@ -215,6 +218,9 @@ importers:
 
   sampler-export:
     dependencies:
+      '@oletizi/audiotools-config':
+        specifier: workspace:*
+        version: link:../audiotools-config
       '@oletizi/sampler-devices':
         specifier: workspace:*
         version: link:../sampler-devices

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { resolveRepositoryPath } from '@/backup/repo-path-resolver.js';
+import { resolveRepositoryPath } from '@/lib/backup/repo-path-resolver.js';
 import * as os from 'node:os';
 
 // Mock os module at module level

@@ -10,8 +10,8 @@
 import { writeFileSync } from "fs";
 import { basename, join, relative, extname } from "pathe";
 import { create } from "xmlbuilder2";
-import { parseA3P, findSampleFile } from "@/converters/s3k-to-sfz.js";
-import type { S3KProgramData } from "@/converters/s3k-to-sfz.js";
+import { parseA3P, findSampleFile } from "@/lib/converters/s3k-to-sfz.js";
+import type { S3KProgramData } from "@/lib/converters/s3k-to-sfz.js";
 
 /**
  * Create DecentSampler XML document from program data

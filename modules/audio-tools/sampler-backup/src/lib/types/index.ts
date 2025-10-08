@@ -102,11 +102,11 @@ export type {
   BackupSourceConfig,
   RemoteSourceConfig,
   LocalSourceConfig,
-} from '@/sources/backup-source.js';
+} from '@/lib/sources/backup-source.js';
 
 export type {
   BackupSourceFromPathOptions,
-} from '@/sources/backup-source-factory.js';
+} from '@/lib/sources/backup-source-factory.js';
 
 /**
  * BorgBackup types
@@ -119,4 +119,4 @@ export type {
   BorgRepositoryInfo,
   BorgCommandResult,
   IBorgBackupAdapter,
-} from '@/types/borg.js';
+} from '@/lib/types/borg.js';

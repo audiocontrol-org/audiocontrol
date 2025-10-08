@@ -3,9 +3,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { LocalSource } from '@/sources/local-source.js';
-import type { LocalSourceConfig } from '@/sources/backup-source.js';
-import type { RsyncConfig } from '@/backup/rsync-adapter.js';
+import { LocalSource } from '@/lib/sources/local-source.js';
+import type { LocalSourceConfig } from '@/lib/sources/backup-source.js';
+import type { RsyncConfig } from '@/lib/backup/rsync-adapter.js';
 
 // Mock RsyncAdapter
 class MockRsyncAdapter {

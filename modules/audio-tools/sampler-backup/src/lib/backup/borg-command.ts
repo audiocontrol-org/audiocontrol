@@ -4,7 +4,7 @@
 
 import { spawn } from 'child_process';
 import type { ChildProcess } from 'child_process';
-import type { BorgCommandResult, BorgProgress } from '@/types/borg.js';
+import type { BorgCommandResult, BorgProgress } from '@/lib/types/borg.js';
 
 /**
  * Execute a borg command and return result

@@ -3,9 +3,9 @@
  * Supports auto-detection of source type from path or explicit configuration
  */
 
-import { RemoteSource } from '@/sources/remote-source.js';
-import { LocalSource } from '@/sources/local-source.js';
-import type { BackupSource, BackupSourceConfig, RemoteSourceConfig, LocalSourceConfig } from '@/sources/backup-source.js';
+import { RemoteSource } from '@/lib/sources/remote-source.js';
+import { LocalSource } from '@/lib/sources/local-source.js';
+import type { BackupSource, BackupSourceConfig, RemoteSourceConfig, LocalSourceConfig } from '@/lib/sources/backup-source.js';
 
 /**
  * Options for creating a backup source from a path string
