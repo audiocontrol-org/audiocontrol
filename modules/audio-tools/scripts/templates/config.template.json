@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "created": "{{CREATED_DATE}}",
+  "platform": "{{PLATFORM}}",
+  "samplers": {{SAMPLERS_JSON}},
+  "backup": {
+    "type": "{{BACKUP_TYPE}}",
+    "remote": {
+      "sources": {{REMOTE_SOURCES_JSON}}
+    },
+    "local": {
+      "mountPattern": "{{LOCAL_MOUNT_PATTERN}}"
+    },
+    "repository": "{{BORG_REPO}}",
+    "retention": {
+      "daily": 7,
+      "weekly": 4,
+      "monthly": 12
+    }
+  },
+  "extraction": {
+    "outputPath": "{{EXTRACT_PATH}}",
+    "formats": {{OUTPUT_FORMATS_JSON}},
+    "batchMode": true
+  },
+  "library": {
+    "enabled": {{LIBRARY_ENABLED}},
+    "path": "{{LIBRARY_PATH}}",
+    "symlinkStrategy": "{{SYMLINK_STRATEGY}}"
+  },
+  "scheduling": {
+    "enabled": {{SCHEDULING_ENABLED}},
+    "cron": "{{SCHEDULE_CRON}}",
+    "runExtraction": true
+  }
+}
