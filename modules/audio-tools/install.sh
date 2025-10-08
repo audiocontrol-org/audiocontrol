@@ -172,6 +172,12 @@ verify_package_compatibility() {
 }
 
 check_installer_version() {
+  # Skip version check for alpha/beta/rc releases (development versions)
+  if [[ "$INSTALLER_VERSION" =~ -(alpha|beta|rc) ]]; then
+    echo "Skipping version check (prerelease version)"
+    return 0
+  fi
+
   # Check if newer installer version is available by querying GitHub API for latest audio-tools release
   echo "Checking for installer updates..."
 
