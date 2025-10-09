@@ -327,11 +327,13 @@ async function handleBackupCommand(sourceName: string | undefined, options: any)
 
       // If source was updated (registered/recognized), save config
       if (updatedSource !== sourceConfig) {
-        const sourceIndex = config.backupSources.findIndex((s: BackupSource) => s.name === sourceName);
-        if (sourceIndex !== -1) {
-          config.backupSources[sourceIndex] = updatedSource;
-          await saveConfig(config);
-          console.log(`✓ Configuration updated\n`);
+        if (config.backup?.sources) {
+          const sourceIndex = config.backup.sources.findIndex((s: BackupSource) => s.name === sourceName);
+          if (sourceIndex !== -1) {
+            config.backup.sources[sourceIndex] = updatedSource;
+            await saveConfig(config);
+            console.log(`✓ Configuration updated\n`);
+          }
         }
         sourceConfig = updatedSource;
       }
@@ -360,11 +362,13 @@ async function handleBackupCommand(sourceName: string | undefined, options: any)
 
         // If source was updated (registered/recognized), save config
         if (updatedSource !== sourceConfig) {
-          const sourceIndex = config.backupSources.findIndex((s: BackupSource) => s.name === sourceConfig.name);
-          if (sourceIndex !== -1) {
-            config.backupSources[sourceIndex] = updatedSource;
-            await saveConfig(config);
-            console.log(`✓ Configuration updated\n`);
+          if (config.backup?.sources) {
+            const sourceIndex = config.backup.sources.findIndex((s: BackupSource) => s.name === sourceConfig.name);
+            if (sourceIndex !== -1) {
+              config.backup.sources[sourceIndex] = updatedSource;
+              await saveConfig(config);
+              console.log(`✓ Configuration updated\n`);
+            }
           }
           sourceConfig = updatedSource;
         }

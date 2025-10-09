@@ -46,14 +46,15 @@ export class DeviceResolver {
     sourceName: string,
     config: AudioToolsConfig
   ): Promise<ResolutionResult> {
-    const source = config.backupSources.find((s: BackupSource) => s.name === sourceName);
+    const sources = config.backup?.sources || [];
+    const source = sources.find((s: BackupSource) => s.name === sourceName);
 
     if (!source) {
       throw new Error(`Backup source not found: ${sourceName}`);
     }
 
     // Try to match device by UUID
-    const matchResult = await this.matcher.matchDevice(mountPath, config.backupSources);
+    const matchResult = await this.matcher.matchDevice(mountPath, sources);
 
     // Handle conflicts
     if (matchResult.reason === 'conflict') {
