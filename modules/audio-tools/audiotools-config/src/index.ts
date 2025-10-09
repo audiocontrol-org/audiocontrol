@@ -62,3 +62,10 @@ export {
   editExportConfigWizard,
   importBackupsWizard,
 } from './wizard.js';
+
+// Export migration utilities
+export {
+  migrateConfig,
+  hasDeviceIdentifier,
+  getDeviceIdentifier,
+} from './migration.js';

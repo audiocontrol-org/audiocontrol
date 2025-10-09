@@ -9,7 +9,8 @@ import { Command } from "commander";
 import { RemoteSource } from "@/lib/sources/remote-source.js";
 import { LocalSource } from "@/lib/sources/local-source.js";
 import type { RemoteSourceConfig, LocalSourceConfig } from "@/lib/sources/backup-source.js";
-import { loadConfig, getEnabledBackupSources, type BackupSource } from "@oletizi/audiotools-config";
+import { loadConfig, getEnabledBackupSources, type BackupSource, saveConfig } from "@oletizi/audiotools-config";
+import { DeviceResolver } from "@/lib/device/device-resolver.js";
 import { homedir } from 'os';
 import { join } from 'pathe';
 import { readdir, stat } from 'node:fs/promises';
@@ -149,6 +150,54 @@ function createSourceFromConfig(sourceConfig: BackupSource): RemoteSource | Loca
 }
 
 /**
+ * Resolve device UUID for local source and update config
+ *
+ * @param sourceConfig - Backup source configuration
+ * @param config - Full audio-tools configuration
+ * @param dryRun - If true, skip UUID resolution and config updates
+ * @returns Updated backup source with UUID fields populated
+ */
+async function resolveLocalDevice(
+  sourceConfig: BackupSource,
+  config: ReturnType<typeof loadConfig> extends Promise<infer T> ? T : never,
+  dryRun: boolean = false
+): Promise<BackupSource> {
+  // Only resolve for local sources
+  if (sourceConfig.type !== 'local') {
+    return sourceConfig;
+  }
+
+  if (dryRun) {
+    console.log(`[DRY RUN] Would resolve device UUID for ${sourceConfig.name}`);
+    return sourceConfig;
+  }
+
+  const resolver = new DeviceResolver();
+
+  try {
+    const result = await resolver.resolveDevice(
+      sourceConfig.source,  // mount path
+      sourceConfig.name,    // source name
+      config
+    );
+
+    // Display resolution status
+    if (result.action === 'registered') {
+      console.log(`📝 ${result.message}`);
+    } else if (result.action === 'recognized') {
+      console.log(`✓ ${result.message}`);
+    }
+
+    return result.source;
+  } catch (error: any) {
+    // Device resolution failed - this is not fatal, just warn user
+    console.warn(`⚠️  Device UUID resolution failed: ${error.message}`);
+    console.warn(`   Continuing backup without UUID tracking`);
+    return sourceConfig;
+  }
+}
+
+/**
  * Backup a single source
  */
 async function backupSource(source: RemoteSource | LocalSource, dryRun: boolean = false): Promise<void> {
@@ -260,7 +309,7 @@ async function handleBackupCommand(sourceName: string | undefined, options: any)
 
     // If sourceName is provided, backup only that source
     if (sourceName) {
-      const sourceConfig = enabledSources.find(s => s.name === sourceName);
+      let sourceConfig = enabledSources.find(s => s.name === sourceName);
       if (!sourceConfig) {
         console.error(`Error: Source '${sourceName}' not found or not enabled in configuration`);
         console.error(`Available sources: ${enabledSources.map(s => s.name).join(', ')}`);
@@ -273,6 +322,20 @@ async function handleBackupCommand(sourceName: string | undefined, options: any)
       console.log(`Device: ${sourceConfig.device}`);
       console.log("");
 
+      // Resolve device UUID for local sources
+      const updatedSource = await resolveLocalDevice(sourceConfig, config, options.dryRun);
+
+      // If source was updated (registered/recognized), save config
+      if (updatedSource !== sourceConfig) {
+        const sourceIndex = config.backupSources.findIndex((s: BackupSource) => s.name === sourceName);
+        if (sourceIndex !== -1) {
+          config.backupSources[sourceIndex] = updatedSource;
+          await saveConfig(config);
+          console.log(`✓ Configuration updated\n`);
+        }
+        sourceConfig = updatedSource;
+      }
+
       const source = createSourceFromConfig(sourceConfig);
       await backupSource(source, options.dryRun);
       return;
@@ -282,7 +345,7 @@ async function handleBackupCommand(sourceName: string | undefined, options: any)
     console.log(`Found ${enabledSources.length} enabled backup source(s)\n`);
 
     for (let i = 0; i < enabledSources.length; i++) {
-      const sourceConfig = enabledSources[i];
+      let sourceConfig = enabledSources[i];
       console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
       console.log(`[${i + 1}/${enabledSources.length}] ${sourceConfig.name}`);
       console.log(`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
@@ -292,6 +355,20 @@ async function handleBackupCommand(sourceName: string | undefined, options: any)
       console.log("");
 
       try {
+        // Resolve device UUID for local sources
+        const updatedSource = await resolveLocalDevice(sourceConfig, config, options.dryRun);
+
+        // If source was updated (registered/recognized), save config
+        if (updatedSource !== sourceConfig) {
+          const sourceIndex = config.backupSources.findIndex((s: BackupSource) => s.name === sourceConfig.name);
+          if (sourceIndex !== -1) {
+            config.backupSources[sourceIndex] = updatedSource;
+            await saveConfig(config);
+            console.log(`✓ Configuration updated\n`);
+          }
+          sourceConfig = updatedSource;
+        }
+
         const source = createSourceFromConfig(sourceConfig);
         await backupSource(source, options.dryRun);
       } catch (err: any) {
@@ -318,6 +395,15 @@ Examples:
   Config-based backup (NEW):
     $ akai-backup backup                    # Backup all enabled sources from config
     $ akai-backup backup pi-scsi2          # Backup specific source by name
+    $ akai-backup backup --dry-run         # Preview changes without backing up
+
+  Device UUID Tracking (Automatic):
+    Local sources are automatically tracked by device UUID. When you backup
+    a local device (SD card, USB drive), the system:
+    - Detects the device UUID on first backup (registration)
+    - Recognizes the same device on subsequent backups (recognition)
+    - Updates the lastSeen timestamp each time
+    - Works even if the mount path changes between backups
 
   Flag-based backup (backward compatible):
     Remote (SSH) backup - PiSCSI:

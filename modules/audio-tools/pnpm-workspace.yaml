@@ -9,4 +9,5 @@ packages:
   - 'sampler-backup'
   - 'sampler-attic'    # Temporary storage for deferred code - NOT FOR DISTRIBUTION
   - 'lib-runtime'
+  - 'lib-device-uuid'
   # sampler-interface excluded - UI app with missing dependencies

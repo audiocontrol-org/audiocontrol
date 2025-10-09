@@ -103,6 +103,36 @@ Individual backup source configuration:
 - `sampler?`: Sampler name (optional, defaults to source name)
 - `enabled`: Whether this source is active for backups
 
+**Device UUID Tracking (Optional):**
+
+For local media sources, additional fields enable device UUID tracking to recognize the same physical device across remounts:
+
+- `volumeUUID?`: Primary device identifier (e.g., "12345678-1234-1234-1234-123456789012")
+- `volumeLabel?`: Human-readable volume name (e.g., "SDCARD", "S5000_BACKUP")
+- `volumeSerial?`: Fallback identifier for devices without UUID (e.g., "12345678-02")
+- `lastSeen?`: ISO 8601 timestamp of last detection (e.g., "2025-10-09T14:30:00.000Z")
+- `registeredAt?`: ISO 8601 timestamp when device was first registered (e.g., "2025-10-09T14:30:00.000Z")
+
+**Example with UUID tracking:**
+```typescript
+{
+  name: 's5k-sdcard',
+  type: 'local',
+  source: '/Volumes/SDCARD',
+  device: 'sd-card',
+  sampler: 's5000',
+  enabled: true,
+  volumeUUID: '12345678-1234-1234-1234-123456789012',
+  volumeLabel: 'SDCARD',
+  lastSeen: '2025-10-09T14:30:00.000Z',
+  registeredAt: '2025-10-09T14:00:00.000Z'
+}
+```
+
+**Backward Compatibility:**
+All UUID fields are optional. Existing configurations remain valid without modification.
+
+
 #### `ExportConfig`
 
 Configuration for the export tool:
