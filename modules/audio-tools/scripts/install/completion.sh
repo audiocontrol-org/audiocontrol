@@ -40,11 +40,6 @@ show_installation_summary() {
   # Configuration summary
   echo "Configuration:"
 
-  # BorgBackup repository
-  if [ "${SKIP_BACKUP:-false}" != "true" ] && [ "${CONFIG_BACKUP_TYPE:-none}" != "none" ]; then
-    success "BorgBackup repository initialized"
-  fi
-
   # Remote sources
   if [ -n "${CONFIG_REMOTE_SOURCES:-}" ]; then
     IFS=' ' read -ra sources <<< "${CONFIG_REMOTE_SOURCES}"
@@ -97,13 +92,6 @@ show_verification_commands() {
       local user_host="${source%%:*}"
       echo "  \$ ssh $user_host 'echo Connection successful'"
     done
-    echo ""
-  fi
-
-  if [ "${SKIP_BACKUP:-false}" != "true" ] && command_exists borg; then
-    echo "Check BorgBackup:"
-    echo "  \$ borg --version"
-    echo "  \$ borg info ~/.audiotools/borg-repo"
     echo ""
   fi
 }
@@ -183,7 +171,6 @@ show_next_steps() {
     echo "1. Prepare disk images for extraction"
     echo "2. Run extraction on your disk images"
     echo "3. Import programs into your DAW or sampler"
-    echo "4. Consider installing BorgBackup for backup functionality"
   fi
 
   echo ""
@@ -223,13 +210,6 @@ show_troubleshooting() {
   echo "  • Test: ping <piscsi-hostname>"
   echo "  • Check SSH key authentication: ssh <user>@<piscsi-hostname>"
   echo ""
-
-  if command_exists borg; then
-    echo "Repository locked:"
-    echo "  • If backup was interrupted, break lock:"
-    echo "    \$ borg break-lock ~/.audiotools/borg-repo"
-    echo ""
-  fi
 
   echo "Command not found (akai-backup, akai-extract):"
   echo "  • Add npm global bin to PATH:"

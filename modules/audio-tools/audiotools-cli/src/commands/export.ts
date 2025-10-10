@@ -69,19 +69,12 @@ async function extractFromConfig(
     console.log(`  Source: ${sourceDir}`);
     console.log(`  Output: ${destDir}`);
 
-    // Convert sampler type string to SamplerType if valid
-    let samplerTypes: SamplerType[] | undefined;
-    if (source.sampler) {
-      const validTypes = ['s5k', 's3k'] as const;
-      if (validTypes.includes(source.sampler as any)) {
-        samplerTypes = [source.sampler as SamplerType];
-      }
-    }
-
+    // Don't filter by samplerTypes - we already know this backup came from the configured sampler.
+    // The detected samplerType from disk headers is used to determine extraction method,
+    // not to filter which disks to process. DOS/FAT formatted S3K disks will show as 'unknown'.
     const result = await extractBatch({
       sourceDir,
       destDir,
-      samplerTypes,
       force: !exportConfig.skipUnchanged,
       convertToSFZ: exportConfig.formats.includes('sfz'),
       convertToDecentSampler: exportConfig.formats.includes('decentsampler'),
