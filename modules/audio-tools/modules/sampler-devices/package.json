@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/sampler-devices",
-  "version": "1.0.0-alpha.40",
+  "version": "1.0.0-alpha.41",
   "description": "Module for communicating with old midi devices",
   "main": "./dist/index.js",
   "exports": {
@@ -69,6 +69,6 @@
     "yaml": "^2.7.0"
   },
   "dependencies": {
-    "@oletizi/sampler-lib": "^1.0.0-alpha.40"
+    "@oletizi/sampler-lib": "^1.0.0-alpha.41"
   }
 }
