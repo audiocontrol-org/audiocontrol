@@ -14,4 +14,7 @@ export { MediaDetector } from "@/lib/media/media-detector.js";
 export { LocalBackupAdapter } from "@/lib/backup/local-backup-adapter.js";
 export { BorgBackupAdapter } from "@/lib/backup/borg-backup-adapter.js";
 export * from "@/lib/device/index.js";
+export { AutoDetectBackup } from "@/lib/device/auto-detect-backup.js";
+export { DeviceResolver } from "@/lib/device/device-resolver.js";
 export * from "@/lib/prompt/interactive-prompt.js";
+export { InteractivePrompt, UserCancelledError } from "@/lib/prompt/interactive-prompt.js";

@@ -27,6 +27,9 @@ importers:
       '@oletizi/audiotools-config':
         specifier: workspace:*
         version: link:../audiotools-config
+      '@oletizi/lib-device-uuid':
+        specifier: workspace:1.0.0-alpha.31
+        version: link:../lib-device-uuid
       '@oletizi/sampler-backup':
         specifier: workspace:*
         version: link:../sampler-backup
