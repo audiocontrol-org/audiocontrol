@@ -9,13 +9,13 @@ Monorepo of experimental tools for manipulating software and hardware audio devi
 Install the latest stable version directly from GitHub Releases:
 
 ```bash
-curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.37/install.sh | bash
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.38/install.sh | bash
 ```
 
 **Or download and inspect first:**
 
 ```bash
-curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.37/install.sh -o install.sh
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.38/install.sh -o install.sh
 chmod +x install.sh
 ./install.sh
 ```
@@ -24,7 +24,7 @@ chmod +x install.sh
 
 ```bash
 # Download checksum
-curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.37/install.sh.sha256 -o install.sh.sha256
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.38/install.sh.sha256 -o install.sh.sha256
 
 # Verify checksum (macOS/Linux)
 shasum -a 256 -c install.sh.sha256

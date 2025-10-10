@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/audio-tools",
-  "version": "1.0.0-alpha.37",
+  "version": "1.0.0-alpha.38",
   "private": false,
   "description": "Monorepo for hardware sampler utilities and format parsers",
   "type": "module",
