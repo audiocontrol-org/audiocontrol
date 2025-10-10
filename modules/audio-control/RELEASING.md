@@ -4,12 +4,19 @@ This document describes the happy path for releasing packages in the audio-contr
 
 ## Quick Reference
 
-**One-click ship (after changesets created):**
+**One-click ship (truly one command):**
 ```bash
 pnpm release:ship
 ```
 
-This builds, commits, pushes, and publishes all in one step.
+This does EVERYTHING automatically:
+- Auto-creates changeset if none exist (patch bump for all packages)
+- Bumps versions
+- Builds all packages
+- Commits and pushes changes
+- Publishes to npm
+
+**No manual changeset creation required!**
 
 ## Alpha Release Process (Happy Path)
 
@@ -26,57 +33,24 @@ This puts changesets into prerelease mode. You only need to do this once when st
 🦋  Entered pre mode!
 ```
 
-### 2. Create a Changeset
-
-```bash
-pnpm changeset
-```
-
-**Or manually create:** `.changeset/descriptive-name.md`
-
-```markdown
----
-"@oletizi/launch-control-xl3": patch
-"@oletizi/canonical-midi-maps": patch
-"@oletizi/ardour-midi-maps": patch
-"@oletizi/live-max-cc-router": patch
----
-
-Description of what changed
-```
-
-**Bump types:**
-- `patch`: Bug fixes, minor changes (1.20.0 → 1.20.1)
-- `minor`: New features (1.20.0 → 1.21.0)
-- `major`: Breaking changes (1.20.0 → 2.0.0)
-
-### 3. Version Bump
-
-```bash
-pnpm changeset:version
-```
-
-This reads your changesets and updates package.json versions accordingly.
-
-**What happens:**
-- Reads `.changeset/*.md` files
-- Updates `package.json` version fields
-- Updates `CHANGELOG.md` files
-- Deletes processed changeset files
-- Adds `-alpha.X` suffix (when in prerelease mode)
-
-### 4. Ship It! 🚀
+### 2. Ship It! 🚀
 
 ```bash
 pnpm release:ship
 ```
 
 **What this does (in order):**
-1. **Builds** all packages: `pnpm -r build`
-2. **Stages** changes: `git add .`
-3. **Commits** with message: `chore(release): publish packages`
-4. **Pushes** to remote: `git push`
-5. **Publishes** to npm: `pnpm changeset:publish`
+1. **Auto-creates changeset** if none exist (all packages, patch bump)
+2. **Bumps versions** from changesets: `pnpm changeset:version`
+   - Reads `.changeset/*.md` files
+   - Updates all `package.json` versions
+   - Updates `CHANGELOG.md` files
+   - Deletes processed changeset files
+3. **Builds** all packages: `pnpm -r build`
+4. **Stages** changes: `git add .`
+5. **Commits** with message: `chore(release): publish packages`
+6. **Pushes** to remote: `git push`
+7. **Publishes** to npm: `pnpm changeset:publish`
 
 **You will be prompted for:**
 - 2FA/OTP code from your authenticator app
@@ -88,7 +62,7 @@ pnpm release:ship
 🦋  @oletizi/package-name@1.20.1-alpha.1
 ```
 
-### 5. Verify Publication
+### 4. Verify Publication
 
 ```bash
 npm view @oletizi/launch-control-xl3 dist-tags
@@ -108,19 +82,24 @@ npm view @oletizi/live-max-cc-router dist-tags
 # One-time setup: Enter alpha mode
 pnpm release:pre:alpha
 
-# Create a changeset describing your changes
-pnpm changeset
-# Select packages and bump type, write description
-
-# Bump versions based on changesets
-pnpm changeset:version
-
-# Ship it! (build + commit + push + publish)
+# That's it! Just run:
 pnpm release:ship
 # Enter your 2FA/OTP when prompted
 
 # Verify it worked
 npm view @oletizi/launch-control-xl3 dist-tags
+```
+
+**Optional: Create custom changeset before shipping**
+
+If you want a custom changeset message instead of "Automated release":
+
+```bash
+pnpm changeset
+# Select packages and bump type, write description
+
+# Then ship
+pnpm release:ship
 ```
 
 ## Version Consistency
@@ -130,7 +109,7 @@ All packages should share the same version number for simplicity.
 **To sync versions:**
 1. Create changeset with all packages listed
 2. Use same bump type for all (usually `patch`)
-3. Run `pnpm changeset:version`
+3. Run `pnpm release:ship`
 4. All packages will have matching versions
 
 ## Exiting Alpha Mode
@@ -155,10 +134,7 @@ pnpm release:pre:exit
 # Create changeset
 pnpm changeset
 
-# Version bump (creates stable versions)
-pnpm changeset:version
-
-# Ship it!
+# Ship it! (version bump + build + commit + push + publish)
 pnpm release:ship
 ```
 
@@ -182,10 +158,10 @@ pnpm release:ship
 
 | Script | Description |
 |--------|-------------|
-| `pnpm release:ship` | **One-click:** Build + commit + push + publish |
+| `pnpm release:ship` | **One-click:** Version bump + build + commit + push + publish |
 | `pnpm release:publish` | Version + build + publish (no git operations) |
 | `pnpm changeset` | Create a new changeset interactively |
-| `pnpm changeset:version` | Bump versions based on changesets |
+| `pnpm changeset:version` | Bump versions based on changesets (called by release:ship) |
 | `pnpm changeset:publish` | Publish to npm (only) |
 | `pnpm release:pre:alpha` | Enter alpha prerelease mode |
 | `pnpm release:pre:beta` | Enter beta prerelease mode |

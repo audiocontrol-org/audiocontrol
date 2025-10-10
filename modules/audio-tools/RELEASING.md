@@ -4,12 +4,20 @@ This document describes the happy path for releasing packages in the audio-tools
 
 ## Quick Reference
 
-**One-click ship (after creating changesets):**
+**One-click ship (truly one command):**
 ```bash
 pnpm release:ship
 ```
 
-This does everything: version bump, update docs, build, commit, push, and publish.
+This does EVERYTHING automatically:
+- Auto-creates changeset if none exist (patch bump for all packages)
+- Bumps versions
+- Updates README.md files with new version
+- Builds all packages
+- Commits and pushes changes
+- Publishes to npm
+
+**No manual changeset creation required!**
 
 ## Alpha Release Process (Happy Path)
 
@@ -26,61 +34,25 @@ This puts changesets into prerelease mode. You only need to do this once when st
 🦋  Entered pre mode!
 ```
 
-### 2. Create a Changeset
-
-```bash
-pnpm changeset
-```
-
-**Or manually create:** `.changeset/descriptive-name.md`
-
-```markdown
----
-"@oletizi/sampler-lib": patch
-"@oletizi/sampler-export": patch
-"@oletizi/sampler-backup": patch
-"@oletizi/audiotools": patch
----
-
-Description of what changed
-```
-
-**Bump types:**
-- `patch`: Bug fixes, minor changes (1.0.0 → 1.0.1)
-- `minor`: New features (1.0.0 → 1.1.0)
-- `major`: Breaking changes (1.0.0 → 2.0.0)
-
-**Available packages:**
-- `@oletizi/audiotools` - CLI tool for sampler operations
-- `@oletizi/audiotools-config` - Configuration utilities
-- `@oletizi/sampler-lib` - Core sampler library
-- `@oletizi/sampler-devices` - Device communication
-- `@oletizi/sampler-midi` - MIDI utilities
-- `@oletizi/sampler-translate` - Format translation
-- `@oletizi/sampler-export` - Sample extraction
-- `@oletizi/sampler-backup` - Device backup utilities
-- `@oletizi/lib-runtime` - Runtime utilities
-- `@oletizi/lib-device-uuid` - Device UUID utilities
-- `@oletizi/sampler-attic` - NOT FOR DISTRIBUTION (internal use)
-
-### 3. Ship It! 🚀
+### 2. Ship It! 🚀
 
 ```bash
 pnpm release:ship
 ```
 
 **What this does (in order):**
-1. **Bumps versions** from changesets: `pnpm changeset:version`
+1. **Auto-creates changeset** if none exist (all packages, patch bump)
+2. **Bumps versions** from changesets: `pnpm changeset:version`
    - Reads `.changeset/*.md` files
    - Updates all `package.json` versions
    - Updates `CHANGELOG.md` files
    - **Updates README.md files with new version** (automated!)
    - Deletes processed changeset files
-2. **Builds** all packages: `pnpm -r build`
-3. **Stages** changes: `git add .`
-4. **Commits** with message: `chore(release): publish packages`
-5. **Pushes** to remote: `git push`
-6. **Publishes** to npm: `pnpm changeset:publish`
+3. **Builds** all packages: `pnpm -r build`
+4. **Stages** changes: `git add .`
+5. **Commits** with message: `chore(release): publish packages`
+6. **Pushes** to remote: `git push`
+7. **Publishes** to npm: `pnpm changeset:publish`
 
 **You will be prompted for:**
 - 2FA/OTP code from your authenticator app
@@ -111,16 +83,24 @@ npm view @oletizi/audiotools dist-tags
 # One-time setup: Enter alpha mode
 pnpm release:pre:alpha
 
-# Create a changeset describing your changes
-pnpm changeset
-# Select packages and bump type, write description
-
-# Ship it! (version bump + update docs + build + commit + push + publish)
+# That's it! Just run:
 pnpm release:ship
 # Enter your 2FA/OTP when prompted
 
 # Verify it worked
 npm view @oletizi/sampler-lib dist-tags
+```
+
+**Optional: Create custom changeset before shipping**
+
+If you want a custom changeset message instead of "Automated release":
+
+```bash
+pnpm changeset
+# Select packages and bump type, write description
+
+# Then ship
+pnpm release:ship
 ```
 
 ## Version Consistency
