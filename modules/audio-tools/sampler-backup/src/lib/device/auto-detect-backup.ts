@@ -117,7 +117,23 @@ export class AutoDetectBackup implements AutoDetectBackupInterface {
     // Step 1: Detect device info (may fail gracefully)
     const deviceInfo = await this.detectDeviceInfo(mountPath);
 
-    // Step 2: Determine device type (infer or prompt)
+    // Step 2: Check if device is already registered (before prompting!)
+    const existingSource = this.findExistingSource(deviceInfo, config);
+    if (existingSource) {
+      // Device recognized - update lastSeen and return
+      const updatedSource = {
+        ...existingSource,
+        lastSeen: new Date().toISOString(),
+      };
+      return {
+        source: updatedSource,
+        action: 'recognized',
+        deviceInfo,
+        wasPrompted,
+      };
+    }
+
+    // Step 3: New device - determine device type (infer or prompt)
     let deviceType = options.deviceType;
     if (!deviceType) {
       deviceType = this.inferDeviceType(deviceInfo);
@@ -127,22 +143,11 @@ export class AutoDetectBackup implements AutoDetectBackupInterface {
       }
     }
 
-    // Step 3: Determine sampler (prompt if needed)
+    // Step 4: Determine sampler (prompt if needed)
     let sampler = options.sampler;
     if (!sampler) {
       sampler = await this.determineSampler(config);
       wasPrompted = true;
-    }
-
-    // Step 4: Check if device is already registered
-    const existingSource = this.findExistingSource(deviceInfo, config);
-    if (existingSource) {
-      return {
-        source: existingSource,
-        action: 'recognized',
-        deviceInfo,
-        wasPrompted,
-      };
     }
 
     // Step 5: Create new backup source
