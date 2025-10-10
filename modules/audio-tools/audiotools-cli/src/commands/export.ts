@@ -62,7 +62,9 @@ async function extractFromConfig(
 
   try {
     const sourceDir = getSourceBackupDir(source, backupRoot);
-    const destDir = join(exportConfig.outputRoot, source.name, source.device);
+    // Use same structure as backup: sampler/device instead of source-name/device
+    const sampler = source.sampler || 'unknown';
+    const destDir = join(exportConfig.outputRoot, sampler, source.device);
 
     console.log(`  Source: ${sourceDir}`);
     console.log(`  Output: ${destDir}`);
