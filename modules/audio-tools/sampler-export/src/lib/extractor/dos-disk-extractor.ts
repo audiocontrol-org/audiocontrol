@@ -104,7 +104,8 @@ async function executeMcopy(
             env: {
                 ...process.env,
                 MTOOLS_SKIP_CHECK: '1'  // Skip mtools.conf check
-            }
+            },
+            stdio: ['ignore', 'pipe', 'pipe']  // stdin closed, stdout/stderr piped
         });
 
         let stdout = "";
