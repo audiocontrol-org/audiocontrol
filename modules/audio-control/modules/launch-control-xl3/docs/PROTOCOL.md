@@ -1,12 +1,12 @@
 # Launch Control XL3 Protocol Specification
 
-**Version:** 1.6
-**Last Updated:** 2025-10-01
+**Version:** 1.7
+**Last Updated:** 2025-10-09
 **Status:** Verified with hardware
 
 ## Overview
 
-The Launch Control XL3 communicates via MIDI SysEx messages. Custom modes are fetched and stored using a multi-page protocol.
+The Launch Control XL3 communicates via MIDI SysEx messages. Custom modes are fetched and stored using a multi-page protocol with slot selection via SysEx slot byte parameter.
 
 ## Table of Contents
 
@@ -54,17 +54,15 @@ The `.ksy` file is a Kaitai Struct specification that defines the **exact byte l
    - Client sends Universal Device Inquiry (ACK)
    - Device responds with device info
 
-2. **Slot Selection** (via DAW port - see [DAW Port Protocol](#daw-port-protocol))
-   - Phase 1: Query current slot (6-message bidirectional sequence)
-   - Phase 2: Set target slot (6-message bidirectional sequence, skipped if already on target slot)
+2. **Slot Selection** (via SysEx slot byte parameter)
+   - Simply include the target slot number (0-14) in the SysEx read request
+   - Slot 15 (0x0F) is reserved for immutable factory content and cannot be read or written
 
 3. **Mode Fetch** (2 SysEx pages)
-   - Request page 0x00 (controls 0x10-0x27 + mode name + labels)
-   - Request page 0x03 (controls 0x28-0x3F + mode name + labels)
+   - Request page 0 (controls 0x10-0x27 + mode name + labels)
+   - Request page 1 (controls 0x28-0x3F + mode name + labels)
 
-### Read Request Format ⭐
-
-**Critical Discovery (2025-10-01):** The SysEx read request DOES have a slot parameter. The slot byte is simply the slot number (0-14). Slot 15 (0x0F) is reserved for immutable factory content and cannot be read or written.
+### Read Request Format
 
 **SysEx Read Request:**
 ```
@@ -79,28 +77,34 @@ Where:
 - `05` = Sub-command
 - `00` = Reserved
 - `40` = Read operation
-- `[PAGE]` = Page byte (0x00 or 0x03)
-- `[SLOT]` = **Slot number (0-14)** - Slot 15 (0x0F) is reserved and immutable
+- `[PAGE]` = Page byte (0x00 for page 0, 0x03 for page 1)
+- `[SLOT]` = Slot number (0-14) - Slot 15 (0x0F) is reserved and immutable
 - `F7` = SysEx end
 
-**Discovery Method:** Empirical testing (2025-10-01). Initially thought DAW port was required, but testing with SysEx slot byte alone proved it works correctly. Using slot number directly (0-14) in the SysEx message successfully reads from that slot. Slot 15 is reserved for immutable factory content.
+**Page byte mapping:**
+- Logical page 0 → SysEx page byte 0x00
+- Logical page 1 → SysEx page byte 0x03
 
-**Implication:** To read from a specific slot, simply include the slot number in the SysEx message. DAW port protocol is NOT required for slot selection.
+**Discovery Method:** Empirical testing (2025-10-01). The SysEx slot byte parameter directly selects the target slot without requiring DAW port protocol.
+
+**Implementation:** See `SysExParser.buildCustomModeReadRequest(slot, page)` at line 966-994 in `src/core/SysExParser.ts`.
 
 ### Multi-Page Structure
 
 Custom mode data is split across **2 SysEx response pages** due to MIDI message size limits:
 
-| Page Byte | Controls | Contains Mode Name? | Label Control IDs |
-|-----------|----------|---------------------|-------------------|
-| 0x00      | 0x10-0x27 (24 controls) | Yes (both pages) | 0x10-0x27 |
-| 0x03      | 0x28-0x3F (24 controls) | Yes (both pages) | 0x28-0x3F |
+| Logical Page | SysEx Page Byte | Controls | Contains Mode Name? | Label Control IDs |
+|--------------|-----------------|----------|---------------------|-------------------|
+| 0            | 0x00            | 0x10-0x27 (24 controls) | Yes (both pages) | 0x10-0x27 |
+| 1            | 0x03            | 0x28-0x3F (24 controls) | Yes (both pages) | 0x28-0x3F |
 
 **Total: 48 controls** (0x10-0x3F)
 
 Each page follows the same structure defined in `launch_control_xl3.ksy`.
 
-**Discovery Method:** MIDI spy capture (2025-10-01) - Web editor slot 14 fetch revealed page bytes 0x00 and 0x03, not 0x00, 0x01, 0x02 as previously assumed.
+**Discovery Method:** MIDI spy capture (2025-10-01) - Web editor slot fetch revealed page bytes 0x00 and 0x03.
+
+**Important:** Pages are fetched **sequentially**, not in parallel. Send page 0 request, wait for response, then send page 1 request. See `DeviceManager.readCustomMode()` at line 621-780.
 
 ---
 
@@ -112,14 +116,14 @@ Writing a custom mode to the device uses command `0x45` with a multi-page protoc
 
 **Discovery Method:** Web editor MIDI traffic capture using CoreMIDI spy (2025-09-30)
 
-### Write Flow with Acknowledgements ⭐
+### Write Flow with Acknowledgements
 
 **Critical Discovery (2025-09-30):** The device sends acknowledgement SysEx messages after receiving each page. The client MUST wait for these acknowledgements before sending the next page.
 
 **Complete Write Sequence:**
 1. Send page 0 write command (`0x45 00`)
 2. **Wait for device acknowledgement** (`0x15 00 06`)
-3. Send page 3 write command (`0x45 03`)
+3. Send page 1 write command (`0x45 03`)
 4. **Wait for device acknowledgement** (`0x15 03 06`)
 
 **Timing:** Device typically responds within 24-27ms. Web editor waits for acknowledgement before proceeding.
@@ -128,12 +132,12 @@ Writing a custom mode to the device uses command `0x45` with a multi-page protoc
 
 ### Multi-Page Write Protocol
 
-Custom modes require **TWO pages** to be written (not three like reads):
+Custom modes require **TWO pages** to be written:
 
-| Page | Control IDs | Contains Mode Name? |
-|------|-------------|---------------------|
-| 0    | 0x10-0x27 (16-39) | Yes |
-| 3    | 0x28-0x3F (40-63) | Yes |
+| Logical Page | SysEx Page Byte | Control IDs | Contains Mode Name? |
+|--------------|-----------------|-------------|---------------------|
+| 0            | 0x00            | 0x10-0x27 (16-39) | Yes |
+| 1            | 0x03            | 0x28-0x3F (40-63) | Yes |
 
 **Note:** Control IDs 0x00-0x0F do not exist on the device hardware. Only IDs 0x10-0x3F (48 controls total).
 
@@ -163,6 +167,14 @@ F0 00 20 29 02 15 05 00 15 [page] 06 F7
 - Page byte followed by `0x00` flag
 - Mode name format: `20 [length] [bytes]` (no `06` prefix)
 - **Requires waiting for acknowledgements between pages**
+
+### Slot Selection for Writes
+
+Slot selection is handled by the SysEx slot byte parameter. Simply include the target slot number (0-14) when constructing the write request.
+
+**No DAW port protocol required.** Earlier protocol versions incorrectly assumed DAW port was mandatory. Empirical testing confirmed the SysEx slot byte works independently.
+
+See `DeviceManager.writeCustomMode()` at line 785-878 for implementation.
 
 ### Mode Name Encoding
 
@@ -200,7 +212,7 @@ F0 00 20 29 02 15 05 00 15 [page] 06 F7
 F0 00 20 29 02 15 05 00 45 00 00 20 08 43 48 41 4E 4E 45 56 45 ...
                            │  │  │  Mode name: "CHANNEVE"
                            │  │  └─ Flag 0x00
-                           │  └─ Page 0
+                           │  └─ Page 0 (SysEx byte 0x00)
                            └─ Write command 0x45
 
 37:06.079  [← Device] Page 0 Acknowledgement (27ms later)
@@ -209,16 +221,16 @@ F0 00 20 29 02 15 05 00 15 00 06 F7
                            │  └─ Page 0 acknowledged
                            └─ Acknowledgement command 0x15
 
-37:06.079  [→ Device] Page 3 Write (sent immediately after ACK)
+37:06.079  [→ Device] Page 1 Write (sent immediately after ACK)
 F0 00 20 29 02 15 05 00 45 03 00 20 08 43 48 41 4E 4E 45 56 45 ...
                            │  │
                            │  └─ Flag 0x00
-                           └─ Page 3
+                           └─ Page 1 (SysEx byte 0x03)
 
-37:06.103  [← Device] Page 3 Acknowledgement (24ms later)
+37:06.103  [← Device] Page 1 Acknowledgement (24ms later)
 F0 00 20 29 02 15 05 00 15 03 06 F7
                            │  │  └─ Status 0x06 (success)
-                           │  └─ Page 3 acknowledged
+                           │  └─ Page 1 acknowledged
                            └─ Acknowledgement command 0x15
 ```
 
@@ -279,7 +291,7 @@ Offset | Type | Field        | Values
       └─ length = 8 chars
 ```
 
-### Control Label Encoding ⭐
+### Control Label Encoding
 
 **Critical Discovery:** Labels use **length-encoding** where the marker byte encodes the string length.
 
@@ -442,115 +454,34 @@ function mapLabelControlId(labelId: number): number {
 3. Achieved 95% accuracy (20/21 correct)
 4. One "failure" was intentional test data ("TEST1")
 
-### Phase 4: Documentation
+### Phase 4: Slot Selection Discovery
+1. Initial assumption: DAW port protocol required for slot selection
+2. Tested SysEx slot byte parameter directly (2025-10-01)
+3. Discovery: Slot byte works independently - DAW port NOT required
+4. Updated code to use SysEx slot byte (commit 756cacd)
+5. Removed DawPortController infrastructure
+
+### Phase 5: Documentation
 1. Created Kaitai Struct specification (`.ksy` file)
 2. Validated spec by generating parser and comparing output
 3. Documented control ID mapping exception (25-28 → 26-29)
+4. Updated all documentation to reflect slot selection discovery
 
 ---
 
-## DAW Port Protocol
+## DAW Port Protocol (DEPRECATED)
 
-### Overview
+**Status:** DEPRECATED as of 2025-10-01
 
-The Launch Control XL3 uses a **dual-port MIDI system**:
-- **MIDI Port**: SysEx data transfers (read/write custom modes, device info)
-- **DAW Port**: Out-of-band control (slot selection, mode switching)
+**Historical Note:** Earlier protocol versions documented an extensive 2-phase DAW port protocol for slot selection. This was based on observations of the web editor, which does use the DAW port for some operations.
 
-**Critical Discovery:** The slot byte in SysEx messages does NOT control target slot. Instead, the device uses an out-of-band slot selection protocol via the DAW port.
+**Discovery (2025-10-01):** The SysEx slot byte parameter works independently for slot selection. Simply include the slot number (0-14) in the SysEx read/write request. No DAW port communication required.
 
-### Two-Phase Slot Selection Protocol
+**Implementation:** The DawPortController class has been removed from the codebase (commit 756cacd). See `DeviceManager.ts` lines 627 and 790 for comments confirming this.
 
-Slot selection requires a bidirectional negotiation with the device:
+**Why the confusion?** The web editor uses DAW port for UI feedback and mode switching, but it's not required for SysEx slot targeting. The SysEx slot byte is the canonical mechanism.
 
-#### Phase 1: Query Current Slot (6 messages bidirectional)
-```
-1. Client → Device: Note On  (Ch16, Note 11, Vel 127)  [0x9F, 0x0B, 0x7F]
-2. Client → Device: CC Query (Ch8,  CC 30,  Val 0)     [0xB7, 0x1E, 0x00]
-3. Device → Client: Note On echo                       [0x9F, 0x0B, 0x7F]
-4. Device → Client: CC Response (Ch7, CC 30, current_slot) [0xB6, 0x1E, value]
-5. Client → Device: Note Off (Ch16, Note 11, Vel 0)    [0x9F, 0x0B, 0x00]
-6. Device → Client: Note Off echo ⭐                    [0x9F, 0x0B, 0x00]
-```
-
-**Note:** The Note Off echo (message 6) is the acknowledgement that Phase 1 is complete.
-
-#### Phase 2: Set Target Slot (6 messages bidirectional, conditional)
-```
-1. Client → Device: Note On  (Ch16, Note 11, Vel 127)  [0x9F, 0x0B, 0x7F]
-2. Client → Device: CC Set   (Ch7,  CC 30,  target_slot) [0xB6, 0x1E, value]
-3. Device → Client: Note On echo                       [0x9F, 0x0B, 0x7F]
-4. Device → Client: CC echo (Ch7, CC 30, target_slot)  [0xB6, 0x1E, value]
-5. Client → Device: Note Off (Ch16, Note 11, Vel 0)    [0x9F, 0x0B, 0x00]
-6. Device → Client: Note Off echo ⭐                    [0x9F, 0x0B, 0x00]
-```
-
-**Important:**
-- Phase 2 is **SKIPPED** if device is already on target slot (discovered from Phase 1 CC response)
-- The Note Off echo (message 6) is the acknowledgement that slot change is complete
-- Client MUST wait for Note Off echo before proceeding to SysEx read/write operations
-
-**Discovery Method:** MIDI spy capture (2025-10-01) - Web editor skipped Phase 2 when device already on slot 14
-
-### Channel Mapping
-
-- **Channel 16 (0x0F)**: Note On/Off wrapper messages
-- **Channel 8 (0x07)**: Query messages (CC value = 0)
-- **Channel 7 (0x06)**: Set commands and device responses
-
-### Slot Value Encoding
-
-CC values map to physical slots with an offset:
-
-| Physical Slot | API Slot | CC Value |
-|---------------|----------|----------|
-| 1 | 0 | 6 |
-| 2 | 1 | 7 |
-| 3 | 2 | 8 |
-| ... | ... | ... |
-| 15 | 14 | 20 |
-
-**Formula:**
-```
-CC_Value = Physical_Slot + 5
-CC_Value = API_Slot + 6
-```
-
-### Implementation Example
-
-```typescript
-async selectSlot(apiSlot: number): Promise<void> {
-  const ccValue = apiSlot + 6;  // Convert API slot to CC value
-
-  // Phase 1: Query current slot
-  await sendDAW([0x9F, 0x0B, 0x7F]);  // Note On Ch16
-  await sendDAW([0xB7, 0x1E, 0x00]);  // CC Query Ch8
-  const response = await waitForResponse();  // Device sends current slot
-  await sendDAW([0x8F, 0x0B, 0x00]);  // Note Off Ch16
-
-  await delay(10);  // Inter-phase delay
-
-  // Phase 2: Set target slot
-  await sendDAW([0x9F, 0x0B, 0x7F]);        // Note On Ch16
-  await sendDAW([0xB6, 0x1E, ccValue]);     // CC Set Ch7
-  await sendDAW([0x8F, 0x0B, 0x00]);        // Note Off Ch16
-
-  await delay(50);  // Allow device to process
-}
-```
-
-### Complete Read/Write Flow
-
-**Writing to a specific slot:**
-1. Execute two-phase slot selection protocol (DAW port)
-2. Wait ~50ms for device to process
-3. Send SysEx write command (MIDI port)
-4. Device writes to the selected slot
-
-**Reading from a specific slot:**
-1. Execute two-phase slot selection protocol (DAW port)
-2. Send SysEx read command (MIDI port)
-3. Device returns data from the selected slot
+**Reference:** For historical documentation of the DAW port protocol, see git history before commit 756cacd (2025-10-09).
 
 ---
 
@@ -601,6 +532,7 @@ The parser follows the protocol specification exactly:
 
 - **Formal Specification:** [`../formats/launch_control_xl3.ksy`](../formats/launch_control_xl3.ksy)
 - **Parser Implementation:** [`../src/core/SysExParser.ts`](../src/core/SysExParser.ts)
+- **Device Manager:** [`../src/device/DeviceManager.ts`](../src/device/DeviceManager.ts)
 - **Test Data:** [`../backup/`](../backup/) - Real device captures in JSON format
 
 ---
@@ -609,9 +541,10 @@ The parser follows the protocol specification exactly:
 
 | Version | Date | Changes |
 |---------|------|---------|
-| 1.6 | 2025-10-01 | **DEFINITIVE:** SysEx read/write DOES have slot parameter. Format is `F0 00 20 29 02 15 05 00 40 [PAGE] [SLOT] F7` where `[SLOT]` is slot number 0-14 (slot 15 reserved and immutable). DAW port protocol is NOT required for slot selection. Earlier versions incorrectly thought DAW port was mandatory - empirical testing proved SysEx slot byte works independently. |
+| 1.7 | 2025-10-09 | **MAJOR UPDATE:** Corrected page mapping documentation. Logical pages 0 and 1 map to SysEx page bytes 0x00 and 0x03. Removed extensive DAW port protocol documentation (deprecated). Clarified that slot selection uses SysEx slot byte directly. Updated all examples to reflect working code. |
+| 1.6 | 2025-10-01 | **DEFINITIVE:** SysEx read/write DOES have slot parameter. Format is `F0 00 20 29 02 15 05 00 40 [PAGE] [SLOT] F7` where `[SLOT]` is slot number 0-14 (slot 15 reserved and immutable). DAW port protocol is NOT required for slot selection. |
 | 1.5 | 2025-10-01 | **RETRACTED:** Incorrectly stated SysEx has no slot parameter. |
-| 1.4 | 2025-10-01 | **Critical:** Corrected read protocol - uses 2 pages (0x00, 0x03), not 3 pages (0, 1, 2). Documented complete DAW port bidirectional protocol with device echoes. Phase 1 Note Off echo is slot query acknowledgement. Phase 2 Note Off echo is slot change acknowledgement. Phase 2 skipped if already on target slot. |
+| 1.4 | 2025-10-01 | **Critical:** Corrected read protocol - uses 2 pages (0x00, 0x03), not 3 pages (0, 1, 2). Documented complete DAW port bidirectional protocol with device echoes. |
 | 1.3 | 2025-09-30 | Added Parsed Response Format section documenting both array and object control formats |
 | 1.2 | 2025-09-30 | **Critical:** Discovered write acknowledgement protocol (command 0x15). Device sends ACK after each page write. Client must wait for ACK before sending next page. |
 | 1.1 | 2025-09-30 | Documented write protocol (command 0x45) with mode name format discovery |
@@ -627,9 +560,12 @@ The parser follows the protocol specification exactly:
 4. **Length-encoding is critical** - marker byte `0x60 + length` determines string size
 5. **No LED data in custom modes** - don't waste time looking for it
 6. **Device returns controls in both array and object format** - parser must handle both
+7. **Slot selection uses SysEx slot byte** - no DAW port protocol required
+8. **Page bytes:** Logical page 0→0x00, logical page 1→0x03 in SysEx messages
 
 If protocol changes are needed:
 1. Update `.ksy` file first
 2. Validate with kaitai-struct-compiler
 3. Update parser implementation to match
 4. Add test case with real device capture
+5. Update this documentation
