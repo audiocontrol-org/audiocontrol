@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/live-max-cc-router",
-  "version": "1.20.1-alpha.1",
+  "version": "1.20.1",
   "description": "TypeScript-based CC router for Max for Live with controller-specific canonical mappings",
   "type": "module",
   "main": "./dist/cc-router.js",

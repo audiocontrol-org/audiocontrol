@@ -1,5 +1,17 @@
 # @oletizi/live-max-cc-router
 
+## 1.20.1
+
+### Patch Changes
+
+- 3c7a56c: Alpha release 1.20.1-alpha.0 - Testing changesets workflow with proper patch versioning
+- Fix slot selection and DAW port protocol for Launch Control XL3
+- 30d7e37: Sync all packages to 1.20.1-alpha.1 for version consistency
+- Updated dependencies [3c7a56c]
+- Updated dependencies
+- Updated dependencies [30d7e37]
+  - @oletizi/canonical-midi-maps@1.20.1
+
 ## 1.20.1-alpha.1
 
 ### Patch Changes
