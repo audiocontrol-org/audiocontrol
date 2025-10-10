@@ -120,6 +120,20 @@ export function validateBackupSource(source: BackupSource): void {
       throw new Error('volumeSerial must be a string if provided');
     }
   }
+
+  // Validate backupPath if present
+  if (source.backupPath !== undefined && source.backupPath !== null) {
+    if (typeof source.backupPath !== 'string') {
+      throw new Error('backupPath must be a string if provided');
+    }
+    if (source.backupPath.trim() === '') {
+      throw new Error('backupPath cannot be empty string');
+    }
+    // Validate it's an absolute path
+    if (!source.backupPath.startsWith('/') && !source.backupPath.match(/^[A-Za-z]:[\\\/]/)) {
+      throw new Error(`backupPath must be an absolute path: "${source.backupPath}"`);
+    }
+  }
 }
 
 /**

@@ -6,7 +6,14 @@
  */
 
 import { Command } from 'commander';
-import { loadConfig, saveConfig, getEnabledBackupSources, type BackupSource } from '@oletizi/audiotools-config';
+import {
+  loadConfig,
+  saveConfig,
+  updateBackupSource,
+  getEnabledBackupSources,
+  resolveBackupPath,
+  type BackupSource
+} from '@oletizi/audiotools-config';
 import { RemoteSource, LocalSource, AutoDetectBackup, InteractivePrompt, UserCancelledError, DeviceResolver } from '@oletizi/sampler-backup';
 import type { RemoteSourceConfig, LocalSourceConfig } from '@oletizi/sampler-backup';
 import { createDeviceDetector } from '@oletizi/lib-device-uuid';
@@ -94,6 +101,12 @@ async function backupFromConfig(source: BackupSource, dryRun: boolean = false): 
       } else {
         await remoteSource.backup('daily');
         console.log('  ✓ Backup completed');
+
+        // Save the backup path to config after successful backup
+        const backupPath = resolveBackupPath(source);
+        const config = await loadConfig();
+        const updatedConfig = updateBackupSource(config, source.name, { backupPath });
+        await saveConfig(updatedConfig);
       }
     } else if (source.type === 'local') {
       const config: LocalSourceConfig = {
@@ -111,6 +124,12 @@ async function backupFromConfig(source: BackupSource, dryRun: boolean = false): 
       } else {
         await localSource.backup('daily');
         console.log('  ✓ Backup completed');
+
+        // Save the backup path to config after successful backup
+        const backupPath = resolveBackupPath(source);
+        const config = await loadConfig();
+        const updatedConfig = updateBackupSource(config, source.name, { backupPath });
+        await saveConfig(updatedConfig);
       }
     } else {
       throw new Error(`Unknown source type: ${source.type}`);

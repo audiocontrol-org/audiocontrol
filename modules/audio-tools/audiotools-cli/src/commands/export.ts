@@ -6,7 +6,13 @@
  */
 
 import { Command } from 'commander';
-import { loadConfig, getEnabledExportSources, type BackupSource, type ExportConfig } from '@oletizi/audiotools-config';
+import {
+  loadConfig,
+  getEnabledExportSources,
+  resolveBackupPath,
+  type BackupSource,
+  type ExportConfig
+} from '@oletizi/audiotools-config';
 import { extractBatch, type SamplerType } from '@oletizi/sampler-export';
 import { homedir } from 'os';
 import { join } from 'pathe';
@@ -16,23 +22,30 @@ const DEFAULT_OUTPUT_ROOT = join(homedir(), '.audiotools', 'sampler-export', 'ex
 const DEFAULT_BACKUP_ROOT = join(homedir(), '.audiotools', 'backup');
 
 /**
- * Get backup directory for a specific source
+ * Get backup directory for a specific source.
+ *
+ * Reads backupPath from source config if available (new behavior).
+ * Falls back to computing path for backward compatibility with old configs.
  */
-function getSourceBackupDir(backupRoot: string, sourceName: string, device: string): string {
-  // Standard backup structure: backupRoot/sourceName/device/daily.0
-  const dailyBackup = join(backupRoot, sourceName, device, 'daily.0');
-
-  // Check if daily.0 exists, otherwise use the device directory
-  if (existsSync(dailyBackup) && statSync(dailyBackup).isDirectory()) {
-    return dailyBackup;
+function getSourceBackupDir(source: BackupSource, backupRoot: string): string {
+  // New behavior: use backupPath from config if available
+  if (source.backupPath && existsSync(source.backupPath)) {
+    return source.backupPath;
   }
 
-  const deviceDir = join(backupRoot, sourceName, device);
-  if (existsSync(deviceDir) && statSync(deviceDir).isDirectory()) {
-    return deviceDir;
+  // Fallback for old configs without backupPath
+  console.warn(`  ⚠️  Source "${source.name}" missing backupPath, using fallback`);
+  const computedPath = resolveBackupPath(source, backupRoot);
+
+  if (existsSync(computedPath)) {
+    return computedPath;
   }
 
-  throw new Error(`Backup directory not found for source "${sourceName}" device "${device}"`);
+  throw new Error(
+    `Backup directory not found for source "${source.name}".\n` +
+    `  Expected: ${source.backupPath || computedPath}\n` +
+    `  Run 'audiotools backup ${source.name}' to create a backup first.`
+  );
 }
 
 /**
@@ -48,7 +61,7 @@ async function extractFromConfig(
   console.log(`  Formats: ${exportConfig.formats.join(', ')}`);
 
   try {
-    const sourceDir = getSourceBackupDir(backupRoot, source.name, source.device);
+    const sourceDir = getSourceBackupDir(source, backupRoot);
     const destDir = join(exportConfig.outputRoot, source.name, source.device);
 
     console.log(`  Source: ${sourceDir}`);

@@ -140,12 +140,15 @@ export function findBackupDiskImages(
   sampler: string,
   conventions: BackupPathConventions = DEFAULT_PATH_CONVENTIONS
 ): string[] {
-  // Build search paths: new convention first, then legacy
+  const samplerPath = join(conventions.backupRoot, sampler);
+
+  // Build search paths: new convention first, then legacy, then current directory
   const searchPaths = [
-    join(conventions.backupRoot, sampler, conventions.defaultSubdirectory),
+    join(samplerPath, conventions.defaultSubdirectory),
     ...conventions.legacySubdirectories.map((legacy) =>
-      join(conventions.backupRoot, sampler, legacy)
+      join(samplerPath, legacy)
     ),
+    samplerPath, // Also check the sampler directory itself (for local media backups)
   ];
 
   // Search all paths, return disk images from first non-empty directory

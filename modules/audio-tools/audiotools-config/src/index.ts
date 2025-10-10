@@ -69,3 +69,9 @@ export {
   hasDeviceIdentifier,
   getDeviceIdentifier,
 } from './migration.js';
+
+// Export path resolution utilities
+export {
+  resolveBackupPath,
+  DEFAULT_BACKUP_ROOT,
+} from './path-resolver.js';

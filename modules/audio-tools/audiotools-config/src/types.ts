@@ -151,6 +151,22 @@ export interface BackupSource {
    * @example "2025-10-09T14:30:00.000Z"
    */
   registeredAt?: string;
+
+  /**
+   * Backup path - Actual filesystem location where backups are stored
+   *
+   * Absolute path to the directory where this source's backups are written.
+   * Automatically populated after the first successful backup. This eliminates
+   * the need for discovery logic - export reads this path directly.
+   *
+   * Structure examples:
+   * - Local source: `~/.audiotools/backup/{sampler}/{device}`
+   * - Remote source: `~/.audiotools/backup/{hostname}/{device}`
+   *
+   * @example "/Users/orion/.audiotools/backup/s3k/hard-drive"
+   * @example "/Users/orion/.audiotools/backup/pi-scsi2/images"
+   */
+  backupPath?: string;
 }
 
 /**
