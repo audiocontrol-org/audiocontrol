@@ -1,5 +1,5 @@
 #!/usr/bin/env tsx
-import { copyFileSync, readFileSync, statSync } from 'fs';
+import { copyFileSync, readFileSync, readdirSync, statSync } from 'fs';
 import { join } from 'path';
 
 function getPackages(rootDir: string): string[] {
@@ -11,9 +11,30 @@ function getPackages(rootDir: string): string[] {
 
   const packages: string[] = [];
   for (const pattern of packagePatterns) {
-    const pkgPath = join(rootDir, pattern);
-    if (statSync(pkgPath).isDirectory()) {
-      packages.push(pattern);
+    // Handle glob patterns like 'modules/*'
+    if (pattern.includes('*')) {
+      const baseDir = pattern.replace('/*', '');
+      const basePath = join(rootDir, baseDir);
+      try {
+        const entries = readdirSync(basePath);
+        for (const entry of entries) {
+          const entryPath = join(basePath, entry);
+          if (statSync(entryPath).isDirectory()) {
+            packages.push(join(baseDir, entry));
+          }
+        }
+      } catch (err) {
+        // Skip if directory doesn't exist
+      }
+    } else {
+      const pkgPath = join(rootDir, pattern);
+      try {
+        if (statSync(pkgPath).isDirectory()) {
+          packages.push(pattern);
+        }
+      } catch (err) {
+        // Skip if directory doesn't exist
+      }
     }
   }
   return packages;
