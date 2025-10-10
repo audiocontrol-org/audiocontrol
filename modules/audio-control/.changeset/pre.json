@@ -9,6 +9,7 @@
   },
   "changesets": [
     "test-alpha-launch-control",
-    "test-multi-package"
+    "test-multi-package",
+    "three-bees-speak"
   ]
 }

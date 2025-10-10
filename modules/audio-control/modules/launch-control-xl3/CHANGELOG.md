@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.0.0-alpha.2
+
+### Major Changes
+
+- 50c7f54: changesets
+
 ## 1.20.1-alpha.1
 
 ### Patch Changes
