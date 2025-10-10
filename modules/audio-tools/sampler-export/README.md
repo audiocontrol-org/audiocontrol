@@ -7,7 +7,7 @@
 **Recommended: Use the installer (installs both backup and export packages)**
 
 ```bash
-curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.23/install.sh | bash
+curl -fsSL https://github.com/oletizi/ol_dsp/releases/download/audio-tools@1.0.0-alpha.24/install.sh | bash
 ```
 
 **Alternative: Install this package only**
