@@ -1,12 +1,13 @@
 #!/usr/bin/env npx tsx
 /**
- * Backup Current Mode from Physical Slot 1
+ * Backup Current Mode from Physical Slot
  *
- * Reads the current mode from physical slot 1 and stores it in both JSON and
+ * Reads the current mode from a specified physical slot (1-16) and stores it in both JSON and
  * TypeScript format for later restoration using the library's built-in functions.
  */
 
 import { writeFileSync } from 'fs';
+import { Command } from 'commander';
 import { LaunchControlXL3 } from '../src';
 import { JuceMidiBackend } from '../src/backends/JuceMidiBackend';
 
@@ -50,8 +51,8 @@ async function checkEnvironment(): Promise<boolean> {
   return false;
 }
 
-async function backupCurrentMode() {
-  console.log('🔧 Backing up current mode from physical slot 1');
+async function backupCurrentMode(physicalSlot: number) {
+  console.log(`🔧 Backing up current mode from physical slot ${physicalSlot}`);
   console.log('═══════════════════════════════════════════════');
   console.log();
 
@@ -64,7 +65,6 @@ async function backupCurrentMode() {
   console.log();
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const physicalSlot = 1;
   const apiSlot = physicalSlot - 1; // API uses 0-based indexing
 
   // Create device with JUCE backend
@@ -234,5 +234,28 @@ function generateBuilderCode(mode: any): string {
   return lines.join('\\n');
 }
 
+// Parse command line arguments
+const program = new Command();
+
+program
+  .name('backup-current-mode')
+  .description('Backup current mode from Launch Control XL3 physical slot')
+  .option('-s, --slot <number>', 'Physical slot number (1-16)', '1')
+  .parse(process.argv);
+
+const options = program.opts();
+const physicalSlot = parseInt(options.slot, 10);
+
+// Validate slot number
+if (isNaN(physicalSlot) || physicalSlot < 1 || physicalSlot > 16) {
+  console.error('❌ Error: Slot must be a number between 1 and 16');
+  console.log('');
+  console.log('Usage:');
+  console.log('  pnpm backup           # defaults to slot 1');
+  console.log('  pnpm backup --slot 2  # backs up slot 2');
+  console.log('  pnpm backup -s 15     # backs up slot 15');
+  process.exit(1);
+}
+
 // Run the backup
-backupCurrentMode().catch(console.error);
+backupCurrentMode(physicalSlot).catch(console.error);

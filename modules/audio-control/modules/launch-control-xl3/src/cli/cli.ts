@@ -7,7 +7,9 @@
  */
 
 import { Command } from 'commander';
+import { readFile } from 'fs/promises';
 import { LaunchControlXL3 } from '../LaunchControlXL3.js';
+import type { CustomMode } from '../types/CustomMode.js';
 
 const program = new Command();
 const VERSION = '0.1.0';
@@ -147,6 +149,50 @@ program
       console.log(`Loading mode from slot ${slotNum}...`);
       const mode = await ctrl.loadCustomMode(slotNum as any);
       console.log(`✓ Loaded mode: ${mode.name}`);
+    } catch (error) {
+      console.error(`Error: ${(error as Error).message}`);
+      process.exit(1);
+    }
+  });
+
+// Write mode command
+program
+  .command('write-mode <slot> <file>')
+  .description('Write custom mode to slot (0-15) from JSON file')
+  .action(async (slot: string, file: string) => {
+    try {
+      const ctrl = await connect();
+      const slotNum = parseInt(slot, 10);
+
+      // Validate slot number
+      if (isNaN(slotNum) || slotNum < 0 || slotNum > 15) {
+        console.error('Slot must be 0-15');
+        process.exit(1);
+      }
+
+      // Read JSON file
+      console.log(`Reading mode from ${file}...`);
+      let fileContent: string;
+      try {
+        fileContent = await readFile(file, 'utf-8');
+      } catch (error) {
+        console.error(`Failed to read file: ${(error as Error).message}`);
+        process.exit(1);
+      }
+
+      // Parse JSON
+      let mode: CustomMode;
+      try {
+        mode = JSON.parse(fileContent) as CustomMode;
+      } catch (error) {
+        console.error(`Failed to parse JSON: ${(error as Error).message}`);
+        process.exit(1);
+      }
+
+      // Write mode to device
+      console.log(`Writing mode to slot ${slotNum}...`);
+      await ctrl.writeCustomMode(slotNum, mode);
+      console.log(`✓ Mode written successfully`);
     } catch (error) {
       console.error(`Error: ${(error as Error).message}`);
       process.exit(1);

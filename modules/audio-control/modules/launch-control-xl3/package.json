@@ -42,6 +42,7 @@
     "test:handshake:node": "tsx utils/test-handshake-node.ts",
     "test:fetch-mode:node": "tsx utils/test-fetch-custom-mode-node.ts",
     "test:round-trip:node": "tsx utils/test-round-trip-node.ts",
+    "test:slot-copy": "tsx utils/test-slot-copy.ts",
     "test:factory-copy": "tsx utils/test-factory-mode-copy.ts",
     "test:control-name": "tsx utils/test-control-name-send.ts",
     "test:simple-write": "tsx utils/test-simple-write.ts",
