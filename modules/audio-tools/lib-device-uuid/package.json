@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/lib-device-uuid",
-  "version": "1.0.0-alpha.32",
+  "version": "1.0.0-alpha.33",
   "description": "Cross-platform device UUID detection for Akai sampler backup tools",
   "type": "module",
   "main": "./dist/index.js",
