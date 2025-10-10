@@ -66,43 +66,30 @@ install_packages() {
   fi
 }
 
-# Handle npm permissions by falling back to user-local installation
+# Handle npm permissions by failing with helpful instructions
 handle_permissions() {
   echo ""
-  echo "Configuring npm for user-local installation..."
+  error "Global npm installation failed due to permissions."
   echo ""
-
-  # Get current npm prefix
-  local current_prefix
-  current_prefix=$(npm config get prefix)
-
-  # Set user-local prefix if needed
-  local user_prefix="$HOME/.npm-global"
-
-  if [[ "$current_prefix" != "$user_prefix" ]]; then
-    echo "Setting npm prefix to: $user_prefix"
-    npm config set prefix "$user_prefix"
-
-    # Add to PATH instructions
-    echo ""
-    echo "IMPORTANT: Add npm binaries to your PATH by running:"
-    echo ""
-    echo "  export PATH=\"$user_prefix/bin:\$PATH\""
-    echo ""
-    echo "Add this line to your shell profile (~/.bashrc, ~/.zshrc, etc.)"
-    echo ""
-    read -p "Press Enter to continue after updating your PATH..."
-  fi
-
-  # Retry installation with user-local prefix
+  echo "This usually happens when npm is configured to install globally to a"
+  echo "system directory that requires elevated permissions."
   echo ""
-  echo "Retrying installation with user-local prefix..."
-  for package in "${PACKAGES[@]}"; do
-    echo "Installing $package..."
-    npm install -g "$package" || error "Failed to install $package"
-  done
-
-  success "All packages installed successfully (user-local)"
+  echo "You have two options:"
+  echo ""
+  echo "Option 1: Configure npm to use a user-local directory (recommended)"
+  echo "  1. Run: npm config set prefix ~/.npm-global"
+  echo "  2. Add to your PATH: export PATH=\"~/.npm-global/bin:\$PATH\""
+  echo "  3. Add the PATH export to your shell profile (~/.zshrc or ~/.bashrc)"
+  echo "  4. Re-run this installer"
+  echo ""
+  echo "Option 2: Install with sudo (not recommended)"
+  echo "  1. Re-run this installer with sudo"
+  echo "  Note: This may cause permission issues with npm in the future"
+  echo ""
+  echo "For more information, see:"
+  echo "  https://docs.npmjs.com/resolving-eacces-permissions-errors-when-installing-packages-globally"
+  echo ""
+  exit 1
 }
 
 # Verify that CLI binaries are accessible in PATH
