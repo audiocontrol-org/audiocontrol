@@ -1,5 +1,11 @@
 # @oletizi/audiotools-config
 
+## 1.0.0-alpha.42
+
+### Patch Changes
+
+- Fix GitHub release installer to use bootstrap script that downloads dependencies at runtime
+
 ## 1.0.0-alpha.41
 
 ### Patch Changes

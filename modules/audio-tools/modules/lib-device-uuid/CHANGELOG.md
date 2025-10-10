@@ -1,5 +1,13 @@
 # @oletizi/lib-device-uuid
 
+## 1.0.0-alpha.42
+
+### Patch Changes
+
+- Fix GitHub release installer to use bootstrap script that downloads dependencies at runtime
+- Updated dependencies
+  - @oletizi/sampler-lib@1.0.0-alpha.42
+
 ## 1.0.0-alpha.41
 
 ### Patch Changes

@@ -9,6 +9,7 @@
 "@oletizi/sampler-backup": patch
 "@oletizi/lib-runtime": patch
 "@oletizi/lib-device-uuid": patch
+"@oletizi/sampler-attic": patch
 ---
 
-Restructure monorepo to modules/ directory and add changesets workflow
+Fix GitHub release installer to use bootstrap script that downloads dependencies at runtime

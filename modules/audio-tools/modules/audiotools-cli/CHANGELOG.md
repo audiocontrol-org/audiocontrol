@@ -1,5 +1,16 @@
 # @oletizi/audiotools
 
+## 1.0.0-alpha.42
+
+### Patch Changes
+
+- Fix GitHub release installer to use bootstrap script that downloads dependencies at runtime
+- Updated dependencies
+  - @oletizi/audiotools-config@1.0.0-alpha.42
+  - @oletizi/sampler-export@1.0.0-alpha.42
+  - @oletizi/sampler-backup@1.0.0-alpha.42
+  - @oletizi/lib-device-uuid@1.0.0-alpha.42
+
 ## 1.0.0-alpha.41
 
 ### Patch Changes

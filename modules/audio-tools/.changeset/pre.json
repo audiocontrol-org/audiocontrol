@@ -15,8 +15,6 @@
     "@oletizi/sampler-translate": "1.0.0-alpha.39"
   },
   "changesets": [
-    "automation-improvements",
-    "restructure-and-changesets",
-    "sync-attic-version"
+    "fix-installer"
   ]
 }
