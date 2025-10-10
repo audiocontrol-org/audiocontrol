@@ -33,15 +33,26 @@ function createGitHubRelease() {
   execSync(`mkdir -p ${tempDir}`, { stdio: 'inherit' });
 
   try {
-    // Copy main installer
-    const installerSrc = join(rootDir, 'scripts/install/main.sh');
+    // Update bootstrap installer version and copy
+    const installerSrc = join(rootDir, 'install.sh');
+    const installerContent = readFileSync(installerSrc, 'utf-8');
+
+    // Update INSTALLER_VERSION to match release version
+    const updatedContent = installerContent.replace(
+      /INSTALLER_VERSION="[^"]+"/,
+      `INSTALLER_VERSION="${version}"`
+    ).replace(
+      /MIN_PACKAGE_VERSION="[^"]+"/,
+      `MIN_PACKAGE_VERSION="${version}"`
+    );
+
     const installerDest = join(tempDir, 'install.sh');
-    copyFileSync(installerSrc, installerDest);
-    console.log('✓ Prepared install.sh');
+    writeFileSync(installerDest, updatedContent, 'utf-8');
+    console.log('✓ Prepared install.sh with version', version);
 
     // Generate checksum
-    const installerContent = readFileSync(installerDest);
-    const hash = createHash('sha256').update(installerContent).digest('hex');
+    const installerBuffer = readFileSync(installerDest);
+    const hash = createHash('sha256').update(installerBuffer).digest('hex');
     const checksumContent = `${hash}  install.sh\n`;
     const checksumDest = join(tempDir, 'install.sh.sha256');
     writeFileSync(checksumDest, checksumContent, 'utf-8');
