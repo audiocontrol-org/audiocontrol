@@ -507,23 +507,35 @@ export function initializeExportConfigIfNeeded(
   config: AudioToolsConfig,
   enabledSource?: string
 ): AudioToolsConfig {
-  // If export config already exists, don't modify it
-  if (config.export) {
-    return config;
-  }
-
   const dataRoot = config.backup?.backupRoot || join(homedir(), '.audiotools');
   const outputRoot = join(dataRoot, 'sampler-export', 'extracted');
 
-  return {
-    ...config,
-    export: {
-      outputRoot,
-      formats: ['sfz', 'decentsampler'],
-      skipUnchanged: true,
-      enabledSources: enabledSource ? [enabledSource] : [],
-    },
-  };
+  // If export config doesn't exist, create it with the source
+  if (!config.export) {
+    return {
+      ...config,
+      export: {
+        outputRoot,
+        formats: ['sfz', 'decentsampler'],
+        skipUnchanged: true,
+        enabledSources: enabledSource ? [enabledSource] : [],
+      },
+    };
+  }
+
+  // Export config exists - add source to enabledSources if provided and not already there
+  if (enabledSource && !config.export.enabledSources.includes(enabledSource)) {
+    return {
+      ...config,
+      export: {
+        ...config.export,
+        enabledSources: [...config.export.enabledSources, enabledSource],
+      },
+    };
+  }
+
+  // Export config exists and source already enabled (or no source provided)
+  return config;
 }
 
 // ============================================================================
