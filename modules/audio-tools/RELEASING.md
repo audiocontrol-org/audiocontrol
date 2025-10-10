@@ -15,9 +15,10 @@ This does EVERYTHING automatically:
 - Updates README.md files with new version
 - Builds all packages
 - Commits and pushes changes
+- **Creates GitHub release with installer**
 - Publishes to npm
 
-**No manual changeset creation required!**
+**No manual steps required!** The installer will be immediately available at the URL in the README.
 
 ## Alpha Release Process (Happy Path)
 
@@ -52,7 +53,12 @@ pnpm release:ship
 4. **Stages** changes: `git add .`
 5. **Commits** with message: `chore(release): publish packages`
 6. **Pushes** to remote: `git push`
-7. **Publishes** to npm: `pnpm changeset:publish`
+7. **Creates GitHub release**: `tsx scripts/create-github-release.ts`
+   - Creates release tag `audio-tools@VERSION`
+   - Uploads installer script as `install.sh`
+   - Generates and uploads `install.sh.sha256` checksum
+   - Adds release notes with installation instructions
+8. **Publishes** to npm: `pnpm changeset:publish`
 
 **You will be prompted for:**
 - 2FA/OTP code from your authenticator app
