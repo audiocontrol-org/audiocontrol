@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0-alpha.40
+
+### Patch Changes
+
+- Restructure monorepo to modules/ directory and add changesets workflow
+- Updated dependencies
+  - @oletizi/sampler-lib@1.0.0-alpha.40
+  - @oletizi/sampler-devices@1.0.0-alpha.40
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
@@ -10,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-10-04
 
 ### Added
+
 - **Translation libraries migrated** from deprecated code (Phase 2.1)
   - `lib-translate-s56k.ts` (251 lines) - S5000/S6000 translation logic
   - `lib-decent.ts` (108 lines) - DecentSampler format conversion with comprehensive tests
@@ -24,6 +34,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Comprehensive JSDoc/TSDoc documentation** for all public APIs (42e1be4, f5a95ae, 8b9ae6a)
 
 ### Changed
+
 - **BREAKING: Migrated test framework** from mocha+chai+sinon to vitest
   - Converted sinon stubs to `vi.fn()` and `vi.spyOn()`
   - Replaced `stub.withArgs().resolves()` with `mockResolvedValue()`
@@ -32,15 +43,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Improved test organization** - Separated unit and integration tests
 
 ### Removed
+
 - **BREAKING: Deleted deprecated code** - All files from `src-deprecated/` migrated
 - Removed mocha, chai, sinon, c8, and associated dependencies
 - Removed `.mocharc.json` configuration file
 
 ### Fixed
+
 - **Test configuration** - Added `postcss.config.cjs` to prevent PostCSS loading errors
 - **Mock implementations** - Converted sinon patterns to vitest patterns
 
 ### Security
+
 - **Strict TypeScript mode** - Most modules comply with strict type checking
 - **100% import pattern compliance** - All imports use `@/` pattern with `.js` extensions
 - **Type-safe translations** - Proper typing for all format conversions
@@ -48,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## Known Issues
 
 ### Pre-existing Code Issues (Not Migration-Related)
+
 - **12 test failures** due to code issues that existed before migration:
   - Undefined attribute handling in translation modules
   - Missing mock implementations in some edge cases
@@ -70,9 +85,9 @@ Translation libraries previously in `src-deprecated/lib/` are now in production-
 // Files were in src-deprecated/lib/
 
 // New (v7.0.0)
-import { translateS56K } from '@/lib-translate-s56k.js';
-import { convertToDecentSampler } from '@/lib-decent.js';
-import { parseAkaiMPC } from '@/lib-akai-mpc.js';
+import { translateS56K } from "@/lib-translate-s56k.js";
+import { convertToDecentSampler } from "@/lib-decent.js";
+import { parseAkaiMPC } from "@/lib-akai-mpc.js";
 ```
 
 #### Testing Changes
@@ -81,30 +96,30 @@ The package now uses **vitest** instead of mocha+chai+sinon:
 
 ```typescript
 // Old (mocha+chai+sinon)
-import { expect } from 'chai';
-import sinon from 'sinon';
+import { expect } from "chai";
+import sinon from "sinon";
 
-describe('test', () => {
+describe("test", () => {
   let stub;
   beforeEach(() => {
-    stub = sinon.stub(obj, 'method').resolves(value);
+    stub = sinon.stub(obj, "method").resolves(value);
   });
 
-  it('should work', () => {
+  it("should work", () => {
     expect(result).to.equal(expected);
   });
 });
 
 // New (vitest)
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi } from "vitest";
 
-describe('test', () => {
+describe("test", () => {
   let mock;
   beforeEach(() => {
-    mock = vi.spyOn(obj, 'method').mockResolvedValue(value);
+    mock = vi.spyOn(obj, "method").mockResolvedValue(value);
   });
 
-  it('should work', () => {
+  it("should work", () => {
     expect(result).toBe(expected);
   });
 });
@@ -113,6 +128,7 @@ describe('test', () => {
 ## Package Features
 
 ### Format Translation
+
 - **S5000/S6000 translation** - Comprehensive S56K format translation
 - **DecentSampler output** - Convert to DecentSampler XML format
 - **Akai MPC support** - Parse and convert MPC format files
@@ -120,6 +136,7 @@ describe('test', () => {
 - **Sample manipulation** - Transform and convert sample data
 
 ### Translation Capabilities
+
 - **Program conversion** - Akai programs to modern sampler formats
 - **Sample mapping** - Preserve keygroup and zone information
 - **Metadata preservation** - Maintain sample metadata through conversion
@@ -134,7 +151,10 @@ npm install @oletizi/sampler-translate
 ## Quick Start
 
 ```typescript
-import { translateS56K, convertToDecentSampler } from '@oletizi/sampler-translate';
+import {
+  translateS56K,
+  convertToDecentSampler,
+} from "@oletizi/sampler-translate";
 
 // Translate S5000/S6000 program
 const translated = await translateS56K(s56kProgram);

@@ -1,0 +1,21 @@
+{
+  "mode": "pre",
+  "tag": "alpha",
+  "initialVersions": {
+    "@oletizi/audiotools": "1.0.0-alpha.39",
+    "@oletizi/audiotools-config": "1.0.0-alpha.39",
+    "@oletizi/lib-device-uuid": "1.0.0-alpha.39",
+    "@oletizi/lib-runtime": "1.0.0-alpha.39",
+    "@oletizi/sampler-attic": "1.0.0-alpha.39",
+    "@oletizi/sampler-backup": "1.0.0-alpha.39",
+    "@oletizi/sampler-devices": "1.0.0-alpha.39",
+    "@oletizi/sampler-export": "1.0.0-alpha.39",
+    "@oletizi/sampler-lib": "1.0.0-alpha.39",
+    "@oletizi/sampler-midi": "1.0.0-alpha.39",
+    "@oletizi/sampler-translate": "1.0.0-alpha.39"
+  },
+  "changesets": [
+    "restructure-and-changesets",
+    "sync-attic-version"
+  ]
+}

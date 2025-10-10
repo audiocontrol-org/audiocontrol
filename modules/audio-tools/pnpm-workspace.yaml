@@ -1,13 +1,3 @@
 packages:
-  - 'audiotools-config'
-  - 'audiotools-cli'
-  - 'sampler-lib'
-  - 'sampler-devices'
-  - 'sampler-midi'
-  - 'sampler-translate'
-  - 'sampler-export'
-  - 'sampler-backup'
-  - 'sampler-attic'    # Temporary storage for deferred code - NOT FOR DISTRIBUTION
-  - 'lib-runtime'
-  - 'lib-device-uuid'
+  - 'modules/*'
   # sampler-interface excluded - UI app with missing dependencies

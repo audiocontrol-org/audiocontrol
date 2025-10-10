@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.0.0-alpha.40
+
+### Patch Changes
+
+- Restructure monorepo to modules/ directory and add changesets workflow
+- Updated dependencies
+  - @oletizi/sampler-lib@1.0.0-alpha.40
+  - @oletizi/sampler-devices@1.0.0-alpha.40
+
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
@@ -10,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-10-04
 
 ### Added
+
 - **✨ Backend interface pattern with dependency injection** (c124ff3)
   - `MidiBackend` interface for abstraction layer
   - `EasyMidiBackend` implementation wrapping easymidi
@@ -26,6 +36,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Comprehensive JSDoc/TSDoc documentation** for all public APIs (42e1be4, f5a95ae, 8b9ae6a)
 
 ### Changed
+
 - **BREAKING: Refactored MidiSystem to require backend injection**
   - Constructor now requires explicit `MidiBackend` parameter
   - No default backend instantiation (follows dependency injection principle)
@@ -41,6 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fixed note mapping** - Improved MIDI note conversion (c93bc24)
 
 ### Removed
+
 - **BREAKING: Deleted legacy `Midi` class** - Replaced with `MidiSystem` + backend injection
 - **BREAKING: Removed `createMidiSystem()` factory** - Must use `new MidiSystem(backend)`
 - **BREAKING: Removed default backend** in MidiSystem constructor
@@ -50,6 +62,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Removed direct easymidi coupling from business logic
 
 ### Fixed
+
 - **easymidi test failures** - Resolved 16 sysex-related failures via mock backend
 - **Test coverage gaps** - Increased from ~70% to 80%+ (97.76% core, 100% instrument)
 - **Mock testing issues** - Full unit testing capability without hardware
@@ -57,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Architecture violations** - Now follows TYPESCRIPT-ARCHITECTURE.md principles
 
 ### Security
+
 - **Strict TypeScript mode** - All modules comply with strict type checking
 - **100% import pattern compliance** - All imports use `@/` pattern with `.js` extensions
 - **Interface-based abstraction** - Zero direct third-party library coupling
@@ -69,8 +83,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 #### 1. Backend Injection Required
 
 **Before (v6.x)**:
+
 ```typescript
-import { createMidiSystem } from '@oletizi/sampler-midi';
+import { createMidiSystem } from "@oletizi/sampler-midi";
 
 // Factory created system with default backend
 const system = createMidiSystem();
@@ -78,8 +93,9 @@ await system.start();
 ```
 
 **After (v7.0.0)**:
+
 ```typescript
-import { MidiSystem, EasyMidiBackend } from '@oletizi/sampler-midi';
+import { MidiSystem, EasyMidiBackend } from "@oletizi/sampler-midi";
 
 // Must explicitly inject backend
 const backend = new EasyMidiBackend();
@@ -90,16 +106,18 @@ await system.start();
 #### 2. Removed Legacy Midi Class
 
 **Before (v6.x)**:
+
 ```typescript
-import { Midi } from '@oletizi/sampler-midi';
+import { Midi } from "@oletizi/sampler-midi";
 
 const midi = new Midi();
 ```
 
 **After (v7.0.0)**:
+
 ```typescript
 // Use MidiSystem with backend injection
-import { MidiSystem, EasyMidiBackend } from '@oletizi/sampler-midi';
+import { MidiSystem, EasyMidiBackend } from "@oletizi/sampler-midi";
 
 const backend = new EasyMidiBackend();
 const system = new MidiSystem(backend);
@@ -110,15 +128,15 @@ const system = new MidiSystem(backend);
 **For unit tests**, inject a mock backend:
 
 ```typescript
-import { describe, it, expect, vi } from 'vitest';
-import { MidiSystem } from '@oletizi/sampler-midi';
-import type { MidiBackend } from '@oletizi/sampler-midi';
+import { describe, it, expect, vi } from "vitest";
+import { MidiSystem } from "@oletizi/sampler-midi";
+import type { MidiBackend } from "@oletizi/sampler-midi";
 
-describe('MidiSystem', () => {
-  it('should work with mock backend', () => {
+describe("MidiSystem", () => {
+  it("should work with mock backend", () => {
     const mockBackend: MidiBackend = {
-      getInputs: vi.fn().mockReturnValue([{ name: 'Test Input' }]),
-      getOutputs: vi.fn().mockReturnValue([{ name: 'Test Output' }]),
+      getInputs: vi.fn().mockReturnValue([{ name: "Test Input" }]),
+      getOutputs: vi.fn().mockReturnValue([{ name: "Test Output" }]),
       createInput: vi.fn(),
       createOutput: vi.fn(),
       closeInput: vi.fn(),
@@ -136,10 +154,10 @@ describe('MidiSystem', () => {
 **For integration tests**, use real `EasyMidiBackend`:
 
 ```typescript
-import { MidiSystem, EasyMidiBackend } from '@oletizi/sampler-midi';
+import { MidiSystem, EasyMidiBackend } from "@oletizi/sampler-midi";
 
-describe('MIDI Integration', () => {
-  it('should work with real hardware', async () => {
+describe("MIDI Integration", () => {
+  it("should work with real hardware", async () => {
     const backend = new EasyMidiBackend();
     const system = new MidiSystem(backend);
     await system.start();
@@ -151,12 +169,14 @@ describe('MIDI Integration', () => {
 ## Why This Change?
 
 ### Problem with v6.x
+
 - ❌ Direct coupling to easymidi library
 - ❌ Impossible to unit test without MIDI hardware
 - ❌ Tests failed due to easymidi's strict validation
 - ❌ Violated dependency injection principles
 
 ### Solution in v7.0.0
+
 - ✅ Interface-based abstraction (`MidiBackend`)
 - ✅ Fully unit testable with mock backends
 - ✅ Follows CLAUDE.md and TYPESCRIPT-ARCHITECTURE.md
@@ -167,6 +187,7 @@ describe('MIDI Integration', () => {
 ## Package Features
 
 ### MIDI Backend System
+
 - **MidiBackend interface** - Abstract MIDI operations
 - **EasyMidiBackend** - Production implementation using easymidi
 - **Mock backend support** - Full testability without hardware
@@ -174,6 +195,7 @@ describe('MIDI Integration', () => {
 - **Virtual port support** - Create virtual MIDI ports
 
 ### MIDI System
+
 - **Port management** - Select and manage MIDI ports
 - **Message sending** - Send MIDI messages (note on/off, CC, sysex)
 - **Message receiving** - Handle incoming MIDI messages
@@ -181,6 +203,7 @@ describe('MIDI Integration', () => {
 - **Error handling** - Comprehensive error reporting
 
 ### Instrument Support
+
 - **Akai S3000XL** - Full sysex support
 - **Device specifications** - Standardized device definitions
 - **Generic MIDI** - Universal MIDI device support
@@ -194,7 +217,7 @@ npm install @oletizi/sampler-midi
 ## Quick Start
 
 ```typescript
-import { MidiSystem, EasyMidiBackend } from '@oletizi/sampler-midi';
+import { MidiSystem, EasyMidiBackend } from "@oletizi/sampler-midi";
 
 // Create MIDI system with backend
 const backend = new EasyMidiBackend();
@@ -212,7 +235,7 @@ system.setInput(inputs[0].name);
 system.setOutput(outputs[0].name);
 
 // Send MIDI message
-system.send('noteon', { note: 60, velocity: 100, channel: 0 });
+system.send("noteon", { note: 60, velocity: 100, channel: 0 });
 ```
 
 See the [README](./README.md) for comprehensive documentation and examples.
