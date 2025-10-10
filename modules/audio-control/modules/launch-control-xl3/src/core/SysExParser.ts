@@ -996,8 +996,15 @@ export class SysExParser {
 
   /**
    * Build custom mode write request
+   *
+   * The slot byte in the SysEx message directly selects the target slot (0-14).
+   * Slot 15 is reserved for immutable factory content and cannot be written.
+   * DAW port protocol is NOT required for slot selection.
    */
-  static buildCustomModeWriteRequest(page: number, modeData: CustomModeMessage): number[] {
+  static buildCustomModeWriteRequest(slot: number, page: number, modeData: CustomModeMessage): number[] {
+    if (slot < 0 || slot > 14) {
+      throw new Error('Custom mode slot must be 0-14 (slot 15 is reserved for immutable factory content)');
+    }
     if (page < 0 || page > 3) {
       throw new Error('Page must be 0-3');
     }
@@ -1014,9 +1021,11 @@ export class SysExParser {
     // Page 3: Controls 0x28-0x3F (IDs 40-63, remaining 24 hardware controls)
     // Note: Control IDs 0x00-0x0F do not exist on the device hardware
     //
-    // Format: F0 00 20 29 02 15 05 00 45 [page] 00 [encoded data] F7
+    // Format: F0 00 20 29 02 15 05 00 45 [page] [slot] [encoded data] F7
     //
-    // Slot selection is done via DAW port BEFORE sending any pages.
+    // The slot byte directly selects the target slot (0-14).
+    // Slot 15 (0x0F) is reserved for immutable factory content and cannot be written.
+    // DAW port protocol is NOT required for slot selection.
 
     return [
       0xF0,             // SysEx start
@@ -1027,7 +1036,7 @@ export class SysExParser {
       0x00,             // Reserved
       0x45,             // Write operation with data
       page,             // Page number (0 or 3 for write operations)
-      0x00,             // Flag byte (always 0x00)
+      slot,             // Slot byte: slot number (0-14, slot 15 reserved)
       ...encodedData,   // Encoded custom mode data
       0xF7              // SysEx end
     ];

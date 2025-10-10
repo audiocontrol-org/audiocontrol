@@ -853,7 +853,7 @@ export class DeviceManager extends EventEmitter {
 
     // Send page 0
     const page0Data = { ...validatedModeData, controls: page0Controls, labels: page0Labels };
-    const page0Message = SysExParser.buildCustomModeWriteRequest(0, page0Data);
+    const page0Message = SysExParser.buildCustomModeWriteRequest(slot, 0, page0Data);
     await this.sendSysEx(page0Message);
 
     // CRITICAL: Wait for device acknowledgement before sending next page
@@ -864,7 +864,7 @@ export class DeviceManager extends EventEmitter {
     // Send page 3 (only if there are controls in this range)
     if (page3Controls.length > 0) {
       const page3Data = { ...validatedModeData, controls: page3Controls, labels: page3Labels };
-      const page3Message = SysExParser.buildCustomModeWriteRequest(3, page3Data);
+      const page3Message = SysExParser.buildCustomModeWriteRequest(slot, 3, page3Data);
       await this.sendSysEx(page3Message);
 
       // Wait for page 3 acknowledgement
