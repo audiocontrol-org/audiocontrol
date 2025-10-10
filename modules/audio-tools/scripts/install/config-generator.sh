@@ -103,7 +103,7 @@ generate_config_json() {
   local samplers_json=$(build_json_array "${CONFIG_SAMPLERS[@]}")
   local formats_array=()
   IFS=',' read -ra formats_array <<< "$CONFIG_OUTPUT_FORMATS"
-  local formats_json=$(build_json_array "${formats_array[@]}")
+  local formats_json=$(build_json_array ${formats_array[@]+"${formats_array[@]}"})
   local remote_sources_json="[]"
 
   if [ ${#CONFIG_REMOTE_SOURCES[@]} -gt 0 ]; then
