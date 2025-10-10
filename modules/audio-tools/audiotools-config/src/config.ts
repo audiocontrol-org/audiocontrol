@@ -485,6 +485,47 @@ export function getEnabledExportSources(config: AudioToolsConfig): BackupSource[
   );
 }
 
+/**
+ * Initializes export configuration if not already present.
+ *
+ * Creates a default export configuration with sensible defaults.
+ * Optionally enables a specific backup source for export.
+ *
+ * @param config - Current configuration
+ * @param enabledSource - Optional source name to enable for export
+ * @returns New configuration with export initialized (or unchanged if already present)
+ *
+ * @example
+ * ```typescript
+ * // Initialize export config after first backup
+ * const config = await loadConfig();
+ * const updated = initializeExportConfigIfNeeded(config, 'piscsi_HD0');
+ * await saveConfig(updated);
+ * ```
+ */
+export function initializeExportConfigIfNeeded(
+  config: AudioToolsConfig,
+  enabledSource?: string
+): AudioToolsConfig {
+  // If export config already exists, don't modify it
+  if (config.export) {
+    return config;
+  }
+
+  const dataRoot = config.backup?.backupRoot || join(homedir(), '.audiotools');
+  const outputRoot = join(dataRoot, 'sampler-export', 'extracted');
+
+  return {
+    ...config,
+    export: {
+      outputRoot,
+      formats: ['sfz', 'decentsampler'],
+      skipUnchanged: true,
+      enabledSources: enabledSource ? [enabledSource] : [],
+    },
+  };
+}
+
 // ============================================================================
 // Generic Tool Configuration Operations
 // ============================================================================

@@ -32,6 +32,7 @@ export {
   enableSourceForExport,
   disableSourceForExport,
   getEnabledExportSources,
+  initializeExportConfigIfNeeded,
   // Generic tool configuration operations
   getToolConfig,
   setToolConfig,

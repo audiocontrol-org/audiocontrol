@@ -12,6 +12,7 @@ import {
   updateBackupSource,
   getEnabledBackupSources,
   resolveBackupPath,
+  initializeExportConfigIfNeeded,
   type BackupSource
 } from '@oletizi/audiotools-config';
 import { RemoteSource, LocalSource, AutoDetectBackup, InteractivePrompt, UserCancelledError, DeviceResolver } from '@oletizi/sampler-backup';
@@ -104,9 +105,17 @@ async function backupFromConfig(source: BackupSource, dryRun: boolean = false): 
 
         // Save the backup path to config after successful backup
         const backupPath = resolveBackupPath(source);
-        const config = await loadConfig();
-        const updatedConfig = updateBackupSource(config, source.name, { backupPath });
+        let config = await loadConfig();
+        let updatedConfig = updateBackupSource(config, source.name, { backupPath });
+
+        // Initialize export config if needed and enable this source
+        updatedConfig = initializeExportConfigIfNeeded(updatedConfig, source.name);
         await saveConfig(updatedConfig);
+
+        // If export was just initialized, show helpful message
+        if (!config.export) {
+          console.log('\n💡 Export is now configured. Run "audiotools export" to extract disk images.');
+        }
       }
     } else if (source.type === 'local') {
       const config: LocalSourceConfig = {
@@ -127,9 +136,17 @@ async function backupFromConfig(source: BackupSource, dryRun: boolean = false): 
 
         // Save the backup path to config after successful backup
         const backupPath = resolveBackupPath(source);
-        const config = await loadConfig();
-        const updatedConfig = updateBackupSource(config, source.name, { backupPath });
+        let config = await loadConfig();
+        let updatedConfig = updateBackupSource(config, source.name, { backupPath });
+
+        // Initialize export config if needed and enable this source
+        updatedConfig = initializeExportConfigIfNeeded(updatedConfig, source.name);
         await saveConfig(updatedConfig);
+
+        // If export was just initialized, show helpful message
+        if (!config.export) {
+          console.log('\n💡 Export is now configured. Run "audiotools export" to extract disk images.');
+        }
       }
     } else {
       throw new Error(`Unknown source type: ${source.type}`);
@@ -322,10 +339,15 @@ export const backupCommand = new Command('backup')
         }
       }
 
-      if (!config.backup) {
-        console.error('\nNo backup configuration found.');
-        console.error('Run "audiotools config" to configure backup sources.');
-        process.exit(1);
+      if (!config.backup || !config.backup.sources || config.backup.sources.length === 0) {
+        console.log('\n💡 No backup sources configured yet.');
+        console.log('\nTo get started:');
+        console.log('  1. Insert your sampler media (SD card, floppy, external drive)');
+        console.log('  2. Run: audiotools backup /path/to/media');
+        console.log('     Example: audiotools backup /Volumes/S3K');
+        console.log('\nOr configure sources manually:');
+        console.log('  audiotools config');
+        return;
       }
 
       const enabledSources = getEnabledBackupSources(config);
