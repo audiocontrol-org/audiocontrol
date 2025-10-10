@@ -21,10 +21,11 @@
     "backup-and-extract": "pnpm --filter sampler-backup backup:batch && pnpm --filter sampler-export extract:batch",
     "changeset": "changeset",
     "changeset:version": "changeset version && tsx scripts/update-docs-version.ts",
-    "changeset:publish": "changeset publish",
+    "changeset:publish": "changeset publish --no-git-tag",
+    "pnpm:publish": "pnpm -r publish --access public --no-git-checks",
     "update-docs": "tsx scripts/update-docs-version.ts",
     "release:publish": "pnpm changeset:version && pnpm -r build && pnpm changeset:publish",
-    "release:ship": "tsx scripts/ensure-changeset.ts && pnpm changeset:version && pnpm -r build && git add . && (git diff-index --quiet --cached HEAD || (git commit -m \"chore(release): publish packages\" && git push)) && tsx scripts/create-github-release.ts && pnpm changeset:publish",
+    "release:ship": "tsx scripts/ensure-changeset.ts && pnpm changeset:version && pnpm -r build && git add . && (git diff-index --quiet --cached HEAD || (git commit -m \"chore(release): publish packages\" && git push)) && tsx scripts/create-github-release.ts && pnpm -r publish --access public --no-git-checks --tag alpha",
     "release:pre:alpha": "changeset pre enter alpha",
     "release:pre:beta": "changeset pre enter beta",
     "release:pre:exit": "changeset pre exit && echo '\\n✅ Exited prerelease mode. Next changeset version will be stable.'"
