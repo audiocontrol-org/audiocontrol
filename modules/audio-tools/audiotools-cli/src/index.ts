@@ -15,13 +15,14 @@ import { Command } from 'commander';
 import { backupCommand } from './commands/backup.js';
 import { exportCommand } from './commands/export.js';
 import { configCommand } from './commands/config.js';
+import packageJson from '../package.json' with { type: 'json' };
 
 const program = new Command();
 
 program
   .name('audiotools')
   .description('Audio Tools - Backup, extract, and convert Akai sampler data')
-  .version('1.0.0');
+  .version(packageJson.version);
 
 // Add subcommands
 program.addCommand(backupCommand);
