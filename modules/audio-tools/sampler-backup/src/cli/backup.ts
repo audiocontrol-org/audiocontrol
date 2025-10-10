@@ -18,6 +18,7 @@ import { homedir } from 'os';
 import { join } from 'pathe';
 import { readdir, stat } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import packageJson from '../../package.json' with { type: 'json' };
 
 const program = new Command();
 const DEFAULT_BACKUP_ROOT = join(homedir(), '.audiotools', 'backup');
@@ -564,7 +565,7 @@ async function handleBackupCommand(sourceName: string | undefined, options: any)
 program
     .name("akai-backup")
     .description("Backup Akai sampler disk images using rsync")
-    .version("1.0.0")
+    .version(packageJson.version)
     .addHelpText('after', `
 Examples:
   Auto-detect backup (NEW):
