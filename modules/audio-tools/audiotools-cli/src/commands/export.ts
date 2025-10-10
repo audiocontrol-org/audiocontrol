@@ -220,6 +220,10 @@ export const exportCommand = new Command('export')
         console.log(`Export Summary:`);
         console.log(`  Succeeded: ${succeeded}`);
         console.log(`  Failed: ${failed}`);
+        if (succeeded > 0) {
+          console.log(`\nExtracted files location:`);
+          console.log(`  ${exportConfig.outputRoot}`);
+        }
         console.log('='.repeat(60));
 
         if (failed > 0) {
