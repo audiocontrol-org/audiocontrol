@@ -8,6 +8,10 @@ export default defineConfig({
       insertTypesEntry: true,
       include: ['src/**/*'],
       exclude: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
+      entryRoot: 'src',
+      outDir: 'dist',
+      rollupTypes: true,
+      pathsToAliases: true,
     })
   ],
   css: false, // Disable CSS processing for Node.js library

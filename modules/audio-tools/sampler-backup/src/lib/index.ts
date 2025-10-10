@@ -6,6 +6,7 @@
 
 export * from "@/lib/types/index.js";
 export * from "@/lib/sources/backup-source.js";
+export type { RemoteSourceConfig, LocalSourceConfig, BackupSourceConfig } from "@/lib/sources/backup-source.js";
 export { BackupSourceFactory } from "@/lib/sources/backup-source-factory.js";
 export { LocalSource } from "@/lib/sources/local-source.js";
 export { RemoteSource } from "@/lib/sources/remote-source.js";
