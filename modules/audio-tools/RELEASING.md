@@ -4,12 +4,12 @@ This document describes the happy path for releasing packages in the audio-tools
 
 ## Quick Reference
 
-**One-click ship (after changesets created):**
+**One-click ship (after creating changesets):**
 ```bash
 pnpm release:ship
 ```
 
-This builds, commits, pushes, and publishes all in one step.
+This does everything: version bump, update docs, build, commit, push, and publish.
 
 ## Alpha Release Process (Happy Path)
 
@@ -63,33 +63,24 @@ Description of what changed
 - `@oletizi/lib-device-uuid` - Device UUID utilities
 - `@oletizi/sampler-attic` - NOT FOR DISTRIBUTION (internal use)
 
-### 3. Version Bump
-
-```bash
-pnpm changeset:version
-```
-
-This reads your changesets and updates package.json versions accordingly.
-
-**What happens:**
-- Reads `.changeset/*.md` files
-- Updates `package.json` version fields
-- Updates `CHANGELOG.md` files
-- Deletes processed changeset files
-- Adds `-alpha.X` suffix (when in prerelease mode)
-
-### 4. Ship It! 🚀
+### 3. Ship It! 🚀
 
 ```bash
 pnpm release:ship
 ```
 
 **What this does (in order):**
-1. **Builds** all packages: `pnpm -r build`
-2. **Stages** changes: `git add .`
-3. **Commits** with message: `chore(release): publish packages`
-4. **Pushes** to remote: `git push`
-5. **Publishes** to npm: `pnpm changeset:publish`
+1. **Bumps versions** from changesets: `pnpm changeset:version`
+   - Reads `.changeset/*.md` files
+   - Updates all `package.json` versions
+   - Updates `CHANGELOG.md` files
+   - **Updates README.md files with new version** (automated!)
+   - Deletes processed changeset files
+2. **Builds** all packages: `pnpm -r build`
+3. **Stages** changes: `git add .`
+4. **Commits** with message: `chore(release): publish packages`
+5. **Pushes** to remote: `git push`
+6. **Publishes** to npm: `pnpm changeset:publish`
 
 **You will be prompted for:**
 - 2FA/OTP code from your authenticator app
@@ -101,7 +92,7 @@ pnpm release:ship
 🦋  @oletizi/package-name@1.0.1-alpha.1
 ```
 
-### 5. Verify Publication
+### 4. Verify Publication
 
 ```bash
 npm view @oletizi/sampler-lib dist-tags
@@ -124,10 +115,7 @@ pnpm release:pre:alpha
 pnpm changeset
 # Select packages and bump type, write description
 
-# Bump versions based on changesets
-pnpm changeset:version
-
-# Ship it! (build + commit + push + publish)
+# Ship it! (version bump + update docs + build + commit + push + publish)
 pnpm release:ship
 # Enter your 2FA/OTP when prompted
 
@@ -142,7 +130,7 @@ All packages should share the same version number for simplicity.
 **To sync versions:**
 1. Create changeset with all packages listed
 2. Use same bump type for all (usually `patch`)
-3. Run `pnpm changeset:version`
+3. Run `pnpm release:ship`
 4. All packages will have matching versions
 
 ## Exiting Alpha Mode
@@ -167,10 +155,7 @@ pnpm release:pre:exit
 # Create changeset
 pnpm changeset
 
-# Version bump (creates stable versions)
-pnpm changeset:version
-
-# Ship it!
+# Ship it! (version bump + build + commit + push + publish)
 pnpm release:ship
 ```
 
@@ -194,11 +179,12 @@ pnpm release:ship
 
 | Script | Description |
 |--------|-------------|
-| `pnpm release:ship` | **One-click:** Build + commit + push + publish |
+| `pnpm release:ship` | **One-click:** Version bump + update docs + build + commit + push + publish |
 | `pnpm release:publish` | Version + build + publish (no git operations) |
 | `pnpm changeset` | Create a new changeset interactively |
-| `pnpm changeset:version` | Bump versions based on changesets |
+| `pnpm changeset:version` | Bump versions and update docs (called by release:ship) |
 | `pnpm changeset:publish` | Publish to npm (only) |
+| `pnpm update-docs` | Manually update README versions (rarely needed) |
 | `pnpm release:pre:alpha` | Enter alpha prerelease mode |
 | `pnpm release:pre:beta` | Enter beta prerelease mode |
 | `pnpm release:pre:exit` | Exit prerelease mode |
