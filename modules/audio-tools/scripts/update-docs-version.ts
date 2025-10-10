@@ -26,8 +26,9 @@ function updateDocumentationVersion(filePath: string, newVersion: string): void 
 function updateDocsVersion() {
   const rootDir = join(import.meta.dirname, '..');
 
-  // Get version from package.json
-  const pkgPath = join(rootDir, 'package.json');
+  // Get version from a published module's package.json (not root)
+  // Use sampler-lib as the canonical version source
+  const pkgPath = join(rootDir, 'modules/sampler-lib/package.json');
   const pkg: PackageJson = JSON.parse(readFileSync(pkgPath, 'utf-8'));
   const version = pkg.version;
 
@@ -36,8 +37,8 @@ function updateDocsVersion() {
   // List of documentation files to update
   const docsToUpdate = [
     'README.md',
-    'sampler-backup/README.md',
-    'sampler-export/README.md',
+    'modules/sampler-backup/README.md',
+    'modules/sampler-export/README.md',
   ];
 
   for (const docPath of docsToUpdate) {
