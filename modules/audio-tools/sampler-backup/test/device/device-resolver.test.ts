@@ -28,14 +28,16 @@ describe('DeviceResolver', () => {
     config = {
       version: '1.0',
       extractPath: '/extract',
-      backupSources: [{
-        name: 's5k-card',
-        type: 'local',
-        source: '/Volumes/SDCARD',
-        device: 'sd-card',
-        sampler: 's5000',
-        enabled: true
-      }]
+      backup: {
+        sources: [{
+          name: 's5k-card',
+          type: 'local',
+          source: '/Volumes/SDCARD',
+          device: 'sd-card',
+          sampler: 's5000',
+          enabled: true
+        }]
+      }
     };
 
     const matcher = new DeviceMatcher(mockDetector);
@@ -53,8 +55,8 @@ describe('DeviceResolver', () => {
     });
 
     it('should recognize existing device and update lastSeen', async () => {
-      config.backupSources[0].volumeUUID = '12345678-1234-1234-1234-123456789012';
-      config.backupSources[0].registeredAt = '2025-10-01T00:00:00.000Z';
+      config.backup!.sources[0].volumeUUID = '12345678-1234-1234-1234-123456789012';
+      config.backup!.sources[0].registeredAt = '2025-10-01T00:00:00.000Z';
 
       const result = await resolver.resolveDevice('/Volumes/SDCARD', 's5k-card', config);
 
@@ -71,8 +73,8 @@ describe('DeviceResolver', () => {
 
     it('should throw on UUID conflict', async () => {
       // Add two sources with the same UUID (conflict)
-      config.backupSources[0].volumeUUID = '12345678-1234-1234-1234-123456789012';
-      config.backupSources.push({
+      config.backup!.sources[0].volumeUUID = '12345678-1234-1234-1234-123456789012';
+      config.backup!.sources.push({
         name: 's5k-card-2',
         type: 'local',
         source: '/Volumes/SDCARD2',
@@ -89,9 +91,9 @@ describe('DeviceResolver', () => {
 
     it('should throw when device matches different source', async () => {
       // Set first source to have different UUID
-      config.backupSources[0].volumeUUID = 'different-uuid';
+      config.backup!.sources[0].volumeUUID = 'different-uuid';
       // Add second source with matching UUID
-      config.backupSources.push({
+      config.backup!.sources.push({
         name: 's5k-card-2',
         type: 'local',
         source: '/Volumes/SDCARD2',
@@ -107,7 +109,7 @@ describe('DeviceResolver', () => {
     });
 
     it('should throw when UUIDs dont match', async () => {
-      config.backupSources[0].volumeUUID = 'expected-uuid';
+      config.backup!.sources[0].volumeUUID = 'expected-uuid';
 
       await expect(
         resolver.resolveDevice('/Volumes/SDCARD', 's5k-card', config)
@@ -115,7 +117,7 @@ describe('DeviceResolver', () => {
     });
 
     it('should include UUID in mismatch error message', async () => {
-      config.backupSources[0].volumeUUID = 'expected-uuid';
+      config.backup!.sources[0].volumeUUID = 'expected-uuid';
 
       await expect(
         resolver.resolveDevice('/Volumes/SDCARD', 's5k-card', config)
@@ -136,7 +138,7 @@ describe('DeviceResolver', () => {
     it('should handle serial-based recognition', async () => {
       mockDeviceInfo.volumeUUID = undefined;
       mockDeviceInfo.volumeSerial = '12345678-02';
-      config.backupSources[0].volumeSerial = '12345678-02';
+      config.backup!.sources[0].volumeSerial = '12345678-02';
 
       const result = await resolver.resolveDevice('/Volumes/SDCARD', 's5k-card', config);
 
@@ -163,8 +165,8 @@ describe('DeviceResolver', () => {
   describe('Conflict Error Messages', () => {
     it('should list all conflicting source names', async () => {
       // Create three sources with same UUID (including the first one)
-      config.backupSources[0].volumeUUID = '12345678-1234-1234-1234-123456789012';
-      config.backupSources.push(
+      config.backup!.sources[0].volumeUUID = '12345678-1234-1234-1234-123456789012';
+      config.backup!.sources.push(
         {
           name: 's5k-card-2',
           type: 'local',
@@ -204,7 +206,7 @@ describe('DeviceResolver', () => {
     });
 
     it('should handle empty backupSources array', async () => {
-      config.backupSources = [];
+      config.backup!.sources = [];
 
       await expect(
         resolver.resolveDevice('/Volumes/SDCARD', 's5k-card', config)
@@ -212,8 +214,8 @@ describe('DeviceResolver', () => {
     });
 
     it('should preserve existing volumeLabel when updating', async () => {
-      config.backupSources[0].volumeUUID = '12345678-1234-1234-1234-123456789012';
-      config.backupSources[0].volumeLabel = 'OLD_LABEL';
+      config.backup!.sources[0].volumeUUID = '12345678-1234-1234-1234-123456789012';
+      config.backup!.sources[0].volumeLabel = 'OLD_LABEL';
 
       const result = await resolver.resolveDevice('/Volumes/SDCARD', 's5k-card', config);
 

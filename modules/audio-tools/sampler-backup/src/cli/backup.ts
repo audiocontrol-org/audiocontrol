@@ -11,6 +11,9 @@ import { LocalSource } from "@/lib/sources/local-source.js";
 import type { RemoteSourceConfig, LocalSourceConfig } from "@/lib/sources/backup-source.js";
 import { loadConfig, getEnabledBackupSources, type BackupSource, saveConfig } from "@oletizi/audiotools-config";
 import { DeviceResolver } from "@/lib/device/device-resolver.js";
+import { AutoDetectBackup } from "@/lib/device/auto-detect-backup.js";
+import { InteractivePrompt, UserCancelledError } from "@/lib/prompt/interactive-prompt.js";
+import { createDeviceDetector } from "@oletizi/lib-device-uuid";
 import { homedir } from 'os';
 import { join } from 'pathe';
 import { readdir, stat } from 'node:fs/promises';
@@ -91,6 +94,39 @@ function isRemotePath(path: string): boolean {
   const hasColon = path.includes(':');
   const isWindowsPath = /^[A-Za-z]:/.test(path);
   return hasColon && !isWindowsPath;
+}
+
+/**
+ * Check if path is a local mount path (not a source name)
+ *
+ * Detects:
+ * - Absolute paths starting with / (Unix/Linux)
+ * - Paths containing /Volumes/ (macOS)
+ * - Paths containing /mnt/ (Linux)
+ * - Windows paths (C:\, D:\, etc.)
+ */
+function isLocalMountPath(path: string): boolean {
+  // Absolute Unix/Linux path
+  if (path.startsWith('/')) {
+    return true;
+  }
+
+  // macOS volume paths
+  if (path.includes('/Volumes/')) {
+    return true;
+  }
+
+  // Linux mount paths
+  if (path.includes('/mnt/')) {
+    return true;
+  }
+
+  // Windows paths (C:\, D:\, etc.)
+  if (/^[A-Za-z]:[\\\/]/.test(path)) {
+    return true;
+  }
+
+  return false;
 }
 
 /**
@@ -198,6 +234,110 @@ async function resolveLocalDevice(
 }
 
 /**
+ * Auto-detect and resolve local mount path to backup source.
+ *
+ * Performs complete auto-detection workflow:
+ * 1. Detects device info using lib-device-uuid
+ * 2. Infers device type from filesystem if not provided
+ * 3. Prompts for missing device type if needed
+ * 4. Prompts for sampler if needed
+ * 5. Checks if device is already registered
+ * 6. Returns complete BackupSource ready to use
+ *
+ * @param mountPath - Path where device is mounted
+ * @param config - Current audio-tools configuration
+ * @param options - CLI options (device, sampler, dryRun)
+ * @returns Complete backup source ready to use
+ * @throws UserCancelledError if user cancels prompts
+ */
+async function autoDetectLocalDevice(
+  mountPath: string,
+  config: ReturnType<typeof loadConfig> extends Promise<infer T> ? T : never,
+  options: { device?: string; sampler?: string; dryRun?: boolean }
+): Promise<BackupSource> {
+  if (options.dryRun) {
+    console.log(`[DRY RUN] Would auto-detect device at ${mountPath}`);
+    // For dry-run, create minimal source without detection
+    return {
+      name: 'dry-run-source',
+      type: 'local',
+      source: mountPath,
+      device: options.device || 'unknown',
+      sampler: options.sampler || 'unknown',
+      enabled: true,
+    };
+  }
+
+  // Create auto-detect service with dependencies
+  const deviceDetector = createDeviceDetector();
+  const promptService = new InteractivePrompt();
+  const deviceResolver = new DeviceResolver();
+  const autoDetect = new AutoDetectBackup(deviceDetector, promptService, deviceResolver);
+
+  console.log(`Auto-detecting device at ${mountPath}...`);
+
+  // Run auto-detection with CLI options as overrides
+  const result = await autoDetect.detectAndResolve(mountPath, config, {
+    deviceType: options.device,
+    sampler: options.sampler,
+  });
+
+  // Display device info
+  console.log('');
+  console.log('Device detected:');
+  if (result.deviceInfo.volumeLabel) {
+    console.log(`  Label: ${result.deviceInfo.volumeLabel}`);
+  }
+  if (result.deviceInfo.volumeUUID) {
+    console.log(`  UUID: ${result.deviceInfo.volumeUUID}`);
+  }
+  if (result.deviceInfo.filesystem) {
+    console.log(`  Filesystem: ${result.deviceInfo.filesystem}`);
+  }
+  console.log('');
+
+  // Display action taken
+  if (result.action === 'registered') {
+    console.log(`📝 Registered new backup source: ${result.source.name}`);
+  } else if (result.action === 'recognized') {
+    console.log(`✓ Recognized existing backup source: ${result.source.name}`);
+  } else {
+    console.log(`➕ Created backup source: ${result.source.name} (no UUID tracking)`);
+  }
+
+  // Update config if source was registered or created
+  if (result.action === 'registered' || result.action === 'created') {
+    // Add to config
+    if (!config.backup) {
+      config.backup = {
+        backupRoot: DEFAULT_BACKUP_ROOT,
+        sources: [],
+      };
+    }
+    if (!config.backup.sources) {
+      config.backup.sources = [];
+    }
+    config.backup.sources.push(result.source);
+    await saveConfig(config);
+    console.log('✓ Configuration saved');
+  } else if (result.action === 'recognized') {
+    // Update existing source (for lastSeen timestamp)
+    const sourceIndex = config.backup?.sources?.findIndex(
+      (s: BackupSource) => s.name === result.source.name
+    );
+    if (sourceIndex !== undefined && sourceIndex !== -1 && config.backup?.sources) {
+      config.backup.sources[sourceIndex] = result.source;
+      await saveConfig(config);
+      console.log('✓ Configuration updated');
+    }
+  }
+
+  console.log('');
+
+  return result.source;
+}
+
+/**
  * Backup a single source
  */
 async function backupSource(source: RemoteSource | LocalSource, dryRun: boolean = false): Promise<void> {
@@ -286,13 +426,40 @@ async function handleSyncCommand(options: any): Promise<void> {
  */
 async function handleBackupCommand(sourceName: string | undefined, options: any): Promise<void> {
   try {
-    // If --source flag is provided, use flag-based logic (backward compatibility)
+    // Load config first (needed for all code paths)
+    const config = await loadConfig();
+
+    // NEW: If positional argument is provided, check if it's a path (auto-detect flow)
+    if (sourceName && isLocalMountPath(sourceName)) {
+      // This is a local mount path - trigger auto-detect flow
+      const mountPath = sourceName;
+
+      try {
+        const resolvedSource = await autoDetectLocalDevice(mountPath, config, {
+          device: options.device,
+          sampler: options.sampler,
+          dryRun: options.dryRun,
+        });
+
+        // Proceed with backup using resolved source
+        const source = createSourceFromConfig(resolvedSource);
+        await backupSource(source, options.dryRun);
+        return;
+      } catch (error: any) {
+        if (error instanceof UserCancelledError) {
+          console.log('\nBackup cancelled by user');
+          process.exit(0);
+        }
+        throw error;
+      }
+    }
+
+    // BACKWARD COMPATIBILITY: If --source flag is provided, use flag-based logic
     if (options.source) {
       return handleSyncCommand(options);
     }
 
-    // Load config
-    const config = await loadConfig();
+    // Config-based backup (existing behavior)
     if (!config.backup) {
       console.error("Error: No backup configuration found");
       console.error("Run 'audiotools config' or 'akai-backup config' to set up configuration");
@@ -307,7 +474,7 @@ async function handleBackupCommand(sourceName: string | undefined, options: any)
       process.exit(1);
     }
 
-    // If sourceName is provided, backup only that source
+    // If sourceName is provided and not a path, backup only that source by name
     if (sourceName) {
       let sourceConfig = enabledSources.find(s => s.name === sourceName);
       if (!sourceConfig) {
@@ -385,6 +552,10 @@ async function handleBackupCommand(sourceName: string | undefined, options: any)
 
     console.log("✓ All backups complete");
   } catch (err: any) {
+    if (err instanceof UserCancelledError) {
+      console.log('\nBackup cancelled by user');
+      process.exit(0);
+    }
     console.error(`Error: ${err.message}`);
     process.exit(1);
   }
@@ -396,7 +567,13 @@ program
     .version("1.0.0")
     .addHelpText('after', `
 Examples:
-  Config-based backup (NEW):
+  Auto-detect backup (NEW):
+    $ akai-backup backup /Volumes/SDCARD            # Auto-detect device, prompt for details
+    $ akai-backup backup /Volumes/SDCARD --device floppy   # Auto-detect, specify device
+    $ akai-backup backup /Volumes/SDCARD --device floppy --sampler s5000   # No prompts
+    $ akai-backup backup /mnt/usb/sdcard --dry-run  # Preview auto-detect
+
+  Config-based backup:
     $ akai-backup backup                    # Backup all enabled sources from config
     $ akai-backup backup pi-scsi2          # Backup specific source by name
     $ akai-backup backup --dry-run         # Preview changes without backing up
@@ -448,13 +625,13 @@ How It Works:
   No snapshots, no archives - just fast, simple sync.
 `);
 
-// Backup command (NEW - config-based with optional source name argument)
+// Backup command (NEW - config-based with optional source name argument OR auto-detect path)
 program
     .command("backup [source]")
-    .description("Backup from config (all enabled sources or specific source by name)")
+    .description("Backup from config, auto-detect device, or by source name")
     .option("-s, --source <path>", "Override: use flag-based source path instead of config")
-    .option("-d, --device <name>", "Override: device name (requires --source)")
-    .option("--sampler <name>", "Override: sampler name (for local sources with --source)")
+    .option("-d, --device <name>", "Device type (for auto-detect or --source)")
+    .option("--sampler <name>", "Sampler name (for auto-detect or --source)")
     .option("--dry-run", "Show what would be synced without actually syncing")
     .action(handleBackupCommand);
 

@@ -55,7 +55,9 @@
     "@oletizi/lib-device-uuid": "workspace:*",
     "@oletizi/sampler-devices": "workspace:*",
     "@oletizi/sampler-lib": "workspace:*",
+    "@types/inquirer": "^9.0.0",
     "commander": "^12.1.0",
+    "inquirer": "^9.2.0",
     "pathe": "^1.1.2"
   },
   "devDependencies": {

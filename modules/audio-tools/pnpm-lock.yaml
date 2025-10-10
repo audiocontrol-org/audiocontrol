@@ -178,9 +178,15 @@ importers:
       '@oletizi/sampler-lib':
         specifier: workspace:*
         version: link:../sampler-lib
+      '@types/inquirer':
+        specifier: ^9.0.0
+        version: 9.0.9
       commander:
         specifier: ^12.1.0
         version: 12.1.0
+      inquirer:
+        specifier: ^9.2.0
+        version: 9.3.8(@types/node@22.18.8)
       pathe:
         specifier: ^1.1.2
         version: 1.1.2
@@ -953,6 +959,20 @@ packages:
       iconv-lite: 0.7.0
     dev: false
 
+  /@inquirer/external-editor@1.0.2(@types/node@22.18.8):
+    resolution: {integrity: sha512-yy9cOoBnx58TlsPrIxauKIFQTiyH+0MK4e97y4sV9ERbI+zDxw7i2hxHLCIEGIE/8PPvDxGhgzIOTSOWcs6/MQ==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/node': '>=18'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
+    dependencies:
+      '@types/node': 22.18.8
+      chardet: 2.1.0
+      iconv-lite: 0.7.0
+    dev: false
+
   /@inquirer/figures@1.0.13:
     resolution: {integrity: sha512-lGPVU3yO9ZNqA7vTYz26jny41lE7yoQansmqdMLBEfqaGsmdg7V3W9mK9Pvb5IL4EVZ9GnSDGMO/cJXud5dMaw==}
     engines: {node: '>=18'}
@@ -1444,7 +1464,6 @@ packages:
     dependencies:
       '@types/through': 0.0.33
       rxjs: 7.8.2
-    dev: true
 
   /@types/istanbul-lib-coverage@2.0.6:
     resolution: {integrity: sha512-2QF/t/auWm0lsy8XtKVPG19v3sSOQlJe/YHZgfjb/KBBHOGSV+J2q/S671rcq9uTBrLAXmZpqJiaQbMT+zNU1w==}
@@ -1467,13 +1486,11 @@ packages:
     resolution: {integrity: sha512-pAZSHMiagDR7cARo/cch1f3rXy0AEXwsVsVH09FcyeJVAzCnGgmYis7P3JidtTUjyadhTeSo8TgRPswstghDaw==}
     dependencies:
       undici-types: 6.21.0
-    dev: true
 
   /@types/through@0.0.33:
     resolution: {integrity: sha512-HsJ+z3QuETzP3cswwtzt2vEIiHBk/dCcHGhbmG5X3ecnwFD/lPrMpliGXxSCg03L9AhrdwA4Oz/qfspkDW+xGQ==}
     dependencies:
       '@types/node': 22.18.8
-    dev: true
 
   /@vitest/coverage-v8@1.6.1(vitest@1.6.1):
     resolution: {integrity: sha512-6YeRZwuO4oTGKxD3bijok756oktHSIm3eczVVzNe3scqzuhLwltIF3S9ZL/vwOVIpURmU6SnZhziXXAfw8/Qlw==}
@@ -2631,6 +2648,26 @@ packages:
     engines: {node: '>=18'}
     dependencies:
       '@inquirer/external-editor': 1.0.2(@types/node@20.19.19)
+      '@inquirer/figures': 1.0.13
+      ansi-escapes: 4.3.2
+      cli-width: 4.1.0
+      mute-stream: 1.0.0
+      ora: 5.4.1
+      run-async: 3.0.0
+      rxjs: 7.8.2
+      string-width: 4.2.3
+      strip-ansi: 6.0.1
+      wrap-ansi: 6.2.0
+      yoctocolors-cjs: 2.1.3
+    transitivePeerDependencies:
+      - '@types/node'
+    dev: false
+
+  /inquirer@9.3.8(@types/node@22.18.8):
+    resolution: {integrity: sha512-pFGGdaHrmRKMh4WoDDSowddgjT1Vkl90atobmTeSmcPGdYiwikch/m/Ef5wRaiamHejtw0cUUMMerzDUXCci2w==}
+    engines: {node: '>=18'}
+    dependencies:
+      '@inquirer/external-editor': 1.0.2(@types/node@22.18.8)
       '@inquirer/figures': 1.0.13
       ansi-escapes: 4.3.2
       cli-width: 4.1.0
