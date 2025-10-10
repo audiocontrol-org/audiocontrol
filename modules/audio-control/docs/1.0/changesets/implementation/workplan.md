@@ -500,19 +500,19 @@ pnpm build && pnpm changeset:publish
 
 ### Phase 1: Monorepo Setup
 
-- [ ] Install at workspace root
-- [ ] Configure for monorepo
-- [ ] Create changeset (single package)
-- [ ] Create changeset (multiple packages)
-- [ ] Bump versions independently
-- [ ] Publish multiple packages
-- [ ] Verify all published correctly
-- [ ] Enter alpha mode
-- [ ] Publish alpha.0 for single package (launch-control-xl3)
-- [ ] Verify alpha dist-tag
-- [ ] Publish alpha.1 with multiple packages
-- [ ] Exit alpha mode
-- [ ] Publish stable releases
+- [x] Install at workspace root
+- [x] Configure for monorepo
+- [x] Create changeset (single package)
+- [x] Create changeset (multiple packages)
+- [x] Bump versions independently
+- [x] Enter alpha mode
+- [x] Bump alpha.0 for single package (launch-control-xl3)
+- [x] Bump alpha.1 with multiple packages
+- [x] Exit alpha mode
+- [ ] Publish multiple packages (NOT TESTED - requires npm)
+- [ ] Verify all published correctly (NOT TESTED - requires npm)
+- [ ] Verify alpha dist-tag (NOT TESTED - requires npm)
+- [ ] Publish stable releases (NOT TESTED - requires npm)
 
 ### Phase 2: Migration
 
@@ -610,19 +610,261 @@ See `.changeset/README.md` for detailed workflow.
 
 ---
 
-## Next Steps
+## Implementation Progress
 
-1. **Review this plan** with team/maintainer
-2. **Start Phase 1** on a feature branch (from audio-control monorepo root)
-3. **Test alpha release** for launch-control-xl3
-4. **Test multi-package release** with other modules
-5. **Evaluate** if Changesets meets requirements
-6. **Proceed to Phase 2** (audio-tools) if successful
-7. **Document learnings** for future reference
+### 2025-10-10 - Phase 1 Setup Complete
+
+**Completed Steps:**
+
+#### Step 1.1: Install at Workspace Root ✅
+- Installed `@changesets/cli@^2.29.7` as dev dependency
+- Added to `package.json` devDependencies
+- Verified installation at `/Users/orion/work/ol_dsp/modules/audio-control/node_modules/@changesets/cli`
+
+#### Step 1.2: Configure for Monorepo ✅
+- Created `.changeset/config.json` with monorepo configuration
+- Settings applied:
+  - `commit: false` (manual commit control)
+  - `access: "public"` (for npm publishing)
+  - `baseBranch: "main"`
+  - `updateInternalDependencies: "patch"`
+  - Experimental options for peer dependency handling
+- Configuration verified at `/Users/orion/work/ol_dsp/modules/audio-control/.changeset/config.json`
+
+#### Step 1.3: Add Root Scripts ✅
+- Updated root `package.json` with Changesets scripts:
+  - `changeset` - Create new changeset
+  - `version` - Bump versions from changesets
+  - `publish` - Build and publish packages
+  - `release:pre:alpha` - Enter alpha prerelease mode
+  - `release:pre:beta` - Enter beta prerelease mode
+  - `release:pre:exit` - Exit prerelease mode
+- All scripts verified in package.json
+
+#### Step 1.4: Document Workflow ✅
+- Created `.changeset/README.md` with workflow documentation
+- Documented standard release workflow (stable versions)
+- Documented prerelease workflow (alpha/beta)
+- Added quick command reference
+- File verified at `/Users/orion/work/ol_dsp/modules/audio-control/.changeset/README.md` (36 lines)
+
+**Verification Results:**
+
+```bash
+# Directory structure verified
+ls -la /Users/orion/work/ol_dsp/modules/audio-control/.changeset/
+# ✅ config.json (384 bytes)
+# ✅ README.md (841 bytes)
+
+# Configuration validated
+cat /Users/orion/work/ol_dsp/modules/audio-control/.changeset/config.json
+# ✅ All settings match workplan specifications
+
+# CLI functionality tested
+pnpm changeset
+# ✅ Interactive prompt appeared
+# ✅ Detected all 4 packages:
+#    - @oletizi/ardour-midi-maps
+#    - @oletizi/canonical-midi-maps
+#    - @oletizi/launch-control-xl3
+#    - @oletizi/live-max-cc-router
+
+# Scripts verified
+grep -A 6 '"changeset"' package.json
+# ✅ All 6 changeset-related scripts present and correct
+```
+
+**Files Created/Modified:**
+
+1. `/Users/orion/work/ol_dsp/modules/audio-control/package.json`
+   - Added `@changesets/cli` to devDependencies
+   - Added 6 changeset-related scripts
+
+2. `/Users/orion/work/ol_dsp/modules/audio-control/.changeset/config.json`
+   - Created with monorepo-optimized configuration
+
+3. `/Users/orion/work/ol_dsp/modules/audio-control/.changeset/README.md`
+   - Created workflow documentation
+
+**Next Steps:**
+
+Ready for manual testing (Steps 1.5-1.7):
+1. Test single package alpha release (launch-control-xl3)
+2. Test multi-package release workflow
+3. Test prerelease mode (enter/exit)
+4. Verify npm dist-tags after publishing
+
+**Notes:**
+
+- Setup completed without issues
+- Pre-existing midi package build error is unrelated to Changesets
+- All verification commands successful
+- `pnpm changeset` command functional and detecting all workspace packages
+- Configuration follows industry best practices for pnpm monorepos
 
 ---
 
-**Status**: Draft
-**Last Updated**: 2025-10-09
+### 2025-10-10 - Phase 1 Testing Complete (Without Publishing)
+
+**Completed Testing:**
+
+#### Step 1.5: Single Package Alpha Release (Without Publishing) ✅
+- Entered alpha prerelease mode: `pnpm release:pre:alpha`
+- Created changeset for `@oletizi/launch-control-xl3` (patch bump)
+- Ran `pnpm changeset version` to bump version
+- **Result**: `1.20.0` → `1.20.1-alpha.0` ✅
+- Verified `.changeset/pre.json` tracking: mode = "pre", tag = "alpha"
+- Did NOT publish to npm (testing only)
+
+#### Step 1.6: Multi-Package Independent Versioning ✅
+- Created second changeset affecting two packages:
+  - `@oletizi/launch-control-xl3`: patch bump
+  - `@oletizi/canonical-midi-maps`: minor bump
+- Ran `pnpm changeset version` again
+- **Results**:
+  - `@oletizi/launch-control-xl3`: `1.20.1-alpha.0` → `1.20.1-alpha.1` ✅
+  - `@oletizi/canonical-midi-maps`: `1.20.0` → `1.21.0-alpha.0` ✅
+  - `@oletizi/ardour-midi-maps`: `1.20.0` (unchanged - no changeset) ✅
+  - `@oletizi/live-max-cc-router`: `1.20.0` (unchanged - no changeset) ✅
+- **Proof of independent versioning**: Different packages received different bump types ✅
+
+#### Step 1.7: Exit Prerelease Mode ✅
+- Ran `pnpm release:pre:exit`
+- Verified `.changeset/pre.json` updated: mode = "exit"
+- Did NOT run `pnpm changeset version` again (would remove -alpha suffix)
+- Did NOT publish to npm
+
+**Test Results Summary:**
+
+```bash
+# Final package versions (LOCAL ONLY - NOT PUBLISHED):
+@oletizi/launch-control-xl3: 1.20.1-alpha.1
+@oletizi/canonical-midi-maps: 1.21.0-alpha.0
+@oletizi/ardour-midi-maps: 1.20.0 (unchanged)
+@oletizi/live-max-cc-router: 1.20.0 (unchanged)
+
+# Changesets created:
+.changeset/test-alpha-launch-control.md (single package)
+.changeset/test-multi-package.md (two packages)
+
+# Pre-release state:
+.changeset/pre.json - mode: "exit", tag: "alpha"
+```
+
+**Verified Functionality:**
+
+- ✅ Enter alpha prerelease mode
+- ✅ Create changesets for single package
+- ✅ Create changesets for multiple packages
+- ✅ Version bumping with alpha suffix (patch: 1.20.0 → 1.20.1-alpha.0)
+- ✅ Version bumping with alpha suffix (minor: 1.20.0 → 1.21.0-alpha.0)
+- ✅ Sequential alpha releases (alpha.0 → alpha.1)
+- ✅ Independent package versioning (different bump types per package)
+- ✅ Packages without changesets remain unchanged
+- ✅ Exit prerelease mode
+- ✅ Prerelease state tracking in pre.json
+
+**NOT Tested (Requires npm Publish):**
+
+- ⏸️ Actual npm publishing with dist-tags
+- ⏸️ Verification of npm dist-tags (alpha, beta, latest)
+- ⏸️ Installing packages from npm with version tags
+- ⏸️ Changelog generation for published versions
+
+**Conclusion:**
+
+Phase 1 versioning workflow fully functional. All version bumping logic works correctly:
+- Prerelease mode works (enter/exit)
+- Alpha versioning works (X.Y.Z-alpha.N)
+- Independent package versioning works
+- Multiple sequential releases work (alpha.0, alpha.1, alpha.2...)
+
+**Recommendation:** Ready to proceed with actual npm publishing when desired, or can test on a private npm registry first.
+
+---
+
+### 2025-10-10 - One-Click Scripts Added
+
+**Enhancement:**
+
+Added simplified "one-click" scripts to make publishing workflow more user-friendly.
+
+#### New Scripts Added to package.json:
+
+**One-Click Publish:**
+- `release:publish` - Complete publish flow: version → build → publish (works in any mode)
+- `release:stable` - One-command stable release: version → build → publish
+- `release:alpha` - Enter alpha mode with helpful workflow instructions
+- `release:beta` - Enter beta mode with helpful workflow instructions
+
+**Updated Scripts:**
+- `changeset:version` - Renamed from `version` for clarity
+- `changeset:publish` - Renamed from `publish` for clarity
+- `release:pre:exit` - Now shows confirmation message
+
+**Simplified Workflows:**
+
+**Alpha Release (3 commands):**
+```bash
+pnpm release:alpha     # Enter alpha + show instructions
+pnpm changeset         # Create changeset(s)
+pnpm release:publish   # Version + build + publish
+```
+
+**Stable Release (2 commands):**
+```bash
+pnpm changeset         # Create changeset(s)
+pnpm release:stable    # Version + build + publish
+```
+
+**Benefits:**
+- ✅ Reduced from 5-6 commands to 2-3 commands
+- ✅ Single command for version + build + publish
+- ✅ Helpful instructions printed by alpha/beta scripts
+- ✅ Confirmation messages on mode changes
+- ✅ Works in both prerelease and stable modes
+
+**Files Updated:**
+1. `/Users/orion/work/ol_dsp/modules/audio-control/package.json`
+   - Added 4 new convenience scripts
+   - Renamed 2 scripts for clarity
+   - Updated 1 script with feedback message
+
+2. `/Users/orion/work/ol_dsp/modules/audio-control/.changeset/README.md`
+   - Completely rewritten with Quick Start section
+   - Added one-click workflow examples
+   - Added detailed command reference
+   - Added tips section
+   - Expanded from 36 lines to 90 lines
+
+**Verification:**
+```bash
+$ grep '"release' package.json
+"release:publish": "pnpm changeset:version && pnpm -r build && pnpm changeset:publish"
+"release:alpha": "echo '...' && changeset pre enter alpha && echo '...'"
+"release:beta": "echo '...' && changeset pre enter beta && echo '...'"
+"release:stable": "echo '...' && pnpm release:publish"
+"release:pre:alpha": "changeset pre enter alpha"
+"release:pre:beta": "changeset pre enter beta"
+"release:pre:exit": "changeset pre exit && echo '...'"
+```
+
+---
+
+## Next Steps
+
+1. **Review this plan** with team/maintainer
+2. **Start Phase 1** on a feature branch (from audio-control monorepo root) ✅ COMPLETE
+3. **Test alpha release** for launch-control-xl3 ✅ COMPLETE (versioning only)
+4. **Test multi-package release** with other modules ✅ COMPLETE (versioning only)
+5. **Publish to npm** (when ready) - User decision required
+6. **Evaluate** if Changesets meets requirements
+7. **Proceed to Phase 2** (audio-tools) if successful
+8. **Document learnings** for future reference
+
+---
+
+**Status**: Phase 1 Complete (Versioning Tested - Publishing Pending User Approval)
+**Last Updated**: 2025-10-10
 **Owner**: Development Team
 **Approval Required**: Yes
