@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/lib-runtime",
-  "version": "1.0.0-alpha.35",
+  "version": "1.0.0-alpha.36",
   "description": "Runtime tools",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
