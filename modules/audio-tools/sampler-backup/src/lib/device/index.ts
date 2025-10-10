@@ -6,7 +6,9 @@
  * - First-time device registration
  * - Device recognition across sessions
  * - Conflict detection and resolution
+ * - Auto-detection of local media devices
  */
 
 export * from './device-matcher.js';
 export * from './device-resolver.js';
+export * from './auto-detect-backup.js';
