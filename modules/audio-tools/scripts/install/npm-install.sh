@@ -6,6 +6,7 @@ set -euo pipefail
 
 # Package list - install with @alpha tag to get latest prerelease
 readonly PACKAGES=(
+  "@oletizi/audiotools@alpha"
   "@oletizi/sampler-backup@alpha"
   "@oletizi/sampler-export@alpha"
   "@oletizi/sampler-lib@alpha"
@@ -14,6 +15,7 @@ readonly PACKAGES=(
 
 # Binary verification list
 readonly BINARIES=(
+  "audiotools"
   "akai-backup"
   "akai-extract"
 )
