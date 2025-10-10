@@ -24,9 +24,11 @@ export default defineConfig({
       external: [
         'commander',
         'pathe',
+        'inquirer',
         '@oletizi/sampler-devices',
         '@oletizi/sampler-lib',
         '@oletizi/audiotools-config',
+        '@oletizi/lib-device-uuid',
         // Node.js built-ins (both with and without node: prefix)
         'module',
         'fs',

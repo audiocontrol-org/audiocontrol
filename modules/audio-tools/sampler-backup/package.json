@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/sampler-backup",
-  "version": "1.0.0-alpha.22",
+  "version": "1.0.0-alpha.23",
   "description": "Akai sampler backup utilities for hardware samplers via PiSCSI",
   "main": "./dist/lib/index.js",
   "exports": {
@@ -52,9 +52,12 @@
   },
   "dependencies": {
     "@oletizi/audiotools-config": "workspace:*",
+    "@oletizi/lib-device-uuid": "workspace:*",
     "@oletizi/sampler-devices": "workspace:*",
     "@oletizi/sampler-lib": "workspace:*",
+    "@types/inquirer": "^9.0.0",
     "commander": "^12.1.0",
+    "inquirer": "^9.2.0",
     "pathe": "^1.1.2"
   },
   "devDependencies": {

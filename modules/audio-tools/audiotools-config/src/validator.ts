@@ -18,6 +18,17 @@ import type {
 } from '@/types.js';
 
 /**
+ * Validates ISO 8601 timestamp format
+ *
+ * @param timestamp - Timestamp string to validate
+ * @returns true if valid ISO 8601 format, false otherwise
+ */
+function isValidTimestamp(timestamp: string): boolean {
+  const date = new Date(timestamp);
+  return !isNaN(date.getTime()) && date.toISOString() === timestamp;
+}
+
+/**
  * Validates a backup source configuration.
  *
  * Checks all required fields and validates type-specific requirements:
@@ -26,6 +37,8 @@ import type {
  * - Source path must not be empty
  * - Device must not be empty
  * - For local sources, sampler must be provided
+ * - Optional UUID fields must be strings if provided
+ * - Optional timestamp fields must be valid ISO 8601 format if provided
  *
  * @param source - The backup source to validate
  * @throws {Error} If validation fails with a descriptive error message
@@ -73,6 +86,38 @@ export function validateBackupSource(source: BackupSource): void {
   if (source.type === 'local') {
     if (!source.sampler || source.sampler.trim() === '') {
       throw new Error('Local sources must specify a sampler model');
+    }
+  }
+
+  // Validate optional timestamp fields if present
+  if (source.lastSeen !== undefined && source.lastSeen !== null) {
+    if (typeof source.lastSeen !== 'string' || !isValidTimestamp(source.lastSeen)) {
+      throw new Error(`Invalid lastSeen timestamp: "${source.lastSeen}". Must be ISO 8601 format.`);
+    }
+  }
+
+  if (source.registeredAt !== undefined && source.registeredAt !== null) {
+    if (typeof source.registeredAt !== 'string' || !isValidTimestamp(source.registeredAt)) {
+      throw new Error(`Invalid registeredAt timestamp: "${source.registeredAt}". Must be ISO 8601 format.`);
+    }
+  }
+
+  // Validate string fields if present (optional but must be strings)
+  if (source.volumeUUID !== undefined && source.volumeUUID !== null) {
+    if (typeof source.volumeUUID !== 'string') {
+      throw new Error('volumeUUID must be a string if provided');
+    }
+  }
+
+  if (source.volumeLabel !== undefined && source.volumeLabel !== null) {
+    if (typeof source.volumeLabel !== 'string') {
+      throw new Error('volumeLabel must be a string if provided');
+    }
+  }
+
+  if (source.volumeSerial !== undefined && source.volumeSerial !== null) {
+    if (typeof source.volumeSerial !== 'string') {
+      throw new Error('volumeSerial must be a string if provided');
     }
   }
 }

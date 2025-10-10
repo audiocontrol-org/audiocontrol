@@ -62,14 +62,18 @@ export interface AudioToolsConfig {
  *   enabled: true
  * };
  *
- * // Local backup source
+ * // Local backup source with UUID tracking
  * const localSource: BackupSource = {
  *   name: 'sd-card',
  *   type: 'local',
  *   source: '/Volumes/AKAI_SD',
  *   device: 'sd-card',
  *   sampler: 's5000',
- *   enabled: true
+ *   enabled: true,
+ *   volumeUUID: '12345678-1234-1234-1234-123456789012',
+ *   volumeLabel: 'AKAI_SD',
+ *   lastSeen: '2025-10-09T14:30:00.000Z',
+ *   registeredAt: '2025-10-09T14:00:00.000Z'
  * };
  * ```
  */
@@ -95,6 +99,58 @@ export interface BackupSource {
 
   /** Whether this source is enabled for backup operations */
   enabled: boolean;
+
+  /**
+   * Volume UUID - Primary device identifier
+   *
+   * Used to recognize the same physical device across remounts, even if mount
+   * path changes. On macOS, obtained via diskutil. On Linux, via blkid.
+   *
+   * Some older FAT32 volumes may not have a UUID - use volumeSerial as fallback.
+   *
+   * @example "12345678-1234-1234-1234-123456789012"
+   */
+  volumeUUID?: string;
+
+  /**
+   * Volume label - Human-readable device name
+   *
+   * The volume label as it appears in the filesystem. Useful for user display
+   * but not reliable as an identifier (users can rename volumes).
+   *
+   * @example "SDCARD", "S5000_BACKUP", "MY_USB"
+   */
+  volumeLabel?: string;
+
+  /**
+   * Volume serial number - Fallback identifier
+   *
+   * Used when volumeUUID is not available (e.g., older FAT32 volumes).
+   * On Linux, this is the PARTUUID from blkid.
+   *
+   * @example "12345678-02"
+   */
+  volumeSerial?: string;
+
+  /**
+   * Last seen timestamp - When device was last detected
+   *
+   * ISO 8601 timestamp of the last time this physical device was detected.
+   * Updated each time the device is successfully identified during backup.
+   *
+   * @example "2025-10-09T14:30:00.000Z"
+   */
+  lastSeen?: string;
+
+  /**
+   * Registration timestamp - When device was first added
+   *
+   * ISO 8601 timestamp of when this device was first registered in the config.
+   * Never changes after initial registration.
+   *
+   * @example "2025-10-09T14:30:00.000Z"
+   */
+  registeredAt?: string;
 }
 
 /**

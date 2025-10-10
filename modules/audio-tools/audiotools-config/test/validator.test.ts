@@ -280,4 +280,142 @@ describe('validator', () => {
       expect(() => validateUnifiedConfig(config)).toThrow('Export config: Export formats array cannot be empty');
     });
   });
+
+  describe('UUID Field Validation', () => {
+    it('should accept valid UUID fields', () => {
+      const source: BackupSource = {
+        name: 's5k-card',
+        type: 'local',
+        source: '/Volumes/SDCARD',
+        device: 'sd-card',
+        sampler: 's5000',
+        enabled: true,
+        volumeUUID: '12345678-1234-1234-1234-123456789012',
+        volumeLabel: 'SDCARD',
+        volumeSerial: '12345678-02',
+        lastSeen: '2025-10-09T14:30:00.000Z',
+        registeredAt: '2025-10-09T14:30:00.000Z'
+      };
+
+      expect(() => validateBackupSource(source)).not.toThrow();
+    });
+
+    it('should accept sources without UUID fields', () => {
+      const source: BackupSource = {
+        name: 's5k-card',
+        type: 'local',
+        source: '/Volumes/SDCARD',
+        device: 'sd-card',
+        sampler: 's5000',
+        enabled: true
+      };
+
+      expect(() => validateBackupSource(source)).not.toThrow();
+    });
+
+    it('should reject invalid lastSeen timestamp', () => {
+      const source: BackupSource = {
+        name: 's5k-card',
+        type: 'local',
+        source: '/Volumes/SDCARD',
+        device: 'sd-card',
+        sampler: 's5000',
+        enabled: true,
+        lastSeen: 'not-a-timestamp'
+      };
+
+      expect(() => validateBackupSource(source))
+        .toThrow('Invalid lastSeen timestamp');
+    });
+
+    it('should reject invalid registeredAt timestamp', () => {
+      const source: BackupSource = {
+        name: 's5k-card',
+        type: 'local',
+        source: '/Volumes/SDCARD',
+        device: 'sd-card',
+        sampler: 's5000',
+        enabled: true,
+        registeredAt: '2025-10-09'  // Not ISO 8601 with time
+      };
+
+      expect(() => validateBackupSource(source))
+        .toThrow('Invalid registeredAt timestamp');
+    });
+
+    it('should reject non-string volumeUUID', () => {
+      const source = {
+        name: 's5k-card',
+        type: 'local',
+        source: '/Volumes/SDCARD',
+        device: 'sd-card',
+        sampler: 's5000',
+        enabled: true,
+        volumeUUID: 12345  // Wrong type
+      } as any;
+
+      expect(() => validateBackupSource(source))
+        .toThrow('volumeUUID must be a string');
+    });
+
+    it('should reject non-string volumeLabel', () => {
+      const source = {
+        name: 's5k-card',
+        type: 'local',
+        source: '/Volumes/SDCARD',
+        device: 'sd-card',
+        sampler: 's5000',
+        enabled: true,
+        volumeLabel: 12345  // Wrong type
+      } as any;
+
+      expect(() => validateBackupSource(source))
+        .toThrow('volumeLabel must be a string');
+    });
+
+    it('should reject non-string volumeSerial', () => {
+      const source = {
+        name: 's5k-card',
+        type: 'local',
+        source: '/Volumes/SDCARD',
+        device: 'sd-card',
+        sampler: 's5000',
+        enabled: true,
+        volumeSerial: 12345  // Wrong type
+      } as any;
+
+      expect(() => validateBackupSource(source))
+        .toThrow('volumeSerial must be a string');
+    });
+
+    it('should accept partial UUID fields', () => {
+      const source: BackupSource = {
+        name: 's5k-card',
+        type: 'local',
+        source: '/Volumes/SDCARD',
+        device: 'sd-card',
+        sampler: 's5000',
+        enabled: true,
+        volumeLabel: 'SDCARD',
+        lastSeen: '2025-10-09T14:30:00.000Z'
+      };
+
+      expect(() => validateBackupSource(source)).not.toThrow();
+    });
+
+    it('should accept volumeSerial without volumeUUID', () => {
+      const source: BackupSource = {
+        name: 's5k-card',
+        type: 'local',
+        source: '/Volumes/SDCARD',
+        device: 'sd-card',
+        sampler: 's5000',
+        enabled: true,
+        volumeSerial: '12345678-02',
+        registeredAt: '2025-10-09T14:00:00.000Z'
+      };
+
+      expect(() => validateBackupSource(source)).not.toThrow();
+    });
+  });
 });

@@ -10,7 +10,7 @@ import type { BackupSource } from '@/lib/sources/backup-source.js';
 import type { BackupResult, RsnapshotInterval } from '@/lib/types/index.js';
 
 // Mock modules using dependency injection pattern (no module stubbing)
-vi.mock('@/sources/backup-source-factory.js');
+vi.mock('@/lib/sources/backup-source-factory.js');
 
 // Mock BackupSource implementation for testing
 class MockBackupSource implements BackupSource {

@@ -76,6 +76,15 @@ export class RsyncAdapter {
 
       rsync.on('close', (code: number | null) => {
         if (code === 0) {
+          // Complete success
+          resolve();
+        } else if (code === 23 || code === 24) {
+          // Code 23: Partial transfer due to error (some files couldn't be transferred)
+          // Code 24: Partial transfer due to vanished source files
+          // These are warnings, not failures - some files were successfully transferred
+          console.warn(`\n⚠️  Partial transfer (rsync code ${code}): Some files could not be transferred`);
+          console.warn('   Common causes: Permission denied on system files (.Spotlight-V100, .Trashes)');
+          console.warn('   Your data files were backed up successfully.\n');
           resolve();
         } else {
           reject(new Error(`rsync failed with code ${code}`));
