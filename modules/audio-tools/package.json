@@ -24,7 +24,7 @@
     "changeset:publish": "changeset publish",
     "update-docs": "tsx scripts/update-docs-version.ts",
     "release:publish": "pnpm changeset:version && pnpm -r build && pnpm changeset:publish",
-    "release:ship": "tsx scripts/ensure-changeset.ts && pnpm changeset:version && pnpm -r build && (git diff-index --quiet HEAD || (git add . && git commit -m \"chore(release): publish packages\" && git push)) && tsx scripts/create-github-release.ts && pnpm changeset:publish",
+    "release:ship": "tsx scripts/ensure-changeset.ts && pnpm changeset:version && pnpm -r build && git add . && (git diff-index --quiet --cached HEAD || (git commit -m \"chore(release): publish packages\" && git push)) && tsx scripts/create-github-release.ts && pnpm changeset:publish",
     "release:pre:alpha": "changeset pre enter alpha",
     "release:pre:beta": "changeset pre enter beta",
     "release:pre:exit": "changeset pre exit && echo '\\n✅ Exited prerelease mode. Next changeset version will be stable.'"
