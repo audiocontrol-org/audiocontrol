@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/audiotools",
-  "version": "1.0.0-alpha.38",
+  "version": "1.0.0-alpha.39",
   "description": "Unified CLI for audio-tools - backup, extract, and convert Akai sampler data",
   "type": "module",
   "bin": {
