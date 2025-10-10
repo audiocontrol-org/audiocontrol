@@ -18,3 +18,12 @@ export { AutoDetectBackup } from "@/lib/device/auto-detect-backup.js";
 export { DeviceResolver } from "@/lib/device/device-resolver.js";
 export * from "@/lib/prompt/interactive-prompt.js";
 export { InteractivePrompt, UserCancelledError } from "@/lib/prompt/interactive-prompt.js";
+
+// Disk discovery - shared logic for backup and export tools
+export {
+  detectSamplerType,
+  findDiskImagesRecursive,
+  discoverDiskImages,
+  type SamplerType,
+  type DiskInfo
+} from "@/lib/discovery/disk-scanner.js";

@@ -46,7 +46,7 @@
   },
   "dependencies": {
     "@oletizi/audiotools-config": "workspace:*",
-    "@oletizi/lib-device-uuid": "workspace:1.0.0-alpha.31",
+    "@oletizi/lib-device-uuid": "workspace:*",
     "@oletizi/sampler-backup": "workspace:*",
     "@oletizi/sampler-export": "workspace:*",
     "commander": "^12.1.0",
