@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/sampler-attic",
-  "version": "1.0.0-alpha.42",
+  "version": "1.0.0-alpha.43",
   "description": "Temporary storage for code pending refactoring - NOT FOR DISTRIBUTION",
   "private": true,
   "type": "module",

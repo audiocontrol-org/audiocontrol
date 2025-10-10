@@ -15,6 +15,7 @@
     "@oletizi/sampler-translate": "1.0.0-alpha.39"
   },
   "changesets": [
-    "fix-installer"
+    "fix-installer",
+    "fix-workspace-protocol"
   ]
 }

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.0-alpha.43
+
+### Patch Changes
+
+- Fix publishing to properly convert workspace:\* dependencies to actual versions
+- Updated dependencies
+  - @oletizi/audiotools-config@1.0.0-alpha.43
+  - @oletizi/sampler-lib@1.0.0-alpha.43
+  - @oletizi/sampler-devices@1.0.0-alpha.43
+  - @oletizi/lib-device-uuid@1.0.0-alpha.43
+
 ## 1.0.0-alpha.42
 
 ### Patch Changes

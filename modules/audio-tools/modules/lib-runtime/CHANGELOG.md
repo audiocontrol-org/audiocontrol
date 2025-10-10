@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.0-alpha.43
+
+### Patch Changes
+
+- Fix publishing to properly convert workspace:\* dependencies to actual versions
+
 ## 1.0.0-alpha.42
 
 ### Patch Changes
