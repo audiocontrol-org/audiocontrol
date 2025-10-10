@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.20.1-alpha.1
+
+### Patch Changes
+
+- Sync all packages to 1.20.1-alpha.1 for version consistency
+
 ## 1.20.1-alpha.0
 
 ### Patch Changes

@@ -1,5 +1,13 @@
 # @oletizi/live-max-cc-router
 
+## 1.20.1-alpha.1
+
+### Patch Changes
+
+- Sync all packages to 1.20.1-alpha.1 for version consistency
+- Updated dependencies
+  - @oletizi/canonical-midi-maps@1.20.1-alpha.1
+
 ## 1.20.1-alpha.0
 
 ### Patch Changes
