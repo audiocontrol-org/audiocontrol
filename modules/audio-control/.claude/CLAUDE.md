@@ -146,6 +146,71 @@ head -10 file.ts                  # Verify content is correct
 - Sensible defaults with override capability
 - Type-safe throughout the entire API surface
 
+## Documentation and Workplan Convention
+
+### Workplan Location and Structure
+
+**Structured workplans are REQUIRED for non-trivial features, bug fixes, and activities.**
+
+All workplans must be located in the **audio-control workspace's documentation directory**:
+
+```
+modules/audio-control/docs/<version>/<feature|activity|fixes>/implementation/workplan.md
+```
+
+**Examples:**
+- `modules/audio-control/docs/1.0/issues/32/implementation/workplan.md` - Bug fix for issue #32 in v1.0
+- `modules/audio-control/docs/1.1/multi-page-write/implementation/workplan.md` - Feature for multi-page write in v1.1
+- `modules/audio-control/docs/1.2/fixes/label-parsing/implementation/workplan.md` - Label parsing fix in v1.2
+
+**IMPORTANT:** Workplans belong in the **audio-control workspace** (`modules/audio-control/docs/<version>/`), NOT in individual modules within audio-control.
+
+### Workplan Structure Requirements
+
+A workplan must include:
+- **Problem statement** - What needs to be solved
+- **Analysis** - Root cause and evidence
+- **Implementation plan** - Step-by-step changes with file paths
+- **Documentation updates** - Required doc changes (MANDATORY)
+- **Testing plan** - Verification steps
+- **Verification checklist** - Sign-off criteria
+- **Timeline estimate** - Expected effort
+
+### When to Create a Workplan
+
+**Required for:**
+- Protocol changes or bug fixes
+- New features or significant refactoring
+- Multi-step implementations
+- Changes affecting multiple files/modules
+- Breaking changes
+
+**Not required for:**
+- Trivial typo fixes
+- Single-line bug fixes
+- Documentation-only changes
+- Dependency version updates
+
+### File Organization
+
+**Permanent documentation:**
+- **Workplans/Implementation plans** → `modules/audio-control/docs/<version>/<feature>/implementation/workplan.md`
+- **Protocol specifications** → Module's `docs/PROTOCOL.md` (e.g., `modules/launch-control-xl3/docs/PROTOCOL.md`)
+- **Architecture patterns** → Module's `docs/ARCHITECTURE.md`
+- **Project guidelines** → `.claude/CLAUDE.md` (audio-control workspace or module-specific)
+
+**Temporary files:**
+- **Investigation notes** → `modules/audio-control/tmp/`
+- **Temporary scripts** → `modules/audio-control/tmp/` (move to `scripts/` if keeping long-term)
+- **Test data/captures** → `modules/audio-control/tmp/` (move to module's `backup/` or `test/fixtures/` if keeping)
+
+**Permanent scripts:**
+- **Build scripts** → `modules/audio-control/scripts/`
+- **Utility scripts** → `modules/audio-control/scripts/`
+- **Test utilities** → Module's `utils/` or `test/utils/`
+
+**Important:** `tmp/` should be gitignored. Only commit temporary files if they provide value for the permanent record.
+
 ## Common Tasks
 
 ### Adding a New MIDI Mapping Type

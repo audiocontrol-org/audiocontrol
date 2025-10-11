@@ -131,8 +131,8 @@ When investigating protocol behavior:
 
 ❌ **DON'T** change parser without updating docs
 ❌ **DON'T** document speculative behavior
-❌ **DON'T** leave investigation notes in repo
-❌ **DON'T** create new workplan/investigation files
+❌ **DON'T** leave investigation notes in module (use audio-control workspace `tmp/`)
+❌ **DON'T** create workplans in module (use audio-control workspace `docs/<version>/`)
 ❌ **DON'T** commit without version history update
 ❌ **DON'T** add LED configuration code (not in protocol)
 ❌ **DON'T** assume SysEx slot byte controls target (uses DAW port)
@@ -192,13 +192,23 @@ launch-control-xl3/
 └── utils/              ← Testing utilities
 ```
 
-**Don't create:**
-- `investigation/` directories
-- `notes/` directories
-- Workplan files
-- Temporary documentation
+**Don't create in this module:**
+- `investigation/` directories (use audio-control workspace `tmp/` instead)
+- `notes/` directories (use audio-control workspace `tmp/` instead)
+- Workplan files (they belong in audio-control workspace `docs/<version>/`)
+- Temporary scripts (use audio-control workspace `tmp/` instead)
 
-If findings are worth keeping, put them in `docs/PROTOCOL.md` or `docs/ARCHITECTURE.md`.
+**Module-specific permanent documentation:**
+- Protocol details → This module's `docs/PROTOCOL.md`
+- Architecture patterns → This module's `docs/ARCHITECTURE.md`
+- API documentation → This module's `docs/API.md`
+
+**Audio-control workspace documentation:**
+- Implementation workplans → `modules/audio-control/docs/<version>/<feature>/implementation/workplan.md`
+- Temporary files → `modules/audio-control/tmp/`
+- Permanent scripts → `modules/audio-control/scripts/`
+
+**See audio-control workspace `modules/audio-control/.claude/CLAUDE.md` for complete workplan convention and file organization guidelines.**
 
 ---
 
@@ -270,5 +280,5 @@ Your change is complete when:
 ---
 
 **Module Owner:** See git history
-**Last Updated:** 2025-09-30
+**Last Updated:** 2025-10-11
 **Documentation:** [`docs/README.md`](./docs/README.md)
