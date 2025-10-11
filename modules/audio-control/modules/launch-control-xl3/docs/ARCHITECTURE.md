@@ -129,6 +129,15 @@ const name = String.fromCharCode(...data.slice(i + 2, i + 2 + length));
 const canonicalId = mapLabelControlId(controlId);
 ```
 
+#### Common Pitfalls
+
+**DO NOT scan for `0x40` bytes to identify controls in READ responses.**
+
+In versions prior to v1.6, the parser incorrectly scanned for `0x40` bytes and treated following bytes as control IDs.
+This was wrong because `0x40` appears as **data within `0x48` control structures** (specifically as the minValue field at byte offset +7).
+
+**Correct approach:** Only look for `0x48` marker bytes to identify control definitions in READ responses.
+
 ### 5. MIDI Backends (src/backends/)
 
 **Purpose:** Abstract MIDI communication
@@ -459,5 +468,5 @@ launch-control-xl3/
 
 ---
 
-**Last Updated:** 2025-09-30
+**Last Updated:** 2025-10-11
 **Maintainers:** See git history for contributors

@@ -549,7 +549,7 @@ export class SysExParser {
   }
 
   /**
-   * Parse read response format with mixed 0x48/0x40 markers
+   * Parse read response format with 0x48 control definition markers
    */
   private static parseReadResponseFormat(
     data: number[],
@@ -559,21 +559,7 @@ export class SysExParser {
   ): void {
     console.log(`[parseReadResponseFormat] Starting parse from position ${startPos}, data length ${data.length}`);
 
-    // Step 1: Parse any 0x40 CC data sections first (from mixed response)
-    const ccData: { ccNumber: number, position: number }[] = [];
-    for (let i = startPos; i < data.length - 1; i++) {
-      if (data[i] === 0x40 && data[i + 1] !== undefined) {
-        const ccNumber = data[i + 1];
-        if (ccNumber !== undefined) {
-          ccData.push({ ccNumber, position: ccData.length });
-        }
-        i++; // Skip the CC number byte
-      }
-    }
-
-    console.log(`[parseReadResponseFormat] Found ${ccData.length} 0x40 CC data entries`);
-
-    // Step 2: Parse 0x48 control definition sections (device stores as 0x48, not 0x49)
+    // Parse 0x48 control definition sections (device stores as 0x48, not 0x49)
     let controlsFound = 0;
     let lastPosition = startPos;
     for (let i = startPos; i < data.length - 9; i++) {
@@ -626,55 +612,6 @@ export class SysExParser {
     }
 
     console.log(`[parseReadResponseFormat] Parsed ${controlsFound} controls (last at position ${lastPosition}, loop ended at ${data.length - 9})`);
-
-    // Step 3: Process 0x40 short-format controls (unconfigured controls with default CH0/CC0)
-    // These appear mixed with 0x48 controls in the device response
-    if (ccData.length > 0) {
-      // Build set of control IDs we already have from 0x48 parsing
-      const existingControlIds = new Set(controls.map(c => c.controlId));
-
-      console.log(`[parseReadResponseFormat] Found ${ccData.length} 0x40 entries, ${existingControlIds.size} already parsed from 0x48`);
-
-      // Parse 0x40 markers to get control IDs
-      const shortFormatControls: number[] = [];
-      for (let i = 0; i < data.length - 1; i++) {
-        if (data[i] === 0x40) {
-          const possibleControlId = data[i + 1];
-          // Valid control IDs are 0x10-0x3F
-          if (possibleControlId !== undefined && possibleControlId >= 0x10 && possibleControlId <= 0x3F) {
-            shortFormatControls.push(possibleControlId);
-          }
-        }
-      }
-
-      console.log(`[parseReadResponseFormat] Found ${shortFormatControls.length} valid 0x40 control IDs`);
-
-      // Add controls for 0x40 entries that aren't already in our list
-      let addedCount = 0;
-      for (const controlId of shortFormatControls) {
-        if (!existingControlIds.has(controlId)) {
-          controls.push({
-            controlId,
-            channel: 0,  // Default/unconfigured
-            ccNumber: 0, // Default/unconfigured
-            minValue: 0,
-            maxValue: 127,
-            behaviour: 'absolute' as any,
-          });
-
-          colors.push({
-            controlId,
-            color: this.getDefaultColorForControl(controlId),
-            behaviour: 'static',
-          });
-
-          existingControlIds.add(controlId);
-          addedCount++;
-        }
-      }
-
-      console.log(`[parseReadResponseFormat] Added ${addedCount} controls from 0x40 short format`);
-    }
   }
 
   /**

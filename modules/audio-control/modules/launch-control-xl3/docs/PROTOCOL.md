@@ -1,7 +1,7 @@
 # Launch Control XL3 Protocol Specification
 
-**Version:** 1.7
-**Last Updated:** 2025-10-09
+**Version:** 1.8
+**Last Updated:** 2025-10-11
 **Status:** Verified with hardware
 
 ## Overview
@@ -88,6 +88,21 @@ Where:
 **Discovery Method:** Empirical testing (2025-10-01). The SysEx slot byte parameter directly selects the target slot without requiring DAW port protocol.
 
 **Implementation:** See `SysExParser.buildCustomModeReadRequest(slot, page)` at line 966-994 in `src/core/SysExParser.ts`.
+
+### READ Response Format
+
+READ responses use **only `0x48` control definition markers**. Each control is defined by an 11-byte structure:
+
+```
+Position:  0    1          2        3       4        5       6       7         8         9        10
+Bytes:     0x48 controlId  0x02     type    channel  param1  0x48    minValue  ccNumber  maxValue  0x00
+```
+
+**Important:** The byte `0x40` may appear at position +7 as the `minValue` field. This is **data, not a control marker**.
+Do not scan for `0x40` bytes to identify controls.
+
+**Example:**
+A control with minValue=64 (0x40) will have `0x40` at byte position +7, immediately before the CC number.
 
 ### Multi-Page Structure
 
@@ -541,6 +556,7 @@ The parser follows the protocol specification exactly:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.8 | 2025-10-11 | **Parser Bug Fix:** Removed incorrect 0x40 parsing in READ responses. The byte 0x40 appears as **data within 0x48 control structures** (minValue field at offset +7), not as a control marker. This caused wrong CC numbers, missing custom labels, and fake controls with CC 0. Only 0x48 markers are used for READ responses. Reference: GitHub issue #32 |
 | 1.7 | 2025-10-09 | **MAJOR UPDATE:** Corrected page mapping documentation. Logical pages 0 and 1 map to SysEx page bytes 0x00 and 0x03. Removed extensive DAW port protocol documentation (deprecated). Clarified that slot selection uses SysEx slot byte directly. Updated all examples to reflect working code. |
 | 1.6 | 2025-10-01 | **DEFINITIVE:** SysEx read/write DOES have slot parameter. Format is `F0 00 20 29 02 15 05 00 40 [PAGE] [SLOT] F7` where `[SLOT]` is slot number 0-14 (slot 15 reserved and immutable). DAW port protocol is NOT required for slot selection. |
 | 1.5 | 2025-10-01 | **RETRACTED:** Incorrectly stated SysEx has no slot parameter. |
@@ -562,6 +578,7 @@ The parser follows the protocol specification exactly:
 6. **Device returns controls in both array and object format** - parser must handle both
 7. **Slot selection uses SysEx slot byte** - no DAW port protocol required
 8. **Page bytes:** Logical page 0→0x00, logical page 1→0x03 in SysEx messages
+9. **DO NOT scan for 0x40 bytes** - they appear as data in minValue fields, not as control markers
 
 If protocol changes are needed:
 1. Update `.ksy` file first

@@ -18,6 +18,7 @@ doc: |
   Empirically discovered format through MIDI traffic analysis.
 
   Version History:
+  - v1.5 (2025-10-11): Documented parser bug fix - 0x40 appears as data in minValue field, not as control marker
   - v1.4 (2025-10-09): Corrected to 2 pages (0x00, 0x03), not 3 pages. Updated to reflect working code.
   - v1.3 (2025-09-30): Documented read slot byte behavior for DAW port integration
   - v1.2 (2025-09-30): Added write acknowledgement message format (command 0x15)
@@ -93,29 +94,50 @@ types:
       Example: 20 08 43 48 41 4E 54 45 53 54 = "CHANTEST" (8 chars)
 
   control_definition:
+    doc: |
+      11-byte control definition structure found in READ responses.
+      Marker byte is always 0x48 (not 0x40, 0x49, or any other value).
+
+      Note: The min_value field (position +7) may contain 0x40 (decimal 64) as DATA.
+      This is not a control marker - it's simply a minValue of 64.
+
+      WARNING: Parsers must not scan for 0x40 bytes to identify controls.
     seq:
-      - id: control_type
-        type: u1
-        doc: Control type (0x00=knob top, 0x05=knob bottom, 0x09=fader, etc)
+      - id: control_marker
+        contents: [0x48]
+        doc: Control definition marker (always 0x48 in READ responses)
       - id: control_id
         type: u1
         doc: Hardware control ID (0x10-0x3F)
+      - id: def_type
+        contents: [0x02]
+        doc: Definition type (always 0x02)
+      - id: control_type
+        type: u1
+        doc: Control type (0x00=knob top, 0x05=knob bottom, 0x09=fader, etc)
       - id: midi_channel
         type: u1
         doc: MIDI channel (0-15)
+      - id: param1
+        type: u1
+        doc: Parameter (usually 0x01 or 0x00)
+      - id: unknown1
+        contents: [0x48]
+        doc: Unknown fixed byte (always 0x48)
+      - id: min_value
+        type: u1
+        doc: |
+          Minimum value (0-127).
+          WARNING: This may be 0x40 (64 decimal) - do NOT interpret as control marker!
       - id: cc_number
         type: u1
         doc: MIDI CC number (0-127)
-      - id: min_value
-        type: u1
-        doc: Minimum value (usually 0)
       - id: max_value
         type: u1
-        doc: Maximum value (usually 127)
-      - id: behavior
-        type: u1
-        enum: control_behavior
-        doc: Control behavior (absolute/relative/toggle)
+        doc: Maximum value (0-127)
+      - id: terminator
+        contents: [0x00]
+        doc: Terminator byte
 
   label_section:
     seq:
