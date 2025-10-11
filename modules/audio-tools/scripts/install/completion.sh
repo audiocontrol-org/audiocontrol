@@ -26,8 +26,9 @@ show_installation_summary() {
   # Installed packages
   echo "Installed Packages:"
   local packages=(
-    "@oletizi/sampler-backup  (akai-backup)"
-    "@oletizi/sampler-export  (akai-extract)"
+    "@oletizi/audiotools      (audiotools CLI)"
+    "@oletizi/sampler-backup  (backup library)"
+    "@oletizi/sampler-export  (export library)"
     "@oletizi/sampler-lib"
     "@oletizi/sampler-devices"
   )
@@ -78,7 +79,7 @@ show_verification_commands() {
   echo ""
 
   echo "Check installation:"
-  echo "  \$ which akai-backup akai-extract"
+  echo "  \$ which audiotools"
   echo ""
 
   echo "View configuration:"
@@ -108,43 +109,38 @@ show_quick_start() {
   # Backup-specific commands
   if [ "${CONFIG_BACKUP_TYPE:-none}" != "none" ] && [ "${SKIP_BACKUP:-false}" != "true" ]; then
     echo "1. Run your first backup:"
-    echo "   \$ akai-backup batch"
+    echo "   \$ audiotools backup"
     echo ""
 
     echo "2. Extract disk images:"
-    echo "   \$ akai-extract batch"
+    echo "   \$ audiotools export"
     echo ""
 
-    echo "3. View backup archives:"
-    echo "   \$ akai-backup list"
-    echo ""
-
-    echo "4. Check repository info:"
-    echo "   \$ akai-backup info"
+    echo "3. View backup list:"
+    echo "   \$ audiotools backup --list"
     echo ""
 
     # One-command workflow
     local workflow_script="${AUDIOTOOLS_DIR:-$HOME/.audiotools}/scripts/backup-and-extract.sh"
     if [ -f "$workflow_script" ]; then
-      echo "5. One-command workflow:"
+      echo "4. One-command workflow:"
       echo "   \$ $workflow_script"
       echo ""
     fi
   else
     # Extract-only mode
     echo "1. Extract a disk image:"
-    echo "   \$ akai-extract single /path/to/disk.hds"
+    echo "   \$ audiotools export /path/to/disk.hds"
     echo ""
 
     echo "2. Extract all images from a directory:"
-    echo "   \$ akai-extract batch --source /path/to/images"
+    echo "   \$ audiotools export --source /path/to/images"
     echo ""
   fi
 
   # Help commands
   echo "Get help:"
-  echo "   \$ akai-backup --help"
-  echo "   \$ akai-extract --help"
+  echo "   \$ audiotools --help"
   echo ""
 }
 
@@ -211,7 +207,7 @@ show_troubleshooting() {
   echo "  • Check SSH key authentication: ssh <user>@<piscsi-hostname>"
   echo ""
 
-  echo "Command not found (akai-backup, akai-extract):"
+  echo "Command not found (audiotools):"
   echo "  • Add npm global bin to PATH:"
   echo "    \$ export PATH=\"\$(npm config get prefix)/bin:\$PATH\""
   echo "  • Add to your shell profile (~/.bashrc, ~/.zshrc, etc.)"

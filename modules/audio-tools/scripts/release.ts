@@ -176,20 +176,49 @@ This installer is specifically tested with packages at version \`${version}\`. F
   const tarballName = `audio-tools-${version}.tar.gz`;
   const tarballPath = join(rootDir, tarballName);
 
-  execCommand(`tar -czf "${tarballPath}" --exclude node_modules --exclude dist --exclude '*.tsbuildinfo' --exclude .release-assets .`, rootDir);
+  execCommand(`tar -czf "${tarballPath}" --exclude node_modules --exclude dist --exclude '*.tsbuildinfo' --exclude .release-assets --exclude '*.tar.gz' .`, rootDir);
   console.log(`✓ Created ${tarballName}`);
 
+  // Get current branch name for --target flag
+  const currentBranch = execSync('git branch --show-current', { cwd: rootDir, encoding: 'utf-8' }).trim();
+  console.log(`\nCurrent branch: ${currentBranch}`);
+
   console.log(`\nCreating GitHub release ${tag}...`);
+
+  // Check if release already exists
+  try {
+    execSync(`gh release view "${tag}"`, { stdio: 'ignore', encoding: 'utf-8' });
+    console.log(`⚠️  Release ${tag} already exists, deleting it first...`);
+    execSync(`gh release delete "${tag}" -y`, { stdio: 'inherit', encoding: 'utf-8' });
+    console.log(`✓ Deleted existing release ${tag}`);
+  } catch (error) {
+    // Release doesn't exist, continue
+  }
+
+  // Delete existing git tag (local and remote) to ensure new release creates tag from current branch
+  try {
+    execSync(`git tag -d "${tag}"`, { stdio: 'ignore', encoding: 'utf-8' });
+    console.log(`✓ Deleted local tag ${tag}`);
+  } catch (error) {
+    // Tag doesn't exist locally
+  }
+  try {
+    execSync(`git push origin :refs/tags/"${tag}"`, { stdio: 'ignore', encoding: 'utf-8' });
+    console.log(`✓ Deleted remote tag ${tag}`);
+  } catch (error) {
+    // Tag doesn't exist on remote
+  }
 
   // Write notes to temporary file to avoid shell escaping issues
   const notesFile = join(rootDir, '.release-notes.tmp');
   writeFileSync(notesFile, notes, 'utf-8');
 
   try {
-    // Create release with multiple assets
+    // Create release with multiple assets, targeting current branch
     execCommand(
       `gh release create "${tag}" ` +
       `--title "${title}" ` +
+      `--target "${currentBranch}" ` +
       `--notes-file "${notesFile}" ` +
       `"${tarballPath}" ` +
       `"${installerAsset.path}#Installer Script" ` +
@@ -206,7 +235,7 @@ This installer is specifically tested with packages at version \`${version}\`. F
   } catch (error) {
     console.error('⚠️  Failed to create GitHub release');
     console.error('You can create it manually with:');
-    console.error(`  gh release create "${tag}" --title "${title}" --notes-file "${notesFile}" "${tarballPath}" "${installerAsset.path}" "${installerAsset.checksumPath}"`);
+    console.error(`  gh release create "${tag}" --title "${title}" --target "${currentBranch}" --notes-file "${notesFile}" "${tarballPath}" "${installerAsset.path}" "${installerAsset.checksumPath}"`);
     execCommand(`rm -f "${tarballPath}" "${notesFile}"`, rootDir);
     cleanupInstallerAssets(rootDir);
     throw error;

@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/sampler-backup",
-  "version": "1.0.0-alpha.43",
+  "version": "1.0.0-alpha.50",
   "description": "Akai sampler backup utilities for hardware samplers via PiSCSI",
   "main": "./dist/lib/index.js",
   "exports": {
@@ -11,10 +11,6 @@
   },
   "types": "./dist/lib/index.d.ts",
   "type": "module",
-  "bin": {
-    "akai-backup": "./dist/cli/backup.js",
-    "sampler-migrate": "./dist/cli/migrate.js"
-  },
   "files": [
     "dist",
     "LICENSE"

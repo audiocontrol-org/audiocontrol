@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/audio-tools",
-  "version": "1.0.0-alpha.39",
+  "version": "1.0.0-alpha.50",
   "private": false,
   "description": "Monorepo for hardware sampler utilities and format parsers",
   "type": "module",
@@ -44,8 +44,5 @@
     "@types/node": "^22.13.1",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3"
-  },
-  "dependencies": {
-    "@oletizi/sampler-lib": "^7.0.0"
   }
 }

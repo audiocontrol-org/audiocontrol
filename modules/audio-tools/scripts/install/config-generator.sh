@@ -168,8 +168,8 @@ create_wrapper_scripts() {
   echo "Creating wrapper scripts..."
 
   # Get CLI binary paths
-  local akai_backup_path=$(command -v akai-backup 2>/dev/null || echo "akai-backup")
-  local akai_extract_path=$(command -v akai-extract 2>/dev/null || echo "akai-extract")
+  local akai_backup_path=$(command -v audiotools backup 2>/dev/null || echo "audiotools backup")
+  local akai_extract_path=$(command -v audiotools export 2>/dev/null || echo "audiotools export")
 
   # Create backup wrapper from template
   local wrapper_template="$TEMPLATES_DIR/backup-wrapper.template.sh"
@@ -201,7 +201,7 @@ LOGS_DIR="$HOME/.audiotools/logs"
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 
 echo "[$TIMESTAMP] Running backup..." | tee -a "$LOGS_DIR/backup.log"
-akai-backup batch >> "$LOGS_DIR/backup.log" 2>&1
+audiotools backup batch >> "$LOGS_DIR/backup.log" 2>&1
 echo "[$TIMESTAMP] Backup completed" | tee -a "$LOGS_DIR/backup.log"
 EOF
   chmod 755 "$backup_script"
@@ -218,7 +218,7 @@ LOGS_DIR="$HOME/.audiotools/logs"
 TIMESTAMP=$(date "+%Y-%m-%d %H:%M:%S")
 
 echo "[$TIMESTAMP] Running extraction..." | tee -a "$LOGS_DIR/extraction.log"
-akai-extract batch >> "$LOGS_DIR/extraction.log" 2>&1
+audiotools export batch >> "$LOGS_DIR/extraction.log" 2>&1
 echo "[$TIMESTAMP] Extraction completed" | tee -a "$LOGS_DIR/extraction.log"
 EOF
   chmod 755 "$extract_script"
@@ -266,7 +266,7 @@ setup_launchd_schedule() {
   local minute="${cron_parts[0]}"
   local hour="${cron_parts[1]}"
 
-  local akai_backup_path=$(command -v akai-backup 2>/dev/null || echo "akai-backup")
+  local akai_backup_path=$(command -v audiotools backup 2>/dev/null || echo "audiotools backup")
   local logs_dir="$HOME/.audiotools/logs"
 
   sed \
@@ -285,14 +285,14 @@ setup_launchd_schedule() {
 }
 
 setup_cron_schedule() {
-  local akai_backup_path=$(command -v akai-backup 2>/dev/null || echo "akai-backup")
+  local akai_backup_path=$(command -v audiotools backup 2>/dev/null || echo "audiotools backup")
   local logs_dir="$HOME/.audiotools/logs"
   local cron_command="$akai_backup_path batch >> $logs_dir/backup.log 2>&1"
   local cron_entry="$CONFIG_SCHEDULE_CRON $cron_command"
 
   # Check if entry already exists
-  if crontab -l 2>/dev/null | grep -q "akai-backup batch"; then
-    warn "Crontab entry already exists for akai-backup"
+  if crontab -l 2>/dev/null | grep -q "audiotools backup batch"; then
+    warn "Crontab entry already exists for audiotools backup"
     return 0
   fi
 
@@ -370,22 +370,22 @@ generate_quickstart() {
 ### Backup
 ```bash
 # Run backup from all configured sources
-akai-backup batch
+audiotools backup batch
 
 # List backup archives
-akai-backup list
+audiotools backup list
 
 # Show repository info
-akai-backup info
+audiotools backup info
 ```
 
 ### Extraction
 ```bash
 # Extract all disk images from backups
-akai-extract batch
+audiotools export batch
 
 # Extract specific disk image
-akai-extract single /path/to/disk.hds
+audiotools export single /path/to/disk.hds
 ```
 
 ### One-Command Workflow
