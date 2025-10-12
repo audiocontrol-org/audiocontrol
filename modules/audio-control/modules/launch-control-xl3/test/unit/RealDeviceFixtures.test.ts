@@ -43,8 +43,8 @@ describe('Real Device Fixtures', () => {
     const fixturePath = join(backupDir, latestFixture);
     const fixtureData = JSON.parse(await fs.readFile(fixturePath, 'utf-8'));
 
-    // Mock DeviceManager to return real fixture data
-    (mockDeviceManager.readCustomMode as any).mockResolvedValue(fixtureData);
+    // Mock DeviceManager to return real fixture data (just the mode part)
+    (mockDeviceManager.readCustomMode as any).mockResolvedValue(fixtureData.mode);
 
     const mode = await customModeManager.readMode(0);
 
@@ -62,10 +62,15 @@ describe('Real Device Fixtures', () => {
     // Validate control structure
     for (const [controlKey, control] of Object.entries(mode.controls)) {
       expect(control.type).toMatch(/^(knob|fader|button)$/);
-      expect(control.channel).toBeGreaterThanOrEqual(0);
-      expect(control.channel).toBeLessThanOrEqual(15);
-      expect(control.cc).toBeGreaterThanOrEqual(0);
-      expect(control.cc).toBeLessThanOrEqual(127);
+
+      // Handle both property name formats (new and legacy)
+      const channel = control.channel ?? control.midiChannel;
+      const cc = control.cc ?? control.ccNumber;
+
+      expect(channel).toBeGreaterThanOrEqual(0);
+      expect(channel).toBeLessThanOrEqual(15);
+      expect(cc).toBeGreaterThanOrEqual(0);
+      expect(cc).toBeLessThanOrEqual(127);
     }
   });
 

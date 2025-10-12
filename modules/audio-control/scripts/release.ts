@@ -91,13 +91,26 @@ function release() {
   const bumpType = process.argv[2];
   const dryRun = process.argv.includes('--dry-run');
 
-  if (!bumpType || !['major', 'minor', 'patch'].includes(bumpType)) {
-    console.error('Usage: pnpm release <major|minor|patch> [--dry-run]');
-    console.error('\nExample:');
-    console.error('  pnpm release patch            # 1.0.1 → 1.0.2');
-    console.error('  pnpm release minor            # 1.0.1 → 1.1.0');
-    console.error('  pnpm release major            # 1.0.1 → 2.0.0');
-    console.error('  pnpm release minor --dry-run  # Test release without changes');
+  // Check for --preid flag
+  const preidIndex = process.argv.indexOf('--preid');
+  const prereleaseId = preidIndex !== -1 && process.argv[preidIndex + 1]
+    ? process.argv[preidIndex + 1]
+    : 'alpha';
+
+  const validBumpTypes = ['major', 'minor', 'patch', 'premajor', 'preminor', 'prepatch', 'prerelease'];
+
+  if (!bumpType || !validBumpTypes.includes(bumpType)) {
+    console.error('Usage: pnpm release <major|minor|patch|premajor|preminor|prepatch|prerelease> [--preid <id>] [--dry-run]');
+    console.error('\nStable releases:');
+    console.error('  pnpm release patch                    # 1.20.0 → 1.20.1');
+    console.error('  pnpm release minor                    # 1.20.0 → 1.21.0');
+    console.error('  pnpm release major                    # 1.20.0 → 2.0.0');
+    console.error('\nPre-releases:');
+    console.error('  pnpm release prepatch                 # 1.20.0 → 1.20.1-alpha.0');
+    console.error('  pnpm release prepatch --preid beta    # 1.20.0 → 1.20.1-beta.0');
+    console.error('  pnpm release prerelease               # 1.20.0-alpha.0 → 1.20.0-alpha.1');
+    console.error('\nOther:');
+    console.error('  pnpm release minor --dry-run          # Test release without changes');
     process.exit(1);
   }
 
@@ -110,7 +123,8 @@ function release() {
   }
 
   console.log('Step 1: Bump version');
-  execCommand(`tsx scripts/bump-version.ts ${bumpType}${dryRun ? ' --dry-run' : ''}`, rootDir);
+  const preidFlag = prereleaseId !== 'alpha' ? ` --preid ${prereleaseId}` : '';
+  execCommand(`tsx scripts/bump-version.ts ${bumpType}${preidFlag}${dryRun ? ' --dry-run' : ''}`, rootDir);
 
   const version = getVersion(rootDir);
   const modules = getPublishedModules(rootDir);

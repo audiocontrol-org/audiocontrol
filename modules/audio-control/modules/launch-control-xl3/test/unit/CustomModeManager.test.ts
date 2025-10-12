@@ -904,12 +904,12 @@ describe('CustomModeManager', () => {
   });
 
   describe('Cleanup', () => {
-    it('should clean up resources', () => {
+    it('should clean up resources', async () => {
       // Add some cached modes
       const testMode = customModeManager.createDefaultMode('Cleanup Test');
       writeCustomModeSpy.mockResolvedValue(undefined);
 
-      customModeManager.writeMode(1, testMode);
+      await customModeManager.writeMode(1, testMode);
 
       const cachedModes = customModeManager.getCachedModes();
       expect(cachedModes.size).toBeGreaterThan(0);

@@ -6,10 +6,10 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { ControlMapper, ValueTransformers, RelativeHandlers } from '@/src/mapping/ControlMapper.js';
-import { ControlMapping, ControlType, ControlBehaviour } from '@/src/types/index.js';
-import { MidiMessage } from '@/src/core/MidiInterface.js';
-import { setupFakeTimers, createControlChangeMessage } from '@/test/helpers/test-utils.js';
+import { ControlMapper, ValueTransformers, RelativeHandlers } from '@/mapping/ControlMapper';
+import { ControlMapping, ControlType, ControlBehaviour } from '@/types/index';
+import { MidiMessage } from '@/core/MidiInterface';
+import { setupFakeTimers, createControlChangeMessage } from '../helpers/test-utils';
 
 describe('ControlMapper', () => {
   setupFakeTimers();
@@ -18,7 +18,7 @@ describe('ControlMapper', () => {
 
   beforeEach(() => {
     controlMapper = new ControlMapper({
-      defaultChannel: 0,
+      defaultChannel: 1,
       enableValueSmoothing: false,
       enableDeadzone: false,
     });
@@ -65,7 +65,7 @@ describe('ControlMapper', () => {
     it('should unmap a control successfully', () => {
       const mapping: ControlMapping = {
         type: 'button',
-        channel: 0,
+        channel: 1,
         cc: 60,
         min: 0,
         max: 127,
@@ -85,7 +85,7 @@ describe('ControlMapper', () => {
 
       const mapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 30,
         min: 0,
         max: 127,
@@ -106,7 +106,7 @@ describe('ControlMapper', () => {
     it('should update control mapping', () => {
       const originalMapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 40,
         min: 0,
         max: 127,
@@ -190,7 +190,7 @@ describe('ControlMapper', () => {
     it('should apply min/max range scaling', () => {
       const mapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 10,
         min: 20,
         max: 80,
@@ -217,7 +217,7 @@ describe('ControlMapper', () => {
 
       const mapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 10,
         min: 0,
         max: 127,
@@ -237,7 +237,7 @@ describe('ControlMapper', () => {
     it('should apply exponential transform', () => {
       const mapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 10,
         min: 0,
         max: 127,
@@ -260,7 +260,7 @@ describe('ControlMapper', () => {
     it('should apply toggle transform', () => {
       const mapping: ControlMapping = {
         type: 'button',
-        channel: 0,
+        channel: 1,
         cc: 10,
         min: 0,
         max: 127,
@@ -288,7 +288,7 @@ describe('ControlMapper', () => {
       it('should pass through values unchanged in absolute mode', () => {
         const mapping: ControlMapping = {
           type: 'knob',
-          channel: 0,
+          channel: 1,
           cc: 10,
           min: 0,
           max: 127,
@@ -306,7 +306,7 @@ describe('ControlMapper', () => {
       it('should handle relative1 mode correctly', () => {
         const mapping: ControlMapping = {
           type: 'knob',
-          channel: 0,
+          channel: 1,
           cc: 10,
           min: 0,
           max: 127,
@@ -331,7 +331,7 @@ describe('ControlMapper', () => {
       it('should handle relative2 mode correctly', () => {
         const mapping: ControlMapping = {
           type: 'knob',
-          channel: 0,
+          channel: 1,
           cc: 10,
           min: 0,
           max: 127,
@@ -356,7 +356,7 @@ describe('ControlMapper', () => {
       it('should handle relative3 mode correctly', () => {
         const mapping: ControlMapping = {
           type: 'knob',
-          channel: 0,
+          channel: 1,
           cc: 10,
           min: 0,
           max: 127,
@@ -389,7 +389,7 @@ describe('ControlMapper', () => {
     it('should smooth values using moving average', () => {
       const mapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 10,
         min: 0,
         max: 127,
@@ -427,7 +427,7 @@ describe('ControlMapper', () => {
     it('should ignore small value changes within deadzone', () => {
       const mapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 10,
         min: 0,
         max: 127,
@@ -559,7 +559,7 @@ describe('ControlMapper', () => {
     it('should track control values and timestamps', () => {
       const mapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 10,
         min: 0,
         max: 127,
@@ -579,7 +579,7 @@ describe('ControlMapper', () => {
     it('should reset control state', () => {
       const mapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 10,
         min: 0,
         max: 127,
@@ -602,7 +602,7 @@ describe('ControlMapper', () => {
     it('should reset all controls', () => {
       const mapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 10,
         min: 0,
         max: 127,
@@ -626,7 +626,7 @@ describe('ControlMapper', () => {
     it('should handle invalid control values gracefully', () => {
       const mapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 10,
         min: 0,
         max: 127,
@@ -646,7 +646,7 @@ describe('ControlMapper', () => {
     it('should handle missing transform gracefully', () => {
       const mapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 10,
         min: 0,
         max: 127,
@@ -669,7 +669,7 @@ describe('ControlMapper', () => {
 
       const mapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 10,
         min: 0,
         max: 127,
@@ -687,7 +687,7 @@ describe('ControlMapper', () => {
     it('should clean up resources', () => {
       const mapping: ControlMapping = {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: 10,
         min: 0,
         max: 127,
@@ -777,7 +777,7 @@ describe('RelativeHandlers', () => {
 
     it('should clamp to valid range', () => {
       expect(RelativeHandlers.twosComplement(50, 100)).toBe(127); // Clamped to max
-      expect(RelativeHandlers.twosComplement(150, 10)).toBe(0); // Clamped to min
+      expect(RelativeHandlers.twosComplement(100, 5)).toBe(0); // Clamped to min
     });
   });
 

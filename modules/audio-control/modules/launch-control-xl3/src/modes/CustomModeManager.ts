@@ -13,18 +13,22 @@ import {
   CustomMode,
   CustomModeSlot,
   ControlBehaviour,
-  ControlType
+  ControlType,
+  LedBehaviour
 } from '../types/index.js';
 
 export interface CustomModeManagerOptions {
   deviceManager: DeviceManager;
   autoSync?: boolean;
+  cacheTimeout?: number;
 }
 
 export interface CustomModeEvents {
   'mode:loaded': (slot: number, mode: CustomMode) => void;
   'mode:saved': (slot: number, mode: CustomMode) => void;
   'mode:error': (error: Error) => void;
+  'cache:cleared': () => void;
+  'cache:updated': (slot: number) => void;
 }
 
 /**
@@ -84,12 +88,26 @@ export const LED_COLORS = {
 } as const;
 
 /**
+ * Valid LED behaviours
+ */
+const VALID_LED_BEHAVIOURS: LedBehaviour[] = ['static', 'flash', 'pulse', 'flashing', 'pulsing'];
+
+/**
+ * Cache entry with timestamp
+ */
+interface CacheEntry {
+  mode: CustomMode;
+  timestamp: number;
+}
+
+/**
  * Custom Mode Manager
  */
 export class CustomModeManager extends EventEmitter {
   private deviceManager: DeviceManager;
   private options: Required<CustomModeManagerOptions>;
   private pendingOperations: Map<number, Promise<CustomMode>> = new Map();
+  private cache: Map<number, CacheEntry> = new Map();
 
   constructor(options: CustomModeManagerOptions) {
     super();
@@ -98,6 +116,7 @@ export class CustomModeManager extends EventEmitter {
     this.options = {
       deviceManager: options.deviceManager,
       autoSync: options.autoSync ?? true,
+      cacheTimeout: options.cacheTimeout ?? 300000, // Default 5 minutes
     };
 
     this.setupEventHandlers();
@@ -117,7 +136,7 @@ export class CustomModeManager extends EventEmitter {
     });
 
     this.deviceManager.on('device:disconnected', () => {
-      // Cleanup on disconnect
+      this.clearCache();
     });
   }
 
@@ -126,6 +145,12 @@ export class CustomModeManager extends EventEmitter {
    */
   async readMode(slot: CustomModeSlot): Promise<CustomMode> {
     this.validateSlot(slot);
+
+    // Check if we have a valid cached mode for this slot
+    const cached = this.getCachedMode(slot);
+    if (cached) {
+      return cached;
+    }
 
     // Check if we have a pending operation for this slot
     const pending = this.pendingOperations.get(slot);
@@ -147,11 +172,41 @@ export class CustomModeManager extends EventEmitter {
   }
 
   /**
+   * Get cached mode if it exists and is not expired
+   */
+  private getCachedMode(slot: number): CustomMode | undefined {
+    const entry = this.cache.get(slot);
+    if (!entry) {
+      return undefined;
+    }
+
+    const now = Date.now();
+    const age = now - entry.timestamp;
+
+    if (age > this.options.cacheTimeout) {
+      // Cache expired
+      this.cache.delete(slot);
+      return undefined;
+    }
+
+    return entry.mode;
+  }
+
+  /**
    * Perform actual mode read from device
    */
   private async performReadMode(slot: CustomModeSlot): Promise<CustomMode> {
     const response = await this.deviceManager.readCustomMode(slot);
-    return this.parseCustomModeResponse(slot, response);
+    const mode = this.parseCustomModeResponse(slot, response);
+
+    // Cache with timestamp
+    this.cache.set(slot, {
+      mode,
+      timestamp: Date.now()
+    });
+
+    this.emit('cache:updated', slot);
+    return mode;
   }
 
   /**
@@ -167,7 +222,14 @@ export class CustomModeManager extends EventEmitter {
     // Send to device
     await this.deviceManager.writeCustomMode(slot, deviceMode);
 
+    // Update cache with the original mode (not device format)
+    this.cache.set(slot, {
+      mode,
+      timestamp: Date.now()
+    });
+
     this.emit('mode:saved', slot, mode);
+    this.emit('cache:updated', slot);
   }
 
   /**
@@ -180,6 +242,7 @@ export class CustomModeManager extends EventEmitter {
     const mode: CustomMode = {
       name: response.name || `Custom ${slot + 1}`,
       controls: {},
+      leds: new Map(),
       metadata: {
         slot,
         createdAt: new Date(),
@@ -198,18 +261,53 @@ export class CustomModeManager extends EventEmitter {
         : Object.values(response.controls);
 
       for (const control of controlsArray) {
-        const controlId = this.getControlIdName(control.controlId);
-        const label = labelsMap.get(control.controlId);
+        const controlIdValue = control.controlId;
+
+        // Skip unknown control IDs (not in CONTROL_IDS)
+        const isKnownControl = Object.values(CONTROL_IDS).includes(controlIdValue);
+        if (!isKnownControl) {
+          continue; // Skip this control
+        }
+
+        const controlId = this.getControlIdName(controlIdValue);
+        const label = labelsMap.get(controlIdValue);
+
+        // Handle both property name formats (device may use either):
+        // - New format: midiChannel, ccNumber, minValue, maxValue, behavior
+        // - Legacy format: channel, cc, min, max, behaviour
+        const midiChannel = control.midiChannel ?? control.channel ?? 0;
+        const ccNumber = control.ccNumber ?? control.cc ?? 0;
+        const minValue = control.minValue ?? control.min ?? 0;
+        const maxValue = control.maxValue ?? control.max ?? 127;
+        const behavior = (control.behavior ?? control.behaviour ?? 'absolute') as ControlBehaviour;
 
         mode.controls[controlId] = {
           name: label,
-          type: this.getControlType(control.controlId),
-          midiChannel: control.midiChannel,
-          ccNumber: control.ccNumber,
-          minValue: control.minValue,
-          maxValue: control.maxValue,
-          behavior: control.behavior as ControlBehaviour,
+          type: this.getControlType(controlIdValue),
+          // Primary property names
+          midiChannel,
+          ccNumber,
+          minValue,
+          maxValue,
+          behavior,
+          // Legacy aliases for backward compatibility
+          channel: midiChannel,
+          cc: ccNumber,
+          min: minValue,
+          max: maxValue,
+          behaviour: behavior,
         };
+      }
+    }
+
+    // Parse LED/color mappings if present
+    if (response.colors && Array.isArray(response.colors)) {
+      for (const colorMapping of response.colors) {
+        mode.leds!.set(colorMapping.controlId, {
+          color: colorMapping.color,
+          colour: colorMapping.color, // Alternative spelling
+          behaviour: colorMapping.behaviour || 'static',
+        });
       }
     }
 
@@ -229,14 +327,22 @@ export class CustomModeManager extends EventEmitter {
       const controlId = this.getControlIdValue(key);
       if (controlId !== undefined) {
         const ctrl = control as any;
+
+        // Read from primary property names first, fallback to legacy aliases
+        const midiChannel = ctrl.midiChannel ?? ctrl.channel ?? 0;
+        const ccNumber = ctrl.ccNumber ?? ctrl.cc ?? 0;
+        const minValue = ctrl.minValue ?? ctrl.min ?? 0;
+        const maxValue = ctrl.maxValue ?? ctrl.max ?? 127;
+        const behaviour = ctrl.behaviour ?? ctrl.behavior ?? 'absolute';
+
         controls.push({
           controlId,
-          // Support both property names, prefer primary names
-          channel: ctrl.midiChannel ?? ctrl.channel,
-          ccNumber: ctrl.ccNumber ?? ctrl.cc,
-          minValue: ctrl.minValue ?? ctrl.min,
-          maxValue: ctrl.maxValue ?? ctrl.max,
-          behaviour: ctrl.behavior ?? ctrl.behaviour,
+          // Use legacy property names for output (tests expect these)
+          channel: midiChannel,
+          ccNumber,
+          minValue,
+          maxValue,
+          behaviour,
         });
 
         // Extract label if present
@@ -246,12 +352,27 @@ export class CustomModeManager extends EventEmitter {
       }
     }
 
+    // Convert LED mappings
+    if (mode.leds) {
+      for (const [controlId, led] of mode.leds.entries()) {
+        const ledData = led as any;
+        colors.push({
+          controlId,
+          color: ledData.color ?? ledData.colour,
+          behaviour: ledData.behaviour ?? 'static',
+        });
+      }
+    }
+
     return {
       slot,
       name: mode.name,
       controls,
       colors,
       labels,
+      metadata: {
+        slot,
+      }
     } as any;
   }
 
@@ -276,7 +397,7 @@ export class CustomModeManager extends EventEmitter {
 
     // If no named constant exists, generate control_XX format
     // This matches the CustomModeBuilder.build() format
-    return `control_${value}`;
+    return `control_${value.toString(16)}`;
   }
 
   /**
@@ -343,6 +464,7 @@ export class CustomModeManager extends EventEmitter {
     const mode: CustomMode = {
       name: name || 'Default Mode',
       controls: {},
+      leds: new Map(),
       metadata: {
         createdAt: new Date(),
         modifiedAt: new Date(),
@@ -355,6 +477,13 @@ export class CustomModeManager extends EventEmitter {
       const key = `SEND_A${i + 1}`;
       mode.controls[key] = {
         type: 'knob',
+        // Primary property names
+        midiChannel: 0,
+        ccNumber: 13 + i,
+        minValue: 0,
+        maxValue: 127,
+        behavior: 'absolute',
+        // Legacy aliases for backward compatibility
         channel: 0,
         cc: 13 + i,
         min: 0,
@@ -368,6 +497,13 @@ export class CustomModeManager extends EventEmitter {
       const key = `SEND_B${i + 1}`;
       mode.controls[key] = {
         type: 'knob',
+        // Primary property names
+        midiChannel: 0,
+        ccNumber: 29 + i,
+        minValue: 0,
+        maxValue: 127,
+        behavior: 'absolute',
+        // Legacy aliases for backward compatibility
         channel: 0,
         cc: 29 + i,
         min: 0,
@@ -381,6 +517,13 @@ export class CustomModeManager extends EventEmitter {
       const key = `PAN${i + 1}`;
       mode.controls[key] = {
         type: 'knob',
+        // Primary property names
+        midiChannel: 0,
+        ccNumber: 49 + i,
+        minValue: 0,
+        maxValue: 127,
+        behavior: 'absolute',
+        // Legacy aliases for backward compatibility
         channel: 0,
         cc: 49 + i,
         min: 0,
@@ -394,12 +537,40 @@ export class CustomModeManager extends EventEmitter {
       const key = `FADER${i + 1}`;
       mode.controls[key] = {
         type: 'fader',
+        // Primary property names
+        midiChannel: 0,
+        ccNumber: 77 + i,
+        minValue: 0,
+        maxValue: 127,
+        behavior: 'absolute',
+        // Legacy aliases for backward compatibility
         channel: 0,
         cc: 77 + i,
         min: 0,
         max: 127,
         behaviour: 'absolute',
       };
+    }
+
+    // Setup default LED mappings for buttons
+    // Focus buttons (0x30-0x37) - Green
+    for (let i = 0; i < 8; i++) {
+      const controlId = CONTROL_IDS[`FOCUS${i + 1}` as keyof typeof CONTROL_IDS];
+      mode.leds!.set(controlId, {
+        color: LED_COLORS.GREEN_LOW,
+        colour: LED_COLORS.GREEN_LOW,
+        behaviour: 'static',
+      });
+    }
+
+    // Control buttons (0x38-0x3F) - Red
+    for (let i = 0; i < 8; i++) {
+      const controlId = CONTROL_IDS[`CONTROL${i + 1}` as keyof typeof CONTROL_IDS];
+      mode.leds!.set(controlId, {
+        color: LED_COLORS.RED_LOW,
+        colour: LED_COLORS.RED_LOW,
+        behaviour: 'static',
+      });
     }
 
     return mode;
@@ -409,7 +580,12 @@ export class CustomModeManager extends EventEmitter {
    * Export mode to JSON
    */
   exportMode(mode: CustomMode): string {
-    return JSON.stringify(mode, null, 2);
+    // Convert Map to array for JSON serialization
+    const serializable = {
+      ...mode,
+      leds: mode.leds ? Array.from(mode.leds.entries()) : []
+    };
+    return JSON.stringify(serializable, null, 2);
   }
 
   /**
@@ -417,6 +593,12 @@ export class CustomModeManager extends EventEmitter {
    */
   importMode(json: string): CustomMode {
     const parsed = JSON.parse(json);
+
+    // Convert leds array back to Map
+    if (parsed.leds && Array.isArray(parsed.leds)) {
+      parsed.leds = new Map(parsed.leds);
+    }
+
     this.validateMode(parsed);
     return parsed;
   }
@@ -433,9 +615,13 @@ export class CustomModeManager extends EventEmitter {
   /**
    * Validate custom mode
    */
-  private validateMode(mode: CustomMode): void {
+  private validateMode(mode: any): void {
     if (!mode.name || typeof mode.name !== 'string') {
       throw new Error('Mode must have a name');
+    }
+
+    if (mode.name.trim() === '') {
+      throw new Error('Mode name cannot be empty');
     }
 
     if (!mode.controls || typeof mode.controls !== 'object') {
@@ -450,24 +636,65 @@ export class CustomModeManager extends EventEmitter {
 
       const ctrl = control as any; // Type assertion for validation
 
-      if (ctrl.channel < 0 || ctrl.channel > 15) {
-        throw new Error(`Invalid channel for ${key}: ${ctrl.channel}`);
+      // Validate channel (check both property names)
+      const channel = ctrl.channel ?? ctrl.midiChannel;
+      if (channel !== undefined && (channel < 0 || channel > 15)) {
+        throw new Error(`Invalid channel for ${key}: ${channel}`);
       }
 
-      if (ctrl.cc !== undefined && (ctrl.cc < 0 || ctrl.cc > 127)) {
-        throw new Error(`Invalid CC for ${key}: ${ctrl.cc}`);
+      // Validate CC number (check both property names)
+      const cc = ctrl.cc ?? ctrl.ccNumber;
+      if (cc !== undefined && (cc < 0 || cc > 127)) {
+        throw new Error(`Invalid CC for ${key}: ${cc}`);
       }
 
-      if (ctrl.min !== undefined && (ctrl.min < 0 || ctrl.min > 127)) {
-        throw new Error(`Invalid min value for ${key}: ${ctrl.min}`);
+      // Validate min value (check both property names)
+      const min = ctrl.min ?? ctrl.minValue;
+      if (min !== undefined && (min < 0 || min > 127)) {
+        throw new Error(`Invalid min value for ${key}: ${min}`);
       }
 
-      if (ctrl.max !== undefined && (ctrl.max < 0 || ctrl.max > 127)) {
-        throw new Error(`Invalid max value for ${key}: ${ctrl.max}`);
+      // Validate max value (check both property names)
+      const max = ctrl.max ?? ctrl.maxValue;
+      if (max !== undefined && (max < 0 || max > 127)) {
+        throw new Error(`Invalid max value for ${key}: ${max}`);
       }
 
-      if (ctrl.min !== undefined && ctrl.max !== undefined && ctrl.min > ctrl.max) {
+      if (min !== undefined && max !== undefined && min > max) {
         throw new Error(`Min value greater than max for ${key}`);
+      }
+    }
+
+    // Validate LED configurations if present
+    if (mode.leds) {
+      // Handle both Map and object formats
+      const ledsMap = mode.leds instanceof Map ? mode.leds : new Map(Object.entries(mode.leds));
+
+      for (const [controlId, led] of ledsMap.entries()) {
+        const ledData = led as any;
+        const behaviour = ledData.behaviour ?? ledData.behavior;
+
+        if (behaviour && !VALID_LED_BEHAVIOURS.includes(behaviour)) {
+          // Get control name for better error message
+          // Handle both numeric IDs and string names (like "FOCUS1")
+          let controlName: string;
+          if (typeof controlId === 'string') {
+            // Check if it's a control name (like "FOCUS1") or a numeric string
+            const controlIdValue = this.getControlIdValue(controlId);
+            if (controlIdValue !== undefined) {
+              // It's a valid control name
+              controlName = controlId;
+            } else {
+              // It's a numeric string, parse it
+              const controlIdNum = parseInt(controlId, 10);
+              controlName = this.getControlIdName(controlIdNum);
+            }
+          } else {
+            // It's a number
+            controlName = this.getControlIdName(Number(controlId));
+          }
+          throw new Error(`Invalid LED behaviour for ${controlName}: ${behaviour}`);
+        }
       }
     }
   }
@@ -477,7 +704,30 @@ export class CustomModeManager extends EventEmitter {
    */
   cleanup(): void {
     this.pendingOperations.clear();
+    this.cache.clear();
     this.removeAllListeners();
+  }
+
+  /**
+   * Clear the pending operations cache and cached modes
+   */
+  clearCache(): void {
+    this.pendingOperations.clear();
+    this.cache.clear();
+    this.emit('cache:cleared');
+  }
+
+  /**
+   * Get all cached modes
+   * Returns a copy of the cached modes map to prevent external mutation
+   * @returns Map of slot numbers to cached CustomMode objects
+   */
+  getCachedModes(): Map<number, CustomMode> {
+    const result = new Map<number, CustomMode>();
+    for (const [slot, entry] of this.cache.entries()) {
+      result.set(slot, entry.mode);
+    }
+    return result;
   }
 }
 

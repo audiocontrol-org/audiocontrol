@@ -63,11 +63,7 @@ function publishModules(dryRun: boolean = false) {
   execCommand('pnpm build', rootDir);
 
   console.log('\nStep 2: Run tests');
-  try {
-    execCommand('pnpm test', rootDir);
-  } catch (error) {
-    console.log('⚠️  Some modules have no tests, continuing...');
-  }
+  execCommand('pnpm test', rootDir);
 
   console.log('\nStep 3: Type check');
   execCommand('pnpm typecheck', rootDir);

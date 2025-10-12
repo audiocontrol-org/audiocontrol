@@ -16,17 +16,27 @@ export interface Control {
   behavior: ControlBehavior;
 }
 
+export interface LedMapping {
+  color?: number;        // LED color value
+  colour?: number;       // Alternative spelling
+  behaviour?: string;    // LED behavior: 'static', 'flash', 'pulse', 'flashing', 'pulsing'
+}
+
 export interface CustomMode {
   name: string;           // Mode name (max 8 chars)
   controls: Record<string, ControlMapping>;    // Control mappings by ID
+  leds?: Map<number, LedMapping>;  // LED mappings by control ID
   labels?: Map<number, string>;  // Control labels by ID
-  colors?: Map<number, number>;  // Control colors by ID
+  colors?: Map<number, number>;  // Control colors by ID (legacy)
   // Note: LED states are controlled via real-time MIDI messages (0x78),
   // not stored in custom mode configurations
   metadata?: {
     name?: string;
     description?: string;
     version?: string;
+    slot?: number;
+    createdAt?: Date;
+    modifiedAt?: Date;
     [key: string]: any;
   };
   slot?: number;          // Mode slot (0-15)

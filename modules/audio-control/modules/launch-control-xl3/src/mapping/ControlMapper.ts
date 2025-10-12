@@ -112,7 +112,9 @@ export class RelativeHandlers {
    * Relative mode 1: Two's complement
    */
   static twosComplement(value: number, currentValue: number, speed: number = 1): number {
-    const delta = value > 64 ? value - 128 : value;
+    // Clamp input to valid MIDI range first
+    const clampedValue = Math.max(0, Math.min(127, value));
+    const delta = clampedValue > 64 ? clampedValue - 128 : clampedValue;
     const newValue = currentValue + (delta * speed);
     return Math.max(0, Math.min(127, newValue));
   }
@@ -150,7 +152,7 @@ export class ControlMapper extends EventEmitter {
     super();
 
     this.options = {
-      defaultChannel: options.defaultChannel ?? 0,
+      defaultChannel: options.defaultChannel ?? 1,
       enableValueSmoothing: options.enableValueSmoothing ?? false,
       smoothingFactor: options.smoothingFactor ?? 3,
       enableDeadzone: options.enableDeadzone ?? false,
@@ -270,14 +272,20 @@ export class ControlMapper extends EventEmitter {
     // Emit events
     this.emit('value:changed', controlId, outputValue, mapped.mapping);
 
+    // Get channel, using defaultChannel if channel is not specified or is 0
+    const mappingChannel = mapped.mapping.midiChannel ?? mapped.mapping.channel;
+    const channel = (mappingChannel && mappingChannel > 0) ? mappingChannel : this.options.defaultChannel;
+
     // Create MIDI message
+    // Clamp output value to valid MIDI range (0-127)
+    const clampedOutputValue = Math.max(0, Math.min(127, Math.round(outputValue)));
     const message: ControlChangeMessage = {
       type: 'controlChange',
       timestamp: Date.now(),
-      channel: createMidiChannel(mapped.mapping.midiChannel ?? mapped.mapping.channel ?? 0),
+      channel: createMidiChannel(channel),
       cc: createCCNumber(mapped.mapping.ccNumber ?? mapped.mapping.cc ?? 0),
-      value: createMidiValue(outputValue),
-      data: [0xB0 | ((mapped.mapping.midiChannel ?? mapped.mapping.channel ?? 0) - 1), mapped.mapping.ccNumber ?? mapped.mapping.cc ?? 0, outputValue],
+      value: createMidiValue(clampedOutputValue),
+      data: [0xB0 | (channel - 1), mapped.mapping.ccNumber ?? mapped.mapping.cc ?? 0, clampedOutputValue],
     };
 
     this.emit('midi:out', message);
@@ -457,7 +465,7 @@ export class ControlMapper extends EventEmitter {
     for (let i = 0; i < 8; i++) {
       mappings.set(`SEND_A${i + 1}`, {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: (13 + i) as CCNumber,
         min: 0,
         max: 127,
@@ -469,7 +477,7 @@ export class ControlMapper extends EventEmitter {
     for (let i = 0; i < 8; i++) {
       mappings.set(`SEND_B${i + 1}`, {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: (29 + i) as CCNumber,
         min: 0,
         max: 127,
@@ -481,7 +489,7 @@ export class ControlMapper extends EventEmitter {
     for (let i = 0; i < 8; i++) {
       mappings.set(`PAN${i + 1}`, {
         type: 'knob',
-        channel: 0,
+        channel: 1,
         cc: (49 + i) as CCNumber,
         min: 0,
         max: 127,
@@ -493,7 +501,7 @@ export class ControlMapper extends EventEmitter {
     for (let i = 0; i < 8; i++) {
       mappings.set(`FADER${i + 1}`, {
         type: 'fader',
-        channel: 0,
+        channel: 1,
         cc: (77 + i) as CCNumber,
         min: 0,
         max: 127,

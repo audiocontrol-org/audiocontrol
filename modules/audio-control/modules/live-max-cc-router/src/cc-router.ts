@@ -90,8 +90,12 @@ export class CCRouter {
    */
   private findMapping(ccNumber: number): ParameterMapping | null {
     for (let i = 0; i < this.mappings.length; i++) {
-      if (this.mappings[i].ccNumber === ccNumber) {
-        return this.mappings[i];
+      const mapping = this.mappings[i];
+      if (!mapping) {
+        continue;
+      }
+      if (mapping.ccNumber === ccNumber) {
+        return mapping;
       }
     }
     return null;
@@ -190,7 +194,7 @@ export class CCRouter {
   private transformValue(midiValue: number, mapping: ParameterMapping): number {
     // Normalize to 0-1
     let normalized = midiValue / 127.0;
-    
+
     // Apply curve
     switch (mapping.curve) {
       case 'exponential':
@@ -204,12 +208,12 @@ export class CCRouter {
         // No transformation needed
         break;
     }
-    
+
     // Apply min/max range if specified
     if (mapping.minValue !== undefined && mapping.maxValue !== undefined) {
       normalized = mapping.minValue + (normalized * (mapping.maxValue - mapping.minValue));
     }
-    
+
     return normalized;
   }
 
@@ -218,7 +222,7 @@ export class CCRouter {
    */
   public setMapping(ccNumber: number, deviceIndex: number, parameterIndex: number, parameterName?: string, curve?: 'linear' | 'exponential' | 'logarithmic'): void {
     const existingIndex = this.mappings.findIndex(m => m.ccNumber === ccNumber);
-    
+
     const mapping: ParameterMapping = {
       ccNumber: ccNumber,
       deviceIndex: deviceIndex,
@@ -287,8 +291,16 @@ export class CCRouter {
         // Apply canonical mappings
         const mappingKeys = Object.keys(canonicalMapping.mappings);
         for (let i = 0; i < mappingKeys.length; i++) {
-          const ccNumber = parseInt(mappingKeys[i], 10);
+          const key = mappingKeys[i];
+          if (!key) {
+            throw new Error("Mapping key at index " + i + " is undefined - corrupted mapping data");
+          }
+          const ccNumber = parseInt(key, 10);
           const mapping = canonicalMapping.mappings[ccNumber];
+
+          if (!mapping) {
+            throw new Error("Mapping not found for CC number " + ccNumber + " - invalid mapping data structure");
+          }
 
           this.setMapping(
             ccNumber,
@@ -348,7 +360,7 @@ export class CCRouter {
   public getSelectedTrackInfo(): TrackInfo | null {
     try {
       const selectedTrack = new LiveAPI("live_set view selected_track");
-      
+
       if (!selectedTrack || selectedTrack.id === "0") {
         return null;
       }
@@ -370,7 +382,7 @@ export class CCRouter {
   public getSelectedTrackDevices(): DeviceInfo[] {
     try {
       const selectedTrack = new LiveAPI("live_set view selected_track");
-      
+
       if (!selectedTrack || selectedTrack.id === "0") {
         return [];
       }
@@ -381,7 +393,7 @@ export class CCRouter {
       for (let i = 0; i < devices.length; i++) {
         const device = new LiveAPI("live_set view selected_track devices " + i);
         const parameters = device.get("parameters");
-        
+
         deviceInfo.push({
           index: i,
           name: device.get("name"),
@@ -405,6 +417,9 @@ export class CCRouter {
 
     for (let i = 0; i < this.mappings.length; i++) {
       const m = this.mappings[i];
+      if (!m) {
+        throw new Error("Mapping at index " + i + " is undefined - corrupted mappings array");
+      }
       logger.info("  CC " + m.ccNumber + " -> Device " + m.deviceIndex + " Param " + m.parameterIndex + " (" + m.curve + ")");
     }
 
