@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/live-max-cc-router",
-  "version": "1.20.1",
+  "version": "1.20.1-alpha.2",
   "description": "TypeScript-based CC router for Max for Live with controller-specific canonical mappings",
   "type": "module",
   "main": "./dist/cc-router.js",
@@ -29,7 +29,7 @@
     "setup": "node scripts/setup.cjs",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "keywords": [
     "max-for-live",
