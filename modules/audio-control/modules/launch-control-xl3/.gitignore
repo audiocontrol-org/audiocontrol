@@ -1,1 +1,5 @@
 backup/
+
+# Prevent accidentally committing npm package artifacts
+package/
+*.tgz

@@ -781,14 +781,22 @@ export class DeviceManager extends EventEmitter {
 
   /**
    * Write custom mode to device
+   *
+   * UPDATED (Issue #36 Fix): Automatically selects target slot before write
+   * to prevent firmware rejection (status 0x9) when writing to inactive slots.
    */
   async writeCustomMode(slot: number, mode: CustomMode): Promise<void> {
     if (slot < 0 || slot > 14) {
       throw new Error('Custom mode slot must be 0-14 (slot 15 is reserved for immutable factory content)');
     }
 
-    // Slot selection is handled by the SysEx slot byte parameter.
-    // DAW port protocol is NOT required for slot selection.
+    // Issue #36 Fix: Select target slot before write to prevent firmware rejection
+    // Device firmware rejects writes to inactive slots with status 0x9
+    console.log(`[DeviceManager] Selecting slot ${slot} before write`);
+    await this.selectTemplate(slot);
+
+    // Wait for device to process slot selection (100ms conservative delay)
+    await new Promise(resolve => setTimeout(resolve, 100));
 
     const modeData = {
       slot,
