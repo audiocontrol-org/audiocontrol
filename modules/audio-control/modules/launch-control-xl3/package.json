@@ -47,6 +47,7 @@
     "test:factory-copy": "tsx utils/test-factory-mode-copy.ts",
     "test:control-name": "tsx utils/test-control-name-send.ts",
     "test:simple-write": "tsx utils/test-simple-write.ts",
+    "test:issue-36": "tsx utils/test-issue-36-fix.ts",
     "web-automation:basic": "tsx utils/test-web-automation.ts --mode=basic --screenshots",
     "web-automation:device": "tsx utils/test-web-automation.ts --mode=device --screenshots",
     "web-automation:actions": "tsx utils/test-web-automation.ts --mode=actions --screenshots",

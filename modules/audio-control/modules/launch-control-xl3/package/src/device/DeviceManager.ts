@@ -587,12 +587,23 @@ export class DeviceManager extends EventEmitter {
 
   /**
    * Write custom mode to device
+   *
+   * UPDATED (Issue #36 Fix): Now includes slot pre-selection to ensure
+   * device firmware accepts write operations to inactive slots.
    */
   async writeCustomMode(slot: number, mode: CustomMode): Promise<void> {
     if (slot < 0 || slot > 15) {
       throw new Error('Custom mode slot must be 0-15');
     }
 
+    // NEW: Select target slot before write to prevent firmware rejection (status 0x9)
+    console.log(`[DeviceManager] Selecting slot ${slot} before write`);
+    await this.selectTemplate(slot);
+
+    // NEW: Wait for device to process slot selection (100ms conservative delay)
+    await new Promise(resolve => setTimeout(resolve, 100));
+
+    // EXISTING: Write to now-active slot
     const modeData = {
       slot,
       name: mode.name,
