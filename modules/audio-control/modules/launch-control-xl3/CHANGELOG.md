@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.20.3
+
+### Patch Changes
+
+- Fix Issue #36: Add slot pre-selection before write to prevent firmware rejection
+
+  Device firmware no longer rejects writes to inactive slots with status 0x9 error. The `DeviceManager.writeCustomMode()` method now automatically calls `selectTemplate(slot)` before performing write operations, ensuring the target slot is active on the device.
+
 ## 1.20.1
 
 ### Patch Changes
