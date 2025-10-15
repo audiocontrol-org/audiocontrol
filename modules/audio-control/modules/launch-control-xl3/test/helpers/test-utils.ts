@@ -131,9 +131,9 @@ export function createMockMidiBackend(options: {
     backend.setPortConfigurations(inputConfigs, outputConfigs);
   }
 
-  // Auto-initialize if requested
+  // Auto-initialize if requested (synchronous for deterministic tests)
   if (autoInitialize) {
-    backend.initialize();
+    backend.initializeSync();
   }
 
   return backend;

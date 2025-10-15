@@ -116,6 +116,14 @@ export class DeterministicMidiBackend implements MidiBackendInterface {
     this.isInitialized = true;
   }
 
+  /**
+   * Synchronous initialization for tests (sets isInitialized flag directly)
+   * Use this in test setup to avoid async initialization
+   */
+  initializeSync(): void {
+    this.isInitialized = true;
+  }
+
   async getInputPorts(): Promise<MidiPortInfo[]> {
     if (!this.isInitialized) {
       throw new Error('Backend not initialized');
