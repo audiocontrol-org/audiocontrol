@@ -36,7 +36,9 @@
     "test:parallel": "vitest run --reporter=verbose --threads",
     "test:all": "vitest run --config vitest.all.config.ts",
     "test:unit": "vitest run test/core test/device test/unit test/utils",
-    "test:integration": "vitest run test/integration",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:skip": "SKIP_HARDWARE_TESTS=true vitest run --config vitest.integration.config.ts",
+    "test:integration:force": "SKIP_HARDWARE_TESTS=false vitest run --config vitest.integration.config.ts",
     "test:coverage": "vitest --coverage",
     "test:watch": "vitest --watch",
     "test:handshake:node": "tsx utils/test-handshake-node.ts",
@@ -48,6 +50,7 @@
     "test:control-name": "tsx utils/test-control-name-send.ts",
     "test:simple-write": "tsx utils/test-simple-write.ts",
     "test:issue-36": "tsx utils/test-issue-36-fix.ts",
+    "test:playwright:slot-fix": "playwright test test/integration/slot-selection.playwright.test.ts",
     "web-automation:basic": "tsx utils/test-web-automation.ts --mode=basic --screenshots",
     "web-automation:device": "tsx utils/test-web-automation.ts --mode=device --screenshots",
     "web-automation:actions": "tsx utils/test-web-automation.ts --mode=actions --screenshots",
@@ -85,7 +88,6 @@
     "node": ">=18"
   },
   "dependencies": {
-    "@julusian/midi": "^3.6.1",
     "@types/axios": "^0.9.36",
     "@types/js-yaml": "^4.0.9",
     "axios": "^1.12.2",

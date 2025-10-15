@@ -4,8 +4,8 @@
  * Tests that writing to inactive slots now works after the fix
  */
 
-import { DeviceManager } from '../package/src/device/DeviceManager.js';
-import { EasyMidiBackend } from '../package/src/core/backends/EasyMidiBackend.js';
+import { DeviceManager } from '../src/device/DeviceManager.js';
+import { EasyMidiBackend } from '../src/core/backends/EasyMidiBackend.js';
 
 async function testIssue36Fix(): Promise<void> {
   console.log('=== Issue #36 Validation Test ===\n');

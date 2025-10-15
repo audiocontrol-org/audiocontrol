@@ -100,7 +100,7 @@ describe('SysExParser', () => {
       const message = [
         0xF0, // Start
         ...MANUFACTURER_ID,
-        0x11, // Device ID
+        0x02, // Device ID (Launch Control XL 3) - UPDATED for Issue #36 fix
         SysExMessageType.TEMPLATE_CHANGE,
         0x05, // Template number
         0xF7, // End
@@ -159,7 +159,7 @@ describe('SysExParser', () => {
 
       expect(message[0]).toBe(0xF0);
       expect(message.slice(1, 4)).toEqual(MANUFACTURER_ID);
-      expect(message[4]).toBe(0x11); // Device ID
+      expect(message[4]).toBe(0x02); // Device ID (Launch Control XL 3) - UPDATED for Issue #36 fix
       expect(message[5]).toBe(SysExMessageType.TEMPLATE_CHANGE);
       expect(message[6]).toBe(5); // Template number
       expect(message[7]).toBe(0xF7);

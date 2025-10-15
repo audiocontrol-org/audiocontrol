@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>WebMIDI Test for Issue #36</title>
+</head>
+<body>
+  <h1>WebMIDI Test - Issue #36 Fix Validation</h1>
+  <div id="status">Initializing...</div>
+  <pre id="log"></pre>
+
+  <script>
+    const statusEl = document.getElementById('status');
+    const logEl = document.getElementById('log');
+
+    function log(message) {
+      console.log(message);
+      logEl.textContent += message + '\n';
+    }
+
+    // Make test results available globally for Playwright
+    window.testResults = {
+      midiAccess: null,
+      slot0Result: null,
+      slot1Result: null,
+      complete: false,
+      error: null
+    };
+
+    // SysEx message helpers
+    const MANUFACTURER_ID = [0x00, 0x20, 0x29];
+    const DEVICE_ID = 0x02;
+
+    function buildCustomModeReadRequest(slot, page) {
+      return [
+        0xF0, ...MANUFACTURER_ID, DEVICE_ID, 0x15, 0x05, 0x00, 0x40,
+        page === 0 ? 0x00 : 0x03, slot, 0xF7
+      ];
+    }
+
+    function buildTemplateChange(slot) {
+      return [
+        0xF0, ...MANUFACTURER_ID, DEVICE_ID, 0x77, slot, 0xF7
+      ];
+    }
+
+    async function runTest() {
+      try {
+        log('[1] Requesting MIDI access...');
+        statusEl.textContent = 'Requesting MIDI access...';
+
+        const access = await navigator.requestMIDIAccess({ sysex: true });
+        log('✓ MIDI access granted');
+
+        // Find device - use MIDI port (not DAW port) for custom mode operations
+        // Device's MIDI Out = messages FROM device = WebMIDI input (we read from it)
+        // Device's MIDI In = messages TO device = WebMIDI output (we write to it)
+        let inputPort = null;
+        let outputPort = null;
+
+        access.inputs.forEach((input) => {
+          if ((input.name?.includes('Launch Control XL') || input.name?.includes('LCXL3')) &&
+              input.name?.includes('MIDI Out')) {
+            inputPort = input;
+            log(`✓ Selected input: ${input.name}`);
+          }
+        });
+
+        access.outputs.forEach((output) => {
+          if ((output.name?.includes('Launch Control XL') || output.name?.includes('LCXL3')) &&
+              output.name?.includes('MIDI In')) {
+            outputPort = output;
+            log(`✓ Selected output: ${output.name}`);
+          }
+        });
+
+        if (!inputPort || !outputPort) {
+          throw new Error('Launch Control XL 3 not found');
+        }
+
+        // Open the ports
+        log('[1.1] Opening input port...');
+        await inputPort.open();
+        log('[1.2] Opening output port...');
+        await outputPort.open();
+        log('✓ Ports opened');
+
+        window.testResults.midiAccess = { success: true, deviceName: inputPort.name };
+        statusEl.textContent = `Connected to ${inputPort.name}`;
+
+        // Perform device handshake (required before reading modes)
+        log('[2] Performing device handshake...');
+
+        // Step 1 & 2: Wait for SYN-ACK (set up handler BEFORE sending)
+        const synAckPromise = new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            log('[ERROR] Timeout waiting for SYN-ACK (5s)');
+            reject(new Error('Handshake timeout waiting for SYN-ACK'));
+          }, 5000);
+
+          inputPort.onmidimessage = (event) => {
+            const data = Array.from(event.data);
+            log(`[2.2] Received ${data.length} bytes: ${data.slice(0, 10).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')}...`);
+
+            // Check for SYN-ACK: F0 00 20 29 00 42 02 [SERIAL] F7 (22 bytes)
+            if (data.length === 22 && data[0] === 0xF0 && data[5] === 0x42 && data[6] === 0x02) {
+              clearTimeout(timeout);
+              log('✓ Received SYN-ACK');
+              resolve(null);
+            }
+          };
+        });
+
+        // Send Novation SYN (after handler is set up)
+        const synMessage = new Uint8Array([0xF0, 0x00, 0x20, 0x29, 0x00, 0x42, 0x02, 0xF7]);
+        log(`[2.1] Sending SYN: ${Array.from(synMessage).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')}`);
+        outputPort.send(synMessage);
+
+        await synAckPromise;
+
+        // Step 3 & 4: Wait for device inquiry response (set up handler BEFORE sending)
+        const inquiryPromise = new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => {
+            log('[ERROR] Timeout waiting for device inquiry response (5s)');
+            reject(new Error('Handshake timeout waiting for device response'));
+          }, 5000);
+
+          inputPort.onmidimessage = (event) => {
+            const data = Array.from(event.data);
+            log(`[2.4] Received ${data.length} bytes: ${data.slice(0, 10).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')}...`);
+
+            // Check for device inquiry response: F0 7E XX 06 02...
+            if (data[0] === 0xF0 && data[1] === 0x7E && data[3] === 0x06 && data[4] === 0x02) {
+              clearTimeout(timeout);
+              log('✓ Device handshake complete');
+              resolve(null);
+            }
+          };
+        });
+
+        // Send Universal Device Inquiry (after handler is set up)
+        const inquiryMessage = new Uint8Array([0xF0, 0x7E, 0x7F, 0x06, 0x01, 0xF7]);
+        log(`[2.3] Sending Device Inquiry: ${Array.from(inquiryMessage).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')}`);
+        outputPort.send(inquiryMessage);
+
+        await inquiryPromise;
+
+        // Read from slot 0
+        log('[3] Reading from slot 0...');
+        const slot0Name = await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Timeout waiting for slot 0 response')), 5000);
+
+          inputPort.onmidimessage = (event) => {
+            const data = Array.from(event.data);
+            log(`[DEBUG] Received ${data.length} bytes: ${data.slice(0, 12).map(b => '0x' + b.toString(16).padStart(2, '0')).join(' ')}...`);
+
+            if (data[0] === 0xF0 && data[8] === 0x10) {
+              clearTimeout(timeout);
+
+              // Parse name
+              for (let i = 10; i < data.length - 3; i++) {
+                if (data[i] === 0x06 && data[i + 1] === 0x20) {
+                  const length = data[i + 2];
+                  if (length > 0) {
+                    const nameBytes = data.slice(i + 3, i + 3 + length);
+                    const name = String.fromCharCode(...nameBytes);
+                    resolve(name);
+                    return;
+                  }
+                }
+              }
+              resolve('Unknown');
+            }
+          };
+
+          // Small delay to ensure handler is set up
+          setTimeout(() => {
+            outputPort.send(buildCustomModeReadRequest(0, 0));
+          }, 10);
+        });
+
+        log(`✓ Slot 0: "${slot0Name}"`);
+        window.testResults.slot0Result = { success: true, name: slot0Name };
+
+        // Select slot 1 with device ID 0x02 (CRITICAL for Issue #36)
+        log('[3] Selecting slot 1 with device ID 0x02...');
+        // Set up handler first (device may or may not respond to template change)
+        inputPort.onmidimessage = null; // Clear previous handler
+        outputPort.send(buildTemplateChange(1));
+        await new Promise(resolve => setTimeout(resolve, 100));
+        log('✓ Slot 1 selected');
+
+        // Read from slot 1 (should NOT get status 0x9)
+        log('[4] Reading from slot 1 (checking for status 0x9)...');
+        const slot1Result = await new Promise((resolve, reject) => {
+          const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
+          let receivedStatus9 = false;
+
+          inputPort.onmidimessage = (event) => {
+            const data = Array.from(event.data);
+
+            // Check for status 0x9 error
+            if (data.length === 12 && data[8] === 0x15 && data[10] === 0x09) {
+              receivedStatus9 = true;
+              clearTimeout(timeout);
+              resolve({ success: false, error: 'Received status 0x9', noStatus9: false });
+              return;
+            }
+
+            // Check for successful response
+            if (data[0] === 0xF0 && data[8] === 0x10) {
+              clearTimeout(timeout);
+
+              // Parse name
+              for (let i = 10; i < data.length - 3; i++) {
+                if (data[i] === 0x06 && data[i + 1] === 0x20) {
+                  const length = data[i + 2];
+                  if (length > 0) {
+                    const nameBytes = data.slice(i + 3, i + 3 + length);
+                    const name = String.fromCharCode(...nameBytes);
+                    resolve({ success: true, name, noStatus9: !receivedStatus9 });
+                    return;
+                  }
+                }
+              }
+              resolve({ success: true, name: 'Unknown', noStatus9: !receivedStatus9 });
+            }
+          };
+
+          // Small delay to ensure handler is set up
+          setTimeout(() => {
+            outputPort.send(buildCustomModeReadRequest(1, 0));
+          }, 10);
+        });
+
+        window.testResults.slot1Result = slot1Result;
+
+        if (slot1Result.success && slot1Result.noStatus9) {
+          log(`✓ Slot 1: "${slot1Result.name}"`);
+          log('✓ No status 0x9 error - Issue #36 fix validated!');
+          statusEl.textContent = '✓ TEST PASSED';
+          statusEl.style.color = 'green';
+        } else {
+          log(`✗ Slot 1 test failed: ${slot1Result.error || 'Unknown'}`);
+          statusEl.textContent = '✗ TEST FAILED';
+          statusEl.style.color = 'red';
+        }
+
+        window.testResults.complete = true;
+
+      } catch (error) {
+        log(`✗ Error: ${error.message}`);
+        statusEl.textContent = `✗ Error: ${error.message}`;
+        statusEl.style.color = 'red';
+        window.testResults.error = error.message;
+        window.testResults.complete = true;
+      }
+    }
+
+    // Start test when page loads
+    window.addEventListener('load', runTest);
+  </script>
+</body>
+</html>

@@ -830,6 +830,13 @@ export class SysExParser {
 
   /**
    * Build template change message
+   *
+   * UPDATED (Issue #36 Fix): Changed device ID from 0x11 (legacy Launch Control XL)
+   * to 0x02 (Launch Control XL 3) to match the XL3 protocol used in read/write operations.
+   *
+   * Format: F0 00 20 29 02 77 [slot] F7
+   * - 0x02 = Launch Control XL 3 device ID
+   * - 0x77 = Template change message type
    */
   static buildTemplateChange(templateNumber: number): number[] {
     if (templateNumber < 0 || templateNumber > 15) {
@@ -839,7 +846,7 @@ export class SysExParser {
     return [
       0xF0, // SysEx start
       ...MANUFACTURER_ID,
-      0x11, // Device ID (Launch Control XL)
+      0x02, // Device ID (Launch Control XL 3) - FIXED from 0x11
       SysExMessageType.TEMPLATE_CHANGE,
       templateNumber,
       0xF7, // SysEx end

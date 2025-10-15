@@ -605,6 +605,12 @@ export class DeviceManager extends EventEmitter {
 
     // Send template change message
     const message = SysExParser.buildTemplateChange(slot);
+
+    // DIAGNOSTIC LOGGING: Show exact bytes being sent for slot selection
+    const hexBytes = message.map(b => '0x' + b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+    console.log(`[DeviceManager] Slot selection SysEx bytes for slot ${slot}: ${hexBytes}`);
+    console.log(`[DeviceManager] Message length: ${message.length} bytes`);
+
     await this.sendSysEx(message);
 
     this.currentMode = {
