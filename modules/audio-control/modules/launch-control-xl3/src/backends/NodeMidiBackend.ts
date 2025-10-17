@@ -190,7 +190,9 @@ export class NodeMidiBackend extends EventEmitter implements MidiBackendInterfac
     }
 
     const nativePort = (outputPort as any).nativeOutput as midi.Output;
-    nativePort.sendMessage(Array.from(message.data));
+    // Type assertion needed: node-midi accepts variable-length arrays for SysEx,
+    // but TypeScript definitions are overly restrictive (require exactly 3 elements)
+    nativePort.sendMessage(Array.from(message.data) as any);
   }
 
   async closePort(port: MidiPort): Promise<void> {
