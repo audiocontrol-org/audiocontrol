@@ -9,7 +9,7 @@
 import { writeFileSync } from 'fs';
 import { Command } from 'commander';
 import { LaunchControlXL3 } from '../src';
-import { JuceMidiBackend } from '../src/backends/JuceMidiBackend';
+import { NodeMidiBackend } from '../src/backends/NodeMidiBackend';
 
 /**
  * Check if test environment is ready
@@ -18,37 +18,38 @@ async function checkEnvironment(): Promise<boolean> {
   console.log('🔍 Checking test environment...');
 
   try {
-    const response = await fetch('http://localhost:7777/health', { signal: AbortSignal.timeout(2000) });
-    const data = await response.json();
+    const backend = new NodeMidiBackend();
+    await backend.initialize();
 
-    if (data.status === 'ok') {
-      console.log('✓ JUCE MIDI server is running');
+    const inputPorts = await backend.getInputPorts();
+    const outputPorts = await backend.getOutputPorts();
+
+    const hasDevice = inputPorts.some(p => p.name.includes('LCXL3')) &&
+                     outputPorts.some(p => p.name.includes('LCXL3'));
+
+    await backend.cleanup();
+
+    if (hasDevice) {
+      console.log('✓ Launch Control XL3 device detected');
       return true;
+    } else {
+      console.log('✗ Launch Control XL3 device not found!');
+      console.log();
+      console.log('═'.repeat(60));
+      console.log('Device Not Found');
+      console.log('═'.repeat(60));
+      console.log();
+      console.log('Required setup:');
+      console.log('  1. Connect Launch Control XL3 via USB');
+      console.log('  2. Power on the device');
+      console.log('  3. Ensure MIDI drivers are installed');
+      console.log();
+      return false;
     }
   } catch (error) {
-    console.log('✗ JUCE MIDI server not running!');
-    console.log();
-    console.log('═'.repeat(60));
-    console.log('Integration Test Environment Not Ready');
-    console.log('═'.repeat(60));
-    console.log();
-    console.log('Required setup:');
-    console.log('  1. Start JUCE MIDI server:');
-    console.log('     pnpm env:juce-server');
-    console.log();
-    console.log('  2. Connect Launch Control XL3 via USB');
-    console.log('  3. Power on the device');
-    console.log();
-    console.log('Quick check environment:');
-    console.log('     pnpm env:check');
-    console.log();
-    console.log('For more help:');
-    console.log('     pnpm env:help');
-    console.log();
+    console.log('✗ Error checking environment:', error);
     return false;
   }
-
-  return false;
 }
 
 async function backupCurrentMode(physicalSlot: number) {
@@ -67,8 +68,9 @@ async function backupCurrentMode(physicalSlot: number) {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const apiSlot = physicalSlot - 1; // API uses 0-based indexing
 
-  // Create device with JUCE backend
-  const backend = new JuceMidiBackend({ host: 'localhost', port: 7777 });
+  // Create device with Node MIDI backend
+  const backend = new NodeMidiBackend();
+  await backend.initialize();
   const device = new LaunchControlXL3({ midiBackend: backend });
 
   try {
@@ -139,10 +141,11 @@ async function backupCurrentMode(physicalSlot: number) {
  */
 
 import { LaunchControlXL3, CustomModeBuilder, Color } from '../src';
-import { JuceMidiBackend } from '../src/backends/JuceMidiBackend';
+import { NodeMidiBackend } from '../src/backends/NodeMidiBackend';
 
 export async function restoreMode() {
-  const backend = new JuceMidiBackend({ host: 'localhost', port: 7777 });
+  const backend = new NodeMidiBackend();
+  await backend.initialize();
   const device = new LaunchControlXL3({ midiBackend: backend });
 
   try {

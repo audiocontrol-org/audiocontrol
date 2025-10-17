@@ -109,6 +109,73 @@ doc: |
 
 ---
 
+## Recent Protocol Discoveries
+
+### Write Acknowledgement Status Byte (2025-10-16) - VERIFIED
+
+**Discovery:** The "status" byte in write acknowledgement messages is NOT a success/failure indicator - it's the **SLOT IDENTIFIER** using CC 30 slot encoding.
+
+**Evidence:**
+- Writing to slot 0 → response status: 0x06
+- Writing to slot 1 → response status: 0x07
+- Writing to slot 3 → response status: 0x09
+- Writing to slot 5 → response status: 0x13
+
+**Pattern:**
+- Slots 0-3: 0x06 + slot
+- Slots 4-14: 0x0E + slot
+
+**Impact:**
+- Fixed Issue #36 (DeviceManager.ts line 448-451 bug)
+- Changed from `if (ack.status === 0x06)` to accepting any acknowledgement as success
+- Acknowledgement arrival = success; timeout = failure
+- Status byte can be used to verify correct slot was written
+
+**Method:** Raw MIDI testing with `utils/test-round-trip-validation.ts`
+
+**Verification (2025-10-16):**
+
+Test run with `utils/test-valid-mode-changes.ts` successfully confirmed the fix:
+- ✅ **Write to slot 3 succeeded** - No firmware rejection (Issue #36 was library bug)
+- ✅ **Control CC numbers persisted correctly** - All 5 test controls changed from (13,14,15,16,17) to (23,24,25,26,27)
+- ✅ **Control channels persisted correctly** - All channel values verified
+- ✅ **10/11 changes verified successfully**
+
+**Status:** VERIFIED - Issue #36 RESOLVED
+
+**Documentation:**
+- Updated PROTOCOL.md v2.0 with verification results
+- Added "Known Issue: Mode Name Truncation" section
+- Updated version history with verification evidence
+- Confirmed fix works on real hardware
+
+### Mode Name Truncation (2025-10-16) - UNDER INVESTIGATION
+
+**Discovery:** Mode names written to the device may be truncated on read-back.
+
+**Evidence:**
+- Written name: "TESTMOD" (7 characters)
+- Read-back name: "M" (1 character!)
+
+**Hypothesis:**
+1. The mode name field may have an undocumented length limit
+2. There may be a serialization bug in the name field
+3. The device firmware may truncate/modify mode names in specific ways
+
+**Impact:**
+- Mode name verification in round-trip tests cannot reliably confirm name persistence
+- Does NOT affect control data persistence (verified to work correctly)
+
+**Status:** Under investigation - needs further testing with different name patterns
+
+**Next Steps:**
+- Test various name lengths (1-8 characters)
+- Test different character patterns (alphanumeric, spaces, special chars)
+- Compare with web editor behavior
+- Capture MIDI traffic during name write/read
+
+---
+
 ## Discovery Methodology Documentation
 
 **Every non-obvious protocol detail MUST explain how it was discovered.**
@@ -302,6 +369,38 @@ If Novation's official documentation conflicts:
 **Implementation uses:** Actual behavior (empirical)
 ```
 
+### Status Byte Misinterpretation Example
+
+**Original (incorrect) interpretation:**
+```markdown
+### Write Acknowledgement
+
+Format: F0 00 20 29 02 15 05 00 15 [page] [status] F7
+Status byte: 0x06 = success, other values = failure
+```
+
+**Corrected interpretation (2025-10-16):**
+```markdown
+### Write Acknowledgement
+
+Format: F0 00 20 29 02 15 05 00 15 [page] [slot_identifier] F7
+
+The byte at position 10 is NOT a success/failure indicator.
+It's the SLOT IDENTIFIER using CC 30 encoding:
+- Slots 0-3: 0x06 + slot
+- Slots 4-14: 0x0E + slot
+
+Success is indicated by acknowledgement arrival.
+Failure is indicated by timeout (no acknowledgement).
+```
+
+**Verified (2025-10-16):**
+- Test with slot 3 write succeeded
+- Control data persisted correctly
+- Issue #36 resolved - bug was in library, not firmware
+
+**Key lesson:** Test with multiple slots, not just slot 0!
+
 ---
 
 ## Test Data Requirements
@@ -361,17 +460,55 @@ const fixtureData = JSON.parse(await fs.readFile(join(backupDir, latestFixture),
 3. Verify parser handles all captured data
 4. Compare with web editor behavior (if changes affect mapping)
 
+### Raw MIDI Testing for Protocol Discovery
+
+**When investigating device behavior:**
+
+Use `utils/test-round-trip-validation.ts` or similar raw MIDI scripts to:
+1. Send specific SysEx messages directly
+2. Capture exact device responses with byte-level precision
+3. Test systematic patterns (e.g., all slots 0-14, not just slot 0)
+4. Verify assumptions against real hardware
+
+**Example from Issue #36 discovery:**
+```bash
+# Test write acknowledgements across multiple slots
+npx tsx utils/test-round-trip-validation.ts
+
+# Observed pattern:
+# Slot 0 → ACK status 0x06
+# Slot 1 → ACK status 0x07
+# Slot 5 → ACK status 0x13
+# Conclusion: Status byte is slot identifier, not success flag
+```
+
+**Example from Issue #36 verification:**
+```bash
+# Test valid mode changes to non-zero slot
+npx tsx utils/test-valid-mode-changes.ts
+
+# Results:
+# ✅ Write to slot 3 succeeded
+# ✅ Control CC numbers changed correctly (13→23, 14→24, etc.)
+# ✅ Control channels persisted
+# ✅ 10/11 changes verified
+# ❌ Mode name truncated ("TESTMOD" → "M")
+# Conclusion: Issue #36 resolved, new issue discovered
+```
+
 ### Anti-Patterns to Avoid
 
 ❌ **DON'T** create hand-crafted mock data without validation
 ❌ **DON'T** assume array format - device may return objects
 ❌ **DON'T** commit changes without real device testing
 ❌ **DON'T** skip fixture capture before protocol changes
+❌ **DON'T** test only slot 0 - patterns may emerge with other slots
 
 ✅ **DO** use real fixtures from `backup/` directory
 ✅ **DO** test both array and object formats
 ✅ **DO** validate against protocol specifications
 ✅ **DO** document data source (real vs synthetic)
+✅ **DO** test across all slots when discovering slot-related behavior
 
 ---
 
@@ -410,5 +547,5 @@ const fixtureData = JSON.parse(await fs.readFile(join(backupDir, latestFixture),
 
 ---
 
-**Last Updated:** 2025-09-30
+**Last Updated:** 2025-10-16
 **Maintained By:** See git history for contributors

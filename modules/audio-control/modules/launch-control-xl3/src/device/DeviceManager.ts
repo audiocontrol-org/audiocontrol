@@ -71,6 +71,7 @@ export class DeviceManager extends EventEmitter {
     resolve: () => void;
     reject: (error: Error) => void;
     timeout: NodeJS.Timeout;
+    slot: number; // Track slot for status byte validation
   }>();
 
   constructor(options: DeviceManagerOptions = {}) {
@@ -335,21 +336,52 @@ export class DeviceManager extends EventEmitter {
   }
 
   /**
+   * Calculate expected status byte based on slot number.
+   *
+   * The status byte in write acknowledgements is actually a SLOT IDENTIFIER,
+   * not a success/failure code. It encodes which slot the write was applied to.
+   *
+   * Encoding pattern (matches CC 30 slot selection protocol):
+   * - Slots 0-3:   0x06 + slot  (0x06, 0x07, 0x08, 0x09)
+   * - Slots 4-15:  0x0E + slot  (0x12, 0x13, ..., 0x1D)
+   *
+   * Reference: Protocol documentation for CC 30 slot selection
+   *
+   * @param slot - Target slot number (0-15)
+   * @returns Expected status byte value
+   */
+  private getExpectedStatusByte(slot: number): number {
+    if (slot >= 0 && slot <= 3) {
+      return 0x06 + slot;
+    } else if (slot >= 4 && slot <= 15) {
+      return 0x0E + slot;
+    }
+    throw new Error(`Invalid slot number: ${slot} (must be 0-15)`);
+  }
+
+  /**
    * Wait for write acknowledgement from device (persistent listener pattern)
    *
    * Discovery: Playwright + CoreMIDI spy (2025-09-30)
    * Device sends acknowledgement SysEx after receiving each page write:
    * Format: F0 00 20 29 02 15 05 00 15 [page] [status] F7
-   * Example: F0 00 20 29 02 15 05 00 15 00 06 F7 (page 0, status 0x06 success)
+   *
+   * CRITICAL DISCOVERY (2025-10-16): The status byte is NOT a success/failure code.
+   * It's a SLOT IDENTIFIER that matches the CC 30 slot selection encoding:
+   * - Slots 0-3:   0x06 + slot  (0x06, 0x07, 0x08, 0x09)
+   * - Slots 4-15:  0x0E + slot  (0x12, 0x13, ..., 0x1D)
+   *
+   * Example: Writing to slot 3 returns status 0x09 (0x06 + 3), NOT 0x06
    *
    * CRITICAL: Uses persistent listener set up during handshake.
    * Registers promise in queue; acknowledgement handler resolves it.
    * This avoids race conditions from rapid device responses (24-27ms).
    *
    * @param expectedPage - Page number to wait acknowledgement for (0 or 3)
+   * @param slot - Target slot number for status byte validation
    * @param timeoutMs - Timeout in milliseconds (typical ACK arrives within 24-27ms)
    */
-  private async waitForWriteAcknowledgement(expectedPage: number, timeoutMs: number): Promise<void> {
+  private async waitForWriteAcknowledgement(expectedPage: number, slot: number, timeoutMs: number): Promise<void> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.pendingAcknowledgements.delete(expectedPage);
@@ -357,7 +389,7 @@ export class DeviceManager extends EventEmitter {
       }, timeoutMs);
 
       // Register in queue - persistent listener will route acknowledgement here
-      this.pendingAcknowledgements.set(expectedPage, { resolve, reject, timeout });
+      this.pendingAcknowledgements.set(expectedPage, { resolve, reject, timeout, slot });
     });
   }
 
@@ -445,10 +477,22 @@ export class DeviceManager extends EventEmitter {
           if (pending) {
             clearTimeout(pending.timeout);
             this.pendingAcknowledgements.delete(ack.page);
-            if (ack.status === 0x06) {
+
+            // CRITICAL: Status byte is a SLOT IDENTIFIER, not a success code
+            // Validate that the returned slot identifier matches the target slot
+            const expectedStatus = this.getExpectedStatusByte(pending.slot);
+
+            if (ack.status === expectedStatus) {
+              // Status byte matches expected slot identifier
               pending.resolve();
             } else {
-              pending.reject(new Error(`Write failed for page ${ack.page}: status 0x${ack.status.toString(16)}`));
+              // Status byte mismatch - either wrong slot or write failure
+              const expectedSlot = pending.slot;
+              pending.reject(new Error(
+                `Write acknowledgement slot mismatch for page ${ack.page}: ` +
+                `expected slot ${expectedSlot} (status 0x${expectedStatus.toString(16)}), ` +
+                `but received status 0x${ack.status.toString(16)}`
+              ));
             }
           }
           break;
@@ -872,8 +916,8 @@ export class DeviceManager extends EventEmitter {
 
     // CRITICAL: Wait for device acknowledgement before sending next page
     // Discovery: Playwright + CoreMIDI spy (2025-09-30)
-    // Device sends ACK (0x15 00 06) within 24-27ms after receiving page 0
-    await this.waitForWriteAcknowledgement(0, 100); // Wait up to 100ms for page 0 ACK
+    // Status byte encodes slot identifier, not success/failure
+    await this.waitForWriteAcknowledgement(0, slot, 100); // Wait up to 100ms for page 0 ACK
 
     // Send page 3 (only if there are controls in this range)
     if (page3Controls.length > 0) {
@@ -884,7 +928,7 @@ export class DeviceManager extends EventEmitter {
       // Wait for page 3 acknowledgement
       // WORKAROUND: JUCE backend sometimes doesn't forward page 3 ACKs immediately
       // Device sends ACK within 24-80ms, but backend may delay delivery
-      await this.waitForWriteAcknowledgement(3, 2000); // Wait up to 2000ms for page 3 ACK
+      await this.waitForWriteAcknowledgement(3, slot, 2000); // Wait up to 2000ms for page 3 ACK
     }
 
     // Allow device time to process and persist the write

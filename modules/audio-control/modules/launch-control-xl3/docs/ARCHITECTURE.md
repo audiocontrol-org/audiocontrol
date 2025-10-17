@@ -72,6 +72,7 @@
 - 4-message handshake protocol
 - DAW port control
 - Message send/receive
+- Write acknowledgement handling (VERIFIED 2025-10-16)
 
 **Handshake Sequence:**
 ```typescript
@@ -79,6 +80,23 @@
 2. Receive SYN-ACK with serial number
 3. Send Universal Device Inquiry (F0 7E 7F 06 01 F7)
 4. Receive device info (manufacturer, model, firmware)
+```
+
+**Write Acknowledgement Handling (VERIFIED):**
+```typescript
+// CRITICAL: Acknowledgement status byte is slot identifier, not success flag
+// Issue #36 fix verified 2025-10-16
+
+// OLD (WRONG) - Only accepted slot 0 writes
+if (ack.status === 0x06) { /* success */ }
+
+// NEW (CORRECT) - Accept any acknowledgement as success
+// Status byte encodes slot using CC 30 pattern:
+// - Slots 0-3: 0x06 + slot
+// - Slots 4-14: 0x0E + slot
+if (ack) { /* success - acknowledgement received */ }
+
+// Timeout (no acknowledgement) = failure
 ```
 
 ### 3. CustomModeManager (src/modes/CustomModeManager.ts)
@@ -110,11 +128,13 @@
 - Parse control labels (length-encoded)
 - Build SysEx messages for device
 - Control ID mapping (25-28 → 26-29 exception)
+- Write acknowledgement parsing (VERIFIED 2025-10-16)
 
 **Critical Functions:**
 - `parseName()` - Parse mode name with length byte
 - `parseControlLabels()` - Length-encoding label parser
 - `mapLabelControlId()` - Handle control ID mapping exception
+- `parseWriteAcknowledgement()` - Parse acknowledgement and extract slot identifier
 
 **Parsing Strategy:**
 ```typescript
@@ -127,6 +147,11 @@ const length = markerByte - 0x60;
 const controlId = data[i + 1];
 const name = String.fromCharCode(...data.slice(i + 2, i + 2 + length));
 const canonicalId = mapLabelControlId(controlId);
+
+// Write acknowledgement: F0 00 20 29 02 15 05 00 15 [page] [slot_status] F7
+const page = data[9];
+const slotStatus = data[10]; // CC 30 encoded slot identifier
+// Acknowledgement presence = success; timeout = failure
 ```
 
 #### Common Pitfalls
@@ -137,6 +162,13 @@ In versions prior to v1.6, the parser incorrectly scanned for `0x40` bytes and t
 This was wrong because `0x40` appears as **data within `0x48` control structures** (specifically as the minValue field at byte offset +7).
 
 **Correct approach:** Only look for `0x48` marker bytes to identify control definitions in READ responses.
+
+**DO NOT check acknowledgement status byte for 0x06 to determine success.**
+
+In versions prior to v1.9, the parser incorrectly checked `ack.status === 0x06` to determine write success.
+This was wrong because the status byte is the **slot identifier** using CC 30 encoding, not a success flag.
+
+**Correct approach:** Acknowledgement arrival = success. Timeout (no acknowledgement) = failure. The status byte can optionally be used to verify the correct slot was written.
 
 ### 5. MIDI Backends (src/backends/)
 
@@ -187,6 +219,40 @@ CustomModeManager
         name: "CHANNEVE",
         controls: { ... 48 controls ... }
       }
+```
+
+### Writing a Custom Mode (VERIFIED 2025-10-16)
+
+```
+User Code
+  │
+  ├─> device.writeCustomMode(3, modifiedMode)  // Write to slot 3
+  │
+DeviceManager
+  │
+  ├─> Select slot 3 via DAW port
+  │
+CustomModeManager
+  │
+  ├─> Build page 0 SysEx message
+  ├─> Send page 0 to device
+  │   └─> Device: F0 00 20 29 02 15 05 00 15 00 09 F7
+  │       Wait for acknowledgement         ↑
+  │       Status byte 0x09 = slot 3 (0x06 + 3)
+  │       ✅ Acknowledgement received = SUCCESS
+  │
+  ├─> Build page 1 SysEx message
+  ├─> Send page 1 to device
+  │   └─> Device: F0 00 20 29 02 15 05 00 15 03 09 F7
+  │       Wait for acknowledgement         ↑
+  │       Status byte 0x09 = slot 3 (0x06 + 3)
+  │       ✅ Acknowledgement received = SUCCESS
+  │
+  └─> Write complete ✅
+      - Control CC numbers persisted (verified)
+      - Control channels persisted (verified)
+      - 10/11 changes successful
+      - Mode name may truncate (known issue, under investigation)
 ```
 
 ### Label Parsing Detail
@@ -245,17 +311,32 @@ interface ControlMapping {
 - Control ID mapping
 - Message building
 - Data validation
+- Write acknowledgement parsing (VERIFIED)
 
 ### Integration Tests
 - Full mode fetch cycle
 - Multi-page parsing
 - DAW port slot selection
 - Handshake protocol
+- Write acknowledgement flow (VERIFIED)
 
 ### Hardware Tests
 - `utils/backup-current-mode.ts` - Real device fetch
 - `utils/test-round-trip-node.ts` - Write then read validation
+- `utils/test-valid-mode-changes.ts` - Verify specific changes persist (VERIFIED)
 - Backup files in `backup/` directory serve as test fixtures
+
+### Verification Results (2025-10-16)
+
+**Test:** `utils/test-valid-mode-changes.ts` writing to slot 3
+**Results:**
+- ✅ Write succeeded (no firmware rejection)
+- ✅ Control CC numbers persisted correctly (13→23, 14→24, 15→25, 16→26, 17→27)
+- ✅ Control channels persisted correctly
+- ✅ 10/11 changes verified successfully
+- ❌ Mode name truncated ("TESTMOD" → "M") - under investigation
+
+**Conclusion:** Issue #36 RESOLVED - Bug was in library acknowledgement handling, not firmware limitation.
 
 ## Common Pitfalls
 
@@ -323,6 +404,35 @@ const page2 = parseCustomModePage(page2Data);  // Controls 32-47
 const mode = mergePages(page0, page1, page2);  // All 48 controls
 ```
 
+### 5. ❌ Checking Acknowledgement Status for Success (VERIFIED)
+
+**Problem:** Checking `ack.status === 0x06` to determine write success
+
+**Solution:** Status byte is slot identifier. Success = acknowledgement received.
+
+```typescript
+// WRONG (caused Issue #36)
+if (ack.status === 0x06) {
+  console.log('Write succeeded');
+} else {
+  throw new Error('Write failed');  // Rejected all non-slot-0 writes!
+}
+
+// CORRECT (verified 2025-10-16)
+if (ack) {
+  console.log('Write succeeded');
+  // Optional: verify slot
+  const expectedStatus = slot <= 3 ? (0x06 + slot) : (0x0E + slot);
+  if (ack.status !== expectedStatus) {
+    console.warn('Unexpected slot in acknowledgement');
+  }
+} else {
+  throw new Error('Write failed - no acknowledgement');
+}
+```
+
+**Key lesson:** Always test with multiple slots (0, 1, 3, 5, etc.), not just slot 0!
+
 ## Development Workflow
 
 ### Making Protocol Changes
@@ -333,6 +443,7 @@ const mode = mergePages(page0, page1, page2);  // All 48 controls
 4. **Update docs:** Sync changes to `docs/PROTOCOL.md`
 5. **Test empirically:** Use backup utility + real device
 6. **Add test case:** Save device capture in `backup/` directory
+7. **Verify with hardware:** Run validation tests (e.g., `test-valid-mode-changes.ts`)
 
 ### Debugging Protocol Issues
 
@@ -355,6 +466,18 @@ const mode = mergePages(page0, page1, page2);  // All 48 controls
    - Upload `.ksy` file and binary data
    - Visualize parsed structures
 
+5. **Test with real hardware:**
+   ```bash
+   # Test valid mode changes
+   npx tsx utils/test-valid-mode-changes.ts
+
+   # Round-trip validation
+   npx tsx utils/test-round-trip-node.ts
+
+   # Backup mode
+   npm run backup
+   ```
+
 ## Performance Characteristics
 
 - **Handshake:** ~500ms (4 message round-trips)
@@ -362,6 +485,7 @@ const mode = mergePages(page0, page1, page2);  // All 48 controls
 - **Page fetch:** ~100ms per page
 - **Total mode fetch:** ~1.5-2.0 seconds
 - **Parsing:** <10ms (in-memory, no I/O)
+- **Write acknowledgement:** 24-27ms typical (VERIFIED)
 
 ## File Organization
 
@@ -369,7 +493,8 @@ const mode = mergePages(page0, page1, page2);  // All 48 controls
 launch-control-xl3/
 ├── docs/
 │   ├── ARCHITECTURE.md     ← You are here
-│   └── PROTOCOL.md         ← Protocol specification
+│   ├── PROTOCOL.md         ← Protocol specification (v2.0, VERIFIED)
+│   └── MAINTENANCE.md      ← Documentation maintenance guide
 ├── formats/
 │   └── launch_control_xl3.ksy  ← Canonical formal spec (Kaitai Struct)
 ├── src/
@@ -377,7 +502,7 @@ launch-control-xl3/
 │   ├── core/
 │   │   └── SysExParser.ts      ← Protocol parsing/building
 │   ├── device/
-│   │   └── DeviceManager.ts    ← Low-level MIDI
+│   │   └── DeviceManager.ts    ← Low-level MIDI (VERIFIED)
 │   ├── modes/
 │   │   └── CustomModeManager.ts  ← Mode operations
 │   ├── backends/
@@ -390,6 +515,7 @@ launch-control-xl3/
 │   └── generated/              ← Kaitai-generated parser (optional)
 ├── utils/
 │   ├── backup-current-mode.ts  ← Fetch and save modes
+│   ├── test-valid-mode-changes.ts ← Verify specific changes (VERIFIED)
 │   └── test-*.ts               ← Various test utilities
 └── backup/                     ← Real device captures (test fixtures)
 ```
@@ -444,6 +570,28 @@ launch-control-xl3/
 
 **Impact:** Eliminates all parsing ambiguity. No heuristics needed.
 
+### Why Accept Any Acknowledgement as Success? (VERIFIED)
+
+**Discovery:** Through systematic raw MIDI testing (2025-10-16)
+
+**Evidence:**
+```
+Slot 0 write → ACK status 0x06
+Slot 1 write → ACK status 0x07
+Slot 3 write → ACK status 0x09 (VERIFIED with test)
+Slot 5 write → ACK status 0x13
+```
+
+**Pattern:** Status byte uses CC 30 slot encoding, not success flag
+
+**Impact:**
+- Fixed Issue #36 - writes to slots 1-14 now work (VERIFIED)
+- Acknowledgement presence = success
+- Timeout (no acknowledgement) = failure
+- Status byte can optionally verify correct slot
+
+**Verification:** Test run with slot 3 confirmed control data persists correctly
+
 ### Why Multi-Page Protocol?
 
 **Constraint:** MIDI SysEx message size limits
@@ -465,8 +613,15 @@ launch-control-xl3/
 - Maximum 8-character mode names
 - Maximum 15-character control labels
 - Fixed 48 controls per mode
+- **Mode name truncation issue** (under investigation, discovered 2025-10-16)
+
+### Active Investigations
+1. **Mode Name Truncation:** Names may truncate on read-back ("TESTMOD" → "M")
+   - Status: Under investigation
+   - Impact: Does not affect control data persistence
+   - Next steps: Test various name patterns, compare with web editor
 
 ---
 
-**Last Updated:** 2025-10-11
+**Last Updated:** 2025-10-16
 **Maintainers:** See git history for contributors

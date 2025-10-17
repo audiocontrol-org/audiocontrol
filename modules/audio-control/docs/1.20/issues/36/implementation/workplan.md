@@ -1,479 +1,700 @@
-# Issue #36: Device Firmware Slot Rejection - Diagnostic Workplan
+# Issue #36 Fix Implementation Workplan
 
-**Issue**: Launch Control XL3: Device firmware rejects writes to inactive slots (status 0x9)
-**Status**: Investigation Phase
-**Created**: 2025-10-12
-**Branch**: `issues/36-slot-rejection`
-**Severity**: High - Core functionality blocked
+**Issue**: [#36 - Device firmware rejects writes to inactive slots with status 0x9](https://github.com/oletizi/ol_dsp/issues/36)
+**Version**: 1.20.x
+**Status**: Investigation Required
+**Created**: 2025-10-15
+**Last Updated**: 2025-10-15
+
+---
+
+## Executive Summary
+
+**Problem**: Device firmware continues to reject writes to inactive slots with status 0x9 error, despite v1.20.10 claiming to fix this issue.
+
+**Root Cause**: The v1.20.10 "fix" was based on incorrect assumptions and insufficient validation:
+- Changed device ID from 0x11 to 0x02 in command 0x77 (template change)
+- Integration test only validated READ operations, not WRITE operations
+- No empirical MIDI capture to verify command 0x77 validity for Launch Control XL3
+- Protocol documentation contradicts implementation approach
+
+**User Impact**: Cannot reliably write custom mode configurations to the device, limiting library's core functionality.
+
+**Required Action**: Comprehensive protocol investigation followed by empirically-validated fix implementation.
 
 ---
 
 ## Problem Statement
 
-### Summary
+### User Test Results (v1.20.10)
 
-The Novation Launch Control XL3 device firmware **rejects write operations to slots that are not currently active** on the physical device, returning status code `0x9` (device rejection). This prevents programmatic multi-slot management from working, blocking core functionality in the xl3-web application.
+From issue comments:
 
-### Impact
+```
+[LOG] [DeviceManager] Slot selection SysEx bytes for slot 3:
+      0xF0 0x00 0x20 0x29 0x02 0x77 0x03 0xF7
 
-**Functionality Blocked**:
-- Users cannot copy modes between slots programmatically
-- Multi-slot management from web UI is non-functional
-- Limits device to effectively one user-programmable slot at a time
-- Defeats purpose of 15-slot architecture for remote management
-
-**Data Integrity**: Safe - Device rejects invalid operations cleanly (no corruption risk)
-
-### Environment
-
-- **Device**: Novation Launch Control XL3 (Serial: LX280935400469)
-- **Firmware**: v1.0.10.84
-- **Library**: @oletizi/launch-control-xl3 v1.20.2
-- **Web App**: xl3-web v0.1.0
-- **Related Issue**: oletizi/xl3-web#4
-
----
-
-## Analysis & Evidence
-
-### Code Review Findings
-
-#### 1. Acknowledgement Handling (DeviceManager.ts)
-
-**Location**: `src/device/DeviceManager.ts:70, 441-451`
-
-```typescript
-// Line 70: Acknowledgement tracking
-private pendingAcknowledgements = new Map<number, {
-  resolve: () => void;
-  reject: (error: Error) => void;
-  timeout: NodeJS.Timeout;
-}>();
-
-// Line 441-451: Acknowledgement handler
-case 'write_acknowledgement':
-  const ack = parsed as any;
-  const pending = this.pendingAcknowledgements.get(ack.page);
-  if (pending) {
-    clearTimeout(pending.timeout);
-    this.pendingAcknowledgements.delete(ack.page);
-    if (ack.status === 0x06) {
-      pending.resolve();  // Success
-    } else {
-      pending.reject(new Error(`Write failed for page ${ack.page}: status 0x${ack.status.toString(16)}`));
-    }
-  }
-  break;
+[ERROR] Send error: Error: Write failed for page 0: status 0x9
 ```
 
-**Observations**:
-- Handles write acknowledgements correctly
-- Distinguishes between success (0x06) and rejection (0x09)
-- **Missing**: No handling for slot selection acknowledgements
-- Only tracks page-level operations, not slot-level state
+**Finding**: Device still rejects writes with status 0x9 despite device ID being set to 0x02.
 
-#### 2. Template Selection Implementation (DeviceManager.ts)
+### Why v1.20.10 Fix Failed
 
-**Location**: `src/device/DeviceManager.ts:520-535`
+**1. Insufficient Testing**
 
-```typescript
-/**
- * Select a template slot (0-15)
- */
-async selectTemplate(slot: number): Promise<void> {
-  if (slot < 0 || slot > 15) {
-    throw new Error('Template slot must be 0-15');
+Integration test `test/integration/test-slot-selection.cjs` only validated READ operations:
+
+```javascript
+// Step 4: Read from slot 1 (testing fix)  ← WRONG: Should be WRITE
+const readSlot1 = buildCustomModeReadRequest(1, 0);
+output.sendMessage(readSlot1);
+
+const slot1Response = await waitForMessage('Slot 1 response', (bytes) => {
+  // Check for status 0x9 error
+  if (bytes.length === 12 && bytes[8] === 0x15 && bytes[10] === 0x09) {
+    receivedStatus9 = true;
+    return true;
   }
-
-  // Send template change message
-  const message = SysExParser.buildTemplateChange(slot);
-  await this.sendSysEx(message);
-
-  this.currentMode = {
-    type: 'template',
-    slot,
-  };
-
-  this.emit('device:modeChanged', this.currentMode);
-}
+  // Check for successful response
+  return bytes[0] === 0xF0 && bytes[8] === 0x10;
+}, TEST_TIMEOUT);
 ```
 
-**Observations**:
-- **Template selection command EXISTS** (command 0x77)
-- Format: `F0 00 20 29 02 11 77 [slot] F7`
-- **CRITICAL**: Method exists but is **NEVER called before writes**
-- Only called during device initialization (selectTemplate(0))
-- No acknowledgement wait implemented
+**Critical flaw**: Bug only affects WRITE operations. Reads always work regardless of slot selection, so test gave false positive.
 
-#### 3. Write Implementation (DeviceManager.ts)
+**2. Unverified Protocol Assumptions**
 
-**Location**: `src/device/DeviceManager.ts:591-606`
+Current implementation uses SysEx command 0x77 (TEMPLATE_CHANGE):
 
 ```typescript
-/**
- * Write custom mode to device
- */
-async writeCustomMode(slot: number, mode: CustomMode): Promise<void> {
-  if (slot < 0 || slot > 15) {
-    throw new Error('Custom mode slot must be 0-15');
-  }
-
-  const modeData = {
-    slot,
-    name: mode.name,
-    controls: mode.controls,
-    colors: mode.colors,
-  };
-
-  const validatedModeData = this.validateCustomModeData(modeData);
-  const message = SysExParser.buildCustomModeWriteRequest(slot, validatedModeData);
-  await this.sendSysEx(message);
-}
-```
-
-**Observations**:
-- Goes **directly to write** without slot pre-selection
-- Includes slot parameter in SysEx message (correct per protocol)
-- **Missing**: No call to `selectTemplate(slot)` before write
-- **Missing**: No acknowledgement wait for slot selection
-
-#### 4. SysEx Parser (SysExParser.ts)
-
-**Location**: `src/core/SysExParser.ts:520-533, 674-686`
-
-```typescript
-// Template change builder
+// src/core/SysExParser.ts:841-854
 static buildTemplateChange(templateNumber: number): number[] {
-  if (templateNumber < 0 || templateNumber > 15) {
-    throw new Error('Template number must be 0-15');
-  }
-
   return [
     0xF0, // SysEx start
-    ...MANUFACTURER_ID,
-    0x11, // Device ID (Launch Control XL)
-    SysExMessageType.TEMPLATE_CHANGE, // 0x77
+    ...MANUFACTURER_ID,  // 0x00 0x20 0x29
+    0x02, // Device ID (Launch Control XL 3)
+    SysExMessageType.TEMPLATE_CHANGE,  // 0x77
     templateNumber,
     0xF7, // SysEx end
   ];
 }
-
-// Write request builder
-static buildCustomModeWriteRequest(slot: number, modeData: CustomModeMessage): number[] {
-  // ... validation ...
-
-  return [
-    0xF0,             // SysEx start
-    0x00, 0x20, 0x29, // Manufacturer ID (Novation)
-    0x02,             // Device ID (Launch Control XL 3)
-    0x15,             // Command (Custom mode)
-    0x05,             // Sub-command
-    0x00,             // Reserved
-    0x45,             // Write operation
-    slot,             // Slot number (0-14)
-    ...encodedData,   // Encoded custom mode data
-    0xF7              // SysEx end
-  ];
-}
 ```
 
-**Observations**:
-- Both commands correctly implemented
-- Template change uses device ID 0x11, command 0x77
-- Write uses device ID 0x02, command 0x45
-- **No parsing for template change acknowledgements**
+**Problems**:
+- No MIDI capture exists to verify command 0x77 validity for XL3
+- No evidence this command actually changes target slot for write operations
+- Protocol docs say "slot selection uses SysEx slot byte directly" (contradicts implementation)
 
-#### 5. Protocol Documentation (PROTOCOL.md)
+**3. Protocol Documentation Contradiction**
 
-**Location**: `docs/PROTOCOL.md:60-89, 487-500`
+From `modules/launch-control-xl3/docs/PROTOCOL.md`:
 
-**Current Documentation States**:
-> "Slot Selection (via SysEx slot byte parameter)
-> Simply include the target slot number (0-14) in the SysEx read request"
+```markdown
+## Slot Selection Protocol (DEPRECATED - Phase 4)
+**Status:** DEPRECATED as of 2025-10-01
 
-**Critical Gap**:
-- Documentation assumes slot byte is sufficient
-- **Does NOT mention template selection requirement**
-- No reference to 0x77 command for writes
-- Deprecated DAW port protocol (but template selection different)
-
-### Issue Evidence from xl3-web
-
-**Automated Test Results** (from issue description):
-
-```javascript
-[LOG] === SEND DIAGNOSTIC ===
-[LOG] 1. activeSlotIndex: 3                              ✅ CORRECT
-[LOG] 2. activeSlotIndex type: number                    ✅ CORRECT
-[LOG] 3. mode.name: Cutoffj                             ✅ CORRECT
-[LOG] 6. converted mode name: Cutoffj                    ✅ CORRECT
-[LOG] 7. converted controls count: 48                    ✅ CORRECT
-
-[ERROR] Send error: Error: Write failed for page 0: status 0x9
-    at DeviceManager.handleSysExMessage
+**Discovery (2025-10-01):** The SysEx slot byte parameter works independently
+for slot selection. Simply include the slot number (0-14) in the SysEx
+read/write request. No DAW port communication required.
 ```
 
-**Software Stack Verification**:
-- ✅ Web App - Correctly passes slot parameter
-- ✅ Library API - Device.saveCustomMode(slot, mode) receives correct slot
-- ✅ SysEx Builder - buildCustomModeWriteRequest(slot, page, data) uses variable slot
-- ✅ Message Transmission - SysEx message sent successfully to device
-- ❌ Device Firmware - Rejects write with status 0x9
+**Contradiction**: Docs claim slot byte in SysEx message controls target, but implementation sends separate 0x77 command.
 
-### Device Behavior Analysis
-
-**Observed Pattern**:
-- Writing to **currently active slot**: ✅ Success (status 0x06)
-- Writing to **slot 0**: ✅ Success (default/fallback slot)
-- Writing to **inactive slot**: ❌ Rejection (status 0x09)
-
-**Hypothesis**:
-The firmware only accepts writes to:
-1. The currently active slot on the physical device, OR
-2. Slot 0 (special default slot)
-
-This explains why:
-- BUG-001 (hardcoded slot 0) "worked" initially
-- BUG-001 fix passed verification (only tested slot 0 writes)
-- Cross-slot operations fail (device rejects inactive slot writes)
+**Evidence gap**: No MIDI capture or empirical test validates either approach for WRITE operations.
 
 ---
 
-## Root Cause Hypothesis
+## Analysis
 
-### Primary Hypothesis: Missing Slot Pre-Selection
+### Known Facts
 
-**Theory**: The device requires a **2-phase write protocol**:
+1. **READ operations work** - Can read from any slot without error
+2. **WRITE operations fail** - Status 0x9 when writing to inactive slots
+3. **Active slot works** - Can write to currently selected slot (via hardware buttons)
+4. **Command 0x77 exists** - Template change command from Launchpad protocol
+5. **Device ID 0x02 confirmed** - Correct for Launch Control XL3
 
+### Unknown Factors
+
+1. **Is command 0x77 valid for XL3?**
+   - May be Launchpad-specific
+   - Never captured in actual device MIDI traffic
+   - No manufacturer documentation confirms support
+
+2. **What does physical slot button press send?**
+   - No MIDI capture exists
+   - Could reveal actual slot selection mechanism
+   - May use different command or implicit selection
+
+3. **Do write operations implicitly select slot?**
+   - Hypothesis: slot byte in write SysEx may auto-select target
+   - Would explain why reads work without pre-selection
+   - Needs empirical testing
+
+4. **Does timing/sequencing matter?**
+   - May need delay after selection
+   - May need acknowledgement handling
+   - May require specific message ordering
+
+### Hypotheses to Investigate
+
+**Hypothesis 1: Implicit Slot Selection**
 ```
-Phase 1: Select Target Slot
-  Command: F0 00 20 29 02 11 77 [slot] F7
-  Purpose: Activate the target slot on device
-
-Phase 2: Write to Selected Slot
-  Command: F0 00 20 29 02 15 05 00 45 [page] [slot] [data] F7
-  Purpose: Write mode data to now-active slot
-```
-
-**Current Implementation**: Only executes Phase 2
-
-**Evidence Supporting This Hypothesis**:
-1. Template selection command exists but unused before writes
-2. Device accepts writes to "active" slot (whatever is currently selected)
-3. Slot 0 works because it's default/always active
-4. Web editor likely sends 0x77 before 0x45 (needs verification)
-
-### Alternative Hypotheses (Lower Confidence)
-
-**Hypothesis B: Timing Issue**
-- Device needs time to process slot parameter
-- Rapid write after slot change causes rejection
-- **Likelihood**: Low - status 0x09 is explicit rejection, not timeout
-
-**Hypothesis C: Firmware Bug**
-- Device firmware incorrectly validates slot parameter
-- SysEx slot byte should work but doesn't
-- **Likelihood**: Low - too many users would report this
-
-**Hypothesis D: Undocumented Protocol Requirement**
-- Additional handshake step required
-- Missing secret command or parameter
-- **Likelihood**: Medium - but template selection is most obvious candidate
-
----
-
-## Investigation Plan
-
-### Phase 1: MIDI Traffic Capture (Priority: CRITICAL)
-
-**Duration**: 2-3 hours
-**Goal**: Capture how Novation's web editor handles cross-slot writes
-
-**Tools**:
-- CoreMIDI spy tool: `modules/coremidi/midi-snoop`
-- Playwright browser automation for web editor control
-- Existing utility: `utils/test-daw-port-monitor.ts`
-
-**Procedure**:
-
-1. **Setup MIDI Monitoring**:
-   ```bash
-   cd modules/coremidi/midi-snoop
-   make run
-   ```
-   Monitor both:
-   - LCXL3 1 MIDI In/Out (SysEx port)
-   - LCXL3 1 DAW In/Out (control port)
-
-2. **Test Sequence in Web Editor**:
-
-   **Test A: Write to Active Slot** (baseline)
-   - Select slot 1 on device
-   - Modify mode in web editor
-   - Click "Send to Device"
-   - **Capture**: All MIDI messages
-   - **Expected**: Success, no 0x77 command needed
-
-   **Test B: Cross-Slot Write** (primary test)
-   - Select slot 1 on device (physically)
-   - In web editor, load slot 3
-   - Modify mode
-   - Click "Send to Device" (should target slot 3)
-   - **Capture**: All MIDI messages
-   - **Expected**: 0x77 command before 0x45 write
-
-   **Test C: Sequential Slot Writes**
-   - Write to slot 1
-   - Immediately write to slot 2
-   - Immediately write to slot 3
-   - **Capture**: Message timing and sequencing
-
-3. **Analysis Checklist**:
-   - [ ] Identify 0x77 (template change) commands
-   - [ ] Check timing between 0x77 and 0x45
-   - [ ] Identify acknowledgement format for 0x77
-   - [ ] Verify device sends response to 0x77
-   - [ ] Document complete message sequence
-
-**Deliverable**:
-- MIDI capture log showing complete message sequence
-- Timing analysis (ms between commands)
-- Identification of acknowledgement format
-
-**Success Criteria**:
-- Confirm 0x77 sent before cross-slot writes
-- Document acknowledgement format
-- Understand timing requirements
-
----
-
-### Phase 2: Template Selection Protocol Validation (Priority: HIGH)
-
-**Duration**: 1-2 hours
-**Goal**: Verify template selection command behavior with real device
-
-**Test Utilities** (create if needed):
-```typescript
-// utils/test-slot-selection.ts
-// Test programmatic slot selection
-
-async function testSlotSelection() {
-  const device = await connectDevice();
-
-  // Test 1: Select slot 3
-  await device.selectTemplate(3);
-  await sleep(100); // Wait for device
-
-  // Test 2: Write to slot 3 (should succeed)
-  const testMode = createTestMode();
-  await device.writeCustomMode(3, testMode);
-
-  // Test 3: Write to slot 5 WITHOUT selection (should fail)
-  try {
-    await device.writeCustomMode(5, testMode);
-    console.error('UNEXPECTED: Write succeeded without slot selection');
-  } catch (error) {
-    console.log('EXPECTED: Write failed with status 0x9');
-  }
-}
+Theory: Write SysEx slot byte automatically selects target slot
+Evidence needed: Test write with different slot bytes
+Test: Write to slot 3 without pre-selection, slot byte = 3
+Expected: Success (contradicts current understanding)
 ```
 
-**Test Sequence**:
+**Hypothesis 2: Command 0x77 Invalid**
+```
+Theory: Command 0x77 not supported by XL3 firmware
+Evidence needed: MIDI capture of physical button press
+Test: Press slot 3 button, capture MIDI traffic
+Expected: Different command or no SysEx message
+```
 
-1. **Baseline Test**: Write to active slot
-   - Physically select slot 1
-   - Write to slot 1 programmatically
-   - **Expected**: Success (status 0x06)
+**Hypothesis 3: DAW Port Required**
+```
+Theory: Slot selection requires DAW port protocol (deprecated phase)
+Evidence needed: Re-test DAW port approach
+Test: Use DAW port slot selection, then write
+Expected: Success (but defeats purpose of phase 4 simplification)
+```
 
-2. **Slot Selection Test**: Template change then write
-   - Physically on slot 1
-   - Send: `F0 00 20 29 02 11 77 03 F7` (select slot 3)
-   - Wait for device response/acknowledgement
-   - Write to slot 3
-   - **Expected**: Success (status 0x06)
-
-3. **No Selection Test**: Direct write to inactive slot
-   - Physically on slot 1
-   - Write directly to slot 3 (no 0x77 first)
-   - **Expected**: Failure (status 0x09)
-
-4. **Timing Test**: Various delays between selection and write
-   - Try delays: 0ms, 50ms, 100ms, 200ms, 500ms
-   - Identify minimum safe delay
-
-**Deliverable**:
-- Empirical confirmation that 0x77 enables writes
-- Documented acknowledgement format for template changes
-- Minimum timing requirement
-
-**Success Criteria**:
-- Phase 2 test succeeds (0x77 + write = success)
-- Phase 3 test fails (no 0x77 + write = 0x09)
-- Timing requirement identified
-
----
-
-### Phase 3: Acknowledgement Protocol Analysis (Priority: MEDIUM)
-
-**Duration**: 1 hour
-**Goal**: Understand device response to template selection
-
-**Current Knowledge**:
-- Write acknowledgements: `F0 00 20 29 02 15 05 00 15 [page] [status] F7`
-- Template changes may have different format
-- Web editor waits ~24-27ms for write ACKs
-
-**Investigation**:
-
-1. **Identify Template Change Response Format**:
-   - Send: `F0 00 20 29 02 11 77 03 F7`
-   - Capture: Device response message
-   - Parse: Identify status/confirmation bytes
-
-2. **Compare with Template Change SysEx** (line 387-394 in DeviceManager.ts):
-   ```typescript
-   case 'template_change':
-     const templateChange = this.validateTemplateChangeResponse(parsed);
-     this.currentMode = { type: 'template', slot: templateChange.templateNumber };
-     this.emit('device:modeChanged', this.currentMode);
-     break;
-   ```
-   - Check if device sends template_change response
-   - May be receiving it but not waiting for it
-
-3. **Timing Analysis**:
-   - Measure response time from 0x77 send to ACK receive
-   - Compare with write ACK timing (24-27ms)
-   - Determine if explicit wait needed or event-based
-
-**Deliverable**:
-- Template change acknowledgement specification
-- Parser implementation for template change ACK
-- Timing requirements documented
-
-**Success Criteria**:
-- Can parse template change responses
-- Know when to proceed with write
-- Have timeout values for error handling
+**Hypothesis 4: Web Editor Difference**
+```
+Theory: Web editor uses different protocol for writes
+Evidence needed: Playwright capture of web editor write operation
+Test: Automate web editor to write to inactive slot, capture MIDI
+Expected: Different command sequence than our implementation
+```
 
 ---
 
 ## Implementation Plan
 
-### Phase 4: Slot Selection Wrapper Implementation (Priority: HIGH)
+### Phase 1: Investigation & Protocol Discovery
 
+**Goal**: Empirically determine correct slot selection mechanism for write operations
+
+#### Task 1.1: MIDI Capture of Physical Slot Selection
+**Duration**: 1-2 hours
+**Tools**: `midisnoop`, hardware device
+
+**Steps**:
+1. Start MIDI spy: `cd modules/coremidi/midi-snoop && make run`
+2. Press slot button 3 on physical device
+3. Capture and analyze MIDI messages
+4. Document exact byte sequence
+5. Compare with current implementation
+
+**Success Criteria**:
+- Captured exact MIDI traffic when pressing slot buttons
+- Documented byte-level protocol
+- Identified if command 0x77 is actually used
+
+**Deliverables**:
+- `modules/audio-control/tmp/slot-button-midi-capture-[date].txt` - Raw capture
+- Update to `modules/launch-control-xl3/docs/PROTOCOL.md` with findings
+
+#### Task 1.2: Test Implicit Slot Selection Hypothesis
+**Duration**: 1 hour
+**Tools**: `node-midi`, test utility
+
+**Steps**:
+1. Create test: Write to slot 3 without any pre-selection command
+2. Use slot byte = 3 in write SysEx message
+3. Observe if write succeeds or fails with status 0x9
+4. Repeat for multiple slots
+
+**Test Code**:
+```javascript
+// Test: Can slot byte in write SysEx auto-select target?
+const writeSlot3 = buildCustomModeWriteRequest(3, 0, modeData);
+output.sendMessage(writeSlot3); // NO pre-selection command
+
+const response = await waitForResponse();
+// Success = hypothesis confirmed
+// Status 0x9 = hypothesis rejected
+```
+
+**Success Criteria**:
+- Definitive answer: Does slot byte auto-select or not?
+- Documented in protocol investigation notes
+
+#### Task 1.3: Web Editor MIDI Traffic Capture
 **Duration**: 2-3 hours
-**Goal**: Add programmatic slot selection before writes
+**Tools**: Playwright, MIDI spy
 
-**Approach**: Modify existing write flow to include slot pre-selection
+**Steps**:
+1. Set up Playwright automation for Components web editor
+2. Load custom mode in editor
+3. Modify mode configuration
+4. Write to device at specific slot
+5. Capture all MIDI traffic during write operation
+6. Analyze command sequence
 
-#### Changes Required
+**Success Criteria**:
+- Captured web editor's exact write sequence
+- Identified any pre-selection commands
+- Documented differences from our implementation
 
-**File**: `src/device/DeviceManager.ts`
+**Deliverables**:
+- `modules/audio-control/tmp/web-editor-write-capture-[date].txt`
+- Comparison document: web editor vs our implementation
 
-**Location**: `writeCustomMode()` method (line 591)
+#### Task 1.4: Verify Command 0x77 Behavior
+**Duration**: 1 hour
+**Tools**: `node-midi`, test utility
+
+**Steps**:
+1. Send command 0x77 with device ID 0x02 for slot 3
+2. Wait 500ms (allow device to process)
+3. Attempt write with slot byte = 3
+4. Check for status 0x9 error
+5. Repeat with different timing delays
+
+**Success Criteria**:
+- Determined if command 0x77 has any effect
+- Documented timing requirements if any
+
+### Phase 2: Fix Implementation
+
+**Goal**: Implement correct slot selection mechanism based on investigation findings
+
+**Note**: Actual implementation depends on Phase 1 results. Three possible paths:
+
+#### Path A: Implicit Selection (if Hypothesis 1 confirmed)
+
+**Change**: Remove separate slot selection command entirely
+
+**Files to modify**:
+- `src/device/DeviceManager.ts` - Remove `selectSlot()` call before writes
+- `src/core/SysExParser.ts` - Ensure write requests use correct slot byte
+- `docs/PROTOCOL.md` - Update to document implicit selection
 
 **Implementation**:
+```typescript
+// In CustomModeManager.writeCustomMode()
+async writeCustomMode(slot: number, mode: CustomMode): Promise<void> {
+  // OLD: await this.deviceManager.selectSlot(slot);
+
+  // NEW: Slot selection is implicit via SysEx slot byte
+  for (let page = 0; page < 3; page++) {
+    const sysex = SysExParser.buildCustomModeWriteRequest(slot, page, pageData);
+    await this.sendSysEx(sysex);
+    await this.waitForAck();
+  }
+}
+```
+
+#### Path B: Different Command (if Hypothesis 2 confirmed)
+
+**Change**: Replace command 0x77 with correct command from capture
+
+**Files to modify**:
+- `src/core/SysExParser.ts` - Update `buildTemplateChange()` with correct command
+- `src/types/SysExMessageType.ts` - Add new command constant
+- `docs/PROTOCOL.md` - Document discovered command
+
+**Implementation**: Depends on captured byte sequence
+
+#### Path C: Web Editor Protocol (if Hypothesis 4 reveals solution)
+
+**Change**: Replicate web editor's exact command sequence
+
+**Files to modify**:
+- `src/device/DeviceManager.ts` - Implement web editor sequence
+- `src/core/SysExParser.ts` - Add any new message builders
+- `docs/PROTOCOL.md` - Document complete sequence
+
+**Implementation**: Depends on web editor capture analysis
+
+---
+
+### Phase 3: Validation & Testing
+
+**Goal**: Ensure fix works reliably with comprehensive test coverage
+
+#### Task 3.1: Create Write Operation Test Suite
+**Duration**: 2-3 hours
+**Tools**: Vitest, node-midi
+
+**Test Cases**:
+1. Write to inactive slot (must succeed)
+2. Write to active slot (must succeed)
+3. Sequential writes to different slots
+4. Write without selection (must fail if selection required)
+5. Write with invalid slot number (must fail gracefully)
+6. Multiple page writes (real-world scenario)
+
+**File**: `test/integration/test-custom-mode-write.test.ts`
+
+**Critical Test**:
+```javascript
+it('should write to inactive slot after selection', async () => {
+  // Start with slot 0 active
+  await selectSlot(0);
+
+  // Write to slot 3 (inactive)
+  const result = await writeCustomMode(3, testMode);
+
+  // MUST NOT receive status 0x9
+  expect(result.status).not.toBe(0x9);
+  expect(result.success).toBe(true);
+
+  // Verify write actually worked
+  const readBack = await readCustomMode(3);
+  expect(readBack.mode.name).toBe(testMode.name);
+});
+```
+
+#### Task 3.2: Update Existing Integration Tests
+**Duration**: 1 hour
+
+**Files to modify**:
+- `test/integration/test-slot-selection.cjs` - Add write operation tests
+- Delete or rewrite READ-only tests that gave false positives
+
+#### Task 3.3: Real Device Validation
+**Duration**: 1 hour
+**Tools**: Physical hardware, backup utility
+
+**Validation Steps**:
+1. Run full test suite against real device
+2. Use backup utility to write to multiple slots
+3. Verify each slot via web editor
+4. Test edge cases (slot 0, slot 14, rapid switching)
+
+**Success Criteria**:
+- All tests pass with real hardware
+- No status 0x9 errors in any scenario
+- Writes verified via independent tool (web editor)
+
+---
+
+### Phase 4: Documentation Updates
+
+**Goal**: Ensure all documentation accurately reflects fix
+
+#### Task 4.1: Protocol Documentation
+**Duration**: 1 hour
+
+**File**: `modules/launch-control-xl3/docs/PROTOCOL.md`
+
+**Updates Required**:
+- Remove DEPRECATED marker if DAW port not needed
+- Document actual slot selection mechanism
+- Add version history entry for fix
+- Include MIDI capture evidence
+- Explain discovery methodology
+
+**Version History Entry**:
+```markdown
+### 2025-10-15 - Slot Selection for Write Operations (Issue #36 Fix)
+
+**Discovery**: [Describe actual finding from investigation]
+
+**Protocol Change**: [Describe what changed]
+
+**Evidence**: MIDI captures in `backup/captures/slot-selection-[date]/`
+
+**Rationale**: [Explain why this approach works]
+
+**Previous Approach**: Used command 0x77, which [explain why it failed]
+```
+
+#### Task 4.2: Architecture Documentation
+**Duration**: 30 minutes
+
+**File**: `modules/launch-control-xl3/docs/ARCHITECTURE.md`
+
+**Updates**:
+- Update data flow diagram if slot selection mechanism changed
+- Document timing requirements if any
+- Explain any new protocol phases
+
+#### Task 4.3: Update Kaitai Struct Specification
+**Duration**: 30 minutes
+
+**File**: `modules/launch-control-xl3/formats/launch_control_xl3.ksy`
+
+**Updates**:
+- Add any newly discovered message types
+- Update documentation comments
+- Validate compilation: `kaitai-struct-compiler formats/launch_control_xl3.ksy`
+
+#### Task 4.4: Workplan Post-Mortem
+**Duration**: 30 minutes
+
+**File**: This file - add "Post-Implementation Review" section
+
+**Content**:
+- What was the actual root cause?
+- Why did v1.20.10 fix fail?
+- Lessons learned about validation methodology
+- Recommendations for future protocol changes
+
+---
+
+### Phase 5: Release Process
+
+**Goal**: Ship validated fix to users
+
+#### Task 5.1: Create Changeset
+**Duration**: 15 minutes
+
+```bash
+pnpm changeset
+# Select: @oletizi/launch-control-xl3 (patch)
+# Message: "Fix slot selection for write operations (Issue #36)"
+```
+
+#### Task 5.2: Version and Publish
+**Duration**: 30 minutes
+
+```bash
+# Version packages
+pnpm changeset:version
+
+# Build all packages
+pnpm -r build
+
+# Verify tests pass
+pnpm test
+
+# Publish
+pnpm changeset:publish
+```
+
+#### Task 5.3: Update GitHub Issue
+**Duration**: 15 minutes
+
+**Comment**:
+```markdown
+## ✅ Fixed in v1.20.x
+
+**Root Cause**: [Describe actual cause from investigation]
+
+**Fix**: [Describe solution implemented]
+
+**Validation**:
+- ✅ Write operations to inactive slots succeed
+- ✅ Integration tests cover write scenarios
+- ✅ Tested against real hardware
+- ✅ Verified via web editor cross-check
+
+**Evidence**: See MIDI captures in repository backup directory
+
+**Breaking Changes**: None
+
+Closing as fixed.
+```
+
+#### Task 5.4: Create Release Notes
+**Duration**: 15 minutes
+
+**GitHub Release**:
+```markdown
+## v1.20.x - Issue #36 Fix
+
+### 🐛 Bug Fixes
+
+**Launch Control XL3: Slot Selection for Write Operations (#36)**
+
+Fixed device firmware rejecting writes to inactive slots with status 0x9 error.
+
+**What Changed**:
+- [Describe actual changes based on implementation path]
+
+**Impact**:
+- Users can now reliably write custom mode configurations to any slot
+- No more status 0x9 errors when writing to inactive slots
+
+**Validation**:
+- Comprehensive write operation test suite
+- Real hardware validation
+- MIDI protocol captures documented
+
+**Previous Fix Attempt**:
+v1.20.10 incorrectly attempted to fix this by changing device ID in command 0x77.
+This failed because [explain reason based on investigation].
+
+### Credits
+Thanks to [user] for detailed testing and validation feedback.
+```
+
+---
+
+## Timeline Estimate
+
+### Optimistic (Investigation Path A - Implicit Selection)
+- Phase 1: 4-5 hours
+- Phase 2: 1-2 hours
+- Phase 3: 3-4 hours
+- Phase 4: 2-3 hours
+- Phase 5: 1 hour
+**Total**: 11-15 hours active work, ~2 days calendar time
+
+### Pessimistic (Investigation Path C - Complex Protocol)
+- Phase 1: 6-8 hours (web editor analysis complex)
+- Phase 2: 3-4 hours (complex implementation)
+- Phase 3: 4-5 hours (extensive testing)
+- Phase 4: 3-4 hours (significant doc updates)
+- Phase 5: 1 hour
+**Total**: 17-22 hours active work, ~3-4 days calendar time
+
+## Success Criteria
+
+### Technical Validation
+- [ ] Write to inactive slot succeeds without status 0x9 error
+- [ ] All integration tests pass with real hardware
+- [ ] MIDI captures document actual protocol behavior
+- [ ] Implementation matches discovered protocol
+- [ ] No regressions in read operations
+
+### Documentation Quality
+- [ ] Protocol docs updated with evidence and methodology
+- [ ] Version history documents discovery process
+- [ ] Architecture docs reflect any changes
+- [ ] Kaitai struct specification synchronized
+- [ ] All four key files synchronized (per MAINTENANCE.md)
+
+### User Acceptance
+- [ ] User testing confirms fix works
+- [ ] No status 0x9 errors in user's workflow
+- [ ] Fix validated in production use case
+- [ ] User closes issue as resolved
+
+### Process Improvements
+- [ ] Integration tests validate actual bug scenario (writes, not reads)
+- [ ] MIDI capture evidence exists for future reference
+- [ ] Post-mortem documents why v1.20.10 failed
+- [ ] Validation methodology improved to prevent false positives
+
+---
+
+## Risk Assessment
+
+### High Risk Items
+
+**Risk**: Investigation reveals no viable fix
+- **Probability**: Low (device clearly supports slot writes via web editor)
+- **Mitigation**: Web editor MIDI capture provides working solution
+- **Fallback**: Implement exact web editor protocol sequence
+
+**Risk**: Fix requires firmware-level changes
+- **Probability**: Very Low (web editor works with current firmware)
+- **Mitigation**: N/A - web editor proves software solution exists
+- **Fallback**: Document limitation, request firmware update from Novation
+
+**Risk**: Timing/race conditions cause intermittent failures
+- **Probability**: Medium (real-time MIDI protocol)
+- **Mitigation**: Comprehensive timing tests, add acknowledgement handling
+- **Fallback**: Document timing requirements, add retry logic
+
+### Medium Risk Items
+
+**Risk**: Different firmware versions behave differently
+- **Probability**: Medium (common in hardware devices)
+- **Mitigation**: Test with multiple firmware versions if available
+- **Fallback**: Document firmware version requirements
+
+**Risk**: Solution breaks existing functionality
+- **Probability**: Low (comprehensive test suite exists)
+- **Mitigation**: Run full test suite before release
+- **Fallback**: Revert and re-investigate
+
+---
+
+## Lessons Learned from v1.20.10 Failure
+
+### What Went Wrong
+
+1. **Insufficient Test Coverage**
+   - Test validated READ operations only
+   - Bug affects WRITE operations only
+   - False positive gave incorrect confidence
+
+2. **No Empirical Evidence**
+   - Never captured MIDI traffic from actual slot button press
+   - Assumed command 0x77 based on Launchpad protocol
+   - No validation that command works for XL3
+
+3. **Ignored Documentation Contradiction**
+   - Protocol docs said "SysEx slot byte works directly"
+   - Implementation used separate selection command
+   - Never investigated which approach was correct
+
+4. **Premature Release**
+   - Released without user acceptance testing
+   - Claimed fix worked without validation
+   - Didn't test actual failure scenario
+
+### Process Improvements
+
+**MUST DO for all protocol changes**:
+- [ ] Capture MIDI traffic from real device behavior
+- [ ] Test the actual operation that fails (not proxy operations)
+- [ ] Validate with user acceptance test before release
+- [ ] Document evidence and methodology in protocol docs
+- [ ] Never assume protocol behavior without empirical proof
+
+**MUST NOT DO**:
+- ❌ Test reads when bug affects writes
+- ❌ Assume commands work without MIDI capture
+- ❌ Ignore contradictions between docs and implementation
+- ❌ Release without user validation
+- ❌ Claim fix works based on passing test suite alone
+
+---
+
+## Approval & Sign-off
+
+### Investigation Phase Complete
+- [ ] MIDI captures documented in backup directory
+- [ ] All hypotheses tested empirically
+- [ ] Root cause identified with evidence
+- [ ] Implementation path selected
+- **Signed**: _________________ Date: _______
+
+### Implementation Complete
+- [ ] Fix implemented per investigation findings
+- [ ] All tests pass
+- [ ] Documentation updated
+- [ ] Code reviewed
+- **Signed**: _________________ Date: _______
+
+### User Acceptance
+- [ ] User confirms fix resolves issue
+- [ ] No status 0x9 errors in user workflow
+- [ ] Production use case validated
+- **Signed**: _________________ Date: _______
+
+### Release Authorization
+- [ ] All success criteria met
+- [ ] Changelog and release notes prepared
+- [ ] Version bumped appropriately
+- **Signed**: _________________ Date: _______
+
+---
+
+## References
+
+- **Issue**: https://github.com/oletizi/ol_dsp/issues/36
+- **Failed Fix PR**: #37 (v1.20.10)
+- **Protocol Docs**: `modules/launch-control-xl3/docs/PROTOCOL.md`
+- **Test File**: `test/integration/test-slot-selection.cjs`
+- **Parser**: `src/core/SysExParser.ts:841-854`
+
+---
+
+**Document Status**: Draft - Awaiting Phase 1 Investigation
+**Next Action**: Begin Task 1.1 (MIDI Capture of Physical Slot Selection)
+**Owner**: Development Team
+**Reviewers**: [To be assigned]
 
 ```typescript
 /**

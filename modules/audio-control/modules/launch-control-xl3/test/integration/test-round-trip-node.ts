@@ -34,18 +34,12 @@
  *
  * Requirements:
  *   - Launch Control XL 3 device connected via USB
- *   - JUCE MIDI server running on http://localhost:7777
  *   - Device should be powered on and ready
- *
- * To start the JUCE MIDI server:
- *   cd ../../../modules/juce/midi-server
- *   make run
- *   # Server will run on http://localhost:7777
  */
 
 import chalk from 'chalk';
 import { LaunchControlXL3 } from '../src';
-import { JuceMidiBackend } from '../src/backends/JuceMidiBackend.js';
+import { NodeMidiBackend } from '../src/backends/NodeMidiBackend.js';
 import type { CustomMode, ControlMapping } from '../src/types/CustomMode.js';
 
 // Console formatting helpers
@@ -189,37 +183,74 @@ async function checkEnvironment(): Promise<boolean> {
   log.step('Checking test environment...');
 
   try {
-    const response = await fetch('http://localhost:7777/health', { signal: AbortSignal.timeout(2000) });
-    const data = await response.json();
+    // Create a temporary NodeMidiBackend to check for LCXL3 device
+    const backend = new NodeMidiBackend();
+    await backend.initialize();
 
-    if (data.status === 'ok') {
-      log.success('JUCE MIDI server is running');
+    const inputPorts = await backend.getInputPorts();
+    const outputPorts = await backend.getOutputPorts();
+
+    // Look for Launch Control XL3 in available ports
+    const lcxl3Input = inputPorts.find(p =>
+      p.name.toLowerCase().includes('launch control xl') ||
+      p.name.toLowerCase().includes('lcxl3')
+    );
+
+    const lcxl3Output = outputPorts.find(p =>
+      p.name.toLowerCase().includes('launch control xl') ||
+      p.name.toLowerCase().includes('lcxl3')
+    );
+
+    await backend.cleanup();
+
+    if (lcxl3Input && lcxl3Output) {
+      log.success('Launch Control XL3 device found');
+      log.data('Input Port', lcxl3Input.name);
+      log.data('Output Port', lcxl3Output.name);
       return true;
+    } else {
+      log.error('Launch Control XL3 device not found!');
+      console.log();
+      log.warning('═'.repeat(60));
+      log.warning('Integration Test Environment Not Ready');
+      log.warning('═'.repeat(60));
+      console.log();
+      log.info('Required setup:');
+      log.info('  1. Connect Launch Control XL3 via USB');
+      log.info('  2. Power on the device');
+      console.log();
+      log.info('Available MIDI ports:');
+      if (inputPorts.length === 0) {
+        log.warning('  No MIDI input ports found');
+      } else {
+        log.info('  Input ports:');
+        inputPorts.forEach(p => console.log(chalk.gray(`    - ${p.name}`)));
+      }
+      if (outputPorts.length === 0) {
+        log.warning('  No MIDI output ports found');
+      } else {
+        log.info('  Output ports:');
+        outputPorts.forEach(p => console.log(chalk.gray(`    - ${p.name}`)));
+      }
+      console.log();
+      return false;
     }
-  } catch (error) {
-    log.error('JUCE MIDI server not running!');
+  } catch (error: any) {
+    log.error('Failed to enumerate MIDI ports!');
     console.log();
     log.warning('═'.repeat(60));
-    log.warning('Integration Test Environment Not Ready');
+    log.warning('MIDI System Error');
     log.warning('═'.repeat(60));
     console.log();
-    log.info('Required setup:');
-    log.info('  1. Start JUCE MIDI server:');
-    console.log(chalk.white('     pnpm env:juce-server'));
+    log.error(`Error: ${error.message}`);
     console.log();
-    log.info('  2. Connect Launch Control XL3 via USB');
-    log.info('  3. Power on the device');
-    console.log();
-    log.info('Quick check environment:');
-    console.log(chalk.white('     pnpm env:check'));
-    console.log();
-    log.info('For more help:');
-    console.log(chalk.white('     pnpm env:help'));
+    log.info('Troubleshooting:');
+    log.info('  1. Ensure MIDI drivers are installed');
+    log.info('  2. Check system MIDI settings');
+    log.info('  3. Verify device permissions');
     console.log();
     return false;
   }
-
-  return false;
 }
 
 /**
@@ -243,17 +274,17 @@ async function testRoundTrip(): Promise<void> {
   console.log();
 
   let controller: LaunchControlXL3 | null = null;
-  let backend: JuceMidiBackend | null = null;
+  let backend: NodeMidiBackend | null = null;
   let testPassed = false;
 
   try {
-    // Step 1: Create and initialize JuceMidiBackend
-    log.step('Creating JuceMidiBackend instance...');
-    backend = new JuceMidiBackend();
+    // Step 1: Create and initialize NodeMidiBackend
+    log.step('Creating NodeMidiBackend instance...');
+    backend = new NodeMidiBackend();
 
-    log.step('Initializing JuceMidiBackend...');
+    log.step('Initializing NodeMidiBackend...');
     await backend.initialize();
-    log.success('JuceMidiBackend initialized successfully!');
+    log.success('NodeMidiBackend initialized successfully!');
 
     // Step 2: Create LaunchControlXL3 instance
     log.step('Creating LaunchControlXL3 instance...');
@@ -479,14 +510,7 @@ async function testRoundTrip(): Promise<void> {
     log.error('Test failed with error:');
     log.error(error.message);
 
-    if (error.message.includes('ECONNREFUSED') || error.message.includes('fetch failed')) {
-      log.warning('');
-      log.warning('TROUBLESHOOTING:');
-      log.warning('• Start the JUCE MIDI server:');
-      log.warning('  cd ../../../modules/juce/midi-server');
-      log.warning('  make run');
-      log.warning('• Server should be running on http://localhost:7777');
-    } else if (error.message.includes('Cannot find MIDI devices')) {
+    if (error.message.includes('Cannot find MIDI devices') || error.message.includes('not found')) {
       log.warning('');
       log.warning('TROUBLESHOOTING:');
       log.warning('• Ensure Launch Control XL 3 is connected via USB');
@@ -508,7 +532,7 @@ async function testRoundTrip(): Promise<void> {
 
     if (backend) {
       log.step('Cleaning up MIDI backend...');
-      // JuceMidiBackend cleanup handled by server
+      await backend.cleanup();
     }
   }
 

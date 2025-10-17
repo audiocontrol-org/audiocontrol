@@ -24,7 +24,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { DeviceManager } from '@/device/DeviceManager.js';
-import { JuceMidiBackend } from '@/backends/JuceMidiBackend.js';
+import { NodeMidiBackend } from '@/backends/NodeMidiBackend.js';
 import type { CustomMode } from '@/types/index.js';
 
 // Skip these tests if no device is connected
@@ -33,12 +33,12 @@ const SKIP_HARDWARE_TESTS = process.env.SKIP_HARDWARE_TESTS === 'true';
 
 describe.skipIf(SKIP_HARDWARE_TESTS)('Slot Selection Hardware Integration', () => {
   let deviceManager: DeviceManager;
-  let backend: JuceMidiBackend;
+  let backend: NodeMidiBackend;
 
   beforeAll(async () => {
     console.log('\n[Slot Selection Tests] Connecting to Launch Control XL 3...');
 
-    backend = new JuceMidiBackend();
+    backend = new NodeMidiBackend();
     await backend.initialize();
 
     deviceManager = new DeviceManager({
@@ -251,7 +251,7 @@ describe.skipIf(SKIP_HARDWARE_TESTS)('Slot Selection Hardware Integration', () =
 
 describe('Slot Selection Mock Tests', () => {
   it('should handle connection failure gracefully', async () => {
-    const backend = new JuceMidiBackend();
+    const backend = new NodeMidiBackend();
     await backend.initialize();
 
     const deviceManager = new DeviceManager({

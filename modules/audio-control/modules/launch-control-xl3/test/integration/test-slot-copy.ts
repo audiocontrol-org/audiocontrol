@@ -9,27 +9,35 @@
  */
 
 import { LaunchControlXL3 } from '../src';
-import { JuceMidiBackend } from '../src/backends/JuceMidiBackend';
+import { NodeMidiBackend } from '../src/backends/NodeMidiBackend';
 
 async function checkEnvironment(): Promise<boolean> {
   console.log('🔍 Checking test environment...');
 
   try {
-    const response = await fetch('http://localhost:7777/health', { signal: AbortSignal.timeout(2000) });
-    const data = await response.json();
+    const backend = new NodeMidiBackend();
+    await backend.initialize();
 
-    if (data.status === 'ok') {
-      console.log('✓ JUCE MIDI server is running');
+    const inputPorts = await backend.getInputPorts();
+    const outputPorts = await backend.getOutputPorts();
+
+    const hasDevice = inputPorts.some(p => p.name.includes('LCXL3')) &&
+                     outputPorts.some(p => p.name.includes('LCXL3'));
+
+    await backend.cleanup();
+
+    if (hasDevice) {
+      console.log('✓ Launch Control XL3 device detected');
       return true;
+    } else {
+      console.log('✗ Launch Control XL3 device not found!');
+      console.log('\nPlease connect the Launch Control XL3 device via USB\n');
+      return false;
     }
   } catch (error) {
-    console.log('✗ JUCE MIDI server not running!');
-    console.log('\nPlease start the JUCE MIDI server:');
-    console.log('  pnpm env:juce-server\n');
+    console.log('✗ Error checking environment:', error);
     return false;
   }
-
-  return false;
 }
 
 async function testSlotCopy() {
@@ -47,7 +55,8 @@ async function testSlotCopy() {
   const sourceSlot = 0; // First slot
   const targetSlot = 7; // 8th slot
 
-  const backend = new JuceMidiBackend({ host: 'localhost', port: 7777 });
+  const backend = new NodeMidiBackend();
+  await backend.initialize();
   const device = new LaunchControlXL3({ midiBackend: backend });
 
   try {
