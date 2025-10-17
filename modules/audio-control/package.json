@@ -1,6 +1,6 @@
 {
   "name": "@oletizi/audio-control",
-  "version": "1.20.16",
+  "version": "1.20.17",
   "private": false,
   "description": "Monorepo for audio device control utilities",
   "type": "module",
