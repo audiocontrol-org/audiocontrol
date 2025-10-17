@@ -29,10 +29,6 @@ export { CustomModeBuilder, Color } from './builders/CustomModeBuilder.js';
 // Control mapping
 export * from './mapping/ControlMapper.js';
 
-// MIDI Backends
-export { NodeMidiBackend } from './backends/NodeMidiBackend.js';
-
-
 // Type definitions
 export type {
   // MIDI types
