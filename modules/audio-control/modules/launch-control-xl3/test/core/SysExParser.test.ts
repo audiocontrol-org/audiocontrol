@@ -687,12 +687,12 @@ describe('SysExParser', () => {
         expect(decodedName).toBe('CHANNEVE');
       });
 
-      it('should limit mode name to 8 characters maximum', () => {
+      it('should limit mode name to 18 characters maximum', () => {
         const modeData: any = {
           type: 'custom_mode_response',
           manufacturerId: [0x00, 0x20, 0x29],
           slot: 0,
-          name: 'VERYLONGMODENAME', // 16 characters
+          name: 'EXACTLYEIGHTEENCHA', // Exactly 18 characters
           controls: [],
           colors: [],
           data: []
@@ -700,11 +700,31 @@ describe('SysExParser', () => {
 
         const message = SysExParser.buildCustomModeWriteRequest(0, 0, modeData);
 
-        // Check that up to 16 characters are encoded (Phase 2: new format)
-        const nameBytes = message.slice(14, 30); // 4-byte header + 16 chars
+        // Check that exactly 18 characters are encoded
+        const nameBytes = message.slice(14, 32); // 4-byte header + 18 chars
         const decodedName = String.fromCharCode(...nameBytes);
 
-        expect(decodedName).toBe('VERYLONGMODENAME');
+        expect(decodedName).toBe('EXACTLYEIGHTEENCHA');
+      });
+
+      it('should truncate mode names longer than 18 characters', () => {
+        const modeData: any = {
+          type: 'custom_mode_response',
+          manufacturerId: [0x00, 0x20, 0x29],
+          slot: 0,
+          name: 'THISHASNINETEENCHAR', // 19 characters - should be truncated
+          controls: [],
+          colors: [],
+          data: []
+        };
+
+        const message = SysExParser.buildCustomModeWriteRequest(0, 0, modeData);
+
+        // Check that only first 18 characters are encoded
+        const nameBytes = message.slice(14, 32); // 4-byte header + 18 chars
+        const decodedName = String.fromCharCode(...nameBytes);
+
+        expect(decodedName).toBe('THISHASNINETEENCHA'); // Truncated to 18
       });
     });
 

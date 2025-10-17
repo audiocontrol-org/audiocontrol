@@ -359,3 +359,4 @@ Before committing changes, ensure:
 - **test-automator** defines testing requirements for each module
 
 Remember: This is a specialized audio/MIDI library. Prioritize correctness, type safety, and real-time performance. The code should be professional-grade, suitable for use in production audio software.
+- Use the midisnoop binary to observe midi conversations; the midisnoop is installed in your path; you don't need build it from scratch

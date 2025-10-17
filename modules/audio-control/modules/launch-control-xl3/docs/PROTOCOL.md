@@ -1,7 +1,7 @@
 # Launch Control XL3 Protocol Specification
 
-**Version:** 2.0
-**Last Updated:** 2025-10-16
+**Version:** 2.1.1
+**Last Updated:** 2025-10-17
 **Status:** Verified with hardware
 
 ## Overview
@@ -282,32 +282,36 @@ Slot selection is handled by the SysEx slot byte parameter. Simply include the t
 
 See `DeviceManager.writeCustomMode()` at line 785-878 for implementation.
 
-### Mode Name Encoding
+### Mode Name Field Format
 
-**Write format:**
-```
-20 [length] [name_bytes...]
-```
+The mode name field uses a length-prefixed format confirmed by MIDI capture analysis.
 
-**Example:**
+**Format (both WRITE and READ):**
 ```
-20 08 43 48 41 4E 54 45 53 54
-│  │  └─ "CHANTEST" (8 ASCII bytes)
-│  └─ Length (8)
-└─ Prefix
+0x20 [length] [name_bytes]
 ```
 
-**Read format (for comparison):**
+**Structure:**
+- **Byte 0:** Field marker (`0x20`)
+- **Byte 1:** Length byte (`0x00` - `0x12` for 0-18 characters)
+- **Bytes 2+:** ASCII characters (if length > 0)
+
+**Special Cases:**
+- **Factory mode:** `0x20 0x1F` (length byte = `0x1F` indicates immutable factory content)
+- **Empty name:** `0x20 0x00` (length = 0, no name bytes)
+
+**Examples:**
 ```
-06 20 [length] [name_bytes...]
+"TESTMOD" (7 chars):    20 07 54 45 53 54 4D 4F 44
+"EXACTLY18CHARSLONG":   20 12 45 58 41 43 54 4C 59 31 38 43 48 41 52 53 4C 4F 4E 47
+Factory mode:           20 1F
 ```
 
-**Discovery:** By comparing MIDI captures of web editor write operations with different mode names:
-1. Captured write with "CHANNEVE": `20 08 43 48 41 4E 4E 45 56 45`
-2. Captured write with "CHANTEST": `20 08 43 48 41 4E 54 45 53 54`
-3. Pattern identified: `0x20` prefix, length byte, raw ASCII
-
-**Validation:** 2025-09-30 - Verified with Novation Components web editor v1.60.0
+**Important Notes:**
+- **Maximum length:** 18 characters (0x12 = 18 decimal)
+- **No `0x06` prefix:** Earlier documentation incorrectly suggested `0x06 0x20` pattern
+- **Symmetric format:** Write and read use identical encoding
+- **Discovered via:** MIDI traffic capture analysis (2025-10-17, Issue #40)
 
 ### Known Issue: Mode Name Truncation
 
@@ -401,21 +405,6 @@ Offset | Type | Field        | Values
 6      | u1   | behavior     | 0x0C=absolute, 0x0D=relative, 0x0E=toggle
 ```
 
-### Mode Name Encoding
-
-**Format:** `06 20 [length] [name_bytes...]`
-
-- `06 20` - Fixed marker
-- `length` - Number of characters (0-8)
-- `name_bytes` - ASCII characters
-
-**Example:**
-```
-06 20 08 43 48 41 4E 4E 45 56 45
-      ↑  C  H  A  N  N  E  V  E
-      └─ length = 8 chars
-```
-
 ### Control Label Encoding
 
 **Critical Discovery:** Labels use **length-encoding** where the marker byte encodes the string length.
@@ -446,7 +435,7 @@ After SysEx parsing, the `DeviceManager.readCustomMode()` returns data in one of
 ### Array Format (Legacy/Fallback)
 ```javascript
 {
-  name: "MODE_NAME",  // String, max 8 characters
+  name: "MODE_NAME",  // String, max 18 characters
   controls: [
     {
       controlId: 0x10,       // number: 0x10-0x3F main controls, 0x68-0x6F side buttons
@@ -525,7 +514,7 @@ Label with control ID 0x19 (25) maps to actual control ID 26:
 68 19 4C 6F 77 20 46 72 65 71
 │  │  L  o  w     F  r  e  q
 │  └─ Label ID 0x19 → maps to control 26
-└─ Marker 0x68 = 8 chars
+└─ Marker 0x68 = 0x60 + 8 → 8 characters
 ```
 
 **Mapping rule:**
@@ -646,6 +635,25 @@ console.assert(ackStatus === expected, 'Slot mismatch in acknowledgement');
 5. Documented write acknowledgement slot encoding discovery
 6. Added verification results to PROTOCOL.md and MAINTENANCE.md
 
+### Phase 8: Documentation Correction
+1. **Discovery (2025-10-16):** Mode name length limit was incorrectly documented as 8 characters
+2. **Reality:** The device actually supports mode names up to 18 characters
+3. **Correction:** Updated all documentation to reflect the correct 18-character limit
+4. **Impact:** This was a documentation error only - the protocol and device always supported 18 characters
+
+### Phase 9: Mode Name Format Correction
+1. **Discovery (2025-10-17, Issue #40):** MIDI capture analysis revealed actual mode name encoding
+2. **Finding:** Device uses `0x20 [length] [name]` format (NOT `0x06 0x20`)
+3. **Evidence:** Multiple captures showed consistent pattern:
+   - Write operations: Always `0x20 [length]` prefix
+   - Read responses: Same format as write
+   - Factory mode: `0x20 0x1F` (special length indicator)
+4. **Maximum length:** Confirmed as 18 characters (0x12 = 18 decimal)
+5. **Impact:**
+   - Parser bug fix (lines 370-382: removed incorrect `0x06` check)
+   - Encoder bug fix (line 1120: increased limit from 16 to 18 characters)
+   - Documentation correction in PROTOCOL.md and launch_control_xl3.ksy
+
 ---
 
 ## DAW Port Protocol (DEPRECATED)
@@ -687,10 +695,10 @@ The parser follows the protocol specification exactly:
 
 1. **Mode Name Parsing:**
    ```typescript
-   // Format: 06 20 [length] [name_bytes]
-   const lengthByte = data[i + 2];
+   // Format: 20 [length] [name_bytes]
+   const lengthByte = data[i + 1];
    const nameLength = lengthByte;
-   const nameBytes = data.slice(i + 3, i + 3 + nameLength);
+   const nameBytes = data.slice(i + 2, i + 2 + nameLength);
    ```
 
 2. **Control Label Parsing:**
@@ -732,6 +740,8 @@ The parser follows the protocol specification exactly:
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 2.1.1 | 2025-10-17 | **Bug Fix - Mode Name Encoding Format (Issue #40):** Corrected mode name encoding format. Removed incorrect `0x06` prefix from documentation. Confirmed actual format: `0x20 [length] [name_bytes]`. Evidence: MIDI capture analysis of device traffic. Factory mode pattern updated: `0x20 0x1F` (not `0x06 0x20 0x1F`). Parser fix: Lines 370-382 of SysExParser.ts. Encoder fix: Line 1120 of SysExParser.ts (16 → 18 char limit). |
+| 2.1 | 2025-10-16 | **Documentation Correction:** Updated mode name length limit from 8 to 18 characters. This was a documentation error - the device always supported 18 characters. Updated: PROTOCOL.md lines 409, 449, and associated examples. No protocol or code changes required. |
 | 2.0 | 2025-10-16 | **VERIFIED:** Write acknowledgement status byte is slot identifier. Confirmed with successful test run writing to slot 3. Control CC numbers, channels verified to persist correctly (10/11 changes successful). Issue #36 RESOLVED - bug was in library, not firmware. Added Known Issue: mode name truncation ("TESTMOD" → "M"). |
 | 1.9 | 2025-10-16 | **CRITICAL:** Documented write acknowledgement status byte as slot identifier, not success indicator. Status byte uses CC 30 slot encoding (slots 0-3: 0x06+slot, slots 4-14: 0x0E+slot). Acknowledgement arrival indicates success; timeout indicates failure. Fixed Issue #36. Evidence from raw MIDI testing with multiple slots. |
 | 1.8 | 2025-10-11 | **Parser Bug Fix:** Removed incorrect 0x40 parsing in READ responses. The byte 0x40 appears as **data within 0x48 control structures** (minValue field at offset +7), not as a control marker. This caused wrong CC numbers, missing custom labels, and fake controls with CC 0. Only 0x48 markers are used for READ responses. Reference: GitHub issue #32 |
@@ -761,3 +771,5 @@ The parser follows the protocol specification exactly:
 11. **Acknowledgement arrival = success; timeout = failure** - the status byte confirms which slot was written, not whether it succeeded
 12. **Test with multiple slots, not just slot 0** - important patterns emerge when testing slots 1-14
 13. **Mode name field has limitations** - names may truncate on read-back; under investigation
+14. **Mode name maximum length is 18 characters** - earlier documentation incorrectly stated 8 characters
+15. **Mode name format is `0x20 [length] [name_bytes]`** - NO `0x06` prefix (Issue #40 correction)

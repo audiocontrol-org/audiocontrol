@@ -18,6 +18,8 @@ doc: |
   Empirically discovered format through MIDI traffic analysis.
 
   Version History:
+  - v1.7 (2025-10-17): CRITICAL FIX - Corrected mode_name format to 0x20 prefix (NOT 0x06 0x20)
+  - v1.6 (2025-10-16): Corrected mode name length limit documentation from 8 to 18 characters
   - v1.5 (2025-10-11): Documented parser bug fix - 0x40 appears as data in minValue field, not as control marker
   - v1.4 (2025-10-09): Corrected to 2 pages (0x00, 0x03), not 3 pages. Updated to reflect working code.
   - v1.3 (2025-09-30): Documented read slot byte behavior for DAW port integration
@@ -74,24 +76,35 @@ types:
   mode_name:
     seq:
       - id: name_marker
-        contents: [0x06, 0x20]
+        contents: [0x20]
+        doc: Mode name field marker (NOT 0x06 0x20 as previously documented)
       - id: name_length
         type: u1
-        doc: Length of mode name (0-8 characters)
+        doc: |
+          Length of mode name (0-18 characters, 0x00-0x12).
+          Special value 0x1F (31) indicates factory/immutable mode.
       - id: name_bytes
         size: name_length
         type: str
         encoding: ASCII
-        if: name_length > 0
+        if: name_length > 0 and name_length != 0x1F
     doc: |
-      Mode name format (READ/response):
-        06 20 [length] [name_bytes]
+      Mode name field format: 0x20 [length] [name_bytes]
 
-      Mode name format (WRITE/request):
-        20 [length] [name_bytes]
+      Confirmed by MIDI capture analysis (2025-10-17, Issue #40):
+      - Device uses 0x20 prefix (NOT 0x06 0x20)
+      - Maximum length: 18 characters (0x12 = 18 decimal)
+      - Factory mode indicator: 0x20 0x1F (length = 0x1F)
+      - Write and read use identical format
 
-      Discovery: Web editor MIDI capture (2025-09-30)
-      Example: 20 08 43 48 41 4E 54 45 53 54 = "CHANTEST" (8 chars)
+      Examples:
+        "TESTMOD" (7 chars):    20 07 54 45 53 54 4D 4F 44
+        "EXACTLY18CHARSLONG":   20 12 45 58 41 43 54 4C 59 31 38 43 48 41 52 53 4C 4F 4E 47
+        Factory mode:           20 1F
+
+      Earlier versions incorrectly documented:
+      - 0x06 0x20 prefix pattern (does not exist in protocol)
+      - 8-character maximum (actual maximum is 18)
 
   control_definition:
     doc: |

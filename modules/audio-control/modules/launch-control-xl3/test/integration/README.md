@@ -98,13 +98,31 @@ These tests are executable TypeScript files that can be run directly with `tsx`.
 
 #### 1. Custom Mode Write and Verify (`custom-mode-write-verify.test.ts`)
 
-**Purpose:** Validates that CustomMode API changes are correctly written to the device and can be read back with all modifications preserved.
+**Purpose:** Validates that CustomMode API changes are correctly written to the device and can be read back with all modifications preserved. **Now includes 18-character mode name testing.**
 
 **What it tests:**
 - ✓ CustomMode read/write API
 - ✓ Device firmware accepts valid modifications
 - ✓ Data integrity through write/read cycle
 - ✓ Control property changes (CC, channel, name)
+- ✓ **18-character mode names** (protocol v2 validation)
+
+**Test Suites:**
+
+**Suite 1: Standard Property Changes**
+- Tests mode name changes (short names)
+- Tests control CC number modifications
+- Tests control MIDI channel changes
+- Tests control name changes
+- Typically validates 13-16 property changes
+
+**Suite 2: 18-Character Mode Names** (NEW)
+- Tests 17-character names (under limit)
+- Tests exactly 18-character names (at limit)
+- Tests 18-character names with mixed case
+- Tests 9-character names (over old 8-char limit)
+- Validates round-trip persistence
+- Character-by-character verification on mismatch
 
 **Test flow:**
 1. Read custom mode from slot 10 using library API
@@ -123,8 +141,17 @@ npx tsx test/integration/custom-mode-write-verify.test.ts
 ```
 
 **Expected results:**
-- All property changes should be preserved (name, CC numbers, channels)
-- Test saves detailed results to `/Users/orion/work/ol_dsp/modules/audio-control/tmp/custom-mode-write-verify-*.json`
+- **Suite 1:** All property changes should be preserved (name, CC numbers, channels)
+- **Suite 2:** All 18-character mode names should write and read back identically
+- Test saves detailed results to:
+  - `/Users/orion/work/ol_dsp/modules/audio-control/tmp/custom-mode-write-verify-standard-*.json`
+  - `/Users/orion/work/ol_dsp/modules/audio-control/tmp/custom-mode-write-verify-18char-*.json`
+
+**Test cases for 18-character names:**
+- `17CharacterMode1` - 17 characters (under limit)
+- `EXACTLY18CHARSLONG` - Exactly 18 characters (at limit)
+- `18CharModeName123` - 18 characters with mixed case
+- `ShortName` - 9 characters (over old 8-char limit)
 
 **Related issues:** #36
 
@@ -234,8 +261,10 @@ Each standalone test defines its own success criteria:
    - ✓ No data corruption in page 0 or page 3
 
 3. **custom-mode-write-verify.test.ts**
-   - ✓ All property modifications preserved (name, CC, channel)
-   - ✓ Typically 13-16 individual property changes verified
+   - ✓ Suite 1: All property modifications preserved (name, CC, channel)
+   - ✓ Suite 1: Typically 13-16 individual property changes verified
+   - ✓ Suite 2: All 4 test cases for 18-character names pass
+   - ✓ Suite 2: Names write and read back byte-for-byte identical
 
 #### Result Files
 
@@ -243,7 +272,8 @@ All standalone tests save detailed results to `/Users/orion/work/ol_dsp/modules/
 
 - `basic-read-operations-*.json` - Communication test results
 - `raw-midi-round-trip-*.json` - Byte-level comparison data
-- `custom-mode-write-verify-*.json` - Property verification details
+- `custom-mode-write-verify-standard-*.json` - Property verification details (Suite 1)
+- `custom-mode-write-verify-18char-*.json` - 18-character name test details (Suite 2)
 
 ---
 
@@ -287,11 +317,12 @@ Integration tests use a separate Vitest config:
 - **Property-level:** `custom-mode-write-verify.test.ts` validates structured data
 - **Communication:** `basic-read-operations.test.ts` validates protocol basics
 - **Slot selection:** `slot-selection.hardware.test.ts` validates pre-selection requirement
+- **18-char names:** `custom-mode-write-verify.test.ts` Suite 2 validates protocol v2 extended names
 
 ### Custom Mode Properties Validated
 
 The tests verify these CustomMode properties:
-- `name` (8 characters max)
+- `name` (18 characters max - protocol v2)
 - `controls` object with 48 control mappings
 - Control properties: `ccNumber`, `midiChannel`, `name`
 - Label parsing and encoding
@@ -363,6 +394,14 @@ Error: Device returned status 0x9 (slot not selected)
 
 - Load a factory preset into slot 10 using Components
 - Or use a different source slot by editing the test file
+
+#### 18-Character Mode Name Test Failures
+
+If Suite 2 tests fail:
+- Check that you're using the latest protocol version (v2)
+- Verify device firmware supports 18-character names
+- Check result JSON for character-by-character comparison
+- Ensure no truncation at 8 characters (old limit)
 
 #### Test timeouts
 
@@ -481,7 +520,9 @@ Total suite: ~30-60s
 
 - Basic read operations: ~5-10s
 - Raw MIDI round-trip: ~10-15s
-- Custom mode write/verify: ~15-20s
+- Custom mode write/verify (both suites): ~25-35s
+  - Suite 1 (standard): ~10-15s
+  - Suite 2 (18-char names): ~15-20s (4 test cases)
 
 ---
 

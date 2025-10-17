@@ -350,10 +350,14 @@ export class SysExParser {
 
   /**
    * Phase 1 Fix: Enhanced name parsing with factory fallback handling
-   * Handles both custom names and factory format fallbacks (06 20 1F pattern)
+   * Handles both custom names and factory format fallbacks (0x20 0x1F pattern)
    *
    * BUGFIX (2025-10-11): Stop reading at marker byte boundaries (0x48, 0x49, 0x60, 0x69, 0xF7)
    * to prevent including control/label/color markers in mode name.
+   *
+   * BUGFIX (Issue #40): Fixed parser pattern to match actual device format:
+   * - Changed from 0x06 0x20 to just 0x20 (confirmed by MIDI capture analysis)
+   * - Adjusted nameStart offset from i+3 to i+2 to account for removed byte
    */
   private static parseName(data: number[]): string | undefined {
     let nameStart = -1;
@@ -367,17 +371,17 @@ export class SysExParser {
         // No explicit length, will read until terminator
         break;
       }
-      // Format 2: 0x06 0x20 [length] [name bytes] - read response format
-      if (data[i] === 0x06 && data[i + 1] === 0x20) {
-        const lengthByte = data[i + 2];
-        // Check for factory pattern: 06 20 1F (indicates factory data)
+      // Format 2: 0x20 [length] [name bytes] - actual device format
+      if (data[i] === 0x20) {
+        const lengthByte = data[i + 1];
+        // Check for factory pattern: 0x20 0x1F (indicates factory data)
         if (lengthByte === 0x1F) {
           // This is factory data, use slot-based fallback name
           return undefined; // Let caller use default slot name
         }
         // Use the length byte to know exactly how many characters to read
         nameLength = lengthByte ?? 0;
-        nameStart = i + 3;
+        nameStart = i + 2;  // FIXED: was i + 3
         break;
       }
       // Format 3: Direct ASCII after control sections - fallback
@@ -1110,14 +1114,14 @@ export class SysExParser {
 
   /**
    * Encode a name string with the correct Launch Control XL3 prefix
-   * Phase 2 implementation: Uses 0x01 0x20 0x10 0x2A prefix as per web editor analysis
+   * Uses 0x20 [length] [name_bytes] format as confirmed by MIDI capture analysis
    *
-   * @param name - Name string to encode (max 16 chars based on web editor "New Custom Mode")
+   * @param name - Name string to encode (max 18 chars per PROTOCOL.md v2.1)
    * @returns Encoded name bytes with prefix
    */
   private static encodeName(name: string): number[] {
-    // Truncate to 16 characters and convert to bytes
-    const nameBytes = Array.from(name.substring(0, 16)).map(c => c.charCodeAt(0));
+    // Truncate to 18 characters and convert to bytes (FIXED: was 16)
+    const nameBytes = Array.from(name.substring(0, 18)).map(c => c.charCodeAt(0));
 
     // Web editor format: 0x20 [length] [name_bytes]
     return [

@@ -41,11 +41,11 @@ export class CustomModeBuilder {
   };
 
   /**
-   * Set the custom mode name (max 8 characters)
+   * Set the custom mode name (max 18 characters)
    */
   name(name: string): this {
-    if (name.length > 8) {
-      throw new Error('Mode name must be 8 characters or less');
+    if (name.length > 18) {
+      throw new Error('Mode name must be 18 characters or less');
     }
     this.modeName = name;
     return this;
