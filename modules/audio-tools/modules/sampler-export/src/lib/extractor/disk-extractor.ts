@@ -220,14 +220,34 @@ export async function extractAkaiDisk(
                 return result;
             }
 
-            // Extract all files from the disk
+            // Extract all files from all partitions
+            const partitions = diskResult.data.partitions;
             if (!quiet) {
-                console.log("Extracting files from disk...");
+                console.log(`Extracting files from ${partitions.length} partition(s)...`);
             }
-            const extractResult = await akaitools.akaiRead("/", rawDir, undefined, true);
 
-            if (extractResult.errors.length > 0) {
-                result.errors.push(...extractResult.errors.map((e) => e.message));
+            for (let i = 0; i < partitions.length; i++) {
+                const partitionNum = i + 1; // Partitions are 1-indexed
+                const partition = partitions[i];
+
+                // Create partition-specific subdirectory if more than one partition
+                const partitionDir = partitions.length > 1
+                    ? join(rawDir, `partition_${String(partitionNum).padStart(3, '0')}`)
+                    : rawDir;
+
+                if (partitions.length > 1) {
+                    mkdirSync(partitionDir, { recursive: true });
+                }
+
+                if (!quiet && partitions.length > 1) {
+                    console.log(`  Partition ${partitionNum}: ${partition.volumes.length} volume(s)`);
+                }
+
+                const extractResult = await akaitools.akaiRead("/", partitionDir, partitionNum, true);
+
+                if (extractResult.errors.length > 0) {
+                    result.errors.push(...extractResult.errors.map((e) => e.message));
+                }
             }
         }
 

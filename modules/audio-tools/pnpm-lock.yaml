@@ -220,6 +220,9 @@ importers:
       '@oletizi/sampler-lib':
         specifier: ^1.0.11
         version: 1.0.11
+      pathe:
+        specifier: ^2.0.3
+        version: 2.0.3
     devDependencies:
       '@tsconfig/recommended':
         specifier: ^1.0.8
