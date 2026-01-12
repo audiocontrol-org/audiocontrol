@@ -108,17 +108,20 @@ export async function parseA3P(filepath: string): Promise<S3KProgramData> {
     const data = await readAkaiData(filepath);
 
     const program = {} as ProgramHeader;
-    parseProgramHeader(data, 0, program);
+    // Offset 1 skips the file type byte at position 0
+    parseProgramHeader(data, 1, program);
 
     // Program name is already converted to string by parser
     const programName = program.PRNAME;
     const numKeygroups = program.GROUPS;
 
     const keygroups: S3KKeygroupData[] = [];
+    // Keygroups start at byte 192 (0xc0), matching CHUNK_LENGTH in readAkaiProgram
     let offset = 0xc0;
 
     for (let i = 0; i < numKeygroups; i++) {
-        if (offset + 0xc2 > data.length) {
+        // Check if enough nibbles remain (offset and size are in bytes, data.length is in nibbles)
+        if ((offset + 0xc2) * 2 > data.length) {
             break;
         }
 
@@ -186,7 +189,8 @@ export function findSampleFile(
     wavDir: string,
     baseName: string
 ): string | null {
-    const safeName = sampleName.toLowerCase().replace(/\s+/g, "_");
+    // Trim whitespace, convert to lowercase, replace internal spaces with underscores
+    const safeName = sampleName.trim().toLowerCase().replace(/\s+/g, "_");
     let wavFile = `${safeName}.wav`;
 
     // Check if file exists as-is

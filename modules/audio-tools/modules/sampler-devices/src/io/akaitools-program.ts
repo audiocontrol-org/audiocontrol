@@ -127,6 +127,6 @@ export async function akai2Wav(c: AkaiToolsConfig, sourcePath: string): Promise<
     process.env['PERL5LIB'] = c.akaiToolsPath;
     return doSpawn(
         path.join(c.akaiToolsPath, 'akai2wav'),
-        [`"${sourcePath}"`]
+        [sourcePath]
     );
 }
