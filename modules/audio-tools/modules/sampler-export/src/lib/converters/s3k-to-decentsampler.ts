@@ -8,9 +8,9 @@
  */
 
 import { writeFileSync } from "fs";
-import { basename, join, relative, extname } from "pathe";
+import { basename, join, relative, extname, dirname } from "pathe";
 import { create } from "xmlbuilder2";
-import { parseA3P, findSampleFile } from "@/lib/converters/s3k-to-sfz.js";
+import { parseA3P, findSampleFile, getSamplePitch } from "@/lib/converters/s3k-to-sfz.js";
 import type { S3KProgramData } from "@/lib/converters/s3k-to-sfz.js";
 
 /**
@@ -22,8 +22,8 @@ import type { S3KProgramData } from "@/lib/converters/s3k-to-sfz.js";
  * @param program - Parsed S3K program data
  * @param outputDir - Output directory for dspreset file
  * @param wavDir - Directory containing WAV samples
- * @param sourcePath - Path to source .a3p file
- * @returns XML string with pretty formatting
+ * @param sourcePath - Path to source .a3p file (also used to find raw .a3s files)
+ * @returns Promise resolving to XML string with pretty formatting
  *
  * @remarks
  * DecentSampler XML structure:
@@ -47,13 +47,14 @@ import type { S3KProgramData } from "@/lib/converters/s3k-to-sfz.js";
  *
  * @internal
  */
-function createDecentSamplerXML(
+async function createDecentSamplerXML(
     program: S3KProgramData,
     outputDir: string,
     wavDir: string,
     sourcePath: string
-): string {
+): Promise<string> {
     const baseName = basename(sourcePath, extname(sourcePath));
+    const rawDir = dirname(sourcePath);
 
     // Build XML structure
     const root = create({ version: "1.0" }).ele("DecentSampler", {
@@ -104,16 +105,23 @@ function createDecentSamplerXML(
             [lovel, hivel] = [hivel, lovel];
         }
 
+        // Convert pan offset from unsigned byte to signed (-50 to +50)
+        // Values >= 128 are negative (e.g., 206 = -50)
+        let panOffset = kg.panOffset;
+        if (panOffset > 127) {
+            panOffset = panOffset - 256;
+        }
         // Calculate pan (-100 to 100 for DecentSampler)
-        const panOffset = kg.panOffset;
         const pan = Math.max(-100, Math.min(100, Math.round((panOffset / 50.0) * 100)));
 
-        // Calculate pitch/root note
-        let pitch = Math.max(0, Math.min(127, kg.pitch));
-        // If pitch is 0, use a sensible default (middle of key range)
-        if (pitch === 0) {
-            pitch = Math.floor((lokey + hikey) / 2);
+        // Get pitch_keycenter from sample's original pitch (SPITCH)
+        // Fall back to center of key range if sample header unavailable
+        let pitch = await getSamplePitch(kg.sampleName, rawDir);
+        if (pitch === null) {
+            // Default to middle of key range as fallback
+            pitch = Math.round((lokey + hikey) / 2);
         }
+        pitch = Math.max(0, Math.min(127, pitch));
 
         // Calculate tuning in semitones (kg.tune is already in semitones from Akai format)
         const tuneSemitones = kg.tune;
@@ -176,15 +184,15 @@ function createDecentSamplerXML(
  * @param program - Parsed S3K program data
  * @param outputDir - Output directory for dspreset file
  * @param wavDir - Directory containing WAV samples
- * @param sourcePath - Path to source .a3p file
- * @returns Path to created dspreset file
+ * @param sourcePath - Path to source .a3p file (also used to find raw .a3s files)
+ * @returns Promise resolving to path of created dspreset file
  *
  * @throws Error if unable to write file
  *
  * @example
  * ```typescript
  * const program = await parseA3P('/path/to/program.a3p');
- * const dsPath = createDecentSampler(
+ * const dsPath = await createDecentSampler(
  *   program,
  *   '/output/decentsampler',
  *   '/output/wav',
@@ -195,16 +203,16 @@ function createDecentSamplerXML(
  *
  * @public
  */
-export function createDecentSampler(
+export async function createDecentSampler(
     program: S3KProgramData,
     outputDir: string,
     wavDir: string,
     sourcePath: string
-): string {
+): Promise<string> {
     const baseName = basename(sourcePath, extname(sourcePath));
     const dspresetPath = join(outputDir, `${baseName}.dspreset`);
 
-    const xml = createDecentSamplerXML(program, outputDir, wavDir, sourcePath);
+    const xml = await createDecentSamplerXML(program, outputDir, wavDir, sourcePath);
     writeFileSync(dspresetPath, xml);
 
     return dspresetPath;

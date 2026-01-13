@@ -84,4 +84,8 @@ backup:
 export:
 	$(BIN_DIR)/akai-export batch --source $(INSTALL_DIR)/backup --dest $(INSTALL_DIR)/export
 
+## export-force: Force re-export of all disks (regenerates SFZ/DecentSampler files)
+export-force:
+	$(BIN_DIR)/akai-export batch --source $(INSTALL_DIR)/backup --dest $(INSTALL_DIR)/export --force
+
 all: build

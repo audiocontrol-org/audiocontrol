@@ -8,13 +8,15 @@
  */
 
 import { readFileSync, writeFileSync, existsSync } from "fs";
-import { basename, join, relative, extname } from "pathe";
+import { basename, join, relative, extname, dirname } from "pathe";
 import { glob } from "glob";
 import {
     parseProgramHeader,
     parseKeygroupHeader,
+    parseSampleHeader,
     ProgramHeader,
     KeygroupHeader,
+    SampleHeader,
     readAkaiData,
 } from "@oletizi/sampler-devices/s3k";
 
@@ -48,8 +50,8 @@ export interface S3KKeygroupData {
     /** Pan offset (-50 to +50) */
     panOffset: number;
 
-    /** Root pitch/note number */
-    pitch: number;
+    /** Velocity zone tuning offset (-50.00 to +50.00) - NOT root pitch */
+    zoneTuneOffset: number;
 }
 
 /**
@@ -120,8 +122,10 @@ export async function parseA3P(filepath: string): Promise<S3KProgramData> {
     let offset = 0xc0;
 
     for (let i = 0; i < numKeygroups; i++) {
-        // Check if enough nibbles remain (offset and size are in bytes, data.length is in nibbles)
-        if ((offset + 0xc2) * 2 > data.length) {
+        // Check if enough data remains for essential keygroup fields (sample name, key range, etc.)
+        // Essential fields are within first ~160 bytes (0xA0), full keygroup is 194 bytes (0xC2)
+        const minKeygroupSize = 0xa0;
+        if ((offset + minKeygroupSize) * 2 > data.length) {
             break;
         }
 
@@ -141,10 +145,11 @@ export async function parseA3P(filepath: string): Promise<S3KProgramData> {
             highVel: keygroup.HIVEL1,
             volOffset: keygroup.VLOUD1,
             panOffset: keygroup.VPANO1,
-            pitch: keygroup.VTUNO1,
+            zoneTuneOffset: keygroup.VTUNO1 / 256.0,
         });
 
-        offset += 0xc2;
+        // Keygroups are CHUNK_LENGTH (192 bytes = 0xC0) apart, same as program header size
+        offset += 0xc0;
     }
 
     return {
@@ -217,6 +222,55 @@ export function findSampleFile(
 }
 
 /**
+ * Get sample's original pitch (root note) from .a3s file
+ *
+ * Reads the sample header to extract SPITCH - the original recorded pitch.
+ * This is used for pitch_keycenter in SFZ output.
+ *
+ * @param sampleName - Sample name from keygroup
+ * @param rawDir - Directory containing raw .a3s files
+ * @returns MIDI note number (21-127), or null if sample not found
+ *
+ * @remarks
+ * SPITCH range: 21 (A1) to 127 (G8)
+ * Returns null if sample file cannot be read or doesn't exist.
+ *
+ * @example
+ * ```typescript
+ * const pitch = await getSamplePitch('OBXA4', '/path/to/raw');
+ * // Returns 60 for a sample recorded at C3
+ * ```
+ *
+ * @public
+ */
+export async function getSamplePitch(
+    sampleName: string,
+    rawDir: string
+): Promise<number | null> {
+    // Trim whitespace, convert to lowercase, replace internal spaces with underscores
+    const safeName = sampleName.trim().toLowerCase().replace(/\s+/g, "_");
+
+    // Try to find the .a3s sample file
+    const sampleFile = `${safeName}.a3s`;
+    const samplePath = join(rawDir, sampleFile);
+
+    if (!existsSync(samplePath)) {
+        return null;
+    }
+
+    try {
+        const data = await readAkaiData(samplePath);
+        const sample = {} as SampleHeader;
+        // Sample files (.a3s) start directly with sample header at offset 0
+        // (unlike program files which have a file type byte at position 0)
+        parseSampleHeader(data, 0, sample);
+        return sample.SPITCH;
+    } catch {
+        return null;
+    }
+}
+
+/**
  * Create SFZ file from program data
  *
  * Generates SFZ instrument definition from parsed S3K program data.
@@ -226,8 +280,8 @@ export function findSampleFile(
  * @param program - Parsed program data
  * @param outputDir - Output directory for SFZ file
  * @param wavDir - Directory containing WAV samples
- * @param sourcePath - Path to source .a3p file
- * @returns Path to created SFZ file
+ * @param sourcePath - Path to source .a3p file (also used to find raw .a3s files)
+ * @returns Promise resolving to path of created SFZ file
  *
  * @throws Error if unable to write SFZ file
  *
@@ -235,7 +289,7 @@ export function findSampleFile(
  * SFZ features generated:
  * - Region key ranges (lokey/hikey)
  * - Velocity layers (lovel/hivel)
- * - Pitch center (pitch_keycenter)
+ * - Pitch center (pitch_keycenter from sample's SPITCH)
  * - Fine tuning (tune in cents)
  * - Volume (volume in dB)
  * - Pan (pan -100 to +100)
@@ -248,7 +302,7 @@ export function findSampleFile(
  * @example
  * ```typescript
  * const program = await parseA3P('/path/to/program.a3p');
- * const sfzPath = createSFZ(
+ * const sfzPath = await createSFZ(
  *   program,
  *   '/output/sfz',
  *   '/output/wav',
@@ -259,14 +313,15 @@ export function findSampleFile(
  *
  * @public
  */
-export function createSFZ(
+export async function createSFZ(
     program: S3KProgramData,
     outputDir: string,
     wavDir: string,
     sourcePath: string
-): string {
+): Promise<string> {
     const baseName = basename(sourcePath, extname(sourcePath));
     const sfzPath = join(outputDir, `${baseName}.sfz`);
+    const rawDir = dirname(sourcePath);
 
     const lines: string[] = [];
     lines.push(`// ${program.name}`);
@@ -309,15 +364,17 @@ export function createSFZ(
             [lovel, hivel] = [hivel, lovel];
         }
 
-        // Clamp pan to valid SFZ range (-100 to 100)
-        const panOffset = kg.panOffset;
+        // Convert pan offset from unsigned byte to signed (-50 to +50)
+        // Values >= 128 are negative (e.g., 206 = -50)
+        let panOffset = kg.panOffset;
+        if (panOffset > 127) {
+            panOffset = panOffset - 256;
+        }
+        // Convert to SFZ range (-100 to 100)
         const panPercent = Math.max(
             -100.0,
             Math.min(100.0, (panOffset / 50.0) * 100)
         );
-
-        // Clamp pitch to valid MIDI range
-        const pitch = Math.max(0, Math.min(127, kg.pitch));
 
         // Find sample file
         const wavFile = findSampleFile(kg.sampleName, wavDir, baseName);
@@ -325,6 +382,15 @@ export function createSFZ(
             console.warn(`Sample not found: ${kg.sampleName}`);
             continue;
         }
+
+        // Get pitch_keycenter from sample's original pitch (SPITCH)
+        // Fall back to center of key range if sample header unavailable
+        let pitch = await getSamplePitch(kg.sampleName, rawDir);
+        if (pitch === null) {
+            // Default to middle of key range as fallback
+            pitch = Math.round((lokey + hikey) / 2);
+        }
+        pitch = Math.max(0, Math.min(127, pitch));
 
         // Create relative path from output_dir to wav_dir
         const relPath = relative(outputDir, join(wavDir, wavFile));
