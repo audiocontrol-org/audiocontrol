@@ -5,7 +5,7 @@
 import { useCallback, useEffect } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/s330Store';
-import { createS330Client, S330_DATA_TYPES } from '@/core/midi/S330Client';
+import { createS330Client } from '@/core/midi/S330Client';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
 import { cn } from '@/lib/utils';
@@ -13,12 +13,14 @@ import { cn } from '@/lib/utils';
 export function TonesPage() {
   const { adapter, deviceId, status } = useMidiStore();
   const {
+    toneNames,
     tones,
     selectedToneIndex,
     isLoading,
     loadingMessage,
     error,
-    setTones,
+    setToneNames,
+    setToneData,
     selectTone,
     setLoading,
     setError,
@@ -26,39 +28,72 @@ export function TonesPage() {
 
   const isConnected = status === 'connected' && adapter !== null;
 
-  const fetchTones = useCallback(async () => {
+  // Fetch all tone names (lightweight scan)
+  const fetchToneNames = useCallback(async () => {
     if (!adapter) {
       setError('Not connected to device');
       return;
     }
 
     try {
-      setLoading(true, 'Fetching tones from S-330...');
+      setLoading(true, 'Scanning tones from S-330...');
       setError(null);
 
       const client = createS330Client(adapter, { deviceId });
       await client.connect();
 
-      const packets = await client.requestBulkDump(S330_DATA_TYPES.TONE_1_32);
-      const parsedTones = client.parseTones(packets);
-
-      setTones(parsedTones);
+      const names = await client.requestAllToneNames();
+      setToneNames(names);
       setLoading(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch tones';
       setError(message);
       setLoading(false);
     }
-  }, [adapter, deviceId, setTones, setLoading, setError]);
+  }, [adapter, deviceId, setToneNames, setLoading, setError]);
 
-  // Auto-fetch when connected and no tones loaded
-  useEffect(() => {
-    if (isConnected && tones.length === 0 && !isLoading) {
-      fetchTones();
+  // Fetch full data for selected tone
+  const fetchSelectedToneData = useCallback(async (index: number) => {
+    if (!adapter) return;
+
+    // Skip if we already have the data
+    if (tones.has(index)) return;
+
+    try {
+      setLoading(true, `Loading tone ${index}...`);
+
+      const client = createS330Client(adapter, { deviceId });
+      await client.connect();
+
+      const toneData = await client.requestToneData(index);
+      if (toneData) {
+        setToneData(index, toneData);
+      }
+      setLoading(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch tone data';
+      setError(message);
+      setLoading(false);
     }
-  }, [isConnected, tones.length, isLoading, fetchTones]);
+  }, [adapter, deviceId, tones, setToneData, setLoading, setError]);
 
-  const selectedTone = selectedToneIndex !== null ? tones[selectedToneIndex] : null;
+  // Auto-fetch tone names when connected
+  useEffect(() => {
+    if (isConnected && toneNames.length === 0 && !isLoading) {
+      fetchToneNames();
+    }
+  }, [isConnected, toneNames.length, isLoading, fetchToneNames]);
+
+  // Fetch full data when a tone is selected
+  useEffect(() => {
+    if (selectedToneIndex !== null && isConnected) {
+      fetchSelectedToneData(selectedToneIndex);
+    }
+  }, [selectedToneIndex, isConnected, fetchSelectedToneData]);
+
+  // Filter to only show non-empty tones
+  const nonEmptyTones = toneNames.filter((t) => !t.isEmpty);
+  const selectedTone = selectedToneIndex !== null ? tones.get(selectedToneIndex) : null;
 
   if (!isConnected) {
     return (
@@ -81,7 +116,7 @@ export function TonesPage() {
         <h2 className="text-xl font-bold text-s330-text">Tones</h2>
         <div className="flex gap-2">
           <button
-            onClick={fetchTones}
+            onClick={fetchToneNames}
             disabled={isLoading}
             className={cn('btn btn-secondary', isLoading && 'opacity-50')}
           >
@@ -106,11 +141,11 @@ export function TonesPage() {
       )}
 
       {/* Content */}
-      {!isLoading && tones.length > 0 && (
+      {!isLoading && nonEmptyTones.length > 0 && (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-1">
             <ToneList
-              tones={tones}
+              toneNames={nonEmptyTones}
               selectedIndex={selectedToneIndex}
               onSelect={selectTone}
             />
@@ -118,6 +153,11 @@ export function TonesPage() {
           <div className="lg:col-span-2">
             {selectedTone ? (
               <ToneEditor tone={selectedTone} index={selectedToneIndex!} />
+            ) : selectedToneIndex !== null ? (
+              <div className="card text-center py-12 text-s330-muted">
+                <div className="animate-spin w-6 h-6 border-2 border-s330-highlight border-t-transparent rounded-full mx-auto mb-2" />
+                Loading tone data...
+              </div>
             ) : (
               <div className="card text-center py-12 text-s330-muted">
                 Select a tone to edit
@@ -128,12 +168,19 @@ export function TonesPage() {
       )}
 
       {/* Empty State */}
-      {!isLoading && tones.length === 0 && !error && (
+      {!isLoading && toneNames.length === 0 && !error && (
         <div className="card text-center py-12">
           <p className="text-s330-muted mb-4">No tones loaded</p>
-          <button onClick={fetchTones} className="btn btn-primary">
-            Fetch Tones
+          <button onClick={fetchToneNames} className="btn btn-primary">
+            Scan Tones
           </button>
+        </div>
+      )}
+
+      {/* No tones found */}
+      {!isLoading && toneNames.length > 0 && nonEmptyTones.length === 0 && (
+        <div className="card text-center py-12">
+          <p className="text-s330-muted">No tones found on device</p>
         </div>
       )}
     </div>

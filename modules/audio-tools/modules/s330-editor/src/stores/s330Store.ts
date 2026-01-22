@@ -1,27 +1,52 @@
 /**
  * Zustand store for S-330 device data
+ *
+ * Uses a two-tier approach:
+ * - Name lists for quick browsing (fetched with requestAllPatchNames/requestAllToneNames)
+ * - Full data fetched on demand when a patch/tone is selected
  */
 
 import { create } from 'zustand';
-import type { S330Patch, S330Tone } from '@/core/midi/S330Client';
+import type {
+  S330Patch,
+  S330Tone,
+  PatchNameInfo,
+  ToneNameInfo,
+} from '@/core/midi/S330Client';
 
 interface S330State {
-  patches: S330Patch[];
-  tones: S330Tone[];
+  // Name lists for browsing (lightweight)
+  patchNames: PatchNameInfo[];
+  toneNames: ToneNameInfo[];
+
+  // Full data (fetched on demand)
+  patches: Map<number, S330Patch>;
+  tones: Map<number, S330Tone>;
+
+  // Selection state
   selectedPatchIndex: number | null;
   selectedToneIndex: number | null;
+
+  // UI state
   isLoading: boolean;
   loadingMessage: string | null;
   error: string | null;
 }
 
 interface S330Actions {
-  setPatches: (patches: S330Patch[]) => void;
-  setTones: (tones: S330Tone[]) => void;
+  // Name list actions
+  setPatchNames: (names: PatchNameInfo[]) => void;
+  setToneNames: (names: ToneNameInfo[]) => void;
+
+  // Full data actions
+  setPatchData: (index: number, patch: S330Patch) => void;
+  setToneData: (index: number, tone: S330Tone) => void;
+
+  // Selection
   selectPatch: (index: number | null) => void;
   selectTone: (index: number | null) => void;
-  updatePatch: (index: number, patch: S330Patch) => void;
-  updateTone: (index: number, tone: S330Tone) => void;
+
+  // UI state
   setLoading: (isLoading: boolean, message?: string | null) => void;
   setError: (error: string | null) => void;
   clear: () => void;
@@ -31,31 +56,37 @@ type S330Store = S330State & S330Actions;
 
 export const useS330Store = create<S330Store>((set) => ({
   // Initial state
-  patches: [],
-  tones: [],
+  patchNames: [],
+  toneNames: [],
+  patches: new Map(),
+  tones: new Map(),
   selectedPatchIndex: null,
   selectedToneIndex: null,
   isLoading: false,
   loadingMessage: null,
   error: null,
 
-  setPatches: (patches) => set({ patches }),
+  setPatchNames: (names) => set({ patchNames: names }),
 
-  setTones: (tones) => set({ tones }),
+  setToneNames: (names) => set({ toneNames: names }),
+
+  setPatchData: (index, patch) =>
+    set((state) => {
+      const newPatches = new Map(state.patches);
+      newPatches.set(index, patch);
+      return { patches: newPatches };
+    }),
+
+  setToneData: (index, tone) =>
+    set((state) => {
+      const newTones = new Map(state.tones);
+      newTones.set(index, tone);
+      return { tones: newTones };
+    }),
 
   selectPatch: (index) => set({ selectedPatchIndex: index }),
 
   selectTone: (index) => set({ selectedToneIndex: index }),
-
-  updatePatch: (index, patch) =>
-    set((state) => ({
-      patches: state.patches.map((p, i) => (i === index ? patch : p)),
-    })),
-
-  updateTone: (index, tone) =>
-    set((state) => ({
-      tones: state.tones.map((t, i) => (i === index ? tone : t)),
-    })),
 
   setLoading: (isLoading, message = null) =>
     set({ isLoading, loadingMessage: message }),
@@ -64,8 +95,10 @@ export const useS330Store = create<S330Store>((set) => ({
 
   clear: () =>
     set({
-      patches: [],
-      tones: [],
+      patchNames: [],
+      toneNames: [],
+      patches: new Map(),
+      tones: new Map(),
       selectedPatchIndex: null,
       selectedToneIndex: null,
       error: null,

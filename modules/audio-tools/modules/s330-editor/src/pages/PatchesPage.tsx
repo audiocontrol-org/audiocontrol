@@ -5,7 +5,7 @@
 import { useCallback, useEffect } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/s330Store';
-import { createS330Client, S330_DATA_TYPES } from '@/core/midi/S330Client';
+import { createS330Client } from '@/core/midi/S330Client';
 import { PatchList } from '@/components/patches/PatchList';
 import { PatchEditor } from '@/components/patches/PatchEditor';
 import { cn } from '@/lib/utils';
@@ -13,12 +13,14 @@ import { cn } from '@/lib/utils';
 export function PatchesPage() {
   const { adapter, deviceId, status } = useMidiStore();
   const {
+    patchNames,
     patches,
     selectedPatchIndex,
     isLoading,
     loadingMessage,
     error,
-    setPatches,
+    setPatchNames,
+    setPatchData,
     selectPatch,
     setLoading,
     setError,
@@ -26,39 +28,73 @@ export function PatchesPage() {
 
   const isConnected = status === 'connected' && adapter !== null;
 
-  const fetchPatches = useCallback(async () => {
+  // Fetch all patch names (lightweight scan)
+  const fetchPatchNames = useCallback(async () => {
     if (!adapter) {
       setError('Not connected to device');
       return;
     }
 
     try {
-      setLoading(true, 'Fetching patches from S-330...');
+      setLoading(true, 'Scanning patches from S-330...');
       setError(null);
 
       const client = createS330Client(adapter, { deviceId });
       await client.connect();
 
-      const packets = await client.requestBulkDump(S330_DATA_TYPES.PATCH_1_32);
-      const parsedPatches = client.parsePatches(packets);
-
-      setPatches(parsedPatches);
+      const names = await client.requestAllPatchNames();
+      setPatchNames(names);
       setLoading(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch patches';
       setError(message);
       setLoading(false);
     }
-  }, [adapter, deviceId, setPatches, setLoading, setError]);
+  }, [adapter, deviceId, setPatchNames, setLoading, setError]);
 
-  // Auto-fetch when connected and no patches loaded
-  useEffect(() => {
-    if (isConnected && patches.length === 0 && !isLoading) {
-      fetchPatches();
+  // Fetch full data for selected patch
+  const fetchSelectedPatchData = useCallback(async (index: number) => {
+    if (!adapter) return;
+
+    // Skip if we already have the data
+    if (patches.has(index)) return;
+
+    try {
+      setLoading(true, `Loading patch ${index}...`);
+
+      const client = createS330Client(adapter, { deviceId });
+      await client.connect();
+
+      const patchData = await client.requestPatchData(index);
+      if (patchData) {
+        setPatchData(index, patchData);
+      }
+      setLoading(false);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to fetch patch data';
+      setError(message);
+      setLoading(false);
     }
-  }, [isConnected, patches.length, isLoading, fetchPatches]);
+  }, [adapter, deviceId, patches, setPatchData, setLoading, setError]);
 
-  const selectedPatch = selectedPatchIndex !== null ? patches[selectedPatchIndex] : null;
+  // Auto-fetch patch names when connected
+  useEffect(() => {
+    if (isConnected && patchNames.length === 0 && !isLoading) {
+      fetchPatchNames();
+    }
+  }, [isConnected, patchNames.length, isLoading, fetchPatchNames]);
+
+  // Fetch full data when a patch is selected
+  useEffect(() => {
+    if (selectedPatchIndex !== null && isConnected) {
+      fetchSelectedPatchData(selectedPatchIndex);
+    }
+  }, [selectedPatchIndex, isConnected, fetchSelectedPatchData]);
+
+  const selectedPatch = selectedPatchIndex !== null ? patches.get(selectedPatchIndex) : null;
+
+  // Filter to only show non-empty patches
+  const nonEmptyPatches = patchNames.filter((p) => !p.isEmpty);
 
   if (!isConnected) {
     return (
@@ -81,7 +117,7 @@ export function PatchesPage() {
         <h2 className="text-xl font-bold text-s330-text">Patches</h2>
         <div className="flex gap-2">
           <button
-            onClick={fetchPatches}
+            onClick={fetchPatchNames}
             disabled={isLoading}
             className={cn('btn btn-secondary', isLoading && 'opacity-50')}
           >
@@ -106,11 +142,11 @@ export function PatchesPage() {
       )}
 
       {/* Content */}
-      {!isLoading && patches.length > 0 && (
+      {!isLoading && nonEmptyPatches.length > 0 && (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-1">
             <PatchList
-              patches={patches}
+              patchNames={nonEmptyPatches}
               selectedIndex={selectedPatchIndex}
               onSelect={selectPatch}
             />
@@ -118,6 +154,11 @@ export function PatchesPage() {
           <div className="lg:col-span-2">
             {selectedPatch ? (
               <PatchEditor patch={selectedPatch} index={selectedPatchIndex!} />
+            ) : selectedPatchIndex !== null ? (
+              <div className="card text-center py-12 text-s330-muted">
+                <div className="animate-spin w-6 h-6 border-2 border-s330-highlight border-t-transparent rounded-full mx-auto mb-2" />
+                Loading patch data...
+              </div>
             ) : (
               <div className="card text-center py-12 text-s330-muted">
                 Select a patch to edit
@@ -128,12 +169,19 @@ export function PatchesPage() {
       )}
 
       {/* Empty State */}
-      {!isLoading && patches.length === 0 && !error && (
+      {!isLoading && patchNames.length === 0 && !error && (
         <div className="card text-center py-12">
           <p className="text-s330-muted mb-4">No patches loaded</p>
-          <button onClick={fetchPatches} className="btn btn-primary">
-            Fetch Patches
+          <button onClick={fetchPatchNames} className="btn btn-primary">
+            Scan Patches
           </button>
+        </div>
+      )}
+
+      {/* No patches found */}
+      {!isLoading && patchNames.length > 0 && nonEmptyPatches.length === 0 && (
+        <div className="card text-center py-12">
+          <p className="text-s330-muted">No patches found on device</p>
         </div>
       )}
     </div>
