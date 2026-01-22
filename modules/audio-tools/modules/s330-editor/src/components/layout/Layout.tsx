@@ -13,6 +13,7 @@ interface LayoutProps {
 
 const navItems = [
   { to: '/', label: 'Connect' },
+  { to: '/play', label: 'Play' },
   { to: '/patches', label: 'Patches' },
   { to: '/tones', label: 'Tones' },
   { to: '/sampling', label: 'Sampling' },

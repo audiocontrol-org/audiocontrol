@@ -11,6 +11,8 @@ export default defineConfig({
   },
   server: {
     port: 3330,
+    host: true,
+    allowedHosts: ['orion-m1'],
   },
   build: {
     outDir: 'dist',
