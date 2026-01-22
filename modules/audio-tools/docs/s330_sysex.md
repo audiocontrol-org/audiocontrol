@@ -344,6 +344,91 @@ Breakdown:
 - **Retry**: On timeout or ERR, wait 100ms then retry (max 3 attempts)
 - **Bulk transfer**: Maximum 256 bytes per DAT packet
 
+## Hardware Testing Findings
+
+Based on actual testing with S-330 hardware, the following protocol behaviors were confirmed:
+
+### RQ1/DT1 vs RQD/WSD Protocol
+
+**Important:** The S-330 does NOT respond to RQ1 (0x11) data request commands. Instead, it exclusively uses the handshake-based RQD/WSD protocol for data transfer.
+
+| Command | Hardware Response | Notes |
+|---------|------------------|-------|
+| RQ1 | No response | Not supported on S-330 |
+| DT1 | No response | Write-only, no ACK returned |
+| RQD | DAT, RJC, or ERR | Returns data or rejection |
+| WSD | ACK or RJC | Ready to receive or rejection |
+
+### RQD/WSD Data Types
+
+The RQD and WSD commands use a data type byte with checksum:
+
+```
+F0 41 dev 1E 41/40 tt cs F7
+```
+
+Where:
+- `tt` = Data type
+- `cs` = Checksum: `(128 - tt) & 0x7F`
+
+| Type | Hex | Description |
+|------|-----|-------------|
+| All Data | 00 | Complete memory dump |
+| Patch 1-32 | 01 | First 32 patches |
+| Patch 33-64 | 02 | Second 32 patches |
+| Tone 1-32 | 03 | First 32 tones |
+| Tone 33-64 | 04 | Second 32 tones (if expanded) |
+| Function | 05 | System function parameters |
+
+### Response Codes
+
+| Response | Hex | Meaning |
+|----------|-----|---------|
+| DAT | 42 | Data follows (RQD success) |
+| ACK | 43 | Ready to receive (WSD success) |
+| EOD | 45 | End of data transfer |
+| ERR | 4E | Communication/checksum error |
+| RJC | 4F | Request rejected (no data available) |
+
+### DAT Packet Format
+
+When RQD succeeds, the S-330 responds with DAT packets:
+
+```
+F0 41 dev 1E 42 tt cs data... checksum F7
+```
+
+The data is nibblized (2 bytes per actual byte, MSN then LSN).
+
+### Protocol State Machine
+
+The S-330 maintains protocol state:
+
+1. After WSD ACK, the device expects DAT packets (RQD will be rejected)
+2. After receiving complete data, the device returns to idle state
+3. RQD only succeeds when relevant data exists (patches/tones loaded)
+4. If no samples are loaded, RQD for tones returns RJC
+
+### Example Captured Responses
+
+**RQD Type 1 (Patch 1-32) - Success:**
+```
+TX: F0 41 00 1E 41 01 7F F7
+RX: F0 41 00 1E 42 01 7F [128 bytes nibblized patch data] cs F7
+```
+
+**WSD Type 0 (All Data) - Ready to Receive:**
+```
+TX: F0 41 00 1E 40 00 00 F7
+RX: F0 41 00 1E 43 F7  (ACK)
+```
+
+**RQD Type 3 (Tone 1-32) - No Data Available:**
+```
+TX: F0 41 00 1E 41 03 7D F7
+RX: F0 41 00 1E 4F F7  (RJC)
+```
+
 ## Notes
 
 ### Sample Rate and Pitch

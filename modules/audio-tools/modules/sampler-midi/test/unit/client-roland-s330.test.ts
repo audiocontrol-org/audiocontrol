@@ -34,12 +34,11 @@ function createMockMidiIO(): S330MidiIO & {
     const listeners: Array<(message: number[]) => void> = [];
     let lastSentMessage: number[] | null = null;
 
-    return {
+    const midiIO = {
         _listeners: listeners,
-        _lastSentMessage: lastSentMessage,
 
         send: vi.fn((message: number[]) => {
-            lastSentMessage = message;
+            midiIO._lastSentMessage = message;
         }),
 
         onSysEx: vi.fn((callback: (message: number[]) => void) => {
@@ -57,10 +56,10 @@ function createMockMidiIO(): S330MidiIO & {
             listeners.forEach(listener => listener(message));
         },
 
-        get lastSentMessage() {
-            return lastSentMessage;
-        },
+        _lastSentMessage: null as number[] | null,
     };
+
+    return midiIO;
 }
 
 describe('Roland S-330 MIDI Client', () => {
@@ -221,12 +220,14 @@ describe('Roland S-330 MIDI Client', () => {
             await expect(client.setTone(0, {} as any)).rejects.toThrow('Not implemented');
         });
 
-        it('requestBulkDump should throw', async () => {
-            await expect(client.requestBulkDump(0)).rejects.toThrow('Not implemented');
+        it('requestBulkDump should timeout without response', async () => {
+            const clientWithShortTimeout = createS330Client(mockMidiIO, { timeoutMs: 50 });
+            await expect(clientWithShortTimeout.requestBulkDump(0x01)).rejects.toThrow('timeout');
         });
 
-        it('sendBulkDump should throw', async () => {
-            await expect(client.sendBulkDump(0)).rejects.toThrow('Not implemented');
+        it('sendBulkDump should timeout without ACK', async () => {
+            const clientWithShortTimeout = createS330Client(mockMidiIO, { timeoutMs: 50 });
+            await expect(clientWithShortTimeout.sendBulkDump(0x01, [0x00])).rejects.toThrow('timeout');
         });
     });
 });
