@@ -235,18 +235,18 @@ Host                          S-330
 
 #### Receiving Data from S-330
 
+**Using RQD with address/size (RECOMMENDED):**
+
 ```
 Host                          S-330
   |                             |
-  |--- RQD (type) ------------->|
+  |--- RQD (addr, size) ------->|
   |                             |
-  |<-------- ACK ---------------|
-  |                             |
-  |<------ DAT (packet 1) ------|
+  |<------ DAT (packet 1) ------|  (no initial ACK!)
   |                             |
   |-------- ACK --------------->|
   |                             |
-  |<------ DAT (packet 2) ------|
+  |<------ DAT (packet 2) ------|  (if more data)
   |                             |
   |-------- ACK --------------->|
   |                             |
@@ -257,6 +257,9 @@ Host                          S-330
   |-------- ACK --------------->|
   |                             |
 ```
+
+**Note:** The S-330 sends DAT immediately after RQD - there is no initial ACK.
+See "Hardware Testing Findings" section for address/size format details.
 
 ### Bulk Dump Types
 
@@ -321,10 +324,10 @@ Breakdown:
 - `0C` - Checksum: 128 - ((0+1+0+0F+64) & 7F) = 128 - 116 = 12 (0x0C)
 - `F7` - SysEx end
 
-### Request Single Tone Dump
+### Request Tone 8 Parameters (RQD with address)
 
 ```
-F0 41 00 1E 41 03 00 F7
+F0 41 00 1E 41 00 02 08 00 00 00 00 4C 2A F7
 ```
 
 Breakdown:
@@ -333,9 +336,12 @@ Breakdown:
 - `00` - Device ID
 - `1E` - S-330 Model ID
 - `41` - RQD command
-- `03` - Type (single tone)
-- `00` - Tone number 0
+- `00 02 08 00` - Address (Tone 8, offset 0)
+- `00 00 00 4C` - Size (76 nibbles = 38 bytes, tone parameter block)
+- `2A` - Checksum: 128 - ((0+2+8+0 + 0+0+0+4C) & 0x7F) = 128 - 0x56 = 0x2A
 - `F7` - SysEx end
+
+**Important:** Both address LSB (0x00) and size LSB (0x4C) are even.
 
 ## Timing Considerations
 
@@ -346,39 +352,120 @@ Breakdown:
 
 ## Hardware Testing Findings
 
-Based on actual testing with S-330 hardware, the following protocol behaviors were confirmed:
+Based on actual testing with S-330 hardware (January 2026), the following protocol behaviors were confirmed:
 
-### RQ1/DT1 vs RQD/WSD Protocol
+### RQ1/DT1 Protocol
 
-**Important:** The S-330 does NOT respond to RQ1 (0x11) data request commands. Instead, it exclusively uses the handshake-based RQD/WSD protocol for data transfer.
+**The S-330 DOES respond to RQ1 (0x11) data request commands** when using proper address-based requests. This is useful for reading individual parameters without handshaking.
 
 | Command | Hardware Response | Notes |
 |---------|------------------|-------|
-| RQ1 | No response | Not supported on S-330 |
+| RQ1 | DT1 with data | Address-based read - simple, no handshake |
 | DT1 | No response | Write-only, no ACK returned |
-| RQD | DAT, RJC, or ERR | Returns data or rejection |
+| RQD (type only) | RJC | Old bulk dump format - rejected |
+| RQD (address) | DAT | **Address-based - WORKS with handshake** |
 | WSD | ACK or RJC | Ready to receive or rejection |
 
-### RQD/WSD Data Types
+### RQD with Address/Size Format (RECOMMENDED)
 
-The RQD and WSD commands use a data type byte with checksum:
+**RQD works when using address and size fields** (not the old type-byte format). This allows bulk data transfer with handshaking.
 
 ```
-F0 41 dev 1E 41/40 tt cs F7
+F0 41 dev 1E 41 [address 4B] [size 4B] [checksum] F7
 ```
 
-Where:
-- `tt` = Data type
-- `cs` = Checksum: `(128 - tt) & 0x7F`
+#### Critical Constraints (from Roland documentation)
 
-| Type | Hex | Description |
-|------|-----|-------------|
-| All Data | 00 | Complete memory dump |
-| Patch 1-32 | 01 | First 32 patches |
-| Patch 33-64 | 02 | Second 32 patches |
-| Tone 1-32 | 03 | First 32 tones |
-| Tone 33-64 | 04 | Second 32 tones (if expanded) |
-| Function | 05 | System function parameters |
+> *3-1 Address and size should specify a memory space in which data exist.
+> The lowest bit of LSB byte in address and size should be 0.*
+>
+> *3-2 The number of data bytes should be even number*
+
+This means:
+- **Address LSB must be even**: `address[3] & 0x01 == 0`
+- **Size LSB must be even**: `size[3] & 0x01 == 0`
+- **Size represents nibble count**, not byte count
+
+These constraints exist because all data is nibblized. You cannot request an odd number of nibbles (half a byte).
+
+#### Size Field Calculation
+
+To request N logical bytes:
+```
+size_nibbles = N * 2
+size = [0x00, 0x00, (size_nibbles >> 7) & 0x7F, size_nibbles & 0x7F]
+```
+
+Examples:
+- 8-byte name: size = `[0x00, 0x00, 0x00, 0x10]` (16 nibbles)
+- 64-byte block: size = `[0x00, 0x00, 0x01, 0x00]` (128 nibbles, note 7-bit encoding)
+
+#### RQD Handshake Flow
+
+```
+Host                          S-330
+  |                             |
+  |--- RQD (addr, size) ------->|
+  |                             |
+  |<-------- DAT (data) --------|
+  |                             |
+  |-------- ACK --------------->|
+  |                             |
+  |<-------- DAT (data) --------|  (if more data)
+  |                             |
+  |-------- ACK --------------->|
+  |                             |
+  |<-------- EOD ---------------|
+  |                             |
+  |-------- ACK --------------->|
+  |                             |
+```
+
+**Note:** No initial ACK from S-330 - it goes directly to sending DAT packets.
+
+#### Example: Request Patch 16 Name (8 bytes)
+
+```
+Address: 00 01 10 00  (Patch 16, offset 0)
+Size:    00 00 00 10  (16 nibbles = 8 bytes)
+Checksum: 128 - ((00+01+10+00 + 00+00+00+10) & 0x7F) = 128 - 0x21 = 0x5F
+
+TX: F0 41 00 1E 41 00 01 10 00 00 00 00 10 5F F7
+RX: F0 41 00 1E 42 00 01 10 00 [16 nibbles] cs F7  (DAT)
+TX: F0 41 00 1E 43 F7  (ACK)
+RX: F0 41 00 1E 45 F7  (EOD)
+TX: F0 41 00 1E 43 F7  (ACK)
+```
+
+### Data Nibblization
+
+**All parameter data is nibblized** - each logical byte is transmitted as two nibbles:
+- High nibble first (bits 7-4 in bits 3-0)
+- Low nibble second (bits 3-0 in bits 3-0)
+
+To decode: `actualByte = (highNibble << 4) | lowNibble`
+
+To encode: `[byte >> 4, byte & 0x0F]`
+
+### RQD/WSD Bulk Data Types (DEPRECATED)
+
+**Note:** The old bulk dump format (RQD with just a type byte) is rejected by the S-330. Use RQD with address/size instead.
+
+The legacy format was:
+```
+F0 41 dev 1E 41 tt cs F7
+```
+
+| Type | Hex | Description | Hardware Response |
+|------|-----|-------------|------------------|
+| All Data | 00 | Complete memory dump | RJC |
+| Patch 1-32 | 01 | First 32 patches | RJC |
+| Patch 33-64 | 02 | Second 32 patches | RJC |
+| Tone 1-32 | 03 | First 32 tones | RJC |
+| Tone 33-64 | 04 | Second 32 tones (if expanded) | RJC |
+| Function | 05 | System function parameters | RJC |
+
+**Use RQD with address/size format instead.**
 
 ### Response Codes
 
@@ -411,22 +498,40 @@ The S-330 maintains protocol state:
 
 ### Example Captured Responses
 
-**RQD Type 1 (Patch 1-32) - Success:**
+**RQD with Address - Requesting Patch 16 Name (8 bytes):**
 ```
-TX: F0 41 00 1E 41 01 7F F7
-RX: F0 41 00 1E 42 01 7F [128 bytes nibblized patch data] cs F7
+TX: F0 41 00 1E 41 00 01 10 00 00 00 00 10 5F F7
+    (RQD, addr=00 01 10 00, size=00 00 00 10)
+RX: F0 41 00 1E 42 00 01 10 00 [16 nibbles] cs F7  (DAT)
+TX: F0 41 00 1E 43 F7  (ACK)
+RX: F0 41 00 1E 45 F7  (EOD)
+TX: F0 41 00 1E 43 F7  (ACK)
+```
+
+**RQD with Address - Large Range (multiple packets):**
+```
+TX: F0 41 00 1E 41 00 01 00 00 00 00 10 00 5F F7
+    (RQD, addr=00 01 00 00, size=00 00 10 00 = 4096 nibbles)
+RX: F0 41 00 1E 42 ... (DAT packet 1)
+TX: F0 41 00 1E 43 F7  (ACK)
+RX: F0 41 00 1E 42 ... (DAT packet 2)
+TX: F0 41 00 1E 43 F7  (ACK)
+... (more packets)
+RX: F0 41 00 1E 45 F7  (EOD)
+TX: F0 41 00 1E 43 F7  (ACK)
+```
+
+**RQD with Odd Size - Rejected:**
+```
+TX: F0 41 00 1E 41 00 01 10 00 00 00 00 7F xx F7
+    (size LSB 0x7F is odd)
+RX: F0 41 00 1E 4F F7  (RJC - rejected!)
 ```
 
 **WSD Type 0 (All Data) - Ready to Receive:**
 ```
 TX: F0 41 00 1E 40 00 00 F7
 RX: F0 41 00 1E 43 F7  (ACK)
-```
-
-**RQD Type 3 (Tone 1-32) - No Data Available:**
-```
-TX: F0 41 00 1E 41 03 7D F7
-RX: F0 41 00 1E 4F F7  (RJC)
 ```
 
 ## Notes
