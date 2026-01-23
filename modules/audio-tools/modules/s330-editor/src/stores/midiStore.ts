@@ -1,5 +1,7 @@
 /**
  * Zustand store for MIDI connection state
+ *
+ * Persists port selection to localStorage for auto-reconnect
  */
 
 import { create } from 'zustand';
@@ -10,6 +12,38 @@ import {
   requestMidiAccess,
   createWebMidiAdapter,
 } from '@/core/midi/WebMidiAdapter';
+
+// localStorage keys
+const STORAGE_KEY_INPUT = 's330-midi-input';
+const STORAGE_KEY_OUTPUT = 's330-midi-output';
+const STORAGE_KEY_DEVICE_ID = 's330-device-id';
+
+// Helper to save to localStorage
+function saveToStorage(inputId: string | null, outputId: string | null, deviceId: number) {
+  try {
+    if (inputId) localStorage.setItem(STORAGE_KEY_INPUT, inputId);
+    else localStorage.removeItem(STORAGE_KEY_INPUT);
+    if (outputId) localStorage.setItem(STORAGE_KEY_OUTPUT, outputId);
+    else localStorage.removeItem(STORAGE_KEY_OUTPUT);
+    localStorage.setItem(STORAGE_KEY_DEVICE_ID, String(deviceId));
+  } catch (e) {
+    console.warn('[MidiStore] Failed to save to localStorage:', e);
+  }
+}
+
+// Helper to load from localStorage
+function loadFromStorage(): { inputId: string | null; outputId: string | null; deviceId: number } {
+  try {
+    const inputId = localStorage.getItem(STORAGE_KEY_INPUT);
+    const outputId = localStorage.getItem(STORAGE_KEY_OUTPUT);
+    const deviceIdStr = localStorage.getItem(STORAGE_KEY_DEVICE_ID);
+    const deviceId = deviceIdStr ? parseInt(deviceIdStr, 10) : 0;
+    return { inputId, outputId, deviceId: isNaN(deviceId) ? 0 : deviceId };
+  } catch (e) {
+    console.warn('[MidiStore] Failed to load from localStorage:', e);
+    return { inputId: null, outputId: null, deviceId: 0 };
+  }
+}
 
 interface MidiState {
   isSupported: boolean;
@@ -58,7 +92,7 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
   openPorts: { input: null, output: null },
 
   /**
-   * Initialize MIDI access
+   * Initialize MIDI access and auto-connect to saved ports
    */
   initialize: async () => {
     const { isSupported } = get();
@@ -69,6 +103,11 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
 
     try {
       set({ error: null });
+
+      // Load saved preferences
+      const saved = loadFromStorage();
+      set({ deviceId: saved.deviceId });
+
       const access = await requestMidiAccess();
       const rawAccess = await navigator.requestMIDIAccess({ sysex: true });
 
@@ -83,6 +122,19 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
       rawAccess.onstatechange = () => {
         get().refresh();
       };
+
+      // Auto-connect if we have saved port IDs and they're available
+      if (saved.inputId && saved.outputId) {
+        const inputAvailable = access.inputs.some((p) => p.id === saved.inputId);
+        const outputAvailable = access.outputs.some((p) => p.id === saved.outputId);
+
+        if (inputAvailable && outputAvailable) {
+          console.log('[MidiStore] Auto-connecting to saved ports...');
+          await get().connect(saved.inputId, saved.outputId);
+        } else {
+          console.log('[MidiStore] Saved ports not available, skipping auto-connect');
+        }
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to initialize MIDI';
       set({ error: message, status: 'error' });
@@ -161,6 +213,9 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
         selectedOutput: outputs.find((p) => p.id === outputId) ?? null,
         status: 'connected',
       });
+
+      // Save to localStorage for auto-reconnect
+      saveToStorage(inputId, outputId, get().deviceId);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to connect';
       set({ error: message, status: 'error' });
@@ -202,6 +257,9 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
   setDeviceId: (id: number) => {
     if (id >= 0 && id <= 16) {
       set({ deviceId: id });
+      // Save to localStorage
+      const { selectedInputId, selectedOutputId } = get();
+      saveToStorage(selectedInputId, selectedOutputId, id);
     }
   },
 }));

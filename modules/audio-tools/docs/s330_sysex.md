@@ -58,7 +58,17 @@ F0 41 DEV 1E CMD [ADDRESS] [DATA] [CHECKSUM] F7
 
 ## Address Map
 
-The S-330 uses a 4-byte address space organized hierarchically:
+The S-330 uses a 4-byte address space organized hierarchically.
+
+### Address Map Overview (Confirmed January 2026)
+
+| Bank | Address Range | Description |
+|------|--------------|-------------|
+| 00 00 | `00 00 (pp*4) 00` | **Patch Parameters** - stride of 4 per patch |
+| 00 01 | `00 01 00 xx` | **Function Parameters** - multi mode config |
+| 00 02 | `00 02 00 xx` | **MIDI Parameters** |
+| 00 03 | `00 03 (tt*4) 00` | **Tone Parameters** - stride of 4 per tone |
+| 01 xx | `01 xx xx xx` | **Wave Data** |
 
 ### System Parameters (00 00 00 00 - 00 00 00 7F)
 
@@ -78,9 +88,64 @@ Base address: `00 00 00 00`
 | 09 | 1 | Aftertouch | 00-01 | Aftertouch enable |
 | 0A | 1 | Hold Pedal | 00-01 | Hold pedal enable |
 
-### Patch Parameters (00 01 00 00 - 00 01 7F 7F)
+### Function Parameters - Multi Mode (00 01 00 22 - 00 01 00 5D)
 
-Base address: `00 01 pp 00` where `pp` = patch number (00-3F)
+Base address: `00 01 00 xx` where `xx` is the parameter offset below.
+
+**Important**: Function parameters are in bank `00 01`, NOT `00 00`.
+
+**Data Format**: When reading via RQD, the data is returned de-nibblized. Each parameter is stored as a single byte at consecutive addresses.
+
+**Writing via DT1**: Values must be nibblized when sending: `[value >> 4, value & 0x0F]`
+
+#### MULTI MIDI RX-CH Parameters (Offset 0x22-0x29)
+
+| Offset | Parameter | Range | Description |
+|--------|-----------|-------|-------------|
+| 22 | Part A Channel | 00-0F | MIDI receive channel (0=Ch 1, 15=Ch 16) |
+| 23 | Part B Channel | 00-0F | MIDI receive channel (0=Ch 1, 15=Ch 16) |
+| 24 | Part C Channel | 00-0F | MIDI receive channel (0=Ch 1, 15=Ch 16) |
+| 25 | Part D Channel | 00-0F | MIDI receive channel (0=Ch 1, 15=Ch 16) |
+| 26 | Part E Channel | 00-0F | MIDI receive channel (0=Ch 1, 15=Ch 16) |
+| 27 | Part F Channel | 00-0F | MIDI receive channel (0=Ch 1, 15=Ch 16) |
+| 28 | Part G Channel | 00-0F | MIDI receive channel (0=Ch 1, 15=Ch 16) |
+| 29 | Part H Channel | 00-0F | MIDI receive channel (0=Ch 1, 15=Ch 16) |
+
+#### MULTI PATCH NUMBER Parameters (Offset 0x32-0x39)
+
+| Offset | Parameter | Range | Description |
+|--------|-----------|-------|-------------|
+| 32 | Part A Patch | 00-3F | Patch number (0-63), display as P11-P74 |
+| 33 | Part B Patch | 00-3F | Patch number (0-63) |
+| 34 | Part C Patch | 00-3F | Patch number (0-63) |
+| 35 | Part D Patch | 00-3F | Patch number (0-63) |
+| 36 | Part E Patch | 00-3F | Patch number (0-63) |
+| 37 | Part F Patch | 00-3F | Patch number (0-63) |
+| 38 | Part G Patch | 00-3F | Patch number (0-63) |
+| 39 | Part H Patch | 00-3F | Patch number (0-63) |
+
+**Display Note**: The S-330 displays patch numbers starting at P11 (first bank). Index 0 = P11, index 1 = P12, etc.
+
+#### MULTI LEVEL Parameters (Offset 0x56-0x5D)
+
+| Offset | Parameter | Range | Description |
+|--------|-----------|-------|-------------|
+| 56 | Part A Level | 00-7F | Output level (0-127) |
+| 57 | Part B Level | 00-7F | Output level (0-127) |
+| 58 | Part C Level | 00-7F | Output level (0-127) |
+| 59 | Part D Level | 00-7F | Output level (0-127) |
+| 5A | Part E Level | 00-7F | Output level (0-127) |
+| 5B | Part F Level | 00-7F | Output level (0-127) |
+| 5C | Part G Level | 00-7F | Output level (0-127) |
+| 5D | Part H Level | 00-7F | Output level (0-127) |
+
+**Note**: The S-330 does not have per-part output routing in multi mode - all parts share the patch's output assignment.
+
+### Patch Parameters (00 00 00 00 - 00 00 FC 00)
+
+Base address: `00 00 (pp*4) 00` where `pp` = patch number (00-3F)
+
+**Important**: Each patch occupies a stride of 4 in the address space. Patch 0 is at `00 00 00 00`, Patch 1 is at `00 00 04 00`, Patch 2 is at `00 00 08 00`, etc.
 
 #### Patch Common Parameters (Offset 00-0F)
 
@@ -114,9 +179,11 @@ Each patch can have up to 32 partials. Partial `n` starts at offset `10 + (n * 2
 | 09 | 1 | Output Assign | 00-08 | Individual output |
 | 0A | 1 | Mute | 00-01 | Partial mute flag |
 
-### Tone Parameters (00 02 00 00 - 00 02 1F 7F)
+### Tone Parameters (00 03 00 00 - 00 03 7C 00)
 
-Base address: `00 02 tt 00` where `tt` = tone number (00-1F)
+Base address: `00 03 (tt*4) 00` where `tt` = tone number (00-1F)
+
+**Important**: Like patches, each tone occupies a stride of 4 in the address space. Tone 0 is at `00 03 00 00`, Tone 1 is at `00 03 04 00`, etc.
 
 | Offset | Size | Parameter | Range | Description |
 |--------|------|-----------|-------|-------------|

@@ -1,0 +1,5 @@
+
+# E2E test artifacts
+e2e-*.png
+playwright-report/
+test-results/

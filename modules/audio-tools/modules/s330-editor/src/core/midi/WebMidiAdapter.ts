@@ -96,6 +96,12 @@ export async function requestMidiAccess(): Promise<WebMidiAccess> {
 /**
  * Create a Web MIDI adapter implementing S330MidiIO interface
  *
+ * This adapter handles chunked SysEx messages from the Web MIDI API.
+ * Some browsers may deliver large SysEx messages in multiple chunks:
+ * - First chunk starts with 0xF0, may not end with 0xF7
+ * - Middle chunks don't start with 0xF0, don't end with 0xF7
+ * - Last chunk doesn't start with 0xF0, ends with 0xF7
+ *
  * @param input - Web MIDI input port
  * @param output - Web MIDI output port
  * @returns S330MidiIO adapter
@@ -106,6 +112,10 @@ export function createWebMidiAdapter(
 ): S330MidiIO {
   const listeners = new Map<SysExCallback, (e: MIDIMessageEvent) => void>();
 
+  // Buffer for accumulating chunked SysEx messages
+  let sysExBuffer: number[] = [];
+  let isReceivingSysEx = false;
+
   return {
     send(message: number[]): void {
       console.log('[WebMIDI] Sending:', message.map(b => b.toString(16).padStart(2, '0')).join(' '));
@@ -114,11 +124,55 @@ export function createWebMidiAdapter(
 
     onSysEx(callback: SysExCallback): void {
       const listener = (e: MIDIMessageEvent) => {
-        // Check for SysEx start byte (e.data can be null)
-        if (e.data && e.data[0] === 0xF0) {
-          console.log('[WebMIDI] Received SysEx:', Array.from(e.data).slice(0, 10).map(b => b.toString(16).padStart(2, '0')).join(' '), '...');
-          callback(Array.from(e.data));
+        if (!e.data || e.data.length === 0) return;
+
+        const data = Array.from(e.data);
+        const firstByte = data[0];
+        const lastByte = data[data.length - 1];
+
+        // Log ALL incoming MIDI messages for debugging
+        console.log('[WebMIDI] Received MIDI:', {
+          length: data.length,
+          first: firstByte.toString(16),
+          last: lastByte.toString(16),
+          isSysExStart: firstByte === 0xF0,
+          isSysExEnd: lastByte === 0xF7,
+          preview: data.slice(0, 10).map(b => b.toString(16).padStart(2, '0')).join(' '),
+        });
+
+        // Case 1: Complete SysEx message (starts with F0, ends with F7)
+        if (firstByte === 0xF0 && lastByte === 0xF7) {
+          console.log('[WebMIDI] Complete SysEx:', data.length, 'bytes');
+          callback(data);
+          return;
         }
+
+        // Case 2: Start of chunked SysEx (starts with F0, doesn't end with F7)
+        if (firstByte === 0xF0 && lastByte !== 0xF7) {
+          console.log('[WebMIDI] SysEx chunk start:', data.length, 'bytes');
+          sysExBuffer = data;
+          isReceivingSysEx = true;
+          return;
+        }
+
+        // Case 3: Middle or end of chunked SysEx
+        if (isReceivingSysEx) {
+          sysExBuffer.push(...data);
+
+          // Check if this is the end chunk
+          if (lastByte === 0xF7) {
+            console.log('[WebMIDI] SysEx chunk end, total:', sysExBuffer.length, 'bytes');
+            callback(sysExBuffer);
+            sysExBuffer = [];
+            isReceivingSysEx = false;
+          } else {
+            console.log('[WebMIDI] SysEx chunk middle:', data.length, 'bytes, total:', sysExBuffer.length);
+          }
+          return;
+        }
+
+        // Case 4: Regular MIDI message (not SysEx) - ignore
+        // This includes note on/off, CC, etc.
       };
       listeners.set(callback, listener);
       input.addEventListener('midimessage', listener);

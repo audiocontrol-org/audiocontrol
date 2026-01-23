@@ -64,6 +64,44 @@ export const S330_DATA_TYPES = {
 export type S330DataType = (typeof S330_DATA_TYPES)[keyof typeof S330_DATA_TYPES];
 
 /**
+ * Function parameter addresses (00 01 00 xx)
+ * Base address is 00 01 00 00 (function parameters bank)
+ * All function parameters are stored as single bytes at consecutive addresses
+ */
+export const S330_FUNCTION_ADDRESSES = {
+  // MULTI MIDI RX-CH (MIDI channel assignments 0-15 = Ch 1-16)
+  // Each value is 1 byte at consecutive addresses
+  MULTI_CHANNEL_A: 0x22,
+  MULTI_CHANNEL_B: 0x23,
+  MULTI_CHANNEL_C: 0x24,
+  MULTI_CHANNEL_D: 0x25,
+  MULTI_CHANNEL_E: 0x26,
+  MULTI_CHANNEL_F: 0x27,
+  MULTI_CHANNEL_G: 0x28,
+  MULTI_CHANNEL_H: 0x29,
+
+  // MULTI PATCH NUMBER (patch index 0-63)
+  MULTI_PATCH_A: 0x32,
+  MULTI_PATCH_B: 0x33,
+  MULTI_PATCH_C: 0x34,
+  MULTI_PATCH_D: 0x35,
+  MULTI_PATCH_E: 0x36,
+  MULTI_PATCH_F: 0x37,
+  MULTI_PATCH_G: 0x38,
+  MULTI_PATCH_H: 0x39,
+
+  // MULTI LEVEL (level 0-127)
+  MULTI_LEVEL_A: 0x56,
+  MULTI_LEVEL_B: 0x57,
+  MULTI_LEVEL_C: 0x58,
+  MULTI_LEVEL_D: 0x59,
+  MULTI_LEVEL_E: 0x5A,
+  MULTI_LEVEL_F: 0x5B,
+  MULTI_LEVEL_G: 0x5C,
+  MULTI_LEVEL_H: 0x5D,
+} as const;
+
+/**
  * Patch name info returned from requestAllPatchNames
  */
 export interface PatchNameInfo {
@@ -82,6 +120,15 @@ export interface ToneNameInfo {
 }
 
 /**
+ * Multi mode part configuration
+ */
+export interface MultiPartConfig {
+  channel: number; // 0-15 (MIDI channel 1-16)
+  patchIndex: number; // 0-63
+  level: number; // 0-127
+}
+
+/**
  * S-330 client interface for browser
  */
 export interface S330ClientInterface {
@@ -96,11 +143,20 @@ export interface S330ClientInterface {
   requestPatchData(patchIndex: number): Promise<S330Patch | null>;
   requestToneData(toneIndex: number): Promise<S330Tone | null>;
 
+  // Function parameters - Multi mode configuration
+  requestFunctionParameters(): Promise<MultiPartConfig[]>;
+  setMultiChannel(part: number, channel: number): void;
+  setMultiPatch(part: number, patchIndex: number): void;
+  setMultiLevel(part: number, level: number): void;
+
   // Low-level RQD with address/size - for custom requests
   requestDataWithAddress(
     address: number[],
     sizeInBytes: number
   ): Promise<number[]>;
+
+  // DT1 parameter update - for setting individual parameters
+  sendParameter(address: number[], data: number[]): void;
 
   // Legacy bulk dump methods (type-byte format - typically rejected by S-330)
   requestBulkDump(dataType: S330DataType): Promise<number[][]>;
@@ -207,6 +263,9 @@ function parse21BitAddress(data: number[], offset: number): number {
 
 /**
  * Create S-330 client for browser
+ *
+ * The client internally serializes all MIDI requests to prevent
+ * concurrent requests from interfering with each other.
  */
 export function createS330Client(
   midiIO: S330MidiIO,
@@ -216,6 +275,20 @@ export function createS330Client(
   const timeoutMs = options.timeoutMs ?? TIMING.ACK_TIMEOUT_MS;
 
   let connected = false;
+
+  // Request queue for serializing MIDI operations
+  // The S-330 can only handle one request at a time
+  let requestQueue: Promise<unknown> = Promise.resolve();
+
+  /**
+   * Serialize a request through the queue
+   * Ensures only one MIDI request is in flight at a time
+   */
+  function serialize<T>(fn: () => Promise<T>): Promise<T> {
+    const result = requestQueue.then(fn, fn); // Run even if previous failed
+    requestQueue = result.catch(() => {}); // Swallow errors for queue chain
+    return result;
+  }
 
   /**
    * Send message and wait for response with timeout
@@ -430,198 +503,402 @@ export function createS330Client(
     },
 
     /**
-     * Request all patch names from the S-330
+     * Send parameter update using DT1 (Data Set 1) command
+     *
+     * DT1 is a one-way write command that sets parameters on the S-330.
+     * No response is expected from the device.
+     *
+     * Format: F0 41 [dev] 1E 12 [addr 4B] [data] [checksum] F7
+     *
+     * @param address - 4-byte address [aa, bb, cc, dd]
+     * @param data - Parameter data bytes to write
      */
-    async requestAllPatchNames(): Promise<PatchNameInfo[]> {
-      const patches: PatchNameInfo[] = [];
-
-      // Request each patch name individually
-      // Patch address: 00 01 pp 00 (pp = patch number 0-31)
-      // Name is 8 bytes at offset 0
-      for (let i = 0; i < MAX_PATCHES; i++) {
-        try {
-          const address = [0x00, 0x01, i, 0x00];
-          const data = await this.requestDataWithAddress(address, 8);
-
-          const name = parseName(data, 0, 8);
-          const isEmpty =
-            name === '' || name === '        ' || data.every((b) => b === 0);
-
-          patches.push({ index: i, name, isEmpty });
-        } catch (err) {
-          // If we get RJC, the patch slot is empty
-          patches.push({ index: i, name: '', isEmpty: true });
-        }
+    sendParameter(address: number[], data: number[]): void {
+      if (address.length !== 4) {
+        throw new Error('Address must be 4 bytes');
       }
 
-      return patches;
+      // Calculate checksum over address + data
+      const cs = calculateChecksum(address, data);
+
+      const message = [
+        0xf0,
+        ROLAND_ID,
+        deviceId,
+        S330_MODEL_ID,
+        S330_COMMANDS.DT1,
+        ...address,
+        ...data,
+        cs,
+        0xf7,
+      ];
+
+      console.log('[S330] DT1 parameter update:', {
+        address: address.map((b) => b.toString(16).padStart(2, '0')).join(' '),
+        data: data.map((b) => b.toString(16).padStart(2, '0')).join(' '),
+        message: message.map((b) => b.toString(16).padStart(2, '0')).join(' '),
+      });
+
+      midiIO.send(message);
+    },
+
+    /**
+     * Request all patch names from the S-330
+     * Serialized to prevent concurrent request interference
+     *
+     * Patch names are stored in bank 00 00 (Patch parameters).
+     * Address format: 00 00 pp 00 (pp = patch number 0-63)
+     * Name is the first 8 bytes at each patch address.
+     */
+    async requestAllPatchNames(): Promise<PatchNameInfo[]> {
+      return serialize(async () => {
+        const patches: PatchNameInfo[] = [];
+
+        // Request each patch name individually
+        // Patch address: 00 00 (pp*4) 00 - each patch has stride of 4
+        // Name is 8 bytes at offset 0
+        for (let i = 0; i < MAX_PATCHES; i++) {
+          try {
+            const address = [0x00, 0x00, i * 4, 0x00];
+            const data = await this.requestDataWithAddress(address, 8);
+
+            const name = parseName(data, 0, 8);
+            const isEmpty =
+              name === '' || name === '        ' || data.every((b) => b === 0);
+
+            // Debug: log non-empty patches
+            if (!isEmpty) {
+              console.log(`[S330] Patch ${i}: name="${name}", data=[${data.join(',')}]`);
+            }
+
+            patches.push({ index: i, name, isEmpty });
+          } catch (err) {
+            // If we get RJC, the patch slot is empty
+            console.log(`[S330] Patch ${i}: RJC or error - marking empty`);
+            patches.push({ index: i, name: '', isEmpty: true });
+          }
+        }
+
+        return patches;
+      });
     },
 
     /**
      * Request all tone names from the S-330
+     * Serialized to prevent concurrent request interference
      */
     async requestAllToneNames(): Promise<ToneNameInfo[]> {
-      const tones: ToneNameInfo[] = [];
+      return serialize(async () => {
+        const tones: ToneNameInfo[] = [];
 
-      // Request each tone name individually
-      // Tone address: 00 02 tt 00 (tt = tone number 0-31)
-      // Name is 8 bytes at offset 0
-      for (let i = 0; i < MAX_TONES; i++) {
-        try {
-          const address = [0x00, 0x02, i, 0x00];
-          const data = await this.requestDataWithAddress(address, 8);
+        // Request each tone name individually
+        // Tone address: 00 02 tt 00 (tt = tone number 0-31)
+        // Name is 8 bytes at offset 0
+        for (let i = 0; i < MAX_TONES; i++) {
+          try {
+            const address = [0x00, 0x02, i, 0x00];
+            const data = await this.requestDataWithAddress(address, 8);
 
-          const name = parseName(data, 0, 8);
-          const isEmpty =
-            name === '' || name === '        ' || data.every((b) => b === 0);
+            const name = parseName(data, 0, 8);
+            const isEmpty =
+              name === '' || name === '        ' || data.every((b) => b === 0);
 
-          tones.push({ index: i, name, isEmpty });
-        } catch (err) {
-          // If we get RJC, the tone slot is empty
-          tones.push({ index: i, name: '', isEmpty: true });
+            tones.push({ index: i, name, isEmpty });
+          } catch (err) {
+            // If we get RJC, the tone slot is empty
+            tones.push({ index: i, name: '', isEmpty: true });
+          }
         }
-      }
 
-      return tones;
+        return tones;
+      });
     },
 
     /**
      * Request full patch data for a specific patch
+     * Serialized to prevent concurrent request interference
      */
     async requestPatchData(patchIndex: number): Promise<S330Patch | null> {
       if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
         throw new Error(`Invalid patch index: ${patchIndex}`);
       }
 
-      try {
-        // Request full patch data
-        // Patch common is 16 bytes, partials are 11 bytes each (max 32)
-        // Total max size: 16 + (32 * 11) = 368 bytes
-        const address = [0x00, 0x01, patchIndex, 0x00];
-        const data = await this.requestDataWithAddress(
-          address,
-          PATCH_COMMON_SIZE + MAX_PARTIALS * PARTIAL_SIZE
-        );
+      return serialize(async () => {
+        try {
+          // Request full patch data
+          // Patch common is 16 bytes, partials are 11 bytes each (max 32)
+          // Total max size: 16 + (32 * 11) = 368 bytes
+          const address = [0x00, 0x01, patchIndex, 0x00];
+          const data = await this.requestDataWithAddress(
+            address,
+            PATCH_COMMON_SIZE + MAX_PARTIALS * PARTIAL_SIZE
+          );
 
-        // Parse patch common
-        const common: S330PatchCommon = {
-          name: parseName(data, 0),
-          benderRange: data[8],
-          aftertouchSens: data[9],
-          keyMode: parseKeyMode(data[10]),
-          splitPoint: data[11],
-          portamentoTime: data[12],
-          portamentoEnabled: data[13] !== 0,
-          outputAssign: data[14],
-          level: data[15],
-        };
+          // Parse patch common
+          const common: S330PatchCommon = {
+            name: parseName(data, 0),
+            benderRange: data[8],
+            aftertouchSens: data[9],
+            keyMode: parseKeyMode(data[10]),
+            splitPoint: data[11],
+            portamentoTime: data[12],
+            portamentoEnabled: data[13] !== 0,
+            outputAssign: data[14],
+            level: data[15],
+          };
 
-        // Parse partials
-        const partials: S330Partial[] = [];
-        for (let p = 0; p < MAX_PARTIALS; p++) {
-          const offset = PATCH_COMMON_SIZE + p * PARTIAL_SIZE;
-          const toneNum = data[offset];
+          // Parse partials
+          const partials: S330Partial[] = [];
+          for (let p = 0; p < MAX_PARTIALS; p++) {
+            const offset = PATCH_COMMON_SIZE + p * PARTIAL_SIZE;
+            const toneNum = data[offset];
 
-          // Tone number 0x7F indicates empty partial
-          if (toneNum === 0x7f) break;
+            // Tone number 0x7F indicates empty partial
+            if (toneNum === 0x7f) break;
 
-          partials.push({
-            toneNumber: toneNum,
-            keyRangeLow: data[offset + 1],
-            keyRangeHigh: data[offset + 2],
-            velRangeLow: data[offset + 3],
-            velRangeHigh: data[offset + 4],
-            level: data[offset + 5],
-            pan: data[offset + 6],
-            coarseTune: data[offset + 7],
-            fineTune: data[offset + 8],
-            outputAssign: data[offset + 9],
-            muted: data[offset + 10] !== 0,
-          });
+            partials.push({
+              toneNumber: toneNum,
+              keyRangeLow: data[offset + 1],
+              keyRangeHigh: data[offset + 2],
+              velRangeLow: data[offset + 3],
+              velRangeHigh: data[offset + 4],
+              level: data[offset + 5],
+              pan: data[offset + 6],
+              coarseTune: data[offset + 7],
+              fineTune: data[offset + 8],
+              outputAssign: data[offset + 9],
+              muted: data[offset + 10] !== 0,
+            });
+          }
+
+          return { common, partials };
+        } catch (err) {
+          console.warn('[S330] Failed to get patch', patchIndex, err);
+          return null;
         }
-
-        return { common, partials };
-      } catch (err) {
-        console.warn('[S330] Failed to get patch', patchIndex, err);
-        return null;
-      }
+      });
     },
 
     /**
      * Request full tone data for a specific tone
+     * Serialized to prevent concurrent request interference
      */
     async requestToneData(toneIndex: number): Promise<S330Tone | null> {
       if (toneIndex < 0 || toneIndex >= MAX_TONES) {
         throw new Error(`Invalid tone index: ${toneIndex}`);
       }
 
-      try {
-        // Request full tone data (38 bytes = 0x26)
-        const address = [0x00, 0x02, toneIndex, 0x00];
-        const data = await this.requestDataWithAddress(address, TONE_BLOCK_SIZE);
+      return serialize(async () => {
+        try {
+          // Request full tone data (38 bytes = 0x26)
+          const address = [0x00, 0x02, toneIndex, 0x00];
+          const data = await this.requestDataWithAddress(address, TONE_BLOCK_SIZE);
 
-        return {
-          name: parseName(data, 0),
-          originalKey: data[8],
-          sampleRate: parseSampleRate(data[9]),
-          startAddress: parse21BitAddress(data, 10),
-          loopStart: parse21BitAddress(data, 13),
-          loopEnd: parse21BitAddress(data, 16),
-          loopMode: parseLoopMode(data[19]),
-          coarseTune: data[20],
-          fineTune: data[21],
-          level: data[22],
-          tva: {
-            attack: data[23],
-            decay: data[24],
-            sustain: data[25],
-            release: data[26],
-          },
-          tvf: {
-            cutoff: data[27],
-            resonance: data[28],
-            envDepth: data[29],
-            envelope: {
-              attack: data[30],
-              decay: data[31],
-              sustain: data[32],
-              release: data[33],
+          return {
+            name: parseName(data, 0),
+            originalKey: data[8],
+            sampleRate: parseSampleRate(data[9]),
+            startAddress: parse21BitAddress(data, 10),
+            loopStart: parse21BitAddress(data, 13),
+            loopEnd: parse21BitAddress(data, 16),
+            loopMode: parseLoopMode(data[19]),
+            coarseTune: data[20],
+            fineTune: data[21],
+            level: data[22],
+            tva: {
+              attack: data[23],
+              decay: data[24],
+              sustain: data[25],
+              release: data[26],
             },
-          },
-          lfo: {
-            rate: data[34],
-            depth: data[35],
-            delay: data[36],
-            destination: parseLfoDestination(data[37]),
-          },
-        };
-      } catch (err) {
-        console.warn('[S330] Failed to get tone', toneIndex, err);
-        return null;
+            tvf: {
+              cutoff: data[27],
+              resonance: data[28],
+              envDepth: data[29],
+              envelope: {
+                attack: data[30],
+                decay: data[31],
+                sustain: data[32],
+                release: data[33],
+              },
+            },
+            lfo: {
+              rate: data[34],
+              depth: data[35],
+              delay: data[36],
+              destination: parseLfoDestination(data[37]),
+            },
+          };
+        } catch (err) {
+          console.warn('[S330] Failed to get tone', toneIndex, err);
+          return null;
+        }
+      });
+    },
+
+    /**
+     * Request all function parameters (Multi mode configuration)
+     * Serialized to prevent concurrent request interference
+     *
+     * Address base: 00 01 00 00 (function parameters bank per MIDI Implementation)
+     * - Multi MIDI RX-CH 1-8:    offsets 0x22-0x29 (8 bytes)
+     * - Multi Patch Number 1-8:  offsets 0x32-0x39 (8 bytes)
+     * - Multi Level 1-8:         offsets 0x56-0x5D (8 bytes)
+     *
+     * Returns configuration for all 8 parts (A-H)
+     */
+    async requestFunctionParameters(): Promise<MultiPartConfig[]> {
+      return serialize(async () => {
+        try {
+          // Read each parameter group separately using correct base address 00 01 00 xx
+          // Data is already de-nibblized, each byte = 1 value
+
+          // Channels: 00 01 00 22 (8 bytes for parts A-H)
+          const channelData = await this.requestDataWithAddress(
+            [0x00, 0x01, 0x00, 0x22],
+            8
+          );
+
+          // Patches: 00 01 00 32 (8 bytes for parts A-H)
+          const patchData = await this.requestDataWithAddress(
+            [0x00, 0x01, 0x00, 0x32],
+            8
+          );
+
+          // Levels: 00 01 00 56 (8 bytes for parts A-H)
+          const levelData = await this.requestDataWithAddress(
+            [0x00, 0x01, 0x00, 0x56],
+            8
+          );
+
+          const parts: MultiPartConfig[] = [];
+
+          for (let i = 0; i < 8; i++) {
+            const channel = channelData[i] ?? 0;
+            const patchIndex = patchData[i] ?? 0;
+            const level = levelData[i] ?? 127;
+
+            parts.push({ channel, patchIndex, level });
+          }
+
+          console.log('[S330] Loaded function parameters:', parts);
+          return parts;
+        } catch (err) {
+          console.warn('[S330] Failed to load function parameters:', err);
+          // Return default configuration
+          return Array.from({ length: 8 }, (_, i) => ({
+            channel: i,
+            patchIndex: 0,
+            level: 127,
+          }));
+        }
+      });
+    },
+
+    /**
+     * Set MIDI receive channel for a multi mode part
+     *
+     * Address: 00 01 00 (0x22 + part) - function parameters bank
+     *
+     * @param part - Part number (0-7 for A-H)
+     * @param channel - MIDI channel (0-15 for Ch 1-16)
+     */
+    setMultiChannel(part: number, channel: number): void {
+      if (part < 0 || part > 7) {
+        throw new Error(`Invalid part number: ${part} (must be 0-7)`);
       }
+      if (channel < 0 || channel > 15) {
+        throw new Error(`Invalid channel: ${channel} (must be 0-15)`);
+      }
+
+      // Address: 00 01 00 (0x22 + part) - each part is 1 byte apart
+      const offset = 0x22 + part;
+      const address = [0x00, 0x01, 0x00, offset];
+
+      // Value is stored as single byte, but sent nibblized for DT1
+      const nibbles = [(channel >> 4) & 0x0f, channel & 0x0f];
+
+      this.sendParameter(address, nibbles);
+      console.log(`[S330] Set part ${part} channel to ${channel + 1}`);
+    },
+
+    /**
+     * Set patch assignment for a multi mode part
+     *
+     * Address: 00 01 00 (0x32 + part) - function parameters bank
+     *
+     * @param part - Part number (0-7 for A-H)
+     * @param patchIndex - Patch number (0-63)
+     */
+    setMultiPatch(part: number, patchIndex: number): void {
+      if (part < 0 || part > 7) {
+        throw new Error(`Invalid part number: ${part} (must be 0-7)`);
+      }
+      if (patchIndex < 0 || patchIndex > 63) {
+        throw new Error(`Invalid patch index: ${patchIndex} (must be 0-63)`);
+      }
+
+      // Address: 00 01 00 (0x32 + part) - each part is 1 byte apart
+      const offset = 0x32 + part;
+      const address = [0x00, 0x01, 0x00, offset];
+
+      // Value is stored as single byte, but sent nibblized for DT1
+      const nibbles = [(patchIndex >> 4) & 0x0f, patchIndex & 0x0f];
+
+      this.sendParameter(address, nibbles);
+      console.log(`[S330] Set part ${part} patch to ${patchIndex}`);
+    },
+
+    /**
+     * Set level for a multi mode part
+     *
+     * Address: 00 01 00 (0x56 + part) - function parameters bank
+     *
+     * @param part - Part number (0-7 for A-H)
+     * @param level - Level (0-127)
+     */
+    setMultiLevel(part: number, level: number): void {
+      if (part < 0 || part > 7) {
+        throw new Error(`Invalid part number: ${part} (must be 0-7)`);
+      }
+      if (level < 0 || level > 127) {
+        throw new Error(`Invalid level: ${level} (must be 0-127)`);
+      }
+
+      // Address: 00 01 00 (0x56 + part) - each part is 1 byte apart
+      const offset = 0x56 + part;
+      const address = [0x00, 0x01, 0x00, offset];
+
+      // Value is stored as single byte, but sent nibblized for DT1
+      const nibbles = [(level >> 4) & 0x0f, level & 0x0f];
+
+      this.sendParameter(address, nibbles);
+      console.log(`[S330] Set part ${part} level to ${level}`);
     },
 
     // Legacy bulk dump method (type-byte format - typically rejected)
+    // Serialized to prevent concurrent request interference
     async requestBulkDump(dataType: S330DataType): Promise<number[][]> {
-      const checksum = (128 - (dataType & 0x7F)) & 0x7F;
-      const message = [
-        0xF0,
-        ROLAND_ID,
-        deviceId,
-        S330_MODEL_ID,
-        S330_COMMANDS.RQD,
-        dataType,
-        checksum,
-        0xF7,
-      ];
+      return serialize(async () => {
+        const checksum = (128 - (dataType & 0x7F)) & 0x7F;
+        const message = [
+          0xF0,
+          ROLAND_ID,
+          deviceId,
+          S330_MODEL_ID,
+          S330_COMMANDS.RQD,
+          dataType,
+          checksum,
+          0xF7,
+        ];
 
-      console.log('[S330] Sending RQD request:', {
-        dataType: dataType.toString(16),
-        deviceId,
-        message: message.map(b => b.toString(16).padStart(2, '0')).join(' '),
-      });
+        console.log('[S330] Sending RQD request:', {
+          dataType: dataType.toString(16),
+          deviceId,
+          message: message.map(b => b.toString(16).padStart(2, '0')).join(' '),
+        });
 
-      return new Promise((resolve, reject) => {
+        return new Promise((resolve, reject) => {
         const packets: number[][] = [];
         let timeoutId: ReturnType<typeof setTimeout>;
 
@@ -717,9 +994,12 @@ export function createS330Client(
         midiIO.onSysEx(listener);
         midiIO.send(message);
       });
+      });
     },
 
+    // Serialized to prevent concurrent request interference
     async sendBulkDump(dataType: S330DataType, data: number[]): Promise<S330Response> {
+      return serialize(async () => {
       const wsdChecksum = (128 - (dataType & 0x7F)) & 0x7F;
       const wsdMessage = [
         0xF0,
@@ -772,6 +1052,7 @@ export function createS330Client(
       ]);
 
       return { success: true, command: 'EOD' as S330Command };
+      });
     },
 
     parsePatches(packets: number[][]): S330Patch[] {

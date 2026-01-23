@@ -5,12 +5,17 @@
  * output routing, and levels.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/s330Store';
 import { createS330Client } from '@/core/midi/S330Client';
+import type { S330ClientInterface } from '@/core/midi/S330Client';
 import { cn } from '@/lib/utils';
+
+// Global flag to prevent React Strict Mode from running effects twice
+// This is necessary because MIDI requests can't be safely run concurrently
+let isFetchingGlobal = false;
 
 // MIDI Part configuration (A-H = channels 1-8)
 interface MidiPart {
@@ -18,7 +23,6 @@ interface MidiPart {
   channel: number;
   patchIndex: number | null;
   patchName: string;
-  output: number;
   level: number;
   active: boolean;
 }
@@ -32,79 +36,167 @@ export function PlayPage() {
 
   const isConnected = status === 'connected' && adapter !== null;
 
-  // Mock MIDI parts - in reality this would come from system parameters
-  // The S-330 stores part assignments in system memory
+  // Keep a ref to the S330 client for sending parameter updates
+  const clientRef = useRef<S330ClientInterface | null>(null);
+
+  // MIDI parts - loaded from S-330 function parameters
   const [parts, setParts] = useState<MidiPart[]>(
     PART_LABELS.map((id, i) => ({
       id,
-      channel: i + 1,
+      channel: i, // 0-15 (Ch 1-16)
       patchIndex: null,
       patchName: '',
-      output: 1,
       level: 127,
       active: true,
     }))
   );
 
-  const [selectedPart, setSelectedPart] = useState<number | null>(null);
   const [displayMode, setDisplayMode] = useState<'standard' | 'multi'>('standard');
 
-  // Fetch patch names if not loaded
-  const fetchPatchNames = useCallback(async () => {
-    if (!adapter || patchNames.length > 0) return;
-
-    try {
-      setLoading(true, 'Loading patches...');
-      const client = createS330Client(adapter, { deviceId });
-      await client.connect();
-      const names = await client.requestAllPatchNames();
-      setPatchNames(names);
-      setLoading(false);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load patches');
-      setLoading(false);
+  // Initialize client and fetch data when adapter is available
+  useEffect(() => {
+    if (!adapter) {
+      clientRef.current = null;
+      return;
     }
+
+    // Create client
+    const client = createS330Client(adapter, { deviceId });
+    clientRef.current = client;
+
+    // Skip if already fetching (React Strict Mode protection)
+    if (isFetchingGlobal) {
+      console.log('[PlayPage] Already fetching (React Strict Mode double-mount), skipping');
+      return;
+    }
+
+    // Skip if data already loaded
+    if (patchNames.length > 0) {
+      console.log('[PlayPage] Data already loaded, skipping fetch');
+      return;
+    }
+
+    isFetchingGlobal = true;
+
+    // Fetch all data sequentially using the same client
+    const fetchData = async () => {
+      try {
+        // Fetch patches first
+        setLoading(true, 'Loading patches...');
+        console.log('[PlayPage] Fetching patch names...');
+        const names = await client.requestAllPatchNames();
+        console.log('[PlayPage] Got', names.length, 'patches,', names.filter(n => !n.isEmpty).length, 'non-empty');
+        console.log('[PlayPage] Non-empty:', names.filter(n => !n.isEmpty).map(n => `${n.index}:${n.name}`).join(', '));
+        setPatchNames(names);
+
+        // Then fetch function parameters
+        setLoading(true, 'Loading multi mode configuration...');
+        console.log('[PlayPage] Fetching function parameters...');
+        const configs = await client.requestFunctionParameters();
+        console.log('[PlayPage] Got function parameters:');
+        configs.forEach((c, i) => {
+          console.log(`  Part ${i}: channel=${c.channel}, patchIndex=${c.patchIndex}, level=${c.level}`);
+        });
+
+        // Update parts with loaded configuration
+        setParts((prev) =>
+          prev.map((part, i) => ({
+            ...part,
+            channel: configs[i]?.channel ?? i,
+            patchIndex: configs[i]?.patchIndex ?? null,
+            level: configs[i]?.level ?? 127,
+          }))
+        );
+
+        setLoading(false);
+      } catch (err) {
+        console.error('[PlayPage] Error fetching data:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load data');
+        setLoading(false);
+      } finally {
+        isFetchingGlobal = false;
+      }
+    };
+
+    fetchData();
   }, [adapter, deviceId, patchNames.length, setPatchNames, setLoading, setError]);
 
+  // Debug: log patchNames changes
   useEffect(() => {
-    if (isConnected) {
-      fetchPatchNames();
-    }
-  }, [isConnected, fetchPatchNames]);
+    console.log('[PlayPage] patchNames updated:', patchNames.length, 'total,', patchNames.filter(p => !p.isEmpty).length, 'non-empty');
+  }, [patchNames]);
 
-  // Update parts with actual patch data once loaded
+  // Update patch names based on patchIndex loaded from function parameters
   useEffect(() => {
     if (patchNames.length === 0) return;
 
-    // Find non-empty patches and assign them to parts
-    const nonEmptyPatches = patchNames.filter((p) => !p.isEmpty);
-
+    // Look up patch names based on patchIndex from function parameters
     setParts((prev) =>
-      prev.map((part, i) => {
-        const patch = nonEmptyPatches[i];
-        if (patch) {
-          return {
-            ...part,
-            patchIndex: patch.index,
-            patchName: patch.name,
-          };
+      prev.map((part) => {
+        if (part.patchIndex !== null) {
+          const patch = patchNames.find((p) => p.index === part.patchIndex);
+          if (patch && !patch.isEmpty) {
+            return { ...part, patchName: patch.name };
+          }
         }
-        return { ...part, patchIndex: null, patchName: '' };
+        return { ...part, patchName: '' };
       })
     );
   }, [patchNames]);
 
-  // Handle patch selection for a part
-  const handlePatchSelect = (partIndex: number, patchIndex: number) => {
-    const patch = patchNames.find((p) => p.index === patchIndex);
+  // Handle field updates
+  const updatePart = (partIndex: number, updates: Partial<MidiPart>) => {
     setParts((prev) =>
-      prev.map((part, i) =>
-        i === partIndex
-          ? { ...part, patchIndex, patchName: patch?.name ?? '' }
-          : part
-      )
+      prev.map((part, i) => (i === partIndex ? { ...part, ...updates } : part))
     );
-    setSelectedPart(null);
+  };
+
+  const handleChannelChange = (partIndex: number, channel: number) => {
+    updatePart(partIndex, { channel });
+
+    // Send parameter update to hardware
+    if (clientRef.current) {
+      try {
+        clientRef.current.setMultiChannel(partIndex, channel);
+      } catch (err) {
+        console.error('[PlayPage] Failed to send channel parameter:', err);
+        setError(
+          err instanceof Error ? err.message : 'Failed to update channel'
+        );
+      }
+    }
+  };
+
+  const handlePatchChange = (partIndex: number, patchIndex: number) => {
+    const patch = patchNames.find((p) => p.index === patchIndex);
+    updatePart(partIndex, {
+      patchIndex,
+      patchName: patch?.name ?? '',
+    });
+
+    // Send parameter update to hardware
+    if (clientRef.current) {
+      try {
+        clientRef.current.setMultiPatch(partIndex, patchIndex);
+      } catch (err) {
+        console.error('[PlayPage] Failed to send patch parameter:', err);
+        setError(err instanceof Error ? err.message : 'Failed to update patch');
+      }
+    }
+  };
+
+  const handleLevelChange = (partIndex: number, level: number) => {
+    updatePart(partIndex, { level });
+
+    // Send parameter update to hardware
+    if (clientRef.current) {
+      try {
+        clientRef.current.setMultiLevel(partIndex, level);
+      } catch (err) {
+        console.error('[PlayPage] Failed to send level parameter:', err);
+        setError(err instanceof Error ? err.message : 'Failed to update level');
+      }
+    }
   };
 
   if (!isConnected) {
@@ -166,12 +258,11 @@ export function PlayPage() {
         {/* Parts Grid */}
         <div className="p-4 font-mono text-sm">
           {/* Header row */}
-          <div className="grid grid-cols-12 gap-2 mb-2 text-s330-muted text-xs">
+          <div className="grid grid-cols-10 gap-2 mb-2 text-s330-muted text-xs">
             <div className="col-span-1"></div>
             <div className="col-span-1">VAL</div>
             <div className="col-span-1 text-center">CH</div>
             <div className="col-span-5">Patch</div>
-            <div className="col-span-2 text-center">Out</div>
             <div className="col-span-2 text-right">Level</div>
           </div>
 
@@ -179,13 +270,7 @@ export function PlayPage() {
           {parts.map((part, index) => (
             <div
               key={part.id}
-              onClick={() => setSelectedPart(selectedPart === index ? null : index)}
-              className={cn(
-                'grid grid-cols-12 gap-2 py-1.5 px-1 rounded cursor-pointer transition-colors',
-                selectedPart === index
-                  ? 'bg-s330-highlight/20'
-                  : 'hover:bg-s330-accent/30'
-              )}
+              className="grid grid-cols-10 gap-2 py-1.5 px-1 rounded transition-colors hover:bg-s330-accent/10"
             >
               {/* Part label */}
               <div className="col-span-1 text-s330-highlight font-bold">
@@ -197,69 +282,90 @@ export function PlayPage() {
                 {part.active ? '*' : ''}
               </div>
 
-              {/* Channel */}
-              <div className="col-span-1 text-center text-s330-text">
-                {part.channel}
+              {/* Channel - editable dropdown (0-15 stored, display as 1-16) */}
+              <div className="col-span-1 text-center">
+                <select
+                  value={part.channel}
+                  onChange={(e) => handleChannelChange(index, Number(e.target.value))}
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn(
+                    'w-full px-1 py-0.5 text-center text-xs font-mono',
+                    'bg-s330-panel border border-s330-accent rounded',
+                    'text-s330-text hover:bg-s330-accent/30',
+                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                  )}
+                >
+                  {Array.from({ length: 16 }, (_, i) => (
+                    <option key={i} value={i}>
+                      {i + 1}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              {/* Patch */}
-              <div className="col-span-5 text-s330-text">
-                {part.patchIndex !== null ? (
-                  <span>
-                    <span className="text-s330-muted">P</span>
-                    {String(part.patchIndex + 1).padStart(2, '0')}{' '}
-                    <span className="text-s330-highlight">{part.patchName}</span>
-                  </span>
-                ) : (
-                  <span className="text-s330-muted">---</span>
-                )}
+              {/* Patch - editable dropdown */}
+              <div className="col-span-5">
+                <select
+                  value={part.patchIndex ?? -1}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    if (value !== -1) {
+                      handlePatchChange(index, value);
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn(
+                    'w-full px-1 py-0.5 text-xs font-mono',
+                    'bg-s330-panel border border-s330-accent rounded',
+                    'text-s330-text hover:bg-s330-accent/30',
+                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                  )}
+                >
+                  <option value={-1} className="text-s330-muted">
+                    ---
+                  </option>
+                  {patchNames
+                    .filter((p) => !p.isEmpty)
+                    .map((patch) => (
+                      <option key={patch.index} value={patch.index}>
+                        P{String(patch.index + 11).padStart(2, '0')} {patch.name}
+                      </option>
+                    ))}
+                </select>
               </div>
 
-              {/* Output */}
-              <div className="col-span-2 text-center text-s330-text">
-                {part.output}
-              </div>
-
-              {/* Level */}
-              <div className="col-span-2 text-right text-s330-text">
-                {part.level}
+              {/* Level - editable number input */}
+              <div className="col-span-2 text-right">
+                <input
+                  type="number"
+                  min={0}
+                  max={127}
+                  value={part.level}
+                  onChange={(e) => {
+                    const value = Math.min(127, Math.max(0, Number(e.target.value)));
+                    handleLevelChange(index, value);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn(
+                    'w-full px-1 py-0.5 text-right text-xs font-mono',
+                    'bg-s330-panel border border-s330-accent rounded',
+                    'text-s330-text hover:bg-s330-accent/30',
+                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
+                    '[appearance:textfield]',
+                    '[&::-webkit-outer-spin-button]:appearance-none',
+                    '[&::-webkit-inner-spin-button]:appearance-none'
+                  )}
+                />
               </div>
             </div>
           ))}
         </div>
-
-        {/* Patch selector (when a part is selected) */}
-        {selectedPart !== null && (
-          <div className="border-t border-s330-accent p-4">
-            <div className="text-xs text-s330-muted mb-2">
-              Select patch for Part {PART_LABELS[selectedPart]}:
-            </div>
-            <div className="grid grid-cols-4 gap-2 max-h-40 overflow-y-auto">
-              {patchNames
-                .filter((p) => !p.isEmpty)
-                .map((patch) => (
-                  <button
-                    key={patch.index}
-                    onClick={() => handlePatchSelect(selectedPart, patch.index)}
-                    className={cn(
-                      'px-2 py-1 rounded text-xs font-mono text-left transition-colors',
-                      parts[selectedPart].patchIndex === patch.index
-                        ? 'bg-s330-highlight text-white'
-                        : 'bg-s330-accent/50 text-s330-text hover:bg-s330-accent'
-                    )}
-                  >
-                    P{String(patch.index + 1).padStart(2, '0')} {patch.name}
-                  </button>
-                ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Display section - shows current patches summary */}
       <div className="bg-s330-panel border border-s330-accent rounded-md p-4">
         <div className="text-xs text-s330-muted mb-3 font-mono">
-          Display P1-P{Math.min(8, patchNames.filter((p) => !p.isEmpty).length)}
+          Display P11-P{Math.min(8, patchNames.filter((p) => !p.isEmpty).length) + 10}
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-sm">
           {parts.slice(0, 8).map((part) => (
@@ -267,12 +373,12 @@ export function PlayPage() {
               {part.patchIndex !== null ? (
                 <>
                   <span className="text-s330-muted">P</span>
-                  {String(part.patchIndex + 1).padStart(2, '0')}{' '}
+                  {String(part.patchIndex + 11).padStart(2, '0')}{' '}
                   <span className="text-s330-highlight">{part.patchName}</span>
                 </>
               ) : (
                 <span className="text-s330-muted">
-                  P{String(part.channel).padStart(2, '0')}
+                  P{String(part.patchIndex !== null ? part.patchIndex + 11 : 11).padStart(2, '0')}
                 </span>
               )}
             </div>
