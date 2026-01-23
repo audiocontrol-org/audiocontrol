@@ -56,13 +56,17 @@
 // =============================================================================
 
 export type {
+    // MIDI Adapter
+    S330MidiAdapter,
+
     // System types
     S330SystemParams,
 
     // Patch types
     S330KeyMode,
+    S330AftertouchAssign,
+    S330KeyAssign,
     S330PatchCommon,
-    S330Partial,
     S330Patch,
 
     // Tone types
@@ -111,11 +115,8 @@ export {
 
     // Patch parameter offsets
     PATCH_COMMON_OFFSETS,
-    PATCH_COMMON_SIZE,
-    PATCH_PARTIALS_OFFSET,
-    PARTIAL_OFFSETS,
-    PARTIAL_SIZE,
-    MAX_PARTIALS,
+    PATCH_TOTAL_SIZE,
+    TONE_MAP_ENTRIES,
     MAX_PATCHES,
 
     // Tone parameter offsets
@@ -150,6 +151,10 @@ export {
     // Value conversion
     parseKeyMode,
     encodeKeyMode,
+    parseAftertouchAssign,
+    encodeAftertouchAssign,
+    parseKeyAssign,
+    encodeKeyAssign,
     parseLoopMode,
     encodeLoopMode,
     parseLfoDestination,
@@ -163,16 +168,14 @@ export {
     parseSignedValue,
     encodeSignedValue,
 
-    // Structure parsing (stub implementations)
+    // Structure parsing
     parseSystemParams,
     parsePatchCommon,
-    parsePartial,
     parseTone,
 
     // Structure encoding (stub implementations)
     encodeSystemParams,
     encodePatchCommon,
-    encodePartial,
     encodeTone,
 
     // Validation
@@ -183,3 +186,50 @@ export {
     isValid7BitValue,
     clamp7Bit,
 } from './s330-params.js';
+
+// =============================================================================
+// Message Building Exports
+// =============================================================================
+
+export {
+    // Nibblization
+    nibblize,
+    denibblize,
+
+    // Size encoding
+    encodeSize,
+
+    // Message builders
+    buildRQDMessage,
+    buildWSDMessage,
+    buildDATMessage,
+    buildACKMessage,
+    buildEODMessage,
+    buildRJCMessage,
+    buildERRMessage,
+
+    // Helper functions
+    buildPatchAddressRQD,
+} from './s330-messages.js';
+
+// =============================================================================
+// Client Exports
+// =============================================================================
+
+export type {
+    // Client interface and data types
+    S330ClientInterface,
+    PatchNameInfo,
+    ToneNameInfo,
+    MultiPartConfig,
+    S330DataType,
+} from './s330-client.js';
+
+export {
+    // Client factory function
+    createS330Client,
+
+    // Data type constants
+    S330_DATA_TYPES,
+    S330_FUNCTION_ADDRESSES,
+} from './s330-client.js';

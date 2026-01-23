@@ -53,8 +53,11 @@ export const S330_COMMANDS = {
 /** System parameters base address */
 export const ADDR_SYSTEM = [0x00, 0x00, 0x00, 0x00] as const;
 
-/** Patch parameters base address (add patch number to byte 2) */
-export const ADDR_PATCH_BASE = [0x00, 0x01, 0x00, 0x00] as const;
+/** Patch parameters base address
+ * Each patch occupies stride of 4: patch N at [0x00, 0x00, N*4, 0x00]
+ * Note: Patch addresses are in bank 0x00 0x00, NOT 0x00 0x01
+ */
+export const ADDR_PATCH_BASE = [0x00, 0x00, 0x00, 0x00] as const;
 
 /** Tone parameters base address (add tone number to byte 2) */
 export const ADDR_TONE_BASE = [0x00, 0x02, 0x00, 0x00] as const;
@@ -88,45 +91,35 @@ export const SYSTEM_BLOCK_SIZE = 0x0B;
 // Patch Parameter Offsets
 // =============================================================================
 
-/** Offsets within patch common block */
+/**
+ * Patch parameter offsets (byte positions after de-nibblization)
+ *
+ * Each patch is 512 bytes total (1024 nibbles)
+ * Patches are accessed at address: 00 00 (pp*4) 00 where pp = patch number 0-63
+ */
 export const PATCH_COMMON_OFFSETS = {
-    NAME: 0x00,              // 8 bytes
-    BENDER_RANGE: 0x08,
-    AFTERTOUCH_SENS: 0x09,
-    KEY_MODE: 0x0A,
-    SPLIT_POINT: 0x0B,
-    PORTAMENTO_TIME: 0x0C,
-    PORTAMENTO_MODE: 0x0D,
-    OUTPUT_ASSIGN: 0x0E,
-    LEVEL: 0x0F,
+    NAME: 0,                 // 12 bytes (nibble address 00 00H-00 17H)
+    BENDER_RANGE: 12,        // nibble address 00 18H
+    AFTERTOUCH_SENS: 14,     // nibble address 00 1CH
+    KEY_MODE: 15,            // nibble address 00 1EH (0-4: Normal/V-Sw/X-Fade/V-Mix/Unison)
+    VELOCITY_THRESHOLD: 16,  // nibble address 00 20H
+    TONE_LAYER_1: 17,        // nibble address 00 22H-01 7BH (109 entries, -1 to 31)
+    TONE_LAYER_2: 126,       // nibble address 01 7CH-03 55H (109 entries, 0-31)
+    COPY_SOURCE: 235,        // nibble address 03 56H
+    OCTAVE_SHIFT: 284,       // nibble address 03 58H (-2 to +2)
+    LEVEL: 285,              // nibble address 03 5AH
+    DETUNE: 287,             // nibble address 03 5EH (-64 to +63)
+    VELOCITY_MIX_RATIO: 288, // nibble address 03 60H
+    AFTERTOUCH_ASSIGN: 289,  // nibble address 03 62H (0-4: Mod/Vol/Bend+/Bend-/Filter)
+    KEY_ASSIGN: 290,         // nibble address 03 64H (0=Rotary, 1=Fix)
+    OUTPUT_ASSIGN: 291,      // nibble address 03 66H (0-7=Out 1-8, 8=TONE)
 } as const;
 
-/** Size of patch common block */
-export const PATCH_COMMON_SIZE = 0x10;
+/** Total size of patch data (512 bytes after de-nibblization) */
+export const PATCH_TOTAL_SIZE = 512;
 
-/** Offset where partials begin within patch */
-export const PATCH_PARTIALS_OFFSET = 0x10;
-
-/** Offsets within each partial block */
-export const PARTIAL_OFFSETS = {
-    TONE_NUMBER: 0x00,
-    KEY_RANGE_LOW: 0x01,
-    KEY_RANGE_HIGH: 0x02,
-    VEL_RANGE_LOW: 0x03,
-    VEL_RANGE_HIGH: 0x04,
-    LEVEL: 0x05,
-    PAN: 0x06,
-    COARSE_TUNE: 0x07,
-    FINE_TUNE: 0x08,
-    OUTPUT_ASSIGN: 0x09,
-    MUTE: 0x0A,
-} as const;
-
-/** Size of each partial block */
-export const PARTIAL_SIZE = 0x0B;
-
-/** Maximum partials per patch */
-export const MAX_PARTIALS = 32;
+/** Number of tone mapping entries per layer (MIDI notes 21-127) */
+export const TONE_MAP_ENTRIES = 109;
 
 /** Maximum patches in memory */
 export const MAX_PATCHES = 64;
@@ -243,9 +236,10 @@ export const VALUE_RANGES = {
 
 /**
  * Build patch address from patch number and offset
+ * Patches are at bank 00 00 with stride of 4: address 00 00 (pp*4) offset
  */
 export function buildPatchAddress(patchNumber: number, offset: number): number[] {
-    return [0x00, 0x01, patchNumber & 0x3F, offset & 0x7F];
+    return [0x00, 0x00, (patchNumber * 4) & 0x7F, offset & 0x7F];
 }
 
 /**

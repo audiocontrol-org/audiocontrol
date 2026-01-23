@@ -147,37 +147,60 @@ Base address: `00 00 (pp*4) 00` where `pp` = patch number (00-3F)
 
 **Important**: Each patch occupies a stride of 4 in the address space. Patch 0 is at `00 00 00 00`, Patch 1 is at `00 00 04 00`, Patch 2 is at `00 00 08 00`, etc.
 
-#### Patch Common Parameters (Offset 00-0F)
+**Data Format**: Patch parameters are stored in nibblized format. When reading via RQD, each logical byte requires 2 nibbles. Offsets below are in **nibble addresses** (divide by 2 to get byte offsets after de-nibblization).
 
-| Offset | Size | Parameter | Range | Description |
-|--------|------|-----------|-------|-------------|
-| 00 | 8 | Patch Name | ASCII | 8-character name |
-| 08 | 1 | Bender Range | 00-0C | Pitch bend range (semitones) |
-| 09 | 1 | Aftertouch Sens | 00-7F | Aftertouch sensitivity |
-| 0A | 1 | Key Mode | 00-02 | 0=Whole, 1=Dual, 2=Split |
-| 0B | 1 | Split Point | 00-7F | Split point (MIDI note) |
-| 0C | 1 | Portamento Time | 00-7F | Portamento time |
-| 0D | 1 | Portamento Mode | 00-01 | 0=Off, 1=On |
-| 0E | 1 | Output Assign | 00-08 | Output routing |
-| 0F | 1 | Level | 00-7F | Patch level |
+Total patch size: **512 bytes** (1024 nibbles = `00 00 04 00`)
 
-#### Partial Parameters (Offset 10-2F per partial)
+#### Patch Parameters (from Roland S-330 Manual)
 
-Each patch can have up to 32 partials. Partial `n` starts at offset `10 + (n * 20)`.
+| Nibble Offset | Parameter | Range | Description |
+|---------------|-----------|-------|-------------|
+| 00 00H-00 17H | PATCH NAME | 32-127 | 12 ASCII characters (24 nibbles) |
+| 00 18H | BEND RANGE | 0-12 | Pitch bend range (semitones) |
+| 00 1AH | dummy | - | Reserved/unused |
+| 00 1CH | AFTER TOUCH SENSE | 0-127 | Aftertouch sensitivity |
+| 00 1EH | KEY MODE | 0-4 | 0=Normal, 1=V-Sw, 2=X-Fade, 3=V-Mix, 4=Unison |
+| 00 20H | VELOCITY SW THRESHOLD | 0-127 | Velocity switch threshold |
+| 00 22H-01 7BH | TONE TO KEY #1 | -1 to 31 | First tone layer (109 entries, -1=OFF) |
+| 01 7CH-03 55H | TONE TO KEY #2 | 0-31 | Second tone layer (109 entries) |
+| 03 56H | COPY SOURCE | 0-7 | Copy source setting |
+| 03 58H | OCTAVE SHIFT | -2 to +2 | Octave transpose |
+| 03 5AH | OUTPUT LEVEL | 0-127 | Overall patch level |
+| 03 5CH | dummy | - | Reserved/unused |
+| 03 5EH | DETUNE | -64 to +63 | Unison detune amount |
+| 03 60H | VELOCITY MIX RATIO | 0-127 | V-Mix layer balance |
+| 03 62H | AFTER TOUCH ASSIGN | 0-4 | 0=Mod, 1=Vol, 2=Bend+, 3=Bend-, 4=Filter |
+| 03 64H | KEY ASSIGN | 0-1 | 0=Rotary, 1=Fix |
+| 03 66H | OUTPUT ASSIGN | 0-8 | 0-7=Output 1-8, 8=TONE |
+| 03 68H-03 7FH | dummy | - | Reserved/unused |
 
-| Offset | Size | Parameter | Range | Description |
-|--------|------|-----------|-------|-------------|
-| 00 | 1 | Tone Number | 00-1F | Assigned tone |
-| 01 | 1 | Key Range Low | 00-7F | Lower key limit |
-| 02 | 1 | Key Range High | 00-7F | Upper key limit |
-| 03 | 1 | Vel Range Low | 01-7F | Lower velocity limit |
-| 04 | 1 | Vel Range High | 01-7F | Upper velocity limit |
-| 05 | 1 | Level | 00-7F | Partial level |
-| 06 | 1 | Pan | 00-7F | Pan position (40=center) |
-| 07 | 1 | Coarse Tune | 00-7F | Coarse tuning (40=0, ±48 semi) |
-| 08 | 1 | Fine Tune | 00-7F | Fine tuning (40=0, ±50 cents) |
-| 09 | 1 | Output Assign | 00-08 | Individual output |
-| 0A | 1 | Mute | 00-01 | Partial mute flag |
+**Byte Offsets**: After de-nibblization:
+- Patch name: bytes 0-11 (12 chars)
+- Bend range: byte 12
+- Aftertouch sense: byte 14
+- Key mode: byte 15
+- Velocity threshold: byte 16
+- Tone mappings: bytes 17-280 (two 109-entry arrays)
+- Octave shift: byte 284
+- Output level: byte 285
+- Detune: byte 287
+- V-Mix ratio: byte 288
+- Aftertouch assign: byte 289
+- Key assign: byte 290
+- Output assign: byte 291
+
+**Key Mode Values**:
+- 0 = Normal: Single tone layer across keyboard
+- 1 = V-Sw (Velocity Switch): Layer 1 below threshold, layer 2 above
+- 2 = X-Fade (Crossfade): Smooth blend between layers based on velocity
+- 3 = V-Mix: Mix both layers, ratio controlled by velocity
+- 4 = Unison: Both layers play together with detune
+
+**Tone Mapping Arrays**:
+- Two arrays of 109 entries each (MIDI notes 21-127, C1-G9)
+- Layer 1: Values -1 to 31 (-1 = no tone assigned)
+- Layer 2: Values 0-31 (0 = no tone assigned for layer 2)
+- Each entry maps a MIDI note to a tone number
 
 ### Tone Parameters (00 03 00 00 - 00 03 7C 00)
 

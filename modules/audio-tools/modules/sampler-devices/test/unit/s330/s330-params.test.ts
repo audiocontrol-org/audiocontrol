@@ -20,13 +20,11 @@ import {
     // Structure parsing (stubs)
     parseSystemParams,
     parsePatchCommon,
-    parsePartial,
     parseTone,
 
     // Structure encoding (stubs)
     encodeSystemParams,
     encodePatchCommon,
-    encodePartial,
     encodeTone,
 
     // Validation functions
@@ -41,49 +39,66 @@ import {
 import type {
     S330SystemParams,
     S330PatchCommon,
-    S330Partial,
     S330Tone,
 } from '@/devices/s330/index.js';
 
 describe('S-330 Key Mode Conversion', () => {
     describe('parseKeyMode', () => {
-        it('should parse 0 as whole', () => {
-            expect(parseKeyMode(0)).toBe('whole');
+        it('should parse 0 as normal', () => {
+            expect(parseKeyMode(0)).toBe('normal');
         });
 
-        it('should parse 1 as dual', () => {
-            expect(parseKeyMode(1)).toBe('dual');
+        it('should parse 1 as v-sw', () => {
+            expect(parseKeyMode(1)).toBe('v-sw');
         });
 
-        it('should parse 2 as split', () => {
-            expect(parseKeyMode(2)).toBe('split');
+        it('should parse 2 as x-fade', () => {
+            expect(parseKeyMode(2)).toBe('x-fade');
         });
 
-        it('should default to whole for unknown values', () => {
-            expect(parseKeyMode(3)).toBe('whole');
-            expect(parseKeyMode(255)).toBe('whole');
+        it('should parse 3 as v-mix', () => {
+            expect(parseKeyMode(3)).toBe('v-mix');
+        });
+
+        it('should parse 4 as unison', () => {
+            expect(parseKeyMode(4)).toBe('unison');
+        });
+
+        it('should default to normal for unknown values', () => {
+            expect(parseKeyMode(5)).toBe('normal');
+            expect(parseKeyMode(255)).toBe('normal');
         });
     });
 
     describe('encodeKeyMode', () => {
-        it('should encode whole as 0', () => {
-            expect(encodeKeyMode('whole')).toBe(0);
+        it('should encode normal as 0', () => {
+            expect(encodeKeyMode('normal')).toBe(0);
         });
 
-        it('should encode dual as 1', () => {
-            expect(encodeKeyMode('dual')).toBe(1);
+        it('should encode v-sw as 1', () => {
+            expect(encodeKeyMode('v-sw')).toBe(1);
         });
 
-        it('should encode split as 2', () => {
-            expect(encodeKeyMode('split')).toBe(2);
+        it('should encode x-fade as 2', () => {
+            expect(encodeKeyMode('x-fade')).toBe(2);
+        });
+
+        it('should encode v-mix as 3', () => {
+            expect(encodeKeyMode('v-mix')).toBe(3);
+        });
+
+        it('should encode unison as 4', () => {
+            expect(encodeKeyMode('unison')).toBe(4);
         });
     });
 
     describe('round-trip', () => {
         it('should round-trip all key modes', () => {
-            expect(parseKeyMode(encodeKeyMode('whole'))).toBe('whole');
-            expect(parseKeyMode(encodeKeyMode('dual'))).toBe('dual');
-            expect(parseKeyMode(encodeKeyMode('split'))).toBe('split');
+            expect(parseKeyMode(encodeKeyMode('normal'))).toBe('normal');
+            expect(parseKeyMode(encodeKeyMode('v-sw'))).toBe('v-sw');
+            expect(parseKeyMode(encodeKeyMode('x-fade'))).toBe('x-fade');
+            expect(parseKeyMode(encodeKeyMode('v-mix'))).toBe('v-mix');
+            expect(parseKeyMode(encodeKeyMode('unison'))).toBe('unison');
         });
     });
 });
@@ -411,23 +426,32 @@ describe('S-330 Structure Parsing (Stubs)', () => {
     });
 
     describe('parsePatchCommon', () => {
-        it('should return default patch common params', () => {
-            const result = parsePatchCommon([]);
-            expect(result.name).toBe('INIT');
-            expect(result.benderRange).toBe(2);
-            expect(result.keyMode).toBe('whole');
-            expect(result.level).toBe(127);
-        });
-    });
+        it('should parse patch common params from data', () => {
+            // Create minimal test data (512 bytes)
+            const data = new Array(512).fill(0);
+            // Set name to "TEST" at bytes 0-11
+            const nameBytes = [0x54, 0x45, 0x53, 0x54, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20];
+            nameBytes.forEach((b, i) => { data[i] = b; });
+            // Bender range at byte 12
+            data[12] = 5;
+            // Aftertouch sens at byte 14
+            data[14] = 100;
+            // Key mode at byte 15 (0 = normal)
+            data[15] = 0;
+            // Velocity threshold at byte 16
+            data[16] = 64;
+            // Level at byte 285
+            data[285] = 120;
 
-    describe('parsePartial', () => {
-        it('should return default partial params', () => {
-            const result = parsePartial([], 0);
-            expect(result.toneNumber).toBe(0);
-            expect(result.keyRangeLow).toBe(0);
-            expect(result.keyRangeHigh).toBe(127);
-            expect(result.level).toBe(127);
-            expect(result.pan).toBe(64);
+            const result = parsePatchCommon(data);
+            expect(result.name).toBe('TEST');
+            expect(result.benderRange).toBe(5);
+            expect(result.aftertouchSens).toBe(100);
+            expect(result.keyMode).toBe('normal');
+            expect(result.velocityThreshold).toBe(64);
+            expect(result.level).toBe(120);
+            expect(result.toneLayer1).toHaveLength(109);
+            expect(result.toneLayer2).toHaveLength(109);
         });
     });
 
@@ -464,38 +488,61 @@ describe('S-330 Structure Encoding (Stubs)', () => {
     });
 
     describe('encodePatchCommon', () => {
-        it('should return empty array (stub)', () => {
+        it('should encode patch common parameters to 512 bytes', () => {
             const params: S330PatchCommon = {
                 name: 'TEST',
                 benderRange: 2,
                 aftertouchSens: 64,
-                keyMode: 'whole',
-                splitPoint: 60,
-                portamentoTime: 0,
-                portamentoEnabled: false,
-                outputAssign: 0,
+                keyMode: 'normal',
+                velocityThreshold: 64,
+                toneLayer1: new Array(109).fill(0),
+                toneLayer2: new Array(109).fill(0),
+                copySource: 0,
+                octaveShift: 0,
                 level: 127,
+                detune: 0,
+                velocityMixRatio: 64,
+                aftertouchAssign: 'modulation',
+                keyAssign: 'rotary',
+                outputAssign: 0,
             };
-            expect(encodePatchCommon(params)).toEqual([]);
+            const encoded = encodePatchCommon(params);
+            expect(encoded.length).toBe(512);
         });
-    });
 
-    describe('encodePartial', () => {
-        it('should return empty array (stub)', () => {
-            const partial: S330Partial = {
-                toneNumber: 0,
-                keyRangeLow: 0,
-                keyRangeHigh: 127,
-                velRangeLow: 1,
-                velRangeHigh: 127,
-                level: 127,
-                pan: 64,
-                coarseTune: 64,
-                fineTune: 64,
-                outputAssign: 0,
-                muted: false,
+        it('should round-trip encode/decode correctly', () => {
+            const params: S330PatchCommon = {
+                name: 'TEST PATCH',
+                benderRange: 5,
+                aftertouchSens: 100,
+                keyMode: 'v-sw',
+                velocityThreshold: 80,
+                toneLayer1: new Array(109).fill(10),
+                toneLayer2: new Array(109).fill(20),
+                copySource: 3,
+                octaveShift: -1,
+                level: 100,
+                detune: 32,
+                velocityMixRatio: 75,
+                aftertouchAssign: 'filter',
+                keyAssign: 'fix',
+                outputAssign: 5,
             };
-            expect(encodePartial(partial)).toEqual([]);
+            const encoded = encodePatchCommon(params);
+            const decoded = parsePatchCommon(encoded);
+
+            expect(decoded.name).toBe(params.name);
+            expect(decoded.benderRange).toBe(params.benderRange);
+            expect(decoded.aftertouchSens).toBe(params.aftertouchSens);
+            expect(decoded.keyMode).toBe(params.keyMode);
+            expect(decoded.velocityThreshold).toBe(params.velocityThreshold);
+            expect(decoded.level).toBe(params.level);
+            expect(decoded.detune).toBe(params.detune);
+            expect(decoded.octaveShift).toBe(params.octaveShift);
+            expect(decoded.velocityMixRatio).toBe(params.velocityMixRatio);
+            expect(decoded.aftertouchAssign).toBe(params.aftertouchAssign);
+            expect(decoded.keyAssign).toBe(params.keyAssign);
+            expect(decoded.outputAssign).toBe(params.outputAssign);
         });
     });
 

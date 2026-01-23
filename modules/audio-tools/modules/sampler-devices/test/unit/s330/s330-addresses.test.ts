@@ -19,11 +19,8 @@ import {
     SYSTEM_OFFSETS,
     SYSTEM_BLOCK_SIZE,
     PATCH_COMMON_OFFSETS,
-    PATCH_COMMON_SIZE,
-    PATCH_PARTIALS_OFFSET,
-    PARTIAL_OFFSETS,
-    PARTIAL_SIZE,
-    MAX_PARTIALS,
+    PATCH_TOTAL_SIZE,
+    TONE_MAP_ENTRIES,
     MAX_PATCHES,
     TONE_OFFSETS,
     TONE_BLOCK_SIZE,
@@ -101,7 +98,7 @@ describe('S-330 Address Constants', () => {
         });
 
         it('should have correct patch base address', () => {
-            expect(ADDR_PATCH_BASE).toEqual([0x00, 0x01, 0x00, 0x00]);
+            expect(ADDR_PATCH_BASE).toEqual([0x00, 0x00, 0x00, 0x00]);
         });
 
         it('should have correct tone base address', () => {
@@ -140,50 +137,28 @@ describe('S-330 Address Constants', () => {
             expect(PATCH_COMMON_OFFSETS.NAME).toBe(0x00);
         });
 
-        it('should have bender range at offset 8', () => {
-            expect(PATCH_COMMON_OFFSETS.BENDER_RANGE).toBe(0x08);
+        it('should have bender range at offset 12', () => {
+            expect(PATCH_COMMON_OFFSETS.BENDER_RANGE).toBe(12);
         });
 
-        it('should have level at offset 15', () => {
-            expect(PATCH_COMMON_OFFSETS.LEVEL).toBe(0x0F);
+        it('should have level at offset 285', () => {
+            expect(PATCH_COMMON_OFFSETS.LEVEL).toBe(285);
         });
 
-        it('should have correct patch common size', () => {
-            expect(PATCH_COMMON_SIZE).toBe(0x10);
+        it('should have key mode at offset 15', () => {
+            expect(PATCH_COMMON_OFFSETS.KEY_MODE).toBe(15);
         });
 
-        it('should have partials starting at offset 16', () => {
-            expect(PATCH_PARTIALS_OFFSET).toBe(0x10);
+        it('should have correct patch total size', () => {
+            expect(PATCH_TOTAL_SIZE).toBe(512);
         });
 
-        it('should have correct partial size', () => {
-            expect(PARTIAL_SIZE).toBe(0x0B);
-        });
-
-        it('should allow up to 32 partials', () => {
-            expect(MAX_PARTIALS).toBe(32);
+        it('should have 109 tone map entries per layer', () => {
+            expect(TONE_MAP_ENTRIES).toBe(109);
         });
 
         it('should allow up to 64 patches', () => {
             expect(MAX_PATCHES).toBe(64);
-        });
-    });
-
-    describe('Partial Offsets', () => {
-        it('should have tone number at offset 0', () => {
-            expect(PARTIAL_OFFSETS.TONE_NUMBER).toBe(0x00);
-        });
-
-        it('should have key range low at offset 1', () => {
-            expect(PARTIAL_OFFSETS.KEY_RANGE_LOW).toBe(0x01);
-        });
-
-        it('should have pan at offset 6', () => {
-            expect(PARTIAL_OFFSETS.PAN).toBe(0x06);
-        });
-
-        it('should have mute at offset 10', () => {
-            expect(PARTIAL_OFFSETS.MUTE).toBe(0x0A);
         });
     });
 
@@ -314,22 +289,26 @@ describe('S-330 Address Builder Functions', () => {
     describe('buildPatchAddress', () => {
         it('should build address for patch 0, offset 0', () => {
             const address = buildPatchAddress(0, 0);
-            expect(address).toEqual([0x00, 0x01, 0x00, 0x00]);
+            expect(address).toEqual([0x00, 0x00, 0x00, 0x00]);
         });
 
-        it('should build address for patch 5, offset 8 (bender range)', () => {
-            const address = buildPatchAddress(5, 0x08);
-            expect(address).toEqual([0x00, 0x01, 0x05, 0x08]);
+        it('should build address for patch 5, offset 12 (bender range)', () => {
+            const address = buildPatchAddress(5, 12);
+            // Patch 5 is at position 20 (5*4), offset 12
+            expect(address).toEqual([0x00, 0x00, 20, 12]);
         });
 
-        it('should build address for patch 63 (max), offset 15 (level)', () => {
-            const address = buildPatchAddress(63, 0x0F);
-            expect(address).toEqual([0x00, 0x01, 0x3F, 0x0F]);
+        it('should build address for patch 63 (max), offset 285 (level)', () => {
+            const address = buildPatchAddress(63, 285 & 0x7F);
+            // Patch 63 is at position 252 (63*4), but masked to 7 bits = 124
+            // offset 285 masked to 7 bits = 29
+            expect(address).toEqual([0x00, 0x00, 124, 29]);
         });
 
-        it('should mask patch number to 6 bits', () => {
+        it('should apply stride of 4 and mask to 7 bits', () => {
             const address = buildPatchAddress(0xFF, 0x00);
-            expect(address[2]).toBe(0x3F); // 0xFF & 0x3F = 0x3F
+            // 0xFF * 4 = 1020, & 0x7F = 124
+            expect(address[2]).toBe(124);
         });
 
         it('should mask offset to 7 bits', () => {

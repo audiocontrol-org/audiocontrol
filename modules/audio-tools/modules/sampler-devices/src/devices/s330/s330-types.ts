@@ -33,48 +33,60 @@ export interface S330SystemParams {
 // =============================================================================
 
 /**
- * Key/velocity mode for patch
+ * Key mode for patch
+ * - normal: Single tone layer across keyboard
+ * - v-sw: Velocity switch (layer 1 below threshold, layer 2 above)
+ * - x-fade: Crossfade between layers based on velocity
+ * - v-mix: Mix both layers, ratio controlled by velocity
+ * - unison: Both layers play together with detune
  */
-export type S330KeyMode = 'whole' | 'dual' | 'split';
+export type S330KeyMode = 'normal' | 'v-sw' | 'x-fade' | 'v-mix' | 'unison';
 
 /**
- * S-330 patch common parameters
+ * Aftertouch assignment destination
+ */
+export type S330AftertouchAssign = 'modulation' | 'volume' | 'bend+' | 'bend-' | 'filter';
+
+/**
+ * Key assignment mode
+ */
+export type S330KeyAssign = 'rotary' | 'fix';
+
+/**
+ * S-330 patch parameters (from hardware manual)
+ *
+ * Each patch is 512 bytes (1024 nibbles) with the following structure:
+ * - 12-character name
+ * - Performance parameters (bend, aftertouch, mode, etc.)
+ * - Two tone mapping layers (109 keys each, MIDI notes 21-127)
+ * - Output and level settings
  */
 export interface S330PatchCommon {
-    name: string;            // 8 characters max
-    benderRange: number;     // 0-12 semitones
-    aftertouchSens: number;  // 0-127
-    keyMode: S330KeyMode;
-    splitPoint: number;      // 0-127 (MIDI note)
-    portamentoTime: number;  // 0-127
-    portamentoEnabled: boolean;
-    outputAssign: number;    // 0-8
-    level: number;           // 0-127
+    name: string;                      // 12 characters max (00 00H-00 17H)
+    benderRange: number;               // 0-12 semitones (00 18H)
+    aftertouchSens: number;            // 0-127 (00 1CH)
+    keyMode: S330KeyMode;              // 00 1EH (0-4)
+    velocityThreshold: number;         // 0-127 (00 20H) - V-Sw threshold
+    toneLayer1: number[];              // 109 entries, -1 to 31 (00 22H-01 7BH)
+    toneLayer2: number[];              // 109 entries, 0-31 (01 7CH-03 55H)
+    copySource: number;                // 0-7 (03 56H)
+    octaveShift: number;               // -2 to +2 (03 58H)
+    level: number;                     // 0-127 (03 5AH)
+    detune: number;                    // -64 to +63 (03 5EH) - Unison detune
+    velocityMixRatio: number;          // 0-127 (03 60H) - V-Mix ratio
+    aftertouchAssign: S330AftertouchAssign; // 03 62H (0-4)
+    keyAssign: S330KeyAssign;          // 03 64H (0-1)
+    outputAssign: number;              // 0-8 (03 66H) - 0-7=Out 1-8, 8=TONE
 }
 
 /**
- * S-330 partial (key zone within a patch)
- */
-export interface S330Partial {
-    toneNumber: number;      // 0-31
-    keyRangeLow: number;     // 0-127
-    keyRangeHigh: number;    // 0-127
-    velRangeLow: number;     // 1-127
-    velRangeHigh: number;    // 1-127
-    level: number;           // 0-127
-    pan: number;             // 0-127 (64 = center)
-    coarseTune: number;      // 0-127 (64 = 0, +/-48 semi)
-    fineTune: number;        // 0-127 (64 = 0, +/-50 cents)
-    outputAssign: number;    // 0-8
-    muted: boolean;
-}
-
-/**
- * Complete S-330 patch with common params and partials
+ * Complete S-330 patch
+ *
+ * Note: The S-330 uses a tone mapping approach instead of partials.
+ * Each patch has two layers of 109 tone assignments (one per MIDI note from C1 to G9).
  */
 export interface S330Patch {
     common: S330PatchCommon;
-    partials: S330Partial[];
 }
 
 // =============================================================================
@@ -143,6 +155,40 @@ export interface S330Tone {
     tva: S330TvaEnvelope;
     tvf: S330TvfParams;
     lfo: S330LfoParams;
+}
+
+// =============================================================================
+// MIDI Adapter Interface
+// =============================================================================
+
+/**
+ * MIDI transport adapter interface for S-330 communication
+ *
+ * This interface abstracts MIDI I/O to enable the S330Client to work
+ * in both Node.js (via easymidi) and browser (via Web MIDI API) environments.
+ *
+ * Implementations:
+ * - Node.js: EasymidiAdapter in sampler-midi package
+ * - Browser: WebMidiAdapter in s330-editor package
+ */
+export interface S330MidiAdapter {
+    /**
+     * Send a SysEx message to the device
+     * @param data - Complete SysEx message including F0 start and F7 end bytes
+     */
+    send(data: number[]): void;
+
+    /**
+     * Register a callback for incoming SysEx messages
+     * @param callback - Function to call when SysEx message is received
+     */
+    onSysEx(callback: (data: number[]) => void): void;
+
+    /**
+     * Remove a previously registered SysEx callback
+     * @param callback - The callback function to remove
+     */
+    removeSysExListener(callback: (data: number[]) => void): void;
 }
 
 // =============================================================================

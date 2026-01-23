@@ -34,10 +34,10 @@ export function PatchList({ patchNames, selectedIndex, onSelect }: PatchListProp
           >
             <div className="flex items-center justify-between">
               <span className="font-mono">
-                {String(patch.index + 1).padStart(2, '0')}
+                P{String(patch.index + 11).padStart(2, '0')}
               </span>
               <span className="flex-1 mx-3 truncate">
-                {patch.name || '(unnamed)'}
+                {patch.name}
               </span>
             </div>
           </button>

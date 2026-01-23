@@ -10,9 +10,10 @@
 import {
     S330SystemParams,
     S330PatchCommon,
-    S330Partial,
     S330Tone,
     S330KeyMode,
+    S330AftertouchAssign,
+    S330KeyAssign,
     S330LoopMode,
     S330LfoDestination,
     S330SampleRate,
@@ -21,9 +22,6 @@ import {
 import {
     SYSTEM_OFFSETS,
     PATCH_COMMON_OFFSETS,
-    PARTIAL_OFFSETS,
-    PARTIAL_SIZE,
-    PATCH_PARTIALS_OFFSET,
     TONE_OFFSETS,
 } from './s330-addresses.js';
 
@@ -36,10 +34,12 @@ import {
  */
 export function parseKeyMode(value: number): S330KeyMode {
     switch (value) {
-        case 0: return 'whole';
-        case 1: return 'dual';
-        case 2: return 'split';
-        default: return 'whole';
+        case 0: return 'normal';
+        case 1: return 'v-sw';
+        case 2: return 'x-fade';
+        case 3: return 'v-mix';
+        case 4: return 'unison';
+        default: return 'normal';
     }
 }
 
@@ -48,10 +48,53 @@ export function parseKeyMode(value: number): S330KeyMode {
  */
 export function encodeKeyMode(mode: S330KeyMode): number {
     switch (mode) {
-        case 'whole': return 0;
-        case 'dual': return 1;
-        case 'split': return 2;
+        case 'normal': return 0;
+        case 'v-sw': return 1;
+        case 'x-fade': return 2;
+        case 'v-mix': return 3;
+        case 'unison': return 4;
     }
+}
+
+/**
+ * Convert aftertouch assign byte to enum
+ */
+export function parseAftertouchAssign(value: number): S330AftertouchAssign {
+    switch (value) {
+        case 0: return 'modulation';
+        case 1: return 'volume';
+        case 2: return 'bend+';
+        case 3: return 'bend-';
+        case 4: return 'filter';
+        default: return 'modulation';
+    }
+}
+
+/**
+ * Convert aftertouch assign enum to byte
+ */
+export function encodeAftertouchAssign(assign: S330AftertouchAssign): number {
+    switch (assign) {
+        case 'modulation': return 0;
+        case 'volume': return 1;
+        case 'bend+': return 2;
+        case 'bend-': return 3;
+        case 'filter': return 4;
+    }
+}
+
+/**
+ * Convert key assign byte to enum
+ */
+export function parseKeyAssign(value: number): S330KeyAssign {
+    return value === 1 ? 'fix' : 'rotary';
+}
+
+/**
+ * Convert key assign enum to byte
+ */
+export function encodeKeyAssign(assign: S330KeyAssign): number {
+    return assign === 'fix' ? 1 : 0;
 }
 
 /**
@@ -115,11 +158,12 @@ export function encodeSampleRate(rate: S330SampleRate): number {
 }
 
 /**
- * Extract 8-character ASCII name from buffer
+ * Extract ASCII name from buffer (supports variable length for S-330 patches)
+ * S-330 patches use 12 characters, tones use 8 characters
  */
-export function parseName(data: number[], offset: number): string {
+export function parseName(data: number[], offset: number, length: number = 8): string {
     let name = '';
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < length; i++) {
         const char = data[offset + i] & 0x7F;
         if (char >= 0x20 && char <= 0x7E) {
             name += String.fromCharCode(char);
@@ -131,12 +175,12 @@ export function parseName(data: number[], offset: number): string {
 }
 
 /**
- * Encode 8-character ASCII name to buffer
+ * Encode ASCII name to buffer (supports variable length for S-330 patches)
  */
-export function encodeName(name: string): number[] {
+export function encodeName(name: string, length: number = 8): number[] {
     const result: number[] = [];
-    const padded = name.padEnd(8, ' ').substring(0, 8);
-    for (let i = 0; i < 8; i++) {
+    const padded = name.padEnd(length, ' ').substring(0, length);
+    for (let i = 0; i < length; i++) {
         result.push(padded.charCodeAt(i) & 0x7F);
     }
     return result;
@@ -204,42 +248,84 @@ export function parseSystemParams(_data: number[]): S330SystemParams {
 }
 
 /**
- * Parse patch common parameters from SysEx data
- * TODO: Implement actual parsing logic
+ * Parse patch common parameters from de-nibblized SysEx data
+ *
+ * Data should be de-nibblized patch data (512 bytes total).
+ * Offsets are byte positions after de-nibblization.
+ *
+ * @param data De-nibblized patch data (512 bytes)
+ * @returns Parsed patch common parameters
  */
-export function parsePatchCommon(_data: number[]): S330PatchCommon {
-    // Stub implementation - returns default values
-    return {
-        name: 'INIT',
-        benderRange: 2,
-        aftertouchSens: 64,
-        keyMode: 'whole',
-        splitPoint: 60,
-        portamentoTime: 0,
-        portamentoEnabled: false,
-        outputAssign: 0,
-        level: 127,
-    };
-}
+export function parsePatchCommon(data: number[]): S330PatchCommon {
+    // Patch name: bytes 0-11 (12 characters)
+    const name = parseName(data, 0, 12);
 
-/**
- * Parse partial parameters from SysEx data
- * TODO: Implement actual parsing logic
- */
-export function parsePartial(_data: number[], _index: number): S330Partial {
-    // Stub implementation - returns default values
+    // Bend range: byte 12 (nibble address 00 18H)
+    const benderRange = data[12];
+
+    // Aftertouch sense: byte 14 (nibble address 00 1CH)
+    const aftertouchSens = data[14];
+
+    // Key mode: byte 15 (nibble address 00 1EH)
+    const keyMode = parseKeyMode(data[15]);
+
+    // Velocity threshold: byte 16 (nibble address 00 20H)
+    const velocityThreshold = data[16];
+
+    // Tone layer 1: bytes 17-125 (109 entries, nibble address 00 22H-01 7BH)
+    // Each entry is -1 to 31 (0xFF = -1 = OFF)
+    const toneLayer1: number[] = [];
+    for (let i = 0; i < 109; i++) {
+        const value = data[17 + i];
+        toneLayer1.push(value === 0xFF ? -1 : value);
+    }
+
+    // Tone layer 2: bytes 126-234 (109 entries, nibble address 01 7CH-03 55H)
+    const toneLayer2: number[] = [];
+    for (let i = 0; i < 109; i++) {
+        toneLayer2.push(data[126 + i]);
+    }
+
+    // Copy source: byte 235 (nibble address 03 56H)
+    const copySource = data[235];
+
+    // Octave shift: byte 284 (nibble address 03 58H) - signed value -2 to +2
+    const octaveShift = parseSignedValue(data[284], 2);
+
+    // Output level: byte 285 (nibble address 03 5AH)
+    const level = data[285];
+
+    // Detune: byte 287 (nibble address 03 5EH) - signed value -64 to +63
+    const detune = parseSignedValue(data[287]);
+
+    // Velocity mix ratio: byte 288 (nibble address 03 60H)
+    const velocityMixRatio = data[288];
+
+    // Aftertouch assign: byte 289 (nibble address 03 62H)
+    const aftertouchAssign = parseAftertouchAssign(data[289]);
+
+    // Key assign: byte 290 (nibble address 03 64H)
+    const keyAssign = parseKeyAssign(data[290]);
+
+    // Output assign: byte 291 (nibble address 03 66H)
+    const outputAssign = data[291];
+
     return {
-        toneNumber: 0,
-        keyRangeLow: 0,
-        keyRangeHigh: 127,
-        velRangeLow: 1,
-        velRangeHigh: 127,
-        level: 127,
-        pan: 64,
-        coarseTune: 64,
-        fineTune: 64,
-        outputAssign: 0,
-        muted: false,
+        name,
+        benderRange,
+        aftertouchSens,
+        keyMode,
+        velocityThreshold,
+        toneLayer1,
+        toneLayer2,
+        copySource,
+        octaveShift,
+        level,
+        detune,
+        velocityMixRatio,
+        aftertouchAssign,
+        keyAssign,
+        outputAssign,
     };
 }
 
@@ -300,22 +386,75 @@ export function encodeSystemParams(_params: S330SystemParams): number[] {
 }
 
 /**
- * Encode patch common parameters to SysEx data
- * TODO: Implement actual encoding logic
+ * Encode patch common parameters to de-nibblized SysEx data
+ *
+ * Reverses parsePatchCommon to convert patch parameters back to
+ * the 512-byte de-nibblized format expected by the S-330.
+ *
+ * @param params Patch common parameters to encode
+ * @returns 512-byte array ready for nibblization and transmission
  */
-export function encodePatchCommon(_params: S330PatchCommon): number[] {
-    // Stub implementation
-    return [];
+export function encodePatchCommon(params: S330PatchCommon): number[] {
+    // Create 512-byte array initialized to 0
+    const result = new Array(512).fill(0);
+
+    // Patch name: bytes 0-11 (12 characters)
+    const nameBytes = encodeName(params.name, 12);
+    for (let i = 0; i < 12; i++) {
+        result[i] = nameBytes[i];
+    }
+
+    // Bend range: byte 12 (nibble address 00 18H)
+    result[12] = params.benderRange;
+
+    // Aftertouch sense: byte 14 (nibble address 00 1CH)
+    result[14] = params.aftertouchSens;
+
+    // Key mode: byte 15 (nibble address 00 1EH)
+    result[15] = encodeKeyMode(params.keyMode);
+
+    // Velocity threshold: byte 16 (nibble address 00 20H)
+    result[16] = params.velocityThreshold;
+
+    // Tone layer 1: bytes 17-125 (109 entries, nibble address 00 22H-01 7BH)
+    // -1 maps to 0xFF (OFF), otherwise 0-31
+    for (let i = 0; i < 109; i++) {
+        const value = params.toneLayer1[i];
+        result[17 + i] = value === -1 ? 0xFF : value;
+    }
+
+    // Tone layer 2: bytes 126-234 (109 entries, nibble address 01 7CH-03 55H)
+    for (let i = 0; i < 109; i++) {
+        result[126 + i] = params.toneLayer2[i];
+    }
+
+    // Copy source: byte 235 (nibble address 03 56H)
+    result[235] = params.copySource;
+
+    // Octave shift: byte 284 (nibble address 03 58H) - signed value -2 to +2
+    result[284] = encodeSignedValue(params.octaveShift, 2);
+
+    // Output level: byte 285 (nibble address 03 5AH)
+    result[285] = params.level;
+
+    // Detune: byte 287 (nibble address 03 5EH) - signed value -64 to +63
+    result[287] = encodeSignedValue(params.detune);
+
+    // Velocity mix ratio: byte 288 (nibble address 03 60H)
+    result[288] = params.velocityMixRatio;
+
+    // Aftertouch assign: byte 289 (nibble address 03 62H)
+    result[289] = encodeAftertouchAssign(params.aftertouchAssign);
+
+    // Key assign: byte 290 (nibble address 03 64H)
+    result[290] = encodeKeyAssign(params.keyAssign);
+
+    // Output assign: byte 291 (nibble address 03 66H)
+    result[291] = params.outputAssign;
+
+    return result;
 }
 
-/**
- * Encode partial parameters to SysEx data
- * TODO: Implement actual encoding logic
- */
-export function encodePartial(_partial: S330Partial): number[] {
-    // Stub implementation
-    return [];
-}
 
 /**
  * Encode tone parameters to SysEx data
