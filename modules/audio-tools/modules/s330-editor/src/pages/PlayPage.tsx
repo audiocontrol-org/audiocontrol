@@ -23,6 +23,7 @@ interface MidiPart {
   channel: number;
   patchIndex: number | null;
   patchName: string;
+  output: number;
   level: number;
   active: boolean;
 }
@@ -46,6 +47,7 @@ export function PlayPage() {
       channel: i, // 0-15 (Ch 1-16)
       patchIndex: null,
       patchName: '',
+      output: 1, // 1-8 for individual outputs
       level: 127,
       active: true,
     }))
@@ -95,7 +97,7 @@ export function PlayPage() {
         const configs = await client.requestFunctionParameters();
         console.log('[PlayPage] Got function parameters:');
         configs.forEach((c, i) => {
-          console.log(`  Part ${i}: channel=${c.channel}, patchIndex=${c.patchIndex}, level=${c.level}`);
+          console.log(`  Part ${i}: channel=${c.channel}, patchIndex=${c.patchIndex}, output=${c.output}, level=${c.level}`);
         });
 
         // Update parts with loaded configuration
@@ -104,6 +106,7 @@ export function PlayPage() {
             ...part,
             channel: configs[i]?.channel ?? i,
             patchIndex: configs[i]?.patchIndex ?? null,
+            output: configs[i]?.output ?? 1,
             level: configs[i]?.level ?? 127,
           }))
         );
@@ -185,6 +188,22 @@ export function PlayPage() {
     }
   };
 
+  const handleOutputChange = (partIndex: number, output: number) => {
+    updatePart(partIndex, { output });
+
+    // Send parameter update to hardware
+    if (clientRef.current) {
+      try {
+        clientRef.current.setMultiOutput(partIndex, output);
+      } catch (err) {
+        console.error('[PlayPage] Failed to send output parameter:', err);
+        setError(
+          err instanceof Error ? err.message : 'Failed to update output'
+        );
+      }
+    }
+  };
+
   const handleLevelChange = (partIndex: number, level: number) => {
     updatePart(partIndex, { level });
 
@@ -258,19 +277,20 @@ export function PlayPage() {
         {/* Parts Grid */}
         <div className="p-4 font-mono text-sm">
           {/* Header row */}
-          <div className="grid grid-cols-10 gap-2 mb-2 text-s330-muted text-xs">
+          <div className="grid grid-cols-12 gap-2 mb-2 text-s330-muted text-xs">
             <div className="col-span-1"></div>
             <div className="col-span-1">VAL</div>
             <div className="col-span-1 text-center">CH</div>
-            <div className="col-span-5">Patch</div>
-            <div className="col-span-2 text-right">Level</div>
+            <div className="col-span-4">Patch</div>
+            <div className="col-span-1 text-center">Out</div>
+            <div className="col-span-4">Level</div>
           </div>
 
           {/* Part rows */}
           {parts.map((part, index) => (
             <div
               key={part.id}
-              className="grid grid-cols-10 gap-2 py-1.5 px-1 rounded transition-colors hover:bg-s330-accent/10"
+              className="grid grid-cols-12 gap-2 py-1.5 px-1 rounded transition-colors hover:bg-s330-accent/10"
             >
               {/* Part label */}
               <div className="col-span-1 text-s330-highlight font-bold">
@@ -304,7 +324,7 @@ export function PlayPage() {
               </div>
 
               {/* Patch - editable dropdown */}
-              <div className="col-span-5">
+              <div className="col-span-4">
                 <select
                   value={part.patchIndex ?? -1}
                   onChange={(e) => {
@@ -334,28 +354,56 @@ export function PlayPage() {
                 </select>
               </div>
 
-              {/* Level - editable number input */}
-              <div className="col-span-2 text-right">
+              {/* Output - editable dropdown (1-8 for individual outputs) */}
+              <div className="col-span-1 text-center">
+                <select
+                  value={part.output}
+                  onChange={(e) => handleOutputChange(index, Number(e.target.value))}
+                  onClick={(e) => e.stopPropagation()}
+                  className={cn(
+                    'w-full px-1 py-0.5 text-center text-xs font-mono',
+                    'bg-s330-panel border border-s330-accent rounded',
+                    'text-s330-text hover:bg-s330-accent/30',
+                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                  )}
+                >
+                  {Array.from({ length: 8 }, (_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      {i + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Level - slider with value display */}
+              <div className="col-span-4 flex items-center gap-2">
                 <input
-                  type="number"
+                  type="range"
                   min={0}
                   max={127}
                   value={part.level}
-                  onChange={(e) => {
-                    const value = Math.min(127, Math.max(0, Number(e.target.value)));
-                    handleLevelChange(index, value);
-                  }}
+                  onChange={(e) => handleLevelChange(index, Number(e.target.value))}
                   onClick={(e) => e.stopPropagation()}
                   className={cn(
-                    'w-full px-1 py-0.5 text-right text-xs font-mono',
-                    'bg-s330-panel border border-s330-accent rounded',
-                    'text-s330-text hover:bg-s330-accent/30',
-                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
-                    '[appearance:textfield]',
-                    '[&::-webkit-outer-spin-button]:appearance-none',
-                    '[&::-webkit-inner-spin-button]:appearance-none'
+                    'flex-1 h-1.5 rounded-full appearance-none cursor-pointer',
+                    'bg-s330-accent/50',
+                    '[&::-webkit-slider-thumb]:appearance-none',
+                    '[&::-webkit-slider-thumb]:w-3',
+                    '[&::-webkit-slider-thumb]:h-3',
+                    '[&::-webkit-slider-thumb]:rounded-full',
+                    '[&::-webkit-slider-thumb]:bg-s330-highlight',
+                    '[&::-webkit-slider-thumb]:hover:bg-s330-text',
+                    '[&::-moz-range-thumb]:w-3',
+                    '[&::-moz-range-thumb]:h-3',
+                    '[&::-moz-range-thumb]:rounded-full',
+                    '[&::-moz-range-thumb]:bg-s330-highlight',
+                    '[&::-moz-range-thumb]:border-0',
+                    '[&::-moz-range-thumb]:hover:bg-s330-text'
                   )}
                 />
+                <span className="w-8 text-right text-xs text-s330-text font-mono">
+                  {part.level}
+                </span>
               </div>
             </div>
           ))}

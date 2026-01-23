@@ -90,6 +90,17 @@ export const S330_FUNCTION_ADDRESSES = {
   MULTI_PATCH_G: 0x38,
   MULTI_PATCH_H: 0x39,
 
+  // MULTI OUTPUT ASSIGN (output 1-8, 0=mix)
+  // Address offset follows pattern: channels at 0x22, patches at 0x32, outputs at 0x42
+  MULTI_OUTPUT_A: 0x42,
+  MULTI_OUTPUT_B: 0x43,
+  MULTI_OUTPUT_C: 0x44,
+  MULTI_OUTPUT_D: 0x45,
+  MULTI_OUTPUT_E: 0x46,
+  MULTI_OUTPUT_F: 0x47,
+  MULTI_OUTPUT_G: 0x48,
+  MULTI_OUTPUT_H: 0x49,
+
   // MULTI LEVEL (level 0-127)
   MULTI_LEVEL_A: 0x56,
   MULTI_LEVEL_B: 0x57,
@@ -125,6 +136,7 @@ export interface ToneNameInfo {
 export interface MultiPartConfig {
   channel: number; // 0-15 (MIDI channel 1-16)
   patchIndex: number; // 0-63
+  output: number; // 0-8 (0=mix, 1-8=individual outputs)
   level: number; // 0-127
 }
 
@@ -147,6 +159,7 @@ export interface S330ClientInterface {
   requestFunctionParameters(): Promise<MultiPartConfig[]>;
   setMultiChannel(part: number, channel: number): void;
   setMultiPatch(part: number, patchIndex: number): void;
+  setMultiOutput(part: number, output: number): void;
   setMultiLevel(part: number, level: number): void;
 
   // Low-level RQD with address/size - for custom requests
@@ -743,6 +756,7 @@ export function createS330Client(
      * Address base: 00 01 00 00 (function parameters bank per MIDI Implementation)
      * - Multi MIDI RX-CH 1-8:    offsets 0x22-0x29 (8 bytes)
      * - Multi Patch Number 1-8:  offsets 0x32-0x39 (8 bytes)
+     * - Multi Output Assign 1-8: offsets 0x42-0x49 (8 bytes)
      * - Multi Level 1-8:         offsets 0x56-0x5D (8 bytes)
      *
      * Returns configuration for all 8 parts (A-H)
@@ -765,6 +779,20 @@ export function createS330Client(
             8
           );
 
+          // Outputs: 00 01 00 42 (8 bytes for parts A-H)
+          let outputData: number[];
+          try {
+            outputData = await this.requestDataWithAddress(
+              [0x00, 0x01, 0x00, 0x42],
+              8
+            );
+          } catch (err) {
+            // Output parameters may not exist on all firmware versions
+            // Default to output 1 for all parts (mix output)
+            console.warn('[S330] Output parameters not available, using defaults');
+            outputData = [1, 1, 1, 1, 1, 1, 1, 1];
+          }
+
           // Levels: 00 01 00 56 (8 bytes for parts A-H)
           const levelData = await this.requestDataWithAddress(
             [0x00, 0x01, 0x00, 0x56],
@@ -776,9 +804,10 @@ export function createS330Client(
           for (let i = 0; i < 8; i++) {
             const channel = channelData[i] ?? 0;
             const patchIndex = patchData[i] ?? 0;
+            const output = outputData[i] ?? 1;
             const level = levelData[i] ?? 127;
 
-            parts.push({ channel, patchIndex, level });
+            parts.push({ channel, patchIndex, output, level });
           }
 
           console.log('[S330] Loaded function parameters:', parts);
@@ -789,6 +818,7 @@ export function createS330Client(
           return Array.from({ length: 8 }, (_, i) => ({
             channel: i,
             patchIndex: 0,
+            output: 1,
             level: 127,
           }));
         }
@@ -847,6 +877,33 @@ export function createS330Client(
 
       this.sendParameter(address, nibbles);
       console.log(`[S330] Set part ${part} patch to ${patchIndex}`);
+    },
+
+    /**
+     * Set output assignment for a multi mode part
+     *
+     * Address: 00 01 00 (0x42 + part) - function parameters bank
+     *
+     * @param part - Part number (0-7 for A-H)
+     * @param output - Output assignment (0-8: 0=mix, 1-8=individual outputs)
+     */
+    setMultiOutput(part: number, output: number): void {
+      if (part < 0 || part > 7) {
+        throw new Error(`Invalid part number: ${part} (must be 0-7)`);
+      }
+      if (output < 0 || output > 8) {
+        throw new Error(`Invalid output: ${output} (must be 0-8)`);
+      }
+
+      // Address: 00 01 00 (0x42 + part) - each part is 1 byte apart
+      const offset = 0x42 + part;
+      const address = [0x00, 0x01, 0x00, offset];
+
+      // Value is stored as single byte, but sent nibblized for DT1
+      const nibbles = [(output >> 4) & 0x0f, output & 0x0f];
+
+      this.sendParameter(address, nibbles);
+      console.log(`[S330] Set part ${part} output to ${output}`);
     },
 
     /**
