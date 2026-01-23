@@ -2,9 +2,10 @@
  * Main application layout
  */
 
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
 import { MidiStatus } from '@/components/midi/MidiStatus';
+import { useMidiStore } from '@/stores/midiStore';
 import { cn } from '@/lib/utils';
 
 interface LayoutProps {
@@ -21,6 +22,13 @@ const navItems = [
 ];
 
 export function Layout({ children }: LayoutProps) {
+  const initialize = useMidiStore((state) => state.initialize);
+
+  // Initialize MIDI on app start
+  useEffect(() => {
+    initialize();
+  }, [initialize]);
+
   return (
     <div className="min-h-screen bg-s330-bg">
       {/* Header */}

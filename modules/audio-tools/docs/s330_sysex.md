@@ -94,9 +94,9 @@ Base address: `00 01 00 xx` where `xx` is the parameter offset below.
 
 **Important**: Function parameters are in bank `00 01`, NOT `00 00`.
 
-**Data Format**: When reading via RQD, the data is returned de-nibblized. Each parameter is stored as a single byte at consecutive addresses.
+**Data Format**: When reading via RQD, the data is returned de-nibblized (each logical byte is sent as two nibbles in DAT packets). Each parameter is stored as a single byte at consecutive addresses.
 
-**Writing via DT1**: Values must be nibblized when sending: `[value >> 4, value & 0x0F]`
+**Writing via DT1**: Values are sent as raw bytes, NOT nibblized. See DT1 example below.
 
 #### MULTI MIDI RX-CH Parameters (Offset 0x22-0x29)
 

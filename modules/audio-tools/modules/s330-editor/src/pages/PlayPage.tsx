@@ -170,8 +170,8 @@ export function PlayPage() {
     }
   };
 
-  const handlePatchChange = (partIndex: number, patchIndex: number) => {
-    const patch = patchNames.find((p) => p.index === patchIndex);
+  const handlePatchChange = (partIndex: number, patchIndex: number | null) => {
+    const patch = patchIndex !== null ? patchNames.find((p) => p.index === patchIndex) : null;
     updatePart(partIndex, {
       patchIndex,
       patchName: patch?.name ?? '',
@@ -329,9 +329,7 @@ export function PlayPage() {
                   value={part.patchIndex ?? -1}
                   onChange={(e) => {
                     const value = Number(e.target.value);
-                    if (value !== -1) {
-                      handlePatchChange(index, value);
-                    }
+                    handlePatchChange(index, value === -1 ? null : value);
                   }}
                   onClick={(e) => e.stopPropagation()}
                   className={cn(

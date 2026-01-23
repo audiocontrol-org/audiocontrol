@@ -263,3 +263,14 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
     }
   },
 }));
+
+// Expose store on window for E2E testing
+declare global {
+  interface Window {
+    __midiStore?: typeof useMidiStore;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.__midiStore = useMidiStore;
+}

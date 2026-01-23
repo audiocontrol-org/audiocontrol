@@ -3,3 +3,4 @@
 e2e-*.png
 playwright-report/
 test-results/
+.playwright-chrome-data/

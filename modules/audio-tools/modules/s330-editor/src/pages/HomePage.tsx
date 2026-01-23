@@ -8,6 +8,10 @@ import { MidiPortSelector } from '@/components/midi/MidiPortSelector';
 import { useMidiStore } from '@/stores/midiStore';
 import { cn } from '@/lib/utils';
 
+// localStorage keys (must match midiStore)
+const STORAGE_KEY_INPUT = 's330-midi-input';
+const STORAGE_KEY_OUTPUT = 's330-midi-output';
+
 export function HomePage() {
   const navigate = useNavigate();
   const {
@@ -18,19 +22,36 @@ export function HomePage() {
     sysExEnabled,
     status,
     error,
-    initialize,
     refresh,
     connect,
     disconnect,
+    selectedInputId: storeInputId,
+    selectedOutputId: storeOutputId,
   } = useMidiStore();
 
-  const [selectedInputId, setSelectedInputId] = useState<string | null>(null);
-  const [selectedOutputId, setSelectedOutputId] = useState<string | null>(null);
+  // Local state for port selection - initialized from localStorage
+  const [selectedInputId, setSelectedInputId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY_INPUT);
+    } catch {
+      return null;
+    }
+  });
+  const [selectedOutputId, setSelectedOutputId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY_OUTPUT);
+    } catch {
+      return null;
+    }
+  });
 
-  // Initialize MIDI on mount
+  // Sync local state with store state when connected
   useEffect(() => {
-    initialize();
-  }, [initialize]);
+    if (status === 'connected' && storeInputId && storeOutputId) {
+      setSelectedInputId(storeInputId);
+      setSelectedOutputId(storeOutputId);
+    }
+  }, [status, storeInputId, storeOutputId]);
 
   const handleConnect = async () => {
     if (selectedInputId && selectedOutputId) {

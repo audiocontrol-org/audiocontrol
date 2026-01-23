@@ -157,10 +157,10 @@ export interface S330ClientInterface {
 
   // Function parameters - Multi mode configuration
   requestFunctionParameters(): Promise<MultiPartConfig[]>;
-  setMultiChannel(part: number, channel: number): void;
-  setMultiPatch(part: number, patchIndex: number): void;
-  setMultiOutput(part: number, output: number): void;
-  setMultiLevel(part: number, level: number): void;
+  setMultiChannel(part: number, channel: number): Promise<void>;
+  setMultiPatch(part: number, patchIndex: number | null): Promise<void>;
+  setMultiOutput(part: number, output: number): Promise<void>;
+  setMultiLevel(part: number, level: number): Promise<void>;
 
   // Low-level RQD with address/size - for custom requests
   requestDataWithAddress(
@@ -168,8 +168,11 @@ export interface S330ClientInterface {
     sizeInBytes: number
   ): Promise<number[]>;
 
-  // DT1 parameter update - for setting individual parameters
+  // DT1 parameter update - for setting individual parameters (does NOT work for function params)
   sendParameter(address: number[], data: number[]): void;
+
+  // WSD/DAT/EOD parameter update - ONLY method that works for function parameters
+  sendParameterWithWSD(address: number[], data: number[]): Promise<void>;
 
   // Legacy bulk dump methods (type-byte format - typically rejected by S-330)
   requestBulkDump(dataType: S330DataType): Promise<number[][]>;
@@ -523,6 +526,9 @@ export function createS330Client(
      *
      * Format: F0 41 [dev] 1E 12 [addr 4B] [data] [checksum] F7
      *
+     * NOTE: DT1 does NOT work for function parameter writes on S-330.
+     * Use sendParameterWithWSD() instead for function parameters.
+     *
      * @param address - 4-byte address [aa, bb, cc, dd]
      * @param data - Parameter data bytes to write
      */
@@ -553,6 +559,141 @@ export function createS330Client(
       });
 
       midiIO.send(message);
+    },
+
+    /**
+     * Send parameter update using WSD/DAT/EOD protocol
+     *
+     * This is the ONLY method that works for function parameter writes on S-330.
+     * The protocol requires:
+     * 1. Send WSD (Want to Send Data) with address and size
+     * 2. Wait for ACK
+     * 3. Send DAT with nibblized data
+     * 4. Send EOD (End of Data)
+     *
+     * Format:
+     * - WSD: F0 41 [dev] 1E 40 [addr 4B] [size 4B] [checksum] F7
+     * - Wait for ACK (0x43)
+     * - DAT: F0 41 [dev] 1E 42 [addr 4B] [nibblized_data] [checksum] F7
+     * - EOD: F0 41 [dev] 1E 45 F7
+     *
+     * @param address - 4-byte address [aa, bb, cc, dd]
+     * @param data - Parameter data bytes to write
+     * @returns Promise that resolves when write is complete
+     */
+    async sendParameterWithWSD(address: number[], data: number[]): Promise<void> {
+      if (address.length !== 4) {
+        throw new Error('Address must be 4 bytes');
+      }
+
+      return new Promise((resolve, reject) => {
+        let phase: 'WSD' | 'DAT' | 'DONE' = 'WSD';
+        const timeoutId = setTimeout(() => {
+          midiIO.removeSysExListener(listener);
+          reject(new Error('WSD write timeout - no response from S-330'));
+        }, timeoutMs);
+
+        function listener(response: number[]) {
+          if (response.length < 5) return;
+          if (response[1] !== ROLAND_ID) return;
+          if (response[2] !== deviceId) return;
+          if (response[3] !== S330_MODEL_ID) return;
+
+          const command = response[4];
+
+          if (phase === 'WSD') {
+            if (command === S330_COMMANDS.ACK) {
+              console.log('[S330] WSD ACK - sending DAT');
+              phase = 'DAT';
+
+              // Send DAT with address and nibblized data
+              const nibblized = nibblize(data);
+              const datChecksum = calculateChecksum(address, nibblized);
+
+              const datMessage = [
+                0xf0,
+                ROLAND_ID,
+                deviceId,
+                S330_MODEL_ID,
+                S330_COMMANDS.DAT,
+                ...address,
+                ...nibblized,
+                datChecksum,
+                0xf7,
+              ];
+
+              console.log('[S330] DAT:', {
+                address: address.map((b) => b.toString(16).padStart(2, '0')).join(' '),
+                data: data.map((b) => b.toString(16).padStart(2, '0')).join(' '),
+              });
+
+              midiIO.send(datMessage);
+
+              // Send EOD after small delay
+              setTimeout(() => {
+                const eodMessage = [
+                  0xf0,
+                  ROLAND_ID,
+                  deviceId,
+                  S330_MODEL_ID,
+                  S330_COMMANDS.EOD,
+                  0xf7,
+                ];
+                console.log('[S330] EOD sent');
+                midiIO.send(eodMessage);
+                phase = 'DONE';
+
+                // Wait a bit for S-330 to process, then resolve
+                setTimeout(() => {
+                  clearTimeout(timeoutId);
+                  midiIO.removeSysExListener(listener);
+                  resolve();
+                }, 100);
+              }, 50);
+            } else if (command === S330_COMMANDS.RJC) {
+              clearTimeout(timeoutId);
+              midiIO.removeSysExListener(listener);
+              reject(new Error('WSD rejected by S-330'));
+            } else if (command === S330_COMMANDS.ERR) {
+              clearTimeout(timeoutId);
+              midiIO.removeSysExListener(listener);
+              reject(new Error('WSD communication error'));
+            }
+          }
+        }
+
+        midiIO.onSysEx(listener);
+
+        // Build and send WSD message
+        const sizeInBytes = data.length;
+        const size = [
+          (sizeInBytes >> 21) & 0x7f,
+          (sizeInBytes >> 14) & 0x7f,
+          (sizeInBytes >> 7) & 0x7f,
+          sizeInBytes & 0x7f,
+        ];
+
+        const wsdChecksum = calculateChecksum(address, size);
+
+        const wsdMessage = [
+          0xf0,
+          ROLAND_ID,
+          deviceId,
+          S330_MODEL_ID,
+          S330_COMMANDS.WSD,
+          ...address,
+          ...size,
+          wsdChecksum,
+          0xf7,
+        ];
+
+        console.log('[S330] WSD:', {
+          address: address.map((b) => b.toString(16).padStart(2, '0')).join(' '),
+          size: sizeInBytes,
+        });
+
+        midiIO.send(wsdMessage);
+      });
     },
 
     /**
@@ -828,12 +969,15 @@ export function createS330Client(
     /**
      * Set MIDI receive channel for a multi mode part
      *
-     * Address: 00 01 00 (0x22 + part) - function parameters bank
+     * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+     * Must read all 8 part channels, modify one, and write all 8 back.
+     *
+     * Address: 00 01 00 22 (Multi MIDI RX-CH A-H) - function parameters bank
      *
      * @param part - Part number (0-7 for A-H)
      * @param channel - MIDI channel (0-15 for Ch 1-16)
      */
-    setMultiChannel(part: number, channel: number): void {
+    async setMultiChannel(part: number, channel: number): Promise<void> {
       if (part < 0 || part > 7) {
         throw new Error(`Invalid part number: ${part} (must be 0-7)`);
       }
@@ -841,53 +985,69 @@ export function createS330Client(
         throw new Error(`Invalid channel: ${channel} (must be 0-15)`);
       }
 
-      // Address: 00 01 00 (0x22 + part) - each part is 1 byte apart
-      const offset = 0x22 + part;
-      const address = [0x00, 0x01, 0x00, offset];
+      return serialize(async () => {
+        // Read all 8 part channels (address 00 01 00 22, size 8)
+        const allChannelData = await this.requestDataWithAddress([0x00, 0x01, 0x00, 0x22], 8);
 
-      // Value is stored as single byte, but sent nibblized for DT1
-      const nibbles = [(channel >> 4) & 0x0f, channel & 0x0f];
+        // Modify the specific part
+        const newChannelData = [...allChannelData];
+        newChannelData[part] = channel;
 
-      this.sendParameter(address, nibbles);
-      console.log(`[S330] Set part ${part} channel to ${channel + 1}`);
+        // Write all 8 back via WSD/DAT/EOD
+        await this.sendParameterWithWSD([0x00, 0x01, 0x00, 0x22], newChannelData);
+
+        console.log(`[S330] Set part ${part} channel to ${channel + 1}`);
+      });
     },
 
     /**
      * Set patch assignment for a multi mode part
      *
-     * Address: 00 01 00 (0x32 + part) - function parameters bank
+     * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+     * Must read all 8 part patches, modify one, and write all 8 back.
+     *
+     * Address: 00 01 00 32 (Multi Patch A-H) - function parameters bank
      *
      * @param part - Part number (0-7 for A-H)
-     * @param patchIndex - Patch number (0-63)
+     * @param patchIndex - Patch number (0-63), or null for "off"
      */
-    setMultiPatch(part: number, patchIndex: number): void {
+    async setMultiPatch(part: number, patchIndex: number | null): Promise<void> {
       if (part < 0 || part > 7) {
         throw new Error(`Invalid part number: ${part} (must be 0-7)`);
       }
-      if (patchIndex < 0 || patchIndex > 63) {
-        throw new Error(`Invalid patch index: ${patchIndex} (must be 0-63)`);
+      // Allow 0-63 for valid patches, or null/0x7F for "off"
+      const value = patchIndex === null ? 0x7f : patchIndex;
+      if (patchIndex !== null && (patchIndex < 0 || patchIndex > 63)) {
+        throw new Error(`Invalid patch index: ${patchIndex} (must be 0-63 or null)`);
       }
 
-      // Address: 00 01 00 (0x32 + part) - each part is 1 byte apart
-      const offset = 0x32 + part;
-      const address = [0x00, 0x01, 0x00, offset];
+      return serialize(async () => {
+        // Read all 8 part patches (address 00 01 00 32, size 8)
+        const allPatchData = await this.requestDataWithAddress([0x00, 0x01, 0x00, 0x32], 8);
 
-      // Value is stored as single byte, but sent nibblized for DT1
-      const nibbles = [(patchIndex >> 4) & 0x0f, patchIndex & 0x0f];
+        // Modify the specific part
+        const newPatchData = [...allPatchData];
+        newPatchData[part] = value;
 
-      this.sendParameter(address, nibbles);
-      console.log(`[S330] Set part ${part} patch to ${patchIndex}`);
+        // Write all 8 back via WSD/DAT/EOD
+        await this.sendParameterWithWSD([0x00, 0x01, 0x00, 0x32], newPatchData);
+
+        console.log(`[S330] Set part ${part} patch to ${patchIndex === null ? 'OFF (0x7F)' : patchIndex}`);
+      });
     },
 
     /**
      * Set output assignment for a multi mode part
      *
-     * Address: 00 01 00 (0x42 + part) - function parameters bank
+     * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+     * Must read all 8 part outputs, modify one, and write all 8 back.
+     *
+     * Address: 00 01 00 42 (Multi Output Assign A-H) - function parameters bank
      *
      * @param part - Part number (0-7 for A-H)
      * @param output - Output assignment (0-8: 0=mix, 1-8=individual outputs)
      */
-    setMultiOutput(part: number, output: number): void {
+    async setMultiOutput(part: number, output: number): Promise<void> {
       if (part < 0 || part > 7) {
         throw new Error(`Invalid part number: ${part} (must be 0-7)`);
       }
@@ -895,26 +1055,41 @@ export function createS330Client(
         throw new Error(`Invalid output: ${output} (must be 0-8)`);
       }
 
-      // Address: 00 01 00 (0x42 + part) - each part is 1 byte apart
-      const offset = 0x42 + part;
-      const address = [0x00, 0x01, 0x00, offset];
+      return serialize(async () => {
+        // Read all 8 part outputs (address 00 01 00 42, size 8)
+        let allOutputData: number[];
+        try {
+          allOutputData = await this.requestDataWithAddress([0x00, 0x01, 0x00, 0x42], 8);
+        } catch (err) {
+          // Output parameters may not exist on all firmware versions
+          // Default to output 1 for all parts (mix output)
+          console.warn('[S330] Output parameters not available, using defaults');
+          allOutputData = [1, 1, 1, 1, 1, 1, 1, 1];
+        }
 
-      // Value is stored as single byte, but sent nibblized for DT1
-      const nibbles = [(output >> 4) & 0x0f, output & 0x0f];
+        // Modify the specific part
+        const newOutputData = [...allOutputData];
+        newOutputData[part] = output;
 
-      this.sendParameter(address, nibbles);
-      console.log(`[S330] Set part ${part} output to ${output}`);
+        // Write all 8 back via WSD/DAT/EOD
+        await this.sendParameterWithWSD([0x00, 0x01, 0x00, 0x42], newOutputData);
+
+        console.log(`[S330] Set part ${part} output to ${output}`);
+      });
     },
 
     /**
      * Set level for a multi mode part
      *
-     * Address: 00 01 00 (0x56 + part) - function parameters bank
+     * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+     * Must read all 8 part levels, modify one, and write all 8 back.
+     *
+     * Address: 00 01 00 56 (Multi Level A-H) - function parameters bank
      *
      * @param part - Part number (0-7 for A-H)
      * @param level - Level (0-127)
      */
-    setMultiLevel(part: number, level: number): void {
+    async setMultiLevel(part: number, level: number): Promise<void> {
       if (part < 0 || part > 7) {
         throw new Error(`Invalid part number: ${part} (must be 0-7)`);
       }
@@ -922,15 +1097,19 @@ export function createS330Client(
         throw new Error(`Invalid level: ${level} (must be 0-127)`);
       }
 
-      // Address: 00 01 00 (0x56 + part) - each part is 1 byte apart
-      const offset = 0x56 + part;
-      const address = [0x00, 0x01, 0x00, offset];
+      return serialize(async () => {
+        // Read all 8 part levels (address 00 01 00 56, size 8)
+        const allLevelData = await this.requestDataWithAddress([0x00, 0x01, 0x00, 0x56], 8);
 
-      // Value is stored as single byte, but sent nibblized for DT1
-      const nibbles = [(level >> 4) & 0x0f, level & 0x0f];
+        // Modify the specific part
+        const newLevelData = [...allLevelData];
+        newLevelData[part] = level;
 
-      this.sendParameter(address, nibbles);
-      console.log(`[S330] Set part ${part} level to ${level}`);
+        // Write all 8 back via WSD/DAT/EOD
+        await this.sendParameterWithWSD([0x00, 0x01, 0x00, 0x56], newLevelData);
+
+        console.log(`[S330] Set part ${part} level to ${level}`);
+      });
     },
 
     // Legacy bulk dump method (type-byte format - typically rejected)
