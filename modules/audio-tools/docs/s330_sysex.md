@@ -96,7 +96,7 @@ Base address: `00 01 00 xx` where `xx` is the parameter offset below.
 
 **Data Format**: When reading via RQD, the data is returned de-nibblized (each logical byte is sent as two nibbles in DAT packets). Each parameter is stored as a single byte at consecutive addresses.
 
-**Writing via DT1**: Values are sent as raw bytes, NOT nibblized. See DT1 example below.
+**Writing Function Parameters**: DT1 is **silently ignored** for function parameters. You **must use WSD/DAT/EOD protocol** instead. See "Writing Function Parameters" section below.
 
 #### MULTI MIDI RX-CH Parameters (Offset 0x22-0x29)
 
@@ -273,6 +273,68 @@ Host                          S-330
   (No response expected)
 ```
 
+**WARNING**: DT1 is **silently ignored** for function parameters (address `00 01 xx xx`). The S-330 accepts the message but does not apply the change. You must use WSD/DAT/EOD protocol for writing function parameters. See "Writing Function Parameters" section below.
+
+### Writing Function Parameters (WSD/DAT/EOD)
+
+**DT1 does not work for function parameters**. You must use the WSD/DAT/EOD handshaking protocol.
+
+#### WSD Message Format
+
+```
+F0 41 dev 1E 40 [address 4B] [size 4B] [checksum] F7
+```
+
+#### Minimum Size Constraints
+
+The S-330 rejects (RJC) WSD requests with insufficient size:
+
+| Parameter Group | Address | Minimum Size | Notes |
+|-----------------|---------|--------------|-------|
+| Part Patches | 00 01 00 32 | 8 | All 8 parts must be written together |
+| Part Channels | 00 01 00 22 | 8 | All 8 parts must be written together |
+| Part Levels | 00 01 00 56 | 8 | All 8 parts must be written together |
+
+**Single-parameter writes (size=1) are rejected!** You must read all values, modify one, and write all back.
+
+#### WSD/DAT/EOD Flow
+
+```
+Host                          S-330
+  |                             |
+  |--- WSD (addr, size) ------->|
+  |                             |
+  |<-------- ACK ---------------|  (or RJC if invalid)
+  |                             |
+  |--- DAT (addr, data) ------->|  (data is nibblized)
+  |                             |
+  |--- EOD -------------------->|
+  |                             |
+```
+
+#### Example: Set Part A Patch to Index 1
+
+First read all 8 part patches, then write all 8 back:
+
+```
+# Step 1: Read current values
+TX: F0 41 00 1E 41 00 01 00 32 00 00 00 10 3D F7  (RQD addr=00 01 00 32, size=16 nibbles)
+RX: F0 41 00 1E 42 ... [16 nibbles] ... F7        (DAT with 8 patch indices)
+TX: F0 41 00 1E 43 F7                              (ACK)
+RX: F0 41 00 1E 45 F7                              (EOD)
+
+# Step 2: Send WSD
+TX: F0 41 00 1E 40 00 01 00 32 00 00 00 08 45 F7  (WSD addr=00 01 00 32, size=8 bytes)
+RX: F0 41 00 1E 43 F7                              (ACK - ready to receive)
+
+# Step 3: Send DAT with nibblized data
+TX: F0 41 00 1E 42 00 01 00 32 00 01 00 01 00 02 00 03 00 04 00 05 00 06 00 07 30 F7
+    (DAT with modified data: Part A=1, others unchanged)
+
+# Step 4: Send EOD
+TX: F0 41 00 1E 45 F7                              (EOD)
+```
+
 ### Bulk Dump (WSD/RQD/DAT) Flow
 
 #### Sending Data to S-330
@@ -280,25 +342,17 @@ Host                          S-330
 ```
 Host                          S-330
   |                             |
-  |--- WSD (type) ------------->|
+  |--- WSD (addr, size) ------->|
   |                             |
   |<-------- ACK ---------------|
   |                             |
-  |--- DAT (packet 1) --------->|
-  |                             |
-  |<-------- ACK ---------------|
-  |                             |
-  |--- DAT (packet 2) --------->|
-  |                             |
-  |<-------- ACK ---------------|
-  |                             |
-  ...                          ...
+  |--- DAT (addr, data) ------->|
   |                             |
   |--- EOD -------------------->|
   |                             |
-  |<-------- ACK ---------------|
-  |                             |
 ```
+
+**Note**: Unlike receiving, there is no ACK after DAT when sending. Just send DAT then EOD.
 
 #### Receiving Data from S-330
 
@@ -374,7 +428,9 @@ Breakdown:
 - `7F` - Checksum
 - `F7` - SysEx end
 
-### Set Patch Level to 100
+### Set Patch Level to 100 (DT1 - May Not Work)
+
+**WARNING**: DT1 is silently ignored for function parameters. Use WSD/DAT/EOD instead for addresses in bank `00 01`.
 
 ```
 F0 41 00 1E 12 00 01 00 0F 64 0C F7
@@ -386,10 +442,12 @@ Breakdown:
 - `00` - Device ID
 - `1E` - S-330 Model ID
 - `12` - DT1 command
-- `00 01 00 0F` - Address (Patch 0, Level offset)
+- `00 01 00 0F` - Address (Function params, offset 0F)
 - `64` - Data (100 decimal)
 - `0C` - Checksum: 128 - ((0+1+0+0F+64) & 7F) = 128 - 116 = 12 (0x0C)
 - `F7` - SysEx end
+
+**Note**: This example shows DT1 format but the S-330 may silently ignore it. Verified that function parameter writes require WSD/DAT/EOD protocol.
 
 ### Request Tone 8 Parameters (RQD with address)
 
@@ -428,10 +486,12 @@ Based on actual testing with S-330 hardware (January 2026), the following protoc
 | Command | Hardware Response | Notes |
 |---------|------------------|-------|
 | RQ1 | DT1 with data | Address-based read - simple, no handshake |
-| DT1 | No response | Write-only, no ACK returned |
+| DT1 | No response | **Silently ignored for function params!** |
 | RQD (type only) | RJC | Old bulk dump format - rejected |
 | RQD (address) | DAT | **Address-based - WORKS with handshake** |
-| WSD | ACK or RJC | Ready to receive or rejection |
+| WSD (address) | ACK or RJC | **Required for function param writes** |
+
+**Critical Finding**: DT1 writes are **silently ignored** for function parameters (address `00 01 xx xx`). The S-330 accepts the message but does not apply the change. You must use WSD/DAT/EOD for these addresses.
 
 ### RQD with Address/Size Format (RECOMMENDED)
 
