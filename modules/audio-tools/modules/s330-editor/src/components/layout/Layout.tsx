@@ -5,6 +5,7 @@
 import { ReactNode, useEffect, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 import { MidiStatus } from '@/components/midi/MidiStatus';
+import { VideoCapture } from '@/components/video/VideoCapture';
 import { useMidiStore } from '@/stores/midiStore';
 import { cn } from '@/lib/utils';
 
@@ -118,6 +119,9 @@ export function Layout({ children }: LayoutProps) {
           Requires Chrome, Edge, or Opera browser.
         </div>
       </footer>
+
+      {/* Video Capture Panel */}
+      <VideoCapture />
     </div>
   );
 }
