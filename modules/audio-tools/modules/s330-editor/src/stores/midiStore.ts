@@ -69,6 +69,7 @@ interface MidiActions {
   connect: (inputId: string, outputId: string) => Promise<void>;
   disconnect: () => Promise<void>;
   setDeviceId: (id: number) => void;
+  sendPanic: () => void;
 }
 
 type MidiStore = MidiState & MidiActions;
@@ -261,6 +262,28 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
       const { selectedInputId, selectedOutputId } = get();
       saveToStorage(selectedInputId, selectedOutputId, id);
     }
+  },
+
+  /**
+   * Send MIDI panic: All Sound Off (CC#120) and All Notes Off (CC#123) on all channels.
+   * This immediately silences all notes. Use when notes get stuck during heavy SysEx traffic.
+   */
+  sendPanic: () => {
+    const { adapter } = get();
+    if (!adapter) {
+      console.warn('[MidiStore] Cannot send panic: no MIDI adapter connected');
+      return;
+    }
+
+    // Send All Sound Off (CC#120) and All Notes Off (CC#123) on all 16 channels
+    for (let channel = 0; channel < 16; channel++) {
+      const status = 0xb0 + channel; // Control Change status byte
+      // CC#120 - All Sound Off (immediate silence)
+      adapter.send([status, 120, 0]);
+      // CC#123 - All Notes Off (release all held notes)
+      adapter.send([status, 123, 0]);
+    }
+    console.log('[MidiStore] Panic: sent All Sound Off and All Notes Off on all channels');
   },
 }));
 

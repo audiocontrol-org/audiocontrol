@@ -225,6 +225,9 @@ export interface S330ClientInterface {
     setMultiOutput(part: number, output: number): Promise<void>;
     setMultiLevel(part: number, level: number): Promise<void>;
 
+    // MIDI panic - send All Notes Off / All Sound Off on all channels
+    panic(): void;
+
     // Individual patch parameter setters
     setPatchName(patchIndex: number, name: string): Promise<void>;
     setPatchKeyMode(
@@ -680,6 +683,23 @@ export function createS330Client(
 
         getDeviceId(): number {
             return deviceId;
+        },
+
+        /**
+         * Send MIDI panic: All Sound Off (CC#120) and All Notes Off (CC#123) on all channels.
+         * This immediately silences all notes without waiting for the message queue.
+         * Use when notes get stuck during heavy SysEx traffic.
+         */
+        panic(): void {
+            // Send All Sound Off (CC#120) and All Notes Off (CC#123) on all 16 channels
+            for (let channel = 0; channel < 16; channel++) {
+                const status = 0xb0 + channel; // Control Change status byte
+                // CC#120 - All Sound Off (immediate silence)
+                midiAdapter.send([status, 120, 0]);
+                // CC#123 - All Notes Off (release all held notes)
+                midiAdapter.send([status, 123, 0]);
+            }
+            console.log('[S330Client] Panic: sent All Sound Off and All Notes Off on all channels');
         },
 
         /**

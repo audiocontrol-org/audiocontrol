@@ -2,11 +2,41 @@
  * Main application layout
  */
 
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
 import { MidiStatus } from '@/components/midi/MidiStatus';
 import { useMidiStore } from '@/stores/midiStore';
 import { cn } from '@/lib/utils';
+
+/**
+ * Panic button component - sends All Notes Off on all channels
+ */
+function PanicButton() {
+  const status = useMidiStore((state) => state.status);
+  const sendPanic = useMidiStore((state) => state.sendPanic);
+
+  const handlePanic = useCallback(() => {
+    sendPanic();
+  }, [sendPanic]);
+
+  const isConnected = status === 'connected';
+
+  return (
+    <button
+      onClick={handlePanic}
+      disabled={!isConnected}
+      className={cn(
+        'px-3 py-1.5 text-sm font-medium rounded transition-colors',
+        isConnected
+          ? 'bg-red-600 hover:bg-red-500 text-white'
+          : 'bg-s330-muted/30 text-s330-muted cursor-not-allowed'
+      )}
+      title={isConnected ? 'Send All Notes Off on all channels' : 'Connect to MIDI to enable'}
+    >
+      PANIC
+    </button>
+  );
+}
 
 interface LayoutProps {
   children: ReactNode;
@@ -43,8 +73,11 @@ export function Layout({ children }: LayoutProps) {
               <span className="text-xs text-s330-muted">Roland Sampler</span>
             </div>
 
-            {/* MIDI Status */}
-            <MidiStatus />
+            {/* MIDI Status and Panic Button */}
+            <div className="flex items-center gap-3">
+              <PanicButton />
+              <MidiStatus />
+            </div>
           </div>
 
           {/* Navigation */}
