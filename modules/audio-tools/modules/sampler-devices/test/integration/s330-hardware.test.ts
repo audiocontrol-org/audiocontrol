@@ -311,6 +311,29 @@ describe('S-330 Hardware Integration', () => {
         });
     });
 
+    describe('Tone Name Reading', () => {
+        it('should fetch all tone names', { skip: shouldSkip, timeout: TIMEOUT_MS * 10 }, async () => {
+            expect(client).toBeDefined();
+
+            console.log('  Fetching all tone names...');
+            const toneNames = await client!.requestAllToneNames();
+
+            expect(toneNames).toBeDefined();
+            expect(toneNames.length).toBe(32); // S-330 has 32 tones
+
+            console.log(`  Received ${toneNames.length} tones:`);
+
+            for (const tone of toneNames) {
+                const displayNum = `T${tone.index + 11}`;
+                const status = tone.isEmpty ? '(empty)' : '';
+                console.log(`    ${displayNum}: "${tone.name}" ${status}`);
+            }
+
+            const nonEmpty = toneNames.filter(t => !t.isEmpty);
+            console.log(`  ✓ ${nonEmpty.length} non-empty tones found`);
+        });
+    });
+
     describe('Error Handling', () => {
         it('should handle request for invalid address gracefully', { skip: shouldSkip }, async () => {
             expect(client).toBeDefined();
