@@ -400,4 +400,11 @@ export interface S330ClientOptions {
     deviceId?: number;       // Default: 0
     timeoutMs?: number;      // Default: 500
     retryCount?: number;     // Default: 3
+    /**
+     * Delay in milliseconds before flushing buffered writes.
+     * Multiple writes to the same address within this window are collapsed.
+     * Set to 0 to disable buffering (immediate writes).
+     * Default: 150ms
+     */
+    writeFlushDelayMs?: number;
 }

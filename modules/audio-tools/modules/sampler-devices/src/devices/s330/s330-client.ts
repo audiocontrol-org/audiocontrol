@@ -284,6 +284,7 @@ export function createS330Client(
 ): S330ClientInterface {
     const deviceId = options.deviceId ?? DEFAULT_DEVICE_ID;
     const timeoutMs = options.timeoutMs ?? TIMING.ACK_TIMEOUT_MS;
+    const writeFlushDelayMs = options.writeFlushDelayMs ?? 150;
 
     let connected = false;
 
@@ -299,6 +300,78 @@ export function createS330Client(
         const result = requestQueue.then(fn, fn); // Run even if previous failed
         requestQueue = result.catch(() => {}); // Swallow errors for queue chain
         return result;
+    }
+
+    // =========================================================================
+    // Write Buffer - Rate limits device writes
+    // =========================================================================
+
+    /**
+     * Buffer for pending writes.
+     * Key is address as string (e.g., "0,2,4,0"), value is data to write.
+     * Multiple writes to same address collapse to latest value.
+     */
+    const writeBuffer = new Map<string, { address: number[]; data: number[] }>();
+    let flushTimer: ReturnType<typeof setTimeout> | null = null;
+    let flushPromise: Promise<void> | null = null;
+
+    /**
+     * Convert address array to string key for buffer map
+     */
+    function addressKey(address: number[]): string {
+        return address.join(',');
+    }
+
+    /**
+     * Flush all buffered writes to the device.
+     * Writes are sent sequentially through the serialize queue.
+     */
+    async function flushWriteBuffer(): Promise<void> {
+        if (writeBuffer.size === 0) return;
+
+        // Copy and clear buffer before async operations
+        const pending = Array.from(writeBuffer.values());
+        writeBuffer.clear();
+        flushTimer = null;
+
+        // Send all pending writes sequentially
+        for (const { address, data } of pending) {
+            await serialize(async () => {
+                await sendData(address, data);
+            });
+        }
+    }
+
+    /**
+     * Schedule a buffered write.
+     * Multiple writes to the same address within writeFlushDelayMs are collapsed.
+     *
+     * @param address - 4-byte address
+     * @param data - Data bytes to write
+     * @returns Promise that resolves when the write is flushed
+     */
+    function bufferWrite(address: number[], data: number[]): Promise<void> {
+        // If buffering is disabled, write immediately
+        if (writeFlushDelayMs === 0) {
+            return serialize(async () => {
+                await sendData(address, data);
+            });
+        }
+
+        // Add/update in buffer (collapses multiple writes to same address)
+        const key = addressKey(address);
+        writeBuffer.set(key, { address, data });
+
+        // Schedule flush if not already scheduled
+        if (!flushTimer) {
+            flushPromise = new Promise((resolve, reject) => {
+                flushTimer = setTimeout(() => {
+                    flushWriteBuffer().then(resolve).catch(reject);
+                }, writeFlushDelayMs);
+            });
+        }
+
+        return flushPromise!;
     }
 
     /**
@@ -742,7 +815,8 @@ export function createS330Client(
 
         /**
          * Send tone data to S-330
-         * Uses WSD/DAT/EOD protocol to write complete tone block
+         * Uses WSD/DAT/EOD protocol to write complete tone block.
+         * Writes are buffered and rate-limited to prevent flooding the device.
          *
          * @param toneIndex - Tone number (0-31)
          * @param tone - Complete tone data structure
@@ -753,19 +827,17 @@ export function createS330Client(
                 throw new Error(`Invalid tone index: ${toneIndex}`);
             }
 
-            return serialize(async () => {
-                // Encode tone to binary format
-                const toneBytes = encodeTone(tone);
+            // Encode tone to binary format
+            const toneBytes = encodeTone(tone);
 
-                // Tone address layout (empirically determined):
-                // - Tone 0 at byte2=4
-                // - Tone N (N>=1) at byte2=8+N*2
-                const byte2 = toneIndex === 0 ? 4 : (8 + toneIndex * 2);
-                const address = [0x00, 0x02, byte2, 0x00];
+            // Tone address layout (empirically determined):
+            // - Tone 0 at byte2=4
+            // - Tone N (N>=1) at byte2=8+N*2
+            const byte2 = toneIndex === 0 ? 4 : (8 + toneIndex * 2);
+            const address = [0x00, 0x02, byte2, 0x00];
 
-                // Send via WSD/DAT/EOD protocol
-                await sendData(address, toneBytes);
-            });
+            // Buffer write - collapses rapid updates, rate-limits device communication
+            return bufferWrite(address, toneBytes);
         },
 
         /**
@@ -1278,7 +1350,8 @@ export function createS330Client(
 
         /**
          * Send complete patch data to S-330
-         * Uses WSD/DAT/EOD protocol to write patch common section
+         * Uses WSD/DAT/EOD protocol to write patch common section.
+         * Writes are buffered and rate-limited to prevent flooding the device.
          *
          * @param patchIndex - Patch number (0-63)
          * @param patch - Complete patch common data structure
@@ -1289,16 +1362,14 @@ export function createS330Client(
                 throw new Error(`Invalid patch index: ${patchIndex}`);
             }
 
-            return serialize(async () => {
-                // Encode patch to binary format
-                const patchBytes = encodePatchCommon(patch);
+            // Encode patch to binary format
+            const patchBytes = encodePatchCommon(patch);
 
-                // Calculate patch address: [0x00, 0x00, patchIndex * 4, 0x00]
-                const address = [0x00, 0x00, patchIndex * 4, 0x00];
+            // Calculate patch address: [0x00, 0x00, patchIndex * 4, 0x00]
+            const address = [0x00, 0x00, patchIndex * 4, 0x00];
 
-                // Send via WSD/DAT/EOD protocol
-                await sendData(address, patchBytes);
-            });
+            // Buffer write - collapses rapid updates, rate-limits device communication
+            return bufferWrite(address, patchBytes);
         },
     };
 }
