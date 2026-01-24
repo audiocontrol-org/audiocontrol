@@ -211,16 +211,21 @@ function EnvelopeVisualization({
     const drawWidth = width - padding * 2;
     const drawHeight = height - padding * 2;
 
-    // Calculate X positions based on rates (higher rate = faster = shorter segment)
+    // Calculate X positions based on cumulative time (sum of time units up to each point)
+    // Using a fixed max scale so that changing one point's rate doesn't affect points to its right
+    // Time unit = 128 - rate (rate 127 = fastest = 1 unit, rate 1 = slowest = 127 units)
+    // Max possible time = 8 points × 127 units = 1016
     const activePoints = endPoint;
-    const totalTimeUnits = rates.slice(0, activePoints).reduce((sum, r) => sum + (128 - r), 0);
+    const MAX_TIME_UNITS = 8 * 127; // Fixed scale for consistent positioning
 
     const xPositions = [padding];
     let cumulativeTime = 0;
 
     for (let i = 0; i < activePoints; i++) {
         cumulativeTime += 128 - rates[i];
-        xPositions.push(padding + (cumulativeTime / totalTimeUnits) * drawWidth);
+        // Position based on cumulative time with fixed scale
+        // Points only move when their rate or earlier rates change
+        xPositions.push(padding + (cumulativeTime / MAX_TIME_UNITS) * drawWidth);
     }
 
     // Calculate Y positions based on levels (0 at bottom, 127 at top)
@@ -265,20 +270,18 @@ function EnvelopeVisualization({
             // Calculate rate (horizontal) - rate[i] controls time to reach point i
             // xPositions[dragging] is the previous point, xPositions[dragging+1] is current
             const prevPointX = xPositions[dragging];
-            const minX = prevPointX + 5; // Minimum distance from previous point
-            const maxX = width - padding - 5;
+            const minX = prevPointX + 2; // Minimum distance from previous point (rate 127)
+            const maxX = width - padding;
             const clampedX = Math.max(minX, Math.min(maxX, pos.x));
 
-            // Calculate segment width from previous point to desired position
+            // Convert segment width to time units using the fixed scale
+            // segmentWidth / drawWidth * MAX_TIME_UNITS = time units for this segment
             const segmentWidth = clampedX - prevPointX;
-            const avgSegmentWidth = drawWidth / activePoints;
+            const timeUnits = (segmentWidth / drawWidth) * MAX_TIME_UNITS;
 
-            // Convert to rate: wider segment = more time = lower rate
-            // Rate 127 = fastest (shortest segment), Rate 1 = slowest (longest segment)
-            // timeRatio of 1.0 = average time, 2.0 = twice as long, 0.5 = half as long
-            const timeRatio = segmentWidth / avgSegmentWidth;
-            // Map timeRatio to rate: ratio 0.25->127, ratio 1.0->64, ratio 2.0->1
-            const newRate = Math.round(Math.max(1, Math.min(127, 128 - timeRatio * 64)));
+            // Convert time units to rate: rate = 128 - timeUnits
+            // Clamp to valid range [1, 127]
+            const newRate = Math.round(Math.max(1, Math.min(127, 128 - timeUnits)));
 
             // Update both level and rate in a single state update
             onLevelAndRateChange(dragging, newLevel, newRate);
