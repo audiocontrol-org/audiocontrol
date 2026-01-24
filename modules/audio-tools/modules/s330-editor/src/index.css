@@ -1,0 +1,38 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  body {
+    @apply min-h-screen;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply px-4 py-2 rounded-md font-medium transition-colors;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-s330-bg;
+  }
+
+  .btn-primary {
+    @apply bg-s330-highlight text-white hover:bg-opacity-90 focus:ring-s330-highlight;
+  }
+
+  .btn-secondary {
+    @apply bg-s330-accent text-s330-text hover:bg-opacity-90 focus:ring-s330-accent;
+  }
+
+  .card {
+    @apply bg-s330-panel rounded-lg p-4 shadow-lg;
+  }
+
+  .input {
+    @apply bg-s330-bg border border-s330-accent rounded-md px-3 py-2;
+    @apply text-s330-text placeholder-s330-muted;
+    @apply focus:outline-none focus:ring-2 focus:ring-s330-highlight focus:border-transparent;
+  }
+}

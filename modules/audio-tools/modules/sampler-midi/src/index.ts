@@ -40,6 +40,8 @@ export {
 
 // Export client implementations
 export * from "@/client/client-akai-s3000xl.js"
+export * from "@/client/client-roland-s330.js"
+export * from "@/client/s330-easymidi-adapter.js"
 
 // Export MIDI system
 export { MidiSystem } from "@/midi.js"

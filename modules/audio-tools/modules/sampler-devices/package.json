@@ -18,6 +18,11 @@
       "types": "./dist/s5k.d.ts",
       "import": "./dist/s5k.js",
       "require": "./dist/s5k.cjs"
+    },
+    "./s330": {
+      "types": "./dist/s330.d.ts",
+      "import": "./dist/s330.js",
+      "require": "./dist/s330.cjs"
     }
   },
   "module": "./dist/index.mjs",
@@ -33,16 +38,21 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "integration": "vitest run test/integration",
+    "test:hardware:s330": "vitest run test/integration/s330-hardware.test.ts",
     "build": "pnpm test && tsup",
     "clean": "rm -rf dist"
   },
   "keywords": [
     "akai",
+    "roland",
     "sampler",
     "midi",
+    "sysex",
     "s5000",
     "s6000",
     "s3000xl",
+    "s-330",
+    "s-550",
     "hardware-sampler",
     "device-communication"
   ],
@@ -70,6 +80,8 @@
   },
   "dependencies": {
     "@oletizi/sampler-lib": "^1.0.11",
+    "@oletizi/sampler-midi": "workspace:*",
+    "easymidi": "^3.1.0",
     "pathe": "^2.0.3"
   }
 }
