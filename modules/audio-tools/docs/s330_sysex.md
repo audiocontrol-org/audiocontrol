@@ -67,7 +67,7 @@ The S-330 uses a 4-byte address space organized hierarchically.
 | 00 00 | `00 00 (pp*4) 00` | **Patch Parameters** - stride of 4 per patch |
 | 00 01 | `00 01 00 xx` | **Function Parameters** - multi mode config |
 | 00 02 | `00 02 00 xx` | **MIDI Parameters** |
-| 00 03 | `00 03 (tt*4) 00` | **Tone Parameters** - stride of 4 per tone |
+| 00 02 | `00 02 xx 00` | **Tone Parameters** - see note below |
 | 01 xx | `01 xx xx xx` | **Wave Data** |
 
 ### System Parameters (00 00 00 00 - 00 00 00 7F)
@@ -212,39 +212,147 @@ Total patch size: **512 bytes** (1024 nibbles = `00 00 04 00`)
 - Layer 2: Values 0-31 (0 = no tone assigned for layer 2)
 - Each entry maps a MIDI note to a tone number
 
-### Tone Parameters (00 03 00 00 - 00 03 7C 00)
+### Tone Parameters (00 02 04 00 onwards)
 
-Base address: `00 03 (tt*4) 00` where `tt` = tone number (00-1F)
+**Empirically determined address layout**:
+- Tone 0 is at `00 02 04 00`
+- Tone N (N>=1) is at `00 02 (8+N*2) 00`
 
-**Important**: Like patches, each tone occupies a stride of 4 in the address space. Tone 0 is at `00 03 00 00`, Tone 1 is at `00 03 04 00`, etc.
+| Tone | Internal Index | Address |
+|------|----------------|---------|
+| T11 | 0 | 00 02 04 00 |
+| T12 | 1 | 00 02 0A 00 |
+| T13 | 2 | 00 02 0C 00 |
+| T14 | 3 | 00 02 0E 00 |
+| T15 | 4 | 00 02 10 00 |
+| ... | N | 00 02 (8+N*2) 00 |
 
-| Offset | Size | Parameter | Range | Description |
-|--------|------|-----------|-------|-------------|
-| 00 | 8 | Tone Name | ASCII | 8-character name |
-| 08 | 1 | Original Key | 00-7F | Original pitch (MIDI note) |
-| 09 | 1 | Sample Rate | 00-01 | 0=15kHz, 1=30kHz |
-| 0A | 3 | Start Address | - | Wave start (21-bit) |
-| 0D | 3 | Loop Start | - | Loop start (21-bit) |
-| 10 | 3 | Loop End | - | Loop end (21-bit) |
-| 13 | 1 | Loop Mode | 00-02 | 0=Forward, 1=Alternating, 2=One-shot |
-| 14 | 1 | Coarse Tune | 00-7F | Coarse tuning |
-| 15 | 1 | Fine Tune | 00-7F | Fine tuning |
-| 16 | 1 | Level | 00-7F | Tone level |
-| 17 | 1 | TVA Attack | 00-7F | Amplitude attack time |
-| 18 | 1 | TVA Decay | 00-7F | Amplitude decay time |
-| 19 | 1 | TVA Sustain | 00-7F | Amplitude sustain level |
-| 1A | 1 | TVA Release | 00-7F | Amplitude release time |
-| 1B | 1 | TVF Cutoff | 00-7F | Filter cutoff frequency |
-| 1C | 1 | TVF Resonance | 00-7F | Filter resonance |
-| 1D | 1 | TVF Env Depth | 00-7F | Filter envelope depth |
-| 1E | 1 | TVF Attack | 00-7F | Filter attack time |
-| 1F | 1 | TVF Decay | 00-7F | Filter decay time |
-| 20 | 1 | TVF Sustain | 00-7F | Filter sustain level |
-| 21 | 1 | TVF Release | 00-7F | Filter release time |
-| 22 | 1 | LFO Rate | 00-7F | LFO speed |
-| 23 | 1 | LFO Depth | 00-7F | LFO amount |
-| 24 | 1 | LFO Delay | 00-7F | LFO delay time |
-| 25 | 1 | LFO Destination | 00-02 | 0=Pitch, 1=TVF, 2=TVA |
+**Note**: The documented formula `00 02 (tt*2) 00` does not match actual hardware behavior. The address layout was determined through empirical testing with real S-330 hardware.
+
+**Total size per tone**: `00 00 02 00H` (512 nibble-bytes)
+
+**Data Format**: Like patch parameters, tone data is nibblized. Each logical byte is transmitted as two nibbles (high nibble first, then low nibble). The offsets below are **nibble addresses**.
+
+#### Basic Parameters (00 00H - 00 33H)
+
+| Nibble Offset | Parameter | Range | Description |
+|---------------|-----------|-------|-------------|
+| 00 00H-00 0FH | TONE NAME | 32-127 | 8 ASCII characters (16 nibbles) |
+| 00 10H-00 11H | OUTPUT ASSIGN | 0-7 | Output routing |
+| 00 12H-00 13H | SOURCE TONE | 0-31 | Source tone number |
+| 00 14H-00 15H | ORIG/SUB TONE | 0-1 | 0=ORG, 1=SUB |
+| 00 16H-00 17H | SAMPLING FREQUENCY | 0-1 | 0=30kHz, 1=15kHz |
+| 00 18H-00 19H | ORIG KEY NUMBER | 11-108 | Original key (MIDI format) |
+| 00 1AH-00 1BH | WAVE BANK | 0-1 | 0=A, 1=B |
+| 00 1CH-00 1DH | WAVE SEGMENT TOP | 0-17 | Wave segment start |
+| 00 1EH-00 1FH | WAVE SEGMENT LENGTH | 0-18 | Wave segment length |
+| 00 20H-00 25H | START POINT | 000000-221180 | Sample start (24-bit, 6 nibbles) |
+| 00 26H-00 2BH | END POINT | 000004-221184 | Sample end (24-bit, 6 nibbles) |
+| 00 2CH-00 31H | LOOP POINT | 000000-221184 | Loop position (24-bit, 6 nibbles) |
+| 00 32H-00 33H | LOOP MODE | 0-3 | 0=Fwd, 1=Alt, 2=1Shot, 3=Reverse |
+
+#### LFO/TVA Parameters (00 34H - 00 71H)
+
+| Nibble Offset | Parameter | Range | Description |
+|---------------|-----------|-------|-------------|
+| 00 34H-00 35H | TVA LFO DEPTH | 0-127 | TVA LFO modulation depth |
+| 00 38H-00 39H | LFO RATE | 0-127 | LFO speed |
+| 00 3AH-00 3BH | LFO SYNC | 0-1 | 0=OFF, 1=ON |
+| 00 3CH-00 3DH | LFO DELAY | 0-127 | LFO delay time |
+| 00 40H-00 41H | LFO MODE | 0-1 | 0=NORMAL, 1=ONE SHOT |
+| 00 42H-00 43H | TVA LFO DEPTH | 0-127 | TVA LFO depth |
+| 00 44H-00 45H | LFO POLARITY | 0-1 | 0=Sine, 1=Peak hold |
+| 00 46H-00 47H | LFO OFFSET | 0-127 | LFO offset |
+| 00 48H-00 49H | TRANSPOSE | 0-127 | Pitch transpose |
+| 00 4AH-00 4BH | FINE TUNE | -64 to +63 | Fine tuning |
+| 00 4CH-00 4DH | TVF CUT OFF | 0-127 | Filter cutoff frequency |
+| 00 4EH-00 4FH | TVF RESONANCE | 0-127 | Filter resonance |
+| 00 50H-00 51H | TVF KEY FOLLOW | 0-127 | Filter keyboard tracking |
+| 00 54H-00 55H | TVF LFO DEPTH | 0-127 | Filter LFO depth |
+| 00 56H-00 57H | TVF EG DEPTH | 0-127 | Filter envelope depth |
+| 00 58H-00 59H | TVF EG POLARITY | 0-1 | 0=NORMAL, 1=REVERSE |
+| 00 5AH-00 5BH | TVF LEVEL CURVE | 0-5 | Filter level curve |
+| 00 5CH-00 5DH | TVF KEY RATE FOLLOW | 0-127 | Filter key rate follow |
+| 00 5EH-00 5FH | TVF VELOCITY RATE FOLLOW | 0-127 | Filter velocity follow |
+| 00 62H-00 63H | TVF SWITCH | 0-1 | 0=OFF, 1=ON |
+| 00 64H-00 65H | BENDER SWITCH | 0-1 | 0=OFF, 1=ON |
+| 00 66H-00 67H | TVA ENV SUSTAIN POINT | 0-7 | Envelope sustain point |
+| 00 68H-00 69H | TVA ENV END POINT | 1-7 | Envelope end point |
+| 00 6AH-00 6BH | TVA ENV LEVEL 1 | 0-127 | Envelope level 1 |
+| 00 6CH-00 6DH | TVA ENV RATE 1 | 1-127 | Envelope rate 1 |
+| 00 6EH-00 6FH | TVA ENV LEVEL 2 | 0-127 | Envelope level 2 |
+| 00 70H-00 71H | TVA ENV RATE 2 | 1-127 | Envelope rate 2 |
+
+#### TVA Envelope Levels/Rates 3-8 (00 72H - 01 09H)
+
+| Nibble Offset | Parameter | Range |
+|---------------|-----------|-------|
+| 00 72H-00 73H | TVA ENV LEVEL 3 | 0-127 |
+| 00 74H-00 75H | TVA ENV RATE 3 | 1-127 |
+| 00 76H-00 77H | TVA ENV LEVEL 4 | 0-127 |
+| 00 78H-00 79H | TVA ENV RATE 4 | 1-127 |
+| 00 7AH-00 7BH | TVA ENV LEVEL 5 | 0-127 |
+| 00 7CH-00 7DH | TVA ENV RATE 5 | 1-127 |
+| 00 7EH-00 7FH | TVA ENV LEVEL 6 | 0-127 |
+| 01 00H-01 01H | TVA ENV RATE 6 | 1-127 |
+| 01 02H-01 03H | TVA ENV LEVEL 7 | 0-127 |
+| 01 04H-01 05H | TVA ENV RATE 7 | 1-127 |
+| 01 06H-01 07H | TVA ENV LEVEL 8 | 0-127 |
+| 01 08H-01 09H | TVA ENV RATE 8 | 1-127 |
+
+#### Recording/Playback Parameters (01 0CH - 01 33H)
+
+| Nibble Offset | Parameter | Range | Description |
+|---------------|-----------|-------|-------------|
+| 01 0CH-01 0DH | TVA ENV KEY-RATE | 0-127 | Key rate |
+| 01 0EH-01 0FH | LEVEL | 0-127 | Output level |
+| 01 10H-01 11H | ENV VEL-RATE | 0-127 | Velocity rate |
+| 01 12H-01 13H | REC THRESHOLD | 0-127 | Recording threshold |
+| 01 14H-01 15H | REC PRE-TRIGGER | 0-3 | 0=0ms, 1=10ms, 2=50ms, 3=100ms |
+| 01 16H-01 17H | REC SAMPLING FREQUENCY | 0-1 | 0=30kHz, 1=15kHz |
+| 01 18H-01 1DH | REC START POINT | 000000-221180 | Record start (24-bit) |
+| 01 1EH-01 23H | REC END POINT | 000004-221184 | Record end (24-bit) |
+| 01 24H-01 29H | REC LOOP POINT | 000000-221184 | Record loop (24-bit) |
+| 01 2AH-01 2BH | ZOOM T | 0-5 | Time zoom |
+| 01 2CH-01 2DH | ZOOM L | 0-5 | Level zoom |
+| 01 2EH-01 2FH | COPY SOURCE | 0-31 | Copy source tone |
+| 01 30H-01 31H | LOOP TUNE | -64 to +63 | Loop tuning |
+| 01 32H-01 33H | TVA LEVEL CURVE | 0-5 | TVA level curve |
+
+#### Loop/Filter Envelope Parameters (01 4CH - 01 7BH)
+
+| Nibble Offset | Parameter | Range | Description |
+|---------------|-----------|-------|-------------|
+| 01 4CH-01 51H | LOOP LENGTH | 000004-221184 | Loop length (24-bit) |
+| 01 52H-01 53H | PITCH FOLLOW | 0-1 | 0=OFF, 1=ON |
+| 01 54H-01 55H | ENV ZOOM | 0-5 | Envelope zoom |
+| 01 56H-01 57H | TVF ENV SUSTAIN POINT | 0-7 | Filter sustain point |
+| 01 58H-01 59H | TVF ENV END POINT | 1-7 | Filter end point |
+| 01 5AH-01 5BH | TVF ENV LEVEL 1 | 0-127 | Filter envelope level 1 |
+| 01 5CH-01 5DH | TVF ENV RATE 1 | 1-127 | Filter envelope rate 1 |
+| 01 5EH-01 5FH | TVF ENV LEVEL 2 | 0-127 | Filter envelope level 2 |
+| 01 60H-01 61H | TVF ENV RATE 2 | 1-127 | Filter envelope rate 2 |
+| 01 62H-01 63H | TVF ENV LEVEL 3 | 0-127 | Filter envelope level 3 |
+| 01 64H-01 65H | TVF ENV RATE 3 | 1-127 | Filter envelope rate 3 |
+| 01 66H-01 67H | TVF ENV LEVEL 4 | 0-127 | Filter envelope level 4 |
+| 01 68H-01 69H | TVF ENV RATE 4 | 1-127 | Filter envelope rate 4 |
+| 01 6AH-01 6BH | TVF ENV LEVEL 5 | 0-127 | Filter envelope level 5 |
+| 01 6CH-01 6DH | TVF ENV RATE 5 | 1-127 | Filter envelope rate 5 |
+| 01 6EH-01 6FH | TVF ENV LEVEL 6 | 0-127 | Filter envelope level 6 |
+| 01 70H-01 71H | TVF ENV RATE 6 | 1-127 | Filter envelope rate 6 |
+| 01 72H-01 73H | TVF ENV LEVEL 7 | 0-127 | Filter envelope level 7 |
+| 01 74H-01 75H | TVF ENV RATE 7 | 1-127 | Filter envelope rate 7 |
+| 01 76H-01 77H | TVF ENV LEVEL 8 | 0-127 | Filter envelope level 8 |
+| 01 78H-01 79H | TVF ENV RATE 8 | 1-127 | Filter envelope rate 8 |
+| 01 7AH-01 7BH | AFTER TOUCH SWITCH | 0-1 | 0=OFF, 1=ON |
+
+#### Tone Display Numbering
+
+The S-330 displays tones as T11-T42 (not T0-T31):
+- Internal index 0 = Display T11
+- Internal index 1 = Display T12
+- ...
+- Internal index 31 = Display T42
 
 ### Wave Data (01 00 00 00 - 01 7F 7F 7F)
 

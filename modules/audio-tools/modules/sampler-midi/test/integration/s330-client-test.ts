@@ -236,7 +236,9 @@ function createS330Client(midiIO: S330MidiIO, deviceId: number = DEFAULT_DEVICE_
     },
 
     async requestToneName(toneIndex: number): Promise<string> {
-      const address = [0x00, 0x02, toneIndex, 0x00];
+      // Tone address: tone 0 at byte2=4, tone N (N>=1) at byte2=8+N*2
+      const byte2 = toneIndex === 0 ? 4 : (8 + toneIndex * 2);
+      const address = [0x00, 0x02, byte2, 0x00];
       const data = await requestDataWithAddress(address, 8);
       return parseName(data, 0, 8);
     },
@@ -337,10 +339,11 @@ async function main() {
     console.log(`  ✗ FAIL: ${err}\n`);
   }
 
-  // Test 4: Request tone params
-  console.log('=== Test 4: Request Tone 8 Full Params (38 bytes) ===');
+  // Test 4: Request tone params (tone 1 at byte2=10)
+  console.log('=== Test 4: Request Tone 1 Full Params (38 bytes) ===');
   try {
-    const data = await client.requestDataWithAddress([0x00, 0x02, 8, 0x00], TONE_BLOCK_SIZE);
+    // Tone 1: byte2 = 8 + 1*2 = 10
+    const data = await client.requestDataWithAddress([0x00, 0x02, 10, 0x00], TONE_BLOCK_SIZE);
     console.log(`  Data length: ${data.length} bytes`);
     console.log(`  Name: "${parseName(data, 0, 8)}"`);
     console.log(`  Original Key: ${data[8]}`);

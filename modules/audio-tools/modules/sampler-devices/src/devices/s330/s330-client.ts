@@ -49,6 +49,7 @@ import {
     calculateChecksum,
     PATCH_TOTAL_SIZE,
     TONE_BLOCK_SIZE,
+    TONE_STRIDE,
     MAX_PATCHES,
     MAX_TONES,
     PATCH_PARAMS,
@@ -698,11 +699,14 @@ export function createS330Client(
                 const tones: ToneNameInfo[] = [];
 
                 // Request each tone name individually
-                // Tone address: 00 02 tt 00 (tt = tone number 0-31)
-                // Name is 8 bytes at offset 0
+                // Tone address layout (empirically determined):
+                // - Tone 0 at byte2=4: [0x00, 0x02, 0x04, 0x00]
+                // - Tone N (N>=1) at byte2=8+N*2: [0x00, 0x02, 8+N*2, 0x00]
+                // Name is 8 bytes at offset 0 (16 nibbles at 00 00H)
                 for (let i = 0; i < MAX_TONES; i++) {
                     try {
-                        const address = [0x00, 0x02, i, 0x00];
+                        const byte2 = i === 0 ? 4 : (8 + i * 2);
+                        const address = [0x00, 0x02, byte2, 0x00];
                         const data = await requestDataWithAddress(address, 8);
 
                         const name = parseName(data, 0, 8);
@@ -759,8 +763,11 @@ export function createS330Client(
 
             return serialize(async () => {
                 try {
-                    // Request full tone data (38 bytes = 0x26)
-                    const address = [0x00, 0x02, toneIndex, 0x00];
+                    // Request full tone data
+                    // Tone address layout (empirically determined):
+                    // - Tone 0 at byte2=4, Tone N (N>=1) at byte2=8+N*2
+                    const byte2 = toneIndex === 0 ? 4 : (8 + toneIndex * 2);
+                    const address = [0x00, 0x02, byte2, 0x00];
                     const data = await requestDataWithAddress(address, TONE_BLOCK_SIZE);
 
                     return {

@@ -20,6 +20,7 @@ export function PatchesPage() {
     loadingMessage,
     error,
     setPatchNames,
+    setToneNames,
     setPatchData,
     selectPatch,
     setLoading,
@@ -52,6 +53,26 @@ export function PatchesPage() {
     }
   }, [adapter, deviceId, setPatchNames, setLoading, setError]);
 
+  // Fetch all tone names (needed for tone mapping display)
+  const fetchToneNames = useCallback(async () => {
+    if (!adapter) return;
+
+    try {
+      console.log('[PatchesPage] Fetching tone names...');
+      const client = createS330Client(adapter, { deviceId });
+      await client.connect();
+
+      const names = await client.requestAllToneNames();
+      console.log('[PatchesPage] Received tone names:', names);
+      const nonEmpty = names.filter(n => !n.isEmpty);
+      console.log('[PatchesPage] Non-empty tones:', nonEmpty);
+      setToneNames(names);
+    } catch (err) {
+      // Silent fail - tone names are optional for display
+      console.warn('[PatchesPage] Failed to fetch tone names:', err);
+    }
+  }, [adapter, deviceId, setToneNames]);
+
   // Fetch full data for selected patch
   const fetchSelectedPatchData = useCallback(async (index: number) => {
     if (!adapter) return;
@@ -83,6 +104,13 @@ export function PatchesPage() {
       fetchPatchNames();
     }
   }, [isConnected, patchNames.length, isLoading, fetchPatchNames]);
+
+  // Also fetch tone names for the tone mapping display
+  useEffect(() => {
+    if (isConnected && !isLoading && patchNames.length > 0) {
+      fetchToneNames();
+    }
+  }, [isConnected, isLoading, patchNames.length, fetchToneNames]);
 
   // Fetch full data when a patch is selected
   useEffect(() => {

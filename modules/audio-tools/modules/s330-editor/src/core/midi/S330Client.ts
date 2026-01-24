@@ -35,6 +35,7 @@ export type {
     S330Response,
     S330Command,
     S330ClientOptions,
+    S330KeyMode,
 } from '@oletizi/sampler-devices/s330';
 
 // Re-export constants for convenience
