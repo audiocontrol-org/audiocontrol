@@ -329,20 +329,21 @@ describe('S-330 Hardware Integration', () => {
             }
         });
 
-        it('should timeout on non-responsive device', { skip: shouldSkip, timeout: TIMEOUT_MS + 1000 }, async () => {
+        it('should return null for non-responsive device', { skip: shouldSkip, timeout: TIMEOUT_MS + 1000 }, async () => {
             expect(client).toBeDefined();
 
-            // Create a client with very short timeout
-            const shortTimeoutClient = createS330Client(
+            // Create a client with wrong device ID - S-330 won't respond
+            const wrongIdClient = createS330Client(
                 createEasymidiAdapter(input!, output!),
                 { deviceId: 99, timeoutMs: 500 } // Wrong device ID
             );
 
-            await expect(
-                shortTimeoutClient.requestPatchData(0)
-            ).rejects.toThrow(/timeout/i);
+            // With wrong device ID, the S-330 ignores requests.
+            // The client returns null after timeout (graceful degradation)
+            const result = await wrongIdClient.requestPatchData(0);
+            expect(result).toBeNull();
 
-            console.log('  ✓ Timeout handled correctly');
+            console.log('  ✓ Wrong device ID handled correctly (returned null)');
         });
     });
 });

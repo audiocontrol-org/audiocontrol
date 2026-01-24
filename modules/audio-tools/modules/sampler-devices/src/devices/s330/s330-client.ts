@@ -36,6 +36,8 @@ import type {
     S330Response,
     S330Command,
     S330PatchCommon,
+    S330AftertouchAssign,
+    S330KeyAssign,
 } from './s330-types.js';
 
 import {
@@ -49,12 +51,17 @@ import {
     TONE_BLOCK_SIZE,
     MAX_PATCHES,
     MAX_TONES,
+    PATCH_PARAMS,
+    buildPatchParamAddress,
 } from './s330-addresses.js';
 
 import {
     parsePatchCommon,
     encodePatchCommon,
     parseName,
+    encodeAftertouchAssign,
+    encodeKeyAssign,
+    encodeSignedValue,
 } from './s330-params.js';
 
 // =============================================================================
@@ -264,14 +271,21 @@ export interface S330ClientInterface {
     setMultiLevel(part: number, level: number): Promise<void>;
 
     // Individual patch parameter setters
+    setPatchName(patchIndex: number, name: string): Promise<void>;
     setPatchKeyMode(
         patchIndex: number,
         keyMode: 'normal' | 'v-sw' | 'x-fade' | 'v-mix' | 'unison'
     ): Promise<void>;
     setPatchBenderRange(patchIndex: number, range: number): Promise<void>;
     setPatchAftertouchSens(patchIndex: number, sens: number): Promise<void>;
+    setPatchAftertouchAssign(patchIndex: number, assign: S330AftertouchAssign): Promise<void>;
+    setPatchKeyAssign(patchIndex: number, assign: S330KeyAssign): Promise<void>;
     setPatchOutput(patchIndex: number, output: number): Promise<void>;
     setPatchLevel(patchIndex: number, level: number): Promise<void>;
+    setPatchDetune(patchIndex: number, detune: number): Promise<void>;
+    setPatchVelocityThreshold(patchIndex: number, threshold: number): Promise<void>;
+    setPatchVelocityMixRatio(patchIndex: number, ratio: number): Promise<void>;
+    setPatchOctaveShift(patchIndex: number, shift: number): Promise<void>;
 }
 
 // =============================================================================
@@ -519,10 +533,11 @@ export function createS330Client(
         }
 
         return new Promise((resolve, reject) => {
-            let phase: 'WSD' | 'DAT' | 'DONE' = 'WSD';
+            // State machine: WSD → wait ACK → DAT → wait ACK → EOD → wait ACK → done
+            let phase: 'WSD' | 'DAT' | 'EOD' | 'DONE' = 'WSD';
             const timeoutId = setTimeout(() => {
                 midiAdapter.removeSysExListener(listener);
-                reject(new Error('WSD write timeout - no response from S-330'));
+                reject(new Error(`WSD write timeout in phase ${phase}`));
             }, timeoutMs);
 
             function listener(response: number[]) {
@@ -533,11 +548,24 @@ export function createS330Client(
 
                 const command = response[4];
 
-                if (phase === 'WSD') {
-                    if (command === S330_COMMANDS.ACK) {
+                if (command === S330_COMMANDS.RJC) {
+                    clearTimeout(timeoutId);
+                    midiAdapter.removeSysExListener(listener);
+                    reject(new Error(`WSD rejected by S-330 in phase ${phase}`));
+                    return;
+                }
+                if (command === S330_COMMANDS.ERR) {
+                    clearTimeout(timeoutId);
+                    midiAdapter.removeSysExListener(listener);
+                    reject(new Error(`WSD communication error in phase ${phase}`));
+                    return;
+                }
+
+                if (command === S330_COMMANDS.ACK) {
+                    if (phase === 'WSD') {
+                        // Received ACK for WSD - send DAT
                         phase = 'DAT';
 
-                        // Send DAT with address and nibblized data
                         const nibblized = nibblize(data);
                         const datChecksum = calculateChecksum(address, nibblized);
 
@@ -554,35 +582,26 @@ export function createS330Client(
                         ];
 
                         midiAdapter.send(datMessage);
+                    } else if (phase === 'DAT') {
+                        // Received ACK for DAT - send EOD
+                        phase = 'EOD';
 
-                        // Send EOD after small delay
-                        setTimeout(() => {
-                            const eodMessage = [
-                                0xf0,
-                                ROLAND_ID,
-                                deviceId,
-                                S330_MODEL_ID,
-                                S330_COMMANDS.EOD,
-                                0xf7,
-                            ];
-                            midiAdapter.send(eodMessage);
-                            phase = 'DONE';
+                        const eodMessage = [
+                            0xf0,
+                            ROLAND_ID,
+                            deviceId,
+                            S330_MODEL_ID,
+                            S330_COMMANDS.EOD,
+                            0xf7,
+                        ];
 
-                            // Wait a bit for S-330 to process, then resolve
-                            setTimeout(() => {
-                                clearTimeout(timeoutId);
-                                midiAdapter.removeSysExListener(listener);
-                                resolve();
-                            }, 100);
-                        }, 50);
-                    } else if (command === S330_COMMANDS.RJC) {
+                        midiAdapter.send(eodMessage);
+                    } else if (phase === 'EOD') {
+                        // Received ACK for EOD - write complete
+                        phase = 'DONE';
                         clearTimeout(timeoutId);
                         midiAdapter.removeSysExListener(listener);
-                        reject(new Error('WSD rejected by S-330'));
-                    } else if (command === S330_COMMANDS.ERR) {
-                        clearTimeout(timeoutId);
-                        midiAdapter.removeSysExListener(listener);
-                        reject(new Error('WSD communication error'));
+                        resolve();
                     }
                 }
             }
@@ -590,12 +609,13 @@ export function createS330Client(
             midiAdapter.onSysEx(listener);
 
             // Build and send WSD message
-            const sizeInBytes = data.length;
+            // Size is in nibbles (same as RQD) - each byte becomes 2 nibbles
+            const sizeInNibbles = data.length * 2;
             const size = [
-                (sizeInBytes >> 21) & 0x7f,
-                (sizeInBytes >> 14) & 0x7f,
-                (sizeInBytes >> 7) & 0x7f,
-                sizeInBytes & 0x7f,
+                (sizeInNibbles >> 21) & 0x7f,
+                (sizeInNibbles >> 14) & 0x7f,
+                (sizeInNibbles >> 7) & 0x7f,
+                sizeInNibbles & 0x7f,
             ];
 
             const wsdChecksum = calculateChecksum(address, size);
@@ -720,7 +740,9 @@ export function createS330Client(
                     const common = parsePatchCommon(data);
 
                     return { common };
-                } catch (err) {
+                } catch {
+                    // Return null for errors (timeout, rejection, no data, etc.)
+                    // This provides graceful degradation when patch data is unavailable
                     return null;
                 }
             });
@@ -940,8 +962,42 @@ export function createS330Client(
         },
 
         /**
+         * Set patch name
+         * Uses 2-byte writes in 8-byte chunks at the exact name address
+         * @param patchIndex - Patch number (0-63)
+         * @param name - Patch name (max 12 characters, padded with spaces)
+         */
+        async setPatchName(patchIndex: number, name: string): Promise<void> {
+            if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
+                throw new Error(`Invalid patch index: ${patchIndex}`);
+            }
+
+            return serialize(async () => {
+                // Get the exact address for the name parameter
+                const address = buildPatchParamAddress(patchIndex, PATCH_PARAMS.name);
+
+                // Pad name with spaces to 12 characters
+                const nameBytes = Array(PATCH_PARAMS.name.size).fill(0x20); // ASCII space
+                for (let i = 0; i < Math.min(name.length, PATCH_PARAMS.name.size); i++) {
+                    nameBytes[i] = name.charCodeAt(i);
+                }
+
+                // Write name in 8-byte chunk (first 8 chars) then 4-byte chunk (last 4 chars)
+                // S-330 accepts 8-byte writes for patch bank
+                await sendData(address, nameBytes.slice(0, 8));
+
+                // Calculate address for remaining 4 bytes (offset by 8 nibble pairs = 16 nibbles = 0x10)
+                const secondAddress = [...address];
+                secondAddress[3] = (secondAddress[3] + 0x10) & 0x7f; // Advance by 8 bytes (16 nibbles)
+
+                // Write remaining 4 bytes (but we need at least 2 bytes for WSD)
+                await sendData(secondAddress, nameBytes.slice(8, 12));
+            });
+        },
+
+        /**
          * Set key mode for a patch
-         * Uses WSD/DAT/EOD protocol for single-byte parameter update
+         * Uses 8-byte read-modify-write (S-330 requires 8-byte minimum for WSD)
          */
         async setPatchKeyMode(
             patchIndex: number,
@@ -963,14 +1019,24 @@ export function createS330Client(
                     : 4;
 
             return serialize(async () => {
-                const address = [0x00, 0x00, patchIndex * 4, 0x0f];
-                await sendData(address, [keyModeValue]);
+                // Get the exact address for the key mode parameter
+                const address = buildPatchParamAddress(patchIndex, PATCH_PARAMS.keyMode);
+
+                // Read 8 bytes at this address (S-330 requires 8-byte writes)
+                const data = await requestDataWithAddress(address, 8);
+                const newData = [...data];
+
+                // Modify the key mode (first byte)
+                newData[0] = keyModeValue;
+
+                // Write 8 bytes back
+                await sendData(address, newData);
             });
         },
 
         /**
          * Set bender range for a patch
-         * Uses WSD/DAT/EOD protocol for single-byte parameter update
+         * Uses 8-byte read-modify-write (S-330 requires 8-byte minimum for WSD)
          */
         async setPatchBenderRange(patchIndex: number, range: number): Promise<void> {
             if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
@@ -981,14 +1047,24 @@ export function createS330Client(
             }
 
             return serialize(async () => {
-                const address = [0x00, 0x00, patchIndex * 4, 0x0c];
-                await sendData(address, [range]);
+                // Get the exact address for the bender range parameter
+                const address = buildPatchParamAddress(patchIndex, PATCH_PARAMS.benderRange);
+
+                // Read 8 bytes at this address (S-330 requires 8-byte writes)
+                const data = await requestDataWithAddress(address, 8);
+                const newData = [...data];
+
+                // Modify the bender range (first byte)
+                newData[0] = range;
+
+                // Write 8 bytes back
+                await sendData(address, newData);
             });
         },
 
         /**
          * Set aftertouch sensitivity for a patch
-         * Uses WSD/DAT/EOD protocol for single-byte parameter update
+         * Uses 8-byte read-modify-write (S-330 requires 8-byte minimum for WSD)
          */
         async setPatchAftertouchSens(patchIndex: number, sens: number): Promise<void> {
             if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
@@ -999,14 +1075,24 @@ export function createS330Client(
             }
 
             return serialize(async () => {
-                const address = [0x00, 0x00, patchIndex * 4, 0x0e];
-                await sendData(address, [sens]);
+                // Get the exact address for the aftertouch sensitivity parameter
+                const address = buildPatchParamAddress(patchIndex, PATCH_PARAMS.aftertouchSens);
+
+                // Read 8 bytes at this address (S-330 requires 8-byte writes)
+                const data = await requestDataWithAddress(address, 8);
+                const newData = [...data];
+
+                // Modify the aftertouch sensitivity (first byte)
+                newData[0] = sens;
+
+                // Write 8 bytes back
+                await sendData(address, newData);
             });
         },
 
         /**
          * Set output assignment for a patch
-         * Uses WSD/DAT/EOD protocol for single-byte parameter update
+         * Uses 8-byte read-modify-write (S-330 requires 8-byte minimum for WSD)
          */
         async setPatchOutput(patchIndex: number, output: number): Promise<void> {
             if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
@@ -1017,14 +1103,24 @@ export function createS330Client(
             }
 
             return serialize(async () => {
-                const address = [0x00, 0x00, patchIndex * 4 + 1, 0x33];
-                await sendData(address, [output]);
+                // Get the exact address for the output assignment parameter
+                const address = buildPatchParamAddress(patchIndex, PATCH_PARAMS.outputAssign);
+
+                // Read 8 bytes at this address (S-330 requires 8-byte writes)
+                const data = await requestDataWithAddress(address, 8);
+                const newData = [...data];
+
+                // Modify the output assignment (first byte)
+                newData[0] = output;
+
+                // Write 8 bytes back
+                await sendData(address, newData);
             });
         },
 
         /**
          * Set level for a patch
-         * Uses WSD/DAT/EOD protocol for single-byte parameter update
+         * Uses 8-byte read-modify-write (S-330 requires 8-byte minimum for WSD)
          */
         async setPatchLevel(patchIndex: number, level: number): Promise<void> {
             if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
@@ -1035,8 +1131,184 @@ export function createS330Client(
             }
 
             return serialize(async () => {
-                const address = [0x00, 0x00, patchIndex * 4 + 1, 0x2d];
-                await sendData(address, [level]);
+                // Get the exact address for the level parameter
+                const address = buildPatchParamAddress(patchIndex, PATCH_PARAMS.level);
+
+                // Read 8 bytes at this address (S-330 requires 8-byte writes)
+                const data = await requestDataWithAddress(address, 8);
+                const newData = [...data];
+
+                // Modify the level (first byte)
+                newData[0] = level;
+
+                // Write 8 bytes back
+                await sendData(address, newData);
+            });
+        },
+
+        /**
+         * Set detune for a patch (unison mode)
+         * Uses 8-byte read-modify-write (S-330 requires 8-byte minimum for WSD)
+         * @param detune - Detune amount (-64 to +63, displayed as -64 to +63)
+         */
+        async setPatchDetune(patchIndex: number, detune: number): Promise<void> {
+            if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
+                throw new Error(`Invalid patch index: ${patchIndex}`);
+            }
+            if (detune < -64 || detune > 63) {
+                throw new Error(`Invalid detune: ${detune} (must be -64 to +63)`);
+            }
+
+            return serialize(async () => {
+                // Get the exact address for the detune parameter
+                const address = buildPatchParamAddress(patchIndex, PATCH_PARAMS.detune);
+
+                // Read 8 bytes at this address (S-330 requires 8-byte writes)
+                const data = await requestDataWithAddress(address, 8);
+                const newData = [...data];
+
+                // Modify the detune (first byte) - uses signed encoding
+                newData[0] = encodeSignedValue(detune);
+
+                // Write 8 bytes back
+                await sendData(address, newData);
+            });
+        },
+
+        /**
+         * Set velocity threshold for a patch (V-Sw mode)
+         * Uses 8-byte read-modify-write (S-330 requires 8-byte minimum for WSD)
+         * @param threshold - Velocity threshold (0-127)
+         */
+        async setPatchVelocityThreshold(patchIndex: number, threshold: number): Promise<void> {
+            if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
+                throw new Error(`Invalid patch index: ${patchIndex}`);
+            }
+            if (threshold < 0 || threshold > 127) {
+                throw new Error(`Invalid velocity threshold: ${threshold}`);
+            }
+
+            return serialize(async () => {
+                // Get the exact address for the velocity threshold parameter
+                const address = buildPatchParamAddress(patchIndex, PATCH_PARAMS.velocityThreshold);
+
+                // Read 8 bytes at this address (S-330 requires 8-byte writes)
+                const data = await requestDataWithAddress(address, 8);
+                const newData = [...data];
+
+                // Modify the velocity threshold (first byte)
+                newData[0] = threshold;
+
+                // Write 8 bytes back
+                await sendData(address, newData);
+            });
+        },
+
+        /**
+         * Set velocity mix ratio for a patch (V-Mix mode)
+         * Uses 8-byte read-modify-write (S-330 requires 8-byte minimum for WSD)
+         * @param ratio - Velocity mix ratio (0-127)
+         */
+        async setPatchVelocityMixRatio(patchIndex: number, ratio: number): Promise<void> {
+            if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
+                throw new Error(`Invalid patch index: ${patchIndex}`);
+            }
+            if (ratio < 0 || ratio > 127) {
+                throw new Error(`Invalid velocity mix ratio: ${ratio}`);
+            }
+
+            return serialize(async () => {
+                // Get the exact address for the velocity mix ratio parameter
+                const address = buildPatchParamAddress(patchIndex, PATCH_PARAMS.velocityMixRatio);
+
+                // Read 8 bytes at this address (S-330 requires 8-byte writes)
+                const data = await requestDataWithAddress(address, 8);
+                const newData = [...data];
+
+                // Modify the velocity mix ratio (first byte)
+                newData[0] = ratio;
+
+                // Write 8 bytes back
+                await sendData(address, newData);
+            });
+        },
+
+        /**
+         * Set octave shift for a patch
+         * Uses 8-byte read-modify-write (S-330 requires 8-byte minimum for WSD)
+         * @param shift - Octave shift (-2 to +2)
+         */
+        async setPatchOctaveShift(patchIndex: number, shift: number): Promise<void> {
+            if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
+                throw new Error(`Invalid patch index: ${patchIndex}`);
+            }
+            if (shift < -2 || shift > 2) {
+                throw new Error(`Invalid octave shift: ${shift} (must be -2 to +2)`);
+            }
+
+            return serialize(async () => {
+                // Get the exact address for the octave shift parameter
+                const address = buildPatchParamAddress(patchIndex, PATCH_PARAMS.octaveShift);
+
+                // Read 8 bytes at this address (S-330 requires 8-byte writes)
+                const data = await requestDataWithAddress(address, 8);
+                const newData = [...data];
+
+                // Modify the octave shift (first byte) - uses signed encoding
+                newData[0] = encodeSignedValue(shift, 2);
+
+                // Write 8 bytes back
+                await sendData(address, newData);
+            });
+        },
+
+        /**
+         * Set aftertouch assignment for a patch
+         * Uses 8-byte read-modify-write (S-330 requires 8-byte minimum for WSD)
+         */
+        async setPatchAftertouchAssign(patchIndex: number, assign: S330AftertouchAssign): Promise<void> {
+            if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
+                throw new Error(`Invalid patch index: ${patchIndex}`);
+            }
+
+            return serialize(async () => {
+                // Get the exact address for the aftertouch assign parameter
+                const address = buildPatchParamAddress(patchIndex, PATCH_PARAMS.aftertouchAssign);
+
+                // Read 8 bytes at this address (S-330 requires 8-byte writes)
+                const data = await requestDataWithAddress(address, 8);
+                const newData = [...data];
+
+                // Modify the aftertouch assign (first byte)
+                newData[0] = encodeAftertouchAssign(assign);
+
+                // Write 8 bytes back
+                await sendData(address, newData);
+            });
+        },
+
+        /**
+         * Set key assignment mode for a patch
+         * Uses 8-byte read-modify-write (S-330 requires 8-byte minimum for WSD)
+         */
+        async setPatchKeyAssign(patchIndex: number, assign: S330KeyAssign): Promise<void> {
+            if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
+                throw new Error(`Invalid patch index: ${patchIndex}`);
+            }
+
+            return serialize(async () => {
+                // Get the exact address for the key assign parameter
+                const address = buildPatchParamAddress(patchIndex, PATCH_PARAMS.keyAssign);
+
+                // Read 8 bytes at this address (S-330 requires 8-byte writes)
+                const data = await requestDataWithAddress(address, 8);
+                const newData = [...data];
+
+                // Modify the key assign (first byte)
+                newData[0] = encodeKeyAssign(assign);
+
+                // Write 8 bytes back
+                await sendData(address, newData);
             });
         },
 

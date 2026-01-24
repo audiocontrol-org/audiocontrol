@@ -440,8 +440,8 @@ describe('S-330 Structure Parsing (Stubs)', () => {
             data[15] = 0;
             // Velocity threshold at byte 16
             data[16] = 64;
-            // Level at byte 285
-            data[285] = 120;
+            // Level at byte 237 (nibble address 03 5a: (3<<7|0x5a)/2 = 474/2 = 237)
+            data[237] = 120;
 
             const result = parsePatchCommon(data);
             expect(result.name).toBe('TEST');

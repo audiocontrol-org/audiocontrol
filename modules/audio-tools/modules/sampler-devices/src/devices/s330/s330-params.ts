@@ -23,6 +23,7 @@ import {
     SYSTEM_OFFSETS,
     PATCH_COMMON_OFFSETS,
     TONE_OFFSETS,
+    PATCH_PARAMS,
 } from './s330-addresses.js';
 
 // =============================================================================
@@ -251,64 +252,63 @@ export function parseSystemParams(_data: number[]): S330SystemParams {
  * Parse patch common parameters from de-nibblized SysEx data
  *
  * Data should be de-nibblized patch data (512 bytes total).
- * Offsets are byte positions after de-nibblization.
+ * Offsets are taken from PATCH_PARAMS for consistency with the client setters.
  *
  * @param data De-nibblized patch data (512 bytes)
  * @returns Parsed patch common parameters
  */
 export function parsePatchCommon(data: number[]): S330PatchCommon {
-    // Patch name: bytes 0-11 (12 characters)
-    const name = parseName(data, 0, 12);
+    // Patch name (12 characters)
+    const name = parseName(data, PATCH_PARAMS.name.byteOffset, PATCH_PARAMS.name.size);
 
-    // Bend range: byte 12 (nibble address 00 18H)
-    const benderRange = data[12];
+    // Bend range
+    const benderRange = data[PATCH_PARAMS.benderRange.byteOffset];
 
-    // Aftertouch sense: byte 14 (nibble address 00 1CH)
-    const aftertouchSens = data[14];
+    // Aftertouch sensitivity
+    const aftertouchSens = data[PATCH_PARAMS.aftertouchSens.byteOffset];
 
-    // Key mode: byte 15 (nibble address 00 1EH)
-    const keyMode = parseKeyMode(data[15]);
+    // Key mode
+    const keyMode = parseKeyMode(data[PATCH_PARAMS.keyMode.byteOffset]);
 
-    // Velocity threshold: byte 16 (nibble address 00 20H)
-    const velocityThreshold = data[16];
+    // Velocity threshold
+    const velocityThreshold = data[PATCH_PARAMS.velocityThreshold.byteOffset];
 
-    // Tone layer 1: bytes 17-125 (109 entries, nibble address 00 22H-01 7BH)
-    // Each entry is -1 to 31 (0xFF = -1 = OFF)
+    // Tone layer 1 (109 entries, each is -1 to 31; 0xFF = -1 = OFF)
     const toneLayer1: number[] = [];
-    for (let i = 0; i < 109; i++) {
-        const value = data[17 + i];
+    for (let i = 0; i < PATCH_PARAMS.toneLayer1.size; i++) {
+        const value = data[PATCH_PARAMS.toneLayer1.byteOffset + i];
         toneLayer1.push(value === 0xFF ? -1 : value);
     }
 
-    // Tone layer 2: bytes 126-234 (109 entries, nibble address 01 7CH-03 55H)
+    // Tone layer 2 (109 entries)
     const toneLayer2: number[] = [];
-    for (let i = 0; i < 109; i++) {
-        toneLayer2.push(data[126 + i]);
+    for (let i = 0; i < PATCH_PARAMS.toneLayer2.size; i++) {
+        toneLayer2.push(data[PATCH_PARAMS.toneLayer2.byteOffset + i]);
     }
 
-    // Copy source: byte 235 (nibble address 03 56H)
-    const copySource = data[235];
+    // Copy source
+    const copySource = data[PATCH_PARAMS.copySource.byteOffset];
 
-    // Octave shift: byte 284 (nibble address 03 58H) - signed value -2 to +2
-    const octaveShift = parseSignedValue(data[284], 2);
+    // Octave shift (signed value -2 to +2)
+    const octaveShift = parseSignedValue(data[PATCH_PARAMS.octaveShift.byteOffset], 2);
 
-    // Output level: byte 285 (nibble address 03 5AH)
-    const level = data[285];
+    // Output level
+    const level = data[PATCH_PARAMS.level.byteOffset];
 
-    // Detune: byte 287 (nibble address 03 5EH) - signed value -64 to +63
-    const detune = parseSignedValue(data[287]);
+    // Detune (signed value -64 to +63)
+    const detune = parseSignedValue(data[PATCH_PARAMS.detune.byteOffset]);
 
-    // Velocity mix ratio: byte 288 (nibble address 03 60H)
-    const velocityMixRatio = data[288];
+    // Velocity mix ratio
+    const velocityMixRatio = data[PATCH_PARAMS.velocityMixRatio.byteOffset];
 
-    // Aftertouch assign: byte 289 (nibble address 03 62H)
-    const aftertouchAssign = parseAftertouchAssign(data[289]);
+    // Aftertouch assign
+    const aftertouchAssign = parseAftertouchAssign(data[PATCH_PARAMS.aftertouchAssign.byteOffset]);
 
-    // Key assign: byte 290 (nibble address 03 64H)
-    const keyAssign = parseKeyAssign(data[290]);
+    // Key assign
+    const keyAssign = parseKeyAssign(data[PATCH_PARAMS.keyAssign.byteOffset]);
 
-    // Output assign: byte 291 (nibble address 03 66H)
-    const outputAssign = data[291];
+    // Output assign
+    const outputAssign = data[PATCH_PARAMS.outputAssign.byteOffset];
 
     return {
         name,
@@ -390,6 +390,7 @@ export function encodeSystemParams(_params: S330SystemParams): number[] {
  *
  * Reverses parsePatchCommon to convert patch parameters back to
  * the 512-byte de-nibblized format expected by the S-330.
+ * Offsets are taken from PATCH_PARAMS for consistency with the client setters.
  *
  * @param params Patch common parameters to encode
  * @returns 512-byte array ready for nibblization and transmission
@@ -398,59 +399,58 @@ export function encodePatchCommon(params: S330PatchCommon): number[] {
     // Create 512-byte array initialized to 0
     const result = new Array(512).fill(0);
 
-    // Patch name: bytes 0-11 (12 characters)
-    const nameBytes = encodeName(params.name, 12);
-    for (let i = 0; i < 12; i++) {
-        result[i] = nameBytes[i];
+    // Patch name
+    const nameBytes = encodeName(params.name, PATCH_PARAMS.name.size);
+    for (let i = 0; i < PATCH_PARAMS.name.size; i++) {
+        result[PATCH_PARAMS.name.byteOffset + i] = nameBytes[i];
     }
 
-    // Bend range: byte 12 (nibble address 00 18H)
-    result[12] = params.benderRange;
+    // Bend range
+    result[PATCH_PARAMS.benderRange.byteOffset] = params.benderRange;
 
-    // Aftertouch sense: byte 14 (nibble address 00 1CH)
-    result[14] = params.aftertouchSens;
+    // Aftertouch sensitivity
+    result[PATCH_PARAMS.aftertouchSens.byteOffset] = params.aftertouchSens;
 
-    // Key mode: byte 15 (nibble address 00 1EH)
-    result[15] = encodeKeyMode(params.keyMode);
+    // Key mode
+    result[PATCH_PARAMS.keyMode.byteOffset] = encodeKeyMode(params.keyMode);
 
-    // Velocity threshold: byte 16 (nibble address 00 20H)
-    result[16] = params.velocityThreshold;
+    // Velocity threshold
+    result[PATCH_PARAMS.velocityThreshold.byteOffset] = params.velocityThreshold;
 
-    // Tone layer 1: bytes 17-125 (109 entries, nibble address 00 22H-01 7BH)
-    // -1 maps to 0xFF (OFF), otherwise 0-31
-    for (let i = 0; i < 109; i++) {
+    // Tone layer 1 (109 entries; -1 maps to 0xFF for OFF)
+    for (let i = 0; i < PATCH_PARAMS.toneLayer1.size; i++) {
         const value = params.toneLayer1[i];
-        result[17 + i] = value === -1 ? 0xFF : value;
+        result[PATCH_PARAMS.toneLayer1.byteOffset + i] = value === -1 ? 0xFF : value;
     }
 
-    // Tone layer 2: bytes 126-234 (109 entries, nibble address 01 7CH-03 55H)
-    for (let i = 0; i < 109; i++) {
-        result[126 + i] = params.toneLayer2[i];
+    // Tone layer 2 (109 entries)
+    for (let i = 0; i < PATCH_PARAMS.toneLayer2.size; i++) {
+        result[PATCH_PARAMS.toneLayer2.byteOffset + i] = params.toneLayer2[i];
     }
 
-    // Copy source: byte 235 (nibble address 03 56H)
-    result[235] = params.copySource;
+    // Copy source
+    result[PATCH_PARAMS.copySource.byteOffset] = params.copySource;
 
-    // Octave shift: byte 284 (nibble address 03 58H) - signed value -2 to +2
-    result[284] = encodeSignedValue(params.octaveShift, 2);
+    // Octave shift (signed value -2 to +2)
+    result[PATCH_PARAMS.octaveShift.byteOffset] = encodeSignedValue(params.octaveShift, 2);
 
-    // Output level: byte 285 (nibble address 03 5AH)
-    result[285] = params.level;
+    // Output level
+    result[PATCH_PARAMS.level.byteOffset] = params.level;
 
-    // Detune: byte 287 (nibble address 03 5EH) - signed value -64 to +63
-    result[287] = encodeSignedValue(params.detune);
+    // Detune (signed value -64 to +63)
+    result[PATCH_PARAMS.detune.byteOffset] = encodeSignedValue(params.detune);
 
-    // Velocity mix ratio: byte 288 (nibble address 03 60H)
-    result[288] = params.velocityMixRatio;
+    // Velocity mix ratio
+    result[PATCH_PARAMS.velocityMixRatio.byteOffset] = params.velocityMixRatio;
 
-    // Aftertouch assign: byte 289 (nibble address 03 62H)
-    result[289] = encodeAftertouchAssign(params.aftertouchAssign);
+    // Aftertouch assign
+    result[PATCH_PARAMS.aftertouchAssign.byteOffset] = encodeAftertouchAssign(params.aftertouchAssign);
 
-    // Key assign: byte 290 (nibble address 03 64H)
-    result[290] = encodeKeyAssign(params.keyAssign);
+    // Key assign
+    result[PATCH_PARAMS.keyAssign.byteOffset] = encodeKeyAssign(params.keyAssign);
 
-    // Output assign: byte 291 (nibble address 03 66H)
-    result[291] = params.outputAssign;
+    // Output assign
+    result[PATCH_PARAMS.outputAssign.byteOffset] = params.outputAssign;
 
     return result;
 }

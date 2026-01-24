@@ -174,20 +174,30 @@ Total patch size: **512 bytes** (1024 nibbles = `00 00 04 00`)
 | 03 66H | OUTPUT ASSIGN | 0-8 | 0-7=Output 1-8, 8=TONE |
 | 03 68H-03 7FH | dummy | - | Reserved/unused |
 
-**Byte Offsets**: After de-nibblization:
-- Patch name: bytes 0-11 (12 chars)
-- Bend range: byte 12
-- Aftertouch sense: byte 14
-- Key mode: byte 15
-- Velocity threshold: byte 16
-- Tone mappings: bytes 17-280 (two 109-entry arrays)
-- Octave shift: byte 284
-- Output level: byte 285
-- Detune: byte 287
-- V-Mix ratio: byte 288
-- Aftertouch assign: byte 289
-- Key assign: byte 290
-- Output assign: byte 291
+**Byte Offsets**: After de-nibblization, calculated from nibble address using formula:
+`byteOffset = ((high << 7) | low) / 2`
+
+| Nibble Address | Byte Offset | Parameter |
+|----------------|-------------|-----------|
+| 00 00H | 0 | Patch name (12 chars) |
+| 00 18H | 12 | Bend range |
+| 00 1CH | 14 | Aftertouch sense |
+| 00 1EH | 15 | Key mode |
+| 00 20H | 16 | Velocity threshold |
+| 00 22H | 17 | Tone layer 1 start |
+| 01 7CH | 126 | Tone layer 2 start |
+| 03 56H | 235 | Copy source |
+| 03 58H | 236 | Octave shift |
+| 03 5AH | 237 | Output level |
+| 03 5EH | 239 | Detune |
+| 03 60H | 240 | V-Mix ratio |
+| 03 62H | 241 | Aftertouch assign |
+| 03 64H | 242 | Key assign |
+| 03 66H | 243 | Output assign |
+
+**Address Calculation Example**: Level at nibble address `03 5AH`:
+- `(0x03 << 7) | 0x5A = 384 + 90 = 474 nibbles`
+- `474 / 2 = 237 bytes`
 
 **Key Mode Values**:
 - 0 = Normal: Single tone layer across keyboard
@@ -320,7 +330,9 @@ The S-330 rejects (RJC) WSD requests with insufficient size:
 
 **Single-parameter writes (size=1) are rejected!** You must read all values, modify one, and write all back.
 
-#### WSD/DAT/EOD Flow
+#### WSD/DAT/EOD Flow (Corrected January 2026)
+
+**Important**: The S-330 requires ACK after each message in the sequence:
 
 ```
 Host                          S-330
@@ -331,9 +343,15 @@ Host                          S-330
   |                             |
   |--- DAT (addr, data) ------->|  (data is nibblized)
   |                             |
+  |<-------- ACK ---------------|  (data received)
+  |                             |
   |--- EOD -------------------->|
   |                             |
+  |<-------- ACK ---------------|  (transfer complete)
+  |                             |
 ```
+
+**State Machine**: Wait for ACK after each step before proceeding. Do not send DAT until ACK received for WSD. Do not send EOD until ACK received for DAT.
 
 #### Example: Set Part A Patch to Index 1
 
@@ -358,6 +376,78 @@ TX: F0 41 00 1E 42 00 01 00 32 00 01 00 01 00 02 00 03 00 04 00 05 00 06 00 07 3
 TX: F0 41 00 1E 45 F7                              (EOD)
 ```
 
+### Writing Patch Parameters (00 00 xx xx)
+
+**Critical Finding (January 2026)**: The S-330 rejects WSD writes to patch parameter addresses unless the size is at least 8 bytes.
+
+#### Minimum Size Constraints for Patch Parameters
+
+| Parameter | Address | Minimum Size | Result |
+|-----------|---------|--------------|--------|
+| Any patch param | 00 00 pp xx | 8 bytes | ACK (success) |
+| Single param | 00 00 pp xx | 1-4 bytes | RJC (rejected!) |
+
+**Why this matters**: You cannot write a single patch parameter directly. The S-330 requires 8-byte block writes.
+
+#### Read-Modify-Write Pattern (Required)
+
+To update a single patch parameter:
+
+1. **Read** 8 bytes starting at the parameter address
+2. **Modify** the target byte in the read data
+3. **Write** all 8 bytes back to the same address
+
+```
+# Example: Set Patch 0 Level to 100
+
+# Step 1: Read 8 bytes at level address
+TX: F0 41 00 1E 41 00 00 03 5a 00 00 00 10 28 F7  (RQD addr=00 00 03 5a, size=16 nibbles)
+RX: F0 41 00 1E 42 ... [16 nibbles] ... F7        (DAT with 8 bytes)
+TX: F0 41 00 1E 43 F7                              (ACK)
+RX: F0 41 00 1E 45 F7                              (EOD)
+TX: F0 41 00 1E 43 F7                              (ACK)
+
+# Step 2: Modify byte 0 (level) in the read data
+data[0] = 100;  // Set level to 100
+
+# Step 3: Send WSD with 8 bytes
+TX: F0 41 00 1E 40 00 00 03 5a 00 00 00 10 28 F7  (WSD addr=00 00 03 5a, size=16 nibbles)
+RX: F0 41 00 1E 43 F7                              (ACK - ready to receive)
+
+# Step 4: Send DAT with nibblized data
+TX: F0 41 00 1E 42 00 00 03 5a [16 nibbles] cs F7  (DAT with modified data)
+RX: F0 41 00 1E 43 F7                              (ACK - data received)
+
+# Step 5: Send EOD
+TX: F0 41 00 1E 45 F7                              (EOD)
+RX: F0 41 00 1E 43 F7                              (ACK - transfer complete)
+```
+
+#### Patch Parameter Addresses
+
+Each patch starts at address `[0x00, 0x00, patchIndex * 4, 0x00]`.
+
+For parameters in the upper range (bytes 235+), the address includes the high nibble:
+- Level: `[0x00, 0x00, patchIndex * 4 + 0x03, 0x5a]`
+- Octave Shift: `[0x00, 0x00, patchIndex * 4 + 0x03, 0x58]`
+- Output Assign: `[0x00, 0x00, patchIndex * 4 + 0x03, 0x66]`
+
+**Example addresses for Patch 0**:
+| Parameter | Nibble Offset | Full Address |
+|-----------|---------------|--------------|
+| Name | 00 00 | 00 00 00 00 |
+| Bend Range | 00 18 | 00 00 00 18 |
+| Level | 03 5a | 00 00 03 5a |
+| Octave Shift | 03 58 | 00 00 03 58 |
+| Output Assign | 03 66 | 00 00 03 66 |
+
+**Example addresses for Patch 1** (stride = 4):
+| Parameter | Full Address |
+|-----------|--------------|
+| Name | 00 00 04 00 |
+| Level | 00 00 07 5a |
+| Output Assign | 00 00 07 66 |
+
 ### Bulk Dump (WSD/RQD/DAT) Flow
 
 #### Sending Data to S-330
@@ -371,11 +461,15 @@ Host                          S-330
   |                             |
   |--- DAT (addr, data) ------->|
   |                             |
+  |<-------- ACK ---------------|
+  |                             |
   |--- EOD -------------------->|
+  |                             |
+  |<-------- ACK ---------------|
   |                             |
 ```
 
-**Note**: Unlike receiving, there is no ACK after DAT when sending. Just send DAT then EOD.
+**Important**: Wait for ACK after each message. The S-330 sends ACK after DAT to confirm data reception before EOD.
 
 #### Receiving Data from S-330
 
@@ -502,6 +596,17 @@ Breakdown:
 
 Based on actual testing with S-330 hardware (January 2026), the following protocol behaviors were confirmed:
 
+### Key Findings Summary
+
+| Finding | Impact |
+|---------|--------|
+| DT1 silently ignored for function params | Must use WSD/DAT/EOD |
+| 2-byte WSD writes rejected for patch params | Must use 8-byte minimum |
+| WSD requires ACK after DAT before EOD | Proper state machine needed |
+| RQD works with address/size format | Use this, not old type format |
+| Function params in bank 00 01 | Not 00 00 |
+| Patch params in bank 00 00 | With stride of 4 per patch |
+
 ### RQ1/DT1 Protocol
 
 **The S-330 DOES respond to RQ1 (0x11) data request commands** when using proper address-based requests. This is useful for reading individual parameters without handshaking.
@@ -512,7 +617,9 @@ Based on actual testing with S-330 hardware (January 2026), the following protoc
 | DT1 | No response | **Silently ignored for function params!** |
 | RQD (type only) | RJC | Old bulk dump format - rejected |
 | RQD (address) | DAT | **Address-based - WORKS with handshake** |
-| WSD (address) | ACK or RJC | **Required for function param writes** |
+| WSD (function) | ACK or RJC | **Required for function param writes** |
+| WSD (patch, 8B) | ACK | 8-byte minimum required |
+| WSD (patch, <8B) | RJC | **Rejected - too small!** |
 
 **Critical Finding**: DT1 writes are **silently ignored** for function parameters (address `00 01 xx xx`). The S-330 accepts the message but does not apply the change. You must use WSD/DAT/EOD for these addresses.
 

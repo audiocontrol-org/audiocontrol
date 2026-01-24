@@ -118,6 +118,129 @@ export const PATCH_COMMON_OFFSETS = {
 /** Total size of patch data (512 bytes after de-nibblization) */
 export const PATCH_TOTAL_SIZE = 512;
 
+// =============================================================================
+// Patch Parameter Definitions (Semantic API)
+// =============================================================================
+
+/**
+ * Defines a patch parameter with both address and byte offset.
+ * This provides a single source of truth for parameter locations:
+ * - `address` is used for MIDI SysEx communication (nibble addresses)
+ * - `byteOffset` is used for parsing de-nibblized data
+ */
+export interface PatchParam {
+    /** Human-readable parameter name for debugging */
+    name: string;
+    /** [high, low] nibble offset within patch address space */
+    address: readonly [number, number];
+    /** Offset in parsed (de-nibblized) patch data */
+    byteOffset: number;
+    /** Size in bytes (default 1) */
+    size: number;
+}
+
+/**
+ * All patch parameters with their addresses and byte offsets.
+ *
+ * Address format: Each patch starts at [0x00, 0x00, patchIndex * 4, 0x00]
+ * The `address` here is the offset from that base, split into high/low nibbles.
+ *
+ * For parameters in the upper range (bytes 235+), the high nibble wraps:
+ * - Nibble address 0x0356 → [0x03, 0x56] → high byte adds 3 to patch stride
+ */
+export const PATCH_PARAMS = {
+    name: {
+        name: 'Name',
+        address: [0x00, 0x00] as const,
+        byteOffset: 0,
+        size: 12,
+    },
+    benderRange: {
+        name: 'Bender Range',
+        address: [0x00, 0x18] as const,
+        byteOffset: 12,
+        size: 1,
+    },
+    aftertouchSens: {
+        name: 'A.T. Sensitivity',
+        address: [0x00, 0x1c] as const,
+        byteOffset: 14,
+        size: 1,
+    },
+    keyMode: {
+        name: 'Key Mode',
+        address: [0x00, 0x1e] as const,
+        byteOffset: 15,
+        size: 1,
+    },
+    velocityThreshold: {
+        name: 'V-Sw Threshold',
+        address: [0x00, 0x20] as const,
+        byteOffset: 16,
+        size: 1,
+    },
+    toneLayer1: {
+        name: 'Tone Layer 1',
+        address: [0x00, 0x22] as const,
+        byteOffset: 17,
+        size: 109,
+    },
+    toneLayer2: {
+        name: 'Tone Layer 2',
+        address: [0x01, 0x7c] as const,
+        byteOffset: 126,
+        size: 109,
+    },
+    copySource: {
+        name: 'Copy Source',
+        address: [0x03, 0x56] as const,
+        byteOffset: 235, // (3<<7|0x56)/2 = 470/2 = 235
+        size: 1,
+    },
+    octaveShift: {
+        name: 'Octave Shift',
+        address: [0x03, 0x58] as const,
+        byteOffset: 236, // (3<<7|0x58)/2 = 472/2 = 236
+        size: 1,
+    },
+    level: {
+        name: 'Level',
+        address: [0x03, 0x5a] as const,
+        byteOffset: 237, // (3<<7|0x5a)/2 = 474/2 = 237
+        size: 1,
+    },
+    detune: {
+        name: 'Detune',
+        address: [0x03, 0x5e] as const,
+        byteOffset: 239, // (3<<7|0x5e)/2 = 478/2 = 239
+        size: 1,
+    },
+    velocityMixRatio: {
+        name: 'V-Mix Ratio',
+        address: [0x03, 0x60] as const,
+        byteOffset: 240, // (3<<7|0x60)/2 = 480/2 = 240
+        size: 1,
+    },
+    aftertouchAssign: {
+        name: 'A.T. Assign',
+        address: [0x03, 0x62] as const,
+        byteOffset: 241, // (3<<7|0x62)/2 = 482/2 = 241
+        size: 1,
+    },
+    keyAssign: {
+        name: 'Key Assign',
+        address: [0x03, 0x64] as const,
+        byteOffset: 242, // (3<<7|0x64)/2 = 484/2 = 242
+        size: 1,
+    },
+    outputAssign: {
+        name: 'Output Assign',
+        address: [0x03, 0x66] as const,
+        byteOffset: 243, // (3<<7|0x66)/2 = 486/2 = 243
+        size: 1,
+    },
+} as const satisfies Record<string, PatchParam>;
+
 /** Number of tone mapping entries per layer (MIDI notes 21-127) */
 export const TONE_MAP_ENTRIES = 109;
 
@@ -240,6 +363,28 @@ export const VALUE_RANGES = {
  */
 export function buildPatchAddress(patchNumber: number, offset: number): number[] {
     return [0x00, 0x00, (patchNumber * 4) & 0x7F, offset & 0x7F];
+}
+
+/**
+ * Build patch parameter address from patch index and PatchParam definition
+ *
+ * This is the semantic API for building patch addresses. It combines:
+ * - Base patch address: [0x00, 0x00, patchIndex * 4, 0x00]
+ * - Parameter offset: param.address[0] added to byte 2, param.address[1] as byte 3
+ *
+ * Example for patch 0, level parameter (address [0x03, 0x5a]):
+ * - Byte 2: 0 * 4 + 3 = 3
+ * - Byte 3: 0x5a
+ * - Result: [0x00, 0x00, 0x03, 0x5a]
+ *
+ * Example for patch 1, level parameter:
+ * - Byte 2: 1 * 4 + 3 = 7
+ * - Byte 3: 0x5a
+ * - Result: [0x00, 0x00, 0x07, 0x5a]
+ */
+export function buildPatchParamAddress(patchIndex: number, param: PatchParam): number[] {
+    const [high, low] = param.address;
+    return [0x00, 0x00, (patchIndex * 4 + high) & 0x7f, low & 0x7f];
 }
 
 /**

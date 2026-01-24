@@ -94,6 +94,8 @@ export type {
 // Constant Exports
 // =============================================================================
 
+export type { PatchParam } from './s330-addresses.js';
+
 export {
     // Device identification
     ROLAND_ID,
@@ -118,6 +120,7 @@ export {
     PATCH_TOTAL_SIZE,
     TONE_MAP_ENTRIES,
     MAX_PATCHES,
+    PATCH_PARAMS,
 
     // Tone parameter offsets
     TONE_OFFSETS,
@@ -138,6 +141,7 @@ export {
 
     // Address builders
     buildPatchAddress,
+    buildPatchParamAddress,
     buildToneAddress,
     buildSystemAddress,
     calculateChecksum,

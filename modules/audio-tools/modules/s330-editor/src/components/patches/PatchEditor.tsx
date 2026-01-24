@@ -2,12 +2,12 @@
  * Patch editor component
  */
 
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import type { S330Patch } from '@/core/midi/S330Client';
 import type { S330ClientInterface } from '@/core/midi/S330Client';
 import { createS330Client } from '@/core/midi/S330Client';
 import { useMidiStore } from '@/stores/midiStore';
-import { midiNoteToName, formatPercent, formatPan, cn } from '@/lib/utils';
+import { formatPercent, cn } from '@/lib/utils';
 import { ParameterSlider } from '@/components/ui/ParameterSlider';
 
 interface PatchEditorProps {
@@ -19,11 +19,26 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
   const { common } = patch;
   const { adapter, deviceId } = useMidiStore();
   const clientRef = useRef<S330ClientInterface | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameValue, setNameValue] = useState(common.name);
 
   // Initialize client if not already created
   if (adapter && !clientRef.current) {
     clientRef.current = createS330Client(adapter, { deviceId });
   }
+
+  // Patch name handler
+  const handleNameChange = async (newName: string) => {
+    if (clientRef.current) {
+      try {
+        await clientRef.current.setPatchName(index, newName);
+        setNameValue(newName);
+      } catch (err) {
+        console.error('[PatchEditor] Failed to update patch name:', err);
+      }
+    }
+    setEditingName(false);
+  };
 
   // Parameter update handlers
   const handleKeyModeChange = async (keyMode: 'normal' | 'v-sw' | 'x-fade' | 'v-mix' | 'unison') => {
@@ -76,19 +91,108 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
     }
   };
 
+  const handleDetuneChange = async (detune: number) => {
+    if (clientRef.current) {
+      try {
+        await clientRef.current.setPatchDetune(index, detune);
+      } catch (err) {
+        console.error('[PatchEditor] Failed to update detune:', err);
+      }
+    }
+  };
+
+  const handleVelocityThresholdChange = async (threshold: number) => {
+    if (clientRef.current) {
+      try {
+        await clientRef.current.setPatchVelocityThreshold(index, threshold);
+      } catch (err) {
+        console.error('[PatchEditor] Failed to update velocity threshold:', err);
+      }
+    }
+  };
+
+  const handleVelocityMixRatioChange = async (ratio: number) => {
+    if (clientRef.current) {
+      try {
+        await clientRef.current.setPatchVelocityMixRatio(index, ratio);
+      } catch (err) {
+        console.error('[PatchEditor] Failed to update velocity mix ratio:', err);
+      }
+    }
+  };
+
+  const handleOctaveShiftChange = async (shift: number) => {
+    if (clientRef.current) {
+      try {
+        await clientRef.current.setPatchOctaveShift(index, shift);
+      } catch (err) {
+        console.error('[PatchEditor] Failed to update octave shift:', err);
+      }
+    }
+  };
+
+  const handleKeyAssignChange = async (assign: 'rotary' | 'fix') => {
+    if (clientRef.current) {
+      try {
+        await clientRef.current.setPatchKeyAssign(index, assign);
+      } catch (err) {
+        console.error('[PatchEditor] Failed to update key assign:', err);
+      }
+    }
+  };
+
+  const handleAftertouchAssignChange = async (assign: 'modulation' | 'volume' | 'bend+' | 'bend-' | 'filter') => {
+    if (clientRef.current) {
+      try {
+        await clientRef.current.setPatchAftertouchAssign(index, assign);
+      } catch (err) {
+        console.error('[PatchEditor] Failed to update aftertouch assign:', err);
+      }
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="card">
         <div className="mb-4">
           <span className="text-sm text-s330-muted">Patch P{String(index + 11).padStart(2, '0')}</span>
-          <h3 className="text-xl font-bold text-s330-text font-mono">
-            {common.name}
-          </h3>
+          {editingName ? (
+            <input
+              type="text"
+              value={nameValue}
+              onChange={(e) => setNameValue(e.target.value.slice(0, 12))}
+              onBlur={() => handleNameChange(nameValue)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleNameChange(nameValue);
+                } else if (e.key === 'Escape') {
+                  setNameValue(common.name);
+                  setEditingName(false);
+                }
+              }}
+              autoFocus
+              maxLength={12}
+              className={cn(
+                'text-xl font-bold font-mono w-full',
+                'bg-s330-panel border border-s330-highlight rounded px-2 py-1',
+                'text-s330-text focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+              )}
+            />
+          ) : (
+            <h3
+              className="text-xl font-bold text-s330-text font-mono cursor-pointer hover:text-s330-highlight"
+              onClick={() => setEditingName(true)}
+              title="Click to edit patch name"
+            >
+              {nameValue}
+            </h3>
+          )}
         </div>
 
-        {/* Common Parameters */}
+        {/* Common Parameters - matching hardware layout */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {/* Key Mode */}
           <div>
             <label className="text-xs text-s330-muted mb-1 block">Key Mode</label>
             <select
@@ -108,30 +212,26 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
               <option value="unison">Unison</option>
             </select>
           </div>
-          {common.keyMode === 'v-sw' && (
-            <div>
-              <label className="text-xs text-s330-muted mb-1 block">V-Sw Threshold</label>
-              <div className="text-sm text-s330-text font-mono">
-                {common.velocityThreshold}
-              </div>
-            </div>
-          )}
-          {common.keyMode === 'v-mix' && (
-            <div>
-              <label className="text-xs text-s330-muted mb-1 block">V-Mix Ratio</label>
-              <div className="text-sm text-s330-text font-mono">
-                {formatPercent(common.velocityMixRatio)}
-              </div>
-            </div>
-          )}
-          {common.keyMode === 'unison' && (
-            <div>
-              <label className="text-xs text-s330-muted mb-1 block">Detune</label>
-              <div className="text-sm text-s330-text font-mono">
-                {common.detune > 0 ? '+' : ''}{common.detune}
-              </div>
-            </div>
-          )}
+
+          {/* Key Assign */}
+          <div>
+            <label className="text-xs text-s330-muted mb-1 block">Key Assign</label>
+            <select
+              value={common.keyAssign}
+              onChange={(e) => handleKeyAssignChange(e.target.value as 'rotary' | 'fix')}
+              className={cn(
+                'w-full px-2 py-1.5 text-sm font-mono',
+                'bg-s330-panel border border-s330-accent rounded',
+                'text-s330-text hover:bg-s330-accent/30',
+                'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+              )}
+            >
+              <option value="rotary">Rotary</option>
+              <option value="fix">Fix</option>
+            </select>
+          </div>
+
+          {/* P.Bend Range */}
           <div>
             <label className="text-xs text-s330-muted mb-1 block">P.Bend Range</label>
             <select
@@ -151,6 +251,50 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
               ))}
             </select>
           </div>
+
+          {/* A.T Assign */}
+          <div>
+            <label className="text-xs text-s330-muted mb-1 block">A.T Assign</label>
+            <select
+              value={common.aftertouchAssign}
+              onChange={(e) => handleAftertouchAssignChange(e.target.value as 'modulation' | 'volume' | 'bend+' | 'bend-' | 'filter')}
+              className={cn(
+                'w-full px-2 py-1.5 text-sm font-mono',
+                'bg-s330-panel border border-s330-accent rounded',
+                'text-s330-text hover:bg-s330-accent/30',
+                'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+              )}
+            >
+              <option value="modulation">Modulation</option>
+              <option value="volume">Volume</option>
+              <option value="bend+">Bend+</option>
+              <option value="bend-">Bend-</option>
+              <option value="filter">Filter</option>
+            </select>
+          </div>
+
+          {/* Oct.Shift */}
+          <div>
+            <label className="text-xs text-s330-muted mb-1 block">Oct.Shift</label>
+            <select
+              value={common.octaveShift}
+              onChange={(e) => handleOctaveShiftChange(Number(e.target.value))}
+              className={cn(
+                'w-full px-2 py-1.5 text-sm font-mono',
+                'bg-s330-panel border border-s330-accent rounded',
+                'text-s330-text hover:bg-s330-accent/30',
+                'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+              )}
+            >
+              {[-2, -1, 0, 1, 2].map((shift) => (
+                <option key={shift} value={shift}>
+                  {shift > 0 ? '+' : ''}{shift}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Output Assign */}
           <div>
             <label className="text-xs text-s330-muted mb-1 block">Output Assign</label>
             <select
@@ -171,26 +315,9 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
               <option value={8}>TONE</option>
             </select>
           </div>
-          <div>
-            <label className="text-xs text-s330-muted mb-1 block">Oct.Shift</label>
-            <div className="text-sm text-s330-text font-mono">
-              {common.octaveShift > 0 ? '+' : ''}{common.octaveShift}
-            </div>
-          </div>
-          <div>
-            <label className="text-xs text-s330-muted mb-1 block">Key Assign</label>
-            <div className="text-sm text-s330-text capitalize">
-              {common.keyAssign}
-            </div>
-          </div>
-          <div>
-            <label className="text-xs text-s330-muted mb-1 block">A.T Assign</label>
-            <div className="text-sm text-s330-text capitalize">
-              {common.aftertouchAssign}
-            </div>
-          </div>
         </div>
 
+        {/* Sliders for Level and A.T Sense */}
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           <ParameterSlider
             label="Level"
@@ -204,6 +331,44 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
             onChange={handleAftertouchSensChange}
             formatValue={formatPercent}
           />
+        </div>
+
+        {/* Mode-specific parameters */}
+        <div className="mt-4 grid gap-4 md:grid-cols-3">
+          {/* Unison Detune - always visible, only active in Unison mode */}
+          <div className={cn(common.keyMode !== 'unison' && 'opacity-50')}>
+            <ParameterSlider
+              label="Unison Detune"
+              value={common.detune + 64}
+              onChange={(val) => handleDetuneChange(val - 64)}
+              formatValue={(val) => {
+                const detune = val - 64;
+                return `${detune > 0 ? '+' : ''}${detune}`;
+              }}
+              disabled={common.keyMode !== 'unison'}
+            />
+          </div>
+
+          {/* V-Sw Thresh - always visible, only active in V-Sw mode */}
+          <div className={cn(common.keyMode !== 'v-sw' && 'opacity-50')}>
+            <ParameterSlider
+              label="V-Sw Thresh."
+              value={common.velocityThreshold}
+              onChange={handleVelocityThresholdChange}
+              disabled={common.keyMode !== 'v-sw'}
+            />
+          </div>
+
+          {/* V-Mix Ratio - always visible, only active in V-Mix mode */}
+          <div className={cn(common.keyMode !== 'v-mix' && 'opacity-50')}>
+            <ParameterSlider
+              label="V-Mix Ratio"
+              value={common.velocityMixRatio}
+              onChange={handleVelocityMixRatioChange}
+              formatValue={formatPercent}
+              disabled={common.keyMode !== 'v-mix'}
+            />
+          </div>
         </div>
       </div>
 

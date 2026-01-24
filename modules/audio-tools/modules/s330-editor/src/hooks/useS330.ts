@@ -6,7 +6,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { S330MidiIO } from '@/core/midi/types';
 import {
   createS330Client,
-  S330_DATA_TYPES,
   type S330ClientInterface,
   type S330Patch,
   type S330Tone,
@@ -43,9 +42,9 @@ export function useS330(
   options: UseS330Options = {}
 ): UseS330Return {
   const [deviceId, setDeviceIdState] = useState(options.deviceId ?? 0);
-  const [patches, setPatches] = useState<S330Patch[]>([]);
-  const [tones, setTones] = useState<S330Tone[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [patches] = useState<S330Patch[]>([]);
+  const [tones] = useState<S330Tone[]>([]);
+  const [isLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Create client when adapter changes
@@ -77,66 +76,73 @@ export function useS330(
 
   /**
    * Fetch patches from device
+   * TODO: Implement bulk dump support in S330Client
    */
-  const fetchPatches = useCallback(async (bank: 1 | 2 = 1) => {
+  const fetchPatches = useCallback(async (_bank: 1 | 2 = 1) => {
     if (!client) {
       setError('Not connected to device');
       return;
     }
 
-    try {
-      setIsLoading(true);
-      setError(null);
+    setError('Bulk dump not yet implemented - use patch list view instead');
 
-      const dataType = bank === 1 ? S330_DATA_TYPES.PATCH_1_32 : S330_DATA_TYPES.PATCH_33_64;
-      const packets = await client.requestBulkDump(dataType);
-      const parsedPatches = client.parsePatches(packets);
+    // try {
+    //   setIsLoading(true);
+    //   setError(null);
 
-      if (bank === 1) {
-        setPatches((prev) => [...parsedPatches, ...prev.slice(32)]);
-      } else {
-        setPatches((prev) => [...prev.slice(0, 32), ...parsedPatches]);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch patches';
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
+    //   const dataType = bank === 1 ? S330_DATA_TYPES.PATCH_1_32 : S330_DATA_TYPES.PATCH_33_64;
+    //   const packets = await client.requestBulkDump(dataType);
+    //   const parsedPatches = client.parsePatches(packets);
+
+    //   if (bank === 1) {
+    //     setPatches((prev) => [...parsedPatches, ...prev.slice(32)]);
+    //   } else {
+    //     setPatches((prev) => [...prev.slice(0, 32), ...parsedPatches]);
+    //   }
+    // } catch (err) {
+    //   const message = err instanceof Error ? err.message : 'Failed to fetch patches';
+    //   setError(message);
+    // } finally {
+    //   setIsLoading(false);
+    // }
   }, [client]);
 
   /**
    * Fetch tones from device
+   * TODO: Implement bulk dump support in S330Client
    */
-  const fetchTones = useCallback(async (bank: 1 | 2 = 1) => {
+  const fetchTones = useCallback(async (_bank: 1 | 2 = 1) => {
     if (!client) {
       setError('Not connected to device');
       return;
     }
 
-    try {
-      setIsLoading(true);
-      setError(null);
+    setError('Bulk dump not yet implemented - use tone list view instead');
 
-      const dataType = bank === 1 ? S330_DATA_TYPES.TONE_1_32 : S330_DATA_TYPES.TONE_33_64;
-      const packets = await client.requestBulkDump(dataType);
-      const parsedTones = client.parseTones(packets);
+    // try {
+    //   setIsLoading(true);
+    //   setError(null);
 
-      if (bank === 1) {
-        setTones((prev) => [...parsedTones, ...prev.slice(32)]);
-      } else {
-        setTones((prev) => [...prev.slice(0, 32), ...parsedTones]);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch tones';
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
+    //   const dataType = bank === 1 ? S330_DATA_TYPES.TONE_1_32 : S330_DATA_TYPES.TONE_33_64;
+    //   const packets = await client.requestBulkDump(dataType);
+    //   const parsedTones = client.parseTones(packets);
+
+    //   if (bank === 1) {
+    //     setTones((prev) => [...parsedTones, ...prev.slice(32)]);
+    //   } else {
+    //     setTones((prev) => [...prev.slice(0, 32), ...parsedTones]);
+    //   }
+    // } catch (err) {
+    //   const message = err instanceof Error ? err.message : 'Failed to fetch tones';
+    //   setError(message);
+    // } finally {
+    //   setIsLoading(false);
+    // }
   }, [client]);
 
   /**
    * Fetch all data from device
+   * TODO: Implement bulk dump support in S330Client
    */
   const fetchAll = useCallback(async () => {
     if (!client) {
@@ -144,26 +150,28 @@ export function useS330(
       return;
     }
 
-    try {
-      setIsLoading(true);
-      setError(null);
+    setError('Bulk dump not yet implemented - use individual views instead');
 
-      // Fetch patches bank 1
-      const patchPackets1 = await client.requestBulkDump(S330_DATA_TYPES.PATCH_1_32);
-      const patches1 = client.parsePatches(patchPackets1);
+    // try {
+    //   setIsLoading(true);
+    //   setError(null);
 
-      // Fetch tones bank 1
-      const tonePackets1 = await client.requestBulkDump(S330_DATA_TYPES.TONE_1_32);
-      const tones1 = client.parseTones(tonePackets1);
+    //   // Fetch patches bank 1
+    //   const patchPackets1 = await client.requestBulkDump(S330_DATA_TYPES.PATCH_1_32);
+    //   const patches1 = client.parsePatches(patchPackets1);
 
-      setPatches(patches1);
-      setTones(tones1);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to fetch data';
-      setError(message);
-    } finally {
-      setIsLoading(false);
-    }
+    //   // Fetch tones bank 1
+    //   const tonePackets1 = await client.requestBulkDump(S330_DATA_TYPES.TONE_1_32);
+    //   const tones1 = client.parseTones(tonePackets1);
+
+    //   setPatches(patches1);
+    //   setTones(tones1);
+    // } catch (err) {
+    //   const message = err instanceof Error ? err.message : 'Failed to fetch data';
+    //   setError(message);
+    // } finally {
+    //   setIsLoading(false);
+    // }
   }, [client]);
 
   return {
