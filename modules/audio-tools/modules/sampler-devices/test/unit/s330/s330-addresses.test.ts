@@ -167,20 +167,28 @@ describe('S-330 Address Constants', () => {
             expect(TONE_OFFSETS.NAME).toBe(0x00);
         });
 
-        it('should have original key at offset 8', () => {
-            expect(TONE_OFFSETS.ORIGINAL_KEY).toBe(0x08);
+        it('should have original key at offset 12', () => {
+            expect(TONE_OFFSETS.ORIG_KEY_NUMBER).toBe(12);
         });
 
-        it('should have loop mode at offset 19', () => {
-            expect(TONE_OFFSETS.LOOP_MODE).toBe(0x13);
+        it('should have loop mode at offset 25', () => {
+            expect(TONE_OFFSETS.LOOP_MODE).toBe(25);
         });
 
-        it('should have LFO destination at offset 37', () => {
-            expect(TONE_OFFSETS.LFO_DESTINATION).toBe(0x25);
+        it('should have LFO rate at offset 28', () => {
+            expect(TONE_OFFSETS.LFO_RATE).toBe(28);
         });
 
-        it('should have correct tone block size', () => {
-            expect(TONE_BLOCK_SIZE).toBe(0x26);
+        it('should have TVA envelope sustain point at offset 51', () => {
+            expect(TONE_OFFSETS.TVA_ENV_SUSTAIN_POINT).toBe(51);
+        });
+
+        it('should have TVF envelope sustain point at offset 107', () => {
+            expect(TONE_OFFSETS.TVF_ENV_SUSTAIN_POINT).toBe(107);
+        });
+
+        it('should have correct tone block size (256 bytes)', () => {
+            expect(TONE_BLOCK_SIZE).toBe(256);
         });
 
         it('should allow up to 32 tones', () => {

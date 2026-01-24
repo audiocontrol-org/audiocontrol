@@ -11,18 +11,26 @@ import {
     S330SystemParams,
     S330PatchCommon,
     S330Tone,
+    S330Envelope,
+    S330TvaParams,
+    S330TvfParams,
+    S330LfoParams,
+    S330WaveParams,
     S330KeyMode,
     S330AftertouchAssign,
     S330KeyAssign,
     S330LoopMode,
-    S330LfoDestination,
     S330SampleRate,
+    S330EgPolarity,
+    S330LfoMode,
+    S330LevelCurve,
 } from './s330-types.js';
 
 import {
     SYSTEM_OFFSETS,
     PATCH_COMMON_OFFSETS,
     TONE_OFFSETS,
+    TONE_BLOCK_SIZE,
     PATCH_PARAMS,
 } from './s330-addresses.js';
 
@@ -106,6 +114,7 @@ export function parseLoopMode(value: number): S330LoopMode {
         case 0: return 'forward';
         case 1: return 'alternating';
         case 2: return 'one-shot';
+        case 3: return 'reverse';
         default: return 'forward';
     }
 }
@@ -118,30 +127,44 @@ export function encodeLoopMode(mode: S330LoopMode): number {
         case 'forward': return 0;
         case 'alternating': return 1;
         case 'one-shot': return 2;
+        case 'reverse': return 3;
     }
 }
 
 /**
- * Convert LFO destination byte to enum
+ * Convert EG polarity byte to enum
  */
-export function parseLfoDestination(value: number): S330LfoDestination {
-    switch (value) {
-        case 0: return 'pitch';
-        case 1: return 'tvf';
-        case 2: return 'tva';
-        default: return 'pitch';
-    }
+export function parseEgPolarity(value: number): S330EgPolarity {
+    return value === 1 ? 'reverse' : 'normal';
 }
 
 /**
- * Convert LFO destination enum to byte
+ * Convert EG polarity enum to byte
  */
-export function encodeLfoDestination(dest: S330LfoDestination): number {
-    switch (dest) {
-        case 'pitch': return 0;
-        case 'tvf': return 1;
-        case 'tva': return 2;
-    }
+export function encodeEgPolarity(polarity: S330EgPolarity): number {
+    return polarity === 'reverse' ? 1 : 0;
+}
+
+/**
+ * Convert LFO mode byte to enum
+ */
+export function parseLfoMode(value: number): S330LfoMode {
+    return value === 1 ? 'one-shot' : 'normal';
+}
+
+/**
+ * Convert LFO mode enum to byte
+ */
+export function encodeLfoMode(mode: S330LfoMode): number {
+    return mode === 'one-shot' ? 1 : 0;
+}
+
+/**
+ * Parse level curve value (clamp to 0-5)
+ */
+export function parseLevelCurve(value: number): S330LevelCurve {
+    const clamped = Math.max(0, Math.min(5, value));
+    return clamped as S330LevelCurve;
 }
 
 /**
@@ -188,7 +211,7 @@ export function encodeName(name: string, length: number = 8): number[] {
 }
 
 /**
- * Extract 21-bit address from 3 bytes
+ * Extract 21-bit address from 3 bytes (7-bit MIDI encoding)
  */
 export function parse21BitAddress(data: number[], offset: number): number {
     return (
@@ -199,7 +222,7 @@ export function parse21BitAddress(data: number[], offset: number): number {
 }
 
 /**
- * Encode 21-bit address to 3 bytes
+ * Encode 21-bit address to 3 bytes (7-bit MIDI encoding)
  */
 export function encode21BitAddress(value: number): number[] {
     return [
@@ -207,6 +230,98 @@ export function encode21BitAddress(value: number): number[] {
         (value >> 7) & 0x7F,
         value & 0x7F,
     ];
+}
+
+/**
+ * Extract 24-bit wave address from 3 bytes
+ * Used for tone wave parameters (START/END/LOOP points)
+ */
+export function parse24BitAddress(data: number[], offset: number): number {
+    const b0 = data[offset] ?? 0;
+    const b1 = data[offset + 1] ?? 0;
+    const b2 = data[offset + 2] ?? 0;
+    return (b0 << 16) | (b1 << 8) | b2;
+}
+
+/**
+ * Encode 24-bit wave address to 3 bytes
+ */
+export function encode24BitAddress(value: number): number[] {
+    return [
+        (value >> 16) & 0xFF,
+        (value >> 8) & 0xFF,
+        value & 0xFF,
+    ];
+}
+
+/**
+ * Parse 8-point envelope from tone data
+ *
+ * @param data - De-nibblized tone data
+ * @param sustainOffset - Byte offset for sustain point
+ * @param endOffset - Byte offset for end point
+ * @param levelsStart - Byte offset for first level
+ * @returns Parsed envelope
+ */
+export function parseEnvelope(
+    data: number[],
+    sustainOffset: number,
+    endOffset: number,
+    levelsStart: number
+): S330Envelope {
+    const levels: [number, number, number, number, number, number, number, number] = [
+        data[levelsStart] ?? 0,
+        data[levelsStart + 2] ?? 0,
+        data[levelsStart + 4] ?? 0,
+        data[levelsStart + 6] ?? 0,
+        data[levelsStart + 8] ?? 0,
+        data[levelsStart + 10] ?? 0,
+        data[levelsStart + 12] ?? 0,
+        data[levelsStart + 14] ?? 0,
+    ];
+
+    const rates: [number, number, number, number, number, number, number, number] = [
+        data[levelsStart + 1] ?? 1,
+        data[levelsStart + 3] ?? 1,
+        data[levelsStart + 5] ?? 1,
+        data[levelsStart + 7] ?? 1,
+        data[levelsStart + 9] ?? 1,
+        data[levelsStart + 11] ?? 1,
+        data[levelsStart + 13] ?? 1,
+        data[levelsStart + 15] ?? 1,
+    ];
+
+    return {
+        levels,
+        rates,
+        sustainPoint: data[sustainOffset] ?? 0,
+        endPoint: data[endOffset] ?? 8,
+    };
+}
+
+/**
+ * Encode 8-point envelope to byte array
+ *
+ * @param envelope - Envelope to encode
+ * @param sustainOffset - Byte offset for sustain point in output
+ * @param endOffset - Byte offset for end point in output
+ * @param levelsStart - Byte offset for first level in output
+ * @param output - Output array to write to
+ */
+export function encodeEnvelope(
+    envelope: S330Envelope,
+    sustainOffset: number,
+    endOffset: number,
+    levelsStart: number,
+    output: number[]
+): void {
+    output[sustainOffset] = envelope.sustainPoint & 0x7F;
+    output[endOffset] = envelope.endPoint & 0x7F;
+
+    for (let i = 0; i < 8; i++) {
+        output[levelsStart + i * 2] = envelope.levels[i] & 0x7F;
+        output[levelsStart + i * 2 + 1] = Math.max(1, envelope.rates[i]) & 0x7F;
+    }
 }
 
 /**
@@ -331,44 +446,116 @@ export function parsePatchCommon(data: number[]): S330PatchCommon {
 
 /**
  * Parse tone parameters from SysEx data
- * TODO: Implement actual parsing logic
+ *
+ * Parses de-nibblized tone data (256 bytes) into S330Tone structure.
+ * Uses TONE_OFFSETS for byte positions.
+ *
+ * @param data De-nibblized tone data (256 bytes)
+ * @returns Parsed tone parameters
  */
-export function parseTone(_data: number[]): S330Tone {
-    // Stub implementation - returns default values
+export function parseTone(data: number[]): S330Tone {
+    // Helper to safely get a byte with default
+    const getByte = (offset: number, defaultVal: number = 0): number =>
+        data[offset] ?? defaultVal;
+
+    // Parse wave parameters
+    const wave: S330WaveParams = {
+        bank: getByte(TONE_OFFSETS.WAVE_BANK),
+        segmentTop: getByte(TONE_OFFSETS.WAVE_SEGMENT_TOP),
+        segmentLength: getByte(TONE_OFFSETS.WAVE_SEGMENT_LENGTH),
+        startPoint: parse24BitAddress(data, TONE_OFFSETS.START_POINT),
+        endPoint: parse24BitAddress(data, TONE_OFFSETS.END_POINT),
+        loopPoint: parse24BitAddress(data, TONE_OFFSETS.LOOP_POINT),
+        loopLength: parse24BitAddress(data, TONE_OFFSETS.LOOP_LENGTH),
+    };
+
+    // Parse LFO parameters
+    const lfo: S330LfoParams = {
+        rate: getByte(TONE_OFFSETS.LFO_RATE),
+        sync: getByte(TONE_OFFSETS.LFO_SYNC) === 1,
+        delay: getByte(TONE_OFFSETS.LFO_DELAY),
+        mode: parseLfoMode(getByte(TONE_OFFSETS.LFO_MODE)),
+        polarity: getByte(TONE_OFFSETS.LFO_POLARITY) === 1,
+        offset: getByte(TONE_OFFSETS.LFO_OFFSET),
+    };
+
+    // Parse TVA envelope
+    const tvaEnvelope = parseEnvelope(
+        data,
+        TONE_OFFSETS.TVA_ENV_SUSTAIN_POINT,
+        TONE_OFFSETS.TVA_ENV_END_POINT,
+        TONE_OFFSETS.TVA_ENV_LEVEL_1
+    );
+
+    // Parse TVA parameters
+    const tva: S330TvaParams = {
+        lfoDepth: getByte(TONE_OFFSETS.TVA_LFO_DEPTH),
+        keyRate: getByte(TONE_OFFSETS.TVA_KEY_RATE),
+        level: getByte(TONE_OFFSETS.TVA_LEVEL, 127),
+        velRate: getByte(TONE_OFFSETS.TVA_VEL_RATE),
+        levelCurve: parseLevelCurve(getByte(TONE_OFFSETS.TVA_LEVEL_CURVE)),
+        envelope: tvaEnvelope,
+    };
+
+    // Parse TVF envelope
+    const tvfEnvelope = parseEnvelope(
+        data,
+        TONE_OFFSETS.TVF_ENV_SUSTAIN_POINT,
+        TONE_OFFSETS.TVF_ENV_END_POINT,
+        TONE_OFFSETS.TVF_ENV_LEVEL_1
+    );
+
+    // Parse TVF parameters
+    const tvf: S330TvfParams = {
+        cutoff: getByte(TONE_OFFSETS.TVF_CUTOFF, 127),
+        resonance: getByte(TONE_OFFSETS.TVF_RESONANCE),
+        keyFollow: getByte(TONE_OFFSETS.TVF_KEY_FOLLOW),
+        lfoDepth: getByte(TONE_OFFSETS.TVF_LFO_DEPTH),
+        egDepth: getByte(TONE_OFFSETS.TVF_EG_DEPTH),
+        egPolarity: parseEgPolarity(getByte(TONE_OFFSETS.TVF_EG_POLARITY)),
+        levelCurve: parseLevelCurve(getByte(TONE_OFFSETS.TVF_LEVEL_CURVE)),
+        keyRateFollow: getByte(TONE_OFFSETS.TVF_KEY_RATE_FOLLOW),
+        velRateFollow: getByte(TONE_OFFSETS.TVF_VEL_RATE_FOLLOW),
+        enabled: getByte(TONE_OFFSETS.TVF_SWITCH) === 1,
+        envelope: tvfEnvelope,
+    };
+
     return {
-        name: 'INIT',
-        originalKey: 60,
-        sampleRate: '30kHz',
-        startAddress: 0,
-        loopStart: 0,
-        loopEnd: 0,
-        loopMode: 'forward',
-        coarseTune: 64,
-        fineTune: 64,
-        level: 127,
-        tva: {
-            attack: 0,
-            decay: 64,
-            sustain: 127,
-            release: 64,
-        },
-        tvf: {
-            cutoff: 127,
-            resonance: 0,
-            envDepth: 0,
-            envelope: {
-                attack: 0,
-                decay: 64,
-                sustain: 127,
-                release: 64,
-            },
-        },
-        lfo: {
-            rate: 64,
-            depth: 0,
-            delay: 0,
-            destination: 'pitch',
-        },
+        // Basic info
+        name: parseName(data, TONE_OFFSETS.NAME, 8),
+        outputAssign: getByte(TONE_OFFSETS.OUTPUT_ASSIGN),
+        sourceTone: getByte(TONE_OFFSETS.SOURCE_TONE),
+        origSubTone: getByte(TONE_OFFSETS.ORIG_SUB_TONE),
+        sampleRate: parseSampleRate(getByte(TONE_OFFSETS.SAMPLING_FREQ)),
+        originalKey: getByte(TONE_OFFSETS.ORIG_KEY_NUMBER, 60),
+
+        // Wave parameters
+        wave,
+        loopMode: parseLoopMode(getByte(TONE_OFFSETS.LOOP_MODE)),
+
+        // LFO
+        lfo,
+        tvaLfoDepth: getByte(TONE_OFFSETS.TVA_LFO_DEPTH),
+
+        // Pitch
+        transpose: getByte(TONE_OFFSETS.TRANSPOSE, 64),
+        fineTune: parseSignedValue(getByte(TONE_OFFSETS.FINE_TUNE, 64)),
+
+        // TVF and TVA
+        tvf,
+        tva,
+
+        // Switches
+        benderEnabled: getByte(TONE_OFFSETS.BENDER_SWITCH) === 1,
+        aftertouchEnabled: getByte(TONE_OFFSETS.AFTERTOUCH_SWITCH) === 1,
+        pitchFollow: getByte(TONE_OFFSETS.PITCH_FOLLOW) === 1,
+
+        // Recording/misc parameters
+        recThreshold: getByte(TONE_OFFSETS.REC_THRESHOLD),
+        recPreTrigger: getByte(TONE_OFFSETS.REC_PRE_TRIGGER),
+        loopTune: parseSignedValue(getByte(TONE_OFFSETS.LOOP_TUNE, 64)),
+        envZoom: getByte(TONE_OFFSETS.ENV_ZOOM),
+        copySource: getByte(TONE_OFFSETS.COPY_SOURCE),
     };
 }
 
@@ -458,11 +645,116 @@ export function encodePatchCommon(params: S330PatchCommon): number[] {
 
 /**
  * Encode tone parameters to SysEx data
- * TODO: Implement actual encoding logic
+ *
+ * Encodes S330Tone structure to 256-byte array for transmission.
+ * Uses TONE_OFFSETS for byte positions.
+ *
+ * @param tone Tone parameters to encode
+ * @returns 256-byte array ready for nibblization
  */
-export function encodeTone(_tone: S330Tone): number[] {
-    // Stub implementation
-    return [];
+export function encodeTone(tone: S330Tone): number[] {
+    const data = new Array(TONE_BLOCK_SIZE).fill(0);
+
+    // Name (8 bytes)
+    const nameBytes = encodeName(tone.name, 8);
+    for (let i = 0; i < 8; i++) {
+        data[TONE_OFFSETS.NAME + i] = nameBytes[i];
+    }
+
+    // Basic info
+    data[TONE_OFFSETS.OUTPUT_ASSIGN] = tone.outputAssign & 0x7F;
+    data[TONE_OFFSETS.SOURCE_TONE] = tone.sourceTone & 0x1F;
+    data[TONE_OFFSETS.ORIG_SUB_TONE] = tone.origSubTone & 0x01;
+    data[TONE_OFFSETS.SAMPLING_FREQ] = encodeSampleRate(tone.sampleRate);
+    data[TONE_OFFSETS.ORIG_KEY_NUMBER] = tone.originalKey & 0x7F;
+
+    // Wave parameters
+    data[TONE_OFFSETS.WAVE_BANK] = tone.wave.bank & 0x01;
+    data[TONE_OFFSETS.WAVE_SEGMENT_TOP] = tone.wave.segmentTop & 0x7F;
+    data[TONE_OFFSETS.WAVE_SEGMENT_LENGTH] = tone.wave.segmentLength & 0x7F;
+
+    // 24-bit wave addresses
+    const startAddr = encode24BitAddress(tone.wave.startPoint);
+    const endAddr = encode24BitAddress(tone.wave.endPoint);
+    const loopAddr = encode24BitAddress(tone.wave.loopPoint);
+    const loopLen = encode24BitAddress(tone.wave.loopLength);
+
+    for (let i = 0; i < 3; i++) {
+        data[TONE_OFFSETS.START_POINT + i] = startAddr[i];
+        data[TONE_OFFSETS.END_POINT + i] = endAddr[i];
+        data[TONE_OFFSETS.LOOP_POINT + i] = loopAddr[i];
+        data[TONE_OFFSETS.LOOP_LENGTH + i] = loopLen[i];
+    }
+
+    // Loop mode
+    data[TONE_OFFSETS.LOOP_MODE] = encodeLoopMode(tone.loopMode);
+
+    // LFO parameters
+    data[TONE_OFFSETS.TVA_LFO_DEPTH] = tone.tvaLfoDepth & 0x7F;
+    data[TONE_OFFSETS.LFO_RATE] = tone.lfo.rate & 0x7F;
+    data[TONE_OFFSETS.LFO_SYNC] = tone.lfo.sync ? 1 : 0;
+    data[TONE_OFFSETS.LFO_DELAY] = tone.lfo.delay & 0x7F;
+    data[TONE_OFFSETS.LFO_MODE] = encodeLfoMode(tone.lfo.mode);
+    data[TONE_OFFSETS.LFO_POLARITY] = tone.lfo.polarity ? 1 : 0;
+    data[TONE_OFFSETS.LFO_OFFSET] = tone.lfo.offset & 0x7F;
+
+    // Pitch parameters
+    data[TONE_OFFSETS.TRANSPOSE] = tone.transpose & 0x7F;
+    data[TONE_OFFSETS.FINE_TUNE] = encodeSignedValue(tone.fineTune);
+
+    // TVF parameters
+    data[TONE_OFFSETS.TVF_CUTOFF] = tone.tvf.cutoff & 0x7F;
+    data[TONE_OFFSETS.TVF_RESONANCE] = tone.tvf.resonance & 0x7F;
+    data[TONE_OFFSETS.TVF_KEY_FOLLOW] = tone.tvf.keyFollow & 0x7F;
+    data[TONE_OFFSETS.TVF_LFO_DEPTH] = tone.tvf.lfoDepth & 0x7F;
+    data[TONE_OFFSETS.TVF_EG_DEPTH] = tone.tvf.egDepth & 0x7F;
+    data[TONE_OFFSETS.TVF_EG_POLARITY] = encodeEgPolarity(tone.tvf.egPolarity);
+    data[TONE_OFFSETS.TVF_LEVEL_CURVE] = tone.tvf.levelCurve & 0x07;
+    data[TONE_OFFSETS.TVF_KEY_RATE_FOLLOW] = tone.tvf.keyRateFollow & 0x7F;
+    data[TONE_OFFSETS.TVF_VEL_RATE_FOLLOW] = tone.tvf.velRateFollow & 0x7F;
+    data[TONE_OFFSETS.TVF_SWITCH] = tone.tvf.enabled ? 1 : 0;
+
+    // Bender switch
+    data[TONE_OFFSETS.BENDER_SWITCH] = tone.benderEnabled ? 1 : 0;
+
+    // TVA envelope
+    encodeEnvelope(
+        tone.tva.envelope,
+        TONE_OFFSETS.TVA_ENV_SUSTAIN_POINT,
+        TONE_OFFSETS.TVA_ENV_END_POINT,
+        TONE_OFFSETS.TVA_ENV_LEVEL_1,
+        data
+    );
+
+    // TVA additional parameters
+    data[TONE_OFFSETS.TVA_KEY_RATE] = tone.tva.keyRate & 0x7F;
+    data[TONE_OFFSETS.TVA_LEVEL] = tone.tva.level & 0x7F;
+    data[TONE_OFFSETS.TVA_VEL_RATE] = tone.tva.velRate & 0x7F;
+    data[TONE_OFFSETS.TVA_LEVEL_CURVE] = tone.tva.levelCurve & 0x07;
+
+    // Recording parameters
+    data[TONE_OFFSETS.REC_THRESHOLD] = tone.recThreshold & 0x7F;
+    data[TONE_OFFSETS.REC_PRE_TRIGGER] = tone.recPreTrigger & 0x03;
+    data[TONE_OFFSETS.COPY_SOURCE] = tone.copySource & 0x1F;
+    data[TONE_OFFSETS.LOOP_TUNE] = encodeSignedValue(tone.loopTune);
+
+    // Additional settings
+    data[TONE_OFFSETS.PITCH_FOLLOW] = tone.pitchFollow ? 1 : 0;
+    data[TONE_OFFSETS.ENV_ZOOM] = tone.envZoom & 0x07;
+
+    // TVF envelope
+    encodeEnvelope(
+        tone.tvf.envelope,
+        TONE_OFFSETS.TVF_ENV_SUSTAIN_POINT,
+        TONE_OFFSETS.TVF_ENV_END_POINT,
+        TONE_OFFSETS.TVF_ENV_LEVEL_1,
+        data
+    );
+
+    // Aftertouch switch
+    data[TONE_OFFSETS.AFTERTOUCH_SWITCH] = tone.aftertouchEnabled ? 1 : 0;
+
+    return data;
 }
 
 // =============================================================================

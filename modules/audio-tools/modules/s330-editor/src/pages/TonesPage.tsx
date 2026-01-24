@@ -1,11 +1,14 @@
 /**
  * Tones page - View and edit S-330 tones
+ *
+ * Parameter changes are sent to the device in real-time.
  */
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/s330Store';
 import { createS330Client } from '@/core/midi/S330Client';
+import type { S330ClientInterface } from '@/core/midi/S330Client';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
 import { cn } from '@/lib/utils';
@@ -27,6 +30,37 @@ export function TonesPage() {
   } = useS330Store();
 
   const isConnected = status === 'connected' && adapter !== null;
+
+  // Keep a ref to the S330 client for sending parameter updates
+  const clientRef = useRef<S330ClientInterface | null>(null);
+
+  // Initialize client when adapter changes
+  useEffect(() => {
+    if (!adapter) {
+      clientRef.current = null;
+      return;
+    }
+    clientRef.current = createS330Client(adapter, { deviceId });
+  }, [adapter, deviceId]);
+
+  // Handle tone parameter updates - local state only (for responsive UI)
+  const handleToneUpdate = useCallback((updatedTone: Parameters<typeof setToneData>[1]) => {
+    if (selectedToneIndex === null) return;
+    setToneData(selectedToneIndex, updatedTone);
+  }, [selectedToneIndex, setToneData]);
+
+  // Commit changes to device - called after drag operations complete
+  const handleToneCommit = useCallback(() => {
+    if (selectedToneIndex === null || !clientRef.current) return;
+
+    const toneData = tones.get(selectedToneIndex);
+    if (!toneData) return;
+
+    clientRef.current.sendToneData(selectedToneIndex, toneData).catch((err) => {
+      console.error('[TonesPage] Failed to send tone data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to send tone data');
+    });
+  }, [selectedToneIndex, tones, setError]);
 
   // Fetch all tone names (lightweight scan)
   const fetchToneNames = useCallback(async () => {
@@ -152,7 +186,12 @@ export function TonesPage() {
           </div>
           <div className="lg:col-span-2">
             {selectedTone ? (
-              <ToneEditor tone={selectedTone} index={selectedToneIndex!} />
+              <ToneEditor
+                tone={selectedTone}
+                index={selectedToneIndex!}
+                onUpdate={handleToneUpdate}
+                onCommit={handleToneCommit}
+              />
             ) : selectedToneIndex !== null ? (
               <div className="card text-center py-12 text-s330-muted">
                 <div className="animate-spin w-6 h-6 border-2 border-s330-highlight border-t-transparent rounded-full mx-auto mb-2" />

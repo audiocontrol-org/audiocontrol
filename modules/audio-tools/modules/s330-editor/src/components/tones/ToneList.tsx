@@ -33,8 +33,8 @@ export function ToneList({ toneNames, selectedIndex, onSelect }: ToneListProps) 
             )}
           >
             <div className="flex items-center justify-between">
-              <span className="font-mono">
-                {String(tone.index + 1).padStart(2, '0')}
+              <span className="font-mono text-s330-muted">
+                T{tone.index + 11}
               </span>
               <span className="flex-1 mx-3 truncate">
                 {tone.name || '(unnamed)'}

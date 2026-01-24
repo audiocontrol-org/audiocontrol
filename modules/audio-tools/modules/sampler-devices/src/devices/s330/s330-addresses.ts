@@ -260,37 +260,144 @@ export const MAX_PATCHES = 64;
 // Tone Parameter Offsets
 // =============================================================================
 
-/** Offsets within tone block */
+/**
+ * Tone parameter offsets (byte positions after de-nibblization)
+ *
+ * The S-330 tone block is 512 nibbles (256 bytes after de-nibblization).
+ * Nibble addresses from the protocol are converted to byte offsets using:
+ *   byteOffset = ((high << 7) | low) / 2
+ *
+ * For example, nibble address 00 32H = ((0 << 7) | 0x32) / 2 = 25 bytes
+ */
 export const TONE_OFFSETS = {
-    NAME: 0x00,              // 8 bytes
-    ORIGINAL_KEY: 0x08,
-    SAMPLE_RATE: 0x09,
-    START_ADDRESS: 0x0A,     // 3 bytes (21-bit)
-    LOOP_START: 0x0D,        // 3 bytes (21-bit)
-    LOOP_END: 0x10,          // 3 bytes (21-bit)
-    LOOP_MODE: 0x13,
-    COARSE_TUNE: 0x14,
-    FINE_TUNE: 0x15,
-    LEVEL: 0x16,
-    TVA_ATTACK: 0x17,
-    TVA_DECAY: 0x18,
-    TVA_SUSTAIN: 0x19,
-    TVA_RELEASE: 0x1A,
-    TVF_CUTOFF: 0x1B,
-    TVF_RESONANCE: 0x1C,
-    TVF_ENV_DEPTH: 0x1D,
-    TVF_ATTACK: 0x1E,
-    TVF_DECAY: 0x1F,
-    TVF_SUSTAIN: 0x20,
-    TVF_RELEASE: 0x21,
-    LFO_RATE: 0x22,
-    LFO_DEPTH: 0x23,
-    LFO_DELAY: 0x24,
-    LFO_DESTINATION: 0x25,
+    // === Basic Info (00 00H - 00 1FH) ===
+    NAME: 0,                    // 00 00H-00 0FH: 8 bytes (16 nibbles)
+    OUTPUT_ASSIGN: 8,           // 00 10H-00 11H
+    SOURCE_TONE: 9,             // 00 12H-00 13H
+    ORIG_SUB_TONE: 10,          // 00 14H-00 15H
+    SAMPLING_FREQ: 11,          // 00 16H-00 17H (0=30kHz, 1=15kHz)
+    ORIG_KEY_NUMBER: 12,        // 00 18H-00 19H (MIDI note 11-108)
+    WAVE_BANK: 13,              // 00 1AH-00 1BH (0=A, 1=B)
+    WAVE_SEGMENT_TOP: 14,       // 00 1CH-00 1DH
+    WAVE_SEGMENT_LENGTH: 15,    // 00 1EH-00 1FH
+
+    // === Wave Points (00 20H - 00 33H) - 24-bit addresses ===
+    START_POINT: 16,            // 00 20H-00 25H (6 nibbles = 3 bytes)
+    END_POINT: 19,              // 00 26H-00 2BH (6 nibbles = 3 bytes)
+    LOOP_POINT: 22,             // 00 2CH-00 31H (6 nibbles = 3 bytes)
+    LOOP_MODE: 25,              // 00 32H-00 33H (0=Fwd, 1=Alt, 2=1Shot, 3=Rev)
+
+    // === LFO Parameters (00 34H - 00 47H) ===
+    TVA_LFO_DEPTH: 26,          // 00 34H-00 35H
+    // 00 36H-00 37H: dummy
+    LFO_RATE: 28,               // 00 38H-00 39H
+    LFO_SYNC: 29,               // 00 3AH-00 3BH (0=OFF, 1=ON)
+    LFO_DELAY: 30,              // 00 3CH-00 3DH
+    // 00 3EH-00 3FH: dummy
+    LFO_MODE: 32,               // 00 40H-00 41H (0=NORMAL, 1=ONE SHOT)
+    TVA_LFO_DEPTH_2: 33,        // 00 42H-00 43H (duplicate?)
+    LFO_POLARITY: 34,           // 00 44H-00 45H (0=Sine, 1=Peak hold)
+    LFO_OFFSET: 35,             // 00 46H-00 47H
+
+    // === Pitch Parameters (00 48H - 00 4BH) ===
+    TRANSPOSE: 36,              // 00 48H-00 49H
+    FINE_TUNE: 37,              // 00 4AH-00 4BH (-64 to +63)
+
+    // === TVF Parameters (00 4CH - 00 63H) ===
+    TVF_CUTOFF: 38,             // 00 4CH-00 4DH
+    TVF_RESONANCE: 39,          // 00 4EH-00 4FH
+    TVF_KEY_FOLLOW: 40,         // 00 50H-00 51H
+    // 00 52H-00 53H: dummy
+    TVF_LFO_DEPTH: 42,          // 00 54H-00 55H
+    TVF_EG_DEPTH: 43,           // 00 56H-00 57H
+    TVF_EG_POLARITY: 44,        // 00 58H-00 59H (0=NORMAL, 1=REVERSE)
+    TVF_LEVEL_CURVE: 45,        // 00 5AH-00 5BH
+    TVF_KEY_RATE_FOLLOW: 46,    // 00 5CH-00 5DH
+    TVF_VEL_RATE_FOLLOW: 47,    // 00 5EH-00 5FH
+    // 00 60H-00 61H: dummy
+    TVF_SWITCH: 49,             // 00 62H-00 63H (0=OFF, 1=ON)
+
+    // === Bender Switch (00 64H - 00 65H) ===
+    BENDER_SWITCH: 50,          // 00 64H-00 65H
+
+    // === TVA Envelope Config (00 66H - 00 69H) ===
+    TVA_ENV_SUSTAIN_POINT: 51,  // 00 66H-00 67H (0-7)
+    TVA_ENV_END_POINT: 52,      // 00 68H-00 69H (1-8)
+
+    // === TVA Envelope Points 1-5 (00 6AH - 00 7DH) ===
+    TVA_ENV_LEVEL_1: 53,        // 00 6AH-00 6BH
+    TVA_ENV_RATE_1: 54,         // 00 6CH-00 6DH
+    TVA_ENV_LEVEL_2: 55,        // 00 6EH-00 6FH
+    TVA_ENV_RATE_2: 56,         // 00 70H-00 71H
+    TVA_ENV_LEVEL_3: 57,        // 00 72H-00 73H
+    TVA_ENV_RATE_3: 58,         // 00 74H-00 75H
+    TVA_ENV_LEVEL_4: 59,        // 00 76H-00 77H
+    TVA_ENV_RATE_4: 60,         // 00 78H-00 79H
+    TVA_ENV_LEVEL_5: 61,        // 00 7AH-00 7BH
+    TVA_ENV_RATE_5: 62,         // 00 7CH-00 7DH
+
+    // === TVA Envelope Points 6-8 (00 7EH - 01 09H) ===
+    TVA_ENV_LEVEL_6: 63,        // 00 7EH-00 7FH
+    TVA_ENV_RATE_6: 64,         // 01 00H-01 01H (note: crosses nibble boundary)
+    TVA_ENV_LEVEL_7: 65,        // 01 02H-01 03H
+    TVA_ENV_RATE_7: 66,         // 01 04H-01 05H
+    TVA_ENV_LEVEL_8: 67,        // 01 06H-01 07H
+    TVA_ENV_RATE_8: 68,         // 01 08H-01 09H
+
+    // === TVA Additional Parameters (01 0CH - 01 33H) ===
+    TVA_KEY_RATE: 70,           // 01 0CH-01 0DH
+    TVA_LEVEL: 71,              // 01 0EH-01 0FH (output level)
+    TVA_VEL_RATE: 72,           // 01 10H-01 11H
+    REC_THRESHOLD: 73,          // 01 12H-01 13H
+    REC_PRE_TRIGGER: 74,        // 01 14H-01 15H
+    REC_SAMPLING_FREQ: 75,      // 01 16H-01 17H
+    REC_START_POINT: 76,        // 01 18H-01 1DH (3 bytes)
+    REC_END_POINT: 79,          // 01 1EH-01 23H (3 bytes)
+    REC_LOOP_POINT: 82,         // 01 24H-01 29H (3 bytes)
+    ZOOM_T: 85,                 // 01 2AH-01 2BH
+    ZOOM_L: 86,                 // 01 2CH-01 2DH
+    COPY_SOURCE: 87,            // 01 2EH-01 2FH
+    LOOP_TUNE: 88,              // 01 30H-01 31H
+    TVA_LEVEL_CURVE: 89,        // 01 32H-01 33H
+
+    // === Loop Length (01 4CH - 01 51H) ===
+    LOOP_LENGTH: 102,           // 01 4CH-01 51H (3 bytes)
+
+    // === Additional Settings (01 52H - 01 55H) ===
+    PITCH_FOLLOW: 105,          // 01 52H-01 53H
+    ENV_ZOOM: 106,              // 01 54H-01 55H
+
+    // === TVF Envelope Config (01 56H - 01 59H) ===
+    TVF_ENV_SUSTAIN_POINT: 107, // 01 56H-01 57H (0-7)
+    TVF_ENV_END_POINT: 108,     // 01 58H-01 59H (1-8)
+
+    // === TVF Envelope Points 1-8 (01 5AH - 01 79H) ===
+    TVF_ENV_LEVEL_1: 109,       // 01 5AH-01 5BH
+    TVF_ENV_RATE_1: 110,        // 01 5CH-01 5DH
+    TVF_ENV_LEVEL_2: 111,       // 01 5EH-01 5FH
+    TVF_ENV_RATE_2: 112,        // 01 60H-01 61H
+    TVF_ENV_LEVEL_3: 113,       // 01 62H-01 63H
+    TVF_ENV_RATE_3: 114,        // 01 64H-01 65H
+    TVF_ENV_LEVEL_4: 115,       // 01 66H-01 67H
+    TVF_ENV_RATE_4: 116,        // 01 68H-01 69H
+    TVF_ENV_LEVEL_5: 117,       // 01 6AH-01 6BH
+    TVF_ENV_RATE_5: 118,        // 01 6CH-01 6DH
+    TVF_ENV_LEVEL_6: 119,       // 01 6EH-01 6FH
+    TVF_ENV_RATE_6: 120,        // 01 70H-01 71H
+    TVF_ENV_LEVEL_7: 121,       // 01 72H-01 73H
+    TVF_ENV_RATE_7: 122,        // 01 74H-01 75H
+    TVF_ENV_LEVEL_8: 123,       // 01 76H-01 77H
+    TVF_ENV_RATE_8: 124,        // 01 78H-01 79H
+
+    // === Aftertouch Switch (01 7AH - 01 7BH) ===
+    AFTERTOUCH_SWITCH: 125,     // 01 7AH-01 7BH
 } as const;
 
-/** Size of tone block */
-export const TONE_BLOCK_SIZE = 0x26;
+/** Size of tone block in bytes (after de-nibblization) */
+export const TONE_BLOCK_SIZE = 256;
+
+/** Size of tone block in nibbles (for RQD size calculation) */
+export const TONE_BLOCK_NIBBLES = 512;
 
 /** Maximum tones in memory */
 export const MAX_TONES = 32;

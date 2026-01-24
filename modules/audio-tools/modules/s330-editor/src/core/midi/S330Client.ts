@@ -36,6 +36,11 @@ export type {
     S330Command,
     S330ClientOptions,
     S330KeyMode,
+    S330Envelope,
+    S330TvaParams,
+    S330TvfParams,
+    S330LfoParams,
+    S330WaveParams,
 } from '@oletizi/sampler-devices/s330';
 
 // Re-export constants for convenience

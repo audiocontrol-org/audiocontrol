@@ -59,6 +59,8 @@ import {
 import {
     parsePatchCommon,
     encodePatchCommon,
+    parseTone,
+    encodeTone,
     parseName,
     encodeAftertouchAssign,
     encodeKeyAssign,
@@ -189,55 +191,6 @@ function nibblize(bytes: number[]): number[] {
     return nibbles;
 }
 
-/**
- * Parse loop mode from byte value
- */
-function parseLoopMode(value: number): 'forward' | 'alternating' | 'one-shot' {
-    switch (value) {
-        case 0:
-            return 'forward';
-        case 1:
-            return 'alternating';
-        case 2:
-            return 'one-shot';
-        default:
-            return 'forward';
-    }
-}
-
-/**
- * Parse LFO destination from byte value
- */
-function parseLfoDestination(value: number): 'pitch' | 'tvf' | 'tva' {
-    switch (value) {
-        case 0:
-            return 'pitch';
-        case 1:
-            return 'tvf';
-        case 2:
-            return 'tva';
-        default:
-            return 'pitch';
-    }
-}
-
-/**
- * Parse sample rate from byte value
- */
-function parseSampleRate(value: number): '15kHz' | '30kHz' {
-    return value === 0 ? '30kHz' : '15kHz';
-}
-
-/**
- * Parse 21-bit address from 3 bytes
- */
-function parse21BitAddress(data: number[], offset: number): number {
-    return (
-        ((data[offset] & 0x7f) << 14) |
-        ((data[offset + 1] & 0x7f) << 7) |
-        (data[offset + 2] & 0x7f)
-    );
-}
 
 // =============================================================================
 // S-330 Client Interface
@@ -263,6 +216,7 @@ export interface S330ClientInterface {
     // Tone operations
     requestAllToneNames(): Promise<ToneNameInfo[]>;
     requestToneData(toneIndex: number): Promise<S330Tone | null>;
+    sendToneData(toneIndex: number, tone: S330Tone): Promise<void>;
 
     // Multi mode configuration
     requestFunctionParameters(): Promise<MultiPartConfig[]>;
@@ -755,6 +709,14 @@ export function createS330Client(
         /**
          * Request full tone data for a specific tone
          * Serialized to prevent concurrent request interference
+         *
+         * Tone data is 256 bytes (512 nibbles) and includes:
+         * - Basic info (name, output, sample rate, original key)
+         * - Wave parameters (start/end/loop points)
+         * - LFO parameters
+         * - 8-point TVA envelope with sustain/end points
+         * - 8-point TVF envelope with sustain/end points
+         * - Various switches and recording parameters
          */
         async requestToneData(toneIndex: number): Promise<S330Tone | null> {
             if (toneIndex < 0 || toneIndex >= MAX_TONES) {
@@ -763,51 +725,46 @@ export function createS330Client(
 
             return serialize(async () => {
                 try {
-                    // Request full tone data
+                    // Request full tone data (256 bytes)
                     // Tone address layout (empirically determined):
                     // - Tone 0 at byte2=4, Tone N (N>=1) at byte2=8+N*2
                     const byte2 = toneIndex === 0 ? 4 : (8 + toneIndex * 2);
                     const address = [0x00, 0x02, byte2, 0x00];
                     const data = await requestDataWithAddress(address, TONE_BLOCK_SIZE);
 
-                    return {
-                        name: parseName(data, 0),
-                        originalKey: data[8],
-                        sampleRate: parseSampleRate(data[9]),
-                        startAddress: parse21BitAddress(data, 10),
-                        loopStart: parse21BitAddress(data, 13),
-                        loopEnd: parse21BitAddress(data, 16),
-                        loopMode: parseLoopMode(data[19]),
-                        coarseTune: data[20],
-                        fineTune: data[21],
-                        level: data[22],
-                        tva: {
-                            attack: data[23],
-                            decay: data[24],
-                            sustain: data[25],
-                            release: data[26],
-                        },
-                        tvf: {
-                            cutoff: data[27],
-                            resonance: data[28],
-                            envDepth: data[29],
-                            envelope: {
-                                attack: data[30],
-                                decay: data[31],
-                                sustain: data[32],
-                                release: data[33],
-                            },
-                        },
-                        lfo: {
-                            rate: data[34],
-                            depth: data[35],
-                            delay: data[36],
-                            destination: parseLfoDestination(data[37]),
-                        },
-                    };
+                    // Use parseTone from s330-params.ts for proper 8-point envelope parsing
+                    return parseTone(data);
                 } catch (err) {
                     return null;
                 }
+            });
+        },
+
+        /**
+         * Send tone data to S-330
+         * Uses WSD/DAT/EOD protocol to write complete tone block
+         *
+         * @param toneIndex - Tone number (0-31)
+         * @param tone - Complete tone data structure
+         * @returns Promise that resolves when tone is written
+         */
+        async sendToneData(toneIndex: number, tone: S330Tone): Promise<void> {
+            if (toneIndex < 0 || toneIndex >= MAX_TONES) {
+                throw new Error(`Invalid tone index: ${toneIndex}`);
+            }
+
+            return serialize(async () => {
+                // Encode tone to binary format
+                const toneBytes = encodeTone(tone);
+
+                // Tone address layout (empirically determined):
+                // - Tone 0 at byte2=4
+                // - Tone N (N>=1) at byte2=8+N*2
+                const byte2 = toneIndex === 0 ? 4 : (8 + toneIndex * 2);
+                const address = [0x00, 0x02, byte2, 0x00];
+
+                // Send via WSD/DAT/EOD protocol
+                await sendData(address, toneBytes);
             });
         },
 

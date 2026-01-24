@@ -71,11 +71,15 @@ export type {
 
     // Tone types
     S330LoopMode,
-    S330LfoDestination,
     S330SampleRate,
-    S330TvaEnvelope,
+    S330EgPolarity,
+    S330LfoMode,
+    S330LevelCurve,
+    S330Envelope,
+    S330TvaParams,
     S330TvfParams,
     S330LfoParams,
+    S330WaveParams,
     S330Tone,
 
     // SysEx types
@@ -161,23 +165,30 @@ export {
     encodeKeyAssign,
     parseLoopMode,
     encodeLoopMode,
-    parseLfoDestination,
-    encodeLfoDestination,
+    parseEgPolarity,
+    encodeEgPolarity,
+    parseLfoMode,
+    encodeLfoMode,
+    parseLevelCurve,
     parseSampleRate,
     encodeSampleRate,
     parseName,
     encodeName,
     parse21BitAddress,
     encode21BitAddress,
+    parse24BitAddress,
+    encode24BitAddress,
     parseSignedValue,
     encodeSignedValue,
+    parseEnvelope,
+    encodeEnvelope,
 
     // Structure parsing
     parseSystemParams,
     parsePatchCommon,
     parseTone,
 
-    // Structure encoding (stub implementations)
+    // Structure encoding
     encodeSystemParams,
     encodePatchCommon,
     encodeTone,

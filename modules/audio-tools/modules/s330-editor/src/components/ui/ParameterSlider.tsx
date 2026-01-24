@@ -9,6 +9,7 @@ interface ParameterSliderProps {
   label: string;
   value: number;
   onChange: (value: number) => void;
+  onCommit?: () => void; // Called when drag ends - use for device sends
   min?: number;
   max?: number;
   step?: number;
@@ -20,6 +21,7 @@ export function ParameterSlider({
   label,
   value,
   onChange,
+  onCommit,
   min = 0,
   max = 127,
   step = 1,
@@ -41,6 +43,7 @@ export function ParameterSlider({
         )}
         value={[value]}
         onValueChange={([v]) => onChange(v)}
+        onValueCommit={() => onCommit?.()}
         min={min}
         max={max}
         step={step}

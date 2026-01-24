@@ -95,66 +95,193 @@ export interface S330Patch {
 
 /**
  * Loop mode for tone playback
+ * From protocol: 0=Fwd, 1=Alt, 2=1Shot, 3=Reverse
  */
-export type S330LoopMode = 'forward' | 'alternating' | 'one-shot';
-
-/**
- * LFO destination routing
- */
-export type S330LfoDestination = 'pitch' | 'tvf' | 'tva';
+export type S330LoopMode = 'forward' | 'alternating' | 'one-shot' | 'reverse';
 
 /**
  * Sample rate options
+ * From protocol: 0=30kHz, 1=15kHz
  */
 export type S330SampleRate = '15kHz' | '30kHz';
 
 /**
- * TVA (Time Variant Amplifier) envelope parameters
+ * EG (Envelope Generator) polarity
  */
-export interface S330TvaEnvelope {
-    attack: number;          // 0-127
-    decay: number;           // 0-127
-    sustain: number;         // 0-127
-    release: number;         // 0-127
+export type S330EgPolarity = 'normal' | 'reverse';
+
+/**
+ * LFO mode
+ */
+export type S330LfoMode = 'normal' | 'one-shot';
+
+/**
+ * Level curve type (0-5)
+ */
+export type S330LevelCurve = 0 | 1 | 2 | 3 | 4 | 5;
+
+/**
+ * 8-point envelope used by both TVA and TVF
+ * The S-330 uses complex multi-point envelopes, not simple ADSR
+ */
+export interface S330Envelope {
+    /** 8 level values (0-127) */
+    levels: [number, number, number, number, number, number, number, number];
+    /** 8 rate values (1-127) */
+    rates: [number, number, number, number, number, number, number, number];
+    /** Sustain point (0-7), envelope holds at this point until note release */
+    sustainPoint: number;
+    /** End point (1-8), envelope ends at this point */
+    endPoint: number;
+}
+
+/**
+ * TVA (Time Variant Amplifier) parameters
+ */
+export interface S330TvaParams {
+    /** LFO modulation depth for amplitude (0-127) */
+    lfoDepth: number;
+    /** Keyboard rate follow (0-127) - higher keys = faster envelope */
+    keyRate: number;
+    /** Output level (0-127) */
+    level: number;
+    /** Velocity rate follow (0-127) - velocity affects envelope speed */
+    velRate: number;
+    /** Level curve type (0-5) */
+    levelCurve: S330LevelCurve;
+    /** 8-point envelope */
+    envelope: S330Envelope;
 }
 
 /**
  * TVF (Time Variant Filter) parameters
  */
 export interface S330TvfParams {
-    cutoff: number;          // 0-127
-    resonance: number;       // 0-127
-    envDepth: number;        // 0-127
-    envelope: S330TvaEnvelope;
+    /** Filter cutoff frequency (0-127) */
+    cutoff: number;
+    /** Filter resonance (0-127) */
+    resonance: number;
+    /** Keyboard follow for filter (0-127) */
+    keyFollow: number;
+    /** LFO modulation depth for filter (0-127) */
+    lfoDepth: number;
+    /** Envelope depth / EG Depth (0-127) */
+    egDepth: number;
+    /** Envelope polarity */
+    egPolarity: S330EgPolarity;
+    /** Level curve (0-5) */
+    levelCurve: S330LevelCurve;
+    /** Key rate follow (0-127) */
+    keyRateFollow: number;
+    /** Velocity rate follow (0-127) */
+    velRateFollow: number;
+    /** Filter on/off switch */
+    enabled: boolean;
+    /** 8-point envelope */
+    envelope: S330Envelope;
 }
 
 /**
  * LFO parameters
  */
 export interface S330LfoParams {
-    rate: number;            // 0-127
-    depth: number;           // 0-127
-    delay: number;           // 0-127
-    destination: S330LfoDestination;
+    /** LFO rate/speed (0-127) */
+    rate: number;
+    /** Key sync on/off */
+    sync: boolean;
+    /** LFO delay time (0-127) */
+    delay: number;
+    /** LFO mode */
+    mode: S330LfoMode;
+    /** LFO polarity (sine vs peak hold) */
+    polarity: boolean;
+    /** LFO offset (0-127) */
+    offset: number;
+}
+
+/**
+ * Wave/Sample parameters
+ */
+export interface S330WaveParams {
+    /** Wave bank (0=A, 1=B) */
+    bank: number;
+    /** Wave segment start position (0-17) */
+    segmentTop: number;
+    /** Wave segment length (0-18) */
+    segmentLength: number;
+    /** Sample start point (24-bit address) */
+    startPoint: number;
+    /** Sample end point (24-bit address) */
+    endPoint: number;
+    /** Loop point (24-bit address) */
+    loopPoint: number;
+    /** Loop length for display (24-bit) */
+    loopLength: number;
 }
 
 /**
  * S-330 tone (sample with synthesis parameters)
+ *
+ * Total size: 512 nibbles (256 bytes after de-nibblization)
+ *
+ * This matches the actual S-330 MIDI protocol, not a simplified model.
  */
 export interface S330Tone {
-    name: string;            // 8 characters max
-    originalKey: number;     // 0-127 (MIDI note)
+    // === Basic Info (00 00H - 00 1FH) ===
+    /** Tone name (8 characters max) */
+    name: string;
+    /** Output assignment (0-7) */
+    outputAssign: number;
+    /** Source tone number (0-31) */
+    sourceTone: number;
+    /** Original/Sub tone flag (0=ORG, 1=SUB) */
+    origSubTone: number;
+    /** Sampling frequency (0=30kHz, 1=15kHz) */
     sampleRate: S330SampleRate;
-    startAddress: number;    // 21-bit wave address
-    loopStart: number;       // 21-bit wave address
-    loopEnd: number;         // 21-bit wave address
+    /** Original key number (MIDI note 11-108) */
+    originalKey: number;
+
+    // === Wave Parameters (00 1AH - 00 33H) ===
+    wave: S330WaveParams;
+    /** Loop mode (0=Fwd, 1=Alt, 2=1Shot, 3=Reverse) */
     loopMode: S330LoopMode;
-    coarseTune: number;      // 0-127
-    fineTune: number;        // 0-127
-    level: number;           // 0-127
-    tva: S330TvaEnvelope;
-    tvf: S330TvfParams;
+
+    // === LFO Parameters (00 34H - 00 47H) ===
     lfo: S330LfoParams;
+    /** TVA LFO depth (separate from LFO params) */
+    tvaLfoDepth: number;
+
+    // === Pitch Parameters (00 48H - 00 4BH) ===
+    /** Transpose (0-127, 64=center) */
+    transpose: number;
+    /** Fine tune (-64 to +63) */
+    fineTune: number;
+
+    // === TVF Parameters (00 4CH - 00 63H) ===
+    tvf: S330TvfParams;
+
+    // === TVA Parameters (00 64H - 01 33H) ===
+    tva: S330TvaParams;
+
+    // === Switches ===
+    /** Pitch bender on/off */
+    benderEnabled: boolean;
+    /** Aftertouch on/off */
+    aftertouchEnabled: boolean;
+    /** Pitch follow for loop */
+    pitchFollow: boolean;
+
+    // === Recording Parameters (for display, not usually edited via MIDI) ===
+    /** Recording threshold (0-127) */
+    recThreshold: number;
+    /** Recording pre-trigger (0-3: 0ms, 10ms, 50ms, 100ms) */
+    recPreTrigger: number;
+    /** Loop tune (-64 to +63) */
+    loopTune: number;
+    /** Envelope zoom for display (0-5) */
+    envZoom: number;
+    /** Copy source tone (0-31) */
+    copySource: number;
 }
 
 // =============================================================================
