@@ -98,109 +98,6 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                 </div>
             </div>
 
-            {/* Pitch */}
-            <div className="card">
-                <h4 className="font-medium text-s330-text mb-4">Pitch</h4>
-                <div className="grid gap-4 md:grid-cols-2">
-                    <ParameterSlider
-                        label="Transpose"
-                        value={tone.transpose}
-                        onChange={(v) => onUpdate?.({ ...tone, transpose: v })}
-                        onCommit={onCommit}
-                        min={0}
-                        max={127}
-                        formatValue={(v) => `${v - 64} semitones`}
-                    />
-                    <ParameterSlider
-                        label="Fine Tune"
-                        value={tone.fineTune + 64}
-                        onChange={(v) => onUpdate?.({ ...tone, fineTune: v - 64 })}
-                        onCommit={onCommit}
-                        min={0}
-                        max={127}
-                        formatValue={(v) => `${v - 64} cents`}
-                    />
-                </div>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            id="benderEnabled"
-                            checked={tone.benderEnabled}
-                            onChange={(e) => {
-                                const updatedTone = { ...tone, benderEnabled: e.target.checked };
-                                onUpdate?.(updatedTone);
-                                onCommit?.(updatedTone);
-                            }}
-                            className="rounded"
-                        />
-                        <label htmlFor="benderEnabled" className="text-sm text-s330-text">
-                            Pitch Bender
-                        </label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            id="aftertouchEnabled"
-                            checked={tone.aftertouchEnabled}
-                            onChange={(e) => {
-                                const updatedTone = { ...tone, aftertouchEnabled: e.target.checked };
-                                onUpdate?.(updatedTone);
-                                onCommit?.(updatedTone);
-                            }}
-                            className="rounded"
-                        />
-                        <label htmlFor="aftertouchEnabled" className="text-sm text-s330-text">
-                            Aftertouch
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            {/* TVA (Amplifier) */}
-            <div className="card">
-                <h4 className="font-medium text-s330-text mb-4">TVA (Amplifier)</h4>
-                <div className="grid gap-4 md:grid-cols-4 mb-4">
-                    <ParameterSlider
-                        label="Level"
-                        value={tone.tva.level}
-                        onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, level: v } })}
-                        onCommit={onCommit}
-                        formatValue={formatPercent}
-                    />
-                    <ParameterSlider
-                        label="LFO Depth"
-                        value={tone.tva.lfoDepth}
-                        onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, lfoDepth: v } })}
-                        onCommit={onCommit}
-                        formatValue={formatPercent}
-                    />
-                    <ParameterSlider
-                        label="Key Rate"
-                        value={tone.tva.keyRate}
-                        onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, keyRate: v } })}
-                        onCommit={onCommit}
-                        formatValue={formatPercent}
-                    />
-                    <ParameterSlider
-                        label="Vel Rate"
-                        value={tone.tva.velRate}
-                        onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, velRate: v } })}
-                        onCommit={onCommit}
-                        formatValue={formatPercent}
-                    />
-                </div>
-                <div className="mb-2">
-                    <label className="text-xs text-s330-muted">Level Curve: {tone.tva.levelCurve}</label>
-                </div>
-                <EnvelopeEditor
-                    envelope={tone.tva.envelope}
-                    onChange={handleTvaEnvelopeChange}
-                    onCommit={onCommit}
-                    label="TVA"
-                />
-            </div>
-
             {/* TVF (Filter) */}
             <div className="card">
                 <h4 className="font-medium text-s330-text mb-4">
@@ -369,6 +266,109 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         </label>
                     </div>
                 </div>
+            </div>
+
+            {/* Pitch */}
+            <div className="card">
+                <h4 className="font-medium text-s330-text mb-4">Pitch</h4>
+                <div className="grid gap-4 md:grid-cols-2">
+                    <ParameterSlider
+                        label="Transpose"
+                        value={tone.transpose}
+                        onChange={(v) => onUpdate?.({ ...tone, transpose: v })}
+                        onCommit={onCommit}
+                        min={0}
+                        max={127}
+                        formatValue={(v) => `${v - 64} semitones`}
+                    />
+                    <ParameterSlider
+                        label="Fine Tune"
+                        value={tone.fineTune + 64}
+                        onChange={(v) => onUpdate?.({ ...tone, fineTune: v - 64 })}
+                        onCommit={onCommit}
+                        min={0}
+                        max={127}
+                        formatValue={(v) => `${v - 64} cents`}
+                    />
+                </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="benderEnabled"
+                            checked={tone.benderEnabled}
+                            onChange={(e) => {
+                                const updatedTone = { ...tone, benderEnabled: e.target.checked };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
+                            }}
+                            className="rounded"
+                        />
+                        <label htmlFor="benderEnabled" className="text-sm text-s330-text">
+                            Pitch Bender
+                        </label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="aftertouchEnabled"
+                            checked={tone.aftertouchEnabled}
+                            onChange={(e) => {
+                                const updatedTone = { ...tone, aftertouchEnabled: e.target.checked };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
+                            }}
+                            className="rounded"
+                        />
+                        <label htmlFor="aftertouchEnabled" className="text-sm text-s330-text">
+                            Aftertouch
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            {/* TVA (Amplifier) */}
+            <div className="card">
+                <h4 className="font-medium text-s330-text mb-4">TVA (Amplifier)</h4>
+                <div className="grid gap-4 md:grid-cols-4 mb-4">
+                    <ParameterSlider
+                        label="Level"
+                        value={tone.tva.level}
+                        onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, level: v } })}
+                        onCommit={onCommit}
+                        formatValue={formatPercent}
+                    />
+                    <ParameterSlider
+                        label="LFO Depth"
+                        value={tone.tva.lfoDepth}
+                        onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, lfoDepth: v } })}
+                        onCommit={onCommit}
+                        formatValue={formatPercent}
+                    />
+                    <ParameterSlider
+                        label="Key Rate"
+                        value={tone.tva.keyRate}
+                        onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, keyRate: v } })}
+                        onCommit={onCommit}
+                        formatValue={formatPercent}
+                    />
+                    <ParameterSlider
+                        label="Vel Rate"
+                        value={tone.tva.velRate}
+                        onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, velRate: v } })}
+                        onCommit={onCommit}
+                        formatValue={formatPercent}
+                    />
+                </div>
+                <div className="mb-2">
+                    <label className="text-xs text-s330-muted">Level Curve: {tone.tva.levelCurve}</label>
+                </div>
+                <EnvelopeEditor
+                    envelope={tone.tva.envelope}
+                    onChange={handleTvaEnvelopeChange}
+                    onCommit={onCommit}
+                    label="TVA"
+                />
             </div>
         </div>
     );
