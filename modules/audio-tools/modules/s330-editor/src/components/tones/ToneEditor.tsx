@@ -19,7 +19,10 @@ interface ToneEditorProps {
     tone: S330Tone;
     index: number;
     onUpdate?: (tone: S330Tone) => void;
-    onCommit?: () => void; // Called after drag operations complete - triggers device send
+    // Called to commit changes to device
+    // For immediate commits (checkbox/dropdown), pass the updated tone directly
+    // For drag-end commits, call with no args (reads from store)
+    onCommit?: (updatedTone?: S330Tone) => void;
 }
 
 export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps) {
@@ -125,8 +128,9 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                             id="benderEnabled"
                             checked={tone.benderEnabled}
                             onChange={(e) => {
-                                onUpdate?.({ ...tone, benderEnabled: e.target.checked });
-                                onCommit?.();
+                                const updatedTone = { ...tone, benderEnabled: e.target.checked };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
                             }}
                             className="rounded"
                         />
@@ -140,8 +144,9 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                             id="aftertouchEnabled"
                             checked={tone.aftertouchEnabled}
                             onChange={(e) => {
-                                onUpdate?.({ ...tone, aftertouchEnabled: e.target.checked });
-                                onCommit?.();
+                                const updatedTone = { ...tone, aftertouchEnabled: e.target.checked };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
                             }}
                             className="rounded"
                         />
@@ -213,8 +218,9 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         id="tvfEnabled"
                         checked={tone.tvf.enabled}
                         onChange={(e) => {
-                            onUpdate?.({ ...tone, tvf: { ...tone.tvf, enabled: e.target.checked } });
-                            onCommit?.();
+                            const updatedTone = { ...tone, tvf: { ...tone.tvf, enabled: e.target.checked } };
+                            onUpdate?.(updatedTone);
+                            onCommit?.(updatedTone);
                         }}
                         className="rounded"
                     />
@@ -332,8 +338,9 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                             id="lfoSync"
                             checked={tone.lfo.sync}
                             onChange={(e) => {
-                                onUpdate?.({ ...tone, lfo: { ...tone.lfo, sync: e.target.checked } });
-                                onCommit?.();
+                                const updatedTone = { ...tone, lfo: { ...tone.lfo, sync: e.target.checked } };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
                             }}
                             className="rounded"
                         />
@@ -351,8 +358,9 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                             id="lfoPolarity"
                             checked={tone.lfo.polarity}
                             onChange={(e) => {
-                                onUpdate?.({ ...tone, lfo: { ...tone.lfo, polarity: e.target.checked } });
-                                onCommit?.();
+                                const updatedTone = { ...tone, lfo: { ...tone.lfo, polarity: e.target.checked } };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
                             }}
                             className="rounded"
                         />

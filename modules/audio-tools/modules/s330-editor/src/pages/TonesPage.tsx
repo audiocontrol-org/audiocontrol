@@ -49,11 +49,14 @@ export function TonesPage() {
     setToneData(selectedToneIndex, updatedTone);
   }, [selectedToneIndex, setToneData]);
 
-  // Commit changes to device - called after drag operations complete
-  const handleToneCommit = useCallback(() => {
+  // Commit changes to device
+  // For immediate commits (checkbox, dropdown), pass the updated tone directly
+  // For drag-end commits, tone is read from the store (already updated during drag)
+  const handleToneCommit = useCallback((updatedTone?: Parameters<typeof setToneData>[1]) => {
     if (selectedToneIndex === null || !clientRef.current) return;
 
-    const toneData = tones.get(selectedToneIndex);
+    // Use provided tone or fall back to store (for drag-end scenarios)
+    const toneData = updatedTone ?? tones.get(selectedToneIndex);
     if (!toneData) return;
 
     clientRef.current.sendToneData(selectedToneIndex, toneData).catch((err) => {
