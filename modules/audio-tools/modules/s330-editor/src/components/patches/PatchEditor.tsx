@@ -20,7 +20,13 @@ interface PatchEditorProps {
 export function PatchEditor({ patch, index }: PatchEditorProps) {
   const { common } = patch;
   const { adapter, deviceId } = useMidiStore();
-  const { toneNames } = useS330Store();
+  const { toneNames, setPatchData } = useS330Store();
+
+  // Helper to update both store and device
+  const updatePatch = useCallback((updatedCommon: typeof common) => {
+    // Update store immediately for responsive UI
+    setPatchData(index, { common: updatedCommon });
+  }, [index, setPatchData]);
   const clientRef = useRef<S330ClientInterface | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(common.name);
@@ -35,10 +41,11 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
 
   // Patch name handler
   const handleNameChange = async (newName: string) => {
+    updatePatch({ ...common, name: newName });
+    setNameValue(newName);
     if (clientRef.current) {
       try {
         await clientRef.current.setPatchName(index, newName);
-        setNameValue(newName);
       } catch (err) {
         console.error('[PatchEditor] Failed to update patch name:', err);
       }
@@ -46,8 +53,9 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
     setEditingName(false);
   };
 
-  // Parameter update handlers
+  // Parameter update handlers - update store first, then send to device
   const handleKeyModeChange = async (keyMode: 'normal' | 'v-sw' | 'x-fade' | 'v-mix' | 'unison') => {
+    updatePatch({ ...common, keyMode });
     if (clientRef.current) {
       try {
         await clientRef.current.setPatchKeyMode(index, keyMode);
@@ -58,6 +66,7 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
   };
 
   const handleBenderRangeChange = async (range: number) => {
+    updatePatch({ ...common, benderRange: range });
     if (clientRef.current) {
       try {
         await clientRef.current.setPatchBenderRange(index, range);
@@ -68,6 +77,7 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
   };
 
   const handleOutputChange = async (output: number) => {
+    updatePatch({ ...common, outputAssign: output });
     if (clientRef.current) {
       try {
         await clientRef.current.setPatchOutput(index, output);
@@ -77,50 +87,70 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
     }
   };
 
-  const handleLevelChange = async (level: number) => {
+  const handleLevelChange = (level: number) => {
+    updatePatch({ ...common, level });
+  };
+
+  const handleLevelCommit = async () => {
     if (clientRef.current) {
       try {
-        await clientRef.current.setPatchLevel(index, level);
+        await clientRef.current.setPatchLevel(index, common.level);
       } catch (err) {
         console.error('[PatchEditor] Failed to update level:', err);
       }
     }
   };
 
-  const handleAftertouchSensChange = async (sens: number) => {
+  const handleAftertouchSensChange = (sens: number) => {
+    updatePatch({ ...common, aftertouchSens: sens });
+  };
+
+  const handleAftertouchSensCommit = async () => {
     if (clientRef.current) {
       try {
-        await clientRef.current.setPatchAftertouchSens(index, sens);
+        await clientRef.current.setPatchAftertouchSens(index, common.aftertouchSens);
       } catch (err) {
         console.error('[PatchEditor] Failed to update aftertouch sensitivity:', err);
       }
     }
   };
 
-  const handleDetuneChange = async (detune: number) => {
+  const handleDetuneChange = (detune: number) => {
+    updatePatch({ ...common, detune });
+  };
+
+  const handleDetuneCommit = async () => {
     if (clientRef.current) {
       try {
-        await clientRef.current.setPatchDetune(index, detune);
+        await clientRef.current.setPatchDetune(index, common.detune);
       } catch (err) {
         console.error('[PatchEditor] Failed to update detune:', err);
       }
     }
   };
 
-  const handleVelocityThresholdChange = async (threshold: number) => {
+  const handleVelocityThresholdChange = (threshold: number) => {
+    updatePatch({ ...common, velocityThreshold: threshold });
+  };
+
+  const handleVelocityThresholdCommit = async () => {
     if (clientRef.current) {
       try {
-        await clientRef.current.setPatchVelocityThreshold(index, threshold);
+        await clientRef.current.setPatchVelocityThreshold(index, common.velocityThreshold);
       } catch (err) {
         console.error('[PatchEditor] Failed to update velocity threshold:', err);
       }
     }
   };
 
-  const handleVelocityMixRatioChange = async (ratio: number) => {
+  const handleVelocityMixRatioChange = (ratio: number) => {
+    updatePatch({ ...common, velocityMixRatio: ratio });
+  };
+
+  const handleVelocityMixRatioCommit = async () => {
     if (clientRef.current) {
       try {
-        await clientRef.current.setPatchVelocityMixRatio(index, ratio);
+        await clientRef.current.setPatchVelocityMixRatio(index, common.velocityMixRatio);
       } catch (err) {
         console.error('[PatchEditor] Failed to update velocity mix ratio:', err);
       }
@@ -128,6 +158,7 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
   };
 
   const handleOctaveShiftChange = async (shift: number) => {
+    updatePatch({ ...common, octaveShift: shift });
     if (clientRef.current) {
       try {
         await clientRef.current.setPatchOctaveShift(index, shift);
@@ -138,6 +169,7 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
   };
 
   const handleKeyAssignChange = async (assign: 'rotary' | 'fix') => {
+    updatePatch({ ...common, keyAssign: assign });
     if (clientRef.current) {
       try {
         await clientRef.current.setPatchKeyAssign(index, assign);
@@ -148,6 +180,7 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
   };
 
   const handleAftertouchAssignChange = async (assign: 'modulation' | 'volume' | 'bend+' | 'bend-' | 'filter') => {
+    updatePatch({ ...common, aftertouchAssign: assign });
     if (clientRef.current) {
       try {
         await clientRef.current.setPatchAftertouchAssign(index, assign);
@@ -364,12 +397,14 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
             label="Level"
             value={common.level}
             onChange={handleLevelChange}
+            onCommit={handleLevelCommit}
             formatValue={formatPercent}
           />
           <ParameterSlider
             label="A.T Sense"
             value={common.aftertouchSens}
             onChange={handleAftertouchSensChange}
+            onCommit={handleAftertouchSensCommit}
             formatValue={formatPercent}
           />
         </div>
@@ -382,6 +417,7 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
               label="Unison Detune"
               value={common.detune + 64}
               onChange={(val) => handleDetuneChange(val - 64)}
+              onCommit={handleDetuneCommit}
               formatValue={(val) => {
                 const detune = val - 64;
                 return `${detune > 0 ? '+' : ''}${detune}`;
@@ -396,6 +432,7 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
               label="V-Sw Thresh."
               value={common.velocityThreshold}
               onChange={handleVelocityThresholdChange}
+              onCommit={handleVelocityThresholdCommit}
               disabled={common.keyMode !== 'v-sw'}
             />
           </div>
@@ -406,6 +443,7 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
               label="V-Mix Ratio"
               value={common.velocityMixRatio}
               onChange={handleVelocityMixRatioChange}
+              onCommit={handleVelocityMixRatioCommit}
               formatValue={formatPercent}
               disabled={common.keyMode !== 'v-mix'}
             />
