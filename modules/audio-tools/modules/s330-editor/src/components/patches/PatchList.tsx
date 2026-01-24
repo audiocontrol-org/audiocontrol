@@ -12,11 +12,13 @@ interface PatchListProps {
 }
 
 export function PatchList({ patchNames, selectedIndex, onSelect }: PatchListProps) {
+  const namedCount = patchNames.filter((p) => !p.isEmpty).length;
+
   return (
     <div className="card p-2">
       <div className="flex items-center justify-between px-2 py-1 mb-2">
         <span className="text-sm font-medium text-s330-text">
-          Patches ({patchNames.length})
+          Patches ({namedCount} of {patchNames.length} used)
         </span>
       </div>
       <div className="max-h-[500px] overflow-y-auto space-y-1">
@@ -29,15 +31,20 @@ export function PatchList({ patchNames, selectedIndex, onSelect }: PatchListProp
               'hover:bg-s330-accent/50',
               patch.index === selectedIndex
                 ? 'bg-s330-highlight text-white'
-                : 'text-s330-text'
+                : patch.isEmpty
+                  ? 'text-s330-muted/50'
+                  : 'text-s330-text'
             )}
           >
             <div className="flex items-center justify-between">
               <span className="font-mono">
                 P{String(patch.index + 11).padStart(2, '0')}
               </span>
-              <span className="flex-1 mx-3 truncate">
-                {patch.name}
+              <span className={cn(
+                'flex-1 mx-3 truncate',
+                patch.isEmpty && 'italic'
+              )}>
+                {patch.isEmpty ? '(empty)' : patch.name}
               </span>
             </div>
           </button>

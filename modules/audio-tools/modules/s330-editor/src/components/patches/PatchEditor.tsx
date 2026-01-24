@@ -255,11 +255,14 @@ export function PatchEditor({ patch, index }: PatchEditorProps) {
             />
           ) : (
             <h3
-              className="text-xl font-bold text-s330-text font-mono cursor-pointer hover:text-s330-highlight"
+              className={cn(
+                'text-xl font-bold font-mono cursor-pointer hover:text-s330-highlight',
+                nameValue.trim() ? 'text-s330-text' : 'text-s330-muted/50 italic'
+              )}
               onClick={() => setEditingName(true)}
               title="Click to edit patch name"
             >
-              {nameValue}
+              {nameValue.trim() || '(unnamed)'}
             </h3>
           )}
         </div>

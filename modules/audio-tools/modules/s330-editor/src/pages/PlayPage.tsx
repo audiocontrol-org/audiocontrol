@@ -342,13 +342,11 @@ export function PlayPage() {
                   <option value={-1} className="text-s330-muted">
                     ---
                   </option>
-                  {patchNames
-                    .filter((p) => !p.isEmpty)
-                    .map((patch) => (
-                      <option key={patch.index} value={patch.index}>
-                        P{String(patch.index + 11).padStart(2, '0')} {patch.name}
-                      </option>
-                    ))}
+                  {patchNames.map((patch) => (
+                    <option key={patch.index} value={patch.index}>
+                      P{String(patch.index + 11).padStart(2, '0')} {patch.isEmpty ? '(empty)' : patch.name}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -411,7 +409,7 @@ export function PlayPage() {
       {/* Display section - shows current patches summary */}
       <div className="bg-s330-panel border border-s330-accent rounded-md p-4">
         <div className="text-xs text-s330-muted mb-3 font-mono">
-          Display P11-P{Math.min(8, patchNames.filter((p) => !p.isEmpty).length) + 10}
+          Active Part Assignments
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-sm">
           {parts.slice(0, 8).map((part) => (

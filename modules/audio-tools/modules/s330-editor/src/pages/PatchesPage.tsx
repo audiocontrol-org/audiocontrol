@@ -121,9 +121,6 @@ export function PatchesPage() {
 
   const selectedPatch = selectedPatchIndex !== null ? patches.get(selectedPatchIndex) : null;
 
-  // Filter to only show non-empty patches
-  const nonEmptyPatches = patchNames.filter((p) => !p.isEmpty);
-
   if (!isConnected) {
     return (
       <div className="card text-center py-12">
@@ -170,11 +167,11 @@ export function PatchesPage() {
       )}
 
       {/* Content */}
-      {!isLoading && nonEmptyPatches.length > 0 && (
+      {!isLoading && patchNames.length > 0 && (
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-1">
             <PatchList
-              patchNames={nonEmptyPatches}
+              patchNames={patchNames}
               selectedIndex={selectedPatchIndex}
               onSelect={selectPatch}
             />
@@ -196,20 +193,13 @@ export function PatchesPage() {
         </div>
       )}
 
-      {/* Empty State */}
+      {/* Empty State - no patches scanned yet */}
       {!isLoading && patchNames.length === 0 && !error && (
         <div className="card text-center py-12">
           <p className="text-s330-muted mb-4">No patches loaded</p>
           <button onClick={fetchPatchNames} className="btn btn-primary">
             Scan Patches
           </button>
-        </div>
-      )}
-
-      {/* No patches found */}
-      {!isLoading && patchNames.length > 0 && nonEmptyPatches.length === 0 && (
-        <div className="card text-center py-12">
-          <p className="text-s330-muted">No patches found on device</p>
         </div>
       )}
     </div>
