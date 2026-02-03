@@ -1,0 +1,63 @@
+{
+  "name": "@audiocontrol/controller-workflow",
+  "version": "1.0.0",
+  "description": "Universal MIDI controller configuration to DAW deployment workflow",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "controller-deploy": "./dist/cli/deploy.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "dev": "tsc -b --watch",
+    "test": "vitest run",
+    "test:coverage": "vitest --coverage",
+    "test:watch": "vitest --watch",
+    "lint": "eslint . --ext .ts",
+    "lint:fix": "eslint . --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "cli": "node dist/cli/deploy.js"
+  },
+  "dependencies": {
+    "@audiocontrol/launch-control-xl3": "workspace:*",
+    "@audiocontrol/canonical-midi-maps": "workspace:*",
+    "@audiocontrol/ardour-midi-maps": "workspace:*",
+    "commander": "^11.0.0",
+    "eventemitter3": "^5.0.1",
+    "yaml": "^2.3.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^1.2.0",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.0"
+  },
+  "keywords": [
+    "midi",
+    "controller",
+    "workflow",
+    "daw",
+    "ardour",
+    "ableton",
+    "automation",
+    "launch-control-xl3"
+  ],
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18"
+  }
+}

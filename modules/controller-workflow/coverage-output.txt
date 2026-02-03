@@ -1,0 +1,123 @@
+
+> @oletizi/controller-workflow@1.0.0 test:coverage /Users/orion/work/ol_dsp-audio-control-360/modules/audio-control/modules/controller-workflow
+> vitest --coverage
+
+
+ DEV  v1.6.1 /Users/orion/work/ol_dsp-audio-control-360/modules/audio-control/modules/controller-workflow
+      Coverage enabled with v8
+
+ ✓ src/__tests__/unit/LaunchControlXL3Converter.test.ts  (32 tests) 6ms
+ ✓ src/__tests__/unit/ArdourDeployer.test.ts  (32 tests) 9ms
+ ✓ src/__tests__/integration/end-to-end.test.ts  (13 tests) 20ms
+ ✓ src/__tests__/unit/DeploymentWorkflow.test.ts  (29 tests) 32ms
+stdout | src/__tests__/performance/workflow-benchmark.test.ts > Performance Benchmarks > End-to-End Workflow Performance > should complete end-to-end workflow in <10s
+
+✓ End-to-End Workflow: 11.47ms (target: 10000ms)
+
+stdout | src/__tests__/performance/workflow-benchmark.test.ts > Performance Benchmarks > End-to-End Workflow Performance > should complete end-to-end workflow with multiple iterations (consistency check)
+
+✓ End-to-End Workflow (multiple iterations):
+  Iterations: 5
+  Min: 2.50ms
+  Max: 6.01ms
+  Avg: 4.16ms (target: 10000ms)
+  Median: 3.80ms
+  StdDev: 1.27ms
+
+stdout | src/__tests__/performance/workflow-benchmark.test.ts > Performance Benchmarks > Component-Level Performance > should read single configuration from controller in <1s
+
+✓ Controller Read (single slot): 0.02ms (target: 1000ms)
+
+stdout | src/__tests__/performance/workflow-benchmark.test.ts > Performance Benchmarks > Component-Level Performance > should list all 16 configuration slots in <5s
+
+✓ List All Slots (16 slots): 0.05ms (target: 5000ms)
+
+stdout | src/__tests__/performance/workflow-benchmark.test.ts > Performance Benchmarks > Component-Level Performance > should convert LCXL3 to canonical format in <100ms
+
+✓ Conversion (LCXL3 → Canonical): 0.02ms (target: 100ms)
+
+stdout | src/__tests__/performance/workflow-benchmark.test.ts > Performance Benchmarks > Component-Level Performance > should convert multiple times with consistent performance
+
+✓ Conversion (multiple iterations):
+  Iterations: 10
+  Min: 0.01ms
+  Max: 0.07ms
+  Avg: 0.02ms (target: 100ms)
+  Median: 0.01ms
+  StdDev: 0.02ms
+
+stdout | src/__tests__/performance/workflow-benchmark.test.ts > Performance Benchmarks > Component-Level Performance > should deploy to Ardour in <500ms
+
+✓ Deployment (Ardour): 0.07ms (target: 500ms)
+
+stdout | src/__tests__/performance/workflow-benchmark.test.ts > Performance Benchmarks > Component-Level Performance > should deploy to multiple DAWs in <1s
+
+✓ Deployment (2 DAWs in parallel): 0.07ms (target: 1000ms)
+
+stdout | src/__tests__/performance/workflow-benchmark.test.ts > Performance Benchmarks > File I/O Performance > should write canonical YAML efficiently
+
+✓ YAML Serialization: 3.18ms
+
+stdout | src/__tests__/performance/workflow-benchmark.test.ts > Performance Benchmarks > File I/O Performance > should write Ardour XML efficiently
+
+✓ Ardour XML Serialization: 0.01ms
+
+stdout | src/__tests__/performance/workflow-benchmark.test.ts > Performance Benchmarks > Memory and Resource Efficiency > should handle multiple workflow executions without performance degradation
+
+✓ Resource Efficiency (3 iterations, after warmup):
+  Iterations: 3
+  Min: 1.98ms
+  Max: 3.34ms
+  Avg: 2.49ms
+  Median: 2.16ms
+  StdDev: 0.60ms
+
+stdout | src/__tests__/performance/workflow-benchmark.test.ts > Performance Benchmarks > Memory and Resource Efficiency > should process large configurations efficiently
+
+Large Configuration Processing:
+✓   Read (48 controls): 0.02ms (target: 1000ms)
+✓   Convert (48 controls): 0.02ms (target: 100ms)
+✓   Deploy (48 controls): 0.06ms (target: 500ms)
+
+stdout | src/__tests__/performance/workflow-benchmark.test.ts > Performance Benchmarks > Performance Bottleneck Analysis > should identify slowest workflow stage
+
+=== BOTTLENECK ANALYSIS ===
+✓   Serialize to YAML: 1.65ms
+✓   Deploy to Ardour: 0.07ms
+✓   Read Controller: 0.02ms
+✓   Convert to Canonical: 0.01ms
+
+Total Time: 1.75ms
+Slowest Stage: Serialize to YAML (94.2% of total)
+
+ ✓ src/__tests__/performance/workflow-benchmark.test.ts  (13 tests) 58ms
+ ✓ src/__tests__/unit/LaunchControlXL3Adapter.test.ts  (35 tests) 18ms
+ ✓ src/orchestrator/DeploymentWorkflow.test.ts  (21 tests) 14ms
+ ✓ src/adapters/controllers/LaunchControlXL3Adapter.test.ts  (19 tests) 6ms
+ ✓ src/adapters/daws/ArdourDeployer.test.ts  (16 tests) 3ms
+ ✓ src/integration.test.ts  (16 tests) 6ms
+
+ Test Files  10 passed (10)
+      Tests  226 passed (226)
+   Start at  20:24:31
+   Duration  541ms (transform 438ms, setup 0ms, collect 885ms, tests 172ms, environment 1ms, prepare 581ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   92.29 |    94.57 |   89.83 |   92.29 |                   
+ ...oller-workflow |       0 |        0 |       0 |       0 |                   
+  ...conversion.ts |       0 |        0 |       0 |       0 | 1-70              
+ ...rs/controllers |   96.52 |    96.25 |   94.44 |   96.52 |                   
+  ...XL3Adapter.ts |   96.52 |    96.25 |   94.44 |   96.52 | ...93-294,296,338 
+ .../adapters/daws |   99.43 |    96.92 |   93.75 |   99.43 |                   
+  ...urDeployer.ts |   99.43 |    96.92 |   93.75 |   99.43 | 355-356           
+ ...src/converters |   99.16 |      100 |      90 |   99.16 |                   
+  ...3Converter.ts |   99.16 |      100 |      90 |   99.16 | 239-240           
+ ...c/orchestrator |   93.49 |    89.87 |   85.71 |   93.49 |                   
+  ...ntWorkflow.ts |   93.49 |    89.87 |   85.71 |   93.49 | ...68-372,567-569 
+-------------------|---------|----------|---------|---------|-------------------
+
+ PASS  Waiting for file changes...
+       press h to show help, press q to quit
