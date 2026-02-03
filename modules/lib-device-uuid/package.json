@@ -1,0 +1,56 @@
+{
+  "name": "@audiocontrol/lib-device-uuid",
+  "version": "1.0.0-alpha.50",
+  "description": "Cross-platform device UUID detection for Akai sampler backup tools",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc && tsc-alias",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "keywords": [
+    "device",
+    "uuid",
+    "volume",
+    "serial",
+    "diskutil",
+    "blkid",
+    "macos",
+    "linux"
+  ],
+  "author": "Orion Letizi",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oletizi/ol_dsp.git",
+    "directory": "modules/audio-tools/lib-device-uuid"
+  },
+  "homepage": "https://github.com/oletizi/ol_dsp/tree/main/modules/audio-tools/lib-device-uuid",
+  "bugs": {
+    "url": "https://github.com/oletizi/ol_dsp/issues"
+  },
+  "dependencies": {
+    "@audiocontrol/sampler-lib": "workspace:*"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.8",
+    "@types/node": "^22.13.1",
+    "tsc-alias": "^1.8.16",
+    "typescript": "^5.7.3",
+    "vitest": "^1.2.0"
+  }
+}

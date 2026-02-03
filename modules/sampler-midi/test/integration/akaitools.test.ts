@@ -1,0 +1,529 @@
+import { describe, it, expect, afterEach, vi } from 'vitest';
+import {
+    CHUNK_LENGTH, newAkaitools,
+    newAkaiToolsConfig,
+    readAkaiData,
+} from "@audiocontrol/sampler-devices";
+import path from "path";
+import fs from "fs/promises";
+import {
+    KeygroupHeader, KeygroupHeader_writeSNAME1,
+    parseKeygroupHeader,
+    parseProgramHeader,
+    parseSampleHeader,
+    ProgramHeader, ProgramHeader_writeGROUPS, ProgramHeader_writePRNAME,
+    SampleHeader,
+    AkaiRecordResult, AkaiRecordType, AkaiToolsConfig, RemoteDisk,
+    akaiByte2String, nextByte
+} from "@audiocontrol/sampler-devices/s3k";
+import {byte2nibblesLE, nibbles2byte} from "@audiocontrol/sampler-lib";
+
+
+describe(`Read akai disk image.`, async () => {
+    let tools = newAkaitools(await newAkaiToolsConfig())
+
+    it.skip(`Reads an akai disk image`, async function () {
+        // SKIPPED: Requires test data files that are not in repository
+        const diskFile = path.join('build', `akai-${new Date().getTime()}.img`)
+        let partitionCount = 3
+        let c = await newAkaiToolsConfig()
+        c.diskFile = diskFile
+        let er = await tools.akaiFormat(1, partitionCount)
+        er.errors.forEach(e => console.error(e))
+        expect(er.errors.length).toBe(0)
+
+        for (let i = 0; i < partitionCount; i++) {
+            let sourcePath = path.join('test', 'data', 's3000xl', 'instruments', 'test_program.a3p');
+            er = await tools.akaiWrite(sourcePath, '/vol 1', i + 1)
+            er.errors.forEach(e => console.error(e))
+            expect(er.errors.length).toBe(0)
+        }
+
+        const result = await tools.readAkaiDisk()
+        result.errors.forEach(e => console.error(e))
+        expect(result.errors.length).toBe(0)
+
+        const akaiDisk = result.data
+        expect(akaiDisk).toBeDefined()
+        expect(akaiDisk.partitions.length).toBe(partitionCount)
+        for (const partition of akaiDisk.partitions) {
+            expect(partition.volumes.length).toBeGreaterThanOrEqual(1)
+            for (const volume of partition.volumes) {
+                expect(volume.records.length).toBeGreaterThanOrEqual(1)
+            }
+        }
+        await fs.writeFile(path.join('build', `akai-disk-${new Date().getTime()}.json`), JSON.stringify(akaiDisk))
+    }, { timeout: 2000 })
+})
+
+
+describe('Test interaction w/ akaitools and akai files.', async () => {
+    let tools = newAkaitools(await newAkaiToolsConfig())
+    const diskFile = path.join('build', `akai-${new Date().getTime()}.img`)
+
+    afterEach(() => {
+        fs.rm(diskFile).then().catch(() => {
+            /* no one cares */
+        })
+    })
+
+    it(`Parses akailist output and constructs a model of an Akai disk.`, async () => {
+        const output = `
+S3000 VOLUME           3         0 /chop.03
+S3000 VOLUME         214         0 /chop.01
+S3000 SAMPLE           5    211872 /chop.03/chop.03.00-l
+S3000 SAMPLE          31    211872 /chop.03/chop.03.00-r
+S3000 SAMPLE          57    211872 /chop.03/chop.03.01-l
+S3000 SAMPLE          83    211872 /chop.03/chop.03.01-r
+S3000 SAMPLE         109    211872 /chop.03/chop.03.02-l
+S3000 SAMPLE         135    211872 /chop.03/chop.03.02-r
+S3000 SAMPLE         161    211872 /chop.03/chop.03.03-l
+S3000 SAMPLE         187    211872 /chop.03/chop.03.03-r
+S3000 PROGRAM        213       960 /chop.03/chop.03
+S3000 SAMPLE         216    211872 /chop.01/chop.01.00-l
+S3000 SAMPLE         242    211872 /chop.01/chop.01.00-r
+S3000 SAMPLE         268    211872 /chop.01/chop.01.01-l
+S3000 SAMPLE         294    211872 /chop.01/chop.01.01-r
+S3000 SAMPLE         320    211872 /chop.01/chop.01.02-l
+S3000 SAMPLE         346    211872 /chop.01/chop.01.02-r
+S3000 SAMPLE         372    211872 /chop.01/chop.01.03-l
+S3000 SAMPLE         398    211872 /chop.01/chop.01.03-r
+S3000 PROGRAM        424       960 /chop.01/chop.01`
+        const parsed = tools.parseAkaiList(output);
+        expect(parsed).toBeDefined()
+        expect(parsed.length).toBe(20)
+        expect(parsed[0].type).toBe(AkaiRecordType.VOLUME)
+        expect(parsed[1].type).toBe(AkaiRecordType.VOLUME)
+
+        function listFunction() {
+            const result: AkaiRecordResult = {data: parsed, errors: []}
+            return Promise.resolve(result)
+        }
+
+        vi.spyOn(tools, 'akaiList').mockImplementation(listFunction)
+
+        const diskResult = await tools.readAkaiDisk()
+        expect(diskResult).toBeDefined()
+        expect(diskResult.errors.length).toBe(0)
+
+        const disk = diskResult.data
+        expect(disk).toBeDefined()
+        expect(disk.partitions).toBeDefined()
+        expect(disk.partitions.length).toBeGreaterThanOrEqual(1)
+
+        const partition = disk.partitions[0]
+        expect(partition.volumes).toBeDefined()
+        expect(partition.volumes.length).toBe(2)
+
+        const volume1 = partition.volumes[0]
+        expect(volume1).toBeDefined()
+        expect(volume1.records).toBeDefined()
+        expect(volume1.records.length).toBe(9)
+
+        const volume2 = partition.volumes[1]
+        expect(volume2.records.length).toBe(9)
+
+    })
+
+    it(`Formats an Akai disk image`, async function () {
+        let result = await tools.akaiFormat()
+        result.errors.forEach(e => console.error(e))
+        expect(result.errors.length).toBe(0)
+        expect(result.code).toBe(0)
+    })
+
+    it.skip(`Writes to an Akai disk image and lists its contents`, async function () {
+        // SKIPPED: Requires test data files that are not in repository
+        let result = await tools.akaiFormat()
+        expect(result.code).toBe(0)
+        expect(result.errors.length).toBe(0)
+
+        for (const n of ['saw.a3p', 'sawtooth.a3s', 'sine.a3s', 'square.a3s', 'test_program.a3p']) {
+            const file = path.join('test', 'data', 's3000xl', 'instruments', n)
+            const s = await fs.stat(file)
+            expect(s.isFile())
+            result = await tools.akaiWrite(file, `/VOLUME 1/`)
+            expect(result.code).toBe(0)
+            expect(result.errors.length).toBe(0)
+        }
+
+        let listResult = await tools.akaiList('/some/path')
+        for (const e of listResult.errors) {
+            console.error(e)
+        }
+
+        // the first entry should be a volume
+        expect(listResult.errors).toHaveLength(0)
+        expect(listResult.data.length).toBe(1)
+        expect(listResult.data[0].type).toBe(AkaiRecordType.VOLUME)
+
+        // listing the volume should return some Akai objects
+        listResult = await tools.akaiList(listResult.data[0].name)
+        expect(listResult.errors).toHaveLength(0)
+        expect(listResult.data.length).toBe(5)
+    })
+    it.skip(`Converts wav files to Akai sample format`, async () => {
+        // SKIPPED: Requires test data files that are not in repository
+        const source = path.join('test', 'data', 's3000xl', 'samples', 'kit.wav')
+        const stat = await fs.stat(source)
+        expect(stat.isFile())
+        const targetDir = path.join('build')
+        let result = await tools.akaiFormat()
+        expect(result.code).toBe(0)
+        expect(result.errors.length).toBe(0)
+        result = await tools.wav2Akai(source, targetDir, 'kit'.padEnd(12, ' '))
+
+        expect(!result.code)
+        expect(result.errors).toHaveLength(0)
+    })
+})
+
+
+describe(`Test parsing Akai objects read by akaitools`, async () => {
+    let tools = newAkaitools(await newAkaiToolsConfig())
+    it.skip(`Parses Akai program file`, async () => {
+        // SKIPPED: Requires test data files that are not in repository
+        const programPath = path.join('test', 'data', 's3000xl', 'instruments', 'test_program.a3p')
+        const buffer = await fs.readFile(programPath)
+        const data = []
+        for (let i = 0; i < buffer.length; i++) {
+            const nibbles = byte2nibblesLE(buffer[i])
+            data.push(nibbles[0])
+            data.push(nibbles[1])
+        }
+        let header = {} as ProgramHeader;
+        parseProgramHeader(data, 1, header)
+        expect(header.PRNAME).toBe('TEST PROGRAM')
+    })
+
+    it.skip(`Parses Akai sample header from file`, async () => {
+        // SKIPPED: Requires test data files that are not in repository
+        const samplePath = path.join('test', 'data', 's3000xl', 'instruments', 'sine.a3s')
+        const data = await readAkaiData(samplePath);
+        let header = {} as SampleHeader
+        parseSampleHeader(data, 0, header)
+        expect(header.SHNAME).toBe('SINE        ')
+    })
+
+    it.skip(`Parses Akai program header from file`, async () => {
+        // SKIPPED: Requires test data files that are not in repository
+        const programPath = path.join('test', 'data', 's3000xl', 'instruments', 'test_4_kgs.a3p')
+        const data = await readAkaiData(programPath)
+        const programHeader = {} as ProgramHeader
+        parseProgramHeader(data, 1, programHeader)
+        console.log(`data size : ${data.length}`)
+        console.log(`Keygroup count: ${programHeader.GROUPS}`)
+        expect(programHeader.PRNAME).toBe('TEST 4 KGS  ')
+        expect(programHeader.GROUPS).toBe(4)
+
+        const kg1 = {} as KeygroupHeader
+        // parseKeygroupHeader(data.slice(KEYGROUP1_START_OFFSET), 0, kg1)
+        parseKeygroupHeader(data.slice(CHUNK_LENGTH), 0, kg1)
+        expect(kg1.SNAME1.startsWith('SINE'))
+
+        const kg2 = {} as KeygroupHeader
+        // parseKeygroupHeader(data.slice(KEYGROUP1_START_OFFSET + KEYGROUP_LENGTH), 0, kg2)
+        parseKeygroupHeader(data.slice(CHUNK_LENGTH + CHUNK_LENGTH), 0, kg2)
+        expect(kg2.SNAME1.startsWith('SQUARE'))
+
+        const keygroups: KeygroupHeader[] = []
+        for (let i = 0; i < programHeader.GROUPS; i++) {
+            const kg = {} as KeygroupHeader
+            // parseKeygroupHeader(data.slice(KEYGROUP1_START_OFFSET + KEYGROUP_LENGTH * i), 0, kg)
+            parseKeygroupHeader(data.slice(CHUNK_LENGTH + CHUNK_LENGTH * i), 0, kg)
+
+            keygroups.push(kg)
+        }
+
+        expect(keygroups[0].SNAME1).toBe('SINE        ')
+        expect(keygroups[1].SNAME1).toBe('SQUARE      ')
+        expect(keygroups[2].SNAME1).toBe('SAWTOOTH    ')
+        expect(keygroups[3].SNAME1).toBe('PULSE       ')
+        // for (let i = 0; i < data.length; i += 2) {
+        //
+        //     const kg = {} as KeygroupHeader
+        //     parseKeygroupHeader(data.slice(i), 0, kg)
+        //     if (kg.SNAME1.startsWith('SQUARE')) {
+        //         console.log(`Bytes read by program: ${bytesRead}`)
+        //         console.log(`OFFSET               : ${i}`)
+        //         break
+        //     }
+        // }
+
+
+        // SNAM1 offset into data: 476
+    })
+
+    it.skip(`Reads akai program files`, async () => {
+        // SKIPPED: Requires test data files that are not in repository
+        const programPath = path.join('test', 'data', 's3000xl', 'instruments', 'test_4_kgs.a3p')
+        const programData = await tools.readAkaiProgram(programPath)
+        expect(programData.program.getHeader().PRNAME).toBe('TEST 4 KGS  ')
+
+        const keygroups = programData.keygroups
+        expect(keygroups.length).toBe(4)
+
+        expect(keygroups[0].getHeader().SNAME1).toBe('SINE        ')
+        expect(keygroups[1].getHeader().SNAME1).toBe('SQUARE      ')
+        expect(keygroups[2].getHeader().SNAME1).toBe('SAWTOOTH    ')
+        expect(keygroups[3].getHeader().SNAME1).toBe('PULSE       ')
+    })
+
+    it.skip(`Creates akaiprogram files`, async () => {
+        // SKIPPED: Requires test data files that are not in repository
+        const protoPath = path.join('data', 'test_program.a3p')
+        const programData = await tools.readAkaiProgram(protoPath)
+        expect(programData.program.getHeader().PRNAME).toBe('TEST PROGRAM')
+        expect(programData.keygroups.length).toBe(1)
+        // the number of bytes the program header starts writing to (bc it thinks its writing
+        // to raw sysex data.). This should all be baked into the auto-generated parser somehow.
+        const rawLeader = 7
+        // const raw = new Array(rawLeader).fill(0).concat(data)
+        const program = programData.program
+        // program.raw = raw
+
+        ProgramHeader_writePRNAME(program.getHeader(), 'SYNTHETIC')
+
+
+        // const keygroup1raw = new Array(rawLeader).fill(0).concat(data.slice(KEYGROUP1_START_OFFSET))
+        const keygroup1 = programData.keygroups[0]
+        // keygroup1.raw = keygroup1raw
+
+        KeygroupHeader_writeSNAME1(keygroup1.getHeader(), 'MODIFIED')
+        const keygroup1data = keygroup1.getHeader().raw.slice(rawLeader)
+
+        const keygroup2raw = keygroup1.getHeader().raw.slice()
+        const keygroup2 = {} as KeygroupHeader
+        keygroup2.raw = keygroup2raw
+        parseKeygroupHeader(keygroup2raw.slice(rawLeader), 0, keygroup2)
+
+
+        expect(keygroup2.SNAME1).toBe('MODIFIED    ')
+        KeygroupHeader_writeSNAME1(keygroup2, 'KEYGROUP 2')
+        const keygroup2data: number[] = keygroup2raw.slice(rawLeader)
+
+        // update GROUP count in program
+        ProgramHeader_writeGROUPS(program.getHeader(), 2)
+
+        // Write keygroup data
+        const nibbles = program.getHeader().raw.slice(rawLeader)
+
+        for (let i = 0; i < keygroup1data.length; i++) {
+            nibbles[CHUNK_LENGTH + i] = keygroup1data[i]
+        }
+
+        for (let i = 0; i < keygroup2data.length; i++) {
+            // Nice that javascript automatically grows the array behind the scenes ;-)
+            // But, if this *wasn't* javascript, we'd have to explicitly grow the array.
+            // HOWEVER--if there is anything interesting at the end of the original program file AFTER the
+            // keygroup data, this will overwrite it.
+            // nibbles[KEYGROUP1_START_OFFSET * 2 + i] = keygroup2data[i]
+            nibbles[CHUNK_LENGTH * 2 + i] = keygroup2data[i]
+            // nibbles[KEYGROUP1_START_OFFSET + KEYGROUP_LENGTH * 2 + i] = keygroup2data[i]
+        }
+
+
+        const outData = []
+        for (let i = 0; i < nibbles.length; i += 2) {
+            outData.push(nibbles2byte(nibbles[i], nibbles[i + 1]))
+        }
+        console.log(`outdata lenght: ${outData.length}`)
+        const p = {} as ProgramHeader
+        parseProgramHeader(nibbles, 1, p)
+        expect(p.PRNAME).toBe('SYNTHETIC   ')
+
+        const outfile = path.join('build', 'synthetic.a3p')
+        await fs.writeFile(outfile, Buffer.from(outData))
+
+        const parsed = await tools.readAkaiProgram(outfile)
+        expect(parsed.program.getHeader().PRNAME).toBe('SYNTHETIC   ')
+        expect(parsed.keygroups[0].getHeader().SNAME1).toBe('MODIFIED    ')
+        expect(parsed.keygroups.length).toBe(2)
+        expect(parsed.keygroups[1].getHeader().SNAME1).toBe('KEYGROUP 2  ')
+    })
+
+    it.skip(`Reads and writes a program file with multiple keygroups unchanged`, async () => {
+        // SKIPPED: Requires test data files that are not in repository
+        const protoPath = path.join('test', 'data', 's3000xl', 'instruments', 'test_4_kgs.a3p')
+        const p = await tools.readAkaiProgram(protoPath)
+
+        const outpath = path.join('build', 'test_4_kgs.a3p');
+        await fs.rm(outpath).then().catch(() => {
+        })
+        await tools.writeAkaiProgram(outpath, p)
+        await tools.akaiFormat(1, 1)
+        await tools.akaiWrite(outpath, '/test4kgs')
+    })
+
+    it.skip(`Writes a known good multi-keygroup akai program to disk and reads it back`, async () => {
+        // SKIPPED: Requires test data files that are not in repository
+        const goodPath = path.join('test', 'data', 's3000xl', 'chops', 'brk.10', 'brk.10_good.a3p')
+        const good = await tools.readAkaiProgram(goodPath)
+
+
+        const outpath = path.join('build', 'brk.10_sus.a3p')
+        await tools.writeAkaiProgram(outpath, good)
+
+        const suspect = await tools.readAkaiProgram(outpath)
+        expect(suspect.program.getHeader().PRNAME).toBe(good.program.getHeader().PRNAME)
+
+        for (let i = 0; i < good.keygroups.length; i++) {
+            const goodkg = good.keygroups[i]
+            const suskg = suspect.keygroups[i]
+            console.log(`good[${i}]: SNAME1: ${goodkg.getHeader().SNAME1}`)
+            console.log(`sus[${i}] : SNAME1: ${suskg.getHeader().SNAME1}`)
+            console.log()
+            expect(suskg.getHeader().SNAME1).toBe(goodkg.getHeader().SNAME1)
+        }
+
+        // write the program to a disk, extract it, then read it
+        const diskpath = path.join('build', 'akai.img')
+        const c: AkaiToolsConfig = await newAkaiToolsConfig()
+        c.diskFile = diskpath
+        await tools.akaiFormat()
+        await tools.akaiWrite(outpath, '/test')
+
+        const result = await tools.akaiList('/test')
+        expect(result.data).toBeDefined()
+        expect(result.data.length).toBeGreaterThanOrEqual(1)
+        for (const record of result.data) {
+            console.log(`record:`)
+            console.log(record)
+        }
+        const record = result.data[0]
+        expect(record.type).toBe(AkaiRecordType.PROGRAM)
+        expect(record.name.endsWith(path.parse(outpath).name))
+
+
+        // read the program from disk and validate it
+        const refriedDir = path.join('build', `tmp-${new Date().getTime()}`);
+        await tools.akaiRead('/test', refriedDir)
+        const refriedPath = path.join(refriedDir, 'test', path.parse(outpath).name + '.a3p')
+
+        const refried = await tools.readAkaiProgram(refriedPath)
+        console.log(`refried name: ${refried.program.getHeader().PRNAME}`)
+        expect(refried).toBeDefined()
+        expect(refried.keygroups).toBeDefined()
+        expect(refried.keygroups.length).toBe(good.keygroups.length)
+        for (let i = 0; i < good.keygroups.length; i++) {
+            const goodkg = good.keygroups[i]
+            const refkg = refried.keygroups[i]
+            console.log(`good[${i}]  : SNAME1: ${goodkg.getHeader().SNAME1}`)
+            console.log(`refried[${i}] : SNAME1: ${refkg.getHeader().SNAME1}`)
+            console.log()
+            expect(refkg.getHeader().SNAME1).toBe(goodkg.getHeader().SNAME1)
+        }
+
+    })
+
+    it.skip(`Compares known good to broken akai program`, async () => {
+        // SKIPPED: Requires test data files that are not in repository
+        const goodPath = path.join('test', 'data', 's3000xl', 'chops', 'brk.10', 'brk.10_good.a3p')
+        const badPath = path.join('test', 'data', 's3000xl', 'chops', 'brk.10-broken', 'brk.10.a3p')
+
+        const good = await tools.readAkaiProgram(goodPath)
+        const bad = await tools.readAkaiProgram(badPath)
+        console.log(`good: KGRP1 (block address of first keygroup): ${good.program.getHeader().KGRP1}`)
+        console.log(`bad : KGRP1                                  : ${bad.program.getHeader().KGRP1}`)
+
+        for (let i = 0; i < good.keygroups.length; i++) {
+            const goodkg = good.keygroups[i]
+            console.log(`good[${i}]: SNAME1: ${goodkg.getHeader().SNAME1}`)
+        }
+
+        for (let i = 0; i < bad.keygroups.length; i++) {
+            const badkg = bad.keygroups[i]
+            console.log(`badkg[${i}]: SNAME1: ${badkg.getHeader().SNAME1}`)
+        }
+
+    })
+
+    it.skip(`Finds strings in akai files`, async () => {
+        // SKIPPED: Requires test data files that are not in repository
+        const programPath = path.join('test', 'data', 's3000xl', 'instruments', 'test_program.a3p')
+        const data = await readAkaiData(programPath)
+        let offset = 0
+        const v = {value: 0, offset: offset * 2}
+        const window = []
+        while (v.offset < data.length) {
+            nextByte(data, v)
+            window.push(v.value)
+            if (window.length > 12) {
+                window.shift()
+            }
+            // console.log(window)
+            const s = akaiByte2String(window)
+            console.log(`${v.offset}: ${s}`)
+        }
+    })
+})
+
+describe(`Synchronizing data w/ a piscsi host`, async () => {
+    let tools = newAkaitools(await newAkaiToolsConfig())
+    it(`Parses table of mounted volumes`, async function () {
+        const table = `+----+-----+------+-------------------------------------
+| ID | LUN | TYPE | IMAGE FILE
++----+-----+------+-------------------------------------
+|  1 |   0 | SCHD | /home/orion/images/HD1.hds
+|  2 |   0 | SCHD | /home/orion/images/HD2.hds
+|  4 |   0 | SCHD | /home/orion/images/HD4.hds
+|  5 |   0 | SCHD | /home/orion/images/HD5.hds
++----+-----+------+-------------------------------------`
+        // const parsed = []
+        // table.split('\n').forEach(i => {
+        //     const match = i.match(/\|\s*(\d+).*/)
+        //     if (match) {
+        //         parsed.push({
+        //             scsiId: Number.parseInt(i.substring(2, 4)),
+        //             lun: Number.parseInt(i.substring(6, 10)),
+        //             image: i.substring(19).trim()
+        //         })
+        //     }
+        // })
+        const parsed = tools.parseRemoteVolumes(table)
+        expect(parsed).toBeDefined()
+        expect(parsed.length).toBe(4)
+        expect(parsed[0].scsiId).toBe(1)
+        expect(parsed[0].lun).toBe(0)
+        expect(parsed[0].image).toBe('/home/orion/images/HD1.hds')
+    })
+
+    it.skip(`Lists mounted volumes`, async function () {
+        // SKIPPED: Requires external PiSCSI hardware/server
+        const c = await newAkaiToolsConfig()
+        expect(c.piscsiHost)
+        expect(c.scsiId)
+
+        const result = await tools.remoteVolumes()
+        result.data.forEach(v => console.log(v))
+        expect(result.errors.length).toBe(0)
+        expect(result.data.length).toBeGreaterThanOrEqual(1)
+
+    }, { timeout: 5000 })
+
+    it.skip(`Unmounts a volume`, async function () {
+        // SKIPPED: Requires external PiSCSI hardware/server
+        const v: RemoteDisk = {image: "/home/orion/images/HD4.hds", scsiId: 4}
+        const result = await tools.remoteUnmount(v)
+        result.errors.forEach(e => console.error(e))
+        expect(result.code).toBe(0)
+        expect(result.errors.length).toBe(0)
+    }, { timeout: 5000 })
+
+    it.skip('Mounts a volume', async function () {
+        // SKIPPED: Requires external PiSCSI hardware/server
+        const v: RemoteDisk = {image: "/home/orion/images/HD4.hds", scsiId: 4}
+        const result = await tools.remoteMount(v)
+        result.errors.forEach(e => console.error(e))
+        expect(result.code).toBe(0)
+        expect(result.errors.length).toBe(0)
+    }, { timeout: 5000 })
+
+    it.skip('Syncs akai data', async function () {
+        // SKIPPED: Requires external PiSCSI hardware/server
+        const result = await tools.remoteSync()
+        result.errors.forEach(e => console.error(e))
+        expect(result.code).toBe(0)
+        expect(result.errors.length).toBe(0)
+    }, { timeout: 30000 })
+})

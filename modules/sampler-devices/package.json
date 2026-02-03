@@ -1,0 +1,87 @@
+{
+  "name": "@audiocontrol/sampler-devices",
+  "version": "1.0.0-alpha.50",
+  "description": "Module for communicating with old midi devices",
+  "main": "./dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./s3k": {
+      "types": "./dist/s3k.d.ts",
+      "import": "./dist/s3k.js",
+      "require": "./dist/s3k.cjs"
+    },
+    "./s5k": {
+      "types": "./dist/s5k.d.ts",
+      "import": "./dist/s5k.js",
+      "require": "./dist/s5k.cjs"
+    },
+    "./s330": {
+      "types": "./dist/s330.d.ts",
+      "import": "./dist/s330.js",
+      "require": "./dist/s330.cjs"
+    }
+  },
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "scripts": {
+    "gen": "tsx src/gen-s3000xl.ts src/devices",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "integration": "vitest run test/integration",
+    "test:hardware:s330": "vitest run test/integration/s330-hardware.test.ts",
+    "build": "pnpm test && tsup",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "akai",
+    "roland",
+    "sampler",
+    "midi",
+    "sysex",
+    "s5000",
+    "s6000",
+    "s3000xl",
+    "s-330",
+    "s-550",
+    "hardware-sampler",
+    "device-communication"
+  ],
+  "author": "Orion Letizi",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oletizi/ol_dsp.git",
+    "directory": "modules/audio-tools/sampler-devices"
+  },
+  "homepage": "https://github.com/oletizi/ol_dsp/tree/main/modules/audio-tools/sampler-devices",
+  "bugs": {
+    "url": "https://github.com/oletizi/ol_dsp/issues"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.8",
+    "@types/node": "^22.13.1",
+    "@vitest/coverage-v8": "^1.2.0",
+    "tsup": "^8.3.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^5.0.0",
+    "vitest": "^1.2.0",
+    "yaml": "^2.7.0"
+  },
+  "dependencies": {
+    "@audiocontrol/sampler-lib": "^1.0.11",
+    "@audiocontrol/sampler-midi": "workspace:*",
+    "easymidi": "^3.1.0",
+    "pathe": "^2.0.3"
+  }
+}

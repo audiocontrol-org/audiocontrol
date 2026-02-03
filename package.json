@@ -1,0 +1,63 @@
+{
+  "name": "@audiocontrol/audiocontrol",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Control vintage samplers and synthesizers - audiocontrol.org",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "install": "pnpm build && pnpm generate:ardour:install",
+    "clean": "pnpm -r clean",
+    "dev": "pnpm -r dev",
+    "test": "pnpm -r test",
+    "lint": "eslint . --ext .ts,.tsx",
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,md}\"",
+    "prepublishOnly": "tsx scripts/copy-license.ts",
+    "version:bump": "tsx scripts/bump-version.ts",
+    "publish:modules": "tsx scripts/publish-modules.ts",
+    "release": "tsx scripts/release.ts",
+    "changeset": "changeset",
+    "changeset:version": "changeset version",
+    "changeset:publish": "changeset publish",
+    "release:publish": "pnpm changeset:version && pnpm -r build && pnpm changeset:publish",
+    "release:ship": "tsx scripts/ensure-changeset.ts && pnpm changeset:version && pnpm -r build && git add . && (git diff-index --quiet --cached HEAD || (git commit -m \"chore(release): publish packages\" && git push)) && pnpm changeset:publish",
+    "release:alpha": "echo '\\n📦 Alpha Release Workflow:\\n  1. Enter alpha mode (done by this command)\\n  2. Create changesets: pnpm changeset\\n  3. Publish: pnpm release:publish\\n  4. Exit alpha: pnpm release:pre:exit\\n' && changeset pre enter alpha && echo '\\n✅ Alpha mode active. Now create changesets with: pnpm changeset'",
+    "release:beta": "echo '\\n📦 Beta Release Workflow:\\n  1. Enter beta mode (done by this command)\\n  2. Create changesets: pnpm changeset\\n  3. Publish: pnpm release:publish\\n  4. Exit beta: pnpm release:pre:exit\\n' && changeset pre enter beta && echo '\\n✅ Beta mode active. Now create changesets with: pnpm changeset'",
+    "release:stable": "echo '\\n📦 Stable Release Workflow:\\n  1. Ensure you have exited prerelease mode\\n  2. Create changesets: pnpm changeset\\n  3. This command will: version + build + publish\\n' && pnpm release:publish",
+    "release:pre:alpha": "changeset pre enter alpha",
+    "release:pre:beta": "changeset pre enter beta",
+    "release:pre:exit": "changeset pre exit && echo '\\n✅ Exited prerelease mode. Next changeset version will be stable.'",
+    "generate:ardour": "cd modules/ardour-midi-maps && pnpm generate",
+    "generate:ardour:install": "cd modules/ardour-midi-maps && pnpm generate:install",
+    "plugin:list": "../../cmake-build/modules/juce/host/plughost_artefacts/plughost --list",
+    "plugin:interrogate": "tsx tools/plugin-interrogator.ts",
+    "plugin:interrogate:text": "tsx tools/plugin-interrogator.ts --text",
+    "plugin:interrogate:all": "tsx tools/plugin-interrogator.ts --all",
+    "plugin:interrogate:all:text": "tsx tools/plugin-interrogator.ts --all --text"
+  },
+  "keywords": [
+    "audio",
+    "midi",
+    "daw",
+    "control-surface"
+  ],
+  "author": "",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=8"
+  },
+  "packageManager": "pnpm@8.15.1",
+  "devDependencies": {
+    "@changesets/cli": "^2.29.7",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "eslint": "^8.56.0",
+    "eslint-config-prettier": "^9.1.0",
+    "prettier": "^3.2.4",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}

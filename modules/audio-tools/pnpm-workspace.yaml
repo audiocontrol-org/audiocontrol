@@ -1,3 +1,0 @@
-packages:
-  - 'modules/*'
-  # sampler-interface excluded - UI app with missing dependencies

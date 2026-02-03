@@ -1,0 +1,78 @@
+{
+  "name": "@audiocontrol/sampler-export",
+  "version": "1.0.0-alpha.50",
+  "description": "Akai sampler disk extraction and format conversion tools",
+  "main": "./dist/lib/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/lib/index.d.ts",
+      "import": "./dist/lib/index.js",
+      "require": "./dist/lib/index.cjs"
+    }
+  },
+  "module": "./dist/lib/index.mjs",
+  "types": "./dist/lib/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist",
+    "bin",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "build": "tsup",
+    "clean": "rm -rf dist",
+    "extract:batch": "node dist/cli/extract.cjs batch"
+  },
+  "author": "Orion Letizi",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/oletizi/ol_dsp.git",
+    "directory": "modules/audio-tools/sampler-export"
+  },
+  "homepage": "https://github.com/oletizi/ol_dsp/tree/main/modules/audio-tools/sampler-export",
+  "bugs": {
+    "url": "https://github.com/oletizi/ol_dsp/issues"
+  },
+  "keywords": [
+    "akai",
+    "sampler",
+    "extraction",
+    "conversion",
+    "s5000",
+    "s6000",
+    "s3000xl",
+    "sfz",
+    "decentsampler",
+    "disk-image"
+  ],
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.8",
+    "@types/chai": "^5.0.1",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.13.1",
+    "@vitest/coverage-v8": "^1.2.0",
+    "c8": "^10.1.3",
+    "chai": "^5.1.2",
+    "mocha": "^11.1.0",
+    "mochawesome": "^7.1.3",
+    "tsup": "^8.3.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^5.0.0",
+    "vitest": "^1.2.0"
+  },
+  "dependencies": {
+    "@audiocontrol/audiotools-config": "workspace:*",
+    "@audiocontrol/sampler-backup": "workspace:*",
+    "@audiocontrol/sampler-devices": "workspace:*",
+    "@audiocontrol/sampler-lib": "workspace:*",
+    "commander": "^12.1.0",
+    "glob": "^11.0.0",
+    "pathe": "^1.1.2",
+    "xmlbuilder2": "^3.1.1"
+  }
+}
