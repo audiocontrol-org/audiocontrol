@@ -83,7 +83,7 @@
     "zod": "^3.22.4"
   },
   "devDependencies": {
-    "@audiocontrol/mulder-specs": "^0.6.0",
+    "@oletizi/mulder-specs": "^0.6.0",
     "@playwright/test": "^1.55.1",
     "@types/node": "^20.11.0",
     "@vitest/coverage-v8": "^1.2.0",
