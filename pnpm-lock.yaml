@@ -589,9 +589,6 @@ importers:
 
   modules/sampler-lib:
     dependencies:
-      '@audiocontrol/sampler-devices':
-        specifier: workspace:*
-        version: link:../sampler-devices
       dayjs:
         specifier: ^1.11.13
         version: 1.11.19
@@ -3628,7 +3625,7 @@ packages:
       std-env: 3.9.0
       strip-literal: 2.1.1
       test-exclude: 6.0.0
-      vitest: 1.6.1(@types/node@22.19.8)
+      vitest: 1.6.1(@types/node@20.19.17)
     transitivePeerDependencies:
       - supports-color
     dev: true
