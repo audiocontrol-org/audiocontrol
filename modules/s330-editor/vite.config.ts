@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 
 export default defineConfig({
+  base: '/roland/s330/editor/',
   plugins: [react()],
   resolve: {
     alias: {
