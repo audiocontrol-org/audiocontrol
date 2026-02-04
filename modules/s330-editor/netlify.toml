@@ -1,7 +1,6 @@
 [build]
-  # Build sampler-devices first to ensure it's available for sampler-midi
   command = "pnpm --filter @audiocontrol/sampler-devices build && pnpm --filter @audiocontrol/s330-editor... build"
-  publish = "modules/s330-editor/dist"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
