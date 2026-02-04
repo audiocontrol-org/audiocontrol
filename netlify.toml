@@ -1,5 +1,5 @@
 [build]
-  command = "pnpm install --frozen-lockfile --filter @audiocontrol/s330-editor... && pnpm --filter @audiocontrol/s330-editor... build"
+  command = "pnpm --filter @audiocontrol/s330-editor... build"
   publish = "modules/s330-editor/dist"
 
 [build.environment]
