@@ -81,7 +81,6 @@
   },
   "dependencies": {
     "@audiocontrol/sampler-lib": "workspace:*",
-    "@audiocontrol/sampler-midi": "workspace:*",
     "easymidi": "^3.1.0",
     "pathe": "^2.0.3"
   }

@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "build:deploy": "cd ../.. && pnpm install --frozen-lockfile && pnpm --filter @audiocontrol/s330-editor... build",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
