@@ -53,6 +53,33 @@ export {
     calculateChecksum,
 } from '@audiocontrol/sampler-devices/s330';
 
+// Re-export front panel types and functions
+export type {
+    FrontPanelController,
+    FrontPanelButton,
+    NavigationButton,
+    FunctionButton,
+    NavigationMode,
+    FrontPanelControllerOptions,
+} from '@audiocontrol/sampler-devices/s330';
+
+export {
+    createFrontPanelController,
+} from '@audiocontrol/sampler-devices/s330';
+
+// Re-export parameter listener types and functions
+export type {
+    ParameterChangeEvent,
+    ParameterChangeType,
+    ParseResult,
+} from '@audiocontrol/sampler-devices/s330';
+
+export {
+    parseDT1Message,
+    isDT1Message,
+    isUIStateAddress,
+} from '@audiocontrol/sampler-devices/s330';
+
 // Local type alias for backward compatibility
 // S330MidiIO matches S330MidiAdapter from sampler-devices
 export type { S330MidiIO } from './types';

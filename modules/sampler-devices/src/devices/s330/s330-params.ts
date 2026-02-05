@@ -445,6 +445,37 @@ export function parsePatchCommon(data: number[]): S330PatchCommon {
 }
 
 /**
+ * Create an empty patch common structure
+ * Used when a patch slot is empty or read fails.
+ *
+ * @param index Optional patch index for identification
+ * @returns Empty patch common with default values
+ */
+export function createEmptyPatchCommon(index?: number): S330PatchCommon {
+    // Create empty tone layer arrays (109 entries each)
+    const emptyToneLayer1 = new Array(109).fill(-1); // -1 = OFF for layer 1
+    const emptyToneLayer2 = new Array(109).fill(0);  // 0 = first tone for layer 2
+
+    return {
+        name: '',
+        keyMode: 'normal',
+        benderRange: 2,
+        aftertouchSens: 0,
+        velocityThreshold: 64,
+        velocityMixRatio: 64,
+        level: 127,
+        detune: 0,
+        octaveShift: 0,
+        aftertouchAssign: 'modulation',
+        keyAssign: 'rotary',
+        outputAssign: 0,
+        toneLayer1: emptyToneLayer1,
+        toneLayer2: emptyToneLayer2,
+        copySource: 0,
+    };
+}
+
+/**
  * Parse tone parameters from SysEx data
  *
  * Parses de-nibblized tone data (256 bytes) into S330Tone structure.
