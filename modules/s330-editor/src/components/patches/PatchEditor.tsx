@@ -2,7 +2,7 @@
  * Patch editor component
  */
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import type { S330Patch, S330KeyMode, S330Tone } from '@/core/midi/S330Client';
 import type { S330ClientInterface } from '@/core/midi/S330Client';
 import { createS330Client } from '@/core/midi/S330Client';
@@ -35,6 +35,13 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
   const [toneMappingExpanded, setToneMappingExpanded] = useState(false);
   const [toneLayer1, setToneLayer1] = useState(common.toneLayer1);
   const [toneLayer2, setToneLayer2] = useState(common.toneLayer2);
+
+  // Sync local state when patch changes
+  useEffect(() => {
+    setNameValue(common.name);
+    setToneLayer1(common.toneLayer1);
+    setToneLayer2(common.toneLayer2);
+  }, [common.name, common.toneLayer1, common.toneLayer2]);
 
   // Initialize client if not already created
   if (adapter && !clientRef.current) {
