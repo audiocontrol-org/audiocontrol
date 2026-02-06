@@ -886,10 +886,9 @@ export function createS330Client(
             return serialize(async () => {
                 try {
                     // Request full tone data (256 bytes)
-                    // Tone address layout (empirically determined):
-                    // - Tone 0 at byte2=4, Tone N (N>=1) at byte2=8+N*2
-                    const byte2 = toneIndex === 0 ? 4 : (8 + toneIndex * 2);
-                    const address = [0x00, 0x02, byte2, 0x00];
+                    // Tone address: 0x00, 0x03, toneIndex*2, 0x00
+                    const byte2 = toneIndex * 2;
+                    const address = [0x00, 0x03, byte2, 0x00];
                     const data = await requestDataWithAddress(address, TONE_BLOCK_SIZE);
 
                     // Use parseTone from s330-params.ts for proper 8-point envelope parsing
@@ -939,10 +938,9 @@ export function createS330Client(
 
                     let tone: S330Tone | null;
                     try {
-                        // Tone address layout (empirically determined):
-                        // - Tone 0 at byte2=4, Tone N (N>=1) at byte2=8+N*2
-                        const byte2 = i === 0 ? 4 : (8 + i * 2);
-                        const address = [0x00, 0x02, byte2, 0x00];
+                        // Tone address: 0x00, 0x03, toneIndex*2, 0x00
+                        const byte2 = i * 2;
+                        const address = [0x00, 0x03, byte2, 0x00];
                         const data = await requestDataWithAddress(address, TONE_BLOCK_SIZE);
                         tone = parseTone(data);
                     } catch {
@@ -999,11 +997,9 @@ export function createS330Client(
             // Encode tone to binary format
             const toneBytes = encodeTone(tone);
 
-            // Tone address layout (empirically determined):
-            // - Tone 0 at byte2=4
-            // - Tone N (N>=1) at byte2=8+N*2
-            const byte2 = toneIndex === 0 ? 4 : (8 + toneIndex * 2);
-            const address = [0x00, 0x02, byte2, 0x00];
+            // Tone address: 0x00, 0x03, toneIndex*2, 0x00
+            const byte2 = toneIndex * 2;
+            const address = [0x00, 0x03, byte2, 0x00];
 
             // Buffer write - collapses rapid updates, rate-limits device communication
             return bufferWrite(address, toneBytes);
