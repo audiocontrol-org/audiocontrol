@@ -40,6 +40,9 @@ export function PlayPage() {
   // Keep a ref to the S330 client for sending parameter updates
   const clientRef = useRef<S330ClientInterface | null>(null);
 
+  // Track if we've already initiated loading to prevent loops
+  const hasInitiatedLoad = useRef(false);
+
   // Local state for patches (sparse array - undefined = not loaded)
   const [patches, setPatches] = useState<(S330Patch | undefined)[]>([]);
   const [loadedBanks, setLoadedBanks] = useState<Set<number>>(new Set());
@@ -149,6 +152,7 @@ export function PlayPage() {
   // Load initial data when connected
   useEffect(() => {
     if (!isConnected || !clientRef.current) return;
+    if (hasInitiatedLoad.current) return;
 
     // Check if data already loaded from cache
     const cachedPatches = clientRef.current.getLoadedPatches();
@@ -164,9 +168,11 @@ export function PlayPage() {
         }
       }
       setLoadedBanks(banksWithData);
+      hasInitiatedLoad.current = true;
       loadFunctionParams();
     } else if (!isLoading && patches.length === 0) {
       // Load first bank of patches, then function parameters
+      hasInitiatedLoad.current = true;
       loadPatchBank(0).then(() => loadFunctionParams());
     }
   }, [isConnected, isLoading, patches.length, loadPatchBank, loadFunctionParams]);
@@ -232,9 +238,13 @@ export function PlayPage() {
     }
   };
 
+  // Update level in local state only (for responsive UI)
   const handleLevelChange = (partIndex: number, level: number) => {
     updatePart(partIndex, { level });
+  };
 
+  // Send level to device when user finishes adjusting
+  const handleLevelCommit = (partIndex: number, level: number) => {
     if (clientRef.current) {
       clientRef.current.setMultiLevel(partIndex, level).catch((err) => {
         console.error('[PlayPage] Failed to send level parameter:', err);
@@ -456,6 +466,8 @@ export function PlayPage() {
                   max={127}
                   value={part.level}
                   onChange={(e) => handleLevelChange(index, Number(e.target.value))}
+                  onMouseUp={(e) => handleLevelCommit(index, Number((e.target as HTMLInputElement).value))}
+                  onTouchEnd={(e) => handleLevelCommit(index, Number((e.target as HTMLInputElement).value))}
                   onClick={(e) => e.stopPropagation()}
                   className={cn(
                     'flex-1 h-1.5 rounded-full appearance-none cursor-pointer',
