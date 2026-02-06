@@ -7,6 +7,7 @@ import { NavLink } from 'react-router-dom';
 import { MidiStatus } from '@/components/midi/MidiStatus';
 import { VideoCapture } from '@/components/video/VideoCapture';
 import { useMidiStore } from '@/stores/midiStore';
+import { useParameterListener } from '@/hooks/useParameterListener';
 import { cn } from '@/lib/utils';
 
 /**
@@ -48,8 +49,6 @@ const navItems = [
   { to: '/play', label: 'Play' },
   { to: '/patches', label: 'Patches' },
   { to: '/tones', label: 'Tones' },
-  { to: '/sampling', label: 'Sampling' },
-  { to: '/library', label: 'Library' },
 ];
 
 export function Layout({ children }: LayoutProps) {
@@ -59,6 +58,9 @@ export function Layout({ children }: LayoutProps) {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Listen for hardware parameter changes and trigger UI updates
+  useParameterListener();
 
   return (
     <div className="min-h-screen bg-s330-bg">
@@ -120,7 +122,7 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </footer>
 
-      {/* Video Capture Panel */}
+      {/* Video Capture Panel (includes front panel controls) */}
       <VideoCapture />
     </div>
   );

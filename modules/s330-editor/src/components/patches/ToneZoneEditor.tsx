@@ -7,7 +7,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import type { S330KeyMode, ToneNameInfo } from '@/core/midi/S330Client';
+import type { S330KeyMode, S330Tone } from '@/core/midi/S330Client';
 import { cn, midiNoteToName } from '@/lib/utils';
 
 // =============================================================================
@@ -33,8 +33,8 @@ interface ToneZoneEditorProps {
   toneData: number[];
   /** Current key mode (determines if Layer 2 should be shown) */
   keyMode: S330KeyMode;
-  /** Tone names from the device (optional) */
-  toneNames?: ToneNameInfo[];
+  /** Loaded tones from the device (sparse array - undefined = not loaded) */
+  tones?: (S330Tone | undefined)[];
   /** Callback when tone data is updated */
   onUpdate: (data: number[]) => void;
 }
@@ -142,7 +142,7 @@ function usesDualLayers(keyMode: S330KeyMode): boolean {
 // Component
 // =============================================================================
 
-export function ToneZoneEditor({ layer, toneData, keyMode, toneNames, onUpdate }: ToneZoneEditorProps) {
+export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: ToneZoneEditorProps) {
   const [selectedZoneIndex, setSelectedZoneIndex] = useState<number | null>(null);
   const [editingZone, setEditingZone] = useState<ToneZone | null>(null);
 
@@ -152,18 +152,16 @@ export function ToneZoneEditor({ layer, toneData, keyMode, toneNames, onUpdate }
   // Create a map of tone index to name for quick lookup
   const toneNameMap = useMemo(() => {
     const map = new Map<number, string>();
-    console.log('[ToneZoneEditor] Building toneNameMap, toneNames:', toneNames?.length ?? 0);
-    if (toneNames) {
-      for (const t of toneNames) {
-        if (!t.isEmpty && t.name.trim()) {
-          console.log(`[ToneZoneEditor] Adding tone ${t.index}: "${t.name}"`);
-          map.set(t.index, t.name.trim());
+    if (tones) {
+      for (let i = 0; i < tones.length; i++) {
+        const tone = tones[i];
+        if (tone && tone.name.trim()) {
+          map.set(i, tone.name.trim());
         }
       }
     }
-    console.log('[ToneZoneEditor] toneNameMap size:', map.size);
     return map;
-  }, [toneNames]);
+  }, [tones]);
 
   // Convert internal index (0-31) to display number (T11-T42)
   const getDisplayNumber = (toneIndex: number): string => {

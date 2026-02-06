@@ -102,7 +102,7 @@ describe('S-330 Address Constants', () => {
         });
 
         it('should have correct tone base address', () => {
-            expect(ADDR_TONE_BASE).toEqual([0x00, 0x02, 0x00, 0x00]);
+            expect(ADDR_TONE_BASE).toEqual([0x00, 0x03, 0x00, 0x00]);
         });
 
         it('should have correct wave data base address', () => {
@@ -157,8 +157,8 @@ describe('S-330 Address Constants', () => {
             expect(TONE_MAP_ENTRIES).toBe(109);
         });
 
-        it('should allow up to 64 patches', () => {
-            expect(MAX_PATCHES).toBe(64);
+        it('should allow up to 16 patches (2 banks of 8)', () => {
+            expect(MAX_PATCHES).toBe(16);
         });
     });
 
@@ -326,28 +326,28 @@ describe('S-330 Address Builder Functions', () => {
     });
 
     describe('buildToneAddress', () => {
-        it('should build address for tone 0 at byte2=4', () => {
+        it('should build address for tone 0 at byte2=0', () => {
             const address = buildToneAddress(0, 0);
-            // Tone 0 is special: byte2=4
-            expect(address).toEqual([0x00, 0x02, 0x04, 0x00]);
+            // Tone N at [0x00, 0x03, N*2, offset]
+            expect(address).toEqual([0x00, 0x03, 0x00, 0x00]);
         });
 
-        it('should build address for tone 1 at byte2=10', () => {
+        it('should build address for tone 1 at byte2=2', () => {
             const address = buildToneAddress(1, 0x00);
-            // Tone N (N>=1): byte2 = 8 + N*2 = 8 + 2 = 10
-            expect(address).toEqual([0x00, 0x02, 0x0A, 0x00]);
+            // Tone 1: byte2 = 1*2 = 2
+            expect(address).toEqual([0x00, 0x03, 0x02, 0x00]);
         });
 
-        it('should build address for tone 3 at byte2=14', () => {
+        it('should build address for tone 3 at byte2=6', () => {
             const address = buildToneAddress(3, 0x08);
-            // Tone 3: byte2 = 8 + 3*2 = 14 = 0x0E
-            expect(address).toEqual([0x00, 0x02, 0x0E, 0x08]);
+            // Tone 3: byte2 = 3*2 = 6
+            expect(address).toEqual([0x00, 0x03, 0x06, 0x08]);
         });
 
         it('should build address for tone 10 with offset', () => {
             const address = buildToneAddress(10, 0x08);
-            // Tone 10: byte2 = 8 + 10*2 = 28 = 0x1C
-            expect(address).toEqual([0x00, 0x02, 0x1C, 0x08]);
+            // Tone 10: byte2 = 10*2 = 20 = 0x14
+            expect(address).toEqual([0x00, 0x03, 0x14, 0x08]);
         });
 
         it('should mask offset to 7 bits', () => {

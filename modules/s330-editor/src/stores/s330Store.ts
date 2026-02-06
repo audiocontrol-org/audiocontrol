@@ -1,28 +1,27 @@
 /**
- * Zustand store for S-330 device data
+ * Zustand store for S-330 UI state
  *
- * Uses a two-tier approach:
- * - Name lists for quick browsing (fetched with requestAllPatchNames/requestAllToneNames)
- * - Full data fetched on demand when a patch/tone is selected
+ * Data caching is handled by the S330 client - this store only manages
+ * UI state like selection and loading indicators.
  */
 
 import { create } from 'zustand';
-import type {
-  S330Patch,
-  S330Tone,
-  PatchNameInfo,
-  ToneNameInfo,
-} from '@/core/midi/S330Client';
+
+/**
+ * Type of hardware parameter change
+ */
+export type HardwareChangeType = 'patch' | 'tone' | 'function' | null;
+
+/**
+ * Information about the last hardware parameter change
+ */
+export interface LastHardwareChange {
+  type: HardwareChangeType;
+  index: number | null;
+  timestamp: number;
+}
 
 interface S330State {
-  // Name lists for browsing (lightweight)
-  patchNames: PatchNameInfo[];
-  toneNames: ToneNameInfo[];
-
-  // Full data (fetched on demand)
-  patches: Map<number, S330Patch>;
-  tones: Map<number, S330Tone>;
-
   // Selection state
   selectedPatchIndex: number | null;
   selectedToneIndex: number | null;
@@ -31,17 +30,20 @@ interface S330State {
   isLoading: boolean;
   loadingMessage: string | null;
   error: string | null;
+
+  // Progress tracking
+  loadingProgress: number | null; // 0-100, null when not tracking progress
+  loadingCurrent: number;
+  loadingTotal: number;
+
+  // Hardware sync state
+  // Incremented when any hardware parameter changes - triggers React re-renders
+  hardwareChangeVersion: number;
+  // Details of the last hardware change for selective refetching
+  lastHardwareChange: LastHardwareChange;
 }
 
 interface S330Actions {
-  // Name list actions
-  setPatchNames: (names: PatchNameInfo[]) => void;
-  setToneNames: (names: ToneNameInfo[]) => void;
-
-  // Full data actions
-  setPatchData: (index: number, patch: S330Patch) => void;
-  setToneData: (index: number, tone: S330Tone) => void;
-
   // Selection
   selectPatch: (index: number | null) => void;
   selectTone: (index: number | null) => void;
@@ -49,40 +51,33 @@ interface S330Actions {
   // UI state
   setLoading: (isLoading: boolean, message?: string | null) => void;
   setError: (error: string | null) => void;
+  setProgress: (current: number, total: number) => void;
+  clearProgress: () => void;
   clear: () => void;
+
+  // Hardware sync
+  /**
+   * Notify the store that a hardware parameter has changed.
+   * This increments hardwareChangeVersion to trigger React re-renders
+   * and stores the change details for selective refetching.
+   */
+  notifyHardwareChange: (type: HardwareChangeType, index: number | null) => void;
 }
 
 type S330Store = S330State & S330Actions;
 
 export const useS330Store = create<S330Store>((set) => ({
   // Initial state
-  patchNames: [],
-  toneNames: [],
-  patches: new Map(),
-  tones: new Map(),
   selectedPatchIndex: null,
   selectedToneIndex: null,
   isLoading: false,
   loadingMessage: null,
   error: null,
-
-  setPatchNames: (names) => set({ patchNames: names }),
-
-  setToneNames: (names) => set({ toneNames: names }),
-
-  setPatchData: (index, patch) =>
-    set((state) => {
-      const newPatches = new Map(state.patches);
-      newPatches.set(index, patch);
-      return { patches: newPatches };
-    }),
-
-  setToneData: (index, tone) =>
-    set((state) => {
-      const newTones = new Map(state.tones);
-      newTones.set(index, tone);
-      return { tones: newTones };
-    }),
+  loadingProgress: null,
+  loadingCurrent: 0,
+  loadingTotal: 0,
+  hardwareChangeVersion: 0,
+  lastHardwareChange: { type: null, index: null, timestamp: 0 },
 
   selectPatch: (index) => set({ selectedPatchIndex: index }),
 
@@ -93,14 +88,37 @@ export const useS330Store = create<S330Store>((set) => ({
 
   setError: (error) => set({ error }),
 
+  setProgress: (current, total) =>
+    set({
+      loadingCurrent: current,
+      loadingTotal: total,
+      loadingProgress: total > 0 ? Math.round((current / total) * 100) : null,
+    }),
+
+  clearProgress: () =>
+    set({
+      loadingProgress: null,
+      loadingCurrent: 0,
+      loadingTotal: 0,
+    }),
+
   clear: () =>
     set({
-      patchNames: [],
-      toneNames: [],
-      patches: new Map(),
-      tones: new Map(),
       selectedPatchIndex: null,
       selectedToneIndex: null,
       error: null,
+      loadingProgress: null,
+      loadingCurrent: 0,
+      loadingTotal: 0,
     }),
+
+  notifyHardwareChange: (type, index) =>
+    set((state) => ({
+      hardwareChangeVersion: state.hardwareChangeVersion + 1,
+      lastHardwareChange: {
+        type,
+        index,
+        timestamp: Date.now(),
+      },
+    })),
 }));

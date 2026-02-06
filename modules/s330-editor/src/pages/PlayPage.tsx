@@ -5,17 +5,17 @@
  * output routing, and levels.
  */
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/s330Store';
 import { createS330Client } from '@/core/midi/S330Client';
-import type { S330ClientInterface } from '@/core/midi/S330Client';
+import type { S330ClientInterface, S330Patch } from '@/core/midi/S330Client';
 import { cn } from '@/lib/utils';
 
-// Global flag to prevent React Strict Mode from running effects twice
-// This is necessary because MIDI requests can't be safely run concurrently
-let isFetchingGlobal = false;
+// Constants for bank loading
+const PATCHES_PER_BANK = 8;
+const TOTAL_PATCHES = 16; // 2 banks of 8
 
 // MIDI Part configuration (A-H = channels 1-8)
 interface MidiPart {
@@ -32,13 +32,17 @@ const PART_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 export function PlayPage() {
   const { adapter, deviceId, status } = useMidiStore();
-  const { patchNames, setPatchNames, setLoading, setError, isLoading, error } =
+  const { setLoading, setError, isLoading, error, setProgress, clearProgress, loadingProgress, loadingMessage } =
     useS330Store();
 
   const isConnected = status === 'connected' && adapter !== null;
 
   // Keep a ref to the S330 client for sending parameter updates
   const clientRef = useRef<S330ClientInterface | null>(null);
+
+  // Local state for patches (sparse array - undefined = not loaded)
+  const [patches, setPatches] = useState<(S330Patch | undefined)[]>([]);
+  const [loadedBanks, setLoadedBanks] = useState<Set<number>>(new Set());
 
   // MIDI parts - loaded from S-330 function parameters
   const [parts, setParts] = useState<MidiPart[]>(
@@ -55,97 +59,134 @@ export function PlayPage() {
 
   const [displayMode, setDisplayMode] = useState<'standard' | 'multi'>('standard');
 
-  // Initialize client and fetch data when adapter is available
+  // Initialize client when adapter changes
   useEffect(() => {
     if (!adapter) {
       clientRef.current = null;
       return;
     }
+    clientRef.current = createS330Client(adapter, { deviceId });
+  }, [adapter, deviceId]);
 
-    // Create client
-    const client = createS330Client(adapter, { deviceId });
-    clientRef.current = client;
+  // Load a specific range of patches
+  const loadPatchBank = useCallback(
+    async (bankIndex: number, forceReload = false) => {
+      if (!clientRef.current) return;
 
-    // Skip if already fetching (React Strict Mode protection)
-    if (isFetchingGlobal) {
-      console.log('[PlayPage] Already fetching (React Strict Mode double-mount), skipping');
-      return;
-    }
+      const startIndex = bankIndex * PATCHES_PER_BANK;
+      const count = PATCHES_PER_BANK;
 
-    // Skip if data already loaded
-    if (patchNames.length > 0) {
-      console.log('[PlayPage] Data already loaded, skipping fetch');
-      return;
-    }
-
-    isFetchingGlobal = true;
-
-    // Fetch all data sequentially using the same client
-    const fetchData = async () => {
       try {
-        // Fetch patches first
-        setLoading(true, 'Loading patches...');
-        console.log('[PlayPage] Fetching patch names...');
-        const names = await client.requestAllPatchNames();
-        console.log('[PlayPage] Got', names.length, 'patches,', names.filter(n => !n.isEmpty).length, 'non-empty');
-        console.log('[PlayPage] Non-empty:', names.filter(n => !n.isEmpty).map(n => `${n.index}:${n.name}`).join(', '));
-        setPatchNames(names);
+        setLoading(
+          true,
+          `${forceReload ? 'Reloading' : 'Loading'} patches ${startIndex + 1}-${startIndex + count}...`
+        );
+        setError(null);
 
-        // Then fetch function parameters
-        setLoading(true, 'Loading multi mode configuration...');
-        console.log('[PlayPage] Fetching function parameters...');
-        const configs = await client.requestFunctionParameters();
-        console.log('[PlayPage] Got function parameters:');
-        configs.forEach((c, i) => {
-          console.log(`  Part ${i}: channel=${c.channel}, patchIndex=${c.patchIndex}, output=${c.output}, level=${c.level}`);
+        // Ensure array is large enough before loading
+        setPatches((prev) => {
+          if (prev.length >= TOTAL_PATCHES) return prev;
+          const updated = [...prev];
+          while (updated.length < TOTAL_PATCHES) updated.push(undefined);
+          return updated;
         });
 
-        // Update parts with loaded configuration
-        setParts((prev) =>
-          prev.map((part, i) => ({
-            ...part,
-            channel: configs[i]?.channel ?? i,
-            patchIndex: configs[i]?.patchIndex ?? null,
-            output: configs[i]?.output ?? 1,
-            level: configs[i]?.level ?? 127,
-          }))
+        await clientRef.current.connect();
+        await clientRef.current.loadPatchRange(
+          startIndex,
+          count,
+          (current: number, total: number) => setProgress(current, total),
+          (index: number, patch: S330Patch) => {
+            setPatches((prev) => {
+              const updated = [...prev];
+              updated[index] = patch;
+              return updated;
+            });
+          },
+          forceReload
         );
 
+        setLoadedBanks((prev) => new Set([...prev, bankIndex]));
+        clearProgress();
         setLoading(false);
       } catch (err) {
-        console.error('[PlayPage] Error fetching data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load data');
+        const message = err instanceof Error ? err.message : 'Failed to load patches';
+        setError(message);
+        clearProgress();
         setLoading(false);
-      } finally {
-        isFetchingGlobal = false;
       }
-    };
+    },
+    [setLoading, setError, setProgress, clearProgress]
+  );
 
-    fetchData();
-  }, [adapter, deviceId, patchNames.length, setPatchNames, setLoading, setError]);
+  // Load function parameters (multi mode configuration)
+  const loadFunctionParams = useCallback(async () => {
+    if (!clientRef.current) return;
 
-  // Debug: log patchNames changes
+    try {
+      setLoading(true, 'Loading multi mode configuration...');
+      const configs = await clientRef.current.requestFunctionParameters();
+
+      // Update parts with loaded configuration
+      setParts((prev) =>
+        prev.map((part, i) => ({
+          ...part,
+          channel: configs[i]?.channel ?? i,
+          patchIndex: configs[i]?.patchIndex ?? null,
+          output: configs[i]?.output ?? 1,
+          level: configs[i]?.level ?? 127,
+        }))
+      );
+
+      setLoading(false);
+    } catch (err) {
+      console.error('[PlayPage] Error loading function parameters:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load configuration');
+      setLoading(false);
+    }
+  }, [setLoading, setError]);
+
+  // Load initial data when connected
   useEffect(() => {
-    console.log('[PlayPage] patchNames updated:', patchNames.length, 'total,', patchNames.filter(p => !p.isEmpty).length, 'non-empty');
-  }, [patchNames]);
+    if (!isConnected || !clientRef.current) return;
 
-  // Update patch names based on patchIndex loaded from function parameters
+    // Check if data already loaded from cache
+    const cachedPatches = clientRef.current.getLoadedPatches();
+    const hasData = cachedPatches.some((p) => p !== undefined);
+
+    if (hasData) {
+      setPatches(cachedPatches);
+      const banksWithData = new Set<number>();
+      for (let bank = 0; bank < 2; bank++) {
+        const startIndex = bank * PATCHES_PER_BANK;
+        if (cachedPatches.slice(startIndex, startIndex + PATCHES_PER_BANK).some((p) => p !== undefined)) {
+          banksWithData.add(bank);
+        }
+      }
+      setLoadedBanks(banksWithData);
+      loadFunctionParams();
+    } else if (!isLoading && patches.length === 0) {
+      // Load first bank of patches, then function parameters
+      loadPatchBank(0).then(() => loadFunctionParams());
+    }
+  }, [isConnected, isLoading, patches.length, loadPatchBank, loadFunctionParams]);
+
+  // Update patch names when patches or parts change
   useEffect(() => {
-    if (patchNames.length === 0) return;
+    if (patches.length === 0) return;
 
-    // Look up patch names based on patchIndex from function parameters
     setParts((prev) =>
       prev.map((part) => {
-        if (part.patchIndex !== null) {
-          const patch = patchNames.find((p) => p.index === part.patchIndex);
-          if (patch && !patch.isEmpty) {
-            return { ...part, patchName: patch.name };
+        if (part.patchIndex !== null && part.patchIndex < patches.length) {
+          const patch = patches[part.patchIndex];
+          if (patch && patch.common.name.trim()) {
+            return { ...part, patchName: patch.common.name };
           }
         }
         return { ...part, patchName: '' };
       })
     );
-  }, [patchNames]);
+  }, [patches]);
 
   // Handle field updates
   const updatePart = (partIndex: number, updates: Partial<MidiPart>) => {
@@ -157,65 +198,56 @@ export function PlayPage() {
   const handleChannelChange = (partIndex: number, channel: number) => {
     updatePart(partIndex, { channel });
 
-    // Send parameter update to hardware
     if (clientRef.current) {
-      try {
-        clientRef.current.setMultiChannel(partIndex, channel);
-      } catch (err) {
+      clientRef.current.setMultiChannel(partIndex, channel).catch((err) => {
         console.error('[PlayPage] Failed to send channel parameter:', err);
-        setError(
-          err instanceof Error ? err.message : 'Failed to update channel'
-        );
-      }
+        setError(err instanceof Error ? err.message : 'Failed to update channel');
+      });
     }
   };
 
   const handlePatchChange = (partIndex: number, patchIndex: number | null) => {
-    const patch = patchIndex !== null ? patchNames.find((p) => p.index === patchIndex) : null;
+    const patch = patchIndex !== null && patchIndex < patches.length ? patches[patchIndex] : null;
     updatePart(partIndex, {
       patchIndex,
-      patchName: patch?.name ?? '',
+      patchName: patch?.common.name ?? '',
     });
 
-    // Send parameter update to hardware
     if (clientRef.current) {
-      try {
-        clientRef.current.setMultiPatch(partIndex, patchIndex);
-      } catch (err) {
+      clientRef.current.setMultiPatch(partIndex, patchIndex).catch((err) => {
         console.error('[PlayPage] Failed to send patch parameter:', err);
         setError(err instanceof Error ? err.message : 'Failed to update patch');
-      }
+      });
     }
   };
 
   const handleOutputChange = (partIndex: number, output: number) => {
     updatePart(partIndex, { output });
 
-    // Send parameter update to hardware
     if (clientRef.current) {
-      try {
-        clientRef.current.setMultiOutput(partIndex, output);
-      } catch (err) {
+      clientRef.current.setMultiOutput(partIndex, output).catch((err) => {
         console.error('[PlayPage] Failed to send output parameter:', err);
-        setError(
-          err instanceof Error ? err.message : 'Failed to update output'
-        );
-      }
+        setError(err instanceof Error ? err.message : 'Failed to update output');
+      });
     }
   };
 
   const handleLevelChange = (partIndex: number, level: number) => {
     updatePart(partIndex, { level });
 
-    // Send parameter update to hardware
     if (clientRef.current) {
-      try {
-        clientRef.current.setMultiLevel(partIndex, level);
-      } catch (err) {
+      clientRef.current.setMultiLevel(partIndex, level).catch((err) => {
         console.error('[PlayPage] Failed to send level parameter:', err);
         setError(err instanceof Error ? err.message : 'Failed to update level');
-      }
+      });
     }
+  };
+
+  // Check if a patch is empty
+  const isPatchEmpty = (patch: S330Patch | undefined): boolean => {
+    if (!patch) return true;
+    const name = patch.common.name;
+    return name === '' || name === '            ' || name.trim() === '';
   };
 
   if (!isConnected) {
@@ -234,6 +266,50 @@ export function PlayPage() {
 
   return (
     <div className="space-y-4">
+      {/* Header with bank loading buttons */}
+      <div className="flex items-center justify-between gap-4">
+        <h2 className="text-xl font-bold text-s330-text">Play</h2>
+        <div className="flex items-center gap-4 flex-1 justify-end">
+          {/* Loading Progress */}
+          {isLoading && loadingProgress !== null && (
+            <div className="flex-1 max-w-xs">
+              <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-s330-highlight transition-all duration-150 ease-out"
+                  style={{ width: `${loadingProgress}%` }}
+                />
+              </div>
+              <p className="text-s330-muted text-xs mt-0.5 truncate">{loadingMessage}</p>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-s330-muted">(Re)load:</span>
+            <button
+              onClick={() => loadPatchBank(0, true)}
+              disabled={isLoading}
+              className={cn(
+                'btn',
+                loadedBanks.has(0) ? 'btn-secondary' : 'btn-primary',
+                isLoading && 'opacity-50'
+              )}
+            >
+              P11-P18
+            </button>
+            <button
+              onClick={() => loadPatchBank(1, true)}
+              disabled={isLoading}
+              className={cn(
+                'btn',
+                loadedBanks.has(1) ? 'btn-secondary' : 'btn-primary',
+                isLoading && 'opacity-50'
+              )}
+            >
+              P21-P28
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Mode Header - mimics S-330 top bar */}
       <div className="bg-s330-panel border border-s330-accent rounded-md overflow-hidden">
         <div className="flex items-center justify-between px-4 py-2 bg-s330-accent/30 border-b border-s330-accent">
@@ -342,9 +418,10 @@ export function PlayPage() {
                   <option value={-1} className="text-s330-muted">
                     ---
                   </option>
-                  {patchNames.map((patch) => (
-                    <option key={patch.index} value={patch.index}>
-                      P{String(patch.index + 11).padStart(2, '0')} {patch.isEmpty ? '(empty)' : patch.name}
+                  {patches.map((patch, patchIndex) => (
+                    <option key={patchIndex} value={patchIndex}>
+                      P{String(patchIndex + 11).padStart(2, '0')}{' '}
+                      {patch ? (isPatchEmpty(patch) ? '(empty)' : patch.common.name) : '(not loaded)'}
                     </option>
                   ))}
                 </select>
@@ -421,9 +498,7 @@ export function PlayPage() {
                   <span className="text-s330-highlight">{part.patchName}</span>
                 </>
               ) : (
-                <span className="text-s330-muted">
-                  P{String(part.patchIndex !== null ? part.patchIndex + 11 : 11).padStart(2, '0')}
-                </span>
+                <span className="text-s330-muted">---</span>
               )}
             </div>
           ))}
@@ -438,7 +513,7 @@ export function PlayPage() {
       )}
 
       {/* Loading indicator */}
-      {isLoading && (
+      {isLoading && !loadingProgress && (
         <div className="text-center py-4">
           <div className="animate-spin w-6 h-6 border-2 border-s330-highlight border-t-transparent rounded-full mx-auto" />
         </div>

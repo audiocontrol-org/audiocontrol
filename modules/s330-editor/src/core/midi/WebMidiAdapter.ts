@@ -8,6 +8,13 @@
 import type { S330MidiIO, SysExCallback, MidiPortInfo, WebMidiAccess } from './types';
 
 /**
+ * Check if running in a secure context (HTTPS or localhost)
+ */
+export function isSecureContext(): boolean {
+  return typeof window !== 'undefined' && window.isSecureContext === true;
+}
+
+/**
  * Check if Web MIDI API is available
  */
 export function isWebMidiSupported(): boolean {
@@ -21,8 +28,26 @@ export function getBrowserCompatibility(): {
   supported: boolean;
   browser: string;
   notes: string;
+  requiresSecureContext?: boolean;
 } {
   const ua = navigator.userAgent;
+
+  // Check for secure context first - this affects all browsers
+  if (!isSecureContext()) {
+    let browser = 'your browser';
+    if (ua.includes('Chrome') || ua.includes('Chromium')) browser = 'Chrome';
+    else if (ua.includes('Edg')) browser = 'Edge';
+    else if (ua.includes('Opera')) browser = 'Opera';
+    else if (ua.includes('Firefox')) browser = 'Firefox';
+    else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
+
+    return {
+      supported: false,
+      browser,
+      notes: 'Web MIDI requires a secure context (HTTPS or localhost)',
+      requiresSecureContext: true,
+    };
+  }
 
   if (ua.includes('Chrome') || ua.includes('Chromium')) {
     return { supported: true, browser: 'Chrome', notes: 'Full support with SysEx' };
@@ -118,7 +143,6 @@ export function createWebMidiAdapter(
 
   return {
     send(message: number[]): void {
-      console.log('[WebMIDI] Sending:', message.map(b => b.toString(16).padStart(2, '0')).join(' '));
       output.send(new Uint8Array(message));
     },
 
@@ -130,26 +154,14 @@ export function createWebMidiAdapter(
         const firstByte = data[0];
         const lastByte = data[data.length - 1];
 
-        // Log ALL incoming MIDI messages for debugging
-        console.log('[WebMIDI] Received MIDI:', {
-          length: data.length,
-          first: firstByte.toString(16),
-          last: lastByte.toString(16),
-          isSysExStart: firstByte === 0xF0,
-          isSysExEnd: lastByte === 0xF7,
-          preview: data.slice(0, 10).map(b => b.toString(16).padStart(2, '0')).join(' '),
-        });
-
         // Case 1: Complete SysEx message (starts with F0, ends with F7)
         if (firstByte === 0xF0 && lastByte === 0xF7) {
-          console.log('[WebMIDI] Complete SysEx:', data.length, 'bytes');
           callback(data);
           return;
         }
 
         // Case 2: Start of chunked SysEx (starts with F0, doesn't end with F7)
         if (firstByte === 0xF0 && lastByte !== 0xF7) {
-          console.log('[WebMIDI] SysEx chunk start:', data.length, 'bytes');
           sysExBuffer = data;
           isReceivingSysEx = true;
           return;
@@ -161,18 +173,14 @@ export function createWebMidiAdapter(
 
           // Check if this is the end chunk
           if (lastByte === 0xF7) {
-            console.log('[WebMIDI] SysEx chunk end, total:', sysExBuffer.length, 'bytes');
             callback(sysExBuffer);
             sysExBuffer = [];
             isReceivingSysEx = false;
-          } else {
-            console.log('[WebMIDI] SysEx chunk middle:', data.length, 'bytes, total:', sysExBuffer.length);
           }
           return;
         }
 
         // Case 4: Regular MIDI message (not SysEx) - ignore
-        // This includes note on/off, CC, etc.
       };
       listeners.set(callback, listener);
       input.addEventListener('midimessage', listener);

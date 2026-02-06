@@ -34,7 +34,8 @@
   ],
   "scripts": {
     "gen": "tsx src/gen-s3000xl.ts src/devices",
-    "test": "vitest run",
+    "test": "vitest run test/unit",
+    "test:all": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "integration": "vitest run test/integration",
@@ -80,7 +81,6 @@
   },
   "dependencies": {
     "@audiocontrol/sampler-lib": "workspace:*",
-    "@audiocontrol/sampler-midi": "workspace:*",
     "easymidi": "^3.1.0",
     "pathe": "^2.0.3"
   }

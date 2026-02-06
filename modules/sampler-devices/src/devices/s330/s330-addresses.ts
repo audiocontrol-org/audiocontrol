@@ -60,16 +60,15 @@ export const ADDR_SYSTEM = [0x00, 0x00, 0x00, 0x00] as const;
 export const ADDR_PATCH_BASE = [0x00, 0x00, 0x00, 0x00] as const;
 
 /** Tone parameters base address
- * Each tone occupies stride of 2: tone N at [0x00, 0x02, N*2, 0x00]
- * Total size per tone: 00 00 02 00H (512 nibble-bytes)
+ * Tone N at [0x00, 0x03, N*2, 0x00] (stride of 2)
+ * Total size per tone: 256 bytes (512 nibbles)
  */
-export const ADDR_TONE_BASE = [0x00, 0x02, 0x00, 0x00] as const;
+export const ADDR_TONE_BASE = [0x00, 0x03, 0x00, 0x00] as const;
 
 /** Tone stride in address byte 2
- * Each tone occupies 4 units in byte 2 (same as patches)
- * Total size 00 00 02 00H refers to internal structure, not address stride
+ * Each tone occupies 2 units in byte 2
  */
-export const TONE_STRIDE = 4;
+export const TONE_STRIDE = 2;
 
 /** Wave data base address */
 export const ADDR_WAVE_DATA = [0x01, 0x00, 0x00, 0x00] as const;
@@ -253,8 +252,8 @@ export const PATCH_PARAMS = {
 /** Number of tone mapping entries per layer (MIDI notes 21-127) */
 export const TONE_MAP_ENTRIES = 109;
 
-/** Maximum patches in memory */
-export const MAX_PATCHES = 64;
+/** Maximum patches in memory (2 banks of 8) */
+export const MAX_PATCHES = 16;
 
 // =============================================================================
 // Tone Parameter Offsets
@@ -505,13 +504,14 @@ export function buildPatchParamAddress(patchIndex: number, param: PatchParam): n
 
 /**
  * Build tone address from tone number and offset
- * Empirically determined layout:
- * - Tone 0 at byte2=4
- * - Tone N (N>=1) at byte2=8+N*2
+ *
+ * Tone address layout (TONE_STRIDE = 2):
+ * - Tone N at [0x00, 0x03, N*2, offset]
+ * - Tone 0 at byte2=0, Tone 1 at byte2=2, etc.
  */
 export function buildToneAddress(toneNumber: number, offset: number): number[] {
-    const byte2 = toneNumber === 0 ? 4 : (8 + toneNumber * 2);
-    return [0x00, 0x02, byte2 & 0x7F, offset & 0x7F];
+    const byte2 = toneNumber * 2;
+    return [0x00, 0x03, byte2 & 0x7F, offset & 0x7F];
 }
 
 /**

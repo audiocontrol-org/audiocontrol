@@ -11,7 +11,7 @@
  */
 
 import type { S330Tone, S330Envelope } from '@audiocontrol/sampler-devices/s330';
-import { midiNoteToName, formatPercent, cn } from '@/lib/utils';
+import { midiNoteToName, formatPercent, cn, formatS330Number } from '@/lib/utils';
 import { ParameterSlider } from '@/components/ui/ParameterSlider';
 import { EnvelopeEditor } from '@/components/ui/EnvelopeEditor';
 
@@ -39,7 +39,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
             {/* Header */}
             <div className="card">
                 <div className="mb-4">
-                    <label className="text-sm text-s330-muted">Tone T{index + 11}</label>
+                    <label className="text-sm text-s330-muted">Tone T{formatS330Number(index)}</label>
                     <input
                         type="text"
                         value={tone.name}
@@ -55,8 +55,17 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                     <div>
                         <label className="text-xs text-s330-muted">Original Key</label>
-                        <div className="text-sm text-s330-text">
-                            {midiNoteToName(tone.originalKey)} ({tone.originalKey})
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="number"
+                                min={0}
+                                max={127}
+                                value={tone.originalKey}
+                                onChange={(e) => onUpdate?.({ ...tone, originalKey: Math.max(0, Math.min(127, parseInt(e.target.value) || 0)) })}
+                                onBlur={() => onCommit?.()}
+                                className="w-16 text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                            />
+                            <span className="text-sm text-s330-muted">{midiNoteToName(tone.originalKey)}</span>
                         </div>
                     </div>
                     <div>
@@ -65,35 +74,82 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                     </div>
                     <div>
                         <label className="text-xs text-s330-muted">Loop Mode</label>
-                        <div className="text-sm text-s330-text capitalize">{tone.loopMode}</div>
+                        <select
+                            value={tone.loopMode}
+                            onChange={(e) => {
+                                const updatedTone = { ...tone, loopMode: e.target.value as S330Tone['loopMode'] };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
+                            }}
+                            className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                        >
+                            <option value="forward">Forward</option>
+                            <option value="alternating">Alternating</option>
+                            <option value="one-shot">One-Shot</option>
+                            <option value="reverse">Reverse</option>
+                        </select>
                     </div>
                     <div>
                         <label className="text-xs text-s330-muted">Output</label>
-                        <div className="text-sm text-s330-text">
-                            {tone.outputAssign === 0 ? 'Mix' : `Out ${tone.outputAssign}`}
-                        </div>
+                        <select
+                            value={tone.outputAssign}
+                            onChange={(e) => {
+                                const updatedTone = { ...tone, outputAssign: parseInt(e.target.value) };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
+                            }}
+                            className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                        >
+                            <option value={0}>Mix</option>
+                            <option value={1}>Out 1</option>
+                            <option value={2}>Out 2</option>
+                            <option value={3}>Out 3</option>
+                            <option value={4}>Out 4</option>
+                            <option value={5}>Out 5</option>
+                            <option value={6}>Out 6</option>
+                            <option value={7}>Out 7</option>
+                            <option value={8}>Out 8</option>
+                        </select>
                     </div>
                 </div>
 
                 {/* Wave Addresses */}
                 <div className="mt-4 grid gap-4 md:grid-cols-3 text-xs">
                     <div className="bg-s330-bg p-2 rounded">
-                        <span className="text-s330-muted">Start: </span>
-                        <span className="font-mono text-s330-text">
-                            0x{tone.wave.startPoint.toString(16).padStart(6, '0')}
-                        </span>
+                        <label className="text-s330-muted block mb-1">Start</label>
+                        <input
+                            type="number"
+                            min={0}
+                            max={0x221180}
+                            value={tone.wave.startPoint}
+                            onChange={(e) => onUpdate?.({ ...tone, wave: { ...tone.wave, startPoint: Math.max(0, parseInt(e.target.value) || 0) } })}
+                            onBlur={() => onCommit?.()}
+                            className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                        />
                     </div>
                     <div className="bg-s330-bg p-2 rounded">
-                        <span className="text-s330-muted">Loop Point: </span>
-                        <span className="font-mono text-s330-text">
-                            0x{tone.wave.loopPoint.toString(16).padStart(6, '0')}
-                        </span>
+                        <label className="text-s330-muted block mb-1">Loop Point</label>
+                        <input
+                            type="number"
+                            min={0}
+                            max={0x221184}
+                            value={tone.wave.loopPoint}
+                            onChange={(e) => onUpdate?.({ ...tone, wave: { ...tone.wave, loopPoint: Math.max(0, parseInt(e.target.value) || 0) } })}
+                            onBlur={() => onCommit?.()}
+                            className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                        />
                     </div>
                     <div className="bg-s330-bg p-2 rounded">
-                        <span className="text-s330-muted">End: </span>
-                        <span className="font-mono text-s330-text">
-                            0x{tone.wave.endPoint.toString(16).padStart(6, '0')}
-                        </span>
+                        <label className="text-s330-muted block mb-1">End</label>
+                        <input
+                            type="number"
+                            min={4}
+                            max={0x221184}
+                            value={tone.wave.endPoint}
+                            onChange={(e) => onUpdate?.({ ...tone, wave: { ...tone.wave, endPoint: Math.max(4, parseInt(e.target.value) || 4) } })}
+                            onBlur={() => onCommit?.()}
+                            className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                        />
                     </div>
                 </div>
             </div>
