@@ -27,6 +27,7 @@ export function EnvelopeEditor({
     disabled = false,
 }: EnvelopeEditorProps) {
     const { levels, rates, sustainPoint, endPoint } = envelope;
+    const [isExpanded, setIsExpanded] = useState(false);
 
     const updateLevel = (index: number, value: number) => {
         const newLevels = [...levels] as S330Envelope['levels'];
@@ -61,21 +62,129 @@ export function EnvelopeEditor({
         });
     };
 
+    // Close expanded view on Escape key
+    useEffect(() => {
+        if (!isExpanded) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') setIsExpanded(false);
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isExpanded]);
+
     return (
         <div className={cn('space-y-4', disabled && 'opacity-50 pointer-events-none')}>
-            {/* Envelope visualization */}
-            <EnvelopeVisualization
-                levels={levels}
-                rates={rates}
-                sustainPoint={sustainPoint}
-                endPoint={endPoint}
-                label={label}
-                onLevelAndRateChange={updateLevelAndRate}
-                onDragEnd={onCommit}
-                disabled={disabled}
-            />
+            {/* Envelope visualization with expand button */}
+            <div className="relative">
+                <EnvelopeVisualization
+                    levels={levels}
+                    rates={rates}
+                    sustainPoint={sustainPoint}
+                    endPoint={endPoint}
+                    label={label}
+                    onLevelAndRateChange={updateLevelAndRate}
+                    onDragEnd={onCommit}
+                    disabled={disabled}
+                    expanded={false}
+                />
+                {/* Expand button */}
+                <button
+                    type="button"
+                    onClick={() => setIsExpanded(true)}
+                    className="absolute top-2 right-2 p-1 rounded bg-s330-accent/20 hover:bg-s330-accent/40 text-s330-muted hover:text-s330-text transition-colors"
+                    title="Expand envelope editor"
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                    </svg>
+                </button>
+            </div>
 
-            {/* Sustain and End point selectors */}
+            {/* Expanded fullscreen overlay */}
+            {isExpanded && (
+                <div
+                    className="fixed inset-0 z-50 bg-s330-bg/95 backdrop-blur-sm flex flex-col p-6"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) setIsExpanded(false);
+                    }}
+                >
+                    {/* Header */}
+                    <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-medium text-s330-text">{label} Envelope</h3>
+                        <button
+                            type="button"
+                            onClick={() => setIsExpanded(false)}
+                            className="p-2 rounded bg-s330-accent/20 hover:bg-s330-accent/40 text-s330-muted hover:text-s330-text transition-colors"
+                            title="Close (Esc)"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    {/* Expanded visualization */}
+                    <div className="flex-1 min-h-0">
+                        <EnvelopeVisualization
+                            levels={levels}
+                            rates={rates}
+                            sustainPoint={sustainPoint}
+                            endPoint={endPoint}
+                            label={label}
+                            onLevelAndRateChange={updateLevelAndRate}
+                            onDragEnd={onCommit}
+                            disabled={disabled}
+                            expanded={true}
+                        />
+                    </div>
+
+                    {/* Controls in expanded view */}
+                    <div className="mt-4 grid grid-cols-2 gap-4 max-w-md">
+                        <div className="space-y-1">
+                            <label className="text-xs text-s330-muted">Sustain Point</label>
+                            <select
+                                className="w-full bg-s330-card text-s330-text text-sm rounded px-2 py-1 border border-s330-accent/30"
+                                value={sustainPoint}
+                                onChange={(e) => {
+                                    updateSustainPoint(Number(e.target.value));
+                                    onCommit?.();
+                                }}
+                                disabled={disabled}
+                            >
+                                {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+                                    <option key={i} value={i} disabled={i >= endPoint}>
+                                        {i + 1}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-xs text-s330-muted">End Point</label>
+                            <select
+                                className="w-full bg-s330-card text-s330-text text-sm rounded px-2 py-1 border border-s330-accent/30"
+                                value={endPoint}
+                                onChange={(e) => {
+                                    updateEndPoint(Number(e.target.value));
+                                    onCommit?.();
+                                }}
+                                disabled={disabled}
+                            >
+                                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                                    <option key={i} value={i} disabled={i <= sustainPoint}>
+                                        {i}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="mt-2 text-xs text-s330-muted/60 text-center">
+                        Press Esc or click outside to close
+                    </div>
+                </div>
+            )}
+
+            {/* Sustain and End point selectors (normal view) */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                     <label className="text-xs text-s330-muted">Sustain Point</label>
@@ -182,6 +291,9 @@ export function EnvelopeEditor({
 /**
  * Interactive SVG visualization of the 8-point envelope
  * Points can be dragged to adjust level (vertical) and rate (horizontal)
+ *
+ * When expanded=true, uses full viewport width and taller height.
+ * Horizontal scaling is based on active points only for better precision.
  */
 function EnvelopeVisualization({
     levels,
@@ -192,6 +304,7 @@ function EnvelopeVisualization({
     onLevelAndRateChange,
     onDragEnd,
     disabled = false,
+    expanded = false,
 }: {
     levels: S330Envelope['levels'];
     rates: S330Envelope['rates'];
@@ -201,40 +314,64 @@ function EnvelopeVisualization({
     onLevelAndRateChange: (index: number, level: number, rate: number) => void;
     onDragEnd?: () => void;
     disabled?: boolean;
+    expanded?: boolean;
 }) {
     const [dragging, setDragging] = useState<number | null>(null);
     const svgRef = useRef<SVGSVGElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [dimensions, setDimensions] = useState({ width: 300, height: 120 });
 
-    const width = 300;
-    const height = 120;
-    const padding = 15;
+    // Update dimensions based on container size when expanded
+    useEffect(() => {
+        if (!expanded || !containerRef.current) {
+            setDimensions({ width: 300, height: 120 });
+            return;
+        }
+
+        const updateDimensions = () => {
+            if (containerRef.current) {
+                const rect = containerRef.current.getBoundingClientRect();
+                // Use container width, cap height at 400px for usability
+                setDimensions({
+                    width: Math.max(300, rect.width - 32), // Account for padding
+                    height: Math.min(400, Math.max(200, rect.height - 60)),
+                });
+            }
+        };
+
+        updateDimensions();
+        window.addEventListener('resize', updateDimensions);
+        return () => window.removeEventListener('resize', updateDimensions);
+    }, [expanded]);
+
+    const { width, height } = dimensions;
+    const padding = expanded ? 30 : 15;
     const drawWidth = width - padding * 2;
     const drawHeight = height - padding * 2;
 
-    // Calculate X positions based on cumulative time (sum of time units up to each point)
-    // Using a fixed max scale so that changing one point's rate doesn't affect points to its right
-    // Time unit = 128 - rate (rate 127 = fastest = 1 unit, rate 1 = slowest = 127 units)
-    // Max possible time = 8 points × 127 units = 1016
     // Clamp activePoints to valid range 1-8 defensively
     const activePoints = Math.max(1, Math.min(8, endPoint));
-    const MAX_TIME_UNITS = 8 * 127; // Fixed scale for consistent positioning
 
-    const xPositions = [padding];
-    let cumulativeTime = 0;
-
+    // Calculate cumulative time for active points only
+    // This allows the display to scale to fill the width based on actual envelope content
+    let totalTime = 0;
+    const times: number[] = [0];
     for (let i = 0; i < activePoints; i++) {
-        // Ensure rate is valid (1-127), default to 64 if invalid
         const rate = (rates[i] >= 1 && rates[i] <= 127) ? rates[i] : 64;
-        cumulativeTime += 128 - rate;
-        // Position based on cumulative time with fixed scale
-        // Points only move when their rate or earlier rates change
-        xPositions.push(padding + (cumulativeTime / MAX_TIME_UNITS) * drawWidth);
+        totalTime += 128 - rate;
+        times.push(totalTime);
     }
+
+    // Use actual total time for scaling (fills width based on active points)
+    // Minimum of 1 to avoid division by zero
+    const maxTime = Math.max(1, totalTime);
+
+    // Calculate X positions - now scaled to fill the full width
+    const xPositions = times.map((t) => padding + (t / maxTime) * drawWidth);
 
     // Calculate Y positions based on levels (0 at bottom, 127 at top)
     const yPositions = [height - padding];
     for (let i = 0; i < activePoints; i++) {
-        // Ensure level is valid (0-127), default to 0 if invalid
         const level = (levels[i] >= 0 && levels[i] <= 127) ? levels[i] : 0;
         yPositions.push(padding + (1 - level / 127) * drawHeight);
     }
@@ -272,26 +409,26 @@ function EnvelopeVisualization({
                 Math.max(0, Math.min(127, (1 - (pos.y - padding) / drawHeight) * 127))
             );
 
-            // Calculate rate (horizontal) - rate[i] controls time to reach point i
-            // xPositions[dragging] is the previous point, xPositions[dragging+1] is current
+            // Calculate rate (horizontal)
+            // The rate determines the time to reach this point from the previous point
+            // We need to calculate what rate would place this point at the mouse X position
             const prevPointX = xPositions[dragging];
-            const minX = prevPointX + 2; // Minimum distance from previous point (rate 127)
+            const minX = prevPointX + 2; // Minimum distance
             const maxX = width - padding;
             const clampedX = Math.max(minX, Math.min(maxX, pos.x));
 
-            // Convert segment width to time units using the fixed scale
-            // segmentWidth / drawWidth * MAX_TIME_UNITS = time units for this segment
+            // Convert X position to time, then to rate
+            // segmentWidth / drawWidth * maxTime = time units for this segment
             const segmentWidth = clampedX - prevPointX;
-            const timeUnits = (segmentWidth / drawWidth) * MAX_TIME_UNITS;
+            const timeUnits = (segmentWidth / drawWidth) * maxTime;
 
             // Convert time units to rate: rate = 128 - timeUnits
             // Clamp to valid range [1, 127]
             const newRate = Math.round(Math.max(1, Math.min(127, 128 - timeUnits)));
 
-            // Update both level and rate in a single state update
             onLevelAndRateChange(dragging, newLevel, newRate);
         },
-        [dragging, xPositions, activePoints, drawHeight, drawWidth, width, onLevelAndRateChange, padding]
+        [dragging, xPositions, drawHeight, drawWidth, width, maxTime, onLevelAndRateChange, padding]
     );
 
     const handleMouseUp = useCallback(() => {
@@ -313,8 +450,20 @@ function EnvelopeVisualization({
         }
     }, [dragging, handleMouseMove, handleMouseUp]);
 
+    const pointRadius = expanded ? 8 : 5;
+    const sustainPointRadius = expanded ? 10 : 6;
+    const hitAreaRadius = expanded ? 16 : 12;
+    const strokeWidth = expanded ? 3 : 2;
+
     return (
-        <div className="bg-s330-bg rounded-md p-2" aria-label={`${label} envelope`}>
+        <div
+            ref={containerRef}
+            className={cn(
+                'bg-s330-bg rounded-md',
+                expanded ? 'h-full p-4' : 'p-2'
+            )}
+            aria-label={`${label} envelope`}
+        >
             <svg
                 ref={svgRef}
                 width={width}
@@ -356,6 +505,20 @@ function EnvelopeVisualization({
                     />
                 ))}
 
+                {/* Vertical grid lines for each point (expanded mode) */}
+                {expanded && pathPoints.slice(1).map((p, i) => (
+                    <line
+                        key={`vgrid-${i}`}
+                        x1={p.x}
+                        y1={padding}
+                        x2={p.x}
+                        y2={height - padding}
+                        stroke="currentColor"
+                        strokeOpacity={0.05}
+                        strokeWidth={1}
+                    />
+                ))}
+
                 {/* Sustain point vertical line */}
                 {sustainPoint < activePoints && (
                     <line
@@ -375,7 +538,7 @@ function EnvelopeVisualization({
                     d={pathData}
                     fill="none"
                     stroke="#e94560"
-                    strokeWidth={2}
+                    strokeWidth={strokeWidth}
                     strokeLinecap="round"
                     strokeLinejoin="round"
                 />
@@ -387,7 +550,7 @@ function EnvelopeVisualization({
                         <circle
                             cx={p.x}
                             cy={p.y}
-                            r={12}
+                            r={hitAreaRadius}
                             fill="transparent"
                             className={cn(
                                 !disabled && i < endPoint && 'cursor-grab',
@@ -399,7 +562,7 @@ function EnvelopeVisualization({
                         <circle
                             cx={p.x}
                             cy={p.y}
-                            r={i === sustainPoint ? 6 : 5}
+                            r={i === sustainPoint ? sustainPointRadius : pointRadius}
                             fill={dragging === i ? '#ff6b8a' : i === sustainPoint ? '#e94560' : '#1a1a2e'}
                             stroke="#e94560"
                             strokeWidth={i === sustainPoint ? 2 : 1.5}
@@ -409,17 +572,31 @@ function EnvelopeVisualization({
                             )}
                             onMouseDown={handleMouseDown(i)}
                         />
-                        {/* Level value label */}
-                        {dragging === i && (
+                        {/* Level value label - always show in expanded, only when dragging in normal */}
+                        {(dragging === i || expanded) && (
                             <text
                                 x={p.x}
-                                y={p.y - 12}
+                                y={p.y - (expanded ? 16 : 12)}
+                                textAnchor="middle"
+                                fill="#e94560"
+                                fontSize={expanded ? 12 : 10}
+                                fontFamily="monospace"
+                            >
+                                {levels[i]}
+                            </text>
+                        )}
+                        {/* Rate value label (expanded mode only) */}
+                        {expanded && (
+                            <text
+                                x={p.x}
+                                y={height - padding + 16}
                                 textAnchor="middle"
                                 fill="#e94560"
                                 fontSize={10}
                                 fontFamily="monospace"
+                                opacity={0.6}
                             >
-                                {levels[i]}
+                                R{rates[i]}
                             </text>
                         )}
                     </g>
@@ -429,33 +606,35 @@ function EnvelopeVisualization({
                 <circle
                     cx={pathPoints[0].x}
                     cy={pathPoints[0].y}
-                    r={3}
+                    r={expanded ? 4 : 3}
                     fill="#1a1a2e"
                     stroke="#e94560"
                     strokeWidth={1}
                 />
             </svg>
 
-            {/* Point labels */}
-            <div className="flex justify-between text-[10px] text-s330-muted mt-1 px-1">
-                <span>Start</span>
-                {[1, 2, 3, 4, 5, 6, 7, 8].slice(0, endPoint).map((i) => (
-                    <span
-                        key={i}
-                        className={cn(
-                            i - 1 === sustainPoint && 'text-s330-highlight font-bold',
-                            i === endPoint && 'text-s330-accent'
-                        )}
-                    >
-                        {i}
-                    </span>
-                ))}
-            </div>
+            {/* Point labels (normal mode only) */}
+            {!expanded && (
+                <div className="flex justify-between text-[10px] text-s330-muted mt-1 px-1">
+                    <span>Start</span>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].slice(0, endPoint).map((i) => (
+                        <span
+                            key={i}
+                            className={cn(
+                                i - 1 === sustainPoint && 'text-s330-highlight font-bold',
+                                i === endPoint && 'text-s330-accent'
+                            )}
+                        >
+                            {i}
+                        </span>
+                    ))}
+                </div>
+            )}
 
-            {/* Drag hint */}
-            {!disabled && (
+            {/* Drag hint (normal mode only) */}
+            {!disabled && !expanded && (
                 <div className="text-[9px] text-s330-muted/60 text-center mt-1">
-                    Drag points to adjust level
+                    Drag points to adjust · Click expand for precision editing
                 </div>
             )}
         </div>
