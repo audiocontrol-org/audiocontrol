@@ -241,6 +241,10 @@ export type {
     ToneNameInfo,
     MultiPartConfig,
     S330DataType,
+    // Callback types for progressive loading
+    ProgressCallback,
+    PatchLoadedCallback,
+    ToneLoadedCallback,
 } from './s330-client.js';
 
 export {

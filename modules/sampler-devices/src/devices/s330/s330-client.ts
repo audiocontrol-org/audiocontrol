@@ -191,6 +191,30 @@ function nibblize(bytes: number[]): number[] {
     return nibbles;
 }
 
+// =============================================================================
+// Callback Types for Progressive Loading
+// =============================================================================
+
+/**
+ * Progress callback for batch operations
+ * @param current - Number of items loaded so far
+ * @param total - Total number of items to load
+ */
+export type ProgressCallback = (current: number, total: number) => void;
+
+/**
+ * Callback invoked when a patch is loaded
+ * @param index - Patch index (0-15)
+ * @param patch - The loaded patch data
+ */
+export type PatchLoadedCallback = (index: number, patch: S330Patch) => void;
+
+/**
+ * Callback invoked when a tone is loaded
+ * @param index - Tone index (0-31)
+ * @param tone - The loaded tone data
+ */
+export type ToneLoadedCallback = (index: number, tone: S330Tone) => void;
 
 // =============================================================================
 // S-330 Client Interface
@@ -209,14 +233,30 @@ export interface S330ClientInterface {
     getDeviceId(): number;
 
     // Patch operations
-    requestAllPatchNames(): Promise<PatchNameInfo[]>;
     requestPatchData(patchIndex: number): Promise<S330Patch | null>;
     sendPatchData(patchIndex: number, patch: S330PatchCommon): Promise<void>;
+    loadPatchRange(
+        startIndex: number,
+        count: number,
+        onProgress?: ProgressCallback,
+        onPatchLoaded?: PatchLoadedCallback,
+        forceReload?: boolean
+    ): Promise<S330Patch[]>;
+    getLoadedPatches(): (S330Patch | undefined)[];
+    invalidatePatchCache(): void;
 
     // Tone operations
-    requestAllToneNames(): Promise<ToneNameInfo[]>;
     requestToneData(toneIndex: number): Promise<S330Tone | null>;
     sendToneData(toneIndex: number, tone: S330Tone): Promise<void>;
+    loadToneRange(
+        startIndex: number,
+        count: number,
+        onProgress?: ProgressCallback,
+        onToneLoaded?: ToneLoadedCallback,
+        forceReload?: boolean
+    ): Promise<S330Tone[]>;
+    getLoadedTones(): (S330Tone | undefined)[];
+    invalidateToneCache(): void;
 
     // Multi mode configuration
     requestFunctionParameters(): Promise<MultiPartConfig[]>;
@@ -290,6 +330,11 @@ export function createS330Client(
     const writeFlushDelayMs = options.writeFlushDelayMs ?? 150;
 
     let connected = false;
+
+    // Patch and tone caches for progressive loading
+    // undefined = not loaded, S330Patch/S330Tone = loaded
+    let patchCache: (S330Patch | undefined)[] = new Array(MAX_PATCHES).fill(undefined);
+    let toneCache: (S330Tone | undefined)[] = new Array(MAX_TONES).fill(undefined);
 
     // Request queue for serializing MIDI operations
     // The S-330 can only handle one request at a time
@@ -703,75 +748,6 @@ export function createS330Client(
         },
 
         /**
-         * Request all patch names from the S-330
-         * Serialized to prevent concurrent request interference
-         *
-         * Patch names are stored in bank 00 00 (Patch parameters).
-         * Address format: 00 00 (pp*4) 00 where pp = patch number 0-63
-         * Name is the first 12 bytes (24 nibbles) at each patch address.
-         */
-        async requestAllPatchNames(): Promise<PatchNameInfo[]> {
-            return serialize(async () => {
-                const patches: PatchNameInfo[] = [];
-
-                // Request each patch name individually
-                // Patch address: 00 00 (pp*4) 00 - each patch has stride of 4
-                // Name is 12 bytes at offset 0
-                for (let i = 0; i < MAX_PATCHES; i++) {
-                    try {
-                        const address = [0x00, 0x00, i * 4, 0x00];
-                        const data = await requestDataWithAddress(address, 12);
-
-                        const name = parseName(data, 0, 12);
-                        const isEmpty =
-                            name === '' || name === '            ' || data.every((b) => b === 0);
-
-                        patches.push({ index: i, name, isEmpty });
-                    } catch (err) {
-                        // If we get RJC, the patch slot is empty
-                        patches.push({ index: i, name: '', isEmpty: true });
-                    }
-                }
-
-                return patches;
-            });
-        },
-
-        /**
-         * Request all tone names from the S-330
-         * Serialized to prevent concurrent request interference
-         */
-        async requestAllToneNames(): Promise<ToneNameInfo[]> {
-            return serialize(async () => {
-                const tones: ToneNameInfo[] = [];
-
-                // Request each tone name individually
-                // Tone address layout (empirically determined):
-                // - Tone 0 at byte2=4: [0x00, 0x02, 0x04, 0x00]
-                // - Tone N (N>=1) at byte2=8+N*2: [0x00, 0x02, 8+N*2, 0x00]
-                // Name is 8 bytes at offset 0 (16 nibbles at 00 00H)
-                for (let i = 0; i < MAX_TONES; i++) {
-                    try {
-                        const byte2 = i === 0 ? 4 : (8 + i * 2);
-                        const address = [0x00, 0x02, byte2, 0x00];
-                        const data = await requestDataWithAddress(address, 8);
-
-                        const name = parseName(data, 0, 8);
-                        const isEmpty =
-                            name === '' || name === '        ' || data.every((b) => b === 0);
-
-                        tones.push({ index: i, name, isEmpty });
-                    } catch (err) {
-                        // If we get RJC, the tone slot is empty
-                        tones.push({ index: i, name: '', isEmpty: true });
-                    }
-                }
-
-                return tones;
-            });
-        },
-
-        /**
          * Request full patch data for a specific patch
          * Serialized to prevent concurrent request interference
          */
@@ -797,6 +773,97 @@ export function createS330Client(
                     return null;
                 }
             });
+        },
+
+        /**
+         * Load a range of patches with progress callbacks and caching.
+         * Only fetches patches that aren't already cached (unless forceReload).
+         */
+        async loadPatchRange(
+            startIndex: number,
+            count: number,
+            onProgress?: ProgressCallback,
+            onPatchLoaded?: PatchLoadedCallback,
+            forceReload?: boolean
+        ): Promise<S330Patch[]> {
+            const endIndex = Math.min(startIndex + count, MAX_PATCHES);
+            const actualCount = endIndex - startIndex;
+
+            // If forcing reload, clear cache for this range
+            if (forceReload) {
+                for (let i = startIndex; i < endIndex; i++) {
+                    patchCache[i] = undefined;
+                }
+            }
+
+            return serialize(async () => {
+                console.log(`[S330Client] Loading patches ${startIndex}-${endIndex - 1}${forceReload ? ' (forced)' : ''}...`);
+                const result: S330Patch[] = [];
+                let loaded = 0;
+
+                for (let i = startIndex; i < endIndex; i++) {
+                    // Skip if already cached
+                    if (patchCache[i] !== undefined) {
+                        const patch = patchCache[i]!;
+                        result.push(patch);
+                        loaded++;
+                        onProgress?.(loaded, actualCount);
+                        onPatchLoaded?.(i, patch);
+                        continue;
+                    }
+
+                    let patch: S330Patch;
+                    try {
+                        const address = [0x00, 0x00, i * 4, 0x00];
+                        const data = await requestDataWithAddress(address, PATCH_TOTAL_SIZE);
+                        const common = parsePatchCommon(data);
+                        patch = { common };
+                    } catch {
+                        // Create placeholder for failed reads
+                        const placeholder: S330PatchCommon = {
+                            name: '!ERROR!',
+                            keyMode: 'normal',
+                            benderRange: 0,
+                            aftertouchSens: 0,
+                            aftertouchAssign: 'modulation',
+                            keyAssign: 'rotary',
+                            outputAssign: 0,
+                            level: 0,
+                            detune: 0,
+                            velocityThreshold: 0,
+                            velocityMixRatio: 0,
+                            octaveShift: 0,
+                            toneLayer1: [],
+                            toneLayer2: [],
+                            copySource: 0,
+                        };
+                        patch = { common: placeholder };
+                    }
+                    patchCache[i] = patch;
+                    result.push(patch);
+                    loaded++;
+                    onProgress?.(loaded, actualCount);
+                    onPatchLoaded?.(i, patch);
+                }
+
+                console.log(`[S330Client] Loaded ${result.length} patches (${startIndex}-${endIndex - 1})`);
+                return result;
+            });
+        },
+
+        /**
+         * Get currently loaded patches (sparse array, undefined = not loaded)
+         */
+        getLoadedPatches(): (S330Patch | undefined)[] {
+            return [...patchCache];
+        },
+
+        /**
+         * Invalidate the patch cache, forcing a reload on next access.
+         */
+        invalidatePatchCache(): void {
+            console.log('[S330Client] Invalidating patch cache');
+            patchCache = new Array(MAX_PATCHES).fill(undefined);
         },
 
         /**
@@ -831,6 +898,88 @@ export function createS330Client(
                     return null;
                 }
             });
+        },
+
+        /**
+         * Load a range of tones with progress callbacks and caching.
+         * Only fetches tones that aren't already cached (unless forceReload).
+         */
+        async loadToneRange(
+            startIndex: number,
+            count: number,
+            onProgress?: ProgressCallback,
+            onToneLoaded?: ToneLoadedCallback,
+            forceReload?: boolean
+        ): Promise<S330Tone[]> {
+            const endIndex = Math.min(startIndex + count, MAX_TONES);
+            const actualCount = endIndex - startIndex;
+
+            // If forcing reload, clear cache for this range
+            if (forceReload) {
+                for (let i = startIndex; i < endIndex; i++) {
+                    toneCache[i] = undefined;
+                }
+            }
+
+            return serialize(async () => {
+                console.log(`[S330Client] Loading tones ${startIndex}-${endIndex - 1}${forceReload ? ' (forced)' : ''}...`);
+                const result: S330Tone[] = [];
+                let loaded = 0;
+
+                for (let i = startIndex; i < endIndex; i++) {
+                    // Skip if already cached
+                    if (toneCache[i] !== undefined) {
+                        const tone = toneCache[i]!;
+                        result.push(tone);
+                        loaded++;
+                        onProgress?.(loaded, actualCount);
+                        onToneLoaded?.(i, tone);
+                        continue;
+                    }
+
+                    let tone: S330Tone | null;
+                    try {
+                        // Tone address layout (empirically determined):
+                        // - Tone 0 at byte2=4, Tone N (N>=1) at byte2=8+N*2
+                        const byte2 = i === 0 ? 4 : (8 + i * 2);
+                        const address = [0x00, 0x02, byte2, 0x00];
+                        const data = await requestDataWithAddress(address, TONE_BLOCK_SIZE);
+                        tone = parseTone(data);
+                    } catch {
+                        tone = null;
+                    }
+
+                    if (tone) {
+                        toneCache[i] = tone;
+                        result.push(tone);
+                        loaded++;
+                        onProgress?.(loaded, actualCount);
+                        onToneLoaded?.(i, tone);
+                    } else {
+                        // Skip empty/error tones but still update progress
+                        loaded++;
+                        onProgress?.(loaded, actualCount);
+                    }
+                }
+
+                console.log(`[S330Client] Loaded ${result.length} tones (${startIndex}-${endIndex - 1})`);
+                return result;
+            });
+        },
+
+        /**
+         * Get currently loaded tones (sparse array, undefined = not loaded)
+         */
+        getLoadedTones(): (S330Tone | undefined)[] {
+            return [...toneCache];
+        },
+
+        /**
+         * Invalidate the tone cache, forcing a reload on next access.
+         */
+        invalidateToneCache(): void {
+            console.log('[S330Client] Invalidating tone cache');
+            toneCache = new Array(MAX_TONES).fill(undefined);
         },
 
         /**

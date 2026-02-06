@@ -17,6 +17,9 @@ export type {
     ToneNameInfo,
     MultiPartConfig,
     S330DataType,
+    ProgressCallback,
+    PatchLoadedCallback,
+    ToneLoadedCallback,
 } from '@audiocontrol/sampler-devices/s330';
 
 export {
