@@ -291,11 +291,15 @@ export function parseEnvelope(
         data[levelsStart + 15] ?? 1,
     ];
 
+    // Ensure endPoint is clamped to valid range 1-8 to prevent display issues
+    const rawEndPoint = data[endOffset] ?? 8;
+    const endPoint = Math.max(1, Math.min(8, rawEndPoint));
+
     return {
         levels,
         rates,
         sustainPoint: data[sustainOffset] ?? 0,
-        endPoint: data[endOffset] ?? 8,
+        endPoint,
     };
 }
 
