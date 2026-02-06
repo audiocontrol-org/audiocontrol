@@ -159,16 +159,17 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
     }
   };
 
-  const handleOctaveShiftChange = async (shift: number) => {
-    updatePatch({ ...common, octaveShift: shift });
-    if (clientRef.current) {
-      try {
-        await clientRef.current.setPatchOctaveShift(index, shift);
-      } catch (err) {
-        console.error('[PatchEditor] Failed to update octave shift:', err);
-      }
-    }
-  };
+  // Disabled due to parsing bug - see issue #10
+  // const handleOctaveShiftChange = async (shift: number) => {
+  //   updatePatch({ ...common, octaveShift: shift });
+  //   if (clientRef.current) {
+  //     try {
+  //       await clientRef.current.setPatchOctaveShift(index, shift);
+  //     } catch (err) {
+  //       console.error('[PatchEditor] Failed to update octave shift:', err);
+  //     }
+  //   }
+  // };
 
   const handleKeyAssignChange = async (assign: 'rotary' | 'fix') => {
     updatePatch({ ...common, keyAssign: assign });
@@ -356,25 +357,19 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
             </select>
           </div>
 
-          {/* Oct.Shift */}
-          <div>
+          {/* Oct.Shift - disabled due to parsing bug, see issue #10 */}
+          <div className="opacity-50">
             <label className="text-xs text-s330-muted mb-1 block">Oct.Shift</label>
-            <select
-              value={common.octaveShift}
-              onChange={(e) => handleOctaveShiftChange(Number(e.target.value))}
+            <div
               className={cn(
                 'w-full px-2 py-1.5 text-sm font-mono',
-                'bg-s330-panel border border-s330-accent rounded',
-                'text-s330-text hover:bg-s330-accent/30',
-                'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                'bg-s330-panel border border-s330-accent/50 rounded',
+                'text-s330-muted cursor-not-allowed'
               )}
+              title="Temporarily disabled - see issue #10"
             >
-              {[-2, -1, 0, 1, 2].map((shift) => (
-                <option key={shift} value={shift}>
-                  {shift > 0 ? '+' : ''}{shift}
-                </option>
-              ))}
-            </select>
+              {common.octaveShift > 0 ? '+' : ''}{common.octaveShift}
+            </div>
           </div>
 
           {/* Output Assign */}
@@ -427,10 +422,6 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
               value={common.detune + 64}
               onChange={(val) => handleDetuneChange(val - 64)}
               onCommit={handleDetuneCommit}
-              formatValue={(val) => {
-                const detune = val - 64;
-                return `${detune > 0 ? '+' : ''}${detune}`;
-              }}
               disabled={common.keyMode !== 'unison'}
             />
           </div>

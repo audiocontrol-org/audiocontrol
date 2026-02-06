@@ -48,8 +48,6 @@ const navItems = [
   { to: '/play', label: 'Play' },
   { to: '/patches', label: 'Patches' },
   { to: '/tones', label: 'Tones' },
-  { to: '/sampling', label: 'Sampling' },
-  { to: '/library', label: 'Library' },
 ];
 
 export function Layout({ children }: LayoutProps) {

@@ -248,23 +248,6 @@ export function EnvelopeEditor({
                     </thead>
                     <tbody>
                         <tr className="border-b border-s330-accent/10">
-                            <td className="py-2 px-2 text-s330-muted">Level</td>
-                            {levels.map((level, i) => (
-                                <td key={i} className="py-1 px-1">
-                                    <input
-                                        type="number"
-                                        min={0}
-                                        max={127}
-                                        value={level}
-                                        onChange={(e) => updateLevel(i, Number(e.target.value))}
-                                        onBlur={() => onCommit?.()}
-                                        className="w-full bg-s330-bg text-s330-text text-center rounded px-1 py-0.5 border border-s330-accent/20"
-                                        disabled={disabled || i >= endPoint}
-                                    />
-                                </td>
-                            ))}
-                        </tr>
-                        <tr>
                             <td className="py-2 px-2 text-s330-muted">Rate</td>
                             {rates.map((rate, i) => (
                                 <td key={i} className="py-1 px-1">
@@ -274,6 +257,23 @@ export function EnvelopeEditor({
                                         max={127}
                                         value={rate}
                                         onChange={(e) => updateRate(i, Number(e.target.value))}
+                                        onBlur={() => onCommit?.()}
+                                        className="w-full bg-s330-bg text-s330-text text-center rounded px-1 py-0.5 border border-s330-accent/20"
+                                        disabled={disabled || i >= endPoint}
+                                    />
+                                </td>
+                            ))}
+                        </tr>
+                        <tr>
+                            <td className="py-2 px-2 text-s330-muted">Level</td>
+                            {levels.map((level, i) => (
+                                <td key={i} className="py-1 px-1">
+                                    <input
+                                        type="number"
+                                        min={0}
+                                        max={127}
+                                        value={level}
+                                        onChange={(e) => updateLevel(i, Number(e.target.value))}
                                         onBlur={() => onCommit?.()}
                                         className="w-full bg-s330-bg text-s330-text text-center rounded px-1 py-0.5 border border-s330-accent/20"
                                         disabled={disabled || i >= endPoint}
@@ -352,22 +352,19 @@ function EnvelopeVisualization({
     // Clamp activePoints to valid range 1-8 defensively
     const activePoints = Math.max(1, Math.min(8, endPoint));
 
-    // Calculate cumulative time for active points only
-    // This allows the display to scale to fill the width based on actual envelope content
-    let totalTime = 0;
-    const times: number[] = [0];
+    // Fixed scale based on number of active points
+    // Each point has a fixed horizontal range of 127 time units (max rate segment)
+    // This ensures dragging one point doesn't shift other points
+    const maxTime = activePoints * 127;
+
+    // Calculate cumulative time and X positions
+    const xPositions = [padding];
+    let cumulativeTime = 0;
     for (let i = 0; i < activePoints; i++) {
         const rate = (rates[i] >= 1 && rates[i] <= 127) ? rates[i] : 64;
-        totalTime += 128 - rate;
-        times.push(totalTime);
+        cumulativeTime += 128 - rate;
+        xPositions.push(padding + (cumulativeTime / maxTime) * drawWidth);
     }
-
-    // Use actual total time for scaling (fills width based on active points)
-    // Minimum of 1 to avoid division by zero
-    const maxTime = Math.max(1, totalTime);
-
-    // Calculate X positions - now scaled to fill the full width
-    const xPositions = times.map((t) => padding + (t / maxTime) * drawWidth);
 
     // Calculate Y positions based on levels (0 at bottom, 127 at top)
     const yPositions = [height - padding];
