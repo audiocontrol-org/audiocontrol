@@ -8,6 +8,13 @@
 import type { S330MidiIO, SysExCallback, MidiPortInfo, WebMidiAccess } from './types';
 
 /**
+ * Check if running in a secure context (HTTPS or localhost)
+ */
+export function isSecureContext(): boolean {
+  return typeof window !== 'undefined' && window.isSecureContext === true;
+}
+
+/**
  * Check if Web MIDI API is available
  */
 export function isWebMidiSupported(): boolean {
@@ -21,8 +28,26 @@ export function getBrowserCompatibility(): {
   supported: boolean;
   browser: string;
   notes: string;
+  requiresSecureContext?: boolean;
 } {
   const ua = navigator.userAgent;
+
+  // Check for secure context first - this affects all browsers
+  if (!isSecureContext()) {
+    let browser = 'your browser';
+    if (ua.includes('Chrome') || ua.includes('Chromium')) browser = 'Chrome';
+    else if (ua.includes('Edg')) browser = 'Edge';
+    else if (ua.includes('Opera')) browser = 'Opera';
+    else if (ua.includes('Firefox')) browser = 'Firefox';
+    else if (ua.includes('Safari') && !ua.includes('Chrome')) browser = 'Safari';
+
+    return {
+      supported: false,
+      browser,
+      notes: 'Web MIDI requires a secure context (HTTPS or localhost)',
+      requiresSecureContext: true,
+    };
+  }
 
   if (ua.includes('Chrome') || ua.includes('Chromium')) {
     return { supported: true, browser: 'Chrome', notes: 'Full support with SysEx' };

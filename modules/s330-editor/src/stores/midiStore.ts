@@ -47,7 +47,7 @@ function loadFromStorage(): { inputId: string | null; outputId: string | null; d
 
 interface MidiState {
   isSupported: boolean;
-  browserInfo: { supported: boolean; browser: string; notes: string };
+  browserInfo: { supported: boolean; browser: string; notes: string; requiresSecureContext?: boolean };
   inputs: MidiPortInfo[];
   outputs: MidiPortInfo[];
   sysExEnabled: boolean;
