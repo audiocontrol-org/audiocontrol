@@ -31,6 +31,7 @@ export function TonesPage() {
     setError,
     setProgress,
     clearProgress,
+    lastHardwareChange,
   } = useS330Store();
 
   const isConnected = status === 'connected' && adapter !== null;
@@ -178,6 +179,22 @@ export function TonesPage() {
       loadInitialData();
     }
   }, [isConnected, tones.length, isLoading, loadInitialData]);
+
+  // Refetch data when hardware parameters change
+  useEffect(() => {
+    if (!clientRef.current || !lastHardwareChange.type || isLoading) return;
+
+    const { type, index } = lastHardwareChange;
+
+    // Refetch the specific tone that changed
+    if (type === 'tone' && index !== null && index >= 0 && index < TOTAL_TONES) {
+      console.log('[TonesPage] Hardware tone change detected, refetching tone', index);
+      // Invalidate cache for this tone and refetch
+      clientRef.current.invalidateToneCache();
+      const bankIndex = Math.floor(index / TONES_PER_BANK);
+      loadToneBank(bankIndex, true);
+    }
+  }, [lastHardwareChange, isLoading, loadToneBank]);
 
   // Filter to only show loaded tones
   const loadedTones = tones.filter((t): t is S330Tone => t !== undefined);

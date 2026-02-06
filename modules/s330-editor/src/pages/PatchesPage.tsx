@@ -33,6 +33,7 @@ export function PatchesPage() {
     setError,
     setProgress,
     clearProgress,
+    lastHardwareChange,
   } = useS330Store();
 
   const isConnected = status === 'connected' && adapter !== null;
@@ -228,6 +229,28 @@ export function PatchesPage() {
       loadInitialData();
     }
   }, [isConnected, patches.length, isLoading, loadInitialData]);
+
+  // Refetch data when hardware parameters change
+  useEffect(() => {
+    if (!clientRef.current || !lastHardwareChange.type || isLoading) return;
+
+    const { type, index } = lastHardwareChange;
+
+    // Refetch the specific patch or tone that changed
+    if (type === 'patch' && index !== null && index >= 0 && index < TOTAL_PATCHES) {
+      console.log('[PatchesPage] Hardware patch change detected, refetching patch', index);
+      // Invalidate cache for this patch and refetch
+      clientRef.current.invalidatePatchCache();
+      const bankIndex = Math.floor(index / PATCHES_PER_BANK);
+      loadPatchBank(bankIndex, true);
+    } else if (type === 'tone' && index !== null && index >= 0 && index < TOTAL_TONES) {
+      console.log('[PatchesPage] Hardware tone change detected, refetching tone', index);
+      // Invalidate cache for this tone and refetch
+      clientRef.current.invalidateToneCache();
+      const bankIndex = Math.floor(index / TONES_PER_BANK);
+      loadToneBank(bankIndex, true);
+    }
+  }, [lastHardwareChange, isLoading, loadPatchBank, loadToneBank]);
 
   // Filter to only show loaded patches
   const loadedPatches = patches.filter((p): p is S330Patch => p !== undefined);

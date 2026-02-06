@@ -7,6 +7,7 @@ import { NavLink } from 'react-router-dom';
 import { MidiStatus } from '@/components/midi/MidiStatus';
 import { VideoCapture } from '@/components/video/VideoCapture';
 import { useMidiStore } from '@/stores/midiStore';
+import { useParameterListener } from '@/hooks/useParameterListener';
 import { cn } from '@/lib/utils';
 
 /**
@@ -57,6 +58,9 @@ export function Layout({ children }: LayoutProps) {
   useEffect(() => {
     initialize();
   }, [initialize]);
+
+  // Listen for hardware parameter changes and trigger UI updates
+  useParameterListener();
 
   return (
     <div className="min-h-screen bg-s330-bg">
