@@ -40,17 +40,10 @@ export function useParameterListener(
 
       // Parse the message
       const result = parseDT1Message(message, deviceId);
-
-      if (!result.valid || !result.event) {
-        // Log non-valid messages for debugging (but not spam for device ID mismatches)
-        if (result.reason && !result.reason.includes('Device ID mismatch')) {
-          console.log('[ParameterListener] Ignored:', result.reason);
-        }
-        return;
-      }
+      if (!result.valid || !result.event) return;
 
       const event = result.event;
-      console.log('[ParameterListener] Parameter change:', event.type, 'index:', event.index);
+      console.log('[ParameterListener] Hardware change:', event.type, event.index);
 
       // Notify the store to trigger UI updates
       notifyHardwareChange(event.type, event.index);
@@ -61,12 +54,10 @@ export function useParameterListener(
 
     // Register the listener
     adapter.onSysEx(handleSysEx);
-    console.log('[ParameterListener] Listening for hardware parameter changes');
 
     // Cleanup
     return () => {
       adapter.removeSysExListener(handleSysEx);
-      console.log('[ParameterListener] Stopped listening');
     };
   }, [adapter, deviceId, notifyHardwareChange]);
 }

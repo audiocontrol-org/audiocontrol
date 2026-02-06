@@ -143,7 +143,6 @@ export function createWebMidiAdapter(
 
   return {
     send(message: number[]): void {
-      console.log('[WebMIDI] Sending:', message.map(b => b.toString(16).padStart(2, '0')).join(' '));
       output.send(new Uint8Array(message));
     },
 
@@ -155,26 +154,14 @@ export function createWebMidiAdapter(
         const firstByte = data[0];
         const lastByte = data[data.length - 1];
 
-        // Log ALL incoming MIDI messages for debugging
-        console.log('[WebMIDI] Received MIDI:', {
-          length: data.length,
-          first: firstByte.toString(16),
-          last: lastByte.toString(16),
-          isSysExStart: firstByte === 0xF0,
-          isSysExEnd: lastByte === 0xF7,
-          preview: data.slice(0, 10).map(b => b.toString(16).padStart(2, '0')).join(' '),
-        });
-
         // Case 1: Complete SysEx message (starts with F0, ends with F7)
         if (firstByte === 0xF0 && lastByte === 0xF7) {
-          console.log('[WebMIDI] Complete SysEx:', data.length, 'bytes');
           callback(data);
           return;
         }
 
         // Case 2: Start of chunked SysEx (starts with F0, doesn't end with F7)
         if (firstByte === 0xF0 && lastByte !== 0xF7) {
-          console.log('[WebMIDI] SysEx chunk start:', data.length, 'bytes');
           sysExBuffer = data;
           isReceivingSysEx = true;
           return;
@@ -186,18 +173,14 @@ export function createWebMidiAdapter(
 
           // Check if this is the end chunk
           if (lastByte === 0xF7) {
-            console.log('[WebMIDI] SysEx chunk end, total:', sysExBuffer.length, 'bytes');
             callback(sysExBuffer);
             sysExBuffer = [];
             isReceivingSysEx = false;
-          } else {
-            console.log('[WebMIDI] SysEx chunk middle:', data.length, 'bytes, total:', sysExBuffer.length);
           }
           return;
         }
 
         // Case 4: Regular MIDI message (not SysEx) - ignore
-        // This includes note on/off, CC, etc.
       };
       listeners.set(callback, listener);
       input.addEventListener('midimessage', listener);
