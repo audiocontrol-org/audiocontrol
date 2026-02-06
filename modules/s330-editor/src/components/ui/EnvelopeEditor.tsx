@@ -215,14 +215,17 @@ function EnvelopeVisualization({
     // Using a fixed max scale so that changing one point's rate doesn't affect points to its right
     // Time unit = 128 - rate (rate 127 = fastest = 1 unit, rate 1 = slowest = 127 units)
     // Max possible time = 8 points × 127 units = 1016
-    const activePoints = endPoint;
+    // Clamp activePoints to valid range 1-8 defensively
+    const activePoints = Math.max(1, Math.min(8, endPoint));
     const MAX_TIME_UNITS = 8 * 127; // Fixed scale for consistent positioning
 
     const xPositions = [padding];
     let cumulativeTime = 0;
 
     for (let i = 0; i < activePoints; i++) {
-        cumulativeTime += 128 - rates[i];
+        // Ensure rate is valid (1-127), default to 64 if invalid
+        const rate = (rates[i] >= 1 && rates[i] <= 127) ? rates[i] : 64;
+        cumulativeTime += 128 - rate;
         // Position based on cumulative time with fixed scale
         // Points only move when their rate or earlier rates change
         xPositions.push(padding + (cumulativeTime / MAX_TIME_UNITS) * drawWidth);
@@ -231,7 +234,9 @@ function EnvelopeVisualization({
     // Calculate Y positions based on levels (0 at bottom, 127 at top)
     const yPositions = [height - padding];
     for (let i = 0; i < activePoints; i++) {
-        yPositions.push(padding + (1 - levels[i] / 127) * drawHeight);
+        // Ensure level is valid (0-127), default to 0 if invalid
+        const level = (levels[i] >= 0 && levels[i] <= 127) ? levels[i] : 0;
+        yPositions.push(padding + (1 - level / 127) * drawHeight);
     }
 
     // Build path
