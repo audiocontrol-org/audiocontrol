@@ -61,8 +61,11 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                                 min={0}
                                 max={127}
                                 value={tone.originalKey}
-                                onChange={(e) => onUpdate?.({ ...tone, originalKey: Math.max(0, Math.min(127, parseInt(e.target.value) || 0)) })}
-                                onBlur={() => onCommit?.()}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, originalKey: Math.max(0, Math.min(127, parseInt(e.target.value) || 0)) };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
                                 className="w-16 text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
                             />
                             <span className="text-sm text-s330-muted">{midiNoteToName(tone.originalKey)}</span>
@@ -122,8 +125,11 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                             min={0}
                             max={0x221180}
                             value={tone.wave.startPoint}
-                            onChange={(e) => onUpdate?.({ ...tone, wave: { ...tone.wave, startPoint: Math.max(0, parseInt(e.target.value) || 0) } })}
-                            onBlur={() => onCommit?.()}
+                            onChange={(e) => {
+                                const updatedTone = { ...tone, wave: { ...tone.wave, startPoint: Math.max(0, parseInt(e.target.value) || 0) } };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
+                            }}
                             className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
                         />
                     </div>
@@ -134,8 +140,11 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                             min={0}
                             max={0x221184}
                             value={tone.wave.loopPoint}
-                            onChange={(e) => onUpdate?.({ ...tone, wave: { ...tone.wave, loopPoint: Math.max(0, parseInt(e.target.value) || 0) } })}
-                            onBlur={() => onCommit?.()}
+                            onChange={(e) => {
+                                const updatedTone = { ...tone, wave: { ...tone.wave, loopPoint: Math.max(0, parseInt(e.target.value) || 0) } };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
+                            }}
                             className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
                         />
                     </div>
@@ -146,8 +155,11 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                             min={4}
                             max={0x221184}
                             value={tone.wave.endPoint}
-                            onChange={(e) => onUpdate?.({ ...tone, wave: { ...tone.wave, endPoint: Math.max(4, parseInt(e.target.value) || 4) } })}
-                            onBlur={() => onCommit?.()}
+                            onChange={(e) => {
+                                const updatedTone = { ...tone, wave: { ...tone.wave, endPoint: Math.max(4, parseInt(e.target.value) || 4) } };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
+                            }}
                             className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
                         />
                     </div>
