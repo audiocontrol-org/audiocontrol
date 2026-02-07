@@ -61,7 +61,7 @@ export function Layout({ children }: LayoutProps) {
   return (
     <div className="min-h-screen bg-s330-bg">
       {/* Header */}
-      <header className="bg-s330-panel border-b border-s330-accent">
+      <header className="sticky top-0 z-40 bg-s330-panel border-b border-s330-accent">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Logo */}
