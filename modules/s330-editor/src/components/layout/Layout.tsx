@@ -125,8 +125,8 @@ export function Layout({ children }: LayoutProps) {
         onClick={toggleDrawer}
         className={cn(
           'fixed top-3 z-50',
-          'flex items-center justify-center',
-          'w-6 h-16 rounded-r-md',
+          'flex items-center justify-center gap-1',
+          'w-12 h-16 rounded-r-md',
           'bg-s330-panel border border-l-0 border-s330-accent',
           'text-s330-muted hover:text-s330-text hover:bg-s330-accent/50',
           'shadow-md transition-[left] duration-200 ease-in-out'
@@ -134,7 +134,17 @@ export function Layout({ children }: LayoutProps) {
         style={{ left: isDrawerOpen ? drawerWidth : 0 }}
         title={isDrawerOpen ? 'Close S-330 display' : 'Open S-330 display'}
       >
+        {/* Video camera icon */}
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+          />
+        </svg>
+        {/* Chevron */}
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
