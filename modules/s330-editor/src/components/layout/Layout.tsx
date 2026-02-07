@@ -120,6 +120,30 @@ export function Layout({ children }: LayoutProps) {
         />
       </aside>
 
+      {/* Drawer toggle tab - consistent position at drawer edge */}
+      <button
+        onClick={toggleDrawer}
+        className={cn(
+          'fixed top-1/2 -translate-y-1/2 z-50',
+          'flex items-center justify-center',
+          'w-6 h-16 rounded-r-md',
+          'bg-s330-panel border border-l-0 border-s330-accent',
+          'text-s330-muted hover:text-s330-text hover:bg-s330-accent/50',
+          'shadow-md transition-[left] duration-200 ease-in-out'
+        )}
+        style={{ left: isDrawerOpen ? drawerWidth : 0 }}
+        title={isDrawerOpen ? 'Close S-330 display' : 'Open S-330 display'}
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d={isDrawerOpen ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'}
+          />
+        </svg>
+      </button>
+
       {/* Main page wrapper - pushed right when drawer is open */}
       <div
         className="min-h-screen flex flex-col transition-[margin] duration-200"
@@ -129,24 +153,8 @@ export function Layout({ children }: LayoutProps) {
         <header className="sticky top-0 z-40 bg-s330-panel border-b border-s330-accent">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            {/* Logo and Drawer Toggle */}
+            {/* Logo */}
             <div className="flex items-center gap-4">
-              <button
-                onClick={toggleDrawer}
-                className={cn(
-                  'p-2 rounded transition-colors',
-                  isDrawerOpen
-                    ? 'bg-s330-highlight text-white'
-                    : 'text-s330-muted hover:text-s330-text hover:bg-s330-accent/50'
-                )}
-                title={isDrawerOpen ? 'Close S-330 display' : 'Open S-330 display'}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
-                  />
-                </svg>
-              </button>
               <h1 className="text-xl font-bold text-s330-text">
                 <span className="text-s330-highlight">S-330</span> Editor
               </h1>
