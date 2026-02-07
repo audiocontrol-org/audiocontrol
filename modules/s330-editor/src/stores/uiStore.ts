@@ -25,6 +25,8 @@ function loadSidebarWidth(): number {
 interface UIState {
   /** Whether the video panel is docked in the sidebar */
   isVideoDocked: boolean;
+  /** Whether the floating video panel is expanded */
+  isVideoExpanded: boolean;
   /** Width of the sidebar in pixels */
   sidebarWidth: number;
 }
@@ -34,6 +36,8 @@ interface UIActions {
   toggleVideoDock: () => void;
   /** Set dock state */
   setVideoDocked: (docked: boolean) => void;
+  /** Set video expanded state */
+  setVideoExpanded: (expanded: boolean) => void;
   /** Set sidebar width */
   setSidebarWidth: (width: number) => void;
 }
@@ -42,18 +46,27 @@ type UIStore = UIState & UIActions;
 
 export const useUIStore = create<UIStore>((set) => ({
   isVideoDocked: localStorage.getItem(STORAGE_KEY_DOCKED) === 'true',
+  isVideoExpanded: false,
   sidebarWidth: loadSidebarWidth(),
 
   toggleVideoDock: () =>
     set((state) => {
       const newValue = !state.isVideoDocked;
       localStorage.setItem(STORAGE_KEY_DOCKED, String(newValue));
-      return { isVideoDocked: newValue };
+      // When undocking, expand the floating panel
+      return {
+        isVideoDocked: newValue,
+        isVideoExpanded: !newValue ? true : state.isVideoExpanded,
+      };
     }),
 
   setVideoDocked: (docked) => {
     localStorage.setItem(STORAGE_KEY_DOCKED, String(docked));
     set({ isVideoDocked: docked });
+  },
+
+  setVideoExpanded: (expanded) => {
+    set({ isVideoExpanded: expanded });
   },
 
   setSidebarWidth: (width) => {

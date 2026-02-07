@@ -53,7 +53,8 @@ interface VideoCaptureProps {
 
 export function VideoCapture({ isDocked = false }: VideoCaptureProps) {
   const toggleVideoDock = useUIStore((state) => state.toggleVideoDock);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const isExpanded = useUIStore((state) => state.isVideoExpanded);
+  const setIsExpanded = useUIStore((state) => state.setVideoExpanded);
   const [devices, setDevices] = useState<VideoDevice[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
