@@ -120,11 +120,11 @@ export function Layout({ children }: LayoutProps) {
         />
       </aside>
 
-      {/* Drawer toggle tab - consistent position at drawer edge */}
+      {/* Drawer toggle tab - aligned with header */}
       <button
         onClick={toggleDrawer}
         className={cn(
-          'fixed top-1/2 -translate-y-1/2 z-50',
+          'fixed top-3 z-50',
           'flex items-center justify-center',
           'w-6 h-16 rounded-r-md',
           'bg-s330-panel border border-l-0 border-s330-accent',
