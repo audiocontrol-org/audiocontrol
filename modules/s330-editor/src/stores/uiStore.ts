@@ -4,7 +4,7 @@
 
 import { create } from 'zustand';
 
-const STORAGE_KEY_DOCKED = 's330-video-docked';
+const STORAGE_KEY_DRAWER = 's330-drawer-open';
 const STORAGE_KEY_SIDEBAR_WIDTH = 's330-sidebar-width';
 
 const DEFAULT_SIDEBAR_WIDTH = 320;
@@ -23,56 +23,43 @@ function loadSidebarWidth(): number {
 }
 
 interface UIState {
-  /** Whether the video panel is docked in the sidebar */
-  isVideoDocked: boolean;
-  /** Whether the floating video panel is expanded */
-  isVideoExpanded: boolean;
-  /** Width of the sidebar in pixels */
-  sidebarWidth: number;
+  /** Whether the video drawer is open */
+  isDrawerOpen: boolean;
+  /** Width of the drawer in pixels */
+  drawerWidth: number;
 }
 
 interface UIActions {
-  /** Toggle dock state */
-  toggleVideoDock: () => void;
-  /** Set dock state */
-  setVideoDocked: (docked: boolean) => void;
-  /** Set video expanded state */
-  setVideoExpanded: (expanded: boolean) => void;
-  /** Set sidebar width */
-  setSidebarWidth: (width: number) => void;
+  /** Toggle drawer open/closed */
+  toggleDrawer: () => void;
+  /** Set drawer open state */
+  setDrawerOpen: (open: boolean) => void;
+  /** Set drawer width */
+  setDrawerWidth: (width: number) => void;
 }
 
 type UIStore = UIState & UIActions;
 
 export const useUIStore = create<UIStore>((set) => ({
-  isVideoDocked: localStorage.getItem(STORAGE_KEY_DOCKED) === 'true',
-  isVideoExpanded: false,
-  sidebarWidth: loadSidebarWidth(),
+  isDrawerOpen: localStorage.getItem(STORAGE_KEY_DRAWER) === 'true',
+  drawerWidth: loadSidebarWidth(),
 
-  toggleVideoDock: () =>
+  toggleDrawer: () =>
     set((state) => {
-      const newValue = !state.isVideoDocked;
-      localStorage.setItem(STORAGE_KEY_DOCKED, String(newValue));
-      // When undocking, expand the floating panel
-      return {
-        isVideoDocked: newValue,
-        isVideoExpanded: !newValue ? true : state.isVideoExpanded,
-      };
+      const newValue = !state.isDrawerOpen;
+      localStorage.setItem(STORAGE_KEY_DRAWER, String(newValue));
+      return { isDrawerOpen: newValue };
     }),
 
-  setVideoDocked: (docked) => {
-    localStorage.setItem(STORAGE_KEY_DOCKED, String(docked));
-    set({ isVideoDocked: docked });
+  setDrawerOpen: (open) => {
+    localStorage.setItem(STORAGE_KEY_DRAWER, String(open));
+    set({ isDrawerOpen: open });
   },
 
-  setVideoExpanded: (expanded) => {
-    set({ isVideoExpanded: expanded });
-  },
-
-  setSidebarWidth: (width) => {
+  setDrawerWidth: (width) => {
     const clampedWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, width));
     localStorage.setItem(STORAGE_KEY_SIDEBAR_WIDTH, String(clampedWidth));
-    set({ sidebarWidth: clampedWidth });
+    set({ drawerWidth: clampedWidth });
   },
 }));
 

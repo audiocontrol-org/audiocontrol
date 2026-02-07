@@ -6,6 +6,7 @@
  * alongside the editor.
  *
  * Includes collapsible front panel controls for remote S-330 operation.
+ * Renders as drawer content - the drawer itself is managed by Layout.
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -17,44 +18,20 @@ import { ValueButtons } from '@/components/front-panel/ValueButtons';
 import { FunctionButtonRow } from '@/components/front-panel/FunctionButtonRow';
 
 const STORAGE_KEY_DEVICE = 's330-video-device';
-const STORAGE_KEY_POSITION = 's330-video-position';
-const STORAGE_KEY_SIZE = 's330-video-size';
 const STORAGE_KEY_CONTROLS = 's330-video-controls-expanded';
-
-const DEFAULT_WIDTH = 400;
-const DEFAULT_HEIGHT = 300;
-const MIN_WIDTH = 200;
-const MIN_HEIGHT = 150;
-const CONTROLS_HEIGHT = 180;
 
 interface VideoDevice {
   deviceId: string;
   label: string;
 }
 
-interface Position {
-  x: number;
-  y: number;
-}
-
-interface Size {
-  width: number;
-  height: number;
-}
-
 // Check if mediaDevices API is available (requires secure context)
 const isMediaDevicesAvailable = () =>
   typeof navigator !== 'undefined' && navigator.mediaDevices !== undefined;
 
-interface VideoCaptureProps {
-  /** Whether the panel is docked in the sidebar */
-  isDocked?: boolean;
-}
-
-export function VideoCapture({ isDocked = false }: VideoCaptureProps) {
-  const toggleVideoDock = useUIStore((state) => state.toggleVideoDock);
-  const isExpanded = useUIStore((state) => state.isVideoExpanded);
-  const setIsExpanded = useUIStore((state) => state.setVideoExpanded);
+export function VideoCapture() {
+  const toggleDrawer = useUIStore((state) => state.toggleDrawer);
+  const isDrawerOpen = useUIStore((state) => state.isDrawerOpen);
   const [devices, setDevices] = useState<VideoDevice[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -69,35 +46,8 @@ export function VideoCapture({ isDocked = false }: VideoCaptureProps) {
   // Front panel hook
   const { pressButton, isConnected, isPressing, activeButton, navigationMode, setNavigationMode } = useFrontPanel();
 
-  // Position and size state
-  const [position, setPosition] = useState<Position>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY_POSITION);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch { /* ignore */ }
-    }
-    return { x: 16, y: window.innerHeight - DEFAULT_HEIGHT - 16 };
-  });
-
-  const [size, setSize] = useState<Size>(() => {
-    const saved = localStorage.getItem(STORAGE_KEY_SIZE);
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch { /* ignore */ }
-    }
-    return { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };
-  });
-
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const isDragging = useRef(false);
-  const isResizing = useRef(false);
-  const resizeDirection = useRef<string | null>(null);
-  const dragOffset = useRef({ x: 0, y: 0 });
-  const resizeStart = useRef({ x: 0, y: 0, width: 0, height: 0, posX: 0, posY: 0 });
 
   // Enumerate available video devices
   const enumerateDevices = useCallback(async () => {
@@ -190,116 +140,6 @@ export function VideoCapture({ isDocked = false }: VideoCaptureProps) {
     }
   };
 
-  // Drag handlers
-  const handleDragStart = useCallback((e: React.MouseEvent) => {
-    if ((e.target as HTMLElement).closest('button, select, input')) return;
-    isDragging.current = true;
-    dragOffset.current = {
-      x: e.clientX - position.x,
-      y: e.clientY - position.y,
-    };
-    e.preventDefault();
-  }, [position]);
-
-  const handleDragMove = useCallback((e: MouseEvent) => {
-    if (!isDragging.current) return;
-    const totalHeight = size.height + (controlsExpanded ? CONTROLS_HEIGHT : 0);
-    const newX = Math.max(0, Math.min(window.innerWidth - size.width, e.clientX - dragOffset.current.x));
-    const newY = Math.max(0, Math.min(window.innerHeight - totalHeight, e.clientY - dragOffset.current.y));
-    setPosition({ x: newX, y: newY });
-  }, [size, controlsExpanded]);
-
-  const handleDragEnd = useCallback(() => {
-    if (isDragging.current) {
-      isDragging.current = false;
-      localStorage.setItem(STORAGE_KEY_POSITION, JSON.stringify(position));
-    }
-  }, [position]);
-
-  // Resize handlers
-  const handleResizeStart = useCallback((direction: string) => (e: React.MouseEvent) => {
-    isResizing.current = true;
-    resizeDirection.current = direction;
-    resizeStart.current = {
-      x: e.clientX,
-      y: e.clientY,
-      width: size.width,
-      height: size.height,
-      posX: position.x,
-      posY: position.y,
-    };
-    e.preventDefault();
-    e.stopPropagation();
-  }, [size, position]);
-
-  const handleResizeMove = useCallback((e: MouseEvent) => {
-    if (!isResizing.current || !resizeDirection.current) return;
-
-    const deltaX = e.clientX - resizeStart.current.x;
-    const deltaY = e.clientY - resizeStart.current.y;
-    const dir = resizeDirection.current;
-
-    let newWidth = resizeStart.current.width;
-    let newHeight = resizeStart.current.height;
-    let newX = resizeStart.current.posX;
-    let newY = resizeStart.current.posY;
-
-    if (dir.includes('e')) {
-      newWidth = Math.max(MIN_WIDTH, resizeStart.current.width + deltaX);
-    }
-    if (dir.includes('w')) {
-      const proposedWidth = resizeStart.current.width - deltaX;
-      if (proposedWidth >= MIN_WIDTH) {
-        newWidth = proposedWidth;
-        newX = resizeStart.current.posX + deltaX;
-      }
-    }
-    if (dir.includes('s')) {
-      newHeight = Math.max(MIN_HEIGHT, resizeStart.current.height + deltaY);
-    }
-    if (dir.includes('n')) {
-      const proposedHeight = resizeStart.current.height - deltaY;
-      if (proposedHeight >= MIN_HEIGHT) {
-        newHeight = proposedHeight;
-        newY = resizeStart.current.posY + deltaY;
-      }
-    }
-
-    newX = Math.max(0, Math.min(window.innerWidth - newWidth, newX));
-    newY = Math.max(0, newY);
-
-    setSize({ width: newWidth, height: newHeight });
-    setPosition({ x: newX, y: newY });
-  }, []);
-
-  const handleResizeEnd = useCallback(() => {
-    if (isResizing.current) {
-      isResizing.current = false;
-      resizeDirection.current = null;
-      localStorage.setItem(STORAGE_KEY_SIZE, JSON.stringify(size));
-      localStorage.setItem(STORAGE_KEY_POSITION, JSON.stringify(position));
-    }
-  }, [size, position]);
-
-  // Global mouse event listeners
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      handleDragMove(e);
-      handleResizeMove(e);
-    };
-    const handleMouseUp = () => {
-      handleDragEnd();
-      handleResizeEnd();
-    };
-
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [handleDragMove, handleDragEnd, handleResizeMove, handleResizeEnd]);
-
   // Check for permission on mount
   useEffect(() => {
     if (!isMediaDevicesAvailable()) {
@@ -342,32 +182,24 @@ export function VideoCapture({ isDocked = false }: VideoCaptureProps) {
     };
   }, []);
 
-  // Auto-start stream when expanded or docked
+  // Auto-start stream when drawer opens
   useEffect(() => {
-    const shouldStream = (isExpanded || isDocked) && selectedDeviceId && hasPermission;
+    const shouldStream = isDrawerOpen && selectedDeviceId && hasPermission;
     if (shouldStream && !isStreaming) {
       startStream();
-    } else if (!isExpanded && !isDocked && isStreaming) {
+    } else if (!isDrawerOpen && isStreaming) {
       stopStream();
     }
-  }, [isExpanded, isDocked, selectedDeviceId, hasPermission, isStreaming, startStream, stopStream]);
+  }, [isDrawerOpen, selectedDeviceId, hasPermission, isStreaming, startStream, stopStream]);
 
   // Persist controls expanded state
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY_CONTROLS, String(controlsExpanded));
-
-    if (controlsExpanded) {
-      const totalHeight = size.height + CONTROLS_HEIGHT;
-      const maxY = window.innerHeight - totalHeight;
-      if (position.y > maxY) {
-        setPosition(prev => ({ ...prev, y: Math.max(0, maxY) }));
-      }
-    }
-  }, [controlsExpanded, size.height, position.y]);
+  }, [controlsExpanded]);
 
   // Keyboard shortcut handler for front panel
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (!isExpanded || !controlsExpanded || !isConnected || isPressing) return;
+    if (!isDrawerOpen || !controlsExpanded || !isConnected || isPressing) return;
 
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
@@ -406,7 +238,7 @@ export function VideoCapture({ isDocked = false }: VideoCaptureProps) {
       e.preventDefault();
       pressButton(funcButton);
     }
-  }, [isExpanded, controlsExpanded, isConnected, isPressing, pressButton]);
+  }, [isDrawerOpen, controlsExpanded, isConnected, isPressing, pressButton]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -415,499 +247,186 @@ export function VideoCapture({ isDocked = false }: VideoCaptureProps) {
     };
   }, [handleKeyDown]);
 
-  // Docked mode - render directly without floating container
-  if (isDocked) {
-    return (
-      <div className="flex flex-col h-full">
-        {/* Header */}
-        <div className="flex items-center justify-between px-3 py-2 border-b border-s330-accent select-none">
-          <span className="text-sm font-medium text-s330-text">S-330 Display</span>
-          <div className="flex items-center gap-2">
-            {isStreaming && (
-              <span className="flex items-center gap-1 text-xs text-green-400">
-                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                Live
-              </span>
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 py-2 border-b border-s330-accent select-none">
+        <span className="text-sm font-medium text-s330-text">S-330 Display</span>
+        <div className="flex items-center gap-2">
+          {isStreaming && (
+            <span className="flex items-center gap-1 text-xs text-green-400">
+              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+              Live
+            </span>
+          )}
+          <span
+            className={cn(
+              'w-2 h-2 rounded-full',
+              isConnected ? 'bg-green-400' : 'bg-s330-muted'
             )}
-            <span
-              className={cn(
-                'w-2 h-2 rounded-full',
-                isConnected ? 'bg-green-400' : 'bg-s330-muted'
-              )}
-              title={isConnected ? 'MIDI connected' : 'MIDI disconnected'}
-            />
-            <button
-              onClick={() => setControlsExpanded(!controlsExpanded)}
-              className={cn(
-                'p-1 text-s330-muted hover:text-s330-text',
-                controlsExpanded && 'text-s330-highlight'
-              )}
-              title={controlsExpanded ? 'Hide controls' : 'Show controls'}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                />
-              </svg>
-            </button>
-            <button
-              onClick={toggleVideoDock}
-              className="p-1 text-s330-highlight hover:text-s330-text"
-              title="Undock panel"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* Video area */}
-        <div className="aspect-video bg-black relative">
-          <video ref={videoRef} className="w-full h-full object-contain" playsInline muted />
-
-          {isSecureContext === false && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-s330-bg/90 p-4">
-              <p className="text-s330-muted text-sm text-center">
-                Video capture requires HTTPS or localhost
-              </p>
-            </div>
-          )}
-
-          {isSecureContext && hasPermission === null && (
-            <div className="absolute inset-0 flex items-center justify-center bg-s330-bg/90">
-              <button
-                onClick={requestPermission}
-                className="px-4 py-2 bg-s330-highlight text-white rounded hover:bg-s330-highlight/80"
-              >
-                Enable Camera Access
-              </button>
-            </div>
-          )}
-
-          {hasPermission === false && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-s330-bg/90 p-4">
-              <p className="text-s330-muted text-sm text-center mb-2">Camera access denied</p>
-              <button
-                onClick={requestPermission}
-                className="px-3 py-1 text-sm bg-s330-accent text-s330-text rounded hover:bg-s330-accent/80"
-              >
-                Try Again
-              </button>
-            </div>
-          )}
-
-          {hasPermission && devices.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center bg-s330-bg/90">
-              <p className="text-s330-muted text-sm">No video devices found</p>
-            </div>
-          )}
-
-          {error && (
-            <div className="absolute bottom-0 left-0 right-0 bg-red-500/80 px-2 py-1">
-              <p className="text-white text-xs">{error}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Video Controls */}
-        {hasPermission && devices.length > 0 && (
-          <div className="p-2 border-t border-s330-accent flex gap-2 items-center">
-            <select
-              value={selectedDeviceId ?? ''}
-              onChange={(e) => handleDeviceChange(e.target.value)}
-              className={cn(
-                'flex-1 px-2 py-1 text-xs font-mono',
-                'bg-s330-bg border border-s330-accent rounded',
-                'text-s330-text focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-              )}
-            >
-              {devices.map((device) => (
-                <option key={device.deviceId} value={device.deviceId}>
-                  {device.label}
-                </option>
-              ))}
-            </select>
-            {!isStreaming ? (
-              <button
-                onClick={startStream}
-                disabled={!selectedDeviceId}
-                className={cn(
-                  'px-3 py-1 text-xs rounded',
-                  'bg-s330-highlight text-white hover:bg-s330-highlight/80',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
-                )}
-              >
-                Start
-              </button>
-            ) : (
-              <button
-                onClick={stopStream}
-                className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-500"
-              >
-                Stop
-              </button>
+            title={isConnected ? 'MIDI connected' : 'MIDI disconnected'}
+          />
+          <button
+            onClick={() => setControlsExpanded(!controlsExpanded)}
+            className={cn(
+              'p-1 text-s330-muted hover:text-s330-text',
+              controlsExpanded && 'text-s330-highlight'
             )}
+            title={controlsExpanded ? 'Hide controls' : 'Show controls'}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+              />
+            </svg>
+          </button>
+          <button
+            onClick={toggleDrawer}
+            className="p-1 text-s330-muted hover:text-s330-text"
+            title="Close drawer"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      {/* Video area */}
+      <div className="aspect-video bg-black relative">
+        <video ref={videoRef} className="w-full h-full object-contain" playsInline muted />
+
+        {isSecureContext === false && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-s330-bg/90 p-4">
+            <p className="text-s330-muted text-sm text-center">
+              Video capture requires HTTPS or localhost
+            </p>
           </div>
         )}
 
-        {/* Front Panel Controls */}
-        {controlsExpanded && (
-          <div className="p-3 border-t border-s330-accent space-y-3">
-            <FunctionButtonRow
+        {isSecureContext && hasPermission === null && (
+          <div className="absolute inset-0 flex items-center justify-center bg-s330-bg/90">
+            <button
+              onClick={requestPermission}
+              className="px-4 py-2 bg-s330-highlight text-white rounded hover:bg-s330-highlight/80"
+            >
+              Enable Camera Access
+            </button>
+          </div>
+        )}
+
+        {hasPermission === false && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-s330-bg/90 p-4">
+            <p className="text-s330-muted text-sm text-center mb-2">Camera access denied</p>
+            <button
+              onClick={requestPermission}
+              className="px-3 py-1 text-sm bg-s330-accent text-s330-text rounded hover:bg-s330-accent/80"
+            >
+              Try Again
+            </button>
+          </div>
+        )}
+
+        {hasPermission && devices.length === 0 && (
+          <div className="absolute inset-0 flex items-center justify-center bg-s330-bg/90">
+            <p className="text-s330-muted text-sm">No video devices found</p>
+          </div>
+        )}
+
+        {error && (
+          <div className="absolute bottom-0 left-0 right-0 bg-red-500/80 px-2 py-1">
+            <p className="text-white text-xs">{error}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Video Controls */}
+      {hasPermission && devices.length > 0 && (
+        <div className="p-2 border-t border-s330-accent flex gap-2 items-center">
+          <select
+            value={selectedDeviceId ?? ''}
+            onChange={(e) => handleDeviceChange(e.target.value)}
+            className={cn(
+              'flex-1 px-2 py-1 text-xs font-mono',
+              'bg-s330-bg border border-s330-accent rounded',
+              'text-s330-text focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+            )}
+          >
+            {devices.map((device) => (
+              <option key={device.deviceId} value={device.deviceId}>
+                {device.label}
+              </option>
+            ))}
+          </select>
+          {!isStreaming ? (
+            <button
+              onClick={startStream}
+              disabled={!selectedDeviceId}
+              className={cn(
+                'px-3 py-1 text-xs rounded',
+                'bg-s330-highlight text-white hover:bg-s330-highlight/80',
+                'disabled:opacity-50 disabled:cursor-not-allowed'
+              )}
+            >
+              Start
+            </button>
+          ) : (
+            <button
+              onClick={stopStream}
+              className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-500"
+            >
+              Stop
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Front Panel Controls */}
+      {controlsExpanded && (
+        <div className="p-3 border-t border-s330-accent space-y-3">
+          <FunctionButtonRow
+            onPress={pressButton}
+            activeButton={activeButton}
+            disabled={!isConnected || isPressing}
+          />
+          <div className="flex items-center justify-between gap-2">
+            <NavigationPad
               onPress={pressButton}
               activeButton={activeButton}
               disabled={!isConnected || isPressing}
             />
-            <div className="flex items-center justify-between gap-2">
-              <NavigationPad
-                onPress={pressButton}
-                activeButton={activeButton}
-                disabled={!isConnected || isPressing}
-              />
-              <ValueButtons
-                onPress={pressButton}
-                activeButton={activeButton}
-                disabled={!isConnected || isPressing}
-              />
-            </div>
-            <div className="flex items-center justify-center gap-2">
-              <span className="text-xs text-s330-muted">Arrow category:</span>
-              <button
-                onClick={() => setNavigationMode(navigationMode === 'menu' ? 'sampling' : 'menu')}
-                className={cn(
-                  'px-2 py-0.5 text-xs font-mono rounded border transition-colors',
-                  navigationMode === 'menu'
-                    ? 'bg-s330-accent border-s330-accent text-s330-text'
-                    : 'bg-s330-highlight border-s330-highlight text-white'
-                )}
-                title={navigationMode === 'menu'
-                  ? 'Category 01: works in menus and parameter screens'
-                  : 'Category 09: works on sampling screen'}
-              >
-                {navigationMode === 'menu' ? '01' : '09'}
-              </button>
-            </div>
-            <div className="text-xs text-s330-muted text-center opacity-70">
-              Keys: Arrows, +/-, Enter, F1-F5
-            </div>
-            {!isConnected && (
-              <div className="text-xs text-s330-muted text-center">
-                Connect MIDI to use controls
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-
-  // Floating mode - original behavior
-  return (
-    <div className="fixed bottom-4 left-4 z-50">
-      {/* Collapsed button */}
-      {!isExpanded && (
-        <button
-          onClick={() => setIsExpanded(true)}
-          className={cn(
-            'px-4 py-2 rounded-lg shadow-lg',
-            'bg-s330-panel border border-s330-accent',
-            'text-s330-text hover:bg-s330-accent/50',
-            'transition-colors flex items-center gap-2'
-          )}
-        >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+            <ValueButtons
+              onPress={pressButton}
+              activeButton={activeButton}
+              disabled={!isConnected || isPressing}
             />
-          </svg>
-          Video
-        </button>
-      )}
-
-      {/* Expanded panel */}
-      {isExpanded && (
-        <div
-          ref={panelRef}
-          style={{
-            position: 'fixed',
-            left: position.x,
-            top: position.y,
-            width: size.width,
-            height: size.height + (controlsExpanded ? CONTROLS_HEIGHT : 0),
-          }}
-          className={cn(
-            'bg-s330-panel border border-s330-accent rounded-lg shadow-xl',
-            'overflow-hidden flex flex-col'
-          )}
-        >
-          {/* Header - draggable */}
-          <div
-            className="flex items-center justify-between px-3 py-2 border-b border-s330-accent cursor-move select-none"
-            onMouseDown={handleDragStart}
-          >
-            <span className="text-sm font-medium text-s330-text">S-330 Display</span>
-            <div className="flex items-center gap-2">
-              {isStreaming && (
-                <span className="flex items-center gap-1 text-xs text-green-400">
-                  <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                  Live
-                </span>
-              )}
-              {/* MIDI connection indicator */}
-              <span
-                className={cn(
-                  'w-2 h-2 rounded-full',
-                  isConnected ? 'bg-green-400' : 'bg-s330-muted'
-                )}
-                title={isConnected ? 'MIDI connected' : 'MIDI disconnected'}
-              />
-              {/* Controls toggle button */}
-              <button
-                onClick={() => setControlsExpanded(!controlsExpanded)}
-                className={cn(
-                  'p-1 text-s330-muted hover:text-s330-text',
-                  controlsExpanded && 'text-s330-highlight'
-                )}
-                title={controlsExpanded ? 'Hide controls' : 'Show controls'}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-                  />
-                </svg>
-              </button>
-              {/* Dock/undock button */}
-              <button
-                onClick={toggleVideoDock}
-                className={cn(
-                  'p-1 text-s330-muted hover:text-s330-text',
-                  isDocked && 'text-s330-highlight'
-                )}
-                title={isDocked ? 'Undock panel' : 'Dock to sidebar'}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {isDocked ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 5a1 1 0 011-1h4a1 1 0 011 1v14a1 1 0 01-1 1h-4a1 1 0 01-1-1V5z" />
-                  )}
-                </svg>
-              </button>
-              {/* Close button - only in floating mode */}
-              {!isDocked && (
-                <button
-                  onClick={() => setIsExpanded(false)}
-                  className="p-1 text-s330-muted hover:text-s330-text"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              )}
-            </div>
           </div>
-
-          {/* Video area */}
-          <div className="flex-1 bg-black relative min-h-0">
-            <video
-              ref={videoRef}
-              className="w-full h-full object-contain"
-              playsInline
-              muted
-            />
-
-            {/* Secure context required overlay */}
-            {isSecureContext === false && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-s330-bg/90 p-4">
-                <p className="text-s330-muted text-sm text-center">
-                  Video capture requires HTTPS or localhost
-                </p>
-              </div>
-            )}
-
-            {/* Permission request overlay */}
-            {isSecureContext && hasPermission === null && (
-              <div className="absolute inset-0 flex items-center justify-center bg-s330-bg/90">
-                <button
-                  onClick={requestPermission}
-                  className="px-4 py-2 bg-s330-highlight text-white rounded hover:bg-s330-highlight/80"
-                >
-                  Enable Camera Access
-                </button>
-              </div>
-            )}
-
-            {/* No permission overlay */}
-            {hasPermission === false && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-s330-bg/90 p-4">
-                <p className="text-s330-muted text-sm text-center mb-2">
-                  Camera access denied
-                </p>
-                <button
-                  onClick={requestPermission}
-                  className="px-3 py-1 text-sm bg-s330-accent text-s330-text rounded hover:bg-s330-accent/80"
-                >
-                  Try Again
-                </button>
-              </div>
-            )}
-
-            {/* No devices overlay */}
-            {hasPermission && devices.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center bg-s330-bg/90">
-                <p className="text-s330-muted text-sm">No video devices found</p>
-              </div>
-            )}
-
-            {/* Error overlay */}
-            {error && (
-              <div className="absolute bottom-0 left-0 right-0 bg-red-500/80 px-2 py-1">
-                <p className="text-white text-xs">{error}</p>
-              </div>
-            )}
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-xs text-s330-muted">Arrow category:</span>
+            <button
+              onClick={() => setNavigationMode(navigationMode === 'menu' ? 'sampling' : 'menu')}
+              className={cn(
+                'px-2 py-0.5 text-xs font-mono rounded border transition-colors',
+                navigationMode === 'menu'
+                  ? 'bg-s330-accent border-s330-accent text-s330-text'
+                  : 'bg-s330-highlight border-s330-highlight text-white'
+              )}
+              title={navigationMode === 'menu'
+                ? 'Category 01: works in menus and parameter screens'
+                : 'Category 09: works on sampling screen'}
+            >
+              {navigationMode === 'menu' ? '01' : '09'}
+            </button>
           </div>
-
-          {/* Video Controls */}
-          {hasPermission && devices.length > 0 && (
-            <div className="p-2 border-t border-s330-accent flex gap-2 items-center">
-              <select
-                value={selectedDeviceId ?? ''}
-                onChange={(e) => handleDeviceChange(e.target.value)}
-                className={cn(
-                  'flex-1 px-2 py-1 text-xs font-mono',
-                  'bg-s330-bg border border-s330-accent rounded',
-                  'text-s330-text focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                )}
-              >
-                {devices.map((device) => (
-                  <option key={device.deviceId} value={device.deviceId}>
-                    {device.label}
-                  </option>
-                ))}
-              </select>
-
-              {!isStreaming ? (
-                <button
-                  onClick={startStream}
-                  disabled={!selectedDeviceId}
-                  className={cn(
-                    'px-3 py-1 text-xs rounded',
-                    'bg-s330-highlight text-white hover:bg-s330-highlight/80',
-                    'disabled:opacity-50 disabled:cursor-not-allowed'
-                  )}
-                >
-                  Start
-                </button>
-              ) : (
-                <button
-                  onClick={stopStream}
-                  className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-500"
-                >
-                  Stop
-                </button>
-              )}
+          <div className="text-xs text-s330-muted text-center opacity-70">
+            Keys: Arrows, +/-, Enter, F1-F5
+          </div>
+          {!isConnected && (
+            <div className="text-xs text-s330-muted text-center">
+              Connect MIDI to use controls
             </div>
           )}
-
-          {/* Front Panel Controls */}
-          {controlsExpanded && (
-            <div className="p-3 border-t border-s330-accent space-y-3">
-              <FunctionButtonRow
-                onPress={pressButton}
-                activeButton={activeButton}
-                disabled={!isConnected || isPressing}
-              />
-
-              <div className="flex items-center justify-between gap-2">
-                <NavigationPad
-                  onPress={pressButton}
-                  activeButton={activeButton}
-                  disabled={!isConnected || isPressing}
-                />
-
-                <ValueButtons
-                  onPress={pressButton}
-                  activeButton={activeButton}
-                  disabled={!isConnected || isPressing}
-                />
-              </div>
-
-              {/* Mode toggle */}
-              <div className="flex items-center justify-center gap-2">
-                <span className="text-xs text-s330-muted">Arrow category:</span>
-                <button
-                  onClick={() => setNavigationMode(navigationMode === 'menu' ? 'sampling' : 'menu')}
-                  className={cn(
-                    'px-2 py-0.5 text-xs font-mono rounded border transition-colors',
-                    navigationMode === 'menu'
-                      ? 'bg-s330-accent border-s330-accent text-s330-text'
-                      : 'bg-s330-highlight border-s330-highlight text-white'
-                  )}
-                  title={navigationMode === 'menu'
-                    ? 'Category 01: works in menus and parameter screens'
-                    : 'Category 09: works on sampling screen'}
-                >
-                  {navigationMode === 'menu' ? '01' : '09'}
-                </button>
-              </div>
-
-              <div className="text-xs text-s330-muted text-center opacity-70">
-                Keys: Arrows, +/-, Enter, F1-F5
-              </div>
-
-              {!isConnected && (
-                <div className="text-xs text-s330-muted text-center">
-                  Connect MIDI to use controls
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Resize handles - corners */}
-          <div
-            onMouseDown={handleResizeStart('nw')}
-            className="absolute top-0 left-0 w-3 h-3 cursor-nw-resize hover:bg-s330-highlight/30"
-          />
-          <div
-            onMouseDown={handleResizeStart('ne')}
-            className="absolute top-0 right-0 w-3 h-3 cursor-ne-resize hover:bg-s330-highlight/30"
-          />
-          <div
-            onMouseDown={handleResizeStart('sw')}
-            className="absolute bottom-0 left-0 w-3 h-3 cursor-sw-resize hover:bg-s330-highlight/30"
-          />
-          <div
-            onMouseDown={handleResizeStart('se')}
-            className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize hover:bg-s330-highlight/30"
-            style={{
-              background: 'linear-gradient(135deg, transparent 50%, rgba(233, 69, 96, 0.5) 50%)',
-            }}
-          />
-
-          {/* Resize handles - edges */}
-          <div
-            onMouseDown={handleResizeStart('n')}
-            className="absolute top-0 left-3 right-3 h-1 cursor-n-resize hover:bg-s330-highlight/30"
-          />
-          <div
-            onMouseDown={handleResizeStart('s')}
-            className="absolute bottom-0 left-3 right-3 h-1 cursor-s-resize hover:bg-s330-highlight/30"
-          />
-          <div
-            onMouseDown={handleResizeStart('w')}
-            className="absolute left-0 top-3 bottom-3 w-1 cursor-w-resize hover:bg-s330-highlight/30"
-          />
-          <div
-            onMouseDown={handleResizeStart('e')}
-            className="absolute right-0 top-3 bottom-3 w-1 cursor-e-resize hover:bg-s330-highlight/30"
-          />
         </div>
       )}
     </div>

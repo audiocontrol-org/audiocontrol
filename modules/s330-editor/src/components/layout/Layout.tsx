@@ -53,9 +53,10 @@ const navItems = [
 
 export function Layout({ children }: LayoutProps) {
   const initialize = useMidiStore((state) => state.initialize);
-  const isVideoDocked = useUIStore((state) => state.isVideoDocked);
-  const sidebarWidth = useUIStore((state) => state.sidebarWidth);
-  const setSidebarWidth = useUIStore((state) => state.setSidebarWidth);
+  const isDrawerOpen = useUIStore((state) => state.isDrawerOpen);
+  const toggleDrawer = useUIStore((state) => state.toggleDrawer);
+  const drawerWidth = useUIStore((state) => state.drawerWidth);
+  const setDrawerWidth = useUIStore((state) => state.setDrawerWidth);
 
   const [isResizing, setIsResizing] = useState(false);
   const resizeStartX = useRef(0);
@@ -66,13 +67,13 @@ export function Layout({ children }: LayoutProps) {
     initialize();
   }, [initialize]);
 
-  // Handle sidebar resize
+  // Handle drawer resize
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     setIsResizing(true);
     resizeStartX.current = e.clientX;
-    resizeStartWidth.current = sidebarWidth;
+    resizeStartWidth.current = drawerWidth;
     e.preventDefault();
-  }, [sidebarWidth]);
+  }, [drawerWidth]);
 
   useEffect(() => {
     if (!isResizing) return;
@@ -80,7 +81,7 @@ export function Layout({ children }: LayoutProps) {
     const handleMouseMove = (e: MouseEvent) => {
       const delta = e.clientX - resizeStartX.current;
       const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, resizeStartWidth.current + delta));
-      setSidebarWidth(newWidth);
+      setDrawerWidth(newWidth);
     };
 
     const handleMouseUp = () => {
@@ -93,16 +94,59 @@ export function Layout({ children }: LayoutProps) {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, setSidebarWidth]);
+  }, [isResizing, setDrawerWidth]);
 
   return (
     <div className="min-h-screen bg-s330-bg flex flex-col">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-s330-panel border-b border-s330-accent">
+      {/* Video Capture Drawer - slides in from left */}
+      <aside
+        className={cn(
+          'fixed top-0 left-0 h-full z-50',
+          'border-r border-s330-accent bg-s330-panel overflow-y-auto',
+          'shadow-xl transition-transform duration-200 ease-in-out',
+          isDrawerOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+        style={{ width: drawerWidth }}
+      >
+        <VideoCapture />
+        {/* Resize handle */}
+        <div
+          onMouseDown={handleResizeStart}
+          className={cn(
+            'absolute top-0 right-0 w-1 h-full cursor-ew-resize',
+            'hover:bg-s330-highlight/50 transition-colors',
+            isResizing && 'bg-s330-highlight'
+          )}
+        />
+      </aside>
+
+      {/* Main page wrapper - pushed right when drawer is open */}
+      <div
+        className="min-h-screen flex flex-col transition-[margin] duration-200"
+        style={{ marginLeft: isDrawerOpen ? drawerWidth : 0 }}
+      >
+        {/* Header */}
+        <header className="sticky top-0 z-40 bg-s330-panel border-b border-s330-accent">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
-            {/* Logo */}
+            {/* Logo and Drawer Toggle */}
             <div className="flex items-center gap-4">
+              <button
+                onClick={toggleDrawer}
+                className={cn(
+                  'p-2 rounded transition-colors',
+                  isDrawerOpen
+                    ? 'bg-s330-highlight text-white'
+                    : 'text-s330-muted hover:text-s330-text hover:bg-s330-accent/50'
+                )}
+                title={isDrawerOpen ? 'Close S-330 display' : 'Open S-330 display'}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                    d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+                  />
+                </svg>
+              </button>
               <h1 className="text-xl font-bold text-s330-text">
                 <span className="text-s330-highlight">S-330</span> Editor
               </h1>
@@ -141,46 +185,22 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </header>
 
-      {/* Main area with optional sidebar */}
-      <div className="flex-1 flex">
-        {/* Left sidebar for docked video */}
-        {isVideoDocked && (
-          <aside
-            className="flex-shrink-0 border-r border-s330-accent bg-s330-panel overflow-y-auto relative"
-            style={{ width: sidebarWidth }}
-          >
-            <VideoCapture isDocked />
-            {/* Resize handle */}
-            <div
-              onMouseDown={handleResizeStart}
-              className={cn(
-                'absolute top-0 right-0 w-1 h-full cursor-ew-resize',
-                'hover:bg-s330-highlight/50 transition-colors',
-                isResizing && 'bg-s330-highlight'
-              )}
-            />
-          </aside>
-        )}
+      {/* Main content */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+          {children}
+        </main>
 
-        {/* Main content */}
-        <div className="flex-1 flex flex-col min-w-0">
-          <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
-            {children}
-          </main>
-
-          {/* Footer */}
-          <footer className="border-t border-s330-accent py-4">
-            <div className="max-w-7xl mx-auto px-4 text-center text-xs text-s330-muted">
-              S-330 Editor uses Web MIDI API for direct browser-to-hardware communication.
-              <br />
-              Requires Chrome, Edge, or Opera browser.
-            </div>
-          </footer>
-        </div>
+        {/* Footer */}
+        <footer className="border-t border-s330-accent py-4">
+          <div className="max-w-7xl mx-auto px-4 text-center text-xs text-s330-muted">
+            S-330 Editor uses Web MIDI API for direct browser-to-hardware communication.
+            <br />
+            Requires Chrome, Edge, or Opera browser.
+          </div>
+        </footer>
       </div>
-
-      {/* Video Capture Panel - floating mode (includes front panel controls) */}
-      {!isVideoDocked && <VideoCapture />}
+      </div>
     </div>
   );
 }
