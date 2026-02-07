@@ -2,11 +2,12 @@
  * Main application layout
  */
 
-import { ReactNode, useEffect, useCallback } from 'react';
+import { ReactNode, useEffect, useCallback, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { MidiStatus } from '@/components/midi/MidiStatus';
 import { VideoCapture } from '@/components/video/VideoCapture';
 import { useMidiStore } from '@/stores/midiStore';
+import { useUIStore, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
 
 /**
@@ -52,14 +53,50 @@ const navItems = [
 
 export function Layout({ children }: LayoutProps) {
   const initialize = useMidiStore((state) => state.initialize);
+  const isVideoDocked = useUIStore((state) => state.isVideoDocked);
+  const sidebarWidth = useUIStore((state) => state.sidebarWidth);
+  const setSidebarWidth = useUIStore((state) => state.setSidebarWidth);
+
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartX = useRef(0);
+  const resizeStartWidth = useRef(0);
 
   // Initialize MIDI on app start
   useEffect(() => {
     initialize();
   }, [initialize]);
 
+  // Handle sidebar resize
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    setIsResizing(true);
+    resizeStartX.current = e.clientX;
+    resizeStartWidth.current = sidebarWidth;
+    e.preventDefault();
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = e.clientX - resizeStartX.current;
+      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, resizeStartWidth.current + delta));
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, setSidebarWidth]);
+
   return (
-    <div className="min-h-screen bg-s330-bg">
+    <div className="min-h-screen bg-s330-bg flex flex-col">
       {/* Header */}
       <header className="sticky top-0 z-40 bg-s330-panel border-b border-s330-accent">
         <div className="max-w-7xl mx-auto px-4 py-3">
@@ -104,22 +141,46 @@ export function Layout({ children }: LayoutProps) {
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {children}
-      </main>
+      {/* Main area with optional sidebar */}
+      <div className="flex-1 flex">
+        {/* Left sidebar for docked video */}
+        {isVideoDocked && (
+          <aside
+            className="flex-shrink-0 border-r border-s330-accent bg-s330-panel overflow-y-auto relative"
+            style={{ width: sidebarWidth }}
+          >
+            <VideoCapture isDocked />
+            {/* Resize handle */}
+            <div
+              onMouseDown={handleResizeStart}
+              className={cn(
+                'absolute top-0 right-0 w-1 h-full cursor-ew-resize',
+                'hover:bg-s330-highlight/50 transition-colors',
+                isResizing && 'bg-s330-highlight'
+              )}
+            />
+          </aside>
+        )}
 
-      {/* Footer */}
-      <footer className="border-t border-s330-accent py-4 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 text-center text-xs text-s330-muted">
-          S-330 Editor uses Web MIDI API for direct browser-to-hardware communication.
-          <br />
-          Requires Chrome, Edge, or Opera browser.
+        {/* Main content */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+            {children}
+          </main>
+
+          {/* Footer */}
+          <footer className="border-t border-s330-accent py-4">
+            <div className="max-w-7xl mx-auto px-4 text-center text-xs text-s330-muted">
+              S-330 Editor uses Web MIDI API for direct browser-to-hardware communication.
+              <br />
+              Requires Chrome, Edge, or Opera browser.
+            </div>
+          </footer>
         </div>
-      </footer>
+      </div>
 
-      {/* Video Capture Panel (includes front panel controls) */}
-      <VideoCapture />
+      {/* Video Capture Panel - floating mode (includes front panel controls) */}
+      {!isVideoDocked && <VideoCapture />}
     </div>
   );
 }

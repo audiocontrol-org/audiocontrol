@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { useUIStore } from '@/stores/uiStore';
 import { useFrontPanel, type NavigationButton, type FunctionButton } from '@/hooks/useFrontPanel';
 import { NavigationPad } from '@/components/front-panel/NavigationPad';
 import { ValueButtons } from '@/components/front-panel/ValueButtons';
@@ -45,7 +46,13 @@ interface Size {
 const isMediaDevicesAvailable = () =>
   typeof navigator !== 'undefined' && navigator.mediaDevices !== undefined;
 
-export function VideoCapture() {
+interface VideoCaptureProps {
+  /** Whether the panel is docked in the sidebar */
+  isDocked?: boolean;
+}
+
+export function VideoCapture({ isDocked = false }: VideoCaptureProps) {
+  const toggleVideoDock = useUIStore((state) => state.toggleVideoDock);
   const [isExpanded, setIsExpanded] = useState(false);
   const [devices, setDevices] = useState<VideoDevice[]>([]);
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
@@ -69,7 +76,7 @@ export function VideoCapture() {
         return JSON.parse(saved);
       } catch { /* ignore */ }
     }
-    return { x: window.innerWidth - DEFAULT_WIDTH - 16, y: window.innerHeight - DEFAULT_HEIGHT - 16 };
+    return { x: 16, y: window.innerHeight - DEFAULT_HEIGHT - 16 };
   });
 
   const [size, setSize] = useState<Size>(() => {
@@ -334,14 +341,15 @@ export function VideoCapture() {
     };
   }, []);
 
-  // Auto-start stream when expanded
+  // Auto-start stream when expanded or docked
   useEffect(() => {
-    if (isExpanded && selectedDeviceId && hasPermission && !isStreaming) {
+    const shouldStream = (isExpanded || isDocked) && selectedDeviceId && hasPermission;
+    if (shouldStream && !isStreaming) {
       startStream();
-    } else if (!isExpanded && isStreaming) {
+    } else if (!isExpanded && !isDocked && isStreaming) {
       stopStream();
     }
-  }, [isExpanded, selectedDeviceId, hasPermission, isStreaming, startStream, stopStream]);
+  }, [isExpanded, isDocked, selectedDeviceId, hasPermission, isStreaming, startStream, stopStream]);
 
   // Persist controls expanded state
   useEffect(() => {
@@ -406,8 +414,197 @@ export function VideoCapture() {
     };
   }, [handleKeyDown]);
 
+  // Docked mode - render directly without floating container
+  if (isDocked) {
+    return (
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="flex items-center justify-between px-3 py-2 border-b border-s330-accent select-none">
+          <span className="text-sm font-medium text-s330-text">S-330 Display</span>
+          <div className="flex items-center gap-2">
+            {isStreaming && (
+              <span className="flex items-center gap-1 text-xs text-green-400">
+                <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+                Live
+              </span>
+            )}
+            <span
+              className={cn(
+                'w-2 h-2 rounded-full',
+                isConnected ? 'bg-green-400' : 'bg-s330-muted'
+              )}
+              title={isConnected ? 'MIDI connected' : 'MIDI disconnected'}
+            />
+            <button
+              onClick={() => setControlsExpanded(!controlsExpanded)}
+              className={cn(
+                'p-1 text-s330-muted hover:text-s330-text',
+                controlsExpanded && 'text-s330-highlight'
+              )}
+              title={controlsExpanded ? 'Hide controls' : 'Show controls'}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
+                />
+              </svg>
+            </button>
+            <button
+              onClick={toggleVideoDock}
+              className="p-1 text-s330-highlight hover:text-s330-text"
+              title="Undock panel"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                  d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Video area */}
+        <div className="aspect-video bg-black relative">
+          <video ref={videoRef} className="w-full h-full object-contain" playsInline muted />
+
+          {isSecureContext === false && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-s330-bg/90 p-4">
+              <p className="text-s330-muted text-sm text-center">
+                Video capture requires HTTPS or localhost
+              </p>
+            </div>
+          )}
+
+          {isSecureContext && hasPermission === null && (
+            <div className="absolute inset-0 flex items-center justify-center bg-s330-bg/90">
+              <button
+                onClick={requestPermission}
+                className="px-4 py-2 bg-s330-highlight text-white rounded hover:bg-s330-highlight/80"
+              >
+                Enable Camera Access
+              </button>
+            </div>
+          )}
+
+          {hasPermission === false && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-s330-bg/90 p-4">
+              <p className="text-s330-muted text-sm text-center mb-2">Camera access denied</p>
+              <button
+                onClick={requestPermission}
+                className="px-3 py-1 text-sm bg-s330-accent text-s330-text rounded hover:bg-s330-accent/80"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {hasPermission && devices.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center bg-s330-bg/90">
+              <p className="text-s330-muted text-sm">No video devices found</p>
+            </div>
+          )}
+
+          {error && (
+            <div className="absolute bottom-0 left-0 right-0 bg-red-500/80 px-2 py-1">
+              <p className="text-white text-xs">{error}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Video Controls */}
+        {hasPermission && devices.length > 0 && (
+          <div className="p-2 border-t border-s330-accent flex gap-2 items-center">
+            <select
+              value={selectedDeviceId ?? ''}
+              onChange={(e) => handleDeviceChange(e.target.value)}
+              className={cn(
+                'flex-1 px-2 py-1 text-xs font-mono',
+                'bg-s330-bg border border-s330-accent rounded',
+                'text-s330-text focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+              )}
+            >
+              {devices.map((device) => (
+                <option key={device.deviceId} value={device.deviceId}>
+                  {device.label}
+                </option>
+              ))}
+            </select>
+            {!isStreaming ? (
+              <button
+                onClick={startStream}
+                disabled={!selectedDeviceId}
+                className={cn(
+                  'px-3 py-1 text-xs rounded',
+                  'bg-s330-highlight text-white hover:bg-s330-highlight/80',
+                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                )}
+              >
+                Start
+              </button>
+            ) : (
+              <button
+                onClick={stopStream}
+                className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-500"
+              >
+                Stop
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Front Panel Controls */}
+        {controlsExpanded && (
+          <div className="p-3 border-t border-s330-accent space-y-3">
+            <FunctionButtonRow
+              onPress={pressButton}
+              activeButton={activeButton}
+              disabled={!isConnected || isPressing}
+            />
+            <div className="flex items-center justify-between gap-2">
+              <NavigationPad
+                onPress={pressButton}
+                activeButton={activeButton}
+                disabled={!isConnected || isPressing}
+              />
+              <ValueButtons
+                onPress={pressButton}
+                activeButton={activeButton}
+                disabled={!isConnected || isPressing}
+              />
+            </div>
+            <div className="flex items-center justify-center gap-2">
+              <span className="text-xs text-s330-muted">Arrow category:</span>
+              <button
+                onClick={() => setNavigationMode(navigationMode === 'menu' ? 'sampling' : 'menu')}
+                className={cn(
+                  'px-2 py-0.5 text-xs font-mono rounded border transition-colors',
+                  navigationMode === 'menu'
+                    ? 'bg-s330-accent border-s330-accent text-s330-text'
+                    : 'bg-s330-highlight border-s330-highlight text-white'
+                )}
+                title={navigationMode === 'menu'
+                  ? 'Category 01: works in menus and parameter screens'
+                  : 'Category 09: works on sampling screen'}
+              >
+                {navigationMode === 'menu' ? '01' : '09'}
+              </button>
+            </div>
+            <div className="text-xs text-s330-muted text-center opacity-70">
+              Keys: Arrows, +/-, Enter, F1-F5
+            </div>
+            {!isConnected && (
+              <div className="text-xs text-s330-muted text-center">
+                Connect MIDI to use controls
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Floating mode - original behavior
   return (
-    <div className="fixed bottom-4 right-4 z-50">
+    <div className="fixed bottom-4 left-4 z-50">
       {/* Collapsed button */}
       {!isExpanded && (
         <button
@@ -483,15 +680,36 @@ export function VideoCapture() {
                   />
                 </svg>
               </button>
-              {/* Close button */}
+              {/* Dock/undock button */}
               <button
-                onClick={() => setIsExpanded(false)}
-                className="p-1 text-s330-muted hover:text-s330-text"
+                onClick={toggleVideoDock}
+                className={cn(
+                  'p-1 text-s330-muted hover:text-s330-text',
+                  isDocked && 'text-s330-highlight'
+                )}
+                title={isDocked ? 'Undock panel' : 'Dock to sidebar'}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  {isDocked ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 5a1 1 0 011-1h4a1 1 0 011 1v14a1 1 0 01-1 1h-4a1 1 0 01-1-1V5z" />
+                  )}
                 </svg>
               </button>
+              {/* Close button - only in floating mode */}
+              {!isDocked && (
+                <button
+                  onClick={() => setIsExpanded(false)}
+                  className="p-1 text-s330-muted hover:text-s330-text"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </div>
           </div>
 
