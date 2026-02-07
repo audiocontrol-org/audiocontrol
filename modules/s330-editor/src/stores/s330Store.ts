@@ -62,6 +62,12 @@ interface S330Actions {
    * and stores the change details for selective refetching.
    */
   notifyHardwareChange: (type: HardwareChangeType, index: number | null) => void;
+
+  /**
+   * Clear the last hardware change after it's been handled.
+   * This prevents the change from triggering multiple refetches.
+   */
+  clearHardwareChange: () => void;
 }
 
 type S330Store = S330State & S330Actions;
@@ -121,4 +127,9 @@ export const useS330Store = create<S330Store>((set) => ({
         timestamp: Date.now(),
       },
     })),
+
+  clearHardwareChange: () =>
+    set({
+      lastHardwareChange: { type: null, index: null, timestamp: 0 },
+    }),
 }));

@@ -31,13 +31,15 @@ export function TonesPage() {
     setError,
     setProgress,
     clearProgress,
-    lastHardwareChange,
   } = useS330Store();
 
   const isConnected = status === 'connected' && adapter !== null;
 
   // Keep a ref to the S330 client
   const clientRef = useRef<S330ClientInterface | null>(null);
+
+  // Track if we've already initiated loading to prevent loops
+  const hasInitiatedLoad = useRef(false);
 
   // Local state for tones (sparse array - undefined = not loaded)
   const [tones, setTones] = useState<(S330Tone | undefined)[]>([]);
@@ -175,26 +177,20 @@ export function TonesPage() {
 
   // Auto-load initial data when connected
   useEffect(() => {
-    if (isConnected && tones.length === 0 && !isLoading) {
+    if (!isConnected || hasInitiatedLoad.current) return;
+
+    // Check if data already loaded from cache
+    if (tones.length > 0) {
+      hasInitiatedLoad.current = true;
+      return;
+    }
+
+    if (!isLoading) {
+      hasInitiatedLoad.current = true;
       loadInitialData();
     }
   }, [isConnected, tones.length, isLoading, loadInitialData]);
 
-  // Refetch data when hardware parameters change
-  useEffect(() => {
-    if (!clientRef.current || !lastHardwareChange.type || isLoading) return;
-
-    const { type, index } = lastHardwareChange;
-
-    // Refetch the specific tone that changed
-    if (type === 'tone' && index !== null && index >= 0 && index < TOTAL_TONES) {
-      console.log('[TonesPage] Hardware tone change detected, refetching tone', index);
-      // Invalidate cache for this tone and refetch
-      clientRef.current.invalidateToneCache();
-      const bankIndex = Math.floor(index / TONES_PER_BANK);
-      loadToneBank(bankIndex, true);
-    }
-  }, [lastHardwareChange, isLoading, loadToneBank]);
 
   // Filter to only show loaded tones
   const loadedTones = tones.filter((t): t is S330Tone => t !== undefined);

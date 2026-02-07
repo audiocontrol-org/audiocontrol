@@ -33,13 +33,15 @@ export function PatchesPage() {
     setError,
     setProgress,
     clearProgress,
-    lastHardwareChange,
   } = useS330Store();
 
   const isConnected = status === 'connected' && adapter !== null;
 
   // Keep a ref to the S330 client
   const clientRef = useRef<S330ClientInterface | null>(null);
+
+  // Track if we've already initiated loading to prevent loops
+  const hasInitiatedLoad = useRef(false);
 
   // Local state for patches and tones (sparse arrays - undefined = not loaded)
   const [patches, setPatches] = useState<(S330Patch | undefined)[]>([]);
@@ -225,32 +227,20 @@ export function PatchesPage() {
 
   // Auto-load initial data when connected
   useEffect(() => {
-    if (isConnected && patches.length === 0 && !isLoading) {
+    if (!isConnected || hasInitiatedLoad.current) return;
+
+    // Check if data already loaded from cache
+    if (patches.length > 0) {
+      hasInitiatedLoad.current = true;
+      return;
+    }
+
+    if (!isLoading) {
+      hasInitiatedLoad.current = true;
       loadInitialData();
     }
   }, [isConnected, patches.length, isLoading, loadInitialData]);
 
-  // Refetch data when hardware parameters change
-  useEffect(() => {
-    if (!clientRef.current || !lastHardwareChange.type || isLoading) return;
-
-    const { type, index } = lastHardwareChange;
-
-    // Refetch the specific patch or tone that changed
-    if (type === 'patch' && index !== null && index >= 0 && index < TOTAL_PATCHES) {
-      console.log('[PatchesPage] Hardware patch change detected, refetching patch', index);
-      // Invalidate cache for this patch and refetch
-      clientRef.current.invalidatePatchCache();
-      const bankIndex = Math.floor(index / PATCHES_PER_BANK);
-      loadPatchBank(bankIndex, true);
-    } else if (type === 'tone' && index !== null && index >= 0 && index < TOTAL_TONES) {
-      console.log('[PatchesPage] Hardware tone change detected, refetching tone', index);
-      // Invalidate cache for this tone and refetch
-      clientRef.current.invalidateToneCache();
-      const bankIndex = Math.floor(index / TONES_PER_BANK);
-      loadToneBank(bankIndex, true);
-    }
-  }, [lastHardwareChange, isLoading, loadPatchBank, loadToneBank]);
 
   // Filter to only show loaded patches
   const loadedPatches = patches.filter((p): p is S330Patch => p !== undefined);
