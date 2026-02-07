@@ -199,14 +199,6 @@ export function Layout({ children }: LayoutProps) {
           {children}
         </main>
 
-        {/* Footer */}
-        <footer className="border-t border-s330-accent py-4">
-          <div className="px-12 text-center text-xs text-s330-muted">
-            S-330 Editor uses Web MIDI API for direct browser-to-hardware communication.
-            <br />
-            Requires Chrome, Edge, or Opera browser.
-          </div>
-        </footer>
       </div>
       </div>
     </div>

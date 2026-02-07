@@ -42,7 +42,7 @@ export function ToneList({ tones, selectedIndex, onSelect }: ToneListProps) {
           Tones ({nonEmptyCount} of {loadedTones.length} with names)
         </span>
       </div>
-      <div className="max-h-[500px] overflow-y-auto space-y-1">
+      <div className="max-h-[calc(100vh-220px)] overflow-y-auto space-y-1">
         {tones.map((tone, index) => {
           const isLoaded = tone !== undefined;
           const isEmpty = isLoaded && isToneEmpty(tone);

@@ -213,103 +213,108 @@ export function TonesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-s330-text">Tones</h2>
-          <span className="text-sm text-s330-muted">
-            {loadedTones.length} of {TOTAL_TONES} loaded
-          </span>
-        </div>
-        <div className="flex items-center gap-4 flex-1 justify-end">
-          {/* Loading Progress (inline with buttons) */}
-          {isLoading && loadingProgress !== null && (
-            <div className="flex-1 max-w-xs">
-              <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                  style={{ width: `${loadingProgress}%` }}
-                />
+    <div>
+      {/* Sticky Header */}
+      <div className="sticky top-[88px] z-30 bg-s330-bg py-4 -mx-12 px-12 border-b border-s330-accent/30">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <h2 className="text-xl font-bold text-s330-text">Tones</h2>
+            <span className="text-sm text-s330-muted">
+              {loadedTones.length} of {TOTAL_TONES} loaded
+            </span>
+          </div>
+          <div className="flex items-center gap-4 flex-1 justify-end">
+            {/* Loading Progress (inline with buttons) */}
+            {isLoading && loadingProgress !== null && (
+              <div className="flex-1 max-w-xs">
+                <div className="h-2 bg-s330-panel rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-s330-highlight transition-all duration-150 ease-out"
+                    style={{ width: `${loadingProgress}%` }}
+                  />
+                </div>
+                <p className="text-s330-muted text-xs mt-0.5 truncate">
+                  {loadingMessage}
+                </p>
               </div>
-              <p className="text-s330-muted text-xs mt-0.5 truncate">
-                {loadingMessage}
-              </p>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-s330-muted">(Re)load:</span>
+              <button
+                onClick={() => loadToneBank(0, true)}
+                disabled={isLoading}
+                className={cn(
+                  'btn',
+                  loadedBanks.has(0) ? 'btn-secondary' : 'btn-primary',
+                  isLoading && 'opacity-50'
+                )}
+              >
+                T11-T18
+              </button>
+              <button
+                onClick={() => loadToneBank(1, true)}
+                disabled={isLoading}
+                className={cn(
+                  'btn',
+                  loadedBanks.has(1) ? 'btn-secondary' : 'btn-primary',
+                  isLoading && 'opacity-50'
+                )}
+              >
+                T21-T28
+              </button>
+              <button
+                onClick={() => loadToneBank(2, true)}
+                disabled={isLoading}
+                className={cn(
+                  'btn',
+                  loadedBanks.has(2) ? 'btn-secondary' : 'btn-primary',
+                  isLoading && 'opacity-50'
+                )}
+              >
+                T31-T38
+              </button>
+              <button
+                onClick={() => loadToneBank(3, true)}
+                disabled={isLoading}
+                className={cn(
+                  'btn',
+                  loadedBanks.has(3) ? 'btn-secondary' : 'btn-primary',
+                  isLoading && 'opacity-50'
+                )}
+              >
+                T41-T48
+              </button>
+              <button
+                onClick={loadAll}
+                disabled={isLoading}
+                className={cn('btn btn-secondary', isLoading && 'opacity-50')}
+              >
+                All
+              </button>
             </div>
-          )}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-s330-muted">(Re)load:</span>
-            <button
-              onClick={() => loadToneBank(0, true)}
-              disabled={isLoading}
-              className={cn(
-                'btn',
-                loadedBanks.has(0) ? 'btn-secondary' : 'btn-primary',
-                isLoading && 'opacity-50'
-              )}
-            >
-              T11-T18
-            </button>
-            <button
-              onClick={() => loadToneBank(1, true)}
-              disabled={isLoading}
-              className={cn(
-                'btn',
-                loadedBanks.has(1) ? 'btn-secondary' : 'btn-primary',
-                isLoading && 'opacity-50'
-              )}
-            >
-              T21-T28
-            </button>
-            <button
-              onClick={() => loadToneBank(2, true)}
-              disabled={isLoading}
-              className={cn(
-                'btn',
-                loadedBanks.has(2) ? 'btn-secondary' : 'btn-primary',
-                isLoading && 'opacity-50'
-              )}
-            >
-              T31-T38
-            </button>
-            <button
-              onClick={() => loadToneBank(3, true)}
-              disabled={isLoading}
-              className={cn(
-                'btn',
-                loadedBanks.has(3) ? 'btn-secondary' : 'btn-primary',
-                isLoading && 'opacity-50'
-              )}
-            >
-              T41-T48
-            </button>
-            <button
-              onClick={loadAll}
-              disabled={isLoading}
-              className={cn('btn btn-secondary', isLoading && 'opacity-50')}
-            >
-              All
-            </button>
           </div>
         </div>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-500/20 border border-red-500 rounded-md p-3">
+        <div className="bg-red-500/20 border border-red-500 rounded-md p-3 mt-6">
           <p className="text-red-200 text-sm">{error}</p>
         </div>
       )}
 
       {/* Content - show while loading for progressive updates */}
       {tones.length > 0 && (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3 mt-6">
+          {/* Sticky list column */}
           <div className="lg:col-span-1">
-            <ToneList
-              tones={tones}
-              selectedIndex={selectedToneIndex}
-              onSelect={selectTone}
-            />
+            <div className="sticky top-[160px]">
+              <ToneList
+                tones={tones}
+                selectedIndex={selectedToneIndex}
+                onSelect={selectTone}
+              />
+            </div>
           </div>
           <div className="lg:col-span-2">
             {selectedTone ? (
