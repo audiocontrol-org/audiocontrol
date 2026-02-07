@@ -150,8 +150,8 @@ export function Layout({ children }: LayoutProps) {
         style={{ marginLeft: isDrawerOpen ? drawerWidth : 0 }}
       >
         {/* Header */}
-        <header className="sticky top-0 z-40 bg-s330-panel border-b border-s330-accent">
-        <div className="max-w-7xl mx-auto px-4 py-3">
+        <header className="sticky top-0 z-40 h-[88px] bg-s330-panel border-b border-s330-accent">
+        <div className="px-12 py-3">
           <div className="flex items-center justify-between">
             {/* Logo */}
             <div className="flex items-center gap-4">
@@ -195,13 +195,13 @@ export function Layout({ children }: LayoutProps) {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0">
-        <main className="flex-1 max-w-7xl w-full mx-auto px-4 py-6">
+        <main className="flex-1 px-12 py-6">
           {children}
         </main>
 
         {/* Footer */}
         <footer className="border-t border-s330-accent py-4">
-          <div className="max-w-7xl mx-auto px-4 text-center text-xs text-s330-muted">
+          <div className="px-12 text-center text-xs text-s330-muted">
             S-330 Editor uses Web MIDI API for direct browser-to-hardware communication.
             <br />
             Requires Chrome, Edge, or Opera browser.

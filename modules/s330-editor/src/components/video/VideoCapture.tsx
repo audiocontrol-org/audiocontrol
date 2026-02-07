@@ -248,8 +248,8 @@ export function VideoCapture() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-s330-accent select-none">
+      {/* Header - matches main header height */}
+      <div className="flex items-center justify-between h-[88px] px-3 border-b border-s330-accent select-none">
         <span className="text-sm font-medium text-s330-text">S-330 Display</span>
         <div className="flex items-center gap-2">
           {isStreaming && (
