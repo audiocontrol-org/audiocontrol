@@ -12,7 +12,6 @@ import { useS330Store } from '@/stores/s330Store';
 import {
   useDeviceDataStore,
   PATCHES_PER_BANK,
-  TOTAL_PATCHES,
 } from '@/stores/deviceDataStore';
 import { createS330Client } from '@/core/midi/S330Client';
 import type { S330ClientInterface, S330Patch } from '@/core/midi/S330Client';
