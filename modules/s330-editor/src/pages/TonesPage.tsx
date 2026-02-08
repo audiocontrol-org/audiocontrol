@@ -1,22 +1,23 @@
 /**
  * Tones page - View and edit S-330 tones
  *
- * Data is cached in the S330 client - this page only manages UI state.
+ * Data is cached in deviceDataStore and persists across page navigation.
  * Loads first bank (8 tones) by default for faster startup.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/s330Store';
+import {
+  useDeviceDataStore,
+  TONES_PER_BANK,
+  TOTAL_TONES,
+} from '@/stores/deviceDataStore';
 import { createS330Client } from '@/core/midi/S330Client';
 import type { S330ClientInterface, S330Tone } from '@/core/midi/S330Client';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
 import { cn } from '@/lib/utils';
-
-// Constants for bank loading (S-330 uses banks of 8)
-const TONES_PER_BANK = 8;
-const TOTAL_TONES = 32; // 4 banks of 8
 
 export function TonesPage() {
   const { adapter, deviceId, status } = useMidiStore();
@@ -35,15 +36,21 @@ export function TonesPage() {
 
   const isConnected = status === 'connected' && adapter !== null;
 
+  // Shared device data store
+  const {
+    tones,
+    loadedToneBanks: loadedBanks,
+    setTone,
+    markToneBankLoaded,
+    ensureToneArraySize,
+    invalidateToneCache,
+  } = useDeviceDataStore();
+
   // Keep a ref to the S330 client
   const clientRef = useRef<S330ClientInterface | null>(null);
 
   // Track if we've already initiated loading to prevent loops
   const hasInitiatedLoad = useRef(false);
-
-  // Local state for tones (sparse array - undefined = not loaded)
-  const [tones, setTones] = useState<(S330Tone | undefined)[]>([]);
-  const [loadedBanks, setLoadedBanks] = useState<Set<number>>(new Set());
 
   // Initialize client when adapter changes
   useEffect(() => {
@@ -53,28 +60,6 @@ export function TonesPage() {
     }
     const client = createS330Client(adapter, { deviceId });
     clientRef.current = client;
-  }, [adapter, deviceId]);
-
-  // Sync loaded state from client cache on mount
-  useEffect(() => {
-    if (!clientRef.current) return;
-
-    const cachedTones = clientRef.current.getLoadedTones();
-    const banksWithData = new Set<number>();
-    for (let bank = 0; bank < 4; bank++) {
-      const startIndex = bank * TONES_PER_BANK;
-      const hasData = cachedTones
-        .slice(startIndex, startIndex + TONES_PER_BANK)
-        .some((t) => t !== undefined);
-      if (hasData) {
-        banksWithData.add(bank);
-      }
-    }
-
-    if (banksWithData.size > 0) {
-      setLoadedBanks(banksWithData);
-      setTones(cachedTones);
-    }
   }, [adapter, deviceId]);
 
   // Load a specific range of tones (updates UI progressively)
@@ -93,12 +78,7 @@ export function TonesPage() {
         setError(null);
 
         // Ensure array is large enough before loading
-        setTones((prev) => {
-          if (prev.length >= TOTAL_TONES) return prev;
-          const updated = [...prev];
-          while (updated.length < TOTAL_TONES) updated.push(undefined);
-          return updated;
-        });
+        ensureToneArraySize();
 
         await clientRef.current.connect();
         await clientRef.current.loadToneRange(
@@ -106,17 +86,11 @@ export function TonesPage() {
           count,
           (current: number, total: number) => setProgress(current, total),
           // Update UI immediately when each tone is loaded
-          (index: number, tone: S330Tone) => {
-            setTones((prev) => {
-              const updated = [...prev];
-              updated[index] = tone;
-              return updated;
-            });
-          },
+          (index: number, tone: S330Tone) => setTone(index, tone),
           forceReload
         );
 
-        setLoadedBanks((prev) => new Set([...prev, bankIndex]));
+        markToneBankLoaded(bankIndex);
         clearProgress();
         setLoading(false);
       } catch (err) {
@@ -127,7 +101,7 @@ export function TonesPage() {
         setLoading(false);
       }
     },
-    [setLoading, setError, setProgress, clearProgress]
+    [setLoading, setError, setProgress, clearProgress, ensureToneArraySize, setTone, markToneBankLoaded]
   );
 
   // Load initial data (first bank)
@@ -140,24 +114,19 @@ export function TonesPage() {
     if (!clientRef.current) return;
 
     clientRef.current.invalidateToneCache();
-    setTones([]);
-    setLoadedBanks(new Set());
+    invalidateToneCache();
 
     // Load all 4 tone banks
     for (let bank = 0; bank < 4; bank++) {
       await loadToneBank(bank, true);
     }
-  }, [loadToneBank]);
+  }, [loadToneBank, invalidateToneCache]);
 
   // Handle tone updates from the editor
   const handleToneUpdate = useCallback((tone: S330Tone) => {
     if (selectedToneIndex === null) return;
-    setTones((prev) => {
-      const updated = [...prev];
-      updated[selectedToneIndex] = tone;
-      return updated;
-    });
-  }, [selectedToneIndex]);
+    setTone(selectedToneIndex, tone);
+  }, [selectedToneIndex, setTone]);
 
   // Commit changes to device
   const handleToneCommit = useCallback(
@@ -245,7 +214,7 @@ export function TonesPage() {
                 disabled={isLoading}
                 className={cn(
                   'btn',
-                  loadedBanks.has(0) ? 'btn-secondary' : 'btn-primary',
+                  loadedBanks.includes(0) ? 'btn-secondary' : 'btn-primary',
                   isLoading && 'opacity-50'
                 )}
               >
@@ -256,7 +225,7 @@ export function TonesPage() {
                 disabled={isLoading}
                 className={cn(
                   'btn',
-                  loadedBanks.has(1) ? 'btn-secondary' : 'btn-primary',
+                  loadedBanks.includes(1) ? 'btn-secondary' : 'btn-primary',
                   isLoading && 'opacity-50'
                 )}
               >
@@ -267,7 +236,7 @@ export function TonesPage() {
                 disabled={isLoading}
                 className={cn(
                   'btn',
-                  loadedBanks.has(2) ? 'btn-secondary' : 'btn-primary',
+                  loadedBanks.includes(2) ? 'btn-secondary' : 'btn-primary',
                   isLoading && 'opacity-50'
                 )}
               >
@@ -278,7 +247,7 @@ export function TonesPage() {
                 disabled={isLoading}
                 className={cn(
                   'btn',
-                  loadedBanks.has(3) ? 'btn-secondary' : 'btn-primary',
+                  loadedBanks.includes(3) ? 'btn-secondary' : 'btn-primary',
                   isLoading && 'opacity-50'
                 )}
               >

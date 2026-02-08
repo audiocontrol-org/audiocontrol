@@ -1,24 +1,24 @@
 /**
  * Patches page - View and edit S-330 patches
  *
- * Data is cached in the S330 client - this page only manages UI state.
+ * Data is cached in deviceDataStore and persists across page navigation.
  * Loads first bank (8 patches) by default for faster startup.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/s330Store';
+import {
+  useDeviceDataStore,
+  PATCHES_PER_BANK,
+  TONES_PER_BANK,
+  TOTAL_PATCHES,
+} from '@/stores/deviceDataStore';
 import { createS330Client } from '@/core/midi/S330Client';
 import type { S330ClientInterface, S330Patch, S330Tone } from '@/core/midi/S330Client';
 import { PatchList } from '@/components/patches/PatchList';
 import { PatchEditor } from '@/components/patches/PatchEditor';
 import { cn } from '@/lib/utils';
-
-// Constants for bank loading (S-330 uses banks of 8)
-const PATCHES_PER_BANK = 8;
-const TONES_PER_BANK = 8;
-const TOTAL_PATCHES = 16;  // 2 banks of 8
-const TOTAL_TONES = 32;    // 4 banks of 8
 
 export function PatchesPage() {
   const { adapter, deviceId, status } = useMidiStore();
@@ -37,17 +37,27 @@ export function PatchesPage() {
 
   const isConnected = status === 'connected' && adapter !== null;
 
+  // Shared device data store
+  const {
+    patches,
+    tones,
+    loadedPatchBanks,
+    loadedToneBanks,
+    setPatch,
+    setTone,
+    markPatchBankLoaded,
+    markToneBankLoaded,
+    ensurePatchArraySize,
+    ensureToneArraySize,
+    invalidatePatchCache,
+    invalidateToneCache,
+  } = useDeviceDataStore();
+
   // Keep a ref to the S330 client
   const clientRef = useRef<S330ClientInterface | null>(null);
 
   // Track if we've already initiated loading to prevent loops
   const hasInitiatedLoad = useRef(false);
-
-  // Local state for patches and tones (sparse arrays - undefined = not loaded)
-  const [patches, setPatches] = useState<(S330Patch | undefined)[]>([]);
-  const [tones, setTones] = useState<(S330Tone | undefined)[]>([]);
-  const [loadedPatchBanks, setLoadedPatchBanks] = useState<Set<number>>(new Set());
-  const [loadedToneBanks, setLoadedToneBanks] = useState<Set<number>>(new Set());
 
   // Initialize client when adapter changes
   useEffect(() => {
@@ -57,42 +67,6 @@ export function PatchesPage() {
     }
     const client = createS330Client(adapter, { deviceId });
     clientRef.current = client;
-  }, [adapter, deviceId]);
-
-  // Sync loaded state from client cache on mount
-  useEffect(() => {
-    if (!clientRef.current) return;
-
-    // Check patch banks
-    const cachedPatches = clientRef.current.getLoadedPatches();
-    const patchBanksWithData = new Set<number>();
-    for (let bank = 0; bank < 2; bank++) {
-      const startIndex = bank * PATCHES_PER_BANK;
-      const hasData = cachedPatches.slice(startIndex, startIndex + PATCHES_PER_BANK).some(p => p !== undefined);
-      if (hasData) {
-        patchBanksWithData.add(bank);
-      }
-    }
-
-    // Check tone banks
-    const cachedTones = clientRef.current.getLoadedTones();
-    const toneBanksWithData = new Set<number>();
-    for (let bank = 0; bank < 4; bank++) {
-      const startIndex = bank * TONES_PER_BANK;
-      const hasData = cachedTones.slice(startIndex, startIndex + TONES_PER_BANK).some(t => t !== undefined);
-      if (hasData) {
-        toneBanksWithData.add(bank);
-      }
-    }
-
-    if (patchBanksWithData.size > 0) {
-      setLoadedPatchBanks(patchBanksWithData);
-      setPatches(cachedPatches);
-    }
-    if (toneBanksWithData.size > 0) {
-      setLoadedToneBanks(toneBanksWithData);
-      setTones(cachedTones);
-    }
   }, [adapter, deviceId]);
 
   // Load a specific range of patches (updates UI progressively)
@@ -105,32 +79,18 @@ export function PatchesPage() {
     try {
       setLoading(true, `${forceReload ? 'Reloading' : 'Loading'} patches ${startIndex + 1}-${startIndex + count}...`);
       setError(null);
-
-      // Ensure array is large enough before loading
-      setPatches((prev) => {
-        if (prev.length >= TOTAL_PATCHES) return prev;
-        const updated = [...prev];
-        while (updated.length < TOTAL_PATCHES) updated.push(undefined);
-        return updated;
-      });
+      ensurePatchArraySize();
 
       await clientRef.current.connect();
       await clientRef.current.loadPatchRange(
         startIndex,
         count,
         (current, total) => setProgress(current, total),
-        // Update UI immediately when each patch is loaded
-        (index, patch) => {
-          setPatches((prev) => {
-            const updated = [...prev];
-            updated[index] = patch;
-            return updated;
-          });
-        },
+        (index, patch) => setPatch(index, patch),
         forceReload
       );
 
-      setLoadedPatchBanks((prev) => new Set([...prev, bankIndex]));
+      markPatchBankLoaded(bankIndex);
       clearProgress();
       setLoading(false);
     } catch (err) {
@@ -139,7 +99,7 @@ export function PatchesPage() {
       clearProgress();
       setLoading(false);
     }
-  }, [setLoading, setError, setProgress, clearProgress]);
+  }, [setLoading, setError, setProgress, clearProgress, ensurePatchArraySize, setPatch, markPatchBankLoaded]);
 
   // Load a specific range of tones (updates UI progressively)
   const loadToneBank = useCallback(async (bankIndex: number, forceReload = false) => {
@@ -153,12 +113,7 @@ export function PatchesPage() {
       setError(null);
 
       // Ensure array is large enough before loading
-      setTones((prev) => {
-        if (prev.length >= TOTAL_TONES) return prev;
-        const updated = [...prev];
-        while (updated.length < TOTAL_TONES) updated.push(undefined);
-        return updated;
-      });
+      ensureToneArraySize();
 
       await clientRef.current.connect();
       await clientRef.current.loadToneRange(
@@ -166,18 +121,11 @@ export function PatchesPage() {
         count,
         (current, total) => setProgress(current, total),
         // Update UI immediately when each tone is loaded
-        (index, tone) => {
-          setTones((prev) => {
-            const updated = [...prev];
-            updated[index] = tone;
-            return updated;
-          });
-        },
+        (index, tone) => setTone(index, tone),
         forceReload
       );
 
-      setLoadedToneBanks((prev) => new Set([...prev, bankIndex]));
-
+      markToneBankLoaded(bankIndex);
       clearProgress();
       setLoading(false);
     } catch (err) {
@@ -186,7 +134,7 @@ export function PatchesPage() {
       clearProgress();
       setLoading(false);
     }
-  }, [setLoading, setError, setProgress, clearProgress]);
+  }, [setLoading, setError, setProgress, clearProgress, ensureToneArraySize, setTone, markToneBankLoaded]);
 
   // Load initial data (first bank of patches and tones)
   const loadInitialData = useCallback(async () => {
@@ -200,10 +148,8 @@ export function PatchesPage() {
 
     clientRef.current.invalidatePatchCache();
     clientRef.current.invalidateToneCache();
-    setPatches([]);
-    setTones([]);
-    setLoadedPatchBanks(new Set());
-    setLoadedToneBanks(new Set());
+    invalidatePatchCache();
+    invalidateToneCache();
 
     // Load all 2 patch banks
     for (let bank = 0; bank < 2; bank++) {
@@ -214,22 +160,18 @@ export function PatchesPage() {
     for (let bank = 0; bank < 4; bank++) {
       await loadToneBank(bank, true);
     }
-  }, [loadPatchBank, loadToneBank]);
+  }, [loadPatchBank, loadToneBank, invalidatePatchCache, invalidateToneCache]);
 
   // Handle patch updates from the editor
   const handlePatchUpdate = useCallback((index: number, patch: S330Patch) => {
-    setPatches((prev) => {
-      const updated = [...prev];
-      updated[index] = patch;
-      return updated;
-    });
-  }, []);
+    setPatch(index, patch);
+  }, [setPatch]);
 
   // Auto-load initial data when connected
   useEffect(() => {
     if (!isConnected || hasInitiatedLoad.current) return;
 
-    // Check if data already loaded from cache
+    // Skip if data already in store
     if (patches.length > 0) {
       hasInitiatedLoad.current = true;
       return;
@@ -291,42 +233,42 @@ export function PatchesPage() {
               <button
                 onClick={() => loadPatchBank(0, true)}
                 disabled={isLoading}
-                className={cn('btn', loadedPatchBanks.has(0) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
+                className={cn('btn', loadedPatchBanks.includes(0) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
               >
                 P11-P18
               </button>
               <button
                 onClick={() => loadPatchBank(1, true)}
                 disabled={isLoading}
-                className={cn('btn', loadedPatchBanks.has(1) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
+                className={cn('btn', loadedPatchBanks.includes(1) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
               >
                 P21-P28
               </button>
               <button
                 onClick={() => loadToneBank(0, true)}
                 disabled={isLoading}
-                className={cn('btn', loadedToneBanks.has(0) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
+                className={cn('btn', loadedToneBanks.includes(0) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
               >
                 T11-T18
               </button>
               <button
                 onClick={() => loadToneBank(1, true)}
                 disabled={isLoading}
-                className={cn('btn', loadedToneBanks.has(1) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
+                className={cn('btn', loadedToneBanks.includes(1) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
               >
                 T21-T28
               </button>
               <button
                 onClick={() => loadToneBank(2, true)}
                 disabled={isLoading}
-                className={cn('btn', loadedToneBanks.has(2) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
+                className={cn('btn', loadedToneBanks.includes(2) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
               >
                 T31-T38
               </button>
               <button
                 onClick={() => loadToneBank(3, true)}
                 disabled={isLoading}
-                className={cn('btn', loadedToneBanks.has(3) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
+                className={cn('btn', loadedToneBanks.includes(3) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
               >
                 T41-T48
               </button>
