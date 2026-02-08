@@ -9,13 +9,14 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/s330Store';
+import {
+  useDeviceDataStore,
+  PATCHES_PER_BANK,
+  TOTAL_PATCHES,
+} from '@/stores/deviceDataStore';
 import { createS330Client } from '@/core/midi/S330Client';
 import type { S330ClientInterface, S330Patch } from '@/core/midi/S330Client';
 import { cn } from '@/lib/utils';
-
-// Constants for bank loading
-const PATCHES_PER_BANK = 8;
-const TOTAL_PATCHES = 16; // 2 banks of 8
 
 // MIDI Part configuration (A-H = channels 1-8)
 interface MidiPart {
@@ -37,15 +38,20 @@ export function PlayPage() {
 
   const isConnected = status === 'connected' && adapter !== null;
 
+  // Shared device data store
+  const {
+    patches,
+    loadedPatchBanks: loadedBanks,
+    setPatch,
+    markPatchBankLoaded,
+    ensurePatchArraySize,
+  } = useDeviceDataStore();
+
   // Keep a ref to the S330 client for sending parameter updates
   const clientRef = useRef<S330ClientInterface | null>(null);
 
   // Track if we've already initiated loading to prevent loops
   const hasInitiatedLoad = useRef(false);
-
-  // Local state for patches (sparse array - undefined = not loaded)
-  const [patches, setPatches] = useState<(S330Patch | undefined)[]>([]);
-  const [loadedBanks, setLoadedBanks] = useState<Set<number>>(new Set());
 
   // MIDI parts - loaded from S-330 function parameters
   const [parts, setParts] = useState<MidiPart[]>(
@@ -85,31 +91,18 @@ export function PlayPage() {
           `${forceReload ? 'Reloading' : 'Loading'} patches ${startIndex + 1}-${startIndex + count}...`
         );
         setError(null);
-
-        // Ensure array is large enough before loading
-        setPatches((prev) => {
-          if (prev.length >= TOTAL_PATCHES) return prev;
-          const updated = [...prev];
-          while (updated.length < TOTAL_PATCHES) updated.push(undefined);
-          return updated;
-        });
+        ensurePatchArraySize();
 
         await clientRef.current.connect();
         await clientRef.current.loadPatchRange(
           startIndex,
           count,
           (current: number, total: number) => setProgress(current, total),
-          (index: number, patch: S330Patch) => {
-            setPatches((prev) => {
-              const updated = [...prev];
-              updated[index] = patch;
-              return updated;
-            });
-          },
+          (index: number, patch: S330Patch) => setPatch(index, patch),
           forceReload
         );
 
-        setLoadedBanks((prev) => new Set([...prev, bankIndex]));
+        markPatchBankLoaded(bankIndex);
         clearProgress();
         setLoading(false);
       } catch (err) {
@@ -119,7 +112,7 @@ export function PlayPage() {
         setLoading(false);
       }
     },
-    [setLoading, setError, setProgress, clearProgress]
+    [setLoading, setError, setProgress, clearProgress, ensurePatchArraySize, setPatch, markPatchBankLoaded]
   );
 
   // Load function parameters (multi mode configuration)
@@ -151,26 +144,16 @@ export function PlayPage() {
 
   // Load initial data when connected
   useEffect(() => {
-    if (!isConnected || !clientRef.current) return;
-    if (hasInitiatedLoad.current) return;
+    if (!isConnected || hasInitiatedLoad.current) return;
 
-    // Check if data already loaded from cache
-    const cachedPatches = clientRef.current.getLoadedPatches();
-    const hasData = cachedPatches.some((p) => p !== undefined);
-
-    if (hasData) {
-      setPatches(cachedPatches);
-      const banksWithData = new Set<number>();
-      for (let bank = 0; bank < 2; bank++) {
-        const startIndex = bank * PATCHES_PER_BANK;
-        if (cachedPatches.slice(startIndex, startIndex + PATCHES_PER_BANK).some((p) => p !== undefined)) {
-          banksWithData.add(bank);
-        }
-      }
-      setLoadedBanks(banksWithData);
+    // Skip if data already in store
+    if (patches.length > 0) {
       hasInitiatedLoad.current = true;
       loadFunctionParams();
-    } else if (!isLoading && patches.length === 0) {
+      return;
+    }
+
+    if (!isLoading) {
       // Load first bank of patches, then function parameters
       hasInitiatedLoad.current = true;
       loadPatchBank(0).then(() => loadFunctionParams());
@@ -299,7 +282,7 @@ export function PlayPage() {
               disabled={isLoading}
               className={cn(
                 'btn',
-                loadedBanks.has(0) ? 'btn-secondary' : 'btn-primary',
+                loadedBanks.includes(0) ? 'btn-secondary' : 'btn-primary',
                 isLoading && 'opacity-50'
               )}
             >
@@ -310,7 +293,7 @@ export function PlayPage() {
               disabled={isLoading}
               className={cn(
                 'btn',
-                loadedBanks.has(1) ? 'btn-secondary' : 'btn-primary',
+                loadedBanks.includes(1) ? 'btn-secondary' : 'btn-primary',
                 isLoading && 'opacity-50'
               )}
             >
