@@ -104,23 +104,19 @@ export function clearLogs() {
 }
 
 /**
- * Format logs for GitHub issue
+ * Format environment info for GitHub issue (without logs for privacy)
  */
-export function formatLogsForGitHub(options: {
+export function formatEnvironmentForGitHub(options: {
   buildTime: string;
   gitCommit: string;
   gitBranch: string;
-  includeAllLogs?: boolean;
 }): string {
-  const { buildTime, gitCommit, gitBranch, includeAllLogs = false } = options;
-
-  const logs = includeAllLogs ? getLogEntries() : getErrorsAndWarnings();
-  const recentLogs = logs.slice(-100); // Last 100 entries
+  const { buildTime, gitCommit, gitBranch } = options;
 
   const userAgent = navigator.userAgent;
   const url = window.location.href;
 
-  let output = `## Environment
+  return `## Environment
 
 | Property | Value |
 |----------|-------|
@@ -150,23 +146,44 @@ export function formatLogsForGitHub(options: {
 
 <!-- What actually happened? -->
 
+## Console Logs
+
+<!-- If relevant, paste console logs here (use "Copy for Issue" button to include logs) -->
 `;
+}
 
+/**
+ * Format logs for GitHub issue (includes logs - use for manual copy)
+ */
+export function formatLogsForGitHub(options: {
+  buildTime: string;
+  gitCommit: string;
+  gitBranch: string;
+  includeAllLogs?: boolean;
+}): string {
+  const { buildTime, gitCommit, gitBranch, includeAllLogs = false } = options;
+
+  const logs = includeAllLogs ? getLogEntries() : getErrorsAndWarnings();
+  const recentLogs = logs.slice(-100); // Last 100 entries
+
+  let output = formatEnvironmentForGitHub({ buildTime, gitCommit, gitBranch });
+
+  // Replace the placeholder comment with actual logs
   if (recentLogs.length > 0) {
-    output += `## Console Logs
-
-\`\`\`
+    output = output.replace(
+      '<!-- If relevant, paste console logs here (use "Copy for Issue" button to include logs) -->',
+      `\`\`\`
 ${recentLogs.map(entry => {
   const levelIcon = entry.level === 'error' ? '[ERROR]' : entry.level === 'warn' ? '[WARN]' : '[LOG]';
   return `${entry.timestamp} ${levelIcon} ${entry.message}`;
 }).join('\n')}
-\`\`\`
-`;
+\`\`\``
+    );
   } else {
-    output += `## Console Logs
-
-No errors or warnings captured.
-`;
+    output = output.replace(
+      '<!-- If relevant, paste console logs here (use "Copy for Issue" button to include logs) -->',
+      'No errors or warnings captured.'
+    );
   }
 
   return output;

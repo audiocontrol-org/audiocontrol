@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import {
   getLogEntries,
   formatLogsForGitHub,
+  formatEnvironmentForGitHub,
   clearLogs,
   type LogEntry,
 } from '@/lib/logCapture';
@@ -92,10 +93,15 @@ export function BuildInfo() {
   }, [getIssueContent]);
 
   const getGitHubIssueUrl = useCallback(() => {
-    const body = encodeURIComponent(getIssueContent());
+    // Use environment-only format (no logs) for privacy
+    const body = encodeURIComponent(formatEnvironmentForGitHub({
+      buildTime: formatBuildTime(info.buildTime),
+      gitCommit: info.gitCommit + (info.gitDirty ? ' (dirty)' : ''),
+      gitBranch: info.gitBranch,
+    }));
     const title = encodeURIComponent('[S-330 Editor] ');
     return `https://github.com/audiocontrol-org/audiocontrol/issues/new?title=${title}&body=${body}`;
-  }, [getIssueContent]);
+  }, [info]);
 
   const shortLabel = `${info.gitCommit}${info.gitDirty ? '*' : ''}`;
 
