@@ -348,6 +348,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         min={0}
                         max={127}
                         formatValue={(v) => `${v - 64} semitones`}
+                        disabled
                     />
                     <ParameterSlider
                         label="Fine Tune"
@@ -359,7 +360,23 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         formatValue={(v) => `${v - 64} cents`}
                     />
                 </div>
-                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                <div className="mt-4 grid gap-4 md:grid-cols-3">
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="pitchFollow"
+                            checked={tone.pitchFollow}
+                            onChange={(e) => {
+                                const updatedTone = { ...tone, pitchFollow: e.target.checked };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
+                            }}
+                            className="rounded"
+                        />
+                        <label htmlFor="pitchFollow" className="text-sm text-s330-text">
+                            Pitch Follow
+                        </label>
+                    </div>
                     <div className="flex items-center gap-2">
                         <input
                             type="checkbox"
