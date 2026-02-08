@@ -584,15 +584,13 @@ export function createS330Client(
                     const nibbles = response.slice(dataStart, dataEnd);
                     allNibbles.push(...nibbles);
                     sendAck();
-                } else if (command === S330_COMMANDS.EOD) {
+                } else if (command === S330_COMMANDS.EOD || command === 0x45) {
+                    // Accept both 0x4F and 0x45 as EOD - S-330 uses different values
+                    // for bulk data dumps vs small parameter reads
                     clearTimeout(timeoutId);
                     midiAdapter.removeSysExListener(listener);
                     sendAck();
                     resolve(deNibblize(allNibbles));
-                } else if (command === S330_COMMANDS.RJC) {
-                    clearTimeout(timeoutId);
-                    midiAdapter.removeSysExListener(listener);
-                    reject(new Error('RQD request rejected by S-330'));
                 } else if (command === S330_COMMANDS.ERR) {
                     clearTimeout(timeoutId);
                     midiAdapter.removeSysExListener(listener);
