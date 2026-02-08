@@ -249,7 +249,7 @@ export const PATCH_PARAMS = {
     },
 } as const satisfies Record<string, PatchParam>;
 
-/** Number of tone mapping entries per layer (MIDI notes 21-127) */
+/** Number of tone mapping entries per layer (MIDI notes 12-120, C0-C9) */
 export const TONE_MAP_ENTRIES = 109;
 
 /** Maximum patches in memory (2 banks of 8) */

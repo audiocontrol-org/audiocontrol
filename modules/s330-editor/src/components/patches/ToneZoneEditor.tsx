@@ -9,6 +9,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import type { S330KeyMode, S330Tone } from '@/core/midi/S330Client';
 import { cn, midiNoteToName } from '@/lib/utils';
+import { useMidiLearn } from '@/hooks/useMidiLearn';
 
 // =============================================================================
 // Types
@@ -18,9 +19,9 @@ import { cn, midiNoteToName } from '@/lib/utils';
  * Represents a contiguous zone of keys mapped to a single tone
  */
 export interface ToneZone {
-  /** Starting MIDI note (21-127) */
+  /** Starting MIDI note (12-120) */
   startKey: number;
-  /** Ending MIDI note (21-127) */
+  /** Ending MIDI note (12-120) */
   endKey: number;
   /** Tone number (-1 to 31 for Layer 1, 0 to 31 for Layer 2) */
   tone: number;
@@ -45,11 +46,11 @@ interface ToneZoneEditorProps {
 
 /**
  * First MIDI note in the S-330 tone mapping.
- * With 109 entries ending at MIDI 127, the first key is MIDI 19 (G0).
+ * Entry 0 corresponds to MIDI note 12 (C0).
  */
-const MIN_KEY = 19;
-/** Last MIDI note in the S-330 tone mapping (G9) */
-const MAX_KEY = 127;
+const MIN_KEY = 12;
+/** Last MIDI note in the S-330 tone mapping (C9) */
+const MAX_KEY = 120;
 /** Total number of keys in the mapping */
 const TOTAL_KEYS = 109;
 
@@ -146,6 +147,27 @@ export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: To
   const [selectedZoneIndex, setSelectedZoneIndex] = useState<number | null>(null);
   const [editingZone, setEditingZone] = useState<ToneZone | null>(null);
 
+  // MIDI learn for key assignment
+  const handleMidiLearn = useCallback((target: 'startKey' | 'endKey', noteNumber: number) => {
+    if (!editingZone) return;
+
+    if (target === 'startKey') {
+      // Clamp to valid range and ensure start <= end
+      const clampedStart = Math.max(MIN_KEY, Math.min(noteNumber, editingZone.endKey));
+      setEditingZone({ ...editingZone, startKey: clampedStart });
+    } else {
+      // Clamp to valid range and ensure end >= start
+      const clampedEnd = Math.min(MAX_KEY, Math.max(noteNumber, editingZone.startKey));
+      setEditingZone({ ...editingZone, endKey: clampedEnd });
+    }
+  }, [editingZone]);
+
+  const { learningTarget, startLearning, cancelLearning } = useMidiLearn(
+    handleMidiLearn,
+    MIN_KEY,
+    MAX_KEY
+  );
+
   // Convert array to zones for display
   const zones = useMemo(() => arrayToZones(toneData, layer), [toneData, layer]);
 
@@ -204,46 +226,44 @@ export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: To
     }
   }, [selectedZoneIndex, zones]);
 
-  // Handle tone change for selected zone
+  // Handle tone change for selected zone (staged, not applied immediately)
   const handleToneChange = useCallback((newTone: number) => {
-    if (editingZone === null || selectedZoneIndex === null) return;
+    if (editingZone === null) return;
+    setEditingZone({ ...editingZone, tone: newTone });
+  }, [editingZone]);
 
-    const updatedZone = { ...editingZone, tone: newTone };
-    setEditingZone(updatedZone);
-
-    // Update zones array and convert back to data
-    const updatedZones = [...zones];
-    updatedZones[selectedZoneIndex] = updatedZone;
-    onUpdate(zonesToArray(updatedZones, layer));
-  }, [editingZone, selectedZoneIndex, zones, layer, onUpdate]);
-
-  // Handle start key change
+  // Handle start key change (staged, not applied immediately)
   const handleStartKeyChange = useCallback((newStartKey: number) => {
-    if (editingZone === null || selectedZoneIndex === null) return;
-
+    if (editingZone === null) return;
     // Clamp to valid range and ensure start <= end
     const clampedStart = Math.max(MIN_KEY, Math.min(newStartKey, editingZone.endKey));
-    const updatedZone = { ...editingZone, startKey: clampedStart };
-    setEditingZone(updatedZone);
+    setEditingZone({ ...editingZone, startKey: clampedStart });
+  }, [editingZone]);
 
-    const updatedZones = [...zones];
-    updatedZones[selectedZoneIndex] = updatedZone;
-    onUpdate(zonesToArray(updatedZones, layer));
-  }, [editingZone, selectedZoneIndex, zones, layer, onUpdate]);
-
-  // Handle end key change
+  // Handle end key change (staged, not applied immediately)
   const handleEndKeyChange = useCallback((newEndKey: number) => {
-    if (editingZone === null || selectedZoneIndex === null) return;
-
+    if (editingZone === null) return;
     // Clamp to valid range and ensure end >= start
     const clampedEnd = Math.min(MAX_KEY, Math.max(newEndKey, editingZone.startKey));
-    const updatedZone = { ...editingZone, endKey: clampedEnd };
-    setEditingZone(updatedZone);
+    setEditingZone({ ...editingZone, endKey: clampedEnd });
+  }, [editingZone]);
+
+  // Apply staged changes to the zone
+  const handleApplyZone = useCallback(() => {
+    if (editingZone === null || selectedZoneIndex === null) return;
 
     const updatedZones = [...zones];
-    updatedZones[selectedZoneIndex] = updatedZone;
+    updatedZones[selectedZoneIndex] = editingZone;
     onUpdate(zonesToArray(updatedZones, layer));
+    setSelectedZoneIndex(null);
+    setEditingZone(null);
   }, [editingZone, selectedZoneIndex, zones, layer, onUpdate]);
+
+  // Cancel editing and discard changes
+  const handleCancelEdit = useCallback(() => {
+    setSelectedZoneIndex(null);
+    setEditingZone(null);
+  }, []);
 
   // Handle zone deletion
   const handleDeleteZone = useCallback(() => {
@@ -321,39 +341,65 @@ export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: To
 
       {/* Zone visualization */}
       <div className="relative h-12 bg-s330-panel rounded border border-s330-accent overflow-hidden">
-        {zones.length === 0 ? (
+        {zones.length === 0 && editingZone === null ? (
           <div className="absolute inset-0 flex items-center justify-center text-s330-muted text-sm">
             No zones defined - click &quot;Add Zone&quot; to create one
           </div>
         ) : (
-          zones.map((zone, index) => {
-            const startPercent = ((zone.startKey - MIN_KEY) / TOTAL_KEYS) * 100;
-            const widthPercent = ((zone.endKey - zone.startKey + 1) / TOTAL_KEYS) * 100;
-            const isSelected = selectedZoneIndex === index;
+          <>
+            {/* Render committed zones (dim the selected one since we show draft instead) */}
+            {zones.map((zone, index) => {
+              const isSelected = selectedZoneIndex === index;
+              // Skip rendering the original zone if we're editing it (show draft instead)
+              if (isSelected && editingZone) return null;
 
-            return (
-              <button
-                key={`${zone.startKey}-${zone.endKey}-${zone.tone}`}
-                onClick={() => handleZoneClick(index)}
+              const startPercent = ((zone.startKey - MIN_KEY) / TOTAL_KEYS) * 100;
+              const widthPercent = ((zone.endKey - zone.startKey + 1) / TOTAL_KEYS) * 100;
+
+              return (
+                <button
+                  key={`${index}-${zone.startKey}-${zone.endKey}-${zone.tone}`}
+                  onClick={() => handleZoneClick(index)}
+                  className={cn(
+                    'absolute top-1 bottom-1 rounded cursor-pointer transition-all',
+                    getToneColor(zone.tone),
+                    'hover:brightness-110'
+                  )}
+                  style={{
+                    left: `${startPercent}%`,
+                    width: `${Math.max(widthPercent, 1)}%`,
+                  }}
+                  title={`${getToneName(zone.tone)}: ${midiNoteToName(zone.startKey)} - ${midiNoteToName(zone.endKey)}`}
+                >
+                  <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white truncate px-1">
+                    {widthPercent > 8 ? getShortToneName(zone.tone) : ''}
+                  </span>
+                </button>
+              );
+            })}
+            {/* Render draft zone preview when editing */}
+            {editingZone && (
+              <div
                 className={cn(
-                  'absolute top-1 bottom-1 rounded cursor-pointer transition-all',
-                  getToneColor(zone.tone),
-                  isSelected
-                    ? 'ring-2 ring-white ring-offset-1 ring-offset-s330-panel z-10'
-                    : 'hover:brightness-110'
+                  'absolute top-1 bottom-1 rounded transition-all z-20',
+                  getToneColor(editingZone.tone),
+                  'ring-2 ring-yellow-400 ring-offset-1 ring-offset-s330-panel',
+                  'opacity-80'
                 )}
                 style={{
-                  left: `${startPercent}%`,
-                  width: `${Math.max(widthPercent, 1)}%`,
+                  left: `${((editingZone.startKey - MIN_KEY) / TOTAL_KEYS) * 100}%`,
+                  width: `${Math.max(((editingZone.endKey - editingZone.startKey + 1) / TOTAL_KEYS) * 100, 1)}%`,
                 }}
-                title={`${getToneName(zone.tone)}: ${midiNoteToName(zone.startKey)} - ${midiNoteToName(zone.endKey)}`}
+                title={`Draft: ${getToneName(editingZone.tone)}: ${midiNoteToName(editingZone.startKey)} - ${midiNoteToName(editingZone.endKey)}`}
               >
                 <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white truncate px-1">
-                  {widthPercent > 8 ? getShortToneName(zone.tone) : ''}
+                  {((editingZone.endKey - editingZone.startKey + 1) / TOTAL_KEYS) * 100 > 8
+                    ? getShortToneName(editingZone.tone)
+                    : ''}
                 </span>
-              </button>
-            );
-          })
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -409,56 +455,110 @@ export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: To
             {/* Start key selector */}
             <div>
               <label className="text-xs text-s330-muted mb-1 block">Start Key</label>
-              <select
-                value={editingZone.startKey}
-                onChange={(e) => handleStartKeyChange(Number(e.target.value))}
-                className={cn(
-                  'w-full px-2 py-1.5 text-sm font-mono',
-                  'bg-s330-panel border border-s330-accent rounded',
-                  'text-s330-text hover:bg-s330-accent/30',
-                  'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                )}
-              >
-                {Array.from({ length: TOTAL_KEYS }, (_, i) => {
-                  const key = MIN_KEY + i;
-                  return (
-                    <option key={key} value={key} disabled={key > editingZone.endKey}>
-                      {midiNoteToName(key)} ({key})
-                    </option>
-                  );
-                })}
-              </select>
+              <div className="flex gap-1">
+                <select
+                  value={editingZone.startKey}
+                  onChange={(e) => handleStartKeyChange(Number(e.target.value))}
+                  className={cn(
+                    'flex-1 min-w-0 px-2 py-1.5 text-sm font-mono',
+                    'bg-s330-panel border border-s330-accent rounded',
+                    'text-s330-text hover:bg-s330-accent/30',
+                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                  )}
+                >
+                  {Array.from({ length: TOTAL_KEYS }, (_, i) => {
+                    const key = MIN_KEY + i;
+                    return (
+                      <option key={key} value={key} disabled={key > editingZone.endKey}>
+                        {midiNoteToName(key)} ({key})
+                      </option>
+                    );
+                  })}
+                </select>
+                <button
+                  onClick={() => learningTarget === 'startKey' ? cancelLearning() : startLearning('startKey')}
+                  className={cn(
+                    'px-2 py-1 text-xs font-medium rounded whitespace-nowrap',
+                    'transition-colors',
+                    learningTarget === 'startKey'
+                      ? 'bg-yellow-500 text-black animate-pulse'
+                      : 'bg-s330-accent text-s330-text hover:bg-s330-highlight'
+                  )}
+                  title="Learn from MIDI input"
+                >
+                  {learningTarget === 'startKey' ? '...' : 'Learn'}
+                </button>
+              </div>
             </div>
 
             {/* End key selector */}
             <div>
               <label className="text-xs text-s330-muted mb-1 block">End Key</label>
-              <select
-                value={editingZone.endKey}
-                onChange={(e) => handleEndKeyChange(Number(e.target.value))}
-                className={cn(
-                  'w-full px-2 py-1.5 text-sm font-mono',
-                  'bg-s330-panel border border-s330-accent rounded',
-                  'text-s330-text hover:bg-s330-accent/30',
-                  'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                )}
-              >
-                {Array.from({ length: TOTAL_KEYS }, (_, i) => {
-                  const key = MIN_KEY + i;
-                  return (
-                    <option key={key} value={key} disabled={key < editingZone.startKey}>
-                      {midiNoteToName(key)} ({key})
-                    </option>
-                  );
-                })}
-              </select>
+              <div className="flex gap-1">
+                <select
+                  value={editingZone.endKey}
+                  onChange={(e) => handleEndKeyChange(Number(e.target.value))}
+                  className={cn(
+                    'flex-1 min-w-0 px-2 py-1.5 text-sm font-mono',
+                    'bg-s330-panel border border-s330-accent rounded',
+                    'text-s330-text hover:bg-s330-accent/30',
+                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                  )}
+                >
+                  {Array.from({ length: TOTAL_KEYS }, (_, i) => {
+                    const key = MIN_KEY + i;
+                    return (
+                      <option key={key} value={key} disabled={key < editingZone.startKey}>
+                        {midiNoteToName(key)} ({key})
+                      </option>
+                    );
+                  })}
+                </select>
+                <button
+                  onClick={() => learningTarget === 'endKey' ? cancelLearning() : startLearning('endKey')}
+                  className={cn(
+                    'px-2 py-1 text-xs font-medium rounded whitespace-nowrap',
+                    'transition-colors',
+                    learningTarget === 'endKey'
+                      ? 'bg-yellow-500 text-black animate-pulse'
+                      : 'bg-s330-accent text-s330-text hover:bg-s330-highlight'
+                  )}
+                  title="Learn from MIDI input"
+                >
+                  {learningTarget === 'endKey' ? '...' : 'Learn'}
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Zone info */}
-          <div className="text-xs text-s330-muted">
-            Range: {midiNoteToName(editingZone.startKey)} - {midiNoteToName(editingZone.endKey)}
-            {' '}({editingZone.endKey - editingZone.startKey + 1} keys)
+          {/* Zone info and action buttons */}
+          <div className="flex items-center justify-between">
+            <div className="text-xs text-s330-muted">
+              Range: {midiNoteToName(editingZone.startKey)} - {midiNoteToName(editingZone.endKey)}
+              {' '}({editingZone.endKey - editingZone.startKey + 1} keys)
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleCancelEdit}
+                className={cn(
+                  'px-3 py-1 text-xs font-medium rounded',
+                  'bg-s330-panel border border-s330-accent text-s330-text',
+                  'hover:bg-s330-accent/30 transition-colors'
+                )}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleApplyZone}
+                className={cn(
+                  'px-3 py-1 text-xs font-medium rounded',
+                  'bg-green-600 text-white hover:bg-green-700',
+                  'transition-colors'
+                )}
+              >
+                Apply
+              </button>
+            </div>
           </div>
         </div>
       )}
