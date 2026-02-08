@@ -103,6 +103,7 @@ export function PlayPage() {
         clearProgress();
         setLoading(false);
       } catch (err) {
+        console.error('[PlayPage] Error loading patches:', err);
         const message = err instanceof Error ? err.message : 'Failed to load patches';
         setError(message);
         clearProgress();

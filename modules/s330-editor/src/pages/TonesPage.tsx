@@ -94,6 +94,7 @@ export function TonesPage() {
         clearProgress();
         setLoading(false);
       } catch (err) {
+        console.error('[TonesPage] Error loading tones:', err);
         const message =
           err instanceof Error ? err.message : 'Failed to load tones';
         setError(message);

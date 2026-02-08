@@ -94,6 +94,7 @@ export function PatchesPage() {
       clearProgress();
       setLoading(false);
     } catch (err) {
+      console.error('[PatchesPage] Error loading patches:', err);
       const message = err instanceof Error ? err.message : 'Failed to load patches';
       setError(message);
       clearProgress();
@@ -129,6 +130,7 @@ export function PatchesPage() {
       clearProgress();
       setLoading(false);
     } catch (err) {
+      console.error('[PatchesPage] Error loading tones:', err);
       const message = err instanceof Error ? err.message : 'Failed to load tones';
       setError(message);
       clearProgress();
