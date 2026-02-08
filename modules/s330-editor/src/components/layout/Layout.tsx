@@ -5,6 +5,7 @@
 import { ReactNode, useEffect, useCallback, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { MidiStatus } from '@/components/midi/MidiStatus';
+import { BuildInfo } from '@/components/layout/BuildInfo';
 import { VideoCapture } from '@/components/video/VideoCapture';
 import { useMidiStore } from '@/stores/midiStore';
 import { useUIStore, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH } from '@/stores/uiStore';
@@ -171,10 +172,11 @@ export function Layout({ children }: LayoutProps) {
               <span className="text-xs text-s330-muted">Roland Sampler</span>
             </div>
 
-            {/* MIDI Status and Panic Button */}
+            {/* MIDI Status, Panic Button, and Build Info */}
             <div className="flex items-center gap-3">
               <PanicButton />
               <MidiStatus />
+              <BuildInfo />
             </div>
           </div>
 
