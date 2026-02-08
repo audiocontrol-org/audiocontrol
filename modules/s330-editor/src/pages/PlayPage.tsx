@@ -66,8 +66,6 @@ export function PlayPage() {
     }))
   );
 
-  const [displayMode, setDisplayMode] = useState<'standard' | 'multi'>('standard');
-
   // Initialize client when adapter changes
   useEffect(() => {
     if (!adapter) {
@@ -303,46 +301,8 @@ export function PlayPage() {
         </div>
       </div>
 
-      {/* Mode Header - mimics S-330 top bar */}
+      {/* Parts Grid */}
       <div className="bg-s330-panel border border-s330-accent rounded-md overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2 bg-s330-accent/30 border-b border-s330-accent">
-          <div className="flex gap-2">
-            <button className="px-3 py-1 bg-s330-panel border border-s330-accent rounded text-xs font-mono text-s330-text">
-              MODE
-            </button>
-            <button className="px-3 py-1 bg-s330-panel border border-s330-accent rounded text-xs font-mono text-s330-text">
-              MENU
-            </button>
-          </div>
-          <div className="text-sm font-mono text-s330-text">
-            PLAY-{displayMode === 'standard' ? 'Standard' : 'Multi'}
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setDisplayMode('standard')}
-              className={cn(
-                'px-3 py-1 border border-s330-accent rounded text-xs font-mono',
-                displayMode === 'standard'
-                  ? 'bg-s330-highlight text-white'
-                  : 'bg-s330-panel text-s330-text'
-              )}
-            >
-              STD
-            </button>
-            <button
-              onClick={() => setDisplayMode('multi')}
-              className={cn(
-                'px-3 py-1 border border-s330-accent rounded text-xs font-mono',
-                displayMode === 'multi'
-                  ? 'bg-s330-highlight text-white'
-                  : 'bg-s330-panel text-s330-text'
-              )}
-            >
-              MULTI
-            </button>
-          </div>
-        </div>
-
         {/* Parts Grid */}
         <div className="p-4 font-mono text-sm">
           {/* Header row */}
@@ -473,28 +433,6 @@ export function PlayPage() {
                   {part.level}
                 </span>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Display section - shows current patches summary */}
-      <div className="bg-s330-panel border border-s330-accent rounded-md p-4">
-        <div className="text-xs text-s330-muted mb-3 font-mono">
-          Active Part Assignments
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-sm">
-          {parts.slice(0, 8).map((part) => (
-            <div key={part.id} className="text-s330-text">
-              {part.patchIndex !== null ? (
-                <>
-                  <span className="text-s330-muted">P</span>
-                  {String(part.patchIndex + 11).padStart(2, '0')}{' '}
-                  <span className="text-s330-highlight">{part.patchName}</span>
-                </>
-              ) : (
-                <span className="text-s330-muted">---</span>
-              )}
             </div>
           ))}
         </div>
