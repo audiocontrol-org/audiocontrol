@@ -39,11 +39,11 @@ export const S330_COMMANDS = {
     /** Acknowledge */
     ACK: 0x43,
     /** End of Data */
-    EOD: 0x45,
+    EOD: 0x4F,
     /** Communication Error */
     ERR: 0x4E,
     /** Rejection */
-    RJC: 0x4F,
+    RJC: 0x45,
 } as const;
 
 // =============================================================================

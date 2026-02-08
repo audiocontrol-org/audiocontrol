@@ -560,6 +560,24 @@ export function createS330Client(
 
                 if (command === S330_COMMANDS.DAT) {
                     // DAT packet: F0 41 dev 1E 42 [addr 4B] [nibbles...] cs F7
+                    // Extract and verify response address matches our request
+                    const respAddr = response.slice(5, 9);
+
+                    // For the first DAT packet, verify address matches request
+                    // For continuation packets, address will be different (incremented)
+                    if (allNibbles.length === 0) {
+                        // First packet - verify base address matches
+                        const addrMatch = respAddr[0] === address[0] &&
+                                         respAddr[1] === address[1] &&
+                                         respAddr[2] === address[2] &&
+                                         respAddr[3] === address[3];
+                        if (!addrMatch) {
+                            console.warn(`[S330Client] Ignoring stale DAT packet for address ${respAddr.map(b => b.toString(16).padStart(2, '0')).join(' ')} (expected ${address.map(b => b.toString(16).padStart(2, '0')).join(' ')})`);
+                            sendAck(); // Still ACK to clear it
+                            return;
+                        }
+                    }
+
                     // Data starts at byte 9 (after addr), ends 2 bytes before end (cs + F7)
                     const dataStart = 9;
                     const dataEnd = response.length - 2;
@@ -767,9 +785,10 @@ export function createS330Client(
                     const common = parsePatchCommon(data);
 
                     return { common };
-                } catch {
+                } catch (err) {
                     // Return null for errors (timeout, rejection, no data, etc.)
                     // This provides graceful degradation when patch data is unavailable
+                    console.error(`[S330Client] Error loading patch ${patchIndex}:`, err);
                     return null;
                 }
             });
@@ -818,7 +837,8 @@ export function createS330Client(
                         const data = await requestDataWithAddress(address, PATCH_TOTAL_SIZE);
                         const common = parsePatchCommon(data);
                         patch = { common };
-                    } catch {
+                    } catch (err) {
+                        console.error(`[S330Client] Error parsing patch ${i}:`, err);
                         // Create placeholder for failed reads
                         const placeholder: S330PatchCommon = {
                             name: '!ERROR!',
@@ -943,7 +963,8 @@ export function createS330Client(
                         const address = [0x00, 0x03, byte2, 0x00];
                         const data = await requestDataWithAddress(address, TONE_BLOCK_SIZE);
                         tone = parseTone(data);
-                    } catch {
+                    } catch (err) {
+                        console.error(`[S330Client] Error loading tone ${i}:`, err);
                         tone = null;
                     }
 
