@@ -2,12 +2,13 @@
  * Main application layout
  */
 
-import { ReactNode, useEffect, useCallback } from 'react';
+import { ReactNode, useEffect, useCallback, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { MidiStatus } from '@/components/midi/MidiStatus';
+import { BuildInfo } from '@/components/layout/BuildInfo';
 import { VideoCapture } from '@/components/video/VideoCapture';
 import { useMidiStore } from '@/stores/midiStore';
-import { useParameterListener } from '@/hooks/useParameterListener';
+import { useUIStore, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
 
 /**
@@ -53,20 +54,115 @@ const navItems = [
 
 export function Layout({ children }: LayoutProps) {
   const initialize = useMidiStore((state) => state.initialize);
+  const isDrawerOpen = useUIStore((state) => state.isDrawerOpen);
+  const toggleDrawer = useUIStore((state) => state.toggleDrawer);
+  const drawerWidth = useUIStore((state) => state.drawerWidth);
+  const setDrawerWidth = useUIStore((state) => state.setDrawerWidth);
+
+  const [isResizing, setIsResizing] = useState(false);
+  const resizeStartX = useRef(0);
+  const resizeStartWidth = useRef(0);
 
   // Initialize MIDI on app start
   useEffect(() => {
     initialize();
   }, [initialize]);
 
-  // Listen for hardware parameter changes and trigger UI updates
-  useParameterListener();
+  // Handle drawer resize
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    setIsResizing(true);
+    resizeStartX.current = e.clientX;
+    resizeStartWidth.current = drawerWidth;
+    e.preventDefault();
+  }, [drawerWidth]);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = e.clientX - resizeStartX.current;
+      const newWidth = Math.max(MIN_SIDEBAR_WIDTH, Math.min(MAX_SIDEBAR_WIDTH, resizeStartWidth.current + delta));
+      setDrawerWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isResizing, setDrawerWidth]);
 
   return (
-    <div className="min-h-screen bg-s330-bg">
-      {/* Header */}
-      <header className="bg-s330-panel border-b border-s330-accent">
-        <div className="max-w-7xl mx-auto px-4 py-3">
+    <div className="min-h-screen bg-s330-bg flex flex-col">
+      {/* Video Capture Drawer - slides in from left */}
+      <aside
+        className={cn(
+          'fixed top-0 left-0 h-full z-50',
+          'border-r border-s330-accent bg-s330-panel overflow-y-auto',
+          'shadow-xl transition-transform duration-200 ease-in-out',
+          isDrawerOpen ? 'translate-x-0' : '-translate-x-full'
+        )}
+        style={{ width: drawerWidth }}
+      >
+        <VideoCapture />
+        {/* Resize handle */}
+        <div
+          onMouseDown={handleResizeStart}
+          className={cn(
+            'absolute top-0 right-0 w-1 h-full cursor-ew-resize',
+            'hover:bg-s330-highlight/50 transition-colors',
+            isResizing && 'bg-s330-highlight'
+          )}
+        />
+      </aside>
+
+      {/* Drawer toggle tab - aligned with header */}
+      <button
+        onClick={toggleDrawer}
+        className={cn(
+          'fixed top-3 z-50',
+          'flex items-center justify-center gap-1',
+          'w-12 h-16 rounded-r-md',
+          'bg-s330-panel border border-l-0 border-s330-accent',
+          'text-s330-muted hover:text-s330-text hover:bg-s330-accent/50',
+          'shadow-md transition-[left] duration-200 ease-in-out'
+        )}
+        style={{ left: isDrawerOpen ? drawerWidth : 0 }}
+        title={isDrawerOpen ? 'Close S-330 display' : 'Open S-330 display'}
+      >
+        {/* Video camera icon */}
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"
+          />
+        </svg>
+        {/* Chevron */}
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d={isDrawerOpen ? 'M15 19l-7-7 7-7' : 'M9 5l7 7-7 7'}
+          />
+        </svg>
+      </button>
+
+      {/* Main page wrapper - pushed right when drawer is open */}
+      <div
+        className="min-h-screen flex flex-col transition-[margin] duration-200"
+        style={{ marginLeft: isDrawerOpen ? drawerWidth : 0 }}
+      >
+        {/* Header */}
+        <header className="sticky top-0 z-40 h-[88px] bg-s330-panel border-b border-s330-accent">
+        <div className="px-12 py-3">
           <div className="flex items-center justify-between">
             {/* Logo */}
             <div className="flex items-center gap-4">
@@ -76,10 +172,11 @@ export function Layout({ children }: LayoutProps) {
               <span className="text-xs text-s330-muted">Roland Sampler</span>
             </div>
 
-            {/* MIDI Status and Panic Button */}
+            {/* MIDI Status, Panic Button, and Build Info */}
             <div className="flex items-center gap-3">
               <PanicButton />
               <MidiStatus />
+              <BuildInfo />
             </div>
           </div>
 
@@ -109,21 +206,13 @@ export function Layout({ children }: LayoutProps) {
       </header>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {children}
-      </main>
+      <div className="flex-1 flex flex-col min-w-0">
+        <main className="flex-1 px-12 py-6">
+          {children}
+        </main>
 
-      {/* Footer */}
-      <footer className="border-t border-s330-accent py-4 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 text-center text-xs text-s330-muted">
-          S-330 Editor uses Web MIDI API for direct browser-to-hardware communication.
-          <br />
-          Requires Chrome, Edge, or Opera browser.
-        </div>
-      </footer>
-
-      {/* Video Capture Panel (includes front panel controls) */}
-      <VideoCapture />
+      </div>
+      </div>
     </div>
   );
 }

@@ -1,22 +1,23 @@
 /**
  * Tones page - View and edit S-330 tones
  *
- * Data is cached in the S330 client - this page only manages UI state.
+ * Data is cached in deviceDataStore and persists across page navigation.
  * Loads first bank (8 tones) by default for faster startup.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/s330Store';
+import {
+  useDeviceDataStore,
+  TONES_PER_BANK,
+  TOTAL_TONES,
+} from '@/stores/deviceDataStore';
 import { createS330Client } from '@/core/midi/S330Client';
 import type { S330ClientInterface, S330Tone } from '@/core/midi/S330Client';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
 import { cn } from '@/lib/utils';
-
-// Constants for bank loading (S-330 uses banks of 8)
-const TONES_PER_BANK = 8;
-const TOTAL_TONES = 32; // 4 banks of 8
 
 export function TonesPage() {
   const { adapter, deviceId, status } = useMidiStore();
@@ -31,17 +32,25 @@ export function TonesPage() {
     setError,
     setProgress,
     clearProgress,
-    lastHardwareChange,
   } = useS330Store();
 
   const isConnected = status === 'connected' && adapter !== null;
 
+  // Shared device data store
+  const {
+    tones,
+    loadedToneBanks: loadedBanks,
+    setTone,
+    markToneBankLoaded,
+    ensureToneArraySize,
+    invalidateToneCache,
+  } = useDeviceDataStore();
+
   // Keep a ref to the S330 client
   const clientRef = useRef<S330ClientInterface | null>(null);
 
-  // Local state for tones (sparse array - undefined = not loaded)
-  const [tones, setTones] = useState<(S330Tone | undefined)[]>([]);
-  const [loadedBanks, setLoadedBanks] = useState<Set<number>>(new Set());
+  // Track if we've already initiated loading to prevent loops
+  const hasInitiatedLoad = useRef(false);
 
   // Initialize client when adapter changes
   useEffect(() => {
@@ -51,28 +60,6 @@ export function TonesPage() {
     }
     const client = createS330Client(adapter, { deviceId });
     clientRef.current = client;
-  }, [adapter, deviceId]);
-
-  // Sync loaded state from client cache on mount
-  useEffect(() => {
-    if (!clientRef.current) return;
-
-    const cachedTones = clientRef.current.getLoadedTones();
-    const banksWithData = new Set<number>();
-    for (let bank = 0; bank < 4; bank++) {
-      const startIndex = bank * TONES_PER_BANK;
-      const hasData = cachedTones
-        .slice(startIndex, startIndex + TONES_PER_BANK)
-        .some((t) => t !== undefined);
-      if (hasData) {
-        banksWithData.add(bank);
-      }
-    }
-
-    if (banksWithData.size > 0) {
-      setLoadedBanks(banksWithData);
-      setTones(cachedTones);
-    }
   }, [adapter, deviceId]);
 
   // Load a specific range of tones (updates UI progressively)
@@ -91,12 +78,7 @@ export function TonesPage() {
         setError(null);
 
         // Ensure array is large enough before loading
-        setTones((prev) => {
-          if (prev.length >= TOTAL_TONES) return prev;
-          const updated = [...prev];
-          while (updated.length < TOTAL_TONES) updated.push(undefined);
-          return updated;
-        });
+        ensureToneArraySize();
 
         await clientRef.current.connect();
         await clientRef.current.loadToneRange(
@@ -104,20 +86,15 @@ export function TonesPage() {
           count,
           (current: number, total: number) => setProgress(current, total),
           // Update UI immediately when each tone is loaded
-          (index: number, tone: S330Tone) => {
-            setTones((prev) => {
-              const updated = [...prev];
-              updated[index] = tone;
-              return updated;
-            });
-          },
+          (index: number, tone: S330Tone) => setTone(index, tone),
           forceReload
         );
 
-        setLoadedBanks((prev) => new Set([...prev, bankIndex]));
+        markToneBankLoaded(bankIndex);
         clearProgress();
         setLoading(false);
       } catch (err) {
+        console.error('[TonesPage] Error loading tones:', err);
         const message =
           err instanceof Error ? err.message : 'Failed to load tones';
         setError(message);
@@ -125,7 +102,7 @@ export function TonesPage() {
         setLoading(false);
       }
     },
-    [setLoading, setError, setProgress, clearProgress]
+    [setLoading, setError, setProgress, clearProgress, ensureToneArraySize, setTone, markToneBankLoaded]
   );
 
   // Load initial data (first bank)
@@ -138,24 +115,19 @@ export function TonesPage() {
     if (!clientRef.current) return;
 
     clientRef.current.invalidateToneCache();
-    setTones([]);
-    setLoadedBanks(new Set());
+    invalidateToneCache();
 
     // Load all 4 tone banks
     for (let bank = 0; bank < 4; bank++) {
       await loadToneBank(bank, true);
     }
-  }, [loadToneBank]);
+  }, [loadToneBank, invalidateToneCache]);
 
   // Handle tone updates from the editor
   const handleToneUpdate = useCallback((tone: S330Tone) => {
     if (selectedToneIndex === null) return;
-    setTones((prev) => {
-      const updated = [...prev];
-      updated[selectedToneIndex] = tone;
-      return updated;
-    });
-  }, [selectedToneIndex]);
+    setTone(selectedToneIndex, tone);
+  }, [selectedToneIndex, setTone]);
 
   // Commit changes to device
   const handleToneCommit = useCallback(
@@ -175,26 +147,20 @@ export function TonesPage() {
 
   // Auto-load initial data when connected
   useEffect(() => {
-    if (isConnected && tones.length === 0 && !isLoading) {
+    if (!isConnected || hasInitiatedLoad.current) return;
+
+    // Check if data already loaded from cache
+    if (tones.length > 0) {
+      hasInitiatedLoad.current = true;
+      return;
+    }
+
+    if (!isLoading) {
+      hasInitiatedLoad.current = true;
       loadInitialData();
     }
   }, [isConnected, tones.length, isLoading, loadInitialData]);
 
-  // Refetch data when hardware parameters change
-  useEffect(() => {
-    if (!clientRef.current || !lastHardwareChange.type || isLoading) return;
-
-    const { type, index } = lastHardwareChange;
-
-    // Refetch the specific tone that changed
-    if (type === 'tone' && index !== null && index >= 0 && index < TOTAL_TONES) {
-      console.log('[TonesPage] Hardware tone change detected, refetching tone', index);
-      // Invalidate cache for this tone and refetch
-      clientRef.current.invalidateToneCache();
-      const bankIndex = Math.floor(index / TONES_PER_BANK);
-      loadToneBank(bankIndex, true);
-    }
-  }, [lastHardwareChange, isLoading, loadToneBank]);
 
   // Filter to only show loaded tones
   const loadedTones = tones.filter((t): t is S330Tone => t !== undefined);
@@ -217,103 +183,108 @@ export function TonesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-s330-text">Tones</h2>
-          <span className="text-sm text-s330-muted">
-            {loadedTones.length} of {TOTAL_TONES} loaded
-          </span>
-        </div>
-        <div className="flex items-center gap-4 flex-1 justify-end">
-          {/* Loading Progress (inline with buttons) */}
-          {isLoading && loadingProgress !== null && (
-            <div className="flex-1 max-w-xs">
-              <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                  style={{ width: `${loadingProgress}%` }}
-                />
+    <div>
+      {/* Sticky Header */}
+      <div className="sticky top-[88px] z-30 bg-s330-bg py-4 -mx-12 px-12 border-b border-s330-accent/30">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <h2 className="text-xl font-bold text-s330-text">Tones</h2>
+            <span className="text-sm text-s330-muted">
+              {loadedTones.length} of {TOTAL_TONES} loaded
+            </span>
+          </div>
+          <div className="flex items-center gap-4 flex-1 justify-end">
+            {/* Loading Progress (inline with buttons) */}
+            {isLoading && loadingProgress !== null && (
+              <div className="flex-1 max-w-xs">
+                <div className="h-2 bg-s330-panel rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-s330-highlight transition-all duration-150 ease-out"
+                    style={{ width: `${loadingProgress}%` }}
+                  />
+                </div>
+                <p className="text-s330-muted text-xs mt-0.5 truncate">
+                  {loadingMessage}
+                </p>
               </div>
-              <p className="text-s330-muted text-xs mt-0.5 truncate">
-                {loadingMessage}
-              </p>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-s330-muted">(Re)load:</span>
+              <button
+                onClick={() => loadToneBank(0, true)}
+                disabled={isLoading}
+                className={cn(
+                  'btn',
+                  loadedBanks.includes(0) ? 'btn-secondary' : 'btn-primary',
+                  isLoading && 'opacity-50'
+                )}
+              >
+                T11-T18
+              </button>
+              <button
+                onClick={() => loadToneBank(1, true)}
+                disabled={isLoading}
+                className={cn(
+                  'btn',
+                  loadedBanks.includes(1) ? 'btn-secondary' : 'btn-primary',
+                  isLoading && 'opacity-50'
+                )}
+              >
+                T21-T28
+              </button>
+              <button
+                onClick={() => loadToneBank(2, true)}
+                disabled={isLoading}
+                className={cn(
+                  'btn',
+                  loadedBanks.includes(2) ? 'btn-secondary' : 'btn-primary',
+                  isLoading && 'opacity-50'
+                )}
+              >
+                T31-T38
+              </button>
+              <button
+                onClick={() => loadToneBank(3, true)}
+                disabled={isLoading}
+                className={cn(
+                  'btn',
+                  loadedBanks.includes(3) ? 'btn-secondary' : 'btn-primary',
+                  isLoading && 'opacity-50'
+                )}
+              >
+                T41-T48
+              </button>
+              <button
+                onClick={loadAll}
+                disabled={isLoading}
+                className={cn('btn btn-secondary', isLoading && 'opacity-50')}
+              >
+                All
+              </button>
             </div>
-          )}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-s330-muted">(Re)load:</span>
-            <button
-              onClick={() => loadToneBank(0, true)}
-              disabled={isLoading}
-              className={cn(
-                'btn',
-                loadedBanks.has(0) ? 'btn-secondary' : 'btn-primary',
-                isLoading && 'opacity-50'
-              )}
-            >
-              T11-T18
-            </button>
-            <button
-              onClick={() => loadToneBank(1, true)}
-              disabled={isLoading}
-              className={cn(
-                'btn',
-                loadedBanks.has(1) ? 'btn-secondary' : 'btn-primary',
-                isLoading && 'opacity-50'
-              )}
-            >
-              T21-T28
-            </button>
-            <button
-              onClick={() => loadToneBank(2, true)}
-              disabled={isLoading}
-              className={cn(
-                'btn',
-                loadedBanks.has(2) ? 'btn-secondary' : 'btn-primary',
-                isLoading && 'opacity-50'
-              )}
-            >
-              T31-T38
-            </button>
-            <button
-              onClick={() => loadToneBank(3, true)}
-              disabled={isLoading}
-              className={cn(
-                'btn',
-                loadedBanks.has(3) ? 'btn-secondary' : 'btn-primary',
-                isLoading && 'opacity-50'
-              )}
-            >
-              T41-T48
-            </button>
-            <button
-              onClick={loadAll}
-              disabled={isLoading}
-              className={cn('btn btn-secondary', isLoading && 'opacity-50')}
-            >
-              All
-            </button>
           </div>
         </div>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-500/20 border border-red-500 rounded-md p-3">
+        <div className="bg-red-500/20 border border-red-500 rounded-md p-3 mt-6">
           <p className="text-red-200 text-sm">{error}</p>
         </div>
       )}
 
       {/* Content - show while loading for progressive updates */}
       {tones.length > 0 && (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="grid gap-6 lg:grid-cols-3 mt-6">
+          {/* Sticky list column */}
           <div className="lg:col-span-1">
-            <ToneList
-              tones={tones}
-              selectedIndex={selectedToneIndex}
-              onSelect={selectTone}
-            />
+            <div className="sticky top-[160px]">
+              <ToneList
+                tones={tones}
+                selectedIndex={selectedToneIndex}
+                onSelect={selectTone}
+              />
+            </div>
           </div>
           <div className="lg:col-span-2">
             {selectedTone ? (

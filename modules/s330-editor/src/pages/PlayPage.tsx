@@ -9,13 +9,13 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/s330Store';
+import {
+  useDeviceDataStore,
+  PATCHES_PER_BANK,
+} from '@/stores/deviceDataStore';
 import { createS330Client } from '@/core/midi/S330Client';
 import type { S330ClientInterface, S330Patch } from '@/core/midi/S330Client';
 import { cn } from '@/lib/utils';
-
-// Constants for bank loading
-const PATCHES_PER_BANK = 8;
-const TOTAL_PATCHES = 16; // 2 banks of 8
 
 // MIDI Part configuration (A-H = channels 1-8)
 interface MidiPart {
@@ -37,12 +37,20 @@ export function PlayPage() {
 
   const isConnected = status === 'connected' && adapter !== null;
 
+  // Shared device data store
+  const {
+    patches,
+    loadedPatchBanks: loadedBanks,
+    setPatch,
+    markPatchBankLoaded,
+    ensurePatchArraySize,
+  } = useDeviceDataStore();
+
   // Keep a ref to the S330 client for sending parameter updates
   const clientRef = useRef<S330ClientInterface | null>(null);
 
-  // Local state for patches (sparse array - undefined = not loaded)
-  const [patches, setPatches] = useState<(S330Patch | undefined)[]>([]);
-  const [loadedBanks, setLoadedBanks] = useState<Set<number>>(new Set());
+  // Track if we've already initiated loading to prevent loops
+  const hasInitiatedLoad = useRef(false);
 
   // MIDI parts - loaded from S-330 function parameters
   const [parts, setParts] = useState<MidiPart[]>(
@@ -56,8 +64,6 @@ export function PlayPage() {
       active: true,
     }))
   );
-
-  const [displayMode, setDisplayMode] = useState<'standard' | 'multi'>('standard');
 
   // Initialize client when adapter changes
   useEffect(() => {
@@ -82,41 +88,29 @@ export function PlayPage() {
           `${forceReload ? 'Reloading' : 'Loading'} patches ${startIndex + 1}-${startIndex + count}...`
         );
         setError(null);
-
-        // Ensure array is large enough before loading
-        setPatches((prev) => {
-          if (prev.length >= TOTAL_PATCHES) return prev;
-          const updated = [...prev];
-          while (updated.length < TOTAL_PATCHES) updated.push(undefined);
-          return updated;
-        });
+        ensurePatchArraySize();
 
         await clientRef.current.connect();
         await clientRef.current.loadPatchRange(
           startIndex,
           count,
           (current: number, total: number) => setProgress(current, total),
-          (index: number, patch: S330Patch) => {
-            setPatches((prev) => {
-              const updated = [...prev];
-              updated[index] = patch;
-              return updated;
-            });
-          },
+          (index: number, patch: S330Patch) => setPatch(index, patch),
           forceReload
         );
 
-        setLoadedBanks((prev) => new Set([...prev, bankIndex]));
+        markPatchBankLoaded(bankIndex);
         clearProgress();
         setLoading(false);
       } catch (err) {
+        console.error('[PlayPage] Error loading patches:', err);
         const message = err instanceof Error ? err.message : 'Failed to load patches';
         setError(message);
         clearProgress();
         setLoading(false);
       }
     },
-    [setLoading, setError, setProgress, clearProgress]
+    [setLoading, setError, setProgress, clearProgress, ensurePatchArraySize, setPatch, markPatchBankLoaded]
   );
 
   // Load function parameters (multi mode configuration)
@@ -148,25 +142,18 @@ export function PlayPage() {
 
   // Load initial data when connected
   useEffect(() => {
-    if (!isConnected || !clientRef.current) return;
+    if (!isConnected || hasInitiatedLoad.current) return;
 
-    // Check if data already loaded from cache
-    const cachedPatches = clientRef.current.getLoadedPatches();
-    const hasData = cachedPatches.some((p) => p !== undefined);
-
-    if (hasData) {
-      setPatches(cachedPatches);
-      const banksWithData = new Set<number>();
-      for (let bank = 0; bank < 2; bank++) {
-        const startIndex = bank * PATCHES_PER_BANK;
-        if (cachedPatches.slice(startIndex, startIndex + PATCHES_PER_BANK).some((p) => p !== undefined)) {
-          banksWithData.add(bank);
-        }
-      }
-      setLoadedBanks(banksWithData);
+    // Skip if data already in store
+    if (patches.length > 0) {
+      hasInitiatedLoad.current = true;
       loadFunctionParams();
-    } else if (!isLoading && patches.length === 0) {
+      return;
+    }
+
+    if (!isLoading) {
       // Load first bank of patches, then function parameters
+      hasInitiatedLoad.current = true;
       loadPatchBank(0).then(() => loadFunctionParams());
     }
   }, [isConnected, isLoading, patches.length, loadPatchBank, loadFunctionParams]);
@@ -232,9 +219,13 @@ export function PlayPage() {
     }
   };
 
+  // Update level in local state only (for responsive UI)
   const handleLevelChange = (partIndex: number, level: number) => {
     updatePart(partIndex, { level });
+  };
 
+  // Send level to device when user finishes adjusting
+  const handleLevelCommit = (partIndex: number, level: number) => {
     if (clientRef.current) {
       clientRef.current.setMultiLevel(partIndex, level).catch((err) => {
         console.error('[PlayPage] Failed to send level parameter:', err);
@@ -289,7 +280,7 @@ export function PlayPage() {
               disabled={isLoading}
               className={cn(
                 'btn',
-                loadedBanks.has(0) ? 'btn-secondary' : 'btn-primary',
+                loadedBanks.includes(0) ? 'btn-secondary' : 'btn-primary',
                 isLoading && 'opacity-50'
               )}
             >
@@ -300,7 +291,7 @@ export function PlayPage() {
               disabled={isLoading}
               className={cn(
                 'btn',
-                loadedBanks.has(1) ? 'btn-secondary' : 'btn-primary',
+                loadedBanks.includes(1) ? 'btn-secondary' : 'btn-primary',
                 isLoading && 'opacity-50'
               )}
             >
@@ -310,46 +301,8 @@ export function PlayPage() {
         </div>
       </div>
 
-      {/* Mode Header - mimics S-330 top bar */}
+      {/* Parts Grid */}
       <div className="bg-s330-panel border border-s330-accent rounded-md overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2 bg-s330-accent/30 border-b border-s330-accent">
-          <div className="flex gap-2">
-            <button className="px-3 py-1 bg-s330-panel border border-s330-accent rounded text-xs font-mono text-s330-text">
-              MODE
-            </button>
-            <button className="px-3 py-1 bg-s330-panel border border-s330-accent rounded text-xs font-mono text-s330-text">
-              MENU
-            </button>
-          </div>
-          <div className="text-sm font-mono text-s330-text">
-            PLAY-{displayMode === 'standard' ? 'Standard' : 'Multi'}
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setDisplayMode('standard')}
-              className={cn(
-                'px-3 py-1 border border-s330-accent rounded text-xs font-mono',
-                displayMode === 'standard'
-                  ? 'bg-s330-highlight text-white'
-                  : 'bg-s330-panel text-s330-text'
-              )}
-            >
-              STD
-            </button>
-            <button
-              onClick={() => setDisplayMode('multi')}
-              className={cn(
-                'px-3 py-1 border border-s330-accent rounded text-xs font-mono',
-                displayMode === 'multi'
-                  ? 'bg-s330-highlight text-white'
-                  : 'bg-s330-panel text-s330-text'
-              )}
-            >
-              MULTI
-            </button>
-          </div>
-        </div>
-
         {/* Parts Grid */}
         <div className="p-4 font-mono text-sm">
           {/* Header row */}
@@ -456,6 +409,8 @@ export function PlayPage() {
                   max={127}
                   value={part.level}
                   onChange={(e) => handleLevelChange(index, Number(e.target.value))}
+                  onMouseUp={(e) => handleLevelCommit(index, Number((e.target as HTMLInputElement).value))}
+                  onTouchEnd={(e) => handleLevelCommit(index, Number((e.target as HTMLInputElement).value))}
                   onClick={(e) => e.stopPropagation()}
                   className={cn(
                     'flex-1 h-1.5 rounded-full appearance-none cursor-pointer',
@@ -478,28 +433,6 @@ export function PlayPage() {
                   {part.level}
                 </span>
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Display section - shows current patches summary */}
-      <div className="bg-s330-panel border border-s330-accent rounded-md p-4">
-        <div className="text-xs text-s330-muted mb-3 font-mono">
-          Active Part Assignments
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 font-mono text-sm">
-          {parts.slice(0, 8).map((part) => (
-            <div key={part.id} className="text-s330-text">
-              {part.patchIndex !== null ? (
-                <>
-                  <span className="text-s330-muted">P</span>
-                  {String(part.patchIndex + 11).padStart(2, '0')}{' '}
-                  <span className="text-s330-highlight">{part.patchName}</span>
-                </>
-              ) : (
-                <span className="text-s330-muted">---</span>
-              )}
             </div>
           ))}
         </div>

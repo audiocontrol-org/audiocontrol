@@ -256,8 +256,10 @@ export function EnvelopeEditor({
                                         min={1}
                                         max={127}
                                         value={rate}
-                                        onChange={(e) => updateRate(i, Number(e.target.value))}
-                                        onBlur={() => onCommit?.()}
+                                        onChange={(e) => {
+                                            updateRate(i, Number(e.target.value));
+                                            onCommit?.();
+                                        }}
                                         className="w-full bg-s330-bg text-s330-text text-center rounded px-1 py-0.5 border border-s330-accent/20"
                                         disabled={disabled || i >= endPoint}
                                     />
@@ -273,8 +275,10 @@ export function EnvelopeEditor({
                                         min={0}
                                         max={127}
                                         value={level}
-                                        onChange={(e) => updateLevel(i, Number(e.target.value))}
-                                        onBlur={() => onCommit?.()}
+                                        onChange={(e) => {
+                                            updateLevel(i, Number(e.target.value));
+                                            onCommit?.();
+                                        }}
                                         className="w-full bg-s330-bg text-s330-text text-center rounded px-1 py-0.5 border border-s330-accent/20"
                                         disabled={disabled || i >= endPoint}
                                     />
