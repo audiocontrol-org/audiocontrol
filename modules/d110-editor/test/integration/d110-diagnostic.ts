@@ -143,16 +143,7 @@ async function runDiagnostic() {
     analyzeMessage(msg.bytes);
   });
 
-  // Also listen for other MIDI messages
-  input.on('noteon', (msg) => {
-    console.log(`[${Date.now() - startTime}ms] Note ON: ch=${msg.channel} note=${msg.note} vel=${msg.velocity}`);
-  });
-  input.on('noteoff', (msg) => {
-    console.log(`[${Date.now() - startTime}ms] Note OFF: ch=${msg.channel} note=${msg.note}`);
-  });
-  input.on('cc', (msg) => {
-    console.log(`[${Date.now() - startTime}ms] CC: ch=${msg.channel} ctrl=${msg.controller} val=${msg.value}`);
-  });
+  // Note: Only listening for SysEx messages in this diagnostic
 
   console.log('='.repeat(70));
   console.log('DIAGNOSTIC TESTS');
@@ -182,7 +173,7 @@ async function runDiagnostic() {
 
   // Test 3: Try different memory addresses
   console.log('--- Test 3: RQ1 Different Memory Addresses ---');
-  for (const [key, addr] of Object.entries(TEST_ADDRESSES)) {
+  for (const [, addr] of Object.entries(TEST_ADDRESSES)) {
     const rq1 = buildRQ1(addr, addr.size, 0x10);
     console.log(`Sending RQ1 for ${addr.name}: ${formatBytes(rq1)}`);
     output.send('sysex', rq1 as unknown as number[]);

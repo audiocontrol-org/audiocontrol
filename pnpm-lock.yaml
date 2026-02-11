@@ -134,6 +134,9 @@ importers:
 
   modules/d110-editor:
     dependencies:
+      '@audiocontrol/shared-midi':
+        specifier: workspace:*
+        version: link:../shared-midi
       '@radix-ui/react-dialog':
         specifier: ^1.0.5
         version: 1.1.15(@types/react-dom@18.3.7)(@types/react@18.3.27)(react-dom@18.3.1)(react@18.3.1)
@@ -421,6 +424,9 @@ importers:
       '@audiocontrol/sampler-devices':
         specifier: workspace:*
         version: link:../sampler-devices
+      '@audiocontrol/shared-midi':
+        specifier: workspace:*
+        version: link:../shared-midi
       '@radix-ui/react-dialog':
         specifier: ^1.0.5
         version: 1.1.15(@types/react-dom@18.3.7)(@types/react@18.3.27)(react-dom@18.3.1)(react@18.3.1)
@@ -818,6 +824,12 @@ importers:
       vitest:
         specifier: ^1.2.0
         version: 1.6.1(@types/node@22.19.8)
+
+  modules/shared-midi:
+    devDependencies:
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.2
 
 packages:
 

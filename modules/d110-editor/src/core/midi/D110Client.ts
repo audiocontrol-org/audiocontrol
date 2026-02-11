@@ -71,7 +71,7 @@ export function createD110Client(
         reject(new Error(`Timeout waiting for response from D-110 at address ${formatAddress(address)}`));
       }, timeoutMs);
 
-      const handler = (message: number[]) => {
+      const handler = (message: number[]): void => {
         if (!isD110Message(message)) return;
 
         const parsed = parseSysExMessage(message);
@@ -164,7 +164,7 @@ export function createD110Client(
    * Parse partial parameters from tone data
    */
   function parsePartialParams(data: number[], offset: number): PartialParams {
-    const d = (i: number) => data[offset + i] ?? 0;
+    const d = (i: number): number => data[offset + i] ?? 0;
 
     const pitchEnvelope: PitchEnvelope = {
       depth: d(8),

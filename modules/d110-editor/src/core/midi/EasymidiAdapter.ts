@@ -41,7 +41,7 @@ export function createEasymidiAdapter(
     },
 
     onSysEx(callback: SysExCallback): void {
-      const listener = (msg: { bytes: number[] }) => {
+      const listener = (msg: { bytes: number[] }): void => {
         callback(msg.bytes);
       };
       callbackMap.set(callback, listener);

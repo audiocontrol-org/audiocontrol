@@ -1,0 +1,24 @@
+{
+  "name": "@audiocontrol/shared-midi",
+  "version": "1.0.0",
+  "description": "Shared Web MIDI utilities for AudioControl editors",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "midi",
+    "webmidi",
+    "sysex"
+  ],
+  "author": "Orion Letizi",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

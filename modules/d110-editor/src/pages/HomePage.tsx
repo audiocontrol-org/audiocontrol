@@ -1,122 +1,94 @@
-import { useState, useEffect } from 'react';
-import {
-  isWebMidiSupported,
-  getBrowserCompatibility,
-  requestMidiAccess,
-  openMidiPorts,
-  createD110Client,
-} from '@/core/midi';
-import type { MidiPortInfo, D110MidiIO, D110ClientInterface } from '@/core/midi';
+/**
+ * D-110 Editor Home Page - MIDI Connection Setup
+ *
+ * Dedicated connection page matching S-330 editor layout.
+ */
 
-export function HomePage() {
-  const [isSupported, setIsSupported] = useState(false);
-  const [browserInfo, setBrowserInfo] = useState<{ supported: boolean; browser: string; notes: string } | null>(null);
-  const [inputs, setInputs] = useState<MidiPortInfo[]>([]);
-  const [outputs, setOutputs] = useState<MidiPortInfo[]>([]);
-  const [selectedInput, setSelectedInput] = useState<string>('');
-  const [selectedOutput, setSelectedOutput] = useState<string>('');
-  const [deviceId, setDeviceId] = useState(17); // Default device ID (0x10 + 1)
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [_adapter, setAdapter] = useState<D110MidiIO | null>(null);
-  const [client, setClient] = useState<D110ClientInterface | null>(null);
-  const [cleanup, setCleanup] = useState<(() => Promise<void>) | null>(null);
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useMidiStore } from '@/stores';
+import { MidiPortSelector } from '@/components/midi';
+import { cn } from '@/lib/utils';
 
-  // Check Web MIDI support on mount
+// localStorage keys (must match midiStore)
+const STORAGE_KEY_INPUT = 'd110-midi-input';
+const STORAGE_KEY_OUTPUT = 'd110-midi-output';
+
+export function HomePage(): JSX.Element {
+  const navigate = useNavigate();
+  const {
+    isSupported,
+    browserInfo,
+    inputs,
+    outputs,
+    sysExEnabled,
+    status,
+    error,
+    refresh,
+    connect,
+    disconnect,
+    selectedInputId: storeInputId,
+    selectedOutputId: storeOutputId,
+  } = useMidiStore();
+
+  // Local state for port selection - initialized from localStorage
+  const [selectedInputId, setSelectedInputId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY_INPUT);
+    } catch {
+      return null;
+    }
+  });
+  const [selectedOutputId, setSelectedOutputId] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(STORAGE_KEY_OUTPUT);
+    } catch {
+      return null;
+    }
+  });
+
+  // Sync local state with store state when connected
   useEffect(() => {
-    const supported = isWebMidiSupported();
-    setIsSupported(supported);
-    setBrowserInfo(getBrowserCompatibility());
-
-    if (supported) {
-      initializeMidi();
+    if (status === 'connected' && storeInputId && storeOutputId) {
+      setSelectedInputId(storeInputId);
+      setSelectedOutputId(storeOutputId);
     }
-  }, []);
+  }, [status, storeInputId, storeOutputId]);
 
-  async function initializeMidi() {
-    try {
-      const access = await requestMidiAccess();
-      setInputs(access.inputs);
-      setOutputs(access.outputs);
-
-      // Auto-select first ports if available
-      if (access.inputs.length > 0 && !selectedInput) {
-        setSelectedInput(access.inputs[0].id);
-      }
-      if (access.outputs.length > 0 && !selectedOutput) {
-        setSelectedOutput(access.outputs[0].id);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to access MIDI');
+  const handleConnect = (): void => {
+    if (selectedInputId && selectedOutputId) {
+      void connect(selectedInputId, selectedOutputId);
     }
-  }
+  };
 
-  async function handleConnect() {
-    if (!selectedInput || !selectedOutput) {
-      setError('Please select both input and output ports');
-      return;
-    }
+  const handleDisconnect = (): void => {
+    void disconnect();
+    setSelectedInputId(null);
+    setSelectedOutputId(null);
+  };
 
-    setIsConnecting(true);
-    setError(null);
+  const handleContinue = (): void => {
+    navigate('/tones');
+  };
 
-    try {
-      const result = await openMidiPorts(selectedInput, selectedOutput);
-      setAdapter(result.adapter);
-      setCleanup(() => result.cleanup);
+  const isConnected = status === 'connected';
 
-      const d110Client = createD110Client(result.adapter, { deviceId: deviceId - 1 }); // Convert to 0-indexed
-      setClient(d110Client);
-      setIsConnected(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to connect');
-    } finally {
-      setIsConnecting(false);
-    }
-  }
-
-  async function handleDisconnect() {
-    if (cleanup) {
-      await cleanup();
-    }
-    setAdapter(null);
-    setClient(client);
-    setCleanup(null);
-    setIsConnected(false);
-  }
-
-  async function handleTestConnection() {
-    if (!client) return;
-
-    setError(null);
-    try {
-      const systemParams = await client.requestSystemParams();
-      alert(`Connected! Reverb Mode: ${systemParams.reverbMode}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to communicate with D-110');
-    }
-  }
-
-  // Browser not supported
+  // Show browser compatibility warning
   if (!isSupported) {
     return (
       <div className="max-w-2xl mx-auto">
         <div className="card">
-          <h1 className="text-2xl font-bold text-d110-highlight mb-4">Web MIDI Not Supported</h1>
-          <p className="text-d110-muted mb-4">
-            Your browser does not support the Web MIDI API, which is required for this editor.
+          <h2 className="text-xl font-bold text-d110-highlight mb-4">
+            Browser Not Supported
+          </h2>
+          <p className="text-d110-text mb-4">
+            The Web MIDI API is not available in {browserInfo.browser}.
           </p>
-          {browserInfo && (
-            <div className="bg-d110-surface rounded-md p-4">
-              <p className="font-medium">Browser: {browserInfo.browser}</p>
-              <p className="text-d110-muted mt-1">{browserInfo.notes}</p>
-            </div>
-          )}
-          <div className="mt-4">
-            <p className="text-d110-muted">Please use one of these browsers:</p>
-            <ul className="list-disc list-inside mt-2 text-d110-text">
-              <li>Google Chrome</li>
+          <p className="text-d110-muted mb-4">{browserInfo.notes}</p>
+          <div className="bg-d110-surface p-4 rounded-md">
+            <h3 className="font-medium text-d110-text mb-2">Supported Browsers:</h3>
+            <ul className="list-disc list-inside text-d110-muted space-y-1">
+              <li>Google Chrome (recommended)</li>
               <li>Microsoft Edge</li>
               <li>Opera</li>
             </ul>
@@ -128,147 +100,137 @@ export function HomePage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="text-center">
-        <h1 className="text-3xl font-bold text-d110-highlight">Roland D-110 Editor</h1>
-        <p className="text-d110-muted mt-2">
-          Connect to your D-110 to start editing tones and patches
-        </p>
-      </div>
-
-      {/* Error display */}
-      {error && (
-        <div className="bg-red-900/50 border border-red-700 text-red-200 rounded-md p-4">
-          <p className="font-medium">Error</p>
-          <p className="mt-1">{error}</p>
-        </div>
-      )}
-
-      {/* Connection card */}
+      {/* Connection Card */}
       <div className="card">
-        <h2 className="text-lg font-semibold mb-4">MIDI Connection</h2>
+        <h2 className="text-xl font-bold text-d110-text mb-4">
+          Connect to D-110
+        </h2>
 
-        {!isConnected ? (
-          <div className="space-y-4">
-            {/* Input port select */}
-            <div>
-              <label className="label">MIDI Input</label>
-              <select
-                value={selectedInput}
-                onChange={(e) => setSelectedInput(e.target.value)}
-                className="input w-full"
-                disabled={isConnecting}
-              >
-                <option value="">Select input port...</option>
-                {inputs.map((port) => (
-                  <option key={port.id} value={port.id}>
-                    {port.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Output port select */}
-            <div>
-              <label className="label">MIDI Output</label>
-              <select
-                value={selectedOutput}
-                onChange={(e) => setSelectedOutput(e.target.value)}
-                className="input w-full"
-                disabled={isConnecting}
-              >
-                <option value="">Select output port...</option>
-                {outputs.map((port) => (
-                  <option key={port.id} value={port.id}>
-                    {port.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Device ID */}
-            <div>
-              <label className="label">Device ID (17-32)</label>
-              <input
-                type="number"
-                min={17}
-                max={32}
-                value={deviceId}
-                onChange={(e) => setDeviceId(parseInt(e.target.value, 10))}
-                className="input w-24"
-                disabled={isConnecting}
-              />
-              <p className="text-xs text-d110-muted mt-1">
-                Default is 17. Check your D-110's device ID setting.
-              </p>
-            </div>
-
-            {/* Connect button */}
-            <div className="flex gap-2">
-              <button
-                onClick={handleConnect}
-                disabled={isConnecting || !selectedInput || !selectedOutput}
-                className="btn btn-primary"
-              >
-                {isConnecting ? 'Connecting...' : 'Connect'}
-              </button>
-              <button
-                onClick={initializeMidi}
-                className="btn btn-secondary"
-                disabled={isConnecting}
-              >
-                Refresh Ports
-              </button>
-            </div>
+        {/* SysEx Warning */}
+        {!sysExEnabled && inputs.length > 0 && (
+          <div className="bg-yellow-500/20 border border-yellow-500 rounded-md p-3 mb-4">
+            <p className="text-yellow-200 text-sm">
+              SysEx access was denied. Please allow SysEx permission when prompted
+              to enable full device communication.
+            </p>
           </div>
-        ) : (
-          <div className="space-y-4">
-            {/* Connected status */}
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <span className="text-green-400 font-medium">Connected</span>
-            </div>
+        )}
 
-            {/* Connection info */}
-            <div className="bg-d110-surface rounded-md p-3 text-sm">
-              <p>
-                <span className="text-d110-muted">Input:</span>{' '}
-                {inputs.find((p) => p.id === selectedInput)?.name}
-              </p>
-              <p>
-                <span className="text-d110-muted">Output:</span>{' '}
-                {outputs.find((p) => p.id === selectedOutput)?.name}
-              </p>
-              <p>
-                <span className="text-d110-muted">Device ID:</span> {deviceId}
-              </p>
-            </div>
+        {/* Error Display */}
+        {error && (
+          <div className="bg-red-500/20 border border-red-500 rounded-md p-3 mb-4">
+            <p className="text-red-200 text-sm">{error}</p>
+          </div>
+        )}
 
-            {/* Actions */}
-            <div className="flex gap-2">
-              <button onClick={handleTestConnection} className="btn btn-primary">
-                Test Connection
-              </button>
+        {/* Port Selection */}
+        <div className="grid gap-4 md:grid-cols-2 mb-6">
+          <MidiPortSelector
+            label="MIDI Input (from D-110)"
+            ports={inputs}
+            value={selectedInputId}
+            onChange={setSelectedInputId}
+            disabled={status === 'connected' || status === 'connecting'}
+          />
+          <MidiPortSelector
+            label="MIDI Output (to D-110)"
+            ports={outputs}
+            value={selectedOutputId}
+            onChange={setSelectedOutputId}
+            disabled={status === 'connected' || status === 'connecting'}
+          />
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3">
+          {isConnected ? (
+            <>
               <button onClick={handleDisconnect} className="btn btn-secondary">
                 Disconnect
               </button>
-            </div>
-          </div>
-        )}
+              <button onClick={handleContinue} className="btn btn-primary">
+                Continue to Tones
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={handleConnect}
+                disabled={!selectedInputId || !selectedOutputId || status === 'connecting'}
+                className={cn(
+                  'btn btn-primary',
+                  (!selectedInputId || !selectedOutputId) && 'opacity-50 cursor-not-allowed'
+                )}
+              >
+                {status === 'connecting' ? 'Connecting...' : 'Connect'}
+              </button>
+              <button onClick={() => void refresh()} className="btn btn-secondary">
+                Refresh Ports
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Info card */}
+      {/* Device ID Selection */}
       <div className="card">
-        <h2 className="text-lg font-semibold mb-2">About</h2>
-        <p className="text-d110-muted text-sm">
-          This editor allows you to edit tones and patches on your Roland D-110 synthesizer
-          in real-time. Connect your D-110 via MIDI to get started.
+        <h3 className="font-medium text-d110-text mb-3">Device ID</h3>
+        <p className="text-sm text-d110-muted mb-3">
+          Enter the Device ID configured on your D-110 (MIDI → Rx CH → DevNo).
+          The D-110 uses device IDs 17-32.
         </p>
-        <p className="text-d110-muted text-sm mt-2">
-          Make sure your D-110 is set to receive SysEx messages and the device ID matches
-          the setting on your synthesizer.
-        </p>
+        <DeviceIdSelector />
       </div>
+
+      {/* Help Card */}
+      <div className="card">
+        <h3 className="font-medium text-d110-text mb-3">Connection Help</h3>
+        <ul className="text-sm text-d110-muted space-y-2">
+          <li>
+            <strong className="text-d110-text">MIDI Interface:</strong> Connect your D-110
+            to your computer via a MIDI interface (USB-MIDI adapter, audio interface, etc.)
+          </li>
+          <li>
+            <strong className="text-d110-text">Port Names:</strong> Look for port names
+            containing "D-110", "Roland", or your MIDI interface name
+          </li>
+          <li>
+            <strong className="text-d110-text">SysEx:</strong> This editor uses System
+            Exclusive messages. Ensure your MIDI interface supports SysEx.
+          </li>
+          <li>
+            <strong className="text-d110-text">Device ID:</strong> Must match the setting
+            on your D-110 (MIDI → Rx CH → DevNo). Default is 17.
+          </li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function DeviceIdSelector(): JSX.Element {
+  const { deviceId, setDeviceId } = useMidiStore();
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
+    const newValue = parseInt(e.target.value, 10);
+    if (newValue >= 17 && newValue <= 32) {
+      setDeviceId(newValue);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-4">
+      <input
+        type="number"
+        min={17}
+        max={32}
+        value={deviceId}
+        onChange={handleChange}
+        className="input w-20 text-center"
+      />
+      <span className="text-sm text-d110-muted">
+        (17-32, as shown on D-110)
+      </span>
     </div>
   );
 }
