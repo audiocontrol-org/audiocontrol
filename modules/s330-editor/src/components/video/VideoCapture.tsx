@@ -47,6 +47,7 @@ export function VideoCapture() {
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const isStartingRef = useRef(false);
 
   // Enumerate available video devices
   const enumerateDevices = useCallback(async () => {
@@ -91,12 +92,24 @@ export function VideoCapture() {
   // Start video stream
   const startStream = useCallback(async () => {
     if (!selectedDeviceId) return;
+    if (isStartingRef.current) return; // Prevent concurrent start attempts
+
+    isStartingRef.current = true;
 
     try {
       setError(null);
 
+      // Stop existing stream and clear video element
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.srcObject = null;
+        // Allow the video element to settle before setting new source
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -107,7 +120,16 @@ export function VideoCapture() {
 
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        await videoRef.current.play();
+        try {
+          await videoRef.current.play();
+        } catch (playErr) {
+          // Ignore "play interrupted" errors - they occur when switching devices rapidly
+          if (playErr instanceof Error && playErr.name === 'AbortError') {
+            console.log('[VideoCapture] Play interrupted, will retry on next start');
+            return;
+          }
+          throw playErr;
+        }
       }
 
       setIsStreaming(true);
@@ -116,6 +138,8 @@ export function VideoCapture() {
       console.error('[VideoCapture] Failed to start stream:', err);
       setError(err instanceof Error ? err.message : 'Failed to start video');
       setIsStreaming(false);
+    } finally {
+      isStartingRef.current = false;
     }
   }, [selectedDeviceId]);
 
@@ -126,18 +150,24 @@ export function VideoCapture() {
       streamRef.current = null;
     }
     if (videoRef.current) {
+      videoRef.current.pause();
       videoRef.current.srcObject = null;
     }
+    isStartingRef.current = false;
     setIsStreaming(false);
   }, []);
 
-  // Handle device change
-  const handleDeviceChange = (deviceId: string) => {
+  // Handle device change - restart stream with new device
+  const handleDeviceChange = useCallback(async (deviceId: string) => {
+    const wasStreaming = isStreaming;
     setSelectedDeviceId(deviceId);
-    if (isStreaming) {
+
+    if (wasStreaming) {
       stopStream();
+      // Small delay to allow state to settle, then restart
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
-  };
+  }, [isStreaming, stopStream]);
 
   // Check for permission on mount
   useEffect(() => {
