@@ -20,6 +20,7 @@ import {
   ASSIGN_MODE_NAMES,
   OUTPUT_ASSIGN_NAMES,
   PART_TIMBRE_OFFSETS,
+  SYSTEM_PARAM_OFFSETS,
   PARAM_RANGES,
   getToneName,
 } from '@/core/midi/constants';
@@ -41,9 +42,14 @@ export function PartConfigEditor({
 }: PartConfigEditorProps): JSX.Element {
   const updatePartConfig = useD110Store((state) => state.updatePartConfig);
   const tone = useD110Store((state) => state.tones.get(partIndex));
+  const systemParams = useD110Store((state) => state.systemParams);
+  const updateSystemParams = useD110Store((state) => state.updateSystemParams);
   const client = useMidiStore((state) => state.client);
 
   const toneName = tone?.common.name.trim() || null;
+  // MIDI channel is stored as 0-15, displayed as 1-16
+  const midiChannelInternal = systemParams?.midiChannels[partIndex] ?? 0;
+  const midiChannelDisplay = midiChannelInternal + 1;
 
   const sendPartParameter = useCallback(
     async (offset: number, value: number) => {
@@ -55,6 +61,31 @@ export function PartConfigEditor({
       }
     },
     [client, partIndex]
+  );
+
+  const sendSystemParameter = useCallback(
+    async (offset: number, value: number) => {
+      if (!client) return;
+      try {
+        await client.sendSystemParameter(offset, value);
+      } catch (err) {
+        console.error(`[PartConfigEditor] Failed to send system parameter:`, err);
+      }
+    },
+    [client]
+  );
+
+  // MIDI Channel (displayed as 1-16, stored/sent as 0-15)
+  const handleMidiChannelChange = useCallback(
+    async (displayChannel: number) => {
+      if (!systemParams) return;
+      const internalChannel = displayChannel - 1; // Convert 1-16 to 0-15
+      const newChannels = [...systemParams.midiChannels];
+      newChannels[partIndex] = internalChannel;
+      updateSystemParams({ midiChannels: newChannels });
+      await sendSystemParameter(SYSTEM_PARAM_OFFSETS.MIDI_CHANNEL_1 + partIndex, internalChannel);
+    },
+    [partIndex, systemParams, updateSystemParams, sendSystemParameter]
   );
 
   // Tone Group
@@ -225,6 +256,7 @@ export function PartConfigEditor({
             </div>
           </div>
           <div className="flex items-center gap-4 text-sm text-d110-muted">
+            <span>Ch: {midiChannelDisplay}</span>
             <span>Lvl: {config.outputLevel}</span>
             <span>Pan: {formatPan(config.pan)}</span>
             <span className="text-d110-highlight">Expand</span>
@@ -317,7 +349,21 @@ export function PartConfigEditor({
       </div>
 
       {/* Mode Controls */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label className="label">MIDI Channel</label>
+          <select
+            value={midiChannelDisplay}
+            onChange={(e) => void handleMidiChannelChange(parseInt(e.target.value, 10))}
+            className="input w-full"
+          >
+            {Array.from({ length: 16 }, (_, i) => (
+              <option key={i} value={i + 1}>
+                {i + 1}
+              </option>
+            ))}
+          </select>
+        </div>
         <div>
           <label className="label">Assign Mode</label>
           <select
