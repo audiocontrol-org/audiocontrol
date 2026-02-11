@@ -1,7 +1,14 @@
 # Roland D-110 Editor - Workplan
 
-**GitHub Milestone:** TBD
-**GitHub Issues:** TBD
+**GitHub Milestone:** [Week of Feb 10-14](https://github.com/audiocontrol-org/audiocontrol/milestone/2)
+**GitHub Issues:**
+
+- [Parent: Roland D-110 Editor (#13)](https://github.com/audiocontrol-org/audiocontrol/issues/13)
+- [Implement D-110 core MIDI infrastructure (#14)](https://github.com/audiocontrol-org/audiocontrol/issues/14)
+- [Implement D-110 tone editor - common parameters (#15)](https://github.com/audiocontrol-org/audiocontrol/issues/15)
+- [Implement D-110 tone editor - partial parameters (#16)](https://github.com/audiocontrol-org/audiocontrol/issues/16)
+- [Implement D-110 multi/patch editor (#17)](https://github.com/audiocontrol-org/audiocontrol/issues/17)
+- [D-110 editor integration and polish (#18)](https://github.com/audiocontrol-org/audiocontrol/issues/18)
 
 ---
 

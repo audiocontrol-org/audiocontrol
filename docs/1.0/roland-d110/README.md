@@ -2,7 +2,7 @@
 
 **Status:** Planning
 **Branch:** `feature/roland-d110`
-**Milestone:** TBD
+**Milestone:** [Week of Feb 10-14](https://github.com/audiocontrol-org/audiocontrol/milestone/2)
 
 ## Overview
 
