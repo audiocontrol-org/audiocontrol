@@ -26,7 +26,7 @@ export function PartSelector(): JSX.Element {
             key={i}
             onClick={() => selectPart(i)}
             className={cn(
-              'relative flex flex-col items-center justify-center min-w-[60px] px-3 py-2 rounded-md transition-colors',
+              'relative flex flex-col items-center justify-center min-w-[100px] px-3 py-2 rounded-md transition-colors',
               isSelected
                 ? 'bg-d110-accent text-white'
                 : hasTone
@@ -39,7 +39,7 @@ export function PartSelector(): JSX.Element {
           >
             <span className="text-xs font-medium">Part {i + 1}</span>
             {hasTone && (
-              <span className="text-[10px] truncate max-w-[50px] opacity-75">
+              <span className="text-[10px] font-mono opacity-75">
                 {toneName}
               </span>
             )}

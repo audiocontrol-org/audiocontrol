@@ -12,6 +12,7 @@ import { useD110Store, selectCurrentTone } from '@/stores';
 import { useMidiStore } from '@/stores';
 import { PartSelector } from '@/components/ToneEditor/PartSelector';
 import { ToneCommonEditor } from '@/components/ToneEditor/ToneCommonEditor';
+import { PartialEditor } from '@/components/ToneEditor/PartialEditor';
 import { TONE_GROUP_NAMES } from '@/core/midi/constants';
 
 export function ToneEditor(): JSX.Element {
@@ -185,6 +186,9 @@ export function ToneEditor(): JSX.Element {
 
       {/* Tone Common Editor */}
       <ToneCommonEditor />
+
+      {/* Partial Editor */}
+      <PartialEditor />
     </div>
   );
 }
