@@ -84,6 +84,8 @@ interface D110Actions {
   // Part operations
   setPartConfig: (partIndex: number, config: PartConfig) => void;
   setAllPartConfigs: (configs: PartConfig[]) => void;
+  updatePartConfig: (partIndex: number, updates: Partial<PartConfig>) => void;
+  updateSystemParams: (updates: Partial<SystemParams>) => void;
 
   // Patch operations
   setPatch: (patch: D110Patch) => void;
@@ -329,6 +331,26 @@ export const useD110Store = create<D110Store>((set) => ({
     }),
 
   setAllPartConfigs: (configs) => set({ partConfigs: configs }),
+
+  updatePartConfig: (partIndex, updates) =>
+    set((state) => {
+      const existingConfig = state.partConfigs[partIndex];
+      if (!existingConfig) return state;
+      const newConfigs = [...state.partConfigs];
+      newConfigs[partIndex] = { ...existingConfig, ...updates };
+      return { partConfigs: newConfigs };
+    }),
+
+  updateSystemParams: (updates) =>
+    set((state) => {
+      if (!state.systemParams) return state;
+      return {
+        systemParams: {
+          ...state.systemParams,
+          ...updates,
+        },
+      };
+    }),
 
   setPatch: (patch) =>
     set({

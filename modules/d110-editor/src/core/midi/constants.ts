@@ -379,3 +379,130 @@ export function getPcmWaveName(bank: number, waveNumber: number): string {
   if (bank === 1) return PCM_WAVE_NAMES_B[waveNumber] ?? `Wave B${waveNumber}`;
   return `Wave ${waveNumber}`;
 }
+
+/**
+ * Part timbre parameter offsets within 16-byte part timbre block
+ * Used for sending individual part parameter changes to hardware
+ */
+export const PART_TIMBRE_OFFSETS = {
+  TONE_GROUP: 0,
+  TONE_NUMBER: 1,
+  KEY_SHIFT: 2,
+  FINE_TUNE: 3,
+  BENDER_RANGE: 4,
+  ASSIGN_MODE: 5,
+  OUTPUT_ASSIGN: 6,
+  // Offset 7 is reserved
+  OUTPUT_LEVEL: 8,
+  PAN: 9,
+  KEY_RANGE_LOWER: 10,
+  KEY_RANGE_UPPER: 11,
+} as const;
+
+/**
+ * System parameter offsets within 33-byte system block
+ * Used for sending individual system parameter changes to hardware
+ */
+export const SYSTEM_PARAM_OFFSETS = {
+  MASTER_TUNE: 0,
+  REVERB_MODE: 1,
+  REVERB_TIME: 2,
+  REVERB_LEVEL: 3,
+  // Partial reserve for 9 parts (8 + rhythm)
+  PARTIAL_RESERVE_1: 4,
+  PARTIAL_RESERVE_2: 5,
+  PARTIAL_RESERVE_3: 6,
+  PARTIAL_RESERVE_4: 7,
+  PARTIAL_RESERVE_5: 8,
+  PARTIAL_RESERVE_6: 9,
+  PARTIAL_RESERVE_7: 10,
+  PARTIAL_RESERVE_8: 11,
+  PARTIAL_RESERVE_RHYTHM: 12,
+  // MIDI channels for 9 parts (8 + rhythm)
+  MIDI_CHANNEL_1: 13,
+  MIDI_CHANNEL_2: 14,
+  MIDI_CHANNEL_3: 15,
+  MIDI_CHANNEL_4: 16,
+  MIDI_CHANNEL_5: 17,
+  MIDI_CHANNEL_6: 18,
+  MIDI_CHANNEL_7: 19,
+  MIDI_CHANNEL_8: 20,
+  MIDI_CHANNEL_RHYTHM: 21,
+  // Patch name (10 bytes)
+  PATCH_NAME: 22,
+} as const;
+
+/**
+ * D-110 Preset A tone names (64 tones)
+ * Factory preset tones in bank A
+ */
+export const PRESET_A_TONE_NAMES: readonly string[] = [
+  'Acou Piano1', 'Acou Piano2', 'Acou Piano3', 'Elec Piano1',
+  'Elec Piano2', 'Elec Piano3', 'Elec Piano4', 'Honkytonk',
+  'Elec Org 1', 'Elec Org 2', 'Elec Org 3', 'Elec Org 4',
+  'Pipe Org 1', 'Pipe Org 2', 'Pipe Org 3', 'Accordion',
+  'Harpsi 1', 'Harpsi 2', 'Harpsi 3', 'Clav 1',
+  'Clav 2', 'Clav 3', 'Celesta 1', 'Celesta 2',
+  'Syn Brass1', 'Syn Brass2', 'Syn Brass3', 'Syn Brass4',
+  'Syn Bass 1', 'Syn Bass 2', 'Syn Bass 3', 'Syn Bass 4',
+  'Fantasy', 'Harmo Pan', 'Chorale', 'Glasses',
+  'Soundtrack', 'Atmosphere', 'Warm Bell', 'Funny Vox',
+  'Echo Bell', 'Ice Rain', 'Oboe 2001', 'Echo Pan',
+  'Doctor Solo', 'Schooldaze', 'Bellsinger', 'SquareWave',
+  'Str Sect 1', 'Str Sect 2', 'Str Sect 3', 'Pizzicato',
+  'Violin 1', 'Violin 2', 'Cello 1', 'Cello 2',
+  'Contrabass', 'Harp 1', 'Harp 2', 'Guitar 1',
+  'Guitar 2', 'Elec Gtr 1', 'Elec Gtr 2', 'Sitar',
+] as const;
+
+/**
+ * D-110 Preset B tone names (64 tones)
+ * Factory preset tones in bank B
+ */
+export const PRESET_B_TONE_NAMES: readonly string[] = [
+  'Acou Bass1', 'Acou Bass2', 'Elec Bass1', 'Elec Bass2',
+  'Slap Bass1', 'Slap Bass2', 'Fretless 1', 'Fretless 2',
+  'Flute 1', 'Flute 2', 'Piccolo', 'Pan Flute',
+  'Blow Pipe', 'Bottleblow', 'Breathpipe', 'Whistle',
+  'Sax 1', 'Sax 2', 'Sax 3', 'Sax 4',
+  'Clarinet 1', 'Clarinet 2', 'Oboe', 'Engl Horn',
+  'Bassoon', 'Harmonica', 'Trumpet 1', 'Trumpet 2',
+  'Trombone 1', 'Trombone 2', 'Fr Horn 1', 'Fr Horn 2',
+  'Tuba', 'Brs Sect 1', 'Brs Sect 2', 'Vibe 1',
+  'Vibe 2', 'Syn Mallet', 'Windbell', 'Glock',
+  'Tube Bell', 'Xylophone', 'Marimba', 'Koto',
+  'Sho', 'Shakuhachi', 'Whistle 2', 'Breathpipe2',
+  'Timpani', 'Melodic Tom', 'Deep Snare', 'Elec Perc 1',
+  'Elec Perc 2', 'Taiko', 'Taiko Rim', 'Cymbal',
+  'Castanets', 'Triangle', 'Orche Hit', 'Telephone',
+  'Bird Tweet', 'One Note Jam', 'Water Bells', 'Jungle Tune',
+] as const;
+
+/**
+ * Get tone name by group and number
+ * @param group - Tone group (0=Preset A, 1=Preset B, 2=Internal, 3=Card)
+ * @param number - Tone number (0-63)
+ * @returns Tone name or generic label for Internal/Card
+ */
+export function getToneName(group: number, number: number): string {
+  if (number < 0 || number > 63) return `Tone ${number + 1}`;
+
+  // Ensure group is treated as a number (handles enum values)
+  const groupNum = Number(group);
+
+  if (groupNum === 0) {
+    // Preset A
+    return PRESET_A_TONE_NAMES[number] ?? `Preset A ${number + 1}`;
+  } else if (groupNum === 1) {
+    // Preset B
+    return PRESET_B_TONE_NAMES[number] ?? `Preset B ${number + 1}`;
+  } else if (groupNum === 2) {
+    // Internal
+    return `Internal ${number + 1}`;
+  } else if (groupNum === 3) {
+    // Card
+    return `Card ${number + 1}`;
+  }
+
+  return `Tone ${number + 1}`;
+}
