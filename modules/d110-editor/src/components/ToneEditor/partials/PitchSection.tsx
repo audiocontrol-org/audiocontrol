@@ -2,20 +2,24 @@
  * Pitch Section Component
  *
  * Edits pitch parameters for a partial:
- * - Waveform selection (Square/Sawtooth/PCM)
- * - PCM wave number
+ * - Waveform selection (Square/Sawtooth for Synth, PCM Bank A/B for PCM)
+ * - PCM wave number (when PCM mode)
  * - Pitch coarse (semitones)
  * - Pitch fine (cents)
  * - Pitch keyfollow
  * - Pitch bender switch
  * - Pulse width (for square wave)
  * - Pulse width velocity
+ *
+ * The waveform options shown depend on the Structure parameter:
+ * - Synth partials: Square and Sawtooth enabled, PCM disabled
+ * - PCM partials: PCM A and PCM B enabled, Synth disabled
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import type { PartialParams } from '@/core/midi/types';
 import { ParameterSlider, formatKeyfollow } from '@/components/ui';
-import { getPcmWaveName, PARAM_RANGES } from '@/core/midi/constants';
+import { getPcmWaveName, PARAM_RANGES, isPartialPCM, STRUCTURE_NAMES } from '@/core/midi/constants';
 import { cn } from '@/lib/utils';
 
 interface PitchSectionProps {
@@ -23,35 +27,70 @@ interface PitchSectionProps {
   onChange: (key: keyof PartialParams, value: number | boolean) => void;
   onCommit?: () => void;
   disabled?: boolean;
+  /** Structure index for partials 1-2 (0-12) */
+  structure12: number;
+  /** Structure index for partials 3-4 (0-12) */
+  structure34: number;
+  /** Which partial this is (0-3) */
+  partialIndex: number;
 }
 
-// Waveform parameter encoding (per D-110 MIDI Implementation, offset 00 04):
-// WG WAVEFORM/PCM BANK: 0-3
-// Based on Edisyn's implementation and empirical testing:
-// Bit 1 = Bank (0=Bank1, 1=Bank2), Bit 0 = Type (0=PCM, 1=Synth)
-//   0 (00) = PCM Bank 1 (A)
-//   1 (01) = Square (synth waveform)
-//   2 (10) = PCM Bank 2 (B)
-//   3 (11) = Sawtooth (synth waveform)
+// Waveform parameter encoding
+// For SYNTH partials: bit 0 selects Square (0) vs Sawtooth (1)
+// For PCM partials: bit 1 is high bit of PCM wave number (Bank A=0, Bank B=1)
+const WAVEFORM_SQUARE = 0;
+const WAVEFORM_SAWTOOTH = 1;
 const WAVEFORM_PCM_BANK_A = 0;
-const WAVEFORM_SQUARE = 1;
 const WAVEFORM_PCM_BANK_B = 2;
-const WAVEFORM_SAWTOOTH = 3;
 
 export function PitchSection({
   params,
   onChange,
   onCommit,
   disabled = false,
+  structure12,
+  structure34,
+  partialIndex,
 }: PitchSectionProps): JSX.Element {
-  // Decode waveform value (0-3)
-  const isSquare = params.waveform === WAVEFORM_SQUARE;
-  const isSawtooth = params.waveform === WAVEFORM_SAWTOOTH;
-  const isPcm = params.waveform === WAVEFORM_PCM_BANK_A || params.waveform === WAVEFORM_PCM_BANK_B;
-  const pcmBank = params.waveform === WAVEFORM_PCM_BANK_B ? 1 : 0;
+  // Determine if this partial is PCM or Synth based on Structure
+  const structureIndex = partialIndex < 2 ? structure12 : structure34;
+  const isSecondInPair = partialIndex === 1 || partialIndex === 3;
+  const isPcmPartial = isPartialPCM(structureIndex, isSecondInPair);
+  const isSynthPartial = !isPcmPartial;
 
-  // DEBUG: Log waveform value to help diagnose bank selection issues
-  console.log('[PitchSection] waveform:', params.waveform, 'isPcm:', isPcm, 'pcmBank:', pcmBank, 'pcmWaveNumber:', params.pcmWaveNumber);
+  // Get structure name for tooltips
+  const structureName = STRUCTURE_NAMES[structureIndex] ?? `Structure ${structureIndex + 1}`;
+  const partialPairLabel = partialIndex < 2 ? '1-2' : '3-4';
+
+  // Decode current waveform value
+  // For Synth: bit 0 determines Square/Sawtooth
+  // For PCM: bit 1 determines Bank A/B
+  const currentWaveformBit0 = params.waveform & 0x01;
+  const currentWaveformBit1 = (params.waveform & 0x02) >> 1;
+
+  const isSquare = isSynthPartial && currentWaveformBit0 === 0;
+  const isSawtooth = isSynthPartial && currentWaveformBit0 === 1;
+  const isPcmBankA = isPcmPartial && currentWaveformBit1 === 0;
+  const isPcmBankB = isPcmPartial && currentWaveformBit1 === 1;
+  const pcmBank = currentWaveformBit1;
+
+  // Tooltip messages
+  const tooltips = useMemo(() => {
+    const synthDisabledReason = isPcmPartial
+      ? `Disabled: Structure ${structureIndex + 1} (${structureName}) sets Partial ${partialIndex + 1} to PCM mode. Change Structure ${partialPairLabel} to enable synth waveforms.`
+      : null;
+
+    const pcmDisabledReason = isSynthPartial
+      ? `Disabled: Structure ${structureIndex + 1} (${structureName}) sets Partial ${partialIndex + 1} to Synth mode. Change Structure ${partialPairLabel} to enable PCM waveforms.`
+      : null;
+
+    return {
+      square: synthDisabledReason ?? 'Square wave - A synthesized waveform with adjustable pulse width',
+      sawtooth: synthDisabledReason ?? 'Sawtooth wave - A synthesized waveform rich in harmonics',
+      pcmA: pcmDisabledReason ?? 'PCM Bank A - Waves 1-128, primarily attack transients and one-shot samples',
+      pcmB: pcmDisabledReason ?? 'PCM Bank B - Waves 1-128, primarily looped samples',
+    };
+  }, [isPcmPartial, isSynthPartial, structureIndex, structureName, partialIndex, partialPairLabel]);
 
   const handleWaveformChange = useCallback(
     (type: 'square' | 'sawtooth' | 'pcm-a' | 'pcm-b') => {
@@ -70,7 +109,6 @@ export function PitchSection({
           value = WAVEFORM_PCM_BANK_B;
           break;
       }
-      console.log('[PitchSection] Setting waveform to:', value, 'for type:', type);
       onChange('waveform', value);
       onCommit?.();
     },
@@ -92,17 +130,30 @@ export function PitchSection({
 
   return (
     <div className={cn('space-y-4', disabled && 'opacity-50 pointer-events-none')}>
+      {/* Structure Info Banner */}
+      <div className="bg-d110-surface rounded-md px-3 py-2 text-xs text-d110-muted">
+        <span className="font-medium">Structure {partialPairLabel}:</span>{' '}
+        <span className="text-d110-text">{structureName}</span>
+        {' → '}
+        <span className={isPcmPartial ? 'text-amber-400' : 'text-emerald-400'}>
+          Partial {partialIndex + 1} is {isPcmPartial ? 'PCM' : 'Synth'}
+        </span>
+      </div>
+
       {/* Waveform Selection */}
       <div>
         <label className="label mb-2">Waveform</label>
         <div className="flex flex-wrap gap-2">
+          {/* Synth Waveforms */}
           <button
             onClick={() => handleWaveformChange('square')}
             className={cn(
               'btn text-sm',
-              isSquare ? 'btn-primary' : 'btn-secondary'
+              isSquare ? 'btn-primary' : 'btn-secondary',
+              isPcmPartial && 'opacity-40 cursor-not-allowed'
             )}
-            disabled={disabled}
+            disabled={disabled || isPcmPartial}
+            title={tooltips.square}
           >
             Square
           </button>
@@ -110,19 +161,28 @@ export function PitchSection({
             onClick={() => handleWaveformChange('sawtooth')}
             className={cn(
               'btn text-sm',
-              isSawtooth ? 'btn-primary' : 'btn-secondary'
+              isSawtooth ? 'btn-primary' : 'btn-secondary',
+              isPcmPartial && 'opacity-40 cursor-not-allowed'
             )}
-            disabled={disabled}
+            disabled={disabled || isPcmPartial}
+            title={tooltips.sawtooth}
           >
             Sawtooth
           </button>
+
+          {/* Separator */}
+          <div className="w-px bg-d110-border self-stretch mx-1" />
+
+          {/* PCM Banks */}
           <button
             onClick={() => handleWaveformChange('pcm-a')}
             className={cn(
               'btn text-sm',
-              isPcm && pcmBank === 0 ? 'btn-primary' : 'btn-secondary'
+              isPcmBankA ? 'btn-primary' : 'btn-secondary',
+              isSynthPartial && 'opacity-40 cursor-not-allowed'
             )}
-            disabled={disabled}
+            disabled={disabled || isSynthPartial}
+            title={tooltips.pcmA}
           >
             PCM A
           </button>
@@ -130,24 +190,25 @@ export function PitchSection({
             onClick={() => handleWaveformChange('pcm-b')}
             className={cn(
               'btn text-sm',
-              isPcm && pcmBank === 1 ? 'btn-primary' : 'btn-secondary'
+              isPcmBankB ? 'btn-primary' : 'btn-secondary',
+              isSynthPartial && 'opacity-40 cursor-not-allowed'
             )}
-            disabled={disabled}
+            disabled={disabled || isSynthPartial}
+            title={tooltips.pcmB}
           >
             PCM B
           </button>
         </div>
       </div>
 
-      {/* PCM Wave Number (only shown for PCM) */}
-      {isPcm && (
+      {/* PCM Wave Number (only shown for PCM partials) */}
+      {isPcmPartial && (
         <div>
           <label className="label mb-2">PCM Wave</label>
           <select
             value={params.pcmWaveNumber}
             onChange={(e) => {
               // Ensure waveform value matches the displayed bank when selecting a wave
-              // pcmBank is derived from current waveform display (0=Bank A, 1=Bank B)
               const expectedWaveform = pcmBank === 0 ? WAVEFORM_PCM_BANK_A : WAVEFORM_PCM_BANK_B;
               if (params.waveform !== expectedWaveform) {
                 onChange('waveform', expectedWaveform);
@@ -157,6 +218,7 @@ export function PitchSection({
             }}
             className="input w-full"
             disabled={disabled}
+            title="Select a PCM sample from the current bank"
           >
             {Array.from({ length: 128 }, (_, i) => (
               <option key={i} value={i}>
@@ -167,8 +229,8 @@ export function PitchSection({
         </div>
       )}
 
-      {/* Pulse Width (only shown for Square) */}
-      {isSquare && (
+      {/* Pulse Width (only shown for Square wave on Synth partials) */}
+      {isSynthPartial && isSquare && (
         <div className="grid grid-cols-2 gap-4">
           <ParameterSlider
             label="Pulse Width"
@@ -239,6 +301,7 @@ export function PitchSection({
               params.pitchBenderSwitch ? 'btn-primary' : 'btn-secondary'
             )}
             disabled={disabled}
+            title="Enable or disable pitch bend for this partial"
           >
             {params.pitchBenderSwitch ? 'ON' : 'OFF'}
           </button>

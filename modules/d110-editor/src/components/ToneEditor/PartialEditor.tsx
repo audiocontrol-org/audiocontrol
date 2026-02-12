@@ -181,6 +181,9 @@ export function PartialEditor(): JSX.Element {
           <PitchSection
             params={partial}
             onChange={handlePartialChange}
+            structure12={tone.common.structure12}
+            structure34={tone.common.structure34}
+            partialIndex={selectedPartial}
           />
         </CollapsibleSection>
 
