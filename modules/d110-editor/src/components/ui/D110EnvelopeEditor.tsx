@@ -66,11 +66,23 @@ export function D110EnvelopeEditor({
   const tvfTvaData = data as TvfTvaEnvelopeData;
 
   // Get levels and times based on envelope type
+  //
+  // Pitch envelope: 5 points (L0 → L1 → L2 → Sus → End), 4 times between them
+  // TVF/TVA envelope: 5 points (Start(100) → L1 → L2 → L3 → Sus), 4 times + T5 (release)
+  //
+  // For visualization, we show 5 points with 4 times before sustain.
+  // T5 (release time) is shown separately in the table for TVF/TVA.
   const levels = isPitch
     ? [pitchData.level0, pitchData.level1, pitchData.level2, pitchData.sustainLevel, pitchData.endLevel]
     : [100, tvfTvaData.level1, tvfTvaData.level2, tvfTvaData.level3, tvfTvaData.sustainLevel];
 
-  const times = isPitch
+  // Times shown in visualization (between the 5 points)
+  const displayTimes = isPitch
+    ? [pitchData.time1, pitchData.time2, pitchData.time3, pitchData.time4]
+    : [tvfTvaData.time1, tvfTvaData.time2, tvfTvaData.time3, tvfTvaData.time4];
+
+  // All times for the table (TVF/TVA has T5 release time)
+  const allTimes = isPitch
     ? [pitchData.time1, pitchData.time2, pitchData.time3, pitchData.time4]
     : [tvfTvaData.time1, tvfTvaData.time2, tvfTvaData.time3, tvfTvaData.time4, tvfTvaData.time5];
 
@@ -96,12 +108,17 @@ export function D110EnvelopeEditor({
     if (key) onChange(key, Math.max(0, Math.min(100, value)));
   };
 
+  // Time labels for table header
+  const timeLabels = isPitch
+    ? ['T1', 'T2', 'T3', 'T4']
+    : ['T1', 'T2', 'T3', 'T4', 'T5'];
+
   return (
     <div className={cn('space-y-4', disabled && 'opacity-50 pointer-events-none')}>
       {/* Envelope visualization */}
       <EnvelopeVisualization
         levels={levels}
-        times={times}
+        times={displayTimes}
         pointLabels={pointLabels}
         label={label}
         isPitch={isPitch}
@@ -117,11 +134,17 @@ export function D110EnvelopeEditor({
           <thead>
             <tr className="text-d110-muted border-b border-d110-border">
               <th className="text-left py-1 px-2 w-16">Param</th>
-              {pointLabels.map((label, i) => (
+              {pointLabels.map((lbl, i) => (
                 <th key={i} className="text-center py-1 px-1 min-w-[50px]">
-                  {label}
+                  {lbl}
                 </th>
               ))}
+              {/* Extra column for T5 release time in TVF/TVA */}
+              {!isPitch && (
+                <th className="text-center py-1 px-1 min-w-[50px] text-amber-400">
+                  Rel
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -142,6 +165,12 @@ export function D110EnvelopeEditor({
                   />
                 </td>
               ))}
+              {/* Empty cell for release column */}
+              {!isPitch && (
+                <td className="py-1 px-1">
+                  <span className="text-d110-muted/50 text-center block">0</span>
+                </td>
+              )}
             </tr>
             {/* Time row */}
             <tr>
@@ -150,7 +179,7 @@ export function D110EnvelopeEditor({
               <td className="py-1 px-1">
                 <span className="text-d110-muted/50 text-center block">-</span>
               </td>
-              {times.map((time, i) => (
+              {allTimes.map((time, i) => (
                 <td key={i} className="py-1 px-1">
                   <input
                     type="number"
@@ -159,8 +188,12 @@ export function D110EnvelopeEditor({
                     value={time}
                     onChange={(e) => handleTimeChange(i, Number(e.target.value))}
                     onBlur={() => onCommit?.()}
-                    className="w-full bg-d110-surface text-d110-text text-center rounded px-1 py-0.5 border border-d110-border"
+                    className={cn(
+                      'w-full bg-d110-surface text-d110-text text-center rounded px-1 py-0.5 border border-d110-border',
+                      !isPitch && i === 4 && 'border-amber-400/50'
+                    )}
                     disabled={disabled}
+                    title={timeLabels[i]}
                   />
                 </td>
               ))}
@@ -168,6 +201,13 @@ export function D110EnvelopeEditor({
           </tbody>
         </table>
       </div>
+
+      {/* Release time note for TVF/TVA */}
+      {!isPitch && (
+        <div className="text-[9px] text-d110-muted/60 text-center">
+          <span className="text-amber-400">Rel</span> = Release time (T5) after key release
+        </div>
+      )}
     </div>
   );
 }
