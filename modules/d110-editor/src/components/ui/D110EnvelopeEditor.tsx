@@ -6,7 +6,7 @@
  *
  * Envelope structures:
  * - Pitch: L0 → L1 → L2 → Sustain → End (5 levels, 4 times)
- * - TVF/TVA: Start → L1 → L2 → L3 → Sustain (4 levels after start, 5 times)
+ * - TVF/TVA: 0 → L1 → L2 → L3 → Sustain (starts at 0, 4 editable levels, 5 times)
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
@@ -68,27 +68,29 @@ export function D110EnvelopeEditor({
   // Get levels and times based on envelope type
   //
   // Pitch envelope: 5 points (L0 → L1 → L2 → Sus → End), 4 times between them
-  // TVF/TVA envelope: 5 points (Start(100) → L1 → L2 → L3 → Sus), 4 times + T5 (release)
+  // TVF/TVA envelope: 5 points (0 → L1 → L2 → L3 → Sus), 4 times + T5 (release)
+  //   - Starts at 0, rises to L1 over T1, then L2 over T2, etc.
   //
   // For visualization, we show 5 points with 4 times before sustain.
   // T5 (release time) is shown separately in the table for TVF/TVA.
+  // TVF/TVA envelopes start at 0, rise through L1-L3 to sustain, then release back to 0
   const levels = isPitch
     ? [pitchData.level0, pitchData.level1, pitchData.level2, pitchData.sustainLevel, pitchData.endLevel]
-    : [100, tvfTvaData.level1, tvfTvaData.level2, tvfTvaData.level3, tvfTvaData.sustainLevel];
+    : [0, tvfTvaData.level1, tvfTvaData.level2, tvfTvaData.level3, tvfTvaData.sustainLevel, 0];
 
-  // Times shown in visualization (between the 5 points)
+  // Times shown in visualization
+  // Pitch: 4 times (T1-T4) between 5 points
+  // TVF/TVA: 5 times (T1-T5) between 6 points, including release
   const displayTimes = isPitch
-    ? [pitchData.time1, pitchData.time2, pitchData.time3, pitchData.time4]
-    : [tvfTvaData.time1, tvfTvaData.time2, tvfTvaData.time3, tvfTvaData.time4];
-
-  // All times for the table (TVF/TVA has T5 release time)
-  const allTimes = isPitch
     ? [pitchData.time1, pitchData.time2, pitchData.time3, pitchData.time4]
     : [tvfTvaData.time1, tvfTvaData.time2, tvfTvaData.time3, tvfTvaData.time4, tvfTvaData.time5];
 
+
+  // levelKeys: which points can have their level edited (null = fixed level)
+  // For TVF/TVA: Start (0) and Release (0) are fixed, others are editable
   const levelKeys = isPitch
     ? ['level0', 'level1', 'level2', 'sustainLevel', 'endLevel']
-    : [null, 'level1', 'level2', 'level3', 'sustainLevel'];
+    : [null, 'level1', 'level2', 'level3', 'sustainLevel', null];
 
   const timeKeys = isPitch
     ? ['time1', 'time2', 'time3', 'time4']
@@ -96,7 +98,7 @@ export function D110EnvelopeEditor({
 
   const pointLabels = isPitch
     ? ['L0', 'L1', 'L2', 'Sus', 'End']
-    : ['Start', 'L1', 'L2', 'L3', 'Sus'];
+    : ['Start', 'L1', 'L2', 'L3', 'Sus', 'Rel'];
 
   const handleLevelChange = (index: number, value: number) => {
     const key = levelKeys[index];
@@ -135,43 +137,52 @@ export function D110EnvelopeEditor({
           <thead>
             <tr className="text-d110-muted border-b border-d110-border">
               <th className="text-left py-1 px-2 w-16">Param</th>
-              {pointLabels.map((lbl, i) => (
-                <th key={i} className="text-center py-1 px-1 min-w-[50px]">
-                  {lbl}
-                </th>
-              ))}
-              {/* Extra column for T5 release time in TVF/TVA */}
-              {!isPitch && (
-                <th className="text-center py-1 px-1 min-w-[50px] text-amber-400">
-                  Rel
-                </th>
-              )}
+              {pointLabels.map((lbl, i) => {
+                const isRelease = !isPitch && i === pointLabels.length - 1;
+                return (
+                  <th
+                    key={i}
+                    className={cn(
+                      'text-center py-1 px-1 min-w-[50px]',
+                      isRelease && 'text-amber-400'
+                    )}
+                  >
+                    {lbl}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
             {/* Level row */}
             <tr className="border-b border-d110-border/50">
               <td className="py-2 px-2 text-d110-muted">Level</td>
-              {levels.map((level, i) => (
-                <td key={i} className="py-1 px-1">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={level}
-                    onChange={(e) => handleLevelChange(i, Number(e.target.value))}
-                    onBlur={() => onCommit?.()}
-                    className="w-full bg-d110-surface text-d110-text text-center rounded px-1 py-0.5 border border-d110-border"
-                    disabled={disabled || levelKeys[i] === null}
-                  />
-                </td>
-              ))}
-              {/* Empty cell for release column */}
-              {!isPitch && (
-                <td className="py-1 px-1">
-                  <span className="text-d110-muted/50 text-center block">0</span>
-                </td>
-              )}
+              {levels.map((level, i) => {
+                const isRelease = !isPitch && i === levels.length - 1;
+                return (
+                  <td key={i} className="py-1 px-1">
+                    {levelKeys[i] === null ? (
+                      <span className={cn(
+                        'text-center block',
+                        isRelease ? 'text-amber-400/50' : 'text-d110-muted/50'
+                      )}>
+                        {level}
+                      </span>
+                    ) : (
+                      <input
+                        type="number"
+                        min={0}
+                        max={100}
+                        value={level}
+                        onChange={(e) => handleLevelChange(i, Number(e.target.value))}
+                        onBlur={() => onCommit?.()}
+                        className="w-full bg-d110-surface text-d110-text text-center rounded px-1 py-0.5 border border-d110-border"
+                        disabled={disabled}
+                      />
+                    )}
+                  </td>
+                );
+              })}
             </tr>
             {/* Time row */}
             <tr>
@@ -180,41 +191,41 @@ export function D110EnvelopeEditor({
               <td className="py-1 px-1">
                 <span className="text-d110-muted/50 text-center block">-</span>
               </td>
-              {allTimes.map((time, i) => (
-                <td key={i} className="py-1 px-1">
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    value={time}
-                    onChange={(e) => handleTimeChange(i, Number(e.target.value))}
-                    onBlur={() => onCommit?.()}
-                    className={cn(
-                      'w-full bg-d110-surface text-d110-text text-center rounded px-1 py-0.5 border border-d110-border',
-                      !isPitch && i === 4 && 'border-amber-400/50'
-                    )}
-                    disabled={disabled}
-                    title={timeLabels[i]}
-                  />
-                </td>
-              ))}
+              {displayTimes.map((time, i) => {
+                const isRelease = !isPitch && i === displayTimes.length - 1;
+                return (
+                  <td key={i} className="py-1 px-1">
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      value={time}
+                      onChange={(e) => handleTimeChange(i, Number(e.target.value))}
+                      onBlur={() => onCommit?.()}
+                      className={cn(
+                        'w-full bg-d110-surface text-d110-text text-center rounded px-1 py-0.5 border border-d110-border',
+                        isRelease && 'border-amber-400/50'
+                      )}
+                      disabled={disabled}
+                      title={timeLabels[i]}
+                    />
+                  </td>
+                );
+              })}
             </tr>
           </tbody>
         </table>
       </div>
-
-      {/* Release time note for TVF/TVA */}
-      {!isPitch && (
-        <div className="text-[9px] text-d110-muted/60 text-center">
-          <span className="text-amber-400">Rel</span> = Release time (T5) after key release
-        </div>
-      )}
     </div>
   );
 }
 
 /**
  * Interactive SVG visualization of the envelope
+ *
+ * X-axis layout: Uses cumulative time positioning with an absolute scale.
+ * Full draw width = 400 time units (4 segments × 100 max each).
+ * When dragging a point, all points to the right shift with it.
  */
 function EnvelopeVisualization({
   levels,
@@ -241,7 +252,6 @@ function EnvelopeVisualization({
 }): JSX.Element {
   const [dragging, setDragging] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const lastMouseXRef = useRef<number | null>(null);
 
   const width = 320;
   const height = 120;
@@ -249,22 +259,27 @@ function EnvelopeVisualization({
   const drawWidth = width - padding * 2;
   const drawHeight = height - padding * 2;
 
-  // Calculate X positions based on cumulative time
-  // For TVF/TVA, times[4] (T5) is release time after sustain
-  const totalTime = times.reduce((sum, t) => sum + t, 0) || 1;
+  // Absolute time scale: full draw width = 400 time units (4 segments × 100 max)
+  // This gives intuitive dragging where point position directly maps to cumulative time
+  const maxTotalTime = times.length * 100;
+
+  // Calculate X positions based on cumulative time (absolute scale, not normalized)
+  // Point 0 is at the start (padding)
+  // Point i (i > 0) is at: padding + (cumTime / maxTotalTime) * drawWidth
   const xPositions = [padding];
   let cumTime = 0;
-
   for (let i = 0; i < times.length; i++) {
     cumTime += times[i];
-    xPositions.push(padding + (cumTime / (totalTime || 1)) * drawWidth);
+    xPositions.push(padding + (cumTime / maxTotalTime) * drawWidth);
   }
 
   // Calculate Y positions based on levels (0 at bottom, 100 at top)
   const yPositions = levels.map((level) => padding + (1 - level / 100) * drawHeight);
 
-  // Build path
+  // Build path - for TVF/TVA, exclude the release point (drawn separately in amber)
+  const mainPathPoints = isPitch ? xPositions.length : xPositions.length - 1;
   const pathData = xPositions
+    .slice(0, mainPathPoints)
     .map((x, i) => `${i === 0 ? 'M' : 'L'} ${x} ${yPositions[i]}`)
     .join(' ');
 
@@ -277,47 +292,63 @@ function EnvelopeVisualization({
     return Math.round(Math.max(0, Math.min(100, (1 - (y - padding) / drawHeight) * 100)));
   };
 
+  // Convert mouse X position to time value for a given point
+  // Uses cumulative positioning: the time is the difference between
+  // the target cumulative time (from mouse position) and the previous point's cumulative time
+  const getTimeFromMouseX = (e: MouseEvent, pointIndex: number): number => {
+    if (!svgRef.current || pointIndex < 1) return 0;
+    const rect = svgRef.current.getBoundingClientRect();
+    const scaleX = width / rect.width;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+
+    // Calculate cumulative time up to the point BEFORE the one being dragged
+    let prevCumTime = 0;
+    for (let i = 0; i < pointIndex - 1; i++) {
+      prevCumTime += times[i];
+    }
+
+    // Convert mouse position to target cumulative time
+    const clampedX = Math.max(padding, Math.min(width - padding, mouseX));
+    const targetCumTime = ((clampedX - padding) / drawWidth) * maxTotalTime;
+
+    // New time value = target cumulative time - previous cumulative time
+    const newTime = targetCumTime - prevCumTime;
+
+    return Math.round(Math.max(0, Math.min(100, newTime)));
+  };
+
   const handleMouseDown = (index: number) => (e: React.MouseEvent) => {
-    if (disabled || levelKeys[index] === null) return;
+    // A point can be dragged if it can edit level OR time
+    // - levelKeys[index] !== null means level is editable
+    // - index > 0 means time is editable (there's a time segment before this point)
+    const canEditLevel = levelKeys[index] !== null;
+    const canEditTime = index > 0;
+    if (disabled || (!canEditLevel && !canEditTime)) return;
     e.preventDefault();
     setDragging(index);
-    lastMouseXRef.current = e.clientX;
   };
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (dragging === null) return;
 
-      // Vertical (level) adjustment
-      const level = getMouseY(e);
-      onLevelChange(dragging, level);
+      // Vertical (level) adjustment - only if level is editable
+      if (levelKeys[dragging] !== null) {
+        const level = getMouseY(e);
+        onLevelChange(dragging, level);
+      }
 
       // Horizontal (time) adjustment - only for points > 0
       // Point 0 has no time segment before it
-      if (dragging > 0 && lastMouseXRef.current !== null) {
-        const rect = svgRef.current?.getBoundingClientRect();
-        if (!rect) return;
-
-        const deltaX = e.clientX - lastMouseXRef.current;
-        lastMouseXRef.current = e.clientX;
-
-        // Convert pixel delta to time delta
-        // Scale factor: full draw width corresponds to ~100 time units worth of change
-        const scaleX = width / rect.width;
-        const scaledDelta = deltaX * scaleX;
-        const timeDelta = (scaledDelta / drawWidth) * 100;
-
-        // Time index is point index - 1 (time[0] leads to point[1], etc.)
+      if (dragging > 0) {
+        const newTime = getTimeFromMouseX(e, dragging);
         const timeIndex = dragging - 1;
-        const currentTime = times[timeIndex];
-        const newTime = Math.max(0, Math.min(100, Math.round(currentTime + timeDelta)));
-
-        if (newTime !== currentTime) {
+        if (newTime !== times[timeIndex]) {
           onTimeChange(timeIndex, newTime);
         }
       }
     },
-    [dragging, onLevelChange, onTimeChange, times, width, drawWidth]
+    [dragging, levelKeys, onLevelChange, onTimeChange, times, maxTotalTime]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -325,7 +356,6 @@ function EnvelopeVisualization({
       onDragEnd?.();
     }
     setDragging(null);
-    lastMouseXRef.current = null;
   }, [dragging, onDragEnd]);
 
   useEffect(() => {
@@ -339,8 +369,11 @@ function EnvelopeVisualization({
     }
   }, [dragging, handleMouseMove, handleMouseUp]);
 
-  // Sustain point index
+  // Sustain point index (TVF/TVA now has 6 points: 0, L1, L2, L3, Sus, Rel)
   const sustainIndex = isPitch ? 3 : 4;
+
+  // Release point index (only for TVF/TVA)
+  const releaseIndex = isPitch ? -1 : 5;
 
   return (
     <div className="bg-d110-surface rounded-md p-2" aria-label={`${label} envelope`}>
@@ -397,7 +430,7 @@ function EnvelopeVisualization({
           strokeDasharray="4 2"
         />
 
-        {/* Envelope curve */}
+        {/* Envelope curve - main attack/decay portion */}
         <path
           d={pathData}
           fill="none"
@@ -407,10 +440,26 @@ function EnvelopeVisualization({
           strokeLinejoin="round"
         />
 
+        {/* Release segment (TVF/TVA only) - drawn in amber */}
+        {releaseIndex > 0 && (
+          <line
+            x1={xPositions[sustainIndex]}
+            y1={yPositions[sustainIndex]}
+            x2={xPositions[releaseIndex]}
+            y2={yPositions[releaseIndex]}
+            stroke="#f59e0b"
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+        )}
+
         {/* Draggable points */}
         {xPositions.map((x, i) => {
-          const canDrag = levelKeys[i] !== null;
+          const canEditLevel = levelKeys[i] !== null;
+          const canEditTime = i > 0;
+          const canDrag = canEditLevel || canEditTime;
           const isSustain = i === sustainIndex;
+          const isRelease = i === releaseIndex;
           return (
             <g key={i}>
               {/* Larger invisible hit area */}
@@ -421,7 +470,7 @@ function EnvelopeVisualization({
                   r={12}
                   fill="transparent"
                   className={cn(
-                    !disabled && 'cursor-grab',
+                    !disabled && (canEditLevel ? 'cursor-grab' : 'cursor-ew-resize'),
                     dragging === i && 'cursor-grabbing'
                   )}
                   onMouseDown={handleMouseDown(i)}
@@ -431,12 +480,12 @@ function EnvelopeVisualization({
               <circle
                 cx={x}
                 cy={yPositions[i]}
-                r={isSustain ? 6 : 5}
-                fill={dragging === i ? '#ff6b8a' : isSustain ? '#e94560' : '#1a1a2e'}
-                stroke="#e94560"
+                r={isSustain ? 6 : isRelease ? 5 : 5}
+                fill={dragging === i ? '#ff6b8a' : isSustain ? '#e94560' : isRelease ? '#f59e0b' : '#1a1a2e'}
+                stroke={isRelease ? '#f59e0b' : '#e94560'}
                 strokeWidth={isSustain ? 2 : 1.5}
                 className={cn(
-                  !disabled && canDrag && 'cursor-grab',
+                  !disabled && canDrag && (canEditLevel ? 'cursor-grab' : 'cursor-ew-resize'),
                   dragging === i && 'cursor-grabbing'
                 )}
                 onMouseDown={canDrag ? handleMouseDown(i) : undefined}
@@ -444,24 +493,26 @@ function EnvelopeVisualization({
               {/* Value labels on drag */}
               {dragging === i && (
                 <>
-                  {/* Level value above point */}
-                  <text
-                    x={x}
-                    y={yPositions[i] - 12}
-                    textAnchor="middle"
-                    fill="#e94560"
-                    fontSize={10}
-                    fontFamily="monospace"
-                  >
-                    L:{levels[i]}
-                  </text>
+                  {/* Level value above point (only if level is editable) */}
+                  {canEditLevel && (
+                    <text
+                      x={x}
+                      y={yPositions[i] - 12}
+                      textAnchor="middle"
+                      fill="#e94560"
+                      fontSize={10}
+                      fontFamily="monospace"
+                    >
+                      L:{levels[i]}
+                    </text>
+                  )}
                   {/* Time value below point (only for points > 0) */}
-                  {i > 0 && (
+                  {canEditTime && (
                     <text
                       x={x}
                       y={yPositions[i] + 18}
                       textAnchor="middle"
-                      fill="#60a5fa"
+                      fill={isRelease ? '#f59e0b' : '#60a5fa'}
                       fontSize={10}
                       fontFamily="monospace"
                     >
