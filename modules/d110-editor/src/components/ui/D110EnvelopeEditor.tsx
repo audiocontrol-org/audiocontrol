@@ -124,6 +124,7 @@ export function D110EnvelopeEditor({
         isPitch={isPitch}
         levelKeys={levelKeys}
         onLevelChange={handleLevelChange}
+        onTimeChange={handleTimeChange}
         onDragEnd={onCommit}
         disabled={disabled}
       />
@@ -223,6 +224,7 @@ function EnvelopeVisualization({
   isPitch,
   levelKeys,
   onLevelChange,
+  onTimeChange,
   onDragEnd,
   disabled = false,
 }: {
@@ -233,11 +235,13 @@ function EnvelopeVisualization({
   isPitch: boolean;
   levelKeys: (string | null)[];
   onLevelChange: (index: number, value: number) => void;
+  onTimeChange: (index: number, value: number) => void;
   onDragEnd?: () => void;
   disabled?: boolean;
 }): JSX.Element {
   const [dragging, setDragging] = useState<number | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const lastMouseXRef = useRef<number | null>(null);
 
   const width = 320;
   const height = 120;
@@ -277,15 +281,43 @@ function EnvelopeVisualization({
     if (disabled || levelKeys[index] === null) return;
     e.preventDefault();
     setDragging(index);
+    lastMouseXRef.current = e.clientX;
   };
 
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
       if (dragging === null) return;
+
+      // Vertical (level) adjustment
       const level = getMouseY(e);
       onLevelChange(dragging, level);
+
+      // Horizontal (time) adjustment - only for points > 0
+      // Point 0 has no time segment before it
+      if (dragging > 0 && lastMouseXRef.current !== null) {
+        const rect = svgRef.current?.getBoundingClientRect();
+        if (!rect) return;
+
+        const deltaX = e.clientX - lastMouseXRef.current;
+        lastMouseXRef.current = e.clientX;
+
+        // Convert pixel delta to time delta
+        // Scale factor: full draw width corresponds to ~100 time units worth of change
+        const scaleX = width / rect.width;
+        const scaledDelta = deltaX * scaleX;
+        const timeDelta = (scaledDelta / drawWidth) * 100;
+
+        // Time index is point index - 1 (time[0] leads to point[1], etc.)
+        const timeIndex = dragging - 1;
+        const currentTime = times[timeIndex];
+        const newTime = Math.max(0, Math.min(100, Math.round(currentTime + timeDelta)));
+
+        if (newTime !== currentTime) {
+          onTimeChange(timeIndex, newTime);
+        }
+      }
     },
-    [dragging, onLevelChange]
+    [dragging, onLevelChange, onTimeChange, times, width, drawWidth]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -293,6 +325,7 @@ function EnvelopeVisualization({
       onDragEnd?.();
     }
     setDragging(null);
+    lastMouseXRef.current = null;
   }, [dragging, onDragEnd]);
 
   useEffect(() => {
@@ -408,18 +441,34 @@ function EnvelopeVisualization({
                 )}
                 onMouseDown={canDrag ? handleMouseDown(i) : undefined}
               />
-              {/* Level value label on drag */}
+              {/* Value labels on drag */}
               {dragging === i && (
-                <text
-                  x={x}
-                  y={yPositions[i] - 12}
-                  textAnchor="middle"
-                  fill="#e94560"
-                  fontSize={10}
-                  fontFamily="monospace"
-                >
-                  {levels[i]}
-                </text>
+                <>
+                  {/* Level value above point */}
+                  <text
+                    x={x}
+                    y={yPositions[i] - 12}
+                    textAnchor="middle"
+                    fill="#e94560"
+                    fontSize={10}
+                    fontFamily="monospace"
+                  >
+                    L:{levels[i]}
+                  </text>
+                  {/* Time value below point (only for points > 0) */}
+                  {i > 0 && (
+                    <text
+                      x={x}
+                      y={yPositions[i] + 18}
+                      textAnchor="middle"
+                      fill="#60a5fa"
+                      fontSize={10}
+                      fontFamily="monospace"
+                    >
+                      T:{times[i - 1]}
+                    </text>
+                  )}
+                </>
               )}
             </g>
           );
@@ -443,7 +492,7 @@ function EnvelopeVisualization({
       {/* Drag hint */}
       {!disabled && (
         <div className="text-[9px] text-d110-muted/60 text-center mt-1">
-          Drag points to adjust levels
+          Drag points: vertical = level, horizontal = time
         </div>
       )}
     </div>
