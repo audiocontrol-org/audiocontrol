@@ -69,6 +69,32 @@ export function HomePage() {
     navigate('/patches');
   };
 
+  // Show secure context warning
+  if (!isSupported && browserInfo.requiresSecureContext) {
+    return (
+      <div className="max-w-2xl mx-auto">
+        <div className="card">
+          <h2 className="text-xl font-bold text-s330-highlight mb-4">
+            Secure Connection Required
+          </h2>
+          <p className="text-s330-text mb-4">
+            The Web MIDI API requires a secure context (HTTPS or localhost).
+          </p>
+          <p className="text-s330-muted mb-4">
+            You&apos;re currently accessing this page over an insecure connection.
+          </p>
+          <div className="bg-s330-bg p-4 rounded-md">
+            <h3 className="font-medium text-s330-text mb-2">To use this editor:</h3>
+            <ul className="list-disc list-inside text-s330-muted space-y-1">
+              <li>Access via <code className="text-s330-highlight">localhost</code> or <code className="text-s330-highlight">127.0.0.1</code></li>
+              <li>Or use HTTPS (deploy with SSL certificate)</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Show browser compatibility warning
   if (!isSupported) {
     return (

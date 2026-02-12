@@ -291,11 +291,15 @@ export function parseEnvelope(
         data[levelsStart + 15] ?? 1,
     ];
 
+    // Ensure endPoint is clamped to valid range 1-8 to prevent display issues
+    const rawEndPoint = data[endOffset] ?? 8;
+    const endPoint = Math.max(1, Math.min(8, rawEndPoint));
+
     return {
         levels,
         rates,
         sustainPoint: data[sustainOffset] ?? 0,
-        endPoint: data[endOffset] ?? 8,
+        endPoint,
     };
 }
 
@@ -441,6 +445,37 @@ export function parsePatchCommon(data: number[]): S330PatchCommon {
         aftertouchAssign,
         keyAssign,
         outputAssign,
+    };
+}
+
+/**
+ * Create an empty patch common structure
+ * Used when a patch slot is empty or read fails.
+ *
+ * @param index Optional patch index for identification
+ * @returns Empty patch common with default values
+ */
+export function createEmptyPatchCommon(index?: number): S330PatchCommon {
+    // Create empty tone layer arrays (109 entries each)
+    const emptyToneLayer1 = new Array(109).fill(-1); // -1 = OFF for layer 1
+    const emptyToneLayer2 = new Array(109).fill(0);  // 0 = first tone for layer 2
+
+    return {
+        name: '',
+        keyMode: 'normal',
+        benderRange: 2,
+        aftertouchSens: 0,
+        velocityThreshold: 64,
+        velocityMixRatio: 64,
+        level: 127,
+        detune: 0,
+        octaveShift: 0,
+        aftertouchAssign: 'modulation',
+        keyAssign: 'rotary',
+        outputAssign: 0,
+        toneLayer1: emptyToneLayer1,
+        toneLayer2: emptyToneLayer2,
+        copySource: 0,
     };
 }
 

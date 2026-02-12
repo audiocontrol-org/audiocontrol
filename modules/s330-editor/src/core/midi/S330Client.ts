@@ -17,6 +17,9 @@ export type {
     ToneNameInfo,
     MultiPartConfig,
     S330DataType,
+    ProgressCallback,
+    PatchLoadedCallback,
+    ToneLoadedCallback,
 } from '@audiocontrol/sampler-devices/s330';
 
 export {
@@ -51,6 +54,33 @@ export {
     S330_COMMANDS,
     TIMING,
     calculateChecksum,
+} from '@audiocontrol/sampler-devices/s330';
+
+// Re-export front panel types and functions
+export type {
+    FrontPanelController,
+    FrontPanelButton,
+    NavigationButton,
+    FunctionButton,
+    NavigationMode,
+    FrontPanelControllerOptions,
+} from '@audiocontrol/sampler-devices/s330';
+
+export {
+    createFrontPanelController,
+} from '@audiocontrol/sampler-devices/s330';
+
+// Re-export parameter listener types and functions
+export type {
+    ParameterChangeEvent,
+    ParameterChangeType,
+    ParseResult,
+} from '@audiocontrol/sampler-devices/s330';
+
+export {
+    parseDT1Message,
+    isDT1Message,
+    isUIStateAddress,
 } from '@audiocontrol/sampler-devices/s330';
 
 // Local type alias for backward compatibility

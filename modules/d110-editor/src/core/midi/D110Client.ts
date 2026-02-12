@@ -151,10 +151,11 @@ export function createD110Client(
       structure12: data[10] as ToneCommon['structure12'],
       structure34: data[11] as ToneCommon['structure34'],
       partialMutes: {
-        partial1: (data[12] & 0x01) !== 0,
-        partial2: (data[12] & 0x02) !== 0,
-        partial3: (data[12] & 0x04) !== 0,
-        partial4: (data[12] & 0x08) !== 0,
+        // Bits represent "partial ON", so invert: bit=1 means NOT muted
+        partial1: (data[12] & 0x01) === 0,
+        partial2: (data[12] & 0x02) === 0,
+        partial3: (data[12] & 0x04) === 0,
+        partial4: (data[12] & 0x08) === 0,
       },
       envMode: data[13],
     };

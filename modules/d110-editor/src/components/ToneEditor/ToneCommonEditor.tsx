@@ -138,12 +138,12 @@ export function ToneCommonEditor(): JSX.Element {
 
       updateToneCommon(selectedPart, { partialMutes: newMutes });
 
-      // Pack mutes into a single byte
+      // Pack mutes into a single byte (bits represent "partial ON", so invert)
       const mutesByte =
-        (newMutes.partial1 ? 0x01 : 0) |
-        (newMutes.partial2 ? 0x02 : 0) |
-        (newMutes.partial3 ? 0x04 : 0) |
-        (newMutes.partial4 ? 0x08 : 0);
+        (newMutes.partial1 ? 0 : 0x01) |
+        (newMutes.partial2 ? 0 : 0x02) |
+        (newMutes.partial3 ? 0 : 0x04) |
+        (newMutes.partial4 ? 0 : 0x08);
 
       await sendParameter(12, mutesByte);
     },

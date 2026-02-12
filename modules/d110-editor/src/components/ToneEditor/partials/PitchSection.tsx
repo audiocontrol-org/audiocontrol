@@ -25,35 +25,50 @@ interface PitchSectionProps {
   disabled?: boolean;
 }
 
+// Waveform parameter encoding (per D-110 MIDI Implementation, offset 00 04):
+// WG WAVEFORM/PCM BANK: 0-3
+//   0 = Square
+//   1 = Sawtooth
+//   2 = PCM Bank A (Bank 1)
+//   3 = PCM Bank B (Bank 2)
+const WAVEFORM_SQUARE = 0;
+const WAVEFORM_SAWTOOTH = 1;
+const WAVEFORM_PCM_BANK_A = 2;
+const WAVEFORM_PCM_BANK_B = 3;
+
 export function PitchSection({
   params,
   onChange,
   onCommit,
   disabled = false,
 }: PitchSectionProps): JSX.Element {
-  // Waveform byte encoding:
-  // 0 = Square, 1 = Sawtooth, 2+ = PCM Bank A, 66+ = PCM Bank B
-  const isPcm = params.waveform >= 2;
-  const isSquare = params.waveform === 0;
-  const pcmBank = params.waveform >= 66 ? 1 : 0;
+  // Decode waveform value (0-3)
+  const isSquare = params.waveform === WAVEFORM_SQUARE;
+  const isSawtooth = params.waveform === WAVEFORM_SAWTOOTH;
+  const isPcm = params.waveform === WAVEFORM_PCM_BANK_A || params.waveform === WAVEFORM_PCM_BANK_B;
+  const pcmBank = params.waveform === WAVEFORM_PCM_BANK_B ? 1 : 0;
+
+  // DEBUG: Log waveform value to help diagnose bank selection issues
+  console.log('[PitchSection] waveform:', params.waveform, 'isPcm:', isPcm, 'pcmBank:', pcmBank, 'pcmWaveNumber:', params.pcmWaveNumber);
 
   const handleWaveformChange = useCallback(
     (type: 'square' | 'sawtooth' | 'pcm-a' | 'pcm-b') => {
       let value: number;
       switch (type) {
         case 'square':
-          value = 0;
+          value = WAVEFORM_SQUARE;
           break;
         case 'sawtooth':
-          value = 1;
+          value = WAVEFORM_SAWTOOTH;
           break;
         case 'pcm-a':
-          value = 2;
+          value = WAVEFORM_PCM_BANK_A;
           break;
         case 'pcm-b':
-          value = 66;
+          value = WAVEFORM_PCM_BANK_B;
           break;
       }
+      console.log('[PitchSection] Setting waveform to:', value, 'for type:', type);
       onChange('waveform', value);
       onCommit?.();
     },
@@ -83,7 +98,7 @@ export function PitchSection({
             onClick={() => handleWaveformChange('square')}
             className={cn(
               'btn text-sm',
-              params.waveform === 0 ? 'btn-primary' : 'btn-secondary'
+              isSquare ? 'btn-primary' : 'btn-secondary'
             )}
             disabled={disabled}
           >
@@ -93,7 +108,7 @@ export function PitchSection({
             onClick={() => handleWaveformChange('sawtooth')}
             className={cn(
               'btn text-sm',
-              params.waveform === 1 ? 'btn-primary' : 'btn-secondary'
+              isSawtooth ? 'btn-primary' : 'btn-secondary'
             )}
             disabled={disabled}
           >
@@ -129,13 +144,19 @@ export function PitchSection({
           <select
             value={params.pcmWaveNumber}
             onChange={(e) => {
+              // Ensure waveform value matches the displayed bank when selecting a wave
+              // pcmBank is derived from current waveform display (0=Bank A, 1=Bank B)
+              const expectedWaveform = pcmBank === 0 ? WAVEFORM_PCM_BANK_A : WAVEFORM_PCM_BANK_B;
+              if (params.waveform !== expectedWaveform) {
+                onChange('waveform', expectedWaveform);
+              }
               onChange('pcmWaveNumber', parseInt(e.target.value, 10));
               onCommit?.();
             }}
             className="input w-full"
             disabled={disabled}
           >
-            {Array.from({ length: 64 }, (_, i) => (
+            {Array.from({ length: 128 }, (_, i) => (
               <option key={i} value={i}>
                 {i + 1}: {getPcmWaveName(pcmBank, i)}
               </option>

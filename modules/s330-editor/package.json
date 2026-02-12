@@ -30,6 +30,7 @@
     "directory": "modules/audio-tools/modules/s330-editor"
   },
   "dependencies": {
+    "@audiocontrol/editor-tools": "workspace:*",
     "@audiocontrol/sampler-devices": "workspace:*",
     "@audiocontrol/shared-midi": "workspace:*",
     "@radix-ui/react-dialog": "^1.0.5",
@@ -64,6 +65,7 @@
     "tailwindcss": "^3.4.0",
     "typescript": "^5.3.0",
     "vite": "^5.0.10",
+    "vite-plugin-mkcert": "^1.17.9",
     "vitest": "^1.1.0"
   }
 }

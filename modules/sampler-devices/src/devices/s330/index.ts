@@ -188,6 +188,9 @@ export {
     parsePatchCommon,
     parseTone,
 
+    // Structure creation
+    createEmptyPatchCommon,
+
     // Structure encoding
     encodeSystemParams,
     encodePatchCommon,
@@ -238,6 +241,10 @@ export type {
     ToneNameInfo,
     MultiPartConfig,
     S330DataType,
+    // Callback types for progressive loading
+    ProgressCallback,
+    PatchLoadedCallback,
+    ToneLoadedCallback,
 } from './s330-client.js';
 
 export {
@@ -248,3 +255,46 @@ export {
     S330_DATA_TYPES,
     S330_FUNCTION_ADDRESSES,
 } from './s330-client.js';
+
+// =============================================================================
+// Parameter Listener Exports
+// =============================================================================
+
+export type {
+    ParameterChangeType,
+    ParameterChangeEvent,
+    ParseResult,
+} from './s330-parameter-listener.js';
+
+export {
+    parseDT1Message,
+    isDT1Message,
+    isUIStateAddress,
+} from './s330-parameter-listener.js';
+
+// =============================================================================
+// Front Panel Exports
+// =============================================================================
+
+export type {
+    NavigationButton,
+    FunctionButton,
+    FrontPanelButton,
+    FrontPanelControllerOptions,
+    FrontPanelController,
+    NavigationMode,
+} from './s330-front-panel.js';
+
+export {
+    FRONT_PANEL_ADDRESS,
+    ARROW_CODES_CAT01,
+    ARROW_CODES_CAT09,
+    VALUE_CODES,
+    NAVIGATION_DELAY_MS,
+    FUNCTION_CODES,
+    isNavigationButton,
+    isArrowButton,
+    isValueButton,
+    buildFrontPanelMessage,
+    createFrontPanelController,
+} from './s330-front-panel.js';

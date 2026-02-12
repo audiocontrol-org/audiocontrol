@@ -325,59 +325,91 @@ export const KEYFOLLOW_NAMES: readonly string[] = [
 ] as const;
 
 /**
- * PCM wave names for Bank A (0-63)
- * Based on D-110 documentation
+ * PCM wave names for Bank A (0-127)
+ * From Edisyn D-110 implementation - one-shot and some looped samples
  */
 export const PCM_WAVE_NAMES_A: readonly string[] = [
-  'Acou Piano 1', 'Acou Piano 2', 'Acou Piano 3', 'Acou Piano 4',
-  'Acou Piano 5', 'Acou Piano 6', 'Acou Piano 7', 'Acou Piano 8',
-  'Elec Piano 1', 'Elec Piano 2', 'Elec Piano 3', 'Elec Piano 4',
-  'Elec Organ 1', 'Elec Organ 2', 'Elec Organ 3', 'Elec Organ 4',
-  'Elec Organ 5', 'Elec Organ 6', 'Elec Organ 7', 'Pipe Organ 1',
-  'Pipe Organ 2', 'Pipe Organ 3', 'Accordion', 'Harp 1',
-  'Harp 2', 'Acou Guitar 1', 'Acou Guitar 2', 'Elec Guitar 1',
-  'Elec Guitar 2', 'Elec Guitar 3', 'Sitar 1', 'Sitar 2',
-  'Acou Bass 1', 'Acou Bass 2', 'Elec Bass 1', 'Elec Bass 2',
-  'Slap Bass 1', 'Slap Bass 2', 'Slap Bass 3', 'Fretless Bass 1',
-  'Fretless Bass 2', 'Strings 1', 'Strings 2', 'Strings 3',
-  'Strings 4', 'Pizzicato', 'Violin 1', 'Violin 2',
-  'Cello 1', 'Cello 2', 'Contrabass', 'Brass 1',
-  'Brass 2', 'Brass 3', 'Trumpet 1', 'Trumpet 2',
-  'Trombone 1', 'Trombone 2', 'Horn 1', 'Horn 2',
-  'Flute 1', 'Flute 2', 'Clarinet', 'Oboe',
+  'Bass Drum-1', 'Bass Drum-2', 'Bass Drum-3', 'Snare Drum-1',
+  'Snare Drum-2', 'Snare Drum-3', 'Snare Drum-4', 'Tom Tom-1',
+  'Tom Tom-2', 'High Hat', 'High Hat (Loop)', 'Crash Cymbal-1',
+  'Crash Cymbal-2 (Loop)', 'Ride Cymbal-1', 'Ride Cymbal-2 (Loop)', 'Cup',
+  'China Cymbal-1', 'China Cymbal-2 (Loop)', 'Rim Shot', 'Hand Clap',
+  'Mute High Conga', 'Conga', 'Bongo', 'Cowbell',
+  'Tambourine', 'Agogo', 'Claves', 'Timbale High',
+  'Timbale Low', 'Cabasa', 'Timpani Attack', 'Timpani',
+  'Acoustic Piano High', 'Acoustic Piano Low', 'Piano Forte Thump', 'Organ Percussion',
+  'Trumpet', 'Lips', 'Trombone', 'Clarinet',
+  'Flute High', 'Flute Low', 'Steamer', 'Indian Flute',
+  'Breath', 'Vibraphone High', 'Vibraphone Low', 'Marimba',
+  'Xylophone High', 'Xylophone Low', 'Kalimba', 'Wind Bell',
+  'Chime Bar', 'Hammer', 'Guiro', 'Chink',
+  'Nails', 'Fretless Bass', 'Pull Bass', 'Slap Bass',
+  'Thump Bass', 'Acoustic Bass', 'Electric Bass', 'Gut Guitar',
+  'Steel Guitar', 'Dirty Guitar', 'Pizzicato', 'Harp',
+  'Contrabass', 'Cello', 'Violin-1', 'Violin-2',
+  'Koto', 'Draw Bars (Loop)', 'High Organ (Loop)', 'Low Organ (Loop)',
+  'Trumpet (Loop)', 'Trombone (Loop)', 'Sax-1 (Loop)', 'Sax-2 (Loop)',
+  'Reed (Loop)', 'Slap Bass (Loop)', 'Acoustic Bass (Loop)', 'Electric Bass-1 (Loop)',
+  'Electric Bass-2 (Loop)', 'Gut Guitar (Loop)', 'Steel Guitar (Loop)', 'Electric Guitar (Loop)',
+  'Clav (Loop)', 'Cello (Loop)', 'Violin (Loop)', 'Electric Piano-1 (Loop)',
+  'Electric Piano-2 (Loop)', 'Harpsichord-1 (Loop)', 'Harpsichord-2 (Loop)', 'Telephone Bell (Loop)',
+  'Female Voice-1 (Loop)', 'Female Voice-2 (Loop)', 'Male Voice-1 (Loop)', 'Male Voice-2 (Loop)',
+  'Spectrum-1 (Loop)', 'Spectrum-2 (Loop)', 'Spectrum-3 (Loop)', 'Spectrum-4 (Loop)',
+  'Spectrum-5 (Loop)', 'Spectrum-6 (Loop)', 'Spectrum-7 (Loop)', 'Spectrum-8 (Loop)',
+  'Spectrum-9 (Loop)', 'Spectrum-10 (Loop)', 'Noise (Loop)', 'Shot-1',
+  'Shot-2', 'Shot-3', 'Shot-4', 'Shot-5',
+  'Shot-6', 'Shot-7', 'Shot-8', 'Shot-9',
+  'Shot-10', 'Shot-11', 'Shot-12', 'Shot-13',
+  'Shot-14', 'Shot-15', 'Shot-16', 'Shot-17',
 ] as const;
 
 /**
- * PCM wave names for Bank B (0-63)
- * Based on D-110 documentation
+ * PCM wave names for Bank B (0-127)
+ * From Edisyn D-110 implementation - looped versions and additional samples
  */
 export const PCM_WAVE_NAMES_B: readonly string[] = [
-  'Bassoon', 'Harmonica', 'Sax 1', 'Sax 2',
-  'Sax 3', 'Shakuhachi 1', 'Shakuhachi 2', 'Recorder',
-  'Pan Flute', 'Voice 1', 'Voice 2', 'Voice 3',
-  'Vibraphone 1', 'Vibraphone 2', 'Marimba 1', 'Marimba 2',
-  'Xylophone', 'Glockenspiel', 'Tubular Bells 1', 'Tubular Bells 2',
-  'Steel Drums', 'Timpani', 'SD 1', 'SD 2',
-  'BD 1', 'BD 2', 'Tom', 'HH Closed',
-  'HH Open', 'Crash', 'Ride', 'Hand Clap',
-  'Cowbell', 'Tambourine', 'High Bongo', 'Low Bongo',
-  'High Conga Mute', 'High Conga', 'Low Conga', 'Timbales',
-  'High Agogo', 'Low Agogo', 'Cabasa', 'Maracas',
-  'Short Whistle', 'Long Whistle', 'Guiro Short', 'Guiro Long',
-  'Claves', 'Wood Block', 'Cuica Mute', 'Cuica Open',
-  'Triangle Mute', 'Triangle Open', 'Shaker', 'Jingle Bells',
-  'Bell Tree', 'Castanets', 'Taiko', 'Concert BD',
-  'Finger Snap', 'Breath Noise', 'String Slap', 'Loop 1',
+  'Bass Drum-1', 'Bass Drum-2', 'Bass Drum-3', 'Snare Drum-1',
+  'Snare Drum-2', 'Snare Drum-3', 'Snare Drum-4', 'Tom Tom-1',
+  'Tom Tom-2', 'High Hat', 'High Hat (Loop)', 'Crash Cymbal-1',
+  'Crash Cymbal-2 (Loop)', 'Ride Cymbal-1', 'Ride Cymbal-2 (Loop)', 'Cup',
+  'China Cymbal-1', 'China Cymbal-2 (Loop)', 'Rim Shot', 'Hand Clap',
+  'Mute High Conga', 'Conga', 'Bongo', 'Cowbell',
+  'Tambourine', 'Agogo', 'Claves', 'Timbale High',
+  'Timbale Low', 'Cabasa', 'Loop-1', 'Loop-2',
+  'Loop-3', 'Loop-4', 'Loop-5', 'Loop-6',
+  'Loop-7', 'Loop-8', 'Loop-9', 'Loop-10',
+  'Loop-11', 'Loop-12', 'Loop-13', 'Loop-14',
+  'Loop-15', 'Loop-16', 'Loop-17', 'Loop-18',
+  'Loop-19', 'Loop-20', 'Loop-21', 'Loop-22',
+  'Loop-23', 'Loop-24', 'Loop-25', 'Loop-26',
+  'Loop-27', 'Loop-28', 'Loop-29', 'Loop-30',
+  'Loop-31', 'Loop-32', 'Loop-33', 'Loop-34',
+  'Loop-35', 'Loop-36', 'Loop-37', 'Loop-38',
+  'Loop-39', 'Loop-40', 'Loop-41', 'Loop-42',
+  'Loop-43', 'Loop-44', 'Loop-45', 'Loop-46',
+  'Loop-47', 'Loop-48', 'Loop-49', 'Loop-50',
+  'Loop-51', 'Loop-52', 'Loop-53', 'Loop-54',
+  'Loop-55', 'Loop-56', 'Loop-57', 'Loop-58',
+  'Loop-59', 'Loop-60', 'Loop-61', 'Loop-62',
+  'Loop-63', 'Loop-64', 'Jam-1', 'Jam-2',
+  'Jam-3', 'Jam-4', 'Jam-5', 'Jam-6',
+  'Jam-7', 'Jam-8', 'Jam-9', 'Jam-10',
+  'Jam-11', 'Jam-12', 'Jam-13', 'Jam-14',
+  'Jam-15', 'Jam-16', 'Jam-17', 'Jam-18',
+  'Jam-19', 'Jam-20', 'Jam-21', 'Jam-22',
+  'Jam-23', 'Jam-24', 'Jam-25', 'Jam-26',
+  'Jam-27', 'Jam-28', 'Jam-29', 'Jam-30',
+  'Jam-31', 'Jam-32', 'Jam-33', 'Jam-34',
 ] as const;
 
 /**
  * Get PCM wave name by bank and number
  */
 export function getPcmWaveName(bank: number, waveNumber: number): string {
-  if (waveNumber < 0 || waveNumber > 63) return `Wave ${waveNumber}`;
-  if (bank === 0) return PCM_WAVE_NAMES_A[waveNumber] ?? `Wave A${waveNumber}`;
-  if (bank === 1) return PCM_WAVE_NAMES_B[waveNumber] ?? `Wave B${waveNumber}`;
-  return `Wave ${waveNumber}`;
+  if (waveNumber < 0 || waveNumber > 127) return `Wave ${waveNumber + 1}`;
+  if (bank === 0) return PCM_WAVE_NAMES_A[waveNumber] ?? `Wave A${waveNumber + 1}`;
+  if (bank === 1) return PCM_WAVE_NAMES_B[waveNumber] ?? `Wave B${waveNumber + 1}`;
+  return `Wave ${waveNumber + 1}`;
 }
 
 /**
