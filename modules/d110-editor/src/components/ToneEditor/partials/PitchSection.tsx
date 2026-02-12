@@ -27,14 +27,16 @@ interface PitchSectionProps {
 
 // Waveform parameter encoding (per D-110 MIDI Implementation, offset 00 04):
 // WG WAVEFORM/PCM BANK: 0-3
-//   0 = Square
-//   1 = Sawtooth
-//   2 = PCM Bank A (Bank 1)
-//   3 = PCM Bank B (Bank 2)
-const WAVEFORM_SQUARE = 0;
-const WAVEFORM_SAWTOOTH = 1;
-const WAVEFORM_PCM_BANK_A = 2;
-const WAVEFORM_PCM_BANK_B = 3;
+// Based on Edisyn's implementation and empirical testing:
+// Bit 1 = Bank (0=Bank1, 1=Bank2), Bit 0 = Type (0=PCM, 1=Synth)
+//   0 (00) = PCM Bank 1 (A)
+//   1 (01) = Square (synth waveform)
+//   2 (10) = PCM Bank 2 (B)
+//   3 (11) = Sawtooth (synth waveform)
+const WAVEFORM_PCM_BANK_A = 0;
+const WAVEFORM_SQUARE = 1;
+const WAVEFORM_PCM_BANK_B = 2;
+const WAVEFORM_SAWTOOTH = 3;
 
 export function PitchSection({
   params,
