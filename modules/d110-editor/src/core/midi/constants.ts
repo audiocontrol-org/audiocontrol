@@ -308,6 +308,14 @@ export const OUTPUT_ASSIGN_NAMES: readonly string[] = [
 /**
  * Partial parameter offsets within a partial's 58-byte data block
  * Used for sending individual parameter changes to hardware
+ *
+ * IMPORTANT: The D-110 parameter order is:
+ *   Pitch (0-7) → Pitch Env (8-19) → LFO (20-22) → TVF (23-40) → TVA (41-57)
+ *
+ * This order was verified against Edisyn and D-110 MIDI implementation docs.
+ * Sources:
+ * - Edisyn RolandD110Tone.java
+ * - D-10/D-110 MIDI Implementation (TVF Cutoff at offset 0x17 = 23)
  */
 export const PARTIAL_PARAM_OFFSETS = {
   // Pitch section (0-7)
@@ -334,49 +342,49 @@ export const PARTIAL_PARAM_OFFSETS = {
   PITCH_ENV_SUS_L: 18,
   PITCH_ENV_END_L: 19,
 
-  // TVF section (20-37)
-  TVF_CUTOFF: 20,
-  TVF_RESONANCE: 21,
-  TVF_KEYFOLLOW: 22,
-  TVF_BIAS_POINT: 23,
-  TVF_BIAS_LEVEL: 24,
-  TVF_ENV_DEPTH: 25,
-  TVF_ENV_VELOCITY: 26,
-  TVF_ENV_DEPTH_KF: 27,
-  TVF_ENV_TIME_KF: 28,
-  TVF_ENV_T1: 29,
-  TVF_ENV_T2: 30,
-  TVF_ENV_T3: 31,
-  TVF_ENV_T4: 32,
-  TVF_ENV_T5: 33,
-  TVF_ENV_L1: 34,
-  TVF_ENV_L2: 35,
-  TVF_ENV_L3: 36,
-  TVF_ENV_SUS_L: 37,
+  // LFO section (20-22) - comes BEFORE TVF in D-110 memory layout
+  LFO_RATE: 20,
+  LFO_DEPTH: 21,
+  LFO_MOD_SENS: 22,
 
-  // TVA section (38-54)
-  TVA_LEVEL: 38,
-  TVA_VELOCITY: 39,
-  TVA_BIAS_POINT_1: 40,
-  TVA_BIAS_LEVEL_1: 41,
-  TVA_BIAS_POINT_2: 42,
-  TVA_BIAS_LEVEL_2: 43,
-  TVA_ENV_TIME_KF: 44,
-  TVA_ENV_T1_VELOCITY: 45,
-  TVA_ENV_T1: 46,
-  TVA_ENV_T2: 47,
-  TVA_ENV_T3: 48,
-  TVA_ENV_T4: 49,
-  TVA_ENV_T5: 50,
-  TVA_ENV_L1: 51,
-  TVA_ENV_L2: 52,
-  TVA_ENV_L3: 53,
-  TVA_ENV_SUS_L: 54,
+  // TVF section (23-40)
+  TVF_CUTOFF: 23,
+  TVF_RESONANCE: 24,
+  TVF_KEYFOLLOW: 25,
+  TVF_BIAS_POINT: 26,
+  TVF_BIAS_LEVEL: 27,
+  TVF_ENV_DEPTH: 28,
+  TVF_ENV_VELOCITY: 29,
+  TVF_ENV_DEPTH_KF: 30,
+  TVF_ENV_TIME_KF: 31,
+  TVF_ENV_T1: 32,
+  TVF_ENV_T2: 33,
+  TVF_ENV_T3: 34,
+  TVF_ENV_T4: 35,
+  TVF_ENV_T5: 36,
+  TVF_ENV_L1: 37,
+  TVF_ENV_L2: 38,
+  TVF_ENV_L3: 39,
+  TVF_ENV_SUS_L: 40,
 
-  // LFO section (55-57)
-  LFO_RATE: 55,
-  LFO_DEPTH: 56,
-  LFO_MOD_SENS: 57,
+  // TVA section (41-57)
+  TVA_LEVEL: 41,
+  TVA_VELOCITY: 42,
+  TVA_BIAS_POINT_1: 43,
+  TVA_BIAS_LEVEL_1: 44,
+  TVA_BIAS_POINT_2: 45,
+  TVA_BIAS_LEVEL_2: 46,
+  TVA_ENV_TIME_KF: 47,
+  TVA_ENV_T1_VELOCITY: 48,
+  TVA_ENV_T1: 49,
+  TVA_ENV_T2: 50,
+  TVA_ENV_T3: 51,
+  TVA_ENV_T4: 52,
+  TVA_ENV_T5: 53,
+  TVA_ENV_L1: 54,
+  TVA_ENV_L2: 55,
+  TVA_ENV_L3: 56,
+  TVA_ENV_SUS_L: 57,
 } as const;
 
 /**

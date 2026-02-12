@@ -163,10 +163,18 @@ export function createD110Client(
 
   /**
    * Parse partial parameters from tone data
+   *
+   * D-110 partial parameter layout (58 bytes):
+   *   0-7:   Pitch section (8 bytes)
+   *   8-19:  Pitch envelope (12 bytes)
+   *   20-22: LFO section (3 bytes)
+   *   23-40: TVF section (18 bytes)
+   *   41-57: TVA section (17 bytes)
    */
   function parsePartialParams(data: number[], offset: number): PartialParams {
     const d = (i: number): number => data[offset + i] ?? 0;
 
+    // Pitch envelope (8-19)
     const pitchEnvelope: PitchEnvelope = {
       depth: d(8),
       velocitySensitivity: d(9),
@@ -182,44 +190,47 @@ export function createD110Client(
       endLevel: d(19),
     };
 
-    const tvfEnvelope: TvfEnvelope = {
-      depth: d(25),
-      velocitySensitivity: d(26),
-      depthKeyfollow: d(27),
-      timeKeyfollow: d(28),
-      time1: d(29),
-      time2: d(30),
-      time3: d(31),
-      time4: d(32),
-      time5: d(33),
-      level1: d(34),
-      level2: d(35),
-      level3: d(36),
-      sustainLevel: d(37),
-    };
-
-    const tvaEnvelope: TvaEnvelope = {
-      timeKeyfollow: d(44),
-      time1Velocity: d(45),
-      time1: d(46),
-      time2: d(47),
-      time3: d(48),
-      time4: d(49),
-      time5: d(50),
-      level1: d(51),
-      level2: d(52),
-      level3: d(53),
-      sustainLevel: d(54),
-    };
-
+    // LFO section (20-22) - comes BEFORE TVF in D-110 memory
     const lfo: LfoParams = {
-      rate: d(55),
-      depth: d(56),
-      modulationSensitivity: d(57),
+      rate: d(20),
+      depth: d(21),
+      modulationSensitivity: d(22),
+    };
+
+    // TVF envelope (28-40)
+    const tvfEnvelope: TvfEnvelope = {
+      depth: d(28),
+      velocitySensitivity: d(29),
+      depthKeyfollow: d(30),
+      timeKeyfollow: d(31),
+      time1: d(32),
+      time2: d(33),
+      time3: d(34),
+      time4: d(35),
+      time5: d(36),
+      level1: d(37),
+      level2: d(38),
+      level3: d(39),
+      sustainLevel: d(40),
+    };
+
+    // TVA envelope (47-57)
+    const tvaEnvelope: TvaEnvelope = {
+      timeKeyfollow: d(47),
+      time1Velocity: d(48),
+      time1: d(49),
+      time2: d(50),
+      time3: d(51),
+      time4: d(52),
+      time5: d(53),
+      level1: d(54),
+      level2: d(55),
+      level3: d(56),
+      sustainLevel: d(57),
     };
 
     return {
-      // Pitch section
+      // Pitch section (0-7)
       pitchCoarse: d(0),
       pitchFine: d(1),
       pitchKeyfollow: d(2),
@@ -229,28 +240,28 @@ export function createD110Client(
       pulseWidth: d(6),
       pulseWidthVelocity: d(7),
 
-      // Pitch envelope
+      // Pitch envelope (8-19)
       pitchEnvelope,
 
-      // Filter (TVF) section
-      tvfCutoff: d(20),
-      tvfResonance: d(21),
-      tvfKeyfollow: d(22),
-      tvfBiasPoint: d(23),
-      tvfBiasLevel: d(24),
+      // LFO section (20-22)
+      lfo,
+
+      // Filter (TVF) section (23-40)
+      tvfCutoff: d(23),
+      tvfResonance: d(24),
+      tvfKeyfollow: d(25),
+      tvfBiasPoint: d(26),
+      tvfBiasLevel: d(27),
       tvfEnvelope,
 
-      // Amplifier (TVA) section
-      tvaLevel: d(38),
-      tvaVelocitySensitivity: d(39),
-      tvaBiasPoint1: d(40),
-      tvaBiasLevel1: d(41),
-      tvaBiasPoint2: d(42),
-      tvaBiasLevel2: d(43),
+      // Amplifier (TVA) section (41-57)
+      tvaLevel: d(41),
+      tvaVelocitySensitivity: d(42),
+      tvaBiasPoint1: d(43),
+      tvaBiasLevel1: d(44),
+      tvaBiasPoint2: d(45),
+      tvaBiasLevel2: d(46),
       tvaEnvelope,
-
-      // LFO section
-      lfo,
     };
   }
 
