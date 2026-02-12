@@ -62,11 +62,13 @@ export {
   PARAM_RANGES,
   WAVEFORM_TYPES,
   PCM_BANKS,
+  STRUCTURE_PCM_FLAGS,
   STRUCTURE_NAMES,
   REVERB_MODE_NAMES,
   TONE_GROUP_NAMES,
   ASSIGN_MODE_NAMES,
   OUTPUT_ASSIGN_NAMES,
+  isPartialPCM,
 } from '@/core/midi/constants';
 
 // SysEx utilities

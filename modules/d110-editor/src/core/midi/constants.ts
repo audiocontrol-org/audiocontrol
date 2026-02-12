@@ -149,7 +149,27 @@ export const PARAM_RANGES = {
 } as const;
 
 /**
- * Waveform types
+ * Waveform byte encoding
+ *
+ * The waveform byte (offset 4 within each partial) has dual interpretation
+ * depending on whether the Structure parameter designates this partial as
+ * Synth or PCM:
+ *
+ * For SYNTH partials (determined by Structure):
+ *   Bit 0: Waveform type (0 = Square, 1 = Sawtooth)
+ *   Bit 1: Unused (typically 0)
+ *
+ * For PCM partials (determined by Structure):
+ *   Bit 0: Unused (typically 0)
+ *   Bit 1: High bit (bit 7) of PCM wave number, allowing 256 waves (0-255)
+ *          When bit 1 = 0: waves 0-127 (Bank A)
+ *          When bit 1 = 1: waves 128-255 (Bank B)
+ *
+ * This means waveform value 0 can mean EITHER "Square wave" OR "PCM Bank A"
+ * depending on the Structure setting. The UI must check Structure to know
+ * which interpretation applies.
+ *
+ * Source: Edisyn D-110 implementation and MUNT MT-32 emulator
  */
 export const WAVEFORM_TYPES = {
   SQUARE: 0,
@@ -157,7 +177,14 @@ export const WAVEFORM_TYPES = {
 } as const;
 
 /**
- * PCM bank selection (in waveform byte)
+ * PCM bank selection
+ *
+ * The D-110 has 256 PCM waves split into two banks:
+ * - Bank A (0): Waves 0-127 - Attack transients and one-shot samples
+ * - Bank B (1): Waves 128-255 - Looped versions and additional samples
+ *
+ * The bank is encoded in bit 1 of the waveform byte, while the wave number
+ * (0-127 within each bank) is stored in the pcmWaveNumber byte (offset 5).
  */
 export const PCM_BANKS = {
   BANK_A: 0,
@@ -165,22 +192,73 @@ export const PCM_BANKS = {
 } as const;
 
 /**
+ * Structure (algorithm) PCM flags
+ *
+ * The Structure parameter determines whether each partial in a pair uses:
+ * - S (Synth): Square or Sawtooth waveform selected by waveform byte bit 0
+ * - P (PCM): PCM sample selected by pcmWaveNumber (0-255, with bit 7 stored in waveform byte bit 1)
+ *
+ * This array encodes which partials are PCM for each structure (0-12, displayed as 1-13):
+ * - Bit 1 (0x2) = first partial in pair is PCM
+ * - Bit 0 (0x1) = second partial in pair is PCM
+ *
+ * Based on MUNT MT-32 emulator PartialStruct table.
+ * Source: https://github.com/munt/munt/blob/master/mt32emu/src/Part.cpp
+ */
+export const STRUCTURE_PCM_FLAGS = [
+  0, // Structure 1:  S+S (00)
+  0, // Structure 2:  S+S (00)
+  2, // Structure 3:  P+S (10)
+  2, // Structure 4:  P+S (10)
+  1, // Structure 5:  S+P (01)
+  3, // Structure 6:  P+P (11)
+  3, // Structure 7:  P+P (11)
+  0, // Structure 8:  S+S (00) with Ring Mod
+  3, // Structure 9:  P+P (11) with Ring Mod
+  0, // Structure 10: S+S (00) with Ring Mod
+  2, // Structure 11: P+S (10) with Ring Mod
+  1, // Structure 12: S+P (01) with Ring Mod
+  3, // Structure 13: P+P (11) with Ring Mod
+] as const;
+
+/**
+ * Check if a partial is PCM based on structure
+ *
+ * @param structureIndex - Structure index (0-12)
+ * @param isSecondPartial - true for second partial in pair (P2 or P4), false for first (P1 or P3)
+ * @returns true if the partial uses PCM samples, false if it uses synth waveforms
+ */
+export function isPartialPCM(structureIndex: number, isSecondPartial: boolean): boolean {
+  const flags = STRUCTURE_PCM_FLAGS[structureIndex] ?? 0;
+  return isSecondPartial ? (flags & 0x1) !== 0 : (flags & 0x2) !== 0;
+}
+
+/**
  * Structure (algorithm) names
+ *
+ * Format: "P1+P2" where P1/P2 indicates first/second partial type:
+ * - S = Synth (Square or Sawtooth waveform)
+ * - P = PCM (sampled waveform)
+ * - (RM) = Ring Modulation between partials
+ *
+ * The Structure determines how the waveform byte is interpreted:
+ * - For Synth partials: bit 0 selects Square (0) vs Sawtooth (1)
+ * - For PCM partials: bit 1 is the high bit of the 8-bit PCM wave number (0-255)
  */
 export const STRUCTURE_NAMES: readonly string[] = [
-  '1',
-  '2',
-  '3',
-  '4',
-  '5',
-  '6',
-  '7',
-  '8',
-  '9',
-  '10',
-  '11',
-  '12',
-  '13',
+  'S+S',      // 1: Synth + Synth
+  'S+S',      // 2: Synth + Synth
+  'P+S',      // 3: PCM + Synth
+  'P+S',      // 4: PCM + Synth
+  'S+P',      // 5: Synth + PCM
+  'P+P',      // 6: PCM + PCM
+  'P+P',      // 7: PCM + PCM
+  'S+S (RM)', // 8: Synth + Synth with Ring Mod
+  'P+P (RM)', // 9: PCM + PCM with Ring Mod
+  'S+S (RM)', // 10: Synth + Synth with Ring Mod
+  'P+S (RM)', // 11: PCM + Synth with Ring Mod
+  'S+P (RM)', // 12: Synth + PCM with Ring Mod
+  'P+P (RM)', // 13: PCM + PCM with Ring Mod
 ] as const;
 
 /**
