@@ -200,6 +200,9 @@ export function PartialEditor(): JSX.Element {
           <FilterSection
             params={partial}
             onChange={handlePartialChange}
+            structure12={tone.common.structure12}
+            structure34={tone.common.structure34}
+            partialIndex={selectedPartial}
           />
         </CollapsibleSection>
 
@@ -208,6 +211,9 @@ export function PartialEditor(): JSX.Element {
           <FilterEnvelopeSection
             envelope={partial.tvfEnvelope}
             onChange={handleTvfEnvelopeChange}
+            structure12={tone.common.structure12}
+            structure34={tone.common.structure34}
+            partialIndex={selectedPartial}
           />
         </CollapsibleSection>
 

@@ -7,10 +7,14 @@
  * - Depth keyfollow
  * - Time keyfollow
  * - Envelope levels and times
+ *
+ * Note: The TVF envelope only applies to synthesizer waveforms.
+ * PCM partials bypass the filter entirely.
  */
 
 import type { TvfEnvelope } from '@/core/midi/types';
 import { ParameterSlider, D110EnvelopeEditor } from '@/components/ui';
+import { isPartialPCM, STRUCTURE_NAMES } from '@/core/midi/constants';
 import { cn } from '@/lib/utils';
 
 interface FilterEnvelopeSectionProps {
@@ -18,6 +22,12 @@ interface FilterEnvelopeSectionProps {
   onChange: (key: keyof TvfEnvelope, value: number) => void;
   onCommit?: () => void;
   disabled?: boolean;
+  /** Structure index for partials 1-2 (0-12) */
+  structure12: number;
+  /** Structure index for partials 3-4 (0-12) */
+  structure34: number;
+  /** Which partial this is (0-3) */
+  partialIndex: number;
 }
 
 export function FilterEnvelopeSection({
@@ -25,7 +35,20 @@ export function FilterEnvelopeSection({
   onChange,
   onCommit,
   disabled = false,
+  structure12,
+  structure34,
+  partialIndex,
 }: FilterEnvelopeSectionProps): JSX.Element {
+  // Determine if this partial is PCM based on Structure
+  const structureIndex = partialIndex < 2 ? structure12 : structure34;
+  const isSecondInPair = partialIndex === 1 || partialIndex === 3;
+  const isPcmPartial = isPartialPCM(structureIndex, isSecondInPair);
+
+  // Get structure name for tooltip
+  const structureName = STRUCTURE_NAMES[structureIndex] ?? `Structure ${structureIndex + 1}`;
+
+  // Filter envelope is disabled for PCM partials
+  const isFilterDisabled = disabled || isPcmPartial;
   const formatDepth = (value: number): string => {
     const offset = value - 50;
     if (offset === 0) return '0';
@@ -33,7 +56,16 @@ export function FilterEnvelopeSection({
   };
 
   return (
-    <div className={cn('space-y-4', disabled && 'opacity-50 pointer-events-none')}>
+    <div className={cn('space-y-4', isFilterDisabled && 'opacity-50 pointer-events-none')}>
+      {/* PCM Warning Banner */}
+      {isPcmPartial && (
+        <div className="bg-amber-900/30 border border-amber-600/50 rounded-md px-3 py-2 text-xs text-amber-200">
+          <span className="font-medium">Filter envelope disabled:</span>{' '}
+          Structure {structureIndex + 1} ({structureName}) sets Partial {partialIndex + 1} to PCM mode.
+          The TVF only applies to synthesizer waveforms.
+        </div>
+      )}
+
       {/* Envelope modulation parameters */}
       <div className="grid grid-cols-2 gap-4">
         <ParameterSlider
@@ -44,7 +76,7 @@ export function FilterEnvelopeSection({
           min={0}
           max={100}
           formatValue={formatDepth}
-          disabled={disabled}
+          disabled={isFilterDisabled}
         />
         <ParameterSlider
           label="Velocity Sens"
@@ -54,7 +86,7 @@ export function FilterEnvelopeSection({
           min={0}
           max={100}
           formatValue={formatDepth}
-          disabled={disabled}
+          disabled={isFilterDisabled}
         />
       </div>
 
@@ -67,7 +99,7 @@ export function FilterEnvelopeSection({
           min={0}
           max={4}
           formatValue={(v) => String(v)}
-          disabled={disabled}
+          disabled={isFilterDisabled}
         />
         <ParameterSlider
           label="Time Key Follow"
@@ -77,7 +109,7 @@ export function FilterEnvelopeSection({
           min={0}
           max={4}
           formatValue={(v) => String(v)}
-          disabled={disabled}
+          disabled={isFilterDisabled}
         />
       </div>
 
@@ -98,7 +130,7 @@ export function FilterEnvelopeSection({
         onChange={(key, value) => onChange(key as keyof TvfEnvelope, value)}
         onCommit={onCommit}
         label="Filter Envelope"
-        disabled={disabled}
+        disabled={isFilterDisabled}
       />
     </div>
   );
