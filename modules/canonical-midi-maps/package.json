@@ -22,7 +22,7 @@
     "clean": "rm -rf dist *.tsbuildinfo",
     "dev": "tsc -b --watch",
     "test": "vitest run",
-    "test:coverage": "vitest --coverage",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "validate-maps": "node dist/cli/validate-maps.js",

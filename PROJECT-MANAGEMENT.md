@@ -16,6 +16,14 @@ This document establishes project management standards for the audiocontrol mono
 4. **Branch naming aligns with features**: Feature slugs match branch names
 5. **Labels organize by domain**: Use labels to categorize work by module or type
 
+### Engineering Quality Standards
+
+| Standard | Requirement |
+| -------- | ----------- |
+| **Code Coverage (Project-Wide)** | Minimum **80%** for lines, functions, branches, and statements across all active modules |
+
+Coverage must be enforced in each module's Vitest configuration and validated via that module's `test:coverage` script.
+
 ---
 
 ## Feature Design and Planning Workflow

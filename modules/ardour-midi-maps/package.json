@@ -21,7 +21,7 @@
     "clean": "rm -rf dist *.tsbuildinfo",
     "dev": "tsc -b --watch",
     "test": "vitest run",
-    "test:coverage": "vitest --coverage",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "generate": "tsx scripts/generate-ardour-maps.ts",

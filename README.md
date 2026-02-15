@@ -38,6 +38,10 @@ pnpm plugin:generate-batch
 pnpm build
 ```
 
+## Quality Standard
+
+- Project-wide minimum test coverage: **80%** for lines, functions, branches, and statements.
+
 ## License
 
 MIT
