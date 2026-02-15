@@ -1,25 +1,26 @@
 /**
  * Zustand store for MIDI connection state
  *
- * Persists port selection to localStorage for auto-reconnect
+ * Manages WebMIDI connection to the D-110 synthesizer.
+ * Persists port selection to localStorage for auto-reconnect.
  */
 
 import { create } from 'zustand';
-import type { MidiPortInfo, ConnectionStatus, S330MidiIO } from '@/core/midi/types';
+import type { MidiPortInfo, ConnectionStatus, D110MidiIO, D110ClientInterface } from '@/core/midi/types';
 import {
   isWebMidiSupported,
   getBrowserCompatibility,
   requestMidiAccess,
   createWebMidiAdapter,
 } from '@audiocontrol/shared-midi';
+import { createD110Client } from '@/core/midi/D110Client';
 
 // localStorage keys
-const STORAGE_KEY_INPUT = 's330-midi-input';
-const STORAGE_KEY_OUTPUT = 's330-midi-output';
-const STORAGE_KEY_DEVICE_ID = 's330-device-id';
+const STORAGE_KEY_INPUT = 'd110-midi-input';
+const STORAGE_KEY_OUTPUT = 'd110-midi-output';
+const STORAGE_KEY_DEVICE_ID = 'd110-device-id';
 
-// Helper to save to localStorage
-function saveToStorage(inputId: string | null, outputId: string | null, deviceId: number) {
+function saveToStorage(inputId: string | null, outputId: string | null, deviceId: number): void {
   try {
     if (inputId) localStorage.setItem(STORAGE_KEY_INPUT, inputId);
     else localStorage.removeItem(STORAGE_KEY_INPUT);
@@ -31,23 +32,22 @@ function saveToStorage(inputId: string | null, outputId: string | null, deviceId
   }
 }
 
-// Helper to load from localStorage
 function loadFromStorage(): { inputId: string | null; outputId: string | null; deviceId: number } {
   try {
     const inputId = localStorage.getItem(STORAGE_KEY_INPUT);
     const outputId = localStorage.getItem(STORAGE_KEY_OUTPUT);
     const deviceIdStr = localStorage.getItem(STORAGE_KEY_DEVICE_ID);
-    const deviceId = deviceIdStr ? parseInt(deviceIdStr, 10) : 0;
-    return { inputId, outputId, deviceId: isNaN(deviceId) ? 0 : deviceId };
+    const deviceId = deviceIdStr ? parseInt(deviceIdStr, 10) : 17; // Default to 17
+    return { inputId, outputId, deviceId: isNaN(deviceId) ? 17 : deviceId };
   } catch (e) {
     console.warn('[MidiStore] Failed to load from localStorage:', e);
-    return { inputId: null, outputId: null, deviceId: 0 };
+    return { inputId: null, outputId: null, deviceId: 17 };
   }
 }
 
 interface MidiState {
   isSupported: boolean;
-  browserInfo: { supported: boolean; browser: string; notes: string; requiresSecureContext?: boolean };
+  browserInfo: { supported: boolean; browser: string; notes: string };
   inputs: MidiPortInfo[];
   outputs: MidiPortInfo[];
   sysExEnabled: boolean;
@@ -57,8 +57,9 @@ interface MidiState {
   selectedOutputId: string | null;
   selectedInput: MidiPortInfo | null;
   selectedOutput: MidiPortInfo | null;
-  adapter: S330MidiIO | null;
-  deviceId: number;
+  adapter: D110MidiIO | null;
+  client: D110ClientInterface | null;
+  deviceId: number; // User-facing device ID (17-32)
   midiAccess: MIDIAccess | null;
   openPorts: { input: MIDIInput | null; output: MIDIOutput | null };
 }
@@ -88,13 +89,11 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
   selectedInput: null,
   selectedOutput: null,
   adapter: null,
-  deviceId: 0,
+  client: null,
+  deviceId: 17, // Default D-110 device ID
   midiAccess: null,
   openPorts: { input: null, output: null },
 
-  /**
-   * Initialize MIDI access and auto-connect to saved ports
-   */
   initialize: async () => {
     const { isSupported } = get();
     if (!isSupported) {
@@ -121,7 +120,7 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
 
       // Listen for device changes
       rawAccess.onstatechange = () => {
-        get().refresh();
+        void get().refresh();
       };
 
       // Auto-connect if we have saved port IDs and they're available
@@ -132,8 +131,6 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
         if (inputAvailable && outputAvailable) {
           console.log('[MidiStore] Auto-connecting to saved ports...');
           await get().connect(saved.inputId, saved.outputId);
-        } else {
-          console.log('[MidiStore] Saved ports not available, skipping auto-connect');
         }
       }
     } catch (err) {
@@ -142,9 +139,6 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
     }
   },
 
-  /**
-   * Refresh port list
-   */
   refresh: async () => {
     const { midiAccess } = get();
     if (!midiAccess) {
@@ -181,11 +175,8 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
     }
   },
 
-  /**
-   * Connect to selected ports
-   */
   connect: async (inputId: string, outputId: string) => {
-    const { midiAccess, inputs, outputs } = get();
+    const { midiAccess, deviceId, inputs, outputs } = get();
     if (!midiAccess) {
       set({ error: 'MIDI not initialized' });
       return;
@@ -205,9 +196,13 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
 
       const adapter = createWebMidiAdapter(input, output);
 
+      // Create D-110 client with device ID (convert from user ID 17-32 to SysEx ID 0x10-0x1F)
+      const client = createD110Client(adapter, { deviceId: deviceId - 1 });
+
       set({
         openPorts: { input, output },
         adapter,
+        client,
         selectedInputId: inputId,
         selectedOutputId: outputId,
         selectedInput: inputs.find((p) => p.id === inputId) ?? null,
@@ -215,17 +210,13 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
         status: 'connected',
       });
 
-      // Save to localStorage for auto-reconnect
-      saveToStorage(inputId, outputId, get().deviceId);
+      saveToStorage(inputId, outputId, deviceId);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to connect';
       set({ error: message, status: 'error' });
     }
   },
 
-  /**
-   * Disconnect from ports
-   */
   disconnect: async () => {
     const { openPorts } = get();
 
@@ -236,6 +227,7 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
       set({
         openPorts: { input: null, output: null },
         adapter: null,
+        client: null,
         selectedInputId: null,
         selectedOutputId: null,
         selectedInput: null,
@@ -249,25 +241,20 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
     }
   },
 
-  /**
-   * Set device ID (protocol value 0-16)
-   *
-   * Note: The S-330 displays device IDs as 1-17, but uses 0-16 in the protocol.
-   * The UI converts display values (1-17) to protocol values (0-16).
-   */
   setDeviceId: (id: number) => {
-    if (id >= 0 && id <= 16) {
+    if (id >= 17 && id <= 32) {
       set({ deviceId: id });
-      // Save to localStorage
-      const { selectedInputId, selectedOutputId } = get();
+      const { selectedInputId, selectedOutputId, adapter } = get();
       saveToStorage(selectedInputId, selectedOutputId, id);
+
+      // Recreate client with new device ID if connected
+      if (adapter) {
+        const client = createD110Client(adapter, { deviceId: id - 1 });
+        set({ client });
+      }
     }
   },
 
-  /**
-   * Send MIDI panic: All Sound Off (CC#120) and All Notes Off (CC#123) on all channels.
-   * This immediately silences all notes. Use when notes get stuck during heavy SysEx traffic.
-   */
   sendPanic: () => {
     const { adapter } = get();
     if (!adapter) {
@@ -275,25 +262,12 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
       return;
     }
 
-    // Send All Sound Off (CC#120) and All Notes Off (CC#123) on all 16 channels
+    // Send All Sound Off and All Notes Off on all 16 channels
     for (let channel = 0; channel < 16; channel++) {
-      const status = 0xb0 + channel; // Control Change status byte
-      // CC#120 - All Sound Off (immediate silence)
-      adapter.send([status, 120, 0]);
-      // CC#123 - All Notes Off (release all held notes)
-      adapter.send([status, 123, 0]);
+      const status = 0xb0 + channel;
+      adapter.send([status, 120, 0]); // All Sound Off
+      adapter.send([status, 123, 0]); // All Notes Off
     }
     console.log('[MidiStore] Panic: sent All Sound Off and All Notes Off on all channels');
   },
 }));
-
-// Expose store on window for E2E testing
-declare global {
-  interface Window {
-    __midiStore?: typeof useMidiStore;
-  }
-}
-
-if (typeof window !== 'undefined') {
-  window.__midiStore = useMidiStore;
-}

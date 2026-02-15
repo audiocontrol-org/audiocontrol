@@ -104,14 +104,32 @@ export function clearLogs() {
 }
 
 /**
- * Format environment info for GitHub issue (without logs for privacy)
+ * Get error count
  */
-export function formatEnvironmentForGitHub(options: {
+export function getErrorCount(): number {
+  return logBuffer.filter(entry => entry.level === 'error').length;
+}
+
+/**
+ * Get warning count
+ */
+export function getWarningCount(): number {
+  return logBuffer.filter(entry => entry.level === 'warn').length;
+}
+
+export interface GitHubFormatOptions {
   buildTime: string;
   gitCommit: string;
   gitBranch: string;
-}): string {
-  const { buildTime, gitCommit, gitBranch } = options;
+  editorName: string;
+  editorDescription: string;
+}
+
+/**
+ * Format environment info for GitHub issue (without logs for privacy)
+ */
+export function formatEnvironmentForGitHub(options: GitHubFormatOptions): string {
+  const { buildTime, gitCommit, gitBranch, editorName, editorDescription } = options;
 
   const userAgent = navigator.userAgent;
   const url = window.location.href;
@@ -120,6 +138,7 @@ export function formatEnvironmentForGitHub(options: {
 
 | Property | Value |
 |----------|-------|
+| Editor | ${editorName} - ${editorDescription} |
 | Build | \`${gitCommit}\` |
 | Branch | \`${gitBranch}\` |
 | Build Time | ${buildTime} |
@@ -155,18 +174,15 @@ export function formatEnvironmentForGitHub(options: {
 /**
  * Format logs for GitHub issue (includes logs - use for manual copy)
  */
-export function formatLogsForGitHub(options: {
-  buildTime: string;
-  gitCommit: string;
-  gitBranch: string;
-  includeAllLogs?: boolean;
-}): string {
-  const { buildTime, gitCommit, gitBranch, includeAllLogs = false } = options;
+export function formatLogsForGitHub(
+  options: GitHubFormatOptions & { includeAllLogs?: boolean }
+): string {
+  const { includeAllLogs = false, ...envOptions } = options;
 
   const logs = includeAllLogs ? getLogEntries() : getErrorsAndWarnings();
   const recentLogs = logs.slice(-100); // Last 100 entries
 
-  let output = formatEnvironmentForGitHub({ buildTime, gitCommit, gitBranch });
+  let output = formatEnvironmentForGitHub(envOptions);
 
   // Replace the placeholder comment with actual logs
   if (recentLogs.length > 0) {
