@@ -112,7 +112,7 @@ Child issues created under parent #4:
 
 ## Verification Checklist
 
-- [ ] `pnpm --filter @audiocontrol/sampler-devices test`
+- [x] `pnpm --filter @audiocontrol/sampler-devices test`
 - [ ] `pnpm --filter @audiocontrol/jv1080-editor test`
 - [ ] `pnpm --filter @audiocontrol/jv1080-editor build`
 - [ ] Manual hardware validation of system parameter writes

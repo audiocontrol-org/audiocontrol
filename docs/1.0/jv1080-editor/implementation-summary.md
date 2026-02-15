@@ -1,20 +1,28 @@
 # JV-1080 Editor - Implementation Summary
 
-**Status:** Not Started
+**Status:** In Progress
 **Branch:** `feature/jv1080-editor`
-**Completed:** _TBD_
+**Completed:** Phase 1 (protocol extraction), Phase 2 (unit test coverage)
 
 ## Summary
 
-_To be completed after implementation._
+Phase 1 and 2 are complete in `@audiocontrol/sampler-devices`. The JV-1080 protocol client was extracted into dedicated module files and covered with unit tests for message framing/checksum, address/value encoding, and inbound DT1 event parsing/subscriptions.
 
 ## What Was Ported
 
-_To be completed after implementation._
+- JV-1080 protocol client split into:
+  - `modules/sampler-devices/src/devices/jv1080/jv1080-types.ts`
+  - `modules/sampler-devices/src/devices/jv1080/jv1080-addresses.ts`
+  - `modules/sampler-devices/src/devices/jv1080/jv1080-messages.ts`
+  - `modules/sampler-devices/src/devices/jv1080/jv1080-client.ts`
+- Package-level exports:
+  - `modules/sampler-devices/src/devices/jv1080/index.ts`
+  - `modules/sampler-devices/src/jv1080.ts`
 
 ## Adaptations Made
 
-_Document changes needed to fit attic/ol_dsp code into audiocontrol architecture._
+- Added typed event subscriptions (`fx-type`, `fx-param`) and typed MIDI adapter interface for monorepo consistency.
+- Added dedicated unit coverage in `modules/sampler-devices/test/unit/jv1080.test.ts`.
 
 ## Deviations from Plan
 
@@ -26,7 +34,7 @@ _To be completed after implementation._
 
 ## Verification Results
 
-- [ ] `pnpm --filter @audiocontrol/sampler-devices test` passes
+- [x] `pnpm --filter @audiocontrol/sampler-devices test` passes
 - [ ] `pnpm --filter @audiocontrol/jv1080-editor build` succeeds
 - [ ] JV-1080 system parameter controls verified on hardware
 - [ ] JV-1080 FX type selection and parameter writes verified on hardware
