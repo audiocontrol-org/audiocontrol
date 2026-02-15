@@ -23,6 +23,11 @@
       "types": "./dist/s330.d.ts",
       "import": "./dist/s330.js",
       "require": "./dist/s330.cjs"
+    },
+    "./jv1080": {
+      "types": "./dist/jv1080.d.ts",
+      "import": "./dist/jv1080.js",
+      "require": "./dist/jv1080.cjs"
     }
   },
   "module": "./dist/index.mjs",
