@@ -2,7 +2,7 @@
 
 **Status:** In Progress
 **Branch:** `feature/jv1080-editor`
-**Completed:** Phase 1 (protocol extraction), Phase 2 (unit test coverage), Phase 3 (editor scaffold + MIDI connection UI)
+**Completed:** Phase 1 (protocol extraction), Phase 2 (unit test coverage), Phase 3 (editor scaffold + MIDI connection UI), Phase 4 (system parameter controls)
 
 ## Summary
 
@@ -13,6 +13,11 @@ Phase 3 is complete with a new `@audiocontrol/jv1080-editor` module scaffold, in
 - Home route with MIDI input/output selection, connect/disconnect controls, and device ID entry
 - Editor route placeholder for upcoming system/FX controls
 - Zustand MIDI store using `@audiocontrol/shared-midi` and `Jv1080Client` from `@audiocontrol/sampler-devices/jv1080`
+
+Phase 4 is complete in `@audiocontrol/jv1080-editor`:
+- Added system parameter controls for panel mode, performance number, patch group/id/number, insert/chorus/reverb switches, patch remain, and clock source.
+- Wired UI controls to `Jv1080Client` system methods for DT1 writes.
+- Added unit tests for system control mapping and value clamping in `src/system/systemControls.test.ts`.
 
 ## What Was Ported
 
@@ -42,6 +47,6 @@ _To be completed after implementation._
 
 - [x] `pnpm --filter @audiocontrol/sampler-devices test` passes
 - [x] `pnpm --filter @audiocontrol/jv1080-editor build` succeeds
-- [ ] JV-1080 system parameter controls verified on hardware
+- [ ] JV-1080 system parameter controls verified on hardware (pending)
 - [ ] JV-1080 FX type selection and parameter writes verified on hardware
 - [ ] Documentation synchronized with final implementation
