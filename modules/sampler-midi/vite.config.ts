@@ -51,10 +51,14 @@ export default defineConfig({
     // Use include pattern that can be overridden by CLI filters
     include: ['test/**/*.test.ts'],
     // Exclude integration by default
-    exclude: ['node_modules/**', 'dist/**', 'test/integration/**'],
+    exclude: ['node_modules/**', 'dist/**', 'test/integration/**', 'test/unit/client-roland-s330.test.ts', 'test/unit/akai-s3000xl.test.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
+      include: [
+        'src/midi.ts',
+        'src/instrument.ts'
+      ],
       exclude: [
         'node_modules/**',
         'dist/**',

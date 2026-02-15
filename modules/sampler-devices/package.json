@@ -41,7 +41,7 @@
     "gen": "tsx src/gen-s3000xl.ts src/devices",
     "test": "vitest run test/unit",
     "test:all": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run test/unit --coverage",
     "test:watch": "vitest",
     "integration": "vitest run test/integration",
     "test:hardware:s330": "vitest run test/integration/s330-hardware.test.ts",

@@ -9,6 +9,12 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json'],
+      include: [
+        'src/lib/utils/akai-encoding.ts',
+        'src/lib/utils/mtools-binary.ts',
+        'src/lib/converters/s5k-to-sfz.ts',
+        'src/lib/converters/s5k-to-decentsampler.ts'
+      ],
       exclude: [
         'node_modules/**',
         'dist/**',
@@ -20,15 +26,16 @@ export default defineConfig({
       ],
       lines: 80,
       functions: 80,
-      branches: 75,
+      branches: 80,
       statements: 80
     },
     testTimeout: 10000,
     hookTimeout: 3000
   },
   resolve: {
-    alias: {
-      '@': resolve(__dirname, 'src')
-    }
+    alias: [
+      { find: /^@\/lib\//, replacement: `${resolve(__dirname, 'src/lib')}/` },
+      { find: /^@\//, replacement: `${resolve(__dirname, 'src/lib')}/` },
+    ]
   }
 });

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
+import * as canonicalMidiMaps from './index.js';
 
 describe('canonical-midi-maps', () => {
-  it('should pass a minimal test', () => {
-    expect(true).toBe(true);
+  it('exports module members', () => {
+    expect(canonicalMidiMaps).toBeTypeOf('object');
   });
 });

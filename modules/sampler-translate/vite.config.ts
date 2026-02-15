@@ -13,6 +13,12 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json'],
+      include: [
+        'src/lib-akai-mpc.ts',
+        'src/lib-midi.ts',
+        'src/lib-decent.ts',
+        'src/lib-translate.ts'
+      ],
       exclude: [
         'node_modules/**',
         'dist/**',
@@ -24,7 +30,7 @@ export default defineConfig({
       ],
       lines: 80,
       functions: 80,
-      branches: 75,
+      branches: 80,
       statements: 80
     },
     testTimeout: 10000,

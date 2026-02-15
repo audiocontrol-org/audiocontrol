@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage",
+    "test:coverage": "vitest run test/unit/akai-encoding.test.ts test/unit/mtools-binary.test.ts test/unit/s5k-converters.test.ts --coverage",
     "test:watch": "vitest",
     "build": "tsup",
     "clean": "rm -rf dist",

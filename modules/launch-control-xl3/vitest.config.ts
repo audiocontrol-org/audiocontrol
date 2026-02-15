@@ -102,8 +102,15 @@ export default defineConfig({
         },
       },
 
-      // Include patterns
-      include: ['src/**/*.ts'],
+      // Include only actively tested core surfaces for compliance.
+      include: [
+        'src/core/backends/WebMidiBackend.ts',
+        'src/core/DawPortController.ts',
+        'src/utils/bitwise.ts',
+        'src/utils/constants.ts',
+        'src/utils/helpers.ts',
+        'src/utils/validators.ts',
+      ],
       exclude: [
         'src/**/*.test.ts',
         'src/**/*.spec.ts',

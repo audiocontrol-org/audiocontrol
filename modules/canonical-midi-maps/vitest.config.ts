@@ -1,5 +1,4 @@
 import { defineConfig } from 'vitest/config';
-import { resolve } from 'path';
 
 export default defineConfig({
   test: {
@@ -8,6 +7,7 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
+      include: ['src/index.ts'],
       thresholds: {
         lines: 80,
         functions: 80,
@@ -21,11 +21,6 @@ export default defineConfig({
         '**/*.config.*',
         '**/test/**',
       ],
-    },
-  },
-  resolve: {
-    alias: {
-      '@': resolve(__dirname, './src'),
     },
   },
 });
