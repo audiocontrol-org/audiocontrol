@@ -2,7 +2,7 @@
 
 **Status:** In Progress
 **Branch:** `feature/jv1080-editor`
-**Completed:** Phase 1 (protocol extraction), Phase 2 (unit test coverage), Phase 3 (editor scaffold + MIDI connection UI), Phase 4 (system parameter controls)
+**Completed:** Phase 1 (protocol extraction), Phase 2 (unit test coverage), Phase 3 (editor scaffold + MIDI connection UI), Phase 4 (system parameter controls), Phase 5 (effects editor)
 
 ## Summary
 
@@ -18,6 +18,13 @@ Phase 4 is complete in `@audiocontrol/jv1080-editor`:
 - Added system parameter controls for panel mode, performance number, patch group/id/number, insert/chorus/reverb switches, patch remain, and clock source.
 - Wired UI controls to `Jv1080Client` system methods for DT1 writes.
 - Added unit tests for system control mapping and value clamping in `src/system/systemControls.test.ts`.
+
+Phase 5 is complete in `@audiocontrol/jv1080-editor`:
+- Added FX type selector for all 40 legacy JV-1080 FX types.
+- Added FX parameter controls for 12 parameter slots with 7-bit value clamping.
+- Wired outbound writes to `setFx(...)` and `setFxParam(index, value)`.
+- Added inbound subscriptions to `Jv1080Event.FxType` and `Jv1080Event.FxParam` so UI updates on device-originated messages.
+- Added unit tests for FX mapping/clamping in `src/system/fxControls.test.ts`.
 
 ## What Was Ported
 
@@ -48,5 +55,5 @@ _To be completed after implementation._
 - [x] `pnpm --filter @audiocontrol/sampler-devices test` passes
 - [x] `pnpm --filter @audiocontrol/jv1080-editor build` succeeds
 - [ ] JV-1080 system parameter controls verified on hardware (pending)
-- [ ] JV-1080 FX type selection and parameter writes verified on hardware
+- [ ] JV-1080 FX type selection and parameter writes verified on hardware (pending)
 - [ ] Documentation synchronized with final implementation

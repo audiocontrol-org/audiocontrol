@@ -1,5 +1,6 @@
 import { useMidiStore } from '@/stores/midiStore';
 import { SystemControls } from '@/components/system/SystemControls';
+import { FxControls } from '@/components/system/FxControls';
 
 export function EditorPage(): JSX.Element {
   const { status, client, deviceId } = useMidiStore();
@@ -19,6 +20,7 @@ export function EditorPage(): JSX.Element {
         </ul>
       </section>
       <SystemControls client={client} connected={status === 'connected'} />
+      <FxControls client={client} connected={status === 'connected'} />
     </>
   );
 }
