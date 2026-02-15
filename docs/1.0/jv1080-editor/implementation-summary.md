@@ -2,11 +2,17 @@
 
 **Status:** In Progress
 **Branch:** `feature/jv1080-editor`
-**Completed:** Phase 1 (protocol extraction), Phase 2 (unit test coverage)
+**Completed:** Phase 1 (protocol extraction), Phase 2 (unit test coverage), Phase 3 (editor scaffold + MIDI connection UI)
 
 ## Summary
 
 Phase 1 and 2 are complete in `@audiocontrol/sampler-devices`. The JV-1080 protocol client was extracted into dedicated module files and covered with unit tests for message framing/checksum, address/value encoding, and inbound DT1 event parsing/subscriptions.
+
+Phase 3 is complete with a new `@audiocontrol/jv1080-editor` module scaffold, including:
+- Vite + React app package and TypeScript build config
+- Home route with MIDI input/output selection, connect/disconnect controls, and device ID entry
+- Editor route placeholder for upcoming system/FX controls
+- Zustand MIDI store using `@audiocontrol/shared-midi` and `Jv1080Client` from `@audiocontrol/sampler-devices/jv1080`
 
 ## What Was Ported
 
@@ -35,7 +41,7 @@ _To be completed after implementation._
 ## Verification Results
 
 - [x] `pnpm --filter @audiocontrol/sampler-devices test` passes
-- [ ] `pnpm --filter @audiocontrol/jv1080-editor build` succeeds
+- [x] `pnpm --filter @audiocontrol/jv1080-editor build` succeeds
 - [ ] JV-1080 system parameter controls verified on hardware
 - [ ] JV-1080 FX type selection and parameter writes verified on hardware
 - [ ] Documentation synchronized with final implementation

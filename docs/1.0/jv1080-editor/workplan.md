@@ -113,8 +113,8 @@ Child issues created under parent #4:
 ## Verification Checklist
 
 - [x] `pnpm --filter @audiocontrol/sampler-devices test`
-- [ ] `pnpm --filter @audiocontrol/jv1080-editor test`
-- [ ] `pnpm --filter @audiocontrol/jv1080-editor build`
+- [x] `pnpm --filter @audiocontrol/jv1080-editor test`
+- [x] `pnpm --filter @audiocontrol/jv1080-editor build`
 - [ ] Manual hardware validation of system parameter writes
 - [ ] Manual hardware validation of FX type/parameter writes
 - [ ] Feature docs updated with any implementation deviations
