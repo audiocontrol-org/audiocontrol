@@ -1,6 +1,6 @@
 {
   "name": "@audiocontrol/d110-editor",
-  "version": "1.0.0-alpha.1",
+  "version": "0.1.0",
   "description": "Web-based editor for Roland D-110 synthesizer",
   "type": "module",
   "scripts": {

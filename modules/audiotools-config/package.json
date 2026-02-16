@@ -1,6 +1,6 @@
 {
   "name": "@audiocontrol/audiotools-config",
-  "version": "1.0.0-alpha.50",
+  "version": "0.1.0",
   "description": "Shared configuration system for audio-tools",
   "type": "module",
   "main": "./dist/index.js",

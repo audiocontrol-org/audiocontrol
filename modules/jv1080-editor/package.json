@@ -1,6 +1,6 @@
 {
   "name": "@audiocontrol/jv1080-editor",
-  "version": "1.0.0-alpha.1",
+  "version": "0.1.0",
   "description": "Web-based editor scaffold for Roland JV-1080",
   "type": "module",
   "scripts": {

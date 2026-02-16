@@ -1,6 +1,6 @@
 {
   "name": "@audiocontrol/editor-core",
-  "version": "1.0.0-alpha.1",
+  "version": "0.1.0",
   "description": "Shared editor infrastructure for audiocontrol web editors",
   "type": "module",
   "main": "dist/index.js",

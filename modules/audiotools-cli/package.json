@@ -1,6 +1,6 @@
 {
   "name": "@audiocontrol/audiotools",
-  "version": "1.0.0-alpha.50",
+  "version": "0.1.0",
   "description": "Unified CLI for audio-tools - backup, extract, and convert Akai sampler data",
   "type": "module",
   "bin": {

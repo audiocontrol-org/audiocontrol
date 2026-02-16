@@ -1,6 +1,6 @@
 {
   "name": "@audiocontrol/sampler-lib",
-  "version": "1.0.0-alpha.50",
+  "version": "0.1.0",
   "description": "Library code for sampler stuff",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

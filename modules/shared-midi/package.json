@@ -1,6 +1,6 @@
 {
   "name": "@audiocontrol/shared-midi",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Shared Web MIDI utilities for AudioControl editors",
   "type": "module",
   "main": "./src/index.ts",

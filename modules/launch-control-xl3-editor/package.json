@@ -1,6 +1,6 @@
 {
   "name": "@audiocontrol/launch-control-xl3-editor",
-  "version": "1.0.0-alpha.1",
+  "version": "0.1.0",
   "description": "Legacy Web MIDI editor client for Novation Launch Control XL3",
   "type": "module",
   "main": "./dist/index.js",

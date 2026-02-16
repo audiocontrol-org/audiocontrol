@@ -1,6 +1,6 @@
 {
   "name": "@audiocontrol/editor-tools",
-  "version": "1.0.0-alpha.1",
+  "version": "0.1.0",
   "description": "Shared tools for audiocontrol editors - build info, log capture, debugging",
   "type": "module",
   "main": "dist/index.js",

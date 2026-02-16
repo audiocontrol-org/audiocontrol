@@ -1,6 +1,6 @@
 {
   "name": "@audiocontrol/s330-editor",
-  "version": "1.0.0-alpha.1",
+  "version": "0.1.0",
   "description": "Web-based editor for Roland S-330 sampler",
   "type": "module",
   "scripts": {
