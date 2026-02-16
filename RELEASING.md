@@ -40,26 +40,27 @@ pnpm release:ship
 ```
 
 **What this does (in order):**
-1. **Auto-creates changeset** if none exist (all packages, patch bump)
-2. **Bumps versions** from changesets: `pnpm changeset:version`
+1. **Validates workspace version sync**: `pnpm version:check`
+2. **Auto-creates changeset** if none exist (all packages, patch bump)
+3. **Bumps versions** from changesets: `pnpm changeset:version`
    - Reads `.changeset/*.md` files
    - Updates all `package.json` versions
    - Updates `CHANGELOG.md` files
    - Deletes processed changeset files
-3. **Builds** all packages: `pnpm -r build`
-4. **Stages** changes: `git add .`
-5. **Commits** with message: `chore(release): publish packages`
-6. **Pushes** to remote: `git push`
-7. **Publishes** to npm: `pnpm changeset:publish`
+4. **Builds** all packages: `pnpm -r build`
+5. **Stages** changes: `git add .`
+6. **Commits** with message: `chore(release): publish packages`
+7. **Pushes** to remote: `git push`
+8. **Publishes** to npm: `pnpm changeset:publish`
 
 **You will be prompted for:**
 - 2FA/OTP code from your authenticator app
 
 **Expected output:**
 ```
-🦋  info Publishing "@audiocontrol/package-name" at "1.20.1-alpha.1"
+🦋  info Publishing "@audiocontrol/package-name" at "0.1.1-alpha.0"
 🦋  success packages published successfully:
-🦋  @audiocontrol/package-name@1.20.1-alpha.1
+🦋  @audiocontrol/package-name@0.1.1-alpha.0
 ```
 
 ### 4. Verify Publication
@@ -73,7 +74,7 @@ npm view @audiocontrol/live-max-cc-router dist-tags
 
 **Expected output:**
 ```
-{ latest: '1.20.0', alpha: '1.20.1-alpha.1' }
+{ latest: '0.1.0', alpha: '0.1.1-alpha.0' }
 ```
 
 ## Complete Workflow Example
@@ -104,13 +105,16 @@ pnpm release:ship
 
 ## Version Consistency
 
-All packages should share the same version number for simplicity.
+All workspace packages share one common version, starting from `0.1.0`.
 
-**To sync versions:**
-1. Create changeset with all packages listed
-2. Use same bump type for all (usually `patch`)
-3. Run `pnpm release:ship`
-4. All packages will have matching versions
+This is enforced by:
+- `.changeset/config.json` `fixed` group containing all workspace packages
+- `pnpm version:check` guard script, which fails when a module version diverges from root
+
+**To verify sync manually:**
+```bash
+pnpm version:check
+```
 
 ## Exiting Alpha Mode
 
@@ -147,7 +151,7 @@ pnpm release:ship
 **Solution:** Wait 1-2 minutes for npm CDN propagation, then check again.
 
 ### Versions out of sync
-**Solution:** Create a changeset that includes all packages with the same bump type.
+**Solution:** Set root and module versions to the same value, then run `pnpm version:check` until it passes.
 
 ### Wrong dist-tag
 **Issue:** Package published to `latest` instead of `alpha`
@@ -158,6 +162,7 @@ pnpm release:ship
 
 | Script | Description |
 |--------|-------------|
+| `pnpm version:check` | Verify all workspace package versions match the root version |
 | `pnpm release:ship` | **One-click:** Version bump + build + commit + push + publish |
 | `pnpm release:publish` | Version + build + publish (no git operations) |
 | `pnpm changeset` | Create a new changeset interactively |
@@ -175,6 +180,7 @@ pnpm release:ship
 4. **Verify before shipping** - Run `pnpm test` and `pnpm typecheck` first
 5. **Check dist-tags** - Verify packages published to correct tag
 6. **Git hygiene** - Ensure branch is clean before shipping
+7. **Run version guard first** - `pnpm version:check`
 
 ## Emergency Rollback
 
@@ -182,10 +188,10 @@ If you published a bad version:
 
 ```bash
 # Deprecate the bad version
-npm deprecate @audiocontrol/package-name@1.20.1-alpha.1 "Broken release, use 1.20.1-alpha.2"
+npm deprecate @audiocontrol/package-name@0.1.1-alpha.0 "Broken release, use 0.1.1-alpha.1"
 
 # Tag a previous version as alpha
-npm dist-tag add @audiocontrol/package-name@1.20.1-alpha.0 alpha
+npm dist-tag add @audiocontrol/package-name@0.1.0 alpha
 ```
 
 Then fix the issue and publish a new version.
