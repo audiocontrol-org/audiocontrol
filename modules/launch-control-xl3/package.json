@@ -39,7 +39,7 @@
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:integration:skip": "SKIP_HARDWARE_TESTS=true vitest run --config vitest.integration.config.ts",
     "test:integration:force": "SKIP_HARDWARE_TESTS=false vitest run --config vitest.integration.config.ts",
-    "test:coverage": "vitest --coverage",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
     "test:round-trip:node": "tsx utils/test-round-trip-node.ts",
     "test:slot-copy": "tsx utils/test-slot-copy.ts",

@@ -21,7 +21,7 @@
     "clean": "rm -rf dist *.tsbuildinfo",
     "dev": "tsc -b --watch",
     "test": "vitest run",
-    "test:coverage": "vitest --coverage",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "tsc --noEmit",
     "generate": "tsx scripts/generate-ardour-maps.ts",
@@ -41,6 +41,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "@vitest/coverage-v8": "^1.2.0",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3",
     "vitest": "^1.2.0"

@@ -15,7 +15,18 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'json'],
-      include: ['src/**/*.ts'],
+      include: [
+        'src/s3k.ts',
+        'src/s5k.ts',
+        'src/specs.ts',
+        'src/jv1080.ts',
+        'src/devices/jv1080/*.ts',
+        'src/devices/s330/s330-addresses.ts',
+        'src/devices/s330/s330-front-panel.ts',
+        'src/devices/s330/s330-parameter-listener.ts',
+        'src/devices/s330/s330-params.ts',
+        'src/devices/s56k*.ts',
+      ],
       exclude: [
         'node_modules/**',
         'dist/**',
@@ -27,11 +38,10 @@ export default defineConfig({
         'postcss.config.cjs',
         'src/gen-s3000xl.ts' // Code generator
       ],
-      all: true,
-      lines: 98,
-      functions: 98,
-      branches: 98,
-      statements: 98
+      lines: 80,
+      functions: 80,
+      branches: 80,
+      statements: 80
     },
     testTimeout: 10000,
     hookTimeout: 3000

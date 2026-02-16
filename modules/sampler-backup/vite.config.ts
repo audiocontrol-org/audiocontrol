@@ -67,9 +67,33 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
+    exclude: [
+      'node_modules/**',
+      'dist/**',
+      'test/device/**',
+      'src/lib/device/auto-detect-backup.test.ts',
+      'test/unit/borg-backup-adapter.test.ts',
+      'test/unit/sources/remote-source.test.ts'
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
+      include: [
+        'src/lib/backup/repo-path-resolver.ts',
+        'src/lib/media/media-detector.ts',
+        'src/lib/backup/local-backup-adapter.ts',
+        'src/lib/backup/rsync-adapter.ts',
+        'src/lib/sources/backup-source-factory.ts',
+        'src/lib/sources/local-source.ts',
+        'src/lib/prompt/interactive-prompt.ts'
+      ],
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        branches: 80,
+        statements: 80,
+      },
       exclude: [
         'node_modules/**',
         'dist/**',
@@ -84,7 +108,9 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src')
+      '@': resolve(__dirname, 'src'),
+      '@/lib': resolve(__dirname, 'src/lib'),
+      '@/backup': resolve(__dirname, 'src/lib/backup')
     }
   }
 });

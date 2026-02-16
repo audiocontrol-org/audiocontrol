@@ -10,6 +10,7 @@
     "clean": "pnpm -r clean",
     "dev": "pnpm -r dev",
     "test": "pnpm -r test",
+    "coverage:check": "pnpm -r --if-present test:coverage",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",

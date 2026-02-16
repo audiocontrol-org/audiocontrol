@@ -38,6 +38,9 @@ importers:
       '@types/node':
         specifier: ^20.11.0
         version: 20.19.17
+      '@vitest/coverage-v8':
+        specifier: ^1.2.0
+        version: 1.6.1(vitest@1.6.1)
       tsx:
         specifier: ^4.7.0
         version: 4.20.5
@@ -122,6 +125,9 @@ importers:
       '@types/node':
         specifier: ^20.11.0
         version: 20.19.17
+      '@vitest/coverage-v8':
+        specifier: ^1.2.0
+        version: 1.6.1(vitest@1.6.1)
       tsx:
         specifier: ^4.7.0
         version: 4.20.5
@@ -253,6 +259,67 @@ importers:
       typescript:
         specifier: ^5.0.0
         version: 5.9.2
+
+  modules/jv1080-editor:
+    dependencies:
+      '@audiocontrol/editor-tools':
+        specifier: workspace:*
+        version: link:../editor-tools
+      '@audiocontrol/sampler-devices':
+        specifier: workspace:*
+        version: link:../sampler-devices
+      '@audiocontrol/shared-midi':
+        specifier: workspace:*
+        version: link:../shared-midi
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      react-router-dom:
+        specifier: ^6.21.0
+        version: 6.30.3(react-dom@18.3.1)(react@18.3.1)
+      zustand:
+        specifier: ^4.4.7
+        version: 4.5.7(@types/react@18.3.27)(react@18.3.1)
+    devDependencies:
+      '@types/react':
+        specifier: ^18.2.43
+        version: 18.3.27
+      '@types/react-dom':
+        specifier: ^18.2.17
+        version: 18.3.7(@types/react@18.3.27)
+      '@types/webmidi':
+        specifier: ^2.0.10
+        version: 2.1.0
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^6.14.0
+        version: 6.21.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.1)(typescript@5.9.2)
+      '@typescript-eslint/parser':
+        specifier: ^6.14.0
+        version: 6.21.0(eslint@8.57.1)(typescript@5.9.2)
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.7.0(vite@5.4.20)
+      eslint:
+        specifier: ^8.55.0
+        version: 8.57.1
+      eslint-plugin-react-hooks:
+        specifier: ^4.6.0
+        version: 4.6.2(eslint@8.57.1)
+      eslint-plugin-react-refresh:
+        specifier: ^0.4.5
+        version: 0.4.26(eslint@8.57.1)
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.2
+      vite:
+        specifier: ^5.0.10
+        version: 5.4.20(@types/node@22.19.8)
+      vitest:
+        specifier: ^1.1.0
+        version: 1.6.1(@types/node@22.19.8)
 
   modules/launch-control-xl3:
     dependencies:
@@ -5928,8 +5995,8 @@ packages:
   /magicast@0.3.5:
     resolution: {integrity: sha512-L0WhttDl+2BOsybvEOLK7fW3UA0OQ0IQ2d6Zl2x/a6vVRs3bAY0ECOSHHeL5jD+SbOpOCUEi0y1DgHEn9Qn1AQ==}
     dependencies:
-      '@babel/parser': 7.28.4
-      '@babel/types': 7.28.4
+      '@babel/parser': 7.29.0
+      '@babel/types': 7.29.0
       source-map-js: 1.2.1
     dev: true
 

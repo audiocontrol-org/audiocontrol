@@ -1,0 +1,95 @@
+:root {
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+  line-height: 1.4;
+  font-weight: 400;
+  color: #ebedf2;
+  background: radial-gradient(circle at top, #2b3140 0%, #151922 55%, #0e1118 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+a {
+  color: #9ed0ff;
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.app-shell {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.panel {
+  background: rgba(22, 27, 38, 0.88);
+  border: 1px solid #3a4255;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 240px;
+  flex: 1;
+}
+
+label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #b6bdd0;
+}
+
+select,
+input,
+button {
+  border-radius: 8px;
+  border: 1px solid #4b5366;
+  background: #202636;
+  color: #ebedf2;
+  padding: 10px 12px;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled,
+select:disabled,
+input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status {
+  font-weight: 600;
+  color: #f7d26a;
+}
+
+.status.connected {
+  color: #8de3a6;
+}
+
+.error {
+  color: #ff8a8a;
+}

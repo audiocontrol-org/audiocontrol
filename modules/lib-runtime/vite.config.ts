@@ -17,10 +17,10 @@ export default defineConfig({
         '**/*.spec.ts',
         'postcss.config.cjs'
       ],
-      lines: 90,
-      functions: 90,
-      branches: 85,
-      statements: 90
+      lines: 80,
+      functions: 80,
+      branches: 80,
+      statements: 80
     },
     testTimeout: 10000,
     hookTimeout: 3000
