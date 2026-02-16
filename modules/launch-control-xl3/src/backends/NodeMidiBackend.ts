@@ -7,6 +7,7 @@
 
 import { MidiBackendInterface, MidiPortInfo, MidiInputPort, MidiOutputPort, MidiMessage, MidiPort } from '../core/MidiInterface.js';
 import { EventEmitter } from 'events';
+// @ts-expect-error node-midi has no maintained official TypeScript declarations.
 import midi from 'midi';
 
 class NodeMidiInputPort implements MidiInputPort {
