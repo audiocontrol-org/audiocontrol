@@ -12,7 +12,7 @@
 | Phase 3: Connection Components | Completed | Shared MidiConnectionPage + MidiPortSelector created; JV-1080, D-110, S-330 Home pages migrated |
 | Phase 4: UI Components | Completed | Shared ParameterSlider, formatters, CollapsibleSection with editor integrations |
 | Phase 5: Design System | Completed | Shared CSS tokens implemented and wired; JV-1080 migrated to Tailwind |
-| Phase 6: Editor Migration | Not Started | Apply shared components to editors |
+| Phase 6: Editor Migration | Completed | All three editors migrated to shared MidiConnectionPage and createMidiStore |
 
 ## Implementation Notes
 
@@ -74,6 +74,11 @@ _(To be populated during implementation)_
   - `modules/jv1080-editor/src/components/system/FxControls.tsx`
 
 ### Phase 6 Notes
+
+- Migrated JV-1080 MIDI store to shared `createMidiStore` factory.
+- Migrated D-110 MIDI store to shared `createMidiStore` factory with D-110 client creation.
+- Migrated S-330 MIDI store to shared `createMidiStore` factory (retaining E2E `window.__midiStore` exposure).
+- All editors now use shared `MidiConnectionPage` for connection flow.
 
 ## Code Metrics
 
