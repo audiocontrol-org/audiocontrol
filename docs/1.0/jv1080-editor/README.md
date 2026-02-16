@@ -1,6 +1,6 @@
 # JV-1080 Editor
 
-**Status:** Planning
+**Status:** In Progress
 **Branch:** `feature/jv1080-editor`
 **Milestone:** [Week of Feb 3-7](https://github.com/audiocontrol-org/audiocontrol/milestone/1)
 
@@ -12,7 +12,8 @@ Port Roland JV-1080 editor work from `oletizi/ol_dsp` into this monorepo as firs
 
 - [PRD](./prd.md) - Product requirements, scope, and source analysis
 - [Workplan](./workplan.md) - Implementation phases and GitHub tracking links
-- [Implementation Summary](./implementation-summary.md) - Post-completion report template
+- [Implementation Summary](./implementation-summary.md) - Progress and completion notes
+- [Validation Notes](./validation-notes.md) - Automated + hardware validation tracking
 
 ## GitHub Tracking
 

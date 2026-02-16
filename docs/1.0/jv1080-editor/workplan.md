@@ -117,4 +117,4 @@ Child issues created under parent #4:
 - [x] `pnpm --filter @audiocontrol/jv1080-editor build`
 - [ ] Manual hardware validation of system parameter writes
 - [ ] Manual hardware validation of FX type/parameter writes
-- [ ] Feature docs updated with any implementation deviations
+- [x] Feature docs updated with any implementation deviations

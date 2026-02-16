@@ -44,11 +44,13 @@ Phase 5 is complete in `@audiocontrol/jv1080-editor`:
 
 ## Deviations from Plan
 
-_To be completed after implementation._
+- Phase 3 imported `Jv1080Client` via `@audiocontrol/sampler-devices/jv1080` subpath (instead of root package export) to avoid browser bundling of Node-oriented modules.
 
 ## Known Issues / Follow-up
 
-_To be completed after implementation._
+- Hardware validation for system and FX writes is still pending.
+- System control UI currently uses optimistic local state rather than full parameter readback.
+- FX parameter UI uses generic parameter labels (`Param 1..12`) rather than per-FX semantic naming.
 
 ## Verification Results
 
@@ -56,4 +58,4 @@ _To be completed after implementation._
 - [x] `pnpm --filter @audiocontrol/jv1080-editor build` succeeds
 - [ ] JV-1080 system parameter controls verified on hardware (pending)
 - [ ] JV-1080 FX type selection and parameter writes verified on hardware (pending)
-- [ ] Documentation synchronized with final implementation
+- [x] Documentation synchronized with final implementation
