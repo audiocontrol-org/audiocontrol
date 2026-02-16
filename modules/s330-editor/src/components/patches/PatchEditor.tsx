@@ -7,7 +7,8 @@ import type { S330Patch, S330KeyMode, S330Tone } from '@/core/midi/S330Client';
 import type { S330ClientInterface } from '@/core/midi/S330Client';
 import { createS330Client } from '@/core/midi/S330Client';
 import { useMidiStore } from '@/stores/midiStore';
-import { formatPercent, cn } from '@/lib/utils';
+import { formatPercent } from '@audiocontrol/editor-core';
+import { cn } from '@/lib/utils';
 import { ParameterSlider } from '@/components/ui/ParameterSlider';
 import { ToneZoneEditor } from './ToneZoneEditor';
 

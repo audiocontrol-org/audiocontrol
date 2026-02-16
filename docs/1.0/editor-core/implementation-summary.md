@@ -52,6 +52,10 @@ _(To be populated during implementation)_
 - Added shared formatter utilities in `modules/editor-core/src/utils/formatters.ts` (`formatPercent`, `formatSigned`, `formatPitch`, `formatKeyfollow`, `formatPan`).
 - Migrated D-110 and S-330 local `ParameterSlider` components to thin themed wrappers around shared `editor-core` `ParameterSlider`.
 - Migrated D-110 `PartialEditor` collapsible sections to shared `editor-core` `CollapsibleSection`.
+- Added formatter and component tests in `editor-core`:
+  - `src/utils/formatters.test.ts`
+  - `src/components/CollapsibleSection.test.tsx`
+  - `src/components/MidiConnectionPage.test.tsx`
 
 ### Phase 5 Notes
 
@@ -79,6 +83,7 @@ _(To be populated during implementation)_
 - Migrated D-110 MIDI store to shared `createMidiStore` factory with D-110 client creation.
 - Migrated S-330 MIDI store to shared `createMidiStore` factory (retaining E2E `window.__midiStore` exposure).
 - All editors now use shared `MidiConnectionPage` for connection flow.
+- Migrated remaining duplicated formatter callsites to `@audiocontrol/editor-core` in S-330 and D-110 and removed dead local S-330 formatter helpers.
 
 ## Code Metrics
 
@@ -116,7 +121,7 @@ _(Document insights for future shared library work)_
 
 ## Open Issues
 
-_(Track any blocking issues or unresolved questions)_
+- Vitest in this sandbox logs a websocket bind warning (`listen EPERM ... 0.0.0.0:24678`) during some runs; tests still execute and pass. This does not reproduce as a functional test failure in normal local environments.
 
 ## References
 

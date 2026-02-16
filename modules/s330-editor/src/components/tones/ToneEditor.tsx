@@ -11,7 +11,8 @@
  */
 
 import type { S330Tone, S330Envelope } from '@audiocontrol/sampler-devices/s330';
-import { midiNoteToName, formatPercent, cn, formatS330Number } from '@/lib/utils';
+import { formatPercent } from '@audiocontrol/editor-core';
+import { midiNoteToName, cn, formatS330Number } from '@/lib/utils';
 import { ParameterSlider } from '@/components/ui/ParameterSlider';
 import { EnvelopeEditor } from '@/components/ui/EnvelopeEditor';
 

@@ -12,6 +12,7 @@
  */
 
 import { useCallback } from 'react';
+import { formatPan } from '@audiocontrol/editor-core';
 import { useD110Store } from '@/stores';
 import { useMidiStore } from '@/stores';
 import { ParameterSlider, formatPitch } from '@/components/ui/ParameterSlider';
@@ -208,11 +209,7 @@ export function PartConfigEditor({
     await sendPartParameter(PART_TIMBRE_OFFSETS.KEY_RANGE_UPPER, config.keyRangeUpper);
   }, [config.keyRangeUpper, sendPartParameter]);
 
-  const formatPan = (value: number): string => {
-    if (value === 50) return 'C';
-    if (value < 50) return `L${50 - value}`;
-    return `R${value - 50}`;
-  };
+  const formatPartPan = (value: number): string => formatPan(value, 50);
 
   const formatKeyShift = (value: number): string => {
     const shift = value - 24;
@@ -258,7 +255,7 @@ export function PartConfigEditor({
           <div className="flex items-center gap-4 text-sm text-d110-muted">
             <span>Ch: {midiChannelDisplay}</span>
             <span>Lvl: {config.outputLevel}</span>
-            <span>Pan: {formatPan(config.pan)}</span>
+            <span>Pan: {formatPartPan(config.pan)}</span>
             <span className="text-d110-highlight">Expand</span>
           </div>
         </div>
@@ -411,7 +408,7 @@ export function PartConfigEditor({
           onCommit={() => void handlePanCommit()}
           min={PARAM_RANGES.PAN.min}
           max={PARAM_RANGES.PAN.max}
-          formatValue={formatPan}
+          formatValue={formatPartPan}
         />
       </div>
 

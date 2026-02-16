@@ -23,30 +23,6 @@ export function midiNoteToName(note: number): string {
 }
 
 /**
- * Format value as percentage (0-127 → 0-100%)
- */
-export function formatPercent(value: number): string {
-  return `${Math.round((value / 127) * 100)}%`;
-}
-
-/**
- * Format signed value (-64 to +63 from 0-127)
- */
-export function formatSigned(value: number): string {
-  const signed = value - 64;
-  return signed >= 0 ? `+${signed}` : String(signed);
-}
-
-/**
- * Format pan value (0-127, 64 = center)
- */
-export function formatPan(value: number): string {
-  if (value === 64) return 'C';
-  if (value < 64) return `L${64 - value}`;
-  return `R${value - 64}`;
-}
-
-/**
  * Debounce function
  */
 export function debounce<T extends (...args: unknown[]) => void>(

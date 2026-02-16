@@ -153,10 +153,10 @@ Child issues created under parent #27:
 
 ## Verification Checklist
 
-- [ ] `pnpm --filter @audiocontrol/editor-core build`
-- [ ] `pnpm --filter @audiocontrol/editor-core test`
-- [ ] JV-1080 uses EditorLayout with consistent header
-- [ ] JV-1080 uses Tailwind CSS
-- [ ] D-110 has BrowserRouter in main.tsx
-- [ ] All editors have sendPanic method
-- [ ] Feature docs updated with implementation notes
+- [x] `pnpm --filter @audiocontrol/editor-core build`
+- [x] `pnpm --filter @audiocontrol/editor-core test`
+- [x] JV-1080 uses EditorLayout with consistent header
+- [x] JV-1080 uses Tailwind CSS
+- [x] D-110 has BrowserRouter in main.tsx
+- [x] All editors have sendPanic method
+- [x] Feature docs updated with implementation notes
