@@ -8,13 +8,13 @@ export function EditorPage(): JSX.Element {
   return (
     <>
       <section className="panel">
-        <h2>Editor</h2>
-        <p>
+        <h2 className="text-lg font-semibold text-jv1080-text">Editor</h2>
+        <p className="mt-2 text-sm text-jv1080-muted">
           {status === 'connected'
             ? 'Connected. System control writes are live.'
             : 'Connect MIDI on Home page to enable system parameter writes.'}
         </p>
-        <ul>
+        <ul className="mt-3 list-disc pl-5 text-sm text-jv1080-text">
           <li>Device ID: {deviceId}</li>
           <li>Client: {client ? 'ready' : 'not connected'}</li>
         </ul>

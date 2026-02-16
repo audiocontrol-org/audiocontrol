@@ -1,0 +1,46 @@
+{
+  "name": "@audiocontrol/editor-core",
+  "version": "1.0.0-alpha.1",
+  "description": "Shared editor infrastructure for audiocontrol web editors",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./tokens.css": "./src/design/tokens.css"
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@audiocontrol/shared-midi": "workspace:*",
+    "@radix-ui/react-slider": "^1.1.2",
+    "zustand": "^4.4.7"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.6.1"
+  },
+  "keywords": [
+    "audiocontrol",
+    "editor",
+    "midi",
+    "zustand"
+  ]
+}

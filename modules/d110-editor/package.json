@@ -35,6 +35,7 @@
     "directory": "modules/d110-editor"
   },
   "dependencies": {
+    "@audiocontrol/editor-core": "workspace:*",
     "@audiocontrol/editor-tools": "workspace:*",
     "@audiocontrol/shared-midi": "workspace:*",
     "@radix-ui/react-dialog": "^1.0.5",

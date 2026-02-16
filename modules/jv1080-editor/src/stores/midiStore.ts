@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import {
   createWebMidiAdapter,
+  type MidiIO,
   getBrowserCompatibility,
   isWebMidiSupported,
   requestMidiAccess,
@@ -17,11 +18,13 @@ interface MidiState {
   browserInfo: ReturnType<typeof getBrowserCompatibility>;
   inputs: MidiPortInfo[];
   outputs: MidiPortInfo[];
+  sysExEnabled: boolean;
   status: 'disconnected' | 'connecting' | 'connected' | 'error';
   error: string | null;
   selectedInputId: string | null;
   selectedOutputId: string | null;
   deviceId: number;
+  adapter: MidiIO | null;
   midiAccess: MIDIAccess | null;
   openPorts: { input: MIDIInput | null; output: MIDIOutput | null };
   client: Jv1080Client | null;
@@ -32,6 +35,7 @@ interface MidiState {
   setSelectedInputId: (id: string) => void;
   setSelectedOutputId: (id: string) => void;
   setDeviceId: (value: number) => void;
+  sendPanic: () => void;
 }
 
 function loadStored() {
@@ -64,11 +68,13 @@ export const useMidiStore = create<MidiState>((set, get) => ({
   browserInfo: getBrowserCompatibility(),
   inputs: [],
   outputs: [],
+  sysExEnabled: false,
   status: 'disconnected',
   error: null,
   selectedInputId: null,
   selectedOutputId: null,
   deviceId: 16,
+  adapter: null,
   midiAccess: null,
   openPorts: { input: null, output: null },
   client: null,
@@ -87,6 +93,7 @@ export const useMidiStore = create<MidiState>((set, get) => ({
       set({
         inputs: accessInfo.inputs,
         outputs: accessInfo.outputs,
+        sysExEnabled: accessInfo.sysExEnabled,
         selectedInputId: saved.inputId,
         selectedOutputId: saved.outputId,
         deviceId: saved.deviceId,
@@ -157,6 +164,7 @@ export const useMidiStore = create<MidiState>((set, get) => ({
 
       set({
         openPorts: { input, output },
+        adapter,
         status: 'connected',
         error: null,
         client,
@@ -177,6 +185,7 @@ export const useMidiStore = create<MidiState>((set, get) => ({
 
     set({
       openPorts: { input: null, output: null },
+      adapter: null,
       status: 'disconnected',
       client: null,
       error: null,
@@ -190,5 +199,18 @@ export const useMidiStore = create<MidiState>((set, get) => ({
     set({ deviceId: clamped });
     const { selectedInputId, selectedOutputId } = get();
     saveStored(selectedInputId, selectedOutputId, clamped);
+  },
+
+  sendPanic: () => {
+    const { adapter } = get();
+    if (!adapter) {
+      return;
+    }
+
+    for (let channel = 0; channel < 16; channel += 1) {
+      const status = 0xb0 + channel;
+      adapter.send([status, 120, 0]);
+      adapter.send([status, 123, 0]);
+    }
   },
 }));

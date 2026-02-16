@@ -19,12 +19,12 @@ import { cn } from '@/lib/utils';
 
 // S-330 Editor theme colors
 const s330Theme = {
-  bgPrimary: '#0f172a',      // slate-900
-  bgPanel: '#1e293b',        // slate-800
-  border: '#334155',         // slate-700
-  textPrimary: '#f1f5f9',    // slate-100
-  textMuted: '#94a3b8',      // slate-400
-  highlight: '#38bdf8',      // sky-400
+  bgPrimary: 'var(--ac-bg-primary)',
+  bgPanel: 'var(--ac-bg-panel)',
+  border: 'var(--ac-border)',
+  textPrimary: 'var(--ac-text-primary)',
+  textMuted: 'var(--ac-text-muted)',
+  highlight: 'var(--ac-highlight)',
 };
 
 // S-330 Editor layout configuration

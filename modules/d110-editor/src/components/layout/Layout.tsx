@@ -15,12 +15,12 @@ import { useMidiStore } from '@/stores/midiStore';
 
 // D-110 Editor theme colors
 const d110Theme = {
-  bgPrimary: '#111827',      // gray-900
-  bgPanel: '#1f2937',        // gray-800
-  border: '#374151',         // gray-700
-  textPrimary: '#e5e7eb',    // gray-200
-  textMuted: '#6b7280',      // gray-500
-  highlight: '#60a5fa',      // blue-400
+  bgPrimary: 'var(--ac-bg-primary)',
+  bgPanel: 'var(--ac-bg-panel)',
+  border: 'var(--ac-border)',
+  textPrimary: 'var(--ac-text-primary)',
+  textMuted: 'var(--ac-text-muted)',
+  highlight: 'var(--ac-highlight)',
 };
 
 // D-110 Editor layout configuration

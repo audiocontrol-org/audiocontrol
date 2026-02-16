@@ -31,16 +31,17 @@ export function SystemControls({ client, connected }: SystemControlsProps): JSX.
 
   return (
     <section className="panel">
-      <h2>System Parameters</h2>
-      <p>Core JV-1080 system controls wired to DT1 writes.</p>
+      <h2 className="text-lg font-semibold text-jv1080-text">System Parameters</h2>
+      <p className="mt-2 text-sm text-jv1080-muted">Core JV-1080 system controls wired to DT1 writes.</p>
       {!connected ? <p className="error">Connect MIDI on Home page to enable writes.</p> : null}
 
-      <div className="row">
+      <div className="row mt-3">
         <div className="col">
-          <label htmlFor="panel-mode">Panel Mode</label>
+          <label htmlFor="panel-mode" className="label">Panel Mode</label>
           <select
             id="panel-mode"
             value={state.panelMode}
+            className="field"
             disabled={disabled}
             onChange={(e) => {
               const value = e.target.value as PanelMode;
@@ -54,14 +55,15 @@ export function SystemControls({ client, connected }: SystemControlsProps): JSX.
           </select>
         </div>
 
-        <div className="col" style={{ maxWidth: 220 }}>
-          <label htmlFor="performance-number">Performance Number</label>
+        <div className="col max-w-[220px]">
+          <label htmlFor="performance-number" className="label">Performance Number</label>
           <input
             id="performance-number"
             type="number"
             min={0}
             max={127}
             value={state.performanceNumber}
+            className="field"
             disabled={disabled}
             onChange={(e) => {
               const value = clamp7Bit(Number.parseInt(e.target.value, 10) || 0);
@@ -74,10 +76,11 @@ export function SystemControls({ client, connected }: SystemControlsProps): JSX.
 
       <div className="row">
         <div className="col">
-          <label htmlFor="patch-group">Patch Group</label>
+          <label htmlFor="patch-group" className="label">Patch Group</label>
           <select
             id="patch-group"
             value={state.patchGroup}
+            className="field"
             disabled={disabled}
             onChange={(e) => {
               const value = e.target.value as PatchGroup;
@@ -90,14 +93,15 @@ export function SystemControls({ client, connected }: SystemControlsProps): JSX.
           </select>
         </div>
 
-        <div className="col" style={{ maxWidth: 220 }}>
-          <label htmlFor="patch-group-id">Patch Group ID</label>
+        <div className="col max-w-[220px]">
+          <label htmlFor="patch-group-id" className="label">Patch Group ID</label>
           <input
             id="patch-group-id"
             type="number"
             min={0}
             max={127}
             value={state.patchGroupId}
+            className="field"
             disabled={disabled}
             onChange={(e) => {
               const value = clamp7Bit(Number.parseInt(e.target.value, 10) || 0);
@@ -107,14 +111,15 @@ export function SystemControls({ client, connected }: SystemControlsProps): JSX.
           />
         </div>
 
-        <div className="col" style={{ maxWidth: 220 }}>
-          <label htmlFor="patch-number">Patch Number</label>
+        <div className="col max-w-[220px]">
+          <label htmlFor="patch-number" className="label">Patch Number</label>
           <input
             id="patch-number"
             type="number"
             min={0}
             max={127}
             value={state.patchNumber}
+            className="field"
             disabled={disabled}
             onChange={(e) => {
               const value = clamp7Bit(Number.parseInt(e.target.value, 10) || 0);
@@ -125,7 +130,7 @@ export function SystemControls({ client, connected }: SystemControlsProps): JSX.
         </div>
       </div>
 
-      <div className="row" style={{ marginTop: 8 }}>
+      <div className="row mt-2">
         <Toggle
           label="Insert FX"
           checked={state.insertFx}
@@ -164,12 +169,13 @@ export function SystemControls({ client, connected }: SystemControlsProps): JSX.
         />
       </div>
 
-      <div className="row" style={{ marginTop: 8 }}>
-        <div className="col" style={{ maxWidth: 220 }}>
-          <label htmlFor="clock-source">Clock Source</label>
+      <div className="row mt-2">
+        <div className="col max-w-[220px]">
+          <label htmlFor="clock-source" className="label">Clock Source</label>
           <select
             id="clock-source"
             value={state.clockSource}
+            className="field"
             disabled={disabled}
             onChange={(e) => {
               const value = e.target.value as ClockSource;
@@ -195,7 +201,7 @@ interface ToggleProps {
 
 function Toggle({ label, checked, disabled, onChange }: ToggleProps): JSX.Element {
   return (
-    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 150 }}>
+    <label className="inline-flex items-center gap-2 min-w-[150px] text-sm text-jv1080-text">
       <input
         type="checkbox"
         checked={checked}

@@ -30,6 +30,7 @@
     "directory": "modules/audio-tools/modules/s330-editor"
   },
   "dependencies": {
+    "@audiocontrol/editor-core": "workspace:*",
     "@audiocontrol/editor-tools": "workspace:*",
     "@audiocontrol/sampler-devices": "workspace:*",
     "@audiocontrol/shared-midi": "workspace:*",

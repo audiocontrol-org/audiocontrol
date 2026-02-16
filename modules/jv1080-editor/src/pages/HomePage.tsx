@@ -1,85 +1,33 @@
-import { useEffect } from 'react';
-import { MidiPortSelector } from '@/components/midi/MidiPortSelector';
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { MidiConnectionPage, type MidiConnectionPageConfig } from '@audiocontrol/editor-core';
 import { useMidiStore } from '@/stores/midiStore';
 
 export function HomePage(): JSX.Element {
-  const {
-    isSupported,
-    browserInfo,
-    inputs,
-    outputs,
-    status,
-    error,
-    selectedInputId,
-    selectedOutputId,
-    deviceId,
-    initialize,
-    connect,
-    disconnect,
-    refresh,
-    setSelectedInputId,
-    setSelectedOutputId,
-    setDeviceId,
-  } = useMidiStore();
+  const navigate = useNavigate();
+  const store = useMidiStore();
 
-  useEffect(() => {
-    void initialize();
-  }, [initialize]);
-
-  const canConnect = Boolean(selectedInputId && selectedOutputId) && status !== 'connected';
+  const config: MidiConnectionPageConfig = useMemo(() => ({
+    deviceName: 'JV-1080',
+    inputLabel: 'MIDI Input (from JV-1080)',
+    outputLabel: 'MIDI Output (to JV-1080)',
+    deviceIdLabel: 'Device ID',
+    deviceIdHelpText: 'Set the JV-1080 device ID to match your hardware.',
+    continueLabel: 'Continue to Editor',
+    helpItems: [
+      'Connect your JV-1080 through a MIDI interface.',
+      'Pick MIDI ports that correspond to your interface or JV-1080.',
+      'Enable SysEx permission when prompted.',
+      'Device ID must match the value configured on the hardware.',
+    ],
+  }), []);
 
   return (
-    <section className="panel">
-      <h2>MIDI Connection</h2>
-      <p>
-        Browser: <strong>{browserInfo.browser}</strong> | Web MIDI: <strong>{isSupported ? 'supported' : 'unsupported'}</strong>
-      </p>
-      <p className={`status ${status === 'connected' ? 'connected' : ''}`}>Status: {status}</p>
-      {error ? <p className="error">{error}</p> : null}
-
-      <div className="row">
-        <MidiPortSelector
-          label="MIDI Input"
-          ports={inputs}
-          value={selectedInputId}
-          onChange={setSelectedInputId}
-          disabled={!isSupported || status === 'connected'}
-        />
-        <MidiPortSelector
-          label="MIDI Output"
-          ports={outputs}
-          value={selectedOutputId}
-          onChange={setSelectedOutputId}
-          disabled={!isSupported || status === 'connected'}
-        />
-      </div>
-
-      <div className="row" style={{ marginTop: 12 }}>
-        <div className="col" style={{ maxWidth: 220 }}>
-          <label htmlFor="device-id">JV-1080 Device ID (0-127)</label>
-          <input
-            id="device-id"
-            type="number"
-            min={0}
-            max={127}
-            value={deviceId}
-            onChange={(e) => setDeviceId(Number.parseInt(e.target.value, 10) || 0)}
-            disabled={status === 'connected'}
-          />
-        </div>
-      </div>
-
-      <div className="row" style={{ marginTop: 12 }}>
-        <button type="button" onClick={() => void refresh()} disabled={!isSupported}>
-          Refresh Ports
-        </button>
-        <button type="button" onClick={() => void connect()} disabled={!canConnect}>
-          Connect
-        </button>
-        <button type="button" onClick={() => void disconnect()} disabled={status !== 'connected'}>
-          Disconnect
-        </button>
-      </div>
-    </section>
+    <MidiConnectionPage
+      config={config}
+      store={store}
+      deviceIdRange={{ min: 0, max: 127 }}
+      onContinue={() => navigate('/editor')}
+    />
   );
 }

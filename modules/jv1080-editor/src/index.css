@@ -1,95 +1,55 @@
-:root {
-  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
-  line-height: 1.4;
-  font-weight: 400;
-  color: #ebedf2;
-  background: radial-gradient(circle at top, #2b3140 0%, #151922 55%, #0e1118 100%);
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+    line-height: 1.4;
+    font-weight: 400;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply m-0 min-h-screen text-jv1080-text;
+    background: radial-gradient(circle at top, color-mix(in srgb, var(--ac-highlight) 14%, #1f2937) 0%, var(--ac-bg-panel) 55%, var(--ac-bg-primary) 100%);
+  }
+
+  a {
+    @apply text-jv1080-accent no-underline hover:underline;
+  }
 }
 
-* {
-  box-sizing: border-box;
-}
+@layer components {
+  .panel {
+    @apply rounded-xl border border-jv1080-border p-4 mb-4;
+    background: color-mix(in srgb, var(--ac-bg-panel) 88%, transparent);
+  }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-}
+  .row {
+    @apply flex gap-3 flex-wrap items-center;
+  }
 
-a {
-  color: #9ed0ff;
-  text-decoration: none;
-}
+  .col {
+    @apply flex flex-col gap-2 min-w-[240px] flex-1;
+  }
 
-a:hover {
-  text-decoration: underline;
-}
+  .label {
+    @apply text-xs uppercase tracking-[0.06em] text-jv1080-muted;
+  }
 
-.app-shell {
-  max-width: 900px;
-  margin: 0 auto;
-  padding: 24px;
-}
+  .field {
+    @apply rounded-lg border border-jv1080-border px-3 py-2 text-jv1080-text bg-jv1080-panel;
+  }
 
-.panel {
-  background: rgba(22, 27, 38, 0.88);
-  border: 1px solid #3a4255;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-}
+  .btn {
+    @apply rounded-lg border border-jv1080-border px-3 py-2 text-jv1080-text bg-jv1080-panel cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed;
+  }
 
-.row {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.col {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 240px;
-  flex: 1;
-}
-
-label {
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: #b6bdd0;
-}
-
-select,
-input,
-button {
-  border-radius: 8px;
-  border: 1px solid #4b5366;
-  background: #202636;
-  color: #ebedf2;
-  padding: 10px 12px;
-}
-
-button {
-  cursor: pointer;
-}
-
-button:disabled,
-select:disabled,
-input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.status {
-  font-weight: 600;
-  color: #f7d26a;
-}
-
-.status.connected {
-  color: #8de3a6;
-}
-
-.error {
-  color: #ff8a8a;
+  .error {
+    @apply text-red-300;
+  }
 }
