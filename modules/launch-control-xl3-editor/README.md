@@ -14,7 +14,7 @@ This library provides a complete implementation of the Launch Control XL 3's Sys
 ## Installation
 
 ```bash
-npm install @ol-dsp/launch-control-xl3
+npm install @audiocontrol/launch-control-xl3-editor
 ```
 
 ## Usage
@@ -22,7 +22,7 @@ npm install @ol-dsp/launch-control-xl3
 ### Basic Connection
 
 ```typescript
-import { LaunchControlXL3Client } from '@ol-dsp/launch-control-xl3';
+import { LaunchControlXL3Client } from '@audiocontrol/launch-control-xl3-editor';
 
 const client = new LaunchControlXL3Client();
 
@@ -54,7 +54,7 @@ if (mode) {
 ### Writing Custom Modes
 
 ```typescript
-import { CustomMode, ControlType } from '@ol-dsp/launch-control-xl3';
+import { CustomMode, ControlType } from '@audiocontrol/launch-control-xl3-editor';
 
 const customMode: CustomMode = {
   name: 'My Synth Control',
@@ -101,7 +101,7 @@ The library implements the proprietary SysEx protocol used by the Launch Control
 The library includes the Midimunge encoding system used to convert 8-bit data to MIDI-safe 7-bit format:
 
 ```typescript
-import { eightToSeven, sevenToEight } from '@ol-dsp/launch-control-xl3';
+import { eightToSeven, sevenToEight } from '@audiocontrol/launch-control-xl3-editor';
 
 // Encode data for MIDI transmission
 const encoded = eightToSeven(data);

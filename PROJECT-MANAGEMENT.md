@@ -141,6 +141,7 @@ gh issue create \
 | `ardour-midi-maps`   | Ardour DAW MIDI map generation              |
 | `canonical-midi-maps` | DAW-agnostic MIDI mapping format           |
 | `launch-control-xl3` | Novation Launch Control XL3 support         |
+| `launch-control-xl3-editor` | Launch Control XL3 web editor/prototype |
 | `audiotools-cli`     | CLI tooling                                 |
 | `docs`               | Documentation                               |
 

@@ -446,6 +446,15 @@ importers:
         specifier: ^1.2.0
         version: 1.6.1(@types/node@20.19.17)
 
+  modules/launch-control-xl3-editor:
+    devDependencies:
+      typescript:
+        specifier: ^5.3.3
+        version: 5.9.2
+      vitest:
+        specifier: ^1.1.0
+        version: 1.6.1(@types/node@22.19.8)
+
   modules/lib-device-uuid:
     dependencies:
       '@audiocontrol/sampler-lib':

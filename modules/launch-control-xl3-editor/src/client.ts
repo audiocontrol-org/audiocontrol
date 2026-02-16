@@ -165,7 +165,7 @@ export class LaunchControlXL3Client {
 
     // Send read request
     const request = buildReadRequest(slot);
-    this.midiOutput.send(request);
+    this.midiOutput.send(Array.from(request));
 
     // Wait for response
     // In a real implementation, this would use promises and event handling
@@ -196,7 +196,7 @@ export class LaunchControlXL3Client {
 
     // Send each message with a small delay
     for (const message of messages) {
-      this.midiOutput.send(message);
+      this.midiOutput.send(Array.from(message));
       await this.delay(50); // Small delay between messages
     }
   }
@@ -286,7 +286,7 @@ export class LaunchControlXL3Client {
     // Note: LED protocol needs to be discovered
     // This is a placeholder based on common patterns
     const message = new Uint8Array([0x90, button, color]);
-    this.midiOutput.send(message);
+    this.midiOutput.send(Array.from(message));
   }
 
   /**
