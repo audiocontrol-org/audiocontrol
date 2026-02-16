@@ -1,6 +1,6 @@
 # Editor-Core Shared Library - Implementation Summary
 
-**Status:** In Progress
+**Status:** Completed
 **Last Updated:** 2026-02-16
 
 ## Progress Overview
@@ -95,11 +95,14 @@ _(To be populated during implementation)_
 
 ## Deviations from Plan
 
-_(Document any significant deviations from the original PRD/workplan)_
+- S-330 and D-110 migrations were originally marked "optional, stretch" in Phase 6; both were completed within the same feature branch due to low incremental migration risk after shared abstractions stabilized.
+- Additional cleanup work removed superseded legacy MIDI UI components from editor modules once shared components were fully adopted.
 
 ## Lessons Learned
 
-_(Document insights for future shared library work)_
+- A config-first component API (`MidiConnectionPage` + `createMidiStore`) reduced migration complexity by keeping device-specific behavior declarative.
+- Shipping shared tokens as a plain CSS entrypoint enabled low-friction adoption across Tailwind and non-Tailwind editors.
+- Converting local components to thin wrappers around shared primitives preserved editor-specific styling while minimizing behavioral divergence.
 
 ## Validation
 

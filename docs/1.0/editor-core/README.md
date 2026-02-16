@@ -1,6 +1,6 @@
 # Editor-Core Shared Library
 
-**Status:** Planning
+**Status:** Completed
 **Branch:** `feature/editor-core`
 **Milestone:** [Week of Feb 17-21](https://github.com/audiocontrol-org/audiocontrol/milestone/3)
 
@@ -23,16 +23,16 @@ Create shared infrastructure to eliminate ~1,100 lines of duplicated code across
 
 | Issue | Phase | Priority | Status |
 |-------|-------|----------|--------|
-| [#28 Create editor-core module scaffold](https://github.com/audiocontrol-org/audiocontrol/issues/28) | 2 | P2 | Planned |
-| [#29 Implement createMidiStore factory](https://github.com/audiocontrol-org/audiocontrol/issues/29) | 2 | P2 | Planned |
-| [#30 Create MidiConnectionPage component](https://github.com/audiocontrol-org/audiocontrol/issues/30) | 3 | P2 | Planned |
-| [#31 Add shared MidiPortSelector](https://github.com/audiocontrol-org/audiocontrol/issues/31) | 3 | P2 | Planned |
-| [#32 Add shared ParameterSlider with formatters](https://github.com/audiocontrol-org/audiocontrol/issues/32) | 4 | P2 | Planned |
-| [#33 Add shared CollapsibleSection](https://github.com/audiocontrol-org/audiocontrol/issues/33) | 4 | P2 | Planned |
-| [#34 Create design system tokens](https://github.com/audiocontrol-org/audiocontrol/issues/34) | 5 | P3 | Planned |
-| [#35 Migrate JV-1080 to EditorLayout](https://github.com/audiocontrol-org/audiocontrol/issues/35) | 1 | P1 | Planned |
-| [#36 Migrate JV-1080 to Tailwind CSS](https://github.com/audiocontrol-org/audiocontrol/issues/36) | 5 | P2 | Planned |
-| [#37 Standardize BrowserRouter placement](https://github.com/audiocontrol-org/audiocontrol/issues/37) | 1 | P1 | Planned |
+| [#28 Create editor-core module scaffold](https://github.com/audiocontrol-org/audiocontrol/issues/28) | 2 | P2 | Completed |
+| [#29 Implement createMidiStore factory](https://github.com/audiocontrol-org/audiocontrol/issues/29) | 2 | P2 | Completed |
+| [#30 Create MidiConnectionPage component](https://github.com/audiocontrol-org/audiocontrol/issues/30) | 3 | P2 | Completed |
+| [#31 Add shared MidiPortSelector](https://github.com/audiocontrol-org/audiocontrol/issues/31) | 3 | P2 | Completed |
+| [#32 Add shared ParameterSlider with formatters](https://github.com/audiocontrol-org/audiocontrol/issues/32) | 4 | P2 | Completed |
+| [#33 Add shared CollapsibleSection](https://github.com/audiocontrol-org/audiocontrol/issues/33) | 4 | P2 | Completed |
+| [#34 Create design system tokens](https://github.com/audiocontrol-org/audiocontrol/issues/34) | 5 | P3 | Completed |
+| [#35 Migrate JV-1080 to EditorLayout](https://github.com/audiocontrol-org/audiocontrol/issues/35) | 1 | P1 | Completed |
+| [#36 Migrate JV-1080 to Tailwind CSS](https://github.com/audiocontrol-org/audiocontrol/issues/36) | 5 | P2 | Completed |
+| [#37 Standardize BrowserRouter placement](https://github.com/audiocontrol-org/audiocontrol/issues/37) | 1 | P1 | Completed |
 
 ## Quick Links
 
