@@ -57,7 +57,7 @@
 
 ### Finding 1: MIDI Capture Analysis Says NO `0x06` Prefix
 
-**Source:** `/Users/orion/work/ol_dsp/modules/audio-control/docs/1.20/issues/40/investigation/analysis/midi-capture-analysis.md`
+**Source:** `modules/launch-control-xl3-editor/docs/1.20/issues/40/investigation/analysis/midi-capture-analysis.md`
 
 **Evidence from actual MIDI traffic:**
 
@@ -92,7 +92,7 @@
 
 ### Finding 2: Code Analysis Says MISSING `0x06` Prefix
 
-**Source:** `/Users/orion/work/ol_dsp/modules/audio-control/docs/1.20/issues/40/investigation/analysis/web-editor-analysis.md`
+**Source:** `modules/launch-control-xl3-editor/docs/1.20/issues/40/investigation/analysis/web-editor-analysis.md`
 
 **Evidence from parser code:**
 
@@ -380,14 +380,14 @@ cat backup/*.json | jq '.mode.name'
 ## Investigation Artifacts
 
 ### MIDI Captures
-- `/Users/orion/work/ol_dsp/modules/audio-control/docs/1.20/issues/40/investigation/midi-captures/mode-write-read-20251017-090833.txt` (40623 bytes, 192 lines)
+- `modules/launch-control-xl3-editor/docs/1.20/issues/40/investigation/midi-captures/mode-write-read-20251017-090833.txt` (40623 bytes, 192 lines)
 - Contains WRITE and READ operations for all test cases
 - Confirms device uses `0x20 [length] [name]` format
 
 ### Analysis Documents
-- `/Users/orion/work/ol_dsp/modules/audio-control/docs/1.20/issues/40/investigation/analysis/midi-capture-analysis.md` (13KB, 400 lines)
-- `/Users/orion/work/ol_dsp/modules/audio-control/docs/1.20/issues/40/investigation/analysis/web-editor-analysis.md` (9KB, 326 lines)
-- `/Users/orion/work/ol_dsp/modules/audio-control/docs/1.20/issues/40/investigation/analysis/code-review.md` (from earlier investigation)
+- `modules/launch-control-xl3-editor/docs/1.20/issues/40/investigation/analysis/midi-capture-analysis.md` (13KB, 400 lines)
+- `modules/launch-control-xl3-editor/docs/1.20/issues/40/investigation/analysis/web-editor-analysis.md` (9KB, 326 lines)
+- `modules/launch-control-xl3-editor/docs/1.20/issues/40/investigation/analysis/code-review.md` (from earlier investigation)
 
 ### Test Results
 - Integration tests: FAILED (all 5 test cases show truncation)

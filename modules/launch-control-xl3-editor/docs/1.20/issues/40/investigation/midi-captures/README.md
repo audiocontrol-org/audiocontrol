@@ -36,7 +36,7 @@ The `capture-mode-name-midi.ts` utility uses monkey-patching to intercept MIDI t
 ## How to Run Capture
 
 ```bash
-cd /Users/orion/work/ol_dsp/modules/audio-control/modules/launch-control-xl3
+cd modules/launch-control-xl3
 
 # Run capture utility (default slot 0)
 tsx utils/capture-mode-name-midi.ts
@@ -129,10 +129,10 @@ _This section will be populated after running captures and analysis._
 
 ## Related Files
 
-- Capture Utility: `/Users/orion/work/ol_dsp/modules/audio-control/modules/launch-control-xl3/utils/capture-mode-name-midi.ts`
-- Parser Implementation: `/Users/orion/work/ol_dsp/modules/audio-control/modules/launch-control-xl3/src/core/SysExParser.ts`
-- Protocol Documentation: `/Users/orion/work/ol_dsp/modules/audio-control/modules/launch-control-xl3/docs/PROTOCOL.md`
-- Issue Workplan: `/Users/orion/work/ol_dsp/modules/audio-control/docs/1.20/issues/40/implementation/workplan.md`
+- Capture Utility: `modules/launch-control-xl3/utils/capture-mode-name-midi.ts`
+- Parser Implementation: `modules/launch-control-xl3/src/core/SysExParser.ts`
+- Protocol Documentation: `modules/launch-control-xl3/docs/PROTOCOL.md`
+- Issue Workplan: `modules/launch-control-xl3-editor/docs/1.20/issues/40/implementation/workplan.md`
 
 ## Automation
 

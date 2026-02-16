@@ -277,7 +277,7 @@ private static encodeName(name: string): number[] {
 
 ### Captured Write Acknowledgements
 
-Located at: `/Users/orion/work/ol_dsp/modules/audio-control/tmp/midi-capture.txt`
+Located at: `tmp/midi-capture.txt`
 
 ```
 system-exclusive hex 00 20 29 02 15 05 00 15 00 06 dec

@@ -33,9 +33,9 @@ Mode names up to 18 characters should persist correctly when written to the devi
 
 ### Investigation Completed
 Comprehensive investigation documented at:
-- **Main findings:** `docs/1.20/issues/40/investigation/COMPREHENSIVE-FINDINGS.md`
-- **MIDI analysis:** `docs/1.20/issues/40/investigation/analysis/midi-capture-analysis.md`
-- **Code analysis:** `docs/1.20/issues/40/investigation/analysis/web-editor-analysis.md`
+- **Main findings:** `modules/launch-control-xl3-editor/docs/1.20/issues/40/investigation/COMPREHENSIVE-FINDINGS.md`
+- **MIDI analysis:** `modules/launch-control-xl3-editor/docs/1.20/issues/40/investigation/analysis/midi-capture-analysis.md`
+- **Code analysis:** `modules/launch-control-xl3-editor/docs/1.20/issues/40/investigation/analysis/web-editor-analysis.md`
 
 ### Root Cause: TWO BUGS Identified
 
@@ -586,10 +586,10 @@ This implementation is considered successful when:
 ## References
 
 ### Investigation Documents
-- **Comprehensive findings:** `docs/1.20/issues/40/investigation/COMPREHENSIVE-FINDINGS.md`
-- **MIDI capture analysis:** `docs/1.20/issues/40/investigation/analysis/midi-capture-analysis.md`
-- **Code analysis:** `docs/1.20/issues/40/investigation/analysis/web-editor-analysis.md`
-- **MIDI captures:** `docs/1.20/issues/40/investigation/midi-captures/`
+- **Comprehensive findings:** `modules/launch-control-xl3-editor/docs/1.20/issues/40/investigation/COMPREHENSIVE-FINDINGS.md`
+- **MIDI capture analysis:** `modules/launch-control-xl3-editor/docs/1.20/issues/40/investigation/analysis/midi-capture-analysis.md`
+- **Code analysis:** `modules/launch-control-xl3-editor/docs/1.20/issues/40/investigation/analysis/web-editor-analysis.md`
+- **MIDI captures:** `modules/launch-control-xl3-editor/docs/1.20/issues/40/investigation/midi-captures/`
 
 ### Evidence
 - **MIDI capture file:** `mode-write-read-20251017-090833.txt` (40KB, 192 lines)

@@ -285,8 +285,8 @@ Status byte `0xD` is not in any expected range for slot acknowledgements. This s
 - ✅ `/tmp/lcxl3-alpha-test/package/src/builders/CustomModeBuilder.ts` - Validation for 18 chars
 
 ### Current Repository
-- ✅ `/Users/orion/work/ol_dsp/modules/audio-control/modules/launch-control-xl3/src/core/SysExParser.ts`
-- ✅ `/Users/orion/work/ol_dsp/modules/audio-control/modules/launch-control-xl3/src/builders/CustomModeBuilder.ts`
+- ✅ `modules/launch-control-xl3/src/core/SysExParser.ts`
+- ✅ `modules/launch-control-xl3/src/builders/CustomModeBuilder.ts`
 
 ---
 
