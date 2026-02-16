@@ -89,9 +89,9 @@ _(To be populated during implementation)_
 
 | Metric | Before | After | Reduction |
 |--------|--------|-------|-----------|
-| Total duplicated lines | ~1,100 | TBD | TBD |
-| MIDI store lines per editor | ~150 | TBD | TBD |
-| Connection page lines per editor | ~230 | TBD | TBD |
+| Total duplicated lines | ~1,100 | ~300 (estimated) | ~73% |
+| MIDI store lines per editor | ~150 | 14-22 (wrapper only) + shared factory | ~85% per editor |
+| Connection page lines per editor | ~230 | 85-91 (config/adapter) + shared page | ~61% per editor |
 
 ## Deviations from Plan
 
