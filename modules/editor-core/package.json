@@ -10,7 +10,8 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./tokens.css": "./src/design/tokens.css"
+    "./tokens.css": "./src/design/tokens.css",
+    "./primitives.css": "./src/design/primitives.css"
   },
   "files": [
     "dist",

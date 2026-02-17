@@ -1,7 +1,7 @@
 # Editor-Core Shared Library - Implementation Summary
 
 **Status:** Completed
-**Last Updated:** 2026-02-16
+**Last Updated:** 2026-02-17
 
 ## Progress Overview
 
@@ -13,6 +13,7 @@
 | Phase 4: UI Components | Completed | Shared ParameterSlider, formatters, CollapsibleSection with editor integrations |
 | Phase 5: Design System | Completed | Shared CSS tokens implemented and wired; JV-1080 migrated to Tailwind |
 | Phase 6: Editor Migration | Completed | All three editors migrated to shared MidiConnectionPage and createMidiStore |
+| Phase 7: Design-System Hardening | In Progress | Findings documented; standardization plan created for cross-page and cross-editor consistency |
 
 ## Implementation Notes
 
@@ -85,6 +86,41 @@ _(To be populated during implementation)_
 - All editors now use shared `MidiConnectionPage` for connection flow.
 - Migrated remaining duplicated formatter callsites to `@audiocontrol/editor-core` in S-330 and D-110 and removed dead local S-330 formatter helpers.
 
+### Phase 7 Notes (Current)
+
+Findings from S-330 refactor verification show that tokens alone are not enough; layout and component primitives must also be enforced at page level.
+
+- Vertical rhythm inconsistency:
+  - `Connect` and `Play` rendered with little or no top page margin.
+  - `Patches` and `Tones` rendered with clear top spacing.
+  - Root cause: page-level wrappers and spacing conventions were not uniformly applied.
+- Content width inconsistency:
+  - `Connect` uses centered, constrained cards.
+  - `Play` stretches nearly full width.
+  - `Patches`/`Tones` split into left list + right editor with another width model.
+  - Result: pages look like separate products instead of one editor shell.
+- Card/container treatment inconsistency:
+  - Different border radius, border contrast, and card density across pages.
+  - Some sections use card primitives; others use page-local styles.
+- Typography hierarchy inconsistency:
+  - Header/page title/subtitle sizing and weights vary by page.
+  - Section headings and helper text contrast are not normalized.
+- Control styling inconsistency:
+  - Different button sizing, group spacing, and state emphasis (active/inactive/reload chips).
+  - Form control paddings and alignments differ between similar controls.
+- Scroll and viewport behavior inconsistency:
+  - `Patches` and `Tones` introduce nested scrolling zones that do not match `Connect`/`Play` behavior.
+- Color inconsistency (significant):
+  - Accent color usage differs across pages for similar semantics (active tabs/chips/status emphasis/action buttons).
+  - Surface and border contrast levels vary per page, producing inconsistent panel depth.
+  - Status/action colors (danger, connected, selected) are not fully tokenized by semantic role across all components.
+
+Actions already started:
+
+- Added cross-editor primitives at `modules/editor-core/src/design/primitives.css`.
+- Applied `.ac-page` wrappers to S-330, D-110, and JV-1080 page roots to establish shared default top spacing behavior.
+- Migrated `MidiConnectionPage` and `MidiPortSelector` to use shared primitives.
+
 ## Code Metrics
 
 | Metric | Before | After | Reduction |
@@ -125,9 +161,11 @@ _(To be populated during implementation)_
 ## Open Issues
 
 - Vitest in this sandbox logs a websocket bind warning (`listen EPERM ... 0.0.0.0:24678`) during some runs; tests still execute and pass. This does not reproduce as a functional test failure in normal local environments.
+- Shared tokens exist, but semantic color roles and page-shell layout rules are not yet uniformly enforced across all editor pages.
 
 ## References
 
 - [PRD](./prd.md)
 - [Workplan](./workplan.md)
+- [Design System Plan](./design-system-plan.md)
 - [Cross-Editor Review](../../../cross-editor-review.md)

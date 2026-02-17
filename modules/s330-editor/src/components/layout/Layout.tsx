@@ -229,13 +229,14 @@ export function Layout({ children }: LayoutProps): JSX.Element {
   );
 
   return (
-    <EditorLayout
-      config={layoutConfig}
-      headerRight={<HeaderRight />}
-      headerBefore={drawerElements}
-      contentStyle={{ marginLeft: isDrawerOpen ? drawerWidth : 0, transition: 'margin 200ms' }}
-    >
-      {children}
-    </EditorLayout>
+    <div style={{ marginLeft: isDrawerOpen ? drawerWidth : 0, transition: 'margin 200ms' }}>
+      <EditorLayout
+        config={layoutConfig}
+        headerRight={<HeaderRight />}
+        headerBefore={drawerElements}
+      >
+        {children}
+      </EditorLayout>
+    </div>
   );
 }

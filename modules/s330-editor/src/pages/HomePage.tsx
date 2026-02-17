@@ -81,11 +81,13 @@ export function HomePage(): JSX.Element {
   };
 
   return (
-    <MidiConnectionPage
-      config={config}
-      store={pageStore}
-      deviceIdRange={{ min: 0, max: 16 }}
-      onContinue={() => navigate('/patches')}
-    />
+    <div className="ac-page">
+      <MidiConnectionPage
+        config={config}
+        store={pageStore}
+        deviceIdRange={{ min: 0, max: 16 }}
+        onContinue={() => navigate('/patches')}
+      />
+    </div>
   );
 }

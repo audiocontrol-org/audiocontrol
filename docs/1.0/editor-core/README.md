@@ -13,6 +13,7 @@ Create shared infrastructure to eliminate ~1,100 lines of duplicated code across
 - [PRD](./prd.md) - Product requirements, problem statement, and solution design
 - [Workplan](./workplan.md) - Implementation phases and GitHub tracking links
 - [Implementation Summary](./implementation-summary.md) - Progress and completion notes
+- [Design System Plan](./design-system-plan.md) - Findings and phased plan for robust cross-editor visual consistency
 
 ## GitHub Tracking
 
@@ -33,6 +34,13 @@ Create shared infrastructure to eliminate ~1,100 lines of duplicated code across
 | [#35 Migrate JV-1080 to EditorLayout](https://github.com/audiocontrol-org/audiocontrol/issues/35) | 1 | P1 | Completed |
 | [#36 Migrate JV-1080 to Tailwind CSS](https://github.com/audiocontrol-org/audiocontrol/issues/36) | 5 | P2 | Completed |
 | [#37 Standardize BrowserRouter placement](https://github.com/audiocontrol-org/audiocontrol/issues/37) | 1 | P1 | Completed |
+| [#39 [editor-core] Harden shared design system across editors](https://github.com/audiocontrol-org/audiocontrol/issues/39) | 7 | P2 | In Progress |
+| [#40 Normalize shared control and state styling across editor pages](https://github.com/audiocontrol-org/audiocontrol/issues/40) | 7 | P2 | Open |
+| [#41 Document visual regression checklist for editor design system](https://github.com/audiocontrol-org/audiocontrol/issues/41) | 7 | P3 | Open |
+| [#42 Standardize full-height layout and scroll-region contracts](https://github.com/audiocontrol-org/audiocontrol/issues/42) | 7 | P2 | Open |
+| [#43 Implement shared page-shell primitives and migrate S-330 pages](https://github.com/audiocontrol-org/audiocontrol/issues/43) | 7 | P2 | Open |
+| [#44 Adopt hardened editor-core primitives in D-110 and JV-1080](https://github.com/audiocontrol-org/audiocontrol/issues/44) | 7 | P2 | Open |
+| [#45 Define semantic color token map for editor-core](https://github.com/audiocontrol-org/audiocontrol/issues/45) | 7 | P2 | Open |
 
 ## Quick Links
 

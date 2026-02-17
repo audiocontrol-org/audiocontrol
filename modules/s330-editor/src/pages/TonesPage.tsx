@@ -183,9 +183,9 @@ export function TonesPage() {
   }
 
   return (
-    <div>
+    <div className="ac-page">
       {/* Sticky Header */}
-      <div className="sticky top-[88px] z-30 bg-s330-bg py-4 -mx-12 px-12 border-b border-s330-accent/30">
+      <div className="sticky top-[88px] z-30 bg-s330-bg pb-4 -mx-12 px-12 border-b border-s330-accent/30">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-s330-text">Tones</h2>

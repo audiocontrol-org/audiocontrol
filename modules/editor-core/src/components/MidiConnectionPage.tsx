@@ -1,5 +1,4 @@
 import type { MidiPortInfo } from '@audiocontrol/shared-midi';
-import type { CSSProperties } from 'react';
 import { MidiPortSelector } from './MidiPortSelector';
 
 export interface MidiConnectionPageConfig {
@@ -56,16 +55,16 @@ export function MidiConnectionPage({
 
   if (!store.isSupported && store.browserInfo.requiresSecureContext) {
     return (
-      <div style={{ maxWidth: 820, margin: '0 auto' }}>
-        <section style={sectionStyle}>
-          <h2 style={titleStyle}>{config.secureContextTitle ?? 'Secure Connection Required'}</h2>
+      <div className="ac-container-md">
+        <section className="ac-card">
+          <h2 className="ac-title-lg">{config.secureContextTitle ?? 'Secure Connection Required'}</h2>
           <p>The Web MIDI API requires a secure context (HTTPS or localhost).</p>
-          <ul style={{ margin: 0, paddingLeft: 20, color: '#9ca3af' }}>
+          <ul className="ac-help-list">
             {(config.secureContextHelpItems ?? [
               'Access the app through localhost or 127.0.0.1.',
               'Or deploy over HTTPS.',
             ]).map((item) => (
-              <li key={item} style={{ marginBottom: 6 }}>
+              <li key={item}>
                 {item}
               </li>
             ))}
@@ -77,32 +76,32 @@ export function MidiConnectionPage({
 
   if (!store.isSupported) {
     return (
-      <div style={{ maxWidth: 820, margin: '0 auto' }}>
-        <section style={sectionStyle}>
-          <h2 style={titleStyle}>Browser Not Supported</h2>
+      <div className="ac-container-md">
+        <section className="ac-card">
+          <h2 className="ac-title-lg">Browser Not Supported</h2>
           <p>
             The Web MIDI API is not available in {store.browserInfo.browser}.
           </p>
-          <p style={{ color: '#9ca3af' }}>{store.browserInfo.notes}</p>
+          <p className="ac-text-muted">{store.browserInfo.notes}</p>
         </section>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: 820, margin: '0 auto', display: 'grid', gap: 16 }}>
-      <section style={sectionStyle}>
-        <h2 style={titleStyle}>Connect to {config.deviceName}</h2>
+    <div className="ac-container-md ac-stack-lg">
+      <section className="ac-card">
+        <h2 className="ac-title-lg">Connect to {config.deviceName}</h2>
 
         {!store.sysExEnabled && store.inputs.length > 0 && (
-          <p style={{ color: '#facc15' }}>
+          <p className="ac-text-warn">
             SysEx access was denied. Allow SysEx permission for full device communication.
           </p>
         )}
 
-        {store.error ? <p style={{ color: '#fca5a5' }}>{store.error}</p> : null}
+        {store.error ? <p className="ac-text-error">{store.error}</p> : null}
 
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 12 }}>
+        <div className="ac-grid-2" style={{ marginTop: 12 }}>
           <MidiPortSelector
             label={config.inputLabel}
             ports={store.inputs}
@@ -119,13 +118,13 @@ export function MidiConnectionPage({
           />
         </div>
 
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 16 }}>
+        <div className="ac-row" style={{ marginTop: 16 }}>
           {isConnected ? (
             <>
-              <button type="button" onClick={() => void store.disconnect()} style={buttonStyle}>
+              <button type="button" onClick={() => void store.disconnect()} className="ac-btn">
                 Disconnect
               </button>
-              <button type="button" onClick={onContinue} style={buttonStyle}>
+              <button type="button" onClick={onContinue} className="ac-btn">
                 {config.continueLabel}
               </button>
             </>
@@ -135,11 +134,11 @@ export function MidiConnectionPage({
                 type="button"
                 onClick={() => void store.connect()}
                 disabled={!canConnect || store.status === 'connecting'}
-                style={buttonStyle}
+                className="ac-btn"
               >
                 {store.status === 'connecting' ? 'Connecting...' : 'Connect'}
               </button>
-              <button type="button" onClick={() => void store.refresh()} style={buttonStyle}>
+              <button type="button" onClick={() => void store.refresh()} className="ac-btn">
                 Refresh Ports
               </button>
             </>
@@ -147,11 +146,12 @@ export function MidiConnectionPage({
         </div>
       </section>
 
-      <section style={sectionStyle}>
-        <h3 style={{ marginTop: 0 }}>{config.deviceIdLabel}</h3>
-        <p style={{ color: '#9ca3af' }}>{config.deviceIdHelpText}</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <section className="ac-card">
+        <h3 className="ac-title-md">{config.deviceIdLabel}</h3>
+        <p className="ac-text-muted">{config.deviceIdHelpText}</p>
+        <div className="ac-row">
           <input
+            className="ac-input"
             type="number"
             min={minDisplay}
             max={maxDisplay}
@@ -161,19 +161,19 @@ export function MidiConnectionPage({
               store.setDeviceId(parsed - displayOffset);
             }}
             disabled={store.status === 'connected'}
-            style={inputStyle}
+            style={{ width: 90 }}
           />
-          <span style={{ color: '#9ca3af' }}>
+          <span className="ac-text-muted">
             ({minDisplay}-{maxDisplay})
           </span>
         </div>
       </section>
 
-      <section style={sectionStyle}>
-        <h3 style={{ marginTop: 0 }}>Connection Help</h3>
-        <ul style={{ margin: 0, paddingLeft: 20, color: '#9ca3af' }}>
+      <section className="ac-card">
+        <h3 className="ac-title-md">Connection Help</h3>
+        <ul className="ac-help-list">
           {config.helpItems.map((item) => (
-            <li key={item} style={{ marginBottom: 6 }}>
+            <li key={item}>
               {item}
             </li>
           ))}
@@ -182,34 +182,3 @@ export function MidiConnectionPage({
     </div>
   );
 }
-
-const sectionStyle: CSSProperties = {
-  background: 'rgba(17, 24, 39, 0.8)',
-  border: '1px solid #374151',
-  borderRadius: 12,
-  padding: 16,
-};
-
-const titleStyle: CSSProperties = {
-  marginTop: 0,
-  marginBottom: 8,
-};
-
-const buttonStyle: CSSProperties = {
-  borderRadius: 8,
-  border: '1px solid #4b5563',
-  background: '#1f2937',
-  color: '#e5e7eb',
-  padding: '10px 12px',
-  cursor: 'pointer',
-};
-
-const inputStyle: CSSProperties = {
-  borderRadius: 8,
-  border: '1px solid #4b5563',
-  background: '#111827',
-  color: '#e5e7eb',
-  padding: '10px 12px',
-  width: 90,
-  textAlign: 'center',
-};

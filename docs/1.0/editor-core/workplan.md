@@ -14,6 +14,13 @@
 - [Migrate JV-1080 to EditorLayout (#35)](https://github.com/audiocontrol-org/audiocontrol/issues/35)
 - [Migrate JV-1080 to Tailwind CSS (#36)](https://github.com/audiocontrol-org/audiocontrol/issues/36)
 - [Standardize BrowserRouter placement (#37)](https://github.com/audiocontrol-org/audiocontrol/issues/37)
+- [Parent: [editor-core] Harden shared design system across editors (#39)](https://github.com/audiocontrol-org/audiocontrol/issues/39)
+- [Normalize shared control and state styling across editor pages (#40)](https://github.com/audiocontrol-org/audiocontrol/issues/40)
+- [Document visual regression checklist for editor design system (#41)](https://github.com/audiocontrol-org/audiocontrol/issues/41)
+- [Standardize full-height layout and scroll-region contracts (#42)](https://github.com/audiocontrol-org/audiocontrol/issues/42)
+- [Implement shared page-shell primitives and migrate S-330 pages (#43)](https://github.com/audiocontrol-org/audiocontrol/issues/43)
+- [Adopt hardened editor-core primitives in D-110 and JV-1080 (#44)](https://github.com/audiocontrol-org/audiocontrol/issues/44)
+- [Define semantic color token map for editor-core (#45)](https://github.com/audiocontrol-org/audiocontrol/issues/45)
 
 ## Technical Approach
 
@@ -136,6 +143,33 @@ Migrate existing editors to use shared components.
 - No regression in existing editor functionality
 - Reduced code duplication measurable via line count
 
+### Phase 7: Design-System Hardening (New)
+
+Convert current token + primitive baseline into an enforceable cross-editor design system.
+
+**Issues:**
+- [#39 Parent: Harden shared design system across editors](https://github.com/audiocontrol-org/audiocontrol/issues/39)
+- [#45 Define semantic color token map for editor-core](https://github.com/audiocontrol-org/audiocontrol/issues/45)
+- [#43 Implement shared page-shell primitives and migrate S-330 pages](https://github.com/audiocontrol-org/audiocontrol/issues/43)
+- [#40 Normalize shared control and state styling across editor pages](https://github.com/audiocontrol-org/audiocontrol/issues/40)
+- [#42 Standardize full-height layout and scroll-region contracts](https://github.com/audiocontrol-org/audiocontrol/issues/42)
+- [#44 Adopt hardened editor-core primitives in D-110 and JV-1080](https://github.com/audiocontrol-org/audiocontrol/issues/44)
+- [#41 Document visual regression checklist for editor design system](https://github.com/audiocontrol-org/audiocontrol/issues/41)
+
+**Tasks:**
+- Promote color tokens to semantic roles and remove page-level hardcoded status/action colors.
+- Standardize page-shell primitives and default spacing rules across all S-330 pages.
+- Normalize reusable controls (button/chip/input/select) and section typography hierarchy.
+- Define explicit rules for full-height layout and nested scrolling regions.
+- Migrate D-110 and JV-1080 page shells to the same primitives after S-330 baseline is stable.
+- Add lightweight visual regression checklist for representative pages (`Connect`, `Play`, `Patches`, `Tones`).
+
+**Success criteria:**
+- Page spacing and container rhythm are consistent by default across all S-330 pages.
+- Shared semantic colors map consistently to `active/selected/connected/warn/danger` states.
+- Equivalent controls render consistently across S-330, D-110, and JV-1080.
+- Local editor CSS primarily defines theme identity, not duplicated structure.
+
 ## Issue Decomposition
 
 Child issues created under parent #27:
@@ -150,6 +184,13 @@ Child issues created under parent #27:
 8. [#35 Migrate JV-1080 to EditorLayout](https://github.com/audiocontrol-org/audiocontrol/issues/35)
 9. [#36 Migrate JV-1080 to Tailwind CSS](https://github.com/audiocontrol-org/audiocontrol/issues/36)
 10. [#37 Standardize BrowserRouter placement](https://github.com/audiocontrol-org/audiocontrol/issues/37)
+11. [#39 Parent: Harden shared design system across editors](https://github.com/audiocontrol-org/audiocontrol/issues/39)
+12. [#40 Normalize shared control and state styling across editor pages](https://github.com/audiocontrol-org/audiocontrol/issues/40)
+13. [#41 Document visual regression checklist for editor design system](https://github.com/audiocontrol-org/audiocontrol/issues/41)
+14. [#42 Standardize full-height layout and scroll-region contracts](https://github.com/audiocontrol-org/audiocontrol/issues/42)
+15. [#43 Implement shared page-shell primitives and migrate S-330 pages](https://github.com/audiocontrol-org/audiocontrol/issues/43)
+16. [#44 Adopt hardened editor-core primitives in D-110 and JV-1080](https://github.com/audiocontrol-org/audiocontrol/issues/44)
+17. [#45 Define semantic color token map for editor-core](https://github.com/audiocontrol-org/audiocontrol/issues/45)
 
 ## Verification Checklist
 
@@ -160,3 +201,6 @@ Child issues created under parent #27:
 - [x] D-110 has BrowserRouter in main.tsx
 - [x] All editors have sendPanic method
 - [x] Feature docs updated with implementation notes
+- [ ] Semantic color token map applied to all shared status/action elements
+- [ ] Shared page-shell primitives adopted by all S-330 editor pages
+- [ ] Cross-editor visual consistency pass completed for representative pages

@@ -17,18 +17,12 @@ export function MidiPortSelector({
 }: MidiPortSelectorProps): JSX.Element {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220, flex: 1 }}>
-      <label style={{ fontSize: 12, fontWeight: 600 }}>{label}</label>
+      <label className="ac-label">{label}</label>
       <select
+        className="ac-select"
         value={value ?? ''}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
-        style={{
-          borderRadius: 8,
-          border: '1px solid #4b5563',
-          background: '#111827',
-          color: '#e5e7eb',
-          padding: '10px 12px',
-        }}
       >
         <option value="">Select a port...</option>
         {ports.map((port) => (

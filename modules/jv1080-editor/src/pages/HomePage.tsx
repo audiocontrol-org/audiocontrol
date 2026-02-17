@@ -79,11 +79,13 @@ export function HomePage(): JSX.Element {
   };
 
   return (
-    <MidiConnectionPage
-      config={config}
-      store={pageStore}
-      deviceIdRange={{ min: 0, max: 127 }}
-      onContinue={() => navigate('/editor')}
-    />
+    <div className="ac-page">
+      <MidiConnectionPage
+        config={config}
+        store={pageStore}
+        deviceIdRange={{ min: 0, max: 127 }}
+        onContinue={() => navigate('/editor')}
+      />
+    </div>
   );
 }

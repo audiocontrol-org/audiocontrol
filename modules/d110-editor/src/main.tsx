@@ -4,6 +4,7 @@ import { initLogCapture } from '@audiocontrol/editor-tools';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from '@/App';
 import '@audiocontrol/editor-core/tokens.css';
+import '@audiocontrol/editor-core/primitives.css';
 import '@/index.css';
 
 // Initialize log capture before React renders

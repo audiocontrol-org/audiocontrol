@@ -75,11 +75,13 @@ export function HomePage(): JSX.Element {
   };
 
   return (
-    <MidiConnectionPage
-      config={config}
-      store={pageStore}
-      deviceIdRange={{ min: 17, max: 32 }}
-      onContinue={() => navigate('/tones')}
-    />
+    <div className="ac-page">
+      <MidiConnectionPage
+        config={config}
+        store={pageStore}
+        deviceIdRange={{ min: 17, max: 32 }}
+        onContinue={() => navigate('/tones')}
+      />
+    </div>
   );
 }

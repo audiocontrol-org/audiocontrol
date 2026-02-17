@@ -10,6 +10,14 @@ const STORAGE_KEY_SIDEBAR_WIDTH = 's330-sidebar-width';
 const DEFAULT_SIDEBAR_WIDTH = 320;
 const MIN_SIDEBAR_WIDTH = 280;
 const MAX_SIDEBAR_WIDTH = 600;
+const DEFAULT_DRAWER_OPEN = true;
+
+function loadDrawerOpen(): boolean {
+  const saved = localStorage.getItem(STORAGE_KEY_DRAWER);
+  if (saved === 'true') return true;
+  if (saved === 'false') return false;
+  return DEFAULT_DRAWER_OPEN;
+}
 
 function loadSidebarWidth(): number {
   const saved = localStorage.getItem(STORAGE_KEY_SIDEBAR_WIDTH);
@@ -41,7 +49,7 @@ interface UIActions {
 type UIStore = UIState & UIActions;
 
 export const useUIStore = create<UIStore>((set) => ({
-  isDrawerOpen: localStorage.getItem(STORAGE_KEY_DRAWER) === 'true',
+  isDrawerOpen: loadDrawerOpen(),
   drawerWidth: loadSidebarWidth(),
 
   toggleDrawer: () =>

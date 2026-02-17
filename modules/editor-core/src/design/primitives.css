@@ -1,0 +1,139 @@
+:root {
+  --ac-font-sans: Inter, "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --ac-font-mono: "IBM Plex Mono", "SFMono-Regular", Menlo, monospace;
+  --ac-text-xs: 0.75rem;
+  --ac-text-sm: 0.875rem;
+  --ac-text-md: 1rem;
+  --ac-text-lg: 1.5rem;
+  --ac-page-space: var(--ac-space-3);
+  --ac-container-md: 42rem;
+}
+
+.ac-page {
+  padding-top: var(--ac-page-space);
+}
+
+.ac-container-md {
+  width: min(100%, var(--ac-container-md));
+  margin-inline: auto;
+}
+
+.ac-stack {
+  display: grid;
+  gap: var(--ac-space-4);
+}
+
+.ac-stack-lg {
+  display: grid;
+  gap: var(--ac-space-6);
+}
+
+.ac-card {
+  background: color-mix(in srgb, var(--ac-bg-panel) 88%, transparent);
+  border: 1px solid var(--ac-border);
+  border-radius: var(--ac-radius-lg);
+  padding: var(--ac-space-4);
+}
+
+.ac-title-lg {
+  margin: 0;
+  color: var(--ac-text-primary);
+  font-family: var(--ac-font-sans);
+  font-size: var(--ac-text-lg);
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ac-title-md {
+  margin: 0;
+  color: var(--ac-text-primary);
+  font-family: var(--ac-font-sans);
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.ac-text-muted {
+  color: var(--ac-text-muted);
+  font-size: var(--ac-text-md);
+}
+
+.ac-text-error {
+  color: #fca5a5;
+}
+
+.ac-text-warn {
+  color: #facc15;
+}
+
+.ac-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ac-space-3);
+}
+
+@media (min-width: 900px) {
+  .ac-grid-2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.ac-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--ac-space-3);
+}
+
+.ac-btn {
+  border-radius: var(--ac-radius-md);
+  border: 1px solid var(--ac-border);
+  background: color-mix(in srgb, var(--ac-bg-panel) 94%, transparent);
+  color: var(--ac-text-primary);
+  padding: 0.625rem 0.75rem;
+  font-size: var(--ac-text-md);
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 150ms ease;
+}
+
+.ac-btn:hover:not(:disabled) {
+  filter: brightness(1.1);
+}
+
+.ac-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ac-input,
+.ac-select {
+  width: 100%;
+  border-radius: var(--ac-radius-md);
+  border: 1px solid var(--ac-border);
+  background: color-mix(in srgb, var(--ac-bg-primary) 88%, transparent);
+  color: var(--ac-text-primary);
+  padding: 0.625rem 0.75rem;
+  font-size: var(--ac-text-md);
+}
+
+.ac-input {
+  text-align: center;
+}
+
+.ac-label {
+  color: var(--ac-text-primary);
+  font-family: var(--ac-font-sans);
+  font-size: var(--ac-text-sm);
+  font-weight: 600;
+}
+
+.ac-help-list {
+  margin: 0;
+  padding-left: 1.25rem;
+  color: var(--ac-text-muted);
+}
+
+.ac-help-list > li {
+  margin-bottom: 0.375rem;
+}

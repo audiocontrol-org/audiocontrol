@@ -256,7 +256,7 @@ export function PlayPage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="ac-page space-y-4">
       {/* Header with bank loading buttons */}
       <div className="flex items-center justify-between gap-4">
         <h2 className="text-xl font-bold text-s330-text">Play</h2>

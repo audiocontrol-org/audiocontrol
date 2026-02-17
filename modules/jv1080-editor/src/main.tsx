@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from '@/App';
 import '@audiocontrol/editor-core/tokens.css';
+import '@audiocontrol/editor-core/primitives.css';
 import '@/index.css';
 
 const rootElement = document.getElementById('root');
