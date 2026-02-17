@@ -168,6 +168,8 @@ Architecture-review-driven adjustments (2026-02-17):
 
 Capture before/after screenshots at 1366x768 for each target editor and compare:
 
+Reference protocol: [Visual Regression Protocol](./visual-regression-protocol.md)
+
 - [ ] S-330 `Connect`: page top spacing, card width, button spacing, error/warn styles
 - [ ] S-330 `Play`: top spacing consistent with `Connect`, header rhythm, table card alignment
 - [ ] S-330 `Patches`: sticky header offset, list/detail column alignment, list scroll behavior

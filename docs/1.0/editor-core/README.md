@@ -15,6 +15,7 @@ Create shared infrastructure to eliminate ~1,100 lines of duplicated code across
 - [Implementation Summary](./implementation-summary.md) - Progress and completion notes
 - [Design System Plan](./design-system-plan.md) - Findings and phased plan for robust cross-editor visual consistency
 - [Architecture Review](./architecture-review.md) - Design system architecture assessment and recommendations
+- [Visual Regression Protocol](./visual-regression-protocol.md) - Screenshot route matrix and pass/fail checklist for Phase 7 closeout
 
 ## GitHub Tracking
 
