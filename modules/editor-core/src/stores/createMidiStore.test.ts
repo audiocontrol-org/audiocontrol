@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMidiStore } from './createMidiStore';
+import type { MidiTransport } from '../transports';
 
 const mockIsWebMidiSupported = vi.hoisted(() => vi.fn());
 const mockGetBrowserCompatibility = vi.hoisted(() => vi.fn());
@@ -239,5 +240,57 @@ describe('createMidiStore', () => {
     expect(useStore.getState().client).toEqual({ deviceId: 4 });
     expect(destroyClient).toHaveBeenCalledTimes(1);
     expect(localStorage.getItem('test-device-device-id')).toBe('4');
+  });
+
+  it('supports injected transport implementations', async () => {
+    const adapter = {
+      send: vi.fn(),
+      onSysEx: vi.fn(),
+      removeSysExListener: vi.fn(),
+    };
+    const disconnect = vi.fn().mockResolvedValue(undefined);
+    const onStateChange = vi.fn();
+    const initialize = vi.fn().mockResolvedValue({
+      inputs: [{ id: 'mock-in', name: 'Mock Input', state: 'connected' }],
+      outputs: [{ id: 'mock-out', name: 'Mock Output', state: 'connected' }],
+      sysExEnabled: true,
+    });
+    const refresh = vi.fn().mockResolvedValue({
+      inputs: [{ id: 'mock-in', name: 'Mock Input', state: 'connected' }],
+      outputs: [{ id: 'mock-out', name: 'Mock Output', state: 'connected' }],
+      sysExEnabled: true,
+    });
+    const connect = vi.fn().mockResolvedValue({
+      adapter,
+      inputInfo: { id: 'mock-in', name: 'Mock Input', state: 'connected' },
+      outputInfo: { id: 'mock-out', name: 'Mock Output', state: 'connected' },
+      disconnect,
+    });
+
+    const transport: MidiTransport = {
+      kind: 'mock-test',
+      isSupported: () => true,
+      getBrowserInfo: () => ({ supported: true, browser: 'Mock', notes: 'Test transport' }),
+      initialize,
+      refresh,
+      onStateChange,
+      connect,
+    };
+
+    const useStore = createMidiStore({
+      deviceName: 'test-device',
+      defaultDeviceId: 0,
+      deviceIdRange: { min: 0, max: 16 },
+      transport,
+    });
+
+    await useStore.getState().initialize();
+    await useStore.getState().connect('mock-in', 'mock-out');
+    await useStore.getState().disconnect();
+
+    expect(initialize).toHaveBeenCalledTimes(1);
+    expect(connect).toHaveBeenCalledWith('mock-in', 'mock-out');
+    expect(disconnect).toHaveBeenCalledTimes(1);
+    expect(useStore.getState().status).toBe('disconnected');
   });
 });

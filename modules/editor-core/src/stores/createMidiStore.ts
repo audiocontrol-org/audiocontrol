@@ -1,25 +1,24 @@
 import { create } from 'zustand';
 import {
-  createWebMidiAdapter,
-  getBrowserCompatibility,
-  isWebMidiSupported,
-  requestMidiAccess,
   type ConnectionStatus,
   type MidiIO,
   type MidiPortInfo,
 } from '@audiocontrol/shared-midi';
+import { createWebMidiTransport } from '../transports/webMidiTransport';
+import type { MidiTransport, MidiTransportConnection, MidiTransportPorts } from '../transports/types';
 
 export interface MidiStoreConfig<TClient> {
   deviceName: string;
   defaultDeviceId: number;
   deviceIdRange: { min: number; max: number };
+  transport?: MidiTransport;
   createClient?: (adapter: MidiIO, deviceId: number) => TClient;
   destroyClient?: (client: TClient) => void;
 }
 
 export interface MidiStoreState<TClient> {
   isSupported: boolean;
-  browserInfo: ReturnType<typeof getBrowserCompatibility>;
+  browserInfo: { browser: string; notes: string; supported: boolean; requiresSecureContext?: boolean };
   inputs: MidiPortInfo[];
   outputs: MidiPortInfo[];
   sysExEnabled: boolean;
@@ -47,16 +46,6 @@ export interface MidiStoreActions {
 
 export type MidiStore<TClient> = MidiStoreState<TClient> & MidiStoreActions;
 
-function toPortInfo(port: MIDIInput | MIDIOutput): MidiPortInfo {
-  const namePrefix = port.type === 'input' ? 'Input' : 'Output';
-  return {
-    id: port.id,
-    name: port.name ?? `${namePrefix} ${port.id}`,
-    ...(port.manufacturer ? { manufacturer: port.manufacturer } : {}),
-    state: port.state,
-  };
-}
-
 function clampDeviceId(value: number, range: { min: number; max: number }): number {
   if (Number.isNaN(value)) return range.min;
   if (value < range.min) return range.min;
@@ -64,27 +53,10 @@ function clampDeviceId(value: number, range: { min: number; max: number }): numb
   return value;
 }
 
-function getInputById(inputs: MIDIInputMap, targetId: string): MIDIInput | null {
-  let result: MIDIInput | null = null;
-  inputs.forEach((input) => {
-    if (input.id === targetId) {
-      result = input;
-    }
-  });
-  return result;
-}
-
-function getOutputById(outputs: MIDIOutputMap, targetId: string): MIDIOutput | null {
-  let result: MIDIOutput | null = null;
-  outputs.forEach((output) => {
-    if (output.id === targetId) {
-      result = output;
-    }
-  });
-  return result;
-}
-
 export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
+  const transport = config.transport ?? createWebMidiTransport();
+  let activeConnection: MidiTransportConnection | null = null;
+
   const storageKeyInput = `${config.deviceName}-midi-input`;
   const storageKeyOutput = `${config.deviceName}-midi-output`;
   const storageKeyDeviceId = `${config.deviceName}-device-id`;
@@ -123,8 +95,8 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
   }
 
   return create<MidiStore<TClient>>((set, get) => ({
-    isSupported: isWebMidiSupported(),
-    browserInfo: getBrowserCompatibility(),
+    isSupported: transport.isSupported(),
+    browserInfo: transport.getBrowserInfo(),
     inputs: [],
     outputs: [],
     sysExEnabled: false,
@@ -152,23 +124,21 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
         const saved = loadFromStorage();
         set({ deviceId: saved.deviceId });
 
-        const access = await requestMidiAccess();
-        const rawAccess = await navigator.requestMIDIAccess({ sysex: true });
-
+        const ports = await transport.initialize();
         set({
-          inputs: access.inputs,
-          outputs: access.outputs,
-          sysExEnabled: access.sysExEnabled,
-          midiAccess: rawAccess,
+          inputs: ports.inputs,
+          outputs: ports.outputs,
+          sysExEnabled: ports.sysExEnabled,
+          midiAccess: transport.getNativeAccess ? transport.getNativeAccess() : null,
         });
 
-        rawAccess.onstatechange = () => {
+        transport.onStateChange(() => {
           void get().refresh();
-        };
+        });
 
         if (saved.inputId && saved.outputId) {
-          const inputAvailable = access.inputs.some((port) => port.id === saved.inputId);
-          const outputAvailable = access.outputs.some((port) => port.id === saved.outputId);
+          const inputAvailable = ports.inputs.some((port) => port.id === saved.inputId);
+          const outputAvailable = ports.outputs.some((port) => port.id === saved.outputId);
           if (inputAvailable && outputAvailable) {
             await get().connect(saved.inputId, saved.outputId);
           }
@@ -180,33 +150,25 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
     },
 
     refresh: async () => {
-      const { midiAccess } = get();
-      if (!midiAccess) {
-        await get().initialize();
-        return;
-      }
-
+      if (!get().isSupported) return;
       try {
-        const inputs: MidiPortInfo[] = [];
-        const outputs: MidiPortInfo[] = [];
-
-        midiAccess.inputs.forEach((port) => {
-          inputs.push(toPortInfo(port));
+        const ports = await transport.refresh();
+        set({
+          inputs: ports.inputs,
+          outputs: ports.outputs,
+          sysExEnabled: ports.sysExEnabled,
+          midiAccess: transport.getNativeAccess ? transport.getNativeAccess() : null,
+          error: null,
         });
-        midiAccess.outputs.forEach((port) => {
-          outputs.push(toPortInfo(port));
-        });
-
-        set({ inputs, outputs, error: null });
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to refresh ports';
-        set({ error: message });
+        // Some transports require initialize before refresh.
+        await get().initialize();
       }
     },
 
     connect: async (inputId: string, outputId: string) => {
-      const { midiAccess, deviceId, inputs, outputs } = get();
-      if (!midiAccess) {
+      const { deviceId, inputs, outputs } = get();
+      if (!get().isSupported) {
         set({ error: 'MIDI not initialized', status: 'error' });
         return;
       }
@@ -214,25 +176,18 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
       try {
         set({ status: 'connecting', error: null });
 
-        const input = getInputById(midiAccess.inputs, inputId);
-        const output = getOutputById(midiAccess.outputs, outputId);
-        if (!input) throw new Error(`Input port not found: ${inputId}`);
-        if (!output) throw new Error(`Output port not found: ${outputId}`);
-
-        await input.open();
-        await output.open();
-
-        const adapter = createWebMidiAdapter(input, output);
-        const client = config.createClient ? config.createClient(adapter, deviceId) : null;
+        const connection = await transport.connect(inputId, outputId);
+        activeConnection = connection;
+        const client = config.createClient ? config.createClient(connection.adapter, deviceId) : null;
 
         set({
-          openPorts: { input, output },
-          adapter,
+          openPorts: { input: connection.nativeInput ?? null, output: connection.nativeOutput ?? null },
+          adapter: connection.adapter,
           client,
           selectedInputId: inputId,
           selectedOutputId: outputId,
-          selectedInput: inputs.find((port) => port.id === inputId) ?? null,
-          selectedOutput: outputs.find((port) => port.id === outputId) ?? null,
+          selectedInput: inputs.find((port) => port.id === inputId) ?? connection.inputInfo,
+          selectedOutput: outputs.find((port) => port.id === outputId) ?? connection.outputInfo,
           status: 'connected',
         });
 
@@ -244,15 +199,17 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
     },
 
     disconnect: async () => {
-      const { openPorts, client } = get();
+      const { client } = get();
 
       try {
         if (config.destroyClient && client) {
           config.destroyClient(client);
         }
 
-        if (openPorts.input) await openPorts.input.close();
-        if (openPorts.output) await openPorts.output.close();
+        if (activeConnection) {
+          await activeConnection.disconnect();
+          activeConnection = null;
+        }
 
         set({
           openPorts: { input: null, output: null },
@@ -262,6 +219,7 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
           selectedOutputId: null,
           selectedInput: null,
           selectedOutput: null,
+          midiAccess: transport.getNativeAccess ? transport.getNativeAccess() : null,
           status: 'disconnected',
           error: null,
         });
