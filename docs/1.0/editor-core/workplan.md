@@ -224,7 +224,7 @@ Child issues created under parent #27:
 - [x] Feature docs updated with implementation notes
 - [x] Semantic color token map applied to shared status/action elements in editor-core primitives
 - [x] Shared page-shell primitives adopted by all S-330 editor pages
-- [ ] `s330` and `d110` Tailwind configs use shared CSS variable token mappings
-- [ ] Local control utility duplication reduced where shared primitives cover usage
-- [ ] Motion and typography rhythm tokens added to editor-core token contract
+- [x] `s330` and `d110` Tailwind configs use shared CSS variable token mappings
+- [x] Local control utility duplication reduced where shared primitives cover usage
+- [x] Motion and typography rhythm tokens added to editor-core token contract
 - [ ] Cross-editor visual consistency pass completed for representative pages

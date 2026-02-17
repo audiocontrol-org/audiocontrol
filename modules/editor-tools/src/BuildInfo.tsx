@@ -140,9 +140,11 @@ export function BuildInfo({ buildInfo, config }: BuildInfoProps) {
 
   // Style objects for theming
   const buttonStyle: CSSProperties = {
-    color: errorCount > 0 ? '#f87171' : theme.textMuted,
+    color: errorCount > 0 ? 'var(--ac-status-danger, #f87171)' : theme.textMuted,
     backgroundColor: 'rgba(0,0,0,0.3)',
-    border: errorCount > 0 ? '1px solid rgba(248, 113, 113, 0.5)' : '1px solid transparent',
+    border: errorCount > 0
+      ? '1px solid color-mix(in srgb, var(--ac-status-danger, #f87171) 55%, transparent)'
+      : '1px solid transparent',
   };
 
   const modalOverlayStyle: CSSProperties = {
@@ -178,7 +180,7 @@ export function BuildInfo({ buildInfo, config }: BuildInfoProps) {
         title={errorCount > 0 ? `${errorCount} errors - click for details` : 'Click for build details'}
       >
         {shortLabel}
-        {errorCount > 0 && <span className="ml-1 text-red-400">({errorCount})</span>}
+        {errorCount > 0 && <span className="ml-1 ac-text-error">({errorCount})</span>}
       </button>
 
       {/* Modal */}
@@ -245,8 +247,12 @@ export function BuildInfo({ buildInfo, config }: BuildInfoProps) {
                     fontSize: '0.75rem',
                     padding: '0.125rem 0.375rem',
                     borderRadius: '0.25rem',
-                    backgroundColor: errorCount > 0 ? 'rgba(239, 68, 68, 0.2)' : 'rgba(234, 179, 8, 0.2)',
-                    color: errorCount > 0 ? '#f87171' : '#fbbf24',
+                    backgroundColor: errorCount > 0
+                      ? 'color-mix(in srgb, var(--ac-status-danger, #f87171) 22%, transparent)'
+                      : 'color-mix(in srgb, var(--ac-status-warning, #fbbf24) 22%, transparent)',
+                    color: errorCount > 0
+                      ? 'var(--ac-status-danger, #f87171)'
+                      : 'var(--ac-status-warning, #fbbf24)',
                   }}>
                     {errorCount > 0 ? errorCount : warnCount}
                   </span>
@@ -313,8 +319,16 @@ export function BuildInfo({ buildInfo, config }: BuildInfoProps) {
                             style={{
                               padding: '0.5rem',
                               borderBottom: `1px solid ${theme.border}`,
-                              backgroundColor: entry.level === 'error' ? 'rgba(239, 68, 68, 0.1)' : entry.level === 'warn' ? 'rgba(234, 179, 8, 0.1)' : 'transparent',
-                              color: entry.level === 'error' ? '#fca5a5' : entry.level === 'warn' ? '#fcd34d' : theme.textMuted,
+                              backgroundColor: entry.level === 'error'
+                                ? 'color-mix(in srgb, var(--ac-status-danger, #f87171) 12%, transparent)'
+                                : entry.level === 'warn'
+                                  ? 'color-mix(in srgb, var(--ac-status-warning, #fbbf24) 12%, transparent)'
+                                  : 'transparent',
+                              color: entry.level === 'error'
+                                ? 'var(--ac-status-danger, #fca5a5)'
+                                : entry.level === 'warn'
+                                  ? 'var(--ac-status-warning, #fcd34d)'
+                                  : theme.textMuted,
                             }}
                           >
                             <div style={{ display: 'flex', gap: '0.5rem', opacity: 0.7, marginBottom: '0.25rem' }}>
@@ -322,7 +336,11 @@ export function BuildInfo({ buildInfo, config }: BuildInfoProps) {
                               <span style={{
                                 textTransform: 'uppercase',
                                 fontWeight: 'bold',
-                                color: entry.level === 'error' ? '#f87171' : entry.level === 'warn' ? '#fbbf24' : 'inherit',
+                                color: entry.level === 'error'
+                                  ? 'var(--ac-status-danger, #f87171)'
+                                  : entry.level === 'warn'
+                                    ? 'var(--ac-status-warning, #fbbf24)'
+                                    : 'inherit',
                               }}>
                                 {entry.level}
                               </span>
@@ -356,7 +374,7 @@ export function BuildInfo({ buildInfo, config }: BuildInfoProps) {
                     fontSize: '0.875rem',
                     fontWeight: 500,
                     borderRadius: '0.25rem',
-                    backgroundColor: copyStatus === 'copied' ? '#16a34a' : 'rgba(255,255,255,0.1)',
+                    backgroundColor: copyStatus === 'copied' ? 'var(--ac-status-connected, #16a34a)' : 'rgba(255,255,255,0.1)',
                     color: copyStatus === 'copied' ? 'white' : theme.textPrimary,
                   }}
                   className="transition-colors"

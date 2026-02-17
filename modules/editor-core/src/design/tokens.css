@@ -33,6 +33,20 @@
   --ac-radius-sm: 0.25rem;
   --ac-radius-md: 0.5rem;
   --ac-radius-lg: 0.75rem;
+
+  --ac-font-weight-normal: 400;
+  --ac-font-weight-medium: 500;
+  --ac-font-weight-semibold: 600;
+  --ac-font-weight-bold: 700;
+  --ac-leading-tight: 1.25;
+  --ac-leading-normal: 1.5;
+  --ac-leading-relaxed: 1.625;
+
+  --ac-duration-fast: 150ms;
+  --ac-duration-normal: 250ms;
+  --ac-duration-slow: 350ms;
+  --ac-easing-default: cubic-bezier(0.4, 0, 0.2, 1);
+  --ac-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
 }
 
 :root[data-editor='s330'] {

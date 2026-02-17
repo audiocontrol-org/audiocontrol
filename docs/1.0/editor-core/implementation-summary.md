@@ -175,7 +175,18 @@ Capture before/after screenshots at 1366x768 for each target editor and compare:
 - [ ] D-110 `Connect` and `Tones`: top spacing parity and shared alert styling
 - [ ] JV-1080 `Connect` and `Editor`: top spacing parity and section rhythm
 - [ ] Connected/disconnected status colors and danger/warn treatments match semantic token intent
-- [ ] No page-local hardcoded red/yellow status colors in shared/editor-core-rendered UI
+- [x] No page-local hardcoded red/yellow status colors in shared/editor-core-rendered UI
+
+Code-level consistency audit update (2026-02-17):
+
+- Completed:
+  - Motion and typography rhythm tokens added to `tokens.css`.
+  - Shared primitives and `EditorLayout`/`BuildInfo` status transitions and colors consume semantic tokens.
+  - `s330` and `d110` Tailwind color mappings now point to shared CSS variable tokens.
+  - Local `.btn/.input/.label` utility duplication removed from active `s330` and `d110` callsites covered in Phase 7.
+- Pending manual screenshot validation:
+  - Visual spacing/rhythm confirmation per page at target viewport sizes.
+  - Cross-editor parity confirmation for final visual polish (non-functional style nuance).
 
 ## Open Issues
 

@@ -90,8 +90,8 @@
   color: var(--ac-text-primary);
   font-family: var(--ac-font-sans);
   font-size: var(--ac-text-lg);
-  font-weight: 700;
-  line-height: 1.2;
+  font-weight: var(--ac-font-weight-bold);
+  line-height: var(--ac-leading-tight);
 }
 
 .ac-title-md {
@@ -99,13 +99,14 @@
   color: var(--ac-text-primary);
   font-family: var(--ac-font-sans);
   font-size: 1.125rem;
-  font-weight: 600;
-  line-height: 1.25;
+  font-weight: var(--ac-font-weight-semibold);
+  line-height: var(--ac-leading-tight);
 }
 
 .ac-text-muted {
   color: var(--ac-text-muted);
   font-size: var(--ac-text-md);
+  line-height: var(--ac-leading-normal);
 }
 
 .ac-text-error {
@@ -146,9 +147,12 @@
   color: var(--ac-color-text-primary);
   padding: 0.625rem 0.75rem;
   font-size: var(--ac-text-md);
-  font-weight: 600;
+  font-weight: var(--ac-font-weight-semibold);
   cursor: pointer;
-  transition: filter 150ms ease;
+  transition:
+    filter var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default);
 }
 
 .ac-btn:hover:not(:disabled) {
@@ -179,6 +183,7 @@
   color: var(--ac-color-text-primary);
   padding: 0.625rem 0.75rem;
   font-size: var(--ac-text-md);
+  line-height: var(--ac-leading-normal);
 }
 
 .ac-input {
@@ -193,7 +198,8 @@
   color: var(--ac-text-primary);
   font-family: var(--ac-font-sans);
   font-size: var(--ac-text-sm);
-  font-weight: 600;
+  font-weight: var(--ac-font-weight-semibold);
+  line-height: var(--ac-leading-tight);
 }
 
 .ac-label-block {
@@ -205,6 +211,7 @@
   margin: 0;
   padding-left: 1.25rem;
   color: var(--ac-text-muted);
+  line-height: var(--ac-leading-normal);
 }
 
 .ac-help-list > li {
