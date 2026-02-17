@@ -187,3 +187,15 @@
   flex: 0 0 auto;
   width: 5.625rem;
 }
+
+.ac-alert {
+  border: 1px solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-md);
+  padding: var(--ac-space-3);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 90%, transparent);
+}
+
+.ac-alert-error {
+  border-color: color-mix(in srgb, var(--ac-status-danger) 55%, var(--ac-color-border-subtle));
+  background: color-mix(in srgb, var(--ac-status-danger) 16%, transparent);
+}

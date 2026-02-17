@@ -290,8 +290,8 @@ export function PatchesPage() {
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-500/20 border border-red-500 rounded-md p-3 mt-6">
-          <p className="text-red-200 text-sm">{error}</p>
+        <div className="ac-alert ac-alert-error">
+          <p className="ac-text-error text-sm">{error}</p>
         </div>
       )}
 

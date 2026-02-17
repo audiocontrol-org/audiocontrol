@@ -442,8 +442,8 @@ export function PlayPage() {
 
       {/* Error display */}
       {error && (
-        <div className="bg-red-500/20 border border-red-500 rounded-md p-3">
-          <p className="text-red-200 text-sm">{error}</p>
+        <div className="ac-alert ac-alert-error">
+          <p className="ac-text-error text-sm">{error}</p>
         </div>
       )}
 
