@@ -95,6 +95,7 @@ Success criteria:
 
 ## Immediate Next Steps
 
-1. Codify semantic color tokens and replace remaining hardcoded status/action colors in shared components.
-2. Introduce shared page-shell/layout primitives and migrate S-330 `Play`, `Patches`, `Tones`.
-3. Add a small visual regression checklist to `docs/1.0/editor-core/implementation-summary.md`.
+1. Migrate `s330` and `d110` Tailwind color themes to CSS variable-backed token mappings.
+2. Reduce local duplicated control utility classes (`.btn/.input/.label`) where shared primitives cover behavior.
+3. Add motion and typography rhythm tokens to `tokens.css` and use them in shared primitives.
+4. Execute and document the visual regression checklist for `Connect`, `Play`, `Patches`, and `Tones`.

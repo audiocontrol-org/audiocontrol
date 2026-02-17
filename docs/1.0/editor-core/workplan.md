@@ -162,13 +162,33 @@ Convert current token + primitive baseline into an enforceable cross-editor desi
 - Normalize reusable controls (button/chip/input/select) and section typography hierarchy.
 - Define explicit rules for full-height layout and nested scrolling regions.
 - Migrate D-110 and JV-1080 page shells to the same primitives after S-330 baseline is stable.
+- Migrate `s330` and `d110` Tailwind color definitions to shared CSS variable-backed tokens.
+- De-duplicate local `.btn/.btn-primary/.btn-secondary/.input/.label` definitions where shared primitives exist.
+- Add missing token contracts for motion and typography rhythm (line-height/weight scale).
 - Add lightweight visual regression checklist for representative pages (`Connect`, `Play`, `Patches`, `Tones`).
 
 **Success criteria:**
 - Page spacing and container rhythm are consistent by default across all S-330 pages.
 - Shared semantic colors map consistently to `active/selected/connected/warn/danger` states.
 - Equivalent controls render consistently across S-330, D-110, and JV-1080.
+- `s330` and `d110` Tailwind theme colors read from shared CSS variable tokens.
 - Local editor CSS primarily defines theme identity, not duplicated structure.
+
+### Phase 8: Component Abstraction Follow-up (Post-Phase 7)
+
+Defer higher-order React abstraction work until visual/token consistency is complete.
+
+**Issue:**
+- [#46 Add shared SelectableList abstraction for editor list UIs](https://github.com/audiocontrol-org/audiocontrol/issues/46)
+
+**Tasks:**
+- Evaluate common list interaction behavior across S-330 and D-110.
+- Extract shared `SelectableList` abstraction in `editor-core` if convergence is stable.
+- Migrate list callsites with no behavior regression.
+
+**Success criteria:**
+- Shared list behaviors are consistent (selection, loading, empty states, keyboard affordances).
+- List UIs reduce local duplicated rendering logic.
 
 ## Issue Decomposition
 
@@ -191,6 +211,7 @@ Child issues created under parent #27:
 15. [#43 Implement shared page-shell primitives and migrate S-330 pages](https://github.com/audiocontrol-org/audiocontrol/issues/43)
 16. [#44 Adopt hardened editor-core primitives in D-110 and JV-1080](https://github.com/audiocontrol-org/audiocontrol/issues/44)
 17. [#45 Define semantic color token map for editor-core](https://github.com/audiocontrol-org/audiocontrol/issues/45)
+18. [#46 Add shared SelectableList abstraction for editor list UIs](https://github.com/audiocontrol-org/audiocontrol/issues/46)
 
 ## Verification Checklist
 
@@ -203,4 +224,7 @@ Child issues created under parent #27:
 - [x] Feature docs updated with implementation notes
 - [x] Semantic color token map applied to shared status/action elements in editor-core primitives
 - [x] Shared page-shell primitives adopted by all S-330 editor pages
+- [ ] `s330` and `d110` Tailwind configs use shared CSS variable token mappings
+- [ ] Local control utility duplication reduced where shared primitives cover usage
+- [ ] Motion and typography rhythm tokens added to editor-core token contract
 - [ ] Cross-editor visual consistency pass completed for representative pages

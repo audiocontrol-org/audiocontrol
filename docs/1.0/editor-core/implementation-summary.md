@@ -121,6 +121,12 @@ Actions already started:
 - Applied `.ac-page` wrappers to S-330, D-110, and JV-1080 page roots to establish shared default top spacing behavior.
 - Migrated `MidiConnectionPage` and `MidiPortSelector` to use shared primitives.
 
+Architecture-review-driven adjustments (2026-02-17):
+
+- Prioritized Tailwind token convergence for `s330` and `d110` to reduce token drift versus `editor-core`.
+- Split deferred React abstraction work (shared `SelectableList`) into a post-Phase-7 follow-up issue.
+- Added explicit Phase 7 exit checks for control utility de-duplication and motion/typography token contract completion.
+
 ## Code Metrics
 
 | Metric | Before | After | Reduction |

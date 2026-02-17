@@ -42,6 +42,7 @@ Create shared infrastructure to eliminate ~1,100 lines of duplicated code across
 | [#43 Implement shared page-shell primitives and migrate S-330 pages](https://github.com/audiocontrol-org/audiocontrol/issues/43) | 7 | P2 | Open |
 | [#44 Adopt hardened editor-core primitives in D-110 and JV-1080](https://github.com/audiocontrol-org/audiocontrol/issues/44) | 7 | P2 | Open |
 | [#45 Define semantic color token map for editor-core](https://github.com/audiocontrol-org/audiocontrol/issues/45) | 7 | P2 | Open |
+| [#46 Add shared SelectableList abstraction for editor list UIs](https://github.com/audiocontrol-org/audiocontrol/issues/46) | 8 | P3 | Open |
 
 ## Quick Links
 
