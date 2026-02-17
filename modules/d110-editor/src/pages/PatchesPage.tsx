@@ -8,7 +8,7 @@ import { PatchEditor } from '@/components/PatchEditor';
 
 export function PatchesPage(): JSX.Element {
   return (
-    <div className="ac-page">
+    <div className="ac-page ac-page-shell">
       <PatchEditor />
     </div>
   );

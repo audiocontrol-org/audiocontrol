@@ -180,6 +180,10 @@ export function PanicButton({
   disabled = false,
   title = 'Send All Notes Off on all channels',
 }: PanicButtonProps): JSX.Element {
+  const panicBg = 'var(--ac-status-danger, #dc2626)';
+  const mutedText = 'var(--ac-text-muted, #6b7280)';
+  const mutedBg = 'color-mix(in srgb, var(--ac-color-surface-panel, #111827) 70%, transparent)';
+
   return (
     <button
       onClick={onClick}
@@ -189,8 +193,8 @@ export function PanicButton({
         fontSize: '0.875rem',
         fontWeight: 500,
         borderRadius: '0.25rem',
-        backgroundColor: disabled ? 'rgba(107, 114, 128, 0.3)' : '#dc2626',
-        color: disabled ? '#6b7280' : 'white',
+        backgroundColor: disabled ? mutedBg : panicBg,
+        color: disabled ? mutedText : 'white',
         cursor: disabled ? 'not-allowed' : 'pointer',
         transition: 'background-color 150ms',
       }}
@@ -216,6 +220,9 @@ export function MidiStatusDisplay({
   inputName,
   outputName,
 }: MidiStatusDisplayProps): JSX.Element {
+  const connectedColor = 'var(--ac-status-connected, #22c55e)';
+  const mutedColor = 'var(--ac-text-muted, #6b7280)';
+
   return (
     <div className="flex items-center gap-2 text-sm">
       {/* Status indicator */}
@@ -225,17 +232,17 @@ export function MidiStatusDisplay({
             width: '0.5rem',
             height: '0.5rem',
             borderRadius: '50%',
-            backgroundColor: isConnected ? '#22c55e' : '#6b7280',
+            backgroundColor: isConnected ? connectedColor : mutedColor,
           }}
         />
-        <span style={{ color: isConnected ? '#22c55e' : '#6b7280' }}>
+        <span style={{ color: isConnected ? connectedColor : mutedColor }}>
           {isConnected ? 'Connected' : 'Disconnected'}
         </span>
       </div>
 
       {/* Port names when connected */}
       {isConnected && (inputName || outputName) && (
-        <span style={{ color: '#9ca3af', fontSize: '0.75rem' }}>
+        <span style={{ color: 'var(--ac-text-muted, #9ca3af)', fontSize: '0.75rem' }}>
           {inputName && outputName
             ? `${inputName} ↔ ${outputName}`
             : inputName || outputName}
