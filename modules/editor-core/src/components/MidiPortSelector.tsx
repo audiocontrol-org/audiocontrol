@@ -16,7 +16,7 @@ export function MidiPortSelector({
   disabled = false,
 }: MidiPortSelectorProps): JSX.Element {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, minWidth: 220, flex: 1 }}>
+    <div className="ac-field">
       <label className="ac-label">{label}</label>
       <select
         className="ac-select"

@@ -101,7 +101,7 @@ export function MidiConnectionPage({
 
         {store.error ? <p className="ac-text-error">{store.error}</p> : null}
 
-        <div className="ac-grid-2" style={{ marginTop: 12 }}>
+        <div className="ac-grid-2 ac-mt-3">
           <MidiPortSelector
             label={config.inputLabel}
             ports={store.inputs}
@@ -118,7 +118,7 @@ export function MidiConnectionPage({
           />
         </div>
 
-        <div className="ac-row" style={{ marginTop: 16 }}>
+        <div className="ac-row ac-mt-4">
           {isConnected ? (
             <>
               <button type="button" onClick={() => void store.disconnect()} className="ac-btn">
@@ -151,7 +151,7 @@ export function MidiConnectionPage({
         <p className="ac-text-muted">{config.deviceIdHelpText}</p>
         <div className="ac-row">
           <input
-            className="ac-input"
+            className="ac-input ac-input-sm"
             type="number"
             min={minDisplay}
             max={maxDisplay}
@@ -161,7 +161,6 @@ export function MidiConnectionPage({
               store.setDeviceId(parsed - displayOffset);
             }}
             disabled={store.status === 'connected'}
-            style={{ width: 90 }}
           />
           <span className="ac-text-muted">
             ({minDisplay}-{maxDisplay})

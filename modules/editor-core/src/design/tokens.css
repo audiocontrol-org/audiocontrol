@@ -1,10 +1,27 @@
 :root {
-  --ac-bg-primary: #0f172a;
-  --ac-bg-panel: #111827;
-  --ac-border: #334155;
-  --ac-text-primary: #e5e7eb;
-  --ac-text-muted: #9ca3af;
-  --ac-highlight: #38bdf8;
+  --ac-color-surface-canvas: #0f172a;
+  --ac-color-surface-panel: #111827;
+  --ac-color-border-subtle: #334155;
+  --ac-color-text-primary: #e5e7eb;
+  --ac-color-text-muted: #9ca3af;
+  --ac-color-accent: #38bdf8;
+  --ac-color-success: #4ade80;
+  --ac-color-warning: #facc15;
+  --ac-color-danger: #fca5a5;
+  --ac-color-selected: #60a5fa;
+
+  --ac-status-connected: var(--ac-color-success);
+  --ac-status-warning: var(--ac-color-warning);
+  --ac-status-danger: var(--ac-color-danger);
+  --ac-status-selected: var(--ac-color-selected);
+
+  /* Compatibility aliases for existing editor CSS. */
+  --ac-bg-primary: var(--ac-color-surface-canvas);
+  --ac-bg-panel: var(--ac-color-surface-panel);
+  --ac-border: var(--ac-color-border-subtle);
+  --ac-text-primary: var(--ac-color-text-primary);
+  --ac-text-muted: var(--ac-color-text-muted);
+  --ac-highlight: var(--ac-color-accent);
 
   --ac-space-1: 0.25rem;
   --ac-space-2: 0.5rem;
@@ -19,28 +36,40 @@
 }
 
 :root[data-editor='s330'] {
-  --ac-bg-primary: #0f172a;
-  --ac-bg-panel: #1e293b;
-  --ac-border: #334155;
-  --ac-text-primary: #f1f5f9;
-  --ac-text-muted: #94a3b8;
-  --ac-highlight: #38bdf8;
+  --ac-color-surface-canvas: #0f172a;
+  --ac-color-surface-panel: #1e293b;
+  --ac-color-border-subtle: #334155;
+  --ac-color-text-primary: #f1f5f9;
+  --ac-color-text-muted: #94a3b8;
+  --ac-color-accent: #38bdf8;
+  --ac-color-success: #22c55e;
+  --ac-color-warning: #facc15;
+  --ac-color-danger: #fb7185;
+  --ac-color-selected: #60a5fa;
 }
 
 :root[data-editor='d110'] {
-  --ac-bg-primary: #111827;
-  --ac-bg-panel: #1f2937;
-  --ac-border: #374151;
-  --ac-text-primary: #e5e7eb;
-  --ac-text-muted: #6b7280;
-  --ac-highlight: #60a5fa;
+  --ac-color-surface-canvas: #111827;
+  --ac-color-surface-panel: #1f2937;
+  --ac-color-border-subtle: #374151;
+  --ac-color-text-primary: #e5e7eb;
+  --ac-color-text-muted: #6b7280;
+  --ac-color-accent: #60a5fa;
+  --ac-color-success: #34d399;
+  --ac-color-warning: #fbbf24;
+  --ac-color-danger: #fb7185;
+  --ac-color-selected: #60a5fa;
 }
 
 :root[data-editor='jv1080'] {
-  --ac-bg-primary: #0f172a;
-  --ac-bg-panel: #111827;
-  --ac-border: #334155;
-  --ac-text-primary: #e5e7eb;
-  --ac-text-muted: #9ca3af;
-  --ac-highlight: #f59e0b;
+  --ac-color-surface-canvas: #0f172a;
+  --ac-color-surface-panel: #111827;
+  --ac-color-border-subtle: #334155;
+  --ac-color-text-primary: #e5e7eb;
+  --ac-color-text-muted: #9ca3af;
+  --ac-color-accent: #f59e0b;
+  --ac-color-success: #4ade80;
+  --ac-color-warning: #fbbf24;
+  --ac-color-danger: #fb7185;
+  --ac-color-selected: #f59e0b;
 }
