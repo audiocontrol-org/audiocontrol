@@ -6,11 +6,36 @@
   --ac-text-md: 1rem;
   --ac-text-lg: 1.5rem;
   --ac-page-space: var(--ac-space-3);
+  --ac-page-main-inline: 1rem;
+  --ac-page-sticky-top: 5.5rem;
   --ac-container-md: 42rem;
 }
 
 .ac-page {
   padding-top: var(--ac-page-space);
+}
+
+.ac-page-shell {
+  display: grid;
+  gap: var(--ac-space-4);
+}
+
+.ac-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ac-space-4);
+}
+
+.ac-page-sticky-header {
+  position: sticky;
+  top: var(--ac-page-sticky-top);
+  z-index: 30;
+  margin-inline: calc(var(--ac-page-main-inline) * -1);
+  padding-inline: var(--ac-page-main-inline);
+  padding-bottom: var(--ac-space-3);
+  background: var(--ac-color-surface-canvas);
+  border-bottom: 1px solid color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
 }
 
 .ac-container-md {

@@ -243,22 +243,24 @@ export function PlayPage() {
 
   if (!isConnected) {
     return (
-      <div className="card text-center py-12">
-        <h2 className="text-xl font-bold text-s330-text mb-2">Not Connected</h2>
-        <p className="text-s330-muted mb-4">
-          Connect to your S-330 to view the play screen.
-        </p>
-        <Link to="/" className="btn btn-primary inline-block">
-          Go to Connection
-        </Link>
+      <div className="ac-page">
+        <div className="card text-center py-12">
+          <h2 className="text-xl font-bold text-s330-text mb-2">Not Connected</h2>
+          <p className="text-s330-muted mb-4">
+            Connect to your S-330 to view the play screen.
+          </p>
+          <Link to="/" className="btn btn-primary inline-block">
+            Go to Connection
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="ac-page space-y-4">
+    <div className="ac-page ac-page-shell">
       {/* Header with bank loading buttons */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="ac-page-header">
         <h2 className="text-xl font-bold text-s330-text">Play</h2>
         <div className="flex items-center gap-4 flex-1 justify-end">
           {/* Loading Progress */}

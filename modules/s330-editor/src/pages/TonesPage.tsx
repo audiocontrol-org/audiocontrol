@@ -170,22 +170,24 @@ export function TonesPage() {
 
   if (!isConnected) {
     return (
-      <div className="card text-center py-12">
-        <h2 className="text-xl font-bold text-s330-text mb-2">Not Connected</h2>
-        <p className="text-s330-muted mb-4">
-          Connect to your S-330 to view and edit tones.
-        </p>
-        <a href="/" className="btn btn-primary inline-block">
-          Go to Connection
-        </a>
+      <div className="ac-page">
+        <div className="card text-center py-12">
+          <h2 className="text-xl font-bold text-s330-text mb-2">Not Connected</h2>
+          <p className="text-s330-muted mb-4">
+            Connect to your S-330 to view and edit tones.
+          </p>
+          <a href="/" className="btn btn-primary inline-block">
+            Go to Connection
+          </a>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="ac-page">
+    <div className="ac-page ac-page-shell">
       {/* Sticky Header */}
-      <div className="sticky top-[88px] z-30 bg-s330-bg pb-4 -mx-12 px-12 border-b border-s330-accent/30">
+      <div className="ac-page-sticky-header">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-s330-text">Tones</h2>
@@ -275,7 +277,7 @@ export function TonesPage() {
 
       {/* Content - show while loading for progressive updates */}
       {tones.length > 0 && (
-        <div className="grid gap-6 lg:grid-cols-3 mt-6">
+        <div className="grid gap-6 lg:grid-cols-3">
           {/* Sticky list column */}
           <div className="lg:col-span-1">
             <div className="sticky top-[160px]">
