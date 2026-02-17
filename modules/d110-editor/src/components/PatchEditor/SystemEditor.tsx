@@ -161,9 +161,9 @@ export function SystemEditor(): JSX.Element {
           <span
             className={`text-sm ${
               partialsRemaining < 0
-                ? 'text-red-400'
+                ? 'ac-text-error'
                 : partialsRemaining === 0
-                  ? 'text-yellow-400'
+                  ? 'ac-text-warn'
                   : 'text-d110-muted'
             }`}
           >

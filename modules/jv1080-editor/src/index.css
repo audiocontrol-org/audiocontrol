@@ -50,6 +50,6 @@
   }
 
   .error {
-    @apply text-red-300;
+    color: var(--ac-status-danger);
   }
 }

@@ -224,3 +224,15 @@
   border-color: color-mix(in srgb, var(--ac-status-danger) 55%, var(--ac-color-border-subtle));
   background: color-mix(in srgb, var(--ac-status-danger) 16%, transparent);
 }
+
+.ac-alert-inline {
+  border: 1px solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-sm);
+  padding: var(--ac-space-1) var(--ac-space-2);
+}
+
+.ac-alert-inline-error {
+  color: var(--ac-status-danger);
+  border-color: color-mix(in srgb, var(--ac-status-danger) 55%, var(--ac-color-border-subtle));
+  background: color-mix(in srgb, var(--ac-status-danger) 12%, transparent);
+}
