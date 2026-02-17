@@ -6,7 +6,7 @@ export function EditorPage(): JSX.Element {
   const { status, client, deviceId } = useMidiStore();
 
   return (
-    <>
+    <div className="ac-page ac-page-shell">
       <section className="panel">
         <h2 className="text-lg font-semibold text-jv1080-text">Editor</h2>
         <p className="mt-2 text-sm text-jv1080-muted">
@@ -21,6 +21,6 @@ export function EditorPage(): JSX.Element {
       </section>
       <SystemControls client={client} connected={status === 'connected'} />
       <FxControls client={client} connected={status === 'connected'} />
-    </>
+    </div>
   );
 }
