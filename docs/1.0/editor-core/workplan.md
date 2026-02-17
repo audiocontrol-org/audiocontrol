@@ -201,6 +201,6 @@ Child issues created under parent #27:
 - [x] D-110 has BrowserRouter in main.tsx
 - [x] All editors have sendPanic method
 - [x] Feature docs updated with implementation notes
-- [ ] Semantic color token map applied to all shared status/action elements
-- [ ] Shared page-shell primitives adopted by all S-330 editor pages
+- [x] Semantic color token map applied to shared status/action elements in editor-core primitives
+- [x] Shared page-shell primitives adopted by all S-330 editor pages
 - [ ] Cross-editor visual consistency pass completed for representative pages

@@ -158,6 +158,19 @@ Actions already started:
 - [ ] MIDI device detection works in all browsers
 - [ ] Device ID persistence works correctly
 
+### Visual Regression Checklist (Phase 7)
+
+Capture before/after screenshots at 1366x768 for each target editor and compare:
+
+- [ ] S-330 `Connect`: page top spacing, card width, button spacing, error/warn styles
+- [ ] S-330 `Play`: top spacing consistent with `Connect`, header rhythm, table card alignment
+- [ ] S-330 `Patches`: sticky header offset, list/detail column alignment, list scroll behavior
+- [ ] S-330 `Tones`: sticky header offset, list/detail column alignment, list scroll behavior
+- [ ] D-110 `Connect` and `Tones`: top spacing parity and shared alert styling
+- [ ] JV-1080 `Connect` and `Editor`: top spacing parity and section rhythm
+- [ ] Connected/disconnected status colors and danger/warn treatments match semantic token intent
+- [ ] No page-local hardcoded red/yellow status colors in shared/editor-core-rendered UI
+
 ## Open Issues
 
 - Vitest in this sandbox logs a websocket bind warning (`listen EPERM ... 0.0.0.0:24678`) during some runs; tests still execute and pass. This does not reproduce as a functional test failure in normal local environments.
