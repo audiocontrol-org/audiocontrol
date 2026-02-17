@@ -176,7 +176,7 @@ export function TonesPage() {
           <p className="text-s330-muted mb-4">
             Connect to your S-330 to view and edit tones.
           </p>
-          <a href="/" className="btn btn-primary inline-block">
+          <a href="/" className="ac-btn ac-btn-primary inline-block">
             Go to Connection
           </a>
         </div>
@@ -216,8 +216,8 @@ export function TonesPage() {
                 onClick={() => loadToneBank(0, true)}
                 disabled={isLoading}
                 className={cn(
-                  'btn',
-                  loadedBanks.includes(0) ? 'btn-secondary' : 'btn-primary',
+                  'ac-btn',
+                  loadedBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}
               >
@@ -227,8 +227,8 @@ export function TonesPage() {
                 onClick={() => loadToneBank(1, true)}
                 disabled={isLoading}
                 className={cn(
-                  'btn',
-                  loadedBanks.includes(1) ? 'btn-secondary' : 'btn-primary',
+                  'ac-btn',
+                  loadedBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}
               >
@@ -238,8 +238,8 @@ export function TonesPage() {
                 onClick={() => loadToneBank(2, true)}
                 disabled={isLoading}
                 className={cn(
-                  'btn',
-                  loadedBanks.includes(2) ? 'btn-secondary' : 'btn-primary',
+                  'ac-btn',
+                  loadedBanks.includes(2) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}
               >
@@ -249,8 +249,8 @@ export function TonesPage() {
                 onClick={() => loadToneBank(3, true)}
                 disabled={isLoading}
                 className={cn(
-                  'btn',
-                  loadedBanks.includes(3) ? 'btn-secondary' : 'btn-primary',
+                  'ac-btn',
+                  loadedBanks.includes(3) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}
               >
@@ -259,7 +259,7 @@ export function TonesPage() {
               <button
                 onClick={loadAll}
                 disabled={isLoading}
-                className={cn('btn btn-secondary', isLoading && 'opacity-50')}
+                className={cn('ac-btn ac-btn-secondary', isLoading && 'opacity-50')}
               >
                 All
               </button>
@@ -309,7 +309,7 @@ export function TonesPage() {
       {!isLoading && loadedTones.length === 0 && !error && (
         <div className="card text-center py-12">
           <p className="text-s330-muted mb-4">No tones loaded</p>
-          <button onClick={loadInitialData} className="btn btn-primary">
+          <button onClick={loadInitialData} className="ac-btn ac-btn-primary">
             Load Tones
           </button>
         </div>

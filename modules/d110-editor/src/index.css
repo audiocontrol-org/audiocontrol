@@ -50,24 +50,4 @@ body {
   .card {
     @apply bg-d110-panel rounded-lg border border-d110-border p-4;
   }
-
-  .btn {
-    @apply px-4 py-2 rounded-md font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-d110-accent focus:ring-offset-2 focus:ring-offset-d110-bg disabled:opacity-50 disabled:cursor-not-allowed;
-  }
-
-  .btn-primary {
-    @apply bg-d110-accent text-white hover:bg-d110-highlight;
-  }
-
-  .btn-secondary {
-    @apply bg-d110-surface text-d110-text border border-d110-border hover:bg-d110-panel;
-  }
-
-  .input {
-    @apply bg-d110-surface border border-d110-border rounded-md px-3 py-2 text-d110-text focus:outline-none focus:ring-2 focus:ring-d110-accent focus:border-transparent;
-  }
-
-  .label {
-    @apply block text-sm font-medium text-d110-muted mb-1;
-  }
 }

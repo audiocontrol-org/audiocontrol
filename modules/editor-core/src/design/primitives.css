@@ -160,6 +160,16 @@
   cursor: not-allowed;
 }
 
+.ac-btn-primary {
+  background: var(--ac-color-accent);
+  border-color: color-mix(in srgb, var(--ac-color-accent) 60%, var(--ac-color-border-subtle));
+  color: #fff;
+}
+
+.ac-btn-secondary {
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 92%, transparent);
+}
+
 .ac-input,
 .ac-select {
   width: 100%;
@@ -172,6 +182,10 @@
 }
 
 .ac-input {
+  text-align: left;
+}
+
+.ac-input-center {
   text-align: center;
 }
 
@@ -180,6 +194,11 @@
   font-family: var(--ac-font-sans);
   font-size: var(--ac-text-sm);
   font-weight: 600;
+}
+
+.ac-label-block {
+  display: block;
+  margin-bottom: var(--ac-space-1);
 }
 
 .ac-help-list {

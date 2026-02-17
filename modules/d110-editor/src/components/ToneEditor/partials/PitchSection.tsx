@@ -142,14 +142,14 @@ export function PitchSection({
 
       {/* Waveform Selection */}
       <div>
-        <label className="label mb-2">Waveform</label>
+        <label className="ac-label ac-label-block mb-2">Waveform</label>
         <div className="flex flex-wrap gap-2">
           {/* Synth Waveforms */}
           <button
             onClick={() => handleWaveformChange('square')}
             className={cn(
-              'btn text-sm',
-              isSquare ? 'btn-primary' : 'btn-secondary',
+              'ac-btn text-sm',
+              isSquare ? 'ac-btn-primary' : 'ac-btn-secondary',
               isPcmPartial && 'opacity-40 cursor-not-allowed'
             )}
             disabled={disabled || isPcmPartial}
@@ -160,8 +160,8 @@ export function PitchSection({
           <button
             onClick={() => handleWaveformChange('sawtooth')}
             className={cn(
-              'btn text-sm',
-              isSawtooth ? 'btn-primary' : 'btn-secondary',
+              'ac-btn text-sm',
+              isSawtooth ? 'ac-btn-primary' : 'ac-btn-secondary',
               isPcmPartial && 'opacity-40 cursor-not-allowed'
             )}
             disabled={disabled || isPcmPartial}
@@ -177,8 +177,8 @@ export function PitchSection({
           <button
             onClick={() => handleWaveformChange('pcm-a')}
             className={cn(
-              'btn text-sm',
-              isPcmBankA ? 'btn-primary' : 'btn-secondary',
+              'ac-btn text-sm',
+              isPcmBankA ? 'ac-btn-primary' : 'ac-btn-secondary',
               isSynthPartial && 'opacity-40 cursor-not-allowed'
             )}
             disabled={disabled || isSynthPartial}
@@ -189,8 +189,8 @@ export function PitchSection({
           <button
             onClick={() => handleWaveformChange('pcm-b')}
             className={cn(
-              'btn text-sm',
-              isPcmBankB ? 'btn-primary' : 'btn-secondary',
+              'ac-btn text-sm',
+              isPcmBankB ? 'ac-btn-primary' : 'ac-btn-secondary',
               isSynthPartial && 'opacity-40 cursor-not-allowed'
             )}
             disabled={disabled || isSynthPartial}
@@ -204,7 +204,7 @@ export function PitchSection({
       {/* PCM Wave Number (only shown for PCM partials) */}
       {isPcmPartial && (
         <div>
-          <label className="label mb-2">PCM Wave</label>
+          <label className="ac-label ac-label-block mb-2">PCM Wave</label>
           <select
             value={params.pcmWaveNumber}
             onChange={(e) => {
@@ -216,7 +216,7 @@ export function PitchSection({
               onChange('pcmWaveNumber', parseInt(e.target.value, 10));
               onCommit?.();
             }}
-            className="input w-full"
+            className="ac-input w-full"
             disabled={disabled}
             title="Select a PCM sample from the current bank"
           >
@@ -290,15 +290,15 @@ export function PitchSection({
           disabled={disabled}
         />
         <div className="flex flex-col justify-end">
-          <label className="label mb-2">Pitch Bender</label>
+          <label className="ac-label ac-label-block mb-2">Pitch Bender</label>
           <button
             onClick={() => {
               onChange('pitchBenderSwitch', !params.pitchBenderSwitch);
               onCommit?.();
             }}
             className={cn(
-              'btn w-full',
-              params.pitchBenderSwitch ? 'btn-primary' : 'btn-secondary'
+              'ac-btn w-full',
+              params.pitchBenderSwitch ? 'ac-btn-primary' : 'ac-btn-secondary'
             )}
             disabled={disabled}
             title="Enable or disable pitch bend for this partial"

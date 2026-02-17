@@ -249,7 +249,7 @@ export function PlayPage() {
           <p className="text-s330-muted mb-4">
             Connect to your S-330 to view the play screen.
           </p>
-          <Link to="/" className="btn btn-primary inline-block">
+          <Link to="/" className="ac-btn ac-btn-primary inline-block">
             Go to Connection
           </Link>
         </div>
@@ -281,8 +281,8 @@ export function PlayPage() {
               onClick={() => loadPatchBank(0, true)}
               disabled={isLoading}
               className={cn(
-                'btn',
-                loadedBanks.includes(0) ? 'btn-secondary' : 'btn-primary',
+                'ac-btn',
+                loadedBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary',
                 isLoading && 'opacity-50'
               )}
             >
@@ -292,8 +292,8 @@ export function PlayPage() {
               onClick={() => loadPatchBank(1, true)}
               disabled={isLoading}
               className={cn(
-                'btn',
-                loadedBanks.includes(1) ? 'btn-secondary' : 'btn-primary',
+                'ac-btn',
+                loadedBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary',
                 isLoading && 'opacity-50'
               )}
             >

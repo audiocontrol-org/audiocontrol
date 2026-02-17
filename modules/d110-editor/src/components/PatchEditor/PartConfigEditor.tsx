@@ -286,11 +286,11 @@ export function PartConfigEditor({
       {/* Tone Selection */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="label">Tone Group</label>
+          <label className="ac-label ac-label-block">Tone Group</label>
           <select
             value={config.toneGroup}
             onChange={(e) => void handleToneGroupChange(parseInt(e.target.value, 10))}
-            className="input w-full"
+            className="ac-input w-full"
           >
             {TONE_GROUP_NAMES.map((name, i) => (
               <option key={i} value={i}>
@@ -300,11 +300,11 @@ export function PartConfigEditor({
           </select>
         </div>
         <div>
-          <label className="label">Tone</label>
+          <label className="ac-label ac-label-block">Tone</label>
           <select
             value={config.toneNumber}
             onChange={(e) => void handleToneNumberChange(parseInt(e.target.value, 10))}
-            className="input w-full"
+            className="ac-input w-full"
           >
             {Array.from({ length: 64 }, (_, i) => (
               <option key={i} value={i}>
@@ -348,11 +348,11 @@ export function PartConfigEditor({
       {/* Mode Controls */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="label">MIDI Channel</label>
+          <label className="ac-label ac-label-block">MIDI Channel</label>
           <select
             value={midiChannelDisplay}
             onChange={(e) => void handleMidiChannelChange(parseInt(e.target.value, 10))}
-            className="input w-full"
+            className="ac-input w-full"
           >
             {Array.from({ length: 16 }, (_, i) => (
               <option key={i} value={i + 1}>
@@ -362,11 +362,11 @@ export function PartConfigEditor({
           </select>
         </div>
         <div>
-          <label className="label">Assign Mode</label>
+          <label className="ac-label ac-label-block">Assign Mode</label>
           <select
             value={config.assignMode}
             onChange={(e) => void handleAssignModeChange(parseInt(e.target.value, 10))}
-            className="input w-full"
+            className="ac-input w-full"
           >
             {ASSIGN_MODE_NAMES.map((name, i) => (
               <option key={i} value={i}>
@@ -376,11 +376,11 @@ export function PartConfigEditor({
           </select>
         </div>
         <div>
-          <label className="label">Output Assign</label>
+          <label className="ac-label ac-label-block">Output Assign</label>
           <select
             value={config.outputAssign}
             onChange={(e) => void handleOutputAssignChange(parseInt(e.target.value, 10))}
-            className="input w-full"
+            className="ac-input w-full"
           >
             {OUTPUT_ASSIGN_NAMES.map((name, i) => (
               <option key={i} value={i}>

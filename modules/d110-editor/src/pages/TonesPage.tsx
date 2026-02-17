@@ -23,7 +23,7 @@ export function TonesPage(): JSX.Element {
           <p className="text-d110-muted mb-4">
             Connect to your D-110 to view and edit tones.
           </p>
-          <a href="/roland/d110/editor/" className="btn btn-primary inline-block">
+          <a href="/roland/d110/editor/" className="ac-btn ac-btn-primary inline-block">
             Go to Connection
           </a>
         </div>

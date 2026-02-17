@@ -151,7 +151,7 @@ export function MidiConnectionPage({
         <p className="ac-text-muted">{config.deviceIdHelpText}</p>
         <div className="ac-row">
           <input
-            className="ac-input ac-input-sm"
+            className="ac-input ac-input-center ac-input-sm"
             type="number"
             min={minDisplay}
             max={maxDisplay}

@@ -200,7 +200,7 @@ export function PatchesPage() {
           <p className="text-s330-muted mb-4">
             Connect to your S-330 to view and edit patches.
           </p>
-          <a href="/" className="btn btn-primary inline-block">
+          <a href="/" className="ac-btn ac-btn-primary inline-block">
             Go to Connection
           </a>
         </div>
@@ -237,49 +237,49 @@ export function PatchesPage() {
               <button
                 onClick={() => loadPatchBank(0, true)}
                 disabled={isLoading}
-                className={cn('btn', loadedPatchBanks.includes(0) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
+                className={cn('ac-btn', loadedPatchBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
               >
                 P11-P18
               </button>
               <button
                 onClick={() => loadPatchBank(1, true)}
                 disabled={isLoading}
-                className={cn('btn', loadedPatchBanks.includes(1) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
+                className={cn('ac-btn', loadedPatchBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
               >
                 P21-P28
               </button>
               <button
                 onClick={() => loadToneBank(0, true)}
                 disabled={isLoading}
-                className={cn('btn', loadedToneBanks.includes(0) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
+                className={cn('ac-btn', loadedToneBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
               >
                 T11-T18
               </button>
               <button
                 onClick={() => loadToneBank(1, true)}
                 disabled={isLoading}
-                className={cn('btn', loadedToneBanks.includes(1) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
+                className={cn('ac-btn', loadedToneBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
               >
                 T21-T28
               </button>
               <button
                 onClick={() => loadToneBank(2, true)}
                 disabled={isLoading}
-                className={cn('btn', loadedToneBanks.includes(2) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
+                className={cn('ac-btn', loadedToneBanks.includes(2) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
               >
                 T31-T38
               </button>
               <button
                 onClick={() => loadToneBank(3, true)}
                 disabled={isLoading}
-                className={cn('btn', loadedToneBanks.includes(3) ? 'btn-secondary' : 'btn-primary', isLoading && 'opacity-50')}
+                className={cn('ac-btn', loadedToneBanks.includes(3) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
               >
                 T41-T48
               </button>
               <button
                 onClick={loadAll}
                 disabled={isLoading}
-                className={cn('btn btn-secondary', isLoading && 'opacity-50')}
+                className={cn('ac-btn ac-btn-secondary', isLoading && 'opacity-50')}
               >
                 All
               </button>
@@ -329,7 +329,7 @@ export function PatchesPage() {
       {!isLoading && loadedPatches.length === 0 && !error && (
         <div className="card text-center py-12">
           <p className="text-s330-muted mb-4">No patches loaded</p>
-          <button onClick={loadInitialData} className="btn btn-primary">
+          <button onClick={loadInitialData} className="ac-btn ac-btn-primary">
             Load Patches
           </button>
         </div>
