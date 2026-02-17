@@ -297,10 +297,10 @@ export function PatchesPage() {
 
       {/* Content - show while loading for progressive updates */}
       {patches.length > 0 && (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="ac-list-detail-grid">
           {/* Sticky list column */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-[160px]">
+          <div>
+            <div className="ac-list-column-sticky">
               <PatchList
                 patches={patches}
                 selectedIndex={selectedPatchIndex}
@@ -308,7 +308,7 @@ export function PatchesPage() {
               />
             </div>
           </div>
-          <div className="lg:col-span-2">
+          <div>
             {selectedPatch ? (
               <PatchEditor
                 patch={selectedPatch}

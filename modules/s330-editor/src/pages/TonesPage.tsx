@@ -277,10 +277,10 @@ export function TonesPage() {
 
       {/* Content - show while loading for progressive updates */}
       {tones.length > 0 && (
-        <div className="grid gap-6 lg:grid-cols-3">
+        <div className="ac-list-detail-grid">
           {/* Sticky list column */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-[160px]">
+          <div>
+            <div className="ac-list-column-sticky">
               <ToneList
                 tones={tones}
                 selectedIndex={selectedToneIndex}
@@ -288,7 +288,7 @@ export function TonesPage() {
               />
             </div>
           </div>
-          <div className="lg:col-span-2">
+          <div>
             {selectedTone ? (
               <ToneEditor
                 tone={selectedTone}
