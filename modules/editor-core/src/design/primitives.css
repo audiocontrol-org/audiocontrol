@@ -757,3 +757,23 @@
   width: 1rem;
   height: 1rem;
 }
+
+/* Scrollbar styling for dark theme */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--ac-color-surface-canvas);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ac-color-border-subtle);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--ac-color-border-subtle) 80%, var(--ac-color-text-muted));
+}
