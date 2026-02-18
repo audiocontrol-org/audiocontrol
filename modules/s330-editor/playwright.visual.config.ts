@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const port = Number.parseInt(process.env.VISUAL_PORT ?? '3330', 10);
-const baseURL = process.env.VISUAL_BASE_URL ?? `https://localhost:${port}`;
+const port = Number.parseInt(process.env.VISUAL_PORT ?? '4330', 10);
+const baseURL = process.env.VISUAL_BASE_URL ?? `http://localhost:${port}`;
 const appURL = `${baseURL}/roland/s330/editor/`;
 
 export default defineConfig({
@@ -14,7 +14,6 @@ export default defineConfig({
     baseURL,
     trace: 'off',
     screenshot: 'off',
-    ignoreHTTPSErrors: true,
     permissions: ['midi', 'midi-sysex'],
   },
   projects: [
@@ -26,7 +25,9 @@ export default defineConfig({
   webServer: process.env.VISUAL_BASE_URL
     ? undefined
     : {
-        command: `pnpm dev --host --port ${port}`,
+        // Keep server URL deterministic for Playwright health checks.
+        // If the port is busy, fail fast instead of auto-switching ports.
+        command: `VISUAL_HTTP=1 pnpm dev --host --port ${port} --strictPort`,
         url: appURL,
         reuseExistingServer: true,
         timeout: 120 * 1000,

@@ -74,6 +74,9 @@ export function EditorLayout({
   const headerStyle: CSSProperties = {
     backgroundColor: theme.bgPanel,
     borderBottom: `1px solid ${theme.border}`,
+    position: 'sticky',
+    top: 0,
+    zIndex: 40,
   };
 
   const navLinkBaseStyle: CSSProperties = {

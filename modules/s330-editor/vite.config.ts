@@ -19,14 +19,17 @@ function getGitInfo() {
 
 const gitInfo = getGitInfo();
 const buildTime = new Date().toISOString();
+const useMkcert = process.env.VISUAL_HTTP !== '1';
 
 export default defineConfig({
   base: '/roland/s330/editor/',
   plugins: [
     react(),
-    mkcert({
-      hosts: ['localhost', 'orion-m1', 'orion-m4'],
-    }),
+    ...(useMkcert
+      ? [mkcert({
+          hosts: ['localhost', 'orion-m1', 'orion-m4'],
+        })]
+      : []),
   ],
   resolve: {
     alias: {

@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const port = Number.parseInt(process.env.VISUAL_PORT ?? '3110', 10);
+const port = Number.parseInt(process.env.VISUAL_PORT ?? '4310', 10);
 const baseURL = process.env.VISUAL_BASE_URL ?? `http://localhost:${port}`;
 
 export default defineConfig({
@@ -24,7 +24,7 @@ export default defineConfig({
   webServer: process.env.VISUAL_BASE_URL
     ? undefined
     : {
-        command: `pnpm dev --host --port ${port}`,
+        command: `pnpm dev --host --port ${port} --strictPort`,
         url: baseURL,
         reuseExistingServer: true,
         timeout: 120 * 1000,

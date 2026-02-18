@@ -7,7 +7,8 @@
   --ac-text-lg: 1.5rem;
   --ac-page-space: var(--ac-space-3);
   --ac-page-main-inline: 1rem;
-  --ac-page-sticky-top: 5.5rem;
+  --ac-page-sticky-top: 5.125rem;
+  --ac-page-sticky-padding-top: var(--ac-space-3);
   --ac-page-main-vertical: 3rem;
   --ac-page-list-sticky-top: 10rem;
   --ac-page-list-scroll-bottom: 2.25rem;
@@ -34,8 +35,10 @@
   position: sticky;
   top: var(--ac-page-sticky-top);
   z-index: 30;
+  margin-top: calc(var(--ac-page-space) * -1);
   margin-inline: calc(var(--ac-page-main-inline) * -1);
   padding-inline: var(--ac-page-main-inline);
+  padding-top: var(--ac-page-sticky-padding-top);
   padding-bottom: var(--ac-space-3);
   background: var(--ac-color-surface-canvas);
   border-bottom: 1px solid color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
