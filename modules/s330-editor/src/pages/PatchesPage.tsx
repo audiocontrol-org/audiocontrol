@@ -212,7 +212,7 @@ export function PatchesPage() {
     <div className="ac-page ac-page-shell">
       {/* Sticky Header */}
       <div className="ac-page-sticky-header">
-        <div className="flex items-center justify-between gap-4">
+        <div className="ac-page-header">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-s330-text">Patches</h2>
             <span className="text-sm text-s330-muted">

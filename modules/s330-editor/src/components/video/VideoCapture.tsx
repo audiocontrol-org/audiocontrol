@@ -354,7 +354,10 @@ export function VideoCapture() {
         )}
 
         {error && (
-          <div className="absolute bottom-0 left-0 right-0 bg-red-500/80 px-2 py-1">
+          <div
+            className="absolute bottom-0 left-0 right-0 px-2 py-1"
+            style={{ background: 'color-mix(in srgb, var(--ac-status-danger) 80%, transparent)' }}
+          >
             <p className="text-white text-xs">{error}</p>
           </div>
         )}
@@ -393,7 +396,7 @@ export function VideoCapture() {
           ) : (
             <button
               onClick={stopStream}
-              className="px-3 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-500"
+              className="ac-btn ac-btn-danger px-3 py-1 text-xs"
             >
               Stop
             </button>

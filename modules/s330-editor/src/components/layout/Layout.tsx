@@ -95,14 +95,17 @@ function DrawerToggle({ isOpen, drawerWidth, onToggle }: DrawerToggleProps): JSX
     <button
       onClick={onToggle}
       className={cn(
-        'fixed top-3 z-50',
-        'flex items-center justify-center gap-1',
-        'w-12 h-16 rounded-r-md',
+        'fixed z-50',
+        'flex flex-col items-center justify-center gap-1.5',
+        'w-12 h-20 rounded-r-md',
         'bg-s330-panel border border-l-0 border-s330-accent',
         'text-s330-muted hover:text-s330-text hover:bg-s330-accent/50',
         'shadow-md transition-[left] duration-200 ease-in-out'
       )}
-      style={{ left: isOpen ? drawerWidth : 0 }}
+      style={{
+        top: 'calc(var(--ac-page-sticky-top) + 0.25rem)',
+        left: isOpen ? drawerWidth : 0,
+      }}
       title={isOpen ? 'Close S-330 display' : 'Open S-330 display'}
     >
       {/* Video camera icon */}

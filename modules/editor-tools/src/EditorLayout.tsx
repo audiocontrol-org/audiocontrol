@@ -227,9 +227,9 @@ export function MidiStatusDisplay({
   const mutedColor = 'var(--ac-text-muted, #6b7280)';
 
   return (
-    <div className="flex items-center gap-2 text-sm">
+    <div className="text-sm" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
       {/* Status indicator */}
-      <div className="flex items-center gap-1.5">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem' }}>
         <div
           style={{
             width: '0.5rem',

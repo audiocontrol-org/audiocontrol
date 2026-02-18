@@ -284,46 +284,47 @@ export function PlayPage() {
 
   return (
     <div className="ac-page ac-page-shell">
-      {/* Header with bank loading buttons */}
-      <div className="ac-page-header">
-        <h2 className="text-xl font-bold text-s330-text">Play</h2>
-        <div className="flex items-center gap-4 flex-1 justify-end">
-          {/* Loading Progress */}
-          {isLoading && loadingProgress !== null && (
-            <div className="flex-1 max-w-xs">
-              <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                  style={{ width: `${loadingProgress}%` }}
-                />
+      <div className="ac-page-sticky-header">
+        <div className="ac-page-header">
+          <h2 className="text-xl font-bold text-s330-text">Play</h2>
+          <div className="flex items-center gap-4 flex-1 justify-end">
+            {/* Loading Progress */}
+            {isLoading && loadingProgress !== null && (
+              <div className="flex-1 max-w-xs">
+                <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-s330-highlight transition-all duration-150 ease-out"
+                    style={{ width: `${loadingProgress}%` }}
+                  />
+                </div>
+                <p className="text-s330-muted text-xs mt-0.5 truncate">{loadingMessage}</p>
               </div>
-              <p className="text-s330-muted text-xs mt-0.5 truncate">{loadingMessage}</p>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-s330-muted">(Re)load:</span>
+              <button
+                onClick={() => loadPatchBank(0, true)}
+                disabled={isLoading}
+                className={cn(
+                  'ac-btn',
+                  loadedBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary',
+                  isLoading && 'opacity-50'
+                )}
+              >
+                P11-P18
+              </button>
+              <button
+                onClick={() => loadPatchBank(1, true)}
+                disabled={isLoading}
+                className={cn(
+                  'ac-btn',
+                  loadedBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary',
+                  isLoading && 'opacity-50'
+                )}
+              >
+                P21-P28
+              </button>
             </div>
-          )}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-s330-muted">(Re)load:</span>
-            <button
-              onClick={() => loadPatchBank(0, true)}
-              disabled={isLoading}
-              className={cn(
-                'ac-btn',
-                loadedBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary',
-                isLoading && 'opacity-50'
-              )}
-            >
-              P11-P18
-            </button>
-            <button
-              onClick={() => loadPatchBank(1, true)}
-              disabled={isLoading}
-              className={cn(
-                'ac-btn',
-                loadedBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary',
-                isLoading && 'opacity-50'
-              )}
-            >
-              P21-P28
-            </button>
           </div>
         </div>
       </div>
