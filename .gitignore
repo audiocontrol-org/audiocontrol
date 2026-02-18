@@ -24,6 +24,8 @@ logs/
 # Testing
 coverage/
 .nyc_output/
+modules/*-editor/test-results/
+modules/*-editor/playwright-report/
 
 # Package manager
 pnpm-lock.yamltmp/

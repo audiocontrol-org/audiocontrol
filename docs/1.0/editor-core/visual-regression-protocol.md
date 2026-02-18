@@ -107,7 +107,7 @@ Per-editor commands are also available:
 ## Baseline Compare Contract
 
 - Baseline directory: `modules/<editor>/artifacts/visual/baseline`
-- Current capture directory: `modules/<editor>/artifacts/visual/current`
+- Current capture directory: `modules/<editor>/test-results/visual/current` (git-ignored)
 - Compare script: exact PNG hash + file set parity.
   - Missing current image for an existing baseline: fail
   - Extra current image without a baseline peer: fail

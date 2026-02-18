@@ -9,7 +9,7 @@ if (!modulePath) {
 }
 
 const baselineDir = path.join(modulePath, 'artifacts/visual/baseline');
-const currentDir = path.join(modulePath, 'artifacts/visual/current');
+const currentDir = path.join(modulePath, 'test-results/visual/current');
 
 async function listPngs(dir) {
   try {

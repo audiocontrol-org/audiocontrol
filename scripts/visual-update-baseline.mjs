@@ -8,7 +8,7 @@ if (!modulePath) {
 }
 
 const baselineDir = path.join(modulePath, 'artifacts/visual/baseline');
-const currentDir = path.join(modulePath, 'artifacts/visual/current');
+const currentDir = path.join(modulePath, 'test-results/visual/current');
 
 await rm(baselineDir, { recursive: true, force: true });
 await mkdir(path.dirname(baselineDir), { recursive: true });

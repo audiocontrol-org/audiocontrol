@@ -3,7 +3,7 @@ import { test } from '@playwright/test';
 import { captureEditorFixtureScreenshots } from '@audiocontrol/editor-core';
 import { d110VisualFixture } from '../src/testing/visualFixtures';
 
-const outputDir = process.env.VISUAL_OUTPUT_DIR ?? 'artifacts/visual/current';
+const outputDir = process.env.VISUAL_OUTPUT_DIR ?? 'test-results/visual/current';
 
 test('capture deterministic D-110 visual fixtures', async ({ page }) => {
   await mkdir(outputDir, { recursive: true });

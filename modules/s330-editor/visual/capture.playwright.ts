@@ -3,7 +3,7 @@ import { test } from '@playwright/test';
 import { captureEditorFixtureScreenshots } from '@audiocontrol/editor-core';
 import { s330VisualFixture } from '../src/testing/visualFixtures';
 
-const outputDir = process.env.VISUAL_OUTPUT_DIR ?? 'artifacts/visual/current';
+const outputDir = process.env.VISUAL_OUTPUT_DIR ?? 'test-results/visual/current';
 const pageId = process.env.VISUAL_PAGE_ID;
 
 test('capture deterministic S-330 visual fixtures', async ({ page }) => {
