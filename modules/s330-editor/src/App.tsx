@@ -1,11 +1,19 @@
+import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { HomePage } from '@/pages/HomePage';
 import { PlayPage } from '@/pages/PlayPage';
 import { PatchesPage } from '@/pages/PatchesPage';
 import { TonesPage } from '@/pages/TonesPage';
+import { isMockMidiMode } from '@/mock/mockMode';
+import { seedS330MockState } from '@/mock/mockState';
 
 export function App() {
+  useEffect(() => {
+    if (!isMockMidiMode()) return;
+    seedS330MockState();
+  }, []);
+
   return (
     <Layout>
       <Routes>

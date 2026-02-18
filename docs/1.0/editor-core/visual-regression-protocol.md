@@ -13,6 +13,9 @@ Provide a repeatable manual screenshot workflow to close Phase 7 visual consiste
 - Zoom: 100%
 - Viewport: `1366x768`
 - Capture type: full window screenshot
+- Runtime mode: use deterministic mock transport
+  - append `?midi=mock` to each editor URL
+  - S-330 additionally seeds deterministic page data for `Play/Patches/Tones` in mock mode
 - Editor state:
   - `Disconnected` state captures for connection pages
   - `Connected` state captures for editor pages where applicable
@@ -23,19 +26,19 @@ Provide a repeatable manual screenshot workflow to close Phase 7 visual consiste
 ## Route Matrix
 
 1. S-330
-- Connect: `/roland/s330/editor/`
-- Play: `/roland/s330/editor/play`
-- Patches: `/roland/s330/editor/patches`
-- Tones: `/roland/s330/editor/tones`
+- Connect: `/roland/s330/editor/?midi=mock`
+- Play: `/roland/s330/editor/play?midi=mock`
+- Patches: `/roland/s330/editor/patches?midi=mock`
+- Tones: `/roland/s330/editor/tones?midi=mock`
 
 2. D-110
-- Connect: `/roland/d110/editor/`
-- Tones: `/roland/d110/editor/tones`
-- Patches: `/roland/d110/editor/patches`
+- Connect: `/roland/d110/editor/?midi=mock`
+- Tones: `/roland/d110/editor/tones?midi=mock`
+- Patches: `/roland/d110/editor/patches?midi=mock`
 
 3. JV-1080
-- Connect: `/roland/jv1080/editor/`
-- Editor: `/roland/jv1080/editor/editor`
+- Connect: `/roland/jv1080/editor/?midi=mock`
+- Editor: `/roland/jv1080/editor/editor?midi=mock`
 
 ## Per-Screenshot Checks
 

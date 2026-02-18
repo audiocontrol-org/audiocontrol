@@ -16,6 +16,8 @@ import {
 import { createS330Client } from '@/core/midi/S330Client';
 import type { S330ClientInterface, S330Patch } from '@/core/midi/S330Client';
 import { cn } from '@/lib/utils';
+import { isMockMidiMode } from '@/mock/mockMode';
+import { MOCK_PLAY_PARTS } from '@/mock/mockState';
 
 // MIDI Part configuration (A-H = channels 1-8)
 interface MidiPart {
@@ -31,6 +33,7 @@ interface MidiPart {
 const PART_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 export function PlayPage() {
+  const mockMode = isMockMidiMode();
   const { adapter, deviceId, status } = useMidiStore();
   const { setLoading, setError, isLoading, error, setProgress, clearProgress, loadingProgress, loadingMessage } =
     useS330Store();
@@ -67,12 +70,33 @@ export function PlayPage() {
 
   // Initialize client when adapter changes
   useEffect(() => {
+    if (mockMode) return;
     if (!adapter) {
       clientRef.current = null;
       return;
     }
     clientRef.current = createS330Client(adapter, { deviceId });
-  }, [adapter, deviceId]);
+  }, [adapter, deviceId, mockMode]);
+
+  // Deterministic mock-mode part assignments for screenshots and visual tests.
+  useEffect(() => {
+    if (!mockMode) return;
+    hasInitiatedLoad.current = true;
+    setParts((prev) =>
+      prev.map((part, index) => {
+        const mock = MOCK_PLAY_PARTS[index];
+        if (!mock) return part;
+        return {
+          ...part,
+          channel: mock.channel,
+          patchIndex: mock.patchIndex,
+          output: mock.output,
+          level: mock.level,
+          active: mock.active,
+        };
+      })
+    );
+  }, [mockMode]);
 
   // Load a specific range of patches
   const loadPatchBank = useCallback(
@@ -142,6 +166,7 @@ export function PlayPage() {
 
   // Load initial data when connected
   useEffect(() => {
+    if (mockMode) return;
     if (!isConnected || hasInitiatedLoad.current) return;
 
     // Skip if data already in store
@@ -156,7 +181,7 @@ export function PlayPage() {
       hasInitiatedLoad.current = true;
       loadPatchBank(0).then(() => loadFunctionParams());
     }
-  }, [isConnected, isLoading, patches.length, loadPatchBank, loadFunctionParams]);
+  }, [isConnected, isLoading, patches.length, loadPatchBank, loadFunctionParams, mockMode]);
 
   // Update patch names when patches or parts change
   useEffect(() => {
