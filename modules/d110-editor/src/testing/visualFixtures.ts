@@ -12,12 +12,12 @@ export const d110VisualFixture: VisualEditorFixture = {
     {
       id: 'tones',
       path: buildVisualRoute('/roland/d110/editor/tones'),
-      readySelector: 'h1:has-text("Tone Editor"), h2:has-text("Tones")',
+      readySelector: 'h1:has-text("Tone Editor"), h2:has-text("Tone Editor"), h2:has-text("Tones")',
     },
     {
       id: 'patches',
       path: buildVisualRoute('/roland/d110/editor/patches'),
-      readySelector: 'h1:has-text("Patch Editor"), h2:has-text("Patches")',
+      readySelector: 'h1:has-text("Patch Editor"), h2:has-text("Patch Editor"), h2:has-text("Patches")',
     },
   ],
 };

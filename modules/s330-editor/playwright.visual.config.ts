@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const port = Number.parseInt(process.env.VISUAL_PORT ?? '3330', 10);
-const baseURL = process.env.VISUAL_BASE_URL ?? `http://localhost:${port}`;
+const baseURL = process.env.VISUAL_BASE_URL ?? `https://localhost:${port}`;
+const appURL = `${baseURL}/roland/s330/editor/`;
 
 export default defineConfig({
   testDir: './visual',
@@ -13,6 +14,7 @@ export default defineConfig({
     baseURL,
     trace: 'off',
     screenshot: 'off',
+    ignoreHTTPSErrors: true,
     permissions: ['midi', 'midi-sysex'],
   },
   projects: [
@@ -25,7 +27,7 @@ export default defineConfig({
     ? undefined
     : {
         command: `pnpm dev --host --port ${port}`,
-        url: baseURL,
+        url: appURL,
         reuseExistingServer: true,
         timeout: 120 * 1000,
       },

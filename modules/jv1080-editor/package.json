@@ -12,8 +12,8 @@
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "visual:capture": "playwright test -c playwright.visual.config.ts",
-    "visual:compare": "node ../../scripts/visual-compare.mjs modules/jv1080-editor",
-    "visual:baseline:update": "node ../../scripts/visual-update-baseline.mjs modules/jv1080-editor"
+    "visual:compare": "node ../../scripts/visual-compare.mjs .",
+    "visual:baseline:update": "node ../../scripts/visual-update-baseline.mjs ."
   },
   "keywords": [
     "roland",
