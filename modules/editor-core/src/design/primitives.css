@@ -73,11 +73,18 @@
     grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
     align-items: start;
   }
+
+  /* First grid cell must stretch to row height for sticky to work */
+  .ac-list-detail-grid > :first-child {
+    align-self: stretch;
+  }
 }
 
 .ac-list-column-sticky {
   position: sticky;
   top: var(--ac-page-list-sticky-top);
+  align-self: start;
+  max-height: calc(100vh - var(--ac-page-list-sticky-top) - var(--ac-page-list-scroll-bottom));
 }
 
 .ac-scroll-list {
