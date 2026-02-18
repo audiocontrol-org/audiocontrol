@@ -225,20 +225,23 @@ export function Layout({ children }: LayoutProps): JSX.Element {
   }, [isResizing, setDrawerWidth]);
 
   useEffect(() => {
-    const updateToggleTop = () => {
-      const root = contentRef.current;
-      if (!root) return;
+    const root = contentRef.current;
+    if (!root) return;
 
+    const updateToggleTop = () => {
       const target = root.querySelector<HTMLElement>('.ac-list-detail-grid .card, .card');
       if (!target) return;
 
       setDrawerToggleTopPx(target.getBoundingClientRect().top);
     };
 
-    const raf = requestAnimationFrame(updateToggleTop);
+    // Use ResizeObserver to detect when content layout changes
+    const resizeObserver = new ResizeObserver(updateToggleTop);
+    resizeObserver.observe(root);
+
     window.addEventListener('resize', updateToggleTop);
     return () => {
-      cancelAnimationFrame(raf);
+      resizeObserver.disconnect();
       window.removeEventListener('resize', updateToggleTop);
     };
   }, [children, isDrawerOpen, drawerWidth]);
