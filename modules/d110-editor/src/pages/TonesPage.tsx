@@ -34,7 +34,7 @@ export function TonesPage(): JSX.Element {
   return (
     <div className="ac-page ac-page-shell">
       {/* Header */}
-      <div className="ac-page-header">
+      <div className="ac-page-header ac-page-header-block">
         <h2 className="text-xl font-bold text-d110-text">Tones</h2>
       </div>
 

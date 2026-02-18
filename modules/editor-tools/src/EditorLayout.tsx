@@ -109,7 +109,12 @@ export function EditorLayout({
               <h1 className="text-xl font-bold" style={{ color: theme.textPrimary }}>
                 <span style={{ color: theme.highlight }}>{editorName}</span> Editor
               </h1>
-              <span className="text-xs" style={{ color: theme.textMuted }}>
+              <span
+                className="text-xs"
+                style={{
+                  color: 'var(--ac-highlight-secondary, var(--ac-text-muted, #9ca3af))',
+                }}
+              >
                 {editorSubtitle}
               </span>
             </div>

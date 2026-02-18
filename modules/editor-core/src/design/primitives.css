@@ -30,6 +30,9 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--ac-space-4);
+}
+
+.ac-page-header-block {
   padding-block: var(--ac-page-header-padding-y);
 }
 
