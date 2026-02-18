@@ -271,7 +271,7 @@ export function Layout({ children }: LayoutProps): JSX.Element {
         ref={contentRef}
         style={{
           ['--ac-page-offset-inline' as string]: isDrawerOpen
-            ? `calc(${drawerWidth}px + var(--ac-page-section-gap))`
+            ? `calc(${drawerWidth}px + var(--ac-page-section-gap) - 18px)`
             : '0px',
         }}
       >
