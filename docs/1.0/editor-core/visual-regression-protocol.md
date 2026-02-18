@@ -35,6 +35,23 @@ Provide a repeatable manual screenshot workflow to close Phase 7 visual consiste
 
 All fixture routes are generated with `buildVisualRoute(...)` so `?midi=mock` is consistently applied.
 
+## Execution Commands
+
+- Capture all editors:
+  - `pnpm visual:capture`
+- Compare against baseline (all editors):
+  - `pnpm visual:compare`
+- Capture then compare:
+  - `pnpm visual:check`
+- Promote current captures to baseline:
+  - `pnpm visual:baseline:update`
+
+Per-editor commands are also available:
+
+- `pnpm --filter @audiocontrol/s330-editor visual:capture`
+- `pnpm --filter @audiocontrol/d110-editor visual:capture`
+- `pnpm --filter @audiocontrol/jv1080-editor visual:capture`
+
 ## Route Matrix
 
 1. S-330
@@ -86,3 +103,12 @@ All fixture routes are generated with `buildVisualRoute(...)` so `?midi=mock` is
 - All matrix rows captured and reviewed.
 - All rows marked `Pass` or tracked with follow-up issue.
 - `docs/1.0/editor-core/implementation-summary.md` visual checklist updated to reflect outcome.
+
+## Baseline Compare Contract
+
+- Baseline directory: `modules/<editor>/artifacts/visual/baseline`
+- Current capture directory: `modules/<editor>/artifacts/visual/current`
+- Compare script: exact PNG hash + file set parity.
+  - Missing current image for an existing baseline: fail
+  - Extra current image without a baseline peer: fail
+  - Same filename but different image hash: fail

@@ -129,6 +129,9 @@ Architecture-review-driven adjustments (2026-02-17):
 - Centralized runtime MIDI transport mode selection in `editor-core` via `createRuntimeMidiTransport(...)` and `isMockMidiMode()`.
 - Added shared visual regression harness primitives in `editor-core` and per-editor fixture maps for S-330, D-110, and JV-1080.
 - Added mock-mode integration tests for S-330, D-110, and JV-1080 MIDI stores to verify deterministic startup/auto-connect behavior.
+- Added executable visual capture commands and baseline compare/update scripts:
+  - root scripts: `visual:capture`, `visual:compare`, `visual:check`, `visual:baseline:update`
+  - per-editor Playwright capture configs/specs and baseline compare wiring
 
 ## Code Metrics
 

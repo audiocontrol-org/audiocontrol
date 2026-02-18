@@ -10,7 +10,10 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --passWithNoTests",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "visual:capture": "playwright test -c playwright.visual.config.ts",
+    "visual:compare": "node ../../scripts/visual-compare.mjs modules/jv1080-editor",
+    "visual:baseline:update": "node ../../scripts/visual-update-baseline.mjs modules/jv1080-editor"
   },
   "keywords": [
     "roland",
@@ -39,6 +42,7 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
     "autoprefixer": "^10.4.16",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
