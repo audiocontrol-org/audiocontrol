@@ -8,11 +8,13 @@
   --ac-page-section-gap: var(--ac-space-6);
   --ac-page-space: var(--ac-page-section-gap);
   --ac-page-main-inline: var(--ac-space-6);
-  --ac-page-sticky-top: 5.125rem;
-  --ac-page-content-top: var(--ac-page-list-sticky-top);
+  --ac-site-header-height: 3.75rem;
+  --ac-page-header-height: 3.5rem;
+  --ac-page-sticky-top: var(--ac-site-header-height);
+  --ac-page-content-top: calc(var(--ac-page-list-sticky-top) + var(--ac-page-section-gap));
   --ac-page-header-padding-y: var(--ac-space-2);
   --ac-page-main-vertical: 3rem;
-  --ac-page-list-sticky-top: 10rem;
+  --ac-page-list-sticky-top: calc(var(--ac-site-header-height) + var(--ac-page-header-height));
   --ac-page-list-scroll-bottom: 2.25rem;
   --ac-container-md: 42rem;
 }
@@ -45,8 +47,8 @@
   top: var(--ac-page-sticky-top);
   z-index: 30;
   min-height: 3.5rem;
+  margin-top: calc(var(--ac-page-main-vertical) * -1);
   margin-inline: calc(var(--ac-page-main-inline) * -1);
-  margin-bottom: var(--ac-page-section-gap);
   padding-inline: var(--ac-page-main-inline);
   background: var(--ac-color-surface-canvas);
   border-bottom: 1px solid color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
