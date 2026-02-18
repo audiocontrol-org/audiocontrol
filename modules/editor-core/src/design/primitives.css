@@ -84,12 +84,23 @@
   position: sticky;
   top: var(--ac-page-list-sticky-top);
   align-self: start;
+  display: flex;
+  flex-direction: column;
   max-height: calc(100vh - var(--ac-page-list-sticky-top) - var(--ac-page-list-scroll-bottom));
 }
 
+/* Cards inside sticky columns must constrain to parent bounds */
+.ac-list-column-sticky > .card {
+  max-height: inherit;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
 .ac-scroll-list {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  max-height: calc(100vh - var(--ac-page-list-sticky-top) - var(--ac-page-list-scroll-bottom));
 }
 
 .ac-container-md {
