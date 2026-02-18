@@ -23,6 +23,18 @@ Provide a repeatable manual screenshot workflow to close Phase 7 visual consiste
   - `before-<editor>-<page>.png`
   - `after-<editor>-<page>.png`
 
+## Shared Harness
+
+- Shared helpers live in `modules/editor-core/src/testing/`.
+- Route/query helper: `modules/editor-core/src/testing/visualRegression.ts`
+- Playwright capture helper: `modules/editor-core/src/testing/playwrightHarness.ts`
+- Per-editor fixtures:
+  - `modules/s330-editor/src/testing/visualFixtures.ts`
+  - `modules/d110-editor/src/testing/visualFixtures.ts`
+  - `modules/jv1080-editor/src/testing/visualFixtures.ts`
+
+All fixture routes are generated with `buildVisualRoute(...)` so `?midi=mock` is consistently applied.
+
 ## Route Matrix
 
 1. S-330

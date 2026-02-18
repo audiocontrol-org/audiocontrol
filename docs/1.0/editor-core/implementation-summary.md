@@ -126,6 +126,9 @@ Architecture-review-driven adjustments (2026-02-17):
 - Prioritized Tailwind token convergence for `s330` and `d110` to reduce token drift versus `editor-core`.
 - Split deferred React abstraction work (shared `SelectableList`) into a post-Phase-7 follow-up issue.
 - Added explicit Phase 7 exit checks for control utility de-duplication and motion/typography token contract completion.
+- Centralized runtime MIDI transport mode selection in `editor-core` via `createRuntimeMidiTransport(...)` and `isMockMidiMode()`.
+- Added shared visual regression harness primitives in `editor-core` and per-editor fixture maps for S-330, D-110, and JV-1080.
+- Added mock-mode integration tests for S-330, D-110, and JV-1080 MIDI stores to verify deterministic startup/auto-connect behavior.
 
 ## Code Metrics
 
