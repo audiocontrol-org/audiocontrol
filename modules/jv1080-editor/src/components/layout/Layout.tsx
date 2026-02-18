@@ -1,21 +1,19 @@
+/**
+ * JV-1080 Editor Layout
+ *
+ * Uses shared EditorLayout from @audiocontrol/editor-core
+ */
+
 import { type ReactNode, useCallback, useEffect } from 'react';
 import {
   EditorLayout,
   MidiStatusDisplay,
   PanicButton,
   type EditorLayoutConfig,
-} from '@audiocontrol/editor-tools';
+} from '@audiocontrol/editor-core';
 import { useMidiStore } from '@/stores/midiStore';
 
-const jv1080Theme = {
-  bgPrimary: 'var(--ac-bg-primary)',
-  bgPanel: 'var(--ac-bg-panel)',
-  border: 'var(--ac-border)',
-  textPrimary: 'var(--ac-text-primary)',
-  textMuted: 'var(--ac-text-muted)',
-  highlight: 'var(--ac-highlight)',
-};
-
+// JV-1080 Editor layout configuration
 const layoutConfig: EditorLayoutConfig = {
   editorName: 'JV-1080',
   editorSubtitle: 'Roland Synthesizer Module',
@@ -23,20 +21,11 @@ const layoutConfig: EditorLayoutConfig = {
     { to: '/', label: 'Connect' },
     { to: '/editor', label: 'Editor' },
   ],
-  theme: jv1080Theme,
   buildInfoConfig: {
     editorName: 'JV-1080 Editor',
     editorDescription: 'Roland Synthesizer Module',
     githubRepo: 'audiocontrol-org/audiocontrol',
     issueTitlePrefix: '[JV-1080 Editor]',
-    theme: {
-      textMuted: jv1080Theme.textMuted,
-      textPrimary: jv1080Theme.textPrimary,
-      textHighlight: jv1080Theme.highlight,
-      bgPrimary: jv1080Theme.bgPrimary,
-      bgPanel: jv1080Theme.bgPanel,
-      border: jv1080Theme.border,
-    },
   },
 };
 

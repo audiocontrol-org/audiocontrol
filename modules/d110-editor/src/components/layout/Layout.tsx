@@ -1,7 +1,7 @@
 /**
  * D-110 Editor Layout
  *
- * Uses shared EditorLayout from @audiocontrol/editor-tools
+ * Uses shared EditorLayout from @audiocontrol/editor-core
  */
 
 import { type ReactNode, useEffect, useCallback } from 'react';
@@ -10,18 +10,8 @@ import {
   PanicButton,
   MidiStatusDisplay,
   type EditorLayoutConfig,
-} from '@audiocontrol/editor-tools';
+} from '@audiocontrol/editor-core';
 import { useMidiStore } from '@/stores/midiStore';
-
-// D-110 Editor theme colors
-const d110Theme = {
-  bgPrimary: 'var(--ac-bg-primary)',
-  bgPanel: 'var(--ac-bg-panel)',
-  border: 'var(--ac-border)',
-  textPrimary: 'var(--ac-text-primary)',
-  textMuted: 'var(--ac-text-muted)',
-  highlight: 'var(--ac-highlight)',
-};
 
 // D-110 Editor layout configuration
 const layoutConfig: EditorLayoutConfig = {
@@ -32,20 +22,11 @@ const layoutConfig: EditorLayoutConfig = {
     { to: '/tones', label: 'Tones' },
     { to: '/patches', label: 'Patches' },
   ],
-  theme: d110Theme,
   buildInfoConfig: {
     editorName: 'D-110 Editor',
     editorDescription: 'Roland LA Synthesizer',
     githubRepo: 'audiocontrol-org/audiocontrol',
     issueTitlePrefix: '[D-110 Editor]',
-    theme: {
-      textMuted: d110Theme.textMuted,
-      textPrimary: d110Theme.textPrimary,
-      textHighlight: d110Theme.highlight,
-      bgPrimary: d110Theme.bgPrimary,
-      bgPanel: d110Theme.bgPanel,
-      border: d110Theme.border,
-    },
   },
   footerText: 'D-110 Editor uses Web MIDI API for direct browser-to-hardware communication. Requires Chrome, Edge, or Opera browser.',
 };

@@ -33,7 +33,6 @@
   },
   "dependencies": {
     "@audiocontrol/editor-core": "workspace:*",
-    "@audiocontrol/editor-tools": "workspace:*",
     "@audiocontrol/sampler-devices": "workspace:*",
     "@audiocontrol/shared-midi": "workspace:*",
     "react": "^18.2.0",

@@ -39,7 +39,6 @@
   },
   "dependencies": {
     "@audiocontrol/editor-core": "workspace:*",
-    "@audiocontrol/editor-tools": "workspace:*",
     "@audiocontrol/shared-midi": "workspace:*",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",

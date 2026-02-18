@@ -15,3 +15,20 @@ export {
   type MidiConnectionPageStore,
   type MidiConnectionPageProps,
 } from './MidiConnectionPage';
+
+// Layout components
+export {
+  EditorLayout,
+  PanicButton,
+  MidiStatusDisplay,
+  BuildInfo,
+  getBuildInfo,
+  type EditorLayoutConfig,
+  type EditorLayoutProps,
+  type NavItem,
+  type PanicButtonProps,
+  type MidiStatusDisplayProps,
+  type BuildInfoData,
+  type BuildInfoConfig,
+  type BuildInfoProps,
+} from './layout';

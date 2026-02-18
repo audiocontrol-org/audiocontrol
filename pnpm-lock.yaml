@@ -143,9 +143,6 @@ importers:
       '@audiocontrol/editor-core':
         specifier: workspace:*
         version: link:../editor-core
-      '@audiocontrol/editor-tools':
-        specifier: workspace:*
-        version: link:../editor-tools
       '@audiocontrol/shared-midi':
         specifier: workspace:*
         version: link:../shared-midi
@@ -271,6 +268,12 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.3.1(react@18.3.1)
+      react-router-dom:
+        specifier: ^6.21.0
+        version: 6.30.3(react-dom@18.3.1)(react@18.3.1)
+      tailwindcss:
+        specifier: ^3.4.0
+        version: 3.4.19(tsx@4.20.5)
       typescript:
         specifier: ^5.3.0
         version: 5.9.2
@@ -278,33 +281,11 @@ importers:
         specifier: ^1.6.1
         version: 1.6.1(@types/node@20.19.17)
 
-  modules/editor-tools:
-    dependencies:
-      react:
-        specifier: ^18.2.0
-        version: 18.3.1
-    devDependencies:
-      '@types/node':
-        specifier: ^20.0.0
-        version: 20.19.17
-      '@types/react':
-        specifier: ^18.2.0
-        version: 18.3.27
-      react-router-dom:
-        specifier: ^6.21.0
-        version: 6.30.3(react-dom@18.3.1)(react@18.3.1)
-      typescript:
-        specifier: ^5.0.0
-        version: 5.9.2
-
   modules/jv1080-editor:
     dependencies:
       '@audiocontrol/editor-core':
         specifier: workspace:*
         version: link:../editor-core
-      '@audiocontrol/editor-tools':
-        specifier: workspace:*
-        version: link:../editor-tools
       '@audiocontrol/sampler-devices':
         specifier: workspace:*
         version: link:../sampler-devices
@@ -574,9 +555,6 @@ importers:
       '@audiocontrol/editor-core':
         specifier: workspace:*
         version: link:../editor-core
-      '@audiocontrol/editor-tools':
-        specifier: workspace:*
-        version: link:../editor-tools
       '@audiocontrol/sampler-devices':
         specifier: workspace:*
         version: link:../sampler-devices

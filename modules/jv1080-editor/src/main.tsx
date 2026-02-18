@@ -2,9 +2,13 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from '@/App';
+import { initLogCapture } from '@audiocontrol/editor-core';
 import '@audiocontrol/editor-core/tokens.css';
 import '@audiocontrol/editor-core/primitives.css';
 import '@/index.css';
+
+// Initialize log capture before React renders
+initLogCapture();
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

@@ -1,10 +1,17 @@
-/** @type {import('tailwindcss').Config} */
+import type { Config } from 'tailwindcss';
+import editorCorePreset from '@audiocontrol/editor-core/tailwind-preset';
+
 export default {
-  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
+  presets: [editorCorePreset],
+  content: [
+    './index.html',
+    './src/**/*.{js,ts,jsx,tsx}',
+    '../editor-core/src/**/*.{js,ts,jsx,tsx}',
+  ],
   theme: {
     extend: {
       colors: {
-        // D-110 inspired color scheme (silver/gray hardware)
+        // D-110 inspired color scheme (device-specific)
         'd110': {
           bg: 'var(--ac-bg-primary)',
           panel: 'var(--ac-bg-panel)',
@@ -19,4 +26,4 @@ export default {
     },
   },
   plugins: [],
-};
+} satisfies Config;

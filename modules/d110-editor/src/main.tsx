@@ -1,6 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { initLogCapture } from '@audiocontrol/editor-tools';
+import { initLogCapture } from '@audiocontrol/editor-core';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from '@/App';
 import '@audiocontrol/editor-core/tokens.css';

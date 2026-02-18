@@ -1,7 +1,7 @@
 /**
  * S-330 Editor Layout
  *
- * Uses shared EditorLayout from @audiocontrol/editor-tools
+ * Uses shared EditorLayout from @audiocontrol/editor-core
  * with S-330-specific video capture drawer
  */
 
@@ -11,21 +11,11 @@ import {
   PanicButton,
   MidiStatusDisplay,
   type EditorLayoutConfig,
-} from '@audiocontrol/editor-tools';
+} from '@audiocontrol/editor-core';
 import { VideoCapture } from '@/components/video/VideoCapture';
 import { useMidiStore } from '@/stores/midiStore';
 import { useUIStore, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
-
-// S-330 Editor theme colors
-const s330Theme = {
-  bgPrimary: 'var(--ac-bg-primary)',
-  bgPanel: 'var(--ac-bg-panel)',
-  border: 'var(--ac-border)',
-  textPrimary: 'var(--ac-text-primary)',
-  textMuted: 'var(--ac-text-muted)',
-  highlight: 'var(--ac-highlight)',
-};
 
 // S-330 Editor layout configuration
 const layoutConfig: EditorLayoutConfig = {
@@ -37,20 +27,11 @@ const layoutConfig: EditorLayoutConfig = {
     { to: '/patches', label: 'Patches' },
     { to: '/tones', label: 'Tones' },
   ],
-  theme: s330Theme,
   buildInfoConfig: {
     editorName: 'S-330 Editor',
     editorDescription: 'Roland Sampler',
     githubRepo: 'audiocontrol-org/audiocontrol',
     issueTitlePrefix: '[S-330 Editor]',
-    theme: {
-      textMuted: s330Theme.textMuted,
-      textPrimary: s330Theme.textPrimary,
-      textHighlight: s330Theme.highlight,
-      bgPrimary: s330Theme.bgPrimary,
-      bgPanel: s330Theme.bgPanel,
-      border: s330Theme.border,
-    },
   },
 };
 
