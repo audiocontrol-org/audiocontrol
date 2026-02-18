@@ -281,3 +281,22 @@
   border-color: color-mix(in srgb, var(--ac-status-danger) 55%, var(--ac-color-border-subtle));
   background: color-mix(in srgb, var(--ac-status-danger) 12%, transparent);
 }
+
+.ac-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-inline: var(--ac-drawer-inline);
+  padding-block: var(--ac-space-3);
+  border-bottom: 1px solid var(--ac-color-border-subtle);
+}
+
+.ac-drawer-section {
+  padding-inline: var(--ac-drawer-inline);
+  padding-block: var(--ac-space-3);
+  border-top: 1px solid var(--ac-color-border-subtle);
+}
+
+.ac-drawer-section:first-of-type {
+  border-top: none;
+}

@@ -269,7 +269,7 @@ export function VideoCapture() {
   return (
     <div className="flex flex-col h-full">
       {/* Header - matches main header height */}
-      <div className="flex items-center justify-between h-[88px] px-3 border-b border-s330-accent select-none">
+      <div className="ac-drawer-header h-[88px] border-s330-accent select-none">
         <span className="text-sm font-medium text-s330-text">S-330 Display</span>
       </div>
 
@@ -326,7 +326,7 @@ export function VideoCapture() {
 
       {/* Video Controls */}
       {hasPermission && devices.length > 0 && (
-        <div className="p-2 border-t border-s330-accent flex gap-2 items-center">
+        <div className="ac-drawer-section border-s330-accent flex gap-2 items-center">
           <select
             value={selectedDeviceId ?? ''}
             onChange={(e) => handleDeviceChange(e.target.value)}
@@ -366,7 +366,7 @@ export function VideoCapture() {
       )}
 
       {/* Front Panel Controls */}
-      <div className="p-3 border-t border-s330-accent space-y-3">
+      <div className="ac-drawer-section border-s330-accent space-y-3">
         <FunctionButtonRow
           onPress={pressButton}
           activeButton={activeButton}
