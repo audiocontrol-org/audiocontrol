@@ -7,8 +7,9 @@
   --ac-text-lg: 1.5rem;
   --ac-page-section-gap: var(--ac-space-6);
   --ac-page-space: var(--ac-page-section-gap);
-  --ac-page-main-inline: 1rem;
+  --ac-page-main-inline: var(--ac-space-6);
   --ac-page-sticky-top: 5.125rem;
+  --ac-page-content-top: var(--ac-page-list-sticky-top);
   --ac-page-header-padding-y: var(--ac-space-2);
   --ac-page-main-vertical: 3rem;
   --ac-page-list-sticky-top: 10rem;
@@ -46,6 +47,11 @@
   padding-block: var(--ac-page-header-padding-y);
   background: var(--ac-color-surface-canvas);
   border-bottom: 1px solid color-mix(in srgb, var(--ac-color-border-subtle) 70%, transparent);
+}
+
+.ac-page-shell > :not(.ac-page-sticky-header) {
+  margin-inline-start: var(--ac-page-offset-inline, 0px);
+  transition: margin-inline-start 200ms;
 }
 
 .ac-list-detail-grid {

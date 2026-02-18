@@ -92,6 +92,9 @@ export function EditorLayout({
     padding: '1rem 0',
     marginTop: 'auto',
   };
+  const containerStyle: CSSProperties = {
+    paddingInline: 'var(--ac-page-main-inline, 1rem)',
+  };
 
   return (
     <div
@@ -102,7 +105,7 @@ export function EditorLayout({
 
       {/* Header */}
       <header style={headerStyle}>
-        <div className="max-w-7xl mx-auto px-4 py-3">
+        <div className="max-w-7xl mx-auto py-3" style={containerStyle}>
           <div className="flex items-center justify-between">
             {/* Logo */}
             <div className="flex items-center gap-4">
@@ -153,8 +156,8 @@ export function EditorLayout({
 
       {/* Main content */}
       <main
-        className="max-w-7xl mx-auto px-4 py-6 flex-1 w-full"
-        style={contentStyle}
+        className="max-w-7xl mx-auto py-6 flex-1 w-full"
+        style={{ ...containerStyle, ...contentStyle }}
       >
         {children}
       </main>
@@ -163,8 +166,8 @@ export function EditorLayout({
       {footerText && (
         <footer style={footerStyle}>
           <div
-            className="max-w-7xl mx-auto px-4 text-center text-xs"
-            style={{ color: theme.textMuted }}
+            className="max-w-7xl mx-auto text-center text-xs"
+            style={{ color: theme.textMuted, ...containerStyle }}
           >
             {footerText}
           </div>
@@ -188,25 +191,11 @@ export function PanicButton({
   disabled = false,
   title = 'Send All Notes Off on all channels',
 }: PanicButtonProps): JSX.Element {
-  const panicBg = 'var(--ac-status-danger, #dc2626)';
-  const mutedText = 'var(--ac-text-muted, #6b7280)';
-  const mutedBg = 'color-mix(in srgb, var(--ac-color-surface-panel, #111827) 70%, transparent)';
-
   return (
     <button
       onClick={onClick}
       disabled={disabled}
-      style={{
-        padding: '0.375rem 0.75rem',
-        fontSize: '0.875rem',
-        fontWeight: 500,
-        borderRadius: '0.25rem',
-        backgroundColor: disabled ? mutedBg : panicBg,
-        color: disabled ? mutedText : 'white',
-        cursor: disabled ? 'not-allowed' : 'pointer',
-        transition: 'background-color var(--ac-duration-fast, 150ms) var(--ac-easing-default, ease)',
-      }}
-      className={disabled ? '' : 'hover:opacity-90'}
+      className="ac-btn ac-btn-danger px-3 py-1.5 text-sm hover:opacity-90"
       title={disabled ? 'Connect to MIDI to enable' : title}
     >
       PANIC

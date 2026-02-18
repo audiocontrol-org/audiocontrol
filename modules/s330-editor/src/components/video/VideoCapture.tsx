@@ -18,7 +18,6 @@ import { ValueButtons } from '@/components/front-panel/ValueButtons';
 import { FunctionButtonRow } from '@/components/front-panel/FunctionButtonRow';
 
 const STORAGE_KEY_DEVICE = 's330-video-device';
-const STORAGE_KEY_CONTROLS = 's330-video-controls-expanded';
 
 interface VideoDevice {
   deviceId: string;
@@ -37,10 +36,6 @@ export function VideoCapture() {
   const [error, setError] = useState<string | null>(null);
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [isSecureContext, setIsSecureContext] = useState<boolean | null>(null);
-  const [controlsExpanded, setControlsExpanded] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY_CONTROLS);
-    return saved === 'true';
-  });
 
   // Front panel hook
   const { pressButton, isConnected, isPressing, activeButton, navigationMode, setNavigationMode } = useFrontPanel();
@@ -221,14 +216,9 @@ export function VideoCapture() {
     }
   }, [isDrawerOpen, selectedDeviceId, hasPermission, isStreaming, startStream, stopStream]);
 
-  // Persist controls expanded state
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY_CONTROLS, String(controlsExpanded));
-  }, [controlsExpanded]);
-
   // Keyboard shortcut handler for front panel
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (!isDrawerOpen || !controlsExpanded || !isConnected || isPressing) return;
+    if (!isDrawerOpen || !isConnected || isPressing) return;
 
     const target = e.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
@@ -267,7 +257,7 @@ export function VideoCapture() {
       e.preventDefault();
       pressButton(funcButton);
     }
-  }, [isDrawerOpen, controlsExpanded, isConnected, isPressing, pressButton]);
+  }, [isDrawerOpen, isConnected, isPressing, pressButton]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -281,35 +271,6 @@ export function VideoCapture() {
       {/* Header - matches main header height */}
       <div className="flex items-center justify-between h-[88px] px-3 border-b border-s330-accent select-none">
         <span className="text-sm font-medium text-s330-text">S-330 Display</span>
-        <div className="flex items-center gap-2">
-          {isStreaming && (
-            <span className="flex items-center gap-1 text-xs text-green-400">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-              Live
-            </span>
-          )}
-          <span
-            className={cn(
-              'w-2 h-2 rounded-full',
-              isConnected ? 'bg-green-400' : 'bg-s330-muted'
-            )}
-            title={isConnected ? 'MIDI connected' : 'MIDI disconnected'}
-          />
-          <button
-            onClick={() => setControlsExpanded(!controlsExpanded)}
-            className={cn(
-              'p-1 text-s330-muted hover:text-s330-text',
-              controlsExpanded && 'text-s330-highlight'
-            )}
-            title={controlsExpanded ? 'Hide controls' : 'Show controls'}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-              />
-            </svg>
-          </button>
-        </div>
       </div>
 
       {/* Video area */}
@@ -370,7 +331,7 @@ export function VideoCapture() {
             value={selectedDeviceId ?? ''}
             onChange={(e) => handleDeviceChange(e.target.value)}
             className={cn(
-              'flex-1 px-2 py-1 text-xs font-mono',
+              'flex-1 min-w-0 px-2 py-1 text-xs font-mono',
               'bg-s330-bg border border-s330-accent rounded',
               'text-s330-text focus:outline-none focus:ring-1 focus:ring-s330-highlight'
             )}
@@ -386,7 +347,7 @@ export function VideoCapture() {
               onClick={startStream}
               disabled={!selectedDeviceId}
               className={cn(
-                'px-3 py-1 text-xs rounded',
+                'shrink-0 px-3 py-1 text-xs rounded',
                 'bg-s330-highlight text-white hover:bg-s330-highlight/80',
                 'disabled:opacity-50 disabled:cursor-not-allowed'
               )}
@@ -396,7 +357,7 @@ export function VideoCapture() {
           ) : (
             <button
               onClick={stopStream}
-              className="ac-btn ac-btn-danger px-3 py-1 text-xs"
+              className="ac-btn ac-btn-danger shrink-0 px-3 py-1 text-xs"
             >
               Stop
             </button>
@@ -405,52 +366,50 @@ export function VideoCapture() {
       )}
 
       {/* Front Panel Controls */}
-      {controlsExpanded && (
-        <div className="p-3 border-t border-s330-accent space-y-3">
-          <FunctionButtonRow
+      <div className="p-3 border-t border-s330-accent space-y-3">
+        <FunctionButtonRow
+          onPress={pressButton}
+          activeButton={activeButton}
+          disabled={!isConnected || isPressing}
+        />
+        <div className="flex items-center justify-between gap-2">
+          <NavigationPad
             onPress={pressButton}
             activeButton={activeButton}
             disabled={!isConnected || isPressing}
           />
-          <div className="flex items-center justify-between gap-2">
-            <NavigationPad
-              onPress={pressButton}
-              activeButton={activeButton}
-              disabled={!isConnected || isPressing}
-            />
-            <ValueButtons
-              onPress={pressButton}
-              activeButton={activeButton}
-              disabled={!isConnected || isPressing}
-            />
-          </div>
-          <div className="flex items-center justify-center gap-2">
-            <span className="text-xs text-s330-muted">Arrow category:</span>
-            <button
-              onClick={() => setNavigationMode(navigationMode === 'menu' ? 'sampling' : 'menu')}
-              className={cn(
-                'px-2 py-0.5 text-xs font-mono rounded border transition-colors',
-                navigationMode === 'menu'
-                  ? 'bg-s330-accent border-s330-accent text-s330-text'
-                  : 'bg-s330-highlight border-s330-highlight text-white'
-              )}
-              title={navigationMode === 'menu'
-                ? 'Category 01: works in menus and parameter screens'
-                : 'Category 09: works on sampling screen'}
-            >
-              {navigationMode === 'menu' ? '01' : '09'}
-            </button>
-          </div>
-          <div className="text-xs text-s330-muted text-center opacity-70">
-            Keys: Arrows, +/-, Enter, F1-F5
-          </div>
-          {!isConnected && (
-            <div className="text-xs text-s330-muted text-center">
-              Connect MIDI to use controls
-            </div>
-          )}
+          <ValueButtons
+            onPress={pressButton}
+            activeButton={activeButton}
+            disabled={!isConnected || isPressing}
+          />
         </div>
-      )}
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-xs text-s330-muted">Arrow category:</span>
+          <button
+            onClick={() => setNavigationMode(navigationMode === 'menu' ? 'sampling' : 'menu')}
+            className={cn(
+              'px-2 py-0.5 text-xs font-mono rounded border transition-colors',
+              navigationMode === 'menu'
+                ? 'bg-s330-accent border-s330-accent text-s330-text'
+                : 'bg-s330-highlight border-s330-highlight text-white'
+            )}
+            title={navigationMode === 'menu'
+              ? 'Category 01: works in menus and parameter screens'
+              : 'Category 09: works on sampling screen'}
+          >
+            {navigationMode === 'menu' ? '01' : '09'}
+          </button>
+        </div>
+        <div className="text-xs text-s330-muted text-center opacity-70">
+          Keys: Arrows, +/-, Enter, F1-F5
+        </div>
+        {!isConnected && (
+          <div className="text-xs text-s330-muted text-center">
+            Connect MIDI to use controls
+          </div>
+        )}
+      </div>
     </div>
   );
 }

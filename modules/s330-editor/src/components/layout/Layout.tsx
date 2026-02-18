@@ -87,29 +87,30 @@ function HeaderRight(): JSX.Element {
 interface DrawerToggleProps {
   isOpen: boolean;
   drawerWidth: number;
+  topPx: number | null;
   onToggle: () => void;
 }
 
-function DrawerToggle({ isOpen, drawerWidth, onToggle }: DrawerToggleProps): JSX.Element {
+function DrawerToggle({ isOpen, drawerWidth, topPx, onToggle }: DrawerToggleProps): JSX.Element {
   return (
     <button
       onClick={onToggle}
       className={cn(
-        'fixed z-50',
+        'fixed z-40',
         'flex flex-col items-center justify-center gap-1.5',
-        'w-12 h-20 rounded-r-md',
+        'w-[18px] h-12 rounded-r',
         'bg-s330-panel border border-l-0 border-s330-accent',
         'text-s330-muted hover:text-s330-text hover:bg-s330-accent/50',
-        'shadow-md transition-[left] duration-200 ease-in-out'
+        'transition-[left] duration-200 ease-in-out'
       )}
       style={{
-        top: 'calc(var(--ac-page-sticky-top) + 0.25rem)',
-        left: isOpen ? drawerWidth : 0,
+        top: topPx !== null ? `${Math.round(topPx)}px` : 'var(--ac-page-content-top)',
+        left: isOpen ? `${drawerWidth - 1}px` : '0px',
       }}
       title={isOpen ? 'Close S-330 display' : 'Open S-330 display'}
     >
       {/* Video camera icon */}
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -118,7 +119,7 @@ function DrawerToggle({ isOpen, drawerWidth, onToggle }: DrawerToggleProps): JSX
         />
       </svg>
       {/* Chevron */}
-      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-1.5 h-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -141,15 +142,22 @@ interface DrawerProps {
 }
 
 function Drawer({ isOpen, width, isResizing, onResizeStart }: DrawerProps): JSX.Element {
+  const drawerTop = 'calc(var(--ac-page-content-top) - var(--ac-page-space))';
+
   return (
     <aside
       className={cn(
-        'fixed top-0 left-0 h-full z-50',
+        'fixed left-0 z-30',
         'border-r border-s330-accent bg-s330-panel overflow-y-auto',
         'shadow-xl transition-transform duration-200 ease-in-out',
         isOpen ? 'translate-x-0' : '-translate-x-full'
       )}
-      style={{ width }}
+      style={{
+        top: drawerTop,
+        left: '0px',
+        width,
+        height: `calc(100vh - ${drawerTop})`,
+      }}
     >
       <VideoCapture />
       {/* Resize handle */}
@@ -177,8 +185,10 @@ export function Layout({ children }: LayoutProps): JSX.Element {
   const setDrawerWidth = useUIStore((state) => state.setDrawerWidth);
 
   const [isResizing, setIsResizing] = useState(false);
+  const [drawerToggleTopPx, setDrawerToggleTopPx] = useState<number | null>(null);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Initialize MIDI on app start
   useEffect(() => {
@@ -214,6 +224,25 @@ export function Layout({ children }: LayoutProps): JSX.Element {
     };
   }, [isResizing, setDrawerWidth]);
 
+  useEffect(() => {
+    const updateToggleTop = () => {
+      const root = contentRef.current;
+      if (!root) return;
+
+      const target = root.querySelector<HTMLElement>('.ac-list-detail-grid .card, .card');
+      if (!target) return;
+
+      setDrawerToggleTopPx(target.getBoundingClientRect().top);
+    };
+
+    const raf = requestAnimationFrame(updateToggleTop);
+    window.addEventListener('resize', updateToggleTop);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', updateToggleTop);
+    };
+  }, [children, isDrawerOpen, drawerWidth]);
+
   // S-330 specific: drawer and drawer toggle rendered before header
   const drawerElements = (
     <>
@@ -226,20 +255,28 @@ export function Layout({ children }: LayoutProps): JSX.Element {
       <DrawerToggle
         isOpen={isDrawerOpen}
         drawerWidth={drawerWidth}
+        topPx={drawerToggleTopPx}
         onToggle={toggleDrawer}
       />
     </>
   );
 
   return (
-    <div style={{ marginLeft: isDrawerOpen ? drawerWidth : 0, transition: 'margin 200ms' }}>
-      <EditorLayout
-        config={layoutConfig}
-        headerRight={<HeaderRight />}
-        headerBefore={drawerElements}
+    <EditorLayout
+      config={layoutConfig}
+      headerRight={<HeaderRight />}
+    >
+      {drawerElements}
+      <div
+        ref={contentRef}
+        style={{
+          ['--ac-page-offset-inline' as string]: isDrawerOpen
+            ? `calc(${drawerWidth}px + var(--ac-page-section-gap))`
+            : '0px',
+        }}
       >
         {children}
-      </EditorLayout>
-    </div>
+      </div>
+    </EditorLayout>
   );
 }
