@@ -268,11 +268,6 @@ export function VideoCapture() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header - matches main header height */}
-      <div className="ac-drawer-header h-[88px] border-s330-accent select-none">
-        <span className="text-sm font-medium text-s330-text">S-330 Display</span>
-      </div>
-
       {/* Video area */}
       <div className="aspect-video bg-black relative">
         <video ref={videoRef} className="w-full h-full object-contain" playsInline muted />
