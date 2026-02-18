@@ -306,7 +306,7 @@ export function PlayPage() {
                 onClick={() => loadPatchBank(0, true)}
                 disabled={isLoading}
                 className={cn(
-                  'ac-btn',
+                  'ac-btn ac-btn-sm',
                   loadedBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}
@@ -317,7 +317,7 @@ export function PlayPage() {
                 onClick={() => loadPatchBank(1, true)}
                 disabled={isLoading}
                 className={cn(
-                  'ac-btn',
+                  'ac-btn ac-btn-sm',
                   loadedBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}

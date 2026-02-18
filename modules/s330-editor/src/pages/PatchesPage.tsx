@@ -237,49 +237,49 @@ export function PatchesPage() {
               <button
                 onClick={() => loadPatchBank(0, true)}
                 disabled={isLoading}
-                className={cn('ac-btn', loadedPatchBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
+                className={cn('ac-btn ac-btn-sm', loadedPatchBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
               >
                 P11-P18
               </button>
               <button
                 onClick={() => loadPatchBank(1, true)}
                 disabled={isLoading}
-                className={cn('ac-btn', loadedPatchBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
+                className={cn('ac-btn ac-btn-sm', loadedPatchBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
               >
                 P21-P28
               </button>
               <button
                 onClick={() => loadToneBank(0, true)}
                 disabled={isLoading}
-                className={cn('ac-btn', loadedToneBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
+                className={cn('ac-btn ac-btn-sm', loadedToneBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
               >
                 T11-T18
               </button>
               <button
                 onClick={() => loadToneBank(1, true)}
                 disabled={isLoading}
-                className={cn('ac-btn', loadedToneBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
+                className={cn('ac-btn ac-btn-sm', loadedToneBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
               >
                 T21-T28
               </button>
               <button
                 onClick={() => loadToneBank(2, true)}
                 disabled={isLoading}
-                className={cn('ac-btn', loadedToneBanks.includes(2) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
+                className={cn('ac-btn ac-btn-sm', loadedToneBanks.includes(2) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
               >
                 T31-T38
               </button>
               <button
                 onClick={() => loadToneBank(3, true)}
                 disabled={isLoading}
-                className={cn('ac-btn', loadedToneBanks.includes(3) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
+                className={cn('ac-btn ac-btn-sm', loadedToneBanks.includes(3) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
               >
                 T41-T48
               </button>
               <button
                 onClick={loadAll}
                 disabled={isLoading}
-                className={cn('ac-btn ac-btn-secondary', isLoading && 'opacity-50')}
+                className={cn('ac-btn ac-btn-sm ac-btn-secondary', isLoading && 'opacity-50')}
               >
                 All
               </button>

@@ -81,7 +81,12 @@ export function HomePage(): JSX.Element {
   };
 
   return (
-    <div className="ac-page">
+    <div className="ac-page ac-page-shell">
+      <div className="ac-page-sticky-header">
+        <div className="ac-page-header">
+          <h2 className="text-xl font-bold text-s330-text">Connect</h2>
+        </div>
+      </div>
       <MidiConnectionPage
         config={config}
         store={pageStore}

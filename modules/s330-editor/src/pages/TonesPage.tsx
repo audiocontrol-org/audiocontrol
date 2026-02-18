@@ -216,7 +216,7 @@ export function TonesPage() {
                 onClick={() => loadToneBank(0, true)}
                 disabled={isLoading}
                 className={cn(
-                  'ac-btn',
+                  'ac-btn ac-btn-sm',
                   loadedBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}
@@ -227,7 +227,7 @@ export function TonesPage() {
                 onClick={() => loadToneBank(1, true)}
                 disabled={isLoading}
                 className={cn(
-                  'ac-btn',
+                  'ac-btn ac-btn-sm',
                   loadedBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}
@@ -238,7 +238,7 @@ export function TonesPage() {
                 onClick={() => loadToneBank(2, true)}
                 disabled={isLoading}
                 className={cn(
-                  'ac-btn',
+                  'ac-btn ac-btn-sm',
                   loadedBanks.includes(2) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}
@@ -249,7 +249,7 @@ export function TonesPage() {
                 onClick={() => loadToneBank(3, true)}
                 disabled={isLoading}
                 className={cn(
-                  'ac-btn',
+                  'ac-btn ac-btn-sm',
                   loadedBanks.includes(3) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}
@@ -259,7 +259,7 @@ export function TonesPage() {
               <button
                 onClick={loadAll}
                 disabled={isLoading}
-                className={cn('ac-btn ac-btn-secondary', isLoading && 'opacity-50')}
+                className={cn('ac-btn ac-btn-sm ac-btn-secondary', isLoading && 'opacity-50')}
               >
                 All
               </button>

@@ -31,6 +31,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--ac-space-4);
+  min-height: 2.25rem;
 }
 
 .ac-page-header-block {
@@ -191,6 +192,11 @@
   background: var(--ac-status-danger);
   border-color: color-mix(in srgb, var(--ac-status-danger) 60%, var(--ac-color-border-subtle));
   color: #fff;
+}
+
+.ac-btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: var(--ac-text-sm);
 }
 
 .ac-input,
