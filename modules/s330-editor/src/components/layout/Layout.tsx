@@ -52,12 +52,12 @@ function HeaderRight(): JSX.Element {
 
   return (
     <>
-      <PanicButton onClick={handlePanic} disabled={!isConnected} />
       <MidiStatusDisplay
         isConnected={isConnected}
         inputName={selectedInput?.name}
         outputName={selectedOutput?.name}
       />
+      <PanicButton onClick={handlePanic} disabled={!isConnected} />
     </>
   );
 }

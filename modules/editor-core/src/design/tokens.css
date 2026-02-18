@@ -13,7 +13,7 @@
   --ac-color-danger: #fca5a5;
   --ac-color-selected: var(--ac-roland-primary);
 
-  --ac-status-connected: var(--ac-color-success);
+  --ac-status-connected: var(--ac-color-accent);
   --ac-status-warning: var(--ac-color-warning);
   --ac-status-danger: var(--ac-color-danger);
   --ac-status-selected: var(--ac-color-selected);
