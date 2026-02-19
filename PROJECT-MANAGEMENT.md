@@ -246,6 +246,25 @@ Every feature workplan.md must include:
 
 Each GitHub issue description must include GitHub links to feature documentation (PRD, workplan). Use GitHub URLs, not file paths — GitHub links are portable and accessible without a local clone.
 
+### Deploy Branch Naming
+
+Deploy branches trigger Netlify deployments. Use the full editor module name.
+
+**Format:** `deploy/<module-name>`
+
+| Branch | Deploys |
+| ------ | ------- |
+| `deploy/s330-editor` | S-330 editor to Netlify |
+| `deploy/d110-editor` | D-110 editor to Netlify |
+| `deploy/jv1080-editor` | JV-1080 editor to Netlify |
+
+To deploy the latest main:
+
+```bash
+git fetch origin main
+git push origin origin/main:refs/heads/deploy/<module-name> --force
+```
+
 ---
 
 ## Git Worktree Structure
