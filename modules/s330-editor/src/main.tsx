@@ -3,7 +3,9 @@ import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from '@/App';
-import { initLogCapture } from '@audiocontrol/editor-tools';
+import { initLogCapture } from '@audiocontrol/editor-core';
+import '@audiocontrol/editor-core/tokens.css';
+import '@audiocontrol/editor-core/primitives.css';
 import '@/index.css';
 
 // Initialize log capture before anything else
@@ -17,6 +19,8 @@ const queryClient = new QueryClient({
     },
   },
 });
+
+document.documentElement.dataset.editor = 's330';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

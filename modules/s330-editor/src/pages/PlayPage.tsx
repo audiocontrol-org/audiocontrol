@@ -16,6 +16,8 @@ import {
 import { createS330Client } from '@/core/midi/S330Client';
 import type { S330ClientInterface, S330Patch } from '@/core/midi/S330Client';
 import { cn } from '@/lib/utils';
+import { isMockMidiMode } from '@/mock/mockMode';
+import { MOCK_PLAY_PARTS } from '@/mock/mockState';
 
 // MIDI Part configuration (A-H = channels 1-8)
 interface MidiPart {
@@ -31,6 +33,7 @@ interface MidiPart {
 const PART_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 export function PlayPage() {
+  const mockMode = isMockMidiMode();
   const { adapter, deviceId, status } = useMidiStore();
   const { setLoading, setError, isLoading, error, setProgress, clearProgress, loadingProgress, loadingMessage } =
     useS330Store();
@@ -67,12 +70,33 @@ export function PlayPage() {
 
   // Initialize client when adapter changes
   useEffect(() => {
+    if (mockMode) return;
     if (!adapter) {
       clientRef.current = null;
       return;
     }
     clientRef.current = createS330Client(adapter, { deviceId });
-  }, [adapter, deviceId]);
+  }, [adapter, deviceId, mockMode]);
+
+  // Deterministic mock-mode part assignments for screenshots and visual tests.
+  useEffect(() => {
+    if (!mockMode) return;
+    hasInitiatedLoad.current = true;
+    setParts((prev) =>
+      prev.map((part, index) => {
+        const mock = MOCK_PLAY_PARTS[index];
+        if (!mock) return part;
+        return {
+          ...part,
+          channel: mock.channel,
+          patchIndex: mock.patchIndex,
+          output: mock.output,
+          level: mock.level,
+          active: mock.active,
+        };
+      })
+    );
+  }, [mockMode]);
 
   // Load a specific range of patches
   const loadPatchBank = useCallback(
@@ -142,6 +166,7 @@ export function PlayPage() {
 
   // Load initial data when connected
   useEffect(() => {
+    if (mockMode) return;
     if (!isConnected || hasInitiatedLoad.current) return;
 
     // Skip if data already in store
@@ -156,7 +181,7 @@ export function PlayPage() {
       hasInitiatedLoad.current = true;
       loadPatchBank(0).then(() => loadFunctionParams());
     }
-  }, [isConnected, isLoading, patches.length, loadPatchBank, loadFunctionParams]);
+  }, [isConnected, isLoading, patches.length, loadPatchBank, loadFunctionParams, mockMode]);
 
   // Update patch names when patches or parts change
   useEffect(() => {
@@ -243,60 +268,63 @@ export function PlayPage() {
 
   if (!isConnected) {
     return (
-      <div className="card text-center py-12">
-        <h2 className="text-xl font-bold text-s330-text mb-2">Not Connected</h2>
-        <p className="text-s330-muted mb-4">
-          Connect to your S-330 to view the play screen.
-        </p>
-        <Link to="/" className="btn btn-primary inline-block">
-          Go to Connection
-        </Link>
+      <div className="ac-page">
+        <div className="card text-center py-12">
+          <h2 className="text-xl font-bold text-s330-text mb-2">Not Connected</h2>
+          <p className="text-s330-muted mb-4">
+            Connect to your S-330 to view the play screen.
+          </p>
+          <Link to="/" className="ac-btn ac-btn-primary inline-block">
+            Go to Connection
+          </Link>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Header with bank loading buttons */}
-      <div className="flex items-center justify-between gap-4">
-        <h2 className="text-xl font-bold text-s330-text">Play</h2>
-        <div className="flex items-center gap-4 flex-1 justify-end">
-          {/* Loading Progress */}
-          {isLoading && loadingProgress !== null && (
-            <div className="flex-1 max-w-xs">
-              <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                  style={{ width: `${loadingProgress}%` }}
-                />
+    <div className="ac-page ac-page-shell">
+      <div className="ac-page-sticky-header">
+        <div className="ac-page-header">
+          <h2 className="text-xl font-bold text-s330-text">Play</h2>
+          <div className="flex items-center gap-4 flex-1 justify-end">
+            {/* Loading Progress */}
+            {isLoading && loadingProgress !== null && (
+              <div className="flex-1 max-w-xs">
+                <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-s330-highlight transition-all duration-150 ease-out"
+                    style={{ width: `${loadingProgress}%` }}
+                  />
+                </div>
+                <p className="text-s330-muted text-xs mt-0.5 truncate">{loadingMessage}</p>
               </div>
-              <p className="text-s330-muted text-xs mt-0.5 truncate">{loadingMessage}</p>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-s330-muted">(Re)load:</span>
+              <button
+                onClick={() => loadPatchBank(0, true)}
+                disabled={isLoading}
+                className={cn(
+                  'ac-btn ac-btn-sm',
+                  loadedBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary',
+                  isLoading && 'opacity-50'
+                )}
+              >
+                P11-P18
+              </button>
+              <button
+                onClick={() => loadPatchBank(1, true)}
+                disabled={isLoading}
+                className={cn(
+                  'ac-btn ac-btn-sm',
+                  loadedBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary',
+                  isLoading && 'opacity-50'
+                )}
+              >
+                P21-P28
+              </button>
             </div>
-          )}
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-s330-muted">(Re)load:</span>
-            <button
-              onClick={() => loadPatchBank(0, true)}
-              disabled={isLoading}
-              className={cn(
-                'btn',
-                loadedBanks.includes(0) ? 'btn-secondary' : 'btn-primary',
-                isLoading && 'opacity-50'
-              )}
-            >
-              P11-P18
-            </button>
-            <button
-              onClick={() => loadPatchBank(1, true)}
-              disabled={isLoading}
-              className={cn(
-                'btn',
-                loadedBanks.includes(1) ? 'btn-secondary' : 'btn-primary',
-                isLoading && 'opacity-50'
-              )}
-            >
-              P21-P28
-            </button>
           </div>
         </div>
       </div>
@@ -440,8 +468,8 @@ export function PlayPage() {
 
       {/* Error display */}
       {error && (
-        <div className="bg-red-500/20 border border-red-500 rounded-md p-3">
-          <p className="text-red-200 text-sm">{error}</p>
+        <div className="ac-alert ac-alert-error">
+          <p className="ac-text-error text-sm">{error}</p>
         </div>
       )}
 

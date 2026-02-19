@@ -24,11 +24,11 @@ interface StructureSelectorProps {
 function StructureSelector({ label, value, onChange }: StructureSelectorProps): JSX.Element {
   return (
     <div>
-      <label className="label">{label}</label>
+      <label className="ac-label ac-label-block">{label}</label>
       <select
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value, 10))}
-        className="input w-full"
+        className="ac-input w-full"
       >
         {STRUCTURE_NAMES.map((name, i) => (
           <option key={i} value={i}>
@@ -182,13 +182,13 @@ export function ToneCommonEditor(): JSX.Element {
 
       {/* Tone Name */}
       <div>
-        <label className="label">Tone Name</label>
+        <label className="ac-label ac-label-block">Tone Name</label>
         <input
           type="text"
           value={common.name}
           onChange={(e) => void handleNameChange(e.target.value)}
           maxLength={10}
-          className="input w-full font-mono"
+          className="ac-input w-full font-mono"
           placeholder="Tone name..."
         />
         <p className="text-xs text-d110-muted mt-1">
@@ -222,7 +222,7 @@ export function ToneCommonEditor(): JSX.Element {
 
       {/* Partial Mutes */}
       <div>
-        <label className="label">Partial Mutes</label>
+        <label className="ac-label ac-label-block">Partial Mutes</label>
         <div className="flex gap-2">
           <PartialMuteToggle
             label="P1"
@@ -252,13 +252,13 @@ export function ToneCommonEditor(): JSX.Element {
 
       {/* Envelope Mode */}
       <div>
-        <label className="label">Envelope Mode</label>
+        <label className="ac-label ac-label-block">Envelope Mode</label>
         <div className="flex gap-2">
           <button
             onClick={() => void handleEnvModeChange(0)}
             className={cn(
-              'btn',
-              common.envMode === 0 ? 'btn-primary' : 'btn-secondary'
+              'ac-btn',
+              common.envMode === 0 ? 'ac-btn-primary' : 'ac-btn-secondary'
             )}
           >
             Normal
@@ -266,8 +266,8 @@ export function ToneCommonEditor(): JSX.Element {
           <button
             onClick={() => void handleEnvModeChange(1)}
             className={cn(
-              'btn',
-              common.envMode === 1 ? 'btn-primary' : 'btn-secondary'
+              'ac-btn',
+              common.envMode === 1 ? 'ac-btn-primary' : 'ac-btn-secondary'
             )}
           >
             No Sustain

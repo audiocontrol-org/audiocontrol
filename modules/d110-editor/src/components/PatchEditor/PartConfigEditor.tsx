@@ -12,6 +12,7 @@
  */
 
 import { useCallback } from 'react';
+import { formatPan } from '@audiocontrol/editor-core';
 import { useD110Store } from '@/stores';
 import { useMidiStore } from '@/stores';
 import { ParameterSlider, formatPitch } from '@/components/ui/ParameterSlider';
@@ -208,11 +209,7 @@ export function PartConfigEditor({
     await sendPartParameter(PART_TIMBRE_OFFSETS.KEY_RANGE_UPPER, config.keyRangeUpper);
   }, [config.keyRangeUpper, sendPartParameter]);
 
-  const formatPan = (value: number): string => {
-    if (value === 50) return 'C';
-    if (value < 50) return `L${50 - value}`;
-    return `R${value - 50}`;
-  };
+  const formatPartPan = (value: number): string => formatPan(value, 50);
 
   const formatKeyShift = (value: number): string => {
     const shift = value - 24;
@@ -258,7 +255,7 @@ export function PartConfigEditor({
           <div className="flex items-center gap-4 text-sm text-d110-muted">
             <span>Ch: {midiChannelDisplay}</span>
             <span>Lvl: {config.outputLevel}</span>
-            <span>Pan: {formatPan(config.pan)}</span>
+            <span>Pan: {formatPartPan(config.pan)}</span>
             <span className="text-d110-highlight">Expand</span>
           </div>
         </div>
@@ -289,11 +286,11 @@ export function PartConfigEditor({
       {/* Tone Selection */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label className="label">Tone Group</label>
+          <label className="ac-label ac-label-block">Tone Group</label>
           <select
             value={config.toneGroup}
             onChange={(e) => void handleToneGroupChange(parseInt(e.target.value, 10))}
-            className="input w-full"
+            className="ac-input w-full"
           >
             {TONE_GROUP_NAMES.map((name, i) => (
               <option key={i} value={i}>
@@ -303,11 +300,11 @@ export function PartConfigEditor({
           </select>
         </div>
         <div>
-          <label className="label">Tone</label>
+          <label className="ac-label ac-label-block">Tone</label>
           <select
             value={config.toneNumber}
             onChange={(e) => void handleToneNumberChange(parseInt(e.target.value, 10))}
-            className="input w-full"
+            className="ac-input w-full"
           >
             {Array.from({ length: 64 }, (_, i) => (
               <option key={i} value={i}>
@@ -351,11 +348,11 @@ export function PartConfigEditor({
       {/* Mode Controls */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label className="label">MIDI Channel</label>
+          <label className="ac-label ac-label-block">MIDI Channel</label>
           <select
             value={midiChannelDisplay}
             onChange={(e) => void handleMidiChannelChange(parseInt(e.target.value, 10))}
-            className="input w-full"
+            className="ac-input w-full"
           >
             {Array.from({ length: 16 }, (_, i) => (
               <option key={i} value={i + 1}>
@@ -365,11 +362,11 @@ export function PartConfigEditor({
           </select>
         </div>
         <div>
-          <label className="label">Assign Mode</label>
+          <label className="ac-label ac-label-block">Assign Mode</label>
           <select
             value={config.assignMode}
             onChange={(e) => void handleAssignModeChange(parseInt(e.target.value, 10))}
-            className="input w-full"
+            className="ac-input w-full"
           >
             {ASSIGN_MODE_NAMES.map((name, i) => (
               <option key={i} value={i}>
@@ -379,11 +376,11 @@ export function PartConfigEditor({
           </select>
         </div>
         <div>
-          <label className="label">Output Assign</label>
+          <label className="ac-label ac-label-block">Output Assign</label>
           <select
             value={config.outputAssign}
             onChange={(e) => void handleOutputAssignChange(parseInt(e.target.value, 10))}
-            className="input w-full"
+            className="ac-input w-full"
           >
             {OUTPUT_ASSIGN_NAMES.map((name, i) => (
               <option key={i} value={i}>
@@ -411,7 +408,7 @@ export function PartConfigEditor({
           onCommit={() => void handlePanCommit()}
           min={PARAM_RANGES.PAN.min}
           max={PARAM_RANGES.PAN.max}
-          formatValue={formatPan}
+          formatValue={formatPartPan}
         />
       </div>
 

@@ -1,7 +1,7 @@
 /**
  * S-330 Editor Layout
  *
- * Uses shared EditorLayout from @audiocontrol/editor-tools
+ * Uses shared EditorLayout from @audiocontrol/editor-core
  * with S-330-specific video capture drawer
  */
 
@@ -11,21 +11,11 @@ import {
   PanicButton,
   MidiStatusDisplay,
   type EditorLayoutConfig,
-} from '@audiocontrol/editor-tools';
+} from '@audiocontrol/editor-core';
 import { VideoCapture } from '@/components/video/VideoCapture';
 import { useMidiStore } from '@/stores/midiStore';
 import { useUIStore, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH } from '@/stores/uiStore';
 import { cn } from '@/lib/utils';
-
-// S-330 Editor theme colors
-const s330Theme = {
-  bgPrimary: '#0f172a',      // slate-900
-  bgPanel: '#1e293b',        // slate-800
-  border: '#334155',         // slate-700
-  textPrimary: '#f1f5f9',    // slate-100
-  textMuted: '#94a3b8',      // slate-400
-  highlight: '#38bdf8',      // sky-400
-};
 
 // S-330 Editor layout configuration
 const layoutConfig: EditorLayoutConfig = {
@@ -37,20 +27,11 @@ const layoutConfig: EditorLayoutConfig = {
     { to: '/patches', label: 'Patches' },
     { to: '/tones', label: 'Tones' },
   ],
-  theme: s330Theme,
   buildInfoConfig: {
     editorName: 'S-330 Editor',
     editorDescription: 'Roland Sampler',
     githubRepo: 'audiocontrol-org/audiocontrol',
     issueTitlePrefix: '[S-330 Editor]',
-    theme: {
-      textMuted: s330Theme.textMuted,
-      textPrimary: s330Theme.textPrimary,
-      textHighlight: s330Theme.highlight,
-      bgPrimary: s330Theme.bgPrimary,
-      bgPanel: s330Theme.bgPanel,
-      border: s330Theme.border,
-    },
   },
 };
 
@@ -71,12 +52,12 @@ function HeaderRight(): JSX.Element {
 
   return (
     <>
-      <PanicButton onClick={handlePanic} disabled={!isConnected} />
       <MidiStatusDisplay
         isConnected={isConnected}
         inputName={selectedInput?.name}
         outputName={selectedOutput?.name}
       />
+      <PanicButton onClick={handlePanic} disabled={!isConnected} />
     </>
   );
 }
@@ -87,26 +68,30 @@ function HeaderRight(): JSX.Element {
 interface DrawerToggleProps {
   isOpen: boolean;
   drawerWidth: number;
+  topPx: number | null;
   onToggle: () => void;
 }
 
-function DrawerToggle({ isOpen, drawerWidth, onToggle }: DrawerToggleProps): JSX.Element {
+function DrawerToggle({ isOpen, drawerWidth, topPx, onToggle }: DrawerToggleProps): JSX.Element {
   return (
     <button
       onClick={onToggle}
       className={cn(
-        'fixed top-3 z-50',
-        'flex items-center justify-center gap-1',
-        'w-12 h-16 rounded-r-md',
+        'fixed z-40',
+        'flex flex-col items-center justify-center gap-1.5',
+        'w-[18px] h-12 rounded-r',
         'bg-s330-panel border border-l-0 border-s330-accent',
         'text-s330-muted hover:text-s330-text hover:bg-s330-accent/50',
-        'shadow-md transition-[left] duration-200 ease-in-out'
+        'transition-[left] duration-200 ease-in-out'
       )}
-      style={{ left: isOpen ? drawerWidth : 0 }}
+      style={{
+        top: topPx !== null ? `${Math.round(topPx)}px` : 'var(--ac-page-content-top)',
+        left: isOpen ? `${drawerWidth - 1}px` : '0px',
+      }}
       title={isOpen ? 'Close S-330 display' : 'Open S-330 display'}
     >
       {/* Video camera icon */}
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -115,7 +100,7 @@ function DrawerToggle({ isOpen, drawerWidth, onToggle }: DrawerToggleProps): JSX
         />
       </svg>
       {/* Chevron */}
-      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg className="w-1.5 h-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -138,15 +123,22 @@ interface DrawerProps {
 }
 
 function Drawer({ isOpen, width, isResizing, onResizeStart }: DrawerProps): JSX.Element {
+  const drawerTop = 'calc(var(--ac-page-content-top) - var(--ac-page-space))';
+
   return (
     <aside
       className={cn(
-        'fixed top-0 left-0 h-full z-50',
+        'fixed left-0 z-30',
         'border-r border-s330-accent bg-s330-panel overflow-y-auto',
         'shadow-xl transition-transform duration-200 ease-in-out',
         isOpen ? 'translate-x-0' : '-translate-x-full'
       )}
-      style={{ width }}
+      style={{
+        top: drawerTop,
+        left: '0px',
+        width,
+        height: `calc(100vh - ${drawerTop})`,
+      }}
     >
       <VideoCapture />
       {/* Resize handle */}
@@ -174,8 +166,10 @@ export function Layout({ children }: LayoutProps): JSX.Element {
   const setDrawerWidth = useUIStore((state) => state.setDrawerWidth);
 
   const [isResizing, setIsResizing] = useState(false);
+  const [drawerToggleTopPx, setDrawerToggleTopPx] = useState<number | null>(null);
   const resizeStartX = useRef(0);
   const resizeStartWidth = useRef(0);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   // Initialize MIDI on app start
   useEffect(() => {
@@ -211,6 +205,28 @@ export function Layout({ children }: LayoutProps): JSX.Element {
     };
   }, [isResizing, setDrawerWidth]);
 
+  useEffect(() => {
+    const root = contentRef.current;
+    if (!root) return;
+
+    const updateToggleTop = () => {
+      const target = root.querySelector<HTMLElement>('.ac-list-detail-grid .card, .card');
+      if (!target) return;
+
+      setDrawerToggleTopPx(target.getBoundingClientRect().top);
+    };
+
+    // Use ResizeObserver to detect when content layout changes
+    const resizeObserver = new ResizeObserver(updateToggleTop);
+    resizeObserver.observe(root);
+
+    window.addEventListener('resize', updateToggleTop);
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateToggleTop);
+    };
+  }, [children, isDrawerOpen, drawerWidth]);
+
   // S-330 specific: drawer and drawer toggle rendered before header
   const drawerElements = (
     <>
@@ -223,6 +239,7 @@ export function Layout({ children }: LayoutProps): JSX.Element {
       <DrawerToggle
         isOpen={isDrawerOpen}
         drawerWidth={drawerWidth}
+        topPx={drawerToggleTopPx}
         onToggle={toggleDrawer}
       />
     </>
@@ -232,10 +249,18 @@ export function Layout({ children }: LayoutProps): JSX.Element {
     <EditorLayout
       config={layoutConfig}
       headerRight={<HeaderRight />}
-      headerBefore={drawerElements}
-      contentStyle={{ marginLeft: isDrawerOpen ? drawerWidth : 0, transition: 'margin 200ms' }}
     >
-      {children}
+      {drawerElements}
+      <div
+        ref={contentRef}
+        style={{
+          ['--ac-page-offset-inline' as string]: isDrawerOpen
+            ? `calc(${drawerWidth}px + var(--ac-page-section-gap) - 18px)`
+            : '0px',
+        }}
+      >
+        {children}
+      </div>
     </EditorLayout>
   );
 }

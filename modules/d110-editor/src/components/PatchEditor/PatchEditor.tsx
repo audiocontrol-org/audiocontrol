@@ -110,7 +110,7 @@ export function PatchEditor(): JSX.Element {
         <p className="text-d110-muted mb-4">
           Connect to your D-110 to view and edit patches.
         </p>
-        <a href="/roland/d110/editor/" className="btn btn-primary inline-block">
+        <a href="/roland/d110/editor/" className="ac-btn ac-btn-primary inline-block">
           Go to Connection
         </a>
       </div>
@@ -126,7 +126,7 @@ export function PatchEditor(): JSX.Element {
           <button
             onClick={() => void handleFetchPatch()}
             disabled={isFetching}
-            className="btn btn-primary"
+            className="ac-btn ac-btn-primary"
           >
             {isFetching ? 'Fetching...' : 'Fetch Patch'}
           </button>
@@ -135,13 +135,13 @@ export function PatchEditor(): JSX.Element {
         {/* Patch Name */}
         {patch && (
           <div>
-            <label className="label">Patch Name</label>
+            <label className="ac-label ac-label-block">Patch Name</label>
             <input
               type="text"
               value={patchName}
               onChange={(e) => void handleNameChange(e.target.value)}
               maxLength={PATCH_NAME_LENGTH}
-              className="input w-full font-mono text-lg"
+              className="ac-input w-full font-mono text-lg"
               placeholder="Patch name..."
             />
             <p className="text-xs text-d110-muted mt-1">
@@ -173,13 +173,13 @@ export function PatchEditor(): JSX.Element {
             <div className="flex gap-2">
               <button
                 onClick={handleExpandAll}
-                className="btn btn-secondary text-sm"
+                className="ac-btn ac-btn-secondary text-sm"
               >
                 Expand First
               </button>
               <button
                 onClick={handleCollapseAll}
-                className="btn btn-secondary text-sm"
+                className="ac-btn ac-btn-secondary text-sm"
               >
                 Collapse All
               </button>

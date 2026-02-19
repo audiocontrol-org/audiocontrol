@@ -61,21 +61,27 @@ export async function requestMidiAccess(): Promise<WebMidiAccess> {
   const outputs: MidiPortInfo[] = [];
 
   access.inputs.forEach((port) => {
-    inputs.push({
+    const midiPort: MidiPortInfo = {
       id: port.id,
       name: port.name ?? `Input ${port.id}`,
-      manufacturer: port.manufacturer ?? undefined,
       state: port.state,
-    });
+    };
+    if (port.manufacturer) {
+      midiPort.manufacturer = port.manufacturer;
+    }
+    inputs.push(midiPort);
   });
 
   access.outputs.forEach((port) => {
-    outputs.push({
+    const midiPort: MidiPortInfo = {
       id: port.id,
       name: port.name ?? `Output ${port.id}`,
-      manufacturer: port.manufacturer ?? undefined,
       state: port.state,
-    });
+    };
+    if (port.manufacturer) {
+      midiPort.manufacturer = port.manufacturer;
+    }
+    outputs.push(midiPort);
   });
 
   return {
@@ -107,7 +113,7 @@ export function createWebMidiAdapter(input: MIDIInput, output: MIDIOutput): Midi
 
   return {
     send(message: number[]): void {
-      output.send(new Uint8Array(message));
+      output.send(message);
     },
 
     onSysEx(callback: SysExCallback): void {
@@ -177,8 +183,20 @@ export async function openMidiPorts(
 
   const access = await navigator.requestMIDIAccess({ sysex: true });
 
-  const input = access.inputs.get(inputId);
-  const output = access.outputs.get(outputId);
+  let input: MIDIInput | undefined;
+  let output: MIDIOutput | undefined;
+
+  access.inputs.forEach((port) => {
+    if (port.id === inputId) {
+      input = port;
+    }
+  });
+
+  access.outputs.forEach((port) => {
+    if (port.id === outputId) {
+      output = port;
+    }
+  });
 
   if (!input) {
     throw new Error(`MIDI input port not found: ${inputId}`);
@@ -187,14 +205,17 @@ export async function openMidiPorts(
     throw new Error(`MIDI output port not found: ${outputId}`);
   }
 
-  await input.open();
-  await output.open();
+  const selectedInput = input;
+  const selectedOutput = output;
 
-  const adapter = createWebMidiAdapter(input, output);
+  await selectedInput.open();
+  await selectedOutput.open();
+
+  const adapter = createWebMidiAdapter(selectedInput, selectedOutput);
 
   const cleanup = async () => {
-    await input.close();
-    await output.close();
+    await selectedInput.close();
+    await selectedOutput.close();
   };
 
   return { adapter, cleanup };

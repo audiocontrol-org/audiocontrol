@@ -1,0 +1,61 @@
+{
+  "name": "@audiocontrol/editor-core",
+  "version": "0.1.0",
+  "description": "Shared editor infrastructure for audiocontrol web editors",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./tokens.css": "./src/design/tokens.css",
+    "./primitives.css": "./src/design/primitives.css",
+    "./vite": {
+      "types": "./dist/build/vite.d.ts",
+      "import": "./dist/build/vite.js"
+    },
+    "./tailwind-preset": {
+      "types": "./dist/tailwind.preset.d.ts",
+      "import": "./dist/tailwind.preset.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@audiocontrol/shared-midi": "workspace:*",
+    "@radix-ui/react-slider": "^1.1.2",
+    "zustand": "^4.4.7"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "react-router-dom": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.21.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.6.1"
+  },
+  "keywords": [
+    "audiocontrol",
+    "editor",
+    "midi",
+    "zustand"
+  ]
+}

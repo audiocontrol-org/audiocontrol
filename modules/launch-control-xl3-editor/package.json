@@ -1,0 +1,36 @@
+{
+  "name": "@audiocontrol/launch-control-xl3-editor",
+  "version": "0.1.0",
+  "description": "Legacy Web MIDI editor client for Novation Launch Control XL3",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "novation",
+    "launch-control-xl3",
+    "midi",
+    "web-midi",
+    "editor"
+  ],
+  "author": "",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3",
+    "vitest": "^1.1.0"
+  }
+}

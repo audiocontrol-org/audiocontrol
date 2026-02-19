@@ -38,6 +38,12 @@ pnpm plugin:generate-batch
 pnpm build
 ```
 
+## Versioning
+
+- Workspace packages use a unified version, currently `0.1.0`.
+- Validate version alignment with `pnpm version:check`.
+- Releases are managed via Changesets with a fixed workspace version group.
+
 ## Quality Standard
 
 - Project-wide minimum test coverage: **80%** for lines, functions, branches, and statements.

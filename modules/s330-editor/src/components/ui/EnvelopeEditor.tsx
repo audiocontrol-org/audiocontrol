@@ -527,7 +527,7 @@ function EnvelopeVisualization({
                         y1={padding}
                         x2={xPositions[sustainPoint + 1]}
                         y2={height - padding}
-                        stroke="#e94560"
+                        stroke={envelopeColor}
                         strokeOpacity={0.3}
                         strokeWidth={1}
                         strokeDasharray="4 2"
@@ -538,7 +538,7 @@ function EnvelopeVisualization({
                 <path
                     d={pathData}
                     fill="none"
-                    stroke="#e94560"
+                    stroke={envelopeColor}
                     strokeWidth={strokeWidth}
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -564,8 +564,8 @@ function EnvelopeVisualization({
                             cx={p.x}
                             cy={p.y}
                             r={i === sustainPoint ? sustainPointRadius : pointRadius}
-                            fill={dragging === i ? '#ff6b8a' : i === sustainPoint ? '#e94560' : '#1a1a2e'}
-                            stroke="#e94560"
+                            fill={dragging === i ? envelopeColorActive : i === sustainPoint ? envelopeColor : envelopeSurface}
+                            stroke={envelopeColor}
                             strokeWidth={i === sustainPoint ? 2 : 1.5}
                             className={cn(
                                 !disabled && i < endPoint && 'cursor-grab',
@@ -579,7 +579,7 @@ function EnvelopeVisualization({
                                 x={p.x}
                                 y={p.y - (expanded ? 16 : 12)}
                                 textAnchor="middle"
-                                fill="#e94560"
+                                fill={envelopeColor}
                                 fontSize={expanded ? 12 : 10}
                                 fontFamily="monospace"
                             >
@@ -592,7 +592,7 @@ function EnvelopeVisualization({
                                 x={p.x}
                                 y={height - padding + 16}
                                 textAnchor="middle"
-                                fill="#e94560"
+                                fill={envelopeColor}
                                 fontSize={10}
                                 fontFamily="monospace"
                                 opacity={0.6}
@@ -608,8 +608,8 @@ function EnvelopeVisualization({
                     cx={pathPoints[0].x}
                     cy={pathPoints[0].y}
                     r={expanded ? 4 : 3}
-                    fill="#1a1a2e"
-                    stroke="#e94560"
+                    fill={envelopeSurface}
+                    stroke={envelopeColor}
                     strokeWidth={1}
                 />
             </svg>
@@ -641,3 +641,6 @@ function EnvelopeVisualization({
         </div>
     );
 }
+    const envelopeColor = 'var(--ac-highlight)';
+    const envelopeColorActive = 'color-mix(in srgb, var(--ac-highlight) 78%, white)';
+    const envelopeSurface = 'var(--ac-bg-panel)';

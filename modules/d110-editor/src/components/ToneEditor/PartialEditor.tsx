@@ -5,7 +5,8 @@
  * Handles parameter updates and hardware sync.
  */
 
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
+import { CollapsibleSection } from '@audiocontrol/editor-core';
 import { useD110Store, selectCurrentTone } from '@/stores';
 import { useMidiStore } from '@/stores';
 import { PartialSelector } from '@/components/ToneEditor/PartialSelector';
@@ -20,29 +21,6 @@ import {
 } from '@/components/ToneEditor/partials';
 import { PARTIAL_OFFSETS, PARTIAL_PARAM_OFFSETS } from '@/core/midi/constants';
 import type { D110Tone, PartialParams, PitchEnvelope, TvfEnvelope, TvaEnvelope, LfoParams } from '@/core/midi/types';
-
-interface CollapsibleSectionProps {
-  title: string;
-  defaultOpen?: boolean;
-  children: React.ReactNode;
-}
-
-function CollapsibleSection({ title, defaultOpen = true, children }: CollapsibleSectionProps): JSX.Element {
-  const [isOpen, setIsOpen] = useState(defaultOpen);
-
-  return (
-    <div className="border border-d110-border rounded-md overflow-hidden">
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between px-4 py-2 bg-d110-surface hover:bg-d110-border transition-colors"
-      >
-        <h4 className="text-sm font-medium text-d110-text">{title}</h4>
-        <span className="text-d110-muted">{isOpen ? '−' : '+'}</span>
-      </button>
-      {isOpen && <div className="p-4">{children}</div>}
-    </div>
-  );
-}
 
 export function PartialEditor(): JSX.Element {
   const client = useMidiStore((state) => state.client);
@@ -177,7 +155,11 @@ export function PartialEditor(): JSX.Element {
 
       <div className="space-y-3">
         {/* Pitch Section */}
-        <CollapsibleSection title="Pitch" defaultOpen={true}>
+        <CollapsibleSection
+          title="Pitch"
+          defaultOpen={true}
+          theme={collapsibleTheme}
+        >
           <PitchSection
             params={partial}
             onChange={handlePartialChange}
@@ -188,7 +170,11 @@ export function PartialEditor(): JSX.Element {
         </CollapsibleSection>
 
         {/* Pitch Envelope Section */}
-        <CollapsibleSection title="Pitch Envelope" defaultOpen={false}>
+        <CollapsibleSection
+          title="Pitch Envelope"
+          defaultOpen={false}
+          theme={collapsibleTheme}
+        >
           <PitchEnvelopeSection
             envelope={partial.pitchEnvelope}
             onChange={handlePitchEnvelopeChange}
@@ -196,7 +182,11 @@ export function PartialEditor(): JSX.Element {
         </CollapsibleSection>
 
         {/* Filter Section */}
-        <CollapsibleSection title="Filter (TVF)" defaultOpen={true}>
+        <CollapsibleSection
+          title="Filter (TVF)"
+          defaultOpen={true}
+          theme={collapsibleTheme}
+        >
           <FilterSection
             params={partial}
             onChange={handlePartialChange}
@@ -207,7 +197,11 @@ export function PartialEditor(): JSX.Element {
         </CollapsibleSection>
 
         {/* Filter Envelope Section */}
-        <CollapsibleSection title="Filter Envelope" defaultOpen={false}>
+        <CollapsibleSection
+          title="Filter Envelope"
+          defaultOpen={false}
+          theme={collapsibleTheme}
+        >
           <FilterEnvelopeSection
             envelope={partial.tvfEnvelope}
             onChange={handleTvfEnvelopeChange}
@@ -218,7 +212,11 @@ export function PartialEditor(): JSX.Element {
         </CollapsibleSection>
 
         {/* Amp Section */}
-        <CollapsibleSection title="Amplifier (TVA)" defaultOpen={true}>
+        <CollapsibleSection
+          title="Amplifier (TVA)"
+          defaultOpen={true}
+          theme={collapsibleTheme}
+        >
           <AmpSection
             params={partial}
             onChange={handlePartialChange}
@@ -226,7 +224,11 @@ export function PartialEditor(): JSX.Element {
         </CollapsibleSection>
 
         {/* Amp Envelope Section */}
-        <CollapsibleSection title="Amp Envelope" defaultOpen={false}>
+        <CollapsibleSection
+          title="Amp Envelope"
+          defaultOpen={false}
+          theme={collapsibleTheme}
+        >
           <AmpEnvelopeSection
             envelope={partial.tvaEnvelope}
             onChange={handleTvaEnvelopeChange}
@@ -234,7 +236,11 @@ export function PartialEditor(): JSX.Element {
         </CollapsibleSection>
 
         {/* LFO Section */}
-        <CollapsibleSection title="LFO" defaultOpen={true}>
+        <CollapsibleSection
+          title="LFO"
+          defaultOpen={true}
+          theme={collapsibleTheme}
+        >
           <LfoSection
             params={partial.lfo}
             onChange={handleLfoChange}
@@ -288,6 +294,14 @@ function getPitchEnvelopeOffset(key: keyof PitchEnvelope): number {
   };
   return mapping[key];
 }
+
+const collapsibleTheme = {
+  container: 'border border-d110-border rounded-md overflow-hidden',
+  headerButton: 'w-full flex items-center justify-between px-4 py-2 bg-d110-surface hover:bg-d110-border transition-colors',
+  title: 'text-sm font-medium text-d110-text',
+  icon: 'text-d110-muted',
+  body: 'p-4',
+};
 
 function getTvfEnvelopeOffset(key: keyof TvfEnvelope): number {
   const mapping: Record<keyof TvfEnvelope, number> = {

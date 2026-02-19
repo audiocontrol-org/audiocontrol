@@ -104,14 +104,14 @@ export function ToneEditor(): JSX.Element {
             <button
               onClick={() => void handleFetchTone()}
               disabled={!isConnected || isFetching}
-              className="btn btn-secondary text-sm"
+              className="ac-btn ac-btn-secondary text-sm"
             >
               {isFetching ? 'Fetching...' : 'Fetch Tone'}
             </button>
             <button
               onClick={() => void handleFetchAll()}
               disabled={!isConnected || isFetching}
-              className="btn btn-secondary text-sm"
+              className="ac-btn ac-btn-secondary text-sm"
             >
               Fetch All
             </button>

@@ -120,13 +120,13 @@ export function SystemEditor(): JSX.Element {
         <h4 className="text-sm font-medium text-d110-text">Reverb</h4>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label className="label">Mode</label>
+            <label className="ac-label ac-label-block">Mode</label>
             <select
               value={systemParams.reverbMode}
               onChange={(e) =>
                 void handleReverbModeChange(parseInt(e.target.value, 10))
               }
-              className="input w-full"
+              className="ac-input w-full"
             >
               {REVERB_MODE_NAMES.map((name, i) => (
                 <option key={i} value={i}>
@@ -161,9 +161,9 @@ export function SystemEditor(): JSX.Element {
           <span
             className={`text-sm ${
               partialsRemaining < 0
-                ? 'text-red-400'
+                ? 'ac-text-error'
                 : partialsRemaining === 0
-                  ? 'text-yellow-400'
+                  ? 'ac-text-warn'
                   : 'text-d110-muted'
             }`}
           >

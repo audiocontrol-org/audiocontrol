@@ -170,23 +170,25 @@ export function TonesPage() {
 
   if (!isConnected) {
     return (
-      <div className="card text-center py-12">
-        <h2 className="text-xl font-bold text-s330-text mb-2">Not Connected</h2>
-        <p className="text-s330-muted mb-4">
-          Connect to your S-330 to view and edit tones.
-        </p>
-        <a href="/" className="btn btn-primary inline-block">
-          Go to Connection
-        </a>
+      <div className="ac-page">
+        <div className="card text-center py-12">
+          <h2 className="text-xl font-bold text-s330-text mb-2">Not Connected</h2>
+          <p className="text-s330-muted mb-4">
+            Connect to your S-330 to view and edit tones.
+          </p>
+          <a href="/" className="ac-btn ac-btn-primary inline-block">
+            Go to Connection
+          </a>
+        </div>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="ac-page ac-page-shell">
       {/* Sticky Header */}
-      <div className="sticky top-[88px] z-30 bg-s330-bg py-4 -mx-12 px-12 border-b border-s330-accent/30">
-        <div className="flex items-center justify-between gap-4">
+      <div className="ac-page-sticky-header">
+        <div className="ac-page-header">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-s330-text">Tones</h2>
             <span className="text-sm text-s330-muted">
@@ -214,8 +216,8 @@ export function TonesPage() {
                 onClick={() => loadToneBank(0, true)}
                 disabled={isLoading}
                 className={cn(
-                  'btn',
-                  loadedBanks.includes(0) ? 'btn-secondary' : 'btn-primary',
+                  'ac-btn ac-btn-sm',
+                  loadedBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}
               >
@@ -225,8 +227,8 @@ export function TonesPage() {
                 onClick={() => loadToneBank(1, true)}
                 disabled={isLoading}
                 className={cn(
-                  'btn',
-                  loadedBanks.includes(1) ? 'btn-secondary' : 'btn-primary',
+                  'ac-btn ac-btn-sm',
+                  loadedBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}
               >
@@ -236,8 +238,8 @@ export function TonesPage() {
                 onClick={() => loadToneBank(2, true)}
                 disabled={isLoading}
                 className={cn(
-                  'btn',
-                  loadedBanks.includes(2) ? 'btn-secondary' : 'btn-primary',
+                  'ac-btn ac-btn-sm',
+                  loadedBanks.includes(2) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}
               >
@@ -247,8 +249,8 @@ export function TonesPage() {
                 onClick={() => loadToneBank(3, true)}
                 disabled={isLoading}
                 className={cn(
-                  'btn',
-                  loadedBanks.includes(3) ? 'btn-secondary' : 'btn-primary',
+                  'ac-btn ac-btn-sm',
+                  loadedBanks.includes(3) ? 'ac-btn-secondary' : 'ac-btn-primary',
                   isLoading && 'opacity-50'
                 )}
               >
@@ -257,7 +259,7 @@ export function TonesPage() {
               <button
                 onClick={loadAll}
                 disabled={isLoading}
-                className={cn('btn btn-secondary', isLoading && 'opacity-50')}
+                className={cn('ac-btn ac-btn-sm ac-btn-secondary', isLoading && 'opacity-50')}
               >
                 All
               </button>
@@ -268,17 +270,17 @@ export function TonesPage() {
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-500/20 border border-red-500 rounded-md p-3 mt-6">
-          <p className="text-red-200 text-sm">{error}</p>
+        <div className="ac-alert ac-alert-error">
+          <p className="ac-text-error text-sm">{error}</p>
         </div>
       )}
 
       {/* Content - show while loading for progressive updates */}
       {tones.length > 0 && (
-        <div className="grid gap-6 lg:grid-cols-3 mt-6">
+        <div className="ac-list-detail-grid">
           {/* Sticky list column */}
-          <div className="lg:col-span-1">
-            <div className="sticky top-[160px]">
+          <div>
+            <div className="ac-list-column-sticky">
               <ToneList
                 tones={tones}
                 selectedIndex={selectedToneIndex}
@@ -286,7 +288,7 @@ export function TonesPage() {
               />
             </div>
           </div>
-          <div className="lg:col-span-2">
+          <div>
             {selectedTone ? (
               <ToneEditor
                 tone={selectedTone}
@@ -307,7 +309,7 @@ export function TonesPage() {
       {!isLoading && loadedTones.length === 0 && !error && (
         <div className="card text-center py-12">
           <p className="text-s330-muted mb-4">No tones loaded</p>
-          <button onClick={loadInitialData} className="btn btn-primary">
+          <button onClick={loadInitialData} className="ac-btn ac-btn-primary">
             Load Tones
           </button>
         </div>

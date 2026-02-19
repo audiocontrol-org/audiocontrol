@@ -17,29 +17,31 @@ export function TonesPage(): JSX.Element {
 
   if (!isConnected) {
     return (
-      <div className="card text-center py-12">
-        <h2 className="text-xl font-bold text-d110-text mb-2">Not Connected</h2>
-        <p className="text-d110-muted mb-4">
-          Connect to your D-110 to view and edit tones.
-        </p>
-        <a href="/roland/d110/editor/" className="btn btn-primary inline-block">
-          Go to Connection
-        </a>
+      <div className="ac-page">
+        <div className="card text-center py-12">
+          <h2 className="text-xl font-bold text-d110-text mb-2">Not Connected</h2>
+          <p className="text-d110-muted mb-4">
+            Connect to your D-110 to view and edit tones.
+          </p>
+          <a href="/roland/d110/editor/" className="ac-btn ac-btn-primary inline-block">
+            Go to Connection
+          </a>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="ac-page ac-page-shell">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="ac-page-header ac-page-header-block">
         <h2 className="text-xl font-bold text-d110-text">Tones</h2>
       </div>
 
       {/* Error Display */}
       {error && (
-        <div className="bg-red-500/20 border border-red-500 rounded-md p-3">
-          <p className="text-red-200 text-sm">{error}</p>
+        <div className="ac-alert ac-alert-error">
+          <p className="ac-text-error text-sm">{error}</p>
         </div>
       )}
 

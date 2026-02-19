@@ -67,16 +67,17 @@ export function FxControls({ client, connected }: FxControlsProps): JSX.Element 
 
   return (
     <section className="panel">
-      <h2>Effects</h2>
-      <p>FX type and 12 parameter controls wired to DT1 writes with inbound sync.</p>
+      <h2 className="text-lg font-semibold text-jv1080-text">Effects</h2>
+      <p className="mt-2 text-sm text-jv1080-muted">FX type and 12 parameter controls wired to DT1 writes with inbound sync.</p>
       {!connected ? <p className="error">Connect MIDI on Home page to enable FX writes.</p> : null}
 
-      <div className="row">
+      <div className="row mt-3">
         <div className="col">
-          <label htmlFor="fx-type">FX Type</label>
+          <label htmlFor="fx-type" className="label">FX Type</label>
           <select
             id="fx-type"
             value={state.fxType}
+            className="field"
             disabled={disabled}
             onChange={(e) => {
               const value = Number.parseInt(e.target.value, 10) || 0;
@@ -93,16 +94,17 @@ export function FxControls({ client, connected }: FxControlsProps): JSX.Element 
         </div>
       </div>
 
-      <div className="row" style={{ marginTop: 8 }}>
+      <div className="row mt-2">
         {state.fxParams.map((value, index) => (
-          <div className="col" key={`fx-param-${index}`} style={{ maxWidth: 160 }}>
-            <label htmlFor={`fx-param-${index}`}>Param {index + 1}</label>
+          <div className="col max-w-[160px]" key={`fx-param-${index}`}>
+            <label htmlFor={`fx-param-${index}`} className="label">Param {index + 1}</label>
             <input
               id={`fx-param-${index}`}
               type="number"
               min={0}
               max={127}
               value={value}
+              className="field"
               disabled={disabled}
               onChange={(e) => {
                 const parsed = Number.parseInt(e.target.value, 10) || 0;

@@ -1,6 +1,6 @@
 {
   "name": "@audiocontrol/jv1080-editor",
-  "version": "1.0.0-alpha.1",
+  "version": "0.1.0",
   "description": "Web-based editor scaffold for Roland JV-1080",
   "type": "module",
   "scripts": {
@@ -10,7 +10,10 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest --passWithNoTests",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "visual:capture": "playwright test -c playwright.visual.config.ts",
+    "visual:compare": "node ../../scripts/visual-compare.mjs .",
+    "visual:baseline:update": "node ../../scripts/visual-update-baseline.mjs ."
   },
   "keywords": [
     "roland",
@@ -29,7 +32,7 @@
     "directory": "modules/jv1080-editor"
   },
   "dependencies": {
-    "@audiocontrol/editor-tools": "workspace:*",
+    "@audiocontrol/editor-core": "workspace:*",
     "@audiocontrol/sampler-devices": "workspace:*",
     "@audiocontrol/shared-midi": "workspace:*",
     "react": "^18.2.0",
@@ -38,12 +41,16 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "autoprefixer": "^10.4.16",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
     "@types/webmidi": "^2.0.10",
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
     "@vitejs/plugin-react": "^4.2.1",
+    "postcss": "^8.4.32",
+    "tailwindcss": "^3.4.0",
     "eslint": "^8.55.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",

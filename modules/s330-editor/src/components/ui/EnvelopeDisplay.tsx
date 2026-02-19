@@ -84,7 +84,7 @@ export function EnvelopeDisplay({
                         y1={padding}
                         x2={xPositions[sustainPoint + 1]}
                         y2={height - padding}
-                        stroke="#e94560"
+                        stroke={envelopeColor}
                         strokeOpacity={0.3}
                         strokeWidth={1}
                         strokeDasharray="4 2"
@@ -95,7 +95,7 @@ export function EnvelopeDisplay({
                 <path
                     d={pathData}
                     fill="none"
-                    stroke="#e94560"
+                    stroke={envelopeColor}
                     strokeWidth={2}
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -108,8 +108,8 @@ export function EnvelopeDisplay({
                         cx={p.x}
                         cy={p.y}
                         r={i === sustainPoint ? 4 : 3}
-                        fill={i === sustainPoint ? '#e94560' : '#1a1a2e'}
-                        stroke="#e94560"
+                        fill={i === sustainPoint ? envelopeColor : envelopeSurface}
+                        stroke={envelopeColor}
                         strokeWidth={1}
                     />
                 ))}
@@ -119,8 +119,8 @@ export function EnvelopeDisplay({
                     cx={pathPoints[0].x}
                     cy={pathPoints[0].y}
                     r={2}
-                    fill="#1a1a2e"
-                    stroke="#e94560"
+                    fill={envelopeSurface}
+                    stroke={envelopeColor}
                     strokeWidth={1}
                 />
             </svg>
@@ -140,3 +140,5 @@ export function EnvelopeDisplay({
         </div>
     );
 }
+    const envelopeColor = 'var(--ac-highlight)';
+    const envelopeSurface = 'var(--ac-bg-panel)';

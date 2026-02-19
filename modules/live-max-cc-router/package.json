@@ -1,6 +1,6 @@
 {
   "name": "@audiocontrol/live-max-cc-router",
-  "version": "1.20.18-alpha.0",
+  "version": "0.1.0",
   "description": "TypeScript-based CC router for Max for Live with controller-specific canonical mappings",
   "type": "module",
   "main": "./dist/cc-router.js",

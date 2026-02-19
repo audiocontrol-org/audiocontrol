@@ -304,7 +304,7 @@ export function VirtualFrontPanel() {
 
                         {/* Error display */}
                         {lastError && (
-                            <div className="text-xs text-red-400 bg-red-500/10 px-2 py-1 rounded">
+                            <div className="ac-alert-inline ac-alert-inline-error text-xs">
                                 {lastError}
                             </div>
                         )}

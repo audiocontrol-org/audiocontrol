@@ -1,6 +1,6 @@
 {
   "name": "@audiocontrol/d110-editor",
-  "version": "1.0.0-alpha.1",
+  "version": "0.1.0",
   "description": "Web-based editor for Roland D-110 synthesizer",
   "type": "module",
   "scripts": {
@@ -15,7 +15,10 @@
     "test:all": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "visual:capture": "playwright test -c playwright.visual.config.ts",
+    "visual:compare": "node ../../scripts/visual-compare.mjs .",
+    "visual:baseline:update": "node ../../scripts/visual-update-baseline.mjs ."
   },
   "keywords": [
     "roland",
@@ -35,7 +38,7 @@
     "directory": "modules/d110-editor"
   },
   "dependencies": {
-    "@audiocontrol/editor-tools": "workspace:*",
+    "@audiocontrol/editor-core": "workspace:*",
     "@audiocontrol/shared-midi": "workspace:*",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",

@@ -42,7 +42,7 @@ export function PatchList({ patches, selectedIndex, onSelect }: PatchListProps) 
           Patches ({nonEmptyCount} of {loadedPatches.length} used)
         </span>
       </div>
-      <div className="max-h-[calc(100vh-220px)] overflow-y-auto space-y-1">
+      <div className="ac-scroll-list space-y-1">
         {patches.map((patch, index) => {
           const isLoaded = patch !== undefined;
           const isEmpty = isLoaded && isPatchEmpty(patch);
