@@ -131,6 +131,6 @@ pnpm --filter <module>... build      # Build module and its dependencies
 - Never use relative imports — use `@/` pattern
 - Never create files larger than 500 lines
 - Never commit temporary files or build artifacts
-- Never add Claude attribution to git commits
+- Never add Claude attribution to git commits or pull requests
 - Never use `ts-node` — use `tsx`
 - Never call builds "production-ready"
