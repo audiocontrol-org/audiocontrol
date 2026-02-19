@@ -7,6 +7,7 @@
 
 import type { S330Envelope } from '@audiocontrol/sampler-devices/s330';
 import { cn } from '@/lib/utils';
+import { VfdGlowDefs } from '@audiocontrol/editor-core';
 
 interface EnvelopeDisplayProps {
     envelope: S330Envelope;
@@ -57,6 +58,8 @@ export function EnvelopeDisplay({
                 viewBox={`0 0 ${width} ${height}`}
                 className="w-full h-auto"
             >
+                <VfdGlowDefs />
+
                 {/* Grid lines */}
                 <line
                     x1={padding}
@@ -88,6 +91,7 @@ export function EnvelopeDisplay({
                         strokeOpacity={0.3}
                         strokeWidth={1}
                         strokeDasharray="4 2"
+                        filter="url(#vfd-glow-subtle)"
                     />
                 )}
 
@@ -99,6 +103,7 @@ export function EnvelopeDisplay({
                     strokeWidth={2}
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    filter="url(#vfd-glow)"
                 />
 
                 {/* Points */}
@@ -111,6 +116,7 @@ export function EnvelopeDisplay({
                         fill={i === sustainPoint ? envelopeColor : envelopeSurface}
                         stroke={envelopeColor}
                         strokeWidth={1}
+                        filter="url(#vfd-glow)"
                     />
                 ))}
 
@@ -122,6 +128,7 @@ export function EnvelopeDisplay({
                     fill={envelopeSurface}
                     stroke={envelopeColor}
                     strokeWidth={1}
+                    filter="url(#vfd-glow-subtle)"
                 />
             </svg>
 
