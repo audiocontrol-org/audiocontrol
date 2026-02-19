@@ -9,6 +9,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { VfdGlowDefs } from '@audiocontrol/editor-core';
 import type { S330Envelope } from '@audiocontrol/sampler-devices/s330';
 
 interface EnvelopeEditorProps {
@@ -472,6 +473,8 @@ function EnvelopeVisualization({
                 viewBox={`0 0 ${width} ${height}`}
                 className={cn('w-full h-auto', !disabled && 'cursor-crosshair')}
             >
+                <VfdGlowDefs />
+
                 {/* Grid lines */}
                 <line
                     x1={padding}
@@ -531,6 +534,7 @@ function EnvelopeVisualization({
                         strokeOpacity={0.3}
                         strokeWidth={1}
                         strokeDasharray="4 2"
+                        filter="url(#vfd-glow-subtle)"
                     />
                 )}
 
@@ -542,6 +546,7 @@ function EnvelopeVisualization({
                     strokeWidth={strokeWidth}
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    filter="url(#vfd-glow)"
                 />
 
                 {/* Draggable points */}
@@ -567,6 +572,7 @@ function EnvelopeVisualization({
                             fill={dragging === i ? envelopeColorActive : i === sustainPoint ? envelopeColor : envelopeSurface}
                             stroke={envelopeColor}
                             strokeWidth={i === sustainPoint ? 2 : 1.5}
+                            filter={dragging === i ? 'url(#vfd-glow-intense)' : 'url(#vfd-glow)'}
                             className={cn(
                                 !disabled && i < endPoint && 'cursor-grab',
                                 dragging === i && 'cursor-grabbing'
@@ -611,6 +617,7 @@ function EnvelopeVisualization({
                     fill={envelopeSurface}
                     stroke={envelopeColor}
                     strokeWidth={1}
+                    filter="url(#vfd-glow-subtle)"
                 />
             </svg>
 

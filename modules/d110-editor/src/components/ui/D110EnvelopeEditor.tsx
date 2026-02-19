@@ -11,6 +11,7 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
+import { VfdGlowDefs } from '@audiocontrol/editor-core';
 
 export type EnvelopeType = 'pitch' | 'tvf' | 'tva';
 
@@ -375,6 +376,11 @@ function EnvelopeVisualization({
   // Release point index (only for TVF/TVA)
   const releaseIndex = isPitch ? -1 : 5;
 
+  const envelopeColor = 'var(--ac-highlight)';
+  const envelopeColorActive = 'color-mix(in srgb, var(--ac-highlight) 78%, white)';
+  const envelopeSurface = 'var(--ac-bg-panel)';
+  const releaseColor = '#f59e0b'; // Amber for release segment
+
   return (
     <div className="bg-d110-surface rounded-md p-2" aria-label={`${label} envelope`}>
       <svg
@@ -384,6 +390,8 @@ function EnvelopeVisualization({
         viewBox={`0 0 ${width} ${height}`}
         className={cn('w-full h-auto', !disabled && 'cursor-crosshair')}
       >
+        <VfdGlowDefs />
+
         {/* Grid lines */}
         <line
           x1={padding}
@@ -424,20 +432,22 @@ function EnvelopeVisualization({
           y1={padding}
           x2={xPositions[sustainIndex]}
           y2={height - padding}
-          stroke="#e94560"
+          stroke={envelopeColor}
           strokeOpacity={0.3}
           strokeWidth={1}
           strokeDasharray="4 2"
+          filter="url(#vfd-glow-subtle)"
         />
 
         {/* Envelope curve - main attack/decay portion */}
         <path
           d={pathData}
           fill="none"
-          stroke="#e94560"
+          stroke={envelopeColor}
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
+          filter="url(#vfd-glow)"
         />
 
         {/* Release segment (TVF/TVA only) - drawn in amber */}
@@ -447,9 +457,10 @@ function EnvelopeVisualization({
             y1={yPositions[sustainIndex]}
             x2={xPositions[releaseIndex]}
             y2={yPositions[releaseIndex]}
-            stroke="#f59e0b"
+            stroke={releaseColor}
             strokeWidth={2}
             strokeLinecap="round"
+            filter="url(#vfd-glow)"
           />
         )}
 
@@ -481,9 +492,10 @@ function EnvelopeVisualization({
                 cx={x}
                 cy={yPositions[i]}
                 r={isSustain ? 6 : isRelease ? 5 : 5}
-                fill={dragging === i ? '#ff6b8a' : isSustain ? '#e94560' : isRelease ? '#f59e0b' : '#1a1a2e'}
-                stroke={isRelease ? '#f59e0b' : '#e94560'}
+                fill={dragging === i ? envelopeColorActive : isSustain ? envelopeColor : isRelease ? releaseColor : envelopeSurface}
+                stroke={isRelease ? releaseColor : envelopeColor}
                 strokeWidth={isSustain ? 2 : 1.5}
+                filter={dragging === i ? 'url(#vfd-glow-intense)' : 'url(#vfd-glow)'}
                 className={cn(
                   !disabled && canDrag && (canEditLevel ? 'cursor-grab' : 'cursor-ew-resize'),
                   dragging === i && 'cursor-grabbing'
@@ -499,7 +511,7 @@ function EnvelopeVisualization({
                       x={x}
                       y={yPositions[i] - 12}
                       textAnchor="middle"
-                      fill="#e94560"
+                      fill={envelopeColor}
                       fontSize={10}
                       fontFamily="monospace"
                     >
@@ -512,7 +524,7 @@ function EnvelopeVisualization({
                       x={x}
                       y={yPositions[i] + 18}
                       textAnchor="middle"
-                      fill={isRelease ? '#f59e0b' : '#60a5fa'}
+                      fill={isRelease ? releaseColor : envelopeColor}
                       fontSize={10}
                       fontFamily="monospace"
                     >

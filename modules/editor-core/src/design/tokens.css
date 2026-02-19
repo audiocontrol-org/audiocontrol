@@ -53,6 +53,11 @@
   --ac-easing-emphasized: cubic-bezier(0.2, 0, 0, 1);
 
   --ac-drawer-inline: var(--ac-page-main-inline);
+
+  /* VFD glow effect tokens */
+  --ac-vfd-glow-color: var(--ac-highlight);
+  --ac-vfd-glow-inner-radius: 2;
+  --ac-vfd-glow-outer-radius: 4;
 }
 
 :root[data-editor='s330'] {

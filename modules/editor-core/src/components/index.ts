@@ -32,3 +32,12 @@ export {
   type BuildInfoConfig,
   type BuildInfoProps,
 } from './layout';
+
+// SVG glow components
+export {
+  VfdGlowDefs,
+  VfdGlowPath,
+  VfdGlowCircle,
+  type VfdGlowDefsProps,
+  type VfdGlowVariant,
+} from './svg';
