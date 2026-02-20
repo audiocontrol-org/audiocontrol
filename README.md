@@ -1,52 +1,59 @@
 # Audio Control
 
-A monorepo for programmatic MIDI controller mapping and audio plugin parameter management.
+Web-based editors for vintage synthesizers and samplers.
 
-## Purpose
+## Overview
 
-Audio Control provides tools and libraries for creating accurate, maintainable MIDI mappings between hardware controllers and audio plugins/DAWs. It solves the fundamental problem of controller mapping: ensuring that physical controls map to the correct plugin parameters with proper ranges and behaviors.
+Audio Control provides browser-based editors for programming vintage MIDI instruments. Each editor communicates directly with hardware via Web MIDI API and SysEx, enabling real-time parameter editing, backup, and sample management.
 
-## Components
+## Editors
 
-- **`canonical-midi-maps`** - Device-specific MIDI controller mappings with real plugin parameter indices
-- **`ardour-midi-maps`** - TypeScript library for generating Ardour DAW MIDI configuration files
-- **Plugin interrogation tools** - Extract accurate parameter information from VST/AU plugins using JUCE
+| Editor | Device | Type | URL |
+|--------|--------|------|-----|
+| S-330 Editor | Roland S-330 | Sampler | [audiocontrol.org/roland/s330/editor](https://audiocontrol.org/roland/s330/editor) |
+| D-110 Editor | Roland D-110 | Synthesizer | [audiocontrol.org/roland/d110/editor](https://audiocontrol.org/roland/d110/editor) |
+| JV-1080 Editor | Roland JV-1080 | Synthesizer | [audiocontrol.org/roland/jv1080/editor](https://audiocontrol.org/roland/jv1080/editor) |
 
-## Key Features
+## Features
 
-- 🎛️ Accurate plugin parameter extraction via a custom plugin loader
-- 🎹 Hardware controller abstraction layers
-- 📄 DAW-specific format generation (currently Ardour, more coming)
-- 🔧 Programmatic mapping creation with TypeScript
-- 📊 Parameter categorization and semantic grouping
+- **Real-time SysEx communication** - Direct parameter editing with instant hardware feedback
+- **Backup & restore** - Save complete device states to disk
+- **Sample export** - Extract audio samples from sampler memory
+- **Cross-format translation** - Convert between sampler formats
 
-## Architecture
+## Modules
 
-See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for detailed information about how plugin descriptors, canonical MIDI maps, and DAW-specific mappings work together.
+- `s330-editor` / `d110-editor` / `jv1080-editor` - Web-based device editors
+- `editor-core` - Shared editor functionality
+- `sampler-midi` - MIDI SysEx protocol implementations
+- `sampler-lib` - Shared sampler data structures
+- `sampler-devices` - Device communication layer
+- `sampler-backup` - Backup and restore utilities
+- `sampler-export` - Audio export from sampler data
 
-## Quick Start
+## Technology
+
+- TypeScript
+- React
+- Web MIDI API
+- pnpm workspaces
+
+## Development
 
 ```bash
 # Install dependencies
 pnpm install
 
-# Extract plugin parameters
-cd modules/canonical-midi-maps
-pnpm plugin:generate-batch
-
-# Build libraries
+# Build all modules
 pnpm build
+
+# Run tests
+pnpm test
+
+# Build and test a specific module
+pnpm --filter s330-editor build
+pnpm --filter s330-editor test
 ```
-
-## Versioning
-
-- Workspace packages use a unified version, currently `0.1.0`.
-- Validate version alignment with `pnpm version:check`.
-- Releases are managed via Changesets with a fixed workspace version group.
-
-## Quality Standard
-
-- Project-wide minimum test coverage: **80%** for lines, functions, branches, and statements.
 
 ## License
 
