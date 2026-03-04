@@ -6,7 +6,15 @@
  */
 
 import { create } from 'zustand';
-import type { MidiPortInfo, ConnectionStatus, D110MidiIO, D110ClientInterface } from '@/core/midi/types';
+import type {
+  MidiPortInfo,
+  ConnectionStatus,
+  D110MidiIO,
+  D110ClientInterface,
+  ScanStatus,
+  D110ScanResult,
+  D110Scanner,
+} from '@/core/midi/types';
 import {
   isWebMidiSupported,
   getBrowserCompatibility,
@@ -14,6 +22,7 @@ import {
   createWebMidiAdapter,
 } from '@audiocontrol/shared-midi';
 import { createD110Client } from '@/core/midi/D110Client';
+import { createD110Scanner } from '@/core/midi/D110Scanner';
 
 // localStorage keys
 const STORAGE_KEY_INPUT = 'd110-midi-input';
@@ -62,6 +71,12 @@ interface MidiState {
   deviceId: number; // User-facing device ID (17-32)
   midiAccess: MIDIAccess | null;
   openPorts: { input: MIDIInput | null; output: MIDIOutput | null };
+  // Scanner state
+  scanStatus: ScanStatus;
+  scanProgress: string;
+  foundDevices: D110ScanResult[];
+  scanError: string | null;
+  scanner: D110Scanner | null;
 }
 
 interface MidiActions {
@@ -71,6 +86,11 @@ interface MidiActions {
   disconnect: () => Promise<void>;
   setDeviceId: (id: number) => void;
   sendPanic: () => void;
+  // Scanner actions
+  startScan: () => Promise<void>;
+  cancelScan: () => void;
+  selectFoundDevice: (device: D110ScanResult) => Promise<void>;
+  dismissScanResults: () => void;
 }
 
 type MidiStore = MidiState & MidiActions;
@@ -93,6 +113,12 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
   deviceId: 17, // Default D-110 device ID
   midiAccess: null,
   openPorts: { input: null, output: null },
+  // Scanner state
+  scanStatus: 'idle',
+  scanProgress: '',
+  foundDevices: [],
+  scanError: null,
+  scanner: null,
 
   initialize: async () => {
     const { isSupported } = get();
@@ -131,7 +157,19 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
         if (inputAvailable && outputAvailable) {
           console.log('[MidiStore] Auto-connecting to saved ports...');
           await get().connect(saved.inputId, saved.outputId);
+        } else {
+          // Saved ports not available, trigger auto-scan after short delay
+          console.log('[MidiStore] Saved ports not available, starting auto-scan...');
+          setTimeout(() => {
+            void get().startScan();
+          }, 500);
         }
+      } else {
+        // No saved ports, trigger auto-scan after short delay
+        console.log('[MidiStore] No saved ports, starting auto-scan...');
+        setTimeout(() => {
+          void get().startScan();
+        }, 500);
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to initialize MIDI';
@@ -269,5 +307,90 @@ export const useMidiStore = create<MidiStore>((set, get) => ({
       adapter.send([status, 123, 0]); // All Notes Off
     }
     console.log('[MidiStore] Panic: sent All Sound Off and All Notes Off on all channels');
+  },
+
+  startScan: async () => {
+    const { midiAccess, scanner: existingScanner, scanStatus } = get();
+    if (!midiAccess) {
+      set({ scanError: 'MIDI not initialized', scanStatus: 'error' });
+      return;
+    }
+
+    // Prevent duplicate scans (React Strict Mode triggers twice)
+    if (scanStatus === 'scanning' || existingScanner?.isScanning()) {
+      console.log('[MidiStore] Scan already in progress, ignoring duplicate request');
+      return;
+    }
+
+    const scanner = createD110Scanner(midiAccess, {
+      onProgress: (message) => {
+        set({ scanProgress: message });
+      },
+      stopOnFirstDevice: false, // Scan for ALL devices
+      onDeviceFound: (device) => {
+        // Immediately update UI when device is found - show as option, don't auto-connect
+        console.log('[MidiStore] Device found during scan, showing as option');
+        const { foundDevices } = get();
+        set({
+          scanStatus: 'found',
+          foundDevices: [...foundDevices, device],
+          scanProgress: `Found D-110 on ${device.outputPortName}`,
+        });
+      },
+    });
+
+    set({
+      scanner,
+      scanStatus: 'scanning',
+      scanProgress: 'Starting scan...',
+      foundDevices: [],
+      scanError: null,
+    });
+
+    try {
+      const results = await scanner.scan();
+
+      // Update with final results
+      if (results.length === 0) {
+        set({ scanStatus: 'not_found', scanProgress: '' });
+      } else {
+        // Show found devices as options - user clicks to connect
+        set({
+          scanStatus: 'found',
+          foundDevices: results,
+          scanProgress: '',
+        });
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Scan failed';
+      set({ scanError: message, scanStatus: 'error', scanProgress: '' });
+    }
+  },
+
+  cancelScan: () => {
+    const { scanner } = get();
+    if (scanner?.isScanning()) {
+      scanner.cancel();
+    }
+    set({ scanStatus: 'idle', scanProgress: '', foundDevices: [] });
+  },
+
+  selectFoundDevice: async (device: D110ScanResult) => {
+    // Set the device ID from the scan result
+    set({ deviceId: device.userDeviceId });
+    saveToStorage(device.inputPortId, device.outputPortId, device.userDeviceId);
+
+    // Connect to the device
+    await get().connect(device.inputPortId, device.outputPortId);
+
+    // Clear scan state after successful connection
+    const { status } = get();
+    if (status === 'connected') {
+      set({ scanStatus: 'idle', foundDevices: [] });
+    }
+  },
+
+  dismissScanResults: () => {
+    set({ scanStatus: 'idle', scanProgress: '', foundDevices: [], scanError: null });
   },
 }));

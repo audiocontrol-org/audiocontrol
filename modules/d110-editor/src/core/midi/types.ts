@@ -256,6 +256,55 @@ export interface D110ClientOptions {
 }
 
 /**
+ * Result of a successful D-110 device scan
+ */
+export interface D110ScanResult {
+  inputPortId: string;
+  outputPortId: string;
+  inputPortName: string;
+  outputPortName: string;
+  /** Device ID as sent in SysEx (0x00-0x1F) */
+  deviceId: number;
+  /** User-facing device ID as shown on D-110 (1-32) */
+  userDeviceId: number;
+}
+
+/**
+ * Scanner status
+ */
+export type ScanStatus = 'idle' | 'scanning' | 'found' | 'not_found' | 'error';
+
+/**
+ * Scanner configuration
+ */
+export interface D110ScannerConfig {
+  /** Timeout waiting for response per probe (ms) */
+  probeTimeoutMs?: number;
+  /** Delay between device ID probes (ms) */
+  probeDelayMs?: number;
+  /** Delay between port pairs (ms) */
+  portDelayMs?: number;
+  /** Progress callback */
+  onProgress?: (message: string) => void;
+  /** Stop scanning after finding the first device */
+  stopOnFirstDevice?: boolean;
+  /** Callback when a device is found (called before scan completes) */
+  onDeviceFound?: (device: D110ScanResult) => void;
+}
+
+/**
+ * Scanner interface
+ */
+export interface D110Scanner {
+  /** Scan for D-110 devices */
+  scan(): Promise<D110ScanResult[]>;
+  /** Cancel ongoing scan */
+  cancel(): void;
+  /** Whether a scan is in progress */
+  isScanning(): boolean;
+}
+
+/**
  * D-110 client interface
  */
 export interface D110ClientInterface {

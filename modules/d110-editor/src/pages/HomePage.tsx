@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMidiStore } from '@/stores';
-import { MidiPortSelector } from '@/components/midi';
+import { MidiPortSelector, ScannerStatus } from '@/components/midi';
 import { cn } from '@/lib/utils';
 
 // localStorage keys (must match midiStore)
@@ -29,6 +29,15 @@ export function HomePage(): JSX.Element {
     disconnect,
     selectedInputId: storeInputId,
     selectedOutputId: storeOutputId,
+    // Scanner state
+    scanStatus,
+    scanProgress,
+    foundDevices,
+    scanError,
+    startScan,
+    cancelScan,
+    selectFoundDevice,
+    dismissScanResults,
   } = useMidiStore();
 
   // Local state for port selection - initialized from localStorage
@@ -100,6 +109,17 @@ export function HomePage(): JSX.Element {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
+      {/* Scanner Status */}
+      <ScannerStatus
+        status={scanStatus}
+        progress={scanProgress}
+        foundDevices={foundDevices}
+        error={scanError}
+        onCancel={cancelScan}
+        onSelectDevice={(device) => void selectFoundDevice(device)}
+        onDismiss={dismissScanResults}
+      />
+
       {/* Connection Card */}
       <div className="card">
         <h2 className="text-xl font-bold text-d110-text mb-4">
@@ -163,6 +183,13 @@ export function HomePage(): JSX.Element {
                 )}
               >
                 {status === 'connecting' ? 'Connecting...' : 'Connect'}
+              </button>
+              <button
+                onClick={() => void startScan()}
+                disabled={scanStatus === 'scanning'}
+                className="btn btn-secondary"
+              >
+                {scanStatus === 'scanning' ? 'Scanning...' : 'Scan for Devices'}
               </button>
               <button onClick={() => void refresh()} className="btn btn-secondary">
                 Refresh Ports

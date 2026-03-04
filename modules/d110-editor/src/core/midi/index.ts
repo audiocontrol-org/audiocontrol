@@ -28,6 +28,10 @@ export type {
   D110Patch,
   D110ClientOptions,
   D110ClientInterface,
+  D110ScanResult,
+  ScanStatus,
+  D110ScannerConfig,
+  D110Scanner,
 } from '@/core/midi/types';
 
 // Enums (export as values, which also exports the types)
@@ -99,6 +103,9 @@ export {
 
 // D-110 client
 export { createD110Client } from '@/core/midi/D110Client';
+
+// D-110 scanner
+export { createD110Scanner } from '@/core/midi/D110Scanner';
 
 // Node.js adapter (for testing with easymidi)
 export { createEasymidiAdapter, findMidiPort } from '@/core/midi/EasymidiAdapter';
