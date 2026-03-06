@@ -10,7 +10,7 @@
  * - Pitch parameters
  */
 
-import type { S330Tone, S330Envelope } from '@audiocontrol/sampler-devices/s330';
+import type { S330Tone, S330Envelope, S330EgPolarity, S330LevelCurve } from '@audiocontrol/sampler-devices/s330';
 import { formatPercent } from '@audiocontrol/editor-core';
 import { midiNoteToName, cn, formatS330Number } from '@/lib/utils';
 import { ParameterSlider } from '@/components/ui/ParameterSlider';
@@ -279,16 +279,43 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         tooltip={TONE_TOOLTIPS.tvfVelRate}
                     />
                 </div>
-                <div className="mb-2 flex gap-4">
+                <div className="mb-4 grid gap-4 md:grid-cols-2">
                     <Tooltip content={TONE_TOOLTIPS.tvfEgPolarity}>
-                        <span className="text-xs text-s330-muted cursor-help">
-                            EG Polarity: {tone.tvf.egPolarity}
-                        </span>
+                        <div>
+                            <label className="text-xs text-s330-muted mb-1 block">EG Polarity</label>
+                            <select
+                                value={tone.tvf.egPolarity}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, tvf: { ...tone.tvf, egPolarity: e.target.value as S330EgPolarity } };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
+                                disabled={!tone.tvf.enabled}
+                                className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text disabled:opacity-50"
+                            >
+                                <option value="normal">Normal</option>
+                                <option value="reverse">Reverse</option>
+                            </select>
+                        </div>
                     </Tooltip>
                     <Tooltip content={TONE_TOOLTIPS.tvfLevelCurve}>
-                        <span className="text-xs text-s330-muted cursor-help">
-                            Level Curve: {tone.tvf.levelCurve}
-                        </span>
+                        <div>
+                            <label className="text-xs text-s330-muted mb-1 block">Level Curve</label>
+                            <select
+                                value={tone.tvf.levelCurve}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, tvf: { ...tone.tvf, levelCurve: Number(e.target.value) as S330LevelCurve } };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
+                                disabled={!tone.tvf.enabled}
+                                className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text disabled:opacity-50"
+                            >
+                                {[0, 1, 2, 3, 4, 5].map((i) => (
+                                    <option key={i} value={i}>{i}</option>
+                                ))}
+                            </select>
+                        </div>
                     </Tooltip>
                 </div>
                 <EnvelopeEditor
@@ -497,8 +524,21 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                     />
                 </div>
                 <Tooltip content={TONE_TOOLTIPS.tvaLevelCurve}>
-                    <div className="mb-2">
-                        <label className="text-xs text-s330-muted">Level Curve: {tone.tva.levelCurve}</label>
+                    <div className="mb-4 max-w-[200px]">
+                        <label className="text-xs text-s330-muted mb-1 block">Level Curve</label>
+                        <select
+                            value={tone.tva.levelCurve}
+                            onChange={(e) => {
+                                const updatedTone = { ...tone, tva: { ...tone.tva, levelCurve: Number(e.target.value) as S330LevelCurve } };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
+                            }}
+                            className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                        >
+                            {[0, 1, 2, 3, 4, 5].map((i) => (
+                                <option key={i} value={i}>{i}</option>
+                            ))}
+                        </select>
                     </div>
                 </Tooltip>
                 <EnvelopeEditor
