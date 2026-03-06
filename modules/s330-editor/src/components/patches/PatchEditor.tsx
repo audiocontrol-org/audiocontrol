@@ -10,7 +10,9 @@ import { useMidiStore } from '@/stores/midiStore';
 import { formatPercent } from '@audiocontrol/editor-core';
 import { cn } from '@/lib/utils';
 import { ParameterSlider } from '@/components/ui/ParameterSlider';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { ToneZoneEditor } from './ToneZoneEditor';
+import { PATCH_TOOLTIPS } from '@/constants/patch-tooltips';
 
 interface PatchEditorProps {
   patch: S330Patch;
@@ -33,7 +35,6 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
   const clientRef = useRef<S330ClientInterface | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(common.name);
-  const [toneMappingExpanded, setToneMappingExpanded] = useState(false);
   const [toneLayer1, setToneLayer1] = useState(common.toneLayer1);
   const [toneLayer2, setToneLayer2] = useState(common.toneLayer2);
 
@@ -285,122 +286,133 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
         {/* Common Parameters - matching hardware layout */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {/* Key Mode */}
-          <div>
-            <label className="text-xs text-s330-muted mb-1 block">Key Mode</label>
-            <select
-              value={common.keyMode}
-              onChange={(e) => handleKeyModeChange(e.target.value as 'normal' | 'v-sw' | 'x-fade' | 'v-mix' | 'unison')}
-              className={cn(
-                'w-full px-2 py-1.5 text-sm font-mono',
-                'bg-s330-panel border border-s330-accent rounded',
-                'text-s330-text hover:bg-s330-accent/30',
-                'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-              )}
-            >
-              <option value="normal">Normal</option>
-              <option value="v-sw">V-Sw</option>
-              <option value="x-fade">X-Fade</option>
-              <option value="v-mix">V-Mix</option>
-              <option value="unison">Unison</option>
-            </select>
-          </div>
+          <Tooltip content={PATCH_TOOLTIPS.keyMode}>
+            <div>
+              <label className="text-xs text-s330-muted mb-1 block">Key Mode</label>
+              <select
+                value={common.keyMode}
+                onChange={(e) => handleKeyModeChange(e.target.value as 'normal' | 'v-sw' | 'x-fade' | 'v-mix' | 'unison')}
+                className={cn(
+                  'w-full px-2 py-1.5 text-sm font-mono',
+                  'bg-s330-panel border border-s330-accent rounded',
+                  'text-s330-text hover:bg-s330-accent/30',
+                  'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                )}
+              >
+                <option value="normal">Normal</option>
+                <option value="v-sw">V-Sw</option>
+                <option value="x-fade">X-Fade</option>
+                <option value="v-mix">V-Mix</option>
+                <option value="unison">Unison</option>
+              </select>
+            </div>
+          </Tooltip>
 
           {/* Key Assign */}
-          <div>
-            <label className="text-xs text-s330-muted mb-1 block">Key Assign</label>
-            <select
-              value={common.keyAssign}
-              onChange={(e) => handleKeyAssignChange(e.target.value as 'rotary' | 'fix')}
-              className={cn(
-                'w-full px-2 py-1.5 text-sm font-mono',
-                'bg-s330-panel border border-s330-accent rounded',
-                'text-s330-text hover:bg-s330-accent/30',
-                'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-              )}
-            >
-              <option value="rotary">Rotary</option>
-              <option value="fix">Fix</option>
-            </select>
-          </div>
+          <Tooltip content={PATCH_TOOLTIPS.keyAssign}>
+            <div>
+              <label className="text-xs text-s330-muted mb-1 block">Key Assign</label>
+              <select
+                value={common.keyAssign}
+                onChange={(e) => handleKeyAssignChange(e.target.value as 'rotary' | 'fix')}
+                className={cn(
+                  'w-full px-2 py-1.5 text-sm font-mono',
+                  'bg-s330-panel border border-s330-accent rounded',
+                  'text-s330-text hover:bg-s330-accent/30',
+                  'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                )}
+              >
+                <option value="rotary">Rotary</option>
+                <option value="fix">Fix</option>
+              </select>
+            </div>
+          </Tooltip>
 
           {/* P.Bend Range */}
-          <div>
-            <label className="text-xs text-s330-muted mb-1 block">P.Bend Range</label>
-            <select
-              value={common.benderRange}
-              onChange={(e) => handleBenderRangeChange(Number(e.target.value))}
-              className={cn(
-                'w-full px-2 py-1.5 text-sm font-mono',
-                'bg-s330-panel border border-s330-accent rounded',
-                'text-s330-text hover:bg-s330-accent/30',
-                'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-              )}
-            >
-              {Array.from({ length: 13 }, (_, i) => (
-                <option key={i} value={i}>
-                  {i} semitones
-                </option>
-              ))}
-            </select>
-          </div>
+          <Tooltip content={PATCH_TOOLTIPS.benderRange}>
+            <div>
+              <label className="text-xs text-s330-muted mb-1 block">P.Bend Range</label>
+              <select
+                value={common.benderRange}
+                onChange={(e) => handleBenderRangeChange(Number(e.target.value))}
+                className={cn(
+                  'w-full px-2 py-1.5 text-sm font-mono',
+                  'bg-s330-panel border border-s330-accent rounded',
+                  'text-s330-text hover:bg-s330-accent/30',
+                  'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                )}
+              >
+                {Array.from({ length: 13 }, (_, i) => (
+                  <option key={i} value={i}>
+                    {i} semitones
+                  </option>
+                ))}
+              </select>
+            </div>
+          </Tooltip>
 
           {/* A.T Assign */}
-          <div>
-            <label className="text-xs text-s330-muted mb-1 block">A.T Assign</label>
-            <select
-              value={common.aftertouchAssign}
-              onChange={(e) => handleAftertouchAssignChange(e.target.value as 'modulation' | 'volume' | 'bend+' | 'bend-' | 'filter')}
-              className={cn(
-                'w-full px-2 py-1.5 text-sm font-mono',
-                'bg-s330-panel border border-s330-accent rounded',
-                'text-s330-text hover:bg-s330-accent/30',
-                'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-              )}
-            >
-              <option value="modulation">Modulation</option>
-              <option value="volume">Volume</option>
-              <option value="bend+">Bend+</option>
-              <option value="bend-">Bend-</option>
-              <option value="filter">Filter</option>
-            </select>
-          </div>
+          <Tooltip content={PATCH_TOOLTIPS.aftertouchAssign}>
+            <div>
+              <label className="text-xs text-s330-muted mb-1 block">A.T Assign</label>
+              <select
+                value={common.aftertouchAssign}
+                onChange={(e) => handleAftertouchAssignChange(e.target.value as 'modulation' | 'volume' | 'bend+' | 'bend-' | 'filter')}
+                className={cn(
+                  'w-full px-2 py-1.5 text-sm font-mono',
+                  'bg-s330-panel border border-s330-accent rounded',
+                  'text-s330-text hover:bg-s330-accent/30',
+                  'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                )}
+              >
+                <option value="modulation">Modulation</option>
+                <option value="volume">Volume</option>
+                <option value="bend+">Bend+</option>
+                <option value="bend-">Bend-</option>
+                <option value="filter">Filter</option>
+              </select>
+            </div>
+          </Tooltip>
 
           {/* Oct.Shift - disabled due to parsing bug, see issue #10 */}
-          <div className="opacity-50">
-            <label className="text-xs text-s330-muted mb-1 block">Oct.Shift</label>
-            <div
-              className={cn(
-                'w-full px-2 py-1.5 text-sm font-mono',
-                'bg-s330-panel border border-s330-accent/50 rounded',
-                'text-s330-muted cursor-not-allowed'
-              )}
-              title="Temporarily disabled - see issue #10"
-            >
-              {common.octaveShift > 0 ? '+' : ''}{common.octaveShift}
+          <Tooltip content={PATCH_TOOLTIPS.octaveShift + ' (Currently disabled - see issue #10)'}>
+            <div className="opacity-50">
+              <label className="text-xs text-s330-muted mb-1 block">Oct.Shift</label>
+              <div
+                className={cn(
+                  'w-full px-2 py-1.5 text-sm font-mono',
+                  'bg-s330-panel border border-s330-accent/50 rounded',
+                  'text-s330-muted cursor-not-allowed'
+                )}
+              >
+                {common.octaveShift > 0 ? '+' : ''}{common.octaveShift}
+              </div>
             </div>
-          </div>
+          </Tooltip>
 
           {/* Output Assign */}
-          <div>
-            <label className="text-xs text-s330-muted mb-1 block">Output Assign</label>
-            <select
-              value={common.outputAssign}
-              onChange={(e) => handleOutputChange(Number(e.target.value))}
-              className={cn(
-                'w-full px-2 py-1.5 text-sm font-mono',
-                'bg-s330-panel border border-s330-accent rounded',
-                'text-s330-text hover:bg-s330-accent/30',
-                'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-              )}
-            >
-              {Array.from({ length: 8 }, (_, i) => (
-                <option key={i} value={i}>
-                  Out {i + 1}
-                </option>
-              ))}
-              <option value={8}>TONE</option>
-            </select>
-          </div>
+          <Tooltip content={PATCH_TOOLTIPS.outputAssign}>
+            <div>
+              <label className="text-xs text-s330-muted mb-1 block">Output Assign</label>
+              <select
+                value={common.outputAssign}
+                onChange={(e) => handleOutputChange(Number(e.target.value))}
+                className={cn(
+                  'w-full px-2 py-1.5 text-sm font-mono',
+                  'bg-s330-panel border border-s330-accent rounded',
+                  'text-s330-text hover:bg-s330-accent/30',
+                  'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                )}
+              >
+                {Array.from({ length: 8 }, (_, i) => (
+                  <option key={i} value={i}>
+                    Out {i + 1}
+                  </option>
+                ))}
+                <option value={8}>TONE</option>
+              </select>
+            </div>
+          </Tooltip>
         </div>
 
         {/* Sliders for Level and A.T Sense */}
@@ -411,6 +423,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
             onChange={handleLevelChange}
             onCommit={handleLevelCommit}
             formatValue={formatPercent}
+            tooltip={PATCH_TOOLTIPS.level}
           />
           <ParameterSlider
             label="A.T Sense"
@@ -418,6 +431,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
             onChange={handleAftertouchSensChange}
             onCommit={handleAftertouchSensCommit}
             formatValue={formatPercent}
+            tooltip={PATCH_TOOLTIPS.aftertouchSens}
           />
         </div>
 
@@ -431,6 +445,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
               onChange={(val) => handleDetuneChange(val - 64)}
               onCommit={handleDetuneCommit}
               disabled={common.keyMode !== 'unison'}
+              tooltip={PATCH_TOOLTIPS.detune}
             />
           </div>
 
@@ -442,6 +457,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
               onChange={handleVelocityThresholdChange}
               onCommit={handleVelocityThresholdCommit}
               disabled={common.keyMode !== 'v-sw'}
+              tooltip={PATCH_TOOLTIPS.velocityThreshold}
             />
           </div>
 
@@ -454,6 +470,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
               onCommit={handleVelocityMixRatioCommit}
               formatValue={formatPercent}
               disabled={common.keyMode !== 'v-mix'}
+              tooltip={PATCH_TOOLTIPS.velocityMixRatio}
             />
           </div>
         </div>
@@ -461,57 +478,32 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
 
       {/* Tone Mapping Editor */}
       <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="font-medium text-s330-text">
-            Tone Mapping
-            <span className="ml-2 text-xs text-s330-muted">
-              ({loadedTonesCount} tones loaded, {namedTonesCount} with names)
-            </span>
-          </h4>
-          <button
-            onClick={() => setToneMappingExpanded(!toneMappingExpanded)}
-            className={cn(
-              'px-3 py-1 text-sm rounded',
-              'bg-s330-accent text-s330-text hover:bg-s330-highlight',
-              'transition-colors'
-            )}
-          >
-            {toneMappingExpanded ? 'Collapse' : 'Expand'}
-          </button>
+        <h4 className="font-medium text-s330-text mb-4">
+          Tone Mapping
+          <span className="ml-2 text-xs text-s330-muted">
+            ({loadedTonesCount} tones loaded, {namedTonesCount} with names)
+          </span>
+        </h4>
+
+        <div className="space-y-6">
+          {/* Layer 1 Zone Editor */}
+          <ToneZoneEditor
+            layer={1}
+            toneData={toneLayer1}
+            keyMode={common.keyMode as S330KeyMode}
+            tones={tones}
+            onUpdate={handleToneLayer1Update}
+          />
+
+          {/* Layer 2 Zone Editor (shown for dual-layer modes) */}
+          <ToneZoneEditor
+            layer={2}
+            toneData={toneLayer2}
+            keyMode={common.keyMode as S330KeyMode}
+            tones={tones}
+            onUpdate={handleToneLayer2Update}
+          />
         </div>
-
-        {toneMappingExpanded ? (
-          <div className="space-y-6">
-            {/* Layer 1 Zone Editor */}
-            <ToneZoneEditor
-              layer={1}
-              toneData={toneLayer1}
-              keyMode={common.keyMode as S330KeyMode}
-              tones={tones}
-              onUpdate={handleToneLayer1Update}
-            />
-
-            {/* Layer 2 Zone Editor (shown for dual-layer modes) */}
-            <ToneZoneEditor
-              layer={2}
-              toneData={toneLayer2}
-              keyMode={common.keyMode as S330KeyMode}
-              tones={tones}
-              onUpdate={handleToneLayer2Update}
-            />
-          </div>
-        ) : (
-          <div className="space-y-1">
-            <p className="text-s330-muted text-sm">
-              Layer 1 active keys: {toneLayer1.filter(t => t !== -1).length} / 109
-            </p>
-            {common.keyMode !== 'normal' && (
-              <p className="text-s330-muted text-sm">
-                Layer 2 active keys: {toneLayer2.filter(t => t !== 0).length} / 109
-              </p>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );

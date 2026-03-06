@@ -10,11 +10,13 @@
  * - Pitch parameters
  */
 
-import type { S330Tone, S330Envelope } from '@audiocontrol/sampler-devices/s330';
+import type { S330Tone, S330Envelope, S330EgPolarity, S330LevelCurve } from '@audiocontrol/sampler-devices/s330';
 import { formatPercent } from '@audiocontrol/editor-core';
 import { midiNoteToName, cn, formatS330Number } from '@/lib/utils';
 import { ParameterSlider } from '@/components/ui/ParameterSlider';
 import { EnvelopeEditor } from '@/components/ui/EnvelopeEditor';
+import { Tooltip } from '@/components/ui/Tooltip';
+import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
 
 interface ToneEditorProps {
     tone: S330Tone;
@@ -54,116 +56,130 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
 
                 {/* Basic Info */}
                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <div>
-                        <label className="text-xs text-s330-muted">Original Key</label>
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="number"
-                                min={0}
-                                max={127}
-                                value={tone.originalKey}
+                    <Tooltip content={TONE_TOOLTIPS.originalKey}>
+                        <div>
+                            <label className="text-xs text-s330-muted">Original Key</label>
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="number"
+                                    min={0}
+                                    max={127}
+                                    value={tone.originalKey}
+                                    onChange={(e) => {
+                                        const updatedTone = { ...tone, originalKey: Math.max(0, Math.min(127, parseInt(e.target.value) || 0)) };
+                                        onUpdate?.(updatedTone);
+                                        onCommit?.(updatedTone);
+                                    }}
+                                    className="w-16 text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                                />
+                                <span className="text-sm text-s330-muted">{midiNoteToName(tone.originalKey)}</span>
+                            </div>
+                        </div>
+                    </Tooltip>
+                    <Tooltip content={TONE_TOOLTIPS.sampleRate}>
+                        <div>
+                            <label className="text-xs text-s330-muted">Sample Rate</label>
+                            <div className="text-sm text-s330-text">{tone.sampleRate}</div>
+                        </div>
+                    </Tooltip>
+                    <Tooltip content={TONE_TOOLTIPS.loopMode}>
+                        <div>
+                            <label className="text-xs text-s330-muted">Loop Mode</label>
+                            <select
+                                value={tone.loopMode}
                                 onChange={(e) => {
-                                    const updatedTone = { ...tone, originalKey: Math.max(0, Math.min(127, parseInt(e.target.value) || 0)) };
+                                    const updatedTone = { ...tone, loopMode: e.target.value as S330Tone['loopMode'] };
                                     onUpdate?.(updatedTone);
                                     onCommit?.(updatedTone);
                                 }}
-                                className="w-16 text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
-                            />
-                            <span className="text-sm text-s330-muted">{midiNoteToName(tone.originalKey)}</span>
+                                className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                            >
+                                <option value="forward">Forward</option>
+                                <option value="alternating">Alternating</option>
+                                <option value="one-shot">One-Shot</option>
+                                <option value="reverse">Reverse</option>
+                            </select>
                         </div>
-                    </div>
-                    <div>
-                        <label className="text-xs text-s330-muted">Sample Rate</label>
-                        <div className="text-sm text-s330-text">{tone.sampleRate}</div>
-                    </div>
-                    <div>
-                        <label className="text-xs text-s330-muted">Loop Mode</label>
-                        <select
-                            value={tone.loopMode}
-                            onChange={(e) => {
-                                const updatedTone = { ...tone, loopMode: e.target.value as S330Tone['loopMode'] };
-                                onUpdate?.(updatedTone);
-                                onCommit?.(updatedTone);
-                            }}
-                            className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
-                        >
-                            <option value="forward">Forward</option>
-                            <option value="alternating">Alternating</option>
-                            <option value="one-shot">One-Shot</option>
-                            <option value="reverse">Reverse</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label className="text-xs text-s330-muted">Output</label>
-                        <select
-                            value={tone.outputAssign}
-                            onChange={(e) => {
-                                const updatedTone = { ...tone, outputAssign: parseInt(e.target.value) };
-                                onUpdate?.(updatedTone);
-                                onCommit?.(updatedTone);
-                            }}
-                            className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
-                        >
-                            <option value={0}>Mix</option>
-                            <option value={1}>Out 1</option>
-                            <option value={2}>Out 2</option>
-                            <option value={3}>Out 3</option>
-                            <option value={4}>Out 4</option>
-                            <option value={5}>Out 5</option>
-                            <option value={6}>Out 6</option>
-                            <option value={7}>Out 7</option>
-                            <option value={8}>Out 8</option>
-                        </select>
-                    </div>
+                    </Tooltip>
+                    <Tooltip content={TONE_TOOLTIPS.outputAssign}>
+                        <div>
+                            <label className="text-xs text-s330-muted">Output</label>
+                            <select
+                                value={tone.outputAssign}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, outputAssign: parseInt(e.target.value) };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
+                                className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                            >
+                                <option value={0}>Mix</option>
+                                <option value={1}>Out 1</option>
+                                <option value={2}>Out 2</option>
+                                <option value={3}>Out 3</option>
+                                <option value={4}>Out 4</option>
+                                <option value={5}>Out 5</option>
+                                <option value={6}>Out 6</option>
+                                <option value={7}>Out 7</option>
+                                <option value={8}>Out 8</option>
+                            </select>
+                        </div>
+                    </Tooltip>
                 </div>
 
                 {/* Wave Addresses */}
                 <div className="mt-4 grid gap-4 md:grid-cols-3 text-xs">
-                    <div className="bg-s330-bg p-2 rounded">
-                        <label className="text-s330-muted block mb-1">Start</label>
-                        <input
-                            type="number"
-                            min={0}
-                            max={0x221180}
-                            value={tone.wave.startPoint}
-                            onChange={(e) => {
-                                const updatedTone = { ...tone, wave: { ...tone.wave, startPoint: Math.max(0, parseInt(e.target.value) || 0) } };
-                                onUpdate?.(updatedTone);
-                                onCommit?.(updatedTone);
-                            }}
-                            className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
-                        />
-                    </div>
-                    <div className="bg-s330-bg p-2 rounded">
-                        <label className="text-s330-muted block mb-1">Loop Point</label>
-                        <input
-                            type="number"
-                            min={0}
-                            max={0x221184}
-                            value={tone.wave.loopPoint}
-                            onChange={(e) => {
-                                const updatedTone = { ...tone, wave: { ...tone.wave, loopPoint: Math.max(0, parseInt(e.target.value) || 0) } };
-                                onUpdate?.(updatedTone);
-                                onCommit?.(updatedTone);
-                            }}
-                            className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
-                        />
-                    </div>
-                    <div className="bg-s330-bg p-2 rounded">
-                        <label className="text-s330-muted block mb-1">End</label>
-                        <input
-                            type="number"
-                            min={4}
-                            max={0x221184}
-                            value={tone.wave.endPoint}
-                            onChange={(e) => {
-                                const updatedTone = { ...tone, wave: { ...tone.wave, endPoint: Math.max(4, parseInt(e.target.value) || 4) } };
-                                onUpdate?.(updatedTone);
-                                onCommit?.(updatedTone);
-                            }}
-                            className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
-                        />
-                    </div>
+                    <Tooltip content={TONE_TOOLTIPS.waveStart}>
+                        <div className="bg-s330-bg p-2 rounded">
+                            <label className="text-s330-muted block mb-1">Start</label>
+                            <input
+                                type="number"
+                                min={0}
+                                max={0x221180}
+                                value={tone.wave.startPoint}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, wave: { ...tone.wave, startPoint: Math.max(0, parseInt(e.target.value) || 0) } };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
+                                className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                            />
+                        </div>
+                    </Tooltip>
+                    <Tooltip content={TONE_TOOLTIPS.waveLoop}>
+                        <div className="bg-s330-bg p-2 rounded">
+                            <label className="text-s330-muted block mb-1">Loop Point</label>
+                            <input
+                                type="number"
+                                min={0}
+                                max={0x221184}
+                                value={tone.wave.loopPoint}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, wave: { ...tone.wave, loopPoint: Math.max(0, parseInt(e.target.value) || 0) } };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
+                                className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                            />
+                        </div>
+                    </Tooltip>
+                    <Tooltip content={TONE_TOOLTIPS.waveEnd}>
+                        <div className="bg-s330-bg p-2 rounded">
+                            <label className="text-s330-muted block mb-1">End</label>
+                            <input
+                                type="number"
+                                min={4}
+                                max={0x221184}
+                                value={tone.wave.endPoint}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, wave: { ...tone.wave, endPoint: Math.max(4, parseInt(e.target.value) || 4) } };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
+                                className="w-full font-mono bg-transparent border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                            />
+                        </div>
+                    </Tooltip>
                 </div>
             </div>
 
@@ -178,22 +194,24 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         {tone.tvf.enabled ? 'ON' : 'OFF'}
                     </span>
                 </h4>
-                <div className="flex items-center gap-2 mb-4">
-                    <input
-                        type="checkbox"
-                        id="tvfEnabled"
-                        checked={tone.tvf.enabled}
-                        onChange={(e) => {
-                            const updatedTone = { ...tone, tvf: { ...tone.tvf, enabled: e.target.checked } };
-                            onUpdate?.(updatedTone);
-                            onCommit?.(updatedTone);
-                        }}
-                        className="rounded"
-                    />
-                    <label htmlFor="tvfEnabled" className="text-sm text-s330-text">
-                        Enable Filter
-                    </label>
-                </div>
+                <Tooltip content={TONE_TOOLTIPS.tvfEnabled}>
+                    <div className="flex items-center gap-2 mb-4">
+                        <input
+                            type="checkbox"
+                            id="tvfEnabled"
+                            checked={tone.tvf.enabled}
+                            onChange={(e) => {
+                                const updatedTone = { ...tone, tvf: { ...tone.tvf, enabled: e.target.checked } };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
+                            }}
+                            className="rounded"
+                        />
+                        <label htmlFor="tvfEnabled" className="text-sm text-s330-text">
+                            Enable Filter
+                        </label>
+                    </div>
+                </Tooltip>
                 <div className="grid gap-4 md:grid-cols-3 mb-4">
                     <ParameterSlider
                         label="Cutoff"
@@ -202,6 +220,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onCommit={onCommit}
                         formatValue={formatPercent}
                         disabled={!tone.tvf.enabled}
+                        tooltip={TONE_TOOLTIPS.tvfCutoff}
                     />
                     <ParameterSlider
                         label="Resonance"
@@ -210,6 +229,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onCommit={onCommit}
                         formatValue={formatPercent}
                         disabled={!tone.tvf.enabled}
+                        tooltip={TONE_TOOLTIPS.tvfResonance}
                     />
                     <ParameterSlider
                         label="Key Follow"
@@ -218,6 +238,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onCommit={onCommit}
                         formatValue={formatPercent}
                         disabled={!tone.tvf.enabled}
+                        tooltip={TONE_TOOLTIPS.tvfKeyFollow}
                     />
                 </div>
                 <div className="grid gap-4 md:grid-cols-4 mb-4">
@@ -228,6 +249,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onCommit={onCommit}
                         formatValue={formatPercent}
                         disabled={!tone.tvf.enabled}
+                        tooltip={TONE_TOOLTIPS.tvfLfoDepth}
                     />
                     <ParameterSlider
                         label="EG Depth"
@@ -236,6 +258,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onCommit={onCommit}
                         formatValue={formatPercent}
                         disabled={!tone.tvf.enabled}
+                        tooltip={TONE_TOOLTIPS.tvfEgDepth}
                     />
                     <ParameterSlider
                         label="Key Rate"
@@ -244,6 +267,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onCommit={onCommit}
                         formatValue={formatPercent}
                         disabled={!tone.tvf.enabled}
+                        tooltip={TONE_TOOLTIPS.tvfKeyRate}
                     />
                     <ParameterSlider
                         label="Vel Rate"
@@ -252,15 +276,47 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onCommit={onCommit}
                         formatValue={formatPercent}
                         disabled={!tone.tvf.enabled}
+                        tooltip={TONE_TOOLTIPS.tvfVelRate}
                     />
                 </div>
-                <div className="mb-2 flex gap-4">
-                    <label className="text-xs text-s330-muted">
-                        EG Polarity: {tone.tvf.egPolarity}
-                    </label>
-                    <label className="text-xs text-s330-muted">
-                        Level Curve: {tone.tvf.levelCurve}
-                    </label>
+                <div className="mb-4 grid gap-4 md:grid-cols-2">
+                    <Tooltip content={TONE_TOOLTIPS.tvfEgPolarity}>
+                        <div>
+                            <label className="text-xs text-s330-muted mb-1 block">EG Polarity</label>
+                            <select
+                                value={tone.tvf.egPolarity}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, tvf: { ...tone.tvf, egPolarity: e.target.value as S330EgPolarity } };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
+                                disabled={!tone.tvf.enabled}
+                                className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text disabled:opacity-50"
+                            >
+                                <option value="normal">Normal</option>
+                                <option value="reverse">Reverse</option>
+                            </select>
+                        </div>
+                    </Tooltip>
+                    <Tooltip content={TONE_TOOLTIPS.tvfLevelCurve}>
+                        <div>
+                            <label className="text-xs text-s330-muted mb-1 block">Level Curve</label>
+                            <select
+                                value={tone.tvf.levelCurve}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, tvf: { ...tone.tvf, levelCurve: Number(e.target.value) as S330LevelCurve } };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
+                                disabled={!tone.tvf.enabled}
+                                className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text disabled:opacity-50"
+                            >
+                                {[0, 1, 2, 3, 4, 5].map((i) => (
+                                    <option key={i} value={i}>{i}</option>
+                                ))}
+                            </select>
+                        </div>
+                    </Tooltip>
                 </div>
                 <EnvelopeEditor
                     envelope={tone.tvf.envelope}
@@ -281,6 +337,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onChange={(v) => onUpdate?.({ ...tone, lfo: { ...tone.lfo, rate: v } })}
                         onCommit={onCommit}
                         formatValue={formatPercent}
+                        tooltip={TONE_TOOLTIPS.lfoRate}
                     />
                     <ParameterSlider
                         label="Delay"
@@ -288,6 +345,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onChange={(v) => onUpdate?.({ ...tone, lfo: { ...tone.lfo, delay: v } })}
                         onCommit={onCommit}
                         formatValue={formatPercent}
+                        tooltip={TONE_TOOLTIPS.lfoDelay}
                     />
                     <ParameterSlider
                         label="Offset"
@@ -295,45 +353,52 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onChange={(v) => onUpdate?.({ ...tone, lfo: { ...tone.lfo, offset: v } })}
                         onCommit={onCommit}
                         formatValue={formatPercent}
+                        tooltip={TONE_TOOLTIPS.lfoOffset}
                     />
                 </div>
                 <div className="grid gap-4 md:grid-cols-3">
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            id="lfoSync"
-                            checked={tone.lfo.sync}
-                            onChange={(e) => {
-                                const updatedTone = { ...tone, lfo: { ...tone.lfo, sync: e.target.checked } };
-                                onUpdate?.(updatedTone);
-                                onCommit?.(updatedTone);
-                            }}
-                            className="rounded"
-                        />
-                        <label htmlFor="lfoSync" className="text-sm text-s330-text">
-                            Key Sync
-                        </label>
-                    </div>
-                    <div>
-                        <label className="text-xs text-s330-muted">Mode</label>
-                        <div className="text-sm text-s330-text capitalize">{tone.lfo.mode}</div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            id="lfoPolarity"
-                            checked={tone.lfo.polarity}
-                            onChange={(e) => {
-                                const updatedTone = { ...tone, lfo: { ...tone.lfo, polarity: e.target.checked } };
-                                onUpdate?.(updatedTone);
-                                onCommit?.(updatedTone);
-                            }}
-                            className="rounded"
-                        />
-                        <label htmlFor="lfoPolarity" className="text-sm text-s330-text">
-                            Peak Hold
-                        </label>
-                    </div>
+                    <Tooltip content={TONE_TOOLTIPS.lfoSync}>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="lfoSync"
+                                checked={tone.lfo.sync}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, lfo: { ...tone.lfo, sync: e.target.checked } };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
+                                className="rounded"
+                            />
+                            <label htmlFor="lfoSync" className="text-sm text-s330-text">
+                                Key Sync
+                            </label>
+                        </div>
+                    </Tooltip>
+                    <Tooltip content={TONE_TOOLTIPS.lfoMode}>
+                        <div>
+                            <label className="text-xs text-s330-muted">Mode</label>
+                            <div className="text-sm text-s330-text capitalize">{tone.lfo.mode}</div>
+                        </div>
+                    </Tooltip>
+                    <Tooltip content={TONE_TOOLTIPS.lfoPeakHold}>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="lfoPolarity"
+                                checked={tone.lfo.polarity}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, lfo: { ...tone.lfo, polarity: e.target.checked } };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
+                                className="rounded"
+                            />
+                            <label htmlFor="lfoPolarity" className="text-sm text-s330-text">
+                                Peak Hold
+                            </label>
+                        </div>
+                    </Tooltip>
                 </div>
             </div>
 
@@ -350,6 +415,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         max={127}
                         formatValue={(v) => `${v - 64} semitones`}
                         disabled
+                        tooltip={TONE_TOOLTIPS.transpose}
                     />
                     <ParameterSlider
                         label="Fine Tune"
@@ -359,57 +425,64 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         min={0}
                         max={127}
                         formatValue={(v) => `${v - 64} cents`}
+                        tooltip={TONE_TOOLTIPS.fineTune}
                     />
                 </div>
                 <div className="mt-4 grid gap-4 md:grid-cols-3">
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            id="pitchFollow"
-                            checked={tone.pitchFollow}
-                            onChange={(e) => {
-                                const updatedTone = { ...tone, pitchFollow: e.target.checked };
-                                onUpdate?.(updatedTone);
-                                onCommit?.(updatedTone);
-                            }}
-                            className="rounded"
-                        />
-                        <label htmlFor="pitchFollow" className="text-sm text-s330-text">
-                            Pitch Follow
-                        </label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            id="benderEnabled"
-                            checked={tone.benderEnabled}
-                            onChange={(e) => {
-                                const updatedTone = { ...tone, benderEnabled: e.target.checked };
-                                onUpdate?.(updatedTone);
-                                onCommit?.(updatedTone);
-                            }}
-                            className="rounded"
-                        />
-                        <label htmlFor="benderEnabled" className="text-sm text-s330-text">
-                            Pitch Bender
-                        </label>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="checkbox"
-                            id="aftertouchEnabled"
-                            checked={tone.aftertouchEnabled}
-                            onChange={(e) => {
-                                const updatedTone = { ...tone, aftertouchEnabled: e.target.checked };
-                                onUpdate?.(updatedTone);
-                                onCommit?.(updatedTone);
-                            }}
-                            className="rounded"
-                        />
-                        <label htmlFor="aftertouchEnabled" className="text-sm text-s330-text">
-                            Aftertouch
-                        </label>
-                    </div>
+                    <Tooltip content={TONE_TOOLTIPS.pitchFollow}>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="pitchFollow"
+                                checked={tone.pitchFollow}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, pitchFollow: e.target.checked };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
+                                className="rounded"
+                            />
+                            <label htmlFor="pitchFollow" className="text-sm text-s330-text">
+                                Pitch Follow
+                            </label>
+                        </div>
+                    </Tooltip>
+                    <Tooltip content={TONE_TOOLTIPS.benderEnabled}>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="benderEnabled"
+                                checked={tone.benderEnabled}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, benderEnabled: e.target.checked };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
+                                className="rounded"
+                            />
+                            <label htmlFor="benderEnabled" className="text-sm text-s330-text">
+                                Pitch Bender
+                            </label>
+                        </div>
+                    </Tooltip>
+                    <Tooltip content={TONE_TOOLTIPS.aftertouchEnabled}>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="checkbox"
+                                id="aftertouchEnabled"
+                                checked={tone.aftertouchEnabled}
+                                onChange={(e) => {
+                                    const updatedTone = { ...tone, aftertouchEnabled: e.target.checked };
+                                    onUpdate?.(updatedTone);
+                                    onCommit?.(updatedTone);
+                                }}
+                                className="rounded"
+                            />
+                            <label htmlFor="aftertouchEnabled" className="text-sm text-s330-text">
+                                Aftertouch
+                            </label>
+                        </div>
+                    </Tooltip>
                 </div>
             </div>
 
@@ -423,6 +496,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, level: v } })}
                         onCommit={onCommit}
                         formatValue={formatPercent}
+                        tooltip={TONE_TOOLTIPS.tvaLevel}
                     />
                     <ParameterSlider
                         label="LFO Depth"
@@ -430,6 +504,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, lfoDepth: v } })}
                         onCommit={onCommit}
                         formatValue={formatPercent}
+                        tooltip={TONE_TOOLTIPS.tvaLfoDepth}
                     />
                     <ParameterSlider
                         label="Key Rate"
@@ -437,6 +512,7 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, keyRate: v } })}
                         onCommit={onCommit}
                         formatValue={formatPercent}
+                        tooltip={TONE_TOOLTIPS.tvaKeyRate}
                     />
                     <ParameterSlider
                         label="Vel Rate"
@@ -444,11 +520,27 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
                         onChange={(v) => onUpdate?.({ ...tone, tva: { ...tone.tva, velRate: v } })}
                         onCommit={onCommit}
                         formatValue={formatPercent}
+                        tooltip={TONE_TOOLTIPS.tvaVelRate}
                     />
                 </div>
-                <div className="mb-2">
-                    <label className="text-xs text-s330-muted">Level Curve: {tone.tva.levelCurve}</label>
-                </div>
+                <Tooltip content={TONE_TOOLTIPS.tvaLevelCurve}>
+                    <div className="mb-4 max-w-[200px]">
+                        <label className="text-xs text-s330-muted mb-1 block">Level Curve</label>
+                        <select
+                            value={tone.tva.levelCurve}
+                            onChange={(e) => {
+                                const updatedTone = { ...tone, tva: { ...tone.tva, levelCurve: Number(e.target.value) as S330LevelCurve } };
+                                onUpdate?.(updatedTone);
+                                onCommit?.(updatedTone);
+                            }}
+                            className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
+                        >
+                            {[0, 1, 2, 3, 4, 5].map((i) => (
+                                <option key={i} value={i}>{i}</option>
+                            ))}
+                        </select>
+                    </div>
+                </Tooltip>
                 <EnvelopeEditor
                     envelope={tone.tva.envelope}
                     onChange={handleTvaEnvelopeChange}

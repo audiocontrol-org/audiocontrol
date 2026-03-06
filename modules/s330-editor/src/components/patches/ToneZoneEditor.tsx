@@ -10,6 +10,8 @@ import { useState, useMemo, useCallback } from 'react';
 import type { S330KeyMode, S330Tone } from '@/core/midi/S330Client';
 import { cn, midiNoteToName } from '@/lib/utils';
 import { useMidiLearn } from '@/hooks/useMidiLearn';
+import { Tooltip } from '@/components/ui/Tooltip';
+import { TONE_MAPPING_TOOLTIPS } from '@/constants/tone-mapping-tooltips';
 
 // =============================================================================
 // Types
@@ -324,19 +326,23 @@ export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: To
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <span className="text-sm text-s330-muted">
-          Layer {layer}: {activeKeyCount} / {TOTAL_KEYS} keys active
-        </span>
-        <button
-          onClick={handleAddZone}
-          className={cn(
-            'px-2 py-1 text-xs font-medium rounded',
-            'bg-s330-accent text-s330-text hover:bg-s330-highlight',
-            'transition-colors'
-          )}
-        >
-          + Add Zone
-        </button>
+        <Tooltip content={layer === 1 ? TONE_MAPPING_TOOLTIPS.layer1 : TONE_MAPPING_TOOLTIPS.layer2}>
+          <span className="text-sm text-s330-muted cursor-help">
+            Layer {layer}: {activeKeyCount} / {TOTAL_KEYS} keys active
+          </span>
+        </Tooltip>
+        <Tooltip content={TONE_MAPPING_TOOLTIPS.addZone}>
+          <button
+            onClick={handleAddZone}
+            className={cn(
+              'px-2 py-1 text-xs font-medium rounded',
+              'bg-s330-accent text-s330-text hover:bg-s330-highlight',
+              'transition-colors'
+            )}
+          >
+            + Add Zone
+          </button>
+        </Tooltip>
       </div>
 
       {/* Zone visualization */}
@@ -417,118 +423,128 @@ export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: To
             <span className="text-sm font-medium text-s330-text">
               Editing Zone {selectedZoneIndex + 1}
             </span>
-            <button
-              onClick={handleDeleteZone}
-              className={cn(
-                'px-2 py-1 text-xs font-medium rounded',
-                'bg-red-600 text-white hover:bg-red-700',
-                'transition-colors'
-              )}
-            >
-              Delete
-            </button>
+            <Tooltip content={TONE_MAPPING_TOOLTIPS.deleteZone}>
+              <button
+                onClick={handleDeleteZone}
+                className={cn(
+                  'px-2 py-1 text-xs font-medium rounded',
+                  'bg-red-600 text-white hover:bg-red-700',
+                  'transition-colors'
+                )}
+              >
+                Delete
+              </button>
+            </Tooltip>
           </div>
 
           <div className="grid grid-cols-3 gap-3">
             {/* Tone selector */}
-            <div>
-              <label className="text-xs text-s330-muted mb-1 block">Tone</label>
-              <select
-                value={editingZone.tone}
-                onChange={(e) => handleToneChange(Number(e.target.value))}
-                className={cn(
-                  'w-full px-2 py-1.5 text-sm font-mono',
-                  'bg-s330-panel border border-s330-accent rounded',
-                  'text-s330-text hover:bg-s330-accent/30',
-                  'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                )}
-              >
-                {layer === 1 && <option value={-1}>OFF</option>}
-                {Array.from({ length: 32 }, (_, i) => (
-                  <option key={i} value={i}>
-                    {getToneName(i)}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Tooltip content={TONE_MAPPING_TOOLTIPS.toneSelector}>
+              <div>
+                <label className="text-xs text-s330-muted mb-1 block">Tone</label>
+                <select
+                  value={editingZone.tone}
+                  onChange={(e) => handleToneChange(Number(e.target.value))}
+                  className={cn(
+                    'w-full px-2 py-1.5 text-sm font-mono',
+                    'bg-s330-panel border border-s330-accent rounded',
+                    'text-s330-text hover:bg-s330-accent/30',
+                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                  )}
+                >
+                  {layer === 1 && <option value={-1}>OFF</option>}
+                  {Array.from({ length: 32 }, (_, i) => (
+                    <option key={i} value={i}>
+                      {getToneName(i)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </Tooltip>
 
             {/* Start key selector */}
-            <div>
-              <label className="text-xs text-s330-muted mb-1 block">Start Key</label>
-              <div className="flex gap-1">
-                <select
-                  value={editingZone.startKey}
-                  onChange={(e) => handleStartKeyChange(Number(e.target.value))}
-                  className={cn(
-                    'flex-1 min-w-0 px-2 py-1.5 text-sm font-mono',
-                    'bg-s330-panel border border-s330-accent rounded',
-                    'text-s330-text hover:bg-s330-accent/30',
-                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                  )}
-                >
-                  {Array.from({ length: TOTAL_KEYS }, (_, i) => {
-                    const key = MIN_KEY + i;
-                    return (
-                      <option key={key} value={key} disabled={key > editingZone.endKey}>
-                        {midiNoteToName(key)} ({key})
-                      </option>
-                    );
-                  })}
-                </select>
-                <button
-                  onClick={() => learningTarget === 'startKey' ? cancelLearning() : startLearning('startKey')}
-                  className={cn(
-                    'px-2 py-1 text-xs font-medium rounded whitespace-nowrap',
-                    'transition-colors',
-                    learningTarget === 'startKey'
-                      ? 'bg-yellow-500 text-black animate-pulse'
-                      : 'bg-s330-accent text-s330-text hover:bg-s330-highlight'
-                  )}
-                  title="Learn from MIDI input"
-                >
-                  {learningTarget === 'startKey' ? '...' : 'Learn'}
-                </button>
+            <Tooltip content={TONE_MAPPING_TOOLTIPS.startKey}>
+              <div>
+                <label className="text-xs text-s330-muted mb-1 block">Start Key</label>
+                <div className="flex gap-1">
+                  <select
+                    value={editingZone.startKey}
+                    onChange={(e) => handleStartKeyChange(Number(e.target.value))}
+                    className={cn(
+                      'flex-1 min-w-0 px-2 py-1.5 text-sm font-mono',
+                      'bg-s330-panel border border-s330-accent rounded',
+                      'text-s330-text hover:bg-s330-accent/30',
+                      'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                    )}
+                  >
+                    {Array.from({ length: TOTAL_KEYS }, (_, i) => {
+                      const key = MIN_KEY + i;
+                      return (
+                        <option key={key} value={key} disabled={key > editingZone.endKey}>
+                          {midiNoteToName(key)} ({key})
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <Tooltip content={TONE_MAPPING_TOOLTIPS.learnButton}>
+                    <button
+                      onClick={() => learningTarget === 'startKey' ? cancelLearning() : startLearning('startKey')}
+                      className={cn(
+                        'px-2 py-1 text-xs font-medium rounded whitespace-nowrap',
+                        'transition-colors',
+                        learningTarget === 'startKey'
+                          ? 'bg-yellow-500 text-black animate-pulse'
+                          : 'bg-s330-accent text-s330-text hover:bg-s330-highlight'
+                      )}
+                    >
+                      {learningTarget === 'startKey' ? '...' : 'Learn'}
+                    </button>
+                  </Tooltip>
+                </div>
               </div>
-            </div>
+            </Tooltip>
 
             {/* End key selector */}
-            <div>
-              <label className="text-xs text-s330-muted mb-1 block">End Key</label>
-              <div className="flex gap-1">
-                <select
-                  value={editingZone.endKey}
-                  onChange={(e) => handleEndKeyChange(Number(e.target.value))}
-                  className={cn(
-                    'flex-1 min-w-0 px-2 py-1.5 text-sm font-mono',
-                    'bg-s330-panel border border-s330-accent rounded',
-                    'text-s330-text hover:bg-s330-accent/30',
-                    'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
-                  )}
-                >
-                  {Array.from({ length: TOTAL_KEYS }, (_, i) => {
-                    const key = MIN_KEY + i;
-                    return (
-                      <option key={key} value={key} disabled={key < editingZone.startKey}>
-                        {midiNoteToName(key)} ({key})
-                      </option>
-                    );
-                  })}
-                </select>
-                <button
-                  onClick={() => learningTarget === 'endKey' ? cancelLearning() : startLearning('endKey')}
-                  className={cn(
-                    'px-2 py-1 text-xs font-medium rounded whitespace-nowrap',
-                    'transition-colors',
-                    learningTarget === 'endKey'
-                      ? 'bg-yellow-500 text-black animate-pulse'
-                      : 'bg-s330-accent text-s330-text hover:bg-s330-highlight'
-                  )}
-                  title="Learn from MIDI input"
-                >
-                  {learningTarget === 'endKey' ? '...' : 'Learn'}
-                </button>
+            <Tooltip content={TONE_MAPPING_TOOLTIPS.endKey}>
+              <div>
+                <label className="text-xs text-s330-muted mb-1 block">End Key</label>
+                <div className="flex gap-1">
+                  <select
+                    value={editingZone.endKey}
+                    onChange={(e) => handleEndKeyChange(Number(e.target.value))}
+                    className={cn(
+                      'flex-1 min-w-0 px-2 py-1.5 text-sm font-mono',
+                      'bg-s330-panel border border-s330-accent rounded',
+                      'text-s330-text hover:bg-s330-accent/30',
+                      'focus:outline-none focus:ring-1 focus:ring-s330-highlight'
+                    )}
+                  >
+                    {Array.from({ length: TOTAL_KEYS }, (_, i) => {
+                      const key = MIN_KEY + i;
+                      return (
+                        <option key={key} value={key} disabled={key < editingZone.startKey}>
+                          {midiNoteToName(key)} ({key})
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <Tooltip content={TONE_MAPPING_TOOLTIPS.learnButton}>
+                    <button
+                      onClick={() => learningTarget === 'endKey' ? cancelLearning() : startLearning('endKey')}
+                      className={cn(
+                        'px-2 py-1 text-xs font-medium rounded whitespace-nowrap',
+                        'transition-colors',
+                        learningTarget === 'endKey'
+                          ? 'bg-yellow-500 text-black animate-pulse'
+                          : 'bg-s330-accent text-s330-text hover:bg-s330-highlight'
+                      )}
+                    >
+                      {learningTarget === 'endKey' ? '...' : 'Learn'}
+                    </button>
+                  </Tooltip>
+                </div>
               </div>
-            </div>
+            </Tooltip>
           </div>
 
           {/* Zone info and action buttons */}
@@ -538,26 +554,30 @@ export function ToneZoneEditor({ layer, toneData, keyMode, tones, onUpdate }: To
               {' '}({editingZone.endKey - editingZone.startKey + 1} keys)
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={handleCancelEdit}
-                className={cn(
-                  'px-3 py-1 text-xs font-medium rounded',
-                  'bg-s330-panel border border-s330-accent text-s330-text',
-                  'hover:bg-s330-accent/30 transition-colors'
-                )}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleApplyZone}
-                className={cn(
-                  'px-3 py-1 text-xs font-medium rounded',
-                  'bg-green-600 text-white hover:bg-green-700',
-                  'transition-colors'
-                )}
-              >
-                Apply
-              </button>
+              <Tooltip content={TONE_MAPPING_TOOLTIPS.cancelChanges}>
+                <button
+                  onClick={handleCancelEdit}
+                  className={cn(
+                    'px-3 py-1 text-xs font-medium rounded',
+                    'bg-s330-panel border border-s330-accent text-s330-text',
+                    'hover:bg-s330-accent/30 transition-colors'
+                  )}
+                >
+                  Cancel
+                </button>
+              </Tooltip>
+              <Tooltip content={TONE_MAPPING_TOOLTIPS.applyChanges}>
+                <button
+                  onClick={handleApplyZone}
+                  className={cn(
+                    'px-3 py-1 text-xs font-medium rounded',
+                    'bg-green-600 text-white hover:bg-green-700',
+                    'transition-colors'
+                  )}
+                >
+                  Apply
+                </button>
+              </Tooltip>
             </div>
           </div>
         </div>

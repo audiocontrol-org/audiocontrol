@@ -11,6 +11,8 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { VfdGlowDefs } from '@audiocontrol/editor-core';
 import type { S330Envelope } from '@audiocontrol/sampler-devices/s330';
+import { Tooltip } from './Tooltip';
+import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
 
 interface EnvelopeEditorProps {
     envelope: S330Envelope;
@@ -141,42 +143,46 @@ export function EnvelopeEditor({
 
                     {/* Controls in expanded view */}
                     <div className="mt-4 grid grid-cols-2 gap-4 max-w-md">
-                        <div className="space-y-1">
-                            <label className="text-xs text-s330-muted">Sustain Point</label>
-                            <select
-                                className="w-full bg-s330-card text-s330-text text-sm rounded px-2 py-1 border border-s330-accent/30"
-                                value={sustainPoint}
-                                onChange={(e) => {
-                                    updateSustainPoint(Number(e.target.value));
-                                    onCommit?.();
-                                }}
-                                disabled={disabled}
-                            >
-                                {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-                                    <option key={i} value={i} disabled={i >= endPoint}>
-                                        {i + 1}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-xs text-s330-muted">End Point</label>
-                            <select
-                                className="w-full bg-s330-card text-s330-text text-sm rounded px-2 py-1 border border-s330-accent/30"
-                                value={endPoint}
-                                onChange={(e) => {
-                                    updateEndPoint(Number(e.target.value));
-                                    onCommit?.();
-                                }}
-                                disabled={disabled}
-                            >
-                                {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                                    <option key={i} value={i} disabled={i <= sustainPoint}>
-                                        {i}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                        <Tooltip content={TONE_TOOLTIPS.sustainPoint}>
+                            <div className="space-y-1">
+                                <label className="text-xs text-s330-muted">Sustain Point</label>
+                                <select
+                                    className="w-full bg-s330-card text-s330-text text-sm rounded px-2 py-1 border border-s330-accent/30"
+                                    value={sustainPoint}
+                                    onChange={(e) => {
+                                        updateSustainPoint(Number(e.target.value));
+                                        onCommit?.();
+                                    }}
+                                    disabled={disabled}
+                                >
+                                    {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+                                        <option key={i} value={i} disabled={i >= endPoint}>
+                                            {i + 1}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </Tooltip>
+                        <Tooltip content={TONE_TOOLTIPS.endPoint}>
+                            <div className="space-y-1">
+                                <label className="text-xs text-s330-muted">End Point</label>
+                                <select
+                                    className="w-full bg-s330-card text-s330-text text-sm rounded px-2 py-1 border border-s330-accent/30"
+                                    value={endPoint}
+                                    onChange={(e) => {
+                                        updateEndPoint(Number(e.target.value));
+                                        onCommit?.();
+                                    }}
+                                    disabled={disabled}
+                                >
+                                    {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                                        <option key={i} value={i} disabled={i <= sustainPoint}>
+                                            {i}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        </Tooltip>
                     </div>
 
                     <div className="mt-2 text-xs text-s330-muted/60 text-center">
@@ -187,42 +193,46 @@ export function EnvelopeEditor({
 
             {/* Sustain and End point selectors (normal view) */}
             <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                    <label className="text-xs text-s330-muted">Sustain Point</label>
-                    <select
-                        className="w-full bg-s330-bg text-s330-text text-sm rounded px-2 py-1 border border-s330-accent/30"
-                        value={sustainPoint}
-                        onChange={(e) => {
-                            updateSustainPoint(Number(e.target.value));
-                            onCommit?.();
-                        }}
-                        disabled={disabled}
-                    >
-                        {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
-                            <option key={i} value={i} disabled={i >= endPoint}>
-                                {i + 1}
-                            </option>
-                        ))}
-                    </select>
-                </div>
-                <div className="space-y-1">
-                    <label className="text-xs text-s330-muted">End Point</label>
-                    <select
-                        className="w-full bg-s330-bg text-s330-text text-sm rounded px-2 py-1 border border-s330-accent/30"
-                        value={endPoint}
-                        onChange={(e) => {
-                            updateEndPoint(Number(e.target.value));
-                            onCommit?.();
-                        }}
-                        disabled={disabled}
-                    >
-                        {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                            <option key={i} value={i} disabled={i <= sustainPoint}>
-                                {i}
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                <Tooltip content={TONE_TOOLTIPS.sustainPoint}>
+                    <div className="space-y-1">
+                        <label className="text-xs text-s330-muted">Sustain Point</label>
+                        <select
+                            className="w-full bg-s330-bg text-s330-text text-sm rounded px-2 py-1 border border-s330-accent/30"
+                            value={sustainPoint}
+                            onChange={(e) => {
+                                updateSustainPoint(Number(e.target.value));
+                                onCommit?.();
+                            }}
+                            disabled={disabled}
+                        >
+                            {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+                                <option key={i} value={i} disabled={i >= endPoint}>
+                                    {i + 1}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </Tooltip>
+                <Tooltip content={TONE_TOOLTIPS.endPoint}>
+                    <div className="space-y-1">
+                        <label className="text-xs text-s330-muted">End Point</label>
+                        <select
+                            className="w-full bg-s330-bg text-s330-text text-sm rounded px-2 py-1 border border-s330-accent/30"
+                            value={endPoint}
+                            onChange={(e) => {
+                                updateEndPoint(Number(e.target.value));
+                                onCommit?.();
+                            }}
+                            disabled={disabled}
+                        >
+                            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                                <option key={i} value={i} disabled={i <= sustainPoint}>
+                                    {i}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </Tooltip>
             </div>
 
             {/* Point-by-point editing table */}

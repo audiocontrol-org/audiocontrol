@@ -1,4 +1,5 @@
 import { ParameterSlider as CoreParameterSlider, type ParameterSliderProps as CoreParameterSliderProps } from '@audiocontrol/editor-core';
+import { Tooltip } from './Tooltip';
 
 interface ParameterSliderProps {
   label: string;
@@ -10,6 +11,7 @@ interface ParameterSliderProps {
   step?: number;
   formatValue?: (value: number) => string;
   disabled?: boolean;
+  tooltip?: string;
 }
 
 export function ParameterSlider({
@@ -22,6 +24,7 @@ export function ParameterSlider({
   step = 1,
   formatValue = (v) => String(v),
   disabled = false,
+  tooltip,
 }: ParameterSliderProps) {
   const theme: CoreParameterSliderProps['theme'] = {
     disabledContainer: 'opacity-50',
@@ -33,7 +36,7 @@ export function ParameterSlider({
     thumb: 'block w-4 h-4 bg-s330-text rounded-full focus:outline-none focus:ring-2 focus:ring-s330-highlight hover:bg-white transition-colors',
   };
 
-  return (
+  const slider = (
     <CoreParameterSlider
       label={label}
       value={value}
@@ -47,4 +50,14 @@ export function ParameterSlider({
       theme={theme}
     />
   );
+
+  if (tooltip) {
+    return (
+      <Tooltip content={tooltip}>
+        <div>{slider}</div>
+      </Tooltip>
+    );
+  }
+
+  return slider;
 }
