@@ -35,7 +35,6 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
   const clientRef = useRef<S330ClientInterface | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(common.name);
-  const [toneMappingExpanded, setToneMappingExpanded] = useState(false);
   const [toneLayer1, setToneLayer1] = useState(common.toneLayer1);
   const [toneLayer2, setToneLayer2] = useState(common.toneLayer2);
 
@@ -479,57 +478,32 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
 
       {/* Tone Mapping Editor */}
       <div className="card">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="font-medium text-s330-text">
-            Tone Mapping
-            <span className="ml-2 text-xs text-s330-muted">
-              ({loadedTonesCount} tones loaded, {namedTonesCount} with names)
-            </span>
-          </h4>
-          <button
-            onClick={() => setToneMappingExpanded(!toneMappingExpanded)}
-            className={cn(
-              'px-3 py-1 text-sm rounded',
-              'bg-s330-accent text-s330-text hover:bg-s330-highlight',
-              'transition-colors'
-            )}
-          >
-            {toneMappingExpanded ? 'Collapse' : 'Expand'}
-          </button>
+        <h4 className="font-medium text-s330-text mb-4">
+          Tone Mapping
+          <span className="ml-2 text-xs text-s330-muted">
+            ({loadedTonesCount} tones loaded, {namedTonesCount} with names)
+          </span>
+        </h4>
+
+        <div className="space-y-6">
+          {/* Layer 1 Zone Editor */}
+          <ToneZoneEditor
+            layer={1}
+            toneData={toneLayer1}
+            keyMode={common.keyMode as S330KeyMode}
+            tones={tones}
+            onUpdate={handleToneLayer1Update}
+          />
+
+          {/* Layer 2 Zone Editor (shown for dual-layer modes) */}
+          <ToneZoneEditor
+            layer={2}
+            toneData={toneLayer2}
+            keyMode={common.keyMode as S330KeyMode}
+            tones={tones}
+            onUpdate={handleToneLayer2Update}
+          />
         </div>
-
-        {toneMappingExpanded ? (
-          <div className="space-y-6">
-            {/* Layer 1 Zone Editor */}
-            <ToneZoneEditor
-              layer={1}
-              toneData={toneLayer1}
-              keyMode={common.keyMode as S330KeyMode}
-              tones={tones}
-              onUpdate={handleToneLayer1Update}
-            />
-
-            {/* Layer 2 Zone Editor (shown for dual-layer modes) */}
-            <ToneZoneEditor
-              layer={2}
-              toneData={toneLayer2}
-              keyMode={common.keyMode as S330KeyMode}
-              tones={tones}
-              onUpdate={handleToneLayer2Update}
-            />
-          </div>
-        ) : (
-          <div className="space-y-1">
-            <p className="text-s330-muted text-sm">
-              Layer 1 active keys: {toneLayer1.filter(t => t !== -1).length} / 109
-            </p>
-            {common.keyMode !== 'normal' && (
-              <p className="text-s330-muted text-sm">
-                Layer 2 active keys: {toneLayer2.filter(t => t !== 0).length} / 109
-              </p>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
