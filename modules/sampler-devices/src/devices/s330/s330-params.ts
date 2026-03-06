@@ -411,8 +411,8 @@ export function parsePatchCommon(data: number[]): S330PatchCommon {
     // Octave shift (signed value -2 to +2)
     const octaveShift = parseSignedValue(data[PATCH_PARAMS.octaveShift.byteOffset], 2);
 
-    // Output level
-    const level = data[PATCH_PARAMS.level.byteOffset];
+    // Output level (default to max for empty patches)
+    const level = name.trim() ? data[PATCH_PARAMS.level.byteOffset] : 127;
 
     // Detune (signed value -64 to +63)
     const detune = parseSignedValue(data[PATCH_PARAMS.detune.byteOffset]);
