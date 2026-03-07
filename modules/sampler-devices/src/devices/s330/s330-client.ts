@@ -1602,15 +1602,10 @@ export function createS330Client(
         ): Promise<void> {
             const {
                 toneIndex,
-                name,
                 waveData,
                 waveBank,
                 segmentTop,
                 segmentLength,
-                sampleRate,
-                loopMode,
-                loopPoint = 0,
-                originalKey = 60,
             } = input;
 
             // Validate inputs
@@ -1633,81 +1628,110 @@ export function createS330Client(
                 throw new Error(`Wave data too large: ${sampleCount} samples exceeds ${maxSamples} for ${segmentLength} segments`);
             }
 
-            console.log(`[S330Client] Importing tone ${toneIndex}: "${name}" to bank ${waveBank}, segment ${segmentTop}`);
-
             // Step 1: Configure tone parameters FIRST (before wave upload)
             // This configures the tone to point to the wave memory location
             console.log('[S330Client] Step 1: Configuring tone parameters...');
 
-            // Build a complete S330Tone object with sensible defaults
-            const tone: S330Tone = {
-                name: name.slice(0, 8),
-                outputAssign: 1,
-                sourceTone: 0,
-                origSubTone: 0,
-                sampleRate,
-                originalKey,
-                wave: {
-                    bank: waveBank,
-                    segmentTop,
-                    segmentLength,
-                    startPoint: 0,
-                    endPoint: Math.max(0, sampleCount - 1),
-                    loopPoint,
-                    loopLength: Math.max(0, sampleCount - 1 - loopPoint),
-                },
-                loopMode,
-                lfo: {
-                    rate: 64,
-                    sync: false,
-                    delay: 0,
-                    mode: 'normal',
-                    polarity: false,
-                    offset: 64,
-                },
-                tvaLfoDepth: 0,
-                transpose: 64,
-                fineTune: 0,
-                tvf: {
-                    cutoff: 127,
-                    resonance: 0,
-                    keyFollow: 64,
-                    lfoDepth: 0,
-                    egDepth: 0,
-                    egPolarity: 'normal',
-                    levelCurve: 0,
-                    keyRateFollow: 64,
-                    velRateFollow: 64,
-                    enabled: false,
-                    envelope: {
-                        levels: [127, 127, 127, 127, 127, 127, 127, 0],
-                        rates: [127, 127, 127, 127, 127, 127, 127, 127],
-                        sustainPoint: 6,
-                        endPoint: 8,
+            // Determine if we're importing an existing tone or creating a new one
+            let tone: S330Tone;
+
+            if (input.tone) {
+                // Library import: Use the full tone object, but override wave allocation
+                // to match the explicit parameters (wave allocation may differ from original)
+                const toneName = input.tone.name;
+                console.log(`[S330Client] Importing existing tone ${toneIndex}: "${toneName}" to bank ${waveBank}, segment ${segmentTop}`);
+
+                tone = {
+                    ...input.tone,
+                    wave: {
+                        ...input.tone.wave,
+                        bank: waveBank,
+                        segmentTop,
+                        segmentLength,
+                        // Recalculate end point based on actual sample count
+                        endPoint: Math.max(0, sampleCount - 1),
+                        loopLength: Math.max(0, sampleCount - 1 - input.tone.wave.loopPoint),
                     },
-                },
-                tva: {
-                    lfoDepth: 0,
-                    keyRate: 64,
-                    level: 127,
-                    velRate: 64,
-                    levelCurve: 0,
-                    envelope: {
-                        levels: [127, 127, 127, 127, 127, 127, 127, 0],
-                        rates: [127, 127, 127, 127, 127, 127, 127, 127],
-                        sustainPoint: 6,
-                        endPoint: 8,
+                };
+            } else {
+                // New sample import: Use basic parameters with sensible defaults
+                const name = input.name ?? 'UNNAMED';
+                const sampleRate = input.sampleRate ?? '30kHz';
+                const loopMode = input.loopMode ?? 'one-shot';
+                const loopPoint = input.loopPoint ?? 0;
+                const originalKey = input.originalKey ?? 60;
+
+                console.log(`[S330Client] Importing new tone ${toneIndex}: "${name}" to bank ${waveBank}, segment ${segmentTop}`);
+
+                tone = {
+                    name: name.slice(0, 8),
+                    outputAssign: 1,
+                    sourceTone: 0,
+                    origSubTone: 0,
+                    sampleRate,
+                    originalKey,
+                    wave: {
+                        bank: waveBank,
+                        segmentTop,
+                        segmentLength,
+                        startPoint: 0,
+                        endPoint: Math.max(0, sampleCount - 1),
+                        loopPoint,
+                        loopLength: Math.max(0, sampleCount - 1 - loopPoint),
                     },
-                },
-                benderEnabled: true,
-                aftertouchEnabled: false,
-                pitchFollow: true,
-                recThreshold: 64,
-                recPreTrigger: 0,
-                loopTune: 0,
-                envZoom: 0,
-                copySource: 0,
-            };
+                    loopMode,
+                    lfo: {
+                        rate: 64,
+                        sync: false,
+                        delay: 0,
+                        mode: 'normal',
+                        polarity: false,
+                        offset: 64,
+                    },
+                    tvaLfoDepth: 0,
+                    transpose: 64,
+                    fineTune: 0,
+                    tvf: {
+                        cutoff: 127,
+                        resonance: 0,
+                        keyFollow: 64,
+                        lfoDepth: 0,
+                        egDepth: 0,
+                        egPolarity: 'normal',
+                        levelCurve: 0,
+                        keyRateFollow: 64,
+                        velRateFollow: 64,
+                        enabled: false,
+                        envelope: {
+                            levels: [127, 127, 127, 127, 127, 127, 127, 0],
+                            rates: [127, 127, 127, 127, 127, 127, 127, 127],
+                            sustainPoint: 6,
+                            endPoint: 8,
+                        },
+                    },
+                    tva: {
+                        lfoDepth: 0,
+                        keyRate: 64,
+                        level: 127,
+                        velRate: 64,
+                        levelCurve: 0,
+                        envelope: {
+                            levels: [127, 127, 127, 127, 127, 127, 127, 0],
+                            rates: [127, 127, 127, 127, 127, 127, 127, 127],
+                            sustainPoint: 6,
+                            endPoint: 8,
+                        },
+                    },
+                    benderEnabled: true,
+                    aftertouchEnabled: false,
+                    pitchFollow: true,
+                    recThreshold: 64,
+                    recPreTrigger: 0,
+                    loopTune: 0,
+                    envZoom: 0,
+                    copySource: 0,
+                };
+            }
 
             // Use existing sendToneData which uses bufferWrite
             await this.sendToneData(toneIndex, tone);

@@ -275,17 +275,15 @@ export function LibraryPage() {
         setOperationStatus(`Uploading ${toneName} (${sampleCount.toLocaleString()} samples)...`);
 
         // Upload wave data and tone to device
+        // Pass the full tone object to preserve all parameters (pitchFollow, envelopes, etc.)
         await clientRef.current.importTone(
           {
             toneIndex: slot,
-            name: data.tone.name,
             waveData: data.wavData,
             waveBank: data.tone.wave.bank as 0 | 1,
             segmentTop: data.tone.wave.segmentTop,
             segmentLength: data.tone.wave.segmentLength,
-            sampleRate: data.tone.sampleRate,
-            loopMode: data.tone.loopMode,
-            loopPoint: data.tone.wave.loopPoint,
+            tone: data.tone,
           },
           (bytesSent, totalBytes) => {
             const pct = totalBytes > 0 ? Math.floor((bytesSent / totalBytes) * 100) : 0;

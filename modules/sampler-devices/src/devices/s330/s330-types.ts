@@ -470,13 +470,16 @@ export interface S330WaveDataInput {
 
 /**
  * Input for importing a tone with wave data to the S-330.
+ *
+ * There are two modes:
+ * 1. New sample import: Provide basic parameters (name, sampleRate, loopMode, etc.)
+ *    and sensible defaults will be used for other tone settings.
+ * 2. Library import: Provide a full S330Tone object via the `tone` parameter
+ *    and all tone settings will be preserved exactly.
  */
 export interface S330ImportToneInput {
     /** Target tone index (0-31, maps to T11-T42) */
     toneIndex: number;
-
-    /** Tone name (max 8 characters) */
-    name: string;
 
     /**
      * Wave data bytes (7-bit encoded 12-bit samples).
@@ -493,11 +496,24 @@ export interface S330ImportToneInput {
     /** Number of segments to allocate */
     segmentLength: number;
 
-    /** Sample rate */
-    sampleRate: '15kHz' | '30kHz';
+    /**
+     * Full tone object for library import.
+     * When provided, all tone parameters are taken from this object.
+     * The wave allocation (bank, segmentTop, segmentLength) is still
+     * taken from the explicit parameters above to ensure consistency.
+     */
+    tone?: S330Tone;
 
-    /** Loop mode */
-    loopMode: S330LoopMode;
+    // --- Parameters for new sample import (ignored if `tone` is provided) ---
+
+    /** Tone name (max 8 characters) - required if tone not provided */
+    name?: string;
+
+    /** Sample rate - required if tone not provided */
+    sampleRate?: '15kHz' | '30kHz';
+
+    /** Loop mode - required if tone not provided */
+    loopMode?: S330LoopMode;
 
     /** Loop point in samples (relative to segment start) */
     loopPoint?: number;
