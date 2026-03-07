@@ -44,6 +44,7 @@ export type {
     S330TvfParams,
     S330LfoParams,
     S330WaveParams,
+    S330WaveDataResponse,
 } from '@audiocontrol/sampler-devices/s330';
 
 // Re-export constants for convenience

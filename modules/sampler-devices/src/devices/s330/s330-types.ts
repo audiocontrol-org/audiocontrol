@@ -408,3 +408,40 @@ export interface S330ClientOptions {
      */
     writeFlushDelayMs?: number;
 }
+
+// =============================================================================
+// Wave Data Types
+// =============================================================================
+
+/**
+ * Wave data response from S-330
+ *
+ * The S-330 stores samples as 12-bit linear PCM. Data is transmitted
+ * nibblized over SysEx. After de-nibblization, the raw bytes contain
+ * packed 12-bit samples (2 samples per 3 bytes).
+ */
+export interface S330WaveDataResponse {
+    /**
+     * Raw wave data bytes (packed 12-bit samples).
+     * 2 samples are stored in 3 bytes:
+     * - Byte 0: Sample1 bits 11-4
+     * - Byte 1: Sample1 bits 3-0 (high nibble) | Sample2 bits 11-8 (low nibble)
+     * - Byte 2: Sample2 bits 7-0
+     */
+    data: Uint8Array;
+
+    /** Sample rate in Hz (15000 or 30000) */
+    sampleRate: 15000 | 30000;
+
+    /** Sample start point (24-bit address in wave memory) */
+    startPoint: number;
+
+    /** Sample end point (24-bit address in wave memory) */
+    endPoint: number;
+
+    /** Loop point (24-bit address in wave memory) */
+    loopPoint: number;
+
+    /** Loop mode */
+    loopMode: S330LoopMode;
+}

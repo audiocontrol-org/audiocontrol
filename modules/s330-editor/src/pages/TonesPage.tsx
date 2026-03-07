@@ -5,7 +5,7 @@
  * Loads first bank (8 tones) by default for faster startup.
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/s330Store';
 import {
@@ -18,6 +18,7 @@ import type { S330ClientInterface, S330Tone } from '@/core/midi/S330Client';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
 import { cn } from '@/lib/utils';
+import { exportWaveAsWav } from '@/lib/wave-export';
 
 export function TonesPage() {
   const { adapter, deviceId, status } = useMidiStore();
@@ -51,6 +52,10 @@ export function TonesPage() {
 
   // Track if we've already initiated loading to prevent loops
   const hasInitiatedLoad = useRef(false);
+
+  // Export state
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState<number | undefined>(undefined);
 
   // Initialize client when adapter changes
   useEffect(() => {
@@ -144,6 +149,39 @@ export function TonesPage() {
     },
     [selectedToneIndex, tones, setError]
   );
+
+  // Export sample as WAV file
+  const handleExportSample = useCallback(async () => {
+    if (selectedToneIndex === null || !clientRef.current) return;
+
+    const tone = tones[selectedToneIndex];
+    if (!tone) return;
+
+    setIsExporting(true);
+    setExportProgress(0);
+    setError(null);
+
+    try {
+      const waveData = await clientRef.current.requestWaveData(
+        selectedToneIndex,
+        (bytesReceived, totalBytes) => {
+          const progress = totalBytes > 0 ? (bytesReceived / totalBytes) * 100 : 0;
+          setExportProgress(progress);
+        }
+      );
+
+      // Export the wave data as a WAV file
+      exportWaveAsWav(waveData, tone.name || `tone_${selectedToneIndex}`);
+
+      console.log('[TonesPage] Sample exported successfully');
+    } catch (err) {
+      console.error('[TonesPage] Failed to export sample:', err);
+      setError(err instanceof Error ? err.message : 'Failed to export sample');
+    } finally {
+      setIsExporting(false);
+      setExportProgress(undefined);
+    }
+  }, [selectedToneIndex, tones, setError]);
 
   // Auto-load initial data when connected
   useEffect(() => {
@@ -295,6 +333,9 @@ export function TonesPage() {
                 index={selectedToneIndex!}
                 onUpdate={handleToneUpdate}
                 onCommit={handleToneCommit}
+                onExportSample={handleExportSample}
+                isExporting={isExporting}
+                exportProgress={exportProgress}
               />
             ) : (
               <div className="card text-center py-12 text-s330-muted">

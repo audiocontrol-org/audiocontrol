@@ -82,6 +82,9 @@ export type {
     S330WaveParams,
     S330Tone,
 
+    // Wave data types
+    S330WaveDataResponse,
+
     // SysEx types
     S330Command,
     S330BulkDumpType,

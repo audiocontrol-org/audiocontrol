@@ -4,23 +4,33 @@
  * Universal client for communicating with Roland S-330 samplers via SysEx.
  * Works in both Node.js and browser environments via dependency injection.
  *
- * See /docs/s330_sysex.md for complete protocol documentation.
+ * See docs/1.0/s330-sysex-protocol.md for complete protocol documentation.
  *
- * ## Protocol Notes (from hardware testing, January 2026)
+ * ## Protocol Notes (from hardware testing)
  *
  * The S-330 uses the RQD/WSD handshake protocol exclusively:
  *
  * - **RQD with address/size**: F0 41 dev 1E 41 [addr 4B] [size 4B] [cs] F7
  * - **WSD (Want to Send Data)**: Request permission to write parameters
- * - **DAT (Data Transfer)**: Bidirectional data packets with nibblized data
+ * - **DAT (Data Transfer)**: Bidirectional data packets
  * - **ACK (Acknowledge)**: Ready to receive next packet
  * - **EOD (End of Data)**: Transfer complete
  * - **ERR (Error)**: Communication error
  * - **RJC (Rejection)**: Request denied or no data available
  *
+ * ## Data Encoding
+ *
+ * **Parameter data** (patches, tones): Nibblized format
+ * - Size = bytes × 2 (nibble count)
+ * - Each byte split into two nibbles (0x00-0x0F)
+ *
+ * **Wave data**: 7-bit encoded 12-bit samples (NOT nibblized)
+ * - Size = sample count × 2 (bytes, not nibbles)
+ * - Each 12-bit sample = 2 bytes: `0aaa aaaa` + `0bbb bb00`
+ * - Decode: `sample = (byte0 << 5) | (byte1 >> 2)`
+ *
  * Important constraints:
- * - Both address LSB and size LSB must be EVEN (nibble alignment)
- * - Size represents nibble count, not byte count (size = bytes * 2)
+ * - Both address LSB and size LSB must be EVEN
  * - RQD handshake: RQD → DAT → ACK → ... → EOD → ACK (no initial ACK from device)
  * - Function parameter writes MUST use WSD/DAT/EOD (DT1 does not work)
  *
@@ -38,6 +48,7 @@ import type {
     S330PatchCommon,
     S330AftertouchAssign,
     S330KeyAssign,
+    S330WaveDataResponse,
 } from './s330-types.js';
 
 import {
@@ -54,6 +65,7 @@ import {
     MAX_TONES,
     PATCH_PARAMS,
     buildPatchParamAddress,
+    ADDR_WAVE_DATA,
 } from './s330-addresses.js';
 
 import {
@@ -257,6 +269,12 @@ export interface S330ClientInterface {
     ): Promise<S330Tone[]>;
     getLoadedTones(): (S330Tone | undefined)[];
     invalidateToneCache(): void;
+
+    // Wave data operations
+    requestWaveData(
+        toneIndex: number,
+        onProgress?: (bytesReceived: number, totalBytes: number) => void
+    ): Promise<S330WaveDataResponse>;
 
     // Multi mode configuration
     requestFunctionParameters(): Promise<MultiPartConfig[]>;
@@ -1022,6 +1040,201 @@ export function createS330Client(
 
             // Buffer write - collapses rapid updates, rate-limits device communication
             return bufferWrite(address, toneBytes);
+        },
+
+        /**
+         * Request wave data for a tone
+         *
+         * Fetches the raw sample data for a tone from the S-330's wave memory.
+         * The S-330 stores samples as 12-bit linear PCM, packed as 2 samples per 3 bytes.
+         *
+         * @param toneIndex - Tone number (0-31)
+         * @param onProgress - Optional progress callback with bytes received and total bytes
+         * @returns Wave data response with raw sample bytes and metadata
+         */
+        async requestWaveData(
+            toneIndex: number,
+            onProgress?: (bytesReceived: number, totalBytes: number) => void
+        ): Promise<S330WaveDataResponse> {
+            if (toneIndex < 0 || toneIndex >= MAX_TONES) {
+                throw new Error(`Invalid tone index: ${toneIndex}`);
+            }
+
+            return serialize(async () => {
+                // First, get the tone data to extract wave parameters
+                const byte2 = toneIndex * 2;
+                const toneAddress = [0x00, 0x03, byte2, 0x00];
+                const toneData = await requestDataWithAddress(toneAddress, TONE_BLOCK_SIZE);
+
+                if (toneData.length < 26) {
+                    throw new Error('Insufficient tone data received');
+                }
+
+                // Parse wave parameters from tone data
+                // See TONE_OFFSETS in s330-addresses.ts
+                const sampleRateValue = toneData[11]; // 0=30kHz, 1=15kHz
+                const sampleRate: 15000 | 30000 = sampleRateValue === 1 ? 15000 : 30000;
+
+                // Parse 24-bit addresses (3 bytes each, big-endian)
+                const startPoint = (toneData[16] << 16) | (toneData[17] << 8) | toneData[18];
+                const endPoint = (toneData[19] << 16) | (toneData[20] << 8) | toneData[21];
+                const loopPoint = (toneData[22] << 16) | (toneData[23] << 8) | toneData[24];
+                const loopModeValue = toneData[25];
+                const loopMode = (['forward', 'alternating', 'one-shot', 'reverse'] as const)[loopModeValue] || 'forward';
+
+                // Calculate sample count and data size
+                const sampleCount = endPoint - startPoint;
+                if (sampleCount <= 0) {
+                    throw new Error(`Invalid sample range: start=${startPoint}, end=${endPoint}`);
+                }
+
+                // Each 12-bit sample is transmitted as 2 bytes (0aaa aaaa + 0bbb bb00)
+                const bytesToFetch = sampleCount * 2;
+                console.log(`[S330Client] Fetching wave data: ${sampleCount} samples, ${bytesToFetch} bytes`);
+
+                // Calculate wave data address
+                // Wave data is at base address 0x01 00 00 00
+                // The startPoint is an offset into wave memory
+                const waveAddress = [
+                    ADDR_WAVE_DATA[0],
+                    (startPoint >> 14) & 0x7f,
+                    (startPoint >> 7) & 0x7f,
+                    startPoint & 0x7e, // Must be even (nibble-aligned)
+                ];
+
+                // Fetch wave data with extended timeout for large samples
+                const waveTimeoutMs = Math.max(timeoutMs * 4, bytesToFetch / 100);
+
+                // Use a modified request that supports progress reporting
+                const waveData = await requestWaveDataWithProgress(
+                    waveAddress,
+                    bytesToFetch,
+                    waveTimeoutMs,
+                    onProgress
+                );
+
+                return {
+                    data: new Uint8Array(waveData),
+                    sampleRate,
+                    startPoint,
+                    endPoint,
+                    loopPoint,
+                    loopMode,
+                };
+            });
+
+            // Internal helper for wave data fetch with progress
+            // IMPORTANT: Wave data is NOT nibblized - it's raw 7-bit MIDI bytes
+            // encoding 12-bit samples. Do NOT de-nibblize wave data.
+            async function requestWaveDataWithProgress(
+                address: number[],
+                sizeInBytes: number,
+                waveTimeoutMs: number,
+                onProgress?: (bytesReceived: number, totalBytes: number) => void
+            ): Promise<number[]> {
+                if (address.length !== 4) {
+                    throw new Error('Address must be 4 bytes');
+                }
+
+                if (address[3] & 0x01) {
+                    throw new Error(`Address LSB must be even (got 0x${address[3].toString(16)})`);
+                }
+
+                // Wave data size is in BYTES, not nibbles (unlike tone/patch data)
+                const size = [
+                    (sizeInBytes >> 21) & 0x7f,
+                    (sizeInBytes >> 14) & 0x7f,
+                    (sizeInBytes >> 7) & 0x7f,
+                    sizeInBytes & 0x7f,
+                ];
+
+                const cs = calculateChecksum(address, size);
+                const message = [
+                    0xf0,
+                    ROLAND_ID,
+                    deviceId,
+                    S330_MODEL_ID,
+                    S330_COMMANDS.RQD,
+                    ...address,
+                    ...size,
+                    cs,
+                    0xf7,
+                ];
+
+                return new Promise((resolve, reject) => {
+                    // Wave data comes as raw 7-bit bytes, NOT nibbles
+                    const allBytes: number[] = [];
+                    let timeoutId: ReturnType<typeof setTimeout>;
+
+                    function resetTimeout() {
+                        if (timeoutId) clearTimeout(timeoutId);
+                        timeoutId = setTimeout(() => {
+                            midiAdapter.removeSysExListener(listener);
+                            if (allBytes.length > 0) {
+                                resolve(allBytes);
+                            } else {
+                                reject(new Error('Wave data request timeout - no data received'));
+                            }
+                        }, waveTimeoutMs);
+                    }
+
+                    function sendAck() {
+                        const ackMsg = [
+                            0xf0,
+                            ROLAND_ID,
+                            deviceId,
+                            S330_MODEL_ID,
+                            S330_COMMANDS.ACK,
+                            0xf7,
+                        ];
+                        midiAdapter.send(ackMsg);
+                    }
+
+                    function listener(response: number[]) {
+                        if (response.length < 5) return;
+                        if (response[1] !== ROLAND_ID) return;
+                        if (response[3] !== S330_MODEL_ID) return;
+
+                        const respDeviceId = response[2];
+                        const command = response[4];
+
+                        if (respDeviceId !== deviceId) {
+                            return;
+                        }
+
+                        resetTimeout();
+
+                        if (command === S330_COMMANDS.DAT) {
+                            // DAT packet: F0 41 dev 1E 42 [addr 4B] [data...] cs F7
+                            const dataStart = 9;
+                            const dataEnd = response.length - 2;
+                            const data = response.slice(dataStart, dataEnd);
+                            // Wave data is raw 7-bit bytes - do NOT de-nibblize
+                            allBytes.push(...data);
+
+                            // Report progress
+                            onProgress?.(allBytes.length, sizeInBytes);
+
+                            sendAck();
+                        } else if (command === S330_COMMANDS.EOD || command === 0x45) {
+                            clearTimeout(timeoutId);
+                            midiAdapter.removeSysExListener(listener);
+                            sendAck();
+                            // Return raw bytes - no de-nibblization for wave data
+                            resolve(allBytes);
+                        } else if (command === S330_COMMANDS.ERR) {
+                            clearTimeout(timeoutId);
+                            midiAdapter.removeSysExListener(listener);
+                            reject(new Error('Wave data communication error'));
+                        }
+                    }
+
+                    resetTimeout();
+                    midiAdapter.onSysEx(listener);
+                    console.log('[S330Client] Requesting wave data:', message.map(b => b.toString(16).padStart(2, '0')).join(' '));
+                    midiAdapter.send(message);
+                });
+            }
         },
 
         /**
