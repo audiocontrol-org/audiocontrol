@@ -241,20 +241,39 @@ export function LibraryPage() {
 
     setOperationProgress(0);
     setOperationError(null);
+    setOperationStatus('Reading set from library...');
 
     try {
       // Load and convert set
+      setOperationStatus('Parsing tones and patches...');
       const deviceState = await loadSetToDevice(
         libraryHandle,
         selection.name,
-        (progress) => setOperationProgress(Math.floor(progress * 0.5))
+        (progress) => {
+          setOperationProgress(Math.floor(progress * 0.5));
+          if (progress < 30) {
+            setOperationStatus('Reading manifest...');
+          } else if (progress < 60) {
+            setOperationStatus('Loading tone data...');
+          } else {
+            setOperationStatus('Loading patch data...');
+          }
+        }
       );
 
       // Upload to device
       let uploadCount = 0;
-      const totalItems = deviceState.tones.size + deviceState.patches.size;
+      const totalTones = deviceState.tones.size;
+      const totalPatches = deviceState.patches.size;
+      const totalItems = totalTones + totalPatches;
 
       for (const [slot, data] of deviceState.tones) {
+        const toneSlot = `T${Math.floor(slot / 8) + 1}${(slot % 8) + 1}`;
+        const toneName = data.tone.name || toneSlot;
+        const sampleCount = data.wavData.length / 2;
+
+        setOperationStatus(`Uploading ${toneName} (${sampleCount.toLocaleString()} samples)...`);
+
         // Upload wave data and tone to device
         await clientRef.current.importTone(
           {
@@ -268,7 +287,10 @@ export function LibraryPage() {
             loopMode: data.tone.loopMode,
             loopPoint: data.tone.wave.loopPoint,
           },
-          () => {}
+          (bytesSent, totalBytes) => {
+            const pct = totalBytes > 0 ? Math.floor((bytesSent / totalBytes) * 100) : 0;
+            setOperationStatus(`Uploading ${toneName}: ${pct}% (${bytesSent.toLocaleString()}/${totalBytes.toLocaleString()} bytes)`);
+          }
         );
         setTone(slot, data.tone);
         uploadCount++;
@@ -279,6 +301,11 @@ export function LibraryPage() {
       }
 
       for (const [slot, patch] of deviceState.patches) {
+        const patchSlot = `P${String(slot + 1).padStart(2, '0')}`;
+        const patchName = patch.common.name || patchSlot;
+
+        setOperationStatus(`Uploading patch ${patchName}...`);
+
         await clientRef.current.sendPatchData(slot, patch.common);
         uploadCount++;
         setOperationProgress(50 + Math.floor((uploadCount / totalItems) * 50));
@@ -288,10 +315,15 @@ export function LibraryPage() {
       }
 
       setOperationProgress(100);
+      setOperationStatus(`Loaded ${totalTones} tones and ${totalPatches} patches`);
+
+      // Brief delay to show completion message
+      await new Promise((resolve) => setTimeout(resolve, 500));
       setIsLoadDialogOpen(false);
     } catch (err) {
       console.error('[LibraryPage] Failed to load set:', err);
       setOperationError(err instanceof Error ? err.message : 'Failed to load set');
+      setOperationStatus(null);
     }
   }, [libraryHandle, selection, setTone]);
 
@@ -435,6 +467,7 @@ export function LibraryPage() {
         isLoading={operationProgress !== undefined && operationProgress < 100}
         progress={operationProgress}
         error={operationError}
+        statusMessage={operationStatus}
       />
     </div>
   );

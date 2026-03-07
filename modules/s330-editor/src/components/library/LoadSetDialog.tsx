@@ -17,6 +17,7 @@ interface LoadSetDialogProps {
   isLoading: boolean;
   progress?: number;
   error: string | null;
+  statusMessage?: string | null;
 }
 
 export function LoadSetDialog({
@@ -27,6 +28,7 @@ export function LoadSetDialog({
   isLoading,
   progress,
   error,
+  statusMessage,
 }: LoadSetDialogProps): JSX.Element {
   const handleLoad = useCallback(async () => {
     await onLoad();
@@ -80,7 +82,7 @@ export function LoadSetDialog({
                   />
                 </div>
                 <p className="text-xs text-s330-muted mt-1">
-                  {progress < 50 ? 'Loading from library...' : 'Uploading to device...'}
+                  {statusMessage || (progress < 50 ? 'Loading from library...' : 'Uploading to device...')}
                 </p>
               </div>
             )}
