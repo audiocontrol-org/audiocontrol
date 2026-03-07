@@ -23,10 +23,6 @@ export type {
   Template,
   TemplateResult,
 
-  // Converter interfaces
-  ToneConverter,
-  PatchConverter,
-
   // Storage interfaces
   LibraryItemInfo,
   LibraryStorage,

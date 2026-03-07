@@ -33,8 +33,6 @@ export type {
   VelocityLayerTemplate,
   Template,
   TemplateResult,
-  ToneConverter,
-  PatchConverter,
   LibraryItemInfo,
   LibraryStorage,
 } from './types/index.js';
@@ -91,8 +89,16 @@ export type {
   TemplateYaml,
 } from './schemas/index.js';
 
-// Converter exports will be added in Phase 3
-// export { ConverterRegistry } from './converters/index.js';
+// Converter exports
+export {
+  ConverterRegistry,
+  converterRegistry,
+  s330ToneConverter,
+  s330PatchConverter,
+  createPatchFromKeyGroups,
+} from './converters/index.js';
+
+export type { ToneConverter, PatchConverter } from './converters/index.js';
 
 // Storage exports will be added in Phase 4
 // export { FileStorage, getLibraryRoot } from './storage/index.js';

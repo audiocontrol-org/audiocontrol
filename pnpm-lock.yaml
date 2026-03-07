@@ -866,6 +866,9 @@ importers:
 
   modules/sampler-library:
     dependencies:
+      '@audiocontrol/sampler-devices':
+        specifier: workspace:*
+        version: link:../sampler-devices
       yaml:
         specifier: ^2.7.0
         version: 2.8.1

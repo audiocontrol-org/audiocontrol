@@ -146,51 +146,6 @@ export interface TemplateResult<TPatch, TTone> {
 }
 
 /**
- * Interface for device-specific tone converters.
- */
-export interface ToneConverter<TDeviceTone, TYamlTone extends BaseTone> {
-  /** Device type this converter handles */
-  readonly deviceType: DeviceType;
-
-  /**
-   * Convert device tone to YAML format.
-   * @param tone - Device-native tone data
-   * @param wavFilename - Filename for the associated WAV file
-   * @returns YAML-serializable tone object
-   */
-  toYaml(tone: TDeviceTone, wavFilename: string): TYamlTone;
-
-  /**
-   * Convert YAML tone back to device format.
-   * @param yaml - Parsed YAML tone data
-   * @returns Device-native tone data
-   */
-  fromYaml(yaml: TYamlTone): TDeviceTone;
-}
-
-/**
- * Interface for device-specific patch converters.
- */
-export interface PatchConverter<TDevicePatch, TYamlPatch extends BasePatch> {
-  /** Device type this converter handles */
-  readonly deviceType: DeviceType;
-
-  /**
-   * Convert device patch to YAML format.
-   * @param patch - Device-native patch data
-   * @returns YAML-serializable patch object
-   */
-  toYaml(patch: TDevicePatch): TYamlPatch;
-
-  /**
-   * Convert YAML patch back to device format.
-   * @param yaml - Parsed YAML patch data
-   * @returns Device-native patch data
-   */
-  fromYaml(yaml: TYamlPatch): TDevicePatch;
-}
-
-/**
  * Library item metadata for listings.
  */
 export interface LibraryItemInfo {

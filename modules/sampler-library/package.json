@@ -46,6 +46,7 @@
     "url": "https://github.com/audiocontrol-org/audiocontrol/issues"
   },
   "dependencies": {
+    "@audiocontrol/sampler-devices": "workspace:*",
     "yaml": "^2.7.0",
     "zod": "^3.24.0"
   },
