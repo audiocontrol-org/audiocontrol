@@ -169,16 +169,18 @@ export function parseLevelCurve(value: number): S330LevelCurve {
 
 /**
  * Convert sample rate byte to enum
+ * Per S-330 spec: 0=30kHz, 1=15kHz
  */
 export function parseSampleRate(value: number): S330SampleRate {
-    return value === 1 ? '30kHz' : '15kHz';
+    return value === 0 ? '30kHz' : '15kHz';
 }
 
 /**
  * Convert sample rate enum to byte
+ * Per S-330 spec: 0=30kHz, 1=15kHz
  */
 export function encodeSampleRate(rate: S330SampleRate): number {
-    return rate === '30kHz' ? 1 : 0;
+    return rate === '30kHz' ? 0 : 1;
 }
 
 /**

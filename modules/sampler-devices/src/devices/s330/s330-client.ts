@@ -1056,6 +1056,7 @@ export function createS330Client(
             toneIndex: number,
             onProgress?: (bytesReceived: number, totalBytes: number) => void
         ): Promise<S330WaveDataResponse> {
+            console.log('[S330Client] requestWaveData called with toneIndex:', toneIndex);
             if (toneIndex < 0 || toneIndex >= MAX_TONES) {
                 throw new Error(`Invalid tone index: ${toneIndex}`);
             }
@@ -1064,6 +1065,7 @@ export function createS330Client(
                 // First, get the tone data to extract wave parameters
                 const byte2 = toneIndex * 2;
                 const toneAddress = [0x00, 0x03, byte2, 0x00];
+                console.log('[S330Client] Fetching tone data from address:', toneAddress);
                 const toneData = await requestDataWithAddress(toneAddress, TONE_BLOCK_SIZE);
 
                 if (toneData.length < 26) {
@@ -1075,31 +1077,95 @@ export function createS330Client(
                 const sampleRateValue = toneData[11]; // 0=30kHz, 1=15kHz
                 const sampleRate: 15000 | 30000 = sampleRateValue === 1 ? 15000 : 30000;
 
-                // Parse 24-bit addresses (3 bytes each, big-endian)
-                const startPoint = (toneData[16] << 16) | (toneData[17] << 8) | toneData[18];
-                const endPoint = (toneData[19] << 16) | (toneData[20] << 8) | toneData[21];
-                const loopPoint = (toneData[22] << 16) | (toneData[23] << 8) | toneData[24];
+                // Wave memory organization:
+                // - WAVE_BANK (byte 13): 0=A, 1=B (selects 256KB half of wave memory)
+                // - WAVE_SEGMENT_TOP (byte 14): Starting segment index within bank
+                // - WAVE_SEGMENT_LENGTH (byte 15): Number of segments occupied
+                // - START_POINT/END_POINT/LOOP_POINT (bytes 16-24): RELATIVE offsets within segment
+                const waveBank = toneData[13]; // 0=A, 1=B
+                const waveSegmentTop = toneData[14]; // Starting segment index
+                const waveSegmentLength = toneData[15]; // Number of segments
+
+                // Parse 24-bit relative offsets (3 bytes each, big-endian)
+                // These are RELATIVE to the start of waveSegmentTop, NOT absolute addresses
+                const relativeStart = (toneData[16] << 16) | (toneData[17] << 8) | toneData[18];
+                const relativeEnd = (toneData[19] << 16) | (toneData[20] << 8) | toneData[21];
+                const relativeLoop = (toneData[22] << 16) | (toneData[23] << 8) | toneData[24];
                 const loopModeValue = toneData[25];
                 const loopMode = (['forward', 'alternating', 'one-shot', 'reverse'] as const)[loopModeValue] || 'forward';
 
-                // Calculate sample count and data size
-                const sampleCount = endPoint - startPoint;
+                console.log('[S330Client] Parsed wave params for tone', toneIndex, ':', {
+                    sampleRate,
+                    waveBank,
+                    waveSegmentTop,
+                    waveSegmentLength,
+                    relativeStart,
+                    relativeEnd,
+                    relativeLoop,
+                    loopMode,
+                });
+
+                // Calculate wave memory address and fetch size
+                // S-330 Memory Map (from MIDI Implementation documentation):
+                //   - Wave data A (×18 segments): base address 01 00 00 00H
+                //   - Wave data B (×18 segments): base address 01 20 00 00H
+                //
+                // Wave data location is determined ONLY by:
+                //   - waveBank: which bank (A=0, B=1)
+                //   - waveSegmentTop: starting segment index
+                //   - waveSegmentLength: number of segments allocated
+                //
+                // startPoint/endPoint/loopPoint are PLAYBACK parameters, not memory addresses.
+                //
+                // S-330 Wave Memory Address Calculation
+                // IMPORTANT: Address space differs from data size!
+                //
+                // From documentation:
+                //   - Bank A base: 01 00 00 00H, Bank B base: 01 20 00 00H
+                //   - Difference: 0x20 in byte 1 = 32 × 2^14 = 524288 address units per bank
+                //   - Each bank has 18 segments
+                //
+                // Wave data format:
+                //   - 12-bit samples transmitted as 2 bytes (7-bit MIDI encoding)
+                //   - Each segment: 12,000 samples = 24,000 bytes when transmitted
+                //
+                // S-330 Wave Memory Address Calculation
+                // (from MIDI Implementation documentation, Section 4: Address mapping)
+                //
+                // Addresses are 7-bit hex (00-7F per byte), 4 bytes: AA BB CC DD
+                //   - Bank A base: 01 00 00 00H
+                //   - Bank B base: 01 20 00 00H
+                //   - Segment stride: 00 01 40 00H = 24576 address units
+                //
+                // Each segment contains 12000 samples (0.4s at 30kHz, 0.8s at 15kHz)
+                // transmitted as 24000 bytes (2 bytes per 12-bit sample).
+                //
+                const SEGMENT_SIZE_SAMPLES = 12000;
+                const SEGMENT_DATA_BYTES = SEGMENT_SIZE_SAMPLES * 2; // 24000 bytes
+                const SEGMENT_ADDR_STRIDE = 24576; // 00 01 40 00H in 7-bit hex
+                const BANK_ADDR_SIZE = SEGMENT_ADDR_STRIDE * 18; // 442368 per bank
+
+                const bankBaseAddr = waveBank * BANK_ADDR_SIZE;
+                const addrOffset = bankBaseAddr + (waveSegmentTop * SEGMENT_ADDR_STRIDE);
+
+                // Fetch size based on segment length (each segment = 12000 samples × 2 bytes)
+                const sampleCount = waveSegmentLength * SEGMENT_SIZE_SAMPLES;
+                const bytesToFetch = sampleCount * 2;
+
                 if (sampleCount <= 0) {
-                    throw new Error(`Invalid sample range: start=${startPoint}, end=${endPoint}`);
+                    throw new Error(`Invalid segment allocation: segmentLength=${waveSegmentLength}`);
                 }
 
-                // Each 12-bit sample is transmitted as 2 bytes (0aaa aaaa + 0bbb bb00)
-                const bytesToFetch = sampleCount * 2;
-                console.log(`[S330Client] Fetching wave data: ${sampleCount} samples, ${bytesToFetch} bytes`);
+                console.log(`[S330Client] Fetching wave data: ${sampleCount} samples (${waveSegmentLength} segments), ${bytesToFetch} bytes`);
+                console.log(`[S330Client] Wave address: bank=${waveBank}, segmentTop=${waveSegmentTop}, addrOffset=${addrOffset}`);
 
-                // Calculate wave data address
-                // Wave data is at base address 0x01 00 00 00
-                // The startPoint is an offset into wave memory
+                // The address bytes encode a 28-bit offset in 7-bit chunks
+                // Note: LSB must be even per Roland spec (*3-1: lowest bit of LSB should be 0)
                 const waveAddress = [
                     ADDR_WAVE_DATA[0],
-                    (startPoint >> 14) & 0x7f,
-                    (startPoint >> 7) & 0x7f,
-                    startPoint & 0x7e, // Must be even (nibble-aligned)
+                    (addrOffset >> 14) & 0x7f,
+                    (addrOffset >> 7) & 0x7f,
+                    addrOffset & 0x7e, // Must be even per documentation
                 ];
 
                 // Fetch wave data with extended timeout for large samples
@@ -1116,9 +1182,9 @@ export function createS330Client(
                 return {
                     data: new Uint8Array(waveData),
                     sampleRate,
-                    startPoint,
-                    endPoint,
-                    loopPoint,
+                    startPoint: relativeStart,
+                    endPoint: relativeEnd,
+                    loopPoint: relativeLoop,
                     loopMode,
                 };
             });

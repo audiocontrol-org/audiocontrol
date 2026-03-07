@@ -103,19 +103,62 @@ This differs from parameter data where size = bytes × 2 (nibble count).
 
 ### Wave Data Address
 
-| Address Base | Content |
-|--------------|---------|
-| 01 00 00 00 | Wave memory start |
+From the S-330 MIDI Implementation, Section 4 (Address Mapping):
+- Addresses are represented from 00 to 7F by hexadecimal (7-bit per byte)
+- Format: `AA BB CC DD` where each byte is 0-127
 
-Wave addresses use 7-bit encoding per byte. To address sample N:
+| Address | Content |
+|---------|---------|
+| 01 00 00 00H | Wave Bank A (18 segments) |
+| 01 20 00 00H | Wave Bank B (18 segments) |
+
+#### Wave Memory Organization
+
+Each bank contains 18 segments. Key measurements:
+
+| Property | Value | Notes |
+|----------|-------|-------|
+| Segment stride | 00 01 40 00H = 24576 | Address units between segments |
+| Samples per segment | 12000 | 0.4s at 30kHz, 0.8s at 15kHz |
+| Data bytes per segment | 24000 | 2 bytes per 12-bit sample |
+| Padding per segment | 576 | Unused address space |
+| Bank size | 442368 | 18 × 24576 |
+
+#### Calculating Wave Addresses
+
+To fetch wave data for a tone:
+
 ```typescript
+// From tone parameters:
+// - waveBank: 0=A, 1=B
+// - waveSegmentTop: starting segment index (0-17)
+// - waveSegmentLength: number of segments
+
+const SEGMENT_ADDR_STRIDE = 24576;  // 00 01 40 00H
+const BANK_ADDR_SIZE = SEGMENT_ADDR_STRIDE * 18;
+
+const bankBaseAddr = waveBank * BANK_ADDR_SIZE;
+const addrOffset = bankBaseAddr + (waveSegmentTop * SEGMENT_ADDR_STRIDE);
+
+// Encode as 4-byte 7-bit address
 const address = [
-    0x01,                      // Wave bank
-    (sampleOffset >> 14) & 0x7F,
-    (sampleOffset >> 7) & 0x7F,
-    sampleOffset & 0x7E        // LSB must be even
+    0x01,                        // Wave memory area
+    (addrOffset >> 14) & 0x7F,   // BB
+    (addrOffset >> 7) & 0x7F,    // CC
+    addrOffset & 0x7E            // DD - LSB must be even
 ];
+
+// Request size in bytes (NOT address units)
+const bytesToFetch = waveSegmentLength * 12000 * 2;
 ```
+
+#### Important Notes
+
+1. **Segment stride ≠ data size**: Each segment occupies 24576 address units but contains only 24000 bytes of sample data.
+
+2. **startPoint/endPoint/loopPoint** in tone parameters are playback offsets relative to the segment, NOT memory addresses.
+
+3. **LSB must be even**: Per Roland spec, the lowest bit of the address LSB should be 0.
 
 ## Sample Format Details
 
@@ -139,5 +182,8 @@ function calculateChecksum(address: number[], data: number[]): number {
 
 ## References
 
-- Roland S-330 MIDI Implementation (Section 3: Exclusive Communications)
+- Roland S-330 MIDI Implementation
+  - Section 3: Exclusive Communications
+  - Section 4: Address Mapping of Parameters
+  - Section 4.6: Wave Data (offset addresses and total size)
 - Roland S-330 Owner's Manual
