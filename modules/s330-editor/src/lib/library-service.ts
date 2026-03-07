@@ -520,8 +520,11 @@ export async function saveDeviceToSetIncremental(
 
   // Process each tone: fetch wave data and write to disk immediately
   for (const { index, tone } of validTones) {
-    const toneFile = `T${String(index + 1).padStart(2, '0')}`;
-    onStatus?.(`Fetching wave data for ${tone.name || toneFile}...`);
+    const toneSlot = `T${String(index + 1).padStart(2, '0')}`;
+    // Sanitize tone name for filename (remove invalid chars, trim whitespace)
+    const sanitizedName = (tone.name || '').trim().replace(/[<>:"/\\|?*]/g, '_');
+    const toneFile = sanitizedName ? `${toneSlot} ${sanitizedName}` : toneSlot;
+    onStatus?.(`Fetching wave data for ${tone.name || toneSlot}...`);
 
     try {
       // Fetch wave data from device
@@ -529,7 +532,7 @@ export async function saveDeviceToSetIncremental(
         // Could add sub-progress here
       });
 
-      onStatus?.(`Writing ${tone.name || toneFile} to disk...`);
+      onStatus?.(`Writing ${tone.name || toneSlot} to disk...`);
 
       // Convert tone to YAML
       const toneYaml = s330ToneConverter.toYaml(tone, `${toneFile}.wav`);
@@ -570,8 +573,11 @@ export async function saveDeviceToSetIncremental(
 
   // Process each patch: write to disk immediately
   for (const { index, patch } of validPatches) {
-    const patchFile = `P${String(index + 1).padStart(2, '0')}`;
-    onStatus?.(`Writing ${patch.common.name || patchFile} to disk...`);
+    const patchSlot = `P${String(index + 1).padStart(2, '0')}`;
+    // Sanitize patch name for filename
+    const sanitizedName = (patch.common.name || '').trim().replace(/[<>:"/\\|?*]/g, '_');
+    const patchFile = sanitizedName ? `${patchSlot} ${sanitizedName}` : patchSlot;
+    onStatus?.(`Writing ${patch.common.name || patchSlot} to disk...`);
 
     try {
       // Convert patch to YAML
