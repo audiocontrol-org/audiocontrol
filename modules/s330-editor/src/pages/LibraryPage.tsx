@@ -273,12 +273,18 @@ export function LibraryPage() {
         setTone(slot, data.tone);
         uploadCount++;
         setOperationProgress(50 + Math.floor((uploadCount / totalItems) * 50));
+
+        // Give the S-330 time to process before next import
+        await new Promise((resolve) => setTimeout(resolve, 200));
       }
 
       for (const [slot, patch] of deviceState.patches) {
         await clientRef.current.sendPatchData(slot, patch.common);
         uploadCount++;
         setOperationProgress(50 + Math.floor((uploadCount / totalItems) * 50));
+
+        // Give the S-330 time to process
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
       setOperationProgress(100);

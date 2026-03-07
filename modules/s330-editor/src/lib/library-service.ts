@@ -19,6 +19,8 @@ import {
   s330PatchConverter,
   deviceStateToSet,
   setToDeviceState,
+  parseWav,
+  wavToS330,
   type ToneYaml,
   type PatchYaml,
   type SetYaml,
@@ -552,7 +554,7 @@ export async function saveDeviceToSetIncremental(
       await wavWritable.write(wavBlob);
       await wavWritable.close();
 
-      // Track for manifest
+      // Track for manifest - preserve original segment allocation from device
       toneEntries.push({
         slot: index,
         file: toneFile,
@@ -667,12 +669,18 @@ export async function loadToneFromSet(
   const yamlContent = await yamlFile.text();
   const yaml = ToneYamlSchema.parse(parseYaml(yamlContent));
 
-  // Load WAV
+  // Load WAV and parse to extract audio data
   const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`);
   const wavFile = await wavHandle.getFile();
-  const wavData = new Uint8Array(await wavFile.arrayBuffer());
+  const wavFileBuffer = await wavFile.arrayBuffer();
+  const wavParsed = parseWav(wavFileBuffer);
 
-  return { yaml, wavData };
+  // Convert 16-bit PCM samples to S330's 12-bit packed format using the same
+  // function as ImportSampleDialog - this is the known-good conversion path
+  const targetSampleRate = yaml.wave.sampleRate as 15000 | 30000;
+  const s330Data = wavToS330(wavParsed, targetSampleRate);
+
+  return { yaml, wavData: s330Data.data };
 }
 
 /**
