@@ -8,6 +8,13 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
+import {
+  parseWav,
+  wavToS330,
+  calculateSegmentsNeeded,
+  type WavData,
+  type S330WaveSampleRate,
+} from '@audiocontrol/sampler-devices/s330';
 
 export interface ImportSampleDialogProps {
   /** Whether the dialog is open */
@@ -38,160 +45,9 @@ export interface ImportSampleDialogProps {
   importError?: string | null;
 }
 
-interface WavInfo {
-  sampleRate: number;
-  channels: number;
-  bitsPerSample: number;
+/** Extended WAV info for display purposes */
+interface WavDisplayInfo extends WavData {
   duration: number;
-  sampleCount: number;
-  data: Float32Array;
-}
-
-function parseWavFile(arrayBuffer: ArrayBuffer): WavInfo {
-  const view = new DataView(arrayBuffer);
-
-  // Check RIFF header
-  const riff = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
-  if (riff !== 'RIFF') {
-    throw new Error('Not a valid WAV file (missing RIFF header)');
-  }
-
-  const wave = String.fromCharCode(view.getUint8(8), view.getUint8(9), view.getUint8(10), view.getUint8(11));
-  if (wave !== 'WAVE') {
-    throw new Error('Not a valid WAV file (missing WAVE format)');
-  }
-
-  // Find fmt chunk
-  let offset = 12;
-  let fmtFound = false;
-  let audioFormat = 0;
-  let channels = 0;
-  let sampleRate = 0;
-  let bitsPerSample = 0;
-
-  while (offset < arrayBuffer.byteLength - 8) {
-    const chunkId = String.fromCharCode(
-      view.getUint8(offset),
-      view.getUint8(offset + 1),
-      view.getUint8(offset + 2),
-      view.getUint8(offset + 3)
-    );
-    const chunkSize = view.getUint32(offset + 4, true);
-
-    if (chunkId === 'fmt ') {
-      audioFormat = view.getUint16(offset + 8, true);
-      channels = view.getUint16(offset + 10, true);
-      sampleRate = view.getUint32(offset + 12, true);
-      bitsPerSample = view.getUint16(offset + 22, true);
-      fmtFound = true;
-    }
-
-    if (chunkId === 'data') {
-      if (!fmtFound) {
-        throw new Error('WAV file has data chunk before fmt chunk');
-      }
-
-      if (audioFormat !== 1 && audioFormat !== 3) {
-        throw new Error(`Unsupported audio format: ${audioFormat} (only PCM supported)`);
-      }
-
-      const dataSize = chunkSize;
-      const bytesPerSample = bitsPerSample / 8;
-      const sampleCount = dataSize / bytesPerSample / channels;
-
-      // Convert to mono float32
-      const data = new Float32Array(sampleCount);
-      const dataOffset = offset + 8;
-
-      for (let i = 0; i < sampleCount; i++) {
-        let sample = 0;
-
-        // Read all channels and average for mono
-        for (let ch = 0; ch < channels; ch++) {
-          const sampleOffset = dataOffset + (i * channels + ch) * bytesPerSample;
-
-          if (audioFormat === 3) {
-            // 32-bit float
-            sample += view.getFloat32(sampleOffset, true);
-          } else if (bitsPerSample === 16) {
-            sample += view.getInt16(sampleOffset, true) / 32768;
-          } else if (bitsPerSample === 24) {
-            const b0 = view.getUint8(sampleOffset);
-            const b1 = view.getUint8(sampleOffset + 1);
-            const b2 = view.getUint8(sampleOffset + 2);
-            const val = (b2 << 16) | (b1 << 8) | b0;
-            const signed = val > 0x7fffff ? val - 0x1000000 : val;
-            sample += signed / 8388608;
-          } else if (bitsPerSample === 8) {
-            sample += (view.getUint8(sampleOffset) - 128) / 128;
-          } else {
-            throw new Error(`Unsupported bit depth: ${bitsPerSample}`);
-          }
-        }
-
-        data[i] = sample / channels;
-      }
-
-      return {
-        sampleRate,
-        channels,
-        bitsPerSample,
-        duration: sampleCount / sampleRate,
-        sampleCount,
-        data,
-      };
-    }
-
-    offset += 8 + chunkSize;
-    // Align to word boundary
-    if (chunkSize % 2 === 1) offset++;
-  }
-
-  throw new Error('WAV file missing data chunk');
-}
-
-function resampleAudio(input: Float32Array, inputRate: number, outputRate: number): Float32Array {
-  if (inputRate === outputRate) {
-    return input;
-  }
-
-  const ratio = inputRate / outputRate;
-  const outputLength = Math.floor(input.length / ratio);
-  const output = new Float32Array(outputLength);
-
-  for (let i = 0; i < outputLength; i++) {
-    const srcIndex = i * ratio;
-    const srcIndexFloor = Math.floor(srcIndex);
-    const srcIndexCeil = Math.min(srcIndexFloor + 1, input.length - 1);
-    const frac = srcIndex - srcIndexFloor;
-
-    // Linear interpolation
-    output[i] = input[srcIndexFloor] * (1 - frac) + input[srcIndexCeil] * frac;
-  }
-
-  return output;
-}
-
-function convertToS330Format(samples: Float32Array): Uint8Array {
-  // S-330 uses 12-bit samples packed as 2 bytes per sample (high nibble unused)
-  // Format: each sample is 2 bytes, little-endian, 12-bit value left-shifted by 4
-  const output = new Uint8Array(samples.length * 2);
-
-  for (let i = 0; i < samples.length; i++) {
-    // Clamp and convert to 12-bit signed (-2048 to 2047)
-    const clamped = Math.max(-1, Math.min(1, samples[i]));
-    const value = Math.round(clamped * 2047);
-
-    // Convert to unsigned 12-bit (0 to 4095)
-    const unsigned = value < 0 ? value + 4096 : value;
-
-    // Pack as 2 bytes (little-endian, shifted left by 4)
-    const shifted = unsigned << 4;
-    output[i * 2] = shifted & 0xff;
-    output[i * 2 + 1] = (shifted >> 8) & 0xff;
-  }
-
-  return output;
 }
 
 export function ImportSampleDialog({
@@ -205,7 +61,7 @@ export function ImportSampleDialog({
   importError,
 }: ImportSampleDialogProps): JSX.Element {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [wavInfo, setWavInfo] = useState<WavInfo | null>(null);
+  const [wavInfo, setWavInfo] = useState<WavDisplayInfo | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [name, setName] = useState(toneName || '');
   const [targetSampleRate, setTargetSampleRate] = useState<'15kHz' | '30kHz'>('30kHz');
@@ -232,8 +88,8 @@ export function ImportSampleDialog({
 
   // Calculate segments needed based on output sample count after resampling
   const segmentsNeeded = wavInfo
-    ? Math.ceil(
-        (wavInfo.sampleCount * ((targetSampleRate === '30kHz' ? 30000 : 15000) / wavInfo.sampleRate)) / 12000
+    ? calculateSegmentsNeeded(
+        Math.floor(wavInfo.samples.length * ((targetSampleRate === '30kHz' ? 30000 : 15000) / wavInfo.sampleRate))
       )
     : 1;
 
@@ -247,8 +103,9 @@ export function ImportSampleDialog({
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const info = parseWavFile(arrayBuffer);
-      setWavInfo(info);
+      const wavData = parseWav(arrayBuffer);
+      const duration = wavData.samples.length / wavData.sampleRate;
+      setWavInfo({ ...wavData, duration });
 
       // Auto-set name from filename if not already set
       if (!name) {
@@ -257,7 +114,7 @@ export function ImportSampleDialog({
       }
 
       // Auto-select sample rate closest to source
-      if (info.sampleRate <= 22500) {
+      if (wavData.sampleRate <= 22500) {
         setTargetSampleRate('15kHz');
       } else {
         setTargetSampleRate('30kHz');
@@ -276,20 +133,17 @@ export function ImportSampleDialog({
     setLocalError(null);
 
     try {
-      // Resample to target rate
-      const targetRate = targetSampleRate === '30kHz' ? 30000 : 15000;
-      const resampled = resampleAudio(wavInfo.data, wavInfo.sampleRate, targetRate);
-
-      // Convert to S-330 format
-      const waveData = convertToS330Format(resampled);
+      // Convert to S-330 format (includes resampling)
+      const targetRate: S330WaveSampleRate = targetSampleRate === '30kHz' ? 30000 : 15000;
+      const s330Data = wavToS330(wavInfo, targetRate);
 
       await onImport({
         toneIndex,
         name: name.trim(),
-        waveData,
+        waveData: s330Data.data,
         waveBank,
         segmentTop: targetSegment,
-        segmentLength: Math.ceil(resampled.length / 12000),
+        segmentLength: calculateSegmentsNeeded(s330Data.sampleCount),
         sampleRate: targetSampleRate,
         loopMode,
         loopPoint: 0,
@@ -297,7 +151,7 @@ export function ImportSampleDialog({
     } catch (err) {
       // Error handled by parent
     }
-  }, [wavInfo, name, targetSampleRate, targetSegment, loopMode, toneIndex, onImport]);
+  }, [wavInfo, name, targetSampleRate, targetSegment, loopMode, toneIndex, onImport, waveBank]);
 
   const handleClose = useCallback(() => {
     if (!isImporting) {

@@ -86,9 +86,22 @@ export {
   s330ToneConverter,
   s330PatchConverter,
   createPatchFromKeyGroups,
+  // Wave conversion (browser-compatible)
+  parseWav,
+  createWav,
+  wavToS330,
+  s330ToWav,
+  calculateSegmentsNeeded,
+  validateWaveDataFits,
 } from './converters/index.js';
 
-export type { ToneConverter, PatchConverter } from './converters/index.js';
+export type {
+  ToneConverter,
+  PatchConverter,
+  WavData,
+  S330WaveData,
+  S330WaveSampleRate,
+} from './converters/index.js';
 
 // Template exports (these are browser-compatible)
 export {

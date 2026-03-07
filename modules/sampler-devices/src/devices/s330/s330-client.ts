@@ -660,10 +660,17 @@ export function createS330Client(
             throw new Error('Address must be 4 bytes');
         }
 
+        const addrStr = address.map(b => b.toString(16).padStart(2, '0')).join(' ');
+        console.log(`[S330Client] sendData: address=${addrStr}, dataLen=${data.length}`);
+
         return new Promise((resolve, reject) => {
             // State machine: WSD → wait ACK → DAT → wait ACK → EOD → wait ACK → done
             let phase: 'WSD' | 'DAT' | 'EOD' | 'DONE' = 'WSD';
+            let phaseStartTime = Date.now();
+
             const timeoutId = setTimeout(() => {
+                const elapsed = Date.now() - phaseStartTime;
+                console.log(`[S330Client] sendData TIMEOUT in phase ${phase} after ${elapsed}ms`);
                 midiAdapter.removeSysExListener(listener);
                 reject(new Error(`WSD write timeout in phase ${phase}`));
             }, timeoutMs);
@@ -690,9 +697,13 @@ export function createS330Client(
                 }
 
                 if (command === S330_COMMANDS.ACK) {
+                    const elapsed = Date.now() - phaseStartTime;
+                    console.log(`[S330Client] sendData ACK received in phase ${phase} after ${elapsed}ms`);
+
                     if (phase === 'WSD') {
                         // Received ACK for WSD - send DAT
                         phase = 'DAT';
+                        phaseStartTime = Date.now();
 
                         const nibblized = nibblize(data);
                         const datChecksum = calculateChecksum(address, nibblized);
@@ -709,10 +720,15 @@ export function createS330Client(
                             0xf7,
                         ];
 
+                        console.log(`[S330Client] sendData sending DAT (${nibblized.length} nibbles)`);
                         midiAdapter.send(datMessage);
                     } else if (phase === 'DAT') {
                         // Received ACK for DAT - send EOD
                         phase = 'EOD';
+                        phaseStartTime = Date.now();
+
+                        // Clear the original timeout - we'll handle EOD specially
+                        clearTimeout(timeoutId);
 
                         const eodMessage = [
                             0xf0,
@@ -723,9 +739,23 @@ export function createS330Client(
                             0xf7,
                         ];
 
+                        console.log(`[S330Client] sendData sending EOD`);
                         midiAdapter.send(eodMessage);
+
+                        // S-330 may not ACK after EOD for parameter writes
+                        // Give it a short time to respond, then resolve anyway
+                        // (the data was already acknowledged with the DAT ACK)
+                        setTimeout(() => {
+                            if (phase === 'EOD') {
+                                console.log(`[S330Client] sendData EOD not ACKed, assuming success`);
+                                phase = 'DONE';
+                                midiAdapter.removeSysExListener(listener);
+                                resolve();
+                            }
+                        }, 300);
                     } else if (phase === 'EOD') {
                         // Received ACK for EOD - write complete
+                        console.log(`[S330Client] sendData complete`);
                         phase = 'DONE';
                         clearTimeout(timeoutId);
                         midiAdapter.removeSysExListener(listener);
@@ -760,6 +790,8 @@ export function createS330Client(
                 0xf7,
             ];
 
+            console.log(`[S330Client] sendData sending WSD: ${wsdMessage.map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+            phaseStartTime = Date.now();
             midiAdapter.send(wsdMessage);
         });
     }
@@ -801,6 +833,7 @@ export function createS330Client(
 
     /**
      * Internal helper for chunked wave data transfer using WSD/DAT/EOD protocol.
+     * Data is nibblized before sending (each byte becomes 2 nibbles) per S-330 MIDI spec.
      */
     async function sendWaveDataChunked(
         address: number[],
@@ -815,12 +848,13 @@ export function createS330Client(
         }
 
         const totalBytes = data.length;
-        // Max chunk size - leave room for SysEx overhead (F0 41 dev 1E 42 addr[4] ... cs F7)
-        const MAX_CHUNK_SIZE = 256;
+        // S-330 wave data is already 7-bit MIDI safe (2 bytes per 12-bit sample)
+        // No nibblization needed - send raw bytes directly
+        const MAX_CHUNK_BYTES = 128;
 
         return new Promise((resolve, reject) => {
             let bytesSent = 0;
-            let currentChunkStart = 0;
+            let currentByteOffset = 0;
             let phase: 'WSD' | 'DAT' | 'EOD' | 'DONE' = 'WSD';
             let timeoutId: ReturnType<typeof setTimeout>;
 
@@ -833,7 +867,7 @@ export function createS330Client(
             }
 
             function sendNextChunk() {
-                if (currentChunkStart >= totalBytes) {
+                if (currentByteOffset >= totalBytes) {
                     // All data sent, send EOD
                     phase = 'EOD';
                     const eodMessage = [
@@ -860,21 +894,23 @@ export function createS330Client(
                 }
 
                 phase = 'DAT';
-                const chunkEnd = Math.min(currentChunkStart + MAX_CHUNK_SIZE, totalBytes);
-                const chunk = Array.from(data.slice(currentChunkStart, chunkEnd));
+                const chunkEndByte = Math.min(currentByteOffset + MAX_CHUNK_BYTES, totalBytes);
+                const chunkBytes = Array.from(data.slice(currentByteOffset, chunkEndByte));
 
-                // Calculate current address for this chunk
-                const chunkOffset = currentChunkStart;
+                // S-330 wave data is already 7-bit MIDI safe (2 bytes per 12-bit sample)
+                // No nibblization needed - send raw bytes
+
+                // Calculate current address for this chunk (in bytes)
                 const baseOffset = (address[1] << 14) | (address[2] << 7) | address[3];
-                const chunkAddr = baseOffset + chunkOffset;
+                const chunkAddr = baseOffset + currentByteOffset;
                 const chunkAddress = [
                     address[0],
                     (chunkAddr >> 14) & 0x7f,
                     (chunkAddr >> 7) & 0x7f,
-                    chunkAddr & 0x7e,
+                    chunkAddr & 0x7f,
                 ];
 
-                const datChecksum = calculateChecksum(chunkAddress, chunk);
+                const datChecksum = calculateChecksum(chunkAddress, chunkBytes);
                 const datMessage = [
                     0xf0,
                     ROLAND_ID,
@@ -882,14 +918,14 @@ export function createS330Client(
                     S330_MODEL_ID,
                     S330_COMMANDS.DAT,
                     ...chunkAddress,
-                    ...chunk,
+                    ...chunkBytes,
                     datChecksum,
                     0xf7,
                 ];
 
                 midiAdapter.send(datMessage);
-                bytesSent = chunkEnd;
-                currentChunkStart = chunkEnd;
+                bytesSent = chunkEndByte;
+                currentByteOffset = chunkEndByte;
                 onProgress?.(bytesSent, totalBytes);
             }
 
@@ -938,7 +974,7 @@ export function createS330Client(
             resetTimeout();
 
             // Build and send WSD message
-            // Wave data size is in BYTES (not nibbles)
+            // Size is in bytes (S-330 wave data is already 7-bit MIDI safe)
             const size = [
                 (totalBytes >> 21) & 0x7f,
                 (totalBytes >> 14) & 0x7f,

@@ -1,8 +1,13 @@
 /**
- * S-330 wave data converter for WAV ↔ S-330 12-bit format.
+ * S-330 wave data format encoding/decoding.
  *
  * The S-330 uses 12-bit linear PCM samples, transmitted over MIDI as
- * 2 bytes per sample (7-bit encoding).
+ * 2 bytes per sample in a 7-bit safe encoding:
+ *
+ * - Byte 0: 0aaa aaaa - upper 7 bits of the 12-bit sample
+ * - Byte 1: 0bbb bb00 - lower 5 bits, left-shifted by 2
+ *
+ * Both bytes are always < 128, making them MIDI-safe without nibblization.
  *
  * @packageDocumentation
  */
@@ -41,7 +46,7 @@ export interface S330WaveData {
 /**
  * Parse a WAV file buffer into sample data.
  *
- * Supports 8-bit, 16-bit, 24-bit, and 32-bit PCM WAV files.
+ * Supports 8-bit, 16-bit, 24-bit PCM, 32-bit PCM, and 32-bit float WAV files.
  * Stereo files are converted to mono by averaging channels.
  */
 export function parseWav(buffer: ArrayBuffer): WavData {
@@ -60,7 +65,12 @@ export function parseWav(buffer: ArrayBuffer): WavData {
 
   // Find fmt and data chunks
   let offset = 12;
-  let fmtChunk: { channels: number; sampleRate: number; bitsPerSample: number } | null = null;
+  let fmtChunk: {
+    audioFormat: number;
+    channels: number;
+    sampleRate: number;
+    bitsPerSample: number;
+  } | null = null;
   let dataStart = 0;
   let dataSize = 0;
 
@@ -75,10 +85,12 @@ export function parseWav(buffer: ArrayBuffer): WavData {
 
     if (chunkId === 'fmt ') {
       const audioFormat = view.getUint16(offset + 8, true);
-      if (audioFormat !== 1) {
-        throw new Error(`Unsupported WAV format: ${audioFormat} (only PCM supported)`);
+      // audioFormat 1 = PCM, 3 = IEEE float
+      if (audioFormat !== 1 && audioFormat !== 3) {
+        throw new Error(`Unsupported WAV format: ${audioFormat} (only PCM and float supported)`);
       }
       fmtChunk = {
+        audioFormat,
         channels: view.getUint16(offset + 10, true),
         sampleRate: view.getUint32(offset + 12, true),
         bitsPerSample: view.getUint16(offset + 22, true),
@@ -100,9 +112,9 @@ export function parseWav(buffer: ArrayBuffer): WavData {
     throw new Error('Invalid WAV file: missing data chunk');
   }
 
-  const { channels, sampleRate, bitsPerSample } = fmtChunk;
+  const { audioFormat, channels, sampleRate, bitsPerSample } = fmtChunk;
   const bytesPerSample = bitsPerSample / 8;
-  const frameCount = dataSize / (bytesPerSample * channels);
+  const frameCount = Math.floor(dataSize / (bytesPerSample * channels));
 
   // Convert to mono 16-bit
   const samples = new Int16Array(frameCount);
@@ -114,26 +126,34 @@ export function parseWav(buffer: ArrayBuffer): WavData {
       const sampleOffset = dataStart + (i * channels + ch) * bytesPerSample;
       let sample: number;
 
-      switch (bitsPerSample) {
-        case 8:
-          // 8-bit WAV is unsigned
-          sample = (view.getUint8(sampleOffset) - 128) * 256;
-          break;
-        case 16:
-          sample = view.getInt16(sampleOffset, true);
-          break;
-        case 24:
-          // 24-bit: read 3 bytes, sign-extend
-          sample = view.getUint8(sampleOffset) |
-            (view.getUint8(sampleOffset + 1) << 8) |
-            (view.getInt8(sampleOffset + 2) << 16);
-          sample = sample >> 8; // Scale to 16-bit
-          break;
-        case 32:
-          sample = view.getInt32(sampleOffset, true) >> 16; // Scale to 16-bit
-          break;
-        default:
-          throw new Error(`Unsupported bit depth: ${bitsPerSample}`);
+      if (audioFormat === 3) {
+        // IEEE float format
+        const floatSample = view.getFloat32(sampleOffset, true);
+        // Clamp to -1..1 and scale to 16-bit
+        sample = Math.round(Math.max(-1, Math.min(1, floatSample)) * 32767);
+      } else {
+        // PCM format
+        switch (bitsPerSample) {
+          case 8:
+            // 8-bit WAV is unsigned
+            sample = (view.getUint8(sampleOffset) - 128) * 256;
+            break;
+          case 16:
+            sample = view.getInt16(sampleOffset, true);
+            break;
+          case 24:
+            // 24-bit: read 3 bytes, sign-extend
+            sample = view.getUint8(sampleOffset) |
+              (view.getUint8(sampleOffset + 1) << 8) |
+              (view.getInt8(sampleOffset + 2) << 16);
+            sample = sample >> 8; // Scale to 16-bit
+            break;
+          case 32:
+            sample = view.getInt32(sampleOffset, true) >> 16; // Scale to 16-bit
+            break;
+          default:
+            throw new Error(`Unsupported bit depth: ${bitsPerSample}`);
+        }
       }
 
       sum += sample;
@@ -265,11 +285,11 @@ export function wavToS330(wav: WavData, targetSampleRate: S330WaveSampleRate): S
 }
 
 /**
- * Convert S-330 wave data to WAV format.
+ * Convert S-330 wave data to 16-bit PCM samples.
  *
  * @param s330Data - S-330 encoded wave bytes
  * @param sampleRate - Sample rate (15000 or 30000)
- * @returns Parsed 16-bit samples
+ * @returns 16-bit PCM samples
  */
 export function s330ToWav(s330Data: Uint8Array, sampleRate: S330WaveSampleRate): Int16Array {
   const sampleCount = Math.floor(s330Data.length / 2);

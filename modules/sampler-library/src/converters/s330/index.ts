@@ -5,6 +5,9 @@
 
 export { s330ToneConverter } from './tone-converter.js';
 export { s330PatchConverter, createPatchFromKeyGroups } from './patch-converter.js';
+
+// Re-export wave format functions from sampler-devices
+// (the canonical location for device-specific wire formats)
 export {
   parseWav,
   createWav,
@@ -15,4 +18,4 @@ export {
   type WavData,
   type S330WaveData,
   type S330WaveSampleRate,
-} from './wave-converter.js';
+} from '@audiocontrol/sampler-devices/s330';
