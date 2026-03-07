@@ -13,17 +13,20 @@ import type { DeviceType } from '@/types/index.js';
 /**
  * Get the root directory for the audiotools library.
  *
- * @returns Path to ~/.audiotools/library/
+ * Uses ~/Documents/AudioTools/library/ for better visibility in macOS file pickers
+ * (dotfiles are hidden by default in macOS).
+ *
+ * @returns Path to ~/Documents/AudioTools/library/
  */
 export function getLibraryRoot(): string {
-  return join(homedir(), '.audiotools', 'library');
+  return join(homedir(), 'Documents', 'AudioTools', 'library');
 }
 
 /**
  * Get the library directory for a specific device.
  *
  * @param device - Device type
- * @returns Path to ~/.audiotools/library/{device}/
+ * @returns Path to ~/Documents/AudioTools/library/{device}/
  */
 export function getDeviceLibraryPath(device: DeviceType): string {
   return join(getLibraryRoot(), device);
@@ -33,7 +36,7 @@ export function getDeviceLibraryPath(device: DeviceType): string {
  * Get the tones directory for a device.
  *
  * @param device - Device type
- * @returns Path to ~/.audiotools/library/{device}/tones/
+ * @returns Path to ~/Documents/AudioTools/library/{device}/tones/
  */
 export function getTonesDirectory(device: DeviceType): string {
   return join(getDeviceLibraryPath(device), 'tones');
@@ -43,7 +46,7 @@ export function getTonesDirectory(device: DeviceType): string {
  * Get the patches directory for a device.
  *
  * @param device - Device type
- * @returns Path to ~/.audiotools/library/{device}/patches/
+ * @returns Path to ~/Documents/AudioTools/library/{device}/patches/
  */
 export function getPatchesDirectory(device: DeviceType): string {
   return join(getDeviceLibraryPath(device), 'patches');
@@ -53,7 +56,7 @@ export function getPatchesDirectory(device: DeviceType): string {
  * Get the templates directory for a device.
  *
  * @param device - Device type
- * @returns Path to ~/.audiotools/library/{device}/templates/
+ * @returns Path to ~/Documents/AudioTools/library/{device}/templates/
  */
 export function getTemplatesDirectory(device: DeviceType): string {
   return join(getDeviceLibraryPath(device), 'templates');
@@ -64,7 +67,7 @@ export function getTemplatesDirectory(device: DeviceType): string {
  *
  * @param device - Device type
  * @param toneName - Tone name (without extension)
- * @returns Path to ~/.audiotools/library/{device}/tones/{toneName}.yaml
+ * @returns Path to ~/Documents/AudioTools/library/{device}/tones/{toneName}.yaml
  */
 export function getTonePath(device: DeviceType, toneName: string): string {
   return join(getTonesDirectory(device), `${toneName}.yaml`);
@@ -75,7 +78,7 @@ export function getTonePath(device: DeviceType, toneName: string): string {
  *
  * @param device - Device type
  * @param toneName - Tone name (without extension)
- * @returns Path to ~/.audiotools/library/{device}/tones/{toneName}.wav
+ * @returns Path to ~/Documents/AudioTools/library/{device}/tones/{toneName}.wav
  */
 export function getToneWavePath(device: DeviceType, toneName: string): string {
   return join(getTonesDirectory(device), `${toneName}.wav`);
@@ -86,7 +89,7 @@ export function getToneWavePath(device: DeviceType, toneName: string): string {
  *
  * @param device - Device type
  * @param patchName - Patch name (without extension)
- * @returns Path to ~/.audiotools/library/{device}/patches/{patchName}.yaml
+ * @returns Path to ~/Documents/AudioTools/library/{device}/patches/{patchName}.yaml
  */
 export function getPatchPath(device: DeviceType, patchName: string): string {
   return join(getPatchesDirectory(device), `${patchName}.yaml`);
@@ -97,7 +100,7 @@ export function getPatchPath(device: DeviceType, patchName: string): string {
  *
  * @param device - Device type
  * @param templateName - Template name (without extension)
- * @returns Path to ~/.audiotools/library/{device}/templates/{templateName}.yaml
+ * @returns Path to ~/Documents/AudioTools/library/{device}/templates/{templateName}.yaml
  */
 export function getTemplatePath(device: DeviceType, templateName: string): string {
   return join(getTemplatesDirectory(device), `${templateName}.yaml`);

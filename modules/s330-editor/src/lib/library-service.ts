@@ -23,7 +23,45 @@ import { createWavBlobFromSamples, unpack12BitTo16Bit } from '@/lib/wave-export'
  * Check if the File System Access API is available
  */
 export function hasFileSystemAccess(): boolean {
-  return 'showSaveFilePicker' in window && 'showOpenFilePicker' in window;
+  return 'showSaveFilePicker' in window && 'showDirectoryPicker' in window;
+}
+
+// In-memory cache for the library directory handle
+let cachedDirectoryHandle: FileSystemDirectoryHandle | null = null;
+
+/**
+ * Get the cached library directory handle, if available and still has permission.
+ */
+export async function getCachedLibraryDirectory(): Promise<FileSystemDirectoryHandle | null> {
+  if (!cachedDirectoryHandle) {
+    return null;
+  }
+
+  // Verify we still have permission
+  try {
+    const permission = await cachedDirectoryHandle.queryPermission({ mode: 'readwrite' });
+    if (permission === 'granted') {
+      return cachedDirectoryHandle;
+    }
+
+    // Try to request permission
+    const requested = await cachedDirectoryHandle.requestPermission({ mode: 'readwrite' });
+    if (requested === 'granted') {
+      return cachedDirectoryHandle;
+    }
+  } catch {
+    // Permission check failed, clear cache
+    cachedDirectoryHandle = null;
+  }
+
+  return null;
+}
+
+/**
+ * Set the cached library directory handle.
+ */
+export function setCachedLibraryDirectory(handle: FileSystemDirectoryHandle | null): void {
+  cachedDirectoryHandle = handle;
 }
 
 /**
@@ -81,69 +119,96 @@ function downloadFile(blob: Blob, filename: string): void {
 }
 
 /**
- * Export tone to library using File System Access API
- * Falls back to downloads if API not available
+ * Get a directory handle for the library.
+ * Must be called directly from a user gesture (click handler).
+ * Returns null if user cancels or API not available.
  */
-export async function exportToneToLibrary(
+export async function pickLibraryDirectory(): Promise<FileSystemDirectoryHandle | null> {
+  if (!hasFileSystemAccess()) {
+    return null;
+  }
+
+  try {
+    return await window.showDirectoryPicker({
+      id: 'sampler-library',
+      mode: 'readwrite',
+      startIn: 'documents',
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return null; // User cancelled
+    }
+    throw err;
+  }
+}
+
+/**
+ * Get or create a nested directory path within a directory handle.
+ */
+async function getNestedDirectory(
+  rootHandle: FileSystemDirectoryHandle,
+  path: string[]
+): Promise<FileSystemDirectoryHandle> {
+  let current = rootHandle;
+  for (const segment of path) {
+    current = await current.getDirectoryHandle(segment, { create: true });
+  }
+  return current;
+}
+
+/**
+ * Export tone to a specific directory using File System Access API.
+ * Automatically creates library/s330/tones/ subdirectory structure.
+ */
+export async function exportToneToDirectory(
+  directoryHandle: FileSystemDirectoryHandle,
   tone: S330Tone,
   waveData: S330WaveDataResponse,
   customName?: string,
   onProgress?: (progress: number) => void
 ): Promise<void> {
-  onProgress?.(10);
-
   const { yamlContent, wavBlob, toneName } = prepareExport(tone, waveData, customName);
 
   onProgress?.(50);
 
-  if (hasFileSystemAccess()) {
-    // Use File System Access API to let user choose save location
-    try {
-      // Save YAML file
-      const yamlHandle = await window.showSaveFilePicker({
-        suggestedName: `${toneName}.yaml`,
-        types: [
-          {
-            description: 'YAML files',
-            accept: { 'text/yaml': ['.yaml', '.yml'] },
-          },
-        ],
-      });
-      const yamlWritable = await yamlHandle.createWritable();
-      await yamlWritable.write(yamlContent);
-      await yamlWritable.close();
+  // Create library/s330/tones/ subdirectory structure
+  const tonesDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'tones']);
 
-      onProgress?.(75);
+  // Write YAML file
+  const yamlHandle = await tonesDir.getFileHandle(`${toneName}.yaml`, { create: true });
+  const yamlWritable = await yamlHandle.createWritable();
+  await yamlWritable.write(yamlContent);
+  await yamlWritable.close();
 
-      // Save WAV file
-      const wavHandle = await window.showSaveFilePicker({
-        suggestedName: `${toneName}.wav`,
-        types: [
-          {
-            description: 'WAV files',
-            accept: { 'audio/wav': ['.wav'] },
-          },
-        ],
-      });
-      const wavWritable = await wavHandle.createWritable();
-      await wavWritable.write(wavBlob);
-      await wavWritable.close();
+  onProgress?.(75);
 
-      onProgress?.(100);
-    } catch (err) {
-      // User cancelled the save dialog
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        throw new Error('Export cancelled');
-      }
-      throw err;
-    }
-  } else {
-    // Fallback: download files directly
-    downloadFile(new Blob([yamlContent], { type: 'text/yaml' }), `${toneName}.yaml`);
-    onProgress?.(75);
-    downloadFile(wavBlob, `${toneName}.wav`);
-    onProgress?.(100);
-  }
+  // Write WAV file
+  const wavHandle = await tonesDir.getFileHandle(`${toneName}.wav`, { create: true });
+  const wavWritable = await wavHandle.createWritable();
+  await wavWritable.write(wavBlob);
+  await wavWritable.close();
+
+  onProgress?.(100);
+}
+
+/**
+ * Export tone to library by downloading files (fallback)
+ */
+export async function exportToneAsDownload(
+  tone: S330Tone,
+  waveData: S330WaveDataResponse,
+  customName?: string,
+  onProgress?: (progress: number) => void
+): Promise<void> {
+  const { yamlContent, wavBlob, toneName } = prepareExport(tone, waveData, customName);
+
+  onProgress?.(50);
+
+  // Download both files
+  downloadFile(new Blob([yamlContent], { type: 'text/yaml' }), `${toneName}.yaml`);
+  onProgress?.(75);
+  downloadFile(wavBlob, `${toneName}.wav`);
+  onProgress?.(100);
 }
 
 /**
@@ -262,6 +327,7 @@ declare global {
   interface Window {
     showSaveFilePicker(options?: SaveFilePickerOptions): Promise<FileSystemFileHandle>;
     showOpenFilePicker(options?: OpenFilePickerOptions): Promise<FileSystemFileHandle[]>;
+    showDirectoryPicker(options?: DirectoryPickerOptions): Promise<FileSystemDirectoryHandle>;
   }
 
   interface SaveFilePickerOptions {
@@ -274,6 +340,12 @@ declare global {
     types?: FilePickerAcceptType[];
   }
 
+  interface DirectoryPickerOptions {
+    id?: string;
+    mode?: 'read' | 'readwrite';
+    startIn?: 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
+  }
+
   interface FilePickerAcceptType {
     description?: string;
     accept: Record<string, string[]>;
@@ -282,6 +354,13 @@ declare global {
   interface FileSystemFileHandle {
     getFile(): Promise<File>;
     createWritable(): Promise<FileSystemWritableFileStream>;
+  }
+
+  interface FileSystemDirectoryHandle {
+    getFileHandle(name: string, options?: { create?: boolean }): Promise<FileSystemFileHandle>;
+    getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<FileSystemDirectoryHandle>;
+    queryPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<'granted' | 'denied' | 'prompt'>;
+    requestPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<'granted' | 'denied' | 'prompt'>;
   }
 
   interface FileSystemWritableFileStream extends WritableStream {

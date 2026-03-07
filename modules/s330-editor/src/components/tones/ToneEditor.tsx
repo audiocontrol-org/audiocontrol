@@ -37,6 +37,10 @@ interface ToneEditorProps {
     onExportToLibrary?: () => void;
     // Whether library export is in progress
     isExportingToLibrary?: boolean;
+    // Called when user clicks Import Sample button
+    onImportSample?: () => void;
+    // Whether sample import is in progress
+    isImporting?: boolean;
 }
 
 export function ToneEditor({
@@ -49,6 +53,8 @@ export function ToneEditor({
     exportProgress,
     onExportToLibrary,
     isExportingToLibrary = false,
+    onImportSample,
+    isImporting = false,
 }: ToneEditorProps) {
     const handleTvaEnvelopeChange = (envelope: S330Envelope) => {
         onUpdate?.({ ...tone, tva: { ...tone.tva, envelope } });
@@ -123,6 +129,28 @@ export function ToneEditor({
                                             </>
                                         ) : (
                                             'Export Sample'
+                                        )}
+                                    </button>
+                                </Tooltip>
+                            )}
+                            {/* Import Sample Button */}
+                            {onImportSample && (
+                                <Tooltip content="Import a WAV file from disk to this tone slot">
+                                    <button
+                                        onClick={onImportSample}
+                                        disabled={isImporting || isExporting || isExportingToLibrary}
+                                        className={cn(
+                                            'ac-btn ac-btn-sm ac-btn-ghost',
+                                            (isImporting || isExporting || isExportingToLibrary) && 'opacity-50 cursor-wait'
+                                        )}
+                                    >
+                                        {isImporting ? (
+                                            <>
+                                                <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                                Importing...
+                                            </>
+                                        ) : (
+                                            'Import Sample'
                                         )}
                                     </button>
                                 </Tooltip>

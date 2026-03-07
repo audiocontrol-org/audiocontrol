@@ -5,7 +5,7 @@
  * Shows export progress and allows customizing the tone name.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { S330Tone } from '@audiocontrol/sampler-devices/s330';
 import { cn } from '@/lib/utils';
@@ -19,8 +19,8 @@ export interface ExportToneDialogProps {
   tone: S330Tone;
   /** Tone index (for display) */
   toneIndex: number;
-  /** Callback to perform the export */
-  onExport: (toneName: string) => Promise<void>;
+  /** Callback to perform the export - receives tone name and index */
+  onExport: (toneName: string, toneIndex: number) => Promise<void>;
   /** Whether export is in progress */
   isExporting: boolean;
   /** Export progress (0-100) */
@@ -42,6 +42,14 @@ export function ExportToneDialog({
   const [toneName, setToneName] = useState(tone.name || `Tone_${toneIndex + 1}`);
   const [localError, setLocalError] = useState<string | null>(null);
 
+  // Reset tone name when dialog opens or tone changes
+  useEffect(() => {
+    if (open) {
+      setToneName(tone.name || `Tone_${toneIndex + 1}`);
+      setLocalError(null);
+    }
+  }, [open, tone.name, toneIndex]);
+
   const handleExport = useCallback(async () => {
     if (!toneName.trim()) {
       setLocalError('Tone name is required');
@@ -50,11 +58,11 @@ export function ExportToneDialog({
 
     setLocalError(null);
     try {
-      await onExport(toneName.trim());
+      await onExport(toneName.trim(), toneIndex);
     } catch (err) {
       // Error should be handled by parent via exportError prop
     }
-  }, [toneName, onExport]);
+  }, [toneName, toneIndex, onExport]);
 
   const handleClose = useCallback(() => {
     if (!isExporting) {

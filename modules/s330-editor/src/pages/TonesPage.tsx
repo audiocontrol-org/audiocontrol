@@ -18,9 +18,17 @@ import type { S330ClientInterface, S330Tone } from '@/core/midi/S330Client';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
+import { ImportSampleDialog } from '@/components/library/ImportSampleDialog';
 import { cn } from '@/lib/utils';
 import { exportWaveAsWav } from '@/lib/wave-export';
-import { exportToneToLibrary } from '@/lib/library-service';
+import {
+  pickLibraryDirectory,
+  exportToneToDirectory,
+  exportToneAsDownload,
+  hasFileSystemAccess,
+  getCachedLibraryDirectory,
+  setCachedLibraryDirectory,
+} from '@/lib/library-service';
 
 export function TonesPage() {
   const { adapter, deviceId, status } = useMidiStore();
@@ -64,6 +72,13 @@ export function TonesPage() {
   const [isExportingToLibrary, setIsExportingToLibrary] = useState(false);
   const [libraryExportProgress, setLibraryExportProgress] = useState<number | undefined>(undefined);
   const [libraryExportError, setLibraryExportError] = useState<string | null>(null);
+  const [libraryDirectoryHandle, setLibraryDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
+
+  // Import Sample state
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState<number | undefined>(undefined);
+  const [importError, setImportError] = useState<string | null>(null);
 
   // Initialize client when adapter changes
   useEffect(() => {
@@ -192,18 +207,46 @@ export function TonesPage() {
   }, [selectedToneIndex, tones, setError]);
 
   // Open export to library dialog
-  const handleOpenExportDialog = useCallback(() => {
+  // Must pick directory first (requires user gesture), then open dialog
+  const handleOpenExportDialog = useCallback(async () => {
     setLibraryExportError(null);
     setLibraryExportProgress(undefined);
+
+    // If File System Access API available, try to get cached directory or pick one
+    if (hasFileSystemAccess()) {
+      // First check if we have a cached directory with valid permissions
+      let dirHandle = await getCachedLibraryDirectory();
+
+      if (!dirHandle) {
+        // No cached directory, ask user to pick one
+        dirHandle = await pickLibraryDirectory();
+        if (!dirHandle) {
+          // User cancelled directory picker
+          return;
+        }
+        // Cache for future use
+        setCachedLibraryDirectory(dirHandle);
+      }
+
+      setLibraryDirectoryHandle(dirHandle);
+    }
+
     setIsExportDialogOpen(true);
   }, []);
 
   // Export tone to library
-  const handleExportToLibrary = useCallback(async (toneName: string) => {
-    if (selectedToneIndex === null || !clientRef.current) return;
+  // toneIndex is passed from the dialog to ensure we export the correct tone
+  const handleExportToLibrary = useCallback(async (toneName: string, toneIndex: number) => {
+    if (!clientRef.current) return;
 
-    const tone = tones[selectedToneIndex];
+    const tone = tones[toneIndex];
     if (!tone) return;
+
+    console.log('[TonesPage] handleExportToLibrary called with:', {
+      toneName,
+      toneIndex,
+      tonePropName: tone.name,
+    });
 
     setIsExportingToLibrary(true);
     setLibraryExportProgress(0);
@@ -211,8 +254,9 @@ export function TonesPage() {
 
     try {
       // First, fetch wave data from device
+      console.log('[TonesPage] Calling requestWaveData with toneIndex:', toneIndex);
       const waveData = await clientRef.current.requestWaveData(
-        selectedToneIndex,
+        toneIndex,
         (bytesReceived, totalBytes) => {
           const progress = totalBytes > 0 ? (bytesReceived / totalBytes) * 50 : 0;
           setLibraryExportProgress(progress);
@@ -220,10 +264,17 @@ export function TonesPage() {
       );
 
       // Export to library (YAML + WAV files)
-      await exportToneToLibrary(tone, waveData, toneName, (progress) => {
-        // Scale progress to 50-100 range (since fetching was 0-50)
-        setLibraryExportProgress(50 + progress * 0.5);
-      });
+      if (libraryDirectoryHandle) {
+        // Write directly to selected directory
+        await exportToneToDirectory(libraryDirectoryHandle, tone, waveData, toneName, (progress) => {
+          setLibraryExportProgress(50 + progress * 0.5);
+        });
+      } else {
+        // Fallback to downloads
+        await exportToneAsDownload(tone, waveData, toneName, (progress) => {
+          setLibraryExportProgress(50 + progress * 0.5);
+        });
+      }
 
       console.log('[TonesPage] Tone exported to library successfully');
       setLibraryExportProgress(100);
@@ -235,7 +286,74 @@ export function TonesPage() {
     } finally {
       setIsExportingToLibrary(false);
     }
-  }, [selectedToneIndex, tones]);
+  }, [tones, libraryDirectoryHandle]);
+
+  // Open import sample dialog
+  const handleOpenImportDialog = useCallback(() => {
+    setImportError(null);
+    setImportProgress(undefined);
+    setIsImportDialogOpen(true);
+  }, []);
+
+  // Import sample from local file to device
+  const handleImportSample = useCallback(async (params: {
+    toneIndex: number;
+    name: string;
+    waveData: Uint8Array;
+    waveBank: 0 | 1;
+    segmentTop: number;
+    segmentLength: number;
+    sampleRate: '15kHz' | '30kHz';
+    loopMode: 'forward' | 'alternating' | 'one-shot' | 'reverse';
+    loopPoint: number;
+  }) => {
+    if (!clientRef.current) return;
+
+    const { toneIndex, name, waveData, waveBank, segmentTop, segmentLength, sampleRate, loopMode, loopPoint } = params;
+
+    setIsImporting(true);
+    setImportProgress(0);
+    setImportError(null);
+
+    try {
+      console.log(`[TonesPage] Importing sample to T${toneIndex + 11}...`);
+      console.log(`[TonesPage] Wave data size: ${waveData.length} bytes, ${waveData.length / 2} samples`);
+      console.log(`[TonesPage] Segments: ${segmentLength}, starting at ${segmentTop}`);
+
+      await clientRef.current.importTone(
+        {
+          toneIndex,
+          name,
+          waveData,
+          waveBank,
+          segmentTop,
+          segmentLength,
+          sampleRate,
+          loopMode,
+          loopPoint,
+        },
+        (bytesSent, totalBytes) => {
+          const progress = totalBytes > 0 ? (bytesSent / totalBytes) * 100 : 0;
+          setImportProgress(progress);
+        }
+      );
+
+      setImportProgress(100);
+      console.log(`[TonesPage] Sample imported successfully to T${toneIndex + 11}`);
+
+      // Reload the tone bank to reflect changes
+      const bankIndex = Math.floor(toneIndex / TONES_PER_BANK);
+      await loadToneBank(bankIndex, true);
+
+    } catch (err) {
+      console.error('[TonesPage] Failed to import sample:', err);
+      const message = err instanceof Error ? err.message : 'Failed to import sample';
+      setImportError(message);
+      throw err;
+    } finally {
+      setIsImporting(false);
+    }
+  }, [loadToneBank]);
 
   // Auto-load initial data when connected
   useEffect(() => {
@@ -392,6 +510,8 @@ export function TonesPage() {
                 exportProgress={exportProgress}
                 onExportToLibrary={handleOpenExportDialog}
                 isExportingToLibrary={isExportingToLibrary}
+                onImportSample={handleOpenImportDialog}
+                isImporting={isImporting}
               />
             ) : (
               <div className="card text-center py-12 text-s330-muted">
@@ -423,6 +543,20 @@ export function TonesPage() {
           isExporting={isExportingToLibrary}
           exportProgress={libraryExportProgress}
           exportError={libraryExportError}
+        />
+      )}
+
+      {/* Import Sample Dialog */}
+      {selectedToneIndex !== null && (
+        <ImportSampleDialog
+          open={isImportDialogOpen}
+          onOpenChange={setIsImportDialogOpen}
+          toneIndex={selectedToneIndex}
+          toneName={selectedTone?.name}
+          onImport={handleImportSample}
+          isImporting={isImporting}
+          importProgress={importProgress}
+          importError={importError}
         />
       )}
     </div>

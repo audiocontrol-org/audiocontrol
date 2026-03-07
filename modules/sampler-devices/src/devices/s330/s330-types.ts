@@ -445,3 +445,63 @@ export interface S330WaveDataResponse {
     /** Loop mode */
     loopMode: S330LoopMode;
 }
+
+/**
+ * Input for sending wave data to the S-330.
+ */
+export interface S330WaveDataInput {
+    /**
+     * Raw wave data bytes (7-bit encoded 12-bit samples).
+     * Each 12-bit sample is encoded as 2 bytes:
+     * - Byte 0: 0aaa aaaa (upper 7 bits)
+     * - Byte 1: 0bbb bb00 (lower 5 bits, left-shifted by 2)
+     */
+    data: Uint8Array;
+
+    /** Target wave bank (0=A, 1=B) */
+    waveBank: 0 | 1;
+
+    /** Target segment index (0-17) */
+    segmentTop: number;
+
+    /** Number of segments to write (1-18) */
+    segmentLength: number;
+}
+
+/**
+ * Input for importing a tone with wave data to the S-330.
+ */
+export interface S330ImportToneInput {
+    /** Target tone index (0-31, maps to T11-T42) */
+    toneIndex: number;
+
+    /** Tone name (max 8 characters) */
+    name: string;
+
+    /**
+     * Wave data bytes (7-bit encoded 12-bit samples).
+     * Use wavToS330() from sampler-library to convert from WAV.
+     */
+    waveData: Uint8Array;
+
+    /** Target wave bank (0=A, 1=B) */
+    waveBank: 0 | 1;
+
+    /** Target segment index (0-17) */
+    segmentTop: number;
+
+    /** Number of segments to allocate */
+    segmentLength: number;
+
+    /** Sample rate */
+    sampleRate: '15kHz' | '30kHz';
+
+    /** Loop mode */
+    loopMode: S330LoopMode;
+
+    /** Loop point in samples (relative to segment start) */
+    loopPoint?: number;
+
+    /** Original key (MIDI note number, default 60 = C4) */
+    originalKey?: number;
+}

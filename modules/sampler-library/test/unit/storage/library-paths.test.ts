@@ -19,17 +19,17 @@ describe('library-paths', () => {
   describe('getLibraryRoot', () => {
     it('should return path under home directory', () => {
       const root = getLibraryRoot();
-      expect(root).toBe(join(homedir(), '.audiotools', 'library'));
+      expect(root).toBe(join(homedir(), 'Documents', 'AudioTools', 'library'));
     });
   });
 
   describe('getDeviceLibraryPath', () => {
     it('should return device-specific path', () => {
       expect(getDeviceLibraryPath('s330')).toBe(
-        join(homedir(), '.audiotools', 'library', 's330')
+        join(homedir(), 'Documents', 'AudioTools', 'library', 's330')
       );
       expect(getDeviceLibraryPath('jv1080')).toBe(
-        join(homedir(), '.audiotools', 'library', 'jv1080')
+        join(homedir(), 'Documents', 'AudioTools', 'library', 'jv1080')
       );
     });
   });
@@ -37,19 +37,19 @@ describe('library-paths', () => {
   describe('directory paths', () => {
     it('should return correct tones directory', () => {
       expect(getTonesDirectory('s330')).toBe(
-        join(homedir(), '.audiotools', 'library', 's330', 'tones')
+        join(homedir(), 'Documents', 'AudioTools', 'library', 's330', 'tones')
       );
     });
 
     it('should return correct patches directory', () => {
       expect(getPatchesDirectory('s330')).toBe(
-        join(homedir(), '.audiotools', 'library', 's330', 'patches')
+        join(homedir(), 'Documents', 'AudioTools', 'library', 's330', 'patches')
       );
     });
 
     it('should return correct templates directory', () => {
       expect(getTemplatesDirectory('s330')).toBe(
-        join(homedir(), '.audiotools', 'library', 's330', 'templates')
+        join(homedir(), 'Documents', 'AudioTools', 'library', 's330', 'templates')
       );
     });
   });
@@ -57,25 +57,25 @@ describe('library-paths', () => {
   describe('file paths', () => {
     it('should return correct tone YAML path', () => {
       expect(getTonePath('s330', 'Kick_01')).toBe(
-        join(homedir(), '.audiotools', 'library', 's330', 'tones', 'Kick_01.yaml')
+        join(homedir(), 'Documents', 'AudioTools', 'library', 's330', 'tones', 'Kick_01.yaml')
       );
     });
 
     it('should return correct tone WAV path', () => {
       expect(getToneWavePath('s330', 'Kick_01')).toBe(
-        join(homedir(), '.audiotools', 'library', 's330', 'tones', 'Kick_01.wav')
+        join(homedir(), 'Documents', 'AudioTools', 'library', 's330', 'tones', 'Kick_01.wav')
       );
     });
 
     it('should return correct patch path', () => {
       expect(getPatchPath('s330', 'DrumKit_01')).toBe(
-        join(homedir(), '.audiotools', 'library', 's330', 'patches', 'DrumKit_01.yaml')
+        join(homedir(), 'Documents', 'AudioTools', 'library', 's330', 'patches', 'DrumKit_01.yaml')
       );
     });
 
     it('should return correct template path', () => {
       expect(getTemplatePath('s330', 'drum-kit')).toBe(
-        join(homedir(), '.audiotools', 'library', 's330', 'templates', 'drum-kit.yaml')
+        join(homedir(), 'Documents', 'AudioTools', 'library', 's330', 'templates', 'drum-kit.yaml')
       );
     });
   });

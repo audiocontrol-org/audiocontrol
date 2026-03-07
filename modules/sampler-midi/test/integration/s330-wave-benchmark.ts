@@ -5,9 +5,15 @@
  * Uses the actual s330-client for all device communication.
  *
  * Run with: npx tsx test/integration/s330-wave-benchmark.ts [toneIndex]
+ *
+ * Saves output files:
+ *   - tone_N_NAME.raw  - Raw 7-bit encoded data from sampler
+ *   - tone_N_NAME.wav  - Decoded 16-bit WAV file
  */
 
 import * as easymidi from 'easymidi';
+import * as fs from 'fs';
+import * as path from 'path';
 import { createS330Client } from '@audiocontrol/sampler-devices/s330';
 import type { S330MidiAdapter } from '@audiocontrol/sampler-devices/s330';
 
@@ -46,6 +52,84 @@ function createEasyMidiAdapter(
             }
         },
     };
+}
+
+/**
+ * Decode 12-bit samples from S-330 SysEx transmission format to 16-bit array
+ */
+function unpack12BitTo16Bit(transmittedData: Uint8Array): Int16Array {
+    const numSamples = Math.floor(transmittedData.length / 2);
+    const samples = new Int16Array(numSamples);
+
+    for (let i = 0; i < numSamples; i++) {
+        const byte0 = transmittedData[i * 2];     // 0aaa aaaa
+        const byte1 = transmittedData[i * 2 + 1]; // 0bbb bb00
+
+        // Decode 12-bit sample: upper 7 bits from byte0, lower 5 bits from byte1
+        const sample12bit = (byte0 << 5) | (byte1 >> 2);
+
+        // Sign extend from 12-bit 2's complement
+        let signedSample: number;
+        if (sample12bit & 0x800) {
+            signedSample = sample12bit - 0x1000;
+        } else {
+            signedSample = sample12bit;
+        }
+
+        // Scale to 16-bit range (shift left 4 bits)
+        samples[i] = signedSample << 4;
+    }
+
+    return samples;
+}
+
+/**
+ * Create WAV file buffer from 16-bit samples
+ */
+function createWavBuffer(samples: Int16Array, sampleRate: number): Buffer {
+    const numChannels = 1;
+    const bitsPerSample = 16;
+    const bytesPerSample = bitsPerSample / 8;
+    const blockAlign = numChannels * bytesPerSample;
+    const byteRate = sampleRate * blockAlign;
+    const dataSize = samples.length * bytesPerSample;
+    const headerSize = 44;
+    const fileSize = headerSize + dataSize;
+
+    const buffer = Buffer.alloc(fileSize);
+
+    // RIFF chunk descriptor
+    buffer.write('RIFF', 0);
+    buffer.writeUInt32LE(fileSize - 8, 4);
+    buffer.write('WAVE', 8);
+
+    // fmt sub-chunk
+    buffer.write('fmt ', 12);
+    buffer.writeUInt32LE(16, 16); // Sub-chunk size
+    buffer.writeUInt16LE(1, 20);  // Audio format (PCM)
+    buffer.writeUInt16LE(numChannels, 22);
+    buffer.writeUInt32LE(sampleRate, 24);
+    buffer.writeUInt32LE(byteRate, 28);
+    buffer.writeUInt16LE(blockAlign, 32);
+    buffer.writeUInt16LE(bitsPerSample, 34);
+
+    // data sub-chunk
+    buffer.write('data', 36);
+    buffer.writeUInt32LE(dataSize, 40);
+
+    // Write sample data
+    for (let i = 0; i < samples.length; i++) {
+        buffer.writeInt16LE(samples[i], 44 + i * 2);
+    }
+
+    return buffer;
+}
+
+/**
+ * Sanitize filename
+ */
+function sanitizeFilename(name: string): string {
+    return name.trim().replace(/[<>:"/\\|?*\s]/g, '_') || 'sample';
 }
 
 /**
@@ -197,6 +281,29 @@ async function main() {
             samples.push(sample);
         }
         console.log(`    First 16 samples: ${samples.join(', ')}`);
+
+        // Save raw data file
+        const outputDir = path.join(process.cwd(), 'output');
+        if (!fs.existsSync(outputDir)) {
+            fs.mkdirSync(outputDir, { recursive: true });
+        }
+
+        const safeName = sanitizeFilename(tone.name);
+        const rawFilename = path.join(outputDir, `tone_${toneIndex}_${safeName}.raw`);
+        const wavFilename = path.join(outputDir, `tone_${toneIndex}_${safeName}.wav`);
+
+        // Write raw 7-bit encoded data
+        fs.writeFileSync(rawFilename, Buffer.from(waveResponse.data));
+        console.log(`\n  Saved raw data: ${rawFilename}`);
+        console.log(`    Size: ${waveResponse.data.length} bytes`);
+
+        // Decode and write WAV file
+        const samples16bit = unpack12BitTo16Bit(waveResponse.data);
+        const wavBuffer = createWavBuffer(samples16bit, waveResponse.sampleRate);
+        fs.writeFileSync(wavFilename, wavBuffer);
+        console.log(`  Saved WAV file: ${wavFilename}`);
+        console.log(`    Samples: ${samples16bit.length}`);
+        console.log(`    Duration: ${(samples16bit.length / waveResponse.sampleRate).toFixed(3)}s`);
 
         console.log('  PASS\n');
     } catch (err) {
