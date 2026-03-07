@@ -9,7 +9,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
-import { useDeviceDataStore, TONES_PER_BANK } from '@/stores/deviceDataStore';
+import { useDeviceDataStore, TONES_PER_BANK, PATCHES_PER_BANK } from '@/stores/deviceDataStore';
 import { useLibraryStore } from '@/stores/libraryStore';
 import { createS330Client } from '@/core/midi/S330Client';
 import type { S330ClientInterface, S330Tone, S330Patch } from '@/core/midi/S330Client';
@@ -24,7 +24,7 @@ import {
   getCachedLibraryDirectory,
   setCachedLibraryDirectory,
   listSets,
-  saveDeviceToSet,
+  saveDeviceToSetIncremental,
   loadSetToDevice,
 } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
@@ -45,7 +45,18 @@ export function LibraryPage() {
   const isConnected = status === 'connected' && adapter !== null;
 
   // Device data store
-  const { tones, patches, loadedToneBanks, loadedPatchBanks, setTone } = useDeviceDataStore();
+  const {
+    tones,
+    patches,
+    loadedToneBanks,
+    loadedPatchBanks,
+    setTone,
+    setPatch,
+    ensureToneArraySize,
+    ensurePatchArraySize,
+    markToneBankLoaded,
+    markPatchBankLoaded,
+  } = useDeviceDataStore();
 
   // Library store
   const { sets, setSets, isLoading, setLoading, setError, error } = useLibraryStore();
@@ -124,14 +135,21 @@ export function LibraryPage() {
     }
   }, [libraryHandle, setSets, setLoading, setError]);
 
-  // Load tones from device
-  const handleLoadDeviceTones = useCallback(async () => {
+  // Load all data from device (tones and patches)
+  const handleLoadDeviceData = useCallback(async () => {
     if (!clientRef.current) return;
 
-    setLoading(true, 'Loading tones from device...');
+    setLoading(true, 'Loading data from device...');
     try {
       await clientRef.current.connect();
+
+      // Ensure arrays are properly sized
+      ensureToneArraySize();
+      ensurePatchArraySize();
+
+      // Load all tones
       for (let bank = 0; bank < 4; bank++) {
+        setLoading(true, `Loading tones (bank ${bank + 1}/4)...`);
         await clientRef.current.loadToneRange(
           bank * TONES_PER_BANK,
           TONES_PER_BANK,
@@ -139,14 +157,28 @@ export function LibraryPage() {
           (index: number, tone: S330Tone) => setTone(index, tone),
           false
         );
+        markToneBankLoaded(bank);
+      }
+
+      // Load all patches
+      for (let bank = 0; bank < 2; bank++) {
+        setLoading(true, `Loading patches (bank ${bank + 1}/2)...`);
+        await clientRef.current.loadPatchRange(
+          bank * PATCHES_PER_BANK,
+          PATCHES_PER_BANK,
+          () => {},
+          (index: number, patch: S330Patch) => setPatch(index, patch),
+          false
+        );
+        markPatchBankLoaded(bank);
       }
     } catch (err) {
-      console.error('[LibraryPage] Failed to load tones:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load tones');
+      console.error('[LibraryPage] Failed to load device data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load from device');
     } finally {
       setLoading(false);
     }
-  }, [setLoading, setError, setTone]);
+  }, [setLoading, setError, setTone, setPatch, ensureToneArraySize, ensurePatchArraySize, markToneBankLoaded, markPatchBankLoaded]);
 
   // Open save set dialog
   const handleOpenSaveDialog = useCallback(() => {
@@ -155,49 +187,33 @@ export function LibraryPage() {
     setIsSaveDialogOpen(true);
   }, []);
 
-  // Save device state to set
+  // Status message for save operation
+  const [operationStatus, setOperationStatus] = useState<string | null>(null);
+
+  // Save device state to set - incremental save that writes to disk as data is fetched
   const handleSaveSet = useCallback(async (setName: string, description?: string) => {
     if (!libraryHandle || !clientRef.current) return;
 
     setOperationProgress(0);
     setOperationError(null);
+    setOperationStatus(null);
+
+    const client = clientRef.current;
 
     try {
-      // Collect wave data for all loaded tones
-      const waveData = new Map<number, { data: Uint8Array; sampleRate: number }>();
-
-      // Get wave data for each tone that's loaded
-      let toneCount = 0;
-      for (let i = 0; i < tones.length; i++) {
-        if (tones[i]) toneCount++;
-      }
-
-      let processed = 0;
-      for (let i = 0; i < tones.length; i++) {
-        const tone = tones[i];
-        if (!tone) continue;
-
-        try {
-          const waveResponse = await clientRef.current.requestWaveData(i, () => {});
-          const sampleRate = tone.sampleRate === '30kHz' ? 30000 : 15000;
-          waveData.set(i, { data: waveResponse.data, sampleRate });
-        } catch (err) {
-          console.warn(`[LibraryPage] Could not get wave data for tone ${i}:`, err);
-        }
-
-        processed++;
-        setOperationProgress(Math.floor((processed / toneCount) * 50));
-      }
-
-      // Convert and save to library
-      await saveDeviceToSet(
+      // Use incremental save - fetches wave data and writes each tone to disk immediately
+      await saveDeviceToSetIncremental(
         libraryHandle,
         setName,
         description,
         tones as (S330Tone | null)[],
         patches as (S330Patch | null)[],
-        waveData,
-        (progress) => setOperationProgress(50 + Math.floor(progress * 0.5))
+        // Fetch wave data callback - called for each tone
+        async (toneIndex, onWaveProgress) => {
+          return await client.requestWaveData(toneIndex, onWaveProgress ?? (() => {}));
+        },
+        (progress) => setOperationProgress(progress),
+        (status) => setOperationStatus(status)
       );
 
       setOperationProgress(100);
@@ -317,7 +333,7 @@ export function LibraryPage() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={handleLoadDeviceTones}
+              onClick={handleLoadDeviceData}
               disabled={isLoading}
               className={cn('ac-btn ac-btn-sm ac-btn-secondary', isLoading && 'opacity-50')}
             >
@@ -401,6 +417,7 @@ export function LibraryPage() {
         isSaving={operationProgress !== undefined && operationProgress < 100}
         progress={operationProgress}
         error={operationError}
+        statusMessage={operationStatus}
       />
 
       {/* Load Set Dialog */}

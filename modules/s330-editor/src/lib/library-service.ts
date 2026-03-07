@@ -436,11 +436,9 @@ export async function saveDeviceToSet(
     await yamlWritable.write(yamlContent);
     await yamlWritable.close();
 
-    // Write WAV
-    const wavBlob = createWavBlobFromSamples(
-      new Int16Array(toneData.wavData.buffer),
-      toneData.sampleRate
-    );
+    // Write WAV - convert from S330 12-bit packed format to 16-bit samples
+    const samples = unpack12BitTo16Bit(toneData.wavData);
+    const wavBlob = createWavBlobFromSamples(samples, toneData.sampleRate);
     const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`, { create: true });
     const wavWritable = await wavHandle.createWritable();
     await wavWritable.write(wavBlob);
@@ -463,6 +461,166 @@ export async function saveDeviceToSet(
   }
 
   onProgress?.(100);
+}
+
+/**
+ * Callback for fetching wave data from device
+ */
+export type FetchWaveDataCallback = (
+  toneIndex: number,
+  onWaveProgress?: (bytesReceived: number, totalBytes: number) => void
+) => Promise<S330WaveDataResponse>;
+
+/**
+ * Save device state to a set incrementally.
+ * Writes each tone/patch to disk immediately after fetching, so partial saves
+ * are preserved even if the operation fails partway through.
+ */
+export async function saveDeviceToSetIncremental(
+  directoryHandle: FileSystemDirectoryHandle,
+  setName: string,
+  description: string | undefined,
+  tones: (S330Tone | null)[],
+  patches: (S330Patch | null)[],
+  fetchWaveData: FetchWaveDataCallback,
+  onProgress?: (progress: number) => void,
+  onStatus?: (message: string) => void
+): Promise<void> {
+  const sanitizedName = setName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+
+  // Create directory structure first
+  onStatus?.('Creating set directory...');
+  const setsDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'sets']);
+  const setDir = await setsDir.getDirectoryHandle(sanitizedName, { create: true });
+  const tonesDir = await setDir.getDirectoryHandle('tones', { create: true });
+  const patchesDir = await setDir.getDirectoryHandle('patches', { create: true });
+
+  onProgress?.(5);
+
+  // Count items for progress tracking
+  const validTones: { index: number; tone: S330Tone }[] = [];
+  const validPatches: { index: number; patch: S330Patch }[] = [];
+
+  for (let i = 0; i < tones.length; i++) {
+    const tone = tones[i];
+    if (tone) validTones.push({ index: i, tone });
+  }
+
+  for (let i = 0; i < patches.length; i++) {
+    const patch = patches[i];
+    if (patch) validPatches.push({ index: i, patch });
+  }
+
+  const totalItems = validTones.length + validPatches.length;
+  let processed = 0;
+
+  // Track manifest entries for final write
+  const toneEntries: { slot: number; file: string; waveAllocation: { bank: 0 | 1; segmentTop: number; segmentLength: number } }[] = [];
+  const patchEntries: { slot: number; file: string }[] = [];
+
+  // Process each tone: fetch wave data and write to disk immediately
+  for (const { index, tone } of validTones) {
+    const toneFile = `T${String(index + 1).padStart(2, '0')}`;
+    onStatus?.(`Fetching wave data for ${tone.name || toneFile}...`);
+
+    try {
+      // Fetch wave data from device
+      const waveResponse = await fetchWaveData(index, (_received, _total) => {
+        // Could add sub-progress here
+      });
+
+      onStatus?.(`Writing ${tone.name || toneFile} to disk...`);
+
+      // Convert tone to YAML
+      const toneYaml = s330ToneConverter.toYaml(tone, `${toneFile}.wav`);
+      const yamlContent = stringifyYaml(toneYaml, { indent: 2, lineWidth: 120 });
+
+      // Write YAML
+      const yamlHandle = await tonesDir.getFileHandle(`${toneFile}.yaml`, { create: true });
+      const yamlWritable = await yamlHandle.createWritable();
+      await yamlWritable.write(yamlContent);
+      await yamlWritable.close();
+
+      // Convert and write WAV - using the proper 12-bit to 16-bit conversion
+      const samples = unpack12BitTo16Bit(waveResponse.data);
+      const wavBlob = createWavBlobFromSamples(samples, waveResponse.sampleRate);
+      const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`, { create: true });
+      const wavWritable = await wavHandle.createWritable();
+      await wavWritable.write(wavBlob);
+      await wavWritable.close();
+
+      // Track for manifest
+      toneEntries.push({
+        slot: index,
+        file: toneFile,
+        waveAllocation: {
+          bank: tone.wave.bank as 0 | 1,
+          segmentTop: tone.wave.segmentTop,
+          segmentLength: tone.wave.segmentLength,
+        },
+      });
+    } catch (err) {
+      console.warn(`[saveDeviceToSetIncremental] Failed to save tone ${index}:`, err);
+      // Continue with other tones - don't lose everything
+    }
+
+    processed++;
+    onProgress?.(5 + Math.floor((processed / totalItems) * 85));
+  }
+
+  // Process each patch: write to disk immediately
+  for (const { index, patch } of validPatches) {
+    const patchFile = `P${String(index + 1).padStart(2, '0')}`;
+    onStatus?.(`Writing ${patch.common.name || patchFile} to disk...`);
+
+    try {
+      // Convert patch to YAML
+      const patchYaml = s330PatchConverter.toYaml(patch);
+      const yamlContent = stringifyYaml(patchYaml, { indent: 2, lineWidth: 120 });
+
+      // Write YAML
+      const yamlHandle = await patchesDir.getFileHandle(`${patchFile}.yaml`, { create: true });
+      const yamlWritable = await yamlHandle.createWritable();
+      await yamlWritable.write(yamlContent);
+      await yamlWritable.close();
+
+      // Track for manifest
+      patchEntries.push({
+        slot: index,
+        file: patchFile,
+      });
+    } catch (err) {
+      console.warn(`[saveDeviceToSetIncremental] Failed to save patch ${index}:`, err);
+      // Continue with other patches
+    }
+
+    processed++;
+    onProgress?.(5 + Math.floor((processed / totalItems) * 85));
+  }
+
+  // Write manifest last (so we know what actually succeeded)
+  onStatus?.('Writing set manifest...');
+  const now = new Date().toISOString();
+  const manifest: SetYaml = {
+    format: 'sampler-set',
+    device: 's330',
+    version: 1,
+    name: setName,
+    description,
+    createdAt: now,
+    modifiedAt: now,
+    tones: toneEntries.sort((a, b) => a.slot - b.slot),
+    patches: patchEntries.sort((a, b) => a.slot - b.slot),
+  };
+
+  const manifestContent = stringifyYaml(manifest, { indent: 2, lineWidth: 120 });
+  const manifestHandle = await setDir.getFileHandle('set.yaml', { create: true });
+  const manifestWritable = await manifestHandle.createWritable();
+  await manifestWritable.write(manifestContent);
+  await manifestWritable.close();
+
+  onProgress?.(100);
+  onStatus?.(`Saved ${toneEntries.length} tones and ${patchEntries.length} patches`);
 }
 
 /**

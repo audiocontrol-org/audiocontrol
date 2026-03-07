@@ -15,6 +15,7 @@ interface SaveSetDialogProps {
   isSaving: boolean;
   progress?: number;
   error: string | null;
+  statusMessage?: string | null;
 }
 
 export function SaveSetDialog({
@@ -24,6 +25,7 @@ export function SaveSetDialog({
   isSaving,
   progress,
   error,
+  statusMessage,
 }: SaveSetDialogProps): JSX.Element {
   const [setName, setSetName] = useState('');
   const [description, setDescription] = useState('');
@@ -124,7 +126,7 @@ export function SaveSetDialog({
                   />
                 </div>
                 <p className="text-xs text-s330-muted mt-1">
-                  {progress < 50 ? 'Reading wave data...' : 'Saving to library...'}
+                  {statusMessage || (progress < 50 ? 'Reading wave data...' : 'Saving to library...')}
                 </p>
               </div>
             )}
