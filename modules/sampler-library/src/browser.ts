@@ -59,6 +59,12 @@ export {
   DrumKitTemplateSchema,
   VelocityLayerTemplateSchema,
   TemplateYamlSchema,
+  // Set schemas
+  WaveSegmentAllocationSchema,
+  SetToneEntrySchema,
+  SetPatchEntrySchema,
+  SetSystemParamsSchema,
+  SetYamlSchema,
 } from './schemas/index.js';
 
 export type {
@@ -77,6 +83,14 @@ export type {
   DrumKitTemplateYaml,
   VelocityLayerTemplateYaml,
   TemplateYaml,
+  // Set types
+  WaveSegmentAllocation,
+  SetToneEntry,
+  SetPatchEntry,
+  SetSystemParams,
+  SetYaml,
+  SetInfo,
+  SetData,
 } from './schemas/index.js';
 
 // Converter exports
@@ -93,6 +107,11 @@ export {
   s330ToWav,
   calculateSegmentsNeeded,
   validateWaveDataFits,
+  // Set conversion (browser-compatible)
+  deviceStateToSet,
+  setToDeviceState,
+  validateSetAllocations,
+  calculateSetSegmentUsage,
 } from './converters/index.js';
 
 export type {
@@ -101,6 +120,10 @@ export type {
   WavData,
   S330WaveData,
   S330WaveSampleRate,
+  DeviceStateInput,
+  DeviceStateToSetResult,
+  SetToDeviceInput,
+  SetToDeviceResult,
 } from './converters/index.js';
 
 // Template exports (these are browser-compatible)

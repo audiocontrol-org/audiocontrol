@@ -26,6 +26,7 @@ const layoutConfig: EditorLayoutConfig = {
     { to: '/play', label: 'Play' },
     { to: '/patches', label: 'Patches' },
     { to: '/tones', label: 'Tones' },
+    { to: '/library', label: 'Library' },
   ],
   buildInfoConfig: {
     editorName: 'S-330 Editor',

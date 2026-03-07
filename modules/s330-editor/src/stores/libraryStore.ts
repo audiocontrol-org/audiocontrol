@@ -8,7 +8,12 @@
  */
 
 import { create } from 'zustand';
-import type { ToneYaml, PatchYaml, TemplateYaml } from '@audiocontrol/sampler-library/browser';
+import type {
+  ToneYaml,
+  PatchYaml,
+  TemplateYaml,
+  SetInfo,
+} from '@audiocontrol/sampler-library/browser';
 
 /**
  * Library item summary for display in browser
@@ -17,6 +22,16 @@ export interface LibraryItemSummary {
   name: string;
   filename: string;
   modifiedAt?: Date;
+}
+
+/**
+ * Set operation state
+ */
+export interface SetOperationState {
+  isOperating: boolean;
+  progress: number;
+  setName: string | null;
+  error: string | null;
 }
 
 /**
@@ -44,6 +59,7 @@ interface LibraryState {
   tones: Map<string, LibraryItemSummary>;
   patches: Map<string, LibraryItemSummary>;
   templates: Map<string, LibraryItemSummary>;
+  sets: SetInfo[];
 
   // Loaded item cache
   loadedTones: Map<string, ToneYaml>;
@@ -57,14 +73,19 @@ interface LibraryState {
 
   // Library panel state
   isLibraryPanelOpen: boolean;
-  selectedCategory: 'tones' | 'patches' | 'templates';
+  selectedCategory: 'tones' | 'patches' | 'templates' | 'sets';
   selectedItemName: string | null;
+  selectedSetName: string | null;
 
   // Export dialog state
   exportDialog: ExportState;
 
   // Import dialog state
   importDialog: ImportState;
+
+  // Set operation state
+  saveSetDialog: SetOperationState;
+  loadSetDialog: SetOperationState;
 }
 
 interface LibraryActions {
@@ -76,8 +97,11 @@ interface LibraryActions {
   setTones: (tones: Map<string, LibraryItemSummary>) => void;
   setPatches: (patches: Map<string, LibraryItemSummary>) => void;
   setTemplates: (templates: Map<string, LibraryItemSummary>) => void;
+  setSets: (sets: SetInfo[]) => void;
   addTone: (filename: string, summary: LibraryItemSummary) => void;
   removeTone: (filename: string) => void;
+  addSet: (setInfo: SetInfo) => void;
+  removeSet: (setName: string) => void;
 
   // Loaded item cache
   cacheTone: (name: string, tone: ToneYaml) => void;
@@ -90,8 +114,9 @@ interface LibraryActions {
   // UI state
   toggleLibraryPanel: () => void;
   setLibraryPanelOpen: (open: boolean) => void;
-  setSelectedCategory: (category: 'tones' | 'patches' | 'templates') => void;
+  setSelectedCategory: (category: 'tones' | 'patches' | 'templates' | 'sets') => void;
   setSelectedItem: (name: string | null) => void;
+  setSelectedSet: (name: string | null) => void;
 
   // Export dialog
   openExportDialog: (toneName: string) => void;
@@ -106,6 +131,20 @@ interface LibraryActions {
   setImportProgress: (progress: number) => void;
   setImportError: (error: string | null) => void;
   setImportComplete: () => void;
+
+  // Save set dialog
+  openSaveSetDialog: (setName: string) => void;
+  closeSaveSetDialog: () => void;
+  setSaveSetProgress: (progress: number) => void;
+  setSaveSetError: (error: string | null) => void;
+  setSaveSetComplete: () => void;
+
+  // Load set dialog
+  openLoadSetDialog: (setName: string) => void;
+  closeLoadSetDialog: () => void;
+  setLoadSetProgress: (progress: number) => void;
+  setLoadSetError: (error: string | null) => void;
+  setLoadSetComplete: () => void;
 
   // Reset
   clear: () => void;
@@ -127,11 +166,19 @@ const initialImportState: ImportState = {
   error: null,
 };
 
+const initialSetOperationState: SetOperationState = {
+  isOperating: false,
+  progress: 0,
+  setName: null,
+  error: null,
+};
+
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
   // Initial state
   tones: new Map(),
   patches: new Map(),
   templates: new Map(),
+  sets: [],
   loadedTones: new Map(),
   loadedPatches: new Map(),
   loadedTemplates: new Map(),
@@ -141,8 +188,11 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   isLibraryPanelOpen: false,
   selectedCategory: 'tones',
   selectedItemName: null,
+  selectedSetName: null,
   exportDialog: initialExportState,
   importDialog: initialImportState,
+  saveSetDialog: initialSetOperationState,
+  loadSetDialog: initialSetOperationState,
 
   // Library loading
   setLoading: (isLoading, message = null) =>
@@ -154,6 +204,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   setTones: (tones) => set({ tones }),
   setPatches: (patches) => set({ patches }),
   setTemplates: (templates) => set({ templates }),
+  setSets: (sets) => set({ sets }),
 
   addTone: (filename, summary) =>
     set((state) => {
@@ -168,6 +219,18 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
       newTones.delete(filename);
       return { tones: newTones };
     }),
+
+  addSet: (setInfo) =>
+    set((state) => ({
+      sets: [...state.sets.filter((s) => s.name !== setInfo.name), setInfo].sort((a, b) =>
+        a.name.localeCompare(b.name)
+      ),
+    })),
+
+  removeSet: (setName) =>
+    set((state) => ({
+      sets: state.sets.filter((s) => s.name !== setName),
+    })),
 
   // Loaded item cache
   cacheTone: (name, tone) =>
@@ -202,9 +265,11 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   setLibraryPanelOpen: (open) => set({ isLibraryPanelOpen: open }),
 
   setSelectedCategory: (category) =>
-    set({ selectedCategory: category, selectedItemName: null }),
+    set({ selectedCategory: category, selectedItemName: null, selectedSetName: null }),
 
   setSelectedItem: (name) => set({ selectedItemName: name }),
+
+  setSelectedSet: (name) => set({ selectedSetName: name }),
 
   // Export dialog
   openExportDialog: (toneName) =>
@@ -262,18 +327,78 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
       importDialog: { ...state.importDialog, isImporting: false, progress: 100 },
     })),
 
+  // Save set dialog
+  openSaveSetDialog: (setName) =>
+    set({
+      saveSetDialog: {
+        isOperating: true,
+        progress: 0,
+        setName,
+        error: null,
+      },
+    }),
+
+  closeSaveSetDialog: () => set({ saveSetDialog: initialSetOperationState }),
+
+  setSaveSetProgress: (progress) =>
+    set((state) => ({
+      saveSetDialog: { ...state.saveSetDialog, progress },
+    })),
+
+  setSaveSetError: (error) =>
+    set((state) => ({
+      saveSetDialog: { ...state.saveSetDialog, error, isOperating: false },
+    })),
+
+  setSaveSetComplete: () =>
+    set((state) => ({
+      saveSetDialog: { ...state.saveSetDialog, isOperating: false, progress: 100 },
+    })),
+
+  // Load set dialog
+  openLoadSetDialog: (setName) =>
+    set({
+      loadSetDialog: {
+        isOperating: true,
+        progress: 0,
+        setName,
+        error: null,
+      },
+    }),
+
+  closeLoadSetDialog: () => set({ loadSetDialog: initialSetOperationState }),
+
+  setLoadSetProgress: (progress) =>
+    set((state) => ({
+      loadSetDialog: { ...state.loadSetDialog, progress },
+    })),
+
+  setLoadSetError: (error) =>
+    set((state) => ({
+      loadSetDialog: { ...state.loadSetDialog, error, isOperating: false },
+    })),
+
+  setLoadSetComplete: () =>
+    set((state) => ({
+      loadSetDialog: { ...state.loadSetDialog, isOperating: false, progress: 100 },
+    })),
+
   // Reset
   clear: () =>
     set({
       tones: new Map(),
       patches: new Map(),
       templates: new Map(),
+      sets: [],
       loadedTones: new Map(),
       loadedPatches: new Map(),
       loadedTemplates: new Map(),
       error: null,
       selectedItemName: null,
+      selectedSetName: null,
       exportDialog: initialExportState,
       importDialog: initialImportState,
+      saveSetDialog: initialSetOperationState,
+      loadSetDialog: initialSetOperationState,
     }),
 }));
