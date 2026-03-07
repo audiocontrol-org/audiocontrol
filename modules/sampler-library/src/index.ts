@@ -117,5 +117,17 @@ export {
   fileStorage,
 } from './storage/index.js';
 
-// Template exports will be added in Phase 5
-// export { TemplateEngine } from './templates/index.js';
+// Template exports
+export {
+  parseNoteName,
+  resolveKey,
+  validateToneReferences,
+  TemplateHandlerRegistry,
+  templateHandlerRegistry,
+  s330TemplateHandler,
+} from './templates/index.js';
+
+export type {
+  TemplateApplicationResult,
+  TemplateHandler,
+} from './templates/index.js';
