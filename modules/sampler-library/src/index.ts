@@ -39,8 +39,57 @@ export type {
   LibraryStorage,
 } from './types/index.js';
 
-// Schema exports will be added in Phase 2
-// export { ToneYamlSchema, PatchYamlSchema, TemplateYamlSchema } from './schemas/index.js';
+// Schema exports
+export {
+  // Common schemas
+  DeviceTypeSchema,
+  LoopModeSchema,
+  BaseWaveParamsSchema,
+  S330EnvelopeSchema,
+  AdsrEnvelopeSchema,
+  MidiNoteNameSchema,
+  MidiNoteSchema,
+  VelocityRangeSchema,
+  KeyRangeSchema,
+  // Tone schemas
+  S330LfoParamsSchema,
+  S330TvfParamsSchema,
+  S330TvaParamsSchema,
+  S330ToneExtensionSchema,
+  ToneYamlSchema,
+  // Patch schemas
+  S330KeyModeSchema,
+  S330AftertouchAssignSchema,
+  S330KeyAssignSchema,
+  KeyGroupSchema,
+  S330PatchExtensionSchema,
+  PatchYamlSchema,
+  // Template schemas
+  TemplateTypeSchema,
+  DrumKitEntrySchema,
+  VelocityLayerEntrySchema,
+  DrumKitTemplateSchema,
+  VelocityLayerTemplateSchema,
+  TemplateYamlSchema,
+} from './schemas/index.js';
+
+export type {
+  DeviceTypeZ,
+  LoopModeZ,
+  BaseWaveParamsZ,
+  S330EnvelopeZ,
+  AdsrEnvelopeZ,
+  ToneYaml,
+  S330ToneExtension,
+  PatchYaml,
+  KeyGroup,
+  S330PatchExtension,
+  DrumKitEntry as DrumKitEntryZ,
+  VelocityLayerEntry as VelocityLayerEntryZ,
+  DrumKitTemplateYaml,
+  VelocityLayerTemplateYaml,
+  TemplateYaml,
+} from './schemas/index.js';
 
 // Converter exports will be added in Phase 3
 // export { ConverterRegistry } from './converters/index.js';
