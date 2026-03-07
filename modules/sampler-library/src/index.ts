@@ -100,8 +100,22 @@ export {
 
 export type { ToneConverter, PatchConverter } from './converters/index.js';
 
-// Storage exports will be added in Phase 4
-// export { FileStorage, getLibraryRoot } from './storage/index.js';
+// Storage exports
+export {
+  getLibraryRoot,
+  getDeviceLibraryPath,
+  getTonesDirectory,
+  getPatchesDirectory,
+  getTemplatesDirectory,
+  getTonePath,
+  getToneWavePath,
+  getPatchPath,
+  getTemplatePath,
+  sanitizeFilename,
+  getBaseName,
+  FileStorage,
+  fileStorage,
+} from './storage/index.js';
 
 // Template exports will be added in Phase 5
 // export { TemplateEngine } from './templates/index.js';
