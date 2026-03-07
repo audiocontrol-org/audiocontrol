@@ -69,6 +69,12 @@ export {
   DrumKitTemplateSchema,
   VelocityLayerTemplateSchema,
   TemplateYamlSchema,
+  // Set schemas
+  WaveSegmentAllocationSchema,
+  SetToneEntrySchema,
+  SetPatchEntrySchema,
+  SetSystemParamsSchema,
+  SetYamlSchema,
 } from './schemas/index.js';
 
 export type {
@@ -87,6 +93,14 @@ export type {
   DrumKitTemplateYaml,
   VelocityLayerTemplateYaml,
   TemplateYaml,
+  // Set types
+  WaveSegmentAllocation,
+  SetToneEntry,
+  SetPatchEntry,
+  SetSystemParams,
+  SetYaml,
+  SetInfo,
+  SetData,
 } from './schemas/index.js';
 
 // Converter exports
@@ -103,6 +117,11 @@ export {
   s330ToWav,
   calculateSegmentsNeeded,
   validateWaveDataFits,
+  // Set conversion
+  deviceStateToSet,
+  setToDeviceState,
+  validateSetAllocations,
+  calculateSetSegmentUsage,
 } from './converters/index.js';
 
 export type {
@@ -111,6 +130,10 @@ export type {
   WavData,
   S330WaveData,
   S330WaveSampleRate,
+  DeviceStateInput,
+  DeviceStateToSetResult,
+  SetToDeviceInput,
+  SetToDeviceResult,
 } from './converters/index.js';
 
 // Storage exports
@@ -128,6 +151,22 @@ export {
   getBaseName,
   FileStorage,
   fileStorage,
+  // Set paths
+  getSetsDirectory,
+  getSetDirectory,
+  getSetManifestPath,
+  getSetTonesDirectory,
+  getSetPatchesDirectory,
+  getSetTonePath,
+  getSetToneWavePath,
+  getSetPatchPath,
+  getToneFilename,
+  getPatchFilename,
+  parseToneFilename,
+  parsePatchFilename,
+  // Set storage
+  SetStorage,
+  setStorage,
 } from './storage/index.js';
 
 // Template exports

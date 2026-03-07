@@ -64,3 +64,22 @@ export type {
   VelocityLayerTemplateYaml,
   TemplateYaml,
 } from './template-schema.js';
+
+// Set schemas
+export {
+  WaveSegmentAllocationSchema,
+  SetToneEntrySchema,
+  SetPatchEntrySchema,
+  SetSystemParamsSchema,
+  SetYamlSchema,
+} from './set-schema.js';
+
+export type {
+  WaveSegmentAllocation,
+  SetToneEntry,
+  SetPatchEntry,
+  SetSystemParams,
+  SetYaml,
+  SetInfo,
+  SetData,
+} from './set-schema.js';

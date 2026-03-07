@@ -23,12 +23,21 @@ export {
   s330ToWav,
   calculateSegmentsNeeded,
   validateWaveDataFits,
+  // Set conversion
+  deviceStateToSet,
+  setToDeviceState,
+  validateSetAllocations,
+  calculateSetSegmentUsage,
 } from './s330/index.js';
 
 export type {
   WavData,
   S330WaveData,
   S330WaveSampleRate,
+  DeviceStateInput,
+  DeviceStateToSetResult,
+  SetToDeviceInput,
+  SetToDeviceResult,
 } from './s330/index.js';
 
 // Register S-330 converters in the global registry
