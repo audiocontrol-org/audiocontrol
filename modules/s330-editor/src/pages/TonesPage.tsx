@@ -17,8 +17,10 @@ import { createS330Client } from '@/core/midi/S330Client';
 import type { S330ClientInterface, S330Tone } from '@/core/midi/S330Client';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
+import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { cn } from '@/lib/utils';
 import { exportWaveAsWav } from '@/lib/wave-export';
+import { exportToneToLibrary } from '@/lib/library-service';
 
 export function TonesPage() {
   const { adapter, deviceId, status } = useMidiStore();
@@ -53,9 +55,15 @@ export function TonesPage() {
   // Track if we've already initiated loading to prevent loops
   const hasInitiatedLoad = useRef(false);
 
-  // Export state
+  // Export state (WAV download)
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<number | undefined>(undefined);
+
+  // Export to Library state
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isExportingToLibrary, setIsExportingToLibrary] = useState(false);
+  const [libraryExportProgress, setLibraryExportProgress] = useState<number | undefined>(undefined);
+  const [libraryExportError, setLibraryExportError] = useState<string | null>(null);
 
   // Initialize client when adapter changes
   useEffect(() => {
@@ -182,6 +190,52 @@ export function TonesPage() {
       setExportProgress(undefined);
     }
   }, [selectedToneIndex, tones, setError]);
+
+  // Open export to library dialog
+  const handleOpenExportDialog = useCallback(() => {
+    setLibraryExportError(null);
+    setLibraryExportProgress(undefined);
+    setIsExportDialogOpen(true);
+  }, []);
+
+  // Export tone to library
+  const handleExportToLibrary = useCallback(async (toneName: string) => {
+    if (selectedToneIndex === null || !clientRef.current) return;
+
+    const tone = tones[selectedToneIndex];
+    if (!tone) return;
+
+    setIsExportingToLibrary(true);
+    setLibraryExportProgress(0);
+    setLibraryExportError(null);
+
+    try {
+      // First, fetch wave data from device
+      const waveData = await clientRef.current.requestWaveData(
+        selectedToneIndex,
+        (bytesReceived, totalBytes) => {
+          const progress = totalBytes > 0 ? (bytesReceived / totalBytes) * 50 : 0;
+          setLibraryExportProgress(progress);
+        }
+      );
+
+      // Export to library (YAML + WAV files)
+      await exportToneToLibrary(tone, waveData, toneName, (progress) => {
+        // Scale progress to 50-100 range (since fetching was 0-50)
+        setLibraryExportProgress(50 + progress * 0.5);
+      });
+
+      console.log('[TonesPage] Tone exported to library successfully');
+      setLibraryExportProgress(100);
+    } catch (err) {
+      console.error('[TonesPage] Failed to export to library:', err);
+      const message = err instanceof Error ? err.message : 'Failed to export to library';
+      setLibraryExportError(message);
+      throw err;
+    } finally {
+      setIsExportingToLibrary(false);
+    }
+  }, [selectedToneIndex, tones]);
 
   // Auto-load initial data when connected
   useEffect(() => {
@@ -336,6 +390,8 @@ export function TonesPage() {
                 onExportSample={handleExportSample}
                 isExporting={isExporting}
                 exportProgress={exportProgress}
+                onExportToLibrary={handleOpenExportDialog}
+                isExportingToLibrary={isExportingToLibrary}
               />
             ) : (
               <div className="card text-center py-12 text-s330-muted">
@@ -354,6 +410,20 @@ export function TonesPage() {
             Load Tones
           </button>
         </div>
+      )}
+
+      {/* Export to Library Dialog */}
+      {selectedTone && (
+        <ExportToneDialog
+          open={isExportDialogOpen}
+          onOpenChange={setIsExportDialogOpen}
+          tone={selectedTone}
+          toneIndex={selectedToneIndex!}
+          onExport={handleExportToLibrary}
+          isExporting={isExportingToLibrary}
+          exportProgress={libraryExportProgress}
+          exportError={libraryExportError}
+        />
       )}
     </div>
   );

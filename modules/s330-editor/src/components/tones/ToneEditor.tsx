@@ -33,6 +33,10 @@ interface ToneEditorProps {
     isExporting?: boolean;
     // Export progress (0-100), shown when exporting
     exportProgress?: number;
+    // Called when user clicks Export to Library button
+    onExportToLibrary?: () => void;
+    // Whether library export is in progress
+    isExportingToLibrary?: boolean;
 }
 
 export function ToneEditor({
@@ -43,6 +47,8 @@ export function ToneEditor({
     onExportSample,
     isExporting = false,
     exportProgress,
+    onExportToLibrary,
+    isExportingToLibrary = false,
 }: ToneEditorProps) {
     const handleTvaEnvelopeChange = (envelope: S330Envelope) => {
         onUpdate?.({ ...tone, tva: { ...tone.tva, envelope } });
@@ -72,44 +78,70 @@ export function ToneEditor({
                             className="block text-xl font-bold text-s330-text font-mono bg-transparent border-b border-s330-accent/50 focus:border-s330-highlight focus:outline-none w-full max-w-[10ch]"
                         />
                     </div>
-                    {/* Export Sample Button */}
-                    {onExportSample && (
-                        <div className="flex flex-col items-end gap-1">
-                            <Tooltip content={hasSampleData ? 'Download this sample as a WAV file' : 'No sample data to export'}>
-                                <button
-                                    onClick={onExportSample}
-                                    disabled={isExporting || !hasSampleData}
-                                    className={cn(
-                                        'ac-btn ac-btn-sm',
-                                        hasSampleData ? 'ac-btn-secondary' : 'ac-btn-ghost opacity-50',
-                                        isExporting && 'opacity-50 cursor-wait'
-                                    )}
-                                >
-                                    {isExporting ? (
-                                        <>
-                                            <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                                            Exporting...
-                                        </>
-                                    ) : (
-                                        'Export Sample'
-                                    )}
-                                </button>
-                            </Tooltip>
-                            {isExporting && exportProgress !== undefined && (
-                                <div className="w-32">
-                                    <div className="h-1.5 bg-s330-panel rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                                            style={{ width: `${exportProgress}%` }}
-                                        />
-                                    </div>
-                                    <p className="text-s330-muted text-xs text-right mt-0.5">
-                                        {exportProgress.toFixed(0)}%
-                                    </p>
-                                </div>
+                    {/* Export Buttons */}
+                    <div className="flex flex-col items-end gap-2">
+                        <div className="flex gap-2">
+                            {/* Export to Library Button */}
+                            {onExportToLibrary && (
+                                <Tooltip content={hasSampleData ? 'Export tone and sample to library' : 'No sample data to export'}>
+                                    <button
+                                        onClick={onExportToLibrary}
+                                        disabled={isExportingToLibrary || isExporting || !hasSampleData}
+                                        className={cn(
+                                            'ac-btn ac-btn-sm',
+                                            hasSampleData ? 'ac-btn-primary' : 'ac-btn-ghost opacity-50',
+                                            (isExportingToLibrary || isExporting) && 'opacity-50 cursor-wait'
+                                        )}
+                                    >
+                                        {isExportingToLibrary ? (
+                                            <>
+                                                <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                                Exporting...
+                                            </>
+                                        ) : (
+                                            'Export to Library'
+                                        )}
+                                    </button>
+                                </Tooltip>
+                            )}
+                            {/* Export Sample Button */}
+                            {onExportSample && (
+                                <Tooltip content={hasSampleData ? 'Download this sample as a WAV file' : 'No sample data to export'}>
+                                    <button
+                                        onClick={onExportSample}
+                                        disabled={isExporting || isExportingToLibrary || !hasSampleData}
+                                        className={cn(
+                                            'ac-btn ac-btn-sm',
+                                            hasSampleData ? 'ac-btn-secondary' : 'ac-btn-ghost opacity-50',
+                                            (isExporting || isExportingToLibrary) && 'opacity-50 cursor-wait'
+                                        )}
+                                    >
+                                        {isExporting ? (
+                                            <>
+                                                <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                                Exporting...
+                                            </>
+                                        ) : (
+                                            'Export Sample'
+                                        )}
+                                    </button>
+                                </Tooltip>
                             )}
                         </div>
-                    )}
+                        {isExporting && exportProgress !== undefined && (
+                            <div className="w-32">
+                                <div className="h-1.5 bg-s330-panel rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-s330-highlight transition-all duration-150 ease-out"
+                                        style={{ width: `${exportProgress}%` }}
+                                    />
+                                </div>
+                                <p className="text-s330-muted text-xs text-right mt-0.5">
+                                    {exportProgress.toFixed(0)}%
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Basic Info */}
