@@ -1,0 +1,61 @@
+{
+  "name": "@audiocontrol/sampler-library",
+  "version": "0.1.0",
+  "description": "Device-agnostic library system for sampler tone/patch storage with YAML format",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "pnpm test && tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "keywords": [
+    "sampler",
+    "library",
+    "yaml",
+    "tone",
+    "patch",
+    "template",
+    "s330",
+    "roland",
+    "midi"
+  ],
+  "author": "Orion Letizi",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/audiocontrol-org/audiocontrol.git",
+    "directory": "modules/sampler-library"
+  },
+  "homepage": "https://github.com/audiocontrol-org/audiocontrol/tree/main/modules/sampler-library",
+  "bugs": {
+    "url": "https://github.com/audiocontrol-org/audiocontrol/issues"
+  },
+  "dependencies": {
+    "yaml": "^2.7.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@tsconfig/recommended": "^1.0.8",
+    "@types/node": "^22.13.1",
+    "@vitest/coverage-v8": "^1.2.0",
+    "tsup": "^8.3.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^1.2.0"
+  }
+}
