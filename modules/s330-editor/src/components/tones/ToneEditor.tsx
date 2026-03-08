@@ -26,9 +26,36 @@ interface ToneEditorProps {
     // For immediate commits (checkbox/dropdown), pass the updated tone directly
     // For drag-end commits, call with no args (reads from store)
     onCommit?: (updatedTone?: S330Tone) => void;
+    // Called when user clicks Export Sample button
+    // Handler should fetch wave data and trigger download
+    onExportSample?: () => void;
+    // Whether sample export is in progress
+    isExporting?: boolean;
+    // Export progress (0-100), shown when exporting
+    exportProgress?: number;
+    // Called when user clicks Export to Library button
+    onExportToLibrary?: () => void;
+    // Whether library export is in progress
+    isExportingToLibrary?: boolean;
+    // Called when user clicks Import Sample button
+    onImportSample?: () => void;
+    // Whether sample import is in progress
+    isImporting?: boolean;
 }
 
-export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps) {
+export function ToneEditor({
+    tone,
+    index,
+    onUpdate,
+    onCommit,
+    onExportSample,
+    isExporting = false,
+    exportProgress,
+    onExportToLibrary,
+    isExportingToLibrary = false,
+    onImportSample,
+    isImporting = false,
+}: ToneEditorProps) {
     const handleTvaEnvelopeChange = (envelope: S330Envelope) => {
         onUpdate?.({ ...tone, tva: { ...tone.tva, envelope } });
     };
@@ -37,21 +64,112 @@ export function ToneEditor({ tone, index, onUpdate, onCommit }: ToneEditorProps)
         onUpdate?.({ ...tone, tvf: { ...tone.tvf, envelope } });
     };
 
+    // Check if this tone has valid sample data
+    const hasSampleData = tone.wave.endPoint > tone.wave.startPoint;
+
     return (
         <div className="space-y-6">
             {/* Header */}
             <div className="card">
-                <div className="mb-4">
-                    <label className="text-sm text-s330-muted">Tone T{formatS330Number(index)}</label>
-                    <input
-                        type="text"
-                        value={tone.name}
-                        onChange={(e) => onUpdate?.({ ...tone, name: e.target.value.slice(0, 8) })}
-                        onBlur={() => onCommit?.()}
-                        placeholder="(unnamed)"
-                        maxLength={8}
-                        className="block text-xl font-bold text-s330-text font-mono bg-transparent border-b border-s330-accent/50 focus:border-s330-highlight focus:outline-none w-full max-w-[10ch]"
-                    />
+                <div className="mb-4 flex items-start justify-between">
+                    <div>
+                        <label className="text-sm text-s330-muted">Tone T{formatS330Number(index)}</label>
+                        <input
+                            type="text"
+                            value={tone.name}
+                            onChange={(e) => onUpdate?.({ ...tone, name: e.target.value.slice(0, 8) })}
+                            onBlur={() => onCommit?.()}
+                            placeholder="(unnamed)"
+                            maxLength={8}
+                            className="block text-xl font-bold text-s330-text font-mono bg-transparent border-b border-s330-accent/50 focus:border-s330-highlight focus:outline-none w-full max-w-[10ch]"
+                        />
+                    </div>
+                    {/* Export Buttons */}
+                    <div className="flex flex-col items-end gap-2">
+                        <div className="flex gap-2">
+                            {/* Export to Library Button */}
+                            {onExportToLibrary && (
+                                <Tooltip content={hasSampleData ? 'Export tone and sample to library' : 'No sample data to export'}>
+                                    <button
+                                        onClick={onExportToLibrary}
+                                        disabled={isExportingToLibrary || isExporting || !hasSampleData}
+                                        className={cn(
+                                            'ac-btn ac-btn-sm',
+                                            hasSampleData ? 'ac-btn-primary' : 'ac-btn-ghost opacity-50',
+                                            (isExportingToLibrary || isExporting) && 'opacity-50 cursor-wait'
+                                        )}
+                                    >
+                                        {isExportingToLibrary ? (
+                                            <>
+                                                <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                                Exporting...
+                                            </>
+                                        ) : (
+                                            'Export to Library'
+                                        )}
+                                    </button>
+                                </Tooltip>
+                            )}
+                            {/* Export Sample Button */}
+                            {onExportSample && (
+                                <Tooltip content={hasSampleData ? 'Download this sample as a WAV file' : 'No sample data to export'}>
+                                    <button
+                                        onClick={onExportSample}
+                                        disabled={isExporting || isExportingToLibrary || !hasSampleData}
+                                        className={cn(
+                                            'ac-btn ac-btn-sm',
+                                            hasSampleData ? 'ac-btn-secondary' : 'ac-btn-ghost opacity-50',
+                                            (isExporting || isExportingToLibrary) && 'opacity-50 cursor-wait'
+                                        )}
+                                    >
+                                        {isExporting ? (
+                                            <>
+                                                <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                                Exporting...
+                                            </>
+                                        ) : (
+                                            'Export Sample'
+                                        )}
+                                    </button>
+                                </Tooltip>
+                            )}
+                            {/* Import Sample Button */}
+                            {onImportSample && (
+                                <Tooltip content="Import a WAV file from disk to this tone slot">
+                                    <button
+                                        onClick={onImportSample}
+                                        disabled={isImporting || isExporting || isExportingToLibrary}
+                                        className={cn(
+                                            'ac-btn ac-btn-sm ac-btn-ghost',
+                                            (isImporting || isExporting || isExportingToLibrary) && 'opacity-50 cursor-wait'
+                                        )}
+                                    >
+                                        {isImporting ? (
+                                            <>
+                                                <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                                Importing...
+                                            </>
+                                        ) : (
+                                            'Import Sample'
+                                        )}
+                                    </button>
+                                </Tooltip>
+                            )}
+                        </div>
+                        {isExporting && exportProgress !== undefined && (
+                            <div className="w-32">
+                                <div className="h-1.5 bg-s330-panel rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-s330-highlight transition-all duration-150 ease-out"
+                                        style={{ width: `${exportProgress}%` }}
+                                    />
+                                </div>
+                                <p className="text-s330-muted text-xs text-right mt-0.5">
+                                    {exportProgress.toFixed(0)}%
+                                </p>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Basic Info */}

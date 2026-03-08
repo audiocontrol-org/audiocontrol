@@ -5,6 +5,7 @@ import { HomePage } from '@/pages/HomePage';
 import { PlayPage } from '@/pages/PlayPage';
 import { PatchesPage } from '@/pages/PatchesPage';
 import { TonesPage } from '@/pages/TonesPage';
+import { LibraryPage } from '@/pages/LibraryPage';
 import { isMockMidiMode } from '@/mock/mockMode';
 import { seedS330MockState } from '@/mock/mockState';
 
@@ -21,6 +22,7 @@ export function App() {
         <Route path="/play" element={<PlayPage />} />
         <Route path="/patches" element={<PatchesPage />} />
         <Route path="/tones" element={<TonesPage />} />
+        <Route path="/library" element={<LibraryPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Layout>

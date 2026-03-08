@@ -245,28 +245,29 @@ describe('S-330 Level Curve Conversion', () => {
 });
 
 describe('S-330 Sample Rate Conversion', () => {
+    // Per S-330 spec: 0=30kHz, 1=15kHz
     describe('parseSampleRate', () => {
-        it('should parse 0 as 15kHz', () => {
-            expect(parseSampleRate(0)).toBe('15kHz');
+        it('should parse 0 as 30kHz', () => {
+            expect(parseSampleRate(0)).toBe('30kHz');
         });
 
-        it('should parse 1 as 30kHz', () => {
-            expect(parseSampleRate(1)).toBe('30kHz');
+        it('should parse 1 as 15kHz', () => {
+            expect(parseSampleRate(1)).toBe('15kHz');
         });
 
-        it('should parse any non-1 value as 15kHz', () => {
+        it('should parse any non-0 value as 15kHz', () => {
             expect(parseSampleRate(2)).toBe('15kHz');
             expect(parseSampleRate(255)).toBe('15kHz');
         });
     });
 
     describe('encodeSampleRate', () => {
-        it('should encode 15kHz as 0', () => {
-            expect(encodeSampleRate('15kHz')).toBe(0);
+        it('should encode 30kHz as 0', () => {
+            expect(encodeSampleRate('30kHz')).toBe(0);
         });
 
-        it('should encode 30kHz as 1', () => {
-            expect(encodeSampleRate('30kHz')).toBe(1);
+        it('should encode 15kHz as 1', () => {
+            expect(encodeSampleRate('15kHz')).toBe(1);
         });
     });
 
@@ -667,7 +668,7 @@ describe('S-330 Structure Parsing', () => {
             data[TONE_OFFSETS.NAME + 6] = 0x4d; // M
             data[TONE_OFFSETS.NAME + 7] = 0x45; // E
             data[TONE_OFFSETS.ORIG_KEY_NUMBER] = 60;   // Original key
-            data[TONE_OFFSETS.SAMPLING_FREQ] = 1;    // Sample rate (1 = 30kHz)
+            data[TONE_OFFSETS.SAMPLING_FREQ] = 0;    // Sample rate (0 = 30kHz per S-330 spec)
             data[TONE_OFFSETS.LOOP_MODE] = 0;   // Loop mode (forward)
             data[TONE_OFFSETS.TVA_LEVEL] = 100; // Level
             data[TONE_OFFSETS.TVF_CUTOFF] = 127; // Cutoff
@@ -690,8 +691,8 @@ describe('S-330 Structure Parsing', () => {
             const result = parseTone([]);
             expect(result.name).toBe('');
             expect(result.originalKey).toBe(60);
-            // Empty data means value 0, which is 15kHz
-            expect(result.sampleRate).toBe('15kHz');
+            // Empty data means value 0, which is 30kHz per S-330 spec
+            expect(result.sampleRate).toBe('30kHz');
             expect(result.loopMode).toBe('forward');
             // 8-point envelope with defaults
             expect(result.tva.envelope.levels).toHaveLength(8);
@@ -880,7 +881,7 @@ describe('S-330 Structure Encoding', () => {
             expect(encoded[TONE_OFFSETS.NAME + 4]).toBe(0x20); // space (padded)
             // Check parameters
             expect(encoded[TONE_OFFSETS.ORIG_KEY_NUMBER]).toBe(60);   // Original key
-            expect(encoded[TONE_OFFSETS.SAMPLING_FREQ]).toBe(1);    // Sample rate (30kHz = 1)
+            expect(encoded[TONE_OFFSETS.SAMPLING_FREQ]).toBe(0);    // Sample rate (30kHz = 0 per S-330 spec)
             expect(encoded[TONE_OFFSETS.TVA_LEVEL]).toBe(127); // Level
             expect(encoded[TONE_OFFSETS.TVA_ENV_SUSTAIN_POINT]).toBe(5);
             expect(encoded[TONE_OFFSETS.TVA_ENV_END_POINT]).toBe(8);

@@ -82,6 +82,11 @@ export type {
     S330WaveParams,
     S330Tone,
 
+    // Wave data types
+    S330WaveDataResponse,
+    S330WaveDataInput,
+    S330ImportToneInput,
+
     // SysEx types
     S330Command,
     S330BulkDumpType,
@@ -298,3 +303,22 @@ export {
     buildFrontPanelMessage,
     createFrontPanelController,
 } from './s330-front-panel.js';
+
+// =============================================================================
+// Wave Format Exports
+// =============================================================================
+
+export type {
+    S330WaveSampleRate,
+    WavData,
+    S330WaveData,
+} from './s330-wave-format.js';
+
+export {
+    parseWav,
+    createWav,
+    wavToS330,
+    s330ToWav,
+    calculateSegmentsNeeded,
+    validateWaveDataFits,
+} from './s330-wave-format.js';

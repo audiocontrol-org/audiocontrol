@@ -4,23 +4,33 @@
  * Universal client for communicating with Roland S-330 samplers via SysEx.
  * Works in both Node.js and browser environments via dependency injection.
  *
- * See /docs/s330_sysex.md for complete protocol documentation.
+ * See docs/1.0/s330-sysex-protocol.md for complete protocol documentation.
  *
- * ## Protocol Notes (from hardware testing, January 2026)
+ * ## Protocol Notes (from hardware testing)
  *
  * The S-330 uses the RQD/WSD handshake protocol exclusively:
  *
  * - **RQD with address/size**: F0 41 dev 1E 41 [addr 4B] [size 4B] [cs] F7
  * - **WSD (Want to Send Data)**: Request permission to write parameters
- * - **DAT (Data Transfer)**: Bidirectional data packets with nibblized data
+ * - **DAT (Data Transfer)**: Bidirectional data packets
  * - **ACK (Acknowledge)**: Ready to receive next packet
  * - **EOD (End of Data)**: Transfer complete
  * - **ERR (Error)**: Communication error
  * - **RJC (Rejection)**: Request denied or no data available
  *
+ * ## Data Encoding
+ *
+ * **Parameter data** (patches, tones): Nibblized format
+ * - Size = bytes × 2 (nibble count)
+ * - Each byte split into two nibbles (0x00-0x0F)
+ *
+ * **Wave data**: 7-bit encoded 12-bit samples (NOT nibblized)
+ * - Size = sample count × 2 (bytes, not nibbles)
+ * - Each 12-bit sample = 2 bytes: `0aaa aaaa` + `0bbb bb00`
+ * - Decode: `sample = (byte0 << 5) | (byte1 >> 2)`
+ *
  * Important constraints:
- * - Both address LSB and size LSB must be EVEN (nibble alignment)
- * - Size represents nibble count, not byte count (size = bytes * 2)
+ * - Both address LSB and size LSB must be EVEN
  * - RQD handshake: RQD → DAT → ACK → ... → EOD → ACK (no initial ACK from device)
  * - Function parameter writes MUST use WSD/DAT/EOD (DT1 does not work)
  *
@@ -38,6 +48,9 @@ import type {
     S330PatchCommon,
     S330AftertouchAssign,
     S330KeyAssign,
+    S330WaveDataResponse,
+    S330WaveDataInput,
+    S330ImportToneInput,
 } from './s330-types.js';
 
 import {
@@ -54,6 +67,7 @@ import {
     MAX_TONES,
     PATCH_PARAMS,
     buildPatchParamAddress,
+    ADDR_WAVE_DATA,
 } from './s330-addresses.js';
 
 import {
@@ -257,6 +271,28 @@ export interface S330ClientInterface {
     ): Promise<S330Tone[]>;
     getLoadedTones(): (S330Tone | undefined)[];
     invalidateToneCache(): void;
+
+    // Wave data operations
+    requestWaveData(
+        toneIndex: number,
+        onProgress?: (bytesReceived: number, totalBytes: number) => void
+    ): Promise<S330WaveDataResponse>;
+
+    sendWaveData(
+        input: S330WaveDataInput,
+        onProgress?: (bytesSent: number, totalBytes: number) => void
+    ): Promise<void>;
+
+    /**
+     * Import a tone with wave data to the S-330.
+     *
+     * This uploads wave data to the specified segment and configures
+     * the tone parameters to use it.
+     */
+    importTone(
+        input: S330ImportToneInput,
+        onProgress?: (bytesSent: number, totalBytes: number) => void
+    ): Promise<void>;
 
     // Multi mode configuration
     requestFunctionParameters(): Promise<MultiPartConfig[]>;
@@ -624,10 +660,17 @@ export function createS330Client(
             throw new Error('Address must be 4 bytes');
         }
 
+        const addrStr = address.map(b => b.toString(16).padStart(2, '0')).join(' ');
+        console.log(`[S330Client] sendData: address=${addrStr}, dataLen=${data.length}`);
+
         return new Promise((resolve, reject) => {
             // State machine: WSD → wait ACK → DAT → wait ACK → EOD → wait ACK → done
             let phase: 'WSD' | 'DAT' | 'EOD' | 'DONE' = 'WSD';
+            let phaseStartTime = Date.now();
+
             const timeoutId = setTimeout(() => {
+                const elapsed = Date.now() - phaseStartTime;
+                console.log(`[S330Client] sendData TIMEOUT in phase ${phase} after ${elapsed}ms`);
                 midiAdapter.removeSysExListener(listener);
                 reject(new Error(`WSD write timeout in phase ${phase}`));
             }, timeoutMs);
@@ -654,9 +697,13 @@ export function createS330Client(
                 }
 
                 if (command === S330_COMMANDS.ACK) {
+                    const elapsed = Date.now() - phaseStartTime;
+                    console.log(`[S330Client] sendData ACK received in phase ${phase} after ${elapsed}ms`);
+
                     if (phase === 'WSD') {
                         // Received ACK for WSD - send DAT
                         phase = 'DAT';
+                        phaseStartTime = Date.now();
 
                         const nibblized = nibblize(data);
                         const datChecksum = calculateChecksum(address, nibblized);
@@ -673,10 +720,15 @@ export function createS330Client(
                             0xf7,
                         ];
 
+                        console.log(`[S330Client] sendData sending DAT (${nibblized.length} nibbles)`);
                         midiAdapter.send(datMessage);
                     } else if (phase === 'DAT') {
                         // Received ACK for DAT - send EOD
                         phase = 'EOD';
+                        phaseStartTime = Date.now();
+
+                        // Clear the original timeout - we'll handle EOD specially
+                        clearTimeout(timeoutId);
 
                         const eodMessage = [
                             0xf0,
@@ -687,9 +739,23 @@ export function createS330Client(
                             0xf7,
                         ];
 
+                        console.log(`[S330Client] sendData sending EOD`);
                         midiAdapter.send(eodMessage);
+
+                        // S-330 may not ACK after EOD for parameter writes
+                        // Give it a short time to respond, then resolve anyway
+                        // (the data was already acknowledged with the DAT ACK)
+                        setTimeout(() => {
+                            if (phase === 'EOD') {
+                                console.log(`[S330Client] sendData EOD not ACKed, assuming success`);
+                                phase = 'DONE';
+                                midiAdapter.removeSysExListener(listener);
+                                resolve();
+                            }
+                        }, 300);
                     } else if (phase === 'EOD') {
                         // Received ACK for EOD - write complete
+                        console.log(`[S330Client] sendData complete`);
                         phase = 'DONE';
                         clearTimeout(timeoutId);
                         midiAdapter.removeSysExListener(listener);
@@ -724,6 +790,212 @@ export function createS330Client(
                 0xf7,
             ];
 
+            console.log(`[S330Client] sendData sending WSD: ${wsdMessage.map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+            phaseStartTime = Date.now();
+            midiAdapter.send(wsdMessage);
+        });
+    }
+
+    // =========================================================================
+    // Internal Wave Upload Helpers
+    // =========================================================================
+
+    /**
+     * Internal helper for wave data upload.
+     * Used by both sendWaveData (public) and importTone.
+     * Must be called from within a serialize block.
+     */
+    async function sendWaveDataInternal(
+        input: S330WaveDataInput,
+        onProgress?: (bytesSent: number, totalBytes: number) => void
+    ): Promise<void> {
+        const { data, waveBank, segmentTop } = input;
+
+        // Calculate wave address using same logic as requestWaveData
+        const SEGMENT_ADDR_STRIDE = 24576; // 00 01 40 00H in 7-bit hex
+        const BANK_ADDR_SIZE = SEGMENT_ADDR_STRIDE * 18;
+
+        const bankBaseAddr = waveBank * BANK_ADDR_SIZE;
+        const addrOffset = bankBaseAddr + (segmentTop * SEGMENT_ADDR_STRIDE);
+
+        const waveAddress = [
+            ADDR_WAVE_DATA[0],
+            (addrOffset >> 14) & 0x7f,
+            (addrOffset >> 7) & 0x7f,
+            addrOffset & 0x7e,
+        ];
+
+        console.log(`[S330Client] Sending wave data: ${data.length} bytes to bank=${waveBank}, segment=${segmentTop}`);
+        console.log(`[S330Client] Wave address: ${waveAddress.map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+
+        await sendWaveDataChunked(waveAddress, data, onProgress);
+    }
+
+    /**
+     * Internal helper for chunked wave data transfer using WSD/DAT/EOD protocol.
+     * Data is nibblized before sending (each byte becomes 2 nibbles) per S-330 MIDI spec.
+     */
+    async function sendWaveDataChunked(
+        address: number[],
+        data: Uint8Array,
+        onProgress?: (bytesSent: number, totalBytes: number) => void
+    ): Promise<void> {
+        if (address.length !== 4) {
+            throw new Error('Address must be 4 bytes');
+        }
+        if (address[3] & 0x01) {
+            throw new Error(`Address LSB must be even (got 0x${address[3].toString(16)})`);
+        }
+
+        const totalBytes = data.length;
+        // S-330 wave data is already 7-bit MIDI safe (2 bytes per 12-bit sample)
+        // No nibblization needed - send raw bytes directly
+        const MAX_CHUNK_BYTES = 128;
+
+        return new Promise((resolve, reject) => {
+            let bytesSent = 0;
+            let currentByteOffset = 0;
+            let phase: 'WSD' | 'DAT' | 'EOD' | 'DONE' = 'WSD';
+            let timeoutId: ReturnType<typeof setTimeout>;
+
+            function resetTimeout() {
+                if (timeoutId) clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    midiAdapter.removeSysExListener(listener);
+                    reject(new Error(`Wave data send timeout in phase ${phase} (sent ${bytesSent}/${totalBytes})`));
+                }, timeoutMs * 4);
+            }
+
+            function sendNextChunk() {
+                if (currentByteOffset >= totalBytes) {
+                    // All data sent, send EOD
+                    phase = 'EOD';
+                    const eodMessage = [
+                        0xf0,
+                        ROLAND_ID,
+                        deviceId,
+                        S330_MODEL_ID,
+                        S330_COMMANDS.EOD,
+                        0xf7,
+                    ];
+                    midiAdapter.send(eodMessage);
+
+                    // S-330 may not ACK after EOD for wave data uploads
+                    // Give it a short time to respond, then resolve anyway
+                    setTimeout(() => {
+                        if (phase === 'EOD') {
+                            phase = 'DONE';
+                            clearTimeout(timeoutId);
+                            midiAdapter.removeSysExListener(listener);
+                            resolve();
+                        }
+                    }, 500);
+                    return;
+                }
+
+                phase = 'DAT';
+                const chunkEndByte = Math.min(currentByteOffset + MAX_CHUNK_BYTES, totalBytes);
+                const chunkBytes = Array.from(data.slice(currentByteOffset, chunkEndByte));
+
+                // S-330 wave data is already 7-bit MIDI safe (2 bytes per 12-bit sample)
+                // No nibblization needed - send raw bytes
+
+                // Calculate current address for this chunk (in bytes)
+                const baseOffset = (address[1] << 14) | (address[2] << 7) | address[3];
+                const chunkAddr = baseOffset + currentByteOffset;
+                const chunkAddress = [
+                    address[0],
+                    (chunkAddr >> 14) & 0x7f,
+                    (chunkAddr >> 7) & 0x7f,
+                    chunkAddr & 0x7f,
+                ];
+
+                const datChecksum = calculateChecksum(chunkAddress, chunkBytes);
+                const datMessage = [
+                    0xf0,
+                    ROLAND_ID,
+                    deviceId,
+                    S330_MODEL_ID,
+                    S330_COMMANDS.DAT,
+                    ...chunkAddress,
+                    ...chunkBytes,
+                    datChecksum,
+                    0xf7,
+                ];
+
+                midiAdapter.send(datMessage);
+                bytesSent = chunkEndByte;
+                currentByteOffset = chunkEndByte;
+                onProgress?.(bytesSent, totalBytes);
+            }
+
+            function listener(response: number[]) {
+                if (response.length < 5) return;
+                if (response[1] !== ROLAND_ID) return;
+                if (response[2] !== deviceId) return;
+                if (response[3] !== S330_MODEL_ID) return;
+
+                const command = response[4];
+                resetTimeout();
+
+                if (command === S330_COMMANDS.RJC) {
+                    clearTimeout(timeoutId);
+                    midiAdapter.removeSysExListener(listener);
+                    reject(new Error(`Wave data rejected by S-330 in phase ${phase}`));
+                    return;
+                }
+                if (command === S330_COMMANDS.ERR) {
+                    clearTimeout(timeoutId);
+                    midiAdapter.removeSysExListener(listener);
+                    reject(new Error(`Wave data communication error in phase ${phase}`));
+                    return;
+                }
+
+                if (command === S330_COMMANDS.ACK) {
+                    if (phase === 'WSD') {
+                        // WSD accepted, start sending data
+                        // Small delay to let S-330 prepare for data
+                        setTimeout(() => sendNextChunk(), 10);
+                    } else if (phase === 'DAT') {
+                        // Chunk acknowledged, send next
+                        // Small delay between chunks for S-330 to process
+                        setTimeout(() => sendNextChunk(), 5);
+                    } else if (phase === 'EOD') {
+                        // Transfer complete
+                        phase = 'DONE';
+                        clearTimeout(timeoutId);
+                        midiAdapter.removeSysExListener(listener);
+                        resolve();
+                    }
+                }
+            }
+
+            midiAdapter.onSysEx(listener);
+            resetTimeout();
+
+            // Build and send WSD message
+            // Size is in bytes (S-330 wave data is already 7-bit MIDI safe)
+            const size = [
+                (totalBytes >> 21) & 0x7f,
+                (totalBytes >> 14) & 0x7f,
+                (totalBytes >> 7) & 0x7f,
+                totalBytes & 0x7f,
+            ];
+
+            const wsdChecksum = calculateChecksum(address, size);
+            const wsdMessage = [
+                0xf0,
+                ROLAND_ID,
+                deviceId,
+                S330_MODEL_ID,
+                S330_COMMANDS.WSD,
+                ...address,
+                ...size,
+                wsdChecksum,
+                0xf7,
+            ];
+
+            console.log('[S330Client] Sending WSD:', wsdMessage.map(b => b.toString(16).padStart(2, '0')).join(' '));
             midiAdapter.send(wsdMessage);
         });
     }
@@ -1022,6 +1294,461 @@ export function createS330Client(
 
             // Buffer write - collapses rapid updates, rate-limits device communication
             return bufferWrite(address, toneBytes);
+        },
+
+        /**
+         * Request wave data for a tone
+         *
+         * Fetches the raw sample data for a tone from the S-330's wave memory.
+         * The S-330 stores samples as 12-bit linear PCM, packed as 2 samples per 3 bytes.
+         *
+         * @param toneIndex - Tone number (0-31)
+         * @param onProgress - Optional progress callback with bytes received and total bytes
+         * @returns Wave data response with raw sample bytes and metadata
+         */
+        async requestWaveData(
+            toneIndex: number,
+            onProgress?: (bytesReceived: number, totalBytes: number) => void
+        ): Promise<S330WaveDataResponse> {
+            console.log('[S330Client] requestWaveData called with toneIndex:', toneIndex);
+            if (toneIndex < 0 || toneIndex >= MAX_TONES) {
+                throw new Error(`Invalid tone index: ${toneIndex}`);
+            }
+
+            return serialize(async () => {
+                // First, get the tone data to extract wave parameters
+                const byte2 = toneIndex * 2;
+                const toneAddress = [0x00, 0x03, byte2, 0x00];
+                console.log('[S330Client] Fetching tone data from address:', toneAddress);
+                const toneData = await requestDataWithAddress(toneAddress, TONE_BLOCK_SIZE);
+
+                if (toneData.length < 26) {
+                    throw new Error('Insufficient tone data received');
+                }
+
+                // Parse wave parameters from tone data
+                // See TONE_OFFSETS in s330-addresses.ts
+                const sampleRateValue = toneData[11]; // 0=30kHz, 1=15kHz
+                const sampleRate: 15000 | 30000 = sampleRateValue === 1 ? 15000 : 30000;
+
+                // Wave memory organization:
+                // - WAVE_BANK (byte 13): 0=A, 1=B (selects 256KB half of wave memory)
+                // - WAVE_SEGMENT_TOP (byte 14): Starting segment index within bank
+                // - WAVE_SEGMENT_LENGTH (byte 15): Number of segments occupied
+                // - START_POINT/END_POINT/LOOP_POINT (bytes 16-24): RELATIVE offsets within segment
+                const waveBank = toneData[13]; // 0=A, 1=B
+                const waveSegmentTop = toneData[14]; // Starting segment index
+                const waveSegmentLength = toneData[15]; // Number of segments
+
+                // Parse 24-bit relative offsets (3 bytes each, big-endian)
+                // These are RELATIVE to the start of waveSegmentTop, NOT absolute addresses
+                const relativeStart = (toneData[16] << 16) | (toneData[17] << 8) | toneData[18];
+                const relativeEnd = (toneData[19] << 16) | (toneData[20] << 8) | toneData[21];
+                const relativeLoop = (toneData[22] << 16) | (toneData[23] << 8) | toneData[24];
+                const loopModeValue = toneData[25];
+                const loopMode = (['forward', 'alternating', 'one-shot', 'reverse'] as const)[loopModeValue] || 'forward';
+
+                console.log('[S330Client] Parsed wave params for tone', toneIndex, ':', {
+                    sampleRate,
+                    waveBank,
+                    waveSegmentTop,
+                    waveSegmentLength,
+                    relativeStart,
+                    relativeEnd,
+                    relativeLoop,
+                    loopMode,
+                });
+
+                // Calculate wave memory address and fetch size
+                // S-330 Memory Map (from MIDI Implementation documentation):
+                //   - Wave data A (×18 segments): base address 01 00 00 00H
+                //   - Wave data B (×18 segments): base address 01 20 00 00H
+                //
+                // Wave data location is determined ONLY by:
+                //   - waveBank: which bank (A=0, B=1)
+                //   - waveSegmentTop: starting segment index
+                //   - waveSegmentLength: number of segments allocated
+                //
+                // startPoint/endPoint/loopPoint are PLAYBACK parameters, not memory addresses.
+                //
+                // S-330 Wave Memory Address Calculation
+                // IMPORTANT: Address space differs from data size!
+                //
+                // From documentation:
+                //   - Bank A base: 01 00 00 00H, Bank B base: 01 20 00 00H
+                //   - Difference: 0x20 in byte 1 = 32 × 2^14 = 524288 address units per bank
+                //   - Each bank has 18 segments
+                //
+                // Wave data format:
+                //   - 12-bit samples transmitted as 2 bytes (7-bit MIDI encoding)
+                //   - Each segment: 12,000 samples = 24,000 bytes when transmitted
+                //
+                // S-330 Wave Memory Address Calculation
+                // (from MIDI Implementation documentation, Section 4: Address mapping)
+                //
+                // Addresses are 7-bit hex (00-7F per byte), 4 bytes: AA BB CC DD
+                //   - Bank A base: 01 00 00 00H
+                //   - Bank B base: 01 20 00 00H
+                //   - Segment stride: 00 01 40 00H = 24576 address units
+                //
+                // Each segment contains 12000 samples (0.4s at 30kHz, 0.8s at 15kHz)
+                // transmitted as 24000 bytes (2 bytes per 12-bit sample).
+                //
+                const SEGMENT_SIZE_SAMPLES = 12000;
+                const SEGMENT_DATA_BYTES = SEGMENT_SIZE_SAMPLES * 2; // 24000 bytes
+                const SEGMENT_ADDR_STRIDE = 24576; // 00 01 40 00H in 7-bit hex
+                const BANK_ADDR_SIZE = SEGMENT_ADDR_STRIDE * 18; // 442368 per bank
+
+                const bankBaseAddr = waveBank * BANK_ADDR_SIZE;
+                const addrOffset = bankBaseAddr + (waveSegmentTop * SEGMENT_ADDR_STRIDE);
+
+                // Fetch size based on segment length (each segment = 12000 samples × 2 bytes)
+                const sampleCount = waveSegmentLength * SEGMENT_SIZE_SAMPLES;
+                const bytesToFetch = sampleCount * 2;
+
+                if (sampleCount <= 0) {
+                    throw new Error(`Invalid segment allocation: segmentLength=${waveSegmentLength}`);
+                }
+
+                console.log(`[S330Client] Fetching wave data: ${sampleCount} samples (${waveSegmentLength} segments), ${bytesToFetch} bytes`);
+                console.log(`[S330Client] Wave address: bank=${waveBank}, segmentTop=${waveSegmentTop}, addrOffset=${addrOffset}`);
+
+                // The address bytes encode a 28-bit offset in 7-bit chunks
+                // Note: LSB must be even per Roland spec (*3-1: lowest bit of LSB should be 0)
+                const waveAddress = [
+                    ADDR_WAVE_DATA[0],
+                    (addrOffset >> 14) & 0x7f,
+                    (addrOffset >> 7) & 0x7f,
+                    addrOffset & 0x7e, // Must be even per documentation
+                ];
+
+                // Fetch wave data with extended timeout for large samples
+                const waveTimeoutMs = Math.max(timeoutMs * 4, bytesToFetch / 100);
+
+                // Use a modified request that supports progress reporting
+                const waveData = await requestWaveDataWithProgress(
+                    waveAddress,
+                    bytesToFetch,
+                    waveTimeoutMs,
+                    onProgress
+                );
+
+                return {
+                    data: new Uint8Array(waveData),
+                    sampleRate,
+                    startPoint: relativeStart,
+                    endPoint: relativeEnd,
+                    loopPoint: relativeLoop,
+                    loopMode,
+                };
+            });
+
+            // Internal helper for wave data fetch with progress
+            // IMPORTANT: Wave data is NOT nibblized - it's raw 7-bit MIDI bytes
+            // encoding 12-bit samples. Do NOT de-nibblize wave data.
+            async function requestWaveDataWithProgress(
+                address: number[],
+                sizeInBytes: number,
+                waveTimeoutMs: number,
+                onProgress?: (bytesReceived: number, totalBytes: number) => void
+            ): Promise<number[]> {
+                if (address.length !== 4) {
+                    throw new Error('Address must be 4 bytes');
+                }
+
+                if (address[3] & 0x01) {
+                    throw new Error(`Address LSB must be even (got 0x${address[3].toString(16)})`);
+                }
+
+                // Wave data size is in BYTES, not nibbles (unlike tone/patch data)
+                const size = [
+                    (sizeInBytes >> 21) & 0x7f,
+                    (sizeInBytes >> 14) & 0x7f,
+                    (sizeInBytes >> 7) & 0x7f,
+                    sizeInBytes & 0x7f,
+                ];
+
+                const cs = calculateChecksum(address, size);
+                const message = [
+                    0xf0,
+                    ROLAND_ID,
+                    deviceId,
+                    S330_MODEL_ID,
+                    S330_COMMANDS.RQD,
+                    ...address,
+                    ...size,
+                    cs,
+                    0xf7,
+                ];
+
+                return new Promise((resolve, reject) => {
+                    // Wave data comes as raw 7-bit bytes, NOT nibbles
+                    const allBytes: number[] = [];
+                    let timeoutId: ReturnType<typeof setTimeout>;
+
+                    function resetTimeout() {
+                        if (timeoutId) clearTimeout(timeoutId);
+                        timeoutId = setTimeout(() => {
+                            midiAdapter.removeSysExListener(listener);
+                            if (allBytes.length > 0) {
+                                resolve(allBytes);
+                            } else {
+                                reject(new Error('Wave data request timeout - no data received'));
+                            }
+                        }, waveTimeoutMs);
+                    }
+
+                    function sendAck() {
+                        const ackMsg = [
+                            0xf0,
+                            ROLAND_ID,
+                            deviceId,
+                            S330_MODEL_ID,
+                            S330_COMMANDS.ACK,
+                            0xf7,
+                        ];
+                        midiAdapter.send(ackMsg);
+                    }
+
+                    function listener(response: number[]) {
+                        if (response.length < 5) return;
+                        if (response[1] !== ROLAND_ID) return;
+                        if (response[3] !== S330_MODEL_ID) return;
+
+                        const respDeviceId = response[2];
+                        const command = response[4];
+
+                        if (respDeviceId !== deviceId) {
+                            return;
+                        }
+
+                        resetTimeout();
+
+                        if (command === S330_COMMANDS.DAT) {
+                            // DAT packet: F0 41 dev 1E 42 [addr 4B] [data...] cs F7
+                            const dataStart = 9;
+                            const dataEnd = response.length - 2;
+                            const data = response.slice(dataStart, dataEnd);
+                            // Wave data is raw 7-bit bytes - do NOT de-nibblize
+                            allBytes.push(...data);
+
+                            // Report progress
+                            onProgress?.(allBytes.length, sizeInBytes);
+
+                            sendAck();
+                        } else if (command === S330_COMMANDS.EOD || command === 0x45) {
+                            clearTimeout(timeoutId);
+                            midiAdapter.removeSysExListener(listener);
+                            sendAck();
+                            // Return raw bytes - no de-nibblization for wave data
+                            resolve(allBytes);
+                        } else if (command === S330_COMMANDS.ERR) {
+                            clearTimeout(timeoutId);
+                            midiAdapter.removeSysExListener(listener);
+                            reject(new Error('Wave data communication error'));
+                        }
+                    }
+
+                    resetTimeout();
+                    midiAdapter.onSysEx(listener);
+                    console.log('[S330Client] Requesting wave data:', message.map(b => b.toString(16).padStart(2, '0')).join(' '));
+                    midiAdapter.send(message);
+                });
+            }
+        },
+
+        /**
+         * Send wave data to the S-330.
+         *
+         * Uses WSD/DAT/EOD protocol to upload wave samples to wave memory.
+         * The data must be pre-encoded as 7-bit MIDI bytes (2 bytes per 12-bit sample).
+         *
+         * @param input - Wave data and target location
+         * @param onProgress - Optional progress callback
+         */
+        async sendWaveData(
+            input: S330WaveDataInput,
+            onProgress?: (bytesSent: number, totalBytes: number) => void
+        ): Promise<void> {
+            const { waveBank, segmentTop, segmentLength } = input;
+
+            if (waveBank !== 0 && waveBank !== 1) {
+                throw new Error(`Invalid wave bank: ${waveBank} (must be 0 or 1)`);
+            }
+            if (segmentTop < 0 || segmentTop >= 18) {
+                throw new Error(`Invalid segment top: ${segmentTop} (must be 0-17)`);
+            }
+            if (segmentLength < 1 || segmentTop + segmentLength > 18) {
+                throw new Error(`Invalid segment length: ${segmentLength}`);
+            }
+
+            return serialize(async () => {
+                await sendWaveDataInternal(input, onProgress);
+            });
+        },
+
+        /**
+         * Import a tone with wave data to the S-330.
+         *
+         * Uploads wave data to the specified segment and configures
+         * the tone parameters to use it.
+         *
+         * @param input - Import configuration
+         * @param onProgress - Optional progress callback
+         */
+        async importTone(
+            input: S330ImportToneInput,
+            onProgress?: (bytesSent: number, totalBytes: number) => void
+        ): Promise<void> {
+            const {
+                toneIndex,
+                waveData,
+                waveBank,
+                segmentTop,
+                segmentLength,
+            } = input;
+
+            // Validate inputs
+            if (toneIndex < 0 || toneIndex >= MAX_TONES) {
+                throw new Error(`Invalid tone index: ${toneIndex} (must be 0-31)`);
+            }
+            if (waveBank !== 0 && waveBank !== 1) {
+                throw new Error(`Invalid wave bank: ${waveBank} (must be 0 or 1)`);
+            }
+            if (segmentTop < 0 || segmentTop >= 18) {
+                throw new Error(`Invalid segment top: ${segmentTop} (must be 0-17)`);
+            }
+            if (segmentLength < 1 || segmentTop + segmentLength > 18) {
+                throw new Error(`Invalid segment length: ${segmentLength}`);
+            }
+
+            const sampleCount = waveData.length / 2; // 2 bytes per sample
+            const maxSamples = segmentLength * 12000;
+            if (sampleCount > maxSamples) {
+                throw new Error(`Wave data too large: ${sampleCount} samples exceeds ${maxSamples} for ${segmentLength} segments`);
+            }
+
+            // Step 1: Configure tone parameters FIRST (before wave upload)
+            // This configures the tone to point to the wave memory location
+            console.log('[S330Client] Step 1: Configuring tone parameters...');
+
+            // Determine if we're importing an existing tone or creating a new one
+            let tone: S330Tone;
+
+            if (input.tone) {
+                // Library import: Use the full tone object, but override wave allocation
+                // to match the explicit parameters (wave allocation may differ from original)
+                const toneName = input.tone.name;
+                console.log(`[S330Client] Importing existing tone ${toneIndex}: "${toneName}" to bank ${waveBank}, segment ${segmentTop}`);
+
+                tone = {
+                    ...input.tone,
+                    wave: {
+                        ...input.tone.wave,
+                        bank: waveBank,
+                        segmentTop,
+                        segmentLength,
+                        // Recalculate end point based on actual sample count
+                        endPoint: Math.max(0, sampleCount - 1),
+                        loopLength: Math.max(0, sampleCount - 1 - input.tone.wave.loopPoint),
+                    },
+                };
+            } else {
+                // New sample import: Use basic parameters with sensible defaults
+                const name = input.name ?? 'UNNAMED';
+                const sampleRate = input.sampleRate ?? '30kHz';
+                const loopMode = input.loopMode ?? 'one-shot';
+                const loopPoint = input.loopPoint ?? 0;
+                const originalKey = input.originalKey ?? 60;
+
+                console.log(`[S330Client] Importing new tone ${toneIndex}: "${name}" to bank ${waveBank}, segment ${segmentTop}`);
+
+                tone = {
+                    name: name.slice(0, 8),
+                    outputAssign: 1,
+                    sourceTone: 0,
+                    origSubTone: 0,
+                    sampleRate,
+                    originalKey,
+                    wave: {
+                        bank: waveBank,
+                        segmentTop,
+                        segmentLength,
+                        startPoint: 0,
+                        endPoint: Math.max(0, sampleCount - 1),
+                        loopPoint,
+                        loopLength: Math.max(0, sampleCount - 1 - loopPoint),
+                    },
+                    loopMode,
+                    lfo: {
+                        rate: 64,
+                        sync: false,
+                        delay: 0,
+                        mode: 'normal',
+                        polarity: false,
+                        offset: 64,
+                    },
+                    tvaLfoDepth: 0,
+                    transpose: 64,
+                    fineTune: 0,
+                    tvf: {
+                        cutoff: 127,
+                        resonance: 0,
+                        keyFollow: 64,
+                        lfoDepth: 0,
+                        egDepth: 0,
+                        egPolarity: 'normal',
+                        levelCurve: 0,
+                        keyRateFollow: 64,
+                        velRateFollow: 64,
+                        enabled: false,
+                        envelope: {
+                            levels: [127, 127, 127, 127, 127, 127, 127, 0],
+                            rates: [127, 127, 127, 127, 127, 127, 127, 127],
+                            sustainPoint: 6,
+                            endPoint: 8,
+                        },
+                    },
+                    tva: {
+                        lfoDepth: 0,
+                        keyRate: 64,
+                        level: 127,
+                        velRate: 64,
+                        levelCurve: 0,
+                        envelope: {
+                            levels: [127, 127, 127, 127, 127, 127, 127, 0],
+                            rates: [127, 127, 127, 127, 127, 127, 127, 127],
+                            sustainPoint: 6,
+                            endPoint: 8,
+                        },
+                    },
+                    benderEnabled: true,
+                    aftertouchEnabled: false,
+                    pitchFollow: true,
+                    recThreshold: 64,
+                    recPreTrigger: 0,
+                    loopTune: 0,
+                    envZoom: 0,
+                    copySource: 0,
+                };
+            }
+
+            // Use existing sendToneData which uses bufferWrite
+            await this.sendToneData(toneIndex, tone);
+
+            // Step 2: Send wave data using existing public method
+            console.log('[S330Client] Step 2: Uploading wave data...');
+            await this.sendWaveData(
+                {
+                    data: waveData,
+                    waveBank,
+                    segmentTop,
+                    segmentLength,
+                },
+                onProgress
+            );
+
+            console.log(`[S330Client] Tone ${toneIndex} imported successfully`);
         },
 
         /**

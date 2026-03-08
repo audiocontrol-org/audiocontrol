@@ -1,0 +1,167 @@
+/**
+ * Save Set Dialog
+ *
+ * Modal dialog for saving the current device state to a named set in the library.
+ */
+
+import { useState, useCallback } from 'react';
+import * as Dialog from '@radix-ui/react-dialog';
+import { cn } from '@/lib/utils';
+
+interface SaveSetDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSave: (setName: string, description?: string) => Promise<void>;
+  isSaving: boolean;
+  progress?: number;
+  error: string | null;
+  statusMessage?: string | null;
+}
+
+export function SaveSetDialog({
+  open,
+  onOpenChange,
+  onSave,
+  isSaving,
+  progress,
+  error,
+  statusMessage,
+}: SaveSetDialogProps): JSX.Element {
+  const [setName, setSetName] = useState('');
+  const [description, setDescription] = useState('');
+
+  const handleSave = useCallback(async () => {
+    if (!setName.trim()) return;
+    await onSave(setName.trim(), description.trim() || undefined);
+  }, [setName, description, onSave]);
+
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    if (!isSaving) {
+      onOpenChange(nextOpen);
+      if (!nextOpen) {
+        // Reset form on close
+        setSetName('');
+        setDescription('');
+      }
+    }
+  }, [isSaving, onOpenChange]);
+
+  return (
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
+      <Dialog.Portal>
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+        <Dialog.Content
+          className={cn(
+            'fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
+            'bg-s330-panel border border-s330-accent rounded-lg shadow-xl',
+            'w-full max-w-md p-6'
+          )}
+        >
+          <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
+            Save Device to Library
+          </Dialog.Title>
+
+          <div className="space-y-4">
+            {/* Set Name */}
+            <div>
+              <label
+                htmlFor="setName"
+                className="block text-sm font-medium text-s330-text mb-1"
+              >
+                Set Name
+              </label>
+              <input
+                id="setName"
+                type="text"
+                value={setName}
+                onChange={(e) => setSetName(e.target.value)}
+                disabled={isSaving}
+                placeholder="e.g., My_Drum_Kit"
+                className={cn(
+                  'w-full px-3 py-2 rounded',
+                  'bg-s330-bg border border-s330-accent',
+                  'text-s330-text placeholder:text-s330-muted',
+                  'focus:outline-none focus:border-s330-highlight',
+                  'disabled:opacity-50'
+                )}
+                autoFocus
+              />
+              <p className="text-xs text-s330-muted mt-1">
+                Use letters, numbers, and underscores. Spaces will be converted.
+              </p>
+            </div>
+
+            {/* Description */}
+            <div>
+              <label
+                htmlFor="description"
+                className="block text-sm font-medium text-s330-text mb-1"
+              >
+                Description (optional)
+              </label>
+              <textarea
+                id="description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                disabled={isSaving}
+                placeholder="Brief description of this set..."
+                rows={3}
+                className={cn(
+                  'w-full px-3 py-2 rounded resize-none',
+                  'bg-s330-bg border border-s330-accent',
+                  'text-s330-text placeholder:text-s330-muted',
+                  'focus:outline-none focus:border-s330-highlight',
+                  'disabled:opacity-50'
+                )}
+              />
+            </div>
+
+            {/* Progress Bar */}
+            {isSaving && progress !== undefined && (
+              <div>
+                <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-s330-highlight transition-all duration-150"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <p className="text-xs text-s330-muted mt-1">
+                  {statusMessage || (progress < 50 ? 'Reading wave data...' : 'Saving to library...')}
+                </p>
+              </div>
+            )}
+
+            {/* Error */}
+            {error && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded">
+                <p className="text-sm text-red-400">{error}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 mt-6">
+            <Dialog.Close asChild>
+              <button
+                className="ac-btn ac-btn-secondary"
+                disabled={isSaving}
+              >
+                Cancel
+              </button>
+            </Dialog.Close>
+            <button
+              onClick={handleSave}
+              disabled={!setName.trim() || isSaving}
+              className={cn(
+                'ac-btn ac-btn-primary',
+                (!setName.trim() || isSaving) && 'opacity-50'
+              )}
+            >
+              {isSaving ? 'Saving...' : 'Save Set'}
+            </button>
+          </div>
+        </Dialog.Content>
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
