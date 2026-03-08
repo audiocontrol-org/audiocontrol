@@ -132,7 +132,7 @@ export function createDrumTone(
       offset: 64,
     },
     tvaLfoDepth: 0,
-    transpose: 0, // Bipolar: -63 to +64, 0 = no pitch change
+    transpose: 0, // Raw value: 0 = no pitch change (not standard MIDI bipolar)
     fineTune: 0,
     tvf: {
       cutoff: 127,

@@ -576,7 +576,7 @@ export function parseTone(data: number[]): S330Tone {
 
         // Pitch
         transpose: getByte(TONE_OFFSETS.TRANSPOSE, 64),
-        fineTune: parseSignedValue(getByte(TONE_OFFSETS.FINE_TUNE, 64)),
+        fineTune: getByte(TONE_OFFSETS.FINE_TUNE, 0), // Raw value: 0 = center
 
         // TVF and TVA
         tvf,
@@ -737,7 +737,7 @@ export function encodeTone(tone: S330Tone): number[] {
 
     // Pitch parameters
     data[TONE_OFFSETS.TRANSPOSE] = tone.transpose & 0x7F;
-    data[TONE_OFFSETS.FINE_TUNE] = encodeSignedValue(tone.fineTune);
+    data[TONE_OFFSETS.FINE_TUNE] = tone.fineTune & 0x7F; // Raw value: 0 = center
 
     // TVF parameters
     data[TONE_OFFSETS.TVF_CUTOFF] = tone.tvf.cutoff & 0x7F;
