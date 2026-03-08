@@ -200,15 +200,28 @@ function LibraryPatchPreview({
   onImport?: () => void;
 }): JSX.Element {
   // Find required tones by analyzing toneLayer1 and toneLayer2
+  // Note: toneLayer2 is only meaningful when keyMode uses velocity switching
+  // and only for keys where toneLayer1 is assigned (>= 0)
+  const { keyMode, toneLayer1, toneLayer2 } = patch.common;
   const requiredTones = new Set<number>();
-  for (const toneIndex of patch.common.toneLayer1) {
-    if (toneIndex !== -1) {
+
+  for (const toneIndex of toneLayer1) {
+    if (toneIndex >= 0 && toneIndex <= 31) {
       requiredTones.add(toneIndex);
     }
   }
-  for (const toneIndex of patch.common.toneLayer2) {
-    if (toneIndex !== -1) {
-      requiredTones.add(toneIndex);
+
+  // Only check layer 2 if velocity switching is active
+  const usesVelocitySwitching = keyMode === 'v-sw' || keyMode === 'x-fade' || keyMode === 'v-mix';
+  if (usesVelocitySwitching) {
+    for (let i = 0; i < toneLayer2.length; i++) {
+      // Only count layer 2 if layer 1 is assigned for this key
+      if (toneLayer1[i] >= 0) {
+        const toneIndex = toneLayer2[i];
+        if (toneIndex >= 0 && toneIndex <= 31) {
+          requiredTones.add(toneIndex);
+        }
+      }
     }
   }
 

@@ -792,21 +792,34 @@ export async function deleteSet(
  *
  * Examines toneLayer1 and toneLayer2 arrays to find all unique tone indices.
  * Returns sorted array of tone slot indices (0-31).
+ *
+ * Note: toneLayer2 is only meaningful when keyMode uses velocity switching
+ * ('v-sw', 'x-fade', 'v-mix') AND the corresponding toneLayer1 entry is >= 0.
+ * Otherwise toneLayer2 values are just defaults (all 0s) and should be ignored.
  */
 export function getPatchToneDependencies(patch: S330Patch): number[] {
   const usedTones = new Set<number>();
+  const { keyMode, toneLayer1, toneLayer2 } = patch.common;
 
   // Check toneLayer1 (indices 0-31, -1 means no tone assigned)
-  for (const toneIndex of patch.common.toneLayer1) {
+  for (const toneIndex of toneLayer1) {
     if (toneIndex >= 0 && toneIndex <= 31) {
       usedTones.add(toneIndex);
     }
   }
 
-  // Check toneLayer2
-  for (const toneIndex of patch.common.toneLayer2) {
-    if (toneIndex >= 0 && toneIndex <= 31) {
-      usedTones.add(toneIndex);
+  // Check toneLayer2 only if velocity switching is active
+  // and only for keys that have a layer 1 assignment
+  const usesVelocitySwitching = keyMode === 'v-sw' || keyMode === 'x-fade' || keyMode === 'v-mix';
+  if (usesVelocitySwitching) {
+    for (let i = 0; i < toneLayer2.length; i++) {
+      // Only count layer 2 if layer 1 is assigned for this key
+      if (toneLayer1[i] >= 0) {
+        const toneIndex = toneLayer2[i];
+        if (toneIndex >= 0 && toneIndex <= 31) {
+          usedTones.add(toneIndex);
+        }
+      }
     }
   }
 
