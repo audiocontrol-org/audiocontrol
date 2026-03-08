@@ -83,14 +83,24 @@ export interface ResolvedDrumKitBundle {
 
 /**
  * Filename patterns for drum sample types.
- * Matches variations like "KICK 01", "kick01", "kick_01", etc.
+ *
+ * Preferred format: "01 KICK.wav" (kit number first)
+ * Also supports: "KICK 01.wav", "kick01.wav", "kick_01.wav"
  */
 const DRUM_PATTERNS: Array<{ pattern: RegExp; type: DrumSampleType }> = [
+  // Preferred format: number first (e.g., "01 KICK", "01_KICK", "01-KICK")
+  { pattern: /^(\d+)[_\s-]?kick/i, type: 'kick' },
+  { pattern: /^(\d+)[_\s-]?snare/i, type: 'snare' },
+  { pattern: /^(\d+)[_\s-]?hhc/i, type: 'hhClosed' },
+  { pattern: /^(\d+)[_\s-]?hho/i, type: 'hhOpen' },
+  // Legacy format: name first (e.g., "KICK 01", "kick01", "kick_01")
   { pattern: /^kick[_\s-]?(\d+)/i, type: 'kick' },
   { pattern: /^snare[_\s-]?(\d+)/i, type: 'snare' },
   { pattern: /^hhc[_\s-]?(\d+)/i, type: 'hhClosed' },
   { pattern: /^hho[_\s-]?(\d+)/i, type: 'hhOpen' },
   // Additional patterns for common naming conventions
+  { pattern: /^(\d+)[_\s-]?closed[_\s-]?hat/i, type: 'hhClosed' },
+  { pattern: /^(\d+)[_\s-]?open[_\s-]?hat/i, type: 'hhOpen' },
   { pattern: /^closed[_\s-]?hat[_\s-]?(\d+)/i, type: 'hhClosed' },
   { pattern: /^open[_\s-]?hat[_\s-]?(\d+)/i, type: 'hhOpen' },
   { pattern: /^hihat[_\s-]?closed[_\s-]?(\d+)/i, type: 'hhClosed' },
