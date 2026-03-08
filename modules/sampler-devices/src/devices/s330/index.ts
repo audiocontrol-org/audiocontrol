@@ -340,3 +340,34 @@ export {
     importDrumKit,
     verifyDrumKitImport,
 } from './drum-kit-import-service.js';
+
+// =============================================================================
+// Tone Layer Utilities Exports
+// =============================================================================
+
+export type { ToneZone } from './s330-tone-layer.js';
+
+export {
+    // Constants
+    TONE_LAYER_MIN_MIDI_NOTE,
+    TONE_LAYER_MAX_MIDI_NOTE,
+    TONE_LAYER_SIZE,
+    TONE_LAYER_OFF,
+
+    // Index conversion
+    midiNoteToLayerIndex,
+    layerIndexToMidiNote,
+
+    // Factory functions
+    createEmptyToneLayer,
+
+    // Manipulation functions
+    getToneAtMidiNote,
+    setToneAtMidiNote,
+    setToneForMidiRange,
+    isValidToneLayerMidiNote,
+
+    // Zone functions
+    toneLayerToZones,
+    zonesToToneLayer,
+} from './s330-tone-layer.js';

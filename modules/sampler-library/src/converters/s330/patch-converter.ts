@@ -11,6 +11,10 @@ import type {
   S330AftertouchAssign,
   S330KeyAssign,
 } from '@audiocontrol/sampler-devices/s330';
+import {
+  createEmptyToneLayer,
+  setToneForMidiRange,
+} from '@audiocontrol/sampler-devices/s330';
 import type { PatchConverter } from '@/converters/converter-registry.js';
 import type { PatchYaml, S330PatchExtension } from '@/schemas/index.js';
 
@@ -64,13 +68,6 @@ function mapKeyAssignFromYaml(assign: 'rotary' | 'fix'): S330KeyAssign {
   return assign;
 }
 
-/**
- * Create an empty 109-element tone layer array.
- * S-330 patches use 109 entries for MIDI notes 21-127.
- */
-function createEmptyToneLayer(defaultValue: number): number[] {
-  return new Array(109).fill(defaultValue);
-}
 
 /**
  * S-330 patch converter implementation.
@@ -115,8 +112,8 @@ export const s330PatchConverter: PatchConverter<S330Patch, PatchYaml> = {
 
     // Build tone layer mappings
     // If keyGroups are provided, convert them to tone layers
-    let toneLayer1: number[] = ext?.toneLayer1 ?? createEmptyToneLayer(-1);
-    let toneLayer2: number[] = ext?.toneLayer2 ?? createEmptyToneLayer(0);
+    let toneLayer1: number[] = ext?.toneLayer1 ?? createEmptyToneLayer(1);
+    let toneLayer2: number[] = ext?.toneLayer2 ?? createEmptyToneLayer(2);
 
     // If keyGroups are provided in the simplified format, we would need
     // to resolve tone references to tone indices. This is handled at a
@@ -169,11 +166,8 @@ export function createPatchFromKeyGroups(
   }>,
   toneNameToIndex: Map<string, number>
 ): S330Patch {
-  // Initialize empty tone layers
-  // Layer 1: -1 means no tone assigned
-  // Layer 2: 0 is the default
-  const toneLayer1 = createEmptyToneLayer(-1);
-  const toneLayer2 = createEmptyToneLayer(0);
+  const toneLayer1 = createEmptyToneLayer(1);
+  const toneLayer2 = createEmptyToneLayer(2);
 
   for (const group of keyGroups) {
     const toneIndex = toneNameToIndex.get(group.tone);
@@ -185,13 +179,7 @@ export function createPatchFromKeyGroups(
     const layer = group.layer ?? 1;
     const targetLayer = layer === 1 ? toneLayer1 : toneLayer2;
 
-    // S-330 tone layers cover MIDI notes 21-127 (indices 0-108)
-    for (let key = lowKey; key <= highKey; key++) {
-      const layerIndex = key - 21;
-      if (layerIndex >= 0 && layerIndex < 109) {
-        targetLayer[layerIndex] = toneIndex;
-      }
-    }
+    setToneForMidiRange(targetLayer, lowKey, highKey, toneIndex);
   }
 
   return {

@@ -207,14 +207,14 @@ describe('createPatchFromKeyGroups', () => {
     );
 
     expect(patch.common.name).toBe('DrumKit');
-    // C2 (36) is index 15 in the layer (36 - 21 = 15)
-    expect(patch.common.toneLayer1[15]).toBe(0); // kick
-    // D2 (38) is index 17
-    expect(patch.common.toneLayer1[17]).toBe(1); // snare
-    // F#2-A2 (42-44) are indices 21-23
-    expect(patch.common.toneLayer1[21]).toBe(2); // hihat
-    expect(patch.common.toneLayer1[22]).toBe(2); // hihat
-    expect(patch.common.toneLayer1[23]).toBe(2); // hihat
+    // C2 (36) is index 24 in the layer (36 - 12 = 24)
+    expect(patch.common.toneLayer1[24]).toBe(0); // kick
+    // D2 (38) is index 26
+    expect(patch.common.toneLayer1[26]).toBe(1); // snare
+    // F#2-A2 (42-44) are indices 30-32
+    expect(patch.common.toneLayer1[30]).toBe(2); // hihat
+    expect(patch.common.toneLayer1[31]).toBe(2); // hihat
+    expect(patch.common.toneLayer1[32]).toBe(2); // hihat
   });
 
   it('should support layer 2 assignments', () => {
@@ -232,9 +232,9 @@ describe('createPatchFromKeyGroups', () => {
       toneNameToIndex
     );
 
-    // C4 (60) is index 39 (60 - 21 = 39)
-    expect(patch.common.toneLayer1[39]).toBe(0); // soft
-    expect(patch.common.toneLayer2[39]).toBe(1); // loud
+    // C4 (60) is index 48 (60 - 12 = 48)
+    expect(patch.common.toneLayer1[48]).toBe(0); // soft
+    expect(patch.common.toneLayer2[48]).toBe(1); // loud
   });
 
   it('should throw for unknown tone names', () => {
@@ -268,15 +268,18 @@ describe('createPatchFromKeyGroups', () => {
     const patch = createPatchFromKeyGroups(
       'Test',
       [
-        { tone: 'tone', keyRange: [10, 20] }, // Below valid range (21-127)
+        { tone: 'tone', keyRange: [5, 11] }, // Below valid range (12-120)
+        { tone: 'tone', keyRange: [121, 127] }, // Above valid range
         { tone: 'tone', keyRange: [60, 60] }, // Valid
       ],
       toneNameToIndex
     );
 
-    // Keys below 21 should be ignored
-    expect(patch.common.toneLayer1[0]).toBe(-1); // No assignment
-    // C4 (60) should be assigned
-    expect(patch.common.toneLayer1[39]).toBe(0);
+    // Keys 5-11 are below valid range (MIN=12), so index 0 should be -1
+    expect(patch.common.toneLayer1[0]).toBe(-1); // MIDI 12 not assigned
+    // C4 (60) should be assigned at index 60-12=48
+    expect(patch.common.toneLayer1[48]).toBe(0);
+    // Keys 121-127 are above valid range (MAX=120), so last index should be -1
+    expect(patch.common.toneLayer1[108]).toBe(-1); // MIDI 120 not assigned
   });
 });

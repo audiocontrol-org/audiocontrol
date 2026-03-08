@@ -26,6 +26,7 @@ import {
   createWav,
   parseWav,
   s330ToWav,
+  midiNoteToLayerIndex,
   type DrumSampleInput,
   type DrumKitImportConfig,
 } from '@audiocontrol/sampler-devices/s330';
@@ -610,20 +611,32 @@ describe('S-330 Round-Trip Verification', () => {
           const patch = await client!.requestPatchData(patchSlot);
           expect(patch).not.toBeNull();
 
-          if (patch) {
-            // toneLayer1 maps MIDI notes 21-127 to tone slots
-            // Index = midiNote - 21
-            const layerIndex = expectedMidiNote - 21;
+          // Read tone from device to verify originalKey
+          const tone = await client!.requestToneData(expectedToneSlot);
+          expect(tone).not.toBeNull();
+
+          if (patch && tone) {
+            // Verify patch toneLayer1 mapping
+            const layerIndex = midiNoteToLayerIndex(expectedMidiNote);
             const actualToneSlot = patch.common.toneLayer1[layerIndex];
 
             console.log(`  ${drumType}:`);
             console.log(`    - Patch slot: ${patchSlot}`);
+            console.log(`    - Tone slot: ${expectedToneSlot}`);
             console.log(`    - Expected MIDI note: ${expectedMidiNote}`);
-            console.log(`    - Expected tone slot: ${expectedToneSlot}`);
-            console.log(`    - Actual tone slot at layer index ${layerIndex}: ${actualToneSlot}`);
+            console.log(`    - Layer index: ${layerIndex}`);
+            console.log(`    - Actual tone slot at layer index: ${actualToneSlot}`);
 
-            // Verify the mapping is correct
+            // Verify the MIDI note to tone mapping is correct
             expect(actualToneSlot).toBe(expectedToneSlot);
+
+            // Verify originalKey is NOT the MIDI note (the old bug)
+            // Drums use a fixed originalKey (60 = C4) since pitchFollow is false
+            console.log(`    - Tone originalKey: ${tone.originalKey}`);
+            console.log(`    - Tone pitchFollow: ${tone.pitchFollow}`);
+            expect(tone.originalKey).toBe(60); // Fixed value for drums
+            expect(tone.originalKey).not.toBe(expectedMidiNote); // NOT the MIDI note
+            expect(tone.pitchFollow).toBe(false); // Drums don't follow pitch
 
             // Also verify other notes are unmapped (-1)
             let otherMappings = 0;
@@ -684,7 +697,7 @@ describe('S-330 Round-Trip Verification', () => {
             expect(patchYaml.s330?.toneLayer1).toBeDefined();
 
             // Check the mapping in the YAML
-            const layerIndex = expectedMidiNote - 21;
+            const layerIndex = midiNoteToLayerIndex(expectedMidiNote);
             const yamlToneSlot = patchYaml.s330?.toneLayer1?.[layerIndex];
 
             console.log(`    - YAML toneLayer1[${layerIndex}] (MIDI ${expectedMidiNote}): ${yamlToneSlot}`);

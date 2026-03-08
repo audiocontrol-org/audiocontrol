@@ -8,6 +8,12 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import type { S330KeyMode, S330Tone } from '@/core/midi/S330Client';
+import {
+  TONE_LAYER_MIN_MIDI_NOTE,
+  TONE_LAYER_MAX_MIDI_NOTE,
+  TONE_LAYER_SIZE,
+  TONE_LAYER_OFF,
+} from '@audiocontrol/sampler-devices/s330';
 import { cn, midiNoteToName } from '@/lib/utils';
 import { useMidiLearn } from '@/hooks/useMidiLearn';
 import { Tooltip } from '@/components/ui/Tooltip';
@@ -18,7 +24,9 @@ import { TONE_MAPPING_TOOLTIPS } from '@/constants/tone-mapping-tooltips';
 // =============================================================================
 
 /**
- * Represents a contiguous zone of keys mapped to a single tone
+ * Represents a contiguous zone of keys mapped to a single tone.
+ * Uses UI-friendly property names (startKey/endKey) that map to
+ * the shared startMidiNote/endMidiNote from sampler-devices.
  */
 export interface ToneZone {
   /** Starting MIDI note (12-120) */
@@ -46,15 +54,11 @@ interface ToneZoneEditorProps {
 // Constants
 // =============================================================================
 
-/**
- * First MIDI note in the S-330 tone mapping.
- * Entry 0 corresponds to MIDI note 12 (C0).
- */
-const MIN_KEY = 12;
-/** Last MIDI note in the S-330 tone mapping (C9) */
-const MAX_KEY = 120;
-/** Total number of keys in the mapping */
-const TOTAL_KEYS = 109;
+// Use shared constants from sampler-devices for the authoritative tone layer spec.
+// Alias to shorter names for readability in this UI component.
+const MIN_KEY = TONE_LAYER_MIN_MIDI_NOTE;
+const MAX_KEY = TONE_LAYER_MAX_MIDI_NOTE;
+const TOTAL_KEYS = TONE_LAYER_SIZE;
 
 /** Zone colors by tone number (cycling through a palette) */
 const ZONE_COLORS = [
@@ -81,7 +85,7 @@ const ZONE_COLORS = [
  */
 export function arrayToZones(data: number[], layer: 1 | 2): ToneZone[] {
   const zones: ToneZone[] = [];
-  const offValue = layer === 1 ? -1 : 0;
+  const offValue = layer === 1 ? TONE_LAYER_OFF : 0;
   let i = 0;
 
   while (i < TOTAL_KEYS) {
@@ -111,7 +115,7 @@ export function arrayToZones(data: number[], layer: 1 | 2): ToneZone[] {
  * Convert a list of zones back to a 109-entry array
  */
 export function zonesToArray(zones: ToneZone[], layer: 1 | 2): number[] {
-  const offValue = layer === 1 ? -1 : 0;
+  const offValue = layer === 1 ? TONE_LAYER_OFF : 0;
   const result = new Array(TOTAL_KEYS).fill(offValue);
 
   for (const zone of zones) {

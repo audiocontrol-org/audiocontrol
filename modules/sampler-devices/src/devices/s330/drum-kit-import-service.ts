@@ -11,6 +11,7 @@
 import type { S330Tone, S330Patch, S330PatchCommon } from './s330-types.js';
 import type { S330ClientInterface } from './s330-client.js';
 import { wavToS330, calculateSegmentsNeeded, parseWav } from './s330-wave-format.js';
+import { createEmptyToneLayer, setToneAtMidiNote } from './s330-tone-layer.js';
 
 /**
  * A single drum sample ready for import.
@@ -84,6 +85,14 @@ export type ImportProgressCallback = (
 ) => void;
 
 /**
+ * Default original key for drum samples (C4 / middle C).
+ * Since drums use pitchFollow: false, the sample plays at its recorded pitch
+ * regardless of the triggering MIDI note. The originalKey value doesn't
+ * affect playback but is set to a sensible default.
+ */
+const DRUM_ORIGINAL_KEY = 60;
+
+/**
  * Create a drum tone with one-shot loop mode.
  */
 function createDrumTone(
@@ -92,8 +101,7 @@ function createDrumTone(
   waveBank: 0 | 1,
   segmentTop: number,
   segmentLength: number,
-  sampleCount: number,
-  originalKey: number
+  sampleCount: number
 ): S330Tone {
   return {
     name: name.slice(0, 8).toUpperCase().padEnd(8, ' '),
@@ -101,7 +109,7 @@ function createDrumTone(
     sourceTone: 0,
     origSubTone: 0,
     sampleRate: sampleRate === 30000 ? '30kHz' : '15kHz',
-    originalKey,
+    originalKey: DRUM_ORIGINAL_KEY,
     wave: {
       bank: waveBank,
       segmentTop,
@@ -173,13 +181,8 @@ function createSingleNotePatch(
   toneSlot: number,
   midiNote: number
 ): S330Patch {
-  // Tone layer is 109 elements for MIDI notes 21-127
-  const toneLayer1 = Array(109).fill(-1);
-  const layerIndex = midiNote - 21;
-
-  if (layerIndex >= 0 && layerIndex < 109) {
-    toneLayer1[layerIndex] = toneSlot;
-  }
+  const toneLayer1 = createEmptyToneLayer(1);
+  setToneAtMidiNote(toneLayer1, midiNote, toneSlot);
 
   const common: S330PatchCommon = {
     name: name.slice(0, 12).toUpperCase().padEnd(12, ' '),
@@ -188,7 +191,7 @@ function createSingleNotePatch(
     keyMode: 'normal',
     velocityThreshold: 64,
     toneLayer1,
-    toneLayer2: Array(109).fill(-1),
+    toneLayer2: createEmptyToneLayer(2),
     copySource: 0,
     octaveShift: 0,
     level: 127,
@@ -264,8 +267,7 @@ export async function importDrumKit(
       config.waveBank,
       currentSegment,
       prepared.segmentLength,
-      prepared.sampleCount,
-      sample.midiNote
+      prepared.sampleCount
     );
 
     onProgress?.(i + 1, config.samples.length, `Uploading ${sample.drumType}...`);

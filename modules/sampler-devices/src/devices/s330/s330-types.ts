@@ -58,7 +58,7 @@ export type S330KeyAssign = 'rotary' | 'fix';
  * Each patch is 512 bytes (1024 nibbles) with the following structure:
  * - 12-character name
  * - Performance parameters (bend, aftertouch, mode, etc.)
- * - Two tone mapping layers (109 keys each, MIDI notes 21-127)
+ * - Two tone mapping layers (109 keys each, MIDI notes 12-120 / C0-C9)
  * - Output and level settings
  */
 export interface S330PatchCommon {
