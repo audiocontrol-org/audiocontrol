@@ -10,8 +10,13 @@
  */
 
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
-import type { S330Tone, S330Patch } from '@audiocontrol/sampler-devices/s330';
-import type { S330WaveDataResponse } from '@audiocontrol/sampler-devices/s330';
+import type { S330Tone, S330Patch, S330WaveDataResponse } from '@audiocontrol/sampler-devices/s330';
+import {
+  prepareWavForS330,
+  parseWav,
+  calculateSegmentsNeeded,
+  type PreparedS330Sample,
+} from '@audiocontrol/sampler-devices/s330';
 import {
   ToneYamlSchema,
   SetYamlSchema,
@@ -20,9 +25,6 @@ import {
   s330PatchConverter,
   deviceStateToSet,
   setToDeviceState,
-  parseWav,
-  wavToS330,
-  calculateSegmentsNeeded,
   loadDrumKitBundle as parseDrumKitBundle,
   type ToneYaml,
   type PatchYaml,
@@ -35,50 +37,9 @@ import {
 } from '@audiocontrol/sampler-library/browser';
 import { createWavBlobFromSamples, unpack12BitTo16Bit } from '@/lib/wave-export';
 
-// =========================================================================
-// WAV to S330 Conversion (Single Code Path)
-// =========================================================================
-
-/**
- * Prepared S330 sample data ready for device upload.
- */
-export interface PreparedS330Sample {
-  /** S330 12-bit packed wave data */
-  data: Uint8Array;
-  /** Number of samples (not bytes) */
-  sampleCount: number;
-  /** Number of segments needed on device */
-  segmentLength: number;
-  /** Target sample rate */
-  sampleRate: 15000 | 30000;
-}
-
-/**
- * Convert raw WAV file bytes to S330 format.
- *
- * This is the ONLY function that should be used for WAV → S330 conversion.
- * All UI components and hooks must use this function to ensure consistent
- * conversion behavior.
- *
- * @param wavBytes - Raw WAV file data
- * @param targetSampleRate - Target sample rate (15000 or 30000 Hz)
- * @returns Prepared sample data ready for device upload
- */
-export function prepareWavForS330(
-  wavBytes: ArrayBuffer,
-  targetSampleRate: 15000 | 30000
-): PreparedS330Sample {
-  const wavData = parseWav(wavBytes);
-  const s330Data = wavToS330(wavData, targetSampleRate);
-  const segmentLength = calculateSegmentsNeeded(s330Data.sampleCount);
-
-  return {
-    data: s330Data.data,
-    sampleCount: s330Data.sampleCount,
-    segmentLength,
-    sampleRate: targetSampleRate,
-  };
-}
+// Re-export for consumers that import from this module
+export type { PreparedS330Sample };
+export { prepareWavForS330 };
 
 /**
  * Parse WAV file and return metadata for display purposes.

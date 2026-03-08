@@ -1748,6 +1748,12 @@ export function createS330Client(
                 onProgress
             );
 
+            // Step 3: Re-send tone parameters AFTER wave upload
+            // The S-330 may need tone params to be set after wave data is in place
+            // for the sample rate and other playback parameters to take effect correctly.
+            console.log('[S330Client] Step 3: Re-sending tone parameters...');
+            await this.sendToneData(toneIndex, tone);
+
             console.log(`[S330Client] Tone ${toneIndex} imported successfully`);
         },
 

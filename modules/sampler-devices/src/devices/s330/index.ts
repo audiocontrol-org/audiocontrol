@@ -312,6 +312,8 @@ export type {
     S330WaveSampleRate,
     WavData,
     S330WaveData,
+    WavSourceInfo,
+    PreparedS330Sample,
 } from './s330-wave-format.js';
 
 export {
@@ -321,6 +323,8 @@ export {
     s330ToWav,
     calculateSegmentsNeeded,
     validateWaveDataFits,
+    prepareWavForS330,
+    resample,
 } from './s330-wave-format.js';
 
 // =============================================================================
@@ -336,9 +340,9 @@ export type {
 } from './drum-kit-import-service.js';
 
 export {
-    prepareWavForS330,
     importDrumKit,
     verifyDrumKitImport,
+    createDrumTone,
 } from './drum-kit-import-service.js';
 
 // =============================================================================

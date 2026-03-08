@@ -10,7 +10,7 @@
 
 import type { S330Tone, S330Patch, S330PatchCommon } from './s330-types.js';
 import type { S330ClientInterface } from './s330-client.js';
-import { wavToS330, calculateSegmentsNeeded, parseWav } from './s330-wave-format.js';
+import { prepareWavForS330 } from './s330-wave-format.js';
 import { createEmptyToneLayer, setToneAtMidiNote } from './s330-tone-layer.js';
 
 /**
@@ -43,6 +43,8 @@ export interface DrumKitImportConfig {
   startingSegment: number;
   /** Starting patch slot (0-15) */
   startingPatchSlot: number;
+  /** Original key MIDI note (default: 60 = C4) */
+  originalKey?: number;
 }
 
 /**
@@ -90,18 +92,19 @@ export type ImportProgressCallback = (
  * regardless of the triggering MIDI note. The originalKey value doesn't
  * affect playback but is set to a sensible default.
  */
-const DRUM_ORIGINAL_KEY = 60;
+const DEFAULT_ORIGINAL_KEY = 60;
 
 /**
  * Create a drum tone with one-shot loop mode.
  */
-function createDrumTone(
+export function createDrumTone(
   name: string,
   sampleRate: 15000 | 30000,
   waveBank: 0 | 1,
   segmentTop: number,
   segmentLength: number,
-  sampleCount: number
+  sampleCount: number,
+  originalKey: number = DEFAULT_ORIGINAL_KEY
 ): S330Tone {
   return {
     name: name.slice(0, 8).toUpperCase().padEnd(8, ' '),
@@ -109,7 +112,7 @@ function createDrumTone(
     sourceTone: 0,
     origSubTone: 0,
     sampleRate: sampleRate === 30000 ? '30kHz' : '15kHz',
-    originalKey: DRUM_ORIGINAL_KEY,
+    originalKey,
     wave: {
       bank: waveBank,
       segmentTop,
@@ -129,7 +132,7 @@ function createDrumTone(
       offset: 64,
     },
     tvaLfoDepth: 0,
-    transpose: 64,
+    transpose: 0, // Bipolar: -63 to +64, 0 = no pitch change
     fineTune: 0,
     tvf: {
       cutoff: 127,
@@ -206,24 +209,6 @@ function createSingleNotePatch(
 }
 
 /**
- * Convert WAV data to S330 format with segment information.
- */
-export function prepareWavForS330(
-  wavData: ArrayBuffer,
-  targetSampleRate: 15000 | 30000
-): { data: Uint8Array; sampleCount: number; segmentLength: number } {
-  const parsed = parseWav(wavData);
-  const s330Data = wavToS330(parsed, targetSampleRate);
-  const segmentLength = calculateSegmentsNeeded(s330Data.sampleCount);
-
-  return {
-    data: s330Data.data,
-    sampleCount: s330Data.sampleCount,
-    segmentLength,
-  };
-}
-
-/**
  * Import a drum kit to the S-330 device.
  *
  * @param client - S330 client interface
@@ -267,7 +252,8 @@ export async function importDrumKit(
       config.waveBank,
       currentSegment,
       prepared.segmentLength,
-      prepared.sampleCount
+      prepared.sampleCount,
+      config.originalKey
     );
 
     onProgress?.(i + 1, config.samples.length, `Uploading ${sample.drumType}...`);

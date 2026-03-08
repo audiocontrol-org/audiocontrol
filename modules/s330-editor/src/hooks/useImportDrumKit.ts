@@ -8,6 +8,7 @@
 import { useState, useCallback, MutableRefObject } from 'react';
 import type { S330ClientInterface, S330Tone, S330Patch } from '@/core/midi/S330Client';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
+import { createEmptyToneLayer, setToneAtMidiNote, createDrumTone } from '@audiocontrol/sampler-devices/s330';
 import { loadDrumKitSample, prepareWavForS330 } from '@/lib/library-service';
 
 interface ImportDrumKitDialogState {
@@ -44,117 +45,6 @@ interface UseImportDrumKitReturn {
 }
 
 /**
- * Create an S330Tone object for a drum sample with one-shot loop mode.
- */
-function createDrumTone(
-  name: string,
-  sampleRate: 15000 | 30000,
-  waveBank: 0 | 1,
-  segmentTop: number,
-  segmentLength: number,
-  originalKey: number
-): S330Tone {
-  return {
-    // Basic Info
-    name: name.slice(0, 8).toUpperCase().padEnd(8, ' '), // S-330 names are 8 chars
-    outputAssign: 0, // Mix output
-    sourceTone: 0,
-    origSubTone: 0,
-    sampleRate: sampleRate === 30000 ? '30kHz' : '15kHz',
-    originalKey,
-
-    // Wave params
-    wave: {
-      bank: waveBank,
-      segmentTop,
-      segmentLength,
-      startPoint: 0,
-      endPoint: 0, // Will be set based on wave data
-      loopPoint: 0,
-      loopLength: 0,
-    },
-    loopMode: 'one-shot',
-
-    // LFO
-    lfo: {
-      rate: 50,
-      sync: false,
-      delay: 0,
-      mode: 'normal',
-      polarity: false,
-      offset: 64,
-    },
-    tvaLfoDepth: 0,
-
-    // Pitch
-    transpose: 64, // Center
-    fineTune: 0,
-
-    // TVF
-    tvf: {
-      cutoff: 127,
-      resonance: 0,
-      keyFollow: 0,
-      lfoDepth: 0,
-      egDepth: 0,
-      egPolarity: 'normal',
-      levelCurve: 0,
-      keyRateFollow: 0,
-      velRateFollow: 0,
-      enabled: false,
-      envelope: {
-        levels: [127, 127, 127, 127, 127, 127, 127, 127],
-        rates: [127, 127, 127, 127, 127, 127, 127, 127],
-        sustainPoint: 7,
-        endPoint: 8,
-      },
-    },
-
-    // TVA
-    tva: {
-      lfoDepth: 0,
-      keyRate: 0,
-      level: 127,
-      velRate: 0,
-      levelCurve: 0,
-      envelope: {
-        levels: [127, 127, 127, 127, 127, 127, 127, 0],
-        rates: [127, 127, 127, 127, 127, 127, 127, 30],
-        sustainPoint: 6,
-        endPoint: 8,
-      },
-    },
-
-    // Switches
-    benderEnabled: false,
-    aftertouchEnabled: false,
-    pitchFollow: false, // Drums play at original pitch regardless of MIDI note
-
-    // Recording params (defaults)
-    recThreshold: 64,
-    recPreTrigger: 0,
-    loopTune: 0,
-    envZoom: 0,
-    copySource: 0,
-  };
-}
-
-/**
- * Create tone layer array for S-330 patch (109 elements for MIDI 21-127).
- * Returns -1 for unmapped notes.
- */
-function createToneLayer(): number[] {
-  return Array(109).fill(-1);
-}
-
-/**
- * Convert MIDI note to tone layer index (MIDI 21-127 -> 0-108).
- */
-function midiNoteToLayerIndex(midiNote: number): number {
-  return midiNote - 21;
-}
-
-/**
  * Create an S330Patch for a single drum sample.
  * Maps one MIDI note to one tone.
  */
@@ -163,13 +53,9 @@ function createSingleDrumPatch(
   toneSlot: number,
   midiNote: number
 ): S330Patch {
-  const toneLayer1 = createToneLayer();
-
-  // Map the single MIDI note to the tone
-  const layerIndex = midiNoteToLayerIndex(midiNote);
-  if (layerIndex >= 0 && layerIndex < 109) {
-    toneLayer1[layerIndex] = toneSlot;
-  }
+  // Use canonical tone layer functions from sampler-devices
+  const toneLayer1 = createEmptyToneLayer(1);
+  setToneAtMidiNote(toneLayer1, midiNote, toneSlot);
 
   return {
     common: {
@@ -179,7 +65,7 @@ function createSingleDrumPatch(
       keyMode: 'normal',
       velocityThreshold: 64,
       toneLayer1,
-      toneLayer2: createToneLayer(),
+      toneLayer2: createEmptyToneLayer(2),
       copySource: 0,
       octaveShift: 0,
       level: 127,
@@ -272,33 +158,23 @@ export function useImportDrumKit({
 
         setImportStatus(`Loading ${sample.filename}...`);
 
-        // Load WAV file and convert using the single code path
+        // Load WAV file and convert using the canonical conversion function
         const wavBytes = await loadDrumKitSample(libraryHandle, kitName, sample.filename);
         const prepared = prepareWavForS330(wavBytes.buffer as ArrayBuffer, bundle.sampleRate);
-
-        console.log(`[useImportDrumKit] Sample ${i}: ${sample.filename}`);
-        console.log(`[useImportDrumKit]   - WAV bytes: ${wavBytes.length}`);
-        console.log(`[useImportDrumKit]   - S330 data bytes: ${prepared.data.length}`);
-        console.log(`[useImportDrumKit]   - Sample count: ${prepared.sampleCount}`);
-        console.log(`[useImportDrumKit]   - Segment length: ${prepared.segmentLength}`);
-        console.log(`[useImportDrumKit]   - Current segment: ${currentSegment}`);
-        console.log(`[useImportDrumKit]   - Tone slot: ${toneSlot}`);
 
         // Create tone name (use drumType and kit number)
         const toneName = `${sample.drumType.slice(0, 4).toUpperCase()}${sample.kitNumber}`;
 
-        // Create tone object
+        // Create tone object using canonical createDrumTone
         const tone = createDrumTone(
           toneName,
           bundle.sampleRate,
           waveBank,
           currentSegment,
           prepared.segmentLength,
+          prepared.sampleCount,
           sample.midiNote
         );
-
-        // Update end point based on sample length
-        tone.wave.endPoint = prepared.sampleCount;
 
         setImportStatus(`Uploading ${sample.filename}...`);
 
