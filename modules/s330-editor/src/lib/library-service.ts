@@ -569,6 +569,16 @@ export async function saveDeviceToSet(
 }
 
 /**
+ * Callback for fetching tone data from device
+ */
+export type FetchToneDataCallback = (toneIndex: number) => Promise<S330Tone | null>;
+
+/**
+ * Callback for fetching patch data from device
+ */
+export type FetchPatchDataCallback = (patchIndex: number) => Promise<S330Patch | null>;
+
+/**
  * Callback for fetching wave data from device
  */
 export type FetchWaveDataCallback = (
@@ -576,8 +586,17 @@ export type FetchWaveDataCallback = (
   onWaveProgress?: (bytesReceived: number, totalBytes: number) => void
 ) => Promise<S330WaveDataResponse>;
 
+// S-330 constants
+const MAX_TONES = 48;
+const MAX_PATCHES = 16;
+
 /**
  * Save device state to a set incrementally.
+ *
+ * IMPORTANT: This function fetches ALL data fresh from the device.
+ * It does NOT use any cached UI state to ensure accuracy even when
+ * the device state has changed (e.g., after loading a diskette).
+ *
  * Writes each tone/patch to disk immediately after fetching, so partial saves
  * are preserved even if the operation fails partway through.
  */
@@ -585,61 +604,80 @@ export async function saveDeviceToSetIncremental(
   directoryHandle: FileSystemDirectoryHandle,
   setName: string,
   description: string | undefined,
-  tones: (S330Tone | null)[],
-  patches: (S330Patch | null)[],
+  fetchToneData: FetchToneDataCallback,
+  fetchPatchData: FetchPatchDataCallback,
   fetchWaveData: FetchWaveDataCallback,
   onProgress?: (progress: number) => void,
   onStatus?: (message: string) => void
 ): Promise<void> {
-  const sanitizedName = setName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+  const sanitizedSetName = setName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
 
   // Create directory structure first
   onStatus?.('Creating set directory...');
   const setsDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'sets']);
-  const setDir = await setsDir.getDirectoryHandle(sanitizedName, { create: true });
+  const setDir = await setsDir.getDirectoryHandle(sanitizedSetName, { create: true });
   const tonesDir = await setDir.getDirectoryHandle('tones', { create: true });
   const patchesDir = await setDir.getDirectoryHandle('patches', { create: true });
 
-  onProgress?.(5);
-
-  // Count items for progress tracking
-  const validTones: { index: number; tone: S330Tone }[] = [];
-  const validPatches: { index: number; patch: S330Patch }[] = [];
-
-  for (let i = 0; i < tones.length; i++) {
-    const tone = tones[i];
-    if (tone) validTones.push({ index: i, tone });
-  }
-
-  for (let i = 0; i < patches.length; i++) {
-    const patch = patches[i];
-    if (patch) validPatches.push({ index: i, patch });
-  }
-
-  const totalItems = validTones.length + validPatches.length;
-  let processed = 0;
+  onProgress?.(2);
 
   // Track manifest entries for final write
   const toneEntries: { slot: number; file: string; waveAllocation: { bank: 0 | 1; segmentTop: number; segmentLength: number } }[] = [];
   const patchEntries: { slot: number; file: string }[] = [];
 
-  // Process each tone: fetch wave data and write to disk immediately
+  // Phase 1: Scan device for valid tones and patches
+  onStatus?.('Scanning device for tones and patches...');
+  const validTones: { index: number; tone: S330Tone }[] = [];
+  const validPatches: { index: number; patch: S330Patch }[] = [];
+
+  // Scan all tone slots
+  for (let i = 0; i < MAX_TONES; i++) {
+    try {
+      const tone = await fetchToneData(i);
+      if (tone && tone.wave.segmentLength > 0) {
+        validTones.push({ index: i, tone });
+      }
+    } catch (err) {
+      console.warn(`[saveDeviceToSetIncremental] Failed to fetch tone ${i}:`, err);
+    }
+    onProgress?.(2 + Math.floor(((i + 1) / MAX_TONES) * 8));
+  }
+
+  // Scan all patch slots
+  for (let i = 0; i < MAX_PATCHES; i++) {
+    try {
+      const patch = await fetchPatchData(i);
+      if (patch) {
+        validPatches.push({ index: i, patch });
+      }
+    } catch (err) {
+      console.warn(`[saveDeviceToSetIncremental] Failed to fetch patch ${i}:`, err);
+    }
+    onProgress?.(10 + Math.floor(((i + 1) / MAX_PATCHES) * 5));
+  }
+
+  onStatus?.(`Found ${validTones.length} tones and ${validPatches.length} patches`);
+  onProgress?.(15);
+
+  const totalItems = validTones.length + validPatches.length;
+  let processed = 0;
+
+  // Phase 2: Process each tone - fetch wave data and write to disk
   for (const { index, tone } of validTones) {
     const toneSlot = `T${String(index + 1).padStart(2, '0')}`;
-    // Sanitize tone name for filename (remove invalid chars, trim whitespace)
     const sanitizedName = (tone.name || '').trim().replace(/[<>:"/\\|?*]/g, '_');
     const toneFile = sanitizedName ? `${toneSlot} ${sanitizedName}` : toneSlot;
     onStatus?.(`Fetching wave data for ${tone.name || toneSlot}...`);
 
     try {
-      // Fetch wave data from device
+      // Fetch wave data fresh from device
       const waveResponse = await fetchWaveData(index, (_received, _total) => {
         // Could add sub-progress here
       });
 
       onStatus?.(`Writing ${tone.name || toneSlot} to disk...`);
 
-      // Convert tone to YAML
+      // Convert tone to YAML (tone was already fetched fresh from device)
       const toneYaml = s330ToneConverter.toYaml(tone, `${toneFile}.wav`);
       const yamlContent = stringifyYaml(toneYaml, { indent: 2, lineWidth: 120 });
 
@@ -657,14 +695,15 @@ export async function saveDeviceToSetIncremental(
       await wavWritable.write(wavBlob);
       await wavWritable.close();
 
-      // Track for manifest - preserve original segment allocation from device
+      // Track for manifest - use fresh tone data for allocation info
+      const actualSegmentLength = calculateSegmentsNeeded(samples.length);
       toneEntries.push({
         slot: index,
         file: toneFile,
         waveAllocation: {
           bank: tone.wave.bank as 0 | 1,
           segmentTop: tone.wave.segmentTop,
-          segmentLength: tone.wave.segmentLength,
+          segmentLength: actualSegmentLength,
         },
       });
     } catch (err) {
@@ -673,13 +712,12 @@ export async function saveDeviceToSetIncremental(
     }
 
     processed++;
-    onProgress?.(5 + Math.floor((processed / totalItems) * 85));
+    onProgress?.(15 + Math.floor((processed / totalItems) * 75));
   }
 
-  // Process each patch: write to disk immediately
+  // Phase 3: Process each patch - write to disk (already fetched fresh)
   for (const { index, patch } of validPatches) {
     const patchSlot = `P${String(index + 1).padStart(2, '0')}`;
-    // Sanitize patch name for filename
     const sanitizedName = (patch.common.name || '').trim().replace(/[<>:"/\\|?*]/g, '_');
     const patchFile = sanitizedName ? `${patchSlot} ${sanitizedName}` : patchSlot;
     onStatus?.(`Writing ${patch.common.name || patchSlot} to disk...`);

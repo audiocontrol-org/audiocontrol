@@ -243,7 +243,7 @@ export function LibraryPage() {
   // Status message for save operation
   const [operationStatus, setOperationStatus] = useState<string | null>(null);
 
-  // Save device state to set - incremental save that writes to disk as data is fetched
+  // Save device state to set - fetches ALL data fresh from device
   const handleSaveSet = useCallback(async (setName: string, description?: string) => {
     if (!libraryHandle || !clientRef.current) return;
 
@@ -254,14 +254,20 @@ export function LibraryPage() {
     const client = clientRef.current;
 
     try {
-      // Use incremental save - fetches wave data and writes each tone to disk immediately
+      // Use incremental save - fetches ALL data from device (ignores UI cache)
       await saveDeviceToSetIncremental(
         libraryHandle,
         setName,
         description,
-        tones as (S330Tone | null)[],
-        patches as (S330Patch | null)[],
-        // Fetch wave data callback - called for each tone
+        // Fetch tone data callback - fetches fresh from device
+        async (toneIndex) => {
+          return await client.requestToneData(toneIndex);
+        },
+        // Fetch patch data callback - fetches fresh from device
+        async (patchIndex) => {
+          return await client.requestPatchData(patchIndex);
+        },
+        // Fetch wave data callback - fetches fresh from device
         async (toneIndex, onWaveProgress) => {
           return await client.requestWaveData(toneIndex, onWaveProgress ?? (() => {}));
         },
@@ -278,7 +284,7 @@ export function LibraryPage() {
       console.error('[LibraryPage] Failed to save set:', err);
       setOperationError(err instanceof Error ? err.message : 'Failed to save set');
     }
-  }, [libraryHandle, tones, patches, handleRefreshLibrary]);
+  }, [libraryHandle, handleRefreshLibrary]);
 
   // Open load set dialog
   const handleOpenLoadDialog = useCallback(() => {
