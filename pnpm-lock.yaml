@@ -732,6 +732,9 @@ importers:
         specifier: ^2.0.3
         version: 2.0.3
     devDependencies:
+      '@audiocontrol/sampler-library':
+        specifier: workspace:*
+        version: link:../sampler-library
       '@audiocontrol/sampler-midi':
         specifier: workspace:*
         version: link:../sampler-midi

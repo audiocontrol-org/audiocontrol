@@ -588,5 +588,121 @@ describe('S-330 Round-Trip Verification', () => {
         console.log('\nAll signals verified - no corruption detected');
       }
     );
+
+    it(
+      'should verify MIDI note to tone mappings via SysEx',
+      { skip: shouldSkip, timeout: 60000 },
+      async () => {
+        expect(client).toBeDefined();
+
+        const drumTypes = ['kick', 'snare', 'hhClosed', 'hhOpen'] as const;
+        const BASE_MIDI_NOTE = 36; // C2
+
+        console.log('\nVerifying MIDI note to tone mappings via SysEx...\n');
+
+        for (let i = 0; i < drumTypes.length; i++) {
+          const drumType = drumTypes[i];
+          const expectedToneSlot = TEST_STARTING_TONE_SLOT + i;
+          const patchSlot = TEST_STARTING_PATCH_SLOT + i;
+          const expectedMidiNote = BASE_MIDI_NOTE + i;
+
+          // Read patch from device
+          const patch = await client!.requestPatchData(patchSlot);
+          expect(patch).not.toBeNull();
+
+          if (patch) {
+            // toneLayer1 maps MIDI notes 21-127 to tone slots
+            // Index = midiNote - 21
+            const layerIndex = expectedMidiNote - 21;
+            const actualToneSlot = patch.common.toneLayer1[layerIndex];
+
+            console.log(`  ${drumType}:`);
+            console.log(`    - Patch slot: ${patchSlot}`);
+            console.log(`    - Expected MIDI note: ${expectedMidiNote}`);
+            console.log(`    - Expected tone slot: ${expectedToneSlot}`);
+            console.log(`    - Actual tone slot at layer index ${layerIndex}: ${actualToneSlot}`);
+
+            // Verify the mapping is correct
+            expect(actualToneSlot).toBe(expectedToneSlot);
+
+            // Also verify other notes are unmapped (-1)
+            let otherMappings = 0;
+            for (let j = 0; j < patch.common.toneLayer1.length; j++) {
+              if (j !== layerIndex && patch.common.toneLayer1[j] !== -1) {
+                otherMappings++;
+              }
+            }
+            console.log(`    - Other mapped notes in patch: ${otherMappings}`);
+            // This patch should only have one mapped note
+            expect(otherMappings).toBe(0);
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        console.log('\nAll MIDI note mappings verified via SysEx');
+      }
+    );
+
+    it(
+      'should verify MIDI note to tone mappings in exported YAML',
+      { skip: shouldSkip, timeout: 60000 },
+      async () => {
+        expect(client).toBeDefined();
+
+        // Import the patch converter for YAML export
+        const { s330PatchConverter } = await import(
+          '@audiocontrol/sampler-library'
+        );
+
+        const drumTypes = ['kick', 'snare', 'hhClosed', 'hhOpen'] as const;
+        const BASE_MIDI_NOTE = 36; // C2
+
+        console.log('\nVerifying MIDI note to tone mappings in exported YAML...\n');
+
+        for (let i = 0; i < drumTypes.length; i++) {
+          const drumType = drumTypes[i];
+          const expectedToneSlot = TEST_STARTING_TONE_SLOT + i;
+          const patchSlot = TEST_STARTING_PATCH_SLOT + i;
+          const expectedMidiNote = BASE_MIDI_NOTE + i;
+
+          // Read patch from device
+          const patch = await client!.requestPatchData(patchSlot);
+          expect(patch).not.toBeNull();
+
+          if (patch) {
+            // Convert to YAML format using the existing converter
+            const patchYaml = s330PatchConverter.toYaml(patch);
+
+            console.log(`  ${drumType}:`);
+            console.log(`    - Patch name: "${patchYaml.name}"`);
+            console.log(`    - Format: ${patchYaml.format}`);
+            console.log(`    - Device: ${patchYaml.device}`);
+
+            // Verify YAML has the s330 extension with toneLayer1
+            expect(patchYaml.s330).toBeDefined();
+            expect(patchYaml.s330?.toneLayer1).toBeDefined();
+
+            // Check the mapping in the YAML
+            const layerIndex = expectedMidiNote - 21;
+            const yamlToneSlot = patchYaml.s330?.toneLayer1?.[layerIndex];
+
+            console.log(`    - YAML toneLayer1[${layerIndex}] (MIDI ${expectedMidiNote}): ${yamlToneSlot}`);
+            console.log(`    - Expected tone slot: ${expectedToneSlot}`);
+
+            expect(yamlToneSlot).toBe(expectedToneSlot);
+
+            // Verify format is correct for serialization
+            expect(patchYaml.format).toBe('sampler-patch');
+            expect(patchYaml.device).toBe('s330');
+            expect(patchYaml.version).toBe(1);
+          }
+
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        }
+
+        console.log('\nAll MIDI note mappings verified in exported YAML');
+      }
+    );
   });
 });

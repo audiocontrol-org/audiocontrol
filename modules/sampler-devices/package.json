@@ -74,6 +74,7 @@
     "url": "https://github.com/oletizi/ol_dsp/issues"
   },
   "devDependencies": {
+    "@audiocontrol/sampler-library": "workspace:*",
     "@audiocontrol/sampler-midi": "workspace:*",
     "@tsconfig/recommended": "^1.0.8",
     "@types/node": "^22.13.1",
