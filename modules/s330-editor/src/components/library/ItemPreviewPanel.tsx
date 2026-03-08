@@ -5,14 +5,25 @@
  * with action buttons for import/export.
  */
 
+import { useState, useEffect } from 'react';
 import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
+import type { SetYaml } from '@audiocontrol/sampler-library/browser';
 import type { ItemSelection } from '@/pages/LibraryPage';
+import {
+  loadToneFromSet,
+  loadPatchFromSet,
+  loadSetManifest,
+  convertYamlToS330Tone,
+  convertYamlToS330Patch,
+} from '@/lib/library-service';
 
 interface ItemPreviewPanelProps {
   selection: ItemSelection | null;
   deviceTones: (S330Tone | undefined)[];
   devicePatches: (S330Patch | undefined)[];
   libraryHandle: FileSystemDirectoryHandle | null;
+  onImportTone?: (setName: string, toneFile: string) => void;
+  onImportPatch?: (setName: string, patchFile: string) => void;
 }
 
 /**
@@ -34,12 +45,12 @@ function formatPatchSlot(index: number): string {
 /**
  * Tone preview component
  */
-function TonePreview({ tone, slotIndex }: { tone: S330Tone; slotIndex: number }): JSX.Element {
+function TonePreview({ tone, slotLabel }: { tone: S330Tone; slotLabel: string }): JSX.Element {
   return (
     <div className="space-y-4">
       <div>
         <div className="text-xs text-s330-muted uppercase tracking-wide mb-1">
-          {formatToneSlot(slotIndex)}
+          {slotLabel}
         </div>
         <h4 className="text-lg font-bold text-s330-text">{tone.name}</h4>
       </div>
@@ -95,14 +106,42 @@ function TonePreview({ tone, slotIndex }: { tone: S330Tone; slotIndex: number })
 }
 
 /**
+ * Library tone preview from YAML (shows original slot from file name)
+ */
+function LibraryTonePreview({
+  tone,
+  fileName,
+  onImport,
+}: {
+  tone: S330Tone;
+  fileName: string;
+  onImport?: () => void;
+}): JSX.Element {
+  return (
+    <div className="space-y-4">
+      <TonePreview tone={tone} slotLabel={`Library Tone: ${fileName}`} />
+
+      {onImport && (
+        <button
+          onClick={onImport}
+          className="w-full ac-btn ac-btn-primary"
+        >
+          Import to Device
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
  * Patch preview component
  */
-function PatchPreview({ patch, slotIndex }: { patch: S330Patch; slotIndex: number }): JSX.Element {
+function PatchPreview({ patch, slotLabel }: { patch: S330Patch; slotLabel: string }): JSX.Element {
   return (
     <div className="space-y-4">
       <div>
         <div className="text-xs text-s330-muted uppercase tracking-wide mb-1">
-          {formatPatchSlot(slotIndex)}
+          {slotLabel}
         </div>
         <h4 className="text-lg font-bold text-s330-text">{patch.common.name}</h4>
       </div>
@@ -147,6 +186,76 @@ function PatchPreview({ patch, slotIndex }: { patch: S330Patch; slotIndex: numbe
 }
 
 /**
+ * Library patch preview with tone dependencies
+ */
+function LibraryPatchPreview({
+  patch,
+  fileName,
+  manifest,
+  onImport,
+}: {
+  patch: S330Patch;
+  fileName: string;
+  manifest: SetYaml | null;
+  onImport?: () => void;
+}): JSX.Element {
+  // Find required tones by analyzing toneLayer1 and toneLayer2
+  const requiredTones = new Set<number>();
+  for (const toneIndex of patch.common.toneLayer1) {
+    if (toneIndex !== -1) {
+      requiredTones.add(toneIndex);
+    }
+  }
+  for (const toneIndex of patch.common.toneLayer2) {
+    if (toneIndex !== -1) {
+      requiredTones.add(toneIndex);
+    }
+  }
+
+  const sortedTones = Array.from(requiredTones).sort((a, b) => a - b);
+
+  // Look up tone files in manifest
+  const toneFiles = manifest
+    ? sortedTones.map((slot) => {
+        const entry = manifest.tones.find((t) => t.slot === slot);
+        return entry ? entry.file : formatToneSlot(slot);
+      })
+    : sortedTones.map((slot) => formatToneSlot(slot));
+
+  return (
+    <div className="space-y-4">
+      <PatchPreview patch={patch} slotLabel={`Library Patch: ${fileName}`} />
+
+      {/* Required Tones */}
+      {sortedTones.length > 0 && (
+        <div className="bg-s330-bg rounded p-3 text-sm">
+          <div className="text-s330-muted text-xs uppercase tracking-wide mb-2">
+            Required Tones ({sortedTones.length})
+          </div>
+          <div className="space-y-1">
+            {sortedTones.map((slot, idx) => (
+              <div key={slot} className="flex items-center gap-2 text-s330-text">
+                <span className="text-s330-muted">{formatToneSlot(slot)}:</span>
+                <span className="truncate">{toneFiles[idx]}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {onImport && (
+        <button
+          onClick={onImport}
+          className="w-full ac-btn ac-btn-primary"
+        >
+          Import to Device
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
  * Set preview component (for library sets)
  */
 function SetPreview({ name }: { name: string }): JSX.Element {
@@ -168,11 +277,95 @@ function SetPreview({ name }: { name: string }): JSX.Element {
   );
 }
 
+/**
+ * Loading state component
+ */
+function LoadingState(): JSX.Element {
+  return (
+    <div className="flex items-center justify-center py-8">
+      <div className="flex items-center gap-2 text-s330-muted">
+        <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+        <span>Loading...</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Error state component
+ */
+function ErrorState({ message }: { message: string }): JSX.Element {
+  return (
+    <div className="text-center text-red-400 text-sm py-8">
+      <p>Failed to load: {message}</p>
+    </div>
+  );
+}
+
 export function ItemPreviewPanel({
   selection,
   deviceTones,
   devicePatches,
+  libraryHandle,
+  onImportTone,
+  onImportPatch,
 }: ItemPreviewPanelProps): JSX.Element {
+  // State for loaded library items
+  const [loadingLibraryItem, setLoadingLibraryItem] = useState(false);
+  const [libraryTone, setLibraryTone] = useState<S330Tone | null>(null);
+  const [libraryPatch, setLibraryPatch] = useState<S330Patch | null>(null);
+  const [libraryManifest, setLibraryManifest] = useState<SetYaml | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // Load library item when selection changes
+  useEffect(() => {
+    // Reset state
+    setLibraryTone(null);
+    setLibraryPatch(null);
+    setLibraryManifest(null);
+    setLoadError(null);
+
+    if (!selection || selection.source !== 'library' || !libraryHandle) {
+      return;
+    }
+
+    // Skip if set (not individual item)
+    if (selection.type === 'set') {
+      return;
+    }
+
+    // Need setName for library tones/patches
+    if (!selection.setName || !selection.name) {
+      return;
+    }
+
+    const loadItem = async () => {
+      setLoadingLibraryItem(true);
+      try {
+        // Load manifest for context (needed for patch dependencies)
+        const manifest = await loadSetManifest(libraryHandle, selection.setName!);
+        setLibraryManifest(manifest);
+
+        if (selection.type === 'tone') {
+          const { yaml } = await loadToneFromSet(libraryHandle, selection.setName!, selection.name!);
+          const tone = convertYamlToS330Tone(yaml);
+          setLibraryTone(tone);
+        } else if (selection.type === 'patch') {
+          const patchYaml = await loadPatchFromSet(libraryHandle, selection.setName!, selection.name!);
+          const patch = convertYamlToS330Patch(patchYaml);
+          setLibraryPatch(patch);
+        }
+      } catch (err) {
+        console.error('[ItemPreviewPanel] Failed to load library item:', err);
+        setLoadError(err instanceof Error ? err.message : 'Failed to load item');
+      } finally {
+        setLoadingLibraryItem(false);
+      }
+    };
+
+    loadItem();
+  }, [selection, libraryHandle]);
+
   // Empty state
   if (!selection) {
     return (
@@ -199,7 +392,7 @@ export function ItemPreviewPanel({
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {tone ? (
-            <TonePreview tone={tone} slotIndex={selection.index} />
+            <TonePreview tone={tone} slotLabel={formatToneSlot(selection.index)} />
           ) : (
             <div className="text-center text-s330-muted text-sm py-8">
               <p>Empty slot</p>
@@ -220,7 +413,7 @@ export function ItemPreviewPanel({
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           {patch ? (
-            <PatchPreview patch={patch} slotIndex={selection.index} />
+            <PatchPreview patch={patch} slotLabel={formatPatchSlot(selection.index)} />
           ) : (
             <div className="text-center text-s330-muted text-sm py-8">
               <p>Empty slot</p>
@@ -240,6 +433,65 @@ export function ItemPreviewPanel({
         </div>
         <div className="flex-1 overflow-y-auto p-4">
           <SetPreview name={selection.name} />
+        </div>
+      </div>
+    );
+  }
+
+  // Library tone selected
+  if (selection.source === 'library' && selection.type === 'tone' && selection.setName && selection.name) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="p-3 border-b border-s330-accent">
+          <h3 className="font-bold text-s330-text">Library Tone</h3>
+          <p className="text-xs text-s330-muted mt-0.5">from {selection.setName}</p>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          {loadingLibraryItem ? (
+            <LoadingState />
+          ) : loadError ? (
+            <ErrorState message={loadError} />
+          ) : libraryTone ? (
+            <LibraryTonePreview
+              tone={libraryTone}
+              fileName={selection.name}
+              onImport={onImportTone ? () => onImportTone(selection.setName!, selection.name!) : undefined}
+            />
+          ) : (
+            <div className="text-center text-s330-muted text-sm py-8">
+              <p>Could not load tone</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Library patch selected
+  if (selection.source === 'library' && selection.type === 'patch' && selection.setName && selection.name) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="p-3 border-b border-s330-accent">
+          <h3 className="font-bold text-s330-text">Library Patch</h3>
+          <p className="text-xs text-s330-muted mt-0.5">from {selection.setName}</p>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          {loadingLibraryItem ? (
+            <LoadingState />
+          ) : loadError ? (
+            <ErrorState message={loadError} />
+          ) : libraryPatch ? (
+            <LibraryPatchPreview
+              patch={libraryPatch}
+              fileName={selection.name}
+              manifest={libraryManifest}
+              onImport={onImportPatch ? () => onImportPatch(selection.setName!, selection.name!) : undefined}
+            />
+          ) : (
+            <div className="text-center text-s330-muted text-sm py-8">
+              <p>Could not load patch</p>
+            </div>
+          )}
         </div>
       </div>
     );

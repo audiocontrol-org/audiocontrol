@@ -18,6 +18,8 @@ import { LibraryTreePanel } from '@/components/library/LibraryTreePanel';
 import { ItemPreviewPanel } from '@/components/library/ItemPreviewPanel';
 import { SaveSetDialog } from '@/components/library/SaveSetDialog';
 import { LoadSetDialog } from '@/components/library/LoadSetDialog';
+import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneDialog';
+import { ImportLibraryPatchDialog } from '@/components/library/ImportLibraryPatchDialog';
 import {
   hasFileSystemAccess,
   pickLibraryDirectory,
@@ -68,6 +70,17 @@ export function LibraryPage() {
   const [isLoadDialogOpen, setIsLoadDialogOpen] = useState(false);
   const [operationProgress, setOperationProgress] = useState<number | undefined>(undefined);
   const [operationError, setOperationError] = useState<string | null>(null);
+
+  // Import dialog state
+  const [importToneDialog, setImportToneDialog] = useState<{
+    setName: string;
+    toneFile: string;
+  } | null>(null);
+  const [importPatchDialog, setImportPatchDialog] = useState<{
+    setName: string;
+    patchFile: string;
+  } | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
 
   // S330 client ref
   const clientRef = useRef<S330ClientInterface | null>(null);
@@ -334,6 +347,169 @@ export function LibraryPage() {
     setSelection({ source: 'library', type, name, setName });
   }, []);
 
+  // Open import tone dialog
+  const handleOpenImportToneDialog = useCallback((setName: string, toneFile: string) => {
+    setOperationError(null);
+    setOperationProgress(undefined);
+    setOperationStatus(null);
+    setImportToneDialog({ setName, toneFile });
+  }, []);
+
+  // Open import patch dialog
+  const handleOpenImportPatchDialog = useCallback((setName: string, patchFile: string) => {
+    setOperationError(null);
+    setOperationProgress(undefined);
+    setOperationStatus(null);
+    setImportPatchDialog({ setName, patchFile });
+  }, []);
+
+  // Import single tone from library
+  const handleImportLibraryTone = useCallback(async (params: {
+    setName: string;
+    toneFile: string;
+    tone: S330Tone;
+    wavData: Uint8Array;
+    targetSlot: number;
+    waveBank: 0 | 1;
+    segmentTop: number;
+    segmentLength: number;
+  }) => {
+    if (!clientRef.current) return;
+
+    setIsImporting(true);
+    setOperationProgress(0);
+    setOperationError(null);
+    setOperationStatus(`Uploading ${params.tone.name}...`);
+
+    try {
+      // Update tone wave parameters to match target allocation
+      const toneWithNewWave: S330Tone = {
+        ...params.tone,
+        wave: {
+          ...params.tone.wave,
+          bank: params.waveBank,
+          segmentTop: params.segmentTop,
+          segmentLength: params.segmentLength,
+        },
+      };
+
+      await clientRef.current.importTone(
+        {
+          toneIndex: params.targetSlot,
+          waveData: params.wavData,
+          waveBank: params.waveBank,
+          segmentTop: params.segmentTop,
+          segmentLength: params.segmentLength,
+          tone: toneWithNewWave,
+        },
+        (bytesSent, totalBytes) => {
+          const pct = totalBytes > 0 ? Math.floor((bytesSent / totalBytes) * 100) : 0;
+          setOperationProgress(pct);
+          setOperationStatus(`Uploading: ${pct}%`);
+        }
+      );
+
+      // Update local state
+      setTone(params.targetSlot, toneWithNewWave);
+
+      setOperationProgress(100);
+      setOperationStatus('Import complete!');
+
+      // Brief delay to show completion message
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    } catch (err) {
+      console.error('[LibraryPage] Failed to import tone:', err);
+      setOperationError(err instanceof Error ? err.message : 'Failed to import tone');
+      throw err;
+    } finally {
+      setIsImporting(false);
+    }
+  }, [setTone]);
+
+  // Import patch with its tones from library
+  const handleImportLibraryPatch = useCallback(async (params: {
+    setName: string;
+    patchFile: string;
+    patch: S330Patch;
+    targetPatchSlot: number;
+    tones: Array<{
+      tone: S330Tone;
+      wavData: Uint8Array;
+      targetSlot: number;
+      waveBank: 0 | 1;
+      segmentTop: number;
+      segmentLength: number;
+    }>;
+  }) => {
+    if (!clientRef.current) return;
+
+    setIsImporting(true);
+    setOperationProgress(0);
+    setOperationError(null);
+
+    try {
+      const totalSteps = params.tones.length + 1;
+      let completedSteps = 0;
+
+      // Import each required tone
+      for (const toneData of params.tones) {
+        setOperationStatus(`Uploading tone ${toneData.tone.name}...`);
+
+        // Update tone wave parameters to match target allocation
+        const toneWithNewWave: S330Tone = {
+          ...toneData.tone,
+          wave: {
+            ...toneData.tone.wave,
+            bank: toneData.waveBank,
+            segmentTop: toneData.segmentTop,
+            segmentLength: toneData.segmentLength,
+          },
+        };
+
+        await clientRef.current.importTone(
+          {
+            toneIndex: toneData.targetSlot,
+            waveData: toneData.wavData,
+            waveBank: toneData.waveBank,
+            segmentTop: toneData.segmentTop,
+            segmentLength: toneData.segmentLength,
+            tone: toneWithNewWave,
+          },
+          (bytesSent, totalBytes) => {
+            const tonePct = totalBytes > 0 ? (bytesSent / totalBytes) : 0;
+            const overallPct = ((completedSteps + tonePct) / totalSteps) * 100;
+            setOperationProgress(Math.floor(overallPct));
+          }
+        );
+
+        // Update local state
+        setTone(toneData.targetSlot, toneWithNewWave);
+        completedSteps++;
+
+        // Give the S-330 time to process
+        await new Promise((resolve) => setTimeout(resolve, 200));
+      }
+
+      // Import the patch
+      setOperationStatus(`Uploading patch ${params.patch.common.name}...`);
+      await clientRef.current.sendPatchData(params.targetPatchSlot, params.patch.common);
+      setPatch(params.targetPatchSlot, params.patch);
+      completedSteps++;
+
+      setOperationProgress(100);
+      setOperationStatus('Import complete!');
+
+      // Brief delay to show completion message
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    } catch (err) {
+      console.error('[LibraryPage] Failed to import patch:', err);
+      setOperationError(err instanceof Error ? err.message : 'Failed to import patch');
+      throw err;
+    } finally {
+      setIsImporting(false);
+    }
+  }, [setTone, setPatch]);
+
   // Render not connected state
   if (!isConnected) {
     return (
@@ -426,6 +602,7 @@ export function LibraryPage() {
             sets={sets}
             selectedName={selection?.source === 'library' ? selection.name : undefined}
             selectedType={selection?.source === 'library' ? selection.type : undefined}
+            selectedSetName={selection?.source === 'library' ? selection.setName : undefined}
             onSelectSet={(name) => handleSelectLibrary('set', name)}
             onSelectTone={(name, setName) => handleSelectLibrary('tone', name, setName)}
             onSelectPatch={(name, setName) => handleSelectLibrary('patch', name, setName)}
@@ -441,6 +618,8 @@ export function LibraryPage() {
             deviceTones={tones}
             devicePatches={patches}
             libraryHandle={libraryHandle}
+            onImportTone={handleOpenImportToneDialog}
+            onImportPatch={handleOpenImportPatchDialog}
           />
         </div>
       </div>
@@ -467,6 +646,45 @@ export function LibraryPage() {
         error={operationError}
         statusMessage={operationStatus}
       />
+
+      {/* Import Library Tone Dialog */}
+      {importToneDialog && libraryHandle && (
+        <ImportLibraryToneDialog
+          open={!!importToneDialog}
+          onOpenChange={(open) => {
+            if (!open) setImportToneDialog(null);
+          }}
+          libraryHandle={libraryHandle}
+          setName={importToneDialog.setName}
+          toneFile={importToneDialog.toneFile}
+          deviceTones={tones}
+          onImport={handleImportLibraryTone}
+          isImporting={isImporting}
+          importProgress={operationProgress}
+          importError={operationError}
+          statusMessage={operationStatus}
+        />
+      )}
+
+      {/* Import Library Patch Dialog */}
+      {importPatchDialog && libraryHandle && (
+        <ImportLibraryPatchDialog
+          open={!!importPatchDialog}
+          onOpenChange={(open) => {
+            if (!open) setImportPatchDialog(null);
+          }}
+          libraryHandle={libraryHandle}
+          setName={importPatchDialog.setName}
+          patchFile={importPatchDialog.patchFile}
+          deviceTones={tones}
+          devicePatches={patches}
+          onImport={handleImportLibraryPatch}
+          isImporting={isImporting}
+          importProgress={operationProgress}
+          importError={operationError}
+          statusMessage={operationStatus}
+        />
+      )}
     </div>
   );
 }

@@ -783,6 +783,69 @@ export async function deleteSet(
   await setsDir.removeEntry(sanitizedName, { recursive: true });
 }
 
+// =========================================================================
+// Patch Dependency Analysis
+// =========================================================================
+
+/**
+ * Analyze a patch to find which tones it references.
+ *
+ * Examines toneLayer1 and toneLayer2 arrays to find all unique tone indices.
+ * Returns sorted array of tone slot indices (0-31).
+ */
+export function getPatchToneDependencies(patch: S330Patch): number[] {
+  const usedTones = new Set<number>();
+
+  // Check toneLayer1 (indices 0-31, -1 means no tone assigned)
+  for (const toneIndex of patch.common.toneLayer1) {
+    if (toneIndex >= 0 && toneIndex <= 31) {
+      usedTones.add(toneIndex);
+    }
+  }
+
+  // Check toneLayer2
+  for (const toneIndex of patch.common.toneLayer2) {
+    if (toneIndex >= 0 && toneIndex <= 31) {
+      usedTones.add(toneIndex);
+    }
+  }
+
+  return Array.from(usedTones).sort((a, b) => a - b);
+}
+
+/**
+ * Remap tone indices in a patch's tone layers.
+ *
+ * Creates a new patch with updated toneLayer1 and toneLayer2 arrays
+ * where all tone references are remapped according to the provided mapping.
+ *
+ * @param patch - Original patch
+ * @param toneMapping - Map of original tone slot -> new tone slot
+ * @returns New patch with remapped tone layers
+ */
+export function remapPatchToneLayers(
+  patch: S330Patch,
+  toneMapping: Map<number, number>
+): S330Patch {
+  const newToneLayer1 = patch.common.toneLayer1.map((toneIndex) => {
+    if (toneIndex < 0) return toneIndex; // -1 stays -1
+    return toneMapping.get(toneIndex) ?? toneIndex;
+  });
+
+  const newToneLayer2 = patch.common.toneLayer2.map((toneIndex) => {
+    if (toneIndex < 0) return toneIndex;
+    return toneMapping.get(toneIndex) ?? toneIndex;
+  });
+
+  return {
+    common: {
+      ...patch.common,
+      toneLayer1: newToneLayer1,
+      toneLayer2: newToneLayer2,
+    },
+  };
+}
+
 // TypeScript declarations for File System Access API
 declare global {
   interface Window {
