@@ -83,3 +83,16 @@ export type {
   SetInfo,
   SetData,
 } from './set-schema.js';
+
+// Drum kit bundle schemas
+export {
+  DrumKitSamplesSchema,
+  DrumKitEntryBundleSchema,
+  DrumKitBundleSchema,
+} from './drum-kit-bundle-schema.js';
+
+export type {
+  DrumKitSamples,
+  DrumKitEntryBundle,
+  DrumKitBundle,
+} from './drum-kit-bundle-schema.js';

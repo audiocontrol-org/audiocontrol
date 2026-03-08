@@ -322,3 +322,21 @@ export {
     calculateSegmentsNeeded,
     validateWaveDataFits,
 } from './s330-wave-format.js';
+
+// =============================================================================
+// Drum Kit Import Service Exports
+// =============================================================================
+
+export type {
+    DrumSampleInput,
+    DrumKitImportConfig,
+    ImportedSample,
+    DrumKitImportResult,
+    ImportProgressCallback,
+} from './drum-kit-import-service.js';
+
+export {
+    prepareWavForS330,
+    importDrumKit,
+    verifyDrumKitImport,
+} from './drum-kit-import-service.js';

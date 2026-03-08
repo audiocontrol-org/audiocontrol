@@ -140,3 +140,34 @@ export type {
   TemplateApplicationResult,
   TemplateHandler,
 } from './templates/index.js';
+
+// Drum kit bundle exports
+export {
+  DrumKitSamplesSchema,
+  DrumKitEntryBundleSchema,
+  DrumKitBundleSchema,
+} from './schemas/index.js';
+
+export type {
+  DrumKitSamples,
+  DrumKitEntryBundle,
+  DrumKitBundle,
+} from './schemas/index.js';
+
+export {
+  parseDrumFilename,
+  parseDrumKitDirectory,
+  loadDrumKitBundle,
+  resolveMidiNotes,
+  getAllSampleFilenames,
+  midiNoteToName,
+} from './drum-kits/index.js';
+
+export type {
+  DrumSampleType,
+  DetectedDrumSample,
+  KitSamples,
+  KitMidiNotes,
+  DetectedKit,
+  ResolvedDrumKitBundle,
+} from './drum-kits/index.js';

@@ -9,12 +9,11 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
 import {
-  parseWav,
-  wavToS330,
-  calculateSegmentsNeeded,
-  type WavData,
-  type S330WaveSampleRate,
-} from '@audiocontrol/sampler-devices/s330';
+  prepareWavForS330,
+  getWavFileInfo,
+  calculateWavSegmentsNeeded,
+  type WavFileInfo,
+} from '@/lib/library-service';
 
 export interface ImportSampleDialogProps {
   /** Whether the dialog is open */
@@ -45,9 +44,10 @@ export interface ImportSampleDialogProps {
   importError?: string | null;
 }
 
-/** Extended WAV info for display purposes */
-interface WavDisplayInfo extends WavData {
-  duration: number;
+/** WAV file bytes for conversion */
+interface WavFileState {
+  info: WavFileInfo;
+  bytes: ArrayBuffer;
 }
 
 export function ImportSampleDialog({
@@ -61,10 +61,10 @@ export function ImportSampleDialog({
   importError,
 }: ImportSampleDialogProps): JSX.Element {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [wavInfo, setWavInfo] = useState<WavDisplayInfo | null>(null);
+  const [wavFile, setWavFile] = useState<WavFileState | null>(null);
   const [parseError, setParseError] = useState<string | null>(null);
   const [name, setName] = useState(toneName || '');
-  const [targetSampleRate, setTargetSampleRate] = useState<'15kHz' | '30kHz'>('30kHz');
+  const [targetSampleRate, setTargetSampleRate] = useState<'15kHz' | '30kHz'>('15kHz');
   const [waveBank, setWaveBank] = useState<0 | 1>(0);
   const [targetSegment, setTargetSegment] = useState(0);
   const [loopMode, setLoopMode] = useState<'forward' | 'alternating' | 'one-shot' | 'reverse'>('one-shot');
@@ -75,7 +75,7 @@ export function ImportSampleDialog({
   useEffect(() => {
     if (open) {
       setSelectedFile(null);
-      setWavInfo(null);
+      setWavFile(null);
       setParseError(null);
       setName(toneName || '');
       setTargetSampleRate('30kHz');
@@ -87,10 +87,8 @@ export function ImportSampleDialog({
   }, [open, toneName]);
 
   // Calculate segments needed based on output sample count after resampling
-  const segmentsNeeded = wavInfo
-    ? calculateSegmentsNeeded(
-        Math.floor(wavInfo.samples.length * ((targetSampleRate === '30kHz' ? 30000 : 15000) / wavInfo.sampleRate))
-      )
+  const segmentsNeeded = wavFile
+    ? calculateWavSegmentsNeeded(wavFile.bytes, targetSampleRate === '30kHz' ? 30000 : 15000)
     : 1;
 
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -99,25 +97,17 @@ export function ImportSampleDialog({
 
     setSelectedFile(file);
     setParseError(null);
-    setWavInfo(null);
+    setWavFile(null);
 
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const wavData = parseWav(arrayBuffer);
-      const duration = wavData.samples.length / wavData.sampleRate;
-      setWavInfo({ ...wavData, duration });
+      const info = getWavFileInfo(arrayBuffer);
+      setWavFile({ info, bytes: arrayBuffer });
 
       // Auto-set name from filename if not already set
       if (!name) {
         const baseName = file.name.replace(/\.wav$/i, '').slice(0, 8);
         setName(baseName);
-      }
-
-      // Auto-select sample rate closest to source
-      if (wavData.sampleRate <= 22500) {
-        setTargetSampleRate('15kHz');
-      } else {
-        setTargetSampleRate('30kHz');
       }
     } catch (err) {
       setParseError(err instanceof Error ? err.message : 'Failed to parse WAV file');
@@ -125,7 +115,7 @@ export function ImportSampleDialog({
   }, [name]);
 
   const handleImport = useCallback(async () => {
-    if (!wavInfo || !name.trim()) {
+    if (!wavFile || !name.trim()) {
       setLocalError('Please select a file and enter a name');
       return;
     }
@@ -133,17 +123,17 @@ export function ImportSampleDialog({
     setLocalError(null);
 
     try {
-      // Convert to S-330 format (includes resampling)
-      const targetRate: S330WaveSampleRate = targetSampleRate === '30kHz' ? 30000 : 15000;
-      const s330Data = wavToS330(wavInfo, targetRate);
+      // Convert to S-330 format using the single code path
+      const targetRate = targetSampleRate === '30kHz' ? 30000 : 15000;
+      const prepared = prepareWavForS330(wavFile.bytes, targetRate);
 
       await onImport({
         toneIndex,
         name: name.trim(),
-        waveData: s330Data.data,
+        waveData: prepared.data,
         waveBank,
         segmentTop: targetSegment,
-        segmentLength: calculateSegmentsNeeded(s330Data.sampleCount),
+        segmentLength: prepared.segmentLength,
         sampleRate: targetSampleRate,
         loopMode,
         loopPoint: 0,
@@ -151,7 +141,7 @@ export function ImportSampleDialog({
     } catch (err) {
       // Error handled by parent
     }
-  }, [wavInfo, name, targetSampleRate, targetSegment, loopMode, toneIndex, onImport, waveBank]);
+  }, [wavFile, name, targetSampleRate, targetSegment, loopMode, toneIndex, onImport, waveBank]);
 
   const handleClose = useCallback(() => {
     if (!isImporting) {
@@ -224,25 +214,25 @@ export function ImportSampleDialog({
               </div>
 
               {/* WAV Info */}
-              {wavInfo && (
+              {wavFile && (
                 <div className="bg-s330-bg rounded p-3 text-sm">
                   <div className="text-s330-muted mb-1">File Info:</div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <span className="text-s330-muted">Sample Rate:</span>
-                      <span className="ml-2 text-s330-text">{wavInfo.sampleRate} Hz</span>
+                      <span className="ml-2 text-s330-text">{wavFile.info.sampleRate} Hz</span>
                     </div>
                     <div>
                       <span className="text-s330-muted">Duration:</span>
-                      <span className="ml-2 text-s330-text">{wavInfo.duration.toFixed(2)}s</span>
+                      <span className="ml-2 text-s330-text">{wavFile.info.duration.toFixed(2)}s</span>
                     </div>
                     <div>
                       <span className="text-s330-muted">Channels:</span>
-                      <span className="ml-2 text-s330-text">{wavInfo.channels}</span>
+                      <span className="ml-2 text-s330-text">{wavFile.info.channels}</span>
                     </div>
                     <div>
                       <span className="text-s330-muted">Bit Depth:</span>
-                      <span className="ml-2 text-s330-text">{wavInfo.bitsPerSample}-bit</span>
+                      <span className="ml-2 text-s330-text">{wavFile.info.bitsPerSample}-bit</span>
                     </div>
                   </div>
                 </div>
@@ -286,8 +276,8 @@ export function ImportSampleDialog({
                     isImporting && 'opacity-50'
                   )}
                 >
-                  <option value="30kHz">30 kHz (higher quality)</option>
-                  <option value="15kHz">15 kHz (uses less memory)</option>
+                  <option value="15kHz">15 kHz (default)</option>
+                  <option value="30kHz">30 kHz (higher quality, uses more memory)</option>
                 </select>
               </div>
 
@@ -398,10 +388,10 @@ export function ImportSampleDialog({
                 </button>
                 <button
                   onClick={handleImport}
-                  disabled={isImporting || !wavInfo || !name.trim()}
+                  disabled={isImporting || !wavFile || !name.trim()}
                   className={cn(
                     'ac-btn ac-btn-primary',
-                    (isImporting || !wavInfo || !name.trim()) && 'opacity-50 cursor-not-allowed'
+                    (isImporting || !wavFile || !name.trim()) && 'opacity-50 cursor-not-allowed'
                   )}
                 >
                   {isImporting ? (

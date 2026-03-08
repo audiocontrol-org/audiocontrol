@@ -15,20 +15,123 @@ import type { S330WaveDataResponse } from '@audiocontrol/sampler-devices/s330';
 import {
   ToneYamlSchema,
   SetYamlSchema,
+  DrumKitBundleSchema,
   s330ToneConverter,
   s330PatchConverter,
   deviceStateToSet,
   setToDeviceState,
   parseWav,
   wavToS330,
+  calculateSegmentsNeeded,
+  loadDrumKitBundle as parseDrumKitBundle,
   type ToneYaml,
   type PatchYaml,
   type SetYaml,
   type SetInfo,
   type DeviceStateInput,
   type SetToDeviceInput,
+  type DrumKitBundle,
+  type ResolvedDrumKitBundle,
 } from '@audiocontrol/sampler-library/browser';
 import { createWavBlobFromSamples, unpack12BitTo16Bit } from '@/lib/wave-export';
+
+// =========================================================================
+// WAV to S330 Conversion (Single Code Path)
+// =========================================================================
+
+/**
+ * Prepared S330 sample data ready for device upload.
+ */
+export interface PreparedS330Sample {
+  /** S330 12-bit packed wave data */
+  data: Uint8Array;
+  /** Number of samples (not bytes) */
+  sampleCount: number;
+  /** Number of segments needed on device */
+  segmentLength: number;
+  /** Target sample rate */
+  sampleRate: 15000 | 30000;
+}
+
+/**
+ * Convert raw WAV file bytes to S330 format.
+ *
+ * This is the ONLY function that should be used for WAV → S330 conversion.
+ * All UI components and hooks must use this function to ensure consistent
+ * conversion behavior.
+ *
+ * @param wavBytes - Raw WAV file data
+ * @param targetSampleRate - Target sample rate (15000 or 30000 Hz)
+ * @returns Prepared sample data ready for device upload
+ */
+export function prepareWavForS330(
+  wavBytes: ArrayBuffer,
+  targetSampleRate: 15000 | 30000
+): PreparedS330Sample {
+  const wavData = parseWav(wavBytes);
+  const s330Data = wavToS330(wavData, targetSampleRate);
+  const segmentLength = calculateSegmentsNeeded(s330Data.sampleCount);
+
+  return {
+    data: s330Data.data,
+    sampleCount: s330Data.sampleCount,
+    segmentLength,
+    sampleRate: targetSampleRate,
+  };
+}
+
+/**
+ * Parse WAV file and return metadata for display purposes.
+ * Use this for showing file info before conversion.
+ */
+export interface WavFileInfo {
+  sampleRate: number;
+  channels: number;
+  bitsPerSample: number;
+  sampleCount: number;
+  duration: number;
+}
+
+/**
+ * Get WAV file info for display purposes.
+ *
+ * @param wavBytes - Raw WAV file data
+ * @returns WAV file metadata
+ */
+export function getWavFileInfo(wavBytes: ArrayBuffer): WavFileInfo {
+  const wavData = parseWav(wavBytes);
+  return {
+    sampleRate: wavData.sampleRate,
+    channels: wavData.channels,
+    bitsPerSample: wavData.bitsPerSample,
+    sampleCount: wavData.samples.length,
+    duration: wavData.samples.length / wavData.sampleRate,
+  };
+}
+
+/**
+ * Calculate segments needed for a WAV file at a target sample rate.
+ * Use this for UI display before actual conversion.
+ *
+ * @param wavBytes - Raw WAV file data
+ * @param targetSampleRate - Target sample rate
+ * @returns Number of segments needed
+ */
+export function calculateWavSegmentsNeeded(
+  wavBytes: ArrayBuffer,
+  targetSampleRate: 15000 | 30000
+): number {
+  const wavData = parseWav(wavBytes);
+  // Calculate output sample count after resampling
+  const outputSampleCount = Math.floor(
+    wavData.samples.length * (targetSampleRate / wavData.sampleRate)
+  );
+  return calculateSegmentsNeeded(outputSampleCount);
+}
+
+// =========================================================================
+// File System Access API
+// =========================================================================
 
 /**
  * Check if the File System Access API is available
@@ -669,18 +772,14 @@ export async function loadToneFromSet(
   const yamlContent = await yamlFile.text();
   const yaml = ToneYamlSchema.parse(parseYaml(yamlContent));
 
-  // Load WAV and parse to extract audio data
+  // Load WAV and convert using the single code path
   const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`);
   const wavFile = await wavHandle.getFile();
   const wavFileBuffer = await wavFile.arrayBuffer();
-  const wavParsed = parseWav(wavFileBuffer);
-
-  // Convert 16-bit PCM samples to S330's 12-bit packed format using the same
-  // function as ImportSampleDialog - this is the known-good conversion path
   const targetSampleRate = yaml.wave.sampleRate as 15000 | 30000;
-  const s330Data = wavToS330(wavParsed, targetSampleRate);
+  const prepared = prepareWavForS330(wavFileBuffer, targetSampleRate);
 
-  return { yaml, wavData: s330Data.data };
+  return { yaml, wavData: prepared.data };
 }
 
 /**
@@ -857,6 +956,156 @@ export function remapPatchToneLayers(
       toneLayer2: newToneLayer2,
     },
   };
+}
+
+// =========================================================================
+// Drum Kit Operations
+// =========================================================================
+
+/**
+ * Information about a drum kit bundle in the library.
+ */
+export interface DrumKitInfo {
+  /** Name of the drum kit (from kit.yaml or directory name) */
+  name: string;
+  /** Optional description */
+  description?: string;
+  /** Number of detected kits (4 samples each) */
+  kitCount: number;
+  /** Total number of samples */
+  sampleCount: number;
+  /** Directory name for loading */
+  directoryName: string;
+}
+
+/**
+ * List all drum kit bundles in the library.
+ *
+ * Scans `library/s330/drum-kits/` for directories containing WAV files.
+ */
+export async function listDrumKits(
+  directoryHandle: FileSystemDirectoryHandle
+): Promise<DrumKitInfo[]> {
+  const kits: DrumKitInfo[] = [];
+
+  try {
+    // Navigate to library/s330/drum-kits/
+    const libraryDir = await directoryHandle.getDirectoryHandle('library', { create: false });
+    const s330Dir = await libraryDir.getDirectoryHandle('s330', { create: false });
+    const drumKitsDir = await s330Dir.getDirectoryHandle('drum-kits', { create: false });
+
+    // Iterate through drum kit directories
+    for await (const entry of drumKitsDir.values()) {
+      if (entry.kind !== 'directory') continue;
+
+      try {
+        const kitDir = await drumKitsDir.getDirectoryHandle(entry.name);
+
+        // Collect WAV files and check for kit.yaml
+        const wavFiles: string[] = [];
+        let kitYaml: DrumKitBundle | null = null;
+
+        for await (const file of kitDir.values()) {
+          if (file.kind !== 'file') continue;
+
+          if (file.name.toLowerCase().endsWith('.wav')) {
+            wavFiles.push(file.name);
+          } else if (file.name === 'kit.yaml') {
+            try {
+              const fileHandle = await kitDir.getFileHandle('kit.yaml');
+              const yamlFile = await fileHandle.getFile();
+              const yamlContent = await yamlFile.text();
+              kitYaml = DrumKitBundleSchema.parse(parseYaml(yamlContent));
+            } catch {
+              // Invalid kit.yaml, ignore
+            }
+          }
+        }
+
+        // Skip directories without WAV files
+        if (wavFiles.length === 0) continue;
+
+        // Parse the bundle to get kit info
+        const resolved = parseDrumKitBundle(kitYaml, wavFiles, entry.name);
+
+        kits.push({
+          name: resolved.name,
+          description: resolved.description,
+          kitCount: resolved.kits.length,
+          sampleCount: resolved.totalSamples,
+          directoryName: entry.name,
+        });
+      } catch {
+        // Skip invalid directories
+      }
+    }
+  } catch {
+    // Drum kits directory doesn't exist yet
+    return [];
+  }
+
+  return kits.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Load a drum kit bundle with full metadata and sample information.
+ */
+export async function loadDrumKitBundle(
+  directoryHandle: FileSystemDirectoryHandle,
+  kitName: string
+): Promise<ResolvedDrumKitBundle> {
+  // Navigate to the kit directory
+  const kitDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'drum-kits', kitName
+  ]);
+
+  // Collect WAV files and check for kit.yaml
+  const wavFiles: string[] = [];
+  let kitYaml: DrumKitBundle | null = null;
+
+  for await (const file of kitDir.values()) {
+    if (file.kind !== 'file') continue;
+
+    if (file.name.toLowerCase().endsWith('.wav')) {
+      wavFiles.push(file.name);
+    } else if (file.name === 'kit.yaml') {
+      try {
+        const fileHandle = await kitDir.getFileHandle('kit.yaml');
+        const yamlFile = await fileHandle.getFile();
+        const yamlContent = await yamlFile.text();
+        kitYaml = DrumKitBundleSchema.parse(parseYaml(yamlContent));
+      } catch {
+        // Invalid kit.yaml, use auto-detection only
+      }
+    }
+  }
+
+  // Parse the bundle
+  return parseDrumKitBundle(kitYaml, wavFiles, kitName);
+}
+
+/**
+ * Load a single WAV file from a drum kit bundle.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param kitName - Directory name of the drum kit
+ * @param fileName - WAV filename to load
+ * @returns Raw WAV file data
+ */
+export async function loadDrumKitSample(
+  directoryHandle: FileSystemDirectoryHandle,
+  kitName: string,
+  fileName: string
+): Promise<Uint8Array> {
+  const kitDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'drum-kits', kitName
+  ]);
+
+  const fileHandle = await kitDir.getFileHandle(fileName);
+  const file = await fileHandle.getFile();
+  const arrayBuffer = await file.arrayBuffer();
+
+  return new Uint8Array(arrayBuffer);
 }
 
 // TypeScript declarations for File System Access API

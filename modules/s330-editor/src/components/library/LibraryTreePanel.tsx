@@ -9,18 +9,20 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import type { SetInfo, SetYaml } from '@audiocontrol/sampler-library/browser';
-import { loadSetManifest } from '@/lib/library-service';
+import { loadSetManifest, type DrumKitInfo } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
 
 interface LibraryTreePanelProps {
   libraryHandle: FileSystemDirectoryHandle | null;
   sets: SetInfo[];
+  drumKits: DrumKitInfo[];
   selectedName?: string;
-  selectedType?: 'tone' | 'patch' | 'set';
+  selectedType?: 'tone' | 'patch' | 'set' | 'drumKit';
   selectedSetName?: string;
   onSelectSet: (name: string) => void;
   onSelectTone: (name: string, setName: string) => void;
   onSelectPatch: (name: string, setName: string) => void;
+  onSelectDrumKit: (name: string) => void;
   onRefresh: () => void;
   isLoading: boolean;
 }
@@ -108,6 +110,50 @@ function PatchIcon(): JSX.Element {
         d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
       />
     </svg>
+  );
+}
+
+/**
+ * Drum kit icon
+ */
+function DrumKitIcon(): JSX.Element {
+  return (
+    <svg className="w-3.5 h-3.5 text-s330-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <circle cx="12" cy="12" r="8" strokeWidth={2} />
+      <circle cx="12" cy="12" r="3" strokeWidth={2} />
+    </svg>
+  );
+}
+
+/**
+ * Drum kit item
+ */
+function DrumKitItem({
+  kitInfo,
+  isSelected,
+  onSelect,
+}: {
+  kitInfo: DrumKitInfo;
+  isSelected: boolean;
+  onSelect: () => void;
+}): JSX.Element {
+  return (
+    <button
+      onClick={onSelect}
+      className={cn(
+        'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+        'flex items-center gap-2',
+        isSelected
+          ? 'bg-s330-highlight/20 text-s330-highlight'
+          : 'text-s330-text hover:bg-s330-accent/30'
+      )}
+    >
+      <DrumKitIcon />
+      <span className="flex-1 truncate font-medium">{kitInfo.name}</span>
+      <span className="text-xs text-s330-muted">
+        {kitInfo.kitCount} kit{kitInfo.kitCount !== 1 ? 's' : ''} / {kitInfo.sampleCount} samples
+      </span>
+    </button>
   );
 }
 
@@ -260,12 +306,14 @@ function SetItem({
 export function LibraryTreePanel({
   libraryHandle,
   sets,
+  drumKits,
   selectedName,
   selectedType,
   selectedSetName,
   onSelectSet,
   onSelectTone,
   onSelectPatch,
+  onSelectDrumKit,
   onRefresh,
   isLoading,
 }: LibraryTreePanelProps): JSX.Element {
@@ -356,6 +404,7 @@ export function LibraryTreePanel({
         </div>
         <p className="text-xs text-s330-muted mt-1">
           {sets.length} set{sets.length !== 1 ? 's' : ''}
+          {drumKits.length > 0 && ` / ${drumKits.length} drum kit${drumKits.length !== 1 ? 's' : ''}`}
         </p>
       </div>
 
@@ -381,12 +430,36 @@ export function LibraryTreePanel({
                   isSelected={selectedType === 'set' && selectedName === setInfo.name}
                   isExpanded={expandedSets.has(setInfo.name)}
                   selectedItemName={selectedSetName === setInfo.name ? selectedName : undefined}
-                  selectedItemType={selectedSetName === setInfo.name ? selectedType : undefined}
+                  selectedItemType={selectedSetName === setInfo.name && selectedType !== 'drumKit' ? selectedType : undefined}
                   onToggle={() => toggleSet(setInfo.name)}
                   onSelect={() => onSelectSet(setInfo.name)}
                   onSelectTone={(toneFile) => onSelectTone(toneFile, setInfo.name)}
                   onSelectPatch={(patchFile) => onSelectPatch(patchFile, setInfo.name)}
                   isLoadingManifest={loadingManifests.has(setInfo.name)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Drum Kits Section */}
+        <div className="p-2 border-t border-s330-accent/30">
+          <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1">
+            Drum Kits
+          </div>
+
+          {drumKits.length === 0 ? (
+            <div className="text-sm text-s330-muted/70 px-2 py-4 text-center italic">
+              No drum kits in library
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              {drumKits.map((kitInfo) => (
+                <DrumKitItem
+                  key={kitInfo.directoryName}
+                  kitInfo={kitInfo}
+                  isSelected={selectedType === 'drumKit' && selectedName === kitInfo.directoryName}
+                  onSelect={() => onSelectDrumKit(kitInfo.directoryName)}
                 />
               ))}
             </div>
