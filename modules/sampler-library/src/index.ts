@@ -183,3 +183,47 @@ export type {
   TemplateApplicationResult,
   TemplateHandler,
 } from './templates/index.js';
+
+// Sample chopper exports
+export {
+  // Constants
+  DEFAULT_DRUM_TYPES,
+  DEFAULT_BASE_NOTE,
+  // Audio utilities
+  msToSamples,
+  samplesToMs,
+  calculateRms,
+  calculatePeak,
+  amplitudeToDb,
+  dbToAmplitude,
+  calculateRmsWindowed,
+  findOnsetAboveThreshold,
+  findSilenceStart,
+  // Individual slicers
+  sliceByFixedInterval,
+  sliceBySilence,
+  trimSilence,
+  sliceByTransient,
+  refineOnsetPosition,
+  sliceByManualRegions,
+  createRegionsFromBoundaries,
+  createRegionsFromTempo,
+  // Main orchestrator
+  sliceAudio,
+  slicesToDrumKit,
+  chopSampleToDrumKit,
+  analyzeForSlicing,
+} from './sample-chopper/index.js';
+
+export type {
+  SliceMethod,
+  TransientConfig,
+  SilenceConfig,
+  FixedConfig,
+  ManualConfig,
+  ManualRegion,
+  SliceConfig,
+  Slice,
+  SliceResult,
+  DrumKitOutputConfig,
+} from './sample-chopper/index.js';

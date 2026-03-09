@@ -30,10 +30,12 @@ import {
   setCachedLibraryDirectory,
   listSets,
   listDrumKits,
+  listIndividualTones,
   loadDrumKitBundle,
   saveDeviceToSetIncremental,
   loadSetToDevice,
   type DrumKitInfo,
+  type LibraryToneInfo,
 } from '@/lib/library-service';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 import { cn } from '@/lib/utils';
@@ -43,7 +45,7 @@ import { cn } from '@/lib/utils';
  */
 export interface ItemSelection {
   source: 'device' | 'library';
-  type: 'tone' | 'patch' | 'set' | 'drumKit';
+  type: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone';
   index?: number;
   name?: string;
   setName?: string;
@@ -73,6 +75,9 @@ export function LibraryPage() {
   // Drum kit state
   const [drumKits, setDrumKits] = useState<DrumKitInfo[]>([]);
   const [selectedDrumKitBundle, setSelectedDrumKitBundle] = useState<ResolvedDrumKitBundle | null>(null);
+
+  // Individual tones state
+  const [individualTones, setIndividualTones] = useState<LibraryToneInfo[]>([]);
 
   // Local state
   const [selection, setSelection] = useState<ItemSelection | null>(null);
@@ -131,14 +136,16 @@ export function LibraryPage() {
       const cached = await getCachedLibraryDirectory();
       if (cached) {
         setLibraryHandle(cached);
-        // Load sets and drum kits
+        // Load sets, drum kits, and individual tones
         try {
-          const [setList, kitList] = await Promise.all([
+          const [setList, kitList, toneList] = await Promise.all([
             listSets(cached),
             listDrumKits(cached),
+            listIndividualTones(cached),
           ]);
           setSets(setList);
           setDrumKits(kitList);
+          setIndividualTones(toneList);
         } catch (err) {
           console.error('[LibraryPage] Failed to load library:', err);
         }
@@ -153,14 +160,16 @@ export function LibraryPage() {
     if (handle) {
       setLibraryHandle(handle);
       setCachedLibraryDirectory(handle);
-      // Load sets and drum kits
+      // Load sets, drum kits, and individual tones
       try {
-        const [setList, kitList] = await Promise.all([
+        const [setList, kitList, toneList] = await Promise.all([
           listSets(handle),
           listDrumKits(handle),
+          listIndividualTones(handle),
         ]);
         setSets(setList);
         setDrumKits(kitList);
+        setIndividualTones(toneList);
       } catch (err) {
         console.error('[LibraryPage] Failed to load library:', err);
         setError(err instanceof Error ? err.message : 'Failed to load library');
@@ -174,12 +183,14 @@ export function LibraryPage() {
 
     setLoading(true, 'Refreshing library...');
     try {
-      const [setList, kitList] = await Promise.all([
+      const [setList, kitList, toneList] = await Promise.all([
         listSets(libraryHandle),
         listDrumKits(libraryHandle),
+        listIndividualTones(libraryHandle),
       ]);
       setSets(setList);
       setDrumKits(kitList);
+      setIndividualTones(toneList);
     } catch (err) {
       console.error('[LibraryPage] Failed to refresh library:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh library');
@@ -411,6 +422,12 @@ export function LibraryPage() {
     }
   }, [libraryHandle]);
 
+  // Handle individual tone selection
+  const handleSelectIndividualTone = useCallback((toneName: string) => {
+    setSelection({ source: 'library', type: 'individualTone', name: toneName });
+    setSelectedDrumKitBundle(null);
+  }, []);
+
   // Handle drum kit import button click
   const handleOpenDrumKitImport = useCallback(() => {
     if (!selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) return;
@@ -431,6 +448,15 @@ export function LibraryPage() {
     setOperationProgress(undefined);
     setOperationStatus(null);
     setImportPatchDialog({ setName, patchFile });
+  }, []);
+
+  // Open import individual tone dialog (tones outside of sets)
+  const handleOpenImportIndividualToneDialog = useCallback((toneFile: string) => {
+    setOperationError(null);
+    setOperationProgress(undefined);
+    setOperationStatus(null);
+    // For now, use the same dialog with a special marker for individual tones
+    setImportToneDialog({ setName: '__individual__', toneFile });
   }, []);
 
   // Import single tone from library
@@ -671,6 +697,7 @@ export function LibraryPage() {
             libraryHandle={libraryHandle}
             sets={sets}
             drumKits={drumKits}
+            individualTones={individualTones}
             selectedName={selection?.source === 'library' ? selection.name : undefined}
             selectedType={selection?.source === 'library' ? selection.type : undefined}
             selectedSetName={selection?.source === 'library' ? selection.setName : undefined}
@@ -678,6 +705,7 @@ export function LibraryPage() {
             onSelectTone={(name, setName) => handleSelectLibrary('tone', name, setName)}
             onSelectPatch={(name, setName) => handleSelectLibrary('patch', name, setName)}
             onSelectDrumKit={handleSelectDrumKit}
+            onSelectIndividualTone={handleSelectIndividualTone}
             onRefresh={handleRefreshLibrary}
             isLoading={isLoading}
           />
@@ -699,6 +727,7 @@ export function LibraryPage() {
               libraryHandle={libraryHandle}
               onImportTone={handleOpenImportToneDialog}
               onImportPatch={handleOpenImportPatchDialog}
+              onImportIndividualTone={handleOpenImportIndividualToneDialog}
             />
           )}
         </div>

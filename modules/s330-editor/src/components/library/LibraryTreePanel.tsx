@@ -9,20 +9,22 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import type { SetInfo, SetYaml } from '@audiocontrol/sampler-library/browser';
-import { loadSetManifest, type DrumKitInfo } from '@/lib/library-service';
+import { loadSetManifest, type DrumKitInfo, type LibraryToneInfo } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
 
 interface LibraryTreePanelProps {
   libraryHandle: FileSystemDirectoryHandle | null;
   sets: SetInfo[];
   drumKits: DrumKitInfo[];
+  individualTones: LibraryToneInfo[];
   selectedName?: string;
-  selectedType?: 'tone' | 'patch' | 'set' | 'drumKit';
+  selectedType?: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone';
   selectedSetName?: string;
   onSelectSet: (name: string) => void;
   onSelectTone: (name: string, setName: string) => void;
   onSelectPatch: (name: string, setName: string) => void;
   onSelectDrumKit: (name: string) => void;
+  onSelectIndividualTone: (name: string) => void;
   onRefresh: () => void;
   isLoading: boolean;
 }
@@ -307,6 +309,7 @@ export function LibraryTreePanel({
   libraryHandle,
   sets,
   drumKits,
+  individualTones,
   selectedName,
   selectedType,
   selectedSetName,
@@ -314,6 +317,7 @@ export function LibraryTreePanel({
   onSelectTone,
   onSelectPatch,
   onSelectDrumKit,
+  onSelectIndividualTone,
   onRefresh,
   isLoading,
 }: LibraryTreePanelProps): JSX.Element {
@@ -430,7 +434,7 @@ export function LibraryTreePanel({
                   isSelected={selectedType === 'set' && selectedName === setInfo.name}
                   isExpanded={expandedSets.has(setInfo.name)}
                   selectedItemName={selectedSetName === setInfo.name ? selectedName : undefined}
-                  selectedItemType={selectedSetName === setInfo.name && selectedType !== 'drumKit' ? selectedType : undefined}
+                  selectedItemType={selectedSetName === setInfo.name && selectedType !== 'drumKit' && selectedType !== 'individualTone' ? selectedType : undefined}
                   onToggle={() => toggleSet(setInfo.name)}
                   onSelect={() => onSelectSet(setInfo.name)}
                   onSelectTone={(toneFile) => onSelectTone(toneFile, setInfo.name)}
@@ -441,6 +445,34 @@ export function LibraryTreePanel({
             </div>
           )}
         </div>
+
+        {/* Individual Tones Section */}
+        {individualTones.length > 0 && (
+          <div className="p-2 border-t border-s330-accent/30">
+            <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1">
+              Individual Tones
+            </div>
+
+            <div className="space-y-0.5">
+              {individualTones.map((toneInfo) => (
+                <button
+                  key={toneInfo.fileName}
+                  onClick={() => onSelectIndividualTone(toneInfo.fileName)}
+                  className={cn(
+                    'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+                    'flex items-center gap-2',
+                    selectedType === 'individualTone' && selectedName === toneInfo.fileName
+                      ? 'bg-s330-highlight/20 text-s330-highlight'
+                      : 'text-s330-text hover:bg-s330-accent/30'
+                  )}
+                >
+                  <WaveIcon />
+                  <span className="flex-1 truncate font-medium">{toneInfo.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Drum Kits Section */}
         <div className="p-2 border-t border-s330-accent/30">

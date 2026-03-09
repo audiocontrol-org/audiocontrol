@@ -5,18 +5,23 @@
  * with action buttons for import/export.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
-import type { SetYaml } from '@audiocontrol/sampler-library/browser';
+import type { SetYaml, ResolvedDrumKitBundle, Slice } from '@audiocontrol/sampler-library/browser';
 import type { ItemSelection } from '@/pages/LibraryPage';
 import {
   loadToneFromSet,
   loadPatchFromSet,
   loadSetManifest,
+  loadIndividualTone,
+  loadIndividualToneWavSamples,
   convertYamlToS330Tone,
   convertYamlToS330Patch,
+  loadToneWavSamples,
+  saveDrumKitToLibrary,
 } from '@/lib/library-service';
 import { formatToneSlot, formatPatchSlot } from '@/lib/s330-format';
+import { SampleChopperDialog } from './SampleChopperDialog';
 
 interface ItemPreviewPanelProps {
   selection: ItemSelection | null;
@@ -25,6 +30,7 @@ interface ItemPreviewPanelProps {
   libraryHandle: FileSystemDirectoryHandle | null;
   onImportTone?: (setName: string, toneFile: string) => void;
   onImportPatch?: (setName: string, patchFile: string) => void;
+  onImportIndividualTone?: (toneFile: string) => void;
 }
 
 /**
@@ -97,23 +103,45 @@ function LibraryTonePreview({
   tone,
   fileName,
   onImport,
+  onChopSample,
+  isLoadingWav,
 }: {
   tone: S330Tone;
   fileName: string;
   onImport?: () => void;
+  onChopSample?: () => void;
+  isLoadingWav?: boolean;
 }): JSX.Element {
   return (
     <div className="space-y-4">
       <TonePreview tone={tone} slotLabel={`Library Tone: ${fileName}`} />
 
-      {onImport && (
-        <button
-          onClick={onImport}
-          className="w-full ac-btn ac-btn-primary"
-        >
-          Import to Device
-        </button>
-      )}
+      <div className="flex flex-col gap-2">
+        {onImport && (
+          <button
+            onClick={onImport}
+            className="w-full ac-btn ac-btn-primary"
+          >
+            Import to Device
+          </button>
+        )}
+        {onChopSample && (
+          <button
+            onClick={onChopSample}
+            disabled={isLoadingWav}
+            className="w-full ac-btn ac-btn-ghost"
+          >
+            {isLoadingWav ? (
+              <>
+                <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                Loading...
+              </>
+            ) : (
+              'Chop into Drum Kit'
+            )}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -307,6 +335,7 @@ export function ItemPreviewPanel({
   libraryHandle,
   onImportTone,
   onImportPatch,
+  onImportIndividualTone,
 }: ItemPreviewPanelProps): JSX.Element {
   // State for loaded library items
   const [loadingLibraryItem, setLoadingLibraryItem] = useState(false);
@@ -314,6 +343,84 @@ export function ItemPreviewPanel({
   const [libraryPatch, setLibraryPatch] = useState<S330Patch | null>(null);
   const [libraryManifest, setLibraryManifest] = useState<SetYaml | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+
+  // State for sample chopper
+  const [chopperOpen, setChopperOpen] = useState(false);
+  const [chopperSamples, setChopperSamples] = useState<Int16Array | null>(null);
+  const [chopperSampleRate, setChopperSampleRate] = useState(44100);
+  const [loadingWavForChopper, setLoadingWavForChopper] = useState(false);
+
+  // Handle opening the sample chopper
+  const handleChopSample = useCallback(async () => {
+    if (!libraryHandle || !selection?.name) return;
+
+    setLoadingWavForChopper(true);
+    try {
+      let samples: Int16Array;
+      let sampleRate: number;
+
+      if (selection.type === 'individualTone') {
+        // Load from individual tones directory
+        const result = await loadIndividualToneWavSamples(libraryHandle, selection.name);
+        samples = result.samples;
+        sampleRate = result.sampleRate;
+      } else if (selection.setName) {
+        // Load from set
+        const result = await loadToneWavSamples(libraryHandle, selection.setName, selection.name);
+        samples = result.samples;
+        sampleRate = result.sampleRate;
+      } else {
+        throw new Error('No set name provided for tone');
+      }
+
+      setChopperSamples(samples);
+      setChopperSampleRate(sampleRate);
+      setChopperOpen(true);
+    } catch (err) {
+      console.error('[ItemPreviewPanel] Failed to load WAV for chopping:', err);
+      setLoadError(err instanceof Error ? err.message : 'Failed to load WAV');
+    } finally {
+      setLoadingWavForChopper(false);
+    }
+  }, [libraryHandle, selection?.setName, selection?.name, selection?.type]);
+
+  // Handle when a drum kit is created from chopping
+  const handleKitCreated = useCallback(
+    async (kit: ResolvedDrumKitBundle, slices: Slice[], sampleRate: number) => {
+      if (!libraryHandle) return;
+
+      try {
+        // Prepare slices with labels
+        const labeledSlices = slices.map((slice, i) => {
+          const sampleIndex = i % 4;
+          const defaultLabels = ['KICK', 'SNARE', 'HHC', 'HHO'];
+          const label = defaultLabels[sampleIndex] ?? `S${i + 1}`;
+          return {
+            samples: slice.samples,
+            label,
+          };
+        });
+
+        // Save to library
+        await saveDrumKitToLibrary(
+          libraryHandle,
+          kit.name,
+          labeledSlices,
+          sampleRate,
+          {
+            name: kit.name,
+            sampleRate: kit.sampleRate,
+            baseNote: kit.baseNote,
+          }
+        );
+
+        console.log(`[ItemPreviewPanel] Drum kit saved: ${kit.name}`);
+      } catch (err) {
+        console.error('[ItemPreviewPanel] Failed to save drum kit:', err);
+      }
+    },
+    [libraryHandle]
+  );
 
   // Load library item when selection changes
   useEffect(() => {
@@ -327,12 +434,31 @@ export function ItemPreviewPanel({
       return;
     }
 
-    // Skip if set (not individual item)
-    if (selection.type === 'set') {
+    // Skip if set or drum kit (not individual item)
+    if (selection.type === 'set' || selection.type === 'drumKit') {
       return;
     }
 
-    // Need setName for library tones/patches
+    // Handle individual tones (outside of sets)
+    if (selection.type === 'individualTone' && selection.name) {
+      const loadIndividual = async () => {
+        setLoadingLibraryItem(true);
+        try {
+          const { yaml } = await loadIndividualTone(libraryHandle, selection.name!);
+          const tone = convertYamlToS330Tone(yaml);
+          setLibraryTone(tone);
+        } catch (err) {
+          console.error('[ItemPreviewPanel] Failed to load individual tone:', err);
+          setLoadError(err instanceof Error ? err.message : 'Failed to load tone');
+        } finally {
+          setLoadingLibraryItem(false);
+        }
+      };
+      loadIndividual();
+      return;
+    }
+
+    // Need setName for library tones/patches within sets
     if (!selection.setName || !selection.name) {
       return;
     }
@@ -436,7 +562,48 @@ export function ItemPreviewPanel({
     );
   }
 
-  // Library tone selected
+  // Individual library tone selected (outside of sets)
+  if (selection.source === 'library' && selection.type === 'individualTone' && selection.name) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="p-3 border-b border-s330-accent">
+          <h3 className="font-bold text-s330-text">Library Tone</h3>
+          <p className="text-xs text-s330-muted mt-0.5">individual export</p>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          {loadingLibraryItem ? (
+            <LoadingState />
+          ) : loadError ? (
+            <ErrorState message={loadError} />
+          ) : libraryTone ? (
+            <>
+              <LibraryTonePreview
+                tone={libraryTone}
+                fileName={selection.name}
+                onImport={onImportIndividualTone ? () => onImportIndividualTone(selection.name!) : undefined}
+                onChopSample={libraryHandle ? handleChopSample : undefined}
+                isLoadingWav={loadingWavForChopper}
+              />
+              <SampleChopperDialog
+                open={chopperOpen}
+                onOpenChange={setChopperOpen}
+                samples={chopperSamples}
+                sampleRate={chopperSampleRate}
+                sourceName={selection.name}
+                onKitCreated={handleKitCreated}
+              />
+            </>
+          ) : (
+            <div className="text-center text-s330-muted text-sm py-8">
+              <p>Could not load tone</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Library tone selected (within a set)
   if (selection.source === 'library' && selection.type === 'tone' && selection.setName && selection.name) {
     return (
       <div className="h-full flex flex-col">
@@ -450,11 +617,23 @@ export function ItemPreviewPanel({
           ) : loadError ? (
             <ErrorState message={loadError} />
           ) : libraryTone ? (
-            <LibraryTonePreview
-              tone={libraryTone}
-              fileName={selection.name}
-              onImport={onImportTone ? () => onImportTone(selection.setName!, selection.name!) : undefined}
-            />
+            <>
+              <LibraryTonePreview
+                tone={libraryTone}
+                fileName={selection.name}
+                onImport={onImportTone ? () => onImportTone(selection.setName!, selection.name!) : undefined}
+                onChopSample={libraryHandle ? handleChopSample : undefined}
+                isLoadingWav={loadingWavForChopper}
+              />
+              <SampleChopperDialog
+                open={chopperOpen}
+                onOpenChange={setChopperOpen}
+                samples={chopperSamples}
+                sampleRate={chopperSampleRate}
+                sourceName={selection.name}
+                onKitCreated={handleKitCreated}
+              />
+            </>
           ) : (
             <div className="text-center text-s330-muted text-sm py-8">
               <p>Could not load tone</p>

@@ -961,6 +961,111 @@ export function remapPatchToneLayers(
 // Drum Kit Operations
 // =========================================================================
 
+// =========================================================================
+// Individual Tone/Patch Operations
+// =========================================================================
+
+/**
+ * Information about an individual tone in the library.
+ */
+export interface LibraryToneInfo {
+  /** Tone file name (without extension) */
+  name: string;
+  /** Full filename */
+  fileName: string;
+}
+
+/**
+ * List all individual tones in the library (outside of sets).
+ *
+ * Scans `library/s330/tones/` for YAML files.
+ */
+export async function listIndividualTones(
+  directoryHandle: FileSystemDirectoryHandle
+): Promise<LibraryToneInfo[]> {
+  const tones: LibraryToneInfo[] = [];
+
+  try {
+    // Navigate to library/s330/tones/
+    const libraryDir = await directoryHandle.getDirectoryHandle('library', { create: false });
+    const s330Dir = await libraryDir.getDirectoryHandle('s330', { create: false });
+    const tonesDir = await s330Dir.getDirectoryHandle('tones', { create: false });
+
+    // Iterate through tone files
+    for await (const entry of tonesDir.values()) {
+      if (entry.kind !== 'file') continue;
+      if (!entry.name.toLowerCase().endsWith('.yaml')) continue;
+
+      const name = entry.name.replace(/\.yaml$/i, '');
+      tones.push({
+        name,
+        fileName: name,
+      });
+    }
+  } catch {
+    // Tones directory doesn't exist yet
+    return [];
+  }
+
+  return tones.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Load an individual tone from the library (outside of sets).
+ */
+export async function loadIndividualTone(
+  directoryHandle: FileSystemDirectoryHandle,
+  toneFile: string
+): Promise<{ yaml: ToneYaml; wavData: Uint8Array }> {
+  const tonesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'tones'
+  ]);
+
+  // Load YAML
+  const yamlHandle = await tonesDir.getFileHandle(`${toneFile}.yaml`);
+  const yamlFile = await yamlHandle.getFile();
+  const yamlContent = await yamlFile.text();
+  const yaml = ToneYamlSchema.parse(parseYaml(yamlContent));
+
+  // Load WAV and convert using the single code path
+  const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`);
+  const wavFile = await wavHandle.getFile();
+  const wavFileBuffer = await wavFile.arrayBuffer();
+  const targetSampleRate = yaml.wave.sampleRate as 15000 | 30000;
+  const prepared = prepareWavForS330(wavFileBuffer, targetSampleRate);
+
+  return { yaml, wavData: prepared.data };
+}
+
+/**
+ * Load raw WAV samples from an individual library tone for sample chopping.
+ */
+export async function loadIndividualToneWavSamples(
+  directoryHandle: FileSystemDirectoryHandle,
+  toneFile: string
+): Promise<{ samples: Int16Array; sampleRate: number }> {
+  const tonesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'tones'
+  ]);
+
+  // Load WAV file
+  const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`);
+  const wavFile = await wavHandle.getFile();
+  const wavFileBuffer = await wavFile.arrayBuffer();
+
+  // Parse WAV to get raw samples
+  const wavData = parseWav(wavFileBuffer);
+
+  return {
+    samples: wavData.samples,
+    sampleRate: wavData.sampleRate,
+  };
+}
+
+// =========================================================================
+// Drum Kit Operations
+// =========================================================================
+
 /**
  * Information about a drum kit bundle in the library.
  */
@@ -1081,6 +1186,103 @@ export async function loadDrumKitBundle(
 
   // Parse the bundle
   return parseDrumKitBundle(kitYaml, wavFiles, kitName);
+}
+
+/**
+ * Load raw WAV samples from a library tone for sample chopping.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param setName - Name of the set
+ * @param toneFile - Tone file name (without extension)
+ * @returns Parsed samples and sample rate
+ */
+export async function loadToneWavSamples(
+  directoryHandle: FileSystemDirectoryHandle,
+  setName: string,
+  toneFile: string
+): Promise<{ samples: Int16Array; sampleRate: number }> {
+  const sanitizedName = setName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+
+  const tonesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'sets', sanitizedName, 'tones'
+  ]);
+
+  // Load WAV file
+  const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`);
+  const wavFile = await wavHandle.getFile();
+  const wavFileBuffer = await wavFile.arrayBuffer();
+
+  // Parse WAV to get raw samples
+  const wavData = parseWav(wavFileBuffer);
+
+  return {
+    samples: wavData.samples,
+    sampleRate: wavData.sampleRate,
+  };
+}
+
+/**
+ * Save a chopped drum kit to the library.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param kitName - Name for the drum kit directory
+ * @param slices - Array of sliced samples
+ * @param labels - Labels for each slice
+ * @param sampleRate - Sample rate of the samples
+ * @param kitConfig - Optional kit.yaml configuration
+ */
+export async function saveDrumKitToLibrary(
+  directoryHandle: FileSystemDirectoryHandle,
+  kitName: string,
+  slices: Array<{ samples: Int16Array; label: string }>,
+  sampleRate: number,
+  kitConfig?: {
+    name: string;
+    description?: string;
+    sampleRate: 15000 | 30000;
+    baseNote: number;
+  }
+): Promise<void> {
+  const sanitizedName = kitName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+
+  // Create drum-kits directory structure
+  const drumKitsDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'drum-kits', sanitizedName
+  ]);
+
+  // Write each slice as a WAV file
+  for (let i = 0; i < slices.length; i++) {
+    const slice = slices[i];
+    if (!slice) continue;
+
+    const kitNumber = Math.floor(i / 4) + 1;
+    const paddedNumber = String(kitNumber).padStart(2, '0');
+    const filename = `${paddedNumber} ${slice.label.toUpperCase()}.wav`;
+
+    const wavBlob = createWavBlobFromSamples(slice.samples, sampleRate);
+    const wavHandle = await drumKitsDir.getFileHandle(filename, { create: true });
+    const wavWritable = await wavHandle.createWritable();
+    await wavWritable.write(wavBlob);
+    await wavWritable.close();
+  }
+
+  // Write kit.yaml if config provided
+  if (kitConfig) {
+    const kitYaml: DrumKitBundle = {
+      format: 'drum-kit-bundle',
+      version: 1,
+      name: kitConfig.name,
+      description: kitConfig.description,
+      sampleRate: kitConfig.sampleRate,
+      baseNote: kitConfig.baseNote,
+    };
+
+    const yamlContent = stringifyYaml(kitYaml, { indent: 2, lineWidth: 120 });
+    const yamlHandle = await drumKitsDir.getFileHandle('kit.yaml', { create: true });
+    const yamlWritable = await yamlHandle.createWritable();
+    await yamlWritable.write(yamlContent);
+    await yamlWritable.close();
+  }
 }
 
 /**
