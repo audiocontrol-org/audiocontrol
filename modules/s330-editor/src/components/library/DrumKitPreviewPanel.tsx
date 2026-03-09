@@ -23,8 +23,8 @@ interface DrumKitPreviewPanelProps {
   kitInfo: DrumKitInfo | null;
   libraryHandle: FileSystemDirectoryHandle | null;
   onImport?: () => void;
-  /** Callback when user wants to edit slices (v2 format kits only) */
-  onEditSlices?: () => void;
+  /** Callback when user wants to edit the kit (v2 format kits only) */
+  onEditKit?: () => void;
 }
 
 /**
@@ -155,7 +155,7 @@ export function DrumKitPreviewPanel({
   kitInfo,
   libraryHandle,
   onImport,
-  onEditSlices,
+  onEditKit,
 }: DrumKitPreviewPanelProps): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -273,26 +273,6 @@ export function DrumKitPreviewPanel({
                 </div>
               </div>
             )}
-
-            {/* Action buttons */}
-            <div className="flex flex-col gap-2">
-              {onImport && (
-                <button
-                  onClick={onImport}
-                  className="w-full ac-btn ac-btn-primary"
-                >
-                  Import to Device
-                </button>
-              )}
-              {onEditSlices && bundle.source && bundle.slices && (
-                <button
-                  onClick={onEditSlices}
-                  className="w-full ac-btn ac-btn-secondary"
-                >
-                  Edit Slices
-                </button>
-              )}
-            </div>
           </div>
         ) : (
           <div className="text-center text-s330-muted text-sm py-8">
@@ -300,6 +280,28 @@ export function DrumKitPreviewPanel({
           </div>
         )}
       </div>
+
+      {/* Action buttons - fixed at bottom */}
+      {bundle && (
+        <div className="p-4 border-t border-s330-accent flex flex-col gap-2">
+          {onEditKit && bundle.source && bundle.slices && (
+            <button
+              onClick={onEditKit}
+              className="w-full ac-btn ac-btn-secondary"
+            >
+              Edit Kit
+            </button>
+          )}
+          {onImport && (
+            <button
+              onClick={onImport}
+              className="w-full ac-btn ac-btn-primary"
+            >
+              Import to Device
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

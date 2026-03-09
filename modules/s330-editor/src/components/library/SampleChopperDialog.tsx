@@ -823,11 +823,11 @@ export function SampleChopperDialog({
           <div className="flex items-center justify-between p-4 border-b border-s330-accent shrink-0">
             <div>
               <Dialog.Title className="text-lg font-bold text-s330-text">
-                {editMode ? 'Edit Slices' : 'Chop Sample'}
+                {editMode ? 'Edit Kit' : 'Chop Sample'}
               </Dialog.Title>
               <Dialog.Description className="text-sm text-s330-muted">
                 {editMode
-                  ? `Adjust slice boundaries for "${sourceName}"`
+                  ? `Edit slices and playback settings for "${sourceName}"`
                   : `Slice "${sourceName}" into individual drum hits`}
                 {durationMs > 0 && ` (${durationMs.toFixed(0)}ms)`}
               </Dialog.Description>

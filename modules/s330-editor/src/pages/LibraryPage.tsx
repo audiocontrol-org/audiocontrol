@@ -441,8 +441,8 @@ export function LibraryPage() {
     }
   }, [libraryHandle]);
 
-  // Handle edit slices for v2 drum kits
-  const handleEditSlices = useCallback(async () => {
+  // Handle edit kit for v2 drum kits
+  const handleEditKit = useCallback(async () => {
     if (!libraryHandle || !selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) {
       return;
     }
@@ -451,7 +451,7 @@ export function LibraryPage() {
 
     // Only v2 format kits can be edited
     if (!bundle.source || !bundle.slices) {
-      console.error('[LibraryPage] Cannot edit slices: kit is not in v2 format');
+      console.error('[LibraryPage] Cannot edit kit: kit is not in v2 format');
       return;
     }
 
@@ -810,7 +810,7 @@ export function LibraryPage() {
               kitInfo={drumKits.find((k) => k.directoryName === selection.name) ?? null}
               libraryHandle={libraryHandle}
               onImport={handleOpenDrumKitImport}
-              onEditSlices={handleEditSlices}
+              onEditKit={handleEditKit}
             />
           ) : (
             <ItemPreviewPanel
