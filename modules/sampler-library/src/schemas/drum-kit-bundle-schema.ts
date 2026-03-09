@@ -61,6 +61,13 @@ export const DrumKitBundleSchema = z.object({
   baseNote: MidiNoteSchema.default('C2'),
 
   /**
+   * Transpose value in semitones for pitch adjustment (-64 to +63, default: 0).
+   * Use negative values to pitch down, positive to pitch up.
+   * Common use case: sample at high speed, then pitch down for more sample time.
+   */
+  transpose: z.number().int().min(-64).max(63).default(0).optional(),
+
+  /**
    * Optional explicit kit definitions.
    * If omitted, kits are auto-detected from filenames.
    */

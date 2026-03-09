@@ -191,16 +191,13 @@ export function SampleChopperDialog({
 
     const labels = kitLabels.split(',').map((s) => s.trim());
 
-    // Convert semitones to S-330 raw transpose value (64 = no change)
-    // kitTranspose is in semitones (-24 to +24), S-330 uses 64 as center
-    const rawTranspose = kitTranspose + 64;
-
     const kit = slicesToDrumKit(sliceResult, {
       name: kitName || 'DRUM-KIT',
       sampleRate: kitSampleRate,
       baseNote: kitBaseNote,
       drumTypes: labels.length > 0 ? labels : undefined,
-      transpose: kitTranspose !== 0 ? rawTranspose : undefined,
+      // Pass semitones directly - conversion to S-330 raw value happens at import time
+      transpose: kitTranspose !== 0 ? kitTranspose : undefined,
     });
 
     onKitCreated(kit, sliceResult.slices, sampleRate);

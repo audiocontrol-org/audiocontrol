@@ -31,7 +31,15 @@ export interface CreateToneConfig {
   loopPoint?: number;
   /** Original key MIDI note (default: 60 = C4) */
   originalKey?: number;
-  /** Transpose value - raw S-330 value where 64 = no pitch change (default: 64) */
+  /**
+   * Transpose value in semitones.
+   *
+   * WARNING: The S-330 uses 0 as the default (no pitch change), NOT 64.
+   * Do not assume standard MIDI bipolar encoding. Pass semitone values directly:
+   * - 0 = no pitch change
+   * - negative = pitch down
+   * - positive = pitch up
+   */
   transpose?: number;
   /** Whether pitch follows MIDI note (default: false for one-shot, true for looping) */
   pitchFollow?: boolean;
@@ -53,10 +61,14 @@ function normalizeSampleRate(rate: 15000 | 30000 | '15kHz' | '30kHz'): '15kHz' |
  * Create a new S330Tone with sensible defaults for one-shot samples.
  *
  * The defaults are optimized for one-shot playback (drum hits, sound effects):
- * - transpose: 64 (no pitch change - S-330 uses 64 as center, range 0-127)
+ * - transpose: 0 (no pitch change)
  * - pitchFollow: false (plays at recorded pitch regardless of MIDI note)
  * - loopMode: 'one-shot' (plays once, no looping)
  * - TVF/TVA envelopes: flat (no filtering or amplitude shaping)
+ *
+ * WARNING: The S-330 transpose parameter uses 0 as the default (no pitch change).
+ * Do NOT assume standard MIDI bipolar encoding where 64 = center.
+ * Pass semitone values directly: 0 = no change, negative = down, positive = up.
  *
  * For melodic samples that should track pitch, set pitchFollow: true and
  * optionally adjust transpose for tuning.
@@ -72,7 +84,7 @@ export function createTone(config: CreateToneConfig): S330Tone {
     loopMode = 'one-shot',
     loopPoint = 0,
     originalKey = 60,
-    transpose = 64,
+    transpose = 0, // WARNING: S-330 uses 0 for no pitch change, NOT 64
     pitchFollow,
     outputAssign = 0,
   } = config;

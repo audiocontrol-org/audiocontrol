@@ -105,7 +105,10 @@ const DEFAULT_ORIGINAL_KEY = 60;
  * This is a convenience wrapper around createTone() with drum-specific defaults:
  * - loopMode: 'one-shot'
  * - pitchFollow: false
- * - transpose: 64 (no pitch change, unless overridden)
+ * - transpose: 0 (no pitch change, unless overridden)
+ *
+ * WARNING: The S-330 uses 0 for no pitch change, NOT 64.
+ * Do not assume standard MIDI bipolar encoding.
  *
  * @param name - Tone name (max 8 characters)
  * @param sampleRate - Sample rate (15000 or 30000 Hz)
@@ -114,7 +117,7 @@ const DEFAULT_ORIGINAL_KEY = 60;
  * @param segmentLength - Number of segments
  * @param sampleCount - Number of samples
  * @param originalKey - Original key MIDI note (default: 60 = C4)
- * @param transpose - Transpose value (S-330 raw value, 64 = no pitch change)
+ * @param transpose - Transpose in semitones (0 = no pitch change)
  */
 export function createDrumTone(
   name: string,
@@ -124,7 +127,7 @@ export function createDrumTone(
   segmentLength: number,
   sampleCount: number,
   originalKey: number = DEFAULT_ORIGINAL_KEY,
-  transpose: number = 64
+  transpose: number = 0 // WARNING: S-330 uses 0 for no pitch change, NOT 64
 ): S330Tone {
   return createTone({
     name,

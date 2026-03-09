@@ -411,6 +411,7 @@ export function ItemPreviewPanel({
             name: kit.name,
             sampleRate: kit.sampleRate,
             baseNote: kit.baseNote,
+            transpose: kit.transpose, // Already in semitones
           }
         );
 

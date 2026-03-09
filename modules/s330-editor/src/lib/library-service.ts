@@ -1241,6 +1241,8 @@ export async function saveDrumKitToLibrary(
     description?: string;
     sampleRate: 15000 | 30000;
     baseNote: number;
+    /** Transpose in semitones (-64 to +63, 0 = no change) */
+    transpose?: number;
   }
 ): Promise<void> {
   const sanitizedName = kitName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
@@ -1275,6 +1277,7 @@ export async function saveDrumKitToLibrary(
       description: kitConfig.description,
       sampleRate: kitConfig.sampleRate,
       baseNote: kitConfig.baseNote,
+      transpose: kitConfig.transpose,
     };
 
     const yamlContent = stringifyYaml(kitYaml, { indent: 2, lineWidth: 120 });

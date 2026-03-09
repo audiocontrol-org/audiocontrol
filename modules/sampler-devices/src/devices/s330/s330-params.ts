@@ -575,7 +575,14 @@ export function parseTone(data: number[]): S330Tone {
         tvaLfoDepth: getByte(TONE_OFFSETS.TVA_LFO_DEPTH),
 
         // Pitch
-        transpose: getByte(TONE_OFFSETS.TRANSPOSE, 64),
+        // S-330 transpose uses signed 8-bit two's complement:
+        // - Values 0-127: positive semitones (0 to +127)
+        // - Values 128-255: negative semitones (-128 to -1)
+        // Empirically verified: -24 semitones = raw 232, +24 semitones = raw 24
+        transpose: (() => {
+            const raw = getByte(TONE_OFFSETS.TRANSPOSE, 0);
+            return raw > 127 ? raw - 256 : raw;
+        })(),
         fineTune: getByte(TONE_OFFSETS.FINE_TUNE, 0), // Raw value: 0 = center
 
         // TVF and TVA
@@ -736,7 +743,11 @@ export function encodeTone(tone: S330Tone): number[] {
     data[TONE_OFFSETS.LFO_OFFSET] = tone.lfo.offset & 0x7F;
 
     // Pitch parameters
-    data[TONE_OFFSETS.TRANSPOSE] = tone.transpose & 0x7F;
+    // S-330 transpose uses signed 8-bit two's complement:
+    // - Positive values: store as-is
+    // - Negative values: add 256 (e.g., -24 becomes 232)
+    // Empirically verified: -24 semitones = raw 232, +24 semitones = raw 24
+    data[TONE_OFFSETS.TRANSPOSE] = tone.transpose < 0 ? tone.transpose + 256 : tone.transpose;
     data[TONE_OFFSETS.FINE_TUNE] = tone.fineTune & 0x7F; // Raw value: 0 = center
 
     // TVF parameters

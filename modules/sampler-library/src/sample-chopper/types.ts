@@ -135,10 +135,10 @@ export interface DrumKitOutputConfig {
   /** Labels for each slice (e.g., ['kick', 'snare', 'hhc', 'hho']) */
   drumTypes?: string[];
   /**
-   * Transpose value for imported tones (S-330 raw value).
+   * Transpose value in semitones for pitch adjustment.
    * Use this to pitch samples up or down on playback.
    * Common use case: sample at high speed, then pitch down for more sample time.
-   * Range: 0-127, where 64 = no pitch change.
+   * Range: -64 to +63, where 0 = no pitch change.
    */
   transpose?: number;
 }
