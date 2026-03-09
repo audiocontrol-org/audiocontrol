@@ -649,10 +649,10 @@ export function LibraryPage() {
         </div>
       )}
 
-      {/* Three-Column Layout */}
-      <div className="grid grid-cols-3 gap-4 min-h-[600px]">
+      {/* Three-Column Layout - fixed height to enable internal scrolling */}
+      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-12rem)]">
         {/* Left: Device Memory */}
-        <div className="card p-0 overflow-hidden">
+        <div className="card p-0 overflow-hidden h-full">
           <DeviceMemoryPanel
             tones={tones}
             patches={patches}
@@ -666,7 +666,7 @@ export function LibraryPage() {
         </div>
 
         {/* Center: Library Tree */}
-        <div className="card p-0 overflow-hidden">
+        <div className="card p-0 overflow-hidden h-full">
           <LibraryTreePanel
             libraryHandle={libraryHandle}
             sets={sets}
@@ -684,7 +684,7 @@ export function LibraryPage() {
         </div>
 
         {/* Right: Preview */}
-        <div className="card p-0 overflow-hidden">
+        <div className="card p-0 overflow-hidden h-full">
           {selection?.type === 'drumKit' ? (
             <DrumKitPreviewPanel
               kitInfo={drumKits.find((k) => k.directoryName === selection.name) ?? null}
