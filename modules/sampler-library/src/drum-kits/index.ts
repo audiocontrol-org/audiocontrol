@@ -21,4 +21,5 @@ export type {
   KitMidiNotes,
   DetectedKit,
   ResolvedDrumKitBundle,
+  SliceDefinition,
 } from './drum-kit-parser.js';

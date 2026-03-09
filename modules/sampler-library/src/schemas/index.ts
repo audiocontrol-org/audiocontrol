@@ -88,11 +88,13 @@ export type {
 export {
   DrumKitSamplesSchema,
   DrumKitEntryBundleSchema,
+  SliceDefinitionSchema,
   DrumKitBundleSchema,
 } from './drum-kit-bundle-schema.js';
 
 export type {
   DrumKitSamples,
   DrumKitEntryBundle,
+  SliceDefinition,
   DrumKitBundle,
 } from './drum-kit-bundle-schema.js';

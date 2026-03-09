@@ -3,13 +3,17 @@
  *
  * Handles importing drum kit bundles to the device.
  * Creates tones with one-shot loop mode and a patch with correct MIDI mappings.
+ *
+ * Supports two formats:
+ * - Version 1: Individual WAV files (legacy)
+ * - Version 2: Source WAV + slice definitions (deferred chopping)
  */
 
 import { useState, useCallback, MutableRefObject } from 'react';
 import type { S330ClientInterface, S330Tone, S330Patch } from '@/core/midi/S330Client';
-import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
-import { createEmptyToneLayer, setToneAtMidiNote, createDrumTone, createDrumKitPatch } from '@audiocontrol/sampler-devices/s330';
-import { loadDrumKitSample, prepareWavForS330 } from '@/lib/library-service';
+import type { ResolvedDrumKitBundle, SliceDefinition } from '@audiocontrol/sampler-library/browser';
+import { createEmptyToneLayer, setToneAtMidiNote, createDrumTone, createDrumKitPatch, resample } from '@audiocontrol/sampler-devices/s330';
+import { loadDrumKitSample, loadDrumKitSource, prepareWavForS330 } from '@/lib/library-service';
 
 interface ImportDrumKitDialogState {
   kitName: string;
@@ -130,26 +134,51 @@ export function useImportDrumKit({
     setImportError(null);
 
     try {
+      // Check if this is a v2 format bundle (source + slices)
+      const isV2Format = bundle.source && bundle.slices && bundle.slices.length > 0;
+
       // Collect all samples with their info
       const samples: Array<{
         filename: string;
         drumType: string;
         kitNumber: number;
         midiNote: number;
+        // For v2: slice info
+        slice?: SliceDefinition;
       }> = [];
 
-      const drumOrder = ['kick', 'snare', 'hhClosed', 'hhOpen'] as const;
+      if (isV2Format) {
+        // V2 format: build samples from slices
+        const slices = bundle.slices!;
+        for (let i = 0; i < slices.length; i++) {
+          const slice = slices[i]!;
+          const kitNumber = Math.floor(i / 4) + 1;
+          const kitMidiBase = bundle.baseNote + Math.floor(i / 4) * 4;
+          const midiNote = kitMidiBase + (i % 4);
 
-      for (const kit of bundle.kits) {
-        for (const drumType of drumOrder) {
-          const filename = kit.samples[drumType];
-          if (filename) {
-            samples.push({
-              filename,
-              drumType,
-              kitNumber: kit.kitNumber,
-              midiNote: kit.midiNotes[drumType],
-            });
+          samples.push({
+            filename: slice.label,
+            drumType: slice.label,
+            kitNumber,
+            midiNote,
+            slice,
+          });
+        }
+      } else {
+        // V1 format: collect from kits
+        const drumOrder = ['kick', 'snare', 'hhClosed', 'hhOpen'] as const;
+
+        for (const kit of bundle.kits) {
+          for (const drumType of drumOrder) {
+            const filename = kit.samples[drumType];
+            if (filename) {
+              samples.push({
+                filename,
+                drumType,
+                kitNumber: kit.kitNumber,
+                midiNote: kit.midiNotes[drumType],
+              });
+            }
           }
         }
       }
@@ -158,16 +187,47 @@ export function useImportDrumKit({
       let completedSteps = 0;
       let currentSegment = startingSegment;
 
+      // For v2 format, load source WAV once
+      let sourceWav: { samples: Int16Array; sampleRate: number } | null = null;
+      if (isV2Format) {
+        setImportStatus('Loading source audio...');
+        sourceWav = await loadDrumKitSource(libraryHandle, kitName, bundle.source!);
+      }
+
       // Import each sample as a tone
       for (let i = 0; i < samples.length; i++) {
         const sample = samples[i]!;
         const toneSlot = startingToneSlot + i;
 
-        setImportStatus(`Loading ${sample.filename}...`);
+        setImportStatus(`Processing ${sample.filename}...`);
 
-        // Load WAV file and convert using the canonical conversion function
-        const wavBytes = await loadDrumKitSample(libraryHandle, kitName, sample.filename);
-        const prepared = prepareWavForS330(wavBytes.buffer as ArrayBuffer, bundle.sampleRate);
+        let prepared;
+
+        if (isV2Format && sourceWav && sample.slice) {
+          // V2 format: chop slice from source
+          const sliceSamples = sourceWav.samples.slice(
+            sample.slice.startSample,
+            sample.slice.endSample
+          );
+
+          // Resample to target rate if needed
+          let targetSamples: Int16Array;
+          if (sourceWav.sampleRate !== bundle.sampleRate) {
+            targetSamples = resample(sliceSamples, sourceWav.sampleRate, bundle.sampleRate);
+          } else {
+            targetSamples = sliceSamples;
+          }
+
+          // Prepare for S-330 (pack to 12-bit format)
+          prepared = prepareWavForS330(
+            createWavArrayBuffer(targetSamples, bundle.sampleRate),
+            bundle.sampleRate
+          );
+        } else {
+          // V1 format: load individual WAV file
+          const wavBytes = await loadDrumKitSample(libraryHandle, kitName, sample.filename);
+          prepared = prepareWavForS330(wavBytes.buffer as ArrayBuffer, bundle.sampleRate);
+        }
 
         // Create tone name (use drumType and kit number)
         const toneName = `${sample.drumType.slice(0, 4).toUpperCase()}${sample.kitNumber}`;
@@ -278,6 +338,49 @@ export function useImportDrumKit({
       setIsImporting(false);
     }
   }, [clientRef, libraryHandle, importDrumKitDialog, setTone, setPatch]);
+
+  /**
+   * Helper to create a minimal WAV ArrayBuffer from Int16Array samples.
+   * Used for v2 format when chopping slices.
+   */
+  function createWavArrayBuffer(samples: Int16Array, sampleRate: number): ArrayBuffer {
+    const numChannels = 1;
+    const bitsPerSample = 16;
+    const byteRate = sampleRate * numChannels * (bitsPerSample / 8);
+    const blockAlign = numChannels * (bitsPerSample / 8);
+    const dataSize = samples.length * (bitsPerSample / 8);
+    const fileSize = 44 + dataSize;
+
+    const buffer = new ArrayBuffer(fileSize);
+    const view = new DataView(buffer);
+
+    // RIFF header
+    view.setUint32(0, 0x52494646, false); // "RIFF"
+    view.setUint32(4, fileSize - 8, true);
+    view.setUint32(8, 0x57415645, false); // "WAVE"
+
+    // fmt subchunk
+    view.setUint32(12, 0x666D7420, false); // "fmt "
+    view.setUint32(16, 16, true); // Subchunk1Size (PCM)
+    view.setUint16(20, 1, true); // AudioFormat (PCM)
+    view.setUint16(22, numChannels, true);
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, byteRate, true);
+    view.setUint16(32, blockAlign, true);
+    view.setUint16(34, bitsPerSample, true);
+
+    // data subchunk
+    view.setUint32(36, 0x64617461, false); // "data"
+    view.setUint32(40, dataSize, true);
+
+    // Write samples
+    const dataOffset = 44;
+    for (let i = 0; i < samples.length; i++) {
+      view.setInt16(dataOffset + i * 2, samples[i]!, true);
+    }
+
+    return buffer;
+  }
 
   return {
     importDrumKitDialog,

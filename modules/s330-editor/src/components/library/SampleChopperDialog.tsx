@@ -16,11 +16,19 @@ import {
   DEFAULT_BASE_NOTE,
   type SliceConfig,
   type SliceResult,
-  type Slice,
   type ResolvedDrumKitBundle,
 } from '@audiocontrol/sampler-library/browser';
 import { cn } from '@/lib/utils';
 import { WaveformEditor, type SliceMarker } from './WaveformEditor';
+
+/**
+ * Slice definition for deferred chopping.
+ */
+export interface SliceDefinitionOutput {
+  label: string;
+  startSample: number;
+  endSample: number;
+}
 
 export interface SampleChopperDialogProps {
   /** Whether the dialog is open */
@@ -33,11 +41,16 @@ export interface SampleChopperDialogProps {
   sampleRate: number;
   /** Source file name (for default kit name) */
   sourceName: string;
-  /** Callback when drum kit is created */
+  /**
+   * Callback when drum kit is created.
+   * @param kit - The resolved drum kit bundle
+   * @param slices - Slice definitions with labels and sample boundaries
+   * @param sourceWav - The original source audio samples and sample rate
+   */
   onKitCreated: (
     kit: ResolvedDrumKitBundle,
-    slices: Slice[],
-    sampleRate: number
+    slices: SliceDefinitionOutput[],
+    sourceWav: { samples: Int16Array; sampleRate: number }
   ) => void;
 }
 
@@ -187,7 +200,7 @@ export function SampleChopperDialog({
 
   // Handle create kit
   const handleCreateKit = useCallback(() => {
-    if (!sliceResult || sliceResult.slices.length === 0) return;
+    if (!sliceResult || sliceResult.slices.length === 0 || !samples) return;
 
     const labels = kitLabels.split(',').map((s) => s.trim());
 
@@ -200,10 +213,19 @@ export function SampleChopperDialog({
       transpose: kitTranspose !== 0 ? kitTranspose : undefined,
     });
 
-    onKitCreated(kit, sliceResult.slices, sampleRate);
+    // Convert Slice[] to SliceDefinitionOutput[] with labels
+    const sliceDefinitions: SliceDefinitionOutput[] = sliceResult.slices.map((slice, i) => ({
+      label: labels[i % labels.length] ?? `S${i + 1}`,
+      startSample: slice.startSample,
+      endSample: slice.endSample,
+    }));
+
+    // Pass source WAV and slice definitions for deferred chopping
+    onKitCreated(kit, sliceDefinitions, { samples, sampleRate });
     onOpenChange(false);
   }, [
     sliceResult,
+    samples,
     kitName,
     kitSampleRate,
     kitBaseNote,

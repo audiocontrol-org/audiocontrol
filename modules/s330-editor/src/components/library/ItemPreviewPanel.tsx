@@ -7,8 +7,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
-import type { SetYaml, ResolvedDrumKitBundle, Slice } from '@audiocontrol/sampler-library/browser';
+import type { SetYaml, ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 import type { ItemSelection } from '@/pages/LibraryPage';
+import type { SliceDefinitionOutput } from './SampleChopperDialog';
 import {
   loadToneFromSet,
   loadPatchFromSet,
@@ -386,27 +387,20 @@ export function ItemPreviewPanel({
 
   // Handle when a drum kit is created from chopping
   const handleKitCreated = useCallback(
-    async (kit: ResolvedDrumKitBundle, slices: Slice[], sampleRate: number) => {
+    async (
+      kit: ResolvedDrumKitBundle,
+      slices: SliceDefinitionOutput[],
+      sourceWav: { samples: Int16Array; sampleRate: number }
+    ) => {
       if (!libraryHandle) return;
 
       try {
-        // Prepare slices with labels
-        const labeledSlices = slices.map((slice, i) => {
-          const sampleIndex = i % 4;
-          const defaultLabels = ['KICK', 'SNARE', 'HHC', 'HHO'];
-          const label = defaultLabels[sampleIndex] ?? `S${i + 1}`;
-          return {
-            samples: slice.samples,
-            label,
-          };
-        });
-
-        // Save to library
+        // Save to library using v2 format (source + slices)
         await saveDrumKitToLibrary(
           libraryHandle,
           kit.name,
-          labeledSlices,
-          sampleRate,
+          sourceWav,
+          slices,
           {
             name: kit.name,
             sampleRate: kit.sampleRate,

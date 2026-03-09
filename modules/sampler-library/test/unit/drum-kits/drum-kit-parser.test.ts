@@ -8,7 +8,9 @@ import {
   parseDrumKitDirectory,
   resolveMidiNotes,
   midiNoteToName,
+  loadDrumKitBundle,
 } from '@/drum-kits/drum-kit-parser.js';
+import type { DrumKitBundle } from '@/schemas/drum-kit-bundle-schema.js';
 
 describe('parseDrumFilename', () => {
   describe('preferred format: number first', () => {
@@ -211,5 +213,161 @@ describe('midiNoteToName', () => {
 
   it('should convert F#3 (54) correctly', () => {
     expect(midiNoteToName(54)).toBe('F#3');
+  });
+});
+
+describe('loadDrumKitBundle', () => {
+  describe('version 1 format (individual WAV files)', () => {
+    it('should auto-detect kits from filenames when no YAML provided', () => {
+      const files = [
+        '01 KICK.wav',
+        '01 SNARE.wav',
+        '01 HHC.wav',
+        '01 HHO.wav',
+      ];
+
+      const bundle = loadDrumKitBundle(null, files, 'MY-KIT');
+
+      expect(bundle.name).toBe('MY-KIT');
+      expect(bundle.sampleRate).toBe(15000);
+      expect(bundle.baseNote).toBe(36); // C2
+      expect(bundle.kits).toHaveLength(1);
+      expect(bundle.source).toBeUndefined();
+      expect(bundle.slices).toBeUndefined();
+    });
+
+    it('should use YAML configuration when provided', () => {
+      const yaml: DrumKitBundle = {
+        format: 'drum-kit-bundle',
+        version: 1,
+        name: 'CUSTOM-KIT',
+        sampleRate: 30000,
+        baseNote: 48,
+        transpose: -12,
+      };
+
+      const files = ['01 KICK.wav', '01 SNARE.wav'];
+
+      const bundle = loadDrumKitBundle(yaml, files, 'dir-name');
+
+      expect(bundle.name).toBe('CUSTOM-KIT');
+      expect(bundle.sampleRate).toBe(30000);
+      expect(bundle.baseNote).toBe(48);
+      expect(bundle.transpose).toBe(-12);
+    });
+  });
+
+  describe('version 2 format (source + slices)', () => {
+    it('should parse v2 format with source and slices', () => {
+      const yaml: DrumKitBundle = {
+        format: 'drum-kit-bundle',
+        version: 2,
+        name: 'CHOPPED-KIT',
+        sampleRate: 15000,
+        baseNote: 36,
+        transpose: -24,
+        source: 'source.wav',
+        slices: [
+          { label: 'kick', startSample: 0, endSample: 1000 },
+          { label: 'snare', startSample: 1500, endSample: 2500 },
+          { label: 'hhc', startSample: 3000, endSample: 3800 },
+          { label: 'hho', startSample: 4000, endSample: 5000 },
+        ],
+      };
+
+      const files = ['source.wav'];
+
+      const bundle = loadDrumKitBundle(yaml, files, 'chopped');
+
+      expect(bundle.name).toBe('CHOPPED-KIT');
+      expect(bundle.sampleRate).toBe(15000);
+      expect(bundle.transpose).toBe(-24);
+      expect(bundle.source).toBe('source.wav');
+      expect(bundle.slices).toHaveLength(4);
+      expect(bundle.slices![0]).toEqual({
+        label: 'kick',
+        startSample: 0,
+        endSample: 1000,
+      });
+    });
+
+    it('should build kits from slices for backward compatibility', () => {
+      const yaml: DrumKitBundle = {
+        format: 'drum-kit-bundle',
+        version: 2,
+        name: 'CHOPPED-KIT',
+        sampleRate: 15000,
+        baseNote: 36,
+        source: 'source.wav',
+        slices: [
+          { label: 'kick', startSample: 0, endSample: 1000 },
+          { label: 'snare', startSample: 1500, endSample: 2500 },
+          { label: 'hhc', startSample: 3000, endSample: 3800 },
+          { label: 'hho', startSample: 4000, endSample: 5000 },
+        ],
+      };
+
+      const bundle = loadDrumKitBundle(yaml, ['source.wav'], 'chopped');
+
+      // Should create one kit from 4 slices
+      expect(bundle.kits).toHaveLength(1);
+      expect(bundle.kits[0]?.kitNumber).toBe(1);
+      expect(bundle.kits[0]?.isComplete).toBe(true);
+      expect(bundle.kits[0]?.midiNotes).toEqual({
+        kick: 36,
+        snare: 37,
+        hhClosed: 38,
+        hhOpen: 39,
+      });
+    });
+
+    it('should create multiple kits from 8 slices', () => {
+      const yaml: DrumKitBundle = {
+        format: 'drum-kit-bundle',
+        version: 2,
+        name: 'MULTI-KIT',
+        sampleRate: 15000,
+        baseNote: 36,
+        source: 'source.wav',
+        slices: [
+          { label: 'kick', startSample: 0, endSample: 1000 },
+          { label: 'snare', startSample: 1500, endSample: 2500 },
+          { label: 'hhc', startSample: 3000, endSample: 3800 },
+          { label: 'hho', startSample: 4000, endSample: 5000 },
+          { label: 'kick', startSample: 6000, endSample: 7000 },
+          { label: 'snare', startSample: 7500, endSample: 8500 },
+          { label: 'hhc', startSample: 9000, endSample: 9800 },
+          { label: 'hho', startSample: 10000, endSample: 11000 },
+        ],
+      };
+
+      const bundle = loadDrumKitBundle(yaml, ['source.wav'], 'multi');
+
+      expect(bundle.kits).toHaveLength(2);
+      expect(bundle.kits[0]?.kitNumber).toBe(1);
+      expect(bundle.kits[1]?.kitNumber).toBe(2);
+      expect(bundle.totalSamples).toBe(8);
+    });
+
+    it('should report correct totalSamples from slices', () => {
+      const yaml: DrumKitBundle = {
+        format: 'drum-kit-bundle',
+        version: 2,
+        name: 'TEST-KIT',
+        sampleRate: 15000,
+        baseNote: 36,
+        source: 'source.wav',
+        slices: [
+          { label: 'kick', startSample: 0, endSample: 1000 },
+          { label: 'snare', startSample: 1500, endSample: 2500 },
+          { label: 'hhc', startSample: 3000, endSample: 3800 },
+        ],
+      };
+
+      const bundle = loadDrumKitBundle(yaml, ['source.wav'], 'test');
+
+      expect(bundle.totalSamples).toBe(3); // 3 slices
+      expect(bundle.kits[0]?.isComplete).toBe(false); // Only 3 samples
+    });
   });
 });

@@ -5,10 +5,17 @@
  * following the convention `{TYPE} {##}.wav` and merge with
  * optional kit.yaml configuration.
  *
+ * Supports two formats:
+ * - Version 1: Individual WAV files per sample
+ * - Version 2: Single source WAV + slice definitions (deferred chopping)
+ *
  * @packageDocumentation
  */
 
-import type { DrumKitBundle } from '@/schemas/drum-kit-bundle-schema.js';
+import type { DrumKitBundle, SliceDefinition } from '@/schemas/drum-kit-bundle-schema.js';
+
+// Re-export SliceDefinition for consumers
+export type { SliceDefinition } from '@/schemas/drum-kit-bundle-schema.js';
 
 /**
  * Recognized drum sample types.
@@ -85,6 +92,16 @@ export interface ResolvedDrumKitBundle {
    * Range: -64 to +63, where 0 = no pitch change.
    */
   transpose?: number;
+  /**
+   * Version 2: Source WAV filename (e.g., "source.wav").
+   * If present, slices should be chopped from this file at import time.
+   */
+  source?: string;
+  /**
+   * Version 2: Slice definitions with sample boundaries.
+   * Each slice references a region of the source WAV.
+   */
+  slices?: SliceDefinition[];
 }
 
 /**
@@ -286,9 +303,9 @@ function countKitSamples(samples: KitSamples): number {
 /**
  * Load and resolve a drum kit bundle.
  *
- * Merges the optional kit.yaml configuration with auto-detected
- * samples from filenames. If kit.yaml specifies explicit kits,
- * those override auto-detection.
+ * Supports two formats:
+ * - Version 1: Individual WAV files, auto-detected from filenames or explicit in YAML
+ * - Version 2: Single source WAV + slice definitions (deferred chopping)
  *
  * @param yaml - Parsed kit.yaml or null for auto-detection only
  * @param files - Array of filenames in the directory
@@ -310,9 +327,60 @@ export function loadDrumKitBundle(
   const sampleRate = yaml?.sampleRate ?? 15000;
 
   let kits: DetectedKit[];
+  let source: string | undefined;
+  let slices: SliceDefinition[] | undefined;
 
-  if (yaml?.kits && yaml.kits.length > 0) {
-    // Use explicit kit definitions from YAML
+  // Check for version 2 format (source + slices)
+  if (yaml?.source && yaml?.slices && yaml.slices.length > 0) {
+    // Version 2: deferred chopping
+    source = yaml.source;
+    slices = yaml.slices;
+
+    // Build kits from slices for backward compatibility
+    // Group slices into 4-piece kits based on their order
+    const kitCount = Math.ceil(slices.length / 4);
+    kits = [];
+
+    for (let kitIndex = 0; kitIndex < kitCount; kitIndex++) {
+      const startIdx = kitIndex * 4;
+      const kitSlices = slices.slice(startIdx, startIdx + 4);
+
+      // Map slice labels to drum types
+      const samples: KitSamples = {};
+      for (let i = 0; i < kitSlices.length; i++) {
+        const slice = kitSlices[i];
+        if (!slice) continue;
+
+        // Generate a virtual filename from the slice
+        const paddedKit = String(kitIndex + 1).padStart(2, '0');
+        const filename = `${paddedKit} ${slice.label.toUpperCase()}.wav`;
+
+        // Map based on position in the kit (0=kick, 1=snare, 2=hhClosed, 3=hhOpen)
+        switch (i) {
+          case 0:
+            samples.kick = filename;
+            break;
+          case 1:
+            samples.snare = filename;
+            break;
+          case 2:
+            samples.hhClosed = filename;
+            break;
+          case 3:
+            samples.hhOpen = filename;
+            break;
+        }
+      }
+
+      kits.push({
+        kitNumber: kitIndex + 1,
+        samples,
+        midiNotes: resolveMidiNotes(baseNote, kitIndex),
+        isComplete: kitSlices.length === 4,
+      });
+    }
+  } else if (yaml?.kits && yaml.kits.length > 0) {
+    // Version 1: Use explicit kit definitions from YAML
     kits = yaml.kits.map((entry, index) => ({
       kitNumber: index + 1,
       samples: {
@@ -325,12 +393,12 @@ export function loadDrumKitBundle(
       isComplete: true, // YAML-specified kits are assumed complete
     }));
   } else {
-    // Auto-detect from filenames
+    // Version 1 (auto-detect): detect from filenames
     kits = parseDrumKitDirectory(files, baseNote);
   }
 
   // Calculate totals
-  const totalSamples = kits.reduce(
+  const totalSamples = slices ? slices.length : kits.reduce(
     (sum, kit) => sum + countKitSamples(kit.samples),
     0
   );
@@ -345,6 +413,8 @@ export function loadDrumKitBundle(
     totalSamples,
     allComplete,
     transpose: yaml?.transpose,
+    source,
+    slices,
   };
 }
 

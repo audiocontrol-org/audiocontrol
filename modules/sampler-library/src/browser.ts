@@ -145,12 +145,14 @@ export type {
 export {
   DrumKitSamplesSchema,
   DrumKitEntryBundleSchema,
+  SliceDefinitionSchema,
   DrumKitBundleSchema,
 } from './schemas/index.js';
 
 export type {
   DrumKitSamples,
   DrumKitEntryBundle,
+  SliceDefinition,
   DrumKitBundle,
 } from './schemas/index.js';
 

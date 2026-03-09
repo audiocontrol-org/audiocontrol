@@ -1222,21 +1222,35 @@ export async function loadToneWavSamples(
 }
 
 /**
- * Save a chopped drum kit to the library.
+ * Slice definition for deferred chopping (version 2 format).
+ */
+export interface SliceDefinitionInput {
+  /** Human-readable label for this slice (e.g., "kick", "snare") */
+  label: string;
+  /** Start position in samples (0-indexed) */
+  startSample: number;
+  /** End position in samples (exclusive) */
+  endSample: number;
+}
+
+/**
+ * Save a drum kit to the library using deferred chopping (v2 format).
+ *
+ * Stores the full source WAV and slice definitions in kit.yaml.
+ * Slices are chopped at import time, enabling future slice editing.
  *
  * @param directoryHandle - Library directory handle
  * @param kitName - Name for the drum kit directory
- * @param slices - Array of sliced samples
- * @param labels - Labels for each slice
- * @param sampleRate - Sample rate of the samples
- * @param kitConfig - Optional kit.yaml configuration
+ * @param sourceWav - Full source audio samples and sample rate
+ * @param slices - Slice definitions with labels and sample boundaries
+ * @param kitConfig - Kit configuration (name, sample rate, base note, transpose)
  */
 export async function saveDrumKitToLibrary(
   directoryHandle: FileSystemDirectoryHandle,
   kitName: string,
-  slices: Array<{ samples: Int16Array; label: string }>,
-  sampleRate: number,
-  kitConfig?: {
+  sourceWav: { samples: Int16Array; sampleRate: number },
+  slices: SliceDefinitionInput[],
+  kitConfig: {
     name: string;
     description?: string;
     sampleRate: 15000 | 30000;
@@ -1252,40 +1266,36 @@ export async function saveDrumKitToLibrary(
     'library', 's330', 'drum-kits', sanitizedName
   ]);
 
-  // Write each slice as a WAV file
-  for (let i = 0; i < slices.length; i++) {
-    const slice = slices[i];
-    if (!slice) continue;
+  // Write source WAV file
+  const sourceFilename = 'source.wav';
+  const wavBlob = createWavBlobFromSamples(sourceWav.samples, sourceWav.sampleRate);
+  const wavHandle = await drumKitsDir.getFileHandle(sourceFilename, { create: true });
+  const wavWritable = await wavHandle.createWritable();
+  await wavWritable.write(wavBlob);
+  await wavWritable.close();
 
-    const kitNumber = Math.floor(i / 4) + 1;
-    const paddedNumber = String(kitNumber).padStart(2, '0');
-    const filename = `${paddedNumber} ${slice.label.toUpperCase()}.wav`;
+  // Write kit.yaml with v2 format (source + slices)
+  const kitYaml: DrumKitBundle = {
+    format: 'drum-kit-bundle',
+    version: 2,
+    name: kitConfig.name,
+    description: kitConfig.description,
+    sampleRate: kitConfig.sampleRate,
+    baseNote: kitConfig.baseNote,
+    transpose: kitConfig.transpose,
+    source: sourceFilename,
+    slices: slices.map((slice) => ({
+      label: slice.label,
+      startSample: slice.startSample,
+      endSample: slice.endSample,
+    })),
+  };
 
-    const wavBlob = createWavBlobFromSamples(slice.samples, sampleRate);
-    const wavHandle = await drumKitsDir.getFileHandle(filename, { create: true });
-    const wavWritable = await wavHandle.createWritable();
-    await wavWritable.write(wavBlob);
-    await wavWritable.close();
-  }
-
-  // Write kit.yaml if config provided
-  if (kitConfig) {
-    const kitYaml: DrumKitBundle = {
-      format: 'drum-kit-bundle',
-      version: 1,
-      name: kitConfig.name,
-      description: kitConfig.description,
-      sampleRate: kitConfig.sampleRate,
-      baseNote: kitConfig.baseNote,
-      transpose: kitConfig.transpose,
-    };
-
-    const yamlContent = stringifyYaml(kitYaml, { indent: 2, lineWidth: 120 });
-    const yamlHandle = await drumKitsDir.getFileHandle('kit.yaml', { create: true });
-    const yamlWritable = await yamlHandle.createWritable();
-    await yamlWritable.write(yamlContent);
-    await yamlWritable.close();
-  }
+  const yamlContent = stringifyYaml(kitYaml, { indent: 2, lineWidth: 120 });
+  const yamlHandle = await drumKitsDir.getFileHandle('kit.yaml', { create: true });
+  const yamlWritable = await yamlHandle.createWritable();
+  await yamlWritable.write(yamlContent);
+  await yamlWritable.close();
 }
 
 /**
@@ -1310,6 +1320,36 @@ export async function loadDrumKitSample(
   const arrayBuffer = await file.arrayBuffer();
 
   return new Uint8Array(arrayBuffer);
+}
+
+/**
+ * Load the source WAV from a v2 drum kit bundle (deferred chopping).
+ *
+ * @param directoryHandle - Library directory handle
+ * @param kitName - Directory name of the drum kit
+ * @param sourceFilename - Source WAV filename (from kit.yaml)
+ * @returns Parsed samples and sample rate
+ */
+export async function loadDrumKitSource(
+  directoryHandle: FileSystemDirectoryHandle,
+  kitName: string,
+  sourceFilename: string
+): Promise<{ samples: Int16Array; sampleRate: number }> {
+  const kitDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'drum-kits', kitName
+  ]);
+
+  const fileHandle = await kitDir.getFileHandle(sourceFilename);
+  const file = await fileHandle.getFile();
+  const arrayBuffer = await file.arrayBuffer();
+
+  // Parse WAV to get raw samples
+  const wavData = parseWav(arrayBuffer);
+
+  return {
+    samples: wavData.samples,
+    sampleRate: wavData.sampleRate,
+  };
 }
 
 // TypeScript declarations for File System Access API
