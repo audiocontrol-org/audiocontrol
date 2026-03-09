@@ -13,7 +13,7 @@ import { useDeviceDataStore, TONES_PER_BANK, PATCHES_PER_BANK } from '@/stores/d
 import { useLibraryStore } from '@/stores/libraryStore';
 import { createS330Client } from '@/core/midi/S330Client';
 import type { S330ClientInterface, S330Tone, S330Patch } from '@/core/midi/S330Client';
-import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
+import { DeviceMemoryPanel, type DeviceDragData } from '@/components/library/DeviceMemoryPanel';
 import { LibraryTreePanel } from '@/components/library/LibraryTreePanel';
 import { ItemPreviewPanel } from '@/components/library/ItemPreviewPanel';
 import { DrumKitPreviewPanel } from '@/components/library/DrumKitPreviewPanel';
@@ -23,6 +23,7 @@ import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneD
 import { ImportLibraryPatchDialog } from '@/components/library/ImportLibraryPatchDialog';
 import { ImportDrumKitDialog } from '@/components/library/ImportDrumKitDialog';
 import { SampleChopperDialog, type SliceDefinitionOutput, type InitialSliceDefinition } from '@/components/library/SampleChopperDialog';
+import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { useImportDrumKit } from '@/hooks/useImportDrumKit';
 import {
   hasFileSystemAccess,
@@ -37,6 +38,7 @@ import {
   updateDrumKitSlices,
   saveDeviceToSetIncremental,
   loadSetToDevice,
+  exportToneToDirectory,
   type DrumKitInfo,
   type LibraryToneInfo,
 } from '@/lib/library-service';
@@ -98,6 +100,15 @@ export function LibraryPage() {
   // Individual tones state
   const [individualTones, setIndividualTones] = useState<LibraryToneInfo[]>([]);
 
+  // Export tone dialog state
+  const [exportToneDialog, setExportToneDialog] = useState<{
+    tone: S330Tone;
+    toneIndex: number;
+  } | null>(null);
+  const [exportProgress, setExportProgress] = useState<number | undefined>(undefined);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportStatus, setExportStatus] = useState<string | null>(null);
+
   // Local state
   const [selection, setSelection] = useState<ItemSelection | null>(null);
   const [libraryHandle, setLibraryHandle] = useState<FileSystemDirectoryHandle | null>(null);
@@ -105,6 +116,7 @@ export function LibraryPage() {
   const [isLoadDialogOpen, setIsLoadDialogOpen] = useState(false);
   const [operationProgress, setOperationProgress] = useState<number | undefined>(undefined);
   const [operationError, setOperationError] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Import dialog state
   const [importToneDialog, setImportToneDialog] = useState<{
@@ -551,6 +563,85 @@ export function LibraryPage() {
     setImportToneDialog({ setName: '__individual__', toneFile });
   }, []);
 
+  // Handle drop from device memory to library (export tone) - opens dialog
+  const handleDropDeviceItem = useCallback((data: DeviceDragData) => {
+    if (!libraryHandle || !clientRef.current) {
+      setOperationError('Library or device not connected');
+      return;
+    }
+
+    // Only support tones for now
+    if (data.type !== 'tone') {
+      setOperationError('Only tone export is currently supported');
+      return;
+    }
+
+    const tone = tones[data.index];
+    if (!tone) {
+      setOperationError('Tone not loaded from device');
+      return;
+    }
+
+    // Open the export dialog
+    setExportToneDialog({ tone, toneIndex: data.index });
+    setExportProgress(undefined);
+    setExportError(null);
+    setExportStatus(null);
+  }, [libraryHandle, tones]);
+
+  // Handle export tone from dialog
+  const handleExportTone = useCallback(async (toneName: string, toneIndex: number) => {
+    if (!libraryHandle || !clientRef.current || !exportToneDialog) {
+      throw new Error('Library or device not connected');
+    }
+
+    const tone = exportToneDialog.tone;
+
+    setIsExporting(true);
+    setExportError(null);
+    setExportProgress(0);
+    setExportStatus(`Fetching wave data...`);
+
+    try {
+      // Request wave data from device
+      const waveData = await clientRef.current.requestWaveData(
+        toneIndex,
+        (received, total) => {
+          const progress = total > 0 ? Math.floor((received / total) * 50) : 0;
+          setExportProgress(progress);
+        }
+      );
+
+      setExportStatus(`Writing to library...`);
+      setExportProgress(50);
+
+      // Export to library with the user-specified name
+      await exportToneToDirectory(
+        libraryHandle,
+        { ...tone, name: toneName },
+        waveData,
+        toneName,
+        (progress) => {
+          setExportProgress(50 + Math.floor(progress / 2));
+        }
+      );
+
+      setExportProgress(100);
+      setExportStatus('Export complete');
+
+      // Refresh individual tones list
+      const updatedTones = await listIndividualTones(libraryHandle);
+      setIndividualTones(updatedTones);
+    } catch (err) {
+      console.error('[LibraryPage] Failed to export tone:', err);
+      const message = err instanceof Error ? err.message : 'Failed to export tone';
+      setExportError(message);
+      throw err;
+    } finally {
+      setIsExporting(false);
+    }
+  }, [libraryHandle, exportToneDialog]);
+
   // Import single tone from library
   const handleImportLibraryTone = useCallback(async (params: {
     setName: string;
@@ -799,7 +890,8 @@ export function LibraryPage() {
             onSelectDrumKit={handleSelectDrumKit}
             onSelectIndividualTone={handleSelectIndividualTone}
             onRefresh={handleRefreshLibrary}
-            isLoading={isLoading}
+            isLoading={isLoading || isExporting}
+            onDropDeviceItem={handleDropDeviceItem}
           />
         </div>
 
@@ -923,6 +1015,26 @@ export function LibraryPage() {
           onSlicesUpdated={handleSlicesUpdated}
         />
       )}
+
+      {/* Export Tone Dialog */}
+      <ExportToneDialog
+        open={!!exportToneDialog}
+        onOpenChange={(open) => {
+          if (!open && !isExporting) {
+            setExportToneDialog(null);
+            setExportProgress(undefined);
+            setExportError(null);
+            setExportStatus(null);
+          }
+        }}
+        tone={exportToneDialog?.tone ?? null}
+        toneIndex={exportToneDialog?.toneIndex ?? 0}
+        onExport={handleExportTone}
+        isExporting={isExporting}
+        exportProgress={exportProgress}
+        exportError={exportError}
+        statusMessage={exportStatus}
+      />
     </div>
   );
 }

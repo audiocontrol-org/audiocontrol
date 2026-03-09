@@ -87,8 +87,8 @@ export const S330ToneExtensionSchema = z.object({
   outputAssign: z.number().int().min(0).max(7),
   /** Source tone number (0-31) */
   sourceTone: z.number().int().min(0).max(31).optional(),
-  /** Transpose (0-127, 64=center) */
-  transpose: z.number().int().min(0).max(127).default(64),
+  /** Transpose in semitones (-64 to +63, 0=no change) */
+  transpose: z.number().int().min(-64).max(63).default(0),
   /** Fine tune (-64 to +63) */
   fineTune: z.number().int().min(-64).max(63).default(0),
   /** LFO parameters */

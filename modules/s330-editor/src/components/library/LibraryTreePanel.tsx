@@ -5,12 +5,15 @@
  * - Sets (expandable folders showing their tones/patches)
  * - Global Tones
  * - Global Patches
+ *
+ * Supports drag and drop from device memory to export items to library.
  */
 
 import { useState, useCallback, useEffect } from 'react';
 import type { SetInfo, SetYaml } from '@audiocontrol/sampler-library/browser';
 import { loadSetManifest, type DrumKitInfo, type LibraryToneInfo } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
+import { DEVICE_DRAG_MIME, type DeviceDragData } from './DeviceMemoryPanel';
 
 interface LibraryTreePanelProps {
   libraryHandle: FileSystemDirectoryHandle | null;
@@ -27,6 +30,8 @@ interface LibraryTreePanelProps {
   onSelectIndividualTone: (name: string) => void;
   onRefresh: () => void;
   isLoading: boolean;
+  /** Callback when a device item is dropped to export to library */
+  onDropDeviceItem?: (data: DeviceDragData) => void;
 }
 
 /**
@@ -320,10 +325,49 @@ export function LibraryTreePanel({
   onSelectIndividualTone,
   onRefresh,
   isLoading,
+  onDropDeviceItem,
 }: LibraryTreePanelProps): JSX.Element {
   const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set());
   const [manifests, setManifests] = useState<Map<string, SetYaml>>(new Map());
   const [loadingManifests, setLoadingManifests] = useState<Set<string>>(new Set());
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  // Handle drag over for drop zone
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes(DEVICE_DRAG_MIME)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes(DEVICE_DRAG_MIME)) {
+      e.preventDefault();
+      setIsDragOver(true);
+    }
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    // Only clear if we're leaving the container, not entering a child
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+
+    const jsonData = e.dataTransfer.getData(DEVICE_DRAG_MIME);
+    if (!jsonData) return;
+
+    try {
+      const data = JSON.parse(jsonData) as DeviceDragData;
+      onDropDeviceItem?.(data);
+    } catch (err) {
+      console.error('[LibraryTreePanel] Failed to parse drop data:', err);
+    }
+  }, [onDropDeviceItem]);
 
   const toggleSet = useCallback((name: string) => {
     setExpandedSets((prev) => {
@@ -446,13 +490,31 @@ export function LibraryTreePanel({
           )}
         </div>
 
-        {/* Individual Tones Section */}
-        {individualTones.length > 0 && (
-          <div className="p-2 border-t border-s330-accent/30">
-            <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1">
-              Individual Tones
-            </div>
+        {/* Individual Tones Section - Drop Zone */}
+        <div
+          className={cn(
+            'p-2 border-t border-s330-accent/30 transition-colors',
+            isDragOver && 'bg-s330-highlight/10 border-s330-highlight'
+          )}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
+          <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1 flex items-center gap-2">
+            Individual Tones
+            {isDragOver && (
+              <span className="text-s330-highlight font-normal normal-case">
+                — Drop to export
+              </span>
+            )}
+          </div>
 
+          {individualTones.length === 0 && !isDragOver ? (
+            <div className="text-sm text-s330-muted/70 px-2 py-4 text-center italic">
+              Drag tones from device to export
+            </div>
+          ) : (
             <div className="space-y-0.5">
               {individualTones.map((toneInfo) => (
                 <button
@@ -471,8 +533,14 @@ export function LibraryTreePanel({
                 </button>
               ))}
             </div>
-          </div>
-        )}
+          )}
+
+          {isDragOver && (
+            <div className="mt-2 p-3 border-2 border-dashed border-s330-highlight/50 rounded text-center text-sm text-s330-highlight">
+              Drop here to export to library
+            </div>
+          )}
+        </div>
 
         {/* Drum Kits Section */}
         <div className="p-2 border-t border-s330-accent/30">

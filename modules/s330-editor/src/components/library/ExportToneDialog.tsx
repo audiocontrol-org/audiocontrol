@@ -15,8 +15,8 @@ export interface ExportToneDialogProps {
   open: boolean;
   /** Callback when dialog should close */
   onOpenChange: (open: boolean) => void;
-  /** The tone to export */
-  tone: S330Tone;
+  /** The tone to export (null if not loaded) */
+  tone: S330Tone | null;
   /** Tone index (for display) */
   toneIndex: number;
   /** Callback to perform the export - receives tone name and index */
@@ -27,6 +27,8 @@ export interface ExportToneDialogProps {
   exportProgress?: number;
   /** Export error message */
   exportError?: string | null;
+  /** Status message for current operation */
+  statusMessage?: string | null;
 }
 
 export function ExportToneDialog({
@@ -38,17 +40,18 @@ export function ExportToneDialog({
   isExporting,
   exportProgress,
   exportError,
+  statusMessage,
 }: ExportToneDialogProps): JSX.Element {
-  const [toneName, setToneName] = useState(tone.name || `Tone_${toneIndex + 1}`);
+  const [toneName, setToneName] = useState(tone?.name || `Tone_${toneIndex + 1}`);
   const [localError, setLocalError] = useState<string | null>(null);
 
   // Reset tone name when dialog opens or tone changes
   useEffect(() => {
     if (open) {
-      setToneName(tone.name || `Tone_${toneIndex + 1}`);
+      setToneName(tone?.name || `Tone_${toneIndex + 1}`);
       setLocalError(null);
     }
-  }, [open, tone.name, toneIndex]);
+  }, [open, tone?.name, toneIndex]);
 
   const handleExport = useCallback(async () => {
     if (!toneName.trim()) {
@@ -132,26 +135,28 @@ export function ExportToneDialog({
               </div>
 
               {/* Tone Info */}
-              <div className="bg-s330-bg rounded p-3 text-sm">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="text-s330-muted">Sample Rate:</span>
-                    <span className="ml-2 text-s330-text">{tone.sampleRate}</span>
-                  </div>
-                  <div>
-                    <span className="text-s330-muted">Loop Mode:</span>
-                    <span className="ml-2 text-s330-text capitalize">{tone.loopMode}</span>
-                  </div>
-                  <div>
-                    <span className="text-s330-muted">Original Key:</span>
-                    <span className="ml-2 text-s330-text">{tone.originalKey}</span>
-                  </div>
-                  <div>
-                    <span className="text-s330-muted">TVF:</span>
-                    <span className="ml-2 text-s330-text">{tone.tvf.enabled ? 'ON' : 'OFF'}</span>
+              {tone && (
+                <div className="bg-s330-bg rounded p-3 text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="text-s330-muted">Sample Rate:</span>
+                      <span className="ml-2 text-s330-text">{tone.sampleRate}</span>
+                    </div>
+                    <div>
+                      <span className="text-s330-muted">Loop Mode:</span>
+                      <span className="ml-2 text-s330-text capitalize">{tone.loopMode}</span>
+                    </div>
+                    <div>
+                      <span className="text-s330-muted">Original Key:</span>
+                      <span className="ml-2 text-s330-text">{tone.originalKey}</span>
+                    </div>
+                    <div>
+                      <span className="text-s330-muted">TVF:</span>
+                      <span className="ml-2 text-s330-text">{tone.tvf.enabled ? 'ON' : 'OFF'}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Progress Bar */}
               {isExporting && exportProgress !== undefined && (
@@ -163,7 +168,7 @@ export function ExportToneDialog({
                     />
                   </div>
                   <p className="text-xs text-s330-muted mt-1 text-right">
-                    {exportProgress < 100 ? 'Fetching wave data...' : 'Saving...'}
+                    {statusMessage || (exportProgress < 50 ? 'Fetching wave data...' : 'Saving to library...')}
                   </p>
                 </div>
               )}
@@ -189,10 +194,10 @@ export function ExportToneDialog({
                 </button>
                 <button
                   onClick={handleExport}
-                  disabled={isExporting || !toneName.trim()}
+                  disabled={isExporting || !toneName.trim() || !tone}
                   className={cn(
                     'ac-btn ac-btn-primary',
-                    (isExporting || !toneName.trim()) && 'opacity-50 cursor-not-allowed'
+                    (isExporting || !toneName.trim() || !tone) && 'opacity-50 cursor-not-allowed'
                   )}
                 >
                   {isExporting ? (

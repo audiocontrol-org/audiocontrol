@@ -252,7 +252,7 @@ export interface S330Tone {
     tvaLfoDepth: number;
 
     // === Pitch Parameters (00 48H - 00 4BH) ===
-    /** Transpose (0-127, 64=center) */
+    /** Transpose in semitones (-64 to +63, 0=no change) */
     transpose: number;
     /** Fine tune (-64 to +63) */
     fineTune: number;

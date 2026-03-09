@@ -40,7 +40,7 @@ function createTestTone(overrides: Partial<S330Tone> = {}): S330Tone {
       offset: 0,
     },
     tvaLfoDepth: 0,
-    transpose: 64,
+    transpose: 0,
     fineTune: 0,
     tvf: {
       cutoff: 127,
@@ -125,14 +125,14 @@ describe('s330ToneConverter', () => {
       const tone = createTestTone({
         originalKey: 48,
         outputAssign: 3,
-        transpose: 70,
+        transpose: 6,
         fineTune: -12,
       });
       const yaml = s330ToneConverter.toYaml(tone, 'test.wav');
 
       expect(yaml.s330?.originalKey).toBe(48);
       expect(yaml.s330?.outputAssign).toBe(3);
-      expect(yaml.s330?.transpose).toBe(70);
+      expect(yaml.s330?.transpose).toBe(6);
       expect(yaml.s330?.fineTune).toBe(-12);
     });
 
@@ -254,7 +254,7 @@ describe('s330ToneConverter', () => {
 
       const restored = s330ToneConverter.fromYaml(minimalYaml as any);
 
-      expect(restored.transpose).toBe(64); // default
+      expect(restored.transpose).toBe(0); // default
       expect(restored.fineTune).toBe(0); // default
       expect(restored.benderEnabled).toBe(true); // default
     });
@@ -266,7 +266,7 @@ describe('s330ToneConverter', () => {
         name: 'RoundTrip',
         originalKey: 72,
         outputAssign: 5,
-        transpose: 58,
+        transpose: -6,
         fineTune: -24,
         loopMode: 'alternating',
         sampleRate: '15kHz',
