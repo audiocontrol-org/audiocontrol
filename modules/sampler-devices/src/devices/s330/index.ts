@@ -376,3 +376,11 @@ export {
     toneLayerToZones,
     zonesToToneLayer,
 } from './s330-tone-layer.js';
+
+// =============================================================================
+// Tone Factory Exports
+// =============================================================================
+
+export type { CreateToneConfig } from './s330-tone-factory.js';
+
+export { createTone } from './s330-tone-factory.js';

@@ -81,6 +81,8 @@ import {
     encodeSignedValue,
 } from './s330-params.js';
 
+import { createTone } from './s330-tone-factory.js';
+
 // =============================================================================
 // Data Types
 // =============================================================================
@@ -1660,7 +1662,7 @@ export function createS330Client(
                     },
                 };
             } else {
-                // New sample import: Use basic parameters with sensible defaults
+                // New sample import: Use createTone factory with sensible defaults
                 const name = input.name ?? 'UNNAMED';
                 const sampleRate = input.sampleRate ?? '30kHz';
                 const loopMode = input.loopMode ?? 'one-shot';
@@ -1669,74 +1671,17 @@ export function createS330Client(
 
                 console.log(`[S330Client] Importing new tone ${toneIndex}: "${name}" to bank ${waveBank}, segment ${segmentTop}`);
 
-                tone = {
-                    name: name.slice(0, 8),
-                    outputAssign: 1,
-                    sourceTone: 0,
-                    origSubTone: 0,
+                tone = createTone({
+                    name,
                     sampleRate,
-                    originalKey,
-                    wave: {
-                        bank: waveBank,
-                        segmentTop,
-                        segmentLength,
-                        startPoint: 0,
-                        endPoint: Math.max(0, sampleCount - 1),
-                        loopPoint,
-                        loopLength: Math.max(0, sampleCount - 1 - loopPoint),
-                    },
+                    waveBank,
+                    segmentTop,
+                    segmentLength,
+                    sampleCount,
                     loopMode,
-                    lfo: {
-                        rate: 64,
-                        sync: false,
-                        delay: 0,
-                        mode: 'normal',
-                        polarity: false,
-                        offset: 64,
-                    },
-                    tvaLfoDepth: 0,
-                    transpose: 64,
-                    fineTune: 0,
-                    tvf: {
-                        cutoff: 127,
-                        resonance: 0,
-                        keyFollow: 64,
-                        lfoDepth: 0,
-                        egDepth: 0,
-                        egPolarity: 'normal',
-                        levelCurve: 0,
-                        keyRateFollow: 64,
-                        velRateFollow: 64,
-                        enabled: false,
-                        envelope: {
-                            levels: [127, 127, 127, 127, 127, 127, 127, 0],
-                            rates: [127, 127, 127, 127, 127, 127, 127, 127],
-                            sustainPoint: 6,
-                            endPoint: 8,
-                        },
-                    },
-                    tva: {
-                        lfoDepth: 0,
-                        keyRate: 64,
-                        level: 127,
-                        velRate: 64,
-                        levelCurve: 0,
-                        envelope: {
-                            levels: [127, 127, 127, 127, 127, 127, 127, 0],
-                            rates: [127, 127, 127, 127, 127, 127, 127, 127],
-                            sustainPoint: 6,
-                            endPoint: 8,
-                        },
-                    },
-                    benderEnabled: true,
-                    aftertouchEnabled: false,
-                    pitchFollow: true,
-                    recThreshold: 64,
-                    recPreTrigger: 0,
-                    loopTune: 0,
-                    envZoom: 0,
-                    copySource: 0,
-                };
+                    loopPoint,
+                    originalKey,
+                });
             }
 
             // Use existing sendToneData which uses bufferWrite

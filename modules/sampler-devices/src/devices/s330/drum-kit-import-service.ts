@@ -12,6 +12,7 @@ import type { S330Tone, S330Patch, S330PatchCommon } from './s330-types.js';
 import type { S330ClientInterface } from './s330-client.js';
 import { prepareWavForS330 } from './s330-wave-format.js';
 import { createEmptyToneLayer, setToneAtMidiNote } from './s330-tone-layer.js';
+import { createTone } from './s330-tone-factory.js';
 
 /**
  * A single drum sample ready for import.
@@ -100,6 +101,11 @@ const DEFAULT_ORIGINAL_KEY = 60;
 
 /**
  * Create a drum tone with one-shot loop mode.
+ *
+ * This is a convenience wrapper around createTone() with drum-specific defaults:
+ * - loopMode: 'one-shot'
+ * - pitchFollow: false
+ * - transpose: 0 (no pitch change)
  */
 export function createDrumTone(
   name: string,
@@ -110,74 +116,18 @@ export function createDrumTone(
   sampleCount: number,
   originalKey: number = DEFAULT_ORIGINAL_KEY
 ): S330Tone {
-  return {
-    name: name.slice(0, 8).toUpperCase().padEnd(8, ' '),
-    outputAssign: 0,
-    sourceTone: 0,
-    origSubTone: 0,
-    sampleRate: sampleRate === 30000 ? '30kHz' : '15kHz',
-    originalKey,
-    wave: {
-      bank: waveBank,
-      segmentTop,
-      segmentLength,
-      startPoint: 0,
-      endPoint: sampleCount,
-      loopPoint: 0,
-      loopLength: 0,
-    },
+  return createTone({
+    name,
+    sampleRate,
+    waveBank,
+    segmentTop,
+    segmentLength,
+    sampleCount,
     loopMode: 'one-shot',
-    lfo: {
-      rate: 50,
-      sync: false,
-      delay: 0,
-      mode: 'normal',
-      polarity: false,
-      offset: 64,
-    },
-    tvaLfoDepth: 0,
-    transpose: 0, // Raw value: 0 = no pitch change (not standard MIDI bipolar)
-    fineTune: 0,
-    tvf: {
-      cutoff: 127,
-      resonance: 0,
-      keyFollow: 0,
-      lfoDepth: 0,
-      egDepth: 0,
-      egPolarity: 'normal',
-      levelCurve: 0,
-      keyRateFollow: 0,
-      velRateFollow: 0,
-      enabled: false,
-      envelope: {
-        levels: [127, 127, 127, 127, 127, 127, 127, 127],
-        rates: [127, 127, 127, 127, 127, 127, 127, 127],
-        sustainPoint: 7,
-        endPoint: 8,
-      },
-    },
-    tva: {
-      lfoDepth: 0,
-      keyRate: 0,
-      level: 127,
-      velRate: 0,
-      levelCurve: 0,
-      envelope: {
-        levels: [127, 127, 127, 127, 127, 127, 127, 0],
-        rates: [127, 127, 127, 127, 127, 127, 127, 30],
-        sustainPoint: 6,
-        endPoint: 8,
-      },
-    },
-    benderEnabled: false,
-    aftertouchEnabled: false,
+    originalKey,
+    transpose: 0,
     pitchFollow: false,
-    recThreshold: 64,
-    recPreTrigger: 0,
-    loopTune: 0,
-    envZoom: 0,
-    copySource: 0,
-  };
+  });
 }
 
 /**
