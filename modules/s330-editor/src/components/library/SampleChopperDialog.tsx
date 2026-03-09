@@ -4,6 +4,12 @@
  * Dialog for slicing a contiguous audio sample into individual drum hits
  * and creating a drum kit for import. Supports both auto-detection and
  * manual slice editing (drag to adjust, click to add, delete).
+ *
+ * Features:
+ * - Fullscreen mode for detailed waveform editing
+ * - Horizontal zoom (+/- keys) for fine-grained slice adjustment
+ * - Multiple detection methods: transient, silence, fixed interval
+ * - Manual slice editing with drag-to-adjust
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -85,6 +91,11 @@ type SliceMethodTab = 'transient' | 'silence' | 'fixed' | 'manual';
 /** Default minimum slice size in samples */
 const DEFAULT_MIN_SLICE_SAMPLES = 500;
 
+/** Zoom limits */
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 64;
+const ZOOM_STEP = 1.5;
+
 export function SampleChopperDialog({
   open,
   onOpenChange,
@@ -97,6 +108,12 @@ export function SampleChopperDialog({
   initialKitConfig,
   onSlicesUpdated,
 }: SampleChopperDialogProps): JSX.Element {
+  // Fullscreen mode
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Zoom level
+  const [zoom, setZoom] = useState(1);
+
   // Slice method selection - default to 'manual' in edit mode
   const [selectedMethod, setSelectedMethod] = useState<SliceMethodTab>(
     editMode ? 'manual' : 'transient'
@@ -137,6 +154,14 @@ export function SampleChopperDialog({
   const [manualSlices, setManualSlices] = useState<SliceDefinitionOutput[]>(
     initialSlices?.map((s) => ({ ...s })) ?? []
   );
+
+  // Reset zoom when dialog opens
+  useEffect(() => {
+    if (open) {
+      setZoom(1);
+      setIsFullscreen(false);
+    }
+  }, [open]);
 
   // Initialize kit name from source (only for new kits)
   useEffect(() => {
@@ -420,6 +445,19 @@ export function SampleChopperDialog({
     []
   );
 
+  // Zoom handlers
+  const handleZoomIn = useCallback(() => {
+    setZoom((prev) => Math.min(MAX_ZOOM, prev * ZOOM_STEP));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setZoom((prev) => Math.max(MIN_ZOOM, prev / ZOOM_STEP));
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    setZoom(1);
+  }, []);
+
   // Handle create/update kit
   const handleCreateKit = useCallback(() => {
     if (!currentSliceResult || currentSliceResult.slices.length === 0 || !samples) return;
@@ -493,430 +531,582 @@ export function SampleChopperDialog({
     setUseInitialSlices(false);
   }, [autoSliceResult, kitLabels]);
 
+  // Handle keyboard shortcuts at dialog level
+  const handleDialogKeyDown = useCallback(
+    (event: React.KeyboardEvent) => {
+      // Don't capture keys when typing in an input
+      const target = event.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        return;
+      }
+
+      // Zoom controls: +/= for zoom in, -/_ for zoom out
+      if (event.key === '+' || event.key === '=') {
+        event.preventDefault();
+        event.stopPropagation();
+        handleZoomIn();
+        return;
+      }
+      if (event.key === '-' || event.key === '_') {
+        event.preventDefault();
+        event.stopPropagation();
+        handleZoomOut();
+        return;
+      }
+      // Reset zoom with 0
+      if (event.key === '0') {
+        event.preventDefault();
+        event.stopPropagation();
+        handleZoomReset();
+        return;
+      }
+      // Toggle fullscreen with F or F11
+      if (event.key === 'f' || event.key === 'F' || event.key === 'F11') {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsFullscreen((prev) => !prev);
+        return;
+      }
+      // Escape exits fullscreen first, then closes dialog
+      if (event.key === 'Escape' && isFullscreen) {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsFullscreen(false);
+        return;
+      }
+    },
+    [handleZoomIn, handleZoomOut, handleZoomReset, isFullscreen]
+  );
+
   // Duration info
   const durationMs = samples ? (samples.length / sampleRate) * 1000 : 0;
 
   // Check if we're in an interactive editing mode
   const isManualMode = selectedMethod === 'manual';
 
+  // Waveform height based on fullscreen mode
+  const waveformHeight = isFullscreen ? 400 : 140;
+
   return (
     <Dialog.Root open={open} onOpenChange={handleClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
-          <Dialog.Title className="text-lg font-bold text-s330-text mb-2">
-            {editMode ? 'Edit Slices' : 'Chop Sample'}
-          </Dialog.Title>
-          <Dialog.Description className="text-sm text-s330-muted mb-4">
-            {editMode
-              ? `Adjust slice boundaries for "${sourceName}"`
-              : `Slice "${sourceName}" into individual drum hits`}
-            {durationMs > 0 && ` (${durationMs.toFixed(0)}ms)`}
-          </Dialog.Description>
+        <Dialog.Content
+          className={cn(
+            'fixed z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl overflow-hidden flex flex-col',
+            isFullscreen
+              ? 'inset-4'
+              : 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-3xl max-h-[90vh]'
+          )}
+          onKeyDown={handleDialogKeyDown}
+          data-slice-editor-open="true"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-s330-accent shrink-0">
+            <div>
+              <Dialog.Title className="text-lg font-bold text-s330-text">
+                {editMode ? 'Edit Slices' : 'Chop Sample'}
+              </Dialog.Title>
+              <Dialog.Description className="text-sm text-s330-muted">
+                {editMode
+                  ? `Adjust slice boundaries for "${sourceName}"`
+                  : `Slice "${sourceName}" into individual drum hits`}
+                {durationMs > 0 && ` (${durationMs.toFixed(0)}ms)`}
+              </Dialog.Description>
+            </div>
+            <div className="flex items-center gap-2">
+              {/* Fullscreen toggle */}
+              <button
+                onClick={() => setIsFullscreen((prev) => !prev)}
+                className="p-2 text-s330-muted hover:text-s330-text transition-colors"
+                title={isFullscreen ? 'Exit fullscreen (F)' : 'Fullscreen (F)'}
+              >
+                {isFullscreen ? (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                )}
+              </button>
+              {/* Close button */}
+              <Dialog.Close asChild>
+                <button
+                  className="p-2 text-s330-muted hover:text-s330-text transition-colors"
+                  aria-label="Close"
+                >
+                  <svg
+                    className="w-5 h-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              </Dialog.Close>
+            </div>
+          </div>
 
-          <div className="space-y-4">
-            {/* Waveform Preview */}
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="text-xs text-s330-muted uppercase tracking-wide">
-                  Waveform & Slice Preview
+          {/* Content - scrollable */}
+          <div className="flex-1 overflow-y-auto p-4">
+            <div className="space-y-4">
+              {/* Waveform Preview */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-s330-muted uppercase tracking-wide">
+                    Waveform & Slice Preview
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {isManualMode && (
+                      <div className="text-xs text-s330-muted">
+                        Drag edges to adjust • Click to split • Delete to remove
+                      </div>
+                    )}
+                    {/* Zoom controls */}
+                    <div className="flex items-center gap-1 bg-s330-bg rounded px-2 py-1">
+                      <button
+                        onClick={handleZoomOut}
+                        disabled={zoom <= MIN_ZOOM}
+                        className={cn(
+                          'p-1 text-s330-muted hover:text-s330-text transition-colors',
+                          zoom <= MIN_ZOOM && 'opacity-30 cursor-not-allowed'
+                        )}
+                        title="Zoom out (-)"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM13 10H7" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={handleZoomReset}
+                        className="px-2 text-xs text-s330-muted hover:text-s330-text transition-colors min-w-[3rem]"
+                        title="Reset zoom (0)"
+                      >
+                        {zoom > 1 ? `${zoom.toFixed(1)}×` : 'Fit'}
+                      </button>
+                      <button
+                        onClick={handleZoomIn}
+                        disabled={zoom >= MAX_ZOOM}
+                        className={cn(
+                          'p-1 text-s330-muted hover:text-s330-text transition-colors',
+                          zoom >= MAX_ZOOM && 'opacity-30 cursor-not-allowed'
+                        )}
+                        title="Zoom in (+)"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m3-3H7" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                {isManualMode && (
-                  <div className="text-xs text-s330-muted">
-                    Drag edges to adjust • Click to split • Select + Delete to remove
+                <WaveformEditor
+                  samples={samples}
+                  sampleRate={sampleRate}
+                  sliceMarkers={sliceMarkers}
+                  selectedSlice={selectedSlice}
+                  onSliceClick={setSelectedSlice}
+                  height={waveformHeight}
+                  editable={isManualMode}
+                  onSliceChange={isManualMode ? handleSliceChange : undefined}
+                  onSliceAdd={isManualMode ? handleSliceAdd : undefined}
+                  onSliceDelete={isManualMode ? handleSliceDelete : undefined}
+                  zoom={zoom}
+                  onZoomChange={setZoom}
+                />
+                {currentSliceResult && (
+                  <div className="flex items-center justify-between text-xs text-s330-muted">
+                    <span>
+                      {currentSliceResult.slices.length} slice
+                      {currentSliceResult.slices.length !== 1 ? 's' : ''}
+                      {selectedSlice !== undefined && currentSliceResult.slices[selectedSlice] && (
+                        <span className="ml-2 text-s330-text">
+                          • Selected: {currentSliceResult.slices[selectedSlice]?.durationMs.toFixed(0)}ms
+                        </span>
+                      )}
+                    </span>
+                    {!isManualMode && autoSliceResult && autoSliceResult.slices.length > 0 && (
+                      <button
+                        onClick={handleSwitchToManual}
+                        className="text-s330-highlight hover:underline"
+                      >
+                        Edit manually
+                      </button>
+                    )}
                   </div>
                 )}
               </div>
-              <WaveformEditor
-                samples={samples}
-                sampleRate={sampleRate}
-                sliceMarkers={sliceMarkers}
-                selectedSlice={selectedSlice}
-                onSliceClick={setSelectedSlice}
-                height={140}
-                editable={isManualMode}
-                onSliceChange={isManualMode ? handleSliceChange : undefined}
-                onSliceAdd={isManualMode ? handleSliceAdd : undefined}
-                onSliceDelete={isManualMode ? handleSliceDelete : undefined}
-              />
-              {currentSliceResult && (
-                <div className="flex items-center justify-between text-xs text-s330-muted">
-                  <span>
-                    {currentSliceResult.slices.length} slice
-                    {currentSliceResult.slices.length !== 1 ? 's' : ''}
-                    {selectedSlice !== undefined && currentSliceResult.slices[selectedSlice] && (
-                      <span className="ml-2 text-s330-text">
-                        • Selected: {currentSliceResult.slices[selectedSlice]?.durationMs.toFixed(0)}ms
-                      </span>
+
+              {/* Slice Method Tabs */}
+              <Tabs.Root
+                value={selectedMethod}
+                onValueChange={(v) => {
+                  setSelectedMethod(v as SliceMethodTab);
+                  if (v !== 'manual') {
+                    setUseInitialSlices(false);
+                  }
+                }}
+              >
+                <Tabs.List className="flex border-b border-s330-accent/30 mb-4">
+                  <Tabs.Trigger
+                    value="manual"
+                    className={cn(
+                      'px-4 py-2 text-sm border-b-2 -mb-px transition-colors',
+                      selectedMethod === 'manual'
+                        ? 'border-s330-highlight text-s330-text'
+                        : 'border-transparent text-s330-muted hover:text-s330-text'
                     )}
-                  </span>
-                  {!isManualMode && autoSliceResult && autoSliceResult.slices.length > 0 && (
-                    <button
-                      onClick={handleSwitchToManual}
-                      className="text-s330-highlight hover:underline"
-                    >
-                      Edit manually
-                    </button>
+                  >
+                    Manual
+                  </Tabs.Trigger>
+                  <Tabs.Trigger
+                    value="transient"
+                    className={cn(
+                      'px-4 py-2 text-sm border-b-2 -mb-px transition-colors',
+                      selectedMethod === 'transient'
+                        ? 'border-s330-highlight text-s330-text'
+                        : 'border-transparent text-s330-muted hover:text-s330-text'
+                    )}
+                  >
+                    Transient
+                  </Tabs.Trigger>
+                  <Tabs.Trigger
+                    value="silence"
+                    className={cn(
+                      'px-4 py-2 text-sm border-b-2 -mb-px transition-colors',
+                      selectedMethod === 'silence'
+                        ? 'border-s330-highlight text-s330-text'
+                        : 'border-transparent text-s330-muted hover:text-s330-text'
+                    )}
+                  >
+                    Silence
+                  </Tabs.Trigger>
+                  <Tabs.Trigger
+                    value="fixed"
+                    className={cn(
+                      'px-4 py-2 text-sm border-b-2 -mb-px transition-colors',
+                      selectedMethod === 'fixed'
+                        ? 'border-s330-highlight text-s330-text'
+                        : 'border-transparent text-s330-muted hover:text-s330-text'
+                    )}
+                  >
+                    Fixed
+                  </Tabs.Trigger>
+                </Tabs.List>
+
+                {/* Manual Mode Controls */}
+                <Tabs.Content value="manual" className="space-y-3">
+                  <p className="text-xs text-s330-muted">
+                    Manually define slice points by clicking on the waveform. Drag slice edges to adjust boundaries.
+                    Use +/- to zoom for fine adjustments.
+                  </p>
+
+                  {/* Slice List */}
+                  {manualSlices.length > 0 && (
+                    <div className="bg-s330-bg rounded p-3 space-y-2 max-h-32 overflow-y-auto">
+                      <div className="text-xs text-s330-muted uppercase tracking-wide mb-2">
+                        Slices ({manualSlices.length})
+                      </div>
+                      {manualSlices.map((slice, i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            'flex items-center justify-between text-xs py-1 px-2 rounded cursor-pointer',
+                            selectedSlice === i
+                              ? 'bg-s330-highlight/20 text-s330-text'
+                              : 'hover:bg-s330-accent/20 text-s330-muted'
+                          )}
+                          onClick={() => setSelectedSlice(i)}
+                        >
+                          <span className="font-medium">{slice.label}</span>
+                          <span>
+                            {((slice.endSample - slice.startSample) / sampleRate * 1000).toFixed(0)}ms
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSliceDelete(i);
+                            }}
+                            disabled={manualSlices.length <= 1}
+                            className={cn(
+                              'text-red-400 hover:text-red-300 px-1',
+                              manualSlices.length <= 1 && 'opacity-30 cursor-not-allowed'
+                            )}
+                            title="Delete slice"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
+
+                  {manualSlices.length === 0 && (
+                    <div className="text-sm text-s330-muted text-center py-4">
+                      Click on the waveform to add slice points
+                    </div>
+                  )}
+                </Tabs.Content>
+
+                {/* Transient Detection Controls */}
+                <Tabs.Content value="transient" className="space-y-3">
+                  <p className="text-xs text-s330-muted">
+                    Detect drum hits by amplitude spikes above a threshold.
+                  </p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs text-s330-muted mb-1">
+                        Threshold ({(transientThreshold * 100).toFixed(0)}%)
+                      </label>
+                      <input
+                        type="range"
+                        min="0.05"
+                        max="0.9"
+                        step="0.05"
+                        value={transientThreshold}
+                        onChange={(e) => setTransientThreshold(parseFloat(e.target.value))}
+                        className="w-full accent-s330-highlight"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-s330-muted mb-1">
+                        Min Gap (ms)
+                      </label>
+                      <input
+                        type="number"
+                        min="10"
+                        max="1000"
+                        step="10"
+                        value={transientMinGap}
+                        onChange={(e) => setTransientMinGap(parseInt(e.target.value) || 100)}
+                        className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-s330-muted mb-1">
+                        Pre-pad (ms)
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="5"
+                        value={transientPrePad}
+                        onChange={(e) => setTransientPrePad(parseInt(e.target.value) || 0)}
+                        className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
+                      />
+                    </div>
+                  </div>
+                </Tabs.Content>
+
+                {/* Silence Detection Controls */}
+                <Tabs.Content value="silence" className="space-y-3">
+                  <p className="text-xs text-s330-muted">
+                    Split at gaps of silence between drum hits.
+                  </p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs text-s330-muted mb-1">
+                        Threshold (dB)
+                      </label>
+                      <input
+                        type="number"
+                        min="-80"
+                        max="-10"
+                        step="5"
+                        value={silenceThreshold}
+                        onChange={(e) => setSilenceThreshold(parseInt(e.target.value) || -40)}
+                        className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-s330-muted mb-1">
+                        Min Silence (ms)
+                      </label>
+                      <input
+                        type="number"
+                        min="10"
+                        max="500"
+                        step="10"
+                        value={silenceMinDuration}
+                        onChange={(e) => setSilenceMinDuration(parseInt(e.target.value) || 50)}
+                        className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-s330-muted mb-1">
+                        Min Sample (ms)
+                      </label>
+                      <input
+                        type="number"
+                        min="5"
+                        max="500"
+                        step="5"
+                        value={silenceMinSample}
+                        onChange={(e) => setSilenceMinSample(parseInt(e.target.value) || 10)}
+                        className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
+                      />
+                    </div>
+                  </div>
+                </Tabs.Content>
+
+                {/* Fixed Interval Controls */}
+                <Tabs.Content value="fixed" className="space-y-3">
+                  <p className="text-xs text-s330-muted">
+                    Split at regular time intervals (for metronome-recorded hits).
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-s330-muted mb-1">
+                        Interval (ms)
+                      </label>
+                      <input
+                        type="number"
+                        min="50"
+                        max="5000"
+                        step="50"
+                        value={fixedInterval}
+                        onChange={(e) => setFixedInterval(parseInt(e.target.value) || 500)}
+                        className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-s330-muted mb-1">
+                        Expected Count (optional)
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="32"
+                        step="1"
+                        value={fixedCount ?? ''}
+                        onChange={(e) =>
+                          setFixedCount(e.target.value ? parseInt(e.target.value) : undefined)
+                        }
+                        placeholder="auto"
+                        className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
+                      />
+                    </div>
+                  </div>
+                </Tabs.Content>
+              </Tabs.Root>
+
+              {/* Error Display */}
+              {sliceError && (
+                <div className="text-sm text-red-400 bg-red-900/20 rounded p-2">
+                  {sliceError}
                 </div>
               )}
-            </div>
 
-            {/* Slice Method Tabs */}
-            <Tabs.Root
-              value={selectedMethod}
-              onValueChange={(v) => {
-                setSelectedMethod(v as SliceMethodTab);
-                if (v !== 'manual') {
-                  setUseInitialSlices(false);
-                }
-              }}
-            >
-              <Tabs.List className="flex border-b border-s330-accent/30 mb-4">
-                <Tabs.Trigger
-                  value="manual"
-                  className={cn(
-                    'px-4 py-2 text-sm border-b-2 -mb-px transition-colors',
-                    selectedMethod === 'manual'
-                      ? 'border-s330-highlight text-s330-text'
-                      : 'border-transparent text-s330-muted hover:text-s330-text'
-                  )}
-                >
-                  Manual
-                </Tabs.Trigger>
-                <Tabs.Trigger
-                  value="transient"
-                  className={cn(
-                    'px-4 py-2 text-sm border-b-2 -mb-px transition-colors',
-                    selectedMethod === 'transient'
-                      ? 'border-s330-highlight text-s330-text'
-                      : 'border-transparent text-s330-muted hover:text-s330-text'
-                  )}
-                >
-                  Transient
-                </Tabs.Trigger>
-                <Tabs.Trigger
-                  value="silence"
-                  className={cn(
-                    'px-4 py-2 text-sm border-b-2 -mb-px transition-colors',
-                    selectedMethod === 'silence'
-                      ? 'border-s330-highlight text-s330-text'
-                      : 'border-transparent text-s330-muted hover:text-s330-text'
-                  )}
-                >
-                  Silence
-                </Tabs.Trigger>
-                <Tabs.Trigger
-                  value="fixed"
-                  className={cn(
-                    'px-4 py-2 text-sm border-b-2 -mb-px transition-colors',
-                    selectedMethod === 'fixed'
-                      ? 'border-s330-highlight text-s330-text'
-                      : 'border-transparent text-s330-muted hover:text-s330-text'
-                  )}
-                >
-                  Fixed
-                </Tabs.Trigger>
-              </Tabs.List>
-
-              {/* Manual Mode Controls */}
-              <Tabs.Content value="manual" className="space-y-3">
-                <p className="text-xs text-s330-muted">
-                  Manually define slice points by clicking on the waveform. Drag slice edges to adjust boundaries.
-                </p>
-
-                {/* Slice List */}
-                {manualSlices.length > 0 && (
-                  <div className="bg-s330-bg rounded p-3 space-y-2 max-h-32 overflow-y-auto">
-                    <div className="text-xs text-s330-muted uppercase tracking-wide mb-2">
-                      Slices ({manualSlices.length})
+              {/* Kit Configuration - only show in create mode */}
+              {!editMode && (
+                <div className="bg-s330-bg rounded p-3 space-y-3">
+                  <div className="text-xs text-s330-muted uppercase tracking-wide">
+                    Drum Kit Output
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-s330-muted mb-1">
+                        Kit Name (max 12 chars)
+                      </label>
+                      <input
+                        type="text"
+                        maxLength={12}
+                        value={kitName}
+                        onChange={(e) => setKitName(e.target.value.toUpperCase())}
+                        placeholder="DRUM-KIT"
+                        className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text uppercase"
+                      />
                     </div>
-                    {manualSlices.map((slice, i) => (
-                      <div
-                        key={i}
-                        className={cn(
-                          'flex items-center justify-between text-xs py-1 px-2 rounded cursor-pointer',
-                          selectedSlice === i
-                            ? 'bg-s330-highlight/20 text-s330-text'
-                            : 'hover:bg-s330-accent/20 text-s330-muted'
-                        )}
-                        onClick={() => setSelectedSlice(i)}
+                    <div>
+                      <label className="block text-xs text-s330-muted mb-1">
+                        Sample Rate
+                      </label>
+                      <select
+                        value={kitSampleRate}
+                        onChange={(e) =>
+                          setKitSampleRate(parseInt(e.target.value) as 15000 | 30000)
+                        }
+                        className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
                       >
-                        <span className="font-medium">{slice.label}</span>
-                        <span>
-                          {((slice.endSample - slice.startSample) / sampleRate * 1000).toFixed(0)}ms
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSliceDelete(i);
-                          }}
-                          disabled={manualSlices.length <= 1}
-                          className={cn(
-                            'text-red-400 hover:text-red-300 px-1',
-                            manualSlices.length <= 1 && 'opacity-30 cursor-not-allowed'
-                          )}
-                          title="Delete slice"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
+                        <option value={15000}>15 kHz</option>
+                        <option value={30000}>30 kHz</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-s330-muted mb-1">
+                        Base MIDI Note
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="120"
+                        value={kitBaseNote}
+                        onChange={(e) => setKitBaseNote(parseInt(e.target.value) || 36)}
+                        className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-s330-muted mb-1">
+                        Labels (comma-separated)
+                      </label>
+                      <input
+                        type="text"
+                        value={kitLabels}
+                        onChange={(e) => setKitLabels(e.target.value)}
+                        placeholder="kick,snare,hhc,hho"
+                        className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
+                      />
+                    </div>
                   </div>
-                )}
-
-                {manualSlices.length === 0 && (
-                  <div className="text-sm text-s330-muted text-center py-4">
-                    Click on the waveform to add slice points
-                  </div>
-                )}
-              </Tabs.Content>
-
-              {/* Transient Detection Controls */}
-              <Tabs.Content value="transient" className="space-y-3">
-                <p className="text-xs text-s330-muted">
-                  Detect drum hits by amplitude spikes above a threshold.
-                </p>
-                <div className="grid grid-cols-3 gap-4">
+                  {/* Transpose control */}
                   <div>
                     <label className="block text-xs text-s330-muted mb-1">
-                      Threshold ({(transientThreshold * 100).toFixed(0)}%)
+                      Pitch Adjust (semitones: {kitTranspose > 0 ? '+' : ''}
+                      {kitTranspose})
                     </label>
                     <input
                       type="range"
-                      min="0.05"
-                      max="0.9"
-                      step="0.05"
-                      value={transientThreshold}
-                      onChange={(e) => setTransientThreshold(parseFloat(e.target.value))}
+                      min="-24"
+                      max="24"
+                      step="1"
+                      value={kitTranspose}
+                      onChange={(e) => setKitTranspose(parseInt(e.target.value))}
                       className="w-full accent-s330-highlight"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-s330-muted mb-1">
-                      Min Gap (ms)
-                    </label>
-                    <input
-                      type="number"
-                      min="10"
-                      max="1000"
-                      step="10"
-                      value={transientMinGap}
-                      onChange={(e) => setTransientMinGap(parseInt(e.target.value) || 100)}
-                      className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-s330-muted mb-1">
-                      Pre-pad (ms)
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="100"
-                      step="5"
-                      value={transientPrePad}
-                      onChange={(e) => setTransientPrePad(parseInt(e.target.value) || 0)}
-                      className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                    />
+                    <div className="flex justify-between text-xs text-s330-muted mt-1">
+                      <span>-2 oct</span>
+                      <button
+                        onClick={() => setKitTranspose(0)}
+                        className="text-s330-highlight hover:underline"
+                      >
+                        Reset
+                      </button>
+                      <span>+2 oct</span>
+                    </div>
+                    <p className="text-xs text-s330-muted mt-1">
+                      Use to pitch down samples recorded at high speed.
+                    </p>
                   </div>
                 </div>
-              </Tabs.Content>
+              )}
+            </div>
+          </div>
 
-              {/* Silence Detection Controls */}
-              <Tabs.Content value="silence" className="space-y-3">
-                <p className="text-xs text-s330-muted">
-                  Split at gaps of silence between drum hits.
-                </p>
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-xs text-s330-muted mb-1">
-                      Threshold (dB)
-                    </label>
-                    <input
-                      type="number"
-                      min="-80"
-                      max="-10"
-                      step="5"
-                      value={silenceThreshold}
-                      onChange={(e) => setSilenceThreshold(parseInt(e.target.value) || -40)}
-                      className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-s330-muted mb-1">
-                      Min Silence (ms)
-                    </label>
-                    <input
-                      type="number"
-                      min="10"
-                      max="500"
-                      step="10"
-                      value={silenceMinDuration}
-                      onChange={(e) => setSilenceMinDuration(parseInt(e.target.value) || 50)}
-                      className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-s330-muted mb-1">
-                      Min Sample (ms)
-                    </label>
-                    <input
-                      type="number"
-                      min="5"
-                      max="500"
-                      step="5"
-                      value={silenceMinSample}
-                      onChange={(e) => setSilenceMinSample(parseInt(e.target.value) || 10)}
-                      className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                    />
-                  </div>
-                </div>
-              </Tabs.Content>
-
-              {/* Fixed Interval Controls */}
-              <Tabs.Content value="fixed" className="space-y-3">
-                <p className="text-xs text-s330-muted">
-                  Split at regular time intervals (for metronome-recorded hits).
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-s330-muted mb-1">
-                      Interval (ms)
-                    </label>
-                    <input
-                      type="number"
-                      min="50"
-                      max="5000"
-                      step="50"
-                      value={fixedInterval}
-                      onChange={(e) => setFixedInterval(parseInt(e.target.value) || 500)}
-                      className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-s330-muted mb-1">
-                      Expected Count (optional)
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="32"
-                      step="1"
-                      value={fixedCount ?? ''}
-                      onChange={(e) =>
-                        setFixedCount(e.target.value ? parseInt(e.target.value) : undefined)
-                      }
-                      placeholder="auto"
-                      className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                    />
-                  </div>
-                </div>
-              </Tabs.Content>
-            </Tabs.Root>
-
-            {/* Error Display */}
-            {sliceError && (
-              <div className="text-sm text-red-400 bg-red-900/20 rounded p-2">
-                {sliceError}
-              </div>
-            )}
-
-            {/* Kit Configuration - only show in create mode */}
-            {!editMode && (
-              <div className="bg-s330-bg rounded p-3 space-y-3">
-                <div className="text-xs text-s330-muted uppercase tracking-wide">
-                  Drum Kit Output
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-s330-muted mb-1">
-                      Kit Name (max 12 chars)
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={12}
-                      value={kitName}
-                      onChange={(e) => setKitName(e.target.value.toUpperCase())}
-                      placeholder="DRUM-KIT"
-                      className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text uppercase"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-s330-muted mb-1">
-                      Sample Rate
-                    </label>
-                    <select
-                      value={kitSampleRate}
-                      onChange={(e) =>
-                        setKitSampleRate(parseInt(e.target.value) as 15000 | 30000)
-                      }
-                      className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                    >
-                      <option value={15000}>15 kHz</option>
-                      <option value={30000}>30 kHz</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs text-s330-muted mb-1">
-                      Base MIDI Note
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="120"
-                      value={kitBaseNote}
-                      onChange={(e) => setKitBaseNote(parseInt(e.target.value) || 36)}
-                      className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-s330-muted mb-1">
-                      Labels (comma-separated)
-                    </label>
-                    <input
-                      type="text"
-                      value={kitLabels}
-                      onChange={(e) => setKitLabels(e.target.value)}
-                      placeholder="kick,snare,hhc,hho"
-                      className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                    />
-                  </div>
-                </div>
-                {/* Transpose control */}
-                <div>
-                  <label className="block text-xs text-s330-muted mb-1">
-                    Pitch Adjust (semitones: {kitTranspose > 0 ? '+' : ''}
-                    {kitTranspose})
-                  </label>
-                  <input
-                    type="range"
-                    min="-24"
-                    max="24"
-                    step="1"
-                    value={kitTranspose}
-                    onChange={(e) => setKitTranspose(parseInt(e.target.value))}
-                    className="w-full accent-s330-highlight"
-                  />
-                  <div className="flex justify-between text-xs text-s330-muted mt-1">
-                    <span>-2 oct</span>
-                    <button
-                      onClick={() => setKitTranspose(0)}
-                      className="text-s330-highlight hover:underline"
-                    >
-                      Reset
-                    </button>
-                    <span>+2 oct</span>
-                  </div>
-                  <p className="text-xs text-s330-muted mt-1">
-                    Use to pitch down samples recorded at high speed.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex justify-end gap-2 pt-2">
+          {/* Footer - fixed at bottom */}
+          <div className="flex justify-between items-center gap-2 p-4 border-t border-s330-accent shrink-0 bg-s330-panel">
+            <div className="text-xs text-s330-muted">
+              +/- zoom • F fullscreen • Scroll to pan
+            </div>
+            <div className="flex gap-2">
               <button onClick={handleClose} className="ac-btn ac-btn-ghost">
                 Cancel
               </button>
@@ -935,28 +1125,6 @@ export function SampleChopperDialog({
               </button>
             </div>
           </div>
-
-          {/* Close button */}
-          <Dialog.Close asChild>
-            <button
-              className="absolute top-4 right-4 text-s330-muted hover:text-s330-text"
-              aria-label="Close"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
-            </button>
-          </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>

@@ -3,6 +3,7 @@
  *
  * Canvas-based waveform visualization with slice markers.
  * Supports interactive editing: drag to adjust, click to add, delete slices.
+ * Supports horizontal zoom and scroll for fine-grained editing.
  */
 
 import { useRef, useEffect, useCallback, useState } from 'react';
@@ -42,6 +43,12 @@ interface WaveformEditorProps {
   onSliceAdd?: (samplePosition: number) => void;
   /** Callback when deleting a slice (editable mode) */
   onSliceDelete?: (index: number) => void;
+  /** Current zoom level (1 = fit all, higher = zoomed in) */
+  zoom?: number;
+  /** Callback when zoom changes (for external control) */
+  onZoomChange?: (zoom: number) => void;
+  /** Show zoom controls */
+  showZoomControls?: boolean;
 }
 
 /** Colors for slice markers (cycles through these) */
@@ -73,6 +80,11 @@ const HANDLE_WIDTH = 8;
 /** Minimum slice size in samples (10ms at 44100 = 441 samples) */
 const MIN_SLICE_SAMPLES = 100;
 
+/** Zoom limits */
+const MIN_ZOOM = 1;
+const MAX_ZOOM = 64;
+const ZOOM_STEP = 1.5;
+
 type DragState = {
   sliceIndex: number;
   edge: 'start' | 'end';
@@ -98,12 +110,22 @@ export function WaveformEditor({
   onSliceChange,
   onSliceAdd,
   onSliceDelete,
+  zoom: externalZoom,
+  onZoomChange,
+  showZoomControls = false,
 }: WaveformEditorProps): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [canvasWidth, setCanvasWidth] = useState(600);
   const [dragState, setDragState] = useState<DragState | null>(null);
   const [hoverState, setHoverState] = useState<HoverState>(null);
+
+  // Internal zoom state (used if no external control)
+  const [internalZoom, setInternalZoom] = useState(1);
+  const zoom = externalZoom ?? internalZoom;
+  const setZoom = onZoomChange ?? setInternalZoom;
+
 
   // Handle resize
   useEffect(() => {
@@ -122,23 +144,26 @@ export function WaveformEditor({
     return () => resizeObserver.disconnect();
   }, []);
 
-  // Helper: convert pixel X to sample position
+  // Zoomed canvas width
+  const zoomedWidth = Math.round(canvasWidth * zoom);
+
+  // Helper: convert pixel X (in canvas coords) to sample position
   const pixelToSample = useCallback(
     (pixelX: number): number => {
       if (!samples) return 0;
-      const samplesPerPixel = samples.length / canvasWidth;
+      const samplesPerPixel = samples.length / zoomedWidth;
       return Math.round(pixelX * samplesPerPixel);
     },
-    [samples, canvasWidth]
+    [samples, zoomedWidth]
   );
 
-  // Helper: convert sample position to pixel X
+  // Helper: convert sample position to pixel X (in canvas coords)
   const sampleToPixel = useCallback(
     (samplePos: number): number => {
       if (!samples) return 0;
-      return (samplePos / samples.length) * canvasWidth;
+      return (samplePos / samples.length) * zoomedWidth;
     },
-    [samples, canvasWidth]
+    [samples, zoomedWidth]
   );
 
   // Detect what's under the cursor
@@ -168,6 +193,46 @@ export function WaveformEditor({
     },
     [editable, samples, sliceMarkers, sampleToPixel]
   );
+
+  // Zoom handlers
+  const handleZoomIn = useCallback(() => {
+    const newZoom = Math.min(MAX_ZOOM, zoom * ZOOM_STEP);
+    setZoom(newZoom);
+  }, [zoom, setZoom]);
+
+  const handleZoomOut = useCallback(() => {
+    const newZoom = Math.max(MIN_ZOOM, zoom / ZOOM_STEP);
+    setZoom(newZoom);
+  }, [zoom, setZoom]);
+
+  const handleZoomReset = useCallback(() => {
+    setZoom(1);
+  }, [setZoom]);
+
+  // Center view on selected slice when selection changes
+  useEffect(() => {
+    if (selectedSlice !== undefined && scrollContainerRef.current && samples) {
+      const marker = sliceMarkers[selectedSlice];
+      if (marker) {
+        const sliceCenter = (marker.startSample + marker.endSample) / 2;
+        const pixelCenter = sampleToPixel(sliceCenter);
+        const containerWidth = scrollContainerRef.current.clientWidth;
+        const scrollTarget = pixelCenter - containerWidth / 2;
+
+        // Only scroll if the slice is not visible
+        const currentScroll = scrollContainerRef.current.scrollLeft;
+        const sliceStart = sampleToPixel(marker.startSample);
+        const sliceEnd = sampleToPixel(marker.endSample);
+
+        if (sliceStart < currentScroll || sliceEnd > currentScroll + containerWidth) {
+          scrollContainerRef.current.scrollTo({
+            left: Math.max(0, scrollTarget),
+            behavior: 'smooth',
+          });
+        }
+      }
+    }
+  }, [selectedSlice, sliceMarkers, samples, sampleToPixel]);
 
   // Draw waveform and markers
   useEffect(() => {
@@ -295,7 +360,7 @@ export function WaveformEditor({
     // Draw time labels
     if (showTimeLabels) {
       const durationMs = (samples.length / sampleRate) * 1000;
-      const intervals = calculateTimeIntervals(durationMs);
+      const intervals = calculateTimeIntervals(durationMs, zoom);
 
       ctx.fillStyle = '#666';
       ctx.font = '9px system-ui, sans-serif';
@@ -324,7 +389,7 @@ export function WaveformEditor({
       ctx.textBaseline = 'middle';
       // No text, just visual feedback when hovering
     }
-  }, [samples, sampleRate, sliceMarkers, selectedSlice, canvasWidth, height, showTimeLabels, editable, hoverState, dragState]);
+  }, [samples, sampleRate, sliceMarkers, selectedSlice, zoomedWidth, height, showTimeLabels, editable, hoverState, dragState, zoom]);
 
   // Handle mouse move for hover detection and dragging
   const handleMouseMove = useCallback(
@@ -447,9 +512,31 @@ export function WaveformEditor({
     [samples, dragState, editable, pixelToSample, hitTest, onSliceClick, onSliceAdd]
   );
 
-  // Handle keyboard for deleting selected slice
+  // Handle keyboard for deleting selected slice and zooming
   const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLCanvasElement>) => {
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      // Zoom controls: +/= for zoom in, -/_ for zoom out
+      if (event.key === '+' || event.key === '=') {
+        event.preventDefault();
+        event.stopPropagation();
+        handleZoomIn();
+        return;
+      }
+      if (event.key === '-' || event.key === '_') {
+        event.preventDefault();
+        event.stopPropagation();
+        handleZoomOut();
+        return;
+      }
+      // Reset zoom with 0
+      if (event.key === '0') {
+        event.preventDefault();
+        event.stopPropagation();
+        handleZoomReset();
+        return;
+      }
+
+      // Delete slice
       if (!editable || selectedSlice === undefined || !onSliceDelete) return;
 
       if (event.key === 'Delete' || event.key === 'Backspace') {
@@ -457,8 +544,9 @@ export function WaveformEditor({
         onSliceDelete(selectedSlice);
       }
     },
-    [editable, selectedSlice, onSliceDelete]
+    [editable, selectedSlice, onSliceDelete, handleZoomIn, handleZoomOut, handleZoomReset]
   );
+
 
   // Determine cursor style
   const getCursor = (): string => {
@@ -486,31 +574,89 @@ export function WaveformEditor({
   }
 
   return (
-    <div ref={containerRef} className={cn('relative', className)}>
-      <canvas
-        ref={canvasRef}
-        width={canvasWidth}
-        height={height}
-        onClick={handleClick}
-        onMouseMove={handleMouseMove}
-        onMouseDown={handleMouseDown}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseLeave}
-        onKeyDown={handleKeyDown}
-        tabIndex={editable ? 0 : undefined}
-        className={cn('rounded border border-s330-accent/30 outline-none focus:border-s330-highlight')}
-        style={{ cursor: getCursor() }}
-      />
+    <div
+      ref={containerRef}
+      className={cn('relative', className)}
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+    >
+      {/* Zoom controls */}
+      {showZoomControls && (
+        <div className="absolute top-1 right-1 z-10 flex items-center gap-1 bg-s330-bg/80 rounded px-1">
+          <button
+            onClick={handleZoomOut}
+            disabled={zoom <= MIN_ZOOM}
+            className={cn(
+              'p-1 text-s330-muted hover:text-s330-text transition-colors',
+              zoom <= MIN_ZOOM && 'opacity-30 cursor-not-allowed'
+            )}
+            title="Zoom out (-)"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
+            </svg>
+          </button>
+          <button
+            onClick={handleZoomReset}
+            className="px-1 text-xs text-s330-muted hover:text-s330-text transition-colors"
+            title="Reset zoom (0)"
+          >
+            {zoom > 1 ? `${zoom.toFixed(1)}×` : 'Fit'}
+          </button>
+          <button
+            onClick={handleZoomIn}
+            disabled={zoom >= MAX_ZOOM}
+            className={cn(
+              'p-1 text-s330-muted hover:text-s330-text transition-colors',
+              zoom >= MAX_ZOOM && 'opacity-30 cursor-not-allowed'
+            )}
+            title="Zoom in (+)"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+        </div>
+      )}
+
+      {/* Scrollable container for zoomed waveform */}
+      <div
+        ref={scrollContainerRef}
+        className="overflow-x-auto"
+        style={{ height: height + 16 }} // Extra space for scrollbar
+      >
+        <canvas
+          ref={canvasRef}
+          width={zoomedWidth}
+          height={height}
+          onClick={handleClick}
+          onMouseMove={handleMouseMove}
+          onMouseDown={handleMouseDown}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseLeave}
+          className={cn('rounded border border-s330-accent/30 outline-none')}
+          style={{ cursor: getCursor() }}
+        />
+      </div>
+
       {/* Duration label */}
-      <div className="absolute bottom-1 right-2 text-xs text-s330-muted pointer-events-none">
+      <div className="absolute bottom-5 right-2 text-xs text-s330-muted pointer-events-none">
         {((samples.length / sampleRate) * 1000).toFixed(0)}ms
       </div>
+
       {/* Edit mode hint */}
       {editable && !dragState && sliceMarkers.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <span className="text-s330-muted text-sm bg-s330-bg/80 px-2 py-1 rounded">
             Click to add slice points
           </span>
+        </div>
+      )}
+
+      {/* Zoom hint (when zoomed) */}
+      {zoom > 1 && (
+        <div className="absolute bottom-5 left-2 text-xs text-s330-muted pointer-events-none">
+          Scroll to pan • +/- to zoom
         </div>
       )}
     </div>
@@ -520,19 +666,26 @@ export function WaveformEditor({
 /**
  * Calculate time interval markers for the waveform.
  */
-function calculateTimeIntervals(durationMs: number): number[] {
-  // Choose appropriate interval based on duration
+function calculateTimeIntervals(durationMs: number, zoom: number): number[] {
+  // Adjust interval based on zoom level
+  const effectiveDuration = durationMs / zoom;
+
+  // Choose appropriate interval based on visible duration
   let interval: number;
-  if (durationMs <= 500) {
+  if (effectiveDuration <= 100) {
+    interval = 10;
+  } else if (effectiveDuration <= 250) {
+    interval = 25;
+  } else if (effectiveDuration <= 500) {
+    interval = 50;
+  } else if (effectiveDuration <= 1000) {
     interval = 100;
-  } else if (durationMs <= 1000) {
+  } else if (effectiveDuration <= 2000) {
     interval = 200;
-  } else if (durationMs <= 2000) {
+  } else if (effectiveDuration <= 5000) {
     interval = 500;
-  } else if (durationMs <= 5000) {
-    interval = 1000;
   } else {
-    interval = 2000;
+    interval = 1000;
   }
 
   const intervals: number[] = [];

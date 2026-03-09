@@ -153,6 +153,11 @@ export function VirtualFrontPanel() {
             return;
         }
 
+        // Don't capture keys when slice editor dialog is open (it uses +/- for zoom)
+        if (document.querySelector('[data-slice-editor-open="true"]')) {
+            return;
+        }
+
         // Map keys to navigation buttons
         const navKeyMap: Record<string, NavigationButton> = {
             'ArrowUp': 'up',
