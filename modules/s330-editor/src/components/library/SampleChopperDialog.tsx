@@ -30,6 +30,15 @@ export interface SliceDefinitionOutput {
   endSample: number;
 }
 
+/**
+ * Initial slice definition for edit mode.
+ */
+export interface InitialSliceDefinition {
+  label: string;
+  startSample: number;
+  endSample: number;
+}
+
 export interface SampleChopperDialogProps {
   /** Whether the dialog is open */
   open: boolean;
@@ -42,7 +51,7 @@ export interface SampleChopperDialogProps {
   /** Source file name (for default kit name) */
   sourceName: string;
   /**
-   * Callback when drum kit is created.
+   * Callback when drum kit is created (new kit).
    * @param kit - The resolved drum kit bundle
    * @param slices - Slice definitions with labels and sample boundaries
    * @param sourceWav - The original source audio samples and sample rate
@@ -52,6 +61,22 @@ export interface SampleChopperDialogProps {
     slices: SliceDefinitionOutput[],
     sourceWav: { samples: Int16Array; sampleRate: number }
   ) => void;
+  /** Edit mode: pre-populate with existing slices */
+  editMode?: boolean;
+  /** Initial slice definitions for edit mode */
+  initialSlices?: InitialSliceDefinition[];
+  /** Kit configuration for edit mode (pre-populated values) */
+  initialKitConfig?: {
+    name: string;
+    sampleRate: 15000 | 30000;
+    baseNote: number;
+    transpose?: number;
+  };
+  /**
+   * Callback when slices are updated (edit mode).
+   * @param slices - Updated slice definitions
+   */
+  onSlicesUpdated?: (slices: SliceDefinitionOutput[]) => void;
 }
 
 type SliceMethodTab = 'transient' | 'silence' | 'fixed' | 'manual';
@@ -63,9 +88,18 @@ export function SampleChopperDialog({
   sampleRate,
   sourceName,
   onKitCreated,
+  editMode = false,
+  initialSlices,
+  initialKitConfig,
+  onSlicesUpdated,
 }: SampleChopperDialogProps): JSX.Element {
-  // Slice method selection
-  const [selectedMethod, setSelectedMethod] = useState<SliceMethodTab>('transient');
+  // Slice method selection - default to 'manual' in edit mode
+  const [selectedMethod, setSelectedMethod] = useState<SliceMethodTab>(
+    editMode ? 'manual' : 'transient'
+  );
+
+  // Track whether we're using initial slices (edit mode without re-detection)
+  const [useInitialSlices, setUseInitialSlices] = useState(editMode && !!initialSlices);
 
   // Transient detection parameters
   const [transientThreshold, setTransientThreshold] = useState(0.3);
@@ -84,24 +118,51 @@ export function SampleChopperDialog({
   // Manual regions (simplified - just showing detected slices)
   // Full manual editing would require more complex UI
 
-  // Kit configuration
-  const [kitName, setKitName] = useState('');
+  // Kit configuration - initialize from initialKitConfig in edit mode
+  const [kitName, setKitName] = useState(initialKitConfig?.name ?? '');
   const [kitLabels, setKitLabels] = useState(DEFAULT_DRUM_TYPES.join(','));
-  const [kitSampleRate, setKitSampleRate] = useState<15000 | 30000>(15000);
-  const [kitBaseNote, setKitBaseNote] = useState(DEFAULT_BASE_NOTE);
-  const [kitTranspose, setKitTranspose] = useState(0);
+  const [kitSampleRate, setKitSampleRate] = useState<15000 | 30000>(
+    initialKitConfig?.sampleRate ?? 15000
+  );
+  const [kitBaseNote, setKitBaseNote] = useState(initialKitConfig?.baseNote ?? DEFAULT_BASE_NOTE);
+  const [kitTranspose, setKitTranspose] = useState(initialKitConfig?.transpose ?? 0);
 
   // Slice result state
   const [sliceResult, setSliceResult] = useState<SliceResult | null>(null);
   const [selectedSlice, setSelectedSlice] = useState<number | undefined>(undefined);
   const [sliceError, setSliceError] = useState<string | null>(null);
 
-  // Initialize kit name from source
+  // Manual slice state for edit mode
+  const [manualSlices, setManualSlices] = useState<SliceDefinitionOutput[]>(
+    initialSlices?.map((s) => ({ ...s })) ?? []
+  );
+
+  // Initialize kit name from source (only for new kits)
   useEffect(() => {
-    if (open && sourceName && !kitName) {
+    if (open && sourceName && !kitName && !editMode) {
       setKitName(sourceName.replace(/\.wav$/i, '').toUpperCase().slice(0, 12));
     }
-  }, [open, sourceName, kitName]);
+  }, [open, sourceName, kitName, editMode]);
+
+  // Initialize from initialKitConfig when opening in edit mode
+  useEffect(() => {
+    if (open && editMode && initialKitConfig) {
+      setKitName(initialKitConfig.name);
+      setKitSampleRate(initialKitConfig.sampleRate);
+      setKitBaseNote(initialKitConfig.baseNote);
+      setKitTranspose(initialKitConfig.transpose ?? 0);
+    }
+  }, [open, editMode, initialKitConfig]);
+
+  // Initialize labels from initial slices when in edit mode
+  useEffect(() => {
+    if (open && editMode && initialSlices && initialSlices.length > 0) {
+      const labels = initialSlices.map((s) => s.label);
+      setKitLabels(labels.join(','));
+      setManualSlices(initialSlices.map((s) => ({ ...s })));
+      setUseInitialSlices(true);
+    }
+  }, [open, editMode, initialSlices]);
 
   // Analyze audio and suggest parameters when dialog opens
   useEffect(() => {
@@ -167,23 +228,47 @@ export function SampleChopperDialog({
     fixedCount,
   ]);
 
-  // Perform slicing when config changes
+  // Perform slicing when config changes (or use manual slices in edit mode)
   useEffect(() => {
     if (!samples || samples.length === 0) {
       setSliceResult(null);
       return;
     }
 
+    // In manual mode with initial slices, build result from manualSlices
+    if (selectedMethod === 'manual' && useInitialSlices && manualSlices.length > 0) {
+      const totalDurationMs = (samples.length / sampleRate) * 1000;
+      const result: SliceResult = {
+        slices: manualSlices.map((slice, index) => ({
+          index,
+          startSample: slice.startSample,
+          endSample: slice.endSample,
+          samples: samples.slice(slice.startSample, slice.endSample),
+          durationMs: ((slice.endSample - slice.startSample) / sampleRate) * 1000,
+        })),
+        sampleRate,
+        totalDurationMs,
+      };
+      setSliceResult(result);
+      setSliceError(null);
+      return;
+    }
+
+    // When switching away from manual mode, use auto-detection
     try {
       const result = sliceAudio(samples, sampleRate, sliceConfig);
       setSliceResult(result);
       setSliceError(null);
       setSelectedSlice(undefined);
+      // Once we auto-detect, we're no longer using initial slices
+      if (useInitialSlices && selectedMethod !== 'manual') {
+        setUseInitialSlices(false);
+      }
     } catch (err) {
       setSliceError(err instanceof Error ? err.message : 'Slicing failed');
       setSliceResult(null);
     }
-  }, [samples, sampleRate, sliceConfig]);
+  }, [samples, sampleRate, sliceConfig, selectedMethod, useInitialSlices, manualSlices]);
 
   // Convert slices to waveform markers
   const sliceMarkers = useMemo((): SliceMarker[] => {
@@ -198,20 +283,11 @@ export function SampleChopperDialog({
     }));
   }, [sliceResult, kitLabels]);
 
-  // Handle create kit
+  // Handle create/update kit
   const handleCreateKit = useCallback(() => {
     if (!sliceResult || sliceResult.slices.length === 0 || !samples) return;
 
     const labels = kitLabels.split(',').map((s) => s.trim());
-
-    const kit = slicesToDrumKit(sliceResult, {
-      name: kitName || 'DRUM-KIT',
-      sampleRate: kitSampleRate,
-      baseNote: kitBaseNote,
-      drumTypes: labels.length > 0 ? labels : undefined,
-      // Pass semitones directly - conversion to S-330 raw value happens at import time
-      transpose: kitTranspose !== 0 ? kitTranspose : undefined,
-    });
 
     // Convert Slice[] to SliceDefinitionOutput[] with labels
     const sliceDefinitions: SliceDefinitionOutput[] = sliceResult.slices.map((slice, i) => ({
@@ -220,9 +296,25 @@ export function SampleChopperDialog({
       endSample: slice.endSample,
     }));
 
-    // Pass source WAV and slice definitions for deferred chopping
-    onKitCreated(kit, sliceDefinitions, { samples, sampleRate });
-    onOpenChange(false);
+    if (editMode && onSlicesUpdated) {
+      // Edit mode: only update slices
+      onSlicesUpdated(sliceDefinitions);
+      onOpenChange(false);
+    } else {
+      // Create mode: create new drum kit
+      const kit = slicesToDrumKit(sliceResult, {
+        name: kitName || 'DRUM-KIT',
+        sampleRate: kitSampleRate,
+        baseNote: kitBaseNote,
+        drumTypes: labels.length > 0 ? labels : undefined,
+        // Pass semitones directly - conversion to S-330 raw value happens at import time
+        transpose: kitTranspose !== 0 ? kitTranspose : undefined,
+      });
+
+      // Pass source WAV and slice definitions for deferred chopping
+      onKitCreated(kit, sliceDefinitions, { samples, sampleRate });
+      onOpenChange(false);
+    }
   }, [
     sliceResult,
     samples,
@@ -232,7 +324,9 @@ export function SampleChopperDialog({
     kitLabels,
     kitTranspose,
     sampleRate,
+    editMode,
     onKitCreated,
+    onSlicesUpdated,
     onOpenChange,
   ]);
 
@@ -249,10 +343,12 @@ export function SampleChopperDialog({
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
         <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
           <Dialog.Title className="text-lg font-bold text-s330-text mb-2">
-            Chop Sample
+            {editMode ? 'Edit Slices' : 'Chop Sample'}
           </Dialog.Title>
           <Dialog.Description className="text-sm text-s330-muted mb-4">
-            Slice "{sourceName}" into individual drum hits
+            {editMode
+              ? `Adjust slice boundaries for "${sourceName}"`
+              : `Slice "${sourceName}" into individual drum hits`}
             {durationMs > 0 && ` (${durationMs.toFixed(0)}ms)`}
           </Dialog.Description>
 
@@ -289,6 +385,19 @@ export function SampleChopperDialog({
               onValueChange={(v) => setSelectedMethod(v as SliceMethodTab)}
             >
               <Tabs.List className="flex border-b border-s330-accent/30 mb-4">
+                {editMode && (
+                  <Tabs.Trigger
+                    value="manual"
+                    className={cn(
+                      'px-4 py-2 text-sm border-b-2 -mb-px transition-colors',
+                      selectedMethod === 'manual'
+                        ? 'border-s330-highlight text-s330-text'
+                        : 'border-transparent text-s330-muted hover:text-s330-text'
+                    )}
+                  >
+                    Current
+                  </Tabs.Trigger>
+                )}
                 <Tabs.Trigger
                   value="transient"
                   className={cn(
@@ -465,6 +574,18 @@ export function SampleChopperDialog({
                   </div>
                 </div>
               </Tabs.Content>
+
+              {/* Manual/Current Slices (edit mode) */}
+              {editMode && (
+                <Tabs.Content value="manual" className="space-y-3">
+                  <p className="text-xs text-s330-muted">
+                    Using existing slice boundaries. Switch to another tab to re-detect.
+                  </p>
+                  <div className="text-sm text-s330-text">
+                    {manualSlices.length} slice{manualSlices.length !== 1 ? 's' : ''} loaded
+                  </div>
+                </Tabs.Content>
+              )}
             </Tabs.Root>
 
             {/* Error Display */}
@@ -474,7 +595,8 @@ export function SampleChopperDialog({
               </div>
             )}
 
-            {/* Kit Configuration */}
+            {/* Kit Configuration - only show in create mode */}
+            {!editMode && (
             <div className="bg-s330-bg rounded p-3 space-y-3">
               <div className="text-xs text-s330-muted uppercase tracking-wide">
                 Drum Kit Output
@@ -563,6 +685,7 @@ export function SampleChopperDialog({
                 </p>
               </div>
             </div>
+            )}
 
             {/* Actions */}
             <div className="flex justify-end gap-2 pt-2">
@@ -578,7 +701,9 @@ export function SampleChopperDialog({
                     'opacity-50 cursor-not-allowed'
                 )}
               >
-                Create Drum Kit ({sliceResult?.slices.length ?? 0} samples)
+                {editMode
+                  ? `Save Changes (${sliceResult?.slices.length ?? 0} slices)`
+                  : `Create Drum Kit (${sliceResult?.slices.length ?? 0} samples)`}
               </button>
             </div>
           </div>

@@ -22,6 +22,7 @@ import { LoadSetDialog } from '@/components/library/LoadSetDialog';
 import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneDialog';
 import { ImportLibraryPatchDialog } from '@/components/library/ImportLibraryPatchDialog';
 import { ImportDrumKitDialog } from '@/components/library/ImportDrumKitDialog';
+import { SampleChopperDialog, type SliceDefinitionOutput, type InitialSliceDefinition } from '@/components/library/SampleChopperDialog';
 import { useImportDrumKit } from '@/hooks/useImportDrumKit';
 import {
   hasFileSystemAccess,
@@ -32,6 +33,8 @@ import {
   listDrumKits,
   listIndividualTones,
   loadDrumKitBundle,
+  loadDrumKitSource,
+  updateDrumKitSlices,
   saveDeviceToSetIncremental,
   loadSetToDevice,
   type DrumKitInfo,
@@ -75,6 +78,21 @@ export function LibraryPage() {
   // Drum kit state
   const [drumKits, setDrumKits] = useState<DrumKitInfo[]>([]);
   const [selectedDrumKitBundle, setSelectedDrumKitBundle] = useState<ResolvedDrumKitBundle | null>(null);
+
+  // Slice editing state
+  const [sliceEditDialog, setSliceEditDialog] = useState<{
+    open: boolean;
+    kitName: string;
+    samples: Int16Array | null;
+    sampleRate: number;
+    slices: InitialSliceDefinition[];
+    kitConfig: {
+      name: string;
+      sampleRate: 15000 | 30000;
+      baseNote: number;
+      transpose?: number;
+    };
+  } | null>(null);
 
   // Individual tones state
   const [individualTones, setIndividualTones] = useState<LibraryToneInfo[]>([]);
@@ -422,6 +440,75 @@ export function LibraryPage() {
     }
   }, [libraryHandle]);
 
+  // Handle edit slices for v2 drum kits
+  const handleEditSlices = useCallback(async () => {
+    if (!libraryHandle || !selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) {
+      return;
+    }
+
+    const bundle = selectedDrumKitBundle;
+
+    // Only v2 format kits can be edited
+    if (!bundle.source || !bundle.slices) {
+      console.error('[LibraryPage] Cannot edit slices: kit is not in v2 format');
+      return;
+    }
+
+    setLoading(true, 'Loading source audio...');
+    try {
+      // Load the source WAV
+      const sourceWav = await loadDrumKitSource(libraryHandle, selection.name!, bundle.source);
+
+      // Open the slice editor dialog
+      setSliceEditDialog({
+        open: true,
+        kitName: selection.name!,
+        samples: sourceWav.samples,
+        sampleRate: sourceWav.sampleRate,
+        slices: bundle.slices.map((s) => ({
+          label: s.label,
+          startSample: s.startSample,
+          endSample: s.endSample,
+        })),
+        kitConfig: {
+          name: bundle.name,
+          sampleRate: bundle.sampleRate,
+          baseNote: bundle.baseNote,
+          transpose: bundle.transpose,
+        },
+      });
+    } catch (err) {
+      console.error('[LibraryPage] Failed to load source audio for editing:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load source audio');
+    } finally {
+      setLoading(false);
+    }
+  }, [libraryHandle, selection, selectedDrumKitBundle, setLoading, setError]);
+
+  // Handle saving updated slices
+  const handleSlicesUpdated = useCallback(async (slices: SliceDefinitionOutput[]) => {
+    if (!libraryHandle || !sliceEditDialog) {
+      return;
+    }
+
+    setLoading(true, 'Saving slice changes...');
+    try {
+      await updateDrumKitSlices(libraryHandle, sliceEditDialog.kitName, slices);
+
+      // Refresh the drum kit bundle
+      const updatedBundle = await loadDrumKitBundle(libraryHandle, sliceEditDialog.kitName);
+      setSelectedDrumKitBundle(updatedBundle);
+
+      console.log(`[LibraryPage] Updated slices for ${sliceEditDialog.kitName}`);
+    } catch (err) {
+      console.error('[LibraryPage] Failed to update slices:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save slices');
+    } finally {
+      setLoading(false);
+      setSliceEditDialog(null);
+    }
+  }, [libraryHandle, sliceEditDialog, setLoading, setError]);
+
   // Handle individual tone selection
   const handleSelectIndividualTone = useCallback((toneName: string) => {
     setSelection({ source: 'library', type: 'individualTone', name: toneName });
@@ -718,6 +805,7 @@ export function LibraryPage() {
               kitInfo={drumKits.find((k) => k.directoryName === selection.name) ?? null}
               libraryHandle={libraryHandle}
               onImport={handleOpenDrumKitImport}
+              onEditSlices={handleEditSlices}
             />
           ) : (
             <ItemPreviewPanel
@@ -810,6 +898,24 @@ export function LibraryPage() {
           importProgress={drumKitImportProgress}
           importError={drumKitImportError}
           statusMessage={drumKitImportStatus}
+        />
+      )}
+
+      {/* Slice Edit Dialog */}
+      {sliceEditDialog && (
+        <SampleChopperDialog
+          open={sliceEditDialog.open}
+          onOpenChange={(open) => {
+            if (!open) setSliceEditDialog(null);
+          }}
+          samples={sliceEditDialog.samples}
+          sampleRate={sliceEditDialog.sampleRate}
+          sourceName={sliceEditDialog.kitName}
+          onKitCreated={() => {}} // Not used in edit mode
+          editMode={true}
+          initialSlices={sliceEditDialog.slices}
+          initialKitConfig={sliceEditDialog.kitConfig}
+          onSlicesUpdated={handleSlicesUpdated}
         />
       )}
     </div>

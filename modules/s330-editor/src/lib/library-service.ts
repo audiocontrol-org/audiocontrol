@@ -1352,6 +1352,55 @@ export async function loadDrumKitSource(
   };
 }
 
+/**
+ * Update the slice definitions in an existing v2 drum kit.
+ *
+ * Preserves all other kit settings (name, sample rate, base note, transpose)
+ * and only updates the slices array in kit.yaml.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param kitName - Directory name of the drum kit
+ * @param slices - New slice definitions
+ */
+export async function updateDrumKitSlices(
+  directoryHandle: FileSystemDirectoryHandle,
+  kitName: string,
+  slices: SliceDefinitionInput[]
+): Promise<void> {
+  const kitDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'drum-kits', kitName
+  ]);
+
+  // Read existing kit.yaml
+  const yamlHandle = await kitDir.getFileHandle('kit.yaml');
+  const yamlFile = await yamlHandle.getFile();
+  const yamlContent = await yamlFile.text();
+  const existingKit = DrumKitBundleSchema.parse(parseYaml(yamlContent));
+
+  // Ensure this is a v2 format kit
+  if (!existingKit.source) {
+    throw new Error('Cannot update slices: kit is not in v2 format (missing source)');
+  }
+
+  // Update slices while preserving other settings
+  const updatedKit: DrumKitBundle = {
+    ...existingKit,
+    version: 2,
+    slices: slices.map((slice) => ({
+      label: slice.label,
+      startSample: slice.startSample,
+      endSample: slice.endSample,
+    })),
+  };
+
+  // Write updated kit.yaml
+  const updatedYamlContent = stringifyYaml(updatedKit, { indent: 2, lineWidth: 120 });
+  const writableHandle = await kitDir.getFileHandle('kit.yaml', { create: true });
+  const writable = await writableHandle.createWritable();
+  await writable.write(updatedYamlContent);
+  await writable.close();
+}
+
 // TypeScript declarations for File System Access API
 declare global {
   interface Window {
