@@ -173,6 +173,8 @@ export function useImportDrumKit({
         const toneName = `${sample.drumType.slice(0, 4).toUpperCase()}${sample.kitNumber}`;
 
         // Create tone object using canonical createDrumTone
+        // Pass transpose from bundle if specified (for pitch-shifting workflows)
+        // S-330 transpose: 64 = no change, <64 = lower pitch, >64 = higher pitch
         const tone = createDrumTone(
           toneName,
           bundle.sampleRate,
@@ -180,7 +182,8 @@ export function useImportDrumKit({
           currentSegment,
           prepared.segmentLength,
           prepared.sampleCount,
-          sample.midiNote
+          sample.midiNote,
+          bundle.transpose ?? 64
         );
 
         setImportStatus(`Uploading ${sample.filename}...`);

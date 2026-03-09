@@ -79,6 +79,12 @@ export interface ResolvedDrumKitBundle {
   totalSamples: number;
   /** Whether all kits have complete sample sets */
   allComplete: boolean;
+  /**
+   * Transpose value for imported tones (S-330 raw value).
+   * Use this to pitch samples up or down on playback.
+   * Range: 0-127, where 64 = no pitch change.
+   */
+  transpose?: number;
 }
 
 /**

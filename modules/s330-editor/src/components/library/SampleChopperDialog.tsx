@@ -76,6 +76,7 @@ export function SampleChopperDialog({
   const [kitLabels, setKitLabels] = useState(DEFAULT_DRUM_TYPES.join(','));
   const [kitSampleRate, setKitSampleRate] = useState<15000 | 30000>(15000);
   const [kitBaseNote, setKitBaseNote] = useState(DEFAULT_BASE_NOTE);
+  const [kitTranspose, setKitTranspose] = useState(0);
 
   // Slice result state
   const [sliceResult, setSliceResult] = useState<SliceResult | null>(null);
@@ -190,11 +191,16 @@ export function SampleChopperDialog({
 
     const labels = kitLabels.split(',').map((s) => s.trim());
 
+    // Convert semitones to S-330 raw transpose value (64 = no change)
+    // kitTranspose is in semitones (-24 to +24), S-330 uses 64 as center
+    const rawTranspose = kitTranspose + 64;
+
     const kit = slicesToDrumKit(sliceResult, {
       name: kitName || 'DRUM-KIT',
       sampleRate: kitSampleRate,
       baseNote: kitBaseNote,
       drumTypes: labels.length > 0 ? labels : undefined,
+      transpose: kitTranspose !== 0 ? rawTranspose : undefined,
     });
 
     onKitCreated(kit, sliceResult.slices, sampleRate);
@@ -205,6 +211,7 @@ export function SampleChopperDialog({
     kitSampleRate,
     kitBaseNote,
     kitLabels,
+    kitTranspose,
     sampleRate,
     onKitCreated,
     onOpenChange,
@@ -507,6 +514,34 @@ export function SampleChopperDialog({
                     className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
                   />
                 </div>
+              </div>
+              {/* Transpose control */}
+              <div>
+                <label className="block text-xs text-s330-muted mb-1">
+                  Pitch Adjust (semitones: {kitTranspose > 0 ? '+' : ''}{kitTranspose})
+                </label>
+                <input
+                  type="range"
+                  min="-24"
+                  max="24"
+                  step="1"
+                  value={kitTranspose}
+                  onChange={(e) => setKitTranspose(parseInt(e.target.value))}
+                  className="w-full accent-s330-highlight"
+                />
+                <div className="flex justify-between text-xs text-s330-muted mt-1">
+                  <span>-2 oct</span>
+                  <button
+                    onClick={() => setKitTranspose(0)}
+                    className="text-s330-highlight hover:underline"
+                  >
+                    Reset
+                  </button>
+                  <span>+2 oct</span>
+                </div>
+                <p className="text-xs text-s330-muted mt-1">
+                  Use to pitch down samples recorded at high speed.
+                </p>
               </div>
             </div>
 

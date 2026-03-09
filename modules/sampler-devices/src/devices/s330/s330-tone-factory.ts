@@ -31,7 +31,7 @@ export interface CreateToneConfig {
   loopPoint?: number;
   /** Original key MIDI note (default: 60 = C4) */
   originalKey?: number;
-  /** Transpose value - raw S-330 value where 0 = no pitch change (default: 0) */
+  /** Transpose value - raw S-330 value where 64 = no pitch change (default: 64) */
   transpose?: number;
   /** Whether pitch follows MIDI note (default: false for one-shot, true for looping) */
   pitchFollow?: boolean;
@@ -53,7 +53,7 @@ function normalizeSampleRate(rate: 15000 | 30000 | '15kHz' | '30kHz'): '15kHz' |
  * Create a new S330Tone with sensible defaults for one-shot samples.
  *
  * The defaults are optimized for one-shot playback (drum hits, sound effects):
- * - transpose: 0 (no pitch change - raw S-330 value, NOT standard MIDI bipolar)
+ * - transpose: 64 (no pitch change - S-330 uses 64 as center, range 0-127)
  * - pitchFollow: false (plays at recorded pitch regardless of MIDI note)
  * - loopMode: 'one-shot' (plays once, no looping)
  * - TVF/TVA envelopes: flat (no filtering or amplitude shaping)
@@ -72,7 +72,7 @@ export function createTone(config: CreateToneConfig): S330Tone {
     loopMode = 'one-shot',
     loopPoint = 0,
     originalKey = 60,
-    transpose = 0,
+    transpose = 64,
     pitchFollow,
     outputAssign = 0,
   } = config;
