@@ -26,7 +26,7 @@ import {
   type ResolvedDrumKitBundle,
 } from '@audiocontrol/sampler-library/browser';
 import { cn } from '@/lib/utils';
-import { WaveformEditor, type SliceMarker } from './WaveformEditor';
+import { WaveformEditor, type SliceMarker, type SliceChange } from './WaveformEditor';
 
 /**
  * Slice definition for deferred chopping.
@@ -113,6 +113,9 @@ export function SampleChopperDialog({
 
   // Zoom level
   const [zoom, setZoom] = useState(1);
+
+  // Joined edges mode - adjacent slice boundaries move together
+  const [joinedEdges, setJoinedEdges] = useState(true);
 
   // Slice method selection - default to 'manual' in edit mode
   const [selectedMethod, setSelectedMethod] = useState<SliceMethodTab>(
@@ -345,6 +348,26 @@ export function SampleChopperDialog({
             startSample: marker.startSample,
             endSample: marker.endSample,
           };
+        }
+        return updated;
+      });
+    },
+    []
+  );
+
+  // Handle batch slice changes (for joined edges mode)
+  const handleSlicesChange = useCallback(
+    (changes: SliceChange[]) => {
+      setManualSlices((prev) => {
+        const updated = [...prev];
+        for (const change of changes) {
+          if (updated[change.index]) {
+            updated[change.index] = {
+              ...updated[change.index],
+              startSample: change.marker.startSample,
+              endSample: change.marker.endSample,
+            };
+          }
         }
         return updated;
       });
@@ -670,6 +693,25 @@ export function SampleChopperDialog({
                         Drag edges to adjust • Click to split • Delete to remove
                       </div>
                     )}
+                    {/* Joined edges toggle */}
+                    {isManualMode && (
+                      <button
+                        onClick={() => setJoinedEdges((prev) => !prev)}
+                        className={cn(
+                          'flex items-center gap-1.5 px-2 py-1 rounded text-xs transition-colors',
+                          joinedEdges
+                            ? 'bg-s330-highlight/20 text-s330-highlight'
+                            : 'bg-s330-bg text-s330-muted hover:text-s330-text'
+                        )}
+                        title={joinedEdges ? 'Joined edges: ON - Adjacent boundaries move together' : 'Joined edges: OFF - Move boundaries independently'}
+                      >
+                        {/* Chain link icon */}
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                        </svg>
+                        {joinedEdges ? 'Joined' : 'Split'}
+                      </button>
+                    )}
                     {/* Zoom controls */}
                     <div className="flex items-center gap-1 bg-s330-bg rounded px-2 py-1">
                       <button
@@ -717,10 +759,12 @@ export function SampleChopperDialog({
                   height={waveformHeight}
                   editable={isManualMode}
                   onSliceChange={isManualMode ? handleSliceChange : undefined}
+                  onSlicesChange={isManualMode ? handleSlicesChange : undefined}
                   onSliceAdd={isManualMode ? handleSliceAdd : undefined}
                   onSliceDelete={isManualMode ? handleSliceDelete : undefined}
                   zoom={zoom}
                   onZoomChange={setZoom}
+                  joinedEdges={isManualMode && joinedEdges}
                 />
                 {currentSliceResult && (
                   <div className="flex items-center justify-between text-xs text-s330-muted">

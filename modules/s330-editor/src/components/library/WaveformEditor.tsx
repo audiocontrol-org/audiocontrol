@@ -18,6 +18,12 @@ export interface SliceMarker {
   label?: string;
 }
 
+/** Change to apply to a slice */
+export interface SliceChange {
+  index: number;
+  marker: SliceMarker;
+}
+
 interface WaveformEditorProps {
   /** Audio samples (16-bit signed integers) */
   samples: Int16Array | null;
@@ -39,6 +45,8 @@ interface WaveformEditorProps {
   editable?: boolean;
   /** Callback when a slice marker is dragged (editable mode) */
   onSliceChange?: (index: number, marker: SliceMarker) => void;
+  /** Callback when multiple slices change at once (for joined edges mode) */
+  onSlicesChange?: (changes: SliceChange[]) => void;
   /** Callback when adding a new slice point (editable mode) */
   onSliceAdd?: (samplePosition: number) => void;
   /** Callback when deleting a slice (editable mode) */
@@ -49,6 +57,8 @@ interface WaveformEditorProps {
   onZoomChange?: (zoom: number) => void;
   /** Show zoom controls */
   showZoomControls?: boolean;
+  /** Join adjacent slice edges so they move together */
+  joinedEdges?: boolean;
 }
 
 /** Colors for slice markers (cycles through these) */
@@ -108,11 +118,13 @@ export function WaveformEditor({
   className,
   editable = false,
   onSliceChange,
+  onSlicesChange,
   onSliceAdd,
   onSliceDelete,
   zoom: externalZoom,
   onZoomChange,
   showZoomControls = false,
+  joinedEdges = false,
 }: WaveformEditorProps): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -261,6 +273,19 @@ export function WaveformEditor({
     // Calculate samples per pixel
     const samplesPerPixel = samples.length / width;
 
+    // Detect which boundaries are joined (adjacent slices share the same point)
+    const joinedBoundaries = new Set<number>();
+    if (joinedEdges) {
+      for (let i = 0; i < sliceMarkers.length - 1; i++) {
+        const current = sliceMarkers[i];
+        const next = sliceMarkers[i + 1];
+        // Consider joined if they're within 10 samples of each other
+        if (next && Math.abs(current.endSample - next.startSample) <= 10) {
+          joinedBoundaries.add(i); // Mark current slice's end as joined
+        }
+      }
+    }
+
     // Draw slice regions first (background)
     for (let i = 0; i < sliceMarkers.length; i++) {
       const marker = sliceMarkers[i];
@@ -283,14 +308,16 @@ export function WaveformEditor({
 
       // Start boundary
       const startHovered = hoverState?.sliceIndex === i && hoverState?.edge === 'start';
+      const startIsJoined = i > 0 && joinedBoundaries.has(i - 1);
       ctx.lineWidth = startHovered || (dragState?.sliceIndex === i && dragState?.edge === 'start') ? 3 : isSelected ? 2 : 1;
       ctx.beginPath();
       ctx.moveTo(x1, 0);
       ctx.lineTo(x1, canvasHeight);
       ctx.stroke();
 
-      // End boundary (only draw if not adjacent to next slice start)
+      // End boundary
       const endHovered = hoverState?.sliceIndex === i && hoverState?.edge === 'end';
+      const endIsJoined = joinedBoundaries.has(i);
       ctx.lineWidth = endHovered || (dragState?.sliceIndex === i && dragState?.edge === 'end') ? 3 : isSelected ? 2 : 1;
       ctx.beginPath();
       ctx.moveTo(x2, 0);
@@ -305,11 +332,36 @@ export function WaveformEditor({
         // Start handle
         if (startHovered || (dragState?.sliceIndex === i && dragState?.edge === 'start')) {
           ctx.fillRect(x1 - 2, canvasHeight / 2 - 15, 4, 30);
+          // Draw chain link indicator for joined edges
+          if (startIsJoined && joinedEdges) {
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(x1 - 3, canvasHeight / 2 - 3, 6, 6);
+            ctx.fillStyle = handleColor;
+          }
         }
         // End handle
         if (endHovered || (dragState?.sliceIndex === i && dragState?.edge === 'end')) {
           ctx.fillRect(x2 - 2, canvasHeight / 2 - 15, 4, 30);
+          // Draw chain link indicator for joined edges
+          if (endIsJoined && joinedEdges) {
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(x2 - 3, canvasHeight / 2 - 3, 6, 6);
+            ctx.fillStyle = handleColor;
+          }
         }
+      }
+
+      // Draw joined edge indicator (small diamond) when joinedEdges mode is on
+      if (joinedEdges && endIsJoined) {
+        ctx.fillStyle = '#f59e0b'; // amber color for joined indicator
+        const midY = canvasHeight / 2;
+        ctx.beginPath();
+        ctx.moveTo(x2, midY - 6);
+        ctx.lineTo(x2 + 4, midY);
+        ctx.lineTo(x2, midY + 6);
+        ctx.lineTo(x2 - 4, midY);
+        ctx.closePath();
+        ctx.fill();
       }
     }
 
@@ -389,7 +441,7 @@ export function WaveformEditor({
       ctx.textBaseline = 'middle';
       // No text, just visual feedback when hovering
     }
-  }, [samples, sampleRate, sliceMarkers, selectedSlice, zoomedWidth, height, showTimeLabels, editable, hoverState, dragState, zoom]);
+  }, [samples, sampleRate, sliceMarkers, selectedSlice, zoomedWidth, height, showTimeLabels, editable, hoverState, dragState, zoom, joinedEdges]);
 
   // Handle mouse move for hover detection and dragging
   const handleMouseMove = useCallback(
@@ -400,43 +452,77 @@ export function WaveformEditor({
       const rect = canvas.getBoundingClientRect();
       const x = event.clientX - rect.left;
 
-      if (dragState && onSliceChange) {
+      if (dragState && (onSliceChange || onSlicesChange)) {
         // Dragging - update slice position
         const newSample = pixelToSample(x);
         const marker = sliceMarkers[dragState.sliceIndex];
         if (!marker) return;
 
         let newMarker: SliceMarker;
+        let adjacentChange: SliceChange | null = null;
 
         if (dragState.edge === 'start') {
-          // Constrain: can't go past end - MIN_SLICE_SAMPLES, can't go below 0
-          // Also can't go before previous slice end
-          const minStart = dragState.sliceIndex > 0
-            ? (sliceMarkers[dragState.sliceIndex - 1]?.endSample ?? 0)
-            : 0;
+          // Dragging start edge
+          const prevSlice = dragState.sliceIndex > 0 ? sliceMarkers[dragState.sliceIndex - 1] : null;
+
+          // In joined mode, we can move into the previous slice (adjusting its end)
+          // Constraint: can't make previous slice smaller than MIN_SLICE_SAMPLES
+          const minStart = joinedEdges && prevSlice
+            ? prevSlice.startSample + MIN_SLICE_SAMPLES
+            : (prevSlice?.endSample ?? 0);
           const maxStart = marker.endSample - MIN_SLICE_SAMPLES;
           const constrainedStart = Math.max(minStart, Math.min(maxStart, newSample));
 
           newMarker = { ...marker, startSample: constrainedStart };
+
+          // In joined mode, also update the previous slice's end
+          if (joinedEdges && prevSlice) {
+            adjacentChange = {
+              index: dragState.sliceIndex - 1,
+              marker: { ...prevSlice, endSample: constrainedStart },
+            };
+          }
         } else {
-          // Constrain: can't go before start + MIN_SLICE_SAMPLES, can't go past total length
-          // Also can't go past next slice start
+          // Dragging end edge
           const nextSlice = sliceMarkers[dragState.sliceIndex + 1];
-          const maxEnd = nextSlice ? nextSlice.startSample : samples.length;
+
+          // In joined mode, we can move into the next slice (adjusting its start)
+          // Constraint: can't make next slice smaller than MIN_SLICE_SAMPLES
+          const maxEnd = joinedEdges && nextSlice
+            ? nextSlice.endSample - MIN_SLICE_SAMPLES
+            : (nextSlice?.startSample ?? samples.length);
           const minEnd = marker.startSample + MIN_SLICE_SAMPLES;
           const constrainedEnd = Math.max(minEnd, Math.min(maxEnd, newSample));
 
           newMarker = { ...marker, endSample: constrainedEnd };
+
+          // In joined mode, also update the next slice's start
+          if (joinedEdges && nextSlice) {
+            adjacentChange = {
+              index: dragState.sliceIndex + 1,
+              marker: { ...nextSlice, startSample: constrainedEnd },
+            };
+          }
         }
 
-        onSliceChange(dragState.sliceIndex, newMarker);
+        // Apply changes
+        if (adjacentChange && onSlicesChange) {
+          // Batch update both slices
+          onSlicesChange([
+            { index: dragState.sliceIndex, marker: newMarker },
+            adjacentChange,
+          ]);
+        } else if (onSliceChange) {
+          // Single slice update
+          onSliceChange(dragState.sliceIndex, newMarker);
+        }
       } else if (editable) {
         // Just hovering - update hover state
         const hit = hitTest(x);
         setHoverState(hit);
       }
     },
-    [samples, dragState, editable, sliceMarkers, pixelToSample, hitTest, onSliceChange]
+    [samples, dragState, editable, sliceMarkers, pixelToSample, hitTest, onSliceChange, onSlicesChange, joinedEdges]
   );
 
   // Handle mouse down for starting drag
