@@ -188,11 +188,6 @@ export function SampleChopperDialog({
   const [transientMinGap, setTransientMinGap] = useState(100);
   const [transientPrePad, setTransientPrePad] = useState(5);
 
-  // Silence detection parameters
-  const [silenceThreshold, setSilenceThreshold] = useState(-40);
-  const [silenceMinDuration, setSilenceMinDuration] = useState(50);
-  const [silenceMinSample, setSilenceMinSample] = useState(10);
-
   // Fixed interval parameters
   const [fixedInterval, setFixedInterval] = useState(500);
   const [fixedCount, setFixedCount] = useState<number | undefined>(undefined);
@@ -264,7 +259,7 @@ export function SampleChopperDialog({
       setTransientThreshold(
         Math.round(analysis.suggestedTransientThreshold * 100) / 100
       );
-      setSilenceThreshold(analysis.suggestedSilenceThresholdDb);
+      setStripSilenceThreshold(analysis.suggestedSilenceThresholdDb);
 
       // Suggest fixed interval based on duration
       if (analysis.duration.ms >= 1000) {
@@ -287,13 +282,6 @@ export function SampleChopperDialog({
           minGapMs: transientMinGap,
           prePadMs: transientPrePad,
         };
-      case 'silence':
-        return {
-          method: 'silence',
-          thresholdDb: silenceThreshold,
-          minSilenceMs: silenceMinDuration,
-          minSampleMs: silenceMinSample,
-        };
       case 'fixed':
         return {
           method: 'fixed',
@@ -301,7 +289,8 @@ export function SampleChopperDialog({
           count: fixedCount,
         };
       case 'manual':
-        // Manual mode doesn't use auto-detection
+      case 'silence':
+        // Manual and silence (strip silence) modes don't use auto-detection
         return {
           method: 'transient',
           threshold: transientThreshold,
@@ -314,9 +303,6 @@ export function SampleChopperDialog({
     transientThreshold,
     transientMinGap,
     transientPrePad,
-    silenceThreshold,
-    silenceMinDuration,
-    silenceMinSample,
     fixedInterval,
     fixedCount,
   ]);
@@ -328,8 +314,8 @@ export function SampleChopperDialog({
       return;
     }
 
-    // Skip auto-detection in manual mode
-    if (selectedMethod === 'manual') {
+    // Skip auto-detection in manual and silence (strip silence) modes
+    if (selectedMethod === 'manual' || selectedMethod === 'silence') {
       setAutoSliceResult(null);
       return;
     }
@@ -359,7 +345,8 @@ export function SampleChopperDialog({
   const currentSliceResult = useMemo((): SliceResult | null => {
     if (!samples || samples.length === 0) return null;
 
-    if (selectedMethod === 'manual' || useInitialSlices) {
+    // Manual and silence modes work on manualSlices
+    if (selectedMethod === 'manual' || selectedMethod === 'silence' || useInitialSlices) {
       // Build SliceResult from manual slices
       if (manualSlices.length === 0) return null;
 
@@ -414,7 +401,8 @@ export function SampleChopperDialog({
   // Convert slices to waveform markers
   // When strip silence is active, show preview boundaries instead
   const sliceMarkers = useMemo((): SliceMarker[] => {
-    if (selectedMethod === 'manual' || useInitialSlices) {
+    // Manual and silence modes work on manualSlices
+    if (selectedMethod === 'manual' || selectedMethod === 'silence' || useInitialSlices) {
       // If strip silence preview is active, use preview boundaries
       if (stripSilenceActive && strippedPreview) {
         return manualSlices.map((slice, i) => ({
@@ -603,14 +591,6 @@ export function SampleChopperDialog({
     play(samples);
   }, [samples, isPlaying, play, stop]);
 
-  // Enter strip silence mode - save current boundaries as originals
-  const handleEnterStripSilence = useCallback(() => {
-    setOriginalSliceBoundaries(
-      manualSlices.map((s) => ({ startSample: s.startSample, endSample: s.endSample }))
-    );
-    setStripSilenceActive(true);
-  }, [manualSlices]);
-
   // Apply strip silence - commit preview to slices
   const handleApplyStripSilence = useCallback(() => {
     if (!strippedPreview) return;
@@ -651,9 +631,9 @@ export function SampleChopperDialog({
 
     const labels = kitLabels.split(',').map((s) => s.trim());
 
-    // Use manual slices if in manual mode, otherwise build from auto result
+    // Use manual slices if in manual or silence mode, otherwise build from auto result
     const sliceDefinitions: SliceDefinitionOutput[] =
-      selectedMethod === 'manual' || useInitialSlices
+      selectedMethod === 'manual' || selectedMethod === 'silence' || useInitialSlices
         ? manualSlices
         : currentSliceResult.slices.map((slice, i) => ({
             label: labels[i % labels.length] ?? `S${i + 1}`,
@@ -1024,9 +1004,21 @@ export function SampleChopperDialog({
               <Tabs.Root
                 value={selectedMethod}
                 onValueChange={(v) => {
-                  setSelectedMethod(v as SliceMethodTab);
-                  if (v !== 'manual') {
+                  const newMethod = v as SliceMethodTab;
+                  setSelectedMethod(newMethod);
+                  if (newMethod !== 'manual') {
                     setUseInitialSlices(false);
+                  }
+                  // Auto-enter strip silence mode when switching to silence tab
+                  if (newMethod === 'silence' && manualSlices.length > 0) {
+                    setOriginalSliceBoundaries(
+                      manualSlices.map((s) => ({ startSample: s.startSample, endSample: s.endSample }))
+                    );
+                    setStripSilenceActive(true);
+                  } else if (newMethod !== 'silence') {
+                    // Exit strip silence mode when switching away
+                    setStripSilenceActive(false);
+                    setOriginalSliceBoundaries([]);
                   }
                 }}
               >
@@ -1062,7 +1054,7 @@ export function SampleChopperDialog({
                         : 'border-transparent text-s330-muted hover:text-s330-text'
                     )}
                   >
-                    Silence
+                    Strip Silence
                   </Tabs.Trigger>
                   <Tabs.Trigger
                     value="fixed"
@@ -1154,96 +1146,6 @@ export function SampleChopperDialog({
                       Click on the waveform to add slice points
                     </div>
                   )}
-
-                  {/* Strip Silence Controls */}
-                  {manualSlices.length > 0 && (
-                    <div className={cn(
-                      'rounded p-3 space-y-2',
-                      stripSilenceActive
-                        ? 'bg-s330-highlight/10 border border-s330-highlight/30'
-                        : 'bg-s330-bg'
-                    )}>
-                      <div className="flex items-center justify-between">
-                        <div className="text-xs text-s330-muted uppercase tracking-wide">
-                          Strip Silence
-                        </div>
-                        {stripSilenceActive && (
-                          <span className="text-xs text-s330-highlight font-medium">
-                            Preview Mode
-                          </span>
-                        )}
-                      </div>
-
-                      {!stripSilenceActive ? (
-                        // Not active - show enter button
-                        <div>
-                          <p className="text-xs text-s330-muted mb-2">
-                            Remove silence from the beginning and end of slices.
-                          </p>
-                          <button
-                            onClick={handleEnterStripSilence}
-                            className="px-3 py-1.5 text-xs rounded bg-s330-accent hover:bg-s330-accent/80 text-s330-text transition-colors"
-                          >
-                            Enter Strip Silence Mode
-                          </button>
-                        </div>
-                      ) : (
-                        // Active - show threshold slider and preview controls
-                        <div className="space-y-3">
-                          <p className="text-xs text-s330-muted">
-                            Adjust threshold to preview. Changes shown live on waveform.
-                          </p>
-                          <div>
-                            <label className="block text-xs text-s330-muted mb-1">
-                              Threshold: {stripSilenceThreshold} dB
-                            </label>
-                            <input
-                              type="range"
-                              min="-60"
-                              max="-10"
-                              step="1"
-                              value={stripSilenceThreshold}
-                              onChange={(e) => setStripSilenceThreshold(parseInt(e.target.value))}
-                              className="w-full accent-s330-highlight"
-                            />
-                            <div className="flex justify-between text-xs text-s330-muted mt-0.5">
-                              <span>-60 dB (quieter)</span>
-                              <span>-10 dB (louder)</span>
-                            </div>
-                          </div>
-
-                          {/* Stats about what will change */}
-                          {strippedPreview && (
-                            <div className="text-xs text-s330-muted bg-s330-bg/50 rounded p-2">
-                              <span className="font-medium text-s330-text">
-                                {strippedPreview.filter((p, i) =>
-                                  p.startSample !== originalSliceBoundaries[i]?.startSample ||
-                                  p.endSample !== originalSliceBoundaries[i]?.endSample
-                                ).length}
-                              </span>
-                              {' '}of {manualSlices.length} slices will be trimmed
-                            </div>
-                          )}
-
-                          {/* Apply/Cancel buttons */}
-                          <div className="flex gap-2">
-                            <button
-                              onClick={handleCancelStripSilence}
-                              className="flex-1 px-3 py-1.5 text-xs rounded bg-s330-bg hover:bg-s330-accent/50 text-s330-muted transition-colors"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              onClick={handleApplyStripSilence}
-                              className="flex-1 px-3 py-1.5 text-xs rounded bg-s330-highlight hover:bg-s330-highlight/80 text-white font-medium transition-colors"
-                            >
-                              Apply Strip
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </Tabs.Content>
 
                 {/* Transient Detection Controls */}
@@ -1297,55 +1199,73 @@ export function SampleChopperDialog({
                   </div>
                 </Tabs.Content>
 
-                {/* Silence Detection Controls */}
+                {/* Strip Silence Controls */}
                 <Tabs.Content value="silence" className="space-y-3">
-                  <p className="text-xs text-s330-muted">
-                    Split at gaps of silence between drum hits.
-                  </p>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-xs text-s330-muted mb-1">
-                        Threshold (dB)
-                      </label>
-                      <input
-                        type="number"
-                        min="-80"
-                        max="-10"
-                        step="5"
-                        value={silenceThreshold}
-                        onChange={(e) => setSilenceThreshold(parseInt(e.target.value) || -40)}
-                        className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                      />
+                  {manualSlices.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-s330-muted mb-2">
+                        No slices to strip silence from.
+                      </p>
+                      <p className="text-xs text-s330-muted">
+                        Use Manual, Transient, or Fixed tabs to create slices first.
+                      </p>
                     </div>
-                    <div>
-                      <label className="block text-xs text-s330-muted mb-1">
-                        Min Silence (ms)
-                      </label>
-                      <input
-                        type="number"
-                        min="10"
-                        max="500"
-                        step="10"
-                        value={silenceMinDuration}
-                        onChange={(e) => setSilenceMinDuration(parseInt(e.target.value) || 50)}
-                        className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                      />
+                  ) : (
+                    <div className="space-y-3">
+                      <p className="text-xs text-s330-muted">
+                        Remove silence from the beginning and end of each slice.
+                        Adjust threshold to preview changes live on the waveform.
+                      </p>
+
+                      <div>
+                        <label className="block text-xs text-s330-muted mb-1">
+                          Threshold: {stripSilenceThreshold} dB
+                        </label>
+                        <input
+                          type="range"
+                          min="-60"
+                          max="-10"
+                          step="1"
+                          value={stripSilenceThreshold}
+                          onChange={(e) => setStripSilenceThreshold(parseInt(e.target.value))}
+                          className="w-full accent-s330-highlight"
+                        />
+                        <div className="flex justify-between text-xs text-s330-muted mt-0.5">
+                          <span>-60 dB (quieter)</span>
+                          <span>-10 dB (louder)</span>
+                        </div>
+                      </div>
+
+                      {/* Stats about what will change */}
+                      {strippedPreview && (
+                        <div className="text-xs text-s330-muted bg-s330-bg rounded p-2">
+                          <span className="font-medium text-s330-text">
+                            {strippedPreview.filter((p, i) =>
+                              p.startSample !== originalSliceBoundaries[i]?.startSample ||
+                              p.endSample !== originalSliceBoundaries[i]?.endSample
+                            ).length}
+                          </span>
+                          {' '}of {manualSlices.length} slices will be trimmed
+                        </div>
+                      )}
+
+                      {/* Apply/Reset buttons */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleCancelStripSilence}
+                          className="flex-1 px-3 py-1.5 text-xs rounded bg-s330-bg hover:bg-s330-accent/50 text-s330-muted transition-colors"
+                        >
+                          Reset
+                        </button>
+                        <button
+                          onClick={handleApplyStripSilence}
+                          className="flex-1 px-3 py-1.5 text-xs rounded bg-s330-highlight hover:bg-s330-highlight/80 text-white font-medium transition-colors"
+                        >
+                          Apply Strip
+                        </button>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs text-s330-muted mb-1">
-                        Min Sample (ms)
-                      </label>
-                      <input
-                        type="number"
-                        min="5"
-                        max="500"
-                        step="5"
-                        value={silenceMinSample}
-                        onChange={(e) => setSilenceMinSample(parseInt(e.target.value) || 10)}
-                        className="w-full bg-s330-bg border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                      />
-                    </div>
-                  </div>
+                  )}
                 </Tabs.Content>
 
                 {/* Fixed Interval Controls */}
