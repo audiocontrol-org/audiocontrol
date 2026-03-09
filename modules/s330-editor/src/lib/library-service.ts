@@ -1062,6 +1062,30 @@ export async function loadIndividualToneWavSamples(
   };
 }
 
+/**
+ * Delete an individual tone from the library.
+ *
+ * Removes both the YAML and WAV files for the tone.
+ */
+export async function deleteIndividualTone(
+  directoryHandle: FileSystemDirectoryHandle,
+  toneFile: string
+): Promise<void> {
+  const tonesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'tones'
+  ]);
+
+  // Remove YAML file
+  await tonesDir.removeEntry(`${toneFile}.yaml`);
+
+  // Remove WAV file (may not exist if YAML was orphaned)
+  try {
+    await tonesDir.removeEntry(`${toneFile}.wav`);
+  } catch {
+    // WAV file may not exist, that's ok
+  }
+}
+
 // =========================================================================
 // Drum Kit Operations
 // =========================================================================
@@ -1186,6 +1210,23 @@ export async function loadDrumKitBundle(
 
   // Parse the bundle
   return parseDrumKitBundle(kitYaml, wavFiles, kitName);
+}
+
+/**
+ * Delete a drum kit from the library.
+ *
+ * Removes the entire drum kit directory including all WAV files and kit.yaml.
+ */
+export async function deleteDrumKit(
+  directoryHandle: FileSystemDirectoryHandle,
+  kitName: string
+): Promise<void> {
+  const drumKitsDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'drum-kits'
+  ]);
+
+  // Remove the kit directory recursively
+  await drumKitsDir.removeEntry(kitName, { recursive: true });
 }
 
 /**

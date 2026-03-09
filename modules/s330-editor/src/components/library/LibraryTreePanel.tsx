@@ -32,6 +32,12 @@ interface LibraryTreePanelProps {
   isLoading: boolean;
   /** Callback when a device item is dropped to export to library */
   onDropDeviceItem?: (data: DeviceDragData) => void;
+  /** Callback to delete a set */
+  onDeleteSet?: (name: string) => void;
+  /** Callback to delete an individual tone */
+  onDeleteIndividualTone?: (fileName: string) => void;
+  /** Callback to delete a drum kit */
+  onDeleteDrumKit?: (directoryName: string) => void;
 }
 
 /**
@@ -133,34 +139,77 @@ function DrumKitIcon(): JSX.Element {
 }
 
 /**
+ * Delete button that appears on hover/focus
+ */
+function DeleteButton({
+  onClick,
+  title = 'Delete',
+}: {
+  onClick: (e: React.MouseEvent) => void;
+  title?: string;
+}): JSX.Element {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      className={cn(
+        'p-1 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
+        'hover:bg-red-500/20 hover:text-red-400 text-s330-muted/50',
+        'transition-opacity focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-red-400'
+      )}
+    >
+      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+        />
+      </svg>
+    </button>
+  );
+}
+
+/**
  * Drum kit item
  */
 function DrumKitItem({
   kitInfo,
   isSelected,
   onSelect,
+  onDelete,
 }: {
   kitInfo: DrumKitInfo;
   isSelected: boolean;
   onSelect: () => void;
+  onDelete?: () => void;
 }): JSX.Element {
+  const handleDelete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete?.();
+  }, [onDelete]);
+
   return (
-    <button
-      onClick={onSelect}
+    <div
       className={cn(
-        'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-        'flex items-center gap-2',
+        'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+        'flex items-center gap-2 cursor-pointer',
         isSelected
           ? 'bg-s330-highlight/20 text-s330-highlight'
           : 'text-s330-text hover:bg-s330-accent/30'
       )}
+      onClick={onSelect}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => e.key === 'Enter' && onSelect()}
     >
       <DrumKitIcon />
       <span className="flex-1 truncate font-medium">{kitInfo.name}</span>
       <span className="text-xs text-s330-muted">
         {kitInfo.kitCount} kit{kitInfo.kitCount !== 1 ? 's' : ''} / {kitInfo.sampleCount} samples
       </span>
-    </button>
+      {onDelete && <DeleteButton onClick={handleDelete} title="Delete drum kit" />}
+    </div>
   );
 }
 
@@ -179,6 +228,7 @@ function SetItem({
   onSelectTone,
   onSelectPatch,
   isLoadingManifest,
+  onDelete,
 }: {
   setInfo: SetInfo;
   manifest: SetYaml | null;
@@ -191,24 +241,33 @@ function SetItem({
   onSelectTone: (toneFile: string) => void;
   onSelectPatch: (patchFile: string) => void;
   isLoadingManifest: boolean;
+  onDelete?: () => void;
 }): JSX.Element {
+  const handleDelete = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    onDelete?.();
+  }, [onDelete]);
+
   return (
     <div>
-      <button
-        onClick={(e) => {
-          if ((e.target as HTMLElement).closest('.expand-toggle')) {
-            onToggle();
-          } else {
-            onSelect();
-          }
-        }}
+      <div
         className={cn(
-          'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+          'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
           'flex items-center gap-2',
           isSelected
             ? 'bg-s330-highlight/20 text-s330-highlight'
             : 'text-s330-text hover:bg-s330-accent/30'
         )}
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest('.expand-toggle')) {
+            onToggle();
+          } else if (!(e.target as HTMLElement).closest('.delete-btn')) {
+            onSelect();
+          }
+        }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && onSelect()}
       >
         <span className="expand-toggle cursor-pointer p-0.5 -ml-0.5">
           <ChevronIcon isExpanded={isExpanded} />
@@ -218,7 +277,12 @@ function SetItem({
         <span className="text-xs text-s330-muted">
           {setInfo.toneCount}T / {setInfo.patchCount}P
         </span>
-      </button>
+        {onDelete && (
+          <span className="delete-btn">
+            <DeleteButton onClick={handleDelete} title="Delete set" />
+          </span>
+        )}
+      </div>
 
       {/* Expanded contents with individual items */}
       {isExpanded && (
@@ -326,6 +390,9 @@ export function LibraryTreePanel({
   onRefresh,
   isLoading,
   onDropDeviceItem,
+  onDeleteSet,
+  onDeleteIndividualTone,
+  onDeleteDrumKit,
 }: LibraryTreePanelProps): JSX.Element {
   const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set());
   const [manifests, setManifests] = useState<Map<string, SetYaml>>(new Map());
@@ -484,6 +551,7 @@ export function LibraryTreePanel({
                   onSelectTone={(toneFile) => onSelectTone(toneFile, setInfo.name)}
                   onSelectPatch={(patchFile) => onSelectPatch(patchFile, setInfo.name)}
                   isLoadingManifest={loadingManifests.has(setInfo.name)}
+                  onDelete={onDeleteSet ? () => onDeleteSet(setInfo.name) : undefined}
                 />
               ))}
             </div>
@@ -517,20 +585,32 @@ export function LibraryTreePanel({
           ) : (
             <div className="space-y-0.5">
               {individualTones.map((toneInfo) => (
-                <button
+                <div
                   key={toneInfo.fileName}
                   onClick={() => onSelectIndividualTone(toneInfo.fileName)}
                   className={cn(
-                    'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+                    'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors cursor-pointer',
                     'flex items-center gap-2',
                     selectedType === 'individualTone' && selectedName === toneInfo.fileName
                       ? 'bg-s330-highlight/20 text-s330-highlight'
                       : 'text-s330-text hover:bg-s330-accent/30'
                   )}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && onSelectIndividualTone(toneInfo.fileName)}
                 >
                   <WaveIcon />
                   <span className="flex-1 truncate font-medium">{toneInfo.name}</span>
-                </button>
+                  {onDeleteIndividualTone && (
+                    <DeleteButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteIndividualTone(toneInfo.fileName);
+                      }}
+                      title="Delete tone"
+                    />
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -560,6 +640,7 @@ export function LibraryTreePanel({
                   kitInfo={kitInfo}
                   isSelected={selectedType === 'drumKit' && selectedName === kitInfo.directoryName}
                   onSelect={() => onSelectDrumKit(kitInfo.directoryName)}
+                  onDelete={onDeleteDrumKit ? () => onDeleteDrumKit(kitInfo.directoryName) : undefined}
                 />
               ))}
             </div>

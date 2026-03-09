@@ -39,6 +39,9 @@ import {
   saveDeviceToSetIncremental,
   loadSetToDevice,
   exportToneToDirectory,
+  deleteSet,
+  deleteIndividualTone,
+  deleteDrumKit,
   type DrumKitInfo,
   type LibraryToneInfo,
 } from '@/lib/library-service';
@@ -229,6 +232,75 @@ export function LibraryPage() {
       setLoading(false);
     }
   }, [libraryHandle, setSets, setLoading, setError]);
+
+  // Delete a set from library
+  const handleDeleteSet = useCallback(async (setName: string) => {
+    if (!libraryHandle) return;
+
+    if (!window.confirm(`Delete set "${setName}"? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteSet(libraryHandle, setName);
+      // Clear selection if the deleted item was selected
+      if (selection?.type === 'set' && selection.name === setName) {
+        setSelection(null);
+      }
+      // Refresh library
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to delete set:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete set');
+    }
+  }, [libraryHandle, selection, handleRefreshLibrary, setError]);
+
+  // Delete an individual tone from library
+  const handleDeleteIndividualTone = useCallback(async (fileName: string) => {
+    if (!libraryHandle) return;
+
+    if (!window.confirm(`Delete tone "${fileName}"? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteIndividualTone(libraryHandle, fileName);
+      // Clear selection if the deleted item was selected
+      if (selection?.type === 'individualTone' && selection.name === fileName) {
+        setSelection(null);
+      }
+      // Refresh individual tones list
+      const updatedTones = await listIndividualTones(libraryHandle);
+      setIndividualTones(updatedTones);
+    } catch (err) {
+      console.error('[LibraryPage] Failed to delete tone:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete tone');
+    }
+  }, [libraryHandle, selection, setError]);
+
+  // Delete a drum kit from library
+  const handleDeleteDrumKit = useCallback(async (directoryName: string) => {
+    if (!libraryHandle) return;
+
+    if (!window.confirm(`Delete drum kit "${directoryName}"? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteDrumKit(libraryHandle, directoryName);
+      // Clear selection if the deleted item was selected
+      if (selection?.type === 'drumKit' && selection.name === directoryName) {
+        setSelection(null);
+        setSelectedDrumKitBundle(null);
+      }
+      // Refresh drum kits list
+      const updatedKits = await listDrumKits(libraryHandle);
+      setDrumKits(updatedKits);
+    } catch (err) {
+      console.error('[LibraryPage] Failed to delete drum kit:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete drum kit');
+    }
+  }, [libraryHandle, selection, setError]);
 
   // Load all data from device (tones and patches)
   const handleLoadDeviceData = useCallback(async () => {
@@ -892,6 +964,9 @@ export function LibraryPage() {
             onRefresh={handleRefreshLibrary}
             isLoading={isLoading || isExporting}
             onDropDeviceItem={handleDropDeviceItem}
+            onDeleteSet={handleDeleteSet}
+            onDeleteIndividualTone={handleDeleteIndividualTone}
+            onDeleteDrumKit={handleDeleteDrumKit}
           />
         </div>
 
