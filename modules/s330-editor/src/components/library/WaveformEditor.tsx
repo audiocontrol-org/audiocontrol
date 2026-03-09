@@ -2,7 +2,7 @@
  * Waveform Editor
  *
  * Canvas-based waveform visualization with slice markers.
- * Displays audio samples and detected/manual slice points.
+ * Supports interactive editing: drag to adjust, click to add, delete slices.
  */
 
 import { useRef, useEffect, useCallback, useState } from 'react';
@@ -34,18 +34,26 @@ interface WaveformEditorProps {
   showTimeLabels?: boolean;
   /** Custom class name */
   className?: string;
+  /** Enable interactive editing (drag, add, delete) */
+  editable?: boolean;
+  /** Callback when a slice marker is dragged (editable mode) */
+  onSliceChange?: (index: number, marker: SliceMarker) => void;
+  /** Callback when adding a new slice point (editable mode) */
+  onSliceAdd?: (samplePosition: number) => void;
+  /** Callback when deleting a slice (editable mode) */
+  onSliceDelete?: (index: number) => void;
 }
 
 /** Colors for slice markers (cycles through these) */
 const SLICE_COLORS = [
-  'rgba(59, 130, 246, 0.3)',  // blue
-  'rgba(34, 197, 94, 0.3)',   // green
-  'rgba(234, 179, 8, 0.3)',   // yellow
-  'rgba(168, 85, 247, 0.3)',  // purple
-  'rgba(236, 72, 153, 0.3)',  // pink
-  'rgba(20, 184, 166, 0.3)',  // teal
-  'rgba(249, 115, 22, 0.3)',  // orange
-  'rgba(99, 102, 241, 0.3)',  // indigo
+  'rgba(59, 130, 246, 0.3)', // blue
+  'rgba(34, 197, 94, 0.3)', // green
+  'rgba(234, 179, 8, 0.3)', // yellow
+  'rgba(168, 85, 247, 0.3)', // purple
+  'rgba(236, 72, 153, 0.3)', // pink
+  'rgba(20, 184, 166, 0.3)', // teal
+  'rgba(249, 115, 22, 0.3)', // orange
+  'rgba(99, 102, 241, 0.3)', // indigo
 ];
 
 const SLICE_BORDER_COLORS = [
@@ -59,6 +67,24 @@ const SLICE_BORDER_COLORS = [
   'rgba(99, 102, 241, 0.8)',
 ];
 
+/** Pixels from edge to consider as draggable handle */
+const HANDLE_WIDTH = 8;
+
+/** Minimum slice size in samples (10ms at 44100 = 441 samples) */
+const MIN_SLICE_SAMPLES = 100;
+
+type DragState = {
+  sliceIndex: number;
+  edge: 'start' | 'end';
+  startX: number;
+  originalSample: number;
+};
+
+type HoverState = {
+  sliceIndex: number;
+  edge: 'start' | 'end' | 'body';
+} | null;
+
 export function WaveformEditor({
   samples,
   sampleRate,
@@ -68,10 +94,16 @@ export function WaveformEditor({
   height = 150,
   showTimeLabels = true,
   className,
+  editable = false,
+  onSliceChange,
+  onSliceAdd,
+  onSliceDelete,
 }: WaveformEditorProps): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasWidth, setCanvasWidth] = useState(600);
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const [hoverState, setHoverState] = useState<HoverState>(null);
 
   // Handle resize
   useEffect(() => {
@@ -89,6 +121,53 @@ export function WaveformEditor({
 
     return () => resizeObserver.disconnect();
   }, []);
+
+  // Helper: convert pixel X to sample position
+  const pixelToSample = useCallback(
+    (pixelX: number): number => {
+      if (!samples) return 0;
+      const samplesPerPixel = samples.length / canvasWidth;
+      return Math.round(pixelX * samplesPerPixel);
+    },
+    [samples, canvasWidth]
+  );
+
+  // Helper: convert sample position to pixel X
+  const sampleToPixel = useCallback(
+    (samplePos: number): number => {
+      if (!samples) return 0;
+      return (samplePos / samples.length) * canvasWidth;
+    },
+    [samples, canvasWidth]
+  );
+
+  // Detect what's under the cursor
+  const hitTest = useCallback(
+    (pixelX: number): HoverState => {
+      if (!editable || !samples) return null;
+
+      for (let i = 0; i < sliceMarkers.length; i++) {
+        const marker = sliceMarkers[i];
+        const startX = sampleToPixel(marker.startSample);
+        const endX = sampleToPixel(marker.endSample);
+
+        // Check start edge
+        if (Math.abs(pixelX - startX) <= HANDLE_WIDTH) {
+          return { sliceIndex: i, edge: 'start' };
+        }
+        // Check end edge
+        if (Math.abs(pixelX - endX) <= HANDLE_WIDTH) {
+          return { sliceIndex: i, edge: 'end' };
+        }
+        // Check body
+        if (pixelX > startX + HANDLE_WIDTH && pixelX < endX - HANDLE_WIDTH) {
+          return { sliceIndex: i, edge: 'body' };
+        }
+      }
+      return null;
+    },
+    [editable, samples, sliceMarkers, sampleToPixel]
+  );
 
   // Draw waveform and markers
   useEffect(() => {
@@ -125,21 +204,48 @@ export function WaveformEditor({
       const sliceWidth = x2 - x1;
 
       const isSelected = selectedSlice === i;
+      const isHovered = hoverState?.sliceIndex === i;
       const colorIndex = i % SLICE_COLORS.length;
 
       // Fill slice region
-      ctx.fillStyle = isSelected
-        ? SLICE_COLORS[colorIndex].replace('0.3', '0.5')
-        : SLICE_COLORS[colorIndex];
+      const alpha = isSelected ? '0.5' : isHovered ? '0.4' : '0.3';
+      ctx.fillStyle = SLICE_COLORS[colorIndex].replace('0.3', alpha);
       ctx.fillRect(x1, 0, sliceWidth, canvasHeight);
 
       // Draw slice boundary lines
       ctx.strokeStyle = SLICE_BORDER_COLORS[colorIndex];
       ctx.lineWidth = isSelected ? 2 : 1;
+
+      // Start boundary
+      const startHovered = hoverState?.sliceIndex === i && hoverState?.edge === 'start';
+      ctx.lineWidth = startHovered || (dragState?.sliceIndex === i && dragState?.edge === 'start') ? 3 : isSelected ? 2 : 1;
       ctx.beginPath();
       ctx.moveTo(x1, 0);
       ctx.lineTo(x1, canvasHeight);
       ctx.stroke();
+
+      // End boundary (only draw if not adjacent to next slice start)
+      const endHovered = hoverState?.sliceIndex === i && hoverState?.edge === 'end';
+      ctx.lineWidth = endHovered || (dragState?.sliceIndex === i && dragState?.edge === 'end') ? 3 : isSelected ? 2 : 1;
+      ctx.beginPath();
+      ctx.moveTo(x2, 0);
+      ctx.lineTo(x2, canvasHeight);
+      ctx.stroke();
+
+      // Draw handle indicators in editable mode
+      if (editable) {
+        const handleColor = SLICE_BORDER_COLORS[colorIndex];
+        ctx.fillStyle = handleColor;
+
+        // Start handle
+        if (startHovered || (dragState?.sliceIndex === i && dragState?.edge === 'start')) {
+          ctx.fillRect(x1 - 2, canvasHeight / 2 - 15, 4, 30);
+        }
+        // End handle
+        if (endHovered || (dragState?.sliceIndex === i && dragState?.edge === 'end')) {
+          ctx.fillRect(x2 - 2, canvasHeight / 2 - 15, 4, 30);
+        }
+      }
     }
 
     // Draw waveform
@@ -209,32 +315,160 @@ export function WaveformEditor({
         ctx.stroke();
       }
     }
-  }, [samples, sampleRate, sliceMarkers, selectedSlice, canvasWidth, height, showTimeLabels]);
 
-  // Handle click on canvas
-  const handleClick = useCallback(
+    // Draw add hint when hovering over empty space in editable mode
+    if (editable && !hoverState && !dragState) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.font = '11px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      // No text, just visual feedback when hovering
+    }
+  }, [samples, sampleRate, sliceMarkers, selectedSlice, canvasWidth, height, showTimeLabels, editable, hoverState, dragState]);
+
+  // Handle mouse move for hover detection and dragging
+  const handleMouseMove = useCallback(
     (event: React.MouseEvent<HTMLCanvasElement>) => {
-      if (!samples || !onSliceClick) return;
+      const canvas = canvasRef.current;
+      if (!canvas || !samples) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+
+      if (dragState && onSliceChange) {
+        // Dragging - update slice position
+        const newSample = pixelToSample(x);
+        const marker = sliceMarkers[dragState.sliceIndex];
+        if (!marker) return;
+
+        let newMarker: SliceMarker;
+
+        if (dragState.edge === 'start') {
+          // Constrain: can't go past end - MIN_SLICE_SAMPLES, can't go below 0
+          // Also can't go before previous slice end
+          const minStart = dragState.sliceIndex > 0
+            ? (sliceMarkers[dragState.sliceIndex - 1]?.endSample ?? 0)
+            : 0;
+          const maxStart = marker.endSample - MIN_SLICE_SAMPLES;
+          const constrainedStart = Math.max(minStart, Math.min(maxStart, newSample));
+
+          newMarker = { ...marker, startSample: constrainedStart };
+        } else {
+          // Constrain: can't go before start + MIN_SLICE_SAMPLES, can't go past total length
+          // Also can't go past next slice start
+          const nextSlice = sliceMarkers[dragState.sliceIndex + 1];
+          const maxEnd = nextSlice ? nextSlice.startSample : samples.length;
+          const minEnd = marker.startSample + MIN_SLICE_SAMPLES;
+          const constrainedEnd = Math.max(minEnd, Math.min(maxEnd, newSample));
+
+          newMarker = { ...marker, endSample: constrainedEnd };
+        }
+
+        onSliceChange(dragState.sliceIndex, newMarker);
+      } else if (editable) {
+        // Just hovering - update hover state
+        const hit = hitTest(x);
+        setHoverState(hit);
+      }
+    },
+    [samples, dragState, editable, sliceMarkers, pixelToSample, hitTest, onSliceChange]
+  );
+
+  // Handle mouse down for starting drag
+  const handleMouseDown = useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!editable || !samples) return;
 
       const canvas = canvasRef.current;
       if (!canvas) return;
 
       const rect = canvas.getBoundingClientRect();
       const x = event.clientX - rect.left;
-      const samplesPerPixel = samples.length / canvas.width;
-      const clickedSample = x * samplesPerPixel;
+      const hit = hitTest(x);
 
-      // Find which slice was clicked
-      for (let i = 0; i < sliceMarkers.length; i++) {
-        const marker = sliceMarkers[i];
-        if (clickedSample >= marker.startSample && clickedSample < marker.endSample) {
-          onSliceClick(i);
-          return;
-        }
+      if (hit && (hit.edge === 'start' || hit.edge === 'end')) {
+        // Start dragging
+        const marker = sliceMarkers[hit.sliceIndex];
+        if (!marker) return;
+
+        event.preventDefault();
+        setDragState({
+          sliceIndex: hit.sliceIndex,
+          edge: hit.edge,
+          startX: x,
+          originalSample: hit.edge === 'start' ? marker.startSample : marker.endSample,
+        });
       }
     },
-    [samples, sliceMarkers, onSliceClick]
+    [editable, samples, sliceMarkers, hitTest]
   );
+
+  // Handle mouse up for ending drag
+  const handleMouseUp = useCallback(() => {
+    if (dragState) {
+      setDragState(null);
+    }
+  }, [dragState]);
+
+  // Handle mouse leave
+  const handleMouseLeave = useCallback(() => {
+    setHoverState(null);
+    if (dragState) {
+      setDragState(null);
+    }
+  }, [dragState]);
+
+  // Handle click on canvas
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!samples) return;
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      // Don't process click if we just finished dragging
+      if (dragState) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const clickedSample = pixelToSample(x);
+      const hit = hitTest(x);
+
+      if (hit) {
+        // Clicked on a slice - select it
+        if (onSliceClick && hit.edge === 'body') {
+          onSliceClick(hit.sliceIndex);
+        }
+      } else if (editable && onSliceAdd) {
+        // Clicked on empty space - add new slice point
+        onSliceAdd(clickedSample);
+      }
+    },
+    [samples, dragState, editable, pixelToSample, hitTest, onSliceClick, onSliceAdd]
+  );
+
+  // Handle keyboard for deleting selected slice
+  const handleKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLCanvasElement>) => {
+      if (!editable || selectedSlice === undefined || !onSliceDelete) return;
+
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        event.preventDefault();
+        onSliceDelete(selectedSlice);
+      }
+    },
+    [editable, selectedSlice, onSliceDelete]
+  );
+
+  // Determine cursor style
+  const getCursor = (): string => {
+    if (dragState) return 'ew-resize';
+    if (hoverState?.edge === 'start' || hoverState?.edge === 'end') return 'ew-resize';
+    if (hoverState?.edge === 'body') return 'pointer';
+    if (editable) return 'crosshair';
+    if (onSliceClick) return 'pointer';
+    return 'default';
+  };
 
   // Empty state
   if (!samples || samples.length === 0) {
@@ -258,15 +492,27 @@ export function WaveformEditor({
         width={canvasWidth}
         height={height}
         onClick={handleClick}
-        className={cn(
-          'rounded border border-s330-accent/30',
-          onSliceClick && 'cursor-pointer'
-        )}
+        onMouseMove={handleMouseMove}
+        onMouseDown={handleMouseDown}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseLeave}
+        onKeyDown={handleKeyDown}
+        tabIndex={editable ? 0 : undefined}
+        className={cn('rounded border border-s330-accent/30 outline-none focus:border-s330-highlight')}
+        style={{ cursor: getCursor() }}
       />
       {/* Duration label */}
-      <div className="absolute bottom-1 right-2 text-xs text-s330-muted">
+      <div className="absolute bottom-1 right-2 text-xs text-s330-muted pointer-events-none">
         {((samples.length / sampleRate) * 1000).toFixed(0)}ms
       </div>
+      {/* Edit mode hint */}
+      {editable && !dragState && sliceMarkers.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span className="text-s330-muted text-sm bg-s330-bg/80 px-2 py-1 rounded">
+            Click to add slice points
+          </span>
+        </div>
+      )}
     </div>
   );
 }

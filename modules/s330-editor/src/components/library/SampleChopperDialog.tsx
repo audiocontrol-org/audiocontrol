@@ -2,7 +2,8 @@
  * Sample Chopper Dialog
  *
  * Dialog for slicing a contiguous audio sample into individual drum hits
- * and creating a drum kit for import.
+ * and creating a drum kit for import. Supports both auto-detection and
+ * manual slice editing (drag to adjust, click to add, delete).
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -81,6 +82,9 @@ export interface SampleChopperDialogProps {
 
 type SliceMethodTab = 'transient' | 'silence' | 'fixed' | 'manual';
 
+/** Default minimum slice size in samples */
+const DEFAULT_MIN_SLICE_SAMPLES = 500;
+
 export function SampleChopperDialog({
   open,
   onOpenChange,
@@ -115,9 +119,6 @@ export function SampleChopperDialog({
   const [fixedInterval, setFixedInterval] = useState(500);
   const [fixedCount, setFixedCount] = useState<number | undefined>(undefined);
 
-  // Manual regions (simplified - just showing detected slices)
-  // Full manual editing would require more complex UI
-
   // Kit configuration - initialize from initialKitConfig in edit mode
   const [kitName, setKitName] = useState(initialKitConfig?.name ?? '');
   const [kitLabels, setKitLabels] = useState(DEFAULT_DRUM_TYPES.join(','));
@@ -127,12 +128,12 @@ export function SampleChopperDialog({
   const [kitBaseNote, setKitBaseNote] = useState(initialKitConfig?.baseNote ?? DEFAULT_BASE_NOTE);
   const [kitTranspose, setKitTranspose] = useState(initialKitConfig?.transpose ?? 0);
 
-  // Slice result state
-  const [sliceResult, setSliceResult] = useState<SliceResult | null>(null);
+  // Slice result state (from auto-detection)
+  const [autoSliceResult, setAutoSliceResult] = useState<SliceResult | null>(null);
   const [selectedSlice, setSelectedSlice] = useState<number | undefined>(undefined);
   const [sliceError, setSliceError] = useState<string | null>(null);
 
-  // Manual slice state for edit mode
+  // Manual slice state (editable)
   const [manualSlices, setManualSlices] = useState<SliceDefinitionOutput[]>(
     initialSlices?.map((s) => ({ ...s })) ?? []
   );
@@ -208,7 +209,7 @@ export function SampleChopperDialog({
           count: fixedCount,
         };
       case 'manual':
-        // For manual mode, use transient as base and show results
+        // Manual mode doesn't use auto-detection
         return {
           method: 'transient',
           threshold: transientThreshold,
@@ -228,17 +229,50 @@ export function SampleChopperDialog({
     fixedCount,
   ]);
 
-  // Perform slicing when config changes (or use manual slices in edit mode)
+  // Perform auto-slicing when config changes (non-manual modes)
   useEffect(() => {
     if (!samples || samples.length === 0) {
-      setSliceResult(null);
+      setAutoSliceResult(null);
       return;
     }
 
-    // In manual mode with initial slices, build result from manualSlices
-    if (selectedMethod === 'manual' && useInitialSlices && manualSlices.length > 0) {
+    // Skip auto-detection in manual mode
+    if (selectedMethod === 'manual') {
+      setAutoSliceResult(null);
+      return;
+    }
+
+    try {
+      const result = sliceAudio(samples, sampleRate, sliceConfig);
+      setAutoSliceResult(result);
+      setSliceError(null);
+      setSelectedSlice(undefined);
+      // Sync manual slices from auto-detection for easy switching
+      const labels = kitLabels.split(',').map((s) => s.trim());
+      setManualSlices(
+        result.slices.map((slice, i) => ({
+          label: labels[i % labels.length] ?? `S${i + 1}`,
+          startSample: slice.startSample,
+          endSample: slice.endSample,
+        }))
+      );
+      setUseInitialSlices(false);
+    } catch (err) {
+      setSliceError(err instanceof Error ? err.message : 'Slicing failed');
+      setAutoSliceResult(null);
+    }
+  }, [samples, sampleRate, sliceConfig, selectedMethod, kitLabels]);
+
+  // Get current slice result (from auto or manual)
+  const currentSliceResult = useMemo((): SliceResult | null => {
+    if (!samples || samples.length === 0) return null;
+
+    if (selectedMethod === 'manual' || useInitialSlices) {
+      // Build SliceResult from manual slices
+      if (manualSlices.length === 0) return null;
+
       const totalDurationMs = (samples.length / sampleRate) * 1000;
-      const result: SliceResult = {
+      return {
         slices: manualSlices.map((slice, index) => ({
           index,
           startSample: slice.startSample,
@@ -249,52 +283,158 @@ export function SampleChopperDialog({
         sampleRate,
         totalDurationMs,
       };
-      setSliceResult(result);
-      setSliceError(null);
-      return;
     }
 
-    // When switching away from manual mode, use auto-detection
-    try {
-      const result = sliceAudio(samples, sampleRate, sliceConfig);
-      setSliceResult(result);
-      setSliceError(null);
-      setSelectedSlice(undefined);
-      // Once we auto-detect, we're no longer using initial slices
-      if (useInitialSlices && selectedMethod !== 'manual') {
-        setUseInitialSlices(false);
-      }
-    } catch (err) {
-      setSliceError(err instanceof Error ? err.message : 'Slicing failed');
-      setSliceResult(null);
-    }
-  }, [samples, sampleRate, sliceConfig, selectedMethod, useInitialSlices, manualSlices]);
+    return autoSliceResult;
+  }, [samples, sampleRate, selectedMethod, useInitialSlices, manualSlices, autoSliceResult]);
 
   // Convert slices to waveform markers
   const sliceMarkers = useMemo((): SliceMarker[] => {
-    if (!sliceResult) return [];
+    if (selectedMethod === 'manual' || useInitialSlices) {
+      return manualSlices.map((slice) => ({
+        startSample: slice.startSample,
+        endSample: slice.endSample,
+        label: slice.label,
+      }));
+    }
+
+    if (!autoSliceResult) return [];
 
     const labels = kitLabels.split(',').map((s) => s.trim().toUpperCase());
 
-    return sliceResult.slices.map((slice, i) => ({
+    return autoSliceResult.slices.map((slice, i) => ({
       startSample: slice.startSample,
       endSample: slice.endSample,
       label: labels[i % labels.length] ?? `${i + 1}`,
     }));
-  }, [sliceResult, kitLabels]);
+  }, [selectedMethod, useInitialSlices, manualSlices, autoSliceResult, kitLabels]);
+
+  // Handle slice marker drag (manual mode)
+  const handleSliceChange = useCallback(
+    (index: number, marker: SliceMarker) => {
+      setManualSlices((prev) => {
+        const updated = [...prev];
+        if (updated[index]) {
+          updated[index] = {
+            ...updated[index],
+            startSample: marker.startSample,
+            endSample: marker.endSample,
+          };
+        }
+        return updated;
+      });
+    },
+    []
+  );
+
+  // Handle adding a new slice point (manual mode)
+  const handleSliceAdd = useCallback(
+    (samplePosition: number) => {
+      if (!samples) return;
+
+      const labels = kitLabels.split(',').map((s) => s.trim());
+
+      setManualSlices((prev) => {
+        // Find where to insert the new slice
+        const newSlices = [...prev];
+
+        // Check if clicking inside an existing slice - if so, split it
+        for (let i = 0; i < newSlices.length; i++) {
+          const slice = newSlices[i];
+          if (samplePosition > slice.startSample + DEFAULT_MIN_SLICE_SAMPLES &&
+              samplePosition < slice.endSample - DEFAULT_MIN_SLICE_SAMPLES) {
+            // Split this slice at the click position
+            const originalEnd = slice.endSample;
+            const newLabel = labels[(i + 1) % labels.length] ?? `S${newSlices.length + 1}`;
+
+            // Shrink original slice
+            newSlices[i] = {
+              ...slice,
+              endSample: samplePosition,
+            };
+
+            // Insert new slice
+            newSlices.splice(i + 1, 0, {
+              label: newLabel,
+              startSample: samplePosition,
+              endSample: originalEnd,
+            });
+
+            return newSlices;
+          }
+        }
+
+        // Not inside a slice - create a new one
+        // Find the end position (next slice start or end of audio)
+        let endSample = samples.length;
+        for (const slice of newSlices) {
+          if (slice.startSample > samplePosition && slice.startSample < endSample) {
+            endSample = slice.startSample;
+          }
+        }
+
+        // Find the start position (previous slice end or click position)
+        let startSample = samplePosition;
+        for (const slice of newSlices) {
+          if (slice.endSample <= samplePosition && slice.endSample > startSample - (endSample - samplePosition)) {
+            startSample = slice.endSample;
+          }
+        }
+
+        // Ensure minimum size
+        if (endSample - startSample < DEFAULT_MIN_SLICE_SAMPLES) {
+          endSample = Math.min(startSample + DEFAULT_MIN_SLICE_SAMPLES, samples.length);
+        }
+
+        const newSlice: SliceDefinitionOutput = {
+          label: labels[newSlices.length % labels.length] ?? `S${newSlices.length + 1}`,
+          startSample,
+          endSample,
+        };
+
+        // Insert in sorted order
+        const insertIndex = newSlices.findIndex((s) => s.startSample > startSample);
+        if (insertIndex === -1) {
+          newSlices.push(newSlice);
+        } else {
+          newSlices.splice(insertIndex, 0, newSlice);
+        }
+
+        return newSlices;
+      });
+    },
+    [samples, kitLabels]
+  );
+
+  // Handle deleting a slice (manual mode)
+  const handleSliceDelete = useCallback(
+    (index: number) => {
+      setManualSlices((prev) => {
+        if (prev.length <= 1) return prev; // Keep at least one slice
+        const updated = [...prev];
+        updated.splice(index, 1);
+        return updated;
+      });
+      setSelectedSlice(undefined);
+    },
+    []
+  );
 
   // Handle create/update kit
   const handleCreateKit = useCallback(() => {
-    if (!sliceResult || sliceResult.slices.length === 0 || !samples) return;
+    if (!currentSliceResult || currentSliceResult.slices.length === 0 || !samples) return;
 
     const labels = kitLabels.split(',').map((s) => s.trim());
 
-    // Convert Slice[] to SliceDefinitionOutput[] with labels
-    const sliceDefinitions: SliceDefinitionOutput[] = sliceResult.slices.map((slice, i) => ({
-      label: labels[i % labels.length] ?? `S${i + 1}`,
-      startSample: slice.startSample,
-      endSample: slice.endSample,
-    }));
+    // Use manual slices if in manual mode, otherwise build from auto result
+    const sliceDefinitions: SliceDefinitionOutput[] =
+      selectedMethod === 'manual' || useInitialSlices
+        ? manualSlices
+        : currentSliceResult.slices.map((slice, i) => ({
+            label: labels[i % labels.length] ?? `S${i + 1}`,
+            startSample: slice.startSample,
+            endSample: slice.endSample,
+          }));
 
     if (editMode && onSlicesUpdated) {
       // Edit mode: only update slices
@@ -302,7 +442,7 @@ export function SampleChopperDialog({
       onOpenChange(false);
     } else {
       // Create mode: create new drum kit
-      const kit = slicesToDrumKit(sliceResult, {
+      const kit = slicesToDrumKit(currentSliceResult, {
         name: kitName || 'DRUM-KIT',
         sampleRate: kitSampleRate,
         baseNote: kitBaseNote,
@@ -316,7 +456,7 @@ export function SampleChopperDialog({
       onOpenChange(false);
     }
   }, [
-    sliceResult,
+    currentSliceResult,
     samples,
     kitName,
     kitSampleRate,
@@ -324,6 +464,9 @@ export function SampleChopperDialog({
     kitLabels,
     kitTranspose,
     sampleRate,
+    selectedMethod,
+    useInitialSlices,
+    manualSlices,
     editMode,
     onKitCreated,
     onSlicesUpdated,
@@ -334,14 +477,33 @@ export function SampleChopperDialog({
     onOpenChange(false);
   }, [onOpenChange]);
 
+  // Switch to manual mode (copy current auto slices)
+  const handleSwitchToManual = useCallback(() => {
+    if (autoSliceResult && autoSliceResult.slices.length > 0) {
+      const labels = kitLabels.split(',').map((s) => s.trim());
+      setManualSlices(
+        autoSliceResult.slices.map((slice, i) => ({
+          label: labels[i % labels.length] ?? `S${i + 1}`,
+          startSample: slice.startSample,
+          endSample: slice.endSample,
+        }))
+      );
+    }
+    setSelectedMethod('manual');
+    setUseInitialSlices(false);
+  }, [autoSliceResult, kitLabels]);
+
   // Duration info
   const durationMs = samples ? (samples.length / sampleRate) * 1000 : 0;
+
+  // Check if we're in an interactive editing mode
+  const isManualMode = selectedMethod === 'manual';
 
   return (
     <Dialog.Root open={open} onOpenChange={handleClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-3xl p-6 max-h-[90vh] overflow-y-auto">
           <Dialog.Title className="text-lg font-bold text-s330-text mb-2">
             {editMode ? 'Edit Slices' : 'Chop Sample'}
           </Dialog.Title>
@@ -355,8 +517,15 @@ export function SampleChopperDialog({
           <div className="space-y-4">
             {/* Waveform Preview */}
             <div className="space-y-2">
-              <div className="text-xs text-s330-muted uppercase tracking-wide">
-                Waveform & Slice Preview
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-s330-muted uppercase tracking-wide">
+                  Waveform & Slice Preview
+                </div>
+                {isManualMode && (
+                  <div className="text-xs text-s330-muted">
+                    Drag edges to adjust • Click to split • Select + Delete to remove
+                  </div>
+                )}
               </div>
               <WaveformEditor
                 samples={samples}
@@ -364,16 +533,30 @@ export function SampleChopperDialog({
                 sliceMarkers={sliceMarkers}
                 selectedSlice={selectedSlice}
                 onSliceClick={setSelectedSlice}
-                height={120}
+                height={140}
+                editable={isManualMode}
+                onSliceChange={isManualMode ? handleSliceChange : undefined}
+                onSliceAdd={isManualMode ? handleSliceAdd : undefined}
+                onSliceDelete={isManualMode ? handleSliceDelete : undefined}
               />
-              {sliceResult && (
-                <div className="text-xs text-s330-muted">
-                  Detected {sliceResult.slices.length} slice
-                  {sliceResult.slices.length !== 1 ? 's' : ''}
-                  {selectedSlice !== undefined && sliceResult.slices[selectedSlice] && (
-                    <span className="ml-2 text-s330-text">
-                      • Selected: {sliceResult.slices[selectedSlice]?.durationMs.toFixed(0)}ms
-                    </span>
+              {currentSliceResult && (
+                <div className="flex items-center justify-between text-xs text-s330-muted">
+                  <span>
+                    {currentSliceResult.slices.length} slice
+                    {currentSliceResult.slices.length !== 1 ? 's' : ''}
+                    {selectedSlice !== undefined && currentSliceResult.slices[selectedSlice] && (
+                      <span className="ml-2 text-s330-text">
+                        • Selected: {currentSliceResult.slices[selectedSlice]?.durationMs.toFixed(0)}ms
+                      </span>
+                    )}
+                  </span>
+                  {!isManualMode && autoSliceResult && autoSliceResult.slices.length > 0 && (
+                    <button
+                      onClick={handleSwitchToManual}
+                      className="text-s330-highlight hover:underline"
+                    >
+                      Edit manually
+                    </button>
                   )}
                 </div>
               )}
@@ -382,22 +565,25 @@ export function SampleChopperDialog({
             {/* Slice Method Tabs */}
             <Tabs.Root
               value={selectedMethod}
-              onValueChange={(v) => setSelectedMethod(v as SliceMethodTab)}
+              onValueChange={(v) => {
+                setSelectedMethod(v as SliceMethodTab);
+                if (v !== 'manual') {
+                  setUseInitialSlices(false);
+                }
+              }}
             >
               <Tabs.List className="flex border-b border-s330-accent/30 mb-4">
-                {editMode && (
-                  <Tabs.Trigger
-                    value="manual"
-                    className={cn(
-                      'px-4 py-2 text-sm border-b-2 -mb-px transition-colors',
-                      selectedMethod === 'manual'
-                        ? 'border-s330-highlight text-s330-text'
-                        : 'border-transparent text-s330-muted hover:text-s330-text'
-                    )}
-                  >
-                    Current
-                  </Tabs.Trigger>
-                )}
+                <Tabs.Trigger
+                  value="manual"
+                  className={cn(
+                    'px-4 py-2 text-sm border-b-2 -mb-px transition-colors',
+                    selectedMethod === 'manual'
+                      ? 'border-s330-highlight text-s330-text'
+                      : 'border-transparent text-s330-muted hover:text-s330-text'
+                  )}
+                >
+                  Manual
+                </Tabs.Trigger>
                 <Tabs.Trigger
                   value="transient"
                   className={cn(
@@ -432,6 +618,59 @@ export function SampleChopperDialog({
                   Fixed
                 </Tabs.Trigger>
               </Tabs.List>
+
+              {/* Manual Mode Controls */}
+              <Tabs.Content value="manual" className="space-y-3">
+                <p className="text-xs text-s330-muted">
+                  Manually define slice points by clicking on the waveform. Drag slice edges to adjust boundaries.
+                </p>
+
+                {/* Slice List */}
+                {manualSlices.length > 0 && (
+                  <div className="bg-s330-bg rounded p-3 space-y-2 max-h-32 overflow-y-auto">
+                    <div className="text-xs text-s330-muted uppercase tracking-wide mb-2">
+                      Slices ({manualSlices.length})
+                    </div>
+                    {manualSlices.map((slice, i) => (
+                      <div
+                        key={i}
+                        className={cn(
+                          'flex items-center justify-between text-xs py-1 px-2 rounded cursor-pointer',
+                          selectedSlice === i
+                            ? 'bg-s330-highlight/20 text-s330-text'
+                            : 'hover:bg-s330-accent/20 text-s330-muted'
+                        )}
+                        onClick={() => setSelectedSlice(i)}
+                      >
+                        <span className="font-medium">{slice.label}</span>
+                        <span>
+                          {((slice.endSample - slice.startSample) / sampleRate * 1000).toFixed(0)}ms
+                        </span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSliceDelete(i);
+                          }}
+                          disabled={manualSlices.length <= 1}
+                          className={cn(
+                            'text-red-400 hover:text-red-300 px-1',
+                            manualSlices.length <= 1 && 'opacity-30 cursor-not-allowed'
+                          )}
+                          title="Delete slice"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {manualSlices.length === 0 && (
+                  <div className="text-sm text-s330-muted text-center py-4">
+                    Click on the waveform to add slice points
+                  </div>
+                )}
+              </Tabs.Content>
 
               {/* Transient Detection Controls */}
               <Tabs.Content value="transient" className="space-y-3">
@@ -574,18 +813,6 @@ export function SampleChopperDialog({
                   </div>
                 </div>
               </Tabs.Content>
-
-              {/* Manual/Current Slices (edit mode) */}
-              {editMode && (
-                <Tabs.Content value="manual" className="space-y-3">
-                  <p className="text-xs text-s330-muted">
-                    Using existing slice boundaries. Switch to another tab to re-detect.
-                  </p>
-                  <div className="text-sm text-s330-text">
-                    {manualSlices.length} slice{manualSlices.length !== 1 ? 's' : ''} loaded
-                  </div>
-                </Tabs.Content>
-              )}
             </Tabs.Root>
 
             {/* Error Display */}
@@ -597,94 +824,95 @@ export function SampleChopperDialog({
 
             {/* Kit Configuration - only show in create mode */}
             {!editMode && (
-            <div className="bg-s330-bg rounded p-3 space-y-3">
-              <div className="text-xs text-s330-muted uppercase tracking-wide">
-                Drum Kit Output
-              </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="bg-s330-bg rounded p-3 space-y-3">
+                <div className="text-xs text-s330-muted uppercase tracking-wide">
+                  Drum Kit Output
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs text-s330-muted mb-1">
+                      Kit Name (max 12 chars)
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={12}
+                      value={kitName}
+                      onChange={(e) => setKitName(e.target.value.toUpperCase())}
+                      placeholder="DRUM-KIT"
+                      className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text uppercase"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-s330-muted mb-1">
+                      Sample Rate
+                    </label>
+                    <select
+                      value={kitSampleRate}
+                      onChange={(e) =>
+                        setKitSampleRate(parseInt(e.target.value) as 15000 | 30000)
+                      }
+                      className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
+                    >
+                      <option value={15000}>15 kHz</option>
+                      <option value={30000}>30 kHz</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-s330-muted mb-1">
+                      Base MIDI Note
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      max="120"
+                      value={kitBaseNote}
+                      onChange={(e) => setKitBaseNote(parseInt(e.target.value) || 36)}
+                      className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-s330-muted mb-1">
+                      Labels (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={kitLabels}
+                      onChange={(e) => setKitLabels(e.target.value)}
+                      placeholder="kick,snare,hhc,hho"
+                      className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
+                    />
+                  </div>
+                </div>
+                {/* Transpose control */}
                 <div>
                   <label className="block text-xs text-s330-muted mb-1">
-                    Kit Name (max 12 chars)
+                    Pitch Adjust (semitones: {kitTranspose > 0 ? '+' : ''}
+                    {kitTranspose})
                   </label>
                   <input
-                    type="text"
-                    maxLength={12}
-                    value={kitName}
-                    onChange={(e) => setKitName(e.target.value.toUpperCase())}
-                    placeholder="DRUM-KIT"
-                    className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text uppercase"
+                    type="range"
+                    min="-24"
+                    max="24"
+                    step="1"
+                    value={kitTranspose}
+                    onChange={(e) => setKitTranspose(parseInt(e.target.value))}
+                    className="w-full accent-s330-highlight"
                   />
-                </div>
-                <div>
-                  <label className="block text-xs text-s330-muted mb-1">
-                    Sample Rate
-                  </label>
-                  <select
-                    value={kitSampleRate}
-                    onChange={(e) =>
-                      setKitSampleRate(parseInt(e.target.value) as 15000 | 30000)
-                    }
-                    className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                  >
-                    <option value={15000}>15 kHz</option>
-                    <option value={30000}>30 kHz</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs text-s330-muted mb-1">
-                    Base MIDI Note
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="120"
-                    value={kitBaseNote}
-                    onChange={(e) => setKitBaseNote(parseInt(e.target.value) || 36)}
-                    className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-s330-muted mb-1">
-                    Labels (comma-separated)
-                  </label>
-                  <input
-                    type="text"
-                    value={kitLabels}
-                    onChange={(e) => setKitLabels(e.target.value)}
-                    placeholder="kick,snare,hhc,hho"
-                    className="w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-sm text-s330-text"
-                  />
+                  <div className="flex justify-between text-xs text-s330-muted mt-1">
+                    <span>-2 oct</span>
+                    <button
+                      onClick={() => setKitTranspose(0)}
+                      className="text-s330-highlight hover:underline"
+                    >
+                      Reset
+                    </button>
+                    <span>+2 oct</span>
+                  </div>
+                  <p className="text-xs text-s330-muted mt-1">
+                    Use to pitch down samples recorded at high speed.
+                  </p>
                 </div>
               </div>
-              {/* Transpose control */}
-              <div>
-                <label className="block text-xs text-s330-muted mb-1">
-                  Pitch Adjust (semitones: {kitTranspose > 0 ? '+' : ''}{kitTranspose})
-                </label>
-                <input
-                  type="range"
-                  min="-24"
-                  max="24"
-                  step="1"
-                  value={kitTranspose}
-                  onChange={(e) => setKitTranspose(parseInt(e.target.value))}
-                  className="w-full accent-s330-highlight"
-                />
-                <div className="flex justify-between text-xs text-s330-muted mt-1">
-                  <span>-2 oct</span>
-                  <button
-                    onClick={() => setKitTranspose(0)}
-                    className="text-s330-highlight hover:underline"
-                  >
-                    Reset
-                  </button>
-                  <span>+2 oct</span>
-                </div>
-                <p className="text-xs text-s330-muted mt-1">
-                  Use to pitch down samples recorded at high speed.
-                </p>
-              </div>
-            </div>
             )}
 
             {/* Actions */}
@@ -694,16 +922,16 @@ export function SampleChopperDialog({
               </button>
               <button
                 onClick={handleCreateKit}
-                disabled={!sliceResult || sliceResult.slices.length === 0}
+                disabled={!currentSliceResult || currentSliceResult.slices.length === 0}
                 className={cn(
                   'ac-btn ac-btn-primary',
-                  (!sliceResult || sliceResult.slices.length === 0) &&
+                  (!currentSliceResult || currentSliceResult.slices.length === 0) &&
                     'opacity-50 cursor-not-allowed'
                 )}
               >
                 {editMode
-                  ? `Save Changes (${sliceResult?.slices.length ?? 0} slices)`
-                  : `Create Drum Kit (${sliceResult?.slices.length ?? 0} samples)`}
+                  ? `Save Changes (${currentSliceResult?.slices.length ?? 0} slices)`
+                  : `Create Drum Kit (${currentSliceResult?.slices.length ?? 0} samples)`}
               </button>
             </div>
           </div>
