@@ -93,10 +93,59 @@ type SliceMethodTab = 'transient' | 'silence' | 'fixed' | 'manual';
 /** Default minimum slice size in samples */
 const DEFAULT_MIN_SLICE_SAMPLES = 500;
 
+/** Minimum samples to keep after strip silence */
+const MIN_SAMPLES_AFTER_STRIP = 100;
+
 /** Zoom limits */
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 64;
 const ZOOM_STEP = 1.5;
+
+/**
+ * Find the first sample index where amplitude exceeds threshold.
+ * @param samples - Audio samples
+ * @param startSample - Start of search range
+ * @param endSample - End of search range
+ * @param thresholdDb - Threshold in dB (e.g., -40)
+ * @returns Sample index or startSample if not found
+ */
+function findFirstAboveThreshold(
+  samples: Int16Array,
+  startSample: number,
+  endSample: number,
+  thresholdDb: number
+): number {
+  const threshold = Math.pow(10, thresholdDb / 20) * 32768;
+  for (let i = startSample; i < endSample; i++) {
+    if (Math.abs(samples[i]) >= threshold) {
+      return i;
+    }
+  }
+  return startSample;
+}
+
+/**
+ * Find the last sample index where amplitude exceeds threshold.
+ * @param samples - Audio samples
+ * @param startSample - Start of search range
+ * @param endSample - End of search range
+ * @param thresholdDb - Threshold in dB (e.g., -40)
+ * @returns Sample index or endSample if not found
+ */
+function findLastAboveThreshold(
+  samples: Int16Array,
+  startSample: number,
+  endSample: number,
+  thresholdDb: number
+): number {
+  const threshold = Math.pow(10, thresholdDb / 20) * 32768;
+  for (let i = endSample - 1; i >= startSample; i--) {
+    if (Math.abs(samples[i]) >= threshold) {
+      return i + 1; // Return end position (exclusive)
+    }
+  }
+  return endSample;
+}
 
 export function SampleChopperDialog({
   open,
@@ -118,6 +167,13 @@ export function SampleChopperDialog({
 
   // Joined edges mode - adjacent slice boundaries move together
   const [joinedEdges, setJoinedEdges] = useState(true);
+
+  // Strip silence state
+  const [stripSilenceThreshold, setStripSilenceThreshold] = useState(-40);
+  const [stripSilenceActive, setStripSilenceActive] = useState(false);
+  const [originalSliceBoundaries, setOriginalSliceBoundaries] = useState<
+    Array<{ startSample: number; endSample: number }>
+  >([]);
 
   // Slice method selection - default to 'manual' in edit mode
   const [selectedMethod, setSelectedMethod] = useState<SliceMethodTab>(
@@ -324,9 +380,49 @@ export function SampleChopperDialog({
     return autoSliceResult;
   }, [samples, sampleRate, selectedMethod, useInitialSlices, manualSlices, autoSliceResult]);
 
+  // Strip silence from a single slice using original boundaries
+  const computeStrippedBoundaries = useCallback(
+    (
+      originalStart: number,
+      originalEnd: number,
+      threshold: number
+    ): { startSample: number; endSample: number } => {
+      if (!samples) return { startSample: originalStart, endSample: originalEnd };
+
+      const newStart = findFirstAboveThreshold(samples, originalStart, originalEnd, threshold);
+      const newEnd = findLastAboveThreshold(samples, originalStart, originalEnd, threshold);
+
+      // Ensure minimum size - if too small, keep original
+      if (newEnd - newStart < MIN_SAMPLES_AFTER_STRIP) {
+        return { startSample: originalStart, endSample: originalEnd };
+      }
+
+      return { startSample: newStart, endSample: newEnd };
+    },
+    [samples]
+  );
+
+  // Compute preview boundaries when strip silence is active
+  const strippedPreview = useMemo(() => {
+    if (!stripSilenceActive || originalSliceBoundaries.length === 0) return null;
+
+    return originalSliceBoundaries.map((original) =>
+      computeStrippedBoundaries(original.startSample, original.endSample, stripSilenceThreshold)
+    );
+  }, [stripSilenceActive, originalSliceBoundaries, stripSilenceThreshold, computeStrippedBoundaries]);
+
   // Convert slices to waveform markers
+  // When strip silence is active, show preview boundaries instead
   const sliceMarkers = useMemo((): SliceMarker[] => {
     if (selectedMethod === 'manual' || useInitialSlices) {
+      // If strip silence preview is active, use preview boundaries
+      if (stripSilenceActive && strippedPreview) {
+        return manualSlices.map((slice, i) => ({
+          startSample: strippedPreview[i]?.startSample ?? slice.startSample,
+          endSample: strippedPreview[i]?.endSample ?? slice.endSample,
+          label: slice.label,
+        }));
+      }
       return manualSlices.map((slice) => ({
         startSample: slice.startSample,
         endSample: slice.endSample,
@@ -343,7 +439,7 @@ export function SampleChopperDialog({
       endSample: slice.endSample,
       label: labels[i % labels.length] ?? `${i + 1}`,
     }));
-  }, [selectedMethod, useInitialSlices, manualSlices, autoSliceResult, kitLabels]);
+  }, [selectedMethod, useInitialSlices, manualSlices, autoSliceResult, kitLabels, stripSilenceActive, strippedPreview]);
 
   // Handle slice marker drag (manual mode)
   const handleSliceChange = useCallback(
@@ -506,6 +602,35 @@ export function SampleChopperDialog({
 
     play(samples);
   }, [samples, isPlaying, play, stop]);
+
+  // Enter strip silence mode - save current boundaries as originals
+  const handleEnterStripSilence = useCallback(() => {
+    setOriginalSliceBoundaries(
+      manualSlices.map((s) => ({ startSample: s.startSample, endSample: s.endSample }))
+    );
+    setStripSilenceActive(true);
+  }, [manualSlices]);
+
+  // Apply strip silence - commit preview to slices
+  const handleApplyStripSilence = useCallback(() => {
+    if (!strippedPreview) return;
+
+    setManualSlices((prev) =>
+      prev.map((slice, i) => ({
+        ...slice,
+        startSample: strippedPreview[i]?.startSample ?? slice.startSample,
+        endSample: strippedPreview[i]?.endSample ?? slice.endSample,
+      }))
+    );
+    setStripSilenceActive(false);
+    setOriginalSliceBoundaries([]);
+  }, [strippedPreview]);
+
+  // Cancel strip silence - discard preview
+  const handleCancelStripSilence = useCallback(() => {
+    setStripSilenceActive(false);
+    setOriginalSliceBoundaries([]);
+  }, []);
 
   // Zoom handlers
   const handleZoomIn = useCallback(() => {
@@ -764,13 +889,18 @@ export function SampleChopperDialog({
                     Waveform & Slice Preview
                   </div>
                   <div className="flex items-center gap-3">
-                    {isManualMode && (
+                    {isManualMode && !stripSilenceActive && (
                       <div className="text-xs text-s330-muted">
                         Drag edges to adjust • Click to split • Delete to remove
                       </div>
                     )}
+                    {stripSilenceActive && (
+                      <div className="text-xs text-s330-highlight">
+                        Strip Silence Preview - Adjust threshold below
+                      </div>
+                    )}
                     {/* Joined edges toggle */}
-                    {isManualMode && (
+                    {isManualMode && !stripSilenceActive && (
                       <button
                         onClick={() => setJoinedEdges((prev) => !prev)}
                         className={cn(
@@ -857,14 +987,14 @@ export function SampleChopperDialog({
                   selectedSlice={selectedSlice}
                   onSliceClick={setSelectedSlice}
                   height={waveformHeight}
-                  editable={isManualMode}
-                  onSliceChange={isManualMode ? handleSliceChange : undefined}
-                  onSlicesChange={isManualMode ? handleSlicesChange : undefined}
-                  onSliceAdd={isManualMode ? handleSliceAdd : undefined}
-                  onSliceDelete={isManualMode ? handleSliceDelete : undefined}
+                  editable={isManualMode && !stripSilenceActive}
+                  onSliceChange={isManualMode && !stripSilenceActive ? handleSliceChange : undefined}
+                  onSlicesChange={isManualMode && !stripSilenceActive ? handleSlicesChange : undefined}
+                  onSliceAdd={isManualMode && !stripSilenceActive ? handleSliceAdd : undefined}
+                  onSliceDelete={isManualMode && !stripSilenceActive ? handleSliceDelete : undefined}
                   zoom={zoom}
                   onZoomChange={setZoom}
-                  joinedEdges={isManualMode && joinedEdges}
+                  joinedEdges={isManualMode && joinedEdges && !stripSilenceActive}
                   playbackPosition={playbackPosition}
                 />
                 {currentSliceResult && (
@@ -1022,6 +1152,96 @@ export function SampleChopperDialog({
                   {manualSlices.length === 0 && (
                     <div className="text-sm text-s330-muted text-center py-4">
                       Click on the waveform to add slice points
+                    </div>
+                  )}
+
+                  {/* Strip Silence Controls */}
+                  {manualSlices.length > 0 && (
+                    <div className={cn(
+                      'rounded p-3 space-y-2',
+                      stripSilenceActive
+                        ? 'bg-s330-highlight/10 border border-s330-highlight/30'
+                        : 'bg-s330-bg'
+                    )}>
+                      <div className="flex items-center justify-between">
+                        <div className="text-xs text-s330-muted uppercase tracking-wide">
+                          Strip Silence
+                        </div>
+                        {stripSilenceActive && (
+                          <span className="text-xs text-s330-highlight font-medium">
+                            Preview Mode
+                          </span>
+                        )}
+                      </div>
+
+                      {!stripSilenceActive ? (
+                        // Not active - show enter button
+                        <div>
+                          <p className="text-xs text-s330-muted mb-2">
+                            Remove silence from the beginning and end of slices.
+                          </p>
+                          <button
+                            onClick={handleEnterStripSilence}
+                            className="px-3 py-1.5 text-xs rounded bg-s330-accent hover:bg-s330-accent/80 text-s330-text transition-colors"
+                          >
+                            Enter Strip Silence Mode
+                          </button>
+                        </div>
+                      ) : (
+                        // Active - show threshold slider and preview controls
+                        <div className="space-y-3">
+                          <p className="text-xs text-s330-muted">
+                            Adjust threshold to preview. Changes shown live on waveform.
+                          </p>
+                          <div>
+                            <label className="block text-xs text-s330-muted mb-1">
+                              Threshold: {stripSilenceThreshold} dB
+                            </label>
+                            <input
+                              type="range"
+                              min="-60"
+                              max="-10"
+                              step="1"
+                              value={stripSilenceThreshold}
+                              onChange={(e) => setStripSilenceThreshold(parseInt(e.target.value))}
+                              className="w-full accent-s330-highlight"
+                            />
+                            <div className="flex justify-between text-xs text-s330-muted mt-0.5">
+                              <span>-60 dB (quieter)</span>
+                              <span>-10 dB (louder)</span>
+                            </div>
+                          </div>
+
+                          {/* Stats about what will change */}
+                          {strippedPreview && (
+                            <div className="text-xs text-s330-muted bg-s330-bg/50 rounded p-2">
+                              <span className="font-medium text-s330-text">
+                                {strippedPreview.filter((p, i) =>
+                                  p.startSample !== originalSliceBoundaries[i]?.startSample ||
+                                  p.endSample !== originalSliceBoundaries[i]?.endSample
+                                ).length}
+                              </span>
+                              {' '}of {manualSlices.length} slices will be trimmed
+                            </div>
+                          )}
+
+                          {/* Apply/Cancel buttons */}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleCancelStripSilence}
+                              className="flex-1 px-3 py-1.5 text-xs rounded bg-s330-bg hover:bg-s330-accent/50 text-s330-muted transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleApplyStripSilence}
+                              className="flex-1 px-3 py-1.5 text-xs rounded bg-s330-highlight hover:bg-s330-highlight/80 text-white font-medium transition-colors"
+                            >
+                              Apply Strip
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </Tabs.Content>
