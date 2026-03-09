@@ -4,6 +4,7 @@
 
 import type { S330Patch } from '@/core/midi/S330Client';
 import { cn } from '@/lib/utils';
+import { formatPatchSlot } from '@/lib/s330-format';
 
 interface PatchListProps {
   /** Sparse array of patches - undefined = not loaded */
@@ -18,16 +19,6 @@ interface PatchListProps {
 function isPatchEmpty(patch: S330Patch): boolean {
   const name = patch.common.name;
   return name === '' || name === '            ' || name.trim() === '';
-}
-
-/**
- * Format patch display number (P11-P28)
- * S-330 uses bank.patch notation: P11-P18 (bank 1), P21-P28 (bank 2)
- */
-function formatPatchNumber(index: number): string {
-  const bank = Math.floor(index / 8) + 1;
-  const patchInBank = (index % 8) + 1;
-  return `P${bank}${patchInBank}`;
 }
 
 export function PatchList({ patches, selectedIndex, onSelect }: PatchListProps) {
@@ -67,7 +58,7 @@ export function PatchList({ patches, selectedIndex, onSelect }: PatchListProps) 
             >
               <div className="flex items-center justify-between">
                 <span className="font-mono">
-                  {formatPatchNumber(index)}
+                  {formatPatchSlot(index)}
                 </span>
                 <span className={cn(
                   'flex-1 mx-3 truncate',

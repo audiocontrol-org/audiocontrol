@@ -16,6 +16,7 @@ import {
   convertYamlToS330Tone,
   convertYamlToS330Patch,
 } from '@/lib/library-service';
+import { formatToneSlot, formatPatchSlot } from '@/lib/s330-format';
 
 interface ItemPreviewPanelProps {
   selection: ItemSelection | null;
@@ -24,22 +25,6 @@ interface ItemPreviewPanelProps {
   libraryHandle: FileSystemDirectoryHandle | null;
   onImportTone?: (setName: string, toneFile: string) => void;
   onImportPatch?: (setName: string, patchFile: string) => void;
-}
-
-/**
- * Format tone slot number (0-31 -> T11-T48)
- */
-function formatToneSlot(index: number): string {
-  const bank = Math.floor(index / 8) + 1;
-  const slot = (index % 8) + 1;
-  return `T${bank}${slot}`;
-}
-
-/**
- * Format patch slot number (0-15 -> P01-P16)
- */
-function formatPatchSlot(index: number): string {
-  return `P${String(index + 1).padStart(2, '0')}`;
 }
 
 /**

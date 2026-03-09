@@ -11,22 +11,7 @@ import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 import { midiNoteToName } from '@audiocontrol/sampler-library/browser';
 import { cn } from '@/lib/utils';
-
-/**
- * Format tone slot number (0-31 -> T11-T48)
- */
-function formatToneSlot(index: number): string {
-  const bank = Math.floor(index / 8) + 1;
-  const slot = (index % 8) + 1;
-  return `T${bank}${slot}`;
-}
-
-/**
- * Format patch slot number (0-15 -> P01-P16)
- */
-function formatPatchSlot(index: number): string {
-  return `P${String(index + 1).padStart(2, '0')}`;
-}
+import { formatToneSlot, formatPatchSlot } from '@/lib/s330-format';
 
 export interface ImportDrumKitDialogProps {
   /** Whether the dialog is open */
@@ -45,6 +30,8 @@ export interface ImportDrumKitDialogProps {
     waveBank: 0 | 1;
     startingSegment: number;
     targetPatchSlot: number;
+    singlePatch?: boolean;
+    patchName?: string;
   }) => Promise<void>;
   /** Whether import is in progress */
   isImporting: boolean;
@@ -76,9 +63,12 @@ export function ImportDrumKitDialog({
   const [waveBank, setWaveBank] = useState<0 | 1>(0);
   const [startingSegment, setStartingSegment] = useState(0);
   const [targetPatchSlot, setTargetPatchSlot] = useState(0);
+  const [singlePatch, setSinglePatch] = useState(true); // Default to single-patch mode
 
   const hasEnoughToneSlots = startingToneSlot + totalSamples <= 32;
-  const hasEnoughPatchSlots = targetPatchSlot + totalSamples <= 16;
+  // In single-patch mode, we only need 1 patch slot
+  const patchSlotsNeeded = singlePatch ? 1 : totalSamples;
+  const hasEnoughPatchSlots = targetPatchSlot + patchSlotsNeeded <= 16;
 
   // Estimate segments needed (1 segment per sample as a rough estimate)
   const estimatedSegments = totalSamples;
@@ -90,8 +80,10 @@ export function ImportDrumKitDialog({
       waveBank,
       startingSegment,
       targetPatchSlot,
+      singlePatch,
+      patchName: bundle.name,
     });
-  }, [startingToneSlot, waveBank, startingSegment, targetPatchSlot, onImport]);
+  }, [startingToneSlot, waveBank, startingSegment, targetPatchSlot, singlePatch, bundle.name, onImport]);
 
   const handleClose = useCallback(() => {
     if (!isImporting) {
@@ -120,7 +112,11 @@ export function ImportDrumKitDialog({
               </div>
               <div className="text-sm text-s330-muted">
                 <p>Created {totalSamples} tone{totalSamples !== 1 ? 's' : ''} in slots {formatToneSlot(startingToneSlot)} - {formatToneSlot(startingToneSlot + totalSamples - 1)}</p>
-                <p>Created {totalSamples} patch{totalSamples !== 1 ? 'es' : ''} in slots {formatPatchSlot(targetPatchSlot)} - {formatPatchSlot(targetPatchSlot + totalSamples - 1)}</p>
+                {singlePatch ? (
+                  <p>Created 1 patch in slot {formatPatchSlot(targetPatchSlot)} with all {totalSamples} samples mapped</p>
+                ) : (
+                  <p>Created {totalSamples} patch{totalSamples !== 1 ? 'es' : ''} in slots {formatPatchSlot(targetPatchSlot)} - {formatPatchSlot(targetPatchSlot + totalSamples - 1)}</p>
+                )}
               </div>
               <div className="flex justify-end">
                 <button onClick={handleClose} className="ac-btn ac-btn-primary">
@@ -247,10 +243,25 @@ export function ImportDrumKitDialog({
                 </p>
               )}
 
-              {/* Starting Patch Slot */}
+              {/* Patch Mode Toggle */}
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="singlePatch"
+                  checked={singlePatch}
+                  onChange={(e) => setSinglePatch(e.target.checked)}
+                  disabled={isImporting}
+                  className="w-4 h-4 rounded bg-s330-bg border-s330-accent/50 text-s330-highlight focus:ring-s330-highlight"
+                />
+                <label htmlFor="singlePatch" className="text-sm text-s330-text">
+                  Create single patch with all samples mapped
+                </label>
+              </div>
+
+              {/* Patch Slot */}
               <div>
                 <label htmlFor="targetPatchSlot" className="block text-sm text-s330-muted mb-1">
-                  Starting Patch Slot (needs {totalSamples} consecutive slots)
+                  {singlePatch ? 'Patch Slot' : `Starting Patch Slot (needs ${totalSamples} consecutive slots)`}
                 </label>
                 <select
                   id="targetPatchSlot"
@@ -263,17 +274,31 @@ export function ImportDrumKitDialog({
                     isImporting && 'opacity-50'
                   )}
                 >
-                  {Array.from({ length: Math.max(1, 16 - totalSamples + 1) }, (_, i) => {
-                    const endSlot = i + totalSamples - 1;
-                    const hasOccupied = Array.from({ length: totalSamples }, (_, j) => devicePatches[i + j])
-                      .some((p) => p !== undefined);
-                    return (
-                      <option key={i} value={i}>
-                        {formatPatchSlot(i)} - {formatPatchSlot(endSlot)}
-                        {hasOccupied ? ' (will overwrite)' : ' (empty)'}
-                      </option>
-                    );
-                  })}
+                  {singlePatch ? (
+                    // Single patch mode: show all 16 slots individually
+                    Array.from({ length: 16 }, (_, i) => {
+                      const hasOccupied = devicePatches[i] !== undefined;
+                      return (
+                        <option key={i} value={i}>
+                          {formatPatchSlot(i)}
+                          {hasOccupied ? ' (will overwrite)' : ' (empty)'}
+                        </option>
+                      );
+                    })
+                  ) : (
+                    // Multi-patch mode: show ranges
+                    Array.from({ length: Math.max(1, 16 - totalSamples + 1) }, (_, i) => {
+                      const endSlot = i + totalSamples - 1;
+                      const hasOccupied = Array.from({ length: totalSamples }, (_, j) => devicePatches[i + j])
+                        .some((p) => p !== undefined);
+                      return (
+                        <option key={i} value={i}>
+                          {formatPatchSlot(i)} - {formatPatchSlot(endSlot)}
+                          {hasOccupied ? ' (will overwrite)' : ' (empty)'}
+                        </option>
+                      );
+                    })
+                  )}
                 </select>
                 {!hasEnoughPatchSlots && (
                   <p className="text-xs text-red-400 mt-1">
@@ -299,14 +324,20 @@ export function ImportDrumKitDialog({
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-s330-muted">Patches:</span>
+                    <span className="text-s330-muted">Patch{singlePatch ? '' : 'es'}:</span>
                     <span className="text-s330-text">
-                      {formatPatchSlot(targetPatchSlot)} - {formatPatchSlot(targetPatchSlot + totalSamples - 1)}
+                      {singlePatch
+                        ? formatPatchSlot(targetPatchSlot)
+                        : `${formatPatchSlot(targetPatchSlot)} - ${formatPatchSlot(targetPatchSlot + totalSamples - 1)}`
+                      }
                     </span>
                   </div>
                 </div>
                 <div className="text-xs text-s330-muted mt-2">
-                  One patch per sample, each mapping one MIDI note to one tone.
+                  {singlePatch
+                    ? `Single patch with all ${totalSamples} samples mapped to MIDI notes.`
+                    : 'One patch per sample, each mapping one MIDI note to one tone.'
+                  }
                 </div>
               </div>
 

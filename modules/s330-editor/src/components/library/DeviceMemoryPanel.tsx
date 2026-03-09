@@ -2,10 +2,11 @@
  * Device Memory Panel
  *
  * Left panel showing tones and patches currently loaded on the S-330 device.
- * Displays slot numbers (T11-T48 for tones, P01-P16 for patches) with names.
+ * Displays slot numbers (T11-T48 for tones, P11-P28 for patches) with names.
  */
 
 import { cn } from '@/lib/utils';
+import { formatToneSlot, formatPatchSlot } from '@/lib/s330-format';
 import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
 
 interface DeviceMemoryPanelProps {
@@ -17,22 +18,6 @@ interface DeviceMemoryPanelProps {
   selectedType?: 'tone' | 'patch';
   onSelectTone: (index: number) => void;
   onSelectPatch: (index: number) => void;
-}
-
-/**
- * Format tone slot number (0-31 -> T11-T48)
- */
-function formatToneSlot(index: number): string {
-  const bank = Math.floor(index / 8) + 1;
-  const slot = (index % 8) + 1;
-  return `T${bank}${slot}`;
-}
-
-/**
- * Format patch slot number (0-15 -> P01-P16)
- */
-function formatPatchSlot(index: number): string {
-  return `P${String(index + 1).padStart(2, '0')}`;
 }
 
 export function DeviceMemoryPanel({

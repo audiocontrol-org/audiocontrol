@@ -19,22 +19,7 @@ import {
   remapPatchToneLayers,
 } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
-
-/**
- * Format tone slot number (0-31 -> T11-T48)
- */
-function formatToneSlot(index: number): string {
-  const bank = Math.floor(index / 8) + 1;
-  const slot = (index % 8) + 1;
-  return `T${bank}${slot}`;
-}
-
-/**
- * Format patch slot number (0-15 -> P01-P16)
- */
-function formatPatchSlot(index: number): string {
-  return `P${String(index + 1).padStart(2, '0')}`;
-}
+import { formatToneSlot, formatPatchSlot } from '@/lib/s330-format';
 
 interface ToneImportMapping {
   /** Original slot in the library set */

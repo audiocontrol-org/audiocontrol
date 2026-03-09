@@ -4,6 +4,7 @@
 
 import type { S330Tone } from '@/core/midi/S330Client';
 import { cn } from '@/lib/utils';
+import { formatToneSlot } from '@/lib/s330-format';
 
 interface ToneListProps {
   /** Sparse array of tones - undefined = not loaded */
@@ -18,16 +19,6 @@ interface ToneListProps {
 function isToneEmpty(tone: S330Tone): boolean {
   const name = tone.name;
   return name === '' || name === '        ' || name.trim() === '';
-}
-
-/**
- * Format tone display number (T11-T48)
- * S-330 uses bank.tone notation: T11-T18 (bank 1), T21-T28 (bank 2), etc.
- */
-function formatToneNumber(index: number): string {
-  const bank = Math.floor(index / 8) + 1;
-  const toneInBank = (index % 8) + 1;
-  return `T${bank}${toneInBank}`;
 }
 
 export function ToneList({ tones, selectedIndex, onSelect }: ToneListProps) {
@@ -67,7 +58,7 @@ export function ToneList({ tones, selectedIndex, onSelect }: ToneListProps) {
             >
               <div className="flex items-center justify-between">
                 <span className="font-mono text-s330-muted">
-                  {formatToneNumber(index)}
+                  {formatToneSlot(index)}
                 </span>
                 <span
                   className={cn(

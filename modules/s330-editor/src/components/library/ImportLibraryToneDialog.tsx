@@ -14,15 +14,7 @@ import {
   convertYamlToS330Tone,
 } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
-
-/**
- * Format tone slot number (0-31 -> T11-T48)
- */
-function formatToneSlot(index: number): string {
-  const bank = Math.floor(index / 8) + 1;
-  const slot = (index % 8) + 1;
-  return `T${bank}${slot}`;
-}
+import { formatToneSlot } from '@/lib/s330-format';
 
 export interface ImportLibraryToneDialogProps {
   /** Whether the dialog is open */

@@ -8,7 +8,7 @@
 import { useState, useCallback, MutableRefObject } from 'react';
 import type { S330ClientInterface, S330Tone, S330Patch } from '@/core/midi/S330Client';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
-import { createEmptyToneLayer, setToneAtMidiNote, createDrumTone } from '@audiocontrol/sampler-devices/s330';
+import { createEmptyToneLayer, setToneAtMidiNote, createDrumTone, createDrumKitPatch } from '@audiocontrol/sampler-devices/s330';
 import { loadDrumKitSample, prepareWavForS330 } from '@/lib/library-service';
 
 interface ImportDrumKitDialogState {
@@ -41,6 +41,8 @@ interface UseImportDrumKitReturn {
     waveBank: 0 | 1;
     startingSegment: number;
     targetPatchSlot: number;
+    singlePatch?: boolean;
+    patchName?: string;
   }) => Promise<void>;
 }
 
@@ -110,6 +112,8 @@ export function useImportDrumKit({
     waveBank: 0 | 1;
     startingSegment: number;
     targetPatchSlot: number;
+    singlePatch?: boolean;
+    patchName?: string;
   }) => {
     if (!clientRef.current || !libraryHandle || !importDrumKitDialog) {
       throw new Error('Missing required resources for import');
@@ -117,6 +121,9 @@ export function useImportDrumKit({
 
     const { bundle, kitName } = importDrumKitDialog;
     const { startingToneSlot, waveBank, startingSegment, targetPatchSlot } = params;
+    // Default to single-patch mode
+    const useSinglePatch = params.singlePatch ?? true;
+    const patchName = params.patchName || kitName;
 
     setIsImporting(true);
     setImportProgress(0);
@@ -207,33 +214,51 @@ export function useImportDrumKit({
         await new Promise((resolve) => setTimeout(resolve, 1000));
       }
 
-      // Create and upload one patch per sample
-      setImportStatus('Creating patches...');
-
+      // Create and upload patches
       console.log('[useImportDrumKit] Bundle baseNote:', bundle.baseNote);
       console.log('[useImportDrumKit] Samples with MIDI notes:', samples.map(s => ({
         drumType: s.drumType,
         midiNote: s.midiNote
       })));
+      console.log('[useImportDrumKit] Single patch mode:', useSinglePatch);
 
-      for (let i = 0; i < samples.length; i++) {
-        const sample = samples[i]!;
-        const toneSlot = startingToneSlot + i;
-        const patchSlot = targetPatchSlot + i;
-
-        // Create patch name from drum type and kit number
-        const patchName = `${sample.drumType.slice(0, 4).toUpperCase()}${sample.kitNumber}`;
-
-        console.log(`[useImportDrumKit] Creating patch ${patchName}: tone=${toneSlot}, midiNote=${sample.midiNote}`);
-
-        const patch = createSingleDrumPatch(patchName, toneSlot, sample.midiNote);
-
+      if (useSinglePatch) {
+        // Single patch mode: create one patch with all tone mappings
         setImportStatus(`Creating patch ${patchName}...`);
-        await clientRef.current.sendPatchData(patchSlot, patch.common);
-        setPatch(patchSlot, patch);
 
-        // Small delay between patch uploads
-        await new Promise((resolve) => setTimeout(resolve, 200));
+        const toneMappings = samples.map((sample, i) => ({
+          midiNote: sample.midiNote,
+          toneSlot: startingToneSlot + i,
+        }));
+
+        console.log(`[useImportDrumKit] Creating single patch "${patchName}" with ${toneMappings.length} mappings`);
+
+        const patch = createDrumKitPatch(patchName, toneMappings);
+        await clientRef.current.sendPatchData(targetPatchSlot, patch.common);
+        setPatch(targetPatchSlot, patch);
+      } else {
+        // Multi-patch mode: create one patch per sample
+        setImportStatus('Creating patches...');
+
+        for (let i = 0; i < samples.length; i++) {
+          const sample = samples[i]!;
+          const toneSlot = startingToneSlot + i;
+          const patchSlot = targetPatchSlot + i;
+
+          // Create patch name from drum type and kit number
+          const samplePatchName = `${sample.drumType.slice(0, 4).toUpperCase()}${sample.kitNumber}`;
+
+          console.log(`[useImportDrumKit] Creating patch ${samplePatchName}: tone=${toneSlot}, midiNote=${sample.midiNote}`);
+
+          const patch = createSingleDrumPatch(samplePatchName, toneSlot, sample.midiNote);
+
+          setImportStatus(`Creating patch ${samplePatchName}...`);
+          await clientRef.current.sendPatchData(patchSlot, patch.common);
+          setPatch(patchSlot, patch);
+
+          // Small delay between patch uploads
+          await new Promise((resolve) => setTimeout(resolve, 200));
+        }
       }
 
       completedSteps++;
