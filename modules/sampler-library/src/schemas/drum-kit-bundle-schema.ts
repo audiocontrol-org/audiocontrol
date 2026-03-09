@@ -84,6 +84,14 @@ export const DrumKitBundleSchema = z.object({
   transpose: z.number().int().min(-64).max(63).default(0).optional(),
 
   /**
+   * Velocity-to-level sensitivity (0-5, default: 2).
+   * Maps to the S-330's L-Curve (TVA Level Curve) parameter:
+   * - 0: No velocity sensitivity (constant level)
+   * - 5: Maximum velocity sensitivity
+   */
+  velocitySensitivity: z.number().int().min(0).max(5).default(2).optional(),
+
+  /**
    * Version 1: Optional explicit kit definitions.
    * If omitted, kits are auto-detected from filenames.
    */

@@ -242,7 +242,8 @@ export function useImportDrumKit({
           prepared.segmentLength,
           prepared.sampleCount,
           sample.midiNote,
-          bundle.transpose ?? 0
+          bundle.transpose ?? 0,
+          bundle.velocitySensitivity ?? 2
         );
 
         setImportStatus(`Uploading ${sample.filename}...`);

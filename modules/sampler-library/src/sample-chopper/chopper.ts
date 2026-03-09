@@ -125,6 +125,7 @@ export function slicesToDrumKit(
     totalSamples: sliceResult.slices.length,
     allComplete: kits.every(k => k.isComplete),
     transpose: config.transpose,
+    velocitySensitivity: config.velocitySensitivity ?? 2,
   };
 }
 

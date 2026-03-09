@@ -93,6 +93,11 @@ export interface ResolvedDrumKitBundle {
    */
   transpose?: number;
   /**
+   * Velocity-to-level sensitivity (0-5, default: 2).
+   * Maps to the S-330's L-Curve (TVA Level Curve) parameter.
+   */
+  velocitySensitivity?: number;
+  /**
    * Version 2: Source WAV filename (e.g., "source.wav").
    * If present, slices should be chopped from this file at import time.
    */
@@ -413,6 +418,7 @@ export function loadDrumKitBundle(
     totalSamples,
     allComplete,
     transpose: yaml?.transpose,
+    velocitySensitivity: yaml?.velocitySensitivity ?? 2, // Default to 2 (moderate sensitivity)
     source,
     slices,
   };

@@ -80,12 +80,17 @@ export interface SampleChopperDialogProps {
     sampleRate: 15000 | 30000;
     baseNote: number;
     transpose?: number;
+    velocitySensitivity?: number;
   };
   /**
    * Callback when slices are updated (edit mode).
    * @param slices - Updated slice definitions
+   * @param kitConfig - Updated kit configuration (transpose, velocitySensitivity)
    */
-  onSlicesUpdated?: (slices: SliceDefinitionOutput[]) => void;
+  onSlicesUpdated?: (
+    slices: SliceDefinitionOutput[],
+    kitConfig: { transpose?: number; velocitySensitivity?: number }
+  ) => void;
 }
 
 type SliceMethodTab = 'transient' | 'silence' | 'fixed' | 'manual';
@@ -200,6 +205,9 @@ export function SampleChopperDialog({
   );
   const [kitBaseNote, setKitBaseNote] = useState(initialKitConfig?.baseNote ?? DEFAULT_BASE_NOTE);
   const [kitTranspose, setKitTranspose] = useState(initialKitConfig?.transpose ?? 0);
+  const [kitVelocitySensitivity, setKitVelocitySensitivity] = useState(
+    initialKitConfig?.velocitySensitivity ?? 2
+  ); // Default to moderate sensitivity
 
   // Slice result state (from auto-detection)
   const [autoSliceResult, setAutoSliceResult] = useState<SliceResult | null>(null);
@@ -239,6 +247,7 @@ export function SampleChopperDialog({
       setKitSampleRate(initialKitConfig.sampleRate);
       setKitBaseNote(initialKitConfig.baseNote);
       setKitTranspose(initialKitConfig.transpose ?? 0);
+      setKitVelocitySensitivity(initialKitConfig.velocitySensitivity ?? 2);
     }
   }, [open, editMode, initialKitConfig]);
 
@@ -642,8 +651,11 @@ export function SampleChopperDialog({
           }));
 
     if (editMode && onSlicesUpdated) {
-      // Edit mode: only update slices
-      onSlicesUpdated(sliceDefinitions);
+      // Edit mode: update slices and kit config
+      onSlicesUpdated(sliceDefinitions, {
+        transpose: kitTranspose !== 0 ? kitTranspose : undefined,
+        velocitySensitivity: kitVelocitySensitivity,
+      });
       onOpenChange(false);
     } else {
       // Create mode: create new drum kit
@@ -654,6 +666,7 @@ export function SampleChopperDialog({
         drumTypes: labels.length > 0 ? labels : undefined,
         // Pass semitones directly - conversion to S-330 raw value happens at import time
         transpose: kitTranspose !== 0 ? kitTranspose : undefined,
+        velocitySensitivity: kitVelocitySensitivity,
       });
 
       // Pass source WAV and slice definitions for deferred chopping
@@ -668,6 +681,7 @@ export function SampleChopperDialog({
     kitBaseNote,
     kitLabels,
     kitTranspose,
+    kitVelocitySensitivity,
     sampleRate,
     selectedMethod,
     useInitialSlices,
@@ -1404,6 +1418,59 @@ export function SampleChopperDialog({
                     </div>
                     <p className="text-xs text-s330-muted mt-1">
                       Use to pitch down samples recorded at high speed.
+                    </p>
+                  </div>
+                  {/* Velocity Sensitivity control */}
+                  <div>
+                    <label className="block text-xs text-s330-muted mb-1">
+                      Velocity Sensitivity: {kitVelocitySensitivity}
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="5"
+                      step="1"
+                      value={kitVelocitySensitivity}
+                      onChange={(e) => setKitVelocitySensitivity(parseInt(e.target.value))}
+                      className="w-full accent-s330-highlight"
+                    />
+                    <div className="flex justify-between text-xs text-s330-muted mt-1">
+                      <span>None</span>
+                      <span>Max</span>
+                    </div>
+                    <p className="text-xs text-s330-muted mt-1">
+                      How much MIDI velocity affects sample volume.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Playback Settings - show in edit mode */}
+              {editMode && (
+                <div className="bg-s330-bg rounded p-3 space-y-3">
+                  <div className="text-xs text-s330-muted uppercase tracking-wide">
+                    Playback Settings
+                  </div>
+                  {/* Velocity Sensitivity control */}
+                  <div>
+                    <label className="block text-xs text-s330-muted mb-1">
+                      Velocity Sensitivity: {kitVelocitySensitivity}
+                    </label>
+                    <input
+                      type="range"
+                      min="0"
+                      max="5"
+                      step="1"
+                      value={kitVelocitySensitivity}
+                      onChange={(e) => setKitVelocitySensitivity(parseInt(e.target.value))}
+                      className="w-full accent-s330-highlight"
+                    />
+                    <div className="flex justify-between text-xs text-s330-muted mt-1">
+                      <span>None</span>
+                      <span>Max</span>
+                    </div>
+                    <p className="text-xs text-s330-muted mt-1">
+                      How much MIDI velocity affects sample volume.
                     </p>
                   </div>
                 </div>

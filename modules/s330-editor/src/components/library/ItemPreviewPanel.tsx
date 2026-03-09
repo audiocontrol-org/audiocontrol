@@ -406,6 +406,7 @@ export function ItemPreviewPanel({
             sampleRate: kit.sampleRate,
             baseNote: kit.baseNote,
             transpose: kit.transpose, // Already in semitones
+            velocitySensitivity: kit.velocitySensitivity,
           }
         );
 

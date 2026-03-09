@@ -45,6 +45,13 @@ export interface CreateToneConfig {
   pitchFollow?: boolean;
   /** Output assignment (default: 0) */
   outputAssign?: number;
+  /**
+   * Velocity-to-level sensitivity (0-5, default: 0).
+   * Maps to the S-330's L-Curve (TVA Level Curve) parameter.
+   * - 0: No velocity sensitivity (constant level)
+   * - 5: Maximum velocity sensitivity
+   */
+  velocitySensitivity?: number;
 }
 
 /**
@@ -87,6 +94,7 @@ export function createTone(config: CreateToneConfig): S330Tone {
     transpose = 0, // WARNING: S-330 uses 0 for no pitch change, NOT 64
     pitchFollow,
     outputAssign = 0,
+    velocitySensitivity = 0,
   } = config;
 
   // Default pitchFollow based on loop mode if not explicitly set
@@ -143,7 +151,7 @@ export function createTone(config: CreateToneConfig): S330Tone {
       keyRate: 0,
       level: 127,
       velRate: 0,
-      levelCurve: 0,
+      levelCurve: Math.max(0, Math.min(5, velocitySensitivity)) as 0 | 1 | 2 | 3 | 4 | 5,
       envelope: {
         levels: [127, 127, 127, 127, 127, 127, 127, 0],
         rates: [127, 127, 127, 127, 127, 127, 127, 30],

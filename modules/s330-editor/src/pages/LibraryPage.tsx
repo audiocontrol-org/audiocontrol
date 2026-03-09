@@ -91,6 +91,7 @@ export function LibraryPage() {
       sampleRate: 15000 | 30000;
       baseNote: number;
       transpose?: number;
+      velocitySensitivity?: number;
     };
   } | null>(null);
 
@@ -475,6 +476,7 @@ export function LibraryPage() {
           sampleRate: bundle.sampleRate,
           baseNote: bundle.baseNote,
           transpose: bundle.transpose,
+          velocitySensitivity: bundle.velocitySensitivity,
         },
       });
     } catch (err) {
@@ -485,15 +487,18 @@ export function LibraryPage() {
     }
   }, [libraryHandle, selection, selectedDrumKitBundle, setLoading, setError]);
 
-  // Handle saving updated slices
-  const handleSlicesUpdated = useCallback(async (slices: SliceDefinitionOutput[]) => {
+  // Handle saving updated slices and kit config
+  const handleSlicesUpdated = useCallback(async (
+    slices: SliceDefinitionOutput[],
+    kitConfig: { transpose?: number; velocitySensitivity?: number }
+  ) => {
     if (!libraryHandle || !sliceEditDialog) {
       return;
     }
 
     setLoading(true, 'Saving slice changes...');
     try {
-      await updateDrumKitSlices(libraryHandle, sliceEditDialog.kitName, slices);
+      await updateDrumKitSlices(libraryHandle, sliceEditDialog.kitName, slices, kitConfig);
 
       // Refresh the drum kit bundle
       const updatedBundle = await loadDrumKitBundle(libraryHandle, sliceEditDialog.kitName);

@@ -118,6 +118,7 @@ const DEFAULT_ORIGINAL_KEY = 60;
  * @param sampleCount - Number of samples
  * @param originalKey - Original key MIDI note (default: 60 = C4)
  * @param transpose - Transpose in semitones (0 = no pitch change)
+ * @param velocitySensitivity - Velocity-to-level sensitivity (0-5, default: 2)
  */
 export function createDrumTone(
   name: string,
@@ -127,7 +128,8 @@ export function createDrumTone(
   segmentLength: number,
   sampleCount: number,
   originalKey: number = DEFAULT_ORIGINAL_KEY,
-  transpose: number = 0 // WARNING: S-330 uses 0 for no pitch change, NOT 64
+  transpose: number = 0, // WARNING: S-330 uses 0 for no pitch change, NOT 64
+  velocitySensitivity: number = 2
 ): S330Tone {
   return createTone({
     name,
@@ -140,6 +142,7 @@ export function createDrumTone(
     originalKey,
     transpose,
     pitchFollow: false,
+    velocitySensitivity,
   });
 }
 

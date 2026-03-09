@@ -141,6 +141,13 @@ export interface DrumKitOutputConfig {
    * Range: -64 to +63, where 0 = no pitch change.
    */
   transpose?: number;
+  /**
+   * Velocity-to-level sensitivity (0-5, default: 2).
+   * Maps to the S-330's L-Curve (TVA Level Curve) parameter.
+   * - 0: No velocity sensitivity (constant level)
+   * - 5: Maximum velocity sensitivity
+   */
+  velocitySensitivity?: number;
 }
 
 /**

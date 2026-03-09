@@ -1257,6 +1257,8 @@ export async function saveDrumKitToLibrary(
     baseNote: number;
     /** Transpose in semitones (-64 to +63, 0 = no change) */
     transpose?: number;
+    /** Velocity-to-level sensitivity (0-5, default: 2) */
+    velocitySensitivity?: number;
   }
 ): Promise<void> {
   const sanitizedName = kitName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
@@ -1283,6 +1285,7 @@ export async function saveDrumKitToLibrary(
     sampleRate: kitConfig.sampleRate,
     baseNote: kitConfig.baseNote,
     transpose: kitConfig.transpose,
+    velocitySensitivity: kitConfig.velocitySensitivity ?? 2,
     source: sourceFilename,
     slices: slices.map((slice) => ({
       label: slice.label,
@@ -1353,19 +1356,30 @@ export async function loadDrumKitSource(
 }
 
 /**
- * Update the slice definitions in an existing v2 drum kit.
+ * Kit configuration that can be updated in edit mode.
+ */
+export interface DrumKitConfigUpdate {
+  /** Transpose in semitones (-64 to +63, 0 = no change) */
+  transpose?: number;
+  /** Velocity-to-level sensitivity (0-5, default: 2) */
+  velocitySensitivity?: number;
+}
+
+/**
+ * Update the slice definitions and optionally kit config in an existing v2 drum kit.
  *
- * Preserves all other kit settings (name, sample rate, base note, transpose)
- * and only updates the slices array in kit.yaml.
+ * Preserves other kit settings (name, sample rate, base note) unless overridden.
  *
  * @param directoryHandle - Library directory handle
  * @param kitName - Directory name of the drum kit
  * @param slices - New slice definitions
+ * @param kitConfig - Optional kit configuration updates (transpose, velocitySensitivity)
  */
 export async function updateDrumKitSlices(
   directoryHandle: FileSystemDirectoryHandle,
   kitName: string,
-  slices: SliceDefinitionInput[]
+  slices: SliceDefinitionInput[],
+  kitConfig?: DrumKitConfigUpdate
 ): Promise<void> {
   const kitDir = await getNestedDirectory(directoryHandle, [
     'library', 's330', 'drum-kits', kitName
@@ -1382,7 +1396,7 @@ export async function updateDrumKitSlices(
     throw new Error('Cannot update slices: kit is not in v2 format (missing source)');
   }
 
-  // Update slices while preserving other settings
+  // Update slices and optionally kit config
   const updatedKit: DrumKitBundle = {
     ...existingKit,
     version: 2,
@@ -1391,6 +1405,9 @@ export async function updateDrumKitSlices(
       startSample: slice.startSample,
       endSample: slice.endSample,
     })),
+    // Apply kit config updates if provided
+    ...(kitConfig?.transpose !== undefined && { transpose: kitConfig.transpose }),
+    ...(kitConfig?.velocitySensitivity !== undefined && { velocitySensitivity: kitConfig.velocitySensitivity }),
   };
 
   // Write updated kit.yaml
