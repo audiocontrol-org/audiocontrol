@@ -45,6 +45,10 @@ export interface DrumKitImportConfig {
   startingPatchSlot: number;
   /** Original key MIDI note (default: 60 = C4) */
   originalKey?: number;
+  /** Create a single patch with all samples mapped to their MIDI notes (default: false) */
+  singlePatch?: boolean;
+  /** Name for the single patch (only used when singlePatch is true) */
+  patchName?: string;
 }
 
 /**
@@ -209,6 +213,48 @@ function createSingleNotePatch(
 }
 
 /**
+ * Mapping of a MIDI note to a tone slot.
+ */
+interface ToneMapping {
+  midiNote: number;
+  toneSlot: number;
+}
+
+/**
+ * Create a drum kit patch that maps multiple MIDI notes to different tones.
+ */
+export function createDrumKitPatch(
+  name: string,
+  mappings: ToneMapping[]
+): S330Patch {
+  const toneLayer1 = createEmptyToneLayer(1);
+
+  for (const mapping of mappings) {
+    setToneAtMidiNote(toneLayer1, mapping.midiNote, mapping.toneSlot);
+  }
+
+  const common: S330PatchCommon = {
+    name: name.slice(0, 12).toUpperCase().padEnd(12, ' '),
+    benderRange: 2,
+    aftertouchSens: 64,
+    keyMode: 'normal',
+    velocityThreshold: 64,
+    toneLayer1,
+    toneLayer2: createEmptyToneLayer(2),
+    copySource: 0,
+    octaveShift: 0,
+    level: 127,
+    detune: 0,
+    velocityMixRatio: 64,
+    aftertouchAssign: 'modulation',
+    keyAssign: 'rotary',
+    outputAssign: 8,
+  };
+
+  return { common };
+}
+
+/**
  * Import a drum kit to the S-330 device.
  *
  * @param client - S330 client interface
@@ -224,10 +270,13 @@ export async function importDrumKit(
   const results: ImportedSample[] = [];
   let currentSegment = config.startingSegment;
 
+  // Collect tone mappings for single-patch mode
+  const toneMappings: ToneMapping[] = [];
+
+  // Phase 1: Upload all tones
   for (let i = 0; i < config.samples.length; i++) {
     const sample = config.samples[i]!;
     const toneSlot = config.startingToneSlot + i;
-    const patchSlot = config.startingPatchSlot + i;
 
     onProgress?.(i + 1, config.samples.length, `Converting ${sample.drumType}...`);
 
@@ -268,23 +317,18 @@ export async function importDrumKit(
       tone,
     });
 
-    // Create and upload patch
-    const patchName = `${sample.drumType.slice(0, 4).toUpperCase()}${sample.kitNumber}`;
-    const patch = createSingleNotePatch(patchName, toneSlot, sample.midiNote);
+    // Collect mapping for single-patch mode
+    toneMappings.push({ midiNote: sample.midiNote, toneSlot });
 
-    onProgress?.(i + 1, config.samples.length, `Creating patch ${patchName}...`);
-
-    await client.sendPatchData(patchSlot, patch.common);
-
-    // Record result
+    // Record result (patch will be added later)
     results.push({
       toneSlot,
-      patchSlot,
+      patchSlot: config.singlePatch ? config.startingPatchSlot : config.startingPatchSlot + i,
       segmentTop: currentSegment,
       segmentLength: prepared.segmentLength,
       sampleCount: prepared.sampleCount,
       tone,
-      patch,
+      patch: null as unknown as S330Patch, // Will be set in Phase 2
     });
 
     // Move to next segment
@@ -292,6 +336,40 @@ export async function importDrumKit(
 
     // Give the S-330 time to process
     await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  // Phase 2: Create patches
+  if (config.singlePatch) {
+    // Single patch mode: one patch with all tone mappings
+    const patchName = config.patchName || 'DRUMKIT';
+    const patch = createDrumKitPatch(patchName, toneMappings);
+
+    onProgress?.(config.samples.length, config.samples.length, `Creating patch ${patchName}...`);
+
+    await client.sendPatchData(config.startingPatchSlot, patch.common);
+
+    // Update all results with the shared patch
+    for (const result of results) {
+      result.patch = patch;
+    }
+
+    console.log(`[DrumKitImportService] Created single patch "${patchName}" with ${toneMappings.length} tone mappings`);
+  } else {
+    // Multi-patch mode: one patch per sample
+    for (let i = 0; i < config.samples.length; i++) {
+      const sample = config.samples[i]!;
+      const toneSlot = config.startingToneSlot + i;
+      const patchSlot = config.startingPatchSlot + i;
+
+      const patchName = `${sample.drumType.slice(0, 4).toUpperCase()}${sample.kitNumber}`;
+      const patch = createSingleNotePatch(patchName, toneSlot, sample.midiNote);
+
+      onProgress?.(i + 1, config.samples.length, `Creating patch ${patchName}...`);
+
+      await client.sendPatchData(patchSlot, patch.common);
+
+      results[i]!.patch = patch;
+    }
   }
 
   const totalSegments = currentSegment - config.startingSegment;

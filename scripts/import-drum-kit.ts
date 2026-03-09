@@ -57,6 +57,8 @@ interface ImportOptions {
   startingSegment: number;
   startingPatchSlot: number;
   originalKey: number;
+  singlePatch: boolean;
+  patchName: string;
   dryRun: boolean;
   verbose: boolean;
   help: boolean;
@@ -74,6 +76,8 @@ Options:
   --starting-segment <n>  Starting segment (default: ${DEFAULT_STARTING_SEGMENT})
   --starting-patch <n>    Starting patch slot 0-15 (default: ${DEFAULT_STARTING_PATCH_SLOT})
   --original-key <n>      Original key MIDI note (default: ${DEFAULT_ORIGINAL_KEY} = C4)
+  --single-patch          Create one patch with all samples mapped (default: one patch per sample)
+  --patch-name <name>     Name for the single patch (default: kit directory name, max 12 chars)
   --dry-run               Show what would be imported without sending to device
   --verbose, -v           Show detailed progress
   --help, -h              Show this help message
@@ -82,8 +86,11 @@ Environment Variables:
   MIDI_DEVICE_NAME        Override default MIDI device name
 
 Examples:
-  # Import drum kit with defaults
+  # Import drum kit with defaults (one patch per sample)
   tsx scripts/import-drum-kit.ts ~/Documents/AudioTools/library/s330/drum-kits/KIT\\ 01
+
+  # Import with single patch containing all samples
+  tsx scripts/import-drum-kit.ts ./my-kit --single-patch --patch-name "MYDRUMS"
 
   # Import with custom original key (C5 = 72)
   tsx scripts/import-drum-kit.ts ./my-kit --original-key 72
@@ -107,6 +114,8 @@ function parseArgs(args: string[]): ImportOptions {
     startingSegment: DEFAULT_STARTING_SEGMENT,
     startingPatchSlot: DEFAULT_STARTING_PATCH_SLOT,
     originalKey: DEFAULT_ORIGINAL_KEY,
+    singlePatch: false,
+    patchName: '',
     dryRun: false,
     verbose: false,
     help: false,
@@ -172,6 +181,15 @@ function parseArgs(args: string[]): ImportOptions {
         process.exit(1);
       }
       options.originalKey = parseInt(value, 10);
+    } else if (arg === '--single-patch') {
+      options.singlePatch = true;
+    } else if (arg === '--patch-name') {
+      const value = args[++i];
+      if (!value) {
+        console.error('--patch-name requires a name (max 12 characters)');
+        process.exit(1);
+      }
+      options.patchName = value;
     } else if (!arg.startsWith('-')) {
       positionalArgs.push(arg);
     } else {
@@ -306,6 +324,11 @@ async function main(): Promise<void> {
   console.log(`  Starting Segment: ${options.startingSegment}`);
   console.log(`  Starting Patch Slot: ${options.startingPatchSlot} (P${options.startingPatchSlot + 1})`);
   console.log(`  Original Key: ${options.originalKey} (MIDI note)`);
+  console.log(`  Patch Mode: ${options.singlePatch ? 'Single patch' : 'One patch per sample'}`);
+  if (options.singlePatch) {
+    const patchName = options.patchName || converted.name;
+    console.log(`  Patch Name: ${patchName}`);
+  }
   console.log();
 
   // Step 3: Show what will be created
@@ -313,9 +336,23 @@ async function main(): Promise<void> {
   for (let i = 0; i < converted.samples.length; i++) {
     const sample = converted.samples[i]!;
     const toneSlot = options.startingToneSlot + i;
-    const patchSlot = options.startingPatchSlot + i;
     console.log(`  Tone ${toneSlot} (T${toneSlot + 11}): ${sample.drumType} ${sample.kitNumber}`);
-    console.log(`  Patch ${patchSlot} (P${patchSlot + 1}): maps MIDI note ${sample.midiNote} -> tone ${toneSlot}`);
+  }
+  if (options.singlePatch) {
+    const patchName = options.patchName || converted.name;
+    console.log(`  Patch ${options.startingPatchSlot} (P${options.startingPatchSlot + 1}): "${patchName}" with mappings:`);
+    for (let i = 0; i < converted.samples.length; i++) {
+      const sample = converted.samples[i]!;
+      const toneSlot = options.startingToneSlot + i;
+      console.log(`    MIDI note ${sample.midiNote} -> tone ${toneSlot}`);
+    }
+  } else {
+    for (let i = 0; i < converted.samples.length; i++) {
+      const sample = converted.samples[i]!;
+      const toneSlot = options.startingToneSlot + i;
+      const patchSlot = options.startingPatchSlot + i;
+      console.log(`  Patch ${patchSlot} (P${patchSlot + 1}): maps MIDI note ${sample.midiNote} -> tone ${toneSlot}`);
+    }
   }
   console.log();
 
@@ -354,6 +391,8 @@ async function main(): Promise<void> {
       startingSegment: options.startingSegment,
       startingPatchSlot: options.startingPatchSlot,
       originalKey: options.originalKey,
+      singlePatch: options.singlePatch,
+      patchName: options.patchName || converted.name,
     };
 
     // Step 6: Import

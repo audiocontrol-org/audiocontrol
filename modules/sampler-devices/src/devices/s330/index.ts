@@ -343,6 +343,7 @@ export {
     importDrumKit,
     verifyDrumKitImport,
     createDrumTone,
+    createDrumKitPatch,
 } from './drum-kit-import-service.js';
 
 // =============================================================================
