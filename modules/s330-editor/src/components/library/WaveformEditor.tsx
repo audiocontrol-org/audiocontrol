@@ -59,6 +59,8 @@ interface WaveformEditorProps {
   showZoomControls?: boolean;
   /** Join adjacent slice edges so they move together */
   joinedEdges?: boolean;
+  /** Current playback position in samples (for playhead indicator) */
+  playbackPosition?: number | null;
 }
 
 /** Colors for slice markers (cycles through these) */
@@ -125,6 +127,7 @@ export function WaveformEditor({
   onZoomChange,
   showZoomControls = false,
   joinedEdges = false,
+  playbackPosition,
 }: WaveformEditorProps): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -441,7 +444,29 @@ export function WaveformEditor({
       ctx.textBaseline = 'middle';
       // No text, just visual feedback when hovering
     }
-  }, [samples, sampleRate, sliceMarkers, selectedSlice, zoomedWidth, height, showTimeLabels, editable, hoverState, dragState, zoom, joinedEdges]);
+
+    // Draw playhead indicator
+    if (playbackPosition !== null && playbackPosition !== undefined) {
+      const playheadX = Math.floor(playbackPosition / samplesPerPixel);
+
+      // Draw playhead line
+      ctx.strokeStyle = '#ef4444'; // red
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(playheadX, 0);
+      ctx.lineTo(playheadX, canvasHeight);
+      ctx.stroke();
+
+      // Draw playhead triangle at top
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.moveTo(playheadX - 6, 0);
+      ctx.lineTo(playheadX + 6, 0);
+      ctx.lineTo(playheadX, 8);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }, [samples, sampleRate, sliceMarkers, selectedSlice, zoomedWidth, height, showTimeLabels, editable, hoverState, dragState, zoom, joinedEdges, playbackPosition]);
 
   // Handle mouse move for hover detection and dragging
   const handleMouseMove = useCallback(

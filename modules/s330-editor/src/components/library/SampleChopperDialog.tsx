@@ -10,6 +10,7 @@
  * - Horizontal zoom (+/- keys) for fine-grained slice adjustment
  * - Multiple detection methods: transient, silence, fixed interval
  * - Manual slice editing with drag-to-adjust
+ * - Audio preview for slices (Space to play selected)
  */
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
@@ -27,6 +28,7 @@ import {
 } from '@audiocontrol/sampler-library/browser';
 import { cn } from '@/lib/utils';
 import { WaveformEditor, type SliceMarker, type SliceChange } from './WaveformEditor';
+import { useAudioPreview } from '@/hooks/useAudioPreview';
 
 /**
  * Slice definition for deferred chopping.
@@ -158,13 +160,19 @@ export function SampleChopperDialog({
     initialSlices?.map((s) => ({ ...s })) ?? []
   );
 
-  // Reset zoom when dialog opens
+  // Audio preview
+  const { play, stop, isPlaying, playbackPosition } = useAudioPreview({ sampleRate });
+
+  // Reset zoom and stop playback when dialog opens/closes
   useEffect(() => {
     if (open) {
       setZoom(1);
       setIsFullscreen(false);
+    } else {
+      // Stop playback when dialog closes
+      stop();
     }
-  }, [open]);
+  }, [open, stop]);
 
   // Initialize kit name from source (only for new kits)
   useEffect(() => {
@@ -468,6 +476,37 @@ export function SampleChopperDialog({
     []
   );
 
+  // Play a specific slice
+  const handlePlaySlice = useCallback(
+    (index: number) => {
+      if (!samples || !currentSliceResult) return;
+      const slice = currentSliceResult.slices[index];
+      if (!slice) return;
+
+      // If already playing this slice, stop
+      if (isPlaying && selectedSlice === index) {
+        stop();
+        return;
+      }
+
+      setSelectedSlice(index);
+      play(samples, slice.startSample, slice.endSample);
+    },
+    [samples, currentSliceResult, isPlaying, selectedSlice, play, stop]
+  );
+
+  // Play all slices (full audio)
+  const handlePlayAll = useCallback(() => {
+    if (!samples) return;
+
+    if (isPlaying) {
+      stop();
+      return;
+    }
+
+    play(samples);
+  }, [samples, isPlaying, play, stop]);
+
   // Zoom handlers
   const handleZoomIn = useCallback(() => {
     setZoom((prev) => Math.min(MAX_ZOOM, prev * ZOOM_STEP));
@@ -597,8 +636,45 @@ export function SampleChopperDialog({
         setIsFullscreen(false);
         return;
       }
+      // Space to play selected slice or all
+      if (event.key === ' ') {
+        event.preventDefault();
+        event.stopPropagation();
+        if (selectedSlice !== undefined) {
+          handlePlaySlice(selectedSlice);
+        } else {
+          handlePlayAll();
+        }
+        return;
+      }
+      // Delete/Backspace to delete selected slice (in manual mode)
+      if ((event.key === 'Delete' || event.key === 'Backspace') && selectedMethod === 'manual' && selectedSlice !== undefined) {
+        event.preventDefault();
+        event.stopPropagation();
+        handleSliceDelete(selectedSlice);
+        return;
+      }
+      // Arrow keys to navigate slices
+      if (event.key === 'ArrowLeft' && currentSliceResult && currentSliceResult.slices.length > 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        const newIndex = selectedSlice !== undefined
+          ? Math.max(0, selectedSlice - 1)
+          : currentSliceResult.slices.length - 1;
+        setSelectedSlice(newIndex);
+        return;
+      }
+      if (event.key === 'ArrowRight' && currentSliceResult && currentSliceResult.slices.length > 0) {
+        event.preventDefault();
+        event.stopPropagation();
+        const newIndex = selectedSlice !== undefined
+          ? Math.min(currentSliceResult.slices.length - 1, selectedSlice + 1)
+          : 0;
+        setSelectedSlice(newIndex);
+        return;
+      }
     },
-    [handleZoomIn, handleZoomOut, handleZoomReset, isFullscreen]
+    [handleZoomIn, handleZoomOut, handleZoomReset, isFullscreen, selectedSlice, handlePlaySlice, handlePlayAll, selectedMethod, handleSliceDelete, currentSliceResult]
   );
 
   // Duration info
@@ -712,6 +788,30 @@ export function SampleChopperDialog({
                         {joinedEdges ? 'Joined' : 'Split'}
                       </button>
                     )}
+                    {/* Play controls */}
+                    <div className="flex items-center gap-1 bg-s330-bg rounded px-2 py-1">
+                      <button
+                        onClick={() => selectedSlice !== undefined ? handlePlaySlice(selectedSlice) : handlePlayAll()}
+                        className={cn(
+                          'p-1 transition-colors',
+                          isPlaying
+                            ? 'text-red-400 hover:text-red-300'
+                            : 'text-s330-muted hover:text-s330-text'
+                        )}
+                        title={isPlaying ? 'Stop (Space)' : selectedSlice !== undefined ? 'Play selected slice (Space)' : 'Play all (Space)'}
+                      >
+                        {isPlaying ? (
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <rect x="6" y="5" width="4" height="14" rx="1" />
+                            <rect x="14" y="5" width="4" height="14" rx="1" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M8 5v14l11-7z" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
                     {/* Zoom controls */}
                     <div className="flex items-center gap-1 bg-s330-bg rounded px-2 py-1">
                       <button
@@ -765,6 +865,7 @@ export function SampleChopperDialog({
                   zoom={zoom}
                   onZoomChange={setZoom}
                   joinedEdges={isManualMode && joinedEdges}
+                  playbackPosition={playbackPosition}
                 />
                 {currentSliceResult && (
                   <div className="flex items-center justify-between text-xs text-s330-muted">
@@ -863,15 +964,40 @@ export function SampleChopperDialog({
                         <div
                           key={i}
                           className={cn(
-                            'flex items-center justify-between text-xs py-1 px-2 rounded cursor-pointer',
+                            'flex items-center gap-2 text-xs py-1 px-2 rounded cursor-pointer',
                             selectedSlice === i
                               ? 'bg-s330-highlight/20 text-s330-text'
                               : 'hover:bg-s330-accent/20 text-s330-muted'
                           )}
                           onClick={() => setSelectedSlice(i)}
                         >
-                          <span className="font-medium">{slice.label}</span>
-                          <span>
+                          {/* Play button */}
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePlaySlice(i);
+                            }}
+                            className={cn(
+                              'p-0.5 rounded transition-colors',
+                              isPlaying && selectedSlice === i
+                                ? 'text-red-400 hover:text-red-300'
+                                : 'text-s330-muted hover:text-s330-text'
+                            )}
+                            title={isPlaying && selectedSlice === i ? 'Stop' : 'Play slice'}
+                          >
+                            {isPlaying && selectedSlice === i ? (
+                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                <rect x="6" y="5" width="4" height="14" rx="1" />
+                                <rect x="14" y="5" width="4" height="14" rx="1" />
+                              </svg>
+                            ) : (
+                              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M8 5v14l11-7z" />
+                              </svg>
+                            )}
+                          </button>
+                          <span className="font-medium flex-1">{slice.label}</span>
+                          <span className="text-s330-muted">
                             {((slice.endSample - slice.startSample) / sampleRate * 1000).toFixed(0)}ms
                           </span>
                           <button
@@ -1148,7 +1274,7 @@ export function SampleChopperDialog({
           {/* Footer - fixed at bottom */}
           <div className="flex justify-between items-center gap-2 p-4 border-t border-s330-accent shrink-0 bg-s330-panel">
             <div className="text-xs text-s330-muted">
-              +/- zoom • F fullscreen • Scroll to pan
+              Space play • ←→ navigate • +/- zoom • F fullscreen
             </div>
             <div className="flex gap-2">
               <button onClick={handleClose} className="ac-btn ac-btn-ghost">
