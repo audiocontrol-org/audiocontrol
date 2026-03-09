@@ -177,14 +177,15 @@ export function TonesPage() {
   const handleExportSample = useCallback(async () => {
     if (selectedToneIndex === null || !clientRef.current) return;
 
-    const tone = tones[selectedToneIndex];
-    if (!tone) return;
-
     setIsExporting(true);
     setExportProgress(0);
     setError(null);
 
     try {
+      // Fetch fresh tone data for the filename (don't use stale cached data)
+      const tone = await clientRef.current.requestToneData(selectedToneIndex);
+      const toneName = tone?.name || `tone_${selectedToneIndex}`;
+
       const waveData = await clientRef.current.requestWaveData(
         selectedToneIndex,
         (bytesReceived, totalBytes) => {
@@ -194,7 +195,12 @@ export function TonesPage() {
       );
 
       // Export the wave data as a WAV file
-      exportWaveAsWav(waveData, tone.name || `tone_${selectedToneIndex}`);
+      exportWaveAsWav(waveData, toneName);
+
+      // Update cached tone data with fresh data
+      if (tone) {
+        setTone(selectedToneIndex, tone);
+      }
 
       console.log('[TonesPage] Sample exported successfully');
     } catch (err) {
@@ -204,7 +210,7 @@ export function TonesPage() {
       setIsExporting(false);
       setExportProgress(undefined);
     }
-  }, [selectedToneIndex, tones, setError]);
+  }, [selectedToneIndex, setError, setTone]);
 
   // Open export to library dialog
   // Must pick directory first (requires user gesture), then open dialog
@@ -239,21 +245,25 @@ export function TonesPage() {
   const handleExportToLibrary = useCallback(async (toneName: string, toneIndex: number) => {
     if (!clientRef.current) return;
 
-    const tone = tones[toneIndex];
-    if (!tone) return;
-
-    console.log('[TonesPage] handleExportToLibrary called with:', {
-      toneName,
-      toneIndex,
-      tonePropName: tone.name,
-    });
-
     setIsExportingToLibrary(true);
     setLibraryExportProgress(0);
     setLibraryExportError(null);
 
     try {
-      // First, fetch wave data from device
+      // Fetch fresh tone data from device (don't use stale cached data)
+      console.log('[TonesPage] Fetching fresh tone data for index:', toneIndex);
+      const tone = await clientRef.current.requestToneData(toneIndex);
+      if (!tone) {
+        throw new Error(`No tone data at slot ${toneIndex}`);
+      }
+
+      console.log('[TonesPage] handleExportToLibrary called with:', {
+        toneName,
+        toneIndex,
+        tonePropName: tone.name,
+      });
+
+      // Fetch wave data from device
       console.log('[TonesPage] Calling requestWaveData with toneIndex:', toneIndex);
       const waveData = await clientRef.current.requestWaveData(
         toneIndex,
@@ -276,6 +286,9 @@ export function TonesPage() {
         });
       }
 
+      // Update cached tone data with fresh data
+      setTone(toneIndex, tone);
+
       console.log('[TonesPage] Tone exported to library successfully');
       setLibraryExportProgress(100);
     } catch (err) {
@@ -286,7 +299,7 @@ export function TonesPage() {
     } finally {
       setIsExportingToLibrary(false);
     }
-  }, [tones, libraryDirectoryHandle]);
+  }, [libraryDirectoryHandle, setTone]);
 
   // Open import sample dialog
   const handleOpenImportDialog = useCallback(() => {

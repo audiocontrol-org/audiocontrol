@@ -813,9 +813,12 @@ export function createS330Client(
 
         // Calculate wave address using same logic as requestWaveData
         const SEGMENT_ADDR_STRIDE = 24576; // 00 01 40 00H in 7-bit hex
-        const BANK_ADDR_SIZE = SEGMENT_ADDR_STRIDE * 18;
 
-        const bankBaseAddr = waveBank * BANK_ADDR_SIZE;
+        // Bank base addresses from S-330 MIDI Implementation:
+        // Bank A: 01 00 00 00H (offset 0)
+        // Bank B: 01 20 00 00H (offset 0x20 << 14 = 524288)
+        const BANK_B_OFFSET = 0x20 << 14; // 524288
+        const bankBaseAddr = waveBank === 0 ? 0 : BANK_B_OFFSET;
         const addrOffset = bankBaseAddr + (segmentTop * SEGMENT_ADDR_STRIDE);
 
         const waveAddress = [
@@ -1397,9 +1400,12 @@ export function createS330Client(
                 const SEGMENT_SIZE_SAMPLES = 12000;
                 const SEGMENT_DATA_BYTES = SEGMENT_SIZE_SAMPLES * 2; // 24000 bytes
                 const SEGMENT_ADDR_STRIDE = 24576; // 00 01 40 00H in 7-bit hex
-                const BANK_ADDR_SIZE = SEGMENT_ADDR_STRIDE * 18; // 442368 per bank
 
-                const bankBaseAddr = waveBank * BANK_ADDR_SIZE;
+                // Bank base addresses from S-330 MIDI Implementation:
+                // Bank A: 01 00 00 00H (offset 0)
+                // Bank B: 01 20 00 00H (offset 0x20 << 14 = 524288)
+                const BANK_B_OFFSET = 0x20 << 14; // 524288
+                const bankBaseAddr = waveBank === 0 ? 0 : BANK_B_OFFSET;
                 const addrOffset = bankBaseAddr + (waveSegmentTop * SEGMENT_ADDR_STRIDE);
 
                 // Fetch size based on segment length (each segment = 12000 samples × 2 bytes)
