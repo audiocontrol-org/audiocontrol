@@ -13,6 +13,7 @@ import {
   loadPatchFromSet,
   loadToneFromSet,
   loadSetManifest,
+  loadIndividualPatch,
   convertYamlToS330Patch,
   convertYamlToS330Tone,
   getPatchToneDependencies,
@@ -51,6 +52,8 @@ export interface ImportLibraryPatchDialogProps {
   deviceTones: (S330Tone | undefined)[];
   /** Current device patches (to show slot occupancy) */
   devicePatches: (S330Patch | undefined)[];
+  /** Initial target patch slot (e.g., from drag-drop target) */
+  initialTargetSlot?: number;
   /** Callback to perform the import */
   onImport: (params: {
     setName: string;
@@ -89,15 +92,16 @@ export function ImportLibraryPatchDialog({
   importProgress,
   importError,
   statusMessage,
+  initialTargetSlot,
 }: ImportLibraryPatchDialogProps): JSX.Element {
   // State for loaded data
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [patch, setPatch] = useState<S330Patch | null>(null);
-  const [manifest, setManifest] = useState<SetYaml | null>(null);
+  const [_manifest, setManifest] = useState<SetYaml | null>(null);
 
-  // User selections
-  const [targetPatchSlot, setTargetPatchSlot] = useState(0);
+  // User selections - use initialTargetSlot if provided
+  const [targetPatchSlot, setTargetPatchSlot] = useState(initialTargetSlot ?? 0);
   const [toneMappings, setToneMappings] = useState<ToneImportMapping[]>([]);
 
   // Load patch and manifest when dialog opens
@@ -109,43 +113,77 @@ export function ImportLibraryPatchDialog({
     setPatch(null);
     setManifest(null);
     setToneMappings([]);
+    // Reset target slot to initial value (or 0)
+    setTargetPatchSlot(initialTargetSlot ?? 0);
 
     const loadData = async () => {
       try {
-        // Load manifest
-        const loadedManifest = await loadSetManifest(libraryHandle, setName);
-        setManifest(loadedManifest);
+        // Check if this is an individual patch bundle (not from a set)
+        const isIndividual = setName === '__individual__';
 
-        // Find patch entry to get original slot
-        const patchEntry = loadedManifest.patches.find((p) => p.file === patchFile);
-        if (patchEntry) {
-          setTargetPatchSlot(patchEntry.slot);
-        }
+        if (isIndividual) {
+          // Load individual patch bundle directly from library
+          const bundle = await loadIndividualPatch(libraryHandle, patchFile);
+          const convertedPatch = convertYamlToS330Patch(bundle.patch);
+          setPatch(convertedPatch);
 
-        // Load patch
-        const patchYaml = await loadPatchFromSet(libraryHandle, setName, patchFile);
-        const convertedPatch = convertYamlToS330Patch(patchYaml);
-        setPatch(convertedPatch);
+          // Create mappings from bundled tones
+          // segmentsNeeded is pre-calculated by loadIndividualPatch
+          const mappings: ToneImportMapping[] = [];
+          for (const [slot, toneData] of bundle.tones) {
+            const convertedTone = convertYamlToS330Tone(toneData.yaml);
 
-        // Analyze dependencies and create initial mappings
-        const requiredTones = getPatchToneDependencies(convertedPatch);
-        const mappings: ToneImportMapping[] = [];
-
-        for (const slot of requiredTones) {
-          const toneEntry = loadedManifest.tones.find((t) => t.slot === slot);
-          if (toneEntry) {
             mappings.push({
               originalSlot: slot,
-              fileName: toneEntry.file,
+              fileName: `T${String(slot + 1).padStart(2, '0')}`,
               targetSlot: slot, // Default to same slot
-              waveBank: toneEntry.waveAllocation.bank,
-              segmentTop: toneEntry.waveAllocation.segmentTop,
-              segmentsNeeded: toneEntry.waveAllocation.segmentLength,
+              waveBank: convertedTone.wave.bank as 0 | 1,
+              segmentTop: convertedTone.wave.segmentTop,
+              segmentsNeeded: toneData.segmentsNeeded,
             });
           }
-        }
 
-        setToneMappings(mappings);
+          setToneMappings(mappings);
+          // No manifest for individual patches, but we need to store the bundle
+          // for handleImport to use
+          setManifest(null);
+        } else {
+          // Load from a set
+          // Load manifest
+          const loadedManifest = await loadSetManifest(libraryHandle, setName);
+          setManifest(loadedManifest);
+
+          // Find patch entry to get original slot
+          const patchEntry = loadedManifest.patches.find((p) => p.file === patchFile);
+          if (patchEntry) {
+            setTargetPatchSlot(patchEntry.slot);
+          }
+
+          // Load patch
+          const patchYaml = await loadPatchFromSet(libraryHandle, setName, patchFile);
+          const convertedPatch = convertYamlToS330Patch(patchYaml);
+          setPatch(convertedPatch);
+
+          // Analyze dependencies and create initial mappings
+          const requiredTones = getPatchToneDependencies(convertedPatch);
+          const mappings: ToneImportMapping[] = [];
+
+          for (const slot of requiredTones) {
+            const toneEntry = loadedManifest.tones.find((t) => t.slot === slot);
+            if (toneEntry) {
+              mappings.push({
+                originalSlot: slot,
+                fileName: toneEntry.file,
+                targetSlot: slot, // Default to same slot
+                waveBank: toneEntry.waveAllocation.bank,
+                segmentTop: toneEntry.waveAllocation.segmentTop,
+                segmentsNeeded: toneEntry.waveAllocation.segmentLength,
+              });
+            }
+          }
+
+          setToneMappings(mappings);
+        }
       } catch (err) {
         console.error('[ImportLibraryPatchDialog] Failed to load patch:', err);
         setLoadError(err instanceof Error ? err.message : 'Failed to load patch');
@@ -155,7 +193,7 @@ export function ImportLibraryPatchDialog({
     };
 
     loadData();
-  }, [open, libraryHandle, setName, patchFile]);
+  }, [open, libraryHandle, setName, patchFile, initialTargetSlot]);
 
   // Update a tone mapping
   const updateToneMapping = useCallback((index: number, updates: Partial<ToneImportMapping>) => {
@@ -166,7 +204,9 @@ export function ImportLibraryPatchDialog({
 
   // Perform import
   const handleImport = useCallback(async () => {
-    if (!patch || !manifest) return;
+    if (!patch) return;
+
+    const isIndividual = setName === '__individual__';
 
     try {
       // Load all required tones with wave data
@@ -179,22 +219,46 @@ export function ImportLibraryPatchDialog({
         segmentLength: number;
       }> = [];
 
-      for (const mapping of toneMappings) {
-        const { yaml, wavData } = await loadToneFromSet(
-          libraryHandle,
-          setName,
-          mapping.fileName
-        );
-        const tone = convertYamlToS330Tone(yaml);
+      if (isIndividual) {
+        // Load tones from individual patch bundle
+        const bundle = await loadIndividualPatch(libraryHandle, patchFile);
 
-        tonesData.push({
-          tone,
-          wavData,
-          targetSlot: mapping.targetSlot,
-          waveBank: mapping.waveBank,
-          segmentTop: mapping.segmentTop,
-          segmentLength: mapping.segmentsNeeded,
-        });
+        for (const mapping of toneMappings) {
+          const toneData = bundle.tones.get(mapping.originalSlot);
+          if (!toneData) {
+            throw new Error(`Tone at slot ${mapping.originalSlot} not found in bundle`);
+          }
+
+          const tone = convertYamlToS330Tone(toneData.yaml);
+          tonesData.push({
+            tone,
+            wavData: toneData.wavData,
+            targetSlot: mapping.targetSlot,
+            waveBank: mapping.waveBank,
+            segmentTop: mapping.segmentTop,
+            // Use segmentsNeeded from the bundle - it's calculated from the actual WAV data
+            segmentLength: toneData.segmentsNeeded,
+          });
+        }
+      } else {
+        // Load tones from set
+        for (const mapping of toneMappings) {
+          const { yaml, wavData } = await loadToneFromSet(
+            libraryHandle,
+            setName,
+            mapping.fileName
+          );
+          const tone = convertYamlToS330Tone(yaml);
+
+          tonesData.push({
+            tone,
+            wavData,
+            targetSlot: mapping.targetSlot,
+            waveBank: mapping.waveBank,
+            segmentTop: mapping.segmentTop,
+            segmentLength: mapping.segmentsNeeded,
+          });
+        }
       }
 
       // Build tone remapping
@@ -217,7 +281,7 @@ export function ImportLibraryPatchDialog({
       console.error('[ImportLibraryPatchDialog] Import failed:', err);
       throw err;
     }
-  }, [patch, manifest, toneMappings, targetPatchSlot, onImport, libraryHandle, setName, patchFile]);
+  }, [patch, toneMappings, targetPatchSlot, onImport, libraryHandle, setName, patchFile]);
 
   const handleClose = useCallback(() => {
     if (!isImporting) {
@@ -261,7 +325,7 @@ export function ImportLibraryPatchDialog({
           ) : (
             <div className="flex flex-col min-h-0 space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
-                Import "{patchFile}" from {setName} with its required tones.
+                Import "{patchFile}" {setName === '__individual__' ? 'from library' : `from ${setName}`} with its required tones.
               </Dialog.Description>
 
               {/* Patch Info */}

@@ -11,6 +11,7 @@ import type { S330Tone } from '@/core/midi/S330Client';
 import {
   loadToneFromSet,
   loadSetManifest,
+  loadIndividualTone,
   convertYamlToS330Tone,
 } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,8 @@ export interface ImportLibraryToneDialogProps {
   toneFile: string;
   /** Current device tones (to show slot occupancy) */
   deviceTones: (S330Tone | undefined)[];
+  /** Initial target tone slot (e.g., from drag-drop target) */
+  initialTargetSlot?: number;
   /** Callback to perform the import */
   onImport: (params: {
     setName: string;
@@ -57,6 +60,7 @@ export function ImportLibraryToneDialog({
   setName,
   toneFile,
   deviceTones,
+  initialTargetSlot,
   onImport,
   isImporting,
   importProgress,
@@ -69,8 +73,8 @@ export function ImportLibraryToneDialog({
   const [tone, setTone] = useState<S330Tone | null>(null);
   const [wavData, setWavData] = useState<Uint8Array | null>(null);
 
-  // User selections
-  const [targetSlot, setTargetSlot] = useState(0);
+  // User selections - use initialTargetSlot if provided
+  const [targetSlot, setTargetSlot] = useState(initialTargetSlot ?? 0);
   const [waveBank, setWaveBank] = useState<0 | 1>(0);
   const [segmentTop, setSegmentTop] = useState(0);
   const [segmentLength, setSegmentLength] = useState(1);
@@ -83,29 +87,54 @@ export function ImportLibraryToneDialog({
     setLoadError(null);
     setTone(null);
     setWavData(null);
+    // Reset target slot to initial value if provided (e.g., from drag-drop)
+    if (initialTargetSlot !== undefined) {
+      setTargetSlot(initialTargetSlot);
+    }
 
     const loadData = async () => {
       try {
-        // Load manifest to get original wave allocation
-        const loadedManifest = await loadSetManifest(libraryHandle, setName);
+        // Check if this is an individual tone (not from a set)
+        const isIndividual = setName === '__individual__';
 
-        // Find tone entry in manifest
-        const entry = loadedManifest.tones.find((t) => t.file === toneFile);
+        if (isIndividual) {
+          // Load individual tone directly from library
+          const { yaml, wavData: data } = await loadIndividualTone(libraryHandle, toneFile);
+          setWavData(data);
 
-        // Set defaults from original allocation if available
-        if (entry) {
-          setTargetSlot(entry.slot);
-          setWaveBank(entry.waveAllocation.bank);
-          setSegmentTop(entry.waveAllocation.segmentTop);
-          setSegmentLength(entry.waveAllocation.segmentLength);
+          const convertedTone = convertYamlToS330Tone(yaml);
+          setTone(convertedTone);
+
+          // Set default allocation from tone's wave params
+          setWaveBank(convertedTone.wave.bank as 0 | 1);
+          setSegmentTop(convertedTone.wave.segmentTop);
+          setSegmentLength(convertedTone.wave.segmentLength);
+        } else {
+          // Load from a set
+          // Load manifest to get original wave allocation
+          const loadedManifest = await loadSetManifest(libraryHandle, setName);
+
+          // Find tone entry in manifest
+          const entry = loadedManifest.tones.find((t) => t.file === toneFile);
+
+          // Set defaults from original allocation if available
+          if (entry) {
+            // Only use entry.slot if no initialTargetSlot was provided
+            if (initialTargetSlot === undefined) {
+              setTargetSlot(entry.slot);
+            }
+            setWaveBank(entry.waveAllocation.bank);
+            setSegmentTop(entry.waveAllocation.segmentTop);
+            setSegmentLength(entry.waveAllocation.segmentLength);
+          }
+
+          // Load tone and wave data
+          const { yaml, wavData: data } = await loadToneFromSet(libraryHandle, setName, toneFile);
+          setWavData(data);
+
+          const convertedTone = convertYamlToS330Tone(yaml);
+          setTone(convertedTone);
         }
-
-        // Load tone and wave data
-        const { yaml, wavData: data } = await loadToneFromSet(libraryHandle, setName, toneFile);
-        setWavData(data);
-
-        const convertedTone = convertYamlToS330Tone(yaml);
-        setTone(convertedTone);
       } catch (err) {
         console.error('[ImportLibraryToneDialog] Failed to load tone:', err);
         setLoadError(err instanceof Error ? err.message : 'Failed to load tone');
@@ -115,7 +144,7 @@ export function ImportLibraryToneDialog({
     };
 
     loadData();
-  }, [open, libraryHandle, setName, toneFile]);
+  }, [open, libraryHandle, setName, toneFile, initialTargetSlot]);
 
   const handleImport = useCallback(async () => {
     if (!tone || !wavData) return;
@@ -176,7 +205,7 @@ export function ImportLibraryToneDialog({
           ) : (
             <div className="space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
-                Import "{toneFile}" from {setName} to device.
+                Import "{toneFile}" {setName === '__individual__' ? 'from library' : `from ${setName}`} to device.
               </Dialog.Description>
 
               {/* Tone Info */}

@@ -233,6 +233,60 @@ async function getNestedDirectory(
 }
 
 // =========================================================================
+// Shared File Reading Helpers
+// =========================================================================
+
+/**
+ * Result from reading tone files from disk.
+ */
+interface ReadToneResult {
+  /** Parsed tone YAML */
+  yaml: ToneYaml;
+  /** Prepared wave data ready for S330 import (raw PCM, NOT WAV file) */
+  wavData: Uint8Array;
+  /** Number of segments needed for this tone's wave data */
+  segmentsNeeded: number;
+}
+
+/**
+ * Read a tone's YAML and WAV files from a directory.
+ * This is the canonical function for reading tone data - used by all
+ * tone loading operations (sets, individual tones, patch bundles).
+ *
+ * IMPORTANT: This function returns prepared PCM data, not raw WAV file bytes.
+ * The WAV file is parsed and converted using prepareWavForS330().
+ *
+ * @param directory - Directory handle containing the tone files
+ * @param baseFilename - Base filename without extension (e.g., "T01" or "T01 Piano")
+ * @returns Parsed YAML, prepared wave data, and segment count
+ */
+async function readToneFilesFromDirectory(
+  directory: FileSystemDirectoryHandle,
+  baseFilename: string
+): Promise<ReadToneResult> {
+  // Load and parse YAML
+  const yamlHandle = await directory.getFileHandle(`${baseFilename}.yaml`);
+  const yamlFile = await yamlHandle.getFile();
+  const yamlContent = await yamlFile.text();
+  const yaml = ToneYamlSchema.parse(parseYaml(yamlContent));
+
+  // Load WAV and convert to S330 format
+  // CRITICAL: Use prepareWavForS330 to extract PCM samples from WAV file.
+  // Do NOT store raw WAV file bytes - that includes the 44-byte header
+  // which causes sample count miscalculation during import.
+  const wavHandle = await directory.getFileHandle(`${baseFilename}.wav`);
+  const wavFile = await wavHandle.getFile();
+  const wavFileBuffer = await wavFile.arrayBuffer();
+  const targetSampleRate = yaml.wave.sampleRate as 15000 | 30000;
+  const prepared = prepareWavForS330(wavFileBuffer, targetSampleRate);
+
+  // Calculate segments from actual sample count (data.length / 2 bytes per sample)
+  const segmentsNeeded = calculateSegmentsNeeded(prepared.data.length / 2);
+
+  return { yaml, wavData: prepared.data, segmentsNeeded };
+}
+
+// =========================================================================
 // Shared File Writing Helpers
 // =========================================================================
 
@@ -840,20 +894,8 @@ export async function loadToneFromSet(
     'library', 's330', 'sets', sanitizedName, 'tones'
   ]);
 
-  // Load YAML
-  const yamlHandle = await tonesDir.getFileHandle(`${toneFile}.yaml`);
-  const yamlFile = await yamlHandle.getFile();
-  const yamlContent = await yamlFile.text();
-  const yaml = ToneYamlSchema.parse(parseYaml(yamlContent));
-
-  // Load WAV and convert using the single code path
-  const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`);
-  const wavFile = await wavHandle.getFile();
-  const wavFileBuffer = await wavFile.arrayBuffer();
-  const targetSampleRate = yaml.wave.sampleRate as 15000 | 30000;
-  const prepared = prepareWavForS330(wavFileBuffer, targetSampleRate);
-
-  return { yaml, wavData: prepared.data };
+  const { yaml, wavData } = await readToneFilesFromDirectory(tonesDir, toneFile);
+  return { yaml, wavData };
 }
 
 /**
@@ -1116,20 +1158,8 @@ export async function loadIndividualTone(
     'library', 's330', 'tones'
   ]);
 
-  // Load YAML
-  const yamlHandle = await tonesDir.getFileHandle(`${toneFile}.yaml`);
-  const yamlFile = await yamlHandle.getFile();
-  const yamlContent = await yamlFile.text();
-  const yaml = ToneYamlSchema.parse(parseYaml(yamlContent));
-
-  // Load WAV and convert using the single code path
-  const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`);
-  const wavFile = await wavHandle.getFile();
-  const wavFileBuffer = await wavFile.arrayBuffer();
-  const targetSampleRate = yaml.wave.sampleRate as 15000 | 30000;
-  const prepared = prepareWavForS330(wavFileBuffer, targetSampleRate);
-
-  return { yaml, wavData: prepared.data };
+  const { yaml, wavData } = await readToneFilesFromDirectory(tonesDir, toneFile);
+  return { yaml, wavData };
 }
 
 /**
@@ -1216,7 +1246,7 @@ export interface LoadedPatchBundle {
   /** The patch parameters */
   patch: PatchYaml;
   /** Map of slot -> tone data for all included tones */
-  tones: Map<number, { yaml: ToneYaml; wavData: Uint8Array }>;
+  tones: Map<number, { yaml: ToneYaml; wavData: Uint8Array; segmentsNeeded: number }>;
 }
 
 /**
@@ -1354,34 +1384,28 @@ export async function loadIndividualPatch(
   const patch = PatchYamlSchema.parse(parseYaml(patchContent));
 
   // Load all tones from tones/ subdirectory
-  const tones = new Map<number, { yaml: ToneYaml; wavData: Uint8Array }>();
+  const tones = new Map<number, { yaml: ToneYaml; wavData: Uint8Array; segmentsNeeded: number }>();
 
   try {
     const tonesDir = await patchDir.getDirectoryHandle('tones');
 
     for await (const entry of tonesDir.values()) {
       if (entry.kind === 'file' && entry.name.endsWith('.yaml')) {
-        // Parse slot from filename (T01.yaml -> slot 0)
-        const match = entry.name.match(/^T(\d{2})\.yaml$/);
+        // Parse slot from filename - supports both formats:
+        // - "T01.yaml" (slot only)
+        // - "T01 ToneName.yaml" (slot with name)
+        const match = entry.name.match(/^T(\d{2})(?:\s|\.yaml)/);
         if (!match) continue;
 
         const slot = parseInt(match[1], 10) - 1;
         if (slot < 0 || slot >= 32) continue;
 
-        // Load tone YAML
-        const yamlHandle = await tonesDir.getFileHandle(entry.name);
-        const yamlFile = await yamlHandle.getFile();
-        const yamlContent = await yamlFile.text();
-        const toneYaml = ToneYamlSchema.parse(parseYaml(yamlContent));
+        // Extract base filename (without .yaml extension)
+        const baseFilename = entry.name.replace('.yaml', '');
 
-        // Load WAV data
-        const wavFilename = entry.name.replace('.yaml', '.wav');
-        const wavHandle = await tonesDir.getFileHandle(wavFilename);
-        const wavFile = await wavHandle.getFile();
-        const wavBuffer = await wavFile.arrayBuffer();
-        const wavData = new Uint8Array(wavBuffer);
-
-        tones.set(slot, { yaml: toneYaml, wavData });
+        // Use shared helper to load tone files
+        const { yaml, wavData, segmentsNeeded } = await readToneFilesFromDirectory(tonesDir, baseFilename);
+        tones.set(slot, { yaml, wavData, segmentsNeeded });
       }
     }
   } catch {

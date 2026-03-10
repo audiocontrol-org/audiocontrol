@@ -13,7 +13,7 @@ import { useDeviceDataStore, TONES_PER_BANK, PATCHES_PER_BANK } from '@/stores/d
 import { useLibraryStore } from '@/stores/libraryStore';
 import { createS330Client } from '@/core/midi/S330Client';
 import type { S330ClientInterface, S330Tone, S330Patch } from '@/core/midi/S330Client';
-import { DeviceMemoryPanel, type DeviceDragData } from '@/components/library/DeviceMemoryPanel';
+import { DeviceMemoryPanel, type DeviceDragData, type LibraryDragData } from '@/components/library/DeviceMemoryPanel';
 import { LibraryTreePanel } from '@/components/library/LibraryTreePanel';
 import { ItemPreviewPanel } from '@/components/library/ItemPreviewPanel';
 import { DrumKitPreviewPanel } from '@/components/library/DrumKitPreviewPanel';
@@ -143,10 +143,12 @@ export function LibraryPage() {
   const [importToneDialog, setImportToneDialog] = useState<{
     setName: string;
     toneFile: string;
+    initialTargetSlot?: number;
   } | null>(null);
   const [importPatchDialog, setImportPatchDialog] = useState<{
     setName: string;
     patchFile: string;
+    initialTargetSlot?: number;
   } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -862,6 +864,66 @@ export function LibraryPage() {
     }
   }, [libraryHandle, exportPatchDialog, tones]);
 
+  // Handle drop from library to device tone slot (import tone)
+  const handleDropLibraryTone = useCallback((data: LibraryDragData, targetSlot: number) => {
+    if (!libraryHandle || !clientRef.current) {
+      window.alert('Library or device not connected');
+      return;
+    }
+
+    if (data.type !== 'tone') {
+      window.alert('Can only drop tones on tone slots');
+      return;
+    }
+
+    // Determine if this is from a set or an individual tone
+    if (data.setName && data.toneFile) {
+      // Tone from a set
+      setImportToneDialog({ setName: data.setName, toneFile: data.toneFile, initialTargetSlot: targetSlot });
+    } else {
+      // Individual tone
+      setImportToneDialog({ setName: '__individual__', toneFile: data.name, initialTargetSlot: targetSlot });
+    }
+  }, [libraryHandle]);
+
+  // Handle drop from library to device patch slot (import patch)
+  const handleDropLibraryPatch = useCallback((data: LibraryDragData, targetSlot: number) => {
+    if (!libraryHandle || !clientRef.current) {
+      window.alert('Library or device not connected');
+      return;
+    }
+
+    if (data.type === 'drumKit') {
+      // Handle drum kit drop - open drum kit import dialog
+      const kitInfo = drumKits.find(k => k.directoryName === data.name);
+      if (kitInfo) {
+        loadDrumKitBundle(libraryHandle, data.name)
+          .then(bundle => {
+            openImportDrumKitDialog(data.name, bundle);
+          })
+          .catch(err => {
+            console.error('[LibraryPage] Failed to load drum kit for import:', err);
+            window.alert('Failed to load drum kit');
+          });
+      }
+      return;
+    }
+
+    if (data.type !== 'patch') {
+      window.alert('Can only drop patches or drum kits on patch slots');
+      return;
+    }
+
+    // Determine if this is from a set or an individual patch
+    if (data.setName && data.patchFile) {
+      // Patch from a set
+      setImportPatchDialog({ setName: data.setName, patchFile: data.patchFile, initialTargetSlot: targetSlot });
+    } else {
+      // Individual patch - use the directory name
+      setImportPatchDialog({ setName: '__individual__', patchFile: data.name, initialTargetSlot: targetSlot });
+    }
+  }, [libraryHandle, drumKits, openImportDrumKitDialog]);
+
   // Import single tone from library
   const handleImportLibraryTone = useCallback(async (params: {
     setName: string;
@@ -1091,6 +1153,8 @@ export function LibraryPage() {
             selectedType={selection?.source === 'device' && (selection.type === 'tone' || selection.type === 'patch') ? selection.type : undefined}
             onSelectTone={(index) => handleSelectDevice('tone', index)}
             onSelectPatch={(index) => handleSelectDevice('patch', index)}
+            onDropLibraryTone={handleDropLibraryTone}
+            onDropLibraryPatch={handleDropLibraryPatch}
           />
         </div>
 
@@ -1179,6 +1243,7 @@ export function LibraryPage() {
           setName={importToneDialog.setName}
           toneFile={importToneDialog.toneFile}
           deviceTones={tones}
+          initialTargetSlot={importToneDialog.initialTargetSlot}
           onImport={handleImportLibraryTone}
           isImporting={isImporting}
           importProgress={operationProgress}
@@ -1199,6 +1264,7 @@ export function LibraryPage() {
           patchFile={importPatchDialog.patchFile}
           deviceTones={tones}
           devicePatches={patches}
+          initialTargetSlot={importPatchDialog.initialTargetSlot}
           onImport={handleImportLibraryPatch}
           isImporting={isImporting}
           importProgress={operationProgress}

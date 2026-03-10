@@ -13,7 +13,7 @@ import { useState, useCallback, useEffect } from 'react';
 import type { SetInfo, SetYaml } from '@audiocontrol/sampler-library/browser';
 import { loadSetManifest, type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
-import { DEVICE_DRAG_MIME, type DeviceDragData } from './DeviceMemoryPanel';
+import { DEVICE_DRAG_MIME, type DeviceDragData, LIBRARY_DRAG_MIME, type LibraryDragData } from './DeviceMemoryPanel';
 
 interface LibraryTreePanelProps {
   libraryHandle: FileSystemDirectoryHandle | null;
@@ -184,11 +184,13 @@ function DrumKitItem({
   isSelected,
   onSelect,
   onDelete,
+  onDragStart,
 }: {
   kitInfo: DrumKitInfo;
   isSelected: boolean;
   onSelect: () => void;
   onDelete?: () => void;
+  onDragStart?: (e: React.DragEvent) => void;
 }): JSX.Element {
   const handleDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -199,12 +201,14 @@ function DrumKitItem({
     <div
       className={cn(
         'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-        'flex items-center gap-2 cursor-pointer',
+        'flex items-center gap-2 cursor-grab active:cursor-grabbing',
         isSelected
           ? 'bg-s330-highlight/20 text-s330-highlight'
           : 'text-s330-text hover:bg-s330-accent/30'
       )}
       onClick={onSelect}
+      draggable
+      onDragStart={onDragStart}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => e.key === 'Enter' && onSelect()}
@@ -233,6 +237,8 @@ function SetItem({
   onSelect,
   onSelectTone,
   onSelectPatch,
+  onToneDragStart,
+  onPatchDragStart,
   isLoadingManifest,
   onDelete,
 }: {
@@ -246,6 +252,8 @@ function SetItem({
   onSelect: () => void;
   onSelectTone: (toneFile: string) => void;
   onSelectPatch: (patchFile: string) => void;
+  onToneDragStart?: (e: React.DragEvent, toneFile: string) => void;
+  onPatchDragStart?: (e: React.DragEvent, patchFile: string) => void;
   isLoadingManifest: boolean;
   onDelete?: () => void;
 }): JSX.Element {
@@ -308,12 +316,17 @@ function SetItem({
                   </div>
                   <div className="space-y-0.5">
                     {manifest.tones.map((entry) => (
-                      <button
+                      <div
                         key={entry.file}
                         onClick={() => onSelectTone(entry.file)}
+                        draggable
+                        onDragStart={(e) => onToneDragStart?.(e, entry.file)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && onSelectTone(entry.file)}
                         className={cn(
                           'w-full text-left px-2 py-1 rounded text-xs transition-colors',
-                          'flex items-center gap-2',
+                          'flex items-center gap-2 cursor-grab active:cursor-grabbing',
                           selectedItemType === 'tone' && selectedItemName === entry.file
                             ? 'bg-s330-highlight/20 text-s330-highlight'
                             : 'text-s330-text hover:bg-s330-accent/30'
@@ -321,7 +334,7 @@ function SetItem({
                       >
                         <WaveIcon />
                         <span className="truncate">{entry.file}</span>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -334,12 +347,17 @@ function SetItem({
                   </div>
                   <div className="space-y-0.5">
                     {manifest.patches.map((entry) => (
-                      <button
+                      <div
                         key={entry.file}
                         onClick={() => onSelectPatch(entry.file)}
+                        draggable
+                        onDragStart={(e) => onPatchDragStart?.(e, entry.file)}
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => e.key === 'Enter' && onSelectPatch(entry.file)}
                         className={cn(
                           'w-full text-left px-2 py-1 rounded text-xs transition-colors',
-                          'flex items-center gap-2',
+                          'flex items-center gap-2 cursor-grab active:cursor-grabbing',
                           selectedItemType === 'patch' && selectedItemName === entry.file
                             ? 'bg-s330-highlight/20 text-s330-highlight'
                             : 'text-s330-text hover:bg-s330-accent/30'
@@ -347,7 +365,7 @@ function SetItem({
                       >
                         <PatchIcon />
                         <span className="truncate">{entry.file}</span>
-                      </button>
+                      </div>
                     ))}
                   </div>
                 </div>
@@ -482,6 +500,65 @@ export function LibraryTreePanel({
     }
   }, [onDropDevicePatch]);
 
+  // Handle drag start for individual tones (library -> device)
+  const handleIndividualToneDragStart = useCallback((e: React.DragEvent, toneInfo: LibraryToneInfo) => {
+    const dragData: LibraryDragData = {
+      source: 'library',
+      type: 'tone',
+      name: toneInfo.fileName,
+    };
+    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
+    e.dataTransfer.effectAllowed = 'copy';
+  }, []);
+
+  // Handle drag start for individual patches (library -> device)
+  const handleIndividualPatchDragStart = useCallback((e: React.DragEvent, patchInfo: LibraryPatchInfo) => {
+    const dragData: LibraryDragData = {
+      source: 'library',
+      type: 'patch',
+      name: patchInfo.directoryName,
+    };
+    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
+    e.dataTransfer.effectAllowed = 'copy';
+  }, []);
+
+  // Handle drag start for drum kits (library -> device)
+  const handleDrumKitDragStart = useCallback((e: React.DragEvent, kitInfo: DrumKitInfo) => {
+    const dragData: LibraryDragData = {
+      source: 'library',
+      type: 'drumKit',
+      name: kitInfo.directoryName,
+    };
+    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
+    e.dataTransfer.effectAllowed = 'copy';
+  }, []);
+
+  // Handle drag start for tones within sets (library -> device)
+  const handleSetToneDragStart = useCallback((e: React.DragEvent, toneFile: string, setName: string) => {
+    const dragData: LibraryDragData = {
+      source: 'library',
+      type: 'tone',
+      name: toneFile,
+      setName,
+      toneFile,
+    };
+    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
+    e.dataTransfer.effectAllowed = 'copy';
+  }, []);
+
+  // Handle drag start for patches within sets (library -> device)
+  const handleSetPatchDragStart = useCallback((e: React.DragEvent, patchFile: string, setName: string) => {
+    const dragData: LibraryDragData = {
+      source: 'library',
+      type: 'patch',
+      name: patchFile,
+      setName,
+      patchFile,
+    };
+    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
+    e.dataTransfer.effectAllowed = 'copy';
+  }, []);
+
   const toggleSet = useCallback((name: string) => {
     setExpandedSets((prev) => {
       const next = new Set(prev);
@@ -596,6 +673,8 @@ export function LibraryTreePanel({
                   onSelect={() => onSelectSet(setInfo.name)}
                   onSelectTone={(toneFile) => onSelectTone(toneFile, setInfo.name)}
                   onSelectPatch={(patchFile) => onSelectPatch(patchFile, setInfo.name)}
+                  onToneDragStart={(e, toneFile) => handleSetToneDragStart(e, toneFile, setInfo.name)}
+                  onPatchDragStart={(e, patchFile) => handleSetPatchDragStart(e, patchFile, setInfo.name)}
                   isLoadingManifest={loadingManifests.has(setInfo.name)}
                   onDelete={onDeleteSet ? () => onDeleteSet(setInfo.name) : undefined}
                 />
@@ -634,9 +713,11 @@ export function LibraryTreePanel({
                 <div
                   key={toneInfo.fileName}
                   onClick={() => onSelectIndividualTone(toneInfo.fileName)}
+                  draggable
+                  onDragStart={(e) => handleIndividualToneDragStart(e, toneInfo)}
                   className={cn(
-                    'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors cursor-pointer',
-                    'flex items-center gap-2',
+                    'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+                    'flex items-center gap-2 cursor-grab active:cursor-grabbing',
                     selectedType === 'individualTone' && selectedName === toneInfo.fileName
                       ? 'bg-s330-highlight/20 text-s330-highlight'
                       : 'text-s330-text hover:bg-s330-accent/30'
@@ -698,9 +779,11 @@ export function LibraryTreePanel({
                 <div
                   key={patchInfo.directoryName}
                   onClick={() => onSelectIndividualPatch(patchInfo.directoryName)}
+                  draggable
+                  onDragStart={(e) => handleIndividualPatchDragStart(e, patchInfo)}
                   className={cn(
-                    'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors cursor-pointer',
-                    'flex items-center gap-2',
+                    'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+                    'flex items-center gap-2 cursor-grab active:cursor-grabbing',
                     selectedType === 'individualPatch' && selectedName === patchInfo.directoryName
                       ? 'bg-s330-highlight/20 text-s330-highlight'
                       : 'text-s330-text hover:bg-s330-accent/30'
@@ -754,6 +837,7 @@ export function LibraryTreePanel({
                   isSelected={selectedType === 'drumKit' && selectedName === kitInfo.directoryName}
                   onSelect={() => onSelectDrumKit(kitInfo.directoryName)}
                   onDelete={onDeleteDrumKit ? () => onDeleteDrumKit(kitInfo.directoryName) : undefined}
+                  onDragStart={(e) => handleDrumKitDragStart(e, kitInfo)}
                 />
               ))}
             </div>
