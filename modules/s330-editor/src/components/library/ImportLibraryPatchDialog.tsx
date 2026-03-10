@@ -19,7 +19,7 @@ import {
   getPatchToneDependencies,
   remapPatchToneLayers,
 } from '@/lib/library-service';
-import { suggestPatchAllocation } from '@/lib/slot-allocation';
+import { suggestPatchAllocation, isToneSlotEmpty, isPatchSlotEmpty } from '@/lib/slot-allocation';
 import { cn } from '@/lib/utils';
 import { formatToneSlot, formatPatchSlot } from '@/lib/s330-format';
 
@@ -313,8 +313,9 @@ export function ImportLibraryPatchDialog({
   const error = loadError || importError;
 
   // Check if selected slots will overwrite existing data
+  // Use the same empty detection as the allocation logic (segmentLength === 0 for tones, blank name + no assignments for patches)
   const willOverwritePatch = useMemo(() => {
-    return !!devicePatches[targetPatchSlot];
+    return !isPatchSlotEmpty(devicePatches, targetPatchSlot);
   }, [devicePatches, targetPatchSlot]);
 
   const existingPatchName = devicePatches[targetPatchSlot]?.common.name;
@@ -322,7 +323,7 @@ export function ImportLibraryPatchDialog({
   // Check which tones will be overwritten
   const toneOverwrites = useMemo(() => {
     return toneMappings.map((mapping) => ({
-      willOverwrite: !!deviceTones[mapping.targetSlot],
+      willOverwrite: !isToneSlotEmpty(deviceTones, mapping.targetSlot),
       existingName: deviceTones[mapping.targetSlot]?.name,
     }));
   }, [toneMappings, deviceTones]);
@@ -406,7 +407,8 @@ export function ImportLibraryPatchDialog({
                   {Array.from({ length: 16 }, (_, i) => {
                     const existingPatch = devicePatches[i];
                     const slotLabel = formatPatchSlot(i);
-                    const occupancy = existingPatch ? ` - ${existingPatch.common.name}` : ' - (empty)';
+                    const isEmpty = isPatchSlotEmpty(devicePatches, i);
+                    const occupancy = isEmpty ? ' - (empty)' : ` - ${existingPatch?.common.name || ''}`;
                     return (
                       <option key={i} value={i}>
                         {slotLabel}{occupancy}
@@ -469,7 +471,8 @@ export function ImportLibraryPatchDialog({
                               {Array.from({ length: 32 }, (_, i) => {
                                 const existingTone = deviceTones[i];
                                 const slotLabel = formatToneSlot(i);
-                                const occupancy = existingTone ? ` - ${existingTone.name}` : '';
+                                const isEmpty = isToneSlotEmpty(deviceTones, i);
+                                const occupancy = isEmpty ? ' - (empty)' : ` - ${existingTone?.name || ''}`;
                                 return (
                                   <option key={i} value={i}>
                                     {slotLabel}{occupancy}

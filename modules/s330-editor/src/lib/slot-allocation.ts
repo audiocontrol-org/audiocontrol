@@ -3,6 +3,29 @@
  *
  * Helpers for finding available tone slots, patch slots, and wave memory
  * segments for safe importing without overwriting existing data.
+ *
+ * ============================================================================
+ * CRITICAL: S-330 RETURNS OBJECTS FOR ALL SLOTS, EVEN EMPTY ONES
+ * ============================================================================
+ *
+ * The S-330 sampler returns tone/patch objects for ALL 32 tone slots and
+ * ALL 16 patch slots, regardless of whether they contain actual data.
+ * This means:
+ *
+ *   - `deviceTones[i]` is NEVER undefined after loading (always an S330Tone)
+ *   - `devicePatches[i]` is NEVER undefined after loading (always an S330Patch)
+ *   - Checking `!!deviceTones[i]` or `!!devicePatches[i]` is ALWAYS TRUE
+ *
+ * To determine if a slot is truly empty/available:
+ *
+ *   - For tones: Use `isToneEmpty(tone)` - checks wave.segmentLength === 0
+ *   - For patches: Use `isPatchEmpty(patch)` - checks blank name + no assignments
+ *   - For arrays: Use `isToneSlotEmpty(tones, i)` or `isPatchSlotEmpty(patches, i)`
+ *
+ * NEVER use truthiness checks (!!tone, !!patch, tone ? x : y) to determine
+ * if a slot is empty. This has caused bugs multiple times.
+ *
+ * ============================================================================
  */
 
 import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
@@ -10,14 +33,30 @@ import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
 const SEGMENTS_PER_BANK = 18;
 const SAMPLES_PER_SEGMENT = 12000;
 
+// ============================================================================
+// EMPTY SLOT DETECTION - Single Source of Truth
+// ============================================================================
+
 /**
- * Check if a tone has no wave data allocated (empty/available slot).
+ * Check if a tone is empty (no wave data allocated).
  *
- * The S-330 returns tone objects for all 32 slots, even empty ones.
- * An empty slot has segmentLength === 0 (no wave memory allocated).
+ * This is the AUTHORITATIVE check for whether a tone slot is available.
+ * An empty tone has wave.segmentLength === 0.
+ *
+ * @warning Do NOT use truthiness checks (!!tone) - the S-330 returns objects
+ * for all 32 slots, so tone is never undefined after device data is loaded.
+ *
+ * @example
+ * // CORRECT
+ * if (isToneEmpty(deviceTones[i])) { ... }
+ * const label = isToneEmpty(tone) ? '(empty)' : tone.name;
+ *
+ * // WRONG - will always be true after device load
+ * if (deviceTones[i]) { ... }
+ * const label = tone ? tone.name : '(empty)';
  */
-function isToneAvailable(tone: S330Tone | undefined): boolean {
-  // Not loaded yet = treat as not available (don't assume it's empty)
+export function isToneEmpty(tone: S330Tone | undefined): boolean {
+  // Not loaded yet = treat as NOT empty (don't assume it's available)
   if (!tone) return false;
 
   // No wave segments allocated = empty slot
@@ -25,13 +64,25 @@ function isToneAvailable(tone: S330Tone | undefined): boolean {
 }
 
 /**
- * Check if a patch has no meaningful data (empty/available slot).
+ * Check if a patch is empty (no meaningful data).
  *
- * The S-330 returns patch objects for all 16 slots, even empty ones.
- * An empty patch has a blank name and no tone assignments.
+ * This is the AUTHORITATIVE check for whether a patch slot is available.
+ * An empty patch has a blank/whitespace-only name AND no tone assignments.
+ *
+ * @warning Do NOT use truthiness checks (!!patch) - the S-330 returns objects
+ * for all 16 slots, so patch is never undefined after device data is loaded.
+ *
+ * @example
+ * // CORRECT
+ * if (isPatchEmpty(devicePatches[i])) { ... }
+ * const label = isPatchEmpty(patch) ? '(empty)' : patch.common.name;
+ *
+ * // WRONG - will always be true after device load
+ * if (devicePatches[i]) { ... }
+ * const label = patch ? patch.common.name : '(empty)';
  */
-function isPatchAvailable(patch: S330Patch | undefined): boolean {
-  // Not loaded yet = treat as not available
+export function isPatchEmpty(patch: S330Patch | undefined): boolean {
+  // Not loaded yet = treat as NOT empty
   if (!patch) return false;
 
   // Check for blank/empty name
@@ -44,6 +95,32 @@ function isPatchAvailable(patch: S330Patch | undefined): boolean {
 }
 
 /**
+ * Check if a tone slot is empty/available for import.
+ * Convenience wrapper around isToneEmpty for array access.
+ */
+export function isToneSlotEmpty(
+  deviceTones: (S330Tone | undefined)[],
+  slot: number
+): boolean {
+  return isToneEmpty(deviceTones[slot]);
+}
+
+/**
+ * Check if a patch slot is empty/available for import.
+ * Convenience wrapper around isPatchEmpty for array access.
+ */
+export function isPatchSlotEmpty(
+  devicePatches: (S330Patch | undefined)[],
+  slot: number
+): boolean {
+  return isPatchEmpty(devicePatches[slot]);
+}
+
+// ============================================================================
+// SLOT FINDING FUNCTIONS
+// ============================================================================
+
+/**
  * Find the first available (empty) tone slot.
  * Returns undefined if all slots are occupied.
  */
@@ -52,13 +129,13 @@ export function findFirstEmptyToneSlot(
   preferredSlot?: number
 ): number | undefined {
   // If preferred slot is empty, use it
-  if (preferredSlot !== undefined && isToneAvailable(deviceTones[preferredSlot])) {
+  if (preferredSlot !== undefined && isToneEmpty(deviceTones[preferredSlot])) {
     return preferredSlot;
   }
 
   // Find first empty slot
   for (let i = 0; i < deviceTones.length; i++) {
-    if (isToneAvailable(deviceTones[i])) {
+    if (isToneEmpty(deviceTones[i])) {
       return i;
     }
   }
@@ -75,13 +152,13 @@ export function findFirstEmptyPatchSlot(
   preferredSlot?: number
 ): number | undefined {
   // If preferred slot is empty, use it
-  if (preferredSlot !== undefined && isPatchAvailable(devicePatches[preferredSlot])) {
+  if (preferredSlot !== undefined && isPatchEmpty(devicePatches[preferredSlot])) {
     return preferredSlot;
   }
 
   // Find first empty slot
   for (let i = 0; i < devicePatches.length; i++) {
-    if (isPatchAvailable(devicePatches[i])) {
+    if (isPatchEmpty(devicePatches[i])) {
       return i;
     }
   }
@@ -104,7 +181,7 @@ export function findEmptyToneSlots(
   // First, try preferred slots if they're empty
   if (preferredSlots) {
     for (const slot of preferredSlots) {
-      if (isToneAvailable(deviceTones[slot]) && !usedSlots.has(slot) && result.length < count) {
+      if (isToneEmpty(deviceTones[slot]) && !usedSlots.has(slot) && result.length < count) {
         result.push(slot);
         usedSlots.add(slot);
       }
@@ -113,7 +190,7 @@ export function findEmptyToneSlots(
 
   // Fill remaining from available slots
   for (let i = 0; i < deviceTones.length && result.length < count; i++) {
-    if (isToneAvailable(deviceTones[i]) && !usedSlots.has(i)) {
+    if (isToneEmpty(deviceTones[i]) && !usedSlots.has(i)) {
       result.push(i);
       usedSlots.add(i);
     }
@@ -272,25 +349,9 @@ export function calculateSegmentsNeeded(sampleCount: number): number {
   return Math.ceil(sampleCount / SAMPLES_PER_SEGMENT);
 }
 
-/**
- * Check if a tone slot is empty/available for import.
- */
-export function isToneSlotEmpty(
-  deviceTones: (S330Tone | undefined)[],
-  slot: number
-): boolean {
-  return isToneAvailable(deviceTones[slot]);
-}
-
-/**
- * Check if a patch slot is empty/available for import.
- */
-export function isPatchSlotEmpty(
-  devicePatches: (S330Patch | undefined)[],
-  slot: number
-): boolean {
-  return isPatchAvailable(devicePatches[slot]);
-}
+// ============================================================================
+// ALLOCATION SUGGESTIONS
+// ============================================================================
 
 /**
  * Result of allocation attempt for a single tone import.
@@ -374,8 +435,8 @@ export function suggestPatchAllocation(
     preferredToneSlots,
     emptyToneSlots,
     deviceTonesLength: deviceTones.length,
-    availableSlots: deviceTones.map((t, i) => isToneAvailable(t) ? i : null).filter(i => i !== null),
-    occupiedSlots: deviceTones.map((t, i) => (t && !isToneAvailable(t)) ? { index: i, name: t.name, segments: t.wave.segmentLength } : null).filter(Boolean),
+    availableSlots: deviceTones.map((t, i) => isToneEmpty(t) ? i : null).filter(i => i !== null),
+    occupiedSlots: deviceTones.map((t, i) => (t && !isToneEmpty(t)) ? { index: i, name: t.name, segments: t.wave.segmentLength } : null).filter(Boolean),
   });
 
   // Find wave memory regions

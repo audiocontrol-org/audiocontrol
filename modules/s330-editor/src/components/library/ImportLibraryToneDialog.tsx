@@ -14,7 +14,7 @@ import {
   loadIndividualTone,
   convertYamlToS330Tone,
 } from '@/lib/library-service';
-import { suggestToneAllocation } from '@/lib/slot-allocation';
+import { suggestToneAllocation, isToneSlotEmpty } from '@/lib/slot-allocation';
 import { cn } from '@/lib/utils';
 import { formatToneSlot } from '@/lib/s330-format';
 import { calculateSegmentsNeeded } from '@audiocontrol/sampler-devices/s330';
@@ -191,8 +191,9 @@ export function ImportLibraryToneDialog({
   const error = loadError || importError;
 
   // Check if selected slot will overwrite existing data
+  // Use the same empty detection as the allocation logic (segmentLength === 0)
   const willOverwriteTone = useMemo(() => {
-    return !!deviceTones[targetSlot];
+    return !isToneSlotEmpty(deviceTones, targetSlot);
   }, [deviceTones, targetSlot]);
 
   const existingToneName = deviceTones[targetSlot]?.name;
@@ -280,7 +281,8 @@ export function ImportLibraryToneDialog({
                   {Array.from({ length: 32 }, (_, i) => {
                     const existingTone = deviceTones[i];
                     const slotLabel = formatToneSlot(i);
-                    const occupancy = existingTone ? ` - ${existingTone.name}` : ' - (empty)';
+                    const isEmpty = isToneSlotEmpty(deviceTones, i);
+                    const occupancy = isEmpty ? ' - (empty)' : ` - ${existingTone?.name || ''}`;
                     return (
                       <option key={i} value={i}>
                         {slotLabel}{occupancy}
