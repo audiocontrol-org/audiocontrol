@@ -876,6 +876,11 @@ export function LibraryPage() {
       return;
     }
 
+    // Reset operation state to prevent stale "success" from previous operations
+    setOperationError(null);
+    setOperationProgress(undefined);
+    setOperationStatus(null);
+
     // Determine if this is from a set or an individual tone
     if (data.setName && data.toneFile) {
       // Tone from a set
@@ -913,6 +918,11 @@ export function LibraryPage() {
       window.alert('Can only drop patches or drum kits on patch slots');
       return;
     }
+
+    // Reset operation state to prevent stale "success" from previous operations
+    setOperationError(null);
+    setOperationProgress(undefined);
+    setOperationStatus(null);
 
     // Determine if this is from a set or an individual patch
     if (data.setName && data.patchFile) {
