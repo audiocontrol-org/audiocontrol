@@ -24,6 +24,7 @@ import { ImportLibraryPatchDialog } from '@/components/library/ImportLibraryPatc
 import { ImportDrumKitDialog } from '@/components/library/ImportDrumKitDialog';
 import { SampleChopperDialog, type SliceDefinitionOutput, type InitialSliceDefinition } from '@/components/library/SampleChopperDialog';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
+import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
 import { useImportDrumKit } from '@/hooks/useImportDrumKit';
 import {
   hasFileSystemAccess,
@@ -33,17 +34,23 @@ import {
   listSets,
   listDrumKits,
   listIndividualTones,
+  listIndividualPatches,
   loadDrumKitBundle,
   loadDrumKitSource,
   updateDrumKitSlices,
   saveDeviceToSetIncremental,
   loadSetToDevice,
   exportToneToDirectory,
+  exportPatchToDirectory,
+  getPatchToneDependencies,
   deleteSet,
   deleteIndividualTone,
+  deleteIndividualPatch,
   deleteDrumKit,
   type DrumKitInfo,
   type LibraryToneInfo,
+  type LibraryPatchInfo,
+  type PatchBundleTone,
 } from '@/lib/library-service';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 import { cn } from '@/lib/utils';
@@ -53,7 +60,7 @@ import { cn } from '@/lib/utils';
  */
 export interface ItemSelection {
   source: 'device' | 'library';
-  type: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone';
+  type: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch';
   index?: number;
   name?: string;
   setName?: string;
@@ -103,6 +110,9 @@ export function LibraryPage() {
   // Individual tones state
   const [individualTones, setIndividualTones] = useState<LibraryToneInfo[]>([]);
 
+  // Individual patches state
+  const [individualPatches, setIndividualPatches] = useState<LibraryPatchInfo[]>([]);
+
   // Export tone dialog state
   const [exportToneDialog, setExportToneDialog] = useState<{
     tone: S330Tone;
@@ -111,6 +121,14 @@ export function LibraryPage() {
   const [exportProgress, setExportProgress] = useState<number | undefined>(undefined);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportStatus, setExportStatus] = useState<string | null>(null);
+
+  // Export patch dialog state
+  const [exportPatchDialog, setExportPatchDialog] = useState<{
+    patch: S330Patch;
+    patchIndex: number;
+  } | null>(null);
+  const [exportPatchProgress, setExportPatchProgress] = useState<number | undefined>(undefined);
+  const [exportPatchError, setExportPatchError] = useState<string | null>(null);
 
   // Local state
   const [selection, setSelection] = useState<ItemSelection | null>(null);
@@ -170,16 +188,18 @@ export function LibraryPage() {
       const cached = await getCachedLibraryDirectory();
       if (cached) {
         setLibraryHandle(cached);
-        // Load sets, drum kits, and individual tones
+        // Load sets, drum kits, individual tones, and individual patches
         try {
-          const [setList, kitList, toneList] = await Promise.all([
+          const [setList, kitList, toneList, patchList] = await Promise.all([
             listSets(cached),
             listDrumKits(cached),
             listIndividualTones(cached),
+            listIndividualPatches(cached),
           ]);
           setSets(setList);
           setDrumKits(kitList);
           setIndividualTones(toneList);
+          setIndividualPatches(patchList);
         } catch (err) {
           console.error('[LibraryPage] Failed to load library:', err);
         }
@@ -194,16 +214,18 @@ export function LibraryPage() {
     if (handle) {
       setLibraryHandle(handle);
       setCachedLibraryDirectory(handle);
-      // Load sets, drum kits, and individual tones
+      // Load sets, drum kits, individual tones, and individual patches
       try {
-        const [setList, kitList, toneList] = await Promise.all([
+        const [setList, kitList, toneList, patchList] = await Promise.all([
           listSets(handle),
           listDrumKits(handle),
           listIndividualTones(handle),
+          listIndividualPatches(handle),
         ]);
         setSets(setList);
         setDrumKits(kitList);
         setIndividualTones(toneList);
+        setIndividualPatches(patchList);
       } catch (err) {
         console.error('[LibraryPage] Failed to load library:', err);
         setError(err instanceof Error ? err.message : 'Failed to load library');
@@ -217,14 +239,16 @@ export function LibraryPage() {
 
     setLoading(true, 'Refreshing library...');
     try {
-      const [setList, kitList, toneList] = await Promise.all([
+      const [setList, kitList, toneList, patchList] = await Promise.all([
         listSets(libraryHandle),
         listDrumKits(libraryHandle),
         listIndividualTones(libraryHandle),
+        listIndividualPatches(libraryHandle),
       ]);
       setSets(setList);
       setDrumKits(kitList);
       setIndividualTones(toneList);
+      setIndividualPatches(patchList);
     } catch (err) {
       console.error('[LibraryPage] Failed to refresh library:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh library');
@@ -275,6 +299,29 @@ export function LibraryPage() {
     } catch (err) {
       console.error('[LibraryPage] Failed to delete tone:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete tone');
+    }
+  }, [libraryHandle, selection, setError]);
+
+  // Delete an individual patch bundle from library
+  const handleDeleteIndividualPatch = useCallback(async (directoryName: string) => {
+    if (!libraryHandle) return;
+
+    if (!window.confirm(`Delete patch "${directoryName}" and all its tones? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      await deleteIndividualPatch(libraryHandle, directoryName);
+      // Clear selection if the deleted item was selected
+      if (selection?.type === 'individualPatch' && selection.name === directoryName) {
+        setSelection(null);
+      }
+      // Refresh individual patches list
+      const updatedPatches = await listIndividualPatches(libraryHandle);
+      setIndividualPatches(updatedPatches);
+    } catch (err) {
+      console.error('[LibraryPage] Failed to delete patch:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete patch');
     }
   }, [libraryHandle, selection, setError]);
 
@@ -604,6 +651,12 @@ export function LibraryPage() {
     setSelectedDrumKitBundle(null);
   }, []);
 
+  // Handle individual patch selection
+  const handleSelectIndividualPatch = useCallback((patchName: string) => {
+    setSelection({ source: 'library', type: 'individualPatch', name: patchName });
+    setSelectedDrumKitBundle(null);
+  }, []);
+
   // Handle drum kit import button click
   const handleOpenDrumKitImport = useCallback(() => {
     if (!selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) return;
@@ -636,21 +689,19 @@ export function LibraryPage() {
   }, []);
 
   // Handle drop from device memory to library (export tone) - opens dialog
-  const handleDropDeviceItem = useCallback((data: DeviceDragData) => {
+  const handleDropDeviceTone = useCallback((data: DeviceDragData) => {
     if (!libraryHandle || !clientRef.current) {
-      setOperationError('Library or device not connected');
+      window.alert('Library or device not connected');
       return;
     }
 
-    // Only support tones for now
     if (data.type !== 'tone') {
-      setOperationError('Only tone export is currently supported');
       return;
     }
 
     const tone = tones[data.index];
     if (!tone) {
-      setOperationError('Tone not loaded from device');
+      window.alert('Tone not loaded from device. Try refreshing device data first.');
       return;
     }
 
@@ -660,6 +711,29 @@ export function LibraryPage() {
     setExportError(null);
     setExportStatus(null);
   }, [libraryHandle, tones]);
+
+  // Handle drop from device memory to library (export patch) - opens dialog
+  const handleDropDevicePatch = useCallback((data: DeviceDragData) => {
+    if (!libraryHandle) {
+      window.alert('Library not connected');
+      return;
+    }
+
+    if (data.type !== 'patch') {
+      return;
+    }
+
+    const patch = patches[data.index];
+    if (!patch) {
+      window.alert('Patch not loaded from device. Try refreshing device data first.');
+      return;
+    }
+
+    // Open the export dialog
+    setExportPatchDialog({ patch, patchIndex: data.index });
+    setExportPatchProgress(undefined);
+    setExportPatchError(null);
+  }, [libraryHandle, patches]);
 
   // Handle export tone from dialog
   const handleExportTone = useCallback(async (toneName: string, toneIndex: number) => {
@@ -713,6 +787,80 @@ export function LibraryPage() {
       setIsExporting(false);
     }
   }, [libraryHandle, exportToneDialog]);
+
+  // Handle export patch from dialog
+  const handleExportPatch = useCallback(async (patchName: string, _patchIndex: number) => {
+    if (!libraryHandle || !exportPatchDialog || !clientRef.current) {
+      throw new Error('Library or device not connected');
+    }
+
+    const patch = exportPatchDialog.patch;
+    const client = clientRef.current;
+
+    setIsExporting(true);
+    setExportPatchError(null);
+    setExportPatchProgress(0);
+
+    try {
+      // Get all tone slots referenced by this patch
+      const referencedSlots = getPatchToneDependencies(patch);
+      const totalSlots = referencedSlots.length;
+
+      // Fetch all referenced tones from the device
+      const bundleTones: PatchBundleTone[] = [];
+
+      for (let i = 0; i < referencedSlots.length; i++) {
+        const slot = referencedSlots[i];
+        const tone = tones[slot];
+
+        if (!tone) {
+          throw new Error(`Tone at slot ${slot} not loaded from device. Try refreshing device data first.`);
+        }
+
+        // Progress: 0-60% for fetching tones
+        const baseProgress = Math.floor((i / totalSlots) * 60);
+        setExportPatchProgress(baseProgress);
+
+        // Fetch wave data for this tone
+        const waveData = await client.requestWaveData(
+          slot,
+          (received, total) => {
+            const fetchProgress = total > 0 ? (received / total) : 0;
+            setExportPatchProgress(baseProgress + Math.floor(fetchProgress * (60 / totalSlots)));
+          }
+        );
+
+        bundleTones.push({ slot, tone, waveData });
+      }
+
+      setExportPatchProgress(60);
+
+      // Export to library with the user-specified name and all dependent tones
+      await exportPatchToDirectory(
+        libraryHandle,
+        { ...patch, common: { ...patch.common, name: patchName } },
+        bundleTones,
+        patchName,
+        (progress) => {
+          // Progress: 60-100% for writing files
+          setExportPatchProgress(60 + Math.floor(progress * 0.4));
+        }
+      );
+
+      setExportPatchProgress(100);
+
+      // Refresh individual patches list
+      const updatedPatches = await listIndividualPatches(libraryHandle);
+      setIndividualPatches(updatedPatches);
+    } catch (err) {
+      console.error('[LibraryPage] Failed to export patch:', err);
+      const message = err instanceof Error ? err.message : 'Failed to export patch';
+      setExportPatchError(message);
+      throw err;
+    } finally {
+      setIsExporting(false);
+    }
+  }, [libraryHandle, exportPatchDialog, tones]);
 
   // Import single tone from library
   const handleImportLibraryTone = useCallback(async (params: {
@@ -953,6 +1101,7 @@ export function LibraryPage() {
             sets={sets}
             drumKits={drumKits}
             individualTones={individualTones}
+            individualPatches={individualPatches}
             selectedName={selection?.source === 'library' ? selection.name : undefined}
             selectedType={selection?.source === 'library' ? selection.type : undefined}
             selectedSetName={selection?.source === 'library' ? selection.setName : undefined}
@@ -961,11 +1110,14 @@ export function LibraryPage() {
             onSelectPatch={(name, setName) => handleSelectLibrary('patch', name, setName)}
             onSelectDrumKit={handleSelectDrumKit}
             onSelectIndividualTone={handleSelectIndividualTone}
+            onSelectIndividualPatch={handleSelectIndividualPatch}
             onRefresh={handleRefreshLibrary}
             isLoading={isLoading || isExporting}
-            onDropDeviceItem={handleDropDeviceItem}
+            onDropDeviceTone={handleDropDeviceTone}
+            onDropDevicePatch={handleDropDevicePatch}
             onDeleteSet={handleDeleteSet}
             onDeleteIndividualTone={handleDeleteIndividualTone}
+            onDeleteIndividualPatch={handleDeleteIndividualPatch}
             onDeleteDrumKit={handleDeleteDrumKit}
           />
         </div>
@@ -1109,6 +1261,24 @@ export function LibraryPage() {
         exportProgress={exportProgress}
         exportError={exportError}
         statusMessage={exportStatus}
+      />
+
+      {/* Export Patch Dialog */}
+      <ExportPatchDialog
+        open={!!exportPatchDialog}
+        onOpenChange={(open) => {
+          if (!open && !isExporting) {
+            setExportPatchDialog(null);
+            setExportPatchProgress(undefined);
+            setExportPatchError(null);
+          }
+        }}
+        patch={exportPatchDialog?.patch ?? null}
+        patchIndex={exportPatchDialog?.patchIndex ?? 0}
+        onExport={handleExportPatch}
+        isExporting={isExporting}
+        exportProgress={exportPatchProgress}
+        exportError={exportPatchError}
       />
     </div>
   );

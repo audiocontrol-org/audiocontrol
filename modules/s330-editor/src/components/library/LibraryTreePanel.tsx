@@ -11,7 +11,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import type { SetInfo, SetYaml } from '@audiocontrol/sampler-library/browser';
-import { loadSetManifest, type DrumKitInfo, type LibraryToneInfo } from '@/lib/library-service';
+import { loadSetManifest, type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
 import { DEVICE_DRAG_MIME, type DeviceDragData } from './DeviceMemoryPanel';
 
@@ -20,22 +20,28 @@ interface LibraryTreePanelProps {
   sets: SetInfo[];
   drumKits: DrumKitInfo[];
   individualTones: LibraryToneInfo[];
+  individualPatches: LibraryPatchInfo[];
   selectedName?: string;
-  selectedType?: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone';
+  selectedType?: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch';
   selectedSetName?: string;
   onSelectSet: (name: string) => void;
   onSelectTone: (name: string, setName: string) => void;
   onSelectPatch: (name: string, setName: string) => void;
   onSelectDrumKit: (name: string) => void;
   onSelectIndividualTone: (name: string) => void;
+  onSelectIndividualPatch: (name: string) => void;
   onRefresh: () => void;
   isLoading: boolean;
-  /** Callback when a device item is dropped to export to library */
-  onDropDeviceItem?: (data: DeviceDragData) => void;
+  /** Callback when a device tone is dropped to export to library */
+  onDropDeviceTone?: (data: DeviceDragData) => void;
+  /** Callback when a device patch is dropped to export to library */
+  onDropDevicePatch?: (data: DeviceDragData) => void;
   /** Callback to delete a set */
   onDeleteSet?: (name: string) => void;
   /** Callback to delete an individual tone */
   onDeleteIndividualTone?: (fileName: string) => void;
+  /** Callback to delete an individual patch */
+  onDeleteIndividualPatch?: (fileName: string) => void;
   /** Callback to delete a drum kit */
   onDeleteDrumKit?: (directoryName: string) => void;
 }
@@ -379,6 +385,7 @@ export function LibraryTreePanel({
   sets,
   drumKits,
   individualTones,
+  individualPatches,
   selectedName,
   selectedType,
   selectedSetName,
@@ -387,54 +394,93 @@ export function LibraryTreePanel({
   onSelectPatch,
   onSelectDrumKit,
   onSelectIndividualTone,
+  onSelectIndividualPatch,
   onRefresh,
   isLoading,
-  onDropDeviceItem,
+  onDropDeviceTone,
+  onDropDevicePatch,
   onDeleteSet,
   onDeleteIndividualTone,
+  onDeleteIndividualPatch,
   onDeleteDrumKit,
 }: LibraryTreePanelProps): JSX.Element {
   const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set());
   const [manifests, setManifests] = useState<Map<string, SetYaml>>(new Map());
   const [loadingManifests, setLoadingManifests] = useState<Set<string>>(new Set());
-  const [isDragOver, setIsDragOver] = useState(false);
+  const [isToneDragOver, setIsToneDragOver] = useState(false);
+  const [isPatchDragOver, setIsPatchDragOver] = useState(false);
 
-  // Handle drag over for drop zone
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  // Handle drag over for tone drop zone
+  const handleToneDragOver = useCallback((e: React.DragEvent) => {
     if (e.dataTransfer.types.includes(DEVICE_DRAG_MIME)) {
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
     }
   }, []);
 
-  const handleDragEnter = useCallback((e: React.DragEvent) => {
+  const handleToneDragEnter = useCallback((e: React.DragEvent) => {
     if (e.dataTransfer.types.includes(DEVICE_DRAG_MIME)) {
       e.preventDefault();
-      setIsDragOver(true);
+      setIsToneDragOver(true);
     }
   }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    // Only clear if we're leaving the container, not entering a child
+  const handleToneDragLeave = useCallback((e: React.DragEvent) => {
     if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setIsDragOver(false);
+      setIsToneDragOver(false);
     }
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleToneDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(false);
+    setIsToneDragOver(false);
 
     const jsonData = e.dataTransfer.getData(DEVICE_DRAG_MIME);
     if (!jsonData) return;
 
     try {
       const data = JSON.parse(jsonData) as DeviceDragData;
-      onDropDeviceItem?.(data);
+      onDropDeviceTone?.(data);
     } catch (err) {
       console.error('[LibraryTreePanel] Failed to parse drop data:', err);
     }
-  }, [onDropDeviceItem]);
+  }, [onDropDeviceTone]);
+
+  // Handle drag over for patch drop zone
+  const handlePatchDragOver = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes(DEVICE_DRAG_MIME)) {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    }
+  }, []);
+
+  const handlePatchDragEnter = useCallback((e: React.DragEvent) => {
+    if (e.dataTransfer.types.includes(DEVICE_DRAG_MIME)) {
+      e.preventDefault();
+      setIsPatchDragOver(true);
+    }
+  }, []);
+
+  const handlePatchDragLeave = useCallback((e: React.DragEvent) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsPatchDragOver(false);
+    }
+  }, []);
+
+  const handlePatchDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsPatchDragOver(false);
+
+    const jsonData = e.dataTransfer.getData(DEVICE_DRAG_MIME);
+    if (!jsonData) return;
+
+    try {
+      const data = JSON.parse(jsonData) as DeviceDragData;
+      onDropDevicePatch?.(data);
+    } catch (err) {
+      console.error('[LibraryTreePanel] Failed to parse drop data:', err);
+    }
+  }, [onDropDevicePatch]);
 
   const toggleSet = useCallback((name: string) => {
     setExpandedSets((prev) => {
@@ -545,7 +591,7 @@ export function LibraryTreePanel({
                   isSelected={selectedType === 'set' && selectedName === setInfo.name}
                   isExpanded={expandedSets.has(setInfo.name)}
                   selectedItemName={selectedSetName === setInfo.name ? selectedName : undefined}
-                  selectedItemType={selectedSetName === setInfo.name && selectedType !== 'drumKit' && selectedType !== 'individualTone' ? selectedType : undefined}
+                  selectedItemType={selectedSetName === setInfo.name && selectedType !== 'drumKit' && selectedType !== 'individualTone' && selectedType !== 'individualPatch' ? selectedType : undefined}
                   onToggle={() => toggleSet(setInfo.name)}
                   onSelect={() => onSelectSet(setInfo.name)}
                   onSelectTone={(toneFile) => onSelectTone(toneFile, setInfo.name)}
@@ -562,23 +608,23 @@ export function LibraryTreePanel({
         <div
           className={cn(
             'p-2 border-t border-s330-accent/30 transition-colors',
-            isDragOver && 'bg-s330-highlight/10 border-s330-highlight'
+            isToneDragOver && 'bg-s330-highlight/10 border-s330-highlight'
           )}
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
+          onDragOver={handleToneDragOver}
+          onDragEnter={handleToneDragEnter}
+          onDragLeave={handleToneDragLeave}
+          onDrop={handleToneDrop}
         >
           <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1 flex items-center gap-2">
             Individual Tones
-            {isDragOver && (
+            {isToneDragOver && (
               <span className="text-s330-highlight font-normal normal-case">
                 — Drop to export
               </span>
             )}
           </div>
 
-          {individualTones.length === 0 && !isDragOver ? (
+          {individualTones.length === 0 && !isToneDragOver ? (
             <div className="text-sm text-s330-muted/70 px-2 py-4 text-center italic">
               Drag tones from device to export
             </div>
@@ -615,9 +661,76 @@ export function LibraryTreePanel({
             </div>
           )}
 
-          {isDragOver && (
+          {isToneDragOver && (
             <div className="mt-2 p-3 border-2 border-dashed border-s330-highlight/50 rounded text-center text-sm text-s330-highlight">
-              Drop here to export to library
+              Drop tone here to export
+            </div>
+          )}
+        </div>
+
+        {/* Individual Patches Section - Drop Zone */}
+        <div
+          className={cn(
+            'p-2 border-t border-s330-accent/30 transition-colors',
+            isPatchDragOver && 'bg-s330-highlight/10 border-s330-highlight'
+          )}
+          onDragOver={handlePatchDragOver}
+          onDragEnter={handlePatchDragEnter}
+          onDragLeave={handlePatchDragLeave}
+          onDrop={handlePatchDrop}
+        >
+          <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1 flex items-center gap-2">
+            Individual Patches
+            {isPatchDragOver && (
+              <span className="text-s330-highlight font-normal normal-case">
+                — Drop to export
+              </span>
+            )}
+          </div>
+
+          {individualPatches.length === 0 && !isPatchDragOver ? (
+            <div className="text-sm text-s330-muted/70 px-2 py-4 text-center italic">
+              Drag patches from device to export
+            </div>
+          ) : (
+            <div className="space-y-0.5">
+              {individualPatches.map((patchInfo) => (
+                <div
+                  key={patchInfo.directoryName}
+                  onClick={() => onSelectIndividualPatch(patchInfo.directoryName)}
+                  className={cn(
+                    'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors cursor-pointer',
+                    'flex items-center gap-2',
+                    selectedType === 'individualPatch' && selectedName === patchInfo.directoryName
+                      ? 'bg-s330-highlight/20 text-s330-highlight'
+                      : 'text-s330-text hover:bg-s330-accent/30'
+                  )}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && onSelectIndividualPatch(patchInfo.directoryName)}
+                >
+                  <PatchIcon />
+                  <span className="flex-1 truncate font-medium">{patchInfo.name}</span>
+                  <span className="text-xs text-s330-muted">
+                    {patchInfo.toneCount} tone{patchInfo.toneCount !== 1 ? 's' : ''}
+                  </span>
+                  {onDeleteIndividualPatch && (
+                    <DeleteButton
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteIndividualPatch(patchInfo.directoryName);
+                      }}
+                      title="Delete patch bundle"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {isPatchDragOver && (
+            <div className="mt-2 p-3 border-2 border-dashed border-s330-highlight/50 rounded text-center text-sm text-s330-highlight">
+              Drop patch here to export
             </div>
           )}
         </div>

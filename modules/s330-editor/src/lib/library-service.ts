@@ -19,6 +19,7 @@ import {
 } from '@audiocontrol/sampler-devices/s330';
 import {
   ToneYamlSchema,
+  PatchYamlSchema,
   SetYamlSchema,
   DrumKitBundleSchema,
   s330ToneConverter,
@@ -231,6 +232,115 @@ async function getNestedDirectory(
   return current;
 }
 
+// =========================================================================
+// Shared File Writing Helpers
+// =========================================================================
+
+/**
+ * Result from writing tone files, includes info needed for manifest.
+ */
+interface WriteToneResult {
+  /** Calculated segment length based on actual sample count */
+  segmentLength: number;
+}
+
+/**
+ * Write a tone's YAML and WAV files to a directory.
+ * This is the canonical function for writing tone data - used by both
+ * individual tone export and set export operations.
+ *
+ * @param directory - Directory handle to write files into
+ * @param tone - S330 tone parameters
+ * @param waveData - Wave data response from device
+ * @param baseFilename - Base filename without extension (e.g., "T01" or "T01 Piano")
+ * @returns Info about the written files for manifest tracking
+ */
+async function writeToneFilesToDirectory(
+  directory: FileSystemDirectoryHandle,
+  tone: S330Tone,
+  waveData: S330WaveDataResponse,
+  baseFilename: string
+): Promise<WriteToneResult> {
+  // Convert wave data to samples
+  const samples = unpack12BitTo16Bit(waveData.data);
+
+  // Convert tone to YAML with wave file reference
+  const toneYaml = s330ToneConverter.toYaml(tone, `${baseFilename}.wav`);
+  const yamlContent = stringifyYaml(toneYaml, {
+    indent: 2,
+    lineWidth: 120,
+  });
+
+  // Write YAML file
+  const yamlHandle = await directory.getFileHandle(`${baseFilename}.yaml`, { create: true });
+  const yamlWritable = await yamlHandle.createWritable();
+  await yamlWritable.write(yamlContent);
+  await yamlWritable.close();
+
+  // Write WAV file
+  const wavBlob = createWavBlobFromSamples(samples, waveData.sampleRate);
+  const wavHandle = await directory.getFileHandle(`${baseFilename}.wav`, { create: true });
+  const wavWritable = await wavHandle.createWritable();
+  await wavWritable.write(wavBlob);
+  await wavWritable.close();
+
+  return {
+    segmentLength: calculateSegmentsNeeded(samples.length),
+  };
+}
+
+/**
+ * Write a patch's YAML file to a directory.
+ * This is the canonical function for writing patch data - used by both
+ * individual patch export and set export operations.
+ *
+ * @param directory - Directory handle to write file into
+ * @param patch - S330 patch parameters
+ * @param baseFilename - Base filename without extension (e.g., "P01" or "P01 Strings")
+ */
+async function writePatchFileToDirectory(
+  directory: FileSystemDirectoryHandle,
+  patch: S330Patch,
+  baseFilename: string
+): Promise<void> {
+  // Convert patch to YAML
+  const patchYaml = s330PatchConverter.toYaml(patch);
+  const yamlContent = stringifyYaml(patchYaml, {
+    indent: 2,
+    lineWidth: 120,
+  });
+
+  // Write YAML file
+  const yamlHandle = await directory.getFileHandle(`${baseFilename}.yaml`, { create: true });
+  const yamlWritable = await yamlHandle.createWritable();
+  await yamlWritable.write(yamlContent);
+  await yamlWritable.close();
+}
+
+/**
+ * Generate a tone filename from slot index and optional name.
+ * Format: "T01" or "T01 PianoName" if name is provided
+ */
+function getToneFilename(slotIndex: number, toneName?: string): string {
+  const slotPrefix = `T${String(slotIndex + 1).padStart(2, '0')}`;
+  const sanitizedName = (toneName || '').trim().replace(/[<>:"/\\|?*]/g, '_');
+  return sanitizedName ? `${slotPrefix} ${sanitizedName}` : slotPrefix;
+}
+
+/**
+ * Generate a patch filename from slot index and optional name.
+ * Format: "P01" or "P01 StringPad" if name is provided
+ */
+function getPatchFilename(slotIndex: number, patchName?: string): string {
+  const slotPrefix = `P${String(slotIndex + 1).padStart(2, '0')}`;
+  const sanitizedName = (patchName || '').trim().replace(/[<>:"/\\|?*]/g, '_');
+  return sanitizedName ? `${slotPrefix} ${sanitizedName}` : slotPrefix;
+}
+
+// =========================================================================
+// Individual Tone Export
+// =========================================================================
+
 /**
  * Export tone to a specific directory using File System Access API.
  * Automatically creates library/s330/tones/ subdirectory structure.
@@ -242,26 +352,18 @@ export async function exportToneToDirectory(
   customName?: string,
   onProgress?: (progress: number) => void
 ): Promise<void> {
-  const { yamlContent, wavBlob, toneName } = prepareExport(tone, waveData, customName);
+  const toneName = customName || tone.name || 'untitled';
+  const sanitizedName = toneName.replace(/[<>:"/\\|?*]/g, '_').trim();
 
-  onProgress?.(50);
+  onProgress?.(25);
 
   // Create library/s330/tones/ subdirectory structure
   const tonesDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'tones']);
 
-  // Write YAML file
-  const yamlHandle = await tonesDir.getFileHandle(`${toneName}.yaml`, { create: true });
-  const yamlWritable = await yamlHandle.createWritable();
-  await yamlWritable.write(yamlContent);
-  await yamlWritable.close();
+  onProgress?.(50);
 
-  onProgress?.(75);
-
-  // Write WAV file
-  const wavHandle = await tonesDir.getFileHandle(`${toneName}.wav`, { create: true });
-  const wavWritable = await wavHandle.createWritable();
-  await wavWritable.write(wavBlob);
-  await wavWritable.close();
+  // Write tone files using shared helper
+  await writeToneFilesToDirectory(tonesDir, tone, waveData, sanitizedName);
 
   onProgress?.(100);
 }
@@ -625,10 +727,8 @@ export async function saveDeviceToSetIncremental(
 
   // Phase 2: Process each tone - fetch wave data and write to disk
   for (const { index, tone } of validTones) {
-    const toneSlot = `T${String(index + 1).padStart(2, '0')}`;
-    const sanitizedName = (tone.name || '').trim().replace(/[<>:"/\\|?*]/g, '_');
-    const toneFile = sanitizedName ? `${toneSlot} ${sanitizedName}` : toneSlot;
-    onStatus?.(`Fetching wave data for ${tone.name || toneSlot}...`);
+    const toneFile = getToneFilename(index, tone.name);
+    onStatus?.(`Fetching wave data for ${tone.name || toneFile}...`);
 
     try {
       // Fetch wave data fresh from device
@@ -636,35 +736,19 @@ export async function saveDeviceToSetIncremental(
         // Could add sub-progress here
       });
 
-      onStatus?.(`Writing ${tone.name || toneSlot} to disk...`);
+      onStatus?.(`Writing ${tone.name || toneFile} to disk...`);
 
-      // Convert tone to YAML (tone was already fetched fresh from device)
-      const toneYaml = s330ToneConverter.toYaml(tone, `${toneFile}.wav`);
-      const yamlContent = stringifyYaml(toneYaml, { indent: 2, lineWidth: 120 });
-
-      // Write YAML
-      const yamlHandle = await tonesDir.getFileHandle(`${toneFile}.yaml`, { create: true });
-      const yamlWritable = await yamlHandle.createWritable();
-      await yamlWritable.write(yamlContent);
-      await yamlWritable.close();
-
-      // Convert and write WAV - using the proper 12-bit to 16-bit conversion
-      const samples = unpack12BitTo16Bit(waveResponse.data);
-      const wavBlob = createWavBlobFromSamples(samples, waveResponse.sampleRate);
-      const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`, { create: true });
-      const wavWritable = await wavHandle.createWritable();
-      await wavWritable.write(wavBlob);
-      await wavWritable.close();
+      // Write tone files using shared helper
+      const result = await writeToneFilesToDirectory(tonesDir, tone, waveResponse, toneFile);
 
       // Track for manifest - use fresh tone data for allocation info
-      const actualSegmentLength = calculateSegmentsNeeded(samples.length);
       toneEntries.push({
         slot: index,
         file: toneFile,
         waveAllocation: {
           bank: tone.wave.bank as 0 | 1,
           segmentTop: tone.wave.segmentTop,
-          segmentLength: actualSegmentLength,
+          segmentLength: result.segmentLength,
         },
       });
     } catch (err) {
@@ -678,21 +762,12 @@ export async function saveDeviceToSetIncremental(
 
   // Phase 3: Process each patch - write to disk (already fetched fresh)
   for (const { index, patch } of validPatches) {
-    const patchSlot = `P${String(index + 1).padStart(2, '0')}`;
-    const sanitizedName = (patch.common.name || '').trim().replace(/[<>:"/\\|?*]/g, '_');
-    const patchFile = sanitizedName ? `${patchSlot} ${sanitizedName}` : patchSlot;
-    onStatus?.(`Writing ${patch.common.name || patchSlot} to disk...`);
+    const patchFile = getPatchFilename(index, patch.common.name);
+    onStatus?.(`Writing ${patch.common.name || patchFile} to disk...`);
 
     try {
-      // Convert patch to YAML
-      const patchYaml = s330PatchConverter.toYaml(patch);
-      const yamlContent = stringifyYaml(patchYaml, { indent: 2, lineWidth: 120 });
-
-      // Write YAML
-      const yamlHandle = await patchesDir.getFileHandle(`${patchFile}.yaml`, { create: true });
-      const yamlWritable = await yamlHandle.createWritable();
-      await yamlWritable.write(yamlContent);
-      await yamlWritable.close();
+      // Write patch file using shared helper
+      await writePatchFileToDirectory(patchesDir, patch, patchFile);
 
       // Track for manifest
       patchEntries.push({
@@ -886,14 +961,34 @@ export async function deleteSet(
 // =========================================================================
 
 /**
- * Analyze a patch to find which tones it references.
+ * Get the tone indices that a patch actually depends on.
+ *
+ * THIS IS THE CANONICAL FUNCTION FOR PATCH TONE DEPENDENCY ANALYSIS.
+ * Do not create duplicate or "simpler" versions of this function.
  *
  * Examines toneLayer1 and toneLayer2 arrays to find all unique tone indices.
  * Returns sorted array of tone slot indices (0-31).
  *
- * Note: toneLayer2 is only meaningful when keyMode uses velocity switching
- * ('v-sw', 'x-fade', 'v-mix') AND the corresponding toneLayer1 entry is >= 0.
- * Otherwise toneLayer2 values are just defaults (all 0s) and should be ignored.
+ * ============================================================================
+ * CRITICAL: toneLayer2 HANDLING - READ BEFORE MODIFYING
+ * ============================================================================
+ *
+ * toneLayer2 is ONLY meaningful when BOTH conditions are true:
+ *   1. keyMode uses velocity switching ('v-sw', 'x-fade', 'v-mix')
+ *   2. The corresponding toneLayer1 entry is >= 0 (key is assigned)
+ *
+ * Otherwise, toneLayer2 values are S-330 defaults (all 0s) and MUST be
+ * ignored. If you naively iterate toneLayer2 looking for valid indices,
+ * you will incorrectly include tone slot 0 (T01) for nearly every patch.
+ *
+ * This bug has been introduced multiple times by developers who created
+ * "simpler" versions that skip the keyMode check. DO NOT DO THIS.
+ *
+ * See commit 405cb68 for the original fix and explanation.
+ * ============================================================================
+ *
+ * @param patch - The S330 patch to analyze
+ * @returns Sorted array of tone slot indices (0-31) the patch depends on
  */
 export function getPatchToneDependencies(patch: S330Patch): number[] {
   const usedTones = new Set<number>();
@@ -1084,6 +1179,231 @@ export async function deleteIndividualTone(
   } catch {
     // WAV file may not exist, that's ok
   }
+}
+
+// =========================================================================
+// Individual Patch Operations
+// =========================================================================
+
+/**
+ * Information about an individual patch bundle in the library.
+ */
+export interface LibraryPatchInfo {
+  /** Patch name (from YAML) */
+  name: string;
+  /** Directory name for the patch bundle */
+  directoryName: string;
+  /** Number of dependent tones included */
+  toneCount: number;
+}
+
+/**
+ * Tone data to be included in a patch bundle export.
+ */
+export interface PatchBundleTone {
+  /** Original tone slot index (0-31) */
+  slot: number;
+  /** The tone parameters */
+  tone: S330Tone;
+  /** The wave data response from device */
+  waveData: S330WaveDataResponse;
+}
+
+/**
+ * Result of loading a patch bundle from library.
+ */
+export interface LoadedPatchBundle {
+  /** The patch parameters */
+  patch: PatchYaml;
+  /** Map of slot -> tone data for all included tones */
+  tones: Map<number, { yaml: ToneYaml; wavData: Uint8Array }>;
+}
+
+/**
+ * List all individual patch bundles in the library (outside of sets).
+ *
+ * Scans `library/s330/patches/` for directories containing patch.yaml.
+ */
+export async function listIndividualPatches(
+  directoryHandle: FileSystemDirectoryHandle
+): Promise<LibraryPatchInfo[]> {
+  const patches: LibraryPatchInfo[] = [];
+
+  try {
+    // Navigate to library/s330/patches/
+    const patchesDir = await getNestedDirectory(directoryHandle, [
+      'library', 's330', 'patches'
+    ]);
+
+    // Scan for directories containing patch.yaml
+    for await (const entry of patchesDir.values()) {
+      if (entry.kind === 'directory') {
+        try {
+          const patchDir = await patchesDir.getDirectoryHandle(entry.name);
+          const yamlHandle = await patchDir.getFileHandle('patch.yaml');
+          const yamlFile = await yamlHandle.getFile();
+          const content = await yamlFile.text();
+          const yaml = parseYaml(content) as { name?: string };
+
+          // Count tones in the tones/ subdirectory
+          let toneCount = 0;
+          try {
+            const tonesDir = await patchDir.getDirectoryHandle('tones');
+            for await (const toneEntry of tonesDir.values()) {
+              if (toneEntry.kind === 'file' && toneEntry.name.endsWith('.yaml')) {
+                toneCount++;
+              }
+            }
+          } catch {
+            // No tones directory
+          }
+
+          patches.push({
+            name: yaml.name || entry.name,
+            directoryName: entry.name,
+            toneCount,
+          });
+        } catch {
+          // Not a valid patch bundle, skip
+        }
+      }
+    }
+  } catch {
+    // Directory doesn't exist yet, return empty list
+  }
+
+  return patches.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+
+/**
+ * Export a patch bundle to the library with all dependent tones.
+ *
+ * Creates directory structure:
+ * library/s330/patches/{name}/
+ *   patch.yaml        - Patch parameters
+ *   tones/
+ *     T01.yaml        - Tone parameters (if slot 0 is used)
+ *     T01.wav         - Wave data
+ *     T05.yaml        - Another tone (if slot 4 is used)
+ *     T05.wav
+ *     ...
+ */
+export async function exportPatchToDirectory(
+  directoryHandle: FileSystemDirectoryHandle,
+  patch: S330Patch,
+  tones: PatchBundleTone[],
+  customName?: string,
+  onProgress?: (progress: number) => void
+): Promise<void> {
+  const patchName = customName || patch.common.name || 'untitled';
+  const sanitizedName = patchName.replace(/[<>:"/\\|?*]/g, '_').trim();
+
+  onProgress?.(5);
+
+  // Create library/s330/patches/{name}/ directory structure
+  const patchesDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'patches']);
+  const patchDir = await patchesDir.getDirectoryHandle(sanitizedName, { create: true });
+  const tonesDir = await patchDir.getDirectoryHandle('tones', { create: true });
+
+  onProgress?.(10);
+
+  // Write each tone using shared helper
+  const totalTones = tones.length;
+  for (let i = 0; i < totalTones; i++) {
+    const { slot, tone, waveData } = tones[i];
+    const toneFilename = getToneFilename(slot, tone.name);
+
+    await writeToneFilesToDirectory(tonesDir, tone, waveData, toneFilename);
+
+    // Progress: 10-80% for tones
+    onProgress?.(10 + Math.floor(((i + 1) / totalTones) * 70));
+  }
+
+  // Write patch.yaml using shared helper
+  // For patch bundles, we override the name if customName provided
+  const patchToWrite = customName
+    ? { ...patch, common: { ...patch.common, name: customName } }
+    : patch;
+  await writePatchFileToDirectory(patchDir, patchToWrite, 'patch');
+
+  onProgress?.(100);
+}
+
+/**
+ * Load an individual patch bundle from the library.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param patchDirName - Patch directory name
+ * @returns Loaded patch bundle with patch and tones
+ */
+export async function loadIndividualPatch(
+  directoryHandle: FileSystemDirectoryHandle,
+  patchDirName: string
+): Promise<LoadedPatchBundle> {
+  const patchesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'patches'
+  ]);
+
+  const patchDir = await patchesDir.getDirectoryHandle(patchDirName);
+
+  // Load patch.yaml
+  const patchHandle = await patchDir.getFileHandle('patch.yaml');
+  const patchFile = await patchHandle.getFile();
+  const patchContent = await patchFile.text();
+  const patch = PatchYamlSchema.parse(parseYaml(patchContent));
+
+  // Load all tones from tones/ subdirectory
+  const tones = new Map<number, { yaml: ToneYaml; wavData: Uint8Array }>();
+
+  try {
+    const tonesDir = await patchDir.getDirectoryHandle('tones');
+
+    for await (const entry of tonesDir.values()) {
+      if (entry.kind === 'file' && entry.name.endsWith('.yaml')) {
+        // Parse slot from filename (T01.yaml -> slot 0)
+        const match = entry.name.match(/^T(\d{2})\.yaml$/);
+        if (!match) continue;
+
+        const slot = parseInt(match[1], 10) - 1;
+        if (slot < 0 || slot >= 32) continue;
+
+        // Load tone YAML
+        const yamlHandle = await tonesDir.getFileHandle(entry.name);
+        const yamlFile = await yamlHandle.getFile();
+        const yamlContent = await yamlFile.text();
+        const toneYaml = ToneYamlSchema.parse(parseYaml(yamlContent));
+
+        // Load WAV data
+        const wavFilename = entry.name.replace('.yaml', '.wav');
+        const wavHandle = await tonesDir.getFileHandle(wavFilename);
+        const wavFile = await wavHandle.getFile();
+        const wavBuffer = await wavFile.arrayBuffer();
+        const wavData = new Uint8Array(wavBuffer);
+
+        tones.set(slot, { yaml: toneYaml, wavData });
+      }
+    }
+  } catch {
+    // No tones directory - patch has no dependent tones
+  }
+
+  return { patch, tones };
+}
+
+/**
+ * Delete an individual patch bundle from the library.
+ */
+export async function deleteIndividualPatch(
+  directoryHandle: FileSystemDirectoryHandle,
+  patchDirName: string
+): Promise<void> {
+  const patchesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'patches'
+  ]);
+
+  // Remove the entire patch directory recursively
+  await patchesDir.removeEntry(patchDirName, { recursive: true });
 }
 
 // =========================================================================
