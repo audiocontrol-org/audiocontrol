@@ -193,109 +193,112 @@ export function DeviceMemoryPanel({
         </p>
       </div>
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto">
-        {/* Tones Section */}
-        <div className="p-2">
-          <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1">
+      {/* Two independent scroll panes */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Tones Section - independent scroll */}
+        <div className="flex-1 min-h-0 flex flex-col">
+          <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-4 py-2 border-b border-s330-accent/30">
             Tones (32 slots)
           </div>
-          <div className="space-y-0.5">
-            {tones.map((tone, index) => {
-              const isSelected = selectedType === 'tone' && selectedIndex === index;
-              const bankIndex = Math.floor(index / 8);
-              const isLoaded = loadedToneBanks.includes(bankIndex);
-              const isDragOver = dragOverToneSlot === index;
+          <div className="flex-1 overflow-y-auto p-2">
+            <div className="space-y-0.5">
+              {tones.map((tone, index) => {
+                const isSelected = selectedType === 'tone' && selectedIndex === index;
+                const bankIndex = Math.floor(index / 8);
+                const isLoaded = loadedToneBanks.includes(bankIndex);
+                const isDragOver = dragOverToneSlot === index;
 
-              return (
-                <div
-                  key={index}
-                  onClick={() => onSelectTone(index)}
-                  draggable={!!tone}
-                  onDragStart={tone ? (e) => handleToneDragStart(e, index, tone) : undefined}
-                  onDragOver={handleToneSlotDragOver}
-                  onDragEnter={(e) => handleToneSlotDragEnter(e, index)}
-                  onDragLeave={handleToneSlotDragLeave}
-                  onDrop={(e) => handleToneSlotDrop(e, index)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && onSelectTone(index)}
-                  className={cn(
-                    'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-                    'flex items-center gap-2',
-                    isDragOver
-                      ? 'bg-s330-highlight/30 ring-2 ring-s330-highlight ring-inset'
-                      : isSelected
-                        ? 'bg-s330-highlight/20 text-s330-highlight'
-                        : tone
-                          ? 'text-s330-text hover:bg-s330-accent/30 cursor-grab active:cursor-grabbing'
-                          : 'text-s330-muted/50 hover:bg-s330-accent/20'
-                  )}
-                >
-                  <span className="w-8 text-xs font-mono text-s330-muted">
-                    {formatToneSlot(index)}
-                  </span>
-                  <span className={cn('flex-1 truncate', !tone && 'italic')}>
-                    {isDragOver ? 'Drop to import here' : tone?.name || (isLoaded ? '(empty)' : '(not loaded)')}
-                  </span>
-                  {tone && !isDragOver && (
-                    <span className="text-xs text-s330-muted">
-                      {tone.sampleRate}
+                return (
+                  <div
+                    key={index}
+                    onClick={() => onSelectTone(index)}
+                    draggable={!!tone}
+                    onDragStart={tone ? (e) => handleToneDragStart(e, index, tone) : undefined}
+                    onDragOver={handleToneSlotDragOver}
+                    onDragEnter={(e) => handleToneSlotDragEnter(e, index)}
+                    onDragLeave={handleToneSlotDragLeave}
+                    onDrop={(e) => handleToneSlotDrop(e, index)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && onSelectTone(index)}
+                    className={cn(
+                      'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+                      'flex items-center gap-2',
+                      isDragOver
+                        ? 'bg-s330-highlight/30 ring-2 ring-s330-highlight ring-inset'
+                        : isSelected
+                          ? 'bg-s330-highlight/20 text-s330-highlight'
+                          : tone
+                            ? 'text-s330-text hover:bg-s330-accent/30 cursor-grab active:cursor-grabbing'
+                            : 'text-s330-muted/50 hover:bg-s330-accent/20'
+                    )}
+                  >
+                    <span className="w-8 text-xs font-mono text-s330-muted">
+                      {formatToneSlot(index)}
                     </span>
-                  )}
-                </div>
-              );
-            })}
+                    <span className={cn('flex-1 truncate', !tone && 'italic')}>
+                      {isDragOver ? 'Drop to import here' : tone?.name || (isLoaded ? '(empty)' : '(not loaded)')}
+                    </span>
+                    {tone && !isDragOver && (
+                      <span className="text-xs text-s330-muted">
+                        {tone.sampleRate}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
-        {/* Patches Section */}
-        <div className="p-2 border-t border-s330-accent/50">
-          <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1">
+        {/* Patches Section - independent scroll */}
+        <div className="flex-1 min-h-0 flex flex-col border-t border-s330-accent">
+          <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-4 py-2 border-b border-s330-accent/30">
             Patches (16 slots)
           </div>
-          <div className="space-y-0.5">
-            {patches.map((patch, index) => {
-              const isSelected = selectedType === 'patch' && selectedIndex === index;
-              const bankIndex = Math.floor(index / 8);
-              const isLoaded = loadedPatchBanks.includes(bankIndex);
+          <div className="flex-1 overflow-y-auto p-2">
+            <div className="space-y-0.5">
+              {patches.map((patch, index) => {
+                const isSelected = selectedType === 'patch' && selectedIndex === index;
+                const bankIndex = Math.floor(index / 8);
+                const isLoaded = loadedPatchBanks.includes(bankIndex);
+                const isDragOver = dragOverPatchSlot === index;
 
-              const isDragOver = dragOverPatchSlot === index;
-
-              return (
-                <div
-                  key={index}
-                  onClick={() => onSelectPatch(index)}
-                  draggable={!!patch}
-                  onDragStart={patch ? (e) => handlePatchDragStart(e, index, patch) : undefined}
-                  onDragOver={handlePatchSlotDragOver}
-                  onDragEnter={(e) => handlePatchSlotDragEnter(e, index)}
-                  onDragLeave={handlePatchSlotDragLeave}
-                  onDrop={(e) => handlePatchSlotDrop(e, index)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && onSelectPatch(index)}
-                  className={cn(
-                    'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-                    'flex items-center gap-2',
-                    isDragOver
-                      ? 'bg-s330-highlight/30 ring-2 ring-s330-highlight ring-inset'
-                      : isSelected
-                        ? 'bg-s330-highlight/20 text-s330-highlight'
-                        : patch
-                          ? 'text-s330-text hover:bg-s330-accent/30 cursor-grab active:cursor-grabbing'
-                          : 'text-s330-muted/50 hover:bg-s330-accent/20'
-                  )}
-                >
-                  <span className="w-8 text-xs font-mono text-s330-muted">
-                    {formatPatchSlot(index)}
-                  </span>
-                  <span className={cn('flex-1 truncate', !patch && 'italic')}>
-                    {isDragOver ? 'Drop to import here' : patch?.common.name || (isLoaded ? '(empty)' : '(not loaded)')}
-                  </span>
-                </div>
-              );
-            })}
+                return (
+                  <div
+                    key={index}
+                    onClick={() => onSelectPatch(index)}
+                    draggable={!!patch}
+                    onDragStart={patch ? (e) => handlePatchDragStart(e, index, patch) : undefined}
+                    onDragOver={handlePatchSlotDragOver}
+                    onDragEnter={(e) => handlePatchSlotDragEnter(e, index)}
+                    onDragLeave={handlePatchSlotDragLeave}
+                    onDrop={(e) => handlePatchSlotDrop(e, index)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && onSelectPatch(index)}
+                    className={cn(
+                      'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+                      'flex items-center gap-2',
+                      isDragOver
+                        ? 'bg-s330-highlight/30 ring-2 ring-s330-highlight ring-inset'
+                        : isSelected
+                          ? 'bg-s330-highlight/20 text-s330-highlight'
+                          : patch
+                            ? 'text-s330-text hover:bg-s330-accent/30 cursor-grab active:cursor-grabbing'
+                            : 'text-s330-muted/50 hover:bg-s330-accent/20'
+                    )}
+                  >
+                    <span className="w-8 text-xs font-mono text-s330-muted">
+                      {formatPatchSlot(index)}
+                    </span>
+                    <span className={cn('flex-1 truncate', !patch && 'italic')}>
+                      {isDragOver ? 'Drop to import here' : patch?.common.name || (isLoaded ? '(empty)' : '(not loaded)')}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
