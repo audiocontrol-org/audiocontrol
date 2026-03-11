@@ -7,32 +7,13 @@
  */
 
 import type { S330Patch, S330PatchCommon } from '@audiocontrol/sampler-devices/s330';
+import {
+  createEmptyToneLayer,
+  midiNoteToLayerIndex,
+} from '@audiocontrol/sampler-devices/s330';
 import type { ToneYaml, DrumKitTemplateYaml, VelocityLayerTemplateYaml } from '@/schemas/index.js';
 import type { TemplateHandler, TemplateApplicationResult } from './template-engine.js';
 import { resolveKey, validateToneReferences } from './template-engine.js';
-
-/**
- * Create an empty 109-element tone layer array.
- * S-330 patches use 109 entries for MIDI notes 21-127.
- */
-function createEmptyToneLayer(defaultValue: number): number[] {
-  return new Array(109).fill(defaultValue);
-}
-
-/**
- * Convert a MIDI note number to an S-330 tone layer index.
- * S-330 supports MIDI notes 21-127 (indices 0-108).
- *
- * @param midiNote - MIDI note number (0-127)
- * @returns Layer index (0-108) or -1 if out of range
- */
-function midiNoteToLayerIndex(midiNote: number): number {
-  const index = midiNote - 21;
-  if (index < 0 || index >= 109) {
-    return -1;
-  }
-  return index;
-}
 
 /**
  * Create a default S-330 patch common structure.
@@ -44,8 +25,8 @@ function createDefaultPatchCommon(name: string): S330PatchCommon {
     aftertouchSens: 64,
     keyMode: 'normal',
     velocityThreshold: 64,
-    toneLayer1: createEmptyToneLayer(-1),
-    toneLayer2: createEmptyToneLayer(0),
+    toneLayer1: createEmptyToneLayer(1),
+    toneLayer2: createEmptyToneLayer(2),
     copySource: 0,
     octaveShift: 0,
     level: 100,

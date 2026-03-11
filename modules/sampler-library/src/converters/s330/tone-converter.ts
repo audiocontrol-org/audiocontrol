@@ -304,7 +304,7 @@ export const s330ToneConverter: ToneConverter<S330Tone, ToneYaml> = {
       loopMode: mapLoopModeFromYaml(yaml.wave.loopMode),
       lfo: ext.lfo ? lfoFromYaml(ext.lfo) : defaultLfo,
       tvaLfoDepth: ext.tva?.lfoDepth ?? 0,
-      transpose: ext.transpose ?? 64,
+      transpose: ext.transpose ?? 0,
       fineTune: ext.fineTune ?? 0,
       tvf: ext.tvf ? tvfFromYaml(ext.tvf) : defaultTvf,
       tva: ext.tva ? tvaFromYaml(ext.tva) : defaultTva,

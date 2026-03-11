@@ -17,6 +17,9 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^6.19.0
         version: 6.21.0(eslint@8.57.1)(typescript@5.9.2)
+      easymidi:
+        specifier: ^3.1.0
+        version: 3.1.0
       eslint:
         specifier: ^8.56.0
         version: 8.57.1
@@ -732,6 +735,12 @@ importers:
         specifier: ^2.0.3
         version: 2.0.3
     devDependencies:
+      '@audiocontrol/sampler-library':
+        specifier: workspace:*
+        version: link:../sampler-library
+      '@audiocontrol/sampler-midi':
+        specifier: workspace:*
+        version: link:../sampler-midi
       '@tsconfig/recommended':
         specifier: ^1.0.8
         version: 1.0.13
@@ -912,9 +921,6 @@ importers:
       '@audiocontrol/sampler-lib':
         specifier: workspace:*
         version: link:../sampler-lib
-      '@audiocontrol/sampler-library':
-        specifier: workspace:*
-        version: link:../sampler-library
       easymidi:
         specifier: ^3.1.0
         version: 3.1.0

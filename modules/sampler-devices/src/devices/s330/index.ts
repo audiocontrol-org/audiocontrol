@@ -312,6 +312,8 @@ export type {
     S330WaveSampleRate,
     WavData,
     S330WaveData,
+    WavSourceInfo,
+    PreparedS330Sample,
 } from './s330-wave-format.js';
 
 export {
@@ -321,4 +323,64 @@ export {
     s330ToWav,
     calculateSegmentsNeeded,
     validateWaveDataFits,
+    prepareWavForS330,
+    resample,
 } from './s330-wave-format.js';
+
+// =============================================================================
+// Drum Kit Import Service Exports
+// =============================================================================
+
+export type {
+    DrumSampleInput,
+    DrumKitImportConfig,
+    ImportedSample,
+    DrumKitImportResult,
+    ImportProgressCallback,
+} from './drum-kit-import-service.js';
+
+export {
+    importDrumKit,
+    verifyDrumKitImport,
+    createDrumTone,
+    createDrumKitPatch,
+} from './drum-kit-import-service.js';
+
+// =============================================================================
+// Tone Layer Utilities Exports
+// =============================================================================
+
+export type { ToneZone } from './s330-tone-layer.js';
+
+export {
+    // Constants
+    TONE_LAYER_MIN_MIDI_NOTE,
+    TONE_LAYER_MAX_MIDI_NOTE,
+    TONE_LAYER_SIZE,
+    TONE_LAYER_OFF,
+
+    // Index conversion
+    midiNoteToLayerIndex,
+    layerIndexToMidiNote,
+
+    // Factory functions
+    createEmptyToneLayer,
+
+    // Manipulation functions
+    getToneAtMidiNote,
+    setToneAtMidiNote,
+    setToneForMidiRange,
+    isValidToneLayerMidiNote,
+
+    // Zone functions
+    toneLayerToZones,
+    zonesToToneLayer,
+} from './s330-tone-layer.js';
+
+// =============================================================================
+// Tone Factory Exports
+// =============================================================================
+
+export type { CreateToneConfig } from './s330-tone-factory.js';
+
+export { createTone } from './s330-tone-factory.js';

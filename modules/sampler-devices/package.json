@@ -43,7 +43,7 @@
     "test:all": "vitest run",
     "test:coverage": "vitest run test/unit --coverage",
     "test:watch": "vitest",
-    "integration": "vitest run test/integration",
+    "test:integration": "vitest run --config vite.config.integration.ts",
     "test:hardware:s330": "vitest run test/integration/s330-hardware.test.ts",
     "build": "pnpm test && tsup",
     "clean": "rm -rf dist"
@@ -74,6 +74,8 @@
     "url": "https://github.com/oletizi/ol_dsp/issues"
   },
   "devDependencies": {
+    "@audiocontrol/sampler-library": "workspace:*",
+    "@audiocontrol/sampler-midi": "workspace:*",
     "@tsconfig/recommended": "^1.0.8",
     "@types/node": "^22.13.1",
     "@vitest/coverage-v8": "^1.2.0",

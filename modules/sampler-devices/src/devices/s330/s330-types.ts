@@ -58,7 +58,7 @@ export type S330KeyAssign = 'rotary' | 'fix';
  * Each patch is 512 bytes (1024 nibbles) with the following structure:
  * - 12-character name
  * - Performance parameters (bend, aftertouch, mode, etc.)
- * - Two tone mapping layers (109 keys each, MIDI notes 21-127)
+ * - Two tone mapping layers (109 keys each, MIDI notes 12-120 / C0-C9)
  * - Output and level settings
  */
 export interface S330PatchCommon {
@@ -68,7 +68,18 @@ export interface S330PatchCommon {
     keyMode: S330KeyMode;              // 00 1EH (0-4)
     velocityThreshold: number;         // 0-127 (00 20H) - V-Sw threshold
     toneLayer1: number[];              // 109 entries, -1 to 31 (00 22H-01 7BH)
-    toneLayer2: number[];              // 109 entries, 0-31 (01 7CH-03 55H)
+    /**
+     * 109 entries, 0-31 (01 7CH-03 55H)
+     *
+     * CRITICAL: toneLayer2 is ONLY meaningful when keyMode uses velocity
+     * switching ('v-sw', 'x-fade', 'v-mix') AND the corresponding toneLayer1
+     * entry is >= 0. Otherwise these are S-330 defaults (all 0s) that should
+     * be ignored when analyzing patch dependencies.
+     *
+     * Use getPatchToneDependencies() from library-service.ts instead of
+     * manually iterating this array.
+     */
+    toneLayer2: number[];
     copySource: number;                // 0-7 (03 56H)
     octaveShift: number;               // -2 to +2 (03 58H)
     level: number;                     // 0-127 (03 5AH)
@@ -252,7 +263,7 @@ export interface S330Tone {
     tvaLfoDepth: number;
 
     // === Pitch Parameters (00 48H - 00 4BH) ===
-    /** Transpose (0-127, 64=center) */
+    /** Transpose in semitones (-64 to +63, 0=no change) */
     transpose: number;
     /** Fine tune (-64 to +63) */
     fineTune: number;

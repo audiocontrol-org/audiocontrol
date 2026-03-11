@@ -5,24 +5,19 @@
  * Allows user to select target slot and wave memory allocation.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { S330Tone } from '@/core/midi/S330Client';
 import {
   loadToneFromSet,
   loadSetManifest,
+  loadIndividualTone,
   convertYamlToS330Tone,
 } from '@/lib/library-service';
+import { suggestToneAllocation, isToneSlotEmpty } from '@/lib/slot-allocation';
 import { cn } from '@/lib/utils';
-
-/**
- * Format tone slot number (0-31 -> T11-T48)
- */
-function formatToneSlot(index: number): string {
-  const bank = Math.floor(index / 8) + 1;
-  const slot = (index % 8) + 1;
-  return `T${bank}${slot}`;
-}
+import { formatToneSlot } from '@/lib/s330-format';
+import { calculateSegmentsNeeded } from '@audiocontrol/sampler-devices/s330';
 
 export interface ImportLibraryToneDialogProps {
   /** Whether the dialog is open */
@@ -37,6 +32,8 @@ export interface ImportLibraryToneDialogProps {
   toneFile: string;
   /** Current device tones (to show slot occupancy) */
   deviceTones: (S330Tone | undefined)[];
+  /** Initial target tone slot (e.g., from drag-drop target) */
+  initialTargetSlot?: number;
   /** Callback to perform the import */
   onImport: (params: {
     setName: string;
@@ -65,6 +62,7 @@ export function ImportLibraryToneDialog({
   setName,
   toneFile,
   deviceTones,
+  initialTargetSlot,
   onImport,
   isImporting,
   importProgress,
@@ -77,8 +75,8 @@ export function ImportLibraryToneDialog({
   const [tone, setTone] = useState<S330Tone | null>(null);
   const [wavData, setWavData] = useState<Uint8Array | null>(null);
 
-  // User selections
-  const [targetSlot, setTargetSlot] = useState(0);
+  // User selections - use initialTargetSlot if provided
+  const [targetSlot, setTargetSlot] = useState(initialTargetSlot ?? 0);
   const [waveBank, setWaveBank] = useState<0 | 1>(0);
   const [segmentTop, setSegmentTop] = useState(0);
   const [segmentLength, setSegmentLength] = useState(1);
@@ -94,26 +92,67 @@ export function ImportLibraryToneDialog({
 
     const loadData = async () => {
       try {
-        // Load manifest to get original wave allocation
-        const loadedManifest = await loadSetManifest(libraryHandle, setName);
+        // Check if this is an individual tone (not from a set)
+        const isIndividual = setName === '__individual__';
+        let loadedWavData: Uint8Array;
+        let convertedTone: S330Tone;
+        let preferredBank: 0 | 1 = 0;
 
-        // Find tone entry in manifest
-        const entry = loadedManifest.tones.find((t) => t.file === toneFile);
+        if (isIndividual) {
+          // Load individual tone directly from library
+          const { yaml, wavData: data } = await loadIndividualTone(libraryHandle, toneFile);
+          loadedWavData = data;
+          convertedTone = convertYamlToS330Tone(yaml);
+          preferredBank = convertedTone.wave.bank as 0 | 1;
+        } else {
+          // Load from a set
+          const loadedManifest = await loadSetManifest(libraryHandle, setName);
+          const entry = loadedManifest.tones.find((t) => t.file === toneFile);
 
-        // Set defaults from original allocation if available
-        if (entry) {
-          setTargetSlot(entry.slot);
-          setWaveBank(entry.waveAllocation.bank);
-          setSegmentTop(entry.waveAllocation.segmentTop);
-          setSegmentLength(entry.waveAllocation.segmentLength);
+          if (entry) {
+            preferredBank = entry.waveAllocation.bank;
+          }
+
+          // Load tone and wave data
+          const { yaml, wavData: data } = await loadToneFromSet(libraryHandle, setName, toneFile);
+          loadedWavData = data;
+          convertedTone = convertYamlToS330Tone(yaml);
         }
 
-        // Load tone and wave data
-        const { yaml, wavData: data } = await loadToneFromSet(libraryHandle, setName, toneFile);
-        setWavData(data);
-
-        const convertedTone = convertYamlToS330Tone(yaml);
+        setWavData(loadedWavData);
         setTone(convertedTone);
+
+        // Calculate segments needed from actual wave data
+        const segmentsRequired = calculateSegmentsNeeded(loadedWavData.length / 2);
+        setSegmentLength(segmentsRequired);
+
+        // Use smart allocation to find safe defaults
+        // If dragged to a specific slot, use that as preferred; otherwise find empty slot
+        const allocation = suggestToneAllocation(
+          deviceTones,
+          segmentsRequired,
+          initialTargetSlot,
+          preferredBank
+        );
+
+        // Set target slot - prefer empty slot unless user dragged to specific slot
+        if (initialTargetSlot !== undefined) {
+          // User dragged to specific slot - use it but they can change
+          setTargetSlot(initialTargetSlot);
+        } else {
+          // Auto-select first empty slot
+          setTargetSlot(allocation.toneSlot);
+        }
+
+        // Set wave memory allocation - prefer available memory
+        if (allocation.waveMemory) {
+          setWaveBank(allocation.waveMemory.bank);
+          setSegmentTop(allocation.waveMemory.segmentTop);
+        } else {
+          // No available memory - use preferred bank, segment 0
+          setWaveBank(preferredBank);
+          setSegmentTop(0);
+        }
       } catch (err) {
         console.error('[ImportLibraryToneDialog] Failed to load tone:', err);
         setLoadError(err instanceof Error ? err.message : 'Failed to load tone');
@@ -123,7 +162,7 @@ export function ImportLibraryToneDialog({
     };
 
     loadData();
-  }, [open, libraryHandle, setName, toneFile]);
+  }, [open, libraryHandle, setName, toneFile, initialTargetSlot, deviceTones]);
 
   const handleImport = useCallback(async () => {
     if (!tone || !wavData) return;
@@ -150,6 +189,14 @@ export function ImportLibraryToneDialog({
   const segmentsNeeded = segmentLength;
   const isComplete = importProgress === 100 && !isImporting;
   const error = loadError || importError;
+
+  // Check if selected slot will overwrite existing data
+  // Use the same empty detection as the allocation logic (segmentLength === 0)
+  const willOverwriteTone = useMemo(() => {
+    return !isToneSlotEmpty(deviceTones, targetSlot);
+  }, [deviceTones, targetSlot]);
+
+  const existingToneName = deviceTones[targetSlot]?.name;
 
   return (
     <Dialog.Root open={open} onOpenChange={handleClose}>
@@ -184,7 +231,7 @@ export function ImportLibraryToneDialog({
           ) : (
             <div className="space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
-                Import "{toneFile}" from {setName} to device.
+                Import "{toneFile}" {setName === '__individual__' ? 'from library' : `from ${setName}`} to device.
               </Dialog.Description>
 
               {/* Tone Info */}
@@ -223,15 +270,19 @@ export function ImportLibraryToneDialog({
                   onChange={(e) => setTargetSlot(Number(e.target.value))}
                   disabled={isImporting}
                   className={cn(
-                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
+                    'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isImporting && 'opacity-50'
+                    isImporting && 'opacity-50',
+                    willOverwriteTone
+                      ? 'border-yellow-500/50'
+                      : 'border-s330-accent/50'
                   )}
                 >
                   {Array.from({ length: 32 }, (_, i) => {
                     const existingTone = deviceTones[i];
                     const slotLabel = formatToneSlot(i);
-                    const occupancy = existingTone ? ` - ${existingTone.name}` : ' - (empty)';
+                    const isEmpty = isToneSlotEmpty(deviceTones, i);
+                    const occupancy = isEmpty ? ' - (empty)' : ` - ${existingTone?.name || ''}`;
                     return (
                       <option key={i} value={i}>
                         {slotLabel}{occupancy}
@@ -239,6 +290,14 @@ export function ImportLibraryToneDialog({
                     );
                   })}
                 </select>
+                {willOverwriteTone && (
+                  <p className="text-xs text-yellow-400 mt-1 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    Will overwrite "{existingToneName}"
+                  </p>
+                )}
               </div>
 
               {/* Wave Bank and Segment */}

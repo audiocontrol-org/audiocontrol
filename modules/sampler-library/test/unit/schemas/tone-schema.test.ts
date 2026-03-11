@@ -16,7 +16,7 @@ describe('ToneYamlSchema', () => {
     s330: {
       originalKey: 60,
       outputAssign: 0,
-      transpose: 64,
+      transpose: 0,
       fineTune: 0,
       tvf: {
         cutoff: 127,
@@ -134,7 +134,7 @@ describe('ToneYamlSchema', () => {
     const result = ToneYamlSchema.safeParse(toneWithoutDefaults);
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.s330?.transpose).toBe(64);
+      expect(result.data.s330?.transpose).toBe(0);
       expect(result.data.s330?.fineTune).toBe(0);
     }
   });

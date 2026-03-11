@@ -223,8 +223,13 @@ export function createWav(samples: Int16Array, sampleRate: number): ArrayBuffer 
 
 /**
  * Simple linear resampling.
+ *
+ * @param samples - Source samples
+ * @param fromRate - Source sample rate in Hz
+ * @param toRate - Target sample rate in Hz
+ * @returns Resampled samples at the target rate
  */
-function resample(samples: Int16Array, fromRate: number, toRate: number): Int16Array {
+export function resample(samples: Int16Array, fromRate: number, toRate: number): Int16Array {
   if (fromRate === toRate) {
     return samples;
   }
@@ -341,5 +346,108 @@ export function validateWaveDataFits(
     fits: sampleCount <= availableSamples,
     neededSegments,
     availableSamples,
+  };
+}
+
+/**
+ * Source WAV metadata captured during conversion.
+ */
+export interface WavSourceInfo {
+  /** Original sample rate in Hz */
+  sampleRate: number;
+  /** Original bit depth */
+  bitsPerSample: number;
+  /** Original channel count */
+  channels: number;
+  /** Original sample count (after mono conversion) */
+  sampleCount: number;
+  /** Original duration in seconds */
+  duration: number;
+}
+
+/**
+ * Prepared S330 sample data ready for device upload.
+ */
+export interface PreparedS330Sample {
+  /** Encoded wave data (2 bytes per 12-bit sample) */
+  data: Uint8Array;
+  /** Number of samples */
+  sampleCount: number;
+  /** Number of segments needed on device */
+  segmentLength: number;
+  /** Target sample rate */
+  sampleRate: S330WaveSampleRate;
+  /** Source WAV metadata for diagnostics */
+  source: WavSourceInfo;
+}
+
+/**
+ * Convert raw WAV file bytes to S330 format.
+ *
+ * This is the CANONICAL function for WAV → S330 conversion.
+ * All code paths (set import, drum kit import, single sample import)
+ * should use this function to ensure consistent conversion behavior.
+ *
+ * @param wavBytes - Raw WAV file data
+ * @param targetSampleRate - Target sample rate (15000 or 30000 Hz)
+ * @param options - Optional configuration
+ * @returns Prepared sample data ready for device upload
+ */
+export function prepareWavForS330(
+  wavBytes: ArrayBuffer,
+  targetSampleRate: S330WaveSampleRate,
+  options?: { enableDiagnostics?: boolean }
+): PreparedS330Sample {
+  const wavData = parseWav(wavBytes);
+
+  // Capture source metadata
+  const source: WavSourceInfo = {
+    sampleRate: wavData.sampleRate,
+    bitsPerSample: wavData.bitsPerSample,
+    channels: wavData.channels,
+    sampleCount: wavData.samples.length,
+    duration: wavData.samples.length / wavData.sampleRate,
+  };
+
+  const s330Data = wavToS330(wavData, targetSampleRate);
+  const segmentLength = calculateSegmentsNeeded(s330Data.sampleCount);
+
+  // Diagnostic logging when enabled
+  if (options?.enableDiagnostics) {
+    const expectedOutputSamples = Math.floor(wavData.samples.length * (targetSampleRate / wavData.sampleRate));
+    const actualRatio = wavData.samples.length / s330Data.sampleCount;
+    const expectedRatio = wavData.sampleRate / targetSampleRate;
+
+    console.log(`[prepareWavForS330] ========================================`);
+    console.log(`[prepareWavForS330] SOURCE WAV:`);
+    console.log(`[prepareWavForS330]   Sample rate: ${wavData.sampleRate} Hz`);
+    console.log(`[prepareWavForS330]   Bit depth: ${wavData.bitsPerSample}-bit`);
+    console.log(`[prepareWavForS330]   Channels: ${wavData.channels}`);
+    console.log(`[prepareWavForS330]   Sample count: ${wavData.samples.length}`);
+    console.log(`[prepareWavForS330]   Duration: ${source.duration.toFixed(3)}s`);
+    console.log(`[prepareWavForS330] TARGET:`);
+    console.log(`[prepareWavForS330]   Sample rate: ${targetSampleRate} Hz`);
+    console.log(`[prepareWavForS330]   Expected samples: ${expectedOutputSamples}`);
+    console.log(`[prepareWavForS330] RESULT:`);
+    console.log(`[prepareWavForS330]   Output samples: ${s330Data.sampleCount}`);
+    console.log(`[prepareWavForS330]   Output bytes: ${s330Data.data.length}`);
+    console.log(`[prepareWavForS330]   Segments: ${segmentLength}`);
+    console.log(`[prepareWavForS330]   Output duration: ${(s330Data.sampleCount / targetSampleRate).toFixed(3)}s`);
+
+    if (Math.abs(actualRatio - expectedRatio) > 0.01) {
+      console.error(`[prepareWavForS330] ⚠️ RESAMPLING MISMATCH!`);
+      console.error(`[prepareWavForS330]   Actual ratio: ${actualRatio.toFixed(4)}`);
+      console.error(`[prepareWavForS330]   Expected ratio: ${expectedRatio.toFixed(4)}`);
+    } else {
+      console.log(`[prepareWavForS330] ✓ Resampling verified: ${actualRatio.toFixed(4)}x`);
+    }
+  }
+
+  return {
+    data: s330Data.data,
+    sampleCount: s330Data.sampleCount,
+    segmentLength,
+    sampleRate: targetSampleRate,
+    source,
   };
 }

@@ -70,12 +70,12 @@ describe('s330TemplateHandler', () => {
       const patch = result.patches[0];
       expect(patch?.common.name).toBe('Test Kit');
 
-      // C2 = MIDI 36, layer index = 36 - 21 = 15
-      expect(patch?.common.toneLayer1[15]).toBe(0); // kick
-      // D2 = MIDI 38, layer index = 17
-      expect(patch?.common.toneLayer1[17]).toBe(1); // snare
-      // MIDI 42, layer index = 21
-      expect(patch?.common.toneLayer1[21]).toBe(2); // hihat
+      // C2 = MIDI 36, layer index = 36 - 12 = 24
+      expect(patch?.common.toneLayer1[24]).toBe(0); // kick
+      // D2 = MIDI 38, layer index = 26
+      expect(patch?.common.toneLayer1[26]).toBe(1); // snare
+      // MIDI 42, layer index = 30
+      expect(patch?.common.toneLayer1[30]).toBe(2); // hihat
     });
 
     it('should report missing tones', () => {
@@ -241,13 +241,13 @@ describe('s330TemplateHandler', () => {
       expect(patch?.common.velocityThreshold).toBe(65);
 
       // Check that keys in range have both layers assigned
-      // C2 = 36, layer index = 15
-      expect(patch?.common.toneLayer1[15]).toBe(0); // soft
-      expect(patch?.common.toneLayer2[15]).toBe(1); // loud
+      // C2 = 36, layer index = 36 - 12 = 24
+      expect(patch?.common.toneLayer1[24]).toBe(0); // soft
+      expect(patch?.common.toneLayer2[24]).toBe(1); // loud
 
-      // C7 = 96, layer index = 75
-      expect(patch?.common.toneLayer1[75]).toBe(0); // soft
-      expect(patch?.common.toneLayer2[75]).toBe(1); // loud
+      // C7 = 96, layer index = 96 - 12 = 84
+      expect(patch?.common.toneLayer1[84]).toBe(0); // soft
+      expect(patch?.common.toneLayer2[84]).toBe(1); // loud
     });
 
     it('should warn when more than 2 velocity layers are provided', () => {
@@ -289,9 +289,10 @@ describe('s330TemplateHandler', () => {
       expect(result.warnings.some(w => w.includes('only supports 2 velocity layers'))).toBe(true);
 
       // Should use first (pp) and last (ff) layers
+      // C2 = 36, layer index = 36 - 12 = 24
       const patch = result.patches[0];
-      expect(patch?.common.toneLayer1[15]).toBe(0); // pp (first)
-      expect(patch?.common.toneLayer2[15]).toBe(3); // ff (last)
+      expect(patch?.common.toneLayer1[24]).toBe(0); // pp (first)
+      expect(patch?.common.toneLayer2[24]).toBe(3); // ff (last)
     });
 
     it('should report missing tones', () => {

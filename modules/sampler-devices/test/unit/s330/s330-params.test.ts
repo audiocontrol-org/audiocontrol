@@ -926,8 +926,8 @@ describe('S-330 Structure Encoding', () => {
                     offset: 20,
                 },
                 tvaLfoDepth: 30,
-                transpose: 70,
-                fineTune: -10,
+                transpose: 0, // Raw value: 0 = center
+                fineTune: 0,  // Raw value: 0 = center
                 tvf: {
                     cutoff: 100,
                     resonance: 30,

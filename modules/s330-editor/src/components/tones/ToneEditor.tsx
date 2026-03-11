@@ -529,9 +529,9 @@ export function ToneEditor({
                         value={tone.transpose}
                         onChange={(v) => onUpdate?.({ ...tone, transpose: v })}
                         onCommit={onCommit}
-                        min={0}
-                        max={127}
-                        formatValue={(v) => `${v - 64} semitones`}
+                        min={-24}
+                        max={24}
+                        formatValue={(v) => `${v} semitones`}
                         disabled
                         tooltip={TONE_TOOLTIPS.transpose}
                     />

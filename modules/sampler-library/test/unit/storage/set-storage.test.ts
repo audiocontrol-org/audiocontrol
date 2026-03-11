@@ -38,7 +38,7 @@ describe('SetStorage', () => {
     s330: {
       originalKey: 60,
       outputAssign: 0,
-      transpose: 64,
+      transpose: 0,
       fineTune: 0,
       tva: {
         level: 127,
