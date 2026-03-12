@@ -2488,10 +2488,11 @@ export async function updateDrumKitSlices(
   directoryHandle: FileSystemDirectoryHandle,
   kitName: string,
   slices: SliceDefinitionInput[],
-  kitConfig?: DrumKitConfigUpdate
+  kitConfig?: DrumKitConfigUpdate,
+  path: string[] = []
 ): Promise<void> {
   const kitDir = await getNestedDirectory(directoryHandle, [
-    'library', 's330', 'drum-kits', kitName
+    'library', 's330', 'drum-kits', ...path, kitName
   ]);
 
   // Read existing kit.yaml

@@ -123,6 +123,7 @@ export function LibraryPage() {
   const [sliceEditDialog, setSliceEditDialog] = useState<{
     open: boolean;
     kitName: string;
+    path?: string[];
     samples: Int16Array | null;
     sampleRate: number;
     slices: InitialSliceDefinition[];
@@ -866,12 +867,13 @@ export function LibraryPage() {
     setLoading(true, 'Loading source audio...');
     try {
       // Load the source WAV
-      const sourceWav = await loadDrumKitSource(libraryHandle, selection.name!, bundle.source);
+      const sourceWav = await loadDrumKitSource(libraryHandle, selection.name!, bundle.source, selection.path);
 
       // Open the slice editor dialog
       setSliceEditDialog({
         open: true,
         kitName: selection.name!,
+        path: selection.path,
         samples: sourceWav.samples,
         sampleRate: sourceWav.sampleRate,
         slices: bundle.slices.map((s) => ({
@@ -906,10 +908,10 @@ export function LibraryPage() {
 
     setLoading(true, 'Saving slice changes...');
     try {
-      await updateDrumKitSlices(libraryHandle, sliceEditDialog.kitName, slices, kitConfig);
+      await updateDrumKitSlices(libraryHandle, sliceEditDialog.kitName, slices, kitConfig, sliceEditDialog.path);
 
       // Refresh the drum kit bundle
-      const updatedBundle = await loadDrumKitBundle(libraryHandle, sliceEditDialog.kitName);
+      const updatedBundle = await loadDrumKitBundle(libraryHandle, sliceEditDialog.kitName, sliceEditDialog.path);
       setSelectedDrumKitBundle(updatedBundle);
 
       console.log(`[LibraryPage] Updated slices for ${sliceEditDialog.kitName}`);
