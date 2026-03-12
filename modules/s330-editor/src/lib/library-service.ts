@@ -1392,6 +1392,40 @@ export async function deleteSet(
   await setsDir.removeEntry(sanitizedName, { recursive: true });
 }
 
+/**
+ * Rename a set in the library
+ */
+export async function renameSet(
+  directoryHandle: FileSystemDirectoryHandle,
+  oldName: string,
+  newName: string
+): Promise<void> {
+  const sanitizedOldName = oldName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+  const sanitizedNewName = newName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_').trim();
+
+  if (!sanitizedNewName) {
+    throw new Error('Set name cannot be empty');
+  }
+
+  if (sanitizedOldName === sanitizedNewName) {
+    return; // Nothing to do
+  }
+
+  const setsDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'sets']);
+
+  // Get source directory
+  const sourceDir = await setsDir.getDirectoryHandle(sanitizedOldName, { create: false });
+
+  // Create target directory
+  const targetDir = await setsDir.getDirectoryHandle(sanitizedNewName, { create: true });
+
+  // Copy all contents recursively
+  await copyDirectoryContents(sourceDir, targetDir);
+
+  // Delete source directory
+  await setsDir.removeEntry(sanitizedOldName, { recursive: true });
+}
+
 // =========================================================================
 // Patch Dependency Analysis
 // =========================================================================

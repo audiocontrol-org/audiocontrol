@@ -10,7 +10,7 @@
  * Supports drag and drop from device memory to export items to library.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { SetInfo, SetYaml } from '@audiocontrol/sampler-library/browser';
 import {
   loadSetManifest,
@@ -89,6 +89,8 @@ interface LibraryTreePanelProps {
   onDropMoveItem?: (category: LibraryCategory, sourcePath: string[], itemName: string, targetPath: string[]) => void;
   /** Callback to rename an item (double-click to edit) */
   onRenameItem?: (category: LibraryCategory, path: string[], oldName: string, newName: string, isDirectory: boolean) => Promise<void>;
+  /** Callback to rename a set (double-click to edit) */
+  onRenameSet?: (oldName: string, newName: string) => Promise<void>;
 }
 
 /**
@@ -286,6 +288,7 @@ function SetItem({
   onPatchDragStart,
   isLoadingManifest,
   onDelete,
+  onRename,
 }: {
   setInfo: SetInfo;
   manifest: SetYaml | null;
@@ -301,11 +304,67 @@ function SetItem({
   onPatchDragStart?: (e: React.DragEvent, patchFile: string) => void;
   isLoadingManifest: boolean;
   onDelete?: () => void;
+  onRename?: (newName: string) => Promise<void>;
 }): JSX.Element {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
+
   const handleDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     onDelete?.();
   }, [onDelete]);
+
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!onRename) return;
+    setEditValue(setInfo.name);
+    setIsEditing(true);
+  }, [setInfo.name, onRename]);
+
+  const handleRenameSubmit = useCallback(async () => {
+    const trimmedValue = editValue.trim();
+    if (!trimmedValue || trimmedValue === setInfo.name || !onRename) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsRenaming(true);
+    try {
+      await onRename(trimmedValue);
+      setIsEditing(false);
+    } catch (err) {
+      console.error('[SetItem] Rename failed:', err);
+    } finally {
+      setIsRenaming(false);
+    }
+  }, [editValue, setInfo.name, onRename]);
+
+  const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleRenameSubmit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsEditing(false);
+    }
+  }, [handleRenameSubmit]);
+
+  const handleRenameBlur = useCallback(() => {
+    if (!isRenaming) {
+      handleRenameSubmit();
+    }
+  }, [isRenaming, handleRenameSubmit]);
 
   return (
     <div>
@@ -318,21 +377,42 @@ function SetItem({
             : 'text-s330-text hover:bg-s330-accent/30'
         )}
         onClick={(e) => {
+          if (isEditing) return;
           if ((e.target as HTMLElement).closest('.expand-toggle')) {
             onToggle();
           } else if (!(e.target as HTMLElement).closest('.delete-btn')) {
             onSelect();
           }
         }}
+        onDoubleClick={handleDoubleClick}
         role="button"
-        tabIndex={0}
-        onKeyDown={(e) => e.key === 'Enter' && onSelect()}
+        tabIndex={isEditing ? -1 : 0}
+        onKeyDown={(e) => !isEditing && e.key === 'Enter' && onSelect()}
       >
         <span className="expand-toggle cursor-pointer p-0.5 -ml-0.5">
           <ChevronIcon isExpanded={isExpanded} />
         </span>
         <FolderIcon isOpen={isExpanded} />
-        <span className="flex-1 truncate font-medium">{setInfo.name}</span>
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleRenameKeyDown}
+            onBlur={handleRenameBlur}
+            disabled={isRenaming}
+            className={cn(
+              'flex-1 bg-s330-bg border border-s330-highlight rounded px-1 py-0.5',
+              'text-s330-text font-medium text-sm',
+              'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
+              isRenaming && 'opacity-50'
+            )}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span className="flex-1 truncate font-medium">{setInfo.name}</span>
+        )}
         <span className="text-xs text-s330-muted">
           {setInfo.toneCount}T / {setInfo.patchCount}P
         </span>
@@ -478,6 +558,7 @@ export function LibraryTreePanel({
   onMoveItem,
   onDropMoveItem,
   onRenameItem,
+  onRenameSet,
 }: LibraryTreePanelProps): JSX.Element {
   const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set());
   const [manifests, setManifests] = useState<Map<string, SetYaml>>(new Map());
@@ -891,6 +972,7 @@ export function LibraryTreePanel({
                   onPatchDragStart={(e, patchFile) => handleSetPatchDragStart(e, patchFile, setInfo.name)}
                   isLoadingManifest={loadingManifests.has(setInfo.name)}
                   onDelete={onDeleteSet ? () => onDeleteSet(setInfo.name) : undefined}
+                  onRename={onRenameSet ? (newName) => onRenameSet(setInfo.name, newName) : undefined}
                 />
               ))}
             </div>

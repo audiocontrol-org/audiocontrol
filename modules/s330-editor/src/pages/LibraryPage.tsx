@@ -57,6 +57,7 @@ import {
   renameIndividualTone,
   renameIndividualPatch,
   renameDrumKit,
+  renameSet,
   type DrumKitInfo,
   type LibraryToneInfo,
   type LibraryPatchInfo,
@@ -608,6 +609,20 @@ export function LibraryPage() {
       console.error('[LibraryPage] Failed to rename item:', err);
       setError(err instanceof Error ? err.message : 'Failed to rename item');
       throw err; // Re-throw so the UI knows the rename failed
+    }
+  }, [libraryHandle, handleRefreshLibrary, setError]);
+
+  // Handle set rename (double-click to edit)
+  const handleRenameSet = useCallback(async (oldName: string, newName: string) => {
+    if (!libraryHandle) return;
+
+    try {
+      await renameSet(libraryHandle, oldName, newName);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to rename set:', err);
+      setError(err instanceof Error ? err.message : 'Failed to rename set');
+      throw err;
     }
   }, [libraryHandle, handleRefreshLibrary, setError]);
 
@@ -1465,6 +1480,7 @@ export function LibraryPage() {
             onMoveItem={handleOpenMoveItem}
             onDropMoveItem={handleDropMoveItem}
             onRenameItem={handleRenameItem}
+            onRenameSet={handleRenameSet}
           />
         </div>
 
