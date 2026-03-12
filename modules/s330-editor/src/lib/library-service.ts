@@ -368,6 +368,91 @@ export async function renameDirectory(
 }
 
 /**
+ * Rename an individual tone (YAML + WAV files).
+ *
+ * @param libraryDir - Root library directory handle
+ * @param oldName - Current file name (without extension)
+ * @param newName - New name for the tone
+ * @param path - Path within the tones category (optional subdirectory)
+ */
+export async function renameIndividualTone(
+  libraryDir: FileSystemDirectoryHandle,
+  oldName: string,
+  newName: string,
+  path: string[] = []
+): Promise<void> {
+  const sanitizedNewName = newName.replace(/[<>:"/\\|?*]/g, '_').trim();
+  if (!sanitizedNewName) {
+    throw new Error('Tone name cannot be empty');
+  }
+
+  if (oldName === sanitizedNewName) {
+    return; // Nothing to do
+  }
+
+  // Get the target directory
+  const tonesDir = await getNestedDirectory(libraryDir, ['library', 's330', 'tones', ...path]);
+
+  // Rename YAML file
+  const oldYamlFile = await tonesDir.getFileHandle(`${oldName}.yaml`, { create: false });
+  const yamlContent = await (await oldYamlFile.getFile()).arrayBuffer();
+  const newYamlFile = await tonesDir.getFileHandle(`${sanitizedNewName}.yaml`, { create: true });
+  const yamlWritable = await newYamlFile.createWritable();
+  await yamlWritable.write(yamlContent);
+  await yamlWritable.close();
+  await tonesDir.removeEntry(`${oldName}.yaml`);
+
+  // Rename WAV file if it exists
+  try {
+    const oldWavFile = await tonesDir.getFileHandle(`${oldName}.wav`, { create: false });
+    const wavContent = await (await oldWavFile.getFile()).arrayBuffer();
+    const newWavFile = await tonesDir.getFileHandle(`${sanitizedNewName}.wav`, { create: true });
+    const wavWritable = await newWavFile.createWritable();
+    await wavWritable.write(wavContent);
+    await wavWritable.close();
+    await tonesDir.removeEntry(`${oldName}.wav`);
+  } catch {
+    // WAV file might not exist, that's OK
+  }
+}
+
+/**
+ * Rename an individual patch bundle (directory).
+ *
+ * @param libraryDir - Root library directory handle
+ * @param oldName - Current directory name
+ * @param newName - New name for the patch
+ * @param path - Path within the patches category (optional subdirectory)
+ */
+export async function renameIndividualPatch(
+  libraryDir: FileSystemDirectoryHandle,
+  oldName: string,
+  newName: string,
+  path: string[] = []
+): Promise<void> {
+  // Patches are directories, so we can use renameDirectory
+  await renameDirectory(libraryDir, 'patches', [...path, oldName], newName);
+}
+
+/**
+ * Rename a drum kit (directory).
+ *
+ * @param libraryDir - Root library directory handle
+ * @param oldName - Current directory name
+ * @param newName - New name for the drum kit
+ * @param path - Path within the drum-kits category (optional subdirectory)
+ */
+export async function renameDrumKit(
+  libraryDir: FileSystemDirectoryHandle,
+  oldName: string,
+  newName: string,
+  path: string[] = []
+): Promise<void> {
+  // Drum kits are directories, so we can use renameDirectory
+  await renameDirectory(libraryDir, 'drum-kits', [...path, oldName], newName);
+}
+
+/**
  * Delete a directory from a library category.
  *
  * @param libraryDir - Root library directory handle

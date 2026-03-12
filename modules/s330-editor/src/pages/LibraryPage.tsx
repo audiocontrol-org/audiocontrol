@@ -54,6 +54,9 @@ import {
   renameDirectory,
   deleteDirectory,
   moveItem,
+  renameIndividualTone,
+  renameIndividualPatch,
+  renameDrumKit,
   type DrumKitInfo,
   type LibraryToneInfo,
   type LibraryPatchInfo,
@@ -572,6 +575,39 @@ export function LibraryPage() {
     } catch (err) {
       console.error('[LibraryPage] Failed to move item via drag-drop:', err);
       setError(err instanceof Error ? err.message : 'Failed to move item');
+    }
+  }, [libraryHandle, handleRefreshLibrary, setError]);
+
+  // Handle in-place rename (double-click to edit)
+  const handleRenameItem = useCallback(async (
+    category: LibraryCategory,
+    path: string[],
+    oldName: string,
+    newName: string,
+    isDirectory: boolean
+  ) => {
+    if (!libraryHandle) return;
+
+    try {
+      if (isDirectory) {
+        // Rename a subdirectory
+        await renameDirectory(libraryHandle, category, [...path, oldName], newName);
+      } else if (category === 'tones') {
+        // Tones are stored as .yaml files
+        await renameIndividualTone(libraryHandle, oldName, newName, path);
+      } else if (category === 'patches') {
+        // Patches are stored as directories
+        await renameIndividualPatch(libraryHandle, oldName, newName, path);
+      } else if (category === 'drum-kits') {
+        // Drum kits are stored as directories
+        await renameDrumKit(libraryHandle, oldName, newName, path);
+      }
+
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to rename item:', err);
+      setError(err instanceof Error ? err.message : 'Failed to rename item');
+      throw err; // Re-throw so the UI knows the rename failed
     }
   }, [libraryHandle, handleRefreshLibrary, setError]);
 
@@ -1428,6 +1464,7 @@ export function LibraryPage() {
             onDeleteDirectory={handleOpenDeleteDirectory}
             onMoveItem={handleOpenMoveItem}
             onDropMoveItem={handleDropMoveItem}
+            onRenameItem={handleRenameItem}
           />
         </div>
 

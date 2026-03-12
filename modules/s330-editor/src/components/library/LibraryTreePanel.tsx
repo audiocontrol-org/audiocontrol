@@ -87,6 +87,8 @@ interface LibraryTreePanelProps {
   onMoveItem?: (category: LibraryCategory, sourcePath: string[], itemName: string) => void;
   /** Callback when an item is dropped onto a directory (drag-drop move) */
   onDropMoveItem?: (category: LibraryCategory, sourcePath: string[], itemName: string, targetPath: string[]) => void;
+  /** Callback to rename an item (double-click to edit) */
+  onRenameItem?: (category: LibraryCategory, path: string[], oldName: string, newName: string, isDirectory: boolean) => Promise<void>;
 }
 
 /**
@@ -475,6 +477,7 @@ export function LibraryTreePanel({
   onDeleteDirectory,
   onMoveItem,
   onDropMoveItem,
+  onRenameItem,
 }: LibraryTreePanelProps): JSX.Element {
   const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set());
   const [manifests, setManifests] = useState<Map<string, SetYaml>>(new Map());
@@ -766,6 +769,22 @@ export function LibraryTreePanel({
     onDropMoveItem(libCategory as 'tones' | 'patches' | 'drum-kits', sourcePath, itemName, targetPath);
   }, [onDropMoveItem]);
 
+  // Handle rename via double-click
+  const handleRename = useCallback(async (
+    category: 'tones' | 'patches' | 'drumKits',
+    node: LibraryTreeNode,
+    newName: string
+  ) => {
+    if (!onRenameItem) return;
+
+    // Map category back to LibraryCategory
+    const libCategory = category === 'drumKits' ? 'drum-kits' : category;
+    const oldName = node.fileName || node.directoryName || node.name;
+    const isDirectory = node.type === 'directory';
+
+    await onRenameItem(libCategory as 'tones' | 'patches' | 'drum-kits', node.path, oldName, newName, isDirectory);
+  }, [onRenameItem]);
+
   // Load manifest when a set is expanded
   useEffect(() => {
     if (!libraryHandle) return;
@@ -892,6 +911,7 @@ export function LibraryTreePanel({
             onDelete={(node) => handleTreeNodeDelete(node, 'tones')}
             onContextMenu={(e, node) => handleTreeContextMenu(e, node, 'tones')}
             onDropOnDirectory={(targetPath, dragData) => handleDropOnDirectory('tones', targetPath, dragData)}
+            onRename={(node, newName) => handleRename('tones', node, newName)}
             emptyMessage="Drag tones from device to export"
             isDragOver={isToneDragOver}
             onDragOver={handleToneDragOver}
@@ -995,6 +1015,7 @@ export function LibraryTreePanel({
             onDelete={(node) => handleTreeNodeDelete(node, 'patches')}
             onContextMenu={(e, node) => handleTreeContextMenu(e, node, 'patches')}
             onDropOnDirectory={(targetPath, dragData) => handleDropOnDirectory('patches', targetPath, dragData)}
+            onRename={(node, newName) => handleRename('patches', node, newName)}
             emptyMessage="Drag patches from device to export"
             isDragOver={isPatchDragOver}
             onDragOver={handlePatchDragOver}
@@ -1101,6 +1122,7 @@ export function LibraryTreePanel({
             onDelete={(node) => handleTreeNodeDelete(node, 'drumKits')}
             onContextMenu={(e, node) => handleTreeContextMenu(e, node, 'drumKits')}
             onDropOnDirectory={(targetPath, dragData) => handleDropOnDirectory('drumKits', targetPath, dragData)}
+            onRename={(node, newName) => handleRename('drumKits', node, newName)}
             emptyMessage="No drum kits in library"
             headerActions={
               onCreateDirectory && (

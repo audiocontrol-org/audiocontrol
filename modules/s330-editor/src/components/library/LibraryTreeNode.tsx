@@ -8,7 +8,7 @@
  * - Drum kits (draggable items)
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import type { LibraryTreeNode as TreeNodeType } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
 import { LIBRARY_DRAG_MIME, type LibraryDragData } from '@/components/library/DeviceMemoryPanel';
@@ -148,6 +148,8 @@ export interface LibraryTreeNodeProps {
   onContextMenu?: (e: React.MouseEvent, node: TreeNodeType) => void;
   /** Called when an item is dropped onto a directory */
   onDropOnDirectory?: (targetPath: string[], dragData: LibraryDragData) => void;
+  /** Called when an item is renamed (double-click to edit) */
+  onRename?: (node: TreeNodeType, newName: string) => Promise<void>;
   expandedPaths: Set<string>;
   selectedId?: string;
 }
@@ -163,19 +165,77 @@ export function LibraryTreeNodeComponent({
   onDelete,
   onContextMenu,
   onDropOnDirectory,
+  onRename,
   expandedPaths,
   selectedId,
 }: LibraryTreeNodeProps): JSX.Element {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isEditing) return; // Don't handle clicks while editing
     if (node.type === 'directory') {
       onToggleExpand(node.id);
     } else {
       onSelect(node);
     }
-  }, [node, onToggleExpand, onSelect]);
+  }, [node, onToggleExpand, onSelect, isEditing]);
+
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!onRename) return;
+    setEditValue(node.name);
+    setIsEditing(true);
+  }, [node.name, onRename]);
+
+  const handleRenameSubmit = useCallback(async () => {
+    const trimmedValue = editValue.trim();
+    if (!trimmedValue || trimmedValue === node.name || !onRename) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsRenaming(true);
+    try {
+      await onRename(node, trimmedValue);
+      setIsEditing(false);
+    } catch (err) {
+      console.error('[LibraryTreeNode] Rename failed:', err);
+      // Keep editing mode open on error so user can try again
+    } finally {
+      setIsRenaming(false);
+    }
+  }, [editValue, node, onRename]);
+
+  const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleRenameSubmit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsEditing(false);
+    }
+  }, [handleRenameSubmit]);
+
+  const handleRenameBlur = useCallback(() => {
+    // Submit on blur (unless already submitting)
+    if (!isRenaming) {
+      handleRenameSubmit();
+    }
+  }, [isRenaming, handleRenameSubmit]);
 
   const handleDelete = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -313,7 +373,7 @@ export function LibraryTreeNodeComponent({
         className={cn(
           'group w-full text-left py-1.5 rounded text-sm transition-colors',
           'flex items-center gap-2',
-          isDraggable && 'cursor-grab active:cursor-grabbing',
+          isDraggable && !isEditing && 'cursor-grab active:cursor-grabbing',
           isSelected
             ? 'bg-s330-highlight/20 text-s330-highlight'
             : isDragOver
@@ -322,16 +382,17 @@ export function LibraryTreeNodeComponent({
         )}
         style={{ paddingLeft }}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenuClick}
         onKeyDown={handleKeyDown}
-        draggable={isDraggable}
+        draggable={isDraggable && !isEditing}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         role="treeitem"
-        tabIndex={0}
+        tabIndex={isEditing ? -1 : 0}
         aria-expanded={isDirectory ? isExpanded : undefined}
       >
         {/* Expand/collapse chevron for directories */}
@@ -347,8 +408,27 @@ export function LibraryTreeNodeComponent({
         {node.type === 'patch' && <PatchIcon />}
         {node.type === 'drum-kit' && <DrumKitIcon />}
 
-        {/* Name */}
-        <span className="flex-1 truncate font-medium">{node.name}</span>
+        {/* Name (editable on double-click) */}
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleRenameKeyDown}
+            onBlur={handleRenameBlur}
+            disabled={isRenaming}
+            className={cn(
+              'flex-1 bg-s330-bg border border-s330-highlight rounded px-1 py-0.5',
+              'text-s330-text font-medium text-sm',
+              'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
+              isRenaming && 'opacity-50'
+            )}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span className="flex-1 truncate font-medium">{node.name}</span>
+        )}
 
         {/* Metadata */}
         {node.type === 'patch' && node.toneCount !== undefined && (
@@ -387,6 +467,7 @@ export function LibraryTreeNodeComponent({
               onDelete={onDelete}
               onContextMenu={onContextMenu}
               onDropOnDirectory={onDropOnDirectory}
+              onRename={onRename}
               expandedPaths={expandedPaths}
               selectedId={selectedId}
             />
@@ -423,6 +504,8 @@ export interface TreeSectionProps {
   onContextMenu?: (e: React.MouseEvent, node: TreeNodeType) => void;
   /** Called when an item is dropped onto a directory */
   onDropOnDirectory?: (targetPath: string[], dragData: LibraryDragData) => void;
+  /** Called when an item is renamed (double-click to edit) */
+  onRename?: (node: TreeNodeType, newName: string) => Promise<void>;
   emptyMessage?: string;
   isDragOver?: boolean;
   onDragOver?: (e: React.DragEvent) => void;
@@ -444,6 +527,7 @@ export function TreeSection({
   onDelete,
   onContextMenu,
   onDropOnDirectory,
+  onRename,
   emptyMessage = 'No items',
   isDragOver,
   onDragOver,
@@ -493,6 +577,7 @@ export function TreeSection({
               onDelete={onDelete}
               onContextMenu={onContextMenu}
               onDropOnDirectory={onDropOnDirectory}
+              onRename={onRename}
               expandedPaths={expandedPaths}
               selectedId={selectedId}
             />
