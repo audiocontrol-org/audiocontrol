@@ -23,6 +23,7 @@
   ],
   "scripts": {
     "build": "pnpm test && tsup",
+    "build:lib": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",

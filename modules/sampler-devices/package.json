@@ -6,31 +6,26 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "development": "./src/index.ts",
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
     "./s3k": {
       "types": "./dist/s3k.d.ts",
-      "development": "./src/s3k.ts",
       "import": "./dist/s3k.js",
       "require": "./dist/s3k.cjs"
     },
     "./s5k": {
       "types": "./dist/s5k.d.ts",
-      "development": "./src/s5k.ts",
       "import": "./dist/s5k.js",
       "require": "./dist/s5k.cjs"
     },
     "./s330": {
       "types": "./dist/s330.d.ts",
-      "development": "./src/s330.ts",
       "import": "./dist/s330.js",
       "require": "./dist/s330.cjs"
     },
     "./jv1080": {
       "types": "./dist/jv1080.d.ts",
-      "development": "./src/jv1080.ts",
       "import": "./dist/jv1080.js",
       "require": "./dist/jv1080.cjs"
     }
@@ -51,6 +46,7 @@
     "test:integration": "vitest run --config vite.config.integration.ts",
     "test:hardware:s330": "vitest run test/integration/s330-hardware.test.ts",
     "build": "pnpm test && tsup",
+    "build:lib": "tsup",
     "clean": "rm -rf dist"
   },
   "keywords": [
