@@ -42,6 +42,44 @@ import { createWavBlobFromSamples, unpack12BitTo16Bit } from '@/lib/wave-export'
 export type { PreparedS330Sample };
 export { prepareWavForS330 };
 
+// =========================================================================
+// Hierarchical Library Types
+// =========================================================================
+
+/**
+ * Library item category types that support subdirectories.
+ */
+export type LibraryCategory = 'tones' | 'patches' | 'drum-kits';
+
+/**
+ * Tree node for rendering hierarchical library contents.
+ * Used by both directories and items (tones, patches, drum-kits).
+ */
+export interface LibraryTreeNode {
+  /** Unique identifier for this node (path joined by '/') */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Node type */
+  type: 'directory' | 'tone' | 'patch' | 'drum-kit';
+  /** Path segments from category root (empty for root items) */
+  path: string[];
+  /** Child nodes (only for directories) */
+  children?: LibraryTreeNode[];
+  /** Whether directory is expanded in UI (client state, not persisted) */
+  isExpanded?: boolean;
+  /** File name for items (without extension) */
+  fileName?: string;
+  /** Directory name for patches/drum-kits */
+  directoryName?: string;
+  /** Additional metadata for patches */
+  toneCount?: number;
+  /** Additional metadata for drum kits */
+  kitCount?: number;
+  sampleCount?: number;
+  description?: string;
+}
+
 /**
  * Parse WAV file and return metadata for display purposes.
  * Use this for showing file info before conversion.
@@ -232,6 +270,269 @@ async function getNestedDirectory(
   return current;
 }
 
+/**
+ * Get a nested directory without creating it.
+ * Returns null if any part of the path doesn't exist.
+ */
+async function getNestedDirectoryIfExists(
+  rootHandle: FileSystemDirectoryHandle,
+  path: string[]
+): Promise<FileSystemDirectoryHandle | null> {
+  let current = rootHandle;
+  try {
+    for (const segment of path) {
+      current = await current.getDirectoryHandle(segment, { create: false });
+    }
+    return current;
+  } catch {
+    return null;
+  }
+}
+
+// =========================================================================
+// Directory Operations
+// =========================================================================
+
+/**
+ * Create a subdirectory within a library category.
+ *
+ * @param libraryDir - Root library directory handle
+ * @param category - Category ('tones', 'patches', 'drum-kits')
+ * @param path - Path to parent directory (e.g., ['Piano'] to create under Piano/)
+ * @param name - Name of the new directory
+ */
+export async function createDirectory(
+  libraryDir: FileSystemDirectoryHandle,
+  category: LibraryCategory,
+  path: string[],
+  name: string
+): Promise<void> {
+  const sanitizedName = name.replace(/[<>:"/\\|?*]/g, '_').trim();
+  if (!sanitizedName) {
+    throw new Error('Directory name cannot be empty');
+  }
+
+  // Navigate to the parent directory
+  const parentDir = await getNestedDirectory(libraryDir, ['library', 's330', category, ...path]);
+
+  // Create the new directory (will fail silently if it already exists due to { create: true })
+  await parentDir.getDirectoryHandle(sanitizedName, { create: true });
+}
+
+/**
+ * Rename a directory within a library category.
+ *
+ * Note: File System Access API doesn't support direct rename, so we copy contents and delete original.
+ *
+ * @param libraryDir - Root library directory handle
+ * @param category - Category ('tones', 'patches', 'drum-kits')
+ * @param path - Path to the directory to rename (e.g., ['Piano', 'Grand'])
+ * @param newName - New name for the directory
+ */
+export async function renameDirectory(
+  libraryDir: FileSystemDirectoryHandle,
+  category: LibraryCategory,
+  path: string[],
+  newName: string
+): Promise<void> {
+  if (path.length === 0) {
+    throw new Error('Cannot rename root category directory');
+  }
+
+  const sanitizedNewName = newName.replace(/[<>:"/\\|?*]/g, '_').trim();
+  if (!sanitizedNewName) {
+    throw new Error('Directory name cannot be empty');
+  }
+
+  const parentPath = path.slice(0, -1);
+  const oldName = path[path.length - 1];
+
+  if (oldName === sanitizedNewName) {
+    return; // Nothing to do
+  }
+
+  // Get parent directory
+  const parentDir = await getNestedDirectory(libraryDir, ['library', 's330', category, ...parentPath]);
+
+  // Get source directory
+  const sourceDir = await parentDir.getDirectoryHandle(oldName, { create: false });
+
+  // Create target directory
+  const targetDir = await parentDir.getDirectoryHandle(sanitizedNewName, { create: true });
+
+  // Copy all contents recursively
+  await copyDirectoryContents(sourceDir, targetDir);
+
+  // Delete source directory
+  await parentDir.removeEntry(oldName, { recursive: true });
+}
+
+/**
+ * Delete a directory from a library category.
+ *
+ * @param libraryDir - Root library directory handle
+ * @param category - Category ('tones', 'patches', 'drum-kits')
+ * @param path - Path to the directory to delete (e.g., ['Piano', 'Grand'])
+ * @param recursive - Whether to delete non-empty directories (default: true)
+ */
+export async function deleteDirectory(
+  libraryDir: FileSystemDirectoryHandle,
+  category: LibraryCategory,
+  path: string[],
+  recursive: boolean = true
+): Promise<void> {
+  if (path.length === 0) {
+    throw new Error('Cannot delete root category directory');
+  }
+
+  const parentPath = path.slice(0, -1);
+  const dirName = path[path.length - 1];
+
+  // Get parent directory
+  const parentDir = await getNestedDirectory(libraryDir, ['library', 's330', category, ...parentPath]);
+
+  // Delete the directory
+  await parentDir.removeEntry(dirName, { recursive });
+}
+
+/**
+ * Get directory contents for display (items and subdirectories at a path).
+ *
+ * @param libraryDir - Root library directory handle
+ * @param category - Category ('tones', 'patches', 'drum-kits')
+ * @param path - Path within the category
+ * @returns Object with files and directories arrays
+ */
+export async function getDirectoryContents(
+  libraryDir: FileSystemDirectoryHandle,
+  category: LibraryCategory,
+  path: string[]
+): Promise<{ files: string[]; directories: string[] }> {
+  const files: string[] = [];
+  const directories: string[] = [];
+
+  const targetDir = await getNestedDirectoryIfExists(
+    libraryDir,
+    ['library', 's330', category, ...path]
+  );
+
+  if (!targetDir) {
+    return { files, directories };
+  }
+
+  for await (const entry of targetDir.values()) {
+    if (entry.kind === 'directory') {
+      directories.push(entry.name);
+    } else {
+      files.push(entry.name);
+    }
+  }
+
+  return {
+    files: files.sort((a, b) => a.localeCompare(b)),
+    directories: directories.sort((a, b) => a.localeCompare(b)),
+  };
+}
+
+/**
+ * Move an item (tone, patch, drum-kit, or directory) to a new location.
+ *
+ * @param libraryDir - Root library directory handle
+ * @param category - Category ('tones', 'patches', 'drum-kits')
+ * @param sourcePath - Current path to the item's parent (e.g., ['Piano'])
+ * @param itemName - Name of the item or directory to move
+ * @param targetPath - Destination path (e.g., ['Strings'])
+ */
+export async function moveItem(
+  libraryDir: FileSystemDirectoryHandle,
+  category: LibraryCategory,
+  sourcePath: string[],
+  itemName: string,
+  targetPath: string[]
+): Promise<void> {
+  // Get source and target directories
+  const sourceDir = await getNestedDirectory(libraryDir, ['library', 's330', category, ...sourcePath]);
+  const targetDir = await getNestedDirectory(libraryDir, ['library', 's330', category, ...targetPath]);
+
+  // Check if source exists as a directory
+  let isDirectory = false;
+  try {
+    await sourceDir.getDirectoryHandle(itemName, { create: false });
+    isDirectory = true;
+  } catch {
+    // Not a directory, might be files
+  }
+
+  if (isDirectory) {
+    // Move a directory
+    const sourceDirHandle = await sourceDir.getDirectoryHandle(itemName, { create: false });
+    const targetDirHandle = await targetDir.getDirectoryHandle(itemName, { create: true });
+
+    await copyDirectoryContents(sourceDirHandle, targetDirHandle);
+    await sourceDir.removeEntry(itemName, { recursive: true });
+  } else {
+    // Move files (for tones: .yaml + .wav, for patches: directory, for drum-kits: directory)
+    // Determine what files to move based on category
+    if (category === 'tones') {
+      // Move YAML and WAV files
+      await moveFile(sourceDir, targetDir, `${itemName}.yaml`);
+      try {
+        await moveFile(sourceDir, targetDir, `${itemName}.wav`);
+      } catch {
+        // WAV file might not exist
+      }
+    } else {
+      // For patches and drum-kits, the "item" is a directory
+      const itemDir = await sourceDir.getDirectoryHandle(itemName, { create: false });
+      const targetItemDir = await targetDir.getDirectoryHandle(itemName, { create: true });
+      await copyDirectoryContents(itemDir, targetItemDir);
+      await sourceDir.removeEntry(itemName, { recursive: true });
+    }
+  }
+}
+
+/**
+ * Copy all contents from source directory to target directory.
+ */
+async function copyDirectoryContents(
+  source: FileSystemDirectoryHandle,
+  target: FileSystemDirectoryHandle
+): Promise<void> {
+  for await (const entry of source.values()) {
+    if (entry.kind === 'file') {
+      // Copy file
+      const sourceFile = await source.getFileHandle(entry.name);
+      const file = await sourceFile.getFile();
+      const targetFile = await target.getFileHandle(entry.name, { create: true });
+      const writable = await targetFile.createWritable();
+      await writable.write(await file.arrayBuffer());
+      await writable.close();
+    } else {
+      // Recursively copy subdirectory
+      const sourceSubdir = await source.getDirectoryHandle(entry.name);
+      const targetSubdir = await target.getDirectoryHandle(entry.name, { create: true });
+      await copyDirectoryContents(sourceSubdir, targetSubdir);
+    }
+  }
+}
+
+/**
+ * Move a single file from source to target directory.
+ */
+async function moveFile(
+  sourceDir: FileSystemDirectoryHandle,
+  targetDir: FileSystemDirectoryHandle,
+  fileName: string
+): Promise<void> {
+  const sourceFile = await sourceDir.getFileHandle(fileName);
+  const file = await sourceFile.getFile();
+  const targetFile = await targetDir.getFileHandle(fileName, { create: true });
+  const writable = await targetFile.createWritable();
+  await writable.write(await file.arrayBuffer());
+  await writable.close();
+  await sourceDir.removeEntry(fileName);
+}
+
 // =========================================================================
 // Shared File Reading Helpers
 // =========================================================================
@@ -398,21 +699,29 @@ function getPatchFilename(slotIndex: number, patchName?: string): string {
 /**
  * Export tone to a specific directory using File System Access API.
  * Automatically creates library/s330/tones/ subdirectory structure.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param tone - Tone to export
+ * @param waveData - Wave data for the tone
+ * @param customName - Optional custom name for the tone
+ * @param onProgress - Optional progress callback
+ * @param path - Optional path segments for subdirectory (e.g., ['Piano', 'Grand'])
  */
 export async function exportToneToDirectory(
   directoryHandle: FileSystemDirectoryHandle,
   tone: S330Tone,
   waveData: S330WaveDataResponse,
   customName?: string,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  path: string[] = []
 ): Promise<void> {
   const toneName = customName || tone.name || 'untitled';
   const sanitizedName = toneName.replace(/[<>:"/\\|?*]/g, '_').trim();
 
   onProgress?.(25);
 
-  // Create library/s330/tones/ subdirectory structure
-  const tonesDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'tones']);
+  // Create library/s330/tones/[path...] subdirectory structure
+  const tonesDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'tones', ...path]);
 
   onProgress?.(50);
 
@@ -1110,12 +1419,16 @@ export interface LibraryToneInfo {
   name: string;
   /** Full filename */
   fileName: string;
+  /** Path segments from tones root (empty for root items) */
+  path?: string[];
 }
 
 /**
  * List all individual tones in the library (outside of sets).
  *
  * Scans `library/s330/tones/` for YAML files.
+ *
+ * @deprecated Use listIndividualTonesTree for hierarchical view
  */
 export async function listIndividualTones(
   directoryHandle: FileSystemDirectoryHandle
@@ -1148,14 +1461,81 @@ export async function listIndividualTones(
 }
 
 /**
+ * Recursively scan a directory for tones and build a tree structure.
+ */
+async function scanTonesDirectory(
+  dir: FileSystemDirectoryHandle,
+  path: string[]
+): Promise<LibraryTreeNode[]> {
+  const nodes: LibraryTreeNode[] = [];
+
+  for await (const entry of dir.values()) {
+    if (entry.kind === 'directory') {
+      // Recursively scan subdirectory
+      const subDir = await dir.getDirectoryHandle(entry.name);
+      const children = await scanTonesDirectory(subDir, [...path, entry.name]);
+
+      nodes.push({
+        id: [...path, entry.name].join('/'),
+        name: entry.name,
+        type: 'directory',
+        path,
+        children,
+      });
+    } else if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.yaml')) {
+      const fileName = entry.name.replace(/\.yaml$/i, '');
+      nodes.push({
+        id: [...path, fileName].join('/'),
+        name: fileName,
+        type: 'tone',
+        path,
+        fileName,
+      });
+    }
+  }
+
+  // Sort: directories first, then alphabetically
+  return nodes.sort((a, b) => {
+    if (a.type === 'directory' && b.type !== 'directory') return -1;
+    if (a.type !== 'directory' && b.type === 'directory') return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/**
+ * List all individual tones in the library as a hierarchical tree.
+ *
+ * Recursively scans `library/s330/tones/` for YAML files and directories.
+ */
+export async function listIndividualTonesTree(
+  directoryHandle: FileSystemDirectoryHandle
+): Promise<LibraryTreeNode[]> {
+  try {
+    const libraryDir = await directoryHandle.getDirectoryHandle('library', { create: false });
+    const s330Dir = await libraryDir.getDirectoryHandle('s330', { create: false });
+    const tonesDir = await s330Dir.getDirectoryHandle('tones', { create: false });
+
+    return await scanTonesDirectory(tonesDir, []);
+  } catch {
+    // Tones directory doesn't exist yet
+    return [];
+  }
+}
+
+/**
  * Load an individual tone from the library (outside of sets).
+ *
+ * @param directoryHandle - Library directory handle
+ * @param toneFile - Tone file name (without extension)
+ * @param path - Optional path segments from tones root
  */
 export async function loadIndividualTone(
   directoryHandle: FileSystemDirectoryHandle,
-  toneFile: string
+  toneFile: string,
+  path: string[] = []
 ): Promise<{ yaml: ToneYaml; wavData: Uint8Array }> {
   const tonesDir = await getNestedDirectory(directoryHandle, [
-    'library', 's330', 'tones'
+    'library', 's330', 'tones', ...path
   ]);
 
   const { yaml, wavData } = await readToneFilesFromDirectory(tonesDir, toneFile);
@@ -1164,13 +1544,18 @@ export async function loadIndividualTone(
 
 /**
  * Load raw WAV samples from an individual library tone for sample chopping.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param toneFile - Tone file name (without extension)
+ * @param path - Optional path segments from tones root
  */
 export async function loadIndividualToneWavSamples(
   directoryHandle: FileSystemDirectoryHandle,
-  toneFile: string
+  toneFile: string,
+  path: string[] = []
 ): Promise<{ samples: Int16Array; sampleRate: number }> {
   const tonesDir = await getNestedDirectory(directoryHandle, [
-    'library', 's330', 'tones'
+    'library', 's330', 'tones', ...path
   ]);
 
   // Load WAV file
@@ -1191,13 +1576,18 @@ export async function loadIndividualToneWavSamples(
  * Delete an individual tone from the library.
  *
  * Removes both the YAML and WAV files for the tone.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param toneFile - Tone file name (without extension)
+ * @param path - Optional path segments from tones root
  */
 export async function deleteIndividualTone(
   directoryHandle: FileSystemDirectoryHandle,
-  toneFile: string
+  toneFile: string,
+  path: string[] = []
 ): Promise<void> {
   const tonesDir = await getNestedDirectory(directoryHandle, [
-    'library', 's330', 'tones'
+    'library', 's330', 'tones', ...path
   ]);
 
   // Remove YAML file
@@ -1225,6 +1615,8 @@ export interface LibraryPatchInfo {
   directoryName: string;
   /** Number of dependent tones included */
   toneCount: number;
+  /** Path segments from patches root (empty for root items) */
+  path?: string[];
 }
 
 /**
@@ -1253,6 +1645,8 @@ export interface LoadedPatchBundle {
  * List all individual patch bundles in the library (outside of sets).
  *
  * Scans `library/s330/patches/` for directories containing patch.yaml.
+ *
+ * @deprecated Use listIndividualPatchesTree for hierarchical view
  */
 export async function listIndividualPatches(
   directoryHandle: FileSystemDirectoryHandle
@@ -1305,34 +1699,133 @@ export async function listIndividualPatches(
   return patches.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/**
+ * Recursively scan a directory for patches and build a tree structure.
+ * A patch is identified by containing a patch.yaml file.
+ */
+async function scanPatchesDirectory(
+  dir: FileSystemDirectoryHandle,
+  path: string[]
+): Promise<LibraryTreeNode[]> {
+  const nodes: LibraryTreeNode[] = [];
+
+  for await (const entry of dir.values()) {
+    if (entry.kind === 'directory') {
+      const subDir = await dir.getDirectoryHandle(entry.name);
+
+      // Check if this is a patch bundle (contains patch.yaml)
+      let isPatchBundle = false;
+      let patchName = entry.name;
+      let toneCount = 0;
+
+      try {
+        const yamlHandle = await subDir.getFileHandle('patch.yaml');
+        const yamlFile = await yamlHandle.getFile();
+        const content = await yamlFile.text();
+        const yaml = parseYaml(content) as { name?: string };
+        patchName = yaml.name || entry.name;
+        isPatchBundle = true;
+
+        // Count tones
+        try {
+          const tonesDir = await subDir.getDirectoryHandle('tones');
+          for await (const toneEntry of tonesDir.values()) {
+            if (toneEntry.kind === 'file' && toneEntry.name.endsWith('.yaml')) {
+              toneCount++;
+            }
+          }
+        } catch {
+          // No tones directory
+        }
+      } catch {
+        // Not a patch bundle
+      }
+
+      if (isPatchBundle) {
+        nodes.push({
+          id: [...path, entry.name].join('/'),
+          name: patchName,
+          type: 'patch',
+          path,
+          directoryName: entry.name,
+          toneCount,
+        });
+      } else {
+        // Regular directory - recurse
+        const children = await scanPatchesDirectory(subDir, [...path, entry.name]);
+        nodes.push({
+          id: [...path, entry.name].join('/'),
+          name: entry.name,
+          type: 'directory',
+          path,
+          children,
+        });
+      }
+    }
+  }
+
+  // Sort: directories first, then alphabetically
+  return nodes.sort((a, b) => {
+    if (a.type === 'directory' && b.type !== 'directory') return -1;
+    if (a.type !== 'directory' && b.type === 'directory') return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/**
+ * List all individual patches in the library as a hierarchical tree.
+ *
+ * Recursively scans `library/s330/patches/` for patch bundles and directories.
+ */
+export async function listIndividualPatchesTree(
+  directoryHandle: FileSystemDirectoryHandle
+): Promise<LibraryTreeNode[]> {
+  try {
+    const patchesDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'patches']);
+    return await scanPatchesDirectory(patchesDir, []);
+  } catch {
+    // Patches directory doesn't exist yet
+    return [];
+  }
+}
+
 
 /**
  * Export a patch bundle to the library with all dependent tones.
  *
  * Creates directory structure:
- * library/s330/patches/{name}/
- *   patch.yaml        - Patch parameters
- *   tones/
- *     T01.yaml        - Tone parameters (if slot 0 is used)
- *     T01.wav         - Wave data
- *     T05.yaml        - Another tone (if slot 4 is used)
- *     T05.wav
- *     ...
+ * library/s330/patches/[path...]/
+ *   {name}/
+ *     patch.yaml        - Patch parameters
+ *     tones/
+ *       T01.yaml        - Tone parameters (if slot 0 is used)
+ *       T01.wav         - Wave data
+ *       T05.yaml        - Another tone (if slot 4 is used)
+ *       T05.wav
+ *       ...
+ *
+ * @param directoryHandle - Library directory handle
+ * @param patch - Patch to export
+ * @param tones - Array of tone data to include in the bundle
+ * @param customName - Optional custom name for the patch
+ * @param onProgress - Optional progress callback
+ * @param path - Optional path segments for subdirectory (e.g., ['Pads', 'Ambient'])
  */
 export async function exportPatchToDirectory(
   directoryHandle: FileSystemDirectoryHandle,
   patch: S330Patch,
   tones: PatchBundleTone[],
   customName?: string,
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
+  path: string[] = []
 ): Promise<void> {
   const patchName = customName || patch.common.name || 'untitled';
   const sanitizedName = patchName.replace(/[<>:"/\\|?*]/g, '_').trim();
 
   onProgress?.(5);
 
-  // Create library/s330/patches/{name}/ directory structure
-  const patchesDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'patches']);
+  // Create library/s330/patches/[path...]/{name}/ directory structure
+  const patchesDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'patches', ...path]);
   const patchDir = await patchesDir.getDirectoryHandle(sanitizedName, { create: true });
   const tonesDir = await patchDir.getDirectoryHandle('tones', { create: true });
 
@@ -1365,14 +1858,16 @@ export async function exportPatchToDirectory(
  *
  * @param directoryHandle - Library directory handle
  * @param patchDirName - Patch directory name
+ * @param path - Optional path segments from patches root
  * @returns Loaded patch bundle with patch and tones
  */
 export async function loadIndividualPatch(
   directoryHandle: FileSystemDirectoryHandle,
-  patchDirName: string
+  patchDirName: string,
+  path: string[] = []
 ): Promise<LoadedPatchBundle> {
   const patchesDir = await getNestedDirectory(directoryHandle, [
-    'library', 's330', 'patches'
+    'library', 's330', 'patches', ...path
   ]);
 
   const patchDir = await patchesDir.getDirectoryHandle(patchDirName);
@@ -1417,13 +1912,18 @@ export async function loadIndividualPatch(
 
 /**
  * Delete an individual patch bundle from the library.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param patchDirName - Patch directory name
+ * @param path - Optional path segments from patches root
  */
 export async function deleteIndividualPatch(
   directoryHandle: FileSystemDirectoryHandle,
-  patchDirName: string
+  patchDirName: string,
+  path: string[] = []
 ): Promise<void> {
   const patchesDir = await getNestedDirectory(directoryHandle, [
-    'library', 's330', 'patches'
+    'library', 's330', 'patches', ...path
   ]);
 
   // Remove the entire patch directory recursively
@@ -1448,12 +1948,16 @@ export interface DrumKitInfo {
   sampleCount: number;
   /** Directory name for loading */
   directoryName: string;
+  /** Path segments from drum-kits root (empty for root items) */
+  path?: string[];
 }
 
 /**
  * List all drum kit bundles in the library.
  *
  * Scans `library/s330/drum-kits/` for directories containing WAV files.
+ *
+ * @deprecated Use listDrumKitsTree for hierarchical view
  */
 export async function listDrumKits(
   directoryHandle: FileSystemDirectoryHandle
@@ -1520,15 +2024,109 @@ export async function listDrumKits(
 }
 
 /**
+ * Recursively scan a directory for drum kits and build a tree structure.
+ * A drum kit is identified by containing WAV files or kit.yaml.
+ */
+async function scanDrumKitsDirectory(
+  dir: FileSystemDirectoryHandle,
+  path: string[]
+): Promise<LibraryTreeNode[]> {
+  const nodes: LibraryTreeNode[] = [];
+
+  for await (const entry of dir.values()) {
+    if (entry.kind === 'directory') {
+      const subDir = await dir.getDirectoryHandle(entry.name);
+
+      // Check if this is a drum kit (contains WAV files or kit.yaml)
+      const wavFiles: string[] = [];
+      let kitYaml: DrumKitBundle | null = null;
+
+      for await (const file of subDir.values()) {
+        if (file.kind !== 'file') continue;
+        if (file.name.toLowerCase().endsWith('.wav')) {
+          wavFiles.push(file.name);
+        } else if (file.name === 'kit.yaml') {
+          try {
+            const fileHandle = await subDir.getFileHandle('kit.yaml');
+            const yamlFile = await fileHandle.getFile();
+            const yamlContent = await yamlFile.text();
+            kitYaml = DrumKitBundleSchema.parse(parseYaml(yamlContent));
+          } catch {
+            // Invalid kit.yaml
+          }
+        }
+      }
+
+      if (wavFiles.length > 0) {
+        // This is a drum kit
+        const resolved = parseDrumKitBundle(kitYaml, wavFiles, entry.name);
+        nodes.push({
+          id: [...path, entry.name].join('/'),
+          name: resolved.name,
+          type: 'drum-kit',
+          path,
+          directoryName: entry.name,
+          description: resolved.description,
+          kitCount: resolved.kits.length,
+          sampleCount: resolved.totalSamples,
+        });
+      } else {
+        // Regular directory - recurse
+        const children = await scanDrumKitsDirectory(subDir, [...path, entry.name]);
+        nodes.push({
+          id: [...path, entry.name].join('/'),
+          name: entry.name,
+          type: 'directory',
+          path,
+          children,
+        });
+      }
+    }
+  }
+
+  // Sort: directories first, then alphabetically
+  return nodes.sort((a, b) => {
+    if (a.type === 'directory' && b.type !== 'directory') return -1;
+    if (a.type !== 'directory' && b.type === 'directory') return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/**
+ * List all drum kits in the library as a hierarchical tree.
+ *
+ * Recursively scans `library/s330/drum-kits/` for drum kit bundles and directories.
+ */
+export async function listDrumKitsTree(
+  directoryHandle: FileSystemDirectoryHandle
+): Promise<LibraryTreeNode[]> {
+  try {
+    const libraryDir = await directoryHandle.getDirectoryHandle('library', { create: false });
+    const s330Dir = await libraryDir.getDirectoryHandle('s330', { create: false });
+    const drumKitsDir = await s330Dir.getDirectoryHandle('drum-kits', { create: false });
+
+    return await scanDrumKitsDirectory(drumKitsDir, []);
+  } catch {
+    // Drum kits directory doesn't exist yet
+    return [];
+  }
+}
+
+/**
  * Load a drum kit bundle with full metadata and sample information.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param kitName - Kit directory name
+ * @param path - Optional path segments from drum-kits root
  */
 export async function loadDrumKitBundle(
   directoryHandle: FileSystemDirectoryHandle,
-  kitName: string
+  kitName: string,
+  path: string[] = []
 ): Promise<ResolvedDrumKitBundle> {
   // Navigate to the kit directory
   const kitDir = await getNestedDirectory(directoryHandle, [
-    'library', 's330', 'drum-kits', kitName
+    'library', 's330', 'drum-kits', ...path, kitName
   ]);
 
   // Collect WAV files and check for kit.yaml
@@ -1560,13 +2158,18 @@ export async function loadDrumKitBundle(
  * Delete a drum kit from the library.
  *
  * Removes the entire drum kit directory including all WAV files and kit.yaml.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param kitName - Kit directory name
+ * @param path - Optional path segments from drum-kits root
  */
 export async function deleteDrumKit(
   directoryHandle: FileSystemDirectoryHandle,
-  kitName: string
+  kitName: string,
+  path: string[] = []
 ): Promise<void> {
   const drumKitsDir = await getNestedDirectory(directoryHandle, [
-    'library', 's330', 'drum-kits'
+    'library', 's330', 'drum-kits', ...path
   ]);
 
   // Remove the kit directory recursively

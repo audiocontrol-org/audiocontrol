@@ -41,6 +41,8 @@ export interface LibraryDragData {
   toneFile?: string;
   /** For patches: the file name within the set */
   patchFile?: string;
+  /** Path segments from category root (for hierarchical library) */
+  path?: string[];
 }
 
 /** MIME type for library drag data */

@@ -3,17 +3,34 @@
  *
  * Center panel showing library contents in a tree structure:
  * - Sets (expandable folders showing their tones/patches)
- * - Global Tones
- * - Global Patches
+ * - Individual Tones (hierarchical with subdirectories)
+ * - Individual Patches (hierarchical with subdirectories)
+ * - Drum Kits (hierarchical with subdirectories)
  *
  * Supports drag and drop from device memory to export items to library.
  */
 
 import { useState, useCallback, useEffect } from 'react';
 import type { SetInfo, SetYaml } from '@audiocontrol/sampler-library/browser';
-import { loadSetManifest, type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo } from '@/lib/library-service';
+import {
+  loadSetManifest,
+  type DrumKitInfo,
+  type LibraryToneInfo,
+  type LibraryPatchInfo,
+  type LibraryTreeNode,
+  type LibraryCategory,
+} from '@/lib/library-service';
 import { cn } from '@/lib/utils';
 import { DEVICE_DRAG_MIME, type DeviceDragData, LIBRARY_DRAG_MIME, type LibraryDragData } from './DeviceMemoryPanel';
+import { TreeSection } from './LibraryTreeNode';
+import {
+  LibraryContextMenu,
+  type ContextMenuAction,
+  NewFolderIcon,
+  RenameIcon,
+  MoveIcon,
+  DeleteIcon,
+} from './LibraryContextMenu';
 
 interface LibraryTreePanelProps {
   libraryHandle: FileSystemDirectoryHandle | null;
@@ -21,29 +38,53 @@ interface LibraryTreePanelProps {
   drumKits: DrumKitInfo[];
   individualTones: LibraryToneInfo[];
   individualPatches: LibraryPatchInfo[];
+  /** Hierarchical tree for tones (optional, falls back to flat list) */
+  tonesTree?: LibraryTreeNode[];
+  /** Hierarchical tree for patches (optional, falls back to flat list) */
+  patchesTree?: LibraryTreeNode[];
+  /** Hierarchical tree for drum kits (optional, falls back to flat list) */
+  drumKitsTree?: LibraryTreeNode[];
+  /** Expanded directory paths per category */
+  expandedPaths?: {
+    tones: Set<string>;
+    patches: Set<string>;
+    drumKits: Set<string>;
+  };
   selectedName?: string;
   selectedType?: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch';
   selectedSetName?: string;
+  /** Selected path for hierarchical items */
+  selectedPath?: string[];
   onSelectSet: (name: string) => void;
   onSelectTone: (name: string, setName: string) => void;
   onSelectPatch: (name: string, setName: string) => void;
-  onSelectDrumKit: (name: string) => void;
-  onSelectIndividualTone: (name: string) => void;
-  onSelectIndividualPatch: (name: string) => void;
+  onSelectDrumKit: (name: string, path?: string[]) => void;
+  onSelectIndividualTone: (name: string, path?: string[]) => void;
+  onSelectIndividualPatch: (name: string, path?: string[]) => void;
   onRefresh: () => void;
   isLoading: boolean;
   /** Callback when a device tone is dropped to export to library */
-  onDropDeviceTone?: (data: DeviceDragData) => void;
+  onDropDeviceTone?: (data: DeviceDragData, targetPath?: string[]) => void;
   /** Callback when a device patch is dropped to export to library */
-  onDropDevicePatch?: (data: DeviceDragData) => void;
+  onDropDevicePatch?: (data: DeviceDragData, targetPath?: string[]) => void;
   /** Callback to delete a set */
   onDeleteSet?: (name: string) => void;
   /** Callback to delete an individual tone */
-  onDeleteIndividualTone?: (fileName: string) => void;
+  onDeleteIndividualTone?: (fileName: string, path?: string[]) => void;
   /** Callback to delete an individual patch */
-  onDeleteIndividualPatch?: (fileName: string) => void;
+  onDeleteIndividualPatch?: (fileName: string, path?: string[]) => void;
   /** Callback to delete a drum kit */
-  onDeleteDrumKit?: (directoryName: string) => void;
+  onDeleteDrumKit?: (directoryName: string, path?: string[]) => void;
+  /** Callback to toggle directory expansion */
+  onToggleDirectoryExpanded?: (category: 'tones' | 'patches' | 'drumKits', path: string) => void;
+  /** Callback to create a new directory */
+  onCreateDirectory?: (category: LibraryCategory, parentPath: string[]) => void;
+  /** Callback to rename a directory */
+  onRenameDirectory?: (category: LibraryCategory, path: string[]) => void;
+  /** Callback to delete a directory */
+  onDeleteDirectory?: (category: LibraryCategory, path: string[]) => void;
+  /** Callback to move an item */
+  onMoveItem?: (category: LibraryCategory, sourcePath: string[], itemName: string) => void;
 }
 
 /**
@@ -404,9 +445,14 @@ export function LibraryTreePanel({
   drumKits,
   individualTones,
   individualPatches,
+  tonesTree,
+  patchesTree,
+  drumKitsTree,
+  expandedPaths,
   selectedName,
   selectedType,
   selectedSetName,
+  selectedPath,
   onSelectSet,
   onSelectTone,
   onSelectPatch,
@@ -421,12 +467,25 @@ export function LibraryTreePanel({
   onDeleteIndividualTone,
   onDeleteIndividualPatch,
   onDeleteDrumKit,
+  onToggleDirectoryExpanded,
+  onCreateDirectory,
+  onRenameDirectory,
+  onDeleteDirectory,
+  onMoveItem,
 }: LibraryTreePanelProps): JSX.Element {
   const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set());
   const [manifests, setManifests] = useState<Map<string, SetYaml>>(new Map());
   const [loadingManifests, setLoadingManifests] = useState<Set<string>>(new Set());
   const [isToneDragOver, setIsToneDragOver] = useState(false);
   const [isPatchDragOver, setIsPatchDragOver] = useState(false);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    node: LibraryTreeNode;
+    category: 'tones' | 'patches' | 'drumKits';
+  } | null>(null);
 
   // Handle drag over for tone drop zone
   const handleToneDragOver = useCallback((e: React.DragEvent) => {
@@ -571,6 +630,123 @@ export function LibraryTreePanel({
     });
   }, []);
 
+  // Handle context menu for tree items
+  const handleTreeContextMenu = useCallback((
+    e: React.MouseEvent,
+    node: LibraryTreeNode,
+    category: 'tones' | 'patches' | 'drumKits'
+  ) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY, node, category });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  // Build context menu actions for a node
+  const getContextMenuActions = useCallback((): ContextMenuAction[] => {
+    if (!contextMenu) return [];
+
+    const { node, category } = contextMenu;
+    const actions: ContextMenuAction[] = [];
+    const categoryForService = category === 'drumKits' ? 'drum-kits' : category;
+
+    if (node.type === 'directory') {
+      // Directory actions
+      actions.push({
+        label: 'New Folder',
+        icon: <NewFolderIcon />,
+        onClick: () => onCreateDirectory?.(categoryForService, [...node.path, node.name]),
+      });
+      actions.push({
+        label: 'Rename',
+        icon: <RenameIcon />,
+        onClick: () => onRenameDirectory?.(categoryForService, [...node.path, node.name]),
+      });
+      actions.push({ label: '', separator: true, onClick: () => {} });
+      actions.push({
+        label: 'Delete',
+        icon: <DeleteIcon />,
+        onClick: () => onDeleteDirectory?.(categoryForService, [...node.path, node.name]),
+        danger: true,
+      });
+    } else {
+      // Item actions (tone, patch, drum-kit)
+      actions.push({
+        label: 'Move to...',
+        icon: <MoveIcon />,
+        onClick: () => onMoveItem?.(categoryForService, node.path, node.fileName || node.directoryName || node.name),
+      });
+      actions.push({ label: '', separator: true, onClick: () => {} });
+      actions.push({
+        label: 'Delete',
+        icon: <DeleteIcon />,
+        onClick: () => {
+          if (node.type === 'tone') {
+            onDeleteIndividualTone?.(node.fileName || node.name, node.path);
+          } else if (node.type === 'patch') {
+            onDeleteIndividualPatch?.(node.directoryName || node.name, node.path);
+          } else if (node.type === 'drum-kit') {
+            onDeleteDrumKit?.(node.directoryName || node.name, node.path);
+          }
+        },
+        danger: true,
+      });
+    }
+
+    return actions;
+  }, [contextMenu, onCreateDirectory, onRenameDirectory, onDeleteDirectory, onMoveItem, onDeleteIndividualTone, onDeleteIndividualPatch, onDeleteDrumKit]);
+
+  // Handle tree node selection
+  const handleTreeNodeSelect = useCallback((
+    node: LibraryTreeNode,
+    category: 'tones' | 'patches' | 'drumKits'
+  ) => {
+    if (node.type === 'directory') {
+      // Toggle directory expansion
+      onToggleDirectoryExpanded?.(category, node.id);
+    } else if (node.type === 'tone') {
+      onSelectIndividualTone(node.fileName || node.name, node.path);
+    } else if (node.type === 'patch') {
+      onSelectIndividualPatch(node.directoryName || node.name, node.path);
+    } else if (node.type === 'drum-kit') {
+      onSelectDrumKit(node.directoryName || node.name, node.path);
+    }
+  }, [onToggleDirectoryExpanded, onSelectIndividualTone, onSelectIndividualPatch, onSelectDrumKit]);
+
+  // Handle tree node delete
+  const handleTreeNodeDelete = useCallback((
+    node: LibraryTreeNode,
+    category: 'tones' | 'patches' | 'drumKits'
+  ) => {
+    if (node.type === 'directory') {
+      const categoryForService = category === 'drumKits' ? 'drum-kits' : category;
+      onDeleteDirectory?.(categoryForService, [...node.path, node.name]);
+    } else if (node.type === 'tone') {
+      onDeleteIndividualTone?.(node.fileName || node.name, node.path);
+    } else if (node.type === 'patch') {
+      onDeleteIndividualPatch?.(node.directoryName || node.name, node.path);
+    } else if (node.type === 'drum-kit') {
+      onDeleteDrumKit?.(node.directoryName || node.name, node.path);
+    }
+  }, [onDeleteDirectory, onDeleteIndividualTone, onDeleteIndividualPatch, onDeleteDrumKit]);
+
+  // Compute selected ID for tree rendering
+  const computeSelectedId = useCallback((category: 'tones' | 'patches' | 'drumKits'): string | undefined => {
+    if (!selectedPath || !selectedName) return undefined;
+    if (category === 'tones' && selectedType === 'individualTone') {
+      return [...selectedPath, selectedName].join('/');
+    }
+    if (category === 'patches' && selectedType === 'individualPatch') {
+      return [...selectedPath, selectedName].join('/');
+    }
+    if (category === 'drumKits' && selectedType === 'drumKit') {
+      return [...selectedPath, selectedName].join('/');
+    }
+    return undefined;
+  }, [selectedPath, selectedName, selectedType]);
+
   // Load manifest when a set is expanded
   useEffect(() => {
     if (!libraryHandle) return;
@@ -684,166 +860,278 @@ export function LibraryTreePanel({
         </div>
 
         {/* Individual Tones Section - Drop Zone */}
-        <div
-          className={cn(
-            'p-2 border-t border-s330-accent/30 transition-colors',
-            isToneDragOver && 'bg-s330-highlight/10 border-s330-highlight'
-          )}
-          onDragOver={handleToneDragOver}
-          onDragEnter={handleToneDragEnter}
-          onDragLeave={handleToneDragLeave}
-          onDrop={handleToneDrop}
-        >
-          <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1 flex items-center gap-2">
-            Individual Tones
+        {tonesTree ? (
+          // Hierarchical tree view
+          <TreeSection
+            title="Individual Tones"
+            nodes={tonesTree}
+            category="tones"
+            expandedPaths={expandedPaths?.tones ?? new Set()}
+            selectedId={computeSelectedId('tones')}
+            onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('tones', nodeId)}
+            onSelect={(node) => handleTreeNodeSelect(node, 'tones')}
+            onDelete={(node) => handleTreeNodeDelete(node, 'tones')}
+            onContextMenu={(e, node) => handleTreeContextMenu(e, node, 'tones')}
+            emptyMessage="Drag tones from device to export"
+            isDragOver={isToneDragOver}
+            onDragOver={handleToneDragOver}
+            onDragEnter={handleToneDragEnter}
+            onDragLeave={handleToneDragLeave}
+            onDrop={handleToneDrop}
+            dropMessage="Drop to export"
+            headerActions={
+              onCreateDirectory && (
+                <button
+                  onClick={() => onCreateDirectory('tones', [])}
+                  className="text-s330-muted hover:text-s330-text p-0.5"
+                  title="New folder"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                  </svg>
+                </button>
+              )
+            }
+          />
+        ) : (
+          // Flat list view (legacy)
+          <div
+            className={cn(
+              'p-2 border-t border-s330-accent/30 transition-colors',
+              isToneDragOver && 'bg-s330-highlight/10 border-s330-highlight'
+            )}
+            onDragOver={handleToneDragOver}
+            onDragEnter={handleToneDragEnter}
+            onDragLeave={handleToneDragLeave}
+            onDrop={handleToneDrop}
+          >
+            <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1 flex items-center gap-2">
+              Individual Tones
+              {isToneDragOver && (
+                <span className="text-s330-highlight font-normal normal-case">
+                  — Drop to export
+                </span>
+              )}
+            </div>
+
+            {individualTones.length === 0 && !isToneDragOver ? (
+              <div className="text-sm text-s330-muted/70 px-2 py-4 text-center italic">
+                Drag tones from device to export
+              </div>
+            ) : (
+              <div className="space-y-0.5">
+                {individualTones.map((toneInfo) => (
+                  <div
+                    key={toneInfo.fileName}
+                    onClick={() => onSelectIndividualTone(toneInfo.fileName)}
+                    draggable
+                    onDragStart={(e) => handleIndividualToneDragStart(e, toneInfo)}
+                    className={cn(
+                      'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+                      'flex items-center gap-2 cursor-grab active:cursor-grabbing',
+                      selectedType === 'individualTone' && selectedName === toneInfo.fileName
+                        ? 'bg-s330-highlight/20 text-s330-highlight'
+                        : 'text-s330-text hover:bg-s330-accent/30'
+                    )}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && onSelectIndividualTone(toneInfo.fileName)}
+                  >
+                    <WaveIcon />
+                    <span className="flex-1 truncate font-medium">{toneInfo.name}</span>
+                    {onDeleteIndividualTone && (
+                      <DeleteButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteIndividualTone(toneInfo.fileName);
+                        }}
+                        title="Delete tone"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {isToneDragOver && (
-              <span className="text-s330-highlight font-normal normal-case">
-                — Drop to export
-              </span>
+              <div className="mt-2 p-3 border-2 border-dashed border-s330-highlight/50 rounded text-center text-sm text-s330-highlight">
+                Drop tone here to export
+              </div>
             )}
           </div>
-
-          {individualTones.length === 0 && !isToneDragOver ? (
-            <div className="text-sm text-s330-muted/70 px-2 py-4 text-center italic">
-              Drag tones from device to export
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              {individualTones.map((toneInfo) => (
-                <div
-                  key={toneInfo.fileName}
-                  onClick={() => onSelectIndividualTone(toneInfo.fileName)}
-                  draggable
-                  onDragStart={(e) => handleIndividualToneDragStart(e, toneInfo)}
-                  className={cn(
-                    'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-                    'flex items-center gap-2 cursor-grab active:cursor-grabbing',
-                    selectedType === 'individualTone' && selectedName === toneInfo.fileName
-                      ? 'bg-s330-highlight/20 text-s330-highlight'
-                      : 'text-s330-text hover:bg-s330-accent/30'
-                  )}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && onSelectIndividualTone(toneInfo.fileName)}
-                >
-                  <WaveIcon />
-                  <span className="flex-1 truncate font-medium">{toneInfo.name}</span>
-                  {onDeleteIndividualTone && (
-                    <DeleteButton
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteIndividualTone(toneInfo.fileName);
-                      }}
-                      title="Delete tone"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {isToneDragOver && (
-            <div className="mt-2 p-3 border-2 border-dashed border-s330-highlight/50 rounded text-center text-sm text-s330-highlight">
-              Drop tone here to export
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Individual Patches Section - Drop Zone */}
-        <div
-          className={cn(
-            'p-2 border-t border-s330-accent/30 transition-colors',
-            isPatchDragOver && 'bg-s330-highlight/10 border-s330-highlight'
-          )}
-          onDragOver={handlePatchDragOver}
-          onDragEnter={handlePatchDragEnter}
-          onDragLeave={handlePatchDragLeave}
-          onDrop={handlePatchDrop}
-        >
-          <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1 flex items-center gap-2">
-            Individual Patches
+        {patchesTree ? (
+          // Hierarchical tree view
+          <TreeSection
+            title="Individual Patches"
+            nodes={patchesTree}
+            category="patches"
+            expandedPaths={expandedPaths?.patches ?? new Set()}
+            selectedId={computeSelectedId('patches')}
+            onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('patches', nodeId)}
+            onSelect={(node) => handleTreeNodeSelect(node, 'patches')}
+            onDelete={(node) => handleTreeNodeDelete(node, 'patches')}
+            onContextMenu={(e, node) => handleTreeContextMenu(e, node, 'patches')}
+            emptyMessage="Drag patches from device to export"
+            isDragOver={isPatchDragOver}
+            onDragOver={handlePatchDragOver}
+            onDragEnter={handlePatchDragEnter}
+            onDragLeave={handlePatchDragLeave}
+            onDrop={handlePatchDrop}
+            dropMessage="Drop to export"
+            headerActions={
+              onCreateDirectory && (
+                <button
+                  onClick={() => onCreateDirectory('patches', [])}
+                  className="text-s330-muted hover:text-s330-text p-0.5"
+                  title="New folder"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                  </svg>
+                </button>
+              )
+            }
+          />
+        ) : (
+          // Flat list view (legacy)
+          <div
+            className={cn(
+              'p-2 border-t border-s330-accent/30 transition-colors',
+              isPatchDragOver && 'bg-s330-highlight/10 border-s330-highlight'
+            )}
+            onDragOver={handlePatchDragOver}
+            onDragEnter={handlePatchDragEnter}
+            onDragLeave={handlePatchDragLeave}
+            onDrop={handlePatchDrop}
+          >
+            <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1 flex items-center gap-2">
+              Individual Patches
+              {isPatchDragOver && (
+                <span className="text-s330-highlight font-normal normal-case">
+                  — Drop to export
+                </span>
+              )}
+            </div>
+
+            {individualPatches.length === 0 && !isPatchDragOver ? (
+              <div className="text-sm text-s330-muted/70 px-2 py-4 text-center italic">
+                Drag patches from device to export
+              </div>
+            ) : (
+              <div className="space-y-0.5">
+                {individualPatches.map((patchInfo) => (
+                  <div
+                    key={patchInfo.directoryName}
+                    onClick={() => onSelectIndividualPatch(patchInfo.directoryName)}
+                    draggable
+                    onDragStart={(e) => handleIndividualPatchDragStart(e, patchInfo)}
+                    className={cn(
+                      'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+                      'flex items-center gap-2 cursor-grab active:cursor-grabbing',
+                      selectedType === 'individualPatch' && selectedName === patchInfo.directoryName
+                        ? 'bg-s330-highlight/20 text-s330-highlight'
+                        : 'text-s330-text hover:bg-s330-accent/30'
+                    )}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => e.key === 'Enter' && onSelectIndividualPatch(patchInfo.directoryName)}
+                  >
+                    <PatchIcon />
+                    <span className="flex-1 truncate font-medium">{patchInfo.name}</span>
+                    <span className="text-xs text-s330-muted">
+                      {patchInfo.toneCount} tone{patchInfo.toneCount !== 1 ? 's' : ''}
+                    </span>
+                    {onDeleteIndividualPatch && (
+                      <DeleteButton
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteIndividualPatch(patchInfo.directoryName);
+                        }}
+                        title="Delete patch bundle"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
             {isPatchDragOver && (
-              <span className="text-s330-highlight font-normal normal-case">
-                — Drop to export
-              </span>
+              <div className="mt-2 p-3 border-2 border-dashed border-s330-highlight/50 rounded text-center text-sm text-s330-highlight">
+                Drop patch here to export
+              </div>
             )}
           </div>
-
-          {individualPatches.length === 0 && !isPatchDragOver ? (
-            <div className="text-sm text-s330-muted/70 px-2 py-4 text-center italic">
-              Drag patches from device to export
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              {individualPatches.map((patchInfo) => (
-                <div
-                  key={patchInfo.directoryName}
-                  onClick={() => onSelectIndividualPatch(patchInfo.directoryName)}
-                  draggable
-                  onDragStart={(e) => handleIndividualPatchDragStart(e, patchInfo)}
-                  className={cn(
-                    'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-                    'flex items-center gap-2 cursor-grab active:cursor-grabbing',
-                    selectedType === 'individualPatch' && selectedName === patchInfo.directoryName
-                      ? 'bg-s330-highlight/20 text-s330-highlight'
-                      : 'text-s330-text hover:bg-s330-accent/30'
-                  )}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => e.key === 'Enter' && onSelectIndividualPatch(patchInfo.directoryName)}
-                >
-                  <PatchIcon />
-                  <span className="flex-1 truncate font-medium">{patchInfo.name}</span>
-                  <span className="text-xs text-s330-muted">
-                    {patchInfo.toneCount} tone{patchInfo.toneCount !== 1 ? 's' : ''}
-                  </span>
-                  {onDeleteIndividualPatch && (
-                    <DeleteButton
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteIndividualPatch(patchInfo.directoryName);
-                      }}
-                      title="Delete patch bundle"
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-
-          {isPatchDragOver && (
-            <div className="mt-2 p-3 border-2 border-dashed border-s330-highlight/50 rounded text-center text-sm text-s330-highlight">
-              Drop patch here to export
-            </div>
-          )}
-        </div>
+        )}
 
         {/* Drum Kits Section */}
-        <div className="p-2 border-t border-s330-accent/30">
-          <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1">
-            Drum Kits
-          </div>
+        {drumKitsTree ? (
+          // Hierarchical tree view
+          <TreeSection
+            title="Drum Kits"
+            nodes={drumKitsTree}
+            category="drumKits"
+            expandedPaths={expandedPaths?.drumKits ?? new Set()}
+            selectedId={computeSelectedId('drumKits')}
+            onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('drumKits', nodeId)}
+            onSelect={(node) => handleTreeNodeSelect(node, 'drumKits')}
+            onDelete={(node) => handleTreeNodeDelete(node, 'drumKits')}
+            onContextMenu={(e, node) => handleTreeContextMenu(e, node, 'drumKits')}
+            emptyMessage="No drum kits in library"
+            headerActions={
+              onCreateDirectory && (
+                <button
+                  onClick={() => onCreateDirectory('drum-kits', [])}
+                  className="text-s330-muted hover:text-s330-text p-0.5"
+                  title="New folder"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
+                  </svg>
+                </button>
+              )
+            }
+          />
+        ) : (
+          // Flat list view (legacy)
+          <div className="p-2 border-t border-s330-accent/30">
+            <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1">
+              Drum Kits
+            </div>
 
-          {drumKits.length === 0 ? (
-            <div className="text-sm text-s330-muted/70 px-2 py-4 text-center italic">
-              No drum kits in library
-            </div>
-          ) : (
-            <div className="space-y-0.5">
-              {drumKits.map((kitInfo) => (
-                <DrumKitItem
-                  key={kitInfo.directoryName}
-                  kitInfo={kitInfo}
-                  isSelected={selectedType === 'drumKit' && selectedName === kitInfo.directoryName}
-                  onSelect={() => onSelectDrumKit(kitInfo.directoryName)}
-                  onDelete={onDeleteDrumKit ? () => onDeleteDrumKit(kitInfo.directoryName) : undefined}
-                  onDragStart={(e) => handleDrumKitDragStart(e, kitInfo)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+            {drumKits.length === 0 ? (
+              <div className="text-sm text-s330-muted/70 px-2 py-4 text-center italic">
+                No drum kits in library
+              </div>
+            ) : (
+              <div className="space-y-0.5">
+                {drumKits.map((kitInfo) => (
+                  <DrumKitItem
+                    key={kitInfo.directoryName}
+                    kitInfo={kitInfo}
+                    isSelected={selectedType === 'drumKit' && selectedName === kitInfo.directoryName}
+                    onSelect={() => onSelectDrumKit(kitInfo.directoryName)}
+                    onDelete={onDeleteDrumKit ? () => onDeleteDrumKit(kitInfo.directoryName) : undefined}
+                    onDragStart={(e) => handleDrumKitDragStart(e, kitInfo)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Context Menu */}
+      {contextMenu && (
+        <LibraryContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          actions={getContextMenuActions()}
+          onClose={closeContextMenu}
+        />
+      )}
     </div>
   );
 }
