@@ -82,6 +82,7 @@ import {
 } from './s330-params.js';
 
 import { createTone } from './s330-tone-factory.js';
+import { withRetry, type RetryOptions } from '@audiocontrol/shared-midi';
 
 // =============================================================================
 // Data Types
@@ -644,27 +645,10 @@ export function createS330Client(
     }
 
     /**
-     * Internal helper: Send data using WSD/DAT/EOD protocol
-     *
-     * This is the ONLY method that works for function parameter writes on S-330.
-     * The protocol requires:
-     * 1. Send WSD (Want to Send Data) with address and size
-     * 2. Wait for ACK
-     * 3. Send DAT with nibblized data
-     * 4. Send EOD (End of Data)
-     *
-     * @param address - 4-byte address [aa, bb, cc, dd]
-     * @param data - Parameter data bytes to write
-     * @returns Promise that resolves when write is complete
+     * Single-attempt WSD/DAT/EOD protocol implementation.
+     * Used internally by sendData which wraps this with retry logic.
      */
-    async function sendData(address: number[], data: number[]): Promise<void> {
-        if (address.length !== 4) {
-            throw new Error('Address must be 4 bytes');
-        }
-
-        const addrStr = address.map(b => b.toString(16).padStart(2, '0')).join(' ');
-        console.log(`[S330Client] sendData: address=${addrStr}, dataLen=${data.length}`);
-
+    function sendDataAttempt(address: number[], data: number[]): Promise<void> {
         return new Promise((resolve, reject) => {
             // State machine: WSD → wait ACK → DAT → wait ACK → EOD → wait ACK → done
             let phase: 'WSD' | 'DAT' | 'EOD' | 'DONE' = 'WSD';
@@ -796,6 +780,60 @@ export function createS330Client(
             phaseStartTime = Date.now();
             midiAdapter.send(wsdMessage);
         });
+    }
+
+    /**
+     * Retry options for WSD protocol operations.
+     * Configured for MIDI hardware communication:
+     * - Retry on timeout errors (device may be busy processing)
+     * - Exponential backoff with jitter to avoid thundering herd
+     * - Limited retries to fail fast on persistent issues
+     */
+    const wsdRetryOptions: RetryOptions = {
+        maxRetries: TIMING.MAX_RETRIES,
+        initialDelayMs: TIMING.RETRY_DELAY_MS,
+        maxDelayMs: 2000,
+        multiplier: 2,
+        jitter: 0.3,
+        isRetryable: (error: unknown) => {
+            // Only retry on timeout errors - rejections and communication errors
+            // indicate real problems that won't be fixed by retrying
+            if (error instanceof Error) {
+                return error.message.includes('timeout');
+            }
+            return false;
+        },
+        onRetry: (attempt, error, delayMs) => {
+            console.log(`[S330Client] WSD retry ${attempt} after ${delayMs}ms: ${error}`);
+        },
+    };
+
+    /**
+     * Internal helper: Send data using WSD/DAT/EOD protocol with retry
+     *
+     * This is the ONLY method that works for function parameter writes on S-330.
+     * The protocol requires:
+     * 1. Send WSD (Want to Send Data) with address and size
+     * 2. Wait for ACK
+     * 3. Send DAT with nibblized data
+     * 4. Send EOD (End of Data)
+     *
+     * Uses exponential backoff retry for timeout errors, since the S-330
+     * may be temporarily busy processing previous commands.
+     *
+     * @param address - 4-byte address [aa, bb, cc, dd]
+     * @param data - Parameter data bytes to write
+     * @returns Promise that resolves when write is complete
+     */
+    async function sendData(address: number[], data: number[]): Promise<void> {
+        if (address.length !== 4) {
+            throw new Error('Address must be 4 bytes');
+        }
+
+        const addrStr = address.map(b => b.toString(16).padStart(2, '0')).join(' ');
+        console.log(`[S330Client] sendData: address=${addrStr}, dataLen=${data.length}`);
+
+        return withRetry(() => sendDataAttempt(address, data), wsdRetryOptions);
     }
 
     // =========================================================================
@@ -1698,6 +1736,12 @@ export function createS330Client(
                 },
                 onProgress
             );
+
+            // Give S-330 time to process wave data before sending more commands
+            // The S-330 needs significant time to write wave data to internal memory
+            // and won't respond to WSD messages while busy processing
+            console.log('[S330Client] Waiting for S-330 to process wave data...');
+            await new Promise((resolve) => setTimeout(resolve, 500));
 
             // Step 3: Re-send tone parameters AFTER wave upload
             // The S-330 may need tone params to be set after wave data is in place

@@ -17,3 +17,12 @@ export {
   createWebMidiAdapter,
   openMidiPorts,
 } from './WebMidiAdapter';
+
+// Retry utilities for reliable communication
+export {
+  withRetry,
+  withRetryResult,
+  createRetryWrapper,
+  type RetryOptions,
+  type RetryResult,
+} from './retry';
