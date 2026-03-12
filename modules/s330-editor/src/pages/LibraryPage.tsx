@@ -937,7 +937,7 @@ export function LibraryPage() {
   // Handle drum kit import button click
   const handleOpenDrumKitImport = useCallback(() => {
     if (!selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) return;
-    openImportDrumKitDialog(selection.name!, selectedDrumKitBundle);
+    openImportDrumKitDialog(selection.name!, selectedDrumKitBundle, selection.path);
   }, [selection, selectedDrumKitBundle, openImportDrumKitDialog]);
 
   // Open import tone dialog
@@ -1175,17 +1175,15 @@ export function LibraryPage() {
 
     if (data.type === 'drumKit') {
       // Handle drum kit drop - open drum kit import dialog
-      const kitInfo = drumKits.find(k => k.directoryName === data.name);
-      if (kitInfo) {
-        loadDrumKitBundle(libraryHandle, data.name)
-          .then(bundle => {
-            openImportDrumKitDialog(data.name, bundle);
-          })
-          .catch(err => {
-            console.error('[LibraryPage] Failed to load drum kit for import:', err);
-            window.alert('Failed to load drum kit');
-          });
-      }
+      // Use path from drag data for kits in subdirectories
+      loadDrumKitBundle(libraryHandle, data.name, data.path)
+        .then(bundle => {
+          openImportDrumKitDialog(data.name, bundle, data.path);
+        })
+        .catch(err => {
+          console.error('[LibraryPage] Failed to load drum kit for import:', err);
+          window.alert('Failed to load drum kit');
+        });
       return;
     }
 
@@ -1490,6 +1488,7 @@ export function LibraryPage() {
             <DrumKitPreviewPanel
               kitInfo={drumKits.find((k) => k.directoryName === selection.name) ?? null}
               libraryHandle={libraryHandle}
+              preloadedBundle={selectedDrumKitBundle}
               onImport={handleOpenDrumKitImport}
               onEditKit={handleEditKit}
             />

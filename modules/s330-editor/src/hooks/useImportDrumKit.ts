@@ -18,6 +18,7 @@ import { loadDrumKitSample, loadDrumKitSource, prepareWavForS330 } from '@/lib/l
 interface ImportDrumKitDialogState {
   kitName: string;
   bundle: ResolvedDrumKitBundle;
+  path?: string[];
 }
 
 interface UseImportDrumKitOptions {
@@ -36,7 +37,7 @@ interface UseImportDrumKitReturn {
   importStatus: string | null;
 
   // Dialog handlers
-  openImportDrumKitDialog: (kitName: string, bundle: ResolvedDrumKitBundle) => void;
+  openImportDrumKitDialog: (kitName: string, bundle: ResolvedDrumKitBundle, path?: string[]) => void;
   closeImportDrumKitDialog: () => void;
 
   // Import handler
@@ -98,11 +99,11 @@ export function useImportDrumKit({
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
   // Open dialog
-  const openImportDrumKitDialog = useCallback((kitName: string, bundle: ResolvedDrumKitBundle) => {
+  const openImportDrumKitDialog = useCallback((kitName: string, bundle: ResolvedDrumKitBundle, path?: string[]) => {
     setImportError(null);
     setImportProgress(undefined);
     setImportStatus(null);
-    setImportDrumKitDialog({ kitName, bundle });
+    setImportDrumKitDialog({ kitName, bundle, path });
   }, []);
 
   // Close dialog
@@ -123,7 +124,7 @@ export function useImportDrumKit({
       throw new Error('Missing required resources for import');
     }
 
-    const { bundle, kitName } = importDrumKitDialog;
+    const { bundle, kitName, path } = importDrumKitDialog;
     const { startingToneSlot, waveBank, startingSegment, targetPatchSlot } = params;
     // Default to single-patch mode
     const useSinglePatch = params.singlePatch ?? true;
@@ -191,7 +192,7 @@ export function useImportDrumKit({
       let sourceWav: { samples: Int16Array; sampleRate: number } | null = null;
       if (isV2Format) {
         setImportStatus('Loading source audio...');
-        sourceWav = await loadDrumKitSource(libraryHandle, kitName, bundle.source!);
+        sourceWav = await loadDrumKitSource(libraryHandle, kitName, bundle.source!, path);
       }
 
       // Import each sample as a tone
@@ -225,7 +226,7 @@ export function useImportDrumKit({
           );
         } else {
           // V1 format: load individual WAV file
-          const wavBytes = await loadDrumKitSample(libraryHandle, kitName, sample.filename);
+          const wavBytes = await loadDrumKitSample(libraryHandle, kitName, sample.filename, path);
           prepared = prepareWavForS330(wavBytes.buffer as ArrayBuffer, bundle.sampleRate);
         }
 

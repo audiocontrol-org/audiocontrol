@@ -22,6 +22,8 @@ import {
 interface DrumKitPreviewPanelProps {
   kitInfo: DrumKitInfo | null;
   libraryHandle: FileSystemDirectoryHandle | null;
+  /** Pre-loaded bundle (for kits in subdirectories) */
+  preloadedBundle?: ResolvedDrumKitBundle | null;
   onImport?: () => void;
   /** Callback when user wants to edit the kit (v2 format kits only) */
   onEditKit?: () => void;
@@ -154,6 +156,7 @@ function ErrorState({ message }: { message: string }): JSX.Element {
 export function DrumKitPreviewPanel({
   kitInfo,
   libraryHandle,
+  preloadedBundle,
   onImport,
   onEditKit,
 }: DrumKitPreviewPanelProps): JSX.Element {
@@ -165,6 +168,12 @@ export function DrumKitPreviewPanel({
   useEffect(() => {
     setBundle(null);
     setError(null);
+
+    // Use preloaded bundle if available (for kits in subdirectories)
+    if (preloadedBundle) {
+      setBundle(preloadedBundle);
+      return;
+    }
 
     if (!kitInfo || !libraryHandle) {
       return;
@@ -184,10 +193,10 @@ export function DrumKitPreviewPanel({
     };
 
     loadBundle();
-  }, [kitInfo, libraryHandle]);
+  }, [kitInfo, libraryHandle, preloadedBundle]);
 
-  // Empty state
-  if (!kitInfo) {
+  // Empty state - show if no kitInfo and no preloaded bundle
+  if (!kitInfo && !preloadedBundle) {
     return (
       <div className="h-full flex flex-col">
         <div className="p-3 border-b border-s330-accent">
@@ -202,12 +211,15 @@ export function DrumKitPreviewPanel({
     );
   }
 
+  // Use preloaded bundle's name if kitInfo is not available
+  const displayName = kitInfo?.directoryName ?? bundle?.name ?? 'Drum Kit';
+
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-3 border-b border-s330-accent">
         <h3 className="font-bold text-s330-text">Drum Kit</h3>
-        <p className="text-xs text-s330-muted mt-0.5">{kitInfo.directoryName}</p>
+        <p className="text-xs text-s330-muted mt-0.5">{displayName}</p>
       </div>
 
       {/* Content */}

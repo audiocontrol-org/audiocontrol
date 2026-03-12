@@ -2419,10 +2419,11 @@ export async function saveDrumKitToLibrary(
 export async function loadDrumKitSample(
   directoryHandle: FileSystemDirectoryHandle,
   kitName: string,
-  fileName: string
+  fileName: string,
+  path: string[] = []
 ): Promise<Uint8Array> {
   const kitDir = await getNestedDirectory(directoryHandle, [
-    'library', 's330', 'drum-kits', kitName
+    'library', 's330', 'drum-kits', ...path, kitName
   ]);
 
   const fileHandle = await kitDir.getFileHandle(fileName);
@@ -2443,10 +2444,11 @@ export async function loadDrumKitSample(
 export async function loadDrumKitSource(
   directoryHandle: FileSystemDirectoryHandle,
   kitName: string,
-  sourceFilename: string
+  sourceFilename: string,
+  path: string[] = []
 ): Promise<{ samples: Int16Array; sampleRate: number }> {
   const kitDir = await getNestedDirectory(directoryHandle, [
-    'library', 's330', 'drum-kits', kitName
+    'library', 's330', 'drum-kits', ...path, kitName
   ]);
 
   const fileHandle = await kitDir.getFileHandle(sourceFilename);
