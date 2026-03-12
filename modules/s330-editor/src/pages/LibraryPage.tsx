@@ -557,6 +557,24 @@ export function LibraryPage() {
     }
   }, [moveItemDialog, tonesTree, patchesTree, drumKitsTree]);
 
+  // Handle drag-drop move (directly moves item without dialog)
+  const handleDropMoveItem = useCallback(async (
+    category: LibraryCategory,
+    sourcePath: string[],
+    itemName: string,
+    targetPath: string[]
+  ) => {
+    if (!libraryHandle) return;
+
+    try {
+      await moveItem(libraryHandle, category, sourcePath, itemName, targetPath);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to move item via drag-drop:', err);
+      setError(err instanceof Error ? err.message : 'Failed to move item');
+    }
+  }, [libraryHandle, handleRefreshLibrary, setError]);
+
   // Load all data from device (tones and patches)
   const handleLoadDeviceData = useCallback(async () => {
     if (!clientRef.current) return;
@@ -1409,6 +1427,7 @@ export function LibraryPage() {
             onRenameDirectory={handleOpenRenameDirectory}
             onDeleteDirectory={handleOpenDeleteDirectory}
             onMoveItem={handleOpenMoveItem}
+            onDropMoveItem={handleDropMoveItem}
           />
         </div>
 

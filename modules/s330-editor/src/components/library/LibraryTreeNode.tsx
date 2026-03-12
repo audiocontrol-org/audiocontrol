@@ -8,10 +8,13 @@
  * - Drum kits (draggable items)
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import type { LibraryTreeNode as TreeNodeType } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
 import { LIBRARY_DRAG_MIME, type LibraryDragData } from '@/components/library/DeviceMemoryPanel';
+
+/** Internal MIME type for library-to-library drag operations (moving items) */
+export const LIBRARY_MOVE_MIME = 'application/x-s330-library-move';
 
 // =========================================================================
 // Icons
@@ -143,6 +146,8 @@ export interface LibraryTreeNodeProps {
   onSelect: (node: TreeNodeType) => void;
   onDelete?: (node: TreeNodeType) => void;
   onContextMenu?: (e: React.MouseEvent, node: TreeNodeType) => void;
+  /** Called when an item is dropped onto a directory */
+  onDropOnDirectory?: (targetPath: string[], dragData: LibraryDragData) => void;
   expandedPaths: Set<string>;
   selectedId?: string;
 }
@@ -157,9 +162,12 @@ export function LibraryTreeNodeComponent({
   onSelect,
   onDelete,
   onContextMenu,
+  onDropOnDirectory,
   expandedPaths,
   selectedId,
 }: LibraryTreeNodeProps): JSX.Element {
+  const [isDragOver, setIsDragOver] = useState(false);
+
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
     if (node.type === 'directory') {
@@ -204,9 +212,79 @@ export function LibraryTreeNodeComponent({
       return;
     }
 
+    // Set both MIME types - one for device import, one for library move
     e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
-    e.dataTransfer.effectAllowed = 'copy';
+    e.dataTransfer.setData(LIBRARY_MOVE_MIME, JSON.stringify(dragData));
+    e.dataTransfer.effectAllowed = 'copyMove';
   }, [node]);
+
+  // Drag-over handler for directories (to accept drops)
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (node.type !== 'directory') return;
+    if (!e.dataTransfer.types.includes(LIBRARY_MOVE_MIME)) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+  }, [node.type]);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    if (node.type !== 'directory') return;
+    if (!e.dataTransfer.types.includes(LIBRARY_MOVE_MIME)) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  }, [node.type]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (node.type !== 'directory') return;
+
+    // Only clear if we're actually leaving this element (not entering a child)
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setIsDragOver(false);
+    }
+  }, [node.type]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    if (node.type !== 'directory') return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const jsonData = e.dataTransfer.getData(LIBRARY_MOVE_MIME);
+    if (!jsonData) return;
+
+    try {
+      const dragData = JSON.parse(jsonData) as LibraryDragData;
+
+      // Don't allow dropping on the same directory or a child of the source
+      const targetPath = [...node.path, node.name];
+      const sourcePath = dragData.path || [];
+      const sourceFullPath = [...sourcePath, dragData.name].join('/');
+      const targetFullPath = targetPath.join('/');
+
+      // Prevent dropping into itself or its children
+      if (targetFullPath.startsWith(sourceFullPath + '/') || targetFullPath === sourceFullPath) {
+        console.warn('[LibraryTreeNode] Cannot drop item into itself or its children');
+        return;
+      }
+
+      // Prevent dropping into the same parent directory
+      if (sourcePath.join('/') === targetPath.join('/')) {
+        console.warn('[LibraryTreeNode] Item is already in this folder');
+        return;
+      }
+
+      onDropOnDirectory?.(targetPath, dragData);
+    } catch (err) {
+      console.error('[LibraryTreeNode] Failed to parse drop data:', err);
+    }
+  }, [node, onDropOnDirectory]);
 
   const handleContextMenuClick = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -238,6 +316,8 @@ export function LibraryTreeNodeComponent({
           isDraggable && 'cursor-grab active:cursor-grabbing',
           isSelected
             ? 'bg-s330-highlight/20 text-s330-highlight'
+            : isDragOver
+            ? 'bg-s330-highlight/30 ring-2 ring-s330-highlight ring-inset'
             : 'text-s330-text hover:bg-s330-accent/30'
         )}
         style={{ paddingLeft }}
@@ -246,6 +326,10 @@ export function LibraryTreeNodeComponent({
         onKeyDown={handleKeyDown}
         draggable={isDraggable}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
         role="treeitem"
         tabIndex={0}
         aria-expanded={isDirectory ? isExpanded : undefined}
@@ -302,6 +386,7 @@ export function LibraryTreeNodeComponent({
               onSelect={onSelect}
               onDelete={onDelete}
               onContextMenu={onContextMenu}
+              onDropOnDirectory={onDropOnDirectory}
               expandedPaths={expandedPaths}
               selectedId={selectedId}
             />
@@ -336,6 +421,8 @@ export interface TreeSectionProps {
   onSelect: (node: TreeNodeType) => void;
   onDelete?: (node: TreeNodeType) => void;
   onContextMenu?: (e: React.MouseEvent, node: TreeNodeType) => void;
+  /** Called when an item is dropped onto a directory */
+  onDropOnDirectory?: (targetPath: string[], dragData: LibraryDragData) => void;
   emptyMessage?: string;
   isDragOver?: boolean;
   onDragOver?: (e: React.DragEvent) => void;
@@ -356,6 +443,7 @@ export function TreeSection({
   onSelect,
   onDelete,
   onContextMenu,
+  onDropOnDirectory,
   emptyMessage = 'No items',
   isDragOver,
   onDragOver,
@@ -404,6 +492,7 @@ export function TreeSection({
               onSelect={onSelect}
               onDelete={onDelete}
               onContextMenu={onContextMenu}
+              onDropOnDirectory={onDropOnDirectory}
               expandedPaths={expandedPaths}
               selectedId={selectedId}
             />

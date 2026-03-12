@@ -83,8 +83,10 @@ interface LibraryTreePanelProps {
   onRenameDirectory?: (category: LibraryCategory, path: string[]) => void;
   /** Callback to delete a directory */
   onDeleteDirectory?: (category: LibraryCategory, path: string[]) => void;
-  /** Callback to move an item */
+  /** Callback to move an item (via dialog) */
   onMoveItem?: (category: LibraryCategory, sourcePath: string[], itemName: string) => void;
+  /** Callback when an item is dropped onto a directory (drag-drop move) */
+  onDropMoveItem?: (category: LibraryCategory, sourcePath: string[], itemName: string, targetPath: string[]) => void;
 }
 
 /**
@@ -472,6 +474,7 @@ export function LibraryTreePanel({
   onRenameDirectory,
   onDeleteDirectory,
   onMoveItem,
+  onDropMoveItem,
 }: LibraryTreePanelProps): JSX.Element {
   const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set());
   const [manifests, setManifests] = useState<Map<string, SetYaml>>(new Map());
@@ -747,6 +750,22 @@ export function LibraryTreePanel({
     return undefined;
   }, [selectedPath, selectedName, selectedType]);
 
+  // Handle drag-drop move onto directory
+  const handleDropOnDirectory = useCallback((
+    category: 'tones' | 'patches' | 'drumKits',
+    targetPath: string[],
+    dragData: LibraryDragData
+  ) => {
+    if (!onDropMoveItem) return;
+
+    // Map category back to LibraryCategory
+    const libCategory = category === 'drumKits' ? 'drum-kits' : category;
+    const sourcePath = dragData.path || [];
+    const itemName = dragData.name;
+
+    onDropMoveItem(libCategory as 'tones' | 'patches' | 'drum-kits', sourcePath, itemName, targetPath);
+  }, [onDropMoveItem]);
+
   // Load manifest when a set is expanded
   useEffect(() => {
     if (!libraryHandle) return;
@@ -872,6 +891,7 @@ export function LibraryTreePanel({
             onSelect={(node) => handleTreeNodeSelect(node, 'tones')}
             onDelete={(node) => handleTreeNodeDelete(node, 'tones')}
             onContextMenu={(e, node) => handleTreeContextMenu(e, node, 'tones')}
+            onDropOnDirectory={(targetPath, dragData) => handleDropOnDirectory('tones', targetPath, dragData)}
             emptyMessage="Drag tones from device to export"
             isDragOver={isToneDragOver}
             onDragOver={handleToneDragOver}
@@ -974,6 +994,7 @@ export function LibraryTreePanel({
             onSelect={(node) => handleTreeNodeSelect(node, 'patches')}
             onDelete={(node) => handleTreeNodeDelete(node, 'patches')}
             onContextMenu={(e, node) => handleTreeContextMenu(e, node, 'patches')}
+            onDropOnDirectory={(targetPath, dragData) => handleDropOnDirectory('patches', targetPath, dragData)}
             emptyMessage="Drag patches from device to export"
             isDragOver={isPatchDragOver}
             onDragOver={handlePatchDragOver}
@@ -1079,6 +1100,7 @@ export function LibraryTreePanel({
             onSelect={(node) => handleTreeNodeSelect(node, 'drumKits')}
             onDelete={(node) => handleTreeNodeDelete(node, 'drumKits')}
             onContextMenu={(e, node) => handleTreeContextMenu(e, node, 'drumKits')}
+            onDropOnDirectory={(targetPath, dragData) => handleDropOnDirectory('drumKits', targetPath, dragData)}
             emptyMessage="No drum kits in library"
             headerActions={
               onCreateDirectory && (
