@@ -886,7 +886,7 @@ export function SampleChopperDialog({
                   <div className="flex items-center gap-3">
                     {isManualMode && !stripSilenceActive && (
                       <div className="text-xs text-s330-muted">
-                        Drag edges to adjust • Click to split • Delete to remove
+                        Drag edges to adjust • Double-click to split • Delete to remove
                       </div>
                     )}
                     {stripSilenceActive && (
@@ -1087,7 +1087,7 @@ export function SampleChopperDialog({
                 {/* Manual Mode Controls */}
                 <Tabs.Content value="manual" className="space-y-3">
                   <p className="text-xs text-s330-muted">
-                    Manually define slice points by clicking on the waveform. Drag slice edges to adjust boundaries.
+                    Double-click on a slice to split it. Drag slice edges to adjust boundaries.
                     Use +/- to zoom for fine adjustments.
                   </p>
 
