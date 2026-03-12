@@ -652,8 +652,9 @@ export function SampleChopperDialog({
 
     if (editMode && onSlicesUpdated) {
       // Edit mode: update slices and kit config
+      // Always pass transpose (even if 0) so user can reset it
       onSlicesUpdated(sliceDefinitions, {
-        transpose: kitTranspose !== 0 ? kitTranspose : undefined,
+        transpose: kitTranspose,
         velocitySensitivity: kitVelocitySensitivity,
       });
       onOpenChange(false);
@@ -1450,6 +1451,35 @@ export function SampleChopperDialog({
                 <div className="bg-s330-bg rounded p-3 space-y-3">
                   <div className="text-xs text-s330-muted uppercase tracking-wide">
                     Playback Settings
+                  </div>
+                  {/* Transpose control */}
+                  <div>
+                    <label className="block text-xs text-s330-muted mb-1">
+                      Pitch Adjust (semitones: {kitTranspose > 0 ? '+' : ''}
+                      {kitTranspose})
+                    </label>
+                    <input
+                      type="range"
+                      min="-24"
+                      max="24"
+                      step="1"
+                      value={kitTranspose}
+                      onChange={(e) => setKitTranspose(parseInt(e.target.value))}
+                      className="w-full accent-s330-highlight"
+                    />
+                    <div className="flex justify-between text-xs text-s330-muted mt-1">
+                      <span>-2 oct</span>
+                      <button
+                        onClick={() => setKitTranspose(0)}
+                        className="text-s330-highlight hover:underline"
+                      >
+                        Reset
+                      </button>
+                      <span>+2 oct</span>
+                    </div>
+                    <p className="text-xs text-s330-muted mt-1">
+                      Use to pitch down samples recorded at high speed.
+                    </p>
                   </div>
                   {/* Velocity Sensitivity control */}
                   <div>
