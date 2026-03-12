@@ -337,6 +337,10 @@ export type {
     ImportedSample,
     DrumKitImportResult,
     ImportProgressCallback,
+    // Monolithic drum kit types
+    MonolithicSlice,
+    MonolithicDrumKitConfig,
+    MonolithicDrumKitResult,
 } from './drum-kit-import-service.js';
 
 export {
@@ -344,6 +348,8 @@ export {
     verifyDrumKitImport,
     createDrumTone,
     createDrumKitPatch,
+    // Monolithic drum kit import
+    importMonolithicDrumKit,
 } from './drum-kit-import-service.js';
 
 // =============================================================================
@@ -381,6 +387,13 @@ export {
 // Tone Factory Exports
 // =============================================================================
 
-export type { CreateToneConfig } from './s330-tone-factory.js';
+export type {
+    CreateToneConfig,
+    CreateSubToneConfig,
+} from './s330-tone-factory.js';
 
-export { createTone } from './s330-tone-factory.js';
+export {
+    createTone,
+    createSubTone,
+    createMonolithicPrimaryTone,
+} from './s330-tone-factory.js';

@@ -12,7 +12,7 @@ import type { S330Tone, S330Patch, S330PatchCommon } from './s330-types.js';
 import type { S330ClientInterface } from './s330-client.js';
 import { prepareWavForS330 } from './s330-wave-format.js';
 import { createEmptyToneLayer, setToneAtMidiNote } from './s330-tone-layer.js';
-import { createTone } from './s330-tone-factory.js';
+import { createTone, createSubTone, createMonolithicPrimaryTone } from './s330-tone-factory.js';
 
 /**
  * A single drum sample ready for import.
@@ -393,5 +393,256 @@ export async function verifyDrumKitImport(
   return {
     success: errors.length === 0,
     errors,
+  };
+}
+
+// =============================================================================
+// Monolithic Drum Kit Import (Experimental)
+// =============================================================================
+
+/**
+ * A slice within monolithic wave data.
+ */
+export interface MonolithicSlice {
+  /** Slice label/name */
+  label: string;
+  /** Start sample within the monolithic wave */
+  startSample: number;
+  /** End sample within the monolithic wave */
+  endSample: number;
+  /** MIDI note to map this slice to */
+  midiNote: number;
+}
+
+/**
+ * Configuration for monolithic drum kit import.
+ *
+ * Instead of uploading separate wave data for each sample, this mode:
+ * 1. Uploads all slices as one contiguous wave segment
+ * 2. Creates one primary tone (ORG) owning the wave data
+ * 3. Creates sub-tones (SUB) for each additional slice, referencing the primary
+ *
+ * Benefits:
+ * - Single wave upload (faster)
+ * - More memory efficient (no per-segment padding)
+ * - Fewer segment allocations
+ */
+export interface MonolithicDrumKitConfig {
+  /** The complete wave data containing all slices */
+  waveData: Uint8Array;
+  /** Total sample count in the wave data */
+  totalSampleCount: number;
+  /** Slice definitions (start/end points within the wave) */
+  slices: MonolithicSlice[];
+  /** Target sample rate */
+  sampleRate: 15000 | 30000;
+  /** Starting tone slot for primary tone (0-31) */
+  startingToneSlot: number;
+  /** Wave bank (0=A, 1=B) */
+  waveBank: 0 | 1;
+  /** Starting segment */
+  startingSegment: number;
+  /** Patch slot for the drum kit patch */
+  patchSlot: number;
+  /** Patch name */
+  patchName: string;
+  /** Transpose in semitones (default: 0) */
+  transpose?: number;
+  /** Velocity sensitivity (0-5, default: 2) */
+  velocitySensitivity?: number;
+}
+
+/**
+ * Result of a monolithic drum kit import.
+ */
+export interface MonolithicDrumKitResult {
+  /** Primary tone (owns wave data) */
+  primaryTone: S330Tone;
+  /** Primary tone slot index */
+  primaryToneSlot: number;
+  /** Sub-tones (reference primary's wave data) */
+  subTones: S330Tone[];
+  /** Sub-tone slot indices */
+  subToneSlots: number[];
+  /** The created patch */
+  patch: S330Patch;
+  /** Patch slot index */
+  patchSlot: number;
+  /** Total segments used */
+  segmentsUsed: number;
+}
+
+/**
+ * Import a monolithic drum kit using sub-tones.
+ *
+ * This is an experimental feature that uploads all slices as one contiguous
+ * wave segment and uses sub-tones to play different regions.
+ *
+ * The first slice becomes the primary tone (ORG) which owns the wave data.
+ * Subsequent slices become sub-tones (SUB) that reference the primary tone
+ * but have their own start/end points.
+ *
+ * @param client - S330 client interface
+ * @param config - Monolithic import configuration
+ * @param onProgress - Optional progress callback
+ * @returns Import result
+ */
+export async function importMonolithicDrumKit(
+  client: S330ClientInterface,
+  config: MonolithicDrumKitConfig,
+  onProgress?: ImportProgressCallback
+): Promise<MonolithicDrumKitResult> {
+  const {
+    waveData,
+    totalSampleCount,
+    slices,
+    sampleRate,
+    startingToneSlot,
+    waveBank,
+    startingSegment,
+    patchSlot,
+    patchName,
+    transpose = 0,
+    velocitySensitivity = 2,
+  } = config;
+
+  if (slices.length === 0) {
+    throw new Error('Monolithic drum kit requires at least one slice');
+  }
+
+  if (slices.length > 32 - startingToneSlot) {
+    throw new Error(`Not enough tone slots: need ${slices.length}, have ${32 - startingToneSlot}`);
+  }
+
+  console.log('[MonolithicDrumKit] Starting import');
+  console.log(`  - Total samples: ${totalSampleCount}`);
+  console.log(`  - Slices: ${slices.length}`);
+  console.log(`  - Sample rate: ${sampleRate}`);
+  console.log(`  - Starting tone slot: ${startingToneSlot}`);
+  console.log(`  - Starting segment: ${startingSegment}`);
+
+  // Calculate segments needed for full wave data
+  const samplesPerSegment = 12000;
+  const segmentsNeeded = Math.ceil(totalSampleCount / samplesPerSegment);
+
+  console.log(`  - Segments needed: ${segmentsNeeded}`);
+
+  // Step 1: Upload wave data
+  onProgress?.(0, slices.length + 1, 'Uploading wave data...');
+
+  const firstSlice = slices[0]!;
+  const primaryToneSlot = startingToneSlot;
+
+  // Create primary tone (ORG) - owns the wave data, plays first slice
+  const primaryTone = createMonolithicPrimaryTone(
+    {
+      name: firstSlice.label.slice(0, 8),
+      sampleRate,
+      waveBank,
+      segmentTop: startingSegment,
+      segmentLength: segmentsNeeded,
+      sampleCount: totalSampleCount,
+      loopMode: 'one-shot',
+      originalKey: firstSlice.midiNote,
+      transpose,
+      pitchFollow: false,
+      velocitySensitivity,
+    },
+    firstSlice.startSample,
+    firstSlice.endSample
+  );
+
+  console.log('[MonolithicDrumKit] Primary tone created:');
+  console.log(`  - Name: ${primaryTone.name}`);
+  console.log(`  - Start point: ${primaryTone.wave.startPoint}`);
+  console.log(`  - End point: ${primaryTone.wave.endPoint}`);
+  console.log(`  - origSubTone: ${primaryTone.origSubTone}`);
+
+  // Upload primary tone with wave data
+  await client.importTone(
+    {
+      toneIndex: primaryToneSlot,
+      waveData,
+      waveBank,
+      segmentTop: startingSegment,
+      segmentLength: segmentsNeeded,
+      tone: primaryTone,
+    },
+    (bytesSent, totalBytes) => {
+      const pct = totalBytes > 0 ? bytesSent / totalBytes : 0;
+      onProgress?.(pct, slices.length + 1, 'Uploading wave data...');
+    }
+  );
+
+  console.log('[MonolithicDrumKit] Primary tone uploaded');
+
+  // Give device time to process
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+
+  // Step 2: Create sub-tones for remaining slices
+  const subTones: S330Tone[] = [];
+  const subToneSlots: number[] = [];
+
+  for (let i = 1; i < slices.length; i++) {
+    const slice = slices[i]!;
+    const toneSlot = startingToneSlot + i;
+
+    onProgress?.(i, slices.length + 1, `Creating sub-tone ${slice.label}...`);
+
+    const subTone = createSubTone({
+      name: slice.label.slice(0, 8),
+      sourceToneIndex: primaryToneSlot,
+      sampleRate,
+      startPoint: slice.startSample,
+      endPoint: slice.endSample,
+      loopMode: 'one-shot',
+      originalKey: slice.midiNote,
+      transpose,
+      pitchFollow: false,
+      velocitySensitivity,
+    });
+
+    console.log(`[MonolithicDrumKit] Sub-tone ${i} created:`);
+    console.log(`  - Name: ${subTone.name}`);
+    console.log(`  - Source tone: ${subTone.sourceTone}`);
+    console.log(`  - origSubTone: ${subTone.origSubTone}`);
+    console.log(`  - Start point: ${subTone.wave.startPoint}`);
+    console.log(`  - End point: ${subTone.wave.endPoint}`);
+
+    // Send tone data (no wave upload needed - references primary)
+    await client.sendToneData(toneSlot, subTone);
+
+    subTones.push(subTone);
+    subToneSlots.push(toneSlot);
+
+    // Small delay between tone uploads
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+
+  // Step 3: Create patch with all tone mappings
+  onProgress?.(slices.length, slices.length + 1, `Creating patch ${patchName}...`);
+
+  const toneMappings: ToneMapping[] = slices.map((slice, i) => ({
+    midiNote: slice.midiNote,
+    toneSlot: startingToneSlot + i,
+  }));
+
+  const patch = createDrumKitPatch(patchName, toneMappings);
+  await client.sendPatchData(patchSlot, patch.common);
+
+  console.log('[MonolithicDrumKit] Patch created');
+  console.log(`  - Name: ${patchName}`);
+  console.log(`  - Mappings: ${toneMappings.length}`);
+
+  onProgress?.(slices.length + 1, slices.length + 1, 'Import complete');
+
+  return {
+    primaryTone,
+    primaryToneSlot,
+    subTones,
+    subToneSlots,
+    patch,
+    patchSlot,
+    segmentsUsed: segmentsNeeded,
   };
 }

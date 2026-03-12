@@ -32,6 +32,8 @@ export interface ImportDrumKitDialogProps {
     targetPatchSlot: number;
     singlePatch?: boolean;
     patchName?: string;
+    /** Experimental: use monolithic mode with sub-tones */
+    useMonolithicMode?: boolean;
   }) => Promise<void>;
   /** Whether import is in progress */
   isImporting: boolean;
@@ -64,6 +66,7 @@ export function ImportDrumKitDialog({
   const [startingSegment, setStartingSegment] = useState(0);
   const [targetPatchSlot, setTargetPatchSlot] = useState(0);
   const [singlePatch, setSinglePatch] = useState(true); // Default to single-patch mode
+  const [useMonolithicMode, setUseMonolithicMode] = useState(false); // Experimental monolithic mode
 
   const hasEnoughToneSlots = startingToneSlot + totalSamples <= 32;
   // In single-patch mode, we only need 1 patch slot
@@ -82,8 +85,9 @@ export function ImportDrumKitDialog({
       targetPatchSlot,
       singlePatch,
       patchName: bundle.name,
+      useMonolithicMode,
     });
-  }, [startingToneSlot, waveBank, startingSegment, targetPatchSlot, singlePatch, bundle.name, onImport]);
+  }, [startingToneSlot, waveBank, startingSegment, targetPatchSlot, singlePatch, bundle.name, useMonolithicMode, onImport]);
 
   const handleClose = useCallback(() => {
     if (!isImporting) {
@@ -256,6 +260,31 @@ export function ImportDrumKitDialog({
                 <label htmlFor="singlePatch" className="text-sm text-s330-text">
                   Create single patch with all samples mapped
                 </label>
+              </div>
+
+              {/* Monolithic Mode Toggle (Experimental) */}
+              <div className="border border-yellow-500/30 rounded p-3 bg-yellow-500/5">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="monolithicMode"
+                    checked={useMonolithicMode}
+                    onChange={(e) => setUseMonolithicMode(e.target.checked)}
+                    disabled={isImporting}
+                    className="w-4 h-4 rounded bg-s330-bg border-s330-accent/50 text-yellow-500 focus:ring-yellow-500"
+                  />
+                  <label htmlFor="monolithicMode" className="text-sm text-s330-text">
+                    Use monolithic mode with sub-tones
+                    <span className="ml-2 text-xs text-yellow-500">(experimental)</span>
+                  </label>
+                </div>
+                {useMonolithicMode && (
+                  <p className="text-xs text-s330-muted mt-2">
+                    Uploads all slices as one contiguous wave segment. First slice becomes primary tone,
+                    remaining slices become sub-tones referencing the primary. May be more memory efficient
+                    but requires testing to verify playback works correctly.
+                  </p>
+                )}
               </div>
 
               {/* Patch Slot */}
