@@ -83,6 +83,38 @@ export const S330PatchExtensionSchema = z.object({
 });
 
 /**
+ * S-550 specific patch extension fields.
+ * Same structure as S-330 but with extended tone ranges:
+ * - toneLayer1/2 can reference tones 0-63 (instead of 0-31)
+ */
+export const S550PatchExtensionSchema = z.object({
+  /** Bender range in semitones (0-12) */
+  benderRange: z.number().int().min(0).max(12).optional(),
+  /** Aftertouch sensitivity (0-127) */
+  aftertouchSens: z.number().int().min(0).max(127).optional(),
+  /** Key mode */
+  keyMode: S330KeyModeSchema.optional(),
+  /** Velocity threshold for V-Sw mode (0-127) */
+  velocityThreshold: z.number().int().min(0).max(127).optional(),
+  /** Octave shift (-2 to +2) */
+  octaveShift: z.number().int().min(-2).max(2).optional(),
+  /** Detune for unison mode (-64 to +63) */
+  detune: z.number().int().min(-64).max(63).optional(),
+  /** Velocity mix ratio for V-Mix mode (0-127) */
+  velocityMixRatio: z.number().int().min(0).max(127).optional(),
+  /** Aftertouch assignment */
+  aftertouchAssign: S330AftertouchAssignSchema.optional(),
+  /** Key assignment mode */
+  keyAssign: S330KeyAssignSchema.optional(),
+  /** Output assignment (0-8, where 8=TONE) */
+  outputAssign: z.number().int().min(0).max(8).optional(),
+  /** Tone layer 1 mapping (109 entries, -1=off, 0-63 for S-550's 64 tones) */
+  toneLayer1: z.array(z.number().int().min(-1).max(63)).length(109).optional(),
+  /** Tone layer 2 mapping (109 entries, 0-63 for S-550's 64 tones) */
+  toneLayer2: z.array(z.number().int().min(0).max(63)).length(109).optional(),
+});
+
+/**
  * Complete patch YAML schema.
  */
 export const PatchYamlSchema = z.object({
@@ -100,6 +132,8 @@ export const PatchYamlSchema = z.object({
   keyGroups: z.array(KeyGroupSchema).optional(),
   /** S-330 specific parameters */
   s330: S330PatchExtensionSchema.optional(),
+  /** S-550 specific parameters */
+  s550: S550PatchExtensionSchema.optional(),
   // Future device extensions:
   // jv1080: JV1080PatchExtensionSchema.optional(),
   // d110: D110PatchExtensionSchema.optional(),
@@ -107,6 +141,9 @@ export const PatchYamlSchema = z.object({
   (data) => {
     // Ensure device-specific extension is present when needed
     if (data.device === 's330' && !data.s330 && !data.keyGroups) {
+      return false;
+    }
+    if (data.device === 's550' && !data.s550 && !data.keyGroups) {
       return false;
     }
     return true;
@@ -130,3 +167,8 @@ export type KeyGroup = z.infer<typeof KeyGroupSchema>;
  * S-330 patch extension type.
  */
 export type S330PatchExtension = z.infer<typeof S330PatchExtensionSchema>;
+
+/**
+ * S-550 patch extension type.
+ */
+export type S550PatchExtension = z.infer<typeof S550PatchExtensionSchema>;

@@ -106,6 +106,36 @@ export const S330ToneExtensionSchema = z.object({
 });
 
 /**
+ * S-550 specific tone extension fields.
+ * Same structure as S-330 but with extended ranges:
+ * - sourceTone: 0-63 (64 tones instead of 32)
+ */
+export const S550ToneExtensionSchema = z.object({
+  /** Original key number (MIDI note 11-108) */
+  originalKey: z.number().int().min(11).max(108),
+  /** Output assignment (0-7) */
+  outputAssign: z.number().int().min(0).max(7),
+  /** Source tone number (0-63 for S-550) */
+  sourceTone: z.number().int().min(0).max(63).optional(),
+  /** Transpose in semitones (-64 to +63, 0=no change) */
+  transpose: z.number().int().min(-64).max(63).default(0),
+  /** Fine tune (-64 to +63) */
+  fineTune: z.number().int().min(-64).max(63).default(0),
+  /** LFO parameters */
+  lfo: S330LfoParamsSchema.optional(),
+  /** TVF parameters */
+  tvf: S330TvfParamsSchema.optional(),
+  /** TVA parameters */
+  tva: S330TvaParamsSchema.optional(),
+  /** Pitch bender enabled */
+  benderEnabled: z.boolean().optional(),
+  /** Aftertouch enabled */
+  aftertouchEnabled: z.boolean().optional(),
+  /** Pitch follow for loop */
+  pitchFollow: z.boolean().optional(),
+});
+
+/**
  * Complete tone YAML schema.
  *
  * Contains common fields plus device-specific extension object.
@@ -123,6 +153,8 @@ export const ToneYamlSchema = z.object({
   wave: BaseWaveParamsSchema,
   /** S-330 specific parameters */
   s330: S330ToneExtensionSchema.optional(),
+  /** S-550 specific parameters */
+  s550: S550ToneExtensionSchema.optional(),
   // Future device extensions:
   // jv1080: JV1080ToneExtensionSchema.optional(),
   // d110: D110ToneExtensionSchema.optional(),
@@ -130,6 +162,9 @@ export const ToneYamlSchema = z.object({
   (data) => {
     // Ensure the device-specific extension matches the device type
     if (data.device === 's330' && !data.s330) {
+      return false;
+    }
+    if (data.device === 's550' && !data.s550) {
       return false;
     }
     return true;
@@ -148,3 +183,8 @@ export type ToneYaml = z.infer<typeof ToneYamlSchema>;
  * S-330 tone extension type.
  */
 export type S330ToneExtension = z.infer<typeof S330ToneExtensionSchema>;
+
+/**
+ * S-550 tone extension type.
+ */
+export type S550ToneExtension = z.infer<typeof S550ToneExtensionSchema>;

@@ -11,7 +11,7 @@
 import type {
   S330Tone,
   S330Patch,
-  S330SampleRate,
+  SSeriesSampleRate,
 } from '@audiocontrol/sampler-devices/s330';
 import type {
   SetYaml,
@@ -74,16 +74,16 @@ export interface SetToDeviceResult {
 }
 
 /**
- * Map S330SampleRate string to Hz.
+ * Map SSeriesSampleRate string to Hz.
  */
-function sampleRateStringToHz(rate: S330SampleRate): number {
+function sampleRateStringToHz(rate: SSeriesSampleRate): number {
   return rate === '30kHz' ? 30000 : 15000;
 }
 
 /**
- * Map Hz to S330SampleRate string.
+ * Map Hz to SSeriesSampleRate string.
  */
-function hzToSampleRateString(hz: number): S330SampleRate {
+function hzToSampleRateString(hz: number): SSeriesSampleRate {
   return hz >= 30000 ? '30kHz' : '15kHz';
 }
 

@@ -7,9 +7,9 @@
 import type {
   S330Patch,
   S330PatchCommon,
-  S330KeyMode,
-  S330AftertouchAssign,
-  S330KeyAssign,
+  SSeriesKeyMode,
+  SSeriesAftertouchAssign,
+  SSeriesKeyAssign,
 } from '@audiocontrol/sampler-devices/s330';
 import {
   createEmptyToneLayer,
@@ -22,7 +22,7 @@ import type { PatchYaml, S330PatchExtension } from '@/schemas/index.js';
  * Map S-330 key mode to YAML format.
  */
 function mapKeyModeToYaml(
-  mode: S330KeyMode
+  mode: SSeriesKeyMode
 ): 'normal' | 'v-sw' | 'x-fade' | 'v-mix' | 'unison' {
   return mode;
 }
@@ -32,7 +32,7 @@ function mapKeyModeToYaml(
  */
 function mapKeyModeFromYaml(
   mode: 'normal' | 'v-sw' | 'x-fade' | 'v-mix' | 'unison'
-): S330KeyMode {
+): SSeriesKeyMode {
   return mode;
 }
 
@@ -40,7 +40,7 @@ function mapKeyModeFromYaml(
  * Map S-330 aftertouch assign to YAML format.
  */
 function mapAftertouchAssignToYaml(
-  assign: S330AftertouchAssign
+  assign: SSeriesAftertouchAssign
 ): 'modulation' | 'volume' | 'bend+' | 'bend-' | 'filter' {
   return assign;
 }
@@ -50,21 +50,21 @@ function mapAftertouchAssignToYaml(
  */
 function mapAftertouchAssignFromYaml(
   assign: 'modulation' | 'volume' | 'bend+' | 'bend-' | 'filter'
-): S330AftertouchAssign {
+): SSeriesAftertouchAssign {
   return assign;
 }
 
 /**
  * Map S-330 key assign to YAML format.
  */
-function mapKeyAssignToYaml(assign: S330KeyAssign): 'rotary' | 'fix' {
+function mapKeyAssignToYaml(assign: SSeriesKeyAssign): 'rotary' | 'fix' {
   return assign;
 }
 
 /**
  * Map YAML key assign to S-330 format.
  */
-function mapKeyAssignFromYaml(assign: 'rotary' | 'fix'): S330KeyAssign {
+function mapKeyAssignFromYaml(assign: 'rotary' | 'fix'): SSeriesKeyAssign {
   return assign;
 }
 

@@ -44,6 +44,7 @@ export {
   S330TvfParamsSchema,
   S330TvaParamsSchema,
   S330ToneExtensionSchema,
+  S550ToneExtensionSchema,
   ToneYamlSchema,
   // Patch schemas
   S330KeyModeSchema,
@@ -51,6 +52,7 @@ export {
   S330KeyAssignSchema,
   KeyGroupSchema,
   S330PatchExtensionSchema,
+  S550PatchExtensionSchema,
   PatchYamlSchema,
   // Template schemas
   TemplateTypeSchema,
@@ -75,9 +77,11 @@ export type {
   AdsrEnvelopeZ,
   ToneYaml,
   S330ToneExtension,
+  S550ToneExtension,
   PatchYaml,
   KeyGroup,
   S330PatchExtension,
+  S550PatchExtension,
   DrumKitEntry as DrumKitEntryZ,
   VelocityLayerEntry as VelocityLayerEntryZ,
   DrumKitTemplateYaml,
@@ -97,33 +101,54 @@ export type {
 export {
   ConverterRegistry,
   converterRegistry,
+  // S-330 converters
   s330ToneConverter,
   s330PatchConverter,
   createPatchFromKeyGroups,
+  // S-550 converters
+  s550ToneConverter,
+  s550PatchConverter,
+  s550CreatePatchFromKeyGroups,
   // Wave conversion (browser-compatible)
   parseWav,
   createWav,
   wavToS330,
   s330ToWav,
+  wavToS550,
+  s550ToWav,
   calculateSegmentsNeeded,
   validateWaveDataFits,
-  // Set conversion (browser-compatible)
+  // Set conversion (browser-compatible) - defaults to S-330
   deviceStateToSet,
   setToDeviceState,
   validateSetAllocations,
   calculateSetSegmentUsage,
+  // S-550 specific set conversion
+  s550DeviceStateToSet,
+  s550SetToDeviceState,
+  s550ValidateSetAllocations,
+  s550CalculateSetSegmentUsage,
 } from './converters/index.js';
 
 export type {
   ToneConverter,
   PatchConverter,
+  // Wave types
   WavData,
   S330WaveData,
   S330WaveSampleRate,
+  S550WaveData,
+  S550WaveSampleRate,
+  // Set types (defaults to S-330)
   DeviceStateInput,
   DeviceStateToSetResult,
   SetToDeviceInput,
   SetToDeviceResult,
+  // S-550 specific types
+  S550DeviceStateInput,
+  S550DeviceStateToSetResult,
+  S550SetToDeviceInput,
+  S550SetToDeviceResult,
 } from './converters/index.js';
 
 // Template exports (these are browser-compatible)

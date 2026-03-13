@@ -14,12 +14,12 @@ import { DeviceTypeSchema } from './common-schema.js';
 /**
  * Wave segment allocation for a tone within a set.
  *
- * S-330 has two wave banks (A and B), each with 18 segments.
- * This schema captures where a tone's wave data is stored.
+ * S-330: 2 wave banks (A and B), each with 18 segments
+ * S-550: 4 wave banks (A, B, C, D), each with 18 segments
  */
 export const WaveSegmentAllocationSchema = z.object({
-  /** Wave bank (0 = Bank A, 1 = Bank B) */
-  bank: z.union([z.literal(0), z.literal(1)]),
+  /** Wave bank (0-1 for S-330, 0-3 for S-550) */
+  bank: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
   /** First segment index (0-17) */
   segmentTop: z.number().int().min(0).max(17),
   /** Number of segments used (1-18) */
@@ -32,8 +32,8 @@ export const WaveSegmentAllocationSchema = z.object({
  * Maps a device slot to a tone file within the set.
  */
 export const SetToneEntrySchema = z.object({
-  /** Tone slot index (0-31 for S-330, corresponds to T11-T42) */
-  slot: z.number().int().min(0).max(31),
+  /** Tone slot index (0-31 for S-330, 0-63 for S-550) */
+  slot: z.number().int().min(0).max(63),
   /** Filename reference (without extension, e.g., "T01" for T01.yaml + T01.wav) */
   file: z.string().min(1),
   /** Wave memory allocation */
@@ -46,8 +46,8 @@ export const SetToneEntrySchema = z.object({
  * Maps a device slot to a patch file within the set.
  */
 export const SetPatchEntrySchema = z.object({
-  /** Patch slot index (0-15 for S-330, corresponds to P01-P16) */
-  slot: z.number().int().min(0).max(15),
+  /** Patch slot index (0-63 for S-330, 0-31 for S-550) */
+  slot: z.number().int().min(0).max(63),
   /** Filename reference (without extension, e.g., "P01" for P01.yaml) */
   file: z.string().min(1),
 });

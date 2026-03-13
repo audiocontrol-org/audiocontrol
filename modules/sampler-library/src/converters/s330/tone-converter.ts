@@ -6,12 +6,12 @@
 
 import type {
   S330Tone,
-  S330LoopMode,
-  S330SampleRate,
-  S330Envelope,
-  S330LfoParams,
-  S330TvfParams,
-  S330TvaParams,
+  SSeriesLoopMode,
+  SSeriesSampleRate,
+  SSeriesEnvelope,
+  SSeriesLfoParams,
+  SSeriesTvfParams,
+  SSeriesTvaParams,
 } from '@audiocontrol/sampler-devices/s330';
 import type { ToneConverter } from '@/converters/converter-registry.js';
 import type { ToneYaml, S330ToneExtension } from '@/schemas/index.js';
@@ -20,7 +20,7 @@ import type { LoopMode } from '@/types/index.js';
 /**
  * Map S-330 loop mode to YAML loop mode.
  */
-function mapLoopModeToYaml(mode: S330LoopMode): LoopMode {
+function mapLoopModeToYaml(mode: SSeriesLoopMode): LoopMode {
   switch (mode) {
     case 'forward':
       return 'forward';
@@ -36,7 +36,7 @@ function mapLoopModeToYaml(mode: S330LoopMode): LoopMode {
 /**
  * Map YAML loop mode to S-330 loop mode.
  */
-function mapLoopModeFromYaml(mode: LoopMode): S330LoopMode {
+function mapLoopModeFromYaml(mode: LoopMode): SSeriesLoopMode {
   switch (mode) {
     case 'forward':
       return 'forward';
@@ -52,21 +52,21 @@ function mapLoopModeFromYaml(mode: LoopMode): S330LoopMode {
 /**
  * Map S-330 sample rate to Hz.
  */
-function mapSampleRateToHz(rate: S330SampleRate): number {
+function mapSampleRateToHz(rate: SSeriesSampleRate): number {
   return rate === '30kHz' ? 30000 : 15000;
 }
 
 /**
  * Map Hz to S-330 sample rate.
  */
-function mapSampleRateFromHz(hz: number): S330SampleRate {
+function mapSampleRateFromHz(hz: number): SSeriesSampleRate {
   return hz >= 30000 ? '30kHz' : '15kHz';
 }
 
 /**
  * Convert S-330 8-point envelope to YAML format.
  */
-function envelopeToYaml(env: S330Envelope): {
+function envelopeToYaml(env: SSeriesEnvelope): {
   levels: [number, number, number, number, number, number, number, number];
   rates: [number, number, number, number, number, number, number, number];
   sustainPoint: number;
@@ -88,7 +88,7 @@ function envelopeFromYaml(yaml: {
   rates: [number, number, number, number, number, number, number, number];
   sustainPoint: number;
   endPoint: number;
-}): S330Envelope {
+}): SSeriesEnvelope {
   return {
     levels: yaml.levels,
     rates: yaml.rates,
@@ -100,7 +100,7 @@ function envelopeFromYaml(yaml: {
 /**
  * Convert S-330 LFO params to YAML format.
  */
-function lfoToYaml(lfo: S330LfoParams): NonNullable<S330ToneExtension['lfo']> {
+function lfoToYaml(lfo: SSeriesLfoParams): NonNullable<S330ToneExtension['lfo']> {
   return {
     rate: lfo.rate,
     sync: lfo.sync,
@@ -114,7 +114,7 @@ function lfoToYaml(lfo: S330LfoParams): NonNullable<S330ToneExtension['lfo']> {
 /**
  * Convert YAML LFO params to S-330 format.
  */
-function lfoFromYaml(yaml: NonNullable<S330ToneExtension['lfo']>): S330LfoParams {
+function lfoFromYaml(yaml: NonNullable<S330ToneExtension['lfo']>): SSeriesLfoParams {
   return {
     rate: yaml.rate,
     sync: yaml.sync,
@@ -128,7 +128,7 @@ function lfoFromYaml(yaml: NonNullable<S330ToneExtension['lfo']>): S330LfoParams
 /**
  * Convert S-330 TVF params to YAML format.
  */
-function tvfToYaml(tvf: S330TvfParams): NonNullable<S330ToneExtension['tvf']> {
+function tvfToYaml(tvf: SSeriesTvfParams): NonNullable<S330ToneExtension['tvf']> {
   return {
     cutoff: tvf.cutoff,
     resonance: tvf.resonance,
@@ -147,9 +147,9 @@ function tvfToYaml(tvf: S330TvfParams): NonNullable<S330ToneExtension['tvf']> {
 /**
  * Convert YAML TVF params to S-330 format.
  */
-function tvfFromYaml(yaml: NonNullable<S330ToneExtension['tvf']>): S330TvfParams {
+function tvfFromYaml(yaml: NonNullable<S330ToneExtension['tvf']>): SSeriesTvfParams {
   // Create default envelope if not provided
-  const defaultEnvelope: S330Envelope = {
+  const defaultEnvelope: SSeriesEnvelope = {
     levels: [127, 127, 127, 127, 127, 127, 127, 0],
     rates: [127, 127, 127, 127, 127, 127, 127, 127],
     sustainPoint: 6,
@@ -174,7 +174,7 @@ function tvfFromYaml(yaml: NonNullable<S330ToneExtension['tvf']>): S330TvfParams
 /**
  * Convert S-330 TVA params to YAML format.
  */
-function tvaToYaml(tva: S330TvaParams): NonNullable<S330ToneExtension['tva']> {
+function tvaToYaml(tva: SSeriesTvaParams): NonNullable<S330ToneExtension['tva']> {
   return {
     level: tva.level,
     lfoDepth: tva.lfoDepth,
@@ -188,7 +188,7 @@ function tvaToYaml(tva: S330TvaParams): NonNullable<S330ToneExtension['tva']> {
 /**
  * Convert YAML TVA params to S-330 format.
  */
-function tvaFromYaml(yaml: NonNullable<S330ToneExtension['tva']>): S330TvaParams {
+function tvaFromYaml(yaml: NonNullable<S330ToneExtension['tva']>): SSeriesTvaParams {
   return {
     level: yaml.level,
     lfoDepth: yaml.lfoDepth ?? 0,
@@ -243,7 +243,7 @@ export const s330ToneConverter: ToneConverter<S330Tone, ToneYaml> = {
     const ext = yaml.s330;
 
     // Create default structures for optional fields
-    const defaultLfo: S330LfoParams = {
+    const defaultLfo: SSeriesLfoParams = {
       rate: 0,
       sync: false,
       delay: 0,
@@ -252,7 +252,7 @@ export const s330ToneConverter: ToneConverter<S330Tone, ToneYaml> = {
       offset: 0,
     };
 
-    const defaultTvf: S330TvfParams = {
+    const defaultTvf: SSeriesTvfParams = {
       cutoff: 127,
       resonance: 0,
       keyFollow: 0,
@@ -271,7 +271,7 @@ export const s330ToneConverter: ToneConverter<S330Tone, ToneYaml> = {
       },
     };
 
-    const defaultTva: S330TvaParams = {
+    const defaultTva: SSeriesTvaParams = {
       level: 127,
       lfoDepth: 0,
       keyRate: 0,
