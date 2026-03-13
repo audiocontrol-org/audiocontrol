@@ -16,6 +16,8 @@ import {
   loadSetManifest,
   loadIndividualTone,
   loadIndividualToneWavSamples,
+  loadIndividualPatch,
+  loadDrumKitBundle,
   convertYamlToS330Tone,
   convertYamlToS330Patch,
   loadToneWavSamples,
@@ -320,6 +322,7 @@ export function ItemPreviewPanel({
   const [loadingLibraryItem, setLoadingLibraryItem] = useState(false);
   const [libraryTone, setLibraryTone] = useState<S330Tone | null>(null);
   const [libraryPatch, setLibraryPatch] = useState<S330Patch | null>(null);
+  const [libraryDrumKit, setLibraryDrumKit] = useState<ResolvedDrumKitBundle | null>(null);
   const [libraryManifest, setLibraryManifest] = useState<SetYaml | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -340,7 +343,7 @@ export function ItemPreviewPanel({
 
       if (selection.type === 'individualTone') {
         // Load from individual tones directory
-        const result = await loadIndividualToneWavSamples(libraryHandle, selection.name);
+        const result = await loadIndividualToneWavSamples(libraryHandle, selection.name, selection.path ?? []);
         samples = result.samples;
         sampleRate = result.sampleRate;
       } else if (selection.setName) {
@@ -401,6 +404,7 @@ export function ItemPreviewPanel({
     // Reset state
     setLibraryTone(null);
     setLibraryPatch(null);
+    setLibraryDrumKit(null);
     setLibraryManifest(null);
     setLoadError(null);
 
@@ -408,8 +412,8 @@ export function ItemPreviewPanel({
       return;
     }
 
-    // Skip if set or drum kit (not individual item)
-    if (selection.type === 'set' || selection.type === 'drumKit') {
+    // Skip if set (sets have their own simple preview)
+    if (selection.type === 'set') {
       return;
     }
 
@@ -418,7 +422,7 @@ export function ItemPreviewPanel({
       const loadIndividual = async () => {
         setLoadingLibraryItem(true);
         try {
-          const { yaml } = await loadIndividualTone(libraryHandle, selection.name!);
+          const { yaml } = await loadIndividualTone(libraryHandle, selection.name!, selection.path ?? []);
           const tone = convertYamlToS330Tone(yaml);
           setLibraryTone(tone);
         } catch (err) {
@@ -429,6 +433,43 @@ export function ItemPreviewPanel({
         }
       };
       loadIndividual();
+      return;
+    }
+
+    // Handle individual patches (outside of sets)
+    if (selection.type === 'individualPatch' && selection.name) {
+      const loadIndividual = async () => {
+        setLoadingLibraryItem(true);
+        try {
+          const bundle = await loadIndividualPatch(libraryHandle, selection.name!, selection.path ?? []);
+          const patch = convertYamlToS330Patch(bundle.patch);
+          setLibraryPatch(patch);
+        } catch (err) {
+          console.error('[ItemPreviewPanel] Failed to load individual patch:', err);
+          setLoadError(err instanceof Error ? err.message : 'Failed to load patch');
+        } finally {
+          setLoadingLibraryItem(false);
+        }
+      };
+      loadIndividual();
+      return;
+    }
+
+    // Handle drum kits
+    if (selection.type === 'drumKit' && selection.name) {
+      const loadKit = async () => {
+        setLoadingLibraryItem(true);
+        try {
+          const kit = await loadDrumKitBundle(libraryHandle, selection.name!, selection.path ?? []);
+          setLibraryDrumKit(kit);
+        } catch (err) {
+          console.error('[ItemPreviewPanel] Failed to load drum kit:', err);
+          setLoadError(err instanceof Error ? err.message : 'Failed to load drum kit');
+        } finally {
+          setLoadingLibraryItem(false);
+        }
+      };
+      loadKit();
       return;
     }
 
@@ -570,6 +611,90 @@ export function ItemPreviewPanel({
           ) : (
             <div className="text-center text-s330-muted text-sm py-8">
               <p>Could not load tone</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Individual library patch selected (outside of sets)
+  if (selection.source === 'library' && selection.type === 'individualPatch' && selection.name) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="p-3 border-b border-s330-accent">
+          <h3 className="font-bold text-s330-text">Library Patch</h3>
+          <p className="text-xs text-s330-muted mt-0.5">individual export</p>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          {loadingLibraryItem ? (
+            <LoadingState />
+          ) : loadError ? (
+            <ErrorState message={loadError} />
+          ) : libraryPatch ? (
+            <LibraryPatchPreview
+              patch={libraryPatch}
+              fileName={selection.name}
+              manifest={null}
+            />
+          ) : (
+            <div className="text-center text-s330-muted text-sm py-8">
+              <p>Could not load patch</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Drum kit selected
+  if (selection.source === 'library' && selection.type === 'drumKit' && selection.name) {
+    return (
+      <div className="h-full flex flex-col">
+        <div className="p-3 border-b border-s330-accent">
+          <h3 className="font-bold text-s330-text">Drum Kit</h3>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          {loadingLibraryItem ? (
+            <LoadingState />
+          ) : loadError ? (
+            <ErrorState message={loadError} />
+          ) : libraryDrumKit ? (
+            <div className="space-y-4">
+              <div>
+                <div className="text-xs text-s330-muted uppercase tracking-wide mb-1">
+                  Library Drum Kit
+                </div>
+                <h4 className="text-lg font-bold text-s330-text">{libraryDrumKit.name}</h4>
+                {libraryDrumKit.description && (
+                  <p className="text-sm text-s330-muted mt-1">{libraryDrumKit.description}</p>
+                )}
+              </div>
+
+              <div className="bg-s330-bg rounded p-3 text-sm space-y-3">
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-s330-muted text-xs">Sample Rate</span>
+                    <div className="text-s330-text">{libraryDrumKit.sampleRate} Hz</div>
+                  </div>
+                  <div>
+                    <span className="text-s330-muted text-xs">Base Note</span>
+                    <div className="text-s330-text">{libraryDrumKit.baseNote}</div>
+                  </div>
+                  <div>
+                    <span className="text-s330-muted text-xs">Kits</span>
+                    <div className="text-s330-text">{libraryDrumKit.kits.length}</div>
+                  </div>
+                  <div>
+                    <span className="text-s330-muted text-xs">Total Samples</span>
+                    <div className="text-s330-text">{libraryDrumKit.totalSamples}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center text-s330-muted text-sm py-8">
+              <p>Could not load drum kit</p>
             </div>
           )}
         </div>

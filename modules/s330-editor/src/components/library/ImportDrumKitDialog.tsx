@@ -32,6 +32,8 @@ export interface ImportDrumKitDialogProps {
     targetPatchSlot: number;
     singlePatch?: boolean;
     patchName?: string;
+    /** Use monolithic mode with sub-tones (recommended) */
+    useMonolithicMode?: boolean;
   }) => Promise<void>;
   /** Whether import is in progress */
   isImporting: boolean;
@@ -64,8 +66,11 @@ export function ImportDrumKitDialog({
   const [startingSegment, setStartingSegment] = useState(0);
   const [targetPatchSlot, setTargetPatchSlot] = useState(0);
   const [singlePatch, setSinglePatch] = useState(true); // Default to single-patch mode
+  const [useMonolithicMode, setUseMonolithicMode] = useState(true); // Default to monolithic mode
 
-  const hasEnoughToneSlots = startingToneSlot + totalSamples <= 32;
+  // Monolithic mode needs 1 extra tone slot for the "holder" primary tone
+  const toneSlotsNeeded = useMonolithicMode ? totalSamples + 1 : totalSamples;
+  const hasEnoughToneSlots = startingToneSlot + toneSlotsNeeded <= 32;
   // In single-patch mode, we only need 1 patch slot
   const patchSlotsNeeded = singlePatch ? 1 : totalSamples;
   const hasEnoughPatchSlots = targetPatchSlot + patchSlotsNeeded <= 16;
@@ -82,8 +87,9 @@ export function ImportDrumKitDialog({
       targetPatchSlot,
       singlePatch,
       patchName: bundle.name,
+      useMonolithicMode,
     });
-  }, [startingToneSlot, waveBank, startingSegment, targetPatchSlot, singlePatch, bundle.name, onImport]);
+  }, [startingToneSlot, waveBank, startingSegment, targetPatchSlot, singlePatch, bundle.name, useMonolithicMode, onImport]);
 
   const handleClose = useCallback(() => {
     if (!isImporting) {
@@ -111,7 +117,9 @@ export function ImportDrumKitDialog({
                 <span>Drum kit imported successfully!</span>
               </div>
               <div className="text-sm text-s330-muted">
-                <p>Created {totalSamples} tone{totalSamples !== 1 ? 's' : ''} in slots {formatToneSlot(startingToneSlot)} - {formatToneSlot(startingToneSlot + totalSamples - 1)}</p>
+                <p>Created {toneSlotsNeeded} tone{toneSlotsNeeded !== 1 ? 's' : ''} in slots {formatToneSlot(startingToneSlot)} - {formatToneSlot(startingToneSlot + toneSlotsNeeded - 1)}
+                  {useMonolithicMode && ` (1 holder + ${totalSamples} sub-tones)`}
+                </p>
                 {singlePatch ? (
                   <p>Created 1 patch in slot {formatPatchSlot(targetPatchSlot)} with all {totalSamples} samples mapped</p>
                 ) : (
@@ -158,7 +166,8 @@ export function ImportDrumKitDialog({
               {/* Starting Tone Slot */}
               <div>
                 <label htmlFor="startingToneSlot" className="block text-sm text-s330-muted mb-1">
-                  Starting Tone Slot (needs {totalSamples} consecutive slots)
+                  Starting Tone Slot (needs {toneSlotsNeeded} consecutive slot{toneSlotsNeeded !== 1 ? 's' : ''})
+                  {useMonolithicMode && <span className="text-yellow-500 ml-1">(+1 for wave holder)</span>}
                 </label>
                 <select
                   id="startingToneSlot"
@@ -171,9 +180,9 @@ export function ImportDrumKitDialog({
                     isImporting && 'opacity-50'
                   )}
                 >
-                  {Array.from({ length: Math.max(1, 32 - totalSamples + 1) }, (_, i) => {
-                    const endSlot = i + totalSamples - 1;
-                    const hasOccupied = Array.from({ length: totalSamples }, (_, j) => deviceTones[i + j])
+                  {Array.from({ length: Math.max(1, 32 - toneSlotsNeeded + 1) }, (_, i) => {
+                    const endSlot = i + toneSlotsNeeded - 1;
+                    const hasOccupied = Array.from({ length: toneSlotsNeeded }, (_, j) => deviceTones[i + j])
                       .some((t) => t !== undefined);
                     return (
                       <option key={i} value={i}>
@@ -258,6 +267,31 @@ export function ImportDrumKitDialog({
                 </label>
               </div>
 
+              {/* Monolithic Mode Toggle */}
+              <div className="border border-s330-accent/30 rounded p-3 bg-s330-bg/50">
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    id="monolithicMode"
+                    checked={useMonolithicMode}
+                    onChange={(e) => setUseMonolithicMode(e.target.checked)}
+                    disabled={isImporting}
+                    className="w-4 h-4 rounded bg-s330-bg border-s330-accent/50 text-s330-highlight focus:ring-s330-highlight"
+                  />
+                  <label htmlFor="monolithicMode" className="text-sm text-s330-text">
+                    Use monolithic mode with sub-tones
+                    <span className="ml-2 text-xs text-s330-muted">(recommended)</span>
+                  </label>
+                </div>
+                {useMonolithicMode && (
+                  <p className="text-xs text-s330-muted mt-2">
+                    Uploads all slices as one contiguous wave segment. Creates a "holder" primary tone
+                    that owns the wave data (not mapped to any MIDI note), then all {totalSamples} slices
+                    become sub-tones with their own start/end points. Uses {toneSlotsNeeded} tone slots total.
+                  </p>
+                )}
+              </div>
+
               {/* Patch Slot */}
               <div>
                 <label htmlFor="targetPatchSlot" className="block text-sm text-s330-muted mb-1">
@@ -314,7 +348,8 @@ export function ImportDrumKitDialog({
                   <div className="flex justify-between">
                     <span className="text-s330-muted">Tones:</span>
                     <span className="text-s330-text">
-                      {formatToneSlot(startingToneSlot)} - {formatToneSlot(startingToneSlot + totalSamples - 1)}
+                      {formatToneSlot(startingToneSlot)} - {formatToneSlot(startingToneSlot + toneSlotsNeeded - 1)}
+                      {useMonolithicMode && <span className="text-yellow-500 ml-1">(+1 holder)</span>}
                     </span>
                   </div>
                   <div className="flex justify-between">

@@ -35,6 +35,9 @@ import {
   listDrumKits,
   listIndividualTones,
   listIndividualPatches,
+  listIndividualTonesTree,
+  listIndividualPatchesTree,
+  listDrumKitsTree,
   loadDrumKitBundle,
   loadDrumKitSource,
   updateDrumKitSlices,
@@ -47,11 +50,25 @@ import {
   deleteIndividualTone,
   deleteIndividualPatch,
   deleteDrumKit,
+  createDirectory,
+  renameDirectory,
+  deleteDirectory,
+  moveItem,
+  renameIndividualTone,
+  renameIndividualPatch,
+  renameDrumKit,
+  renameSet,
   type DrumKitInfo,
   type LibraryToneInfo,
   type LibraryPatchInfo,
+  type LibraryTreeNode,
+  type LibraryCategory,
   type PatchBundleTone,
 } from '@/lib/library-service';
+import { CreateDirectoryDialog } from '@/components/library/CreateDirectoryDialog';
+import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialog';
+import { DeleteDirectoryDialog } from '@/components/library/DeleteDirectoryDialog';
+import { MoveItemDialog } from '@/components/library/MoveItemDialog';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 import { cn } from '@/lib/utils';
 
@@ -64,6 +81,8 @@ export interface ItemSelection {
   index?: number;
   name?: string;
   setName?: string;
+  /** Path segments for hierarchical items */
+  path?: string[];
 }
 
 export function LibraryPage() {
@@ -85,7 +104,16 @@ export function LibraryPage() {
   } = useDeviceDataStore();
 
   // Library store
-  const { sets, setSets, isLoading, setLoading, setError, error } = useLibraryStore();
+  const {
+    sets,
+    setSets,
+    isLoading,
+    setLoading,
+    setError,
+    error,
+    expandedPaths,
+    toggleDirectoryExpanded,
+  } = useLibraryStore();
 
   // Drum kit state
   const [drumKits, setDrumKits] = useState<DrumKitInfo[]>([]);
@@ -95,6 +123,7 @@ export function LibraryPage() {
   const [sliceEditDialog, setSliceEditDialog] = useState<{
     open: boolean;
     kitName: string;
+    path?: string[];
     samples: Int16Array | null;
     sampleRate: number;
     slices: InitialSliceDefinition[];
@@ -112,6 +141,33 @@ export function LibraryPage() {
 
   // Individual patches state
   const [individualPatches, setIndividualPatches] = useState<LibraryPatchInfo[]>([]);
+
+  // Hierarchical tree state
+  const [tonesTree, setTonesTree] = useState<LibraryTreeNode[]>([]);
+  const [patchesTree, setPatchesTree] = useState<LibraryTreeNode[]>([]);
+  const [drumKitsTree, setDrumKitsTree] = useState<LibraryTreeNode[]>([]);
+
+  // Directory dialog state
+  const [createDirectoryDialog, setCreateDirectoryDialog] = useState<{
+    category: LibraryCategory;
+    parentPath: string[];
+  } | null>(null);
+  const [renameDirectoryDialog, setRenameDirectoryDialog] = useState<{
+    category: LibraryCategory;
+    path: string[];
+    currentName: string;
+  } | null>(null);
+  const [deleteDirectoryDialog, setDeleteDirectoryDialog] = useState<{
+    category: LibraryCategory;
+    path: string[];
+    directoryName: string;
+  } | null>(null);
+  const [moveItemDialog, setMoveItemDialog] = useState<{
+    category: LibraryCategory;
+    sourcePath: string[];
+    itemName: string;
+    itemType: 'tone' | 'patch' | 'drum-kit' | 'directory';
+  } | null>(null);
 
   // Export tone dialog state
   const [exportToneDialog, setExportToneDialog] = useState<{
@@ -190,18 +246,24 @@ export function LibraryPage() {
       const cached = await getCachedLibraryDirectory();
       if (cached) {
         setLibraryHandle(cached);
-        // Load sets, drum kits, individual tones, and individual patches
+        // Load sets, drum kits, individual tones, individual patches, and hierarchical trees
         try {
-          const [setList, kitList, toneList, patchList] = await Promise.all([
+          const [setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData] = await Promise.all([
             listSets(cached),
             listDrumKits(cached),
             listIndividualTones(cached),
             listIndividualPatches(cached),
+            listIndividualTonesTree(cached),
+            listIndividualPatchesTree(cached),
+            listDrumKitsTree(cached),
           ]);
           setSets(setList);
           setDrumKits(kitList);
           setIndividualTones(toneList);
           setIndividualPatches(patchList);
+          setTonesTree(tonesTreeData);
+          setPatchesTree(patchesTreeData);
+          setDrumKitsTree(drumKitsTreeData);
         } catch (err) {
           console.error('[LibraryPage] Failed to load library:', err);
         }
@@ -216,18 +278,24 @@ export function LibraryPage() {
     if (handle) {
       setLibraryHandle(handle);
       setCachedLibraryDirectory(handle);
-      // Load sets, drum kits, individual tones, and individual patches
+      // Load sets, drum kits, individual tones, individual patches, and hierarchical trees
       try {
-        const [setList, kitList, toneList, patchList] = await Promise.all([
+        const [setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData] = await Promise.all([
           listSets(handle),
           listDrumKits(handle),
           listIndividualTones(handle),
           listIndividualPatches(handle),
+          listIndividualTonesTree(handle),
+          listIndividualPatchesTree(handle),
+          listDrumKitsTree(handle),
         ]);
         setSets(setList);
         setDrumKits(kitList);
         setIndividualTones(toneList);
         setIndividualPatches(patchList);
+        setTonesTree(tonesTreeData);
+        setPatchesTree(patchesTreeData);
+        setDrumKitsTree(drumKitsTreeData);
       } catch (err) {
         console.error('[LibraryPage] Failed to load library:', err);
         setError(err instanceof Error ? err.message : 'Failed to load library');
@@ -241,16 +309,22 @@ export function LibraryPage() {
 
     setLoading(true, 'Refreshing library...');
     try {
-      const [setList, kitList, toneList, patchList] = await Promise.all([
+      const [setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData] = await Promise.all([
         listSets(libraryHandle),
         listDrumKits(libraryHandle),
         listIndividualTones(libraryHandle),
         listIndividualPatches(libraryHandle),
+        listIndividualTonesTree(libraryHandle),
+        listIndividualPatchesTree(libraryHandle),
+        listDrumKitsTree(libraryHandle),
       ]);
       setSets(setList);
       setDrumKits(kitList);
       setIndividualTones(toneList);
       setIndividualPatches(patchList);
+      setTonesTree(tonesTreeData);
+      setPatchesTree(patchesTreeData);
+      setDrumKitsTree(drumKitsTreeData);
     } catch (err) {
       console.error('[LibraryPage] Failed to refresh library:', err);
       setError(err instanceof Error ? err.message : 'Failed to refresh library');
@@ -282,7 +356,7 @@ export function LibraryPage() {
   }, [libraryHandle, selection, handleRefreshLibrary, setError]);
 
   // Delete an individual tone from library
-  const handleDeleteIndividualTone = useCallback(async (fileName: string) => {
+  const handleDeleteIndividualTone = useCallback(async (fileName: string, path?: string[]) => {
     if (!libraryHandle) return;
 
     if (!window.confirm(`Delete tone "${fileName}"? This cannot be undone.`)) {
@@ -290,14 +364,18 @@ export function LibraryPage() {
     }
 
     try {
-      await deleteIndividualTone(libraryHandle, fileName);
+      await deleteIndividualTone(libraryHandle, fileName, path);
       // Clear selection if the deleted item was selected
       if (selection?.type === 'individualTone' && selection.name === fileName) {
         setSelection(null);
       }
-      // Refresh individual tones list
-      const updatedTones = await listIndividualTones(libraryHandle);
+      // Refresh individual tones list and tree
+      const [updatedTones, updatedTree] = await Promise.all([
+        listIndividualTones(libraryHandle),
+        listIndividualTonesTree(libraryHandle),
+      ]);
       setIndividualTones(updatedTones);
+      setTonesTree(updatedTree);
     } catch (err) {
       console.error('[LibraryPage] Failed to delete tone:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete tone');
@@ -305,7 +383,7 @@ export function LibraryPage() {
   }, [libraryHandle, selection, setError]);
 
   // Delete an individual patch bundle from library
-  const handleDeleteIndividualPatch = useCallback(async (directoryName: string) => {
+  const handleDeleteIndividualPatch = useCallback(async (directoryName: string, path?: string[]) => {
     if (!libraryHandle) return;
 
     if (!window.confirm(`Delete patch "${directoryName}" and all its tones? This cannot be undone.`)) {
@@ -313,14 +391,18 @@ export function LibraryPage() {
     }
 
     try {
-      await deleteIndividualPatch(libraryHandle, directoryName);
+      await deleteIndividualPatch(libraryHandle, directoryName, path);
       // Clear selection if the deleted item was selected
       if (selection?.type === 'individualPatch' && selection.name === directoryName) {
         setSelection(null);
       }
-      // Refresh individual patches list
-      const updatedPatches = await listIndividualPatches(libraryHandle);
+      // Refresh individual patches list and tree
+      const [updatedPatches, updatedTree] = await Promise.all([
+        listIndividualPatches(libraryHandle),
+        listIndividualPatchesTree(libraryHandle),
+      ]);
       setIndividualPatches(updatedPatches);
+      setPatchesTree(updatedTree);
     } catch (err) {
       console.error('[LibraryPage] Failed to delete patch:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete patch');
@@ -328,7 +410,7 @@ export function LibraryPage() {
   }, [libraryHandle, selection, setError]);
 
   // Delete a drum kit from library
-  const handleDeleteDrumKit = useCallback(async (directoryName: string) => {
+  const handleDeleteDrumKit = useCallback(async (directoryName: string, path?: string[]) => {
     if (!libraryHandle) return;
 
     if (!window.confirm(`Delete drum kit "${directoryName}"? This cannot be undone.`)) {
@@ -336,20 +418,214 @@ export function LibraryPage() {
     }
 
     try {
-      await deleteDrumKit(libraryHandle, directoryName);
+      await deleteDrumKit(libraryHandle, directoryName, path);
       // Clear selection if the deleted item was selected
       if (selection?.type === 'drumKit' && selection.name === directoryName) {
         setSelection(null);
         setSelectedDrumKitBundle(null);
       }
-      // Refresh drum kits list
-      const updatedKits = await listDrumKits(libraryHandle);
+      // Refresh drum kits list and tree
+      const [updatedKits, updatedTree] = await Promise.all([
+        listDrumKits(libraryHandle),
+        listDrumKitsTree(libraryHandle),
+      ]);
       setDrumKits(updatedKits);
+      setDrumKitsTree(updatedTree);
     } catch (err) {
       console.error('[LibraryPage] Failed to delete drum kit:', err);
       setError(err instanceof Error ? err.message : 'Failed to delete drum kit');
     }
   }, [libraryHandle, selection, setError]);
+
+  // =========================================================================
+  // Directory Operations
+  // =========================================================================
+
+  // Open create directory dialog
+  const handleOpenCreateDirectory = useCallback((category: LibraryCategory, parentPath: string[]) => {
+    setCreateDirectoryDialog({ category, parentPath });
+  }, []);
+
+  // Create a new directory
+  const handleCreateDirectory = useCallback(async (name: string) => {
+    if (!libraryHandle || !createDirectoryDialog) return;
+
+    try {
+      await createDirectory(
+        libraryHandle,
+        createDirectoryDialog.category,
+        createDirectoryDialog.parentPath,
+        name
+      );
+      setCreateDirectoryDialog(null);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to create directory:', err);
+      throw err;
+    }
+  }, [libraryHandle, createDirectoryDialog, handleRefreshLibrary]);
+
+  // Open rename directory dialog
+  const handleOpenRenameDirectory = useCallback((category: LibraryCategory, path: string[]) => {
+    const currentName = path[path.length - 1];
+    setRenameDirectoryDialog({ category, path, currentName });
+  }, []);
+
+  // Rename a directory
+  const handleRenameDirectory = useCallback(async (newName: string) => {
+    if (!libraryHandle || !renameDirectoryDialog) return;
+
+    try {
+      await renameDirectory(
+        libraryHandle,
+        renameDirectoryDialog.category,
+        renameDirectoryDialog.path,
+        newName
+      );
+      setRenameDirectoryDialog(null);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to rename directory:', err);
+      throw err;
+    }
+  }, [libraryHandle, renameDirectoryDialog, handleRefreshLibrary]);
+
+  // Open delete directory dialog
+  const handleOpenDeleteDirectory = useCallback((category: LibraryCategory, path: string[]) => {
+    const directoryName = path[path.length - 1];
+    setDeleteDirectoryDialog({ category, path, directoryName });
+  }, []);
+
+  // Delete a directory
+  const handleDeleteDirectory = useCallback(async () => {
+    if (!libraryHandle || !deleteDirectoryDialog) return;
+
+    try {
+      await deleteDirectory(
+        libraryHandle,
+        deleteDirectoryDialog.category,
+        deleteDirectoryDialog.path,
+        true // recursive
+      );
+      setDeleteDirectoryDialog(null);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to delete directory:', err);
+      throw err;
+    }
+  }, [libraryHandle, deleteDirectoryDialog, handleRefreshLibrary]);
+
+  // Open move item dialog
+  const handleOpenMoveItem = useCallback((
+    category: LibraryCategory,
+    sourcePath: string[],
+    itemName: string
+  ) => {
+    // Determine item type based on what's in the library at that path
+    // For now, we'll infer from category - this could be enhanced
+    let itemType: 'tone' | 'patch' | 'drum-kit' | 'directory' = 'directory';
+    if (category === 'tones') itemType = 'tone';
+    else if (category === 'patches') itemType = 'patch';
+    else if (category === 'drum-kits') itemType = 'drum-kit';
+
+    setMoveItemDialog({ category, sourcePath, itemName, itemType });
+  }, []);
+
+  // Move an item to a new location
+  const handleMoveItem = useCallback(async (targetPath: string[]) => {
+    if (!libraryHandle || !moveItemDialog) return;
+
+    try {
+      await moveItem(
+        libraryHandle,
+        moveItemDialog.category,
+        moveItemDialog.sourcePath,
+        moveItemDialog.itemName,
+        targetPath
+      );
+      setMoveItemDialog(null);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to move item:', err);
+      throw err;
+    }
+  }, [libraryHandle, moveItemDialog, handleRefreshLibrary]);
+
+  // Get the tree for the current category in move dialog
+  const getMoveDialogTree = useCallback((): LibraryTreeNode[] => {
+    if (!moveItemDialog) return [];
+    switch (moveItemDialog.category) {
+      case 'tones': return tonesTree;
+      case 'patches': return patchesTree;
+      case 'drum-kits': return drumKitsTree;
+      default: return [];
+    }
+  }, [moveItemDialog, tonesTree, patchesTree, drumKitsTree]);
+
+  // Handle drag-drop move (directly moves item without dialog)
+  const handleDropMoveItem = useCallback(async (
+    category: LibraryCategory,
+    sourcePath: string[],
+    itemName: string,
+    targetPath: string[]
+  ) => {
+    if (!libraryHandle) return;
+
+    try {
+      await moveItem(libraryHandle, category, sourcePath, itemName, targetPath);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to move item via drag-drop:', err);
+      setError(err instanceof Error ? err.message : 'Failed to move item');
+    }
+  }, [libraryHandle, handleRefreshLibrary, setError]);
+
+  // Handle in-place rename (double-click to edit)
+  const handleRenameItem = useCallback(async (
+    category: LibraryCategory,
+    path: string[],
+    oldName: string,
+    newName: string,
+    isDirectory: boolean
+  ) => {
+    if (!libraryHandle) return;
+
+    try {
+      if (isDirectory) {
+        // Rename a subdirectory
+        await renameDirectory(libraryHandle, category, [...path, oldName], newName);
+      } else if (category === 'tones') {
+        // Tones are stored as .yaml files
+        await renameIndividualTone(libraryHandle, oldName, newName, path);
+      } else if (category === 'patches') {
+        // Patches are stored as directories
+        await renameIndividualPatch(libraryHandle, oldName, newName, path);
+      } else if (category === 'drum-kits') {
+        // Drum kits are stored as directories
+        await renameDrumKit(libraryHandle, oldName, newName, path);
+      }
+
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to rename item:', err);
+      setError(err instanceof Error ? err.message : 'Failed to rename item');
+      throw err; // Re-throw so the UI knows the rename failed
+    }
+  }, [libraryHandle, handleRefreshLibrary, setError]);
+
+  // Handle set rename (double-click to edit)
+  const handleRenameSet = useCallback(async (oldName: string, newName: string) => {
+    if (!libraryHandle) return;
+
+    try {
+      await renameSet(libraryHandle, oldName, newName);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to rename set:', err);
+      setError(err instanceof Error ? err.message : 'Failed to rename set');
+      throw err;
+    }
+  }, [libraryHandle, handleRefreshLibrary, setError]);
 
   // Load all data from device (tones and patches)
   const handleLoadDeviceData = useCallback(async () => {
@@ -559,14 +835,14 @@ export function LibraryPage() {
   }, []);
 
   // Handle drum kit selection
-  const handleSelectDrumKit = useCallback(async (directoryName: string) => {
-    setSelection({ source: 'library', type: 'drumKit', name: directoryName });
+  const handleSelectDrumKit = useCallback(async (directoryName: string, path?: string[]) => {
+    setSelection({ source: 'library', type: 'drumKit', name: directoryName, path });
     setSelectedDrumKitBundle(null);
 
     // Load the full bundle
     if (libraryHandle) {
       try {
-        const bundle = await loadDrumKitBundle(libraryHandle, directoryName);
+        const bundle = await loadDrumKitBundle(libraryHandle, directoryName, path);
         setSelectedDrumKitBundle(bundle);
       } catch (err) {
         console.error('[LibraryPage] Failed to load drum kit bundle:', err);
@@ -591,12 +867,13 @@ export function LibraryPage() {
     setLoading(true, 'Loading source audio...');
     try {
       // Load the source WAV
-      const sourceWav = await loadDrumKitSource(libraryHandle, selection.name!, bundle.source);
+      const sourceWav = await loadDrumKitSource(libraryHandle, selection.name!, bundle.source, selection.path);
 
       // Open the slice editor dialog
       setSliceEditDialog({
         open: true,
         kitName: selection.name!,
+        path: selection.path,
         samples: sourceWav.samples,
         sampleRate: sourceWav.sampleRate,
         slices: bundle.slices.map((s) => ({
@@ -631,10 +908,10 @@ export function LibraryPage() {
 
     setLoading(true, 'Saving slice changes...');
     try {
-      await updateDrumKitSlices(libraryHandle, sliceEditDialog.kitName, slices, kitConfig);
+      await updateDrumKitSlices(libraryHandle, sliceEditDialog.kitName, slices, kitConfig, sliceEditDialog.path);
 
       // Refresh the drum kit bundle
-      const updatedBundle = await loadDrumKitBundle(libraryHandle, sliceEditDialog.kitName);
+      const updatedBundle = await loadDrumKitBundle(libraryHandle, sliceEditDialog.kitName, sliceEditDialog.path);
       setSelectedDrumKitBundle(updatedBundle);
 
       console.log(`[LibraryPage] Updated slices for ${sliceEditDialog.kitName}`);
@@ -648,21 +925,21 @@ export function LibraryPage() {
   }, [libraryHandle, sliceEditDialog, setLoading, setError]);
 
   // Handle individual tone selection
-  const handleSelectIndividualTone = useCallback((toneName: string) => {
-    setSelection({ source: 'library', type: 'individualTone', name: toneName });
+  const handleSelectIndividualTone = useCallback((toneName: string, path?: string[]) => {
+    setSelection({ source: 'library', type: 'individualTone', name: toneName, path });
     setSelectedDrumKitBundle(null);
   }, []);
 
   // Handle individual patch selection
-  const handleSelectIndividualPatch = useCallback((patchName: string) => {
-    setSelection({ source: 'library', type: 'individualPatch', name: patchName });
+  const handleSelectIndividualPatch = useCallback((patchName: string, path?: string[]) => {
+    setSelection({ source: 'library', type: 'individualPatch', name: patchName, path });
     setSelectedDrumKitBundle(null);
   }, []);
 
   // Handle drum kit import button click
   const handleOpenDrumKitImport = useCallback(() => {
     if (!selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) return;
-    openImportDrumKitDialog(selection.name!, selectedDrumKitBundle);
+    openImportDrumKitDialog(selection.name!, selectedDrumKitBundle, selection.path);
   }, [selection, selectedDrumKitBundle, openImportDrumKitDialog]);
 
   // Open import tone dialog
@@ -900,17 +1177,15 @@ export function LibraryPage() {
 
     if (data.type === 'drumKit') {
       // Handle drum kit drop - open drum kit import dialog
-      const kitInfo = drumKits.find(k => k.directoryName === data.name);
-      if (kitInfo) {
-        loadDrumKitBundle(libraryHandle, data.name)
-          .then(bundle => {
-            openImportDrumKitDialog(data.name, bundle);
-          })
-          .catch(err => {
-            console.error('[LibraryPage] Failed to load drum kit for import:', err);
-            window.alert('Failed to load drum kit');
-          });
-      }
+      // Use path from drag data for kits in subdirectories
+      loadDrumKitBundle(libraryHandle, data.name, data.path)
+        .then(bundle => {
+          openImportDrumKitDialog(data.name, bundle, data.path);
+        })
+        .catch(err => {
+          console.error('[LibraryPage] Failed to load drum kit for import:', err);
+          window.alert('Failed to load drum kit');
+        });
       return;
     }
 
@@ -1176,9 +1451,14 @@ export function LibraryPage() {
             drumKits={drumKits}
             individualTones={individualTones}
             individualPatches={individualPatches}
+            tonesTree={tonesTree}
+            patchesTree={patchesTree}
+            drumKitsTree={drumKitsTree}
+            expandedPaths={expandedPaths}
             selectedName={selection?.source === 'library' ? selection.name : undefined}
             selectedType={selection?.source === 'library' ? selection.type : undefined}
             selectedSetName={selection?.source === 'library' ? selection.setName : undefined}
+            selectedPath={selection?.source === 'library' ? selection.path : undefined}
             onSelectSet={(name) => handleSelectLibrary('set', name)}
             onSelectTone={(name, setName) => handleSelectLibrary('tone', name, setName)}
             onSelectPatch={(name, setName) => handleSelectLibrary('patch', name, setName)}
@@ -1193,6 +1473,14 @@ export function LibraryPage() {
             onDeleteIndividualTone={handleDeleteIndividualTone}
             onDeleteIndividualPatch={handleDeleteIndividualPatch}
             onDeleteDrumKit={handleDeleteDrumKit}
+            onToggleDirectoryExpanded={toggleDirectoryExpanded}
+            onCreateDirectory={handleOpenCreateDirectory}
+            onRenameDirectory={handleOpenRenameDirectory}
+            onDeleteDirectory={handleOpenDeleteDirectory}
+            onMoveItem={handleOpenMoveItem}
+            onDropMoveItem={handleDropMoveItem}
+            onRenameItem={handleRenameItem}
+            onRenameSet={handleRenameSet}
           />
         </div>
 
@@ -1202,6 +1490,7 @@ export function LibraryPage() {
             <DrumKitPreviewPanel
               kitInfo={drumKits.find((k) => k.directoryName === selection.name) ?? null}
               libraryHandle={libraryHandle}
+              preloadedBundle={selectedDrumKitBundle}
               onImport={handleOpenDrumKitImport}
               onEditKit={handleEditKit}
             />
@@ -1355,6 +1644,56 @@ export function LibraryPage() {
         isExporting={isExporting}
         exportProgress={exportPatchProgress}
         exportError={exportPatchError}
+      />
+
+      {/* Create Directory Dialog */}
+      <CreateDirectoryDialog
+        open={!!createDirectoryDialog}
+        onOpenChange={(open) => {
+          if (!open) setCreateDirectoryDialog(null);
+        }}
+        onConfirm={handleCreateDirectory}
+        parentPath={createDirectoryDialog?.parentPath ?? []}
+        category={createDirectoryDialog?.category ?? 'tones'}
+      />
+
+      {/* Rename Directory Dialog */}
+      <RenameDirectoryDialog
+        open={!!renameDirectoryDialog}
+        onOpenChange={(open) => {
+          if (!open) setRenameDirectoryDialog(null);
+        }}
+        onConfirm={handleRenameDirectory}
+        currentName={renameDirectoryDialog?.currentName ?? ''}
+        path={renameDirectoryDialog?.path ?? []}
+        category={renameDirectoryDialog?.category ?? 'tones'}
+      />
+
+      {/* Delete Directory Dialog */}
+      <DeleteDirectoryDialog
+        open={!!deleteDirectoryDialog}
+        onOpenChange={(open) => {
+          if (!open) setDeleteDirectoryDialog(null);
+        }}
+        onConfirm={handleDeleteDirectory}
+        directoryName={deleteDirectoryDialog?.directoryName ?? ''}
+        path={deleteDirectoryDialog?.path ?? []}
+        category={deleteDirectoryDialog?.category ?? 'tones'}
+        libraryHandle={libraryHandle}
+      />
+
+      {/* Move Item Dialog */}
+      <MoveItemDialog
+        open={!!moveItemDialog}
+        onOpenChange={(open) => {
+          if (!open) setMoveItemDialog(null);
+        }}
+        onConfirm={handleMoveItem}
+        itemName={moveItemDialog?.itemName ?? ''}
+        itemType={moveItemDialog?.itemType ?? 'tone'}
+        currentPath={moveItemDialog?.sourcePath ?? []}
+        category={moveItemDialog?.category ?? 'tones'}
+        categoryTree={getMoveDialogTree()}
       />
     </div>
   );

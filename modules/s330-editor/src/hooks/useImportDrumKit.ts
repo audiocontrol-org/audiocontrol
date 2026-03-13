@@ -12,12 +12,20 @@
 import { useState, useCallback, MutableRefObject } from 'react';
 import type { S330ClientInterface, S330Tone, S330Patch } from '@/core/midi/S330Client';
 import type { ResolvedDrumKitBundle, SliceDefinition } from '@audiocontrol/sampler-library/browser';
-import { createEmptyToneLayer, setToneAtMidiNote, createDrumTone, createDrumKitPatch, resample } from '@audiocontrol/sampler-devices/s330';
+import {
+  createEmptyToneLayer,
+  setToneAtMidiNote,
+  createDrumTone,
+  createDrumKitPatch,
+  resample,
+  importMonolithicDrumKit,
+} from '@audiocontrol/sampler-devices/s330';
 import { loadDrumKitSample, loadDrumKitSource, prepareWavForS330 } from '@/lib/library-service';
 
 interface ImportDrumKitDialogState {
   kitName: string;
   bundle: ResolvedDrumKitBundle;
+  path?: string[];
 }
 
 interface UseImportDrumKitOptions {
@@ -36,7 +44,7 @@ interface UseImportDrumKitReturn {
   importStatus: string | null;
 
   // Dialog handlers
-  openImportDrumKitDialog: (kitName: string, bundle: ResolvedDrumKitBundle) => void;
+  openImportDrumKitDialog: (kitName: string, bundle: ResolvedDrumKitBundle, path?: string[]) => void;
   closeImportDrumKitDialog: () => void;
 
   // Import handler
@@ -47,6 +55,7 @@ interface UseImportDrumKitReturn {
     targetPatchSlot: number;
     singlePatch?: boolean;
     patchName?: string;
+    useMonolithicMode?: boolean;
   }) => Promise<void>;
 }
 
@@ -98,11 +107,11 @@ export function useImportDrumKit({
   const [importStatus, setImportStatus] = useState<string | null>(null);
 
   // Open dialog
-  const openImportDrumKitDialog = useCallback((kitName: string, bundle: ResolvedDrumKitBundle) => {
+  const openImportDrumKitDialog = useCallback((kitName: string, bundle: ResolvedDrumKitBundle, path?: string[]) => {
     setImportError(null);
     setImportProgress(undefined);
     setImportStatus(null);
-    setImportDrumKitDialog({ kitName, bundle });
+    setImportDrumKitDialog({ kitName, bundle, path });
   }, []);
 
   // Close dialog
@@ -118,22 +127,120 @@ export function useImportDrumKit({
     targetPatchSlot: number;
     singlePatch?: boolean;
     patchName?: string;
+    useMonolithicMode?: boolean;
   }) => {
     if (!clientRef.current || !libraryHandle || !importDrumKitDialog) {
       throw new Error('Missing required resources for import');
     }
 
-    const { bundle, kitName } = importDrumKitDialog;
+    const { bundle, kitName, path } = importDrumKitDialog;
     const { startingToneSlot, waveBank, startingSegment, targetPatchSlot } = params;
     // Default to single-patch mode
     const useSinglePatch = params.singlePatch ?? true;
     const patchName = params.patchName || kitName;
+    const useMonolithicMode = params.useMonolithicMode ?? false;
 
     setIsImporting(true);
     setImportProgress(0);
     setImportError(null);
 
     try {
+      // =========================================================================
+      // MONOLITHIC MODE (Experimental)
+      // =========================================================================
+      if (useMonolithicMode) {
+        // Monolithic mode only works with v2 format (source + slices)
+        if (!bundle.source || !bundle.slices || bundle.slices.length === 0) {
+          throw new Error('Monolithic mode requires v2 format kit with source audio and slices');
+        }
+
+        console.log('[useImportDrumKit] Using MONOLITHIC MODE');
+
+        setImportStatus('Loading source audio for monolithic import...');
+
+        // Load the source WAV
+        const sourceWav = await loadDrumKitSource(libraryHandle, kitName, bundle.source, path);
+
+        // Resample if needed
+        let targetSamples: Int16Array;
+        if (sourceWav.sampleRate !== bundle.sampleRate) {
+          setImportStatus('Resampling audio...');
+          targetSamples = resample(sourceWav.samples, sourceWav.sampleRate, bundle.sampleRate);
+        } else {
+          targetSamples = sourceWav.samples;
+        }
+
+        // Prepare the entire source for S-330 (convert to 12-bit format)
+        setImportStatus('Preparing wave data...');
+        const prepared = prepareWavForS330(
+          createWavArrayBuffer(targetSamples, bundle.sampleRate),
+          bundle.sampleRate
+        );
+
+        // Build slice definitions with MIDI notes
+        const slices = bundle.slices.map((slice, i) => {
+          const kitMidiBase = bundle.baseNote + Math.floor(i / 4) * 4;
+          const midiNote = kitMidiBase + (i % 4);
+          return {
+            label: slice.label,
+            startSample: slice.startSample,
+            endSample: slice.endSample,
+            midiNote,
+          };
+        });
+
+        console.log('[useImportDrumKit] Monolithic import config:', {
+          totalSamples: targetSamples.length,
+          slices: slices.length,
+          sampleRate: bundle.sampleRate,
+          startingToneSlot,
+          waveBank,
+          startingSegment,
+          targetPatchSlot,
+        });
+
+        // Use the monolithic import function
+        const result = await importMonolithicDrumKit(
+          clientRef.current,
+          {
+            waveData: prepared.data,
+            totalSampleCount: prepared.sampleCount,
+            slices,
+            sampleRate: bundle.sampleRate as 15000 | 30000,
+            startingToneSlot,
+            waveBank,
+            startingSegment,
+            patchSlot: targetPatchSlot,
+            patchName,
+            transpose: bundle.transpose,
+            velocitySensitivity: bundle.velocitySensitivity,
+          },
+          (current, total, status) => {
+            setImportProgress(Math.floor((current / total) * 100));
+            setImportStatus(status);
+          }
+        );
+
+        // Update local state with the created tones
+        setTone(result.primaryToneSlot, result.primaryTone);
+        for (let i = 0; i < result.subTones.length; i++) {
+          setTone(result.subToneSlots[i]!, result.subTones[i]!);
+        }
+        setPatch(result.patchSlot, result.patch);
+
+        setImportProgress(100);
+        setImportStatus('Monolithic import complete!');
+
+        console.log('[useImportDrumKit] Monolithic import complete:', result);
+
+        // Brief delay to show completion
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        return;
+      }
+
+      // =========================================================================
+      // STANDARD MODE (separate wave per slice)
+      // =========================================================================
       // Check if this is a v2 format bundle (source + slices)
       const isV2Format = bundle.source && bundle.slices && bundle.slices.length > 0;
 
@@ -191,7 +298,7 @@ export function useImportDrumKit({
       let sourceWav: { samples: Int16Array; sampleRate: number } | null = null;
       if (isV2Format) {
         setImportStatus('Loading source audio...');
-        sourceWav = await loadDrumKitSource(libraryHandle, kitName, bundle.source!);
+        sourceWav = await loadDrumKitSource(libraryHandle, kitName, bundle.source!, path);
       }
 
       // Import each sample as a tone
@@ -225,7 +332,7 @@ export function useImportDrumKit({
           );
         } else {
           // V1 format: load individual WAV file
-          const wavBytes = await loadDrumKitSample(libraryHandle, kitName, sample.filename);
+          const wavBytes = await loadDrumKitSample(libraryHandle, kitName, sample.filename, path);
           prepared = prepareWavForS330(wavBytes.buffer as ArrayBuffer, bundle.sampleRate);
         }
 

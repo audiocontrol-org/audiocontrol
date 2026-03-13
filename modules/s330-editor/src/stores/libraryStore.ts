@@ -54,6 +54,16 @@ export interface ImportState {
   error: string | null;
 }
 
+/**
+ * Expanded directories state for hierarchical library view.
+ * Keys are path strings joined by '/' (e.g., "Piano/Grand")
+ */
+export interface ExpandedPaths {
+  tones: Set<string>;
+  patches: Set<string>;
+  drumKits: Set<string>;
+}
+
 interface LibraryState {
   // Library contents
   tones: Map<string, LibraryItemSummary>;
@@ -86,6 +96,9 @@ interface LibraryState {
   // Set operation state
   saveSetDialog: SetOperationState;
   loadSetDialog: SetOperationState;
+
+  // Directory expansion state for hierarchical view
+  expandedPaths: ExpandedPaths;
 }
 
 interface LibraryActions {
@@ -146,6 +159,12 @@ interface LibraryActions {
   setLoadSetError: (error: string | null) => void;
   setLoadSetComplete: () => void;
 
+  // Directory expansion
+  toggleDirectoryExpanded: (category: 'tones' | 'patches' | 'drumKits', path: string) => void;
+  setDirectoryExpanded: (category: 'tones' | 'patches' | 'drumKits', path: string, expanded: boolean) => void;
+  setExpandedPaths: (category: 'tones' | 'patches' | 'drumKits', paths: Set<string>) => void;
+  collapseAllDirectories: (category?: 'tones' | 'patches' | 'drumKits') => void;
+
   // Reset
   clear: () => void;
 }
@@ -173,6 +192,12 @@ const initialSetOperationState: SetOperationState = {
   error: null,
 };
 
+const initialExpandedPaths: ExpandedPaths = {
+  tones: new Set(),
+  patches: new Set(),
+  drumKits: new Set(),
+};
+
 export const useLibraryStore = create<LibraryStore>((set, get) => ({
   // Initial state
   tones: new Map(),
@@ -193,6 +218,7 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
   importDialog: initialImportState,
   saveSetDialog: initialSetOperationState,
   loadSetDialog: initialSetOperationState,
+  expandedPaths: initialExpandedPaths,
 
   // Library loading
   setLoading: (isLoading, message = null) =>
@@ -383,6 +409,64 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
       loadSetDialog: { ...state.loadSetDialog, isOperating: false, progress: 100 },
     })),
 
+  // Directory expansion
+  toggleDirectoryExpanded: (category, path) =>
+    set((state) => {
+      const categoryPaths = state.expandedPaths[category];
+      const newPaths = new Set(categoryPaths);
+      if (newPaths.has(path)) {
+        newPaths.delete(path);
+      } else {
+        newPaths.add(path);
+      }
+      return {
+        expandedPaths: {
+          ...state.expandedPaths,
+          [category]: newPaths,
+        },
+      };
+    }),
+
+  setDirectoryExpanded: (category, path, expanded) =>
+    set((state) => {
+      const categoryPaths = state.expandedPaths[category];
+      const newPaths = new Set(categoryPaths);
+      if (expanded) {
+        newPaths.add(path);
+      } else {
+        newPaths.delete(path);
+      }
+      return {
+        expandedPaths: {
+          ...state.expandedPaths,
+          [category]: newPaths,
+        },
+      };
+    }),
+
+  setExpandedPaths: (category, paths) =>
+    set((state) => ({
+      expandedPaths: {
+        ...state.expandedPaths,
+        [category]: paths,
+      },
+    })),
+
+  collapseAllDirectories: (category) =>
+    set((state) => {
+      if (category) {
+        return {
+          expandedPaths: {
+            ...state.expandedPaths,
+            [category]: new Set(),
+          },
+        };
+      }
+      return {
+        expandedPaths: initialExpandedPaths,
+      };
+    }),
+
   // Reset
   clear: () =>
     set({
@@ -400,5 +484,6 @@ export const useLibraryStore = create<LibraryStore>((set, get) => ({
       importDialog: initialImportState,
       saveSetDialog: initialSetOperationState,
       loadSetDialog: initialSetOperationState,
+      expandedPaths: initialExpandedPaths,
     }),
 }));

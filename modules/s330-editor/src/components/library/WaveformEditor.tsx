@@ -623,6 +623,28 @@ export function WaveformEditor({
     [samples, dragState, editable, pixelToSample, hitTest, onSliceClick, onSliceAdd]
   );
 
+  // Handle double-click on canvas to split a slice
+  const handleDoubleClick = useCallback(
+    (event: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!samples || !editable || !onSliceAdd) return;
+
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const clickedSample = pixelToSample(x);
+      const hit = hitTest(x);
+
+      // Double-click on slice body to split it
+      if (hit && hit.edge === 'body') {
+        event.preventDefault();
+        onSliceAdd(clickedSample);
+      }
+    },
+    [samples, editable, pixelToSample, hitTest, onSliceAdd]
+  );
+
   // Handle keyboard for deleting selected slice and zooming
   const handleKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLDivElement>) => {
@@ -741,6 +763,7 @@ export function WaveformEditor({
           width={zoomedWidth}
           height={height}
           onClick={handleClick}
+          onDoubleClick={handleDoubleClick}
           onMouseMove={handleMouseMove}
           onMouseDown={handleMouseDown}
           onMouseUp={handleMouseUp}
