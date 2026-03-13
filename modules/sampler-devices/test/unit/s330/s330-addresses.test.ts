@@ -157,8 +157,8 @@ describe('S-330 Address Constants', () => {
             expect(TONE_MAP_ENTRIES).toBe(109);
         });
 
-        it('should allow up to 16 patches (2 banks of 8)', () => {
-            expect(MAX_PATCHES).toBe(16);
+        it('should allow up to 64 patches', () => {
+            expect(MAX_PATCHES).toBe(64);
         });
     });
 

@@ -12,7 +12,7 @@
  * @packageDocumentation
  */
 
-import type { S330MidiAdapter } from './s330-types.js';
+import type { SSeriesMidiAdapter } from './s330-types.js';
 import {
     ROLAND_ID,
     S330_MODEL_ID,
@@ -233,7 +233,7 @@ export function buildFrontPanelMessage(deviceId: number, data: [number, number])
  * ```
  */
 export function createFrontPanelController(
-    midiAdapter: S330MidiAdapter,
+    midiAdapter: SSeriesMidiAdapter,
     options: FrontPanelControllerOptions = {}
 ): FrontPanelController {
     const deviceId = options.deviceId ?? 0;

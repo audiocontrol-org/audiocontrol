@@ -9,7 +9,7 @@
  * @packageDocumentation
  */
 
-import type { S330Tone, S330LoopMode } from './s330-types.js';
+import type { S330Tone, SSeriesLoopMode } from './s330-types.js';
 
 /**
  * Configuration for creating a new tone.
@@ -28,7 +28,7 @@ export interface CreateToneConfig {
   /** Number of samples */
   sampleCount: number;
   /** Loop mode (default: 'one-shot') */
-  loopMode?: S330LoopMode;
+  loopMode?: SSeriesLoopMode;
   /** Loop point in samples (default: 0) */
   loopPoint?: number;
   /** Original key MIDI note (default: 60 = C4) */
@@ -187,7 +187,7 @@ export interface CreateSubToneConfig {
   /** End point within the shared wave data (in samples) */
   endPoint: number;
   /** Loop mode (default: 'one-shot') */
-  loopMode?: S330LoopMode;
+  loopMode?: SSeriesLoopMode;
   /** Loop point in samples (default: startPoint) */
   loopPoint?: number;
   /** Original key MIDI note (default: 60 = C4) */

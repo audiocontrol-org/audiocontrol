@@ -4,99 +4,72 @@
  * This module provides TypeScript interfaces, constants, and utilities
  * for communicating with Roland S-330 samplers via MIDI SysEx.
  *
- * ## Documentation
- *
- * See `/docs/s330_sysex.md` for complete SysEx protocol documentation.
- *
- * ## Device Overview
- *
- * The Roland S-330 is a 16-voice, 12-bit digital sampler (1987).
- * It uses Roland's standard SysEx format with model ID 0x1E.
- *
- * ## Module Structure
- *
- * - `s330-types.ts` - TypeScript interfaces for all data structures
- * - `s330-addresses.ts` - SysEx address map and constants
- * - `s330-params.ts` - Parameter parsing and encoding utilities
- *
- * ## Usage
- *
- * ```typescript
- * import {
- *     S330Tone,
- *     S330Patch,
- *     buildToneAddress,
- *     calculateChecksum,
- * } from '@audiocontrol/sampler-devices/s330';
- *
- * // Build address for tone 5, level parameter
- * const address = buildToneAddress(5, TONE_OFFSETS.LEVEL);
- *
- * // Calculate checksum for message
- * const checksum = calculateChecksum(address, [0x64]);
- * ```
- *
- * ## Status
- *
- * This module is a stub for future implementation. Core types and
- * constants are defined, but MIDI communication is not yet implemented.
- *
- * TODO:
- * - [ ] Implement complete parameter parsing
- * - [ ] Implement parameter encoding
- * - [ ] Add bulk dump support
- * - [ ] Add wave data transfer
- * - [ ] Integration with sampler-midi client
+ * Uses the shared roland-s-series base module for common protocol code.
  *
  * @packageDocumentation
  */
 
 // =============================================================================
-// Type Exports
+// Configuration Export
+// =============================================================================
+
+export { S330_CONFIG, S330_ADDRESSES } from './s330-config.js';
+
+// =============================================================================
+// Shared Type Re-exports (from roland-s-series)
 // =============================================================================
 
 export type {
     // MIDI Adapter
-    S330MidiAdapter,
+    SSeriesMidiAdapter,
 
+    // Envelope and parameter types
+    SSeriesEnvelope,
+    SSeriesKeyMode,
+    SSeriesAftertouchAssign,
+    SSeriesKeyAssign,
+    SSeriesLoopMode,
+    SSeriesSampleRate,
+    SSeriesEgPolarity,
+    SSeriesLfoMode,
+    SSeriesLevelCurve,
+    SSeriesTvaParams,
+    SSeriesTvfParams,
+    SSeriesLfoParams,
+    SSeriesWaveParams,
+
+    // SysEx types
+    SSeriesCommand,
+    SSeriesBulkDumpType,
+    SSeriesErrorCode,
+    SSeriesSysExMessage,
+    SSeriesResponse,
+    SSeriesClientOptions,
+    SSeriesWaveDataResponse,
+    SSeriesWaveDataInput,
+} from './s330-types.js';
+
+// =============================================================================
+// S-330 Specific Type Exports
+// =============================================================================
+
+export type {
     // System types
     S330SystemParams,
 
     // Patch types
-    S330KeyMode,
-    S330AftertouchAssign,
-    S330KeyAssign,
     S330PatchCommon,
     S330Patch,
 
     // Tone types
-    S330LoopMode,
-    S330SampleRate,
-    S330EgPolarity,
-    S330LfoMode,
-    S330LevelCurve,
-    S330Envelope,
-    S330TvaParams,
-    S330TvfParams,
-    S330LfoParams,
-    S330WaveParams,
     S330Tone,
 
     // Wave data types
-    S330WaveDataResponse,
     S330WaveDataInput,
     S330ImportToneInput,
 
-    // SysEx types
-    S330Command,
-    S330BulkDumpType,
-    S330ErrorCode,
-    S330SysExMessage,
-    S330Response,
-
     // Device state types
     S330DeviceState,
-    S330ClientOptions,
 } from './s330-types.js';
 
 // =============================================================================
@@ -119,6 +92,7 @@ export {
     ADDR_PATCH_BASE,
     ADDR_TONE_BASE,
     ADDR_WAVE_DATA,
+    TONE_STRIDE,
 
     // System parameter offsets
     SYSTEM_OFFSETS,
@@ -134,6 +108,7 @@ export {
     // Tone parameter offsets
     TONE_OFFSETS,
     TONE_BLOCK_SIZE,
+    TONE_BLOCK_NIBBLES,
     MAX_TONES,
 
     // Bulk dump types
@@ -226,6 +201,7 @@ export {
     buildRQDMessage,
     buildWSDMessage,
     buildDATMessage,
+    buildDT1Message,
     buildACKMessage,
     buildEODMessage,
     buildRJCMessage,

@@ -1,8 +1,8 @@
 /**
- * Roland S-330 Parameter Definitions
+ * Roland S-550 Parameter Definitions
  *
  * Parameter parsing, validation, and conversion utilities.
- * Uses shared S-series utilities and adds S-330 specific parsing.
+ * Uses shared S-series utilities and adds S-550 specific parsing.
  *
  * @packageDocumentation
  */
@@ -24,16 +24,16 @@ import type {
 } from '../roland-s-series/index.js';
 
 import type {
-    S330SystemParams,
-    S330PatchCommon,
-    S330Tone,
-} from './s330-types.js';
+    S550SystemParams,
+    S550PatchCommon,
+    S550Tone,
+} from './s550-types.js';
 
 import {
     TONE_OFFSETS,
     TONE_BLOCK_SIZE,
     PATCH_PARAMS,
-} from './s330-addresses.js';
+} from './s550-addresses.js';
 
 // =============================================================================
 // Re-export shared parameter utilities
@@ -105,7 +105,7 @@ import {
 /**
  * Parse system parameters from SysEx data
  */
-export function parseSystemParams(_data: number[]): S330SystemParams {
+export function parseSystemParams(_data: number[]): S550SystemParams {
     // Stub implementation - returns default values
     return {
         masterTune: 64,
@@ -128,7 +128,7 @@ export function parseSystemParams(_data: number[]): S330SystemParams {
  * @param data De-nibblized patch data (512 bytes)
  * @returns Parsed patch common parameters
  */
-export function parsePatchCommon(data: number[]): S330PatchCommon {
+export function parsePatchCommon(data: number[]): S550PatchCommon {
     // Patch name (12 characters)
     const name = parseName(data, PATCH_PARAMS.name.byteOffset, PATCH_PARAMS.name.size);
 
@@ -144,14 +144,15 @@ export function parsePatchCommon(data: number[]): S330PatchCommon {
     // Velocity threshold
     const velocityThreshold = data[PATCH_PARAMS.velocityThreshold.byteOffset];
 
-    // Tone layer 1 (109 entries, each is -1 to 31; 0xFF = -1 = OFF)
+    // Tone layer 1 (109 entries, each is -1 to 63; 0xFF = -1 = OFF)
+    // S-550 can reference tones 0-63 (vs S-330's 0-31)
     const toneLayer1: number[] = [];
     for (let i = 0; i < PATCH_PARAMS.toneLayer1.size; i++) {
         const value = data[PATCH_PARAMS.toneLayer1.byteOffset + i];
         toneLayer1.push(value === 0xFF ? -1 : value);
     }
 
-    // Tone layer 2 (109 entries)
+    // Tone layer 2 (109 entries, values 0-63)
     const toneLayer2: number[] = [];
     for (let i = 0; i < PATCH_PARAMS.toneLayer2.size; i++) {
         toneLayer2.push(data[PATCH_PARAMS.toneLayer2.byteOffset + i]);
@@ -201,9 +202,9 @@ export function parsePatchCommon(data: number[]): S330PatchCommon {
 }
 
 /**
- * Create an empty patch common structure
+ * Create an empty patch common structure for S-550
  */
-export function createEmptyPatchCommon(_index?: number): S330PatchCommon {
+export function createEmptyPatchCommon(_index?: number): S550PatchCommon {
     const emptyToneLayer1 = new Array(109).fill(-1);
     const emptyToneLayer2 = new Array(109).fill(0);
 
@@ -232,11 +233,12 @@ export function createEmptyPatchCommon(_index?: number): S330PatchCommon {
  * @param data De-nibblized tone data (256 bytes)
  * @returns Parsed tone parameters
  */
-export function parseTone(data: number[]): S330Tone {
+export function parseTone(data: number[]): S550Tone {
     const getByte = (offset: number, defaultVal: number = 0): number =>
         data[offset] ?? defaultVal;
 
     // Parse wave parameters
+    // S-550 has 4 wave banks (0-3) vs S-330's 2 (0-1)
     const wave: SSeriesWaveParams = {
         bank: getByte(TONE_OFFSETS.WAVE_BANK),
         segmentTop: getByte(TONE_OFFSETS.WAVE_SEGMENT_TOP),
@@ -301,6 +303,7 @@ export function parseTone(data: number[]): S330Tone {
     return {
         name: parseName(data, TONE_OFFSETS.NAME, 8),
         outputAssign: getByte(TONE_OFFSETS.OUTPUT_ASSIGN),
+        // S-550 has 64 tones, so sourceTone can be 0-63
         sourceTone: getByte(TONE_OFFSETS.SOURCE_TONE),
         origSubTone: getByte(TONE_OFFSETS.ORIG_SUB_TONE),
         sampleRate: parseSampleRate(getByte(TONE_OFFSETS.SAMPLING_FREQ)),
@@ -323,6 +326,7 @@ export function parseTone(data: number[]): S330Tone {
         recPreTrigger: getByte(TONE_OFFSETS.REC_PRE_TRIGGER),
         loopTune: parseSignedValue(getByte(TONE_OFFSETS.LOOP_TUNE, 64)),
         envZoom: getByte(TONE_OFFSETS.ENV_ZOOM),
+        // S-550 has 64 tones, so copySource can be 0-63
         copySource: getByte(TONE_OFFSETS.COPY_SOURCE),
     };
 }
@@ -334,7 +338,7 @@ export function parseTone(data: number[]): S330Tone {
 /**
  * Encode system parameters to SysEx data
  */
-export function encodeSystemParams(_params: S330SystemParams): number[] {
+export function encodeSystemParams(_params: S550SystemParams): number[] {
     // Stub implementation
     return [];
 }
@@ -345,7 +349,7 @@ export function encodeSystemParams(_params: S330SystemParams): number[] {
  * @param params Patch common parameters to encode
  * @returns 512-byte array ready for nibblization and transmission
  */
-export function encodePatchCommon(params: S330PatchCommon): number[] {
+export function encodePatchCommon(params: S550PatchCommon): number[] {
     const result = new Array(512).fill(0);
 
     // Patch name
@@ -367,12 +371,13 @@ export function encodePatchCommon(params: S330PatchCommon): number[] {
     result[PATCH_PARAMS.velocityThreshold.byteOffset] = params.velocityThreshold;
 
     // Tone layer 1 (109 entries; -1 maps to 0xFF for OFF)
+    // S-550 allows values 0-63 (vs S-330's 0-31)
     for (let i = 0; i < PATCH_PARAMS.toneLayer1.size; i++) {
         const value = params.toneLayer1[i];
         result[PATCH_PARAMS.toneLayer1.byteOffset + i] = value === -1 ? 0xFF : value;
     }
 
-    // Tone layer 2 (109 entries)
+    // Tone layer 2 (109 entries, values 0-63)
     for (let i = 0; i < PATCH_PARAMS.toneLayer2.size; i++) {
         result[PATCH_PARAMS.toneLayer2.byteOffset + i] = params.toneLayer2[i];
     }
@@ -410,7 +415,7 @@ export function encodePatchCommon(params: S330PatchCommon): number[] {
  * @param tone Tone parameters to encode
  * @returns 256-byte array ready for nibblization
  */
-export function encodeTone(tone: S330Tone): number[] {
+export function encodeTone(tone: S550Tone): number[] {
     const data = new Array(TONE_BLOCK_SIZE).fill(0);
 
     // Name (8 bytes)
@@ -421,13 +426,15 @@ export function encodeTone(tone: S330Tone): number[] {
 
     // Basic info
     data[TONE_OFFSETS.OUTPUT_ASSIGN] = tone.outputAssign & 0x7F;
-    data[TONE_OFFSETS.SOURCE_TONE] = tone.sourceTone & 0x1F;
+    // S-550 has 64 tones, so sourceTone uses 6 bits (0-63)
+    data[TONE_OFFSETS.SOURCE_TONE] = tone.sourceTone & 0x3F;
     data[TONE_OFFSETS.ORIG_SUB_TONE] = tone.origSubTone & 0x01;
     data[TONE_OFFSETS.SAMPLING_FREQ] = encodeSampleRate(tone.sampleRate);
     data[TONE_OFFSETS.ORIG_KEY_NUMBER] = tone.originalKey & 0x7F;
 
     // Wave parameters
-    data[TONE_OFFSETS.WAVE_BANK] = tone.wave.bank & 0x01;
+    // S-550 has 4 wave banks (0-3), so bank uses 2 bits
+    data[TONE_OFFSETS.WAVE_BANK] = tone.wave.bank & 0x03;
     data[TONE_OFFSETS.WAVE_SEGMENT_TOP] = tone.wave.segmentTop & 0x7F;
     data[TONE_OFFSETS.WAVE_SEGMENT_LENGTH] = tone.wave.segmentLength & 0x7F;
 
@@ -493,7 +500,8 @@ export function encodeTone(tone: S330Tone): number[] {
     // Recording parameters
     data[TONE_OFFSETS.REC_THRESHOLD] = tone.recThreshold & 0x7F;
     data[TONE_OFFSETS.REC_PRE_TRIGGER] = tone.recPreTrigger & 0x03;
-    data[TONE_OFFSETS.COPY_SOURCE] = tone.copySource & 0x1F;
+    // S-550 has 64 tones, so copySource uses 6 bits (0-63)
+    data[TONE_OFFSETS.COPY_SOURCE] = tone.copySource & 0x3F;
     data[TONE_OFFSETS.LOOP_TUNE] = encodeSignedValue(tone.loopTune);
 
     // Additional settings
@@ -516,19 +524,19 @@ export function encodeTone(tone: S330Tone): number[] {
 }
 
 // =============================================================================
-// S-330 Specific Validation Functions
+// S-550 Specific Validation Functions
 // =============================================================================
 
 /**
- * Validate patch number is in range for S-330 (0-63)
+ * Validate patch number is in range for S-550 (0-31)
  */
 export function isValidPatchNumber(num: number): boolean {
-    return num >= 0 && num <= 63;
+    return num >= 0 && num <= 31;
 }
 
 /**
- * Validate tone number is in range for S-330 (0-31)
+ * Validate tone number is in range for S-550 (0-63)
  */
 export function isValidToneNumber(num: number): boolean {
-    return num >= 0 && num <= 31;
+    return num >= 0 && num <= 63;
 }

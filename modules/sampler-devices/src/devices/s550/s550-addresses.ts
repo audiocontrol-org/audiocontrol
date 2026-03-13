@@ -1,8 +1,8 @@
 /**
- * Roland S-330 Address Map Constants
+ * Roland S-550 Address Map Constants
  *
- * SysEx address definitions for Roland S-330 sampler.
- * Uses shared S-series constants where applicable.
+ * SysEx address definitions for Roland S-550 sampler.
+ * Uses shared S-series constants and adds S-550 specific values.
  *
  * @packageDocumentation
  */
@@ -20,13 +20,13 @@ import {
 } from '../roland-s-series/index.js';
 
 // =============================================================================
-// Re-export shared constants with original names for compatibility
+// Re-export shared constants
 // =============================================================================
 
 export const ROLAND_ID = SHARED_ROLAND_ID;
-export const S330_MODEL_ID = S_SERIES_MODEL_ID;
+export const S550_MODEL_ID = S_SERIES_MODEL_ID;
 export const DEFAULT_DEVICE_ID = SHARED_DEFAULT_DEVICE_ID;
-export const S330_COMMANDS = S_SERIES_COMMANDS;
+export const S550_COMMANDS = S_SERIES_COMMANDS;
 export const ERROR_CODES = SHARED_ERROR_CODES;
 export const TIMING = SHARED_TIMING;
 export const BULK_DUMP_TYPES = SHARED_BULK_DUMP_TYPES;
@@ -39,14 +39,10 @@ export const calculateChecksum = sharedCalculateChecksum;
 /** System parameters base address */
 export const ADDR_SYSTEM = [0x00, 0x00, 0x00, 0x00] as const;
 
-/** Patch parameters base address
- * Each patch occupies stride of 4: patch N at [0x00, 0x00, N*4, 0x00]
- */
+/** Patch parameters base address */
 export const ADDR_PATCH_BASE = [0x00, 0x00, 0x00, 0x00] as const;
 
-/** Tone parameters base address
- * Tone N at [0x00, 0x03, N*2, 0x00] (stride of 2)
- */
+/** Tone parameters base address */
 export const ADDR_TONE_BASE = [0x00, 0x03, 0x00, 0x00] as const;
 
 /** Tone stride in address byte 2 */
@@ -84,16 +80,16 @@ export const SYSTEM_BLOCK_SIZE = 0x0B;
 /**
  * Patch parameter offsets (byte positions after de-nibblization)
  *
- * Each patch is 512 bytes total (1024 nibbles)
+ * Same structure as S-330, but toneLayer values can reference tones 0-63.
  */
 export const PATCH_COMMON_OFFSETS = {
-    NAME: 0,                 // 12 bytes
+    NAME: 0,
     BENDER_RANGE: 12,
     AFTERTOUCH_SENS: 14,
     KEY_MODE: 15,
     VELOCITY_THRESHOLD: 16,
-    TONE_LAYER_1: 17,        // 109 entries
-    TONE_LAYER_2: 126,       // 109 entries
+    TONE_LAYER_1: 17,        // 109 entries, values 0-63
+    TONE_LAYER_2: 126,       // 109 entries, values 0-63
     COPY_SOURCE: 235,
     OCTAVE_SHIFT: 284,
     LEVEL: 285,
@@ -107,21 +103,13 @@ export const PATCH_COMMON_OFFSETS = {
 /** Total size of patch data (512 bytes after de-nibblization) */
 export const PATCH_TOTAL_SIZE = 512;
 
-// =============================================================================
-// Patch Parameter Definitions (Semantic API)
-// =============================================================================
-
 /**
- * Defines a patch parameter with both address and byte offset.
+ * Patch parameter definitions (Semantic API)
  */
 export interface PatchParam {
-    /** Human-readable parameter name for debugging */
     name: string;
-    /** [high, low] nibble offset within patch address space */
     address: readonly [number, number];
-    /** Offset in parsed (de-nibblized) patch data */
     byteOffset: number;
-    /** Size in bytes (default 1) */
     size: number;
 }
 
@@ -224,8 +212,8 @@ export const PATCH_PARAMS = {
 /** Number of tone mapping entries per layer (MIDI notes 12-120, C0-C9) */
 export const TONE_MAP_ENTRIES = 109;
 
-/** Maximum patches in memory */
-export const MAX_PATCHES = 64;
+/** Maximum patches in memory (S-550: 32) */
+export const MAX_PATCHES = 32;
 
 // =============================================================================
 // Tone Parameter Offsets
@@ -233,6 +221,7 @@ export const MAX_PATCHES = 64;
 
 /**
  * Tone parameter offsets (byte positions after de-nibblization)
+ * Same structure as S-330.
  */
 export const TONE_OFFSETS = {
     // === Basic Info ===
@@ -242,7 +231,7 @@ export const TONE_OFFSETS = {
     ORIG_SUB_TONE: 10,
     SAMPLING_FREQ: 11,
     ORIG_KEY_NUMBER: 12,
-    WAVE_BANK: 13,
+    WAVE_BANK: 13,           // 0-3 for S-550 (A, B, C, D)
     WAVE_SEGMENT_TOP: 14,
     WAVE_SEGMENT_LENGTH: 15,
 
@@ -358,22 +347,22 @@ export const TONE_BLOCK_SIZE = 256;
 /** Size of tone block in nibbles (for RQD size calculation) */
 export const TONE_BLOCK_NIBBLES = 512;
 
-/** Maximum tones in memory */
-export const MAX_TONES = 32;
+/** Maximum tones in memory (S-550: 64) */
+export const MAX_TONES = 64;
 
 // =============================================================================
-// Value Ranges (S-330 specific)
+// Value Ranges (S-550 specific)
 // =============================================================================
 
 /** Parameter value constraints */
 export const VALUE_RANGES = {
     ...SHARED_VALUE_RANGES,
-    /** Tone number range (S-330: 0-31) */
-    TONE_NUMBER: { min: 0x00, max: 0x1F },
-    /** Patch number range (S-330: 0-63) */
-    PATCH_NUMBER: { min: 0x00, max: 0x3F },
-    /** Partial count range */
-    PARTIAL_COUNT: { min: 0x00, max: 0x1F },
+    /** Tone number range (S-550: 0-63) */
+    TONE_NUMBER: { min: 0x00, max: 0x3F },
+    /** Patch number range (S-550: 0-31) */
+    PATCH_NUMBER: { min: 0x00, max: 0x1F },
+    /** Wave bank range (S-550: 0-3) */
+    WAVE_BANK: { min: 0x00, max: 0x03 },
 } as const;
 
 // =============================================================================

@@ -28,6 +28,16 @@
       "types": "./dist/jv1080.d.ts",
       "import": "./dist/jv1080.js",
       "require": "./dist/jv1080.cjs"
+    },
+    "./s550": {
+      "types": "./dist/s550.d.ts",
+      "import": "./dist/s550.js",
+      "require": "./dist/s550.cjs"
+    },
+    "./roland-s-series": {
+      "types": "./dist/roland-s-series.d.ts",
+      "import": "./dist/roland-s-series.js",
+      "require": "./dist/roland-s-series.cjs"
     }
   },
   "module": "./dist/index.mjs",

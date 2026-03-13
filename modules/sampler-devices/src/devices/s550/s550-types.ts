@@ -1,8 +1,7 @@
 /**
- * Roland S-330 Type Definitions
+ * Roland S-550 Type Definitions
  *
- * S-330 specific types built on the shared S-series base.
- * See /docs/s330_sysex.md for complete protocol documentation.
+ * S-550 specific types built on the shared S-series base.
  *
  * @packageDocumentation
  */
@@ -66,9 +65,9 @@ export type {
 // =============================================================================
 
 /**
- * S-330 system/global parameters
+ * S-550 system/global parameters
  */
-export interface S330SystemParams {
+export interface S550SystemParams {
     masterTune: number;      // 0-127 (64 = A440)
     masterLevel: number;     // 0-127
     midiChannel: number;     // 0-15
@@ -87,28 +86,29 @@ export interface S330SystemParams {
 // =============================================================================
 
 /**
- * S-330 patch parameters (from hardware manual)
+ * S-550 patch parameters
  *
  * Each patch is 512 bytes (1024 nibbles) with the following structure:
  * - 12-character name
  * - Performance parameters (bend, aftertouch, mode, etc.)
  * - Two tone mapping layers (109 keys each, MIDI notes 12-120 / C0-C9)
  * - Output and level settings
+ *
+ * Key difference from S-330: toneLayer values can be 0-63 (vs 0-31)
  */
-export interface S330PatchCommon {
+export interface S550PatchCommon {
     name: string;                           // 12 characters max
     benderRange: number;                    // 0-12 semitones
     aftertouchSens: number;                 // 0-127
     keyMode: SSeriesKeyMode;
     velocityThreshold: number;              // 0-127 - V-Sw threshold
-    toneLayer1: number[];                   // 109 entries, -1 to 31
+    toneLayer1: number[];                   // 109 entries, -1 to 63 (S-550 has 64 tones)
     /**
-     * 109 entries, 0-31
+     * 109 entries, 0-63
      *
      * CRITICAL: toneLayer2 is ONLY meaningful when keyMode uses velocity
      * switching ('v-sw', 'x-fade', 'v-mix') AND the corresponding toneLayer1
-     * entry is >= 0. Otherwise these are S-330 defaults (all 0s) that should
-     * be ignored when analyzing patch dependencies.
+     * entry is >= 0.
      */
     toneLayer2: number[];
     copySource: number;                     // 0-7
@@ -122,13 +122,10 @@ export interface S330PatchCommon {
 }
 
 /**
- * Complete S-330 patch
- *
- * Note: The S-330 uses a tone mapping approach instead of partials.
- * Each patch has two layers of 109 tone assignments (one per MIDI note from C1 to G9).
+ * Complete S-550 patch
  */
-export interface S330Patch {
-    common: S330PatchCommon;
+export interface S550Patch {
+    common: S550PatchCommon;
 }
 
 // =============================================================================
@@ -136,19 +133,21 @@ export interface S330Patch {
 // =============================================================================
 
 /**
- * S-330 tone (sample with synthesis parameters)
+ * S-550 tone (sample with synthesis parameters)
  *
  * Total size: 512 nibbles (256 bytes after de-nibblization)
  *
- * This matches the actual S-330 MIDI protocol, not a simplified model.
+ * Key differences from S-330:
+ * - wave.bank can be 0-3 (A, B, C, D) vs 0-1 (A, B)
+ * - sourceTone can be 0-63 (vs 0-31)
  */
-export interface S330Tone {
+export interface S550Tone {
     // === Basic Info ===
     /** Tone name (8 characters max) */
     name: string;
     /** Output assignment (0-7) */
     outputAssign: number;
-    /** Source tone number (0-31) */
+    /** Source tone number (0-63 for S-550) */
     sourceTone: number;
     /** Original/Sub tone flag (0=ORG, 1=SUB) */
     origSubTone: number;
@@ -158,6 +157,7 @@ export interface S330Tone {
     originalKey: number;
 
     // === Wave Parameters ===
+    /** Wave params (bank 0-3 for S-550: A, B, C, D) */
     wave: SSeriesWaveParams;
     /** Loop mode */
     loopMode: SSeriesLoopMode;
@@ -196,7 +196,7 @@ export interface S330Tone {
     loopTune: number;
     /** Envelope zoom for display (0-5) */
     envZoom: number;
-    /** Copy source tone (0-31) */
+    /** Copy source tone (0-63 for S-550) */
     copySource: number;
 }
 
@@ -205,32 +205,32 @@ export interface S330Tone {
 // =============================================================================
 
 /**
- * Current state of connected S-330
+ * Current state of connected S-550
  */
-export interface S330DeviceState {
+export interface S550DeviceState {
     connected: boolean;
     deviceId: number;
-    patches: S330Patch[];
-    tones: S330Tone[];
-    systemParams?: S330SystemParams;
+    patches: S550Patch[];
+    tones: S550Tone[];
+    systemParams?: S550SystemParams;
 }
 
 // =============================================================================
-// Wave Data Types (S-330 specific constraints)
+// Wave Data Types (S-550 specific constraints)
 // =============================================================================
 
 /**
- * Input for sending wave data to the S-330.
- * S-330 has 2 wave banks (A, B).
+ * Input for sending wave data to the S-550.
+ * S-550 has 4 wave banks (A, B, C, D).
  */
-export interface S330WaveDataInput {
+export interface S550WaveDataInput {
     /**
      * Raw wave data bytes (7-bit encoded 12-bit samples).
      */
     data: Uint8Array;
 
-    /** Target wave bank (0=A, 1=B) - S-330 only has 2 banks */
-    waveBank: 0 | 1;
+    /** Target wave bank (0=A, 1=B, 2=C, 3=D) */
+    waveBank: 0 | 1 | 2 | 3;
 
     /** Target segment index (0-17) */
     segmentTop: number;
@@ -240,10 +240,10 @@ export interface S330WaveDataInput {
 }
 
 /**
- * Input for importing a tone with wave data to the S-330.
+ * Input for importing a tone with wave data to the S-550.
  */
-export interface S330ImportToneInput {
-    /** Target tone index (0-31, maps to T11-T42) */
+export interface S550ImportToneInput {
+    /** Target tone index (0-63) */
     toneIndex: number;
 
     /**
@@ -251,8 +251,8 @@ export interface S330ImportToneInput {
      */
     waveData: Uint8Array;
 
-    /** Target wave bank (0=A, 1=B) */
-    waveBank: 0 | 1;
+    /** Target wave bank (0=A, 1=B, 2=C, 3=D) */
+    waveBank: 0 | 1 | 2 | 3;
 
     /** Target segment index (0-17) */
     segmentTop: number;
@@ -264,7 +264,7 @@ export interface S330ImportToneInput {
      * Full tone object for library import.
      * When provided, all tone parameters are taken from this object.
      */
-    tone?: S330Tone;
+    tone?: S550Tone;
 
     // --- Parameters for new sample import (ignored if `tone` is provided) ---
 
