@@ -177,7 +177,8 @@ export function DeviceMemoryPanel({
 
     try {
       const data = JSON.parse(jsonData) as LibraryDragData;
-      if (data.type === 'patch') {
+      // Accept both patches and drum kits on patch slots
+      if (data.type === 'patch' || data.type === 'drumKit') {
         onDropLibraryPatch?.(data, index);
       }
     } catch (err) {

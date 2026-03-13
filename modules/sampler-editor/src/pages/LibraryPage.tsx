@@ -208,6 +208,7 @@ export function LibraryPage() {
   const [importPatchDialog, setImportPatchDialog] = useState<{
     setName: string;
     patchFile: string;
+    patchPath?: string[];
     initialTargetSlot?: number;
   } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
@@ -984,6 +985,15 @@ export function LibraryPage() {
     setImportToneDialog({ setName: '__individual__', toneFile });
   }, []);
 
+  // Open import individual patch dialog (patches outside of sets)
+  const handleOpenImportIndividualPatchDialog = useCallback((patchDirectoryName: string, path?: string[]) => {
+    setOperationError(null);
+    setOperationProgress(undefined);
+    setOperationStatus(null);
+    // Use the same dialog with a special marker for individual patches
+    setImportPatchDialog({ setName: '__individual__', patchFile: patchDirectoryName, patchPath: path });
+  }, []);
+
   // Handle drop from device memory to library (export tone) - opens dialog
   const handleDropDeviceTone = useCallback((data: DeviceDragData) => {
     if (!libraryHandle || !clientRef.current) {
@@ -1221,8 +1231,8 @@ export function LibraryPage() {
       // Patch from a set
       setImportPatchDialog({ setName: data.setName, patchFile: data.patchFile, initialTargetSlot: targetSlot });
     } else {
-      // Individual patch - use the directory name
-      setImportPatchDialog({ setName: '__individual__', patchFile: data.name, initialTargetSlot: targetSlot });
+      // Individual patch - use the directory name and path
+      setImportPatchDialog({ setName: '__individual__', patchFile: data.name, patchPath: data.path, initialTargetSlot: targetSlot });
     }
   }, [libraryHandle, drumKits, openImportDrumKitDialog]);
 
@@ -1522,6 +1532,7 @@ export function LibraryPage() {
               onImportTone={handleOpenImportToneDialog}
               onImportPatch={handleOpenImportPatchDialog}
               onImportIndividualTone={handleOpenImportIndividualToneDialog}
+              onImportIndividualPatch={handleOpenImportIndividualPatchDialog}
             />
           )}
         </div>
@@ -1580,6 +1591,7 @@ export function LibraryPage() {
           libraryHandle={libraryHandle}
           setName={importPatchDialog.setName}
           patchFile={importPatchDialog.patchFile}
+          patchPath={importPatchDialog.patchPath}
           deviceTones={tones}
           devicePatches={patches}
           initialTargetSlot={importPatchDialog.initialTargetSlot}

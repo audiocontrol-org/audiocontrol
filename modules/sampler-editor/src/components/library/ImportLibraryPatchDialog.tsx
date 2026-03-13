@@ -45,10 +45,12 @@ export interface ImportLibraryPatchDialogProps {
   onOpenChange: (open: boolean) => void;
   /** Library directory handle */
   libraryHandle: FileSystemDirectoryHandle;
-  /** Name of the set containing the patch */
+  /** Name of the set containing the patch (or '__individual__' for individual patches) */
   setName: string;
   /** File name of the patch (without extension) */
   patchFile: string;
+  /** Path segments for individual patches in subdirectories */
+  patchPath?: string[];
   /** Current device tones (to show slot occupancy) */
   deviceTones: (S330Tone | undefined)[];
   /** Current device patches (to show slot occupancy) */
@@ -86,6 +88,7 @@ export function ImportLibraryPatchDialog({
   libraryHandle,
   setName,
   patchFile,
+  patchPath,
   deviceTones,
   devicePatches,
   onImport,
@@ -124,7 +127,7 @@ export function ImportLibraryPatchDialog({
 
         if (isIndividual) {
           // Load individual patch bundle directly from library
-          const bundle = await loadIndividualPatch(libraryHandle, patchFile);
+          const bundle = await loadIndividualPatch(libraryHandle, patchFile, patchPath ?? []);
           convertedPatch = convertYamlToS330Patch(bundle.patch);
           setPatch(convertedPatch);
 
@@ -213,7 +216,7 @@ export function ImportLibraryPatchDialog({
     };
 
     loadData();
-  }, [open, libraryHandle, setName, patchFile, initialTargetSlot, deviceTones, devicePatches]);
+  }, [open, libraryHandle, setName, patchFile, patchPath, initialTargetSlot, deviceTones, devicePatches]);
 
   // Update a tone mapping
   const updateToneMapping = useCallback((index: number, updates: Partial<ToneImportMapping>) => {
@@ -241,7 +244,7 @@ export function ImportLibraryPatchDialog({
 
       if (isIndividual) {
         // Load tones from individual patch bundle
-        const bundle = await loadIndividualPatch(libraryHandle, patchFile);
+        const bundle = await loadIndividualPatch(libraryHandle, patchFile, patchPath ?? []);
 
         for (const mapping of toneMappings) {
           const toneData = bundle.tones.get(mapping.originalSlot);
@@ -301,7 +304,7 @@ export function ImportLibraryPatchDialog({
       console.error('[ImportLibraryPatchDialog] Import failed:', err);
       throw err;
     }
-  }, [patch, toneMappings, targetPatchSlot, onImport, libraryHandle, setName, patchFile]);
+  }, [patch, toneMappings, targetPatchSlot, onImport, libraryHandle, setName, patchFile, patchPath]);
 
   const handleClose = useCallback(() => {
     if (!isImporting) {

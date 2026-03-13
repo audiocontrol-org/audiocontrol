@@ -35,6 +35,7 @@ interface ItemPreviewPanelProps {
   onImportTone?: (setName: string, toneFile: string) => void;
   onImportPatch?: (setName: string, patchFile: string) => void;
   onImportIndividualTone?: (toneFile: string) => void;
+  onImportIndividualPatch?: (patchDirectoryName: string, path?: string[]) => void;
 }
 
 /**
@@ -317,6 +318,7 @@ export function ItemPreviewPanel({
   onImportTone,
   onImportPatch,
   onImportIndividualTone,
+  onImportIndividualPatch,
 }: ItemPreviewPanelProps): JSX.Element {
   // State for loaded library items
   const [loadingLibraryItem, setLoadingLibraryItem] = useState(false);
@@ -636,6 +638,7 @@ export function ItemPreviewPanel({
               patch={libraryPatch}
               fileName={selection.name}
               manifest={null}
+              onImport={onImportIndividualPatch ? () => onImportIndividualPatch(selection.name!, selection.path) : undefined}
             />
           ) : (
             <div className="text-center text-s330-muted text-sm py-8">
