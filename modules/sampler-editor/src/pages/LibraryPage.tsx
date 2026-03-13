@@ -1533,6 +1533,7 @@ export function LibraryPage() {
               onImportPatch={handleOpenImportPatchDialog}
               onImportIndividualTone={handleOpenImportIndividualToneDialog}
               onImportIndividualPatch={handleOpenImportIndividualPatchDialog}
+              onLoadSet={handleOpenLoadDialog}
             />
           )}
         </div>

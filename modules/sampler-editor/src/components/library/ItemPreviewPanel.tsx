@@ -36,6 +36,7 @@ interface ItemPreviewPanelProps {
   onImportPatch?: (setName: string, patchFile: string) => void;
   onImportIndividualTone?: (toneFile: string) => void;
   onImportIndividualPatch?: (patchDirectoryName: string, path?: string[]) => void;
+  onLoadSet?: () => void;
 }
 
 /**
@@ -266,7 +267,7 @@ function LibraryPatchPreview({
 /**
  * Set preview component (for library sets)
  */
-function SetPreview({ name }: { name: string }): JSX.Element {
+function SetPreview({ name, onLoad }: { name: string; onLoad?: () => void }): JSX.Element {
   return (
     <div className="space-y-4">
       <div>
@@ -278,9 +279,18 @@ function SetPreview({ name }: { name: string }): JSX.Element {
 
       <div className="bg-s330-bg rounded p-3 text-sm">
         <p className="text-s330-muted">
-          Click "Load Selected Set" to upload this set to the device.
+          Load this set to replace all tones and patches on the device.
         </p>
       </div>
+
+      {onLoad && (
+        <button
+          onClick={onLoad}
+          className="w-full ac-btn ac-btn-primary"
+        >
+          Load Set to Device
+        </button>
+      )}
     </div>
   );
 }
@@ -319,6 +329,7 @@ export function ItemPreviewPanel({
   onImportPatch,
   onImportIndividualTone,
   onImportIndividualPatch,
+  onLoadSet,
 }: ItemPreviewPanelProps): JSX.Element {
   // State for loaded library items
   const [loadingLibraryItem, setLoadingLibraryItem] = useState(false);
@@ -573,7 +584,7 @@ export function ItemPreviewPanel({
           <h3 className="font-bold text-s330-text">Library Set</h3>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
-          <SetPreview name={selection.name} />
+          <SetPreview name={selection.name} onLoad={onLoadSet} />
         </div>
       </div>
     );
