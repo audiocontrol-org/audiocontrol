@@ -23,17 +23,17 @@ import { cn } from '@/lib/utils';
  * Build the editor layout configuration based on the current device.
  */
 function useLayoutConfig(): EditorLayoutConfig {
-  const { deviceName, manufacturer } = useDeviceConfig();
+  const { deviceName, manufacturer, basePath } = useDeviceConfig();
 
   return useMemo(() => ({
     editorName: deviceName,
     editorSubtitle: `${manufacturer} Sampler`,
     navItems: [
-      { to: '', label: 'Connect' },
-      { to: 'play', label: 'Play' },
-      { to: 'patches', label: 'Patches' },
-      { to: 'tones', label: 'Tones' },
-      { to: 'library', label: 'Library' },
+      { to: basePath, label: 'Connect' },
+      { to: `${basePath}/play`, label: 'Play' },
+      { to: `${basePath}/patches`, label: 'Patches' },
+      { to: `${basePath}/tones`, label: 'Tones' },
+      { to: `${basePath}/library`, label: 'Library' },
     ],
     buildInfoConfig: {
       editorName: `${deviceName} Editor`,
@@ -41,7 +41,7 @@ function useLayoutConfig(): EditorLayoutConfig {
       githubRepo: 'audiocontrol-org/audiocontrol',
       issueTitlePrefix: `[${deviceName} Editor]`,
     },
-  }), [deviceName, manufacturer]);
+  }), [deviceName, manufacturer, basePath]);
 }
 
 /**
