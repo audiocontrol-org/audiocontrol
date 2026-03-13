@@ -478,9 +478,16 @@ export interface MonolithicDrumKitResult {
  * This is an experimental feature that uploads all slices as one contiguous
  * wave segment and uses sub-tones to play different regions.
  *
- * The first slice becomes the primary tone (ORG) which owns the wave data.
- * Subsequent slices become sub-tones (SUB) that reference the primary tone
- * but have their own start/end points.
+ * Architecture:
+ * - One primary tone (ORG) owns the wave data but is NOT mapped to any MIDI note
+ * - ALL slices become sub-tones (SUB) that reference the primary tone
+ * - Each sub-tone has its own start/end points defining its playback region
+ *
+ * This approach is necessary because S-330 primary tones appear to play their
+ * full wave segment regardless of start/end point settings, while sub-tones
+ * respect their individual playback windows.
+ *
+ * Requires slices.length + 1 tone slots (1 primary + N sub-tones).
  *
  * @param client - S330 client interface
  * @param config - Monolithic import configuration
@@ -510,13 +517,16 @@ export async function importMonolithicDrumKit(
     throw new Error('Monolithic drum kit requires at least one slice');
   }
 
-  if (slices.length > 32 - startingToneSlot) {
-    throw new Error(`Not enough tone slots: need ${slices.length}, have ${32 - startingToneSlot}`);
+  // Need slices.length + 1 tone slots: 1 primary (holder) + N sub-tones
+  const requiredToneSlots = slices.length + 1;
+  if (requiredToneSlots > 32 - startingToneSlot) {
+    throw new Error(`Not enough tone slots: need ${requiredToneSlots} (1 primary + ${slices.length} sub-tones), have ${32 - startingToneSlot}`);
   }
 
   console.log('[MonolithicDrumKit] Starting import');
   console.log(`  - Total samples: ${totalSampleCount}`);
   console.log(`  - Slices: ${slices.length}`);
+  console.log(`  - Required tone slots: ${requiredToneSlots} (1 primary + ${slices.length} sub-tones)`);
   console.log(`  - Sample rate: ${sampleRate}`);
   console.log(`  - Starting tone slot: ${startingToneSlot}`);
   console.log(`  - Starting segment: ${startingSegment}`);
@@ -527,36 +537,38 @@ export async function importMonolithicDrumKit(
 
   console.log(`  - Segments needed: ${segmentsNeeded}`);
 
-  // Step 1: Upload wave data
-  onProgress?.(0, slices.length + 1, 'Uploading wave data...');
+  // Step 1: Upload wave data with "holder" primary tone
+  // The primary tone owns the wave data but is NOT mapped to any MIDI note.
+  // All playable slices will be sub-tones referencing this primary.
+  onProgress?.(0, slices.length + 2, 'Uploading wave data...');
 
-  const firstSlice = slices[0]!;
   const primaryToneSlot = startingToneSlot;
 
-  // Create primary tone (ORG) - owns the wave data, plays first slice
+  // Create primary tone (ORG) - just holds the wave data, not mapped
+  // Uses a generic name since it's not directly playable
   const primaryTone = createMonolithicPrimaryTone(
     {
-      name: firstSlice.label.slice(0, 8),
+      name: patchName.slice(0, 8), // Use patch name as it's the "holder"
       sampleRate,
       waveBank,
       segmentTop: startingSegment,
       segmentLength: segmentsNeeded,
       sampleCount: totalSampleCount,
       loopMode: 'one-shot',
-      originalKey: firstSlice.midiNote,
+      originalKey: 60, // Default, not used since this tone isn't mapped
       transpose,
       pitchFollow: false,
       velocitySensitivity,
     },
-    firstSlice.startSample,
-    firstSlice.endSample
+    0, // Start at beginning of wave
+    totalSampleCount - 1 // End at end of wave (full range, not used directly)
   );
 
-  console.log('[MonolithicDrumKit] Primary tone created:');
+  console.log('[MonolithicDrumKit] Primary (holder) tone created:');
+  console.log(`  - Slot: ${primaryToneSlot}`);
   console.log(`  - Name: ${primaryTone.name}`);
-  console.log(`  - Start point: ${primaryTone.wave.startPoint}`);
-  console.log(`  - End point: ${primaryTone.wave.endPoint}`);
-  console.log(`  - origSubTone: ${primaryTone.origSubTone}`);
+  console.log(`  - origSubTone: ${primaryTone.origSubTone} (ORG - owns wave data)`);
+  console.log(`  - Note: This tone is NOT mapped to any MIDI note`);
 
   // Upload primary tone with wave data
   await client.importTone(
@@ -579,15 +591,16 @@ export async function importMonolithicDrumKit(
   // Give device time to process
   await new Promise((resolve) => setTimeout(resolve, 1000));
 
-  // Step 2: Create sub-tones for remaining slices
+  // Step 2: Create sub-tones for ALL slices (including the first one)
+  // Sub-tones start at slot primaryToneSlot + 1
   const subTones: S330Tone[] = [];
   const subToneSlots: number[] = [];
 
-  for (let i = 1; i < slices.length; i++) {
+  for (let i = 0; i < slices.length; i++) {
     const slice = slices[i]!;
-    const toneSlot = startingToneSlot + i;
+    const toneSlot = startingToneSlot + 1 + i; // +1 to skip primary
 
-    onProgress?.(i, slices.length + 1, `Creating sub-tone ${slice.label}...`);
+    onProgress?.(i + 1, slices.length + 2, `Creating sub-tone ${slice.label}...`);
 
     const subTone = createSubTone({
       name: slice.label.slice(0, 8),
@@ -603,11 +616,13 @@ export async function importMonolithicDrumKit(
     });
 
     console.log(`[MonolithicDrumKit] Sub-tone ${i} created:`);
+    console.log(`  - Slot: ${toneSlot}`);
     console.log(`  - Name: ${subTone.name}`);
-    console.log(`  - Source tone: ${subTone.sourceTone}`);
-    console.log(`  - origSubTone: ${subTone.origSubTone}`);
+    console.log(`  - Source tone: ${subTone.sourceTone} (references primary)`);
+    console.log(`  - origSubTone: ${subTone.origSubTone} (SUB)`);
     console.log(`  - Start point: ${subTone.wave.startPoint}`);
     console.log(`  - End point: ${subTone.wave.endPoint}`);
+    console.log(`  - MIDI note: ${slice.midiNote}`);
 
     // Send tone data (no wave upload needed - references primary)
     await client.sendToneData(toneSlot, subTone);
@@ -619,12 +634,13 @@ export async function importMonolithicDrumKit(
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
-  // Step 3: Create patch with all tone mappings
-  onProgress?.(slices.length, slices.length + 1, `Creating patch ${patchName}...`);
+  // Step 3: Create patch with tone mappings (using sub-tone slots, NOT primary)
+  onProgress?.(slices.length + 1, slices.length + 2, `Creating patch ${patchName}...`);
 
+  // Map MIDI notes to sub-tone slots (startingToneSlot + 1 + i)
   const toneMappings: ToneMapping[] = slices.map((slice, i) => ({
     midiNote: slice.midiNote,
-    toneSlot: startingToneSlot + i,
+    toneSlot: startingToneSlot + 1 + i, // +1 to skip primary
   }));
 
   const patch = createDrumKitPatch(patchName, toneMappings);
@@ -633,8 +649,9 @@ export async function importMonolithicDrumKit(
   console.log('[MonolithicDrumKit] Patch created');
   console.log(`  - Name: ${patchName}`);
   console.log(`  - Mappings: ${toneMappings.length}`);
+  console.log(`  - Primary tone slot ${primaryToneSlot} is NOT mapped (wave holder only)`);
 
-  onProgress?.(slices.length + 1, slices.length + 1, 'Import complete');
+  onProgress?.(slices.length + 2, slices.length + 2, 'Import complete');
 
   return {
     primaryTone,
