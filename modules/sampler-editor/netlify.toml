@@ -1,6 +1,6 @@
-# Netlify configuration for S-330 Editor
+# Netlify configuration for Sampler Editor
 #
-# SETUP: In Netlify UI, set Base Directory to: modules/s330-editor
+# SETUP: In Netlify UI, set Base Directory to: modules/sampler-editor
 
 [build]
   command = "pnpm build:deploy"

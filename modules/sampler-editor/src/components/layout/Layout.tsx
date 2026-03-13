@@ -1,11 +1,12 @@
 /**
- * S-330 Editor Layout
+ * Sampler Editor Layout
  *
  * Uses shared EditorLayout from @audiocontrol/editor-core
- * with S-330-specific video capture drawer
+ * with device-specific video capture drawer. Device configuration
+ * is provided via DeviceConfigContext.
  */
 
-import { type ReactNode, useEffect, useCallback, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import {
   EditorLayout,
   PanicButton,
@@ -15,26 +16,33 @@ import {
 import { VideoCapture } from '@/components/video/VideoCapture';
 import { useMidiStore } from '@/stores/midiStore';
 import { useUIStore, MIN_SIDEBAR_WIDTH, MAX_SIDEBAR_WIDTH } from '@/stores/uiStore';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { cn } from '@/lib/utils';
 
-// S-330 Editor layout configuration
-const layoutConfig: EditorLayoutConfig = {
-  editorName: 'S-330',
-  editorSubtitle: 'Roland Sampler',
-  navItems: [
-    { to: '/', label: 'Connect' },
-    { to: '/play', label: 'Play' },
-    { to: '/patches', label: 'Patches' },
-    { to: '/tones', label: 'Tones' },
-    { to: '/library', label: 'Library' },
-  ],
-  buildInfoConfig: {
-    editorName: 'S-330 Editor',
-    editorDescription: 'Roland Sampler',
-    githubRepo: 'audiocontrol-org/audiocontrol',
-    issueTitlePrefix: '[S-330 Editor]',
-  },
-};
+/**
+ * Build the editor layout configuration based on the current device.
+ */
+function useLayoutConfig(): EditorLayoutConfig {
+  const { deviceName, manufacturer } = useDeviceConfig();
+
+  return useMemo(() => ({
+    editorName: deviceName,
+    editorSubtitle: `${manufacturer} Sampler`,
+    navItems: [
+      { to: '', label: 'Connect' },
+      { to: 'play', label: 'Play' },
+      { to: 'patches', label: 'Patches' },
+      { to: 'tones', label: 'Tones' },
+      { to: 'library', label: 'Library' },
+    ],
+    buildInfoConfig: {
+      editorName: `${deviceName} Editor`,
+      editorDescription: `${manufacturer} Sampler`,
+      githubRepo: 'audiocontrol-org/audiocontrol',
+      issueTitlePrefix: `[${deviceName} Editor]`,
+    },
+  }), [deviceName, manufacturer]);
+}
 
 /**
  * Header right section with Panic button and MIDI status
@@ -70,10 +78,11 @@ interface DrawerToggleProps {
   isOpen: boolean;
   drawerWidth: number;
   topPx: number | null;
+  deviceName: string;
   onToggle: () => void;
 }
 
-function DrawerToggle({ isOpen, drawerWidth, topPx, onToggle }: DrawerToggleProps): JSX.Element {
+function DrawerToggle({ isOpen, drawerWidth, topPx, deviceName, onToggle }: DrawerToggleProps): JSX.Element {
   return (
     <button
       onClick={onToggle}
@@ -89,7 +98,7 @@ function DrawerToggle({ isOpen, drawerWidth, topPx, onToggle }: DrawerToggleProp
         top: topPx !== null ? `${Math.round(topPx)}px` : 'var(--ac-page-content-top)',
         left: isOpen ? `${drawerWidth - 1}px` : '0px',
       }}
-      title={isOpen ? 'Close S-330 display' : 'Open S-330 display'}
+      title={isOpen ? `Close ${deviceName} display` : `Open ${deviceName} display`}
     >
       {/* Video camera icon */}
       <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -160,6 +169,8 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps): JSX.Element {
+  const layoutConfig = useLayoutConfig();
+  const { deviceName } = useDeviceConfig();
   const initialize = useMidiStore((state) => state.initialize);
   const isDrawerOpen = useUIStore((state) => state.isDrawerOpen);
   const toggleDrawer = useUIStore((state) => state.toggleDrawer);
@@ -228,7 +239,7 @@ export function Layout({ children }: LayoutProps): JSX.Element {
     };
   }, [children, isDrawerOpen, drawerWidth]);
 
-  // S-330 specific: drawer and drawer toggle rendered before header
+  // Video capture drawer and toggle rendered before header
   const drawerElements = (
     <>
       <Drawer
@@ -241,6 +252,7 @@ export function Layout({ children }: LayoutProps): JSX.Element {
         isOpen={isDrawerOpen}
         drawerWidth={drawerWidth}
         topPx={drawerToggleTopPx}
+        deviceName={deviceName}
         onToggle={toggleDrawer}
       />
     </>

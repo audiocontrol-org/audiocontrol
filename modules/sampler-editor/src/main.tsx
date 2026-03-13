@@ -92,9 +92,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
           {/* Device selection page */}
           <Route path="/" element={<DeviceSelectionPage />} />
 
-          {/* Legacy redirect for old S-330 paths */}
-          <Route path="/roland/s330/editor" element={<Navigate to="/roland/s330/editor/" replace />} />
-
           {/* Catch-all redirect to device selection */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

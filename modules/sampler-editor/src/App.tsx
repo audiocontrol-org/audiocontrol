@@ -18,12 +18,12 @@ export function App() {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/play" element={<PlayPage />} />
-        <Route path="/patches" element={<PatchesPage />} />
-        <Route path="/tones" element={<TonesPage />} />
-        <Route path="/library" element={<LibraryPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route index element={<HomePage />} />
+        <Route path="play" element={<PlayPage />} />
+        <Route path="patches" element={<PatchesPage />} />
+        <Route path="tones" element={<TonesPage />} />
+        <Route path="library" element={<LibraryPage />} />
+        <Route path="*" element={<Navigate to="" replace />} />
       </Routes>
     </Layout>
   );
