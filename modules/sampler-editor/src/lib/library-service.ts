@@ -1,0 +1,2583 @@
+/**
+ * Browser-compatible Library Service
+ *
+ * Handles library operations in the browser using the File System Access API
+ * when available, with fallback to download/upload for older browsers.
+ *
+ * Note: Full filesystem persistence requires the File System Access API
+ * (Chrome/Edge) or a backend server. This implementation focuses on
+ * the immediate export/import workflows.
+ */
+
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
+import type { S330Tone, S330Patch, S330WaveDataResponse } from '@/core/midi/S330Client';
+import {
+  prepareWavForS330,
+  parseWav,
+  calculateSegmentsNeeded,
+  type PreparedS330Sample,
+} from '@/core/midi/S330Client';
+import {
+  ToneYamlSchema,
+  PatchYamlSchema,
+  SetYamlSchema,
+  DrumKitBundleSchema,
+  s330ToneConverter,
+  s330PatchConverter,
+  deviceStateToSet,
+  setToDeviceState,
+  loadDrumKitBundle as parseDrumKitBundle,
+  type ToneYaml,
+  type PatchYaml,
+  type SetYaml,
+  type SetInfo,
+  type DeviceStateInput,
+  type SetToDeviceInput,
+  type DrumKitBundle,
+  type ResolvedDrumKitBundle,
+} from '@audiocontrol/sampler-library/browser';
+import { createWavBlobFromSamples, unpack12BitTo16Bit } from '@/lib/wave-export';
+
+// Re-export for consumers that import from this module
+export type { PreparedS330Sample };
+export { prepareWavForS330 };
+
+// =========================================================================
+// Hierarchical Library Types
+// =========================================================================
+
+/**
+ * Library item category types that support subdirectories.
+ */
+export type LibraryCategory = 'tones' | 'patches' | 'drum-kits';
+
+/**
+ * Tree node for rendering hierarchical library contents.
+ * Used by both directories and items (tones, patches, drum-kits).
+ */
+export interface LibraryTreeNode {
+  /** Unique identifier for this node (path joined by '/') */
+  id: string;
+  /** Display name */
+  name: string;
+  /** Node type */
+  type: 'directory' | 'tone' | 'patch' | 'drum-kit';
+  /** Path segments from category root (empty for root items) */
+  path: string[];
+  /** Child nodes (only for directories) */
+  children?: LibraryTreeNode[];
+  /** Whether directory is expanded in UI (client state, not persisted) */
+  isExpanded?: boolean;
+  /** File name for items (without extension) */
+  fileName?: string;
+  /** Directory name for patches/drum-kits */
+  directoryName?: string;
+  /** Additional metadata for patches */
+  toneCount?: number;
+  /** Additional metadata for drum kits */
+  kitCount?: number;
+  sampleCount?: number;
+  description?: string;
+}
+
+/**
+ * Parse WAV file and return metadata for display purposes.
+ * Use this for showing file info before conversion.
+ */
+export interface WavFileInfo {
+  sampleRate: number;
+  channels: number;
+  bitsPerSample: number;
+  sampleCount: number;
+  duration: number;
+}
+
+/**
+ * Get WAV file info for display purposes.
+ *
+ * @param wavBytes - Raw WAV file data
+ * @returns WAV file metadata
+ */
+export function getWavFileInfo(wavBytes: ArrayBuffer): WavFileInfo {
+  const wavData = parseWav(wavBytes);
+  return {
+    sampleRate: wavData.sampleRate,
+    channels: wavData.channels,
+    bitsPerSample: wavData.bitsPerSample,
+    sampleCount: wavData.samples.length,
+    duration: wavData.samples.length / wavData.sampleRate,
+  };
+}
+
+/**
+ * Calculate segments needed for a WAV file at a target sample rate.
+ * Use this for UI display before actual conversion.
+ *
+ * @param wavBytes - Raw WAV file data
+ * @param targetSampleRate - Target sample rate
+ * @returns Number of segments needed
+ */
+export function calculateWavSegmentsNeeded(
+  wavBytes: ArrayBuffer,
+  targetSampleRate: 15000 | 30000
+): number {
+  const wavData = parseWav(wavBytes);
+  // Calculate output sample count after resampling
+  const outputSampleCount = Math.floor(
+    wavData.samples.length * (targetSampleRate / wavData.sampleRate)
+  );
+  return calculateSegmentsNeeded(outputSampleCount);
+}
+
+// =========================================================================
+// File System Access API
+// =========================================================================
+
+/**
+ * Check if the File System Access API is available
+ */
+export function hasFileSystemAccess(): boolean {
+  return 'showSaveFilePicker' in window && 'showDirectoryPicker' in window;
+}
+
+// In-memory cache for the library directory handle
+let cachedDirectoryHandle: FileSystemDirectoryHandle | null = null;
+
+/**
+ * Get the cached library directory handle, if available and still has permission.
+ */
+export async function getCachedLibraryDirectory(): Promise<FileSystemDirectoryHandle | null> {
+  if (!cachedDirectoryHandle) {
+    return null;
+  }
+
+  // Verify we still have permission
+  try {
+    const permission = await cachedDirectoryHandle.queryPermission({ mode: 'readwrite' });
+    if (permission === 'granted') {
+      return cachedDirectoryHandle;
+    }
+
+    // Try to request permission
+    const requested = await cachedDirectoryHandle.requestPermission({ mode: 'readwrite' });
+    if (requested === 'granted') {
+      return cachedDirectoryHandle;
+    }
+  } catch {
+    // Permission check failed, clear cache
+    cachedDirectoryHandle = null;
+  }
+
+  return null;
+}
+
+/**
+ * Set the cached library directory handle.
+ */
+export function setCachedLibraryDirectory(handle: FileSystemDirectoryHandle | null): void {
+  cachedDirectoryHandle = handle;
+}
+
+/**
+ * Export result containing the generated files
+ */
+export interface ExportResult {
+  yamlContent: string;
+  wavBlob: Blob;
+  toneName: string;
+}
+
+/**
+ * Convert S330 tone and wave data to library format
+ */
+export function prepareExport(
+  tone: S330Tone,
+  waveData: S330WaveDataResponse,
+  customName?: string
+): ExportResult {
+  const toneName = customName || tone.name || 'untitled';
+  const wavFilename = `${toneName}.wav`;
+
+  // Convert S330 tone to YAML format
+  const toneYaml = s330ToneConverter.toYaml(tone, wavFilename);
+
+  // Generate YAML content
+  const yamlContent = stringifyYaml(toneYaml, {
+    indent: 2,
+    lineWidth: 120,
+  });
+
+  // Create WAV blob
+  const samples = unpack12BitTo16Bit(waveData.data);
+  const wavBlob = createWavBlobFromSamples(samples, waveData.sampleRate);
+
+  return {
+    yamlContent,
+    wavBlob,
+    toneName,
+  };
+}
+
+/**
+ * Download a file to the user's computer
+ */
+function downloadFile(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Get a directory handle for the library.
+ * Must be called directly from a user gesture (click handler).
+ * Returns null if user cancels or API not available.
+ */
+export async function pickLibraryDirectory(): Promise<FileSystemDirectoryHandle | null> {
+  if (!hasFileSystemAccess()) {
+    return null;
+  }
+
+  try {
+    return await window.showDirectoryPicker({
+      id: 'sampler-library',
+      mode: 'readwrite',
+      startIn: 'documents',
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      return null; // User cancelled
+    }
+    throw err;
+  }
+}
+
+/**
+ * Get or create a nested directory path within a directory handle.
+ */
+async function getNestedDirectory(
+  rootHandle: FileSystemDirectoryHandle,
+  path: string[]
+): Promise<FileSystemDirectoryHandle> {
+  let current = rootHandle;
+  for (const segment of path) {
+    current = await current.getDirectoryHandle(segment, { create: true });
+  }
+  return current;
+}
+
+/**
+ * Get a nested directory without creating it.
+ * Returns null if any part of the path doesn't exist.
+ */
+async function getNestedDirectoryIfExists(
+  rootHandle: FileSystemDirectoryHandle,
+  path: string[]
+): Promise<FileSystemDirectoryHandle | null> {
+  let current = rootHandle;
+  try {
+    for (const segment of path) {
+      current = await current.getDirectoryHandle(segment, { create: false });
+    }
+    return current;
+  } catch {
+    return null;
+  }
+}
+
+// =========================================================================
+// Directory Operations
+// =========================================================================
+
+/**
+ * Create a subdirectory within a library category.
+ *
+ * @param libraryDir - Root library directory handle
+ * @param category - Category ('tones', 'patches', 'drum-kits')
+ * @param path - Path to parent directory (e.g., ['Piano'] to create under Piano/)
+ * @param name - Name of the new directory
+ */
+export async function createDirectory(
+  libraryDir: FileSystemDirectoryHandle,
+  category: LibraryCategory,
+  path: string[],
+  name: string
+): Promise<void> {
+  const sanitizedName = name.replace(/[<>:"/\\|?*]/g, '_').trim();
+  if (!sanitizedName) {
+    throw new Error('Directory name cannot be empty');
+  }
+
+  // Navigate to the parent directory
+  const parentDir = await getNestedDirectory(libraryDir, ['library', 's330', category, ...path]);
+
+  // Create the new directory (will fail silently if it already exists due to { create: true })
+  await parentDir.getDirectoryHandle(sanitizedName, { create: true });
+}
+
+/**
+ * Rename a directory within a library category.
+ *
+ * Note: File System Access API doesn't support direct rename, so we copy contents and delete original.
+ *
+ * @param libraryDir - Root library directory handle
+ * @param category - Category ('tones', 'patches', 'drum-kits')
+ * @param path - Path to the directory to rename (e.g., ['Piano', 'Grand'])
+ * @param newName - New name for the directory
+ */
+export async function renameDirectory(
+  libraryDir: FileSystemDirectoryHandle,
+  category: LibraryCategory,
+  path: string[],
+  newName: string
+): Promise<void> {
+  if (path.length === 0) {
+    throw new Error('Cannot rename root category directory');
+  }
+
+  const sanitizedNewName = newName.replace(/[<>:"/\\|?*]/g, '_').trim();
+  if (!sanitizedNewName) {
+    throw new Error('Directory name cannot be empty');
+  }
+
+  const parentPath = path.slice(0, -1);
+  const oldName = path[path.length - 1];
+
+  if (oldName === sanitizedNewName) {
+    return; // Nothing to do
+  }
+
+  // Get parent directory
+  const parentDir = await getNestedDirectory(libraryDir, ['library', 's330', category, ...parentPath]);
+
+  // Get source directory
+  const sourceDir = await parentDir.getDirectoryHandle(oldName, { create: false });
+
+  // Create target directory
+  const targetDir = await parentDir.getDirectoryHandle(sanitizedNewName, { create: true });
+
+  // Copy all contents recursively
+  await copyDirectoryContents(sourceDir, targetDir);
+
+  // Delete source directory
+  await parentDir.removeEntry(oldName, { recursive: true });
+}
+
+/**
+ * Rename an individual tone (YAML + WAV files).
+ *
+ * @param libraryDir - Root library directory handle
+ * @param oldName - Current file name (without extension)
+ * @param newName - New name for the tone
+ * @param path - Path within the tones category (optional subdirectory)
+ */
+export async function renameIndividualTone(
+  libraryDir: FileSystemDirectoryHandle,
+  oldName: string,
+  newName: string,
+  path: string[] = []
+): Promise<void> {
+  const sanitizedNewName = newName.replace(/[<>:"/\\|?*]/g, '_').trim();
+  if (!sanitizedNewName) {
+    throw new Error('Tone name cannot be empty');
+  }
+
+  if (oldName === sanitizedNewName) {
+    return; // Nothing to do
+  }
+
+  // Get the target directory
+  const tonesDir = await getNestedDirectory(libraryDir, ['library', 's330', 'tones', ...path]);
+
+  // Rename YAML file
+  const oldYamlFile = await tonesDir.getFileHandle(`${oldName}.yaml`, { create: false });
+  const yamlContent = await (await oldYamlFile.getFile()).arrayBuffer();
+  const newYamlFile = await tonesDir.getFileHandle(`${sanitizedNewName}.yaml`, { create: true });
+  const yamlWritable = await newYamlFile.createWritable();
+  await yamlWritable.write(yamlContent);
+  await yamlWritable.close();
+  await tonesDir.removeEntry(`${oldName}.yaml`);
+
+  // Rename WAV file if it exists
+  try {
+    const oldWavFile = await tonesDir.getFileHandle(`${oldName}.wav`, { create: false });
+    const wavContent = await (await oldWavFile.getFile()).arrayBuffer();
+    const newWavFile = await tonesDir.getFileHandle(`${sanitizedNewName}.wav`, { create: true });
+    const wavWritable = await newWavFile.createWritable();
+    await wavWritable.write(wavContent);
+    await wavWritable.close();
+    await tonesDir.removeEntry(`${oldName}.wav`);
+  } catch {
+    // WAV file might not exist, that's OK
+  }
+}
+
+/**
+ * Rename an individual patch bundle (directory).
+ *
+ * @param libraryDir - Root library directory handle
+ * @param oldName - Current directory name
+ * @param newName - New name for the patch
+ * @param path - Path within the patches category (optional subdirectory)
+ */
+export async function renameIndividualPatch(
+  libraryDir: FileSystemDirectoryHandle,
+  oldName: string,
+  newName: string,
+  path: string[] = []
+): Promise<void> {
+  // Patches are directories, so we can use renameDirectory
+  await renameDirectory(libraryDir, 'patches', [...path, oldName], newName);
+}
+
+/**
+ * Rename a drum kit (directory).
+ *
+ * @param libraryDir - Root library directory handle
+ * @param oldName - Current directory name
+ * @param newName - New name for the drum kit
+ * @param path - Path within the drum-kits category (optional subdirectory)
+ */
+export async function renameDrumKit(
+  libraryDir: FileSystemDirectoryHandle,
+  oldName: string,
+  newName: string,
+  path: string[] = []
+): Promise<void> {
+  // Drum kits are directories, so we can use renameDirectory
+  await renameDirectory(libraryDir, 'drum-kits', [...path, oldName], newName);
+}
+
+/**
+ * Delete a directory from a library category.
+ *
+ * @param libraryDir - Root library directory handle
+ * @param category - Category ('tones', 'patches', 'drum-kits')
+ * @param path - Path to the directory to delete (e.g., ['Piano', 'Grand'])
+ * @param recursive - Whether to delete non-empty directories (default: true)
+ */
+export async function deleteDirectory(
+  libraryDir: FileSystemDirectoryHandle,
+  category: LibraryCategory,
+  path: string[],
+  recursive: boolean = true
+): Promise<void> {
+  if (path.length === 0) {
+    throw new Error('Cannot delete root category directory');
+  }
+
+  const parentPath = path.slice(0, -1);
+  const dirName = path[path.length - 1];
+
+  // Get parent directory
+  const parentDir = await getNestedDirectory(libraryDir, ['library', 's330', category, ...parentPath]);
+
+  // Delete the directory
+  await parentDir.removeEntry(dirName, { recursive });
+}
+
+/**
+ * Get directory contents for display (items and subdirectories at a path).
+ *
+ * @param libraryDir - Root library directory handle
+ * @param category - Category ('tones', 'patches', 'drum-kits')
+ * @param path - Path within the category
+ * @returns Object with files and directories arrays
+ */
+export async function getDirectoryContents(
+  libraryDir: FileSystemDirectoryHandle,
+  category: LibraryCategory,
+  path: string[]
+): Promise<{ files: string[]; directories: string[] }> {
+  const files: string[] = [];
+  const directories: string[] = [];
+
+  const targetDir = await getNestedDirectoryIfExists(
+    libraryDir,
+    ['library', 's330', category, ...path]
+  );
+
+  if (!targetDir) {
+    return { files, directories };
+  }
+
+  for await (const entry of targetDir.values()) {
+    if (entry.kind === 'directory') {
+      directories.push(entry.name);
+    } else {
+      files.push(entry.name);
+    }
+  }
+
+  return {
+    files: files.sort((a, b) => a.localeCompare(b)),
+    directories: directories.sort((a, b) => a.localeCompare(b)),
+  };
+}
+
+/**
+ * Move an item (tone, patch, drum-kit, or directory) to a new location.
+ *
+ * @param libraryDir - Root library directory handle
+ * @param category - Category ('tones', 'patches', 'drum-kits')
+ * @param sourcePath - Current path to the item's parent (e.g., ['Piano'])
+ * @param itemName - Name of the item or directory to move
+ * @param targetPath - Destination path (e.g., ['Strings'])
+ */
+export async function moveItem(
+  libraryDir: FileSystemDirectoryHandle,
+  category: LibraryCategory,
+  sourcePath: string[],
+  itemName: string,
+  targetPath: string[]
+): Promise<void> {
+  // Get source and target directories
+  const sourceDir = await getNestedDirectory(libraryDir, ['library', 's330', category, ...sourcePath]);
+  const targetDir = await getNestedDirectory(libraryDir, ['library', 's330', category, ...targetPath]);
+
+  // Check if source exists as a directory
+  let isDirectory = false;
+  try {
+    await sourceDir.getDirectoryHandle(itemName, { create: false });
+    isDirectory = true;
+  } catch {
+    // Not a directory, might be files
+  }
+
+  if (isDirectory) {
+    // Move a directory
+    const sourceDirHandle = await sourceDir.getDirectoryHandle(itemName, { create: false });
+    const targetDirHandle = await targetDir.getDirectoryHandle(itemName, { create: true });
+
+    await copyDirectoryContents(sourceDirHandle, targetDirHandle);
+    await sourceDir.removeEntry(itemName, { recursive: true });
+  } else {
+    // Move files (for tones: .yaml + .wav, for patches: directory, for drum-kits: directory)
+    // Determine what files to move based on category
+    if (category === 'tones') {
+      // Move YAML and WAV files
+      await moveFile(sourceDir, targetDir, `${itemName}.yaml`);
+      try {
+        await moveFile(sourceDir, targetDir, `${itemName}.wav`);
+      } catch {
+        // WAV file might not exist
+      }
+    } else {
+      // For patches and drum-kits, the "item" is a directory
+      const itemDir = await sourceDir.getDirectoryHandle(itemName, { create: false });
+      const targetItemDir = await targetDir.getDirectoryHandle(itemName, { create: true });
+      await copyDirectoryContents(itemDir, targetItemDir);
+      await sourceDir.removeEntry(itemName, { recursive: true });
+    }
+  }
+}
+
+/**
+ * Copy all contents from source directory to target directory.
+ */
+async function copyDirectoryContents(
+  source: FileSystemDirectoryHandle,
+  target: FileSystemDirectoryHandle
+): Promise<void> {
+  for await (const entry of source.values()) {
+    if (entry.kind === 'file') {
+      // Copy file
+      const sourceFile = await source.getFileHandle(entry.name);
+      const file = await sourceFile.getFile();
+      const targetFile = await target.getFileHandle(entry.name, { create: true });
+      const writable = await targetFile.createWritable();
+      await writable.write(await file.arrayBuffer());
+      await writable.close();
+    } else {
+      // Recursively copy subdirectory
+      const sourceSubdir = await source.getDirectoryHandle(entry.name);
+      const targetSubdir = await target.getDirectoryHandle(entry.name, { create: true });
+      await copyDirectoryContents(sourceSubdir, targetSubdir);
+    }
+  }
+}
+
+/**
+ * Move a single file from source to target directory.
+ */
+async function moveFile(
+  sourceDir: FileSystemDirectoryHandle,
+  targetDir: FileSystemDirectoryHandle,
+  fileName: string
+): Promise<void> {
+  const sourceFile = await sourceDir.getFileHandle(fileName);
+  const file = await sourceFile.getFile();
+  const targetFile = await targetDir.getFileHandle(fileName, { create: true });
+  const writable = await targetFile.createWritable();
+  await writable.write(await file.arrayBuffer());
+  await writable.close();
+  await sourceDir.removeEntry(fileName);
+}
+
+// =========================================================================
+// Shared File Reading Helpers
+// =========================================================================
+
+/**
+ * Result from reading tone files from disk.
+ */
+interface ReadToneResult {
+  /** Parsed tone YAML */
+  yaml: ToneYaml;
+  /** Prepared wave data ready for S330 import (raw PCM, NOT WAV file) */
+  wavData: Uint8Array;
+  /** Number of segments needed for this tone's wave data */
+  segmentsNeeded: number;
+}
+
+/**
+ * Read a tone's YAML and WAV files from a directory.
+ * This is the canonical function for reading tone data - used by all
+ * tone loading operations (sets, individual tones, patch bundles).
+ *
+ * IMPORTANT: This function returns prepared PCM data, not raw WAV file bytes.
+ * The WAV file is parsed and converted using prepareWavForS330().
+ *
+ * @param directory - Directory handle containing the tone files
+ * @param baseFilename - Base filename without extension (e.g., "T01" or "T01 Piano")
+ * @returns Parsed YAML, prepared wave data, and segment count
+ */
+async function readToneFilesFromDirectory(
+  directory: FileSystemDirectoryHandle,
+  baseFilename: string
+): Promise<ReadToneResult> {
+  // Load and parse YAML
+  const yamlHandle = await directory.getFileHandle(`${baseFilename}.yaml`);
+  const yamlFile = await yamlHandle.getFile();
+  const yamlContent = await yamlFile.text();
+  const yaml = ToneYamlSchema.parse(parseYaml(yamlContent));
+
+  // Load WAV and convert to S330 format
+  // CRITICAL: Use prepareWavForS330 to extract PCM samples from WAV file.
+  // Do NOT store raw WAV file bytes - that includes the 44-byte header
+  // which causes sample count miscalculation during import.
+  const wavHandle = await directory.getFileHandle(`${baseFilename}.wav`);
+  const wavFile = await wavHandle.getFile();
+  const wavFileBuffer = await wavFile.arrayBuffer();
+  const targetSampleRate = yaml.wave.sampleRate as 15000 | 30000;
+  const prepared = prepareWavForS330(wavFileBuffer, targetSampleRate);
+
+  // Calculate segments from actual sample count (data.length / 2 bytes per sample)
+  const segmentsNeeded = calculateSegmentsNeeded(prepared.data.length / 2);
+
+  return { yaml, wavData: prepared.data, segmentsNeeded };
+}
+
+// =========================================================================
+// Shared File Writing Helpers
+// =========================================================================
+
+/**
+ * Result from writing tone files, includes info needed for manifest.
+ */
+interface WriteToneResult {
+  /** Calculated segment length based on actual sample count */
+  segmentLength: number;
+}
+
+/**
+ * Write a tone's YAML and WAV files to a directory.
+ * This is the canonical function for writing tone data - used by both
+ * individual tone export and set export operations.
+ *
+ * @param directory - Directory handle to write files into
+ * @param tone - S330 tone parameters
+ * @param waveData - Wave data response from device
+ * @param baseFilename - Base filename without extension (e.g., "T01" or "T01 Piano")
+ * @returns Info about the written files for manifest tracking
+ */
+async function writeToneFilesToDirectory(
+  directory: FileSystemDirectoryHandle,
+  tone: S330Tone,
+  waveData: S330WaveDataResponse,
+  baseFilename: string
+): Promise<WriteToneResult> {
+  // Convert wave data to samples
+  const samples = unpack12BitTo16Bit(waveData.data);
+
+  // Convert tone to YAML with wave file reference
+  const toneYaml = s330ToneConverter.toYaml(tone, `${baseFilename}.wav`);
+  const yamlContent = stringifyYaml(toneYaml, {
+    indent: 2,
+    lineWidth: 120,
+  });
+
+  // Write YAML file
+  const yamlHandle = await directory.getFileHandle(`${baseFilename}.yaml`, { create: true });
+  const yamlWritable = await yamlHandle.createWritable();
+  await yamlWritable.write(yamlContent);
+  await yamlWritable.close();
+
+  // Write WAV file
+  const wavBlob = createWavBlobFromSamples(samples, waveData.sampleRate);
+  const wavHandle = await directory.getFileHandle(`${baseFilename}.wav`, { create: true });
+  const wavWritable = await wavHandle.createWritable();
+  await wavWritable.write(wavBlob);
+  await wavWritable.close();
+
+  return {
+    segmentLength: calculateSegmentsNeeded(samples.length),
+  };
+}
+
+/**
+ * Write a patch's YAML file to a directory.
+ * This is the canonical function for writing patch data - used by both
+ * individual patch export and set export operations.
+ *
+ * @param directory - Directory handle to write file into
+ * @param patch - S330 patch parameters
+ * @param baseFilename - Base filename without extension (e.g., "P01" or "P01 Strings")
+ */
+async function writePatchFileToDirectory(
+  directory: FileSystemDirectoryHandle,
+  patch: S330Patch,
+  baseFilename: string
+): Promise<void> {
+  // Convert patch to YAML
+  const patchYaml = s330PatchConverter.toYaml(patch);
+  const yamlContent = stringifyYaml(patchYaml, {
+    indent: 2,
+    lineWidth: 120,
+  });
+
+  // Write YAML file
+  const yamlHandle = await directory.getFileHandle(`${baseFilename}.yaml`, { create: true });
+  const yamlWritable = await yamlHandle.createWritable();
+  await yamlWritable.write(yamlContent);
+  await yamlWritable.close();
+}
+
+/**
+ * Generate a tone filename from slot index and optional name.
+ * Format: "T01" or "T01 PianoName" if name is provided
+ */
+function getToneFilename(slotIndex: number, toneName?: string): string {
+  const slotPrefix = `T${String(slotIndex + 1).padStart(2, '0')}`;
+  const sanitizedName = (toneName || '').trim().replace(/[<>:"/\\|?*]/g, '_');
+  return sanitizedName ? `${slotPrefix} ${sanitizedName}` : slotPrefix;
+}
+
+/**
+ * Generate a patch filename from slot index and optional name.
+ * Format: "P01" or "P01 StringPad" if name is provided
+ */
+function getPatchFilename(slotIndex: number, patchName?: string): string {
+  const slotPrefix = `P${String(slotIndex + 1).padStart(2, '0')}`;
+  const sanitizedName = (patchName || '').trim().replace(/[<>:"/\\|?*]/g, '_');
+  return sanitizedName ? `${slotPrefix} ${sanitizedName}` : slotPrefix;
+}
+
+// =========================================================================
+// Individual Tone Export
+// =========================================================================
+
+/**
+ * Export tone to a specific directory using File System Access API.
+ * Automatically creates library/s330/tones/ subdirectory structure.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param tone - Tone to export
+ * @param waveData - Wave data for the tone
+ * @param customName - Optional custom name for the tone
+ * @param onProgress - Optional progress callback
+ * @param path - Optional path segments for subdirectory (e.g., ['Piano', 'Grand'])
+ */
+export async function exportToneToDirectory(
+  directoryHandle: FileSystemDirectoryHandle,
+  tone: S330Tone,
+  waveData: S330WaveDataResponse,
+  customName?: string,
+  onProgress?: (progress: number) => void,
+  path: string[] = []
+): Promise<void> {
+  const toneName = customName || tone.name || 'untitled';
+  const sanitizedName = toneName.replace(/[<>:"/\\|?*]/g, '_').trim();
+
+  onProgress?.(25);
+
+  // Create library/s330/tones/[path...] subdirectory structure
+  const tonesDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'tones', ...path]);
+
+  onProgress?.(50);
+
+  // Write tone files using shared helper
+  await writeToneFilesToDirectory(tonesDir, tone, waveData, sanitizedName);
+
+  onProgress?.(100);
+}
+
+/**
+ * Export tone to library by downloading files (fallback)
+ */
+export async function exportToneAsDownload(
+  tone: S330Tone,
+  waveData: S330WaveDataResponse,
+  customName?: string,
+  onProgress?: (progress: number) => void
+): Promise<void> {
+  const { yamlContent, wavBlob, toneName } = prepareExport(tone, waveData, customName);
+
+  onProgress?.(50);
+
+  // Download both files
+  downloadFile(new Blob([yamlContent], { type: 'text/yaml' }), `${toneName}.yaml`);
+  onProgress?.(75);
+  downloadFile(wavBlob, `${toneName}.wav`);
+  onProgress?.(100);
+}
+
+/**
+ * Import tone from YAML file
+ * Returns the parsed ToneYaml
+ */
+export async function importToneFromFile(): Promise<ToneYaml> {
+  if (hasFileSystemAccess()) {
+    // Use File System Access API
+    const [fileHandle] = await window.showOpenFilePicker({
+      types: [
+        {
+          description: 'YAML files',
+          accept: { 'text/yaml': ['.yaml', '.yml'] },
+        },
+      ],
+    });
+    const file = await fileHandle.getFile();
+    const content = await file.text();
+    const data = parseYaml(content);
+    return ToneYamlSchema.parse(data);
+  } else {
+    // Fallback: use file input
+    return new Promise((resolve, reject) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.yaml,.yml';
+
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) {
+          reject(new Error('No file selected'));
+          return;
+        }
+
+        try {
+          const content = await file.text();
+          const data = parseYaml(content);
+          const tone = ToneYamlSchema.parse(data);
+          resolve(tone);
+        } catch (err) {
+          reject(err);
+        }
+      };
+
+      input.oncancel = () => {
+        reject(new Error('Import cancelled'));
+      };
+
+      input.click();
+    });
+  }
+}
+
+/**
+ * Import WAV file and return as Uint8Array
+ */
+export async function importWavFile(): Promise<{ data: Uint8Array; filename: string }> {
+  if (hasFileSystemAccess()) {
+    const [fileHandle] = await window.showOpenFilePicker({
+      types: [
+        {
+          description: 'WAV files',
+          accept: { 'audio/wav': ['.wav'] },
+        },
+      ],
+    });
+    const file = await fileHandle.getFile();
+    const arrayBuffer = await file.arrayBuffer();
+    return {
+      data: new Uint8Array(arrayBuffer),
+      filename: file.name,
+    };
+  } else {
+    return new Promise((resolve, reject) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.wav';
+
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) {
+          reject(new Error('No file selected'));
+          return;
+        }
+
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          resolve({
+            data: new Uint8Array(arrayBuffer),
+            filename: file.name,
+          });
+        } catch (err) {
+          reject(err);
+        }
+      };
+
+      input.oncancel = () => {
+        reject(new Error('Import cancelled'));
+      };
+
+      input.click();
+    });
+  }
+}
+
+/**
+ * Convert ToneYaml back to S330Tone for device upload
+ */
+export function convertYamlToS330Tone(yaml: ToneYaml): S330Tone {
+  return s330ToneConverter.fromYaml(yaml);
+}
+
+/**
+ * Convert PatchYaml back to S330Patch for device upload
+ */
+export function convertYamlToS330Patch(yaml: PatchYaml): S330Patch {
+  return s330PatchConverter.fromYaml(yaml);
+}
+
+// =========================================================================
+// Set Operations
+// =========================================================================
+
+/**
+ * List all sets in the library directory
+ */
+export async function listSets(
+  directoryHandle: FileSystemDirectoryHandle
+): Promise<SetInfo[]> {
+  const sets: SetInfo[] = [];
+
+  try {
+    // Navigate to library/s330/sets/
+    const libraryDir = await directoryHandle.getDirectoryHandle('library', { create: false });
+    const s330Dir = await libraryDir.getDirectoryHandle('s330', { create: false });
+    const setsDir = await s330Dir.getDirectoryHandle('sets', { create: false });
+
+    // Iterate through set directories
+    for await (const entry of setsDir.values()) {
+      if (entry.kind !== 'directory') continue;
+
+      try {
+        const setDir = await setsDir.getDirectoryHandle(entry.name);
+        const manifestHandle = await setDir.getFileHandle('set.yaml');
+        const manifestFile = await manifestHandle.getFile();
+        const manifestContent = await manifestFile.text();
+        const manifest = SetYamlSchema.parse(parseYaml(manifestContent));
+
+        sets.push({
+          name: manifest.name,
+          description: manifest.description,
+          createdAt: manifest.createdAt,
+          modifiedAt: manifest.modifiedAt,
+          toneCount: manifest.tones.length,
+          patchCount: manifest.patches.length,
+        });
+      } catch {
+        // Skip invalid sets
+      }
+    }
+  } catch {
+    // Sets directory doesn't exist yet
+    return [];
+  }
+
+  return sets.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Save device state to a new set
+ */
+export async function saveDeviceToSet(
+  directoryHandle: FileSystemDirectoryHandle,
+  setName: string,
+  description: string | undefined,
+  tones: (S330Tone | null)[],
+  patches: (S330Patch | null)[],
+  waveData: Map<number, { data: Uint8Array; sampleRate: number }>,
+  onProgress?: (progress: number) => void
+): Promise<void> {
+  // Convert device state to set format
+  const input: DeviceStateInput = { tones, patches, waveData };
+  const setResult = deviceStateToSet(setName, description, input);
+
+  onProgress?.(10);
+
+  // Create directory structure
+  const setsDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'sets']);
+  const sanitizedName = setName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+  const setDir = await setsDir.getDirectoryHandle(sanitizedName, { create: true });
+  const tonesDir = await setDir.getDirectoryHandle('tones', { create: true });
+  const patchesDir = await setDir.getDirectoryHandle('patches', { create: true });
+
+  onProgress?.(20);
+
+  // Write manifest
+  const manifestContent = stringifyYaml(setResult.manifest, { indent: 2, lineWidth: 120 });
+  const manifestHandle = await setDir.getFileHandle('set.yaml', { create: true });
+  const manifestWritable = await manifestHandle.createWritable();
+  await manifestWritable.write(manifestContent);
+  await manifestWritable.close();
+
+  onProgress?.(30);
+
+  // Write tones
+  const toneCount = setResult.tones.size;
+  let toneIndex = 0;
+  for (const [slot, toneData] of setResult.tones) {
+    const toneFile = `T${String(slot + 1).padStart(2, '0')}`;
+
+    // Write YAML
+    const yamlContent = stringifyYaml(toneData.yaml, { indent: 2, lineWidth: 120 });
+    const yamlHandle = await tonesDir.getFileHandle(`${toneFile}.yaml`, { create: true });
+    const yamlWritable = await yamlHandle.createWritable();
+    await yamlWritable.write(yamlContent);
+    await yamlWritable.close();
+
+    // Write WAV - convert from S330 12-bit packed format to 16-bit samples
+    const samples = unpack12BitTo16Bit(toneData.wavData);
+    const wavBlob = createWavBlobFromSamples(samples, toneData.sampleRate);
+    const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`, { create: true });
+    const wavWritable = await wavHandle.createWritable();
+    await wavWritable.write(wavBlob);
+    await wavWritable.close();
+
+    toneIndex++;
+    onProgress?.(30 + Math.floor((toneIndex / toneCount) * 50));
+  }
+
+  onProgress?.(80);
+
+  // Write patches
+  for (const [slot, patchYaml] of setResult.patches) {
+    const patchFile = `P${String(slot + 1).padStart(2, '0')}`;
+    const yamlContent = stringifyYaml(patchYaml, { indent: 2, lineWidth: 120 });
+    const yamlHandle = await patchesDir.getFileHandle(`${patchFile}.yaml`, { create: true });
+    const yamlWritable = await yamlHandle.createWritable();
+    await yamlWritable.write(yamlContent);
+    await yamlWritable.close();
+  }
+
+  onProgress?.(100);
+}
+
+/**
+ * Callback for fetching tone data from device
+ */
+export type FetchToneDataCallback = (toneIndex: number) => Promise<S330Tone | null>;
+
+/**
+ * Callback for fetching patch data from device
+ */
+export type FetchPatchDataCallback = (patchIndex: number) => Promise<S330Patch | null>;
+
+/**
+ * Callback for fetching wave data from device
+ */
+export type FetchWaveDataCallback = (
+  toneIndex: number,
+  onWaveProgress?: (bytesReceived: number, totalBytes: number) => void
+) => Promise<S330WaveDataResponse>;
+
+// S-330 constants
+const MAX_TONES = 48;
+const MAX_PATCHES = 16;
+
+/**
+ * Save device state to a set incrementally.
+ *
+ * IMPORTANT: This function fetches ALL data fresh from the device.
+ * It does NOT use any cached UI state to ensure accuracy even when
+ * the device state has changed (e.g., after loading a diskette).
+ *
+ * Writes each tone/patch to disk immediately after fetching, so partial saves
+ * are preserved even if the operation fails partway through.
+ */
+export async function saveDeviceToSetIncremental(
+  directoryHandle: FileSystemDirectoryHandle,
+  setName: string,
+  description: string | undefined,
+  fetchToneData: FetchToneDataCallback,
+  fetchPatchData: FetchPatchDataCallback,
+  fetchWaveData: FetchWaveDataCallback,
+  onProgress?: (progress: number) => void,
+  onStatus?: (message: string) => void
+): Promise<void> {
+  const sanitizedSetName = setName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+
+  // Create directory structure first
+  onStatus?.('Creating set directory...');
+  const setsDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'sets']);
+  const setDir = await setsDir.getDirectoryHandle(sanitizedSetName, { create: true });
+  const tonesDir = await setDir.getDirectoryHandle('tones', { create: true });
+  const patchesDir = await setDir.getDirectoryHandle('patches', { create: true });
+
+  onProgress?.(2);
+
+  // Track manifest entries for final write
+  const toneEntries: { slot: number; file: string; waveAllocation: { bank: 0 | 1; segmentTop: number; segmentLength: number } }[] = [];
+  const patchEntries: { slot: number; file: string }[] = [];
+
+  // Phase 1: Scan device for valid tones and patches
+  onStatus?.('Scanning device for tones and patches...');
+  const validTones: { index: number; tone: S330Tone }[] = [];
+  const validPatches: { index: number; patch: S330Patch }[] = [];
+
+  // Scan all tone slots
+  for (let i = 0; i < MAX_TONES; i++) {
+    try {
+      const tone = await fetchToneData(i);
+      if (tone && tone.wave.segmentLength > 0) {
+        validTones.push({ index: i, tone });
+      }
+    } catch (err) {
+      console.warn(`[saveDeviceToSetIncremental] Failed to fetch tone ${i}:`, err);
+    }
+    onProgress?.(2 + Math.floor(((i + 1) / MAX_TONES) * 8));
+  }
+
+  // Scan all patch slots
+  for (let i = 0; i < MAX_PATCHES; i++) {
+    try {
+      const patch = await fetchPatchData(i);
+      if (patch) {
+        validPatches.push({ index: i, patch });
+      }
+    } catch (err) {
+      console.warn(`[saveDeviceToSetIncremental] Failed to fetch patch ${i}:`, err);
+    }
+    onProgress?.(10 + Math.floor(((i + 1) / MAX_PATCHES) * 5));
+  }
+
+  onStatus?.(`Found ${validTones.length} tones and ${validPatches.length} patches`);
+  onProgress?.(15);
+
+  const totalItems = validTones.length + validPatches.length;
+  let processed = 0;
+
+  // Phase 2: Process each tone - fetch wave data and write to disk
+  for (const { index, tone } of validTones) {
+    const toneFile = getToneFilename(index, tone.name);
+    onStatus?.(`Fetching wave data for ${tone.name || toneFile}...`);
+
+    try {
+      // Fetch wave data fresh from device
+      const waveResponse = await fetchWaveData(index, (_received, _total) => {
+        // Could add sub-progress here
+      });
+
+      onStatus?.(`Writing ${tone.name || toneFile} to disk...`);
+
+      // Write tone files using shared helper
+      const result = await writeToneFilesToDirectory(tonesDir, tone, waveResponse, toneFile);
+
+      // Track for manifest - use fresh tone data for allocation info
+      toneEntries.push({
+        slot: index,
+        file: toneFile,
+        waveAllocation: {
+          bank: tone.wave.bank as 0 | 1,
+          segmentTop: tone.wave.segmentTop,
+          segmentLength: result.segmentLength,
+        },
+      });
+    } catch (err) {
+      console.warn(`[saveDeviceToSetIncremental] Failed to save tone ${index}:`, err);
+      // Continue with other tones - don't lose everything
+    }
+
+    processed++;
+    onProgress?.(15 + Math.floor((processed / totalItems) * 75));
+  }
+
+  // Phase 3: Process each patch - write to disk (already fetched fresh)
+  for (const { index, patch } of validPatches) {
+    const patchFile = getPatchFilename(index, patch.common.name);
+    onStatus?.(`Writing ${patch.common.name || patchFile} to disk...`);
+
+    try {
+      // Write patch file using shared helper
+      await writePatchFileToDirectory(patchesDir, patch, patchFile);
+
+      // Track for manifest
+      patchEntries.push({
+        slot: index,
+        file: patchFile,
+      });
+    } catch (err) {
+      console.warn(`[saveDeviceToSetIncremental] Failed to save patch ${index}:`, err);
+      // Continue with other patches
+    }
+
+    processed++;
+    onProgress?.(5 + Math.floor((processed / totalItems) * 85));
+  }
+
+  // Write manifest last (so we know what actually succeeded)
+  onStatus?.('Writing set manifest...');
+  const now = new Date().toISOString();
+  const manifest: SetYaml = {
+    format: 'sampler-set',
+    device: 's330',
+    version: 1,
+    name: setName,
+    description,
+    createdAt: now,
+    modifiedAt: now,
+    tones: toneEntries.sort((a, b) => a.slot - b.slot),
+    patches: patchEntries.sort((a, b) => a.slot - b.slot),
+  };
+
+  const manifestContent = stringifyYaml(manifest, { indent: 2, lineWidth: 120 });
+  const manifestHandle = await setDir.getFileHandle('set.yaml', { create: true });
+  const manifestWritable = await manifestHandle.createWritable();
+  await manifestWritable.write(manifestContent);
+  await manifestWritable.close();
+
+  onProgress?.(100);
+  onStatus?.(`Saved ${toneEntries.length} tones and ${patchEntries.length} patches`);
+}
+
+/**
+ * Load set manifest from library
+ */
+export async function loadSetManifest(
+  directoryHandle: FileSystemDirectoryHandle,
+  setName: string
+): Promise<SetYaml> {
+  const sanitizedName = setName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+
+  const setsDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'sets']);
+  const setDir = await setsDir.getDirectoryHandle(sanitizedName);
+  const manifestHandle = await setDir.getFileHandle('set.yaml');
+  const manifestFile = await manifestHandle.getFile();
+  const manifestContent = await manifestFile.text();
+
+  return SetYamlSchema.parse(parseYaml(manifestContent));
+}
+
+/**
+ * Load a tone from a set
+ */
+export async function loadToneFromSet(
+  directoryHandle: FileSystemDirectoryHandle,
+  setName: string,
+  toneFile: string
+): Promise<{ yaml: ToneYaml; wavData: Uint8Array }> {
+  const sanitizedName = setName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+
+  const tonesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'sets', sanitizedName, 'tones'
+  ]);
+
+  const { yaml, wavData } = await readToneFilesFromDirectory(tonesDir, toneFile);
+  return { yaml, wavData };
+}
+
+/**
+ * Load a patch from a set
+ */
+export async function loadPatchFromSet(
+  directoryHandle: FileSystemDirectoryHandle,
+  setName: string,
+  patchFile: string
+): Promise<PatchYaml> {
+  const sanitizedName = setName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+
+  const patchesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'sets', sanitizedName, 'patches'
+  ]);
+
+  // Load YAML
+  const yamlHandle = await patchesDir.getFileHandle(`${patchFile}.yaml`);
+  const yamlFile = await yamlHandle.getFile();
+  const yamlContent = await yamlFile.text();
+
+  // Note: We'd need a PatchYamlSchema here - for now just parse directly
+  return parseYaml(yamlContent) as PatchYaml;
+}
+
+/**
+ * Load a complete set and convert to device state format.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param setName - Name of the set to load
+ * @param onProgress - Optional progress callback (0-100)
+ * @returns Device-ready tones and patches
+ */
+export async function loadSetToDevice(
+  directoryHandle: FileSystemDirectoryHandle,
+  setName: string,
+  onProgress?: (progress: number) => void
+): Promise<ReturnType<typeof setToDeviceState>> {
+  onProgress?.(0);
+
+  // Load manifest
+  const manifest = await loadSetManifest(directoryHandle, setName);
+  onProgress?.(10);
+
+  // Load all tones
+  const tones = new Map<number, { yaml: ToneYaml; wavData: Uint8Array }>();
+  const toneCount = manifest.tones.length;
+
+  for (let i = 0; i < toneCount; i++) {
+    const entry = manifest.tones[i];
+    if (!entry) continue;
+
+    const toneData = await loadToneFromSet(directoryHandle, setName, entry.file);
+    tones.set(entry.slot, toneData);
+    onProgress?.(10 + Math.floor(((i + 1) / toneCount) * 50));
+  }
+
+  onProgress?.(60);
+
+  // Load all patches
+  const patches = new Map<number, PatchYaml>();
+  const patchCount = manifest.patches.length;
+
+  for (let i = 0; i < patchCount; i++) {
+    const entry = manifest.patches[i];
+    if (!entry) continue;
+
+    const patchYaml = await loadPatchFromSet(directoryHandle, setName, entry.file);
+    patches.set(entry.slot, patchYaml);
+    onProgress?.(60 + Math.floor(((i + 1) / patchCount) * 30));
+  }
+
+  onProgress?.(90);
+
+  // Convert to device state
+  const input: SetToDeviceInput = {
+    manifest,
+    tones,
+    patches,
+  };
+
+  const result = setToDeviceState(input);
+  onProgress?.(100);
+
+  return result;
+}
+
+/**
+ * Delete a set from the library
+ */
+export async function deleteSet(
+  directoryHandle: FileSystemDirectoryHandle,
+  setName: string
+): Promise<void> {
+  const sanitizedName = setName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+
+  const setsDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'sets']);
+
+  // Remove the set directory recursively
+  await setsDir.removeEntry(sanitizedName, { recursive: true });
+}
+
+/**
+ * Rename a set in the library
+ */
+export async function renameSet(
+  directoryHandle: FileSystemDirectoryHandle,
+  oldName: string,
+  newName: string
+): Promise<void> {
+  const sanitizedOldName = oldName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+  const sanitizedNewName = newName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_').trim();
+
+  if (!sanitizedNewName) {
+    throw new Error('Set name cannot be empty');
+  }
+
+  if (sanitizedOldName === sanitizedNewName) {
+    return; // Nothing to do
+  }
+
+  const setsDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'sets']);
+
+  // Get source directory
+  const sourceDir = await setsDir.getDirectoryHandle(sanitizedOldName, { create: false });
+
+  // Create target directory
+  const targetDir = await setsDir.getDirectoryHandle(sanitizedNewName, { create: true });
+
+  // Copy all contents recursively
+  await copyDirectoryContents(sourceDir, targetDir);
+
+  // Delete source directory
+  await setsDir.removeEntry(sanitizedOldName, { recursive: true });
+}
+
+// =========================================================================
+// Patch Dependency Analysis
+// =========================================================================
+
+/**
+ * Get the tone indices that a patch actually depends on.
+ *
+ * THIS IS THE CANONICAL FUNCTION FOR PATCH TONE DEPENDENCY ANALYSIS.
+ * Do not create duplicate or "simpler" versions of this function.
+ *
+ * Examines toneLayer1 and toneLayer2 arrays to find all unique tone indices.
+ * Returns sorted array of tone slot indices (0-31).
+ *
+ * ============================================================================
+ * CRITICAL: toneLayer2 HANDLING - READ BEFORE MODIFYING
+ * ============================================================================
+ *
+ * toneLayer2 is ONLY meaningful when BOTH conditions are true:
+ *   1. keyMode uses velocity switching ('v-sw', 'x-fade', 'v-mix')
+ *   2. The corresponding toneLayer1 entry is >= 0 (key is assigned)
+ *
+ * Otherwise, toneLayer2 values are S-330 defaults (all 0s) and MUST be
+ * ignored. If you naively iterate toneLayer2 looking for valid indices,
+ * you will incorrectly include tone slot 0 (T01) for nearly every patch.
+ *
+ * This bug has been introduced multiple times by developers who created
+ * "simpler" versions that skip the keyMode check. DO NOT DO THIS.
+ *
+ * See commit 405cb68 for the original fix and explanation.
+ * ============================================================================
+ *
+ * @param patch - The S330 patch to analyze
+ * @returns Sorted array of tone slot indices (0-31) the patch depends on
+ */
+export function getPatchToneDependencies(patch: S330Patch): number[] {
+  const usedTones = new Set<number>();
+  const { keyMode, toneLayer1, toneLayer2 } = patch.common;
+
+  // Check toneLayer1 (indices 0-31, -1 means no tone assigned)
+  for (const toneIndex of toneLayer1) {
+    if (toneIndex >= 0 && toneIndex <= 31) {
+      usedTones.add(toneIndex);
+    }
+  }
+
+  // Check toneLayer2 only if velocity switching is active
+  // and only for keys that have a layer 1 assignment
+  const usesVelocitySwitching = keyMode === 'v-sw' || keyMode === 'x-fade' || keyMode === 'v-mix';
+  if (usesVelocitySwitching) {
+    for (let i = 0; i < toneLayer2.length; i++) {
+      // Only count layer 2 if layer 1 is assigned for this key
+      if (toneLayer1[i] >= 0) {
+        const toneIndex = toneLayer2[i];
+        if (toneIndex >= 0 && toneIndex <= 31) {
+          usedTones.add(toneIndex);
+        }
+      }
+    }
+  }
+
+  return Array.from(usedTones).sort((a, b) => a - b);
+}
+
+/**
+ * Remap tone indices in a patch's tone layers.
+ *
+ * Creates a new patch with updated toneLayer1 and toneLayer2 arrays
+ * where all tone references are remapped according to the provided mapping.
+ *
+ * @param patch - Original patch
+ * @param toneMapping - Map of original tone slot -> new tone slot
+ * @returns New patch with remapped tone layers
+ */
+export function remapPatchToneLayers(
+  patch: S330Patch,
+  toneMapping: Map<number, number>
+): S330Patch {
+  const newToneLayer1 = patch.common.toneLayer1.map((toneIndex) => {
+    if (toneIndex < 0) return toneIndex; // -1 stays -1
+    return toneMapping.get(toneIndex) ?? toneIndex;
+  });
+
+  const newToneLayer2 = patch.common.toneLayer2.map((toneIndex) => {
+    if (toneIndex < 0) return toneIndex;
+    return toneMapping.get(toneIndex) ?? toneIndex;
+  });
+
+  return {
+    common: {
+      ...patch.common,
+      toneLayer1: newToneLayer1,
+      toneLayer2: newToneLayer2,
+    },
+  };
+}
+
+// =========================================================================
+// Drum Kit Operations
+// =========================================================================
+
+// =========================================================================
+// Individual Tone/Patch Operations
+// =========================================================================
+
+/**
+ * Information about an individual tone in the library.
+ */
+export interface LibraryToneInfo {
+  /** Tone file name (without extension) */
+  name: string;
+  /** Full filename */
+  fileName: string;
+  /** Path segments from tones root (empty for root items) */
+  path?: string[];
+}
+
+/**
+ * List all individual tones in the library (outside of sets).
+ *
+ * Scans `library/s330/tones/` for YAML files.
+ *
+ * @deprecated Use listIndividualTonesTree for hierarchical view
+ */
+export async function listIndividualTones(
+  directoryHandle: FileSystemDirectoryHandle
+): Promise<LibraryToneInfo[]> {
+  const tones: LibraryToneInfo[] = [];
+
+  try {
+    // Navigate to library/s330/tones/
+    const libraryDir = await directoryHandle.getDirectoryHandle('library', { create: false });
+    const s330Dir = await libraryDir.getDirectoryHandle('s330', { create: false });
+    const tonesDir = await s330Dir.getDirectoryHandle('tones', { create: false });
+
+    // Iterate through tone files
+    for await (const entry of tonesDir.values()) {
+      if (entry.kind !== 'file') continue;
+      if (!entry.name.toLowerCase().endsWith('.yaml')) continue;
+
+      const name = entry.name.replace(/\.yaml$/i, '');
+      tones.push({
+        name,
+        fileName: name,
+      });
+    }
+  } catch {
+    // Tones directory doesn't exist yet
+    return [];
+  }
+
+  return tones.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Recursively scan a directory for tones and build a tree structure.
+ */
+async function scanTonesDirectory(
+  dir: FileSystemDirectoryHandle,
+  path: string[]
+): Promise<LibraryTreeNode[]> {
+  const nodes: LibraryTreeNode[] = [];
+
+  for await (const entry of dir.values()) {
+    if (entry.kind === 'directory') {
+      // Recursively scan subdirectory
+      const subDir = await dir.getDirectoryHandle(entry.name);
+      const children = await scanTonesDirectory(subDir, [...path, entry.name]);
+
+      nodes.push({
+        id: [...path, entry.name].join('/'),
+        name: entry.name,
+        type: 'directory',
+        path,
+        children,
+      });
+    } else if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.yaml')) {
+      const fileName = entry.name.replace(/\.yaml$/i, '');
+      nodes.push({
+        id: [...path, fileName].join('/'),
+        name: fileName,
+        type: 'tone',
+        path,
+        fileName,
+      });
+    }
+  }
+
+  // Sort: directories first, then alphabetically
+  return nodes.sort((a, b) => {
+    if (a.type === 'directory' && b.type !== 'directory') return -1;
+    if (a.type !== 'directory' && b.type === 'directory') return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/**
+ * List all individual tones in the library as a hierarchical tree.
+ *
+ * Recursively scans `library/s330/tones/` for YAML files and directories.
+ */
+export async function listIndividualTonesTree(
+  directoryHandle: FileSystemDirectoryHandle
+): Promise<LibraryTreeNode[]> {
+  try {
+    const libraryDir = await directoryHandle.getDirectoryHandle('library', { create: false });
+    const s330Dir = await libraryDir.getDirectoryHandle('s330', { create: false });
+    const tonesDir = await s330Dir.getDirectoryHandle('tones', { create: false });
+
+    return await scanTonesDirectory(tonesDir, []);
+  } catch {
+    // Tones directory doesn't exist yet
+    return [];
+  }
+}
+
+/**
+ * Load an individual tone from the library (outside of sets).
+ *
+ * @param directoryHandle - Library directory handle
+ * @param toneFile - Tone file name (without extension)
+ * @param path - Optional path segments from tones root
+ */
+export async function loadIndividualTone(
+  directoryHandle: FileSystemDirectoryHandle,
+  toneFile: string,
+  path: string[] = []
+): Promise<{ yaml: ToneYaml; wavData: Uint8Array }> {
+  const tonesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'tones', ...path
+  ]);
+
+  const { yaml, wavData } = await readToneFilesFromDirectory(tonesDir, toneFile);
+  return { yaml, wavData };
+}
+
+/**
+ * Load raw WAV samples from an individual library tone for sample chopping.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param toneFile - Tone file name (without extension)
+ * @param path - Optional path segments from tones root
+ */
+export async function loadIndividualToneWavSamples(
+  directoryHandle: FileSystemDirectoryHandle,
+  toneFile: string,
+  path: string[] = []
+): Promise<{ samples: Int16Array; sampleRate: number }> {
+  const tonesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'tones', ...path
+  ]);
+
+  // Load WAV file
+  const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`);
+  const wavFile = await wavHandle.getFile();
+  const wavFileBuffer = await wavFile.arrayBuffer();
+
+  // Parse WAV to get raw samples
+  const wavData = parseWav(wavFileBuffer);
+
+  return {
+    samples: wavData.samples,
+    sampleRate: wavData.sampleRate,
+  };
+}
+
+/**
+ * Delete an individual tone from the library.
+ *
+ * Removes both the YAML and WAV files for the tone.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param toneFile - Tone file name (without extension)
+ * @param path - Optional path segments from tones root
+ */
+export async function deleteIndividualTone(
+  directoryHandle: FileSystemDirectoryHandle,
+  toneFile: string,
+  path: string[] = []
+): Promise<void> {
+  const tonesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'tones', ...path
+  ]);
+
+  // Remove YAML file
+  await tonesDir.removeEntry(`${toneFile}.yaml`);
+
+  // Remove WAV file (may not exist if YAML was orphaned)
+  try {
+    await tonesDir.removeEntry(`${toneFile}.wav`);
+  } catch {
+    // WAV file may not exist, that's ok
+  }
+}
+
+// =========================================================================
+// Individual Patch Operations
+// =========================================================================
+
+/**
+ * Information about an individual patch bundle in the library.
+ */
+export interface LibraryPatchInfo {
+  /** Patch name (from YAML) */
+  name: string;
+  /** Directory name for the patch bundle */
+  directoryName: string;
+  /** Number of dependent tones included */
+  toneCount: number;
+  /** Path segments from patches root (empty for root items) */
+  path?: string[];
+}
+
+/**
+ * Tone data to be included in a patch bundle export.
+ */
+export interface PatchBundleTone {
+  /** Original tone slot index (0-31) */
+  slot: number;
+  /** The tone parameters */
+  tone: S330Tone;
+  /** The wave data response from device */
+  waveData: S330WaveDataResponse;
+}
+
+/**
+ * Result of loading a patch bundle from library.
+ */
+export interface LoadedPatchBundle {
+  /** The patch parameters */
+  patch: PatchYaml;
+  /** Map of slot -> tone data for all included tones */
+  tones: Map<number, { yaml: ToneYaml; wavData: Uint8Array; segmentsNeeded: number }>;
+}
+
+/**
+ * List all individual patch bundles in the library (outside of sets).
+ *
+ * Scans `library/s330/patches/` for directories containing patch.yaml.
+ *
+ * @deprecated Use listIndividualPatchesTree for hierarchical view
+ */
+export async function listIndividualPatches(
+  directoryHandle: FileSystemDirectoryHandle
+): Promise<LibraryPatchInfo[]> {
+  const patches: LibraryPatchInfo[] = [];
+
+  try {
+    // Navigate to library/s330/patches/
+    const patchesDir = await getNestedDirectory(directoryHandle, [
+      'library', 's330', 'patches'
+    ]);
+
+    // Scan for directories containing patch.yaml
+    for await (const entry of patchesDir.values()) {
+      if (entry.kind === 'directory') {
+        try {
+          const patchDir = await patchesDir.getDirectoryHandle(entry.name);
+          const yamlHandle = await patchDir.getFileHandle('patch.yaml');
+          const yamlFile = await yamlHandle.getFile();
+          const content = await yamlFile.text();
+          const yaml = parseYaml(content) as { name?: string };
+
+          // Count tones in the tones/ subdirectory
+          let toneCount = 0;
+          try {
+            const tonesDir = await patchDir.getDirectoryHandle('tones');
+            for await (const toneEntry of tonesDir.values()) {
+              if (toneEntry.kind === 'file' && toneEntry.name.endsWith('.yaml')) {
+                toneCount++;
+              }
+            }
+          } catch {
+            // No tones directory
+          }
+
+          patches.push({
+            name: yaml.name || entry.name,
+            directoryName: entry.name,
+            toneCount,
+          });
+        } catch {
+          // Not a valid patch bundle, skip
+        }
+      }
+    }
+  } catch {
+    // Directory doesn't exist yet, return empty list
+  }
+
+  return patches.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Recursively scan a directory for patches and build a tree structure.
+ * A patch is identified by containing a patch.yaml file.
+ */
+async function scanPatchesDirectory(
+  dir: FileSystemDirectoryHandle,
+  path: string[]
+): Promise<LibraryTreeNode[]> {
+  const nodes: LibraryTreeNode[] = [];
+
+  for await (const entry of dir.values()) {
+    if (entry.kind === 'directory') {
+      const subDir = await dir.getDirectoryHandle(entry.name);
+
+      // Check if this is a patch bundle (contains patch.yaml)
+      let isPatchBundle = false;
+      let patchName = entry.name;
+      let toneCount = 0;
+
+      try {
+        const yamlHandle = await subDir.getFileHandle('patch.yaml');
+        const yamlFile = await yamlHandle.getFile();
+        const content = await yamlFile.text();
+        const yaml = parseYaml(content) as { name?: string };
+        patchName = yaml.name || entry.name;
+        isPatchBundle = true;
+
+        // Count tones
+        try {
+          const tonesDir = await subDir.getDirectoryHandle('tones');
+          for await (const toneEntry of tonesDir.values()) {
+            if (toneEntry.kind === 'file' && toneEntry.name.endsWith('.yaml')) {
+              toneCount++;
+            }
+          }
+        } catch {
+          // No tones directory
+        }
+      } catch {
+        // Not a patch bundle
+      }
+
+      if (isPatchBundle) {
+        nodes.push({
+          id: [...path, entry.name].join('/'),
+          name: patchName,
+          type: 'patch',
+          path,
+          directoryName: entry.name,
+          toneCount,
+        });
+      } else {
+        // Regular directory - recurse
+        const children = await scanPatchesDirectory(subDir, [...path, entry.name]);
+        nodes.push({
+          id: [...path, entry.name].join('/'),
+          name: entry.name,
+          type: 'directory',
+          path,
+          children,
+        });
+      }
+    }
+  }
+
+  // Sort: directories first, then alphabetically
+  return nodes.sort((a, b) => {
+    if (a.type === 'directory' && b.type !== 'directory') return -1;
+    if (a.type !== 'directory' && b.type === 'directory') return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/**
+ * List all individual patches in the library as a hierarchical tree.
+ *
+ * Recursively scans `library/s330/patches/` for patch bundles and directories.
+ */
+export async function listIndividualPatchesTree(
+  directoryHandle: FileSystemDirectoryHandle
+): Promise<LibraryTreeNode[]> {
+  try {
+    const patchesDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'patches']);
+    return await scanPatchesDirectory(patchesDir, []);
+  } catch {
+    // Patches directory doesn't exist yet
+    return [];
+  }
+}
+
+
+/**
+ * Export a patch bundle to the library with all dependent tones.
+ *
+ * Creates directory structure:
+ * library/s330/patches/[path...]/
+ *   {name}/
+ *     patch.yaml        - Patch parameters
+ *     tones/
+ *       T01.yaml        - Tone parameters (if slot 0 is used)
+ *       T01.wav         - Wave data
+ *       T05.yaml        - Another tone (if slot 4 is used)
+ *       T05.wav
+ *       ...
+ *
+ * @param directoryHandle - Library directory handle
+ * @param patch - Patch to export
+ * @param tones - Array of tone data to include in the bundle
+ * @param customName - Optional custom name for the patch
+ * @param onProgress - Optional progress callback
+ * @param path - Optional path segments for subdirectory (e.g., ['Pads', 'Ambient'])
+ */
+export async function exportPatchToDirectory(
+  directoryHandle: FileSystemDirectoryHandle,
+  patch: S330Patch,
+  tones: PatchBundleTone[],
+  customName?: string,
+  onProgress?: (progress: number) => void,
+  path: string[] = []
+): Promise<void> {
+  const patchName = customName || patch.common.name || 'untitled';
+  const sanitizedName = patchName.replace(/[<>:"/\\|?*]/g, '_').trim();
+
+  onProgress?.(5);
+
+  // Create library/s330/patches/[path...]/{name}/ directory structure
+  const patchesDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'patches', ...path]);
+  const patchDir = await patchesDir.getDirectoryHandle(sanitizedName, { create: true });
+  const tonesDir = await patchDir.getDirectoryHandle('tones', { create: true });
+
+  onProgress?.(10);
+
+  // Write each tone using shared helper
+  const totalTones = tones.length;
+  for (let i = 0; i < totalTones; i++) {
+    const { slot, tone, waveData } = tones[i];
+    const toneFilename = getToneFilename(slot, tone.name);
+
+    await writeToneFilesToDirectory(tonesDir, tone, waveData, toneFilename);
+
+    // Progress: 10-80% for tones
+    onProgress?.(10 + Math.floor(((i + 1) / totalTones) * 70));
+  }
+
+  // Write patch.yaml using shared helper
+  // For patch bundles, we override the name if customName provided
+  const patchToWrite = customName
+    ? { ...patch, common: { ...patch.common, name: customName } }
+    : patch;
+  await writePatchFileToDirectory(patchDir, patchToWrite, 'patch');
+
+  onProgress?.(100);
+}
+
+/**
+ * Load an individual patch bundle from the library.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param patchDirName - Patch directory name
+ * @param path - Optional path segments from patches root
+ * @returns Loaded patch bundle with patch and tones
+ */
+export async function loadIndividualPatch(
+  directoryHandle: FileSystemDirectoryHandle,
+  patchDirName: string,
+  path: string[] = []
+): Promise<LoadedPatchBundle> {
+  const patchesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'patches', ...path
+  ]);
+
+  const patchDir = await patchesDir.getDirectoryHandle(patchDirName);
+
+  // Load patch.yaml
+  const patchHandle = await patchDir.getFileHandle('patch.yaml');
+  const patchFile = await patchHandle.getFile();
+  const patchContent = await patchFile.text();
+  const patch = PatchYamlSchema.parse(parseYaml(patchContent));
+
+  // Load all tones from tones/ subdirectory
+  const tones = new Map<number, { yaml: ToneYaml; wavData: Uint8Array; segmentsNeeded: number }>();
+
+  try {
+    const tonesDir = await patchDir.getDirectoryHandle('tones');
+
+    for await (const entry of tonesDir.values()) {
+      if (entry.kind === 'file' && entry.name.endsWith('.yaml')) {
+        // Parse slot from filename - supports both formats:
+        // - "T01.yaml" (slot only)
+        // - "T01 ToneName.yaml" (slot with name)
+        const match = entry.name.match(/^T(\d{2})(?:\s|\.yaml)/);
+        if (!match) continue;
+
+        const slot = parseInt(match[1], 10) - 1;
+        if (slot < 0 || slot >= 32) continue;
+
+        // Extract base filename (without .yaml extension)
+        const baseFilename = entry.name.replace('.yaml', '');
+
+        // Use shared helper to load tone files
+        const { yaml, wavData, segmentsNeeded } = await readToneFilesFromDirectory(tonesDir, baseFilename);
+        tones.set(slot, { yaml, wavData, segmentsNeeded });
+      }
+    }
+  } catch {
+    // No tones directory - patch has no dependent tones
+  }
+
+  return { patch, tones };
+}
+
+/**
+ * Delete an individual patch bundle from the library.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param patchDirName - Patch directory name
+ * @param path - Optional path segments from patches root
+ */
+export async function deleteIndividualPatch(
+  directoryHandle: FileSystemDirectoryHandle,
+  patchDirName: string,
+  path: string[] = []
+): Promise<void> {
+  const patchesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'patches', ...path
+  ]);
+
+  // Remove the entire patch directory recursively
+  await patchesDir.removeEntry(patchDirName, { recursive: true });
+}
+
+// =========================================================================
+// Drum Kit Operations
+// =========================================================================
+
+/**
+ * Information about a drum kit bundle in the library.
+ */
+export interface DrumKitInfo {
+  /** Name of the drum kit (from kit.yaml or directory name) */
+  name: string;
+  /** Optional description */
+  description?: string;
+  /** Number of detected kits (4 samples each) */
+  kitCount: number;
+  /** Total number of samples */
+  sampleCount: number;
+  /** Directory name for loading */
+  directoryName: string;
+  /** Path segments from drum-kits root (empty for root items) */
+  path?: string[];
+}
+
+/**
+ * List all drum kit bundles in the library.
+ *
+ * Scans `library/s330/drum-kits/` for directories containing WAV files.
+ *
+ * @deprecated Use listDrumKitsTree for hierarchical view
+ */
+export async function listDrumKits(
+  directoryHandle: FileSystemDirectoryHandle
+): Promise<DrumKitInfo[]> {
+  const kits: DrumKitInfo[] = [];
+
+  try {
+    // Navigate to library/s330/drum-kits/
+    const libraryDir = await directoryHandle.getDirectoryHandle('library', { create: false });
+    const s330Dir = await libraryDir.getDirectoryHandle('s330', { create: false });
+    const drumKitsDir = await s330Dir.getDirectoryHandle('drum-kits', { create: false });
+
+    // Iterate through drum kit directories
+    for await (const entry of drumKitsDir.values()) {
+      if (entry.kind !== 'directory') continue;
+
+      try {
+        const kitDir = await drumKitsDir.getDirectoryHandle(entry.name);
+
+        // Collect WAV files and check for kit.yaml
+        const wavFiles: string[] = [];
+        let kitYaml: DrumKitBundle | null = null;
+
+        for await (const file of kitDir.values()) {
+          if (file.kind !== 'file') continue;
+
+          if (file.name.toLowerCase().endsWith('.wav')) {
+            wavFiles.push(file.name);
+          } else if (file.name === 'kit.yaml') {
+            try {
+              const fileHandle = await kitDir.getFileHandle('kit.yaml');
+              const yamlFile = await fileHandle.getFile();
+              const yamlContent = await yamlFile.text();
+              kitYaml = DrumKitBundleSchema.parse(parseYaml(yamlContent));
+            } catch {
+              // Invalid kit.yaml, ignore
+            }
+          }
+        }
+
+        // Skip directories without WAV files
+        if (wavFiles.length === 0) continue;
+
+        // Parse the bundle to get kit info
+        const resolved = parseDrumKitBundle(kitYaml, wavFiles, entry.name);
+
+        kits.push({
+          name: resolved.name,
+          description: resolved.description,
+          kitCount: resolved.kits.length,
+          sampleCount: resolved.totalSamples,
+          directoryName: entry.name,
+        });
+      } catch {
+        // Skip invalid directories
+      }
+    }
+  } catch {
+    // Drum kits directory doesn't exist yet
+    return [];
+  }
+
+  return kits.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Recursively scan a directory for drum kits and build a tree structure.
+ * A drum kit is identified by containing WAV files or kit.yaml.
+ */
+async function scanDrumKitsDirectory(
+  dir: FileSystemDirectoryHandle,
+  path: string[]
+): Promise<LibraryTreeNode[]> {
+  const nodes: LibraryTreeNode[] = [];
+
+  for await (const entry of dir.values()) {
+    if (entry.kind === 'directory') {
+      const subDir = await dir.getDirectoryHandle(entry.name);
+
+      // Check if this is a drum kit (contains WAV files or kit.yaml)
+      const wavFiles: string[] = [];
+      let kitYaml: DrumKitBundle | null = null;
+
+      for await (const file of subDir.values()) {
+        if (file.kind !== 'file') continue;
+        if (file.name.toLowerCase().endsWith('.wav')) {
+          wavFiles.push(file.name);
+        } else if (file.name === 'kit.yaml') {
+          try {
+            const fileHandle = await subDir.getFileHandle('kit.yaml');
+            const yamlFile = await fileHandle.getFile();
+            const yamlContent = await yamlFile.text();
+            kitYaml = DrumKitBundleSchema.parse(parseYaml(yamlContent));
+          } catch {
+            // Invalid kit.yaml
+          }
+        }
+      }
+
+      if (wavFiles.length > 0) {
+        // This is a drum kit
+        const resolved = parseDrumKitBundle(kitYaml, wavFiles, entry.name);
+        nodes.push({
+          id: [...path, entry.name].join('/'),
+          name: resolved.name,
+          type: 'drum-kit',
+          path,
+          directoryName: entry.name,
+          description: resolved.description,
+          kitCount: resolved.kits.length,
+          sampleCount: resolved.totalSamples,
+        });
+      } else {
+        // Regular directory - recurse
+        const children = await scanDrumKitsDirectory(subDir, [...path, entry.name]);
+        nodes.push({
+          id: [...path, entry.name].join('/'),
+          name: entry.name,
+          type: 'directory',
+          path,
+          children,
+        });
+      }
+    }
+  }
+
+  // Sort: directories first, then alphabetically
+  return nodes.sort((a, b) => {
+    if (a.type === 'directory' && b.type !== 'directory') return -1;
+    if (a.type !== 'directory' && b.type === 'directory') return 1;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+/**
+ * List all drum kits in the library as a hierarchical tree.
+ *
+ * Recursively scans `library/s330/drum-kits/` for drum kit bundles and directories.
+ */
+export async function listDrumKitsTree(
+  directoryHandle: FileSystemDirectoryHandle
+): Promise<LibraryTreeNode[]> {
+  try {
+    const libraryDir = await directoryHandle.getDirectoryHandle('library', { create: false });
+    const s330Dir = await libraryDir.getDirectoryHandle('s330', { create: false });
+    const drumKitsDir = await s330Dir.getDirectoryHandle('drum-kits', { create: false });
+
+    return await scanDrumKitsDirectory(drumKitsDir, []);
+  } catch {
+    // Drum kits directory doesn't exist yet
+    return [];
+  }
+}
+
+/**
+ * Load a drum kit bundle with full metadata and sample information.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param kitName - Kit directory name
+ * @param path - Optional path segments from drum-kits root
+ */
+export async function loadDrumKitBundle(
+  directoryHandle: FileSystemDirectoryHandle,
+  kitName: string,
+  path: string[] = []
+): Promise<ResolvedDrumKitBundle> {
+  // Navigate to the kit directory
+  const kitDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'drum-kits', ...path, kitName
+  ]);
+
+  // Collect WAV files and check for kit.yaml
+  const wavFiles: string[] = [];
+  let kitYaml: DrumKitBundle | null = null;
+
+  for await (const file of kitDir.values()) {
+    if (file.kind !== 'file') continue;
+
+    if (file.name.toLowerCase().endsWith('.wav')) {
+      wavFiles.push(file.name);
+    } else if (file.name === 'kit.yaml') {
+      try {
+        const fileHandle = await kitDir.getFileHandle('kit.yaml');
+        const yamlFile = await fileHandle.getFile();
+        const yamlContent = await yamlFile.text();
+        kitYaml = DrumKitBundleSchema.parse(parseYaml(yamlContent));
+      } catch {
+        // Invalid kit.yaml, use auto-detection only
+      }
+    }
+  }
+
+  // Parse the bundle
+  return parseDrumKitBundle(kitYaml, wavFiles, kitName);
+}
+
+/**
+ * Delete a drum kit from the library.
+ *
+ * Removes the entire drum kit directory including all WAV files and kit.yaml.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param kitName - Kit directory name
+ * @param path - Optional path segments from drum-kits root
+ */
+export async function deleteDrumKit(
+  directoryHandle: FileSystemDirectoryHandle,
+  kitName: string,
+  path: string[] = []
+): Promise<void> {
+  const drumKitsDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'drum-kits', ...path
+  ]);
+
+  // Remove the kit directory recursively
+  await drumKitsDir.removeEntry(kitName, { recursive: true });
+}
+
+/**
+ * Load raw WAV samples from a library tone for sample chopping.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param setName - Name of the set
+ * @param toneFile - Tone file name (without extension)
+ * @returns Parsed samples and sample rate
+ */
+export async function loadToneWavSamples(
+  directoryHandle: FileSystemDirectoryHandle,
+  setName: string,
+  toneFile: string
+): Promise<{ samples: Int16Array; sampleRate: number }> {
+  const sanitizedName = setName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+
+  const tonesDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'sets', sanitizedName, 'tones'
+  ]);
+
+  // Load WAV file
+  const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`);
+  const wavFile = await wavHandle.getFile();
+  const wavFileBuffer = await wavFile.arrayBuffer();
+
+  // Parse WAV to get raw samples
+  const wavData = parseWav(wavFileBuffer);
+
+  return {
+    samples: wavData.samples,
+    sampleRate: wavData.sampleRate,
+  };
+}
+
+/**
+ * Slice definition for deferred chopping (version 2 format).
+ */
+export interface SliceDefinitionInput {
+  /** Human-readable label for this slice (e.g., "kick", "snare") */
+  label: string;
+  /** Start position in samples (0-indexed) */
+  startSample: number;
+  /** End position in samples (exclusive) */
+  endSample: number;
+}
+
+/**
+ * Save a drum kit to the library using deferred chopping (v2 format).
+ *
+ * Stores the full source WAV and slice definitions in kit.yaml.
+ * Slices are chopped at import time, enabling future slice editing.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param kitName - Name for the drum kit directory
+ * @param sourceWav - Full source audio samples and sample rate
+ * @param slices - Slice definitions with labels and sample boundaries
+ * @param kitConfig - Kit configuration (name, sample rate, base note, transpose)
+ */
+export async function saveDrumKitToLibrary(
+  directoryHandle: FileSystemDirectoryHandle,
+  kitName: string,
+  sourceWav: { samples: Int16Array; sampleRate: number },
+  slices: SliceDefinitionInput[],
+  kitConfig: {
+    name: string;
+    description?: string;
+    sampleRate: 15000 | 30000;
+    baseNote: number;
+    /** Transpose in semitones (-64 to +63, 0 = no change) */
+    transpose?: number;
+    /** Velocity-to-level sensitivity (0-5, default: 2) */
+    velocitySensitivity?: number;
+  }
+): Promise<void> {
+  const sanitizedName = kitName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
+
+  // Create drum-kits directory structure
+  const drumKitsDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'drum-kits', sanitizedName
+  ]);
+
+  // Write source WAV file
+  const sourceFilename = 'source.wav';
+  const wavBlob = createWavBlobFromSamples(sourceWav.samples, sourceWav.sampleRate);
+  const wavHandle = await drumKitsDir.getFileHandle(sourceFilename, { create: true });
+  const wavWritable = await wavHandle.createWritable();
+  await wavWritable.write(wavBlob);
+  await wavWritable.close();
+
+  // Write kit.yaml with v2 format (source + slices)
+  const kitYaml: DrumKitBundle = {
+    format: 'drum-kit-bundle',
+    version: 2,
+    name: kitConfig.name,
+    description: kitConfig.description,
+    sampleRate: kitConfig.sampleRate,
+    baseNote: kitConfig.baseNote,
+    transpose: kitConfig.transpose,
+    velocitySensitivity: kitConfig.velocitySensitivity ?? 2,
+    source: sourceFilename,
+    slices: slices.map((slice) => ({
+      label: slice.label,
+      startSample: slice.startSample,
+      endSample: slice.endSample,
+    })),
+  };
+
+  const yamlContent = stringifyYaml(kitYaml, { indent: 2, lineWidth: 120 });
+  const yamlHandle = await drumKitsDir.getFileHandle('kit.yaml', { create: true });
+  const yamlWritable = await yamlHandle.createWritable();
+  await yamlWritable.write(yamlContent);
+  await yamlWritable.close();
+}
+
+/**
+ * Load a single WAV file from a drum kit bundle.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param kitName - Directory name of the drum kit
+ * @param fileName - WAV filename to load
+ * @returns Raw WAV file data
+ */
+export async function loadDrumKitSample(
+  directoryHandle: FileSystemDirectoryHandle,
+  kitName: string,
+  fileName: string,
+  path: string[] = []
+): Promise<Uint8Array> {
+  const kitDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'drum-kits', ...path, kitName
+  ]);
+
+  const fileHandle = await kitDir.getFileHandle(fileName);
+  const file = await fileHandle.getFile();
+  const arrayBuffer = await file.arrayBuffer();
+
+  return new Uint8Array(arrayBuffer);
+}
+
+/**
+ * Load the source WAV from a v2 drum kit bundle (deferred chopping).
+ *
+ * @param directoryHandle - Library directory handle
+ * @param kitName - Directory name of the drum kit
+ * @param sourceFilename - Source WAV filename (from kit.yaml)
+ * @returns Parsed samples and sample rate
+ */
+export async function loadDrumKitSource(
+  directoryHandle: FileSystemDirectoryHandle,
+  kitName: string,
+  sourceFilename: string,
+  path: string[] = []
+): Promise<{ samples: Int16Array; sampleRate: number }> {
+  const kitDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'drum-kits', ...path, kitName
+  ]);
+
+  const fileHandle = await kitDir.getFileHandle(sourceFilename);
+  const file = await fileHandle.getFile();
+  const arrayBuffer = await file.arrayBuffer();
+
+  // Parse WAV to get raw samples
+  const wavData = parseWav(arrayBuffer);
+
+  return {
+    samples: wavData.samples,
+    sampleRate: wavData.sampleRate,
+  };
+}
+
+/**
+ * Kit configuration that can be updated in edit mode.
+ */
+export interface DrumKitConfigUpdate {
+  /** Transpose in semitones (-64 to +63, 0 = no change) */
+  transpose?: number;
+  /** Velocity-to-level sensitivity (0-5, default: 2) */
+  velocitySensitivity?: number;
+}
+
+/**
+ * Update the slice definitions and optionally kit config in an existing v2 drum kit.
+ *
+ * Preserves other kit settings (name, sample rate, base note) unless overridden.
+ *
+ * @param directoryHandle - Library directory handle
+ * @param kitName - Directory name of the drum kit
+ * @param slices - New slice definitions
+ * @param kitConfig - Optional kit configuration updates (transpose, velocitySensitivity)
+ */
+export async function updateDrumKitSlices(
+  directoryHandle: FileSystemDirectoryHandle,
+  kitName: string,
+  slices: SliceDefinitionInput[],
+  kitConfig?: DrumKitConfigUpdate,
+  path: string[] = []
+): Promise<void> {
+  const kitDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'drum-kits', ...path, kitName
+  ]);
+
+  // Read existing kit.yaml
+  const yamlHandle = await kitDir.getFileHandle('kit.yaml');
+  const yamlFile = await yamlHandle.getFile();
+  const yamlContent = await yamlFile.text();
+  const existingKit = DrumKitBundleSchema.parse(parseYaml(yamlContent));
+
+  // Ensure this is a v2 format kit
+  if (!existingKit.source) {
+    throw new Error('Cannot update slices: kit is not in v2 format (missing source)');
+  }
+
+  // Update slices and optionally kit config
+  const updatedKit: DrumKitBundle = {
+    ...existingKit,
+    version: 2,
+    slices: slices.map((slice) => ({
+      label: slice.label,
+      startSample: slice.startSample,
+      endSample: slice.endSample,
+    })),
+    // Apply kit config updates if provided
+    ...(kitConfig?.transpose !== undefined && { transpose: kitConfig.transpose }),
+    ...(kitConfig?.velocitySensitivity !== undefined && { velocitySensitivity: kitConfig.velocitySensitivity }),
+  };
+
+  // Write updated kit.yaml
+  const updatedYamlContent = stringifyYaml(updatedKit, { indent: 2, lineWidth: 120 });
+  const writableHandle = await kitDir.getFileHandle('kit.yaml', { create: true });
+  const writable = await writableHandle.createWritable();
+  await writable.write(updatedYamlContent);
+  await writable.close();
+}
+
+// TypeScript declarations for File System Access API
+declare global {
+  interface Window {
+    showSaveFilePicker(options?: SaveFilePickerOptions): Promise<FileSystemFileHandle>;
+    showOpenFilePicker(options?: OpenFilePickerOptions): Promise<FileSystemFileHandle[]>;
+    showDirectoryPicker(options?: DirectoryPickerOptions): Promise<FileSystemDirectoryHandle>;
+  }
+
+  interface SaveFilePickerOptions {
+    suggestedName?: string;
+    types?: FilePickerAcceptType[];
+  }
+
+  interface OpenFilePickerOptions {
+    multiple?: boolean;
+    types?: FilePickerAcceptType[];
+  }
+
+  interface DirectoryPickerOptions {
+    id?: string;
+    mode?: 'read' | 'readwrite';
+    startIn?: 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
+  }
+
+  interface FilePickerAcceptType {
+    description?: string;
+    accept: Record<string, string[]>;
+  }
+
+  interface FileSystemFileHandle {
+    getFile(): Promise<File>;
+    createWritable(): Promise<FileSystemWritableFileStream>;
+  }
+
+  interface FileSystemDirectoryHandle {
+    getFileHandle(name: string, options?: { create?: boolean }): Promise<FileSystemFileHandle>;
+    getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<FileSystemDirectoryHandle>;
+    queryPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<'granted' | 'denied' | 'prompt'>;
+    requestPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<'granted' | 'denied' | 'prompt'>;
+    removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
+    values(): AsyncIterable<FileSystemHandle>;
+  }
+
+  interface FileSystemHandle {
+    readonly kind: 'file' | 'directory';
+    readonly name: string;
+  }
+
+  interface FileSystemWritableFileStream extends WritableStream {
+    write(data: string | Blob | ArrayBuffer): Promise<void>;
+    close(): Promise<void>;
+  }
+}
