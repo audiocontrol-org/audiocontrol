@@ -153,4 +153,25 @@ export {
     calculateSegmentsNeeded,
     validateWaveDataFits,
     prepareWavForSSeries,
+    clampWaveParams,
 } from './s-series-wave-format.js';
+
+// =============================================================================
+// Shared Client
+// =============================================================================
+
+export type {
+    ProgressCallback,
+    PatchLoadedCallback,
+    ToneLoadedCallback,
+    MultiPartConfig,
+    PatchNameInfo,
+    ToneNameInfo,
+    SSeriesWaveDataInput as SSeriesClientWaveDataInput,
+    SSeriesImportToneInput,
+    SSeriesParserFunctions,
+    SSeriesClientInterface,
+    SSeriesAddressBuilders,
+} from './s-series-client.js';
+
+export { createSSeriesClient } from './s-series-client.js';

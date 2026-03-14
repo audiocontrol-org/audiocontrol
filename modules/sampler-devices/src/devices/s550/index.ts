@@ -230,3 +230,21 @@ export {
     prepareWavForSSeries,
     resample,
 } from '../roland-s-series/index.js';
+
+// =============================================================================
+// Client
+// =============================================================================
+
+export type { S550ClientInterface } from './s550-client.js';
+export { createS550Client } from './s550-client.js';
+
+// =============================================================================
+// Tone Factory
+// =============================================================================
+
+export type { CreateToneConfig, CreateSubToneConfig } from './s550-tone-factory.js';
+export {
+    createTone,
+    createSubTone,
+    createMonolithicPrimaryTone,
+} from './s550-tone-factory.js';

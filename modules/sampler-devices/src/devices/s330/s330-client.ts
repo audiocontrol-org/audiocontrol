@@ -82,6 +82,7 @@ import {
 } from './s330-params.js';
 
 import { createTone } from './s330-tone-factory.js';
+import { clampWaveParams } from '../roland-s-series/index.js';
 import { withRetry, type RetryOptions } from '@audiocontrol/shared-midi';
 
 // =============================================================================
@@ -1684,20 +1685,23 @@ export function createS330Client(
             if (input.tone) {
                 // Library import: Use the full tone object, but override wave allocation
                 // to match the explicit parameters (wave allocation may differ from original)
+                // Use clampWaveParams to ensure loopPoint doesn't exceed endPoint
                 const toneName = input.tone.name;
                 console.log(`[S330Client] Importing existing tone ${toneIndex}: "${toneName}" to bank ${waveBank}, segment ${segmentTop}`);
 
-                tone = {
-                    ...input.tone,
-                    wave: {
+                const clampedWave = clampWaveParams(
+                    {
                         ...input.tone.wave,
                         bank: waveBank,
                         segmentTop,
                         segmentLength,
-                        // Recalculate end point based on actual sample count
-                        endPoint: Math.max(0, sampleCount - 1),
-                        loopLength: Math.max(0, sampleCount - 1 - input.tone.wave.loopPoint),
                     },
+                    sampleCount
+                );
+
+                tone = {
+                    ...input.tone,
+                    wave: clampedWave,
                 };
             } else {
                 // New sample import: Use createTone factory with sensible defaults

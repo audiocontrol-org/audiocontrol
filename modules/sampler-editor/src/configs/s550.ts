@@ -4,6 +4,7 @@
  * @packageDocumentation
  */
 
+import { createS550Client } from '@audiocontrol/sampler-devices/s550';
 import type { DeviceConfig, SamplerClientInterface } from './types.js';
 import type { SSeriesMidiAdapter } from '@audiocontrol/sampler-devices/roland-s-series';
 
@@ -35,15 +36,9 @@ export const s550Config: DeviceConfig = {
   // URL configuration
   basePath: '/roland/s550/editor',
 
-  // Client factory - S-550 client not yet implemented
-  createClient: (_adapter: SSeriesMidiAdapter, _options?: { deviceId?: number }): SamplerClientInterface => {
-    // TODO: Implement S-550 client using shared S-series base
-    // The S-550 uses the same SysEx protocol as S-330 (model ID 0x1E)
-    // with different memory layout constants.
-    throw new Error(
-      'S-550 client not yet implemented. ' +
-      'The S-550 client requires implementing s550-client.ts in sampler-devices ' +
-      'using the shared S-series protocol base.'
-    );
+  // Client factory
+  createClient: (adapter: SSeriesMidiAdapter, options?: { deviceId?: number }): SamplerClientInterface => {
+    const client = createS550Client(adapter, options);
+    return client as unknown as SamplerClientInterface;
   },
 };

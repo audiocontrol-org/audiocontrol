@@ -448,3 +448,41 @@ export function prepareWavForSSeries(
         source,
     };
 }
+
+/**
+ * Clamp wave parameters to valid ranges for S-series devices.
+ *
+ * This ensures:
+ * - loopPoint does not exceed endPoint (prevents sampler from playing past wave data)
+ * - loopLength is recalculated based on clamped loopPoint
+ * - All values are non-negative
+ *
+ * @param wave - Wave parameters to clamp
+ * @param sampleCount - Actual sample count (determines endPoint)
+ * @returns Clamped wave parameters
+ */
+export function clampWaveParams<T extends {
+    bank: number;
+    segmentTop: number;
+    segmentLength: number;
+    startPoint: number;
+    endPoint: number;
+    loopPoint: number;
+    loopLength: number;
+}>(wave: T, sampleCount: number): T {
+    // Calculate the valid end point based on sample count
+    const endPoint = Math.max(0, sampleCount - 1);
+
+    // Clamp loop point to not exceed end point
+    const loopPoint = Math.min(Math.max(0, wave.loopPoint), endPoint);
+
+    // Recalculate loop length based on clamped values
+    const loopLength = Math.max(0, endPoint - loopPoint);
+
+    return {
+        ...wave,
+        endPoint,
+        loopPoint,
+        loopLength,
+    };
+}
