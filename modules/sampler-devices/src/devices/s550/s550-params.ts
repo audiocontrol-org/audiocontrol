@@ -324,7 +324,11 @@ export function parseTone(data: number[]): S550Tone {
         pitchFollow: getByte(TONE_OFFSETS.PITCH_FOLLOW) === 1,
         recThreshold: getByte(TONE_OFFSETS.REC_THRESHOLD),
         recPreTrigger: getByte(TONE_OFFSETS.REC_PRE_TRIGGER),
-        loopTune: parseSignedValue(getByte(TONE_OFFSETS.LOOP_TUNE, 64)),
+        loopTune: (() => {
+            // Loop tune uses two's complement like transpose, not bipolar encoding
+            const raw = getByte(TONE_OFFSETS.LOOP_TUNE, 0);
+            return raw > 127 ? raw - 256 : raw;
+        })(),
         envZoom: getByte(TONE_OFFSETS.ENV_ZOOM),
         // S-550 has 64 tones, so copySource can be 0-63
         copySource: getByte(TONE_OFFSETS.COPY_SOURCE),
@@ -502,7 +506,8 @@ export function encodeTone(tone: S550Tone): number[] {
     data[TONE_OFFSETS.REC_PRE_TRIGGER] = tone.recPreTrigger & 0x03;
     // S-550 has 64 tones, so copySource uses 6 bits (0-63)
     data[TONE_OFFSETS.COPY_SOURCE] = tone.copySource & 0x3F;
-    data[TONE_OFFSETS.LOOP_TUNE] = encodeSignedValue(tone.loopTune);
+    // Loop tune uses two's complement like transpose, not bipolar encoding
+    data[TONE_OFFSETS.LOOP_TUNE] = tone.loopTune < 0 ? tone.loopTune + 256 : tone.loopTune;
 
     // Additional settings
     data[TONE_OFFSETS.PITCH_FOLLOW] = tone.pitchFollow ? 1 : 0;

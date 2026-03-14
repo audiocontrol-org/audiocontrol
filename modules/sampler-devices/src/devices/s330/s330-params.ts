@@ -321,7 +321,11 @@ export function parseTone(data: number[]): S330Tone {
         pitchFollow: getByte(TONE_OFFSETS.PITCH_FOLLOW) === 1,
         recThreshold: getByte(TONE_OFFSETS.REC_THRESHOLD),
         recPreTrigger: getByte(TONE_OFFSETS.REC_PRE_TRIGGER),
-        loopTune: parseSignedValue(getByte(TONE_OFFSETS.LOOP_TUNE, 64)),
+        loopTune: (() => {
+            // Loop tune uses two's complement like transpose, not bipolar encoding
+            const raw = getByte(TONE_OFFSETS.LOOP_TUNE, 0);
+            return raw > 127 ? raw - 256 : raw;
+        })(),
         envZoom: getByte(TONE_OFFSETS.ENV_ZOOM),
         copySource: getByte(TONE_OFFSETS.COPY_SOURCE),
     };
@@ -494,7 +498,8 @@ export function encodeTone(tone: S330Tone): number[] {
     data[TONE_OFFSETS.REC_THRESHOLD] = tone.recThreshold & 0x7F;
     data[TONE_OFFSETS.REC_PRE_TRIGGER] = tone.recPreTrigger & 0x03;
     data[TONE_OFFSETS.COPY_SOURCE] = tone.copySource & 0x1F;
-    data[TONE_OFFSETS.LOOP_TUNE] = encodeSignedValue(tone.loopTune);
+    // Loop tune uses two's complement like transpose, not bipolar encoding
+    data[TONE_OFFSETS.LOOP_TUNE] = tone.loopTune < 0 ? tone.loopTune + 256 : tone.loopTune;
 
     // Additional settings
     data[TONE_OFFSETS.PITCH_FOLLOW] = tone.pitchFollow ? 1 : 0;
