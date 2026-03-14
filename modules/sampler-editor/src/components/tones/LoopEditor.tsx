@@ -9,8 +9,10 @@
 
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
 import type { LoopCandidate } from '@audiocontrol/sampler-library';
+import { createSmoothedCopy } from '@audiocontrol/sampler-library/browser';
 import { cn } from '@/lib/utils';
 import type { LoopDetectionProgress } from '@/hooks/useLoopDetection';
+import { useAudioPreview } from '@/hooks/useAudioPreview';
 
 interface LoopEditorProps {
     /** Audio samples (16-bit signed integers) */
@@ -51,6 +53,10 @@ interface LoopEditorProps {
     isSearching?: boolean;
     /** Auto-detection search progress */
     searchProgress?: LoopDetectionProgress;
+    /** Called to smooth the loop splice point with crossfade */
+    onSmoothLoop?: (mode: 'linear' | 'equal-power') => void;
+    /** Whether smoothing is in progress */
+    isSmoothing?: boolean;
 }
 
 /** Waveform colors */
@@ -91,6 +97,8 @@ export function LoopEditor({
     onAutoDetect,
     isSearching = false,
     searchProgress,
+    onSmoothLoop,
+    isSmoothing = false,
 }: LoopEditorProps): JSX.Element {
     const leftCanvasRef = useRef<HTMLCanvasElement>(null);
     const rightCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -101,6 +109,10 @@ export function LoopEditor({
     const [isDragging, setIsDragging] = useState<'loop' | 'end' | null>(null);
     const [dragStartX, setDragStartX] = useState(0);
     const [dragStartValue, setDragStartValue] = useState(0);
+    const [previewMode, setPreviewMode] = useState<'normal' | 'smoothed' | null>(null);
+
+    // Audio preview hook
+    const { play, stop, isPlaying } = useAudioPreview({ sampleRate });
 
     // Calculate window size based on zoom
     const windowSamples = Math.round(DEFAULT_WINDOW_SAMPLES / zoom);
@@ -141,6 +153,93 @@ export function LoopEditor({
         },
         [paneWidth, windowSamples]
     );
+
+    /**
+     * Create a loop preview buffer that plays through the loop transition.
+     * Plays: [lead-in] -> [loop region] -> [loop region] -> [loop region]
+     * This lets you hear the splice point multiple times.
+     */
+    const createLoopPreview = useCallback(
+        (sourceSamples: Int16Array, applySmoothing: boolean): Int16Array => {
+            const loopLength = endPoint - loopPoint;
+            if (loopLength < 32) {
+                throw new Error('Loop too short to preview');
+            }
+
+            // Lead-in: ~100ms before the first loop transition
+            const leadInSamples = Math.min(Math.floor(sampleRate * 0.1), loopPoint - startPoint);
+            const leadInStart = endPoint - leadInSamples;
+
+            // Number of loop iterations to play
+            const loopIterations = 3;
+
+            // Total preview length
+            const totalLength = leadInSamples + (loopLength * loopIterations);
+            const preview = new Int16Array(totalLength);
+
+            // Optionally apply smoothing to source
+            const processedSamples = applySmoothing
+                ? createSmoothedCopy(sourceSamples, loopPoint, endPoint, { mode: 'equal-power', crossfadeLength: 64 })
+                : sourceSamples;
+
+            // Copy lead-in (approaching end point)
+            let writePos = 0;
+            for (let i = 0; i < leadInSamples; i++) {
+                preview[writePos++] = processedSamples[leadInStart + i] ?? 0;
+            }
+
+            // Copy loop iterations
+            for (let iter = 0; iter < loopIterations; iter++) {
+                for (let i = 0; i < loopLength; i++) {
+                    preview[writePos++] = processedSamples[loopPoint + i] ?? 0;
+                }
+            }
+
+            return preview;
+        },
+        [startPoint, loopPoint, endPoint, sampleRate]
+    );
+
+    // Preview the loop without smoothing
+    const handlePreviewLoop = useCallback(() => {
+        if (!samples) return;
+
+        try {
+            stop(); // Stop any current playback
+            setPreviewMode('normal');
+            const preview = createLoopPreview(samples, false);
+            play(preview);
+        } catch (err) {
+            console.error('Failed to preview loop:', err);
+        }
+    }, [samples, createLoopPreview, play, stop]);
+
+    // Preview the loop with smoothing applied
+    const handlePreviewSmoothed = useCallback(() => {
+        if (!samples) return;
+
+        try {
+            stop(); // Stop any current playback
+            setPreviewMode('smoothed');
+            const preview = createLoopPreview(samples, true);
+            play(preview);
+        } catch (err) {
+            console.error('Failed to preview smoothed loop:', err);
+        }
+    }, [samples, createLoopPreview, play, stop]);
+
+    // Stop preview and clear mode
+    const handleStopPreview = useCallback(() => {
+        stop();
+        setPreviewMode(null);
+    }, [stop]);
+
+    // Clear preview mode when playback ends
+    useEffect(() => {
+        if (!isPlaying) {
+            setPreviewMode(null);
+        }
+    }, [isPlaying]);
 
     // Draw a waveform segment on a canvas
     const drawWaveform = useCallback(
@@ -509,6 +608,54 @@ export function LoopEditor({
                                 </>
                             ) : (
                                 'Auto-Detect'
+                            )}
+                        </button>
+                    )}
+                    {/* Preview controls */}
+                    <div className="flex items-center gap-1 border-l border-s330-accent/20 pl-3 ml-1">
+                        {!isPlaying ? (
+                            <>
+                                <button
+                                    onClick={handlePreviewLoop}
+                                    disabled={!samples}
+                                    className="ac-btn ac-btn-xs ac-btn-ghost"
+                                    title="Preview loop (hear the splice point)"
+                                >
+                                    ▶ Preview
+                                </button>
+                                <button
+                                    onClick={handlePreviewSmoothed}
+                                    disabled={!samples}
+                                    className="ac-btn ac-btn-xs ac-btn-ghost"
+                                    title="Preview with crossfade smoothing applied"
+                                >
+                                    ▶ Smoothed
+                                </button>
+                            </>
+                        ) : (
+                            <button
+                                onClick={handleStopPreview}
+                                className="ac-btn ac-btn-xs ac-btn-secondary"
+                                title="Stop playback"
+                            >
+                                ■ Stop {previewMode === 'smoothed' ? '(smoothed)' : ''}
+                            </button>
+                        )}
+                    </div>
+                    {onSmoothLoop && (
+                        <button
+                            onClick={() => onSmoothLoop('equal-power')}
+                            disabled={isSmoothing || isPlaying}
+                            className="ac-btn ac-btn-xs ac-btn-secondary"
+                            title="Apply crossfade at loop splice point to eliminate clicks"
+                        >
+                            {isSmoothing ? (
+                                <>
+                                    <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-1" />
+                                    Smoothing...
+                                </>
+                            ) : (
+                                'Apply Smoothing'
                             )}
                         </button>
                     )}

@@ -75,6 +75,13 @@ export interface LoopCandidate {
   slopeScore: number;
 
   /**
+   * Loop length preference score [0, 1].
+   * 1.0 = ideal length for the sample, 0 = too short or too long.
+   * Prefers loops proportional to sample length, penalizes very short loops.
+   */
+  lengthScore: number;
+
+  /**
    * Weighted combination of all scores [0, 1].
    * Higher is better.
    */
@@ -114,6 +121,23 @@ export interface SearchConfig {
   topK: number;
 
   /**
+   * Target loop length as a fraction of total sustain region length.
+   * 0.15 means target loop should be ~15% of the sustain region.
+   * This is used to calculate length scores that prefer longer loops
+   * for longer samples.
+   * @default 0.15
+   */
+  targetLoopLengthRatio: number;
+
+  /**
+   * Minimum acceptable loop length as a fraction of the target.
+   * Loops shorter than this are heavily penalized.
+   * 0.1 means loops less than 10% of the target get low scores.
+   * @default 0.1
+   */
+  minLoopLengthRatio: number;
+
+  /**
    * Weights for the composite score calculation.
    * All weights should sum to 1.0 for consistent scoring.
    */
@@ -126,21 +150,27 @@ export interface SearchConfig {
 export interface ScoreWeights {
   /**
    * Weight for normalized cross-correlation (time domain).
-   * @default 0.50
+   * @default 0.40
    */
   ncc: number;
 
   /**
    * Weight for spectral envelope similarity (frequency domain).
-   * @default 0.35
+   * @default 0.30
    */
   spectral: number;
 
   /**
    * Weight for slope (first derivative) match.
-   * @default 0.15
+   * @default 0.10
    */
   slope: number;
+
+  /**
+   * Weight for loop length preference.
+   * @default 0.20
+   */
+  length: number;
 }
 
 /**
@@ -266,10 +296,13 @@ export const DEFAULT_SEARCH_CONFIG: SearchConfig = {
   sustainStartMs: 50,
   correlationWindowMs: 34,
   topK: 10,
+  targetLoopLengthRatio: 0.15,
+  minLoopLengthRatio: 0.1,
   weights: {
-    ncc: 0.5,
-    spectral: 0.35,
-    slope: 0.15,
+    ncc: 0.40,
+    spectral: 0.30,
+    slope: 0.10,
+    length: 0.20,
   },
 };
 

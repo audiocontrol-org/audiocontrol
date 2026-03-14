@@ -122,7 +122,7 @@ export function searchLoopPoints(
     pairsToScore = sampleCandidates(candidatePairs, maxCandidatesToScore);
   }
 
-  const scoredCandidates = scoreCandidates(samples, pairsToScore, sampleRate, cfg);
+  const scoredCandidates = scoreCandidates(samples, pairsToScore, sampleRate, cfg, sustainStart);
 
   onProgress?.(80, 'Ranking candidates...');
 
@@ -188,11 +188,12 @@ export function quickSearchLoopPoints(
   const config: Partial<SearchConfig> = {
     searchWindowMs: 50,
     topK,
-    // Adjust weights to use only NCC and slope
+    // Adjust weights to use only NCC, slope, and length
     weights: {
-      ncc: 0.85,
+      ncc: 0.65,
       spectral: 0,
       slope: 0.15,
+      length: 0.20,
     },
   };
 

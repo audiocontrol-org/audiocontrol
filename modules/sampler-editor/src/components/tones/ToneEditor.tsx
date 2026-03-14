@@ -59,6 +59,9 @@ interface ToneEditorProps {
     onAutoDetectLoopPoints?: () => void;
     isSearchingLoopPoints?: boolean;
     loopSearchProgress?: LoopDetectionProgress;
+    // Loop smoothing props
+    onSmoothLoop?: (mode: 'linear' | 'equal-power') => void;
+    isSmoothingLoop?: boolean;
 }
 
 export function ToneEditor({
@@ -83,6 +86,8 @@ export function ToneEditor({
     onAutoDetectLoopPoints,
     isSearchingLoopPoints,
     loopSearchProgress,
+    onSmoothLoop,
+    isSmoothingLoop,
 }: ToneEditorProps) {
     const handleTvaEnvelopeChange = (envelope: S330Envelope) => {
         onUpdate?.({ ...tone, tva: { ...tone.tva, envelope } });
@@ -372,6 +377,8 @@ export function ToneEditor({
                         onAutoDetect={onAutoDetectLoopPoints}
                         isSearching={isSearchingLoopPoints}
                         searchProgress={loopSearchProgress}
+                        onSmoothLoop={onSmoothLoop}
+                        isSmoothing={isSmoothingLoop}
                     />
                 </div>
             )}

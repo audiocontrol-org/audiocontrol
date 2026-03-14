@@ -28,6 +28,7 @@ import {
  * @param endCrossing - Zero crossing at loop end
  * @param sampleRate - Sample rate in Hz
  * @param config - Search configuration
+ * @param sustainStart - Start of sustain region (for length scoring)
  * @returns LoopCandidate with all scores
  */
 export function scoreCandidate(
@@ -37,7 +38,8 @@ export function scoreCandidate(
   startCrossing: ZeroCrossing,
   endCrossing: ZeroCrossing,
   sampleRate: number,
-  config: SearchConfig = DEFAULT_SEARCH_CONFIG
+  config: SearchConfig = DEFAULT_SEARCH_CONFIG,
+  sustainStart: number = 0
 ): LoopCandidate {
   // Calculate window sizes
   const nccWindowSize = calculateOptimalWindowSize(sampleRate, 20, 50, config.correlationWindowMs);
@@ -47,9 +49,17 @@ export function scoreCandidate(
   const nccScore = calculateNCC(samples, loopStart, loopEnd, nccWindowSize);
   const spectralScore = scoreSpectralSimilarity(samples, loopStart, loopEnd, fftWindowSize);
   const slopeScore = calculateSlopeScore(startCrossing, endCrossing);
+  const lengthScore = calculateLengthScore(
+    loopStart,
+    loopEnd,
+    sustainStart,
+    samples.length,
+    config.targetLoopLengthRatio,
+    config.minLoopLengthRatio
+  );
 
   // Calculate composite score
-  const compositeScore = calculateCompositeScore(nccScore, spectralScore, slopeScore, config.weights);
+  const compositeScore = calculateCompositeScore(nccScore, spectralScore, slopeScore, lengthScore, config.weights);
 
   return {
     loopStart,
@@ -57,8 +67,66 @@ export function scoreCandidate(
     nccScore,
     spectralScore,
     slopeScore,
+    lengthScore,
     compositeScore,
   };
+}
+
+/**
+ * Calculate loop length preference score.
+ *
+ * This score encourages loops that are proportional to the sample length:
+ * - Very short samples (few cycles): short loops are fine
+ * - Longer samples: prefer longer loops to capture more tonal variation
+ *
+ * The score uses a bell curve centered on the target length, with heavy
+ * penalty for loops shorter than the minimum ratio.
+ *
+ * @param loopStart - Start of loop
+ * @param loopEnd - End of loop
+ * @param sustainStart - Start of sustain region
+ * @param sampleLength - Total sample length
+ * @param targetRatio - Target loop length as ratio of sustain region
+ * @param minRatio - Minimum acceptable ratio of target length
+ * @returns Length score [0, 1]
+ */
+export function calculateLengthScore(
+  loopStart: number,
+  loopEnd: number,
+  sustainStart: number,
+  sampleLength: number,
+  targetRatio: number = 0.15,
+  minRatio: number = 0.1
+): number {
+  const loopLength = loopEnd - loopStart;
+  const sustainLength = sampleLength - sustainStart;
+
+  // Target loop length based on sustain region
+  const targetLength = sustainLength * targetRatio;
+
+  // Minimum acceptable loop length
+  const minLength = targetLength * minRatio;
+
+  // If loop is shorter than minimum, heavily penalize
+  if (loopLength < minLength) {
+    // Sharp falloff below minimum
+    return Math.max(0, loopLength / minLength * 0.3);
+  }
+
+  // Calculate how close we are to the target
+  // Use a bell curve that's more forgiving for longer loops
+  const ratio = loopLength / targetLength;
+
+  if (ratio <= 1) {
+    // Below target: linear ramp up from minRatio to 1.0
+    const normalized = (ratio - minRatio) / (1 - minRatio);
+    return 0.3 + normalized * 0.7;
+  } else {
+    // Above target: gentle falloff (longer loops are okay, just not ideal)
+    // Score decreases slowly - being 2x the target still gives ~0.7 score
+    const excess = ratio - 1;
+    return Math.max(0.4, 1 - excess * 0.3);
+  }
 }
 
 /**
@@ -66,7 +134,7 @@ export function scoreCandidate(
  *
  * Formula:
  * ```
- * score = w_ncc * NCC + w_spec * spectralScore + w_slope * slopeScore
+ * score = w_ncc * NCC + w_spec * spectralScore + w_slope * slopeScore + w_length * lengthScore
  * ```
  *
  * Note: NCC is in range [-1, 1], so we normalize it to [0, 1] for the composite.
@@ -74,6 +142,7 @@ export function scoreCandidate(
  * @param nccScore - Normalized cross-correlation score [-1, 1]
  * @param spectralScore - Spectral similarity score [0, 1]
  * @param slopeScore - Slope match score [0, 1]
+ * @param lengthScore - Loop length preference score [0, 1]
  * @param weights - Weights for each component
  * @returns Composite score [0, 1]
  */
@@ -81,6 +150,7 @@ export function calculateCompositeScore(
   nccScore: number,
   spectralScore: number,
   slopeScore: number,
+  lengthScore: number,
   weights: ScoreWeights
 ): number {
   // Normalize NCC from [-1, 1] to [0, 1]
@@ -88,7 +158,10 @@ export function calculateCompositeScore(
 
   // Calculate weighted sum
   const score =
-    weights.ncc * normalizedNCC + weights.spectral * spectralScore + weights.slope * slopeScore;
+    weights.ncc * normalizedNCC +
+    weights.spectral * spectralScore +
+    weights.slope * slopeScore +
+    weights.length * lengthScore;
 
   // Clamp to [0, 1]
   return Math.max(0, Math.min(1, score));
@@ -101,6 +174,7 @@ export function calculateCompositeScore(
  * @param candidatePairs - Array of candidate pairs with zero crossing info
  * @param sampleRate - Sample rate in Hz
  * @param config - Search configuration
+ * @param sustainStart - Start of sustain region (for length scoring)
  * @returns Array of LoopCandidate with all scores
  */
 export function scoreCandidates(
@@ -112,10 +186,11 @@ export function scoreCandidates(
     endCrossing: ZeroCrossing;
   }>,
   sampleRate: number,
-  config: SearchConfig = DEFAULT_SEARCH_CONFIG
+  config: SearchConfig = DEFAULT_SEARCH_CONFIG,
+  sustainStart: number = 0
 ): LoopCandidate[] {
   return candidatePairs.map(({ loopStart, loopEnd, startCrossing, endCrossing }) =>
-    scoreCandidate(samples, loopStart, loopEnd, startCrossing, endCrossing, sampleRate, config)
+    scoreCandidate(samples, loopStart, loopEnd, startCrossing, endCrossing, sampleRate, config, sustainStart)
   );
 }
 

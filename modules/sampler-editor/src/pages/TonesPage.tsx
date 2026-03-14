@@ -27,6 +27,7 @@ import {
   setCachedLibraryDirectory,
 } from '@/lib/library-service';
 import { useLoopDetection } from '@/hooks/useLoopDetection';
+import { createSmoothedCopy } from '@audiocontrol/sampler-library/browser';
 
 export function TonesPage() {
   const config = useDeviceConfig();
@@ -94,6 +95,9 @@ export function TonesPage() {
     searchLoopPoints,
     clearResults: clearLoopResults,
   } = useLoopDetection();
+
+  // Loop smoothing state
+  const [isSmoothingLoop, setIsSmoothingLoop] = useState(false);
 
   // Clear loop detection results when selected tone changes
   useEffect(() => {
@@ -402,6 +406,43 @@ export function TonesPage() {
     searchLoopPoints(samplesCopy, sampleRate, selectedTone.wave.endPoint);
   }, [selectedToneIndex, loopEditorWaveData, tones, clearLoopResults, searchLoopPoints]);
 
+  // Smooth loop splice point with crossfade
+  const handleSmoothLoop = useCallback((mode: 'linear' | 'equal-power') => {
+    if (selectedToneIndex === null) return;
+
+    const waveData = loopEditorWaveData.get(selectedToneIndex);
+    if (!waveData) return;
+
+    const selectedTone = tones[selectedToneIndex];
+    if (!selectedTone) return;
+
+    setIsSmoothingLoop(true);
+
+    try {
+      // Create a smoothed copy of the wave data
+      const smoothedData = createSmoothedCopy(
+        waveData,
+        selectedTone.wave.loopPoint,
+        selectedTone.wave.endPoint,
+        { mode, crossfadeLength: 64 }
+      );
+
+      // Update the cached wave data with the smoothed version
+      setLoopEditorWaveData(prev => {
+        const newMap = new Map(prev);
+        newMap.set(selectedToneIndex, smoothedData);
+        return newMap;
+      });
+
+      console.log(`[TonesPage] Applied ${mode} crossfade smoothing to loop`);
+    } catch (err) {
+      console.error('[TonesPage] Failed to smooth loop:', err);
+      setError(err instanceof Error ? err.message : 'Failed to smooth loop');
+    } finally {
+      setIsSmoothingLoop(false);
+    }
+  }, [selectedToneIndex, loopEditorWaveData, tones, setError]);
+
   // Import sample from local file to device
   const handleImportSample = useCallback(async (params: {
     toneIndex: number;
@@ -629,6 +670,8 @@ export function TonesPage() {
                 onAutoDetectLoopPoints={handleAutoDetectLoopPoints}
                 isSearchingLoopPoints={isSearchingLoopPoints}
                 loopSearchProgress={loopSearchProgress}
+                onSmoothLoop={handleSmoothLoop}
+                isSmoothingLoop={isSmoothingLoop}
               />
             ) : (
               <div className="card text-center py-12 text-s330-muted">
