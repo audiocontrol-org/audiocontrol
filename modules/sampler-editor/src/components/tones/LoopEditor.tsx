@@ -40,9 +40,9 @@ interface LoopEditorProps {
 /** Waveform colors */
 const WAVEFORM_COLOR = 'rgba(59, 130, 246, 0.8)';
 const WAVEFORM_FILL = 'rgba(59, 130, 246, 0.3)';
-const BACKGROUND_COLOR = '#1a1a2e';
+const BACKGROUND_COLOR_LEFT = '#1a1a2e';
+const BACKGROUND_COLOR_RIGHT = '#1e1e32';
 const CENTER_LINE_COLOR = '#333';
-const SPLICE_LINE_COLOR = 'rgba(234, 179, 8, 0.8)';
 const MARKER_COLOR = 'rgba(34, 197, 94, 0.8)';
 
 /** Zoom settings */
@@ -132,8 +132,8 @@ export function LoopEditor({
             const canvasHeight = canvas.height;
             const midY = canvasHeight / 2;
 
-            // Clear canvas
-            ctx.fillStyle = BACKGROUND_COLOR;
+            // Clear canvas with direction-specific background for splice point contrast
+            ctx.fillStyle = direction === 'left' ? BACKGROUND_COLOR_LEFT : BACKGROUND_COLOR_RIGHT;
             ctx.fillRect(0, 0, width, canvasHeight);
 
             // Draw center line
@@ -212,17 +212,6 @@ export function LoopEditor({
                 ctx.lineTo(x, yMax);
             }
             ctx.stroke();
-
-            // Draw splice point indicator (at the edge closest to splice)
-            ctx.strokeStyle = SPLICE_LINE_COLOR;
-            ctx.lineWidth = 2;
-            ctx.setLineDash([4, 2]);
-            ctx.beginPath();
-            const spliceX = direction === 'left' ? width - 1 : 0;
-            ctx.moveTo(spliceX, 0);
-            ctx.lineTo(spliceX, canvasHeight);
-            ctx.stroke();
-            ctx.setLineDash([]);
 
             // Draw current position marker label
             ctx.fillStyle = MARKER_COLOR;
@@ -494,9 +483,9 @@ export function LoopEditor({
                     ref={leftCanvasRef}
                     width={paneWidth}
                     height={height}
-                    style={{ width: paneWidth, height }}
+                    style={{ width: '50%', height }}
                     className={cn(
-                        'rounded-l cursor-ew-resize border-r border-yellow-500',
+                        'rounded-l cursor-ew-resize',
                         isDragging === 'end' && 'ring-2 ring-s330-highlight'
                     )}
                     onMouseDown={(e) => handleMouseDown('end', e)}
@@ -506,7 +495,7 @@ export function LoopEditor({
                     ref={rightCanvasRef}
                     width={paneWidth}
                     height={height}
-                    style={{ width: paneWidth, height }}
+                    style={{ width: '50%', height }}
                     className={cn(
                         'rounded-r cursor-ew-resize',
                         isDragging === 'loop' && 'ring-2 ring-s330-highlight'
