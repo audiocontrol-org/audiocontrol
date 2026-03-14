@@ -86,7 +86,6 @@ export {
 export {
   scoreCandidate,
   calculateCompositeScore,
-  calculateLengthScore,
   scoreCandidates,
   rankCandidates,
   filterByThresholds,

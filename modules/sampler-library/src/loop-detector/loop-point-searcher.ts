@@ -63,16 +63,24 @@ export function searchLoopPoints(
   onProgress?.(10, 'Finding zero crossings...');
 
   // Step 2: Determine search regions
+  // Strategy: Search for start candidates EARLY in the sustain region,
+  // and end candidates LATE in the sample. This naturally produces long loops.
   const effectiveEndPoint = targetEndPoint ?? samples.length;
-  const searchWindowSamples = msToSamples(cfg.searchWindowMs, sampleRate);
+  const endSearchWindowSamples = msToSamples(cfg.searchWindowMs, sampleRate);
+  const startSearchWindowSamples = msToSamples(cfg.startSearchWindowMs, sampleRate);
 
-  // Loop end search region: around the target end point
-  const endSearchStart = snapToWordBoundary(Math.max(sustainStart + HARDWARE_CONSTRAINTS.MIN_LOOP_LENGTH, effectiveEndPoint - searchWindowSamples));
-  const endSearchEnd = snapToWordBoundary(Math.min(samples.length, effectiveEndPoint + searchWindowSamples));
-
-  // Loop start search region: from sustain start to before end region
+  // Loop START search region: early sustain region (right after attack)
+  // Constrained to the first startSearchWindowMs of the sustain region
   const startSearchStart = snapToWordBoundary(sustainStart);
-  const startSearchEnd = snapToWordBoundary(Math.max(sustainStart, endSearchStart - HARDWARE_CONSTRAINTS.MIN_LOOP_LENGTH));
+  const startSearchEnd = snapToWordBoundary(
+    Math.min(sustainStart + startSearchWindowSamples, effectiveEndPoint - HARDWARE_CONSTRAINTS.MIN_LOOP_LENGTH)
+  );
+
+  // Loop END search region: near the end of the sample
+  const endSearchStart = snapToWordBoundary(
+    Math.max(startSearchEnd + HARDWARE_CONSTRAINTS.MIN_LOOP_LENGTH, effectiveEndPoint - endSearchWindowSamples)
+  );
+  const endSearchEnd = snapToWordBoundary(Math.min(samples.length, effectiveEndPoint));
 
   // Check if we have valid search regions
   if (startSearchEnd <= startSearchStart || endSearchEnd <= endSearchStart) {
@@ -122,7 +130,7 @@ export function searchLoopPoints(
     pairsToScore = sampleCandidates(candidatePairs, maxCandidatesToScore);
   }
 
-  const scoredCandidates = scoreCandidates(samples, pairsToScore, sampleRate, cfg, sustainStart);
+  const scoredCandidates = scoreCandidates(samples, pairsToScore, sampleRate, cfg);
 
   onProgress?.(80, 'Ranking candidates...');
 
@@ -188,12 +196,11 @@ export function quickSearchLoopPoints(
   const config: Partial<SearchConfig> = {
     searchWindowMs: 50,
     topK,
-    // Adjust weights to use only NCC, slope, and length
+    // Adjust weights to use only NCC and slope
     weights: {
-      ncc: 0.65,
+      ncc: 0.85,
       spectral: 0,
       slope: 0.15,
-      length: 0.20,
     },
   };
 

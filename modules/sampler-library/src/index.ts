@@ -263,7 +263,6 @@ export {
   // Candidate scoring
   scoreCandidate,
   calculateCompositeScore,
-  calculateLengthScore,
   scoreCandidates,
   rankCandidates,
   filterByThresholds,
