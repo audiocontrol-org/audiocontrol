@@ -75,6 +75,7 @@ export function LoopEditor({
     const [isDragging, setIsDragging] = useState<'loop' | 'end' | null>(null);
     const [dragStartX, setDragStartX] = useState(0);
     const [dragStartValue, setDragStartValue] = useState(0);
+    const [hasFocus, setHasFocus] = useState(false);
 
     // Calculate window size based on zoom
     const windowSamples = Math.round(DEFAULT_WINDOW_SAMPLES / zoom);
@@ -426,7 +427,14 @@ export function LoopEditor({
     }
 
     return (
-        <div className={cn('card', className)} ref={containerRef} tabIndex={0}>
+        <div
+            className={cn('card', className, hasFocus && 'ring-1 ring-s330-highlight/50')}
+            ref={containerRef}
+            tabIndex={0}
+            data-loop-editor-active={hasFocus ? 'true' : undefined}
+            onFocus={() => setHasFocus(true)}
+            onBlur={() => setHasFocus(false)}
+        >
             <div className="flex items-center justify-between mb-4">
                 <h4 className="font-medium text-s330-text">Loop Editor</h4>
                 <div className="flex items-center gap-2">

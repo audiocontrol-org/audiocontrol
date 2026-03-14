@@ -158,6 +158,11 @@ export function VirtualFrontPanel() {
             return;
         }
 
+        // Don't capture keys when loop editor has focus (it uses arrow keys and +/-)
+        if (document.querySelector('[data-loop-editor-active="true"]')) {
+            return;
+        }
+
         // Map keys to navigation buttons
         const navKeyMap: Record<string, NavigationButton> = {
             'ArrowUp': 'up',
