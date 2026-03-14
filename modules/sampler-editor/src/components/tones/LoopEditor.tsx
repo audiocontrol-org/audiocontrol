@@ -8,7 +8,9 @@
  */
 
 import { useRef, useEffect, useCallback, useState, useMemo } from 'react';
+import type { LoopCandidate } from '@audiocontrol/sampler-library';
 import { cn } from '@/lib/utils';
+import type { LoopDetectionProgress } from '@/hooks/useLoopDetection';
 
 interface LoopEditorProps {
     /** Audio samples (16-bit signed integers) */
@@ -35,6 +37,20 @@ interface LoopEditorProps {
     loadingProgress?: number;
     /** Custom class name */
     className?: string;
+    /** Loop point candidates from auto-detection */
+    candidates?: LoopCandidate[];
+    /** Index of the currently selected candidate */
+    selectedCandidateIndex?: number;
+    /** Called when a candidate is selected */
+    onCandidateSelect?: (index: number) => void;
+    /** Called when a candidate is applied (sets both loop and end points) */
+    onApplyCandidate?: (loopStart: number, loopEnd: number) => void;
+    /** Called to trigger auto-detection */
+    onAutoDetect?: () => void;
+    /** Whether auto-detection is in progress */
+    isSearching?: boolean;
+    /** Auto-detection search progress */
+    searchProgress?: LoopDetectionProgress;
 }
 
 /** Waveform colors */
@@ -44,6 +60,8 @@ const BACKGROUND_COLOR_LEFT = '#1a1a2e';
 const BACKGROUND_COLOR_RIGHT = '#1e1e32';
 const CENTER_LINE_COLOR = '#333';
 const MARKER_COLOR = 'rgba(34, 197, 94, 0.8)';
+const CANDIDATE_MARKER_COLOR = 'rgba(249, 115, 22, 0.8)';
+const SELECTED_CANDIDATE_COLOR = 'rgba(34, 197, 94, 1.0)';
 
 /** Zoom settings */
 const MIN_ZOOM = 1;
@@ -66,6 +84,13 @@ export function LoopEditor({
     isLoading = false,
     loadingProgress,
     className,
+    candidates = [],
+    selectedCandidateIndex,
+    onCandidateSelect,
+    onApplyCandidate,
+    onAutoDetect,
+    isSearching = false,
+    searchProgress,
 }: LoopEditorProps): JSX.Element {
     const leftCanvasRef = useRef<HTMLCanvasElement>(null);
     const rightCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -164,6 +189,44 @@ export function LoopEditor({
             sampleStart = Math.max(0, sampleStart);
             sampleEnd = Math.min(samples.length, sampleEnd);
 
+            // Draw candidate markers first (so waveform draws on top)
+            if (candidates.length > 0) {
+                candidates.forEach((candidate, index) => {
+                    const candidatePoint = direction === 'left' ? candidate.loopEnd : candidate.loopStart;
+                    const isSelected = index === selectedCandidateIndex;
+
+                    // Check if candidate is in visible range
+                    let xPos: number | null = null;
+                    if (direction === 'left') {
+                        // Left pane: check if loopEnd is visible
+                        if (candidatePoint >= sampleStart && candidatePoint <= sampleEnd) {
+                            xPos = ((candidatePoint - sampleStart) / windowSamples) * width;
+                        }
+                    } else {
+                        // Right pane: check if loopStart is visible
+                        if (candidatePoint >= sampleStart && candidatePoint <= sampleEnd) {
+                            xPos = ((candidatePoint - sampleStart) / windowSamples) * width;
+                        }
+                    }
+
+                    if (xPos !== null) {
+                        ctx.strokeStyle = isSelected ? SELECTED_CANDIDATE_COLOR : CANDIDATE_MARKER_COLOR;
+                        ctx.lineWidth = isSelected ? 2 : 1;
+                        ctx.setLineDash([4, 2]);
+                        ctx.beginPath();
+                        ctx.moveTo(xPos, 0);
+                        ctx.lineTo(xPos, canvasHeight);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+
+                        // Draw candidate number
+                        ctx.fillStyle = isSelected ? SELECTED_CANDIDATE_COLOR : CANDIDATE_MARKER_COLOR;
+                        ctx.font = '9px monospace';
+                        ctx.fillText(`${index + 1}`, xPos + 2, canvasHeight - 4);
+                    }
+                });
+            }
+
             // Draw waveform
             ctx.beginPath();
             ctx.strokeStyle = WAVEFORM_COLOR;
@@ -219,7 +282,7 @@ export function LoopEditor({
             const labelX = direction === 'left' ? width - 60 : 4;
             ctx.fillText(label, labelX, 12);
         },
-        [samples, windowSamples, endPoint, loopPoint]
+        [samples, windowSamples, endPoint, loopPoint, candidates, selectedCandidateIndex]
     );
 
     // Redraw canvases when parameters change
@@ -235,7 +298,7 @@ export function LoopEditor({
         if (rightCanvas) {
             drawWaveform(rightCanvas, loopPoint, 'right');
         }
-    }, [samples, endPoint, loopPoint, drawWaveform, paneWidth, height, zoom]);
+    }, [samples, endPoint, loopPoint, drawWaveform, paneWidth, height, zoom, candidates, selectedCandidateIndex]);
 
     // Handle zoom
     const handleZoomIn = useCallback(() => {
@@ -430,7 +493,26 @@ export function LoopEditor({
             data-loop-editor
         >
             <div className="flex items-center justify-between mb-4">
-                <h4 className="font-medium text-s330-text">Loop Editor</h4>
+                <div className="flex items-center gap-3">
+                    <h4 className="font-medium text-s330-text">Loop Editor</h4>
+                    {onAutoDetect && (
+                        <button
+                            onClick={onAutoDetect}
+                            disabled={isSearching}
+                            className="ac-btn ac-btn-xs ac-btn-primary"
+                            title="Auto-detect loop points"
+                        >
+                            {isSearching ? (
+                                <>
+                                    <span className="inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin mr-1" />
+                                    Searching...
+                                </>
+                            ) : (
+                                'Auto-Detect'
+                            )}
+                        </button>
+                    )}
+                </div>
                 <div className="flex items-center gap-2">
                     {/* Zoom controls */}
                     <button
@@ -458,6 +540,22 @@ export function LoopEditor({
                     </button>
                 </div>
             </div>
+
+            {/* Search progress */}
+            {isSearching && searchProgress && (
+                <div className="mb-4">
+                    <div className="flex items-center justify-between text-xs text-s330-muted mb-1">
+                        <span>{searchProgress.stage}</span>
+                        <span>{searchProgress.percent.toFixed(0)}%</span>
+                    </div>
+                    <div className="h-1.5 bg-s330-panel rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-s330-highlight transition-all duration-150 ease-out"
+                            style={{ width: `${searchProgress.percent}%` }}
+                        />
+                    </div>
+                </div>
+            )}
 
             {/* Info bar */}
             <div className="flex items-center justify-between mb-2 text-xs text-s330-muted">
@@ -593,6 +691,62 @@ export function LoopEditor({
                     </div>
                 </div>
             </div>
+
+            {/* Candidates list */}
+            {candidates.length > 0 && (
+                <div className="mt-4">
+                    <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs text-s330-muted">
+                            Loop Candidates ({candidates.length})
+                        </label>
+                        <span className="text-xs text-s330-muted">
+                            Click to apply • Score: NCC / Spectral / Slope
+                        </span>
+                    </div>
+                    <div className="grid gap-1 max-h-36 overflow-y-auto pr-1">
+                        {candidates.map((candidate, index) => (
+                            <button
+                                key={`${candidate.loopStart}-${candidate.loopEnd}`}
+                                onClick={() => {
+                                    onCandidateSelect?.(index);
+                                    if (onApplyCandidate) {
+                                        onApplyCandidate(candidate.loopStart, candidate.loopEnd);
+                                    } else {
+                                        // Fallback to individual calls (though this has race condition issues)
+                                        onLoopPointChange?.(candidate.loopStart);
+                                        onEndPointChange?.(candidate.loopEnd);
+                                    }
+                                    onCommit?.();
+                                }}
+                                className={cn(
+                                    'flex items-center justify-between px-2 py-1.5 rounded text-xs transition-colors',
+                                    'hover:bg-s330-panel/50',
+                                    index === selectedCandidateIndex
+                                        ? 'bg-s330-highlight/20 text-s330-highlight border border-s330-highlight/30'
+                                        : 'bg-s330-bg border border-s330-accent/10 text-s330-text'
+                                )}
+                            >
+                                <span className="flex items-center gap-2">
+                                    <span className="font-mono w-4 text-center">
+                                        {index + 1}
+                                    </span>
+                                    <span className="font-mono">
+                                        {candidate.loopStart} → {candidate.loopEnd}
+                                    </span>
+                                    <span className="text-s330-muted">
+                                        ({candidate.loopEnd - candidate.loopStart} samples)
+                                    </span>
+                                </span>
+                                <span className="font-mono text-s330-muted">
+                                    {(candidate.nccScore * 100).toFixed(0)}% /
+                                    {(candidate.spectralScore * 100).toFixed(0)}% /
+                                    {(candidate.slopeScore * 100).toFixed(0)}%
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

@@ -26,6 +26,7 @@ import {
   getCachedLibraryDirectory,
   setCachedLibraryDirectory,
 } from '@/lib/library-service';
+import { useLoopDetection } from '@/hooks/useLoopDetection';
 
 export function TonesPage() {
   const config = useDeviceConfig();
@@ -83,6 +84,22 @@ export function TonesPage() {
   const [loopEditorWaveData, setLoopEditorWaveData] = useState<Map<number, Int16Array>>(new Map());
   const [isLoadingLoopWaveData, setIsLoadingLoopWaveData] = useState(false);
   const [loopWaveDataProgress, setLoopWaveDataProgress] = useState<number | undefined>(undefined);
+
+  // Loop detection state
+  const [selectedLoopCandidateIndex, setSelectedLoopCandidateIndex] = useState<number | undefined>(undefined);
+  const {
+    isSearching: isSearchingLoopPoints,
+    progress: loopSearchProgress,
+    candidates: loopCandidates,
+    searchLoopPoints,
+    clearResults: clearLoopResults,
+  } = useLoopDetection();
+
+  // Clear loop detection results when selected tone changes
+  useEffect(() => {
+    clearLoopResults();
+    setSelectedLoopCandidateIndex(undefined);
+  }, [selectedToneIndex, clearLoopResults]);
 
   // Initialize client when adapter changes
   useEffect(() => {
@@ -362,6 +379,29 @@ export function TonesPage() {
     }
   }, [selectedToneIndex, loopEditorWaveData, setError]);
 
+  // Auto-detect loop points
+  const handleAutoDetectLoopPoints = useCallback(() => {
+    if (selectedToneIndex === null) return;
+
+    const waveData = loopEditorWaveData.get(selectedToneIndex);
+    if (!waveData) return;
+
+    const selectedTone = tones[selectedToneIndex];
+    if (!selectedTone) return;
+
+    const sampleRate = selectedTone.sampleRate === '30kHz' ? 30000 : 15000;
+
+    // Clear previous results
+    clearLoopResults();
+    setSelectedLoopCandidateIndex(undefined);
+
+    // Create a copy of the wave data since it will be transferred to the worker
+    const samplesCopy = new Int16Array(waveData);
+
+    // Start the search
+    searchLoopPoints(samplesCopy, sampleRate, selectedTone.wave.endPoint);
+  }, [selectedToneIndex, loopEditorWaveData, tones, clearLoopResults, searchLoopPoints]);
+
   // Import sample from local file to device
   const handleImportSample = useCallback(async (params: {
     toneIndex: number;
@@ -583,6 +623,12 @@ export function TonesPage() {
                 isLoadingWaveData={isLoadingLoopWaveData}
                 waveDataLoadProgress={loopWaveDataProgress}
                 onLoadWaveData={handleLoadLoopWaveData}
+                loopCandidates={loopCandidates}
+                selectedLoopCandidateIndex={selectedLoopCandidateIndex}
+                onLoopCandidateSelect={setSelectedLoopCandidateIndex}
+                onAutoDetectLoopPoints={handleAutoDetectLoopPoints}
+                isSearchingLoopPoints={isSearchingLoopPoints}
+                loopSearchProgress={loopSearchProgress}
               />
             ) : (
               <div className="card text-center py-12 text-s330-muted">

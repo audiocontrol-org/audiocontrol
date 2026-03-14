@@ -53,6 +53,7 @@
   },
   "dependencies": {
     "@audiocontrol/sampler-devices": "workspace:*",
+    "fft.js": "^4.0.4",
     "yaml": "^2.7.0",
     "zod": "^3.24.0"
   },

@@ -11,6 +11,7 @@
  */
 
 import type { S330Tone, S330Envelope, S330EgPolarity, S330LevelCurve } from '@/core/midi/S330Client';
+import type { LoopCandidate } from '@audiocontrol/sampler-library';
 import { formatPercent } from '@audiocontrol/editor-core';
 import { midiNoteToName, cn, formatS330Number } from '@/lib/utils';
 import { ParameterSlider } from '@/components/ui/ParameterSlider';
@@ -18,6 +19,7 @@ import { EnvelopeEditor } from '@/components/ui/EnvelopeEditor';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
 import { LoopEditor } from '@/components/tones/LoopEditor';
+import type { LoopDetectionProgress } from '@/hooks/useLoopDetection';
 
 interface ToneEditorProps {
     tone: S330Tone;
@@ -50,6 +52,13 @@ interface ToneEditorProps {
     waveDataLoadProgress?: number;
     // Called when user wants to load wave data for loop editor
     onLoadWaveData?: () => void;
+    // Loop detection props
+    loopCandidates?: LoopCandidate[];
+    selectedLoopCandidateIndex?: number;
+    onLoopCandidateSelect?: (index: number) => void;
+    onAutoDetectLoopPoints?: () => void;
+    isSearchingLoopPoints?: boolean;
+    loopSearchProgress?: LoopDetectionProgress;
 }
 
 export function ToneEditor({
@@ -68,6 +77,12 @@ export function ToneEditor({
     isLoadingWaveData = false,
     waveDataLoadProgress,
     onLoadWaveData,
+    loopCandidates,
+    selectedLoopCandidateIndex,
+    onLoopCandidateSelect,
+    onAutoDetectLoopPoints,
+    isSearchingLoopPoints,
+    loopSearchProgress,
 }: ToneEditorProps) {
     const handleTvaEnvelopeChange = (envelope: S330Envelope) => {
         onUpdate?.({ ...tone, tva: { ...tone.tva, envelope } });
@@ -344,9 +359,19 @@ export function ToneEditor({
                             const updatedTone = { ...tone, wave: { ...tone.wave, endPoint } };
                             onUpdate?.(updatedTone);
                         }}
+                        onApplyCandidate={(loopStart, loopEnd) => {
+                            const updatedTone = { ...tone, wave: { ...tone.wave, loopPoint: loopStart, endPoint: loopEnd } };
+                            onUpdate?.(updatedTone);
+                        }}
                         onCommit={onCommit}
                         isLoading={isLoadingWaveData}
                         loadingProgress={waveDataLoadProgress}
+                        candidates={loopCandidates}
+                        selectedCandidateIndex={selectedLoopCandidateIndex}
+                        onCandidateSelect={onLoopCandidateSelect}
+                        onAutoDetect={onAutoDetectLoopPoints}
+                        isSearching={isSearchingLoopPoints}
+                        searchProgress={loopSearchProgress}
                     />
                 </div>
             )}

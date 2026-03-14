@@ -217,7 +217,7 @@ export {
 
 export type {
   SliceMethod,
-  TransientConfig,
+  TransientConfig as ChopperTransientConfig,
   SilenceConfig,
   FixedConfig,
   ManualConfig,
@@ -227,3 +227,74 @@ export type {
   SliceResult,
   DrumKitOutputConfig,
 } from './sample-chopper/index.js';
+
+// Loop detector exports
+export {
+  // Constants
+  DEFAULT_SEARCH_CONFIG,
+  DEFAULT_SPLICE_CONFIG,
+  DEFAULT_TRANSIENT_CONFIG,
+  HARDWARE_CONSTRAINTS,
+  // Zero crossing detection
+  snapToWordBoundary,
+  detectZeroCrossings,
+  filterByPolarity,
+  matchBySlope,
+  findMatchingCrossings,
+  calculateSlopeScore,
+  generateCandidatePairs,
+  // Transient exclusion
+  findSustainStart,
+  analyzeAttack,
+  // NCC scoring
+  calculateNCC,
+  calculateZeroMeanNCC,
+  batchCalculateNCC,
+  calculateOptimalWindowSize,
+  normalizeNCCScore,
+  // Spectral scoring
+  createHannWindow,
+  computeLogMagnitudeSpectrum,
+  calculateSpectralDistance,
+  scoreSpectralSimilarity,
+  normalizeSpectralDistance,
+  batchCalculateSpectralSimilarity,
+  calculateOptimalFFTSize,
+  // Candidate scoring
+  scoreCandidate,
+  calculateCompositeScore,
+  scoreCandidates,
+  rankCandidates,
+  filterByThresholds,
+  deduplicateCandidates,
+  // Loop point search
+  searchLoopPoints,
+  quickSearchLoopPoints,
+  validateCandidate,
+  search as searchLoop,
+  // Splice smoothing
+  applyCrossfade,
+  createSmoothedCopy,
+  calculateOptimalCrossfadeLength,
+  analyzeDiscontinuity,
+} from './loop-detector/index.js';
+
+export type {
+  // Loop detector types
+  ZeroCrossingPolarity,
+  ZeroCrossing,
+  LoopCandidate,
+  SearchConfig,
+  ScoreWeights,
+  SpliceConfig,
+  TransientConfig,
+  ProgressCallback,
+  SearchRequest,
+  SearchProgress,
+  SearchComplete,
+  SearchError,
+  SearchResponse,
+  SearchOptions,
+  AttackAnalysis,
+  DiscontinuityAnalysis,
+} from './loop-detector/index.js';
