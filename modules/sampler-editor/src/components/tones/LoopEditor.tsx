@@ -79,8 +79,8 @@ export function LoopEditor({
     // Calculate window size based on zoom
     const windowSamples = Math.round(DEFAULT_WINDOW_SAMPLES / zoom);
 
-    // Effective pane width (half of container minus gap)
-    const paneWidth = useMemo(() => Math.floor((canvasWidth - 8) / 2), [canvasWidth]);
+    // Effective pane width (half of container)
+    const paneWidth = useMemo(() => Math.floor(canvasWidth / 2), [canvasWidth]);
 
     // Handle resize
     useEffect(() => {
@@ -463,7 +463,7 @@ export function LoopEditor({
             </div>
 
             {/* Split pane waveform display */}
-            <div className="flex gap-2">
+            <div className="flex">
                 {/* Left pane: waveform leading to end point */}
                 <div className="flex-1">
                     <div className="text-xs text-s330-muted mb-1 text-center">
@@ -474,18 +474,10 @@ export function LoopEditor({
                         width={paneWidth}
                         height={height}
                         className={cn(
-                            'rounded cursor-ew-resize',
+                            'rounded-l cursor-ew-resize border-r border-yellow-500',
                             isDragging === 'end' && 'ring-2 ring-s330-highlight'
                         )}
                         onMouseDown={(e) => handleMouseDown('end', e)}
-                    />
-                </div>
-
-                {/* Splice indicator */}
-                <div className="flex flex-col items-center justify-center">
-                    <div
-                        className="w-1 bg-yellow-500/50 rounded"
-                        style={{ height: height + 20 }}
                     />
                 </div>
 
@@ -499,7 +491,7 @@ export function LoopEditor({
                         width={paneWidth}
                         height={height}
                         className={cn(
-                            'rounded cursor-ew-resize',
+                            'rounded-r cursor-ew-resize',
                             isDragging === 'loop' && 'ring-2 ring-s330-highlight'
                         )}
                         onMouseDown={(e) => handleMouseDown('loop', e)}
