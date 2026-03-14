@@ -159,7 +159,8 @@ export function VirtualFrontPanel() {
         }
 
         // Don't capture keys when loop editor has focus (it uses arrow keys and +/-)
-        if (document.querySelector('[data-loop-editor-active="true"]')) {
+        const loopEditor = document.querySelector('[data-loop-editor]');
+        if (loopEditor?.contains(document.activeElement)) {
             return;
         }
 
