@@ -268,7 +268,8 @@ export function LoopEditor({
             if (!isDragging) return;
 
             const deltaX = e.clientX - dragStartX;
-            const deltaSamples = pixelToSampleOffset(deltaX);
+            // Negate delta so dragging right moves the waveform right (earlier samples)
+            const deltaSamples = -pixelToSampleOffset(deltaX);
             const newValue = Math.max(
                 startPoint,
                 Math.min(samples?.length ?? 0, dragStartValue + deltaSamples)
