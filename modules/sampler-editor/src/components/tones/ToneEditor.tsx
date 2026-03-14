@@ -17,6 +17,7 @@ import { ParameterSlider } from '@/components/ui/ParameterSlider';
 import { EnvelopeEditor } from '@/components/ui/EnvelopeEditor';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
+import { LoopEditor } from '@/components/tones/LoopEditor';
 
 interface ToneEditorProps {
     tone: S330Tone;
@@ -41,6 +42,14 @@ interface ToneEditorProps {
     onImportSample?: () => void;
     // Whether sample import is in progress
     isImporting?: boolean;
+    // Wave data for loop editor (16-bit signed samples)
+    waveData?: Int16Array | null;
+    // Whether wave data is currently loading
+    isLoadingWaveData?: boolean;
+    // Wave data loading progress (0-100)
+    waveDataLoadProgress?: number;
+    // Called when user wants to load wave data for loop editor
+    onLoadWaveData?: () => void;
 }
 
 export function ToneEditor({
@@ -55,6 +64,10 @@ export function ToneEditor({
     isExportingToLibrary = false,
     onImportSample,
     isImporting = false,
+    waveData,
+    isLoadingWaveData = false,
+    waveDataLoadProgress,
+    onLoadWaveData,
 }: ToneEditorProps) {
     const handleTvaEnvelopeChange = (envelope: S330Envelope) => {
         onUpdate?.({ ...tone, tva: { ...tone.tva, envelope } });
@@ -300,6 +313,43 @@ export function ToneEditor({
                     </Tooltip>
                 </div>
             </div>
+
+            {/* Loop Editor */}
+            {hasSampleData && (
+                <div className="space-y-2">
+                    {!waveData && !isLoadingWaveData && onLoadWaveData && (
+                        <div className="card text-center py-4">
+                            <p className="text-s330-muted text-sm mb-2">
+                                Load wave data to use the visual loop editor
+                            </p>
+                            <button
+                                onClick={onLoadWaveData}
+                                className="ac-btn ac-btn-sm ac-btn-secondary"
+                            >
+                                Load Wave Data
+                            </button>
+                        </div>
+                    )}
+                    <LoopEditor
+                        samples={waveData ?? null}
+                        sampleRate={tone.sampleRate === '30kHz' ? 30000 : 15000}
+                        startPoint={tone.wave.startPoint}
+                        loopPoint={tone.wave.loopPoint}
+                        endPoint={tone.wave.endPoint}
+                        onLoopPointChange={(loopPoint) => {
+                            const updatedTone = { ...tone, wave: { ...tone.wave, loopPoint } };
+                            onUpdate?.(updatedTone);
+                        }}
+                        onEndPointChange={(endPoint) => {
+                            const updatedTone = { ...tone, wave: { ...tone.wave, endPoint } };
+                            onUpdate?.(updatedTone);
+                        }}
+                        onCommit={onCommit}
+                        isLoading={isLoadingWaveData}
+                        loadingProgress={waveDataLoadProgress}
+                    />
+                </div>
+            )}
 
             {/* TVF (Filter) */}
             <div className="card">

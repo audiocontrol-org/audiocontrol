@@ -17,7 +17,7 @@ import { ToneEditor } from '@/components/tones/ToneEditor';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { ImportSampleDialog } from '@/components/library/ImportSampleDialog';
 import { cn } from '@/lib/utils';
-import { exportWaveAsWav } from '@/lib/wave-export';
+import { exportWaveAsWav, unpack12BitTo16Bit } from '@/lib/wave-export';
 import {
   pickLibraryDirectory,
   exportToneToDirectory,
@@ -79,6 +79,11 @@ export function TonesPage() {
   const [importProgress, setImportProgress] = useState<number | undefined>(undefined);
   const [importError, setImportError] = useState<string | null>(null);
 
+  // Loop editor wave data state (keyed by tone index)
+  const [loopEditorWaveData, setLoopEditorWaveData] = useState<Map<number, Int16Array>>(new Map());
+  const [isLoadingLoopWaveData, setIsLoadingLoopWaveData] = useState(false);
+  const [loopWaveDataProgress, setLoopWaveDataProgress] = useState<number | undefined>(undefined);
+
   // Initialize client when adapter changes
   useEffect(() => {
     if (!adapter) {
@@ -103,6 +108,17 @@ export function TonesPage() {
           `${forceReload ? 'Reloading' : 'Loading'} tones ${startIndex + 1}-${startIndex + count}...`
         );
         setError(null);
+
+        // Clear cached loop editor wave data for this bank (will be reloaded on demand)
+        if (forceReload) {
+          setLoopEditorWaveData((prev) => {
+            const newMap = new Map(prev);
+            for (let i = startIndex; i < startIndex + count; i++) {
+              newMap.delete(i);
+            }
+            return newMap;
+          });
+        }
 
         // Ensure array is large enough before loading
         ensureToneArraySize(totalTones);
@@ -306,6 +322,45 @@ export function TonesPage() {
     setImportProgress(undefined);
     setIsImportDialogOpen(true);
   }, []);
+
+  // Load wave data for loop editor
+  const handleLoadLoopWaveData = useCallback(async () => {
+    if (selectedToneIndex === null || !clientRef.current) return;
+
+    // Check if already loaded
+    if (loopEditorWaveData.has(selectedToneIndex)) return;
+
+    setIsLoadingLoopWaveData(true);
+    setLoopWaveDataProgress(0);
+    setError(null);
+
+    try {
+      const waveResponse = await clientRef.current.requestWaveData(
+        selectedToneIndex,
+        (bytesReceived, totalBytes) => {
+          const progress = totalBytes > 0 ? (bytesReceived / totalBytes) * 100 : 0;
+          setLoopWaveDataProgress(progress);
+        }
+      );
+
+      // Convert from packed 12-bit samples to 16-bit for the loop editor
+      const samples = unpack12BitTo16Bit(waveResponse.data);
+
+      setLoopEditorWaveData((prev) => {
+        const newMap = new Map(prev);
+        newMap.set(selectedToneIndex, samples);
+        return newMap;
+      });
+
+      console.log(`[TonesPage] Loaded wave data for loop editor: ${samples.length} samples`);
+    } catch (err) {
+      console.error('[TonesPage] Failed to load wave data for loop editor:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load wave data');
+    } finally {
+      setIsLoadingLoopWaveData(false);
+      setLoopWaveDataProgress(undefined);
+    }
+  }, [selectedToneIndex, loopEditorWaveData, setError]);
 
   // Import sample from local file to device
   const handleImportSample = useCallback(async (params: {
@@ -524,6 +579,10 @@ export function TonesPage() {
                 isExportingToLibrary={isExportingToLibrary}
                 onImportSample={handleOpenImportDialog}
                 isImporting={isImporting}
+                waveData={loopEditorWaveData.get(selectedToneIndex!) ?? null}
+                isLoadingWaveData={isLoadingLoopWaveData}
+                waveDataLoadProgress={loopWaveDataProgress}
+                onLoadWaveData={handleLoadLoopWaveData}
               />
             ) : (
               <div className="card text-center py-12 text-s330-muted">
