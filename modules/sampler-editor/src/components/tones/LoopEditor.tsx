@@ -472,40 +472,37 @@ export function LoopEditor({
             </div>
 
             {/* Split pane waveform display */}
+            <div className="flex mb-1">
+                <div className="flex-1 text-xs text-s330-muted text-center">
+                    ← Approaching End Point
+                </div>
+                <div className="flex-1 text-xs text-s330-muted text-center">
+                    Loop Point Continues →
+                </div>
+            </div>
             <div className="flex">
                 {/* Left pane: waveform leading to end point */}
-                <div className="flex-1">
-                    <div className="text-xs text-s330-muted mb-1 text-center">
-                        ← Approaching End Point
-                    </div>
-                    <canvas
-                        ref={leftCanvasRef}
-                        width={paneWidth}
-                        height={height}
-                        className={cn(
-                            'rounded-l cursor-ew-resize border-r border-yellow-500',
-                            isDragging === 'end' && 'ring-2 ring-s330-highlight'
-                        )}
-                        onMouseDown={(e) => handleMouseDown('end', e)}
-                    />
-                </div>
-
+                <canvas
+                    ref={leftCanvasRef}
+                    width={paneWidth}
+                    height={height}
+                    className={cn(
+                        'flex-1 rounded-l cursor-ew-resize border-r border-yellow-500',
+                        isDragging === 'end' && 'ring-2 ring-s330-highlight'
+                    )}
+                    onMouseDown={(e) => handleMouseDown('end', e)}
+                />
                 {/* Right pane: waveform from loop point */}
-                <div className="flex-1">
-                    <div className="text-xs text-s330-muted mb-1 text-center">
-                        Loop Point Continues →
-                    </div>
-                    <canvas
-                        ref={rightCanvasRef}
-                        width={paneWidth}
-                        height={height}
-                        className={cn(
-                            'rounded-r cursor-ew-resize',
-                            isDragging === 'loop' && 'ring-2 ring-s330-highlight'
-                        )}
-                        onMouseDown={(e) => handleMouseDown('loop', e)}
-                    />
-                </div>
+                <canvas
+                    ref={rightCanvasRef}
+                    width={paneWidth}
+                    height={height}
+                    className={cn(
+                        'flex-1 rounded-r cursor-ew-resize',
+                        isDragging === 'loop' && 'ring-2 ring-s330-highlight'
+                    )}
+                    onMouseDown={(e) => handleMouseDown('loop', e)}
+                />
             </div>
 
             {/* Nudge controls */}
