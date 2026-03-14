@@ -70,7 +70,8 @@ export function LoopEditor({
     const leftCanvasRef = useRef<HTMLCanvasElement>(null);
     const rightCanvasRef = useRef<HTMLCanvasElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const [canvasWidth, setCanvasWidth] = useState(300);
+    const canvasContainerRef = useRef<HTMLDivElement>(null);
+    const [canvasContainerWidth, setCanvasContainerWidth] = useState(600);
     const [zoom, setZoom] = useState(1);
     const [isDragging, setIsDragging] = useState<'loop' | 'end' | null>(null);
     const [dragStartX, setDragStartX] = useState(0);
@@ -80,22 +81,29 @@ export function LoopEditor({
     // Calculate window size based on zoom
     const windowSamples = Math.round(DEFAULT_WINDOW_SAMPLES / zoom);
 
-    // Effective pane width (half of container)
-    const paneWidth = useMemo(() => Math.floor(canvasWidth / 2), [canvasWidth]);
+    // Effective pane width (half of canvas container)
+    const paneWidth = useMemo(() => Math.floor(canvasContainerWidth / 2), [canvasContainerWidth]);
 
-    // Handle resize
+    // Handle resize - measure the card container to set proper canvas resolution
     useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
-        const resizeObserver = new ResizeObserver((entries) => {
-            for (const entry of entries) {
-                setCanvasWidth(entry.contentRect.width);
-            }
+        const updateWidth = () => {
+            // Get the card's content width (excluding padding)
+            const style = getComputedStyle(container);
+            const paddingLeft = parseFloat(style.paddingLeft) || 0;
+            const paddingRight = parseFloat(style.paddingRight) || 0;
+            const contentWidth = container.clientWidth - paddingLeft - paddingRight;
+            setCanvasContainerWidth(contentWidth);
+        };
+
+        const resizeObserver = new ResizeObserver(() => {
+            updateWidth();
         });
 
         resizeObserver.observe(container);
-        setCanvasWidth(container.clientWidth);
+        updateWidth();
 
         return () => resizeObserver.disconnect();
     }, []);
@@ -480,14 +488,15 @@ export function LoopEditor({
                     Loop Point Continues →
                 </div>
             </div>
-            <div className="flex">
+            <div className="flex w-full" ref={canvasContainerRef}>
                 {/* Left pane: waveform leading to end point */}
                 <canvas
                     ref={leftCanvasRef}
                     width={paneWidth}
                     height={height}
+                    style={{ width: paneWidth, height }}
                     className={cn(
-                        'flex-1 rounded-l cursor-ew-resize border-r border-yellow-500',
+                        'rounded-l cursor-ew-resize border-r border-yellow-500',
                         isDragging === 'end' && 'ring-2 ring-s330-highlight'
                     )}
                     onMouseDown={(e) => handleMouseDown('end', e)}
@@ -497,8 +506,9 @@ export function LoopEditor({
                     ref={rightCanvasRef}
                     width={paneWidth}
                     height={height}
+                    style={{ width: paneWidth, height }}
                     className={cn(
-                        'flex-1 rounded-r cursor-ew-resize',
+                        'rounded-r cursor-ew-resize',
                         isDragging === 'loop' && 'ring-2 ring-s330-highlight'
                     )}
                     onMouseDown={(e) => handleMouseDown('loop', e)}
