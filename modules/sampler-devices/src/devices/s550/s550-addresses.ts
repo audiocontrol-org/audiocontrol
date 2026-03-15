@@ -398,3 +398,77 @@ export function buildToneAddress(toneNumber: number, offset: number): number[] {
 export function buildSystemAddress(offset: number): number[] {
     return [0x00, 0x00, 0x00, offset & 0x7F];
 }
+
+// =============================================================================
+// Block-Aware Wave Data Address Functions
+// =============================================================================
+
+/**
+ * Wave bank base addresses.
+ *
+ * The S-550 has 4 wave banks organized into 2 blocks:
+ * - Block 1: Banks A (0x00) and B (0x20)
+ * - Block 2: Banks C (0x40) and D (0x60)
+ */
+export const WAVE_BANK_BASE_ADDRESSES = {
+    0: 0x00,  // Bank A
+    1: 0x20,  // Bank B
+    2: 0x40,  // Bank C
+    3: 0x60,  // Bank D
+} as const;
+
+/**
+ * Build wave data address for an absolute wave bank and segment.
+ *
+ * @param absoluteWaveBank - Absolute wave bank (0-3: A, B, C, D)
+ * @param segmentIndex - Segment index within the bank (0-17)
+ * @returns 4-byte address array
+ *
+ * @example
+ * ```typescript
+ * buildWaveDataAddress(0, 0);  // [0x01, 0x00, 0x00, 0x00] - Bank A, Segment 0
+ * buildWaveDataAddress(2, 5);  // [0x01, 0x40, 0x28, 0x00] - Bank C, Segment 5
+ * ```
+ */
+export function buildWaveDataAddress(absoluteWaveBank: number, segmentIndex: number): number[] {
+    if (absoluteWaveBank < 0 || absoluteWaveBank > 3) {
+        throw new Error(`Wave bank ${absoluteWaveBank} out of range (0-3)`);
+    }
+    if (segmentIndex < 0 || segmentIndex > 17) {
+        throw new Error(`Segment index ${segmentIndex} out of range (0-17)`);
+    }
+
+    const byte1 = WAVE_BANK_BASE_ADDRESSES[absoluteWaveBank as 0 | 1 | 2 | 3];
+    const byte2 = (segmentIndex * 8) & 0x7F;  // Segment stride is 8 in byte 2
+
+    return [0x01, byte1, byte2, 0x00];
+}
+
+/**
+ * Build wave data address using block-relative bank index.
+ *
+ * @param block - Block number (1 or 2)
+ * @param blockRelativeBank - Block-relative bank (0 or 1)
+ * @param segmentIndex - Segment index within the bank (0-17)
+ * @returns 4-byte address array
+ *
+ * @example
+ * ```typescript
+ * buildBlockRelativeWaveAddress(1, 0, 0);  // Bank A, Segment 0
+ * buildBlockRelativeWaveAddress(1, 1, 0);  // Bank B, Segment 0
+ * buildBlockRelativeWaveAddress(2, 0, 0);  // Bank C, Segment 0
+ * buildBlockRelativeWaveAddress(2, 1, 0);  // Bank D, Segment 0
+ * ```
+ */
+export function buildBlockRelativeWaveAddress(
+    block: 1 | 2,
+    blockRelativeBank: 0 | 1,
+    segmentIndex: number
+): number[] {
+    // Convert block-relative bank to absolute bank
+    const absoluteBank = block === 1
+        ? blockRelativeBank        // Block 1: 0 → A(0), 1 → B(1)
+        : blockRelativeBank + 2;   // Block 2: 0 → C(2), 1 → D(3)
+
+    return buildWaveDataAddress(absoluteBank, segmentIndex);
+}

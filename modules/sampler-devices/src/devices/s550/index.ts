@@ -13,7 +13,17 @@
 // Configuration Export
 // =============================================================================
 
-export { S550_CONFIG, S550_ADDRESSES } from './s550-config.js';
+export {
+    S550_CONFIG,
+    S550_ADDRESSES,
+    // Block structure constants
+    TONES_PER_BLOCK,
+    WAVE_BANKS_PER_BLOCK,
+    BLOCK_COUNT,
+    WAVE_BANK_ADDRESSES,
+    BLOCK_WAVE_BANKS,
+    BLOCK_INFO,
+} from './s550-config.js';
 
 // =============================================================================
 // Shared Type Re-exports (from roland-s-series)
@@ -54,6 +64,12 @@ export type {
 // =============================================================================
 
 export type {
+    // Block types
+    S550Block,
+    S550BlockInfo,
+    S550BlockRelativeWaveBank,
+    S550AbsoluteWaveBank,
+
     // System types
     S550SystemParams,
 
@@ -129,7 +145,42 @@ export {
     buildToneAddress,
     buildSystemAddress,
     calculateChecksum,
+
+    // Block-aware wave address builders
+    WAVE_BANK_BASE_ADDRESSES,
+    buildWaveDataAddress,
+    buildBlockRelativeWaveAddress,
 } from './s550-addresses.js';
+
+// =============================================================================
+// Block Utility Exports
+// =============================================================================
+
+export {
+    // Block determination
+    getBlockForTone,
+    getBlockInfo,
+    isToneInBlock,
+
+    // Tone index conversion
+    getBlockRelativeToneIndex,
+    getAbsoluteToneIndex,
+
+    // Wave bank conversion
+    getAbsoluteWaveBank,
+    getBlockRelativeWaveBank,
+    getBlockForWaveBank,
+    isWaveBankInBlock,
+
+    // Wave bank name utilities
+    WAVE_BANK_NAMES,
+    getWaveBankName,
+    parseWaveBankName,
+
+    // Validation
+    isValidWaveBankForTone,
+    getValidWaveBanksForTone,
+} from './s550-blocks.js';
 
 // =============================================================================
 // Parameter Function Exports

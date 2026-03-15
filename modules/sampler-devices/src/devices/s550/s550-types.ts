@@ -61,6 +61,53 @@ export type {
 };
 
 // =============================================================================
+// Block Types
+// =============================================================================
+
+/**
+ * S-550 block identifier.
+ *
+ * The S-550 is organized as two independent blocks, each similar to an S-330.
+ * Block 1 contains tones 0-31 with wave banks A/B.
+ * Block 2 contains tones 32-63 with wave banks C/D.
+ */
+export type S550Block = 1 | 2;
+
+/**
+ * Block-relative wave bank index.
+ *
+ * Within each block, wave banks are referenced as 0 or 1:
+ * - Block 1: 0 = Bank A, 1 = Bank B
+ * - Block 2: 0 = Bank C, 1 = Bank D
+ */
+export type S550BlockRelativeWaveBank = 0 | 1;
+
+/**
+ * Absolute wave bank identifier (as stored in device memory).
+ */
+export type S550AbsoluteWaveBank = 0 | 1 | 2 | 3;
+
+/**
+ * Information about an S-550 block.
+ */
+export interface S550BlockInfo {
+    /** Block number (1 or 2) */
+    block: S550Block;
+
+    /** First tone index in this block (absolute) */
+    firstToneIndex: number;
+
+    /** Last tone index in this block (absolute) */
+    lastToneIndex: number;
+
+    /** Wave banks available in this block (absolute indices) */
+    waveBanks: readonly [S550AbsoluteWaveBank, S550AbsoluteWaveBank];
+
+    /** Disk label for this block */
+    diskLabel?: string;
+}
+
+// =============================================================================
 // System Types
 // =============================================================================
 

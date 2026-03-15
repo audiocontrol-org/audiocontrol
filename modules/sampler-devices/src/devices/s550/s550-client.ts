@@ -38,11 +38,17 @@ import {
 
 import {
     PATCH_PARAMS,
-    ADDR_WAVE_DATA,
     TONE_STRIDE,
+    buildWaveDataAddress,
 } from './s550-addresses.js';
 
 import { createTone } from './s550-tone-factory.js';
+
+import {
+    getBlockForTone,
+    getAbsoluteWaveBank,
+    isValidWaveBankForTone,
+} from './s550-blocks.js';
 
 // =============================================================================
 // Type Aliases for S-550
@@ -79,12 +85,9 @@ const S550_ADDRESS_BUILDERS: SSeriesAddressBuilders = {
     },
 
     buildWaveDataAddress(waveBank: number, segmentIndex: number): number[] {
-        // Wave data address: 01 [bank] [segment*8] 00
-        // Each segment is 12000 samples * 2 bytes = 24000 bytes
-        // Segment stride in address space is 8 in byte 2
-        const byte1 = waveBank & 0x03;
-        const byte2 = (segmentIndex * 8) & 0x7f;
-        return [ADDR_WAVE_DATA[0], byte1, byte2, 0x00];
+        // Use centralized address builder for wave data
+        // waveBank is absolute (0-3: A, B, C, D)
+        return buildWaveDataAddress(waveBank, segmentIndex);
     },
 };
 
