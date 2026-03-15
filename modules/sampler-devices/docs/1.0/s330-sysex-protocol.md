@@ -1,6 +1,8 @@
-# Roland S-330 SysEx Protocol
+# Roland S-Series SysEx Protocol (S-330 / S-550)
 
-This document describes the MIDI System Exclusive protocol used by the Roland S-330 sampler, with particular focus on wave data transfer which uses a different encoding than parameter data.
+This document describes the MIDI System Exclusive protocol used by the Roland S-330 and S-550 samplers. Both devices share model ID `0x1E` and use identical command structure and data encoding. The only differences are memory layout constants (patch/tone counts, wave bank counts).
+
+Focus areas include the RQD/WSD handshake protocol, the DAT packet format with address headers, and the distinction between nibblized parameter data and 7-bit encoded wave data.
 
 ## Overview
 
@@ -15,7 +17,7 @@ The S-330 uses Roland's standard handshaking SysEx protocol:
 
 ## Message Format
 
-All S-330 SysEx messages follow this structure:
+All S-series SysEx messages follow this structure:
 
 ```
 F0 41 <dev> 1E <cmd> [data...] [checksum] F7
@@ -24,11 +26,26 @@ F0 41 <dev> 1E <cmd> [data...] [checksum] F7
 - `F0`: SysEx start
 - `41`: Roland manufacturer ID
 - `<dev>`: Device ID (0x00-0x0F)
-- `1E`: S-330 model ID
+- `1E`: S-series model ID (shared by S-330 and S-550)
 - `<cmd>`: Command byte (RQD, DAT, ACK, etc.)
 - `[data...]`: Command-specific data
 - `[checksum]`: Roland checksum (for DAT messages)
 - `F7`: SysEx end
+
+## DAT Packet Format
+
+**IMPORTANT**: Each DAT packet (both sent and received) includes a **4-byte address header** before the data payload:
+
+```
+F0 41 <dev> 1E 42 <addr0> <addr1> <addr2> <addr3> <data...> <checksum> F7
+```
+
+- The 4 address bytes indicate the starting address of this packet's data
+- Address advances between packets (byte 2 increments by 1 per 128-nibble chunk)
+- The checksum covers both the address header AND the data
+- Each DAT packet carries 128 nibbles (for parameter data) or 128 bytes (for wave data)
+
+This was confirmed via hardware testing against a physical S-550. When receiving DAT packets, the address header must be stripped before collecting nibble/byte data. When sending DAT packets, the address header must be included and the checksum must cover it.
 
 ## Data Encoding: Parameter Data vs Wave Data
 
@@ -95,11 +112,19 @@ This differs from parameter data where size = bytes × 2 (nibble count).
 
 ### Parameter Addresses
 
-| Address Base | Content |
-|--------------|---------|
-| 00 00 xx 00 | Patch data (64 patches, stride=4) |
-| 00 01 00 xx | Function parameters (Multi mode) |
-| 00 03 xx 00 | Tone data (32 tones, stride=2) |
+Addresses are shared between S-330 and S-550. All 4-byte addresses use 7-bit values (0x00-0x7F per byte).
+
+| Address Base | Content | S-330 | S-550 |
+|--------------|---------|-------|-------|
+| 00 00 xx 00 | Patch data (stride=4 in byte 2) | 64 patches (0-63) | 32 patches (0-31) |
+| 00 01 00 xx | Function parameters (Multi mode) | Same | Same |
+| 00 02 xx 00 | Reserved/unknown | Valid data (usage TBD) | Valid data (usage TBD) |
+| 00 03 xx 00 | Tone data (stride=2 in byte 2) | 32 tones (0-31) | 64 tones (0-63) |
+| 00 04 xx 00 | Reserved/unknown | — | Small valid region |
+| 00 05-07 | — | — | RJC (rejected) |
+| 00 08-0F | Reserved/unknown | — | Valid data (usage TBD) |
+
+The S-550 address space was mapped via hardware probing (2-nibble reads at each byte1 value 0x00-0x0F).
 
 ### Wave Data Address
 
@@ -107,10 +132,12 @@ From the S-330 MIDI Implementation, Section 4 (Address Mapping):
 - Addresses are represented from 00 to 7F by hexadecimal (7-bit per byte)
 - Format: `AA BB CC DD` where each byte is 0-127
 
-| Address | Content |
-|---------|---------|
-| 01 00 00 00H | Wave Bank A (18 segments) |
-| 01 20 00 00H | Wave Bank B (18 segments) |
+| Address | Content | Device |
+|---------|---------|--------|
+| 01 00 00 00H | Wave Bank A (18 segments) | Both |
+| 01 01 00 00H | Wave Bank B (18 segments) | Both |
+| 01 02 00 00H | Wave Bank C (18 segments) | S-550 only |
+| 01 03 00 00H | Wave Bank D (18 segments) | S-550 only |
 
 #### Wave Memory Organization
 

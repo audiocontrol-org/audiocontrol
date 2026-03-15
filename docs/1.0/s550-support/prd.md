@@ -1,124 +1,159 @@
 # Roland S-550 Editor Support - Product Requirements Document
 
 **Created:** 2026-02-20
-**Status:** Draft
+**Updated:** 2026-03-15
+**Status:** Approved
 **Owner:** audiocontrol-org
 
 ## Problem Statement
 
-The audiocontrol ecosystem has a fully-featured web editor for the Roland S-330 sampler. The Roland S-550 is a closely related device from the same product family with a very similar architecture and MIDI SysEx implementation. Users who own an S-550 cannot use the existing editor, despite the significant overlap in functionality.
-
-Additionally, the current S-330 editor implementation has device-specific code tightly coupled throughout. As we look toward supporting non-Roland samplers in the future, we need to establish patterns for code reuse that will scale across device families.
+The audiocontrol ecosystem has a fully-featured web editor for the Roland S-330 sampler. The Roland S-550 is a closely related rack-mount device from the same product family sharing the same SysEx model ID (0x1E) and protocol. Users who own an S-550 cannot use the existing editor despite significant architectural overlap. Supporting the S-550 also establishes the pattern for multi-device support across the S-series family and beyond.
 
 ## User Stories
 
-- As an S-550 owner, I want a web-based editor so that I can edit patches, tones, and samples without using the hardware's limited front panel.
-- As a developer, I want clear separation between device-specific and reusable code so that adding new sampler support is efficient.
-- As a maintainer, I want shared code to live in shared modules so that bug fixes and improvements benefit all editors.
+- As an S-550 owner, I want a web-based editor so that I can edit patches, tones, and samples without using the hardware's limited front panel
+- As a developer, I want shared S-series code in a common base module so that device-specific modules only contain device-specific logic
+- As a maintainer, I want a unified sampler editor application that adapts to the connected device rather than maintaining separate editor apps per device
 
 ## Success Criteria
 
-- [ ] S-550 editor is functional for patch/tone editing via SysEx
-- [ ] S-550 device module follows established patterns from S-330
-- [ ] Shared code is extracted to appropriate modules (not duplicated)
-- [ ] Architecture supports future non-Roland samplers
+- [ ] S-550 device module implemented with correct memory block layout
+- [ ] S-550 library converters handle tone, patch, and set import/export
+- [ ] Unified sampler editor serves both S-330 and S-550 via device config registry
+- [ ] Shared S-series protocol code extracted to `roland-s-series` base module
 - [ ] Test coverage meets project standards (80%+)
+- [ ] Editor accessible at `audiocontrol.org/roland/s550/editor`
 
 ## Scope
 
 ### In Scope
 
-- Roland S-550 device module (sampler-devices/s550)
-- Roland S-550 converters (sampler-library/converters/s550)
-- Roland S-550 editor application (s550-editor)
-- Extraction of shared Roland S-series code where appropriate
-- Documentation of device differences and commonalities
+- Roland S-550 device module (`sampler-devices/src/devices/s550/`)
+- Roland S-series shared base (`sampler-devices/src/devices/roland-s-series/`)
+- Roland S-550 library converters (`sampler-library/src/converters/s550/`)
+- Unified sampler editor with device config registry (replacing separate `s330-editor`)
+- S-550 schema support in sampler-library
 
 ### Out of Scope
 
-- Non-Roland sampler support (future feature, but architecture should enable it)
-- Hardware S-550 differences that don't affect MIDI editing (front panel, rack mount)
+- Non-Roland sampler support (architecture enables it but not implemented here)
 - S-550 HD (hard disk variant) specific features
 - Sample transfer via SCSI (MIDI-based sample transfer only)
+- S-770 support (different architecture generation)
 
 ## Technical Context
 
-### S-330 vs S-550 Comparison
+### S-550 vs S-330 Memory Block Layout
 
-| Aspect | S-330 | S-550 | Implication |
-|--------|-------|-------|-------------|
-| Form factor | Desktop | Rack mount | No code impact |
-| Sample memory | 512KB-1.5MB | 512KB-2MB | Memory layout may differ |
-| Model ID | 0x1E | TBD - verify | Device identification |
-| SysEx protocol | Roland format | Same family | Likely identical or very similar |
-| Tone structure | 8-point envelope | Likely same | Verify against S-550 docs |
-| Patch structure | 8 tone zones | Likely same | Verify against S-550 docs |
+Both devices share model ID `0x1E` and identical SysEx protocol commands (RQD, WSD, DAT, ACK, EOD, DT1). The key differences are in memory block allocation — the S-550 inverts the patch/tone ratio and doubles the wave bank capacity:
 
-### Existing Architecture
+| Aspect | S-330 | S-550 | Notes |
+|--------|-------|-------|-------|
+| Model ID | 0x1E | 0x1E | Identical — same protocol family |
+| Patches | 64 | 32 | S-550 has fewer patches |
+| Tones | 32 | 64 | S-550 has more tones |
+| Wave banks | 2 (A, B) | 4 (A, B, C, D) | S-550 has double the wave banks |
+| Patch block size | 512 bytes (1024 nibbles) | 512 bytes (1024 nibbles) | Identical |
+| Tone block size | 256 bytes (512 nibbles) | 256 bytes (512 nibbles) | Identical |
+| Patch stride | 4 (byte 2) | 4 (byte 2) | Identical addressing |
+| Tone stride | 2 (byte 2) | 2 (byte 2) | Identical addressing |
+| Tone layer range | 0-31 | 0-63 | Patch tone maps can reference more tones |
+| Wave bank range | 0-1 | 0-3 | Tone wave params can reference more banks |
+| Source tone range | 0-31 | 0-63 | Tone source references wider range |
+| Wave encoding | 12-bit, 7-bit SysEx | 12-bit, 7-bit SysEx | Identical |
+| Polyphony | 16 voices | 24 voices | No protocol impact |
 
-The exploration revealed these key patterns:
+### Base Address Map (Shared)
 
-**Device-specific (sampler-devices/s330/)**:
-- `s330-addresses.ts` - Memory layout, SysEx addresses
-- `s330-types.ts` - Tone/Patch interfaces, device enums
-- `s330-params.ts` - Parameter encoding/decoding
-- `s330-client.ts` - MIDI SysEx communication
-- `s330-wave-format.ts` - Audio encoding
+Both devices use the same 4-byte address format:
 
-**Reusable patterns (already abstracted)**:
-- `MidiAdapter` interface - Device-agnostic MIDI I/O
-- `ConverterRegistry` - Runtime device discovery
-- `createMidiStore()` - Store factory pattern
-- `editor-core` components - Connection UI, parameter controls
+| Block | Address | Notes |
+|-------|---------|-------|
+| System params | `[0x00, 0x00, 0x00, 0x00]` | 11 bytes |
+| Patch base | `[0x00, 0x00, 0x00, 0x00]` | Patch N at byte2 = N*4 |
+| Tone base | `[0x00, 0x03, 0x00, 0x00]` | Tone N at byte2 = N*2 |
+| Wave data | `[0x01, 0x00, 0x00, 0x00]` | Sample data |
 
-### Architecture Decision: Separate Editors
+### Architecture Decision: Shared Base + Unified Editor
 
-Create `s550-editor` as a separate module rather than a combined "roland-sampler-editor" because:
+The implementation chose shared infrastructure over code duplication:
 
-1. **Type safety** - Each editor binds to its device-specific types (S550Tone vs S330Tone)
-2. **Independent deployment** - Editors can be versioned and deployed separately
-3. **Focused scope** - Each editor is single-purpose, easier to maintain
-4. **URL consistency** - `audiocontrol.org/roland/s550/editor` follows established pattern
+1. **Shared `roland-s-series` base module** — Protocol code (SysEx messages, parameter parsing, wave format, type definitions) lives in `devices/roland-s-series/`. Device-specific modules provide configuration constants and re-export shared types.
 
-Shared code lives in shared modules (`editor-core`, `sampler-devices`, `sampler-library`), not in editor modules.
+2. **Unified `sampler-editor`** replaces the separate `s330-editor` — A `DeviceConfig` registry and `DeviceConfigContext` allow a single React application to serve any S-series device. The editor resolves device type from the URL path and injects the correct configuration at runtime.
+
+This approach was chosen because:
+- S-330 and S-550 share >90% of protocol code (identical commands, message formats, parameter structure)
+- Only memory layout constants differ (patch/tone counts, wave bank range, value ranges)
+- A single editor codebase eliminates duplication of UI components, stores, and routing logic
+- The `DeviceConfig` interface is extensible to future devices
 
 ## Dependencies
 
-- S-550 Owner's Manual / MIDI Implementation documentation
-- Physical S-550 for testing (or emulator)
-- Understanding of S-330/S-550 protocol differences
+- S-550 Owner's Manual / MIDI Implementation documentation (confirmed compatible)
+- Physical S-550 or community tester for hardware validation
+- Existing S-330 implementation as reference
+
+## Resolved Questions
+
+| Question | Answer |
+|----------|--------|
+| S-550 SysEx model ID | 0x1E (same as S-330) |
+| Memory addresses identical? | Yes — same base addresses, same stride values |
+| S-550-specific parameters? | No new parameters; same tone/patch fields with wider value ranges |
+| Wave data encoding | Identical 12-bit encoding |
+| Maximum sample memory | Up to 2MB (vs 1.5MB S-330) — no protocol impact |
 
 ## Open Questions
 
-- [ ] What is the S-550 SysEx model ID? (S-330 is 0x1E)
-- [ ] Are memory addresses identical to S-330?
-- [ ] Are there S-550-specific parameters not present on S-330?
-- [ ] What is the maximum sample memory configuration?
-- [ ] Is wave data encoding identical (12-bit)?
+- [ ] Hardware validation with physical S-550 unit (protocol verified from documentation)
+- [ ] S-550 front panel virtual layout (cosmetic — does not block core editor functionality)
 
 ## Appendix
 
 ### S-Series Family
 
-The Roland S-series includes:
-- S-10 (1987) - Entry-level
-- S-220 (1987) - Basic rack
-- **S-330** (1987) - Desktop, our reference implementation
-- **S-550** (1987) - Professional rack mount
-- S-770 (1989) - Next generation, different architecture
+| Device | Year | Form | Voices | Patches | Tones | Wave Banks | Status |
+|--------|------|------|--------|---------|-------|------------|--------|
+| S-10 | 1987 | Desktop | 4 | — | — | — | Not planned |
+| S-220 | 1987 | Rack | 16 | — | — | — | Not planned |
+| **S-330** | 1987 | Desktop | 16 | 64 | 32 | 2 | **Supported** |
+| **S-550** | 1987 | Rack | 24 | 32 | 64 | 4 | **This feature** |
+| S-770 | 1989 | Rack | 24 | — | — | — | Different architecture |
 
-S-330 and S-550 share the same generation and likely have the most overlap in MIDI implementation.
-
-### Related Modules
+### Module Layout
 
 ```
-modules/
-├── sampler-devices/src/devices/
-│   ├── s330/          # Existing
-│   └── s550/          # NEW
-├── sampler-library/src/converters/
-│   ├── s330/          # Existing
-│   └── s550/          # NEW
-├── s330-editor/       # Existing
-└── s550-editor/       # NEW
+modules/sampler-devices/src/devices/
+├── roland-s-series/          # Shared protocol base
+│   ├── s-series-config.ts    # SSeriesDeviceConfig interface
+│   ├── s-series-types.ts     # Shared types (envelopes, params, adapters)
+│   ├── s-series-constants.ts # Protocol constants (commands, timing)
+│   ├── s-series-messages.ts  # SysEx message builders
+│   ├── s-series-params.ts    # Parameter parsing/encoding
+│   ├── s-series-client.ts    # Client factory
+│   └── s-series-wave-format.ts # Wave format conversion
+├── s330/                     # S-330 specific
+│   ├── s330-config.ts        # 64 patches, 32 tones, 2 wave banks
+│   ├── s330-addresses.ts     # Address builders with S-330 ranges
+│   ├── s330-params.ts        # S-330 parsing (delegates to shared)
+│   └── ...
+└── s550/                     # S-550 specific
+    ├── s550-config.ts        # 32 patches, 64 tones, 4 wave banks
+    ├── s550-addresses.ts     # Address builders with S-550 ranges
+    ├── s550-params.ts        # S-550 parsing (delegates to shared)
+    └── ...
+
+modules/sampler-library/src/converters/
+├── s330/                     # S-330 ↔ library format
+└── s550/                     # S-550 ↔ library format
+
+modules/sampler-editor/       # Unified editor (was s330-editor)
+├── src/configs/              # Device config registry
+│   ├── types.ts              # DeviceConfig interface
+│   ├── registry.ts           # Config lookup by device type
+│   ├── s330.ts               # S-330 config
+│   └── s550.ts               # S-550 config
+└── src/context/              # React context for device config
+    └── DeviceConfigContext.tsx
 ```

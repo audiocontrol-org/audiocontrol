@@ -458,8 +458,10 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
 
                     if (command === S_SERIES_COMMANDS.DAT) {
                         resetTimeout();
-                        const dataStart = 5;
-                        const dataEnd = response.length - 2;
+                        // DAT payload: [addr0, addr1, addr2, addr3, nibble0, nibble1, ..., checksum, F7]
+                        // Skip 4-byte address header, strip checksum + F7
+                        const dataStart = 5 + 4; // skip SysEx header (5) + address (4)
+                        const dataEnd = response.length - 2; // strip checksum + F7
                         const nibbleData = response.slice(dataStart, dataEnd);
                         allNibbles.push(...nibbleData);
 
@@ -537,16 +539,29 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             throw new Error(`WSD rejected: got ${wsdResponse[4].toString(16)}`);
         }
 
-        const PACKET_SIZE = 256;
-        for (let offset = 0; offset < nibbled.length; offset += PACKET_SIZE) {
-            const chunk = nibbled.slice(offset, offset + PACKET_SIZE);
-            const datChecksum = calculateChecksum([], chunk);
+        // Each DAT packet includes a 4-byte address header followed by nibble data.
+        // The device uses 128 nibbles per packet; 1 byte2 unit = 128 nibbles.
+        const NIBBLES_PER_PACKET = 128;
+        for (let offset = 0; offset < nibbled.length; offset += NIBBLES_PER_PACKET) {
+            const chunk = nibbled.slice(offset, offset + NIBBLES_PER_PACKET);
+
+            // Calculate packet address: advance byte2 by 1 per 128-nibble chunk
+            const chunkIndex = offset / NIBBLES_PER_PACKET;
+            const packetAddress = [
+                address[0],
+                address[1],
+                (address[2] + chunkIndex) & 0x7f,
+                address[3],
+            ];
+
+            const datChecksum = calculateChecksum(packetAddress, chunk);
             const dat = [
                 0xf0,
                 ROLAND_ID,
                 deviceId,
                 S_SERIES_MODEL_ID,
                 S_SERIES_COMMANDS.DAT,
+                ...packetAddress,
                 ...chunk,
                 datChecksum,
                 0xf7,
@@ -607,19 +622,32 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             throw new Error(`Wave WSD rejected: got ${wsdResponse[4].toString(16)}`);
         }
 
-        const WAVE_PACKET_SIZE = 256;
+        // Wave data DAT packets include 4-byte address headers.
+        // Wave data is NOT nibblized — 128 bytes per packet matches
+        // 1 byte2 unit = 128 bytes in the wave address space.
+        const WAVE_PACKET_SIZE = 128;
         let bytesSent = 0;
 
         for (let offset = 0; offset < totalBytes; offset += WAVE_PACKET_SIZE) {
             const end = Math.min(offset + WAVE_PACKET_SIZE, totalBytes);
             const chunk = Array.from(waveData.slice(offset, end));
-            const datChecksum = calculateChecksum([], chunk);
+
+            const chunkIndex = offset / WAVE_PACKET_SIZE;
+            const packetAddress = [
+                address[0],
+                address[1],
+                (address[2] + chunkIndex) & 0x7f,
+                address[3],
+            ];
+
+            const datChecksum = calculateChecksum(packetAddress, chunk);
             const dat = [
                 0xf0,
                 ROLAND_ID,
                 deviceId,
                 S_SERIES_MODEL_ID,
                 S_SERIES_COMMANDS.DAT,
+                ...packetAddress,
                 ...chunk,
                 datChecksum,
                 0xf7,
@@ -863,7 +891,8 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
 
                             if (command === S_SERIES_COMMANDS.DAT) {
                                 resetTimeout();
-                                const dataStart = 5;
+                                // Skip 4-byte address header in DAT payload
+                                const dataStart = 5 + 4;
                                 const dataEnd = response.length - 2;
                                 allBytes.push(...response.slice(dataStart, dataEnd));
                                 onProgress?.(allBytes.length, totalBytes);

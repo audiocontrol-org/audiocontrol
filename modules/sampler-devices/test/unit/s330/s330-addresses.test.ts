@@ -80,7 +80,7 @@ describe('S-330 Address Constants', () => {
         });
 
         it('should have correct EOD command', () => {
-            expect(S330_COMMANDS.EOD).toBe(0x4F);
+            expect(S330_COMMANDS.EOD).toBe(0x45);
         });
 
         it('should have correct ERR command', () => {
@@ -88,7 +88,7 @@ describe('S-330 Address Constants', () => {
         });
 
         it('should have correct RJC command', () => {
-            expect(S330_COMMANDS.RJC).toBe(0x45);
+            expect(S330_COMMANDS.RJC).toBe(0x4F);
         });
     });
 

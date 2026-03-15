@@ -39,11 +39,11 @@ export const S_SERIES_COMMANDS = {
     /** Acknowledge */
     ACK: 0x43,
     /** End of Data */
-    EOD: 0x4F,
+    EOD: 0x45,
     /** Communication Error */
     ERR: 0x4E,
     /** Rejection */
-    RJC: 0x45,
+    RJC: 0x4F,
 } as const;
 
 // =============================================================================

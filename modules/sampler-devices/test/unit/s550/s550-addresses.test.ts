@@ -92,8 +92,8 @@ describe('S-550 Constants', () => {
             expect(S550_COMMANDS.DAT).toBe(0x42);
             expect(S550_COMMANDS.DT1).toBe(0x12);
             expect(S550_COMMANDS.ACK).toBe(0x43);
-            expect(S550_COMMANDS.EOD).toBe(0x4F);
-            expect(S550_COMMANDS.RJC).toBe(0x45);
+            expect(S550_COMMANDS.EOD).toBe(0x45);
+            expect(S550_COMMANDS.RJC).toBe(0x4F);
             expect(S550_COMMANDS.ERR).toBe(0x4E);
         });
     });

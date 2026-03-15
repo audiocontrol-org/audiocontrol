@@ -7,305 +7,310 @@
 - [Research S-550 SysEx protocol (#54)](https://github.com/audiocontrol-org/audiocontrol/issues/54)
 - [Implement S-550 device module (#55)](https://github.com/audiocontrol-org/audiocontrol/issues/55)
 - [Implement S-550 converters (#56)](https://github.com/audiocontrol-org/audiocontrol/issues/56)
-- [Create s550-editor module (#57)](https://github.com/audiocontrol-org/audiocontrol/issues/57)
+- [Create unified sampler-editor (#57)](https://github.com/audiocontrol-org/audiocontrol/issues/57)
 - [Evaluate shared code extraction (#58)](https://github.com/audiocontrol-org/audiocontrol/issues/58)
 
 ---
 
-## Phase 1: Research & Protocol Verification
+## Implementation Status
 
-### Tasks
-
-1. **Obtain S-550 documentation**
-   - Locate S-550 Owner's Manual with MIDI Implementation
-   - Document SysEx model ID, memory addresses, parameter layout
-   - Compare against S-330 implementation
-
-2. **Create protocol comparison document**
-   - Side-by-side comparison of S-330 vs S-550 SysEx
-   - Identify identical, similar, and different elements
-   - Document memory layout differences
-
-3. **Verify with hardware** (if available)
-   - Confirm SysEx communication works
-   - Test parameter reads/writes
-   - Validate assumptions from documentation
-
-### Acceptance Criteria
-
-- [ ] S-550 model ID confirmed
-- [ ] Memory address differences documented
-- [ ] Parameter differences documented
-- [ ] Protocol comparison document complete
-
-### Deliverables
-
-- `modules/sampler-devices/docs/1.0/s550-protocol.md`
-- `modules/sampler-devices/docs/1.0/s330-s550-comparison.md`
+| Phase | Status | Notes |
+|-------|--------|-------|
+| Phase 1: Shared S-Series Extraction | Complete | `roland-s-series` base module |
+| Phase 2: S-550 Device Module | Complete | Addresses, params, config, types |
+| Phase 3: S-550 Client & Tone Factory | Complete | Shared client factory pattern |
+| Phase 4: S-550 Library Converters | Complete | Tone, patch, set converters + schemas |
+| Phase 5: Unified Sampler Editor | Complete | Device config registry, context, routing |
+| Phase 6: Hardware Validation | In Progress | Patch/tone read-write validated; wave transfer remaining |
+| Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
 
 ---
 
-## Phase 2: Device Module (sampler-devices/s550)
+## Phase 1: Shared S-Series Base Extraction (Complete)
 
-### Tasks
+Extracted common protocol code from S-330 into `devices/roland-s-series/`.
 
-1. **Create S-550 device directory structure**
-   ```
-   modules/sampler-devices/src/devices/s550/
-   ├── index.ts
-   ├── s550-addresses.ts
-   ├── s550-types.ts
-   ├── s550-params.ts
-   ├── s550-client.ts
-   ├── s550-messages.ts
-   └── s550-wave-format.ts (if different from S-330)
-   ```
+### What Was Built
 
-2. **Implement S-550 addresses**
-   - Model ID constant
-   - Memory addresses (patches, tones, waves)
-   - Address calculation functions
+| File | Purpose |
+|------|---------|
+| `s-series-config.ts` | `SSeriesDeviceConfig` interface — captures device-specific memory layout |
+| `s-series-types.ts` | Shared types: envelopes, key modes, MIDI adapter, SysEx messages |
+| `s-series-constants.ts` | Protocol constants: commands (RQD/WSD/DT1/etc.), timing, error codes |
+| `s-series-messages.ts` | SysEx message builders: nibblization, size encoding, message construction |
+| `s-series-params.ts` | Parameter parsing/encoding: enums, names, addresses, envelopes, signed values |
+| `s-series-wave-format.ts` | WAV ↔ S-series conversion, resampling, segment calculation |
+| `s-series-client.ts` | Shared client factory with bulk dump, parameter read/write, wave data transfer |
 
-3. **Implement S-550 types**
-   - `S550Tone` interface
-   - `S550Patch` interface
-   - Device-specific enums (key modes, outputs, etc.)
+### Key Design Decision
 
-4. **Implement S-550 parameters**
-   - Parameter encoding/decoding
-   - Nibblization helpers
-   - Default value factories
+Both S-330 and S-550 use model ID `0x1E`. The `SSeriesDeviceConfig` interface parameterizes the differences:
 
-5. **Implement S-550 client**
-   - SysEx communication (RQD/WSD/DAT/ACK/EOD)
-   - Bulk dump operations
-   - Parameter read/write
-
-6. **Add package exports**
-   - Update `sampler-devices/package.json` exports
-   - Export as `@audiocontrol/sampler-devices/s550`
-
-7. **Write unit tests**
-   - Parameter encoding tests
-   - Address calculation tests
-   - Type factory tests
-
-### Acceptance Criteria
-
-- [ ] All device files created
-- [ ] S550Client can communicate with hardware
-- [ ] Package exports work correctly
-- [ ] Unit tests pass with 80%+ coverage
-
-### Code Reuse Strategy
-
-If S-330 and S-550 are nearly identical:
-
-**Option A: Shared base with device-specific constants**
 ```typescript
-// shared/roland-s-series-base.ts
-export function createSSeriesClient(config: { modelId: number; ... }) { ... }
-
-// s550/s550-client.ts
-import { createSSeriesClient } from '../shared/roland-s-series-base';
-export const s550Client = createSSeriesClient({ modelId: S550_MODEL_ID, ... });
+interface SSeriesDeviceConfig {
+  modelId: number;           // 0x1E for both
+  patchCount: number;        // 64 (S-330) vs 32 (S-550)
+  toneCount: number;         // 32 (S-330) vs 64 (S-550)
+  waveBankCount: number;     // 2 (S-330) vs 4 (S-550)
+  maxToneIndex: number;      // 31 vs 63
+  maxWaveBank: number;       // 1 vs 3
+  maxPatchIndex: number;     // 63 vs 31
+  addresses: SSeriesAddresses;
+  patchBlockSize: number;    // 512 (both)
+  toneBlockSize: number;     // 256 (both)
+  // ... block sizes, strides
+}
 ```
 
-**Option B: Device-specific implementations (current pattern)**
-- Copy S-330 implementation
-- Modify device-specific constants
-- Keep implementations separate for clarity
+### Acceptance Criteria — Met
 
-Decision depends on Phase 1 findings. If >90% identical, use Option A. If significant differences, use Option B.
+- [x] All shared code extracted without breaking S-330 tests
+- [x] S-330 module delegates to shared base
+- [x] `SSeriesDeviceConfig` captures all device-specific constants
+- [x] Package exports updated for `@audiocontrol/sampler-devices/roland-s-series`
 
 ---
 
-## Phase 3: Library Converters (sampler-library/converters/s550)
+## Phase 2: S-550 Device Module (Complete)
+
+Implemented `devices/s550/` using the shared base.
+
+### What Was Built
+
+| File | Purpose | Key S-550 Specifics |
+|------|---------|---------------------|
+| `s550-config.ts` | Device config instance | 32 patches, 64 tones, 4 wave banks |
+| `s550-addresses.ts` | Address constants and builders | Same base addresses; wider value ranges for tone/wave bank indices |
+| `s550-types.ts` | S550Tone, S550Patch, S550SystemParams | Tone layer range 0-63, wave bank 0-3, source tone 0-63 |
+| `s550-params.ts` | Parameter parsing/encoding | Re-exports shared parsers; S-550 range validation |
+
+### S-550 Memory Block Layout Detail
+
+**Patch block (512 bytes / 1024 nibbles per patch):**
+
+```
+Offset   Field                  Size    S-550 Range
+0x00     Name                   12      ASCII
+0x0C     Bender Range           1       0-12
+0x0E     Aftertouch Sens        1       0-127
+0x0F     Key Mode               1       0-4 (whole/dual/split/v-sw/x-fade)
+0x10     Velocity Threshold     1       0-127
+0x11     Tone Layer 1           109     0-63 (S-330: 0-31)
+0x7E     Tone Layer 2           109     0-63 (S-330: 0-31)
+...      Performance params     ...     Same as S-330
+```
+
+**Tone block (256 bytes / 512 nibbles per tone):**
+
+```
+Offset   Field                  Size    S-550 Range
+0x00     Name                   8       ASCII
+0x09     Source Tone            1       0-63 (S-330: 0-31)
+0x0D     Wave Bank              1       0-3 (S-330: 0-1)
+...      Wave/LFO/TVF/TVA      ...     Same as S-330
+0x57     Copy Source            1       0-63 (S-330: 0-31)
+```
+
+### Test Coverage
+
+- 91 unit tests for S-550 addresses and parameter encoding
+- All tests pass alongside existing S-330 tests (412 total)
+
+### Acceptance Criteria — Met
+
+- [x] All S-550 device files created following S-330 pattern
+- [x] Package exports work as `@audiocontrol/sampler-devices/s550`
+- [x] Unit tests pass with comprehensive coverage
+- [x] Address builders produce correct 4-byte addresses
+
+---
+
+## Phase 3: S-550 Client & Tone Factory (Complete)
+
+Created S-550 client and tone factory using the shared S-series client infrastructure.
+
+### What Was Built
+
+| File | Purpose |
+|------|---------|
+| `s550-client.ts` | S-550 client wrapping shared `createSSeriesClient()` factory |
+| `s550-tone-factory.ts` | Create tones with S-550 defaults (monolithic, sub-tones, etc.) |
+
+### Key Addition: `clampWaveParams`
+
+Added `clampWaveParams()` utility to the shared wave format module. This prevents `loopPoint` from exceeding `endPoint` when importing tones from the library — a fix that benefits both S-330 and S-550.
+
+### Acceptance Criteria — Met
+
+- [x] `createS550Client()` returns working client interface
+- [x] Tone factory creates valid S-550 tones with correct range constraints
+- [x] `clampWaveParams` prevents invalid loop points on both devices
+
+---
+
+## Phase 4: S-550 Library Converters (Complete)
+
+Implemented converters for the sampler-library module.
+
+### What Was Built
+
+| File | Purpose |
+|------|---------|
+| `converters/s550/index.ts` | Converter registration |
+| `converters/s550/tone-converter.ts` | S550Tone ↔ ToneYaml |
+| `converters/s550/patch-converter.ts` | S550Patch ↔ PatchYaml |
+| `converters/s550/set-converter.ts` | Full device state ↔ library set format |
+| `schemas/patch-schema.ts` | S-550 patch YAML schema |
+| `schemas/tone-schema.ts` | S-550 tone YAML schema |
+
+### Acceptance Criteria — Met
+
+- [x] All converters registered in converter registry
+- [x] `DeviceType` includes `'s550'`
+- [x] Round-trip conversion preserves data
+
+---
+
+## Phase 5: Unified Sampler Editor (Complete)
+
+Renamed `s330-editor` to `sampler-editor` and added device config abstraction.
+
+### What Was Built
+
+| File | Purpose |
+|------|---------|
+| `configs/types.ts` | `DeviceConfig` interface, `SamplerDeviceType` union |
+| `configs/registry.ts` | `getDeviceConfig()`, `isDeviceSupported()`, `getSupportedDevices()` |
+| `configs/s330.ts` | S-330 config: 16 patches, 32 tones, 2 wave banks |
+| `configs/s550.ts` | S-550 config: 32 patches, 64 tones, 4 wave banks |
+| `context/DeviceConfigContext.tsx` | React context providing config to all components |
+| `main.tsx` | URL-based device resolution and config injection |
+
+### How Device Selection Works
+
+1. Editor reads device type from URL path (`/roland/s330/editor` → `'s330'`)
+2. `getDeviceConfig('s330')` returns the S-330 configuration
+3. `DeviceConfigContext` provides config to all child components
+4. Components use `useDeviceConfig()` hook for device-specific constants (patch count, tone count, etc.)
+
+### Acceptance Criteria — Met
+
+- [x] Single editor serves both devices
+- [x] Device-specific pages adapt to config (correct patch/tone counts)
+- [x] S-330 URL continues to work at `/roland/s330/editor`
+- [x] S-550 URL works at `/roland/s550/editor`
+
+---
+
+## Phase 6: Hardware Validation (In Progress)
+
+Hardware testing is being performed against a physical Roland S-550 connected via MOTU 828mk3 MIDI interface.
+
+### Protocol Bugs Found and Fixed
+
+Hardware testing revealed three bugs in the shared S-series client that were not caught by unit tests:
+
+1. **Swapped EOD/RJC command bytes** — `s-series-constants.ts` had EOD=0x4F and RJC=0x45, reversed from the Roland spec (EOD=0x45, RJC=0x4F). This caused all RQD reads to interpret the device's "end of data" signal as "rejection."
+
+2. **DAT packet address headers not stripped on receive** — Each DAT packet from the device includes a 4-byte address prefix (`[addr0, addr1, addr2, addr3]`) before the nibble data. The client was including these as data, shifting all parsed parameter values.
+
+3. **DAT packet address headers missing on send** — Outgoing DAT packets must include a 4-byte address header, and the checksum must cover both address and data. Packets use 128-nibble chunks (matching the device's own packet size), with byte 2 of the address incrementing by 1 per chunk.
+
+### Tests Created
+
+| Test File | Purpose |
+|-----------|---------|
+| `test/integration/s550-ping.test.ts` | Minimal connectivity — send raw RQD and log response bytes |
+| `test/integration/s550-probe.test.ts` | Address space discovery — probe byte1 values to map valid regions |
+| `test/integration/s550-dat-format.test.ts` | DAT packet format analysis — examine address headers and chunk sizes |
+| `test/integration/s550-hardware.test.ts` | Full hardware validation — 17 tests covering all read/write operations |
 
 ### Tasks
 
-1. **Create S-550 converter directory**
-   ```
-   modules/sampler-library/src/converters/s550/
-   ├── index.ts
-   ├── tone-converter.ts
-   ├── patch-converter.ts
-   └── set-converter.ts
-   ```
+1. **Connect to physical S-550 via MIDI** — Done
+   - [x] Verify SysEx handshake with model ID 0x1E
+   - [x] Confirm device responds to RQD requests
+   - [x] Map S-550 address space (byte1 values 0x00-0x0F)
 
-2. **Implement tone converter**
-   - `S550Tone` ↔ `ToneYaml` conversion
-   - Implement `ToneConverter<S550Tone>` interface
-   - Handle any S-550-specific tone fields
+2. **Validate patch read/write** — Done
+   - [x] Load all 32 patches via RQD/DAT
+   - [x] Verify patch structure (name, tone layers, key mode, etc.)
+   - [x] Write a modified patch and confirm round-trip (bender range)
+   - [x] Restore original patch values
 
-3. **Implement patch converter**
-   - `S550Patch` ↔ `PatchYaml` conversion
-   - Implement `PatchConverter<S550Patch>` interface
-   - Handle any S-550-specific patch fields
+3. **Validate tone read/write** — Done
+   - [x] Load all 64 tones via RQD/DAT
+   - [x] Verify tone structure (name, wave bank, sample rate, loop mode, etc.)
+   - [x] Access tones at indices 32-63 (beyond S-330 range)
+   - [x] Write a modified tone and confirm round-trip (fineTune)
+   - [x] Restore original tone values
 
-4. **Implement set converter**
-   - Full device state ↔ library format
-   - Sample references
-   - Metadata handling
+4. **Validate wave data transfer** — Not Started
+   - [ ] Import a WAV sample to each wave bank (A, B, C, D)
+   - [ ] Verify 12-bit encoding and playback
+   - [ ] Confirm `clampWaveParams` prevents loop point overflow
 
-5. **Register converters**
-   - Add to converter registry
-   - Update `DeviceType` union to include `'s550'`
-
-6. **Write unit tests**
-   - Round-trip conversion tests
-   - Edge case handling
-   - Compatibility with library storage
+5. **Test library import/export** — Not Started
+   - [ ] Export S-550 set to library format
+   - [ ] Import S-330 set to S-550 (cross-device compatibility)
 
 ### Acceptance Criteria
 
-- [ ] All converters implemented
-- [ ] Converters registered in registry
-- [ ] `DeviceType` includes `'s550'`
-- [ ] Unit tests pass with 80%+ coverage
+- [x] All 32 patches load and display correctly
+- [x] All 64 tones load and display correctly
+- [ ] Wave data transfers to all 4 banks
+- [x] Round-trip (load → edit → save → load) preserves all parameters
+- [ ] Library import/export works end-to-end
 
 ---
 
-## Phase 4: Editor Application (s550-editor)
+## Phase 7: S-550 Virtual Front Panel (Not Started)
+
+The S-550 front panel layout differs cosmetically from the S-330 (rack-mount form factor). This phase adds an S-550-specific front panel component.
 
 ### Tasks
 
-1. **Create s550-editor module**
-   ```
-   modules/s550-editor/
-   ├── package.json
-   ├── tsconfig.json
-   ├── vite.config.ts
-   ├── index.html
-   └── src/
-       ├── App.tsx
-       ├── main.tsx
-       ├── pages/
-       ├── components/
-       ├── stores/
-       ├── core/
-       └── types/
-   ```
+1. **Research S-550 front panel layout**
+   - Button arrangement, display format
+   - Map to existing `VirtualFrontPanel` component interface
 
-2. **Configure build and dependencies**
-   - Extend `editor-core`
-   - Depend on `@audiocontrol/sampler-devices/s550`
-   - Depend on `@audiocontrol/sampler-library`
-   - Configure Vite for `@/` imports
-
-3. **Implement stores**
-   - `midiStore.ts` - Using `createMidiStore` from editor-core
-   - `s550Store.ts` - Device-specific UI state
-   - `deviceDataStore.ts` - Patch/tone caching
-   - `libraryStore.ts` - Library operations
-
-4. **Implement pages**
-   - `HomePage.tsx` - Device connection, overview
-   - `PatchesPage.tsx` - Patch list and editor
-   - `TonesPage.tsx` - Tone list and editor
-   - `LibraryPage.tsx` - Library browser
-   - `PlayPage.tsx` - Performance view (if applicable)
-
-5. **Implement components**
-   - Patch editor (bound to S550Patch)
-   - Tone editor (bound to S550Tone)
-   - Parameter controls (reuse from editor-core)
-   - Virtual front panel (S-550-specific layout)
-
-6. **Implement MIDI client integration**
-   - `S550Client.ts` wrapper for editor use
-   - Connection management
-   - Parameter sync
-
-7. **Write integration tests**
-   - Store behavior tests
-   - Component rendering tests
-   - MIDI mock tests
+2. **Implement S-550 front panel variant**
+   - Add S-550 panel layout to `VirtualFrontPanel`
+   - Device config selects correct layout
 
 ### Acceptance Criteria
 
-- [ ] Editor builds and runs
-- [ ] MIDI connection works
-- [ ] Patch editing functional
-- [ ] Tone editing functional
-- [ ] Library integration works
-- [ ] URL: `audiocontrol.org/roland/s550/editor`
-
----
-
-## Phase 5: Shared Code Extraction (Optional/Future)
-
-Based on implementation experience, evaluate opportunities to extract shared code.
-
-### Candidates for Extraction
-
-| Component | Currently | Potential Shared Location |
-|-----------|-----------|--------------------------|
-| Roland SysEx base | s330-client.ts | sampler-devices/shared/roland-sysex.ts |
-| Envelope editor | s330-editor | editor-core or shared-sampler-ui |
-| Tone zone editor | s330-editor | shared-sampler-ui |
-| Library browser | s330-editor | editor-core |
-
-### Decision Criteria
-
-Extract if:
-- Same code exists in 3+ editors
-- Code is stable (not actively changing)
-- Clear interface boundary exists
-
-Do not extract if:
-- Only 2 implementations exist (wait for third)
-- Device-specific behavior is intertwined
-- Extraction would complicate the code
+- [ ] S-550 front panel renders with correct button layout
+- [ ] Button functions match hardware behavior
 
 ---
 
 ## Dependencies
 
 ```
-Phase 1 (Research)
+Phase 1 (S-Series Base) ─── Complete
     ↓
-Phase 2 (Device Module) ──→ Phase 3 (Converters)
-    ↓                           ↓
-    └───────────────────────────┘
-                ↓
-        Phase 4 (Editor)
-                ↓
-        Phase 5 (Extraction - optional)
+Phase 2 (Device Module) ─── Complete
+    ↓
+Phase 3 (Client/Factory) ── Complete ──→ Phase 4 (Converters) ── Complete
+    ↓                                        ↓
+    └────────────────────────────────────────┘
+                    ↓
+            Phase 5 (Unified Editor) ── Complete
+                    ↓
+            Phase 6 (Hardware Validation) ── Not Started
+                    ↓
+            Phase 7 (Front Panel) ── Not Started
 ```
 
 ---
 
-## Risk Mitigation
+## Risk Assessment
 
-| Risk | Likelihood | Impact | Mitigation |
-|------|------------|--------|------------|
-| S-550 protocol significantly different | Low | High | Phase 1 research before coding |
-| No S-550 hardware for testing | Medium | Medium | Use emulator or community tester |
-| Code duplication grows tech debt | Medium | Low | Track duplication, extract in Phase 5 |
-| editor-core changes break both editors | Low | Medium | Pin versions, test both editors |
-
----
-
-## Future Considerations
-
-### Non-Roland Sampler Support
-
-This implementation establishes patterns for:
-- Device module structure (`sampler-devices/<device>/`)
-- Converter registration (`sampler-library/converters/<device>/`)
-- Editor module structure (`<device>-editor/`)
-
-Future devices (Akai, E-mu, etc.) will follow the same patterns but may require:
-- New base abstractions if protocol families differ significantly
-- Different UI patterns for different device paradigms
-- Extended type system for device families
-
-### S-550 HD Support
-
-The S-550 HD (hard disk version) has additional features:
-- Larger sample storage
-- SCSI-based sample transfer
-- Additional system parameters
-
-This could be a separate device (`s550hd`) or a variant configuration of S-550 support. Decision deferred until S-550 editor is complete.
+| Risk | Status | Mitigation |
+|------|--------|------------|
+| S-550 protocol significantly different | **Resolved** — Same model ID, same protocol | Confirmed from documentation and hardware testing |
+| No S-550 hardware for testing | **Resolved** — Physical S-550 connected via 828mk3 | 17 integration tests passing |
+| Code duplication across devices | **Resolved** — Shared base extracted | `roland-s-series` module handles shared code |
+| Unified editor breaks S-330 | **Low risk** — S-330 config tested | Both configs exercised in same editor |
+| Shared client bugs affect both devices | **Resolved** — Three protocol bugs found and fixed | DAT address headers and EOD/RJC constants corrected; S-330 regression testing needed |

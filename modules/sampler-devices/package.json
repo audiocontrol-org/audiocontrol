@@ -55,6 +55,10 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vite.config.integration.ts",
     "test:hardware:s330": "vitest run test/integration/s330-hardware.test.ts",
+    "test:hardware:s550": "vitest run test/integration/s550-hardware.test.ts",
+    "test:hardware:s550:ping": "vitest run test/integration/s550-ping.test.ts",
+    "test:hardware:s550:probe": "vitest run test/integration/s550-probe.test.ts",
+    "test:hardware:s550:dat": "vitest run test/integration/s550-dat-format.test.ts",
     "build": "pnpm test && tsup",
     "build:lib": "tsup",
     "clean": "rm -rf dist"
