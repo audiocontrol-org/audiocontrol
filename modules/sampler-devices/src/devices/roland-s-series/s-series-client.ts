@@ -546,11 +546,13 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             const chunk = nibbled.slice(offset, offset + NIBBLES_PER_PACKET);
 
             // Calculate packet address: advance byte2 by 1 per 128-nibble chunk
+            // Overflow from byte2 carries into byte1 (7-bit per byte)
             const chunkIndex = offset / NIBBLES_PER_PACKET;
+            const linearAddr2 = address[2] + chunkIndex;
             const packetAddress = [
                 address[0],
-                address[1],
-                (address[2] + chunkIndex) & 0x7f,
+                (address[1] + Math.floor(linearAddr2 / 128)) & 0x7f,
+                linearAddr2 & 0x7f,
                 address[3],
             ];
 
@@ -625,6 +627,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
         // Wave data DAT packets include 4-byte address headers.
         // Wave data is NOT nibblized — 128 bytes per packet matches
         // 1 byte2 unit = 128 bytes in the wave address space.
+        // Address overflow from byte2 carries into byte1 (7-bit per byte).
         const WAVE_PACKET_SIZE = 128;
         let bytesSent = 0;
 
@@ -633,10 +636,11 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             const chunk = Array.from(waveData.slice(offset, end));
 
             const chunkIndex = offset / WAVE_PACKET_SIZE;
+            const linearAddr2 = address[2] + chunkIndex;
             const packetAddress = [
                 address[0],
-                address[1],
-                (address[2] + chunkIndex) & 0x7f,
+                (address[1] + Math.floor(linearAddr2 / 128)) & 0x7f,
+                linearAddr2 & 0x7f,
                 address[3],
             ];
 
@@ -1002,25 +1006,24 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
                     });
                 }
 
+                // Use internal functions directly to avoid serialize() deadlock
+                // (we're already inside serialize)
+
                 // Step 1: Send tone parameters
-                await this.sendToneData(toneIndex, tone);
+                const toneAddress = addressBuilders.buildToneAddress(toneIndex);
+                const toneData = parsers.encodeTone(tone);
+                await sendData(toneAddress, toneData);
+                toneCache[toneIndex] = tone;
 
                 // Step 2: Send wave data
-                await this.sendWaveData(
-                    {
-                        data: waveData,
-                        waveBank,
-                        segmentTop,
-                        segmentLength,
-                    },
-                    onProgress
-                );
+                const waveAddress = addressBuilders.buildWaveDataAddress(waveBank, segmentTop);
+                await sendWaveDataInternal(waveAddress, waveData, onProgress);
 
                 // Step 3: Wait for device to process wave data
                 await new Promise((resolve) => setTimeout(resolve, 500));
 
                 // Step 4: Re-send tone parameters
-                await this.sendToneData(toneIndex, tone);
+                await sendData(toneAddress, toneData);
             });
         },
 
