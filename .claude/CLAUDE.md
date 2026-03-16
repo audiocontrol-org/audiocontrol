@@ -63,6 +63,15 @@ const port = midiPort || createMockPort();
 - Avoid `any` — use `unknown` with type guards
 - Never stub modules — use dependency injection for testability
 
+### Multi-Device Architecture
+
+Never use conditionals in UI components to switch behavior based on device configuration (e.g., `if (deviceType === 's550')`, `if (waveBankCount > 2)`). Instead, use context-specific factory methods that return implementations of interfaces with device-dependent behavior composed in at creation time. The UI calls interface methods without knowing which device is active.
+
+- **Factories, not conditionals** — device-specific logic belongs in factory-created implementations, not scattered across UI components
+- **DRY behind interfaces** — common logic is shared via composition; device-specific logic is injected at object creation
+- **No inheritance** — use composition to build device-specific implementations from shared parts
+- **UI is device-agnostic** — components render what interfaces provide; they never branch on device type
+
 ### Code Quality
 
 - Files must be under 300-500 lines — refactor larger files

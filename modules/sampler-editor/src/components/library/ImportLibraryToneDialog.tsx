@@ -16,7 +16,6 @@ import {
 } from '@/lib/library-service';
 import { suggestToneAllocation, isToneSlotEmpty } from '@/lib/slot-allocation';
 import { cn } from '@/lib/utils';
-import { formatToneSlot } from '@/lib/s330-format';
 import { calculateSegmentsNeeded } from '@audiocontrol/sampler-devices/s330';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 
@@ -283,7 +282,7 @@ export function ImportLibraryToneDialog({
                 >
                   {Array.from({ length: 32 }, (_, i) => {
                     const existingTone = deviceTones[i];
-                    const slotLabel = formatToneSlot(i);
+                    const slotLabel = config.memoryLayout.formatToneSlot(i);
                     const isEmpty = isToneSlotEmpty(deviceTones, i);
                     const occupancy = isEmpty ? ' - (empty)' : ` - ${existingTone?.name || ''}`;
                     return (
@@ -320,9 +319,12 @@ export function ImportLibraryToneDialog({
                       isImporting && 'opacity-50'
                     )}
                   >
-                    {Array.from({ length: config.waveBankCount }, (_, i) => (
-                      <option key={i} value={i}>Bank {String.fromCharCode(65 + i)}</option>
-                    ))}
+                    {(() => {
+                      const banks = config.memoryLayout.getWaveBanksForTone(targetSlot);
+                      return banks.indices.map((idx, i) => (
+                        <option key={idx} value={idx}>Bank {banks.labels[i]}</option>
+                      ));
+                    })()}
                   </select>
                 </div>
                 <div>

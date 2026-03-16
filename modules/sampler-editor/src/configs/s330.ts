@@ -8,6 +8,7 @@ import { createS330Client } from '@audiocontrol/sampler-devices/s330';
 import type { DeviceConfig } from './types.js';
 import type { SSeriesMidiAdapter } from '@audiocontrol/sampler-devices/roland-s-series';
 import type { SamplerClientInterface } from '@/core/midi/SamplerClient';
+import { createS330MemoryLayout } from './memory-layout.js';
 
 /**
  * Roland S-330 sampler configuration.
@@ -42,4 +43,6 @@ export const s330Config: DeviceConfig = {
   createClient: (adapter: SSeriesMidiAdapter, options?: { deviceId?: number }): SamplerClientInterface => {
     return createS330Client(adapter, options) as unknown as SamplerClientInterface;
   },
+
+  memoryLayout: createS330MemoryLayout(),
 };

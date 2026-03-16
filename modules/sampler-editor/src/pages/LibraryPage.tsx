@@ -750,15 +750,12 @@ export function LibraryPage() {
     setIsLoadDialogOpen(true);
   }, [selection]);
 
-  // Load set to device
-  // targetBlock: S-550 block (1 or 2), undefined for S-330
-  // Block 1: tones 0-31, banks A(0)/B(1). Block 2: tones 32-63, banks C(2)/D(3).
-  const handleLoadSet = useCallback(async (targetBlock?: number) => {
+  // Load set to device using the selected import target's offsets
+  const handleLoadSet = useCallback(async (target: { toneIndexOffset: number; waveBankOffset: number }) => {
     if (!libraryHandle || !clientRef.current || !selection?.name) return;
 
-    // Block offset for tone indices and wave banks (S-550 only)
-    const toneOffset = targetBlock === 2 ? 32 : 0;
-    const waveBankOffset = targetBlock === 2 ? 2 : 0;
+    const toneOffset = target.toneIndexOffset;
+    const waveBankOffset = target.waveBankOffset;
 
     setOperationProgress(0);
     setOperationError(null);
@@ -1567,7 +1564,7 @@ export function LibraryPage() {
         progress={operationProgress}
         error={operationError}
         statusMessage={operationStatus}
-        waveBankCount={config.waveBankCount}
+        importTargets={config.memoryLayout.importTargets}
       />
 
       {/* Import Library Tone Dialog */}

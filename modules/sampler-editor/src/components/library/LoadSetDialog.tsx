@@ -2,30 +2,29 @@
  * Load Set Dialog
  *
  * Modal dialog for loading a library set to the device.
- * Shows progress and warnings about overwriting existing data.
+ * Shows progress, warnings, and import target selection.
  *
- * For the S-550 (which has two independent blocks), allows selecting
- * which block to load the set into:
- * - Block 1: Tones 0-31, Wave Banks A/B
- * - Block 2: Tones 32-63, Wave Banks C/D
+ * The import target options come from the device's MemoryLayout —
+ * this component never branches on device type.
  */
 
 import { useCallback, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
+import type { ImportTarget } from '@/configs/types';
 
 interface LoadSetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   setName: string;
-  /** Called with target block (1 or 2 for S-550, undefined for S-330) */
-  onLoad: (targetBlock?: number) => Promise<void>;
+  /** Called with the selected import target */
+  onLoad: (target: ImportTarget) => Promise<void>;
   isLoading: boolean;
   progress?: number;
   error: string | null;
   statusMessage?: string | null;
-  /** Number of wave banks on the device (2 for S-330, 4 for S-550) */
-  waveBankCount: number;
+  /** Import target options from MemoryLayout */
+  importTargets: ImportTarget[];
 }
 
 export function LoadSetDialog({
@@ -37,26 +36,24 @@ export function LoadSetDialog({
   progress,
   error,
   statusMessage,
-  waveBankCount,
+  importTargets,
 }: LoadSetDialogProps): JSX.Element {
-  const [targetBlock, setTargetBlock] = useState<1 | 2>(1);
+  const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
 
   const handleLoad = useCallback(async () => {
-    const block = hasBlocks ? targetBlock : undefined;
-    await onLoad(block);
-  }, [onLoad, targetBlock]);
+    await onLoad(importTargets[selectedTargetIndex]);
+  }, [onLoad, importTargets, selectedTargetIndex]);
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (!isLoading) {
       onOpenChange(nextOpen);
       if (!nextOpen) {
-        setTargetBlock(1);
+        setSelectedTargetIndex(0);
       }
     }
   }, [isLoading, onOpenChange]);
 
-  // S-550 has 4 wave banks = 2 blocks. S-330 has 2 = 1 block (no selection needed).
-  const hasBlocks = waveBankCount > 2;
+  const showTargetSelector = importTargets.length > 1;
 
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
@@ -82,16 +79,16 @@ export function LoadSetDialog({
               <div className="text-lg font-bold text-s330-text">{setName}</div>
             </div>
 
-            {/* Block Selector (S-550 only) */}
-            {hasBlocks && (
+            {/* Import Target Selector */}
+            {showTargetSelector && (
               <div>
-                <label htmlFor="targetBlock" className="block text-sm text-s330-muted mb-1">
+                <label htmlFor="importTarget" className="block text-sm text-s330-muted mb-1">
                   Target Block
                 </label>
                 <select
-                  id="targetBlock"
-                  value={targetBlock}
-                  onChange={(e) => setTargetBlock(Number(e.target.value) as 1 | 2)}
+                  id="importTarget"
+                  value={selectedTargetIndex}
+                  onChange={(e) => setSelectedTargetIndex(Number(e.target.value))}
                   disabled={isLoading}
                   className={cn(
                     'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
@@ -99,8 +96,9 @@ export function LoadSetDialog({
                     isLoading && 'opacity-50'
                   )}
                 >
-                  <option value={1}>Block 1 — Tones 1-32, Banks A/B</option>
-                  <option value={2}>Block 2 — Tones 33-64, Banks C/D</option>
+                  {importTargets.map((target, i) => (
+                    <option key={i} value={i}>{target.label}</option>
+                  ))}
                 </select>
                 <p className="text-xs text-s330-muted mt-1">
                   Each block is an independent memory area with its own tones and wave banks.
