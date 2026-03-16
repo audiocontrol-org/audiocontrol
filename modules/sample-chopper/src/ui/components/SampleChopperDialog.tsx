@@ -12,7 +12,7 @@
  * - Audio preview for slices (Space to play selected)
  */
 
-import { useCallback, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { cn } from '@/ui/utils.js';
 import { WaveformEditor } from './WaveformEditor.js';
@@ -28,6 +28,7 @@ import {
   type InitialSliceDefinition,
 } from '@/ui/hooks/useSampleChopper.js';
 import type { SliceResult } from '@/types.js';
+import { useTriggerRecording } from '@/ui/hooks/useTriggerRecording.js';
 
 // Re-export types for consumers
 export type { SliceDefinitionOutput, InitialSliceDefinition };
@@ -93,7 +94,41 @@ export function SampleChopperDialog({
     labels: initialLabels,
   });
 
-  const { play, stop, isPlaying, playbackPosition } = useAudioPreview({ sampleRate });
+  const { play, stop, isPlaying, playbackPosition, playbackPositionRef } = useAudioPreview({ sampleRate });
+
+  const handlePlayAll = useCallback(() => {
+    if (!samples) return;
+    if (isPlaying) { stop(); return; }
+    play(samples);
+  }, [samples, isPlaying, play, stop]);
+
+  const samplesRef = useRef(samples);
+  samplesRef.current = samples;
+
+  const handleTriggerPlay = useCallback(() => {
+    if (samplesRef.current) play(samplesRef.current);
+  }, [play]);
+
+  const trigger = useTriggerRecording({
+    playbackPositionRef,
+    isPlaying,
+    onPlay: handleTriggerPlay,
+    onStop: stop,
+    totalSamples: samples?.length ?? 0,
+    kitLabels: chopper.kitLabels,
+  });
+
+  // Inject slices into chopper in real time during recording and on completion
+  useEffect(() => {
+    if ((trigger.state === 'recording' || trigger.state === 'complete') && trigger.recordedSlices.length > 0) {
+      chopper.setManualSlices(trigger.recordedSlices);
+    }
+  }, [trigger.state, trigger.recordedSlices, chopper.setManualSlices]);
+
+  const handleSwitchToManualFromTrigger = useCallback(() => {
+    // Slices are already injected; just switch tab
+    chopper.handleMethodChange('manual');
+  }, [chopper.handleMethodChange]);
 
   const handleClose = useCallback(() => {
     stop();
@@ -117,24 +152,13 @@ export function SampleChopperDialog({
     [samples, chopper.currentSliceResult, isPlaying, chopper.selectedSlice, play, stop, chopper.setSelectedSlice]
   );
 
-  const handlePlayAll = useCallback(() => {
-    if (!samples) return;
-
-    if (isPlaying) {
-      stop();
-      return;
-    }
-
-    play(samples);
-  }, [samples, isPlaying, play, stop]);
-
   const handleConfirm = useCallback(() => {
     if (!chopper.currentSliceResult || chopper.currentSliceResult.slices.length === 0 || !samples) return;
 
     const labels = chopper.kitLabels.split(',').map((s: string) => s.trim());
 
     const sliceDefinitions: SliceDefinitionOutput[] =
-      chopper.selectedMethod === 'manual' || chopper.selectedMethod === 'silence' || chopper.useInitialSlices
+      chopper.selectedMethod === 'manual' || chopper.selectedMethod === 'trigger' || chopper.selectedMethod === 'silence' || chopper.useInitialSlices
         ? chopper.manualSlices
         : chopper.currentSliceResult.slices.map((slice, i) => ({
             label: labels[i % labels.length] ?? `S${i + 1}`,
@@ -162,6 +186,11 @@ export function SampleChopperDialog({
     (event: React.KeyboardEvent) => {
       const target = event.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') {
+        return;
+      }
+
+      // Yield keyboard to trigger system when armed or recording
+      if (chopper.selectedMethod === 'trigger' && (trigger.state === 'armed' || trigger.state === 'recording')) {
         return;
       }
 
@@ -230,7 +259,7 @@ export function SampleChopperDialog({
         return;
       }
     },
-    [chopper, handlePlaySlice, handlePlayAll]
+    [chopper, trigger.state, handlePlaySlice, handlePlayAll]
   );
 
   const waveformHeight = chopper.isFullscreen ? 400 : 140;
@@ -450,6 +479,15 @@ export function SampleChopperDialog({
                 onApplyStripSilence={chopper.handleApplyStripSilence}
                 onCancelStripSilence={chopper.handleCancelStripSilence}
                 manualSlices={chopper.manualSlices}
+                triggerProps={{
+                  state: trigger.state,
+                  midiAvailable: trigger.midiAvailable,
+                  triggerCount: trigger.triggerCount,
+                  onArm: trigger.arm,
+                  onStop: trigger.stopRecording,
+                  onReset: trigger.reset,
+                  onEditManually: handleSwitchToManualFromTrigger,
+                }}
               />
 
               {/* Slice list — shown in all modes for consistent preview */}

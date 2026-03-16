@@ -5,7 +5,7 @@
  * using the Web Audio API.
  */
 
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback, useEffect, type MutableRefObject } from 'react';
 
 export interface UseAudioPreviewOptions {
   /** Sample rate of the audio */
@@ -23,6 +23,8 @@ export interface UseAudioPreviewReturn {
   playbackPosition: number | null;
   /** Error message if playback failed */
   error: string | null;
+  /** Ref for low-latency playback position reads (updated in rAF, no re-render) */
+  playbackPositionRef: MutableRefObject<number | null>;
 }
 
 /**
@@ -34,6 +36,7 @@ export function useAudioPreview({ sampleRate }: UseAudioPreviewOptions): UseAudi
   const startTimeRef = useRef<number>(0);
   const startSampleRef = useRef<number>(0);
   const animationFrameRef = useRef<number | null>(null);
+  const playbackPositionRef = useRef<number | null>(null);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackPosition, setPlaybackPosition] = useState<number | null>(null);
@@ -66,19 +69,23 @@ export function useAudioPreview({ sampleRate }: UseAudioPreviewOptions): UseAudi
     return float32;
   }, []);
 
-  // Update playback position during playback
+  // Update playback position during playback.
+  // Uses sourceNodeRef (set synchronously in play()) instead of isPlaying state
+  // to avoid stale-closure issues where the rAF callback captures isPlaying=false.
   const updatePlaybackPosition = useCallback(() => {
-    if (!audioContextRef.current || !isPlaying) {
+    if (!audioContextRef.current || !sourceNodeRef.current) {
       setPlaybackPosition(null);
+      playbackPositionRef.current = null;
       return;
     }
 
     const elapsed = audioContextRef.current.currentTime - startTimeRef.current;
     const currentSample = startSampleRef.current + Math.floor(elapsed * sampleRate);
+    playbackPositionRef.current = currentSample;
     setPlaybackPosition(currentSample);
 
     animationFrameRef.current = requestAnimationFrame(updatePlaybackPosition);
-  }, [isPlaying, sampleRate]);
+  }, [sampleRate]);
 
   // Stop playback
   const stop = useCallback(() => {
@@ -97,6 +104,7 @@ export function useAudioPreview({ sampleRate }: UseAudioPreviewOptions): UseAudi
     }
     setIsPlaying(false);
     setPlaybackPosition(null);
+    playbackPositionRef.current = null;
   }, []);
 
   // Play audio samples
@@ -135,6 +143,7 @@ export function useAudioPreview({ sampleRate }: UseAudioPreviewOptions): UseAudi
         source.onended = () => {
           setIsPlaying(false);
           setPlaybackPosition(null);
+          playbackPositionRef.current = null;
           sourceNodeRef.current = null;
           if (animationFrameRef.current) {
             cancelAnimationFrame(animationFrameRef.current);
@@ -175,6 +184,7 @@ export function useAudioPreview({ sampleRate }: UseAudioPreviewOptions): UseAudi
     stop,
     isPlaying,
     playbackPosition,
+    playbackPositionRef,
     error,
   };
 }

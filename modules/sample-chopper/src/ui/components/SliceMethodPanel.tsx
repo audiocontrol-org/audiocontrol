@@ -8,6 +8,7 @@
 import * as Tabs from '@radix-ui/react-tabs';
 import { cn } from '@/ui/utils.js';
 import type { SliceMethodTab, SliceDefinitionOutput } from '@/ui/hooks/useSampleChopper.js';
+import { TriggerMethodContent, type TriggerMethodContentProps } from '@/ui/components/TriggerMethodContent.js';
 
 export interface SliceMethodPanelProps {
   selectedMethod: SliceMethodTab;
@@ -32,6 +33,8 @@ export interface SliceMethodPanelProps {
   onCancelStripSilence: () => void;
   // Needed for silence tab empty state
   manualSlices: SliceDefinitionOutput[];
+  // Trigger tab props
+  triggerProps?: TriggerMethodContentProps;
 }
 
 export function SliceMethodPanel({
@@ -53,6 +56,7 @@ export function SliceMethodPanel({
   onApplyStripSilence,
   onCancelStripSilence,
   manualSlices,
+  triggerProps,
 }: SliceMethodPanelProps): JSX.Element {
   return (
     <Tabs.Root
@@ -60,7 +64,7 @@ export function SliceMethodPanel({
       onValueChange={(v) => onMethodChange(v as SliceMethodTab)}
     >
       <Tabs.List className="flex border-b border-ac-accent/30 mb-4">
-        {(['manual', 'transient', 'silence', 'fixed'] as const).map((method) => (
+        {(['manual', 'trigger', 'transient', 'silence', 'fixed'] as const).map((method) => (
           <Tabs.Trigger
             key={method}
             value={method}
@@ -82,6 +86,15 @@ export function SliceMethodPanel({
           Double-click on a slice to split it. Drag slice edges to adjust boundaries.
           Use +/- to zoom for fine adjustments.
         </p>
+      </Tabs.Content>
+
+      {/* Trigger Mode Controls */}
+      <Tabs.Content value="trigger" className="space-y-3">
+        {triggerProps ? (
+          <TriggerMethodContent {...triggerProps} />
+        ) : (
+          <p className="text-xs text-ac-muted">Trigger mode not available.</p>
+        )}
       </Tabs.Content>
 
       {/* Transient Detection Controls */}

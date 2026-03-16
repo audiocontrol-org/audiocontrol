@@ -57,5 +57,23 @@ export {
   type SliceMethodTab,
 } from './hooks/useSampleChopper.js';
 
+export {
+  TriggerMethodContent,
+  type TriggerMethodContentProps,
+} from './components/TriggerMethodContent.js';
+
+export {
+  useTriggerInput,
+  type TriggerState,
+  type UseTriggerInputParams,
+  type UseTriggerInputReturn,
+} from './hooks/useTriggerInput.js';
+
+export {
+  useTriggerRecording,
+  type UseTriggerRecordingParams,
+  type UseTriggerRecordingReturn,
+} from './hooks/useTriggerRecording.js';
+
 // Utilities
 export { cn } from './utils.js';
