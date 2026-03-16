@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@audiocontrol/editor-core": "workspace:*",
+    "@audiocontrol/sample-chopper": "workspace:*",
     "@audiocontrol/sampler-devices": "workspace:*",
     "@audiocontrol/sampler-library": "workspace:*",
     "@audiocontrol/shared-midi": "workspace:*",

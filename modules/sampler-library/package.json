@@ -52,6 +52,7 @@
     "url": "https://github.com/audiocontrol-org/audiocontrol/issues"
   },
   "dependencies": {
+    "@audiocontrol/sample-chopper": "workspace:*",
     "@audiocontrol/sampler-devices": "workspace:*",
     "fft.js": "^4.0.4",
     "yaml": "^2.7.0",

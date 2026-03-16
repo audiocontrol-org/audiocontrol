@@ -8,8 +8,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { SetYaml, ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
+import { slicesToDrumKit } from '@audiocontrol/sampler-library/browser';
+import { SampleChopperDialog, type ChopperResult } from '@audiocontrol/sample-chopper/ui';
 import type { ItemSelection } from '@/pages/LibraryPage';
-import type { SliceDefinitionOutput } from './SampleChopperDialog';
 import {
   loadToneFromSet,
   loadPatchFromSet,
@@ -25,7 +26,7 @@ import {
   getPatchToneDependencies,
 } from '@/lib/library-service';
 import { formatToneSlot, formatPatchSlot } from '@/lib/s330-format';
-import { SampleChopperDialog } from './SampleChopperDialog';
+import { S330KitOutputConfig, type S330KitConfig } from './S330KitOutputConfig';
 
 interface ItemPreviewPanelProps {
   selection: ItemSelection | null;
@@ -379,36 +380,70 @@ export function ItemPreviewPanel({
     }
   }, [libraryHandle, selection?.setName, selection?.name, selection?.type]);
 
-  // Handle when a drum kit is created from chopping
-  const handleKitCreated = useCallback(
-    async (
-      kit: ResolvedDrumKitBundle,
-      slices: SliceDefinitionOutput[],
-      sourceWav: { samples: Int16Array; sampleRate: number }
-    ) => {
+  // S-330-specific kit output config state
+  const [kitConfig, setKitConfig] = useState<S330KitConfig>({
+    name: '',
+    sampleRate: 15000,
+    baseNote: 36,
+    transpose: 0,
+    velocitySensitivity: 2,
+  });
+
+  // Initialize kit name from selection when chopper opens
+  useEffect(() => {
+    if (chopperOpen && selection?.name) {
+      setKitConfig((prev) => ({
+        ...prev,
+        name: prev.name || selection.name!.replace(/\.wav$/i, '').toUpperCase().slice(0, 12),
+      }));
+    }
+  }, [chopperOpen, selection?.name]);
+
+  // Handle when chopper confirms slices
+  const handleChopperConfirm = useCallback(
+    async (result: ChopperResult) => {
       if (!libraryHandle) return;
 
       try {
-        // Save to library using v2 format (source + slices)
+        const kit = slicesToDrumKit(
+          {
+            slices: result.sliceDefinitions.map((s, i) => ({
+              index: i,
+              startSample: s.startSample,
+              endSample: s.endSample,
+              samples: result.sourceAudio.samples.slice(s.startSample, s.endSample),
+              durationMs: ((s.endSample - s.startSample) / result.sourceAudio.sampleRate) * 1000,
+            })),
+            sampleRate: result.sourceAudio.sampleRate,
+            totalDurationMs: (result.sourceAudio.samples.length / result.sourceAudio.sampleRate) * 1000,
+          },
+          {
+            name: kitConfig.name || 'DRUM-KIT',
+            sampleRate: kitConfig.sampleRate,
+            baseNote: kitConfig.baseNote,
+            transpose: kitConfig.transpose !== 0 ? kitConfig.transpose : undefined,
+            velocitySensitivity: kitConfig.velocitySensitivity,
+          }
+        );
+
         await saveDrumKitToLibrary(
           libraryHandle,
           kit.name,
-          sourceWav,
-          slices,
+          result.sourceAudio,
+          result.sliceDefinitions,
           {
             name: kit.name,
             sampleRate: kit.sampleRate,
             baseNote: kit.baseNote,
-            transpose: kit.transpose, // Already in semitones
+            transpose: kit.transpose,
             velocitySensitivity: kit.velocitySensitivity,
           }
         );
-
       } catch (err) {
         console.error('[ItemPreviewPanel] Failed to save drum kit:', err);
       }
     },
-    [libraryHandle]
+    [libraryHandle, kitConfig]
   );
 
   // Load library item when selection changes
@@ -617,7 +652,14 @@ export function ItemPreviewPanel({
                 samples={chopperSamples}
                 sampleRate={chopperSampleRate}
                 sourceName={selection.name}
-                onKitCreated={handleKitCreated}
+                onConfirm={handleChopperConfirm}
+                renderOutputConfig={(state) => (
+                  <S330KitOutputConfig
+                    state={state}
+                    config={kitConfig}
+                    onConfigChange={setKitConfig}
+                  />
+                )}
               />
             </>
           ) : (
@@ -743,7 +785,14 @@ export function ItemPreviewPanel({
                 samples={chopperSamples}
                 sampleRate={chopperSampleRate}
                 sourceName={selection.name}
-                onKitCreated={handleKitCreated}
+                onConfirm={handleChopperConfirm}
+                renderOutputConfig={(state) => (
+                  <S330KitOutputConfig
+                    state={state}
+                    config={kitConfig}
+                    onConfigChange={setKitConfig}
+                  />
+                )}
               />
             </>
           ) : (

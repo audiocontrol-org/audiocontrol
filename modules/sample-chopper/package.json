@@ -1,0 +1,84 @@
+{
+  "name": "@audiocontrol/sample-chopper",
+  "version": "0.1.0",
+  "description": "Device-agnostic audio sample slicing algorithms and React UI for drum kit creation",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./ui": {
+      "types": "./dist/ui/index.d.ts",
+      "import": "./dist/ui/index.js",
+      "require": "./dist/ui/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "pnpm test && tsup",
+    "build:lib": "tsup",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "keywords": [
+    "audio",
+    "sample",
+    "chopper",
+    "slicer",
+    "drum-kit",
+    "waveform",
+    "transient-detection"
+  ],
+  "author": "Orion Letizi",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/audiocontrol-org/audiocontrol.git",
+    "directory": "modules/sample-chopper"
+  },
+  "homepage": "https://github.com/audiocontrol-org/audiocontrol/tree/main/modules/sample-chopper",
+  "bugs": {
+    "url": "https://github.com/audiocontrol-org/audiocontrol/issues"
+  },
+  "dependencies": {
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.2.0"
+  },
+  "peerDependencies": {
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "peerDependenciesMeta": {
+    "@radix-ui/react-dialog": { "optional": true },
+    "@radix-ui/react-tabs": { "optional": true },
+    "react": { "optional": true },
+    "react-dom": { "optional": true }
+  },
+  "devDependencies": {
+    "@radix-ui/react-dialog": "^1.0.5",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "@tsconfig/recommended": "^1.0.8",
+    "@types/node": "^22.13.1",
+    "@types/react": "^18.2.43",
+    "@types/react-dom": "^18.2.17",
+    "@vitest/coverage-v8": "^1.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "tsup": "^8.3.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^1.2.0"
+  }
+}

@@ -22,7 +22,7 @@ import { LoadSetDialog } from '@/components/library/LoadSetDialog';
 import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneDialog';
 import { ImportLibraryPatchDialog } from '@/components/library/ImportLibraryPatchDialog';
 import { ImportDrumKitDialog } from '@/components/library/ImportDrumKitDialog';
-import { SampleChopperDialog, type SliceDefinitionOutput, type InitialSliceDefinition } from '@/components/library/SampleChopperDialog';
+import { SampleChopperDialog, type SliceDefinitionOutput, type InitialSliceDefinition } from '@audiocontrol/sample-chopper/ui';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
 import { useImportDrumKit } from '@/hooks/useImportDrumKit';
@@ -387,9 +387,10 @@ export function LibraryPage() {
         <SampleChopperDialog
           open={sliceEditDialog.open} onOpenChange={(open) => { if (!open) setSliceEditDialog(null); }}
           samples={sliceEditDialog.samples} sampleRate={sliceEditDialog.sampleRate}
-          sourceName={sliceEditDialog.kitName} onKitCreated={() => {}} editMode={true}
-          initialSlices={sliceEditDialog.slices} initialKitConfig={sliceEditDialog.kitConfig}
-          onSlicesUpdated={handleSlicesUpdated}
+          sourceName={sliceEditDialog.kitName} onConfirm={() => {}} editMode={true}
+          initialSlices={sliceEditDialog.slices}
+          initialLabels={sliceEditDialog.slices?.map((s) => s.label).join(',')}
+          onSlicesUpdated={(slices) => handleSlicesUpdated(slices, {})}
         />
       )}
       <ExportToneDialog
