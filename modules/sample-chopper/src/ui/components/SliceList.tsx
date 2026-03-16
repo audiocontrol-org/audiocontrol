@@ -1,10 +1,10 @@
 /**
  * Slice List Component
  *
- * Displays a scrollable list of manual slices with play, select, and delete controls.
+ * Displays a scrollable list of slices with play and select controls.
+ * In editable mode, also shows delete controls.
  */
 
-import type { ReactNode } from 'react';
 import { cn } from '@/ui/utils.js';
 import type { SliceDefinitionOutput } from '@/ui/hooks/useSampleChopper.js';
 
@@ -15,7 +15,9 @@ export interface SliceListProps {
   isPlaying: boolean;
   onSliceSelect: (index: number) => void;
   onSlicePlay: (index: number) => void;
-  onSliceDelete: (index: number) => void;
+  onSliceDelete?: (index: number) => void;
+  /** Show delete buttons and edit-mode empty state */
+  editable?: boolean;
 }
 
 export function SliceList({
@@ -26,11 +28,19 @@ export function SliceList({
   onSliceSelect,
   onSlicePlay,
   onSliceDelete,
+  editable = false,
 }: SliceListProps): JSX.Element {
   if (slices.length === 0) {
+    if (editable) {
+      return (
+        <div className="text-sm text-ac-muted text-center py-4">
+          Click on the waveform to add slice points
+        </div>
+      );
+    }
     return (
       <div className="text-sm text-ac-muted text-center py-4">
-        Click on the waveform to add slice points
+        No slices detected
       </div>
     );
   }
@@ -80,20 +90,22 @@ export function SliceList({
           <span className="text-ac-muted">
             {((slice.endSample - slice.startSample) / sampleRate * 1000).toFixed(0)}ms
           </span>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onSliceDelete(i);
-            }}
-            disabled={slices.length <= 1}
-            className={cn(
-              'text-red-400 hover:text-red-300 px-1',
-              slices.length <= 1 && 'opacity-30 cursor-not-allowed'
-            )}
-            title="Delete slice"
-          >
-            ×
-          </button>
+          {editable && onSliceDelete && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onSliceDelete(i);
+              }}
+              disabled={slices.length <= 1}
+              className={cn(
+                'text-red-400 hover:text-red-300 px-1',
+                slices.length <= 1 && 'opacity-30 cursor-not-allowed'
+              )}
+              title="Delete slice"
+            >
+              ×
+            </button>
+          )}
         </div>
       ))}
     </div>

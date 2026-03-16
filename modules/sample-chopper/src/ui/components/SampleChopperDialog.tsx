@@ -17,6 +17,7 @@ import * as Dialog from '@radix-ui/react-dialog';
 import { cn } from '@/ui/utils.js';
 import { WaveformEditor } from './WaveformEditor.js';
 import { SliceMethodPanel } from './SliceMethodPanel.js';
+import { SliceList } from './SliceList.js';
 import { useAudioPreview } from '@/ui/hooks/useAudioPreview.js';
 import {
   useSampleChopper,
@@ -451,13 +452,21 @@ export function SampleChopperDialog({
                 onApplyStripSilence={chopper.handleApplyStripSilence}
                 onCancelStripSilence={chopper.handleCancelStripSilence}
                 manualSlices={chopper.manualSlices}
-                selectedSlice={chopper.selectedSlice}
-                sampleRate={sampleRate}
-                isPlaying={isPlaying}
-                onSliceSelect={chopper.setSelectedSlice}
-                onSlicePlay={handlePlaySlice}
-                onSliceDelete={chopper.handleSliceDelete}
               />
+
+              {/* Slice list — shown in all modes for consistent preview */}
+              {chopper.sliceMarkers.length > 0 && (
+                <SliceList
+                  slices={chopper.manualSlices}
+                  selectedSlice={chopper.selectedSlice}
+                  sampleRate={sampleRate}
+                  isPlaying={isPlaying}
+                  onSliceSelect={chopper.setSelectedSlice}
+                  onSlicePlay={handlePlaySlice}
+                  onSliceDelete={chopper.handleSliceDelete}
+                  editable={chopper.isManualMode}
+                />
+              )}
 
               {/* Error Display */}
               {chopper.sliceError && (

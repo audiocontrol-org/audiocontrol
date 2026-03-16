@@ -2,13 +2,12 @@
  * Slice Method Panel
  *
  * Tab-based interface for selecting and configuring slice detection methods.
+ * The slice list is rendered separately by the dialog for all modes.
  */
 
-import type { ReactNode } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { cn } from '@/ui/utils.js';
 import type { SliceMethodTab, SliceDefinitionOutput } from '@/ui/hooks/useSampleChopper.js';
-import { SliceList } from './SliceList.js';
 
 export interface SliceMethodPanelProps {
   selectedMethod: SliceMethodTab;
@@ -33,14 +32,8 @@ export interface SliceMethodPanelProps {
   originalSliceBoundaries: Array<{ startSample: number; endSample: number }>;
   onApplyStripSilence: () => void;
   onCancelStripSilence: () => void;
-  // Manual slice list props
+  // Needed for silence tab empty state
   manualSlices: SliceDefinitionOutput[];
-  selectedSlice?: number;
-  sampleRate: number;
-  isPlaying: boolean;
-  onSliceSelect: (index: number) => void;
-  onSlicePlay: (index: number) => void;
-  onSliceDelete: (index: number) => void;
 }
 
 export function SliceMethodPanel({
@@ -64,12 +57,6 @@ export function SliceMethodPanel({
   onApplyStripSilence,
   onCancelStripSilence,
   manualSlices,
-  selectedSlice,
-  sampleRate,
-  isPlaying,
-  onSliceSelect,
-  onSlicePlay,
-  onSliceDelete,
 }: SliceMethodPanelProps): JSX.Element {
   return (
     <Tabs.Root
@@ -99,15 +86,6 @@ export function SliceMethodPanel({
           Double-click on a slice to split it. Drag slice edges to adjust boundaries.
           Use +/- to zoom for fine adjustments.
         </p>
-        <SliceList
-          slices={manualSlices}
-          selectedSlice={selectedSlice}
-          sampleRate={sampleRate}
-          isPlaying={isPlaying}
-          onSliceSelect={onSliceSelect}
-          onSlicePlay={onSlicePlay}
-          onSliceDelete={onSliceDelete}
-        />
       </Tabs.Content>
 
       {/* Transient Detection Controls */}

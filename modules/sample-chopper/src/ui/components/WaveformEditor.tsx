@@ -186,22 +186,24 @@ export function WaveformEditor({
   // Detect what's under the cursor
   const hitTest = useCallback(
     (pixelX: number): HoverState => {
-      if (!editable || !samples) return null;
+      if (!samples) return null;
 
       for (let i = 0; i < sliceMarkers.length; i++) {
         const marker = sliceMarkers[i];
         const startX = sampleToPixel(marker.startSample);
         const endX = sampleToPixel(marker.endSample);
 
-        // Check start edge
-        if (Math.abs(pixelX - startX) <= HANDLE_WIDTH) {
-          return { sliceIndex: i, edge: 'start' };
+        // Edge hits only in editable mode (for dragging)
+        if (editable) {
+          if (Math.abs(pixelX - startX) <= HANDLE_WIDTH) {
+            return { sliceIndex: i, edge: 'start' };
+          }
+          if (Math.abs(pixelX - endX) <= HANDLE_WIDTH) {
+            return { sliceIndex: i, edge: 'end' };
+          }
         }
-        // Check end edge
-        if (Math.abs(pixelX - endX) <= HANDLE_WIDTH) {
-          return { sliceIndex: i, edge: 'end' };
-        }
-        // Check body
+
+        // Body hits always available (for selection)
         if (pixelX > startX + HANDLE_WIDTH && pixelX < endX - HANDLE_WIDTH) {
           return { sliceIndex: i, edge: 'body' };
         }
@@ -519,12 +521,12 @@ export function WaveformEditor({
         } else if (onSliceChange) {
           onSliceChange(dragState.sliceIndex, newMarker);
         }
-      } else if (editable) {
+      } else {
         const hit = hitTest(x);
         setHoverState(hit);
       }
     },
-    [samples, dragState, editable, sliceMarkers, pixelToSample, hitTest, onSliceChange, onSlicesChange, joinedEdges]
+    [samples, dragState, sliceMarkers, pixelToSample, hitTest, onSliceChange, onSlicesChange, joinedEdges]
   );
 
   // Handle mouse down for starting drag
