@@ -211,7 +211,6 @@ export function TonesPage() {
         setTone(selectedToneIndex, tone, totalTones);
       }
 
-      console.log('[TonesPage] Sample exported successfully');
     } catch (err) {
       console.error('[TonesPage] Failed to export sample:', err);
       setError(err instanceof Error ? err.message : 'Failed to export sample');
@@ -260,20 +259,12 @@ export function TonesPage() {
 
     try {
       // Fetch fresh tone data from device (don't use stale cached data)
-      console.log('[TonesPage] Fetching fresh tone data for index:', toneIndex);
       const tone = await clientRef.current.requestToneData(toneIndex);
       if (!tone) {
         throw new Error(`No tone data at slot ${toneIndex}`);
       }
 
-      console.log('[TonesPage] handleExportToLibrary called with:', {
-        toneName,
-        toneIndex,
-        tonePropName: tone.name,
-      });
-
       // Fetch wave data from device
-      console.log('[TonesPage] Calling requestWaveData with toneIndex:', toneIndex);
       const waveData = await clientRef.current.requestWaveData(
         toneIndex,
         (bytesReceived, totalBytes) => {
@@ -298,7 +289,6 @@ export function TonesPage() {
       // Update cached tone data with fresh data
       setTone(toneIndex, tone, totalTones);
 
-      console.log('[TonesPage] Tone exported to library successfully');
       setLibraryExportProgress(100);
     } catch (err) {
       console.error('[TonesPage] Failed to export to library:', err);
@@ -346,7 +336,6 @@ export function TonesPage() {
         return newMap;
       });
 
-      console.log(`[TonesPage] Loaded wave data for loop editor: ${samples.length} samples`);
     } catch (err) {
       console.error('[TonesPage] Failed to load wave data for loop editor:', err);
       setError(err instanceof Error ? err.message : 'Failed to load wave data');
@@ -407,7 +396,6 @@ export function TonesPage() {
         return newMap;
       });
 
-      console.log(`[TonesPage] Applied ${mode} crossfade smoothing to loop`);
     } catch (err) {
       console.error('[TonesPage] Failed to smooth loop:', err);
       setError(err instanceof Error ? err.message : 'Failed to smooth loop');
@@ -437,10 +425,6 @@ export function TonesPage() {
     setImportError(null);
 
     try {
-      console.log(`[TonesPage] Importing sample to T${toneIndex + 11}...`);
-      console.log(`[TonesPage] Wave data size: ${waveData.length} bytes, ${waveData.length / 2} samples`);
-      console.log(`[TonesPage] Segments: ${segmentLength}, starting at ${segmentTop}`);
-
       await clientRef.current.importTone(
         {
           toneIndex,
@@ -462,8 +446,6 @@ export function TonesPage() {
           });
         }
       );
-
-      console.log(`[TonesPage] Sample imported successfully to T${toneIndex + 11}`);
 
       // Reload the tone bank to reflect changes
       const bankIndex = Math.floor(toneIndex / tonesPerBank);

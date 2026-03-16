@@ -441,14 +441,6 @@ export function suggestPatchAllocation(
     preferredToneSlots
   );
 
-  console.log('[suggestPatchAllocation] Finding tone slots:', {
-    preferredToneSlots,
-    emptyToneSlots,
-    deviceTonesLength: deviceTones.length,
-    availableSlots: deviceTones.map((t, i) => isToneEmpty(t) ? i : null).filter(i => i !== null),
-    occupiedSlots: deviceTones.map((t, i) => (t && !isToneEmpty(t)) ? { index: i, name: t.name, segments: t.wave.segmentLength } : null).filter(Boolean),
-  });
-
   // Find wave memory regions
   const segmentRequests = dependentTones.map((t) => t.segmentsNeeded);
   const waveRegions = findAvailableWaveMemoryRegions(

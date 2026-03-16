@@ -942,7 +942,6 @@ export function LibraryPage() {
       const updatedBundle = await loadDrumKitBundle(libraryHandle, sliceEditDialog.kitName, sliceEditDialog.path);
       setSelectedDrumKitBundle(updatedBundle);
 
-      console.log(`[LibraryPage] Updated slices for ${sliceEditDialog.kitName}`);
     } catch (err) {
       console.error('[LibraryPage] Failed to update slices:', err);
       setError(err instanceof Error ? err.message : 'Failed to save slices');

@@ -43,8 +43,6 @@ export function useParameterListener(
       if (!result.valid || !result.event) return;
 
       const event = result.event;
-      console.log('[ParameterListener] Hardware change:', event.type, event.index);
-
       // Notify the store to trigger UI updates
       notifyHardwareChange(event.type, event.index);
 

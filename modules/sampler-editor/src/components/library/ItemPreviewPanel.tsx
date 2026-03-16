@@ -404,7 +404,6 @@ export function ItemPreviewPanel({
           }
         );
 
-        console.log(`[ItemPreviewPanel] Drum kit saved: ${kit.name}`);
       } catch (err) {
         console.error('[ItemPreviewPanel] Failed to save drum kit:', err);
       }

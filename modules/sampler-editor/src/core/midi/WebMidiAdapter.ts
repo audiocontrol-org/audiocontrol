@@ -80,16 +80,12 @@ export async function requestMidiAccess(): Promise<WebMidiAccess> {
     throw new Error('Web MIDI API not available. Please use Chrome, Edge, or Opera.');
   }
 
-  console.log('[WebMIDI] Requesting MIDI access with SysEx...');
   const access = await navigator.requestMIDIAccess({ sysex: true });
-  console.log('[WebMIDI] MIDI access granted, sysexEnabled:', access.sysexEnabled);
 
   const inputs: MidiPortInfo[] = [];
   const outputs: MidiPortInfo[] = [];
 
-  console.log('[WebMIDI] Input ports count:', access.inputs.size);
   access.inputs.forEach((port) => {
-    console.log('[WebMIDI] Input port:', port.id, port.name, port.state);
     inputs.push({
       id: port.id,
       name: port.name ?? `Input ${port.id}`,
@@ -98,9 +94,7 @@ export async function requestMidiAccess(): Promise<WebMidiAccess> {
     });
   });
 
-  console.log('[WebMIDI] Output ports count:', access.outputs.size);
   access.outputs.forEach((port) => {
-    console.log('[WebMIDI] Output port:', port.id, port.name, port.state);
     outputs.push({
       id: port.id,
       name: port.name ?? `Output ${port.id}`,
@@ -108,8 +102,6 @@ export async function requestMidiAccess(): Promise<WebMidiAccess> {
       state: port.state,
     });
   });
-
-  console.log('[WebMIDI] Parsed inputs:', inputs.length, 'outputs:', outputs.length);
 
   return {
     inputs,

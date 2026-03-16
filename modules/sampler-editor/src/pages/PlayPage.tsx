@@ -15,7 +15,6 @@ import { useBankLoader } from '@/hooks/useBankLoader';
 import type { SamplerClientInterface, SamplerPatch } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { isMockMidiMode } from '@/mock/mockMode';
-import { MOCK_PLAY_PARTS } from '@/mock/mockState';
 
 // MIDI Part configuration (A-H = channels 1-8)
 interface MidiPart {
@@ -83,23 +82,26 @@ export function PlayPage() {
   }, [adapter, deviceId, mockMode]);
 
   // Deterministic mock-mode part assignments for screenshots and visual tests.
+  // Mock data is lazy-loaded so it's tree-shaken from production builds.
   useEffect(() => {
     if (!mockMode) return;
     hasInitiatedLoad.current = true;
-    setParts((prev) =>
-      prev.map((part, index) => {
-        const mock = MOCK_PLAY_PARTS[index];
-        if (!mock) return part;
-        return {
-          ...part,
-          channel: mock.channel,
-          patchIndex: mock.patchIndex,
-          output: mock.output,
-          level: mock.level,
-          active: mock.active,
-        };
-      })
-    );
+    import('@/mock/mockState').then(({ MOCK_PLAY_PARTS }) => {
+      setParts((prev) =>
+        prev.map((part, index) => {
+          const mock = MOCK_PLAY_PARTS[index];
+          if (!mock) return part;
+          return {
+            ...part,
+            channel: mock.channel,
+            patchIndex: mock.patchIndex,
+            output: mock.output,
+            level: mock.level,
+            active: mock.active,
+          };
+        })
+      );
+    });
   }, [mockMode]);
 
   const { loadPatchBank } = useBankLoader({

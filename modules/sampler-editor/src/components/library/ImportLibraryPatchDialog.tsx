@@ -182,14 +182,6 @@ export function ImportLibraryPatchDialog({
           dependentTones[0]?.preferredBank
         );
 
-        console.log('[ImportLibraryPatchDialog] Allocation result:', {
-          initialTargetSlot,
-          dependentTones,
-          allocation,
-          deviceTonesCount: deviceTones.filter(Boolean).length,
-          emptyToneSlots: deviceTones.map((t, i) => t ? null : i).filter(i => i !== null).slice(0, 10),
-        });
-
         // Set patch slot - prefer empty slot unless user dragged to specific slot
         if (initialTargetSlot !== undefined) {
           setTargetPatchSlot(initialTargetSlot);

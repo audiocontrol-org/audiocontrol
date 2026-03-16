@@ -149,8 +149,6 @@ export function useImportDrumKit({
           throw new Error('Monolithic mode requires v2 format kit with source audio and slices');
         }
 
-        console.log('[useImportDrumKit] Using MONOLITHIC MODE');
-
         // Monolithic import reports its own steps via callback
         // We estimate totalSteps as slices + 2 (wave upload + patch creation)
         const monoTotalSteps = bundle.slices.length + 2;
@@ -200,16 +198,6 @@ export function useImportDrumKit({
           };
         });
 
-        console.log('[useImportDrumKit] Monolithic import config:', {
-          totalSamples: targetSamples.length,
-          slices: slices.length,
-          sampleRate: bundle.sampleRate,
-          startingToneSlot,
-          waveBank,
-          startingSegment,
-          targetPatchSlot,
-        });
-
         const waveTotalBytes = prepared.data.length;
 
         // Use the monolithic import function
@@ -250,8 +238,6 @@ export function useImportDrumKit({
           setTone(result.subToneSlots[i]!, result.subTones[i]!);
         }
         setPatch(result.patchSlot, result.patch);
-
-        console.log('[useImportDrumKit] Monolithic import complete:', result);
 
         // Brief delay to show completion
         await new Promise((resolve) => setTimeout(resolve, 500));
@@ -413,13 +399,6 @@ export function useImportDrumKit({
       }
 
       // Create and upload patches
-      console.log('[useImportDrumKit] Bundle baseNote:', bundle.baseNote);
-      console.log('[useImportDrumKit] Samples with MIDI notes:', samples.map(s => ({
-        drumType: s.drumType,
-        midiNote: s.midiNote
-      })));
-      console.log('[useImportDrumKit] Single patch mode:', useSinglePatch);
-
       if (useSinglePatch) {
         // Single patch mode: create one patch with all tone mappings
         setImportProgress({
@@ -434,8 +413,6 @@ export function useImportDrumKit({
           toneSlot: startingToneSlot + i,
         }));
 
-        console.log(`[useImportDrumKit] Creating single patch "${patchName}" with ${toneMappings.length} mappings`);
-
         const patch = createDrumKitPatch(patchName, toneMappings);
         await clientRef.current.sendPatchData(targetPatchSlot, patch.common);
         setPatch(targetPatchSlot, patch);
@@ -448,8 +425,6 @@ export function useImportDrumKit({
 
           // Create patch name from drum type and kit number
           const samplePatchName = `${sample.drumType.slice(0, 4).toUpperCase()}${sample.kitNumber}`;
-
-          console.log(`[useImportDrumKit] Creating patch ${samplePatchName}: tone=${toneSlot}, midiNote=${sample.midiNote}`);
 
           const patch = createSingleDrumPatch(samplePatchName, toneSlot, sample.midiNote);
 

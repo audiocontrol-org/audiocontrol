@@ -6,13 +6,15 @@ import { PlayPage } from '@/pages/PlayPage';
 import { PatchesPage } from '@/pages/PatchesPage';
 import { TonesPage } from '@/pages/TonesPage';
 import { LibraryPage } from '@/pages/LibraryPage';
-import { isMockMidiMode } from '@/mock/mockMode';
-import { seedS330MockState } from '@/mock/mockState';
-
 export function App() {
   useEffect(() => {
-    if (!isMockMidiMode()) return;
-    seedS330MockState();
+    if (!import.meta.env.DEV) return;
+    import('@/mock/mockMode').then(({ isMockMidiMode }) => {
+      if (!isMockMidiMode()) return;
+      import('@/mock/mockState').then(({ seedS330MockState }) => {
+        seedS330MockState();
+      });
+    });
   }, []);
 
   return (

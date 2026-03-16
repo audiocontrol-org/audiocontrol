@@ -120,7 +120,6 @@ export function VideoCapture() {
         } catch (playErr) {
           // Ignore "play interrupted" errors - they occur when switching devices rapidly
           if (playErr instanceof Error && playErr.name === 'AbortError') {
-            console.log('[VideoCapture] Play interrupted, will retry on next start');
             return;
           }
           throw playErr;
