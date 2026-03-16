@@ -5,7 +5,7 @@
  * Supports mono/poly voice modes, one-shot/gate playback, and mute groups.
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SliceDefinitionOutput } from '@/ui/hooks/useSampleChopper.js';
 
 export type PolyphonyMode = 'mono' | 'poly';
@@ -41,6 +41,8 @@ export interface UseTriggerPlaybackReturn {
   playSlice: (index: number) => void;
   stopSlice: (index: number) => void;
   stopAll: () => void;
+  /** Audio output latency in milliseconds (baseLatency + outputLatency), null if context not yet created */
+  latencyMs: number | null;
 }
 
 export function useTriggerPlayback({
@@ -51,6 +53,7 @@ export function useTriggerPlayback({
 }: UseTriggerPlaybackParams): UseTriggerPlaybackReturn {
   const audioContextRef = useRef<AudioContext | null>(null);
   const activeVoicesRef = useRef<Map<number, Voice>>(new Map());
+  const [latencyMs, setLatencyMs] = useState<number | null>(null);
   const configRef = useRef(config);
   const samplesRef = useRef(samples);
   const slicesRef = useRef(slices);
@@ -62,7 +65,11 @@ export function useTriggerPlayback({
   const getAudioContext = useCallback((): AudioContext | null => {
     if (!audioContextRef.current) {
       try {
-        audioContextRef.current = new AudioContext();
+        audioContextRef.current = new AudioContext({ latencyHint: 'interactive' });
+        const ctx = audioContextRef.current;
+        const base = ctx.baseLatency ?? 0;
+        const output = ctx.outputLatency ?? 0;
+        setLatencyMs(Math.round((base + output) * 1000 * 10) / 10);
       } catch {
         return null;
       }
@@ -176,5 +183,5 @@ export function useTriggerPlayback({
     };
   }, []);
 
-  return { playSlice, stopSlice, stopAll };
+  return { playSlice, stopSlice, stopAll, latencyMs };
 }

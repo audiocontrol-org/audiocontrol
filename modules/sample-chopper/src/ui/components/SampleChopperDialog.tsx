@@ -515,6 +515,7 @@ export function SampleChopperDialog({
                   onPlaybackModeChange: trigger.setPlaybackMode,
                   onMuteGroupChange: trigger.setMuteGroup,
                   slices: trigger.recordedSlices,
+                  latencyMs: triggerPlayback.latencyMs,
                 }}
               />
 

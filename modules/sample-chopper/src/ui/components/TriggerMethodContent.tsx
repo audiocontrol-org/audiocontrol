@@ -29,6 +29,8 @@ export interface TriggerMethodContentProps {
   onPlaybackModeChange: (mode: PlaybackMode) => void;
   onMuteGroupChange: (sliceIndex: number, group: number) => void;
   slices: SliceDefinitionOutput[];
+  /** Audio output latency in milliseconds, null if not yet measured */
+  latencyMs: number | null;
 }
 
 function PlaybackControls({
@@ -37,16 +39,25 @@ function PlaybackControls({
   onPlaybackModeChange,
   onMuteGroupChange,
   slices,
+  latencyMs,
 }: {
   playbackConfig: TriggerPlaybackConfig;
   onPolyphonyChange: (mode: PolyphonyMode) => void;
   onPlaybackModeChange: (mode: PlaybackMode) => void;
   onMuteGroupChange: (sliceIndex: number, group: number) => void;
   slices: SliceDefinitionOutput[];
+  latencyMs: number | null;
 }): JSX.Element {
   return (
     <div className="space-y-3 border-t border-ac-accent/30 pt-3">
-      <div className="text-xs text-ac-muted uppercase tracking-wide">Playback</div>
+      <div className="flex items-center justify-between">
+        <div className="text-xs text-ac-muted uppercase tracking-wide">Playback</div>
+        {latencyMs !== null && (
+          <div className="text-xs text-ac-muted" title="Audio output latency (baseLatency + outputLatency)">
+            {latencyMs}ms latency
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-4">
         {/* Polyphony toggle */}
@@ -141,6 +152,7 @@ export function TriggerMethodContent({
   onPlaybackModeChange,
   onMuteGroupChange,
   slices,
+  latencyMs,
 }: TriggerMethodContentProps): JSX.Element {
   if (state === 'recording') {
     return (
@@ -215,6 +227,7 @@ export function TriggerMethodContent({
           onPlaybackModeChange={onPlaybackModeChange}
           onMuteGroupChange={onMuteGroupChange}
           slices={slices}
+          latencyMs={latencyMs}
         />
       </div>
     );
