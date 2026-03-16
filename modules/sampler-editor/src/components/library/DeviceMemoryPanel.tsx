@@ -1,8 +1,9 @@
 /**
  * Device Memory Panel
  *
- * Left panel showing tones and patches currently loaded on the S-330 device.
- * Displays slot numbers (T11-T48 for tones, P11-P28 for patches) with names.
+ * Left panel showing tones and patches currently loaded on the device.
+ * Tone slots are grouped according to the device's MemoryLayout
+ * (e.g., one flat list for S-330, two blocks for S-550).
  *
  * Supports drag and drop:
  * - Drag device items TO library to export
@@ -11,8 +12,9 @@
 
 import { useState, useCallback } from 'react';
 import { cn } from '@/lib/utils';
-import { formatToneSlot, formatPatchSlot } from '@/lib/s330-format';
-import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
+import type { ToneSlotGroup } from '@/configs/types';
 
 /**
  * Data transfer format for dragged device items.
@@ -49,8 +51,8 @@ export interface LibraryDragData {
 export const LIBRARY_DRAG_MIME = 'application/x-s330-library-item';
 
 interface DeviceMemoryPanelProps {
-  tones: (S330Tone | undefined)[];
-  patches: (S330Patch | undefined)[];
+  tones: (SamplerTone | undefined)[];
+  patches: (SamplerPatch | undefined)[];
   loadedToneBanks: number[];
   loadedPatchBanks: number[];
   selectedIndex?: number;
@@ -75,13 +77,14 @@ export function DeviceMemoryPanel({
   onDropLibraryTone,
   onDropLibraryPatch,
 }: DeviceMemoryPanelProps): JSX.Element {
-  // Track which slot has drag over state
+  const config = useDeviceConfig();
+  const { memoryLayout } = config;
+
   const [dragOverToneSlot, setDragOverToneSlot] = useState<number | null>(null);
   const [dragOverPatchSlot, setDragOverPatchSlot] = useState<number | null>(null);
 
-  // Handle drag start for tones
   const handleToneDragStart = useCallback(
-    (e: React.DragEvent, index: number, tone: S330Tone) => {
+    (e: React.DragEvent, index: number, tone: SamplerTone) => {
       const dragData: DeviceDragData = {
         source: 'device',
         type: 'tone',
@@ -94,9 +97,8 @@ export function DeviceMemoryPanel({
     []
   );
 
-  // Handle drag start for patches
   const handlePatchDragStart = useCallback(
-    (e: React.DragEvent, index: number, patch: S330Patch) => {
+    (e: React.DragEvent, index: number, patch: SamplerPatch) => {
       const dragData: DeviceDragData = {
         source: 'device',
         type: 'patch',
@@ -109,7 +111,6 @@ export function DeviceMemoryPanel({
     []
   );
 
-  // Handle drag over for tone slots (accept library tones)
   const handleToneSlotDragOver = useCallback((e: React.DragEvent) => {
     if (e.dataTransfer.types.includes(LIBRARY_DRAG_MIME)) {
       e.preventDefault();
@@ -147,7 +148,6 @@ export function DeviceMemoryPanel({
     }
   }, [onDropLibraryTone]);
 
-  // Handle drag over for patch slots (accept library patches)
   const handlePatchSlotDragOver = useCallback((e: React.DragEvent) => {
     if (e.dataTransfer.types.includes(LIBRARY_DRAG_MIME)) {
       e.preventDefault();
@@ -177,7 +177,6 @@ export function DeviceMemoryPanel({
 
     try {
       const data = JSON.parse(jsonData) as LibraryDragData;
-      // Accept both patches and drum kits on patch slots
       if (data.type === 'patch' || data.type === 'drumKit') {
         onDropLibraryPatch?.(data, index);
       }
@@ -185,6 +184,72 @@ export function DeviceMemoryPanel({
       console.error('[DeviceMemoryPanel] Failed to parse drop data:', err);
     }
   }, [onDropLibraryPatch]);
+
+  // Render a single tone slot row
+  const renderToneSlot = (index: number) => {
+    const tone = tones[index];
+    const isSelected = selectedType === 'tone' && selectedIndex === index;
+    const bankIndex = Math.floor(index / config.tonesPerBank);
+    const isLoaded = loadedToneBanks.includes(bankIndex);
+    const isDragOver = dragOverToneSlot === index;
+
+    return (
+      <div
+        key={index}
+        onClick={() => onSelectTone(index)}
+        draggable={!!tone}
+        onDragStart={tone ? (e) => handleToneDragStart(e, index, tone) : undefined}
+        onDragOver={handleToneSlotDragOver}
+        onDragEnter={(e) => handleToneSlotDragEnter(e, index)}
+        onDragLeave={handleToneSlotDragLeave}
+        onDrop={(e) => handleToneSlotDrop(e, index)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === 'Enter' && onSelectTone(index)}
+        className={cn(
+          'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
+          'flex items-center gap-2',
+          isDragOver
+            ? 'bg-s330-highlight/30 ring-2 ring-s330-highlight ring-inset'
+            : isSelected
+              ? 'bg-s330-highlight/20 text-s330-highlight'
+              : tone
+                ? 'text-s330-text hover:bg-s330-accent/30 cursor-grab active:cursor-grabbing'
+                : 'text-s330-muted/50 hover:bg-s330-accent/20'
+        )}
+      >
+        <span className="w-8 text-xs font-mono text-s330-muted">
+          {memoryLayout.formatToneSlot(index)}
+        </span>
+        <span className={cn('flex-1 truncate', !tone && 'italic')}>
+          {isDragOver ? 'Drop to import here' : tone?.name || (isLoaded ? '(empty)' : '(not loaded)')}
+        </span>
+        {tone && !isDragOver && (
+          <span className="text-xs text-s330-muted">
+            {tone.sampleRate}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  // Render a tone group (one section with header + slots)
+  const renderToneGroup = (group: ToneSlotGroup, groupIndex: number) => {
+    const indices = Array.from({ length: group.count }, (_, i) => group.firstIndex + i);
+
+    return (
+      <div key={groupIndex} className={cn(groupIndex > 0 && 'border-t border-s330-accent/30')}>
+        <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-4 py-2 border-b border-s330-accent/30">
+          {group.label}
+        </div>
+        <div className="p-2">
+          <div className="space-y-0.5">
+            {indices.map(renderToneSlot)}
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="h-full flex flex-col">
@@ -196,74 +261,25 @@ export function DeviceMemoryPanel({
         </p>
       </div>
 
-      {/* Two independent scroll panes */}
+      {/* Tones + Patches in independent scroll panes */}
       <div className="flex-1 flex flex-col min-h-0">
-        {/* Tones Section - independent scroll */}
+        {/* Tones Section */}
         <div className="flex-1 min-h-0 flex flex-col">
-          <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-4 py-2 border-b border-s330-accent/30">
-            Tones (32 slots)
-          </div>
-          <div className="flex-1 overflow-y-auto p-2">
-            <div className="space-y-0.5">
-              {tones.map((tone, index) => {
-                const isSelected = selectedType === 'tone' && selectedIndex === index;
-                const bankIndex = Math.floor(index / 8);
-                const isLoaded = loadedToneBanks.includes(bankIndex);
-                const isDragOver = dragOverToneSlot === index;
-
-                return (
-                  <div
-                    key={index}
-                    onClick={() => onSelectTone(index)}
-                    draggable={!!tone}
-                    onDragStart={tone ? (e) => handleToneDragStart(e, index, tone) : undefined}
-                    onDragOver={handleToneSlotDragOver}
-                    onDragEnter={(e) => handleToneSlotDragEnter(e, index)}
-                    onDragLeave={handleToneSlotDragLeave}
-                    onDrop={(e) => handleToneSlotDrop(e, index)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => e.key === 'Enter' && onSelectTone(index)}
-                    className={cn(
-                      'w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-                      'flex items-center gap-2',
-                      isDragOver
-                        ? 'bg-s330-highlight/30 ring-2 ring-s330-highlight ring-inset'
-                        : isSelected
-                          ? 'bg-s330-highlight/20 text-s330-highlight'
-                          : tone
-                            ? 'text-s330-text hover:bg-s330-accent/30 cursor-grab active:cursor-grabbing'
-                            : 'text-s330-muted/50 hover:bg-s330-accent/20'
-                    )}
-                  >
-                    <span className="w-8 text-xs font-mono text-s330-muted">
-                      {formatToneSlot(index)}
-                    </span>
-                    <span className={cn('flex-1 truncate', !tone && 'italic')}>
-                      {isDragOver ? 'Drop to import here' : tone?.name || (isLoaded ? '(empty)' : '(not loaded)')}
-                    </span>
-                    {tone && !isDragOver && (
-                      <span className="text-xs text-s330-muted">
-                        {tone.sampleRate}
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+          <div className="flex-1 overflow-y-auto">
+            {memoryLayout.toneGroups.map(renderToneGroup)}
           </div>
         </div>
 
-        {/* Patches Section - independent scroll */}
+        {/* Patches Section */}
         <div className="flex-1 min-h-0 flex flex-col border-t border-s330-accent">
           <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-4 py-2 border-b border-s330-accent/30">
-            Patches (16 slots)
+            {memoryLayout.patchSectionLabel}
           </div>
           <div className="flex-1 overflow-y-auto p-2">
             <div className="space-y-0.5">
               {patches.map((patch, index) => {
                 const isSelected = selectedType === 'patch' && selectedIndex === index;
-                const bankIndex = Math.floor(index / 8);
+                const bankIndex = Math.floor(index / config.patchesPerBank);
                 const isLoaded = loadedPatchBanks.includes(bankIndex);
                 const isDragOver = dragOverPatchSlot === index;
 
@@ -293,7 +309,7 @@ export function DeviceMemoryPanel({
                     )}
                   >
                     <span className="w-8 text-xs font-mono text-s330-muted">
-                      {formatPatchSlot(index)}
+                      {memoryLayout.formatPatchSlot(index)}
                     </span>
                     <span className={cn('flex-1 truncate', !patch && 'italic')}>
                       {isDragOver ? 'Drop to import here' : patch?.common.name || (isLoaded ? '(empty)' : '(not loaded)')}
