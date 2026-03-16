@@ -11,6 +11,7 @@ import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import { useBankLoader } from '@/hooks/useBankLoader';
 import type { SamplerClientInterface, SamplerTone } from '@/core/midi/SamplerClient';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
@@ -31,7 +32,7 @@ import { createSmoothedCopy } from '@audiocontrol/sampler-library/browser';
 
 export function TonesPage() {
   const config = useDeviceConfig();
-  const { totalTones, tonesPerBank } = config;
+  const { totalPatches, totalTones, patchesPerBank, tonesPerBank } = config;
   const { adapter, deviceId, status } = useMidiStore();
   const {
     selectedToneIndex,
@@ -52,8 +53,11 @@ export function TonesPage() {
   const {
     tones,
     loadedToneBanks: loadedBanks,
+    setPatch,
     setTone,
+    markPatchBankLoaded,
     markToneBankLoaded,
+    ensurePatchArraySize,
     ensureToneArraySize,
     invalidateToneCache,
   } = useDeviceDataStore();
@@ -116,58 +120,26 @@ export function TonesPage() {
   }, [adapter, deviceId]);
 
   // Load a specific range of tones (updates UI progressively)
-  const loadToneBank = useCallback(
-    async (bankIndex: number, forceReload = false) => {
-      if (!clientRef.current) return;
-
-      const startIndex = bankIndex * tonesPerBank;
-      const count = tonesPerBank;
-
-      try {
-        setLoading(
-          true,
-          `${forceReload ? 'Reloading' : 'Loading'} tones ${startIndex + 1}-${startIndex + count}...`
-        );
-        setError(null);
-
-        // Clear cached loop editor wave data for this bank (will be reloaded on demand)
-        if (forceReload) {
-          setLoopEditorWaveData((prev) => {
-            const newMap = new Map(prev);
-            for (let i = startIndex; i < startIndex + count; i++) {
-              newMap.delete(i);
-            }
-            return newMap;
-          });
-        }
-
-        // Ensure array is large enough before loading
-        ensureToneArraySize(totalTones);
-
-        await clientRef.current.connect();
-        await clientRef.current.loadToneRange(
-          startIndex,
-          count,
-          (current: number, total: number) => setProgress(current, total),
-          // Update UI immediately when each tone is loaded
-          (index: number, tone: SamplerTone) => setTone(index, tone, totalTones),
-          forceReload
-        );
-
-        markToneBankLoaded(bankIndex);
-        clearProgress();
-        setLoading(false);
-      } catch (err) {
-        console.error('[TonesPage] Error loading tones:', err);
-        const message =
-          err instanceof Error ? err.message : 'Failed to load tones';
-        setError(message);
-        clearProgress();
-        setLoading(false);
+  const { loadToneBank } = useBankLoader({
+    clientRef,
+    stores: {
+      setLoading, setError, setProgress, clearProgress,
+      setPatch, setTone, markPatchBankLoaded, markToneBankLoaded,
+      ensurePatchArraySize, ensureToneArraySize,
+    },
+    config: { totalPatches, totalTones, patchesPerBank, tonesPerBank },
+    onBeforeToneLoad: (startIndex, count, forceReload) => {
+      if (forceReload) {
+        setLoopEditorWaveData((prev) => {
+          const newMap = new Map(prev);
+          for (let i = startIndex; i < startIndex + count; i++) {
+            newMap.delete(i);
+          }
+          return newMap;
+        });
       }
     },
-    [setLoading, setError, setProgress, clearProgress, ensureToneArraySize, setTone, markToneBankLoaded, tonesPerBank, totalTones]
-  );
+  });
 
   // Load initial data (first bank)
   const loadInitialData = useCallback(async () => {

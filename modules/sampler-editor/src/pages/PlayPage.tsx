@@ -11,6 +11,7 @@ import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import { useBankLoader } from '@/hooks/useBankLoader';
 import type { SamplerClientInterface, SamplerPatch } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { isMockMidiMode } from '@/mock/mockMode';
@@ -31,7 +32,7 @@ const PART_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 export function PlayPage() {
   const config = useDeviceConfig();
-  const { totalPatches, patchesPerBank } = config;
+  const { totalPatches, totalTones, patchesPerBank, tonesPerBank } = config;
 
   const mockMode = isMockMidiMode();
   const { adapter, deviceId, status } = useMidiStore();
@@ -45,8 +46,11 @@ export function PlayPage() {
     patches,
     loadedPatchBanks: loadedBanks,
     setPatch,
+    setTone,
     markPatchBankLoaded,
+    markToneBankLoaded,
     ensurePatchArraySize,
+    ensureToneArraySize,
   } = useDeviceDataStore();
 
   // Keep a ref to the S330 client for sending parameter updates
@@ -98,44 +102,15 @@ export function PlayPage() {
     );
   }, [mockMode]);
 
-  // Load a specific range of patches
-  const loadPatchBank = useCallback(
-    async (bankIndex: number, forceReload = false) => {
-      if (!clientRef.current) return;
-
-      const startIndex = bankIndex * patchesPerBank;
-      const count = patchesPerBank;
-
-      try {
-        setLoading(
-          true,
-          `${forceReload ? 'Reloading' : 'Loading'} patches ${startIndex + 1}-${startIndex + count}...`
-        );
-        setError(null);
-        ensurePatchArraySize(totalPatches);
-
-        await clientRef.current.connect();
-        await clientRef.current.loadPatchRange(
-          startIndex,
-          count,
-          (current: number, total: number) => setProgress(current, total),
-          (index: number, patch: SamplerPatch) => setPatch(index, patch, totalPatches),
-          forceReload
-        );
-
-        markPatchBankLoaded(bankIndex);
-        clearProgress();
-        setLoading(false);
-      } catch (err) {
-        console.error('[PlayPage] Error loading patches:', err);
-        const message = err instanceof Error ? err.message : 'Failed to load patches';
-        setError(message);
-        clearProgress();
-        setLoading(false);
-      }
+  const { loadPatchBank } = useBankLoader({
+    clientRef,
+    stores: {
+      setLoading, setError, setProgress, clearProgress,
+      setPatch, setTone, markPatchBankLoaded, markToneBankLoaded,
+      ensurePatchArraySize, ensureToneArraySize,
     },
-    [setLoading, setError, setProgress, clearProgress, ensurePatchArraySize, setPatch, markPatchBankLoaded, patchesPerBank, totalPatches]
-  );
+    config: { totalPatches, totalTones, patchesPerBank, tonesPerBank },
+  });
 
   // Load function parameters (multi mode configuration)
   const loadFunctionParams = useCallback(async () => {

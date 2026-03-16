@@ -10,6 +10,7 @@ import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import { useBankLoader } from '@/hooks/useBankLoader';
 import type { SamplerClientInterface, SamplerPatch, SamplerTone } from '@/core/midi/SamplerClient';
 import { PatchList } from '@/components/patches/PatchList';
 import { PatchEditor } from '@/components/patches/PatchEditor';
@@ -68,73 +69,15 @@ export function PatchesPage() {
   }, [adapter, deviceId]);
 
   // Load a specific range of patches (updates UI progressively)
-  const loadPatchBank = useCallback(async (bankIndex: number, forceReload = false) => {
-    if (!clientRef.current) return;
-
-    const startIndex = bankIndex * patchesPerBank;
-    const count = patchesPerBank;
-
-    try {
-      setLoading(true, `${forceReload ? 'Reloading' : 'Loading'} patches ${startIndex + 1}-${startIndex + count}...`);
-      setError(null);
-      ensurePatchArraySize(totalPatches);
-
-      await clientRef.current.connect();
-      await clientRef.current.loadPatchRange(
-        startIndex,
-        count,
-        (current, total) => setProgress(current, total),
-        (index, patch) => setPatch(index, patch, totalPatches),
-        forceReload
-      );
-
-      markPatchBankLoaded(bankIndex);
-      clearProgress();
-      setLoading(false);
-    } catch (err) {
-      console.error('[PatchesPage] Error loading patches:', err);
-      const message = err instanceof Error ? err.message : 'Failed to load patches';
-      setError(message);
-      clearProgress();
-      setLoading(false);
-    }
-  }, [setLoading, setError, setProgress, clearProgress, ensurePatchArraySize, setPatch, markPatchBankLoaded, patchesPerBank, totalPatches]);
-
-  // Load a specific range of tones (updates UI progressively)
-  const loadToneBank = useCallback(async (bankIndex: number, forceReload = false) => {
-    if (!clientRef.current) return;
-
-    const startIndex = bankIndex * tonesPerBank;
-    const count = tonesPerBank;
-
-    try {
-      setLoading(true, `${forceReload ? 'Reloading' : 'Loading'} tones ${startIndex + 1}-${startIndex + count}...`);
-      setError(null);
-
-      // Ensure array is large enough before loading
-      ensureToneArraySize(totalTones);
-
-      await clientRef.current.connect();
-      await clientRef.current.loadToneRange(
-        startIndex,
-        count,
-        (current, total) => setProgress(current, total),
-        // Update UI immediately when each tone is loaded
-        (index, tone) => setTone(index, tone, totalTones),
-        forceReload
-      );
-
-      markToneBankLoaded(bankIndex);
-      clearProgress();
-      setLoading(false);
-    } catch (err) {
-      console.error('[PatchesPage] Error loading tones:', err);
-      const message = err instanceof Error ? err.message : 'Failed to load tones';
-      setError(message);
-      clearProgress();
-      setLoading(false);
-    }
-  }, [setLoading, setError, setProgress, clearProgress, ensureToneArraySize, setTone, markToneBankLoaded, tonesPerBank, totalTones]);
+  const { loadPatchBank, loadToneBank } = useBankLoader({
+    clientRef,
+    stores: {
+      setLoading, setError, setProgress, clearProgress,
+      setPatch, setTone, markPatchBankLoaded, markToneBankLoaded,
+      ensurePatchArraySize, ensureToneArraySize,
+    },
+    config: { totalPatches, totalTones, patchesPerBank, tonesPerBank },
+  });
 
   // Load initial data (first bank of patches and tones)
   const loadInitialData = useCallback(async () => {
