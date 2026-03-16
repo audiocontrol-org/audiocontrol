@@ -6,10 +6,18 @@
  * same markup.
  */
 
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import type { ImportProgress } from '@/types/import-operation';
 import { getOverallPercent, formatBytes } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
+
+function formatDuration(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000);
+  if (totalSeconds < 60) return `${totalSeconds}s`;
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${String(seconds).padStart(2, '0')}s`;
+}
 
 // =============================================================================
 // Progress Bar
@@ -21,8 +29,30 @@ interface ImportProgressBarProps {
 
 export function ImportProgressBar({ progress }: ImportProgressBarProps): JSX.Element {
   const overallPercent = getOverallPercent(progress);
-  const { currentStep, totalSteps, stepLabel, bytesSent, bytesTotal } = progress;
+  const { currentStep, totalSteps, stepLabel, bytesSent, bytesTotal,
+    bytesSentAllSteps, bytesTotalAllSteps } = progress;
   const stepPercent = bytesTotal > 0 ? Math.floor((bytesSent / bytesTotal) * 100) : 0;
+
+  // Track start time — resets when a new operation begins
+  const startTimeRef = useRef<number>(Date.now());
+  const prevProgressRef = useRef<ImportProgress | null>(null);
+
+  useEffect(() => {
+    const prev = prevProgressRef.current;
+    // Reset timer when progress restarts (new operation or step 1 with 0 bytes)
+    if (!prev || (progress.currentStep === 1 && progress.bytesSent === 0 && progress.bytesSentAllSteps === 0)) {
+      startTimeRef.current = Date.now();
+    }
+    prevProgressRef.current = progress;
+  }, [progress]);
+
+  const elapsedMs = Date.now() - startTimeRef.current;
+  const totalBytesSoFar = bytesSentAllSteps + bytesSent;
+  const bytesRemaining = bytesTotalAllSteps - totalBytesSoFar;
+  const bytesPerMs = elapsedMs > 500 && totalBytesSoFar > 0
+    ? totalBytesSoFar / elapsedMs
+    : 0;
+  const estimatedRemainingMs = bytesPerMs > 0 ? bytesRemaining / bytesPerMs : 0;
 
   return (
     <div className="space-y-1">
@@ -43,6 +73,12 @@ export function ImportProgressBar({ progress }: ImportProgressBarProps): JSX.Ele
           <span />
         )}
         <span>Overall {overallPercent}%</span>
+      </div>
+      <div className="flex items-center justify-between text-[10px] text-s330-muted">
+        <span>Elapsed: {formatDuration(elapsedMs)}</span>
+        {bytesPerMs > 0 && bytesRemaining > 0 && (
+          <span>~{formatDuration(estimatedRemainingMs)} remaining</span>
+        )}
       </div>
     </div>
   );
