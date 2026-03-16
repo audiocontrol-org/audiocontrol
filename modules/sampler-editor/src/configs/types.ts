@@ -7,37 +7,13 @@
  * @packageDocumentation
  */
 
+import type { SamplerClientInterface } from '@/core/midi/SamplerClient';
 import type { SSeriesMidiAdapter } from '@audiocontrol/sampler-devices/roland-s-series';
 
 /**
  * Supported device types in the sampler editor.
  */
 export type SamplerDeviceType = 's330' | 's550';
-
-/**
- * Device-specific client interface.
- * This is a minimal interface that all device clients must implement.
- */
-export interface SamplerClientInterface {
-  // Connection
-  connect(): Promise<void>;
-  disconnect(): void;
-  isConnected(): boolean;
-
-  // Patch operations
-  loadPatch(index: number): Promise<unknown>;
-  loadAllPatches(onProgress?: (current: number, total: number) => void): Promise<unknown[]>;
-  savePatch(index: number, patch: unknown): Promise<void>;
-
-  // Tone operations
-  loadTone(index: number): Promise<unknown>;
-  loadAllTones(onProgress?: (current: number, total: number) => void): Promise<unknown[]>;
-  saveTone(index: number, tone: unknown): Promise<void>;
-
-  // System operations
-  loadSystemParams(): Promise<unknown>;
-  saveSystemParams(params: unknown): Promise<void>;
-}
 
 /**
  * Factory function type for creating device clients.

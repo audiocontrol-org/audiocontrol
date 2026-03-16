@@ -5,8 +5,9 @@
  */
 
 import { createS550Client } from '@audiocontrol/sampler-devices/s550';
-import type { DeviceConfig, SamplerClientInterface } from './types.js';
+import type { DeviceConfig } from './types.js';
 import type { SSeriesMidiAdapter } from '@audiocontrol/sampler-devices/roland-s-series';
+import type { SamplerClientInterface } from '@/core/midi/SamplerClient';
 
 /**
  * Roland S-550 sampler configuration.
@@ -38,7 +39,6 @@ export const s550Config: DeviceConfig = {
 
   // Client factory
   createClient: (adapter: SSeriesMidiAdapter, options?: { deviceId?: number }): SamplerClientInterface => {
-    const client = createS550Client(adapter, options);
-    return client as unknown as SamplerClientInterface;
+    return createS550Client(adapter, options) as unknown as SamplerClientInterface;
   },
 };

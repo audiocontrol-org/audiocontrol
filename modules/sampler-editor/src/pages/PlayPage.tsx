@@ -11,8 +11,7 @@ import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
-import { createS330Client } from '@/core/midi/S330Client';
-import type { S330ClientInterface, S330Patch } from '@/core/midi/S330Client';
+import type { SamplerClientInterface, SamplerPatch } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { isMockMidiMode } from '@/mock/mockMode';
 import { MOCK_PLAY_PARTS } from '@/mock/mockState';
@@ -51,7 +50,7 @@ export function PlayPage() {
   } = useDeviceDataStore();
 
   // Keep a ref to the S330 client for sending parameter updates
-  const clientRef = useRef<S330ClientInterface | null>(null);
+  const clientRef = useRef<SamplerClientInterface | null>(null);
 
   // Track if we've already initiated loading to prevent loops
   const hasInitiatedLoad = useRef(false);
@@ -76,7 +75,7 @@ export function PlayPage() {
       clientRef.current = null;
       return;
     }
-    clientRef.current = createS330Client(adapter, { deviceId });
+    clientRef.current = config.createClient(adapter, { deviceId });
   }, [adapter, deviceId, mockMode]);
 
   // Deterministic mock-mode part assignments for screenshots and visual tests.
@@ -120,7 +119,7 @@ export function PlayPage() {
           startIndex,
           count,
           (current: number, total: number) => setProgress(current, total),
-          (index: number, patch: S330Patch) => setPatch(index, patch, totalPatches),
+          (index: number, patch: SamplerPatch) => setPatch(index, patch, totalPatches),
           forceReload
         );
 
@@ -261,7 +260,7 @@ export function PlayPage() {
   };
 
   // Check if a patch is empty
-  const isPatchEmpty = (patch: S330Patch | undefined): boolean => {
+  const isPatchEmpty = (patch: SamplerPatch | undefined): boolean => {
     if (!patch) return true;
     const name = patch.common.name;
     return name === '' || name === '            ' || name.trim() === '';

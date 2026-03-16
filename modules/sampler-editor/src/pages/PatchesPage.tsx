@@ -10,8 +10,7 @@ import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
-import { createS330Client } from '@/core/midi/S330Client';
-import type { S330ClientInterface, S330Patch, S330Tone } from '@/core/midi/S330Client';
+import type { SamplerClientInterface, SamplerPatch, SamplerTone } from '@/core/midi/SamplerClient';
 import { PatchList } from '@/components/patches/PatchList';
 import { PatchEditor } from '@/components/patches/PatchEditor';
 import { cn } from '@/lib/utils';
@@ -53,7 +52,7 @@ export function PatchesPage() {
   } = useDeviceDataStore();
 
   // Keep a ref to the S330 client
-  const clientRef = useRef<S330ClientInterface | null>(null);
+  const clientRef = useRef<SamplerClientInterface | null>(null);
 
   // Track if we've already initiated loading to prevent loops
   const hasInitiatedLoad = useRef(false);
@@ -64,7 +63,7 @@ export function PatchesPage() {
       clientRef.current = null;
       return;
     }
-    const client = createS330Client(adapter, { deviceId });
+    const client = config.createClient(adapter, { deviceId });
     clientRef.current = client;
   }, [adapter, deviceId]);
 
@@ -168,7 +167,7 @@ export function PatchesPage() {
   }, [loadPatchBank, loadToneBank, invalidatePatchCache, invalidateToneCache, totalPatches, patchesPerBank, totalTones, tonesPerBank]);
 
   // Handle patch updates from the editor
-  const handlePatchUpdate = useCallback((index: number, patch: S330Patch) => {
+  const handlePatchUpdate = useCallback((index: number, patch: SamplerPatch) => {
     setPatch(index, patch, totalPatches);
   }, [setPatch, totalPatches]);
 
@@ -190,8 +189,8 @@ export function PatchesPage() {
 
 
   // Filter to only show loaded patches
-  const loadedPatches = patches.filter((p): p is S330Patch => p !== undefined);
-  const loadedTonesArray = tones.filter((t): t is S330Tone => t !== undefined);
+  const loadedPatches = patches.filter((p): p is SamplerPatch => p !== undefined);
+  const loadedTonesArray = tones.filter((t): t is SamplerTone => t !== undefined);
 
   const selectedPatch = selectedPatchIndex !== null ? patches[selectedPatchIndex] : null;
 

@@ -3,9 +3,14 @@
  *
  * Modal dialog for loading a library set to the device.
  * Shows progress and warnings about overwriting existing data.
+ *
+ * For the S-550 (which has two independent blocks), allows selecting
+ * which block to load the set into:
+ * - Block 1: Tones 0-31, Wave Banks A/B
+ * - Block 2: Tones 32-63, Wave Banks C/D
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
 
@@ -13,11 +18,14 @@ interface LoadSetDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   setName: string;
-  onLoad: () => Promise<void>;
+  /** Called with target block (1 or 2 for S-550, undefined for S-330) */
+  onLoad: (targetBlock?: number) => Promise<void>;
   isLoading: boolean;
   progress?: number;
   error: string | null;
   statusMessage?: string | null;
+  /** Number of wave banks on the device (2 for S-330, 4 for S-550) */
+  waveBankCount: number;
 }
 
 export function LoadSetDialog({
@@ -29,16 +37,26 @@ export function LoadSetDialog({
   progress,
   error,
   statusMessage,
+  waveBankCount,
 }: LoadSetDialogProps): JSX.Element {
+  const [targetBlock, setTargetBlock] = useState<1 | 2>(1);
+
   const handleLoad = useCallback(async () => {
-    await onLoad();
-  }, [onLoad]);
+    const block = hasBlocks ? targetBlock : undefined;
+    await onLoad(block);
+  }, [onLoad, targetBlock]);
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
     if (!isLoading) {
       onOpenChange(nextOpen);
+      if (!nextOpen) {
+        setTargetBlock(1);
+      }
     }
   }, [isLoading, onOpenChange]);
+
+  // S-550 has 4 wave banks = 2 blocks. S-330 has 2 = 1 block (no selection needed).
+  const hasBlocks = waveBankCount > 2;
 
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
@@ -63,6 +81,32 @@ export function LoadSetDialog({
               </div>
               <div className="text-lg font-bold text-s330-text">{setName}</div>
             </div>
+
+            {/* Block Selector (S-550 only) */}
+            {hasBlocks && (
+              <div>
+                <label htmlFor="targetBlock" className="block text-sm text-s330-muted mb-1">
+                  Target Block
+                </label>
+                <select
+                  id="targetBlock"
+                  value={targetBlock}
+                  onChange={(e) => setTargetBlock(Number(e.target.value) as 1 | 2)}
+                  disabled={isLoading}
+                  className={cn(
+                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
+                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
+                    isLoading && 'opacity-50'
+                  )}
+                >
+                  <option value={1}>Block 1 — Tones 1-32, Banks A/B</option>
+                  <option value={2}>Block 2 — Tones 33-64, Banks C/D</option>
+                </select>
+                <p className="text-xs text-s330-muted mt-1">
+                  Each block is an independent memory area with its own tones and wave banks.
+                </p>
+              </div>
+            )}
 
             {/* Warning */}
             <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">

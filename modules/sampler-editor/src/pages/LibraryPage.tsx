@@ -12,8 +12,7 @@ import { useMidiStore } from '@/stores/midiStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useLibraryStore } from '@/stores/libraryStore';
-import { createS330Client } from '@/core/midi/S330Client';
-import type { S330ClientInterface, S330Tone, S330Patch } from '@/core/midi/S330Client';
+import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import { DeviceMemoryPanel, type DeviceDragData, type LibraryDragData } from '@/components/library/DeviceMemoryPanel';
 import { LibraryTreePanel } from '@/components/library/LibraryTreePanel';
 import { ItemPreviewPanel } from '@/components/library/ItemPreviewPanel';
@@ -175,7 +174,7 @@ export function LibraryPage() {
 
   // Export tone dialog state
   const [exportToneDialog, setExportToneDialog] = useState<{
-    tone: S330Tone;
+    tone: SamplerTone;
     toneIndex: number;
   } | null>(null);
   const [exportProgress, setExportProgress] = useState<number | undefined>(undefined);
@@ -184,7 +183,7 @@ export function LibraryPage() {
 
   // Export patch dialog state
   const [exportPatchDialog, setExportPatchDialog] = useState<{
-    patch: S330Patch;
+    patch: SamplerPatch;
     patchIndex: number;
   } | null>(null);
   const [exportPatchProgress, setExportPatchProgress] = useState<number | undefined>(undefined);
@@ -214,7 +213,7 @@ export function LibraryPage() {
   const [isImporting, setIsImporting] = useState(false);
 
   // S330 client ref
-  const clientRef = useRef<S330ClientInterface | null>(null);
+  const clientRef = useRef<SamplerClientInterface | null>(null);
 
   // Initialize client when adapter changes
   useEffect(() => {
@@ -222,17 +221,17 @@ export function LibraryPage() {
       clientRef.current = null;
       return;
     }
-    const client = createS330Client(adapter, { deviceId });
+    const client = config.createClient(adapter, { deviceId });
     clientRef.current = client;
   }, [adapter, deviceId]);
 
   // Drum kit import hook - wrap setTone/setPatch with config-aware versions
   const setToneForHook = useCallback(
-    (index: number, tone: S330Tone) => setTone(index, tone, totalTones),
+    (index: number, tone: SamplerTone) => setTone(index, tone, totalTones),
     [setTone, totalTones]
   );
   const setPatchForHook = useCallback(
-    (index: number, patch: S330Patch) => setPatch(index, patch, totalPatches),
+    (index: number, patch: SamplerPatch) => setPatch(index, patch, totalPatches),
     [setPatch, totalPatches]
   );
 
@@ -664,7 +663,7 @@ export function LibraryPage() {
           bank * tonesPerBank,
           tonesPerBank,
           () => {},
-          (index: number, tone: S330Tone) => setTone(index, tone, totalTones),
+          (index: number, tone: SamplerTone) => setTone(index, tone, totalTones),
           false
         );
         markToneBankLoaded(bank);
@@ -677,7 +676,7 @@ export function LibraryPage() {
           bank * patchesPerBank,
           patchesPerBank,
           () => {},
-          (index: number, patch: S330Patch) => setPatch(index, patch, totalPatches),
+          (index: number, patch: SamplerPatch) => setPatch(index, patch, totalPatches),
           false
         );
         markPatchBankLoaded(bank);
@@ -752,8 +751,14 @@ export function LibraryPage() {
   }, [selection]);
 
   // Load set to device
-  const handleLoadSet = useCallback(async () => {
+  // targetBlock: S-550 block (1 or 2), undefined for S-330
+  // Block 1: tones 0-31, banks A(0)/B(1). Block 2: tones 32-63, banks C(2)/D(3).
+  const handleLoadSet = useCallback(async (targetBlock?: number) => {
     if (!libraryHandle || !clientRef.current || !selection?.name) return;
+
+    // Block offset for tone indices and wave banks (S-550 only)
+    const toneOffset = targetBlock === 2 ? 32 : 0;
+    const waveBankOffset = targetBlock === 2 ? 2 : 0;
 
     setOperationProgress(0);
     setOperationError(null);
@@ -784,7 +789,9 @@ export function LibraryPage() {
       const totalItems = loadedToneCount + loadedPatchCount;
 
       for (const [slot, data] of deviceState.tones) {
-        const toneSlot = `T${Math.floor(slot / 8) + 1}${(slot % 8) + 1}`;
+        const targetSlot = slot + toneOffset;
+        const targetBank = (data.tone.wave.bank + waveBankOffset) as 0 | 1 | 2 | 3;
+        const toneSlot = `T${Math.floor(targetSlot / 8) + 1}${(targetSlot % 8) + 1}`;
         const toneName = data.tone.name || toneSlot;
         const sampleCount = data.wavData.length / 2;
 
@@ -794,9 +801,9 @@ export function LibraryPage() {
         // Pass the full tone object to preserve all parameters (pitchFollow, envelopes, etc.)
         await clientRef.current.importTone(
           {
-            toneIndex: slot,
+            toneIndex: targetSlot,
             waveData: data.wavData,
-            waveBank: data.tone.wave.bank as 0 | 1,
+            waveBank: targetBank,
             segmentTop: data.tone.wave.segmentTop,
             segmentLength: data.tone.wave.segmentLength,
             tone: data.tone,
@@ -806,7 +813,7 @@ export function LibraryPage() {
             setOperationStatus(`Uploading ${toneName}: ${pct}% (${bytesSent.toLocaleString()}/${totalBytes.toLocaleString()} bytes)`);
           }
         );
-        setTone(slot, data.tone, totalTones);
+        setTone(targetSlot, data.tone, totalTones);
         uploadCount++;
         setOperationProgress(50 + Math.floor((uploadCount / totalItems) * 50));
 
@@ -1240,7 +1247,7 @@ export function LibraryPage() {
   const handleImportLibraryTone = useCallback(async (params: {
     setName: string;
     toneFile: string;
-    tone: S330Tone;
+    tone: SamplerTone;
     wavData: Uint8Array;
     targetSlot: number;
     waveBank: 0 | 1 | 2 | 3;
@@ -1256,7 +1263,7 @@ export function LibraryPage() {
 
     try {
       // Update tone wave parameters to match target allocation
-      const toneWithNewWave: S330Tone = {
+      const toneWithNewWave: SamplerTone = {
         ...params.tone,
         wave: {
           ...params.tone.wave,
@@ -1304,10 +1311,10 @@ export function LibraryPage() {
   const handleImportLibraryPatch = useCallback(async (params: {
     setName: string;
     patchFile: string;
-    patch: S330Patch;
+    patch: SamplerPatch;
     targetPatchSlot: number;
     tones: Array<{
-      tone: S330Tone;
+      tone: SamplerTone;
       wavData: Uint8Array;
       targetSlot: number;
       waveBank: 0 | 1 | 2 | 3;
@@ -1330,7 +1337,7 @@ export function LibraryPage() {
         setOperationStatus(`Uploading tone ${toneData.tone.name}...`);
 
         // Update tone wave parameters to match target allocation
-        const toneWithNewWave: S330Tone = {
+        const toneWithNewWave: SamplerTone = {
           ...toneData.tone,
           wave: {
             ...toneData.tone.wave,
@@ -1560,6 +1567,7 @@ export function LibraryPage() {
         progress={operationProgress}
         error={operationError}
         statusMessage={operationStatus}
+        waveBankCount={config.waveBankCount}
       />
 
       {/* Import Library Tone Dialog */}

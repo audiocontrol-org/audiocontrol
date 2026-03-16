@@ -18,6 +18,7 @@ import { suggestToneAllocation, isToneSlotEmpty } from '@/lib/slot-allocation';
 import { cn } from '@/lib/utils';
 import { formatToneSlot } from '@/lib/s330-format';
 import { calculateSegmentsNeeded } from '@audiocontrol/sampler-devices/s330';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 
 export interface ImportLibraryToneDialogProps {
   /** Whether the dialog is open */
@@ -69,6 +70,8 @@ export function ImportLibraryToneDialog({
   importError,
   statusMessage,
 }: ImportLibraryToneDialogProps): JSX.Element {
+  const config = useDeviceConfig();
+
   // State for loaded tone
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -309,7 +312,7 @@ export function ImportLibraryToneDialog({
                   <select
                     id="waveBank"
                     value={waveBank}
-                    onChange={(e) => setWaveBank(Number(e.target.value) as 0 | 1)}
+                    onChange={(e) => setWaveBank(Number(e.target.value) as 0 | 1 | 2 | 3)}
                     disabled={isImporting}
                     className={cn(
                       'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
@@ -317,8 +320,9 @@ export function ImportLibraryToneDialog({
                       isImporting && 'opacity-50'
                     )}
                   >
-                    <option value={0}>Bank A</option>
-                    <option value={1}>Bank B</option>
+                    {Array.from({ length: config.waveBankCount }, (_, i) => (
+                      <option key={i} value={i}>Bank {String.fromCharCode(65 + i)}</option>
+                    ))}
                   </select>
                 </div>
                 <div>

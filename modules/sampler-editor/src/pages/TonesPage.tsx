@@ -10,8 +10,7 @@ import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
-import { createS330Client } from '@/core/midi/S330Client';
-import type { S330ClientInterface, S330Tone } from '@/core/midi/S330Client';
+import type { SamplerClientInterface, SamplerTone } from '@/core/midi/SamplerClient';
 import { ToneList } from '@/components/tones/ToneList';
 import { ToneEditor } from '@/components/tones/ToneEditor';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
@@ -59,7 +58,7 @@ export function TonesPage() {
   } = useDeviceDataStore();
 
   // Keep a ref to the S330 client
-  const clientRef = useRef<S330ClientInterface | null>(null);
+  const clientRef = useRef<SamplerClientInterface | null>(null);
 
   // Track if we've already initiated loading to prevent loops
   const hasInitiatedLoad = useRef(false);
@@ -111,7 +110,7 @@ export function TonesPage() {
       clientRef.current = null;
       return;
     }
-    const client = createS330Client(adapter, { deviceId });
+    const client = config.createClient(adapter, { deviceId });
     clientRef.current = client;
   }, [adapter, deviceId]);
 
@@ -150,7 +149,7 @@ export function TonesPage() {
           count,
           (current: number, total: number) => setProgress(current, total),
           // Update UI immediately when each tone is loaded
-          (index: number, tone: S330Tone) => setTone(index, tone, totalTones),
+          (index: number, tone: SamplerTone) => setTone(index, tone, totalTones),
           forceReload
         );
 
@@ -189,14 +188,14 @@ export function TonesPage() {
   }, [loadToneBank, invalidateToneCache, totalTones, tonesPerBank]);
 
   // Handle tone updates from the editor
-  const handleToneUpdate = useCallback((tone: S330Tone) => {
+  const handleToneUpdate = useCallback((tone: SamplerTone) => {
     if (selectedToneIndex === null) return;
     setTone(selectedToneIndex, tone, totalTones);
   }, [selectedToneIndex, setTone, totalTones]);
 
   // Commit changes to device
   const handleToneCommit = useCallback(
-    (tone?: S330Tone) => {
+    (tone?: SamplerTone) => {
       if (selectedToneIndex === null || !clientRef.current) return;
 
       const toneData = tone ?? tones[selectedToneIndex];
@@ -522,7 +521,7 @@ export function TonesPage() {
 
 
   // Filter to only show loaded tones
-  const loadedTones = tones.filter((t): t is S330Tone => t !== undefined);
+  const loadedTones = tones.filter((t): t is SamplerTone => t !== undefined);
 
   const selectedTone =
     selectedToneIndex !== null ? tones[selectedToneIndex] : null;

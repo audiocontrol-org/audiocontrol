@@ -3,10 +3,9 @@
  */
 
 import { useRef, useState, useCallback, useEffect } from 'react';
-import type { S330Patch, S330KeyMode, S330Tone } from '@/core/midi/S330Client';
-import type { S330ClientInterface } from '@/core/midi/S330Client';
-import { createS330Client } from '@/core/midi/S330Client';
+import type { SamplerPatch, SamplerKeyMode, SamplerTone, SamplerClientInterface } from '@/core/midi/SamplerClient';
 import { useMidiStore } from '@/stores/midiStore';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { formatPercent } from '@audiocontrol/editor-core';
 import { cn } from '@/lib/utils';
 import { ParameterSlider } from '@/components/ui/ParameterSlider';
@@ -15,24 +14,25 @@ import { ToneZoneEditor } from './ToneZoneEditor';
 import { PATCH_TOOLTIPS } from '@/constants/patch-tooltips';
 
 interface PatchEditorProps {
-  patch: S330Patch;
+  patch: SamplerPatch;
   index: number;
   /** Loaded tones (sparse array - undefined = not loaded) */
-  tones: (S330Tone | undefined)[];
+  tones: (SamplerTone | undefined)[];
   /** Callback when patch data is updated locally */
-  onUpdate: (index: number, patch: S330Patch) => void;
+  onUpdate: (index: number, patch: SamplerPatch) => void;
 }
 
 export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps) {
   const { common } = patch;
   const { adapter, deviceId } = useMidiStore();
+  const config = useDeviceConfig();
 
   // Helper to update both local state and send to device
   const updatePatch = useCallback((updatedCommon: typeof common) => {
     onUpdate(index, { common: updatedCommon });
   }, [index, onUpdate]);
 
-  const clientRef = useRef<S330ClientInterface | null>(null);
+  const clientRef = useRef<SamplerClientInterface | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameValue, setNameValue] = useState(common.name);
   const [toneLayer1, setToneLayer1] = useState(common.toneLayer1);
@@ -47,7 +47,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
 
   // Initialize client if not already created
   if (adapter && !clientRef.current) {
-    clientRef.current = createS330Client(adapter, { deviceId });
+    clientRef.current = config.createClient(adapter, { deviceId });
   }
 
   // Patch name handler
@@ -490,7 +490,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
           <ToneZoneEditor
             layer={1}
             toneData={toneLayer1}
-            keyMode={common.keyMode as S330KeyMode}
+            keyMode={common.keyMode as SamplerKeyMode}
             tones={tones}
             onUpdate={handleToneLayer1Update}
           />
@@ -499,7 +499,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
           <ToneZoneEditor
             layer={2}
             toneData={toneLayer2}
-            keyMode={common.keyMode as S330KeyMode}
+            keyMode={common.keyMode as SamplerKeyMode}
             tones={tones}
             onUpdate={handleToneLayer2Update}
           />
