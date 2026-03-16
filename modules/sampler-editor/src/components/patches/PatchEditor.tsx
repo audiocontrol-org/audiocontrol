@@ -168,18 +168,6 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
     }
   };
 
-  // Disabled due to parsing bug - see issue #10
-  // const handleOctaveShiftChange = async (shift: number) => {
-  //   updatePatch({ ...common, octaveShift: shift });
-  //   if (clientRef.current) {
-  //     try {
-  //       await clientRef.current.setPatchOctaveShift(index, shift);
-  //     } catch (err) {
-  //       console.error('[PatchEditor] Failed to update octave shift:', err);
-  //     }
-  //   }
-  // };
-
   const handleKeyAssignChange = async (assign: 'rotary' | 'fix') => {
     updatePatch({ ...common, keyAssign: assign });
     if (clientRef.current) {

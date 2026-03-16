@@ -10,7 +10,7 @@
  * - Pitch parameters
  */
 
-import type { S330Tone, S330Envelope, S330EgPolarity, S330LevelCurve } from '@/core/midi/S330Client';
+import type { SamplerTone, SamplerEnvelope, SamplerEgPolarity, SamplerLevelCurve } from '@/core/midi/SamplerClient';
 import type { LoopCandidate } from '@audiocontrol/sampler-library';
 import { formatPercent } from '@audiocontrol/editor-core';
 import { midiNoteToName, cn, formatS330Number } from '@/lib/utils';
@@ -22,13 +22,13 @@ import { LoopEditor } from '@/components/tones/LoopEditor';
 import type { LoopDetectionProgress } from '@/hooks/useLoopDetection';
 
 interface ToneEditorProps {
-    tone: S330Tone;
+    tone: SamplerTone;
     index: number;
-    onUpdate?: (tone: S330Tone) => void;
+    onUpdate?: (tone: SamplerTone) => void;
     // Called to commit changes to device
     // For immediate commits (checkbox/dropdown), pass the updated tone directly
     // For drag-end commits, call with no args (reads from store)
-    onCommit?: (updatedTone?: S330Tone) => void;
+    onCommit?: (updatedTone?: SamplerTone) => void;
     // Called when user clicks Export Sample button
     // Handler should fetch wave data and trigger download
     onExportSample?: () => void;
@@ -89,11 +89,11 @@ export function ToneEditor({
     onSmoothLoop,
     isSmoothingLoop,
 }: ToneEditorProps) {
-    const handleTvaEnvelopeChange = (envelope: S330Envelope) => {
+    const handleTvaEnvelopeChange = (envelope: SamplerEnvelope) => {
         onUpdate?.({ ...tone, tva: { ...tone.tva, envelope } });
     };
 
-    const handleTvfEnvelopeChange = (envelope: S330Envelope) => {
+    const handleTvfEnvelopeChange = (envelope: SamplerEnvelope) => {
         onUpdate?.({ ...tone, tvf: { ...tone.tvf, envelope } });
     };
 
@@ -239,7 +239,7 @@ export function ToneEditor({
                             <select
                                 value={tone.loopMode}
                                 onChange={(e) => {
-                                    const updatedTone = { ...tone, loopMode: e.target.value as S330Tone['loopMode'] };
+                                    const updatedTone = { ...tone, loopMode: e.target.value as SamplerTone['loopMode'] };
                                     onUpdate?.(updatedTone);
                                     onCommit?.(updatedTone);
                                 }}
@@ -486,7 +486,7 @@ export function ToneEditor({
                             <select
                                 value={tone.tvf.egPolarity}
                                 onChange={(e) => {
-                                    const updatedTone = { ...tone, tvf: { ...tone.tvf, egPolarity: e.target.value as S330EgPolarity } };
+                                    const updatedTone = { ...tone, tvf: { ...tone.tvf, egPolarity: e.target.value as SamplerEgPolarity } };
                                     onUpdate?.(updatedTone);
                                     onCommit?.(updatedTone);
                                 }}
@@ -504,7 +504,7 @@ export function ToneEditor({
                             <select
                                 value={tone.tvf.levelCurve}
                                 onChange={(e) => {
-                                    const updatedTone = { ...tone, tvf: { ...tone.tvf, levelCurve: Number(e.target.value) as S330LevelCurve } };
+                                    const updatedTone = { ...tone, tvf: { ...tone.tvf, levelCurve: Number(e.target.value) as SamplerLevelCurve } };
                                     onUpdate?.(updatedTone);
                                     onCommit?.(updatedTone);
                                 }}
@@ -729,7 +729,7 @@ export function ToneEditor({
                         <select
                             value={tone.tva.levelCurve}
                             onChange={(e) => {
-                                const updatedTone = { ...tone, tva: { ...tone.tva, levelCurve: Number(e.target.value) as S330LevelCurve } };
+                                const updatedTone = { ...tone, tva: { ...tone.tva, levelCurve: Number(e.target.value) as SamplerLevelCurve } };
                                 onUpdate?.(updatedTone);
                                 onCommit?.(updatedTone);
                             }}

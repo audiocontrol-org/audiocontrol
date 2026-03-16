@@ -7,7 +7,7 @@
 
 import { useState, useCallback, MutableRefObject } from 'react';
 import type { ImportOperationState, ImportProgress } from '@/types/import-operation';
-import type { S330ClientInterface, S330Tone, S330Patch } from '@/core/midi/S330Client';
+import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 
 interface ImportToneDialogState {
   setName: string;
@@ -20,9 +20,9 @@ interface ImportPatchDialogState {
 }
 
 interface UseLibraryImportOptions {
-  clientRef: MutableRefObject<S330ClientInterface | null>;
-  setTone: (index: number, tone: S330Tone) => void;
-  setPatch: (index: number, patch: S330Patch) => void;
+  clientRef: MutableRefObject<SamplerClientInterface | null>;
+  setTone: (index: number, tone: SamplerTone) => void;
+  setPatch: (index: number, patch: SamplerPatch) => void;
 }
 
 interface UseLibraryImportReturn extends ImportOperationState {
@@ -40,7 +40,7 @@ interface UseLibraryImportReturn extends ImportOperationState {
   handleImportTone: (params: {
     setName: string;
     toneFile: string;
-    tone: S330Tone;
+    tone: SamplerTone;
     wavData: Uint8Array;
     targetSlot: number;
     waveBank: 0 | 1;
@@ -50,10 +50,10 @@ interface UseLibraryImportReturn extends ImportOperationState {
   handleImportPatch: (params: {
     setName: string;
     patchFile: string;
-    patch: S330Patch;
+    patch: SamplerPatch;
     targetPatchSlot: number;
     tones: Array<{
-      tone: S330Tone;
+      tone: SamplerTone;
       wavData: Uint8Array;
       targetSlot: number;
       waveBank: 0 | 1;
@@ -101,7 +101,7 @@ export function useLibraryImport({
   const handleImportTone = useCallback(async (params: {
     setName: string;
     toneFile: string;
-    tone: S330Tone;
+    tone: SamplerTone;
     wavData: Uint8Array;
     targetSlot: number;
     waveBank: 0 | 1;
@@ -115,7 +115,7 @@ export function useLibraryImport({
 
     try {
       // Update tone wave parameters to match target allocation
-      const toneWithNewWave: S330Tone = {
+      const toneWithNewWave: SamplerTone = {
         ...params.tone,
         wave: {
           ...params.tone.wave,
@@ -161,10 +161,10 @@ export function useLibraryImport({
   const handleImportPatch = useCallback(async (params: {
     setName: string;
     patchFile: string;
-    patch: S330Patch;
+    patch: SamplerPatch;
     targetPatchSlot: number;
     tones: Array<{
-      tone: S330Tone;
+      tone: SamplerTone;
       wavData: Uint8Array;
       targetSlot: number;
       waveBank: 0 | 1;
@@ -189,7 +189,7 @@ export function useLibraryImport({
         const stepNum = completedSteps + 1;
 
         // Update tone wave parameters to match target allocation
-        const toneWithNewWave: S330Tone = {
+        const toneWithNewWave: SamplerTone = {
           ...toneData.tone,
           wave: {
             ...toneData.tone.wave,

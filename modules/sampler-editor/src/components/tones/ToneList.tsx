@@ -2,13 +2,13 @@
  * Tone list component - displays tones with loading states
  */
 
-import type { S330Tone } from '@/core/midi/S330Client';
+import type { SamplerTone } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { formatToneSlot } from '@/lib/s330-format';
 
 interface ToneListProps {
   /** Sparse array of tones - undefined = not loaded */
-  tones: (S330Tone | undefined)[];
+  tones: (SamplerTone | undefined)[];
   selectedIndex: number | null;
   onSelect: (index: number | null) => void;
 }
@@ -16,14 +16,14 @@ interface ToneListProps {
 /**
  * Check if a tone name indicates it's empty/unused
  */
-function isToneEmpty(tone: S330Tone): boolean {
+function isToneEmpty(tone: SamplerTone): boolean {
   const name = tone.name;
   return name === '' || name === '        ' || name.trim() === '';
 }
 
 export function ToneList({ tones, selectedIndex, onSelect }: ToneListProps) {
   // Count loaded and non-empty tones
-  const loadedTones = tones.filter((t): t is S330Tone => t !== undefined);
+  const loadedTones = tones.filter((t): t is SamplerTone => t !== undefined);
   const nonEmptyCount = loadedTones.filter((t) => !isToneEmpty(t)).length;
 
   return (

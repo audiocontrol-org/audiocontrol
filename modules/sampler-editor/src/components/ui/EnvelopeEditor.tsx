@@ -10,13 +10,13 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { cn } from '@/lib/utils';
 import { VfdGlowDefs } from '@audiocontrol/editor-core';
-import type { S330Envelope } from '@/core/midi/S330Client';
+import type { SamplerEnvelope } from '@/core/midi/SamplerClient';
 import { Tooltip } from './Tooltip';
 import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
 
 interface EnvelopeEditorProps {
-    envelope: S330Envelope;
-    onChange: (envelope: S330Envelope) => void;
+    envelope: SamplerEnvelope;
+    onChange: (envelope: SamplerEnvelope) => void;
     onCommit?: () => void; // Called when drag ends - use for device sends
     label: string;
     disabled?: boolean;
@@ -33,21 +33,21 @@ export function EnvelopeEditor({
     const [isExpanded, setIsExpanded] = useState(false);
 
     const updateLevel = (index: number, value: number) => {
-        const newLevels = [...levels] as S330Envelope['levels'];
+        const newLevels = [...levels] as SamplerEnvelope['levels'];
         newLevels[index] = value;
         onChange({ ...envelope, levels: newLevels });
     };
 
     const updateRate = (index: number, value: number) => {
-        const newRates = [...rates] as S330Envelope['rates'];
+        const newRates = [...rates] as SamplerEnvelope['rates'];
         newRates[index] = Math.max(1, value); // Rate minimum is 1
         onChange({ ...envelope, rates: newRates });
     };
 
     // Combined update for simultaneous level+rate changes (used by drag)
     const updateLevelAndRate = (index: number, level: number, rate: number) => {
-        const newLevels = [...levels] as S330Envelope['levels'];
-        const newRates = [...rates] as S330Envelope['rates'];
+        const newLevels = [...levels] as SamplerEnvelope['levels'];
+        const newRates = [...rates] as SamplerEnvelope['rates'];
         newLevels[index] = level;
         newRates[index] = Math.max(1, rate);
         onChange({ ...envelope, levels: newLevels, rates: newRates });
@@ -321,8 +321,8 @@ function EnvelopeVisualization({
     disabled = false,
     expanded = false,
 }: {
-    levels: S330Envelope['levels'];
-    rates: S330Envelope['rates'];
+    levels: SamplerEnvelope['levels'];
+    rates: SamplerEnvelope['rates'];
     sustainPoint: number;
     endPoint: number;
     label: string;

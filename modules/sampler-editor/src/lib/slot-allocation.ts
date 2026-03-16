@@ -12,8 +12,8 @@
  * ALL 16 patch slots, regardless of whether they contain actual data.
  * This means:
  *
- *   - `deviceTones[i]` is NEVER undefined after loading (always an S330Tone)
- *   - `devicePatches[i]` is NEVER undefined after loading (always an S330Patch)
+ *   - `deviceTones[i]` is NEVER undefined after loading (always an SamplerTone)
+ *   - `devicePatches[i]` is NEVER undefined after loading (always an SamplerPatch)
  *   - Checking `!!deviceTones[i]` or `!!devicePatches[i]` is ALWAYS TRUE
  *
  * To determine if a slot is truly empty/available:
@@ -28,7 +28,7 @@
  * ============================================================================
  */
 
-import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
+import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 
 const SEGMENTS_PER_BANK = 18;
 const SAMPLES_PER_SEGMENT = 12000;
@@ -55,7 +55,7 @@ const SAMPLES_PER_SEGMENT = 12000;
  * if (deviceTones[i]) { ... }
  * const label = tone ? tone.name : '(empty)';
  */
-export function isToneEmpty(tone: S330Tone | undefined): boolean {
+export function isToneEmpty(tone: SamplerTone | undefined): boolean {
   // Not loaded yet = treat as NOT empty (don't assume it's available)
   if (!tone) return false;
 
@@ -81,7 +81,7 @@ export function isToneEmpty(tone: S330Tone | undefined): boolean {
  * if (devicePatches[i]) { ... }
  * const label = patch ? patch.common.name : '(empty)';
  */
-export function isPatchEmpty(patch: S330Patch | undefined): boolean {
+export function isPatchEmpty(patch: SamplerPatch | undefined): boolean {
   // Not loaded yet = treat as NOT empty
   if (!patch) return false;
 
@@ -99,7 +99,7 @@ export function isPatchEmpty(patch: S330Patch | undefined): boolean {
  * Convenience wrapper around isToneEmpty for array access.
  */
 export function isToneSlotEmpty(
-  deviceTones: (S330Tone | undefined)[],
+  deviceTones: (SamplerTone | undefined)[],
   slot: number
 ): boolean {
   return isToneEmpty(deviceTones[slot]);
@@ -110,7 +110,7 @@ export function isToneSlotEmpty(
  * Convenience wrapper around isPatchEmpty for array access.
  */
 export function isPatchSlotEmpty(
-  devicePatches: (S330Patch | undefined)[],
+  devicePatches: (SamplerPatch | undefined)[],
   slot: number
 ): boolean {
   return isPatchEmpty(devicePatches[slot]);
@@ -125,7 +125,7 @@ export function isPatchSlotEmpty(
  * Returns undefined if all slots are occupied.
  */
 export function findFirstEmptyToneSlot(
-  deviceTones: (S330Tone | undefined)[],
+  deviceTones: (SamplerTone | undefined)[],
   preferredSlot?: number
 ): number | undefined {
   // If preferred slot is empty, use it
@@ -148,7 +148,7 @@ export function findFirstEmptyToneSlot(
  * Returns undefined if all slots are occupied.
  */
 export function findFirstEmptyPatchSlot(
-  devicePatches: (S330Patch | undefined)[],
+  devicePatches: (SamplerPatch | undefined)[],
   preferredSlot?: number
 ): number | undefined {
   // If preferred slot is empty, use it
@@ -171,7 +171,7 @@ export function findFirstEmptyPatchSlot(
  * Returns array of available slots, may be shorter than requested if not enough available.
  */
 export function findEmptyToneSlots(
-  deviceTones: (S330Tone | undefined)[],
+  deviceTones: (SamplerTone | undefined)[],
   count: number,
   preferredSlots?: number[]
 ): number[] {
@@ -222,7 +222,7 @@ const ALL_WAVE_BANKS: WaveBankIndex[] = [0, 1, 2, 3];
  * Initializes all 4 banks (S-550 uses 0-3, S-330 uses 0-1).
  */
 export function getWaveMemoryUsage(
-  deviceTones: (S330Tone | undefined)[]
+  deviceTones: (SamplerTone | undefined)[]
 ): Map<WaveBankIndex, Set<number>> {
   const usage = new Map<WaveBankIndex, Set<number>>(
     ALL_WAVE_BANKS.map(b => [b, new Set()])
@@ -248,7 +248,7 @@ export function getWaveMemoryUsage(
  * Tries to find contiguous free segments, preferring the specified bank.
  */
 export function findAvailableWaveMemory(
-  deviceTones: (S330Tone | undefined)[],
+  deviceTones: (SamplerTone | undefined)[],
   segmentsNeeded: number,
   preferredBank?: WaveBankIndex
 ): WaveMemoryRegion | undefined {
@@ -291,7 +291,7 @@ export function findAvailableWaveMemory(
  * Returns array of regions, may be shorter than requested if not enough space.
  */
 export function findAvailableWaveMemoryRegions(
-  deviceTones: (S330Tone | undefined)[],
+  deviceTones: (SamplerTone | undefined)[],
   segmentRequests: number[],
   preferredBank?: WaveBankIndex
 ): WaveMemoryRegion[] {
@@ -381,7 +381,7 @@ export interface ToneAllocationResult {
  * Get allocation suggestion for importing a single tone.
  */
 export function suggestToneAllocation(
-  deviceTones: (S330Tone | undefined)[],
+  deviceTones: (SamplerTone | undefined)[],
   segmentsNeeded: number,
   preferredSlot?: number,
   preferredBank?: WaveBankIndex
@@ -423,8 +423,8 @@ export interface PatchAllocationResult {
  * Get allocation suggestion for importing a patch with its dependent tones.
  */
 export function suggestPatchAllocation(
-  deviceTones: (S330Tone | undefined)[],
-  devicePatches: (S330Patch | undefined)[],
+  deviceTones: (SamplerTone | undefined)[],
+  devicePatches: (SamplerPatch | undefined)[],
   dependentTones: Array<{ originalSlot: number; segmentsNeeded: number }>,
   preferredPatchSlot?: number,
   preferredBank?: WaveBankIndex

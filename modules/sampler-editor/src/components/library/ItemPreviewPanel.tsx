@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
+import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { SetYaml, ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 import type { ItemSelection } from '@/pages/LibraryPage';
 import type { SliceDefinitionOutput } from './SampleChopperDialog';
@@ -29,8 +29,8 @@ import { SampleChopperDialog } from './SampleChopperDialog';
 
 interface ItemPreviewPanelProps {
   selection: ItemSelection | null;
-  deviceTones: (S330Tone | undefined)[];
-  devicePatches: (S330Patch | undefined)[];
+  deviceTones: (SamplerTone | undefined)[];
+  devicePatches: (SamplerPatch | undefined)[];
   libraryHandle: FileSystemDirectoryHandle | null;
   onImportTone?: (setName: string, toneFile: string) => void;
   onImportPatch?: (setName: string, patchFile: string) => void;
@@ -42,7 +42,7 @@ interface ItemPreviewPanelProps {
 /**
  * Tone preview component
  */
-function TonePreview({ tone, slotLabel }: { tone: S330Tone; slotLabel: string }): JSX.Element {
+function TonePreview({ tone, slotLabel }: { tone: SamplerTone; slotLabel: string }): JSX.Element {
   return (
     <div className="space-y-4">
       <div>
@@ -112,7 +112,7 @@ function LibraryTonePreview({
   onChopSample,
   isLoadingWav,
 }: {
-  tone: S330Tone;
+  tone: SamplerTone;
   fileName: string;
   onImport?: () => void;
   onChopSample?: () => void;
@@ -155,7 +155,7 @@ function LibraryTonePreview({
 /**
  * Patch preview component
  */
-function PatchPreview({ patch, slotLabel }: { patch: S330Patch; slotLabel: string }): JSX.Element {
+function PatchPreview({ patch, slotLabel }: { patch: SamplerPatch; slotLabel: string }): JSX.Element {
   return (
     <div className="space-y-4">
       <div>
@@ -213,7 +213,7 @@ function LibraryPatchPreview({
   manifest,
   onImport,
 }: {
-  patch: S330Patch;
+  patch: SamplerPatch;
   fileName: string;
   manifest: SetYaml | null;
   onImport?: () => void;
@@ -333,8 +333,8 @@ export function ItemPreviewPanel({
 }: ItemPreviewPanelProps): JSX.Element {
   // State for loaded library items
   const [loadingLibraryItem, setLoadingLibraryItem] = useState(false);
-  const [libraryTone, setLibraryTone] = useState<S330Tone | null>(null);
-  const [libraryPatch, setLibraryPatch] = useState<S330Patch | null>(null);
+  const [libraryTone, setLibraryTone] = useState<SamplerTone | null>(null);
+  const [libraryPatch, setLibraryPatch] = useState<SamplerPatch | null>(null);
   const [libraryDrumKit, setLibraryDrumKit] = useState<ResolvedDrumKitBundle | null>(null);
   const [libraryManifest, setLibraryManifest] = useState<SetYaml | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);

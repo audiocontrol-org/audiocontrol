@@ -7,7 +7,7 @@
  */
 
 import { useState, useMemo, useCallback } from 'react';
-import type { S330KeyMode, S330Tone } from '@/core/midi/S330Client';
+import type { SamplerKeyMode, SamplerTone } from '@/core/midi/SamplerClient';
 import {
   TONE_LAYER_MIN_MIDI_NOTE,
   TONE_LAYER_MAX_MIDI_NOTE,
@@ -43,9 +43,9 @@ interface ToneZoneEditorProps {
   /** The 109-entry tone data array */
   toneData: number[];
   /** Current key mode (determines if Layer 2 should be shown) */
-  keyMode: S330KeyMode;
+  keyMode: SamplerKeyMode;
   /** Loaded tones from the device (sparse array - undefined = not loaded) */
-  tones?: (S330Tone | undefined)[];
+  tones?: (SamplerTone | undefined)[];
   /** Callback when tone data is updated */
   onUpdate: (data: number[]) => void;
 }
@@ -141,7 +141,7 @@ function getToneColor(tone: number): string {
 /**
  * Check if a key mode uses dual layers
  */
-function usesDualLayers(keyMode: S330KeyMode): boolean {
+function usesDualLayers(keyMode: SamplerKeyMode): boolean {
   return keyMode !== 'normal';
 }
 

@@ -10,12 +10,10 @@
  */
 
 import { create } from 'zustand';
+import type { SamplerPatch, SamplerTone } from '@/core/midi/SamplerClient';
 
-// Generic patch and tone types - device-specific types can be cast to these
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Patch = any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type Tone = any;
+type Patch = SamplerPatch;
+type Tone = SamplerTone;
 
 interface DeviceDataState {
   /** Current device type (for cache invalidation on device switch) */

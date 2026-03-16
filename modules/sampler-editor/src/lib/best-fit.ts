@@ -8,7 +8,7 @@
 
 import type { ToneSlotGroup } from '@/configs/types';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
-import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
+import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import {
   isToneEmpty,
   isPatchEmpty,
@@ -83,7 +83,7 @@ function collisionLabel(total: number): string {
  * available slot and segment position.
  */
 export function findToneBestFits(
-  deviceTones: (S330Tone | undefined)[],
+  deviceTones: (SamplerTone | undefined)[],
   segmentsNeeded: number,
   toneGroups: ToneSlotGroup[],
   formatToneSlot: (index: number) => string,
@@ -157,7 +157,7 @@ export function findToneBestFits(
  * Generates one option per (group, bank) combo.
  */
 export function findContiguousBestFits(
-  deviceTones: (S330Tone | undefined)[],
+  deviceTones: (SamplerTone | undefined)[],
   toneSlotsNeeded: number,
   waveSegmentsNeeded: number,
   toneGroups: ToneSlotGroup[],
@@ -245,8 +245,8 @@ export function findContiguousBestFits(
  * Tries each bank as the preferred allocation target and scores the result.
  */
 export function findPatchBestFits(
-  deviceTones: (S330Tone | undefined)[],
-  devicePatches: (S330Patch | undefined)[],
+  deviceTones: (SamplerTone | undefined)[],
+  devicePatches: (SamplerPatch | undefined)[],
   dependentTones: Array<{ originalSlot: number; segmentsNeeded: number }>,
   toneGroups: ToneSlotGroup[],
   formatPatchSlot: (index: number) => string,

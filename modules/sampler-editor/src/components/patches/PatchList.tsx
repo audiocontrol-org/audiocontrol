@@ -2,13 +2,13 @@
  * Patch list component - displays patches with loading states
  */
 
-import type { S330Patch } from '@/core/midi/S330Client';
+import type { SamplerPatch } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { formatPatchSlot } from '@/lib/s330-format';
 
 interface PatchListProps {
   /** Sparse array of patches - undefined = not loaded */
-  patches: (S330Patch | undefined)[];
+  patches: (SamplerPatch | undefined)[];
   selectedIndex: number | null;
   onSelect: (index: number | null) => void;
 }
@@ -16,14 +16,14 @@ interface PatchListProps {
 /**
  * Check if a patch name indicates it's empty/unused
  */
-function isPatchEmpty(patch: S330Patch): boolean {
+function isPatchEmpty(patch: SamplerPatch): boolean {
   const name = patch.common.name;
   return name === '' || name === '            ' || name.trim() === '';
 }
 
 export function PatchList({ patches, selectedIndex, onSelect }: PatchListProps) {
   // Count loaded and non-empty patches
-  const loadedPatches = patches.filter((p): p is S330Patch => p !== undefined);
+  const loadedPatches = patches.filter((p): p is SamplerPatch => p !== undefined);
   const nonEmptyCount = loadedPatches.filter(p => !isPatchEmpty(p)).length;
 
   return (

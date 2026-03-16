@@ -9,14 +9,14 @@ import type { ToneSlotGroup } from '@/configs/types';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
 import { computeSlotStatus } from '@/components/ui/memory-map-types';
 import { isToneEmpty } from '@/lib/slot-allocation';
-import type { S330Tone } from '@/core/midi/S330Client';
+import type { SamplerTone } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 
 const CELLS_PER_ROW = 8;
 
 interface ToneSlotMapProps {
   group: ToneSlotGroup;
-  deviceTones: (S330Tone | undefined)[];
+  deviceTones: (SamplerTone | undefined)[];
   formatToneSlot: (index: number) => string;
   proposal?: AllocationProposal;
 }

@@ -11,10 +11,10 @@ import type { AllocationProposal } from '@/components/ui/memory-map-types';
 import { ToneSlotMap } from '@/components/ui/ToneSlotMap';
 import { WaveSegmentMap } from '@/components/ui/WaveSegmentMap';
 import { getWaveMemoryUsage } from '@/lib/slot-allocation';
-import type { S330Tone } from '@/core/midi/S330Client';
+import type { SamplerTone } from '@/core/midi/SamplerClient';
 
 interface MemoryMapPanelProps {
-  deviceTones: (S330Tone | undefined)[];
+  deviceTones: (SamplerTone | undefined)[];
   toneGroups: ToneSlotGroup[];
   formatToneSlot: (index: number) => string;
   proposal?: AllocationProposal;

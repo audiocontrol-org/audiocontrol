@@ -20,7 +20,7 @@ import {
   ImportButtonContent,
 } from '@/components/ui/ImportStatus';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
-import type { S330Tone } from '@/core/midi/S330Client';
+import type { SamplerTone } from '@/core/midi/SamplerClient';
 
 interface LoadSetDialogProps extends ImportOperationState {
   open: boolean;
@@ -28,7 +28,7 @@ interface LoadSetDialogProps extends ImportOperationState {
   setName: string;
   onLoad: (target: ImportTarget) => Promise<void>;
   importTargets: ImportTarget[];
-  deviceTones?: (S330Tone | undefined)[];
+  deviceTones?: (SamplerTone | undefined)[];
   toneGroups?: ToneSlotGroup[];
   formatToneSlot?: (index: number) => string;
 }

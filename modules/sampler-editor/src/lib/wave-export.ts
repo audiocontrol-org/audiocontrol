@@ -17,7 +17,7 @@
  * See docs/1.0/s330-sysex-protocol.md for full protocol details.
  */
 
-import type { S330WaveDataResponse } from '@/core/midi/S330Client';
+import type { SamplerWaveDataResponse } from '@/core/midi/SamplerClient';
 
 /**
  * Decode 12-bit samples from S-330 SysEx transmission format to 16-bit array
@@ -65,7 +65,7 @@ export function unpack12BitTo16Bit(transmittedData: Uint8Array): Int16Array {
  * @param waveData - S-330 wave data response with packed 12-bit samples
  * @returns Blob containing a valid WAV file
  */
-export function createWavBlob(waveData: S330WaveDataResponse): Blob {
+export function createWavBlob(waveData: SamplerWaveDataResponse): Blob {
     const samples = unpack12BitTo16Bit(waveData.data);
     return createWavBlobFromSamples(samples, waveData.sampleRate);
 }
@@ -154,7 +154,7 @@ export function downloadBlob(blob: Blob, filename: string): void {
  * @param waveData - S-330 wave data response
  * @param toneName - Name of the tone (used for filename)
  */
-export function exportWaveAsWav(waveData: S330WaveDataResponse, toneName: string): void {
+export function exportWaveAsWav(waveData: SamplerWaveDataResponse, toneName: string): void {
     const blob = createWavBlob(waveData);
 
     // Sanitize filename - remove invalid characters
@@ -167,7 +167,7 @@ export function exportWaveAsWav(waveData: S330WaveDataResponse, toneName: string
 /**
  * Calculate duration of wave data in seconds
  */
-export function getWaveDuration(waveData: S330WaveDataResponse): number {
+export function getWaveDuration(waveData: SamplerWaveDataResponse): number {
     const sampleCount = waveData.endPoint - waveData.startPoint;
     return sampleCount / waveData.sampleRate;
 }
@@ -175,7 +175,7 @@ export function getWaveDuration(waveData: S330WaveDataResponse): number {
 /**
  * Format wave data info as human-readable string
  */
-export function formatWaveInfo(waveData: S330WaveDataResponse): string {
+export function formatWaveInfo(waveData: SamplerWaveDataResponse): string {
     const sampleCount = waveData.endPoint - waveData.startPoint;
     const durationMs = (sampleCount / waveData.sampleRate) * 1000;
     const dataBytes = waveData.data.length;

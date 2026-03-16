@@ -5,12 +5,12 @@
  * For editable version, use EnvelopeEditor.
  */
 
-import type { S330Envelope } from '@/core/midi/S330Client';
+import type { SamplerEnvelope } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
 import { VfdGlowDefs } from '@audiocontrol/editor-core';
 
 interface EnvelopeDisplayProps {
-    envelope: S330Envelope;
+    envelope: SamplerEnvelope;
     label: string;
     width?: number;
     height?: number;

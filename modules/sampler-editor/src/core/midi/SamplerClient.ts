@@ -45,6 +45,7 @@ export type {
     SSeriesWaveParams as SamplerWaveParams,
     SSeriesWaveDataResponse as SamplerWaveDataResponse,
     SSeriesEgPolarity as SamplerEgPolarity,
+    SSeriesLevelCurve as SamplerLevelCurve,
     SSeriesAftertouchAssign as SamplerAftertouchAssign,
     SSeriesKeyAssign as SamplerKeyAssign,
 } from '@audiocontrol/sampler-devices/roland-s-series';
