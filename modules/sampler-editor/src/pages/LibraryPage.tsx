@@ -70,6 +70,8 @@ import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialo
 import { DeleteDirectoryDialog } from '@/components/library/DeleteDirectoryDialog';
 import { MoveItemDialog } from '@/components/library/MoveItemDialog';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
+import type { ImportProgress } from '@/types/import-operation';
+import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 
 /**
@@ -194,7 +196,7 @@ export function LibraryPage() {
   const [libraryHandle, setLibraryHandle] = useState<FileSystemDirectoryHandle | null>(null);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [isLoadDialogOpen, setIsLoadDialogOpen] = useState(false);
-  const [operationProgress, setOperationProgress] = useState<number | undefined>(undefined);
+  const [operationProgress, setOperationProgress] = useState<ImportProgress | undefined>(undefined);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -240,7 +242,6 @@ export function LibraryPage() {
     isImporting: isDrumKitImporting,
     importProgress: drumKitImportProgress,
     importError: drumKitImportError,
-    importStatus: drumKitImportStatus,
     openImportDrumKitDialog,
     closeImportDrumKitDialog,
     handleImportDrumKit,
@@ -696,16 +697,12 @@ export function LibraryPage() {
     setIsSaveDialogOpen(true);
   }, []);
 
-  // Status message for save operation
-  const [operationStatus, setOperationStatus] = useState<string | null>(null);
-
   // Save device state to set - fetches ALL data fresh from device
   const handleSaveSet = useCallback(async (setName: string, description?: string) => {
     if (!libraryHandle || !clientRef.current) return;
 
-    setOperationProgress(0);
+    setOperationProgress({ currentStep: 0, totalSteps: 1, stepLabel: 'Preparing...', bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: 0, bytesTotalAllSteps: 100 });
     setOperationError(null);
-    setOperationStatus(null);
 
     const client = clientRef.current;
 
@@ -727,11 +724,11 @@ export function LibraryPage() {
         async (toneIndex, onWaveProgress) => {
           return await client.requestWaveData(toneIndex, onWaveProgress ?? (() => {}));
         },
-        (progress) => setOperationProgress(progress),
-        (status) => setOperationStatus(status)
+        (progress) => setOperationProgress((prev) => prev ? { ...prev, bytesSent: Math.floor(progress), bytesTotal: 100 } : { currentStep: 1, totalSteps: 1, stepLabel: 'Saving...', bytesSent: Math.floor(progress), bytesTotal: 100, bytesSentAllSteps: 0, bytesTotalAllSteps: 100 }),
+        (status) => setOperationProgress((prev) => prev ? { ...prev, stepLabel: status } : { currentStep: 1, totalSteps: 1, stepLabel: status, bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: 0, bytesTotalAllSteps: 100 })
       );
 
-      setOperationProgress(100);
+      setOperationProgress({ currentStep: 1, totalSteps: 1, stepLabel: 'Save complete', bytesSent: 100, bytesTotal: 100, bytesSentAllSteps: 0, bytesTotalAllSteps: 100 });
 
       // Refresh library
       await handleRefreshLibrary();
@@ -750,6 +747,7 @@ export function LibraryPage() {
     setIsLoadDialogOpen(true);
   }, [selection]);
 
+
   // Load set to device using the selected import target's offsets
   const handleLoadSet = useCallback(async (target: { toneIndexOffset: number; waveBankOffset: number }) => {
     if (!libraryHandle || !clientRef.current || !selection?.name) return;
@@ -757,25 +755,19 @@ export function LibraryPage() {
     const toneOffset = target.toneIndexOffset;
     const waveBankOffset = target.waveBankOffset;
 
-    setOperationProgress(0);
+    setOperationProgress({ currentStep: 1, totalSteps: 1, stepLabel: 'Reading set from library...', bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: 0, bytesTotalAllSteps: 0 });
     setOperationError(null);
-    setOperationStatus('Reading set from library...');
 
     try {
       // Load and convert set
-      setOperationStatus('Parsing tones and patches...');
       const deviceState = await loadSetToDevice(
         libraryHandle,
         selection.name,
         (progress) => {
-          setOperationProgress(Math.floor(progress * 0.5));
-          if (progress < 30) {
-            setOperationStatus('Reading manifest...');
-          } else if (progress < 60) {
-            setOperationStatus('Loading tone data...');
-          } else {
-            setOperationStatus('Loading patch data...');
-          }
+          let stepLabel = 'Reading manifest...';
+          if (progress >= 60) stepLabel = 'Loading patch data...';
+          else if (progress >= 30) stepLabel = 'Loading tone data...';
+          setOperationProgress({ currentStep: 1, totalSteps: 1, stepLabel, bytesSent: Math.floor(progress), bytesTotal: 100, bytesSentAllSteps: 0, bytesTotalAllSteps: 0 });
         }
       );
 
@@ -784,16 +776,14 @@ export function LibraryPage() {
       const loadedToneCount = deviceState.tones.size;
       const loadedPatchCount = deviceState.patches.size;
       const totalItems = loadedToneCount + loadedPatchCount;
+      const bytesTotalAllSteps = Array.from(deviceState.tones.values()).reduce((sum, d) => sum + d.wavData.length, 0);
+      let bytesSentAllSteps = 0;
 
       for (const [slot, data] of deviceState.tones) {
         const targetSlot = slot + toneOffset;
         const targetBank = (data.tone.wave.bank + waveBankOffset) as 0 | 1 | 2 | 3;
         const toneSlot = `T${Math.floor(targetSlot / 8) + 1}${(targetSlot % 8) + 1}`;
         const toneName = data.tone.name || toneSlot;
-        const sampleCount = data.wavData.length / 2;
-
-        setOperationStatus(`Uploading ${toneName} (${sampleCount.toLocaleString()} samples)...`);
-
         // Upload wave data and tone to device
         // Pass the full tone object to preserve all parameters (pitchFollow, envelopes, etc.)
         await clientRef.current.importTone(
@@ -806,13 +796,20 @@ export function LibraryPage() {
             tone: data.tone,
           },
           (bytesSent, totalBytes) => {
-            const pct = totalBytes > 0 ? Math.floor((bytesSent / totalBytes) * 100) : 0;
-            setOperationStatus(`Uploading ${toneName}: ${pct}% (${bytesSent.toLocaleString()}/${totalBytes.toLocaleString()} bytes)`);
+            setOperationProgress({
+              currentStep: uploadCount + 1,
+              totalSteps: totalItems,
+              stepLabel: `Uploading ${toneName}`,
+              bytesSent,
+              bytesTotal: totalBytes,
+              bytesSentAllSteps,
+              bytesTotalAllSteps,
+            });
           }
         );
         setTone(targetSlot, data.tone, totalTones);
+        bytesSentAllSteps += data.wavData.length;
         uploadCount++;
-        setOperationProgress(50 + Math.floor((uploadCount / totalItems) * 50));
 
         // Give the device time to process before next import
         await new Promise((resolve) => setTimeout(resolve, 200));
@@ -822,18 +819,28 @@ export function LibraryPage() {
         const patchSlot = `P${String(slot + 1).padStart(2, '0')}`;
         const patchName = patch.common.name || patchSlot;
 
-        setOperationStatus(`Uploading patch ${patchName}...`);
+        setOperationProgress({
+          currentStep: uploadCount + 1,
+          totalSteps: totalItems,
+          stepLabel: `Uploading patch ${patchName}`,
+          bytesSent: 0, bytesTotal: 0,
+          bytesSentAllSteps, bytesTotalAllSteps,
+        });
 
         await clientRef.current.sendPatchData(slot, patch.common);
         uploadCount++;
-        setOperationProgress(50 + Math.floor((uploadCount / totalItems) * 50));
 
         // Give the device time to process
         await new Promise((resolve) => setTimeout(resolve, 100));
       }
 
-      setOperationProgress(100);
-      setOperationStatus(`Loaded ${loadedToneCount} tones and ${loadedPatchCount} patches`);
+      setOperationProgress({
+        currentStep: totalItems,
+        totalSteps: totalItems,
+        stepLabel: `Loaded ${loadedToneCount} tones and ${loadedPatchCount} patches`,
+        bytesSent: 0, bytesTotal: 0,
+        bytesSentAllSteps: bytesTotalAllSteps, bytesTotalAllSteps,
+      });
 
       // Brief delay to show completion message
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -841,7 +848,6 @@ export function LibraryPage() {
     } catch (err) {
       console.error('[LibraryPage] Failed to load set:', err);
       setOperationError(err instanceof Error ? err.message : 'Failed to load set');
-      setOperationStatus(null);
     }
   }, [libraryHandle, selection, setTone, totalTones]);
 
@@ -968,7 +974,6 @@ export function LibraryPage() {
   const handleOpenImportToneDialog = useCallback((setName: string, toneFile: string) => {
     setOperationError(null);
     setOperationProgress(undefined);
-    setOperationStatus(null);
     setImportToneDialog({ setName, toneFile });
   }, []);
 
@@ -976,7 +981,6 @@ export function LibraryPage() {
   const handleOpenImportPatchDialog = useCallback((setName: string, patchFile: string) => {
     setOperationError(null);
     setOperationProgress(undefined);
-    setOperationStatus(null);
     setImportPatchDialog({ setName, patchFile });
   }, []);
 
@@ -984,7 +988,6 @@ export function LibraryPage() {
   const handleOpenImportIndividualToneDialog = useCallback((toneFile: string) => {
     setOperationError(null);
     setOperationProgress(undefined);
-    setOperationStatus(null);
     // For now, use the same dialog with a special marker for individual tones
     setImportToneDialog({ setName: '__individual__', toneFile });
   }, []);
@@ -993,7 +996,6 @@ export function LibraryPage() {
   const handleOpenImportIndividualPatchDialog = useCallback((patchDirectoryName: string, path?: string[]) => {
     setOperationError(null);
     setOperationProgress(undefined);
-    setOperationStatus(null);
     // Use the same dialog with a special marker for individual patches
     setImportPatchDialog({ setName: '__individual__', patchFile: patchDirectoryName, patchPath: path });
   }, []);
@@ -1187,7 +1189,6 @@ export function LibraryPage() {
     // Reset operation state to prevent stale "success" from previous operations
     setOperationError(null);
     setOperationProgress(undefined);
-    setOperationStatus(null);
 
     // Determine if this is from a set or an individual tone
     if (data.setName && data.toneFile) {
@@ -1228,7 +1229,6 @@ export function LibraryPage() {
     // Reset operation state to prevent stale "success" from previous operations
     setOperationError(null);
     setOperationProgress(undefined);
-    setOperationStatus(null);
 
     // Determine if this is from a set or an individual patch
     if (data.setName && data.patchFile) {
@@ -1254,9 +1254,8 @@ export function LibraryPage() {
     if (!clientRef.current) return;
 
     setIsImporting(true);
-    setOperationProgress(0);
+    setOperationProgress(undefined);
     setOperationError(null);
-    setOperationStatus(`Uploading ${params.tone.name}...`);
 
     try {
       // Update tone wave parameters to match target allocation
@@ -1281,17 +1280,18 @@ export function LibraryPage() {
           tone: toneWithNewWave,
         },
         (bytesSent, totalBytes) => {
-          const pct = totalBytes > 0 ? Math.floor((bytesSent / totalBytes) * 100) : 0;
-          setOperationProgress(pct);
-          setOperationStatus(`Uploading: ${pct}%`);
+          setOperationProgress({
+            currentStep: 1,
+            totalSteps: 1,
+            stepLabel: `Uploading ${params.tone.name}`,
+            bytesSent, bytesTotal: totalBytes,
+            bytesSentAllSteps: 0, bytesTotalAllSteps: totalBytes,
+          });
         }
       );
 
       // Update local state
       setTone(params.targetSlot, toneWithNewWave, totalTones);
-
-      setOperationProgress(100);
-      setOperationStatus('Import complete!');
 
       // Brief delay to show completion message
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -1322,16 +1322,18 @@ export function LibraryPage() {
     if (!clientRef.current) return;
 
     setIsImporting(true);
-    setOperationProgress(0);
+    setOperationProgress(undefined);
     setOperationError(null);
 
     try {
       const totalSteps = params.tones.length + 1;
       let completedSteps = 0;
+      const patchBytesTotalAll = params.tones.reduce((sum, t) => sum + t.wavData.length, 0);
+      let patchBytesSentAll = 0;
 
       // Import each required tone
-      for (const toneData of params.tones) {
-        setOperationStatus(`Uploading tone ${toneData.tone.name}...`);
+      for (let i = 0; i < params.tones.length; i++) {
+        const toneData = params.tones[i];
 
         // Update tone wave parameters to match target allocation
         const toneWithNewWave: SamplerTone = {
@@ -1355,14 +1357,19 @@ export function LibraryPage() {
             tone: toneWithNewWave,
           },
           (bytesSent, totalBytes) => {
-            const tonePct = totalBytes > 0 ? (bytesSent / totalBytes) : 0;
-            const overallPct = ((completedSteps + tonePct) / totalSteps) * 100;
-            setOperationProgress(Math.floor(overallPct));
+            setOperationProgress({
+              currentStep: completedSteps + 1,
+              totalSteps,
+              stepLabel: `Uploading tone ${toneData.tone.name} (${i + 1} of ${params.tones.length})`,
+              bytesSent, bytesTotal: totalBytes,
+              bytesSentAllSteps: patchBytesSentAll, bytesTotalAllSteps: patchBytesTotalAll,
+            });
           }
         );
 
         // Update local state
         setTone(toneData.targetSlot, toneWithNewWave, totalTones);
+        patchBytesSentAll += toneData.wavData.length;
         completedSteps++;
 
         // Give the device time to process
@@ -1370,13 +1377,15 @@ export function LibraryPage() {
       }
 
       // Import the patch
-      setOperationStatus(`Uploading patch ${params.patch.common.name}...`);
+      setOperationProgress({
+        currentStep: totalSteps,
+        totalSteps,
+        stepLabel: `Creating patch ${params.patch.common.name}`,
+        bytesSent: 0, bytesTotal: 0,
+        bytesSentAllSteps: patchBytesSentAll, bytesTotalAllSteps: patchBytesTotalAll,
+      });
       await clientRef.current.sendPatchData(params.targetPatchSlot, params.patch.common);
       setPatch(params.targetPatchSlot, params.patch, totalPatches);
-      completedSteps++;
-
-      setOperationProgress(100);
-      setOperationStatus('Import complete!');
 
       // Brief delay to show completion message
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -1548,10 +1557,10 @@ export function LibraryPage() {
         open={isSaveDialogOpen}
         onOpenChange={setIsSaveDialogOpen}
         onSave={handleSaveSet}
-        isSaving={operationProgress !== undefined && operationProgress < 100}
-        progress={operationProgress}
+        isSaving={operationProgress !== undefined}
+        progress={operationProgress ? getOverallPercent(operationProgress) : undefined}
         error={operationError}
-        statusMessage={operationStatus}
+        statusMessage={operationProgress?.stepLabel ?? null}
       />
 
       {/* Load Set Dialog */}
@@ -1560,10 +1569,9 @@ export function LibraryPage() {
         onOpenChange={setIsLoadDialogOpen}
         setName={selection?.name ?? ''}
         onLoad={handleLoadSet}
-        isLoading={operationProgress !== undefined && operationProgress < 100}
-        progress={operationProgress}
-        error={operationError}
-        statusMessage={operationStatus}
+        isImporting={operationProgress !== undefined}
+        importProgress={operationProgress}
+        importError={operationError}
         importTargets={config.memoryLayout.importTargets}
         deviceTones={tones}
         toneGroups={config.memoryLayout.toneGroups}
@@ -1586,7 +1594,6 @@ export function LibraryPage() {
           isImporting={isImporting}
           importProgress={operationProgress}
           importError={operationError}
-          statusMessage={operationStatus}
         />
       )}
 
@@ -1608,7 +1615,6 @@ export function LibraryPage() {
           isImporting={isImporting}
           importProgress={operationProgress}
           importError={operationError}
-          statusMessage={operationStatus}
         />
       )}
 
@@ -1626,7 +1632,6 @@ export function LibraryPage() {
           isImporting={isDrumKitImporting}
           importProgress={drumKitImportProgress}
           importError={drumKitImportError}
-          statusMessage={drumKitImportStatus}
         />
       )}
 

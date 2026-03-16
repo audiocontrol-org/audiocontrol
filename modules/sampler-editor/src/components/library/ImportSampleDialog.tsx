@@ -7,6 +7,8 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import type { ImportOperationState } from '@/types/import-operation';
+import { isImportComplete } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 import {
   prepareWavForS330,
@@ -14,17 +16,19 @@ import {
   calculateWavSegmentsNeeded,
   type WavFileInfo,
 } from '@/lib/library-service';
+import {
+  ImportProgressBar,
+  ImportErrorBanner,
+  ImportSuccessScreen,
+  ImportButtonContent,
+  DialogCloseButton,
+} from '@/components/ui/ImportStatus';
 
-export interface ImportSampleDialogProps {
-  /** Whether the dialog is open */
+export interface ImportSampleDialogProps extends ImportOperationState {
   open: boolean;
-  /** Callback when dialog should close */
   onOpenChange: (open: boolean) => void;
-  /** Target tone index to import to */
   toneIndex: number;
-  /** Current tone name (for default naming) */
   toneName?: string;
-  /** Callback to perform the import */
   onImport: (params: {
     toneIndex: number;
     name: string;
@@ -36,12 +40,6 @@ export interface ImportSampleDialogProps {
     loopMode: 'forward' | 'alternating' | 'one-shot' | 'reverse';
     loopPoint: number;
   }) => Promise<void>;
-  /** Whether import is in progress */
-  isImporting: boolean;
-  /** Import progress (0-100) */
-  importProgress?: number;
-  /** Import error message */
-  importError?: string | null;
 }
 
 /** WAV file bytes for conversion */
@@ -150,7 +148,7 @@ export function ImportSampleDialog({
   }, [isImporting, onOpenChange]);
 
   const error = localError || parseError || importError;
-  const isComplete = importProgress === 100 && !isImporting;
+  const isComplete = isImportComplete({ isImporting, importProgress, importError });
 
   return (
     <Dialog.Root open={open} onOpenChange={handleClose}>
@@ -162,19 +160,10 @@ export function ImportSampleDialog({
           </Dialog.Title>
 
           {isComplete ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-green-400">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Sample imported successfully!</span>
-              </div>
-              <div className="flex justify-end">
-                <button onClick={handleClose} className="ac-btn ac-btn-primary">
-                  Done
-                </button>
-              </div>
-            </div>
+            <ImportSuccessScreen
+              message="Sample imported successfully!"
+              onDone={handleClose}
+            />
           ) : (
             <div className="space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
@@ -352,27 +341,11 @@ export function ImportSampleDialog({
                 </select>
               </div>
 
-              {/* Progress Bar */}
-              {isImporting && importProgress !== undefined && (
-                <div>
-                  <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                      style={{ width: `${importProgress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-s330-muted mt-1 text-right">
-                    Uploading to device... {importProgress.toFixed(0)}%
-                  </p>
-                </div>
+              {isImporting && importProgress && (
+                <ImportProgressBar progress={importProgress} />
               )}
 
-              {/* Error Display */}
-              {error && (
-                <div className="text-sm text-red-400 bg-red-900/20 rounded p-2">
-                  {error}
-                </div>
-              )}
+              {error && <ImportErrorBanner error={error} />}
 
               {/* Actions */}
               <div className="flex justify-end gap-2">
@@ -394,30 +367,14 @@ export function ImportSampleDialog({
                     (isImporting || !wavFile || !name.trim()) && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  {isImporting ? (
-                    <>
-                      <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Importing...
-                    </>
-                  ) : (
-                    'Import Sample'
-                  )}
+                  <ImportButtonContent isImporting={isImporting} label="Import Sample" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Close button */}
           <Dialog.Close asChild>
-            <button
-              className="absolute top-4 right-4 text-s330-muted hover:text-s330-text"
-              aria-label="Close"
-              disabled={isImporting}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <DialogCloseButton disabled={isImporting} />
           </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>

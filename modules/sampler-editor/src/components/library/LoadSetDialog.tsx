@@ -10,29 +10,26 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
+import type { ImportOperationState } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 import type { ImportTarget, ToneSlotGroup } from '@/configs/types';
 import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
+import {
+  ImportProgressBar,
+  ImportErrorBanner,
+  ImportButtonContent,
+} from '@/components/ui/ImportStatus';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
 import type { S330Tone } from '@/core/midi/S330Client';
 
-interface LoadSetDialogProps {
+interface LoadSetDialogProps extends ImportOperationState {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   setName: string;
-  /** Called with the selected import target */
   onLoad: (target: ImportTarget) => Promise<void>;
-  isLoading: boolean;
-  progress?: number;
-  error: string | null;
-  statusMessage?: string | null;
-  /** Import target options from MemoryLayout */
   importTargets: ImportTarget[];
-  /** Current device tones for memory map */
   deviceTones?: (S330Tone | undefined)[];
-  /** Tone groups from MemoryLayout */
   toneGroups?: ToneSlotGroup[];
-  /** Format tone slot label */
   formatToneSlot?: (index: number) => string;
 }
 
@@ -41,10 +38,9 @@ export function LoadSetDialog({
   onOpenChange,
   setName,
   onLoad,
-  isLoading,
-  progress,
-  error,
-  statusMessage,
+  isImporting,
+  importProgress,
+  importError,
   importTargets,
   deviceTones,
   toneGroups,
@@ -74,13 +70,13 @@ export function LoadSetDialog({
   }, [onLoad, importTargets, selectedTargetIndex]);
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
-    if (!isLoading) {
+    if (!isImporting) {
       onOpenChange(nextOpen);
       if (!nextOpen) {
         setSelectedTargetIndex(0);
       }
     }
-  }, [isLoading, onOpenChange]);
+  }, [isImporting, onOpenChange]);
 
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
@@ -115,11 +111,11 @@ export function LoadSetDialog({
                 id="importTarget"
                 value={selectedTargetIndex}
                 onChange={(e) => setSelectedTargetIndex(Number(e.target.value))}
-                disabled={isLoading}
+                disabled={isImporting}
                 className={cn(
                   'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                   'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                  isLoading && 'opacity-50'
+                  isImporting && 'opacity-50'
                 )}
               >
                 {importTargets.map((target, i) => (
@@ -146,27 +142,11 @@ export function LoadSetDialog({
               </p>
             </div>
 
-            {/* Progress Bar */}
-            {isLoading && progress !== undefined && (
-              <div>
-                <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-s330-highlight transition-all duration-150"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-                <p className="text-xs text-s330-muted mt-1">
-                  {statusMessage || (progress < 50 ? 'Loading from library...' : 'Uploading to device...')}
-                </p>
-              </div>
+            {isImporting && importProgress && (
+              <ImportProgressBar progress={importProgress} />
             )}
 
-            {/* Error */}
-            {error && (
-              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded">
-                <p className="text-sm text-red-400">{error}</p>
-              </div>
-            )}
+            {importError && <ImportErrorBanner error={importError} />}
           </div>
 
           {/* Actions */}
@@ -174,20 +154,20 @@ export function LoadSetDialog({
             <Dialog.Close asChild>
               <button
                 className="ac-btn ac-btn-secondary"
-                disabled={isLoading}
+                disabled={isImporting}
               >
                 Cancel
               </button>
             </Dialog.Close>
             <button
               onClick={handleLoad}
-              disabled={isLoading}
+              disabled={isImporting}
               className={cn(
                 'ac-btn ac-btn-primary',
-                isLoading && 'opacity-50'
+                isImporting && 'opacity-50'
               )}
             >
-              {isLoading ? 'Loading...' : 'Load Set'}
+              <ImportButtonContent isImporting={isImporting} label="Load Set" importingLabel="Loading..." />
             </button>
           </div>
         </Dialog.Content>

@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, MutableRefObject } from 'react';
+import type { ImportOperationState, ImportProgress } from '@/types/import-operation';
 import type { S330ClientInterface, S330Tone, S330Patch } from '@/core/midi/S330Client';
 
 interface ImportToneDialogState {
@@ -24,14 +25,10 @@ interface UseLibraryImportOptions {
   setPatch: (index: number, patch: S330Patch) => void;
 }
 
-interface UseLibraryImportReturn {
+interface UseLibraryImportReturn extends ImportOperationState {
   // Dialog state
   importToneDialog: ImportToneDialogState | null;
   importPatchDialog: ImportPatchDialogState | null;
-  isImporting: boolean;
-  importProgress: number | undefined;
-  importError: string | null;
-  importStatus: string | null;
 
   // Dialog handlers
   openImportToneDialog: (setName: string, toneFile: string) => void;
@@ -74,15 +71,13 @@ export function useLibraryImport({
   const [importToneDialog, setImportToneDialog] = useState<ImportToneDialogState | null>(null);
   const [importPatchDialog, setImportPatchDialog] = useState<ImportPatchDialogState | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState<number | undefined>(undefined);
+  const [importProgress, setImportProgress] = useState<ImportProgress | undefined>(undefined);
   const [importError, setImportError] = useState<string | null>(null);
-  const [importStatus, setImportStatus] = useState<string | null>(null);
 
   // Open import tone dialog
   const openImportToneDialog = useCallback((setName: string, toneFile: string) => {
     setImportError(null);
     setImportProgress(undefined);
-    setImportStatus(null);
     setImportToneDialog({ setName, toneFile });
   }, []);
 
@@ -90,7 +85,6 @@ export function useLibraryImport({
   const openImportPatchDialog = useCallback((setName: string, patchFile: string) => {
     setImportError(null);
     setImportProgress(undefined);
-    setImportStatus(null);
     setImportPatchDialog({ setName, patchFile });
   }, []);
 
@@ -116,9 +110,8 @@ export function useLibraryImport({
     if (!clientRef.current) return;
 
     setIsImporting(true);
-    setImportProgress(0);
+    setImportProgress(undefined);
     setImportError(null);
-    setImportStatus(`Uploading ${params.tone.name}...`);
 
     try {
       // Update tone wave parameters to match target allocation
@@ -141,17 +134,17 @@ export function useLibraryImport({
           tone: toneWithNewWave,
         },
         (bytesSent, totalBytes) => {
-          const pct = totalBytes > 0 ? Math.floor((bytesSent / totalBytes) * 100) : 0;
-          setImportProgress(pct);
-          setImportStatus(`Uploading: ${pct}%`);
+          setImportProgress({
+            currentStep: 1, totalSteps: 1,
+            stepLabel: `Uploading ${params.tone.name}`,
+            bytesSent, bytesTotal: totalBytes,
+            bytesSentAllSteps: 0, bytesTotalAllSteps: totalBytes,
+          });
         }
       );
 
       // Update local state
       setTone(params.targetSlot, toneWithNewWave);
-
-      setImportProgress(100);
-      setImportStatus('Import complete!');
 
       // Brief delay to show completion message
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -181,16 +174,19 @@ export function useLibraryImport({
     if (!clientRef.current) return;
 
     setIsImporting(true);
-    setImportProgress(0);
+    setImportProgress(undefined);
     setImportError(null);
 
     try {
       const totalSteps = params.tones.length + 1;
       let completedSteps = 0;
+      const bytesTotalAllSteps = params.tones.reduce((sum, t) => sum + t.wavData.length, 0);
+      let bytesSentAllSteps = 0;
 
       // Import each required tone
-      for (const toneData of params.tones) {
-        setImportStatus(`Uploading tone ${toneData.tone.name}...`);
+      for (let i = 0; i < params.tones.length; i++) {
+        const toneData = params.tones[i]!;
+        const stepNum = completedSteps + 1;
 
         // Update tone wave parameters to match target allocation
         const toneWithNewWave: S330Tone = {
@@ -212,14 +208,18 @@ export function useLibraryImport({
             tone: toneWithNewWave,
           },
           (bytesSent, totalBytes) => {
-            const tonePct = totalBytes > 0 ? (bytesSent / totalBytes) : 0;
-            const overallPct = ((completedSteps + tonePct) / totalSteps) * 100;
-            setImportProgress(Math.floor(overallPct));
+            setImportProgress({
+              currentStep: stepNum, totalSteps,
+              stepLabel: `Uploading tone ${toneData.tone.name} (${i + 1} of ${params.tones.length})`,
+              bytesSent, bytesTotal: totalBytes,
+              bytesSentAllSteps, bytesTotalAllSteps,
+            });
           }
         );
 
         // Update local state
         setTone(toneData.targetSlot, toneWithNewWave);
+        bytesSentAllSteps += toneData.wavData.length;
         completedSteps++;
 
         // Give the S-330 time to process
@@ -227,13 +227,14 @@ export function useLibraryImport({
       }
 
       // Import the patch
-      setImportStatus(`Uploading patch ${params.patch.common.name}...`);
+      setImportProgress({
+        currentStep: totalSteps, totalSteps,
+        stepLabel: `Creating patch ${params.patch.common.name}`,
+        bytesSent: 0, bytesTotal: 0,
+        bytesSentAllSteps, bytesTotalAllSteps,
+      });
       await clientRef.current.sendPatchData(params.targetPatchSlot, params.patch.common);
       setPatch(params.targetPatchSlot, params.patch);
-      completedSteps++;
-
-      setImportProgress(100);
-      setImportStatus('Import complete!');
 
       // Brief delay to show completion message
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -252,7 +253,6 @@ export function useLibraryImport({
     isImporting,
     importProgress,
     importError,
-    importStatus,
     openImportToneDialog,
     openImportPatchDialog,
     closeImportToneDialog,

@@ -6,6 +6,8 @@
  */
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import type { ImportOperationState } from '@/types/import-operation';
+import { isImportComplete } from '@/types/import-operation';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { SetYaml } from '@audiocontrol/sampler-library/browser';
@@ -14,8 +16,8 @@ import {
   loadToneFromSet,
   loadSetManifest,
   loadIndividualPatch,
-  convertYamlToSamplerPatch,
-  convertYamlToSamplerTone,
+  convertYamlToS330Patch,
+  convertYamlToS330Tone,
   getPatchToneDependencies,
   remapPatchToneLayers,
 } from '@/lib/library-service';
@@ -24,6 +26,14 @@ import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
 import { BestFitPicker } from '@/components/ui/BestFitPicker';
+import {
+  ImportProgressBar,
+  ImportErrorBanner,
+  ImportSuccessScreen,
+  ImportLoadingSpinner,
+  ImportButtonContent,
+  DialogCloseButton,
+} from '@/components/ui/ImportStatus';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
 import { findPatchBestFits } from '@/lib/best-fit';
 import type { FitOption, PatchFitValues } from '@/lib/best-fit';
@@ -43,26 +53,16 @@ interface ToneImportMapping {
   segmentsNeeded: number;
 }
 
-export interface ImportLibraryPatchDialogProps {
-  /** Whether the dialog is open */
+export interface ImportLibraryPatchDialogProps extends ImportOperationState {
   open: boolean;
-  /** Callback when dialog should close */
   onOpenChange: (open: boolean) => void;
-  /** Library directory handle */
   libraryHandle: FileSystemDirectoryHandle;
-  /** Name of the set containing the patch (or '__individual__' for individual patches) */
   setName: string;
-  /** File name of the patch (without extension) */
   patchFile: string;
-  /** Path segments for individual patches in subdirectories */
   patchPath?: string[];
-  /** Current device tones (to show slot occupancy) */
   deviceTones: (SamplerTone | undefined)[];
-  /** Current device patches (to show slot occupancy) */
   devicePatches: (SamplerPatch | undefined)[];
-  /** Initial target patch slot (e.g., from drag-drop target) */
   initialTargetSlot?: number;
-  /** Callback to perform the import */
   onImport: (params: {
     setName: string;
     patchFile: string;
@@ -77,14 +77,6 @@ export interface ImportLibraryPatchDialogProps {
       segmentLength: number;
     }>;
   }) => Promise<void>;
-  /** Whether import is in progress */
-  isImporting: boolean;
-  /** Import progress (0-100) */
-  importProgress?: number;
-  /** Import error message */
-  importError?: string | null;
-  /** Status message */
-  statusMessage?: string | null;
 }
 
 export function ImportLibraryPatchDialog({
@@ -100,7 +92,6 @@ export function ImportLibraryPatchDialog({
   isImporting,
   importProgress,
   importError,
-  statusMessage,
   initialTargetSlot,
 }: ImportLibraryPatchDialogProps): JSX.Element {
   const config = useDeviceConfig();
@@ -141,12 +132,12 @@ export function ImportLibraryPatchDialog({
         if (isIndividual) {
           // Load individual patch bundle directly from library
           const bundle = await loadIndividualPatch(libraryHandle, patchFile, patchPath ?? []);
-          convertedPatch = convertYamlToSamplerPatch(bundle.patch);
+          convertedPatch = convertYamlToS330Patch(bundle.patch);
           setPatch(convertedPatch);
 
           // Collect dependent tone info
           for (const [slot, toneData] of bundle.tones) {
-            const convertedTone = convertYamlToSamplerTone(toneData.yaml);
+            const convertedTone = convertYamlToS330Tone(toneData.yaml);
             dependentTones.push({
               originalSlot: slot,
               segmentsNeeded: toneData.segmentsNeeded,
@@ -163,7 +154,7 @@ export function ImportLibraryPatchDialog({
 
           // Load patch
           const patchYaml = await loadPatchFromSet(libraryHandle, setName, patchFile);
-          convertedPatch = convertYamlToSamplerPatch(patchYaml);
+          convertedPatch = convertYamlToS330Patch(patchYaml);
           setPatch(convertedPatch);
 
           // Analyze dependencies
@@ -265,7 +256,7 @@ export function ImportLibraryPatchDialog({
             throw new Error(`Tone at slot ${mapping.originalSlot} not found in bundle`);
           }
 
-          const tone = convertYamlToSamplerTone(toneData.yaml);
+          const tone = convertYamlToS330Tone(toneData.yaml);
           tonesData.push({
             tone,
             wavData: toneData.wavData,
@@ -284,7 +275,7 @@ export function ImportLibraryPatchDialog({
             setName,
             mapping.fileName
           );
-          const tone = convertYamlToSamplerTone(yaml);
+          const tone = convertYamlToS330Tone(yaml);
 
           tonesData.push({
             tone,
@@ -325,7 +316,7 @@ export function ImportLibraryPatchDialog({
     }
   }, [isImporting, onOpenChange]);
 
-  const isComplete = importProgress === 100 && !isImporting;
+  const isComplete = isImportComplete({ isImporting, importProgress, importError });
   const error = loadError || importError;
 
   // Check if selected slots will overwrite existing data
@@ -388,26 +379,12 @@ export function ImportLibraryPatchDialog({
           </Dialog.Title>
 
           {isComplete ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-green-400">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Patch imported successfully!</span>
-              </div>
-              <div className="flex justify-end">
-                <button onClick={handleClose} className="ac-btn ac-btn-primary">
-                  Done
-                </button>
-              </div>
-            </div>
+            <ImportSuccessScreen
+              message="Patch imported successfully!"
+              onDone={handleClose}
+            />
           ) : isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="flex items-center gap-2 text-s330-muted">
-                <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                <span>Loading patch data...</span>
-              </div>
-            </div>
+            <ImportLoadingSpinner message="Loading patch data..." />
           ) : (
             <div className="flex flex-col min-h-0 space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
@@ -612,27 +589,11 @@ export function ImportLibraryPatchDialog({
                 </div>
               )}
 
-              {/* Progress Bar */}
-              {isImporting && importProgress !== undefined && (
-                <div>
-                  <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                      style={{ width: `${importProgress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-s330-muted mt-1 text-right">
-                    {statusMessage || `Importing... ${importProgress.toFixed(0)}%`}
-                  </p>
-                </div>
+              {isImporting && importProgress && (
+                <ImportProgressBar progress={importProgress} />
               )}
 
-              {/* Error Display */}
-              {error && (
-                <div className="text-sm text-red-400 bg-red-900/20 rounded p-2">
-                  {error}
-                </div>
-              )}
+              {error && <ImportErrorBanner error={error} />}
 
               {/* Actions */}
               <div className="flex justify-end gap-2 pt-2">
@@ -654,30 +615,17 @@ export function ImportLibraryPatchDialog({
                     (isImporting || !patch) && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  {isImporting ? (
-                    <>
-                      <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Importing...
-                    </>
-                  ) : (
-                    <>Import Patch {toneMappings.length > 0 && `+ ${toneMappings.length} Tones`}</>
-                  )}
+                  <ImportButtonContent
+                    isImporting={isImporting}
+                    label={`Import Patch${toneMappings.length > 0 ? ` + ${toneMappings.length} Tones` : ''}`}
+                  />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Close button */}
           <Dialog.Close asChild>
-            <button
-              className="absolute top-4 right-4 text-s330-muted hover:text-s330-text"
-              aria-label="Close"
-              disabled={isImporting}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <DialogCloseButton disabled={isImporting} />
           </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>

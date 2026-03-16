@@ -7,6 +7,8 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
+import type { ImportOperationState } from '@/types/import-operation';
+import { isImportComplete } from '@/types/import-operation';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
@@ -15,11 +17,18 @@ import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
 import { BestFitPicker } from '@/components/ui/BestFitPicker';
+import {
+  ImportProgressBar,
+  ImportErrorBanner,
+  ImportSuccessScreen,
+  ImportButtonContent,
+  DialogCloseButton,
+} from '@/components/ui/ImportStatus';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
 import { findContiguousBestFits } from '@/lib/best-fit';
 import type { FitOption, ContiguousFitValues } from '@/lib/best-fit';
 
-export interface ImportDrumKitDialogProps {
+export interface ImportDrumKitDialogProps extends ImportOperationState {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bundle: ResolvedDrumKitBundle;
@@ -34,10 +43,6 @@ export interface ImportDrumKitDialogProps {
     patchName?: string;
     useMonolithicMode?: boolean;
   }) => Promise<void>;
-  isImporting: boolean;
-  importProgress?: number;
-  importError?: string | null;
-  statusMessage?: string | null;
 }
 
 export function ImportDrumKitDialog({
@@ -50,7 +55,6 @@ export function ImportDrumKitDialog({
   isImporting,
   importProgress,
   importError,
-  statusMessage,
 }: ImportDrumKitDialogProps): JSX.Element {
   const config = useDeviceConfig();
   const { memoryLayout } = config;
@@ -163,7 +167,7 @@ export function ImportDrumKitDialog({
     }
   }, [isImporting, onOpenChange]);
 
-  const isComplete = importProgress === 100 && !isImporting;
+  const isComplete = isImportComplete({ isImporting, importProgress, importError });
 
   // Max starting index that leaves enough room (relative to group, not absolute)
   const maxStartingTone = Math.max(0, groupToneCount - toneSlotsNeeded);
@@ -179,29 +183,22 @@ export function ImportDrumKitDialog({
           </Dialog.Title>
 
           {isComplete ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-green-400">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Drum kit imported successfully!</span>
-              </div>
-              <div className="text-sm text-s330-muted">
-                <p>Created {toneSlotsNeeded} tone{toneSlotsNeeded !== 1 ? 's' : ''} in slots {memoryLayout.formatToneSlot(absoluteToneSlot)} - {memoryLayout.formatToneSlot(absoluteToneSlot + toneSlotsNeeded - 1)}
-                  {useMonolithicMode && ` (1 holder + ${totalSamples} sub-tones)`}
-                </p>
-                {singlePatch ? (
-                  <p>Created 1 patch in slot {memoryLayout.formatPatchSlot(targetPatchSlot)} with all {totalSamples} samples mapped</p>
-                ) : (
-                  <p>Created {totalSamples} patch{totalSamples !== 1 ? 'es' : ''} in slots {memoryLayout.formatPatchSlot(targetPatchSlot)} - {memoryLayout.formatPatchSlot(targetPatchSlot + totalSamples - 1)}</p>
-                )}
-              </div>
-              <div className="flex justify-end">
-                <button onClick={handleClose} className="ac-btn ac-btn-primary">
-                  Done
-                </button>
-              </div>
-            </div>
+            <ImportSuccessScreen
+              message="Drum kit imported successfully!"
+              detail={
+                <>
+                  <p>Created {toneSlotsNeeded} tone{toneSlotsNeeded !== 1 ? 's' : ''} in slots {memoryLayout.formatToneSlot(absoluteToneSlot)} - {memoryLayout.formatToneSlot(absoluteToneSlot + toneSlotsNeeded - 1)}
+                    {useMonolithicMode && ` (1 holder + ${totalSamples} sub-tones)`}
+                  </p>
+                  {singlePatch ? (
+                    <p>Created 1 patch in slot {memoryLayout.formatPatchSlot(targetPatchSlot)} with all {totalSamples} samples mapped</p>
+                  ) : (
+                    <p>Created {totalSamples} patch{totalSamples !== 1 ? 'es' : ''} in slots {memoryLayout.formatPatchSlot(targetPatchSlot)} - {memoryLayout.formatPatchSlot(targetPatchSlot + totalSamples - 1)}</p>
+                  )}
+                </>
+              }
+              onDone={handleClose}
+            />
           ) : (
             <div className="space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
@@ -488,27 +485,11 @@ export function ImportDrumKitDialog({
                 </div>
               </div>
 
-              {/* Progress Bar */}
-              {isImporting && importProgress !== undefined && (
-                <div>
-                  <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                      style={{ width: `${importProgress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-s330-muted mt-1 text-right">
-                    {statusMessage || `Importing... ${importProgress.toFixed(0)}%`}
-                  </p>
-                </div>
+              {isImporting && importProgress && (
+                <ImportProgressBar progress={importProgress} />
               )}
 
-              {/* Error Display */}
-              {importError && (
-                <div className="text-sm text-red-400 bg-red-900/20 rounded p-2">
-                  {importError}
-                </div>
-              )}
+              {importError && <ImportErrorBanner error={importError} />}
 
               {/* Actions */}
               <div className="flex justify-end gap-2">
@@ -530,30 +511,14 @@ export function ImportDrumKitDialog({
                     (isImporting || !hasEnoughToneSlots || !hasEnoughPatchSlots) && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  {isImporting ? (
-                    <>
-                      <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Importing...
-                    </>
-                  ) : (
-                    'Import Drum Kit'
-                  )}
+                  <ImportButtonContent isImporting={isImporting} label="Import Drum Kit" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Close button */}
           <Dialog.Close asChild>
-            <button
-              className="absolute top-4 right-4 text-s330-muted hover:text-s330-text"
-              aria-label="Close"
-              disabled={isImporting}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <DialogCloseButton disabled={isImporting} />
           </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>

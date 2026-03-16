@@ -8,24 +8,22 @@
 import { useState, useCallback } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { ToneYaml } from '@audiocontrol/sampler-library/browser';
+import type { ImportOperationState } from '@/types/import-operation';
+import { isImportComplete } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
+import {
+  ImportProgressBar,
+  ImportErrorBanner,
+  ImportSuccessScreen,
+  ImportButtonContent,
+  DialogCloseButton,
+} from '@/components/ui/ImportStatus';
 
-export interface ImportToneDialogProps {
-  /** Whether the dialog is open */
+export interface ImportToneDialogProps extends ImportOperationState {
   open: boolean;
-  /** Callback when dialog should close */
   onOpenChange: (open: boolean) => void;
-  /** The tone YAML to import */
   tone: ToneYaml | null;
-  /** Callback to perform the import */
   onImport: (targetSlot: number) => Promise<void>;
-  /** Whether import is in progress */
-  isImporting: boolean;
-  /** Import progress (0-100) */
-  importProgress?: number;
-  /** Import error message */
-  importError?: string | null;
-  /** Total number of tone slots available */
   totalSlots?: number;
 }
 
@@ -55,7 +53,7 @@ export function ImportToneDialog({
     }
   }, [isImporting, onOpenChange]);
 
-  const isComplete = importProgress === 100 && !isImporting;
+  const isComplete = isImportComplete({ isImporting, importProgress, importError });
 
   if (!tone) {
     return <></>;
@@ -71,25 +69,15 @@ export function ImportToneDialog({
           </Dialog.Title>
 
           {isComplete ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-green-400">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Tone imported successfully!</span>
-              </div>
-              <p className="text-sm text-s330-muted">
-                <span className="font-mono text-s330-text">{tone.name}</span> imported to slot T{targetSlot + 1}
-              </p>
-              <div className="flex justify-end">
-                <button
-                  onClick={handleClose}
-                  className="ac-btn ac-btn-primary"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
+            <ImportSuccessScreen
+              message="Tone imported successfully!"
+              detail={
+                <p>
+                  <span className="font-mono text-s330-text">{tone.name}</span> imported to slot T{targetSlot + 1}
+                </p>
+              }
+              onDone={handleClose}
+            />
           ) : (
             <div className="space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
@@ -150,27 +138,11 @@ export function ImportToneDialog({
                 </p>
               </div>
 
-              {/* Progress Bar */}
-              {isImporting && importProgress !== undefined && (
-                <div>
-                  <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                      style={{ width: `${importProgress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-s330-muted mt-1 text-right">
-                    {importProgress < 50 ? 'Uploading wave data...' : 'Sending parameters...'}
-                  </p>
-                </div>
+              {isImporting && importProgress && (
+                <ImportProgressBar progress={importProgress} />
               )}
 
-              {/* Error Display */}
-              {importError && (
-                <div className="text-sm text-red-400 bg-red-900/20 rounded p-2">
-                  {importError}
-                </div>
-              )}
+              {importError && <ImportErrorBanner error={importError} />}
 
               {/* Actions */}
               <div className="flex justify-end gap-2">
@@ -192,30 +164,14 @@ export function ImportToneDialog({
                     isImporting && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  {isImporting ? (
-                    <>
-                      <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Importing...
-                    </>
-                  ) : (
-                    'Import'
-                  )}
+                  <ImportButtonContent isImporting={isImporting} label="Import" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Close button */}
           <Dialog.Close asChild>
-            <button
-              className="absolute top-4 right-4 text-s330-muted hover:text-s330-text"
-              aria-label="Close"
-              disabled={isImporting}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <DialogCloseButton disabled={isImporting} />
           </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>

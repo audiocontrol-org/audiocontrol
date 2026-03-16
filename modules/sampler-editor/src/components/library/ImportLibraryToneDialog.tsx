@@ -6,13 +6,15 @@
  */
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import type { ImportOperationState } from '@/types/import-operation';
+import { isImportComplete } from '@/types/import-operation';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { SamplerTone } from '@/core/midi/SamplerClient';
 import {
   loadToneFromSet,
   loadSetManifest,
   loadIndividualTone,
-  convertYamlToSamplerTone,
+  convertYamlToS330Tone,
 } from '@/lib/library-service';
 import { suggestToneAllocation, isToneSlotEmpty } from '@/lib/slot-allocation';
 import { cn } from '@/lib/utils';
@@ -20,26 +22,26 @@ import { calculateSegmentsNeeded } from '@audiocontrol/sampler-devices/s330';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
 import { BestFitPicker } from '@/components/ui/BestFitPicker';
+import {
+  ImportProgressBar,
+  ImportErrorBanner,
+  ImportSuccessScreen,
+  ImportLoadingSpinner,
+  ImportButtonContent,
+  DialogCloseButton,
+} from '@/components/ui/ImportStatus';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
 import { findToneBestFits } from '@/lib/best-fit';
 import type { FitOption, ToneFitValues } from '@/lib/best-fit';
 
-export interface ImportLibraryToneDialogProps {
-  /** Whether the dialog is open */
+export interface ImportLibraryToneDialogProps extends ImportOperationState {
   open: boolean;
-  /** Callback when dialog should close */
   onOpenChange: (open: boolean) => void;
-  /** Library directory handle */
   libraryHandle: FileSystemDirectoryHandle;
-  /** Name of the set containing the tone */
   setName: string;
-  /** File name of the tone (without extension) */
   toneFile: string;
-  /** Current device tones (to show slot occupancy) */
   deviceTones: (SamplerTone | undefined)[];
-  /** Initial target tone slot (e.g., from drag-drop target) */
   initialTargetSlot?: number;
-  /** Callback to perform the import */
   onImport: (params: {
     setName: string;
     toneFile: string;
@@ -50,14 +52,6 @@ export interface ImportLibraryToneDialogProps {
     segmentTop: number;
     segmentLength: number;
   }) => Promise<void>;
-  /** Whether import is in progress */
-  isImporting: boolean;
-  /** Import progress (0-100) */
-  importProgress?: number;
-  /** Import error message */
-  importError?: string | null;
-  /** Status message */
-  statusMessage?: string | null;
 }
 
 export function ImportLibraryToneDialog({
@@ -72,7 +66,6 @@ export function ImportLibraryToneDialog({
   isImporting,
   importProgress,
   importError,
-  statusMessage,
 }: ImportLibraryToneDialogProps): JSX.Element {
   const config = useDeviceConfig();
 
@@ -123,7 +116,7 @@ export function ImportLibraryToneDialog({
           // Load individual tone directly from library
           const { yaml, wavData: data } = await loadIndividualTone(libraryHandle, toneFile);
           loadedWavData = data;
-          convertedTone = convertYamlToSamplerTone(yaml);
+          convertedTone = convertYamlToS330Tone(yaml);
           preferredBank = convertedTone.wave.bank as 0 | 1 | 2 | 3;
         } else {
           // Load from a set
@@ -137,7 +130,7 @@ export function ImportLibraryToneDialog({
           // Load tone and wave data
           const { yaml, wavData: data } = await loadToneFromSet(libraryHandle, setName, toneFile);
           loadedWavData = data;
-          convertedTone = convertYamlToSamplerTone(yaml);
+          convertedTone = convertYamlToS330Tone(yaml);
         }
 
         setWavData(loadedWavData);
@@ -208,7 +201,7 @@ export function ImportLibraryToneDialog({
 
   // Use the segment length from the manifest (stored in state)
   const segmentsNeeded = segmentLength;
-  const isComplete = importProgress === 100 && !isImporting;
+  const isComplete = isImportComplete({ isImporting, importProgress, importError });
   const error = loadError || importError;
 
   // Check if selected slot will overwrite existing data
@@ -250,26 +243,12 @@ export function ImportLibraryToneDialog({
           </Dialog.Title>
 
           {isComplete ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-green-400">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Tone imported successfully!</span>
-              </div>
-              <div className="flex justify-end">
-                <button onClick={handleClose} className="ac-btn ac-btn-primary">
-                  Done
-                </button>
-              </div>
-            </div>
+            <ImportSuccessScreen
+              message="Tone imported successfully!"
+              onDone={handleClose}
+            />
           ) : isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="flex items-center gap-2 text-s330-muted">
-                <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                <span>Loading tone data...</span>
-              </div>
-            </div>
+            <ImportLoadingSpinner message="Loading tone data..." />
           ) : (
             <div className="space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
@@ -442,27 +421,11 @@ export function ImportLibraryToneDialog({
                 Warning: This will overwrite existing wave data in the target segment(s).
               </p>
 
-              {/* Progress Bar */}
-              {isImporting && importProgress !== undefined && (
-                <div>
-                  <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                      style={{ width: `${importProgress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-s330-muted mt-1 text-right">
-                    {statusMessage || `Uploading to device... ${importProgress.toFixed(0)}%`}
-                  </p>
-                </div>
+              {isImporting && importProgress && (
+                <ImportProgressBar progress={importProgress} />
               )}
 
-              {/* Error Display */}
-              {error && (
-                <div className="text-sm text-red-400 bg-red-900/20 rounded p-2">
-                  {error}
-                </div>
-              )}
+              {error && <ImportErrorBanner error={error} />}
 
               {/* Actions */}
               <div className="flex justify-end gap-2">
@@ -484,30 +447,14 @@ export function ImportLibraryToneDialog({
                     (isImporting || !tone || !wavData) && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  {isImporting ? (
-                    <>
-                      <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Importing...
-                    </>
-                  ) : (
-                    'Import Tone'
-                  )}
+                  <ImportButtonContent isImporting={isImporting} label="Import Tone" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Close button */}
           <Dialog.Close asChild>
-            <button
-              className="absolute top-4 right-4 text-s330-muted hover:text-s330-text"
-              aria-label="Close"
-              disabled={isImporting}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <DialogCloseButton disabled={isImporting} />
           </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>

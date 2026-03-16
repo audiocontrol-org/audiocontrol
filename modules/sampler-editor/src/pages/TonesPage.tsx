@@ -6,6 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { ImportProgress } from '@/types/import-operation';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
@@ -77,7 +78,7 @@ export function TonesPage() {
   // Import Sample state
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState<number | undefined>(undefined);
+  const [importProgress, setImportProgress] = useState<ImportProgress | undefined>(undefined);
   const [importError, setImportError] = useState<string | null>(null);
 
   // Loop editor wave data state (keyed by tone index)
@@ -460,7 +461,7 @@ export function TonesPage() {
     const { toneIndex, name, waveData, waveBank, segmentTop, segmentLength, sampleRate, loopMode, loopPoint } = params;
 
     setIsImporting(true);
-    setImportProgress(0);
+    setImportProgress(undefined);
     setImportError(null);
 
     try {
@@ -481,12 +482,15 @@ export function TonesPage() {
           loopPoint,
         },
         (bytesSent, totalBytes) => {
-          const progress = totalBytes > 0 ? (bytesSent / totalBytes) * 100 : 0;
-          setImportProgress(progress);
+          setImportProgress({
+            currentStep: 1, totalSteps: 1,
+            stepLabel: `Uploading ${name}`,
+            bytesSent, bytesTotal: totalBytes,
+            bytesSentAllSteps: 0, bytesTotalAllSteps: totalBytes,
+          });
         }
       );
 
-      setImportProgress(100);
       console.log(`[TonesPage] Sample imported successfully to T${toneIndex + 11}`);
 
       // Reload the tone bank to reflect changes

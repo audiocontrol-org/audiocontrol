@@ -10,6 +10,7 @@
  */
 
 import { useState, useCallback, MutableRefObject } from 'react';
+import type { ImportOperationState, ImportProgress } from '@/types/import-operation';
 import type { S330ClientInterface, S330Tone, S330Patch } from '@/core/midi/S330Client';
 import type { ResolvedDrumKitBundle, SliceDefinition } from '@audiocontrol/sampler-library/browser';
 import {
@@ -35,13 +36,9 @@ interface UseImportDrumKitOptions {
   setPatch: (index: number, patch: S330Patch) => void;
 }
 
-interface UseImportDrumKitReturn {
+interface UseImportDrumKitReturn extends ImportOperationState {
   // Dialog state
   importDrumKitDialog: ImportDrumKitDialogState | null;
-  isImporting: boolean;
-  importProgress: number | undefined;
-  importError: string | null;
-  importStatus: string | null;
 
   // Dialog handlers
   openImportDrumKitDialog: (kitName: string, bundle: ResolvedDrumKitBundle, path?: string[]) => void;
@@ -102,15 +99,13 @@ export function useImportDrumKit({
   // Dialog state
   const [importDrumKitDialog, setImportDrumKitDialog] = useState<ImportDrumKitDialogState | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState<number | undefined>(undefined);
+  const [importProgress, setImportProgress] = useState<ImportProgress | undefined>(undefined);
   const [importError, setImportError] = useState<string | null>(null);
-  const [importStatus, setImportStatus] = useState<string | null>(null);
 
   // Open dialog
   const openImportDrumKitDialog = useCallback((kitName: string, bundle: ResolvedDrumKitBundle, path?: string[]) => {
     setImportError(null);
     setImportProgress(undefined);
-    setImportStatus(null);
     setImportDrumKitDialog({ kitName, bundle, path });
   }, []);
 
@@ -141,7 +136,7 @@ export function useImportDrumKit({
     const useMonolithicMode = params.useMonolithicMode ?? false;
 
     setIsImporting(true);
-    setImportProgress(0);
+    setImportProgress(undefined);
     setImportError(null);
 
     try {
@@ -156,7 +151,15 @@ export function useImportDrumKit({
 
         console.log('[useImportDrumKit] Using MONOLITHIC MODE');
 
-        setImportStatus('Loading source audio for monolithic import...');
+        // Monolithic import reports its own steps via callback
+        // We estimate totalSteps as slices + 2 (wave upload + patch creation)
+        const monoTotalSteps = bundle.slices.length + 2;
+
+        setImportProgress({
+          currentStep: 1, totalSteps: monoTotalSteps,
+          stepLabel: 'Loading source audio...', bytesSent: 0, bytesTotal: 0,
+          bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
+        });
 
         // Load the source WAV
         const sourceWav = await loadDrumKitSource(libraryHandle, kitName, bundle.source, path);
@@ -164,14 +167,22 @@ export function useImportDrumKit({
         // Resample if needed
         let targetSamples: Int16Array;
         if (sourceWav.sampleRate !== bundle.sampleRate) {
-          setImportStatus('Resampling audio...');
+          setImportProgress({
+            currentStep: 1, totalSteps: monoTotalSteps,
+            stepLabel: 'Resampling audio...', bytesSent: 0, bytesTotal: 0,
+            bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
+          });
           targetSamples = resample(sourceWav.samples, sourceWav.sampleRate, bundle.sampleRate);
         } else {
           targetSamples = sourceWav.samples;
         }
 
         // Prepare the entire source for S-330 (convert to 12-bit format)
-        setImportStatus('Preparing wave data...');
+        setImportProgress({
+          currentStep: 1, totalSteps: monoTotalSteps,
+          stepLabel: 'Preparing wave data...', bytesSent: 0, bytesTotal: 0,
+          bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
+        });
         const prepared = prepareWavForS330(
           createWavArrayBuffer(targetSamples, bundle.sampleRate),
           bundle.sampleRate
@@ -199,6 +210,8 @@ export function useImportDrumKit({
           targetPatchSlot,
         });
 
+        const waveTotalBytes = prepared.data.length;
+
         // Use the monolithic import function
         const result = await importMonolithicDrumKit(
           clientRef.current,
@@ -216,8 +229,18 @@ export function useImportDrumKit({
             velocitySensitivity: bundle.velocitySensitivity,
           },
           (current, total, status) => {
-            setImportProgress(Math.floor((current / total) * 100));
-            setImportStatus(status);
+            // The monolithic import callback passes a fraction (0-1) for
+            // the wave upload step, and integer step numbers for sub-tone/patch steps.
+            const isWaveUpload = current < 1 && status.includes('wave data');
+            setImportProgress({
+              currentStep: isWaveUpload ? 1 : Math.ceil(current) + 1,
+              totalSteps: total + 1,
+              stepLabel: isWaveUpload ? `Uploading ${patchName} wave data` : status,
+              bytesSent: isWaveUpload ? Math.floor(current * waveTotalBytes) : 0,
+              bytesTotal: isWaveUpload ? waveTotalBytes : 0,
+              bytesSentAllSteps: isWaveUpload ? 0 : waveTotalBytes,
+              bytesTotalAllSteps: waveTotalBytes,
+            });
           }
         );
 
@@ -227,9 +250,6 @@ export function useImportDrumKit({
           setTone(result.subToneSlots[i]!, result.subTones[i]!);
         }
         setPatch(result.patchSlot, result.patch);
-
-        setImportProgress(100);
-        setImportStatus('Monolithic import complete!');
 
         console.log('[useImportDrumKit] Monolithic import complete:', result);
 
@@ -293,11 +313,16 @@ export function useImportDrumKit({
       const totalSteps = samples.length + 1; // samples + patch
       let completedSteps = 0;
       let currentSegment = startingSegment;
+      let completedWaveBytes = 0;
 
       // For v2 format, load source WAV once
       let sourceWav: { samples: Int16Array; sampleRate: number } | null = null;
       if (isV2Format) {
-        setImportStatus('Loading source audio...');
+        setImportProgress({
+          currentStep: 1, totalSteps: totalSteps,
+          stepLabel: 'Loading source audio...', bytesSent: 0, bytesTotal: 0,
+          bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
+        });
         sourceWav = await loadDrumKitSource(libraryHandle, kitName, bundle.source!, path);
       }
 
@@ -305,8 +330,6 @@ export function useImportDrumKit({
       for (let i = 0; i < samples.length; i++) {
         const sample = samples[i]!;
         const toneSlot = startingToneSlot + i;
-
-        setImportStatus(`Processing ${sample.filename}...`);
 
         let prepared;
 
@@ -353,7 +376,7 @@ export function useImportDrumKit({
           bundle.velocitySensitivity ?? 2
         );
 
-        setImportStatus(`Uploading ${sample.filename}...`);
+        const stepNum = completedSteps + 1;
 
         // Upload to device
         await clientRef.current.importTone(
@@ -366,9 +389,13 @@ export function useImportDrumKit({
             tone,
           },
           (bytesSent, totalBytes) => {
-            const tonePct = totalBytes > 0 ? (bytesSent / totalBytes) : 0;
-            const overallPct = ((completedSteps + tonePct) / totalSteps) * 100;
-            setImportProgress(Math.floor(overallPct));
+            setImportProgress({
+              currentStep: stepNum, totalSteps,
+              stepLabel: `Uploading ${sample.filename} (tone ${i + 1} of ${samples.length})`,
+              bytesSent, bytesTotal: totalBytes,
+              bytesSentAllSteps: completedWaveBytes,
+              bytesTotalAllSteps: completedWaveBytes + totalBytes,
+            });
           }
         );
 
@@ -377,6 +404,7 @@ export function useImportDrumKit({
 
         // Move to next segment
         currentSegment += prepared.segmentLength;
+        completedWaveBytes += prepared.data.length;
         completedSteps++;
 
         // Give the S-330 time to process wave data before next upload
@@ -394,7 +422,12 @@ export function useImportDrumKit({
 
       if (useSinglePatch) {
         // Single patch mode: create one patch with all tone mappings
-        setImportStatus(`Creating patch ${patchName}...`);
+        setImportProgress({
+          currentStep: totalSteps, totalSteps,
+          stepLabel: `Creating patch ${patchName}`,
+          bytesSent: 0, bytesTotal: 0,
+          bytesSentAllSteps: completedWaveBytes, bytesTotalAllSteps: completedWaveBytes,
+        });
 
         const toneMappings = samples.map((sample, i) => ({
           midiNote: sample.midiNote,
@@ -408,8 +441,6 @@ export function useImportDrumKit({
         setPatch(targetPatchSlot, patch);
       } else {
         // Multi-patch mode: create one patch per sample
-        setImportStatus('Creating patches...');
-
         for (let i = 0; i < samples.length; i++) {
           const sample = samples[i]!;
           const toneSlot = startingToneSlot + i;
@@ -422,7 +453,12 @@ export function useImportDrumKit({
 
           const patch = createSingleDrumPatch(samplePatchName, toneSlot, sample.midiNote);
 
-          setImportStatus(`Creating patch ${samplePatchName}...`);
+          setImportProgress({
+            currentStep: completedSteps + 1 + i, totalSteps: totalSteps + samples.length - 1,
+            stepLabel: `Creating patch ${samplePatchName} (${i + 1} of ${samples.length})`,
+            bytesSent: 0, bytesTotal: 0,
+            bytesSentAllSteps: completedWaveBytes, bytesTotalAllSteps: completedWaveBytes,
+          });
           await clientRef.current.sendPatchData(patchSlot, patch.common);
           setPatch(patchSlot, patch);
 
@@ -430,10 +466,6 @@ export function useImportDrumKit({
           await new Promise((resolve) => setTimeout(resolve, 200));
         }
       }
-
-      completedSteps++;
-      setImportProgress(100);
-      setImportStatus('Import complete!');
 
       // Brief delay to show completion
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -495,7 +527,6 @@ export function useImportDrumKit({
     isImporting,
     importProgress,
     importError,
-    importStatus,
     openImportDrumKitDialog,
     closeImportDrumKitDialog,
     handleImportDrumKit,
