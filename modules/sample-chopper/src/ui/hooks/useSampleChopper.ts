@@ -92,8 +92,7 @@ export function useSampleChopper({
   const [transientThreshold, setTransientThreshold] = useState(0.3);
   const [transientMinGap, setTransientMinGap] = useState(100);
   const [transientPrePad, setTransientPrePad] = useState(5);
-  const [fixedInterval, setFixedInterval] = useState(500);
-  const [fixedCount, setFixedCount] = useState<number | undefined>(undefined);
+  const [fixedCount, setFixedCount] = useState(16);
   const [kitLabels, setKitLabels] = useState(externalLabels ?? DEFAULT_DRUM_TYPES.join(','));
   const [autoSliceResult, setAutoSliceResult] = useState<SliceResult | null>(null);
   const [selectedSlice, setSelectedSlice] = useState<number | undefined>(undefined);
@@ -125,7 +124,6 @@ export function useSampleChopper({
       if (analysis.duration.ms >= 1000) {
         const estimatedBeats = Math.round(analysis.duration.ms / 500);
         if (estimatedBeats >= 2 && estimatedBeats <= 16) {
-          setFixedInterval(Math.round(analysis.duration.ms / estimatedBeats));
           setFixedCount(estimatedBeats);
         }
       }
@@ -137,12 +135,12 @@ export function useSampleChopper({
       case 'transient':
         return { method: 'transient', threshold: transientThreshold, minGapMs: transientMinGap, prePadMs: transientPrePad };
       case 'fixed':
-        return { method: 'fixed', intervalMs: fixedInterval, count: fixedCount };
+        return { method: 'fixed', count: fixedCount };
       case 'manual':
       case 'silence':
         return { method: 'transient', threshold: transientThreshold, minGapMs: transientMinGap, prePadMs: transientPrePad };
     }
-  }, [selectedMethod, transientThreshold, transientMinGap, transientPrePad, fixedInterval, fixedCount]);
+  }, [selectedMethod, transientThreshold, transientMinGap, transientPrePad, fixedCount]);
 
   // Perform auto-slicing when config changes
   useEffect(() => {
@@ -359,7 +357,7 @@ export function useSampleChopper({
     transientThreshold, setTransientThreshold,
     transientMinGap, setTransientMinGap,
     transientPrePad, setTransientPrePad,
-    fixedInterval, setFixedInterval, fixedCount, setFixedCount,
+    fixedCount, setFixedCount,
     kitLabels, setKitLabels,
     autoSliceResult, currentSliceResult,
     selectedSlice, setSelectedSlice, sliceError, sliceMarkers, manualSlices,

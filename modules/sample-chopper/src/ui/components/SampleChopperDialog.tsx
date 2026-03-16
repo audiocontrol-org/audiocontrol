@@ -440,8 +440,6 @@ export function SampleChopperDialog({
                 onTransientMinGapChange={chopper.setTransientMinGap}
                 transientPrePad={chopper.transientPrePad}
                 onTransientPrePadChange={chopper.setTransientPrePad}
-                fixedInterval={chopper.fixedInterval}
-                onFixedIntervalChange={chopper.setFixedInterval}
                 fixedCount={chopper.fixedCount}
                 onFixedCountChange={chopper.setFixedCount}
                 stripSilenceThreshold={chopper.stripSilenceThreshold}

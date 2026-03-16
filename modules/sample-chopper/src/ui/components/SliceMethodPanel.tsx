@@ -20,10 +20,8 @@ export interface SliceMethodPanelProps {
   transientPrePad: number;
   onTransientPrePadChange: (value: number) => void;
   // Fixed params
-  fixedInterval: number;
-  onFixedIntervalChange: (value: number) => void;
-  fixedCount: number | undefined;
-  onFixedCountChange: (value: number | undefined) => void;
+  fixedCount: number;
+  onFixedCountChange: (value: number) => void;
   // Silence/strip params
   stripSilenceThreshold: number;
   onStripSilenceThresholdChange: (value: number) => void;
@@ -45,8 +43,6 @@ export function SliceMethodPanel({
   onTransientMinGapChange,
   transientPrePad,
   onTransientPrePadChange,
-  fixedInterval,
-  onFixedIntervalChange,
   fixedCount,
   onFixedCountChange,
   stripSilenceThreshold,
@@ -206,43 +202,24 @@ export function SliceMethodPanel({
         )}
       </Tabs.Content>
 
-      {/* Fixed Interval Controls */}
+      {/* Fixed Count Controls */}
       <Tabs.Content value="fixed" className="space-y-3">
         <p className="text-xs text-ac-muted">
-          Split at regular time intervals (for metronome-recorded hits).
+          Split into a fixed number of equal-length slices.
         </p>
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs text-ac-muted mb-1">
-              Interval (ms)
-            </label>
-            <input
-              type="number"
-              min="50"
-              max="5000"
-              step="50"
-              value={fixedInterval}
-              onChange={(e) => onFixedIntervalChange(parseInt(e.target.value) || 500)}
-              className="w-full bg-ac-bg border border-ac-accent/50 rounded px-2 py-1 text-sm text-ac-text"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-ac-muted mb-1">
-              Expected Count (optional)
-            </label>
-            <input
-              type="number"
-              min="1"
-              max="32"
-              step="1"
-              value={fixedCount ?? ''}
-              onChange={(e) =>
-                onFixedCountChange(e.target.value ? parseInt(e.target.value) : undefined)
-              }
-              placeholder="auto"
-              className="w-full bg-ac-bg border border-ac-accent/50 rounded px-2 py-1 text-sm text-ac-text"
-            />
-          </div>
+        <div>
+          <label className="block text-xs text-ac-muted mb-1">
+            Number of slices
+          </label>
+          <input
+            type="number"
+            min="1"
+            max="32"
+            step="1"
+            value={fixedCount}
+            onChange={(e) => onFixedCountChange(Math.max(1, parseInt(e.target.value) || 1))}
+            className="w-full bg-ac-bg border border-ac-accent/50 rounded px-2 py-1 text-sm text-ac-text"
+          />
         </div>
       </Tabs.Content>
     </Tabs.Root>

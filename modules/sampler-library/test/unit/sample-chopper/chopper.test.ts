@@ -16,7 +16,7 @@ describe('sliceAudio', () => {
 
     const result = sliceAudio(samples, 1000, {
       method: 'fixed',
-      intervalMs: 250,
+      count: 4,
     });
 
     expect(result.slices).toHaveLength(4);

@@ -46,16 +46,17 @@ export interface SilenceConfig {
 }
 
 /**
- * Configuration for fixed interval slicing.
+ * Configuration for fixed count slicing.
  *
- * Splits at regular time intervals (for metronome-recorded hits).
+ * Splits audio into a specified number of equal-length slices.
+ * Optionally accepts an explicit interval instead.
  */
 export interface FixedConfig {
   method: 'fixed';
-  /** Interval between slice points in milliseconds */
-  intervalMs: number;
-  /** Expected number of slices (optional, for validation) */
-  count?: number;
+  /** Number of equal slices to create */
+  count: number;
+  /** Explicit interval in ms (overrides count-based calculation if provided) */
+  intervalMs?: number;
 }
 
 /**

@@ -1,13 +1,12 @@
 /**
- * Fixed interval slicer unit tests.
+ * Fixed count slicer unit tests.
  */
 
 import { describe, it, expect } from 'vitest';
 import { sliceByFixedInterval } from '@/sample-chopper/fixed-slicer.js';
 
 describe('sliceByFixedInterval', () => {
-  it('should slice audio into equal intervals', () => {
-    // 1000ms of audio at 1000Hz = 1000 samples
+  it('should slice audio into equal parts by count', () => {
     const samples = new Int16Array(1000);
     for (let i = 0; i < 1000; i++) {
       samples[i] = i;
@@ -15,14 +14,13 @@ describe('sliceByFixedInterval', () => {
 
     const result = sliceByFixedInterval(samples, 1000, {
       method: 'fixed',
-      intervalMs: 250,
+      count: 4,
     });
 
     expect(result.slices).toHaveLength(4);
     expect(result.sampleRate).toBe(1000);
     expect(result.totalDurationMs).toBe(1000);
 
-    // Each slice should be 250 samples
     expect(result.slices[0]?.samples.length).toBe(250);
     expect(result.slices[0]?.startSample).toBe(0);
     expect(result.slices[0]?.endSample).toBe(250);
@@ -36,47 +34,53 @@ describe('sliceByFixedInterval', () => {
     expect(result.slices[3]?.endSample).toBe(1000);
   });
 
-  it('should handle partial final slice', () => {
-    // 900 samples, 250 sample intervals = 3 full + 1 partial (150 samples)
-    const samples = new Int16Array(900);
-
-    const result = sliceByFixedInterval(samples, 1000, {
-      method: 'fixed',
-      intervalMs: 250,
-    });
-
-    expect(result.slices).toHaveLength(4);
-    expect(result.slices[3]?.samples.length).toBe(150);
-    expect(result.slices[3]?.durationMs).toBe(150);
-  });
-
-  it('should validate count if specified', () => {
+  it('should give remainder to last slice', () => {
     const samples = new Int16Array(1000);
 
-    // Should work when count matches
     const result = sliceByFixedInterval(samples, 1000, {
       method: 'fixed',
-      intervalMs: 250,
+      count: 3,
+    });
+
+    expect(result.slices).toHaveLength(3);
+    expect(result.slices[0]?.samples.length).toBe(333);
+    expect(result.slices[1]?.samples.length).toBe(333);
+    expect(result.slices[2]?.samples.length).toBe(334);
+    expect(result.slices[2]?.endSample).toBe(1000);
+  });
+
+  it('should use explicit intervalMs when provided', () => {
+    const samples = new Int16Array(1000);
+
+    const result = sliceByFixedInterval(samples, 1000, {
+      method: 'fixed',
       count: 4,
+      intervalMs: 250,
     });
-    expect(result.slices).toHaveLength(4);
 
-    // Should throw when count doesn't match
-    expect(() =>
-      sliceByFixedInterval(samples, 1000, {
-        method: 'fixed',
-        intervalMs: 250,
-        count: 5,
-      })
-    ).toThrow(/Expected 5 slices/);
+    expect(result.slices).toHaveLength(4);
+    expect(result.slices[0]?.samples.length).toBe(250);
+    expect(result.slices[3]?.endSample).toBe(1000);
   });
 
-  it('should throw for invalid interval', () => {
+  it('should throw for invalid count', () => {
     const samples = new Int16Array(1000);
 
     expect(() =>
       sliceByFixedInterval(samples, 1000, {
         method: 'fixed',
+        count: 0,
+      })
+    ).toThrow(/Invalid count/);
+  });
+
+  it('should throw for invalid explicit interval', () => {
+    const samples = new Int16Array(1000);
+
+    expect(() =>
+      sliceByFixedInterval(samples, 1000, {
+        method: 'fixed',
+        count: 4,
         intervalMs: 0,
       })
     ).toThrow(/Invalid interval/);
@@ -87,7 +91,7 @@ describe('sliceByFixedInterval', () => {
 
     const result = sliceByFixedInterval(samples, 1000, {
       method: 'fixed',
-      intervalMs: 3, // 3 samples per slice
+      count: 2,
     });
 
     expect(result.slices[0]?.samples).toEqual(new Int16Array([100, 200, 300]));
@@ -99,7 +103,7 @@ describe('sliceByFixedInterval', () => {
 
     const result = sliceByFixedInterval(samples, 1000, {
       method: 'fixed',
-      intervalMs: 25,
+      count: 4,
     });
 
     expect(result.slices[0]?.index).toBe(0);
