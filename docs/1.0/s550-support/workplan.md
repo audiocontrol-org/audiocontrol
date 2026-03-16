@@ -23,6 +23,7 @@
 | Phase 5: Unified Sampler Editor | Complete | Device config registry, context, routing |
 | Phase 6: Hardware Validation | Complete | All tests passing against physical S-550 |
 | Phase 7: S-550 Front Panel | Not Started | Virtual front panel layout |
+| Phase 8: Memory Map Visualization | Complete | Graphical memory map in import dialogs |
 
 ---
 
@@ -284,6 +285,47 @@ The S-550 front panel layout differs cosmetically from the S-330 (rack-mount for
 
 - [ ] S-550 front panel renders with correct button layout
 - [ ] Button functions match hardware behavior
+
+---
+
+## Phase 8: Memory Map Visualization (Complete)
+
+Added a graphical memory map to all import dialogs (tone, drum kit, patch, load set) showing occupied/empty/proposed/conflict states for tone slots and wave memory segments.
+
+### What Was Built
+
+| File | Purpose |
+|------|---------|
+| `src/components/ui/memory-map-types.ts` | `AllocationProposal`, `SlotStatus`, `computeSlotStatus()`, `computeSegmentStatus()` |
+| `src/components/ui/ToneSlotMap.tsx` | Grid of tone cells for one `ToneSlotGroup` (8 per row) |
+| `src/components/ui/WaveSegmentMap.tsx` | Horizontal bar of 18 segments for one wave bank |
+| `src/components/ui/MemoryMapPanel.tsx` | Composes tone grid + wave bars + legend |
+
+### Modified Files
+
+| File | Change |
+|------|--------|
+| `ImportLibraryToneDialog.tsx` | Added `<MemoryMapPanel>` with single-slot proposal |
+| `ImportDrumKitDialog.tsx` | Added `<MemoryMapPanel>` with contiguous range proposal |
+| `ImportLibraryPatchDialog.tsx` | Added `<MemoryMapPanel>` with multi-tone proposal from `toneMappings` |
+| `LoadSetDialog.tsx` | Added `<MemoryMapPanel>` with full-block proposal |
+| `LibraryPage.tsx` | Passes `deviceTones`, `toneGroups`, `formatToneSlot` to `LoadSetDialog` |
+
+### Key Design Decisions
+
+- No device conditionals — the panel renders whatever `toneGroups` describes
+- Color coding: empty (`bg-s330-accent/20`), occupied (`bg-emerald-600/60`), proposed (`bg-s330-highlight/40`), conflict (`bg-red-500/40`)
+- Proposals update reactively when users change slot/bank/segment selectors
+- `computeSlotStatus()` and `computeSegmentStatus()` are pure functions for testability
+
+### Acceptance Criteria — Met
+
+- [x] Memory map renders in all four import dialogs
+- [x] Occupied/empty/proposed/conflict states display correctly
+- [x] Changing slot/bank/segment selectors updates the map reactively
+- [x] S-330 shows single tone group + 2 wave banks
+- [x] S-550 shows two tone groups + 4 wave banks
+- [x] No device conditionals in any component
 
 ---
 

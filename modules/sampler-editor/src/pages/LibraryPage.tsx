@@ -1565,6 +1565,9 @@ export function LibraryPage() {
         error={operationError}
         statusMessage={operationStatus}
         importTargets={config.memoryLayout.importTargets}
+        deviceTones={tones}
+        toneGroups={config.memoryLayout.toneGroups}
+        formatToneSlot={config.memoryLayout.formatToneSlot}
       />
 
       {/* Import Library Tone Dialog */}

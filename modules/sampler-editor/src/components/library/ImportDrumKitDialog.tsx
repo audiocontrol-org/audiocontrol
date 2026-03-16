@@ -6,13 +6,15 @@
  * All slot counts, bank options, and formatting are driven by MemoryLayout.
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 import { midiNoteToName } from '@audiocontrol/sampler-library/browser';
 import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
+import type { AllocationProposal } from '@/components/ui/memory-map-types';
 
 export interface ImportDrumKitDialogProps {
   open: boolean;
@@ -92,6 +94,19 @@ export function ImportDrumKitDialog({
     return labelIdx >= 0 ? availableBanks.labels[labelIdx] : String(waveBank);
   })();
 
+  const proposal = useMemo((): AllocationProposal => {
+    const toneSlots = Array.from(
+      { length: toneSlotsNeeded },
+      (_, i) => absoluteToneSlot + i
+    );
+    const waveSegments = [{
+      bank: waveBank,
+      segmentTop: startingSegment,
+      segmentLength: estimatedSegments,
+    }];
+    return { toneSlots, waveSegments };
+  }, [absoluteToneSlot, toneSlotsNeeded, waveBank, startingSegment, estimatedSegments]);
+
   // Reset relative selections when target changes
   const handleTargetChange = useCallback((index: number) => {
     setSelectedTargetIndex(index);
@@ -130,7 +145,7 @@ export function ImportDrumKitDialog({
     <Dialog.Root open={open} onOpenChange={handleClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
           <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
             Import Drum Kit
           </Dialog.Title>
@@ -189,6 +204,14 @@ export function ImportDrumKitDialog({
                   </div>
                 </div>
               </div>
+
+              {/* Memory Map */}
+              <MemoryMapPanel
+                deviceTones={deviceTones}
+                toneGroups={memoryLayout.toneGroups}
+                formatToneSlot={memoryLayout.formatToneSlot}
+                proposal={proposal}
+              />
 
               {/* Import Target */}
               <div>

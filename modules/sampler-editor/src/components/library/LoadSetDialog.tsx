@@ -8,10 +8,13 @@
  * this component never branches on device type.
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
-import type { ImportTarget } from '@/configs/types';
+import type { ImportTarget, ToneSlotGroup } from '@/configs/types';
+import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
+import type { AllocationProposal } from '@/components/ui/memory-map-types';
+import type { S330Tone } from '@/core/midi/S330Client';
 
 interface LoadSetDialogProps {
   open: boolean;
@@ -25,6 +28,12 @@ interface LoadSetDialogProps {
   statusMessage?: string | null;
   /** Import target options from MemoryLayout */
   importTargets: ImportTarget[];
+  /** Current device tones for memory map */
+  deviceTones?: (S330Tone | undefined)[];
+  /** Tone groups from MemoryLayout */
+  toneGroups?: ToneSlotGroup[];
+  /** Format tone slot label */
+  formatToneSlot?: (index: number) => string;
 }
 
 export function LoadSetDialog({
@@ -37,8 +46,28 @@ export function LoadSetDialog({
   error,
   statusMessage,
   importTargets,
+  deviceTones,
+  toneGroups,
+  formatToneSlot,
 }: LoadSetDialogProps): JSX.Element {
   const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
+
+  // Full-block proposal: all tones and all wave segments for the selected target
+  const proposal = useMemo((): AllocationProposal | undefined => {
+    const target = importTargets[selectedTargetIndex];
+    if (!toneGroups) return undefined;
+
+    const group = toneGroups.find((g) => g.firstIndex === target.toneIndexOffset);
+    if (!group) return undefined;
+
+    const toneSlots = Array.from({ length: group.count }, (_, i) => group.firstIndex + i);
+    const waveSegments = group.waveBankIndices.map((bank) => ({
+      bank,
+      segmentTop: 0,
+      segmentLength: 18,
+    }));
+    return { toneSlots, waveSegments };
+  }, [selectedTargetIndex, importTargets, toneGroups]);
 
   const handleLoad = useCallback(async () => {
     await onLoad(importTargets[selectedTargetIndex]);
@@ -61,7 +90,7 @@ export function LoadSetDialog({
           className={cn(
             'fixed z-50 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
             'bg-s330-panel border border-s330-accent rounded-lg shadow-xl',
-            'w-full max-w-md p-6'
+            'w-full max-w-2xl p-6'
           )}
         >
           <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
@@ -98,6 +127,16 @@ export function LoadSetDialog({
                 ))}
               </select>
             </div>
+
+            {/* Memory Map */}
+            {deviceTones && toneGroups && formatToneSlot && (
+              <MemoryMapPanel
+                deviceTones={deviceTones}
+                toneGroups={toneGroups}
+                formatToneSlot={formatToneSlot}
+                proposal={proposal}
+              />
+            )}
 
             {/* Warning */}
             <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">

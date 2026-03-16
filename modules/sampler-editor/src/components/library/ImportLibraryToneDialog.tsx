@@ -18,6 +18,8 @@ import { suggestToneAllocation, isToneSlotEmpty } from '@/lib/slot-allocation';
 import { cn } from '@/lib/utils';
 import { calculateSegmentsNeeded } from '@audiocontrol/sampler-devices/s330';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
+import type { AllocationProposal } from '@/components/ui/memory-map-types';
 
 export interface ImportLibraryToneDialogProps {
   /** Whether the dialog is open */
@@ -209,11 +211,16 @@ export function ImportLibraryToneDialog({
 
   const existingToneName = deviceTones[targetSlot]?.name;
 
+  const proposal = useMemo((): AllocationProposal => ({
+    toneSlots: [targetSlot],
+    waveSegments: [{ bank: waveBank, segmentTop, segmentLength: segmentsNeeded }],
+  }), [targetSlot, waveBank, segmentTop, segmentsNeeded]);
+
   return (
     <Dialog.Root open={open} onOpenChange={handleClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-md p-6">
+        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
           <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
             Import Library Tone
           </Dialog.Title>
@@ -269,6 +276,14 @@ export function ImportLibraryToneDialog({
                   </div>
                 </div>
               )}
+
+              {/* Memory Map */}
+              <MemoryMapPanel
+                deviceTones={deviceTones}
+                toneGroups={memoryLayout.toneGroups}
+                formatToneSlot={memoryLayout.formatToneSlot}
+                proposal={proposal}
+              />
 
               {/* Import Target */}
               <div>
