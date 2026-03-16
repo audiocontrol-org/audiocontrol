@@ -1,7 +1,7 @@
 # Roland S-550 Editor Support - Implementation Summary
 
-**Status:** In Progress (Hardware Validation Underway, Wave Transfer Remaining)
-**Completed:** Phases 1-5, Phase 6 partial (patch/tone read-write validated)
+**Status:** In Progress (Phases 1-6 Complete, Phase 7 Remaining)
+**Completed:** Phases 1-6
 **Author:** audiocontrol-org
 
 ---
@@ -111,20 +111,31 @@ After fixes, all 17 hardware integration tests pass:
 
 ## Remaining Work
 
-### Hardware Validation (Phase 6) — In Progress
+### Hardware Validation (Phase 6) — Complete
 
 - [x] Connect to physical S-550 via MIDI
 - [x] Validate all 32 patches load and parse correctly
 - [x] Validate all 64 tones load and parse correctly
 - [x] Confirm patch round-trip (read → modify → write → read)
 - [x] Confirm tone round-trip (read → modify → write → read)
-- [ ] Test wave data transfer to all 4 banks (A-D)
-- [ ] Test library import/export end-to-end
+- [x] Wave data upload and byte-perfect readback verified
+- [x] Library import/export end-to-end (export → YAML → re-import → upload → verify)
+
+Additional bugs found and fixed during Phase 6:
+- `importTone` deadlock in shared client (called serialize() from within serialize())
+- DAT packet address overflow when byte2 exceeds 127 (carry into byte1)
+- `set-paths.ts` tone/patch filename slot limits too restrictive for S-550
+- S-550 converter exports missing from sampler-library package root
 
 ### S-550 Virtual Front Panel (Phase 7)
 
 - Research rack-mount panel button layout
 - Implement S-550 variant in `VirtualFrontPanel` component
+
+### S-330 Regression Testing (Deferred)
+
+- Validate S-330 hardware test passes with shared client protocol fixes
+- Requires physical S-330 connected via MIDI
 
 ## Lessons Learned
 

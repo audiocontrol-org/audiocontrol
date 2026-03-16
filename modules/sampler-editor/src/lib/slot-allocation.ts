@@ -212,21 +212,27 @@ export interface WaveMemoryRegion {
 }
 
 /**
+ * Build the list of all wave bank indices for the current device.
+ */
+const ALL_WAVE_BANKS: WaveBankIndex[] = [0, 1, 2, 3];
+
+/**
  * Get wave memory usage map from device tones.
  * Returns a map of bank -> Set of used segment indices.
+ * Initializes all 4 banks (S-550 uses 0-3, S-330 uses 0-1).
  */
 export function getWaveMemoryUsage(
   deviceTones: (S330Tone | undefined)[]
 ): Map<WaveBankIndex, Set<number>> {
-  const usage = new Map<WaveBankIndex, Set<number>>([
-    [0, new Set()],
-    [1, new Set()],
-  ]);
+  const usage = new Map<WaveBankIndex, Set<number>>(
+    ALL_WAVE_BANKS.map(b => [b, new Set()])
+  );
 
   for (const tone of deviceTones) {
     if (!tone) continue;
 
     const bank = tone.wave.bank as WaveBankIndex;
+    if (!usage.has(bank)) continue;
     const segmentSet = usage.get(bank)!;
 
     for (let i = 0; i < tone.wave.segmentLength; i++) {
@@ -248,14 +254,14 @@ export function findAvailableWaveMemory(
 ): WaveMemoryRegion | undefined {
   const usage = getWaveMemoryUsage(deviceTones);
 
-  // Try preferred bank first, then others
-  // TODO: For S-550, extend to try all 4 banks
+  // Try preferred bank first, then all others in order
   const banksToTry: WaveBankIndex[] = preferredBank !== undefined
-    ? [preferredBank, preferredBank === 0 ? 1 : 0]
-    : [0, 1];
+    ? [preferredBank, ...ALL_WAVE_BANKS.filter(b => b !== preferredBank)]
+    : [...ALL_WAVE_BANKS];
 
   for (const bank of banksToTry) {
-    const usedSegments = usage.get(bank)!;
+    const usedSegments = usage.get(bank);
+    if (!usedSegments) continue;
 
     // Find contiguous free region
     for (let start = 0; start <= SEGMENTS_PER_BANK - segmentsNeeded; start++) {
@@ -293,23 +299,21 @@ export function findAvailableWaveMemoryRegions(
   const results: WaveMemoryRegion[] = [];
 
   // Track newly allocated segments to avoid conflicts
-  // TODO: For S-550, extend to track all 4 banks
-  const newAllocations = new Map<WaveBankIndex, Set<number>>([
-    [0, new Set()],
-    [1, new Set()],
-  ]);
+  const newAllocations = new Map<WaveBankIndex, Set<number>>(
+    ALL_WAVE_BANKS.map(b => [b, new Set()])
+  );
 
   for (const segmentsNeeded of segmentRequests) {
-    // TODO: For S-550, extend to try all 4 banks
     const banksToTry: WaveBankIndex[] = preferredBank !== undefined
-      ? [preferredBank, preferredBank === 0 ? 1 : 0]
-      : [0, 1];
+      ? [preferredBank, ...ALL_WAVE_BANKS.filter(b => b !== preferredBank)]
+      : [...ALL_WAVE_BANKS];
 
     let found = false;
 
     for (const bank of banksToTry) {
-      const usedSegments = usage.get(bank)!;
-      const newlyUsed = newAllocations.get(bank)!;
+      const usedSegments = usage.get(bank);
+      const newlyUsed = newAllocations.get(bank);
+      if (!usedSegments || !newlyUsed) continue;
 
       for (let start = 0; start <= SEGMENTS_PER_BANK - segmentsNeeded; start++) {
         let isFree = true;

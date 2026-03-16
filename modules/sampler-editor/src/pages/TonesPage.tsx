@@ -181,11 +181,12 @@ export function TonesPage() {
     clientRef.current.invalidateToneCache();
     invalidateToneCache();
 
-    // Load all 4 tone banks
-    for (let bank = 0; bank < 4; bank++) {
+    // Load all tone banks (S-330: 4 banks of 8, S-550: 8 banks of 8)
+    const bankCount = Math.ceil(totalTones / tonesPerBank);
+    for (let bank = 0; bank < bankCount; bank++) {
       await loadToneBank(bank, true);
     }
-  }, [loadToneBank, invalidateToneCache]);
+  }, [loadToneBank, invalidateToneCache, totalTones, tonesPerBank]);
 
   // Handle tone updates from the editor
   const handleToneUpdate = useCallback((tone: S330Tone) => {
