@@ -53,8 +53,6 @@ export function LoadSetDialog({
     }
   }, [isLoading, onOpenChange]);
 
-  const showTargetSelector = importTargets.length > 1;
-
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Portal>
@@ -79,32 +77,27 @@ export function LoadSetDialog({
               <div className="text-lg font-bold text-s330-text">{setName}</div>
             </div>
 
-            {/* Import Target Selector */}
-            {showTargetSelector && (
-              <div>
-                <label htmlFor="importTarget" className="block text-sm text-s330-muted mb-1">
-                  Target Block
-                </label>
-                <select
-                  id="importTarget"
-                  value={selectedTargetIndex}
-                  onChange={(e) => setSelectedTargetIndex(Number(e.target.value))}
-                  disabled={isLoading}
-                  className={cn(
-                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
-                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isLoading && 'opacity-50'
-                  )}
-                >
-                  {importTargets.map((target, i) => (
-                    <option key={i} value={i}>{target.label}</option>
-                  ))}
-                </select>
-                <p className="text-xs text-s330-muted mt-1">
-                  Each block is an independent memory area with its own tones and wave banks.
-                </p>
-              </div>
-            )}
+            {/* Import Target */}
+            <div>
+              <label htmlFor="importTarget" className="block text-sm text-s330-muted mb-1">
+                Target
+              </label>
+              <select
+                id="importTarget"
+                value={selectedTargetIndex}
+                onChange={(e) => setSelectedTargetIndex(Number(e.target.value))}
+                disabled={isLoading}
+                className={cn(
+                  'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
+                  'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
+                  isLoading && 'opacity-50'
+                )}
+              >
+                {importTargets.map((target, i) => (
+                  <option key={i} value={i}>{target.label}</option>
+                ))}
+              </select>
+            </div>
 
             {/* Warning */}
             <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded">

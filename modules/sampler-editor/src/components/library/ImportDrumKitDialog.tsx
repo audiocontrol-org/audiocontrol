@@ -3,45 +3,35 @@
  *
  * Dialog for importing a drum kit bundle to the device.
  * Allows user to select starting tone slot, wave bank/segment, and patch slot.
+ * All slot counts, bank options, and formatting are driven by MemoryLayout.
  */
 
 import { useState, useCallback } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
+import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 import { midiNoteToName } from '@audiocontrol/sampler-library/browser';
 import { cn } from '@/lib/utils';
-import { formatToneSlot, formatPatchSlot } from '@/lib/s330-format';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 
 export interface ImportDrumKitDialogProps {
-  /** Whether the dialog is open */
   open: boolean;
-  /** Callback when dialog should close */
   onOpenChange: (open: boolean) => void;
-  /** Resolved drum kit bundle to import */
   bundle: ResolvedDrumKitBundle;
-  /** Current device tones (to show slot occupancy) */
-  deviceTones: (S330Tone | undefined)[];
-  /** Current device patches (to show slot occupancy) */
-  devicePatches: (S330Patch | undefined)[];
-  /** Callback to perform the import */
+  deviceTones: (SamplerTone | undefined)[];
+  devicePatches: (SamplerPatch | undefined)[];
   onImport: (params: {
     startingToneSlot: number;
-    waveBank: 0 | 1;
+    waveBank: 0 | 1 | 2 | 3;
     startingSegment: number;
     targetPatchSlot: number;
     singlePatch?: boolean;
     patchName?: string;
-    /** Use monolithic mode with sub-tones (recommended) */
     useMonolithicMode?: boolean;
   }) => Promise<void>;
-  /** Whether import is in progress */
   isImporting: boolean;
-  /** Import progress (0-100) */
   importProgress?: number;
-  /** Import error message */
   importError?: string | null;
-  /** Status message */
   statusMessage?: string | null;
 }
 
@@ -57,31 +47,64 @@ export function ImportDrumKitDialog({
   importError,
   statusMessage,
 }: ImportDrumKitDialogProps): JSX.Element {
-  // Calculate total samples needed
+  const config = useDeviceConfig();
+  const { memoryLayout } = config;
+
   const totalSamples = bundle.totalSamples;
+  const { importTargets } = memoryLayout;
 
   // User selections
+  const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
   const [startingToneSlot, setStartingToneSlot] = useState(0);
-  const [waveBank, setWaveBank] = useState<0 | 1>(0);
+  const [waveBank, setWaveBank] = useState<0 | 1 | 2 | 3>(0);
   const [startingSegment, setStartingSegment] = useState(0);
   const [targetPatchSlot, setTargetPatchSlot] = useState(0);
-  const [singlePatch, setSinglePatch] = useState(true); // Default to single-patch mode
-  const [useMonolithicMode, setUseMonolithicMode] = useState(true); // Default to monolithic mode
+  const [singlePatch, setSinglePatch] = useState(true);
+  const [useMonolithicMode, setUseMonolithicMode] = useState(true);
 
-  // Monolithic mode needs 1 extra tone slot for the "holder" primary tone
+  // The selected import target determines the tone/bank offsets
+  const selectedTarget = importTargets[selectedTargetIndex];
+  const absoluteToneSlot = startingToneSlot + selectedTarget.toneIndexOffset;
+
+  // Tone group for the selected target — determines slot count and valid banks
+  const targetGroup = memoryLayout.toneGroups.find(
+    g => g.firstIndex === selectedTarget.toneIndexOffset
+  ) ?? memoryLayout.toneGroups[0];
+  const groupToneCount = targetGroup.count;
+
   const toneSlotsNeeded = useMonolithicMode ? totalSamples + 1 : totalSamples;
-  const hasEnoughToneSlots = startingToneSlot + toneSlotsNeeded <= 32;
-  // In single-patch mode, we only need 1 patch slot
+  const hasEnoughToneSlots = startingToneSlot + toneSlotsNeeded <= groupToneCount;
   const patchSlotsNeeded = singlePatch ? 1 : totalSamples;
-  const hasEnoughPatchSlots = targetPatchSlot + patchSlotsNeeded <= 16;
+  const hasEnoughPatchSlots = targetPatchSlot + patchSlotsNeeded <= config.totalPatches;
 
-  // Estimate segments needed (1 segment per sample as a rough estimate)
   const estimatedSegments = totalSamples;
   const hasEnoughSegments = startingSegment + estimatedSegments <= 18;
 
+  // Valid wave banks come from the target group
+  const availableBanks = {
+    labels: targetGroup.waveBankLabels,
+    indices: targetGroup.waveBankIndices,
+  };
+
+  // Bank label for allocation preview
+  const selectedBankLabel = (() => {
+    const labelIdx = availableBanks.indices.indexOf(waveBank);
+    return labelIdx >= 0 ? availableBanks.labels[labelIdx] : String(waveBank);
+  })();
+
+  // Reset relative selections when target changes
+  const handleTargetChange = useCallback((index: number) => {
+    setSelectedTargetIndex(index);
+    setStartingToneSlot(0);
+    const newGroup = memoryLayout.toneGroups.find(
+      g => g.firstIndex === importTargets[index].toneIndexOffset
+    ) ?? memoryLayout.toneGroups[0];
+    setWaveBank(newGroup.waveBankIndices[0] as 0 | 1 | 2 | 3);
+  }, [importTargets, memoryLayout.toneGroups]);
+
   const handleImport = useCallback(async () => {
     await onImport({
-      startingToneSlot,
+      startingToneSlot: absoluteToneSlot,
       waveBank,
       startingSegment,
       targetPatchSlot,
@@ -89,7 +112,7 @@ export function ImportDrumKitDialog({
       patchName: bundle.name,
       useMonolithicMode,
     });
-  }, [startingToneSlot, waveBank, startingSegment, targetPatchSlot, singlePatch, bundle.name, useMonolithicMode, onImport]);
+  }, [absoluteToneSlot, waveBank, startingSegment, targetPatchSlot, singlePatch, bundle.name, useMonolithicMode, onImport]);
 
   const handleClose = useCallback(() => {
     if (!isImporting) {
@@ -98,6 +121,10 @@ export function ImportDrumKitDialog({
   }, [isImporting, onOpenChange]);
 
   const isComplete = importProgress === 100 && !isImporting;
+
+  // Max starting index that leaves enough room (relative to group, not absolute)
+  const maxStartingTone = Math.max(0, groupToneCount - toneSlotsNeeded);
+  const maxStartingPatch = Math.max(0, config.totalPatches - (singlePatch ? 1 : totalSamples));
 
   return (
     <Dialog.Root open={open} onOpenChange={handleClose}>
@@ -117,13 +144,13 @@ export function ImportDrumKitDialog({
                 <span>Drum kit imported successfully!</span>
               </div>
               <div className="text-sm text-s330-muted">
-                <p>Created {toneSlotsNeeded} tone{toneSlotsNeeded !== 1 ? 's' : ''} in slots {formatToneSlot(startingToneSlot)} - {formatToneSlot(startingToneSlot + toneSlotsNeeded - 1)}
+                <p>Created {toneSlotsNeeded} tone{toneSlotsNeeded !== 1 ? 's' : ''} in slots {memoryLayout.formatToneSlot(absoluteToneSlot)} - {memoryLayout.formatToneSlot(absoluteToneSlot + toneSlotsNeeded - 1)}
                   {useMonolithicMode && ` (1 holder + ${totalSamples} sub-tones)`}
                 </p>
                 {singlePatch ? (
-                  <p>Created 1 patch in slot {formatPatchSlot(targetPatchSlot)} with all {totalSamples} samples mapped</p>
+                  <p>Created 1 patch in slot {memoryLayout.formatPatchSlot(targetPatchSlot)} with all {totalSamples} samples mapped</p>
                 ) : (
-                  <p>Created {totalSamples} patch{totalSamples !== 1 ? 'es' : ''} in slots {formatPatchSlot(targetPatchSlot)} - {formatPatchSlot(targetPatchSlot + totalSamples - 1)}</p>
+                  <p>Created {totalSamples} patch{totalSamples !== 1 ? 'es' : ''} in slots {memoryLayout.formatPatchSlot(targetPatchSlot)} - {memoryLayout.formatPatchSlot(targetPatchSlot + totalSamples - 1)}</p>
                 )}
               </div>
               <div className="flex justify-end">
@@ -163,7 +190,29 @@ export function ImportDrumKitDialog({
                 </div>
               </div>
 
-              {/* Starting Tone Slot */}
+              {/* Import Target */}
+              <div>
+                <label htmlFor="importTarget" className="block text-sm text-s330-muted mb-1">
+                  Target
+                </label>
+                <select
+                  id="importTarget"
+                  value={selectedTargetIndex}
+                  onChange={(e) => handleTargetChange(Number(e.target.value))}
+                  disabled={isImporting}
+                  className={cn(
+                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
+                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
+                    isImporting && 'opacity-50'
+                  )}
+                >
+                  {importTargets.map((target, i) => (
+                    <option key={i} value={i}>{target.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Starting Tone Slot (relative to selected block) */}
               <div>
                 <label htmlFor="startingToneSlot" className="block text-sm text-s330-muted mb-1">
                   Starting Tone Slot (needs {toneSlotsNeeded} consecutive slot{toneSlotsNeeded !== 1 ? 's' : ''})
@@ -180,13 +229,14 @@ export function ImportDrumKitDialog({
                     isImporting && 'opacity-50'
                   )}
                 >
-                  {Array.from({ length: Math.max(1, 32 - toneSlotsNeeded + 1) }, (_, i) => {
-                    const endSlot = i + toneSlotsNeeded - 1;
-                    const hasOccupied = Array.from({ length: toneSlotsNeeded }, (_, j) => deviceTones[i + j])
+                  {Array.from({ length: maxStartingTone + 1 }, (_, i) => {
+                    const absStart = i + selectedTarget.toneIndexOffset;
+                    const absEnd = absStart + toneSlotsNeeded - 1;
+                    const hasOccupied = Array.from({ length: toneSlotsNeeded }, (_, j) => deviceTones[absStart + j])
                       .some((t) => t !== undefined);
                     return (
                       <option key={i} value={i}>
-                        {formatToneSlot(i)} - {formatToneSlot(endSlot)}
+                        {memoryLayout.formatToneSlot(absStart)} - {memoryLayout.formatToneSlot(absEnd)}
                         {hasOccupied ? ' (will overwrite)' : ' (empty)'}
                       </option>
                     );
@@ -208,7 +258,7 @@ export function ImportDrumKitDialog({
                   <select
                     id="waveBank"
                     value={waveBank}
-                    onChange={(e) => setWaveBank(Number(e.target.value) as 0 | 1)}
+                    onChange={(e) => setWaveBank(Number(e.target.value) as 0 | 1 | 2 | 3)}
                     disabled={isImporting}
                     className={cn(
                       'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
@@ -216,8 +266,9 @@ export function ImportDrumKitDialog({
                       isImporting && 'opacity-50'
                     )}
                   >
-                    <option value={0}>Bank A</option>
-                    <option value={1}>Bank B</option>
+                    {availableBanks.indices.map((idx, i) => (
+                      <option key={idx} value={idx}>Bank {availableBanks.labels[i]}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -309,25 +360,23 @@ export function ImportDrumKitDialog({
                   )}
                 >
                   {singlePatch ? (
-                    // Single patch mode: show all 16 slots individually
-                    Array.from({ length: 16 }, (_, i) => {
+                    Array.from({ length: config.totalPatches }, (_, i) => {
                       const hasOccupied = devicePatches[i] !== undefined;
                       return (
                         <option key={i} value={i}>
-                          {formatPatchSlot(i)}
+                          {memoryLayout.formatPatchSlot(i)}
                           {hasOccupied ? ' (will overwrite)' : ' (empty)'}
                         </option>
                       );
                     })
                   ) : (
-                    // Multi-patch mode: show ranges
-                    Array.from({ length: Math.max(1, 16 - totalSamples + 1) }, (_, i) => {
+                    Array.from({ length: maxStartingPatch + 1 }, (_, i) => {
                       const endSlot = i + totalSamples - 1;
                       const hasOccupied = Array.from({ length: totalSamples }, (_, j) => devicePatches[i + j])
                         .some((p) => p !== undefined);
                       return (
                         <option key={i} value={i}>
-                          {formatPatchSlot(i)} - {formatPatchSlot(endSlot)}
+                          {memoryLayout.formatPatchSlot(i)} - {memoryLayout.formatPatchSlot(endSlot)}
                           {hasOccupied ? ' (will overwrite)' : ' (empty)'}
                         </option>
                       );
@@ -348,22 +397,22 @@ export function ImportDrumKitDialog({
                   <div className="flex justify-between">
                     <span className="text-s330-muted">Tones:</span>
                     <span className="text-s330-text">
-                      {formatToneSlot(startingToneSlot)} - {formatToneSlot(startingToneSlot + toneSlotsNeeded - 1)}
+                      {memoryLayout.formatToneSlot(absoluteToneSlot)} - {memoryLayout.formatToneSlot(absoluteToneSlot + toneSlotsNeeded - 1)}
                       {useMonolithicMode && <span className="text-yellow-500 ml-1">(+1 holder)</span>}
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-s330-muted">Wave Memory:</span>
                     <span className="text-s330-text">
-                      Bank {waveBank === 0 ? 'A' : 'B'}, Segment {startingSegment}+
+                      Bank {selectedBankLabel}, Segment {startingSegment}+
                     </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-s330-muted">Patch{singlePatch ? '' : 'es'}:</span>
                     <span className="text-s330-text">
                       {singlePatch
-                        ? formatPatchSlot(targetPatchSlot)
-                        : `${formatPatchSlot(targetPatchSlot)} - ${formatPatchSlot(targetPatchSlot + totalSamples - 1)}`
+                        ? memoryLayout.formatPatchSlot(targetPatchSlot)
+                        : `${memoryLayout.formatPatchSlot(targetPatchSlot)} - ${memoryLayout.formatPatchSlot(targetPatchSlot + totalSamples - 1)}`
                       }
                     </span>
                   </div>
