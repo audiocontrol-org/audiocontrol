@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design token definitions.
+ * In production, the host editor provides these values via its theme.
+ */
+:root {
+  --ac-bg: #0f0f1a;
+  --ac-panel: #1a1a2e;
+  --ac-text: #e2e8f0;
+  --ac-muted: #64748b;
+  --ac-accent: #334155;
+  --ac-highlight: #f59e0b;
+}
+
+/* Button styles used by sample-chopper components */
+.ac-btn {
+  @apply px-4 py-2 rounded-md text-sm font-medium cursor-pointer transition-all border border-transparent;
+}
+
+.ac-btn-primary {
+  @apply bg-ac-highlight text-black hover:opacity-90;
+}
+
+.ac-btn-ghost {
+  @apply bg-transparent text-ac-muted border-ac-accent;
+}
+.ac-btn-ghost:hover {
+  @apply text-ac-text;
+  background-color: rgba(51, 65, 85, 0.3);
+}
+
+/* Dev harness layout */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #0a0a14;
+  color: var(--ac-text);
+  min-height: 100vh;
+}
+
+.harness {
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.harness h1 {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: var(--ac-text);
+}
+
+.drop-zone {
+  border: 2px dashed var(--ac-accent);
+  border-radius: 0.75rem;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: var(--ac-muted);
+}
+
+.drop-zone:hover,
+.drop-zone.drag-over {
+  border-color: var(--ac-highlight);
+  background: rgba(245, 158, 11, 0.05);
+  color: var(--ac-text);
+}
+
+.drop-zone .file-name {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--ac-highlight);
+}
+
+.error {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 0.5rem;
+  color: #f87171;
+  font-size: 0.875rem;
+}
+
+.info {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--ac-panel);
+  border-radius: 0.5rem;
+  border: 1px solid var(--ac-accent);
+}
+
+.info p {
+  font-size: 0.875rem;
+  color: var(--ac-muted);
+  margin-bottom: 0.25rem;
+}
+
+.info p strong {
+  color: var(--ac-text);
+}
+
+.open-btn {
+  margin-top: 0.75rem;
+  padding: 0.5rem 1.25rem;
+  background: var(--ac-highlight);
+  color: #000;
+  border: none;
+  border-radius: 0.375rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+
+.open-btn:hover {
+  opacity: 0.9;
+}
+
+.result {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--ac-panel);
+  border-radius: 0.5rem;
+  border: 1px solid var(--ac-accent);
+}
+
+.result h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: var(--ac-highlight);
+}
+
+.result p {
+  font-size: 0.875rem;
+  color: var(--ac-muted);
+  margin-bottom: 0.75rem;
+}
+
+.result table {
+  width: 100%;
+  font-size: 0.8rem;
+  border-collapse: collapse;
+}
+
+.result th, .result td {
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  border-bottom: 1px solid var(--ac-accent);
+}
+
+.result th {
+  color: var(--ac-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 0.7rem;
+}
+
+.result td {
+  color: var(--ac-text);
+  font-variant-numeric: tabular-nums;
+}
