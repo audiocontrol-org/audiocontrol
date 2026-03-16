@@ -19,7 +19,10 @@ import { cn } from '@/lib/utils';
 import { calculateSegmentsNeeded } from '@audiocontrol/sampler-devices/s330';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
+import { BestFitPicker } from '@/components/ui/BestFitPicker';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
+import { findToneBestFits } from '@/lib/best-fit';
+import type { FitOption, ToneFitValues } from '@/lib/best-fit';
 
 export interface ImportLibraryToneDialogProps {
   /** Whether the dialog is open */
@@ -88,6 +91,11 @@ export function ImportLibraryToneDialog({
   const [waveBank, setWaveBank] = useState<0 | 1 | 2 | 3>(0);
   const [segmentTop, setSegmentTop] = useState(0);
   const [segmentLength, setSegmentLength] = useState(1);
+
+  // Best fit state
+  const [fitOptions, setFitOptions] = useState<FitOption<ToneFitValues>[]>([]);
+  const [selectedFitIndex, setSelectedFitIndex] = useState<number | null>(null);
+  const [showBestFits, setShowBestFits] = useState(false);
 
   const selectedTarget = importTargets[selectedTargetIndex];
   const targetGroup = memoryLayout.toneGroups.find(
@@ -216,6 +224,22 @@ export function ImportLibraryToneDialog({
     waveSegments: [{ bank: waveBank, segmentTop, segmentLength: segmentsNeeded }],
   }), [targetSlot, waveBank, segmentTop, segmentsNeeded]);
 
+  const handleFindBestFit = useCallback(() => {
+    const options = findToneBestFits(deviceTones, segmentsNeeded, memoryLayout.toneGroups, memoryLayout.formatToneSlot);
+    setFitOptions(options);
+    setSelectedFitIndex(null);
+    setShowBestFits(true);
+  }, [deviceTones, segmentsNeeded, memoryLayout]);
+
+  const handleSelectFit = useCallback((index: number) => {
+    const option = fitOptions[index];
+    if (!option) return;
+    setSelectedFitIndex(index);
+    setTargetSlot(option.values.targetSlot);
+    setWaveBank(option.values.waveBank);
+    setSegmentTop(option.values.segmentTop);
+  }, [fitOptions]);
+
   return (
     <Dialog.Root open={open} onOpenChange={handleClose}>
       <Dialog.Portal>
@@ -283,7 +307,19 @@ export function ImportLibraryToneDialog({
                 toneGroups={memoryLayout.toneGroups}
                 formatToneSlot={memoryLayout.formatToneSlot}
                 proposal={proposal}
+                onFindBestFit={handleFindBestFit}
+                findBestFitDisabled={isImporting}
               />
+
+              {showBestFits && fitOptions.length > 0 && (
+                <BestFitPicker
+                  options={fitOptions}
+                  selectedIndex={selectedFitIndex}
+                  onSelect={handleSelectFit}
+                  onClose={() => setShowBestFits(false)}
+                  disabled={isImporting}
+                />
+              )}
 
               {/* Import Target */}
               <div>

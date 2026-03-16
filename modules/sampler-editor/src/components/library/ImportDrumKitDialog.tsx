@@ -14,7 +14,10 @@ import { midiNoteToName } from '@audiocontrol/sampler-library/browser';
 import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
+import { BestFitPicker } from '@/components/ui/BestFitPicker';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
+import { findContiguousBestFits } from '@/lib/best-fit';
+import type { FitOption, ContiguousFitValues } from '@/lib/best-fit';
 
 export interface ImportDrumKitDialogProps {
   open: boolean;
@@ -64,6 +67,11 @@ export function ImportDrumKitDialog({
   const [singlePatch, setSinglePatch] = useState(true);
   const [useMonolithicMode, setUseMonolithicMode] = useState(true);
 
+  // Best fit state
+  const [fitOptions, setFitOptions] = useState<FitOption<ContiguousFitValues>[]>([]);
+  const [selectedFitIndex, setSelectedFitIndex] = useState<number | null>(null);
+  const [showBestFits, setShowBestFits] = useState(false);
+
   // The selected import target determines the tone/bank offsets
   const selectedTarget = importTargets[selectedTargetIndex];
   const absoluteToneSlot = startingToneSlot + selectedTarget.toneIndexOffset;
@@ -106,6 +114,26 @@ export function ImportDrumKitDialog({
     }];
     return { toneSlots, waveSegments };
   }, [absoluteToneSlot, toneSlotsNeeded, waveBank, startingSegment, estimatedSegments]);
+
+  const handleFindBestFit = useCallback(() => {
+    const options = findContiguousBestFits(
+      deviceTones, toneSlotsNeeded, estimatedSegments,
+      memoryLayout.toneGroups, memoryLayout.formatToneSlot,
+    );
+    setFitOptions(options);
+    setSelectedFitIndex(null);
+    setShowBestFits(true);
+  }, [deviceTones, toneSlotsNeeded, estimatedSegments, memoryLayout]);
+
+  const handleSelectFit = useCallback((index: number) => {
+    const option = fitOptions[index];
+    if (!option) return;
+    setSelectedFitIndex(index);
+    setSelectedTargetIndex(option.values.targetIndex);
+    setStartingToneSlot(option.values.startingToneSlot);
+    setWaveBank(option.values.waveBank);
+    setStartingSegment(option.values.startingSegment);
+  }, [fitOptions]);
 
   // Reset relative selections when target changes
   const handleTargetChange = useCallback((index: number) => {
@@ -211,7 +239,19 @@ export function ImportDrumKitDialog({
                 toneGroups={memoryLayout.toneGroups}
                 formatToneSlot={memoryLayout.formatToneSlot}
                 proposal={proposal}
+                onFindBestFit={handleFindBestFit}
+                findBestFitDisabled={isImporting}
               />
+
+              {showBestFits && fitOptions.length > 0 && (
+                <BestFitPicker
+                  options={fitOptions}
+                  selectedIndex={selectedFitIndex}
+                  onSelect={handleSelectFit}
+                  onClose={() => setShowBestFits(false)}
+                  disabled={isImporting}
+                />
+              )}
 
               {/* Import Target */}
               <div>

@@ -23,7 +23,10 @@ import { suggestPatchAllocation, isToneSlotEmpty, isPatchSlotEmpty } from '@/lib
 import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
+import { BestFitPicker } from '@/components/ui/BestFitPicker';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
+import { findPatchBestFits } from '@/lib/best-fit';
+import type { FitOption, PatchFitValues } from '@/lib/best-fit';
 
 interface ToneImportMapping {
   /** Original slot in the library set */
@@ -112,6 +115,11 @@ export function ImportLibraryPatchDialog({
   // User selections - use initialTargetSlot if provided
   const [targetPatchSlot, setTargetPatchSlot] = useState(initialTargetSlot ?? 0);
   const [toneMappings, setToneMappings] = useState<ToneImportMapping[]>([]);
+
+  // Best fit state
+  const [fitOptions, setFitOptions] = useState<FitOption<PatchFitValues>[]>([]);
+  const [selectedFitIndex, setSelectedFitIndex] = useState<number | null>(null);
+  const [showBestFits, setShowBestFits] = useState(false);
 
   // Load patch and manifest when dialog opens
   useEffect(() => {
@@ -328,6 +336,31 @@ export function ImportLibraryPatchDialog({
 
   const existingPatchName = devicePatches[targetPatchSlot]?.common.name;
 
+  const handleFindBestFit = useCallback(() => {
+    const deps = toneMappings.map((m) => ({ originalSlot: m.originalSlot, segmentsNeeded: m.segmentsNeeded }));
+    const options = findPatchBestFits(
+      deviceTones, devicePatches, deps,
+      memoryLayout.toneGroups, memoryLayout.formatPatchSlot,
+    );
+    setFitOptions(options);
+    setSelectedFitIndex(null);
+    setShowBestFits(true);
+  }, [deviceTones, devicePatches, toneMappings, memoryLayout, config.totalPatches]);
+
+  const handleSelectFit = useCallback((index: number) => {
+    const option = fitOptions[index];
+    if (!option) return;
+    setSelectedFitIndex(index);
+    setTargetPatchSlot(option.values.targetPatchSlot);
+    setToneMappings((prev) =>
+      prev.map((m, i) => {
+        const alloc = option.values.toneAllocations[i];
+        if (!alloc) return m;
+        return { ...m, targetSlot: alloc.targetSlot, waveBank: alloc.waveBank, segmentTop: alloc.segmentTop };
+      })
+    );
+  }, [fitOptions]);
+
   const proposal = useMemo((): AllocationProposal => ({
     toneSlots: toneMappings.map((m) => m.targetSlot),
     waveSegments: toneMappings.map((m) => ({
@@ -408,7 +441,19 @@ export function ImportLibraryPatchDialog({
                 toneGroups={memoryLayout.toneGroups}
                 formatToneSlot={memoryLayout.formatToneSlot}
                 proposal={proposal}
+                onFindBestFit={toneMappings.length > 0 ? handleFindBestFit : undefined}
+                findBestFitDisabled={isImporting}
               />
+
+              {showBestFits && fitOptions.length > 0 && (
+                <BestFitPicker
+                  options={fitOptions}
+                  selectedIndex={selectedFitIndex}
+                  onSelect={handleSelectFit}
+                  onClose={() => setShowBestFits(false)}
+                  disabled={isImporting}
+                />
+              )}
 
               {/* Target Patch Slot */}
               <div>

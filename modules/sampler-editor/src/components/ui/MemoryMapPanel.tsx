@@ -18,6 +18,8 @@ interface MemoryMapPanelProps {
   toneGroups: ToneSlotGroup[];
   formatToneSlot: (index: number) => string;
   proposal?: AllocationProposal;
+  onFindBestFit?: () => void;
+  findBestFitDisabled?: boolean;
 }
 
 const legendItems = [
@@ -32,6 +34,8 @@ export function MemoryMapPanel({
   toneGroups,
   formatToneSlot,
   proposal,
+  onFindBestFit,
+  findBestFitDisabled,
 }: MemoryMapPanelProps): JSX.Element {
   const waveUsage = useMemo(() => getWaveMemoryUsage(deviceTones), [deviceTones]);
 
@@ -53,7 +57,18 @@ export function MemoryMapPanel({
 
   return (
     <div className="bg-s330-bg rounded p-3 space-y-3">
-      <div className="text-s330-muted text-xs uppercase tracking-wide">Memory Map</div>
+      <div className="flex items-center justify-between">
+        <div className="text-s330-muted text-xs uppercase tracking-wide">Memory Map</div>
+        {onFindBestFit && (
+          <button
+            onClick={onFindBestFit}
+            disabled={findBestFitDisabled}
+            className="text-xs text-s330-highlight hover:text-s330-text transition-colors disabled:opacity-50"
+          >
+            Find Best Fit
+          </button>
+        )}
+      </div>
 
       {/* Tone slot grids */}
       <div className="space-y-2">
