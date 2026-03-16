@@ -39,3 +39,14 @@ export { FileStorage, fileStorage } from './file-storage.js';
 
 // Set storage
 export { SetStorage, setStorage } from './set-storage.js';
+
+// Chopped sample path utilities
+export {
+  getChoppedSamplesDirectory,
+  getChoppedSampleDirectory,
+  getChoppedSampleManifestPath,
+  getChoppedSampleSourcePath,
+} from './chopped-sample-paths.js';
+
+// Chopped sample storage
+export { ChoppedSampleStorage, choppedSampleStorage } from './chopped-sample-storage.js';

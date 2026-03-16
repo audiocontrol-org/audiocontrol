@@ -79,6 +79,13 @@ export type {
   SetToDeviceResult as S550SetToDeviceResult,
 } from './s550/index.js';
 
+// Chopped sample converters
+export {
+  drumKitBundleToChoppedSample,
+  choppedSampleToDrumKitBundle,
+  createGenericChoppedSample,
+} from './chopped-sample-converter.js';
+
 // Register converters in the global registry
 import { converterRegistry } from './converter-registry.js';
 import { s330ToneConverter, s330PatchConverter } from './s330/index.js';

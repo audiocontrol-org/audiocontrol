@@ -12,7 +12,7 @@
  * - Audio preview for slices (Space to play selected)
  */
 
-import { useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { cn } from '@/ui/utils.js';
 import { WaveformEditor } from './WaveformEditor.js';
@@ -33,6 +33,32 @@ import { useTriggerPlayback } from '@/ui/hooks/useTriggerPlayback.js';
 
 // Re-export types for consumers
 export type { SliceDefinitionOutput, InitialSliceDefinition };
+
+/** Payload passed to the onSave callback. */
+export interface ChopperSavePayload {
+  name: string;
+  slices: SliceDefinitionOutput[];
+  sourceAudio: { samples: Int16Array; sampleRate: number };
+  triggers?: Array<{ triggerId: string; sliceIndex: number }>;
+  playbackConfig?: {
+    polyphony: 'mono' | 'poly';
+    playbackMode: 'one-shot' | 'gate';
+    muteGroups: number[];
+  };
+}
+
+/** Payload returned from the onLoad callback. */
+export interface ChopperLoadPayload {
+  name: string;
+  slices: SliceDefinitionOutput[];
+  sourceAudio: { samples: Int16Array; sampleRate: number };
+  triggers?: Array<{ triggerId: string; sliceIndex: number }>;
+  playbackConfig?: {
+    polyphony: 'mono' | 'poly';
+    playbackMode: 'one-shot' | 'gate';
+    muteGroups: number[];
+  };
+}
 
 /** State passed to the renderOutputConfig render prop. */
 export interface ChopperOutputState {
@@ -71,6 +97,10 @@ export interface SampleChopperDialogProps {
   initialLabels?: string;
   /** Callback when slices are updated (edit mode) */
   onSlicesUpdated?: (slices: SliceDefinitionOutput[]) => void;
+  /** Optional callback to save chopped sample to library */
+  onSave?: (payload: ChopperSavePayload) => Promise<void>;
+  /** Optional callback to load chopped sample from library */
+  onLoad?: () => Promise<ChopperLoadPayload | null>;
 }
 
 export function SampleChopperDialog({
@@ -85,6 +115,8 @@ export function SampleChopperDialog({
   initialSlices,
   initialLabels,
   onSlicesUpdated,
+  onSave,
+  onLoad,
 }: SampleChopperDialogProps): JSX.Element {
   const chopper = useSampleChopper({
     samples,
@@ -204,6 +236,50 @@ export function SampleChopperDialog({
     chopper.selectedMethod, chopper.useInitialSlices, chopper.manualSlices,
     sampleRate, editMode, onConfirm, onSlicesUpdated, onOpenChange,
   ]);
+
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = useCallback(async () => {
+    if (!onSave || !samples || !chopper.currentSliceResult || chopper.currentSliceResult.slices.length === 0) return;
+
+    setIsSaving(true);
+    try {
+      await onSave({
+        name: sourceName,
+        slices: chopper.manualSlices,
+        sourceAudio: { samples, sampleRate },
+        triggers: trigger.recordedSlices.length > 0
+          ? trigger.recordedSlices.map((slice, i) => ({
+              triggerId: `slice:${i}`,
+              sliceIndex: i,
+            }))
+          : undefined,
+        playbackConfig: trigger.playbackConfig.muteGroups.length > 0
+          ? {
+              polyphony: trigger.playbackConfig.polyphony,
+              playbackMode: trigger.playbackConfig.playbackMode,
+              muteGroups: trigger.playbackConfig.muteGroups,
+            }
+          : undefined,
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  }, [onSave, samples, chopper.currentSliceResult, chopper.manualSlices, sampleRate, sourceName, trigger.recordedSlices, trigger.playbackConfig]);
+
+  const handleLoad = useCallback(async () => {
+    if (!onLoad) return;
+    const payload = await onLoad();
+    if (!payload) return;
+
+    const slices = payload.slices.map((s) => ({
+      label: s.label,
+      startSample: s.startSample,
+      endSample: s.endSample,
+    }));
+    chopper.setManualSlices(slices);
+    chopper.handleMethodChange('manual');
+  }, [onLoad, chopper.setManualSlices, chopper.handleMethodChange]);
 
   const handleDialogKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
@@ -556,6 +632,24 @@ export function SampleChopperDialog({
               Space play • ←→ navigate • +/- zoom • F fullscreen
             </div>
             <div className="flex gap-2">
+              {onLoad && (
+                <button onClick={handleLoad} className="ac-btn ac-btn-ghost">
+                  Load
+                </button>
+              )}
+              {onSave && (
+                <button
+                  onClick={handleSave}
+                  disabled={isSaving || !chopper.currentSliceResult || chopper.currentSliceResult.slices.length === 0}
+                  className={cn(
+                    'ac-btn ac-btn-ghost',
+                    (isSaving || !chopper.currentSliceResult || chopper.currentSliceResult.slices.length === 0) &&
+                      'opacity-50 cursor-not-allowed'
+                  )}
+                >
+                  {isSaving ? 'Saving...' : 'Save'}
+                </button>
+              )}
               <button onClick={handleClose} className="ac-btn ac-btn-ghost">
                 Cancel
               </button>

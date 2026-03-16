@@ -181,6 +181,37 @@ export type {
   DrumKitBundle,
 } from './schemas/index.js';
 
+// Chopped sample schema exports (browser-compatible)
+export {
+  TriggerMappingSchema,
+  PolyphonyModeSchema,
+  PlaybackModeSchema,
+  PlaybackConfigSchema,
+  DrumKitMetadataSchema,
+  GenericChoppedSampleSchema,
+  DrumKitChoppedSampleSchema,
+  ChoppedSampleSchema,
+} from './schemas/index.js';
+
+export type {
+  TriggerMapping,
+  PolyphonyMode,
+  PlaybackMode,
+  PlaybackConfig,
+  DrumKitMetadata,
+  GenericChoppedSample,
+  DrumKitChoppedSample,
+  ChoppedSample,
+  ChoppedSampleInfo,
+} from './schemas/index.js';
+
+// Chopped sample converter exports (browser-compatible)
+export {
+  drumKitBundleToChoppedSample,
+  choppedSampleToDrumKitBundle,
+  createGenericChoppedSample,
+} from './converters/index.js';
+
 export {
   parseDrumFilename,
   parseDrumKitDirectory,

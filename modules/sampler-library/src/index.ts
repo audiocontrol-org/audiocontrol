@@ -101,6 +101,28 @@ export type {
   SetYaml,
   SetInfo,
   SetData,
+  // Chopped sample types
+  TriggerMapping,
+  PolyphonyMode,
+  PlaybackMode,
+  PlaybackConfig,
+  DrumKitMetadata,
+  GenericChoppedSample,
+  DrumKitChoppedSample,
+  ChoppedSample,
+  ChoppedSampleInfo,
+} from './schemas/index.js';
+
+// Chopped sample schema exports
+export {
+  TriggerMappingSchema,
+  PolyphonyModeSchema,
+  PlaybackModeSchema,
+  PlaybackConfigSchema,
+  DrumKitMetadataSchema,
+  GenericChoppedSampleSchema,
+  DrumKitChoppedSampleSchema,
+  ChoppedSampleSchema,
 } from './schemas/index.js';
 
 // Converter exports
@@ -150,6 +172,13 @@ export type {
   S550SetToDeviceResult,
 } from './converters/index.js';
 
+// Chopped sample converter exports
+export {
+  drumKitBundleToChoppedSample,
+  choppedSampleToDrumKitBundle,
+  createGenericChoppedSample,
+} from './converters/index.js';
+
 // Storage exports
 export {
   getLibraryRoot,
@@ -181,6 +210,14 @@ export {
   // Set storage
   SetStorage,
   setStorage,
+  // Chopped sample paths
+  getChoppedSamplesDirectory,
+  getChoppedSampleDirectory,
+  getChoppedSampleManifestPath,
+  getChoppedSampleSourcePath,
+  // Chopped sample storage
+  ChoppedSampleStorage,
+  choppedSampleStorage,
 } from './storage/index.js';
 
 // Template exports

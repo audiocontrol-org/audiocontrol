@@ -100,3 +100,27 @@ export type {
   SliceDefinition,
   DrumKitBundle,
 } from './drum-kit-bundle-schema.js';
+
+// Chopped sample schemas
+export {
+  TriggerMappingSchema,
+  PolyphonyModeSchema,
+  PlaybackModeSchema,
+  PlaybackConfigSchema,
+  DrumKitMetadataSchema,
+  GenericChoppedSampleSchema,
+  DrumKitChoppedSampleSchema,
+  ChoppedSampleSchema,
+} from './chopped-sample-schema.js';
+
+export type {
+  TriggerMapping,
+  PolyphonyMode,
+  PlaybackMode,
+  PlaybackConfig,
+  DrumKitMetadata,
+  GenericChoppedSample,
+  DrumKitChoppedSample,
+  ChoppedSample,
+  ChoppedSampleInfo,
+} from './chopped-sample-schema.js';
