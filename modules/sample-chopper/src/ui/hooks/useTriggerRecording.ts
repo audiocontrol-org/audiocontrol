@@ -5,6 +5,7 @@
  * Maintains trigger positions and derives SliceDefinitionOutput[] from them.
  * Each trigger is tagged with an identity (key or MIDI note) so that
  * pressing the same key/note during playback plays back the slice it created.
+ * Supports polyphony modes, mute groups, and one-shot/gate playback.
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef, type MutableRefObject } from 'react';
@@ -16,6 +17,12 @@ import {
   type TriggerId,
 } from '@/ui/hooks/useTriggerInput.js';
 import type { SliceDefinitionOutput } from '@/ui/hooks/useSampleChopper.js';
+import {
+  type TriggerPlaybackConfig,
+  type PolyphonyMode,
+  type PlaybackMode,
+  DEFAULT_PLAYBACK_CONFIG,
+} from '@/ui/hooks/useTriggerPlayback.js';
 
 interface TriggerEvent {
   samplePosition: number;
@@ -39,6 +46,8 @@ export interface UseTriggerRecordingParams {
   onStop: () => void;
   /** Play a specific slice by index */
   onPlaySlice: (index: number) => void;
+  /** Stop a specific slice by index (for gate mode) */
+  onStopSlice: (index: number) => void;
   /** Total number of samples in the audio */
   totalSamples: number;
   /** Kit labels (comma-separated) for naming slices */
@@ -62,6 +71,14 @@ export interface UseTriggerRecordingReturn {
   stopRecording: () => void;
   /** Reset to idle and clear all triggers */
   reset: () => void;
+  /** Current playback configuration */
+  playbackConfig: TriggerPlaybackConfig;
+  /** Set polyphony mode */
+  setPolyphony: (mode: PolyphonyMode) => void;
+  /** Set playback mode */
+  setPlaybackMode: (mode: PlaybackMode) => void;
+  /** Set mute group for a slice */
+  setMuteGroup: (sliceIndex: number, group: number) => void;
 }
 
 export function useTriggerRecording({
@@ -70,11 +87,13 @@ export function useTriggerRecording({
   onPlay,
   onStop,
   onPlaySlice,
+  onStopSlice,
   totalSamples,
   kitLabels,
   active,
 }: UseTriggerRecordingParams): UseTriggerRecordingReturn {
   const [triggerEvents, setTriggerEvents] = useState<TriggerEvent[]>([]);
+  const [playbackConfig, setPlaybackConfig] = useState<TriggerPlaybackConfig>(DEFAULT_PLAYBACK_CONFIG);
 
   const handleTrigger = useCallback((samplePosition: number, triggerId: TriggerId) => {
     setTriggerEvents((prev) => [...prev, { samplePosition, triggerId }]);
@@ -116,8 +135,6 @@ export function useTriggerRecording({
         startSample,
         endSample,
       });
-      // Map the first trigger with this ID to its slice index.
-      // If the same key was pressed multiple times, the first occurrence wins.
       if (!mapping.has(deduped[i].triggerId)) {
         mapping.set(deduped[i].triggerId, i);
       }
@@ -128,16 +145,20 @@ export function useTriggerRecording({
 
   // Refs for stable event handler access
   const onPlaySliceRef = useRef(onPlaySlice);
+  const onStopSliceRef = useRef(onStopSlice);
   const triggerToSliceIndexRef = useRef(triggerToSliceIndex);
   const recordedSlicesRef = useRef(recordedSlices);
   const stateRef = useRef(triggerInput.state);
   const activeRef = useRef(active);
+  const playbackConfigRef = useRef(playbackConfig);
 
   onPlaySliceRef.current = onPlaySlice;
+  onStopSliceRef.current = onStopSlice;
   triggerToSliceIndexRef.current = triggerToSliceIndex;
   recordedSlicesRef.current = recordedSlices;
   stateRef.current = triggerInput.state;
   activeRef.current = active;
+  playbackConfigRef.current = playbackConfig;
 
   const firePlayback = useCallback((triggerId: TriggerId) => {
     const slices = recordedSlicesRef.current;
@@ -149,7 +170,16 @@ export function useTriggerRecording({
     }
   }, []);
 
-  // Keyboard listener for slice playback (idle/complete, when trigger tab is active)
+  const fireStopPlayback = useCallback((triggerId: TriggerId) => {
+    if (playbackConfigRef.current.playbackMode !== 'gate') return;
+    const mapping = triggerToSliceIndexRef.current;
+    const index = mapping.get(triggerId);
+    if (index !== undefined) {
+      onStopSliceRef.current(index);
+    }
+  }, []);
+
+  // Keyboard listeners for slice playback (idle/complete, when trigger tab is active)
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (!activeRef.current) return;
@@ -169,9 +199,25 @@ export function useTriggerRecording({
       firePlayback(id);
     };
 
+    const handleKeyUp = (event: KeyboardEvent): void => {
+      if (!activeRef.current) return;
+      const state = stateRef.current;
+      if (state !== 'idle' && state !== 'complete') return;
+      if (recordedSlicesRef.current.length === 0) return;
+
+      const id = keyTriggerId(event.key);
+      if (!triggerToSliceIndexRef.current.has(id)) return;
+
+      fireStopPlayback(id);
+    };
+
     window.addEventListener('keydown', handleKeyDown, true);
-    return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [firePlayback]);
+    window.addEventListener('keyup', handleKeyUp, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+      window.removeEventListener('keyup', handleKeyUp, true);
+    };
+  }, [firePlayback, fireStopPlayback]);
 
   // MIDI listener for slice playback (idle/complete)
   useEffect(() => {
@@ -187,11 +233,20 @@ export function useTriggerRecording({
       const data = event.data;
       if (!data || data.length < 3) return;
       const status = data[0] & 0xf0;
+      const note = data[1];
       const velocity = data[2];
+
       if (status === 0x90 && velocity > 0) {
-        const id = midiTriggerId(data[1]);
+        // Note On
+        const id = midiTriggerId(note);
         if (triggerToSliceIndexRef.current.has(id)) {
           firePlayback(id);
+        }
+      } else if (status === 0x80 || (status === 0x90 && velocity === 0)) {
+        // Note Off
+        const id = midiTriggerId(note);
+        if (triggerToSliceIndexRef.current.has(id)) {
+          fireStopPlayback(id);
         }
       }
     };
@@ -213,11 +268,29 @@ export function useTriggerRecording({
         });
       }
     };
-  }, [firePlayback]);
+  }, [firePlayback, fireStopPlayback]);
+
+  // Config setters
+  const setPolyphony = useCallback((mode: PolyphonyMode) => {
+    setPlaybackConfig((prev) => ({ ...prev, polyphony: mode }));
+  }, []);
+
+  const setPlaybackMode = useCallback((mode: PlaybackMode) => {
+    setPlaybackConfig((prev) => ({ ...prev, playbackMode: mode }));
+  }, []);
+
+  const setMuteGroup = useCallback((sliceIndex: number, group: number) => {
+    setPlaybackConfig((prev) => {
+      const muteGroups = [...prev.muteGroups];
+      muteGroups[sliceIndex] = group;
+      return { ...prev, muteGroups };
+    });
+  }, []);
 
   const reset = useCallback(() => {
     triggerInput.reset();
     setTriggerEvents([]);
+    setPlaybackConfig(DEFAULT_PLAYBACK_CONFIG);
   }, [triggerInput]);
 
   return {
@@ -228,5 +301,9 @@ export function useTriggerRecording({
     arm: triggerInput.arm,
     stopRecording: triggerInput.stopRecording,
     reset,
+    playbackConfig,
+    setPolyphony,
+    setPlaybackMode,
+    setMuteGroup,
   };
 }

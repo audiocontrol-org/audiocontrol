@@ -4,10 +4,17 @@
  * UI for the Trigger tab in the sample chopper dialog.
  * Shows different content based on the trigger state machine state:
  * idle, armed, recording, or complete.
+ * Includes playback configuration (polyphony, mode, mute groups).
  */
 
 import { cn } from '@/ui/utils.js';
 import type { TriggerState } from '@/ui/hooks/useTriggerInput.js';
+import type {
+  TriggerPlaybackConfig,
+  PolyphonyMode,
+  PlaybackMode,
+} from '@/ui/hooks/useTriggerPlayback.js';
+import type { SliceDefinitionOutput } from '@/ui/hooks/useSampleChopper.js';
 
 export interface TriggerMethodContentProps {
   state: TriggerState;
@@ -17,6 +24,108 @@ export interface TriggerMethodContentProps {
   onStop: () => void;
   onReset: () => void;
   onEditManually: () => void;
+  playbackConfig: TriggerPlaybackConfig;
+  onPolyphonyChange: (mode: PolyphonyMode) => void;
+  onPlaybackModeChange: (mode: PlaybackMode) => void;
+  onMuteGroupChange: (sliceIndex: number, group: number) => void;
+  slices: SliceDefinitionOutput[];
+}
+
+function PlaybackControls({
+  playbackConfig,
+  onPolyphonyChange,
+  onPlaybackModeChange,
+  onMuteGroupChange,
+  slices,
+}: {
+  playbackConfig: TriggerPlaybackConfig;
+  onPolyphonyChange: (mode: PolyphonyMode) => void;
+  onPlaybackModeChange: (mode: PlaybackMode) => void;
+  onMuteGroupChange: (sliceIndex: number, group: number) => void;
+  slices: SliceDefinitionOutput[];
+}): JSX.Element {
+  return (
+    <div className="space-y-3 border-t border-ac-accent/30 pt-3">
+      <div className="text-xs text-ac-muted uppercase tracking-wide">Playback</div>
+
+      <div className="flex gap-4">
+        {/* Polyphony toggle */}
+        <div className="space-y-1">
+          <div className="text-xs text-ac-muted">Voices</div>
+          <div className="flex rounded overflow-hidden border border-ac-accent/50">
+            {(['mono', 'poly'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => onPolyphonyChange(mode)}
+                className={cn(
+                  'px-3 py-1 text-xs transition-colors',
+                  playbackConfig.polyphony === mode
+                    ? 'bg-ac-highlight text-white'
+                    : 'bg-ac-bg text-ac-muted hover:text-ac-text'
+                )}
+              >
+                {mode === 'mono' ? 'Mono' : 'Poly'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Playback mode toggle */}
+        <div className="space-y-1">
+          <div className="text-xs text-ac-muted">Mode</div>
+          <div className="flex rounded overflow-hidden border border-ac-accent/50">
+            {(['one-shot', 'gate'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => onPlaybackModeChange(mode)}
+                className={cn(
+                  'px-3 py-1 text-xs transition-colors',
+                  playbackConfig.playbackMode === mode
+                    ? 'bg-ac-highlight text-white'
+                    : 'bg-ac-bg text-ac-muted hover:text-ac-text'
+                )}
+              >
+                {mode === 'one-shot' ? 'One-Shot' : 'Gate'}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Mute groups — only shown in poly mode */}
+      {playbackConfig.polyphony === 'poly' && slices.length > 1 && (
+        <div className="space-y-1">
+          <div className="text-xs text-ac-muted">
+            Mute Groups
+            <span className="ml-1 text-ac-muted/60">(slices in the same group choke each other)</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {slices.map((slice, i) => {
+              const group = playbackConfig.muteGroups[i] ?? 0;
+              return (
+                <div key={i} className="flex items-center gap-1 bg-ac-bg rounded px-2 py-0.5">
+                  <span className="text-xs text-ac-text truncate max-w-[4rem]" title={slice.label}>
+                    {slice.label}
+                  </span>
+                  <select
+                    value={group}
+                    onChange={(e) => onMuteGroupChange(i, parseInt(e.target.value))}
+                    className="bg-transparent text-xs text-ac-muted border-none outline-none cursor-pointer py-0"
+                    title={`Mute group for ${slice.label}`}
+                  >
+                    <option value={0}>—</option>
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((g) => (
+                      <option key={g} value={g}>G{g}</option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function TriggerMethodContent({
@@ -27,6 +136,11 @@ export function TriggerMethodContent({
   onStop,
   onReset,
   onEditManually,
+  playbackConfig,
+  onPolyphonyChange,
+  onPlaybackModeChange,
+  onMuteGroupChange,
+  slices,
 }: TriggerMethodContentProps): JSX.Element {
   if (state === 'recording') {
     return (
@@ -79,6 +193,7 @@ export function TriggerMethodContent({
       <div className="space-y-3">
         <p className="text-sm text-ac-text">
           {triggerCount} trigger{triggerCount !== 1 ? 's' : ''} captured — {triggerCount} slice{triggerCount !== 1 ? 's' : ''} created.
+          Press mapped keys to play slices.
         </p>
         <div className="flex gap-2">
           <button
@@ -94,6 +209,13 @@ export function TriggerMethodContent({
             Edit Manually
           </button>
         </div>
+        <PlaybackControls
+          playbackConfig={playbackConfig}
+          onPolyphonyChange={onPolyphonyChange}
+          onPlaybackModeChange={onPlaybackModeChange}
+          onMuteGroupChange={onMuteGroupChange}
+          slices={slices}
+        />
       </div>
     );
   }

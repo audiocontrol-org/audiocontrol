@@ -29,6 +29,7 @@ import {
 } from '@/ui/hooks/useSampleChopper.js';
 import type { SliceResult } from '@/types.js';
 import { useTriggerRecording } from '@/ui/hooks/useTriggerRecording.js';
+import { useTriggerPlayback } from '@/ui/hooks/useTriggerPlayback.js';
 
 // Re-export types for consumers
 export type { SliceDefinitionOutput, InitialSliceDefinition };
@@ -126,16 +127,36 @@ export function SampleChopperDialog({
     [samples, chopper.currentSliceResult, isPlaying, chopper.selectedSlice, play, stop, chopper.setSelectedSlice]
   );
 
+  // Break circular dep: trigger needs triggerPlayback.playSlice, triggerPlayback needs trigger.recordedSlices.
+  // Use refs so the callbacks resolve at event time, not at hook-call time.
+  const triggerPlaybackRef = useRef<{ playSlice: (i: number) => void; stopSlice: (i: number) => void }>({
+    playSlice: () => {},
+    stopSlice: () => {},
+  });
+
   const trigger = useTriggerRecording({
     playbackPositionRef,
     isPlaying,
     onPlay: handleTriggerPlay,
     onStop: stop,
-    onPlaySlice: handlePlaySlice,
+    onPlaySlice: (index: number) => {
+      chopper.setSelectedSlice(index);
+      triggerPlaybackRef.current.playSlice(index);
+    },
+    onStopSlice: (index: number) => triggerPlaybackRef.current.stopSlice(index),
     totalSamples: samples?.length ?? 0,
     kitLabels: chopper.kitLabels,
     active: chopper.selectedMethod === 'trigger',
   });
+
+  const triggerPlayback = useTriggerPlayback({
+    samples,
+    sampleRate,
+    slices: trigger.recordedSlices,
+    config: trigger.playbackConfig,
+  });
+
+  triggerPlaybackRef.current = triggerPlayback;
 
   // Inject slices into chopper in real time during recording and on completion
   useEffect(() => {
@@ -489,6 +510,11 @@ export function SampleChopperDialog({
                   onStop: trigger.stopRecording,
                   onReset: trigger.reset,
                   onEditManually: handleSwitchToManualFromTrigger,
+                  playbackConfig: trigger.playbackConfig,
+                  onPolyphonyChange: trigger.setPolyphony,
+                  onPlaybackModeChange: trigger.setPlaybackMode,
+                  onMuteGroupChange: trigger.setMuteGroup,
+                  slices: trigger.recordedSlices,
                 }}
               />
 

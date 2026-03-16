@@ -76,5 +76,14 @@ export {
   type UseTriggerRecordingReturn,
 } from './hooks/useTriggerRecording.js';
 
+export {
+  useTriggerPlayback,
+  type PolyphonyMode,
+  type PlaybackMode,
+  type TriggerPlaybackConfig,
+  type UseTriggerPlaybackParams,
+  type UseTriggerPlaybackReturn,
+} from './hooks/useTriggerPlayback.js';
+
 // Utilities
 export { cn } from './utils.js';
