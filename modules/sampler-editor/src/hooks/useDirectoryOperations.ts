@@ -2,6 +2,8 @@
  * Directory Operations Hook
  *
  * Custom hook for managing directory CRUD operations in the library.
+ * Includes directory create/rename/delete, item move (dialog and drag-drop),
+ * in-place rename for items and sets, and library item deletion.
  */
 
 import { useState, useCallback } from 'react';
@@ -10,12 +12,28 @@ import {
   renameDirectory,
   deleteDirectory,
   moveItem,
+  renameIndividualTone,
+  renameIndividualPatch,
+  renameDrumKit,
+  renameSet,
+  deleteSet,
+  deleteIndividualTone,
+  deleteIndividualPatch,
+  deleteDrumKit,
+  listIndividualTones,
+  listIndividualPatches,
   listIndividualTonesTree,
   listIndividualPatchesTree,
+  listDrumKits,
   listDrumKitsTree,
   type LibraryTreeNode,
   type LibraryCategory,
+  type LibraryToneInfo,
+  type LibraryPatchInfo,
+  type DrumKitInfo,
 } from '@/lib/library-service';
+import type { ItemSelection } from '@/pages/LibraryPage';
+import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 
 interface CreateDirectoryDialogState {
   category: LibraryCategory;
@@ -43,80 +61,45 @@ interface MoveItemDialogState {
 
 interface UseDirectoryOperationsOptions {
   libraryHandle: FileSystemDirectoryHandle | null;
-  onRefreshComplete?: () => void;
-}
-
-interface UseDirectoryOperationsResult {
-  // Tree data
+  handleRefreshLibrary: () => Promise<void>;
+  setError: (error: string) => void;
   tonesTree: LibraryTreeNode[];
   patchesTree: LibraryTreeNode[];
   drumKitsTree: LibraryTreeNode[];
-
-  // Tree setters (for initialization from parent)
-  setTonesTree: React.Dispatch<React.SetStateAction<LibraryTreeNode[]>>;
-  setPatchesTree: React.Dispatch<React.SetStateAction<LibraryTreeNode[]>>;
-  setDrumKitsTree: React.Dispatch<React.SetStateAction<LibraryTreeNode[]>>;
-
-  // Dialog state
-  createDirectoryDialog: CreateDirectoryDialogState | null;
-  renameDirectoryDialog: RenameDirectoryDialogState | null;
-  deleteDirectoryDialog: DeleteDirectoryDialogState | null;
-  moveItemDialog: MoveItemDialogState | null;
-
-  // Dialog openers
-  handleOpenCreateDirectory: (category: LibraryCategory, parentPath: string[]) => void;
-  handleOpenRenameDirectory: (category: LibraryCategory, path: string[]) => void;
-  handleOpenDeleteDirectory: (category: LibraryCategory, path: string[]) => void;
-  handleOpenMoveItem: (category: LibraryCategory, sourcePath: string[], itemName: string) => void;
-
-  // Dialog closers
-  closeCreateDirectoryDialog: () => void;
-  closeRenameDirectoryDialog: () => void;
-  closeDeleteDirectoryDialog: () => void;
-  closeMoveItemDialog: () => void;
-
-  // Operations
-  handleCreateDirectory: (name: string) => Promise<void>;
-  handleRenameDirectory: (newName: string) => Promise<void>;
-  handleDeleteDirectory: () => Promise<void>;
-  handleMoveItem: (targetPath: string[]) => Promise<void>;
-
-  // Helper for move dialog
-  getMoveDialogTree: () => LibraryTreeNode[];
-
-  // Refresh trees
-  refreshTrees: () => Promise<void>;
+  // Delete-related deps
+  selection: ItemSelection | null;
+  setSelection: (selection: ItemSelection | null) => void;
+  setIndividualTones: (tones: LibraryToneInfo[]) => void;
+  setIndividualPatches: (patches: LibraryPatchInfo[]) => void;
+  setTonesTree: (tree: LibraryTreeNode[]) => void;
+  setPatchesTree: (tree: LibraryTreeNode[]) => void;
+  setDrumKits: (kits: DrumKitInfo[]) => void;
+  setDrumKitsTree: (tree: LibraryTreeNode[]) => void;
+  setSelectedDrumKitBundle: (bundle: ResolvedDrumKitBundle | null) => void;
 }
 
 export function useDirectoryOperations({
   libraryHandle,
-  onRefreshComplete,
-}: UseDirectoryOperationsOptions): UseDirectoryOperationsResult {
-  // Tree state
-  const [tonesTree, setTonesTree] = useState<LibraryTreeNode[]>([]);
-  const [patchesTree, setPatchesTree] = useState<LibraryTreeNode[]>([]);
-  const [drumKitsTree, setDrumKitsTree] = useState<LibraryTreeNode[]>([]);
-
+  handleRefreshLibrary,
+  setError,
+  tonesTree,
+  patchesTree,
+  drumKitsTree,
+  selection,
+  setSelection,
+  setIndividualTones,
+  setIndividualPatches,
+  setTonesTree,
+  setPatchesTree,
+  setDrumKits,
+  setDrumKitsTree,
+  setSelectedDrumKitBundle,
+}: UseDirectoryOperationsOptions) {
   // Dialog state
   const [createDirectoryDialog, setCreateDirectoryDialog] = useState<CreateDirectoryDialogState | null>(null);
   const [renameDirectoryDialog, setRenameDirectoryDialog] = useState<RenameDirectoryDialogState | null>(null);
   const [deleteDirectoryDialog, setDeleteDirectoryDialog] = useState<DeleteDirectoryDialogState | null>(null);
   const [moveItemDialog, setMoveItemDialog] = useState<MoveItemDialogState | null>(null);
-
-  // Refresh trees
-  const refreshTrees = useCallback(async () => {
-    if (!libraryHandle) return;
-
-    const [tonesTreeData, patchesTreeData, drumKitsTreeData] = await Promise.all([
-      listIndividualTonesTree(libraryHandle),
-      listIndividualPatchesTree(libraryHandle),
-      listDrumKitsTree(libraryHandle),
-    ]);
-    setTonesTree(tonesTreeData);
-    setPatchesTree(patchesTreeData);
-    setDrumKitsTree(drumKitsTreeData);
-    onRefreshComplete?.();
-  }, [libraryHandle, onRefreshComplete]);
 
   // Dialog openers
   const handleOpenCreateDirectory = useCallback((category: LibraryCategory, parentPath: string[]) => {
@@ -133,93 +116,174 @@ export function useDirectoryOperations({
     setDeleteDirectoryDialog({ category, path, directoryName });
   }, []);
 
-  const handleOpenMoveItem = useCallback((
-    category: LibraryCategory,
-    sourcePath: string[],
-    itemName: string
-  ) => {
-    // Determine item type based on category
+  const handleOpenMoveItem = useCallback((category: LibraryCategory, sourcePath: string[], itemName: string) => {
     let itemType: 'tone' | 'patch' | 'drum-kit' | 'directory' = 'directory';
     if (category === 'tones') itemType = 'tone';
     else if (category === 'patches') itemType = 'patch';
     else if (category === 'drum-kits') itemType = 'drum-kit';
-
     setMoveItemDialog({ category, sourcePath, itemName, itemType });
   }, []);
 
   // Dialog closers
-  const closeCreateDirectoryDialog = useCallback(() => {
-    setCreateDirectoryDialog(null);
-  }, []);
-
-  const closeRenameDirectoryDialog = useCallback(() => {
-    setRenameDirectoryDialog(null);
-  }, []);
-
-  const closeDeleteDirectoryDialog = useCallback(() => {
-    setDeleteDirectoryDialog(null);
-  }, []);
-
-  const closeMoveItemDialog = useCallback(() => {
-    setMoveItemDialog(null);
-  }, []);
+  const closeCreateDirectoryDialog = useCallback(() => setCreateDirectoryDialog(null), []);
+  const closeRenameDirectoryDialog = useCallback(() => setRenameDirectoryDialog(null), []);
+  const closeDeleteDirectoryDialog = useCallback(() => setDeleteDirectoryDialog(null), []);
+  const closeMoveItemDialog = useCallback(() => setMoveItemDialog(null), []);
 
   // Create directory
   const handleCreateDirectory = useCallback(async (name: string) => {
     if (!libraryHandle || !createDirectoryDialog) return;
-
-    await createDirectory(
-      libraryHandle,
-      createDirectoryDialog.category,
-      createDirectoryDialog.parentPath,
-      name
-    );
-    setCreateDirectoryDialog(null);
-    await refreshTrees();
-  }, [libraryHandle, createDirectoryDialog, refreshTrees]);
+    try {
+      await createDirectory(libraryHandle, createDirectoryDialog.category, createDirectoryDialog.parentPath, name);
+      setCreateDirectoryDialog(null);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to create directory:', err);
+      throw err;
+    }
+  }, [libraryHandle, createDirectoryDialog, handleRefreshLibrary]);
 
   // Rename directory
   const handleRenameDirectory = useCallback(async (newName: string) => {
     if (!libraryHandle || !renameDirectoryDialog) return;
-
-    await renameDirectory(
-      libraryHandle,
-      renameDirectoryDialog.category,
-      renameDirectoryDialog.path,
-      newName
-    );
-    setRenameDirectoryDialog(null);
-    await refreshTrees();
-  }, [libraryHandle, renameDirectoryDialog, refreshTrees]);
+    try {
+      await renameDirectory(libraryHandle, renameDirectoryDialog.category, renameDirectoryDialog.path, newName);
+      setRenameDirectoryDialog(null);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to rename directory:', err);
+      throw err;
+    }
+  }, [libraryHandle, renameDirectoryDialog, handleRefreshLibrary]);
 
   // Delete directory
   const handleDeleteDirectory = useCallback(async () => {
     if (!libraryHandle || !deleteDirectoryDialog) return;
+    try {
+      await deleteDirectory(libraryHandle, deleteDirectoryDialog.category, deleteDirectoryDialog.path, true);
+      setDeleteDirectoryDialog(null);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to delete directory:', err);
+      throw err;
+    }
+  }, [libraryHandle, deleteDirectoryDialog, handleRefreshLibrary]);
 
-    await deleteDirectory(
-      libraryHandle,
-      deleteDirectoryDialog.category,
-      deleteDirectoryDialog.path,
-      true // recursive
-    );
-    setDeleteDirectoryDialog(null);
-    await refreshTrees();
-  }, [libraryHandle, deleteDirectoryDialog, refreshTrees]);
-
-  // Move item
+  // Move item (via dialog)
   const handleMoveItem = useCallback(async (targetPath: string[]) => {
     if (!libraryHandle || !moveItemDialog) return;
+    try {
+      await moveItem(libraryHandle, moveItemDialog.category, moveItemDialog.sourcePath, moveItemDialog.itemName, targetPath);
+      setMoveItemDialog(null);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to move item:', err);
+      throw err;
+    }
+  }, [libraryHandle, moveItemDialog, handleRefreshLibrary]);
 
-    await moveItem(
-      libraryHandle,
-      moveItemDialog.category,
-      moveItemDialog.sourcePath,
-      moveItemDialog.itemName,
-      targetPath
-    );
-    setMoveItemDialog(null);
-    await refreshTrees();
-  }, [libraryHandle, moveItemDialog, refreshTrees]);
+  // Handle drag-drop move (directly moves item without dialog)
+  const handleDropMoveItem = useCallback(async (
+    category: LibraryCategory, sourcePath: string[], itemName: string, targetPath: string[]
+  ) => {
+    if (!libraryHandle) return;
+    try {
+      await moveItem(libraryHandle, category, sourcePath, itemName, targetPath);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to move item via drag-drop:', err);
+      setError(err instanceof Error ? err.message : 'Failed to move item');
+    }
+  }, [libraryHandle, handleRefreshLibrary, setError]);
+
+  // Handle in-place rename (double-click to edit)
+  const handleRenameItem = useCallback(async (
+    category: LibraryCategory, path: string[], oldName: string, newName: string, isDirectory: boolean
+  ) => {
+    if (!libraryHandle) return;
+    try {
+      if (isDirectory) await renameDirectory(libraryHandle, category, [...path, oldName], newName);
+      else if (category === 'tones') await renameIndividualTone(libraryHandle, oldName, newName, path);
+      else if (category === 'patches') await renameIndividualPatch(libraryHandle, oldName, newName, path);
+      else if (category === 'drum-kits') await renameDrumKit(libraryHandle, oldName, newName, path);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to rename item:', err);
+      setError(err instanceof Error ? err.message : 'Failed to rename item');
+      throw err;
+    }
+  }, [libraryHandle, handleRefreshLibrary, setError]);
+
+  // Handle set rename
+  const handleRenameSet = useCallback(async (oldName: string, newName: string) => {
+    if (!libraryHandle) return;
+    try {
+      await renameSet(libraryHandle, oldName, newName);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to rename set:', err);
+      setError(err instanceof Error ? err.message : 'Failed to rename set');
+      throw err;
+    }
+  }, [libraryHandle, handleRefreshLibrary, setError]);
+
+  // =========================================================================
+  // Delete operations
+  // =========================================================================
+
+  const handleDeleteSet = useCallback(async (setName: string) => {
+    if (!libraryHandle || !window.confirm(`Delete set "${setName}"? This cannot be undone.`)) return;
+    try {
+      await deleteSet(libraryHandle, setName);
+      if (selection?.type === 'set' && selection.name === setName) setSelection(null);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to delete set:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete set');
+    }
+  }, [libraryHandle, selection, setSelection, handleRefreshLibrary, setError]);
+
+  const handleDeleteIndividualTone = useCallback(async (fileName: string, path?: string[]) => {
+    if (!libraryHandle || !window.confirm(`Delete tone "${fileName}"? This cannot be undone.`)) return;
+    try {
+      await deleteIndividualTone(libraryHandle, fileName, path);
+      if (selection?.type === 'individualTone' && selection.name === fileName) setSelection(null);
+      const [updatedTones, updatedTree] = await Promise.all([listIndividualTones(libraryHandle), listIndividualTonesTree(libraryHandle)]);
+      setIndividualTones(updatedTones);
+      setTonesTree(updatedTree);
+    } catch (err) {
+      console.error('[LibraryPage] Failed to delete tone:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete tone');
+    }
+  }, [libraryHandle, selection, setSelection, setIndividualTones, setTonesTree, setError]);
+
+  const handleDeleteIndividualPatch = useCallback(async (directoryName: string, path?: string[]) => {
+    if (!libraryHandle || !window.confirm(`Delete patch "${directoryName}" and all its tones? This cannot be undone.`)) return;
+    try {
+      await deleteIndividualPatch(libraryHandle, directoryName, path);
+      if (selection?.type === 'individualPatch' && selection.name === directoryName) setSelection(null);
+      const [updatedPatches, updatedTree] = await Promise.all([listIndividualPatches(libraryHandle), listIndividualPatchesTree(libraryHandle)]);
+      setIndividualPatches(updatedPatches);
+      setPatchesTree(updatedTree);
+    } catch (err) {
+      console.error('[LibraryPage] Failed to delete patch:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete patch');
+    }
+  }, [libraryHandle, selection, setSelection, setIndividualPatches, setPatchesTree, setError]);
+
+  const handleDeleteDrumKit = useCallback(async (directoryName: string, path?: string[]) => {
+    if (!libraryHandle || !window.confirm(`Delete drum kit "${directoryName}"? This cannot be undone.`)) return;
+    try {
+      await deleteDrumKit(libraryHandle, directoryName, path);
+      if (selection?.type === 'drumKit' && selection.name === directoryName) { setSelection(null); setSelectedDrumKitBundle(null); }
+      const [updatedKits, updatedTree] = await Promise.all([listDrumKits(libraryHandle), listDrumKitsTree(libraryHandle)]);
+      setDrumKits(updatedKits);
+      setDrumKitsTree(updatedTree);
+    } catch (err) {
+      console.error('[LibraryPage] Failed to delete drum kit:', err);
+      setError(err instanceof Error ? err.message : 'Failed to delete drum kit');
+    }
+  }, [libraryHandle, selection, setSelection, setSelectedDrumKitBundle, setDrumKits, setDrumKitsTree, setError]);
 
   // Get tree for move dialog
   const getMoveDialogTree = useCallback((): LibraryTreeNode[] => {
@@ -233,42 +297,12 @@ export function useDirectoryOperations({
   }, [moveItemDialog, tonesTree, patchesTree, drumKitsTree]);
 
   return {
-    // Tree data
-    tonesTree,
-    patchesTree,
-    drumKitsTree,
-    setTonesTree,
-    setPatchesTree,
-    setDrumKitsTree,
-
-    // Dialog state
-    createDirectoryDialog,
-    renameDirectoryDialog,
-    deleteDirectoryDialog,
-    moveItemDialog,
-
-    // Dialog openers
-    handleOpenCreateDirectory,
-    handleOpenRenameDirectory,
-    handleOpenDeleteDirectory,
-    handleOpenMoveItem,
-
-    // Dialog closers
-    closeCreateDirectoryDialog,
-    closeRenameDirectoryDialog,
-    closeDeleteDirectoryDialog,
-    closeMoveItemDialog,
-
-    // Operations
-    handleCreateDirectory,
-    handleRenameDirectory,
-    handleDeleteDirectory,
-    handleMoveItem,
-
-    // Helper
+    createDirectoryDialog, renameDirectoryDialog, deleteDirectoryDialog, moveItemDialog,
+    handleOpenCreateDirectory, handleOpenRenameDirectory, handleOpenDeleteDirectory, handleOpenMoveItem,
+    closeCreateDirectoryDialog, closeRenameDirectoryDialog, closeDeleteDirectoryDialog, closeMoveItemDialog,
+    handleCreateDirectory, handleRenameDirectory, handleDeleteDirectory, handleMoveItem,
+    handleDropMoveItem, handleRenameItem, handleRenameSet,
+    handleDeleteSet, handleDeleteIndividualTone, handleDeleteIndividualPatch, handleDeleteDrumKit,
     getMoveDialogTree,
-
-    // Refresh
-    refreshTrees,
   };
 }
