@@ -124,6 +124,16 @@ export {
   calculateSetSegmentUsage,
 } from './converters/index.js';
 
+// S-550 converter exports
+export {
+  s550ToneConverter,
+  s550PatchConverter,
+  s550DeviceStateToSet,
+  s550SetToDeviceState,
+  s550ValidateSetAllocations,
+  s550CalculateSetSegmentUsage,
+} from './converters/index.js';
+
 export type {
   ToneConverter,
   PatchConverter,
@@ -134,6 +144,10 @@ export type {
   DeviceStateToSetResult,
   SetToDeviceInput,
   SetToDeviceResult,
+  S550DeviceStateInput,
+  S550DeviceStateToSetResult,
+  S550SetToDeviceInput,
+  S550SetToDeviceResult,
 } from './converters/index.js';
 
 // Storage exports

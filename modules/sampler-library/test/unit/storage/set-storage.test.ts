@@ -395,7 +395,7 @@ describe('set-paths', () => {
     const { getToneFilename } = await import('@/storage/set-paths.js');
 
     expect(() => getToneFilename(-1)).toThrow();
-    expect(() => getToneFilename(32)).toThrow();
+    expect(() => getToneFilename(64)).toThrow();
   });
 
   it('should generate correct patch filenames', async () => {

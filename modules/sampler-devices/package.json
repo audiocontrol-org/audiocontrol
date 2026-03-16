@@ -60,6 +60,7 @@
     "test:hardware:s550:probe": "vitest run test/integration/s550-probe.test.ts",
     "test:hardware:s550:dat": "vitest run test/integration/s550-dat-format.test.ts",
     "test:hardware:s550:wave": "vitest run test/integration/s550-wave.test.ts",
+    "test:hardware:s550:library": "vitest run test/integration/s550-library.test.ts",
     "build": "pnpm test && tsup",
     "build:lib": "tsup",
     "clean": "rm -rf dist"
