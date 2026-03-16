@@ -7,21 +7,21 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import type { S330Tone, S330Patch } from '@/core/midi/S330Client';
+import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { SetYaml } from '@audiocontrol/sampler-library/browser';
 import {
   loadPatchFromSet,
   loadToneFromSet,
   loadSetManifest,
   loadIndividualPatch,
-  convertYamlToS330Patch,
-  convertYamlToS330Tone,
+  convertYamlToSamplerPatch,
+  convertYamlToSamplerTone,
   getPatchToneDependencies,
   remapPatchToneLayers,
 } from '@/lib/library-service';
 import { suggestPatchAllocation, isToneSlotEmpty, isPatchSlotEmpty } from '@/lib/slot-allocation';
 import { cn } from '@/lib/utils';
-import { formatToneSlot, formatPatchSlot } from '@/lib/s330-format';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
 
 interface ToneImportMapping {
   /** Original slot in the library set */
@@ -52,19 +52,19 @@ export interface ImportLibraryPatchDialogProps {
   /** Path segments for individual patches in subdirectories */
   patchPath?: string[];
   /** Current device tones (to show slot occupancy) */
-  deviceTones: (S330Tone | undefined)[];
+  deviceTones: (SamplerTone | undefined)[];
   /** Current device patches (to show slot occupancy) */
-  devicePatches: (S330Patch | undefined)[];
+  devicePatches: (SamplerPatch | undefined)[];
   /** Initial target patch slot (e.g., from drag-drop target) */
   initialTargetSlot?: number;
   /** Callback to perform the import */
   onImport: (params: {
     setName: string;
     patchFile: string;
-    patch: S330Patch;
+    patch: SamplerPatch;
     targetPatchSlot: number;
     tones: Array<{
-      tone: S330Tone;
+      tone: SamplerTone;
       wavData: Uint8Array;
       targetSlot: number;
       waveBank: 0 | 1 | 2 | 3;
@@ -98,10 +98,13 @@ export function ImportLibraryPatchDialog({
   statusMessage,
   initialTargetSlot,
 }: ImportLibraryPatchDialogProps): JSX.Element {
+  const config = useDeviceConfig();
+  const { memoryLayout } = config;
+
   // State for loaded data
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [patch, setPatch] = useState<S330Patch | null>(null);
+  const [patch, setPatch] = useState<SamplerPatch | null>(null);
   const [_manifest, setManifest] = useState<SetYaml | null>(null);
 
   // User selections - use initialTargetSlot if provided
@@ -122,18 +125,18 @@ export function ImportLibraryPatchDialog({
       try {
         // Check if this is an individual patch bundle (not from a set)
         const isIndividual = setName === '__individual__';
-        let convertedPatch: S330Patch;
+        let convertedPatch: SamplerPatch;
         let dependentTones: Array<{ originalSlot: number; segmentsNeeded: number; fileName: string; preferredBank: 0 | 1 | 2 | 3 }> = [];
 
         if (isIndividual) {
           // Load individual patch bundle directly from library
           const bundle = await loadIndividualPatch(libraryHandle, patchFile, patchPath ?? []);
-          convertedPatch = convertYamlToS330Patch(bundle.patch);
+          convertedPatch = convertYamlToSamplerPatch(bundle.patch);
           setPatch(convertedPatch);
 
           // Collect dependent tone info
           for (const [slot, toneData] of bundle.tones) {
-            const convertedTone = convertYamlToS330Tone(toneData.yaml);
+            const convertedTone = convertYamlToSamplerTone(toneData.yaml);
             dependentTones.push({
               originalSlot: slot,
               segmentsNeeded: toneData.segmentsNeeded,
@@ -150,7 +153,7 @@ export function ImportLibraryPatchDialog({
 
           // Load patch
           const patchYaml = await loadPatchFromSet(libraryHandle, setName, patchFile);
-          convertedPatch = convertYamlToS330Patch(patchYaml);
+          convertedPatch = convertYamlToSamplerPatch(patchYaml);
           setPatch(convertedPatch);
 
           // Analyze dependencies
@@ -234,7 +237,7 @@ export function ImportLibraryPatchDialog({
     try {
       // Load all required tones with wave data
       const tonesData: Array<{
-        tone: S330Tone;
+        tone: SamplerTone;
         wavData: Uint8Array;
         targetSlot: number;
         waveBank: 0 | 1 | 2 | 3;
@@ -252,7 +255,7 @@ export function ImportLibraryPatchDialog({
             throw new Error(`Tone at slot ${mapping.originalSlot} not found in bundle`);
           }
 
-          const tone = convertYamlToS330Tone(toneData.yaml);
+          const tone = convertYamlToSamplerTone(toneData.yaml);
           tonesData.push({
             tone,
             wavData: toneData.wavData,
@@ -271,7 +274,7 @@ export function ImportLibraryPatchDialog({
             setName,
             mapping.fileName
           );
-          const tone = convertYamlToS330Tone(yaml);
+          const tone = convertYamlToSamplerTone(yaml);
 
           tonesData.push({
             tone,
@@ -407,9 +410,9 @@ export function ImportLibraryPatchDialog({
                       : 'border-s330-accent/50'
                   )}
                 >
-                  {Array.from({ length: 16 }, (_, i) => {
+                  {Array.from({ length: config.totalPatches }, (_, i) => {
                     const existingPatch = devicePatches[i];
-                    const slotLabel = formatPatchSlot(i);
+                    const slotLabel = memoryLayout.formatPatchSlot(i);
                     const isEmpty = isPatchSlotEmpty(devicePatches, i);
                     const occupancy = isEmpty ? ' - (empty)' : ` - ${existingPatch?.common.name || ''}`;
                     return (
@@ -444,7 +447,7 @@ export function ImportLibraryPatchDialog({
                         <div className="flex items-center justify-between">
                           <span className="text-s330-text font-medium">{mapping.fileName}</span>
                           <span className="text-xs text-s330-muted">
-                            Original: {formatToneSlot(mapping.originalSlot)}
+                            Original: {memoryLayout.formatToneSlot(mapping.originalSlot)}
                           </span>
                         </div>
 
@@ -471,9 +474,9 @@ export function ImportLibraryPatchDialog({
                                   : 'border-s330-accent/50'
                               )}
                             >
-                              {Array.from({ length: 32 }, (_, i) => {
+                              {Array.from({ length: config.totalTones }, (_, i) => {
                                 const existingTone = deviceTones[i];
-                                const slotLabel = formatToneSlot(i);
+                                const slotLabel = memoryLayout.formatToneSlot(i);
                                 const isEmpty = isToneSlotEmpty(deviceTones, i);
                                 const occupancy = isEmpty ? ' - (empty)' : ` - ${existingTone?.name || ''}`;
                                 return (

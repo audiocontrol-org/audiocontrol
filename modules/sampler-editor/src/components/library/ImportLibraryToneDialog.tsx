@@ -7,12 +7,12 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import type { S330Tone } from '@/core/midi/S330Client';
+import type { SamplerTone } from '@/core/midi/SamplerClient';
 import {
   loadToneFromSet,
   loadSetManifest,
   loadIndividualTone,
-  convertYamlToS330Tone,
+  convertYamlToSamplerTone,
 } from '@/lib/library-service';
 import { suggestToneAllocation, isToneSlotEmpty } from '@/lib/slot-allocation';
 import { cn } from '@/lib/utils';
@@ -31,14 +31,14 @@ export interface ImportLibraryToneDialogProps {
   /** File name of the tone (without extension) */
   toneFile: string;
   /** Current device tones (to show slot occupancy) */
-  deviceTones: (S330Tone | undefined)[];
+  deviceTones: (SamplerTone | undefined)[];
   /** Initial target tone slot (e.g., from drag-drop target) */
   initialTargetSlot?: number;
   /** Callback to perform the import */
   onImport: (params: {
     setName: string;
     toneFile: string;
-    tone: S330Tone;
+    tone: SamplerTone;
     wavData: Uint8Array;
     targetSlot: number;
     waveBank: 0 | 1 | 2 | 3;
@@ -74,14 +74,23 @@ export function ImportLibraryToneDialog({
   // State for loaded tone
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [tone, setTone] = useState<S330Tone | null>(null);
+  const [tone, setTone] = useState<SamplerTone | null>(null);
   const [wavData, setWavData] = useState<Uint8Array | null>(null);
 
-  // User selections - use initialTargetSlot if provided
+  const { memoryLayout } = config;
+  const { importTargets } = memoryLayout;
+
+  // User selections
+  const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
   const [targetSlot, setTargetSlot] = useState(initialTargetSlot ?? 0);
   const [waveBank, setWaveBank] = useState<0 | 1 | 2 | 3>(0);
   const [segmentTop, setSegmentTop] = useState(0);
   const [segmentLength, setSegmentLength] = useState(1);
+
+  const selectedTarget = importTargets[selectedTargetIndex];
+  const targetGroup = memoryLayout.toneGroups.find(
+    g => g.firstIndex === selectedTarget.toneIndexOffset
+  ) ?? memoryLayout.toneGroups[0];
 
   // Load tone data when dialog opens
   useEffect(() => {
@@ -97,14 +106,14 @@ export function ImportLibraryToneDialog({
         // Check if this is an individual tone (not from a set)
         const isIndividual = setName === '__individual__';
         let loadedWavData: Uint8Array;
-        let convertedTone: S330Tone;
+        let convertedTone: SamplerTone;
         let preferredBank: 0 | 1 | 2 | 3 = 0;
 
         if (isIndividual) {
           // Load individual tone directly from library
           const { yaml, wavData: data } = await loadIndividualTone(libraryHandle, toneFile);
           loadedWavData = data;
-          convertedTone = convertYamlToS330Tone(yaml);
+          convertedTone = convertYamlToSamplerTone(yaml);
           preferredBank = convertedTone.wave.bank as 0 | 1 | 2 | 3;
         } else {
           // Load from a set
@@ -118,7 +127,7 @@ export function ImportLibraryToneDialog({
           // Load tone and wave data
           const { yaml, wavData: data } = await loadToneFromSet(libraryHandle, setName, toneFile);
           loadedWavData = data;
-          convertedTone = convertYamlToS330Tone(yaml);
+          convertedTone = convertYamlToSamplerTone(yaml);
         }
 
         setWavData(loadedWavData);
@@ -261,7 +270,37 @@ export function ImportLibraryToneDialog({
                 </div>
               )}
 
-              {/* Target Slot Selection */}
+              {/* Import Target */}
+              <div>
+                <label htmlFor="importTarget" className="block text-sm text-s330-muted mb-1">
+                  Target
+                </label>
+                <select
+                  id="importTarget"
+                  value={selectedTargetIndex}
+                  onChange={(e) => {
+                    const idx = Number(e.target.value);
+                    setSelectedTargetIndex(idx);
+                    const newGroup = memoryLayout.toneGroups.find(
+                      g => g.firstIndex === importTargets[idx].toneIndexOffset
+                    ) ?? memoryLayout.toneGroups[0];
+                    setTargetSlot(newGroup.firstIndex);
+                    setWaveBank(newGroup.waveBankIndices[0] as 0 | 1 | 2 | 3);
+                  }}
+                  disabled={isImporting}
+                  className={cn(
+                    'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
+                    'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
+                    isImporting && 'opacity-50'
+                  )}
+                >
+                  {importTargets.map((target, i) => (
+                    <option key={i} value={i}>{target.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Target Slot Selection (scoped to selected group) */}
               <div>
                 <label htmlFor="targetSlot" className="block text-sm text-s330-muted mb-1">
                   Target Tone Slot
@@ -280,13 +319,14 @@ export function ImportLibraryToneDialog({
                       : 'border-s330-accent/50'
                   )}
                 >
-                  {Array.from({ length: 32 }, (_, i) => {
-                    const existingTone = deviceTones[i];
-                    const slotLabel = config.memoryLayout.formatToneSlot(i);
-                    const isEmpty = isToneSlotEmpty(deviceTones, i);
+                  {Array.from({ length: targetGroup.count }, (_, i) => {
+                    const absIndex = targetGroup.firstIndex + i;
+                    const existingTone = deviceTones[absIndex];
+                    const slotLabel = memoryLayout.formatToneSlot(absIndex);
+                    const isEmpty = isToneSlotEmpty(deviceTones, absIndex);
                     const occupancy = isEmpty ? ' - (empty)' : ` - ${existingTone?.name || ''}`;
                     return (
-                      <option key={i} value={i}>
+                      <option key={absIndex} value={absIndex}>
                         {slotLabel}{occupancy}
                       </option>
                     );
@@ -319,12 +359,9 @@ export function ImportLibraryToneDialog({
                       isImporting && 'opacity-50'
                     )}
                   >
-                    {(() => {
-                      const banks = config.memoryLayout.getWaveBanksForTone(targetSlot);
-                      return banks.indices.map((idx, i) => (
-                        <option key={idx} value={idx}>Bank {banks.labels[i]}</option>
-                      ));
-                    })()}
+                    {targetGroup.waveBankIndices.map((idx, i) => (
+                      <option key={idx} value={idx}>Bank {targetGroup.waveBankLabels[i]}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
