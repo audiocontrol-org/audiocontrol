@@ -65,6 +65,7 @@ export {
 export {
   useTriggerInput,
   type TriggerState,
+  type TriggerId,
   type UseTriggerInputParams,
   type UseTriggerInputReturn,
 } from './hooks/useTriggerInput.js';

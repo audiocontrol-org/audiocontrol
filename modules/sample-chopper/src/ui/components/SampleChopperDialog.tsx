@@ -109,13 +109,32 @@ export function SampleChopperDialog({
     if (samplesRef.current) play(samplesRef.current);
   }, [play]);
 
+  const handlePlaySlice = useCallback(
+    (index: number) => {
+      if (!samples || !chopper.currentSliceResult) return;
+      const slice = chopper.currentSliceResult.slices[index];
+      if (!slice) return;
+
+      if (isPlaying && chopper.selectedSlice === index) {
+        stop();
+        return;
+      }
+
+      chopper.setSelectedSlice(index);
+      play(samples, slice.startSample, slice.endSample);
+    },
+    [samples, chopper.currentSliceResult, isPlaying, chopper.selectedSlice, play, stop, chopper.setSelectedSlice]
+  );
+
   const trigger = useTriggerRecording({
     playbackPositionRef,
     isPlaying,
     onPlay: handleTriggerPlay,
     onStop: stop,
+    onPlaySlice: handlePlaySlice,
     totalSamples: samples?.length ?? 0,
     kitLabels: chopper.kitLabels,
+    active: chopper.selectedMethod === 'trigger',
   });
 
   // Inject slices into chopper in real time during recording and on completion
@@ -134,23 +153,6 @@ export function SampleChopperDialog({
     stop();
     onOpenChange(false);
   }, [onOpenChange, stop]);
-
-  const handlePlaySlice = useCallback(
-    (index: number) => {
-      if (!samples || !chopper.currentSliceResult) return;
-      const slice = chopper.currentSliceResult.slices[index];
-      if (!slice) return;
-
-      if (isPlaying && chopper.selectedSlice === index) {
-        stop();
-        return;
-      }
-
-      chopper.setSelectedSlice(index);
-      play(samples, slice.startSample, slice.endSample);
-    },
-    [samples, chopper.currentSliceResult, isPlaying, chopper.selectedSlice, play, stop, chopper.setSelectedSlice]
-  );
 
   const handleConfirm = useCallback(() => {
     if (!chopper.currentSliceResult || chopper.currentSliceResult.slices.length === 0 || !samples) return;

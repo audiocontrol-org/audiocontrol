@@ -3,11 +3,24 @@
  *
  * Captures keyboard and MIDI events for real-time trigger-based sample chopping.
  * Manages a state machine: idle → armed → recording → complete.
+ * Each trigger carries an identity string (e.g. "key:a", "midi:60") so that
+ * the same key/note can be mapped back to its slice during playback.
  */
 
 import { useState, useCallback, useEffect, useRef, type MutableRefObject } from 'react';
 
 export type TriggerState = 'idle' | 'armed' | 'recording' | 'complete';
+
+/** Identifies the source of a trigger: keyboard key or MIDI note number */
+export type TriggerId = string; // "key:<key>" or "midi:<note>"
+
+export function keyTriggerId(key: string): TriggerId {
+  return `key:${key.toLowerCase()}`;
+}
+
+export function midiTriggerId(note: number): TriggerId {
+  return `midi:${note}`;
+}
 
 export interface UseTriggerInputParams {
   /** Ref for low-latency playback position reads */
@@ -18,8 +31,8 @@ export interface UseTriggerInputParams {
   onPlay: () => void;
   /** Stop audio playback */
   onStop: () => void;
-  /** Called for each trigger event with the sample position */
-  onTrigger: (samplePosition: number) => void;
+  /** Called for each trigger event with the sample position and trigger identity */
+  onTrigger: (samplePosition: number, triggerId: TriggerId) => void;
 }
 
 export interface UseTriggerInputReturn {
@@ -81,18 +94,18 @@ export function useTriggerInput({
     wasPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
-  const fireTrigger = useCallback(() => {
+  const fireTrigger = useCallback((id: TriggerId) => {
     if (stateRef.current === 'armed') {
       stateRef.current = 'recording';
       setState('recording');
       onPlayRef.current();
-      onTriggerRef.current(0);
+      onTriggerRef.current(0, id);
       return;
     }
     if (stateRef.current === 'recording') {
       const pos = playbackPositionRef.current;
       if (pos !== null && pos > 0) {
-        onTriggerRef.current(pos);
+        onTriggerRef.current(pos, id);
       }
     }
   }, [playbackPositionRef]);
@@ -108,7 +121,7 @@ export function useTriggerInput({
 
       event.preventDefault();
       event.stopPropagation();
-      fireTrigger();
+      fireTrigger(keyTriggerId(event.key));
     };
 
     window.addEventListener('keydown', handleKeyDown, true);
@@ -127,7 +140,7 @@ export function useTriggerInput({
       const status = data[0] & 0xf0;
       const velocity = data[2];
       if (status === 0x90 && velocity > 0) {
-        fireTrigger();
+        fireTrigger(midiTriggerId(data[1]));
       }
     };
 
