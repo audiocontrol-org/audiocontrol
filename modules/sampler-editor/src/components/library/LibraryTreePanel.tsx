@@ -10,7 +10,7 @@
  * Supports drag and drop from device memory to export items to library.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import type { SetInfo, SetYaml } from '@audiocontrol/sampler-library/browser';
 import {
   loadSetManifest,
@@ -21,16 +21,14 @@ import {
   type LibraryCategory,
 } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
-import { DEVICE_DRAG_MIME, type DeviceDragData, LIBRARY_DRAG_MIME, type LibraryDragData } from './DeviceMemoryPanel';
+import { useLibraryTreeDragDrop } from '@/hooks/useLibraryTreeDragDrop';
+import { useLibraryTreeActions } from '@/hooks/useLibraryTreeActions';
+import { type DeviceDragData } from './DeviceMemoryPanel';
 import { TreeSection } from './LibraryTreeNode';
-import {
-  LibraryContextMenu,
-  type ContextMenuAction,
-  NewFolderIcon,
-  RenameIcon,
-  MoveIcon,
-  DeleteIcon,
-} from './LibraryContextMenu';
+import { LibraryContextMenu } from './LibraryContextMenu';
+import { WaveIcon, PatchIcon, DeleteButton } from './LibraryTreeIcons';
+import { DrumKitItem } from './DrumKitItem';
+import { SetItem } from './SetItem';
 
 interface LibraryTreePanelProps {
   libraryHandle: FileSystemDirectoryHandle | null;
@@ -93,436 +91,6 @@ interface LibraryTreePanelProps {
   onRenameSet?: (oldName: string, newName: string) => Promise<void>;
 }
 
-/**
- * Folder icon component
- */
-function FolderIcon({ isOpen }: { isOpen: boolean }): JSX.Element {
-  return (
-    <svg
-      className={cn('w-4 h-4', isOpen ? 'text-s330-highlight' : 'text-s330-muted')}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      {isOpen ? (
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z"
-        />
-      ) : (
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-        />
-      )}
-    </svg>
-  );
-}
-
-/**
- * Chevron icon for expandable items
- */
-function ChevronIcon({ isExpanded }: { isExpanded: boolean }): JSX.Element {
-  return (
-    <svg
-      className={cn(
-        'w-3 h-3 text-s330-muted transition-transform',
-        isExpanded && 'rotate-90'
-      )}
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 5l7 7-7 7"
-      />
-    </svg>
-  );
-}
-
-/**
- * Wave icon for tones
- */
-function WaveIcon(): JSX.Element {
-  return (
-    <svg className="w-3.5 h-3.5 text-s330-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3"
-      />
-    </svg>
-  );
-}
-
-/**
- * Patch icon
- */
-function PatchIcon(): JSX.Element {
-  return (
-    <svg className="w-3.5 h-3.5 text-s330-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-      />
-    </svg>
-  );
-}
-
-/**
- * Drum kit icon
- */
-function DrumKitIcon(): JSX.Element {
-  return (
-    <svg className="w-3.5 h-3.5 text-s330-muted" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <circle cx="12" cy="12" r="8" strokeWidth={2} />
-      <circle cx="12" cy="12" r="3" strokeWidth={2} />
-    </svg>
-  );
-}
-
-/**
- * Delete button that appears on hover/focus
- */
-function DeleteButton({
-  onClick,
-  title = 'Delete',
-}: {
-  onClick: (e: React.MouseEvent) => void;
-  title?: string;
-}): JSX.Element {
-  return (
-    <button
-      onClick={onClick}
-      title={title}
-      className={cn(
-        'p-1 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100',
-        'hover:bg-red-500/20 hover:text-red-400 text-s330-muted/50',
-        'transition-opacity focus:opacity-100 focus:outline-none focus:ring-1 focus:ring-red-400'
-      )}
-    >
-      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-        />
-      </svg>
-    </button>
-  );
-}
-
-/**
- * Drum kit item
- */
-function DrumKitItem({
-  kitInfo,
-  isSelected,
-  onSelect,
-  onDelete,
-  onDragStart,
-}: {
-  kitInfo: DrumKitInfo;
-  isSelected: boolean;
-  onSelect: () => void;
-  onDelete?: () => void;
-  onDragStart?: (e: React.DragEvent) => void;
-}): JSX.Element {
-  const handleDelete = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete?.();
-  }, [onDelete]);
-
-  return (
-    <div
-      className={cn(
-        'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-        'flex items-center gap-2 cursor-grab active:cursor-grabbing',
-        isSelected
-          ? 'bg-s330-highlight/20 text-s330-highlight'
-          : 'text-s330-text hover:bg-s330-accent/30'
-      )}
-      onClick={onSelect}
-      draggable
-      onDragStart={onDragStart}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => e.key === 'Enter' && onSelect()}
-    >
-      <DrumKitIcon />
-      <span className="flex-1 truncate font-medium">{kitInfo.name}</span>
-      <span className="text-xs text-s330-muted">
-        {kitInfo.kitCount} kit{kitInfo.kitCount !== 1 ? 's' : ''} / {kitInfo.sampleCount} samples
-      </span>
-      {onDelete && <DeleteButton onClick={handleDelete} title="Delete drum kit" />}
-    </div>
-  );
-}
-
-/**
- * Set item with expandable contents showing individual tones/patches
- */
-function SetItem({
-  setInfo,
-  manifest,
-  isSelected,
-  isExpanded,
-  selectedItemName,
-  selectedItemType,
-  onToggle,
-  onSelect,
-  onSelectTone,
-  onSelectPatch,
-  onToneDragStart,
-  onPatchDragStart,
-  isLoadingManifest,
-  onDelete,
-  onRename,
-}: {
-  setInfo: SetInfo;
-  manifest: SetYaml | null;
-  isSelected: boolean;
-  isExpanded: boolean;
-  selectedItemName?: string;
-  selectedItemType?: 'tone' | 'patch' | 'set';
-  onToggle: () => void;
-  onSelect: () => void;
-  onSelectTone: (toneFile: string) => void;
-  onSelectPatch: (patchFile: string) => void;
-  onToneDragStart?: (e: React.DragEvent, toneFile: string) => void;
-  onPatchDragStart?: (e: React.DragEvent, patchFile: string) => void;
-  isLoadingManifest: boolean;
-  onDelete?: () => void;
-  onRename?: (newName: string) => Promise<void>;
-}): JSX.Element {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState('');
-  const [isRenaming, setIsRenaming] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  // Focus input when entering edit mode
-  useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditing]);
-
-  const handleDelete = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    onDelete?.();
-  }, [onDelete]);
-
-  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (!onRename) return;
-    setEditValue(setInfo.name);
-    setIsEditing(true);
-  }, [setInfo.name, onRename]);
-
-  const handleRenameSubmit = useCallback(async () => {
-    const trimmedValue = editValue.trim();
-    if (!trimmedValue || trimmedValue === setInfo.name || !onRename) {
-      setIsEditing(false);
-      return;
-    }
-
-    setIsRenaming(true);
-    try {
-      await onRename(trimmedValue);
-      setIsEditing(false);
-    } catch (err) {
-      console.error('[SetItem] Rename failed:', err);
-    } finally {
-      setIsRenaming(false);
-    }
-  }, [editValue, setInfo.name, onRename]);
-
-  const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      handleRenameSubmit();
-    } else if (e.key === 'Escape') {
-      e.preventDefault();
-      setIsEditing(false);
-    }
-  }, [handleRenameSubmit]);
-
-  const handleRenameBlur = useCallback(() => {
-    if (!isRenaming) {
-      handleRenameSubmit();
-    }
-  }, [isRenaming, handleRenameSubmit]);
-
-  return (
-    <div>
-      <div
-        className={cn(
-          'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors',
-          'flex items-center gap-2',
-          isSelected
-            ? 'bg-s330-highlight/20 text-s330-highlight'
-            : 'text-s330-text hover:bg-s330-accent/30'
-        )}
-        onClick={(e) => {
-          if (isEditing) return;
-          if ((e.target as HTMLElement).closest('.expand-toggle')) {
-            onToggle();
-          } else if (!(e.target as HTMLElement).closest('.delete-btn')) {
-            onSelect();
-          }
-        }}
-        onDoubleClick={handleDoubleClick}
-        role="button"
-        tabIndex={isEditing ? -1 : 0}
-        onKeyDown={(e) => !isEditing && e.key === 'Enter' && onSelect()}
-      >
-        <span className="expand-toggle cursor-pointer p-0.5 -ml-0.5">
-          <ChevronIcon isExpanded={isExpanded} />
-        </span>
-        <FolderIcon isOpen={isExpanded} />
-        {isEditing ? (
-          <input
-            ref={inputRef}
-            type="text"
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
-            onKeyDown={handleRenameKeyDown}
-            onBlur={handleRenameBlur}
-            disabled={isRenaming}
-            className={cn(
-              'flex-1 bg-s330-bg border border-s330-highlight rounded px-1 py-0.5',
-              'text-s330-text font-medium text-sm',
-              'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
-              isRenaming && 'opacity-50'
-            )}
-            onClick={(e) => e.stopPropagation()}
-          />
-        ) : (
-          <span className="flex-1 truncate font-medium">{setInfo.name}</span>
-        )}
-        <span className="text-xs text-s330-muted">
-          {setInfo.toneCount}T / {setInfo.patchCount}P
-        </span>
-        {onDelete && (
-          <span className="delete-btn">
-            <DeleteButton onClick={handleDelete} title="Delete set" />
-          </span>
-        )}
-      </div>
-
-      {/* Expanded contents with individual items */}
-      {isExpanded && (
-        <div className="ml-6 mt-0.5 space-y-0.5 border-l border-s330-accent/30 pl-2">
-          {isLoadingManifest ? (
-            <div className="text-xs text-s330-muted py-2 flex items-center gap-2">
-              <span className="inline-block w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-              Loading...
-            </div>
-          ) : manifest ? (
-            <>
-              {/* Tones section */}
-              {manifest.tones.length > 0 && (
-                <div className="py-1">
-                  <div className="text-xs text-s330-muted uppercase tracking-wide mb-1">
-                    Tones
-                  </div>
-                  <div className="space-y-0.5">
-                    {manifest.tones.map((entry) => (
-                      <div
-                        key={entry.file}
-                        onClick={() => onSelectTone(entry.file)}
-                        draggable
-                        onDragStart={(e) => onToneDragStart?.(e, entry.file)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => e.key === 'Enter' && onSelectTone(entry.file)}
-                        className={cn(
-                          'w-full text-left px-2 py-1 rounded text-xs transition-colors',
-                          'flex items-center gap-2 cursor-grab active:cursor-grabbing',
-                          selectedItemType === 'tone' && selectedItemName === entry.file
-                            ? 'bg-s330-highlight/20 text-s330-highlight'
-                            : 'text-s330-text hover:bg-s330-accent/30'
-                        )}
-                      >
-                        <WaveIcon />
-                        <span className="truncate">{entry.file}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {/* Patches section */}
-              {manifest.patches.length > 0 && (
-                <div className="py-1">
-                  <div className="text-xs text-s330-muted uppercase tracking-wide mb-1">
-                    Patches
-                  </div>
-                  <div className="space-y-0.5">
-                    {manifest.patches.map((entry) => (
-                      <div
-                        key={entry.file}
-                        onClick={() => onSelectPatch(entry.file)}
-                        draggable
-                        onDragStart={(e) => onPatchDragStart?.(e, entry.file)}
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => e.key === 'Enter' && onSelectPatch(entry.file)}
-                        className={cn(
-                          'w-full text-left px-2 py-1 rounded text-xs transition-colors',
-                          'flex items-center gap-2 cursor-grab active:cursor-grabbing',
-                          selectedItemType === 'patch' && selectedItemName === entry.file
-                            ? 'bg-s330-highlight/20 text-s330-highlight'
-                            : 'text-s330-text hover:bg-s330-accent/30'
-                        )}
-                      >
-                        <PatchIcon />
-                        <span className="truncate">{entry.file}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {/* Description if present */}
-              {setInfo.description && (
-                <div className="text-xs text-s330-muted/70 py-1 italic">
-                  {setInfo.description}
-                </div>
-              )}
-            </>
-          ) : (
-            <>
-              {/* Fallback when manifest not loaded */}
-              {setInfo.toneCount > 0 && (
-                <div className="text-xs text-s330-muted py-1">
-                  {setInfo.toneCount} tone{setInfo.toneCount !== 1 ? 's' : ''}
-                </div>
-              )}
-              {setInfo.patchCount > 0 && (
-                <div className="text-xs text-s330-muted py-1">
-                  {setInfo.patchCount} patch{setInfo.patchCount !== 1 ? 'es' : ''}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function LibraryTreePanel({
   libraryHandle,
   sets,
@@ -563,147 +131,55 @@ export function LibraryTreePanel({
   const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set());
   const [manifests, setManifests] = useState<Map<string, SetYaml>>(new Map());
   const [loadingManifests, setLoadingManifests] = useState<Set<string>>(new Set());
-  const [isToneDragOver, setIsToneDragOver] = useState(false);
-  const [isPatchDragOver, setIsPatchDragOver] = useState(false);
 
-  // Context menu state
-  const [contextMenu, setContextMenu] = useState<{
-    x: number;
-    y: number;
-    node: LibraryTreeNode;
-    category: 'tones' | 'patches' | 'drumKits';
-  } | null>(null);
+  // Drag-and-drop handlers
+  const {
+    isToneDragOver,
+    isPatchDragOver,
+    handleToneDragOver,
+    handleToneDragEnter,
+    handleToneDragLeave,
+    handleToneDrop,
+    handlePatchDragOver,
+    handlePatchDragEnter,
+    handlePatchDragLeave,
+    handlePatchDrop,
+    handleIndividualToneDragStart,
+    handleIndividualPatchDragStart,
+    handleDrumKitDragStart,
+    handleSetToneDragStart,
+    handleSetPatchDragStart,
+  } = useLibraryTreeDragDrop({ onDropDeviceTone, onDropDevicePatch });
 
-  // Handle drag over for tone drop zone
-  const handleToneDragOver = useCallback((e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes(DEVICE_DRAG_MIME)) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
-    }
-  }, []);
-
-  const handleToneDragEnter = useCallback((e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes(DEVICE_DRAG_MIME)) {
-      e.preventDefault();
-      setIsToneDragOver(true);
-    }
-  }, []);
-
-  const handleToneDragLeave = useCallback((e: React.DragEvent) => {
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setIsToneDragOver(false);
-    }
-  }, []);
-
-  const handleToneDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsToneDragOver(false);
-
-    const jsonData = e.dataTransfer.getData(DEVICE_DRAG_MIME);
-    if (!jsonData) return;
-
-    try {
-      const data = JSON.parse(jsonData) as DeviceDragData;
-      onDropDeviceTone?.(data);
-    } catch (err) {
-      console.error('[LibraryTreePanel] Failed to parse drop data:', err);
-    }
-  }, [onDropDeviceTone]);
-
-  // Handle drag over for patch drop zone
-  const handlePatchDragOver = useCallback((e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes(DEVICE_DRAG_MIME)) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
-    }
-  }, []);
-
-  const handlePatchDragEnter = useCallback((e: React.DragEvent) => {
-    if (e.dataTransfer.types.includes(DEVICE_DRAG_MIME)) {
-      e.preventDefault();
-      setIsPatchDragOver(true);
-    }
-  }, []);
-
-  const handlePatchDragLeave = useCallback((e: React.DragEvent) => {
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setIsPatchDragOver(false);
-    }
-  }, []);
-
-  const handlePatchDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsPatchDragOver(false);
-
-    const jsonData = e.dataTransfer.getData(DEVICE_DRAG_MIME);
-    if (!jsonData) return;
-
-    try {
-      const data = JSON.parse(jsonData) as DeviceDragData;
-      onDropDevicePatch?.(data);
-    } catch (err) {
-      console.error('[LibraryTreePanel] Failed to parse drop data:', err);
-    }
-  }, [onDropDevicePatch]);
-
-  // Handle drag start for individual tones (library -> device)
-  const handleIndividualToneDragStart = useCallback((e: React.DragEvent, toneInfo: LibraryToneInfo) => {
-    const dragData: LibraryDragData = {
-      source: 'library',
-      type: 'tone',
-      name: toneInfo.fileName,
-    };
-    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
-    e.dataTransfer.effectAllowed = 'copy';
-  }, []);
-
-  // Handle drag start for individual patches (library -> device)
-  const handleIndividualPatchDragStart = useCallback((e: React.DragEvent, patchInfo: LibraryPatchInfo) => {
-    const dragData: LibraryDragData = {
-      source: 'library',
-      type: 'patch',
-      name: patchInfo.directoryName,
-    };
-    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
-    e.dataTransfer.effectAllowed = 'copy';
-  }, []);
-
-  // Handle drag start for drum kits (library -> device)
-  const handleDrumKitDragStart = useCallback((e: React.DragEvent, kitInfo: DrumKitInfo) => {
-    const dragData: LibraryDragData = {
-      source: 'library',
-      type: 'drumKit',
-      name: kitInfo.directoryName,
-    };
-    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
-    e.dataTransfer.effectAllowed = 'copy';
-  }, []);
-
-  // Handle drag start for tones within sets (library -> device)
-  const handleSetToneDragStart = useCallback((e: React.DragEvent, toneFile: string, setName: string) => {
-    const dragData: LibraryDragData = {
-      source: 'library',
-      type: 'tone',
-      name: toneFile,
-      setName,
-      toneFile,
-    };
-    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
-    e.dataTransfer.effectAllowed = 'copy';
-  }, []);
-
-  // Handle drag start for patches within sets (library -> device)
-  const handleSetPatchDragStart = useCallback((e: React.DragEvent, patchFile: string, setName: string) => {
-    const dragData: LibraryDragData = {
-      source: 'library',
-      type: 'patch',
-      name: patchFile,
-      setName,
-      patchFile,
-    };
-    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
-    e.dataTransfer.effectAllowed = 'copy';
-  }, []);
+  // Context menu, tree node selection/delete, rename, move handlers
+  const {
+    contextMenu,
+    handleTreeContextMenu,
+    closeContextMenu,
+    getContextMenuActions,
+    handleTreeNodeSelect,
+    handleTreeNodeDelete,
+    computeSelectedId,
+    handleDropOnDirectory,
+    handleRename,
+  } = useLibraryTreeActions({
+    selectedName,
+    selectedType,
+    selectedPath,
+    onSelectDrumKit,
+    onSelectIndividualTone,
+    onSelectIndividualPatch,
+    onToggleDirectoryExpanded,
+    onDeleteIndividualTone,
+    onDeleteIndividualPatch,
+    onDeleteDrumKit,
+    onDeleteDirectory,
+    onCreateDirectory,
+    onRenameDirectory,
+    onMoveItem,
+    onDropMoveItem,
+    onRenameItem,
+  });
 
   const toggleSet = useCallback((name: string) => {
     setExpandedSets((prev) => {
@@ -716,155 +192,6 @@ export function LibraryTreePanel({
       return next;
     });
   }, []);
-
-  // Handle context menu for tree items
-  const handleTreeContextMenu = useCallback((
-    e: React.MouseEvent,
-    node: LibraryTreeNode,
-    category: 'tones' | 'patches' | 'drumKits'
-  ) => {
-    e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY, node, category });
-  }, []);
-
-  const closeContextMenu = useCallback(() => {
-    setContextMenu(null);
-  }, []);
-
-  // Build context menu actions for a node
-  const getContextMenuActions = useCallback((): ContextMenuAction[] => {
-    if (!contextMenu) return [];
-
-    const { node, category } = contextMenu;
-    const actions: ContextMenuAction[] = [];
-    const categoryForService = category === 'drumKits' ? 'drum-kits' : category;
-
-    if (node.type === 'directory') {
-      // Directory actions
-      actions.push({
-        label: 'New Folder',
-        icon: <NewFolderIcon />,
-        onClick: () => onCreateDirectory?.(categoryForService, [...node.path, node.name]),
-      });
-      actions.push({
-        label: 'Rename',
-        icon: <RenameIcon />,
-        onClick: () => onRenameDirectory?.(categoryForService, [...node.path, node.name]),
-      });
-      actions.push({ label: '', separator: true, onClick: () => {} });
-      actions.push({
-        label: 'Delete',
-        icon: <DeleteIcon />,
-        onClick: () => onDeleteDirectory?.(categoryForService, [...node.path, node.name]),
-        danger: true,
-      });
-    } else {
-      // Item actions (tone, patch, drum-kit)
-      actions.push({
-        label: 'Move to...',
-        icon: <MoveIcon />,
-        onClick: () => onMoveItem?.(categoryForService, node.path, node.fileName || node.directoryName || node.name),
-      });
-      actions.push({ label: '', separator: true, onClick: () => {} });
-      actions.push({
-        label: 'Delete',
-        icon: <DeleteIcon />,
-        onClick: () => {
-          if (node.type === 'tone') {
-            onDeleteIndividualTone?.(node.fileName || node.name, node.path);
-          } else if (node.type === 'patch') {
-            onDeleteIndividualPatch?.(node.directoryName || node.name, node.path);
-          } else if (node.type === 'drum-kit') {
-            onDeleteDrumKit?.(node.directoryName || node.name, node.path);
-          }
-        },
-        danger: true,
-      });
-    }
-
-    return actions;
-  }, [contextMenu, onCreateDirectory, onRenameDirectory, onDeleteDirectory, onMoveItem, onDeleteIndividualTone, onDeleteIndividualPatch, onDeleteDrumKit]);
-
-  // Handle tree node selection
-  const handleTreeNodeSelect = useCallback((
-    node: LibraryTreeNode,
-    category: 'tones' | 'patches' | 'drumKits'
-  ) => {
-    if (node.type === 'directory') {
-      // Toggle directory expansion
-      onToggleDirectoryExpanded?.(category, node.id);
-    } else if (node.type === 'tone') {
-      onSelectIndividualTone(node.fileName || node.name, node.path);
-    } else if (node.type === 'patch') {
-      onSelectIndividualPatch(node.directoryName || node.name, node.path);
-    } else if (node.type === 'drum-kit') {
-      onSelectDrumKit(node.directoryName || node.name, node.path);
-    }
-  }, [onToggleDirectoryExpanded, onSelectIndividualTone, onSelectIndividualPatch, onSelectDrumKit]);
-
-  // Handle tree node delete
-  const handleTreeNodeDelete = useCallback((
-    node: LibraryTreeNode,
-    category: 'tones' | 'patches' | 'drumKits'
-  ) => {
-    if (node.type === 'directory') {
-      const categoryForService = category === 'drumKits' ? 'drum-kits' : category;
-      onDeleteDirectory?.(categoryForService, [...node.path, node.name]);
-    } else if (node.type === 'tone') {
-      onDeleteIndividualTone?.(node.fileName || node.name, node.path);
-    } else if (node.type === 'patch') {
-      onDeleteIndividualPatch?.(node.directoryName || node.name, node.path);
-    } else if (node.type === 'drum-kit') {
-      onDeleteDrumKit?.(node.directoryName || node.name, node.path);
-    }
-  }, [onDeleteDirectory, onDeleteIndividualTone, onDeleteIndividualPatch, onDeleteDrumKit]);
-
-  // Compute selected ID for tree rendering
-  const computeSelectedId = useCallback((category: 'tones' | 'patches' | 'drumKits'): string | undefined => {
-    if (!selectedPath || !selectedName) return undefined;
-    if (category === 'tones' && selectedType === 'individualTone') {
-      return [...selectedPath, selectedName].join('/');
-    }
-    if (category === 'patches' && selectedType === 'individualPatch') {
-      return [...selectedPath, selectedName].join('/');
-    }
-    if (category === 'drumKits' && selectedType === 'drumKit') {
-      return [...selectedPath, selectedName].join('/');
-    }
-    return undefined;
-  }, [selectedPath, selectedName, selectedType]);
-
-  // Handle drag-drop move onto directory
-  const handleDropOnDirectory = useCallback((
-    category: 'tones' | 'patches' | 'drumKits',
-    targetPath: string[],
-    dragData: LibraryDragData
-  ) => {
-    if (!onDropMoveItem) return;
-
-    // Map category back to LibraryCategory
-    const libCategory = category === 'drumKits' ? 'drum-kits' : category;
-    const sourcePath = dragData.path || [];
-    const itemName = dragData.name;
-
-    onDropMoveItem(libCategory as 'tones' | 'patches' | 'drum-kits', sourcePath, itemName, targetPath);
-  }, [onDropMoveItem]);
-
-  // Handle rename via double-click
-  const handleRename = useCallback(async (
-    category: 'tones' | 'patches' | 'drumKits',
-    node: LibraryTreeNode,
-    newName: string
-  ) => {
-    if (!onRenameItem) return;
-
-    // Map category back to LibraryCategory
-    const libCategory = category === 'drumKits' ? 'drum-kits' : category;
-    const oldName = node.fileName || node.directoryName || node.name;
-    const isDirectory = node.type === 'directory';
-
-    await onRenameItem(libCategory as 'tones' | 'patches' | 'drum-kits', node.path, oldName, newName, isDirectory);
-  }, [onRenameItem]);
 
   // Load manifest when a set is expanded
   useEffect(() => {
