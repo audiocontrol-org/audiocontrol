@@ -142,7 +142,12 @@ export function useTriggerPlayback({
     gainNode.connect(ctx.destination);
 
     source.onended = () => {
-      activeVoicesRef.current.delete(index);
+      // Only remove from tracking if this is still the active voice for this slice.
+      // A retrigger may have already replaced us in the map.
+      const current = activeVoicesRef.current.get(index);
+      if (current?.source === source) {
+        activeVoicesRef.current.delete(index);
+      }
       source.disconnect();
       gainNode.disconnect();
     };
