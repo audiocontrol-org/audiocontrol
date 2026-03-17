@@ -158,6 +158,9 @@ export function useSampleChopper({
   useEffect(() => {
     if (!samples || samples.length === 0) { setAutoSliceResult(null); return; }
     if (selectedMethod === 'manual' || selectedMethod === 'trigger' || selectedMethod === 'silence') { setAutoSliceResult(null); return; }
+    // Skip auto-slicing when initial slices are being loaded — the initialSlices
+    // effect sets selectedMethod='manual' but that update hasn't rendered yet
+    if (editMode && initialSlices && initialSlices.length > 0) { return; }
     try {
       const result = sliceAudio(samples, sampleRate, sliceConfig);
       setAutoSliceResult(result);
@@ -173,7 +176,7 @@ export function useSampleChopper({
       setSliceError(err instanceof Error ? err.message : 'Slicing failed');
       setAutoSliceResult(null);
     }
-  }, [samples, sampleRate, sliceConfig, selectedMethod, kitLabels]);
+  }, [samples, sampleRate, sliceConfig, selectedMethod, kitLabels, editMode, initialSlices]);
 
   const currentSliceResult = useMemo((): SliceResult | null => {
     if (!samples || samples.length === 0) return null;

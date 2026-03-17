@@ -27,7 +27,7 @@ import {
   type LibraryDrumKitInfo,
 } from './library.js';
 import { LoadDialog } from './LoadDialog.js';
-import { LibraryBrowser } from './LibraryBrowser.js';
+import { LibraryBrowser, CHOPPER_DRAG_MIME, type ChopperDragData } from './LibraryBrowser.js';
 import './styles.css';
 
 function parseWavFile(buffer: ArrayBuffer): { samples: Int16Array; sampleRate: number } {
@@ -144,13 +144,6 @@ function App() {
     if (file) loadFile(file);
   }, [loadFile]);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) loadFile(file);
-  }, [loadFile]);
-
   const handleConfirm = useCallback((r: ChopperResult) => {
     setResult(r);
     console.log('Chopper result:', r);
@@ -218,6 +211,29 @@ function App() {
       setError(err instanceof Error ? err.message : 'Failed to load sample');
     }
   }, []);
+
+  // Drop zone: accept both OS file drops and library sample drags
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setDragOver(false);
+
+    // Check for library sample drag first
+    const libraryData = e.dataTransfer.getData(CHOPPER_DRAG_MIME);
+    if (libraryData) {
+      try {
+        const dragData = JSON.parse(libraryData) as ChopperDragData;
+        if (dragData.type === 'chopped-sample') {
+          handleOpenFromLibrary(dragData.name, dragData.path);
+          return;
+        }
+      } catch {
+        // Fall through to file drop
+      }
+    }
+
+    const file = e.dataTransfer.files[0];
+    if (file) loadFile(file);
+  }, [loadFile, handleOpenFromLibrary]);
 
   // Library browser: open a tone WAV in the chopper (raw audio, no slices)
   const handleOpenTone = useCallback(async (tone: LibraryToneInfo) => {
@@ -293,7 +309,7 @@ function App() {
               onChange={handleFileChange}
               style={{ display: 'none' }}
             />
-            <p>Drop a WAV file here or click to browse</p>
+            <p>Drop a WAV file or library sample here, or click to browse</p>
             {fileName && <p className="file-name">Loaded: {fileName}</p>}
           </div>
 

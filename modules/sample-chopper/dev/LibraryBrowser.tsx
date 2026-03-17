@@ -19,9 +19,9 @@ import {
   type LibraryDrumKitInfo,
 } from './library.js';
 
-const CHOPPER_DRAG_MIME = 'application/x-chopper-library-move';
+export const CHOPPER_DRAG_MIME = 'application/x-chopper-library-move';
 
-interface ChopperDragData {
+export interface ChopperDragData {
   type: 'chopped-sample' | 'directory';
   name: string;
   path: string[];
