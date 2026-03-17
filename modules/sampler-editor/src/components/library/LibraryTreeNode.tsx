@@ -11,6 +11,7 @@
 import { useCallback, useState, useRef, useEffect } from 'react';
 import type { LibraryTreeNode as TreeNodeType } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
+import { isValidMoveTarget } from '@audiocontrol/sampler-library/browser';
 import { LIBRARY_DRAG_MIME, type LibraryDragData } from '@/components/library/DeviceMemoryPanel';
 
 /** Internal MIME type for library-to-library drag operations (moving items) */
@@ -321,22 +322,10 @@ export function LibraryTreeNodeComponent({
 
     try {
       const dragData = JSON.parse(jsonData) as LibraryDragData;
-
-      // Don't allow dropping on the same directory or a child of the source
       const targetPath = [...node.path, node.name];
       const sourcePath = dragData.path || [];
-      const sourceFullPath = [...sourcePath, dragData.name].join('/');
-      const targetFullPath = targetPath.join('/');
 
-      // Prevent dropping into itself or its children
-      if (targetFullPath.startsWith(sourceFullPath + '/') || targetFullPath === sourceFullPath) {
-        console.warn('[LibraryTreeNode] Cannot drop item into itself or its children');
-        return;
-      }
-
-      // Prevent dropping into the same parent directory
-      if (sourcePath.join('/') === targetPath.join('/')) {
-        console.warn('[LibraryTreeNode] Item is already in this folder');
+      if (!isValidMoveTarget(sourcePath, dragData.name, targetPath)) {
         return;
       }
 

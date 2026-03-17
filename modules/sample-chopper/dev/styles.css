@@ -595,3 +595,29 @@ body {
 .library-tree-chevron.expanded {
   transform: rotate(90deg);
 }
+
+/* Drag-and-drop styles */
+.library-browser-item[draggable="true"] {
+  cursor: grab;
+}
+
+.library-browser-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+.library-browser-item.dragging {
+  opacity: 0.4;
+}
+
+.library-browser-item.drag-over {
+  background: rgba(245, 158, 11, 0.15);
+  outline: 2px solid var(--ac-highlight);
+  outline-offset: -2px;
+  border-radius: 0.25rem;
+}
+
+.library-browser-list.drag-over-root {
+  background: rgba(245, 158, 11, 0.06);
+  outline: 1px dashed rgba(245, 158, 11, 0.3);
+  outline-offset: -1px;
+}

@@ -5,17 +5,28 @@
  * from the connected FSAA library directory.
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { LibraryTreeNode } from '@audiocontrol/sampler-library/browser';
+import { isValidMoveTarget } from '@audiocontrol/sampler-library/browser';
 import {
   listChoppedSamples,
   deleteChoppedSample,
   createSamplesFolder,
+  moveLibraryItem,
   listLibraryTones,
   listLibraryDrumKits,
   type LibraryToneInfo,
   type LibraryDrumKitInfo,
 } from './library.js';
+
+const CHOPPER_DRAG_MIME = 'application/x-chopper-library-move';
+
+interface ChopperDragData {
+  type: 'chopped-sample' | 'directory';
+  name: string;
+  path: string[];
+  directoryName?: string;
+}
 
 type Tab = 'samples' | 'tones' | 'drum-kits';
 
@@ -58,6 +69,7 @@ interface SampleTreeNodeProps {
   onToggle: (id: string) => void;
   onOpen: (name: string, path: string[]) => void;
   onDelete: (name: string, path: string[]) => void;
+  onMove: (name: string, fromPath: string[], toPath: string[]) => void;
   confirmDelete: string | null;
   onConfirmDelete: (id: string | null) => void;
 }
@@ -69,18 +81,113 @@ function SampleTreeNode({
   onToggle,
   onOpen,
   onDelete,
+  onMove,
   confirmDelete,
   onConfirmDelete,
 }: SampleTreeNodeProps): JSX.Element {
   const isExpanded = expandedPaths.has(node.id);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const expandTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleDragStart = useCallback((e: React.DragEvent) => {
+    const dragData: ChopperDragData = {
+      type: node.type === 'directory' ? 'directory' : 'chopped-sample',
+      name: node.directoryName ?? node.name,
+      path: node.path,
+      directoryName: node.directoryName,
+    };
+    e.dataTransfer.setData(CHOPPER_DRAG_MIME, JSON.stringify(dragData));
+    e.dataTransfer.effectAllowed = 'move';
+    setIsDragging(true);
+  }, [node]);
+
+  const handleDragEnd = useCallback(() => {
+    setIsDragging(false);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    if (node.type !== 'directory') return;
+    if (!e.dataTransfer.types.includes(CHOPPER_DRAG_MIME)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = 'move';
+  }, [node.type]);
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    if (node.type !== 'directory') return;
+    if (!e.dataTransfer.types.includes(CHOPPER_DRAG_MIME)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+
+    // Auto-expand folder after a short delay
+    if (!expandedPaths.has(node.id)) {
+      expandTimerRef.current = setTimeout(() => {
+        onToggle(node.id);
+      }, 600);
+    }
+  }, [node.type, node.id, expandedPaths, onToggle]);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    if (node.type !== 'directory') return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const { clientX: x, clientY: y } = e;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setIsDragOver(false);
+      if (expandTimerRef.current) {
+        clearTimeout(expandTimerRef.current);
+        expandTimerRef.current = null;
+      }
+    }
+  }, [node.type]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    if (node.type !== 'directory') return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    if (expandTimerRef.current) {
+      clearTimeout(expandTimerRef.current);
+      expandTimerRef.current = null;
+    }
+
+    const jsonData = e.dataTransfer.getData(CHOPPER_DRAG_MIME);
+    if (!jsonData) return;
+
+    try {
+      const dragData = JSON.parse(jsonData) as ChopperDragData;
+      const targetPath = [...node.path, node.name];
+
+      if (!isValidMoveTarget(dragData.path, dragData.name, targetPath)) {
+        return;
+      }
+
+      onMove(dragData.name, dragData.path, targetPath);
+    } catch (err) {
+      console.error('[SampleTreeNode] Failed to parse drop data:', err);
+    }
+  }, [node, onMove]);
+
+  const dragClasses = [
+    isDragOver ? 'drag-over' : '',
+    isDragging ? 'dragging' : '',
+  ].filter(Boolean).join(' ');
 
   if (node.type === 'directory') {
     return (
       <>
         <li
-          className="library-browser-item library-tree-folder"
+          className={`library-browser-item library-tree-folder ${dragClasses}`}
           style={{ paddingLeft: `${1 + depth * 1.25}rem` }}
           onClick={() => onToggle(node.id)}
+          draggable
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragOver={handleDragOver}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
         >
           <div className="library-browser-item-info">
             <span className="library-browser-item-name">
@@ -102,6 +209,7 @@ function SampleTreeNode({
             onToggle={onToggle}
             onOpen={onOpen}
             onDelete={onDelete}
+            onMove={onMove}
             confirmDelete={confirmDelete}
             onConfirmDelete={onConfirmDelete}
           />
@@ -115,8 +223,11 @@ function SampleTreeNode({
 
   return (
     <li
-      className="library-browser-item"
+      className={`library-browser-item ${dragClasses}`}
       style={{ paddingLeft: `${1 + depth * 1.25}rem` }}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
     >
       <div className="library-browser-item-info">
         <span className="library-browser-item-name">{node.name}</span>
@@ -241,6 +352,15 @@ export function LibraryBrowser({
     }
   }, [refreshSamples]);
 
+  const handleMove = useCallback(async (name: string, fromPath: string[], toPath: string[]) => {
+    try {
+      await moveLibraryItem(name, fromPath, toPath);
+      refreshSamples();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to move item');
+    }
+  }, [refreshSamples]);
+
   const handleTabChange = useCallback((tab: Tab) => {
     setActiveTab(tab);
     setError(null);
@@ -275,6 +395,45 @@ export function LibraryBrowser({
     // Derive currentPath from the deepest expanded directory
     // This is a simple heuristic; the user's last toggle determines the save target
   }, [expandedPaths]);
+
+  const [isRootDragOver, setIsRootDragOver] = useState(false);
+
+  const handleRootDragOver = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes(CHOPPER_DRAG_MIME)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const handleRootDragEnter = useCallback((e: React.DragEvent) => {
+    if (!e.dataTransfer.types.includes(CHOPPER_DRAG_MIME)) return;
+    e.preventDefault();
+    setIsRootDragOver(true);
+  }, []);
+
+  const handleRootDragLeave = useCallback((e: React.DragEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const { clientX: x, clientY: y } = e;
+    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+      setIsRootDragOver(false);
+    }
+  }, []);
+
+  const handleRootDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsRootDragOver(false);
+
+    const jsonData = e.dataTransfer.getData(CHOPPER_DRAG_MIME);
+    if (!jsonData) return;
+
+    try {
+      const dragData = JSON.parse(jsonData) as ChopperDragData;
+      // Only move if it's not already at root
+      if (dragData.path.length === 0) return;
+      handleMove(dragData.name, dragData.path, []);
+    } catch (err) {
+      console.error('[LibraryBrowser] Failed to parse root drop data:', err);
+    }
+  }, [handleMove]);
 
   if (!connected) return null;
 
@@ -340,7 +499,13 @@ export function LibraryBrowser({
             </p>
           )}
           {hasAnySamples && (
-            <ul className="library-browser-list">
+            <ul
+              className={`library-browser-list ${isRootDragOver ? 'drag-over-root' : ''}`}
+              onDragOver={handleRootDragOver}
+              onDragEnter={handleRootDragEnter}
+              onDragLeave={handleRootDragLeave}
+              onDrop={handleRootDrop}
+            >
               {samplesTree.map((node) => (
                 <SampleTreeNode
                   key={node.id}
@@ -350,6 +515,7 @@ export function LibraryBrowser({
                   onToggle={handleToggle}
                   onOpen={onOpen}
                   onDelete={handleDelete}
+                  onMove={handleMove}
                   confirmDelete={confirmDelete}
                   onConfirmDelete={setConfirmDelete}
                 />

@@ -18,6 +18,7 @@ import {
   type DrumKitBundle,
   getNestedDirectory,
   getNestedDirectoryIfExists,
+  moveDirectory,
   listTonesTree,
   listDrumKitsTree,
   listChoppedSamplesTree,
@@ -284,6 +285,20 @@ export async function createSamplesFolder(
   const root = await ensureLibraryHandle();
   const parentDir = await getChoppedSamplesDir(root, path);
   await parentDir.getDirectoryHandle(name, { create: true });
+}
+
+/**
+ * Move a library item (sample or folder) from one location to another.
+ */
+export async function moveLibraryItem(
+  name: string,
+  fromPath: string[],
+  toPath: string[],
+): Promise<void> {
+  const root = await ensureLibraryHandle();
+  const srcParent = await getChoppedSamplesDir(root, fromPath);
+  const destParent = await getChoppedSamplesDir(root, toPath);
+  await moveDirectory(srcParent, name, destParent);
 }
 
 // =========================================================================

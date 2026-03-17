@@ -9,6 +9,7 @@ import {
   LIBRARY_CATEGORIES as _LIBRARY_CATEGORIES,
   getNestedDirectory,
   getNestedDirectoryIfExists,
+  copyDirectoryContents,
   type LibraryCategory,
 } from '@audiocontrol/sampler-library/browser';
 
@@ -113,29 +114,6 @@ export async function createDirectory(
 
   const parentDir = await getNestedDirectory(libraryDir, ['library', 's330', category, ...path]);
   await parentDir.getDirectoryHandle(sanitizedName, { create: true });
-}
-
-/**
- * Copy all contents from source directory to target directory.
- */
-export async function copyDirectoryContents(
-  source: FileSystemDirectoryHandle,
-  target: FileSystemDirectoryHandle
-): Promise<void> {
-  for await (const entry of source.values()) {
-    if (entry.kind === 'file') {
-      const sourceFile = await source.getFileHandle(entry.name);
-      const file = await sourceFile.getFile();
-      const targetFile = await target.getFileHandle(entry.name, { create: true });
-      const writable = await targetFile.createWritable();
-      await writable.write(await file.arrayBuffer());
-      await writable.close();
-    } else {
-      const sourceSubdir = await source.getDirectoryHandle(entry.name);
-      const targetSubdir = await target.getDirectoryHandle(entry.name, { create: true });
-      await copyDirectoryContents(sourceSubdir, targetSubdir);
-    }
-  }
 }
 
 /**

@@ -16,8 +16,7 @@ import {
   type SetToDeviceInput,
 } from '@audiocontrol/sampler-library/browser';
 import { createWavBlobFromSamples, unpack12BitTo16Bit } from '@/lib/wave-export';
-import { getNestedDirectory } from '@audiocontrol/sampler-library/browser';
-import { copyDirectoryContents } from '@/lib/library-fs';
+import { getNestedDirectory, copyDirectoryContents } from '@audiocontrol/sampler-library/browser';
 import {
   parseYaml,
   stringifyYaml,

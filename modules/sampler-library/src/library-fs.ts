@@ -126,6 +126,78 @@ export async function getNestedDirectoryIfExists(
 }
 
 // =========================================================================
+// Filesystem move operations
+// =========================================================================
+
+/**
+ * Copy all contents from source directory to target directory (recursive).
+ */
+export async function copyDirectoryContents(
+  src: FileSystemDirectoryHandle,
+  dest: FileSystemDirectoryHandle,
+): Promise<void> {
+  for await (const entry of src.values()) {
+    if (entry.kind === 'file') {
+      const srcFile = await src.getFileHandle(entry.name);
+      const file = await srcFile.getFile();
+      const destFile = await dest.getFileHandle(entry.name, { create: true });
+      const writable = await destFile.createWritable();
+      await writable.write(await file.arrayBuffer());
+      await writable.close();
+    } else {
+      const srcSub = await src.getDirectoryHandle(entry.name);
+      const destSub = await dest.getDirectoryHandle(entry.name, { create: true });
+      await copyDirectoryContents(srcSub, destSub);
+    }
+  }
+}
+
+/**
+ * Move a directory from one parent to another.
+ * FSAA has no native move, so this copies contents then removes the source.
+ */
+export async function moveDirectory(
+  parentDir: FileSystemDirectoryHandle,
+  name: string,
+  targetParentDir: FileSystemDirectoryHandle,
+): Promise<void> {
+  const srcDir = await parentDir.getDirectoryHandle(name, { create: false });
+  const destDir = await targetParentDir.getDirectoryHandle(name, { create: true });
+  await copyDirectoryContents(srcDir, destDir);
+  await parentDir.removeEntry(name, { recursive: true });
+}
+
+/**
+ * Check whether moving a source item into a target directory is valid.
+ * Returns false if:
+ * - Target is the source itself
+ * - Target is a descendant of the source (circular move)
+ * - Source is already in the target (no-op move)
+ *
+ * Pure path logic — no filesystem access needed.
+ */
+export function isValidMoveTarget(
+  sourcePath: string[],
+  sourceName: string,
+  targetPath: string[],
+): boolean {
+  const sourceFullPath = [...sourcePath, sourceName].join('/');
+  const targetFullPath = targetPath.join('/');
+
+  // Prevent dropping into itself or a descendant
+  if (targetFullPath === sourceFullPath || targetFullPath.startsWith(sourceFullPath + '/')) {
+    return false;
+  }
+
+  // Prevent no-op move (already in the target directory)
+  if (sourcePath.join('/') === targetFullPath) {
+    return false;
+  }
+
+  return true;
+}
+
+// =========================================================================
 // Sorting helper
 // =========================================================================
 
