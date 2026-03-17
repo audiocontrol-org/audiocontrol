@@ -8,7 +8,11 @@
  *   {root}/library/{device}/drum-kits/
  *   {root}/library/{device}/patches/
  *   {root}/library/{device}/sets/{name}/tones/
- *   {root}/library/chopped-samples/
+ *   {root}/library/common/samples/
+ *
+ * All scanners are built on a generic `scanLibraryDirectory` function
+ * parameterized by an `ItemDetector`. Adding a new item type requires
+ * only a new detector, not a new scanner.
  *
  * This module is browser-only (uses the File System Access API).
  */
@@ -39,7 +43,7 @@ declare global {
   }
 }
 
-import { DrumKitBundleSchema, type DrumKitBundle } from './schemas/index.js';
+import { DrumKitBundleSchema, type DrumKitBundle, ChoppedSampleSchema } from './schemas/index.js';
 import { loadDrumKitBundle as parseDrumKitBundle } from './drum-kits/index.js';
 
 // =========================================================================
@@ -62,7 +66,7 @@ export interface LibraryTreeNode {
   /** Display name */
   name: string;
   /** Node type */
-  type: 'directory' | 'tone' | 'patch' | 'drum-kit';
+  type: 'directory' | 'tone' | 'patch' | 'drum-kit' | 'chopped-sample';
   /** Path segments from category root (empty for root items) */
   path: string[];
   /** Child nodes (only for directories) */
@@ -79,6 +83,9 @@ export interface LibraryTreeNode {
   kitCount?: number;
   sampleCount?: number;
   description?: string;
+  /** Additional metadata for chopped samples */
+  sliceCount?: number;
+  variant?: string;
 }
 
 // =========================================================================
@@ -131,7 +138,187 @@ function sortNodes(nodes: LibraryTreeNode[]): LibraryTreeNode[] {
 }
 
 // =========================================================================
-// Tone scanning
+// Generic scanner
+// =========================================================================
+
+/**
+ * Detector function signature for the generic scanner.
+ * Returns a `LibraryTreeNode` if the entry is a recognized item,
+ * or `null` to let the scanner treat it as an organizational directory.
+ */
+export type ItemDetector = (
+  entry: FileSystemHandle,
+  parentDir: FileSystemDirectoryHandle,
+  path: string[],
+) => Promise<LibraryTreeNode | null>;
+
+/**
+ * Generic recursive directory scanner parameterized by a detector.
+ *
+ * For each entry in `dir`:
+ * - Calls `detectItem`. If it returns a node, that node is used.
+ * - If `null` and the entry is a directory, recurses as an organizational folder.
+ * - If `null` and the entry is a file, the entry is skipped.
+ */
+export async function scanLibraryDirectory(
+  dir: FileSystemDirectoryHandle,
+  path: string[],
+  detectItem: ItemDetector,
+): Promise<LibraryTreeNode[]> {
+  const nodes: LibraryTreeNode[] = [];
+
+  for await (const entry of dir.values()) {
+    const detected = await detectItem(entry, dir, path);
+    if (detected) {
+      nodes.push(detected);
+    } else if (entry.kind === 'directory') {
+      const subDir = await dir.getDirectoryHandle(entry.name);
+      const children = await scanLibraryDirectory(subDir, [...path, entry.name], detectItem);
+      nodes.push({
+        id: [...path, entry.name].join('/'),
+        name: entry.name,
+        type: 'directory',
+        path,
+        children,
+      });
+    }
+    // Files that aren't detected are silently skipped
+  }
+
+  return sortNodes(nodes);
+}
+
+// =========================================================================
+// Item detectors
+// =========================================================================
+
+/** Detect a tone: a `.yaml` file in the current directory. */
+const detectTone: ItemDetector = async (entry, _parentDir, path) => {
+  if (entry.kind !== 'file' || !entry.name.toLowerCase().endsWith('.yaml')) return null;
+  const fileName = entry.name.replace(/\.yaml$/i, '');
+  return {
+    id: [...path, fileName].join('/'),
+    name: fileName,
+    type: 'tone',
+    path,
+    fileName,
+  };
+};
+
+/** Detect a drum kit: a directory containing `.wav` files. */
+const detectDrumKit: ItemDetector = async (entry, parentDir, path) => {
+  if (entry.kind !== 'directory') return null;
+
+  const subDir = await parentDir.getDirectoryHandle(entry.name);
+  const wavFiles: string[] = [];
+  let kitYaml: DrumKitBundle | null = null;
+
+  for await (const file of subDir.values()) {
+    if (file.kind !== 'file') continue;
+    if (file.name.toLowerCase().endsWith('.wav')) {
+      wavFiles.push(file.name);
+    } else if (file.name === 'kit.yaml') {
+      try {
+        const fileHandle = await subDir.getFileHandle('kit.yaml');
+        const yamlFile = await fileHandle.getFile();
+        const yamlContent = await yamlFile.text();
+        kitYaml = DrumKitBundleSchema.parse(parseYaml(yamlContent));
+      } catch {
+        // Invalid kit.yaml
+      }
+    }
+  }
+
+  if (wavFiles.length === 0) return null;
+
+  const resolved = parseDrumKitBundle(kitYaml, wavFiles, entry.name);
+  return {
+    id: [...path, entry.name].join('/'),
+    name: resolved.name,
+    type: 'drum-kit',
+    path,
+    directoryName: entry.name,
+    description: resolved.description,
+    kitCount: resolved.kits.length,
+    sampleCount: resolved.totalSamples,
+  };
+};
+
+/** Detect a patch: a directory containing `patch.yaml`. */
+const detectPatch: ItemDetector = async (entry, parentDir, path) => {
+  if (entry.kind !== 'directory') return null;
+
+  const subDir = await parentDir.getDirectoryHandle(entry.name);
+
+  let isPatchBundle = false;
+  let patchName = entry.name;
+  let toneCount = 0;
+
+  try {
+    const yamlHandle = await subDir.getFileHandle('patch.yaml');
+    const yamlFile = await yamlHandle.getFile();
+    const content = await yamlFile.text();
+    const yaml = parseYaml(content) as { name?: string };
+    patchName = yaml.name || entry.name;
+    isPatchBundle = true;
+
+    try {
+      const tonesDir = await subDir.getDirectoryHandle('tones');
+      for await (const toneEntry of tonesDir.values()) {
+        if (toneEntry.kind === 'file' && toneEntry.name.endsWith('.yaml')) {
+          toneCount++;
+        }
+      }
+    } catch {
+      // No tones directory
+    }
+  } catch {
+    // Not a patch bundle
+  }
+
+  if (!isPatchBundle) return null;
+
+  return {
+    id: [...path, entry.name].join('/'),
+    name: patchName,
+    type: 'patch',
+    path,
+    directoryName: entry.name,
+    toneCount,
+  };
+};
+
+/** Detect a chopped sample: a directory containing `manifest.yaml` with a valid schema. */
+const detectChoppedSample: ItemDetector = async (entry, parentDir, path) => {
+  if (entry.kind !== 'directory') return null;
+
+  const subDir = await parentDir.getDirectoryHandle(entry.name);
+
+  try {
+    const manifestHandle = await subDir.getFileHandle('manifest.yaml');
+    const file = await manifestHandle.getFile();
+    const text = await file.text();
+    const parsed = parseYaml(text);
+    const result = ChoppedSampleSchema.safeParse(parsed);
+    if (!result.success) return null;
+
+    return {
+      id: [...path, entry.name].join('/'),
+      name: result.data.name,
+      type: 'chopped-sample',
+      path,
+      directoryName: entry.name,
+      sliceCount: result.data.slices.length,
+      variant: result.data.variant,
+      description: result.data.description,
+    };
+  } catch {
+    return null;
+  }
+};
+
+// =========================================================================
+// Tone scanning (wrapper over generic scanner)
 // =========================================================================
 
 /**
@@ -142,32 +329,7 @@ export async function scanTonesDirectory(
   dir: FileSystemDirectoryHandle,
   path: string[],
 ): Promise<LibraryTreeNode[]> {
-  const nodes: LibraryTreeNode[] = [];
-
-  for await (const entry of dir.values()) {
-    if (entry.kind === 'directory') {
-      const subDir = await dir.getDirectoryHandle(entry.name);
-      const children = await scanTonesDirectory(subDir, [...path, entry.name]);
-      nodes.push({
-        id: [...path, entry.name].join('/'),
-        name: entry.name,
-        type: 'directory',
-        path,
-        children,
-      });
-    } else if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.yaml')) {
-      const fileName = entry.name.replace(/\.yaml$/i, '');
-      nodes.push({
-        id: [...path, fileName].join('/'),
-        name: fileName,
-        type: 'tone',
-        path,
-        fileName,
-      });
-    }
-  }
-
-  return sortNodes(nodes);
+  return scanLibraryDirectory(dir, path, detectTone);
 }
 
 /**
@@ -183,7 +345,7 @@ export async function listTonesTree(
 }
 
 // =========================================================================
-// Drum kit scanning
+// Drum kit scanning (wrapper over generic scanner)
 // =========================================================================
 
 /**
@@ -194,56 +356,7 @@ export async function scanDrumKitsDirectory(
   dir: FileSystemDirectoryHandle,
   path: string[],
 ): Promise<LibraryTreeNode[]> {
-  const nodes: LibraryTreeNode[] = [];
-
-  for await (const entry of dir.values()) {
-    if (entry.kind !== 'directory') continue;
-
-    const subDir = await dir.getDirectoryHandle(entry.name);
-    const wavFiles: string[] = [];
-    let kitYaml: DrumKitBundle | null = null;
-
-    for await (const file of subDir.values()) {
-      if (file.kind !== 'file') continue;
-      if (file.name.toLowerCase().endsWith('.wav')) {
-        wavFiles.push(file.name);
-      } else if (file.name === 'kit.yaml') {
-        try {
-          const fileHandle = await subDir.getFileHandle('kit.yaml');
-          const yamlFile = await fileHandle.getFile();
-          const yamlContent = await yamlFile.text();
-          kitYaml = DrumKitBundleSchema.parse(parseYaml(yamlContent));
-        } catch {
-          // Invalid kit.yaml
-        }
-      }
-    }
-
-    if (wavFiles.length > 0) {
-      const resolved = parseDrumKitBundle(kitYaml, wavFiles, entry.name);
-      nodes.push({
-        id: [...path, entry.name].join('/'),
-        name: resolved.name,
-        type: 'drum-kit',
-        path,
-        directoryName: entry.name,
-        description: resolved.description,
-        kitCount: resolved.kits.length,
-        sampleCount: resolved.totalSamples,
-      });
-    } else {
-      const children = await scanDrumKitsDirectory(subDir, [...path, entry.name]);
-      nodes.push({
-        id: [...path, entry.name].join('/'),
-        name: entry.name,
-        type: 'directory',
-        path,
-        children,
-      });
-    }
-  }
-
-  return sortNodes(nodes);
+  return scanLibraryDirectory(dir, path, detectDrumKit);
 }
 
 /**
@@ -259,7 +372,7 @@ export async function listDrumKitsTree(
 }
 
 // =========================================================================
-// Patch scanning
+// Patch scanning (wrapper over generic scanner)
 // =========================================================================
 
 /**
@@ -270,61 +383,7 @@ export async function scanPatchesDirectory(
   dir: FileSystemDirectoryHandle,
   path: string[],
 ): Promise<LibraryTreeNode[]> {
-  const nodes: LibraryTreeNode[] = [];
-
-  for await (const entry of dir.values()) {
-    if (entry.kind !== 'directory') continue;
-
-    const subDir = await dir.getDirectoryHandle(entry.name);
-
-    let isPatchBundle = false;
-    let patchName = entry.name;
-    let toneCount = 0;
-
-    try {
-      const yamlHandle = await subDir.getFileHandle('patch.yaml');
-      const yamlFile = await yamlHandle.getFile();
-      const content = await yamlFile.text();
-      const yaml = parseYaml(content) as { name?: string };
-      patchName = yaml.name || entry.name;
-      isPatchBundle = true;
-
-      try {
-        const tonesDir = await subDir.getDirectoryHandle('tones');
-        for await (const toneEntry of tonesDir.values()) {
-          if (toneEntry.kind === 'file' && toneEntry.name.endsWith('.yaml')) {
-            toneCount++;
-          }
-        }
-      } catch {
-        // No tones directory
-      }
-    } catch {
-      // Not a patch bundle
-    }
-
-    if (isPatchBundle) {
-      nodes.push({
-        id: [...path, entry.name].join('/'),
-        name: patchName,
-        type: 'patch',
-        path,
-        directoryName: entry.name,
-        toneCount,
-      });
-    } else {
-      const children = await scanPatchesDirectory(subDir, [...path, entry.name]);
-      nodes.push({
-        id: [...path, entry.name].join('/'),
-        name: entry.name,
-        type: 'directory',
-        path,
-        children,
-      });
-    }
-  }
-
-  return sortNodes(nodes);
+  return scanLibraryDirectory(dir, path, detectPatch);
 }
 
 /**
@@ -337,6 +396,32 @@ export async function listPatchesTree(
   const patchesDir = await getNestedDirectoryIfExists(root, ['library', device, 'patches']);
   if (!patchesDir) return [];
   return scanPatchesDirectory(patchesDir, []);
+}
+
+// =========================================================================
+// Chopped sample scanning
+// =========================================================================
+
+/**
+ * Recursively scan a directory for chopped samples and build a tree structure.
+ * A chopped sample is a directory containing a valid `manifest.yaml`.
+ */
+export async function scanChoppedSamplesDirectory(
+  dir: FileSystemDirectoryHandle,
+  path: string[],
+): Promise<LibraryTreeNode[]> {
+  return scanLibraryDirectory(dir, path, detectChoppedSample);
+}
+
+/**
+ * List all chopped samples from `library/common/samples/` as a hierarchical tree.
+ */
+export async function listChoppedSamplesTree(
+  root: FileSystemDirectoryHandle,
+): Promise<LibraryTreeNode[]> {
+  const samplesDir = await getNestedDirectoryIfExists(root, ['library', 'common', 'samples']);
+  if (!samplesDir) return [];
+  return scanChoppedSamplesDirectory(samplesDir, []);
 }
 
 // =========================================================================

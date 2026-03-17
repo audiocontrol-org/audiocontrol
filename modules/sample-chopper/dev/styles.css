@@ -519,3 +519,55 @@ body {
   color: var(--ac-muted);
   font-style: italic;
 }
+
+/* Header actions row (new folder + refresh) */
+.library-browser-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* New folder button */
+.library-browser-new-folder {
+  background: none;
+  border: none;
+  color: var(--ac-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+}
+
+.library-browser-new-folder:hover {
+  color: var(--ac-text);
+}
+
+/* Tree folder row */
+.library-tree-folder {
+  cursor: pointer;
+}
+
+.library-tree-folder:hover {
+  background: rgba(51, 65, 85, 0.2);
+}
+
+/* Expand/collapse chevron */
+.library-tree-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  margin-right: 0.35rem;
+  transition: transform 0.15s ease;
+  vertical-align: middle;
+}
+
+.library-tree-chevron svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.library-tree-chevron.expanded {
+  transform: rotate(90deg);
+}

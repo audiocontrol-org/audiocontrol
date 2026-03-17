@@ -4,17 +4,46 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import type { ChoppedSampleInfo } from '@audiocontrol/sampler-library/browser';
+import type { LibraryTreeNode } from '@audiocontrol/sampler-library/browser';
 import { listChoppedSamples } from './library.js';
+
+interface FlatSampleItem {
+  name: string;
+  variant?: string;
+  sliceCount?: number;
+  description?: string;
+  path: string[];
+  directoryName: string;
+}
+
+function flattenSamplesTree(
+  nodes: LibraryTreeNode[],
+  out: FlatSampleItem[],
+): void {
+  for (const node of nodes) {
+    if (node.type === 'directory' && node.children) {
+      flattenSamplesTree(node.children, out);
+    } else if (node.type === 'chopped-sample') {
+      out.push({
+        name: node.name,
+        variant: node.variant,
+        sliceCount: node.sliceCount,
+        description: node.description,
+        path: node.path,
+        directoryName: node.directoryName ?? node.name,
+      });
+    }
+  }
+}
 
 interface LoadDialogProps {
   open: boolean;
-  onSelect: (name: string) => void;
+  onSelect: (name: string, path: string[]) => void;
   onCancel: () => void;
 }
 
 export function LoadDialog({ open, onSelect, onCancel }: LoadDialogProps): JSX.Element | null {
-  const [items, setItems] = useState<ChoppedSampleInfo[]>([]);
+  const [items, setItems] = useState<FlatSampleItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +53,11 @@ export function LoadDialog({ open, onSelect, onCancel }: LoadDialogProps): JSX.E
     setLoading(true);
     setError(null);
     listChoppedSamples()
-      .then(setItems)
+      .then((tree) => {
+        const flat: FlatSampleItem[] = [];
+        flattenSamplesTree(tree, flat);
+        setItems(flat.sort((a, b) => a.name.localeCompare(b.name)));
+      })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to list samples'))
       .finally(() => setLoading(false));
   }, [open]);
@@ -58,8 +91,8 @@ export function LoadDialog({ open, onSelect, onCancel }: LoadDialogProps): JSX.E
           {!loading && items.length > 0 && (
             <ul className="load-dialog-list">
               {items.map((item) => (
-                <li key={item.name}>
-                  <button className="load-dialog-item" onClick={() => onSelect(item.name)}>
+                <li key={`${item.path.join('/')}/${item.directoryName}`}>
+                  <button className="load-dialog-item" onClick={() => onSelect(item.directoryName, item.path)}>
                     <span className="load-dialog-item-name">{item.name}</span>
                     <span className="load-dialog-item-meta">
                       {item.variant} &middot; {item.sliceCount} slice{item.sliceCount !== 1 ? 's' : ''}

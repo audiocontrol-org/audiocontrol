@@ -349,12 +349,15 @@ export {
   LIBRARY_CATEGORIES,
   getNestedDirectory,
   getNestedDirectoryIfExists,
+  scanLibraryDirectory,
   scanTonesDirectory,
   listTonesTree,
   scanDrumKitsDirectory,
   listDrumKitsTree,
   scanPatchesDirectory,
   listPatchesTree,
+  scanChoppedSamplesDirectory,
+  listChoppedSamplesTree,
   listSets,
   listSetTonesTree,
 } from './library-fs.js';
@@ -363,4 +366,5 @@ export type {
   LibraryCategory,
   LibraryTreeNode,
   LibrarySetInfo,
+  ItemDetector,
 } from './library-fs.js';

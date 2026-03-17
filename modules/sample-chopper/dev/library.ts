@@ -1,7 +1,7 @@
 /**
  * Browser-based library adapter for the standalone sample chopper.
  *
- * Chopped samples live at: {root}/library/chopped-samples/{name}/
+ * Chopped samples live at: {root}/library/common/samples/{path}/
  * Tones and drum kits are scanned from the shared FSAA library layout
  * via functions from @audiocontrol/sampler-library.
  */
@@ -10,7 +10,6 @@ import { stringify as stringifyYaml, parse as parseYaml } from 'yaml';
 import {
   ChoppedSampleSchema,
   type ChoppedSample,
-  type ChoppedSampleInfo,
   parseWav,
   type LibraryTreeNode,
   type LibrarySetInfo,
@@ -21,6 +20,7 @@ import {
   getNestedDirectoryIfExists,
   listTonesTree,
   listDrumKitsTree,
+  listChoppedSamplesTree,
   listSets,
   listSetTonesTree,
   scanTonesDirectory,
@@ -170,15 +170,21 @@ function sanitizeFilename(name: string): string {
 // Chopped Samples: Save / List / Delete / Load
 // =========================================================================
 
+const SAMPLES_ROOT = ['library', 'common', 'samples'];
+
 async function getChoppedSamplesDir(
   root: FileSystemDirectoryHandle,
+  path: string[] = [],
 ): Promise<FileSystemDirectoryHandle> {
-  return getNestedDirectory(root, ['library', 'chopped-samples']);
+  return getNestedDirectory(root, [...SAMPLES_ROOT, ...path]);
 }
 
-export async function saveChoppedSample(payload: ChopperSavePayload): Promise<void> {
+export async function saveChoppedSample(
+  payload: ChopperSavePayload,
+  path: string[] = [],
+): Promise<void> {
   const root = await ensureLibraryHandle();
-  const samplesDir = await getChoppedSamplesDir(root);
+  const samplesDir = await getChoppedSamplesDir(root, path);
 
   const safeName = sanitizeFilename(payload.name);
   const sampleDir = await samplesDir.getDirectoryHandle(safeName, { create: true });
@@ -219,52 +225,25 @@ export async function saveChoppedSample(payload: ChopperSavePayload): Promise<vo
   await wavWritable.close();
 }
 
-export async function listChoppedSamples(): Promise<ChoppedSampleInfo[]> {
+export async function listChoppedSamples(): Promise<LibraryTreeNode[]> {
   const handle = await getLibraryHandle();
   if (!handle) return [];
-
-  const samplesDir = await getNestedDirectoryIfExists(handle, ['library', 'chopped-samples']);
-  if (!samplesDir) return [];
-
-  const items: ChoppedSampleInfo[] = [];
-  for await (const entry of samplesDir.values()) {
-    if (entry.kind !== 'directory') continue;
-
-    try {
-      const dir = await samplesDir.getDirectoryHandle(entry.name);
-      const manifestHandle = await dir.getFileHandle('manifest.yaml');
-      const file = await manifestHandle.getFile();
-      const text = await file.text();
-      const parsed = parseYaml(text);
-      const result = ChoppedSampleSchema.safeParse(parsed);
-      if (!result.success) continue;
-
-      items.push({
-        name: result.data.name,
-        variant: result.data.variant,
-        sliceCount: result.data.slices.length,
-        description: result.data.description,
-        createdAt: result.data.createdAt,
-        modifiedAt: result.data.modifiedAt,
-      });
-    } catch {
-      // Skip unreadable entries
-    }
-  }
-
-  return items.sort((a, b) => a.name.localeCompare(b.name));
+  return listChoppedSamplesTree(handle);
 }
 
-export async function deleteChoppedSample(name: string): Promise<void> {
+export async function deleteChoppedSample(name: string, path: string[] = []): Promise<void> {
   const root = await ensureLibraryHandle();
-  const samplesDir = await getChoppedSamplesDir(root);
+  const samplesDir = await getChoppedSamplesDir(root, path);
   const safeName = sanitizeFilename(name);
   await samplesDir.removeEntry(safeName, { recursive: true });
 }
 
-export async function loadChoppedSample(name: string): Promise<ChopperLoadPayload> {
+export async function loadChoppedSample(
+  name: string,
+  path: string[] = [],
+): Promise<ChopperLoadPayload> {
   const root = await ensureLibraryHandle();
-  const samplesDir = await getChoppedSamplesDir(root);
+  const samplesDir = await getChoppedSamplesDir(root, path);
   const safeName = sanitizeFilename(name);
   const sampleDir = await samplesDir.getDirectoryHandle(safeName, { create: false });
 
@@ -296,6 +275,15 @@ export async function loadChoppedSample(name: string): Promise<ChopperLoadPayloa
     triggers: manifest.triggers,
     playbackConfig: manifest.playback,
   };
+}
+
+export async function createSamplesFolder(
+  path: string[],
+  name: string,
+): Promise<void> {
+  const root = await ensureLibraryHandle();
+  const parentDir = await getChoppedSamplesDir(root, path);
+  await parentDir.getDirectoryHandle(name, { create: true });
 }
 
 // =========================================================================

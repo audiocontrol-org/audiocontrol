@@ -114,6 +114,7 @@ function App() {
   const [libraryConnected, setLibraryConnected] = useState(false);
   const [libraryRefreshKey, setLibraryRefreshKey] = useState(0);
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
+  const [samplesBrowsePath, setSamplesBrowsePath] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Resolve/reject for the promise-based onLoad callback
@@ -173,9 +174,9 @@ function App() {
     const name = window.prompt('Save chopped sample as:', payload.name.replace(/\.wav$/i, ''));
     if (!name) return;
 
-    await saveChoppedSample({ ...payload, name });
+    await saveChoppedSample({ ...payload, name }, samplesBrowsePath);
     setLibraryRefreshKey((k) => k + 1);
-  }, []);
+  }, [samplesBrowsePath]);
 
   // Library: load callback for the dialog (promise-based)
   const handleLoad = useCallback((): Promise<ChopperLoadPayload | null> => {
@@ -185,10 +186,10 @@ function App() {
     });
   }, []);
 
-  const handleLoadSelect = useCallback(async (name: string) => {
+  const handleLoadSelect = useCallback(async (name: string, path: string[]) => {
     setLoadDialogOpen(false);
     try {
-      const payload = await loadChoppedSample(name);
+      const payload = await loadChoppedSample(name, path);
       // Update harness state with loaded audio
       setSamples(payload.sourceAudio.samples);
       setSampleRate(payload.sourceAudio.sampleRate);
@@ -202,9 +203,9 @@ function App() {
   }, []);
 
   // Library browser: open a saved sample in the chopper
-  const handleOpenFromLibrary = useCallback(async (name: string) => {
+  const handleOpenFromLibrary = useCallback(async (name: string, path: string[]) => {
     try {
-      const payload = await loadChoppedSample(name);
+      const payload = await loadChoppedSample(name, path);
       setSamples(payload.sourceAudio.samples);
       setSampleRate(payload.sourceAudio.sampleRate);
       setFileName(payload.name);
@@ -335,6 +336,7 @@ function App() {
         onOpen={handleOpenFromLibrary}
         onOpenTone={handleOpenTone}
         onOpenDrumKit={handleOpenDrumKit}
+        onPathChange={setSamplesBrowsePath}
       />
 
       <SampleChopperDialog
