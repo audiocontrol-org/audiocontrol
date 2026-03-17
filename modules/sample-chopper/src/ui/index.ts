@@ -23,7 +23,6 @@ export {
   type ChopperOutputState,
   type ChopperResult,
   type ChopperSavePayload,
-  type ChopperLoadPayload,
   type SliceDefinitionOutput,
   type InitialSliceDefinition,
 } from './components/SampleChopperDialog.js';

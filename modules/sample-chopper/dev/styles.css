@@ -621,3 +621,150 @@ body {
   outline: 1px dashed rgba(245, 158, 11, 0.3);
   outline-offset: -1px;
 }
+
+/* Save dialog */
+.save-dialog-field {
+  margin-bottom: 0.75rem;
+}
+
+.save-dialog-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--ac-muted);
+  margin-bottom: 0.25rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.save-dialog-path {
+  color: var(--ac-text);
+  text-transform: none;
+  letter-spacing: normal;
+  font-weight: 500;
+}
+
+.save-dialog-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  background: var(--ac-bg);
+  color: var(--ac-text);
+  border: 1px solid var(--ac-accent);
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.save-dialog-input:focus {
+  border-color: var(--ac-highlight);
+}
+
+.save-dialog-tree {
+  max-height: 12rem;
+  overflow-y: auto;
+  border: 1px solid var(--ac-accent);
+  border-radius: 0.375rem;
+  margin-bottom: 0.75rem;
+}
+
+.save-dialog-dir {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 1rem;
+  background: transparent;
+  color: var(--ac-muted);
+  border: none;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.2);
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: background 0.1s;
+}
+
+.save-dialog-dir:last-child {
+  border-bottom: none;
+}
+
+.save-dialog-dir:hover {
+  background: rgba(51, 65, 85, 0.2);
+  color: var(--ac-text);
+}
+
+.save-dialog-dir.selected {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--ac-highlight);
+}
+
+.save-dialog-new-folder {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.save-dialog-folder-input {
+  flex: 1;
+}
+
+.save-dialog-folder-btn {
+  padding: 0.5rem 0.75rem;
+  background: var(--ac-bg);
+  color: var(--ac-muted);
+  border: 1px solid var(--ac-accent);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  white-space: nowrap;
+  transition: all 0.1s;
+}
+
+.save-dialog-folder-btn:hover:not(:disabled) {
+  color: var(--ac-text);
+  border-color: var(--ac-muted);
+}
+
+.save-dialog-folder-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.save-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-top: 1px solid var(--ac-accent);
+}
+
+.save-dialog-cancel {
+  padding: 0.5rem 1rem;
+  background: transparent;
+  color: var(--ac-muted);
+  border: 1px solid var(--ac-accent);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+.save-dialog-cancel:hover {
+  color: var(--ac-text);
+}
+
+.save-dialog-save {
+  padding: 0.5rem 1.25rem;
+  background: var(--ac-highlight);
+  color: white;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.save-dialog-save:hover {
+  opacity: 0.9;
+}
+
+.save-dialog-save:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

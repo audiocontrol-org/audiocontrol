@@ -13,7 +13,6 @@ import {
   SampleChopperDialog,
   type ChopperResult,
   type ChopperSavePayload,
-  type ChopperLoadPayload,
 } from '@/ui/index.js';
 import {
   hasFileSystemAccess,
@@ -26,7 +25,7 @@ import {
   type LibraryToneInfo,
   type LibraryDrumKitInfo,
 } from './library.js';
-import { LoadDialog } from './LoadDialog.js';
+import { SaveDialog, type SaveDialogResult } from './SaveDialog.js';
 import { LibraryBrowser, CHOPPER_DRAG_MIME, type ChopperDragData } from './LibraryBrowser.js';
 import './styles.css';
 
@@ -115,15 +114,16 @@ function App() {
   const [dragOver, setDragOver] = useState(false);
   const [libraryConnected, setLibraryConnected] = useState(false);
   const [libraryRefreshKey, setLibraryRefreshKey] = useState(0);
-  const [loadDialogOpen, setLoadDialogOpen] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
+  const [saveDialogDefaultName, setSaveDialogDefaultName] = useState('');
   const [samplesBrowsePath, setSamplesBrowsePath] = useState<string[]>([]);
   /** Tracks the library origin of the currently loaded sample (for auto-save) */
   const [libraryOrigin, setLibraryOrigin] = useState<{ name: string; path: string[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Resolve/reject for the promise-based onLoad callback
-  const loadResolverRef = useRef<{
-    resolve: (payload: ChopperLoadPayload | null) => void;
+  // Resolve for the promise-based save dialog
+  const saveResolverRef = useRef<{
+    resolve: (result: SaveDialogResult | null) => void;
   } | null>(null);
 
   const loadFile = useCallback(async (file: File) => {
@@ -175,38 +175,18 @@ function App() {
       // Auto-save back to the location it was loaded from
       await saveChoppedSample({ ...payload, name: libraryOrigin.name }, libraryOrigin.path);
     } else {
-      const name = window.prompt('Save chopped sample as:', payload.name.replace(/\.wav$/i, ''));
-      if (!name) return;
-      await saveChoppedSample({ ...payload, name }, samplesBrowsePath);
-      setLibraryOrigin({ name, path: samplesBrowsePath });
+      // Open save dialog for name + directory selection
+      const result = await new Promise<SaveDialogResult | null>((resolve) => {
+        saveResolverRef.current = { resolve };
+        setSaveDialogDefaultName(payload.name.replace(/\.wav$/i, ''));
+        setSaveDialogOpen(true);
+      });
+      if (!result) return;
+      await saveChoppedSample({ ...payload, name: result.name }, result.path);
+      setLibraryOrigin({ name: result.name, path: result.path });
     }
     setLibraryRefreshKey((k) => k + 1);
-  }, [samplesBrowsePath, libraryOrigin]);
-
-  // Library: load callback for the dialog (promise-based)
-  const handleLoad = useCallback((): Promise<ChopperLoadPayload | null> => {
-    return new Promise((resolve) => {
-      loadResolverRef.current = { resolve };
-      setLoadDialogOpen(true);
-    });
-  }, []);
-
-  const handleLoadSelect = useCallback(async (name: string, path: string[]) => {
-    setLoadDialogOpen(false);
-    try {
-      const payload = await loadChoppedSample(name, path);
-      // Update harness state with loaded audio
-      setSamples(payload.sourceAudio.samples);
-      setSampleRate(payload.sourceAudio.sampleRate);
-      setFileName(name);
-      setLibraryOrigin({ name, path });
-      loadResolverRef.current?.resolve(payload);
-    } catch (err) {
-      console.error('Failed to load sample:', err);
-      loadResolverRef.current?.resolve(null);
-    }
-    loadResolverRef.current = null;
-  }, []);
+  }, [libraryOrigin]);
 
   // Library browser: open a saved sample in the chopper
   const handleOpenFromLibrary = useCallback(async (name: string, path: string[]) => {
@@ -291,10 +271,16 @@ function App() {
     }
   }, []);
 
-  const handleLoadCancel = useCallback(() => {
-    setLoadDialogOpen(false);
-    loadResolverRef.current?.resolve(null);
-    loadResolverRef.current = null;
+  const handleSaveDialogSave = useCallback((result: SaveDialogResult) => {
+    setSaveDialogOpen(false);
+    saveResolverRef.current?.resolve(result);
+    saveResolverRef.current = null;
+  }, []);
+
+  const handleSaveDialogCancel = useCallback(() => {
+    setSaveDialogOpen(false);
+    saveResolverRef.current?.resolve(null);
+    saveResolverRef.current = null;
   }, []);
 
   const fsaaAvailable = hasFileSystemAccess();
@@ -395,13 +381,13 @@ function App() {
         initialTriggers={initialTriggers}
         initialPlaybackConfig={initialPlaybackConfig}
         onSave={libraryConnected ? handleSave : undefined}
-        onLoad={libraryConnected ? handleLoad : undefined}
       />
 
-      <LoadDialog
-        open={loadDialogOpen}
-        onSelect={handleLoadSelect}
-        onCancel={handleLoadCancel}
+      <SaveDialog
+        open={saveDialogOpen}
+        defaultName={saveDialogDefaultName}
+        onSave={handleSaveDialogSave}
+        onCancel={handleSaveDialogCancel}
       />
     </div>
   );

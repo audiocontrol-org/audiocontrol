@@ -49,19 +49,6 @@ export interface ChopperSavePayload {
   };
 }
 
-/** Payload returned from the onLoad callback. */
-export interface ChopperLoadPayload {
-  name: string;
-  slices: SliceDefinitionOutput[];
-  sourceAudio: { samples: Int16Array; sampleRate: number };
-  triggers?: Array<{ triggerId: string; sliceIndex: number }>;
-  playbackConfig?: {
-    polyphony: 'mono' | 'poly';
-    playbackMode: 'one-shot' | 'gate';
-    muteGroups: number[];
-  };
-}
-
 /** State passed to the renderOutputConfig render prop. */
 export interface ChopperOutputState {
   sliceDefinitions: SliceDefinitionOutput[];
@@ -101,8 +88,6 @@ export interface SampleChopperDialogProps {
   onSlicesUpdated?: (slices: SliceDefinitionOutput[]) => void;
   /** Optional callback to save chopped sample to library */
   onSave?: (payload: ChopperSavePayload) => Promise<void>;
-  /** Optional callback to load chopped sample from library */
-  onLoad?: () => Promise<ChopperLoadPayload | null>;
   /** Restored trigger mappings from a saved sample */
   initialTriggers?: Array<{ triggerId: string; sliceIndex: number }>;
   /** Restored playback config from a saved sample */
@@ -126,7 +111,6 @@ export function SampleChopperDialog({
   initialLabels,
   onSlicesUpdated,
   onSave,
-  onLoad,
   initialTriggers,
   initialPlaybackConfig,
 }: SampleChopperDialogProps): JSX.Element {
@@ -299,20 +283,6 @@ export function SampleChopperDialog({
       setIsSaving(false);
     }
   }, [onSave, samples, chopper.currentSliceResult, chopper.manualSlices, sampleRate, sourceName, trigger.triggerMappings, trigger.playbackConfig]);
-
-  const handleLoad = useCallback(async () => {
-    if (!onLoad) return;
-    const payload = await onLoad();
-    if (!payload) return;
-
-    const slices = payload.slices.map((s) => ({
-      label: s.label,
-      startSample: s.startSample,
-      endSample: s.endSample,
-    }));
-    chopper.setManualSlices(slices);
-    chopper.handleMethodChange('manual');
-  }, [onLoad, chopper.setManualSlices, chopper.handleMethodChange]);
 
   const handleDialogKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
@@ -703,11 +673,6 @@ export function SampleChopperDialog({
               Space play • ←→ navigate • +/- zoom • F fullscreen
             </div>
             <div className="flex gap-2">
-              {onLoad && (
-                <button onClick={handleLoad} className="ac-btn ac-btn-ghost">
-                  Load
-                </button>
-              )}
               {onSave && (
                 <button
                   onClick={handleSave}
@@ -723,19 +688,6 @@ export function SampleChopperDialog({
               )}
               <button onClick={handleClose} className="ac-btn ac-btn-ghost">
                 Cancel
-              </button>
-              <button
-                onClick={handleConfirm}
-                disabled={!chopper.currentSliceResult || chopper.currentSliceResult.slices.length === 0}
-                className={cn(
-                  'ac-btn ac-btn-primary',
-                  (!chopper.currentSliceResult || chopper.currentSliceResult.slices.length === 0) &&
-                    'opacity-50 cursor-not-allowed'
-                )}
-              >
-                {editMode
-                  ? `Save Changes (${chopper.currentSliceResult?.slices.length ?? 0} slices)`
-                  : `Confirm (${chopper.currentSliceResult?.slices.length ?? 0} slices)`}
               </button>
             </div>
           </div>

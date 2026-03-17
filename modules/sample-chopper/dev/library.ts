@@ -29,9 +29,20 @@ import {
 } from '@audiocontrol/sampler-library/browser';
 import type {
   ChopperSavePayload,
-  ChopperLoadPayload,
   SliceDefinitionOutput,
 } from '@/ui/index.js';
+
+export interface ChopperLoadPayload {
+  name: string;
+  slices: SliceDefinitionOutput[];
+  sourceAudio: { samples: Int16Array; sampleRate: number };
+  triggers?: Array<{ triggerId: string; sliceIndex: number }>;
+  playbackConfig?: {
+    polyphony: 'mono' | 'poly';
+    playbackMode: 'one-shot' | 'gate';
+    muteGroups: number[];
+  };
+}
 
 // Re-export shared types for consumers
 export type { LibraryTreeNode, LibrarySetInfo };
