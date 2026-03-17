@@ -277,67 +277,73 @@ function App() {
         </div>
       )}
 
-      <div
-        className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-        onClick={() => fileInputRef.current?.click()}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".wav"
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-        />
-        <p>Drop a WAV file here or click to browse</p>
-        {fileName && <p className="file-name">Loaded: {fileName}</p>}
+      <div className="harness-columns">
+        <div className="harness-main">
+          <div
+            className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".wav"
+              onChange={handleFileChange}
+              style={{ display: 'none' }}
+            />
+            <p>Drop a WAV file here or click to browse</p>
+            {fileName && <p className="file-name">Loaded: {fileName}</p>}
+          </div>
+
+          {error && <div className="error">{error}</div>}
+
+          {samples && !dialogOpen && (
+            <div className="info">
+              <p><strong>{fileName}</strong></p>
+              <p>{sampleRate} Hz &middot; {samples.length} samples &middot; {((samples.length / sampleRate) * 1000).toFixed(0)}ms</p>
+              <button className="open-btn" onClick={() => setDialogOpen(true)}>
+                Open Chopper
+              </button>
+            </div>
+          )}
+
+          {result && (
+            <div className="result">
+              <h3>Result</h3>
+              <p>{result.sliceDefinitions.length} slices created:</p>
+              <table>
+                <thead>
+                  <tr><th>#</th><th>Label</th><th>Start</th><th>End</th><th>Duration</th></tr>
+                </thead>
+                <tbody>
+                  {result.sliceDefinitions.map((s, i) => (
+                    <tr key={i}>
+                      <td>{i + 1}</td>
+                      <td>{s.label}</td>
+                      <td>{s.startSample}</td>
+                      <td>{s.endSample}</td>
+                      <td>{((s.endSample - s.startSample) / sampleRate * 1000).toFixed(0)}ms</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <div className="harness-sidebar">
+          <LibraryBrowser
+            connected={libraryConnected}
+            refreshKey={libraryRefreshKey}
+            onOpen={handleOpenFromLibrary}
+            onOpenTone={handleOpenTone}
+            onOpenDrumKit={handleOpenDrumKit}
+            onPathChange={setSamplesBrowsePath}
+          />
+        </div>
       </div>
-
-      {error && <div className="error">{error}</div>}
-
-      {samples && !dialogOpen && (
-        <div className="info">
-          <p><strong>{fileName}</strong></p>
-          <p>{sampleRate} Hz &middot; {samples.length} samples &middot; {((samples.length / sampleRate) * 1000).toFixed(0)}ms</p>
-          <button className="open-btn" onClick={() => setDialogOpen(true)}>
-            Open Chopper
-          </button>
-        </div>
-      )}
-
-      {result && (
-        <div className="result">
-          <h3>Result</h3>
-          <p>{result.sliceDefinitions.length} slices created:</p>
-          <table>
-            <thead>
-              <tr><th>#</th><th>Label</th><th>Start</th><th>End</th><th>Duration</th></tr>
-            </thead>
-            <tbody>
-              {result.sliceDefinitions.map((s, i) => (
-                <tr key={i}>
-                  <td>{i + 1}</td>
-                  <td>{s.label}</td>
-                  <td>{s.startSample}</td>
-                  <td>{s.endSample}</td>
-                  <td>{((s.endSample - s.startSample) / sampleRate * 1000).toFixed(0)}ms</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      <LibraryBrowser
-        connected={libraryConnected}
-        refreshKey={libraryRefreshKey}
-        onOpen={handleOpenFromLibrary}
-        onOpenTone={handleOpenTone}
-        onOpenDrumKit={handleOpenDrumKit}
-        onPathChange={setSamplesBrowsePath}
-      />
 
       <SampleChopperDialog
         open={dialogOpen}

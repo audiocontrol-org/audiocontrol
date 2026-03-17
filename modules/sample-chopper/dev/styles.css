@@ -43,9 +43,31 @@ body {
 }
 
 .harness {
-  max-width: 700px;
+  max-width: 1100px;
   margin: 0 auto;
   padding: 2rem;
+}
+
+/* Two-column layout: main content + library sidebar */
+.harness-columns {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.harness-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.harness-sidebar {
+  width: 320px;
+  flex-shrink: 0;
+  position: sticky;
+  top: 2rem;
+  max-height: calc(100vh - 4rem);
+  display: flex;
+  flex-direction: column;
 }
 
 .harness h1 {
@@ -309,11 +331,13 @@ body {
 
 /* Library browser panel */
 .library-browser {
-  margin-top: 1.5rem;
   background: var(--ac-panel);
   border: 1px solid var(--ac-accent);
   border-radius: 0.5rem;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 4rem);
 }
 
 .library-browser-header {
@@ -373,7 +397,7 @@ body {
   list-style: none;
   padding: 0;
   margin: 0;
-  max-height: 320px;
+  flex: 1;
   overflow-y: auto;
 }
 
