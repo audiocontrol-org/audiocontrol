@@ -7,13 +7,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { ChoppedSampleInfo } from '@audiocontrol/sampler-library/browser';
-import { listChoppedSamples, deleteChoppedSample } from './library.js';
 import {
+  listChoppedSamples,
+  deleteChoppedSample,
   listLibraryTones,
   listLibraryDrumKits,
   type LibraryToneInfo,
   type LibraryDrumKitInfo,
-} from './library-imports.js';
+} from './library.js';
 
 type Tab = 'samples' | 'tones' | 'drum-kits';
 
@@ -21,13 +22,27 @@ export interface LibraryBrowserProps {
   connected: boolean;
   refreshKey: number;
   onOpen: (name: string) => void;
-  onOpenTone: (device: string, name: string, path: string[]) => void;
-  onOpenDrumKit: (device: string, name: string, path: string[]) => void;
+  onOpenTone: (tone: LibraryToneInfo) => void;
+  onOpenDrumKit: (kit: LibraryDrumKitInfo) => void;
 }
 
 function DeviceBadge({ device }: { device: string }): JSX.Element {
   const label = device === 's330' ? 'S-330' : device === 's550' ? 'S-550' : device.toUpperCase();
   return <span className="library-device-badge">{label}</span>;
+}
+
+function sourceLabel(source: LibraryToneInfo['source']): string | null {
+  if (source.kind === 'set') return source.setName;
+  return null;
+}
+
+function toneKey(tone: LibraryToneInfo): string {
+  const src = tone.source.kind === 'set' ? `set:${tone.source.setName}` : 'standalone';
+  return `${tone.device}/${src}/${tone.path.join('/')}/${tone.name}`;
+}
+
+function kitKey(kit: LibraryDrumKitInfo): string {
+  return `${kit.device}/${kit.path.join('/')}`;
 }
 
 export function LibraryBrowser({
@@ -204,35 +219,37 @@ export function LibraryBrowser({
       {activeTab === 'tones' && !loading && !error && (
         <>
           {tones.length === 0 && (
-            <p className="library-browser-status">
-              No tones found. Connect a library with tones in library/s330/tones/ or library/s550/tones/.
-            </p>
+            <p className="library-browser-status">No tones found in the connected library.</p>
           )}
           {tones.length > 0 && (
             <ul className="library-browser-list">
-              {tones.map((tone) => (
-                <li key={`${tone.device}/${tone.path.join('/')}/${tone.name}`} className="library-browser-item">
-                  <div className="library-browser-item-info">
-                    <span className="library-browser-item-name">
-                      <DeviceBadge device={tone.device} />
-                      {tone.name}
-                    </span>
-                    <span className="library-browser-item-meta">
-                      {tone.sampleRate ? `${tone.sampleRate} Hz` : 'tone'}
-                      {tone.path.length > 0 ? ` \u00b7 ${tone.path.join('/')}` : ''}
-                    </span>
-                  </div>
-                  <div className="library-browser-item-actions">
-                    <button
-                      className="library-browser-action open"
-                      onClick={() => onOpenTone(tone.device, tone.name, tone.path)}
-                      title="Open in chopper"
-                    >
-                      Open
-                    </button>
-                  </div>
-                </li>
-              ))}
+              {tones.map((tone) => {
+                const setName = sourceLabel(tone.source);
+                const location = [setName, ...tone.path].filter(Boolean).join('/');
+                return (
+                  <li key={toneKey(tone)} className="library-browser-item">
+                    <div className="library-browser-item-info">
+                      <span className="library-browser-item-name">
+                        <DeviceBadge device={tone.device} />
+                        {tone.name}
+                      </span>
+                      <span className="library-browser-item-meta">
+                        {tone.sampleRate ? `${tone.sampleRate} Hz` : 'tone'}
+                        {location ? ` \u00b7 ${location}` : ''}
+                      </span>
+                    </div>
+                    <div className="library-browser-item-actions">
+                      <button
+                        className="library-browser-action open"
+                        onClick={() => onOpenTone(tone)}
+                        title="Open in chopper"
+                      >
+                        Open
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </>
@@ -242,14 +259,12 @@ export function LibraryBrowser({
       {activeTab === 'drum-kits' && !loading && !error && (
         <>
           {drumKits.length === 0 && (
-            <p className="library-browser-status">
-              No drum kits found. Connect a library with kits in library/s330/drum-kits/ or library/s550/drum-kits/.
-            </p>
+            <p className="library-browser-status">No drum kits found in the connected library.</p>
           )}
           {drumKits.length > 0 && (
             <ul className="library-browser-list">
               {drumKits.map((kit) => (
-                <li key={`${kit.device}/${kit.path.join('/')}`} className="library-browser-item">
+                <li key={kitKey(kit)} className="library-browser-item">
                   <div className="library-browser-item-info">
                     <span className="library-browser-item-name">
                       <DeviceBadge device={kit.device} />
@@ -265,7 +280,7 @@ export function LibraryBrowser({
                     {kit.version === 2 ? (
                       <button
                         className="library-browser-action open"
-                        onClick={() => onOpenDrumKit(kit.device, kit.name, kit.path)}
+                        onClick={() => onOpenDrumKit(kit)}
                         title="Open in chopper"
                       >
                         Open

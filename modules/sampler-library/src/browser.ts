@@ -343,3 +343,24 @@ export type {
   AttackAnalysis,
   DiscontinuityAnalysis,
 } from './loop-detector/index.js';
+
+// Library filesystem scanning (FSAA, browser-only)
+export {
+  LIBRARY_CATEGORIES,
+  getNestedDirectory,
+  getNestedDirectoryIfExists,
+  scanTonesDirectory,
+  listTonesTree,
+  scanDrumKitsDirectory,
+  listDrumKitsTree,
+  scanPatchesDirectory,
+  listPatchesTree,
+  listSets,
+  listSetTonesTree,
+} from './library-fs.js';
+
+export type {
+  LibraryCategory,
+  LibraryTreeNode,
+  LibrarySetInfo,
+} from './library-fs.js';

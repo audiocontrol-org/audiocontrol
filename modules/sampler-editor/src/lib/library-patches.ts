@@ -10,8 +10,11 @@ import {
   type ToneYaml,
   type PatchYaml,
 } from '@audiocontrol/sampler-library/browser';
-import type { LibraryTreeNode } from '@/lib/library-fs';
-import { getNestedDirectory } from '@/lib/library-fs';
+import {
+  type LibraryTreeNode,
+  listPatchesTree as listPatchesTreeShared,
+  getNestedDirectory,
+} from '@audiocontrol/sampler-library/browser';
 import {
   parseYaml,
   readToneFilesFromDirectory,
@@ -211,85 +214,12 @@ export async function listIndividualPatches(
 }
 
 /**
- * Recursively scan a directory for patches and build a tree structure.
- */
-async function scanPatchesDirectory(
-  dir: FileSystemDirectoryHandle,
-  path: string[]
-): Promise<LibraryTreeNode[]> {
-  const nodes: LibraryTreeNode[] = [];
-
-  for await (const entry of dir.values()) {
-    if (entry.kind === 'directory') {
-      const subDir = await dir.getDirectoryHandle(entry.name);
-
-      let isPatchBundle = false;
-      let patchName = entry.name;
-      let toneCount = 0;
-
-      try {
-        const yamlHandle = await subDir.getFileHandle('patch.yaml');
-        const yamlFile = await yamlHandle.getFile();
-        const content = await yamlFile.text();
-        const yaml = parseYaml(content) as { name?: string };
-        patchName = yaml.name || entry.name;
-        isPatchBundle = true;
-
-        try {
-          const tonesDir = await subDir.getDirectoryHandle('tones');
-          for await (const toneEntry of tonesDir.values()) {
-            if (toneEntry.kind === 'file' && toneEntry.name.endsWith('.yaml')) {
-              toneCount++;
-            }
-          }
-        } catch {
-          // No tones directory
-        }
-      } catch {
-        // Not a patch bundle
-      }
-
-      if (isPatchBundle) {
-        nodes.push({
-          id: [...path, entry.name].join('/'),
-          name: patchName,
-          type: 'patch',
-          path,
-          directoryName: entry.name,
-          toneCount,
-        });
-      } else {
-        const children = await scanPatchesDirectory(subDir, [...path, entry.name]);
-        nodes.push({
-          id: [...path, entry.name].join('/'),
-          name: entry.name,
-          type: 'directory',
-          path,
-          children,
-        });
-      }
-    }
-  }
-
-  return nodes.sort((a, b) => {
-    if (a.type === 'directory' && b.type !== 'directory') return -1;
-    if (a.type !== 'directory' && b.type === 'directory') return 1;
-    return a.name.localeCompare(b.name);
-  });
-}
-
-/**
  * List all individual patches in the library as a hierarchical tree.
  */
 export async function listIndividualPatchesTree(
   directoryHandle: FileSystemDirectoryHandle
 ): Promise<LibraryTreeNode[]> {
-  try {
-    const patchesDir = await getNestedDirectory(directoryHandle, ['library', 's330', 'patches']);
-    return await scanPatchesDirectory(patchesDir, []);
-  } catch {
-    return [];
-  }
+  return listPatchesTreeShared(directoryHandle, 's330');
 }
 
 // =========================================================================

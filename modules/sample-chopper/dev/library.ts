@@ -1,8 +1,9 @@
 /**
- * Browser-based chopped sample library using the File System Access API.
+ * Browser-based library adapter for the standalone sample chopper.
  *
- * Reads and writes chopped samples to:
- *   {libraryRoot}/chopped-samples/{name}/manifest.yaml + source.wav
+ * Chopped samples live at: {root}/library/chopped-samples/{name}/
+ * Tones and drum kits are scanned from the shared FSAA library layout
+ * via functions from @audiocontrol/sampler-library.
  */
 
 import { stringify as stringifyYaml, parse as parseYaml } from 'yaml';
@@ -10,6 +11,20 @@ import {
   ChoppedSampleSchema,
   type ChoppedSample,
   type ChoppedSampleInfo,
+  parseWav,
+  type LibraryTreeNode,
+  type LibrarySetInfo,
+  DrumKitBundleSchema,
+  loadDrumKitBundle as parseDrumKitBundle,
+  type DrumKitBundle,
+  getNestedDirectory,
+  getNestedDirectoryIfExists,
+  listTonesTree,
+  listDrumKitsTree,
+  listSets,
+  listSetTonesTree,
+  scanTonesDirectory,
+  ToneYamlSchema,
 } from '@audiocontrol/sampler-library/browser';
 import type {
   ChopperSavePayload,
@@ -17,8 +32,11 @@ import type {
   SliceDefinitionOutput,
 } from '@/ui/index.js';
 
+// Re-export shared types for consumers
+export type { LibraryTreeNode, LibrarySetInfo };
+
 // =========================================================================
-// File System Access API types (subset needed here)
+// FSAA type declarations (chopper-specific: directory picker, writable)
 // =========================================================================
 
 declare global {
@@ -31,21 +49,11 @@ declare global {
   }
 
   interface FileSystemDirectoryHandle {
-    getFileHandle(name: string, options?: { create?: boolean }): Promise<FileSystemFileHandle>;
-    getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<FileSystemDirectoryHandle>;
     queryPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<'granted' | 'denied' | 'prompt'>;
     requestPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<'granted' | 'denied' | 'prompt'>;
-    removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
-    values(): AsyncIterable<FileSystemHandle>;
-  }
-
-  interface FileSystemHandle {
-    readonly kind: 'file' | 'directory';
-    readonly name: string;
   }
 
   interface FileSystemFileHandle {
-    getFile(): Promise<File>;
     createWritable(): Promise<FileSystemWritableFileStream>;
   }
 
@@ -96,7 +104,7 @@ export async function getLibraryHandle(): Promise<FileSystemDirectoryHandle | nu
   return null;
 }
 
-export async function ensureLibraryHandle(): Promise<FileSystemDirectoryHandle> {
+async function ensureLibraryHandle(): Promise<FileSystemDirectoryHandle> {
   const existing = await getLibraryHandle();
   if (existing) return existing;
 
@@ -105,14 +113,8 @@ export async function ensureLibraryHandle(): Promise<FileSystemDirectoryHandle> 
   return picked;
 }
 
-async function getChoppedSamplesDir(
-  root: FileSystemDirectoryHandle
-): Promise<FileSystemDirectoryHandle> {
-  return root.getDirectoryHandle('chopped-samples', { create: true });
-}
-
 // =========================================================================
-// WAV Encoding/Decoding
+// WAV Encoding (write-only, not in sampler-library)
 // =========================================================================
 
 function createWavBlob(samples: Int16Array, sampleRate: number): Blob {
@@ -126,11 +128,9 @@ function createWavBlob(samples: Int16Array, sampleRate: number): Blob {
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
 
-  // RIFF header
   writeStr(view, 0, 'RIFF');
   view.setUint32(4, fileSize, true);
   writeStr(view, 8, 'WAVE');
-  // fmt chunk
   writeStr(view, 12, 'fmt ');
   view.setUint32(16, 16, true);
   view.setUint16(20, 1, true);
@@ -139,13 +139,11 @@ function createWavBlob(samples: Int16Array, sampleRate: number): Blob {
   view.setUint32(28, byteRate, true);
   view.setUint16(32, blockAlign, true);
   view.setUint16(34, bitsPerSample, true);
-  // data chunk
   writeStr(view, 36, 'data');
   view.setUint32(40, dataSize, true);
 
   const wavBytes = new Uint8Array(buffer);
   wavBytes.set(new Uint8Array(samples.buffer, samples.byteOffset, dataSize), 44);
-
   return new Blob([wavBytes], { type: 'audio/wav' });
 }
 
@@ -153,50 +151,6 @@ function writeStr(view: DataView, offset: number, str: string): void {
   for (let i = 0; i < str.length; i++) {
     view.setUint8(offset + i, str.charCodeAt(i));
   }
-}
-
-export function parseWavSamples(buffer: ArrayBuffer): { samples: Int16Array; sampleRate: number } {
-  const view = new DataView(buffer);
-
-  const riff = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
-  if (riff !== 'RIFF') throw new Error('Not a WAV file');
-
-  let offset = 12;
-  let sampleRate = 44100;
-  let bitsPerSample = 16;
-  let numChannels = 1;
-
-  while (offset < buffer.byteLength - 8) {
-    const chunkId = String.fromCharCode(
-      view.getUint8(offset), view.getUint8(offset + 1),
-      view.getUint8(offset + 2), view.getUint8(offset + 3)
-    );
-    const chunkSize = view.getUint32(offset + 4, true);
-
-    if (chunkId === 'fmt ') {
-      numChannels = view.getUint16(offset + 10, true);
-      sampleRate = view.getUint32(offset + 12, true);
-      bitsPerSample = view.getUint16(offset + 22, true);
-    }
-
-    if (chunkId === 'data') {
-      const dataOffset = offset + 8;
-      if (bitsPerSample === 16) {
-        const sampleCount = chunkSize / (2 * numChannels);
-        const samples = new Int16Array(sampleCount);
-        for (let i = 0; i < sampleCount; i++) {
-          samples[i] = view.getInt16(dataOffset + i * 2 * numChannels, true);
-        }
-        return { samples, sampleRate };
-      }
-      throw new Error(`Unsupported bit depth: ${bitsPerSample}`);
-    }
-
-    offset += 8 + chunkSize;
-    if (chunkSize % 2 !== 0) offset++;
-  }
-
-  throw new Error('No data chunk found');
 }
 
 // =========================================================================
@@ -213,8 +167,14 @@ function sanitizeFilename(name: string): string {
 }
 
 // =========================================================================
-// Save
+// Chopped Samples: Save / List / Delete / Load
 // =========================================================================
+
+async function getChoppedSamplesDir(
+  root: FileSystemDirectoryHandle,
+): Promise<FileSystemDirectoryHandle> {
+  return getNestedDirectory(root, ['library', 'chopped-samples']);
+}
 
 export async function saveChoppedSample(payload: ChopperSavePayload): Promise<void> {
   const root = await ensureLibraryHandle();
@@ -246,14 +206,12 @@ export async function saveChoppedSample(payload: ChopperSavePayload): Promise<vo
     throw new Error(`Invalid manifest: ${result.error.message}`);
   }
 
-  // Write manifest.yaml
   const yamlContent = stringifyYaml(result.data, { indent: 2, lineWidth: 120 });
   const yamlHandle = await sampleDir.getFileHandle('manifest.yaml', { create: true });
   const yamlWritable = await yamlHandle.createWritable();
   await yamlWritable.write(yamlContent);
   await yamlWritable.close();
 
-  // Write source.wav
   const wavBlob = createWavBlob(payload.sourceAudio.samples, payload.sourceAudio.sampleRate);
   const wavHandle = await sampleDir.getFileHandle('source.wav', { create: true });
   const wavWritable = await wavHandle.createWritable();
@@ -261,20 +219,12 @@ export async function saveChoppedSample(payload: ChopperSavePayload): Promise<vo
   await wavWritable.close();
 }
 
-// =========================================================================
-// List
-// =========================================================================
-
 export async function listChoppedSamples(): Promise<ChoppedSampleInfo[]> {
   const handle = await getLibraryHandle();
   if (!handle) return [];
 
-  let samplesDir: FileSystemDirectoryHandle;
-  try {
-    samplesDir = await handle.getDirectoryHandle('chopped-samples', { create: false });
-  } catch {
-    return [];
-  }
+  const samplesDir = await getNestedDirectoryIfExists(handle, ['library', 'chopped-samples']);
+  if (!samplesDir) return [];
 
   const items: ChoppedSampleInfo[] = [];
   for await (const entry of samplesDir.values()) {
@@ -305,10 +255,6 @@ export async function listChoppedSamples(): Promise<ChoppedSampleInfo[]> {
   return items.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-// =========================================================================
-// Delete
-// =========================================================================
-
 export async function deleteChoppedSample(name: string): Promise<void> {
   const root = await ensureLibraryHandle();
   const samplesDir = await getChoppedSamplesDir(root);
@@ -316,17 +262,12 @@ export async function deleteChoppedSample(name: string): Promise<void> {
   await samplesDir.removeEntry(safeName, { recursive: true });
 }
 
-// =========================================================================
-// Load
-// =========================================================================
-
 export async function loadChoppedSample(name: string): Promise<ChopperLoadPayload> {
   const root = await ensureLibraryHandle();
   const samplesDir = await getChoppedSamplesDir(root);
   const safeName = sanitizeFilename(name);
   const sampleDir = await samplesDir.getDirectoryHandle(safeName, { create: false });
 
-  // Read manifest
   const manifestHandle = await sampleDir.getFileHandle('manifest.yaml');
   const manifestFile = await manifestHandle.getFile();
   const manifestText = await manifestFile.text();
@@ -337,12 +278,10 @@ export async function loadChoppedSample(name: string): Promise<ChopperLoadPayloa
   }
 
   const manifest = result.data;
-
-  // Read source.wav
   const wavHandle = await sampleDir.getFileHandle('source.wav');
   const wavFile = await wavHandle.getFile();
   const wavBuffer = await wavFile.arrayBuffer();
-  const { samples, sampleRate } = parseWavSamples(wavBuffer);
+  const wavData = parseWav(wavBuffer);
 
   const slices: SliceDefinitionOutput[] = manifest.slices.map((s) => ({
     label: s.label,
@@ -353,8 +292,180 @@ export async function loadChoppedSample(name: string): Promise<ChopperLoadPayloa
   return {
     name: manifest.name,
     slices,
-    sourceAudio: { samples, sampleRate },
+    sourceAudio: { samples: wavData.samples, sampleRate: wavData.sampleRate },
     triggers: manifest.triggers,
     playbackConfig: manifest.playback,
   };
+}
+
+// =========================================================================
+// Tone Listing / Loading
+// =========================================================================
+
+const DEVICE_DIRS = ['s330', 's550'] as const;
+
+export interface LibraryToneInfo {
+  name: string;
+  device: string;
+  source: { kind: 'standalone' } | { kind: 'set'; setName: string };
+  path: string[];
+  sampleRate?: number;
+}
+
+export async function listLibraryTones(): Promise<LibraryToneInfo[]> {
+  const handle = await getLibraryHandle();
+  if (!handle) return [];
+
+  const allTones: LibraryToneInfo[] = [];
+
+  for (const device of DEVICE_DIRS) {
+    // Standalone tones
+    const tree = await listTonesTree(handle, device);
+    flattenTones(tree, device, { kind: 'standalone' }, [], allTones);
+
+    // Tones inside sets
+    const sets = await listSets(handle, device);
+    for (const set of sets) {
+      const setTree = await listSetTonesTree(handle, device, set.directoryName);
+      flattenTones(setTree, device, { kind: 'set', setName: set.directoryName }, [], allTones);
+    }
+  }
+
+  return allTones.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function flattenTones(
+  nodes: LibraryTreeNode[],
+  device: string,
+  source: LibraryToneInfo['source'],
+  path: string[],
+  out: LibraryToneInfo[],
+): void {
+  for (const node of nodes) {
+    if (node.type === 'directory' && node.children) {
+      flattenTones(node.children, device, source, [...path, node.name], out);
+    } else if (node.type === 'tone' && node.fileName) {
+      out.push({ name: node.fileName, device, source, path });
+    }
+  }
+}
+
+export async function loadLibraryTone(
+  tone: LibraryToneInfo,
+): Promise<{ samples: Int16Array; sampleRate: number }> {
+  const root = await ensureLibraryHandle();
+  const segments = tone.source.kind === 'set'
+    ? ['library', tone.device, 'sets', tone.source.setName, 'tones', ...tone.path]
+    : ['library', tone.device, 'tones', ...tone.path];
+
+  const dir = await getNestedDirectoryIfExists(root, segments);
+  if (!dir) throw new Error(`Tones directory not found for ${tone.device}`);
+
+  const wavHandle = await dir.getFileHandle(`${tone.name}.wav`);
+  const wavFile = await wavHandle.getFile();
+  const wavBuffer = await wavFile.arrayBuffer();
+  const wavData = parseWav(wavBuffer);
+  return { samples: wavData.samples, sampleRate: wavData.sampleRate };
+}
+
+// =========================================================================
+// Drum Kit Listing / Loading
+// =========================================================================
+
+export interface LibraryDrumKitInfo {
+  name: string;
+  device: string;
+  path: string[];
+  directoryName: string;
+  version: 1 | 2;
+  sliceCount: number;
+  sampleCount: number;
+  description?: string;
+}
+
+export async function listLibraryDrumKits(): Promise<LibraryDrumKitInfo[]> {
+  const handle = await getLibraryHandle();
+  if (!handle) return [];
+
+  const allKits: LibraryDrumKitInfo[] = [];
+
+  for (const device of DEVICE_DIRS) {
+    const tree = await listDrumKitsTree(handle, device);
+    flattenDrumKits(tree, device, [], allKits);
+  }
+
+  return allKits.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function flattenDrumKits(
+  nodes: LibraryTreeNode[],
+  device: string,
+  path: string[],
+  out: LibraryDrumKitInfo[],
+): void {
+  for (const node of nodes) {
+    if (node.type === 'directory' && node.children) {
+      flattenDrumKits(node.children, device, [...path, node.name], out);
+    } else if (node.type === 'drum-kit' && node.directoryName) {
+      const hasSource = node.sampleCount !== undefined && node.sampleCount > 0;
+      out.push({
+        name: node.name,
+        device,
+        path: [...path, node.directoryName],
+        directoryName: node.directoryName,
+        version: hasSource ? 2 : 1,
+        sliceCount: 0,
+        sampleCount: node.sampleCount ?? 0,
+        description: node.description,
+      });
+    }
+  }
+}
+
+export async function loadLibraryDrumKit(
+  kit: LibraryDrumKitInfo,
+): Promise<{ samples: Int16Array; sampleRate: number; slices: SliceDefinitionOutput[] }> {
+  const root = await ensureLibraryHandle();
+  const dir = await getNestedDirectoryIfExists(
+    root, ['library', kit.device, 'drum-kits', ...kit.path],
+  );
+  if (!dir) throw new Error(`Drum kit directory not found for ${kit.device}`);
+
+  let kitYaml: DrumKitBundle | null = null;
+  try {
+    const yamlHandle = await dir.getFileHandle('kit.yaml');
+    const yamlFile = await yamlHandle.getFile();
+    const text = await yamlFile.text();
+    const parsed = parseYaml(text);
+    const result = DrumKitBundleSchema.safeParse(parsed);
+    if (result.success) kitYaml = result.data;
+  } catch {
+    // No kit.yaml
+  }
+
+  const wavFiles: string[] = [];
+  for await (const child of dir.values()) {
+    if (child.kind === 'file' && child.name.endsWith('.wav')) {
+      wavFiles.push(child.name);
+    }
+  }
+
+  const resolved = parseDrumKitBundle(kitYaml, wavFiles, kit.name);
+
+  if (!resolved.source || !resolved.slices || resolved.slices.length === 0) {
+    throw new Error(`"${kit.name}" is a v1 drum kit without a source WAV`);
+  }
+
+  const wavHandle = await dir.getFileHandle(resolved.source);
+  const wavFile = await wavHandle.getFile();
+  const wavBuffer = await wavFile.arrayBuffer();
+  const wavData = parseWav(wavBuffer);
+
+  const slices: SliceDefinitionOutput[] = resolved.slices.map((s) => ({
+    label: s.label,
+    startSample: s.startSample,
+    endSample: s.endSample,
+  }));
+
+  return { samples: wavData.samples, sampleRate: wavData.sampleRate, slices };
 }

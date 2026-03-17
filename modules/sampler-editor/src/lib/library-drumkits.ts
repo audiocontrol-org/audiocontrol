@@ -9,10 +9,11 @@ import {
   loadDrumKitBundle as parseDrumKitBundle,
   type DrumKitBundle,
   type ResolvedDrumKitBundle,
+  type LibraryTreeNode,
+  listDrumKitsTree as listDrumKitsTreeShared,
+  getNestedDirectory,
 } from '@audiocontrol/sampler-library/browser';
 import { createWavBlobFromSamples } from '@/lib/wave-export';
-import type { LibraryTreeNode } from '@/lib/library-fs';
-import { getNestedDirectory } from '@/lib/library-fs';
 import { parseYaml, stringifyYaml } from '@/lib/library-io';
 
 // =========================================================================
@@ -127,84 +128,12 @@ export async function listDrumKits(
 }
 
 /**
- * Recursively scan a directory for drum kits and build a tree structure.
- */
-async function scanDrumKitsDirectory(
-  dir: FileSystemDirectoryHandle,
-  path: string[]
-): Promise<LibraryTreeNode[]> {
-  const nodes: LibraryTreeNode[] = [];
-
-  for await (const entry of dir.values()) {
-    if (entry.kind === 'directory') {
-      const subDir = await dir.getDirectoryHandle(entry.name);
-
-      const wavFiles: string[] = [];
-      let kitYaml: DrumKitBundle | null = null;
-
-      for await (const file of subDir.values()) {
-        if (file.kind !== 'file') continue;
-        if (file.name.toLowerCase().endsWith('.wav')) {
-          wavFiles.push(file.name);
-        } else if (file.name === 'kit.yaml') {
-          try {
-            const fileHandle = await subDir.getFileHandle('kit.yaml');
-            const yamlFile = await fileHandle.getFile();
-            const yamlContent = await yamlFile.text();
-            kitYaml = DrumKitBundleSchema.parse(parseYaml(yamlContent));
-          } catch {
-            // Invalid kit.yaml
-          }
-        }
-      }
-
-      if (wavFiles.length > 0) {
-        const resolved = parseDrumKitBundle(kitYaml, wavFiles, entry.name);
-        nodes.push({
-          id: [...path, entry.name].join('/'),
-          name: resolved.name,
-          type: 'drum-kit',
-          path,
-          directoryName: entry.name,
-          description: resolved.description,
-          kitCount: resolved.kits.length,
-          sampleCount: resolved.totalSamples,
-        });
-      } else {
-        const children = await scanDrumKitsDirectory(subDir, [...path, entry.name]);
-        nodes.push({
-          id: [...path, entry.name].join('/'),
-          name: entry.name,
-          type: 'directory',
-          path,
-          children,
-        });
-      }
-    }
-  }
-
-  return nodes.sort((a, b) => {
-    if (a.type === 'directory' && b.type !== 'directory') return -1;
-    if (a.type !== 'directory' && b.type === 'directory') return 1;
-    return a.name.localeCompare(b.name);
-  });
-}
-
-/**
  * List all drum kits in the library as a hierarchical tree.
  */
 export async function listDrumKitsTree(
   directoryHandle: FileSystemDirectoryHandle
 ): Promise<LibraryTreeNode[]> {
-  try {
-    const libraryDir = await directoryHandle.getDirectoryHandle('library', { create: false });
-    const s330Dir = await libraryDir.getDirectoryHandle('s330', { create: false });
-    const drumKitsDir = await s330Dir.getDirectoryHandle('drum-kits', { create: false });
-
-    return await scanDrumKitsDirectory(drumKitsDir, []);
-  } catch {
-    return [];
-  }
+  return listDrumKitsTreeShared(directoryHandle, 's330');
 }
 
 // =========================================================================

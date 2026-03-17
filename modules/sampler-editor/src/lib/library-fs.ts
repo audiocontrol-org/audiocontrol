@@ -1,50 +1,24 @@
 /**
  * Library filesystem operations — directory management, File System Access API,
- * and shared types for the library service modules.
+ * and editor-specific operations (rename, move, delete, create).
+ *
+ * Types and scanning functions are re-exported from @audiocontrol/sampler-library.
  */
 
-// =========================================================================
-// Hierarchical Library Types
-// =========================================================================
+import {
+  LIBRARY_CATEGORIES as _LIBRARY_CATEGORIES,
+  getNestedDirectory,
+  getNestedDirectoryIfExists,
+  type LibraryCategory,
+} from '@audiocontrol/sampler-library/browser';
 
-/**
- * Library item category types that support subdirectories.
- */
-export type LibraryCategory = 'tones' | 'patches' | 'drum-kits';
-
-/**
- * Tree node for rendering hierarchical library contents.
- * Used by both directories and items (tones, patches, drum-kits).
- */
-export interface LibraryTreeNode {
-  /** Unique identifier for this node (path joined by '/') */
-  id: string;
-  /** Display name */
-  name: string;
-  /** Node type */
-  type: 'directory' | 'tone' | 'patch' | 'drum-kit';
-  /** Path segments from category root (empty for root items) */
-  path: string[];
-  /** Child nodes (only for directories) */
-  children?: LibraryTreeNode[];
-  /** Whether directory is expanded in UI (client state, not persisted) */
-  isExpanded?: boolean;
-  /** File name for items (without extension) */
-  fileName?: string;
-  /** Directory name for patches/drum-kits */
-  directoryName?: string;
-  /** Additional metadata for patches */
-  toneCount?: number;
-  /** Additional metadata for drum kits */
-  kitCount?: number;
-  sampleCount?: number;
-  description?: string;
-}
-
-/**
- * Constant for library categories (exported for consumers).
- */
-export const LIBRARY_CATEGORIES: LibraryCategory[] = ['tones', 'patches', 'drum-kits'];
+// Re-export shared types and helpers from sampler-library
+export type { LibraryCategory, LibraryTreeNode } from '@audiocontrol/sampler-library/browser';
+export {
+  LIBRARY_CATEGORIES,
+  getNestedDirectory,
+  getNestedDirectoryIfExists,
+} from '@audiocontrol/sampler-library/browser';
 
 // =========================================================================
 // File System Access API
@@ -116,43 +90,6 @@ export async function pickLibraryDirectory(): Promise<FileSystemDirectoryHandle 
       return null; // User cancelled
     }
     throw err;
-  }
-}
-
-// =========================================================================
-// Directory Navigation Helpers (exported for other library modules)
-// =========================================================================
-
-/**
- * Get or create a nested directory path within a directory handle.
- */
-export async function getNestedDirectory(
-  rootHandle: FileSystemDirectoryHandle,
-  path: string[]
-): Promise<FileSystemDirectoryHandle> {
-  let current = rootHandle;
-  for (const segment of path) {
-    current = await current.getDirectoryHandle(segment, { create: true });
-  }
-  return current;
-}
-
-/**
- * Get a nested directory without creating it.
- * Returns null if any part of the path doesn't exist.
- */
-export async function getNestedDirectoryIfExists(
-  rootHandle: FileSystemDirectoryHandle,
-  path: string[]
-): Promise<FileSystemDirectoryHandle | null> {
-  let current = rootHandle;
-  try {
-    for (const segment of path) {
-      current = await current.getDirectoryHandle(segment, { create: false });
-    }
-    return current;
-  } catch {
-    return null;
   }
 }
 
@@ -418,8 +355,11 @@ export async function moveItem(
 }
 
 // =========================================================================
-// TypeScript declarations for File System Access API
+// TypeScript declarations for File System Access API (editor-specific)
 // =========================================================================
+
+// Core FSAA types are declared in @audiocontrol/sampler-library.
+// These extend them with editor-specific picker types.
 
 declare global {
   interface Window {
@@ -450,22 +390,12 @@ declare global {
   }
 
   interface FileSystemFileHandle {
-    getFile(): Promise<File>;
     createWritable(): Promise<FileSystemWritableFileStream>;
   }
 
   interface FileSystemDirectoryHandle {
-    getFileHandle(name: string, options?: { create?: boolean }): Promise<FileSystemFileHandle>;
-    getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<FileSystemDirectoryHandle>;
     queryPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<'granted' | 'denied' | 'prompt'>;
     requestPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<'granted' | 'denied' | 'prompt'>;
-    removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
-    values(): AsyncIterable<FileSystemHandle>;
-  }
-
-  interface FileSystemHandle {
-    readonly kind: 'file' | 'directory';
-    readonly name: string;
   }
 
   interface FileSystemWritableFileStream extends WritableStream {

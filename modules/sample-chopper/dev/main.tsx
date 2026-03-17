@@ -19,10 +19,13 @@ import {
   hasFileSystemAccess,
   saveChoppedSample,
   loadChoppedSample,
+  loadLibraryTone,
+  loadLibraryDrumKit,
   getLibraryHandle,
   pickLibraryDirectory,
+  type LibraryToneInfo,
+  type LibraryDrumKitInfo,
 } from './library.js';
-import { loadLibraryTone, loadLibraryDrumKit } from './library-imports.js';
 import { LoadDialog } from './LoadDialog.js';
 import { LibraryBrowser } from './LibraryBrowser.js';
 import './styles.css';
@@ -216,12 +219,12 @@ function App() {
   }, []);
 
   // Library browser: open a tone WAV in the chopper (raw audio, no slices)
-  const handleOpenTone = useCallback(async (device: string, name: string, path: string[]) => {
+  const handleOpenTone = useCallback(async (tone: LibraryToneInfo) => {
     try {
-      const { samples: toneSamples, sampleRate: toneRate } = await loadLibraryTone(device, name, path);
+      const { samples: toneSamples, sampleRate: toneRate } = await loadLibraryTone(tone);
       setSamples(toneSamples);
       setSampleRate(toneRate);
-      setFileName(`${name} (${device.toUpperCase()})`);
+      setFileName(`${tone.name} (${tone.device.toUpperCase()})`);
       setInitialSlices(undefined);
       setEditMode(false);
       setResult(null);
@@ -233,12 +236,12 @@ function App() {
   }, []);
 
   // Library browser: open a v2 drum kit with source WAV + pre-populated slices
-  const handleOpenDrumKit = useCallback(async (device: string, name: string, path: string[]) => {
+  const handleOpenDrumKit = useCallback(async (kit: LibraryDrumKitInfo) => {
     try {
-      const payload = await loadLibraryDrumKit(device, name, path);
+      const payload = await loadLibraryDrumKit(kit);
       setSamples(payload.samples);
       setSampleRate(payload.sampleRate);
-      setFileName(`${name} (${device.toUpperCase()})`);
+      setFileName(`${kit.name} (${kit.device.toUpperCase()})`);
       setInitialSlices(payload.slices);
       setEditMode(true);
       setResult(null);

@@ -14,10 +14,12 @@ import {
   ToneYamlSchema,
   s330ToneConverter,
   type ToneYaml,
+  type LibraryTreeNode,
+  listTonesTree,
+  getNestedDirectory,
 } from '@audiocontrol/sampler-library/browser';
 import { createWavBlobFromSamples, unpack12BitTo16Bit } from '@/lib/wave-export';
-import type { LibraryTreeNode } from '@/lib/library-fs';
-import { hasFileSystemAccess, getNestedDirectory } from '@/lib/library-fs';
+import { hasFileSystemAccess } from '@/lib/library-fs';
 import {
   parseYaml,
   stringifyYaml,
@@ -322,60 +324,12 @@ export async function listIndividualTones(
 }
 
 /**
- * Recursively scan a directory for tones and build a tree structure.
- */
-async function scanTonesDirectory(
-  dir: FileSystemDirectoryHandle,
-  path: string[]
-): Promise<LibraryTreeNode[]> {
-  const nodes: LibraryTreeNode[] = [];
-
-  for await (const entry of dir.values()) {
-    if (entry.kind === 'directory') {
-      const subDir = await dir.getDirectoryHandle(entry.name);
-      const children = await scanTonesDirectory(subDir, [...path, entry.name]);
-
-      nodes.push({
-        id: [...path, entry.name].join('/'),
-        name: entry.name,
-        type: 'directory',
-        path,
-        children,
-      });
-    } else if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.yaml')) {
-      const fileName = entry.name.replace(/\.yaml$/i, '');
-      nodes.push({
-        id: [...path, fileName].join('/'),
-        name: fileName,
-        type: 'tone',
-        path,
-        fileName,
-      });
-    }
-  }
-
-  return nodes.sort((a, b) => {
-    if (a.type === 'directory' && b.type !== 'directory') return -1;
-    if (a.type !== 'directory' && b.type === 'directory') return 1;
-    return a.name.localeCompare(b.name);
-  });
-}
-
-/**
  * List all individual tones in the library as a hierarchical tree.
  */
 export async function listIndividualTonesTree(
   directoryHandle: FileSystemDirectoryHandle
 ): Promise<LibraryTreeNode[]> {
-  try {
-    const libraryDir = await directoryHandle.getDirectoryHandle('library', { create: false });
-    const s330Dir = await libraryDir.getDirectoryHandle('s330', { create: false });
-    const tonesDir = await s330Dir.getDirectoryHandle('tones', { create: false });
-
-    return await scanTonesDirectory(tonesDir, []);
-  } catch {
-    return [];
-  }
+  return listTonesTree(directoryHandle, 's330');
 }
 
 /**
