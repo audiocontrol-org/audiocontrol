@@ -43,13 +43,18 @@ export function useSliceHistory(): UseSliceHistoryReturn {
   const [entries, setEntries] = useState<HistoryEntry[]>([]);
   const [currentIndex, setCurrentIndex] = useState(-1);
   const lastLabelRef = useRef<string | null>(null);
+  // Use a ref to track currentIndex for push() so it doesn't need
+  // currentIndex as a dependency (which would cause infinite re-renders
+  // when push is called from effects).
+  const currentIndexRef = useRef(-1);
+  currentIndexRef.current = currentIndex;
 
   const push = useCallback((slices: SliceDefinitionOutput[], label: string) => {
     const snapshot = slices.map((s) => ({ ...s }));
     const entry: HistoryEntry = { label, slices: snapshot, timestamp: Date.now() };
 
     setEntries((prev) => {
-      const ci = currentIndex;
+      const ci = currentIndexRef.current;
       // Truncate any redo entries beyond current position
       const base = ci >= 0 ? prev.slice(0, ci + 1) : [];
 
@@ -64,40 +69,62 @@ export function useSliceHistory(): UseSliceHistoryReturn {
       // Trim old entries if over limit
       if (updated.length > MAX_HISTORY) {
         const trimmed = updated.slice(updated.length - MAX_HISTORY);
-        setCurrentIndex(trimmed.length - 1);
+        const newIdx = trimmed.length - 1;
+        currentIndexRef.current = newIdx;
+        setCurrentIndex(newIdx);
         lastLabelRef.current = label;
         return trimmed;
       }
-      setCurrentIndex(updated.length - 1);
+      const newIdx = updated.length - 1;
+      currentIndexRef.current = newIdx;
+      setCurrentIndex(newIdx);
       lastLabelRef.current = label;
       return updated;
     });
-  }, [currentIndex]);
+  }, []);
 
   const undo = useCallback((): SliceDefinitionOutput[] | null => {
-    if (currentIndex <= 0) return null;
-    const newIndex = currentIndex - 1;
+    const ci = currentIndexRef.current;
+    if (ci <= 0) return null;
+    const newIndex = ci - 1;
+    currentIndexRef.current = newIndex;
     setCurrentIndex(newIndex);
     lastLabelRef.current = null;
-    return entries[newIndex]?.slices.map((s) => ({ ...s })) ?? null;
-  }, [currentIndex, entries]);
+    // Read from the ref-tracked entries via the state setter pattern
+    let result: SliceDefinitionOutput[] | null = null;
+    setEntries((prev) => {
+      result = prev[newIndex]?.slices.map((s) => ({ ...s })) ?? null;
+      return prev;
+    });
+    return result;
+  }, []);
 
   const redo = useCallback((): SliceDefinitionOutput[] | null => {
-    if (currentIndex >= entries.length - 1) return null;
-    const newIndex = currentIndex + 1;
-    setCurrentIndex(newIndex);
-    lastLabelRef.current = null;
-    return entries[newIndex]?.slices.map((s) => ({ ...s })) ?? null;
-  }, [currentIndex, entries]);
+    let result: SliceDefinitionOutput[] | null = null;
+    setEntries((prev) => {
+      const ci = currentIndexRef.current;
+      if (ci >= prev.length - 1) return prev;
+      const newIndex = ci + 1;
+      currentIndexRef.current = newIndex;
+      setCurrentIndex(newIndex);
+      lastLabelRef.current = null;
+      result = prev[newIndex]?.slices.map((s) => ({ ...s })) ?? null;
+      return prev;
+    });
+    return result;
+  }, []);
 
   const restore = useCallback((index: number): SliceDefinitionOutput[] => {
+    currentIndexRef.current = index;
     setCurrentIndex(index);
     lastLabelRef.current = null;
+    // entries is read from closure but stable enough for click handlers
     return entries[index].slices.map((s) => ({ ...s }));
   }, [entries]);
 
   const clear = useCallback(() => {
     setEntries([]);
+    currentIndexRef.current = -1;
     setCurrentIndex(-1);
     lastLabelRef.current = null;
   }, []);

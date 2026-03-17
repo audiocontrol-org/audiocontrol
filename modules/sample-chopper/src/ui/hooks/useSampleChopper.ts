@@ -162,9 +162,9 @@ export function useSampleChopper({
   useEffect(() => {
     if (!samples || samples.length === 0) { setAutoSliceResult(null); return; }
     if (selectedMethod === 'manual') { setAutoSliceResult(null); return; }
-    // Skip auto-slicing when initial slices are being loaded — the initialSlices
-    // effect sets selectedMethod='manual' but that update hasn't rendered yet
-    if (editMode && initialSlices && initialSlices.length > 0) { return; }
+    // Skip auto-slicing when initial slices are being used — the user hasn't
+    // switched away from manual mode yet
+    if (useInitialSlices) { return; }
     try {
       const result = sliceAudio(samples, sampleRate, sliceConfig);
       setAutoSliceResult(result);
@@ -182,7 +182,7 @@ export function useSampleChopper({
       setSliceError(err instanceof Error ? err.message : 'Slicing failed');
       setAutoSliceResult(null);
     }
-  }, [samples, sampleRate, sliceConfig, selectedMethod, kitLabels, editMode, initialSlices]);
+  }, [samples, sampleRate, sliceConfig, selectedMethod, kitLabels, useInitialSlices]);
 
   const currentSliceResult = useMemo((): SliceResult | null => {
     if (!samples || samples.length === 0) return null;
@@ -251,7 +251,7 @@ export function useSampleChopper({
       history.push(updated, 'Adjust edge');
       return updated;
     });
-  }, [history]);
+  }, [history.push]);
 
   const handleSlicesChange = useCallback((changes: SliceChange[]) => {
     setManualSlices((prev) => {
@@ -267,7 +267,7 @@ export function useSampleChopper({
       history.push(updated, 'Adjust edges');
       return updated;
     });
-  }, [history]);
+  }, [history.push]);
 
   const handleSliceAdd = useCallback((samplePosition: number) => {
     if (!samples) return;
@@ -312,7 +312,7 @@ export function useSampleChopper({
       history.push(newSlices, 'Add slice');
       return newSlices;
     });
-  }, [samples, kitLabels, history]);
+  }, [samples, kitLabels, history.push]);
 
   const handleSliceDelete = useCallback((index: number) => {
     setManualSlices((prev) => {
@@ -323,7 +323,7 @@ export function useSampleChopper({
       return updated;
     });
     setSelectedSlice(undefined);
-  }, [history]);
+  }, [history.push]);
 
   const handleApplyStripSilence = useCallback(() => {
     if (!strippedPreview) return;
@@ -338,7 +338,7 @@ export function useSampleChopper({
     });
     setStripSilenceActive(false);
     setOriginalSliceBoundaries([]);
-  }, [strippedPreview, history]);
+  }, [strippedPreview, history.push]);
 
   const handleCancelStripSilence = useCallback(() => {
     setStripSilenceActive(false);
@@ -361,7 +361,7 @@ export function useSampleChopper({
     }
     setSelectedMethod('manual');
     setUseInitialSlices(false);
-  }, [autoSliceResult, kitLabels, history]);
+  }, [autoSliceResult, kitLabels, history.push]);
 
   const handleMethodChange = useCallback((newMethod: SliceMethodTab) => {
     setSelectedMethod(newMethod);
@@ -376,7 +376,7 @@ export function useSampleChopper({
       setManualSlices(slices);
       setSelectedSlice(undefined);
     }
-  }, [history]);
+  }, [history.undo]);
 
   const handleRedo = useCallback(() => {
     const slices = history.redo();
@@ -384,13 +384,13 @@ export function useSampleChopper({
       setManualSlices(slices);
       setSelectedSlice(undefined);
     }
-  }, [history]);
+  }, [history.redo]);
 
   const handleRestoreHistory = useCallback((index: number) => {
     const slices = history.restore(index);
     setManualSlices(slices);
     setSelectedSlice(undefined);
-  }, [history]);
+  }, [history.restore]);
 
   const activateStripSilence = useCallback(() => {
     if (manualSlices.length === 0) return;
