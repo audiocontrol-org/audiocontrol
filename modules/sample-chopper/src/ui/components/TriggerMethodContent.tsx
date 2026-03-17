@@ -239,6 +239,7 @@ export function TriggerMethodContent({
       <p className="text-xs text-ac-muted">
         Play back audio and mark slice points in real time by pressing any key or MIDI pad.
         Each keypress marks a slice boundary at the current playback position.
+        You can also assign triggers individually using Learn on each slice.
       </p>
       <div className="flex items-center gap-3">
         <button

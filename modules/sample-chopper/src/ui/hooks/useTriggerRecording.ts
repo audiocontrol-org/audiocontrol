@@ -35,6 +35,11 @@ const IGNORED_KEYS = new Set([
   'F7', 'F8', 'F9', 'F10', 'F11', 'F12',
 ]);
 
+export interface TriggerMapping {
+  triggerId: TriggerId;
+  sliceIndex: number;
+}
+
 export interface UseTriggerRecordingParams {
   /** Ref for low-latency playback position reads */
   playbackPositionRef: MutableRefObject<number | null>;
@@ -54,6 +59,14 @@ export interface UseTriggerRecordingParams {
   kitLabels: string;
   /** Whether the trigger tab is currently selected */
   active: boolean;
+  /** Restored trigger mappings from a saved sample */
+  initialTriggers?: TriggerMapping[];
+  /** Restored playback config from a saved sample */
+  initialPlaybackConfig?: TriggerPlaybackConfig;
+  /** Slices to use for playback when restoring triggers (from initialSlices) */
+  initialSlices?: Array<{ label: string; startSample: number; endSample: number }>;
+  /** Whether MIDI learn is active (suppresses playback listeners) */
+  midiLearnActive?: boolean;
 }
 
 export interface UseTriggerRecordingReturn {
@@ -65,6 +78,8 @@ export interface UseTriggerRecordingReturn {
   triggerCount: number;
   /** Slices derived from trigger positions (available when complete or during recording) */
   recordedSlices: SliceDefinitionOutput[];
+  /** Trigger ID → slice index mapping (for saving) */
+  triggerMappings: TriggerMapping[];
   /** Arm the trigger system for recording */
   arm: () => void;
   /** Stop recording early */
@@ -79,6 +94,12 @@ export interface UseTriggerRecordingReturn {
   setPlaybackMode: (mode: PlaybackMode) => void;
   /** Set mute group for a slice */
   setMuteGroup: (sliceIndex: number, group: number) => void;
+  /** Learn a trigger for a specific slice (MIDI learn) */
+  learnTrigger: (sliceIndex: number, triggerId: TriggerId) => void;
+  /** Clear a learned trigger for a specific slice */
+  clearLearnedTrigger: (sliceIndex: number) => void;
+  /** Clear all learned triggers */
+  clearAllLearnedTriggers: () => void;
 }
 
 export function useTriggerRecording({
@@ -91,9 +112,61 @@ export function useTriggerRecording({
   totalSamples,
   kitLabels,
   active,
+  initialTriggers,
+  initialPlaybackConfig,
+  initialSlices,
+  midiLearnActive = false,
 }: UseTriggerRecordingParams): UseTriggerRecordingReturn {
   const [triggerEvents, setTriggerEvents] = useState<TriggerEvent[]>([]);
-  const [playbackConfig, setPlaybackConfig] = useState<TriggerPlaybackConfig>(DEFAULT_PLAYBACK_CONFIG);
+  const [playbackConfig, setPlaybackConfig] = useState<TriggerPlaybackConfig>(
+    initialPlaybackConfig ?? DEFAULT_PLAYBACK_CONFIG,
+  );
+
+  // Restored mapping from saved trigger data (independent of recording)
+  const restoredMapping = useMemo(() => {
+    if (!initialTriggers || initialTriggers.length === 0) return null;
+    const map = new Map<TriggerId, number>();
+    for (const t of initialTriggers) {
+      map.set(t.triggerId, t.sliceIndex);
+    }
+    return map;
+  }, [initialTriggers]);
+
+  // Whether we have a restored mapping that enables playback without recording
+  const hasRestoredTriggers = restoredMapping !== null && restoredMapping.size > 0;
+
+  // Learned mappings from MIDI learn (triggerId → sliceIndex)
+  const [learnedMappings, setLearnedMappings] = useState<Map<TriggerId, number>>(new Map());
+
+  const learnTrigger = useCallback((sliceIndex: number, triggerId: TriggerId) => {
+    setLearnedMappings((prev) => {
+      const next = new Map(prev);
+      // Remove any existing mapping to this slice (one trigger per slice)
+      for (const [id, idx] of next) {
+        if (idx === sliceIndex) next.delete(id);
+      }
+      next.set(triggerId, sliceIndex);
+      return next;
+    });
+  }, []);
+
+  const clearLearnedTrigger = useCallback((sliceIndex: number) => {
+    setLearnedMappings((prev) => {
+      const next = new Map(prev);
+      for (const [id, idx] of next) {
+        if (idx === sliceIndex) next.delete(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const clearAllLearnedTriggers = useCallback(() => {
+    setLearnedMappings(new Map());
+  }, []);
+
+  // Ref for midiLearnActive so event handlers can read it without re-subscribing
+  const midiLearnActiveRef = useRef(midiLearnActive);
+  midiLearnActiveRef.current = midiLearnActive;
 
   const handleTrigger = useCallback((samplePosition: number, triggerId: TriggerId) => {
     setTriggerEvents((prev) => [...prev, { samplePosition, triggerId }]);
@@ -143,27 +216,59 @@ export function useTriggerRecording({
     return { recordedSlices: slices, triggerToSliceIndex: mapping };
   }, [triggerEvents, totalSamples, kitLabels]);
 
+  // Effective mapping: restored ← recorded ← learned (last wins)
+  const effectiveMapping = useMemo(() => {
+    const merged = new Map<TriggerId, number>();
+    if (restoredMapping) {
+      for (const [id, idx] of restoredMapping) merged.set(id, idx);
+    }
+    if (triggerToSliceIndex.size > 0) {
+      for (const [id, idx] of triggerToSliceIndex) merged.set(id, idx);
+    }
+    for (const [id, idx] of learnedMappings) merged.set(id, idx);
+    return merged;
+  }, [triggerToSliceIndex, restoredMapping, learnedMappings]);
+
+  // Trigger mappings for saving (actual trigger IDs, not generic)
+  const triggerMappings = useMemo((): TriggerMapping[] => {
+    return [...effectiveMapping.entries()].map(([triggerId, sliceIndex]) => ({
+      triggerId,
+      sliceIndex,
+    }));
+  }, [effectiveMapping]);
+
+  // Effective slices: prefer recorded, fall back to initial
+  const effectiveSlices = useMemo(() => {
+    if (recordedSlices.length > 0) return recordedSlices;
+    if (hasRestoredTriggers && initialSlices && initialSlices.length > 0) {
+      return initialSlices.map((s) => ({ ...s }));
+    }
+    return [];
+  }, [recordedSlices, hasRestoredTriggers, initialSlices]);
+
   // Refs for stable event handler access
   const onPlaySliceRef = useRef(onPlaySlice);
   const onStopSliceRef = useRef(onStopSlice);
-  const triggerToSliceIndexRef = useRef(triggerToSliceIndex);
-  const recordedSlicesRef = useRef(recordedSlices);
+  const effectiveMappingRef = useRef(effectiveMapping);
+  const effectiveSlicesRef = useRef(effectiveSlices);
   const stateRef = useRef(triggerInput.state);
   const activeRef = useRef(active);
   const playbackConfigRef = useRef(playbackConfig);
+  const hasRestoredTriggersRef = useRef(hasRestoredTriggers);
 
   onPlaySliceRef.current = onPlaySlice;
   onStopSliceRef.current = onStopSlice;
-  triggerToSliceIndexRef.current = triggerToSliceIndex;
-  recordedSlicesRef.current = recordedSlices;
+  effectiveMappingRef.current = effectiveMapping;
+  effectiveSlicesRef.current = effectiveSlices;
   stateRef.current = triggerInput.state;
   activeRef.current = active;
   playbackConfigRef.current = playbackConfig;
+  hasRestoredTriggersRef.current = hasRestoredTriggers;
 
   const firePlayback = useCallback((triggerId: TriggerId) => {
-    const slices = recordedSlicesRef.current;
+    const slices = effectiveSlicesRef.current;
     if (slices.length === 0) return;
-    const mapping = triggerToSliceIndexRef.current;
+    const mapping = effectiveMappingRef.current;
     const index = mapping.get(triggerId);
     if (index !== undefined) {
       onPlaySliceRef.current(index);
@@ -172,7 +277,7 @@ export function useTriggerRecording({
 
   const fireStopPlayback = useCallback((triggerId: TriggerId) => {
     if (playbackConfigRef.current.playbackMode !== 'gate') return;
-    const mapping = triggerToSliceIndexRef.current;
+    const mapping = effectiveMappingRef.current;
     const index = mapping.get(triggerId);
     if (index !== undefined) {
       onStopSliceRef.current(index);
@@ -183,16 +288,17 @@ export function useTriggerRecording({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent): void => {
       if (!activeRef.current) return;
+      if (midiLearnActiveRef.current) return;
       const state = stateRef.current;
       if (state !== 'idle' && state !== 'complete') return;
-      if (recordedSlicesRef.current.length === 0) return;
+      if (effectiveSlicesRef.current.length === 0) return;
       if (event.repeat) return;
       if (IGNORED_KEYS.has(event.key)) return;
       const target = event.target as HTMLElement;
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT') return;
 
       const id = keyTriggerId(event.key);
-      if (!triggerToSliceIndexRef.current.has(id)) return;
+      if (!effectiveMappingRef.current.has(id)) return;
 
       event.preventDefault();
       event.stopPropagation();
@@ -201,12 +307,13 @@ export function useTriggerRecording({
 
     const handleKeyUp = (event: KeyboardEvent): void => {
       if (!activeRef.current) return;
+      if (midiLearnActiveRef.current) return;
       const state = stateRef.current;
       if (state !== 'idle' && state !== 'complete') return;
-      if (recordedSlicesRef.current.length === 0) return;
+      if (effectiveSlicesRef.current.length === 0) return;
 
       const id = keyTriggerId(event.key);
-      if (!triggerToSliceIndexRef.current.has(id)) return;
+      if (!effectiveMappingRef.current.has(id)) return;
 
       fireStopPlayback(id);
     };
@@ -227,9 +334,10 @@ export function useTriggerRecording({
 
     const handleMidiMessage = (event: MIDIMessageEvent): void => {
       if (!activeRef.current) return;
+      if (midiLearnActiveRef.current) return;
       const state = stateRef.current;
       if (state !== 'idle' && state !== 'complete') return;
-      if (recordedSlicesRef.current.length === 0) return;
+      if (effectiveSlicesRef.current.length === 0) return;
       const data = event.data;
       if (!data || data.length < 3) return;
       const status = data[0] & 0xf0;
@@ -239,13 +347,13 @@ export function useTriggerRecording({
       if (status === 0x90 && velocity > 0) {
         // Note On
         const id = midiTriggerId(note);
-        if (triggerToSliceIndexRef.current.has(id)) {
+        if (effectiveMappingRef.current.has(id)) {
           firePlayback(id);
         }
       } else if (status === 0x80 || (status === 0x90 && velocity === 0)) {
         // Note Off
         const id = midiTriggerId(note);
-        if (triggerToSliceIndexRef.current.has(id)) {
+        if (effectiveMappingRef.current.has(id)) {
           fireStopPlayback(id);
         }
       }
@@ -290,6 +398,7 @@ export function useTriggerRecording({
   const reset = useCallback(() => {
     triggerInput.reset();
     setTriggerEvents([]);
+    setLearnedMappings(new Map());
     setPlaybackConfig(DEFAULT_PLAYBACK_CONFIG);
   }, [triggerInput]);
 
@@ -297,7 +406,8 @@ export function useTriggerRecording({
     state: triggerInput.state,
     midiAvailable: triggerInput.midiAvailable,
     triggerCount: triggerEvents.length,
-    recordedSlices,
+    recordedSlices: effectiveSlices,
+    triggerMappings,
     arm: triggerInput.arm,
     stopRecording: triggerInput.stopRecording,
     reset,
@@ -305,5 +415,8 @@ export function useTriggerRecording({
     setPolyphony,
     setPlaybackMode,
     setMuteGroup,
+    learnTrigger,
+    clearLearnedTrigger,
+    clearAllLearnedTriggers,
   };
 }

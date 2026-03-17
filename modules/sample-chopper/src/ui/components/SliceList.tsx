@@ -7,6 +7,8 @@
 
 import { cn } from '@/ui/utils.js';
 import type { SliceDefinitionOutput } from '@/ui/hooks/useSampleChopper.js';
+import type { TriggerMapping } from '@/ui/hooks/useTriggerRecording.js';
+import { triggerDisplayName } from '@/ui/hooks/useMidiLearn.js';
 
 export interface SliceListProps {
   slices: SliceDefinitionOutput[];
@@ -18,6 +20,66 @@ export interface SliceListProps {
   onSliceDelete?: (index: number) => void;
   /** Show delete buttons and edit-mode empty state */
   editable?: boolean;
+  /** Current trigger assignments for display */
+  triggerAssignments?: TriggerMapping[];
+  /** Which slice index is currently in learn mode */
+  learningSliceIndex?: number | null;
+  /** Start MIDI learn for a slice */
+  onStartLearn?: (sliceIndex: number) => void;
+  /** Cancel MIDI learn */
+  onCancelLearn?: () => void;
+  /** Clear trigger assignment for a slice */
+  onClearTrigger?: (sliceIndex: number) => void;
+}
+
+function TriggerControls({
+  sliceIndex,
+  triggerAssignments,
+  learningSliceIndex,
+  onStartLearn,
+  onCancelLearn,
+  onClearTrigger,
+}: {
+  sliceIndex: number;
+  triggerAssignments: TriggerMapping[];
+  learningSliceIndex: number | null;
+  onStartLearn: (sliceIndex: number) => void;
+  onCancelLearn?: () => void;
+  onClearTrigger?: (sliceIndex: number) => void;
+}): JSX.Element {
+  const assignment = triggerAssignments.find((t) => t.sliceIndex === sliceIndex);
+  const isLearning = learningSliceIndex === sliceIndex;
+
+  return (
+    <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+      {assignment && (
+        <span className="font-mono text-[10px] bg-ac-accent/30 text-ac-text px-1.5 py-0.5 rounded">
+          {triggerDisplayName(assignment.triggerId)}
+        </span>
+      )}
+      <button
+        onClick={() => isLearning ? onCancelLearn?.() : onStartLearn(sliceIndex)}
+        className={cn(
+          'px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors',
+          isLearning
+            ? 'bg-yellow-500/30 text-yellow-300 animate-pulse'
+            : 'bg-ac-bg text-ac-muted hover:text-ac-text'
+        )}
+        title={isLearning ? 'Cancel learn' : 'Learn trigger: press a MIDI pad or key'}
+      >
+        {isLearning ? '...' : 'Learn'}
+      </button>
+      {assignment && onClearTrigger && (
+        <button
+          onClick={() => onClearTrigger(sliceIndex)}
+          className="text-red-400 hover:text-red-300 text-[10px] px-0.5"
+          title="Clear trigger assignment"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
 }
 
 export function SliceList({
@@ -29,6 +91,11 @@ export function SliceList({
   onSlicePlay,
   onSliceDelete,
   editable = false,
+  triggerAssignments,
+  learningSliceIndex,
+  onStartLearn,
+  onCancelLearn,
+  onClearTrigger,
 }: SliceListProps): JSX.Element {
   if (slices.length === 0) {
     if (editable) {
@@ -90,6 +157,16 @@ export function SliceList({
           <span className="text-ac-muted">
             {((slice.endSample - slice.startSample) / sampleRate * 1000).toFixed(0)}ms
           </span>
+          {triggerAssignments && onStartLearn && (
+            <TriggerControls
+              sliceIndex={i}
+              triggerAssignments={triggerAssignments}
+              learningSliceIndex={learningSliceIndex ?? null}
+              onStartLearn={onStartLearn}
+              onCancelLearn={onCancelLearn}
+              onClearTrigger={onClearTrigger}
+            />
+          )}
           {editable && onSliceDelete && (
             <button
               onClick={(e) => {

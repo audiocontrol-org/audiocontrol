@@ -30,6 +30,7 @@ import {
 import type { SliceResult } from '@/types.js';
 import { useTriggerRecording } from '@/ui/hooks/useTriggerRecording.js';
 import { useTriggerPlayback } from '@/ui/hooks/useTriggerPlayback.js';
+import { useMidiLearn } from '@/ui/hooks/useMidiLearn.js';
 
 // Re-export types for consumers
 export type { SliceDefinitionOutput, InitialSliceDefinition };
@@ -101,6 +102,14 @@ export interface SampleChopperDialogProps {
   onSave?: (payload: ChopperSavePayload) => Promise<void>;
   /** Optional callback to load chopped sample from library */
   onLoad?: () => Promise<ChopperLoadPayload | null>;
+  /** Restored trigger mappings from a saved sample */
+  initialTriggers?: Array<{ triggerId: string; sliceIndex: number }>;
+  /** Restored playback config from a saved sample */
+  initialPlaybackConfig?: {
+    polyphony: 'mono' | 'poly';
+    playbackMode: 'one-shot' | 'gate';
+    muteGroups: number[];
+  };
 }
 
 export function SampleChopperDialog({
@@ -117,6 +126,8 @@ export function SampleChopperDialog({
   onSlicesUpdated,
   onSave,
   onLoad,
+  initialTriggers,
+  initialPlaybackConfig,
 }: SampleChopperDialogProps): JSX.Element {
   const chopper = useSampleChopper({
     samples,
@@ -166,6 +177,16 @@ export function SampleChopperDialog({
     stopSlice: () => {},
   });
 
+  const midiLearnState = useMidiLearn({
+    enabled: chopper.selectedMethod === 'trigger' && chopper.manualSlices.length > 0,
+    onLearn: (sliceIndex, triggerId) => triggerRef.current.learnTrigger(sliceIndex, triggerId),
+  });
+
+  // Ref to break circular dependency between useMidiLearn.onLearn and trigger.learnTrigger
+  const triggerRef = useRef<{ learnTrigger: (sliceIndex: number, triggerId: string) => void }>({
+    learnTrigger: () => {},
+  });
+
   const trigger = useTriggerRecording({
     playbackPositionRef,
     isPlaying,
@@ -179,7 +200,13 @@ export function SampleChopperDialog({
     totalSamples: samples?.length ?? 0,
     kitLabels: chopper.kitLabels,
     active: chopper.selectedMethod === 'trigger',
+    initialTriggers,
+    initialPlaybackConfig,
+    initialSlices,
+    midiLearnActive: midiLearnState.isLearning,
   });
+
+  triggerRef.current = trigger;
 
   const triggerPlayback = useTriggerPlayback({
     samples,
@@ -248,13 +275,12 @@ export function SampleChopperDialog({
         name: sourceName,
         slices: chopper.manualSlices,
         sourceAudio: { samples, sampleRate },
-        triggers: trigger.recordedSlices.length > 0
-          ? trigger.recordedSlices.map((slice, i) => ({
-              triggerId: `slice:${i}`,
-              sliceIndex: i,
-            }))
+        triggers: trigger.triggerMappings.length > 0
+          ? trigger.triggerMappings
           : undefined,
-        playbackConfig: trigger.playbackConfig.muteGroups.length > 0
+        playbackConfig: trigger.playbackConfig.polyphony !== 'poly'
+            || trigger.playbackConfig.playbackMode !== 'one-shot'
+            || trigger.playbackConfig.muteGroups.length > 0
           ? {
               polyphony: trigger.playbackConfig.polyphony,
               playbackMode: trigger.playbackConfig.playbackMode,
@@ -265,7 +291,7 @@ export function SampleChopperDialog({
     } finally {
       setIsSaving(false);
     }
-  }, [onSave, samples, chopper.currentSliceResult, chopper.manualSlices, sampleRate, sourceName, trigger.recordedSlices, trigger.playbackConfig]);
+  }, [onSave, samples, chopper.currentSliceResult, chopper.manualSlices, sampleRate, sourceName, trigger.triggerMappings, trigger.playbackConfig]);
 
   const handleLoad = useCallback(async () => {
     if (!onLoad) return;
@@ -480,6 +506,27 @@ export function SampleChopperDialog({
                         )}
                       </button>
                     </div>
+                    {/* MIDI Learn toggle — shown on trigger tab when a slice is selected */}
+                    {chopper.selectedMethod === 'trigger' && chopper.manualSlices.length > 0 && chopper.selectedSlice !== undefined && (
+                      <button
+                        onClick={() => {
+                          const idx = chopper.selectedSlice;
+                          if (idx === undefined) return;
+                          midiLearnState.learningSliceIndex === idx
+                            ? midiLearnState.cancelLearning()
+                            : midiLearnState.startLearning(idx);
+                        }}
+                        className={cn(
+                          'px-2 py-1 rounded text-xs font-medium transition-colors',
+                          midiLearnState.learningSliceIndex === chopper.selectedSlice
+                            ? 'bg-yellow-500/30 text-yellow-300 animate-pulse'
+                            : 'bg-ac-bg text-ac-muted hover:text-ac-text'
+                        )}
+                        title={midiLearnState.isLearning ? 'Cancel learn' : 'Learn: assign a MIDI note or key to the selected slice'}
+                      >
+                        {midiLearnState.learningSliceIndex === chopper.selectedSlice ? 'Learn...' : 'Learn'}
+                      </button>
+                    )}
                     {/* Zoom controls */}
                     <div className="flex items-center gap-1 bg-ac-bg rounded px-2 py-1">
                       <button
@@ -606,6 +653,11 @@ export function SampleChopperDialog({
                   onSlicePlay={handlePlaySlice}
                   onSliceDelete={chopper.handleSliceDelete}
                   editable={chopper.isManualMode}
+                  triggerAssignments={chopper.selectedMethod === 'trigger' ? trigger.triggerMappings : undefined}
+                  learningSliceIndex={chopper.selectedMethod === 'trigger' ? midiLearnState.learningSliceIndex : undefined}
+                  onStartLearn={chopper.selectedMethod === 'trigger' ? midiLearnState.startLearning : undefined}
+                  onCancelLearn={chopper.selectedMethod === 'trigger' ? midiLearnState.cancelLearning : undefined}
+                  onClearTrigger={chopper.selectedMethod === 'trigger' ? trigger.clearLearnedTrigger : undefined}
                 />
               )}
 
