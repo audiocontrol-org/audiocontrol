@@ -466,3 +466,56 @@ body {
   width: 0.8rem;
   height: 0.8rem;
 }
+
+/* Library tab bar */
+.library-tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--ac-accent);
+}
+
+.library-tab {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  background: transparent;
+  color: var(--ac-muted);
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  transition: all 0.15s;
+}
+
+.library-tab:hover {
+  color: var(--ac-text);
+  background: rgba(51, 65, 85, 0.15);
+}
+
+.library-tab.active {
+  color: var(--ac-highlight);
+  border-bottom-color: var(--ac-highlight);
+}
+
+/* Device badge */
+.library-device-badge {
+  display: inline-block;
+  padding: 0.1rem 0.35rem;
+  margin-right: 0.4rem;
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--ac-highlight);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 0.2rem;
+  font-size: 0.6rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+}
+
+/* Non-importable kit note */
+.library-browser-item-note {
+  font-size: 0.65rem;
+  color: var(--ac-muted);
+  font-style: italic;
+}

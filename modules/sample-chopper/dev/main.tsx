@@ -22,6 +22,7 @@ import {
   getLibraryHandle,
   pickLibraryDirectory,
 } from './library.js';
+import { loadLibraryTone, loadLibraryDrumKit } from './library-imports.js';
 import { LoadDialog } from './LoadDialog.js';
 import { LibraryBrowser } from './LibraryBrowser.js';
 import './styles.css';
@@ -102,6 +103,8 @@ function App() {
   const [sampleRate, setSampleRate] = useState(44100);
   const [fileName, setFileName] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [initialSlices, setInitialSlices] = useState<Array<{ label: string; startSample: number; endSample: number }> | undefined>(undefined);
+  const [editMode, setEditMode] = useState(false);
   const [result, setResult] = useState<ChopperResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -118,6 +121,8 @@ function App() {
   const loadFile = useCallback(async (file: File) => {
     setError(null);
     setResult(null);
+    setInitialSlices(undefined);
+    setEditMode(false);
     try {
       const buffer = await file.arrayBuffer();
       const { samples: wavSamples, sampleRate: wavRate } = parseWavFile(buffer);
@@ -200,11 +205,47 @@ function App() {
       setSamples(payload.sourceAudio.samples);
       setSampleRate(payload.sourceAudio.sampleRate);
       setFileName(payload.name);
+      setInitialSlices(payload.slices);
+      setEditMode(true);
       setResult(null);
       setError(null);
       setDialogOpen(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sample');
+    }
+  }, []);
+
+  // Library browser: open a tone WAV in the chopper (raw audio, no slices)
+  const handleOpenTone = useCallback(async (device: string, name: string, path: string[]) => {
+    try {
+      const { samples: toneSamples, sampleRate: toneRate } = await loadLibraryTone(device, name, path);
+      setSamples(toneSamples);
+      setSampleRate(toneRate);
+      setFileName(`${name} (${device.toUpperCase()})`);
+      setInitialSlices(undefined);
+      setEditMode(false);
+      setResult(null);
+      setError(null);
+      setDialogOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load tone');
+    }
+  }, []);
+
+  // Library browser: open a v2 drum kit with source WAV + pre-populated slices
+  const handleOpenDrumKit = useCallback(async (device: string, name: string, path: string[]) => {
+    try {
+      const payload = await loadLibraryDrumKit(device, name, path);
+      setSamples(payload.samples);
+      setSampleRate(payload.sampleRate);
+      setFileName(`${name} (${device.toUpperCase()})`);
+      setInitialSlices(payload.slices);
+      setEditMode(true);
+      setResult(null);
+      setError(null);
+      setDialogOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load drum kit');
     }
   }, []);
 
@@ -289,6 +330,8 @@ function App() {
         connected={libraryConnected}
         refreshKey={libraryRefreshKey}
         onOpen={handleOpenFromLibrary}
+        onOpenTone={handleOpenTone}
+        onOpenDrumKit={handleOpenDrumKit}
       />
 
       <SampleChopperDialog
@@ -298,6 +341,8 @@ function App() {
         sampleRate={sampleRate}
         sourceName={fileName}
         onConfirm={handleConfirm}
+        editMode={editMode}
+        initialSlices={initialSlices}
         onSave={libraryConnected ? handleSave : undefined}
         onLoad={libraryConnected ? handleLoad : undefined}
       />

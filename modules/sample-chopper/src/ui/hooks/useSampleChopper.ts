@@ -106,12 +106,23 @@ export function useSampleChopper({
     if (open) { setZoom(1); setIsFullscreen(false); }
   }, [open]);
 
+  // Reset slice state when samples change (new audio loaded)
+  useEffect(() => {
+    setAutoSliceResult(null);
+    setManualSlices([]);
+    setSelectedSlice(undefined);
+    setSliceError(null);
+    setOriginalSliceBoundaries([]);
+    setUseInitialSlices(false);
+  }, [samples]);
+
   // Initialize labels from initial slices when in edit mode
   useEffect(() => {
     if (open && editMode && initialSlices && initialSlices.length > 0) {
       setKitLabels(initialSlices.map((s) => s.label).join(','));
       setManualSlices(initialSlices.map((s) => ({ ...s })));
       setUseInitialSlices(true);
+      setSelectedMethod('manual');
     }
   }, [open, editMode, initialSlices]);
 

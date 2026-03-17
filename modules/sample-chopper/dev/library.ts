@@ -96,7 +96,7 @@ export async function getLibraryHandle(): Promise<FileSystemDirectoryHandle | nu
   return null;
 }
 
-async function ensureLibraryHandle(): Promise<FileSystemDirectoryHandle> {
+export async function ensureLibraryHandle(): Promise<FileSystemDirectoryHandle> {
   const existing = await getLibraryHandle();
   if (existing) return existing;
 
@@ -155,7 +155,7 @@ function writeStr(view: DataView, offset: number, str: string): void {
   }
 }
 
-function parseWavSamples(buffer: ArrayBuffer): { samples: Int16Array; sampleRate: number } {
+export function parseWavSamples(buffer: ArrayBuffer): { samples: Int16Array; sampleRate: number } {
   const view = new DataView(buffer);
 
   const riff = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
