@@ -306,6 +306,17 @@ export async function listChoppedSamples(): Promise<ChoppedSampleInfo[]> {
 }
 
 // =========================================================================
+// Delete
+// =========================================================================
+
+export async function deleteChoppedSample(name: string): Promise<void> {
+  const root = await ensureLibraryHandle();
+  const samplesDir = await getChoppedSamplesDir(root);
+  const safeName = sanitizeFilename(name);
+  await samplesDir.removeEntry(safeName, { recursive: true });
+}
+
+// =========================================================================
 // Load
 // =========================================================================
 

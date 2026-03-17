@@ -23,6 +23,7 @@ import {
   pickLibraryDirectory,
 } from './library.js';
 import { LoadDialog } from './LoadDialog.js';
+import { LibraryBrowser } from './LibraryBrowser.js';
 import './styles.css';
 
 function parseWavFile(buffer: ArrayBuffer): { samples: Int16Array; sampleRate: number } {
@@ -105,6 +106,7 @@ function App() {
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [libraryConnected, setLibraryConnected] = useState(false);
+  const [libraryRefreshKey, setLibraryRefreshKey] = useState(0);
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -148,7 +150,9 @@ function App() {
   // Library: connect
   const handleConnectLibrary = useCallback(async () => {
     const handle = await pickLibraryDirectory();
-    setLibraryConnected(handle !== null);
+    const connected = handle !== null;
+    setLibraryConnected(connected);
+    if (connected) setLibraryRefreshKey((k) => k + 1);
   }, []);
 
   // Check for existing library handle on mount
@@ -162,6 +166,7 @@ function App() {
     if (!name) return;
 
     await saveChoppedSample({ ...payload, name });
+    setLibraryRefreshKey((k) => k + 1);
   }, []);
 
   // Library: load callback for the dialog (promise-based)
@@ -186,6 +191,21 @@ function App() {
       loadResolverRef.current?.resolve(null);
     }
     loadResolverRef.current = null;
+  }, []);
+
+  // Library browser: open a saved sample in the chopper
+  const handleOpenFromLibrary = useCallback(async (name: string) => {
+    try {
+      const payload = await loadChoppedSample(name);
+      setSamples(payload.sourceAudio.samples);
+      setSampleRate(payload.sourceAudio.sampleRate);
+      setFileName(payload.name);
+      setResult(null);
+      setError(null);
+      setDialogOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load sample');
+    }
   }, []);
 
   const handleLoadCancel = useCallback(() => {
@@ -264,6 +284,12 @@ function App() {
           </table>
         </div>
       )}
+
+      <LibraryBrowser
+        connected={libraryConnected}
+        refreshKey={libraryRefreshKey}
+        onOpen={handleOpenFromLibrary}
+      />
 
       <SampleChopperDialog
         open={dialogOpen}
