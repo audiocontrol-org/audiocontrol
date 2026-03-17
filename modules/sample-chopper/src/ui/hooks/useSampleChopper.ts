@@ -19,7 +19,7 @@ import type {
 import { DEFAULT_DRUM_TYPES } from '@/types.js';
 import type { SliceMarker, SliceChange } from '@/ui/components/WaveformEditor.js';
 
-export type SliceMethodTab = 'transient' | 'silence' | 'fixed' | 'manual' | 'trigger';
+export type SliceMethodTab = 'transient' | 'silence' | 'fixed' | 'manual';
 
 /** Slice definition for output. */
 export interface SliceDefinitionOutput {
@@ -148,7 +148,6 @@ export function useSampleChopper({
       case 'fixed':
         return { method: 'fixed', count: fixedCount };
       case 'manual':
-      case 'trigger':
       case 'silence':
         return { method: 'transient', threshold: transientThreshold, minGapMs: transientMinGap, prePadMs: transientPrePad };
     }
@@ -157,7 +156,7 @@ export function useSampleChopper({
   // Perform auto-slicing when config changes
   useEffect(() => {
     if (!samples || samples.length === 0) { setAutoSliceResult(null); return; }
-    if (selectedMethod === 'manual' || selectedMethod === 'trigger' || selectedMethod === 'silence') { setAutoSliceResult(null); return; }
+    if (selectedMethod === 'manual' || selectedMethod === 'silence') { setAutoSliceResult(null); return; }
     // Skip auto-slicing when initial slices are being loaded — the initialSlices
     // effect sets selectedMethod='manual' but that update hasn't rendered yet
     if (editMode && initialSlices && initialSlices.length > 0) { return; }
@@ -180,7 +179,7 @@ export function useSampleChopper({
 
   const currentSliceResult = useMemo((): SliceResult | null => {
     if (!samples || samples.length === 0) return null;
-    if (selectedMethod === 'manual' || selectedMethod === 'trigger' || selectedMethod === 'silence' || useInitialSlices) {
+    if (selectedMethod === 'manual' || selectedMethod === 'silence' || useInitialSlices) {
       if (manualSlices.length === 0) return null;
       const totalDurationMs = (samples.length / sampleRate) * 1000;
       return {
@@ -216,7 +215,7 @@ export function useSampleChopper({
   }, [stripSilenceActive, originalSliceBoundaries, stripSilenceThreshold, computeStrippedBoundaries]);
 
   const sliceMarkers = useMemo((): SliceMarker[] => {
-    if (selectedMethod === 'manual' || selectedMethod === 'trigger' || selectedMethod === 'silence' || useInitialSlices) {
+    if (selectedMethod === 'manual' || selectedMethod === 'silence' || useInitialSlices) {
       if (stripSilenceActive && strippedPreview) {
         return manualSlices.map((slice, i) => ({
           startSample: strippedPreview[i]?.startSample ?? slice.startSample,
@@ -359,7 +358,7 @@ export function useSampleChopper({
   }, [manualSlices]);
 
   const durationMs = samples ? (samples.length / sampleRate) * 1000 : 0;
-  const isManualMode = selectedMethod === 'manual' || selectedMethod === 'trigger';
+  const isManualMode = selectedMethod === 'manual';
 
   return {
     isFullscreen, setIsFullscreen,

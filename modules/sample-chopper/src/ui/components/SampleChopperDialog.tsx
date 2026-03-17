@@ -215,10 +215,8 @@ export function SampleChopperDialog({
     }
   }, [trigger.state, trigger.recordedSlices, chopper.setManualSlices]);
 
-  const handleSwitchToManualFromTrigger = useCallback(() => {
-    // Slices are already injected; just switch tab
-    chopper.handleMethodChange('manual');
-  }, [chopper.handleMethodChange]);
+  // No-op: trigger recording is now part of manual mode
+  const handleSwitchToManualFromTrigger = useCallback(() => {}, []);
 
   const handleClose = useCallback(() => {
     stop();
@@ -231,7 +229,7 @@ export function SampleChopperDialog({
     const labels = chopper.kitLabels.split(',').map((s: string) => s.trim());
 
     const sliceDefinitions: SliceDefinitionOutput[] =
-      chopper.selectedMethod === 'manual' || chopper.selectedMethod === 'trigger' || chopper.selectedMethod === 'silence' || chopper.useInitialSlices
+      chopper.selectedMethod === 'manual' || chopper.selectedMethod === 'silence' || chopper.useInitialSlices
         ? chopper.manualSlices
         : chopper.currentSliceResult.slices.map((slice, i) => ({
             label: labels[i % labels.length] ?? `S${i + 1}`,
@@ -292,7 +290,7 @@ export function SampleChopperDialog({
       }
 
       // Yield keyboard to trigger system when armed or recording
-      if (chopper.selectedMethod === 'trigger' && (trigger.state === 'armed' || trigger.state === 'recording')) {
+      if (chopper.selectedMethod === 'manual' && (trigger.state === 'armed' || trigger.state === 'recording')) {
         return;
       }
 

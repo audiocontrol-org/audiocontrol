@@ -64,7 +64,7 @@ export function SliceMethodPanel({
       onValueChange={(v) => onMethodChange(v as SliceMethodTab)}
     >
       <Tabs.List className="flex border-b border-ac-accent/30 mb-4">
-        {(['manual', 'trigger', 'transient', 'silence', 'fixed'] as const).map((method) => (
+        {(['manual', 'transient', 'silence', 'fixed'] as const).map((method) => (
           <Tabs.Trigger
             key={method}
             value={method}
@@ -86,15 +86,7 @@ export function SliceMethodPanel({
           Double-click on a slice to split it. Drag slice edges to adjust boundaries.
           Use +/- to zoom for fine adjustments.
         </p>
-      </Tabs.Content>
-
-      {/* Trigger Mode Controls */}
-      <Tabs.Content value="trigger" className="space-y-3">
-        {triggerProps ? (
-          <TriggerMethodContent {...triggerProps} />
-        ) : (
-          <p className="text-xs text-ac-muted">Trigger mode not available.</p>
-        )}
+        {triggerProps && <TriggerMethodContent {...triggerProps} />}
       </Tabs.Content>
 
       {/* Transient Detection Controls */}

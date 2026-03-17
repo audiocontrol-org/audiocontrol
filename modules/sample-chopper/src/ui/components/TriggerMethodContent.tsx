@@ -214,12 +214,6 @@ export function TriggerMethodContent({
           >
             Record Again
           </button>
-          <button
-            onClick={onEditManually}
-            className="px-3 py-1.5 text-xs rounded bg-ac-highlight hover:bg-ac-highlight/80 text-white font-medium transition-colors"
-          >
-            Edit Manually
-          </button>
         </div>
         <PlaybackControls
           playbackConfig={playbackConfig}
@@ -237,9 +231,8 @@ export function TriggerMethodContent({
   return (
     <div className="space-y-3">
       <p className="text-xs text-ac-muted">
-        Play back audio and mark slice points in real time by pressing any key or MIDI pad.
+        Arm to play back audio and mark slice points in real time by pressing any key or MIDI pad.
         Each keypress marks a slice boundary at the current playback position.
-        You can also assign triggers individually using Learn on each slice.
       </p>
       <div className="flex items-center gap-3">
         <button
