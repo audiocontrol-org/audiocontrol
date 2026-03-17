@@ -29,6 +29,7 @@ import {
 } from '@/ui/hooks/useSampleChopper.js';
 import type { SliceResult } from '@/types.js';
 import { useTriggerRecording } from '@/ui/hooks/useTriggerRecording.js';
+import { ChangeHistory } from './ChangeHistory.js';
 import { PlaybackControls } from './TriggerMethodContent.js';
 import { useTriggerPlayback } from '@/ui/hooks/useTriggerPlayback.js';
 import { useMidiLearn } from '@/ui/hooks/useMidiLearn.js';
@@ -215,6 +216,15 @@ export function SampleChopperDialog({
     }
   }, [trigger.state, trigger.recordedSlices, chopper.setManualSlices]);
 
+  // Push history when trigger recording completes
+  const prevTriggerStateRef = useRef(trigger.state);
+  useEffect(() => {
+    if (prevTriggerStateRef.current === 'recording' && trigger.state === 'complete' && trigger.recordedSlices.length > 0) {
+      chopper.pushHistory(trigger.recordedSlices, 'Record triggers');
+    }
+    prevTriggerStateRef.current = trigger.state;
+  }, [trigger.state, trigger.recordedSlices, chopper.pushHistory]);
+
   // No-op: trigger recording is now part of manual mode
   const handleSwitchToManualFromTrigger = useCallback(() => {}, []);
 
@@ -291,6 +301,21 @@ export function SampleChopperDialog({
 
       // Yield keyboard to trigger system when armed or recording
       if (chopper.selectedMethod === 'manual' && (trigger.state === 'armed' || trigger.state === 'recording')) {
+        return;
+      }
+
+      // Undo/Redo
+      if (event.key === 'z' && (event.metaKey || event.ctrlKey) && !event.shiftKey) {
+        event.preventDefault();
+        event.stopPropagation();
+        chopper.handleUndo();
+        return;
+      }
+      if ((event.key === 'z' && (event.metaKey || event.ctrlKey) && event.shiftKey) ||
+          (event.key === 'y' && (event.metaKey || event.ctrlKey))) {
+        event.preventDefault();
+        event.stopPropagation();
+        chopper.handleRedo();
         return;
       }
 
@@ -502,6 +527,37 @@ export function SampleChopperDialog({
                         {midiLearnState.learningSliceIndex === chopper.selectedSlice ? 'Learn...' : 'Learn'}
                       </button>
                     )}
+                    {/* Undo/Redo */}
+                    {(chopper.canUndo || chopper.canRedo) && (
+                      <div className="flex items-center gap-1 bg-ac-bg rounded px-2 py-1">
+                        <button
+                          onClick={chopper.handleUndo}
+                          disabled={!chopper.canUndo}
+                          className={cn(
+                            'p-1 text-ac-muted hover:text-ac-text transition-colors',
+                            !chopper.canUndo && 'opacity-30 cursor-not-allowed'
+                          )}
+                          title="Undo (Ctrl+Z)"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a5 5 0 015 5v2M3 10l4-4m-4 4l4 4" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={chopper.handleRedo}
+                          disabled={!chopper.canRedo}
+                          className={cn(
+                            'p-1 text-ac-muted hover:text-ac-text transition-colors',
+                            !chopper.canRedo && 'opacity-30 cursor-not-allowed'
+                          )}
+                          title="Redo (Ctrl+Shift+Z)"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 10H11a5 5 0 00-5 5v2M21 10l-4-4m4 4l-4 4" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
                     {/* Zoom controls */}
                     <div className="flex items-center gap-1 bg-ac-bg rounded px-2 py-1">
                       <button
@@ -637,6 +693,15 @@ export function SampleChopperDialog({
                 />
               )}
 
+              {/* Change history */}
+              {chopper.historyEntries.length > 1 && (
+                <ChangeHistory
+                  entries={chopper.historyEntries}
+                  currentIndex={chopper.historyIndex}
+                  onRestore={chopper.handleRestoreHistory}
+                />
+              )}
+
               {/* Playback config — shown when trigger mappings exist */}
               {trigger.triggerMappings.length > 0 && (
                 <PlaybackControls
@@ -669,7 +734,7 @@ export function SampleChopperDialog({
           {/* Footer */}
           <div className="flex justify-between items-center gap-2 p-4 border-t border-ac-accent shrink-0 bg-ac-panel">
             <div className="text-xs text-ac-muted">
-              Space play • ←→ navigate • +/- zoom • F fullscreen
+              Space play • ←→ navigate • +/- zoom • F fullscreen • Ctrl+Z undo
             </div>
             <div className="flex gap-2">
               {onSave && (

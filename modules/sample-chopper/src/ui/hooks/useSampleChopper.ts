@@ -18,6 +18,7 @@ import type {
 } from '@/types.js';
 import { DEFAULT_DRUM_TYPES } from '@/types.js';
 import type { SliceMarker, SliceChange } from '@/ui/components/WaveformEditor.js';
+import { useSliceHistory, type HistoryEntry } from '@/ui/hooks/useSliceHistory.js';
 
 export type SliceMethodTab = 'transient' | 'fixed' | 'manual';
 
@@ -100,6 +101,7 @@ export function useSampleChopper({
   const [manualSlices, setManualSlices] = useState<SliceDefinitionOutput[]>(
     initialSlices?.map((s) => ({ ...s })) ?? []
   );
+  const history = useSliceHistory();
 
   // Reset zoom when dialog opens/closes
   useEffect(() => {
@@ -114,15 +116,19 @@ export function useSampleChopper({
     setSliceError(null);
     setOriginalSliceBoundaries([]);
     setUseInitialSlices(false);
+    history.clear();
   }, [samples]);
 
   // Initialize labels from initial slices when in edit mode
   useEffect(() => {
     if (open && editMode && initialSlices && initialSlices.length > 0) {
       setKitLabels(initialSlices.map((s) => s.label).join(','));
-      setManualSlices(initialSlices.map((s) => ({ ...s })));
+      const slices = initialSlices.map((s) => ({ ...s }));
+      setManualSlices(slices);
       setUseInitialSlices(true);
       setSelectedMethod('manual');
+      history.clear();
+      history.push(slices, 'Load slices');
     }
   }, [open, editMode, initialSlices]);
 
@@ -165,10 +171,12 @@ export function useSampleChopper({
       setSliceError(null);
       setSelectedSlice(undefined);
       const labels = kitLabels.split(',').map((s) => s.trim());
-      setManualSlices(result.slices.map((slice, i) => ({
+      const detected = result.slices.map((slice, i) => ({
         label: labels[i % labels.length] ?? `S${i + 1}`,
         startSample: slice.startSample, endSample: slice.endSample,
-      })));
+      }));
+      setManualSlices(detected);
+      history.push(detected, `Detect ${selectedMethod}`);
       setUseInitialSlices(false);
     } catch (err) {
       setSliceError(err instanceof Error ? err.message : 'Slicing failed');
@@ -240,9 +248,10 @@ export function useSampleChopper({
       if (updated[index]) {
         updated[index] = { ...updated[index], startSample: marker.startSample, endSample: marker.endSample };
       }
+      history.push(updated, 'Adjust edge');
       return updated;
     });
-  }, []);
+  }, [history]);
 
   const handleSlicesChange = useCallback((changes: SliceChange[]) => {
     setManualSlices((prev) => {
@@ -255,9 +264,10 @@ export function useSampleChopper({
           };
         }
       }
+      history.push(updated, 'Adjust edges');
       return updated;
     });
-  }, []);
+  }, [history]);
 
   const handleSliceAdd = useCallback((samplePosition: number) => {
     if (!samples) return;
@@ -274,6 +284,7 @@ export function useSampleChopper({
             label: labels[(i + 1) % labels.length] ?? `S${newSlices.length + 1}`,
             startSample: samplePosition, endSample: originalEnd,
           });
+          history.push(newSlices, 'Split slice');
           return newSlices;
         }
       }
@@ -298,30 +309,36 @@ export function useSampleChopper({
       };
       const insertIndex = newSlices.findIndex((s) => s.startSample > startSample);
       if (insertIndex === -1) { newSlices.push(newSlice); } else { newSlices.splice(insertIndex, 0, newSlice); }
+      history.push(newSlices, 'Add slice');
       return newSlices;
     });
-  }, [samples, kitLabels]);
+  }, [samples, kitLabels, history]);
 
   const handleSliceDelete = useCallback((index: number) => {
     setManualSlices((prev) => {
       if (prev.length <= 1) return prev;
       const updated = [...prev];
       updated.splice(index, 1);
+      history.push(updated, 'Delete slice');
       return updated;
     });
     setSelectedSlice(undefined);
-  }, []);
+  }, [history]);
 
   const handleApplyStripSilence = useCallback(() => {
     if (!strippedPreview) return;
-    setManualSlices((prev) => prev.map((slice, i) => ({
-      ...slice,
-      startSample: strippedPreview[i]?.startSample ?? slice.startSample,
-      endSample: strippedPreview[i]?.endSample ?? slice.endSample,
-    })));
+    setManualSlices((prev) => {
+      const updated = prev.map((slice, i) => ({
+        ...slice,
+        startSample: strippedPreview[i]?.startSample ?? slice.startSample,
+        endSample: strippedPreview[i]?.endSample ?? slice.endSample,
+      }));
+      history.push(updated, 'Strip silence');
+      return updated;
+    });
     setStripSilenceActive(false);
     setOriginalSliceBoundaries([]);
-  }, [strippedPreview]);
+  }, [strippedPreview, history]);
 
   const handleCancelStripSilence = useCallback(() => {
     setStripSilenceActive(false);
@@ -335,14 +352,16 @@ export function useSampleChopper({
   const handleSwitchToManual = useCallback(() => {
     if (autoSliceResult && autoSliceResult.slices.length > 0) {
       const labels = kitLabels.split(',').map((s) => s.trim());
-      setManualSlices(autoSliceResult.slices.map((slice, i) => ({
+      const slices = autoSliceResult.slices.map((slice, i) => ({
         label: labels[i % labels.length] ?? `S${i + 1}`,
         startSample: slice.startSample, endSample: slice.endSample,
-      })));
+      }));
+      setManualSlices(slices);
+      history.push(slices, 'Edit manually');
     }
     setSelectedMethod('manual');
     setUseInitialSlices(false);
-  }, [autoSliceResult, kitLabels]);
+  }, [autoSliceResult, kitLabels, history]);
 
   const handleMethodChange = useCallback((newMethod: SliceMethodTab) => {
     setSelectedMethod(newMethod);
@@ -350,6 +369,28 @@ export function useSampleChopper({
     setStripSilenceActive(false);
     setOriginalSliceBoundaries([]);
   }, []);
+
+  const handleUndo = useCallback(() => {
+    const slices = history.undo();
+    if (slices) {
+      setManualSlices(slices);
+      setSelectedSlice(undefined);
+    }
+  }, [history]);
+
+  const handleRedo = useCallback(() => {
+    const slices = history.redo();
+    if (slices) {
+      setManualSlices(slices);
+      setSelectedSlice(undefined);
+    }
+  }, [history]);
+
+  const handleRestoreHistory = useCallback((index: number) => {
+    const slices = history.restore(index);
+    setManualSlices(slices);
+    setSelectedSlice(undefined);
+  }, [history]);
 
   const activateStripSilence = useCallback(() => {
     if (manualSlices.length === 0) return;
@@ -378,5 +419,9 @@ export function useSampleChopper({
     handleSliceChange, handleSlicesChange, handleSliceAdd, handleSliceDelete,
     handleSwitchToManual,
     durationMs, isManualMode, useInitialSlices,
+    handleUndo, handleRedo, handleRestoreHistory,
+    canUndo: history.canUndo, canRedo: history.canRedo,
+    historyEntries: history.entries, historyIndex: history.currentIndex,
+    pushHistory: history.push,
   };
 }
