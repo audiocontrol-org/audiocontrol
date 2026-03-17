@@ -29,6 +29,7 @@ import {
 } from '@/ui/hooks/useSampleChopper.js';
 import type { SliceResult } from '@/types.js';
 import { useTriggerRecording } from '@/ui/hooks/useTriggerRecording.js';
+import { PlaybackControls } from './TriggerMethodContent.js';
 import { useTriggerPlayback } from '@/ui/hooks/useTriggerPlayback.js';
 import { useMidiLearn } from '@/ui/hooks/useMidiLearn.js';
 
@@ -164,6 +165,8 @@ export function SampleChopperDialog({
         return;
       }
 
+      // Stop any trigger playback voices so the two engines don't overlap
+      triggerPlaybackRef.current.stopAll();
       chopper.setSelectedSlice(index);
       play(samples, slice.startSample, slice.endSample);
     },
@@ -172,9 +175,10 @@ export function SampleChopperDialog({
 
   // Break circular dep: trigger needs triggerPlayback.playSlice, triggerPlayback needs trigger.recordedSlices.
   // Use refs so the callbacks resolve at event time, not at hook-call time.
-  const triggerPlaybackRef = useRef<{ playSlice: (i: number) => void; stopSlice: (i: number) => void }>({
+  const triggerPlaybackRef = useRef<{ playSlice: (i: number) => void; stopSlice: (i: number) => void; stopAll: () => void }>({
     playSlice: () => {},
     stopSlice: () => {},
+    stopAll: () => {},
   });
 
   const midiLearnState = useMidiLearn({
@@ -194,6 +198,8 @@ export function SampleChopperDialog({
     onStop: stop,
     onPlaySlice: (index: number) => {
       chopper.setSelectedSlice(index);
+      // Stop any useAudioPreview voice so the two engines don't overlap
+      if (isPlaying) stop();
       triggerPlaybackRef.current.playSlice(index);
     },
     onStopSlice: (index: number) => triggerPlaybackRef.current.stopSlice(index),
@@ -659,6 +665,18 @@ export function SampleChopperDialog({
                   onStartLearn={midiLearnState.startLearning}
                   onCancelLearn={midiLearnState.cancelLearning}
                   onClearTrigger={trigger.clearLearnedTrigger}
+                />
+              )}
+
+              {/* Playback config — shown when trigger mappings exist */}
+              {trigger.triggerMappings.length > 0 && (
+                <PlaybackControls
+                  playbackConfig={trigger.playbackConfig}
+                  onPolyphonyChange={trigger.setPolyphony}
+                  onPlaybackModeChange={trigger.setPlaybackMode}
+                  onMuteGroupChange={trigger.setMuteGroup}
+                  slices={chopper.manualSlices}
+                  latencyMs={triggerPlayback.latencyMs}
                 />
               )}
 

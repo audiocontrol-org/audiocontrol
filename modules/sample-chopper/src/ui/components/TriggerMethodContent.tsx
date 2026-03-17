@@ -33,7 +33,7 @@ export interface TriggerMethodContentProps {
   latencyMs: number | null;
 }
 
-function PlaybackControls({
+export function PlaybackControls({
   playbackConfig,
   onPolyphonyChange,
   onPlaybackModeChange,
