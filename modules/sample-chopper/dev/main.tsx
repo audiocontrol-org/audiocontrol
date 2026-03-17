@@ -117,6 +117,8 @@ function App() {
   const [libraryRefreshKey, setLibraryRefreshKey] = useState(0);
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
   const [samplesBrowsePath, setSamplesBrowsePath] = useState<string[]>([]);
+  /** Tracks the library origin of the currently loaded sample (for auto-save) */
+  const [libraryOrigin, setLibraryOrigin] = useState<{ name: string; path: string[] } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Resolve/reject for the promise-based onLoad callback
@@ -130,6 +132,7 @@ function App() {
     setInitialSlices(undefined);
     setInitialTriggers(undefined);
     setInitialPlaybackConfig(undefined);
+    setLibraryOrigin(null);
     setEditMode(false);
     try {
       const buffer = await file.arrayBuffer();
@@ -168,12 +171,17 @@ function App() {
 
   // Library: save callback for the dialog
   const handleSave = useCallback(async (payload: ChopperSavePayload) => {
-    const name = window.prompt('Save chopped sample as:', payload.name.replace(/\.wav$/i, ''));
-    if (!name) return;
-
-    await saveChoppedSample({ ...payload, name }, samplesBrowsePath);
+    if (libraryOrigin) {
+      // Auto-save back to the location it was loaded from
+      await saveChoppedSample({ ...payload, name: libraryOrigin.name }, libraryOrigin.path);
+    } else {
+      const name = window.prompt('Save chopped sample as:', payload.name.replace(/\.wav$/i, ''));
+      if (!name) return;
+      await saveChoppedSample({ ...payload, name }, samplesBrowsePath);
+      setLibraryOrigin({ name, path: samplesBrowsePath });
+    }
     setLibraryRefreshKey((k) => k + 1);
-  }, [samplesBrowsePath]);
+  }, [samplesBrowsePath, libraryOrigin]);
 
   // Library: load callback for the dialog (promise-based)
   const handleLoad = useCallback((): Promise<ChopperLoadPayload | null> => {
@@ -191,6 +199,7 @@ function App() {
       setSamples(payload.sourceAudio.samples);
       setSampleRate(payload.sourceAudio.sampleRate);
       setFileName(name);
+      setLibraryOrigin({ name, path });
       loadResolverRef.current?.resolve(payload);
     } catch (err) {
       console.error('Failed to load sample:', err);
@@ -209,6 +218,7 @@ function App() {
       setInitialSlices(payload.slices);
       setInitialTriggers(payload.triggers);
       setInitialPlaybackConfig(payload.playbackConfig);
+      setLibraryOrigin({ name, path });
       setEditMode(true);
       setResult(null);
       setError(null);
@@ -251,6 +261,7 @@ function App() {
       setInitialSlices(undefined);
       setInitialTriggers(undefined);
       setInitialPlaybackConfig(undefined);
+      setLibraryOrigin(null);
       setEditMode(false);
       setResult(null);
       setError(null);
@@ -270,6 +281,7 @@ function App() {
       setInitialSlices(payload.slices);
       setInitialTriggers(undefined);
       setInitialPlaybackConfig(undefined);
+      setLibraryOrigin(null);
       setEditMode(true);
       setResult(null);
       setError(null);
