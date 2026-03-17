@@ -178,7 +178,7 @@ export function SampleChopperDialog({
   });
 
   const midiLearnState = useMidiLearn({
-    enabled: chopper.selectedMethod === 'trigger' && chopper.manualSlices.length > 0,
+    enabled: chopper.manualSlices.length > 0,
     onLearn: (sliceIndex, triggerId) => triggerRef.current.learnTrigger(sliceIndex, triggerId),
   });
 
@@ -199,11 +199,12 @@ export function SampleChopperDialog({
     onStopSlice: (index: number) => triggerPlaybackRef.current.stopSlice(index),
     totalSamples: samples?.length ?? 0,
     kitLabels: chopper.kitLabels,
-    active: chopper.selectedMethod === 'trigger',
+    active: true,
     initialTriggers,
     initialPlaybackConfig,
     initialSlices,
     midiLearnActive: midiLearnState.isLearning,
+    externalSlices: chopper.manualSlices,
   });
 
   triggerRef.current = trigger;
@@ -506,8 +507,8 @@ export function SampleChopperDialog({
                         )}
                       </button>
                     </div>
-                    {/* MIDI Learn toggle — shown on trigger tab when a slice is selected */}
-                    {chopper.selectedMethod === 'trigger' && chopper.manualSlices.length > 0 && chopper.selectedSlice !== undefined && (
+                    {/* MIDI Learn toggle — shown when a slice is selected */}
+                    {chopper.manualSlices.length > 0 && chopper.selectedSlice !== undefined && (
                       <button
                         onClick={() => {
                           const idx = chopper.selectedSlice;
@@ -653,11 +654,11 @@ export function SampleChopperDialog({
                   onSlicePlay={handlePlaySlice}
                   onSliceDelete={chopper.handleSliceDelete}
                   editable={chopper.isManualMode}
-                  triggerAssignments={chopper.selectedMethod === 'trigger' ? trigger.triggerMappings : undefined}
-                  learningSliceIndex={chopper.selectedMethod === 'trigger' ? midiLearnState.learningSliceIndex : undefined}
-                  onStartLearn={chopper.selectedMethod === 'trigger' ? midiLearnState.startLearning : undefined}
-                  onCancelLearn={chopper.selectedMethod === 'trigger' ? midiLearnState.cancelLearning : undefined}
-                  onClearTrigger={chopper.selectedMethod === 'trigger' ? trigger.clearLearnedTrigger : undefined}
+                  triggerAssignments={trigger.triggerMappings}
+                  learningSliceIndex={midiLearnState.learningSliceIndex}
+                  onStartLearn={midiLearnState.startLearning}
+                  onCancelLearn={midiLearnState.cancelLearning}
+                  onClearTrigger={trigger.clearLearnedTrigger}
                 />
               )}
 

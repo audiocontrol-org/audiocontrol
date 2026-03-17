@@ -67,6 +67,8 @@ export interface UseTriggerRecordingParams {
   initialSlices?: Array<{ label: string; startSample: number; endSample: number }>;
   /** Whether MIDI learn is active (suppresses playback listeners) */
   midiLearnActive?: boolean;
+  /** Current slices from any mode (for MIDI learn playback outside trigger mode) */
+  externalSlices?: Array<{ label: string; startSample: number; endSample: number }>;
 }
 
 export interface UseTriggerRecordingReturn {
@@ -116,6 +118,7 @@ export function useTriggerRecording({
   initialPlaybackConfig,
   initialSlices,
   midiLearnActive = false,
+  externalSlices,
 }: UseTriggerRecordingParams): UseTriggerRecordingReturn {
   const [triggerEvents, setTriggerEvents] = useState<TriggerEvent[]>([]);
   const [playbackConfig, setPlaybackConfig] = useState<TriggerPlaybackConfig>(
@@ -237,14 +240,17 @@ export function useTriggerRecording({
     }));
   }, [effectiveMapping]);
 
-  // Effective slices: prefer recorded, fall back to initial
+  // Effective slices: prefer recorded, fall back to initial, fall back to external
   const effectiveSlices = useMemo(() => {
     if (recordedSlices.length > 0) return recordedSlices;
     if (hasRestoredTriggers && initialSlices && initialSlices.length > 0) {
       return initialSlices.map((s) => ({ ...s }));
     }
+    if (externalSlices && externalSlices.length > 0) {
+      return externalSlices;
+    }
     return [];
-  }, [recordedSlices, hasRestoredTriggers, initialSlices]);
+  }, [recordedSlices, hasRestoredTriggers, initialSlices, externalSlices]);
 
   // Refs for stable event handler access
   const onPlaySliceRef = useRef(onPlaySlice);
