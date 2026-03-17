@@ -10,8 +10,163 @@ import * as Tabs from '@radix-ui/react-tabs';
 import { cn } from '@/ui/utils.js';
 import type { SliceMethodTab, SliceDefinitionOutput } from '@/ui/hooks/useSampleChopper.js';
 import { TriggerMethodContent, type TriggerMethodContentProps } from '@/ui/components/TriggerMethodContent.js';
+import { midiNoteToName } from '@/ui/hooks/useMidiLearn.js';
+import { midiTriggerId, type TriggerId } from '@/ui/hooks/useTriggerInput.js';
 
-type ManualTool = 'record' | 'strip-silence' | null;
+type ManualTool = 'record' | 'strip-silence' | 'auto-map' | null;
+
+export type MappingPattern = 'chromatic' | 'white-keys' | 'black-keys';
+
+const WHITE_KEY_OFFSETS = [0, 2, 4, 5, 7, 9, 11]; // C D E F G A B
+const BLACK_KEY_OFFSETS = [1, 3, 6, 8, 10]; // C# D# F# G# A#
+
+function generateMidiNotes(startNote: number, count: number, pattern: MappingPattern): number[] {
+  const notes: number[] = [];
+  if (pattern === 'chromatic') {
+    for (let i = 0; i < count && startNote + i <= 127; i++) {
+      notes.push(startNote + i);
+    }
+  } else {
+    const offsets = pattern === 'white-keys' ? WHITE_KEY_OFFSETS : BLACK_KEY_OFFSETS;
+    // Find the starting position within the pattern
+    const startOctaveBase = Math.floor(startNote / 12) * 12;
+    const startPc = startNote % 12;
+    let offsetIdx = offsets.findIndex((o) => o >= startPc);
+    if (offsetIdx === -1) { offsetIdx = 0; }
+    let octaveBase = startOctaveBase;
+    // If the first offset in this octave is before our start pitch class, adjust
+    if (offsets[offsetIdx] < startPc) {
+      octaveBase += 12;
+      offsetIdx = 0;
+    }
+    while (notes.length < count) {
+      const note = octaveBase + offsets[offsetIdx];
+      if (note > 127) break;
+      if (note >= startNote) notes.push(note);
+      offsetIdx++;
+      if (offsetIdx >= offsets.length) {
+        offsetIdx = 0;
+        octaveBase += 12;
+      }
+    }
+  }
+  return notes;
+}
+
+function AutoMapPanel({
+  sliceCount,
+  startNote,
+  onStartNoteChange,
+  pattern,
+  onPatternChange,
+  onApply,
+  onCancel,
+}: {
+  sliceCount: number;
+  startNote: number;
+  onStartNoteChange: (note: number) => void;
+  pattern: MappingPattern;
+  onPatternChange: (pattern: MappingPattern) => void;
+  onApply: (mappings: Array<{ sliceIndex: number; triggerId: TriggerId }>) => void;
+  onCancel: () => void;
+}): JSX.Element {
+  const notes = generateMidiNotes(startNote, sliceCount, pattern);
+  const allMapped = notes.length >= sliceCount;
+
+  const handleApply = useCallback(() => {
+    const mappings = notes.map((note, i) => ({
+      sliceIndex: i,
+      triggerId: midiTriggerId(note),
+    }));
+    onApply(mappings);
+  }, [notes, onApply]);
+
+  return (
+    <div className="border border-ac-accent/30 rounded p-3 space-y-3">
+      <p className="text-xs text-ac-muted">
+        Assign MIDI notes to slices automatically.
+      </p>
+
+      <div className="flex gap-4">
+        {/* Starting note */}
+        <div className="space-y-1">
+          <label className="block text-xs text-ac-muted">Start Note</label>
+          <div className="flex items-center gap-1">
+            <input
+              type="number"
+              min={0}
+              max={127}
+              value={startNote}
+              onChange={(e) => onStartNoteChange(Math.max(0, Math.min(127, parseInt(e.target.value) || 0)))}
+              className="w-16 bg-ac-bg border border-ac-accent/50 rounded px-2 py-1 text-sm text-ac-text"
+            />
+            <span className="text-xs text-ac-muted font-mono">{midiNoteToName(startNote)}</span>
+          </div>
+        </div>
+
+        {/* Pattern */}
+        <div className="space-y-1">
+          <label className="block text-xs text-ac-muted">Pattern</label>
+          <div className="flex rounded overflow-hidden border border-ac-accent/50">
+            {([
+              ['chromatic', 'Chromatic'],
+              ['white-keys', 'White Keys'],
+              ['black-keys', 'Black Keys'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                onClick={() => onPatternChange(value)}
+                className={cn(
+                  'px-2.5 py-1 text-xs transition-colors',
+                  pattern === value
+                    ? 'bg-ac-highlight text-white'
+                    : 'bg-ac-bg text-ac-muted hover:text-ac-text'
+                )}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Preview */}
+      <div className="text-xs text-ac-muted bg-ac-bg rounded p-2">
+        <div className="flex flex-wrap gap-1">
+          {notes.map((note, i) => (
+            <span key={i} className="font-mono text-[10px] bg-ac-accent/30 text-ac-text px-1.5 py-0.5 rounded">
+              {midiNoteToName(note)}
+            </span>
+          ))}
+        </div>
+        {!allMapped && (
+          <p className="mt-1 text-red-400">
+            Not enough notes in range for {sliceCount} slices (only {notes.length} available)
+          </p>
+        )}
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={onCancel}
+          className="flex-1 px-3 py-1.5 text-xs rounded bg-ac-bg hover:bg-ac-accent/50 text-ac-muted transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={handleApply}
+          disabled={notes.length === 0}
+          className={cn(
+            'flex-1 px-3 py-1.5 text-xs rounded bg-ac-highlight hover:bg-ac-highlight/80 text-white font-medium transition-colors',
+            notes.length === 0 && 'opacity-50 cursor-not-allowed'
+          )}
+        >
+          Apply ({notes.length} mapping{notes.length !== 1 ? 's' : ''})
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export interface SliceMethodPanelProps {
   selectedMethod: SliceMethodTab;
@@ -39,6 +194,8 @@ export interface SliceMethodPanelProps {
   manualSlices: SliceDefinitionOutput[];
   // Trigger tab props
   triggerProps?: TriggerMethodContentProps;
+  // Auto-map callback: assigns triggers to slices
+  onAutoMap?: (mappings: Array<{ sliceIndex: number; triggerId: TriggerId }>) => void;
 }
 
 export function SliceMethodPanel({
@@ -62,8 +219,11 @@ export function SliceMethodPanel({
   onActivateStripSilence,
   manualSlices,
   triggerProps,
+  onAutoMap,
 }: SliceMethodPanelProps): JSX.Element {
   const [activeTool, setActiveTool] = useState<ManualTool>(null);
+  const [autoMapStartNote, setAutoMapStartNote] = useState(36); // C2
+  const [autoMapPattern, setAutoMapPattern] = useState<MappingPattern>('chromatic');
 
   const toggleTool = useCallback((tool: ManualTool) => {
     const closing = activeTool === tool;
@@ -147,6 +307,21 @@ export function SliceMethodPanel({
           >
             Strip Silence
           </button>
+          {onAutoMap && (
+            <button
+              onClick={() => toggleTool('auto-map')}
+              disabled={manualSlices.length === 0}
+              className={cn(
+                'px-3 py-1.5 text-xs rounded font-medium transition-colors',
+                activeTool === 'auto-map'
+                  ? 'bg-ac-highlight/20 text-ac-highlight border border-ac-highlight/30'
+                  : 'bg-ac-bg text-ac-muted hover:text-ac-text border border-transparent',
+                manualSlices.length === 0 && 'opacity-30 cursor-not-allowed'
+              )}
+            >
+              Auto-Map
+            </button>
+          )}
         </div>
 
         {/* Record Triggers tool */}
@@ -216,6 +391,22 @@ export function SliceMethodPanel({
               </button>
             </div>
           </div>
+        )}
+
+        {/* Auto-Map tool */}
+        {activeTool === 'auto-map' && onAutoMap && manualSlices.length > 0 && (
+          <AutoMapPanel
+            sliceCount={manualSlices.length}
+            startNote={autoMapStartNote}
+            onStartNoteChange={setAutoMapStartNote}
+            pattern={autoMapPattern}
+            onPatternChange={setAutoMapPattern}
+            onApply={(mappings) => {
+              onAutoMap(mappings);
+              setActiveTool(null);
+            }}
+            onCancel={() => setActiveTool(null)}
+          />
         )}
       </Tabs.Content>
 

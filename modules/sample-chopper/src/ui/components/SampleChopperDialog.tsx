@@ -193,9 +193,8 @@ export function SampleChopperDialog({
     active: true,
     initialTriggers,
     initialPlaybackConfig,
-    initialSlices,
     midiLearnActive: midiLearnState.isLearning,
-    externalSlices: chopper.manualSlices,
+    slices: chopper.manualSlices,
   });
 
   triggerRef.current = trigger;
@@ -671,6 +670,11 @@ export function SampleChopperDialog({
                   onMuteGroupChange: trigger.setMuteGroup,
                   slices: trigger.recordedSlices,
                   latencyMs: triggerPlayback.latencyMs,
+                }}
+                onAutoMap={(mappings) => {
+                  for (const { sliceIndex, triggerId } of mappings) {
+                    trigger.learnTrigger(sliceIndex, triggerId);
+                  }
                 }}
               />
 

@@ -63,12 +63,10 @@ export interface UseTriggerRecordingParams {
   initialTriggers?: TriggerMapping[];
   /** Restored playback config from a saved sample */
   initialPlaybackConfig?: TriggerPlaybackConfig;
-  /** Slices to use for playback when restoring triggers (from initialSlices) */
-  initialSlices?: Array<{ label: string; startSample: number; endSample: number }>;
   /** Whether MIDI learn is active (suppresses playback listeners) */
   midiLearnActive?: boolean;
-  /** Current slices from any mode (for MIDI learn playback outside trigger mode) */
-  externalSlices?: Array<{ label: string; startSample: number; endSample: number }>;
+  /** Current slices — the single source of truth from the editor */
+  slices: Array<{ label: string; startSample: number; endSample: number }>;
 }
 
 export interface UseTriggerRecordingReturn {
@@ -116,9 +114,8 @@ export function useTriggerRecording({
   active,
   initialTriggers,
   initialPlaybackConfig,
-  initialSlices,
   midiLearnActive = false,
-  externalSlices,
+  slices,
 }: UseTriggerRecordingParams): UseTriggerRecordingReturn {
   const [triggerEvents, setTriggerEvents] = useState<TriggerEvent[]>([]);
   const [playbackConfig, setPlaybackConfig] = useState<TriggerPlaybackConfig>(
@@ -134,9 +131,6 @@ export function useTriggerRecording({
     }
     return map;
   }, [initialTriggers]);
-
-  // Whether we have a restored mapping that enables playback without recording
-  const hasRestoredTriggers = restoredMapping !== null && restoredMapping.size > 0;
 
   // Learned mappings from MIDI learn (triggerId → sliceIndex)
   const [learnedMappings, setLearnedMappings] = useState<Map<TriggerId, number>>(new Map());
@@ -240,17 +234,8 @@ export function useTriggerRecording({
     }));
   }, [effectiveMapping]);
 
-  // Effective slices: prefer recorded, fall back to initial, fall back to external
-  const effectiveSlices = useMemo(() => {
-    if (recordedSlices.length > 0) return recordedSlices;
-    if (hasRestoredTriggers && initialSlices && initialSlices.length > 0) {
-      return initialSlices.map((s) => ({ ...s }));
-    }
-    if (externalSlices && externalSlices.length > 0) {
-      return externalSlices;
-    }
-    return [];
-  }, [recordedSlices, hasRestoredTriggers, initialSlices, externalSlices]);
+  // The slices passed in are the single source of truth from the editor
+  const effectiveSlices = slices;
 
   // Refs for stable event handler access
   const onPlaySliceRef = useRef(onPlaySlice);
@@ -260,7 +245,6 @@ export function useTriggerRecording({
   const stateRef = useRef(triggerInput.state);
   const activeRef = useRef(active);
   const playbackConfigRef = useRef(playbackConfig);
-  const hasRestoredTriggersRef = useRef(hasRestoredTriggers);
 
   onPlaySliceRef.current = onPlaySlice;
   onStopSliceRef.current = onStopSlice;
@@ -269,7 +253,6 @@ export function useTriggerRecording({
   stateRef.current = triggerInput.state;
   activeRef.current = active;
   playbackConfigRef.current = playbackConfig;
-  hasRestoredTriggersRef.current = hasRestoredTriggers;
 
   const firePlayback = useCallback((triggerId: TriggerId) => {
     const slices = effectiveSlicesRef.current;
