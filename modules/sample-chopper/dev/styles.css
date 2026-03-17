@@ -164,3 +164,145 @@ body {
   color: var(--ac-text);
   font-variant-numeric: tabular-nums;
 }
+
+/* Library connection bar */
+.library-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--ac-panel);
+  border: 1px solid var(--ac-accent);
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.library-status {
+  color: var(--ac-muted);
+}
+
+.library-status.connected {
+  color: #34d399;
+}
+
+.library-btn {
+  padding: 0.25rem 0.75rem;
+  background: transparent;
+  color: var(--ac-muted);
+  border: 1px solid var(--ac-accent);
+  border-radius: 0.375rem;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.15s;
+}
+
+.library-btn:hover {
+  color: var(--ac-text);
+  border-color: var(--ac-muted);
+}
+
+/* Load dialog */
+.load-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+}
+
+.load-dialog {
+  background: var(--ac-panel);
+  border: 1px solid var(--ac-accent);
+  border-radius: 0.75rem;
+  width: 100%;
+  max-width: 420px;
+  max-height: 60vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.load-dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid var(--ac-accent);
+}
+
+.load-dialog-header h2 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ac-text);
+}
+
+.load-dialog-close {
+  background: none;
+  border: none;
+  color: var(--ac-muted);
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+}
+
+.load-dialog-close:hover {
+  color: var(--ac-text);
+}
+
+.load-dialog-body {
+  padding: 0.5rem;
+  overflow-y: auto;
+}
+
+.load-dialog-status {
+  padding: 1rem;
+  text-align: center;
+  color: var(--ac-muted);
+  font-size: 0.875rem;
+}
+
+.load-dialog-error {
+  padding: 0.75rem;
+  color: #f87171;
+  font-size: 0.875rem;
+  text-align: center;
+}
+
+.load-dialog-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.load-dialog-item {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 0.625rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.load-dialog-item:hover {
+  background: rgba(51, 65, 85, 0.4);
+}
+
+.load-dialog-item-name {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--ac-text);
+}
+
+.load-dialog-item-meta {
+  font-size: 0.75rem;
+  color: var(--ac-muted);
+  margin-top: 0.125rem;
+}

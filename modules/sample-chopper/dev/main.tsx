@@ -3,6 +3,8 @@
  *
  * Loads a WAV file via file picker or drag-and-drop,
  * then opens the SampleChopperDialog for testing.
+ * Supports saving/loading chopped samples to the library
+ * via the File System Access API.
  */
 
 import { createRoot } from 'react-dom/client';
@@ -10,7 +12,17 @@ import { useState, useCallback, useRef } from 'react';
 import {
   SampleChopperDialog,
   type ChopperResult,
+  type ChopperSavePayload,
+  type ChopperLoadPayload,
 } from '@/ui/index.js';
+import {
+  hasFileSystemAccess,
+  saveChoppedSample,
+  loadChoppedSample,
+  getLibraryHandle,
+  pickLibraryDirectory,
+} from './library.js';
+import { LoadDialog } from './LoadDialog.js';
 import './styles.css';
 
 function parseWavFile(buffer: ArrayBuffer): { samples: Int16Array; sampleRate: number } {
@@ -92,7 +104,14 @@ function App() {
   const [result, setResult] = useState<ChopperResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [libraryConnected, setLibraryConnected] = useState(false);
+  const [loadDialogOpen, setLoadDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Resolve/reject for the promise-based onLoad callback
+  const loadResolverRef = useRef<{
+    resolve: (payload: ChopperLoadPayload | null) => void;
+  } | null>(null);
 
   const loadFile = useCallback(async (file: File) => {
     setError(null);
@@ -126,9 +145,72 @@ function App() {
     console.log('Chopper result:', r);
   }, []);
 
+  // Library: connect
+  const handleConnectLibrary = useCallback(async () => {
+    const handle = await pickLibraryDirectory();
+    setLibraryConnected(handle !== null);
+  }, []);
+
+  // Check for existing library handle on mount
+  useState(() => {
+    getLibraryHandle().then((h) => setLibraryConnected(h !== null));
+  });
+
+  // Library: save callback for the dialog
+  const handleSave = useCallback(async (payload: ChopperSavePayload) => {
+    const name = window.prompt('Save chopped sample as:', payload.name.replace(/\.wav$/i, ''));
+    if (!name) return;
+
+    await saveChoppedSample({ ...payload, name });
+  }, []);
+
+  // Library: load callback for the dialog (promise-based)
+  const handleLoad = useCallback((): Promise<ChopperLoadPayload | null> => {
+    return new Promise((resolve) => {
+      loadResolverRef.current = { resolve };
+      setLoadDialogOpen(true);
+    });
+  }, []);
+
+  const handleLoadSelect = useCallback(async (name: string) => {
+    setLoadDialogOpen(false);
+    try {
+      const payload = await loadChoppedSample(name);
+      // Update harness state with loaded audio
+      setSamples(payload.sourceAudio.samples);
+      setSampleRate(payload.sourceAudio.sampleRate);
+      setFileName(name);
+      loadResolverRef.current?.resolve(payload);
+    } catch (err) {
+      console.error('Failed to load sample:', err);
+      loadResolverRef.current?.resolve(null);
+    }
+    loadResolverRef.current = null;
+  }, []);
+
+  const handleLoadCancel = useCallback(() => {
+    setLoadDialogOpen(false);
+    loadResolverRef.current?.resolve(null);
+    loadResolverRef.current = null;
+  }, []);
+
+  const fsaaAvailable = hasFileSystemAccess();
+
   return (
     <div className="harness">
       <h1>Sample Chopper Dev Harness</h1>
+
+      {/* Library connection status */}
+      {fsaaAvailable && (
+        <div className="library-bar">
+          <span className={`library-status ${libraryConnected ? 'connected' : ''}`}>
+            {libraryConnected ? 'Library connected' : 'Library not connected'}
+          </span>
+          <button className="library-btn" onClick={handleConnectLibrary}>
+            {libraryConnected ? 'Change Directory' : 'Connect Library'}
+          </button>
+        </div>
+      )}
 
       <div
         className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
@@ -190,6 +272,14 @@ function App() {
         sampleRate={sampleRate}
         sourceName={fileName}
         onConfirm={handleConfirm}
+        onSave={libraryConnected ? handleSave : undefined}
+        onLoad={libraryConnected ? handleLoad : undefined}
+      />
+
+      <LoadDialog
+        open={loadDialogOpen}
+        onSelect={handleLoadSelect}
+        onCancel={handleLoadCancel}
       />
     </div>
   );

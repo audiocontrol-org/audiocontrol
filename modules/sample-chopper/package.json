@@ -61,30 +61,40 @@
     "react-dom": "^18.2.0"
   },
   "peerDependenciesMeta": {
-    "@radix-ui/react-dialog": { "optional": true },
-    "@radix-ui/react-tabs": { "optional": true },
-    "react": { "optional": true },
-    "react-dom": { "optional": true }
+    "@radix-ui/react-dialog": {
+      "optional": true
+    },
+    "@radix-ui/react-tabs": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
   },
   "devDependencies": {
+    "@audiocontrol/sampler-library": "workspace:^",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-tabs": "^1.0.4",
-    "@vitejs/plugin-react": "^4.2.1",
     "@tsconfig/recommended": "^1.0.8",
     "@types/node": "^22.13.1",
     "@types/react": "^18.2.43",
     "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
     "@vitest/coverage-v8": "^1.2.0",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.32",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "tailwindcss": "^3.4.0",
     "tsup": "^8.3.6",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
-    "vite-tsconfig-paths": "^6.1.1",
-    "autoprefixer": "^10.4.16",
-    "postcss": "^8.4.32",
-    "tailwindcss": "^3.4.0",
     "vite": "^5.0.10",
-    "vitest": "^1.2.0"
+    "vite-tsconfig-paths": "^6.1.1",
+    "vitest": "^1.2.0",
+    "yaml": "^2.8.2"
   }
 }
