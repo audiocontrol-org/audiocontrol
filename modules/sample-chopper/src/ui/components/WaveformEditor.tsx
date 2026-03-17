@@ -640,6 +640,7 @@ export function WaveformEditor({
 
       if (event.key === 'Delete' || event.key === 'Backspace') {
         event.preventDefault();
+        event.stopPropagation();
         onSliceDelete(selectedSlice);
       }
     },
