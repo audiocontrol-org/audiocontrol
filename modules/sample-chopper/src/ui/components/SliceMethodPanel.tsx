@@ -5,10 +5,13 @@
  * The slice list is rendered separately by the dialog for all modes.
  */
 
+import { useState, useCallback } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { cn } from '@/ui/utils.js';
 import type { SliceMethodTab, SliceDefinitionOutput } from '@/ui/hooks/useSampleChopper.js';
 import { TriggerMethodContent, type TriggerMethodContentProps } from '@/ui/components/TriggerMethodContent.js';
+
+type ManualTool = 'record' | 'strip-silence' | null;
 
 export interface SliceMethodPanelProps {
   selectedMethod: SliceMethodTab;
@@ -31,7 +34,8 @@ export interface SliceMethodPanelProps {
   originalSliceBoundaries: Array<{ startSample: number; endSample: number }>;
   onApplyStripSilence: () => void;
   onCancelStripSilence: () => void;
-  // Needed for silence tab empty state
+  onActivateStripSilence: () => void;
+  // Needed for strip silence empty state
   manualSlices: SliceDefinitionOutput[];
   // Trigger tab props
   triggerProps?: TriggerMethodContentProps;
@@ -55,16 +59,44 @@ export function SliceMethodPanel({
   originalSliceBoundaries,
   onApplyStripSilence,
   onCancelStripSilence,
+  onActivateStripSilence,
   manualSlices,
   triggerProps,
 }: SliceMethodPanelProps): JSX.Element {
+  const [activeTool, setActiveTool] = useState<ManualTool>(null);
+
+  const toggleTool = useCallback((tool: ManualTool) => {
+    const closing = activeTool === tool;
+    // Cancel strip silence preview when closing it
+    if (activeTool === 'strip-silence') {
+      onCancelStripSilence();
+    }
+    if (closing) {
+      setActiveTool(null);
+    } else {
+      setActiveTool(tool);
+      if (tool === 'strip-silence') {
+        onActivateStripSilence();
+      }
+    }
+  }, [activeTool, onCancelStripSilence, onActivateStripSilence]);
+
+  // Force-close strip silence when leaving manual mode
+  const handleMethodChange = useCallback((method: SliceMethodTab) => {
+    if (activeTool === 'strip-silence') {
+      onCancelStripSilence();
+    }
+    setActiveTool(null);
+    onMethodChange(method);
+  }, [activeTool, onCancelStripSilence, onMethodChange]);
+
   return (
     <Tabs.Root
       value={selectedMethod}
-      onValueChange={(v) => onMethodChange(v as SliceMethodTab)}
+      onValueChange={(v) => handleMethodChange(v as SliceMethodTab)}
     >
       <Tabs.List className="flex border-b border-ac-accent/30 mb-4">
-        {(['manual', 'transient', 'silence', 'fixed'] as const).map((method) => (
+        {(['manual', 'transient', 'fixed'] as const).map((method) => (
           <Tabs.Trigger
             key={method}
             value={method}
@@ -75,7 +107,7 @@ export function SliceMethodPanel({
                 : 'border-transparent text-ac-muted hover:text-ac-text'
             )}
           >
-            {method === 'silence' ? 'Strip Silence' : method.charAt(0).toUpperCase() + method.slice(1)}
+            {method.charAt(0).toUpperCase() + method.slice(1)}
           </Tabs.Trigger>
         ))}
       </Tabs.List>
@@ -86,7 +118,105 @@ export function SliceMethodPanel({
           Double-click on a slice to split it. Drag slice edges to adjust boundaries.
           Use +/- to zoom for fine adjustments.
         </p>
-        {triggerProps && <TriggerMethodContent {...triggerProps} />}
+
+        {/* Tool buttons */}
+        <div className="flex gap-2">
+          {triggerProps && (
+            <button
+              onClick={() => toggleTool('record')}
+              className={cn(
+                'px-3 py-1.5 text-xs rounded font-medium transition-colors',
+                activeTool === 'record'
+                  ? 'bg-ac-highlight/20 text-ac-highlight border border-ac-highlight/30'
+                  : 'bg-ac-bg text-ac-muted hover:text-ac-text border border-transparent'
+              )}
+            >
+              Record Triggers
+            </button>
+          )}
+          <button
+            onClick={() => toggleTool('strip-silence')}
+            disabled={manualSlices.length === 0}
+            className={cn(
+              'px-3 py-1.5 text-xs rounded font-medium transition-colors',
+              activeTool === 'strip-silence'
+                ? 'bg-ac-highlight/20 text-ac-highlight border border-ac-highlight/30'
+                : 'bg-ac-bg text-ac-muted hover:text-ac-text border border-transparent',
+              manualSlices.length === 0 && 'opacity-30 cursor-not-allowed'
+            )}
+          >
+            Strip Silence
+          </button>
+        </div>
+
+        {/* Record Triggers tool */}
+        {activeTool === 'record' && triggerProps && (
+          <div className="border border-ac-accent/30 rounded p-3">
+            <TriggerMethodContent {...triggerProps} />
+          </div>
+        )}
+
+        {/* Strip Silence tool */}
+        {activeTool === 'strip-silence' && manualSlices.length > 0 && (
+          <div className="border border-ac-accent/30 rounded p-3 space-y-3">
+            <p className="text-xs text-ac-muted">
+              Remove silence from the beginning and end of each slice.
+              Adjust threshold to preview changes live on the waveform.
+            </p>
+
+            <div>
+              <label className="block text-xs text-ac-muted mb-1">
+                Threshold: {stripSilenceThreshold} dB
+              </label>
+              <input
+                type="range"
+                min="-60"
+                max="-10"
+                step="1"
+                value={stripSilenceThreshold}
+                onChange={(e) => onStripSilenceThresholdChange(parseInt(e.target.value))}
+                className="w-full accent-ac-highlight"
+              />
+              <div className="flex justify-between text-xs text-ac-muted mt-0.5">
+                <span>-60 dB (quieter)</span>
+                <span>-10 dB (louder)</span>
+              </div>
+            </div>
+
+            {strippedPreview && (
+              <div className="text-xs text-ac-muted bg-ac-bg rounded p-2">
+                <span className="font-medium text-ac-text">
+                  {strippedPreview.filter((p, i) =>
+                    p.startSample !== originalSliceBoundaries[i]?.startSample ||
+                    p.endSample !== originalSliceBoundaries[i]?.endSample
+                  ).length}
+                </span>
+                {' '}of {manualSlices.length} slices will be trimmed
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  onCancelStripSilence();
+                  setActiveTool(null);
+                }}
+                className="flex-1 px-3 py-1.5 text-xs rounded bg-ac-bg hover:bg-ac-accent/50 text-ac-muted transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  onApplyStripSilence();
+                  setActiveTool(null);
+                }}
+                className="flex-1 px-3 py-1.5 text-xs rounded bg-ac-highlight hover:bg-ac-highlight/80 text-white font-medium transition-colors"
+              >
+                Apply Strip
+              </button>
+            </div>
+          </div>
+        )}
       </Tabs.Content>
 
       {/* Transient Detection Controls */}
@@ -138,73 +268,6 @@ export function SliceMethodPanel({
             />
           </div>
         </div>
-      </Tabs.Content>
-
-      {/* Strip Silence Controls */}
-      <Tabs.Content value="silence" className="space-y-3">
-        {manualSlices.length === 0 ? (
-          <div className="text-center py-4">
-            <p className="text-sm text-ac-muted mb-2">
-              No slices to strip silence from.
-            </p>
-            <p className="text-xs text-ac-muted">
-              Use Manual, Transient, or Fixed tabs to create slices first.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-xs text-ac-muted">
-              Remove silence from the beginning and end of each slice.
-              Adjust threshold to preview changes live on the waveform.
-            </p>
-
-            <div>
-              <label className="block text-xs text-ac-muted mb-1">
-                Threshold: {stripSilenceThreshold} dB
-              </label>
-              <input
-                type="range"
-                min="-60"
-                max="-10"
-                step="1"
-                value={stripSilenceThreshold}
-                onChange={(e) => onStripSilenceThresholdChange(parseInt(e.target.value))}
-                className="w-full accent-ac-highlight"
-              />
-              <div className="flex justify-between text-xs text-ac-muted mt-0.5">
-                <span>-60 dB (quieter)</span>
-                <span>-10 dB (louder)</span>
-              </div>
-            </div>
-
-            {strippedPreview && (
-              <div className="text-xs text-ac-muted bg-ac-bg rounded p-2">
-                <span className="font-medium text-ac-text">
-                  {strippedPreview.filter((p, i) =>
-                    p.startSample !== originalSliceBoundaries[i]?.startSample ||
-                    p.endSample !== originalSliceBoundaries[i]?.endSample
-                  ).length}
-                </span>
-                {' '}of {manualSlices.length} slices will be trimmed
-              </div>
-            )}
-
-            <div className="flex gap-2">
-              <button
-                onClick={onCancelStripSilence}
-                className="flex-1 px-3 py-1.5 text-xs rounded bg-ac-bg hover:bg-ac-accent/50 text-ac-muted transition-colors"
-              >
-                Reset
-              </button>
-              <button
-                onClick={onApplyStripSilence}
-                className="flex-1 px-3 py-1.5 text-xs rounded bg-ac-highlight hover:bg-ac-highlight/80 text-white font-medium transition-colors"
-              >
-                Apply Strip
-              </button>
-            </div>
-          </div>
-        )}
       </Tabs.Content>
 
       {/* Fixed Count Controls */}

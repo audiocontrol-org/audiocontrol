@@ -229,7 +229,7 @@ export function SampleChopperDialog({
     const labels = chopper.kitLabels.split(',').map((s: string) => s.trim());
 
     const sliceDefinitions: SliceDefinitionOutput[] =
-      chopper.selectedMethod === 'manual' || chopper.selectedMethod === 'silence' || chopper.useInitialSlices
+      chopper.selectedMethod === 'manual' || chopper.useInitialSlices
         ? chopper.manualSlices
         : chopper.currentSliceResult.slices.map((slice, i) => ({
             label: labels[i % labels.length] ?? `S${i + 1}`,
@@ -599,6 +599,7 @@ export function SampleChopperDialog({
                 originalSliceBoundaries={chopper.originalSliceBoundaries}
                 onApplyStripSilence={chopper.handleApplyStripSilence}
                 onCancelStripSilence={chopper.handleCancelStripSilence}
+                onActivateStripSilence={chopper.activateStripSilence}
                 manualSlices={chopper.manualSlices}
                 triggerProps={{
                   state: trigger.state,
