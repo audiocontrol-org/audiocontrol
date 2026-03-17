@@ -107,6 +107,8 @@ function App() {
   const [fileName, setFileName] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [initialSlices, setInitialSlices] = useState<Array<{ label: string; startSample: number; endSample: number }> | undefined>(undefined);
+  const [initialTriggers, setInitialTriggers] = useState<Array<{ triggerId: string; sliceIndex: number }> | undefined>(undefined);
+  const [initialPlaybackConfig, setInitialPlaybackConfig] = useState<{ polyphony: 'mono' | 'poly'; playbackMode: 'one-shot' | 'gate'; muteGroups: number[] } | undefined>(undefined);
   const [editMode, setEditMode] = useState(false);
   const [result, setResult] = useState<ChopperResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -126,6 +128,8 @@ function App() {
     setError(null);
     setResult(null);
     setInitialSlices(undefined);
+    setInitialTriggers(undefined);
+    setInitialPlaybackConfig(undefined);
     setEditMode(false);
     try {
       const buffer = await file.arrayBuffer();
@@ -203,6 +207,8 @@ function App() {
       setSampleRate(payload.sourceAudio.sampleRate);
       setFileName(payload.name);
       setInitialSlices(payload.slices);
+      setInitialTriggers(payload.triggers);
+      setInitialPlaybackConfig(payload.playbackConfig);
       setEditMode(true);
       setResult(null);
       setError(null);
@@ -243,6 +249,8 @@ function App() {
       setSampleRate(toneRate);
       setFileName(`${tone.name} (${tone.device.toUpperCase()})`);
       setInitialSlices(undefined);
+      setInitialTriggers(undefined);
+      setInitialPlaybackConfig(undefined);
       setEditMode(false);
       setResult(null);
       setError(null);
@@ -260,6 +268,8 @@ function App() {
       setSampleRate(payload.sampleRate);
       setFileName(`${kit.name} (${kit.device.toUpperCase()})`);
       setInitialSlices(payload.slices);
+      setInitialTriggers(undefined);
+      setInitialPlaybackConfig(undefined);
       setEditMode(true);
       setResult(null);
       setError(null);
@@ -370,6 +380,8 @@ function App() {
         onConfirm={handleConfirm}
         editMode={editMode}
         initialSlices={initialSlices}
+        initialTriggers={initialTriggers}
+        initialPlaybackConfig={initialPlaybackConfig}
         onSave={libraryConnected ? handleSave : undefined}
         onLoad={libraryConnected ? handleLoad : undefined}
       />
