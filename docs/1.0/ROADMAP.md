@@ -7,15 +7,18 @@ Date: 2026-03-18
 The audiocontrol monorepo has working device communication, MIDI SysEx protocols, and web-based editors for the Roland S-330 (with S-550 support in progress). The core infrastructure is solid:
 
 - **Library schemas** — Device-agnostic base types (`BaseTone`, `BasePatch`) with device-specific extensions for S-330 and S-550. YAML-based storage with browser and Node.js backends.
+- **Roland S-Series** — Web editors for S-330 (working) and S-550 (in progress). Full SysEx protocols, YAML-to-protocol converters, tone/patch editing, key zone editor.
+- **Akai S3000XL** — Complete MIDI SysEx support with YAML-driven code generation (~4,800 lines of generated interfaces). MIDI client, disk I/O, program/sample parsing. No web editor.
+- **Akai S5000/S6000** — Partial chunk-based binary format parsing. Program file handling, type definitions (~17,000 lines), SysEx section codes. Export converters to DecentSampler and SFZ. No MIDI client, no web editor.
+- **Cross-format translation** — `sampler-translate` provides an `AbstractProgram` intermediate format for cross-device conversion (S3000XL, S5000/S6000). `sampler-export` handles Akai-to-open-format export (DecentSampler, SFZ).
 - **Loop detection & editing** — Full loop editor UI with canvas-based waveform rendering, zoom, and loop candidate visualization. Backend loop detection uses zero-crossing, NCC scoring, spectral analysis, and splice smoothing. The TODO notes that splice-point detection and crossfade are "pretty broken."
 - **Sample chopping** — Transient detection, silence detection, fixed intervals, and manual regions. Outputs individual WAV slices or drum kit bundles. Chopping is slicing-only — no trim, normalize, or effects.
 - **Key zone & patch editing** — Tone zone editor, patch editor, key modes (normal, v-sw, x-fade, v-mix, unison). Velocity zone schemas exist but lack a dedicated editor UI.
-- **Device converters** — Tone/Patch YAML to device protocol converters for S-330 and S-550. No cross-device conversion (e.g., S-330 tone to S-550 tone).
 - **Templates** — `DrumKitTemplate` and `VelocityLayerTemplate` with a handler registry. No UI for editing or creating templates.
 - **MIDI transport abstraction** — `MidiTransport` interface with dependency-injected implementations (`WebMidiTransport`, `MockMidiTransport`, `RuntimeMidiTransport`). Device-layer code depends on `SSeriesMidiAdapter`, not on any transport directly.
 - **midi-server** — Separate C++/JUCE repo (`audiocontrol-org/midi-server`) providing reliable SysEx over HTTP/JSON REST API. Exists specifically because Node.js MIDI libraries have unreliable SysEx handling. Runs on Linux ARM64 (RPi).
 
-What does **not** exist: sample trim/normalize, effects processing, cross-device migration, velocity layer editor UI, drum kit editor UI (beyond library browsing), a formalized "common area" for device-agnostic samples, or a non-browser deployment target.
+What does **not** exist: web editors for any Akai device, complete S5000/S6000 MIDI SysEx implementation, sample trim/normalize, effects processing, cross-device migration UI, velocity layer editor UI, drum kit editor UI (beyond library browsing), a formalized "common area" for device-agnostic samples, or a non-browser deployment target.
 
 ---
 
@@ -133,12 +136,16 @@ Requires mature library schemas and a stable common area. Cross-device migration
 
 ### `device-migration-framework`
 
-Define the transformation pipeline for converting library objects between devices. Start with S-330 to S-550 since they share ~95% of their parameter space (differences: tone slots 32 vs 64, wave banks 2 vs 4, parameter ranges), then generalize to cross-manufacturer migration (Roland to Akai).
+Define the transformation pipeline for converting library objects between devices. Three tiers of difficulty:
+
+1. **Intra-family** — S-330 ↔ S-550 (~95% shared parameter space, differences: tone slots 32 vs 64, wave banks 2 vs 4, parameter ranges). S3000XL ↔ S5000/S6000 (similar sample/program model, different SysEx protocols and disk formats).
+2. **Cross-manufacturer, same era** — Roland S-550 → Akai S3000XL (different parameter models but similar capabilities: multi-sample instruments, velocity layers, key zones). `sampler-translate` already has the `AbstractProgram` intermediate format for this.
+3. **Cross-manufacturer, different era** — Roland S-330 → Akai S5000/S6000 (significant capability gap: S5000 has filters, LFOs, modulation routing that S-330 lacks).
 
 | Aspect | Detail |
 |--------|--------|
-| **Exists** | Per-device YAML-to-protocol converters for S-330 and S-550, device-agnostic base schemas |
-| **Needed** | Cross-device tone conversion, patch translation with parameter mapping, naming conventions for migrated objects, conflict resolution for incompatible parameters |
+| **Exists** | Per-device YAML-to-protocol converters for S-330 and S-550, device-agnostic base schemas, `sampler-translate` with `AbstractProgram` intermediate format, Akai export converters (DecentSampler, SFZ) |
+| **Needed** | Cross-device tone conversion, patch translation with parameter mapping, naming conventions for migrated objects, conflict resolution for incompatible parameters, lossy-migration reports (what was dropped or approximated) |
 | **Depends on** | `library-common-area` (common area is the bridge format), Phase 2 operations (migrated samples may need trimming/re-looping) |
 | **Unblocks** | Nothing downstream — this is a leaf feature |
 
@@ -169,6 +176,36 @@ UI for composing and applying effects chains to common-area samples. Built on th
 | **Needed** | Chain composition UI, per-effect parameter controls, wet/dry preview, apply-to-sample workflow |
 | **Depends on** | `dsp-engine`, `edit-workflow-architecture`, `library-common-area` |
 | **Unblocks** | Nothing downstream — this is a leaf feature |
+
+---
+
+## Akai Device Editors (Parallel Track)
+
+The library track (Phases 1–5) and the edit workflow architecture are designed to be device-agnostic — but that claim is only credible if we validate it against non-Roland devices. Akai editors serve as the proof that workflows, the common area, and the migration framework actually work across manufacturers, not just across Roland models.
+
+Substantial Akai infrastructure already exists in `sampler-devices`, `sampler-midi`, `sampler-export`, and `sampler-translate`. What's missing is the editor layer: the web UI (and eventually kiosk UI) for browsing, editing, and transferring programs and samples on Akai hardware.
+
+### `akai-s3000xl-editor`
+
+Web editor for the Akai S3000XL. The S3000XL has the most complete backend support of any Akai device: full SysEx protocol (YAML-driven codegen), MIDI client, disk I/O. This is the right first Akai editor because the device layer is already done — the work is purely at the editor/UI level.
+
+| Aspect | Detail |
+|--------|--------|
+| **Exists** | S3000XL SysEx interfaces (YAML-generated, ~4,800 lines), MIDI client (`client-akai-s3000xl`), disk I/O via akaitools, program/sample parsing |
+| **Needed** | `AkaiMidiAdapter` (analogous to `SSeriesMidiAdapter`), editor UI (program browser, sample list, parameter editing), integration with common-area library, standalone dev harness |
+| **Depends on** | `edit-workflow-architecture` (workflow pattern and dev harness convention), `library-common-area` (Akai programs use the common area) |
+| **Unblocks** | `device-migration-framework` (validates cross-manufacturer migration with a real non-Roland editor), `akai-s5000-editor` (proves the Akai editor pattern) |
+
+### `akai-s5000-editor`
+
+Web editor for the Akai S5000 and S6000. These share a common protocol (internally referred to as "S56K"). The backend has partial support: chunk-based binary parsing, type definitions, export converters. Completing SysEx communication is a prerequisite for a live editor.
+
+| Aspect | Detail |
+|--------|--------|
+| **Exists** | S5000/S6000 chunk-based parser/writer, type definitions (~17,000 lines), SysEx section codes, export to DecentSampler and SFZ |
+| **Needed** | Complete S5000/S6000 MIDI SysEx client, `AkaiS56kMidiAdapter`, editor UI, integration with common-area library, standalone dev harness |
+| **Depends on** | `edit-workflow-architecture`, `library-common-area`, `akai-s3000xl-editor` (validates Akai editor pattern first) |
+| **Unblocks** | `device-migration-framework` (enables cross-era migration testing: S3000XL ↔ S5000) |
 
 ---
 
@@ -259,27 +296,30 @@ Self-contained sample chopper running on RPi without an external sampler. Wraps 
 ## Dependency Graph
 
 ```
-LIBRARY TRACK                              HARDWARE TRACK
+LIBRARY TRACK                    AKAI TRACK              HARDWARE TRACK
 
-edit-workflow-architecture                 http-midi-transport
-├── library-common-area                    └── hardware-boot-config
-│   ├── sample-trim-normalize ────────┐        ├── kiosk-display-profiles ◄╌╌ edit-workflow-architecture
-│   │   └── dsp-engine                │        │   ├── electron-shell
-│   │       └── effects-chain-editor  │        │   │   ├── gpio-input-bridge
-│   ├── loop-editor-fixes             │        │   │   └── standalone-chopper-app ◄╌╌ common-area-chopping
-│   │   └── velocity-layer-editor     │        │   └── standalone-chopper-app
-│   │       └── device-migration ◄────┘
-│   └── common-area-chopping ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘
-│       └── drum-kit-editor
-│           └── device-migration
+edit-workflow-architecture ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌ http-midi-transport
+├── library-common-area          │                       └── hardware-boot-config
+│   ├── sample-trim-normalize ───┤                           ├── kiosk-display-profiles
+│   │   └── dsp-engine           │                           │   ├── electron-shell
+│   │       └── effects-chain    │                           │   │   ├── gpio-input-bridge
+│   ├── loop-editor-fixes        │                           │   │   └── standalone-chopper ◄╌╌╌┐
+│   │   └── velocity-layer       │                           │   └── standalone-chopper          │
+│   │       └── device-migration ◄── akai-s3000xl-editor     │                                  │
+│   └── common-area-chopping ╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┘
+│       └── drum-kit-editor      │
+│           └── device-migration ◄── akai-s5000-editor
+│                                        └── akai-s3000xl-editor
 
 ╌╌╌ = cross-track dependency
 ```
 
 Key observations:
-- The two tracks are largely independent — they can be worked in parallel
-- `edit-workflow-architecture` is the root of the library track; `http-midi-transport` is the root of the hardware track
-- Cross-track dependencies: `kiosk-display-profiles` benefits from `edit-workflow-architecture`; `standalone-chopper-app` depends on `common-area-chopping`
+- Three tracks can be worked largely in parallel
+- `edit-workflow-architecture` is the root of both the library and Akai tracks; `http-midi-transport` is the root of the hardware track
+- Akai editors depend on the library track's workflow architecture and common area, but not on Roland-specific features
+- Akai editors validate that the architecture is truly device-agnostic — if the S3000XL editor requires Roland-specific workarounds, the architecture needs fixing
+- Cross-track dependencies: `kiosk-display-profiles` benefits from `edit-workflow-architecture`; `standalone-chopper-app` depends on `common-area-chopping`; `device-migration-framework` benefits from having both Roland and Akai editors to test against
 - Hardware phases H1–H3 live in the audiocontrol monorepo; H4–H6 live in `audiocontrol-org/hardware-deploy`
 
 ---
@@ -298,6 +338,8 @@ Key observations:
 | `device-migration-framework` | 4 | Not started | Cross-device library object conversion |
 | `dsp-engine` | 5 | Not started | Offline DSP processing pipeline |
 | `effects-chain-editor` | 5 | Not started | Effects chain composition and application UI |
+| `akai-s3000xl-editor` | A1 | Not started | Web editor for Akai S3000XL (SysEx backend exists) |
+| `akai-s5000-editor` | A2 | Not started | Web editor for Akai S5000/S6000 (partial backend, needs SysEx client) |
 | `http-midi-transport` | H1 | Not started | MidiTransport via midi-server HTTP API |
 | `hardware-boot-config` | H2 | Not started | JSON boot config replacing URL-based device resolution |
 | `kiosk-display-profiles` | H3 | Not started | Touch-optimized CSS for 800×480 and 1024×600 displays |
