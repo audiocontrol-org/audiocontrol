@@ -2,6 +2,8 @@
 
 ## Current State
 
+Date: 2026-03-18
+
 The audiocontrol monorepo has working device communication, MIDI SysEx protocols, and web-based editors for the Roland S-330 (with S-550 support in progress). The core infrastructure is solid:
 
 - **Library schemas** — Device-agnostic base types (`BaseTone`, `BasePatch`) with device-specific extensions for S-330 and S-550. YAML-based storage with browser and Node.js backends.
