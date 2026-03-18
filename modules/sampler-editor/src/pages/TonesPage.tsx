@@ -27,7 +27,7 @@ import {
   getCachedLibraryDirectory,
   setCachedLibraryDirectory,
 } from '@/lib/library-service';
-import { useLoopDetection } from '@/hooks/useLoopDetection';
+import { useLoopDetection } from '@audiocontrol/loop-editor/ui';
 import { createSmoothedCopy } from '@audiocontrol/sampler-library/browser';
 
 export function TonesPage() {

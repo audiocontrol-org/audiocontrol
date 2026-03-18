@@ -18,8 +18,8 @@ import { ParameterSlider } from '@/components/ui/ParameterSlider';
 import { EnvelopeEditor } from '@/components/ui/EnvelopeEditor';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
-import { LoopEditor } from '@/components/tones/LoopEditor';
-import type { LoopDetectionProgress } from '@/hooks/useLoopDetection';
+import { LoopEditor } from '@audiocontrol/loop-editor/ui';
+import type { LoopDetectionProgress } from '@audiocontrol/loop-editor';
 
 interface ToneEditorProps {
     tone: SamplerTone;
