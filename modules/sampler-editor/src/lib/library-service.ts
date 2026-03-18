@@ -12,3 +12,4 @@ export * from './library-tones';
 export * from './library-patches';
 export * from './library-sets';
 export * from './library-drumkits';
+export * from './library-chopped-samples';

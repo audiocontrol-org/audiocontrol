@@ -1,7 +1,7 @@
 /**
- * Import Drum Kit Dialog
+ * Import Samples Dialog
  *
- * Dialog for importing a drum kit bundle to the device.
+ * Dialog for importing a sample bundle (drum kit or chopped sample) to the device.
  * Allows user to select starting tone slot, wave bank/segment, and patch slot.
  * All slot counts, bank options, and formatting are driven by MemoryLayout.
  */
@@ -11,7 +11,7 @@ import type { ImportOperationState } from '@/types/import-operation';
 import { isImportComplete } from '@/types/import-operation';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
-import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
+import type { SampleImportBundle } from '@/hooks/useImportSamples';
 import { midiNoteToName } from '@audiocontrol/sampler-library/browser';
 import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
@@ -28,10 +28,10 @@ import type { AllocationProposal } from '@/components/ui/memory-map-types';
 import { findContiguousBestFits } from '@/lib/best-fit';
 import type { FitOption, ContiguousFitValues } from '@/lib/best-fit';
 
-export interface ImportDrumKitDialogProps extends ImportOperationState {
+export interface ImportSamplesDialogProps extends ImportOperationState {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  bundle: ResolvedDrumKitBundle;
+  bundle: SampleImportBundle;
   deviceTones: (SamplerTone | undefined)[];
   devicePatches: (SamplerPatch | undefined)[];
   onImport: (params: {
@@ -45,7 +45,7 @@ export interface ImportDrumKitDialogProps extends ImportOperationState {
   }) => Promise<void>;
 }
 
-export function ImportDrumKitDialog({
+export function ImportSamplesDialog({
   open,
   onOpenChange,
   bundle,
@@ -55,12 +55,13 @@ export function ImportDrumKitDialog({
   isImporting,
   importProgress,
   importError,
-}: ImportDrumKitDialogProps): JSX.Element {
+}: ImportSamplesDialogProps): JSX.Element {
   const config = useDeviceConfig();
   const { memoryLayout } = config;
 
-  const totalSamples = bundle.totalSamples;
+  const totalSamples = bundle.slices.length;
   const { importTargets } = memoryLayout;
+  const hasSource = !!bundle.source;
 
   // User selections
   const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
@@ -69,18 +70,16 @@ export function ImportDrumKitDialog({
   const [startingSegment, setStartingSegment] = useState(0);
   const [targetPatchSlot, setTargetPatchSlot] = useState(0);
   const [singlePatch, setSinglePatch] = useState(true);
-  const [useMonolithicMode, setUseMonolithicMode] = useState(true);
+  const [useMonolithicMode, setUseMonolithicMode] = useState(hasSource);
 
   // Best fit state
   const [fitOptions, setFitOptions] = useState<FitOption<ContiguousFitValues>[]>([]);
   const [selectedFitIndex, setSelectedFitIndex] = useState<number | null>(null);
   const [showBestFits, setShowBestFits] = useState(false);
 
-  // The selected import target determines the tone/bank offsets
   const selectedTarget = importTargets[selectedTargetIndex];
   const absoluteToneSlot = startingToneSlot + selectedTarget.toneIndexOffset;
 
-  // Tone group for the selected target — determines slot count and valid banks
   const targetGroup = memoryLayout.toneGroups.find(
     g => g.firstIndex === selectedTarget.toneIndexOffset
   ) ?? memoryLayout.toneGroups[0];
@@ -94,13 +93,11 @@ export function ImportDrumKitDialog({
   const estimatedSegments = totalSamples;
   const hasEnoughSegments = startingSegment + estimatedSegments <= 18;
 
-  // Valid wave banks come from the target group
   const availableBanks = {
     labels: targetGroup.waveBankLabels,
     indices: targetGroup.waveBankIndices,
   };
 
-  // Bank label for allocation preview
   const selectedBankLabel = (() => {
     const labelIdx = availableBanks.indices.indexOf(waveBank);
     return labelIdx >= 0 ? availableBanks.labels[labelIdx] : String(waveBank);
@@ -139,7 +136,6 @@ export function ImportDrumKitDialog({
     setStartingSegment(option.values.startingSegment);
   }, [fitOptions]);
 
-  // Reset relative selections when target changes
   const handleTargetChange = useCallback((index: number) => {
     setSelectedTargetIndex(index);
     setStartingToneSlot(0);
@@ -169,9 +165,17 @@ export function ImportDrumKitDialog({
 
   const isComplete = isImportComplete({ isImporting, importProgress, importError });
 
-  // Max starting index that leaves enough room (relative to group, not absolute)
   const maxStartingTone = Math.max(0, groupToneCount - toneSlotsNeeded);
   const maxStartingPatch = Math.max(0, config.totalPatches - (singlePatch ? 1 : totalSamples));
+
+  // MIDI range for display
+  const firstNote = bundle.slices[0]?.midiNote;
+  const lastNote = bundle.slices[bundle.slices.length - 1]?.midiNote;
+
+  // Summary description
+  const summaryDescription = bundle.kitCount
+    ? `"${bundle.name}" (${bundle.kitCount} kit${bundle.kitCount !== 1 ? 's' : ''}, ${totalSamples} samples)`
+    : `"${bundle.name}" (${totalSamples} slice${totalSamples !== 1 ? 's' : ''})`;
 
   return (
     <Dialog.Root open={open} onOpenChange={handleClose}>
@@ -179,12 +183,12 @@ export function ImportDrumKitDialog({
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
         <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
           <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
-            Import Drum Kit
+            Import Samples
           </Dialog.Title>
 
           {isComplete ? (
             <ImportSuccessScreen
-              message="Drum kit imported successfully!"
+              message="Samples imported successfully!"
               detail={
                 <>
                   <p>Created {toneSlotsNeeded} tone{toneSlotsNeeded !== 1 ? 's' : ''} in slots {memoryLayout.formatToneSlot(absoluteToneSlot)} - {memoryLayout.formatToneSlot(absoluteToneSlot + toneSlotsNeeded - 1)}
@@ -202,31 +206,35 @@ export function ImportDrumKitDialog({
           ) : (
             <div className="space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
-                Import "{bundle.name}" ({bundle.kits.length} kit{bundle.kits.length !== 1 ? 's' : ''}, {totalSamples} samples)
+                Import {summaryDescription}
               </Dialog.Description>
 
-              {/* Kit Summary */}
+              {/* Bundle Summary */}
               <div className="bg-s330-bg rounded p-3 text-sm">
-                <div className="text-s330-muted text-xs uppercase tracking-wide mb-2">Kit Summary</div>
+                <div className="text-s330-muted text-xs uppercase tracking-wide mb-2">Summary</div>
                 <div className="grid grid-cols-2 gap-2">
+                  {bundle.kitCount !== undefined && (
+                    <div>
+                      <span className="text-s330-muted">Kits:</span>
+                      <span className="ml-2 text-s330-text">{bundle.kitCount}</span>
+                    </div>
+                  )}
                   <div>
-                    <span className="text-s330-muted">Kits:</span>
-                    <span className="ml-2 text-s330-text">{bundle.kits.length}</span>
-                  </div>
-                  <div>
-                    <span className="text-s330-muted">Samples:</span>
+                    <span className="text-s330-muted">{bundle.kitCount ? 'Samples' : 'Slices'}:</span>
                     <span className="ml-2 text-s330-text">{totalSamples}</span>
                   </div>
                   <div>
                     <span className="text-s330-muted">Sample Rate:</span>
                     <span className="ml-2 text-s330-text">{bundle.sampleRate / 1000}kHz</span>
                   </div>
-                  <div>
-                    <span className="text-s330-muted">MIDI Range:</span>
-                    <span className="ml-2 text-s330-text">
-                      {bundle.kits[0] && midiNoteToName(bundle.kits[0].midiNotes.kick)} - {bundle.kits[bundle.kits.length - 1] && midiNoteToName(bundle.kits[bundle.kits.length - 1]!.midiNotes.hhOpen)}
-                    </span>
-                  </div>
+                  {firstNote !== undefined && lastNote !== undefined && (
+                    <div>
+                      <span className="text-s330-muted">MIDI Range:</span>
+                      <span className="ml-2 text-s330-text">
+                        {midiNoteToName(firstNote)} - {midiNoteToName(lastNote)}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -272,7 +280,7 @@ export function ImportDrumKitDialog({
                 </select>
               </div>
 
-              {/* Starting Tone Slot (relative to selected block) */}
+              {/* Starting Tone Slot */}
               <div>
                 <label htmlFor="startingToneSlot" className="block text-sm text-s330-muted mb-1">
                   Starting Tone Slot (needs {toneSlotsNeeded} consecutive slot{toneSlotsNeeded !== 1 ? 's' : ''})
@@ -378,30 +386,32 @@ export function ImportDrumKitDialog({
                 </label>
               </div>
 
-              {/* Monolithic Mode Toggle */}
-              <div className="border border-s330-accent/30 rounded p-3 bg-s330-bg/50">
-                <div className="flex items-center gap-3">
-                  <input
-                    type="checkbox"
-                    id="monolithicMode"
-                    checked={useMonolithicMode}
-                    onChange={(e) => setUseMonolithicMode(e.target.checked)}
-                    disabled={isImporting}
-                    className="w-4 h-4 rounded bg-s330-bg border-s330-accent/50 text-s330-highlight focus:ring-s330-highlight"
-                  />
-                  <label htmlFor="monolithicMode" className="text-sm text-s330-text">
-                    Use monolithic mode with sub-tones
-                    <span className="ml-2 text-xs text-s330-muted">(recommended)</span>
-                  </label>
+              {/* Monolithic Mode Toggle — only for source-based bundles */}
+              {hasSource && (
+                <div className="border border-s330-accent/30 rounded p-3 bg-s330-bg/50">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="monolithicMode"
+                      checked={useMonolithicMode}
+                      onChange={(e) => setUseMonolithicMode(e.target.checked)}
+                      disabled={isImporting}
+                      className="w-4 h-4 rounded bg-s330-bg border-s330-accent/50 text-s330-highlight focus:ring-s330-highlight"
+                    />
+                    <label htmlFor="monolithicMode" className="text-sm text-s330-text">
+                      Use monolithic mode with sub-tones
+                      <span className="ml-2 text-xs text-s330-muted">(recommended)</span>
+                    </label>
+                  </div>
+                  {useMonolithicMode && (
+                    <p className="text-xs text-s330-muted mt-2">
+                      Uploads all slices as one contiguous wave segment. Creates a "holder" primary tone
+                      that owns the wave data (not mapped to any MIDI note), then all {totalSamples} slices
+                      become sub-tones with their own start/end points. Uses {toneSlotsNeeded} tone slots total.
+                    </p>
+                  )}
                 </div>
-                {useMonolithicMode && (
-                  <p className="text-xs text-s330-muted mt-2">
-                    Uploads all slices as one contiguous wave segment. Creates a "holder" primary tone
-                    that owns the wave data (not mapped to any MIDI note), then all {totalSamples} slices
-                    become sub-tones with their own start/end points. Uses {toneSlotsNeeded} tone slots total.
-                  </p>
-                )}
-              </div>
+              )}
 
               {/* Patch Slot */}
               <div>
@@ -511,7 +521,7 @@ export function ImportDrumKitDialog({
                     (isImporting || !hasEnoughToneSlots || !hasEnoughPatchSlots) && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  <ImportButtonContent isImporting={isImporting} label="Import Drum Kit" />
+                  <ImportButtonContent isImporting={isImporting} label="Import Samples" />
                 </button>
               </div>
             </div>

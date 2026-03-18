@@ -42,14 +42,17 @@ interface LibraryTreePanelProps {
   patchesTree?: LibraryTreeNode[];
   /** Hierarchical tree for drum kits (optional, falls back to flat list) */
   drumKitsTree?: LibraryTreeNode[];
+  /** Hierarchical tree for chopped samples from common/samples/ */
+  choppedSamplesTree?: LibraryTreeNode[];
   /** Expanded directory paths per category */
   expandedPaths?: {
     tones: Set<string>;
     patches: Set<string>;
     drumKits: Set<string>;
+    choppedSamples: Set<string>;
   };
   selectedName?: string;
-  selectedType?: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch';
+  selectedType?: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch' | 'choppedSample';
   selectedSetName?: string;
   /** Selected path for hierarchical items */
   selectedPath?: string[];
@@ -59,6 +62,7 @@ interface LibraryTreePanelProps {
   onSelectDrumKit: (name: string, path?: string[]) => void;
   onSelectIndividualTone: (name: string, path?: string[]) => void;
   onSelectIndividualPatch: (name: string, path?: string[]) => void;
+  onSelectChoppedSample?: (name: string, path?: string[]) => void;
   onRefresh: () => void;
   isLoading: boolean;
   /** Callback when a device tone is dropped to export to library */
@@ -74,7 +78,7 @@ interface LibraryTreePanelProps {
   /** Callback to delete a drum kit */
   onDeleteDrumKit?: (directoryName: string, path?: string[]) => void;
   /** Callback to toggle directory expansion */
-  onToggleDirectoryExpanded?: (category: 'tones' | 'patches' | 'drumKits', path: string) => void;
+  onToggleDirectoryExpanded?: (category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples', path: string) => void;
   /** Callback to create a new directory */
   onCreateDirectory?: (category: LibraryCategory, parentPath: string[]) => void;
   /** Callback to rename a directory */
@@ -100,6 +104,7 @@ export function LibraryTreePanel({
   tonesTree,
   patchesTree,
   drumKitsTree,
+  choppedSamplesTree,
   expandedPaths,
   selectedName,
   selectedType,
@@ -111,6 +116,7 @@ export function LibraryTreePanel({
   onSelectDrumKit,
   onSelectIndividualTone,
   onSelectIndividualPatch,
+  onSelectChoppedSample,
   onRefresh,
   isLoading,
   onDropDeviceTone,
@@ -169,6 +175,7 @@ export function LibraryTreePanel({
     onSelectDrumKit,
     onSelectIndividualTone,
     onSelectIndividualPatch,
+    onSelectChoppedSample,
     onToggleDirectoryExpanded,
     onDeleteIndividualTone,
     onDeleteIndividualPatch,
@@ -290,7 +297,7 @@ export function LibraryTreePanel({
                   isSelected={selectedType === 'set' && selectedName === setInfo.name}
                   isExpanded={expandedSets.has(setInfo.name)}
                   selectedItemName={selectedSetName === setInfo.name ? selectedName : undefined}
-                  selectedItemType={selectedSetName === setInfo.name && selectedType !== 'drumKit' && selectedType !== 'individualTone' && selectedType !== 'individualPatch' ? selectedType : undefined}
+                  selectedItemType={selectedSetName === setInfo.name && selectedType !== 'drumKit' && selectedType !== 'individualTone' && selectedType !== 'individualPatch' && selectedType !== 'choppedSample' ? selectedType : undefined}
                   onToggle={() => toggleSet(setInfo.name)}
                   onSelect={() => onSelectSet(setInfo.name)}
                   onSelectTone={(toneFile) => onSelectTone(toneFile, setInfo.name)}
@@ -573,6 +580,19 @@ export function LibraryTreePanel({
               </div>
             )}
           </div>
+        )}
+        {/* Chopped Samples Section (common/samples/) */}
+        {choppedSamplesTree && choppedSamplesTree.length > 0 && (
+          <TreeSection
+            title="Samples"
+            nodes={choppedSamplesTree}
+            category="choppedSamples"
+            expandedPaths={expandedPaths?.choppedSamples ?? new Set()}
+            selectedId={computeSelectedId('choppedSamples')}
+            onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('choppedSamples', nodeId)}
+            onSelect={(node) => handleTreeNodeSelect(node, 'choppedSamples')}
+            emptyMessage="No samples in common library"
+          />
         )}
       </div>
 

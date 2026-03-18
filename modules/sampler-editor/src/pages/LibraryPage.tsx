@@ -3,7 +3,7 @@
  *
  * Three-column layout:
  * - Left: Device memory (tones and patches loaded on device)
- * - Center: Library browser (sets, global tones, patches)
+ * - Center: Library browser (sets, global tones, patches, drum kits, samples)
  * - Right: Preview/details of selected item with import/export actions
  */
 
@@ -16,38 +16,43 @@ import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/m
 import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
 import { LibraryTreePanel } from '@/components/library/LibraryTreePanel';
 import { ItemPreviewPanel } from '@/components/library/ItemPreviewPanel';
-import { DrumKitPreviewPanel } from '@/components/library/DrumKitPreviewPanel';
+import { SampleBundlePreviewPanel } from '@/components/library/SampleBundlePreviewPanel';
 import { SaveSetDialog } from '@/components/library/SaveSetDialog';
 import { LoadSetDialog } from '@/components/library/LoadSetDialog';
 import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneDialog';
 import { ImportLibraryPatchDialog } from '@/components/library/ImportLibraryPatchDialog';
-import { ImportDrumKitDialog } from '@/components/library/ImportDrumKitDialog';
+import { ImportSamplesDialog } from '@/components/library/ImportSamplesDialog';
 import { SampleChopperDialog, type SliceDefinitionOutput, type InitialSliceDefinition } from '@audiocontrol/sample-chopper/ui';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
-import { useImportDrumKit } from '@/hooks/useImportDrumKit';
+import {
+  useImportSamples,
+  drumKitBundleToImportBundle,
+  choppedSampleToImportBundle,
+} from '@/hooks/useImportSamples';
 import { useDirectoryOperations } from '@/hooks/useDirectoryOperations';
 import { useLibraryExport } from '@/hooks/useLibraryExport';
 import { useLibraryImportDialogs } from '@/hooks/useLibraryImportDialogs';
 import {
   hasFileSystemAccess, pickLibraryDirectory, getCachedLibraryDirectory, setCachedLibraryDirectory,
   listSets, listDrumKits, listIndividualTones, listIndividualPatches,
-  listIndividualTonesTree, listIndividualPatchesTree, listDrumKitsTree,
-  loadDrumKitBundle, loadDrumKitSource, updateDrumKitSlices,
+  listIndividualTonesTree, listIndividualPatchesTree, listDrumKitsTree, listChoppedSamplesTree,
+  loadDrumKitBundle, loadDrumKitSource, updateDrumKitSlices, loadChoppedSampleManifest,
   type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo, type LibraryTreeNode,
 } from '@/lib/library-service';
 import { CreateDirectoryDialog } from '@/components/library/CreateDirectoryDialog';
 import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialog';
 import { DeleteDirectoryDialog } from '@/components/library/DeleteDirectoryDialog';
 import { MoveItemDialog } from '@/components/library/MoveItemDialog';
-import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
+import type { ResolvedDrumKitBundle, ChoppedSample } from '@audiocontrol/sampler-library/browser';
+import { parseNoteName } from '@audiocontrol/sampler-library/browser';
 import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 
 /** Selection state for items in either panel */
 export interface ItemSelection {
   source: 'device' | 'library';
-  type: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch';
+  type: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch' | 'choppedSample';
   index?: number;
   name?: string;
   setName?: string;
@@ -56,11 +61,12 @@ export interface ItemSelection {
 
 /** Load all library data from a directory handle */
 async function loadAllLibraryData(handle: FileSystemDirectoryHandle) {
-  const [setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData] = await Promise.all([
+  const [setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, choppedSamplesTreeData] = await Promise.all([
     listSets(handle), listDrumKits(handle), listIndividualTones(handle), listIndividualPatches(handle),
     listIndividualTonesTree(handle), listIndividualPatchesTree(handle), listDrumKitsTree(handle),
+    listChoppedSamplesTree(handle),
   ]);
-  return { setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData };
+  return { setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, choppedSamplesTreeData };
 }
 
 export function LibraryPage() {
@@ -82,11 +88,14 @@ export function LibraryPage() {
 
   const [drumKits, setDrumKits] = useState<DrumKitInfo[]>([]);
   const [selectedDrumKitBundle, setSelectedDrumKitBundle] = useState<ResolvedDrumKitBundle | null>(null);
+  const [selectedChoppedSampleManifest, setSelectedChoppedSampleManifest] = useState<ChoppedSample | null>(null);
+  const [selectedChoppedSampleNode, setSelectedChoppedSampleNode] = useState<LibraryTreeNode | null>(null);
   const [individualTones, setIndividualTones] = useState<LibraryToneInfo[]>([]);
   const [individualPatches, setIndividualPatches] = useState<LibraryPatchInfo[]>([]);
   const [tonesTree, setTonesTree] = useState<LibraryTreeNode[]>([]);
   const [patchesTree, setPatchesTree] = useState<LibraryTreeNode[]>([]);
   const [drumKitsTree, setDrumKitsTree] = useState<LibraryTreeNode[]>([]);
+  const [choppedSamplesTree, setChoppedSamplesTree] = useState<LibraryTreeNode[]>([]);
   const [sliceEditDialog, setSliceEditDialog] = useState<{
     open: boolean; kitName: string; path?: string[];
     samples: Int16Array | null; sampleRate: number; slices: InitialSliceDefinition[];
@@ -105,15 +114,16 @@ export function LibraryPage() {
   const setPatchForHook = useCallback((index: number, patch: SamplerPatch) => setPatch(index, patch, totalPatches), [setPatch, totalPatches]);
 
   const {
-    importDrumKitDialog, isImporting: isDrumKitImporting,
-    importProgress: drumKitImportProgress, importError: drumKitImportError,
-    openImportDrumKitDialog, closeImportDrumKitDialog, handleImportDrumKit,
-  } = useImportDrumKit({ clientRef, libraryHandle, setTone: setToneForHook, setPatch: setPatchForHook });
+    importSamplesDialog, isImporting: isSamplesImporting,
+    importProgress: samplesImportProgress, importError: samplesImportError,
+    openImportSamplesDialog, closeImportSamplesDialog, handleImportSamples,
+  } = useImportSamples({ clientRef, libraryHandle, setTone: setToneForHook, setPatch: setPatchForHook });
 
   const applyLibraryData = useCallback((data: Awaited<ReturnType<typeof loadAllLibraryData>>) => {
     setSets(data.setList); setDrumKits(data.kitList); setIndividualTones(data.toneList);
     setIndividualPatches(data.patchList); setTonesTree(data.tonesTreeData);
     setPatchesTree(data.patchesTreeData); setDrumKitsTree(data.drumKitsTreeData);
+    setChoppedSamplesTree(data.choppedSamplesTreeData);
   }, [setSets]);
 
   const handleRefreshLibrary = useCallback(async () => {
@@ -137,9 +147,15 @@ export function LibraryPage() {
     clientRef, libraryHandle, tones, patches, setIndividualTones, setIndividualPatches,
   });
 
+  // Wrapper to provide openImportSamplesDialog with drum kit conversion
+  const openImportDrumKitDialogCompat = useCallback((kitName: string, bundle: ResolvedDrumKitBundle, path?: string[]) => {
+    const importBundle = drumKitBundleToImportBundle(bundle);
+    openImportSamplesDialog(kitName, importBundle, 'drumKit', path);
+  }, [openImportSamplesDialog]);
+
   const importDialogs = useLibraryImportDialogs({
     clientRef, libraryHandle, setTone, setPatch, totalTones, totalPatches,
-    openImportDrumKitDialog, selection, handleRefreshLibrary,
+    openImportDrumKitDialog: openImportDrumKitDialogCompat, selection, handleRefreshLibrary,
   });
 
   // Initialize library directory
@@ -197,25 +213,78 @@ export function LibraryPage() {
   // Selection handlers
   const handleSelectDevice = useCallback((type: 'tone' | 'patch', index: number) => setSelection({ source: 'device', type, index }), []);
   const handleSelectLibrary = useCallback((type: 'tone' | 'patch' | 'set', name: string, setName?: string) => {
-    setSelection({ source: 'library', type, name, setName }); setSelectedDrumKitBundle(null);
+    setSelection({ source: 'library', type, name, setName });
+    setSelectedDrumKitBundle(null);
+    setSelectedChoppedSampleManifest(null);
+    setSelectedChoppedSampleNode(null);
   }, []);
   const handleSelectDrumKit = useCallback(async (directoryName: string, path?: string[]) => {
-    setSelection({ source: 'library', type: 'drumKit', name: directoryName, path }); setSelectedDrumKitBundle(null);
+    setSelection({ source: 'library', type: 'drumKit', name: directoryName, path });
+    setSelectedDrumKitBundle(null);
+    setSelectedChoppedSampleManifest(null);
+    setSelectedChoppedSampleNode(null);
     if (libraryHandle) {
       try { setSelectedDrumKitBundle(await loadDrumKitBundle(libraryHandle, directoryName, path)); }
       catch (err) { console.error('[LibraryPage] Failed to load drum kit bundle:', err); }
     }
   }, [libraryHandle]);
+  const handleSelectChoppedSample = useCallback(async (directoryName: string, path?: string[]) => {
+    setSelection({ source: 'library', type: 'choppedSample', name: directoryName, path });
+    setSelectedDrumKitBundle(null);
+    setSelectedChoppedSampleManifest(null);
+    // Find the node for preview panel
+    const findNode = (nodes: LibraryTreeNode[], targetName: string, targetPath: string[]): LibraryTreeNode | null => {
+      for (const node of nodes) {
+        if (node.type === 'chopped-sample' && (node.directoryName === targetName || node.name === targetName)) {
+          const pathMatch = JSON.stringify(node.path) === JSON.stringify(targetPath);
+          if (pathMatch) return node;
+        }
+        if (node.children) {
+          const found = findNode(node.children, targetName, targetPath);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    const node = findNode(choppedSamplesTree, directoryName, path ?? []);
+    setSelectedChoppedSampleNode(node);
+
+    if (libraryHandle) {
+      try {
+        const manifest = await loadChoppedSampleManifest(libraryHandle, directoryName, path);
+        setSelectedChoppedSampleManifest(manifest);
+      } catch (err) { console.error('[LibraryPage] Failed to load chopped sample:', err); }
+    }
+  }, [libraryHandle, choppedSamplesTree]);
   const handleSelectIndividualTone = useCallback((toneName: string, path?: string[]) => {
-    setSelection({ source: 'library', type: 'individualTone', name: toneName, path }); setSelectedDrumKitBundle(null);
+    setSelection({ source: 'library', type: 'individualTone', name: toneName, path });
+    setSelectedDrumKitBundle(null);
+    setSelectedChoppedSampleManifest(null);
+    setSelectedChoppedSampleNode(null);
   }, []);
   const handleSelectIndividualPatch = useCallback((patchName: string, path?: string[]) => {
-    setSelection({ source: 'library', type: 'individualPatch', name: patchName, path }); setSelectedDrumKitBundle(null);
+    setSelection({ source: 'library', type: 'individualPatch', name: patchName, path });
+    setSelectedDrumKitBundle(null);
+    setSelectedChoppedSampleManifest(null);
+    setSelectedChoppedSampleNode(null);
   }, []);
-  const handleOpenDrumKitImport = useCallback(() => {
-    if (!selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) return;
-    openImportDrumKitDialog(selection.name!, selectedDrumKitBundle, selection.path);
-  }, [selection, selectedDrumKitBundle, openImportDrumKitDialog]);
+
+  // Import handlers
+  const handleOpenSamplesImport = useCallback(() => {
+    if (!selection) return;
+
+    if (selection.type === 'drumKit' && selectedDrumKitBundle) {
+      const importBundle = drumKitBundleToImportBundle(selectedDrumKitBundle);
+      openImportSamplesDialog(selection.name!, importBundle, 'drumKit', selection.path);
+    } else if (selection.type === 'choppedSample' && selectedChoppedSampleManifest) {
+      const manifest = selectedChoppedSampleManifest;
+      const rawBaseNote = manifest.variant === 'drum-kit' ? manifest.drumKit.baseNote : 36;
+      const baseNote = typeof rawBaseNote === 'string' ? parseNoteName(rawBaseNote) : rawBaseNote;
+      const targetRate: 15000 | 30000 = 15000;
+      const importBundle = choppedSampleToImportBundle(manifest, targetRate, baseNote);
+      openImportSamplesDialog(selection.name!, importBundle, 'choppedSample', selection.path);
+    }
+  }, [selection, selectedDrumKitBundle, selectedChoppedSampleManifest, openImportSamplesDialog]);
 
   // Kit editing handlers
   const handleEditKit = useCallback(async () => {
@@ -298,6 +367,7 @@ export function LibraryPage() {
             libraryHandle={libraryHandle} sets={sets} drumKits={drumKits}
             individualTones={individualTones} individualPatches={individualPatches}
             tonesTree={tonesTree} patchesTree={patchesTree} drumKitsTree={drumKitsTree}
+            choppedSamplesTree={choppedSamplesTree}
             expandedPaths={expandedPaths}
             selectedName={selection?.source === 'library' ? selection.name : undefined}
             selectedType={selection?.source === 'library' ? selection.type : undefined}
@@ -307,7 +377,9 @@ export function LibraryPage() {
             onSelectTone={(name, setName) => handleSelectLibrary('tone', name, setName)}
             onSelectPatch={(name, setName) => handleSelectLibrary('patch', name, setName)}
             onSelectDrumKit={handleSelectDrumKit} onSelectIndividualTone={handleSelectIndividualTone}
-            onSelectIndividualPatch={handleSelectIndividualPatch} onRefresh={handleRefreshLibrary}
+            onSelectIndividualPatch={handleSelectIndividualPatch}
+            onSelectChoppedSample={handleSelectChoppedSample}
+            onRefresh={handleRefreshLibrary}
             isLoading={isLoading || exportOps.isExporting}
             onDropDeviceTone={exportOps.handleDropDeviceTone} onDropDevicePatch={exportOps.handleDropDevicePatch}
             onDeleteSet={directoryOps.handleDeleteSet} onDeleteIndividualTone={directoryOps.handleDeleteIndividualTone}
@@ -320,11 +392,15 @@ export function LibraryPage() {
           />
         </div>
         <div className="card p-0 overflow-hidden h-full">
-          {selection?.type === 'drumKit' ? (
-            <DrumKitPreviewPanel
-              kitInfo={drumKits.find((k) => k.directoryName === selection.name) ?? null}
-              libraryHandle={libraryHandle} preloadedBundle={selectedDrumKitBundle}
-              onImport={handleOpenDrumKitImport} onEditKit={handleEditKit}
+          {selection?.type === 'drumKit' || selection?.type === 'choppedSample' ? (
+            <SampleBundlePreviewPanel
+              kitInfo={selection.type === 'drumKit' ? (drumKits.find((k) => k.directoryName === selection.name) ?? null) : undefined}
+              choppedSampleNode={selection.type === 'choppedSample' ? selectedChoppedSampleNode : undefined}
+              libraryHandle={libraryHandle}
+              preloadedBundle={selection.type === 'drumKit' ? selectedDrumKitBundle : undefined}
+              preloadedManifest={selection.type === 'choppedSample' ? selectedChoppedSampleManifest : undefined}
+              onImport={handleOpenSamplesImport}
+              onEditKit={selection.type === 'drumKit' ? handleEditKit : undefined}
             />
           ) : (
             <ItemPreviewPanel
@@ -375,12 +451,12 @@ export function LibraryPage() {
           importProgress={importDialogs.operationProgress} importError={importDialogs.operationError}
         />
       )}
-      {importDrumKitDialog && (
-        <ImportDrumKitDialog
-          open={!!importDrumKitDialog} onOpenChange={(open) => { if (!open) closeImportDrumKitDialog(); }}
-          bundle={importDrumKitDialog.bundle} deviceTones={tones} devicePatches={patches}
-          onImport={handleImportDrumKit} isImporting={isDrumKitImporting}
-          importProgress={drumKitImportProgress} importError={drumKitImportError}
+      {importSamplesDialog && (
+        <ImportSamplesDialog
+          open={!!importSamplesDialog} onOpenChange={(open) => { if (!open) closeImportSamplesDialog(); }}
+          bundle={importSamplesDialog.bundle} deviceTones={tones} devicePatches={patches}
+          onImport={handleImportSamples} isImporting={isSamplesImporting}
+          importProgress={samplesImportProgress} importError={samplesImportError}
         />
       )}
       {sliceEditDialog && (
