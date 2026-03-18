@@ -28,7 +28,9 @@ import {
   type InitialSliceDefinition,
 } from '@/ui/hooks/useSampleChopper.js';
 import type { SliceResult } from '@/types.js';
-import { useTriggerRecording } from '@/ui/hooks/useTriggerRecording.js';
+import { useTriggerRecorder } from '@/ui/hooks/useTriggerRecorder.js';
+import { useTriggerMappings } from '@/ui/hooks/useTriggerMappings.js';
+import { useTriggerPlaybackListeners } from '@/ui/hooks/useTriggerPlaybackListeners.js';
 import { ChangeHistory } from './ChangeHistory.js';
 import { PlaybackControls } from './TriggerMethodContent.js';
 import { useTriggerPlayback } from '@/ui/hooks/useTriggerPlayback.js';
@@ -139,6 +141,36 @@ export function SampleChopperDialog({
     if (samplesRef.current) play(samplesRef.current);
   }, [play]);
 
+  // --- Trigger hooks (no circular refs) ---
+
+  const recorder = useTriggerRecorder({
+    playbackPositionRef,
+    isPlaying,
+    onPlay: handleTriggerPlay,
+    onStop: stop,
+    totalSamples: samples?.length ?? 0,
+    kitLabels: chopper.kitLabels,
+  });
+
+  const mappings = useTriggerMappings({
+    initialTriggers,
+    initialPlaybackConfig,
+    recordedMapping: recorder.triggerToSliceIndex,
+  });
+
+  const midiLearnState = useMidiLearn({
+    enabled: chopper.manualSlices.length > 0,
+    onLearn: mappings.learnTrigger,
+  });
+
+  // triggerPlayback needs slices — use manualSlices (the editor's source of truth)
+  const triggerPlayback = useTriggerPlayback({
+    samples,
+    sampleRate,
+    slices: chopper.manualSlices,
+    config: mappings.playbackConfig,
+  });
+
   const handlePlaySlice = useCallback(
     (index: number) => {
       if (!samples || !chopper.currentSliceResult) return;
@@ -151,81 +183,61 @@ export function SampleChopperDialog({
       }
 
       // Stop any trigger playback voices so the two engines don't overlap
-      triggerPlaybackRef.current.stopAll();
+      triggerPlayback.stopAll();
       chopper.setSelectedSlice(index);
       play(samples, slice.startSample, slice.endSample);
     },
-    [samples, chopper.currentSliceResult, isPlaying, chopper.selectedSlice, play, stop, chopper.setSelectedSlice]
+    [samples, chopper.currentSliceResult, isPlaying, chopper.selectedSlice, play, stop, chopper.setSelectedSlice, triggerPlayback]
   );
 
-  // Break circular dep: trigger needs triggerPlayback.playSlice, triggerPlayback needs trigger.recordedSlices.
-  // Use refs so the callbacks resolve at event time, not at hook-call time.
-  const triggerPlaybackRef = useRef<{ playSlice: (i: number) => void; stopSlice: (i: number) => void; stopAll: () => void }>({
-    playSlice: () => {},
-    stopSlice: () => {},
-    stopAll: () => {},
-  });
-
-  const midiLearnState = useMidiLearn({
-    enabled: chopper.manualSlices.length > 0,
-    onLearn: (sliceIndex, triggerId) => triggerRef.current.learnTrigger(sliceIndex, triggerId),
-  });
-
-  // Ref to break circular dependency between useMidiLearn.onLearn and trigger.learnTrigger
-  const triggerRef = useRef<{ learnTrigger: (sliceIndex: number, triggerId: string) => void }>({
-    learnTrigger: () => {},
-  });
-
-  const trigger = useTriggerRecording({
-    playbackPositionRef,
-    isPlaying,
-    onPlay: handleTriggerPlay,
-    onStop: stop,
-    onPlaySlice: (index: number) => {
+  // Playback listeners fire triggerPlayback directly — no refs needed
+  const handleTriggerPlaySlice = useCallback(
+    (index: number) => {
       chopper.setSelectedSlice(index);
-      // Stop any useAudioPreview voice so the two engines don't overlap
       if (isPlaying) stop();
-      triggerPlaybackRef.current.playSlice(index);
+      triggerPlayback.playSlice(index);
     },
-    onStopSlice: (index: number) => triggerPlaybackRef.current.stopSlice(index),
-    totalSamples: samples?.length ?? 0,
-    kitLabels: chopper.kitLabels,
+    [chopper.setSelectedSlice, isPlaying, stop, triggerPlayback],
+  );
+
+  const handleTriggerStopSlice = useCallback(
+    (index: number) => {
+      triggerPlayback.stopSlice(index);
+    },
+    [triggerPlayback],
+  );
+
+  useTriggerPlaybackListeners({
     active: true,
-    initialTriggers,
-    initialPlaybackConfig,
     midiLearnActive: midiLearnState.isLearning,
+    state: recorder.state,
     slices: chopper.manualSlices,
+    effectiveMapping: mappings.effectiveMapping,
+    onPlaySlice: handleTriggerPlaySlice,
+    onStopSlice: handleTriggerStopSlice,
+    playbackConfig: mappings.playbackConfig,
   });
 
-  triggerRef.current = trigger;
-
-  const triggerPlayback = useTriggerPlayback({
-    samples,
-    sampleRate,
-    slices: trigger.recordedSlices,
-    config: trigger.playbackConfig,
-  });
-
-  triggerPlaybackRef.current = triggerPlayback;
-
-  // Inject slices into chopper in real time during recording and on completion
+  // Inject recorded slices into chopper in real time during recording and on completion
   useEffect(() => {
-    if ((trigger.state === 'recording' || trigger.state === 'complete') && trigger.recordedSlices.length > 0) {
-      chopper.setManualSlices(trigger.recordedSlices);
+    if ((recorder.state === 'recording' || recorder.state === 'complete') && recorder.recordedSlices.length > 0) {
+      chopper.setManualSlices(recorder.recordedSlices);
     }
-  }, [trigger.state, trigger.recordedSlices, chopper.setManualSlices]);
+  }, [recorder.state, recorder.recordedSlices, chopper.setManualSlices]);
 
   // Push history when trigger recording completes
-  const prevTriggerStateRef = useRef(trigger.state);
+  const prevTriggerStateRef = useRef(recorder.state);
   useEffect(() => {
-    if (prevTriggerStateRef.current === 'recording' && trigger.state === 'complete' && trigger.recordedSlices.length > 0) {
-      chopper.pushHistory(trigger.recordedSlices, 'Record triggers');
+    if (prevTriggerStateRef.current === 'recording' && recorder.state === 'complete' && recorder.recordedSlices.length > 0) {
+      chopper.pushHistory(recorder.recordedSlices, 'Record triggers');
     }
-    prevTriggerStateRef.current = trigger.state;
-  }, [trigger.state, trigger.recordedSlices, chopper.pushHistory]);
+    prevTriggerStateRef.current = recorder.state;
+  }, [recorder.state, recorder.recordedSlices, chopper.pushHistory]);
 
-  // No-op: trigger recording is now part of manual mode
-  const handleSwitchToManualFromTrigger = useCallback(() => {}, []);
+  const handleTriggerReset = useCallback(() => {
+    recorder.reset();
+    mappings.reset();
+  }, [recorder, mappings]);
 
   const handleClose = useCallback(() => {
     stop();
@@ -273,23 +285,23 @@ export function SampleChopperDialog({
         name: sourceName,
         slices: chopper.manualSlices,
         sourceAudio: { samples, sampleRate },
-        triggers: trigger.triggerMappings.length > 0
-          ? trigger.triggerMappings
+        triggers: mappings.triggerMappings.length > 0
+          ? mappings.triggerMappings
           : undefined,
-        playbackConfig: trigger.playbackConfig.polyphony !== 'poly'
-            || trigger.playbackConfig.playbackMode !== 'one-shot'
-            || trigger.playbackConfig.muteGroups.length > 0
+        playbackConfig: mappings.playbackConfig.polyphony !== 'poly'
+            || mappings.playbackConfig.playbackMode !== 'one-shot'
+            || mappings.playbackConfig.muteGroups.length > 0
           ? {
-              polyphony: trigger.playbackConfig.polyphony,
-              playbackMode: trigger.playbackConfig.playbackMode,
-              muteGroups: trigger.playbackConfig.muteGroups,
+              polyphony: mappings.playbackConfig.polyphony,
+              playbackMode: mappings.playbackConfig.playbackMode,
+              muteGroups: mappings.playbackConfig.muteGroups,
             }
           : undefined,
       });
     } finally {
       setIsSaving(false);
     }
-  }, [onSave, samples, chopper.currentSliceResult, chopper.manualSlices, sampleRate, sourceName, trigger.triggerMappings, trigger.playbackConfig]);
+  }, [onSave, samples, chopper.currentSliceResult, chopper.manualSlices, sampleRate, sourceName, mappings.triggerMappings, mappings.playbackConfig]);
 
   const handleDialogKeyDown = useCallback(
     (event: React.KeyboardEvent) => {
@@ -299,7 +311,7 @@ export function SampleChopperDialog({
       }
 
       // Yield keyboard to trigger system when armed or recording
-      if (chopper.selectedMethod === 'manual' && (trigger.state === 'armed' || trigger.state === 'recording')) {
+      if (chopper.selectedMethod === 'manual' && (recorder.state === 'armed' || recorder.state === 'recording')) {
         return;
       }
 
@@ -383,7 +395,7 @@ export function SampleChopperDialog({
         return;
       }
     },
-    [chopper, trigger.state, handlePlaySlice, handlePlayAll]
+    [chopper, recorder.state, handlePlaySlice, handlePlayAll]
   );
 
   const waveformHeight = chopper.isFullscreen ? 400 : 140;
@@ -657,23 +669,22 @@ export function SampleChopperDialog({
                 onActivateStripSilence={chopper.activateStripSilence}
                 manualSlices={chopper.manualSlices}
                 triggerProps={{
-                  state: trigger.state,
-                  midiAvailable: trigger.midiAvailable,
-                  triggerCount: trigger.triggerCount,
-                  onArm: trigger.arm,
-                  onStop: trigger.stopRecording,
-                  onReset: trigger.reset,
-                  onEditManually: handleSwitchToManualFromTrigger,
-                  playbackConfig: trigger.playbackConfig,
-                  onPolyphonyChange: trigger.setPolyphony,
-                  onPlaybackModeChange: trigger.setPlaybackMode,
-                  onMuteGroupChange: trigger.setMuteGroup,
-                  slices: trigger.recordedSlices,
+                  state: recorder.state,
+                  midiAvailable: recorder.midiAvailable,
+                  triggerCount: recorder.triggerCount,
+                  onArm: recorder.arm,
+                  onStop: recorder.stopRecording,
+                  onReset: handleTriggerReset,
+                  playbackConfig: mappings.playbackConfig,
+                  onPolyphonyChange: mappings.setPolyphony,
+                  onPlaybackModeChange: mappings.setPlaybackMode,
+                  onMuteGroupChange: mappings.setMuteGroup,
+                  slices: chopper.manualSlices,
                   latencyMs: triggerPlayback.latencyMs,
                 }}
-                onAutoMap={(mappings) => {
-                  for (const { sliceIndex, triggerId } of mappings) {
-                    trigger.learnTrigger(sliceIndex, triggerId);
+                onAutoMap={(autoMappings) => {
+                  for (const { sliceIndex, triggerId } of autoMappings) {
+                    mappings.learnTrigger(sliceIndex, triggerId);
                   }
                 }}
               />
@@ -689,11 +700,11 @@ export function SampleChopperDialog({
                   onSlicePlay={handlePlaySlice}
                   onSliceDelete={chopper.handleSliceDelete}
                   editable={chopper.isManualMode}
-                  triggerAssignments={trigger.triggerMappings}
+                  triggerAssignments={mappings.triggerMappings}
                   learningSliceIndex={midiLearnState.learningSliceIndex}
                   onStartLearn={midiLearnState.startLearning}
                   onCancelLearn={midiLearnState.cancelLearning}
-                  onClearTrigger={trigger.clearLearnedTrigger}
+                  onClearTrigger={mappings.clearLearnedTrigger}
                 />
               )}
 
@@ -707,12 +718,12 @@ export function SampleChopperDialog({
               )}
 
               {/* Playback config — shown when trigger mappings exist */}
-              {trigger.triggerMappings.length > 0 && (
+              {mappings.triggerMappings.length > 0 && (
                 <PlaybackControls
-                  playbackConfig={trigger.playbackConfig}
-                  onPolyphonyChange={trigger.setPolyphony}
-                  onPlaybackModeChange={trigger.setPlaybackMode}
-                  onMuteGroupChange={trigger.setMuteGroup}
+                  playbackConfig={mappings.playbackConfig}
+                  onPolyphonyChange={mappings.setPolyphony}
+                  onPlaybackModeChange={mappings.setPlaybackMode}
+                  onMuteGroupChange={mappings.setMuteGroup}
                   slices={chopper.manualSlices}
                   latencyMs={triggerPlayback.latencyMs}
                 />

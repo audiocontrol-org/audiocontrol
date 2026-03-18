@@ -23,7 +23,6 @@ export interface TriggerMethodContentProps {
   onArm: () => void;
   onStop: () => void;
   onReset: () => void;
-  onEditManually: () => void;
   playbackConfig: TriggerPlaybackConfig;
   onPolyphonyChange: (mode: PolyphonyMode) => void;
   onPlaybackModeChange: (mode: PlaybackMode) => void;
@@ -146,7 +145,6 @@ export function TriggerMethodContent({
   onArm,
   onStop,
   onReset,
-  onEditManually,
   playbackConfig,
   onPolyphonyChange,
   onPlaybackModeChange,

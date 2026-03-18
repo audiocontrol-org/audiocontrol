@@ -7,7 +7,7 @@
 
 import { cn } from '@/ui/utils.js';
 import type { SliceDefinitionOutput } from '@/ui/hooks/useSampleChopper.js';
-import type { TriggerMapping } from '@/ui/hooks/useTriggerRecording.js';
+import type { TriggerMapping } from '@/ui/hooks/useTriggerMappings.js';
 import { triggerDisplayName } from '@/ui/hooks/useMidiLearn.js';
 
 export interface SliceListProps {

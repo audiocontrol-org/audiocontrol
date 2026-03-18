@@ -72,10 +72,22 @@ export {
 } from './hooks/useTriggerInput.js';
 
 export {
-  useTriggerRecording,
-  type UseTriggerRecordingParams,
-  type UseTriggerRecordingReturn,
-} from './hooks/useTriggerRecording.js';
+  useTriggerRecorder,
+  type UseTriggerRecorderParams,
+  type UseTriggerRecorderReturn,
+} from './hooks/useTriggerRecorder.js';
+
+export {
+  useTriggerMappings,
+  type TriggerMapping,
+  type UseTriggerMappingsParams,
+  type UseTriggerMappingsReturn,
+} from './hooks/useTriggerMappings.js';
+
+export {
+  useTriggerPlaybackListeners,
+  type UseTriggerPlaybackListenersParams,
+} from './hooks/useTriggerPlaybackListeners.js';
 
 export {
   useTriggerPlayback,
