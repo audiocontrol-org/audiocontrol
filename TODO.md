@@ -27,8 +27,6 @@ to edit those samples.
   * Saturator
   * Filter
   
-  
-  
 ### Migration Between Devices
 There should be a structured way to migrate library objects between
 devices and between devices and common.
