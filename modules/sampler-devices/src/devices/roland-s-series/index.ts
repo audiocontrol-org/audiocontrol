@@ -77,6 +77,26 @@ export {
 } from './s-series-constants.js';
 
 // =============================================================================
+// Shared Address Constants
+// =============================================================================
+
+export type { PatchParam } from './s-series-addresses.js';
+
+export {
+    PATCH_PARAMS,
+    PATCH_COMMON_OFFSETS,
+    TONE_OFFSETS,
+    PATCH_TOTAL_SIZE,
+    TONE_BLOCK_SIZE,
+    TONE_BLOCK_NIBBLES,
+    TONE_MAP_ENTRIES,
+    buildPatchAddress,
+    buildPatchParamAddress,
+    buildToneAddress,
+    buildSystemAddress,
+} from './s-series-addresses.js';
+
+// =============================================================================
 // Message Builders
 // =============================================================================
 

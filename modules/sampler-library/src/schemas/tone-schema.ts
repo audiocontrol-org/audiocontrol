@@ -77,63 +77,33 @@ export const S330TvaParamsSchema = z.object({
   envelope: S330EnvelopeSchema,
 });
 
+function createSeriesToneExtensionSchema(maxSourceTone: number) {
+  return z.object({
+    originalKey: z.number().int().min(11).max(108),
+    outputAssign: z.number().int().min(0).max(7),
+    sourceTone: z.number().int().min(0).max(maxSourceTone).optional(),
+    transpose: z.number().int().min(-64).max(63).default(0),
+    fineTune: z.number().int().min(-64).max(63).default(0),
+    lfo: S330LfoParamsSchema.optional(),
+    tvf: S330TvfParamsSchema.optional(),
+    tva: S330TvaParamsSchema.optional(),
+    benderEnabled: z.boolean().optional(),
+    aftertouchEnabled: z.boolean().optional(),
+    pitchFollow: z.boolean().optional(),
+  });
+}
+
 /**
  * S-330 specific tone extension fields.
  */
-export const S330ToneExtensionSchema = z.object({
-  /** Original key number (MIDI note 11-108) */
-  originalKey: z.number().int().min(11).max(108),
-  /** Output assignment (0-7) */
-  outputAssign: z.number().int().min(0).max(7),
-  /** Source tone number (0-31) */
-  sourceTone: z.number().int().min(0).max(31).optional(),
-  /** Transpose in semitones (-64 to +63, 0=no change) */
-  transpose: z.number().int().min(-64).max(63).default(0),
-  /** Fine tune (-64 to +63) */
-  fineTune: z.number().int().min(-64).max(63).default(0),
-  /** LFO parameters */
-  lfo: S330LfoParamsSchema.optional(),
-  /** TVF parameters */
-  tvf: S330TvfParamsSchema.optional(),
-  /** TVA parameters */
-  tva: S330TvaParamsSchema.optional(),
-  /** Pitch bender enabled */
-  benderEnabled: z.boolean().optional(),
-  /** Aftertouch enabled */
-  aftertouchEnabled: z.boolean().optional(),
-  /** Pitch follow for loop */
-  pitchFollow: z.boolean().optional(),
-});
+export const S330ToneExtensionSchema = createSeriesToneExtensionSchema(31);
 
 /**
  * S-550 specific tone extension fields.
  * Same structure as S-330 but with extended ranges:
  * - sourceTone: 0-63 (64 tones instead of 32)
  */
-export const S550ToneExtensionSchema = z.object({
-  /** Original key number (MIDI note 11-108) */
-  originalKey: z.number().int().min(11).max(108),
-  /** Output assignment (0-7) */
-  outputAssign: z.number().int().min(0).max(7),
-  /** Source tone number (0-63 for S-550) */
-  sourceTone: z.number().int().min(0).max(63).optional(),
-  /** Transpose in semitones (-64 to +63, 0=no change) */
-  transpose: z.number().int().min(-64).max(63).default(0),
-  /** Fine tune (-64 to +63) */
-  fineTune: z.number().int().min(-64).max(63).default(0),
-  /** LFO parameters */
-  lfo: S330LfoParamsSchema.optional(),
-  /** TVF parameters */
-  tvf: S330TvfParamsSchema.optional(),
-  /** TVA parameters */
-  tva: S330TvaParamsSchema.optional(),
-  /** Pitch bender enabled */
-  benderEnabled: z.boolean().optional(),
-  /** Aftertouch enabled */
-  aftertouchEnabled: z.boolean().optional(),
-  /** Pitch follow for loop */
-  pitchFollow: z.boolean().optional(),
-});
+export const S550ToneExtensionSchema = createSeriesToneExtensionSchema(63);
 
 /**
  * Complete tone YAML schema.
