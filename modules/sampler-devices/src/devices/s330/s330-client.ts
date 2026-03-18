@@ -38,17 +38,17 @@
  */
 
 import type {
-    S330MidiAdapter,
+    SSeriesMidiAdapter,
+    SSeriesClientOptions,
+    SSeriesResponse,
+    SSeriesCommand,
+    SSeriesAftertouchAssign,
+    SSeriesKeyAssign,
+    SSeriesWaveDataResponse,
     S330SystemParams,
     S330Patch,
     S330Tone,
-    S330ClientOptions,
-    S330Response,
-    S330Command,
     S330PatchCommon,
-    S330AftertouchAssign,
-    S330KeyAssign,
-    S330WaveDataResponse,
     S330WaveDataInput,
     S330ImportToneInput,
 } from './s330-types.js';
@@ -82,6 +82,7 @@ import {
 } from './s330-params.js';
 
 import { createTone } from './s330-tone-factory.js';
+import { clampWaveParams } from '../roland-s-series/index.js';
 import { withRetry, type RetryOptions } from '@audiocontrol/shared-midi';
 
 // =============================================================================
@@ -279,7 +280,7 @@ export interface S330ClientInterface {
     requestWaveData(
         toneIndex: number,
         onProgress?: (bytesReceived: number, totalBytes: number) => void
-    ): Promise<S330WaveDataResponse>;
+    ): Promise<SSeriesWaveDataResponse>;
 
     sendWaveData(
         input: S330WaveDataInput,
@@ -315,8 +316,8 @@ export interface S330ClientInterface {
     ): Promise<void>;
     setPatchBenderRange(patchIndex: number, range: number): Promise<void>;
     setPatchAftertouchSens(patchIndex: number, sens: number): Promise<void>;
-    setPatchAftertouchAssign(patchIndex: number, assign: S330AftertouchAssign): Promise<void>;
-    setPatchKeyAssign(patchIndex: number, assign: S330KeyAssign): Promise<void>;
+    setPatchAftertouchAssign(patchIndex: number, assign: SSeriesAftertouchAssign): Promise<void>;
+    setPatchKeyAssign(patchIndex: number, assign: SSeriesKeyAssign): Promise<void>;
     setPatchOutput(patchIndex: number, output: number): Promise<void>;
     setPatchLevel(patchIndex: number, level: number): Promise<void>;
     setPatchDetune(patchIndex: number, detune: number): Promise<void>;
@@ -361,8 +362,8 @@ export interface S330ClientInterface {
  * ```
  */
 export function createS330Client(
-    midiAdapter: S330MidiAdapter,
-    options: S330ClientOptions = {}
+    midiAdapter: SSeriesMidiAdapter,
+    options: SSeriesClientOptions = {}
 ): S330ClientInterface {
     const deviceId = options.deviceId ?? DEFAULT_DEVICE_ID;
     const timeoutMs = options.timeoutMs ?? TIMING.ACK_TIMEOUT_MS;
@@ -1352,7 +1353,7 @@ export function createS330Client(
         async requestWaveData(
             toneIndex: number,
             onProgress?: (bytesReceived: number, totalBytes: number) => void
-        ): Promise<S330WaveDataResponse> {
+        ): Promise<SSeriesWaveDataResponse> {
             console.log('[S330Client] requestWaveData called with toneIndex:', toneIndex);
             if (toneIndex < 0 || toneIndex >= MAX_TONES) {
                 throw new Error(`Invalid tone index: ${toneIndex}`);
@@ -1684,20 +1685,23 @@ export function createS330Client(
             if (input.tone) {
                 // Library import: Use the full tone object, but override wave allocation
                 // to match the explicit parameters (wave allocation may differ from original)
+                // Use clampWaveParams to ensure loopPoint doesn't exceed endPoint
                 const toneName = input.tone.name;
                 console.log(`[S330Client] Importing existing tone ${toneIndex}: "${toneName}" to bank ${waveBank}, segment ${segmentTop}`);
 
-                tone = {
-                    ...input.tone,
-                    wave: {
+                const clampedWave = clampWaveParams(
+                    {
                         ...input.tone.wave,
                         bank: waveBank,
                         segmentTop,
                         segmentLength,
-                        // Recalculate end point based on actual sample count
-                        endPoint: Math.max(0, sampleCount - 1),
-                        loopLength: Math.max(0, sampleCount - 1 - input.tone.wave.loopPoint),
                     },
+                    sampleCount
+                );
+
+                tone = {
+                    ...input.tone,
+                    wave: clampedWave,
                 };
             } else {
                 // New sample import: Use createTone factory with sensible defaults
@@ -2214,7 +2218,7 @@ export function createS330Client(
          * Set aftertouch assignment for a patch
          * Uses 8-byte read-modify-write (S-330 requires 8-byte minimum for WSD)
          */
-        async setPatchAftertouchAssign(patchIndex: number, assign: S330AftertouchAssign): Promise<void> {
+        async setPatchAftertouchAssign(patchIndex: number, assign: SSeriesAftertouchAssign): Promise<void> {
             if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
                 throw new Error(`Invalid patch index: ${patchIndex}`);
             }
@@ -2239,7 +2243,7 @@ export function createS330Client(
          * Set key assignment mode for a patch
          * Uses 8-byte read-modify-write (S-330 requires 8-byte minimum for WSD)
          */
-        async setPatchKeyAssign(patchIndex: number, assign: S330KeyAssign): Promise<void> {
+        async setPatchKeyAssign(patchIndex: number, assign: SSeriesKeyAssign): Promise<void> {
             if (patchIndex < 0 || patchIndex >= MAX_PATCHES) {
                 throw new Error(`Invalid patch index: ${patchIndex}`);
             }

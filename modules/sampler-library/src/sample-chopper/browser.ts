@@ -1,13 +1,13 @@
 /**
  * Browser-compatible sample chopper exports.
  *
- * This entry point excludes Node.js-only functions (chopSampleToDrumKit)
- * that require filesystem access.
+ * Re-exports from @audiocontrol/sample-chopper plus device-specific
+ * types and functions from this module.
  *
  * @packageDocumentation
  */
 
-// Type exports
+// Re-export all generic types and functions from standalone module
 export type {
   SliceMethod,
   TransientConfig,
@@ -18,16 +18,12 @@ export type {
   SliceConfig,
   Slice,
   SliceResult,
-  DrumKitOutputConfig,
-} from './types.js';
+} from '@audiocontrol/sample-chopper';
 
 export {
   DEFAULT_DRUM_TYPES,
   DEFAULT_BASE_NOTE,
-} from './types.js';
-
-// Audio utilities
-export {
+  // Audio utilities
   msToSamples,
   samplesToMs,
   calculateRms,
@@ -37,21 +33,21 @@ export {
   calculateRmsWindowed,
   findOnsetAboveThreshold,
   findSilenceStart,
-} from './audio-utils.js';
-
-// Individual slicers
-export { sliceByFixedInterval } from './fixed-slicer.js';
-export { sliceBySilence, trimSilence } from './silence-detector.js';
-export { sliceByTransient, refineOnsetPosition } from './transient-detector.js';
-export {
+  // Individual slicers
+  sliceByFixedInterval,
+  sliceBySilence,
+  trimSilence,
+  sliceByTransient,
+  refineOnsetPosition,
   sliceByManualRegions,
   createRegionsFromBoundaries,
   createRegionsFromTempo,
-} from './manual-slicer.js';
-
-// Main orchestrator (browser-compatible functions only)
-export {
+  // Main orchestrator
   sliceAudio,
-  slicesToDrumKit,
   analyzeForSlicing,
-} from './chopper.js';
+} from '@audiocontrol/sample-chopper';
+
+// Device-specific exports
+export type { DrumKitOutputConfig } from './types.js';
+
+export { slicesToDrumKit } from './chopper.js';

@@ -66,4 +66,5 @@ export interface BrowserCompatibility {
   supported: boolean;
   browser: string;
   notes: string;
+  requiresSecureContext?: boolean;
 }

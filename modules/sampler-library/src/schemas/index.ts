@@ -30,10 +30,11 @@ export {
   S330TvfParamsSchema,
   S330TvaParamsSchema,
   S330ToneExtensionSchema,
+  S550ToneExtensionSchema,
   ToneYamlSchema,
 } from './tone-schema.js';
 
-export type { ToneYaml, S330ToneExtension } from './tone-schema.js';
+export type { ToneYaml, S330ToneExtension, S550ToneExtension } from './tone-schema.js';
 
 // Patch schemas
 export {
@@ -42,10 +43,11 @@ export {
   S330KeyAssignSchema,
   KeyGroupSchema,
   S330PatchExtensionSchema,
+  S550PatchExtensionSchema,
   PatchYamlSchema,
 } from './patch-schema.js';
 
-export type { PatchYaml, KeyGroup, S330PatchExtension } from './patch-schema.js';
+export type { PatchYaml, KeyGroup, S330PatchExtension, S550PatchExtension } from './patch-schema.js';
 
 // Template schemas
 export {
@@ -98,3 +100,27 @@ export type {
   SliceDefinition,
   DrumKitBundle,
 } from './drum-kit-bundle-schema.js';
+
+// Chopped sample schemas
+export {
+  TriggerMappingSchema,
+  PolyphonyModeSchema,
+  PlaybackModeSchema,
+  PlaybackConfigSchema,
+  DrumKitMetadataSchema,
+  GenericChoppedSampleSchema,
+  DrumKitChoppedSampleSchema,
+  ChoppedSampleSchema,
+} from './chopped-sample-schema.js';
+
+export type {
+  TriggerMapping,
+  PolyphonyMode,
+  PlaybackMode,
+  PlaybackConfig,
+  DrumKitMetadata,
+  GenericChoppedSample,
+  DrumKitChoppedSample,
+  ChoppedSample,
+  ChoppedSampleInfo,
+} from './chopped-sample-schema.js';

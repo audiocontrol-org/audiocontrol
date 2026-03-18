@@ -28,6 +28,16 @@
       "types": "./dist/jv1080.d.ts",
       "import": "./dist/jv1080.js",
       "require": "./dist/jv1080.cjs"
+    },
+    "./s550": {
+      "types": "./dist/s550.d.ts",
+      "import": "./dist/s550.js",
+      "require": "./dist/s550.cjs"
+    },
+    "./roland-s-series": {
+      "types": "./dist/roland-s-series.d.ts",
+      "import": "./dist/roland-s-series.js",
+      "require": "./dist/roland-s-series.cjs"
     }
   },
   "module": "./dist/index.mjs",
@@ -45,6 +55,10 @@
     "test:watch": "vitest",
     "test:integration": "vitest run --config vite.config.integration.ts",
     "test:hardware:s330": "vitest run test/integration/s330-hardware.test.ts",
+    "test:hardware:s550": "vitest run test/integration/s550-hardware.test.ts",
+    "test:hardware:s550:wave": "vitest run test/integration/s550-wave.test.ts",
+    "test:hardware:s550:library": "vitest run test/integration/s550-library.test.ts",
+    "test:hardware:s550:octave-shift": "vitest run test/integration/s550-octave-shift.test.ts",
     "build": "pnpm test && tsup",
     "build:lib": "tsup",
     "clean": "rm -rf dist"

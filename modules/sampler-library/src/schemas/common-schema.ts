@@ -9,7 +9,7 @@ import { z } from 'zod';
  * Device type discriminator.
  * Add new device types here as they are supported.
  */
-export const DeviceTypeSchema = z.enum(['s330', 'jv1080', 'd110']);
+export const DeviceTypeSchema = z.enum(['s330', 's550', 'jv1080', 'd110']);
 
 /**
  * Loop mode options.

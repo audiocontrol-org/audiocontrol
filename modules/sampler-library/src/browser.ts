@@ -44,6 +44,7 @@ export {
   S330TvfParamsSchema,
   S330TvaParamsSchema,
   S330ToneExtensionSchema,
+  S550ToneExtensionSchema,
   ToneYamlSchema,
   // Patch schemas
   S330KeyModeSchema,
@@ -51,6 +52,7 @@ export {
   S330KeyAssignSchema,
   KeyGroupSchema,
   S330PatchExtensionSchema,
+  S550PatchExtensionSchema,
   PatchYamlSchema,
   // Template schemas
   TemplateTypeSchema,
@@ -75,9 +77,11 @@ export type {
   AdsrEnvelopeZ,
   ToneYaml,
   S330ToneExtension,
+  S550ToneExtension,
   PatchYaml,
   KeyGroup,
   S330PatchExtension,
+  S550PatchExtension,
   DrumKitEntry as DrumKitEntryZ,
   VelocityLayerEntry as VelocityLayerEntryZ,
   DrumKitTemplateYaml,
@@ -97,33 +101,54 @@ export type {
 export {
   ConverterRegistry,
   converterRegistry,
+  // S-330 converters
   s330ToneConverter,
   s330PatchConverter,
   createPatchFromKeyGroups,
+  // S-550 converters
+  s550ToneConverter,
+  s550PatchConverter,
+  s550CreatePatchFromKeyGroups,
   // Wave conversion (browser-compatible)
   parseWav,
   createWav,
   wavToS330,
   s330ToWav,
+  wavToS550,
+  s550ToWav,
   calculateSegmentsNeeded,
   validateWaveDataFits,
-  // Set conversion (browser-compatible)
+  // Set conversion (browser-compatible) - defaults to S-330
   deviceStateToSet,
   setToDeviceState,
   validateSetAllocations,
   calculateSetSegmentUsage,
+  // S-550 specific set conversion
+  s550DeviceStateToSet,
+  s550SetToDeviceState,
+  s550ValidateSetAllocations,
+  s550CalculateSetSegmentUsage,
 } from './converters/index.js';
 
 export type {
   ToneConverter,
   PatchConverter,
+  // Wave types
   WavData,
   S330WaveData,
   S330WaveSampleRate,
+  S550WaveData,
+  S550WaveSampleRate,
+  // Set types (defaults to S-330)
   DeviceStateInput,
   DeviceStateToSetResult,
   SetToDeviceInput,
   SetToDeviceResult,
+  // S-550 specific types
+  S550DeviceStateInput,
+  S550DeviceStateToSetResult,
+  S550SetToDeviceInput,
+  S550SetToDeviceResult,
 } from './converters/index.js';
 
 // Template exports (these are browser-compatible)
@@ -155,6 +180,37 @@ export type {
   SliceDefinition,
   DrumKitBundle,
 } from './schemas/index.js';
+
+// Chopped sample schema exports (browser-compatible)
+export {
+  TriggerMappingSchema,
+  PolyphonyModeSchema,
+  PlaybackModeSchema,
+  PlaybackConfigSchema,
+  DrumKitMetadataSchema,
+  GenericChoppedSampleSchema,
+  DrumKitChoppedSampleSchema,
+  ChoppedSampleSchema,
+} from './schemas/index.js';
+
+export type {
+  TriggerMapping,
+  PolyphonyMode,
+  PlaybackMode,
+  PlaybackConfig,
+  DrumKitMetadata,
+  GenericChoppedSample,
+  DrumKitChoppedSample,
+  ChoppedSample,
+  ChoppedSampleInfo,
+} from './schemas/index.js';
+
+// Chopped sample converter exports (browser-compatible)
+export {
+  drumKitBundleToChoppedSample,
+  choppedSampleToDrumKitBundle,
+  createGenericChoppedSample,
+} from './converters/index.js';
 
 export {
   parseDrumFilename,
@@ -206,7 +262,7 @@ export {
 
 export type {
   SliceMethod,
-  TransientConfig,
+  TransientConfig as ChopperTransientConfig,
   SilenceConfig,
   FixedConfig,
   ManualConfig,
@@ -216,3 +272,102 @@ export type {
   SliceResult,
   DrumKitOutputConfig,
 } from './sample-chopper/browser.js';
+
+// Loop detector exports (browser-compatible)
+export {
+  // Constants
+  DEFAULT_SEARCH_CONFIG,
+  DEFAULT_SPLICE_CONFIG,
+  DEFAULT_TRANSIENT_CONFIG,
+  HARDWARE_CONSTRAINTS,
+  // Zero crossing detection
+  snapToWordBoundary,
+  detectZeroCrossings,
+  filterByPolarity,
+  matchBySlope,
+  findMatchingCrossings,
+  calculateSlopeScore,
+  generateCandidatePairs,
+  // Transient exclusion
+  findSustainStart,
+  analyzeAttack,
+  // NCC scoring
+  calculateNCC,
+  calculateZeroMeanNCC,
+  batchCalculateNCC,
+  calculateOptimalWindowSize,
+  normalizeNCCScore,
+  // Spectral scoring
+  createHannWindow,
+  computeLogMagnitudeSpectrum,
+  calculateSpectralDistance,
+  scoreSpectralSimilarity,
+  normalizeSpectralDistance,
+  batchCalculateSpectralSimilarity,
+  calculateOptimalFFTSize,
+  // Candidate scoring
+  scoreCandidate,
+  calculateCompositeScore,
+  scoreCandidates,
+  rankCandidates,
+  filterByThresholds,
+  deduplicateCandidates,
+  // Loop point search
+  searchLoopPoints,
+  quickSearchLoopPoints,
+  validateCandidate,
+  search as searchLoop,
+  // Splice smoothing
+  applyCrossfade,
+  createSmoothedCopy,
+  calculateOptimalCrossfadeLength,
+  analyzeDiscontinuity,
+} from './loop-detector/index.js';
+
+export type {
+  // Loop detector types
+  ZeroCrossingPolarity,
+  ZeroCrossing,
+  LoopCandidate,
+  SearchConfig,
+  ScoreWeights,
+  SpliceConfig,
+  TransientConfig,
+  ProgressCallback,
+  SearchRequest,
+  SearchProgress,
+  SearchComplete,
+  SearchError,
+  SearchResponse,
+  SearchOptions,
+  AttackAnalysis,
+  DiscontinuityAnalysis,
+} from './loop-detector/index.js';
+
+// Library filesystem scanning (FSAA, browser-only)
+export {
+  LIBRARY_CATEGORIES,
+  getNestedDirectory,
+  getNestedDirectoryIfExists,
+  copyDirectoryContents,
+  moveDirectory,
+  isValidMoveTarget,
+  scanLibraryDirectory,
+  scanTonesDirectory,
+  listTonesTree,
+  scanDrumKitsDirectory,
+  listDrumKitsTree,
+  scanPatchesDirectory,
+  listPatchesTree,
+  scanChoppedSamplesDirectory,
+  listChoppedSamplesTree,
+  listSets,
+  listSetTonesTree,
+} from './library-fs.js';
+
+export type {
+  LibraryCategory,
+  LibraryTreeNode,
+  LibrarySetInfo,
+  ItemDetector,
+} from './library-fs.js';

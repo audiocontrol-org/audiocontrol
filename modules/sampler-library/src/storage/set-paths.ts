@@ -133,12 +133,12 @@ export function getSetPatchPath(
 /**
  * Generate the standard tone filename for a slot index.
  *
- * @param slot - Slot index (0-31)
- * @returns Filename like "T01", "T02", ..., "T32"
+ * @param slot - Slot index (0-63 for S-550, 0-31 for S-330)
+ * @returns Filename like "T01", "T02", ..., "T64"
  */
 export function getToneFilename(slot: number): string {
-  if (slot < 0 || slot > 31) {
-    throw new Error(`Invalid tone slot index: ${slot}. Must be 0-31.`);
+  if (slot < 0 || slot > 63) {
+    throw new Error(`Invalid tone slot index: ${slot}. Must be 0-63.`);
   }
   return `T${String(slot + 1).padStart(2, '0')}`;
 }
@@ -146,12 +146,12 @@ export function getToneFilename(slot: number): string {
 /**
  * Generate the standard patch filename for a slot index.
  *
- * @param slot - Slot index (0-15)
- * @returns Filename like "P01", "P02", ..., "P16"
+ * @param slot - Slot index (0-63 for S-330, 0-31 for S-550)
+ * @returns Filename like "P01", "P02", ..., "P64"
  */
 export function getPatchFilename(slot: number): string {
-  if (slot < 0 || slot > 15) {
-    throw new Error(`Invalid patch slot index: ${slot}. Must be 0-15.`);
+  if (slot < 0 || slot > 63) {
+    throw new Error(`Invalid patch slot index: ${slot}. Must be 0-63.`);
   }
   return `P${String(slot + 1).padStart(2, '0')}`;
 }

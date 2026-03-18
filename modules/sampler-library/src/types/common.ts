@@ -11,7 +11,7 @@
  * Supported device types in the library system.
  * New devices should be added here as they are implemented.
  */
-export type DeviceType = 's330' | 'jv1080' | 'd110';
+export type DeviceType = 's330' | 's550' | 'jv1080' | 'd110';
 
 /**
  * Loop mode options common across devices.

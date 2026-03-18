@@ -25,9 +25,27 @@ describe('WaveSegmentAllocationSchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should reject invalid bank', () => {
+  it('should accept bank 2 (S-550)', () => {
     const result = WaveSegmentAllocationSchema.safeParse({
       bank: 2,
+      segmentTop: 0,
+      segmentLength: 2,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept bank 3 (S-550)', () => {
+    const result = WaveSegmentAllocationSchema.safeParse({
+      bank: 3,
+      segmentTop: 5,
+      segmentLength: 3,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject invalid bank (4)', () => {
+    const result = WaveSegmentAllocationSchema.safeParse({
+      bank: 4,
       segmentTop: 0,
       segmentLength: 2,
     });
@@ -72,7 +90,7 @@ describe('SetToneEntrySchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should accept maximum slot', () => {
+  it('should accept maximum S-330 slot (31)', () => {
     const result = SetToneEntrySchema.safeParse({
       slot: 31,
       file: 'T32',
@@ -81,10 +99,19 @@ describe('SetToneEntrySchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should reject slot out of range', () => {
+  it('should accept S-550 extended slot (32-63)', () => {
     const result = SetToneEntrySchema.safeParse({
-      slot: 32,
-      file: 'T33',
+      slot: 63,
+      file: 'T64',
+      waveAllocation: { bank: 3, segmentTop: 0, segmentLength: 1 },
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject slot out of range (64)', () => {
+    const result = SetToneEntrySchema.safeParse({
+      slot: 64,
+      file: 'T65',
       waveAllocation: { bank: 0, segmentTop: 0, segmentLength: 1 },
     });
     expect(result.success).toBe(false);
@@ -109,18 +136,26 @@ describe('SetPatchEntrySchema', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should accept maximum slot', () => {
+  it('should accept S-330 maximum slot (63)', () => {
     const result = SetPatchEntrySchema.safeParse({
-      slot: 15,
-      file: 'P16',
+      slot: 63,
+      file: 'P64',
     });
     expect(result.success).toBe(true);
   });
 
-  it('should reject slot out of range', () => {
+  it('should accept S-550 patch slot (31)', () => {
     const result = SetPatchEntrySchema.safeParse({
-      slot: 16,
-      file: 'P17',
+      slot: 31,
+      file: 'P32',
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject slot out of range (64)', () => {
+    const result = SetPatchEntrySchema.safeParse({
+      slot: 64,
+      file: 'P65',
     });
     expect(result.success).toBe(false);
   });
@@ -226,6 +261,14 @@ describe('SetYamlSchema', () => {
     const { patches, ...withoutPatches } = validSet;
     const result = SetYamlSchema.safeParse(withoutPatches);
     expect(result.success).toBe(false);
+  });
+
+  it('should accept s550 device', () => {
+    const result = SetYamlSchema.safeParse({
+      ...validSet,
+      device: 's550',
+    });
+    expect(result.success).toBe(true);
   });
 
   it('should accept jv1080 device', () => {

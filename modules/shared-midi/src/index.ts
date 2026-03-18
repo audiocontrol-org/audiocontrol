@@ -11,6 +11,7 @@ export type {
 
 // Web MIDI utilities
 export {
+  isSecureContext,
   isWebMidiSupported,
   getBrowserCompatibility,
   requestMidiAccess,

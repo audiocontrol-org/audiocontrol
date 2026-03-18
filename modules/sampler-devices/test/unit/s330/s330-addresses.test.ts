@@ -80,7 +80,7 @@ describe('S-330 Address Constants', () => {
         });
 
         it('should have correct EOD command', () => {
-            expect(S330_COMMANDS.EOD).toBe(0x4F);
+            expect(S330_COMMANDS.EOD).toBe(0x45);
         });
 
         it('should have correct ERR command', () => {
@@ -88,7 +88,7 @@ describe('S-330 Address Constants', () => {
         });
 
         it('should have correct RJC command', () => {
-            expect(S330_COMMANDS.RJC).toBe(0x45);
+            expect(S330_COMMANDS.RJC).toBe(0x4F);
         });
     });
 
@@ -157,8 +157,8 @@ describe('S-330 Address Constants', () => {
             expect(TONE_MAP_ENTRIES).toBe(109);
         });
 
-        it('should allow up to 16 patches (2 banks of 8)', () => {
-            expect(MAX_PATCHES).toBe(16);
+        it('should allow up to 64 patches', () => {
+            expect(MAX_PATCHES).toBe(64);
         });
     });
 

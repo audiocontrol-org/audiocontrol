@@ -101,6 +101,28 @@ export type {
   SetYaml,
   SetInfo,
   SetData,
+  // Chopped sample types
+  TriggerMapping,
+  PolyphonyMode,
+  PlaybackMode,
+  PlaybackConfig,
+  DrumKitMetadata,
+  GenericChoppedSample,
+  DrumKitChoppedSample,
+  ChoppedSample,
+  ChoppedSampleInfo,
+} from './schemas/index.js';
+
+// Chopped sample schema exports
+export {
+  TriggerMappingSchema,
+  PolyphonyModeSchema,
+  PlaybackModeSchema,
+  PlaybackConfigSchema,
+  DrumKitMetadataSchema,
+  GenericChoppedSampleSchema,
+  DrumKitChoppedSampleSchema,
+  ChoppedSampleSchema,
 } from './schemas/index.js';
 
 // Converter exports
@@ -124,6 +146,16 @@ export {
   calculateSetSegmentUsage,
 } from './converters/index.js';
 
+// S-550 converter exports
+export {
+  s550ToneConverter,
+  s550PatchConverter,
+  s550DeviceStateToSet,
+  s550SetToDeviceState,
+  s550ValidateSetAllocations,
+  s550CalculateSetSegmentUsage,
+} from './converters/index.js';
+
 export type {
   ToneConverter,
   PatchConverter,
@@ -134,6 +166,17 @@ export type {
   DeviceStateToSetResult,
   SetToDeviceInput,
   SetToDeviceResult,
+  S550DeviceStateInput,
+  S550DeviceStateToSetResult,
+  S550SetToDeviceInput,
+  S550SetToDeviceResult,
+} from './converters/index.js';
+
+// Chopped sample converter exports
+export {
+  drumKitBundleToChoppedSample,
+  choppedSampleToDrumKitBundle,
+  createGenericChoppedSample,
 } from './converters/index.js';
 
 // Storage exports
@@ -167,6 +210,14 @@ export {
   // Set storage
   SetStorage,
   setStorage,
+  // Chopped sample paths
+  getChoppedSamplesDirectory,
+  getChoppedSampleDirectory,
+  getChoppedSampleManifestPath,
+  getChoppedSampleSourcePath,
+  // Chopped sample storage
+  ChoppedSampleStorage,
+  choppedSampleStorage,
 } from './storage/index.js';
 
 // Template exports
@@ -217,7 +268,7 @@ export {
 
 export type {
   SliceMethod,
-  TransientConfig,
+  TransientConfig as ChopperTransientConfig,
   SilenceConfig,
   FixedConfig,
   ManualConfig,
@@ -227,3 +278,74 @@ export type {
   SliceResult,
   DrumKitOutputConfig,
 } from './sample-chopper/index.js';
+
+// Loop detector exports
+export {
+  // Constants
+  DEFAULT_SEARCH_CONFIG,
+  DEFAULT_SPLICE_CONFIG,
+  DEFAULT_TRANSIENT_CONFIG,
+  HARDWARE_CONSTRAINTS,
+  // Zero crossing detection
+  snapToWordBoundary,
+  detectZeroCrossings,
+  filterByPolarity,
+  matchBySlope,
+  findMatchingCrossings,
+  calculateSlopeScore,
+  generateCandidatePairs,
+  // Transient exclusion
+  findSustainStart,
+  analyzeAttack,
+  // NCC scoring
+  calculateNCC,
+  calculateZeroMeanNCC,
+  batchCalculateNCC,
+  calculateOptimalWindowSize,
+  normalizeNCCScore,
+  // Spectral scoring
+  createHannWindow,
+  computeLogMagnitudeSpectrum,
+  calculateSpectralDistance,
+  scoreSpectralSimilarity,
+  normalizeSpectralDistance,
+  batchCalculateSpectralSimilarity,
+  calculateOptimalFFTSize,
+  // Candidate scoring
+  scoreCandidate,
+  calculateCompositeScore,
+  scoreCandidates,
+  rankCandidates,
+  filterByThresholds,
+  deduplicateCandidates,
+  // Loop point search
+  searchLoopPoints,
+  quickSearchLoopPoints,
+  validateCandidate,
+  search as searchLoop,
+  // Splice smoothing
+  applyCrossfade,
+  createSmoothedCopy,
+  calculateOptimalCrossfadeLength,
+  analyzeDiscontinuity,
+} from './loop-detector/index.js';
+
+export type {
+  // Loop detector types
+  ZeroCrossingPolarity,
+  ZeroCrossing,
+  LoopCandidate,
+  SearchConfig,
+  ScoreWeights,
+  SpliceConfig,
+  TransientConfig,
+  ProgressCallback,
+  SearchRequest,
+  SearchProgress,
+  SearchComplete,
+  SearchError,
+  SearchResponse,
+  SearchOptions,
+  AttackAnalysis,
+  DiscontinuityAnalysis,
+} from './loop-detector/index.js';
