@@ -1,36 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MidiConnectionPage, type MidiConnectionPageConfig, type MidiConnectionPageStore } from '@audiocontrol/editor-core';
+import { MidiConnectionPage, useHomePageStore, type MidiConnectionPageConfig } from '@audiocontrol/editor-core';
 import { useMidiStore } from '@/stores/midiStore';
-
-const STORAGE_KEY_INPUT = 's330-midi-input';
-const STORAGE_KEY_OUTPUT = 's330-midi-output';
 
 export function HomePage(): JSX.Element {
   const navigate = useNavigate();
   const midi = useMidiStore();
-
-  const [selectedInputId, setSelectedInputId] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY_INPUT);
-    } catch {
-      return null;
-    }
-  });
-  const [selectedOutputId, setSelectedOutputId] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem(STORAGE_KEY_OUTPUT);
-    } catch {
-      return null;
-    }
-  });
-
-  useEffect(() => {
-    if (midi.status === 'connected' && midi.selectedInputId && midi.selectedOutputId) {
-      setSelectedInputId(midi.selectedInputId);
-      setSelectedOutputId(midi.selectedOutputId);
-    }
-  }, [midi.status, midi.selectedInputId, midi.selectedOutputId]);
+  const pageStore = useHomePageStore('s330', midi);
 
   const config: MidiConnectionPageConfig = useMemo(() => ({
     deviceName: 'S-330',
@@ -52,33 +28,6 @@ export function HomePage(): JSX.Element {
     ],
     deviceIdDisplayOffset: 1,
   }), []);
-
-  const pageStore: MidiConnectionPageStore = {
-    isSupported: midi.isSupported,
-    browserInfo: midi.browserInfo,
-    sysExEnabled: midi.sysExEnabled,
-    status: midi.status,
-    error: midi.error,
-    inputs: midi.inputs,
-    outputs: midi.outputs,
-    selectedInputId,
-    selectedOutputId,
-    deviceId: midi.deviceId,
-    setSelectedInputId,
-    setSelectedOutputId,
-    setDeviceId: midi.setDeviceId,
-    refresh: midi.refresh,
-    connect: async () => {
-      if (selectedInputId && selectedOutputId) {
-        await midi.connect(selectedInputId, selectedOutputId);
-      }
-    },
-    disconnect: async () => {
-      await midi.disconnect();
-      setSelectedInputId(null);
-      setSelectedOutputId(null);
-    },
-  };
 
   return (
     <div className="ac-page ac-page-shell">
