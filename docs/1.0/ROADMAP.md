@@ -21,26 +21,29 @@ What does **not** exist: sample trim/normalize, effects processing, cross-device
 
 Everything downstream depends on having a clear, non-modal pattern for edit workflows. The TODO explicitly states that edit operations "should not use modal dialogs" — they are "first-class workflows that deserve a well-thought-out UX."
 
-A critical part of this phase is establishing that each workflow can be **developed and iterated on standalone**, outside the context of any device editor. The sample chopper already works this way: `modules/sample-chopper/dev/` has its own Vite config, HTML entry point, React harness, and FSAA-based library adapter. You run `pnpm dev` in the chopper module and get a fully functional chopper with file loading, library browsing, and save — no sampler-editor, no MIDI, no device context. This pattern should be the standard for all first-class workflows.
+A critical part of this phase is establishing that each workflow can be **developed and iterated on standalone**, outside the context of any device editor. The sample chopper already works this way: `modules/sample-chopper/dev/` has its own Vite config, HTML entry point, and React harness. You run `pnpm dev` in the chopper module and get a fully functional chopper with file loading, library browsing, and save — no sampler-editor, no MIDI, no device context. This pattern should be the standard for all first-class workflows.
 
 Each workflow module should follow the same structure:
-- **`src/`** — core algorithms and UI components, exported as a library for device editors to consume
-- **`dev/`** — standalone dev harness with its own Vite config, entry point, and FSAA library adapter
+- **`src/`** — core algorithms and UI components, exported as a library for consumers to embed
+- **`dev/`** — standalone dev harness with its own Vite config and entry point
 - **Two-part export** — algorithms (`@audiocontrol/<module>`) and UI (`@audiocontrol/<module>/ui`) as separate entry points
 - **No device dependencies** — the workflow operates on common-area data (audio buffers, YAML manifests) and knows nothing about S-330, S-550, or any specific device
+- **No runtime-environment dependencies** — workflow code must not reach past its injected interfaces into browser-specific APIs (File System Access API, Web MIDI, `window.location`, etc.) or Node-specific APIs. All environment-specific capabilities (file I/O, MIDI, audio playback) are injected through interfaces that have browser and Node.js implementations. The dev harness wires up browser implementations; the Electron shell wires up Node.js implementations; the workflow code doesn't know or care which.
 
-This keeps workflow UX development fast (no editor boot, no MIDI connection), enables focused design iteration, and guarantees that workflows remain device-agnostic by construction.
+This is especially important given the hardware platform track. Every workflow we build will eventually run on an RPi in an Electron shell — no FSAA, no Web MIDI, no URL routing. If workflow code is coupled to browser APIs, the hardware track inherits a porting tax on every feature. Keeping workflows behind injected interfaces means they run in both contexts without modification.
+
+This keeps workflow UX development fast (no editor boot, no MIDI connection), enables focused design iteration, and guarantees that workflows remain both device-agnostic and runtime-agnostic by construction.
 
 ### `edit-workflow-architecture`
 
-Define the architectural pattern for non-modal edit workflows and the standalone dev harness convention. What does a "first-class workflow" look like? Route-based? Panel-based? This is a design spike that produces a PRD, the dev harness template (based on the sample-chopper pattern), and a reference implementation with one concrete workflow.
+Define the architectural pattern for non-modal edit workflows and the standalone dev harness convention. What does a "first-class workflow" look like? Route-based? Panel-based? This is a design spike that produces a PRD, the interface contracts for environment capabilities, the dev harness template (based on the sample-chopper pattern), and a reference implementation with one concrete workflow.
 
 | Aspect | Detail |
 |--------|--------|
-| **Exists** | Dialog-based import/export workflows (`ImportSampleDialog`, `ExportToneDialog`, etc.); standalone dev harness pattern in `sample-chopper/dev/` (Vite config, React harness, FSAA library adapter) |
-| **Needed** | Non-modal workflow pattern, routing/navigation model, state management for in-progress edits, dev harness template that new workflow modules copy, convention for two-part export (algorithms + UI) |
+| **Exists** | Dialog-based import/export workflows (`ImportSampleDialog`, `ExportToneDialog`, etc.); standalone dev harness pattern in `sample-chopper/dev/` (Vite config, React harness, library adapter); `sampler-library` already has browser and Node.js backends |
+| **Needed** | Non-modal workflow pattern, routing/navigation model, state management for in-progress edits, **interface contracts for environment capabilities** (file I/O, audio playback, MIDI) with browser and Node.js implementations, dev harness template that new workflow modules copy, convention for two-part export (algorithms + UI) |
 | **Depends on** | Nothing — this is the foundation |
-| **Unblocks** | Every feature in Phases 2-5 (each uses the workflow pattern and standalone dev harness) |
+| **Unblocks** | Every feature in Phases 2-5 (each uses the workflow pattern and standalone dev harness); hardware track `kiosk-display-profiles` and `electron-shell` (workflows run unmodified in Electron because they depend on interfaces, not browser APIs) |
 
 ### `library-common-area`
 
