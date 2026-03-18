@@ -193,3 +193,18 @@ export type {
 } from './s-series-client.js';
 
 export { createSSeriesClient } from './s-series-client.js';
+
+// =============================================================================
+// Shared Tone Factory
+// =============================================================================
+
+export type {
+    SSeriesCreateToneConfig,
+    SSeriesCreateSubToneConfig,
+} from './s-series-tone-factory.js';
+
+export {
+    createSeriesTone,
+    createSeriesSubTone,
+    createSeriesMonolithicPrimaryTone,
+} from './s-series-tone-factory.js';
