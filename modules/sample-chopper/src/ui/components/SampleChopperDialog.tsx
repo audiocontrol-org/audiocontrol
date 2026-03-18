@@ -141,6 +141,12 @@ export function SampleChopperDialog({
     if (samplesRef.current) play(samplesRef.current);
   }, [play]);
 
+  // Ref so onRetrigger can read the latest recorder state without re-creating the callback
+  const recorderRef = useRef<{ triggerToSliceIndex: Map<string, number>; recordedSlices: Array<{ startSample: number; endSample: number }> }>({
+    triggerToSliceIndex: new Map(),
+    recordedSlices: [],
+  });
+
   // --- Trigger hooks (no circular refs) ---
 
   const recorder = useTriggerRecorder({
@@ -148,9 +154,19 @@ export function SampleChopperDialog({
     isPlaying,
     onPlay: handleTriggerPlay,
     onStop: stop,
+    onRetrigger: useCallback((triggerId: string) => {
+      const { triggerToSliceIndex, recordedSlices } = recorderRef.current;
+      const sliceIndex = triggerToSliceIndex.get(triggerId);
+      if (sliceIndex === undefined) return;
+      const slice = recordedSlices[sliceIndex];
+      if (!slice || !samplesRef.current) return;
+      play(samplesRef.current, slice.startSample, slice.endSample);
+    }, [play]),
     totalSamples: samples?.length ?? 0,
     kitLabels: chopper.kitLabels,
   });
+
+  recorderRef.current = recorder;
 
   const mappings = useTriggerMappings({
     initialTriggers,

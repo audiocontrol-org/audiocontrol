@@ -8,7 +8,7 @@
  * events (the internal memo), not a passthrough of input slices.
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   useTriggerInput,
   type TriggerState,
@@ -31,6 +31,13 @@ export interface UseTriggerRecorderParams {
   onPlay: () => void;
   /** Stop audio playback */
   onStop: () => void;
+  /**
+   * Called when a trigger ID that already created a slice is pressed again
+   * during recording. The callback receives the triggerId so the caller can
+   * look up the slice and replay it through the main audio engine, letting
+   * the user subdivide it with new triggers.
+   */
+  onRetrigger: (triggerId: TriggerId) => void;
   /** Total number of samples in the audio */
   totalSamples: number;
   /** Kit labels (comma-separated) for naming slices */
@@ -61,12 +68,25 @@ export function useTriggerRecorder({
   isPlaying,
   onPlay,
   onStop,
+  onRetrigger,
   totalSamples,
   kitLabels,
 }: UseTriggerRecorderParams): UseTriggerRecorderReturn {
   const [triggerEvents, setTriggerEvents] = useState<TriggerEvent[]>([]);
 
+  // Track which trigger IDs have already created slices so re-triggers can
+  // be routed to playback instead of creating duplicate slice boundaries.
+  const seenTriggerIdsRef = useRef<Set<TriggerId>>(new Set());
+  const onRetriggerRef = useRef(onRetrigger);
+  onRetriggerRef.current = onRetrigger;
+
   const handleTrigger = useCallback((samplePosition: number, triggerId: TriggerId) => {
+    if (seenTriggerIdsRef.current.has(triggerId)) {
+      // This trigger already owns a slice — replay it instead of creating a new boundary
+      onRetriggerRef.current(triggerId);
+      return;
+    }
+    seenTriggerIdsRef.current.add(triggerId);
     setTriggerEvents((prev) => [...prev, { samplePosition, triggerId }]);
   }, []);
 
@@ -120,6 +140,7 @@ export function useTriggerRecorder({
   const reset = useCallback(() => {
     triggerInput.reset();
     setTriggerEvents([]);
+    seenTriggerIdsRef.current.clear();
   }, [triggerInput]);
 
   return {
