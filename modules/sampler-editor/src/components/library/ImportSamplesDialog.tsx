@@ -7,8 +7,8 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import type { ImportOperationState } from '@/types/import-operation';
-import { isImportComplete } from '@/types/import-operation';
+import type { OperationState } from '@/types/import-operation';
+import { isOperationComplete } from '@/types/import-operation';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { SampleImportBundle } from '@/hooks/useImportSamples';
@@ -18,17 +18,17 @@ import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
 import { BestFitPicker } from '@/components/ui/BestFitPicker';
 import {
-  ImportProgressBar,
-  ImportErrorBanner,
-  ImportSuccessScreen,
-  ImportButtonContent,
+  OperationProgressBar,
+  OperationErrorBanner,
+  OperationSuccessScreen,
+  OperationButtonContent,
   DialogCloseButton,
 } from '@/components/ui/ImportStatus';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
 import { findContiguousBestFits } from '@/lib/best-fit';
 import type { FitOption, ContiguousFitValues } from '@/lib/best-fit';
 
-export interface ImportSamplesDialogProps extends ImportOperationState {
+export interface ImportSamplesDialogProps extends OperationState {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   bundle: SampleImportBundle;
@@ -52,9 +52,9 @@ export function ImportSamplesDialog({
   deviceTones,
   devicePatches,
   onImport,
-  isImporting,
-  importProgress,
-  importError,
+  isOperating,
+  progress,
+  error: operationError,
 }: ImportSamplesDialogProps): JSX.Element {
   const config = useDeviceConfig();
   const { memoryLayout } = config;
@@ -158,12 +158,12 @@ export function ImportSamplesDialog({
   }, [absoluteToneSlot, waveBank, startingSegment, targetPatchSlot, singlePatch, bundle.name, useMonolithicMode, onImport]);
 
   const handleClose = useCallback(() => {
-    if (!isImporting) {
+    if (!isOperating) {
       onOpenChange(false);
     }
-  }, [isImporting, onOpenChange]);
+  }, [isOperating, onOpenChange]);
 
-  const isComplete = isImportComplete({ isImporting, importProgress, importError });
+  const isComplete = isOperationComplete({ isOperating, progress, error: operationError });
 
   const maxStartingTone = Math.max(0, groupToneCount - toneSlotsNeeded);
   const maxStartingPatch = Math.max(0, config.totalPatches - (singlePatch ? 1 : totalSamples));
@@ -187,7 +187,7 @@ export function ImportSamplesDialog({
           </Dialog.Title>
 
           {isComplete ? (
-            <ImportSuccessScreen
+            <OperationSuccessScreen
               message="Samples imported successfully!"
               detail={
                 <>
@@ -245,7 +245,7 @@ export function ImportSamplesDialog({
                 formatToneSlot={memoryLayout.formatToneSlot}
                 proposal={proposal}
                 onFindBestFit={handleFindBestFit}
-                findBestFitDisabled={isImporting}
+                findBestFitDisabled={isOperating}
               />
 
               {showBestFits && fitOptions.length > 0 && (
@@ -254,7 +254,7 @@ export function ImportSamplesDialog({
                   selectedIndex={selectedFitIndex}
                   onSelect={handleSelectFit}
                   onClose={() => setShowBestFits(false)}
-                  disabled={isImporting}
+                  disabled={isOperating}
                 />
               )}
 
@@ -267,11 +267,11 @@ export function ImportSamplesDialog({
                   id="importTarget"
                   value={selectedTargetIndex}
                   onChange={(e) => handleTargetChange(Number(e.target.value))}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isImporting && 'opacity-50'
+                    isOperating && 'opacity-50'
                   )}
                 >
                   {importTargets.map((target, i) => (
@@ -290,11 +290,11 @@ export function ImportSamplesDialog({
                   id="startingToneSlot"
                   value={startingToneSlot}
                   onChange={(e) => setStartingToneSlot(Number(e.target.value))}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isImporting && 'opacity-50'
+                    isOperating && 'opacity-50'
                   )}
                 >
                   {Array.from({ length: maxStartingTone + 1 }, (_, i) => {
@@ -327,11 +327,11 @@ export function ImportSamplesDialog({
                     id="waveBank"
                     value={waveBank}
                     onChange={(e) => setWaveBank(Number(e.target.value) as 0 | 1 | 2 | 3)}
-                    disabled={isImporting}
+                    disabled={isOperating}
                     className={cn(
                       'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                       'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isImporting && 'opacity-50'
+                      isOperating && 'opacity-50'
                     )}
                   >
                     {availableBanks.indices.map((idx, i) => (
@@ -347,11 +347,11 @@ export function ImportSamplesDialog({
                     id="startingSegment"
                     value={startingSegment}
                     onChange={(e) => setStartingSegment(Number(e.target.value))}
-                    disabled={isImporting}
+                    disabled={isOperating}
                     className={cn(
                       'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                       'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isImporting && 'opacity-50'
+                      isOperating && 'opacity-50'
                     )}
                   >
                     {Array.from({ length: 18 }, (_, i) => (
@@ -378,7 +378,7 @@ export function ImportSamplesDialog({
                   id="singlePatch"
                   checked={singlePatch}
                   onChange={(e) => setSinglePatch(e.target.checked)}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className="w-4 h-4 rounded bg-s330-bg border-s330-accent/50 text-s330-highlight focus:ring-s330-highlight"
                 />
                 <label htmlFor="singlePatch" className="text-sm text-s330-text">
@@ -395,7 +395,7 @@ export function ImportSamplesDialog({
                       id="monolithicMode"
                       checked={useMonolithicMode}
                       onChange={(e) => setUseMonolithicMode(e.target.checked)}
-                      disabled={isImporting}
+                      disabled={isOperating}
                       className="w-4 h-4 rounded bg-s330-bg border-s330-accent/50 text-s330-highlight focus:ring-s330-highlight"
                     />
                     <label htmlFor="monolithicMode" className="text-sm text-s330-text">
@@ -422,11 +422,11 @@ export function ImportSamplesDialog({
                   id="targetPatchSlot"
                   value={targetPatchSlot}
                   onChange={(e) => setTargetPatchSlot(Number(e.target.value))}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isImporting && 'opacity-50'
+                    isOperating && 'opacity-50'
                   )}
                 >
                   {singlePatch ? (
@@ -495,40 +495,40 @@ export function ImportSamplesDialog({
                 </div>
               </div>
 
-              {isImporting && importProgress && (
-                <ImportProgressBar progress={importProgress} />
+              {isOperating && progress && (
+                <OperationProgressBar progress={progress} />
               )}
 
-              {importError && <ImportErrorBanner error={importError} />}
+              {operationError && <OperationErrorBanner error={operationError} />}
 
               {/* Actions */}
               <div className="flex justify-end gap-2">
                 <button
                   onClick={handleClose}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'ac-btn ac-btn-ghost',
-                    isImporting && 'opacity-50 cursor-not-allowed'
+                    isOperating && 'opacity-50 cursor-not-allowed'
                   )}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleImport}
-                  disabled={isImporting || !hasEnoughToneSlots || !hasEnoughPatchSlots}
+                  disabled={isOperating || !hasEnoughToneSlots || !hasEnoughPatchSlots}
                   className={cn(
                     'ac-btn ac-btn-primary',
-                    (isImporting || !hasEnoughToneSlots || !hasEnoughPatchSlots) && 'opacity-50 cursor-not-allowed'
+                    (isOperating || !hasEnoughToneSlots || !hasEnoughPatchSlots) && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  <ImportButtonContent isImporting={isImporting} label="Import Samples" />
+                  <OperationButtonContent isOperating={isOperating} label="Import Samples" />
                 </button>
               </div>
             </div>
           )}
 
           <Dialog.Close asChild>
-            <DialogCloseButton disabled={isImporting} />
+            <DialogCloseButton disabled={isOperating} />
           </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>

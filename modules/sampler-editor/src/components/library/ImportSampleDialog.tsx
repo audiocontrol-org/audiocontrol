@@ -7,8 +7,8 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import type { ImportOperationState } from '@/types/import-operation';
-import { isImportComplete } from '@/types/import-operation';
+import type { OperationState } from '@/types/import-operation';
+import { isOperationComplete } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 import {
   prepareWavForS330,
@@ -17,14 +17,14 @@ import {
   type WavFileInfo,
 } from '@/lib/library-service';
 import {
-  ImportProgressBar,
-  ImportErrorBanner,
-  ImportSuccessScreen,
-  ImportButtonContent,
+  OperationProgressBar,
+  OperationErrorBanner,
+  OperationSuccessScreen,
+  OperationButtonContent,
   DialogCloseButton,
 } from '@/components/ui/ImportStatus';
 
-export interface ImportSampleDialogProps extends ImportOperationState {
+export interface ImportSampleDialogProps extends OperationState {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   toneIndex: number;
@@ -54,9 +54,9 @@ export function ImportSampleDialog({
   toneIndex,
   toneName,
   onImport,
-  isImporting,
-  importProgress,
-  importError,
+  isOperating,
+  progress,
+  error: operationError,
 }: ImportSampleDialogProps): JSX.Element {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [wavFile, setWavFile] = useState<WavFileState | null>(null);
@@ -142,13 +142,13 @@ export function ImportSampleDialog({
   }, [wavFile, name, targetSampleRate, targetSegment, loopMode, toneIndex, onImport, waveBank]);
 
   const handleClose = useCallback(() => {
-    if (!isImporting) {
+    if (!isOperating) {
       onOpenChange(false);
     }
-  }, [isImporting, onOpenChange]);
+  }, [isOperating, onOpenChange]);
 
-  const error = localError || parseError || importError;
-  const isComplete = isImportComplete({ isImporting, importProgress, importError });
+  const error = localError || parseError || operationError;
+  const isComplete = isOperationComplete({ isOperating, progress, error: operationError });
 
   return (
     <Dialog.Root open={open} onOpenChange={handleClose}>
@@ -160,7 +160,7 @@ export function ImportSampleDialog({
           </Dialog.Title>
 
           {isComplete ? (
-            <ImportSuccessScreen
+            <OperationSuccessScreen
               message="Sample imported successfully!"
               onDone={handleClose}
             />
@@ -177,18 +177,18 @@ export function ImportSampleDialog({
                   type="file"
                   accept=".wav,audio/wav"
                   onChange={handleFileSelect}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className="hidden"
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'w-full py-8 border-2 border-dashed rounded-lg text-center',
                     'hover:border-s330-highlight hover:bg-s330-highlight/5',
                     'transition-colors cursor-pointer',
                     selectedFile ? 'border-s330-highlight' : 'border-s330-accent/50',
-                    isImporting && 'opacity-50 cursor-not-allowed'
+                    isOperating && 'opacity-50 cursor-not-allowed'
                   )}
                 >
                   {selectedFile ? (
@@ -237,13 +237,13 @@ export function ImportSampleDialog({
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value.slice(0, 8))}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   maxLength={8}
                   className={cn(
                     'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text font-mono',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
                     'border-s330-accent/50',
-                    isImporting && 'opacity-50'
+                    isOperating && 'opacity-50'
                   )}
                   placeholder="Enter tone name (max 8 chars)"
                 />
@@ -258,11 +258,11 @@ export function ImportSampleDialog({
                   id="sampleRate"
                   value={targetSampleRate}
                   onChange={(e) => setTargetSampleRate(e.target.value as '15kHz' | '30kHz')}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isImporting && 'opacity-50'
+                    isOperating && 'opacity-50'
                   )}
                 >
                   <option value="15kHz">15 kHz (default)</option>
@@ -280,11 +280,11 @@ export function ImportSampleDialog({
                     id="waveBank"
                     value={waveBank}
                     onChange={(e) => setWaveBank(Number(e.target.value) as 0 | 1)}
-                    disabled={isImporting}
+                    disabled={isOperating}
                     className={cn(
                       'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                       'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isImporting && 'opacity-50'
+                      isOperating && 'opacity-50'
                     )}
                   >
                     <option value={0}>Bank A</option>
@@ -299,11 +299,11 @@ export function ImportSampleDialog({
                     id="targetSegment"
                     value={targetSegment}
                     onChange={(e) => setTargetSegment(Number(e.target.value))}
-                    disabled={isImporting}
+                    disabled={isOperating}
                     className={cn(
                       'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                       'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isImporting && 'opacity-50'
+                      isOperating && 'opacity-50'
                     )}
                   >
                     {Array.from({ length: 18 - segmentsNeeded + 1 }, (_, i) => (
@@ -327,11 +327,11 @@ export function ImportSampleDialog({
                   id="loopMode"
                   value={loopMode}
                   onChange={(e) => setLoopMode(e.target.value as typeof loopMode)}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isImporting && 'opacity-50'
+                    isOperating && 'opacity-50'
                   )}
                 >
                   <option value="one-shot">One-Shot (no loop)</option>
@@ -341,40 +341,40 @@ export function ImportSampleDialog({
                 </select>
               </div>
 
-              {isImporting && importProgress && (
-                <ImportProgressBar progress={importProgress} />
+              {isOperating && progress && (
+                <OperationProgressBar progress={progress} />
               )}
 
-              {error && <ImportErrorBanner error={error} />}
+              {error && <OperationErrorBanner error={error} />}
 
               {/* Actions */}
               <div className="flex justify-end gap-2">
                 <button
                   onClick={handleClose}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'ac-btn ac-btn-ghost',
-                    isImporting && 'opacity-50 cursor-not-allowed'
+                    isOperating && 'opacity-50 cursor-not-allowed'
                   )}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleImport}
-                  disabled={isImporting || !wavFile || !name.trim()}
+                  disabled={isOperating || !wavFile || !name.trim()}
                   className={cn(
                     'ac-btn ac-btn-primary',
-                    (isImporting || !wavFile || !name.trim()) && 'opacity-50 cursor-not-allowed'
+                    (isOperating || !wavFile || !name.trim()) && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  <ImportButtonContent isImporting={isImporting} label="Import Sample" />
+                  <OperationButtonContent isOperating={isOperating} label="Import Sample" operatingLabel="Importing..." />
                 </button>
               </div>
             </div>
           )}
 
           <Dialog.Close asChild>
-            <DialogCloseButton disabled={isImporting} />
+            <DialogCloseButton disabled={isOperating} />
           </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>

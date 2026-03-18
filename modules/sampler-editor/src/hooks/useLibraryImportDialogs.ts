@@ -9,7 +9,7 @@
 import { useState, useCallback, type MutableRefObject } from 'react';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { LibraryDragData } from '@/components/library/DeviceMemoryPanel';
-import type { ImportProgress } from '@/types/import-operation';
+import type { OperationProgress } from '@/types/import-operation';
 import { loadDrumKitBundle, saveDeviceToSetIncremental, loadSetToDevice } from '@/lib/library-service';
 import type { ItemSelection } from '@/pages/LibraryPage';
 
@@ -62,7 +62,7 @@ export function useLibraryImportDialogs({
   const [importToneDialog, setImportToneDialog] = useState<ImportToneDialogState | null>(null);
   const [importPatchDialog, setImportPatchDialog] = useState<ImportPatchDialogState | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [operationProgress, setOperationProgress] = useState<ImportProgress | undefined>(undefined);
+  const [operationProgress, setOperationProgress] = useState<OperationProgress | undefined>(undefined);
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [isLoadDialogOpen, setIsLoadDialogOpen] = useState(false);
@@ -173,7 +173,7 @@ export function useLibraryImportDialogs({
 
   const handleSaveSet = useCallback(async (setName: string, description?: string) => {
     if (!libraryHandle || !clientRef.current) return;
-    const mkProgress = (p: Partial<ImportProgress>): ImportProgress => ({ currentStep: 1, totalSteps: 1, stepLabel: 'Saving...', bytesSent: 0, bytesTotal: 100, bytesSentAllSteps: 0, bytesTotalAllSteps: 100, ...p });
+    const mkProgress = (p: Partial<OperationProgress>): OperationProgress => ({ currentStep: 1, totalSteps: 1, stepLabel: 'Saving...', bytesSent: 0, bytesTotal: 100, bytesSentAllSteps: 0, bytesTotalAllSteps: 100, ...p });
     setOperationProgress(mkProgress({ currentStep: 0, stepLabel: 'Preparing...' }));
     setOperationError(null);
     const client = clientRef.current;

@@ -10,19 +10,19 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import type { ImportOperationState } from '@/types/import-operation';
+import type { OperationState } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 import type { ImportTarget, ToneSlotGroup } from '@/configs/types';
 import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
 import {
-  ImportProgressBar,
-  ImportErrorBanner,
-  ImportButtonContent,
+  OperationProgressBar,
+  OperationErrorBanner,
+  OperationButtonContent,
 } from '@/components/ui/ImportStatus';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
 import type { SamplerTone } from '@/core/midi/SamplerClient';
 
-interface LoadSetDialogProps extends ImportOperationState {
+interface LoadSetDialogProps extends OperationState {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   setName: string;
@@ -38,9 +38,9 @@ export function LoadSetDialog({
   onOpenChange,
   setName,
   onLoad,
-  isImporting,
-  importProgress,
-  importError,
+  isOperating,
+  progress,
+  error: operationError,
   importTargets,
   deviceTones,
   toneGroups,
@@ -70,13 +70,13 @@ export function LoadSetDialog({
   }, [onLoad, importTargets, selectedTargetIndex]);
 
   const handleOpenChange = useCallback((nextOpen: boolean) => {
-    if (!isImporting) {
+    if (!isOperating) {
       onOpenChange(nextOpen);
       if (!nextOpen) {
         setSelectedTargetIndex(0);
       }
     }
-  }, [isImporting, onOpenChange]);
+  }, [isOperating, onOpenChange]);
 
   return (
     <Dialog.Root open={open} onOpenChange={handleOpenChange}>
@@ -111,11 +111,11 @@ export function LoadSetDialog({
                 id="importTarget"
                 value={selectedTargetIndex}
                 onChange={(e) => setSelectedTargetIndex(Number(e.target.value))}
-                disabled={isImporting}
+                disabled={isOperating}
                 className={cn(
                   'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                   'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                  isImporting && 'opacity-50'
+                  isOperating && 'opacity-50'
                 )}
               >
                 {importTargets.map((target, i) => (
@@ -142,11 +142,11 @@ export function LoadSetDialog({
               </p>
             </div>
 
-            {isImporting && importProgress && (
-              <ImportProgressBar progress={importProgress} />
+            {isOperating && progress && (
+              <OperationProgressBar progress={progress} />
             )}
 
-            {importError && <ImportErrorBanner error={importError} />}
+            {operationError && <OperationErrorBanner error={operationError} />}
           </div>
 
           {/* Actions */}
@@ -154,20 +154,20 @@ export function LoadSetDialog({
             <Dialog.Close asChild>
               <button
                 className="ac-btn ac-btn-secondary"
-                disabled={isImporting}
+                disabled={isOperating}
               >
                 Cancel
               </button>
             </Dialog.Close>
             <button
               onClick={handleLoad}
-              disabled={isImporting}
+              disabled={isOperating}
               className={cn(
                 'ac-btn ac-btn-primary',
-                isImporting && 'opacity-50'
+                isOperating && 'opacity-50'
               )}
             >
-              <ImportButtonContent isImporting={isImporting} label="Load Set" importingLabel="Loading..." />
+              <OperationButtonContent isOperating={isOperating} label="Load Set" operatingLabel="Loading..." />
             </button>
           </div>
         </Dialog.Content>

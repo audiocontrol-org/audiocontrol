@@ -114,8 +114,8 @@ export function LibraryPage() {
   const setPatchForHook = useCallback((index: number, patch: SamplerPatch) => setPatch(index, patch, totalPatches), [setPatch, totalPatches]);
 
   const {
-    importSamplesDialog, isImporting: isSamplesImporting,
-    importProgress: samplesImportProgress, importError: samplesImportError,
+    importSamplesDialog, isOperating: isSamplesOperating,
+    progress: samplesProgress, error: samplesError,
     openImportSamplesDialog, closeImportSamplesDialog, handleImportSamples,
   } = useImportSamples({ clientRef, libraryHandle, setTone: setToneForHook, setPatch: setPatchForHook });
 
@@ -423,8 +423,8 @@ export function LibraryPage() {
       <LoadSetDialog
         open={importDialogs.isLoadDialogOpen} onOpenChange={importDialogs.setIsLoadDialogOpen}
         setName={selection?.name ?? ''} onLoad={importDialogs.handleLoadSet}
-        isImporting={importDialogs.operationProgress !== undefined}
-        importProgress={importDialogs.operationProgress} importError={importDialogs.operationError}
+        isOperating={importDialogs.operationProgress !== undefined}
+        progress={importDialogs.operationProgress} error={importDialogs.operationError}
         importTargets={config.memoryLayout.importTargets} deviceTones={tones}
         toneGroups={config.memoryLayout.toneGroups} formatToneSlot={config.memoryLayout.formatToneSlot}
       />
@@ -435,8 +435,8 @@ export function LibraryPage() {
           libraryHandle={libraryHandle} setName={importDialogs.importToneDialog.setName}
           toneFile={importDialogs.importToneDialog.toneFile} deviceTones={tones}
           initialTargetSlot={importDialogs.importToneDialog.initialTargetSlot}
-          onImport={importDialogs.handleImportLibraryTone} isImporting={importDialogs.isImporting}
-          importProgress={importDialogs.operationProgress} importError={importDialogs.operationError}
+          onImport={importDialogs.handleImportLibraryTone} isOperating={importDialogs.isImporting}
+          progress={importDialogs.operationProgress} error={importDialogs.operationError}
         />
       )}
       {importDialogs.importPatchDialog && libraryHandle && (
@@ -447,16 +447,16 @@ export function LibraryPage() {
           patchFile={importDialogs.importPatchDialog.patchFile} patchPath={importDialogs.importPatchDialog.patchPath}
           deviceTones={tones} devicePatches={patches}
           initialTargetSlot={importDialogs.importPatchDialog.initialTargetSlot}
-          onImport={importDialogs.handleImportLibraryPatch} isImporting={importDialogs.isImporting}
-          importProgress={importDialogs.operationProgress} importError={importDialogs.operationError}
+          onImport={importDialogs.handleImportLibraryPatch} isOperating={importDialogs.isImporting}
+          progress={importDialogs.operationProgress} error={importDialogs.operationError}
         />
       )}
       {importSamplesDialog && (
         <ImportSamplesDialog
           open={!!importSamplesDialog} onOpenChange={(open) => { if (!open) closeImportSamplesDialog(); }}
           bundle={importSamplesDialog.bundle} deviceTones={tones} devicePatches={patches}
-          onImport={handleImportSamples} isImporting={isSamplesImporting}
-          importProgress={samplesImportProgress} importError={samplesImportError}
+          onImport={handleImportSamples} isOperating={isSamplesOperating}
+          progress={samplesProgress} error={samplesError}
         />
       )}
       {sliceEditDialog && (
@@ -472,14 +472,14 @@ export function LibraryPage() {
       <ExportToneDialog
         open={!!exportOps.exportToneDialog} onOpenChange={(open) => { if (!open) exportOps.closeExportToneDialog(); }}
         tone={exportOps.exportToneDialog?.tone ?? null} toneIndex={exportOps.exportToneDialog?.toneIndex ?? 0}
-        onExport={exportOps.handleExportTone} isExporting={exportOps.isExporting}
-        exportProgress={exportOps.exportProgress} exportError={exportOps.exportError} statusMessage={exportOps.exportStatus}
+        onExport={exportOps.handleExportTone} isOperating={exportOps.isExporting}
+        progress={exportOps.exportProgress} error={exportOps.exportError}
       />
       <ExportPatchDialog
         open={!!exportOps.exportPatchDialog} onOpenChange={(open) => { if (!open) exportOps.closeExportPatchDialog(); }}
         patch={exportOps.exportPatchDialog?.patch ?? null} patchIndex={exportOps.exportPatchDialog?.patchIndex ?? 0}
-        onExport={exportOps.handleExportPatch} isExporting={exportOps.isExporting}
-        exportProgress={exportOps.exportPatchProgress} exportError={exportOps.exportPatchError}
+        onExport={exportOps.handleExportPatch} isOperating={exportOps.isExporting}
+        progress={exportOps.exportPatchProgress} error={exportOps.exportPatchError}
       />
       <CreateDirectoryDialog
         open={!!directoryOps.createDirectoryDialog}

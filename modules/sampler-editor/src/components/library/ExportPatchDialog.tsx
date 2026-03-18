@@ -8,10 +8,19 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { S330Patch } from '@audiocontrol/sampler-devices/s330';
+import type { OperationState } from '@/types/import-operation';
+import { isOperationComplete } from '@/types/import-operation';
 import { getPatchToneDependencies } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
+import {
+  OperationProgressBar,
+  OperationErrorBanner,
+  OperationSuccessScreen,
+  OperationButtonContent,
+  DialogCloseButton,
+} from '@/components/ui/ImportStatus';
 
-export interface ExportPatchDialogProps {
+export interface ExportPatchDialogProps extends OperationState {
   /** Whether the dialog is open */
   open: boolean;
   /** Callback when dialog should close */
@@ -22,12 +31,6 @@ export interface ExportPatchDialogProps {
   patchIndex: number;
   /** Callback to perform the export - receives patch name and index */
   onExport: (patchName: string, patchIndex: number) => Promise<void>;
-  /** Whether export is in progress */
-  isExporting: boolean;
-  /** Export progress (0-100) */
-  exportProgress?: number;
-  /** Export error message */
-  exportError?: string | null;
 }
 
 export function ExportPatchDialog({
@@ -36,9 +39,9 @@ export function ExportPatchDialog({
   patch,
   patchIndex,
   onExport,
-  isExporting,
-  exportProgress,
-  exportError,
+  isOperating,
+  progress,
+  error: operationError,
 }: ExportPatchDialogProps): JSX.Element {
   const [patchName, setPatchName] = useState(patch?.common.name || `Patch_${patchIndex + 1}`);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -67,19 +70,19 @@ export function ExportPatchDialog({
     try {
       await onExport(patchName.trim(), patchIndex);
     } catch {
-      // Error should be handled by parent via exportError prop
+      // Error should be handled by parent via operationError prop
     }
   }, [patchName, patchIndex, onExport]);
 
   const handleClose = useCallback(() => {
-    if (!isExporting) {
+    if (!isOperating) {
       setLocalError(null);
       onOpenChange(false);
     }
-  }, [isExporting, onOpenChange]);
+  }, [isOperating, onOpenChange]);
 
-  const error = localError || exportError;
-  const isComplete = exportProgress === 100 && !isExporting;
+  const error = localError || operationError;
+  const isComplete = isOperationComplete({ isOperating, progress, error: operationError });
 
   return (
     <Dialog.Root open={open} onOpenChange={handleClose}>
@@ -91,25 +94,15 @@ export function ExportPatchDialog({
           </Dialog.Title>
 
           {isComplete ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-green-400">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Patch bundle exported successfully!</span>
-              </div>
-              <p className="text-sm text-s330-muted">
-                Saved to <span className="font-mono text-s330-text">{patchName}/</span> with {referencedToneCount} tone{referencedToneCount !== 1 ? 's' : ''}
-              </p>
-              <div className="flex justify-end">
-                <button
-                  onClick={handleClose}
-                  className="ac-btn ac-btn-primary"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
+            <OperationSuccessScreen
+              message="Patch bundle exported successfully!"
+              detail={
+                <p>
+                  Saved to <span className="font-mono text-s330-text">{patchName}/</span> with {referencedToneCount} tone{referencedToneCount !== 1 ? 's' : ''}
+                </p>
+              }
+              onDone={handleClose}
+            />
           ) : (
             <div className="space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
@@ -126,13 +119,13 @@ export function ExportPatchDialog({
                   type="text"
                   value={patchName}
                   onChange={(e) => setPatchName(e.target.value)}
-                  disabled={isExporting}
+                  disabled={isOperating}
                   maxLength={32}
                   className={cn(
                     'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
                     error ? 'border-red-500' : 'border-s330-accent/50',
-                    isExporting && 'opacity-50'
+                    isOperating && 'opacity-50'
                   )}
                   placeholder="Enter patch name"
                 />
@@ -171,58 +164,34 @@ export function ExportPatchDialog({
               )}
 
               {/* Progress Bar */}
-              {isExporting && exportProgress !== undefined && (
-                <div>
-                  <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                      style={{ width: `${exportProgress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-s330-muted mt-1 text-right">
-                    {exportProgress < 60
-                      ? `Fetching wave data from device... (${Math.round(exportProgress / 60 * referencedToneCount)}/${referencedToneCount} tones)`
-                      : 'Writing files to library...'
-                    }
-                  </p>
-                </div>
+              {isOperating && progress && (
+                <OperationProgressBar progress={progress} />
               )}
 
               {/* Error Display */}
-              {error && (
-                <div className="text-sm text-red-400 bg-red-900/20 rounded p-2">
-                  {error}
-                </div>
-              )}
+              {error && <OperationErrorBanner error={error} />}
 
               {/* Actions */}
               <div className="flex justify-end gap-2">
                 <button
                   onClick={handleClose}
-                  disabled={isExporting}
+                  disabled={isOperating}
                   className={cn(
                     'ac-btn ac-btn-ghost',
-                    isExporting && 'opacity-50 cursor-not-allowed'
+                    isOperating && 'opacity-50 cursor-not-allowed'
                   )}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleExport}
-                  disabled={isExporting || !patchName.trim() || !patch}
+                  disabled={isOperating || !patchName.trim() || !patch}
                   className={cn(
                     'ac-btn ac-btn-primary',
-                    (isExporting || !patchName.trim() || !patch) && 'opacity-50 cursor-not-allowed'
+                    (isOperating || !patchName.trim() || !patch) && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  {isExporting ? (
-                    <>
-                      <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Exporting...
-                    </>
-                  ) : (
-                    'Export'
-                  )}
+                  <OperationButtonContent isOperating={isOperating} label="Export" operatingLabel="Exporting..." />
                 </button>
               </div>
             </div>
@@ -230,15 +199,7 @@ export function ExportPatchDialog({
 
           {/* Close button */}
           <Dialog.Close asChild>
-            <button
-              className="absolute top-4 right-4 text-s330-muted hover:text-s330-text"
-              aria-label="Close"
-              disabled={isExporting}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <DialogCloseButton disabled={isOperating} />
           </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>

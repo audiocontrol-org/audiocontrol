@@ -1,13 +1,13 @@
 /**
- * Shared import status UI components.
+ * Shared operation status UI components.
  *
  * Single source of truth for progress bars, error banners, and success
- * screens used across all import dialogs. Eliminates six copies of the
- * same markup.
+ * screens used across all import and export dialogs. Eliminates duplicate
+ * markup across dialogs.
  */
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import type { ImportProgress } from '@/types/import-operation';
+import type { OperationProgress } from '@/types/import-operation';
 import { getOverallPercent, formatBytes } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 
@@ -23,11 +23,11 @@ function formatDuration(ms: number): string {
 // Progress Bar
 // =============================================================================
 
-interface ImportProgressBarProps {
-  progress: ImportProgress;
+interface OperationProgressBarProps {
+  progress: OperationProgress;
 }
 
-export function ImportProgressBar({ progress }: ImportProgressBarProps): JSX.Element {
+export function OperationProgressBar({ progress }: OperationProgressBarProps): JSX.Element {
   const overallPercent = getOverallPercent(progress);
   const { currentStep, totalSteps, stepLabel, bytesSent, bytesTotal,
     bytesSentAllSteps, bytesTotalAllSteps } = progress;
@@ -35,7 +35,7 @@ export function ImportProgressBar({ progress }: ImportProgressBarProps): JSX.Ele
 
   // Track start time — resets when a new operation begins
   const startTimeRef = useRef<number>(Date.now());
-  const prevProgressRef = useRef<ImportProgress | null>(null);
+  const prevProgressRef = useRef<OperationProgress | null>(null);
 
   useEffect(() => {
     const prev = prevProgressRef.current;
@@ -88,11 +88,11 @@ export function ImportProgressBar({ progress }: ImportProgressBarProps): JSX.Ele
 // Error Banner
 // =============================================================================
 
-interface ImportErrorBannerProps {
+interface OperationErrorBannerProps {
   error: string;
 }
 
-export function ImportErrorBanner({ error }: ImportErrorBannerProps): JSX.Element {
+export function OperationErrorBanner({ error }: OperationErrorBannerProps): JSX.Element {
   return (
     <div className="text-sm text-red-400 bg-red-900/20 rounded p-2">
       {error}
@@ -104,17 +104,17 @@ export function ImportErrorBanner({ error }: ImportErrorBannerProps): JSX.Elemen
 // Success Screen
 // =============================================================================
 
-interface ImportSuccessScreenProps {
+interface OperationSuccessScreenProps {
   message: string;
   detail?: ReactNode;
   onDone: () => void;
 }
 
-export function ImportSuccessScreen({
+export function OperationSuccessScreen({
   message,
   detail,
   onDone,
-}: ImportSuccessScreenProps): JSX.Element {
+}: OperationSuccessScreenProps): JSX.Element {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-green-400">
@@ -139,11 +139,11 @@ export function ImportSuccessScreen({
 // Loading Spinner
 // =============================================================================
 
-interface ImportLoadingSpinnerProps {
+interface OperationLoadingSpinnerProps {
   message: string;
 }
 
-export function ImportLoadingSpinner({ message }: ImportLoadingSpinnerProps): JSX.Element {
+export function OperationLoadingSpinner({ message }: OperationLoadingSpinnerProps): JSX.Element {
   return (
     <div className="flex items-center justify-center py-8">
       <div className="flex items-center gap-2 text-s330-muted">
@@ -155,25 +155,25 @@ export function ImportLoadingSpinner({ message }: ImportLoadingSpinnerProps): JS
 }
 
 // =============================================================================
-// Import Button Content (spinner + label)
+// Button Content (spinner + label)
 // =============================================================================
 
-interface ImportButtonContentProps {
-  isImporting: boolean;
+interface OperationButtonContentProps {
+  isOperating: boolean;
   label: string;
-  importingLabel?: string;
+  operatingLabel?: string;
 }
 
-export function ImportButtonContent({
-  isImporting,
+export function OperationButtonContent({
+  isOperating,
   label,
-  importingLabel = 'Importing...',
-}: ImportButtonContentProps): JSX.Element {
-  if (isImporting) {
+  operatingLabel = 'Working...',
+}: OperationButtonContentProps): JSX.Element {
+  if (isOperating) {
     return (
       <>
         <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-        {importingLabel}
+        {operatingLabel}
       </>
     );
   }

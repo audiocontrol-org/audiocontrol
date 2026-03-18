@@ -6,8 +6,8 @@
  */
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { ImportOperationState } from '@/types/import-operation';
-import { isImportComplete } from '@/types/import-operation';
+import type { OperationState } from '@/types/import-operation';
+import { isOperationComplete } from '@/types/import-operation';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { SetYaml } from '@audiocontrol/sampler-library/browser';
@@ -27,11 +27,11 @@ import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
 import { BestFitPicker } from '@/components/ui/BestFitPicker';
 import {
-  ImportProgressBar,
-  ImportErrorBanner,
-  ImportSuccessScreen,
-  ImportLoadingSpinner,
-  ImportButtonContent,
+  OperationProgressBar,
+  OperationErrorBanner,
+  OperationSuccessScreen,
+  OperationLoadingSpinner,
+  OperationButtonContent,
   DialogCloseButton,
 } from '@/components/ui/ImportStatus';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
@@ -53,7 +53,7 @@ interface ToneImportMapping {
   segmentsNeeded: number;
 }
 
-export interface ImportLibraryPatchDialogProps extends ImportOperationState {
+export interface ImportLibraryPatchDialogProps extends OperationState {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   libraryHandle: FileSystemDirectoryHandle;
@@ -89,9 +89,9 @@ export function ImportLibraryPatchDialog({
   deviceTones,
   devicePatches,
   onImport,
-  isImporting,
-  importProgress,
-  importError,
+  isOperating,
+  progress,
+  error: operationError,
   initialTargetSlot,
 }: ImportLibraryPatchDialogProps): JSX.Element {
   const config = useDeviceConfig();
@@ -303,13 +303,13 @@ export function ImportLibraryPatchDialog({
   }, [patch, toneMappings, targetPatchSlot, onImport, libraryHandle, setName, patchFile, patchPath]);
 
   const handleClose = useCallback(() => {
-    if (!isImporting) {
+    if (!isOperating) {
       onOpenChange(false);
     }
-  }, [isImporting, onOpenChange]);
+  }, [isOperating, onOpenChange]);
 
-  const isComplete = isImportComplete({ isImporting, importProgress, importError });
-  const error = loadError || importError;
+  const isComplete = isOperationComplete({ isOperating, progress, error: operationError });
+  const error = loadError || operationError;
 
   // Check if selected slots will overwrite existing data
   // Use the same empty detection as the allocation logic (segmentLength === 0 for tones, blank name + no assignments for patches)
@@ -371,12 +371,12 @@ export function ImportLibraryPatchDialog({
           </Dialog.Title>
 
           {isComplete ? (
-            <ImportSuccessScreen
+            <OperationSuccessScreen
               message="Patch imported successfully!"
               onDone={handleClose}
             />
           ) : isLoading ? (
-            <ImportLoadingSpinner message="Loading patch data..." />
+            <OperationLoadingSpinner message="Loading patch data..." />
           ) : (
             <div className="flex flex-col min-h-0 space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
@@ -411,7 +411,7 @@ export function ImportLibraryPatchDialog({
                 formatToneSlot={memoryLayout.formatToneSlot}
                 proposal={proposal}
                 onFindBestFit={toneMappings.length > 0 ? handleFindBestFit : undefined}
-                findBestFitDisabled={isImporting}
+                findBestFitDisabled={isOperating}
               />
 
               {showBestFits && fitOptions.length > 0 && (
@@ -420,7 +420,7 @@ export function ImportLibraryPatchDialog({
                   selectedIndex={selectedFitIndex}
                   onSelect={handleSelectFit}
                   onClose={() => setShowBestFits(false)}
-                  disabled={isImporting}
+                  disabled={isOperating}
                 />
               )}
 
@@ -433,11 +433,11 @@ export function ImportLibraryPatchDialog({
                   id="targetPatchSlot"
                   value={targetPatchSlot}
                   onChange={(e) => setTargetPatchSlot(Number(e.target.value))}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isImporting && 'opacity-50',
+                    isOperating && 'opacity-50',
                     willOverwritePatch
                       ? 'border-yellow-500/50'
                       : 'border-s330-accent/50'
@@ -497,11 +497,11 @@ export function ImportLibraryPatchDialog({
                               onChange={(e) =>
                                 updateToneMapping(index, { targetSlot: Number(e.target.value) })
                               }
-                              disabled={isImporting}
+                              disabled={isOperating}
                               className={cn(
                                 'w-full bg-s330-panel border rounded px-2 py-1 text-s330-text text-xs',
                                 'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
-                                isImporting && 'opacity-50',
+                                isOperating && 'opacity-50',
                                 toneOverwrites[index]?.willOverwrite
                                   ? 'border-yellow-500/50'
                                   : 'border-s330-accent/50'
@@ -530,11 +530,11 @@ export function ImportLibraryPatchDialog({
                               onChange={(e) =>
                                 updateToneMapping(index, { waveBank: Number(e.target.value) as 0 | 1 | 2 | 3 })
                               }
-                              disabled={isImporting}
+                              disabled={isOperating}
                               className={cn(
                                 'w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-s330-text text-xs',
                                 'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
-                                isImporting && 'opacity-50'
+                                isOperating && 'opacity-50'
                               )}
                             >
                               <option value={0}>Bank A</option>
@@ -551,11 +551,11 @@ export function ImportLibraryPatchDialog({
                               onChange={(e) =>
                                 updateToneMapping(index, { segmentTop: Number(e.target.value) })
                               }
-                              disabled={isImporting}
+                              disabled={isOperating}
                               className={cn(
                                 'w-full bg-s330-panel border border-s330-accent/50 rounded px-2 py-1 text-s330-text text-xs',
                                 'focus:outline-none focus:ring-1 focus:ring-s330-highlight',
-                                isImporting && 'opacity-50'
+                                isOperating && 'opacity-50'
                               )}
                             >
                               {Array.from(
@@ -581,34 +581,34 @@ export function ImportLibraryPatchDialog({
                 </div>
               )}
 
-              {isImporting && importProgress && (
-                <ImportProgressBar progress={importProgress} />
+              {isOperating && progress && (
+                <OperationProgressBar progress={progress} />
               )}
 
-              {error && <ImportErrorBanner error={error} />}
+              {error && <OperationErrorBanner error={error} />}
 
               {/* Actions */}
               <div className="flex justify-end gap-2 pt-2">
                 <button
                   onClick={handleClose}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'ac-btn ac-btn-ghost',
-                    isImporting && 'opacity-50 cursor-not-allowed'
+                    isOperating && 'opacity-50 cursor-not-allowed'
                   )}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleImport}
-                  disabled={isImporting || !patch}
+                  disabled={isOperating || !patch}
                   className={cn(
                     'ac-btn ac-btn-primary',
-                    (isImporting || !patch) && 'opacity-50 cursor-not-allowed'
+                    (isOperating || !patch) && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  <ImportButtonContent
-                    isImporting={isImporting}
+                  <OperationButtonContent
+                    isOperating={isOperating}
                     label={`Import Patch${toneMappings.length > 0 ? ` + ${toneMappings.length} Tones` : ''}`}
                   />
                 </button>
@@ -617,7 +617,7 @@ export function ImportLibraryPatchDialog({
           )}
 
           <Dialog.Close asChild>
-            <DialogCloseButton disabled={isImporting} />
+            <DialogCloseButton disabled={isOperating} />
           </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>

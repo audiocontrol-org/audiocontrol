@@ -8,9 +8,18 @@
 import { useState, useCallback, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { S330Tone } from '@audiocontrol/sampler-devices/s330';
+import type { OperationState } from '@/types/import-operation';
+import { isOperationComplete } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
+import {
+  OperationProgressBar,
+  OperationErrorBanner,
+  OperationSuccessScreen,
+  OperationButtonContent,
+  DialogCloseButton,
+} from '@/components/ui/ImportStatus';
 
-export interface ExportToneDialogProps {
+export interface ExportToneDialogProps extends OperationState {
   /** Whether the dialog is open */
   open: boolean;
   /** Callback when dialog should close */
@@ -21,14 +30,6 @@ export interface ExportToneDialogProps {
   toneIndex: number;
   /** Callback to perform the export - receives tone name and index */
   onExport: (toneName: string, toneIndex: number) => Promise<void>;
-  /** Whether export is in progress */
-  isExporting: boolean;
-  /** Export progress (0-100) */
-  exportProgress?: number;
-  /** Export error message */
-  exportError?: string | null;
-  /** Status message for current operation */
-  statusMessage?: string | null;
 }
 
 export function ExportToneDialog({
@@ -37,10 +38,9 @@ export function ExportToneDialog({
   tone,
   toneIndex,
   onExport,
-  isExporting,
-  exportProgress,
-  exportError,
-  statusMessage,
+  isOperating,
+  progress,
+  error: operationError,
 }: ExportToneDialogProps): JSX.Element {
   const [toneName, setToneName] = useState(tone?.name || `Tone_${toneIndex + 1}`);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -63,19 +63,19 @@ export function ExportToneDialog({
     try {
       await onExport(toneName.trim(), toneIndex);
     } catch (err) {
-      // Error should be handled by parent via exportError prop
+      // Error should be handled by parent via operationError prop
     }
   }, [toneName, toneIndex, onExport]);
 
   const handleClose = useCallback(() => {
-    if (!isExporting) {
+    if (!isOperating) {
       setLocalError(null);
       onOpenChange(false);
     }
-  }, [isExporting, onOpenChange]);
+  }, [isOperating, onOpenChange]);
 
-  const error = localError || exportError;
-  const isComplete = exportProgress === 100 && !isExporting;
+  const error = localError || operationError;
+  const isComplete = isOperationComplete({ isOperating, progress, error: operationError });
 
   return (
     <Dialog.Root open={open} onOpenChange={handleClose}>
@@ -87,25 +87,15 @@ export function ExportToneDialog({
           </Dialog.Title>
 
           {isComplete ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-green-400">
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-                <span>Tone exported successfully!</span>
-              </div>
-              <p className="text-sm text-s330-muted">
-                Saved as <span className="font-mono text-s330-text">{toneName}.yaml</span>
-              </p>
-              <div className="flex justify-end">
-                <button
-                  onClick={handleClose}
-                  className="ac-btn ac-btn-primary"
-                >
-                  Done
-                </button>
-              </div>
-            </div>
+            <OperationSuccessScreen
+              message="Tone exported successfully!"
+              detail={
+                <p>
+                  Saved as <span className="font-mono text-s330-text">{toneName}.yaml</span>
+                </p>
+              }
+              onDone={handleClose}
+            />
           ) : (
             <div className="space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
@@ -122,13 +112,13 @@ export function ExportToneDialog({
                   type="text"
                   value={toneName}
                   onChange={(e) => setToneName(e.target.value)}
-                  disabled={isExporting}
+                  disabled={isOperating}
                   maxLength={32}
                   className={cn(
                     'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
                     error ? 'border-red-500' : 'border-s330-accent/50',
-                    isExporting && 'opacity-50'
+                    isOperating && 'opacity-50'
                   )}
                   placeholder="Enter tone name"
                 />
@@ -159,55 +149,34 @@ export function ExportToneDialog({
               )}
 
               {/* Progress Bar */}
-              {isExporting && exportProgress !== undefined && (
-                <div>
-                  <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-s330-highlight transition-all duration-150 ease-out"
-                      style={{ width: `${exportProgress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-s330-muted mt-1 text-right">
-                    {statusMessage || (exportProgress < 50 ? 'Fetching wave data...' : 'Saving to library...')}
-                  </p>
-                </div>
+              {isOperating && progress && (
+                <OperationProgressBar progress={progress} />
               )}
 
               {/* Error Display */}
-              {error && (
-                <div className="text-sm text-red-400 bg-red-900/20 rounded p-2">
-                  {error}
-                </div>
-              )}
+              {error && <OperationErrorBanner error={error} />}
 
               {/* Actions */}
               <div className="flex justify-end gap-2">
                 <button
                   onClick={handleClose}
-                  disabled={isExporting}
+                  disabled={isOperating}
                   className={cn(
                     'ac-btn ac-btn-ghost',
-                    isExporting && 'opacity-50 cursor-not-allowed'
+                    isOperating && 'opacity-50 cursor-not-allowed'
                   )}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleExport}
-                  disabled={isExporting || !toneName.trim() || !tone}
+                  disabled={isOperating || !toneName.trim() || !tone}
                   className={cn(
                     'ac-btn ac-btn-primary',
-                    (isExporting || !toneName.trim() || !tone) && 'opacity-50 cursor-not-allowed'
+                    (isOperating || !toneName.trim() || !tone) && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  {isExporting ? (
-                    <>
-                      <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-                      Exporting...
-                    </>
-                  ) : (
-                    'Export'
-                  )}
+                  <OperationButtonContent isOperating={isOperating} label="Export" operatingLabel="Exporting..." />
                 </button>
               </div>
             </div>
@@ -215,15 +184,7 @@ export function ExportToneDialog({
 
           {/* Close button */}
           <Dialog.Close asChild>
-            <button
-              className="absolute top-4 right-4 text-s330-muted hover:text-s330-text"
-              aria-label="Close"
-              disabled={isExporting}
-            >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <DialogCloseButton disabled={isOperating} />
           </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>

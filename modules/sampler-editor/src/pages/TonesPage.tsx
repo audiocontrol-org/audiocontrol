@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ImportProgress } from '@/types/import-operation';
+import type { OperationProgress } from '@/types/import-operation';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
@@ -75,14 +75,14 @@ export function TonesPage() {
   // Export to Library state
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isExportingToLibrary, setIsExportingToLibrary] = useState(false);
-  const [libraryExportProgress, setLibraryExportProgress] = useState<number | undefined>(undefined);
+  const [libraryExportProgress, setLibraryExportProgress] = useState<OperationProgress | undefined>(undefined);
   const [libraryExportError, setLibraryExportError] = useState<string | null>(null);
   const [libraryDirectoryHandle, setLibraryDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
 
   // Import Sample state
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState<ImportProgress | undefined>(undefined);
+  const [importProgress, setImportProgress] = useState<OperationProgress | undefined>(undefined);
   const [importError, setImportError] = useState<string | null>(null);
 
   // Loop editor wave data state (keyed by tone index)
@@ -254,7 +254,6 @@ export function TonesPage() {
     if (!clientRef.current) return;
 
     setIsExportingToLibrary(true);
-    setLibraryExportProgress(0);
     setLibraryExportError(null);
 
     try {
@@ -264,32 +263,54 @@ export function TonesPage() {
         throw new Error(`No tone data at slot ${toneIndex}`);
       }
 
-      // Fetch wave data from device
+      // Step 1: Fetch wave data from device
       const waveData = await clientRef.current.requestWaveData(
         toneIndex,
         (bytesReceived, totalBytes) => {
-          const progress = totalBytes > 0 ? (bytesReceived / totalBytes) * 50 : 0;
-          setLibraryExportProgress(progress);
+          setLibraryExportProgress({
+            currentStep: 1,
+            totalSteps: 2,
+            stepLabel: 'Fetching wave data',
+            bytesSent: bytesReceived,
+            bytesTotal: totalBytes,
+            bytesSentAllSteps: 0,
+            bytesTotalAllSteps: totalBytes,
+          });
         }
       );
 
-      // Export to library (YAML + WAV files)
+      const waveBytes = waveData.data.length;
+
+      // Step 2: Write to library
+      setLibraryExportProgress({
+        currentStep: 2,
+        totalSteps: 2,
+        stepLabel: 'Writing to library',
+        bytesSent: 0,
+        bytesTotal: 0,
+        bytesSentAllSteps: waveBytes,
+        bytesTotalAllSteps: waveBytes,
+      });
+
       if (libraryDirectoryHandle) {
-        // Write directly to selected directory
-        await exportToneToDirectory(libraryDirectoryHandle, tone, waveData, toneName, (progress) => {
-          setLibraryExportProgress(50 + progress * 0.5);
-        });
+        await exportToneToDirectory(libraryDirectoryHandle, tone, waveData, toneName, () => {});
       } else {
-        // Fallback to downloads
-        await exportToneAsDownload(tone, waveData, toneName, (progress) => {
-          setLibraryExportProgress(50 + progress * 0.5);
-        });
+        await exportToneAsDownload(tone, waveData, toneName, () => {});
       }
 
       // Update cached tone data with fresh data
       setTone(toneIndex, tone, totalTones);
 
-      setLibraryExportProgress(100);
+      // Final state: complete
+      setLibraryExportProgress({
+        currentStep: 2,
+        totalSteps: 2,
+        stepLabel: 'Export complete',
+        bytesSent: 0,
+        bytesTotal: 0,
+        bytesSentAllSteps: waveBytes,
+        bytesTotalAllSteps: waveBytes,
+      });
     } catch (err) {
       console.error('[TonesPage] Failed to export to library:', err);
       const message = err instanceof Error ? err.message : 'Failed to export to library';
@@ -658,9 +679,9 @@ export function TonesPage() {
           tone={selectedTone}
           toneIndex={selectedToneIndex!}
           onExport={handleExportToLibrary}
-          isExporting={isExportingToLibrary}
-          exportProgress={libraryExportProgress}
-          exportError={libraryExportError}
+          isOperating={isExportingToLibrary}
+          progress={libraryExportProgress}
+          error={libraryExportError}
         />
       )}
 
@@ -672,9 +693,9 @@ export function TonesPage() {
           toneIndex={selectedToneIndex}
           toneName={selectedTone?.name}
           onImport={handleImportSample}
-          isImporting={isImporting}
-          importProgress={importProgress}
-          importError={importError}
+          isOperating={isImporting}
+          progress={importProgress}
+          error={importError}
         />
       )}
     </div>

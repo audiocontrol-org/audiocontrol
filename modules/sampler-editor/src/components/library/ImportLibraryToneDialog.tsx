@@ -6,8 +6,8 @@
  */
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { ImportOperationState } from '@/types/import-operation';
-import { isImportComplete } from '@/types/import-operation';
+import type { OperationState } from '@/types/import-operation';
+import { isOperationComplete } from '@/types/import-operation';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { SamplerTone } from '@/core/midi/SamplerClient';
 import {
@@ -23,18 +23,18 @@ import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { MemoryMapPanel } from '@/components/ui/MemoryMapPanel';
 import { BestFitPicker } from '@/components/ui/BestFitPicker';
 import {
-  ImportProgressBar,
-  ImportErrorBanner,
-  ImportSuccessScreen,
-  ImportLoadingSpinner,
-  ImportButtonContent,
+  OperationProgressBar,
+  OperationErrorBanner,
+  OperationSuccessScreen,
+  OperationLoadingSpinner,
+  OperationButtonContent,
   DialogCloseButton,
 } from '@/components/ui/ImportStatus';
 import type { AllocationProposal } from '@/components/ui/memory-map-types';
 import { findToneBestFits } from '@/lib/best-fit';
 import type { FitOption, ToneFitValues } from '@/lib/best-fit';
 
-export interface ImportLibraryToneDialogProps extends ImportOperationState {
+export interface ImportLibraryToneDialogProps extends OperationState {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   libraryHandle: FileSystemDirectoryHandle;
@@ -63,9 +63,9 @@ export function ImportLibraryToneDialog({
   deviceTones,
   initialTargetSlot,
   onImport,
-  isImporting,
-  importProgress,
-  importError,
+  isOperating,
+  progress,
+  error: operationError,
 }: ImportLibraryToneDialogProps): JSX.Element {
   const config = useDeviceConfig();
 
@@ -194,15 +194,15 @@ export function ImportLibraryToneDialog({
   }, [tone, wavData, setName, toneFile, targetSlot, waveBank, segmentTop, segmentLength, onImport]);
 
   const handleClose = useCallback(() => {
-    if (!isImporting) {
+    if (!isOperating) {
       onOpenChange(false);
     }
-  }, [isImporting, onOpenChange]);
+  }, [isOperating, onOpenChange]);
 
   // Use the segment length from the manifest (stored in state)
   const segmentsNeeded = segmentLength;
-  const isComplete = isImportComplete({ isImporting, importProgress, importError });
-  const error = loadError || importError;
+  const isComplete = isOperationComplete({ isOperating, progress, error: operationError });
+  const error = loadError || operationError;
 
   // Check if selected slot will overwrite existing data
   // Use the same empty detection as the allocation logic (segmentLength === 0)
@@ -243,12 +243,12 @@ export function ImportLibraryToneDialog({
           </Dialog.Title>
 
           {isComplete ? (
-            <ImportSuccessScreen
+            <OperationSuccessScreen
               message="Tone imported successfully!"
               onDone={handleClose}
             />
           ) : isLoading ? (
-            <ImportLoadingSpinner message="Loading tone data..." />
+            <OperationLoadingSpinner message="Loading tone data..." />
           ) : (
             <div className="space-y-4">
               <Dialog.Description className="text-sm text-s330-muted">
@@ -287,7 +287,7 @@ export function ImportLibraryToneDialog({
                 formatToneSlot={memoryLayout.formatToneSlot}
                 proposal={proposal}
                 onFindBestFit={handleFindBestFit}
-                findBestFitDisabled={isImporting}
+                findBestFitDisabled={isOperating}
               />
 
               {showBestFits && fitOptions.length > 0 && (
@@ -296,7 +296,7 @@ export function ImportLibraryToneDialog({
                   selectedIndex={selectedFitIndex}
                   onSelect={handleSelectFit}
                   onClose={() => setShowBestFits(false)}
-                  disabled={isImporting}
+                  disabled={isOperating}
                 />
               )}
 
@@ -317,11 +317,11 @@ export function ImportLibraryToneDialog({
                     setTargetSlot(newGroup.firstIndex);
                     setWaveBank(newGroup.waveBankIndices[0] as 0 | 1 | 2 | 3);
                   }}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isImporting && 'opacity-50'
+                    isOperating && 'opacity-50'
                   )}
                 >
                   {importTargets.map((target, i) => (
@@ -339,11 +339,11 @@ export function ImportLibraryToneDialog({
                   id="targetSlot"
                   value={targetSlot}
                   onChange={(e) => setTargetSlot(Number(e.target.value))}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isImporting && 'opacity-50',
+                    isOperating && 'opacity-50',
                     willOverwriteTone
                       ? 'border-yellow-500/50'
                       : 'border-s330-accent/50'
@@ -382,11 +382,11 @@ export function ImportLibraryToneDialog({
                     id="waveBank"
                     value={waveBank}
                     onChange={(e) => setWaveBank(Number(e.target.value) as 0 | 1 | 2 | 3)}
-                    disabled={isImporting}
+                    disabled={isOperating}
                     className={cn(
                       'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                       'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isImporting && 'opacity-50'
+                      isOperating && 'opacity-50'
                     )}
                   >
                     {targetGroup.waveBankIndices.map((idx, i) => (
@@ -402,11 +402,11 @@ export function ImportLibraryToneDialog({
                     id="segmentTop"
                     value={segmentTop}
                     onChange={(e) => setSegmentTop(Number(e.target.value))}
-                    disabled={isImporting}
+                    disabled={isOperating}
                     className={cn(
                       'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                       'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                      isImporting && 'opacity-50'
+                      isOperating && 'opacity-50'
                     )}
                   >
                     {Array.from({ length: Math.max(1, 18 - segmentsNeeded + 1) }, (_, i) => (
@@ -421,40 +421,40 @@ export function ImportLibraryToneDialog({
                 Warning: This will overwrite existing wave data in the target segment(s).
               </p>
 
-              {isImporting && importProgress && (
-                <ImportProgressBar progress={importProgress} />
+              {isOperating && progress && (
+                <OperationProgressBar progress={progress} />
               )}
 
-              {error && <ImportErrorBanner error={error} />}
+              {error && <OperationErrorBanner error={error} />}
 
               {/* Actions */}
               <div className="flex justify-end gap-2">
                 <button
                   onClick={handleClose}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'ac-btn ac-btn-ghost',
-                    isImporting && 'opacity-50 cursor-not-allowed'
+                    isOperating && 'opacity-50 cursor-not-allowed'
                   )}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleImport}
-                  disabled={isImporting || !tone || !wavData}
+                  disabled={isOperating || !tone || !wavData}
                   className={cn(
                     'ac-btn ac-btn-primary',
-                    (isImporting || !tone || !wavData) && 'opacity-50 cursor-not-allowed'
+                    (isOperating || !tone || !wavData) && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  <ImportButtonContent isImporting={isImporting} label="Import Tone" />
+                  <OperationButtonContent isOperating={isOperating} label="Import Tone" />
                 </button>
               </div>
             </div>
           )}
 
           <Dialog.Close asChild>
-            <DialogCloseButton disabled={isImporting} />
+            <DialogCloseButton disabled={isOperating} />
           </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>

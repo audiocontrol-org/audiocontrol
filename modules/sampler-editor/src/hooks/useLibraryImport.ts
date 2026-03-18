@@ -6,7 +6,7 @@
  */
 
 import { useState, useCallback, MutableRefObject } from 'react';
-import type { ImportOperationState, ImportProgress } from '@/types/import-operation';
+import type { OperationState, OperationProgress } from '@/types/import-operation';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 
 interface ImportToneDialogState {
@@ -25,7 +25,7 @@ interface UseLibraryImportOptions {
   setPatch: (index: number, patch: SamplerPatch) => void;
 }
 
-interface UseLibraryImportReturn extends ImportOperationState {
+interface UseLibraryImportReturn extends OperationState {
   // Dialog state
   importToneDialog: ImportToneDialogState | null;
   importPatchDialog: ImportPatchDialogState | null;
@@ -71,7 +71,7 @@ export function useLibraryImport({
   const [importToneDialog, setImportToneDialog] = useState<ImportToneDialogState | null>(null);
   const [importPatchDialog, setImportPatchDialog] = useState<ImportPatchDialogState | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState<ImportProgress | undefined>(undefined);
+  const [importProgress, setImportProgress] = useState<OperationProgress | undefined>(undefined);
   const [importError, setImportError] = useState<string | null>(null);
 
   // Open import tone dialog
@@ -250,9 +250,9 @@ export function useLibraryImport({
   return {
     importToneDialog,
     importPatchDialog,
-    isImporting,
-    importProgress,
-    importError,
+    isOperating: isImporting,
+    progress: importProgress,
+    error: importError,
     openImportToneDialog,
     openImportPatchDialog,
     closeImportToneDialog,

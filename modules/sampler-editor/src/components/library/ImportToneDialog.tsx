@@ -8,18 +8,18 @@
 import { useState, useCallback } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { ToneYaml } from '@audiocontrol/sampler-library/browser';
-import type { ImportOperationState } from '@/types/import-operation';
-import { isImportComplete } from '@/types/import-operation';
+import type { OperationState } from '@/types/import-operation';
+import { isOperationComplete } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 import {
-  ImportProgressBar,
-  ImportErrorBanner,
-  ImportSuccessScreen,
-  ImportButtonContent,
+  OperationProgressBar,
+  OperationErrorBanner,
+  OperationSuccessScreen,
+  OperationButtonContent,
   DialogCloseButton,
 } from '@/components/ui/ImportStatus';
 
-export interface ImportToneDialogProps extends ImportOperationState {
+export interface ImportToneDialogProps extends OperationState {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   tone: ToneYaml | null;
@@ -32,9 +32,9 @@ export function ImportToneDialog({
   onOpenChange,
   tone,
   onImport,
-  isImporting,
-  importProgress,
-  importError,
+  isOperating,
+  progress,
+  error: operationError,
   totalSlots = 32,
 }: ImportToneDialogProps): JSX.Element {
   const [targetSlot, setTargetSlot] = useState(0);
@@ -43,17 +43,17 @@ export function ImportToneDialog({
     try {
       await onImport(targetSlot);
     } catch (err) {
-      // Error should be handled by parent via importError prop
+      // Error should be handled by parent via error prop
     }
   }, [targetSlot, onImport]);
 
   const handleClose = useCallback(() => {
-    if (!isImporting) {
+    if (!isOperating) {
       onOpenChange(false);
     }
-  }, [isImporting, onOpenChange]);
+  }, [isOperating, onOpenChange]);
 
-  const isComplete = isImportComplete({ isImporting, importProgress, importError });
+  const isComplete = isOperationComplete({ isOperating, progress, error: operationError });
 
   if (!tone) {
     return <></>;
@@ -69,7 +69,7 @@ export function ImportToneDialog({
           </Dialog.Title>
 
           {isComplete ? (
-            <ImportSuccessScreen
+            <OperationSuccessScreen
               message="Tone imported successfully!"
               detail={
                 <p>
@@ -120,11 +120,11 @@ export function ImportToneDialog({
                   id="targetSlot"
                   value={targetSlot}
                   onChange={(e) => setTargetSlot(parseInt(e.target.value))}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
-                    isImporting && 'opacity-50'
+                    isOperating && 'opacity-50'
                   )}
                 >
                   {Array.from({ length: totalSlots }, (_, i) => (
@@ -138,40 +138,40 @@ export function ImportToneDialog({
                 </p>
               </div>
 
-              {isImporting && importProgress && (
-                <ImportProgressBar progress={importProgress} />
+              {isOperating && progress && (
+                <OperationProgressBar progress={progress} />
               )}
 
-              {importError && <ImportErrorBanner error={importError} />}
+              {operationError && <OperationErrorBanner error={operationError} />}
 
               {/* Actions */}
               <div className="flex justify-end gap-2">
                 <button
                   onClick={handleClose}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'ac-btn ac-btn-ghost',
-                    isImporting && 'opacity-50 cursor-not-allowed'
+                    isOperating && 'opacity-50 cursor-not-allowed'
                   )}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleImport}
-                  disabled={isImporting}
+                  disabled={isOperating}
                   className={cn(
                     'ac-btn ac-btn-primary',
-                    isImporting && 'opacity-50 cursor-not-allowed'
+                    isOperating && 'opacity-50 cursor-not-allowed'
                   )}
                 >
-                  <ImportButtonContent isImporting={isImporting} label="Import" />
+                  <OperationButtonContent isOperating={isOperating} label="Import" operatingLabel="Importing..." />
                 </button>
               </div>
             </div>
           )}
 
           <Dialog.Close asChild>
-            <DialogCloseButton disabled={isImporting} />
+            <DialogCloseButton disabled={isOperating} />
           </Dialog.Close>
         </Dialog.Content>
       </Dialog.Portal>

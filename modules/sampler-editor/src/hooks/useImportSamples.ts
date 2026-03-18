@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback, MutableRefObject } from 'react';
-import type { ImportOperationState, ImportProgress } from '@/types/import-operation';
+import type { OperationState, OperationProgress } from '@/types/import-operation';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { ResolvedDrumKitBundle, ChoppedSample } from '@audiocontrol/sampler-library/browser';
 import {
@@ -193,7 +193,7 @@ interface UseImportSamplesOptions {
   setPatch: (index: number, patch: SamplerPatch) => void;
 }
 
-interface UseImportSamplesReturn extends ImportOperationState {
+interface UseImportSamplesReturn extends OperationState {
   importSamplesDialog: ImportSamplesDialogState | null;
   openImportSamplesDialog: (
     name: string,
@@ -320,7 +320,7 @@ export function useImportSamples({
 }: UseImportSamplesOptions): UseImportSamplesReturn {
   const [importSamplesDialog, setImportSamplesDialog] = useState<ImportSamplesDialogState | null>(null);
   const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState<ImportProgress | undefined>(undefined);
+  const [importProgress, setImportProgress] = useState<OperationProgress | undefined>(undefined);
   const [importError, setImportError] = useState<string | null>(null);
 
   const openImportSamplesDialog = useCallback((
@@ -597,9 +597,9 @@ export function useImportSamples({
 
   return {
     importSamplesDialog,
-    isImporting,
-    importProgress,
-    importError,
+    isOperating: isImporting,
+    progress: importProgress,
+    error: importError,
     openImportSamplesDialog,
     closeImportSamplesDialog,
     handleImportSamples,

@@ -19,6 +19,7 @@ import {
   parseYaml,
   readToneFilesFromDirectory,
   writeToneFilesToDirectory,
+  writeSubToneYamlToDirectory,
   writePatchFileToDirectory,
   getToneFilename,
 } from '@/lib/library-io';
@@ -43,14 +44,18 @@ export interface LibraryPatchInfo {
 
 /**
  * Tone data to be included in a patch bundle export.
+ *
+ * Original tones (segmentLength > 0) carry their own wave data.
+ * Sub-tones (segmentLength === 0) share wave data with their source tone
+ * and are exported as YAML-only, referencing the source tone's WAV file.
  */
 export interface PatchBundleTone {
-  /** Original tone slot index (0-31) */
+  /** Original tone slot index */
   slot: number;
   /** The tone parameters */
   tone: S330Tone;
-  /** The wave data response from device */
-  waveData: S330WaveDataResponse;
+  /** Wave data — present for original tones, absent for sub-tones */
+  waveData?: S330WaveDataResponse;
 }
 
 /**
@@ -248,12 +253,28 @@ export async function exportPatchToDirectory(
 
   onProgress?.(10);
 
+  // Build a map from slot -> filename for resolving sub-tone WAV references
+  const slotFilenames = new Map<number, string>();
+  for (const { slot, tone } of tones) {
+    slotFilenames.set(slot, getToneFilename(slot, tone.name));
+  }
+
   const totalTones = tones.length;
   for (let i = 0; i < totalTones; i++) {
     const { slot, tone, waveData } = tones[i];
     const toneFilename = getToneFilename(slot, tone.name);
 
-    await writeToneFilesToDirectory(tonesDir, tone, waveData, toneFilename);
+    if (waveData) {
+      // Original tone: write YAML + WAV
+      await writeToneFilesToDirectory(tonesDir, tone, waveData, toneFilename);
+    } else {
+      // Sub-tone: write YAML only, referencing source tone's WAV
+      const sourceFilename = slotFilenames.get(tone.sourceTone);
+      const sourceWavFilename = sourceFilename
+        ? `${sourceFilename}.wav`
+        : `T${String(tone.sourceTone + 1).padStart(2, '0')}.wav`;
+      await writeSubToneYamlToDirectory(tonesDir, tone, toneFilename, sourceWavFilename);
+    }
 
     onProgress?.(10 + Math.floor(((i + 1) / totalTones) * 70));
   }

@@ -107,6 +107,28 @@ export async function writeToneFilesToDirectory(
   };
 }
 
+/**
+ * Write a sub-tone's YAML file only (no WAV).
+ * The YAML's wave.file references the source (original) tone's WAV file.
+ */
+export async function writeSubToneYamlToDirectory(
+  directory: FileSystemDirectoryHandle,
+  tone: S330Tone,
+  baseFilename: string,
+  sourceWavFilename: string,
+): Promise<void> {
+  const toneYaml = s330ToneConverter.toYaml(tone, sourceWavFilename);
+  const yamlContent = stringifyYaml(toneYaml, {
+    indent: 2,
+    lineWidth: 120,
+  });
+
+  const yamlHandle = await directory.getFileHandle(`${baseFilename}.yaml`, { create: true });
+  const yamlWritable = await yamlHandle.createWritable();
+  await yamlWritable.write(yamlContent);
+  await yamlWritable.close();
+}
+
 // =========================================================================
 // Patch File I/O
 // =========================================================================

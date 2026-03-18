@@ -1,17 +1,17 @@
 /**
- * Canonical interface for import operation state.
+ * Canonical interface for operation state (import/export).
  *
- * All import hooks MUST return these fields. All import dialog props
+ * All operation hooks MUST return these fields. All operation dialog props
  * MUST include these fields. The compiler enforces that every progress
  * update provides structured data — no freeform strings.
  */
 
 /**
- * Structured progress for a single import step.
+ * Structured progress for a single operation step.
  * Every field is required so that the UI can render a consistent
- * display across all import operations.
+ * display across all operations.
  */
-export interface ImportProgress {
+export interface OperationProgress {
   /** Current step number (1-based) */
   currentStep: number;
   /** Total number of steps in the operation */
@@ -29,30 +29,30 @@ export interface ImportProgress {
 }
 
 /**
- * State of an import operation, shared across all hooks and dialogs.
+ * State of an operation, shared across all hooks and dialogs.
  */
-export interface ImportOperationState {
-  /** Whether an import operation is in progress */
-  isImporting: boolean;
+export interface OperationState {
+  /** Whether an operation is in progress */
+  isOperating: boolean;
   /** Structured progress data, undefined when not started */
-  importProgress?: ImportProgress;
+  progress?: OperationProgress;
   /** Error message from the most recent operation */
-  importError?: string | null;
+  error?: string | null;
 }
 
 /**
- * Whether an import operation has completed (all steps done).
+ * Whether an operation has completed (all steps done).
  */
-export function isImportComplete(state: ImportOperationState): boolean {
-  if (state.isImporting || !state.importProgress) return false;
-  const { currentStep, totalSteps, bytesSent, bytesTotal } = state.importProgress;
+export function isOperationComplete(state: OperationState): boolean {
+  if (state.isOperating || !state.progress) return false;
+  const { currentStep, totalSteps, bytesSent, bytesTotal } = state.progress;
   return currentStep >= totalSteps && (bytesTotal === 0 || bytesSent >= bytesTotal);
 }
 
 /**
  * Compute overall percentage weighted by bytes, not step count.
  */
-export function getOverallPercent(progress: ImportProgress): number {
+export function getOverallPercent(progress: OperationProgress): number {
   const { bytesSent, bytesSentAllSteps, bytesTotalAllSteps } = progress;
   if (bytesTotalAllSteps <= 0) return 0;
   return Math.min(100, Math.floor(((bytesSentAllSteps + bytesSent) / bytesTotalAllSteps) * 100));
