@@ -15,6 +15,9 @@
     "visual:check": "pnpm visual:capture && pnpm visual:compare",
     "visual:baseline:update": "pnpm --filter @audiocontrol/s330-editor visual:baseline:update && pnpm --filter @audiocontrol/d110-editor visual:baseline:update && pnpm --filter @audiocontrol/jv1080-editor visual:baseline:update",
     "coverage:check": "pnpm -r --if-present test:coverage",
+    "duplication:check": "jscpd --config .jscpd.json",
+    "duplication:cross": "jscpd --config .jscpd.json --skipLocal",
+    "duplication:report": "jscpd --config .jscpd.json --reporters console,html && echo 'Report: reports/duplication/html/index.html'",
     "lint": "eslint . --ext .ts,.tsx",
     "typecheck": "pnpm -r typecheck",
     "format": "prettier --write \"**/*.{ts,tsx,js,json,md}\"",
@@ -63,6 +66,7 @@
     "easymidi": "^3.1.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
+    "jscpd": "^4.0.8",
     "prettier": "^3.2.4",
     "tsx": "^4.7.0",
     "typescript": "^5.3.3"
