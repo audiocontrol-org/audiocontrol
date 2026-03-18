@@ -2,6 +2,24 @@
 
 ## Library
 
+### Consistent Edit Operations
+There should be a well-understood and consistent set of edit
+operations on library objects. Edit operations should follow a
+well-defined pattern.
+
+At the moment, the edit operations that require first-class workflows
+that I know we should support are:
+* Edit (trim, normalize, etc. See "Editing Samples" below)
+* Loop
+* Chop for generic samples
+* Chop for drum kits
+* Multi-sample, multi-layerl instruments (multiple samples mapped to discrete or
+  cross-fading zones)
+* 
+
+Edit operations should not use modal dialogs. They are first-class
+workflows that deserve a well-thought-out UX and supporting UI.
+
 ### Looping Samples
 
 * Samples in the "common" area of the library should be loopable.
@@ -29,7 +47,10 @@ to edit those samples.
   
 ### Migration Between Devices
 There should be a structured way to migrate library objects between
-devices and between devices and common.
+devices and between devices and common. This will require some
+standards for library naming and object lifecycle as well as
+device-to-device object transformations (e.g., conversion of Roland
+Patch objects to Akai Program objects and vice-versa).
 
 ## Built-In Effects
 
