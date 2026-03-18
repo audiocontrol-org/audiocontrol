@@ -80,12 +80,20 @@ export function useTriggerRecorder({
   const onRetriggerRef = useRef(onRetrigger);
   onRetriggerRef.current = onRetrigger;
 
+  // When a retrigger fires, prevent the auto-complete in useTriggerInput
+  // so recording state survives between retrigger replays.
+  const preventAutoCompleteRef = useRef(false);
+
   const handleTrigger = useCallback((samplePosition: number, triggerId: TriggerId) => {
     if (seenTriggerIdsRef.current.has(triggerId)) {
-      // This trigger already owns a slice — replay it instead of creating a new boundary
+      // This trigger already owns a slice — replay it instead of creating a new boundary.
+      // Suppress auto-complete so recording survives the play→stop cycle.
+      preventAutoCompleteRef.current = true;
       onRetriggerRef.current(triggerId);
       return;
     }
+    // Position is -1 when no playback is active (between retrigger replays) — ignore new triggers
+    if (samplePosition < 0) return;
     seenTriggerIdsRef.current.add(triggerId);
     setTriggerEvents((prev) => [...prev, { samplePosition, triggerId }]);
   }, []);
@@ -96,6 +104,7 @@ export function useTriggerRecorder({
     onPlay,
     onStop,
     onTrigger: handleTrigger,
+    preventAutoComplete: preventAutoCompleteRef,
   });
 
   // Build slices and trigger→slice mapping from recorded events
@@ -141,6 +150,7 @@ export function useTriggerRecorder({
     triggerInput.reset();
     setTriggerEvents([]);
     seenTriggerIdsRef.current.clear();
+    preventAutoCompleteRef.current = false;
   }, [triggerInput]);
 
   return {

@@ -31,8 +31,12 @@ export interface UseTriggerInputParams {
   onPlay: () => void;
   /** Stop audio playback */
   onStop: () => void;
-  /** Called for each trigger event with the sample position and trigger identity */
+  /** Called for each trigger event with the sample position and trigger identity.
+   *  Position is -1 when no playback is active (e.g. between retrigger replays). */
   onTrigger: (samplePosition: number, triggerId: TriggerId) => void;
+  /** When true, playback ending won't auto-transition from recording to complete.
+   *  Used by the recorder to keep recording state alive between retrigger replays. */
+  preventAutoComplete?: MutableRefObject<boolean>;
 }
 
 export interface UseTriggerInputReturn {
@@ -60,6 +64,7 @@ export function useTriggerInput({
   onPlay,
   onStop,
   onTrigger,
+  preventAutoComplete,
 }: UseTriggerInputParams): UseTriggerInputReturn {
   const [state, setState] = useState<TriggerState>('idle');
   const [midiAvailable, setMidiAvailable] = useState(false);
@@ -85,14 +90,16 @@ export function useTriggerInput({
     );
   }, []);
 
-  // Handle playback ending → transition to complete
+  // Handle playback ending → transition to complete (unless suppressed by preventAutoComplete)
   const wasPlayingRef = useRef(false);
   useEffect(() => {
     if (wasPlayingRef.current && !isPlaying && stateRef.current === 'recording') {
-      setState('complete');
+      if (!preventAutoComplete?.current) {
+        setState('complete');
+      }
     }
     wasPlayingRef.current = isPlaying;
-  }, [isPlaying]);
+  }, [isPlaying, preventAutoComplete]);
 
   const fireTrigger = useCallback((id: TriggerId) => {
     if (stateRef.current === 'armed') {
@@ -104,9 +111,8 @@ export function useTriggerInput({
     }
     if (stateRef.current === 'recording') {
       const pos = playbackPositionRef.current;
-      if (pos !== null && pos > 0) {
-        onTriggerRef.current(pos, id);
-      }
+      // Pass -1 when no playback is active so retriggers still route through
+      onTriggerRef.current(pos ?? -1, id);
     }
   }, [playbackPositionRef]);
 
