@@ -23,6 +23,7 @@ logs/
 
 # Testing
 coverage/
+reports/
 .nyc_output/
 modules/*-editor/test-results/
 modules/*-editor/playwright-report/

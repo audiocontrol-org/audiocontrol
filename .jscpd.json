@@ -1,0 +1,20 @@
+{
+  "threshold": 6,
+  "minLines": 5,
+  "minTokens": 50,
+  "reporters": ["console", "json", "html"],
+  "output": "reports/duplication",
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/*.test.ts",
+    "**/*.spec.ts",
+    "**/test/**",
+    "pnpm-lock.yaml"
+  ],
+  "path": ["modules/"],
+  "format": ["typescript"],
+  "formatsExts": {
+    "typescript": ["ts", "tsx"]
+  }
+}
