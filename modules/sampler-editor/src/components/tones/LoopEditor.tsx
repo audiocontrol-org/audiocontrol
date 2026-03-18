@@ -12,7 +12,7 @@ import type { LoopCandidate } from '@audiocontrol/sampler-library';
 import { createSmoothedCopy } from '@audiocontrol/sampler-library/browser';
 import { cn } from '@/lib/utils';
 import type { LoopDetectionProgress } from '@/hooks/useLoopDetection';
-import { useAudioPreview } from '@/hooks/useAudioPreview';
+import { useAudioPreview } from '@audiocontrol/sample-chopper/ui';
 
 interface LoopEditorProps {
     /** Audio samples (16-bit signed integers) */
