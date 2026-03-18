@@ -50,6 +50,15 @@ export type {
     SSeriesWaveSampleRate,
     SSeriesWaveDataResponse,
     SSeriesWaveDataInput,
+
+    // Base structure types
+    SSeriesBaseSystemParams,
+    SSeriesBasePatchCommon,
+    SSeriesBaseTone,
+    SSeriesDeviceLimits,
+    SSeriesPatchParamEntry,
+    SSeriesPatchParamMap,
+    SSeriesToneOffsetMap,
 } from './s-series-types.js';
 
 // =============================================================================
@@ -131,6 +140,15 @@ export {
     isValidMidiChannel,
     isValid7BitValue,
     clamp7Bit,
+
+    // Shared structure parse/encode
+    parseSeriesSystemParams,
+    encodeSeriesSystemParams,
+    parseSeriesPatchCommon,
+    encodeSeriesPatchCommon,
+    createEmptySeriesPatchCommon,
+    parseSeriesTone,
+    encodeSeriesTone,
 } from './s-series-params.js';
 
 // =============================================================================

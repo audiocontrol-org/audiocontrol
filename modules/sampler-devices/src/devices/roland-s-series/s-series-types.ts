@@ -196,6 +196,136 @@ export interface SSeriesWaveParams {
 }
 
 // =============================================================================
+// Base Structure Types (shared between S-330 and S-550)
+// =============================================================================
+
+/**
+ * Base system/global parameters shared by all S-series devices
+ */
+export interface SSeriesBaseSystemParams {
+    masterTune: number;
+    masterLevel: number;
+    midiChannel: number;
+    deviceId: number;
+    exclusiveEnabled: boolean;
+    progChangeEnabled: boolean;
+    ctrlChangeEnabled: boolean;
+    benderEnabled: boolean;
+    modWheelEnabled: boolean;
+    aftertouchEnabled: boolean;
+    holdPedalEnabled: boolean;
+}
+
+/**
+ * Base patch common parameters shared by all S-series devices
+ */
+export interface SSeriesBasePatchCommon {
+    name: string;
+    benderRange: number;
+    aftertouchSens: number;
+    keyMode: SSeriesKeyMode;
+    velocityThreshold: number;
+    toneLayer1: number[];
+    /**
+     * CRITICAL: toneLayer2 is ONLY meaningful when keyMode uses velocity
+     * switching ('v-sw', 'x-fade', 'v-mix') AND the corresponding toneLayer1
+     * entry is >= 0.
+     */
+    toneLayer2: number[];
+    copySource: number;
+    octaveShift: number;
+    level: number;
+    detune: number;
+    velocityMixRatio: number;
+    aftertouchAssign: SSeriesAftertouchAssign;
+    keyAssign: SSeriesKeyAssign;
+    outputAssign: number;
+}
+
+/**
+ * Base tone parameters shared by all S-series devices
+ */
+export interface SSeriesBaseTone {
+    name: string;
+    outputAssign: number;
+    sourceTone: number;
+    origSubTone: number;
+    sampleRate: SSeriesSampleRate;
+    originalKey: number;
+    wave: SSeriesWaveParams;
+    loopMode: SSeriesLoopMode;
+    lfo: SSeriesLfoParams;
+    tvaLfoDepth: number;
+    transpose: number;
+    fineTune: number;
+    tvf: SSeriesTvfParams;
+    tva: SSeriesTvaParams;
+    benderEnabled: boolean;
+    aftertouchEnabled: boolean;
+    pitchFollow: boolean;
+    recThreshold: number;
+    recPreTrigger: number;
+    loopTune: number;
+    envZoom: number;
+    copySource: number;
+}
+
+/**
+ * Device-specific limits that vary between S-series models.
+ * Used to parameterize shared parse/encode functions.
+ */
+export interface SSeriesDeviceLimits {
+    sourcetoneMask: number;
+    waveBankMask: number;
+    copySourceMask: number;
+    maxPatchNumber: number;
+    maxToneNumber: number;
+}
+
+// =============================================================================
+// Offset Map Types (for shared parse/encode functions)
+// =============================================================================
+
+/**
+ * Shape of a patch parameter entry in the address map
+ */
+export interface SSeriesPatchParamEntry {
+    readonly byteOffset: number;
+    readonly size: number;
+}
+
+type PatchParamKey =
+    | 'name' | 'benderRange' | 'aftertouchSens' | 'keyMode' | 'velocityThreshold'
+    | 'toneLayer1' | 'toneLayer2' | 'copySource' | 'octaveShift' | 'level'
+    | 'detune' | 'velocityMixRatio' | 'aftertouchAssign' | 'keyAssign' | 'outputAssign';
+
+/**
+ * Shape of the PATCH_PARAMS constant from device address files
+ */
+export type SSeriesPatchParamMap = Readonly<Record<PatchParamKey, SSeriesPatchParamEntry>>;
+
+type ToneOffsetKey =
+    | 'NAME' | 'OUTPUT_ASSIGN' | 'SOURCE_TONE' | 'ORIG_SUB_TONE'
+    | 'SAMPLING_FREQ' | 'ORIG_KEY_NUMBER' | 'WAVE_BANK' | 'WAVE_SEGMENT_TOP'
+    | 'WAVE_SEGMENT_LENGTH' | 'START_POINT' | 'END_POINT' | 'LOOP_POINT'
+    | 'LOOP_LENGTH' | 'LOOP_MODE' | 'TVA_LFO_DEPTH' | 'LFO_RATE' | 'LFO_SYNC'
+    | 'LFO_DELAY' | 'LFO_MODE' | 'LFO_POLARITY' | 'LFO_OFFSET'
+    | 'TVA_ENV_SUSTAIN_POINT' | 'TVA_ENV_END_POINT' | 'TVA_ENV_LEVEL_1'
+    | 'TVA_KEY_RATE' | 'TVA_LEVEL' | 'TVA_VEL_RATE' | 'TVA_LEVEL_CURVE'
+    | 'TVF_CUTOFF' | 'TVF_RESONANCE' | 'TVF_KEY_FOLLOW' | 'TVF_LFO_DEPTH'
+    | 'TVF_EG_DEPTH' | 'TVF_EG_POLARITY' | 'TVF_LEVEL_CURVE'
+    | 'TVF_KEY_RATE_FOLLOW' | 'TVF_VEL_RATE_FOLLOW' | 'TVF_SWITCH'
+    | 'TVF_ENV_SUSTAIN_POINT' | 'TVF_ENV_END_POINT' | 'TVF_ENV_LEVEL_1'
+    | 'TRANSPOSE' | 'FINE_TUNE' | 'BENDER_SWITCH' | 'AFTERTOUCH_SWITCH'
+    | 'PITCH_FOLLOW' | 'REC_THRESHOLD' | 'REC_PRE_TRIGGER' | 'LOOP_TUNE'
+    | 'ENV_ZOOM' | 'COPY_SOURCE';
+
+/**
+ * Shape of the TONE_OFFSETS constant from device address files
+ */
+export type SSeriesToneOffsetMap = Readonly<Record<ToneOffsetKey, number>>;
+
+// =============================================================================
 // SysEx Communication Types
 // =============================================================================
 

@@ -30,6 +30,9 @@ import type {
     SSeriesClientOptions,
     SSeriesWaveDataResponse,
     SSeriesWaveDataInput,
+    SSeriesBaseSystemParams,
+    SSeriesBasePatchCommon,
+    SSeriesBaseTone,
 } from '../roland-s-series/index.js';
 
 // =============================================================================
@@ -68,19 +71,7 @@ export type {
 /**
  * S-330 system/global parameters
  */
-export interface S330SystemParams {
-    masterTune: number;      // 0-127 (64 = A440)
-    masterLevel: number;     // 0-127
-    midiChannel: number;     // 0-15
-    deviceId: number;        // 0-31
-    exclusiveEnabled: boolean;
-    progChangeEnabled: boolean;
-    ctrlChangeEnabled: boolean;
-    benderEnabled: boolean;
-    modWheelEnabled: boolean;
-    aftertouchEnabled: boolean;
-    holdPedalEnabled: boolean;
-}
+export interface S330SystemParams extends SSeriesBaseSystemParams {}
 
 // =============================================================================
 // Patch Types
@@ -94,32 +85,10 @@ export interface S330SystemParams {
  * - Performance parameters (bend, aftertouch, mode, etc.)
  * - Two tone mapping layers (109 keys each, MIDI notes 12-120 / C0-C9)
  * - Output and level settings
+ *
+ * S-330 specific: toneLayer values 0-31, patch numbers 0-63
  */
-export interface S330PatchCommon {
-    name: string;                           // 12 characters max
-    benderRange: number;                    // 0-12 semitones
-    aftertouchSens: number;                 // 0-127
-    keyMode: SSeriesKeyMode;
-    velocityThreshold: number;              // 0-127 - V-Sw threshold
-    toneLayer1: number[];                   // 109 entries, -1 to 31
-    /**
-     * 109 entries, 0-31
-     *
-     * CRITICAL: toneLayer2 is ONLY meaningful when keyMode uses velocity
-     * switching ('v-sw', 'x-fade', 'v-mix') AND the corresponding toneLayer1
-     * entry is >= 0. Otherwise these are S-330 defaults (all 0s) that should
-     * be ignored when analyzing patch dependencies.
-     */
-    toneLayer2: number[];
-    copySource: number;                     // 0-7
-    octaveShift: number;                    // -2 to +2
-    level: number;                          // 0-127
-    detune: number;                         // -64 to +63 - Unison detune
-    velocityMixRatio: number;               // 0-127 - V-Mix ratio
-    aftertouchAssign: SSeriesAftertouchAssign;
-    keyAssign: SSeriesKeyAssign;
-    outputAssign: number;                   // 0-8 (0-7=Out 1-8, 8=TONE)
-}
+export interface S330PatchCommon extends SSeriesBasePatchCommon {}
 
 /**
  * Complete S-330 patch
@@ -140,65 +109,9 @@ export interface S330Patch {
  *
  * Total size: 512 nibbles (256 bytes after de-nibblization)
  *
- * This matches the actual S-330 MIDI protocol, not a simplified model.
+ * S-330 specific: sourceTone 0-31, wave bank 0-1 (A/B), copySource 0-31
  */
-export interface S330Tone {
-    // === Basic Info ===
-    /** Tone name (8 characters max) */
-    name: string;
-    /** Output assignment (0-7) */
-    outputAssign: number;
-    /** Source tone number (0-31) */
-    sourceTone: number;
-    /** Original/Sub tone flag (0=ORG, 1=SUB) */
-    origSubTone: number;
-    /** Sampling frequency */
-    sampleRate: SSeriesSampleRate;
-    /** Original key number (MIDI note 11-108) */
-    originalKey: number;
-
-    // === Wave Parameters ===
-    wave: SSeriesWaveParams;
-    /** Loop mode */
-    loopMode: SSeriesLoopMode;
-
-    // === LFO Parameters ===
-    lfo: SSeriesLfoParams;
-    /** TVA LFO depth (separate from LFO params) */
-    tvaLfoDepth: number;
-
-    // === Pitch Parameters ===
-    /** Transpose in semitones (-64 to +63, 0=no change) */
-    transpose: number;
-    /** Fine tune (-64 to +63) */
-    fineTune: number;
-
-    // === TVF Parameters ===
-    tvf: SSeriesTvfParams;
-
-    // === TVA Parameters ===
-    tva: SSeriesTvaParams;
-
-    // === Switches ===
-    /** Pitch bender on/off */
-    benderEnabled: boolean;
-    /** Aftertouch on/off */
-    aftertouchEnabled: boolean;
-    /** Pitch follow for loop */
-    pitchFollow: boolean;
-
-    // === Recording Parameters ===
-    /** Recording threshold (0-127) */
-    recThreshold: number;
-    /** Recording pre-trigger (0-3: 0ms, 10ms, 50ms, 100ms) */
-    recPreTrigger: number;
-    /** Loop tune (-64 to +63) */
-    loopTune: number;
-    /** Envelope zoom for display (0-5) */
-    envZoom: number;
-    /** Copy source tone (0-31) */
-    copySource: number;
-}
+export interface S330Tone extends SSeriesBaseTone {}
 
 // =============================================================================
 // Device State Types
