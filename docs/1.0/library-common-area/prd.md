@@ -6,11 +6,20 @@
 
 ## Problem Statement
 
-Every sample in the audiocontrol library is device-bound. `ToneYamlSchema` requires `device: DeviceType` and enforces that the matching device extension block is present via a `.refine()` validator (`tone-schema.ts:131-145`). The `name` field is constrained to 12 characters (`tone-schema.ts:121`) -- a device-specific limit inherited from the S-330's display width.
+Every piece of audio in the audiocontrol library is device-bound. `ToneYamlSchema` requires `device: DeviceType` and enforces that the matching device extension block is present via a `.refine()` validator (`tone-schema.ts:131-145`). Importing a WAV requires choosing a target device upfront and providing device-specific parameters before storage.
 
-This means importing a WAV file requires the user to choose a target device upfront and provide device-specific parameters (e.g., `originalKey` for S-330) before the sample can be stored. Users who want to build a library of audio content -- trimming, normalizing, loop-editing, chopping -- must commit to a device context before they can even save their work.
+The common area partially exists: `library/common/samples/` stores chopped samples using `ChoppedSampleSchema`. But there is no general-purpose, device-agnostic abstraction for audio content. A user cannot import a WAV and store it in the library without binding it to a device. And the existing chopped sample format conflates two concerns: the audio data (a WAV file with intrinsic properties) and the musical structure (slices, key mappings, trigger behavior).
 
-The common area partially exists: `library/common/samples/` stores chopped samples produced by the sample chopper, using `ChoppedSampleSchema` with `format: 'chopped-sample'`. But there is no equivalent for individual samples -- a user cannot import a WAV, give it a name and basic wave parameters, and store it in the library without binding it to a device.
+## Design Principles
+
+The common area must be **vendor- and device-agnostic**. No Roland terminology ("tones", "patches"), no device-specific constraints. The vocabulary and abstractions should be drawn from general sampler concepts, informed by the [SFZ specification](https://sfzformat.com/headers/) hierarchy:
+
+| SFZ concept | Common area equivalent | What it represents |
+|---|---|---|
+| Sample file | **Sample** | A WAV file + intrinsic audio properties (sample rate, loop points, root key) |
+| Region / Group | **Program** | A collection of zones that map samples to key ranges, velocity layers, and triggers — describes how samples are played together as an instrument |
+
+This two-level abstraction cleanly separates "what the audio is" from "how it's played."
 
 ## User Stories
 
@@ -18,203 +27,246 @@ The common area partially exists: `library/common/samples/` stores chopped sampl
 
 - As a user, I want to import a WAV file to the common area without choosing a target device so that I can build a sample library independently of any specific sampler.
 - As a user, I want to browse and preview common-area samples alongside device-specific content in the library tree so that all my audio content is accessible from one place.
-- As a user, I want to organize common-area samples into folders so that I can manage a growing collection.
+- As a user, I want to organize common-area samples and programs into folders.
 
 ### Edit
 
 - As a user, I want to edit common-area samples with device-agnostic workflows (trim, normalize, loop, chop) so that I can prepare audio before deciding which device will use it.
 
+### Programs
+
+- As a user, I want to create a program that maps multiple samples across a keyboard range so that I can build instruments (drum kits, velocity layers, splits) without committing to a device.
+- As a user, I want the sample chopper to produce a program (not a separate format) so that chopped audio uses the same abstraction as everything else in the common area.
+
 ### Promote and Demote
 
-- As a user, I want to promote a common-area sample to a device tone so that when I'm ready to use it on a specific sampler, I can add the required device-specific parameters and get a valid device tone.
-- As a user, I want to demote a device tone to the common area so that I can strip device-specific parameters and keep the audio and base metadata for reuse across devices.
+- As a user, I want to promote a common-area sample to a device tone so that when I'm ready to use it on a specific sampler, I can add the required device-specific parameters.
+- As a user, I want to promote a common-area program to a device patch so that a drum kit or velocity-layer instrument can be loaded onto a device.
+- As a user, I want to demote a device tone to the common area so that I can strip device-specific parameters and keep the audio for reuse.
 
 ## Success Criteria
 
-- [ ] A `CommonSampleYamlSchema` is defined and exported from `sampler-library`
-- [ ] Common samples are stored in `library/common/tones/` and scanned by the library filesystem layer
-- [ ] Common samples appear in a dedicated section of `LibraryTreePanel`
-- [ ] Users can import a WAV file directly to the common area without selecting a device
-- [ ] Users can preview common-area samples (metadata + waveform display)
-- [ ] A `PromotionConverter` interface exists with S-330 and S-550 implementations
-- [ ] Users can promote a common sample to a device tone via the UI (providing device-specific defaults)
-- [ ] Users can demote a device tone to the common area via the UI
+- [ ] A `SampleYamlSchema` is defined — device-agnostic, replaces the audio-description half of `ChoppedSampleSchema`
+- [ ] A `ProgramYamlSchema` is defined — device-agnostic, replaces the musical-structure half of `ChoppedSampleSchema`
+- [ ] Both schemas are stored under `library/common/samples/` (flat YAML+WAV for samples, directory bundles for programs)
+- [ ] Common-area content appears in a dedicated section of `LibraryTreePanel`
+- [ ] Users can import a WAV file directly to the common area
+- [ ] Users can preview common-area samples (metadata + waveform)
+- [ ] `PromotionConverter` interface exists with S-330 and S-550 implementations
+- [ ] Users can promote a sample to a device tone and a program to a device patch
 - [ ] All new schemas and converters have unit tests with 80%+ coverage
+- [ ] Existing `ChoppedSampleSchema` consumers are migrated to the new schemas
 
 ## Scope
 
 ### In Scope
 
-- **Schema:** New `CommonSampleYaml` schema (`format: 'common-sample'`, no `device` field)
-- **Storage:** `library/common/tones/` directory layout, path utilities
-- **Scanner:** `detectCommonTone` item detector, `listCommonTonesTree()` scanner function
-- **Library tree:** New "Common Tones" section in `LibraryTreePanel`
-- **Preview:** Metadata display + waveform for common samples
-- **WAV import:** Import button, file picker, write YAML + WAV to common area
-- **Promotion/demotion:** `PromotionConverter` interface with S-330 and S-550 implementations
-- **Promotion UI:** "Promote to [device]" button on common sample preview, parameter form for required device-specific fields; "Demote to Common Area" button on device tone preview
+- **Sample schema** (`SampleYamlSchema`): device-agnostic audio metadata
+- **Program schema** (`ProgramYamlSchema`): device-agnostic instrument mapping (zones, key ranges, velocity layers, playback config)
+- **Storage layout**: unified under `library/common/samples/`
+- **Scanner integration**: detectors for both schemas, tree listing functions
+- **Library tree UI**: new "Samples" section in `LibraryTreePanel` showing both samples and programs
+- **Preview**: metadata + waveform for samples, zone map for programs
+- **WAV import**: import to common area without device selection
+- **Promotion/demotion**: sample → device tone, program → device patch, and reverse
+- **Migration path**: update `ChoppedSampleSchema` consumers to use new schemas
 
 ### Out of Scope
 
-- **Common-area patches** -- tones only for this feature. Patches require resolving tone references across the common/device boundary, which is a separate design problem.
-- **Editing workflows for common samples** -- the `edit-workflow-architecture` feature defines the workflow pattern; specific workflows (trim, normalize, loop) that operate on common samples are Phase 2 features.
-- **Batch operations** -- batch import, batch promote/demote are future enhancements.
-- **Cloud sync** -- all storage is local via FSAA.
-- **Promotion converters for devices beyond S-330/S-550** -- JV-1080 and D-110 converters will be added when those editor tracks begin.
+- **Full SFZ implementation** — we borrow the hierarchical concepts (sample → region → group) but do not implement the SFZ file format or its opcode system
+- **Editing workflows** — the `edit-workflow-architecture` feature defines workflow patterns; specific editors for common-area content are Phase 2
+- **Batch operations** — batch import, batch promote/demote are future enhancements
+- **Cloud sync** — all storage is local via FSAA
+- **Promotion converters beyond S-330/S-550** — added when those editor tracks begin
 
 ## Architecture
 
-### Key Design Decision: New Schema, Not Modified `ToneYaml`
+### Key Design Decision: Two New Schemas, Not Modified Existing Ones
 
-Three alternatives were considered for representing device-agnostic samples:
+**Why not add `'common'` to `DeviceType`?** `ToneYamlSchema` has a `.refine()` (`tone-schema.ts:131-145`) that enforces the device extension block matches the device discriminator. Adding `'common'` would require exempting it from validation and polluting every consumer that switches on `DeviceType`.
 
-1. **Add `'common'` to `DeviceType`** -- rejected. `ToneYamlSchema` has a `.refine()` (`tone-schema.ts:131-145`) that enforces the device extension block matches the device discriminator. Adding `'common'` would require exempting it from validation and polluting every downstream consumer that switches on `DeviceType`.
+**Why not extend `ChoppedSampleSchema`?** It conflates audio properties (WAV file, sample rate) with musical structure (slices, triggers, playback). Separating these into sample and program gives us clean, composable abstractions — a program *references* samples rather than embedding audio metadata.
 
-2. **Make `device` optional in `ToneYamlSchema`** -- rejected. Breaks existing validation and every consumer that expects `device` to exist. The 12-character name limit (`tone-schema.ts:121`) is also a device constraint that should not apply to common samples.
+**Why two schemas?** The SFZ hierarchy demonstrates that "what the audio is" (sample) and "how it's played" (region/group/instrument) are fundamentally different concerns. Keeping them separate means:
+- A sample can exist without being part of any program
+- A program can reference multiple samples
+- Editing audio (trim, normalize, loop) operates on samples; arranging instruments (key mapping, velocity layers) operates on programs
 
-3. **New `CommonSampleYaml` schema** -- chosen. Follows the exact pattern established by `ChoppedSampleSchema` (`chopped-sample-schema.ts`): a standalone schema with its own `format` discriminator, no `device` field, and a relaxed `name` constraint (`max(128)` instead of `max(12)`). Device-specific constraints are applied at promotion time, not at storage time.
+### `SampleYamlSchema`
 
-### `CommonSampleYamlSchema`
+A sample is a WAV file + intrinsic audio properties. One YAML + one WAV, stored as a pair in `library/common/samples/`.
 
 ```typescript
-const CommonSampleYamlSchema = z.object({
-  format: z.literal('common-sample'),
+const SampleYamlSchema = z.object({
+  format: z.literal('sample'),
   version: z.literal(1),
   name: z.string().min(1).max(128),
-  wave: BaseWaveParamsSchema,
+  file: z.string().min(1),                    // WAV filename
+  sampleRate: z.number().int().positive(),
+  loopMode: LoopModeSchema.optional(),         // oneShot if absent
+  loopStart: z.number().int().min(0).optional(),
+  loopEnd: z.number().int().min(0).optional(),
+  rootKey: MidiNoteSchema.optional(),          // original pitch (SFZ: pitch_keycenter)
   tags: z.array(z.string()).optional(),
   description: z.string().optional(),
-  sourceDevice: DeviceTypeSchema.optional(),  // breadcrumb for demoted tones
-  createdAt: z.string().optional(),           // ISO 8601
-  modifiedAt: z.string().optional(),          // ISO 8601
+  sourceDevice: DeviceTypeSchema.optional(),   // breadcrumb for demoted tones
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional(),
 });
 ```
 
-Key fields:
-- `format: 'common-sample'` -- discriminator, parallel to `'sampler-tone'` and `'chopped-sample'`
-- `wave: BaseWaveParamsSchema` -- reuses the existing base wave params (`common-schema.ts:22-31`): `file`, `sampleRate`, `loopMode`, optional `loopPoint`
-- `sourceDevice` -- optional breadcrumb set when a tone is demoted, so the user knows where it came from
-- `name` max is 128, not 12 -- the 12-character limit is a device constraint (S-330 display width) applied during promotion
+Key differences from `BaseWaveParamsSchema` (`common-schema.ts:22-31`):
+- `rootKey` — the original pitch of the sample (SFZ `pitch_keycenter`). Not present in `BaseWaveParams` because device tones store this in their device extension (`originalKey` in S-330).
+- `loopStart`/`loopEnd` — replaces the single `loopPoint` from `BaseWaveParams` for more precise loop region definition.
+- No `device` field — this is the whole point.
+
+### `ProgramYamlSchema`
+
+A program is an instrument definition: a collection of zones that map samples to performance parameters. Stored as a directory bundle (`program.yaml` + referenced sample WAVs or sample references).
+
+```typescript
+const ZoneSchema = z.object({
+  sample: z.string().min(1),                   // sample name or path reference
+  keyRange: KeyRangeSchema.optional(),         // [low, high] MIDI notes
+  velocityRange: VelocityRangeSchema.optional(), // [low, high]
+  rootKey: MidiNoteSchema.optional(),          // override sample's rootKey for this zone
+  transpose: z.number().int().min(-64).max(63).optional(),
+  fineTune: z.number().int().min(-64).max(63).optional(),
+  muteGroup: z.number().int().min(0).optional(), // 0 = none, same non-zero group chokes
+  label: z.string().optional(),                // human-readable name ("kick", "snare")
+});
+
+const ProgramYamlSchema = z.object({
+  format: z.literal('program'),
+  version: z.literal(1),
+  name: z.string().min(1).max(128),
+  zones: z.array(ZoneSchema).min(1),
+  polyphony: PolyphonyModeSchema.optional(),   // mono | poly
+  playbackMode: PlaybackModeSchema.optional(), // one-shot | gate
+  description: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  createdAt: z.string().optional(),
+  modifiedAt: z.string().optional(),
+});
+```
+
+A zone maps directly to the SFZ `<region>` concept: one sample + the conditions under which it plays. The program itself is analogous to SFZ `<group>` — shared playback settings across all zones.
 
 ### Storage Layout
 
 ```
 library/
   common/
-    samples/          # existing -- chopped samples
-    tones/            # new -- common-area tones
-      my-kick.yaml
+    samples/
+      my-kick.yaml           # SampleYaml — individual sample
       my-kick.wav
-      drums/
+      drums/                  # organizational folder
         snare-01.yaml
         snare-01.wav
+      my-drum-kit/            # ProgramYaml — program bundle
+        program.yaml
+        kick.wav
+        snare.wav
+        hihat.wav
+  s330/
+    tones/                    # device-bound (ToneYaml)
+    patches/                  # device-bound (PatchYaml)
+    ...
 ```
 
-Each common tone is a YAML + WAV pair in a flat directory (same pattern as device tones in `library/{device}/tones/`). Subdirectories are organizational folders.
+Samples are YAML+WAV pairs (like device tones). Programs are directory bundles containing `program.yaml` + audio files (like the existing chopped sample pattern with `manifest.yaml`).
 
-### Scanner Integration
+The scanner distinguishes them: a `.yaml` file with `format: 'sample'` is a sample; a directory containing `program.yaml` with `format: 'program'` is a program.
 
-A new `detectCommonTone` item detector follows the existing `ItemDetector` pattern (`library-fs.ts:221-225`). Unlike `detectTone` (which only checks for `.yaml` extension), `detectCommonTone` must parse the YAML to verify `format: 'common-sample'` -- this is more expensive but necessary because `library/common/tones/` could contain other YAML files.
+### Migration from `ChoppedSampleSchema`
 
-```typescript
-const detectCommonTone: ItemDetector = async (entry, parentDir, path) => {
-  if (entry.kind !== 'file' || !entry.name.endsWith('.yaml')) return null;
-  // Parse YAML, validate against CommonSampleYamlSchema
-  // Return LibraryTreeNode with type: 'common-tone' or null
-};
-```
+The existing `ChoppedSampleSchema` maps cleanly to the new model:
 
-`LibraryTreeNode.type` union (`library-fs.ts:69`) gains `'common-tone'`.
+| ChoppedSample field | New location |
+|---|---|
+| `source`, `sampleRate` | `SampleYaml.file`, `SampleYaml.sampleRate` |
+| `slices` | `ProgramYaml.zones` (each slice becomes a zone with a key range derived from `baseNote + index`) |
+| `triggers` | `ProgramYaml.zones[].keyRange` (trigger mappings become zone key assignments) |
+| `playback.polyphony` | `ProgramYaml.polyphony` |
+| `playback.playbackMode` | `ProgramYaml.playbackMode` |
+| `playback.muteGroups` | `ProgramYaml.zones[].muteGroup` (per-zone, not per-index array) |
+| `drumKit.baseNote` | First zone's `keyRange[0]`, or computed from `rootKey + transpose` |
 
-A new `listCommonTonesTree()` function scans `library/common/tones/` using `scanLibraryDirectory` with `detectCommonTone`.
+The sample chopper's output changes from producing a `ChoppedSample` to producing a `Program` + one or more `Sample` files.
 
 ### Promotion and Demotion
 
 ```typescript
-interface PromotionConverter<TDefaults> {
-  promote(sample: CommonSampleYaml, defaults: TDefaults): ToneYaml;
-  demote(tone: ToneYaml): CommonSampleYaml;
+interface SamplePromotionConverter<TDefaults> {
+  promote(sample: SampleYaml, defaults: TDefaults): ToneYaml;
+  demote(tone: ToneYaml): SampleYaml;
+}
+
+interface ProgramPromotionConverter<TDefaults> {
+  promote(program: ProgramYaml, defaults: TDefaults): PatchYaml;
+  demote(patch: PatchYaml): ProgramYaml;
 }
 ```
 
-**S-330 promotion** requires `originalKey` (MIDI note 11-108) -- the S-330 tone extension has no sensible default for this field (`tone-schema.ts:82`). All other S-330 extension fields have defaults. The promotion UI must present a form for `originalKey` (and optionally other fields the user wants to customize).
+**Sample → Tone** (S-330): requires `originalKey` (MIDI note 11-108). Maps `SampleYaml.rootKey` as a default if present. Name truncated to 12 chars at promotion time.
 
-**S-550 promotion** uses the same extension structure (`tone-schema.ts:106`) with the same `originalKey` requirement.
+**Program → Patch** (S-330): each zone becomes a key group. Requires zone-level `originalKey` assignments. The promotion UI presents a form for device-specific parameters that don't have sensible defaults.
 
-**Demotion** strips the device extension block, sets `sourceDevice` to the original device type, and relaxes validation (the 12-character name is preserved as-is since it's within the 128-character common limit).
+**Demotion** strips device extensions, sets `sourceDevice` breadcrumb, relaxes name constraints.
 
-Promotion and demotion **copy** audio files rather than referencing them. This keeps common and device libraries independent -- deleting a device tone doesn't break the common area, and vice versa.
+Copy semantics on promote/demote — common and device libraries stay independent.
 
 ### UI Integration
 
-**LibraryTreePanel** (`LibraryTreePanel.tsx`, currently 611 lines) gains a new "Common Tones" `TreeSection` between the device-specific sections and the existing "Samples" (chopped samples) section. This follows the same pattern as the existing tree sections.
+**LibraryTreePanel** gets a new "Samples" section (replacing the current "Samples" section that only shows chopped samples). This section shows both individual samples and programs from `library/common/samples/`.
 
-**Preview panel** for common samples shows: name, description, tags, wave parameters (sample rate, loop mode, loop point), waveform visualization, and a "Promote to [device]" dropdown button.
-
-**Device tone preview** gains a "Demote to Common Area" button that strips device params and copies to `library/common/tones/`.
+**Preview panel**: samples show metadata + waveform; programs show zone map (key range visualization) + zone list.
 
 ## Dependencies
 
-- **`edit-workflow-architecture`** (complete) -- defines the workflow navigation pattern and environment capability interfaces used by the import and promotion UI flows.
+- **`edit-workflow-architecture`** (complete) — environment capability interfaces for file I/O
 
 ### Existing Assets
 
-- **`ChoppedSampleSchema`** (`chopped-sample-schema.ts`) -- reference implementation for a device-agnostic library schema with its own format discriminator
-- **`BaseWaveParamsSchema`** (`common-schema.ts:22-31`) -- reused directly in the new schema
-- **`library-fs.ts`** -- generic scanner infrastructure (`scanLibraryDirectory`, `ItemDetector` pattern) that the new detector plugs into
-- **`LibraryTreePanel.tsx`** -- existing tree UI with `TreeSection` component pattern for the new section
-- **`listChoppedSamplesTree()`** (`library-fs.ts:491-497`) -- reference for scanning `library/common/` subdirectories
+- **`ChoppedSampleSchema`** (`chopped-sample-schema.ts`) — existing device-agnostic format being superseded
+- **`BaseWaveParamsSchema`** (`common-schema.ts:22-31`) — informs `SampleYaml` field design
+- **`library-fs.ts`** — generic scanner infrastructure (`scanLibraryDirectory`, `ItemDetector`)
+- **`LibraryTreePanel.tsx`** — existing "Samples" section for chopped samples (will be replaced)
+- **`KeyRangeSchema`, `VelocityRangeSchema`** (`common-schema.ts:95-112`) — reused in `ZoneSchema`
+- **`MidiNoteSchema`** (`common-schema.ts:87-90`) — reused for `rootKey`
 
 ## Open Questions
 
-- [ ] **Multiple WAV files per common sample?** Propose: no, single WAV per common sample (matching the device tone pattern). Multi-sample instruments are a different abstraction.
-- [ ] **Copy or reference on promotion?** Propose: copy. Keeps common and device libraries independent. Reference would save disk space but creates fragile cross-references.
-- [ ] **Name length for common samples?** Propose: 128 characters. Device-specific limits (e.g., 12 for S-330) are enforced at promotion time. If the name is too long, the promotion UI prompts the user to shorten it.
-- [ ] **Should `detectCommonTone` validate the full schema or just check the `format` field?** Full validation is safer but slower. Checking only `format: 'common-sample'` is fast but could surface invalid files in the tree. Propose: full `safeParse` (matching the `detectChoppedSample` pattern at `library-fs.ts:374`).
-- [ ] **Tags taxonomy?** Propose: freeform strings for now. A controlled vocabulary can be added later without schema changes since tags are already `z.array(z.string())`.
+- [ ] **Should programs reference samples by name or embed them?** Propose: by filename within the program bundle directory. This keeps programs self-contained (portable as a directory) while avoiding data duplication within the bundle.
+- [ ] **Should samples support multiple WAV files?** Propose: no, one WAV per sample. Multi-file instruments are programs.
+- [ ] **How does `loopEnd` interact with existing `loopPoint`?** `BaseWaveParams` has `loopPoint` (a single offset). The new `SampleYaml` has `loopStart`/`loopEnd` for a full loop region. On promotion, these map to device-specific loop parameters. On demotion, device loop params map back.
+- [ ] **Migration timeline for `ChoppedSampleSchema`?** Propose: keep both schemas working during the transition. The scanner detects both `format: 'chopped-sample'` and `format: 'program'`. Migration converters translate between them. Old format deprecated but readable.
+- [ ] **Tags taxonomy?** Propose: freeform strings. Controlled vocabulary later if needed.
 
 ## Appendix
 
-### Existing Library Layout
+### SFZ Concept Mapping
 
-```
-library/
-  s330/
-    tones/              # device-bound tones (ToneYaml with device: 's330')
-    patches/            # device-bound patches
-    drum-kits/          # drum kit bundles
-    sets/               # saved device state snapshots
-  s550/
-    tones/
-    patches/
-    drum-kits/
-    sets/
-  common/
-    samples/            # chopped samples (ChoppedSampleSchema) -- exists today
-    tones/              # common-area tones (CommonSampleYaml) -- NEW
-```
+| SFZ | audiocontrol common area | audiocontrol device-bound |
+|---|---|---|
+| Sample file | `SampleYaml` | WAV in device tone directory |
+| `<region>` | `Zone` (within `ProgramYaml`) | Key group (within device patch) |
+| `<group>` | `ProgramYaml` | Device patch |
+| `<global>` | Not needed (single-program scope) | Not needed |
+| `pitch_keycenter` | `SampleYaml.rootKey` or `Zone.rootKey` | `S330ToneExtension.originalKey` |
+| `lokey`/`hikey` | `Zone.keyRange` | Key group key range |
+| `lovel`/`hivel` | `Zone.velocityRange` | Key group velocity range |
+| `group`/`off_by` | `Zone.muteGroup` | Patch-level mute groups |
 
 ### Schema Comparison
 
-| Field | `ToneYaml` | `CommonSampleYaml` | `ChoppedSample` |
-|-------|-----------|-------------------|-----------------|
-| `format` | `'sampler-tone'` | `'common-sample'` | `'chopped-sample'` |
-| `device` | required (`DeviceType`) | absent | absent |
-| `version` | positive int | `1` (literal) | `1` (literal) |
-| `name` max | 12 | 128 | 128 |
-| `wave` | `BaseWaveParams` | `BaseWaveParams` | n/a (has `source` + `sampleRate`) |
-| Device extension | required (validated by `.refine()`) | absent | absent |
-| `tags` | absent | optional | absent |
-| `sourceDevice` | absent | optional | absent |
-| `description` | absent | optional | optional |
-| Timestamps | absent | optional | optional |
-
-### Promotion Parameter Requirements by Device
-
-| Device | Required on Promotion | Has Sensible Default |
-|--------|----------------------|---------------------|
-| S-330 | `originalKey` | No -- must be specified by user |
-| S-330 | `outputAssign` | Yes -- defaults to 0 |
-| S-330 | `transpose`, `fineTune` | Yes -- default to 0 |
-| S-550 | `originalKey` | No -- must be specified by user |
-| S-550 | `outputAssign` | Yes -- defaults to 0 |
+| Field | `SampleYaml` | `ProgramYaml` | `ToneYaml` (device) | `ChoppedSample` (deprecated) |
+|---|---|---|---|---|
+| `format` | `'sample'` | `'program'` | `'sampler-tone'` | `'chopped-sample'` |
+| `device` | absent | absent | required | absent |
+| `name` max | 128 | 128 | 12 | 128 |
+| Audio ref | `file` (WAV) | zones reference samples | `wave.file` | `source` |
+| Zones/regions | n/a | `zones[]` | n/a | `slices[]` |
+| Key mapping | n/a | `zone.keyRange` | via device patch | via `triggers` |
+| Loop | `loopMode`, `loopStart`, `loopEnd` | n/a (per-sample) | `wave.loopMode`, `wave.loopPoint` | n/a |
+| Root key | `rootKey` | `zone.rootKey` (override) | `s330.originalKey` | `drumKit.baseNote` |
