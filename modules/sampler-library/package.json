@@ -15,6 +15,11 @@
       "types": "./dist/browser.d.ts",
       "import": "./dist/browser.js",
       "require": "./dist/browser.cjs"
+    },
+    "./s3": {
+      "types": "./dist/s3-storage.d.ts",
+      "import": "./dist/s3-storage.js",
+      "require": "./dist/s3-storage.cjs"
     }
   },
   "files": [
@@ -54,6 +59,7 @@
   "dependencies": {
     "@audiocontrol/sample-chopper": "workspace:*",
     "@audiocontrol/sampler-devices": "workspace:*",
+    "aws4fetch": "^1.0.20",
     "fft.js": "^4.0.4",
     "yaml": "^2.7.0",
     "zod": "^3.24.0"
