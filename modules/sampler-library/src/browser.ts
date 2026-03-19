@@ -181,6 +181,28 @@ export type {
   DrumKitBundle,
 } from './schemas/index.js';
 
+// Sample schema exports (common area, browser-compatible)
+export {
+  SampleYamlSchema,
+} from './schemas/index.js';
+
+export type {
+  SampleYaml,
+  SampleInfo,
+} from './schemas/index.js';
+
+// Program schema exports (common area, browser-compatible)
+export {
+  ZoneSchema,
+  ProgramYamlSchema,
+} from './schemas/index.js';
+
+export type {
+  Zone,
+  ProgramYaml,
+  ProgramInfo,
+} from './schemas/index.js';
+
 // Chopped sample schema exports (browser-compatible)
 export {
   TriggerMappingSchema,
@@ -361,6 +383,8 @@ export {
   listPatchesTree,
   scanChoppedSamplesDirectory,
   listChoppedSamplesTree,
+  scanCommonSamplesDirectory,
+  listCommonSamplesTree,
   listSets,
   listSetTonesTree,
 } from './library-fs.js';
