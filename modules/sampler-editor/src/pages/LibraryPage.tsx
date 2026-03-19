@@ -17,6 +17,7 @@ import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
 import { LibraryTreePanel } from '@/components/library/LibraryTreePanel';
 import { ItemPreviewPanel } from '@/components/library/ItemPreviewPanel';
 import { SampleBundlePreviewPanel } from '@/components/library/SampleBundlePreviewPanel';
+import { CommonSamplePreviewPanel } from '@/components/library/CommonSamplePreviewPanel';
 import { SaveSetDialog } from '@/components/library/SaveSetDialog';
 import { LoadSetDialog } from '@/components/library/LoadSetDialog';
 import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneDialog';
@@ -37,6 +38,7 @@ import {
   hasFileSystemAccess, pickLibraryDirectory, getCachedLibraryDirectory, setCachedLibraryDirectory,
   listSets, listDrumKits, listIndividualTones, listIndividualPatches,
   listIndividualTonesTree, listIndividualPatchesTree, listDrumKitsTree, listChoppedSamplesTree,
+  listCommonSamplesTree,
   loadDrumKitBundle, loadDrumKitSource, updateDrumKitSlices, loadChoppedSampleManifest,
   type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo, type LibraryTreeNode,
 } from '@/lib/library-service';
@@ -52,7 +54,7 @@ import { cn } from '@/lib/utils';
 /** Selection state for items in either panel */
 export interface ItemSelection {
   source: 'device' | 'library';
-  type: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch' | 'choppedSample';
+  type: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch' | 'choppedSample' | 'sample' | 'program';
   index?: number;
   name?: string;
   setName?: string;
@@ -61,12 +63,12 @@ export interface ItemSelection {
 
 /** Load all library data from a directory handle */
 async function loadAllLibraryData(handle: FileSystemDirectoryHandle) {
-  const [setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, choppedSamplesTreeData] = await Promise.all([
+  const [setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, choppedSamplesTreeData, commonSamplesTreeData] = await Promise.all([
     listSets(handle), listDrumKits(handle), listIndividualTones(handle), listIndividualPatches(handle),
     listIndividualTonesTree(handle), listIndividualPatchesTree(handle), listDrumKitsTree(handle),
-    listChoppedSamplesTree(handle),
+    listChoppedSamplesTree(handle), listCommonSamplesTree(handle),
   ]);
-  return { setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, choppedSamplesTreeData };
+  return { setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, choppedSamplesTreeData, commonSamplesTreeData };
 }
 
 export function LibraryPage() {
@@ -96,6 +98,7 @@ export function LibraryPage() {
   const [patchesTree, setPatchesTree] = useState<LibraryTreeNode[]>([]);
   const [drumKitsTree, setDrumKitsTree] = useState<LibraryTreeNode[]>([]);
   const [choppedSamplesTree, setChoppedSamplesTree] = useState<LibraryTreeNode[]>([]);
+  const [commonSamplesTree, setCommonSamplesTree] = useState<LibraryTreeNode[]>([]);
   const [sliceEditDialog, setSliceEditDialog] = useState<{
     open: boolean; kitName: string; path?: string[];
     samples: Int16Array | null; sampleRate: number; slices: InitialSliceDefinition[];
@@ -124,6 +127,7 @@ export function LibraryPage() {
     setIndividualPatches(data.patchList); setTonesTree(data.tonesTreeData);
     setPatchesTree(data.patchesTreeData); setDrumKitsTree(data.drumKitsTreeData);
     setChoppedSamplesTree(data.choppedSamplesTreeData);
+    setCommonSamplesTree(data.commonSamplesTreeData);
   }, [setSets]);
 
   const handleRefreshLibrary = useCallback(async () => {
@@ -268,6 +272,18 @@ export function LibraryPage() {
     setSelectedChoppedSampleManifest(null);
     setSelectedChoppedSampleNode(null);
   }, []);
+  const handleSelectSample = useCallback((sampleName: string, path?: string[]) => {
+    setSelection({ source: 'library', type: 'sample', name: sampleName, path });
+    setSelectedDrumKitBundle(null);
+    setSelectedChoppedSampleManifest(null);
+    setSelectedChoppedSampleNode(null);
+  }, []);
+  const handleSelectProgram = useCallback((programName: string, path?: string[]) => {
+    setSelection({ source: 'library', type: 'program', name: programName, path });
+    setSelectedDrumKitBundle(null);
+    setSelectedChoppedSampleManifest(null);
+    setSelectedChoppedSampleNode(null);
+  }, []);
 
   // Import handlers
   const handleOpenSamplesImport = useCallback(() => {
@@ -368,6 +384,7 @@ export function LibraryPage() {
             individualTones={individualTones} individualPatches={individualPatches}
             tonesTree={tonesTree} patchesTree={patchesTree} drumKitsTree={drumKitsTree}
             choppedSamplesTree={choppedSamplesTree}
+            commonSamplesTree={commonSamplesTree}
             expandedPaths={expandedPaths}
             selectedName={selection?.source === 'library' ? selection.name : undefined}
             selectedType={selection?.source === 'library' ? selection.type : undefined}
@@ -379,6 +396,8 @@ export function LibraryPage() {
             onSelectDrumKit={handleSelectDrumKit} onSelectIndividualTone={handleSelectIndividualTone}
             onSelectIndividualPatch={handleSelectIndividualPatch}
             onSelectChoppedSample={handleSelectChoppedSample}
+            onSelectSample={handleSelectSample}
+            onSelectProgram={handleSelectProgram}
             onRefresh={handleRefreshLibrary}
             isLoading={isLoading || exportOps.isExporting}
             onDropDeviceTone={exportOps.handleDropDeviceTone} onDropDevicePatch={exportOps.handleDropDevicePatch}
@@ -401,6 +420,12 @@ export function LibraryPage() {
               preloadedManifest={selection.type === 'choppedSample' ? selectedChoppedSampleManifest : undefined}
               onImport={handleOpenSamplesImport}
               onEditKit={selection.type === 'drumKit' ? handleEditKit : undefined}
+            />
+          ) : selection?.type === 'sample' || selection?.type === 'program' ? (
+            <CommonSamplePreviewPanel
+              selection={selection ? { type: selection.type as 'sample' | 'program', name: selection.name!, path: selection.path } : null}
+              libraryHandle={libraryHandle}
+              onPromoteToDevice={() => handleRefreshLibrary()}
             />
           ) : (
             <ItemPreviewPanel

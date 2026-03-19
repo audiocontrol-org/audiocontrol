@@ -101,6 +101,13 @@ export type {
   SetYaml,
   SetInfo,
   SetData,
+  // Sample types (common area)
+  SampleYaml,
+  SampleInfo,
+  // Program types (common area)
+  Zone,
+  ProgramYaml,
+  ProgramInfo,
   // Chopped sample types
   TriggerMapping,
   PolyphonyMode,
@@ -111,6 +118,17 @@ export type {
   DrumKitChoppedSample,
   ChoppedSample,
   ChoppedSampleInfo,
+} from './schemas/index.js';
+
+// Sample schema exports (common area)
+export {
+  SampleYamlSchema,
+} from './schemas/index.js';
+
+// Program schema exports (common area)
+export {
+  ZoneSchema,
+  ProgramYamlSchema,
 } from './schemas/index.js';
 
 // Chopped sample schema exports
@@ -170,6 +188,16 @@ export type {
   S550DeviceStateToSetResult,
   S550SetToDeviceInput,
   S550SetToDeviceResult,
+  // Promotion converter types
+  SamplePromotionConverter,
+  S330PromotionDefaults,
+  S550PromotionDefaults,
+} from './converters/index.js';
+
+// Promotion converter exports
+export {
+  s330SamplePromotion,
+  s550SamplePromotion,
 } from './converters/index.js';
 
 // Chopped sample converter exports

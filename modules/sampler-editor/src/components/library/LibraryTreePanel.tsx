@@ -44,15 +44,18 @@ interface LibraryTreePanelProps {
   drumKitsTree?: LibraryTreeNode[];
   /** Hierarchical tree for chopped samples from common/samples/ */
   choppedSamplesTree?: LibraryTreeNode[];
+  /** Hierarchical tree for common-area content (samples, programs, legacy chopped) */
+  commonSamplesTree?: LibraryTreeNode[];
   /** Expanded directory paths per category */
   expandedPaths?: {
     tones: Set<string>;
     patches: Set<string>;
     drumKits: Set<string>;
     choppedSamples: Set<string>;
+    commonSamples: Set<string>;
   };
   selectedName?: string;
-  selectedType?: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch' | 'choppedSample';
+  selectedType?: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch' | 'choppedSample' | 'sample' | 'program';
   selectedSetName?: string;
   /** Selected path for hierarchical items */
   selectedPath?: string[];
@@ -63,6 +66,8 @@ interface LibraryTreePanelProps {
   onSelectIndividualTone: (name: string, path?: string[]) => void;
   onSelectIndividualPatch: (name: string, path?: string[]) => void;
   onSelectChoppedSample?: (name: string, path?: string[]) => void;
+  onSelectSample?: (name: string, path?: string[]) => void;
+  onSelectProgram?: (name: string, path?: string[]) => void;
   onRefresh: () => void;
   isLoading: boolean;
   /** Callback when a device tone is dropped to export to library */
@@ -78,7 +83,7 @@ interface LibraryTreePanelProps {
   /** Callback to delete a drum kit */
   onDeleteDrumKit?: (directoryName: string, path?: string[]) => void;
   /** Callback to toggle directory expansion */
-  onToggleDirectoryExpanded?: (category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples', path: string) => void;
+  onToggleDirectoryExpanded?: (category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples', path: string) => void;
   /** Callback to create a new directory */
   onCreateDirectory?: (category: LibraryCategory, parentPath: string[]) => void;
   /** Callback to rename a directory */
@@ -105,6 +110,7 @@ export function LibraryTreePanel({
   patchesTree,
   drumKitsTree,
   choppedSamplesTree,
+  commonSamplesTree,
   expandedPaths,
   selectedName,
   selectedType,
@@ -117,6 +123,8 @@ export function LibraryTreePanel({
   onSelectIndividualTone,
   onSelectIndividualPatch,
   onSelectChoppedSample,
+  onSelectSample,
+  onSelectProgram,
   onRefresh,
   isLoading,
   onDropDeviceTone,
@@ -176,6 +184,8 @@ export function LibraryTreePanel({
     onSelectIndividualTone,
     onSelectIndividualPatch,
     onSelectChoppedSample,
+    onSelectSample,
+    onSelectProgram,
     onToggleDirectoryExpanded,
     onDeleteIndividualTone,
     onDeleteIndividualPatch,
@@ -581,8 +591,21 @@ export function LibraryTreePanel({
             )}
           </div>
         )}
-        {/* Chopped Samples Section (common/samples/) */}
-        {choppedSamplesTree && choppedSamplesTree.length > 0 && (
+        {/* Common Samples Section (common/samples/ — samples, programs, legacy chopped) */}
+        {commonSamplesTree && commonSamplesTree.length > 0 && (
+          <TreeSection
+            title="Samples"
+            nodes={commonSamplesTree}
+            category="commonSamples"
+            expandedPaths={expandedPaths?.commonSamples ?? new Set()}
+            selectedId={computeSelectedId('commonSamples')}
+            onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('commonSamples', nodeId)}
+            onSelect={(node) => handleTreeNodeSelect(node, 'commonSamples')}
+            emptyMessage="No samples in common library"
+          />
+        )}
+        {/* Legacy Chopped Samples Section — hidden when commonSamplesTree is provided */}
+        {!commonSamplesTree && choppedSamplesTree && choppedSamplesTree.length > 0 && (
           <TreeSection
             title="Samples"
             nodes={choppedSamplesTree}

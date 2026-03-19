@@ -43,7 +43,7 @@ declare global {
   }
 }
 
-import { DrumKitBundleSchema, type DrumKitBundle, ChoppedSampleSchema } from './schemas/index.js';
+import { DrumKitBundleSchema, type DrumKitBundle, ChoppedSampleSchema, SampleYamlSchema, ProgramYamlSchema } from './schemas/index.js';
 import { loadDrumKitBundle as parseDrumKitBundle } from './drum-kits/index.js';
 
 // =========================================================================
@@ -66,7 +66,7 @@ export interface LibraryTreeNode {
   /** Display name */
   name: string;
   /** Node type */
-  type: 'directory' | 'tone' | 'patch' | 'drum-kit' | 'chopped-sample';
+  type: 'directory' | 'tone' | 'patch' | 'drum-kit' | 'chopped-sample' | 'sample' | 'program';
   /** Path segments from category root (empty for root items) */
   path: string[];
   /** Child nodes (only for directories) */
@@ -494,6 +494,121 @@ export async function listChoppedSamplesTree(
   const samplesDir = await getNestedDirectoryIfExists(root, ['library', 'common', 'samples']);
   if (!samplesDir) return [];
   return scanChoppedSamplesDirectory(samplesDir, []);
+}
+
+// =========================================================================
+// Common-area sample detection
+// =========================================================================
+
+/**
+ * Detect a common-area sample: a `.yaml` file with `format: 'sample'`.
+ *
+ * More expensive than `detectTone` because it must parse YAML to check
+ * the format field, but necessary for the common area where multiple
+ * YAML formats coexist.
+ */
+const detectSample: ItemDetector = async (entry, parentDir, path) => {
+  if (entry.kind !== 'file' || !entry.name.toLowerCase().endsWith('.yaml')) return null;
+
+  try {
+    const fileHandle = await parentDir.getFileHandle(entry.name);
+    const file = await fileHandle.getFile();
+    const text = await file.text();
+    const parsed = parseYaml(text);
+    const result = SampleYamlSchema.safeParse(parsed);
+    if (!result.success) return null;
+
+    const fileName = entry.name.replace(/\.yaml$/i, '');
+    return {
+      id: [...path, fileName].join('/'),
+      name: result.data.name,
+      type: 'sample',
+      path,
+      fileName,
+      description: result.data.description,
+    };
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Detect a common-area program: a directory containing `program.yaml`
+ * with `format: 'program'`.
+ */
+const detectProgram: ItemDetector = async (entry, parentDir, path) => {
+  if (entry.kind !== 'directory') return null;
+
+  const subDir = await parentDir.getDirectoryHandle(entry.name);
+
+  try {
+    const manifestHandle = await subDir.getFileHandle('program.yaml');
+    const file = await manifestHandle.getFile();
+    const text = await file.text();
+    const parsed = parseYaml(text);
+    const result = ProgramYamlSchema.safeParse(parsed);
+    if (!result.success) return null;
+
+    return {
+      id: [...path, entry.name].join('/'),
+      name: result.data.name,
+      type: 'program',
+      path,
+      directoryName: entry.name,
+      description: result.data.description,
+      kitCount: result.data.zones.length,
+    };
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Combined detector for `library/common/samples/` that recognizes
+ * samples, programs, and legacy chopped samples.
+ */
+const detectCommonItem: ItemDetector = async (entry, parentDir, path) => {
+  // Try sample first (files)
+  const sample = await detectSample(entry, parentDir, path);
+  if (sample) return sample;
+
+  // Try program (directories with program.yaml)
+  const program = await detectProgram(entry, parentDir, path);
+  if (program) return program;
+
+  // Try legacy chopped sample (directories with manifest.yaml)
+  const chopped = await detectChoppedSample(entry, parentDir, path);
+  if (chopped) return chopped;
+
+  return null;
+};
+
+// =========================================================================
+// Common-area scanning
+// =========================================================================
+
+/**
+ * Recursively scan a directory for common-area content (samples,
+ * programs, and legacy chopped samples) and build a tree structure.
+ */
+export async function scanCommonSamplesDirectory(
+  dir: FileSystemDirectoryHandle,
+  path: string[],
+): Promise<LibraryTreeNode[]> {
+  return scanLibraryDirectory(dir, path, detectCommonItem);
+}
+
+/**
+ * List all common-area content from `library/common/samples/` as a
+ * hierarchical tree. Returns samples, programs, and legacy chopped
+ * samples in a unified tree.
+ */
+export async function listCommonSamplesTree(
+  root: FileSystemDirectoryHandle,
+): Promise<LibraryTreeNode[]> {
+  const samplesDir = await getNestedDirectoryIfExists(root, ['library', 'common', 'samples']);
+  if (!samplesDir) return [];
+  return scanCommonSamplesDirectory(samplesDir, []);
 }
 
 // =========================================================================

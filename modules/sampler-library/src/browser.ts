@@ -151,6 +151,18 @@ export type {
   S550SetToDeviceResult,
 } from './converters/index.js';
 
+// Promotion converter exports (browser-compatible)
+export {
+  s330SamplePromotion,
+  s550SamplePromotion,
+} from './converters/index.js';
+
+export type {
+  SamplePromotionConverter,
+  S330PromotionDefaults,
+  S550PromotionDefaults,
+} from './converters/index.js';
+
 // Template exports (these are browser-compatible)
 export {
   parseNoteName,
@@ -179,6 +191,28 @@ export type {
   DrumKitEntryBundle,
   SliceDefinition,
   DrumKitBundle,
+} from './schemas/index.js';
+
+// Sample schema exports (common area, browser-compatible)
+export {
+  SampleYamlSchema,
+} from './schemas/index.js';
+
+export type {
+  SampleYaml,
+  SampleInfo,
+} from './schemas/index.js';
+
+// Program schema exports (common area, browser-compatible)
+export {
+  ZoneSchema,
+  ProgramYamlSchema,
+} from './schemas/index.js';
+
+export type {
+  Zone,
+  ProgramYaml,
+  ProgramInfo,
 } from './schemas/index.js';
 
 // Chopped sample schema exports (browser-compatible)
@@ -211,6 +245,10 @@ export {
   choppedSampleToDrumKitBundle,
   createGenericChoppedSample,
 } from './converters/index.js';
+
+// Chopped sample migration exports (browser-compatible)
+export { migrateChoppedSample } from './converters/index.js';
+export type { MigrationResult } from './converters/index.js';
 
 export {
   parseDrumFilename,
@@ -361,6 +399,8 @@ export {
   listPatchesTree,
   scanChoppedSamplesDirectory,
   listChoppedSamplesTree,
+  scanCommonSamplesDirectory,
+  listCommonSamplesTree,
   listSets,
   listSetTonesTree,
 } from './library-fs.js';
