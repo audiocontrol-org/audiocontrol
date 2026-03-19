@@ -8,6 +8,7 @@
  */
 
 import type { SamplerClientInterface } from '@/core/midi/SamplerClient';
+export type { SamplerClientInterface } from '@/core/midi/SamplerClient';
 import type { SSeriesMidiAdapter } from '@audiocontrol/sampler-devices/roland-s-series';
 
 /**

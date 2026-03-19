@@ -307,7 +307,7 @@ export function LibraryTreePanel({
                   isSelected={selectedType === 'set' && selectedName === setInfo.name}
                   isExpanded={expandedSets.has(setInfo.name)}
                   selectedItemName={selectedSetName === setInfo.name ? selectedName : undefined}
-                  selectedItemType={selectedSetName === setInfo.name && selectedType !== 'drumKit' && selectedType !== 'individualTone' && selectedType !== 'individualPatch' && selectedType !== 'choppedSample' ? selectedType : undefined}
+                  selectedItemType={selectedSetName === setInfo.name && selectedType !== 'drumKit' && selectedType !== 'individualTone' && selectedType !== 'individualPatch' && selectedType !== 'choppedSample' && selectedType !== 'sample' && selectedType !== 'program' ? selectedType : undefined}
                   onToggle={() => toggleSet(setInfo.name)}
                   onSelect={() => onSelectSet(setInfo.name)}
                   onSelectTone={(toneFile) => onSelectTone(toneFile, setInfo.name)}

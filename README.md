@@ -40,19 +40,48 @@ Audio Control provides browser-based editors for programming vintage MIDI instru
 
 ## Development
 
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) v20+
+- [pnpm](https://pnpm.io/) v9+
+- GNU Make
+
+### Building
+
 ```bash
-# Install dependencies
-pnpm install
+make                                               # install deps + build everything
+make clean && make                                 # full rebuild from scratch
+make modules/sampler-devices/.build-stamp          # build one module and its deps
+make clean                                         # remove all build artifacts
+```
 
-# Build all modules
-pnpm build
+The Makefile installs dependencies automatically (via `pnpm install`) and builds all 24 modules in topological order. Builds are incremental — only modules whose dependencies have changed will rebuild.
 
-# Run tests
-pnpm test
+#### Why Make?
 
-# Build and test a specific module
-pnpm --filter s330-editor build
-pnpm --filter s330-editor test
+pnpm workspaces don't enforce build order, so `pnpm -r build` can fail when a downstream module builds before its upstream dependencies. The Makefile encodes the dependency graph with stamp files (`modules/<name>/.build-stamp`) so Make's resolver builds modules in the correct order.
+
+#### Dependency layers
+
+```
+Layer 0  shared-midi, sampler-lib, audiotools-config, canonical-midi-maps,
+         ardour-midi-maps, launch-control-xl3, launch-control-xl3-editor,
+         lib-runtime, sampler-attic, sample-chopper
+
+Layer 1  editor-core, lib-device-uuid, sampler-devices, live-max-cc-router
+
+Layer 2  sampler-midi, sampler-library, sampler-translate, sampler-backup
+
+Layer 3  sampler-export, loop-editor, d110-editor, jv1080-editor
+
+Layer 4  sampler-editor, audiotools-cli
+```
+
+### Testing
+
+```bash
+pnpm test                            # run all tests
+pnpm --filter <module> test          # test a specific module
 ```
 
 ## License

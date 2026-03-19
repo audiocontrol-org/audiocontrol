@@ -45,18 +45,18 @@ export {
 
 // Re-export types for convenience
 export type {
-    S330MidiAdapter as S330MidiIO,
+    SSeriesMidiAdapter as S330MidiIO,
     S330SystemParams,
     S330Patch,
     S330Tone,
     S330PatchCommon,
-    S330Response,
-    S330Command,
-    S330ClientOptions,
+    SSeriesResponse as S330Response,
+    SSeriesCommand as S330Command,
+    SSeriesClientOptions as S330ClientOptions,
 } from '@audiocontrol/sampler-devices/s330';
 
-// Import S330Command for use in function signatures
-import type { S330Command } from '@audiocontrol/sampler-devices/s330';
+// Import SSeriesCommand for use in function signatures
+import type { SSeriesCommand as S330Command } from '@audiocontrol/sampler-devices/s330';
 
 // Re-export constants for convenience
 export {

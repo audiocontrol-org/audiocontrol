@@ -16,7 +16,10 @@
       "types": "./dist/build/vite.d.ts",
       "import": "./dist/build/vite.js"
     },
-    "./tailwind-preset": "./src/tailwind.preset.ts"
+    "./tailwind-preset": "./src/tailwind.preset.ts",
+    "./dev/styles.css": "./src/dev/styles.css",
+    "./dev/postcss.config": "./src/dev/postcss.config.js",
+    "./dev/tailwind.config": "./src/dev/tailwind.config.ts"
   },
   "files": [
     "dist",

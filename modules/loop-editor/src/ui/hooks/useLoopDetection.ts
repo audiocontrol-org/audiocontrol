@@ -57,7 +57,11 @@ export function useLoopDetection(): UseLoopDetectionResult {
       setError(null);
 
       const worker = new Worker(
-        new URL('@/workers/loop-detection.worker.ts', import.meta.url),
+        // INTENTIONAL RELATIVE PATH — do not convert to @/ alias.
+        // new URL() takes a string literal, not an import specifier. tsup/esbuild
+        // do not resolve @/ aliases inside string literals, so the @/ path would
+        // pass through verbatim into the bundle and break consuming vite builds.
+        new URL('../workers/loop-detection.worker.js', import.meta.url),
         { type: 'module' },
       );
       workerRef.current = worker;

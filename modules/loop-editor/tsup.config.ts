@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts', 'src/ui/index.ts'],
+  entry: ['src/index.ts', 'src/ui/index.ts', 'src/workers/loop-detection.worker.ts'],
   format: ['cjs', 'esm'],
   dts: true,
   splitting: false,

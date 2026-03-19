@@ -143,7 +143,7 @@ function SampleDetails({ sample }: { sample: SampleYaml }): JSX.Element {
           <div>
             <span className="text-s330-muted text-xs">Root Key</span>
             <div className="text-s330-text">
-              {sample.rootKey !== undefined ? midiNoteToName(sample.rootKey) : '--'}
+              {sample.rootKey !== undefined ? midiNoteToName(Number(sample.rootKey)) : '--'}
             </div>
           </div>
           <div>

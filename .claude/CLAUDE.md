@@ -78,6 +78,7 @@ Never use conditionals in UI components to switch behavior based on device confi
 - Unit tests for all public functions (Vitest)
 - High test coverage — aim for 80%+
 - All code must be unit testable via dependency injection
+- **Guideline deviations must be documented in situ** — if a technical constraint forces you to break a project convention (e.g., a relative import where `@/` is the rule), add a comment at the deviation site explaining *what* rule is being broken, *why* it's necessary, and that it should not be copied elsewhere. Unexplained deviations are nucleation sites for bad practices.
 
 ### Repository Hygiene
 
@@ -113,15 +114,25 @@ https://audiocontrol.org/<manufacturer>/<device>/editor
 
 Example: `https://audiocontrol.org/roland/s330/editor`
 
-## Common Commands
+## Build System
+
+The repo uses a `Makefile` at the root to build modules in topological order. Each module gets a stamp file (`.build-stamp`) whose prerequisites encode the dependency graph. `pnpm install` runs automatically when `pnpm-lock.yaml` is newer than the install stamp.
 
 ```bash
-pnpm install                         # Install dependencies
-pnpm build                           # Build all modules
+make                                 # Install deps + build all modules in dependency order
+make clean                           # Remove all dist/ dirs and stamp files
+make clean && make                   # Full rebuild from scratch
+make modules/sampler-devices/.build-stamp  # Build one module (and its deps)
+```
+
+`pnpm -r build` still works but does **not** enforce build order — use `make` instead.
+
+### Other Commands
+
+```bash
+pnpm install                         # Install dependencies (make does this automatically)
 pnpm test                            # Run all tests
-pnpm --filter <module> build         # Build specific module
 pnpm --filter <module> test          # Test specific module
-pnpm --filter <module>... build      # Build module and its dependencies
 ```
 
 ## Documentation Standards
