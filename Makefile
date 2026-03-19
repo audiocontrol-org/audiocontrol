@@ -40,53 +40,59 @@ ALL_STAMPS := \
 	$(SAMPLER_TRANSLATE) $(SAMPLER_BACKUP) $(SAMPLER_EXPORT) $(LOOP_EDITOR) \
 	$(D110_EDITOR) $(JV1080_EDITOR) $(SAMPLER_EDITOR) $(AUDIOTOOLS_CLI)
 
+INSTALL_STAMP := node_modules/.install-stamp
+
 .PHONY: build clean
 
 build: $(ALL_STAMPS)
+
+$(INSTALL_STAMP): pnpm-lock.yaml
+	pnpm install
+	@touch $@
 
 # ---------------------------------------------------------------------------
 # Layer 0 — no workspace dependencies
 # ---------------------------------------------------------------------------
 
 # shared-midi has no build script — just stamp it
-$(SHARED_MIDI):
+$(SHARED_MIDI): $(INSTALL_STAMP)
 	@touch $@
 
-$(SAMPLER_LIB):
+$(SAMPLER_LIB): $(INSTALL_STAMP)
 	cd $(MODULES_DIR)/sampler-lib && pnpm build
 	@touch $@
 
-$(AUDIOTOOLS_CONFIG):
+$(AUDIOTOOLS_CONFIG): $(INSTALL_STAMP)
 	cd $(MODULES_DIR)/audiotools-config && pnpm build
 	@touch $@
 
-$(CANONICAL_MIDI):
+$(CANONICAL_MIDI): $(INSTALL_STAMP)
 	cd $(MODULES_DIR)/canonical-midi-maps && pnpm build
 	@touch $@
 
-$(ARDOUR_MIDI):
+$(ARDOUR_MIDI): $(INSTALL_STAMP)
 	cd $(MODULES_DIR)/ardour-midi-maps && pnpm build
 	@touch $@
 
-$(LAUNCH_CONTROL):
+$(LAUNCH_CONTROL): $(INSTALL_STAMP)
 	cd $(MODULES_DIR)/launch-control-xl3 && pnpm build
 	@touch $@
 
-$(LAUNCH_CONTROL_ED):
+$(LAUNCH_CONTROL_ED): $(INSTALL_STAMP)
 	cd $(MODULES_DIR)/launch-control-xl3-editor && pnpm build
 	@touch $@
 
-$(LIB_RUNTIME):
+$(LIB_RUNTIME): $(INSTALL_STAMP)
 	cd $(MODULES_DIR)/lib-runtime && pnpm build
 	@touch $@
 
-$(SAMPLER_ATTIC):
+$(SAMPLER_ATTIC): $(INSTALL_STAMP)
 	cd $(MODULES_DIR)/sampler-attic && pnpm build
 	@touch $@
 
 # sample-chopper's dep on sampler-library is devDeps only (test harness),
 # so it can build independently
-$(SAMPLE_CHOPPER):
+$(SAMPLE_CHOPPER): $(INSTALL_STAMP)
 	cd $(MODULES_DIR)/sample-chopper && pnpm build
 	@touch $@
 
@@ -169,3 +175,4 @@ $(AUDIOTOOLS_CLI): $(AUDIOTOOLS_CONFIG) $(LIB_DEVICE_UUID) $(SAMPLER_BACKUP) $(S
 clean:
 	rm -rf $(MODULES_DIR)/*/dist
 	rm -f $(MODULES_DIR)/*/.build-stamp
+	rm -f $(INSTALL_STAMP)
