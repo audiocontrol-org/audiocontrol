@@ -43,7 +43,7 @@ declare global {
   }
 }
 
-import { DrumKitBundleSchema, type DrumKitBundle, ChoppedSampleSchema, CommonSampleYamlSchema } from './schemas/index.js';
+import { DrumKitBundleSchema, type DrumKitBundle, ChoppedSampleSchema } from './schemas/index.js';
 import { loadDrumKitBundle as parseDrumKitBundle } from './drum-kits/index.js';
 
 // =========================================================================
@@ -66,7 +66,7 @@ export interface LibraryTreeNode {
   /** Display name */
   name: string;
   /** Node type */
-  type: 'directory' | 'tone' | 'patch' | 'drum-kit' | 'chopped-sample' | 'common-tone';
+  type: 'directory' | 'tone' | 'patch' | 'drum-kit' | 'chopped-sample';
   /** Path segments from category root (empty for root items) */
   path: string[];
   /** Child nodes (only for directories) */
@@ -494,65 +494,6 @@ export async function listChoppedSamplesTree(
   const samplesDir = await getNestedDirectoryIfExists(root, ['library', 'common', 'samples']);
   if (!samplesDir) return [];
   return scanChoppedSamplesDirectory(samplesDir, []);
-}
-
-// =========================================================================
-// Common tone scanning
-// =========================================================================
-
-/**
- * Detect a common tone: a `.yaml` file whose content validates as a common sample.
- *
- * Unlike `detectTone` (which only checks the file extension), this detector
- * must parse YAML and validate against `CommonSampleYamlSchema` to confirm
- * the format discriminator. This is more expensive but necessary because
- * `library/common/tones/` could contain other YAML files.
- */
-const detectCommonTone: ItemDetector = async (entry, parentDir, path) => {
-  if (entry.kind !== 'file' || !entry.name.toLowerCase().endsWith('.yaml')) return null;
-
-  try {
-    const fileHandle = await parentDir.getFileHandle(entry.name);
-    const file = await fileHandle.getFile();
-    const text = await file.text();
-    const parsed = parseYaml(text);
-    const result = CommonSampleYamlSchema.safeParse(parsed);
-    if (!result.success) return null;
-
-    const fileName = entry.name.replace(/\.yaml$/i, '');
-    return {
-      id: [...path, fileName].join('/'),
-      name: result.data.name,
-      type: 'common-tone',
-      path,
-      fileName,
-      description: result.data.description,
-    };
-  } catch {
-    return null;
-  }
-};
-
-/**
- * Recursively scan a directory for common tones and build a tree structure.
- * A common tone is a `.yaml` file with `format: 'common-sample'`.
- */
-export async function scanCommonTonesDirectory(
-  dir: FileSystemDirectoryHandle,
-  path: string[],
-): Promise<LibraryTreeNode[]> {
-  return scanLibraryDirectory(dir, path, detectCommonTone);
-}
-
-/**
- * List all common tones from `library/common/tones/` as a hierarchical tree.
- */
-export async function listCommonTonesTree(
-  root: FileSystemDirectoryHandle,
-): Promise<LibraryTreeNode[]> {
-  const tonesDir = await getNestedDirectoryIfExists(root, ['library', 'common', 'tones']);
-  if (!tonesDir) return [];
-  return scanCommonTonesDirectory(tonesDir, []);
 }
 
 // =========================================================================
