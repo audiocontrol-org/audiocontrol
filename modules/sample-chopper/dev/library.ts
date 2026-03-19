@@ -1,36 +1,71 @@
 /**
- * Browser-based library adapter for the standalone sample chopper.
+ * Library adapter for the standalone sample chopper.
  *
- * Chopped samples live at: {root}/library/common/samples/{path}/
- * Tones and drum kits are scanned from the shared FSAA library layout
- * via functions from @audiocontrol/sampler-library.
+ * Connection management and common-area operations delegate to shared
+ * abstractions in @audiocontrol/sampler-library. This file retains only
+ * the chopper-specific device-browsing operations (listing/loading
+ * tones and drum kits across multiple devices).
  */
 
-import { stringify as stringifyYaml, parse as parseYaml } from 'yaml';
+import { parse as parseYaml } from 'yaml';
 import {
-  ChoppedSampleSchema,
   type ChoppedSample,
-  parseWav,
   type LibraryTreeNode,
   type LibrarySetInfo,
+  type StorageDirectoryHandle,
+  parseWav,
+  createWav,
   DrumKitBundleSchema,
   loadDrumKitBundle as parseDrumKitBundle,
   type DrumKitBundle,
-  getNestedDirectory,
   getNestedDirectoryIfExists,
-  moveDirectory,
   listTonesTree,
   listDrumKitsTree,
   listChoppedSamplesTree,
+  listCommonSamplesTree,
   listSets,
   listSetTonesTree,
-  scanTonesDirectory,
-  ToneYamlSchema,
+  BrowserLibraryConnection,
+  saveChoppedSample as sharedSaveChoppedSample,
+  loadChoppedSample as sharedLoadChoppedSample,
+  deleteItem,
+  createFolder,
+  moveItem,
 } from '@audiocontrol/sampler-library/browser';
 import type {
   ChopperSavePayload,
   SliceDefinitionOutput,
 } from '@/ui/index.js';
+
+// =========================================================================
+// Connection singleton
+// =========================================================================
+
+const connection = new BrowserLibraryConnection({
+  pickerId: 'chopped-sample-library',
+});
+
+export function hasFileSystemAccess(): boolean {
+  return 'showDirectoryPicker' in globalThis;
+}
+
+export async function pickLibraryDirectory(): Promise<boolean> {
+  return connection.connect();
+}
+
+export async function getLibraryHandle(): Promise<StorageDirectoryHandle | null> {
+  if (!connection.isConnected()) return null;
+  const valid = await connection.verifyPermission();
+  return valid ? connection.getRoot() : null;
+}
+
+function ensureRoot(): StorageDirectoryHandle {
+  return connection.getRoot();
+}
+
+// =========================================================================
+// Chopped sample types
+// =========================================================================
 
 export interface ChopperLoadPayload {
   name: string;
@@ -48,158 +83,15 @@ export interface ChopperLoadPayload {
 export type { LibraryTreeNode, LibrarySetInfo };
 
 // =========================================================================
-// FSAA type declarations (chopper-specific: directory picker, writable)
-// =========================================================================
-
-declare global {
-  interface Window {
-    showDirectoryPicker(options?: {
-      id?: string;
-      mode?: 'read' | 'readwrite';
-      startIn?: 'desktop' | 'documents' | 'downloads' | 'music' | 'pictures' | 'videos';
-    }): Promise<FileSystemDirectoryHandle>;
-  }
-
-  interface FileSystemDirectoryHandle {
-    queryPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<'granted' | 'denied' | 'prompt'>;
-    requestPermission(options?: { mode?: 'read' | 'readwrite' }): Promise<'granted' | 'denied' | 'prompt'>;
-  }
-
-  interface FileSystemFileHandle {
-    createWritable(): Promise<FileSystemWritableFileStream>;
-  }
-
-  interface FileSystemWritableFileStream extends WritableStream {
-    write(data: string | Blob | ArrayBuffer): Promise<void>;
-    close(): Promise<void>;
-  }
-}
-
-// =========================================================================
-// Directory Handle Management
-// =========================================================================
-
-let cachedHandle: FileSystemDirectoryHandle | null = null;
-
-export function hasFileSystemAccess(): boolean {
-  return 'showDirectoryPicker' in window;
-}
-
-export async function pickLibraryDirectory(): Promise<FileSystemDirectoryHandle | null> {
-  if (!hasFileSystemAccess()) return null;
-
-  try {
-    const handle = await window.showDirectoryPicker({
-      id: 'chopped-sample-library',
-      mode: 'readwrite',
-      startIn: 'documents',
-    });
-    cachedHandle = handle;
-    return handle;
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') return null;
-    throw err;
-  }
-}
-
-export async function getLibraryHandle(): Promise<FileSystemDirectoryHandle | null> {
-  if (cachedHandle) {
-    try {
-      const perm = await cachedHandle.queryPermission({ mode: 'readwrite' });
-      if (perm === 'granted') return cachedHandle;
-      const req = await cachedHandle.requestPermission({ mode: 'readwrite' });
-      if (req === 'granted') return cachedHandle;
-    } catch {
-      cachedHandle = null;
-    }
-  }
-  return null;
-}
-
-async function ensureLibraryHandle(): Promise<FileSystemDirectoryHandle> {
-  const existing = await getLibraryHandle();
-  if (existing) return existing;
-
-  const picked = await pickLibraryDirectory();
-  if (!picked) throw new Error('Library directory selection cancelled');
-  return picked;
-}
-
-// =========================================================================
-// WAV Encoding (write-only, not in sampler-library)
-// =========================================================================
-
-function createWavBlob(samples: Int16Array, sampleRate: number): Blob {
-  const bitsPerSample = 16;
-  const channels = 1;
-  const byteRate = (sampleRate * channels * bitsPerSample) / 8;
-  const blockAlign = (channels * bitsPerSample) / 8;
-  const dataSize = samples.length * 2;
-  const fileSize = 36 + dataSize;
-
-  const buffer = new ArrayBuffer(44 + dataSize);
-  const view = new DataView(buffer);
-
-  writeStr(view, 0, 'RIFF');
-  view.setUint32(4, fileSize, true);
-  writeStr(view, 8, 'WAVE');
-  writeStr(view, 12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
-  view.setUint16(22, channels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, byteRate, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, bitsPerSample, true);
-  writeStr(view, 36, 'data');
-  view.setUint32(40, dataSize, true);
-
-  const wavBytes = new Uint8Array(buffer);
-  wavBytes.set(new Uint8Array(samples.buffer, samples.byteOffset, dataSize), 44);
-  return new Blob([wavBytes], { type: 'audio/wav' });
-}
-
-function writeStr(view: DataView, offset: number, str: string): void {
-  for (let i = 0; i < str.length; i++) {
-    view.setUint8(offset + i, str.charCodeAt(i));
-  }
-}
-
-// =========================================================================
-// Filename Sanitization
-// =========================================================================
-
-function sanitizeFilename(name: string): string {
-  return name
-    .replace(/[<>:"/\\|?*]/g, '_')
-    .replace(/\s+/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '')
-    .slice(0, 64);
-}
-
-// =========================================================================
 // Chopped Samples: Save / List / Delete / Load
 // =========================================================================
-
-const SAMPLES_ROOT = ['library', 'common', 'samples'];
-
-async function getChoppedSamplesDir(
-  root: FileSystemDirectoryHandle,
-  path: string[] = [],
-): Promise<FileSystemDirectoryHandle> {
-  return getNestedDirectory(root, [...SAMPLES_ROOT, ...path]);
-}
 
 export async function saveChoppedSample(
   payload: ChopperSavePayload,
   path: string[] = [],
 ): Promise<void> {
-  const root = await ensureLibraryHandle();
-  const samplesDir = await getChoppedSamplesDir(root, path);
-
-  const safeName = sanitizeFilename(payload.name);
-  const sampleDir = await samplesDir.getDirectoryHandle(safeName, { create: true });
+  const root = ensureRoot();
+  const wavData = createWav(payload.sourceAudio.samples, payload.sourceAudio.sampleRate);
 
   const manifest: ChoppedSample = {
     format: 'chopped-sample',
@@ -219,22 +111,7 @@ export async function saveChoppedSample(
     modifiedAt: new Date().toISOString(),
   };
 
-  const result = ChoppedSampleSchema.safeParse(manifest);
-  if (!result.success) {
-    throw new Error(`Invalid manifest: ${result.error.message}`);
-  }
-
-  const yamlContent = stringifyYaml(result.data, { indent: 2, lineWidth: 120 });
-  const yamlHandle = await sampleDir.getFileHandle('manifest.yaml', { create: true });
-  const yamlWritable = await yamlHandle.createWritable();
-  await yamlWritable.write(yamlContent);
-  await yamlWritable.close();
-
-  const wavBlob = createWavBlob(payload.sourceAudio.samples, payload.sourceAudio.sampleRate);
-  const wavHandle = await sampleDir.getFileHandle('source.wav', { create: true });
-  const wavWritable = await wavHandle.createWritable();
-  await wavWritable.write(wavBlob);
-  await wavWritable.close();
+  await sharedSaveChoppedSample(root, { name: payload.name, manifest, wavData }, path);
 }
 
 export async function listChoppedSamples(): Promise<LibraryTreeNode[]> {
@@ -243,49 +120,35 @@ export async function listChoppedSamples(): Promise<LibraryTreeNode[]> {
   return listChoppedSamplesTree(handle);
 }
 
+export async function listCommonSamples(): Promise<LibraryTreeNode[]> {
+  const handle = await getLibraryHandle();
+  if (!handle) return [];
+  return listCommonSamplesTree(handle);
+}
+
 export async function deleteChoppedSample(name: string, path: string[] = []): Promise<void> {
-  const root = await ensureLibraryHandle();
-  const samplesDir = await getChoppedSamplesDir(root, path);
-  const safeName = sanitizeFilename(name);
-  await samplesDir.removeEntry(safeName, { recursive: true });
+  await deleteItem(ensureRoot(), name, path);
 }
 
 export async function loadChoppedSample(
   name: string,
   path: string[] = [],
 ): Promise<ChopperLoadPayload> {
-  const root = await ensureLibraryHandle();
-  const samplesDir = await getChoppedSamplesDir(root, path);
-  const safeName = sanitizeFilename(name);
-  const sampleDir = await samplesDir.getDirectoryHandle(safeName, { create: false });
+  const result = await sharedLoadChoppedSample(ensureRoot(), name, path);
+  const wavData = parseWav(result.wavData);
 
-  const manifestHandle = await sampleDir.getFileHandle('manifest.yaml');
-  const manifestFile = await manifestHandle.getFile();
-  const manifestText = await manifestFile.text();
-  const parsed = parseYaml(manifestText);
-  const result = ChoppedSampleSchema.safeParse(parsed);
-  if (!result.success) {
-    throw new Error(`Invalid manifest for "${name}": ${result.error.message}`);
-  }
-
-  const manifest = result.data;
-  const wavHandle = await sampleDir.getFileHandle('source.wav');
-  const wavFile = await wavHandle.getFile();
-  const wavBuffer = await wavFile.arrayBuffer();
-  const wavData = parseWav(wavBuffer);
-
-  const slices: SliceDefinitionOutput[] = manifest.slices.map((s) => ({
+  const slices: SliceDefinitionOutput[] = result.manifest.slices.map((s) => ({
     label: s.label,
     startSample: s.startSample,
     endSample: s.endSample,
   }));
 
   return {
-    name: manifest.name,
+    name: result.manifest.name,
     slices,
     sourceAudio: { samples: wavData.samples, sampleRate: wavData.sampleRate },
-    triggers: manifest.triggers,
-    playbackConfig: manifest.playback,
+    triggers: result.manifest.triggers,
+    playbackConfig: result.manifest.playback,
   };
 }
 
@@ -293,27 +156,19 @@ export async function createSamplesFolder(
   path: string[],
   name: string,
 ): Promise<void> {
-  const root = await ensureLibraryHandle();
-  const parentDir = await getChoppedSamplesDir(root, path);
-  await parentDir.getDirectoryHandle(name, { create: true });
+  await createFolder(ensureRoot(), path, name);
 }
 
-/**
- * Move a library item (sample or folder) from one location to another.
- */
 export async function moveLibraryItem(
   name: string,
   fromPath: string[],
   toPath: string[],
 ): Promise<void> {
-  const root = await ensureLibraryHandle();
-  const srcParent = await getChoppedSamplesDir(root, fromPath);
-  const destParent = await getChoppedSamplesDir(root, toPath);
-  await moveDirectory(srcParent, name, destParent);
+  await moveItem(ensureRoot(), name, fromPath, toPath);
 }
 
 // =========================================================================
-// Tone Listing / Loading
+// Tone Listing / Loading (device-specific browsing)
 // =========================================================================
 
 const DEVICE_DIRS = ['s330', 's550'] as const;
@@ -333,11 +188,9 @@ export async function listLibraryTones(): Promise<LibraryToneInfo[]> {
   const allTones: LibraryToneInfo[] = [];
 
   for (const device of DEVICE_DIRS) {
-    // Standalone tones
     const tree = await listTonesTree(handle, device);
     flattenTones(tree, device, { kind: 'standalone' }, [], allTones);
 
-    // Tones inside sets
     const sets = await listSets(handle, device);
     for (const set of sets) {
       const setTree = await listSetTonesTree(handle, device, set.directoryName);
@@ -367,7 +220,7 @@ function flattenTones(
 export async function loadLibraryTone(
   tone: LibraryToneInfo,
 ): Promise<{ samples: Int16Array; sampleRate: number }> {
-  const root = await ensureLibraryHandle();
+  const root = ensureRoot();
   const segments = tone.source.kind === 'set'
     ? ['library', tone.device, 'sets', tone.source.setName, 'tones', ...tone.path]
     : ['library', tone.device, 'tones', ...tone.path];
@@ -383,7 +236,7 @@ export async function loadLibraryTone(
 }
 
 // =========================================================================
-// Drum Kit Listing / Loading
+// Drum Kit Listing / Loading (device-specific browsing)
 // =========================================================================
 
 export interface LibraryDrumKitInfo {
@@ -439,7 +292,7 @@ function flattenDrumKits(
 export async function loadLibraryDrumKit(
   kit: LibraryDrumKitInfo,
 ): Promise<{ samples: Int16Array; sampleRate: number; slices: SliceDefinitionOutput[] }> {
-  const root = await ensureLibraryHandle();
+  const root = ensureRoot();
   const dir = await getNestedDirectoryIfExists(
     root, ['library', kit.device, 'drum-kits', ...kit.path],
   );

@@ -158,8 +158,7 @@ function App() {
 
   // Library: connect
   const handleConnectLibrary = useCallback(async () => {
-    const handle = await pickLibraryDirectory();
-    const connected = handle !== null;
+    const connected = await pickLibraryDirectory();
     setLibraryConnected(connected);
     if (connected) setLibraryRefreshKey((k) => k + 1);
   }, []);

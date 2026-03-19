@@ -9,6 +9,7 @@ import {
   s330PatchConverter,
   type ToneYaml,
   type PatchYaml,
+  type StorageDirectoryHandle,
 } from '@audiocontrol/sampler-library/browser';
 import {
   type LibraryTreeNode,
@@ -171,7 +172,7 @@ export function remapPatchToneLayers(
  * @deprecated Use listIndividualPatchesTree for hierarchical view
  */
 export async function listIndividualPatches(
-  directoryHandle: FileSystemDirectoryHandle
+  directoryHandle: StorageDirectoryHandle
 ): Promise<LibraryPatchInfo[]> {
   const patches: LibraryPatchInfo[] = [];
 
@@ -222,7 +223,7 @@ export async function listIndividualPatches(
  * List all individual patches in the library as a hierarchical tree.
  */
 export async function listIndividualPatchesTree(
-  directoryHandle: FileSystemDirectoryHandle
+  directoryHandle: StorageDirectoryHandle
 ): Promise<LibraryTreeNode[]> {
   return listPatchesTreeShared(directoryHandle, 's330');
 }
@@ -235,7 +236,7 @@ export async function listIndividualPatchesTree(
  * Export a patch bundle to the library with all dependent tones.
  */
 export async function exportPatchToDirectory(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   patch: S330Patch,
   tones: PatchBundleTone[],
   customName?: string,
@@ -291,7 +292,7 @@ export async function exportPatchToDirectory(
  * Load an individual patch bundle from the library.
  */
 export async function loadIndividualPatch(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   patchDirName: string,
   path: string[] = []
 ): Promise<LoadedPatchBundle> {
@@ -336,7 +337,7 @@ export async function loadIndividualPatch(
  * Delete an individual patch bundle from the library.
  */
 export async function deleteIndividualPatch(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   patchDirName: string,
   path: string[] = []
 ): Promise<void> {

@@ -10,6 +10,7 @@ import {
   type DrumKitBundle,
   type ResolvedDrumKitBundle,
   type LibraryTreeNode,
+  type StorageDirectoryHandle,
   listDrumKitsTree as listDrumKitsTreeShared,
   getNestedDirectory,
 } from '@audiocontrol/sampler-library/browser';
@@ -70,7 +71,7 @@ export interface DrumKitConfigUpdate {
  * @deprecated Use listDrumKitsTree for hierarchical view
  */
 export async function listDrumKits(
-  directoryHandle: FileSystemDirectoryHandle
+  directoryHandle: StorageDirectoryHandle
 ): Promise<DrumKitInfo[]> {
   const kits: DrumKitInfo[] = [];
 
@@ -131,7 +132,7 @@ export async function listDrumKits(
  * List all drum kits in the library as a hierarchical tree.
  */
 export async function listDrumKitsTree(
-  directoryHandle: FileSystemDirectoryHandle
+  directoryHandle: StorageDirectoryHandle
 ): Promise<LibraryTreeNode[]> {
   return listDrumKitsTreeShared(directoryHandle, 's330');
 }
@@ -144,7 +145,7 @@ export async function listDrumKitsTree(
  * Load a drum kit bundle with full metadata and sample information.
  */
 export async function loadDrumKitBundle(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   kitName: string,
   path: string[] = []
 ): Promise<ResolvedDrumKitBundle> {
@@ -179,7 +180,7 @@ export async function loadDrumKitBundle(
  * Delete a drum kit from the library.
  */
 export async function deleteDrumKit(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   kitName: string,
   path: string[] = []
 ): Promise<void> {
@@ -194,7 +195,7 @@ export async function deleteDrumKit(
  * Save a drum kit to the library using deferred chopping (v2 format).
  */
 export async function saveDrumKitToLibrary(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   kitName: string,
   sourceWav: { samples: Int16Array; sampleRate: number },
   slices: SliceDefinitionInput[],
@@ -218,7 +219,7 @@ export async function saveDrumKitToLibrary(
   const wavBlob = createWavBlobFromSamples(sourceWav.samples, sourceWav.sampleRate);
   const wavHandle = await drumKitsDir.getFileHandle(sourceFilename, { create: true });
   const wavWritable = await wavHandle.createWritable();
-  await wavWritable.write(wavBlob);
+  await wavWritable.write(await wavBlob.arrayBuffer());
   await wavWritable.close();
 
   // Write kit.yaml with v2 format
@@ -250,7 +251,7 @@ export async function saveDrumKitToLibrary(
  * Load a single WAV file from a drum kit bundle.
  */
 export async function loadDrumKitSample(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   kitName: string,
   fileName: string,
   path: string[] = []
@@ -270,7 +271,7 @@ export async function loadDrumKitSample(
  * Load the source WAV from a v2 drum kit bundle (deferred chopping).
  */
 export async function loadDrumKitSource(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   kitName: string,
   sourceFilename: string,
   path: string[] = []
@@ -295,7 +296,7 @@ export async function loadDrumKitSource(
  * Update the slice definitions and optionally kit config in an existing v2 drum kit.
  */
 export async function updateDrumKitSlices(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   kitName: string,
   slices: SliceDefinitionInput[],
   kitConfig?: DrumKitConfigUpdate,

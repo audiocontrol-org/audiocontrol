@@ -14,6 +14,7 @@ import {
   s330ToneConverter,
   s330PatchConverter,
   type ToneYaml,
+  type StorageDirectoryHandle,
 } from '@audiocontrol/sampler-library/browser';
 import { createWavBlobFromSamples, unpack12BitTo16Bit } from '@/lib/wave-export';
 
@@ -45,7 +46,7 @@ export interface ReadToneResult {
  * The WAV file is parsed and converted using prepareWavForS330().
  */
 export async function readToneFilesFromDirectory(
-  directory: FileSystemDirectoryHandle,
+  directory: StorageDirectoryHandle,
   baseFilename: string
 ): Promise<ReadToneResult> {
   const yamlHandle = await directory.getFileHandle(`${baseFilename}.yaml`);
@@ -78,7 +79,7 @@ export interface WriteToneResult {
  * individual tone export and set export operations.
  */
 export async function writeToneFilesToDirectory(
-  directory: FileSystemDirectoryHandle,
+  directory: StorageDirectoryHandle,
   tone: S330Tone,
   waveData: S330WaveDataResponse,
   baseFilename: string
@@ -99,7 +100,7 @@ export async function writeToneFilesToDirectory(
   const wavBlob = createWavBlobFromSamples(samples, waveData.sampleRate);
   const wavHandle = await directory.getFileHandle(`${baseFilename}.wav`, { create: true });
   const wavWritable = await wavHandle.createWritable();
-  await wavWritable.write(wavBlob);
+  await wavWritable.write(await wavBlob.arrayBuffer());
   await wavWritable.close();
 
   return {
@@ -112,7 +113,7 @@ export async function writeToneFilesToDirectory(
  * The YAML's wave.file references the source (original) tone's WAV file.
  */
 export async function writeSubToneYamlToDirectory(
-  directory: FileSystemDirectoryHandle,
+  directory: StorageDirectoryHandle,
   tone: S330Tone,
   baseFilename: string,
   sourceWavFilename: string,
@@ -139,7 +140,7 @@ export async function writeSubToneYamlToDirectory(
  * individual patch export and set export operations.
  */
 export async function writePatchFileToDirectory(
-  directory: FileSystemDirectoryHandle,
+  directory: StorageDirectoryHandle,
   patch: S330Patch,
   baseFilename: string
 ): Promise<void> {

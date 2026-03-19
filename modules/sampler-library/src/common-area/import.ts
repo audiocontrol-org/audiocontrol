@@ -4,7 +4,7 @@
  * Imports a raw WAV file into `library/common/samples/` by:
  * 1. Extracting the sample rate from the WAV RIFF header
  * 2. Generating a SampleYaml descriptor with sensible defaults
- * 3. Writing both the YAML and WAV files via the File System Access API
+ * 3. Writing both the YAML and WAV files via a StorageDirectoryHandle
  *
  * @packageDocumentation
  */
@@ -12,6 +12,7 @@
 import { stringify as stringifyYaml } from 'yaml';
 
 import type { SampleYaml } from '@/schemas/index.js';
+import type { StorageDirectoryHandle } from '@/storage-handles.js';
 import { getNestedDirectory } from '@/library-fs.js';
 
 // =========================================================================
@@ -178,7 +179,7 @@ export interface ImportOptions {
  * @returns The generated {@link SampleYaml} object
  */
 export async function importWavToCommonArea(
-  rootHandle: FileSystemDirectoryHandle,
+  rootHandle: StorageDirectoryHandle,
   wavFilename: string,
   wavData: Uint8Array,
   options?: ImportOptions,

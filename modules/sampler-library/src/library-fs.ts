@@ -1,8 +1,8 @@
 /**
- * Library filesystem types and FSAA scanning functions.
+ * Library filesystem types and recursive directory scanners.
  *
  * Provides the shared types and recursive directory scanners used by
- * any consumer of the FSAA library layout:
+ * any consumer of the library layout:
  *
  *   {root}/library/{device}/tones/
  *   {root}/library/{device}/drum-kits/
@@ -14,35 +14,14 @@
  * parameterized by an `ItemDetector`. Adding a new item type requires
  * only a new detector, not a new scanner.
  *
- * This module is browser-only (uses the File System Access API).
+ * All functions accept abstract {@link StorageDirectoryHandle} parameters,
+ * making them portable across runtimes. Browser FSAA handles satisfy
+ * the interface via structural typing.
  */
-
-/* eslint-disable @typescript-eslint/no-empty-interface */
 
 import { parse as parseYaml } from 'yaml';
 
-// =========================================================================
-// File System Access API type declarations (browser-only)
-// =========================================================================
-
-declare global {
-  interface FileSystemDirectoryHandle {
-    getFileHandle(name: string, options?: { create?: boolean }): Promise<FileSystemFileHandle>;
-    getDirectoryHandle(name: string, options?: { create?: boolean }): Promise<FileSystemDirectoryHandle>;
-    removeEntry(name: string, options?: { recursive?: boolean }): Promise<void>;
-    values(): AsyncIterable<FileSystemHandle>;
-  }
-
-  interface FileSystemHandle {
-    readonly kind: 'file' | 'directory';
-    readonly name: string;
-  }
-
-  interface FileSystemFileHandle {
-    getFile(): Promise<File>;
-  }
-}
-
+import type { StorageDirectoryHandle, StorageEntry } from './storage-handles.js';
 import { DrumKitBundleSchema, type DrumKitBundle, ChoppedSampleSchema, SampleYamlSchema, ProgramYamlSchema } from './schemas/index.js';
 import { loadDrumKitBundle as parseDrumKitBundle } from './drum-kits/index.js';
 
@@ -96,9 +75,9 @@ export interface LibraryTreeNode {
  * Get or create a nested directory path within a directory handle.
  */
 export async function getNestedDirectory(
-  rootHandle: FileSystemDirectoryHandle,
+  rootHandle: StorageDirectoryHandle,
   path: string[],
-): Promise<FileSystemDirectoryHandle> {
+): Promise<StorageDirectoryHandle> {
   let current = rootHandle;
   for (const segment of path) {
     current = await current.getDirectoryHandle(segment, { create: true });
@@ -111,9 +90,9 @@ export async function getNestedDirectory(
  * Returns null if any part of the path doesn't exist.
  */
 export async function getNestedDirectoryIfExists(
-  rootHandle: FileSystemDirectoryHandle,
+  rootHandle: StorageDirectoryHandle,
   path: string[],
-): Promise<FileSystemDirectoryHandle | null> {
+): Promise<StorageDirectoryHandle | null> {
   let current = rootHandle;
   try {
     for (const segment of path) {
@@ -133,8 +112,8 @@ export async function getNestedDirectoryIfExists(
  * Copy all contents from source directory to target directory (recursive).
  */
 export async function copyDirectoryContents(
-  src: FileSystemDirectoryHandle,
-  dest: FileSystemDirectoryHandle,
+  src: StorageDirectoryHandle,
+  dest: StorageDirectoryHandle,
 ): Promise<void> {
   for await (const entry of src.values()) {
     if (entry.kind === 'file') {
@@ -157,9 +136,9 @@ export async function copyDirectoryContents(
  * FSAA has no native move, so this copies contents then removes the source.
  */
 export async function moveDirectory(
-  parentDir: FileSystemDirectoryHandle,
+  parentDir: StorageDirectoryHandle,
   name: string,
-  targetParentDir: FileSystemDirectoryHandle,
+  targetParentDir: StorageDirectoryHandle,
 ): Promise<void> {
   const srcDir = await parentDir.getDirectoryHandle(name, { create: false });
   const destDir = await targetParentDir.getDirectoryHandle(name, { create: true });
@@ -219,8 +198,8 @@ function sortNodes(nodes: LibraryTreeNode[]): LibraryTreeNode[] {
  * or `null` to let the scanner treat it as an organizational directory.
  */
 export type ItemDetector = (
-  entry: FileSystemHandle,
-  parentDir: FileSystemDirectoryHandle,
+  entry: StorageEntry,
+  parentDir: StorageDirectoryHandle,
   path: string[],
 ) => Promise<LibraryTreeNode | null>;
 
@@ -233,7 +212,7 @@ export type ItemDetector = (
  * - If `null` and the entry is a file, the entry is skipped.
  */
 export async function scanLibraryDirectory(
-  dir: FileSystemDirectoryHandle,
+  dir: StorageDirectoryHandle,
   path: string[],
   detectItem: ItemDetector,
 ): Promise<LibraryTreeNode[]> {
@@ -398,7 +377,7 @@ const detectChoppedSample: ItemDetector = async (entry, parentDir, path) => {
  * A tone is identified by a .yaml file (optionally paired with a .wav).
  */
 export async function scanTonesDirectory(
-  dir: FileSystemDirectoryHandle,
+  dir: StorageDirectoryHandle,
   path: string[],
 ): Promise<LibraryTreeNode[]> {
   return scanLibraryDirectory(dir, path, detectTone);
@@ -408,7 +387,7 @@ export async function scanTonesDirectory(
  * List all standalone tones for a device as a hierarchical tree.
  */
 export async function listTonesTree(
-  root: FileSystemDirectoryHandle,
+  root: StorageDirectoryHandle,
   device: string,
 ): Promise<LibraryTreeNode[]> {
   const tonesDir = await getNestedDirectoryIfExists(root, ['library', device, 'tones']);
@@ -425,7 +404,7 @@ export async function listTonesTree(
  * A drum kit is a directory containing .wav files (and optionally kit.yaml).
  */
 export async function scanDrumKitsDirectory(
-  dir: FileSystemDirectoryHandle,
+  dir: StorageDirectoryHandle,
   path: string[],
 ): Promise<LibraryTreeNode[]> {
   return scanLibraryDirectory(dir, path, detectDrumKit);
@@ -435,7 +414,7 @@ export async function scanDrumKitsDirectory(
  * List all drum kits for a device as a hierarchical tree.
  */
 export async function listDrumKitsTree(
-  root: FileSystemDirectoryHandle,
+  root: StorageDirectoryHandle,
   device: string,
 ): Promise<LibraryTreeNode[]> {
   const kitsDir = await getNestedDirectoryIfExists(root, ['library', device, 'drum-kits']);
@@ -452,7 +431,7 @@ export async function listDrumKitsTree(
  * A patch is a directory containing patch.yaml (and optionally a tones/ subdirectory).
  */
 export async function scanPatchesDirectory(
-  dir: FileSystemDirectoryHandle,
+  dir: StorageDirectoryHandle,
   path: string[],
 ): Promise<LibraryTreeNode[]> {
   return scanLibraryDirectory(dir, path, detectPatch);
@@ -462,7 +441,7 @@ export async function scanPatchesDirectory(
  * List all patches for a device as a hierarchical tree.
  */
 export async function listPatchesTree(
-  root: FileSystemDirectoryHandle,
+  root: StorageDirectoryHandle,
   device: string,
 ): Promise<LibraryTreeNode[]> {
   const patchesDir = await getNestedDirectoryIfExists(root, ['library', device, 'patches']);
@@ -479,7 +458,7 @@ export async function listPatchesTree(
  * A chopped sample is a directory containing a valid `manifest.yaml`.
  */
 export async function scanChoppedSamplesDirectory(
-  dir: FileSystemDirectoryHandle,
+  dir: StorageDirectoryHandle,
   path: string[],
 ): Promise<LibraryTreeNode[]> {
   return scanLibraryDirectory(dir, path, detectChoppedSample);
@@ -489,7 +468,7 @@ export async function scanChoppedSamplesDirectory(
  * List all chopped samples from `library/common/samples/` as a hierarchical tree.
  */
 export async function listChoppedSamplesTree(
-  root: FileSystemDirectoryHandle,
+  root: StorageDirectoryHandle,
 ): Promise<LibraryTreeNode[]> {
   const samplesDir = await getNestedDirectoryIfExists(root, ['library', 'common', 'samples']);
   if (!samplesDir) return [];
@@ -592,7 +571,7 @@ const detectCommonItem: ItemDetector = async (entry, parentDir, path) => {
  * programs, and legacy chopped samples) and build a tree structure.
  */
 export async function scanCommonSamplesDirectory(
-  dir: FileSystemDirectoryHandle,
+  dir: StorageDirectoryHandle,
   path: string[],
 ): Promise<LibraryTreeNode[]> {
   return scanLibraryDirectory(dir, path, detectCommonItem);
@@ -604,7 +583,7 @@ export async function scanCommonSamplesDirectory(
  * samples in a unified tree.
  */
 export async function listCommonSamplesTree(
-  root: FileSystemDirectoryHandle,
+  root: StorageDirectoryHandle,
 ): Promise<LibraryTreeNode[]> {
   const samplesDir = await getNestedDirectoryIfExists(root, ['library', 'common', 'samples']);
   if (!samplesDir) return [];
@@ -630,7 +609,7 @@ export interface LibrarySetInfo {
  * List all sets for a device.
  */
 export async function listSets(
-  root: FileSystemDirectoryHandle,
+  root: StorageDirectoryHandle,
   device: string,
 ): Promise<LibrarySetInfo[]> {
   const setsDir = await getNestedDirectoryIfExists(root, ['library', device, 'sets']);
@@ -676,7 +655,7 @@ export async function listSets(
  * List tones inside a specific set.
  */
 export async function listSetTonesTree(
-  root: FileSystemDirectoryHandle,
+  root: StorageDirectoryHandle,
   device: string,
   setName: string,
 ): Promise<LibraryTreeNode[]> {

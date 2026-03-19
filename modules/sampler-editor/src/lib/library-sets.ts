@@ -14,6 +14,7 @@ import {
   type SetInfo,
   type DeviceStateInput,
   type SetToDeviceInput,
+  type StorageDirectoryHandle,
 } from '@audiocontrol/sampler-library/browser';
 import { createWavBlobFromSamples, unpack12BitTo16Bit } from '@/lib/wave-export';
 import { getNestedDirectory, copyDirectoryContents } from '@audiocontrol/sampler-library/browser';
@@ -61,7 +62,7 @@ const MAX_PATCHES = 16;
  * List all sets in the library directory
  */
 export async function listSets(
-  directoryHandle: FileSystemDirectoryHandle
+  directoryHandle: StorageDirectoryHandle
 ): Promise<SetInfo[]> {
   const sets: SetInfo[] = [];
 
@@ -103,7 +104,7 @@ export async function listSets(
  * Save device state to a new set
  */
 export async function saveDeviceToSet(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   setName: string,
   description: string | undefined,
   tones: (S330Tone | null)[],
@@ -149,7 +150,7 @@ export async function saveDeviceToSet(
     const wavBlob = createWavBlobFromSamples(samples, toneData.sampleRate);
     const wavHandle = await tonesDir.getFileHandle(`${toneFile}.wav`, { create: true });
     const wavWritable = await wavHandle.createWritable();
-    await wavWritable.write(wavBlob);
+    await wavWritable.write(await wavBlob.arrayBuffer());
     await wavWritable.close();
 
     toneIndex++;
@@ -179,7 +180,7 @@ export async function saveDeviceToSet(
  * the device state has changed (e.g., after loading a diskette).
  */
 export async function saveDeviceToSetIncremental(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   setName: string,
   description: string | undefined,
   fetchToneData: FetchToneDataCallback,
@@ -316,7 +317,7 @@ export async function saveDeviceToSetIncremental(
  * Load set manifest from library
  */
 export async function loadSetManifest(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   setName: string
 ): Promise<SetYaml> {
   const sanitizedName = setName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
@@ -334,7 +335,7 @@ export async function loadSetManifest(
  * Load a tone from a set
  */
 export async function loadToneFromSet(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   setName: string,
   toneFile: string
 ): Promise<{ yaml: ToneYaml; wavData: Uint8Array }> {
@@ -352,7 +353,7 @@ export async function loadToneFromSet(
  * Load a patch from a set
  */
 export async function loadPatchFromSet(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   setName: string,
   patchFile: string
 ): Promise<PatchYaml> {
@@ -373,7 +374,7 @@ export async function loadPatchFromSet(
  * Load a complete set and convert to device state format.
  */
 export async function loadSetToDevice(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   setName: string,
   onProgress?: (progress: number) => void
 ): Promise<ReturnType<typeof setToDeviceState>> {
@@ -426,7 +427,7 @@ export async function loadSetToDevice(
  * Delete a set from the library
  */
 export async function deleteSet(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   setName: string
 ): Promise<void> {
   const sanitizedName = setName.replace(/[<>:"/\\|?*]/g, '_').replace(/\s+/g, '_');
@@ -439,7 +440,7 @@ export async function deleteSet(
  * Rename a set in the library
  */
 export async function renameSet(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   oldName: string,
   newName: string
 ): Promise<void> {

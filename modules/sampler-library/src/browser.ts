@@ -8,6 +8,9 @@
  * @packageDocumentation
  */
 
+// FSAA global type declarations (side-effect import augments globalThis)
+import './fsaa-types.js';
+
 // Type exports
 export type {
   DeviceType,
@@ -382,7 +385,21 @@ export type {
   DiscontinuityAnalysis,
 } from './loop-detector/index.js';
 
-// Library filesystem scanning (FSAA, browser-only)
+// Storage handle abstractions (runtime-agnostic)
+export type {
+  StorageEntry,
+  StorageFile,
+  StorageWritable,
+  StorageFileHandle,
+  StorageDirectoryHandle,
+} from './storage-handles.js';
+
+// Library connection
+export type { LibraryConnection } from './library-connection.js';
+export { BrowserLibraryConnection } from './browser-library-connection.js';
+export type { BrowserLibraryConnectionOptions } from './browser-library-connection.js';
+
+// Library filesystem scanning
 export {
   LIBRARY_CATEGORIES,
   getNestedDirectory,
@@ -411,3 +428,32 @@ export type {
   LibrarySetInfo,
   ItemDetector,
 } from './library-fs.js';
+
+// Common-area CRUD operations
+export {
+  saveSample,
+  loadSample,
+  saveChoppedSample,
+  loadChoppedSample,
+  deleteItem,
+  createFolder,
+  moveItem,
+} from './common-area/samples.js';
+
+export type {
+  SampleSavePayload,
+  SampleLoadResult,
+  ChoppedSampleSavePayload,
+  ChoppedSampleLoadResult,
+} from './common-area/samples.js';
+
+// Common-area import utilities
+export {
+  importWavToCommonArea,
+  buildSampleYaml,
+  deriveSampleName,
+  sanitizeForFilename,
+  extractWavSampleRate,
+} from './common-area/import.js';
+
+export type { ImportOptions } from './common-area/import.js';

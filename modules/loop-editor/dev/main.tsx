@@ -3,6 +3,8 @@
  *
  * Provides test audio data and browser environment wiring so the
  * loop editor can be developed independently of sampler-editor.
+ * Supports loading samples from and saving loop-edited samples
+ * back to the library via the shared library connection.
  */
 
 import '@audiocontrol/editor-core/dev/styles.css';
@@ -11,6 +13,15 @@ import React, { useState, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LoopEditor } from '@/ui/LoopEditor';
 import { useLoopDetection } from '@/ui/hooks/useLoopDetection';
+import {
+  parseWav,
+  createWav,
+  listCommonSamplesTree,
+  loadSample,
+  saveSample,
+  type LibraryTreeNode,
+  type SampleYaml,
+} from '@audiocontrol/sampler-library/browser';
 import { createDevEnvironment } from './environment';
 
 const env = createDevEnvironment();
@@ -22,11 +33,9 @@ function generateTestAudio(sampleRate: number, durationSeconds: number): Int16Ar
 
   for (let i = 0; i < length; i++) {
     const t = i / sampleRate;
-    // Mix of harmonics for a rich test tone
     const fundamental = Math.sin(2 * Math.PI * 440 * t);
     const harmonic2 = 0.5 * Math.sin(2 * Math.PI * 880 * t);
     const harmonic3 = 0.25 * Math.sin(2 * Math.PI * 1320 * t);
-    // Envelope: quick attack, sustain, no release
     const envelope = Math.min(1, t * 20);
     const value = (fundamental + harmonic2 + harmonic3) * envelope * 0.6;
     samples[i] = Math.round(value * 32767);
@@ -36,11 +45,19 @@ function generateTestAudio(sampleRate: number, durationSeconds: number): Int16Ar
 }
 
 function DevHarness() {
-  const sampleRate = 30000;
-  const [samples] = useState(() => generateTestAudio(sampleRate, 2));
-  const [loopPoint, setLoopPoint] = useState(Math.floor(sampleRate * 0.5));
-  const [endPoint, setEndPoint] = useState(Math.floor(sampleRate * 1.5));
+  const defaultSampleRate = 30000;
+  const [samples, setSamples] = useState(() => generateTestAudio(defaultSampleRate, 2));
+  const [sampleRate, setSampleRate] = useState(defaultSampleRate);
+  const [loopPoint, setLoopPoint] = useState(Math.floor(defaultSampleRate * 0.5));
+  const [endPoint, setEndPoint] = useState(Math.floor(defaultSampleRate * 1.5));
   const [selectedCandidateIndex, setSelectedCandidateIndex] = useState<number | undefined>(undefined);
+  const [sampleName, setSampleName] = useState('Test Tone');
+
+  // Library state
+  const [libraryConnected, setLibraryConnected] = useState(false);
+  const [libraryItems, setLibraryItems] = useState<LibraryTreeNode[]>([]);
+  const [libraryOrigin, setLibraryOrigin] = useState<{ name: string; path: string[] } | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const {
     isSearching,
@@ -62,14 +79,117 @@ function DevHarness() {
     setEndPoint(loopEnd);
   }, []);
 
+  // Library: connect
+  const handleConnectLibrary = useCallback(async () => {
+    const connected = await env.library.connect();
+    setLibraryConnected(connected);
+    if (connected) {
+      const root = env.library.getRoot();
+      const items = await listCommonSamplesTree(root);
+      setLibraryItems(items);
+    }
+  }, []);
+
+  // Library: refresh listing
+  const refreshLibrary = useCallback(async () => {
+    if (!libraryConnected) return;
+    const root = env.library.getRoot();
+    const items = await listCommonSamplesTree(root);
+    setLibraryItems(items);
+  }, [libraryConnected]);
+
+  // Library: load a sample
+  const handleLoadSample = useCallback(async (node: LibraryTreeNode) => {
+    if (node.type !== 'sample' || !node.fileName) return;
+    try {
+      const root = env.library.getRoot();
+      const result = await loadSample(root, node.fileName, node.path);
+      const wavData = parseWav(result.wavData);
+      setSamples(wavData.samples);
+      setSampleRate(wavData.sampleRate);
+      setSampleName(result.yaml.name);
+      setLoopPoint(result.yaml.loopStart ?? 0);
+      setEndPoint(result.yaml.loopEnd ?? wavData.samples.length);
+      setLibraryOrigin({ name: node.fileName, path: node.path });
+      clearResults();
+      setSelectedCandidateIndex(undefined);
+      setStatusMessage(`Loaded "${result.yaml.name}"`);
+    } catch (err) {
+      setStatusMessage(`Load failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+    }
+  }, [clearResults]);
+
+  // Library: save current sample with loop points
+  const handleSaveToLibrary = useCallback(async () => {
+    if (!libraryConnected) return;
+
+    const name = libraryOrigin?.name ?? sampleName;
+    const path = libraryOrigin?.path ?? [];
+
+    const yaml: SampleYaml = {
+      format: 'sample',
+      version: 1,
+      name,
+      file: `${name}.wav`,
+      sampleRate,
+      loopMode: 'forward',
+      loopStart: loopPoint,
+      loopEnd: endPoint,
+      modifiedAt: new Date().toISOString(),
+    };
+
+    const wavData = createWav(samples, sampleRate);
+    const root = env.library.getRoot();
+
+    try {
+      await saveSample(root, { name, yaml, wavData }, path);
+      setLibraryOrigin({ name, path });
+      setStatusMessage(`Saved "${name}" to library`);
+      await refreshLibrary();
+    } catch (err) {
+      setStatusMessage(`Save failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+    }
+  }, [libraryConnected, libraryOrigin, sampleName, sampleRate, loopPoint, endPoint, samples, refreshLibrary]);
+
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
-      <h1 style={{ fontSize: 20, fontWeight: 600, marginBottom: 16 }}>
-        Loop Editor — Dev Harness
-      </h1>
-      <p style={{ fontSize: 14, color: '#888', marginBottom: 24 }}>
-        Standalone development environment with synthetic test audio ({sampleRate} Hz, {samples.length} samples).
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h1 className="text-s330-text" style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>
+          Loop Editor — Dev Harness
+        </h1>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {libraryConnected && (
+            <button className="ac-btn ac-btn-primary ac-btn-sm" onClick={handleSaveToLibrary}>
+              Save to Library
+            </button>
+          )}
+          <button className="ac-btn ac-btn-sm" onClick={handleConnectLibrary}>
+            {libraryConnected ? 'Change Library' : 'Connect Library'}
+          </button>
+        </div>
+      </div>
+
+      {statusMessage && (
+        <p className="text-s330-muted" style={{ fontSize: 13, marginBottom: 12 }}>
+          {statusMessage}
+        </p>
+      )}
+
+      <p className="text-s330-muted" style={{ fontSize: 14, marginBottom: 24 }}>
+        {sampleName} — {sampleRate} Hz, {samples.length} samples
+        {libraryOrigin && <span> (from library)</span>}
       </p>
+
+      {/* Library browser */}
+      {libraryConnected && libraryItems.length > 0 && (
+        <div className="ac-card" style={{ marginBottom: 24, maxHeight: 200, overflowY: 'auto' }}>
+          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }} className="text-s330-text">
+            Library Samples
+          </div>
+          <SampleList items={libraryItems} onSelect={handleLoadSample} />
+        </div>
+      )}
+
       <LoopEditor
         samples={samples}
         sampleRate={sampleRate}
@@ -85,8 +205,46 @@ function DevHarness() {
         onAutoDetect={handleAutoDetect}
         isSearching={isSearching}
         searchProgress={progress}
-        audio={env.audio}
+        audio={env.workflow.audio}
       />
+    </div>
+  );
+}
+
+/** Flat list of clickable sample nodes from the library tree. */
+function SampleList({ items, onSelect }: {
+  items: LibraryTreeNode[];
+  onSelect: (node: LibraryTreeNode) => void;
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+      {items.map((node) => {
+        if (node.type === 'directory' && node.children) {
+          return (
+            <div key={node.id}>
+              <div className="text-s330-muted" style={{ fontSize: 11, fontWeight: 600, padding: '4px 0 2px' }}>
+                {node.name}/
+              </div>
+              <div style={{ paddingLeft: 12 }}>
+                <SampleList items={node.children} onSelect={onSelect} />
+              </div>
+            </div>
+          );
+        }
+        if (node.type === 'sample') {
+          return (
+            <button
+              key={node.id}
+              className="ac-btn ac-btn-sm"
+              style={{ textAlign: 'left', padding: '4px 8px', fontSize: 12 }}
+              onClick={() => onSelect(node)}
+            >
+              {node.name}
+            </button>
+          );
+        }
+        return null;
+      })}
     </div>
   );
 }

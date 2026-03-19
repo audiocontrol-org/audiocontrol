@@ -11,6 +11,7 @@ import {
   getNestedDirectoryIfExists,
   copyDirectoryContents,
   type LibraryCategory,
+  type StorageDirectoryHandle,
 } from '@audiocontrol/sampler-library/browser';
 
 // Re-export shared types and helpers from sampler-library
@@ -102,7 +103,7 @@ export async function pickLibraryDirectory(): Promise<FileSystemDirectoryHandle 
  * Create a subdirectory within a library category.
  */
 export async function createDirectory(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   category: LibraryCategory,
   path: string[],
   name: string
@@ -120,8 +121,8 @@ export async function createDirectory(
  * Move a single file from source to target directory.
  */
 async function moveFile(
-  sourceDir: FileSystemDirectoryHandle,
-  targetDir: FileSystemDirectoryHandle,
+  sourceDir: StorageDirectoryHandle,
+  targetDir: StorageDirectoryHandle,
   fileName: string
 ): Promise<void> {
   const sourceFile = await sourceDir.getFileHandle(fileName);
@@ -137,7 +138,7 @@ async function moveFile(
  * Rename a directory within a library category.
  */
 export async function renameDirectory(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   category: LibraryCategory,
   path: string[],
   newName: string
@@ -170,7 +171,7 @@ export async function renameDirectory(
  * Rename an individual tone (YAML + WAV files).
  */
 export async function renameIndividualTone(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   oldName: string,
   newName: string,
   path: string[] = []
@@ -213,7 +214,7 @@ export async function renameIndividualTone(
  * Rename an individual patch bundle (directory).
  */
 export async function renameIndividualPatch(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   oldName: string,
   newName: string,
   path: string[] = []
@@ -225,7 +226,7 @@ export async function renameIndividualPatch(
  * Rename a drum kit (directory).
  */
 export async function renameDrumKit(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   oldName: string,
   newName: string,
   path: string[] = []
@@ -237,7 +238,7 @@ export async function renameDrumKit(
  * Delete a directory from a library category.
  */
 export async function deleteDirectory(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   category: LibraryCategory,
   path: string[],
   recursive: boolean = true
@@ -257,7 +258,7 @@ export async function deleteDirectory(
  * Get directory contents for display (items and subdirectories at a path).
  */
 export async function getDirectoryContents(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   category: LibraryCategory,
   path: string[]
 ): Promise<{ files: string[]; directories: string[] }> {
@@ -291,7 +292,7 @@ export async function getDirectoryContents(
  * Move an item (tone, patch, drum-kit, or directory) to a new location.
  */
 export async function moveItem(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   category: LibraryCategory,
   sourcePath: string[],
   itemName: string,
