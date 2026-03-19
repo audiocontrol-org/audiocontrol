@@ -17,6 +17,7 @@ import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
 import { LibraryTreePanel } from '@/components/library/LibraryTreePanel';
 import { ItemPreviewPanel } from '@/components/library/ItemPreviewPanel';
 import { SampleBundlePreviewPanel } from '@/components/library/SampleBundlePreviewPanel';
+import { CommonSamplePreviewPanel } from '@/components/library/CommonSamplePreviewPanel';
 import { SaveSetDialog } from '@/components/library/SaveSetDialog';
 import { LoadSetDialog } from '@/components/library/LoadSetDialog';
 import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneDialog';
@@ -419,6 +420,12 @@ export function LibraryPage() {
               preloadedManifest={selection.type === 'choppedSample' ? selectedChoppedSampleManifest : undefined}
               onImport={handleOpenSamplesImport}
               onEditKit={selection.type === 'drumKit' ? handleEditKit : undefined}
+            />
+          ) : selection?.type === 'sample' || selection?.type === 'program' ? (
+            <CommonSamplePreviewPanel
+              selection={selection ? { type: selection.type as 'sample' | 'program', name: selection.name!, path: selection.path } : null}
+              libraryHandle={libraryHandle}
+              onPromoteToDevice={() => handleRefreshLibrary()}
             />
           ) : (
             <ItemPreviewPanel

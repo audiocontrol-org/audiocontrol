@@ -246,6 +246,10 @@ export {
   createGenericChoppedSample,
 } from './converters/index.js';
 
+// Chopped sample migration exports (browser-compatible)
+export { migrateChoppedSample } from './converters/index.js';
+export type { MigrationResult } from './converters/index.js';
+
 export {
   parseDrumFilename,
   parseDrumKitDirectory,

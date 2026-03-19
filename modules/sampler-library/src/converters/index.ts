@@ -98,6 +98,10 @@ export {
   createGenericChoppedSample,
 } from './chopped-sample-converter.js';
 
+// Chopped sample migration
+export { migrateChoppedSample } from './chopped-sample-migration.js';
+export type { MigrationResult } from './chopped-sample-migration.js';
+
 // Register converters in the global registry
 import { converterRegistry } from './converter-registry.js';
 import { s330ToneConverter, s330PatchConverter } from './s330/index.js';
