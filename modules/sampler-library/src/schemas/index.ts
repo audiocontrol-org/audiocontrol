@@ -101,6 +101,16 @@ export type {
   DrumKitBundle,
 } from './drum-kit-bundle-schema.js';
 
+// Common sample schemas
+export {
+  CommonSampleYamlSchema,
+} from './common-sample-schema.js';
+
+export type {
+  CommonSampleYaml,
+  CommonSampleInfo,
+} from './common-sample-schema.js';
+
 // Chopped sample schemas
 export {
   TriggerMappingSchema,

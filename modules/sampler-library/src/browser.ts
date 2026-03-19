@@ -181,6 +181,16 @@ export type {
   DrumKitBundle,
 } from './schemas/index.js';
 
+// Common sample schema exports (browser-compatible)
+export {
+  CommonSampleYamlSchema,
+} from './schemas/index.js';
+
+export type {
+  CommonSampleYaml,
+  CommonSampleInfo,
+} from './schemas/index.js';
+
 // Chopped sample schema exports (browser-compatible)
 export {
   TriggerMappingSchema,
@@ -361,6 +371,8 @@ export {
   listPatchesTree,
   scanChoppedSamplesDirectory,
   listChoppedSamplesTree,
+  scanCommonTonesDirectory,
+  listCommonTonesTree,
   listSets,
   listSetTonesTree,
 } from './library-fs.js';

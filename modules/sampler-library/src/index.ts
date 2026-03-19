@@ -101,6 +101,9 @@ export type {
   SetYaml,
   SetInfo,
   SetData,
+  // Common sample types
+  CommonSampleYaml,
+  CommonSampleInfo,
   // Chopped sample types
   TriggerMapping,
   PolyphonyMode,
@@ -111,6 +114,11 @@ export type {
   DrumKitChoppedSample,
   ChoppedSample,
   ChoppedSampleInfo,
+} from './schemas/index.js';
+
+// Common sample schema exports
+export {
+  CommonSampleYamlSchema,
 } from './schemas/index.js';
 
 // Chopped sample schema exports
