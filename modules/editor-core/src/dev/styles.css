@@ -1,0 +1,14 @@
+@import '../design/tokens.css';
+@import '../design/primitives.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: var(--ac-color-surface-canvas);
+  color: var(--ac-color-text-primary);
+  font-family: var(--ac-font-sans);
+  min-height: 100vh;
+  margin: 0;
+}

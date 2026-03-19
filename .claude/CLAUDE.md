@@ -78,6 +78,7 @@ Never use conditionals in UI components to switch behavior based on device confi
 - Unit tests for all public functions (Vitest)
 - High test coverage — aim for 80%+
 - All code must be unit testable via dependency injection
+- **Guideline deviations must be documented in situ** — if a technical constraint forces you to break a project convention (e.g., a relative import where `@/` is the rule), add a comment at the deviation site explaining *what* rule is being broken, *why* it's necessary, and that it should not be copied elsewhere. Unexplained deviations are nucleation sites for bad practices.
 
 ### Repository Hygiene
 

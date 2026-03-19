@@ -5,6 +5,8 @@
  * loop editor can be developed independently of sampler-editor.
  */
 
+import '@audiocontrol/editor-core/dev/styles.css';
+
 import React, { useState, useCallback } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LoopEditor } from '@/ui/LoopEditor';
