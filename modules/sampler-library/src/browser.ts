@@ -151,6 +151,18 @@ export type {
   S550SetToDeviceResult,
 } from './converters/index.js';
 
+// Promotion converter exports (browser-compatible)
+export {
+  s330SamplePromotion,
+  s550SamplePromotion,
+} from './converters/index.js';
+
+export type {
+  SamplePromotionConverter,
+  S330PromotionDefaults,
+  S550PromotionDefaults,
+} from './converters/index.js';
+
 // Template exports (these are browser-compatible)
 export {
   parseNoteName,

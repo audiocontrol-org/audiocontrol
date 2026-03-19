@@ -79,6 +79,18 @@ export type {
   SetToDeviceResult as S550SetToDeviceResult,
 } from './s550/index.js';
 
+// Promotion converters
+export {
+  s330SamplePromotion,
+  s550SamplePromotion,
+} from './promotion.js';
+
+export type {
+  SamplePromotionConverter,
+  S330PromotionDefaults,
+  S550PromotionDefaults,
+} from './promotion.js';
+
 // Chopped sample converters
 export {
   drumKitBundleToChoppedSample,

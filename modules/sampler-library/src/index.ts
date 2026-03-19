@@ -188,6 +188,16 @@ export type {
   S550DeviceStateToSetResult,
   S550SetToDeviceInput,
   S550SetToDeviceResult,
+  // Promotion converter types
+  SamplePromotionConverter,
+  S330PromotionDefaults,
+  S550PromotionDefaults,
+} from './converters/index.js';
+
+// Promotion converter exports
+export {
+  s330SamplePromotion,
+  s550SamplePromotion,
 } from './converters/index.js';
 
 // Chopped sample converter exports
