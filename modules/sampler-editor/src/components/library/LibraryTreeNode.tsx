@@ -139,7 +139,7 @@ function DeleteButton({
 
 export interface LibraryTreeNodeProps {
   node: TreeNodeType;
-  category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples';
+  category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples';
   depth: number;
   isExpanded: boolean;
   isSelected: boolean;
@@ -484,7 +484,7 @@ export function LibraryTreeNodeComponent({
 export interface TreeSectionProps {
   title: string;
   nodes: TreeNodeType[];
-  category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples';
+  category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples';
   expandedPaths: Set<string>;
   selectedId?: string;
   onToggleExpand: (nodeId: string) => void;

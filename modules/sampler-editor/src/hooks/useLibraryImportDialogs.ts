@@ -215,7 +215,7 @@ export function useLibraryImportDialogs({
 
       for (const [slot, data] of deviceState.tones) {
         const targetSlot = slot + toneOffset;
-        const targetBank = (data.tone.wave.bank + waveBankOffset) as 0 | 1 | 2 | 3;
+        const targetBank = (data.tone.wave.bank + waveBankOffset) as 0 | 1;
         const toneName = data.tone.name || `T${Math.floor(targetSlot / 8) + 1}${(targetSlot % 8) + 1}`;
         await clientRef.current.importTone(
           { toneIndex: targetSlot, waveData: data.wavData, waveBank: targetBank, segmentTop: data.tone.wave.segmentTop, segmentLength: data.tone.wave.segmentLength, tone: data.tone },

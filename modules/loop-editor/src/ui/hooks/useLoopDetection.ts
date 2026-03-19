@@ -57,7 +57,7 @@ export function useLoopDetection(): UseLoopDetectionResult {
       setError(null);
 
       const worker = new Worker(
-        new URL('@/workers/loop-detection.worker.ts', import.meta.url),
+        new URL('../workers/loop-detection.worker.js', import.meta.url),
         { type: 'module' },
       );
       workerRef.current = worker;
