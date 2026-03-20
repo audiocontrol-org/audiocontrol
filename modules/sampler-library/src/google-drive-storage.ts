@@ -355,7 +355,9 @@ export class GoogleDriveDirectoryHandle implements StorageDirectoryHandle {
     // Find the child (could be file or folder)
     const children = await this.client.listChildren(this.folderId);
     const child = children.find((c) => c.name === name);
-    if (!child) return;
+    if (!child) {
+      throw new DOMException(`Entry "${name}" not found`, 'NotFoundError');
+    }
 
     if (child.mimeType === FOLDER_MIME && options?.recursive) {
       await this.deleteRecursive(child.id);

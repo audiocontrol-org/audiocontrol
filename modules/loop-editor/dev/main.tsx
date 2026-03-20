@@ -255,11 +255,13 @@ function DevHarness() {
 
   // Library: delete a sample or folder (confirmation + feedback handled by LibraryBrowser)
   const handleDeleteItem = useCallback(async (node: TreeNode) => {
-    const meta = node.meta as { path?: string[] } | undefined;
+    const meta = node.meta as { fileName?: string; path?: string[] } | undefined;
     const conn = activeConnection();
     if (!conn) throw new Error('Not connected');
     const root = conn.getRoot();
-    await deleteItem(root, node.name, meta?.path ?? []);
+    // Use the filesystem name (meta.fileName), not the display name (node.name)
+    const fsName = meta?.fileName ?? node.name;
+    await deleteItem(root, fsName, meta?.path ?? []);
     await refreshLibrary();
   }, [activeBackend, refreshLibrary]);
 

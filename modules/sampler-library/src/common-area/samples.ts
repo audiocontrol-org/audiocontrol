@@ -177,6 +177,11 @@ export async function loadChoppedSample(
 
 /**
  * Delete a library item (file pair or directory bundle) from the common area.
+ *
+ * For file-pair samples, removes both the `.yaml` and `.wav` files.
+ * For directory bundles (chopped samples, programs), removes the directory.
+ * The `name` parameter is the filesystem base name (without extension),
+ * NOT the display name from the YAML.
  */
 export async function deleteItem(
   root: StorageDirectoryHandle,
@@ -184,8 +189,29 @@ export async function deleteItem(
   path: string[] = [],
 ): Promise<void> {
   const dir = await getSamplesDir(root, path);
-  const safeName = sanitizeForFilename(name);
-  await dir.removeEntry(safeName, { recursive: true });
+
+  // Try directory bundle first (chopped samples, programs)
+  try {
+    await dir.removeEntry(name, { recursive: true });
+    return;
+  } catch {
+    // Not a directory — try file pair
+  }
+
+  // Remove file pair (.yaml + .wav)
+  let deleted = false;
+  for (const ext of ['.yaml', '.wav']) {
+    try {
+      await dir.removeEntry(name + ext);
+      deleted = true;
+    } catch {
+      // File may not exist (e.g., orphan yaml without wav)
+    }
+  }
+
+  if (!deleted) {
+    throw new Error(`Could not find "${name}" to delete`);
+  }
 }
 
 /**
