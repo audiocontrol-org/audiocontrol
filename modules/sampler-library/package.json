@@ -20,6 +20,11 @@
       "types": "./dist/s3-storage.d.ts",
       "import": "./dist/s3-storage.js",
       "require": "./dist/s3-storage.cjs"
+    },
+    "./google-drive": {
+      "types": "./dist/google-drive-storage.d.ts",
+      "import": "./dist/google-drive-storage.js",
+      "require": "./dist/google-drive-storage.cjs"
     }
   },
   "files": [

@@ -4,12 +4,12 @@
  * Provides test audio data and browser environment wiring so the
  * loop editor can be developed independently of sampler-editor.
  * Supports loading samples from and saving loop-edited samples
- * back to the library via the shared library connection.
+ * back to the library via local filesystem (FSAA) or Google Drive.
  */
 
 import '@audiocontrol/editor-core/dev/styles.css';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LoopEditor } from '@/ui/LoopEditor';
 import { useLoopDetection } from '@/ui/hooks/useLoopDetection';
@@ -21,6 +21,7 @@ import {
   saveSample,
   type LibraryTreeNode,
   type SampleYaml,
+  type LibraryConnection,
 } from '@audiocontrol/sampler-library/browser';
 import { createDevEnvironment } from './environment';
 
@@ -44,6 +45,8 @@ function generateTestAudio(sampleRate: number, durationSeconds: number): Int16Ar
   return samples;
 }
 
+type StorageBackend = 'none' | 'local' | 'google-drive';
+
 function DevHarness() {
   const defaultSampleRate = 30000;
   const [samples, setSamples] = useState(() => generateTestAudio(defaultSampleRate, 2));
@@ -54,10 +57,23 @@ function DevHarness() {
   const [sampleName, setSampleName] = useState('Test Tone');
 
   // Library state
-  const [libraryConnected, setLibraryConnected] = useState(false);
+  const [activeBackend, setActiveBackend] = useState<StorageBackend>('none');
   const [libraryItems, setLibraryItems] = useState<LibraryTreeNode[]>([]);
   const [libraryOrigin, setLibraryOrigin] = useState<{ name: string; path: string[] } | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<Array<{ id: number; level: 'info' | 'error'; text: string }>>([]);
+  const nextId = React.useRef(0);
+
+  const notify = useCallback((level: 'info' | 'error', text: string) => {
+    const id = nextId.current++;
+    setNotifications((prev) => [...prev, { id, level, text }]);
+    if (level === 'info') {
+      setTimeout(() => setNotifications((prev) => prev.filter((n) => n.id !== id)), 5000);
+    }
+  }, []);
+
+  const dismissNotification = useCallback((id: number) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+  }, []);
 
   const {
     isSearching,
@@ -66,6 +82,54 @@ function DevHarness() {
     searchLoopPoints,
     clearResults,
   } = useLoopDetection();
+
+  const activeConnection = (): LibraryConnection | null => {
+    if (activeBackend === 'local') return env.fsaaLibrary;
+    if (activeBackend === 'google-drive' && env.googleDrive) return env.googleDrive;
+    return null;
+  };
+
+  // Handle Google Drive OAuth redirect on page load.
+  // Guarded against React StrictMode double-firing, which would
+  // consume the auth code on the first run and find nothing on the second.
+  const oauthHandled = React.useRef(false);
+  useEffect(() => {
+    if (!env.googleDrive || oauthHandled.current) return;
+    oauthHandled.current = true;
+
+    (async () => {
+      try {
+        // Check if this is an OAuth callback
+        const handled = await env.googleDrive!.handleRedirect();
+        if (handled) {
+          // Token is stored — now initialize the client
+          const connected = await env.googleDrive!.tryRestore();
+          if (connected) {
+            setActiveBackend('google-drive');
+            notify('info', 'Connected to Google Drive');
+            const root = env.googleDrive!.getRoot();
+            const items = await listCommonSamplesTree(root);
+            setLibraryItems(items);
+          } else {
+            notify('error', 'Google Drive: token exchange succeeded but client init failed');
+          }
+          return;
+        }
+
+        // Try restoring an existing session
+        const restored = await env.googleDrive!.tryRestore();
+        if (restored) {
+          setActiveBackend('google-drive');
+          notify('info', 'Google Drive session restored');
+          const root = env.googleDrive!.getRoot();
+          const items = await listCommonSamplesTree(root);
+          setLibraryItems(items);
+        }
+      } catch (err) {
+        notify('error', `Google Drive init: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    })();
+  }, []);
 
   const handleAutoDetect = useCallback(() => {
     clearResults();
@@ -79,30 +143,47 @@ function DevHarness() {
     setEndPoint(loopEnd);
   }, []);
 
-  // Library: connect
-  const handleConnectLibrary = useCallback(async () => {
-    const connected = await env.library.connect();
-    setLibraryConnected(connected);
+  // Library: connect local filesystem
+  const handleConnectLocal = useCallback(async () => {
+    const connected = await env.fsaaLibrary.connect();
     if (connected) {
-      const root = env.library.getRoot();
+      setActiveBackend('local');
+      notify('info', 'Connected to local filesystem');
+      const root = env.fsaaLibrary.getRoot();
       const items = await listCommonSamplesTree(root);
       setLibraryItems(items);
     }
   }, []);
 
+  // Library: connect Google Drive
+  const handleConnectGoogleDrive = useCallback(async () => {
+    if (!env.googleDrive) {
+      notify('error', 'Google Drive not configured (missing VITE_GOOGLE_CLIENT_ID)');
+      return;
+    }
+    try {
+      await env.googleDrive.connect();
+    } catch (err) {
+      notify('error', `Google Drive: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }, []);
+
   // Library: refresh listing
   const refreshLibrary = useCallback(async () => {
-    if (!libraryConnected) return;
-    const root = env.library.getRoot();
+    const conn = activeConnection();
+    if (!conn) return;
+    const root = conn.getRoot();
     const items = await listCommonSamplesTree(root);
     setLibraryItems(items);
-  }, [libraryConnected]);
+  }, [activeBackend]);
 
   // Library: load a sample
   const handleLoadSample = useCallback(async (node: LibraryTreeNode) => {
     if (node.type !== 'sample' || !node.fileName) return;
+    const conn = activeConnection();
+    if (!conn) return;
     try {
-      const root = env.library.getRoot();
+      const root = conn.getRoot();
       const result = await loadSample(root, node.fileName, node.path);
       const wavData = parseWav(result.wavData);
       setSamples(wavData.samples);
@@ -113,15 +194,16 @@ function DevHarness() {
       setLibraryOrigin({ name: node.fileName, path: node.path });
       clearResults();
       setSelectedCandidateIndex(undefined);
-      setStatusMessage(`Loaded "${result.yaml.name}"`);
+      notify('info', `Loaded "${result.yaml.name}"`);
     } catch (err) {
-      setStatusMessage(`Load failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+      notify('error', `Load failed: ${err instanceof Error ? err.message : 'unknown error'}`);
     }
-  }, [clearResults]);
+  }, [activeBackend, clearResults]);
 
   // Library: save current sample with loop points
   const handleSaveToLibrary = useCallback(async () => {
-    if (!libraryConnected) return;
+    const conn = activeConnection();
+    if (!conn) return;
 
     const name = libraryOrigin?.name ?? sampleName;
     const path = libraryOrigin?.path ?? [];
@@ -139,17 +221,21 @@ function DevHarness() {
     };
 
     const wavData = createWav(samples, sampleRate);
-    const root = env.library.getRoot();
+    const root = conn.getRoot();
 
     try {
       await saveSample(root, { name, yaml, wavData }, path);
       setLibraryOrigin({ name, path });
-      setStatusMessage(`Saved "${name}" to library`);
+      notify('info', `Saved "${name}" to library`);
       await refreshLibrary();
     } catch (err) {
-      setStatusMessage(`Save failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+      notify('error', `Save failed: ${err instanceof Error ? err.message : 'unknown error'}`);
     }
-  }, [libraryConnected, libraryOrigin, sampleName, sampleRate, loopPoint, endPoint, samples, refreshLibrary]);
+  }, [activeBackend, libraryOrigin, sampleName, sampleRate, loopPoint, endPoint, samples, refreshLibrary]);
+
+  const isConnected = activeBackend !== 'none';
+  const hasLocalFS = 'showDirectoryPicker' in globalThis;
+  const hasGoogleDrive = env.googleDrive !== null;
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
@@ -157,22 +243,54 @@ function DevHarness() {
         <h1 className="text-s330-text" style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>
           Loop Editor — Dev Harness
         </h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          {libraryConnected && (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {isConnected && (
             <button className="ac-btn ac-btn-primary ac-btn-sm" onClick={handleSaveToLibrary}>
               Save to Library
             </button>
           )}
-          <button className="ac-btn ac-btn-sm" onClick={handleConnectLibrary}>
-            {libraryConnected ? 'Change Library' : 'Connect Library'}
-          </button>
+          {hasLocalFS && (
+            <button className="ac-btn ac-btn-sm" onClick={handleConnectLocal}>
+              {activeBackend === 'local' ? 'Change Local' : 'Local FS'}
+            </button>
+          )}
+          {hasGoogleDrive && (
+            <button className="ac-btn ac-btn-sm" onClick={handleConnectGoogleDrive}>
+              {activeBackend === 'google-drive' ? 'Google Drive ✓' : 'Google Drive'}
+            </button>
+          )}
         </div>
       </div>
 
-      {statusMessage && (
-        <p className="text-s330-muted" style={{ fontSize: 13, marginBottom: 12 }}>
-          {statusMessage}
-        </p>
+      {/* Notification area — always visible, stacks errors and info */}
+      {notifications.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
+          {notifications.map((n) => (
+            <div
+              key={n.id}
+              className={n.level === 'error' ? 'ac-alert ac-alert-error' : 'ac-alert'}
+              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', fontSize: 13 }}
+            >
+              <span>{n.text}</span>
+              <div style={{ display: 'flex', gap: 4, marginLeft: 12, flexShrink: 0 }}>
+                <button
+                  className="ac-btn ac-btn-sm"
+                  style={{ padding: '2px 8px', fontSize: 11 }}
+                  onClick={() => navigator.clipboard.writeText(n.text)}
+                >
+                  copy
+                </button>
+                <button
+                  className="ac-btn ac-btn-sm"
+                  style={{ padding: '2px 8px', fontSize: 11 }}
+                  onClick={() => dismissNotification(n.id)}
+                >
+                  dismiss
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       )}
 
       <p className="text-s330-muted" style={{ fontSize: 14, marginBottom: 24 }}>
@@ -181,10 +299,10 @@ function DevHarness() {
       </p>
 
       {/* Library browser */}
-      {libraryConnected && libraryItems.length > 0 && (
+      {isConnected && libraryItems.length > 0 && (
         <div className="ac-card" style={{ marginBottom: 24, maxHeight: 200, overflowY: 'auto' }}>
           <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }} className="text-s330-text">
-            Library Samples
+            Library Samples ({activeBackend === 'google-drive' ? 'Google Drive' : 'Local'})
           </div>
           <SampleList items={libraryItems} onSelect={handleLoadSample} />
         </div>
