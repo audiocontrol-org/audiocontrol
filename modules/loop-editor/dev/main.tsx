@@ -8,12 +8,20 @@
  */
 
 import '@audiocontrol/editor-core/dev/styles.css';
+import '@audiocontrol/editor-core/library.css';
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LoopEditor } from '@/ui/LoopEditor';
 import { useLoopDetection } from '@/ui/hooks/useLoopDetection';
-import { useNotifications, NotificationArea } from '@audiocontrol/editor-core';
+import {
+  useNotifications,
+  NotificationArea,
+  LibraryPanel,
+  TreeView,
+  AudioFileIcon,
+  type TreeNode,
+} from '@audiocontrol/editor-core';
 import {
   parseWav,
   createWav,
@@ -27,6 +35,17 @@ import {
 import { createDevEnvironment } from './environment';
 
 const env = createDevEnvironment();
+
+/** Map LibraryTreeNode[] to TreeNode[] for the shared TreeView. */
+function toTreeNodes(nodes: LibraryTreeNode[]): TreeNode[] {
+  return nodes.map((node) => ({
+    id: node.id,
+    name: node.name,
+    type: node.type,
+    children: node.children ? toTreeNodes(node.children) : undefined,
+    meta: { fileName: node.fileName, path: node.path },
+  }));
+}
 
 /** Generate a test tone with a clean loop region. */
 function generateTestAudio(sampleRate: number, durationSeconds: number): Int16Array {
@@ -188,6 +207,18 @@ function DevHarness() {
     }
   }, [activeBackend, clearResults]);
 
+  // TreeView select handler — adapts TreeNode back to LibraryTreeNode for loading
+  const handleTreeSelect = useCallback((treeNode: TreeNode) => {
+    if (treeNode.type !== 'sample') return;
+    const meta = treeNode.meta as { fileName?: string; path?: string[] } | undefined;
+    const libNode = {
+      type: 'sample' as const,
+      fileName: meta?.fileName ?? treeNode.name,
+      path: meta?.path ?? [],
+    } as LibraryTreeNode;
+    handleLoadSample(libNode);
+  }, [handleLoadSample]);
+
   // Library: save current sample with loop points
   const handleSaveToLibrary = useCallback(async () => {
     const conn = activeConnection();
@@ -228,7 +259,7 @@ function DevHarness() {
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <h1 className="text-s330-text" style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>
+        <h1 className="ac-title-md" style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>
           Loop Editor — Dev Harness
         </h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -256,18 +287,26 @@ function DevHarness() {
         </div>
       )}
 
-      <p className="text-s330-muted" style={{ fontSize: 14, marginBottom: 24 }}>
+      <p className="ac-text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
         {sampleName} — {sampleRate} Hz, {samples.length} samples
         {libraryOrigin && <span> (from library)</span>}
       </p>
 
       {/* Library browser */}
       {isConnected && libraryItems.length > 0 && (
-        <div className="ac-card" style={{ marginBottom: 24, maxHeight: 200, overflowY: 'auto' }}>
-          <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }} className="text-s330-text">
-            Library Samples ({activeBackend === 'google-drive' ? 'Google Drive' : 'Local'})
-          </div>
-          <SampleList items={libraryItems} onSelect={handleLoadSample} />
+        <div style={{ marginBottom: 24, maxHeight: 240 }}>
+          <LibraryPanel
+            title={`Library Samples (${activeBackend === 'google-drive' ? 'Google Drive' : 'Local'})`}
+            onRefresh={refreshLibrary}
+            isEmpty={libraryItems.length === 0}
+            emptyMessage="No samples in library"
+          >
+            <TreeView
+              nodes={toTreeNodes(libraryItems)}
+              onSelect={handleTreeSelect}
+              renderIcon={(node) => node.type === 'sample' ? <AudioFileIcon /> : undefined}
+            />
+          </LibraryPanel>
         </div>
       )}
 
@@ -288,44 +327,6 @@ function DevHarness() {
         searchProgress={progress}
         audio={env.workflow.audio}
       />
-    </div>
-  );
-}
-
-/** Flat list of clickable sample nodes from the library tree. */
-function SampleList({ items, onSelect }: {
-  items: LibraryTreeNode[];
-  onSelect: (node: LibraryTreeNode) => void;
-}) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {items.map((node) => {
-        if (node.type === 'directory' && node.children) {
-          return (
-            <div key={node.id}>
-              <div className="text-s330-muted" style={{ fontSize: 11, fontWeight: 600, padding: '4px 0 2px' }}>
-                {node.name}/
-              </div>
-              <div style={{ paddingLeft: 12 }}>
-                <SampleList items={node.children} onSelect={onSelect} />
-              </div>
-            </div>
-          );
-        }
-        if (node.type === 'sample') {
-          return (
-            <button
-              key={node.id}
-              className="ac-btn ac-btn-sm"
-              style={{ textAlign: 'left', padding: '4px 8px', fontSize: 12 }}
-              onClick={() => onSelect(node)}
-            >
-              {node.name}
-            </button>
-          );
-        }
-        return null;
-      })}
     </div>
   );
 }
