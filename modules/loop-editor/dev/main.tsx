@@ -19,9 +19,11 @@ import {
   NotificationArea,
   LibraryBrowser,
   SampleDetailPanel,
+  CacheMetricsModal,
   AudioFileIcon,
   type TreeNode,
   type OperationProgress,
+  type CacheMetricsData,
 } from '@audiocontrol/editor-core';
 import {
   parseWav,
@@ -89,6 +91,7 @@ function DevHarness() {
   const [importProgress, setImportProgress] = useState<OperationProgress | undefined>(undefined);
   const [isLoadingTree, setIsLoadingTree] = useState(false);
   const [isLoadingMeta, setIsLoadingMeta] = useState(false);
+  const [metricsModalOpen, setMetricsModalOpen] = useState(false);
   const { notifications, notify, dismiss } = useNotifications();
 
   const {
@@ -388,6 +391,8 @@ function DevHarness() {
   const isConnected = activeBackend !== 'none';
   const hasLocalFS = 'showDirectoryPicker' in globalThis;
   const hasGoogleDrive = env.googleDrive !== null;
+  const hasCacheMetrics = activeConnection()?.getMetrics !== undefined;
+  const cacheMetrics = activeConnection()?.getMetrics?.() as CacheMetricsData | undefined;
 
   const showLibrary = isConnected && libraryItems.length > 0;
 
@@ -412,6 +417,11 @@ function DevHarness() {
           {hasGoogleDrive && (
             <button className="ac-btn ac-btn-sm" onClick={handleConnectGoogleDrive}>
               {activeBackend === 'google-drive' ? 'Google Drive ✓' : 'Google Drive'}
+            </button>
+          )}
+          {hasCacheMetrics && (
+            <button className="ac-btn ac-btn-sm" onClick={() => setMetricsModalOpen(true)}>
+              Cache Stats
             </button>
           )}
         </div>
@@ -485,6 +495,13 @@ function DevHarness() {
           </div>
         )}
       </div>
+
+      <CacheMetricsModal
+        open={metricsModalOpen}
+        metrics={cacheMetrics}
+        onClose={() => setMetricsModalOpen(false)}
+        onReset={() => activeConnection()?.resetMetrics?.()}
+      />
     </div>
   );
 }

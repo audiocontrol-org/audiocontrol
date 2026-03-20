@@ -48,3 +48,9 @@ export {
   RenameIcon,
   MoveIcon,
 } from './TreeIcons';
+export {
+  CacheMetricsModal,
+  type CacheMetricsModalProps,
+  type CacheMetricsData,
+  type CategoryMetrics,
+} from './CacheMetricsModal';

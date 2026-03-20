@@ -499,3 +499,86 @@
   height: 0.875rem;
   justify-self: end;
 }
+
+/* =========================================================================
+   Cache Metrics Modal
+   ========================================================================= */
+
+.ac-metrics-empty {
+  margin: 0;
+  padding: var(--ac-space-4);
+  text-align: center;
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+  font-style: italic;
+}
+
+.ac-metrics-summary {
+  display: flex;
+  justify-content: space-around;
+  padding: var(--ac-space-3);
+  margin-bottom: var(--ac-space-3);
+  background: color-mix(in srgb, var(--ac-color-accent) 8%, transparent);
+  border-radius: var(--ac-radius-md);
+}
+
+.ac-metrics-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ac-space-1);
+}
+
+.ac-metrics-stat-value {
+  font-size: 1.5rem;
+  font-weight: var(--ac-font-weight-bold);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-metrics-stat-label {
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ac-metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ac-text-sm);
+  margin-bottom: var(--ac-space-3);
+}
+
+.ac-metrics-table th {
+  padding: var(--ac-space-2);
+  text-align: left;
+  font-weight: var(--ac-font-weight-semibold);
+  color: var(--ac-color-text-muted);
+  border-bottom: 1px solid var(--ac-color-border-subtle);
+}
+
+.ac-metrics-table th:not(:first-child) {
+  text-align: right;
+}
+
+.ac-metrics-table td {
+  padding: var(--ac-space-2);
+  color: var(--ac-color-text-primary);
+  border-bottom: 1px solid color-mix(in srgb, var(--ac-color-border-subtle) 50%, transparent);
+}
+
+.ac-metrics-label {
+  font-weight: var(--ac-font-weight-medium);
+}
+
+.ac-metrics-value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.ac-metrics-footer-stats {
+  display: flex;
+  justify-content: space-between;
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}

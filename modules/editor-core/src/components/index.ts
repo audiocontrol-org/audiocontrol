@@ -44,6 +44,7 @@ export {
   ConfirmDialog,
   SaveDialog,
   MoveDialog,
+  CacheMetricsModal,
   FolderIcon,
   ChevronIcon,
   AudioFileIcon,
@@ -68,6 +69,9 @@ export {
   type LibraryBrowserProps,
   type SampleDetailPanelProps,
   type SampleMetadata,
+  type CacheMetricsModalProps,
+  type CacheMetricsData,
+  type CategoryMetrics,
 } from './library';
 
 // Operation status components
