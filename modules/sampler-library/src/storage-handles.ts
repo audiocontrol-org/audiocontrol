@@ -30,6 +30,27 @@ export interface StorageFile {
 }
 
 /**
+ * Optional metadata for cache validation on high-latency backends.
+ *
+ * Backends may provide this information to enable smarter cache invalidation
+ * (e.g., skip re-fetch if mtime and size match). Not all backends support
+ * this — local FSAA does, Google Drive can derive it from API responses,
+ * NFS/SMB varies by implementation.
+ */
+export interface StorageFileMetadata {
+  /** File size in bytes. */
+  readonly size?: number;
+  /** Last modification time (ms since epoch). */
+  readonly lastModified?: number;
+}
+
+/**
+ * Extended file content with optional metadata.
+ * Backends that support metadata should return this from `getFile()`.
+ */
+export interface StorageFileWithMetadata extends StorageFile, StorageFileMetadata {}
+
+/**
  * Writable stream for creating or overwriting a file.
  * In browsers this is satisfied by `FileSystemWritableFileStream`.
  */

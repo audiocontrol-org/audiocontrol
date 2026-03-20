@@ -389,6 +389,8 @@ export type {
 export type {
   StorageEntry,
   StorageFile,
+  StorageFileMetadata,
+  StorageFileWithMetadata,
   StorageWritable,
   StorageFileHandle,
   StorageDirectoryHandle,

@@ -41,6 +41,7 @@ Create a backend-agnostic caching layer over `StorageDirectoryHandle`.
   - `createWritable()` — returns `CachedStorageWritable` that invalidates content + parent entries on `close()`
 - Create `withCache(handle)` factory that returns `StorageDirectoryHandle & { clearCache(): void }`
 - Cache keys use logical paths (e.g., `library/common/samples/Piano`) not backend IDs
+- Path keys must be normalized: lowercase, no trailing slashes, forward slashes only
 - `invalidate(path)` removes a directory's cached entries and all children under that path
 - `clear()` empties all caches
 

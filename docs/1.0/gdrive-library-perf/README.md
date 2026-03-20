@@ -6,7 +6,9 @@
 
 ## Overview
 
-Improve library responsiveness on high-latency storage backends (Google Drive, SMB, cloud drives) by adding a backend-agnostic `CachedStorageDirectoryHandle` decorator, skeleton placeholders to the detail pane, and loading state feedback during tree scans and metadata loads.
+Improve library responsiveness on high-latency storage backends (Google Drive, NFS, SMB, cloud drives) by adding a backend-agnostic `CachedStorageDirectoryHandle` decorator, skeleton placeholders to the detail pane, and loading state feedback during tree scans and metadata loads.
+
+The cache decorator is designed to work with **any** `StorageDirectoryHandle` implementation — not just Google Drive. This includes future backends like Dropbox, OneDrive, S3, or network filesystems over slow connections.
 
 ## Documentation
 

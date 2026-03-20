@@ -110,10 +110,42 @@ Track `isLoadingMeta` and `isLoadingTree` states in the loop-editor dev harness.
 - Cache decorator must implement `StorageDirectoryHandle` exactly — callers cannot distinguish cached from uncached handles
 - Write-through invalidation must be correct — stale data after mutations is worse than no cache
 - Cache keys must be backend-agnostic (logical paths, not Google Drive file IDs)
+- Cache keys must be normalized (lowercase, no trailing slashes) for consistent lookups
 - Skeleton CSS must use existing editor-core design tokens
 - All files must stay under 500 lines
+
+## Backend Compatibility
+
+The cache decorator is designed for any `StorageDirectoryHandle` implementation:
+
+| Backend | Benefit | Notes |
+|---------|---------|-------|
+| **Local FSAA** | Unnecessary | Already fast (<10ms per operation) |
+| **Google Drive** | Primary target | Caches API responses; 50-150x speedup on repeated access |
+| **NFS/SMB shares** | Reduces network round-trips | Variable latency; benefits depend on network conditions |
+| **Other cloud drives** (Dropbox, OneDrive, S3) | Same pattern | Wrap with `withCache()` when adapters are added |
+
+### Limitations
+
+- **External changes not detected.** Edits made outside the app (via Google Drive web UI, another NFS client, etc.) are not reflected until the user clicks "Refresh" to clear the cache and re-scan.
+- **No connectivity awareness.** If a backend disconnects mid-session (e.g., NFS mount drops), the cache does not automatically invalidate. Consumers should handle connection errors and call `clearCache()` on reconnect.
+- **Session-scoped only.** Cache is lost on page reload. Persistent caching (IndexedDB) is out of scope for the initial implementation.
+
+### Future: Metadata-Based Validation
+
+`StorageFileWithMetadata` (added to `storage-handles.ts`) provides optional `size` and `lastModified` fields. Backends that support this metadata can enable smarter cache validation:
+
+```typescript
+// Future enhancement: validate cached content before returning
+if (cached && metadata.lastModified === cached.lastModified) {
+  return cached.content;  // Skip re-fetch
+}
+```
+
+This is not implemented in the initial cache decorator but the interface is in place for future optimization.
 
 ## Open Questions
 
 - ~~Should `contentCache` have a size limit for large WAV files?~~ Not for initial implementation. Session-scoped lifetime is sufficient; users typically work with 10-50 samples per session.
 - ~~Should the cache be Google Drive specific or generic?~~ Generic. `CachedStorageDirectoryHandle` wraps any `StorageDirectoryHandle`.
+- ~~Should the interface support metadata for smarter cache validation?~~ Yes. Added `StorageFileMetadata` and `StorageFileWithMetadata` interfaces. Backends can opt in; cache decorator can use metadata when available in future iterations.
