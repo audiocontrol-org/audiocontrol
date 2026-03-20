@@ -6,7 +6,8 @@
  * Content is rendered via children.
  */
 
-import React from 'react';
+import React, { useCallback, useState } from 'react';
+import { NewFolderIcon } from './TreeIcons';
 
 export interface LibraryTab {
   id: string;
@@ -34,6 +35,9 @@ export interface LibraryPanelProps {
   isEmpty?: boolean;
   /** Called when refresh button is clicked */
   onRefresh?: () => void;
+  /** Called to create a new folder. When provided, renders a new-folder button
+   *  in the header. The panel handles the name prompt internally. */
+  onCreateFolder?: (name: string) => Promise<void>;
   /** Panel title */
   title?: string;
   /** Actions rendered in the header (e.g., create folder button) */
@@ -51,11 +55,25 @@ export function LibraryPanel({
   error,
   emptyMessage = 'No items',
   isEmpty,
+  onCreateFolder,
   onRefresh,
   title,
   headerActions,
   children,
 }: LibraryPanelProps): JSX.Element {
+  const [creatingFolder, setCreatingFolder] = useState(false);
+
+  const handleCreateFolder = useCallback(async () => {
+    const name = window.prompt('New folder name:');
+    if (!name?.trim() || !onCreateFolder) return;
+    setCreatingFolder(true);
+    try {
+      await onCreateFolder(name.trim());
+    } finally {
+      setCreatingFolder(false);
+    }
+  }, [onCreateFolder]);
+
   return (
     <div className="ac-library-panel">
       {/* Connection status */}
@@ -64,11 +82,21 @@ export function LibraryPanel({
       )}
 
       {/* Header */}
-      {(title || headerActions || onRefresh) && (
+      {(title || headerActions || onRefresh || onCreateFolder) && (
         <div className="ac-library-panel-header">
           {title && <span className="ac-library-panel-title">{title}</span>}
           <div className="ac-library-panel-header-actions">
             {headerActions}
+            {onCreateFolder && (
+              <button
+                className="ac-btn ac-btn-sm"
+                onClick={handleCreateFolder}
+                disabled={creatingFolder || loading}
+                title="New folder"
+              >
+                <NewFolderIcon />
+              </button>
+            )}
             {onRefresh && (
               <button
                 className="ac-btn ac-btn-sm"

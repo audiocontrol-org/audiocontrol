@@ -12,7 +12,6 @@ import { isValidMoveTarget } from '@audiocontrol/sampler-library/browser';
 import {
   LibraryPanel,
   TreeView,
-  NewFolderIcon,
   type TreeNode,
   type LibraryTab,
 } from '@audiocontrol/editor-core';
@@ -196,15 +195,9 @@ export function LibraryBrowser({
     });
   }, []);
 
-  const handleNewFolder = useCallback(async () => {
-    const name = window.prompt('New folder name:');
-    if (!name) return;
-    try {
-      await createSamplesFolder(currentPath, name);
-      refreshSamples();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create folder');
-    }
+  const handleCreateFolder = useCallback(async (name: string) => {
+    await createSamplesFolder(currentPath, name);
+    refreshSamples();
   }, [currentPath, refreshSamples]);
 
   // --- TreeView callbacks ---
@@ -355,12 +348,6 @@ export function LibraryBrowser({
         ? tones.length === 0
         : drumKits.length === 0;
 
-  const headerActions = activeTab === 'samples' ? (
-    <button className="ac-btn ac-btn-sm" onClick={handleNewFolder} title="New folder">
-      <NewFolderIcon />
-    </button>
-  ) : undefined;
-
   const treeNodes = toTreeNodes(samplesTree);
 
   return (
@@ -374,7 +361,7 @@ export function LibraryBrowser({
       emptyMessage={emptyMessage}
       isEmpty={!loading && !error && isEmpty}
       onRefresh={refresh}
-      headerActions={headerActions}
+      onCreateFolder={activeTab === 'samples' ? handleCreateFolder : undefined}
     >
       {/* Samples tab -- TreeView with root drag-drop wrapper */}
       {activeTab === 'samples' && !isEmpty && (

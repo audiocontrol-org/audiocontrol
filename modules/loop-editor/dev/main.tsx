@@ -28,6 +28,8 @@ import {
   listCommonSamplesTree,
   loadSample,
   saveSample,
+  createFolder,
+  deleteItem,
   type LibraryTreeNode,
   type SampleYaml,
   type LibraryConnection,
@@ -219,6 +221,32 @@ function DevHarness() {
     handleLoadSample(libNode);
   }, [handleLoadSample]);
 
+  // Library: create a new folder (called by LibraryPanel's built-in button)
+  const handleCreateFolder = useCallback(async (name: string) => {
+    const conn = activeConnection();
+    if (!conn) throw new Error('Not connected');
+    const root = conn.getRoot();
+    await createFolder(root, [], name);
+    await refreshLibrary();
+    notify('info', `Created folder "${name}"`);
+  }, [activeBackend, refreshLibrary]);
+
+  // Library: delete a sample or folder
+  const handleDeleteItem = useCallback(async (node: TreeNode) => {
+    const meta = node.meta as { path?: string[] } | undefined;
+    if (!window.confirm(`Delete "${node.name}"?`)) return;
+    const conn = activeConnection();
+    if (!conn) return;
+    try {
+      const root = conn.getRoot();
+      await deleteItem(root, node.name, meta?.path ?? []);
+      await refreshLibrary();
+      notify('info', `Deleted "${node.name}"`);
+    } catch (err) {
+      notify('error', `Delete failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+    }
+  }, [activeBackend, refreshLibrary]);
+
   // Library: save current sample with loop points
   const handleSaveToLibrary = useCallback(async () => {
     const conn = activeConnection();
@@ -322,12 +350,14 @@ function DevHarness() {
             <LibraryPanel
               title={activeBackend === 'google-drive' ? 'Google Drive' : 'Local Library'}
               onRefresh={refreshLibrary}
+              onCreateFolder={handleCreateFolder}
               isEmpty={libraryItems.length === 0}
               emptyMessage="No samples in library"
             >
               <TreeView
                 nodes={toTreeNodes(libraryItems)}
                 onSelect={handleTreeSelect}
+                onDelete={handleDeleteItem}
                 renderIcon={(node) => node.type === 'sample' ? <AudioFileIcon /> : undefined}
               />
             </LibraryPanel>

@@ -7,7 +7,7 @@
  */
 
 import React, { useCallback, useState } from 'react';
-import { ChevronIcon, FolderIcon } from './TreeIcons';
+import { ChevronIcon, FolderIcon, DeleteIcon } from './TreeIcons';
 
 // =========================================================================
 // Types
@@ -47,6 +47,9 @@ export interface TreeViewProps {
   draggable?: boolean;
   /** Called when drag starts on a non-directory node */
   onDragStart?: (node: TreeNode, e: React.DragEvent) => void;
+  /** Called when a node's delete button is clicked. When provided, renders a
+   *  delete button on hover for each node. */
+  onDelete?: (node: TreeNode) => void;
   /** Depth indentation in pixels per level. Default: 16. */
   indentPx?: number;
   /** Message shown for empty directories. Default: 'Empty folder'. */
@@ -71,6 +74,7 @@ interface TreeNodeRowProps {
   renderTrailing?: (node: TreeNode) => React.ReactNode;
   draggable?: boolean;
   onDragStart?: (node: TreeNode, e: React.DragEvent) => void;
+  onDelete?: (node: TreeNode) => void;
   indentPx: number;
   emptyDirectoryMessage: string;
   expandedIds: Set<string>;
@@ -91,6 +95,7 @@ function TreeNodeRow({
   renderTrailing,
   draggable,
   onDragStart,
+  onDelete,
   indentPx,
   emptyDirectoryMessage,
   expandedIds,
@@ -213,6 +218,16 @@ function TreeNodeRow({
         <span className="ac-tree-node-name">{node.name}</span>
 
         {renderTrailing?.(node)}
+
+        {onDelete && (
+          <button
+            className="ac-tree-delete-btn"
+            onClick={(e) => { e.stopPropagation(); onDelete(node); }}
+            title={`Delete ${node.name}`}
+          >
+            <DeleteIcon />
+          </button>
+        )}
       </div>
 
       {/* Children for expanded directories */}
@@ -234,6 +249,7 @@ function TreeNodeRow({
               renderTrailing={renderTrailing}
               draggable={draggable}
               onDragStart={onDragStart}
+              onDelete={onDelete}
               indentPx={indentPx}
               emptyDirectoryMessage={emptyDirectoryMessage}
               expandedIds={expandedIds}
@@ -271,6 +287,7 @@ export function TreeView({
   onDragOver,
   renderIcon,
   renderTrailing,
+  onDelete,
   draggable,
   onDragStart,
   indentPx = 16,
@@ -314,6 +331,7 @@ export function TreeView({
           renderTrailing={renderTrailing}
           draggable={draggable}
           onDragStart={onDragStart}
+          onDelete={onDelete}
           indentPx={indentPx}
           emptyDirectoryMessage={emptyDirectoryMessage}
           expandedIds={expandedIds}

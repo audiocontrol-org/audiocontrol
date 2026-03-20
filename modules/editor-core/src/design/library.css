@@ -95,6 +95,38 @@
   margin-left: 1rem;
 }
 
+.ac-tree-delete-btn {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: var(--ac-radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  flex-shrink: 0;
+  transition:
+    opacity var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-tree-node:hover .ac-tree-delete-btn,
+.ac-tree-node:focus-within .ac-tree-delete-btn {
+  opacity: 1;
+}
+
+.ac-tree-delete-btn:hover {
+  color: var(--ac-status-danger);
+  background: color-mix(in srgb, var(--ac-status-danger) 15%, transparent);
+}
+
+.ac-tree-delete-btn:focus-visible {
+  opacity: 1;
+  outline: 1px solid var(--ac-status-danger);
+}
+
 .ac-tree-empty {
   font-size: var(--ac-text-xs);
   color: var(--ac-color-text-muted);
