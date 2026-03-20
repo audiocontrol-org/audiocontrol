@@ -70,6 +70,29 @@ export {
   type SampleMetadata,
 } from './library';
 
+// Operation status components
+export {
+  OperationProgressBar,
+  OperationErrorBanner,
+  OperationSuccessScreen,
+  OperationLoadingSpinner,
+  OperationButtonContent,
+  type OperationProgressBarProps,
+  type OperationErrorBannerProps,
+  type OperationSuccessScreenProps,
+  type OperationLoadingSpinnerProps,
+  type OperationButtonContentProps,
+} from './OperationStatus';
+
+// Operation progress types
+export {
+  isOperationComplete,
+  getOverallPercent,
+  formatBytes,
+  type OperationProgress,
+  type OperationState,
+} from '../types/operation-progress';
+
 // SVG glow components
 export {
   VfdGlowDefs,

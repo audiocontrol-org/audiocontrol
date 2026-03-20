@@ -21,6 +21,7 @@ import {
   SampleDetailPanel,
   AudioFileIcon,
   type TreeNode,
+  type OperationProgress,
 } from '@audiocontrol/editor-core';
 import {
   parseWav,
@@ -85,6 +86,7 @@ function DevHarness() {
   const [libraryItems, setLibraryItems] = useState<LibraryTreeNode[]>([]);
   const [libraryOrigin, setLibraryOrigin] = useState<{ name: string; path: string[] } | null>(null);
   const [selectedSampleMeta, setSelectedSampleMeta] = useState<SampleYaml | null>(null);
+  const [importProgress, setImportProgress] = useState<OperationProgress | undefined>(undefined);
   const { notifications, notify, dismiss } = useNotifications();
 
   const {
@@ -251,10 +253,9 @@ function DevHarness() {
     notify('info', `Created folder "${name}"`);
   }, [activeBackend, refreshLibrary]);
 
-  // Library: delete a sample or folder
+  // Library: delete a sample or folder (confirmation handled by LibraryBrowser)
   const handleDeleteItem = useCallback(async (node: TreeNode) => {
     const meta = node.meta as { path?: string[] } | undefined;
-    if (!window.confirm(`Delete "${node.name}"?`)) return;
     const conn = activeConnection();
     if (!conn) return;
     try {
@@ -287,20 +288,48 @@ function DevHarness() {
     const conn = activeConnection();
     if (!conn) return;
     const root = conn.getRoot();
+    const wavFiles = files.filter((f) => f.name.toLowerCase().endsWith('.wav'));
+    const skipped = files.length - wavFiles.length;
+    if (skipped > 0) {
+      notify('error', `Skipped ${skipped} non-WAV file${skipped !== 1 ? 's' : ''}`);
+    }
+    if (wavFiles.length === 0) return;
+
+    const totalBytes = wavFiles.reduce((sum, f) => sum + f.size, 0);
+    let completedBytes = 0;
     let imported = 0;
-    for (const file of files) {
-      if (!file.name.toLowerCase().endsWith('.wav')) {
-        notify('error', `Skipped "${file.name}" — only WAV files are supported`);
-        continue;
-      }
+
+    for (let i = 0; i < wavFiles.length; i++) {
+      const file = wavFiles[i];
+      setImportProgress({
+        currentStep: i + 1,
+        totalSteps: wavFiles.length,
+        stepLabel: `Importing ${file.name}`,
+        bytesSent: 0,
+        bytesTotal: file.size,
+        bytesSentAllSteps: completedBytes,
+        bytesTotalAllSteps: totalBytes,
+      });
       try {
         const data = new Uint8Array(await file.arrayBuffer());
+        setImportProgress({
+          currentStep: i + 1,
+          totalSteps: wavFiles.length,
+          stepLabel: `Importing ${file.name}`,
+          bytesSent: file.size,
+          bytesTotal: file.size,
+          bytesSentAllSteps: completedBytes,
+          bytesTotalAllSteps: totalBytes,
+        });
         await importWavToCommonArea(root, file.name, data, { targetPath });
+        completedBytes += file.size;
         imported++;
       } catch (err) {
         notify('error', `Import "${file.name}" failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+        completedBytes += file.size;
       }
     }
+    setImportProgress(undefined);
     if (imported > 0) {
       await refreshLibrary();
       notify('info', `Imported ${imported} sample${imported !== 1 ? 's' : ''}`);
@@ -415,6 +444,7 @@ function DevHarness() {
               onMove={handleMoveItem}
               onRefresh={refreshLibrary}
               onImportFiles={handleImportFiles}
+              operationProgress={importProgress}
               onSelect={handleTreeSelect}
               emptyMessage="No samples in library"
               renderIcon={(node) => node.type === 'sample' ? <AudioFileIcon /> : undefined}

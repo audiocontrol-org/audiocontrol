@@ -11,7 +11,10 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { LibraryPanel } from './LibraryPanel';
 import { TreeView, type TreeNode } from './TreeView';
+import { ConfirmDialog } from './ConfirmDialog';
 import { ImportIcon } from './TreeIcons';
+import { OperationProgressBar } from '../OperationStatus';
+import type { OperationProgress } from '../../types/operation-progress';
 
 const LIBRARY_MOVE_MIME = 'application/x-library-move';
 
@@ -57,6 +60,9 @@ export interface LibraryBrowserProps {
   /** Optional connection status widget */
   connectionSlot?: React.ReactNode;
 
+  /** Structured progress for an in-flight operation (import, move, etc.) */
+  operationProgress?: OperationProgress;
+
   /** TreeView passthrough for context menu */
   onContextMenu?: (e: React.MouseEvent, node: TreeNode) => void;
 }
@@ -95,11 +101,13 @@ export function LibraryBrowser({
   error,
   emptyMessage = 'No items',
   connectionSlot,
+  operationProgress,
   onContextMenu,
 }: LibraryBrowserProps): JSX.Element {
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<TreeNode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedNode = selectedId ? findNode(nodes, selectedId) : undefined;
@@ -110,6 +118,23 @@ export function LibraryBrowser({
     setSelectedId(node.id);
     onSelect?.(node);
   }, [onSelect]);
+
+  // -- Delete confirmation ------------------------------------------------
+
+  const handleDeleteClick = useCallback((node: TreeNode) => {
+    setDeleteTarget(node);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (deleteTarget) {
+      onDelete(deleteTarget);
+      setDeleteTarget(null);
+    }
+  }, [deleteTarget, onDelete]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteTarget(null);
+  }, []);
 
   // -- File import -------------------------------------------------------
 
@@ -258,11 +283,16 @@ export function LibraryBrowser({
           headerActions={importButton}
           connectionSlot={connectionSlot}
         >
+          {operationProgress && (
+            <div className="ac-library-browser-progress">
+              <OperationProgressBar progress={operationProgress} />
+            </div>
+          )}
           <TreeView
             nodes={nodes}
             selectedId={selectedId}
             onSelect={handleSelect}
-            onDelete={onDelete}
+            onDelete={handleDeleteClick}
             onContextMenu={onContextMenu}
             renderIcon={renderIcon}
             renderTrailing={renderTrailing}
@@ -278,6 +308,15 @@ export function LibraryBrowser({
           {renderDetail(selectedNode ?? null)}
         </div>
       )}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title="Delete"
+        message={`Delete "${deleteTarget?.name}"? This cannot be undone.`}
+        confirmLabel="Delete"
+        danger
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+      />
     </div>
   );
 }

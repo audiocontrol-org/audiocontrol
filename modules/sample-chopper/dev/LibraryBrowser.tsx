@@ -152,7 +152,6 @@ export function LibraryBrowser({
     const meta = node.meta as { directoryName?: string; path?: string[] } | undefined;
     const name = meta?.directoryName ?? node.name;
     const path = meta?.path ?? [];
-    if (!window.confirm(`Delete "${name}"?`)) return;
     try {
       await deleteChoppedSample(name, path);
       refreshSamples();
