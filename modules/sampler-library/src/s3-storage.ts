@@ -88,6 +88,18 @@ class S3Client {
     return resp.ok;
   }
 
+  /**
+   * Get object metadata including size.
+   */
+  async getObjectMetadata(key: string): Promise<{ size: number }> {
+    const resp = await this.aws.fetch(this.url(key), { method: 'HEAD' });
+    if (!resp.ok) {
+      throw new Error(`S3 HeadObject failed for "${key}": ${resp.status} ${resp.statusText}`);
+    }
+    const contentLength = resp.headers.get('Content-Length');
+    return { size: contentLength ? parseInt(contentLength, 10) : 0 };
+  }
+
   async deleteObject(key: string): Promise<void> {
     const resp = await this.aws.fetch(this.url(key), { method: 'DELETE' });
     if (!resp.ok && resp.status !== 404) {
@@ -283,6 +295,67 @@ export class S3DirectoryHandle implements StorageDirectoryHandle {
 }
 
 // =========================================================================
+// StorageFile implementation for S3
+// =========================================================================
+
+/**
+ * StorageFile implementation that fetches content from S3.
+ * Supports streaming reads for progress tracking.
+ */
+class S3File implements StorageFile {
+  readonly size: number;
+  private cachedBuffer: ArrayBuffer | null = null;
+
+  constructor(
+    private readonly client: S3Client,
+    private readonly key: string,
+    size: number,
+  ) {
+    this.size = size;
+  }
+
+  async text(): Promise<string> {
+    const buffer = await this.arrayBuffer();
+    return new TextDecoder().decode(buffer);
+  }
+
+  async arrayBuffer(): Promise<ArrayBuffer> {
+    if (this.cachedBuffer !== null) {
+      return this.cachedBuffer;
+    }
+    const resp = await this.client.getObject(this.key);
+    this.cachedBuffer = await resp.arrayBuffer();
+    return this.cachedBuffer;
+  }
+
+  stream(): ReadableStream<Uint8Array> {
+    const client = this.client;
+    const key = this.key;
+
+    return new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          const resp = await client.getObject(key);
+          const reader = resp.body?.getReader();
+          if (!reader) {
+            throw new Error('No response body available');
+          }
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+    });
+  }
+}
+
+// =========================================================================
 // StorageFileHandle implementation
 // =========================================================================
 
@@ -298,13 +371,8 @@ class S3FileHandle implements StorageFileHandle {
   }
 
   async getFile(): Promise<StorageFile> {
-    const resp = await this.client.getObject(this.key);
-    const buffer = await resp.arrayBuffer();
-
-    return {
-      text: async () => new TextDecoder().decode(buffer),
-      arrayBuffer: async () => buffer,
-    };
+    const metadata = await this.client.getObjectMetadata(this.key);
+    return new S3File(this.client, this.key, metadata.size);
   }
 
   async createWritable(): Promise<StorageWritable> {

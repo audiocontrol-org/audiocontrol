@@ -27,19 +27,26 @@ export interface StorageEntry {
 export interface StorageFile {
   text(): Promise<string>;
   arrayBuffer(): Promise<ArrayBuffer>;
+  /**
+   * Return a readable stream of the file content.
+   * Enables progress tracking during reads on high-latency backends.
+   */
+  stream(): ReadableStream<Uint8Array>;
+  /** File size in bytes. */
+  readonly size: number;
 }
 
 /**
  * Optional metadata for cache validation on high-latency backends.
  *
  * Backends may provide this information to enable smarter cache invalidation
- * (e.g., skip re-fetch if mtime and size match). Not all backends support
+ * (e.g., skip re-fetch if mtime matches). Not all backends support
  * this — local FSAA does, Google Drive can derive it from API responses,
  * NFS/SMB varies by implementation.
+ *
+ * Note: `size` is now part of the base `StorageFile` interface.
  */
 export interface StorageFileMetadata {
-  /** File size in bytes. */
-  readonly size?: number;
   /** Last modification time (ms since epoch). */
   readonly lastModified?: number;
 }

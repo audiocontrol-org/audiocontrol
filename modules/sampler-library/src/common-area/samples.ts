@@ -16,6 +16,60 @@ import type { ChoppedSample } from '@/schemas/index.js';
 import { SampleYamlSchema, ChoppedSampleSchema } from '@/schemas/index.js';
 import { getNestedDirectory, getNestedDirectoryIfExists, getNestedDirectoryReadOnly, moveDirectory } from '@/library-fs.js';
 import { sanitizeForFilename } from './import.js';
+import { readFileWithProgress, readTextWithProgress, type ReadProgressCallback } from './streaming.js';
+
+/**
+ * Structured progress for a multi-step operation.
+ *
+ * This type is intentionally compatible with `OperationProgress` from
+ * `@audiocontrol/editor-core`, allowing progress data to be passed directly
+ * to UI components like `OperationProgressBar`.
+ *
+ * Overall progress is byte-weighted (not step-weighted) so that a
+ * 10 MB upload step doesn't appear as equal to a 100-byte metadata write.
+ */
+export interface OperationProgress {
+  /** Current step number (1-based) */
+  currentStep: number;
+  /** Total number of steps in the operation */
+  totalSteps: number;
+  /** Human-readable label for the current step (e.g., "Loading KICK1.wav") */
+  stepLabel: string;
+  /** Bytes transferred in the current step */
+  bytesSent: number;
+  /** Total bytes to transfer in the current step */
+  bytesTotal: number;
+  /** Bytes completed in all prior steps (for byte-weighted overall progress) */
+  bytesSentAllSteps: number;
+  /** Total bytes across ALL steps in the entire operation */
+  bytesTotalAllSteps: number;
+}
+
+/**
+ * Progress callback for sample operations.
+ *
+ * The callback receives {@link OperationProgress} data that can be passed
+ * directly to `OperationProgressBar` from `@audiocontrol/editor-core`.
+ */
+export interface SampleProgressCallback {
+  (progress: OperationProgress): void;
+}
+
+/**
+ * Options for sample load operations.
+ */
+export interface SampleLoadOptions {
+  /** Optional progress callback for tracking download progress. */
+  onProgress?: SampleProgressCallback;
+}
+
+/**
+ * Options for sample save operations.
+ */
+export interface SampleSaveOptions {
+  /** Optional progress callback for tracking upload progress. */
+  onProgress?: SampleProgressCallback;
+}
 
 const SAMPLES_ROOT = ['library', 'common', 'samples'];
 
@@ -59,50 +113,179 @@ export interface SampleLoadResult {
  *
  * Files are written to `library/common/samples/{path}/{name}.yaml`
  * and `library/common/samples/{path}/{name}.wav`.
+ *
+ * @param root - Library root directory handle
+ * @param payload - Sample data to save (name, yaml, wavData)
+ * @param path - Optional subdirectory path within samples folder
+ * @param options - Optional progress tracking options
+ *
+ * @example
+ * ```typescript
+ * // Basic save without progress
+ * await saveSample(root, { name: 'kick', yaml, wavData });
+ *
+ * // Save with progress reporting (for UI feedback)
+ * await saveSample(root, { name: 'kick', yaml, wavData }, [], {
+ *   onProgress: (p) => {
+ *     console.log(`${p.stepLabel}: ${p.bytesSent}/${p.bytesTotal} bytes`);
+ *     // Use with OperationProgressBar from @audiocontrol/editor-core
+ *     setProgress(p);
+ *   },
+ * });
+ * ```
  */
 export async function saveSample(
   root: StorageDirectoryHandle,
   payload: SampleSavePayload,
   path: string[] = [],
+  options?: SampleSaveOptions,
 ): Promise<void> {
   const dir = await getSamplesDir(root, path);
   const safeName = sanitizeForFilename(payload.name);
+  const { onProgress } = options ?? {};
 
   const yamlContent = stringifyYaml(payload.yaml, { indent: 2, lineWidth: 120 });
+  const yamlBytes = new TextEncoder().encode(yamlContent).length;
+  const wavBytes = payload.wavData.byteLength;
+  const totalBytes = yamlBytes + wavBytes;
+
+  // Step 1: Save YAML metadata
+  onProgress?.({
+    currentStep: 1,
+    totalSteps: 2,
+    stepLabel: `Saving metadata: ${safeName}.yaml`,
+    bytesSent: 0,
+    bytesTotal: yamlBytes,
+    bytesSentAllSteps: 0,
+    bytesTotalAllSteps: totalBytes,
+  });
+
   const yamlHandle = await dir.getFileHandle(`${safeName}.yaml`, { create: true });
   const yamlWritable = await yamlHandle.createWritable();
   await yamlWritable.write(yamlContent);
   await yamlWritable.close();
 
+  onProgress?.({
+    currentStep: 1,
+    totalSteps: 2,
+    stepLabel: `Saving metadata: ${safeName}.yaml`,
+    bytesSent: yamlBytes,
+    bytesTotal: yamlBytes,
+    bytesSentAllSteps: 0,
+    bytesTotalAllSteps: totalBytes,
+  });
+
+  // Step 2: Save WAV audio data
+  onProgress?.({
+    currentStep: 2,
+    totalSteps: 2,
+    stepLabel: `Saving audio: ${safeName}.wav`,
+    bytesSent: 0,
+    bytesTotal: wavBytes,
+    bytesSentAllSteps: yamlBytes,
+    bytesTotalAllSteps: totalBytes,
+  });
+
   const wavHandle = await dir.getFileHandle(`${safeName}.wav`, { create: true });
   const wavWritable = await wavHandle.createWritable();
   await wavWritable.write(payload.wavData);
   await wavWritable.close();
+
+  onProgress?.({
+    currentStep: 2,
+    totalSteps: 2,
+    stepLabel: `Saving audio: ${safeName}.wav`,
+    bytesSent: wavBytes,
+    bytesTotal: wavBytes,
+    bytesSentAllSteps: yamlBytes,
+    bytesTotalAllSteps: totalBytes,
+  });
 }
 
 /**
  * Load a sample YAML + WAV pair from the common area.
+ *
+ * @param root - Library root directory handle
+ * @param name - Sample name (without extension)
+ * @param path - Optional subdirectory path within samples folder
+ * @param options - Optional progress tracking options
+ *
+ * @example
+ * ```typescript
+ * // Basic load without progress
+ * const { yaml, wavData } = await loadSample(root, 'kick');
+ *
+ * // Load with progress reporting (useful for large files on slow backends)
+ * const result = await loadSample(root, 'kick', [], {
+ *   onProgress: (p) => {
+ *     const percent = Math.round((p.bytesSentAllSteps + p.bytesSent) / p.bytesTotalAllSteps * 100);
+ *     console.log(`Loading: ${percent}%`);
+ *     // Or pass directly to OperationProgressBar from @audiocontrol/editor-core
+ *     setLoadProgress(p);
+ *   },
+ * });
+ * ```
  */
 export async function loadSample(
   root: StorageDirectoryHandle,
   name: string,
   path: string[] = [],
+  options?: SampleLoadOptions,
 ): Promise<SampleLoadResult> {
   const dir = await getSamplesDirReadOnly(root, path);
   const safeName = sanitizeForFilename(name);
+  const { onProgress } = options ?? {};
 
+  // Step 1: Load YAML metadata
   const yamlHandle = await dir.getFileHandle(`${safeName}.yaml`);
   const yamlFile = await yamlHandle.getFile();
-  const yamlText = await yamlFile.text();
+
+  // Get WAV file handle to determine total bytes upfront
+  const wavHandle = await dir.getFileHandle(`${safeName}.wav`);
+  const wavFile = await wavHandle.getFile();
+
+  const yamlSize = yamlFile.size;
+  const wavSize = wavFile.size;
+  const totalBytes = yamlSize + wavSize;
+
+  // Read YAML with progress
+  const yamlProgressCallback: ReadProgressCallback | undefined = onProgress
+    ? (bytesRead, bytesTotal) => {
+        onProgress({
+          currentStep: 1,
+          totalSteps: 2,
+          stepLabel: `Loading metadata: ${safeName}.yaml`,
+          bytesSent: bytesRead,
+          bytesTotal,
+          bytesSentAllSteps: 0,
+          bytesTotalAllSteps: totalBytes,
+        });
+      }
+    : undefined;
+
+  const yamlText = await readTextWithProgress(yamlFile, yamlProgressCallback);
   const parsed = parseYaml(yamlText);
   const result = SampleYamlSchema.safeParse(parsed);
   if (!result.success) {
     throw new Error(`Invalid sample YAML for "${name}": ${result.error.message}`);
   }
 
-  const wavHandle = await dir.getFileHandle(`${safeName}.wav`);
-  const wavFile = await wavHandle.getFile();
-  const wavData = await wavFile.arrayBuffer();
+  // Step 2: Load WAV data with progress
+  const wavProgressCallback: ReadProgressCallback | undefined = onProgress
+    ? (bytesRead, bytesTotal) => {
+        onProgress({
+          currentStep: 2,
+          totalSteps: 2,
+          stepLabel: `Loading audio: ${safeName}.wav`,
+          bytesSent: bytesRead,
+          bytesTotal,
+          bytesSentAllSteps: yamlSize,
+          bytesTotalAllSteps: totalBytes,
+        });
+      }
+    : undefined;
+
+  const wavData = await readFileWithProgress(wavFile, wavProgressCallback);
 
   return { yaml: result.data, wavData };
 }
@@ -112,18 +295,53 @@ export async function loadSample(
  *
  * Use this when displaying sample info without needing audio data.
  * Much faster than loadSample for high-latency backends.
+ *
+ * @param root - Library root directory handle
+ * @param name - Sample name (without extension)
+ * @param path - Optional subdirectory path within samples folder
+ * @param options - Optional progress tracking options
+ *
+ * @example
+ * ```typescript
+ * // Quick metadata load for UI display
+ * const meta = await loadSampleMeta(root, 'kick');
+ * console.log(`Sample: ${meta.name}, ${meta.sampleRate}Hz`);
+ *
+ * // With progress (rarely needed for small YAML files)
+ * const meta = await loadSampleMeta(root, 'kick', [], {
+ *   onProgress: setLoadProgress,
+ * });
+ * ```
  */
 export async function loadSampleMeta(
   root: StorageDirectoryHandle,
   name: string,
   path: string[] = [],
+  options?: SampleLoadOptions,
 ): Promise<SampleYaml> {
   const dir = await getSamplesDirReadOnly(root, path);
   const safeName = sanitizeForFilename(name);
+  const { onProgress } = options ?? {};
 
   const yamlHandle = await dir.getFileHandle(`${safeName}.yaml`);
   const yamlFile = await yamlHandle.getFile();
-  const yamlText = await yamlFile.text();
+  const totalBytes = yamlFile.size;
+
+  const progressCallback: ReadProgressCallback | undefined = onProgress
+    ? (bytesRead, bytesTotal) => {
+        onProgress({
+          currentStep: 1,
+          totalSteps: 1,
+          stepLabel: `Loading metadata: ${safeName}.yaml`,
+          bytesSent: bytesRead,
+          bytesTotal,
+          bytesSentAllSteps: 0,
+          bytesTotalAllSteps: totalBytes,
+        });
+      }
+    : undefined;
+
+  const yamlText = await readTextWithProgress(yamlFile, progressCallback);
   const parsed = parseYaml(yamlText);
   const result = SampleYamlSchema.safeParse(parsed);
   if (!result.success) {

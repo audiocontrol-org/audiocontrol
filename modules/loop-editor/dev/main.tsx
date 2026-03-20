@@ -21,6 +21,7 @@ import {
   SampleDetailPanel,
   CacheMetricsModal,
   AudioFileIcon,
+  OperationProgressBar,
   type TreeNode,
   type OperationProgress,
   type CacheMetricsData,
@@ -90,6 +91,8 @@ function DevHarness() {
   const [libraryOrigin, setLibraryOrigin] = useState<{ name: string; path: string[] } | null>(null);
   const [selectedSampleMeta, setSelectedSampleMeta] = useState<SampleYaml | null>(null);
   const [importProgress, setImportProgress] = useState<OperationProgress | undefined>(undefined);
+  const [loadProgress, setLoadProgress] = useState<OperationProgress | undefined>(undefined);
+  const [saveProgress, setSaveProgress] = useState<OperationProgress | undefined>(undefined);
   const [isLoadingTree, setIsLoadingTree] = useState(false);
   const [isLoadingMeta, setIsLoadingMeta] = useState(false);
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
@@ -220,7 +223,10 @@ function DevHarness() {
     if (!conn) return;
     try {
       const root = conn.getRoot();
-      const result = await loadSample(root, node.fileName, node.path);
+      const result = await loadSample(root, node.fileName, node.path, {
+        onProgress: setLoadProgress,
+      });
+      setLoadProgress(undefined);
       const wavData = parseWav(result.wavData);
       setSamples(wavData.samples);
       setSampleRate(wavData.sampleRate);
@@ -233,6 +239,7 @@ function DevHarness() {
       setSelectedCandidateIndex(undefined);
       notify('info', `Loaded "${result.yaml.name}"`);
     } catch (err) {
+      setLoadProgress(undefined);
       notify('error', `Load failed: ${err instanceof Error ? err.message : 'unknown error'}`);
     }
   }, [activeBackend, clearResults]);
@@ -381,11 +388,15 @@ function DevHarness() {
     const root = conn.getRoot();
 
     try {
-      await saveSample(root, { name, yaml, wavData }, path);
+      await saveSample(root, { name, yaml, wavData }, path, {
+        onProgress: setSaveProgress,
+      });
+      setSaveProgress(undefined);
       setLibraryOrigin({ name, path });
       notify('info', `Saved "${name}" to library`);
       await refreshLibrary();
     } catch (err) {
+      setSaveProgress(undefined);
       notify('error', `Save failed: ${err instanceof Error ? err.message : 'unknown error'}`);
     }
   }, [activeBackend, libraryOrigin, sampleName, sampleRate, loopPoint, endPoint, samples, refreshLibrary]);
@@ -454,6 +465,11 @@ function DevHarness() {
             searchProgress={progress}
             audio={env.workflow.audio}
           />
+          {(loadProgress || saveProgress) && (
+            <div style={{ marginTop: 16 }}>
+              <OperationProgressBar progress={(loadProgress ?? saveProgress)!} />
+            </div>
+          )}
           {notifications.length > 0 && (
             <div style={{ marginTop: 16 }}>
               <NotificationArea notifications={notifications} onDismiss={dismiss} />

@@ -450,6 +450,10 @@ export {
 export type {
   SampleSavePayload,
   SampleLoadResult,
+  OperationProgress,
+  SampleProgressCallback,
+  SampleLoadOptions,
+  SampleSaveOptions,
   ChoppedSampleSavePayload,
   ChoppedSampleLoadResult,
 } from './common-area/samples.js';
@@ -464,3 +468,11 @@ export {
 } from './common-area/import.js';
 
 export type { ImportOptions } from './common-area/import.js';
+
+// Streaming utilities for progress-aware reads
+export {
+  readFileWithProgress,
+  readTextWithProgress,
+} from './common-area/streaming.js';
+
+export type { ReadProgressCallback } from './common-area/streaming.js';

@@ -223,6 +223,37 @@ class DriveClient {
   }
 
   /**
+   * Get file metadata including size.
+   */
+  async getFileMetadata(fileId: string): Promise<{ size: number }> {
+    const params = new URLSearchParams({
+      fields: 'size',
+    });
+    const resp = await fetch(`${DRIVE_API}/files/${fileId}?${params}`, {
+      headers: this.headers,
+    });
+    if (!resp.ok) {
+      throw new Error(`Drive getFileMetadata failed: ${resp.status} ${resp.statusText}`);
+    }
+    const data = await resp.json();
+    return { size: parseInt(data.size, 10) };
+  }
+
+  /**
+   * Get a readable stream of file content for progress tracking.
+   * Returns the Response object so caller can access Content-Length header.
+   */
+  async getFileStream(fileId: string): Promise<Response> {
+    const resp = await fetch(`${DRIVE_API}/files/${fileId}?alt=media`, {
+      headers: this.headers,
+    });
+    if (!resp.ok) {
+      throw new Error(`Drive getFileStream failed: ${resp.status} ${resp.statusText}`);
+    }
+    return resp;
+  }
+
+  /**
    * Create or overwrite a file using multipart upload.
    */
   async uploadFile(
@@ -391,6 +422,69 @@ export class GoogleDriveDirectoryHandle implements StorageDirectoryHandle {
 }
 
 // =========================================================================
+// StorageFile implementation for Google Drive
+// =========================================================================
+
+/**
+ * StorageFile implementation that fetches content from Google Drive.
+ * Supports streaming reads for progress tracking.
+ */
+class GoogleDriveFile implements StorageFile {
+  readonly size: number;
+  private cachedBuffer: ArrayBuffer | null = null;
+
+  constructor(
+    private readonly client: DriveClient,
+    private readonly fileId: string,
+    size: number,
+  ) {
+    this.size = size;
+  }
+
+  async text(): Promise<string> {
+    const buffer = await this.arrayBuffer();
+    return new TextDecoder().decode(buffer);
+  }
+
+  async arrayBuffer(): Promise<ArrayBuffer> {
+    if (this.cachedBuffer !== null) {
+      return this.cachedBuffer;
+    }
+    this.cachedBuffer = await this.client.getFileContent(this.fileId);
+    return this.cachedBuffer;
+  }
+
+  stream(): ReadableStream<Uint8Array> {
+    // Return a stream that fetches from Google Drive
+    // We can't directly return fetch().body because we need to handle auth
+    // Instead, return a stream that initiates the fetch on first read
+    const client = this.client;
+    const fileId = this.fileId;
+
+    return new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          const resp = await client.getFileStream(fileId);
+          const reader = resp.body?.getReader();
+          if (!reader) {
+            throw new Error('No response body available');
+          }
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            controller.enqueue(value);
+          }
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+    });
+  }
+}
+
+// =========================================================================
 // StorageFileHandle implementation
 // =========================================================================
 
@@ -411,11 +505,9 @@ class GoogleDriveFileHandle implements StorageFileHandle {
       throw new DOMException(`File "${this.name}" does not exist yet`, 'NotFoundError');
     }
 
-    const buffer = await this.client.getFileContent(this.fileId);
-    return {
-      text: async () => new TextDecoder().decode(buffer),
-      arrayBuffer: async () => buffer,
-    };
+    // Fetch metadata to get file size
+    const metadata = await this.client.getFileMetadata(this.fileId);
+    return new GoogleDriveFile(this.client, this.fileId, metadata.size);
   }
 
   async createWritable(): Promise<StorageWritable> {

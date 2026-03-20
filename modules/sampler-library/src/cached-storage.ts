@@ -516,12 +516,18 @@ class CachedStorageFileHandle implements StorageFileHandle {
 
 /**
  * Wrapper for StorageFile that caches the content after first read.
+ * Implements full StorageFile interface including stream() and size.
  */
 class CachedStorageFile implements StorageFile {
   private cachedText: string | null = null;
   private cachedArrayBuffer: ArrayBuffer | null = null;
 
-  constructor(private readonly inner: StorageFile) {}
+  /** File size from inner file. */
+  readonly size: number;
+
+  constructor(private readonly inner: StorageFile) {
+    this.size = inner.size;
+  }
 
   async text(): Promise<string> {
     if (this.cachedText !== null) {
@@ -553,6 +559,77 @@ class CachedStorageFile implements StorageFile {
     // Fetch from inner
     this.cachedArrayBuffer = await this.inner.arrayBuffer();
     return this.cachedArrayBuffer;
+  }
+
+  /**
+   * Return a readable stream of the file content.
+   * If content is already cached, stream from the cached buffer.
+   * Otherwise, delegate to the inner file's stream.
+   */
+  stream(): ReadableStream<Uint8Array> {
+    // If we have cached content, stream from it
+    if (this.cachedArrayBuffer !== null) {
+      return this.createStreamFromBuffer(this.cachedArrayBuffer);
+    }
+
+    if (this.cachedText !== null) {
+      const buffer = new TextEncoder().encode(this.cachedText).buffer;
+      return this.createStreamFromBuffer(buffer);
+    }
+
+    // No cached content — delegate to inner and cache the result
+    return this.createCachingStream();
+  }
+
+  /**
+   * Create a ReadableStream from an existing ArrayBuffer.
+   */
+  private createStreamFromBuffer(buffer: ArrayBuffer): ReadableStream<Uint8Array> {
+    const bytes = new Uint8Array(buffer);
+    return new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(bytes);
+        controller.close();
+      },
+    });
+  }
+
+  /**
+   * Create a stream that reads from inner and caches the result.
+   */
+  private createCachingStream(): ReadableStream<Uint8Array> {
+    const inner = this.inner;
+    const chunks: Uint8Array[] = [];
+    // Store reference to this for the closure
+    const self = this;
+
+    return new ReadableStream<Uint8Array>({
+      async start(controller) {
+        try {
+          const reader = inner.stream().getReader();
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value);
+            controller.enqueue(value);
+          }
+
+          // Cache the complete content
+          const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+          const combined = new Uint8Array(totalLength);
+          let offset = 0;
+          for (const chunk of chunks) {
+            combined.set(chunk, offset);
+            offset += chunk.length;
+          }
+          self.cachedArrayBuffer = combined.buffer;
+
+          controller.close();
+        } catch (err) {
+          controller.error(err);
+        }
+      },
+    });
   }
 }
 
