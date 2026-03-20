@@ -43,6 +43,13 @@ export interface SSeriesWaveData {
 /**
  * Parse a WAV file buffer into sample data.
  *
+ * Full WAV decoder with RIFF chunk scanning, multi-format support, and
+ * stereo-to-mono conversion. A lightweight sample-rate-only extractor
+ * lives in sampler-library: common-area/import.ts — these are kept
+ * separate due to a circular dependency between sampler-devices and
+ * sampler-library. If the dep cycle is resolved, consolidate into a
+ * shared module.
+ *
  * Supports 8-bit, 16-bit, 24-bit PCM, 32-bit PCM, and 32-bit float WAV files.
  * Stereo files are converted to mono by averaging channels.
  */

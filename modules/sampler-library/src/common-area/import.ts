@@ -25,66 +25,98 @@ const MAX_NAME_LENGTH = 128;
 /** Regex matching characters forbidden in filenames across platforms. */
 const UNSAFE_FILENAME_CHARS = /[<>:"/\\|?*]/g;
 
-/** Byte offset of the sample rate field in a standard WAV RIFF header. */
-const SAMPLE_RATE_OFFSET = 24;
+/** Minimum size for a valid WAV file (RIFF header + one chunk header). */
+const MIN_WAV_SIZE = 20;
 
-/** Minimum size for a valid WAV header (RIFF + fmt chunk header). */
-const MIN_WAV_HEADER_SIZE = 28;
+/** Size of a RIFF chunk header (4-byte ID + 4-byte size). */
+const CHUNK_HEADER_SIZE = 8;
+
+/** Minimum fmt chunk payload size (enough to contain sample rate). */
+const MIN_FMT_SIZE = 8;
 
 // =========================================================================
 // WAV header parsing
+//
+// Lightweight RIFF chunk scanner that extracts only the sample rate.
+// A full WAV decoder (samples, channels, bit depth) lives in
+// sampler-devices: s-series-wave-format.ts — these are kept separate
+// due to a circular dependency between sampler-library and
+// sampler-devices. If the dep cycle is resolved, consolidate into
+// a shared module.
 // =========================================================================
 
+/** Read a little-endian uint32 from a Uint8Array at the given offset. */
+function readUint32LE(data: Uint8Array, offset: number): number {
+  return (
+    (data[offset]) |
+    (data[offset + 1] << 8) |
+    (data[offset + 2] << 16) |
+    (data[offset + 3] << 24)
+  ) >>> 0;
+}
+
+/** Check if 4 bytes at offset match an ASCII tag. */
+function matchTag(data: Uint8Array, offset: number, tag: string): boolean {
+  return (
+    data[offset] === tag.charCodeAt(0) &&
+    data[offset + 1] === tag.charCodeAt(1) &&
+    data[offset + 2] === tag.charCodeAt(2) &&
+    data[offset + 3] === tag.charCodeAt(3)
+  );
+}
+
 /**
- * Extract the sample rate from a standard WAV RIFF header.
+ * Extract the sample rate from a WAV RIFF header.
  *
- * Reads the little-endian uint32 at bytes 24-27, which is the
- * `nSamplesPerSec` field of the `fmt ` chunk in canonical WAV layout.
+ * Scans RIFF chunks to find the `fmt ` chunk, then reads the
+ * `nSamplesPerSec` field (little-endian uint32 at byte 4 of the
+ * fmt payload). Handles non-canonical chunk ordering (e.g., `JUNK`
+ * or `bext` chunks before `fmt `).
  *
- * Throws if the data is too short or the RIFF/WAVE signatures are missing.
+ * Throws if the file is not a valid WAV or the `fmt ` chunk is missing.
  */
 export function extractWavSampleRate(data: Uint8Array): number {
-  if (data.length < MIN_WAV_HEADER_SIZE) {
+  if (data.length < MIN_WAV_SIZE) {
     throw new Error(
-      `WAV data too short: expected at least ${MIN_WAV_HEADER_SIZE} bytes, got ${data.length}`,
+      `WAV data too short: expected at least ${MIN_WAV_SIZE} bytes, got ${data.length}`,
     );
   }
 
   // Validate RIFF header signature (bytes 0-3)
-  if (
-    data[0] !== 0x52 || // R
-    data[1] !== 0x49 || // I
-    data[2] !== 0x46 || // F
-    data[3] !== 0x46    // F
-  ) {
+  if (!matchTag(data, 0, 'RIFF')) {
     throw new Error('Invalid WAV file: missing RIFF header');
   }
 
   // Validate WAVE format marker (bytes 8-11)
-  if (
-    data[8] !== 0x57 ||  // W
-    data[9] !== 0x41 ||  // A
-    data[10] !== 0x56 || // V
-    data[11] !== 0x45    // E
-  ) {
+  if (!matchTag(data, 8, 'WAVE')) {
     throw new Error('Invalid WAV file: missing WAVE format marker');
   }
 
-  // Read sample rate as little-endian uint32 at offset 24
-  const sampleRate =
-    data[SAMPLE_RATE_OFFSET] |
-    (data[SAMPLE_RATE_OFFSET + 1] << 8) |
-    (data[SAMPLE_RATE_OFFSET + 2] << 16) |
-    (data[SAMPLE_RATE_OFFSET + 3] << 24);
+  // Scan chunks starting after the RIFF/WAVE header (byte 12)
+  let offset = 12;
+  while (offset + CHUNK_HEADER_SIZE <= data.length) {
+    const chunkSize = readUint32LE(data, offset + 4);
 
-  // Use unsigned interpretation (>>> 0 converts to uint32)
-  const unsignedRate = sampleRate >>> 0;
+    if (matchTag(data, offset, 'fmt ')) {
+      // fmt chunk found — sample rate is at byte 4 of the payload
+      // (after audioFormat u16 and numChannels u16)
+      const payloadStart = offset + CHUNK_HEADER_SIZE;
+      if (payloadStart + MIN_FMT_SIZE > data.length) {
+        throw new Error('Invalid WAV file: fmt chunk truncated');
+      }
+      const sampleRate = readUint32LE(data, payloadStart + 4);
+      if (sampleRate === 0) {
+        throw new Error('Invalid WAV file: sample rate is zero');
+      }
+      return sampleRate;
+    }
 
-  if (unsignedRate === 0) {
-    throw new Error('Invalid WAV file: sample rate is zero');
+    // Advance to next chunk (chunk sizes are padded to even boundaries)
+    const paddedSize = chunkSize + (chunkSize % 2);
+    offset += CHUNK_HEADER_SIZE + paddedSize;
   }
 
-  return unsignedRate;
+  throw new Error('Invalid WAV file: fmt chunk not found');
 }
 
 // =========================================================================
