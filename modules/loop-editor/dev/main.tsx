@@ -321,7 +321,7 @@ function DevHarness() {
   const showLibrary = isConnected && libraryItems.length > 0;
 
   return (
-    <div style={{ maxWidth: showLibrary ? 1280 : 960, margin: '0 auto', padding: 24 }}>
+    <div style={{ maxWidth: showLibrary ? 1440 : 960, margin: '0 auto', padding: 24 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h1 className="ac-title-md" style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>
@@ -380,7 +380,7 @@ function DevHarness() {
         </div>
 
         {showLibrary && (
-          <div style={{ flex: '0 0 400px', position: 'sticky', top: 24, maxHeight: 'calc(100vh - 48px)', overflow: 'hidden' }}>
+          <div style={{ flex: '0 0 560px', position: 'sticky', top: 24, maxHeight: 'calc(100vh - 48px)', overflow: 'hidden' }}>
             <LibraryBrowser
               nodes={toTreeNodes(libraryItems)}
               title={activeBackend === 'google-drive' ? 'Google Drive' : 'Local Library'}
