@@ -14,6 +14,8 @@ export interface CategoryMetrics {
   hits: number;
   misses: number;
   size: number;
+  hitTimeMs: number;
+  missTimeMs: number;
 }
 
 /**
@@ -27,6 +29,10 @@ export interface CacheMetricsData {
   totalHits: number;
   totalMisses: number;
   hitRate: number;
+  totalHitTimeMs: number;
+  totalMissTimeMs: number;
+  avgHitTimeMs: number;
+  avgMissTimeMs: number;
   invalidations: number;
   clears: number;
 }
@@ -42,9 +48,17 @@ function formatPercent(value: number): string {
   return `${(value * 100).toFixed(1)}%`;
 }
 
-function MetricRow({ label, hits, misses, size }: { label: string; hits: number; misses: number; size: number }): JSX.Element {
+function formatMs(value: number): string {
+  if (value < 1) return '<1ms';
+  if (value < 1000) return `${Math.round(value)}ms`;
+  return `${(value / 1000).toFixed(1)}s`;
+}
+
+function MetricRow({ label, hits, misses, size, hitTimeMs, missTimeMs }: CategoryMetrics & { label: string }): JSX.Element {
   const total = hits + misses;
   const rate = total > 0 ? hits / total : 0;
+  const avgHit = hits > 0 ? hitTimeMs / hits : 0;
+  const avgMiss = misses > 0 ? missTimeMs / misses : 0;
 
   return (
     <tr>
@@ -52,6 +66,8 @@ function MetricRow({ label, hits, misses, size }: { label: string; hits: number;
       <td className="ac-metrics-value">{hits}</td>
       <td className="ac-metrics-value">{misses}</td>
       <td className="ac-metrics-value">{formatPercent(rate)}</td>
+      <td className="ac-metrics-value ac-metrics-time">{hits > 0 ? formatMs(avgHit) : '-'}</td>
+      <td className="ac-metrics-value ac-metrics-time">{misses > 0 ? formatMs(avgMiss) : '-'}</td>
       <td className="ac-metrics-value">{size}</td>
     </tr>
   );
@@ -127,6 +143,22 @@ export function CacheMetricsModal({
                 </div>
               </div>
 
+              {/* Timing summary */}
+              <div className="ac-metrics-timing">
+                <div className="ac-metrics-timing-row">
+                  <span className="ac-metrics-timing-label">Avg Hit:</span>
+                  <span className="ac-metrics-timing-value ac-metrics-hit">{formatMs(metrics.avgHitTimeMs)}</span>
+                </div>
+                <div className="ac-metrics-timing-row">
+                  <span className="ac-metrics-timing-label">Avg Miss:</span>
+                  <span className="ac-metrics-timing-value ac-metrics-miss">{formatMs(metrics.avgMissTimeMs)}</span>
+                </div>
+                <div className="ac-metrics-timing-row">
+                  <span className="ac-metrics-timing-label">Time Saved:</span>
+                  <span className="ac-metrics-timing-value">{formatMs(metrics.totalHits * metrics.avgMissTimeMs - metrics.totalHitTimeMs)}</span>
+                </div>
+              </div>
+
               {/* Category breakdown */}
               <table className="ac-metrics-table">
                 <thead>
@@ -135,6 +167,8 @@ export function CacheMetricsModal({
                     <th>Hits</th>
                     <th>Misses</th>
                     <th>Rate</th>
+                    <th>Avg Hit</th>
+                    <th>Avg Miss</th>
                     <th>Cached</th>
                   </tr>
                 </thead>

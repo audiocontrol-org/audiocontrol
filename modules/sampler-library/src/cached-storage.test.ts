@@ -535,4 +535,48 @@ describe('cache metrics', () => {
     // Sizes should still reflect actual cache contents
     expect(metrics.directories.size).toBe(0); // Cleared
   });
+
+  it('should track timing for hits and misses', async () => {
+    const childDir = createMockDirectoryHandle('samples');
+    const root = createMockDirectoryHandle('root', new Map([['samples', childDir]]));
+    const cached = withCache(root);
+
+    // First access — miss, should record some time
+    await cached.getDirectoryHandle('samples');
+
+    let metrics = cached.getMetrics();
+    expect(metrics.directories.misses).toBe(1);
+    expect(metrics.directories.missTimeMs).toBeGreaterThanOrEqual(0);
+    expect(metrics.totalMissTimeMs).toBeGreaterThanOrEqual(0);
+
+    // Second access — hit, should record some time
+    await cached.getDirectoryHandle('samples');
+
+    metrics = cached.getMetrics();
+    expect(metrics.directories.hits).toBe(1);
+    expect(metrics.directories.hitTimeMs).toBeGreaterThanOrEqual(0);
+    expect(metrics.totalHitTimeMs).toBeGreaterThanOrEqual(0);
+
+    // Average times should be computed
+    expect(metrics.avgHitTimeMs).toBeGreaterThanOrEqual(0);
+    expect(metrics.avgMissTimeMs).toBeGreaterThanOrEqual(0);
+  });
+
+  it('should reset timing metrics', async () => {
+    const childDir = createMockDirectoryHandle('samples');
+    const root = createMockDirectoryHandle('root', new Map([['samples', childDir]]));
+    const cached = withCache(root);
+
+    // Generate some timing
+    await cached.getDirectoryHandle('samples');
+    await cached.getDirectoryHandle('samples');
+
+    cached.resetMetrics();
+
+    const metrics = cached.getMetrics();
+    expect(metrics.totalHitTimeMs).toBe(0);
+    expect(metrics.totalMissTimeMs).toBe(0);
+    expect(metrics.directories.hitTimeMs).toBe(0);
+    expect(metrics.directories.missTimeMs).toBe(0);
+  });
 });

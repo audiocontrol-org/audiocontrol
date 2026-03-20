@@ -71,6 +71,10 @@ export interface CacheCategoryMetrics {
   misses: number;
   /** Current number of cached entries */
   size: number;
+  /** Total time spent on cache hits (milliseconds) */
+  hitTimeMs: number;
+  /** Total time spent on cache misses (milliseconds) */
+  missTimeMs: number;
 }
 
 /**
@@ -91,6 +95,14 @@ export interface CacheMetrics {
   totalMisses: number;
   /** Overall hit rate (0-1) */
   hitRate: number;
+  /** Total time spent on cache hits (milliseconds) */
+  totalHitTimeMs: number;
+  /** Total time spent on cache misses (milliseconds) */
+  totalMissTimeMs: number;
+  /** Average time per cache hit (milliseconds) */
+  avgHitTimeMs: number;
+  /** Average time per cache miss (milliseconds) */
+  avgMissTimeMs: number;
   /** Number of cache invalidations */
   invalidations: number;
   /** Number of full cache clears */
@@ -123,53 +135,69 @@ export class StorageCache {
   // Metrics tracking
   private _entriesHits = 0;
   private _entriesMisses = 0;
+  private _entriesHitTimeMs = 0;
+  private _entriesMissTimeMs = 0;
   private _directoriesHits = 0;
   private _directoriesMisses = 0;
+  private _directoriesHitTimeMs = 0;
+  private _directoriesMissTimeMs = 0;
   private _filesHits = 0;
   private _filesMisses = 0;
+  private _filesHitTimeMs = 0;
+  private _filesMissTimeMs = 0;
   private _contentHits = 0;
   private _contentMisses = 0;
+  private _contentHitTimeMs = 0;
+  private _contentMissTimeMs = 0;
   private _invalidations = 0;
   private _clears = 0;
 
   /** Record a cache hit for the entries cache */
-  recordEntriesHit(): void {
+  recordEntriesHit(durationMs: number): void {
     this._entriesHits++;
+    this._entriesHitTimeMs += durationMs;
   }
 
   /** Record a cache miss for the entries cache */
-  recordEntriesMiss(): void {
+  recordEntriesMiss(durationMs: number): void {
     this._entriesMisses++;
+    this._entriesMissTimeMs += durationMs;
   }
 
   /** Record a cache hit for the directories cache */
-  recordDirectoriesHit(): void {
+  recordDirectoriesHit(durationMs: number): void {
     this._directoriesHits++;
+    this._directoriesHitTimeMs += durationMs;
   }
 
   /** Record a cache miss for the directories cache */
-  recordDirectoriesMiss(): void {
+  recordDirectoriesMiss(durationMs: number): void {
     this._directoriesMisses++;
+    this._directoriesMissTimeMs += durationMs;
   }
 
   /** Record a cache hit for the files cache */
-  recordFilesHit(): void {
+  recordFilesHit(durationMs: number): void {
     this._filesHits++;
+    this._filesHitTimeMs += durationMs;
   }
 
   /** Record a cache miss for the files cache */
-  recordFilesMiss(): void {
+  recordFilesMiss(durationMs: number): void {
     this._filesMisses++;
+    this._filesMissTimeMs += durationMs;
   }
 
   /** Record a cache hit for the content cache */
-  recordContentHit(): void {
+  recordContentHit(durationMs: number): void {
     this._contentHits++;
+    this._contentHitTimeMs += durationMs;
   }
 
   /** Record a cache miss for the content cache */
-  recordContentMiss(): void {
+  recordContentMiss(durationMs: number): void {
     this._contentMisses++;
+    this._contentMissTimeMs += durationMs;
   }
 
   /**
@@ -179,31 +207,45 @@ export class StorageCache {
     const totalHits = this._entriesHits + this._directoriesHits + this._filesHits + this._contentHits;
     const totalMisses = this._entriesMisses + this._directoriesMisses + this._filesMisses + this._contentMisses;
     const total = totalHits + totalMisses;
+    const totalHitTimeMs = this._entriesHitTimeMs + this._directoriesHitTimeMs + this._filesHitTimeMs + this._contentHitTimeMs;
+    const totalMissTimeMs = this._entriesMissTimeMs + this._directoriesMissTimeMs + this._filesMissTimeMs + this._contentMissTimeMs;
 
     return {
       entries: {
         hits: this._entriesHits,
         misses: this._entriesMisses,
         size: this.entries.size,
+        hitTimeMs: this._entriesHitTimeMs,
+        missTimeMs: this._entriesMissTimeMs,
       },
       directories: {
         hits: this._directoriesHits,
         misses: this._directoriesMisses,
         size: this.directories.size,
+        hitTimeMs: this._directoriesHitTimeMs,
+        missTimeMs: this._directoriesMissTimeMs,
       },
       files: {
         hits: this._filesHits,
         misses: this._filesMisses,
         size: this.files.size,
+        hitTimeMs: this._filesHitTimeMs,
+        missTimeMs: this._filesMissTimeMs,
       },
       content: {
         hits: this._contentHits,
         misses: this._contentMisses,
         size: this.content.size,
+        hitTimeMs: this._contentHitTimeMs,
+        missTimeMs: this._contentMissTimeMs,
       },
       totalHits,
       totalMisses,
       hitRate: total > 0 ? totalHits / total : 0,
+      totalHitTimeMs,
+      totalMissTimeMs,
+      avgHitTimeMs: totalHits > 0 ? totalHitTimeMs / totalHits : 0,
+      avgMissTimeMs: totalMisses > 0 ? totalMissTimeMs / totalMisses : 0,
       invalidations: this._invalidations,
       clears: this._clears,
     };
@@ -215,12 +257,20 @@ export class StorageCache {
   resetMetrics(): void {
     this._entriesHits = 0;
     this._entriesMisses = 0;
+    this._entriesHitTimeMs = 0;
+    this._entriesMissTimeMs = 0;
     this._directoriesHits = 0;
     this._directoriesMisses = 0;
+    this._directoriesHitTimeMs = 0;
+    this._directoriesMissTimeMs = 0;
     this._filesHits = 0;
     this._filesMisses = 0;
+    this._filesHitTimeMs = 0;
+    this._filesMissTimeMs = 0;
     this._contentHits = 0;
     this._contentMisses = 0;
+    this._contentHitTimeMs = 0;
+    this._contentMissTimeMs = 0;
     this._invalidations = 0;
     this._clears = 0;
   }
@@ -321,16 +371,17 @@ export class CachedStorageDirectoryHandle implements StorageDirectoryHandle {
     }
 
     // Check cache first
+    const startTime = performance.now();
     const normalizedChildPath = normalizePath(childPath);
     const cachedHandle = this.cache.directories.get(normalizedChildPath);
     if (cachedHandle) {
-      this.cache.recordDirectoriesHit();
+      this.cache.recordDirectoriesHit(performance.now() - startTime);
       return cachedHandle;
     }
 
     // Cache miss — fetch from inner
-    this.cache.recordDirectoriesMiss();
     const handle = await this.inner.getDirectoryHandle(name);
+    this.cache.recordDirectoriesMiss(performance.now() - startTime);
     const cached = new CachedStorageDirectoryHandle(handle, this.cache, childPath);
     this.cache.directories.set(normalizedChildPath, cached);
     return cached;
@@ -352,16 +403,17 @@ export class CachedStorageDirectoryHandle implements StorageDirectoryHandle {
     }
 
     // Check cache first
+    const startTime = performance.now();
     const normalizedChildPath = normalizePath(childPath);
     const cachedHandle = this.cache.files.get(normalizedChildPath);
     if (cachedHandle) {
-      this.cache.recordFilesHit();
+      this.cache.recordFilesHit(performance.now() - startTime);
       return cachedHandle;
     }
 
     // Cache miss — fetch from inner
-    this.cache.recordFilesMiss();
     const handle = await this.inner.getFileHandle(name);
+    this.cache.recordFilesMiss(performance.now() - startTime);
     const cached = new CachedStorageFileHandle(handle, this.cache, childPath, this.path);
     this.cache.files.set(normalizedChildPath, cached);
     return cached;
@@ -383,11 +435,12 @@ export class CachedStorageDirectoryHandle implements StorageDirectoryHandle {
 
   async *values(): AsyncIterable<StorageEntry> {
     const normalizedPath = normalizePath(this.path);
+    const startTime = performance.now();
 
     // Check cache first
     const cachedEntries = this.cache.entries.get(normalizedPath);
     if (cachedEntries) {
-      this.cache.recordEntriesHit();
+      this.cache.recordEntriesHit(performance.now() - startTime);
       for (const entry of cachedEntries) {
         yield entry;
       }
@@ -395,11 +448,11 @@ export class CachedStorageDirectoryHandle implements StorageDirectoryHandle {
     }
 
     // Cache miss — fetch from inner and collect entries
-    this.cache.recordEntriesMiss();
     const entries: StorageEntry[] = [];
     for await (const entry of this.inner.values()) {
       entries.push(entry);
     }
+    this.cache.recordEntriesMiss(performance.now() - startTime);
 
     // Store in cache
     this.cache.entries.set(normalizedPath, entries);
@@ -432,17 +485,18 @@ class CachedStorageFileHandle implements StorageFileHandle {
 
   async getFile(): Promise<StorageFile> {
     const normalizedPath = normalizePath(this.path);
+    const startTime = performance.now();
 
     // Check cache first
     const cachedContent = this.cache.content.get(normalizedPath);
     if (cachedContent) {
-      this.cache.recordContentHit();
+      this.cache.recordContentHit(performance.now() - startTime);
       return cachedContent;
     }
 
     // Cache miss — fetch from inner
-    this.cache.recordContentMiss();
     const file = await this.inner.getFile();
+    this.cache.recordContentMiss(performance.now() - startTime);
 
     // Wrap the file to cache its content reads
     const cachedFile = new CachedStorageFile(file);

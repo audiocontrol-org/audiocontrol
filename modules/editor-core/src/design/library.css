@@ -576,6 +576,47 @@
   font-variant-numeric: tabular-nums;
 }
 
+.ac-metrics-time {
+  font-size: var(--ac-text-xs);
+}
+
+/* Timing summary section */
+.ac-metrics-timing {
+  display: flex;
+  gap: var(--ac-space-4);
+  padding: var(--ac-space-3);
+  margin-bottom: var(--ac-space-3);
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 60%, transparent);
+  border: 1px solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-md);
+}
+
+.ac-metrics-timing-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--ac-space-2);
+}
+
+.ac-metrics-timing-label {
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-metrics-timing-value {
+  font-size: var(--ac-text-sm);
+  font-weight: var(--ac-font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--ac-color-text-primary);
+}
+
+.ac-metrics-hit {
+  color: var(--ac-color-success, #22c55e);
+}
+
+.ac-metrics-miss {
+  color: var(--ac-color-warning, #f59e0b);
+}
+
 .ac-metrics-footer-stats {
   display: flex;
   justify-content: space-between;
