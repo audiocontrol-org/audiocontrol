@@ -24,6 +24,7 @@ import type {
   StorageEntry,
 } from './storage-handles.js';
 import type { LibraryConnection } from './library-connection.js';
+import { withCache, type CachedStorageRoot } from './cached-storage.js';
 
 // =========================================================================
 // Configuration
@@ -472,6 +473,7 @@ class GoogleDriveWritable implements StorageWritable {
  */
 export class GoogleDriveLibraryConnection implements LibraryConnection {
   private root: GoogleDriveDirectoryHandle | null = null;
+  private cachedRoot: CachedStorageRoot | null = null;
   private client: DriveClient | null = null;
   private readonly config: GoogleDriveConfig;
   private readonly rootFolderName: string;
@@ -571,7 +573,19 @@ export class GoogleDriveLibraryConnection implements LibraryConnection {
     if (!this.root) {
       throw new Error('Google Drive library not connected — call connect() first');
     }
-    return this.root;
+    // Lazily create cached wrapper on first access
+    if (!this.cachedRoot) {
+      this.cachedRoot = withCache(this.root);
+    }
+    return this.cachedRoot;
+  }
+
+  /**
+   * Clear all cached data, forcing subsequent operations to re-fetch
+   * from Google Drive.
+   */
+  clearCache(): void {
+    this.cachedRoot?.clearCache();
   }
 
   /**
@@ -589,12 +603,14 @@ export class GoogleDriveLibraryConnection implements LibraryConnection {
       this.client = new DriveClient(token);
       const rootId = await this.getOrCreateRootFolder();
       this.root = new GoogleDriveDirectoryHandle(this.client, rootId, this.rootFolderName);
+      this.cachedRoot = null; // Clear stale cache when re-initializing
       return true;
     } catch (err) {
       console.error('Failed to initialize Google Drive client:', err);
       clearToken();
       this.client = null;
       this.root = null;
+      this.cachedRoot = null;
       return false;
     }
   }

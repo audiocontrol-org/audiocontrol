@@ -9,8 +9,8 @@
 |-------|--------|-------|
 | Phase 1: CachedStorageDirectoryHandle | Complete | `cached-storage.ts` (427 lines) |
 | Phase 2: Cache Unit Tests | Complete | 15 tests covering all cache behaviors |
-| Phase 3: Extract DriveClient | Not started | |
-| Phase 4: Wire Cache in LibraryConnection | Not started | |
+| Phase 3: Extract DriveClient | Skipped | Not needed for initial implementation |
+| Phase 4: Wire Cache in LibraryConnection | Complete | Google Drive auto-caches via `withCache()` |
 | Phase 5: Skeleton CSS + Loading State | Not started | |
 | Phase 6: Consumer Loading States | Not started | |
 
@@ -31,6 +31,15 @@ Path normalization: lowercase, forward slashes only, no leading/trailing slashes
 Exported from `@audiocontrol/sampler-library/browser`:
 - `withCache`, `StorageCache`, `CachedStorageDirectoryHandle`
 - `CachedStorageRoot` type
+
+### Phase 4: Wire Cache in LibraryConnection
+
+- Added optional `clearCache?(): void` to `LibraryConnection` interface
+- `GoogleDriveLibraryConnection.getRoot()` now returns a cached root via `withCache()`
+- Cache is lazily created on first `getRoot()` call
+- `GoogleDriveLibraryConnection.clearCache()` clears all cached data
+- Cache is automatically cleared when connection is re-initialized
+- `BrowserLibraryConnection` (local FSAA) does not implement `clearCache()` — local FS is fast enough without caching
 
 ## Code Metrics
 

@@ -23,4 +23,9 @@ export interface LibraryConnection {
   isConnected(): boolean;
   /** Return the library root handle. Throws if not connected. */
   getRoot(): StorageDirectoryHandle;
+  /**
+   * Clear any cached data, forcing subsequent operations to re-fetch
+   * from the backing store. Optional — not all backends need caching.
+   */
+  clearCache?(): void;
 }
