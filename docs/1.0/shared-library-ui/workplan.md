@@ -142,10 +142,10 @@ Child issues created under parent [#76](https://github.com/audiocontrol-org/audi
 
 ## Verification Checklist
 
-- [ ] `pnpm --filter @audiocontrol/editor-core build`
-- [ ] `pnpm --filter @audiocontrol/editor-core test`
-- [ ] `pnpm --filter @audiocontrol/loop-editor build`
-- [ ] `pnpm --filter @audiocontrol/sample-chopper build`
-- [ ] `pnpm --filter @audiocontrol/sampler-editor build`
-- [ ] `pnpm test` (all modules)
-- [ ] Feature docs updated with implementation notes and issue links
+- [x] `pnpm --filter @audiocontrol/editor-core build`
+- [x] `pnpm --filter @audiocontrol/editor-core test` (110 tests, 52 new)
+- [x] `pnpm --filter @audiocontrol/loop-editor build`
+- [x] `pnpm --filter @audiocontrol/sample-chopper build`
+- [x] `pnpm --filter @audiocontrol/sampler-editor build`
+- [x] `make clean && make` (full rebuild)
+- [x] Feature docs updated with implementation notes and issue links

@@ -1,7 +1,7 @@
 # Shared Library UI Components
 
-**Status:** Planning
-**Branch:** `feature/shared-library-ui`
+**Status:** Completed
+**Branch:** `feature/s550-support`
 **Milestone:** [Week of Mar 23-27](https://github.com/audiocontrol-org/audiocontrol/milestone/6)
 
 ## Overview
@@ -23,15 +23,15 @@ Extract common library UI patterns from three independent implementations (loop-
 
 | Issue | Phase | Status |
 |-------|-------|--------|
-| [#77 Add useNotifications hook and NotificationArea](https://github.com/audiocontrol-org/audiocontrol/issues/77) | 1 | Planning |
-| [#78 Add generic TreeView and TreeIcons](https://github.com/audiocontrol-org/audiocontrol/issues/78) | 2 | Planning |
-| [#79 Add LibraryPanel shell component](https://github.com/audiocontrol-org/audiocontrol/issues/79) | 3 | Planning |
-| [#80 Add ContextMenu component](https://github.com/audiocontrol-org/audiocontrol/issues/80) | 3 | Planning |
-| [#81 Add SaveDialog, MoveDialog, ConfirmDialog](https://github.com/audiocontrol-org/audiocontrol/issues/81) | 4 | Planning |
-| [#82 Add library.css stylesheet](https://github.com/audiocontrol-org/audiocontrol/issues/82) | 3 | Planning |
-| [#83 Migrate loop-editor dev harness](https://github.com/audiocontrol-org/audiocontrol/issues/83) | 5 | Planning |
-| [#84 Migrate sample-chopper dev harness](https://github.com/audiocontrol-org/audiocontrol/issues/84) | 5 | Planning |
-| [#85 Migrate sampler-editor](https://github.com/audiocontrol-org/audiocontrol/issues/85) | 5 | Planning |
+| [#77 Add useNotifications hook and NotificationArea](https://github.com/audiocontrol-org/audiocontrol/issues/77) | 1 | Completed |
+| [#78 Add generic TreeView and TreeIcons](https://github.com/audiocontrol-org/audiocontrol/issues/78) | 2 | Completed |
+| [#79 Add LibraryPanel shell component](https://github.com/audiocontrol-org/audiocontrol/issues/79) | 3 | Completed |
+| [#80 Add ContextMenu component](https://github.com/audiocontrol-org/audiocontrol/issues/80) | 3 | Completed |
+| [#81 Add SaveDialog, MoveDialog, ConfirmDialog](https://github.com/audiocontrol-org/audiocontrol/issues/81) | 4 | Completed |
+| [#82 Add library.css stylesheet](https://github.com/audiocontrol-org/audiocontrol/issues/82) | 3 | Completed |
+| [#83 Migrate loop-editor dev harness](https://github.com/audiocontrol-org/audiocontrol/issues/83) | 5 | Completed |
+| [#84 Migrate sample-chopper dev harness](https://github.com/audiocontrol-org/audiocontrol/issues/84) | 5 | Completed |
+| [#85 Migrate sampler-editor](https://github.com/audiocontrol-org/audiocontrol/issues/85) | 5 | Completed |
 
 ## Quick Links
 

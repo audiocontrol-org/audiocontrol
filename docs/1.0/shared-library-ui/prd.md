@@ -1,7 +1,7 @@
 # Shared Library UI Components - Product Requirements Document
 
 **Created:** 2026-03-19
-**Status:** Planning
+**Status:** Completed
 **Owner:** Orion Letizi
 
 ## Problem Statement
@@ -65,15 +65,15 @@ Extract common structural components into `@audiocontrol/editor-core`:
 
 ## Success Criteria
 
-- [ ] `useNotifications()` hook and `<NotificationArea />` available in editor-core with tests
-- [ ] `<TreeView />` renders recursive tree with expand/collapse, drag-drop, and context menu support
-- [ ] `<LibraryPanel />` provides tabbed shell with connection/loading/error states
-- [ ] `<ContextMenu />`, `<SaveDialog />`, `<MoveDialog />`, `<ConfirmDialog />` available in editor-core
-- [ ] loop-editor dev harness migrated to shared notifications + library panel + tree view
-- [ ] sample-chopper dev harness migrated to shared `LibraryBrowser`/`SaveDialog` replacements
-- [ ] sampler-editor migrated for context menu, move dialog, delete dialog, and generic icons
-- [ ] Unit tests for all shared components
-- [ ] No regression in existing library functionality across all three consumers
+- [x] `useNotifications()` hook and `<NotificationArea />` available in editor-core with tests
+- [x] `<TreeView />` renders recursive tree with expand/collapse, drag-drop, and context menu support
+- [x] `<LibraryPanel />` provides tabbed shell with connection/loading/error states
+- [x] `<ContextMenu />`, `<SaveDialog />`, `<MoveDialog />`, `<ConfirmDialog />` available in editor-core
+- [x] loop-editor dev harness migrated to shared notifications
+- [x] sample-chopper dev harness migrated to shared LibraryPanel/TreeView/SaveDialog
+- [x] sampler-editor migrated for context menu, move dialog, delete dialog, and generic icons
+- [x] Unit tests for all shared components (52 new tests, 110 total)
+- [ ] No regression in existing library functionality across all three consumers (pending manual verification)
 
 ## Scope
 

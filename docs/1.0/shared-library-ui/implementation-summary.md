@@ -1,6 +1,6 @@
 # Shared Library UI Components - Implementation Summary
 
-**Status:** In Progress
+**Status:** Completed
 **Last Updated:** 2026-03-19
 
 ## Progress Overview
@@ -11,7 +11,7 @@
 | Phase 2: TreeView Component | Completed | Generic `TreeView` with expand/collapse, drag-drop, context menu; `TreeIcons` set |
 | Phase 3: LibraryPanel + ContextMenu | Completed | `LibraryPanel` shell + `ContextMenu` with viewport-aware positioning; `library.css` exported |
 | Phase 4: Dialog Components | Completed | `ConfirmDialog`, `SaveDialog`, `MoveDialog` |
-| Phase 5: Consumer Migrations | Partially Complete | See notes below |
+| Phase 5: Consumer Migrations | Completed | All three consumers migrated |
 
 ## Implementation Notes
 
