@@ -24,7 +24,7 @@ import type {
   StorageEntry,
 } from './storage-handles.js';
 import type { LibraryConnection } from './library-connection.js';
-import { withCache, type CachedStorageRoot } from './cached-storage.js';
+import { withCache, type CachedStorageRoot, type CacheMetrics } from './cached-storage.js';
 
 // =========================================================================
 // Configuration
@@ -586,6 +586,20 @@ export class GoogleDriveLibraryConnection implements LibraryConnection {
    */
   clearCache(): void {
     this.cachedRoot?.clearCache();
+  }
+
+  /**
+   * Get current cache metrics (hits, misses, sizes).
+   */
+  getMetrics(): CacheMetrics | undefined {
+    return this.cachedRoot?.getMetrics();
+  }
+
+  /**
+   * Reset all cache metrics counters to zero.
+   */
+  resetMetrics(): void {
+    this.cachedRoot?.resetMetrics();
   }
 
   /**

@@ -403,7 +403,7 @@ export type { BrowserLibraryConnectionOptions } from './browser-library-connecti
 
 // Cached storage decorator
 export { withCache, StorageCache, CachedStorageDirectoryHandle } from './cached-storage.js';
-export type { CachedStorageRoot } from './cached-storage.js';
+export type { CachedStorageRoot, CacheMetrics, CacheCategoryMetrics } from './cached-storage.js';
 
 // Library filesystem scanning
 export {

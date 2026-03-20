@@ -375,12 +375,12 @@ describe('clearCache', () => {
   it('should clear all caches and force re-fetch', async () => {
     const childDir = createMockDirectoryHandle('samples');
     const file = createMockFileHandle('test.txt', 'content');
+    const children = new Map<string, StorageDirectoryHandle | StorageFileHandle>();
+    children.set('samples', childDir);
+    children.set('test.txt', file);
     const root = createMockDirectoryHandle(
       'root',
-      new Map([
-        ['samples', childDir],
-        ['test.txt', file],
-      ]),
+      children,
       [
         { kind: 'directory', name: 'samples' },
         { kind: 'file', name: 'test.txt' },
@@ -407,5 +407,132 @@ describe('clearCache', () => {
     expect(root.getFileHandle).toHaveBeenCalledTimes(2);
     expect(file.getFile).toHaveBeenCalledTimes(2);
     expect(root.values).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('cache metrics', () => {
+  it('should track hits and misses for all cache categories', async () => {
+    const childDir = createMockDirectoryHandle('samples');
+    const file = createMockFileHandle('test.txt', 'content');
+    const children = new Map<string, StorageDirectoryHandle | StorageFileHandle>();
+    children.set('samples', childDir);
+    children.set('test.txt', file);
+    const root = createMockDirectoryHandle(
+      'root',
+      children,
+      [
+        { kind: 'directory', name: 'samples' },
+        { kind: 'file', name: 'test.txt' },
+      ],
+    );
+    const cached = withCache(root);
+
+    // Initial metrics should be zero
+    let metrics = cached.getMetrics();
+    expect(metrics.totalHits).toBe(0);
+    expect(metrics.totalMisses).toBe(0);
+    expect(metrics.hitRate).toBe(0);
+
+    // First access — all misses
+    await cached.getDirectoryHandle('samples');
+    const fh = await cached.getFileHandle('test.txt');
+    await fh.getFile();
+    for await (const _ of cached.values()) { /* drain */ }
+
+    metrics = cached.getMetrics();
+    expect(metrics.directories.misses).toBe(1);
+    expect(metrics.files.misses).toBe(1);
+    expect(metrics.content.misses).toBe(1);
+    expect(metrics.entries.misses).toBe(1);
+    expect(metrics.totalMisses).toBe(4);
+    expect(metrics.totalHits).toBe(0);
+
+    // Second access — all hits
+    await cached.getDirectoryHandle('samples');
+    const fh2 = await cached.getFileHandle('test.txt');
+    await fh2.getFile();
+    for await (const _ of cached.values()) { /* drain */ }
+
+    metrics = cached.getMetrics();
+    expect(metrics.directories.hits).toBe(1);
+    expect(metrics.files.hits).toBe(1);
+    expect(metrics.content.hits).toBe(1);
+    expect(metrics.entries.hits).toBe(1);
+    expect(metrics.totalHits).toBe(4);
+    expect(metrics.totalMisses).toBe(4);
+    expect(metrics.hitRate).toBe(0.5); // 4 hits / 8 total
+  });
+
+  it('should track cache sizes', async () => {
+    const childDir = createMockDirectoryHandle('samples');
+    const file = createMockFileHandle('test.txt', 'content');
+    const children = new Map<string, StorageDirectoryHandle | StorageFileHandle>();
+    children.set('samples', childDir);
+    children.set('test.txt', file);
+    const root = createMockDirectoryHandle(
+      'root',
+      children,
+      [{ kind: 'file', name: 'test.txt' }],
+    );
+    const cached = withCache(root);
+
+    // Access items to populate cache
+    await cached.getDirectoryHandle('samples');
+    const fh = await cached.getFileHandle('test.txt');
+    await fh.getFile();
+    for await (const _ of cached.values()) { /* drain */ }
+
+    const metrics = cached.getMetrics();
+    expect(metrics.directories.size).toBe(1);
+    expect(metrics.files.size).toBe(1);
+    expect(metrics.content.size).toBe(1);
+    expect(metrics.entries.size).toBe(1);
+  });
+
+  it('should track invalidations and clears', async () => {
+    const childDir = createMockDirectoryHandle('samples');
+    const root = createMockDirectoryHandle('root', new Map([['samples', childDir]]));
+    const cached = withCache(root);
+
+    // Populate cache
+    await cached.getDirectoryHandle('samples');
+
+    // Clear should increment clears counter
+    cached.clearCache();
+    let metrics = cached.getMetrics();
+    expect(metrics.clears).toBe(1);
+
+    // Populate again and remove entry
+    await cached.getDirectoryHandle('samples');
+    await cached.removeEntry('samples');
+
+    metrics = cached.getMetrics();
+    expect(metrics.invalidations).toBe(1);
+  });
+
+  it('should reset metrics', async () => {
+    const childDir = createMockDirectoryHandle('samples');
+    const root = createMockDirectoryHandle('root', new Map([['samples', childDir]]));
+    const cached = withCache(root);
+
+    // Generate some metrics
+    await cached.getDirectoryHandle('samples');
+    await cached.getDirectoryHandle('samples');
+    cached.clearCache();
+
+    let metrics = cached.getMetrics();
+    expect(metrics.totalHits).toBeGreaterThan(0);
+    expect(metrics.clears).toBe(1);
+
+    // Reset
+    cached.resetMetrics();
+
+    metrics = cached.getMetrics();
+    expect(metrics.totalHits).toBe(0);
+    expect(metrics.totalMisses).toBe(0);
+    expect(metrics.clears).toBe(0);
+    expect(metrics.invalidations).toBe(0);
+    // Sizes should still reflect actual cache contents
+    expect(metrics.directories.size).toBe(0); // Cleared
   });
 });

@@ -58,6 +58,46 @@ function joinPath(base: string, name: string): string {
 }
 
 // =========================================================================
+// Cache Metrics
+// =========================================================================
+
+/**
+ * Metrics for a single cache category.
+ */
+export interface CacheCategoryMetrics {
+  /** Number of cache hits */
+  hits: number;
+  /** Number of cache misses */
+  misses: number;
+  /** Current number of cached entries */
+  size: number;
+}
+
+/**
+ * Aggregated cache metrics across all categories.
+ */
+export interface CacheMetrics {
+  /** Directory entries cache (values() results) */
+  entries: CacheCategoryMetrics;
+  /** Directory handle cache */
+  directories: CacheCategoryMetrics;
+  /** File handle cache */
+  files: CacheCategoryMetrics;
+  /** File content cache */
+  content: CacheCategoryMetrics;
+  /** Total hits across all categories */
+  totalHits: number;
+  /** Total misses across all categories */
+  totalMisses: number;
+  /** Overall hit rate (0-1) */
+  hitRate: number;
+  /** Number of cache invalidations */
+  invalidations: number;
+  /** Number of full cache clears */
+  clears: number;
+}
+
+// =========================================================================
 // StorageCache — shared cache state
 // =========================================================================
 
@@ -79,6 +119,111 @@ export class StorageCache {
 
   /** Cached file contents: path -> StorageFile */
   readonly content = new Map<string, StorageFile>();
+
+  // Metrics tracking
+  private _entriesHits = 0;
+  private _entriesMisses = 0;
+  private _directoriesHits = 0;
+  private _directoriesMisses = 0;
+  private _filesHits = 0;
+  private _filesMisses = 0;
+  private _contentHits = 0;
+  private _contentMisses = 0;
+  private _invalidations = 0;
+  private _clears = 0;
+
+  /** Record a cache hit for the entries cache */
+  recordEntriesHit(): void {
+    this._entriesHits++;
+  }
+
+  /** Record a cache miss for the entries cache */
+  recordEntriesMiss(): void {
+    this._entriesMisses++;
+  }
+
+  /** Record a cache hit for the directories cache */
+  recordDirectoriesHit(): void {
+    this._directoriesHits++;
+  }
+
+  /** Record a cache miss for the directories cache */
+  recordDirectoriesMiss(): void {
+    this._directoriesMisses++;
+  }
+
+  /** Record a cache hit for the files cache */
+  recordFilesHit(): void {
+    this._filesHits++;
+  }
+
+  /** Record a cache miss for the files cache */
+  recordFilesMiss(): void {
+    this._filesMisses++;
+  }
+
+  /** Record a cache hit for the content cache */
+  recordContentHit(): void {
+    this._contentHits++;
+  }
+
+  /** Record a cache miss for the content cache */
+  recordContentMiss(): void {
+    this._contentMisses++;
+  }
+
+  /**
+   * Get current cache metrics.
+   */
+  getMetrics(): CacheMetrics {
+    const totalHits = this._entriesHits + this._directoriesHits + this._filesHits + this._contentHits;
+    const totalMisses = this._entriesMisses + this._directoriesMisses + this._filesMisses + this._contentMisses;
+    const total = totalHits + totalMisses;
+
+    return {
+      entries: {
+        hits: this._entriesHits,
+        misses: this._entriesMisses,
+        size: this.entries.size,
+      },
+      directories: {
+        hits: this._directoriesHits,
+        misses: this._directoriesMisses,
+        size: this.directories.size,
+      },
+      files: {
+        hits: this._filesHits,
+        misses: this._filesMisses,
+        size: this.files.size,
+      },
+      content: {
+        hits: this._contentHits,
+        misses: this._contentMisses,
+        size: this.content.size,
+      },
+      totalHits,
+      totalMisses,
+      hitRate: total > 0 ? totalHits / total : 0,
+      invalidations: this._invalidations,
+      clears: this._clears,
+    };
+  }
+
+  /**
+   * Reset all metrics counters to zero.
+   */
+  resetMetrics(): void {
+    this._entriesHits = 0;
+    this._entriesMisses = 0;
+    this._directoriesHits = 0;
+    this._directoriesMisses = 0;
+    this._filesHits = 0;
+    this._filesMisses = 0;
+    this._contentHits = 0;
+    this._contentMisses = 0;
+    this._invalidations = 0;
+    this._clears = 0;
+  }
 
   /**
    * Invalidate a directory's cached entries and all children under that path.
@@ -114,6 +259,8 @@ export class StorageCache {
         this.content.delete(key);
       }
     }
+
+    this._invalidations++;
   }
 
   /**
@@ -133,6 +280,7 @@ export class StorageCache {
     this.directories.clear();
     this.files.clear();
     this.content.clear();
+    this._clears++;
   }
 }
 
@@ -176,10 +324,12 @@ export class CachedStorageDirectoryHandle implements StorageDirectoryHandle {
     const normalizedChildPath = normalizePath(childPath);
     const cachedHandle = this.cache.directories.get(normalizedChildPath);
     if (cachedHandle) {
+      this.cache.recordDirectoriesHit();
       return cachedHandle;
     }
 
     // Cache miss — fetch from inner
+    this.cache.recordDirectoriesMiss();
     const handle = await this.inner.getDirectoryHandle(name);
     const cached = new CachedStorageDirectoryHandle(handle, this.cache, childPath);
     this.cache.directories.set(normalizedChildPath, cached);
@@ -205,10 +355,12 @@ export class CachedStorageDirectoryHandle implements StorageDirectoryHandle {
     const normalizedChildPath = normalizePath(childPath);
     const cachedHandle = this.cache.files.get(normalizedChildPath);
     if (cachedHandle) {
+      this.cache.recordFilesHit();
       return cachedHandle;
     }
 
     // Cache miss — fetch from inner
+    this.cache.recordFilesMiss();
     const handle = await this.inner.getFileHandle(name);
     const cached = new CachedStorageFileHandle(handle, this.cache, childPath, this.path);
     this.cache.files.set(normalizedChildPath, cached);
@@ -235,6 +387,7 @@ export class CachedStorageDirectoryHandle implements StorageDirectoryHandle {
     // Check cache first
     const cachedEntries = this.cache.entries.get(normalizedPath);
     if (cachedEntries) {
+      this.cache.recordEntriesHit();
       for (const entry of cachedEntries) {
         yield entry;
       }
@@ -242,6 +395,7 @@ export class CachedStorageDirectoryHandle implements StorageDirectoryHandle {
     }
 
     // Cache miss — fetch from inner and collect entries
+    this.cache.recordEntriesMiss();
     const entries: StorageEntry[] = [];
     for await (const entry of this.inner.values()) {
       entries.push(entry);
@@ -282,10 +436,12 @@ class CachedStorageFileHandle implements StorageFileHandle {
     // Check cache first
     const cachedContent = this.cache.content.get(normalizedPath);
     if (cachedContent) {
+      this.cache.recordContentHit();
       return cachedContent;
     }
 
     // Cache miss — fetch from inner
+    this.cache.recordContentMiss();
     const file = await this.inner.getFile();
 
     // Wrap the file to cache its content reads
@@ -381,11 +537,15 @@ class CachedStorageWritable implements StorageWritable {
 // =========================================================================
 
 /**
- * Extended handle type that includes cache clearing capability.
+ * Extended handle type that includes cache management and metrics.
  */
 export interface CachedStorageRoot extends StorageDirectoryHandle {
   /** Clear all cached data, forcing subsequent operations to re-fetch. */
   clearCache(): void;
+  /** Get current cache metrics (hits, misses, sizes). */
+  getMetrics(): CacheMetrics;
+  /** Reset all metrics counters to zero. */
+  resetMetrics(): void;
 }
 
 /**
@@ -395,7 +555,7 @@ export interface CachedStorageRoot extends StorageDirectoryHandle {
  * ensuring cache coherence across the tree.
  *
  * @param root - The root directory handle to wrap
- * @returns A cached handle with `clearCache()` method
+ * @returns A cached handle with cache management and metrics
  *
  * @example
  * ```typescript
@@ -404,6 +564,10 @@ export interface CachedStorageRoot extends StorageDirectoryHandle {
  * // Operations are cached
  * const dir = await cachedRoot.getDirectoryHandle('samples');
  * const dir2 = await cachedRoot.getDirectoryHandle('samples'); // cached
+ *
+ * // Check cache effectiveness
+ * const metrics = cachedRoot.getMetrics();
+ * console.log(`Hit rate: ${(metrics.hitRate * 100).toFixed(1)}%`);
  *
  * // Force refresh
  * cachedRoot.clearCache();
@@ -423,5 +587,7 @@ export function withCache(root: StorageDirectoryHandle): CachedStorageRoot {
     removeEntry: cached.removeEntry.bind(cached),
     values: cached.values.bind(cached),
     clearCache: () => cache.clear(),
+    getMetrics: () => cache.getMetrics(),
+    resetMetrics: () => cache.resetMetrics(),
   };
 }

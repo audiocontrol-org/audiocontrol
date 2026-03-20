@@ -9,6 +9,7 @@
  */
 
 import type { StorageDirectoryHandle } from './storage-handles.js';
+import type { CacheMetrics } from './cached-storage.js';
 
 /**
  * Connection to a library root directory.
@@ -28,4 +29,13 @@ export interface LibraryConnection {
    * from the backing store. Optional — not all backends need caching.
    */
   clearCache?(): void;
+  /**
+   * Get current cache metrics. Optional — only available on cached backends.
+   * Returns undefined if cache is not yet initialized.
+   */
+  getMetrics?(): CacheMetrics | undefined;
+  /**
+   * Reset cache metrics counters. Optional — only available on cached backends.
+   */
+  resetMetrics?(): void;
 }
