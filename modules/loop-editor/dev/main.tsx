@@ -87,6 +87,8 @@ function DevHarness() {
   const [libraryOrigin, setLibraryOrigin] = useState<{ name: string; path: string[] } | null>(null);
   const [selectedSampleMeta, setSelectedSampleMeta] = useState<SampleYaml | null>(null);
   const [importProgress, setImportProgress] = useState<OperationProgress | undefined>(undefined);
+  const [isLoadingTree, setIsLoadingTree] = useState(false);
+  const [isLoadingMeta, setIsLoadingMeta] = useState(false);
   const { notifications, notify, dismiss } = useNotifications();
 
   const {
@@ -191,12 +193,20 @@ function DevHarness() {
   }, []);
 
   // Library: refresh listing
-  const refreshLibrary = useCallback(async () => {
+  const refreshLibrary = useCallback(async (clearCache = false) => {
     const conn = activeConnection();
     if (!conn) return;
-    const root = conn.getRoot();
-    const items = await listCommonSamplesTree(root);
-    setLibraryItems(items);
+    setIsLoadingTree(true);
+    try {
+      if (clearCache) {
+        conn.clearCache?.();
+      }
+      const root = conn.getRoot();
+      const items = await listCommonSamplesTree(root);
+      setLibraryItems(items);
+    } finally {
+      setIsLoadingTree(false);
+    }
   }, [activeBackend]);
 
   // Library: load a sample
@@ -225,16 +235,22 @@ function DevHarness() {
 
   // TreeView select handler — loads sample metadata for the detail panel
   const handleTreeSelect = useCallback(async (treeNode: TreeNode) => {
-    if (treeNode.type !== 'sample') return;
+    if (treeNode.type !== 'sample') {
+      setSelectedSampleMeta(null);
+      return;
+    }
     const meta = treeNode.meta as { fileName?: string; path?: string[] } | undefined;
     const conn = activeConnection();
     if (!conn) return;
+    setIsLoadingMeta(true);
     try {
       const root = conn.getRoot();
       const result = await loadSample(root, meta?.fileName ?? treeNode.name, meta?.path ?? []);
       setSelectedSampleMeta(result.yaml);
     } catch {
       setSelectedSampleMeta(null);
+    } finally {
+      setIsLoadingMeta(false);
     }
   }, [activeBackend]);
 
@@ -442,15 +458,17 @@ function DevHarness() {
               onCreateFolder={handleCreateFolder}
               onDelete={handleDeleteItem}
               onMove={handleMoveItem}
-              onRefresh={refreshLibrary}
+              onRefresh={() => refreshLibrary(true)}
               onImportFiles={handleImportFiles}
               operationProgress={importProgress}
               onSelect={handleTreeSelect}
+              loading={isLoadingTree}
               emptyMessage="No samples in library"
               renderIcon={(node) => node.type === 'sample' ? <AudioFileIcon /> : undefined}
               renderDetail={(_node) => (
                 <SampleDetailPanel
                   sample={selectedSampleMeta}
+                  loading={isLoadingMeta}
                   actions={
                     selectedSampleMeta ? (
                       <button

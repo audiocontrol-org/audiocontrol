@@ -26,6 +26,8 @@ export interface SampleDetailPanelProps {
   sample: SampleMetadata | null;
   /** Optional action buttons rendered below the metadata */
   actions?: React.ReactNode;
+  /** Show skeleton loading placeholders */
+  loading?: boolean;
 }
 
 function MetadataRow({ label, value }: { label: string; value: React.ReactNode }): JSX.Element {
@@ -41,7 +43,34 @@ function formatLoopMode(mode: string): string {
   return mode.charAt(0).toUpperCase() + mode.slice(1).replace(/-/g, ' ');
 }
 
-export function SampleDetailPanel({ sample, actions }: SampleDetailPanelProps): JSX.Element {
+function SkeletonRow(): JSX.Element {
+  return (
+    <>
+      <span className="ac-skeleton ac-sample-detail-skeleton-label" />
+      <span className="ac-skeleton ac-sample-detail-skeleton-value" />
+    </>
+  );
+}
+
+function SampleDetailSkeleton(): JSX.Element {
+  return (
+    <div className="ac-sample-detail">
+      <div className="ac-skeleton ac-skeleton-title" />
+      <div className="ac-sample-detail-skeleton-meta">
+        <SkeletonRow />
+        <SkeletonRow />
+        <SkeletonRow />
+        <SkeletonRow />
+      </div>
+    </div>
+  );
+}
+
+export function SampleDetailPanel({ sample, actions, loading }: SampleDetailPanelProps): JSX.Element {
+  if (loading) {
+    return <SampleDetailSkeleton />;
+  }
+
   if (!sample) {
     return (
       <div className="ac-sample-detail-empty">

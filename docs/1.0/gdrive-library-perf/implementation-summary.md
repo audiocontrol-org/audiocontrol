@@ -1,6 +1,6 @@
 # Google Drive Library Performance - Implementation Summary
 
-**Status:** In progress
+**Status:** Complete
 **Last Updated:** 2026-03-20
 
 ## Progress Overview
@@ -11,8 +11,8 @@
 | Phase 2: Cache Unit Tests | Complete | 15 tests covering all cache behaviors |
 | Phase 3: Extract DriveClient | Skipped | Not needed for initial implementation |
 | Phase 4: Wire Cache in LibraryConnection | Complete | Google Drive auto-caches via `withCache()` |
-| Phase 5: Skeleton CSS + Loading State | Not started | |
-| Phase 6: Consumer Loading States | Not started | |
+| Phase 5: Skeleton CSS + Loading State | Complete | Skeleton shimmer in SampleDetailPanel |
+| Phase 6: Consumer Loading States | Complete | Loop-editor dev harness wired up |
 
 ## Implementation Notes
 
@@ -40,6 +40,28 @@ Exported from `@audiocontrol/sampler-library/browser`:
 - `GoogleDriveLibraryConnection.clearCache()` clears all cached data
 - Cache is automatically cleared when connection is re-initialized
 - `BrowserLibraryConnection` (local FSAA) does not implement `clearCache()` — local FS is fast enough without caching
+
+### Phase 5: Skeleton CSS + Loading State
+
+Added to `library.css`:
+- `@keyframes ac-skeleton-shimmer` — shimmer animation
+- `.ac-skeleton` — base class with gradient background and animation
+- `.ac-skeleton-title`, `.ac-skeleton-text` — sized placeholders
+- `.ac-sample-detail-skeleton-*` — layout for detail panel skeleton
+
+Updated `SampleDetailPanel`:
+- Added `loading?: boolean` prop
+- Renders `SampleDetailSkeleton` when `loading=true`
+- Skeleton mimics the metadata grid layout
+
+### Phase 6: Consumer Loading States
+
+Updated `loop-editor/dev/main.tsx`:
+- Added `isLoadingTree` state — set during `refreshLibrary()` and initial tree loads
+- Added `isLoadingMeta` state — set during `handleTreeSelect()`
+- Pass `loading={isLoadingTree}` to `LibraryBrowser`
+- Pass `loading={isLoadingMeta}` to `SampleDetailPanel`
+- Refresh button now calls `conn.clearCache()` before re-scanning
 
 ## Code Metrics
 
