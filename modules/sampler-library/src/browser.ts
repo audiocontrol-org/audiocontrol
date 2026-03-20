@@ -439,6 +439,7 @@ export type {
 export {
   saveSample,
   loadSample,
+  loadSampleMeta,
   saveChoppedSample,
   loadChoppedSample,
   deleteItem,

@@ -30,6 +30,7 @@ import {
   createWav,
   listCommonSamplesTree,
   loadSample,
+  loadSampleMeta,
   saveSample,
   createFolder,
   deleteItem,
@@ -248,8 +249,9 @@ function DevHarness() {
     setIsLoadingMeta(true);
     try {
       const root = conn.getRoot();
-      const result = await loadSample(root, meta?.fileName ?? treeNode.name, meta?.path ?? []);
-      setSelectedSampleMeta(result.yaml);
+      // Use loadSampleMeta (not loadSample) to avoid downloading the WAV file
+      const yaml = await loadSampleMeta(root, meta?.fileName ?? treeNode.name, meta?.path ?? []);
+      setSelectedSampleMeta(yaml);
     } catch {
       setSelectedSampleMeta(null);
     } finally {

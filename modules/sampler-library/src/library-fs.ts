@@ -86,6 +86,22 @@ export async function getNestedDirectory(
 }
 
 /**
+ * Get a nested directory for read-only access.
+ * Does not use { create: true }, allowing directory handles to be cached.
+ * Throws if any part of the path doesn't exist.
+ */
+export async function getNestedDirectoryReadOnly(
+  rootHandle: StorageDirectoryHandle,
+  path: string[],
+): Promise<StorageDirectoryHandle> {
+  let current = rootHandle;
+  for (const segment of path) {
+    current = await current.getDirectoryHandle(segment);
+  }
+  return current;
+}
+
+/**
  * Get a nested directory without creating it.
  * Returns null if any part of the path doesn't exist.
  */
@@ -96,7 +112,7 @@ export async function getNestedDirectoryIfExists(
   let current = rootHandle;
   try {
     for (const segment of path) {
-      current = await current.getDirectoryHandle(segment, { create: false });
+      current = await current.getDirectoryHandle(segment);
     }
     return current;
   } catch {

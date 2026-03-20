@@ -14,7 +14,7 @@ import type { StorageDirectoryHandle } from '@/storage-handles.js';
 import type { SampleYaml } from '@/schemas/index.js';
 import type { ChoppedSample } from '@/schemas/index.js';
 import { SampleYamlSchema, ChoppedSampleSchema } from '@/schemas/index.js';
-import { getNestedDirectory, getNestedDirectoryIfExists, moveDirectory } from '@/library-fs.js';
+import { getNestedDirectory, getNestedDirectoryIfExists, getNestedDirectoryReadOnly, moveDirectory } from '@/library-fs.js';
 import { sanitizeForFilename } from './import.js';
 
 const SAMPLES_ROOT = ['library', 'common', 'samples'];
@@ -23,11 +23,20 @@ const SAMPLES_ROOT = ['library', 'common', 'samples'];
 // Internal helpers
 // =========================================================================
 
+/** Get samples directory, creating if needed (for writes). */
 async function getSamplesDir(
   root: StorageDirectoryHandle,
   path: string[] = [],
 ): Promise<StorageDirectoryHandle> {
   return getNestedDirectory(root, [...SAMPLES_ROOT, ...path]);
+}
+
+/** Get samples directory for read-only access (cacheable). */
+async function getSamplesDirReadOnly(
+  root: StorageDirectoryHandle,
+  path: string[] = [],
+): Promise<StorageDirectoryHandle> {
+  return getNestedDirectoryReadOnly(root, [...SAMPLES_ROOT, ...path]);
 }
 
 // =========================================================================
@@ -79,7 +88,7 @@ export async function loadSample(
   name: string,
   path: string[] = [],
 ): Promise<SampleLoadResult> {
-  const dir = await getSamplesDir(root, path);
+  const dir = await getSamplesDirReadOnly(root, path);
   const safeName = sanitizeForFilename(name);
 
   const yamlHandle = await dir.getFileHandle(`${safeName}.yaml`);
@@ -96,6 +105,32 @@ export async function loadSample(
   const wavData = await wavFile.arrayBuffer();
 
   return { yaml: result.data, wavData };
+}
+
+/**
+ * Load only the sample YAML metadata (without the WAV file).
+ *
+ * Use this when displaying sample info without needing audio data.
+ * Much faster than loadSample for high-latency backends.
+ */
+export async function loadSampleMeta(
+  root: StorageDirectoryHandle,
+  name: string,
+  path: string[] = [],
+): Promise<SampleYaml> {
+  const dir = await getSamplesDirReadOnly(root, path);
+  const safeName = sanitizeForFilename(name);
+
+  const yamlHandle = await dir.getFileHandle(`${safeName}.yaml`);
+  const yamlFile = await yamlHandle.getFile();
+  const yamlText = await yamlFile.text();
+  const parsed = parseYaml(yamlText);
+  const result = SampleYamlSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(`Invalid sample YAML for "${name}": ${result.error.message}`);
+  }
+
+  return result.data;
 }
 
 // =========================================================================
