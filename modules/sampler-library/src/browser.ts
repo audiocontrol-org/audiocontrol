@@ -358,6 +358,7 @@ export {
   quickSearchLoopPoints,
   validateCandidate,
   search as searchLoop,
+  LoopDetectionError,
   // Splice smoothing
   applyCrossfade,
   createSmoothedCopy,

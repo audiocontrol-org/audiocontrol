@@ -126,6 +126,22 @@ export interface SearchConfig {
    * All weights should sum to 1.0 for consistent scoring.
    */
   weights: ScoreWeights;
+
+  /**
+   * Whether to automatically detect and exclude trailing silence.
+   * When true, the effective end point is moved back to where
+   * meaningful audio stops, preventing loops in silent regions.
+   * @default true
+   */
+  excludeTrailingSilence: boolean;
+
+  /**
+   * Threshold in dB below which audio is considered silence.
+   * Only used when excludeTrailingSilence is true.
+   * More negative = more sensitive (treats quieter audio as non-silence).
+   * @default -40
+   */
+  silenceThresholdDb: number;
 }
 
 /**
@@ -283,6 +299,8 @@ export const DEFAULT_SEARCH_CONFIG: SearchConfig = {
     spectral: 0.35,
     slope: 0.15,
   },
+  excludeTrailingSilence: true,
+  silenceThresholdDb: -40,
 };
 
 /**

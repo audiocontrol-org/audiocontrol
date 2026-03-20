@@ -107,12 +107,26 @@ function DevHarness() {
     clearResults,
   } = useLoopDetection();
 
+  // Track previous search state to detect when search completes
+  const wasSearchingRef = React.useRef(false);
+
   // Surface loop detection errors as notifications
   useEffect(() => {
     if (loopDetectionError) {
       notify('error', `Loop detection failed: ${loopDetectionError}`);
     }
   }, [loopDetectionError]);
+
+  // Notify when search completes with no candidates
+  useEffect(() => {
+    if (wasSearchingRef.current && !isSearching) {
+      // Search just completed
+      if (!loopDetectionError && candidates.length === 0) {
+        notify('info', 'No loop candidates found. Try adjusting the sample or end point.');
+      }
+    }
+    wasSearchingRef.current = isSearching;
+  }, [isSearching, candidates.length, loopDetectionError]);
 
   const activeConnection = (): LibraryConnection | null => {
     if (activeBackend === 'local') return env.fsaaLibrary;
