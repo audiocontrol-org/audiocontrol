@@ -429,12 +429,6 @@ function DevHarness() {
         </div>
       </div>
 
-      {notifications.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
-          <NotificationArea notifications={notifications} onDismiss={dismiss} />
-        </div>
-      )}
-
       <p className="ac-text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
         {sampleName} — {sampleRate} Hz, {samples.length} samples
         {libraryOrigin && <span> (from library)</span>}
@@ -460,6 +454,11 @@ function DevHarness() {
             searchProgress={progress}
             audio={env.workflow.audio}
           />
+          {notifications.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <NotificationArea notifications={notifications} onDismiss={dismiss} />
+            </div>
+          )}
         </div>
 
         {showLibrary && (
