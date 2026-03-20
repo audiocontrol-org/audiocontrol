@@ -13,7 +13,7 @@ import '@audiocontrol/editor-core/library.css';
 import React, { useState, useCallback, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LoopEditor } from '@/ui/LoopEditor';
-import { useLoopDetection } from '@/ui/hooks/useLoopDetection';
+import { useLoopDetection } from '@audiocontrol/loop-editor/ui';
 import {
   useNotifications,
   NotificationArea,
@@ -93,9 +93,17 @@ function DevHarness() {
     isSearching,
     progress,
     candidates,
+    error: loopDetectionError,
     searchLoopPoints,
     clearResults,
   } = useLoopDetection();
+
+  // Surface loop detection errors as notifications
+  useEffect(() => {
+    if (loopDetectionError) {
+      notify('error', `Loop detection failed: ${loopDetectionError}`);
+    }
+  }, [loopDetectionError]);
 
   const activeConnection = (): LibraryConnection | null => {
     if (activeBackend === 'local') return env.fsaaLibrary;

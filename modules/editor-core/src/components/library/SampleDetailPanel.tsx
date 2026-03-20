@@ -30,10 +30,10 @@ export interface SampleDetailPanelProps {
 
 function MetadataRow({ label, value }: { label: string; value: React.ReactNode }): JSX.Element {
   return (
-    <div className="ac-sample-detail-row">
+    <>
       <span className="ac-sample-detail-label">{label}</span>
       <span className="ac-sample-detail-value">{value}</span>
-    </div>
+    </>
   );
 }
 
