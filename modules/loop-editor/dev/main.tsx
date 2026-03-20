@@ -31,6 +31,7 @@ import {
   createFolder,
   deleteItem,
   moveItem,
+  importWavToCommonArea,
   type LibraryTreeNode,
   type SampleYaml,
   type LibraryConnection,
@@ -281,6 +282,31 @@ function DevHarness() {
     }
   }, [activeBackend, refreshLibrary]);
 
+  // Library: import WAV files
+  const handleImportFiles = useCallback(async (files: File[], targetPath: string[]) => {
+    const conn = activeConnection();
+    if (!conn) return;
+    const root = conn.getRoot();
+    let imported = 0;
+    for (const file of files) {
+      if (!file.name.toLowerCase().endsWith('.wav')) {
+        notify('error', `Skipped "${file.name}" — only WAV files are supported`);
+        continue;
+      }
+      try {
+        const data = new Uint8Array(await file.arrayBuffer());
+        await importWavToCommonArea(root, file.name, data, { targetPath });
+        imported++;
+      } catch (err) {
+        notify('error', `Import "${file.name}" failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+      }
+    }
+    if (imported > 0) {
+      await refreshLibrary();
+      notify('info', `Imported ${imported} sample${imported !== 1 ? 's' : ''}`);
+    }
+  }, [activeBackend, refreshLibrary]);
+
   // Library: save current sample with loop points
   const handleSaveToLibrary = useCallback(async () => {
     const conn = activeConnection();
@@ -388,6 +414,7 @@ function DevHarness() {
               onDelete={handleDeleteItem}
               onMove={handleMoveItem}
               onRefresh={refreshLibrary}
+              onImportFiles={handleImportFiles}
               onSelect={handleTreeSelect}
               emptyMessage="No samples in library"
               renderIcon={(node) => node.type === 'sample' ? <AudioFileIcon /> : undefined}

@@ -44,6 +44,7 @@ export {
   FileIcon,
   DeleteIcon,
   NewFolderIcon,
+  ImportIcon,
   RenameIcon,
   MoveIcon,
 } from './TreeIcons';

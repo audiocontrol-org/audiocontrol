@@ -50,6 +50,7 @@ export {
   FileIcon,
   DeleteIcon,
   NewFolderIcon,
+  ImportIcon,
   RenameIcon,
   MoveIcon,
   type TreeNode,

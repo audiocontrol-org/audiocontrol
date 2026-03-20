@@ -98,6 +98,19 @@ describe('LibraryBrowser', () => {
     expect(html).toContain('No selection');
   });
 
+  it('renders import button when onImportFiles is provided', () => {
+    const html = renderBrowser({ onImportFiles: asyncNoop });
+    expect(html).toContain('Import samples');
+    expect(html).toContain('type="file"');
+    expect(html).toContain('accept=".wav"');
+  });
+
+  it('does not render import button when onImportFiles is omitted', () => {
+    const html = renderBrowser();
+    expect(html).not.toContain('Import samples');
+    expect(html).not.toContain('type="file"');
+  });
+
   it('passes renderIcon to TreeView', () => {
     const html = renderBrowser({
       renderIcon: (node) => <span data-icon={node.name} />,
