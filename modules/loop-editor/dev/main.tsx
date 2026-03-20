@@ -253,19 +253,14 @@ function DevHarness() {
     notify('info', `Created folder "${name}"`);
   }, [activeBackend, refreshLibrary]);
 
-  // Library: delete a sample or folder (confirmation handled by LibraryBrowser)
+  // Library: delete a sample or folder (confirmation + feedback handled by LibraryBrowser)
   const handleDeleteItem = useCallback(async (node: TreeNode) => {
     const meta = node.meta as { path?: string[] } | undefined;
     const conn = activeConnection();
-    if (!conn) return;
-    try {
-      const root = conn.getRoot();
-      await deleteItem(root, node.name, meta?.path ?? []);
-      await refreshLibrary();
-      notify('info', `Deleted "${node.name}"`);
-    } catch (err) {
-      notify('error', `Delete failed: ${err instanceof Error ? err.message : 'unknown error'}`);
-    }
+    if (!conn) throw new Error('Not connected');
+    const root = conn.getRoot();
+    await deleteItem(root, node.name, meta?.path ?? []);
+    await refreshLibrary();
   }, [activeBackend, refreshLibrary]);
 
   // Library: move item to a new directory
@@ -332,7 +327,6 @@ function DevHarness() {
     setImportProgress(undefined);
     if (imported > 0) {
       await refreshLibrary();
-      notify('info', `Imported ${imported} sample${imported !== 1 ? 's' : ''}`);
     }
   }, [activeBackend, refreshLibrary]);
 

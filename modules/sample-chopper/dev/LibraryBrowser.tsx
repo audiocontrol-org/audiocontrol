@@ -152,12 +152,8 @@ export function LibraryBrowser({
     const meta = node.meta as { directoryName?: string; path?: string[] } | undefined;
     const name = meta?.directoryName ?? node.name;
     const path = meta?.path ?? [];
-    try {
-      await deleteChoppedSample(name, path);
-      refreshSamples();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete');
-    }
+    await deleteChoppedSample(name, path);
+    refreshSamples();
   }, [refreshSamples]);
 
   const handleMoveNode = useCallback(async (node: TreeNode, targetPath: string[]) => {

@@ -23,7 +23,7 @@ function renderBrowser(overrides: Partial<React.ComponentProps<typeof LibraryBro
     <LibraryBrowser
       nodes={sampleNodes}
       onCreateFolder={asyncNoop}
-      onDelete={noop}
+      onDelete={asyncNoop}
       onMove={asyncNoop}
       onRefresh={noop}
       {...overrides}

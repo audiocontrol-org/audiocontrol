@@ -324,10 +324,23 @@
   flex-direction: column;
 }
 
-.ac-library-browser-progress {
+.ac-library-browser-status {
   padding-bottom: var(--ac-space-2);
   border-bottom: 1px solid var(--ac-color-border-subtle);
   margin-bottom: var(--ac-space-1);
+}
+
+.ac-library-browser-status-msg {
+  font-size: var(--ac-text-xs);
+  padding: var(--ac-space-1) 0;
+}
+
+.ac-library-browser-status-msg--info {
+  color: var(--ac-status-connected);
+}
+
+.ac-library-browser-status-msg--error {
+  color: var(--ac-status-danger);
 }
 
 .ac-library-browser--file-drag {

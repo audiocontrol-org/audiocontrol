@@ -6,9 +6,13 @@
  * folder creation, deletion, file import, and refresh. Consumers
  * provide storage callbacks and optional render props for
  * device-specific content.
+ *
+ * LibraryBrowser owns operation lifecycle — delete confirmation,
+ * progress feedback, error display, and completion status are all
+ * handled internally. Consumers just provide async callbacks.
  */
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { LibraryPanel } from './LibraryPanel';
 import { TreeView, type TreeNode } from './TreeView';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -18,19 +22,27 @@ import type { OperationProgress } from '../../types/operation-progress';
 
 const LIBRARY_MOVE_MIME = 'application/x-library-move';
 
+/** How long to show the completion/error status bar (ms). */
+const STATUS_DISPLAY_MS = 4000;
+
 interface LibraryMoveData {
   nodeId: string;
   name: string;
   path: string[];
 }
 
+type StatusMessage = {
+  level: 'info' | 'error';
+  text: string;
+};
+
 export interface LibraryBrowserProps {
   /** Library tree data */
   nodes: TreeNode[];
 
-  /** Core library operations */
+  /** Core library operations — all async so LibraryBrowser can track lifecycle */
   onCreateFolder: (name: string) => Promise<void>;
-  onDelete: (node: TreeNode) => void;
+  onDelete: (node: TreeNode) => Promise<void>;
   onMove: (node: TreeNode, targetPath: string[]) => Promise<void>;
   onRefresh: () => void;
 
@@ -107,8 +119,25 @@ export function LibraryBrowser({
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<TreeNode | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // -- Delete confirmation state ------------------------------------------
+  const [deleteTarget, setDeleteTarget] = useState<TreeNode | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // -- Inline status bar --------------------------------------------------
+  const [status, setStatus] = useState<StatusMessage | null>(null);
+  const statusTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const showStatus = useCallback((level: 'info' | 'error', text: string) => {
+    clearTimeout(statusTimerRef.current);
+    setStatus({ level, text });
+    statusTimerRef.current = setTimeout(() => setStatus(null), STATUS_DISPLAY_MS);
+  }, []);
+
+  // Clean up timer on unmount
+  useEffect(() => () => clearTimeout(statusTimerRef.current), []);
 
   const selectedNode = selectedId ? findNode(nodes, selectedId) : undefined;
   const showDetail = renderDetail !== undefined;
@@ -123,18 +152,30 @@ export function LibraryBrowser({
 
   const handleDeleteClick = useCallback((node: TreeNode) => {
     setDeleteTarget(node);
+    setDeleteError(null);
   }, []);
 
-  const handleDeleteConfirm = useCallback(() => {
-    if (deleteTarget) {
-      onDelete(deleteTarget);
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await onDelete(deleteTarget);
+      const name = deleteTarget.name;
       setDeleteTarget(null);
+      showStatus('info', `Deleted "${name}"`);
+    } catch (err) {
+      setDeleteError(err instanceof Error ? err.message : 'Delete failed');
+    } finally {
+      setDeleting(false);
     }
-  }, [deleteTarget, onDelete]);
+  }, [deleteTarget, onDelete, showStatus]);
 
   const handleDeleteCancel = useCallback(() => {
+    if (deleting) return;
     setDeleteTarget(null);
-  }, []);
+    setDeleteError(null);
+  }, [deleting]);
 
   // -- File import -------------------------------------------------------
 
@@ -143,10 +184,13 @@ export function LibraryBrowser({
     setImporting(true);
     try {
       await onImportFiles(files, targetPath);
+      showStatus('info', `Imported ${files.length} file${files.length !== 1 ? 's' : ''}`);
+    } catch (err) {
+      showStatus('error', err instanceof Error ? err.message : 'Import failed');
     } finally {
       setImporting(false);
     }
-  }, [onImportFiles]);
+  }, [onImportFiles, showStatus]);
 
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -156,7 +200,6 @@ export function LibraryBrowser({
     const files = e.target.files;
     if (!files || files.length === 0) return;
     doImport(Array.from(files), []);
-    // Reset so the same file can be re-imported
     e.target.value = '';
   }, [doImport]);
 
@@ -204,7 +247,6 @@ export function LibraryBrowser({
   }, []);
 
   const handleDragOver = useCallback((_targetNode: TreeNode, e: React.DragEvent): boolean => {
-    // Accept internal moves OR OS file drops
     if (e.dataTransfer.types.includes(LIBRARY_MOVE_MIME)) return true;
     if (onImportFiles && hasFilesDrag(e)) {
       e.dataTransfer.dropEffect = 'copy';
@@ -214,7 +256,6 @@ export function LibraryBrowser({
   }, [onImportFiles]);
 
   const handleDrop = useCallback((targetNode: TreeNode, e: React.DragEvent) => {
-    // OS file drop onto a directory
     if (onImportFiles && hasFilesDrag(e)) {
       const targetMeta = targetNode.meta as { path?: string[] } | undefined;
       const targetPath = [...(targetMeta?.path ?? []), targetNode.name];
@@ -223,7 +264,6 @@ export function LibraryBrowser({
       return;
     }
 
-    // Internal library move
     const jsonData = e.dataTransfer.getData(LIBRARY_MOVE_MIME);
     if (!jsonData) return;
     try {
@@ -261,6 +301,21 @@ export function LibraryBrowser({
     </>
   ) : undefined;
 
+  // -- Status bar content -------------------------------------------------
+
+  const hasStatusContent = operationProgress || status;
+
+  // -- Delete dialog message with error -----------------------------------
+
+  const deleteMessage = deleteError
+    ? (
+      <>
+        <p style={{ margin: '0 0 0.75rem' }}>Delete &ldquo;{deleteTarget?.name}&rdquo;? This cannot be undone.</p>
+        <div className="ac-operation-error">{deleteError}</div>
+      </>
+    )
+    : `Delete "${deleteTarget?.name}"? This cannot be undone.`;
+
   const dropClass = isFileDragOver ? `${layoutClass} ac-library-browser--file-drag` : layoutClass;
 
   return (
@@ -283,9 +338,16 @@ export function LibraryBrowser({
           headerActions={importButton}
           connectionSlot={connectionSlot}
         >
-          {operationProgress && (
-            <div className="ac-library-browser-progress">
-              <OperationProgressBar progress={operationProgress} />
+          {hasStatusContent && (
+            <div className="ac-library-browser-status">
+              {operationProgress && (
+                <OperationProgressBar progress={operationProgress} />
+              )}
+              {status && !operationProgress && (
+                <div className={`ac-library-browser-status-msg ac-library-browser-status-msg--${status.level}`}>
+                  {status.text}
+                </div>
+              )}
             </div>
           )}
           <TreeView
@@ -311,8 +373,8 @@ export function LibraryBrowser({
       <ConfirmDialog
         open={deleteTarget !== null}
         title="Delete"
-        message={`Delete "${deleteTarget?.name}"? This cannot be undone.`}
-        confirmLabel="Delete"
+        message={deleteMessage}
+        confirmLabel={deleting ? 'Deleting...' : 'Delete'}
         danger
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
