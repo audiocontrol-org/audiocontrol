@@ -401,6 +401,10 @@ export type { LibraryConnection } from './library-connection.js';
 export { BrowserLibraryConnection } from './browser-library-connection.js';
 export type { BrowserLibraryConnectionOptions } from './browser-library-connection.js';
 
+// Cached storage decorator
+export { withCache, StorageCache, CachedStorageDirectoryHandle } from './cached-storage.js';
+export type { CachedStorageRoot } from './cached-storage.js';
+
 // Library filesystem scanning
 export {
   LIBRARY_CATEGORIES,
