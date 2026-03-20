@@ -39,6 +39,8 @@ export {
   TreeView,
   ContextMenu,
   LibraryPanel,
+  LibraryBrowser,
+  SampleDetailPanel,
   ConfirmDialog,
   SaveDialog,
   MoveDialog,
@@ -62,6 +64,9 @@ export {
   type MoveDialogDirectory,
   type LibraryTab,
   type LibraryPanelProps,
+  type LibraryBrowserProps,
+  type SampleDetailPanelProps,
+  type SampleMetadata,
 } from './library';
 
 // SVG glow components

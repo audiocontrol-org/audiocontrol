@@ -31,7 +31,15 @@ import {
   type DirectoryItem,
 } from '@audiocontrol/editor-core';
 import { listChoppedSamples, createSamplesFolder } from './library.js';
-import { LibraryBrowser, CHOPPER_DRAG_MIME, type ChopperDragData } from './LibraryBrowser.js';
+import { LibraryBrowser } from './LibraryBrowser.js';
+
+const LIBRARY_MOVE_MIME = 'application/x-library-move';
+
+interface LibraryMoveData {
+  nodeId: string;
+  name: string;
+  path: string[];
+}
 import '@audiocontrol/editor-core/primitives.css';
 import '@audiocontrol/editor-core/library.css';
 import './styles.css';
@@ -263,14 +271,12 @@ function App() {
     setDragOver(false);
 
     // Check for library sample drag first
-    const libraryData = e.dataTransfer.getData(CHOPPER_DRAG_MIME);
+    const libraryData = e.dataTransfer.getData(LIBRARY_MOVE_MIME);
     if (libraryData) {
       try {
-        const dragData = JSON.parse(libraryData) as ChopperDragData;
-        if (dragData.type === 'chopped-sample') {
-          handleOpenFromLibrary(dragData.name, dragData.path);
-          return;
-        }
+        const dragData = JSON.parse(libraryData) as LibraryMoveData;
+        handleOpenFromLibrary(dragData.name, dragData.path);
+        return;
       } catch {
         // Fall through to file drop
       }

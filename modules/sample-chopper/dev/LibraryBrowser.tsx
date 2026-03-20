@@ -2,16 +2,17 @@
  * Library browser panel for the standalone sample chopper.
  *
  * Tabbed interface showing chopped samples, tones, and drum kits
- * from the connected FSAA library directory. Uses shared LibraryPanel
- * and TreeView components from editor-core for structural rendering.
+ * from the connected FSAA library directory. The samples tab uses
+ * the composed LibraryBrowser from editor-core (with built-in
+ * drag-drop, delete, and folder creation). Tones and drum kits
+ * tabs use LibraryPanel directly for flat-list rendering.
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import type { LibraryTreeNode } from '@audiocontrol/sampler-library/browser';
-import { isValidMoveTarget } from '@audiocontrol/sampler-library/browser';
 import {
+  LibraryBrowser as LibraryBrowserComposed,
   LibraryPanel,
-  TreeView,
   type TreeNode,
   type LibraryTab,
 } from '@audiocontrol/editor-core';
@@ -26,17 +27,6 @@ import {
   type LibraryToneInfo,
   type LibraryDrumKitInfo,
 } from './library.js';
-
-// -- Public drag-drop contract (used by parent components) ----------------
-
-export const CHOPPER_DRAG_MIME = 'application/x-chopper-library-move';
-
-export interface ChopperDragData {
-  type: 'chopped-sample' | 'directory';
-  name: string;
-  path: string[];
-  directoryName?: string;
-}
 
 // -- Props ----------------------------------------------------------------
 
@@ -105,7 +95,6 @@ export function LibraryBrowser({
   onOpen,
   onOpenTone,
   onOpenDrumKit,
-  onPathChange,
 }: LibraryBrowserProps): JSX.Element | null {
   const [activeTab, setActiveTab] = useState<Tab>('samples');
   const [samplesTree, setSamplesTree] = useState<LibraryTreeNode[]>([]);
@@ -113,8 +102,6 @@ export function LibraryBrowser({
   const [drumKits, setDrumKits] = useState<LibraryDrumKitInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
-  const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
   const [currentPath, setCurrentPath] = useState<string[]>([]);
 
   // --- Data fetching ---
@@ -161,19 +148,25 @@ export function LibraryBrowser({
 
   // --- Actions ---
 
-  const handleDelete = useCallback(async (name: string, path: string[]) => {
+  const handleDeleteNode = useCallback(async (node: TreeNode) => {
+    const meta = node.meta as { directoryName?: string; path?: string[] } | undefined;
+    const name = meta?.directoryName ?? node.name;
+    const path = meta?.path ?? [];
+    if (!window.confirm(`Delete "${name}"?`)) return;
     try {
       await deleteChoppedSample(name, path);
-      setConfirmDelete(null);
       refreshSamples();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete');
     }
   }, [refreshSamples]);
 
-  const handleMove = useCallback(async (name: string, fromPath: string[], toPath: string[]) => {
+  const handleMoveNode = useCallback(async (node: TreeNode, targetPath: string[]) => {
+    const meta = node.meta as { directoryName?: string; path?: string[] } | undefined;
+    const name = meta?.directoryName ?? node.name;
+    const fromPath = meta?.path ?? [];
     try {
-      await moveLibraryItem(name, fromPath, toPath);
+      await moveLibraryItem(name, fromPath, targetPath);
       refreshSamples();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to move item');
@@ -183,16 +176,6 @@ export function LibraryBrowser({
   const handleTabChange = useCallback((tabId: string) => {
     setActiveTab(tabId as Tab);
     setError(null);
-    setConfirmDelete(null);
-  }, []);
-
-  const handleToggle = useCallback((id: string) => {
-    setExpandedPaths((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   }, []);
 
   const handleCreateFolder = useCallback(async (name: string) => {
@@ -200,155 +183,66 @@ export function LibraryBrowser({
     refreshSamples();
   }, [currentPath, refreshSamples]);
 
-  // --- TreeView callbacks ---
-
-  const handleDragStart = useCallback((node: TreeNode, e: React.DragEvent) => {
-    const meta = node.meta as { directoryName?: string; path: string[] } | undefined;
-    const dragData: ChopperDragData = {
-      type: node.type === 'directory' ? 'directory' : 'chopped-sample',
-      name: meta?.directoryName ?? node.name,
-      path: meta?.path ?? [],
-      directoryName: meta?.directoryName,
-    };
-    e.dataTransfer.setData(CHOPPER_DRAG_MIME, JSON.stringify(dragData));
-    e.dataTransfer.effectAllowed = 'move';
-  }, []);
-
-  const handleDragOver = useCallback((_targetNode: TreeNode, e: React.DragEvent): boolean => {
-    return e.dataTransfer.types.includes(CHOPPER_DRAG_MIME);
-  }, []);
-
-  const handleDrop = useCallback((targetNode: TreeNode, e: React.DragEvent) => {
-    const jsonData = e.dataTransfer.getData(CHOPPER_DRAG_MIME);
-    if (!jsonData) return;
-    try {
-      const dragData = JSON.parse(jsonData) as ChopperDragData;
-      const targetMeta = targetNode.meta as { path: string[] } | undefined;
-      const targetPath = [...(targetMeta?.path ?? []), targetNode.name];
-      if (!isValidMoveTarget(dragData.path, dragData.name, targetPath)) return;
-      handleMove(dragData.name, dragData.path, targetPath);
-    } catch (err) {
-      console.error('[LibraryBrowser] Failed to parse drop data:', err);
-    }
-  }, [handleMove]);
+  const handleSelectSample = useCallback((node: TreeNode) => {
+    const meta = node.meta as { directoryName?: string; path?: string[] } | undefined;
+    onOpen(meta?.directoryName ?? node.name, meta?.path ?? []);
+  }, [onOpen]);
 
   const renderTrailing = useCallback((node: TreeNode) => {
     if (node.type === 'directory') return null;
-
     const meta = node.meta as {
       variant?: string;
       sliceCount?: number;
       description?: string;
-      directoryName?: string;
-      path?: string[];
     } | undefined;
 
-    const dirName = meta?.directoryName ?? node.name;
-    const nodePath = meta?.path ?? [];
-    const nodeId = node.id;
-
     return (
-      <>
-        <span className="library-browser-item-meta">
-          {meta?.variant} &middot; {meta?.sliceCount} slice{meta?.sliceCount !== 1 ? 's' : ''}
-          {meta?.description ? ` \u00b7 ${meta.description}` : ''}
-        </span>
-        <span className="library-browser-item-actions">
-          <button
-            className="library-browser-action open"
-            onClick={(e) => { e.stopPropagation(); onOpen(dirName, nodePath); }}
-            title="Open in chopper"
-          >
-            Open
-          </button>
-          {confirmDelete === nodeId ? (
-            <>
-              <button
-                className="library-browser-action danger"
-                onClick={(e) => { e.stopPropagation(); handleDelete(dirName, nodePath); }}
-              >
-                Confirm
-              </button>
-              <button
-                className="library-browser-action"
-                onClick={(e) => { e.stopPropagation(); setConfirmDelete(null); }}
-              >
-                Cancel
-              </button>
-            </>
-          ) : (
-            <button
-              className="library-browser-action"
-              onClick={(e) => { e.stopPropagation(); setConfirmDelete(nodeId); }}
-              title="Delete"
-            >
-              <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </button>
-          )}
-        </span>
-      </>
+      <span className="library-browser-item-meta">
+        {meta?.variant} &middot; {meta?.sliceCount} slice{meta?.sliceCount !== 1 ? 's' : ''}
+        {meta?.description ? ` \u00b7 ${meta.description}` : ''}
+      </span>
     );
-  }, [confirmDelete, onOpen, handleDelete]);
-
-  // --- Root drag-drop (move items to root level) ---
-
-  const [isRootDragOver, setIsRootDragOver] = useState(false);
-
-  const handleRootDragOver = useCallback((e: React.DragEvent) => {
-    if (!e.dataTransfer.types.includes(CHOPPER_DRAG_MIME)) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
   }, []);
-
-  const handleRootDragEnter = useCallback((e: React.DragEvent) => {
-    if (!e.dataTransfer.types.includes(CHOPPER_DRAG_MIME)) return;
-    e.preventDefault();
-    setIsRootDragOver(true);
-  }, []);
-
-  const handleRootDragLeave = useCallback((e: React.DragEvent) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const { clientX: x, clientY: y } = e;
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setIsRootDragOver(false);
-    }
-  }, []);
-
-  const handleRootDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsRootDragOver(false);
-    const jsonData = e.dataTransfer.getData(CHOPPER_DRAG_MIME);
-    if (!jsonData) return;
-    try {
-      const dragData = JSON.parse(jsonData) as ChopperDragData;
-      if (dragData.path.length === 0) return;
-      handleMove(dragData.name, dragData.path, []);
-    } catch (err) {
-      console.error('[LibraryBrowser] Failed to parse root drop data:', err);
-    }
-  }, [handleMove]);
 
   if (!connected) return null;
 
-  // --- Derived render state ---
+  // --- Samples tab via LibraryBrowserComposed ---
+  if (activeTab === 'samples') {
+    return (
+      <div>
+        <LibraryPanel
+          tabs={TABS}
+          activeTabId={activeTab}
+          onTabChange={handleTabChange}
+        />
+        <LibraryBrowserComposed
+          nodes={toTreeNodes(samplesTree)}
+          title="Samples"
+          loading={loading}
+          error={error ?? undefined}
+          emptyMessage="No chopped samples saved yet. Chop a sample and click Save."
+          onCreateFolder={handleCreateFolder}
+          onDelete={handleDeleteNode}
+          onMove={handleMoveNode}
+          onRefresh={refreshSamples}
+          onSelect={handleSelectSample}
+          renderTrailing={renderTrailing}
+        />
+      </div>
+    );
+  }
+
+  // --- Tones / Drum Kits tabs via LibraryPanel ---
 
   const emptyMessage =
-    activeTab === 'samples'
-      ? 'No chopped samples saved yet. Chop a sample and click Save.'
-      : activeTab === 'tones'
-        ? 'No tones found in the connected library.'
-        : 'No drum kits found in the connected library.';
+    activeTab === 'tones'
+      ? 'No tones found in the connected library.'
+      : 'No drum kits found in the connected library.';
 
   const isEmpty =
-    activeTab === 'samples'
-      ? samplesTree.length === 0
-      : activeTab === 'tones'
-        ? tones.length === 0
-        : drumKits.length === 0;
-
-  const treeNodes = toTreeNodes(samplesTree);
+    activeTab === 'tones'
+      ? tones.length === 0
+      : drumKits.length === 0;
 
   return (
     <LibraryPanel
@@ -361,30 +255,7 @@ export function LibraryBrowser({
       emptyMessage={emptyMessage}
       isEmpty={!loading && !error && isEmpty}
       onRefresh={refresh}
-      onCreateFolder={activeTab === 'samples' ? handleCreateFolder : undefined}
     >
-      {/* Samples tab -- TreeView with root drag-drop wrapper */}
-      {activeTab === 'samples' && !isEmpty && (
-        <div
-          className={isRootDragOver ? 'drag-over-root' : ''}
-          onDragOver={handleRootDragOver}
-          onDragEnter={handleRootDragEnter}
-          onDragLeave={handleRootDragLeave}
-          onDrop={handleRootDrop}
-        >
-          <TreeView
-            nodes={treeNodes}
-            expandedIds={expandedPaths}
-            onToggleExpand={handleToggle}
-            draggable
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-            renderTrailing={renderTrailing}
-          />
-        </div>
-      )}
-
       {/* Tones tab -- flat list */}
       {activeTab === 'tones' && !isEmpty && (
         <ul className="library-browser-list">

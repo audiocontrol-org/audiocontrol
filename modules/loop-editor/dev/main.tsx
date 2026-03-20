@@ -17,8 +17,8 @@ import { useLoopDetection } from '@/ui/hooks/useLoopDetection';
 import {
   useNotifications,
   NotificationArea,
-  LibraryPanel,
-  TreeView,
+  LibraryBrowser,
+  SampleDetailPanel,
   AudioFileIcon,
   type TreeNode,
 } from '@audiocontrol/editor-core';
@@ -30,6 +30,7 @@ import {
   saveSample,
   createFolder,
   deleteItem,
+  moveItem,
   type LibraryTreeNode,
   type SampleYaml,
   type LibraryConnection,
@@ -82,6 +83,7 @@ function DevHarness() {
   const [activeBackend, setActiveBackend] = useState<StorageBackend>('none');
   const [libraryItems, setLibraryItems] = useState<LibraryTreeNode[]>([]);
   const [libraryOrigin, setLibraryOrigin] = useState<{ name: string; path: string[] } | null>(null);
+  const [selectedSampleMeta, setSelectedSampleMeta] = useState<SampleYaml | null>(null);
   const { notifications, notify, dismiss } = useNotifications();
 
   const {
@@ -201,6 +203,7 @@ function DevHarness() {
       setLoopPoint(result.yaml.loopStart ?? 0);
       setEndPoint(result.yaml.loopEnd ?? wavData.samples.length);
       setLibraryOrigin({ name: node.fileName, path: node.path });
+      setSelectedSampleMeta(result.yaml);
       clearResults();
       setSelectedCandidateIndex(undefined);
       notify('info', `Loaded "${result.yaml.name}"`);
@@ -209,17 +212,33 @@ function DevHarness() {
     }
   }, [activeBackend, clearResults]);
 
-  // TreeView select handler — adapts TreeNode back to LibraryTreeNode for loading
-  const handleTreeSelect = useCallback((treeNode: TreeNode) => {
+  // TreeView select handler — loads sample metadata for the detail panel
+  const handleTreeSelect = useCallback(async (treeNode: TreeNode) => {
     if (treeNode.type !== 'sample') return;
     const meta = treeNode.meta as { fileName?: string; path?: string[] } | undefined;
+    const conn = activeConnection();
+    if (!conn) return;
+    try {
+      const root = conn.getRoot();
+      const result = await loadSample(root, meta?.fileName ?? treeNode.name, meta?.path ?? []);
+      setSelectedSampleMeta(result.yaml);
+    } catch {
+      setSelectedSampleMeta(null);
+    }
+  }, [activeBackend]);
+
+  // Load the selected sample into the editor
+  const handleLoadSelectedIntoEditor = useCallback(() => {
+    if (!selectedSampleMeta) return;
+    const conn = activeConnection();
+    if (!conn) return;
     const libNode = {
       type: 'sample' as const,
-      fileName: meta?.fileName ?? treeNode.name,
-      path: meta?.path ?? [],
+      fileName: selectedSampleMeta.name,
+      path: libraryOrigin?.path ?? [],
     } as LibraryTreeNode;
     handleLoadSample(libNode);
-  }, [handleLoadSample]);
+  }, [selectedSampleMeta, activeBackend, libraryOrigin, handleLoadSample]);
 
   // Library: create a new folder (called by LibraryPanel's built-in button)
   const handleCreateFolder = useCallback(async (name: string) => {
@@ -244,6 +263,21 @@ function DevHarness() {
       notify('info', `Deleted "${node.name}"`);
     } catch (err) {
       notify('error', `Delete failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+    }
+  }, [activeBackend, refreshLibrary]);
+
+  // Library: move item to a new directory
+  const handleMoveItem = useCallback(async (node: TreeNode, targetPath: string[]) => {
+    const meta = node.meta as { path?: string[] } | undefined;
+    const conn = activeConnection();
+    if (!conn) return;
+    try {
+      const root = conn.getRoot();
+      await moveItem(root, node.name, meta?.path ?? [], targetPath);
+      await refreshLibrary();
+      notify('info', `Moved "${node.name}"`);
+    } catch (err) {
+      notify('error', `Move failed: ${err instanceof Error ? err.message : 'unknown error'}`);
     }
   }, [activeBackend, refreshLibrary]);
 
@@ -346,21 +380,33 @@ function DevHarness() {
         </div>
 
         {showLibrary && (
-          <div style={{ flex: '0 0 280px', position: 'sticky', top: 24, maxHeight: 'calc(100vh - 48px)', overflow: 'hidden' }}>
-            <LibraryPanel
+          <div style={{ flex: '0 0 400px', position: 'sticky', top: 24, maxHeight: 'calc(100vh - 48px)', overflow: 'hidden' }}>
+            <LibraryBrowser
+              nodes={toTreeNodes(libraryItems)}
               title={activeBackend === 'google-drive' ? 'Google Drive' : 'Local Library'}
-              onRefresh={refreshLibrary}
               onCreateFolder={handleCreateFolder}
-              isEmpty={libraryItems.length === 0}
+              onDelete={handleDeleteItem}
+              onMove={handleMoveItem}
+              onRefresh={refreshLibrary}
+              onSelect={handleTreeSelect}
               emptyMessage="No samples in library"
-            >
-              <TreeView
-                nodes={toTreeNodes(libraryItems)}
-                onSelect={handleTreeSelect}
-                onDelete={handleDeleteItem}
-                renderIcon={(node) => node.type === 'sample' ? <AudioFileIcon /> : undefined}
-              />
-            </LibraryPanel>
+              renderIcon={(node) => node.type === 'sample' ? <AudioFileIcon /> : undefined}
+              renderDetail={(_node) => (
+                <SampleDetailPanel
+                  sample={selectedSampleMeta}
+                  actions={
+                    selectedSampleMeta ? (
+                      <button
+                        className="ac-btn ac-btn-sm ac-btn-primary"
+                        onClick={handleLoadSelectedIntoEditor}
+                      >
+                        Load into Editor
+                      </button>
+                    ) : undefined
+                  }
+                />
+              )}
+            />
           </div>
         )}
       </div>

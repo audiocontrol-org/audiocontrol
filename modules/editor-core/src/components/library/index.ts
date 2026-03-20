@@ -29,6 +29,15 @@ export {
   type MoveDialogDirectory,
 } from './MoveDialog';
 export {
+  LibraryBrowser,
+  type LibraryBrowserProps,
+} from './LibraryBrowser';
+export {
+  SampleDetailPanel,
+  type SampleDetailPanelProps,
+  type SampleMetadata,
+} from './SampleDetailPanel';
+export {
   FolderIcon,
   ChevronIcon,
   AudioFileIcon,
