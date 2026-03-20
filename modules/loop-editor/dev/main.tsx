@@ -256,8 +256,11 @@ function DevHarness() {
   const hasLocalFS = 'showDirectoryPicker' in globalThis;
   const hasGoogleDrive = env.googleDrive !== null;
 
+  const showLibrary = isConnected && libraryItems.length > 0;
+
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
+    <div style={{ maxWidth: showLibrary ? 1280 : 960, margin: '0 auto', padding: 24 }}>
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h1 className="ac-title-md" style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>
           Loop Editor — Dev Harness
@@ -292,41 +295,45 @@ function DevHarness() {
         {libraryOrigin && <span> (from library)</span>}
       </p>
 
-      {/* Library browser */}
-      {isConnected && libraryItems.length > 0 && (
-        <div style={{ marginBottom: 24, maxHeight: 240 }}>
-          <LibraryPanel
-            title={`Library Samples (${activeBackend === 'google-drive' ? 'Google Drive' : 'Local'})`}
-            onRefresh={refreshLibrary}
-            isEmpty={libraryItems.length === 0}
-            emptyMessage="No samples in library"
-          >
-            <TreeView
-              nodes={toTreeNodes(libraryItems)}
-              onSelect={handleTreeSelect}
-              renderIcon={(node) => node.type === 'sample' ? <AudioFileIcon /> : undefined}
-            />
-          </LibraryPanel>
+      {/* Main content: editor left, library right */}
+      <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
+        <div style={{ flex: '1 1 0%', minWidth: 0 }}>
+          <LoopEditor
+            samples={samples}
+            sampleRate={sampleRate}
+            startPoint={0}
+            loopPoint={loopPoint}
+            endPoint={endPoint}
+            onLoopPointChange={setLoopPoint}
+            onEndPointChange={setEndPoint}
+            candidates={candidates}
+            selectedCandidateIndex={selectedCandidateIndex}
+            onCandidateSelect={setSelectedCandidateIndex}
+            onApplyCandidate={handleApplyCandidate}
+            onAutoDetect={handleAutoDetect}
+            isSearching={isSearching}
+            searchProgress={progress}
+            audio={env.workflow.audio}
+          />
         </div>
-      )}
 
-      <LoopEditor
-        samples={samples}
-        sampleRate={sampleRate}
-        startPoint={0}
-        loopPoint={loopPoint}
-        endPoint={endPoint}
-        onLoopPointChange={setLoopPoint}
-        onEndPointChange={setEndPoint}
-        candidates={candidates}
-        selectedCandidateIndex={selectedCandidateIndex}
-        onCandidateSelect={setSelectedCandidateIndex}
-        onApplyCandidate={handleApplyCandidate}
-        onAutoDetect={handleAutoDetect}
-        isSearching={isSearching}
-        searchProgress={progress}
-        audio={env.workflow.audio}
-      />
+        {showLibrary && (
+          <div style={{ flex: '0 0 280px', position: 'sticky', top: 24, maxHeight: 'calc(100vh - 48px)', overflow: 'hidden' }}>
+            <LibraryPanel
+              title={activeBackend === 'google-drive' ? 'Google Drive' : 'Local Library'}
+              onRefresh={refreshLibrary}
+              isEmpty={libraryItems.length === 0}
+              emptyMessage="No samples in library"
+            >
+              <TreeView
+                nodes={toTreeNodes(libraryItems)}
+                onSelect={handleTreeSelect}
+                renderIcon={(node) => node.type === 'sample' ? <AudioFileIcon /> : undefined}
+              />
+            </LibraryPanel>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
