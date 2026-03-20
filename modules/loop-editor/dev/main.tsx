@@ -262,8 +262,7 @@ function DevHarness() {
     // Use the filesystem name (meta.fileName), not the display name (node.name)
     const fsName = meta?.fileName ?? node.name;
     await deleteItem(root, fsName, meta?.path ?? []);
-    await refreshLibrary();
-  }, [activeBackend, refreshLibrary]);
+  }, [activeBackend]);
 
   // Library: move item to a new directory
   const handleMoveItem = useCallback(async (node: TreeNode, targetPath: string[]) => {
@@ -327,10 +326,7 @@ function DevHarness() {
       }
     }
     setImportProgress(undefined);
-    if (imported > 0) {
-      await refreshLibrary();
-    }
-  }, [activeBackend, refreshLibrary]);
+  }, [activeBackend]);
 
   // Library: save current sample with loop points
   const handleSaveToLibrary = useCallback(async () => {

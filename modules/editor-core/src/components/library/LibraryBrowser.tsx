@@ -164,12 +164,13 @@ export function LibraryBrowser({
       const name = deleteTarget.name;
       setDeleteTarget(null);
       showStatus('info', `Deleted "${name}"`);
+      onRefresh();
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'Delete failed');
     } finally {
       setDeleting(false);
     }
-  }, [deleteTarget, onDelete, showStatus]);
+  }, [deleteTarget, onDelete, onRefresh, showStatus]);
 
   const handleDeleteCancel = useCallback(() => {
     if (deleting) return;
@@ -185,12 +186,13 @@ export function LibraryBrowser({
     try {
       await onImportFiles(files, targetPath);
       showStatus('info', `Imported ${files.length} file${files.length !== 1 ? 's' : ''}`);
+      onRefresh();
     } catch (err) {
       showStatus('error', err instanceof Error ? err.message : 'Import failed');
     } finally {
       setImporting(false);
     }
-  }, [onImportFiles, showStatus]);
+  }, [onImportFiles, onRefresh, showStatus]);
 
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
