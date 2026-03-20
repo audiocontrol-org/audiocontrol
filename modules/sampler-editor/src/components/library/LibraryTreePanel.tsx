@@ -25,7 +25,7 @@ import { useLibraryTreeDragDrop } from '@/hooks/useLibraryTreeDragDrop';
 import { useLibraryTreeActions } from '@/hooks/useLibraryTreeActions';
 import { type DeviceDragData } from './DeviceMemoryPanel';
 import { TreeSection } from './LibraryTreeNode';
-import { LibraryContextMenu } from './LibraryContextMenu';
+import { ContextMenu } from '@audiocontrol/editor-core';
 import { WaveIcon, PatchIcon, DeleteButton } from './LibraryTreeIcons';
 import { DrumKitItem } from './DrumKitItem';
 import { SetItem } from './SetItem';
@@ -621,7 +621,7 @@ export function LibraryTreePanel({
 
       {/* Context Menu */}
       {contextMenu && (
-        <LibraryContextMenu
+        <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
           actions={getContextMenuActions()}

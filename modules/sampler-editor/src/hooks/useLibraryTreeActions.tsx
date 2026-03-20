@@ -15,7 +15,7 @@ import {
   RenameIcon,
   MoveIcon,
   DeleteIcon,
-} from '@/components/library/LibraryContextMenu';
+} from '@audiocontrol/editor-core';
 
 export interface UseLibraryTreeActionsParams {
   selectedName?: string;

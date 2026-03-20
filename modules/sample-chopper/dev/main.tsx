@@ -8,7 +8,7 @@
  */
 
 import { createRoot } from 'react-dom/client';
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   SampleChopperDialog,
   type ChopperResult,
@@ -25,9 +25,32 @@ import {
   type LibraryToneInfo,
   type LibraryDrumKitInfo,
 } from './library.js';
-import { SaveDialog, type SaveDialogResult } from './SaveDialog.js';
+import {
+  SaveDialog,
+  type SaveDialogResult,
+  type DirectoryItem,
+} from '@audiocontrol/editor-core';
+import { listChoppedSamples, createSamplesFolder } from './library.js';
 import { LibraryBrowser, CHOPPER_DRAG_MIME, type ChopperDragData } from './LibraryBrowser.js';
+import '@audiocontrol/editor-core/primitives.css';
+import '@audiocontrol/editor-core/library.css';
 import './styles.css';
+
+/** Flatten a tree of LibraryTreeNodes into a list of DirectoryItem entries for the SaveDialog. */
+function flattenDirectories(
+  nodes: Array<{ name: string; type: string; path: string[]; children?: Array<{ name: string; type: string; path: string[]; children?: unknown[] }> }>,
+  out: DirectoryItem[],
+  depth: number,
+): void {
+  for (const node of nodes) {
+    if (node.type === 'directory') {
+      out.push({ name: node.name, path: node.path, depth });
+      if (node.children) {
+        flattenDirectories(node.children as typeof nodes, out, depth + 1);
+      }
+    }
+  }
+}
 
 function parseWavFile(buffer: ArrayBuffer): { samples: Int16Array; sampleRate: number } {
   const view = new DataView(buffer);
@@ -116,6 +139,9 @@ function App() {
   const [libraryRefreshKey, setLibraryRefreshKey] = useState(0);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [saveDialogDefaultName, setSaveDialogDefaultName] = useState('');
+  const [saveDialogDirs, setSaveDialogDirs] = useState<DirectoryItem[]>([]);
+  const [saveDialogLoading, setSaveDialogLoading] = useState(false);
+  const [saveDialogError, setSaveDialogError] = useState<string | null>(null);
   const [samplesBrowsePath, setSamplesBrowsePath] = useState<string[]>([]);
   /** Tracks the library origin of the currently loaded sample (for auto-save) */
   const [libraryOrigin, setLibraryOrigin] = useState<{ name: string; path: string[] } | null>(null);
@@ -125,6 +151,30 @@ function App() {
   const saveResolverRef = useRef<{
     resolve: (result: SaveDialogResult | null) => void;
   } | null>(null);
+
+  // Load directory listing when save dialog opens
+  useEffect(() => {
+    if (!saveDialogOpen) return;
+    setSaveDialogLoading(true);
+    setSaveDialogError(null);
+    listChoppedSamples()
+      .then((tree) => {
+        const flat: DirectoryItem[] = [];
+        flattenDirectories(tree, flat, 0);
+        setSaveDialogDirs(flat);
+      })
+      .catch((err) => setSaveDialogError(err instanceof Error ? err.message : 'Failed to list directories'))
+      .finally(() => setSaveDialogLoading(false));
+  }, [saveDialogOpen]);
+
+  const handleCreateSaveFolder = useCallback(async (parentPath: string[], folderName: string) => {
+    await createSamplesFolder(parentPath, folderName);
+    // Refresh directory listing
+    const tree = await listChoppedSamples();
+    const flat: DirectoryItem[] = [];
+    flattenDirectories(tree, flat, 0);
+    setSaveDialogDirs(flat);
+  }, []);
 
   const loadFile = useCallback(async (file: File) => {
     setError(null);
@@ -384,9 +434,14 @@ function App() {
 
       <SaveDialog
         open={saveDialogOpen}
+        title="Save Sample"
         defaultName={saveDialogDefaultName}
+        directories={saveDialogDirs}
+        loading={saveDialogLoading}
+        error={saveDialogError}
         onSave={handleSaveDialogSave}
         onCancel={handleSaveDialogCancel}
+        onCreateFolder={handleCreateSaveFolder}
       />
     </div>
   );

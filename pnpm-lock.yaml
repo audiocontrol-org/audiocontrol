@@ -242,10 +242,10 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^5.0.10
-        version: 5.4.20(@types/node@20.19.17)
+        version: 5.4.20(@types/node@22.19.8)
       vitest:
         specifier: ^1.1.0
-        version: 1.6.1(@types/node@20.19.17)
+        version: 1.6.1(@types/node@22.19.8)
 
   modules/editor-core:
     dependencies:
@@ -355,10 +355,10 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^5.0.10
-        version: 5.4.20(@types/node@20.19.17)
+        version: 5.4.20(@types/node@22.19.8)
       vitest:
         specifier: ^1.1.0
-        version: 1.6.1(@types/node@20.19.17)
+        version: 1.6.1(@types/node@22.19.8)
 
   modules/launch-control-xl3:
     dependencies:
@@ -443,7 +443,7 @@ importers:
         version: 5.9.2
       vitest:
         specifier: ^1.1.0
-        version: 1.6.1(@types/node@20.19.17)
+        version: 1.6.1(@types/node@22.19.8)
 
   modules/lib-device-uuid:
     dependencies:
@@ -629,6 +629,9 @@ importers:
         specifier: ^2.2.0
         version: 2.6.1
     devDependencies:
+      '@audiocontrol/editor-core':
+        specifier: workspace:^
+        version: link:../editor-core
       '@audiocontrol/sampler-library':
         specifier: workspace:^
         version: link:../sampler-library
@@ -910,13 +913,13 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^5.0.10
-        version: 5.4.20(@types/node@20.19.17)
+        version: 5.4.20(@types/node@22.19.8)
       vite-plugin-mkcert:
         specifier: ^1.17.9
         version: 1.17.9(vite@5.4.20)
       vitest:
         specifier: ^1.1.0
-        version: 1.6.1(@types/node@20.19.17)
+        version: 1.6.1(@types/node@22.19.8)
 
   modules/sampler-export:
     dependencies:
@@ -4089,7 +4092,7 @@ packages:
       '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 5.4.20(@types/node@20.19.17)
+      vite: 5.4.20(@types/node@22.19.8)
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -4112,7 +4115,7 @@ packages:
       std-env: 3.9.0
       strip-literal: 2.1.1
       test-exclude: 6.0.0
-      vitest: 1.6.1(@types/node@22.19.8)
+      vitest: 1.6.1(@types/node@20.19.17)
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -8509,7 +8512,7 @@ packages:
       axios: 1.12.2(debug@4.4.3)
       debug: 4.4.3(supports-color@8.1.1)
       picocolors: 1.1.1
-      vite: 5.4.20(@types/node@20.19.17)
+      vite: 5.4.20(@types/node@22.19.8)
     transitivePeerDependencies:
       - supports-color
     dev: true
