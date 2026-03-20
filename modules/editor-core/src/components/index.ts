@@ -9,6 +9,7 @@ export {
   type CollapsibleSectionProps,
   type CollapsibleSectionTheme,
 } from './CollapsibleSection';
+export { NotificationArea, type NotificationAreaProps } from './NotificationArea';
 export {
   MidiConnectionPage,
   type MidiConnectionPageConfig,
@@ -32,6 +33,36 @@ export {
   type BuildInfoConfig,
   type BuildInfoProps,
 } from './layout';
+
+// Library components
+export {
+  TreeView,
+  ContextMenu,
+  LibraryPanel,
+  ConfirmDialog,
+  SaveDialog,
+  MoveDialog,
+  FolderIcon,
+  ChevronIcon,
+  AudioFileIcon,
+  FileIcon,
+  DeleteIcon,
+  NewFolderIcon,
+  RenameIcon,
+  MoveIcon,
+  type TreeNode,
+  type TreeViewProps,
+  type ContextMenuAction,
+  type ContextMenuProps,
+  type ConfirmDialogProps,
+  type SaveDialogProps,
+  type SaveDialogResult,
+  type DirectoryItem,
+  type MoveDialogProps,
+  type MoveDialogDirectory,
+  type LibraryTab,
+  type LibraryPanelProps,
+} from './library';
 
 // SVG glow components
 export {

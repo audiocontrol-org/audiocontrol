@@ -13,6 +13,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LoopEditor } from '@/ui/LoopEditor';
 import { useLoopDetection } from '@/ui/hooks/useLoopDetection';
+import { useNotifications, NotificationArea } from '@audiocontrol/editor-core';
 import {
   parseWav,
   createWav,
@@ -60,20 +61,7 @@ function DevHarness() {
   const [activeBackend, setActiveBackend] = useState<StorageBackend>('none');
   const [libraryItems, setLibraryItems] = useState<LibraryTreeNode[]>([]);
   const [libraryOrigin, setLibraryOrigin] = useState<{ name: string; path: string[] } | null>(null);
-  const [notifications, setNotifications] = useState<Array<{ id: number; level: 'info' | 'error'; text: string }>>([]);
-  const nextId = React.useRef(0);
-
-  const notify = useCallback((level: 'info' | 'error', text: string) => {
-    const id = nextId.current++;
-    setNotifications((prev) => [...prev, { id, level, text }]);
-    if (level === 'info') {
-      setTimeout(() => setNotifications((prev) => prev.filter((n) => n.id !== id)), 5000);
-    }
-  }, []);
-
-  const dismissNotification = useCallback((id: number) => {
-    setNotifications((prev) => prev.filter((n) => n.id !== id));
-  }, []);
+  const { notifications, notify, dismiss } = useNotifications();
 
   const {
     isSearching,
@@ -262,34 +250,9 @@ function DevHarness() {
         </div>
       </div>
 
-      {/* Notification area — always visible, stacks errors and info */}
       {notifications.length > 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-          {notifications.map((n) => (
-            <div
-              key={n.id}
-              className={n.level === 'error' ? 'ac-alert ac-alert-error' : 'ac-alert'}
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', fontSize: 13 }}
-            >
-              <span>{n.text}</span>
-              <div style={{ display: 'flex', gap: 4, marginLeft: 12, flexShrink: 0 }}>
-                <button
-                  className="ac-btn ac-btn-sm"
-                  style={{ padding: '2px 8px', fontSize: 11 }}
-                  onClick={() => navigator.clipboard.writeText(n.text)}
-                >
-                  copy
-                </button>
-                <button
-                  className="ac-btn ac-btn-sm"
-                  style={{ padding: '2px 8px', fontSize: 11 }}
-                  onClick={() => dismissNotification(n.id)}
-                >
-                  dismiss
-                </button>
-              </div>
-            </div>
-          ))}
+        <div style={{ marginBottom: 16 }}>
+          <NotificationArea notifications={notifications} onDismiss={dismiss} />
         </div>
       )}
 

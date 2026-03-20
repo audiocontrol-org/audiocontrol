@@ -302,6 +302,38 @@
   background: color-mix(in srgb, var(--ac-status-danger) 16%, transparent);
 }
 
+/* Notification Area */
+
+.ac-notification-area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ac-space-2);
+}
+
+.ac-notification-area .ac-alert {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  font-size: var(--ac-text-sm);
+}
+
+.ac-notification-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.ac-notification-actions {
+  display: flex;
+  gap: var(--ac-space-1);
+  margin-left: var(--ac-space-3);
+  flex-shrink: 0;
+}
+
+.ac-notification-actions .ac-btn-sm {
+  padding: 0.125rem var(--ac-space-2);
+  font-size: var(--ac-text-xs);
+}
+
 .ac-alert-inline {
   border: 1px solid var(--ac-color-border-subtle);
   border-radius: var(--ac-radius-sm);

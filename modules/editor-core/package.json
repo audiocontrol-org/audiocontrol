@@ -12,6 +12,7 @@
     },
     "./tokens.css": "./src/design/tokens.css",
     "./primitives.css": "./src/design/primitives.css",
+    "./library.css": "./src/design/library.css",
     "./vite": {
       "types": "./dist/build/vite.d.ts",
       "import": "./dist/build/vite.js"
