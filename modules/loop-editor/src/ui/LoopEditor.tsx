@@ -62,6 +62,12 @@ export interface LoopEditorProps {
   isSmoothing?: boolean;
   /** AudioPlayback implementation from the workflow environment */
   audio?: AudioPlayback;
+  /** Current playback mode for the three-way toggle */
+  playbackMode?: 'no-loop' | 'loop' | 'smoothed-loop';
+  /** Called when the user switches playback mode */
+  onPlaybackModeChange?: (mode: 'no-loop' | 'loop' | 'smoothed-loop') => void;
+  /** Discontinuity analysis at the current splice point */
+  discontinuity?: { normalizedAmplitudeStep: number; needsSmoothing: boolean } | null;
 }
 
 /** Waveform colors */
@@ -104,6 +110,9 @@ export function LoopEditor({
   onSmoothLoop,
   isSmoothing = false,
   audio,
+  playbackMode,
+  onPlaybackModeChange,
+  discontinuity,
 }: LoopEditorProps): JSX.Element {
   const leftCanvasRef = useRef<HTMLCanvasElement>(null);
   const rightCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -533,7 +542,42 @@ export function LoopEditor({
               )}
             </div>
           )}
-          {onSmoothLoop && (
+          {onPlaybackModeChange && (
+            <div className="flex items-center gap-1 border-l border-s330-accent/20 pl-3 ml-1">
+              <span className="text-xs text-s330-muted mr-1">Mode:</span>
+              {(['no-loop', 'loop', 'smoothed-loop'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => onPlaybackModeChange(mode)}
+                  className={cn(
+                    'ac-btn ac-btn-xs',
+                    playbackMode === mode ? 'ac-btn-primary' : 'ac-btn-ghost',
+                  )}
+                  data-testid={`playback-mode-${mode}`}
+                  title={{
+                    'no-loop': 'One-shot playback (no loop)',
+                    'loop': 'Loop with original samples (hear raw splice)',
+                    'smoothed-loop': 'Loop with crossfade smoothing applied',
+                  }[mode]}
+                >
+                  {{ 'no-loop': 'No Loop', 'loop': 'Loop', 'smoothed-loop': 'Smoothed' }[mode]}
+                </button>
+              ))}
+              {discontinuity && (
+                <span
+                  data-testid="discontinuity-indicator"
+                  className={cn(
+                    'text-xs ml-2 font-mono',
+                    discontinuity.needsSmoothing ? 'text-yellow-400' : 'text-green-400',
+                  )}
+                  title={`Amplitude step: ${(discontinuity.normalizedAmplitudeStep * 100).toFixed(1)}%`}
+                >
+                  {discontinuity.needsSmoothing ? '⚠' : '✓'} {(discontinuity.normalizedAmplitudeStep * 100).toFixed(1)}%
+                </span>
+              )}
+            </div>
+          )}
+          {onSmoothLoop && !onPlaybackModeChange && (
             <button
               onClick={() => onSmoothLoop('equal-power')}
               disabled={isSmoothing || isPlaying}

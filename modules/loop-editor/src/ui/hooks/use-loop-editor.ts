@@ -1,10 +1,18 @@
 /**
  * useLoopEditor — composable hook for loop editing state.
  *
- * Owns loop point state, loop detection, audio preview, and synth-core
- * MIDI playback. Consumers provide samples and UI chrome; this hook
- * provides everything the LoopEditor component needs plus active voice
- * tracking.
+ * Owns loop point state, loop detection, audio preview, synth-core
+ * MIDI playback, and smoothing. Consumers provide samples and UI
+ * chrome; this hook provides everything the LoopEditor component
+ * needs plus active voice tracking.
+ *
+ * Playback modes:
+ * - no-loop: one-shot playback, sample plays through and stops
+ * - loop: loops at current points with original samples (hear raw splice)
+ * - smoothed-loop: loops with crossfade applied (hear smoothed splice)
+ *
+ * Switching modes while playing polyphonically gives instant A/B/C
+ * comparison of splice quality.
  *
  * Used by: LoopEditorDialog (sampler-editor), dev harness (loop-editor/dev).
  */
@@ -14,8 +22,11 @@ import { createBrowserAudioPlayback } from '@audiocontrol/editor-core';
 import type { AudioPlayback } from '@audiocontrol/editor-core';
 import { useSamplePlayer } from '@audiocontrol/synth-core';
 import type { NoteInput } from '@audiocontrol/synth-core';
-import type { LoopCandidate } from '@audiocontrol/sampler-library';
+import type { LoopCandidate, DiscontinuityAnalysis } from '@audiocontrol/sampler-library';
+import { createSmoothedCopy, analyzeDiscontinuity } from '@audiocontrol/sampler-library/browser';
 import { useLoopDetection } from '@/ui/hooks/useLoopDetection';
+
+export type PlaybackMode = 'no-loop' | 'loop' | 'smoothed-loop';
 
 export interface UseLoopEditorParams {
   /** Audio samples (16-bit signed integers). */
@@ -38,6 +49,13 @@ export interface UseLoopEditorReturn {
   endPoint: number;
   setLoopPoint: (point: number) => void;
   setEndPoint: (point: number) => void;
+
+  // Playback mode (no-loop / loop / smoothed-loop)
+  playbackMode: PlaybackMode;
+  setPlaybackMode: (mode: PlaybackMode) => void;
+
+  // Discontinuity analysis at current splice point
+  discontinuity: DiscontinuityAnalysis | null;
 
   // Loop detection
   isSearching: boolean;
@@ -74,6 +92,7 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
   const [loopPoint, setLoopPoint] = useState(initialLoopStart ?? 0);
   const [endPoint, setEndPoint] = useState(initialLoopEnd ?? (samples?.length ?? 0));
   const [selectedCandidateIndex, setSelectedCandidateIndex] = useState<number | undefined>(undefined);
+  const [playbackMode, setPlaybackMode] = useState<PlaybackMode>('loop');
 
   // Reset state when loading new samples
   const [prevSamples, setPrevSamples] = useState<Int16Array | null>(null);
@@ -89,6 +108,37 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
     setEndPoint(loopEnd ?? (samples?.length ?? 0));
     setSelectedCandidateIndex(undefined);
   }, [samples]);
+
+  // Smoothed buffer — recomputed when samples or loop points change.
+  // createSmoothedCopy only modifies the crossfade zone (~64 samples),
+  // so this is cheap enough to run on every loop point change.
+  const smoothedSamples = useMemo(() => {
+    if (!samples || loopPoint >= endPoint) return null;
+    const loopLength = endPoint - loopPoint;
+    if (loopLength < 64) return null; // too short for crossfade
+    try {
+      return createSmoothedCopy(samples, loopPoint, endPoint, {
+        mode: 'equal-power',
+        crossfadeLength: 64,
+      });
+    } catch {
+      return null;
+    }
+  }, [samples, loopPoint, endPoint]);
+
+  // Discontinuity analysis at current splice point
+  const discontinuity = useMemo(() => {
+    if (!samples || loopPoint >= endPoint) return null;
+    try {
+      return analyzeDiscontinuity(samples, loopPoint, endPoint);
+    } catch {
+      return null;
+    }
+  }, [samples, loopPoint, endPoint]);
+
+  // Derive useSamplePlayer params from playback mode
+  const playerSamples = playbackMode === 'smoothed-loop' ? (smoothedSamples ?? samples) : samples;
+  const loopEnabled = playbackMode !== 'no-loop';
 
   // Audio preview (single-voice play/stop buttons)
   const audio = useMemo(() => createBrowserAudioPlayback(), []);
@@ -117,10 +167,10 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
 
   // Synth-core MIDI playback
   const { activeNotes } = useSamplePlayer({
-    samples,
+    samples: playerSamples,
     sampleRate,
     rootKey,
-    loopEnabled: true,
+    loopEnabled,
     loopStartSample: loopPoint,
     loopEndSample: endPoint,
     noteInput,
@@ -131,6 +181,9 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
     endPoint,
     setLoopPoint,
     setEndPoint,
+    playbackMode,
+    setPlaybackMode,
+    discontinuity,
     isSearching,
     searchProgress: progress,
     candidates,

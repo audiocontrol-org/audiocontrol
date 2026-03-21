@@ -30,6 +30,28 @@ declare module '@audiocontrol/sampler-library' {
       slope: number;
     };
   }
+
+  export interface DiscontinuityAnalysis {
+    amplitudeStep: number;
+    normalizedAmplitudeStep: number;
+    slopeDifference: number;
+    normalizedSlopeDifference: number;
+    needsSmoothing: boolean;
+    recommendedCrossfadeLength: number;
+  }
+
+  export function createSmoothedCopy(
+    samples: Int16Array,
+    loopStart: number,
+    loopEnd: number,
+    config?: { mode?: 'linear' | 'equal-power'; crossfadeLength?: number },
+  ): Int16Array;
+
+  export function analyzeDiscontinuity(
+    samples: Int16Array,
+    loopStart: number,
+    loopEnd: number,
+  ): DiscontinuityAnalysis;
 }
 
 declare module '@audiocontrol/sampler-library/browser' {
@@ -45,8 +67,14 @@ declare module '@audiocontrol/sampler-library/browser' {
 
   export function createSmoothedCopy(
     samples: Int16Array,
-    loopPoint: number,
-    endPoint: number,
-    options?: { mode?: 'linear' | 'equal-power'; crossfadeLength?: number },
+    loopStart: number,
+    loopEnd: number,
+    config?: { mode?: 'linear' | 'equal-power'; crossfadeLength?: number },
   ): Int16Array;
+
+  export function analyzeDiscontinuity(
+    samples: Int16Array,
+    loopStart: number,
+    loopEnd: number,
+  ): import('@audiocontrol/sampler-library').DiscontinuityAnalysis;
 }

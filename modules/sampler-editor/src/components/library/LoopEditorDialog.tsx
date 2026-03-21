@@ -153,6 +153,9 @@ export function LoopEditorDialog({
               isSearching={editor.isSearching}
               searchProgress={editor.searchProgress}
               audio={editor.audio}
+              playbackMode={editor.playbackMode}
+              onPlaybackModeChange={editor.setPlaybackMode}
+              discontinuity={editor.discontinuity}
             />
           </div>
         </Dialog.Content>

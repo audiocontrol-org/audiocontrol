@@ -484,6 +484,9 @@ function DevHarness() {
             isSearching={editor.isSearching}
             searchProgress={editor.searchProgress}
             audio={editor.audio}
+            playbackMode={editor.playbackMode}
+            onPlaybackModeChange={editor.setPlaybackMode}
+            discontinuity={editor.discontinuity}
           />
           {(loadProgress || saveProgress) && (
             <div style={{ marginTop: 16 }}>
