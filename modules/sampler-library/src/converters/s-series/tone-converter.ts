@@ -219,7 +219,8 @@ function extensionToTone(ext: SeriesToneExtension, yaml: ToneYaml): SSeriesBaseT
         originalKey: ext.originalKey,
         wave: {
             bank: 0, segmentTop: 0, segmentLength: 0,
-            startPoint: 0, endPoint: 0,
+            startPoint: yaml.wave.startPoint ?? 0,
+            endPoint: yaml.wave.endPoint ?? 0,
             loopPoint: yaml.wave.loopPoint ?? 0, loopLength: 0,
         },
         loopMode: mapLoopModeFromYaml(yaml.wave.loopMode),
@@ -256,7 +257,9 @@ export function createSeriesToneConverter<TTone extends SSeriesBaseTone>(
                     file: wavFilename,
                     sampleRate: mapSampleRateToHz(tone.sampleRate),
                     loopMode: mapLoopModeToYaml(tone.loopMode),
-                    loopPoint: tone.wave.loopPoint,
+                    startPoint: tone.wave.startPoint || undefined,
+                    endPoint: tone.wave.endPoint || undefined,
+                    loopPoint: tone.wave.loopPoint || undefined,
                 },
                 [deviceType]: extension,
             } as ToneYaml;

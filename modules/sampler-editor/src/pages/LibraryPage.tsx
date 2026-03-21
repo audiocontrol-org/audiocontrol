@@ -488,6 +488,7 @@ export function LibraryPage() {
         const yaml = await loadSampleMeta(libraryHandle, name, path ?? []);
         yaml.loopStart = loopStart;
         yaml.loopEnd = loopEnd;
+        yaml.loopMode = 'forward';
         yaml.modifiedAt = new Date().toISOString();
 
         const samplesDir = await getNestedDirectory(libraryHandle, ['library', 'common', 'samples', ...(path ?? [])]);
@@ -505,6 +506,8 @@ export function LibraryPage() {
         const yaml = parseYaml(await toneFile.text());
         if (yaml.wave) {
           yaml.wave.loopPoint = loopStart;
+          yaml.wave.endPoint = loopEnd;
+          yaml.wave.loopMode = 'forward';
         }
         const writable = await toneHandle.createWritable();
         await writable.write(stringifyYaml(yaml, { indent: 2, lineWidth: 120 }));
