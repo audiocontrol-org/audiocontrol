@@ -2,6 +2,9 @@
  * Plugin interfaces for device-specific library behavior.
  */
 export type {
+  PluginMenuAction,
+  PluginMenuSeparator,
+  PluginContextMenuAction,
   ItemTypePlugin,
   CategoryPlugin,
   CategoryCallbacks,

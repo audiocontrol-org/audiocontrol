@@ -37,6 +37,8 @@ export {
 // Library components
 export {
   TreeView,
+  TreeSection,
+  PluginLibraryBrowser,
   ContextMenu,
   LibraryPanel,
   LibraryBrowser,
@@ -56,6 +58,8 @@ export {
   MoveIcon,
   type TreeNode,
   type TreeViewProps,
+  type TreeSectionProps,
+  type PluginLibraryBrowserProps,
   type ContextMenuAction,
   type ContextMenuProps,
   type ConfirmDialogProps,
@@ -72,6 +76,20 @@ export {
   type CacheMetricsModalProps,
   type CacheMetricsData,
   type CategoryMetrics,
+  // Plugin types
+  type PluginContextMenuAction,
+  type ItemTypePlugin,
+  type CategoryPlugin,
+  type CategoryCallbacks,
+  type ItemTranslator,
+  type SlotGroup,
+  type DeviceMemoryRenderProps,
+  type DeviceMemoryConfig,
+  type ItemSelection,
+  type PreviewContext,
+  type PreviewPanelConfig,
+  type DeviceLibraryPlugin,
+  type DeviceMemoryAction,
 } from './library';
 
 // Operation status components

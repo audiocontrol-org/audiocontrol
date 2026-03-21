@@ -14,7 +14,38 @@
 
 import type { ReactNode } from 'react';
 import type { TreeNode } from '../TreeView';
-import type { ContextMenuAction } from '../ContextMenu';
+
+// =========================================================================
+// Plugin Context Menu Action (without onClick handler)
+// =========================================================================
+
+/**
+ * A regular context menu action.
+ * Unlike ContextMenuAction, this doesn't include onClick - the consuming
+ * code will wire up handlers based on the action id.
+ */
+export interface PluginMenuAction {
+  /** Unique action identifier (e.g., 'rename', 'delete', 'move') */
+  id: string;
+  /** Display label */
+  label: string;
+  /** Optional icon */
+  icon?: ReactNode;
+  /** Whether the action is disabled */
+  disabled?: boolean;
+  /** Whether the action is dangerous (red styling) */
+  danger?: boolean;
+}
+
+/** A separator in the context menu */
+export interface PluginMenuSeparator {
+  separator: true;
+}
+
+/**
+ * Union type for context menu items - either an action or a separator.
+ */
+export type PluginContextMenuAction = PluginMenuAction | PluginMenuSeparator;
 
 // =========================================================================
 // Item Type Plugin
@@ -58,11 +89,12 @@ export interface ItemTypePlugin<TMeta = unknown> {
   supportsRename: boolean;
 
   /**
-   * Get context menu actions for this item type.
+   * Get context menu actions available for this item type.
+   * Actions are descriptive only - click handlers are wired up by consuming code.
    * @param meta - Item metadata from node.meta
    * @param node - The tree node
    */
-  getContextMenuActions?(meta: TMeta, node: TreeNode): ContextMenuAction[];
+  getContextMenuActions?(meta: TMeta, node: TreeNode): PluginContextMenuAction[];
 }
 
 // =========================================================================

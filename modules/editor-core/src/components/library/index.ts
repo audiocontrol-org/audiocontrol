@@ -69,6 +69,7 @@ export {
 
 // Plugin interfaces
 export type {
+  PluginContextMenuAction,
   ItemTypePlugin,
   CategoryPlugin,
   CategoryCallbacks,
