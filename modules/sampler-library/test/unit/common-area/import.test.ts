@@ -90,7 +90,7 @@ describe('extractWavSampleRate', () => {
     expect(extractWavSampleRate(data)).toBe(96000);
   });
 
-  it('throws on data shorter than minimum header size', () => {
+  it('throws on data shorter than minimum size', () => {
     const data = new Uint8Array(10);
     expect(() => extractWavSampleRate(data)).toThrow('WAV data too short');
   });
@@ -110,6 +110,73 @@ describe('extractWavSampleRate', () => {
   it('throws when sample rate is zero', () => {
     const data = makeWavHeader(0);
     expect(() => extractWavSampleRate(data)).toThrow('sample rate is zero');
+  });
+
+  it('finds fmt chunk after a JUNK chunk', () => {
+    // RIFF header (12 bytes) + JUNK chunk (8 header + 4 payload) + fmt chunk
+    const junkPayload = 4;
+    const totalSize = 12 + 8 + junkPayload + 44 - 12; // RIFF header + JUNK + fmt data
+    const data = new Uint8Array(totalSize);
+
+    // RIFF header
+    data.set([0x52, 0x49, 0x46, 0x46], 0); // RIFF
+    data.set([0x57, 0x41, 0x56, 0x45], 8); // WAVE
+
+    // JUNK chunk at offset 12
+    data.set([0x4A, 0x55, 0x4E, 0x4B], 12); // JUNK
+    data[16] = junkPayload; // chunk size = 4
+
+    // fmt chunk at offset 24 (12 + 8 + 4)
+    const fmtOffset = 24;
+    data.set([0x66, 0x6D, 0x74, 0x20], fmtOffset); // "fmt "
+    data[fmtOffset + 4] = 16; // chunk size
+    data[fmtOffset + 8] = 1;  // audio format (PCM)
+    data[fmtOffset + 10] = 1; // channels
+    // sample rate at fmtOffset + 12
+    const sr = 44100;
+    data[fmtOffset + 12] = sr & 0xff;
+    data[fmtOffset + 13] = (sr >> 8) & 0xff;
+    data[fmtOffset + 14] = (sr >> 16) & 0xff;
+    data[fmtOffset + 15] = (sr >> 24) & 0xff;
+
+    expect(extractWavSampleRate(data)).toBe(44100);
+  });
+
+  it('handles odd-sized chunks with padding', () => {
+    // RIFF header + JUNK chunk with odd size (5 bytes payload, padded to 6)
+    const junkPayload = 5;
+    const paddedJunk = 6; // padded to even
+    const totalSize = 12 + 8 + paddedJunk + 32;
+    const data = new Uint8Array(totalSize);
+
+    data.set([0x52, 0x49, 0x46, 0x46], 0);
+    data.set([0x57, 0x41, 0x56, 0x45], 8);
+
+    // JUNK chunk with odd size
+    data.set([0x4A, 0x55, 0x4E, 0x4B], 12);
+    data[16] = junkPayload;
+
+    // fmt chunk after padded JUNK
+    const fmtOffset = 12 + 8 + paddedJunk;
+    data.set([0x66, 0x6D, 0x74, 0x20], fmtOffset);
+    data[fmtOffset + 4] = 16;
+    data[fmtOffset + 8] = 1;
+    data[fmtOffset + 10] = 1;
+    const sr = 48000;
+    data[fmtOffset + 12] = sr & 0xff;
+    data[fmtOffset + 13] = (sr >> 8) & 0xff;
+
+    expect(extractWavSampleRate(data)).toBe(48000);
+  });
+
+  it('throws when fmt chunk is missing', () => {
+    const data = new Uint8Array(28);
+    data.set([0x52, 0x49, 0x46, 0x46], 0);
+    data.set([0x57, 0x41, 0x56, 0x45], 8);
+    // data chunk instead of fmt
+    data.set([0x64, 0x61, 0x74, 0x61], 12); // "data"
+    data[16] = 4; // chunk size
+    expect(() => extractWavSampleRate(data)).toThrow('fmt chunk not found');
   });
 });
 
@@ -190,7 +257,7 @@ describe('buildSampleYaml', () => {
       format: 'sample',
       version: 1,
       name: 'kick',
-      file: 'kick.wav',
+      file: 'sample.wav', // Always sample.wav for directory bundles
       sampleRate: 44100,
     });
   });

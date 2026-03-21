@@ -82,12 +82,26 @@ export interface AudioBuffer {
 }
 
 /**
+ * Options for audio playback.
+ */
+export interface PlayOptions {
+  /** Loop playback continuously until stop() is called. */
+  loop?: boolean;
+  /** Loop region start in seconds (requires loop: true). */
+  loopStart?: number;
+  /** Loop region end in seconds (requires loop: true). */
+  loopEnd?: number;
+}
+
+/**
  * Play audio buffers, control playback, observe state changes.
  */
 export interface AudioPlayback {
-  play(buffer: AudioBuffer): void;
+  play(buffer: AudioBuffer, options?: PlayOptions): void;
   stop(): void;
   seek(time: number): void;
+  /** Update loop region on the currently playing source. No-op if not looping. */
+  setLoopRegion?(loopStart: number, loopEnd: number): void;
   getState(): AudioPlaybackState;
   onStateChange(handler: ((state: AudioPlaybackState) => void) | null): void;
   createBuffer(

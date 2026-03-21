@@ -15,11 +15,15 @@ import {
   s330ToneConverter,
   type ToneYaml,
   type LibraryTreeNode,
+  type StorageDirectoryHandle,
   listTonesTree,
   getNestedDirectory,
 } from '@audiocontrol/sampler-library/browser';
 import { createWavBlobFromSamples, unpack12BitTo16Bit } from '@/lib/wave-export';
-import { hasFileSystemAccess } from '@/lib/library-fs';
+/** Check if the File System Access API (file picker dialogs) is available. */
+function hasFileSystemAccess(): boolean {
+  return 'showSaveFilePicker' in window && 'showDirectoryPicker' in window;
+}
 import {
   parseYaml,
   stringifyYaml,
@@ -139,7 +143,7 @@ export interface LibraryToneInfo {
  * Export tone to a specific directory using File System Access API.
  */
 export async function exportToneToDirectory(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   tone: S330Tone,
   waveData: S330WaveDataResponse,
   customName?: string,
@@ -297,7 +301,7 @@ export function convertYamlToS330Tone(yaml: ToneYaml): S330Tone {
  * @deprecated Use listIndividualTonesTree for hierarchical view
  */
 export async function listIndividualTones(
-  directoryHandle: FileSystemDirectoryHandle
+  directoryHandle: StorageDirectoryHandle
 ): Promise<LibraryToneInfo[]> {
   const tones: LibraryToneInfo[] = [];
 
@@ -327,7 +331,7 @@ export async function listIndividualTones(
  * List all individual tones in the library as a hierarchical tree.
  */
 export async function listIndividualTonesTree(
-  directoryHandle: FileSystemDirectoryHandle
+  directoryHandle: StorageDirectoryHandle
 ): Promise<LibraryTreeNode[]> {
   return listTonesTree(directoryHandle, 's330');
 }
@@ -336,7 +340,7 @@ export async function listIndividualTonesTree(
  * Load an individual tone from the library (outside of sets).
  */
 export async function loadIndividualTone(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   toneFile: string,
   path: string[] = []
 ): Promise<{ yaml: ToneYaml; wavData: Uint8Array }> {
@@ -352,7 +356,7 @@ export async function loadIndividualTone(
  * Load raw WAV samples from an individual library tone for sample chopping.
  */
 export async function loadIndividualToneWavSamples(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   toneFile: string,
   path: string[] = []
 ): Promise<{ samples: Int16Array; sampleRate: number }> {
@@ -376,7 +380,7 @@ export async function loadIndividualToneWavSamples(
  * Delete an individual tone from the library.
  */
 export async function deleteIndividualTone(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   toneFile: string,
   path: string[] = []
 ): Promise<void> {
@@ -397,7 +401,7 @@ export async function deleteIndividualTone(
  * Load raw WAV samples from a library tone in a set for sample chopping.
  */
 export async function loadToneWavSamples(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   setName: string,
   toneFile: string
 ): Promise<{ samples: Int16Array; sampleRate: number }> {

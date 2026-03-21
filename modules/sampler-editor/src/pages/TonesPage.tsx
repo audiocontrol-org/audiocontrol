@@ -20,13 +20,11 @@ import { ImportSampleDialog } from '@/components/library/ImportSampleDialog';
 import { cn } from '@/lib/utils';
 import { exportWaveAsWav, unpack12BitTo16Bit } from '@/lib/wave-export';
 import {
-  pickLibraryDirectory,
   exportToneToDirectory,
   exportToneAsDownload,
-  hasFileSystemAccess,
-  getCachedLibraryDirectory,
-  setCachedLibraryDirectory,
+  type StorageDirectoryHandle,
 } from '@/lib/library-service';
+import { useLibraryConnection } from '@audiocontrol/editor-core';
 import { useLoopDetection } from '@audiocontrol/loop-editor/ui';
 import { createSmoothedCopy } from '@audiocontrol/sampler-library/browser';
 
@@ -77,7 +75,8 @@ export function TonesPage() {
   const [isExportingToLibrary, setIsExportingToLibrary] = useState(false);
   const [libraryExportProgress, setLibraryExportProgress] = useState<OperationProgress | undefined>(undefined);
   const [libraryExportError, setLibraryExportError] = useState<string | null>(null);
-  const [libraryDirectoryHandle, setLibraryDirectoryHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const library = useLibraryConnection({ pickerId: 'sampler-library' });
+  const [libraryDirectoryHandle, setLibraryDirectoryHandle] = useState<StorageDirectoryHandle | null>(null);
 
   // Import Sample state
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -226,27 +225,17 @@ export function TonesPage() {
     setLibraryExportError(null);
     setLibraryExportProgress(undefined);
 
-    // If File System Access API available, try to get cached directory or pick one
-    if (hasFileSystemAccess()) {
-      // First check if we have a cached directory with valid permissions
-      let dirHandle = await getCachedLibraryDirectory();
-
-      if (!dirHandle) {
-        // No cached directory, ask user to pick one
-        dirHandle = await pickLibraryDirectory();
-        if (!dirHandle) {
-          // User cancelled directory picker
-          return;
-        }
-        // Cache for future use
-        setCachedLibraryDirectory(dirHandle);
-      }
-
-      setLibraryDirectoryHandle(dirHandle);
+    // Use existing library connection, or connect if not already
+    if (library.isConnected) {
+      setLibraryDirectoryHandle(library.root);
+    } else if (library.hasLocalFS) {
+      const ok = await library.connect('local');
+      if (!ok) return; // User cancelled
+      setLibraryDirectoryHandle(library.root);
     }
 
     setIsExportDialogOpen(true);
-  }, []);
+  }, [library]);
 
   // Export tone to library
   // toneIndex is passed from the dialog to ensure we export the correct tone

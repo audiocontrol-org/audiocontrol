@@ -10,7 +10,7 @@ import { useState, useCallback, type MutableRefObject } from 'react';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { LibraryDragData } from '@/components/library/DeviceMemoryPanel';
 import type { OperationProgress } from '@/types/import-operation';
-import { loadDrumKitBundle, saveDeviceToSetIncremental, loadSetToDevice } from '@/lib/library-service';
+import { loadDrumKitBundle, saveDeviceToSetIncremental, loadSetToDevice, type StorageDirectoryHandle } from '@/lib/library-service';
 import type { ItemSelection } from '@/pages/LibraryPage';
 
 export interface ImportToneDialogState {
@@ -41,7 +41,7 @@ export interface ImportPatchParams {
 
 interface Options {
   clientRef: MutableRefObject<SamplerClientInterface | null>;
-  libraryHandle: FileSystemDirectoryHandle | null;
+  libraryHandle: StorageDirectoryHandle | null;
   setTone: (index: number, tone: SamplerTone, totalTones: number) => void;
   setPatch: (index: number, patch: SamplerPatch, totalPatches: number) => void;
   totalTones: number;

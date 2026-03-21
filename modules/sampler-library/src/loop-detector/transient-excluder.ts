@@ -59,6 +59,14 @@ export function findSustainStart(
     return Math.min(minSustainOffsetSamples, samples.length);
   }
 
+  // FIX 1: Check if envelope is already stable (handles sustained bass sounds)
+  // Low-frequency sounds with stable amplitude don't need transient detection
+  const envelopeVariance = calculateEnvelopeVariance(rmsEnvelope);
+  if (envelopeVariance < cfg.stableEnvelopeVarianceThreshold) {
+    // Sample is already stable from the start, use minimum offset
+    return Math.min(minSustainOffsetSamples, samples.length);
+  }
+
   // Calculate derivative of RMS envelope (normalized)
   const derivatives = calculateEnvelopeDerivative(rmsEnvelope, peakRms);
 
@@ -68,8 +76,22 @@ export function findSustainStart(
   // Convert frame index back to sample index
   const sustainSampleIndex = sustainFrameIndex * effectiveHopSize;
 
+  // FIX 2: Apply sanity cap for non-decaying samples
+  // Decaying samples (like percussion) naturally have late sustain points and should
+  // NOT be capped - they need their original sustain position for proper error reporting.
+  // Only sustained samples with incorrect late detection should be capped.
+  const isDecaying = isDecayingEnvelope(rmsEnvelope);
+  let finalSustainIndex = sustainSampleIndex;
+
+  if (!isDecaying) {
+    // Apply sanity cap - never detect sustain past maxSustainPositionRatio
+    // This prevents invalid search regions when transient detection fails on sustained samples
+    const maxSustainPosition = Math.floor(samples.length * cfg.maxSustainPositionRatio);
+    finalSustainIndex = Math.min(sustainSampleIndex, maxSustainPosition);
+  }
+
   // Ensure we're at least at the minimum offset
-  return Math.max(sustainSampleIndex, minSustainOffsetSamples);
+  return Math.max(finalSustainIndex, minSustainOffsetSamples);
 }
 
 /**
@@ -92,6 +114,99 @@ function calculateEnvelopeDerivative(envelope: number[], peakRms: number): numbe
   }
 
   return derivatives;
+}
+
+/**
+ * Calculate normalized variance of RMS envelope.
+ * Low variance = stable amplitude (sustained sound).
+ *
+ * Returns the coefficient of variation squared: variance / mean^2
+ * This normalizes the variance to be independent of signal amplitude.
+ *
+ * @param envelope - Array of RMS values
+ * @returns Normalized variance (0 = perfectly stable)
+ */
+function calculateEnvelopeVariance(envelope: number[]): number {
+  if (envelope.length < 2) return 0;
+
+  const mean = envelope.reduce((sum, val) => sum + val, 0) / envelope.length;
+  if (mean === 0) return 0;
+
+  const variance =
+    envelope.reduce((sum, val) => {
+      const diff = val - mean;
+      return sum + diff * diff;
+    }, 0) / envelope.length;
+
+  return variance / (mean * mean); // Coefficient of variation squared
+}
+
+/**
+ * Check if an envelope represents a consistently decaying signal (like percussion).
+ *
+ * A truly decaying envelope has declining amplitude throughout the sample.
+ * This is different from a sustained sound with a decay tail at the end.
+ *
+ * Detection strategy:
+ * - Compare first quarter, middle (40-60%), and last quarter
+ * - A sustained sound with decay tail: first ≈ middle, then drops at end
+ * - A consistently decaying sound: first > middle > last (progressive decay)
+ *
+ * @param envelope - Array of RMS values
+ * @returns true if the envelope shows consistent decay throughout
+ */
+function isDecayingEnvelope(envelope: number[]): boolean {
+  if (envelope.length < 10) return false;
+
+  const quarterLength = Math.floor(envelope.length / 4);
+  if (quarterLength < 2) return false;
+
+  // Calculate average RMS in first quarter (0-25%)
+  let firstQuarterSum = 0;
+  for (let i = 0; i < quarterLength; i++) {
+    firstQuarterSum += envelope[i];
+  }
+  const firstQuarterAvg = firstQuarterSum / quarterLength;
+
+  // Calculate average RMS in middle portion (40-60%)
+  const middleStart = Math.floor(envelope.length * 0.4);
+  const middleEnd = Math.floor(envelope.length * 0.6);
+  const middleLength = middleEnd - middleStart;
+  let middleSum = 0;
+  for (let i = middleStart; i < middleEnd; i++) {
+    middleSum += envelope[i];
+  }
+  const middleAvg = middleLength > 0 ? middleSum / middleLength : 0;
+
+  // Calculate average RMS in last quarter (75-100%)
+  let lastQuarterSum = 0;
+  const lastQuarterStart = envelope.length - quarterLength;
+  for (let i = lastQuarterStart; i < envelope.length; i++) {
+    lastQuarterSum += envelope[i];
+  }
+  const lastQuarterAvg = lastQuarterSum / quarterLength;
+
+  if (firstQuarterAvg === 0) return false;
+
+  // Calculate ratios
+  const middleToFirstRatio = middleAvg / firstQuarterAvg;
+  const lastToFirstRatio = lastQuarterAvg / firstQuarterAvg;
+
+  // A consistently decaying sample shows progressive decay:
+  // - Middle is significantly quieter than first (ratio < 0.7)
+  // - Last is even quieter than middle
+  //
+  // A sustained sample with decay tail:
+  // - Middle is similar to first (ratio >= 0.7)
+  // - Last may still be quiet (decay tail)
+  //
+  // Only classify as "decaying" if there's consistent decay through the middle
+  const hasDecayInMiddle = middleToFirstRatio < 0.7;
+  const hasDecayAtEnd = lastToFirstRatio < 0.5;
+
+  // Must have decay in the middle to be considered a decaying sample
+  // (not just a decay tail at the end)
+  return hasDecayInMiddle && hasDecayAtEnd;
 }
 
 /**
@@ -227,6 +342,81 @@ export function analyzeAttack(
     attackDurationMs,
     hasDetectedAttack: peakSampleIndex > 0,
   };
+}
+
+/**
+ * Find the sample index where the sustain region ends (decay begins).
+ *
+ * For samples with a decay tail, this finds where the amplitude drops
+ * significantly below the sustained level. Loop endpoints should be
+ * placed before this point to avoid looping into the decay.
+ *
+ * @param samples - Audio samples as 16-bit signed integers
+ * @param sampleRate - Sample rate in Hz
+ * @param sustainStart - Sample index where sustain begins (from findSustainStart)
+ * @param config - Transient detection configuration
+ * @returns Sample index where sustain ends, or sample length if no decay detected
+ */
+export function findSustainEnd(
+  samples: Int16Array,
+  sampleRate: number,
+  sustainStart: number,
+  config: Partial<TransientConfig> = {}
+): number {
+  const cfg: TransientConfig = {
+    ...DEFAULT_TRANSIENT_CONFIG,
+    ...config,
+  };
+
+  const windowSizeSamples = msToSamples(cfg.windowMs, sampleRate);
+  const hopSizeSamples = msToSamples(cfg.hopMs, sampleRate);
+
+  const effectiveWindowSize = Math.max(windowSizeSamples, 1);
+  const effectiveHopSize = Math.max(hopSizeSamples, 1);
+
+  const rmsEnvelope = calculateRmsWindowed(samples, effectiveWindowSize, effectiveHopSize);
+
+  if (rmsEnvelope.length < 10) {
+    return samples.length;
+  }
+
+  // Calculate sustained level from early-to-mid sustain region (10-50% of sample)
+  // This avoids both the attack and any decay tail
+  const startFrame = Math.floor(rmsEnvelope.length * 0.1);
+  const endFrame = Math.floor(rmsEnvelope.length * 0.5);
+
+  if (endFrame <= startFrame) {
+    return samples.length;
+  }
+
+  let sustainedSum = 0;
+  for (let i = startFrame; i < endFrame; i++) {
+    sustainedSum += rmsEnvelope[i];
+  }
+  const sustainedLevel = sustainedSum / (endFrame - startFrame);
+
+  if (sustainedLevel === 0) {
+    return samples.length;
+  }
+
+  // Scan backwards from end to find where RMS drops below 70% of sustained level
+  // This threshold catches the start of decay while allowing for normal variation
+  const decayThreshold = sustainedLevel * 0.7;
+
+  // Start scanning from 90% of the sample (skip obvious trailing silence)
+  const scanStart = Math.floor(rmsEnvelope.length * 0.9);
+
+  for (let i = scanStart; i >= startFrame; i--) {
+    if (rmsEnvelope[i] >= decayThreshold) {
+      // Found where amplitude is still at sustained level
+      // Return position slightly past this point (add some margin)
+      const sustainEndFrame = Math.min(i + 5, rmsEnvelope.length - 1);
+      return sustainEndFrame * effectiveHopSize;
+    }
+  }
+
+  // No decay detected - sustain continues to end
+  return samples.length;
 }
 
 /**

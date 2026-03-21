@@ -108,18 +108,27 @@ describe('SampleYamlSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('should reject missing file', () => {
+  it('should use default file when missing', () => {
+    // File has a default of 'sample.wav' for directory bundles
     const { file: _, ...noFile } = validSample;
     const result = SampleYamlSchema.safeParse(noFile);
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.file).toBe('sample.wav');
+    }
   });
 
-  it('should reject empty file', () => {
+  it('should accept empty file (defaults are only for missing)', () => {
+    // Empty file is accepted but not replaced by default (Zod default
+    // only applies when the field is missing, not when it's empty)
     const result = SampleYamlSchema.safeParse({
       ...validSample,
       file: '',
     });
-    expect(result.success).toBe(false);
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.file).toBe('');
+    }
   });
 
   it('should reject missing sampleRate', () => {

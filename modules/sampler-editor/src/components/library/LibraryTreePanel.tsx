@@ -11,7 +11,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import type { SetInfo, SetYaml } from '@audiocontrol/sampler-library/browser';
+import type { SetInfo, SetYaml, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import {
   loadSetManifest,
   type DrumKitInfo,
@@ -25,13 +25,13 @@ import { useLibraryTreeDragDrop } from '@/hooks/useLibraryTreeDragDrop';
 import { useLibraryTreeActions } from '@/hooks/useLibraryTreeActions';
 import { type DeviceDragData } from './DeviceMemoryPanel';
 import { TreeSection } from './LibraryTreeNode';
-import { LibraryContextMenu } from './LibraryContextMenu';
+import { ContextMenu } from '@audiocontrol/editor-core';
 import { WaveIcon, PatchIcon, DeleteButton } from './LibraryTreeIcons';
 import { DrumKitItem } from './DrumKitItem';
 import { SetItem } from './SetItem';
 
 interface LibraryTreePanelProps {
-  libraryHandle: FileSystemDirectoryHandle | null;
+  libraryHandle: StorageDirectoryHandle | null;
   sets: SetInfo[];
   drumKits: DrumKitInfo[];
   individualTones: LibraryToneInfo[];
@@ -621,7 +621,7 @@ export function LibraryTreePanel({
 
       {/* Context Menu */}
       {contextMenu && (
-        <LibraryContextMenu
+        <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
           actions={getContextMenuActions()}

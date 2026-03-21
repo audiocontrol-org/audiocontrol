@@ -118,11 +118,18 @@ describe('S-330 promotion converter', () => {
     expect(tone.s330!.fineTune).toBe(7);
   });
 
-  it('defaults loopMode to oneShot when sample has no loopMode', () => {
-    const sample = makeSample({ loopMode: undefined });
+  it('defaults loopMode to oneShot when sample has no loopMode and no loopStart', () => {
+    const sample = makeSample({ loopMode: undefined, loopStart: undefined });
     const tone = s330SamplePromotion.promote(sample, { originalKey: 60 });
 
     expect(tone.wave.loopMode).toBe('oneShot');
+  });
+
+  it('defaults loopMode to forward when sample has loopStart but no explicit loopMode', () => {
+    const sample = makeSample({ loopMode: undefined, loopStart: 1024 });
+    const tone = s330SamplePromotion.promote(sample, { originalKey: 60 });
+
+    expect(tone.wave.loopMode).toBe('forward');
   });
 
   it('has deviceType set to s330', () => {

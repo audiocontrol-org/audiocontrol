@@ -36,7 +36,7 @@ export function createMockAudioPlayback(): { impl: AudioPlayback; controls: Mock
   }
 
   const impl: AudioPlayback = {
-    play(buffer: AudioBuffer) {
+    play(buffer: AudioBuffer, _options?: import('./types').PlayOptions) {
       lastPlayedBuffer = buffer as MockAudioBuffer;
       playCount++;
       state = { playing: true, currentTime: 0, duration: buffer.duration };

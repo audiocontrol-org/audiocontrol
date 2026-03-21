@@ -2,6 +2,20 @@
 
 ## Library
 
+### Portable Library Module
+The portable library module was supposed to be built as a portable
+implementation of the library,qincluding for use in all of the web
+editors for Roland, Akai, and other manufacturers' samplers. The
+s550/s330 library was meant to serve as a model for how and what to
+build in the portable library module. The portable library module
+should be a superset of the functionality of the s550/s330 library
+code--and, the s550/s330 library code should be replaceable with the
+portable library module with no loss of functionality. The vendor- and
+device-specific parts of the s550/s330 library should be configurable
+plugins to the portable library module--that plugin mechanism should
+allow for the modular addition of future vendor- and device-specific
+library objects, terminology, and patterns.
+
 ### Consistent Edit Operations
 There should be a well-understood and consistent set of edit
 operations on library objects. Edit operations should follow a

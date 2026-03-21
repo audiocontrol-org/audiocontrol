@@ -50,7 +50,7 @@ export function createBrowserAudioPlayback(): AudioPlayback {
   }
 
   return {
-    play(buffer: AudioBuffer) {
+    play(buffer: AudioBuffer, options?: import('./types').PlayOptions) {
       if (!isBrowserBuffer(buffer)) {
         throw new Error('Expected a browser audio buffer');
       }
@@ -65,6 +65,13 @@ export function createBrowserAudioPlayback(): AudioPlayback {
       const audioCtx = getContext();
       const source = audioCtx.createBufferSource();
       source.buffer = buffer._native;
+
+      if (options?.loop) {
+        source.loop = true;
+        if (options.loopStart !== undefined) source.loopStart = options.loopStart;
+        if (options.loopEnd !== undefined) source.loopEnd = options.loopEnd;
+      }
+
       source.connect(audioCtx.destination);
 
       source.onended = () => {
@@ -81,6 +88,13 @@ export function createBrowserAudioPlayback(): AudioPlayback {
       source.start(0, pauseOffset);
       pauseOffset = 0;
       emitState();
+    },
+
+    setLoopRegion(loopStart: number, loopEnd: number) {
+      if (currentSource && currentSource.loop) {
+        currentSource.loopStart = loopStart;
+        currentSource.loopEnd = loopEnd;
+      }
     },
 
     stop() {

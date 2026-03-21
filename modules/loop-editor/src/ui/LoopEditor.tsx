@@ -129,6 +129,13 @@ export function LoopEditor({
     return () => { audio.onStateChange(null); };
   }, [audio]);
 
+  // Update loop region on the live audio source when points change during playback
+  useEffect(() => {
+    if (isPlaying && audio?.setLoopRegion && sampleRate > 0) {
+      audio.setLoopRegion(loopPoint / sampleRate, endPoint / sampleRate);
+    }
+  }, [isPlaying, audio, loopPoint, endPoint, sampleRate]);
+
   // Calculate window size based on zoom
   const windowSamples = Math.round(DEFAULT_WINDOW_SAMPLES / zoom);
 
@@ -164,67 +171,40 @@ export function LoopEditor({
     [paneWidth, windowSamples],
   );
 
-  // Create loop preview buffer
-  const createLoopPreview = useCallback(
-    (sourceSamples: Int16Array, applySmoothing: boolean): Int16Array => {
-      const loopLength = endPoint - loopPoint;
-      if (loopLength < 32) {
-        throw new Error('Loop too short to preview');
-      }
-
-      const leadInSamples = Math.min(Math.floor(sampleRate * 0.1), loopPoint - startPoint);
-      const leadInStart = endPoint - leadInSamples;
-      const loopIterations = 3;
-      const totalLength = leadInSamples + (loopLength * loopIterations);
-      const preview = new Int16Array(totalLength);
-
-      const processedSamples = applySmoothing
-        ? createSmoothedCopy(sourceSamples, loopPoint, endPoint, { mode: 'equal-power', crossfadeLength: 64 })
-        : sourceSamples;
-
-      let writePos = 0;
-      for (let i = 0; i < leadInSamples; i++) {
-        preview[writePos++] = processedSamples[leadInStart + i] ?? 0;
-      }
-
-      for (let iter = 0; iter < loopIterations; iter++) {
-        for (let i = 0; i < loopLength; i++) {
-          preview[writePos++] = processedSamples[loopPoint + i] ?? 0;
-        }
-      }
-
-      return preview;
-    },
-    [startPoint, loopPoint, endPoint, sampleRate],
-  );
-
-  // Preview the loop
+  // Preview the loop — plays from start, loops between loopPoint and endPoint until stopped
   const handlePreviewLoop = useCallback(() => {
     if (!samples || !audio) return;
     try {
       audio.stop();
       setPreviewMode('normal');
-      const preview = createLoopPreview(samples, false);
-      const buffer = audio.createBuffer(preview, sampleRate);
-      audio.play(buffer);
+      const buffer = audio.createBuffer(samples, sampleRate);
+      audio.play(buffer, {
+        loop: true,
+        loopStart: loopPoint / sampleRate,
+        loopEnd: endPoint / sampleRate,
+      });
     } catch (err) {
       console.error('Failed to preview loop:', err);
     }
-  }, [samples, audio, createLoopPreview, sampleRate]);
+  }, [samples, audio, sampleRate, loopPoint, endPoint]);
 
-  // Preview with smoothing
+  // Preview with smoothing — applies crossfade then loops
   const handlePreviewSmoothed = useCallback(() => {
     if (!samples || !audio) return;
     try {
       audio.stop();
       setPreviewMode('smoothed');
-      const preview = createLoopPreview(samples, true);
-      const buffer = audio.createBuffer(preview, sampleRate);
-      audio.play(buffer);
+      const smoothed = createSmoothedCopy(samples, loopPoint, endPoint, { mode: 'equal-power', crossfadeLength: 64 });
+      const buffer = audio.createBuffer(smoothed, sampleRate);
+      audio.play(buffer, {
+        loop: true,
+        loopStart: loopPoint / sampleRate,
+        loopEnd: endPoint / sampleRate,
+      });
     } catch (err) {
       console.error('Failed to preview smoothed loop:', err);
     }
-  }, [samples, audio, createLoopPreview, sampleRate]);
+  }, [samples, audio, sampleRate, loopPoint, endPoint]);
 
   // Stop preview
   const handleStopPreview = useCallback(() => {

@@ -7,18 +7,22 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { SampleYaml, ProgramYaml, ToneYaml } from '@audiocontrol/sampler-library/browser';
-import { s330SamplePromotion, s550SamplePromotion, midiNoteToName, getNestedDirectory } from '@audiocontrol/sampler-library/browser';
+import type { SampleYaml, ProgramYaml, ToneYaml, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
+import { s330SamplePromotion, midiNoteToName, getNestedDirectory } from '@audiocontrol/sampler-library/browser';
+import { OperationProgressBar, type OperationProgress } from '@audiocontrol/editor-core';
 import { loadCommonSample, loadCommonProgram } from '@/lib/library-service';
 import { stringify as stringifyYaml } from 'yaml';
 
 interface CommonSamplePreviewPanelProps {
   selection: { type: 'sample' | 'program'; name: string; path?: string[] } | null;
-  libraryHandle: FileSystemDirectoryHandle | null;
+  libraryHandle: StorageDirectoryHandle | null;
   onPromoteToDevice?: (deviceType: string) => void;
+  onOpenInLoopEditor?: (name: string, path?: string[]) => void;
+  onOpenInChopper?: (name: string, path?: string[]) => void;
 }
 
-type DeviceTarget = 's330' | 's550';
+/** All S-series devices share a single library section under s330. */
+const LIBRARY_DEVICE = 's330' as const;
 
 function LoadingState(): JSX.Element {
   return (
@@ -55,65 +59,51 @@ function TagBadges({ tags }: { tags: string[] }): JSX.Element {
 function PromoteForm({
   onPromote,
   isPromoting,
+  promotionProgress,
   promotionResult,
 }: {
-  onPromote: (device: DeviceTarget, originalKey: number) => void;
+  onPromote: (originalKey: number) => void;
   isPromoting: boolean;
+  promotionProgress?: OperationProgress;
   promotionResult: { success: boolean; message: string } | null;
 }): JSX.Element {
-  const [selectedDevice, setSelectedDevice] = useState<DeviceTarget | null>(null);
   const [originalKey, setOriginalKey] = useState(60);
 
   return (
     <div className="space-y-3">
-      {!selectedDevice ? (
-        <div className="flex flex-col gap-2">
-          <div className="text-xs text-s330-muted uppercase tracking-wide">Promote to Device</div>
-          <div className="flex gap-2">
-            <button onClick={() => setSelectedDevice('s330')} className="flex-1 ac-btn ac-btn-primary ac-btn-sm">
-              S-330
-            </button>
-            <button onClick={() => setSelectedDevice('s550')} className="flex-1 ac-btn ac-btn-ghost ac-btn-sm">
-              S-550
-            </button>
+      <div className="bg-s330-bg rounded p-3 space-y-3">
+        <div className="text-xs text-s330-muted uppercase tracking-wide">
+          Promote to Tone
+        </div>
+        <div>
+          <label className="text-xs text-s330-muted block mb-1">Original Key (MIDI 11-108)</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              min={11}
+              max={108}
+              value={originalKey}
+              onChange={(e) => setOriginalKey(Math.min(108, Math.max(11, parseInt(e.target.value, 10) || 60)))}
+              className="w-20 px-2 py-1 text-sm bg-s330-bg border border-s330-accent rounded text-s330-text"
+            />
+            <span className="text-xs text-s330-muted">{midiNoteToName(originalKey)}</span>
           </div>
         </div>
-      ) : (
-        <div className="bg-s330-bg rounded p-3 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-s330-muted uppercase tracking-wide">
-              Promote to {selectedDevice === 's330' ? 'S-330' : 'S-550'} Tone
-            </span>
-            <button onClick={() => setSelectedDevice(null)} className="text-xs text-s330-muted hover:text-s330-text">
-              Cancel
-            </button>
-          </div>
-          <div>
-            <label className="text-xs text-s330-muted block mb-1">Original Key (MIDI 11-108)</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                min={11}
-                max={108}
-                value={originalKey}
-                onChange={(e) => setOriginalKey(Math.min(108, Math.max(11, parseInt(e.target.value, 10) || 60)))}
-                className="w-20 px-2 py-1 text-sm bg-s330-bg border border-s330-accent rounded text-s330-text"
-              />
-              <span className="text-xs text-s330-muted">{midiNoteToName(originalKey)}</span>
-            </div>
-          </div>
-          <button
-            onClick={() => onPromote(selectedDevice, originalKey)}
-            disabled={isPromoting}
-            className="w-full ac-btn ac-btn-primary ac-btn-sm"
-          >
-            {isPromoting ? 'Promoting...' : 'Promote'}
-          </button>
-        </div>
+        <button
+          onClick={() => onPromote(originalKey)}
+          disabled={isPromoting}
+          className="w-full ac-btn ac-btn-primary ac-btn-sm"
+        >
+          {isPromoting ? 'Promoting...' : 'Promote'}
+        </button>
+      </div>
+
+      {isPromoting && promotionProgress && (
+        <OperationProgressBar progress={promotionProgress} />
       )}
 
       {promotionResult && (
-        <div className={`text-xs p-2 rounded ${promotionResult.success ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
+        <div className={`text-sm p-3 rounded ${promotionResult.success ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
           {promotionResult.message}
         </div>
       )}
@@ -245,47 +235,87 @@ function ProgramDetails({ program }: { program: ProgramYaml }): JSX.Element {
 }
 
 async function promoteSampleToDevice(
-  libraryHandle: FileSystemDirectoryHandle,
+  libraryHandle: StorageDirectoryHandle,
   sample: SampleYaml,
   samplePath: string[],
-  device: DeviceTarget,
+  sampleDirName: string,
   originalKey: number,
+  onProgress?: (progress: OperationProgress) => void,
 ): Promise<void> {
-  const converter = device === 's330' ? s330SamplePromotion : s550SamplePromotion;
-  const tone: ToneYaml = converter.promote(sample, { originalKey });
+  const tone: ToneYaml = s330SamplePromotion.promote(sample, { originalKey });
 
-  const tonesDir = await getNestedDirectory(libraryHandle, ['library', device, 'tones']);
   const toneName = sample.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const wavFileName = `${toneName}.wav`;
+
+  // Fix the WAV filename in the tone YAML to match the output file
+  tone.wave.file = wavFileName;
+
+  onProgress?.({
+    currentStep: 1, totalSteps: 3,
+    stepLabel: 'Creating tones directory...',
+    bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
+  });
+
+  const tonesDir = await getNestedDirectory(libraryHandle, ['library', LIBRARY_DEVICE, 'tones']);
 
   // Write tone YAML
+  onProgress?.({
+    currentStep: 1, totalSteps: 3,
+    stepLabel: `Writing ${toneName}.yaml...`,
+    bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
+  });
+
   const yamlContent = stringifyYaml(tone);
   const yamlHandle = await tonesDir.getFileHandle(`${toneName}.yaml`, { create: true });
   const yamlWritable = await yamlHandle.createWritable();
   await yamlWritable.write(yamlContent);
   await yamlWritable.close();
 
-  // Copy WAV from common area to device tones
-  const sampleDir = await getNestedDirectory(libraryHandle, ['library', 'common', 'samples', ...samplePath]);
-  const sourceWavHandle = await sampleDir.getFileHandle(sample.file);
+  // Copy WAV from common area sample bundle to device tones
+  onProgress?.({
+    currentStep: 2, totalSteps: 3,
+    stepLabel: 'Loading source audio...',
+    bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: 0, bytesTotalAllSteps: 0,
+  });
+
+  const sampleBundleDir = await getNestedDirectory(libraryHandle, ['library', 'common', 'samples', ...samplePath, sampleDirName]);
+  const sourceWavHandle = await sampleBundleDir.getFileHandle('sample.wav');
   const sourceFile = await sourceWavHandle.getFile();
   const wavData = await sourceFile.arrayBuffer();
 
-  const destWavHandle = await tonesDir.getFileHandle(sample.file, { create: true });
+  // Write WAV to device tones
+  onProgress?.({
+    currentStep: 3, totalSteps: 3,
+    stepLabel: `Writing ${wavFileName}...`,
+    bytesSent: 0, bytesTotal: wavData.byteLength, bytesSentAllSteps: 0, bytesTotalAllSteps: wavData.byteLength,
+  });
+
+  const destWavHandle = await tonesDir.getFileHandle(wavFileName, { create: true });
   const destWritable = await destWavHandle.createWritable();
   await destWritable.write(wavData);
   await destWritable.close();
+
+  onProgress?.({
+    currentStep: 3, totalSteps: 3,
+    stepLabel: 'Done',
+    bytesSent: wavData.byteLength, bytesTotal: wavData.byteLength,
+    bytesSentAllSteps: wavData.byteLength, bytesTotalAllSteps: wavData.byteLength,
+  });
 }
 
 export function CommonSamplePreviewPanel({
   selection,
   libraryHandle,
   onPromoteToDevice,
+  onOpenInLoopEditor,
+  onOpenInChopper,
 }: CommonSamplePreviewPanelProps): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sample, setSample] = useState<SampleYaml | null>(null);
   const [program, setProgram] = useState<ProgramYaml | null>(null);
   const [isPromoting, setIsPromoting] = useState(false);
+  const [promotionProgress, setPromotionProgress] = useState<OperationProgress | undefined>(undefined);
   const [promotionResult, setPromotionResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Load data when selection changes
@@ -317,21 +347,25 @@ export function CommonSamplePreviewPanel({
     load();
   }, [selection, libraryHandle]);
 
-  const handlePromote = useCallback(async (device: DeviceTarget, originalKey: number) => {
+  const handlePromote = useCallback(async (originalKey: number) => {
     if (!libraryHandle || !sample || !selection) return;
 
     setIsPromoting(true);
     setPromotionResult(null);
+    setPromotionProgress(undefined);
     try {
-      await promoteSampleToDevice(libraryHandle, sample, selection.path ?? [], device, originalKey);
-      const deviceLabel = device === 's330' ? 'S-330' : 'S-550';
-      setPromotionResult({ success: true, message: `Promoted to ${deviceLabel} tones library` });
-      onPromoteToDevice?.(device);
+      await promoteSampleToDevice(
+        libraryHandle, sample, selection.path ?? [], selection.name, originalKey,
+        setPromotionProgress,
+      );
+      setPromotionResult({ success: true, message: 'Promoted to tones library' });
+      onPromoteToDevice?.(LIBRARY_DEVICE);
     } catch (err) {
       console.error('[CommonSamplePreviewPanel] Promotion failed:', err);
       setPromotionResult({ success: false, message: err instanceof Error ? err.message : 'Promotion failed' });
     } finally {
       setIsPromoting(false);
+      setPromotionProgress(undefined);
     }
   }, [libraryHandle, sample, selection, onPromoteToDevice]);
 
@@ -368,10 +402,31 @@ export function CommonSamplePreviewPanel({
         ) : sample ? (
           <div className="space-y-4">
             <SampleDetails sample={sample} />
+            {(onOpenInLoopEditor || onOpenInChopper) && (
+              <div className="flex flex-col gap-2">
+                {onOpenInLoopEditor && selection && (
+                  <button
+                    onClick={() => onOpenInLoopEditor(selection.name, selection.path)}
+                    className="w-full ac-btn ac-btn-ghost"
+                  >
+                    Open in Loop Editor
+                  </button>
+                )}
+                {onOpenInChopper && selection && (
+                  <button
+                    onClick={() => onOpenInChopper(selection.name, selection.path)}
+                    className="w-full ac-btn ac-btn-ghost"
+                  >
+                    Open in Chopper
+                  </button>
+                )}
+              </div>
+            )}
             <hr className="border-s330-accent/30" />
             <PromoteForm
               onPromote={handlePromote}
               isPromoting={isPromoting}
+              promotionProgress={promotionProgress}
               promotionResult={promotionResult}
             />
           </div>

@@ -98,6 +98,7 @@ export {
   quickSearchLoopPoints,
   validateCandidate,
   search,
+  LoopDetectionError,
 } from './loop-point-searcher.js';
 
 export type { SearchOptions } from './loop-point-searcher.js';

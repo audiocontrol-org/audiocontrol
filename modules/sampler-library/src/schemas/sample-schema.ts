@@ -3,7 +3,9 @@
  *
  * A sample is a device-agnostic representation of a single audio file
  * with intrinsic properties (sample rate, loop points, root key).
- * Stored as a YAML+WAV pair in `library/common/samples/`.
+ * Stored as a directory bundle in `library/common/samples/{name}/`:
+ *   - sample.yaml (metadata)
+ *   - sample.wav (audio data)
  *
  * No device field, no device-specific extensions. Device constraints
  * (e.g., 12-char name limit, originalKey) are applied at promotion time.
@@ -27,8 +29,8 @@ export const SampleYamlSchema = z.object({
   version: z.literal(1),
   /** Sample name (device limits applied at promotion, not storage) */
   name: z.string().min(1).max(128),
-  /** WAV filename (relative to sample location) */
-  file: z.string().min(1),
+  /** WAV filename (always 'sample.wav' for directory bundles) */
+  file: z.string().default('sample.wav'),
   /** Sample rate in Hz */
   sampleRate: z.number().int().positive(),
   /** Loop playback mode (absent = one-shot) */

@@ -10,7 +10,7 @@ import type { OperationState } from '@/types/import-operation';
 import { isOperationComplete } from '@/types/import-operation';
 import * as Dialog from '@radix-ui/react-dialog';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
-import type { SetYaml } from '@audiocontrol/sampler-library/browser';
+import type { SetYaml, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import {
   loadPatchFromSet,
   loadToneFromSet,
@@ -56,7 +56,7 @@ interface ToneImportMapping {
 export interface ImportLibraryPatchDialogProps extends OperationState {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  libraryHandle: FileSystemDirectoryHandle;
+  libraryHandle: StorageDirectoryHandle;
   setName: string;
   patchFile: string;
   patchPath?: string[];

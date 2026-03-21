@@ -26,7 +26,11 @@ export const BaseWaveParamsSchema = z.object({
   sampleRate: z.number().int().positive(),
   /** Loop playback mode */
   loopMode: LoopModeSchema,
-  /** Loop start point (sample offset) */
+  /** Start point — where playback begins (sample offset, default 0) */
+  startPoint: z.number().int().min(0).optional(),
+  /** End point — where playback stops (sample offset). In loop modes, playback jumps to loopPoint after reaching endPoint. */
+  endPoint: z.number().int().min(0).optional(),
+  /** Loop point — where playback jumps to after reaching endPoint in loop modes (sample offset) */
   loopPoint: z.number().int().min(0).optional(),
 });
 

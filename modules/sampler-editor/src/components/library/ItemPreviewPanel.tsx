@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
-import type { SetYaml, ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
+import type { SetYaml, ResolvedDrumKitBundle, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import { slicesToDrumKit } from '@audiocontrol/sampler-library/browser';
 import { SampleChopperDialog, type ChopperResult } from '@audiocontrol/sample-chopper/ui';
 import type { ItemSelection } from '@/pages/LibraryPage';
@@ -32,12 +32,13 @@ interface ItemPreviewPanelProps {
   selection: ItemSelection | null;
   deviceTones: (SamplerTone | undefined)[];
   devicePatches: (SamplerPatch | undefined)[];
-  libraryHandle: FileSystemDirectoryHandle | null;
+  libraryHandle: StorageDirectoryHandle | null;
   onImportTone?: (setName: string, toneFile: string) => void;
   onImportPatch?: (setName: string, patchFile: string) => void;
   onImportIndividualTone?: (toneFile: string) => void;
   onImportIndividualPatch?: (patchDirectoryName: string, path?: string[]) => void;
   onLoadSet?: () => void;
+  onOpenInLoopEditor?: (name: string, nodeType: string, path?: string[]) => void;
 }
 
 /**
@@ -111,12 +112,14 @@ function LibraryTonePreview({
   fileName,
   onImport,
   onChopSample,
+  onOpenInLoopEditor,
   isLoadingWav,
 }: {
   tone: SamplerTone;
   fileName: string;
   onImport?: () => void;
   onChopSample?: () => void;
+  onOpenInLoopEditor?: () => void;
   isLoadingWav?: boolean;
 }): JSX.Element {
   return (
@@ -130,6 +133,22 @@ function LibraryTonePreview({
             className="w-full ac-btn ac-btn-primary"
           >
             Import to Device
+          </button>
+        )}
+        {onOpenInLoopEditor && (
+          <button
+            onClick={onOpenInLoopEditor}
+            disabled={isLoadingWav}
+            className="w-full ac-btn ac-btn-ghost"
+          >
+            {isLoadingWav ? (
+              <>
+                <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                Loading...
+              </>
+            ) : (
+              'Open in Loop Editor'
+            )}
           </button>
         )}
         {onChopSample && (
@@ -331,6 +350,7 @@ export function ItemPreviewPanel({
   onImportIndividualTone,
   onImportIndividualPatch,
   onLoadSet,
+  onOpenInLoopEditor,
 }: ItemPreviewPanelProps): JSX.Element {
   // State for loaded library items
   const [loadingLibraryItem, setLoadingLibraryItem] = useState(false);
@@ -643,6 +663,7 @@ export function ItemPreviewPanel({
                 tone={libraryTone}
                 fileName={selection.name}
                 onImport={onImportIndividualTone ? () => onImportIndividualTone(selection.name!) : undefined}
+                onOpenInLoopEditor={onOpenInLoopEditor ? () => onOpenInLoopEditor(selection.name!, 'tone', selection.path) : undefined}
                 onChopSample={libraryHandle ? handleChopSample : undefined}
                 isLoadingWav={loadingWavForChopper}
               />
@@ -776,6 +797,7 @@ export function ItemPreviewPanel({
                 tone={libraryTone}
                 fileName={selection.name}
                 onImport={onImportTone ? () => onImportTone(selection.setName!, selection.name!) : undefined}
+                onOpenInLoopEditor={onOpenInLoopEditor ? () => onOpenInLoopEditor(selection.name!, 'tone', selection.path) : undefined}
                 onChopSample={libraryHandle ? handleChopSample : undefined}
                 isLoadingWav={loadingWavForChopper}
               />

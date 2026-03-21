@@ -11,9 +11,9 @@
  * @packageDocumentation
  */
 
-import { msToSamples } from '@/sample-chopper/audio-utils.js';
+import { msToSamples, calculateRms, dbToAmplitude, amplitudeToDb } from '@/sample-chopper/audio-utils.js';
 import { deduplicateCandidates, rankCandidates, scoreCandidates } from '@/loop-detector/candidate-scorer.js';
-import { findSustainStart } from '@/loop-detector/transient-excluder.js';
+import { findSustainStart, findSustainEnd } from '@/loop-detector/transient-excluder.js';
 import {
   DEFAULT_SEARCH_CONFIG,
   HARDWARE_CONSTRAINTS,
@@ -22,6 +22,77 @@ import {
   type SearchConfig,
 } from '@/loop-detector/types.js';
 import { detectZeroCrossings, generateCandidatePairs, snapToWordBoundary } from '@/loop-detector/zero-crossing-detector.js';
+
+/**
+ * Error thrown when loop detection fails due to sample characteristics.
+ */
+export class LoopDetectionError extends Error {
+  constructor(
+    message: string,
+    public readonly reason: 'decaying_sample' | 'no_usable_candidates' | 'silent_sample' | 'too_short'
+  ) {
+    super(message);
+    this.name = 'LoopDetectionError';
+  }
+}
+
+/**
+ * Calculate the average RMS level at a loop candidate's region.
+ *
+ * @param samples - Audio samples
+ * @param loopStart - Loop start point
+ * @param loopEnd - Loop end point
+ * @param sampleRate - Sample rate in Hz
+ * @returns RMS level (0-1 normalized)
+ */
+function calculateLoopRegionRms(
+  samples: Int16Array,
+  loopStart: number,
+  loopEnd: number,
+  sampleRate: number
+): number {
+  const windowMs = 50; // 50ms analysis window
+  const windowSamples = msToSamples(windowMs, sampleRate);
+
+  // Calculate RMS at the start and end of the loop region
+  const startRms = calculateRms(samples, loopStart, Math.min(windowSamples, loopEnd - loopStart));
+  const endRms = calculateRms(samples, Math.max(loopStart, loopEnd - windowSamples), windowSamples);
+
+  // Return the average
+  return (startRms + endRms) / 2;
+}
+
+/**
+ * Find where meaningful audio ends by scanning backwards for silence.
+ *
+ * @param samples - Audio samples
+ * @param sampleRate - Sample rate in Hz
+ * @param thresholdDb - Silence threshold in dB
+ * @param startPoint - Point to start scanning back from
+ * @returns Index where audio content ends (last non-silent sample)
+ */
+function findAudioEnd(
+  samples: Int16Array,
+  sampleRate: number,
+  thresholdDb: number,
+  startPoint: number
+): number {
+  const windowSizeSamples = msToSamples(5, sampleRate); // 5ms analysis window
+  const threshold = dbToAmplitude(thresholdDb);
+  const minAudioEnd = HARDWARE_CONSTRAINTS.MIN_LOOP_LENGTH * 2; // Don't trim past this
+
+  // Scan backwards from startPoint to find last non-silent window
+  for (let pos = startPoint - windowSizeSamples; pos >= minAudioEnd; pos -= windowSizeSamples) {
+    const rms = calculateRms(samples, pos, windowSizeSamples);
+    if (rms >= threshold) {
+      // Found non-silent audio - return end of this window
+      return Math.min(pos + windowSizeSamples, startPoint);
+    }
+  }
+
+  // No audio found above threshold - return original point
+  return startPoint;
+}
 
 /**
  * Search for optimal loop points in a sample.
@@ -50,7 +121,10 @@ export function searchLoopPoints(
 
   // Validate sample
   if (samples.length < HARDWARE_CONSTRAINTS.MIN_LOOP_LENGTH * 2) {
-    return []; // Sample too short for any meaningful loop
+    throw new LoopDetectionError(
+      'Sample is too short for loop detection.',
+      'too_short'
+    );
   }
 
   // Step 1: Find sustain region (10%)
@@ -60,14 +134,64 @@ export function searchLoopPoints(
     minSustainOffsetMs: cfg.sustainStartMs,
   });
 
+  // Check if this is a decaying sample (sustain starts past 50% of sample)
+  const sustainRatio = sustainStart / samples.length;
+  const isDecayingSample = sustainRatio > 0.5;
+
   onProgress?.(10, 'Finding zero crossings...');
 
   // Step 2: Determine search regions
   // Strategy: Search for start candidates EARLY in the sustain region,
-  // and end candidates LATE in the sample. This naturally produces long loops.
-  const effectiveEndPoint = targetEndPoint ?? samples.length;
+  // and end candidates before the decay tail (if any).
+  let effectiveEndPoint = targetEndPoint ?? samples.length;
+
   const endSearchWindowSamples = msToSamples(cfg.searchWindowMs, sampleRate);
   const startSearchWindowSamples = msToSamples(cfg.startSearchWindowMs, sampleRate);
+
+  // Step 2a: Find where sustain ends (decay begins)
+  // This is more important than trailing silence for samples with decay tails
+  const sustainEnd = findSustainEnd(samples, sampleRate, sustainStart, {
+    minSustainOffsetMs: cfg.sustainStartMs,
+  });
+
+  // Calculate minimum required sustain region for loop detection
+  const minSustainRegion = startSearchWindowSamples + HARDWARE_CONSTRAINTS.MIN_LOOP_LENGTH + endSearchWindowSamples;
+
+  // Check if sustain region is too short (indicates a decaying sample)
+  const sustainRegionLength = sustainEnd - sustainStart;
+  if (sustainRegionLength < minSustainRegion) {
+    // The sample decays too quickly to find valid loop points
+    throw new LoopDetectionError(
+      'No suitable loop points found. This appears to be a decaying sample without a sustained region.',
+      'decaying_sample'
+    );
+  }
+
+  // Use the earlier of: sustain end, audio end (silence trimmed), or target end
+  if (sustainEnd < effectiveEndPoint) {
+    effectiveEndPoint = sustainEnd;
+    onProgress?.(15, `Sustain ends at sample ${sustainEnd} (${((sustainEnd / sampleRate) * 1000).toFixed(0)}ms)`);
+  }
+
+  // Step 2b: Also exclude trailing silence if configured
+  // This prevents finding loops in silent regions
+  if (cfg.excludeTrailingSilence) {
+    const audioEnd = findAudioEnd(samples, sampleRate, cfg.silenceThresholdDb, effectiveEndPoint);
+    if (audioEnd < effectiveEndPoint) {
+      // Check if trimming would leave enough space for valid search regions
+      // We need at least: sustainStart + startSearchWindow + MIN_LOOP_LENGTH + endSearchWindow
+      const minRequiredLength = sustainStart + startSearchWindowSamples +
+        HARDWARE_CONSTRAINTS.MIN_LOOP_LENGTH + endSearchWindowSamples;
+
+      if (audioEnd >= minRequiredLength) {
+        effectiveEndPoint = audioEnd;
+        onProgress?.(15, `Excluded trailing silence (audio ends at sample ${audioEnd})`);
+      } else {
+        // Trimming would create invalid search regions - skip trimming
+        onProgress?.(15, 'Trailing silence detected but preserving for valid search regions');
+      }
+    }
+  }
 
   // Loop START search region: early sustain region (right after attack)
   // Constrained to the first startSearchWindowMs of the sustain region
@@ -141,8 +265,36 @@ export function searchLoopPoints(
   const deduplicationDistance = Math.min(100, msToSamples(5, sampleRate));
   const deduplicated = deduplicateCandidates(ranked, deduplicationDistance);
 
+  // Step 7: Filter out candidates in silent/near-silent regions
+  const silenceThreshold = dbToAmplitude(cfg.silenceThresholdDb);
+  const usableCandidates = deduplicated.filter((candidate) => {
+    const loopRms = calculateLoopRegionRms(samples, candidate.loopStart, candidate.loopEnd, sampleRate);
+    return loopRms >= silenceThreshold;
+  });
+
+  // If no usable candidates, provide a helpful error
+  if (usableCandidates.length === 0) {
+    if (isDecayingSample) {
+      throw new LoopDetectionError(
+        'No suitable loop points found. This appears to be a decaying sample without a sustained region.',
+        'decaying_sample'
+      );
+    } else if (deduplicated.length > 0) {
+      // We found candidates but they were all in silent regions
+      throw new LoopDetectionError(
+        'No suitable loop points found. All candidate regions are too quiet for a usable loop.',
+        'no_usable_candidates'
+      );
+    } else {
+      throw new LoopDetectionError(
+        'No suitable loop points found in this sample.',
+        'no_usable_candidates'
+      );
+    }
+  }
+
   // Take top K
-  const topK = deduplicated.slice(0, cfg.topK);
+  const topK = usableCandidates.slice(0, cfg.topK);
 
   onProgress?.(100, `Found ${topK.length} candidates`);
 

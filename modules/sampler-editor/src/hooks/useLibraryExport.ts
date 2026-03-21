@@ -18,6 +18,7 @@ import {
   type LibraryToneInfo,
   type LibraryPatchInfo,
   type PatchBundleTone,
+  type StorageDirectoryHandle,
 } from '@/lib/library-service';
 
 interface ExportToneDialogState {
@@ -32,7 +33,7 @@ interface ExportPatchDialogState {
 
 interface UseLibraryExportOptions {
   clientRef: MutableRefObject<SamplerClientInterface | null>;
-  libraryHandle: FileSystemDirectoryHandle | null;
+  libraryHandle: StorageDirectoryHandle | null;
   tones: (SamplerTone | undefined)[];
   patches: (SamplerPatch | undefined)[];
   setIndividualTones: (tones: LibraryToneInfo[]) => void;

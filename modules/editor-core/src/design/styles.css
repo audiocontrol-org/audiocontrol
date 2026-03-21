@@ -1,0 +1,12 @@
+/**
+ * Combined editor-core styles.
+ *
+ * Single import that includes all design layers:
+ *   @import '@audiocontrol/editor-core/styles.css';
+ *
+ * Replaces the need to import tokens, primitives, and library CSS separately.
+ */
+
+@import './tokens.css';
+@import './primitives.css';
+@import './library.css';

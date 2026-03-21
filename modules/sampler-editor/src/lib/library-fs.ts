@@ -1,8 +1,9 @@
 /**
- * Library filesystem operations — directory management, File System Access API,
- * and editor-specific operations (rename, move, delete, create).
+ * Library filesystem operations — directory management and editor-specific
+ * operations (rename, move, delete, create).
  *
  * Types and scanning functions are re-exported from @audiocontrol/sampler-library.
+ * Connection management is handled by useLibraryConnection from editor-core.
  */
 
 import {
@@ -11,88 +12,16 @@ import {
   getNestedDirectoryIfExists,
   copyDirectoryContents,
   type LibraryCategory,
+  type StorageDirectoryHandle,
 } from '@audiocontrol/sampler-library/browser';
 
 // Re-export shared types and helpers from sampler-library
-export type { LibraryCategory, LibraryTreeNode } from '@audiocontrol/sampler-library/browser';
+export type { LibraryCategory, LibraryTreeNode, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 export {
   LIBRARY_CATEGORIES,
   getNestedDirectory,
   getNestedDirectoryIfExists,
 } from '@audiocontrol/sampler-library/browser';
-
-// =========================================================================
-// File System Access API
-// =========================================================================
-
-/**
- * Check if the File System Access API is available
- */
-export function hasFileSystemAccess(): boolean {
-  return 'showSaveFilePicker' in window && 'showDirectoryPicker' in window;
-}
-
-// In-memory cache for the library directory handle
-let cachedDirectoryHandle: FileSystemDirectoryHandle | null = null;
-
-/**
- * Get the cached library directory handle, if available and still has permission.
- */
-export async function getCachedLibraryDirectory(): Promise<FileSystemDirectoryHandle | null> {
-  if (!cachedDirectoryHandle) {
-    return null;
-  }
-
-  // Verify we still have permission
-  try {
-    const permission = await cachedDirectoryHandle.queryPermission({ mode: 'readwrite' });
-    if (permission === 'granted') {
-      return cachedDirectoryHandle;
-    }
-
-    // Try to request permission
-    const requested = await cachedDirectoryHandle.requestPermission({ mode: 'readwrite' });
-    if (requested === 'granted') {
-      return cachedDirectoryHandle;
-    }
-  } catch {
-    // Permission check failed, clear cache
-    cachedDirectoryHandle = null;
-  }
-
-  return null;
-}
-
-/**
- * Set the cached library directory handle.
- */
-export function setCachedLibraryDirectory(handle: FileSystemDirectoryHandle | null): void {
-  cachedDirectoryHandle = handle;
-}
-
-/**
- * Get a directory handle for the library.
- * Must be called directly from a user gesture (click handler).
- * Returns null if user cancels or API not available.
- */
-export async function pickLibraryDirectory(): Promise<FileSystemDirectoryHandle | null> {
-  if (!hasFileSystemAccess()) {
-    return null;
-  }
-
-  try {
-    return await window.showDirectoryPicker({
-      id: 'sampler-library',
-      mode: 'readwrite',
-      startIn: 'documents',
-    });
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      return null; // User cancelled
-    }
-    throw err;
-  }
-}
 
 // =========================================================================
 // Directory Operations
@@ -102,7 +31,7 @@ export async function pickLibraryDirectory(): Promise<FileSystemDirectoryHandle 
  * Create a subdirectory within a library category.
  */
 export async function createDirectory(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   category: LibraryCategory,
   path: string[],
   name: string
@@ -120,8 +49,8 @@ export async function createDirectory(
  * Move a single file from source to target directory.
  */
 async function moveFile(
-  sourceDir: FileSystemDirectoryHandle,
-  targetDir: FileSystemDirectoryHandle,
+  sourceDir: StorageDirectoryHandle,
+  targetDir: StorageDirectoryHandle,
   fileName: string
 ): Promise<void> {
   const sourceFile = await sourceDir.getFileHandle(fileName);
@@ -137,7 +66,7 @@ async function moveFile(
  * Rename a directory within a library category.
  */
 export async function renameDirectory(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   category: LibraryCategory,
   path: string[],
   newName: string
@@ -170,7 +99,7 @@ export async function renameDirectory(
  * Rename an individual tone (YAML + WAV files).
  */
 export async function renameIndividualTone(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   oldName: string,
   newName: string,
   path: string[] = []
@@ -213,7 +142,7 @@ export async function renameIndividualTone(
  * Rename an individual patch bundle (directory).
  */
 export async function renameIndividualPatch(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   oldName: string,
   newName: string,
   path: string[] = []
@@ -225,7 +154,7 @@ export async function renameIndividualPatch(
  * Rename a drum kit (directory).
  */
 export async function renameDrumKit(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   oldName: string,
   newName: string,
   path: string[] = []
@@ -237,7 +166,7 @@ export async function renameDrumKit(
  * Delete a directory from a library category.
  */
 export async function deleteDirectory(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   category: LibraryCategory,
   path: string[],
   recursive: boolean = true
@@ -257,7 +186,7 @@ export async function deleteDirectory(
  * Get directory contents for display (items and subdirectories at a path).
  */
 export async function getDirectoryContents(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   category: LibraryCategory,
   path: string[]
 ): Promise<{ files: string[]; directories: string[] }> {
@@ -291,7 +220,7 @@ export async function getDirectoryContents(
  * Move an item (tone, patch, drum-kit, or directory) to a new location.
  */
 export async function moveItem(
-  libraryDir: FileSystemDirectoryHandle,
+  libraryDir: StorageDirectoryHandle,
   category: LibraryCategory,
   sourcePath: string[],
   itemName: string,

@@ -71,7 +71,9 @@ function createSeriesPromotionConverter<
     deviceType,
 
     promote(sample: SampleYaml, defaults: TDefaults): ToneYaml {
-      const loopMode: LoopMode = sample.loopMode ?? 'oneShot';
+      // A defined loopStart implies looping — default to forward if no explicit mode
+      const loopMode: LoopMode = sample.loopMode
+        ?? (sample.loopStart !== undefined ? 'forward' : 'oneShot');
 
       const tone: Record<string, unknown> = {
         format: 'sampler-tone' as const,
@@ -83,6 +85,7 @@ function createSeriesPromotionConverter<
           sampleRate: sample.sampleRate,
           loopMode,
           loopPoint: sample.loopStart,
+          endPoint: sample.loopEnd,
         },
         [deviceType]: {
           originalKey: defaults.originalKey,
@@ -107,6 +110,7 @@ function createSeriesPromotionConverter<
         sampleRate: tone.wave.sampleRate,
         loopMode: tone.wave.loopMode,
         loopStart: tone.wave.loopPoint,
+        loopEnd: tone.wave.endPoint,
         rootKey,
         sourceDevice: tone.device,
       };

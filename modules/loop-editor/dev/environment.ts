@@ -2,7 +2,8 @@
  * Browser environment wiring for the standalone loop editor dev harness.
  *
  * Provides real browser implementations of the workflow environment
- * capabilities needed by the loop editor.
+ * capabilities needed by the loop editor. Library connections are
+ * managed by the useLibraryConnection hook in editor-core.
  */
 
 import {
@@ -11,9 +12,15 @@ import {
 } from '@audiocontrol/editor-core';
 import type { WorkflowEnvironment } from '@audiocontrol/editor-core';
 
-export function createDevEnvironment(): WorkflowEnvironment {
+export interface DevEnvironment {
+  workflow: WorkflowEnvironment;
+}
+
+export function createDevEnvironment(): DevEnvironment {
   return {
-    fileIO: createBrowserFileIO(),
-    audio: createBrowserAudioPlayback(),
+    workflow: {
+      fileIO: createBrowserFileIO(),
+      audio: createBrowserAudioPlayback(),
+    },
   };
 }

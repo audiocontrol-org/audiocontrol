@@ -8,6 +8,9 @@
  * @packageDocumentation
  */
 
+// FSAA global type declarations (side-effect import augments globalThis)
+import './fsaa-types.js';
+
 // Type exports
 export type {
   DeviceType,
@@ -355,6 +358,7 @@ export {
   quickSearchLoopPoints,
   validateCandidate,
   search as searchLoop,
+  LoopDetectionError,
   // Splice smoothing
   applyCrossfade,
   createSmoothedCopy,
@@ -382,7 +386,27 @@ export type {
   DiscontinuityAnalysis,
 } from './loop-detector/index.js';
 
-// Library filesystem scanning (FSAA, browser-only)
+// Storage handle abstractions (runtime-agnostic)
+export type {
+  StorageEntry,
+  StorageFile,
+  StorageFileMetadata,
+  StorageFileWithMetadata,
+  StorageWritable,
+  StorageFileHandle,
+  StorageDirectoryHandle,
+} from './storage-handles.js';
+
+// Library connection
+export type { LibraryConnection } from './library-connection.js';
+export { BrowserLibraryConnection } from './browser-library-connection.js';
+export type { BrowserLibraryConnectionOptions } from './browser-library-connection.js';
+
+// Cached storage decorator
+export { withCache, StorageCache, CachedStorageDirectoryHandle } from './cached-storage.js';
+export type { CachedStorageRoot, CacheMetrics, CacheCategoryMetrics } from './cached-storage.js';
+
+// Library filesystem scanning
 export {
   LIBRARY_CATEGORIES,
   getNestedDirectory,
@@ -411,3 +435,48 @@ export type {
   LibrarySetInfo,
   ItemDetector,
 } from './library-fs.js';
+
+// Common-area CRUD operations for samples
+export {
+  saveSample,
+  loadSample,
+  loadSampleMeta,
+  saveChoppedSample,
+  loadChoppedSample,
+  deleteItem,
+  createFolder,
+  moveItem,
+} from './common-area/samples.js';
+
+// Common-area CRUD operations for programs
+export { loadProgramMeta } from './common-area/programs.js';
+
+export type {
+  SampleSavePayload,
+  SampleLoadResult,
+  OperationProgress,
+  SampleProgressCallback,
+  SampleLoadOptions,
+  SampleSaveOptions,
+  ChoppedSampleSavePayload,
+  ChoppedSampleLoadResult,
+} from './common-area/samples.js';
+
+// Common-area import utilities
+export {
+  importWavToCommonArea,
+  buildSampleYaml,
+  deriveSampleName,
+  sanitizeForFilename,
+  extractWavSampleRate,
+} from './common-area/import.js';
+
+export type { ImportOptions } from './common-area/import.js';
+
+// Streaming utilities for progress-aware reads
+export {
+  readFileWithProgress,
+  readTextWithProgress,
+} from './common-area/streaming.js';
+
+export type { ReadProgressCallback } from './common-area/streaming.js';

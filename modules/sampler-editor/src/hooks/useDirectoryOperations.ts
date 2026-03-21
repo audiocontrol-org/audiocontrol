@@ -31,6 +31,7 @@ import {
   type LibraryToneInfo,
   type LibraryPatchInfo,
   type DrumKitInfo,
+  type StorageDirectoryHandle,
 } from '@/lib/library-service';
 import type { ItemSelection } from '@/pages/LibraryPage';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
@@ -60,7 +61,7 @@ interface MoveItemDialogState {
 }
 
 interface UseDirectoryOperationsOptions {
-  libraryHandle: FileSystemDirectoryHandle | null;
+  libraryHandle: StorageDirectoryHandle | null;
   handleRefreshLibrary: () => Promise<void>;
   setError: (error: string) => void;
   tonesTree: LibraryTreeNode[];

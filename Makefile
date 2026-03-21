@@ -100,7 +100,7 @@ $(SAMPLE_CHOPPER): $(INSTALL_STAMP)
 # Layer 1
 # ---------------------------------------------------------------------------
 
-$(EDITOR_CORE): $(SHARED_MIDI)
+$(EDITOR_CORE): $(SHARED_MIDI) $(SAMPLER_LIBRARY)
 	cd $(MODULES_DIR)/editor-core && pnpm build
 	@touch $@
 
