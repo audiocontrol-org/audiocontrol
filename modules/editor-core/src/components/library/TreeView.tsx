@@ -6,7 +6,7 @@
  * Device-agnostic — consumers provide node data and callbacks.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { ChevronIcon, FolderIcon, DeleteIcon, NewFolderIcon } from './TreeIcons';
 
 // =========================================================================
@@ -57,6 +57,10 @@ export interface TreeViewProps {
   indentPx?: number;
   /** Message shown for empty directories. Default: 'Empty folder'. */
   emptyDirectoryMessage?: string;
+  /** Called when a node is renamed via inline editing (double-click to edit) */
+  onRename?: (node: TreeNode, newName: string) => Promise<void>;
+  /** Whether inline renaming is enabled. Requires onRename to be provided. */
+  enableInlineRename?: boolean;
 }
 
 // =========================================================================
@@ -83,6 +87,8 @@ interface TreeNodeRowProps {
   emptyDirectoryMessage: string;
   expandedIds: Set<string>;
   selectedId?: string;
+  onRename?: (node: TreeNode, newName: string) => Promise<void>;
+  enableInlineRename?: boolean;
 }
 
 function TreeNodeRow({
@@ -105,21 +111,82 @@ function TreeNodeRow({
   emptyDirectoryMessage,
   expandedIds,
   selectedId,
+  onRename,
+  enableInlineRename,
 }: TreeNodeRowProps): JSX.Element {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const [isRenaming, setIsRenaming] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const isDirectory = node.type === 'directory';
   // Both directories and non-directories can be dragged
   const isDraggable = draggable ?? false;
   const paddingLeft = depth * indentPx + 8;
+  const canRename = enableInlineRename && onRename;
+
+  // Focus input when entering edit mode
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [isEditing]);
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
+    if (isEditing) return; // Don't handle clicks while editing
     if (isDirectory) {
       onToggleExpand(node.id);
     } else {
       onSelect?.(node);
     }
-  }, [node, isDirectory, onToggleExpand, onSelect]);
+  }, [node, isDirectory, onToggleExpand, onSelect, isEditing]);
+
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    if (!canRename) return;
+    setEditValue(node.name);
+    setIsEditing(true);
+  }, [node.name, canRename]);
+
+  const handleRenameSubmit = useCallback(async () => {
+    const trimmedValue = editValue.trim();
+    if (!trimmedValue || trimmedValue === node.name || !onRename) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsRenaming(true);
+    try {
+      await onRename(node, trimmedValue);
+      setIsEditing(false);
+    } catch (err) {
+      // Keep editing mode open on error so user can try again
+      console.error('[TreeView] Rename failed:', err);
+    } finally {
+      setIsRenaming(false);
+    }
+  }, [editValue, node, onRename]);
+
+  const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleRenameSubmit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      setIsEditing(false);
+    }
+  }, [handleRenameSubmit]);
+
+  const handleRenameBlur = useCallback(() => {
+    // Submit on blur (unless already submitting)
+    if (!isRenaming) {
+      handleRenameSubmit();
+    }
+  }, [isRenaming, handleRenameSubmit]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -170,6 +237,7 @@ function TreeNodeRow({
   }, [node, isDirectory, onDrop]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (isEditing) return; // Don't handle while editing
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
       if (isDirectory) {
@@ -178,7 +246,7 @@ function TreeNodeRow({
         onSelect?.(node);
       }
     }
-  }, [node, isDirectory, onToggleExpand, onSelect]);
+  }, [node, isDirectory, onToggleExpand, onSelect, isEditing]);
 
   const icon = renderIcon
     ? renderIcon(node, isExpanded)
@@ -195,19 +263,20 @@ function TreeNodeRow({
   return (
     <div>
       <div
-        className={`ac-tree-node ${stateClass}`}
+        className={`ac-tree-node ${stateClass}${isEditing ? ' ac-tree-node--editing' : ''}`}
         style={{ paddingLeft }}
         onClick={handleClick}
+        onDoubleClick={canRename ? handleDoubleClick : undefined}
         onContextMenu={onContextMenu ? handleContextMenu : undefined}
         onKeyDown={handleKeyDown}
-        draggable={isDraggable}
-        onDragStart={isDraggable ? handleDragStart : undefined}
+        draggable={isDraggable && !isEditing}
+        onDragStart={isDraggable && !isEditing ? handleDragStart : undefined}
         onDragOver={isDirectory ? handleDragOverEvent : undefined}
         onDragEnter={isDirectory ? handleDragEnter : undefined}
         onDragLeave={isDirectory ? handleDragLeave : undefined}
         onDrop={isDirectory ? handleDrop : undefined}
         role="treeitem"
-        tabIndex={0}
+        tabIndex={isEditing ? -1 : 0}
         aria-expanded={isDirectory ? isExpanded : undefined}
       >
         {isDirectory && (
@@ -221,7 +290,21 @@ function TreeNodeRow({
 
         {icon}
 
-        <span className="ac-tree-node-name">{node.name}</span>
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            className="ac-tree-rename-input"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onKeyDown={handleRenameKeyDown}
+            onBlur={handleRenameBlur}
+            disabled={isRenaming}
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span className="ac-tree-node-name">{node.name}</span>
+        )}
 
         {renderTrailing?.(node)}
 
@@ -271,6 +354,8 @@ function TreeNodeRow({
               emptyDirectoryMessage={emptyDirectoryMessage}
               expandedIds={expandedIds}
               selectedId={selectedId}
+              onRename={onRename}
+              enableInlineRename={enableInlineRename}
             />
           ))}
         </div>
@@ -310,6 +395,8 @@ export function TreeView({
   onDragStart,
   indentPx = 16,
   emptyDirectoryMessage = 'Empty folder',
+  onRename,
+  enableInlineRename,
 }: TreeViewProps): JSX.Element {
   // Uncontrolled expand state fallback
   const [internalExpandedIds, setInternalExpandedIds] = useState<Set<string>>(new Set());
@@ -355,6 +442,8 @@ export function TreeView({
           emptyDirectoryMessage={emptyDirectoryMessage}
           expandedIds={expandedIds}
           selectedId={selectedId}
+          onRename={onRename}
+          enableInlineRename={enableInlineRename}
         />
       ))}
     </div>

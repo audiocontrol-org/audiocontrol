@@ -1,5 +1,7 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { TreeView } from './TreeView';
 import type { TreeNode } from './TreeView';
 
@@ -146,5 +148,169 @@ describe('TreeView', () => {
     );
     // hihat.wav is a file, should not have add button
     expect(html).not.toContain('New folder in hihat.wav');
+  });
+
+  describe('inline rename', () => {
+    it('does not render rename input when enableInlineRename is false', () => {
+      const html = renderToStaticMarkup(
+        <TreeView nodes={sampleTree} onRename={async () => {}} />,
+      );
+      expect(html).not.toContain('ac-tree-rename-input');
+    });
+
+    it('does not render rename input when onRename is not provided', () => {
+      const html = renderToStaticMarkup(
+        <TreeView nodes={sampleTree} enableInlineRename />,
+      );
+      expect(html).not.toContain('ac-tree-rename-input');
+    });
+
+    it('enters edit mode on double-click when enabled', async () => {
+      const onRename = vi.fn();
+      render(
+        <TreeView
+          nodes={sampleTree}
+          onRename={onRename}
+          enableInlineRename
+        />,
+      );
+
+      const hihatNode = screen.getByText('hihat.wav');
+      await userEvent.dblClick(hihatNode);
+
+      const input = screen.getByRole('textbox');
+      expect(input).toBeInTheDocument();
+      expect(input).toHaveValue('hihat.wav');
+    });
+
+    it('cancels edit mode on Escape', async () => {
+      const onRename = vi.fn();
+      render(
+        <TreeView
+          nodes={sampleTree}
+          onRename={onRename}
+          enableInlineRename
+        />,
+      );
+
+      const hihatNode = screen.getByText('hihat.wav');
+      await userEvent.dblClick(hihatNode);
+
+      const input = screen.getByRole('textbox');
+      await userEvent.keyboard('{Escape}');
+
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+      expect(onRename).not.toHaveBeenCalled();
+    });
+
+    it('submits rename on Enter', async () => {
+      const onRename = vi.fn().mockResolvedValue(undefined);
+      render(
+        <TreeView
+          nodes={sampleTree}
+          onRename={onRename}
+          enableInlineRename
+        />,
+      );
+
+      const hihatNode = screen.getByText('hihat.wav');
+      await userEvent.dblClick(hihatNode);
+
+      const input = screen.getByRole('textbox');
+      await userEvent.clear(input);
+      await userEvent.type(input, 'newname.wav{Enter}');
+
+      await waitFor(() => {
+        expect(onRename).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'hihat.wav' }),
+          'newname.wav',
+        );
+      });
+    });
+
+    it('does not submit if name unchanged', async () => {
+      const onRename = vi.fn();
+      render(
+        <TreeView
+          nodes={sampleTree}
+          onRename={onRename}
+          enableInlineRename
+        />,
+      );
+
+      const hihatNode = screen.getByText('hihat.wav');
+      await userEvent.dblClick(hihatNode);
+
+      const input = screen.getByRole('textbox');
+      await userEvent.keyboard('{Enter}');
+
+      expect(onRename).not.toHaveBeenCalled();
+    });
+
+    it('does not submit if name is only whitespace', async () => {
+      const onRename = vi.fn();
+      render(
+        <TreeView
+          nodes={sampleTree}
+          onRename={onRename}
+          enableInlineRename
+        />,
+      );
+
+      const hihatNode = screen.getByText('hihat.wav');
+      await userEvent.dblClick(hihatNode);
+
+      const input = screen.getByRole('textbox');
+      await userEvent.clear(input);
+      await userEvent.type(input, '   {Enter}');
+
+      expect(onRename).not.toHaveBeenCalled();
+    });
+
+    it('keeps edit mode open on rename error', async () => {
+      const onRename = vi.fn().mockRejectedValue(new Error('Rename failed'));
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      render(
+        <TreeView
+          nodes={sampleTree}
+          onRename={onRename}
+          enableInlineRename
+        />,
+      );
+
+      const hihatNode = screen.getByText('hihat.wav');
+      await userEvent.dblClick(hihatNode);
+
+      const input = screen.getByRole('textbox');
+      await userEvent.clear(input);
+      await userEvent.type(input, 'newname.wav{Enter}');
+
+      await waitFor(() => {
+        expect(onRename).toHaveBeenCalled();
+      });
+
+      // Input should still be visible after error
+      expect(screen.getByRole('textbox')).toBeInTheDocument();
+
+      consoleError.mockRestore();
+    });
+
+    it('adds editing class when in edit mode', async () => {
+      const onRename = vi.fn();
+      render(
+        <TreeView
+          nodes={sampleTree}
+          onRename={onRename}
+          enableInlineRename
+        />,
+      );
+
+      const hihatNode = screen.getByText('hihat.wav');
+      await userEvent.dblClick(hihatNode);
+
+      const treeNode = screen.getByRole('textbox').closest('.ac-tree-node');
+      expect(treeNode).toHaveClass('ac-tree-node--editing');
+    });
   });
 });

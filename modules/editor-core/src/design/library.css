@@ -134,6 +134,130 @@
   padding-block: var(--ac-space-2);
 }
 
+/* Inline rename input */
+.ac-tree-rename-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.125rem 0.375rem;
+  font-size: var(--ac-text-sm);
+  font-weight: var(--ac-font-weight-medium);
+  font-family: inherit;
+  color: var(--ac-color-text-primary);
+  background: var(--ac-color-surface-canvas);
+  border: 1px solid var(--ac-color-accent);
+  border-radius: var(--ac-radius-sm);
+  outline: none;
+}
+
+.ac-tree-rename-input:focus {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--ac-color-accent) 30%, transparent);
+}
+
+.ac-tree-rename-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ac-tree-node--editing {
+  cursor: default;
+}
+
+.ac-tree-add-btn {
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  border-radius: var(--ac-radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  flex-shrink: 0;
+  transition:
+    opacity var(--ac-duration-fast) var(--ac-easing-default),
+    color var(--ac-duration-fast) var(--ac-easing-default),
+    background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-tree-node:hover .ac-tree-add-btn,
+.ac-tree-node:focus-within .ac-tree-add-btn {
+  opacity: 1;
+}
+
+.ac-tree-add-btn:hover {
+  color: var(--ac-color-accent);
+  background: color-mix(in srgb, var(--ac-color-accent) 15%, transparent);
+}
+
+.ac-tree-add-btn:focus-visible {
+  opacity: 1;
+  outline: 1px solid var(--ac-color-accent);
+}
+
+/* =========================================================================
+   Tree Section
+   ========================================================================= */
+
+.ac-tree-section {
+  padding: var(--ac-space-2);
+  border-top: 1px solid var(--ac-color-border-subtle);
+  transition: background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-tree-section:first-child {
+  border-top: none;
+}
+
+.ac-tree-section--drag-over {
+  background: color-mix(in srgb, var(--ac-color-accent) 10%, transparent);
+  border-color: var(--ac-color-accent);
+}
+
+.ac-tree-section-header {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-1) var(--ac-space-2);
+}
+
+.ac-tree-section-title {
+  font-size: var(--ac-text-xs);
+  font-weight: var(--ac-font-weight-medium);
+  color: var(--ac-color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ac-tree-section-drop-hint {
+  font-size: var(--ac-text-xs);
+  font-weight: var(--ac-font-weight-normal);
+  color: var(--ac-color-accent);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.ac-tree-section-actions {
+  margin-left: auto;
+}
+
+.ac-tree-section-empty {
+  padding: var(--ac-space-4) var(--ac-space-2);
+  text-align: center;
+  font-size: var(--ac-text-sm);
+  font-style: italic;
+  color: color-mix(in srgb, var(--ac-color-text-muted) 70%, transparent);
+}
+
+.ac-tree-section-dropzone {
+  margin-top: var(--ac-space-2);
+  padding: var(--ac-space-3);
+  border: 2px dashed color-mix(in srgb, var(--ac-color-accent) 50%, transparent);
+  border-radius: var(--ac-radius-md);
+  text-align: center;
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-accent);
+}
+
 /* =========================================================================
    Context Menu
    ========================================================================= */
@@ -622,4 +746,83 @@
   justify-content: space-between;
   font-size: var(--ac-text-xs);
   color: var(--ac-color-text-muted);
+}
+
+/* =========================================================================
+   Plugin Library Browser
+   ========================================================================= */
+
+.ac-plugin-library-browser {
+  display: flex;
+  gap: var(--ac-space-3);
+  height: 100%;
+  min-height: 0;
+}
+
+.ac-plugin-library-browser--two-column {
+  /* Library | Preview */
+}
+
+.ac-plugin-library-browser--three-column {
+  /* Device | Library | Preview */
+}
+
+.ac-plugin-library-browser-device {
+  flex: 0 0 auto;
+  min-width: 200px;
+  max-width: 280px;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
+  border: 1px solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-lg);
+}
+
+.ac-plugin-library-browser-library {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
+  border: 1px solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-lg);
+  overflow: hidden;
+}
+
+.ac-plugin-library-browser-connection {
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-bottom: 1px solid var(--ac-color-border-subtle);
+}
+
+.ac-plugin-library-browser-sections {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ac-plugin-library-browser-loading,
+.ac-plugin-library-browser-error,
+.ac-plugin-library-browser-empty {
+  padding: var(--ac-space-4);
+  text-align: center;
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+  font-style: italic;
+}
+
+.ac-plugin-library-browser-error {
+  color: var(--ac-status-danger);
+}
+
+.ac-plugin-library-browser-progress {
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-top: 1px solid var(--ac-color-border-subtle);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-plugin-library-browser-preview {
+  flex: 0 0 auto;
+  min-width: 240px;
+  max-width: 320px;
+  overflow-y: auto;
 }

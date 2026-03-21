@@ -4,6 +4,14 @@ export {
   type TreeViewProps,
 } from './TreeView';
 export {
+  TreeSection,
+  type TreeSectionProps,
+} from './TreeSection';
+export {
+  PluginLibraryBrowser,
+  type PluginLibraryBrowserProps,
+} from './PluginLibraryBrowser';
+export {
   ContextMenu,
   type ContextMenuAction,
   type ContextMenuProps,
@@ -58,3 +66,19 @@ export {
   type CacheMetricsData,
   type CategoryMetrics,
 } from './CacheMetricsModal';
+
+// Plugin interfaces
+export type {
+  ItemTypePlugin,
+  CategoryPlugin,
+  CategoryCallbacks,
+  ItemTranslator,
+  SlotGroup,
+  DeviceMemoryRenderProps,
+  DeviceMemoryConfig,
+  ItemSelection,
+  PreviewContext,
+  PreviewPanelConfig,
+  DeviceLibraryPlugin,
+  DeviceMemoryAction,
+} from './plugins';
