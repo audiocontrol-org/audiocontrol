@@ -35,6 +35,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@audiocontrol/sampler-library": "workspace:*",
     "@audiocontrol/shared-midi": "workspace:*",
     "@radix-ui/react-slider": "^1.1.2",
     "zustand": "^4.4.7"

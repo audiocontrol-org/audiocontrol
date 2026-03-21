@@ -67,6 +67,11 @@ export {
   type CategoryMetrics,
 } from './CacheMetricsModal';
 
+export {
+  LibraryConnectionUI,
+  type LibraryConnectionUIProps,
+} from './LibraryConnectionUI';
+
 // Plugin interfaces
 export type {
   PluginContextMenuAction,

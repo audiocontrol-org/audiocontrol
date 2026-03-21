@@ -47,6 +47,7 @@ export {
   SaveDialog,
   MoveDialog,
   CacheMetricsModal,
+  LibraryConnectionUI,
   FolderIcon,
   ChevronIcon,
   AudioFileIcon,
@@ -90,6 +91,7 @@ export {
   type PreviewPanelConfig,
   type DeviceLibraryPlugin,
   type DeviceMemoryAction,
+  type LibraryConnectionUIProps,
 } from './library';
 
 // Operation status components

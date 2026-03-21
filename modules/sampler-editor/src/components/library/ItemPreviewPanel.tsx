@@ -7,7 +7,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
-import type { SetYaml, ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
+import type { SetYaml, ResolvedDrumKitBundle, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import { slicesToDrumKit } from '@audiocontrol/sampler-library/browser';
 import { SampleChopperDialog, type ChopperResult } from '@audiocontrol/sample-chopper/ui';
 import type { ItemSelection } from '@/pages/LibraryPage';
@@ -32,7 +32,7 @@ interface ItemPreviewPanelProps {
   selection: ItemSelection | null;
   deviceTones: (SamplerTone | undefined)[];
   devicePatches: (SamplerPatch | undefined)[];
-  libraryHandle: FileSystemDirectoryHandle | null;
+  libraryHandle: StorageDirectoryHandle | null;
   onImportTone?: (setName: string, toneFile: string) => void;
   onImportPatch?: (setName: string, patchFile: string) => void;
   onImportIndividualTone?: (toneFile: string) => void;

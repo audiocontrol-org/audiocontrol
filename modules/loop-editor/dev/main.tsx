@@ -16,6 +16,7 @@ import { LoopEditor } from '@/ui/LoopEditor';
 import { useLoopDetection } from '@audiocontrol/loop-editor/ui';
 import {
   useNotifications,
+  useLibraryConnection,
   NotificationArea,
   LibraryBrowser,
   SampleDetailPanel,
@@ -39,7 +40,6 @@ import {
   importWavToCommonArea,
   type LibraryTreeNode,
   type SampleYaml,
-  type LibraryConnection,
 } from '@audiocontrol/sampler-library/browser';
 import { createDevEnvironment } from './environment';
 
@@ -75,8 +75,6 @@ function generateTestAudio(sampleRate: number, durationSeconds: number): Int16Ar
   return samples;
 }
 
-type StorageBackend = 'none' | 'local' | 'google-drive';
-
 function DevHarness() {
   const defaultSampleRate = 30000;
   const [samples, setSamples] = useState(() => generateTestAudio(defaultSampleRate, 2));
@@ -86,8 +84,15 @@ function DevHarness() {
   const [selectedCandidateIndex, setSelectedCandidateIndex] = useState<number | undefined>(undefined);
   const [sampleName, setSampleName] = useState('Test Tone');
 
+  // Library connection via shared hook
+  const library = useLibraryConnection({
+    pickerId: 'loop-editor-library',
+    googleDrive: import.meta.env.VITE_GOOGLE_CLIENT_ID
+      ? { clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID, clientSecret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET }
+      : undefined,
+  });
+
   // Library state
-  const [activeBackend, setActiveBackend] = useState<StorageBackend>('none');
   const [libraryItems, setLibraryItems] = useState<LibraryTreeNode[]>([]);
   const [libraryOrigin, setLibraryOrigin] = useState<{ name: string; path: string[] } | null>(null);
   const [selectedNodeInfo, setSelectedNodeInfo] = useState<{ directoryName: string; path: string[] } | null>(null);
@@ -130,53 +135,22 @@ function DevHarness() {
     wasSearchingRef.current = isSearching;
   }, [isSearching, candidates.length, loopDetectionError]);
 
-  const activeConnection = (): LibraryConnection | null => {
-    if (activeBackend === 'local') return env.fsaaLibrary;
-    if (activeBackend === 'google-drive' && env.googleDrive) return env.googleDrive;
-    return null;
-  };
-
-  // Handle Google Drive OAuth redirect on page load.
-  // Guarded against React StrictMode double-firing, which would
-  // consume the auth code on the first run and find nothing on the second.
-  const oauthHandled = React.useRef(false);
+  // Load library tree when hook connects (including OAuth restore)
+  const prevRootRef = React.useRef(library.root);
   useEffect(() => {
-    if (!env.googleDrive || oauthHandled.current) return;
-    oauthHandled.current = true;
-
-    (async () => {
-      try {
-        // Check if this is an OAuth callback
-        const handled = await env.googleDrive!.handleRedirect();
-        if (handled) {
-          // Token is stored — now initialize the client
-          const connected = await env.googleDrive!.tryRestore();
-          if (connected) {
-            setActiveBackend('google-drive');
-            notify('info', 'Connected to Google Drive');
-            const root = env.googleDrive!.getRoot();
-            const items = await listCommonSamplesTree(root);
-            setLibraryItems(items);
-          } else {
-            notify('error', 'Google Drive: token exchange succeeded but client init failed');
-          }
-          return;
-        }
-
-        // Try restoring an existing session
-        const restored = await env.googleDrive!.tryRestore();
-        if (restored) {
-          setActiveBackend('google-drive');
-          notify('info', 'Google Drive session restored');
-          const root = env.googleDrive!.getRoot();
-          const items = await listCommonSamplesTree(root);
+    if (library.root && library.root !== prevRootRef.current) {
+      (async () => {
+        setIsLoadingTree(true);
+        try {
+          const items = await listCommonSamplesTree(library.root!);
           setLibraryItems(items);
+        } finally {
+          setIsLoadingTree(false);
         }
-      } catch (err) {
-        notify('error', `Google Drive init: ${err instanceof Error ? err.message : String(err)}`);
-      }
-    })();
-  }, []);
+      })();
+    }
+    prevRootRef.current = library.root;
+  }, [library.root]);
 
   const handleAutoDetect = useCallback(() => {
     clearResults();
@@ -190,56 +164,27 @@ function DevHarness() {
     setEndPoint(loopEnd);
   }, []);
 
-  // Library: connect local filesystem
-  const handleConnectLocal = useCallback(async () => {
-    const connected = await env.fsaaLibrary.connect();
-    if (connected) {
-      setActiveBackend('local');
-      notify('info', 'Connected to local filesystem');
-      const root = env.fsaaLibrary.getRoot();
-      const items = await listCommonSamplesTree(root);
-      setLibraryItems(items);
-    }
-  }, []);
-
-  // Library: connect Google Drive
-  const handleConnectGoogleDrive = useCallback(async () => {
-    if (!env.googleDrive) {
-      notify('error', 'Google Drive not configured (missing VITE_GOOGLE_CLIENT_ID)');
-      return;
-    }
-    try {
-      await env.googleDrive.connect();
-    } catch (err) {
-      notify('error', `Google Drive: ${err instanceof Error ? err.message : String(err)}`);
-    }
-  }, []);
-
   // Library: refresh listing
   const refreshLibrary = useCallback(async (clearCache = false) => {
-    const conn = activeConnection();
-    if (!conn) return;
+    if (!library.root) return;
     setIsLoadingTree(true);
     try {
       if (clearCache) {
-        conn.clearCache?.();
+        library.clearCache();
       }
-      const root = conn.getRoot();
-      const items = await listCommonSamplesTree(root);
+      const items = await listCommonSamplesTree(library.root);
       setLibraryItems(items);
     } finally {
       setIsLoadingTree(false);
     }
-  }, [activeBackend]);
+  }, [library.root, library.clearCache]);
 
   // Library: load a sample
   const handleLoadSample = useCallback(async (node: LibraryTreeNode) => {
     if (node.type !== 'sample' || !node.directoryName) return;
-    const conn = activeConnection();
-    if (!conn) return;
+    if (!library.root) return;
     try {
-      const root = conn.getRoot();
-      const result = await loadSample(root, node.directoryName, node.path, {
+      const result = await loadSample(library.root, node.directoryName, node.path, {
         onProgress: setLoadProgress,
       });
       setLoadProgress(undefined);
@@ -258,7 +203,7 @@ function DevHarness() {
       setLoadProgress(undefined);
       notify('error', `Load failed: ${err instanceof Error ? err.message : 'unknown error'}`);
     }
-  }, [activeBackend, clearResults]);
+  }, [library.root, clearResults]);
 
   // TreeView select handler — loads sample metadata for the detail panel
   const handleTreeSelect = useCallback(async (treeNode: TreeNode) => {
@@ -271,75 +216,64 @@ function DevHarness() {
     const directoryName = meta?.directoryName ?? treeNode.name;
     const path = meta?.path ?? [];
     setSelectedNodeInfo({ directoryName, path });
-    const conn = activeConnection();
-    if (!conn) return;
+    if (!library.root) return;
     setIsLoadingMeta(true);
     try {
-      const root = conn.getRoot();
       // Use loadSampleMeta (not loadSample) to avoid downloading the WAV file
-      const yaml = await loadSampleMeta(root, directoryName, path);
+      const yaml = await loadSampleMeta(library.root, directoryName, path);
       setSelectedSampleMeta(yaml);
     } catch {
       setSelectedSampleMeta(null);
     } finally {
       setIsLoadingMeta(false);
     }
-  }, [activeBackend]);
+  }, [library.root]);
 
   // Load the selected sample into the editor
   const handleLoadSelectedIntoEditor = useCallback(() => {
     if (!selectedSampleMeta || !selectedNodeInfo) return;
-    const conn = activeConnection();
-    if (!conn) return;
+    if (!library.root) return;
     const libNode = {
       type: 'sample' as const,
       directoryName: selectedNodeInfo.directoryName,
       path: selectedNodeInfo.path,
     } as LibraryTreeNode;
     handleLoadSample(libNode);
-  }, [selectedSampleMeta, activeBackend, selectedNodeInfo, handleLoadSample]);
+  }, [selectedSampleMeta, library.root, selectedNodeInfo, handleLoadSample]);
 
   // Library: create a new folder (called by LibraryBrowser when user creates folder)
   const handleCreateFolder = useCallback(async (name: string, parentPath: string[]) => {
-    const conn = activeConnection();
-    if (!conn) throw new Error('Not connected');
-    const root = conn.getRoot();
-    await createFolder(root, parentPath, name);
+    if (!library.root) throw new Error('Not connected');
+    await createFolder(library.root, parentPath, name);
     await refreshLibrary();
     notify('info', `Created folder "${name}"`);
-  }, [activeBackend, refreshLibrary]);
+  }, [library.root, refreshLibrary]);
 
   // Library: delete a sample or folder (confirmation + feedback handled by LibraryBrowser)
   const handleDeleteItem = useCallback(async (node: TreeNode) => {
     const meta = node.meta as { directoryName?: string; path?: string[] } | undefined;
-    const conn = activeConnection();
-    if (!conn) throw new Error('Not connected');
-    const root = conn.getRoot();
+    if (!library.root) throw new Error('Not connected');
     // Use the filesystem name (meta.directoryName), not the display name (node.name)
     const fsName = meta?.directoryName ?? node.name;
-    await deleteItem(root, fsName, meta?.path ?? []);
-  }, [activeBackend]);
+    await deleteItem(library.root, fsName, meta?.path ?? []);
+  }, [library.root]);
 
   // Library: move item to a new directory
   const handleMoveItem = useCallback(async (node: TreeNode, targetPath: string[]) => {
     const meta = node.meta as { path?: string[] } | undefined;
-    const conn = activeConnection();
-    if (!conn) return;
+    if (!library.root) return;
     try {
-      const root = conn.getRoot();
-      await moveItem(root, node.name, meta?.path ?? [], targetPath);
+      await moveItem(library.root, node.name, meta?.path ?? [], targetPath);
       await refreshLibrary();
       notify('info', `Moved "${node.name}"`);
     } catch (err) {
       notify('error', `Move failed: ${err instanceof Error ? err.message : 'unknown error'}`);
     }
-  }, [activeBackend, refreshLibrary]);
+  }, [library.root, refreshLibrary]);
 
   // Library: import WAV files
   const handleImportFiles = useCallback(async (files: File[], targetPath: string[]) => {
-    const conn = activeConnection();
-    if (!conn) return;
-    const root = conn.getRoot();
+    if (!library.root) return;
     const wavFiles = files.filter((f) => f.name.toLowerCase().endsWith('.wav'));
     const skipped = files.length - wavFiles.length;
     if (skipped > 0) {
@@ -373,7 +307,7 @@ function DevHarness() {
           bytesSentAllSteps: completedBytes,
           bytesTotalAllSteps: totalBytes,
         });
-        await importWavToCommonArea(root, file.name, data, { targetPath });
+        await importWavToCommonArea(library.root, file.name, data, { targetPath });
         completedBytes += file.size;
         imported++;
       } catch (err) {
@@ -382,12 +316,11 @@ function DevHarness() {
       }
     }
     setImportProgress(undefined);
-  }, [activeBackend]);
+  }, [library.root]);
 
   // Library: save current sample with loop points
   const handleSaveToLibrary = useCallback(async () => {
-    const conn = activeConnection();
-    if (!conn) return;
+    if (!library.root) return;
 
     const name = libraryOrigin?.name ?? sampleName;
     const path = libraryOrigin?.path ?? [];
@@ -405,10 +338,9 @@ function DevHarness() {
     };
 
     const wavData = createWav(samples, sampleRate);
-    const root = conn.getRoot();
 
     try {
-      await saveSample(root, { name, yaml, wavData }, path, {
+      await saveSample(library.root, { name, yaml, wavData }, path, {
         onProgress: setSaveProgress,
       });
       setSaveProgress(undefined);
@@ -419,15 +351,12 @@ function DevHarness() {
       setSaveProgress(undefined);
       notify('error', `Save failed: ${err instanceof Error ? err.message : 'unknown error'}`);
     }
-  }, [activeBackend, libraryOrigin, sampleName, sampleRate, loopPoint, endPoint, samples, refreshLibrary]);
+  }, [library.root, libraryOrigin, sampleName, sampleRate, loopPoint, endPoint, samples, refreshLibrary]);
 
-  const isConnected = activeBackend !== 'none';
-  const hasLocalFS = 'showDirectoryPicker' in globalThis;
-  const hasGoogleDrive = env.googleDrive !== null;
-  const hasCacheMetrics = activeConnection()?.getMetrics !== undefined;
-  const cacheMetrics = activeConnection()?.getMetrics?.() as CacheMetricsData | undefined;
+  const cacheMetrics = library.getMetrics() as CacheMetricsData | undefined;
+  const hasCacheMetrics = cacheMetrics !== undefined;
 
-  const showLibrary = isConnected && libraryItems.length > 0;
+  const showLibrary = library.isConnected && libraryItems.length > 0;
 
   return (
     <div style={{ maxWidth: showLibrary ? 1440 : 960, margin: '0 auto', padding: 24 }}>
@@ -437,19 +366,19 @@ function DevHarness() {
           Loop Editor — Dev Harness
         </h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          {isConnected && (
+          {library.isConnected && (
             <button className="ac-btn ac-btn-primary ac-btn-sm" onClick={handleSaveToLibrary}>
               Save to Library
             </button>
           )}
-          {hasLocalFS && (
-            <button className="ac-btn ac-btn-sm" onClick={handleConnectLocal}>
-              {activeBackend === 'local' ? 'Change Local' : 'Local FS'}
+          {library.hasLocalFS && (
+            <button className="ac-btn ac-btn-sm" onClick={() => library.connect('local')}>
+              {library.activeBackend === 'local' ? 'Change Local' : 'Local FS'}
             </button>
           )}
-          {hasGoogleDrive && (
-            <button className="ac-btn ac-btn-sm" onClick={handleConnectGoogleDrive}>
-              {activeBackend === 'google-drive' ? 'Google Drive ✓' : 'Google Drive'}
+          {library.hasGoogleDrive && (
+            <button className="ac-btn ac-btn-sm" onClick={() => library.connect('google-drive')}>
+              {library.activeBackend === 'google-drive' ? 'Google Drive ✓' : 'Google Drive'}
             </button>
           )}
           {hasCacheMetrics && (
@@ -501,7 +430,7 @@ function DevHarness() {
           <div style={{ flex: '0 0 560px', position: 'sticky', top: 24, maxHeight: 'calc(100vh - 48px)', overflow: 'hidden' }}>
             <LibraryBrowser
               nodes={toTreeNodes(libraryItems)}
-              title={activeBackend === 'google-drive' ? 'Google Drive' : 'Local Library'}
+              title={library.activeBackend === 'google-drive' ? 'Google Drive' : 'Local Library'}
               onCreateFolder={handleCreateFolder}
               onDelete={handleDeleteItem}
               onMove={handleMoveItem}
@@ -537,7 +466,7 @@ function DevHarness() {
         open={metricsModalOpen}
         metrics={cacheMetrics}
         onClose={() => setMetricsModalOpen(false)}
-        onReset={() => activeConnection()?.resetMetrics?.()}
+        onReset={() => library.resetMetrics()}
       />
     </div>
   );

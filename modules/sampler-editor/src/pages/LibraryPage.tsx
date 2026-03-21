@@ -16,6 +16,7 @@ import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useLibraryStore } from '@/stores/libraryStore';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { ItemSelection as PluginItemSelection } from '@audiocontrol/editor-core';
+import { useLibraryConnection, LibraryConnectionUI } from '@audiocontrol/editor-core';
 import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
 import { PluginLibraryTreePanel } from '@/components/library/PluginLibraryTreePanel';
 import { ItemPreviewPanel } from '@/components/library/ItemPreviewPanel';
@@ -40,12 +41,12 @@ import { useDirectoryOperations } from '@/hooks/useDirectoryOperations';
 import { useLibraryExport } from '@/hooks/useLibraryExport';
 import { useLibraryImportDialogs } from '@/hooks/useLibraryImportDialogs';
 import {
-  hasFileSystemAccess, pickLibraryDirectory, getCachedLibraryDirectory, setCachedLibraryDirectory,
   listSets, listDrumKits, listIndividualTones, listIndividualPatches,
   listIndividualTonesTree, listIndividualPatchesTree, listDrumKitsTree, listChoppedSamplesTree,
   listCommonSamplesTree,
   loadDrumKitBundle, loadDrumKitSource, updateDrumKitSlices, loadChoppedSampleManifest,
   type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo, type LibraryTreeNode,
+  type StorageDirectoryHandle,
 } from '@/lib/library-service';
 import { CreateDirectoryDialog } from '@/components/library/CreateDirectoryDialog';
 import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialog';
@@ -67,7 +68,7 @@ export interface ItemSelection {
 }
 
 /** Load all library data from a directory handle */
-async function loadAllLibraryData(handle: FileSystemDirectoryHandle) {
+async function loadAllLibraryData(handle: StorageDirectoryHandle) {
   const [setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, choppedSamplesTreeData, commonSamplesTreeData] = await Promise.all([
     listSets(handle), listDrumKits(handle), listIndividualTones(handle), listIndividualPatches(handle),
     listIndividualTonesTree(handle), listIndividualPatchesTree(handle), listDrumKitsTree(handle),
@@ -116,7 +117,13 @@ export function LibraryPage() {
     kitConfig: { name: string; sampleRate: 15000 | 30000; baseNote: number; transpose?: number; velocitySensitivity?: number };
   } | null>(null);
   const [selection, setSelection] = useState<ItemSelection | null>(null);
-  const [libraryHandle, setLibraryHandle] = useState<FileSystemDirectoryHandle | null>(null);
+  const library = useLibraryConnection({
+    pickerId: 'sampler-library',
+    googleDrive: import.meta.env.VITE_GOOGLE_CLIENT_ID
+      ? { clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID, clientSecret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET }
+      : undefined,
+  });
+  const libraryHandle = library.root;
   const clientRef = useRef<SamplerClientInterface | null>(null);
 
   // Map library data to plugin category format
@@ -296,32 +303,18 @@ export function LibraryPage() {
     openImportDrumKitDialog: openImportDrumKitDialogCompat, selection, handleRefreshLibrary,
   });
 
-  // Initialize library directory
+  // Load library data when connection becomes available
   useEffect(() => {
-    async function initLibrary() {
-      if (!hasFileSystemAccess()) return;
-      const cached = await getCachedLibraryDirectory();
-      if (cached) {
-        setLibraryHandle(cached);
-        try { applyLibraryData(await loadAllLibraryData(cached)); }
-        catch (err) { console.error('[LibraryPage] Failed to load library:', err); }
-      }
-    }
-    initLibrary();
-  }, [applyLibraryData]);
-
-  const handlePickDirectory = useCallback(async () => {
-    const handle = await pickLibraryDirectory();
-    if (handle) {
-      setLibraryHandle(handle);
-      setCachedLibraryDirectory(handle);
-      try { applyLibraryData(await loadAllLibraryData(handle)); }
-      catch (err) {
+    if (!libraryHandle) return;
+    setLoading(true, 'Loading library...');
+    loadAllLibraryData(libraryHandle)
+      .then(applyLibraryData)
+      .catch((err) => {
         console.error('[LibraryPage] Failed to load library:', err);
         setError(err instanceof Error ? err.message : 'Failed to load library');
-      }
-    }
-  }, [applyLibraryData, setError]);
+      })
+      .finally(() => setLoading(false));
+  }, [libraryHandle, applyLibraryData, setLoading, setError]);
 
   const handleLoadDeviceData = useCallback(async () => {
     if (!clientRef.current) return;
@@ -424,9 +417,14 @@ export function LibraryPage() {
         <div className="ac-page-header">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-s330-text">Library</h2>
-            {!libraryHandle && hasFileSystemAccess() && (
-              <button onClick={handlePickDirectory} className="ac-btn ac-btn-sm ac-btn-primary">Select Library Folder</button>
-            )}
+            <LibraryConnectionUI
+              activeBackend={library.activeBackend}
+              isConnected={library.isConnected}
+              hasLocalFS={library.hasLocalFS}
+              hasGoogleDrive={library.hasGoogleDrive}
+              onConnect={library.connect}
+              onDisconnect={library.disconnect}
+            />
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleLoadDeviceData} disabled={isLoading} className={cn('ac-btn ac-btn-sm ac-btn-secondary', isLoading && 'opacity-50')}>Refresh Device</button>

@@ -11,7 +11,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
-import type { SetInfo, SetYaml } from '@audiocontrol/sampler-library/browser';
+import type { SetInfo, SetYaml, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import {
   loadSetManifest,
   type DrumKitInfo,
@@ -31,7 +31,7 @@ import { DrumKitItem } from './DrumKitItem';
 import { SetItem } from './SetItem';
 
 interface LibraryTreePanelProps {
-  libraryHandle: FileSystemDirectoryHandle | null;
+  libraryHandle: StorageDirectoryHandle | null;
   sets: SetInfo[];
   drumKits: DrumKitInfo[];
   individualTones: LibraryToneInfo[];

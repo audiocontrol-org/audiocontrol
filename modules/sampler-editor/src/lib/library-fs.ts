@@ -1,8 +1,9 @@
 /**
- * Library filesystem operations — directory management, File System Access API,
- * and editor-specific operations (rename, move, delete, create).
+ * Library filesystem operations — directory management and editor-specific
+ * operations (rename, move, delete, create).
  *
  * Types and scanning functions are re-exported from @audiocontrol/sampler-library.
+ * Connection management is handled by useLibraryConnection from editor-core.
  */
 
 import {
@@ -15,85 +16,12 @@ import {
 } from '@audiocontrol/sampler-library/browser';
 
 // Re-export shared types and helpers from sampler-library
-export type { LibraryCategory, LibraryTreeNode } from '@audiocontrol/sampler-library/browser';
+export type { LibraryCategory, LibraryTreeNode, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 export {
   LIBRARY_CATEGORIES,
   getNestedDirectory,
   getNestedDirectoryIfExists,
 } from '@audiocontrol/sampler-library/browser';
-
-// =========================================================================
-// File System Access API
-// =========================================================================
-
-/**
- * Check if the File System Access API is available
- */
-export function hasFileSystemAccess(): boolean {
-  return 'showSaveFilePicker' in window && 'showDirectoryPicker' in window;
-}
-
-// In-memory cache for the library directory handle
-let cachedDirectoryHandle: FileSystemDirectoryHandle | null = null;
-
-/**
- * Get the cached library directory handle, if available and still has permission.
- */
-export async function getCachedLibraryDirectory(): Promise<FileSystemDirectoryHandle | null> {
-  if (!cachedDirectoryHandle) {
-    return null;
-  }
-
-  // Verify we still have permission
-  try {
-    const permission = await cachedDirectoryHandle.queryPermission({ mode: 'readwrite' });
-    if (permission === 'granted') {
-      return cachedDirectoryHandle;
-    }
-
-    // Try to request permission
-    const requested = await cachedDirectoryHandle.requestPermission({ mode: 'readwrite' });
-    if (requested === 'granted') {
-      return cachedDirectoryHandle;
-    }
-  } catch {
-    // Permission check failed, clear cache
-    cachedDirectoryHandle = null;
-  }
-
-  return null;
-}
-
-/**
- * Set the cached library directory handle.
- */
-export function setCachedLibraryDirectory(handle: FileSystemDirectoryHandle | null): void {
-  cachedDirectoryHandle = handle;
-}
-
-/**
- * Get a directory handle for the library.
- * Must be called directly from a user gesture (click handler).
- * Returns null if user cancels or API not available.
- */
-export async function pickLibraryDirectory(): Promise<FileSystemDirectoryHandle | null> {
-  if (!hasFileSystemAccess()) {
-    return null;
-  }
-
-  try {
-    return await window.showDirectoryPicker({
-      id: 'sampler-library',
-      mode: 'readwrite',
-      startIn: 'documents',
-    });
-  } catch (err) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
-      return null; // User cancelled
-    }
-    throw err;
-  }
-}
 
 // =========================================================================
 // Directory Operations

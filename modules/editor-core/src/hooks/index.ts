@@ -6,3 +6,10 @@ export {
   type UseNotificationsOptions,
   type UseNotificationsResult,
 } from './useNotifications';
+export {
+  useLibraryConnection,
+  type LibraryBackend,
+  type GoogleDriveCredentials,
+  type UseLibraryConnectionConfig,
+  type UseLibraryConnectionResult,
+} from './useLibraryConnection';

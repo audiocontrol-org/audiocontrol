@@ -15,6 +15,7 @@ import {
   loadSetManifest,
   loadIndividualTone,
   convertYamlToS330Tone,
+  type StorageDirectoryHandle,
 } from '@/lib/library-service';
 import { suggestToneAllocation, isToneSlotEmpty } from '@/lib/slot-allocation';
 import { cn } from '@/lib/utils';
@@ -37,7 +38,7 @@ import type { FitOption, ToneFitValues } from '@/lib/best-fit';
 export interface ImportLibraryToneDialogProps extends OperationState {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  libraryHandle: FileSystemDirectoryHandle;
+  libraryHandle: StorageDirectoryHandle;
   setName: string;
   toneFile: string;
   deviceTones: (SamplerTone | undefined)[];

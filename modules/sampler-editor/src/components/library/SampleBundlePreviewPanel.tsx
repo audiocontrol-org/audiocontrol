@@ -23,6 +23,7 @@ import {
   type ResolvedDrumKitBundle,
   type DetectedKit,
   type ChoppedSample,
+  type StorageDirectoryHandle,
 } from '@audiocontrol/sampler-library/browser';
 
 /** Resolve a MIDI note that may be a name string or number to a number. */
@@ -40,7 +41,7 @@ interface SampleBundlePreviewPanelProps {
   kitInfo?: DrumKitInfo | null;
   /** For chopped sample items from tree */
   choppedSampleNode?: LibraryTreeNode | null;
-  libraryHandle: FileSystemDirectoryHandle | null;
+  libraryHandle: StorageDirectoryHandle | null;
   /** Pre-loaded drum kit bundle (for kits in subdirectories) */
   preloadedBundle?: ResolvedDrumKitBundle | null;
   /** Pre-loaded chopped sample manifest */

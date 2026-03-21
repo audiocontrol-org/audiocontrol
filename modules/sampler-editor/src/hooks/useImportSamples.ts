@@ -10,7 +10,7 @@
 import { useState, useCallback, MutableRefObject } from 'react';
 import type { OperationState, OperationProgress } from '@/types/import-operation';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
-import type { ResolvedDrumKitBundle, ChoppedSample } from '@audiocontrol/sampler-library/browser';
+import type { ResolvedDrumKitBundle, ChoppedSample, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import {
   createEmptyToneLayer,
   setToneAtMidiNote,
@@ -188,7 +188,7 @@ export interface ImportSamplesDialogState {
 
 interface UseImportSamplesOptions {
   clientRef: MutableRefObject<SamplerClientInterface | null>;
-  libraryHandle: FileSystemDirectoryHandle | null;
+  libraryHandle: StorageDirectoryHandle | null;
   setTone: (index: number, tone: SamplerTone) => void;
   setPatch: (index: number, patch: SamplerPatch) => void;
 }
@@ -296,7 +296,7 @@ function createSingleDrumPatch(
 // =========================================================================
 
 async function loadSourceWav(
-  libraryHandle: FileSystemDirectoryHandle,
+  libraryHandle: StorageDirectoryHandle,
   name: string,
   sourceFilename: string,
   sourceLocation: ImportSourceLocation,

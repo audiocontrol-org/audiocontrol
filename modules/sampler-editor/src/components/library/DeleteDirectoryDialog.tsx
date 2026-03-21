@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { ConfirmDialog } from '@audiocontrol/editor-core';
-import { getDirectoryContents, type LibraryCategory } from '@/lib/library-service';
+import { getDirectoryContents, type LibraryCategory, type StorageDirectoryHandle } from '@/lib/library-service';
 
 interface DeleteDirectoryDialogProps {
   open: boolean;
@@ -16,7 +16,7 @@ interface DeleteDirectoryDialogProps {
   directoryName: string;
   path: string[];
   category: LibraryCategory;
-  libraryHandle: FileSystemDirectoryHandle | null;
+  libraryHandle: StorageDirectoryHandle | null;
 }
 
 export function DeleteDirectoryDialog({

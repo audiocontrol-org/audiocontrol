@@ -826,3 +826,55 @@
   max-width: 320px;
   overflow-y: auto;
 }
+
+/* =========================================================================
+   Library Connection UI
+   ========================================================================= */
+
+.ac-library-connection {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+.ac-library-connection-status {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-1);
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+}
+
+.ac-library-connection-dot {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ac-status-connected, #22c55e);
+  flex-shrink: 0;
+}
+
+.ac-library-connection-btn {
+  padding: 0.25rem 0.625rem;
+  font-size: var(--ac-text-xs);
+  font-weight: var(--ac-font-weight-medium);
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-accent) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ac-color-accent) 30%, transparent);
+  border-radius: var(--ac-radius-sm);
+  cursor: pointer;
+  transition:
+    background-color var(--ac-duration-fast) var(--ac-easing-default),
+    border-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-library-connection-btn:hover {
+  background: color-mix(in srgb, var(--ac-color-accent) 25%, transparent);
+  border-color: var(--ac-color-accent);
+}
+
+.ac-library-connection-none {
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  font-style: italic;
+}

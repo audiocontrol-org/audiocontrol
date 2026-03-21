@@ -20,7 +20,10 @@ import {
   getNestedDirectory,
 } from '@audiocontrol/sampler-library/browser';
 import { createWavBlobFromSamples, unpack12BitTo16Bit } from '@/lib/wave-export';
-import { hasFileSystemAccess } from '@/lib/library-fs';
+/** Check if the File System Access API (file picker dialogs) is available. */
+function hasFileSystemAccess(): boolean {
+  return 'showSaveFilePicker' in window && 'showDirectoryPicker' in window;
+}
 import {
   parseYaml,
   stringifyYaml,

@@ -9,6 +9,7 @@ import {
   type SampleYaml,
   type ProgramYaml,
   type LibraryTreeNode,
+  type StorageDirectoryHandle,
   listCommonSamplesTree as listCommonSamplesTreeShared,
   loadSampleMeta,
   loadProgramMeta,
@@ -23,7 +24,7 @@ import {
  * from library/common/samples/ as a hierarchical tree.
  */
 export async function listCommonSamplesTree(
-  directoryHandle: FileSystemDirectoryHandle
+  directoryHandle: StorageDirectoryHandle
 ): Promise<LibraryTreeNode[]> {
   return listCommonSamplesTreeShared(directoryHandle);
 }
@@ -36,7 +37,7 @@ export async function listCommonSamplesTree(
  * Load a sample's metadata from library/common/samples/{path}/{name}/sample.yaml.
  */
 export async function loadCommonSample(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   sampleName: string,
   path: string[] = []
 ): Promise<SampleYaml> {
@@ -47,7 +48,7 @@ export async function loadCommonSample(
  * Load a program's metadata from library/common/samples/{path}/{name}/program.yaml.
  */
 export async function loadCommonProgram(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   programName: string,
   path: string[] = []
 ): Promise<ProgramYaml> {

@@ -11,7 +11,7 @@
  */
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import type { SetInfo, SetYaml } from '@audiocontrol/sampler-library/browser';
+import type { SetInfo, SetYaml, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import { TreeSection, ContextMenu, type TreeNode } from '@audiocontrol/editor-core';
 import type { DeviceLibraryPlugin, ItemSelection } from '@audiocontrol/editor-core';
 import {
@@ -32,7 +32,7 @@ interface PluginLibraryTreePanelProps {
   /** Device library plugin */
   plugin: DeviceLibraryPlugin;
   /** File system handle for the library */
-  libraryHandle: FileSystemDirectoryHandle | null;
+  libraryHandle: StorageDirectoryHandle | null;
   /** Sets in the library (not part of plugin categories) */
   sets: SetInfo[];
   /** Tree data for each category, keyed by categoryId */

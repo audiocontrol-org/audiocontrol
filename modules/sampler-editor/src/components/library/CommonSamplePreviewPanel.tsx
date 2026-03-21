@@ -7,14 +7,14 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import type { SampleYaml, ProgramYaml, ToneYaml } from '@audiocontrol/sampler-library/browser';
+import type { SampleYaml, ProgramYaml, ToneYaml, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import { s330SamplePromotion, s550SamplePromotion, midiNoteToName, getNestedDirectory } from '@audiocontrol/sampler-library/browser';
 import { loadCommonSample, loadCommonProgram } from '@/lib/library-service';
 import { stringify as stringifyYaml } from 'yaml';
 
 interface CommonSamplePreviewPanelProps {
   selection: { type: 'sample' | 'program'; name: string; path?: string[] } | null;
-  libraryHandle: FileSystemDirectoryHandle | null;
+  libraryHandle: StorageDirectoryHandle | null;
   onPromoteToDevice?: (deviceType: string) => void;
 }
 
@@ -245,7 +245,7 @@ function ProgramDetails({ program }: { program: ProgramYaml }): JSX.Element {
 }
 
 async function promoteSampleToDevice(
-  libraryHandle: FileSystemDirectoryHandle,
+  libraryHandle: StorageDirectoryHandle,
   sample: SampleYaml,
   samplePath: string[],
   sampleDirName: string,

@@ -8,6 +8,7 @@ import {
   ChoppedSampleSchema,
   type ChoppedSample,
   type LibraryTreeNode,
+  type StorageDirectoryHandle,
   listChoppedSamplesTree as listChoppedSamplesTreeShared,
   getNestedDirectory,
 } from '@audiocontrol/sampler-library/browser';
@@ -21,7 +22,7 @@ import { parseYaml } from '@/lib/library-io';
  * List all chopped samples from library/common/samples/ as a hierarchical tree.
  */
 export async function listChoppedSamplesTree(
-  directoryHandle: FileSystemDirectoryHandle
+  directoryHandle: StorageDirectoryHandle
 ): Promise<LibraryTreeNode[]> {
   return listChoppedSamplesTreeShared(directoryHandle);
 }
@@ -34,7 +35,7 @@ export async function listChoppedSamplesTree(
  * Load a chopped sample manifest from library/common/samples/{path}/{name}/manifest.yaml.
  */
 export async function loadChoppedSampleManifest(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   sampleName: string,
   path: string[] = []
 ): Promise<ChoppedSample> {
@@ -54,7 +55,7 @@ export async function loadChoppedSampleManifest(
  * Load the source WAV from a chopped sample in library/common/samples/.
  */
 export async function loadChoppedSampleSource(
-  directoryHandle: FileSystemDirectoryHandle,
+  directoryHandle: StorageDirectoryHandle,
   sampleName: string,
   sourceFilename: string,
   path: string[] = []
