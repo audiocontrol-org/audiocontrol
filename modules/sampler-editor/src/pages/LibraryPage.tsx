@@ -46,7 +46,7 @@ import {
   listIndividualTonesTree, listIndividualPatchesTree, listDrumKitsTree, listChoppedSamplesTree,
   listCommonSamplesTree,
   loadDrumKitBundle, loadDrumKitSource, updateDrumKitSlices, loadChoppedSampleManifest,
-  loadIndividualToneWavSamples,
+  loadIndividualTone, loadIndividualToneWavSamples,
   type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo, type LibraryTreeNode,
   type StorageDirectoryHandle,
 } from '@/lib/library-service';
@@ -224,14 +224,14 @@ export function LibraryPage() {
         pageSelection = {
           source: 'library',
           type: 'sample',
-          name: node.name,
+          name: nodeMeta.directoryName ?? node.name,
           path: nodeMeta.path,
         };
       } else if (node.type === 'program') {
         pageSelection = {
           source: 'library',
           type: 'program',
-          name: node.name,
+          name: nodeMeta.directoryName ?? node.name,
           path: nodeMeta.path,
         };
       } else {
@@ -239,7 +239,7 @@ export function LibraryPage() {
         pageSelection = {
           source: 'library',
           type: 'choppedSample',
-          name: node.name,
+          name: nodeMeta.directoryName ?? node.name,
           path: nodeMeta.path,
         };
       }
@@ -422,9 +422,15 @@ export function LibraryPage() {
       let loopEnd: number | undefined;
 
       if (nodeType === 'tone' || nodeType === 'individualTone') {
-        const result = await loadIndividualToneWavSamples(libraryHandle, name, path ?? []);
-        samples = result.samples;
-        sampleRate = result.sampleRate;
+        // Load raw WAV for audio, and YAML separately for loop points
+        const [wavResult, toneResult] = await Promise.all([
+          loadIndividualToneWavSamples(libraryHandle, name, path ?? []),
+          loadIndividualTone(libraryHandle, name, path ?? []),
+        ]);
+        samples = wavResult.samples;
+        sampleRate = wavResult.sampleRate;
+        loopStart = toneResult.yaml.wave.loopPoint;
+        loopEnd = toneResult.yaml.wave.endPoint;
       } else if (nodeType === 'sample') {
         const result = await loadSample(libraryHandle, name, path);
         const wav = parseWav(result.wavData);
@@ -482,26 +488,36 @@ export function LibraryPage() {
     if (!loopEditorDialog?.origin || !libraryHandle) return;
     const { name, type: nodeType, path } = loopEditorDialog.origin;
 
+    console.log('[LibraryPage] handleLoopEditorSave:', { name, nodeType, path, loopStart, loopEnd });
     try {
       if (nodeType === 'sample') {
         // Common sample: update sample.yaml loopStart/loopEnd
+        console.log('[LibraryPage] Loading sample meta:', { name, path: path ?? [] });
         const yaml = await loadSampleMeta(libraryHandle, name, path ?? []);
         yaml.loopStart = loopStart;
         yaml.loopEnd = loopEnd;
         yaml.loopMode = 'forward';
         yaml.modifiedAt = new Date().toISOString();
 
-        const samplesDir = await getNestedDirectory(libraryHandle, ['library', 'common', 'samples', ...(path ?? [])]);
-        const sampleDir = await samplesDir.getDirectoryHandle(sanitizeForFilename(name));
+        const fullPath = ['library', 'common', 'samples', ...(path ?? [])];
+        const safeName = sanitizeForFilename(name);
+        console.log('[LibraryPage] Navigating to:', { fullPath, safeName });
+        const samplesDir = await getNestedDirectory(libraryHandle, fullPath);
+        console.log('[LibraryPage] Got samplesDir, getting sampleDir:', safeName);
+        const sampleDir = await samplesDir.getDirectoryHandle(safeName);
+        console.log('[LibraryPage] Got sampleDir, writing sample.yaml');
         const yamlHandle = await sampleDir.getFileHandle('sample.yaml', { create: true });
         const writable = await yamlHandle.createWritable();
         await writable.write(stringifyYaml(yaml, { indent: 2, lineWidth: 120 }));
         await writable.close();
+        console.log('[LibraryPage] Sample YAML saved successfully');
       } else if (nodeType === 'tone') {
         // Individual tone: update tone YAML's wave.loopPoint
         // All S-series devices share the s330 library section
-        const tonesDir = await getNestedDirectory(libraryHandle, ['library', 's330', 'tones', ...(path ?? [])]);
-        const toneHandle = await tonesDir.getFileHandle(name);
+        const fullPath = ['library', 's330', 'tones', ...(path ?? [])];
+        console.log('[LibraryPage] Navigating to tone dir:', { fullPath, name });
+        const tonesDir = await getNestedDirectory(libraryHandle, fullPath);
+        const toneHandle = await tonesDir.getFileHandle(`${name}.yaml`);
         const toneFile = await toneHandle.getFile();
         const yaml = parseYaml(await toneFile.text());
         if (yaml.wave) {
