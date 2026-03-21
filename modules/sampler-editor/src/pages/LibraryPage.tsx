@@ -56,7 +56,8 @@ import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialo
 import { DeleteDirectoryDialog } from '@/components/library/DeleteDirectoryDialog';
 import { MoveItemDialog } from '@/components/library/MoveItemDialog';
 import type { ResolvedDrumKitBundle, ChoppedSample } from '@audiocontrol/sampler-library/browser';
-import { parseNoteName, loadSample } from '@audiocontrol/sampler-library/browser';
+import { parseNoteName, loadSample, loadSampleMeta, getNestedDirectory, sanitizeForFilename } from '@audiocontrol/sampler-library/browser';
+import { parseYaml, stringifyYaml } from '@/lib/library-io';
 import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 
@@ -479,9 +480,40 @@ export function LibraryPage() {
   // Handle loop editor save (loop points saved back to library)
   const handleLoopEditorSave = useCallback(async (loopStart: number, loopEnd: number) => {
     if (!loopEditorDialog?.origin || !libraryHandle) return;
-    // TODO: Write updated loop points back to library YAML
-    console.log('[LibraryPage] Loop editor save:', { loopStart, loopEnd, origin: loopEditorDialog.origin });
-  }, [loopEditorDialog, libraryHandle]);
+    const { name, type: nodeType, path } = loopEditorDialog.origin;
+
+    try {
+      if (nodeType === 'sample') {
+        // Common sample: update sample.yaml loopStart/loopEnd
+        const yaml = await loadSampleMeta(libraryHandle, name, path ?? []);
+        yaml.loopStart = loopStart;
+        yaml.loopEnd = loopEnd;
+        yaml.modifiedAt = new Date().toISOString();
+
+        const samplesDir = await getNestedDirectory(libraryHandle, ['library', 'common', 'samples', ...(path ?? [])]);
+        const sampleDir = await samplesDir.getDirectoryHandle(sanitizeForFilename(name));
+        const yamlHandle = await sampleDir.getFileHandle('sample.yaml', { create: true });
+        const writable = await yamlHandle.createWritable();
+        await writable.write(stringifyYaml(yaml, { indent: 2, lineWidth: 120 }));
+        await writable.close();
+      } else if (nodeType === 'tone') {
+        // Individual tone: update tone YAML's wave.loopPoint
+        const tonesDir = await getNestedDirectory(libraryHandle, ['library', config.deviceType, 'tones', ...(path ?? [])]);
+        const toneHandle = await tonesDir.getFileHandle(name);
+        const toneFile = await toneHandle.getFile();
+        const yaml = parseYaml(await toneFile.text());
+        if (yaml.wave) {
+          yaml.wave.loopPoint = loopStart;
+        }
+        const writable = await toneHandle.createWritable();
+        await writable.write(stringifyYaml(yaml, { indent: 2, lineWidth: 120 }));
+        await writable.close();
+      }
+    } catch (err) {
+      console.error('[LibraryPage] Failed to save loop points:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save loop points');
+    }
+  }, [loopEditorDialog, libraryHandle, config.deviceType, setError]);
 
   if (!isConnected) {
     return (
