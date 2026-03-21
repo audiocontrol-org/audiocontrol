@@ -18,6 +18,10 @@ export {
   type ConfirmDialogProps,
 } from './ConfirmDialog';
 export {
+  CreateFolderDialog,
+  type CreateFolderDialogProps,
+} from './CreateFolderDialog';
+export {
   SaveDialog,
   type SaveDialogProps,
   type SaveDialogResult,

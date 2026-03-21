@@ -173,10 +173,10 @@ export function LibraryBrowser({
     setError(null);
   }, []);
 
-  const handleCreateFolder = useCallback(async (name: string) => {
-    await createSamplesFolder(currentPath, name);
+  const handleCreateFolder = useCallback(async (name: string, parentPath: string[]) => {
+    await createSamplesFolder(parentPath, name);
     refreshSamples();
-  }, [currentPath, refreshSamples]);
+  }, [refreshSamples]);
 
   const handleSelectSample = useCallback((node: TreeNode) => {
     const meta = node.meta as { directoryName?: string; path?: string[] } | undefined;

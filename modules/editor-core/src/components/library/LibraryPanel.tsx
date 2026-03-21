@@ -6,7 +6,7 @@
  * Content is rendered via children.
  */
 
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { NewFolderIcon } from './TreeIcons';
 
 export interface LibraryTab {
@@ -35,9 +35,10 @@ export interface LibraryPanelProps {
   isEmpty?: boolean;
   /** Called when refresh button is clicked */
   onRefresh?: () => void;
-  /** Called to create a new folder. When provided, renders a new-folder button
-   *  in the header. The panel handles the name prompt internally. */
-  onCreateFolder?: (name: string) => Promise<void>;
+  /** Called when the new-folder button is clicked. When provided, renders
+   *  a new-folder button in the header. The parent component handles
+   *  the actual folder creation dialog and logic. */
+  onCreateFolder?: () => void;
   /** Panel title */
   title?: string;
   /** Actions rendered in the header (e.g., create folder button) */
@@ -61,19 +62,6 @@ export function LibraryPanel({
   headerActions,
   children,
 }: LibraryPanelProps): JSX.Element {
-  const [creatingFolder, setCreatingFolder] = useState(false);
-
-  const handleCreateFolder = useCallback(async () => {
-    const name = window.prompt('New folder name:');
-    if (!name?.trim() || !onCreateFolder) return;
-    setCreatingFolder(true);
-    try {
-      await onCreateFolder(name.trim());
-    } finally {
-      setCreatingFolder(false);
-    }
-  }, [onCreateFolder]);
-
   return (
     <div className="ac-library-panel">
       {/* Connection status */}
@@ -90,8 +78,8 @@ export function LibraryPanel({
             {onCreateFolder && (
               <button
                 className="ac-btn ac-btn-sm"
-                onClick={handleCreateFolder}
-                disabled={creatingFolder || loading}
+                onClick={onCreateFolder}
+                disabled={loading}
                 title="New folder"
               >
                 <NewFolderIcon />

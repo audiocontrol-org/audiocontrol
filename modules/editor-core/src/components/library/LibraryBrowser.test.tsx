@@ -17,12 +17,13 @@ const sampleNodes: TreeNode[] = [
 
 const noop = () => {};
 const asyncNoop = async () => {};
+const asyncNoopCreateFolder = async (_name: string, _parentPath: string[]) => {};
 
 function renderBrowser(overrides: Partial<React.ComponentProps<typeof LibraryBrowser>> = {}) {
   return renderToStaticMarkup(
     <LibraryBrowser
       nodes={sampleNodes}
-      onCreateFolder={asyncNoop}
+      onCreateFolder={asyncNoopCreateFolder}
       onDelete={asyncNoop}
       onMove={asyncNoop}
       onRefresh={noop}
@@ -125,5 +126,11 @@ describe('LibraryBrowser', () => {
     });
     expect(html).toContain('class="trailing"');
     expect(html).toContain('Kick');
+  });
+
+  it('renders add-folder buttons on directory nodes', () => {
+    const html = renderBrowser();
+    expect(html).toContain('ac-tree-add-btn');
+    expect(html).toContain('New folder in Pads');
   });
 });

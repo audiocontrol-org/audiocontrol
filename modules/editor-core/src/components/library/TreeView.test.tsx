@@ -126,4 +126,25 @@ describe('TreeView', () => {
     );
     expect(html).toContain('Deep File');
   });
+
+  it('renders add-folder button on directory nodes when onCreateFolder is provided', () => {
+    const html = renderToStaticMarkup(
+      <TreeView nodes={sampleTree} onCreateFolder={() => {}} />,
+    );
+    expect(html).toContain('ac-tree-add-btn');
+    expect(html).toContain('New folder in Samples');
+  });
+
+  it('does not render add-folder button when onCreateFolder is omitted', () => {
+    const html = renderToStaticMarkup(<TreeView nodes={sampleTree} />);
+    expect(html).not.toContain('ac-tree-add-btn');
+  });
+
+  it('does not render add-folder button on non-directory nodes', () => {
+    const html = renderToStaticMarkup(
+      <TreeView nodes={sampleTree} onCreateFolder={() => {}} />,
+    );
+    // hihat.wav is a file, should not have add button
+    expect(html).not.toContain('New folder in hihat.wav');
+  });
 });

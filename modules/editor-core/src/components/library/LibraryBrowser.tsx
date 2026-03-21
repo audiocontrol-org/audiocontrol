@@ -16,6 +16,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { LibraryPanel } from './LibraryPanel';
 import { TreeView, type TreeNode } from './TreeView';
 import { ConfirmDialog } from './ConfirmDialog';
+import { CreateFolderDialog } from './CreateFolderDialog';
 import { ImportIcon } from './TreeIcons';
 import { OperationProgressBar } from '../OperationStatus';
 import type { OperationProgress } from '../../types/operation-progress';
@@ -29,6 +30,7 @@ interface LibraryMoveData {
   nodeId: string;
   name: string;
   path: string[];
+  type: string;
 }
 
 type StatusMessage = {
@@ -40,8 +42,9 @@ export interface LibraryBrowserProps {
   /** Library tree data */
   nodes: TreeNode[];
 
-  /** Core library operations — all async so LibraryBrowser can track lifecycle */
-  onCreateFolder: (name: string) => Promise<void>;
+  /** Core library operations — all async so LibraryBrowser can track lifecycle.
+   *  parentPath is the directory path where the folder should be created (empty for root). */
+  onCreateFolder: (name: string, parentPath: string[]) => Promise<void>;
   onDelete: (node: TreeNode) => Promise<void>;
   onMove: (node: TreeNode, targetPath: string[]) => Promise<void>;
   onRefresh: () => void;
@@ -119,12 +122,22 @@ export function LibraryBrowser({
   const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [isFileDragOver, setIsFileDragOver] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [moving, setMoving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Track the currently dragged node for validation during drag-over
+  // (browser security prevents reading drag data during dragover events)
+  const dragSourceRef = useRef<LibraryMoveData | null>(null);
 
   // -- Delete confirmation state ------------------------------------------
   const [deleteTarget, setDeleteTarget] = useState<TreeNode | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // -- Create folder dialog state -----------------------------------------
+  const [createFolderTarget, setCreateFolderTarget] = useState<string[] | null>(null);
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [createFolderError, setCreateFolderError] = useState<string | null>(null);
 
   // -- Inline status bar --------------------------------------------------
   const [status, setStatus] = useState<StatusMessage | null>(null);
@@ -178,6 +191,44 @@ export function LibraryBrowser({
     setDeleteError(null);
   }, [deleting]);
 
+  // -- Create folder dialog ----------------------------------------------
+
+  /** Called when header button is clicked (creates at root) */
+  const handleCreateFolderAtRoot = useCallback(() => {
+    setCreateFolderTarget([]);
+    setCreateFolderError(null);
+  }, []);
+
+  /** Called when add-folder button is clicked on a directory node */
+  const handleCreateFolderInDirectory = useCallback((parentNode: TreeNode) => {
+    const meta = parentNode.meta as { path?: string[] } | undefined;
+    const parentPath = [...(meta?.path ?? []), parentNode.name];
+    setCreateFolderTarget(parentPath);
+    setCreateFolderError(null);
+  }, []);
+
+  const handleCreateFolderConfirm = useCallback(async (name: string) => {
+    if (createFolderTarget === null) return;
+    setCreatingFolder(true);
+    setCreateFolderError(null);
+    try {
+      await onCreateFolder(name, createFolderTarget);
+      setCreateFolderTarget(null);
+      showStatus('info', `Created folder "${name}"`);
+      onRefresh();
+    } catch (err) {
+      setCreateFolderError(err instanceof Error ? err.message : 'Failed to create folder');
+    } finally {
+      setCreatingFolder(false);
+    }
+  }, [createFolderTarget, onCreateFolder, onRefresh, showStatus]);
+
+  const handleCreateFolderCancel = useCallback(() => {
+    if (creatingFolder) return;
+    setCreateFolderTarget(null);
+    setCreateFolderError(null);
+  }, [creatingFolder]);
+
   // -- File import -------------------------------------------------------
 
   const doImport = useCallback(async (files: File[], targetPath: string[]) => {
@@ -193,6 +244,21 @@ export function LibraryBrowser({
       setImporting(false);
     }
   }, [onImportFiles, onRefresh, showStatus]);
+
+  // -- Move operation ------------------------------------------------------
+
+  const doMove = useCallback(async (sourceNode: TreeNode, targetPath: string[]) => {
+    setMoving(true);
+    try {
+      await onMove(sourceNode, targetPath);
+      showStatus('info', `Moved "${sourceNode.name}" to ${targetPath.length > 0 ? targetPath.join('/') : 'root'}`);
+      onRefresh();
+    } catch (err) {
+      showStatus('error', err instanceof Error ? err.message : 'Move failed');
+    } finally {
+      setMoving(false);
+    }
+  }, [onMove, onRefresh, showStatus]);
 
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -243,21 +309,54 @@ export function LibraryBrowser({
       nodeId: node.id,
       name: node.name,
       path: meta?.path ?? [],
+      type: node.type,
     };
+    // Store in ref for validation during drag-over (browser security prevents
+    // reading drag data content during dragover, only MIME types are available)
+    dragSourceRef.current = data;
     e.dataTransfer.setData(LIBRARY_MOVE_MIME, JSON.stringify(data));
     e.dataTransfer.effectAllowed = 'move';
   }, []);
 
-  const handleDragOver = useCallback((_targetNode: TreeNode, e: React.DragEvent): boolean => {
-    if (e.dataTransfer.types.includes(LIBRARY_MOVE_MIME)) return true;
+  const handleDragOver = useCallback((targetNode: TreeNode, e: React.DragEvent): boolean => {
+    // Handle file imports from OS
     if (onImportFiles && hasFilesDrag(e)) {
       e.dataTransfer.dropEffect = 'copy';
       return true;
     }
+
+    // Handle internal library moves
+    if (e.dataTransfer.types.includes(LIBRARY_MOVE_MIME)) {
+      const source = dragSourceRef.current;
+      if (!source) return true; // Allow if we can't validate (fallback)
+
+      // Can't drop on self
+      if (source.nodeId === targetNode.id) return false;
+
+      // For directory moves, can't drop into self or descendants
+      if (source.type === 'directory') {
+        const targetMeta = targetNode.meta as { path?: string[] } | undefined;
+        const targetPath = [...(targetMeta?.path ?? []), targetNode.name];
+        const sourcePath = [...source.path, source.name];
+        const sourcePathStr = sourcePath.join('/');
+        const targetPathStr = targetPath.join('/');
+
+        // Target is inside source (circular move)
+        if (targetPathStr === sourcePathStr || targetPathStr.startsWith(sourcePathStr + '/')) {
+          return false;
+        }
+      }
+
+      return true;
+    }
+
     return false;
   }, [onImportFiles]);
 
   const handleDrop = useCallback((targetNode: TreeNode, e: React.DragEvent) => {
+    // Clear drag source ref
+    dragSourceRef.current = null;
+
     if (onImportFiles && hasFilesDrag(e)) {
       const targetMeta = targetNode.meta as { path?: string[] } | undefined;
       const targetPath = [...(targetMeta?.path ?? []), targetNode.name];
@@ -274,11 +373,11 @@ export function LibraryBrowser({
       if (!sourceNode) return;
       const targetMeta = targetNode.meta as { path?: string[] } | undefined;
       const targetPath = [...(targetMeta?.path ?? []), targetNode.name];
-      onMove(sourceNode, targetPath);
+      doMove(sourceNode, targetPath);
     } catch {
       // Silently ignore malformed drag data
     }
-  }, [nodes, onMove, onImportFiles, doImport]);
+  }, [nodes, doMove, onImportFiles, doImport]);
 
   // -- Import button for header ------------------------------------------
 
@@ -295,7 +394,7 @@ export function LibraryBrowser({
       <button
         className="ac-btn ac-btn-sm"
         onClick={handleImportClick}
-        disabled={loading || importing}
+        disabled={loading || importing || moving}
         title="Import samples"
       >
         <ImportIcon />
@@ -336,7 +435,7 @@ export function LibraryBrowser({
           emptyMessage={emptyMessage}
           isEmpty={nodes.length === 0}
           onRefresh={onRefresh}
-          onCreateFolder={onCreateFolder}
+          onCreateFolder={handleCreateFolderAtRoot}
           headerActions={importButton}
           connectionSlot={connectionSlot}
         >
@@ -357,6 +456,7 @@ export function LibraryBrowser({
             selectedId={selectedId}
             onSelect={handleSelect}
             onDelete={handleDeleteClick}
+            onCreateFolder={handleCreateFolderInDirectory}
             onContextMenu={onContextMenu}
             renderIcon={renderIcon}
             renderTrailing={renderTrailing}
@@ -380,6 +480,14 @@ export function LibraryBrowser({
         danger
         onConfirm={handleDeleteConfirm}
         onCancel={handleDeleteCancel}
+      />
+      <CreateFolderDialog
+        open={createFolderTarget !== null}
+        parentPath={createFolderTarget ?? []}
+        creating={creatingFolder}
+        error={createFolderError ?? undefined}
+        onConfirm={handleCreateFolderConfirm}
+        onCancel={handleCreateFolderCancel}
       />
     </div>
   );

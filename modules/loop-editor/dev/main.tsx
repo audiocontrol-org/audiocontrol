@@ -299,12 +299,12 @@ function DevHarness() {
     handleLoadSample(libNode);
   }, [selectedSampleMeta, activeBackend, selectedNodeInfo, handleLoadSample]);
 
-  // Library: create a new folder (called by LibraryPanel's built-in button)
-  const handleCreateFolder = useCallback(async (name: string) => {
+  // Library: create a new folder (called by LibraryBrowser when user creates folder)
+  const handleCreateFolder = useCallback(async (name: string, parentPath: string[]) => {
     const conn = activeConnection();
     if (!conn) throw new Error('Not connected');
     const root = conn.getRoot();
-    await createFolder(root, [], name);
+    await createFolder(root, parentPath, name);
     await refreshLibrary();
     notify('info', `Created folder "${name}"`);
   }, [activeBackend, refreshLibrary]);

@@ -7,7 +7,7 @@
  */
 
 import React, { useCallback, useState } from 'react';
-import { ChevronIcon, FolderIcon, DeleteIcon } from './TreeIcons';
+import { ChevronIcon, FolderIcon, DeleteIcon, NewFolderIcon } from './TreeIcons';
 
 // =========================================================================
 // Types
@@ -50,6 +50,9 @@ export interface TreeViewProps {
   /** Called when a node's delete button is clicked. When provided, renders a
    *  delete button on hover for each node. */
   onDelete?: (node: TreeNode) => void;
+  /** Called when the add-folder button is clicked on a directory. When provided,
+   *  renders an add-folder button on hover for each directory node. */
+  onCreateFolder?: (parentNode: TreeNode) => void;
   /** Depth indentation in pixels per level. Default: 16. */
   indentPx?: number;
   /** Message shown for empty directories. Default: 'Empty folder'. */
@@ -75,6 +78,7 @@ interface TreeNodeRowProps {
   draggable?: boolean;
   onDragStart?: (node: TreeNode, e: React.DragEvent) => void;
   onDelete?: (node: TreeNode) => void;
+  onCreateFolder?: (parentNode: TreeNode) => void;
   indentPx: number;
   emptyDirectoryMessage: string;
   expandedIds: Set<string>;
@@ -96,6 +100,7 @@ function TreeNodeRow({
   draggable,
   onDragStart,
   onDelete,
+  onCreateFolder,
   indentPx,
   emptyDirectoryMessage,
   expandedIds,
@@ -103,7 +108,8 @@ function TreeNodeRow({
 }: TreeNodeRowProps): JSX.Element {
   const [isDragOver, setIsDragOver] = useState(false);
   const isDirectory = node.type === 'directory';
-  const isDraggable = draggable && !isDirectory;
+  // Both directories and non-directories can be dragged
+  const isDraggable = draggable ?? false;
   const paddingLeft = depth * indentPx + 8;
 
   const handleClick = useCallback((e: React.MouseEvent) => {
@@ -219,6 +225,16 @@ function TreeNodeRow({
 
         {renderTrailing?.(node)}
 
+        {isDirectory && onCreateFolder && (
+          <button
+            className="ac-tree-add-btn"
+            onClick={(e) => { e.stopPropagation(); onCreateFolder(node); }}
+            title={`New folder in ${node.name}`}
+          >
+            <NewFolderIcon />
+          </button>
+        )}
+
         {onDelete && (
           <button
             className="ac-tree-delete-btn"
@@ -250,6 +266,7 @@ function TreeNodeRow({
               draggable={draggable}
               onDragStart={onDragStart}
               onDelete={onDelete}
+              onCreateFolder={onCreateFolder}
               indentPx={indentPx}
               emptyDirectoryMessage={emptyDirectoryMessage}
               expandedIds={expandedIds}
@@ -288,6 +305,7 @@ export function TreeView({
   renderIcon,
   renderTrailing,
   onDelete,
+  onCreateFolder,
   draggable,
   onDragStart,
   indentPx = 16,
@@ -332,6 +350,7 @@ export function TreeView({
           draggable={draggable}
           onDragStart={onDragStart}
           onDelete={onDelete}
+          onCreateFolder={onCreateFolder}
           indentPx={indentPx}
           emptyDirectoryMessage={emptyDirectoryMessage}
           expandedIds={expandedIds}
