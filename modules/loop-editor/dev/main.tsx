@@ -127,6 +127,17 @@ const SIGNAL_GENERATORS: Record<string, (sr: number) => Int16Array> = {
     }
     return buf;
   },
+  'discontinuity': (sr) => {
+    const buf = new Int16Array(sr * 2);
+    const loopEnd = 45000;
+    for (let i = 0; i < buf.length; i++) {
+      const t = i / sr;
+      const phaseOffset = (i >= loopEnd - 200) ? Math.PI : 0;
+      const value = Math.sin(2 * Math.PI * 440 * t + phaseOffset) * 0.8;
+      buf[i] = Math.round(value * 32767);
+    }
+    return buf;
+  },
 };
 
 function getInitialSignal(): { samples: Int16Array; name: string } {

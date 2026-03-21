@@ -87,6 +87,26 @@ const SIGNAL_GENERATORS: Record<string, () => Int16Array> = {
     }
     return buf;
   },
+  'discontinuity': () => {
+    // Sustained tone where the loop start and loop end have a deliberate
+    // phase mismatch — the waveform at loopEnd does NOT smoothly connect
+    // to the waveform at loopStart, creating a click when looping.
+    // Loop region: samples 9000..45000. At sample 9000 the sine is at
+    // a positive peak; at sample 44999 we offset the phase by π so
+    // the waveform jumps from positive to negative at the splice.
+    const buf = new Int16Array(SAMPLE_RATE * 2);
+    const loopStart = 9000;
+    const loopEnd = 45000;
+    for (let i = 0; i < buf.length; i++) {
+      const t = i / SAMPLE_RATE;
+      // Add a phase offset in the region approaching loopEnd to create
+      // a discontinuity at the splice point
+      const phaseOffset = (i >= loopEnd - 200) ? Math.PI : 0;
+      const value = Math.sin(2 * Math.PI * 440 * t + phaseOffset) * 0.8;
+      buf[i] = Math.round(value * 32767);
+    }
+    return buf;
+  },
 };
 
 // ---------------------------------------------------------------------------

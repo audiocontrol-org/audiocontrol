@@ -23,7 +23,7 @@ if (!editorPort || !harnessPort) {
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: ['loop-editor-synth.spec.ts', 'loop-editor-autodetect.spec.ts'],
+  testMatch: ['loop-editor-synth.spec.ts', 'loop-editor-autodetect.spec.ts', 'loop-editor-smoothing.spec.ts'],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
