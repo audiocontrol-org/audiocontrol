@@ -4,7 +4,7 @@
  * Imports a raw WAV file into `library/common/samples/` by:
  * 1. Extracting the sample rate from the WAV RIFF header
  * 2. Generating a SampleYaml descriptor with sensible defaults
- * 3. Writing both the YAML and WAV files via a StorageDirectoryHandle
+ * 3. Creating a directory bundle with sample.yaml and sample.wav
  *
  * @packageDocumentation
  */
@@ -151,6 +151,8 @@ export function deriveSampleName(wavFilename: string): string {
  * Build a {@link SampleYaml} object from WAV data and optional metadata.
  *
  * The returned object has `format: 'sample'` and `version: 1`.
+ * The `file` field is always `sample.wav` since samples are stored
+ * in directory bundles.
  * Loop mode and root key are intentionally omitted (one-shot default).
  */
 export function buildSampleYaml(
@@ -164,7 +166,7 @@ export function buildSampleYaml(
     format: 'sample',
     version: 1,
     name,
-    file: wavFilename,
+    file: 'sample.wav',
     sampleRate,
   };
 
@@ -201,8 +203,9 @@ export interface ImportOptions {
 /**
  * Import a WAV file into the library common area.
  *
- * Writes a YAML descriptor and the WAV file to
- * `{rootHandle}/library/common/samples/{targetPath}/`.
+ * Creates a directory bundle at
+ * `{rootHandle}/library/common/samples/{targetPath}/{name}/`
+ * containing `sample.yaml` and `sample.wav`.
  *
  * @param rootHandle - Root directory handle for the library
  * @param wavFilename - Original filename of the WAV (e.g. `"kick.wav"`)
@@ -225,14 +228,15 @@ export async function importWavToCommonArea(
     ? [...basePath, ...options.targetPath]
     : basePath;
 
-  const targetDir = await getNestedDirectory(rootHandle, fullPath);
+  const parentDir = await getNestedDirectory(rootHandle, fullPath);
 
-  // Derive the YAML filename from the sample name
-  const yamlFilename = `${sanitizeForFilename(sampleYaml.name)}.yaml`;
+  // Create sample directory bundle
+  const safeName = sanitizeForFilename(sampleYaml.name);
+  const sampleDir = await parentDir.getDirectoryHandle(safeName, { create: true });
 
   // Write YAML file
   const yamlContent = stringifyYaml(sampleYaml);
-  const yamlHandle = await targetDir.getFileHandle(yamlFilename, { create: true });
+  const yamlHandle = await sampleDir.getFileHandle('sample.yaml', { create: true });
   const yamlWritable = await yamlHandle.createWritable();
   await yamlWritable.write(yamlContent);
   await yamlWritable.close();
@@ -244,7 +248,7 @@ export async function importWavToCommonArea(
     wavData.byteOffset,
     wavData.byteOffset + wavData.byteLength,
   ) as ArrayBuffer;
-  const wavHandle = await targetDir.getFileHandle(wavFilename, { create: true });
+  const wavHandle = await sampleDir.getFileHandle('sample.wav', { create: true });
   const wavWritable = await wavHandle.createWritable();
   await wavWritable.write(wavBuffer);
   await wavWritable.close();

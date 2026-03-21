@@ -52,7 +52,8 @@ function toTreeNodes(nodes: LibraryTreeNode[]): TreeNode[] {
     name: node.name,
     type: node.type,
     children: node.children ? toTreeNodes(node.children) : undefined,
-    meta: { fileName: node.fileName, path: node.path },
+    // Samples use directoryName, other types use fileName
+    meta: { directoryName: node.directoryName ?? node.fileName, path: node.path },
   }));
 }
 
@@ -89,6 +90,7 @@ function DevHarness() {
   const [activeBackend, setActiveBackend] = useState<StorageBackend>('none');
   const [libraryItems, setLibraryItems] = useState<LibraryTreeNode[]>([]);
   const [libraryOrigin, setLibraryOrigin] = useState<{ name: string; path: string[] } | null>(null);
+  const [selectedNodeInfo, setSelectedNodeInfo] = useState<{ directoryName: string; path: string[] } | null>(null);
   const [selectedSampleMeta, setSelectedSampleMeta] = useState<SampleYaml | null>(null);
   const [importProgress, setImportProgress] = useState<OperationProgress | undefined>(undefined);
   const [loadProgress, setLoadProgress] = useState<OperationProgress | undefined>(undefined);
@@ -232,12 +234,12 @@ function DevHarness() {
 
   // Library: load a sample
   const handleLoadSample = useCallback(async (node: LibraryTreeNode) => {
-    if (node.type !== 'sample' || !node.fileName) return;
+    if (node.type !== 'sample' || !node.directoryName) return;
     const conn = activeConnection();
     if (!conn) return;
     try {
       const root = conn.getRoot();
-      const result = await loadSample(root, node.fileName, node.path, {
+      const result = await loadSample(root, node.directoryName, node.path, {
         onProgress: setLoadProgress,
       });
       setLoadProgress(undefined);
@@ -247,7 +249,7 @@ function DevHarness() {
       setSampleName(result.yaml.name);
       setLoopPoint(result.yaml.loopStart ?? 0);
       setEndPoint(result.yaml.loopEnd ?? wavData.samples.length);
-      setLibraryOrigin({ name: node.fileName, path: node.path });
+      setLibraryOrigin({ name: node.directoryName, path: node.path });
       setSelectedSampleMeta(result.yaml);
       clearResults();
       setSelectedCandidateIndex(undefined);
@@ -262,16 +264,20 @@ function DevHarness() {
   const handleTreeSelect = useCallback(async (treeNode: TreeNode) => {
     if (treeNode.type !== 'sample') {
       setSelectedSampleMeta(null);
+      setSelectedNodeInfo(null);
       return;
     }
-    const meta = treeNode.meta as { fileName?: string; path?: string[] } | undefined;
+    const meta = treeNode.meta as { directoryName?: string; path?: string[] } | undefined;
+    const directoryName = meta?.directoryName ?? treeNode.name;
+    const path = meta?.path ?? [];
+    setSelectedNodeInfo({ directoryName, path });
     const conn = activeConnection();
     if (!conn) return;
     setIsLoadingMeta(true);
     try {
       const root = conn.getRoot();
       // Use loadSampleMeta (not loadSample) to avoid downloading the WAV file
-      const yaml = await loadSampleMeta(root, meta?.fileName ?? treeNode.name, meta?.path ?? []);
+      const yaml = await loadSampleMeta(root, directoryName, path);
       setSelectedSampleMeta(yaml);
     } catch {
       setSelectedSampleMeta(null);
@@ -282,16 +288,16 @@ function DevHarness() {
 
   // Load the selected sample into the editor
   const handleLoadSelectedIntoEditor = useCallback(() => {
-    if (!selectedSampleMeta) return;
+    if (!selectedSampleMeta || !selectedNodeInfo) return;
     const conn = activeConnection();
     if (!conn) return;
     const libNode = {
       type: 'sample' as const,
-      fileName: selectedSampleMeta.name,
-      path: libraryOrigin?.path ?? [],
+      directoryName: selectedNodeInfo.directoryName,
+      path: selectedNodeInfo.path,
     } as LibraryTreeNode;
     handleLoadSample(libNode);
-  }, [selectedSampleMeta, activeBackend, libraryOrigin, handleLoadSample]);
+  }, [selectedSampleMeta, activeBackend, selectedNodeInfo, handleLoadSample]);
 
   // Library: create a new folder (called by LibraryPanel's built-in button)
   const handleCreateFolder = useCallback(async (name: string) => {
@@ -305,12 +311,12 @@ function DevHarness() {
 
   // Library: delete a sample or folder (confirmation + feedback handled by LibraryBrowser)
   const handleDeleteItem = useCallback(async (node: TreeNode) => {
-    const meta = node.meta as { fileName?: string; path?: string[] } | undefined;
+    const meta = node.meta as { directoryName?: string; path?: string[] } | undefined;
     const conn = activeConnection();
     if (!conn) throw new Error('Not connected');
     const root = conn.getRoot();
-    // Use the filesystem name (meta.fileName), not the display name (node.name)
-    const fsName = meta?.fileName ?? node.name;
+    // Use the filesystem name (meta.directoryName), not the display name (node.name)
+    const fsName = meta?.directoryName ?? node.name;
     await deleteItem(root, fsName, meta?.path ?? []);
   }, [activeBackend]);
 

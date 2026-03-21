@@ -248,6 +248,7 @@ async function promoteSampleToDevice(
   libraryHandle: FileSystemDirectoryHandle,
   sample: SampleYaml,
   samplePath: string[],
+  sampleDirName: string,
   device: DeviceTarget,
   originalKey: number,
 ): Promise<void> {
@@ -264,13 +265,14 @@ async function promoteSampleToDevice(
   await yamlWritable.write(yamlContent);
   await yamlWritable.close();
 
-  // Copy WAV from common area to device tones
-  const sampleDir = await getNestedDirectory(libraryHandle, ['library', 'common', 'samples', ...samplePath]);
-  const sourceWavHandle = await sampleDir.getFileHandle(sample.file);
+  // Copy WAV from common area sample bundle to device tones
+  // Samples are stored as directory bundles: {dirName}/sample.wav
+  const sampleBundleDir = await getNestedDirectory(libraryHandle, ['library', 'common', 'samples', ...samplePath, sampleDirName]);
+  const sourceWavHandle = await sampleBundleDir.getFileHandle('sample.wav');
   const sourceFile = await sourceWavHandle.getFile();
   const wavData = await sourceFile.arrayBuffer();
 
-  const destWavHandle = await tonesDir.getFileHandle(sample.file, { create: true });
+  const destWavHandle = await tonesDir.getFileHandle(`${toneName}.wav`, { create: true });
   const destWritable = await destWavHandle.createWritable();
   await destWritable.write(wavData);
   await destWritable.close();
@@ -323,7 +325,7 @@ export function CommonSamplePreviewPanel({
     setIsPromoting(true);
     setPromotionResult(null);
     try {
-      await promoteSampleToDevice(libraryHandle, sample, selection.path ?? [], device, originalKey);
+      await promoteSampleToDevice(libraryHandle, sample, selection.path ?? [], selection.name, device, originalKey);
       const deviceLabel = device === 's330' ? 'S-330' : 'S-550';
       setPromotionResult({ success: true, message: `Promoted to ${deviceLabel} tones library` });
       onPromoteToDevice?.(device);

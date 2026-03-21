@@ -162,6 +162,7 @@ export async function moveDirectory(
   await parentDir.removeEntry(name, { recursive: true });
 }
 
+
 /**
  * Check whether moving a source item into a target directory is valid.
  * Returns false if:
@@ -496,30 +497,30 @@ export async function listChoppedSamplesTree(
 // =========================================================================
 
 /**
- * Detect a common-area sample: a `.yaml` file with `format: 'sample'`.
+ * Detect a common-area sample: a directory containing `sample.yaml`
+ * with `format: 'sample'`.
  *
- * More expensive than `detectTone` because it must parse YAML to check
- * the format field, but necessary for the common area where multiple
- * YAML formats coexist.
+ * Samples are stored as directory bundles:
+ *   {name}/sample.yaml + sample.wav
  */
 const detectSample: ItemDetector = async (entry, parentDir, path) => {
-  if (entry.kind !== 'file' || !entry.name.toLowerCase().endsWith('.yaml')) return null;
+  if (entry.kind !== 'directory') return null;
 
   try {
-    const fileHandle = await parentDir.getFileHandle(entry.name);
-    const file = await fileHandle.getFile();
+    const sampleDir = await parentDir.getDirectoryHandle(entry.name);
+    const yamlHandle = await sampleDir.getFileHandle('sample.yaml');
+    const file = await yamlHandle.getFile();
     const text = await file.text();
     const parsed = parseYaml(text);
     const result = SampleYamlSchema.safeParse(parsed);
     if (!result.success) return null;
 
-    const fileName = entry.name.replace(/\.yaml$/i, '');
     return {
-      id: [...path, fileName].join('/'),
+      id: [...path, entry.name].join('/'),
       name: result.data.name,
       type: 'sample',
       path,
-      fileName,
+      directoryName: entry.name,
       description: result.data.description,
     };
   } catch {

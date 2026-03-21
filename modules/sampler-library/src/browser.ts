@@ -436,7 +436,7 @@ export type {
   ItemDetector,
 } from './library-fs.js';
 
-// Common-area CRUD operations
+// Common-area CRUD operations for samples
 export {
   saveSample,
   loadSample,
@@ -447,6 +447,9 @@ export {
   createFolder,
   moveItem,
 } from './common-area/samples.js';
+
+// Common-area CRUD operations for programs
+export { loadProgramMeta } from './common-area/programs.js';
 
 export type {
   SampleSavePayload,

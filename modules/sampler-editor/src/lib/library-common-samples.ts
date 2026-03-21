@@ -1,18 +1,18 @@
 /**
- * Common-area sample operations — listing and loading samples and
- * programs from library/common/samples/.
+ * Common-area sample and program operations.
+ *
+ * Re-exports shared functions from @audiocontrol/sampler-library for
+ * listing and loading samples and programs from library/common/samples/.
  */
 
 import {
-  SampleYamlSchema,
-  ProgramYamlSchema,
   type SampleYaml,
   type ProgramYaml,
   type LibraryTreeNode,
   listCommonSamplesTree as listCommonSamplesTreeShared,
-  getNestedDirectory,
+  loadSampleMeta,
+  loadProgramMeta,
 } from '@audiocontrol/sampler-library/browser';
-import { parseYaml } from '@/lib/library-io';
 
 // =========================================================================
 // Listing
@@ -29,45 +29,27 @@ export async function listCommonSamplesTree(
 }
 
 // =========================================================================
-// Loading
+// Loading - Re-export shared functions with browser-friendly signatures
 // =========================================================================
 
 /**
- * Load a sample YAML from library/common/samples/{path}/{name}.yaml.
+ * Load a sample's metadata from library/common/samples/{path}/{name}/sample.yaml.
  */
 export async function loadCommonSample(
   directoryHandle: FileSystemDirectoryHandle,
   sampleName: string,
   path: string[] = []
 ): Promise<SampleYaml> {
-  const samplesDir = await getNestedDirectory(directoryHandle, [
-    'library', 'common', 'samples', ...path
-  ]);
-
-  const yamlHandle = await samplesDir.getFileHandle(`${sampleName}.yaml`);
-  const file = await yamlHandle.getFile();
-  const text = await file.text();
-  const parsed = parseYaml(text);
-
-  return SampleYamlSchema.parse(parsed);
+  return loadSampleMeta(directoryHandle, sampleName, path);
 }
 
 /**
- * Load a program YAML from library/common/samples/{path}/{name}/program.yaml.
+ * Load a program's metadata from library/common/samples/{path}/{name}/program.yaml.
  */
 export async function loadCommonProgram(
   directoryHandle: FileSystemDirectoryHandle,
   programName: string,
   path: string[] = []
 ): Promise<ProgramYaml> {
-  const programDir = await getNestedDirectory(directoryHandle, [
-    'library', 'common', 'samples', ...path, programName
-  ]);
-
-  const yamlHandle = await programDir.getFileHandle('program.yaml');
-  const file = await yamlHandle.getFile();
-  const text = await file.text();
-  const parsed = parseYaml(text);
-
-  return ProgramYamlSchema.parse(parsed);
+  return loadProgramMeta(directoryHandle, programName, path);
 }

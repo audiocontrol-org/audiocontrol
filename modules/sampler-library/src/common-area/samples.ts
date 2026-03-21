@@ -14,7 +14,7 @@ import type { StorageDirectoryHandle } from '@/storage-handles.js';
 import type { SampleYaml } from '@/schemas/index.js';
 import type { ChoppedSample } from '@/schemas/index.js';
 import { SampleYamlSchema, ChoppedSampleSchema } from '@/schemas/index.js';
-import { getNestedDirectory, getNestedDirectoryIfExists, getNestedDirectoryReadOnly, moveDirectory } from '@/library-fs.js';
+import { getNestedDirectory, getNestedDirectoryReadOnly, moveDirectory } from '@/library-fs.js';
 import { sanitizeForFilename } from './import.js';
 import { readFileWithProgress, readTextWithProgress, type ReadProgressCallback } from './streaming.js';
 
@@ -94,7 +94,7 @@ async function getSamplesDirReadOnly(
 }
 
 // =========================================================================
-// Sample CRUD (YAML + WAV file pairs)
+// Sample CRUD (directory bundles: {name}/sample.yaml + sample.wav)
 // =========================================================================
 
 export interface SampleSavePayload {
@@ -109,10 +109,11 @@ export interface SampleLoadResult {
 }
 
 /**
- * Save a sample as a YAML + WAV file pair in the common area.
+ * Save a sample as a directory bundle in the common area.
  *
- * Files are written to `library/common/samples/{path}/{name}.yaml`
- * and `library/common/samples/{path}/{name}.wav`.
+ * Creates `library/common/samples/{path}/{name}/` containing:
+ *   - sample.yaml (metadata)
+ *   - sample.wav (audio data)
  *
  * @param root - Library root directory handle
  * @param payload - Sample data to save (name, yaml, wavData)
@@ -140,9 +141,12 @@ export async function saveSample(
   path: string[] = [],
   options?: SampleSaveOptions,
 ): Promise<void> {
-  const dir = await getSamplesDir(root, path);
+  const parentDir = await getSamplesDir(root, path);
   const safeName = sanitizeForFilename(payload.name);
   const { onProgress } = options ?? {};
+
+  // Create sample directory bundle
+  const sampleDir = await parentDir.getDirectoryHandle(safeName, { create: true });
 
   const yamlContent = stringifyYaml(payload.yaml, { indent: 2, lineWidth: 120 });
   const yamlBytes = new TextEncoder().encode(yamlContent).length;
@@ -153,14 +157,14 @@ export async function saveSample(
   onProgress?.({
     currentStep: 1,
     totalSteps: 2,
-    stepLabel: `Saving metadata: ${safeName}.yaml`,
+    stepLabel: `Saving metadata: ${safeName}/sample.yaml`,
     bytesSent: 0,
     bytesTotal: yamlBytes,
     bytesSentAllSteps: 0,
     bytesTotalAllSteps: totalBytes,
   });
 
-  const yamlHandle = await dir.getFileHandle(`${safeName}.yaml`, { create: true });
+  const yamlHandle = await sampleDir.getFileHandle('sample.yaml', { create: true });
   const yamlWritable = await yamlHandle.createWritable();
   await yamlWritable.write(yamlContent);
   await yamlWritable.close();
@@ -168,7 +172,7 @@ export async function saveSample(
   onProgress?.({
     currentStep: 1,
     totalSteps: 2,
-    stepLabel: `Saving metadata: ${safeName}.yaml`,
+    stepLabel: `Saving metadata: ${safeName}/sample.yaml`,
     bytesSent: yamlBytes,
     bytesTotal: yamlBytes,
     bytesSentAllSteps: 0,
@@ -179,14 +183,14 @@ export async function saveSample(
   onProgress?.({
     currentStep: 2,
     totalSteps: 2,
-    stepLabel: `Saving audio: ${safeName}.wav`,
+    stepLabel: `Saving audio: ${safeName}/sample.wav`,
     bytesSent: 0,
     bytesTotal: wavBytes,
     bytesSentAllSteps: yamlBytes,
     bytesTotalAllSteps: totalBytes,
   });
 
-  const wavHandle = await dir.getFileHandle(`${safeName}.wav`, { create: true });
+  const wavHandle = await sampleDir.getFileHandle('sample.wav', { create: true });
   const wavWritable = await wavHandle.createWritable();
   await wavWritable.write(payload.wavData);
   await wavWritable.close();
@@ -194,7 +198,7 @@ export async function saveSample(
   onProgress?.({
     currentStep: 2,
     totalSteps: 2,
-    stepLabel: `Saving audio: ${safeName}.wav`,
+    stepLabel: `Saving audio: ${safeName}/sample.wav`,
     bytesSent: wavBytes,
     bytesTotal: wavBytes,
     bytesSentAllSteps: yamlBytes,
@@ -203,10 +207,14 @@ export async function saveSample(
 }
 
 /**
- * Load a sample YAML + WAV pair from the common area.
+ * Load a sample directory bundle from the common area.
+ *
+ * Reads from `library/common/samples/{path}/{name}/`:
+ *   - sample.yaml (metadata)
+ *   - sample.wav (audio data)
  *
  * @param root - Library root directory handle
- * @param name - Sample name (without extension)
+ * @param name - Sample directory name
  * @param path - Optional subdirectory path within samples folder
  * @param options - Optional progress tracking options
  *
@@ -232,16 +240,19 @@ export async function loadSample(
   path: string[] = [],
   options?: SampleLoadOptions,
 ): Promise<SampleLoadResult> {
-  const dir = await getSamplesDirReadOnly(root, path);
+  const parentDir = await getSamplesDirReadOnly(root, path);
   const safeName = sanitizeForFilename(name);
   const { onProgress } = options ?? {};
 
+  // Navigate into sample directory bundle
+  const sampleDir = await parentDir.getDirectoryHandle(safeName);
+
   // Step 1: Load YAML metadata
-  const yamlHandle = await dir.getFileHandle(`${safeName}.yaml`);
+  const yamlHandle = await sampleDir.getFileHandle('sample.yaml');
   const yamlFile = await yamlHandle.getFile();
 
   // Get WAV file handle to determine total bytes upfront
-  const wavHandle = await dir.getFileHandle(`${safeName}.wav`);
+  const wavHandle = await sampleDir.getFileHandle('sample.wav');
   const wavFile = await wavHandle.getFile();
 
   const yamlSize = yamlFile.size;
@@ -254,7 +265,7 @@ export async function loadSample(
         onProgress({
           currentStep: 1,
           totalSteps: 2,
-          stepLabel: `Loading metadata: ${safeName}.yaml`,
+          stepLabel: `Loading metadata: ${safeName}/sample.yaml`,
           bytesSent: bytesRead,
           bytesTotal,
           bytesSentAllSteps: 0,
@@ -276,7 +287,7 @@ export async function loadSample(
         onProgress({
           currentStep: 2,
           totalSteps: 2,
-          stepLabel: `Loading audio: ${safeName}.wav`,
+          stepLabel: `Loading audio: ${safeName}/sample.wav`,
           bytesSent: bytesRead,
           bytesTotal,
           bytesSentAllSteps: yamlSize,
@@ -297,7 +308,7 @@ export async function loadSample(
  * Much faster than loadSample for high-latency backends.
  *
  * @param root - Library root directory handle
- * @param name - Sample name (without extension)
+ * @param name - Sample directory name
  * @param path - Optional subdirectory path within samples folder
  * @param options - Optional progress tracking options
  *
@@ -319,11 +330,14 @@ export async function loadSampleMeta(
   path: string[] = [],
   options?: SampleLoadOptions,
 ): Promise<SampleYaml> {
-  const dir = await getSamplesDirReadOnly(root, path);
+  const parentDir = await getSamplesDirReadOnly(root, path);
   const safeName = sanitizeForFilename(name);
   const { onProgress } = options ?? {};
 
-  const yamlHandle = await dir.getFileHandle(`${safeName}.yaml`);
+  // Navigate into sample directory bundle
+  const sampleDir = await parentDir.getDirectoryHandle(safeName);
+
+  const yamlHandle = await sampleDir.getFileHandle('sample.yaml');
   const yamlFile = await yamlHandle.getFile();
   const totalBytes = yamlFile.size;
 
@@ -332,7 +346,7 @@ export async function loadSampleMeta(
         onProgress({
           currentStep: 1,
           totalSteps: 1,
-          stepLabel: `Loading metadata: ${safeName}.yaml`,
+          stepLabel: `Loading metadata: ${safeName}/sample.yaml`,
           bytesSent: bytesRead,
           bytesTotal,
           bytesSentAllSteps: 0,
@@ -429,11 +443,12 @@ export async function loadChoppedSample(
 // =========================================================================
 
 /**
- * Delete a library item (file pair or directory bundle) from the common area.
+ * Delete a library item (directory bundle) from the common area.
  *
- * For file-pair samples, removes both the `.yaml` and `.wav` files.
- * For directory bundles (chopped samples, programs), removes the directory.
- * The `name` parameter is the filesystem base name (without extension),
+ * All items (samples, chopped samples, programs) are stored as directory
+ * bundles, so this simply removes the directory recursively.
+ *
+ * The `name` parameter is the filesystem directory name,
  * NOT the display name from the YAML.
  */
 export async function deleteItem(
@@ -442,29 +457,7 @@ export async function deleteItem(
   path: string[] = [],
 ): Promise<void> {
   const dir = await getSamplesDir(root, path);
-
-  // Try directory bundle first (chopped samples, programs)
-  try {
-    await dir.removeEntry(name, { recursive: true });
-    return;
-  } catch {
-    // Not a directory — try file pair
-  }
-
-  // Remove file pair (.yaml + .wav)
-  let deleted = false;
-  for (const ext of ['.yaml', '.wav']) {
-    try {
-      await dir.removeEntry(name + ext);
-      deleted = true;
-    } catch {
-      // File may not exist (e.g., orphan yaml without wav)
-    }
-  }
-
-  if (!deleted) {
-    throw new Error(`Could not find "${name}" to delete`);
-  }
+  await dir.removeEntry(name, { recursive: true });
 }
 
 /**

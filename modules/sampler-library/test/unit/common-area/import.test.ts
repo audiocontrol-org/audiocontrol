@@ -257,7 +257,7 @@ describe('buildSampleYaml', () => {
       format: 'sample',
       version: 1,
       name: 'kick',
-      file: 'kick.wav',
+      file: 'sample.wav', // Always sample.wav for directory bundles
       sampleRate: 44100,
     });
   });
