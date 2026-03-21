@@ -77,6 +77,9 @@ export interface PluginLibraryBrowserProps {
   /** Called when a device memory action occurs */
   onDeviceMemoryAction?: (action: DeviceMemoryAction) => void;
 
+  /** Preview panel state (plugin-defined structure, opaque to framework) */
+  previewState?: unknown;
+
   /** Whether the library is loading */
   loading?: boolean;
 
@@ -109,6 +112,7 @@ export function PluginLibraryBrowser({
   onContextMenu,
   deviceMemoryState,
   onDeviceMemoryAction,
+  previewState,
   loading,
   error,
   operationProgress,
@@ -228,7 +232,7 @@ export function PluginLibraryBrowser({
       {hasDeviceMemory && plugin.deviceMemory && (
         <div className="ac-plugin-library-browser-device">
           {plugin.deviceMemory.renderMemoryPanel({
-            selectedSlot: null, // TODO: Extract from deviceMemoryState
+            selectedSlot: null, // Selection is typically managed via customState
             onSelectSlot: (groupId, index) => {
               onDeviceMemoryAction?.({
                 type: 'SELECT_SLOT',
@@ -247,6 +251,8 @@ export function PluginLibraryBrowser({
                 payload: { groupId, index, dragData },
               });
             },
+            // Pass opaque state from consumer to plugin
+            customState: deviceMemoryState,
           })}
         </div>
       )}
@@ -339,8 +345,9 @@ export function PluginLibraryBrowser({
       {/* Preview panel */}
       <div className="ac-plugin-library-browser-preview">
         {plugin.previewPanel.renderPreview(selection, {
-          isLoading: false,
-          error: undefined,
+          isLoading: loading ?? false,
+          error: error,
+          customState: previewState,
         })}
       </div>
     </div>

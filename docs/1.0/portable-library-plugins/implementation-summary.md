@@ -11,8 +11,8 @@
 | Phase 2: TreeSection Component | Completed | 11 new tests |
 | Phase 3: Plugin Interfaces | Completed | Compile-time checked types |
 | Phase 4: PluginLibraryBrowser Component | Completed | 12 new tests |
-| Phase 5: S-330/S-550 Plugin Implementations | Completed | Placeholder panels |
-| Phase 6: sampler-editor Migration | Not Started | LibraryPage migration pending |
+| Phase 5: S-330/S-550 Plugin Implementations | Completed | Adapter components |
+| Phase 6: sampler-editor Migration | In Progress | Plugin adapters complete, LibraryPage migration pending |
 
 ## Implementation Notes
 
@@ -48,6 +48,7 @@ Created `plugins/types.ts` with:
 - `DeviceLibraryPlugin` top-level plugin
 - `DeviceMemoryConfig`, `PreviewPanelConfig` for slots
 - `SlotGroup`, `DeviceMemoryRenderProps`, `ItemSelection`, `PreviewContext`
+- Added `customState` to `DeviceMemoryRenderProps` and `PreviewContext` for opaque state passing
 
 ### Phase 4: PluginLibraryBrowser Component
 
@@ -58,6 +59,7 @@ Created `PluginLibraryBrowser.tsx`:
 - Maps category data through TreeSection components
 - Device memory panel slot (plugin-rendered via `renderMemoryPanel`)
 - Preview panel slot (plugin-rendered via `renderPreview`)
+- Passes `deviceMemoryState` and `previewState` to render functions via `customState`
 - CSS classes: `.ac-plugin-library-browser`, `.ac-plugin-library-browser--three-column`, etc.
 - 12 new tests
 
@@ -76,23 +78,45 @@ Created in `sampler-editor/src/plugins/`:
 - `createDrumKitsCategory()`, `createChoppedSamplesCategory()`
 - `createCommonSamplesCategory()`, `createCommonProgramsCategory()`
 
+**Plugin state types** (`shared/plugin-state-types.ts`):
+- `DeviceMemoryCustomState` — tones, patches, selection, callbacks for memory panel
+- `PreviewPanelCustomState` — selection, device data, library handle, action callbacks
+
 **S-330 plugin** (`s330-library-plugin.tsx`):
 - 32 tones, 16 patches, 2 wave banks
 - Single tone group with banks A/B
-- Placeholder memory panel and preview panel
+- `S330MemoryPanelAdapter` — bridges to existing DeviceMemoryPanel via customState
+- `S330PreviewPanelAdapter` — routes to ItemPreviewPanel, SampleBundlePreviewPanel, or CommonSamplePreviewPanel
 
 **S-550 plugin** (`s550-library-plugin.tsx`):
 - 64 tones in 2 blocks, 32 patches, 4 wave banks
 - Two tone groups: T11-T48 with A/B, T51-T88 with C/D
-- Placeholder memory panel and preview panel
+- `S550MemoryPanelAdapter` — bridges to DeviceMemoryPanel, DeviceConfigContext handles layout
+- `S550PreviewPanelAdapter` — routes to appropriate preview panel based on selection type
 
 ### Phase 6: sampler-editor Migration
 
-Not started. This phase will:
+**Plugin adapter pattern complete:**
+- S-330/S-550 plugins now have functional adapter components
+- Adapters bridge plugin interface (`DeviceMemoryRenderProps`, `PreviewContext`) to existing components
+- State is passed via `customState` and extracted by adapter components
+
+**Remaining work:**
 - Replace LibraryTreePanel usage in LibraryPage with PluginLibraryBrowser
-- Select plugin based on device configuration
-- Map existing state to PluginLibraryBrowser props
+- Select plugin based on device configuration (`s330LibraryPlugin` vs `s550LibraryPlugin`)
+- Map existing LibraryPage state to PluginLibraryBrowser props
+- Wire up `deviceMemoryState` and `previewState` with existing state
 - Verify no functional regression
+
+**Migration complexity:**
+The LibraryPage (~540 lines) manages significant state including:
+- Device data (tones, patches from stores)
+- Library data (sets, trees, manifests)
+- Selection state with multiple selection types
+- Many dialogs (save/load set, import/export, create/rename/delete)
+- Multiple preview panel types based on selection
+
+The PluginLibraryBrowser architecture is designed to accommodate this complexity through the `customState` mechanism, allowing existing components to be reused while gaining the plugin architecture benefits.
 
 ## Code Metrics
 
@@ -100,13 +124,13 @@ Not started. This phase will:
 |--------|--------|-------|--------|
 | TreeView lines | 363 | 451 | +88 (inline rename) |
 | New shared components (editor-core) | — | 5 files | TreeSection, PluginLibraryBrowser, plugin types |
-| Plugin code (sampler-editor) | — | 6 files | ~850 lines |
+| Plugin code (sampler-editor) | — | 7 files | ~950 lines |
 | editor-core tests | 145 | 192 | +47 new tests |
 | LibraryPage lines | — | unchanged | Migration pending |
 
 ## Deviations from Plan
 
-- **Placeholder panels**: S-330 and S-550 plugins use placeholder memory panels and preview panels. The actual implementations will reuse existing DeviceMemoryPanel and ItemPreviewPanel components when Phase 6 migration is complete.
+- **Adapter pattern**: S-330 and S-550 plugins use adapter components that bridge the plugin interface to existing components via `customState`, rather than reimplementing the panels. This allows the existing DeviceMemoryPanel and preview panels to be reused unchanged.
 
 ## Validation
 

@@ -235,6 +235,11 @@ export interface DeviceMemoryRenderProps {
   onDragStart: (groupId: string, index: number, dragData: unknown) => void;
   /** Called when something is dropped on a slot */
   onDrop: (groupId: string, index: number, dragData: unknown) => void;
+  /**
+   * Plugin-defined state passed from the consumer.
+   * Shape is opaque to the framework - plugin defines and interprets it.
+   */
+  customState?: unknown;
 }
 
 /** Configuration for device memory panel */
@@ -269,6 +274,13 @@ export interface PreviewContext {
   isLoading: boolean;
   /** Error message if loading failed */
   error?: string;
+  /**
+   * Plugin-defined state passed from the consumer.
+   * Shape is opaque to the framework - plugin defines and interprets it.
+   * Use this to pass additional data needed for preview rendering
+   * (e.g., device data, action callbacks).
+   */
+  customState?: unknown;
 }
 
 /** Configuration for preview panel */
