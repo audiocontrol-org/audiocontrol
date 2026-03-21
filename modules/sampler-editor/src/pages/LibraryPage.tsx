@@ -122,7 +122,7 @@ export function LibraryPage() {
   } | null>(null);
   const [loopEditorDialog, setLoopEditorDialog] = useState<{
     open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
-    loopStart?: number; loopEnd?: number;
+    loopStart?: number; loopEnd?: number; rootKey?: number;
     origin: { name: string; type: string; path?: string[] } | null;
   } | null>(null);
   const [chopperDialog, setChopperDialog] = useState<{
@@ -420,6 +420,7 @@ export function LibraryPage() {
       let sampleRate: number;
       let loopStart: number | undefined;
       let loopEnd: number | undefined;
+      let rootKey: number | undefined;
 
       if (nodeType === 'tone' || nodeType === 'individualTone') {
         // Load raw WAV for audio, and YAML separately for loop points
@@ -431,6 +432,7 @@ export function LibraryPage() {
         sampleRate = wavResult.sampleRate;
         loopStart = toneResult.yaml.wave.loopPoint;
         loopEnd = toneResult.yaml.wave.endPoint;
+        rootKey = toneResult.yaml.originalKey;
       } else if (nodeType === 'sample') {
         const result = await loadSample(libraryHandle, name, path);
         const wav = parseWav(result.wavData);
@@ -438,13 +440,14 @@ export function LibraryPage() {
         sampleRate = wav.sampleRate;
         loopStart = result.yaml.loopStart;
         loopEnd = result.yaml.loopEnd;
+        rootKey = typeof result.yaml.rootKey === 'number' ? result.yaml.rootKey : undefined;
       } else {
         throw new Error(`Unsupported node type for loop editor: ${nodeType}`);
       }
 
       setLoopEditorDialog({
         open: true, samples, sampleRate, sampleName: name,
-        loopStart, loopEnd,
+        loopStart, loopEnd, rootKey,
         origin: { name, type: nodeType, path },
       });
     } catch (err) {
@@ -769,6 +772,7 @@ export function LibraryPage() {
           sampleName={loopEditorDialog.sampleName}
           loopStart={loopEditorDialog.loopStart}
           loopEnd={loopEditorDialog.loopEnd}
+          rootKey={loopEditorDialog.rootKey}
           onSave={handleLoopEditorSave}
         />
       )}

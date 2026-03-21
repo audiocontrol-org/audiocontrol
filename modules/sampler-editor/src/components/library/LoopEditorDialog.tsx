@@ -5,10 +5,12 @@
  * Manages loop state, auto-detection, and save-back to library.
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { LoopEditor, useLoopDetection } from '@audiocontrol/loop-editor/ui';
 import { createBrowserAudioPlayback } from '@audiocontrol/editor-core';
+import { useSamplePlayer, createWebMidiNoteInput } from '@audiocontrol/synth-core';
+import type { NoteInput } from '@audiocontrol/synth-core';
 
 // =========================================================================
 // Types
@@ -31,6 +33,8 @@ export interface LoopEditorDialogProps {
   loopEnd?: number;
   /** Called when the user saves loop points. */
   onSave?: (loopStart: number, loopEnd: number) => void;
+  /** Root key (MIDI note) for pitched playback — default 60 (C4). */
+  rootKey?: number;
 }
 
 // =========================================================================
@@ -46,6 +50,7 @@ export function LoopEditorDialog({
   loopStart: initialLoopStart,
   loopEnd: initialLoopEnd,
   onSave,
+  rootKey = 60,
 }: LoopEditorDialogProps): JSX.Element {
   const [loopPoint, setLoopPoint] = useState(initialLoopStart ?? 0);
   const [endPoint, setEndPoint] = useState(initialLoopEnd ?? (samples?.length ?? 0));
@@ -61,6 +66,40 @@ export function LoopEditorDialog({
   }
 
   const audio = useMemo(() => createBrowserAudioPlayback(), []);
+
+  // MIDI-triggered polyphonic playback
+  const [midiInput, setMidiInput] = useState<NoteInput | null>(null);
+  useEffect(() => {
+    let disposed = false;
+    let input: NoteInput | null = null;
+    createWebMidiNoteInput()
+      .then((result) => {
+        if (disposed) {
+          result.dispose();
+          return;
+        }
+        input = result;
+        setMidiInput(result);
+      })
+      .catch(() => {
+        // MIDI unavailable — keyboard/mouse playback still works
+      });
+    return () => {
+      disposed = true;
+      input?.dispose();
+      setMidiInput(null);
+    };
+  }, []);
+
+  const { activeNotes } = useSamplePlayer({
+    samples,
+    sampleRate,
+    rootKey,
+    loopEnabled: true,
+    loopStartSample: loopPoint,
+    loopEndSample: endPoint,
+    noteInput: midiInput,
+  });
 
   const {
     isSearching,
@@ -103,6 +142,11 @@ export function LoopEditorDialog({
               </Dialog.Description>
             </div>
             <div className="flex items-center gap-2">
+              {activeNotes.size > 0 && (
+                <span className="text-xs text-s330-muted px-2">
+                  MIDI: {activeNotes.size} {activeNotes.size === 1 ? 'voice' : 'voices'}
+                </span>
+              )}
               {onSave && (
                 <button
                   onClick={handleSave}
