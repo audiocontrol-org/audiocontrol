@@ -6,8 +6,7 @@ import { App } from '@/App';
 import { DeviceConfigProvider, useDeviceConfigOptional } from '@/context/DeviceConfigContext';
 import { getSupportedDevices } from '@/configs/registry';
 import { initLogCapture } from '@audiocontrol/editor-core';
-import '@audiocontrol/editor-core/tokens.css';
-import '@audiocontrol/editor-core/primitives.css';
+import '@audiocontrol/editor-core/styles.css';
 import '@/index.css';
 
 // Initialize log capture before anything else

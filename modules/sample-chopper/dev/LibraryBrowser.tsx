@@ -16,7 +16,7 @@ import {
   type TreeNode,
   type LibraryTab,
 } from '@audiocontrol/editor-core';
-import '@audiocontrol/editor-core/library.css';
+import '@audiocontrol/editor-core/styles.css';
 import {
   listChoppedSamples,
   deleteChoppedSample,

@@ -8,7 +8,7 @@
  */
 
 import '@audiocontrol/editor-core/dev/styles.css';
-import '@audiocontrol/editor-core/library.css';
+import '@audiocontrol/editor-core/styles.css';
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';

@@ -10,6 +10,7 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
+    "./styles.css": "./src/design/styles.css",
     "./tokens.css": "./src/design/tokens.css",
     "./primitives.css": "./src/design/primitives.css",
     "./library.css": "./src/design/library.css",

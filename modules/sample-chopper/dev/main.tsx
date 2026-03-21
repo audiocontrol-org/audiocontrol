@@ -40,8 +40,7 @@ interface LibraryMoveData {
   name: string;
   path: string[];
 }
-import '@audiocontrol/editor-core/primitives.css';
-import '@audiocontrol/editor-core/library.css';
+import '@audiocontrol/editor-core/styles.css';
 import './styles.css';
 
 /** Flatten a tree of LibraryTreeNodes into a list of DirectoryItem entries for the SaveDialog. */
