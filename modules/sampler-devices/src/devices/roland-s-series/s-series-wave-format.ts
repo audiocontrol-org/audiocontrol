@@ -477,10 +477,16 @@ export function clampWaveParams<T extends {
     loopPoint: number;
     loopLength: number;
 }>(wave: T, sampleCount: number): T {
-    // Calculate the valid end point based on sample count
-    const endPoint = Math.max(0, sampleCount - 1);
+    const maxEndPoint = Math.max(0, sampleCount - 1);
 
-    // Clamp loop point to not exceed end point
+    // Preserve explicit endPoint from library YAML, clamped to sample bounds.
+    // Zero means unset — default to end of sample data.
+    const endPoint = wave.endPoint > 0
+        ? Math.min(wave.endPoint, maxEndPoint)
+        : maxEndPoint;
+
+    // Clamp startPoint and loopPoint to valid range
+    const startPoint = Math.min(Math.max(0, wave.startPoint), endPoint);
     const loopPoint = Math.min(Math.max(0, wave.loopPoint), endPoint);
 
     // Recalculate loop length based on clamped values
@@ -488,6 +494,7 @@ export function clampWaveParams<T extends {
 
     return {
         ...wave,
+        startPoint,
         endPoint,
         loopPoint,
         loopLength,
