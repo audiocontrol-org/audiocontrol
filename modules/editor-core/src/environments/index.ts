@@ -7,6 +7,7 @@ export type {
   AudioPlaybackState,
   AudioBuffer,
   AudioPlayback,
+  PlayOptions,
   WorkflowEnvironment,
 } from './types';
 export type {
