@@ -5,6 +5,10 @@
  * loop editor can be developed independently of sampler-editor.
  * Supports loading samples from and saving loop-edited samples
  * back to the library via local filesystem (FSAA) or Google Drive.
+ *
+ * Uses the shared useLoopEditor hook for loop state, detection,
+ * audio preview, and synth-core MIDI playback — same code path
+ * as the production LoopEditorDialog.
  */
 
 import '@audiocontrol/editor-core/dev/styles.css';
@@ -13,7 +17,9 @@ import '@audiocontrol/editor-core/styles.css';
 import React, { useState, useCallback, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LoopEditor } from '@/ui/LoopEditor';
-import { useLoopDetection } from '@audiocontrol/loop-editor/ui';
+import { useLoopEditor } from '@/hooks/use-loop-editor';
+import { createKeyboardNoteInput } from '@audiocontrol/synth-core';
+import type { NoteInput } from '@audiocontrol/synth-core';
 import {
   useNotifications,
   useLibraryConnection,
@@ -23,6 +29,7 @@ import {
   CacheMetricsModal,
   AudioFileIcon,
   OperationProgressBar,
+  createBrowserFileIO,
   type TreeNode,
   type OperationProgress,
   type CacheMetricsData,
@@ -41,9 +48,8 @@ import {
   type LibraryTreeNode,
   type SampleYaml,
 } from '@audiocontrol/sampler-library/browser';
-import { createDevEnvironment } from './environment';
 
-const env = createDevEnvironment();
+const fileIO = createBrowserFileIO();
 
 /** Map LibraryTreeNode[] to TreeNode[] for the shared TreeView. */
 function toTreeNodes(nodes: LibraryTreeNode[]): TreeNode[] {
@@ -52,7 +58,6 @@ function toTreeNodes(nodes: LibraryTreeNode[]): TreeNode[] {
     name: node.name,
     type: node.type,
     children: node.children ? toTreeNodes(node.children) : undefined,
-    // Samples use directoryName, other types use fileName
     meta: { directoryName: node.directoryName ?? node.fileName, path: node.path },
   }));
 }
@@ -79,10 +84,25 @@ function DevHarness() {
   const defaultSampleRate = 30000;
   const [samples, setSamples] = useState(() => generateTestAudio(defaultSampleRate, 2));
   const [sampleRate, setSampleRate] = useState(defaultSampleRate);
-  const [loopPoint, setLoopPoint] = useState(Math.floor(defaultSampleRate * 0.5));
-  const [endPoint, setEndPoint] = useState(Math.floor(defaultSampleRate * 1.5));
-  const [selectedCandidateIndex, setSelectedCandidateIndex] = useState<number | undefined>(undefined);
   const [sampleName, setSampleName] = useState('Test Tone');
+
+  // Keyboard note input for MIDI playback without hardware
+  const [keyboardInput, setKeyboardInput] = useState<NoteInput | null>(null);
+  useEffect(() => {
+    const input = createKeyboardNoteInput(60);
+    setKeyboardInput(input);
+    return () => input.dispose();
+  }, []);
+
+  // Shared loop editor hook — owns loop state, detection, audio, synth-core
+  const editor = useLoopEditor({
+    samples,
+    sampleRate,
+    initialLoopStart: Math.floor(defaultSampleRate * 0.5),
+    initialLoopEnd: Math.floor(defaultSampleRate * 1.5),
+    rootKey: 60,
+    noteInput: keyboardInput,
+  });
 
   // Library connection via shared hook
   const library = useLibraryConnection({
@@ -105,35 +125,25 @@ function DevHarness() {
   const [metricsModalOpen, setMetricsModalOpen] = useState(false);
   const { notifications, notify, dismiss } = useNotifications();
 
-  const {
-    isSearching,
-    progress,
-    candidates,
-    error: loopDetectionError,
-    searchLoopPoints,
-    clearResults,
-  } = useLoopDetection();
-
   // Track previous search state to detect when search completes
   const wasSearchingRef = React.useRef(false);
 
   // Surface loop detection errors as notifications
   useEffect(() => {
-    if (loopDetectionError) {
-      notify('error', `Loop detection failed: ${loopDetectionError}`);
+    if (editor.loopDetectionError) {
+      notify('error', `Loop detection failed: ${editor.loopDetectionError}`);
     }
-  }, [loopDetectionError]);
+  }, [editor.loopDetectionError]);
 
   // Notify when search completes with no candidates
   useEffect(() => {
-    if (wasSearchingRef.current && !isSearching) {
-      // Search just completed
-      if (!loopDetectionError && candidates.length === 0) {
+    if (wasSearchingRef.current && !editor.isSearching) {
+      if (!editor.loopDetectionError && editor.candidates.length === 0) {
         notify('info', 'No loop candidates found. Try adjusting the sample or end point.');
       }
     }
-    wasSearchingRef.current = isSearching;
-  }, [isSearching, candidates.length, loopDetectionError]);
+    wasSearchingRef.current = editor.isSearching;
+  }, [editor.isSearching, editor.candidates.length, editor.loopDetectionError]);
 
   // Load library tree when hook connects (including OAuth restore)
   const prevRootRef = React.useRef(library.root);
@@ -151,18 +161,6 @@ function DevHarness() {
     }
     prevRootRef.current = library.root;
   }, [library.root]);
-
-  const handleAutoDetect = useCallback(() => {
-    clearResults();
-    setSelectedCandidateIndex(undefined);
-    const samplesCopy = new Int16Array(samples);
-    searchLoopPoints(samplesCopy, sampleRate, endPoint);
-  }, [samples, sampleRate, endPoint, clearResults, searchLoopPoints]);
-
-  const handleApplyCandidate = useCallback((loopStart: number, loopEnd: number) => {
-    setLoopPoint(loopStart);
-    setEndPoint(loopEnd);
-  }, []);
 
   // Library: refresh listing
   const refreshLibrary = useCallback(async (clearCache = false) => {
@@ -192,18 +190,16 @@ function DevHarness() {
       setSamples(wavData.samples);
       setSampleRate(wavData.sampleRate);
       setSampleName(result.yaml.name);
-      setLoopPoint(result.yaml.loopStart ?? 0);
-      setEndPoint(result.yaml.loopEnd ?? wavData.samples.length);
+      editor.resetForNewSamples(result.yaml.loopStart ?? 0, result.yaml.loopEnd ?? wavData.samples.length);
       setLibraryOrigin({ name: node.directoryName, path: node.path });
       setSelectedSampleMeta(result.yaml);
-      clearResults();
-      setSelectedCandidateIndex(undefined);
+      editor.clearResults();
       notify('info', `Loaded "${result.yaml.name}"`);
     } catch (err) {
       setLoadProgress(undefined);
       notify('error', `Load failed: ${err instanceof Error ? err.message : 'unknown error'}`);
     }
-  }, [library.root, clearResults]);
+  }, [library.root, editor.resetForNewSamples, editor.clearResults]);
 
   // TreeView select handler — loads sample metadata for the detail panel
   const handleTreeSelect = useCallback(async (treeNode: TreeNode) => {
@@ -219,7 +215,6 @@ function DevHarness() {
     if (!library.root) return;
     setIsLoadingMeta(true);
     try {
-      // Use loadSampleMeta (not loadSample) to avoid downloading the WAV file
       const yaml = await loadSampleMeta(library.root, directoryName, path);
       setSelectedSampleMeta(yaml);
     } catch {
@@ -241,7 +236,7 @@ function DevHarness() {
     handleLoadSample(libNode);
   }, [selectedSampleMeta, library.root, selectedNodeInfo, handleLoadSample]);
 
-  // Library: create a new folder (called by LibraryBrowser when user creates folder)
+  // Library: create a new folder
   const handleCreateFolder = useCallback(async (name: string, parentPath: string[]) => {
     if (!library.root) throw new Error('Not connected');
     await createFolder(library.root, parentPath, name);
@@ -249,11 +244,10 @@ function DevHarness() {
     notify('info', `Created folder "${name}"`);
   }, [library.root, refreshLibrary]);
 
-  // Library: delete a sample or folder (confirmation + feedback handled by LibraryBrowser)
+  // Library: delete a sample or folder
   const handleDeleteItem = useCallback(async (node: TreeNode) => {
     const meta = node.meta as { directoryName?: string; path?: string[] } | undefined;
     if (!library.root) throw new Error('Not connected');
-    // Use the filesystem name (meta.directoryName), not the display name (node.name)
     const fsName = meta?.directoryName ?? node.name;
     await deleteItem(library.root, fsName, meta?.path ?? []);
   }, [library.root]);
@@ -283,10 +277,9 @@ function DevHarness() {
 
     const totalBytes = wavFiles.reduce((sum, f) => sum + f.size, 0);
     let completedBytes = 0;
-    let imported = 0;
 
     for (let i = 0; i < wavFiles.length; i++) {
-      const file = wavFiles[i];
+      const file = wavFiles[i]!;
       setImportProgress({
         currentStep: i + 1,
         totalSteps: wavFiles.length,
@@ -307,9 +300,8 @@ function DevHarness() {
           bytesSentAllSteps: completedBytes,
           bytesTotalAllSteps: totalBytes,
         });
-        await importWavToCommonArea(library.root, file.name, data, { targetPath });
+        await importWavToCommonArea(library.root!, file.name, data, { targetPath });
         completedBytes += file.size;
-        imported++;
       } catch (err) {
         notify('error', `Import "${file.name}" failed: ${err instanceof Error ? err.message : 'unknown error'}`);
         completedBytes += file.size;
@@ -332,8 +324,8 @@ function DevHarness() {
       file: `${name}.wav`,
       sampleRate,
       loopMode: 'forward',
-      loopStart: loopPoint,
-      loopEnd: endPoint,
+      loopStart: editor.loopPoint,
+      loopEnd: editor.endPoint,
       modifiedAt: new Date().toISOString(),
     };
 
@@ -351,7 +343,21 @@ function DevHarness() {
       setSaveProgress(undefined);
       notify('error', `Save failed: ${err instanceof Error ? err.message : 'unknown error'}`);
     }
-  }, [library.root, libraryOrigin, sampleName, sampleRate, loopPoint, endPoint, samples, refreshLibrary]);
+  }, [library.root, libraryOrigin, sampleName, sampleRate, editor.loopPoint, editor.endPoint, samples, refreshLibrary]);
+
+  // File load handler
+  const handleLoadFile = useCallback(async () => {
+    const handle = await fileIO.pickFile({ accept: { 'audio/wav': ['.wav'] } });
+    if (!handle) return;
+    const buffer = await fileIO.readFile(handle);
+    const wavData = parseWav(new Uint8Array(buffer));
+    setSamples(wavData.samples);
+    setSampleRate(wavData.sampleRate);
+    setSampleName(handle.name ?? 'Loaded File');
+    editor.resetForNewSamples(0, wavData.samples.length);
+    editor.clearResults();
+    setLibraryOrigin(null);
+  }, [editor.resetForNewSamples, editor.clearResults]);
 
   const cacheMetrics = library.getMetrics() as CacheMetricsData | undefined;
   const hasCacheMetrics = cacheMetrics !== undefined;
@@ -359,13 +365,21 @@ function DevHarness() {
   const showLibrary = library.isConnected && libraryItems.length > 0;
 
   return (
-    <div style={{ maxWidth: showLibrary ? 1440 : 960, margin: '0 auto', padding: 24 }}>
+    <div data-testid="loop-editor-test-page" style={{ maxWidth: showLibrary ? 1440 : 960, margin: '0 auto', padding: 24 }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
         <h1 className="ac-title-md" style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>
-          Loop Editor — Dev Harness
+          Loop Editor
         </h1>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {editor.activeNotes.size > 0 && (
+            <span className="ac-text-muted" style={{ fontSize: 12 }}>
+              MIDI: {editor.activeNotes.size} {editor.activeNotes.size === 1 ? 'voice' : 'voices'}
+            </span>
+          )}
+          <button className="ac-btn ac-btn-sm" onClick={handleLoadFile}>
+            Load WAV
+          </button>
           {library.isConnected && (
             <button className="ac-btn ac-btn-primary ac-btn-sm" onClick={handleSaveToLibrary}>
               Save to Library
@@ -389,9 +403,10 @@ function DevHarness() {
         </div>
       </div>
 
-      <p className="ac-text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
+      <p data-testid="keyboard-input-status" className="ac-text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
         {sampleName} — {sampleRate} Hz, {samples.length} samples
         {libraryOrigin && <span> (from library)</span>}
+        {' · '}Keyboard input: {keyboardInput ? 'active' : 'initializing'}
       </p>
 
       {/* Main content: editor left, library right */}
@@ -401,18 +416,18 @@ function DevHarness() {
             samples={samples}
             sampleRate={sampleRate}
             startPoint={0}
-            loopPoint={loopPoint}
-            endPoint={endPoint}
-            onLoopPointChange={setLoopPoint}
-            onEndPointChange={setEndPoint}
-            candidates={candidates}
-            selectedCandidateIndex={selectedCandidateIndex}
-            onCandidateSelect={setSelectedCandidateIndex}
-            onApplyCandidate={handleApplyCandidate}
-            onAutoDetect={handleAutoDetect}
-            isSearching={isSearching}
-            searchProgress={progress}
-            audio={env.workflow.audio}
+            loopPoint={editor.loopPoint}
+            endPoint={editor.endPoint}
+            onLoopPointChange={editor.setLoopPoint}
+            onEndPointChange={editor.setEndPoint}
+            candidates={editor.candidates}
+            selectedCandidateIndex={editor.selectedCandidateIndex}
+            onCandidateSelect={editor.setSelectedCandidateIndex}
+            onApplyCandidate={editor.handleApplyCandidate}
+            onAutoDetect={editor.handleAutoDetect}
+            isSearching={editor.isSearching}
+            searchProgress={editor.searchProgress}
+            audio={editor.audio}
           />
           {(loadProgress || saveProgress) && (
             <div style={{ marginTop: 16 }}>
