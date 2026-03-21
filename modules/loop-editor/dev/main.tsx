@@ -16,8 +16,7 @@ import '@audiocontrol/editor-core/styles.css';
 
 import React, { useState, useCallback, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
-import { LoopEditor } from '@/ui/LoopEditor';
-import { useLoopEditor } from '@/hooks/use-loop-editor';
+import { LoopEditor, useLoopEditor } from '@audiocontrol/loop-editor/ui';
 import { createKeyboardNoteInput } from '@audiocontrol/synth-core';
 import type { NoteInput } from '@audiocontrol/synth-core';
 import {
