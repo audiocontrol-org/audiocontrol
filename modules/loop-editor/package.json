@@ -39,6 +39,7 @@
   "dependencies": {
     "@audiocontrol/editor-core": "workspace:*",
     "@audiocontrol/sampler-library": "workspace:*",
+    "@audiocontrol/synth-core": "workspace:*",
     "clsx": "^2.1.0",
     "tailwind-merge": "^2.2.0"
   },

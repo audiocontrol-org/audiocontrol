@@ -2,14 +2,15 @@
  * LoopEditorDialog — modal wrapper around the LoopEditor component.
  *
  * Opens a full-screen dialog for editing loop points on library samples.
- * Manages loop state, auto-detection, and save-back to library.
+ * Delegates loop state, detection, audio preview, and MIDI playback to
+ * the shared useLoopEditor hook. This component only provides the dialog
+ * chrome, save button, and MIDI input creation.
  */
 
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { LoopEditor, useLoopDetection } from '@audiocontrol/loop-editor/ui';
-import { createBrowserAudioPlayback } from '@audiocontrol/editor-core';
-import { useSamplePlayer, createWebMidiNoteInput } from '@audiocontrol/synth-core';
+import { LoopEditor, useLoopEditor } from '@audiocontrol/loop-editor/ui';
+import { createWebMidiNoteInput } from '@audiocontrol/synth-core';
 import type { NoteInput } from '@audiocontrol/synth-core';
 
 // =========================================================================
@@ -35,6 +36,8 @@ export interface LoopEditorDialogProps {
   onSave?: (loopStart: number, loopEnd: number) => void;
   /** Root key (MIDI note) for pitched playback — default 60 (C4). */
   rootKey?: number;
+  /** Optional external note input — overrides built-in Web MIDI. */
+  noteInput?: NoteInput | null;
 }
 
 // =========================================================================
@@ -51,25 +54,13 @@ export function LoopEditorDialog({
   loopEnd: initialLoopEnd,
   onSave,
   rootKey = 60,
+  noteInput: externalNoteInput,
 }: LoopEditorDialogProps): JSX.Element {
-  const [loopPoint, setLoopPoint] = useState(initialLoopStart ?? 0);
-  const [endPoint, setEndPoint] = useState(initialLoopEnd ?? (samples?.length ?? 0));
-  const [selectedCandidateIndex, setSelectedCandidateIndex] = useState<number | undefined>(undefined);
-
-  // Reset state when dialog opens with new data
-  const [prevSamples, setPrevSamples] = useState<Int16Array | null>(null);
-  if (samples !== prevSamples) {
-    setPrevSamples(samples);
-    setLoopPoint(initialLoopStart ?? 0);
-    setEndPoint(initialLoopEnd ?? (samples?.length ?? 0));
-    setSelectedCandidateIndex(undefined);
-  }
-
-  const audio = useMemo(() => createBrowserAudioPlayback(), []);
-
-  // MIDI-triggered polyphonic playback
-  const [midiInput, setMidiInput] = useState<NoteInput | null>(null);
+  // Auto-create Web MIDI input when no external input is provided
+  const [autoMidiInput, setAutoMidiInput] = useState<NoteInput | null>(null);
   useEffect(() => {
+    if (externalNoteInput !== undefined) return;
+
     let disposed = false;
     let input: NoteInput | null = null;
     createWebMidiNoteInput()
@@ -79,7 +70,7 @@ export function LoopEditorDialog({
           return;
         }
         input = result;
-        setMidiInput(result);
+        setAutoMidiInput(result);
       })
       .catch(() => {
         // MIDI unavailable — keyboard/mouse playback still works
@@ -87,44 +78,25 @@ export function LoopEditorDialog({
     return () => {
       disposed = true;
       input?.dispose();
-      setMidiInput(null);
+      setAutoMidiInput(null);
     };
-  }, []);
+  }, [externalNoteInput]);
 
-  const { activeNotes } = useSamplePlayer({
+  const effectiveNoteInput = externalNoteInput !== undefined ? externalNoteInput : autoMidiInput;
+
+  const editor = useLoopEditor({
     samples,
     sampleRate,
+    initialLoopStart,
+    initialLoopEnd,
     rootKey,
-    loopEnabled: true,
-    loopStartSample: loopPoint,
-    loopEndSample: endPoint,
-    noteInput: midiInput,
+    noteInput: effectiveNoteInput,
   });
 
-  const {
-    isSearching,
-    progress,
-    candidates,
-    searchLoopPoints,
-    clearResults,
-  } = useLoopDetection();
-
-  const handleAutoDetect = useCallback(() => {
-    if (!samples) return;
-    clearResults();
-    setSelectedCandidateIndex(undefined);
-    searchLoopPoints(new Int16Array(samples), sampleRate, endPoint);
-  }, [samples, sampleRate, endPoint, clearResults, searchLoopPoints]);
-
-  const handleApplyCandidate = useCallback((loopStart: number, loopEnd: number) => {
-    setLoopPoint(loopStart);
-    setEndPoint(loopEnd);
-  }, []);
-
   const handleSave = useCallback(() => {
-    onSave?.(loopPoint, endPoint);
+    onSave?.(editor.loopPoint, editor.endPoint);
     onOpenChange(false);
-  }, [loopPoint, endPoint, onSave, onOpenChange]);
+  }, [editor.loopPoint, editor.endPoint, onSave, onOpenChange]);
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
@@ -142,9 +114,9 @@ export function LoopEditorDialog({
               </Dialog.Description>
             </div>
             <div className="flex items-center gap-2">
-              {activeNotes.size > 0 && (
+              {editor.activeNotes.size > 0 && (
                 <span className="text-xs text-s330-muted px-2">
-                  MIDI: {activeNotes.size} {activeNotes.size === 1 ? 'voice' : 'voices'}
+                  MIDI: {editor.activeNotes.size} {editor.activeNotes.size === 1 ? 'voice' : 'voices'}
                 </span>
               )}
               {onSave && (
@@ -169,18 +141,18 @@ export function LoopEditorDialog({
               samples={samples}
               sampleRate={sampleRate}
               startPoint={0}
-              loopPoint={loopPoint}
-              endPoint={endPoint}
-              onLoopPointChange={setLoopPoint}
-              onEndPointChange={setEndPoint}
-              candidates={candidates}
-              selectedCandidateIndex={selectedCandidateIndex}
-              onCandidateSelect={setSelectedCandidateIndex}
-              onApplyCandidate={handleApplyCandidate}
-              onAutoDetect={handleAutoDetect}
-              isSearching={isSearching}
-              searchProgress={progress}
-              audio={audio}
+              loopPoint={editor.loopPoint}
+              endPoint={editor.endPoint}
+              onLoopPointChange={editor.setLoopPoint}
+              onEndPointChange={editor.setEndPoint}
+              candidates={editor.candidates}
+              selectedCandidateIndex={editor.selectedCandidateIndex}
+              onCandidateSelect={editor.setSelectedCandidateIndex}
+              onApplyCandidate={editor.handleApplyCandidate}
+              onAutoDetect={editor.handleAutoDetect}
+              isSearching={editor.isSearching}
+              searchProgress={editor.searchProgress}
+              audio={editor.audio}
             />
           </div>
         </Dialog.Content>

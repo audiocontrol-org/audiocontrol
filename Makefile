@@ -150,7 +150,7 @@ $(SAMPLER_EXPORT): $(AUDIOTOOLS_CONFIG) $(SAMPLER_BACKUP) $(SAMPLER_DEVICES) $(S
 	cd $(MODULES_DIR)/sampler-export && pnpm build
 	@touch $@
 
-$(LOOP_EDITOR): $(EDITOR_CORE) $(SAMPLER_LIBRARY)
+$(LOOP_EDITOR): $(EDITOR_CORE) $(SAMPLER_LIBRARY) $(SYNTH_CORE)
 	cd $(MODULES_DIR)/loop-editor && pnpm build
 	@touch $@
 

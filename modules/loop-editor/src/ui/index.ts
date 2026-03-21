@@ -9,3 +9,5 @@ export { LoopEditor } from './LoopEditor';
 export type { LoopEditorProps } from './LoopEditor';
 export { useLoopDetection } from './hooks/useLoopDetection';
 export type { UseLoopDetectionResult } from './hooks/useLoopDetection';
+export { useLoopEditor } from '@/hooks/use-loop-editor';
+export type { UseLoopEditorParams, UseLoopEditorReturn } from '@/hooks/use-loop-editor';
