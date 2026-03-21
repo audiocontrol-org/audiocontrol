@@ -1,6 +1,6 @@
 # Portable Library Module with Device Plugin Architecture - Implementation Summary
 
-**Status:** In Progress
+**Status:** Completed (pending manual verification)
 **Last Updated:** 2026-03-20
 
 ## Progress Overview
@@ -12,7 +12,7 @@
 | Phase 3: Plugin Interfaces | Completed | Compile-time checked types |
 | Phase 4: PluginLibraryBrowser Component | Completed | 12 new tests |
 | Phase 5: S-330/S-550 Plugin Implementations | Completed | Adapter components |
-| Phase 6: sampler-editor Migration | In Progress | Plugin adapters complete, LibraryPage migration pending |
+| Phase 6: sampler-editor Migration | Completed | PluginLibraryTreePanel + LibraryPage migration |
 
 ## Implementation Notes
 
@@ -96,27 +96,26 @@ Created in `sampler-editor/src/plugins/`:
 
 ### Phase 6: sampler-editor Migration
 
-**Plugin adapter pattern complete:**
-- S-330/S-550 plugins now have functional adapter components
-- Adapters bridge plugin interface (`DeviceMemoryRenderProps`, `PreviewContext`) to existing components
-- State is passed via `customState` and extracted by adapter components
+**PluginLibraryTreePanel** (`components/library/PluginLibraryTreePanel.tsx`):
+- Replaces LibraryTreePanel with plugin-driven implementation
+- Handles Sets section separately (device-specific, not in plugin categories)
+- Converts `LibraryTreeNode` to editor-core `TreeNode`
+- Context menu actions from plugin categories
+- Drag-drop support for device export and library moves
+- Key functions: `toTreeNode()`, `toLibraryCategory()`, `handleNodeSelect()`, `handlePluginSelectionChange()`
 
-**Remaining work:**
-- Replace LibraryTreePanel usage in LibraryPage with PluginLibraryBrowser
-- Select plugin based on device configuration (`s330LibraryPlugin` vs `s550LibraryPlugin`)
-- Map existing LibraryPage state to PluginLibraryBrowser props
-- Wire up `deviceMemoryState` and `previewState` with existing state
-- Verify no functional regression
+**LibraryPage migration:**
+- Replaced LibraryTreePanel with PluginLibraryTreePanel
+- Plugin selection based on device type: `config.deviceType === 's550' ? s550LibraryPlugin : s330LibraryPlugin`
+- Maps category data to plugin format via `categoryData` memo
+- Maps plugin selection back to page selection via `handlePluginSelectionChange`
+- Removed legacy selection handlers (now handled inline in `handlePluginSelectionChange`)
+- Type-safe casting for `expandedPaths` compatibility
 
-**Migration complexity:**
-The LibraryPage (~540 lines) manages significant state including:
-- Device data (tones, patches from stores)
-- Library data (sets, trees, manifests)
-- Selection state with multiple selection types
-- Many dialogs (save/load set, import/export, create/rename/delete)
-- Multiple preview panel types based on selection
-
-The PluginLibraryBrowser architecture is designed to accommodate this complexity through the `customState` mechanism, allowing existing components to be reused while gaining the plugin architecture benefits.
+**Plugin adapter pattern:**
+- S-330/S-550 plugins use adapter components that bridge the plugin interface to existing components
+- Adapters extract state from `customState` and pass to existing DeviceMemoryPanel and preview panels
+- Existing components remain unchanged
 
 ## Code Metrics
 
@@ -124,13 +123,16 @@ The PluginLibraryBrowser architecture is designed to accommodate this complexity
 |--------|--------|-------|--------|
 | TreeView lines | 363 | 451 | +88 (inline rename) |
 | New shared components (editor-core) | — | 5 files | TreeSection, PluginLibraryBrowser, plugin types |
-| Plugin code (sampler-editor) | — | 7 files | ~950 lines |
+| Plugin code (sampler-editor) | — | 8 files | ~1500 lines |
 | editor-core tests | 145 | 192 | +47 new tests |
-| LibraryPage lines | — | unchanged | Migration pending |
+| PluginLibraryTreePanel | — | 560 lines | New plugin-driven panel |
+| LibraryPage lines | ~700 | 626 | -74 (removed legacy handlers) |
 
 ## Deviations from Plan
 
 - **Adapter pattern**: S-330 and S-550 plugins use adapter components that bridge the plugin interface to existing components via `customState`, rather than reimplementing the panels. This allows the existing DeviceMemoryPanel and preview panels to be reused unchanged.
+
+- **PluginLibraryTreePanel vs PluginLibraryBrowser**: Instead of using the generic PluginLibraryBrowser from editor-core directly in LibraryPage, we created PluginLibraryTreePanel as an intermediate component that handles sampler-editor-specific concerns (Sets section, LibraryTreeNode types, context menus). This maintains a cleaner separation between editor-core abstractions and sampler-editor specifics.
 
 ## Validation
 
