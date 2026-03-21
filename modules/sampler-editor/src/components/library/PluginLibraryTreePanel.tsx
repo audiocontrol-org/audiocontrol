@@ -73,6 +73,10 @@ interface PluginLibraryTreePanelProps {
   onDeleteIndividualTone?: (fileName: string, path?: string[]) => void;
   onDeleteIndividualPatch?: (fileName: string, path?: string[]) => void;
   onDeleteDrumKit?: (directoryName: string, path?: string[]) => void;
+
+  // Tool actions
+  onOpenInLoopEditor?: (name: string, nodeType: string, path?: string[]) => void;
+  onOpenInChopper?: (name: string, nodeType: string, path?: string[]) => void;
 }
 
 // MIME type for device drag data
@@ -173,6 +177,8 @@ export function PluginLibraryTreePanel({
   onDeleteIndividualTone,
   onDeleteIndividualPatch,
   onDeleteDrumKit,
+  onOpenInLoopEditor,
+  onOpenInChopper,
 }: PluginLibraryTreePanelProps): JSX.Element {
   // Sets section state
   const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set());
@@ -306,6 +312,12 @@ export function PluginLibraryTreePanel({
             onMoveItem(toLibraryCategory(categoryId), nodeMeta.path ?? [], nodeMeta.fileName ?? nodeMeta.directoryName ?? node.name);
           } else if (action.id === 'delete') {
             handleNodeDelete(categoryId, node);
+          } else if (action.id === 'open-loop-editor' && onOpenInLoopEditor) {
+            const nodeMeta = node.meta as { fileName?: string; directoryName?: string; path?: string[] };
+            onOpenInLoopEditor(nodeMeta.fileName ?? nodeMeta.directoryName ?? node.name, node.type, nodeMeta.path);
+          } else if (action.id === 'open-chopper' && onOpenInChopper) {
+            const nodeMeta = node.meta as { fileName?: string; directoryName?: string; path?: string[] };
+            onOpenInChopper(nodeMeta.fileName ?? nodeMeta.directoryName ?? node.name, node.type, nodeMeta.path);
           }
           // Note: rename is handled via inline rename, not context menu action
         },
@@ -313,7 +325,7 @@ export function PluginLibraryTreePanel({
     }
 
     return result;
-  }, [contextMenu, plugin.categories, closeContextMenu, onMoveItem, handleNodeDelete]);
+  }, [contextMenu, plugin.categories, closeContextMenu, onMoveItem, handleNodeDelete, onOpenInLoopEditor, onOpenInChopper]);
 
   // Handle drop on directory
   const handleDropOnDirectory = useCallback((categoryId: string, node: TreeNode, e: React.DragEvent) => {

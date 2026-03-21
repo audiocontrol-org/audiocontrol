@@ -16,6 +16,8 @@ interface CommonSamplePreviewPanelProps {
   selection: { type: 'sample' | 'program'; name: string; path?: string[] } | null;
   libraryHandle: StorageDirectoryHandle | null;
   onPromoteToDevice?: (deviceType: string) => void;
+  onOpenInLoopEditor?: (name: string, path?: string[]) => void;
+  onOpenInChopper?: (name: string, path?: string[]) => void;
 }
 
 type DeviceTarget = 's330' | 's550';
@@ -282,6 +284,8 @@ export function CommonSamplePreviewPanel({
   selection,
   libraryHandle,
   onPromoteToDevice,
+  onOpenInLoopEditor,
+  onOpenInChopper,
 }: CommonSamplePreviewPanelProps): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -370,6 +374,26 @@ export function CommonSamplePreviewPanel({
         ) : sample ? (
           <div className="space-y-4">
             <SampleDetails sample={sample} />
+            {(onOpenInLoopEditor || onOpenInChopper) && (
+              <div className="flex flex-col gap-2">
+                {onOpenInLoopEditor && selection && (
+                  <button
+                    onClick={() => onOpenInLoopEditor(selection.name, selection.path)}
+                    className="w-full ac-btn ac-btn-ghost"
+                  >
+                    Open in Loop Editor
+                  </button>
+                )}
+                {onOpenInChopper && selection && (
+                  <button
+                    onClick={() => onOpenInChopper(selection.name, selection.path)}
+                    className="w-full ac-btn ac-btn-ghost"
+                  >
+                    Open in Chopper
+                  </button>
+                )}
+              </div>
+            )}
             <hr className="border-s330-accent/30" />
             <PromoteForm
               onPromote={handlePromote}

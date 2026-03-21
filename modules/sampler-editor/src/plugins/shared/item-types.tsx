@@ -69,6 +69,17 @@ export const toneItemType: ItemTypePlugin<ToneMeta> = {
     },
     { separator: true },
     {
+      id: 'open-loop-editor',
+      label: 'Open in Loop Editor',
+      icon: null,
+    },
+    {
+      id: 'open-chopper',
+      label: 'Open in Chopper',
+      icon: null,
+    },
+    { separator: true },
+    {
       id: 'delete',
       label: 'Delete',
       icon: null,
@@ -199,6 +210,17 @@ export const sampleItemType: ItemTypePlugin<SampleMeta> = {
     {
       id: 'move',
       label: 'Move to...',
+      icon: null,
+    },
+    { separator: true },
+    {
+      id: 'open-loop-editor',
+      label: 'Open in Loop Editor',
+      icon: null,
+    },
+    {
+      id: 'open-chopper',
+      label: 'Open in Chopper',
       icon: null,
     },
     { separator: true },

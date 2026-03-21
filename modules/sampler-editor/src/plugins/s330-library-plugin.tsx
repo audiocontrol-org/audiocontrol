@@ -153,6 +153,8 @@ function S330PreviewPanelAdapter({
         selection={pageSelection ? { type: pageSelection.type as 'sample' | 'program', name: pageSelection.name!, path: pageSelection.path } : null}
         libraryHandle={state.libraryHandle}
         onPromoteToDevice={() => {}}
+        onOpenInLoopEditor={state.onOpenInLoopEditor}
+        onOpenInChopper={state.onOpenInChopper}
       />
     );
   }
@@ -169,6 +171,7 @@ function S330PreviewPanelAdapter({
       onImportIndividualTone={state.onImportIndividualTone}
       onImportIndividualPatch={state.onImportIndividualPatch}
       onLoadSet={state.onLoadSet}
+      onOpenInLoopEditor={state.onOpenInLoopEditor ? (name, _nodeType, path) => state.onOpenInLoopEditor!(name, path) : undefined}
     />
   );
 }

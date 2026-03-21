@@ -30,6 +30,7 @@ import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneD
 import { ImportLibraryPatchDialog } from '@/components/library/ImportLibraryPatchDialog';
 import { ImportSamplesDialog } from '@/components/library/ImportSamplesDialog';
 import { SampleChopperDialog, type SliceDefinitionOutput, type InitialSliceDefinition } from '@audiocontrol/sample-chopper/ui';
+import { LoopEditorDialog } from '@/components/library/LoopEditorDialog';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
 import {
@@ -45,15 +46,17 @@ import {
   listIndividualTonesTree, listIndividualPatchesTree, listDrumKitsTree, listChoppedSamplesTree,
   listCommonSamplesTree,
   loadDrumKitBundle, loadDrumKitSource, updateDrumKitSlices, loadChoppedSampleManifest,
+  loadIndividualToneWavSamples,
   type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo, type LibraryTreeNode,
   type StorageDirectoryHandle,
 } from '@/lib/library-service';
+import { parseWav } from '@/core/midi/S330Client';
 import { CreateDirectoryDialog } from '@/components/library/CreateDirectoryDialog';
 import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialog';
 import { DeleteDirectoryDialog } from '@/components/library/DeleteDirectoryDialog';
 import { MoveItemDialog } from '@/components/library/MoveItemDialog';
 import type { ResolvedDrumKitBundle, ChoppedSample } from '@audiocontrol/sampler-library/browser';
-import { parseNoteName } from '@audiocontrol/sampler-library/browser';
+import { parseNoteName, loadSample } from '@audiocontrol/sampler-library/browser';
 import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 
@@ -115,6 +118,15 @@ export function LibraryPage() {
     open: boolean; kitName: string; path?: string[];
     samples: Int16Array | null; sampleRate: number; slices: InitialSliceDefinition[];
     kitConfig: { name: string; sampleRate: 15000 | 30000; baseNote: number; transpose?: number; velocitySensitivity?: number };
+  } | null>(null);
+  const [loopEditorDialog, setLoopEditorDialog] = useState<{
+    open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
+    loopStart?: number; loopEnd?: number;
+    origin: { name: string; type: string; path?: string[] } | null;
+  } | null>(null);
+  const [chopperDialog, setChopperDialog] = useState<{
+    open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
+    origin: { name: string; type: string; path?: string[] } | null;
   } | null>(null);
   const [selection, setSelection] = useState<ItemSelection | null>(null);
   const library = useLibraryConnection({
@@ -399,6 +411,78 @@ export function LibraryPage() {
     } finally { setLoading(false); setSliceEditDialog(null); }
   }, [libraryHandle, sliceEditDialog, setLoading, setError]);
 
+  // Open in Loop Editor: loads WAV samples and opens the LoopEditorDialog
+  const handleOpenInLoopEditor = useCallback(async (name: string, nodeType: string, path?: string[]) => {
+    if (!libraryHandle) return;
+    try {
+      let samples: Int16Array;
+      let sampleRate: number;
+      let loopStart: number | undefined;
+      let loopEnd: number | undefined;
+
+      if (nodeType === 'tone' || nodeType === 'individualTone') {
+        const result = await loadIndividualToneWavSamples(libraryHandle, name, path ?? []);
+        samples = result.samples;
+        sampleRate = result.sampleRate;
+      } else if (nodeType === 'sample') {
+        const result = await loadSample(libraryHandle, name, path);
+        const wav = parseWav(result.wavData);
+        samples = wav.samples;
+        sampleRate = wav.sampleRate;
+        loopStart = result.yaml.loopStart;
+        loopEnd = result.yaml.loopEnd;
+      } else {
+        throw new Error(`Unsupported node type for loop editor: ${nodeType}`);
+      }
+
+      setLoopEditorDialog({
+        open: true, samples, sampleRate, sampleName: name,
+        loopStart, loopEnd,
+        origin: { name, type: nodeType, path },
+      });
+    } catch (err) {
+      console.error('[LibraryPage] Failed to load WAV for loop editor:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load sample');
+    }
+  }, [libraryHandle, setError]);
+
+  // Open in Chopper: loads WAV samples and opens the SampleChopperDialog
+  const handleOpenInChopper = useCallback(async (name: string, nodeType: string, path?: string[]) => {
+    if (!libraryHandle) return;
+    try {
+      let samples: Int16Array;
+      let sampleRate: number;
+
+      if (nodeType === 'tone' || nodeType === 'individualTone') {
+        const result = await loadIndividualToneWavSamples(libraryHandle, name, path ?? []);
+        samples = result.samples;
+        sampleRate = result.sampleRate;
+      } else if (nodeType === 'sample') {
+        const result = await loadSample(libraryHandle, name, path);
+        const wav = parseWav(result.wavData);
+        samples = wav.samples;
+        sampleRate = wav.sampleRate;
+      } else {
+        throw new Error(`Unsupported node type for chopper: ${nodeType}`);
+      }
+
+      setChopperDialog({
+        open: true, samples, sampleRate, sampleName: name,
+        origin: { name, type: nodeType, path },
+      });
+    } catch (err) {
+      console.error('[LibraryPage] Failed to load WAV for chopper:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load sample');
+    }
+  }, [libraryHandle, setError]);
+
+  // Handle loop editor save (loop points saved back to library)
+  const handleLoopEditorSave = useCallback(async (loopStart: number, loopEnd: number) => {
+    if (!loopEditorDialog?.origin || !libraryHandle) return;
+    // TODO: Write updated loop points back to library YAML
+    console.log('[LibraryPage] Loop editor save:', { loopStart, loopEnd, origin: loopEditorDialog.origin });
+  }, [loopEditorDialog, libraryHandle]);
+
   if (!isConnected) {
     return (
       <div className="ac-page">
@@ -491,6 +575,8 @@ export function LibraryPage() {
             onDeleteIndividualTone={directoryOps.handleDeleteIndividualTone}
             onDeleteIndividualPatch={directoryOps.handleDeleteIndividualPatch}
             onDeleteDrumKit={directoryOps.handleDeleteDrumKit}
+            onOpenInLoopEditor={handleOpenInLoopEditor}
+            onOpenInChopper={handleOpenInChopper}
           />
         </div>
         <div className="card p-0 overflow-hidden h-full">
@@ -509,6 +595,8 @@ export function LibraryPage() {
               selection={selection ? { type: selection.type as 'sample' | 'program', name: selection.name!, path: selection.path } : null}
               libraryHandle={libraryHandle}
               onPromoteToDevice={() => handleRefreshLibrary()}
+              onOpenInLoopEditor={(name, path) => handleOpenInLoopEditor(name, 'sample', path)}
+              onOpenInChopper={(name, path) => handleOpenInChopper(name, 'sample', path)}
             />
           ) : (
             <ItemPreviewPanel
@@ -517,6 +605,7 @@ export function LibraryPage() {
               onImportIndividualTone={importDialogs.handleOpenImportIndividualToneDialog}
               onImportIndividualPatch={importDialogs.handleOpenImportIndividualPatchDialog}
               onLoadSet={importDialogs.handleOpenLoadDialog}
+              onOpenInLoopEditor={handleOpenInLoopEditor}
             />
           )}
         </div>
@@ -619,6 +708,28 @@ export function LibraryPage() {
         currentPath={directoryOps.moveItemDialog?.sourcePath ?? []}
         category={directoryOps.moveItemDialog?.category ?? 'tones'} categoryTree={directoryOps.getMoveDialogTree()}
       />
+      {loopEditorDialog && (
+        <LoopEditorDialog
+          open={loopEditorDialog.open}
+          onOpenChange={(open) => { if (!open) setLoopEditorDialog(null); }}
+          samples={loopEditorDialog.samples}
+          sampleRate={loopEditorDialog.sampleRate}
+          sampleName={loopEditorDialog.sampleName}
+          loopStart={loopEditorDialog.loopStart}
+          loopEnd={loopEditorDialog.loopEnd}
+          onSave={handleLoopEditorSave}
+        />
+      )}
+      {chopperDialog && (
+        <SampleChopperDialog
+          open={chopperDialog.open}
+          onOpenChange={(open) => { if (!open) setChopperDialog(null); }}
+          samples={chopperDialog.samples}
+          sampleRate={chopperDialog.sampleRate}
+          sourceName={chopperDialog.sampleName}
+          onConfirm={() => { setChopperDialog(null); }}
+        />
+      )}
     </div>
   );
 }

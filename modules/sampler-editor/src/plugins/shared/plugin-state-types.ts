@@ -72,4 +72,8 @@ export interface PreviewPanelCustomState {
   onLoadSet?: () => void;
   onImportDrumKit?: () => void;
   onEditDrumKit?: () => void;
+
+  // Tool action callbacks
+  onOpenInLoopEditor?: (name: string, path?: string[]) => void;
+  onOpenInChopper?: (name: string, path?: string[]) => void;
 }
