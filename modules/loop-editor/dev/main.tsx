@@ -62,29 +62,85 @@ function toTreeNodes(nodes: LibraryTreeNode[]): TreeNode[] {
   }));
 }
 
-/** Generate a test tone with a clean loop region. */
-function generateTestAudio(sampleRate: number, durationSeconds: number): Int16Array {
-  const length = sampleRate * durationSeconds;
-  const samples = new Int16Array(length);
+const DEFAULT_SAMPLE_RATE = 30000;
 
-  for (let i = 0; i < length; i++) {
-    const t = i / sampleRate;
-    const fundamental = Math.sin(2 * Math.PI * 440 * t);
-    const harmonic2 = 0.5 * Math.sin(2 * Math.PI * 880 * t);
-    const harmonic3 = 0.25 * Math.sin(2 * Math.PI * 1320 * t);
-    const envelope = Math.min(1, t * 20);
-    const value = (fundamental + harmonic2 + harmonic3) * envelope * 0.6;
-    samples[i] = Math.round(value * 32767);
-  }
+// ---------------------------------------------------------------------------
+// Test signal generators (inlined — same signals as sampler-library's
+// loop-detector/testing/test-signals.ts and the sampler-editor test page)
+// ---------------------------------------------------------------------------
 
-  return samples;
+function toneAt(i: number, sr: number, amplitude: number): number {
+  const t = i / sr;
+  return (Math.sin(2 * Math.PI * 440 * t) + 0.5 * Math.sin(2 * Math.PI * 880 * t) +
+    0.25 * Math.sin(2 * Math.PI * 1320 * t)) * amplitude * 0.6;
+}
+
+const SIGNAL_GENERATORS: Record<string, (sr: number) => Int16Array> = {
+  'sustain': (sr) => {
+    const buf = new Int16Array(sr * 2);
+    for (let i = 0; i < buf.length; i++) buf[i] = Math.round(toneAt(i, sr, 0.8) * 32767);
+    return buf;
+  },
+  'leading-silence': (sr) => {
+    const silence = Math.round(sr * 0.3);
+    const buf = new Int16Array(sr * 2);
+    for (let i = silence; i < buf.length; i++) {
+      const fadeIn = Math.min(1, (i - silence) / (sr * 0.005));
+      buf[i] = Math.round(toneAt(i, sr, fadeIn) * 32767);
+    }
+    return buf;
+  },
+  'trailing-silence': (sr) => {
+    const toneLen = Math.round(sr * 1.5);
+    const buf = new Int16Array(sr * 2);
+    for (let i = 0; i < toneLen; i++) {
+      const fadeOut = Math.min(1, (toneLen - i) / (sr * 0.005));
+      buf[i] = Math.round(toneAt(i, sr, fadeOut) * 32767);
+    }
+    return buf;
+  },
+  'constant-decay': (sr) => {
+    const buf = new Int16Array(sr * 2);
+    const tau = buf.length / Math.log(1000);
+    for (let i = 0; i < buf.length; i++) buf[i] = Math.round(toneAt(i, sr, Math.exp(-i / tau)) * 32767);
+    return buf;
+  },
+  'decay-into-sustain': (sr) => {
+    const attack = Math.round(sr * 0.01);
+    const decay = Math.round(sr * 0.19);
+    const buf = new Int16Array(sr * 2);
+    for (let i = 0; i < buf.length; i++) {
+      let env: number;
+      if (i < attack) env = i / attack;
+      else if (i < attack + decay) env = 0.6 + 0.4 * Math.exp(-((i - attack) / decay) * 5);
+      else env = 0.6;
+      buf[i] = Math.round(toneAt(i, sr, env) * 32767);
+    }
+    return buf;
+  },
+  'sustain-trailing-decay': (sr) => {
+    const sustainLen = Math.round(sr * 1.5);
+    const decayLen = Math.round(sr * 0.5);
+    const buf = new Int16Array(sustainLen + decayLen);
+    for (let i = 0; i < buf.length; i++) {
+      const env = i < sustainLen ? 0.8 : 0.8 * Math.exp(-((i - sustainLen) / decayLen) * 5);
+      buf[i] = Math.round(toneAt(i, sr, env) * 32767);
+    }
+    return buf;
+  },
+};
+
+function getInitialSignal(): { samples: Int16Array; name: string } {
+  const param = new URLSearchParams(window.location.search).get('signal') ?? 'sustain';
+  const gen = SIGNAL_GENERATORS[param] ?? SIGNAL_GENERATORS['sustain']!;
+  return { samples: gen(DEFAULT_SAMPLE_RATE), name: param };
 }
 
 function DevHarness() {
-  const defaultSampleRate = 30000;
-  const [samples, setSamples] = useState(() => generateTestAudio(defaultSampleRate, 2));
-  const [sampleRate, setSampleRate] = useState(defaultSampleRate);
-  const [sampleName, setSampleName] = useState('Test Tone');
+  const initial = React.useMemo(() => getInitialSignal(), []);
+  const [samples, setSamples] = useState(initial.samples);
+  const [sampleRate, setSampleRate] = useState(DEFAULT_SAMPLE_RATE);
+  const [sampleName, setSampleName] = useState(initial.name);
 
   // Keyboard note input for MIDI playback without hardware
   const [keyboardInput, setKeyboardInput] = useState<NoteInput | null>(null);
@@ -98,8 +154,8 @@ function DevHarness() {
   const editor = useLoopEditor({
     samples,
     sampleRate,
-    initialLoopStart: Math.floor(defaultSampleRate * 0.5),
-    initialLoopEnd: Math.floor(defaultSampleRate * 1.5),
+    initialLoopStart: Math.floor(DEFAULT_SAMPLE_RATE * 0.5),
+    initialLoopEnd: Math.floor(DEFAULT_SAMPLE_RATE * 1.5),
     rootKey: 60,
     noteInput: keyboardInput,
   });
@@ -403,6 +459,7 @@ function DevHarness() {
         </div>
       </div>
 
+      <span data-testid="signal-name" hidden>{initial.name}</span>
       <p data-testid="keyboard-input-status" className="ac-text-muted" style={{ fontSize: 14, marginBottom: 24 }}>
         {sampleName} — {sampleRate} Hz, {samples.length} samples
         {libraryOrigin && <span> (from library)</span>}

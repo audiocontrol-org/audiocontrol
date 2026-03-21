@@ -25,6 +25,7 @@ export default defineConfig({
   },
   server: {
     port: 3332,
+    strictPort: false,
     host: true,
     allowedHosts: ['orion-m1', 'orion-m1.local', 'orion-m1.tail8254f4.ts.net'],
     ...(hasCerts && {
