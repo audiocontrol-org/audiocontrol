@@ -271,34 +271,28 @@ describe('Loop detector integration tests', () => {
       }
     });
 
-    it('should find candidates with a very lenient silence threshold', () => {
+    it('should still reject decaying sample even with lenient silence threshold', () => {
       const { samples, sampleRate } = loadSample();
 
-      // With a very lenient threshold (-80 dB), even quiet loops should be accepted
-      // This tests that the algorithm itself works, even for decaying samples
-      const candidates = searchLoopPoints(
-        samples,
-        sampleRate,
-        undefined,
-        { silenceThresholdDb: -80 }, // Very lenient - almost any audio is "loud enough"
-      );
+      // Even with a very lenient silence threshold, decaying samples should be rejected
+      // because they lack a sustained region, not because they're quiet.
+      // The sustain end detection now correctly identifies this as a decaying sample.
+      expect(() => {
+        searchLoopPoints(
+          samples,
+          sampleRate,
+          undefined,
+          { silenceThresholdDb: -80 }, // Very lenient - but won't help without sustain
+        );
+      }).toThrow(LoopDetectionError);
 
-      console.log(`Threshold -80 dB: ${candidates.length} candidates`);
-
-      // With such a lenient threshold, we should find candidates
-      expect(candidates.length).toBeGreaterThan(0);
-
-      if (candidates.length > 0) {
-        console.log('\nTop candidate:');
-        const c = candidates[0];
-        console.log(`  ${c.loopStart} -> ${c.loopEnd} (length: ${c.loopEnd - c.loopStart})`);
-        console.log(`  NCC: ${(c.nccScore * 100).toFixed(1)}%, Spectral: ${(c.spectralScore * 100).toFixed(1)}%, Slope: ${(c.slopeScore * 100).toFixed(1)}%`);
-
-        // Calculate RMS at this loop point to show it's in a quiet region
-        const windowSamples = msToSamples(50, sampleRate);
-        const loopRms = calculateRms(samples, c.loopStart, windowSamples);
-        const loopDb = 20 * Math.log10(loopRms);
-        console.log(`  Loop region RMS: ${loopRms.toFixed(6)} (${loopDb.toFixed(1)} dB)`);
+      try {
+        searchLoopPoints(samples, sampleRate, undefined, { silenceThresholdDb: -80 });
+      } catch (error) {
+        if (error instanceof LoopDetectionError) {
+          console.log('Correctly rejected:', error.reason);
+          expect(error.reason).toBe('decaying_sample');
+        }
       }
     });
   });
@@ -735,6 +729,109 @@ RESULT:
       // With the longer window, derivatives should be much more stable
       // (compared to 0.095 average with old 10ms window)
       console.log('\n  FIX VERIFIED: Longer window produces stable derivatives for low-freq bass');
+    });
+  });
+
+  describe('Omni Double Sat-13C.wav (sustained with decay tail)', () => {
+    const wavPath = join(FIXTURES_DIR, 'Omni Double Sat-13C.wav');
+    let samples: Int16Array;
+    let sampleRate: number;
+
+    const loadSample = () => {
+      if (!samples) {
+        const nodeBuffer = readFileSync(wavPath);
+        const arrayBuffer = nodeBuffer.buffer.slice(
+          nodeBuffer.byteOffset,
+          nodeBuffer.byteOffset + nodeBuffer.byteLength
+        );
+        const wavData = parseWav(arrayBuffer);
+        samples = wavData.samples;
+        sampleRate = wavData.sampleRate;
+      }
+      return { samples, sampleRate };
+    };
+
+    it('should load the sample correctly', () => {
+      const { samples, sampleRate } = loadSample();
+
+      console.log('Sample properties:', {
+        sampleRate,
+        length: samples.length,
+        durationMs: (samples.length / sampleRate) * 1000,
+        durationSec: samples.length / sampleRate,
+      });
+
+      expect(samples.length).toBeGreaterThan(0);
+      expect(sampleRate).toBeGreaterThan(0);
+    });
+
+    it('should analyze envelope characteristics', () => {
+      const { samples, sampleRate } = loadSample();
+
+      const windowMs = 50;
+      const windowSamples = msToSamples(windowMs, sampleRate);
+
+      // Sample at regular intervals to understand the envelope shape
+      const numSamples = 20;
+      const stepSize = Math.floor(samples.length / numSamples);
+
+      console.log('\nEnvelope analysis (RMS at regular intervals):');
+      const rmsValues: number[] = [];
+
+      for (let i = 0; i < numSamples; i++) {
+        const pos = i * stepSize;
+        const rms = calculateRms(samples, pos, Math.min(windowSamples, samples.length - pos));
+        const rmsDb = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
+        const percent = ((pos / samples.length) * 100).toFixed(0);
+        console.log(`  ${percent}%: RMS=${rms.toFixed(6)} (${rmsDb.toFixed(1)} dB)`);
+        rmsValues.push(rms);
+      }
+
+      // Check decay ratio (first quarter vs last quarter)
+      const quarterLength = Math.floor(rmsValues.length / 4);
+      const firstQuarterAvg = rmsValues.slice(0, quarterLength).reduce((a, b) => a + b, 0) / quarterLength;
+      const lastQuarterAvg = rmsValues.slice(-quarterLength).reduce((a, b) => a + b, 0) / quarterLength;
+      const decayRatio = lastQuarterAvg / firstQuarterAvg;
+
+      console.log(`\nDecay analysis:`);
+      console.log(`  First quarter avg RMS: ${firstQuarterAvg.toFixed(6)}`);
+      console.log(`  Last quarter avg RMS: ${lastQuarterAvg.toFixed(6)}`);
+      console.log(`  Decay ratio: ${decayRatio.toFixed(3)}`);
+      console.log(`  Is decaying (ratio < 0.5): ${decayRatio < 0.5 ? 'YES' : 'NO'}`);
+    });
+
+    it('should find loop candidates (sample has sustain region)', () => {
+      const { samples, sampleRate } = loadSample();
+
+      console.log('\nAttempting loop detection...');
+
+      let candidates: ReturnType<typeof searchLoopPoints> = [];
+      let error: Error | null = null;
+
+      try {
+        candidates = searchLoopPoints(samples, sampleRate);
+      } catch (e) {
+        error = e as Error;
+      }
+
+      if (error) {
+        console.log('Loop detection failed:', error.message);
+        if (error instanceof LoopDetectionError) {
+          console.log('Reason:', error.reason);
+        }
+        // This sample should NOT fail - it has sustain
+        throw new Error(`Loop detection incorrectly failed: ${error.message}`);
+      }
+
+      console.log(`Found ${candidates.length} candidates`);
+      expect(candidates.length).toBeGreaterThan(0);
+
+      if (candidates.length > 0) {
+        const best = candidates[0];
+        const loopLengthMs = ((best.loopEnd - best.loopStart) / sampleRate) * 1000;
+        console.log(`Best loop: ${best.loopStart} -> ${best.loopEnd} (${loopLengthMs.toFixed(0)}ms)`);
+        console.log(`  Composite score: ${(best.compositeScore * 100).toFixed(1)}%`);
+      }
     });
   });
 });

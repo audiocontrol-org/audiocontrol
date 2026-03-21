@@ -13,7 +13,7 @@
 
 import { msToSamples, calculateRms, dbToAmplitude, amplitudeToDb } from '@/sample-chopper/audio-utils.js';
 import { deduplicateCandidates, rankCandidates, scoreCandidates } from '@/loop-detector/candidate-scorer.js';
-import { findSustainStart } from '@/loop-detector/transient-excluder.js';
+import { findSustainStart, findSustainEnd } from '@/loop-detector/transient-excluder.js';
 import {
   DEFAULT_SEARCH_CONFIG,
   HARDWARE_CONSTRAINTS,
@@ -142,14 +142,39 @@ export function searchLoopPoints(
 
   // Step 2: Determine search regions
   // Strategy: Search for start candidates EARLY in the sustain region,
-  // and end candidates LATE in the sample. This naturally produces long loops.
+  // and end candidates before the decay tail (if any).
   let effectiveEndPoint = targetEndPoint ?? samples.length;
 
   const endSearchWindowSamples = msToSamples(cfg.searchWindowMs, sampleRate);
   const startSearchWindowSamples = msToSamples(cfg.startSearchWindowMs, sampleRate);
 
-  // Step 2a: Exclude trailing silence if configured
-  // This prevents finding "perfect" loops in silent regions at the end of samples
+  // Step 2a: Find where sustain ends (decay begins)
+  // This is more important than trailing silence for samples with decay tails
+  const sustainEnd = findSustainEnd(samples, sampleRate, sustainStart, {
+    minSustainOffsetMs: cfg.sustainStartMs,
+  });
+
+  // Calculate minimum required sustain region for loop detection
+  const minSustainRegion = startSearchWindowSamples + HARDWARE_CONSTRAINTS.MIN_LOOP_LENGTH + endSearchWindowSamples;
+
+  // Check if sustain region is too short (indicates a decaying sample)
+  const sustainRegionLength = sustainEnd - sustainStart;
+  if (sustainRegionLength < minSustainRegion) {
+    // The sample decays too quickly to find valid loop points
+    throw new LoopDetectionError(
+      'No suitable loop points found. This appears to be a decaying sample without a sustained region.',
+      'decaying_sample'
+    );
+  }
+
+  // Use the earlier of: sustain end, audio end (silence trimmed), or target end
+  if (sustainEnd < effectiveEndPoint) {
+    effectiveEndPoint = sustainEnd;
+    onProgress?.(15, `Sustain ends at sample ${sustainEnd} (${((sustainEnd / sampleRate) * 1000).toFixed(0)}ms)`);
+  }
+
+  // Step 2b: Also exclude trailing silence if configured
+  // This prevents finding loops in silent regions
   if (cfg.excludeTrailingSilence) {
     const audioEnd = findAudioEnd(samples, sampleRate, cfg.silenceThresholdDb, effectiveEndPoint);
     if (audioEnd < effectiveEndPoint) {
