@@ -498,7 +498,8 @@ export function LibraryPage() {
         await writable.close();
       } else if (nodeType === 'tone') {
         // Individual tone: update tone YAML's wave.loopPoint
-        const tonesDir = await getNestedDirectory(libraryHandle, ['library', config.deviceType, 'tones', ...(path ?? [])]);
+        // All S-series devices share the s330 library section
+        const tonesDir = await getNestedDirectory(libraryHandle, ['library', 's330', 'tones', ...(path ?? [])]);
         const toneHandle = await tonesDir.getFileHandle(name);
         const toneFile = await toneHandle.getFile();
         const yaml = parseYaml(await toneFile.text());
@@ -513,7 +514,7 @@ export function LibraryPage() {
       console.error('[LibraryPage] Failed to save loop points:', err);
       setError(err instanceof Error ? err.message : 'Failed to save loop points');
     }
-  }, [loopEditorDialog, libraryHandle, config.deviceType, setError]);
+  }, [loopEditorDialog, libraryHandle, setError]);
 
   if (!isConnected) {
     return (
