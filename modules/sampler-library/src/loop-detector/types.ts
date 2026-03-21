@@ -196,13 +196,15 @@ export interface SpliceConfig {
 export interface TransientConfig {
   /**
    * RMS window size in milliseconds for envelope calculation.
-   * @default 10
+   * Should span multiple waveform cycles for low-frequency sounds
+   * (e.g., 50ms spans ~6.5 cycles at 130Hz).
+   * @default 50
    */
   windowMs: number;
 
   /**
    * Hop size in milliseconds between RMS calculations.
-   * @default 5
+   * @default 10
    */
   hopMs: number;
 
@@ -219,6 +221,23 @@ export interface TransientConfig {
    * @default 50
    */
   minSustainOffsetMs: number;
+
+  /**
+   * Threshold for detecting already-stable samples.
+   * If the normalized envelope variance (coefficient of variation squared)
+   * is below this value, the sample is considered stable from the start
+   * and sustain detection is skipped.
+   * @default 0.02
+   */
+  stableEnvelopeVarianceThreshold: number;
+
+  /**
+   * Maximum position (as ratio of sample length) for sustain detection.
+   * Prevents sustain from being detected near the end of the sample,
+   * which would leave no room for loop point search.
+   * @default 0.25
+   */
+  maxSustainPositionRatio: number;
 }
 
 /**
@@ -315,10 +334,12 @@ export const DEFAULT_SPLICE_CONFIG: SpliceConfig = {
  * Default transient configuration values.
  */
 export const DEFAULT_TRANSIENT_CONFIG: TransientConfig = {
-  windowMs: 10,
-  hopMs: 5,
+  windowMs: 50,
+  hopMs: 10,
   derivativeThreshold: 0.01,
   minSustainOffsetMs: 50,
+  stableEnvelopeVarianceThreshold: 0.02,
+  maxSustainPositionRatio: 0.25,
 };
 
 /**

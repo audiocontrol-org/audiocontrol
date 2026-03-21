@@ -59,6 +59,14 @@ export function findSustainStart(
     return Math.min(minSustainOffsetSamples, samples.length);
   }
 
+  // FIX 1: Check if envelope is already stable (handles sustained bass sounds)
+  // Low-frequency sounds with stable amplitude don't need transient detection
+  const envelopeVariance = calculateEnvelopeVariance(rmsEnvelope);
+  if (envelopeVariance < cfg.stableEnvelopeVarianceThreshold) {
+    // Sample is already stable from the start, use minimum offset
+    return Math.min(minSustainOffsetSamples, samples.length);
+  }
+
   // Calculate derivative of RMS envelope (normalized)
   const derivatives = calculateEnvelopeDerivative(rmsEnvelope, peakRms);
 
@@ -68,8 +76,22 @@ export function findSustainStart(
   // Convert frame index back to sample index
   const sustainSampleIndex = sustainFrameIndex * effectiveHopSize;
 
+  // FIX 2: Apply sanity cap for non-decaying samples
+  // Decaying samples (like percussion) naturally have late sustain points and should
+  // NOT be capped - they need their original sustain position for proper error reporting.
+  // Only sustained samples with incorrect late detection should be capped.
+  const isDecaying = isDecayingEnvelope(rmsEnvelope);
+  let finalSustainIndex = sustainSampleIndex;
+
+  if (!isDecaying) {
+    // Apply sanity cap - never detect sustain past maxSustainPositionRatio
+    // This prevents invalid search regions when transient detection fails on sustained samples
+    const maxSustainPosition = Math.floor(samples.length * cfg.maxSustainPositionRatio);
+    finalSustainIndex = Math.min(sustainSampleIndex, maxSustainPosition);
+  }
+
   // Ensure we're at least at the minimum offset
-  return Math.max(sustainSampleIndex, minSustainOffsetSamples);
+  return Math.max(finalSustainIndex, minSustainOffsetSamples);
 }
 
 /**
@@ -92,6 +114,70 @@ function calculateEnvelopeDerivative(envelope: number[], peakRms: number): numbe
   }
 
   return derivatives;
+}
+
+/**
+ * Calculate normalized variance of RMS envelope.
+ * Low variance = stable amplitude (sustained sound).
+ *
+ * Returns the coefficient of variation squared: variance / mean^2
+ * This normalizes the variance to be independent of signal amplitude.
+ *
+ * @param envelope - Array of RMS values
+ * @returns Normalized variance (0 = perfectly stable)
+ */
+function calculateEnvelopeVariance(envelope: number[]): number {
+  if (envelope.length < 2) return 0;
+
+  const mean = envelope.reduce((sum, val) => sum + val, 0) / envelope.length;
+  if (mean === 0) return 0;
+
+  const variance =
+    envelope.reduce((sum, val) => {
+      const diff = val - mean;
+      return sum + diff * diff;
+    }, 0) / envelope.length;
+
+  return variance / (mean * mean); // Coefficient of variation squared
+}
+
+/**
+ * Check if an envelope represents a decaying signal (like percussion or plucked strings).
+ *
+ * A decaying envelope has a consistent downward trend in RMS over time.
+ * This is detected by comparing RMS in the first and second halves.
+ *
+ * @param envelope - Array of RMS values
+ * @returns true if the envelope shows consistent decay
+ */
+function isDecayingEnvelope(envelope: number[]): boolean {
+  if (envelope.length < 10) return false;
+
+  // Compare first 25% to last 25%
+  const quarterLength = Math.floor(envelope.length / 4);
+  if (quarterLength < 2) return false;
+
+  // Calculate average RMS in first quarter
+  let firstQuarterSum = 0;
+  for (let i = 0; i < quarterLength; i++) {
+    firstQuarterSum += envelope[i];
+  }
+  const firstQuarterAvg = firstQuarterSum / quarterLength;
+
+  // Calculate average RMS in last quarter
+  let lastQuarterSum = 0;
+  const lastQuarterStart = envelope.length - quarterLength;
+  for (let i = lastQuarterStart; i < envelope.length; i++) {
+    lastQuarterSum += envelope[i];
+  }
+  const lastQuarterAvg = lastQuarterSum / quarterLength;
+
+  // Decaying if last quarter is significantly quieter than first quarter
+  // Using a threshold of 50% reduction (factor of 0.5)
+  if (firstQuarterAvg === 0) return false;
+  const decayRatio = lastQuarterAvg / firstQuarterAvg;
+
+  return decayRatio < 0.5;
 }
 
 /**

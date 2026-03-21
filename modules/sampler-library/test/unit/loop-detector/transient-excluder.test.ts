@@ -47,6 +47,55 @@ function generatePercussive(sampleRate: number, durationMs: number): Int16Array 
   return samples;
 }
 
+/**
+ * Generate a sustained sine wave at a specific frequency.
+ * Simulates low-frequency bass sounds that previously caused sustain detection issues.
+ */
+function generateSustainedSine(
+  frequencyHz: number,
+  durationMs: number,
+  sampleRate: number
+): Int16Array {
+  const samples = new Int16Array(msToSamples(durationMs, sampleRate));
+
+  for (let i = 0; i < samples.length; i++) {
+    const t = i / sampleRate;
+    samples[i] = Math.round(25000 * Math.sin(2 * Math.PI * frequencyHz * t));
+  }
+
+  return samples;
+}
+
+/**
+ * Generate a low-frequency sine with an attack envelope.
+ * The amplitude ramps up over attackMs, then sustains.
+ */
+function generateLowFreqWithAttack(
+  frequencyHz: number,
+  attackMs: number,
+  sustainMs: number,
+  sampleRate: number
+): Int16Array {
+  const attackSamples = msToSamples(attackMs, sampleRate);
+  const totalSamples = attackSamples + msToSamples(sustainMs, sampleRate);
+  const samples = new Int16Array(totalSamples);
+
+  for (let i = 0; i < totalSamples; i++) {
+    const t = i / sampleRate;
+    const sineValue = Math.sin(2 * Math.PI * frequencyHz * t);
+
+    // Apply attack envelope
+    let envelope = 1.0;
+    if (i < attackSamples) {
+      envelope = i / attackSamples;
+    }
+
+    samples[i] = Math.round(25000 * envelope * sineValue);
+  }
+
+  return samples;
+}
+
 describe('findSustainStart', () => {
   it('should find sustain region in attack-sustain signal', () => {
     const sampleRate = 30000;
@@ -123,6 +172,92 @@ describe('findSustainStart', () => {
     // Constant signal has no attack, should return minimum offset
     const minOffsetSamples = msToSamples(50, sampleRate);
     expect(sustainStart).toBe(minOffsetSamples);
+  });
+
+  describe('low-frequency bass sounds', () => {
+    it('should detect sustain early for 130Hz sustained sine (C3 bass)', () => {
+      const sampleRate = 30000;
+      // 130Hz = ~7.7ms per cycle, need 500ms+ for meaningful test
+      const samples = generateSustainedSine(130, 1000, sampleRate);
+
+      const sustainStart = findSustainStart(samples, sampleRate);
+
+      // Sustain should be detected early (within first 25% of sample)
+      const maxSustainPosition = samples.length * 0.25;
+      expect(sustainStart).toBeLessThanOrEqual(maxSustainPosition);
+    });
+
+    it('should detect sustain early for 40Hz sustained sine (sub-bass)', () => {
+      const sampleRate = 30000;
+      // 40Hz = 25ms per cycle, very low frequency
+      const samples = generateSustainedSine(40, 1000, sampleRate);
+
+      const sustainStart = findSustainStart(samples, sampleRate);
+
+      // Sub-bass should also be detected as stable early
+      const maxSustainPosition = samples.length * 0.25;
+      expect(sustainStart).toBeLessThanOrEqual(maxSustainPosition);
+    });
+
+    it('should detect attack correctly for low-freq with envelope', () => {
+      const sampleRate = 30000;
+      const attackMs = 80;
+      // 130Hz bass with attack phase
+      const samples = generateLowFreqWithAttack(130, attackMs, 500, sampleRate);
+
+      const sustainStart = findSustainStart(samples, sampleRate);
+
+      // Should detect sustain after the attack but within reasonable bounds
+      const minSustainOffset = msToSamples(50, sampleRate);
+      const maxSustainPosition = samples.length * 0.25;
+
+      expect(sustainStart).toBeGreaterThanOrEqual(minSustainOffset);
+      expect(sustainStart).toBeLessThanOrEqual(maxSustainPosition);
+    });
+
+    it('should respect maxSustainPositionRatio config', () => {
+      const sampleRate = 30000;
+      const samples = generateSustainedSine(130, 1000, sampleRate);
+
+      // Test with different cap ratios
+      const sustainWith10Percent = findSustainStart(samples, sampleRate, {
+        maxSustainPositionRatio: 0.10,
+      });
+      const sustainWith50Percent = findSustainStart(samples, sampleRate, {
+        maxSustainPositionRatio: 0.50,
+      });
+
+      // With 10% cap, sustain should be at most 10% into sample
+      expect(sustainWith10Percent).toBeLessThanOrEqual(samples.length * 0.10);
+
+      // Both should respect their respective caps
+      expect(sustainWith50Percent).toBeLessThanOrEqual(samples.length * 0.50);
+    });
+
+    it('should use stableEnvelopeVarianceThreshold for sustained signals', () => {
+      const sampleRate = 30000;
+      const samples = generateSustainedSine(130, 1000, sampleRate);
+      const minOffsetSamples = msToSamples(50, sampleRate);
+
+      // With a high variance threshold, stable samples should return early
+      const sustainWithHighThreshold = findSustainStart(samples, sampleRate, {
+        stableEnvelopeVarianceThreshold: 0.5, // Very permissive
+        minSustainOffsetMs: 50,
+      });
+
+      // Should return minimum offset for stable sample
+      expect(sustainWithHighThreshold).toBe(minOffsetSamples);
+
+      // With a very low threshold, stable check won't trigger
+      // (but sanity cap will still apply)
+      const sustainWithLowThreshold = findSustainStart(samples, sampleRate, {
+        stableEnvelopeVarianceThreshold: 0.0001, // Very strict
+        maxSustainPositionRatio: 0.25,
+      });
+
+      // Should still be capped at 25%
+      expect(sustainWithLowThreshold).toBeLessThanOrEqual(samples.length * 0.25);
+    });
   });
 });
 
