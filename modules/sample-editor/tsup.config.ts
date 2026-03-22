@@ -11,6 +11,7 @@ export default defineConfig({
     'react',
     'react-dom',
     '@radix-ui/react-dialog',
+    '@radix-ui/react-tabs',
     '@audiocontrol/synth-core',
     '@audiocontrol/sampler-library',
   ],

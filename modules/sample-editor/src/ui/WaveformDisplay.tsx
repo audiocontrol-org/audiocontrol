@@ -18,9 +18,12 @@ export interface WaveformDisplayProps {
   onSelectionChange?: (sel: { start: number; end: number } | null) => void;
   height?: number;
   className?: string;
+  /** When true, waveform is showing a preview (uses a different color). */
+  isPreview?: boolean;
 }
 
 const WAVEFORM_COLOR = '#4a9eff';
+const PREVIEW_WAVEFORM_COLOR = '#f0a030';
 const SELECTION_COLOR = 'rgba(74, 158, 255, 0.25)';
 const BG_COLOR = '#1a1a2e';
 const CENTER_LINE_COLOR = '#333355';
@@ -32,6 +35,7 @@ export function WaveformDisplay({
   onSelectionChange,
   height = 200,
   className,
+  isPreview = false,
 }: WaveformDisplayProps): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -87,7 +91,7 @@ export function WaveformDisplay({
 
     // Peak-decimated waveform
     const samplesPerPixel = samples.length / w;
-    ctx.strokeStyle = WAVEFORM_COLOR;
+    ctx.strokeStyle = isPreview ? PREVIEW_WAVEFORM_COLOR : WAVEFORM_COLOR;
     ctx.lineWidth = 1;
 
     ctx.beginPath();
@@ -109,7 +113,7 @@ export function WaveformDisplay({
       ctx.lineTo(x + 0.5, yMax);
     }
     ctx.stroke();
-  }, [samples, canvasWidth, height, selection]);
+  }, [samples, canvasWidth, height, selection, isPreview]);
 
   const pixelToSample = useCallback(
     (clientX: number): number => {

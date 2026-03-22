@@ -34,6 +34,14 @@ export interface UseSampleEditorReturn {
   isDirty: boolean;
   /** History for display. */
   history: Array<{ label: string; isCurrent: boolean }>;
+  /** Preview samples — if non-null, the waveform should show these instead of committed samples. */
+  preview: Int16Array | null;
+  /** Set a preview by applying an operation to the current committed samples. Null to clear. */
+  setPreview(operation: ((samples: Int16Array, sr: number) => Int16Array) | null): void;
+  /** Commit the current preview to the undo history with a label. */
+  commitPreview(label: string): void;
+  /** The samples to display (preview if active, otherwise committed). */
+  displaySamples: Int16Array | null;
 }
 
 interface HistoryState {
@@ -53,6 +61,7 @@ export function useSampleEditor({
   }));
 
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
+  const [preview, setPreviewState] = useState<Int16Array | null>(null);
 
   const currentEntry = historyState.currentIndex >= 0
     ? historyState.entries[historyState.currentIndex]
@@ -96,10 +105,42 @@ export function useSampleEditor({
     [sampleRate],
   );
 
+  const setPreview = useCallback(
+    (operation: ((s: Int16Array, sr: number) => Int16Array) | null) => {
+      if (!operation || !samples) {
+        setPreviewState(null);
+        return;
+      }
+      setPreviewState(operation(samples, sampleRate));
+    },
+    [samples, sampleRate],
+  );
+
+  const commitPreview = useCallback(
+    (label: string) => {
+      if (!preview) return;
+      const committed = preview;
+      setPreviewState(null);
+      setHistoryState((prev) => {
+        const base = prev.entries.slice(0, prev.currentIndex + 1);
+        const entries = [...base, { label, samples: committed }];
+        if (entries.length > MAX_HISTORY) {
+          const excess = entries.length - MAX_HISTORY;
+          return { entries: entries.slice(excess), currentIndex: entries.length - excess - 1 };
+        }
+        return { entries, currentIndex: entries.length - 1 };
+      });
+    },
+    [preview],
+  );
+
+  const displaySamples = preview ?? samples;
+
   const canUndo = historyState.currentIndex > 0;
   const canRedo = historyState.currentIndex < historyState.entries.length - 1;
 
   const undo = useCallback(() => {
+    setPreviewState(null);
     setHistoryState((prev) =>
       prev.currentIndex > 0
         ? { ...prev, currentIndex: prev.currentIndex - 1 }
@@ -108,6 +149,7 @@ export function useSampleEditor({
   }, []);
 
   const redo = useCallback(() => {
+    setPreviewState(null);
     setHistoryState((prev) =>
       prev.currentIndex < prev.entries.length - 1
         ? { ...prev, currentIndex: prev.currentIndex + 1 }
@@ -138,5 +180,9 @@ export function useSampleEditor({
     redo,
     isDirty,
     history,
+    preview,
+    setPreview,
+    commitPreview,
+    displaySamples,
   };
 }

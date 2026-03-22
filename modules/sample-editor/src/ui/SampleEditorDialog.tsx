@@ -107,18 +107,22 @@ export function SampleEditorDialog({
           {/* Body */}
           <div className="flex-1 overflow-auto p-4 space-y-4">
             <WaveformDisplay
-              samples={editor.samples}
+              samples={editor.displaySamples}
               sampleRate={editor.sampleRate}
               selection={editor.selection}
               onSelectionChange={editor.setSelection}
               height={220}
+              isPreview={editor.preview !== null}
             />
 
             <OperationPanel
               samples={editor.samples}
               sampleRate={editor.sampleRate}
               selection={editor.selection}
+              onPreview={editor.setPreview}
+              onCommit={editor.commitPreview}
               onApply={editor.apply}
+              hasPreview={editor.preview !== null}
             />
 
             {/* History */}
@@ -151,6 +155,9 @@ export function SampleEditorDialog({
             <span>{durationSec}s</span>
             <span>{sampleRate} Hz</span>
             <span>{sampleCount.toLocaleString()} samples</span>
+            {editor.preview !== null && (
+              <span className="text-amber-400 font-medium">Preview</span>
+            )}
             {editor.isDirty && <span className="text-ac-highlight">Modified</span>}
           </div>
         </Dialog.Content>
