@@ -25,6 +25,11 @@
       "types": "./dist/google-drive-storage.d.ts",
       "import": "./dist/google-drive-storage.js",
       "require": "./dist/google-drive-storage.cjs"
+    },
+    "./testing": {
+      "types": "./dist/testing/index.d.ts",
+      "import": "./dist/testing/index.js",
+      "require": "./dist/testing/index.cjs"
     }
   },
   "files": [

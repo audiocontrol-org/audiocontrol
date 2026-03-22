@@ -185,3 +185,27 @@ export function generatePureSustain(sampleRate = DEFAULT_SAMPLE_RATE): Int16Arra
 
   return buffer;
 }
+
+/**
+ * Sustained tone with a deliberate phase discontinuity at the splice point.
+ *
+ * Tests that the smoothing algorithm detects and fixes the discontinuity.
+ * The waveform inverts phase 200 samples before loopEnd, creating a
+ * click when looping that crossfade smoothing should eliminate.
+ *
+ * Shape: [440 Hz sine at 0.8, phase inverts at loopEnd - 200]
+ * Loop region: samples 9000..45000
+ */
+export function generateDiscontinuity(sampleRate = DEFAULT_SAMPLE_RATE): Int16Array {
+  const total = Math.round(sampleRate * 2);
+  const buffer = new Int16Array(total);
+  const loopEnd = 45000;
+
+  for (let i = 0; i < total; i++) {
+    const t = i / sampleRate;
+    const phaseOffset = (i >= loopEnd - 200) ? Math.PI : 0;
+    buffer[i] = Math.round(Math.sin(2 * Math.PI * 440 * t + phaseOffset) * 0.8 * 32767);
+  }
+
+  return buffer;
+}

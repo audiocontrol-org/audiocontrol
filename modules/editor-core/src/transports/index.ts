@@ -15,6 +15,7 @@ export type {
 export {
   createRuntimeMidiTransport,
   isMockMidiMode,
+  isMockLibraryMode,
 } from './runtimeTransport';
 export type {
   MockMidiTransportOptions,

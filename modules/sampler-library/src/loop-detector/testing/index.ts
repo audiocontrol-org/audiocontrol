@@ -5,4 +5,5 @@ export {
   generateDecayIntoSustain,
   generateSustainWithTrailingDecay,
   generatePureSustain,
+  generateDiscontinuity,
 } from './test-signals.js';
