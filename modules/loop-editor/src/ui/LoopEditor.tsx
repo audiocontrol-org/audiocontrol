@@ -525,6 +525,7 @@ export function LoopEditor({
                     disabled={!samples}
                     className="ac-btn ac-btn-xs ac-btn-ghost"
                     title="Preview loop (hear the splice point)"
+                    data-testid="preview-loop-btn"
                   >
                     &#9654; Preview
                   </button>
@@ -683,6 +684,7 @@ export function LoopEditor({
               onChange={(e) => { onEndPointChange?.(Math.max(loopPoint, parseInt(e.target.value) || 0)); }}
               onBlur={() => onCommit?.()}
               className="flex-1 min-w-0 text-sm font-mono bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text text-center"
+              data-testid="end-point-input"
             />
             <button onClick={() => nudgeEndPoint(1)} className="ac-btn ac-btn-xs ac-btn-ghost" title="Move end point +1 sample">&rsaquo;</button>
             <button onClick={() => nudgeEndPoint(100)} className="ac-btn ac-btn-xs ac-btn-ghost" title="Move end point +100 samples">&rsaquo;&rsaquo;</button>
@@ -699,6 +701,7 @@ export function LoopEditor({
               onChange={(e) => { onLoopPointChange?.(Math.min(endPoint, Math.max(startPoint, parseInt(e.target.value) || 0))); }}
               onBlur={() => onCommit?.()}
               className="flex-1 min-w-0 text-sm font-mono bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text text-center"
+              data-testid="loop-point-input"
             />
             <button onClick={() => nudgeLoopPoint(1)} className="ac-btn ac-btn-xs ac-btn-ghost" title="Move loop point +1 sample">&rsaquo;</button>
             <button onClick={() => nudgeLoopPoint(100)} className="ac-btn ac-btn-xs ac-btn-ghost" title="Move loop point +100 samples">&rsaquo;&rsaquo;</button>
