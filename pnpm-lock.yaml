@@ -242,7 +242,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^5.0.10
-        version: 5.4.20(@types/node@20.19.17)
+        version: 5.4.20(@types/node@22.19.8)
       vitest:
         specifier: ^1.1.0
         version: 1.6.1(@vitest/browser@1.6.1)(jsdom@29.0.1)
@@ -373,7 +373,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^5.0.10
-        version: 5.4.20(@types/node@20.19.17)
+        version: 5.4.20(@types/node@22.19.8)
       vitest:
         specifier: ^1.1.0
         version: 1.6.1(@vitest/browser@1.6.1)(jsdom@29.0.1)
@@ -652,6 +652,9 @@ importers:
 
   modules/sample-chopper:
     dependencies:
+      '@audiocontrol/synth-core':
+        specifier: workspace:*
+        version: link:../synth-core
       clsx:
         specifier: ^2.1.0
         version: 2.1.1
@@ -728,6 +731,61 @@ importers:
       yaml:
         specifier: ^2.8.2
         version: 2.8.2
+
+  modules/sample-editor:
+    dependencies:
+      '@audiocontrol/sampler-library':
+        specifier: workspace:*
+        version: link:../sampler-library
+      '@audiocontrol/synth-core':
+        specifier: workspace:*
+        version: link:../synth-core
+      clsx:
+        specifier: ^2.1.0
+        version: 2.1.1
+      tailwind-merge:
+        specifier: ^2.2.0
+        version: 2.6.1
+    devDependencies:
+      '@radix-ui/react-dialog':
+        specifier: ^1.0.5
+        version: 1.1.15(@types/react-dom@18.3.7)(@types/react@18.3.27)(react-dom@18.3.1)(react@18.3.1)
+      '@tsconfig/recommended':
+        specifier: ^1.0.8
+        version: 1.0.13
+      '@types/node':
+        specifier: ^22.13.1
+        version: 22.19.8
+      '@types/react':
+        specifier: ^18.2.43
+        version: 18.3.27
+      '@types/react-dom':
+        specifier: ^18.2.17
+        version: 18.3.7(@types/react@18.3.27)
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.7.0(vite@5.4.20)
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      tsup:
+        specifier: ^8.3.6
+        version: 8.5.1(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.1)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.2
+      vite:
+        specifier: ^5.0.10
+        version: 5.4.20(@types/node@22.19.8)
+      vite-tsconfig-paths:
+        specifier: ^6.1.1
+        version: 6.1.1(typescript@5.9.2)(vite@5.4.20)
+      vitest:
+        specifier: ^1.2.0
+        version: 1.6.1(@types/node@22.19.8)
 
   modules/sampler-attic:
     devDependencies:
@@ -961,7 +1019,7 @@ importers:
         version: 5.9.2
       vite:
         specifier: ^5.0.10
-        version: 5.4.20(@types/node@20.19.17)
+        version: 5.4.20(@types/node@22.19.8)
       vite-plugin-mkcert:
         specifier: ^1.17.9
         version: 1.17.9(vite@5.4.20)
@@ -4385,7 +4443,7 @@ packages:
       std-env: 3.9.0
       strip-literal: 2.1.1
       test-exclude: 6.0.0
-      vitest: 1.6.1(@types/node@22.19.8)
+      vitest: 1.6.1(@types/node@20.19.17)(jsdom@29.0.1)
     transitivePeerDependencies:
       - supports-color
     dev: true
@@ -9373,8 +9431,8 @@ packages:
       strip-literal: 2.1.1
       tinybench: 2.9.0
       tinypool: 0.8.4
-      vite: 5.4.20(@types/node@20.19.17)
-      vite-node: 1.6.1(@types/node@20.19.17)
+      vite: 5.4.20(@types/node@22.19.8)
+      vite-node: 1.6.1(@types/node@22.19.8)
       why-is-node-running: 2.3.0
     transitivePeerDependencies:
       - less

@@ -33,6 +33,7 @@ JV1080_EDITOR      := $(MODULES_DIR)/jv1080-editor/.build-stamp
 SAMPLER_EDITOR     := $(MODULES_DIR)/sampler-editor/.build-stamp
 AUDIOTOOLS_CLI     := $(MODULES_DIR)/audiotools-cli/.build-stamp
 SYNTH_CORE         := $(MODULES_DIR)/synth-core/.build-stamp
+SAMPLE_EDITOR_MOD  := $(MODULES_DIR)/sample-editor/.build-stamp
 
 ALL_STAMPS := \
 	$(SHARED_MIDI) $(SAMPLER_LIB) $(AUDIOTOOLS_CONFIG) $(CANONICAL_MIDI) \
@@ -41,7 +42,7 @@ ALL_STAMPS := \
 	$(SAMPLER_DEVICES) $(SAMPLER_MIDI) $(SAMPLER_LIBRARY) \
 	$(SAMPLER_TRANSLATE) $(SAMPLER_BACKUP) $(SAMPLER_EXPORT) $(LOOP_EDITOR) \
 	$(D110_EDITOR) $(JV1080_EDITOR) $(SAMPLER_EDITOR) $(AUDIOTOOLS_CLI) \
-	$(SYNTH_CORE)
+	$(SYNTH_CORE) $(SAMPLE_EDITOR_MOD)
 
 INSTALL_STAMP := node_modules/.install-stamp
 
@@ -73,6 +74,8 @@ D110_EDITOR_SRC        := $(shell find $(MODULES_DIR)/d110-editor/src -name '*.t
 JV1080_EDITOR_SRC      := $(shell find $(MODULES_DIR)/jv1080-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLER_EDITOR_SRC     := $(shell find $(MODULES_DIR)/sampler-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AUDIOTOOLS_CLI_SRC     := $(shell find $(MODULES_DIR)/audiotools-cli/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
+SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
+SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
 .PHONY: build clean
 
@@ -185,6 +188,10 @@ $(SAMPLER_EXPORT): $(AUDIOTOOLS_CONFIG) $(SAMPLER_BACKUP) $(SAMPLER_DEVICES) $(S
 
 $(LOOP_EDITOR): $(EDITOR_CORE) $(SAMPLER_LIBRARY) $(SYNTH_CORE) $(LOOP_EDITOR_SRC)
 	cd $(MODULES_DIR)/loop-editor && pnpm build
+	@touch $@
+
+$(SAMPLE_EDITOR_MOD): $(SYNTH_CORE) $(SAMPLER_LIBRARY) $(SAMPLE_EDITOR_SRC)
+	cd $(MODULES_DIR)/sample-editor && pnpm build
 	@touch $@
 
 $(D110_EDITOR): $(EDITOR_CORE) $(SHARED_MIDI) $(D110_EDITOR_SRC)
