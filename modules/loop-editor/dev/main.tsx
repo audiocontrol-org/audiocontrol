@@ -33,6 +33,8 @@ import {
   listCommonSamplesTree,
   loadSample,
   loadSampleMeta,
+  getNestedDirectory,
+  sanitizeForFilename,
   createFolder,
   deleteItem,
   moveItem,
@@ -40,6 +42,7 @@ import {
   type LibraryTreeNode,
   type SampleYaml,
 } from '@audiocontrol/sampler-library/browser';
+import { stringify as stringifyYaml } from 'yaml';
 
 /** Map LibraryTreeNode[] to TreeNode[] for the shared TreeView. */
 function toTreeNodes(nodes: LibraryTreeNode[]): TreeNode[] {
@@ -80,6 +83,7 @@ function DevHarness() {
     loopStart?: number;
     loopEnd?: number;
     rootKey?: number;
+    origin?: { name: string; path: string[] };
   } | null>(null);
 
   // Load library tree when hook connects
@@ -126,11 +130,37 @@ function DevHarness() {
         loopStart: result.yaml.loopStart,
         loopEnd: result.yaml.loopEnd,
         rootKey: typeof result.yaml.rootKey === 'number' ? result.yaml.rootKey : undefined,
+        origin: { name, path: path ?? [] },
       });
     } catch (err) {
       notify('error', `Failed to load sample: ${err instanceof Error ? err.message : 'unknown error'}`);
     }
   }, [library.root]);
+
+  // Save loop points back to sample.yaml in the library
+  const handleSaveLoopPoints = useCallback(async (loopStart: number, loopEnd: number) => {
+    if (!library.root || !loopEditorDialog?.origin) return;
+    const { name, path } = loopEditorDialog.origin;
+    try {
+      const yaml = await loadSampleMeta(library.root, name, path);
+      yaml.loopStart = loopStart;
+      yaml.loopEnd = loopEnd;
+      yaml.loopMode = 'forward';
+      yaml.modifiedAt = new Date().toISOString();
+
+      const fullPath = ['library', 'common', 'samples', ...path];
+      const safeName = sanitizeForFilename(name);
+      const samplesDir = await getNestedDirectory(library.root, fullPath);
+      const sampleDir = await samplesDir.getDirectoryHandle(safeName);
+      const yamlHandle = await sampleDir.getFileHandle('sample.yaml', { create: true });
+      const writable = await yamlHandle.createWritable();
+      await writable.write(stringifyYaml(yaml, { indent: 2, lineWidth: 120 }));
+      await writable.close();
+      notify('info', `Saved loop points for "${name}"`);
+    } catch (err) {
+      notify('error', `Failed to save: ${err instanceof Error ? err.message : 'unknown error'}`);
+    }
+  }, [library.root, loopEditorDialog]);
 
   // Tree node selection — load metadata for detail panel
   const handleTreeSelect = useCallback(async (treeNode: TreeNode) => {
@@ -346,6 +376,7 @@ function DevHarness() {
           loopStart={loopEditorDialog.loopStart}
           loopEnd={loopEditorDialog.loopEnd}
           rootKey={loopEditorDialog.rootKey}
+          onSave={loopEditorDialog.origin ? handleSaveLoopPoints : undefined}
         />
       )}
 

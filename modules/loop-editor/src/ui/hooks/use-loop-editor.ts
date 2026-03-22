@@ -168,6 +168,18 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
     setEndPoint(loopEnd);
   }, []);
 
+  // Auto-select first candidate when auto-detect completes
+  const prevIsSearchingRef = useRef(false);
+  useEffect(() => {
+    if (prevIsSearchingRef.current && !isSearching && candidates.length > 0) {
+      const best = candidates[0]!;
+      setLoopPoint(best.loopStart);
+      setEndPoint(best.loopEnd);
+      setSelectedCandidateIndex(0);
+    }
+    prevIsSearchingRef.current = isSearching;
+  }, [isSearching, candidates]);
+
   // Built-in keyboard input — created once, always available.
   const keyboardInputRef = useRef<NoteInput | null>(null);
   if (!keyboardInputRef.current) {
