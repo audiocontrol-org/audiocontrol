@@ -6,5 +6,7 @@ export interface OscillatorFactory {
   setRootKey(rootKey: number): void;
   setLoopRegion(enabled: boolean, loopStart: number, loopEnd: number): void;
   createOscillator(note: number, velocity: number): SampleOscillator;
+  /** Create an oscillator that plays a slice region of the buffer at original pitch. */
+  createSliceOscillator(startSample: number, endSample: number, velocity: number): SampleOscillator;
   dispose(): void;
 }
