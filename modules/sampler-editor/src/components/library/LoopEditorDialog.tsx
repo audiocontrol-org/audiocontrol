@@ -2,15 +2,14 @@
  * LoopEditorDialog — modal wrapper around the LoopEditor component.
  *
  * Opens a full-screen dialog for editing loop points on library samples.
- * Delegates loop state, detection, audio preview, and MIDI playback to
- * the shared useLoopEditor hook. This component only provides the dialog
- * chrome, save button, and MIDI input creation.
+ * Delegates loop state, detection, audio preview, and playback to
+ * the shared useLoopEditor hook. Keyboard input is built into the hook;
+ * MIDI input can be passed via the noteInput prop.
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { LoopEditor, useLoopEditor } from '@audiocontrol/loop-editor/ui';
-import { createWebMidiNoteInput } from '@audiocontrol/synth-core';
 import type { NoteInput } from '@audiocontrol/synth-core';
 
 // =========================================================================
@@ -36,7 +35,7 @@ export interface LoopEditorDialogProps {
   onSave?: (loopStart: number, loopEnd: number) => void;
   /** Root key (MIDI note) for pitched playback — default 60 (C4). */
   rootKey?: number;
-  /** Optional external note input — overrides built-in Web MIDI. */
+  /** Optional external MIDI input — keyboard input is always built in. */
   noteInput?: NoteInput | null;
 }
 
@@ -54,43 +53,15 @@ export function LoopEditorDialog({
   loopEnd: initialLoopEnd,
   onSave,
   rootKey = 60,
-  noteInput: externalNoteInput,
+  noteInput,
 }: LoopEditorDialogProps): JSX.Element {
-  // Auto-create Web MIDI input when no external input is provided
-  const [autoMidiInput, setAutoMidiInput] = useState<NoteInput | null>(null);
-  useEffect(() => {
-    if (externalNoteInput !== undefined) return;
-
-    let disposed = false;
-    let input: NoteInput | null = null;
-    createWebMidiNoteInput()
-      .then((result) => {
-        if (disposed) {
-          result.dispose();
-          return;
-        }
-        input = result;
-        setAutoMidiInput(result);
-      })
-      .catch(() => {
-        // MIDI unavailable — keyboard/mouse playback still works
-      });
-    return () => {
-      disposed = true;
-      input?.dispose();
-      setAutoMidiInput(null);
-    };
-  }, [externalNoteInput]);
-
-  const effectiveNoteInput = externalNoteInput !== undefined ? externalNoteInput : autoMidiInput;
-
   const editor = useLoopEditor({
     samples,
     sampleRate,
     initialLoopStart,
     initialLoopEnd,
     rootKey,
-    noteInput: effectiveNoteInput,
+    noteInput,
   });
 
   const handleSave = useCallback(() => {

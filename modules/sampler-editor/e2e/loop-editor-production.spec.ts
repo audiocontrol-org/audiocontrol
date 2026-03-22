@@ -118,6 +118,9 @@ test.describe('Loop Editor — production path feature parity', () => {
   });
 
   test('keyboard triggers MIDI voice indicator', async ({ page }) => {
+    // Wait for React effects to wire keyboard input handlers
+    await page.waitForTimeout(500);
+
     await page.keyboard.down('z');
     await expect(page.getByText('MIDI: 1 voice')).toBeVisible();
     await page.keyboard.up('z');
@@ -182,6 +185,7 @@ test.describe('Loop Editor — production path auto-detect', () => {
 test.describe('Loop Editor — production path smoothing', () => {
   test('keyboard playback works in all three modes', async ({ page }, testInfo) => {
     await openLoopEditorForSample(page, testInfo.project.name, 'sustain');
+    await page.waitForTimeout(500);
 
     // Loop mode
     await page.keyboard.down('z');

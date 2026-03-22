@@ -17,10 +17,10 @@
  * Used by: LoopEditorDialog (sampler-editor), dev harness (loop-editor/dev).
  */
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { createBrowserAudioPlayback } from '@audiocontrol/editor-core';
 import type { AudioPlayback } from '@audiocontrol/editor-core';
-import { useSamplePlayer } from '@audiocontrol/synth-core';
+import { useSamplePlayer, createKeyboardNoteInput } from '@audiocontrol/synth-core';
 import type { NoteInput } from '@audiocontrol/synth-core';
 import type { LoopCandidate, DiscontinuityAnalysis } from '@audiocontrol/sampler-library';
 import { createSmoothedCopy, analyzeDiscontinuity } from '@audiocontrol/sampler-library/browser';
@@ -168,7 +168,15 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
     setEndPoint(loopEnd);
   }, []);
 
-  // Synth-core MIDI playback
+  // Built-in keyboard input — created once, always available.
+  // Uses useRef with initializer to ensure it exists before the first render
+  // completes, so useSamplePlayer can wire handlers immediately.
+  const keyboardInputRef = useRef<NoteInput>(createKeyboardNoteInput(rootKey));
+  useEffect(() => {
+    return () => keyboardInputRef.current.dispose();
+  }, []);
+
+  // Synth-core playback — keyboard input is always available.
   const { activeNotes } = useSamplePlayer({
     samples: playerSamples,
     sampleRate,
@@ -176,7 +184,7 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
     loopEnabled,
     loopStartSample: loopPoint,
     loopEndSample: endPoint,
-    noteInput,
+    noteInput: keyboardInputRef.current,
   });
 
   return {

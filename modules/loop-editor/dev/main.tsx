@@ -17,8 +17,6 @@ import '@audiocontrol/editor-core/styles.css';
 import React, { useState, useCallback, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { LoopEditor, useLoopEditor } from '@audiocontrol/loop-editor/ui';
-import { createKeyboardNoteInput } from '@audiocontrol/synth-core';
-import type { NoteInput } from '@audiocontrol/synth-core';
 import {
   useNotifications,
   useLibraryConnection,
@@ -152,22 +150,14 @@ function DevHarness() {
   const [sampleRate, setSampleRate] = useState(DEFAULT_SAMPLE_RATE);
   const [sampleName, setSampleName] = useState(initial.name);
 
-  // Keyboard note input for MIDI playback without hardware
-  const [keyboardInput, setKeyboardInput] = useState<NoteInput | null>(null);
-  useEffect(() => {
-    const input = createKeyboardNoteInput(60);
-    setKeyboardInput(input);
-    return () => input.dispose();
-  }, []);
-
-  // Shared loop editor hook — owns loop state, detection, audio, synth-core
+  // Shared loop editor hook — owns loop state, detection, audio, synth-core.
+  // Keyboard input is built into useLoopEditor — no external wiring needed.
   const editor = useLoopEditor({
     samples,
     sampleRate,
     initialLoopStart: Math.floor(DEFAULT_SAMPLE_RATE * 0.5),
     initialLoopEnd: Math.floor(DEFAULT_SAMPLE_RATE * 1.5),
     rootKey: 60,
-    noteInput: keyboardInput,
   });
 
   // Library connection via shared hook
