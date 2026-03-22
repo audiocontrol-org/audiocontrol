@@ -77,6 +77,7 @@ interface PluginLibraryTreePanelProps {
   // Tool actions
   onOpenInLoopEditor?: (name: string, nodeType: string, path?: string[]) => void;
   onOpenInChopper?: (name: string, nodeType: string, path?: string[]) => void;
+  onOpenInSampleEditor?: (name: string, nodeType: string, path?: string[]) => void;
 }
 
 // MIME type for device drag data
@@ -177,6 +178,7 @@ export function PluginLibraryTreePanel({
   onDeleteDrumKit,
   onOpenInLoopEditor,
   onOpenInChopper,
+  onOpenInSampleEditor,
 }: PluginLibraryTreePanelProps): JSX.Element {
   // Sets section state
   const [expandedSets, setExpandedSets] = useState<Set<string>>(new Set());
@@ -316,6 +318,9 @@ export function PluginLibraryTreePanel({
           } else if (action.id === 'open-chopper' && onOpenInChopper) {
             const nodeMeta = node.meta as { fileName?: string; directoryName?: string; path?: string[] };
             onOpenInChopper(nodeMeta.fileName ?? nodeMeta.directoryName ?? node.name, node.type, nodeMeta.path);
+          } else if (action.id === 'open-sample-editor' && onOpenInSampleEditor) {
+            const nodeMeta = node.meta as { fileName?: string; directoryName?: string; path?: string[] };
+            onOpenInSampleEditor(nodeMeta.fileName ?? nodeMeta.directoryName ?? node.name, node.type, nodeMeta.path);
           }
           // Note: rename is handled via inline rename, not context menu action
         },
@@ -323,7 +328,7 @@ export function PluginLibraryTreePanel({
     }
 
     return result;
-  }, [contextMenu, plugin.categories, closeContextMenu, onMoveItem, handleNodeDelete, onOpenInLoopEditor, onOpenInChopper]);
+  }, [contextMenu, plugin.categories, closeContextMenu, onMoveItem, handleNodeDelete, onOpenInLoopEditor, onOpenInChopper, onOpenInSampleEditor]);
 
   // Handle drop on directory
   const handleDropOnDirectory = useCallback((categoryId: string, node: TreeNode, e: React.DragEvent) => {

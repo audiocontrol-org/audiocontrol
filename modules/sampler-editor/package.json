@@ -41,6 +41,7 @@
     "@audiocontrol/loop-editor": "workspace:*",
     "@audiocontrol/synth-core": "workspace:*",
     "@audiocontrol/sample-chopper": "workspace:*",
+    "@audiocontrol/sample-editor": "workspace:*",
     "@audiocontrol/sampler-devices": "workspace:*",
     "@audiocontrol/sampler-library": "workspace:*",
     "@audiocontrol/shared-midi": "workspace:*",

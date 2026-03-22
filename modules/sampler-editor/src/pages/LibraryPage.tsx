@@ -31,6 +31,7 @@ import { ImportLibraryPatchDialog } from '@/components/library/ImportLibraryPatc
 import { ImportSamplesDialog } from '@/components/library/ImportSamplesDialog';
 import { SampleChopperDialog, type SliceDefinitionOutput, type InitialSliceDefinition, type ChopperSavePayload } from '@audiocontrol/sample-chopper/ui';
 import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
+import { SampleEditorDialog } from '@audiocontrol/sample-editor/ui';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
 import {
@@ -122,6 +123,10 @@ export function LibraryPage() {
     origin: { name: string; type: string; path?: string[] } | null;
   } | null>(null);
   const [chopperDialog, setChopperDialog] = useState<{
+    open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
+    origin: { name: string; type: string; path?: string[] } | null;
+  } | null>(null);
+  const [sampleEditorDialog, setSampleEditorDialog] = useState<{
     open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
     origin: { name: string; type: string; path?: string[] } | null;
   } | null>(null);
@@ -459,6 +464,66 @@ export function LibraryPage() {
     }
   }, [libraryHandle, chopperDialog, handleRefreshLibrary, setError]);
 
+  // Open in Sample Editor: loads WAV samples and opens the SampleEditorDialog
+  const handleOpenInSampleEditor = useCallback(async (name: string, nodeType: string, path?: string[]) => {
+    if (!libraryHandle) return;
+    try {
+      let samples: Int16Array;
+      let sampleRate: number;
+
+      if (nodeType === 'tone' || nodeType === 'individualTone') {
+        const result = await loadIndividualToneWavSamples(libraryHandle, name, path ?? []);
+        samples = result.samples;
+        sampleRate = result.sampleRate;
+      } else if (nodeType === 'sample') {
+        const result = await loadSample(libraryHandle, name, path);
+        const wav = parseWav(result.wavData);
+        samples = wav.samples;
+        sampleRate = wav.sampleRate;
+      } else {
+        throw new Error(`Unsupported node type for sample editor: ${nodeType}`);
+      }
+
+      setSampleEditorDialog({
+        open: true, samples, sampleRate, sampleName: name,
+        origin: { name, type: nodeType, path },
+      });
+    } catch (err) {
+      console.error('[LibraryPage] Failed to load WAV for sample editor:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load sample');
+    }
+  }, [libraryHandle, setError]);
+
+  // Handle sample editor save — write modified audio back to library
+  const handleSampleEditorSave = useCallback(async (samples: Int16Array, sampleRate: number) => {
+    if (!libraryHandle || !sampleEditorDialog?.origin) return;
+    const { name, type: nodeType, path } = sampleEditorDialog.origin;
+
+    try {
+      if (nodeType === 'sample') {
+        const existingMeta = await loadSampleMeta(libraryHandle, name, path ?? []);
+        existingMeta.sampleRate = sampleRate;
+        existingMeta.modifiedAt = new Date().toISOString();
+
+        const wavData = createWav(samples, sampleRate);
+        await saveSample(libraryHandle, { name, yaml: existingMeta, wavData }, path ?? []);
+      } else if (nodeType === 'tone' || nodeType === 'individualTone') {
+        // Write updated WAV back to the tone's directory
+        const wavData = createWav(samples, sampleRate);
+        const fullPath = ['library', 's330', 'tones', ...(path ?? [])];
+        const tonesDir = await getNestedDirectory(libraryHandle, fullPath);
+        const wavHandle = await tonesDir.getFileHandle(`${name}.wav`, { create: true });
+        const writable = await wavHandle.createWritable();
+        await writable.write(wavData);
+        await writable.close();
+      }
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to save edited sample:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save edited sample');
+    }
+  }, [libraryHandle, sampleEditorDialog, handleRefreshLibrary, setError]);
+
   // Handle loop editor save (loop points saved back to library)
   const handleLoopEditorSave = useCallback(async (loopStart: number, loopEnd: number) => {
     if (!loopEditorDialog?.origin || !libraryHandle) return;
@@ -603,6 +668,7 @@ export function LibraryPage() {
             onDeleteDrumKit={directoryOps.handleDeleteDrumKit}
             onOpenInLoopEditor={handleOpenInLoopEditor}
             onOpenInChopper={handleOpenInChopper}
+            onOpenInSampleEditor={handleOpenInSampleEditor}
           />
         </div>
         <div className="card p-0 overflow-hidden h-full">
@@ -621,6 +687,7 @@ export function LibraryPage() {
               onPromoteToDevice={() => handleRefreshLibrary()}
               onOpenInLoopEditor={(name, path) => handleOpenInLoopEditor(name, 'sample', path)}
               onOpenInChopper={(name, path) => handleOpenInChopper(name, 'sample', path)}
+              onOpenInSampleEditor={(name, path) => handleOpenInSampleEditor(name, 'sample', path)}
             />
           ) : (
             <ItemPreviewPanel
@@ -630,6 +697,7 @@ export function LibraryPage() {
               onImportIndividualPatch={importDialogs.handleOpenImportIndividualPatchDialog}
               onLoadSet={importDialogs.handleOpenLoadDialog}
               onOpenInLoopEditor={handleOpenInLoopEditor}
+              onOpenInSampleEditor={handleOpenInSampleEditor}
             />
           )}
         </div>
@@ -754,6 +822,16 @@ export function LibraryPage() {
           sourceName={chopperDialog.sampleName}
           onConfirm={() => { setChopperDialog(null); }}
           onSave={libraryHandle ? handleChopperSave : undefined}
+        />
+      )}
+      {sampleEditorDialog && (
+        <SampleEditorDialog
+          open={sampleEditorDialog.open}
+          onOpenChange={(open) => { if (!open) setSampleEditorDialog(null); }}
+          samples={sampleEditorDialog.samples}
+          sampleRate={sampleEditorDialog.sampleRate}
+          sampleName={sampleEditorDialog.sampleName}
+          onSave={libraryHandle ? handleSampleEditorSave : undefined}
         />
       )}
     </div>

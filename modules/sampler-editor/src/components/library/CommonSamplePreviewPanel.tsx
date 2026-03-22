@@ -19,6 +19,7 @@ interface CommonSamplePreviewPanelProps {
   onPromoteToDevice?: (deviceType: string) => void;
   onOpenInLoopEditor?: (name: string, path?: string[]) => void;
   onOpenInChopper?: (name: string, path?: string[]) => void;
+  onOpenInSampleEditor?: (name: string, path?: string[]) => void;
 }
 
 /** All S-series devices share a single library section under s330. */
@@ -309,6 +310,7 @@ export function CommonSamplePreviewPanel({
   onPromoteToDevice,
   onOpenInLoopEditor,
   onOpenInChopper,
+  onOpenInSampleEditor,
 }: CommonSamplePreviewPanelProps): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -402,7 +404,7 @@ export function CommonSamplePreviewPanel({
         ) : sample ? (
           <div className="space-y-4">
             <SampleDetails sample={sample} />
-            {(onOpenInLoopEditor || onOpenInChopper) && (
+            {(onOpenInLoopEditor || onOpenInChopper || onOpenInSampleEditor) && (
               <div className="flex flex-col gap-2">
                 {onOpenInLoopEditor && selection && (
                   <button
@@ -418,6 +420,14 @@ export function CommonSamplePreviewPanel({
                     className="w-full ac-btn ac-btn-ghost"
                   >
                     Open in Chopper
+                  </button>
+                )}
+                {onOpenInSampleEditor && selection && (
+                  <button
+                    onClick={() => onOpenInSampleEditor(selection.name, selection.path)}
+                    className="w-full ac-btn ac-btn-ghost"
+                  >
+                    Open in Editor
                   </button>
                 )}
               </div>

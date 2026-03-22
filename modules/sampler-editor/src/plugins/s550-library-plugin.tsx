@@ -170,6 +170,7 @@ function S550PreviewPanelAdapter({
         onPromoteToDevice={() => {}}
         onOpenInLoopEditor={state.onOpenInLoopEditor}
         onOpenInChopper={state.onOpenInChopper}
+        onOpenInSampleEditor={state.onOpenInSampleEditor}
       />
     );
   }
@@ -187,6 +188,7 @@ function S550PreviewPanelAdapter({
       onImportIndividualPatch={state.onImportIndividualPatch}
       onLoadSet={state.onLoadSet}
       onOpenInLoopEditor={state.onOpenInLoopEditor ? (name, _nodeType, path) => state.onOpenInLoopEditor!(name, path) : undefined}
+      onOpenInSampleEditor={state.onOpenInSampleEditor ? (name, _nodeType, path) => state.onOpenInSampleEditor!(name, path) : undefined}
     />
   );
 }

@@ -78,6 +78,11 @@ export const toneItemType: ItemTypePlugin<ToneMeta> = {
       label: 'Open in Chopper',
       icon: null,
     },
+    {
+      id: 'open-sample-editor',
+      label: 'Open in Sample Editor',
+      icon: null,
+    },
     { separator: true },
     {
       id: 'delete',
@@ -221,6 +226,11 @@ export const sampleItemType: ItemTypePlugin<SampleMeta> = {
     {
       id: 'open-chopper',
       label: 'Open in Chopper',
+      icon: null,
+    },
+    {
+      id: 'open-sample-editor',
+      label: 'Open in Sample Editor',
       icon: null,
     },
     { separator: true },

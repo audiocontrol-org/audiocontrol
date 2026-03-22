@@ -39,6 +39,7 @@ interface ItemPreviewPanelProps {
   onImportIndividualPatch?: (patchDirectoryName: string, path?: string[]) => void;
   onLoadSet?: () => void;
   onOpenInLoopEditor?: (name: string, nodeType: string, path?: string[]) => void;
+  onOpenInSampleEditor?: (name: string, nodeType: string, path?: string[]) => void;
 }
 
 /**
@@ -113,6 +114,7 @@ function LibraryTonePreview({
   onImport,
   onChopSample,
   onOpenInLoopEditor,
+  onOpenInSampleEditor,
   isLoadingWav,
 }: {
   tone: SamplerTone;
@@ -120,6 +122,7 @@ function LibraryTonePreview({
   onImport?: () => void;
   onChopSample?: () => void;
   onOpenInLoopEditor?: () => void;
+  onOpenInSampleEditor?: () => void;
   isLoadingWav?: boolean;
 }): JSX.Element {
   return (
@@ -148,6 +151,22 @@ function LibraryTonePreview({
               </>
             ) : (
               'Open in Loop Editor'
+            )}
+          </button>
+        )}
+        {onOpenInSampleEditor && (
+          <button
+            onClick={onOpenInSampleEditor}
+            disabled={isLoadingWav}
+            className="w-full ac-btn ac-btn-ghost"
+          >
+            {isLoadingWav ? (
+              <>
+                <span className="inline-block w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                Loading...
+              </>
+            ) : (
+              'Open in Editor'
             )}
           </button>
         )}
@@ -351,6 +370,7 @@ export function ItemPreviewPanel({
   onImportIndividualPatch,
   onLoadSet,
   onOpenInLoopEditor,
+  onOpenInSampleEditor,
 }: ItemPreviewPanelProps): JSX.Element {
   // State for loaded library items
   const [loadingLibraryItem, setLoadingLibraryItem] = useState(false);
@@ -664,6 +684,7 @@ export function ItemPreviewPanel({
                 fileName={selection.name}
                 onImport={onImportIndividualTone ? () => onImportIndividualTone(selection.name!) : undefined}
                 onOpenInLoopEditor={onOpenInLoopEditor ? () => onOpenInLoopEditor(selection.name!, 'tone', selection.path) : undefined}
+                onOpenInSampleEditor={onOpenInSampleEditor ? () => onOpenInSampleEditor(selection.name!, 'tone', selection.path) : undefined}
                 onChopSample={libraryHandle ? handleChopSample : undefined}
                 isLoadingWav={loadingWavForChopper}
               />
@@ -798,6 +819,7 @@ export function ItemPreviewPanel({
                 fileName={selection.name}
                 onImport={onImportTone ? () => onImportTone(selection.setName!, selection.name!) : undefined}
                 onOpenInLoopEditor={onOpenInLoopEditor ? () => onOpenInLoopEditor(selection.name!, 'tone', selection.path) : undefined}
+                onOpenInSampleEditor={onOpenInSampleEditor ? () => onOpenInSampleEditor(selection.name!, 'tone', selection.path) : undefined}
                 onChopSample={libraryHandle ? handleChopSample : undefined}
                 isLoadingWav={loadingWavForChopper}
               />
