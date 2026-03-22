@@ -124,7 +124,7 @@ $(SAMPLER_ATTIC): $(INSTALL_STAMP) $(SAMPLER_ATTIC_SRC)
 
 # sample-chopper's dep on sampler-library is devDeps only (test harness),
 # so it can build independently
-$(SAMPLE_CHOPPER): $(INSTALL_STAMP) $(SAMPLE_CHOPPER_SRC)
+$(SAMPLE_CHOPPER): $(INSTALL_STAMP) $(SAMPLE_CHOPPER_SRC) $(SYNTH_CORE)
 	cd $(MODULES_DIR)/sample-chopper && pnpm build
 	@touch $@
 
