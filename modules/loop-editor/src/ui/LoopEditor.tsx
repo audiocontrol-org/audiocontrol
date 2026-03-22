@@ -495,8 +495,8 @@ export function LoopEditor({
 
   return (
     <div className={cn('card', className)} ref={containerRef} tabIndex={0} data-loop-editor>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
           <h4 className="font-medium text-s330-text">Loop Editor</h4>
           {onAutoDetect && (
             <button

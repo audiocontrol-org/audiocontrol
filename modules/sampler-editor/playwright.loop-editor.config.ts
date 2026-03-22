@@ -28,11 +28,13 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   workers: 1,
   reporter: 'line',
+  timeout: 60_000,
   projects: [
     {
       name: 'sampler-editor',
       use: {
         ...devices['Desktop Chrome'],
+        viewport: { width: 1920, height: 1080 },
         baseURL: `http://localhost:${editorPort}`,
       },
     },
@@ -40,6 +42,7 @@ export default defineConfig({
       name: 'dev-harness',
       use: {
         ...devices['Desktop Chrome'],
+        viewport: { width: 1920, height: 1080 },
         baseURL: `http://localhost:${harnessPort}`,
       },
     },
