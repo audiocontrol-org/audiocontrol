@@ -1,20 +1,21 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import mkcert from 'vite-plugin-mkcert';
 import path from 'path';
-import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const editorCoreDevDir = path.dirname(
   fileURLToPath(import.meta.resolve('@audiocontrol/editor-core/dev/postcss.config')),
 );
 
-const certPath = path.resolve(__dirname, 'certs/dev.crt');
-const keyPath = path.resolve(__dirname, 'certs/dev.key');
-const hasCerts = fs.existsSync(certPath) && fs.existsSync(keyPath);
+const useMkcert = process.env.VISUAL_HTTP !== '1';
 
 export default defineConfig({
   root: __dirname,
-  plugins: [react()],
+  plugins: [
+    react(),
+    ...(useMkcert ? [mkcert({ hosts: ['localhost', 'orion-m1', 'orion-m4'] })] : []),
+  ],
   css: {
     postcss: editorCoreDevDir,
   },
@@ -25,13 +26,8 @@ export default defineConfig({
   },
   server: {
     port: 3332,
+    strictPort: false,
     host: true,
-    allowedHosts: ['orion-m1', 'orion-m1.local', 'orion-m1.tail8254f4.ts.net'],
-    ...(hasCerts && {
-      https: {
-        cert: fs.readFileSync(certPath),
-        key: fs.readFileSync(keyPath),
-      },
-    }),
+    allowedHosts: true,
   },
 });

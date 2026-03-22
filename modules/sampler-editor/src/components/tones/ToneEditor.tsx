@@ -63,8 +63,6 @@ interface ToneEditorProps {
     // Loop smoothing props
     onSmoothLoop?: (mode: 'linear' | 'equal-power') => void;
     isSmoothingLoop?: boolean;
-    // Base path for workflow links (e.g. '/roland/s330/editor')
-    workflowBasePath?: string;
 }
 
 export function ToneEditor({
@@ -91,7 +89,6 @@ export function ToneEditor({
     loopSearchProgress,
     onSmoothLoop,
     isSmoothingLoop,
-    workflowBasePath,
 }: ToneEditorProps) {
     const handleTvaEnvelopeChange = (envelope: SamplerEnvelope) => {
         onUpdate?.({ ...tone, tva: { ...tone.tva, envelope } });
@@ -341,16 +338,6 @@ export function ToneEditor({
             {/* Loop Editor */}
             {hasSampleData && (
                 <div className="space-y-2">
-                    {workflowBasePath && (
-                        <div className="flex justify-end">
-                            <Link
-                                to={`${workflowBasePath}/workflows/loop-editor`}
-                                className="text-xs text-s330-muted hover:text-s330-highlight transition-colors"
-                            >
-                                Open standalone loop editor &rarr;
-                            </Link>
-                        </div>
-                    )}
                     {!waveData && !isLoadingWaveData && onLoadWaveData && (
                         <div className="card text-center py-4">
                             <p className="text-s330-muted text-sm mb-2">

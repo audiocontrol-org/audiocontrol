@@ -36,6 +36,10 @@ export function isMockMidiMode(): boolean {
   return getQueryParam('midi') === 'mock';
 }
 
+export function isMockLibraryMode(): boolean {
+  return getQueryParam('library') === 'mock';
+}
+
 function getFirstPortId(ports?: MidiPortInfo[]): string | null {
   if (!ports || ports.length === 0) return null;
   return ports[0]?.id ?? null;
