@@ -169,11 +169,16 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
   }, []);
 
   // Built-in keyboard input — created once, always available.
-  // Uses useRef with initializer to ensure it exists before the first render
-  // completes, so useSamplePlayer can wire handlers immediately.
-  const keyboardInputRef = useRef<NoteInput>(createKeyboardNoteInput(rootKey));
+  // Lazy initialization avoids creating multiple instances on re-renders.
+  const keyboardInputRef = useRef<NoteInput | null>(null);
+  if (!keyboardInputRef.current) {
+    keyboardInputRef.current = createKeyboardNoteInput(rootKey);
+  }
   useEffect(() => {
-    return () => keyboardInputRef.current.dispose();
+    return () => {
+      keyboardInputRef.current?.dispose();
+      keyboardInputRef.current = null;
+    };
   }, []);
 
   // Synth-core playback — keyboard input is always available.
