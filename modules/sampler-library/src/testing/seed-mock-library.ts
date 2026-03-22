@@ -94,7 +94,7 @@ export function seedMockLibrary(root: InMemoryDirectoryHandle): void {
       'format: sample',
       'version: 1',
       `name: ${signal.name}`,
-      `file: ${signal.name}.wav`,
+      `file: sample.wav`,
       `sampleRate: ${DEFAULT_SAMPLE_RATE}`,
       'loopMode: forward',
       `loopStart: ${signal.loopStart}`,
@@ -102,7 +102,7 @@ export function seedMockLibrary(root: InMemoryDirectoryHandle): void {
     ].join('\n');
 
     dir.addFile(new InMemoryFileHandle('sample.yaml', new TextEncoder().encode(yaml)));
-    dir.addFile(new InMemoryFileHandle(`${signal.name}.wav`, wavBytes));
+    dir.addFile(new InMemoryFileHandle('sample.wav', wavBytes));
     samples.addDirectory(dir);
   }
 

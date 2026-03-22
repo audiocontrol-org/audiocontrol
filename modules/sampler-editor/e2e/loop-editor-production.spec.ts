@@ -32,19 +32,26 @@ async function openInSamplerEditor(page: Page, sampleName: string): Promise<void
 
   // Wait for mock library to auto-connect and tree to load
   // Use exact match to avoid matching "decay-into-sustain" when looking for "sustain"
-  const treeNode = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${sampleName}$`) }).first();
-  await expect(treeNode).toBeVisible({ timeout: 10000 });
+  // Find the sample in the SAMPLES category section (not CHOPPED SAMPLES).
+  // Each category is a TreeSection with a .ac-tree-section-title span.
+  // We need the last match since CHOPPED SAMPLES renders the same names as directories.
+  const allMatches = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${sampleName}$`) });
+  await expect(allMatches.first()).toBeVisible({ timeout: 10000 });
+  // The SAMPLES section renders after CHOPPED SAMPLES, so use .last()
+  const nameSpan = allMatches.last();
+  await expect(nameSpan).toBeVisible({ timeout: 10000 });
 
-  // Click the sample in the tree to select it
-  await treeNode.click();
+  // Click the tree row (.ac-tree-node handles onClick, not the name span)
+  const treeRow = nameSpan.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
+  await treeRow.click();
 
-  // The sample detail panel should show an "Open in Loop Editor" action
-  const openBtn = page.getByRole('button', { name: /Loop Editor/i });
+  // The CommonSamplePreviewPanel should show "Open in Loop Editor"
+  const openBtn = page.getByRole('button', { name: 'Open in Loop Editor' });
   await expect(openBtn).toBeVisible({ timeout: 5000 });
   await openBtn.click();
 
   // Wait for the LoopEditorDialog to open
-  await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 5000 });
+  await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 10000 });
 }
 
 async function openInDevHarness(page: Page, sampleName: string): Promise<void> {

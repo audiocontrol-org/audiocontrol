@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { InMemoryDirectoryHandle } from './in-memory-storage';
 import { seedMockLibrary } from './seed-mock-library';
+import { loadSample } from '../common-area/samples';
+import { listCommonSamplesTree } from '../library-fs';
 
 describe('seedMockLibrary', () => {
   it('creates the expected directory structure', async () => {
@@ -39,7 +41,7 @@ describe('seedMockLibrary', () => {
 
     expect(yamlText).toContain('format: sample');
     expect(yamlText).toContain('name: sustain');
-    expect(yamlText).toContain('file: sustain.wav');
+    expect(yamlText).toContain('file: sample.wav');
     expect(yamlText).toContain('sampleRate: 30000');
     expect(yamlText).toContain('loopMode: forward');
   });
@@ -53,7 +55,7 @@ describe('seedMockLibrary', () => {
       .getDirectoryHandle('samples'))
       .getDirectoryHandle('sustain');
 
-    const wavHandle = await dir.getFileHandle('sustain.wav');
+    const wavHandle = await dir.getFileHandle('sample.wav');
     const wavFile = await wavHandle.getFile();
     const buf = new Uint8Array(await wavFile.arrayBuffer());
 
@@ -65,5 +67,34 @@ describe('seedMockLibrary', () => {
 
     // Should be non-trivial size (2 seconds of 30kHz mono 16-bit)
     expect(buf.byteLength).toBeGreaterThanOrEqual(44 + 60000 * 2);
+  });
+
+  it('works with listCommonSamplesTree', async () => {
+    const root = new InMemoryDirectoryHandle('root');
+    seedMockLibrary(root);
+
+    const tree = await listCommonSamplesTree(root);
+    const names = tree.map(n => n.name);
+
+    expect(names).toContain('sustain');
+    expect(names).toContain('discontinuity');
+    expect(tree.length).toBe(7);
+
+    // All should be type 'sample'
+    for (const node of tree) {
+      expect(node.type).toBe('sample');
+    }
+  });
+
+  it('works with loadSample', async () => {
+    const root = new InMemoryDirectoryHandle('root');
+    seedMockLibrary(root);
+
+    const result = await loadSample(root, 'sustain');
+
+    expect(result.yaml.name).toBe('sustain');
+    expect(result.yaml.sampleRate).toBe(30000);
+    expect(result.yaml.loopMode).toBe('forward');
+    expect(result.wavData.byteLength).toBeGreaterThan(44);
   });
 });
