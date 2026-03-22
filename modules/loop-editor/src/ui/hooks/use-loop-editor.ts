@@ -180,14 +180,38 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
     prevIsSearchingRef.current = isSearching;
   }, [isSearching, candidates]);
 
+  // Shared note event dispatch — all input sources (keyboard, MIDI, external)
+  // call through these refs. useSamplePlayer wires its handlers here once.
+  const noteOnRef = useRef<((note: number, velocity: number) => void) | null>(null);
+  const noteOffRef = useRef<((note: number) => void) | null>(null);
+
+  const dispatchNoteOn = useCallback((note: number, velocity: number) => {
+    noteOnRef.current?.(note, velocity);
+  }, []);
+  const dispatchNoteOff = useCallback((note: number) => {
+    noteOffRef.current?.(note);
+  }, []);
+
+  // The single NoteInput passed to useSamplePlayer — stable reference.
+  const playerInputRef = useRef<NoteInput | null>(null);
+  if (!playerInputRef.current) {
+    playerInputRef.current = {
+      onNoteOn(handler) { noteOnRef.current = handler; },
+      onNoteOff(handler) { noteOffRef.current = handler; },
+      dispose() { noteOnRef.current = null; noteOffRef.current = null; },
+    };
+  }
+
   // Built-in keyboard input — created once, always available.
   const keyboardInputRef = useRef<NoteInput | null>(null);
   if (!keyboardInputRef.current) {
-    keyboardInputRef.current = createKeyboardNoteInput(rootKey);
+    const kbd = createKeyboardNoteInput(rootKey);
+    kbd.onNoteOn(dispatchNoteOn);
+    kbd.onNoteOff(dispatchNoteOff);
+    keyboardInputRef.current = kbd;
   }
 
   // Web MIDI input — created async, available when MIDI permission is granted.
-  const [midiInput, setMidiInput] = useState<NoteInput | null>(null);
   useEffect(() => {
     let disposed = false;
     let input: NoteInput | null = null;
@@ -195,61 +219,37 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
       .then((result) => {
         if (disposed) { result.dispose(); return; }
         input = result;
-        setMidiInput(result);
+        result.onNoteOn(dispatchNoteOn);
+        result.onNoteOff(dispatchNoteOff);
       })
       .catch(() => { /* MIDI unavailable — keyboard still works */ });
     return () => {
       disposed = true;
       input?.dispose();
     };
-  }, []);
+  }, [dispatchNoteOn, dispatchNoteOff]);
 
-  // Combine all note inputs into a single NoteInput for useSamplePlayer.
-  // Sources: keyboard (always), MIDI (when available), external (when provided).
-  const combinedInputRef = useRef<NoteInput | null>(null);
-  const allInputs = [keyboardInputRef.current, midiInput, noteInput].filter(Boolean) as NoteInput[];
-
-  const combinedInput = useMemo((): NoteInput => {
-    let onNoteOn: ((note: number, velocity: number) => void) | null = null;
-    let onNoteOff: ((note: number) => void) | null = null;
-
-    const forward = {
-      noteOn: (n: number, v: number) => onNoteOn?.(n, v),
-      noteOff: (n: number) => onNoteOff?.(n),
+  // External input (when provided by consumer)
+  useEffect(() => {
+    if (!noteInput) return;
+    noteInput.onNoteOn(dispatchNoteOn);
+    noteInput.onNoteOff(dispatchNoteOff);
+    return () => {
+      noteInput.onNoteOn(null);
+      noteInput.onNoteOff(null);
     };
-
-    // Wire all sources
-    for (const input of allInputs) {
-      input.onNoteOn(forward.noteOn);
-      input.onNoteOff(forward.noteOff);
-    }
-
-    const combined: NoteInput = {
-      onNoteOn(handler) { onNoteOn = handler; },
-      onNoteOff(handler) { onNoteOff = handler; },
-      dispose() {
-        for (const input of allInputs) {
-          input.onNoteOn(null);
-          input.onNoteOff(null);
-        }
-      },
-    };
-    combinedInputRef.current = combined;
-    return combined;
-    // Re-create when MIDI connects or external input changes
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [midiInput, noteInput]);
+  }, [noteInput, dispatchNoteOn, dispatchNoteOff]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       keyboardInputRef.current?.dispose();
       keyboardInputRef.current = null;
-      combinedInputRef.current?.dispose();
+      playerInputRef.current?.dispose();
     };
   }, []);
 
-  // Synth-core playback — combined keyboard + MIDI + external input.
+  // Synth-core playback — stable input ref, all sources dispatch through it.
   const { activeNotes } = useSamplePlayer({
     samples: playerSamples,
     sampleRate,
@@ -257,7 +257,7 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
     loopEnabled,
     loopStartSample: loopPoint,
     loopEndSample: endPoint,
-    noteInput: combinedInput,
+    noteInput: playerInputRef.current,
   });
 
   return {

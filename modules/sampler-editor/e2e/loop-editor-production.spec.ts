@@ -57,9 +57,10 @@ async function openInSamplerEditor(page: Page, sampleName: string): Promise<void
 async function openInDevHarness(page: Page, sampleName: string): Promise<void> {
   await page.goto('/?library=mock');
 
-  // Wait for library to auto-connect and tree to appear
+  // Wait for mock library to auto-connect, seed, and tree to render.
+  // The mock seeder generates WAV files in-memory which takes a moment.
   const treeNode = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${sampleName}$`) }).first();
-  await expect(treeNode).toBeVisible({ timeout: 10000 });
+  await expect(treeNode).toBeVisible({ timeout: 15000 });
 
   // Click the tree row (.ac-tree-node handles onClick)
   const treeRow = treeNode.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
@@ -121,11 +122,13 @@ test.describe('Loop Editor — production path feature parity', () => {
   });
 
   test('keyboard triggers MIDI voice indicator', async ({ page }) => {
-    // Wait for React effects to wire keyboard input handlers
-    await page.waitForTimeout(500);
+    // The combined input (keyboard + MIDI) may be re-created when MIDI
+    // connects async. Retry the keypress until the handler is wired.
+    await expect(async () => {
+      await page.keyboard.down('z');
+      await expect(page.getByText('MIDI: 1 voice')).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: 5000 });
 
-    await page.keyboard.down('z');
-    await expect(page.getByText('MIDI: 1 voice')).toBeVisible();
     await page.keyboard.up('z');
     await expect(page.getByText(/MIDI:/)).not.toBeVisible();
   });
@@ -159,6 +162,28 @@ test.describe('Loop Editor — production path auto-detect', () => {
     await expect(page.getByText(/Loop Candidates \(\d+\)/)).toBeVisible();
   });
 
+  test('auto-detect auto-selects first candidate', async ({ page }, testInfo) => {
+    await openLoopEditorForSample(page, testInfo.project.name, 'sustain');
+
+    // Record the loop point value before auto-detect
+    const loopPointBefore = await page.getByTestId('loop-point-input').inputValue();
+
+    await page.getByRole('button', { name: 'Auto-Detect' }).click();
+    await expect(page.getByText('Searching...')).toBeVisible({ timeout: 2000 });
+    await expect(page.getByText('Searching...')).not.toBeVisible({ timeout: 15000 });
+
+    // Candidates should appear
+    await expect(page.getByText(/Loop Candidates \(\d+\)/)).toBeVisible();
+
+    // The first candidate should be highlighted (selected state)
+    const firstCandidate = page.locator('button:has-text("→")').first();
+    await expect(firstCandidate).toHaveClass(/highlight|selected|ac-btn-primary/i);
+
+    // The loop point input should have changed from the initial value
+    const loopPointAfter = await page.getByTestId('loop-point-input').inputValue();
+    expect(loopPointAfter).not.toBe(loopPointBefore);
+  });
+
   test('auto-detect finds candidates for decay-into-sustain', async ({ page }, testInfo) => {
     await openLoopEditorForSample(page, testInfo.project.name, 'decay-into-sustain');
 
@@ -188,11 +213,12 @@ test.describe('Loop Editor — production path auto-detect', () => {
 test.describe('Loop Editor — production path smoothing', () => {
   test('keyboard playback works in all three modes', async ({ page }, testInfo) => {
     await openLoopEditorForSample(page, testInfo.project.name, 'sustain');
-    await page.waitForTimeout(500);
 
-    // Loop mode
-    await page.keyboard.down('z');
-    await expect(page.getByText('MIDI: 1 voice')).toBeVisible();
+    // Loop mode — retry until keyboard input is wired
+    await expect(async () => {
+      await page.keyboard.down('z');
+      await expect(page.getByText('MIDI: 1 voice')).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: 5000 });
     await page.keyboard.up('z');
 
     // Smoothed mode

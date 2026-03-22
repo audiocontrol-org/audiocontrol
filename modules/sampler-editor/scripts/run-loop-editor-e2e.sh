@@ -39,8 +39,8 @@ HARNESS_LOG=$(mktemp)
 VISUAL_HTTP=1 npx vite --port 0 --force > "$EDITOR_LOG" 2>&1 &
 EDITOR_PID=$!
 
-# Start loop-editor dev harness vite on port 0
-(cd ../loop-editor && npx vite --config dev/vite.config.ts --port 0 --force) > "$HARNESS_LOG" 2>&1 &
+# Start loop-editor dev harness vite on port 0 (HTTP mode)
+(cd ../loop-editor && VISUAL_HTTP=1 npx vite --config dev/vite.config.ts --port 0 --force) > "$HARNESS_LOG" 2>&1 &
 HARNESS_PID=$!
 
 # Wait for both servers to bind and report their ports

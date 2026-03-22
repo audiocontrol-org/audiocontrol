@@ -73,6 +73,7 @@
     "vite": "^5.0.10",
     "vite-plugin-mkcert": "^1.17.9",
     "vite-tsconfig-paths": "^6.1.1",
-    "vitest": "^1.2.0"
+    "vitest": "^1.2.0",
+    "yaml": "^2.8.3"
   }
 }
