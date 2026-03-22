@@ -23,7 +23,7 @@ describe('seedMockLibrary', () => {
     expect(entries).toContain('sustain');
     expect(entries).toContain('discontinuity');
     expect(entries).toContain('decay-into-sustain');
-    expect(entries.length).toBe(7);
+    expect(entries.length).toBe(12);
   });
 
   it('creates valid sample.yaml files', async () => {
@@ -78,7 +78,7 @@ describe('seedMockLibrary', () => {
 
     expect(names).toContain('sustain');
     expect(names).toContain('discontinuity');
-    expect(tree.length).toBe(7);
+    expect(tree.length).toBe(12);
 
     // All should be type 'sample'
     for (const node of tree) {

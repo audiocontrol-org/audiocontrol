@@ -19,6 +19,13 @@ import {
   generateSustainWithTrailingDecay,
   generateDiscontinuity,
 } from '../loop-detector/testing/test-signals.js';
+import {
+  generateDrumPattern,
+  generateSilenceGaps,
+  generateSoftLoud,
+  generateRapidFire,
+  generateFadeInHits,
+} from './chopper-test-signals.js';
 
 const DEFAULT_SAMPLE_RATE = 30000;
 
@@ -71,6 +78,12 @@ const SIGNALS: SignalDef[] = [
   { name: 'decay-into-sustain', generate: generateDecayIntoSustain, loopStart: 9000, loopEnd: 45000 },
   { name: 'sustain-trailing-decay', generate: generateSustainWithTrailingDecay, loopStart: 9000, loopEnd: 40000 },
   { name: 'discontinuity', generate: generateDiscontinuity, loopStart: 9000, loopEnd: 45000 },
+  // Chopper-specific test signals (no loop points needed)
+  { name: 'drum-pattern', generate: generateDrumPattern, loopStart: 0, loopEnd: 0 },
+  { name: 'silence-gaps', generate: generateSilenceGaps, loopStart: 0, loopEnd: 0 },
+  { name: 'soft-loud', generate: generateSoftLoud, loopStart: 0, loopEnd: 0 },
+  { name: 'rapid-fire', generate: generateRapidFire, loopStart: 0, loopEnd: 0 },
+  { name: 'fade-in-hits', generate: generateFadeInHits, loopStart: 0, loopEnd: 0 },
 ];
 
 /**
