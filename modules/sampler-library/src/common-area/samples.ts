@@ -381,61 +381,94 @@ export interface ChoppedSampleLoadResult {
 }
 
 /**
- * Save a chopped sample as a directory bundle:
- * `library/common/samples/{path}/{name}/manifest.yaml` + `source.wav`.
+ * Save a chopped sample as a standard sample directory bundle:
+ * `library/common/samples/{path}/{name}/sample.yaml` + `sample.wav`.
+ *
+ * Converts the ChoppedSample manifest to SampleYaml format so that
+ * chopped samples are stored in the unified sample format.
  */
 export async function saveChoppedSample(
   root: StorageDirectoryHandle,
   payload: ChoppedSampleSavePayload,
   path: string[] = [],
 ): Promise<void> {
-  const samplesDir = await getSamplesDir(root, path);
-  const safeName = sanitizeForFilename(payload.name);
-  const sampleDir = await samplesDir.getDirectoryHandle(safeName, { create: true });
-
   const result = ChoppedSampleSchema.safeParse(payload.manifest);
   if (!result.success) {
     throw new Error(`Invalid manifest: ${result.error.message}`);
   }
 
-  const yamlContent = stringifyYaml(result.data, { indent: 2, lineWidth: 120 });
-  const yamlHandle = await sampleDir.getFileHandle('manifest.yaml', { create: true });
-  const yamlWritable = await yamlHandle.createWritable();
-  await yamlWritable.write(yamlContent);
-  await yamlWritable.close();
+  const manifest = result.data;
 
-  const wavHandle = await sampleDir.getFileHandle('source.wav', { create: true });
-  const wavWritable = await wavHandle.createWritable();
-  await wavWritable.write(payload.wavData);
-  await wavWritable.close();
+  // Convert ChoppedSample to SampleYaml
+  const sampleYaml: SampleYaml = {
+    format: 'sample',
+    version: 1,
+    name: manifest.name,
+    file: 'sample.wav',
+    sampleRate: manifest.sampleRate,
+    description: manifest.description,
+    slices: manifest.slices,
+    triggers: manifest.triggers,
+    playback: manifest.playback,
+    drumKit: manifest.variant === 'drum-kit' ? manifest.drumKit : undefined,
+    createdAt: manifest.createdAt,
+    modifiedAt: manifest.modifiedAt,
+  };
+
+  // Use standard saveSample
+  await saveSample(root, { name: payload.name, yaml: sampleYaml, wavData: payload.wavData }, path);
 }
 
 /**
- * Load a chopped sample bundle (manifest.yaml + source.wav).
+ * Load a chopped sample bundle from `sample.yaml` + `sample.wav`.
+ *
+ * Returns a {@link ChoppedSampleLoadResult} for backward compatibility
+ * with consumers that expect the `ChoppedSample` shape. The sample.yaml
+ * must have `slices` defined.
  */
 export async function loadChoppedSample(
   root: StorageDirectoryHandle,
   name: string,
   path: string[] = [],
 ): Promise<ChoppedSampleLoadResult> {
-  const samplesDir = await getSamplesDir(root, path);
+  const parentDir = await getSamplesDirReadOnly(root, path);
   const safeName = sanitizeForFilename(name);
-  const sampleDir = await samplesDir.getDirectoryHandle(safeName, { create: false });
+  const sampleDir = await parentDir.getDirectoryHandle(safeName);
 
-  const manifestHandle = await sampleDir.getFileHandle('manifest.yaml');
-  const manifestFile = await manifestHandle.getFile();
-  const manifestText = await manifestFile.text();
-  const parsed = parseYaml(manifestText);
-  const result = ChoppedSampleSchema.safeParse(parsed);
+  const yamlHandle = await sampleDir.getFileHandle('sample.yaml');
+  const yamlFile = await yamlHandle.getFile();
+  const yamlText = await yamlFile.text();
+  const parsed = parseYaml(yamlText);
+  const result = SampleYamlSchema.safeParse(parsed);
   if (!result.success) {
-    throw new Error(`Invalid manifest for "${name}": ${result.error.message}`);
+    throw new Error(`Invalid sample YAML for "${name}": ${result.error.message}`);
+  }
+  if (!result.data.slices) {
+    throw new Error(`Sample "${name}" has no slices`);
   }
 
-  const wavHandle = await sampleDir.getFileHandle('source.wav');
+  const wavHandle = await sampleDir.getFileHandle('sample.wav');
   const wavFile = await wavHandle.getFile();
   const wavData = await wavFile.arrayBuffer();
 
-  return { manifest: result.data, wavData };
+  // Convert SampleYaml to ChoppedSample for consumers expecting that shape
+  const manifest: ChoppedSample = {
+    format: 'chopped-sample',
+    version: 1,
+    variant: result.data.drumKit ? 'drum-kit' : 'generic',
+    name: result.data.name,
+    source: result.data.file,
+    sampleRate: result.data.sampleRate,
+    slices: result.data.slices,
+    triggers: result.data.triggers,
+    playback: result.data.playback,
+    ...(result.data.drumKit ? { drumKit: result.data.drumKit } : {}),
+    description: result.data.description,
+    createdAt: result.data.createdAt,
+    modifiedAt: result.data.modifiedAt,
+  } as ChoppedSample;
+
+  return { manifest, wavData };
 }
 
 // =========================================================================

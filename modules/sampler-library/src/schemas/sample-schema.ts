@@ -15,6 +15,12 @@
 
 import { z } from 'zod';
 import { LoopModeSchema, MidiNoteSchema, DeviceTypeSchema } from './common-schema.js';
+import { SliceDefinitionSchema } from './drum-kit-bundle-schema.js';
+import {
+  TriggerMappingSchema,
+  PlaybackConfigSchema,
+  DrumKitMetadataSchema,
+} from './chopped-sample-schema.js';
 
 /**
  * Common-area sample YAML schema.
@@ -51,6 +57,17 @@ export const SampleYamlSchema = z.object({
   createdAt: z.string().optional(),
   /** ISO 8601 last modification timestamp */
   modifiedAt: z.string().optional(),
+
+  // -- Slice fields (optional — present when sample has been chopped) --
+
+  /** Slice definitions referencing regions of the source WAV */
+  slices: z.array(SliceDefinitionSchema).optional(),
+  /** Trigger mappings associating MIDI notes/keys to slices */
+  triggers: z.array(TriggerMappingSchema).optional(),
+  /** Playback configuration (polyphony, gate/one-shot, mute groups) */
+  playback: PlaybackConfigSchema.optional(),
+  /** Drum kit parameters (present when slices represent a drum kit) */
+  drumKit: DrumKitMetadataSchema.optional(),
 }).refine(
   (data) => {
     if (data.loopStart !== undefined && data.loopEnd !== undefined) {

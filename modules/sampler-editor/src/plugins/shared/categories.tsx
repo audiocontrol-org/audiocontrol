@@ -12,7 +12,6 @@ import {
   drumKitItemType,
   sampleItemType,
   programItemType,
-  choppedSampleItemType,
 } from './item-types';
 
 // =========================================================================
@@ -120,26 +119,6 @@ export function createDrumKitsCategory(): CategoryPlugin {
     },
     emptyMessage: 'No drum kits in library',
     dropMessage: 'Drop to save drum kit',
-    acceptsExternalDrop: false,
-
-    renderHeaderActions: (callbacks: CategoryCallbacks) => (
-      <NewFolderButton onClick={callbacks.createFolder} />
-    ),
-  };
-}
-
-// =========================================================================
-// Chopped Samples Category
-// =========================================================================
-
-export function createChoppedSamplesCategory(): CategoryPlugin {
-  return {
-    categoryId: 'choppedSamples',
-    title: 'Chopped Samples',
-    itemTypes: {
-      'chopped-sample': choppedSampleItemType,
-    },
-    emptyMessage: 'No chopped samples',
     acceptsExternalDrop: false,
 
     renderHeaderActions: (callbacks: CategoryCallbacks) => (

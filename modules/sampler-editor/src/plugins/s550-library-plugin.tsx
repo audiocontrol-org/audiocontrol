@@ -16,7 +16,6 @@ import {
   createTonesCategory,
   createPatchesCategory,
   createDrumKitsCategory,
-  createChoppedSamplesCategory,
   createCommonSamplesCategory,
   createCommonProgramsCategory,
 } from './shared/categories';
@@ -26,7 +25,7 @@ import { ItemPreviewPanel } from '@/components/library/ItemPreviewPanel';
 import { SampleBundlePreviewPanel } from '@/components/library/SampleBundlePreviewPanel';
 import { CommonSamplePreviewPanel } from '@/components/library/CommonSamplePreviewPanel';
 import type { DeviceMemoryCustomState, PreviewPanelCustomState } from './shared/plugin-state-types';
-import type { DrumKitInfo, LibraryTreeNode } from '@/lib/library-service';
+import type { DrumKitInfo } from '@/lib/library-service';
 
 // =========================================================================
 // S-550 Memory Panel Adapter
@@ -147,24 +146,18 @@ function S550PreviewPanelAdapter({
   const pageSelection = state.pageSelection;
 
   // Route to appropriate preview panel based on selection type
-  if (pageSelection?.type === 'drumKit' || pageSelection?.type === 'choppedSample') {
-    // Find drum kit info for preview
-    const kitInfo: DrumKitInfo | null = pageSelection.type === 'drumKit'
-      ? { directoryName: pageSelection.name!, name: pageSelection.name!, kitCount: 0, sampleCount: 0 }
-      : null;
-
-    // Find chopped sample node for preview
-    const choppedSampleNode: LibraryTreeNode | null = null; // Would need to be passed through state
+  if (pageSelection?.type === 'drumKit') {
+    const kitInfo: DrumKitInfo | null = {
+      directoryName: pageSelection.name!, name: pageSelection.name!, kitCount: 0, sampleCount: 0,
+    };
 
     return (
       <SampleBundlePreviewPanel
-        kitInfo={pageSelection.type === 'drumKit' ? kitInfo : undefined}
-        choppedSampleNode={pageSelection.type === 'choppedSample' ? choppedSampleNode : undefined}
+        kitInfo={kitInfo}
         libraryHandle={state.libraryHandle}
-        preloadedBundle={pageSelection.type === 'drumKit' ? state.selectedDrumKitBundle : undefined}
-        preloadedManifest={pageSelection.type === 'choppedSample' ? state.selectedChoppedSampleManifest : undefined}
+        preloadedBundle={state.selectedDrumKitBundle}
         onImport={state.onImportDrumKit}
-        onEditKit={pageSelection.type === 'drumKit' ? state.onEditDrumKit : undefined}
+        onEditKit={state.onEditDrumKit}
       />
     );
   }
@@ -210,7 +203,6 @@ export const s550LibraryPlugin: DeviceLibraryPlugin = {
     createTonesCategory(),
     createPatchesCategory(),
     createDrumKitsCategory(),
-    createChoppedSamplesCategory(),
     createCommonSamplesCategory(),
     createCommonProgramsCategory(),
   ],

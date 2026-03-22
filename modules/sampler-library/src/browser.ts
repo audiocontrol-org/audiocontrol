@@ -421,8 +421,6 @@ export {
   listDrumKitsTree,
   scanPatchesDirectory,
   listPatchesTree,
-  scanChoppedSamplesDirectory,
-  listChoppedSamplesTree,
   scanCommonSamplesDirectory,
   listCommonSamplesTree,
   listSets,

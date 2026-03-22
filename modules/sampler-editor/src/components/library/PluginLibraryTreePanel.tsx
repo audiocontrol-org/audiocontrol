@@ -133,7 +133,6 @@ function toExpandedPathsKey(categoryId: string): keyof typeof DEFAULT_EXPANDED_P
     case 'tones': return 'tones';
     case 'patches': return 'patches';
     case 'drumKits': return 'drumKits';
-    case 'choppedSamples': return 'choppedSamples';
     case 'commonSamples': return 'commonSamples';
     default: return 'tones';
   }
@@ -143,7 +142,6 @@ const DEFAULT_EXPANDED_PATHS = {
   tones: new Set<string>(),
   patches: new Set<string>(),
   drumKits: new Set<string>(),
-  choppedSamples: new Set<string>(),
   commonSamples: new Set<string>(),
 };
 

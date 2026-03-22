@@ -9,7 +9,7 @@
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { LibraryDragData } from '@/components/library/DeviceMemoryPanel';
 import type { ItemSelection } from '@/pages/LibraryPage';
-import type { ResolvedDrumKitBundle, ChoppedSample, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
+import type { ResolvedDrumKitBundle, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 
 // =========================================================================
 // Device Memory Panel Custom State
@@ -61,8 +61,6 @@ export interface PreviewPanelCustomState {
   libraryHandle: StorageDirectoryHandle | null;
   /** Preloaded drum kit bundle (if selection is a drum kit) */
   selectedDrumKitBundle?: ResolvedDrumKitBundle | null;
-  /** Preloaded chopped sample manifest (if selection is a chopped sample) */
-  selectedChoppedSampleManifest?: ChoppedSample | null;
 
   // Import callbacks
   onImportTone?: (setName: string, toneFile: string) => void;

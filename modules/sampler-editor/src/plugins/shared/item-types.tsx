@@ -270,39 +270,3 @@ export const programItemType: ItemTypePlugin<ProgramMeta> = {
   ],
 };
 
-// =========================================================================
-// Chopped Sample Item Type Plugin
-// =========================================================================
-
-export const choppedSampleItemType: ItemTypePlugin<SampleMeta> = {
-  typeId: 'chopped-sample',
-  displayName: 'Chopped Sample',
-
-  renderIcon: () => <WaveIcon />,
-
-  renderTrailing: () => null,
-
-  isDraggable: () => true,
-
-  supportsRename: true,
-
-  getContextMenuActions: () => [
-    {
-      id: 'rename',
-      label: 'Rename',
-      icon: null,
-    },
-    {
-      id: 'move',
-      label: 'Move to...',
-      icon: null,
-    },
-    { separator: true },
-    {
-      id: 'delete',
-      label: 'Delete',
-      icon: null,
-      danger: true,
-    },
-  ],
-};

@@ -36,16 +36,15 @@ import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
 import {
   useImportSamples,
   drumKitBundleToImportBundle,
-  choppedSampleToImportBundle,
 } from '@/hooks/useImportSamples';
 import { useDirectoryOperations } from '@/hooks/useDirectoryOperations';
 import { useLibraryExport } from '@/hooks/useLibraryExport';
 import { useLibraryImportDialogs } from '@/hooks/useLibraryImportDialogs';
 import {
   listSets, listDrumKits, listIndividualTones, listIndividualPatches,
-  listIndividualTonesTree, listIndividualPatchesTree, listDrumKitsTree, listChoppedSamplesTree,
+  listIndividualTonesTree, listIndividualPatchesTree, listDrumKitsTree,
   listCommonSamplesTree,
-  loadDrumKitBundle, loadDrumKitSource, updateDrumKitSlices, loadChoppedSampleManifest,
+  loadDrumKitBundle, loadDrumKitSource, updateDrumKitSlices,
   loadIndividualTone, loadIndividualToneWavSamples,
   type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo, type LibraryTreeNode,
   type StorageDirectoryHandle,
@@ -55,8 +54,8 @@ import { CreateDirectoryDialog } from '@/components/library/CreateDirectoryDialo
 import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialog';
 import { DeleteDirectoryDialog } from '@/components/library/DeleteDirectoryDialog';
 import { MoveItemDialog } from '@/components/library/MoveItemDialog';
-import type { ResolvedDrumKitBundle, ChoppedSample } from '@audiocontrol/sampler-library/browser';
-import { parseNoteName, loadSample, loadSampleMeta, getNestedDirectory, sanitizeForFilename } from '@audiocontrol/sampler-library/browser';
+import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
+import { loadSample, loadSampleMeta, getNestedDirectory, sanitizeForFilename } from '@audiocontrol/sampler-library/browser';
 import { parseYaml, stringifyYaml } from '@/lib/library-io';
 import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
@@ -64,7 +63,7 @@ import { cn } from '@/lib/utils';
 /** Selection state for items in either panel */
 export interface ItemSelection {
   source: 'device' | 'library';
-  type: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch' | 'choppedSample' | 'sample' | 'program';
+  type: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch' | 'sample' | 'program';
   index?: number;
   name?: string;
   setName?: string;
@@ -73,12 +72,12 @@ export interface ItemSelection {
 
 /** Load all library data from a directory handle */
 async function loadAllLibraryData(handle: StorageDirectoryHandle) {
-  const [setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, choppedSamplesTreeData, commonSamplesTreeData] = await Promise.all([
+  const [setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, commonSamplesTreeData] = await Promise.all([
     listSets(handle), listDrumKits(handle), listIndividualTones(handle), listIndividualPatches(handle),
     listIndividualTonesTree(handle), listIndividualPatchesTree(handle), listDrumKitsTree(handle),
-    listChoppedSamplesTree(handle), listCommonSamplesTree(handle),
+    listCommonSamplesTree(handle),
   ]);
-  return { setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, choppedSamplesTreeData, commonSamplesTreeData };
+  return { setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, commonSamplesTreeData };
 }
 
 export function LibraryPage() {
@@ -105,15 +104,12 @@ export function LibraryPage() {
 
   const [drumKits, setDrumKits] = useState<DrumKitInfo[]>([]);
   const [selectedDrumKitBundle, setSelectedDrumKitBundle] = useState<ResolvedDrumKitBundle | null>(null);
-  const [selectedChoppedSampleManifest, setSelectedChoppedSampleManifest] = useState<ChoppedSample | null>(null);
-  const [selectedChoppedSampleNode, setSelectedChoppedSampleNode] = useState<LibraryTreeNode | null>(null);
   // Flat lists used for legacy hooks but not read directly (trees used for display)
   const [, setIndividualTones] = useState<LibraryToneInfo[]>([]);
   const [, setIndividualPatches] = useState<LibraryPatchInfo[]>([]);
   const [tonesTree, setTonesTree] = useState<LibraryTreeNode[]>([]);
   const [patchesTree, setPatchesTree] = useState<LibraryTreeNode[]>([]);
   const [drumKitsTree, setDrumKitsTree] = useState<LibraryTreeNode[]>([]);
-  const [choppedSamplesTree, setChoppedSamplesTree] = useState<LibraryTreeNode[]>([]);
   const [commonSamplesTree, setCommonSamplesTree] = useState<LibraryTreeNode[]>([]);
   const [sliceEditDialog, setSliceEditDialog] = useState<{
     open: boolean; kitName: string; path?: string[];
@@ -144,17 +140,14 @@ export function LibraryPage() {
     tones: tonesTree,
     patches: patchesTree,
     drumKits: drumKitsTree,
-    choppedSamples: choppedSamplesTree,
     commonSamples: commonSamplesTree,
-  }), [tonesTree, patchesTree, drumKitsTree, choppedSamplesTree, commonSamplesTree]);
+  }), [tonesTree, patchesTree, drumKitsTree, commonSamplesTree]);
 
   // Handle plugin selection change
   const handlePluginSelectionChange = useCallback((pluginSelection: PluginItemSelection | null) => {
     if (!pluginSelection) {
       setSelection(null);
       setSelectedDrumKitBundle(null);
-      setSelectedChoppedSampleManifest(null);
-      setSelectedChoppedSampleNode(null);
       return;
     }
 
@@ -191,43 +184,9 @@ export function LibraryPage() {
           .then(setSelectedDrumKitBundle)
           .catch((err) => console.error('[LibraryPage] Failed to load drum kit bundle:', err));
       }
-    } else if (categoryId === 'choppedSamples') {
-      pageSelection = {
-        source: 'library',
-        type: 'choppedSample',
-        name: nodeMeta.directoryName ?? node.name,
-        path: nodeMeta.path,
-      };
-      // Find node and load manifest
-      const findNode = (nodes: LibraryTreeNode[], targetName: string, targetPath: string[]): LibraryTreeNode | null => {
-        for (const n of nodes) {
-          if (n.type === 'chopped-sample' && (n.directoryName === targetName || n.name === targetName)) {
-            if (JSON.stringify(n.path) === JSON.stringify(targetPath)) return n;
-          }
-          if (n.children) {
-            const found = findNode(n.children, targetName, targetPath);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-      const choppedNode = findNode(choppedSamplesTree, nodeMeta.directoryName ?? node.name, nodeMeta.path ?? []);
-      setSelectedChoppedSampleNode(choppedNode);
-      if (libraryHandle) {
-        loadChoppedSampleManifest(libraryHandle, nodeMeta.directoryName ?? node.name, nodeMeta.path)
-          .then(setSelectedChoppedSampleManifest)
-          .catch((err) => console.error('[LibraryPage] Failed to load chopped sample:', err));
-      }
     } else if (categoryId === 'commonSamples') {
       // Determine type from node type
-      if (node.type === 'sample') {
-        pageSelection = {
-          source: 'library',
-          type: 'sample',
-          name: nodeMeta.directoryName ?? node.name,
-          path: nodeMeta.path,
-        };
-      } else if (node.type === 'program') {
+      if (node.type === 'program') {
         pageSelection = {
           source: 'library',
           type: 'program',
@@ -235,10 +194,10 @@ export function LibraryPage() {
           path: nodeMeta.path,
         };
       } else {
-        // chopped-sample in common area
+        // sample (including samples with slices, formerly "chopped samples")
         pageSelection = {
           source: 'library',
-          type: 'choppedSample',
+          type: 'sample',
           name: nodeMeta.directoryName ?? node.name,
           path: nodeMeta.path,
         };
@@ -256,11 +215,7 @@ export function LibraryPage() {
     setSelection(pageSelection);
     // Clear other selection state when not relevant
     if (categoryId !== 'drumKits') setSelectedDrumKitBundle(null);
-    if (categoryId !== 'choppedSamples') {
-      setSelectedChoppedSampleManifest(null);
-      setSelectedChoppedSampleNode(null);
-    }
-  }, [libraryHandle, choppedSamplesTree]);
+  }, [libraryHandle]);
 
   useEffect(() => {
     if (!adapter) { clientRef.current = null; return; }
@@ -280,7 +235,6 @@ export function LibraryPage() {
     setSets(data.setList); setDrumKits(data.kitList); setIndividualTones(data.toneList);
     setIndividualPatches(data.patchList); setTonesTree(data.tonesTreeData);
     setPatchesTree(data.patchesTreeData); setDrumKitsTree(data.drumKitsTreeData);
-    setChoppedSamplesTree(data.choppedSamplesTreeData);
     setCommonSamplesTree(data.commonSamplesTreeData);
   }, [setSets]);
 
@@ -359,8 +313,6 @@ export function LibraryPage() {
   const handleSelectLibrary = useCallback((type: 'tone' | 'patch' | 'set', name: string, setName?: string) => {
     setSelection({ source: 'library', type, name, setName });
     setSelectedDrumKitBundle(null);
-    setSelectedChoppedSampleManifest(null);
-    setSelectedChoppedSampleNode(null);
   }, []);
 
   // Import handlers
@@ -370,15 +322,8 @@ export function LibraryPage() {
     if (selection.type === 'drumKit' && selectedDrumKitBundle) {
       const importBundle = drumKitBundleToImportBundle(selectedDrumKitBundle);
       openImportSamplesDialog(selection.name!, importBundle, 'drumKit', selection.path);
-    } else if (selection.type === 'choppedSample' && selectedChoppedSampleManifest) {
-      const manifest = selectedChoppedSampleManifest;
-      const rawBaseNote = manifest.variant === 'drum-kit' ? manifest.drumKit.baseNote : 36;
-      const baseNote = typeof rawBaseNote === 'string' ? parseNoteName(rawBaseNote) : rawBaseNote;
-      const targetRate: 15000 | 30000 = 15000;
-      const importBundle = choppedSampleToImportBundle(manifest, targetRate, baseNote);
-      openImportSamplesDialog(selection.name!, importBundle, 'choppedSample', selection.path);
     }
-  }, [selection, selectedDrumKitBundle, selectedChoppedSampleManifest, openImportSamplesDialog]);
+  }, [selection, selectedDrumKitBundle, openImportSamplesDialog]);
 
   // Kit editing handlers
   const handleEditKit = useCallback(async () => {
@@ -432,7 +377,7 @@ export function LibraryPage() {
         sampleRate = wavResult.sampleRate;
         loopStart = toneResult.yaml.wave.loopPoint;
         loopEnd = toneResult.yaml.wave.endPoint;
-        rootKey = toneResult.yaml.originalKey;
+        rootKey = toneResult.yaml.s330?.originalKey ?? toneResult.yaml.s550?.originalKey;
       } else if (nodeType === 'sample') {
         const result = await loadSample(libraryHandle, name, path);
         const wav = parseWav(result.wavData);
@@ -598,7 +543,6 @@ export function LibraryPage() {
               categoryId: selection.type === 'individualTone' ? 'tones'
                 : selection.type === 'individualPatch' ? 'patches'
                 : selection.type === 'drumKit' ? 'drumKits'
-                : selection.type === 'choppedSample' ? 'choppedSamples'
                 : selection.type === 'sample' || selection.type === 'program' ? 'commonSamples'
                 : 'tones',
               node: { id: selection.name ?? '', name: selection.name ?? '', type: selection.type },
@@ -609,7 +553,6 @@ export function LibraryPage() {
               const expandKey = categoryId === 'tones' ? 'tones'
                 : categoryId === 'patches' ? 'patches'
                 : categoryId === 'drumKits' ? 'drumKits'
-                : categoryId === 'choppedSamples' ? 'choppedSamples'
                 : 'commonSamples';
               toggleDirectoryExpanded(expandKey, nodeId);
             }}
@@ -635,15 +578,13 @@ export function LibraryPage() {
           />
         </div>
         <div className="card p-0 overflow-hidden h-full">
-          {selection?.type === 'drumKit' || selection?.type === 'choppedSample' ? (
+          {selection?.type === 'drumKit' ? (
             <SampleBundlePreviewPanel
-              kitInfo={selection.type === 'drumKit' ? (drumKits.find((k) => k.directoryName === selection.name) ?? null) : undefined}
-              choppedSampleNode={selection.type === 'choppedSample' ? selectedChoppedSampleNode : undefined}
+              kitInfo={drumKits.find((k) => k.directoryName === selection.name) ?? null}
               libraryHandle={libraryHandle}
-              preloadedBundle={selection.type === 'drumKit' ? selectedDrumKitBundle : undefined}
-              preloadedManifest={selection.type === 'choppedSample' ? selectedChoppedSampleManifest : undefined}
+              preloadedBundle={selectedDrumKitBundle}
               onImport={handleOpenSamplesImport}
-              onEditKit={selection.type === 'drumKit' ? handleEditKit : undefined}
+              onEditKit={handleEditKit}
             />
           ) : selection?.type === 'sample' || selection?.type === 'program' ? (
             <CommonSamplePreviewPanel

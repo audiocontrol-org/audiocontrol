@@ -10,7 +10,6 @@
  * - Pitch parameters
  */
 
-import { Link } from 'react-router-dom';
 import type { SamplerTone, SamplerEnvelope, SamplerEgPolarity, SamplerLevelCurve } from '@/core/midi/SamplerClient';
 import type { LoopCandidate } from '@audiocontrol/sampler-library';
 import { formatPercent } from '@audiocontrol/editor-core';
