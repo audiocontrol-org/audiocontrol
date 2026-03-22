@@ -156,6 +156,8 @@ export function LoopEditorDialog({
               playbackMode={editor.playbackMode}
               onPlaybackModeChange={editor.setPlaybackMode}
               discontinuity={editor.discontinuity}
+              crossfadeLength={editor.crossfadeLength}
+              onCrossfadeLengthChange={editor.setCrossfadeLength}
             />
           </div>
         </Dialog.Content>

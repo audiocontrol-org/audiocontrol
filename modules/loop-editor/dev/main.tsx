@@ -498,6 +498,8 @@ function DevHarness() {
             playbackMode={editor.playbackMode}
             onPlaybackModeChange={editor.setPlaybackMode}
             discontinuity={editor.discontinuity}
+            crossfadeLength={editor.crossfadeLength}
+            onCrossfadeLengthChange={editor.setCrossfadeLength}
           />
           {(loadProgress || saveProgress) && (
             <div style={{ marginTop: 16 }}>

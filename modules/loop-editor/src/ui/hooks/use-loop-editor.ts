@@ -54,6 +54,10 @@ export interface UseLoopEditorReturn {
   playbackMode: PlaybackMode;
   setPlaybackMode: (mode: PlaybackMode) => void;
 
+  // Smoothing
+  crossfadeLength: number;
+  setCrossfadeLength: (length: number) => void;
+
   // Discontinuity analysis at current splice point
   discontinuity: DiscontinuityAnalysis | null;
 
@@ -93,6 +97,7 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
   const [endPoint, setEndPoint] = useState(initialLoopEnd ?? (samples?.length ?? 0));
   const [selectedCandidateIndex, setSelectedCandidateIndex] = useState<number | undefined>(undefined);
   const [playbackMode, setPlaybackMode] = useState<PlaybackMode>('loop');
+  const [crossfadeLength, setCrossfadeLength] = useState(64);
 
   // Reset state when loading new samples
   const [prevSamples, setPrevSamples] = useState<Int16Array | null>(null);
@@ -109,22 +114,20 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
     setSelectedCandidateIndex(undefined);
   }, [samples]);
 
-  // Smoothed buffer — recomputed when samples or loop points change.
-  // createSmoothedCopy only modifies the crossfade zone (~64 samples),
-  // so this is cheap enough to run on every loop point change.
+  // Smoothed buffer — recomputed when samples, loop points, or crossfade length change.
   const smoothedSamples = useMemo(() => {
     if (!samples || loopPoint >= endPoint) return null;
     const loopLength = endPoint - loopPoint;
-    if (loopLength < 64) return null; // too short for crossfade
+    if (loopLength < crossfadeLength) return null;
     try {
       return createSmoothedCopy(samples, loopPoint, endPoint, {
         mode: 'equal-power',
-        crossfadeLength: 64,
+        crossfadeLength,
       });
     } catch {
       return null;
     }
-  }, [samples, loopPoint, endPoint]);
+  }, [samples, loopPoint, endPoint, crossfadeLength]);
 
   // Discontinuity analysis at current splice point
   const discontinuity = useMemo(() => {
@@ -183,6 +186,8 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
     setEndPoint,
     playbackMode,
     setPlaybackMode,
+    crossfadeLength,
+    setCrossfadeLength,
     discontinuity,
     isSearching,
     searchProgress: progress,

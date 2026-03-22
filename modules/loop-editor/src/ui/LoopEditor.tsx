@@ -68,6 +68,10 @@ export interface LoopEditorProps {
   onPlaybackModeChange?: (mode: 'no-loop' | 'loop' | 'smoothed-loop') => void;
   /** Discontinuity analysis at the current splice point */
   discontinuity?: { normalizedAmplitudeStep: number; needsSmoothing: boolean } | null;
+  /** Current crossfade length in samples */
+  crossfadeLength?: number;
+  /** Called when user changes crossfade length */
+  onCrossfadeLengthChange?: (length: number) => void;
 }
 
 /** Waveform colors */
@@ -113,6 +117,8 @@ export function LoopEditor({
   playbackMode,
   onPlaybackModeChange,
   discontinuity,
+  crossfadeLength,
+  onCrossfadeLengthChange,
 }: LoopEditorProps): JSX.Element {
   const leftCanvasRef = useRef<HTMLCanvasElement>(null);
   const rightCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -574,6 +580,25 @@ export function LoopEditor({
                 >
                   {discontinuity.needsSmoothing ? '⚠' : '✓'} {(discontinuity.normalizedAmplitudeStep * 100).toFixed(1)}%
                 </span>
+              )}
+              {onCrossfadeLengthChange && crossfadeLength !== undefined && (
+                <div className="flex items-center gap-1 border-l border-s330-accent/20 pl-3 ml-1">
+                  <span className="text-xs text-s330-muted whitespace-nowrap">Xfade:</span>
+                  <input
+                    type="range"
+                    min={8}
+                    max={2048}
+                    step={8}
+                    value={crossfadeLength}
+                    onChange={(e) => onCrossfadeLengthChange(parseInt(e.target.value, 10))}
+                    className="w-20 h-1 accent-s330-highlight"
+                    data-testid="crossfade-length-slider"
+                    title={`Crossfade length: ${crossfadeLength} samples`}
+                  />
+                  <span className="text-xs font-mono text-s330-muted w-12" data-testid="crossfade-length-value">
+                    {crossfadeLength}
+                  </span>
+                </div>
               )}
             </div>
           )}
