@@ -61,16 +61,19 @@ async function openInDevHarness(page: Page, sampleName: string): Promise<void> {
   const treeNode = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${sampleName}$`) }).first();
   await expect(treeNode).toBeVisible({ timeout: 10000 });
 
-  // Click the sample in the tree
-  await treeNode.click();
+  // Click the tree row (.ac-tree-node handles onClick)
+  const treeRow = treeNode.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
+  await treeRow.click();
 
-  // Click "Load into Editor" in the detail panel
-  const loadBtn = page.getByRole('button', { name: /Load into Editor/i });
-  await expect(loadBtn).toBeVisible({ timeout: 5000 });
-  await loadBtn.click();
+  // Click "Open in Loop Editor" — same action as sampler-editor
+  const openBtn = page.getByRole('button', { name: 'Open in Loop Editor' });
+  await expect(openBtn).toBeVisible({ timeout: 5000 });
+  await openBtn.click();
 
-  // Wait for the sample to load (the editor shows the sample name)
-  await expect(page.getByText(new RegExp(`${sampleName}.*Hz`))).toBeVisible({ timeout: 5000 });
+  // Wait for the LoopEditorDialog to open
+  await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 10000 });
+  // Wait for React effects to wire keyboard input
+  await page.waitForTimeout(500);
 }
 
 // =========================================================================

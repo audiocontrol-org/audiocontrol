@@ -30,7 +30,7 @@ import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneD
 import { ImportLibraryPatchDialog } from '@/components/library/ImportLibraryPatchDialog';
 import { ImportSamplesDialog } from '@/components/library/ImportSamplesDialog';
 import { SampleChopperDialog, type SliceDefinitionOutput, type InitialSliceDefinition } from '@audiocontrol/sample-chopper/ui';
-import { LoopEditorDialog } from '@/components/library/LoopEditorDialog';
+import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
 import {

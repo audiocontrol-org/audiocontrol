@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { LoopEditorDialog } from '@/components/library/LoopEditorDialog';
+import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
 import { createKeyboardNoteInput } from '@audiocontrol/synth-core';
 import type { NoteInput } from '@audiocontrol/synth-core';
 
