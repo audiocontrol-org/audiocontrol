@@ -637,6 +637,9 @@ importers:
       vite:
         specifier: ^5.0.10
         version: 5.4.20(@types/node@22.19.8)
+      vite-plugin-mkcert:
+        specifier: ^1.17.9
+        version: 1.17.9(vite@5.4.20)
       vite-tsconfig-paths:
         specifier: ^6.1.1
         version: 6.1.1(typescript@5.9.2)(vite@5.4.20)
@@ -8999,7 +9002,7 @@ packages:
       axios: 1.12.2(debug@4.4.3)
       debug: 4.4.3(supports-color@8.1.1)
       picocolors: 1.1.1
-      vite: 5.4.20(@types/node@20.19.17)
+      vite: 5.4.20(@types/node@22.19.8)
     transitivePeerDependencies:
       - supports-color
     dev: true

@@ -276,8 +276,56 @@ function DevHarness() {
           )}
         />
       ) : (
-        <div className="ac-text-muted" style={{ textAlign: 'center', padding: 48 }}>
-          Connect a library folder or use <code>?library=mock</code> for test data
+        <div style={{ textAlign: 'center', padding: 64 }}>
+          <p style={{ color: '#94a3b8', marginBottom: 24 }}>
+            Open a WAV file or connect a sample library
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <label
+              style={{
+                padding: '12px 24px', fontSize: 16, fontWeight: 600,
+                background: '#2563eb', color: '#fff', border: 'none',
+                borderRadius: 8, cursor: 'pointer', display: 'inline-block',
+              }}
+            >
+              Open WAV File
+              <input
+                type="file"
+                accept=".wav,audio/wav"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  try {
+                    const data = new Uint8Array(await file.arrayBuffer());
+                    const wav = parseWav(data);
+                    setLoopEditorDialog({
+                      open: true,
+                      samples: wav.samples,
+                      sampleRate: wav.sampleRate,
+                      sampleName: file.name.replace(/\.wav$/i, ''),
+                      loopStart: 0,
+                      loopEnd: wav.samples.length,
+                    });
+                  } catch (err) {
+                    notify('error', `Failed to load WAV: ${err instanceof Error ? err.message : 'unknown'}`);
+                  }
+                }}
+              />
+            </label>
+            {library.hasLocalFS && (
+              <button
+                onClick={() => library.connect('local')}
+                style={{
+                  padding: '12px 24px', fontSize: 16, fontWeight: 600,
+                  background: 'transparent', color: '#94a3b8', border: '1px solid #334155',
+                  borderRadius: 8, cursor: 'pointer',
+                }}
+              >
+                Connect Library Folder
+              </button>
+            )}
+          </div>
         </div>
       )}
 
