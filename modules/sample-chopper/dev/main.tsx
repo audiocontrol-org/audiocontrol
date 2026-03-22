@@ -1,456 +1,481 @@
 /**
- * Dev harness for the sample chopper.
+ * Standalone dev harness for the sample chopper.
  *
- * Loads a WAV file via file picker or drag-and-drop,
- * then opens the SampleChopperDialog for testing.
- * Supports saving/loading chopped samples to the library
- * via the File System Access API.
+ * Uses the same library browsing pattern as the loop editor,
+ * ensuring feature parity between editor surfaces.
+ *
+ * Initial state: library browser (auto-connects with ?library=mock)
+ * with a drop zone for WAV files. Selecting a sample shows a detail
+ * panel with "Open in Chopper" which opens the SampleChopperDialog.
  */
 
+import '@audiocontrol/editor-core/dev/styles.css';
+import '@audiocontrol/editor-core/styles.css';
+
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { createRoot } from 'react-dom/client';
-import { useState, useCallback, useRef, useEffect } from 'react';
 import {
   SampleChopperDialog,
   type ChopperResult,
   type ChopperSavePayload,
 } from '@/ui/index.js';
 import {
-  hasFileSystemAccess,
-  saveChoppedSample,
-  loadChoppedSample,
-  loadLibraryTone,
-  loadLibraryDrumKit,
-  getLibraryHandle,
-  pickLibraryDirectory,
-  type LibraryToneInfo,
-  type LibraryDrumKitInfo,
-} from './library.js';
-import {
-  SaveDialog,
-  type SaveDialogResult,
-  type DirectoryItem,
+  useNotifications,
+  useLibraryConnection,
+  NotificationArea,
+  LibraryBrowser,
+  SampleDetailPanel,
+  CacheMetricsModal,
+  AudioFileIcon,
+  type TreeNode,
+  type OperationProgress,
+  type CacheMetricsData,
 } from '@audiocontrol/editor-core';
-import { listChoppedSamples, createSamplesFolder } from './library.js';
-import { LibraryBrowser } from './LibraryBrowser.js';
+import {
+  parseWav,
+  createWav,
+  listCommonSamplesTree,
+  loadSample,
+  loadSampleMeta,
+  saveSample,
+  getNestedDirectory,
+  sanitizeForFilename,
+  createFolder,
+  deleteItem,
+  moveItem,
+  importWavToCommonArea,
+  type LibraryTreeNode,
+  type SampleYaml,
+} from '@audiocontrol/sampler-library/browser';
+import { stringify as stringifyYaml } from 'yaml';
 
-const LIBRARY_MOVE_MIME = 'application/x-library-move';
-
-interface LibraryMoveData {
-  nodeId: string;
-  name: string;
-  path: string[];
-}
-import '@audiocontrol/editor-core/styles.css';
-import './styles.css';
-
-/** Flatten a tree of LibraryTreeNodes into a list of DirectoryItem entries for the SaveDialog. */
-function flattenDirectories(
-  nodes: Array<{ name: string; type: string; path: string[]; children?: Array<{ name: string; type: string; path: string[]; children?: unknown[] }> }>,
-  out: DirectoryItem[],
-  depth: number,
-): void {
-  for (const node of nodes) {
-    if (node.type === 'directory') {
-      out.push({ name: node.name, path: node.path, depth });
-      if (node.children) {
-        flattenDirectories(node.children as typeof nodes, out, depth + 1);
-      }
-    }
-  }
-}
-
-function parseWavFile(buffer: ArrayBuffer): { samples: Int16Array; sampleRate: number } {
-  const view = new DataView(buffer);
-
-  // RIFF header
-  const riff = String.fromCharCode(view.getUint8(0), view.getUint8(1), view.getUint8(2), view.getUint8(3));
-  if (riff !== 'RIFF') throw new Error('Not a WAV file');
-
-  const wave = String.fromCharCode(view.getUint8(8), view.getUint8(9), view.getUint8(10), view.getUint8(11));
-  if (wave !== 'WAVE') throw new Error('Not a WAV file');
-
-  // Find fmt chunk
-  let offset = 12;
-  let sampleRate = 44100;
-  let bitsPerSample = 16;
-  let numChannels = 1;
-
-  while (offset < buffer.byteLength - 8) {
-    const chunkId = String.fromCharCode(
-      view.getUint8(offset), view.getUint8(offset + 1),
-      view.getUint8(offset + 2), view.getUint8(offset + 3)
-    );
-    const chunkSize = view.getUint32(offset + 4, true);
-
-    if (chunkId === 'fmt ') {
-      numChannels = view.getUint16(offset + 10, true);
-      sampleRate = view.getUint32(offset + 12, true);
-      bitsPerSample = view.getUint16(offset + 22, true);
-    }
-
-    if (chunkId === 'data') {
-      const dataOffset = offset + 8;
-      const dataLength = chunkSize;
-
-      if (bitsPerSample === 16) {
-        const sampleCount = dataLength / (2 * numChannels);
-        const samples = new Int16Array(sampleCount);
-
-        for (let i = 0; i < sampleCount; i++) {
-          // Take first channel only for multi-channel
-          samples[i] = view.getInt16(dataOffset + i * 2 * numChannels, true);
-        }
-
-        return { samples, sampleRate };
-      }
-
-      if (bitsPerSample === 24) {
-        const bytesPerFrame = 3 * numChannels;
-        const sampleCount = dataLength / bytesPerFrame;
-        const samples = new Int16Array(sampleCount);
-
-        for (let i = 0; i < sampleCount; i++) {
-          const byteOffset = dataOffset + i * bytesPerFrame;
-          // Read 24-bit sample (little-endian), convert to 16-bit
-          const lo = view.getUint8(byteOffset + 1);
-          const hi = view.getInt8(byteOffset + 2);
-          samples[i] = (hi << 8) | lo;
-        }
-
-        return { samples, sampleRate };
-      }
-
-      throw new Error(`Unsupported bit depth: ${bitsPerSample}`);
-    }
-
-    offset += 8 + chunkSize;
-    if (chunkSize % 2 !== 0) offset++; // Pad byte
-  }
-
-  throw new Error('No data chunk found in WAV file');
+/** Map LibraryTreeNode[] to TreeNode[] for the shared TreeView. */
+function toTreeNodes(nodes: LibraryTreeNode[]): TreeNode[] {
+  return nodes.map((node) => ({
+    id: node.id,
+    name: node.name,
+    type: node.type,
+    children: node.children ? toTreeNodes(node.children) : undefined,
+    meta: { directoryName: node.directoryName ?? node.fileName, path: node.path },
+  }));
 }
 
-function App() {
-  const [samples, setSamples] = useState<Int16Array | null>(null);
-  const [sampleRate, setSampleRate] = useState(44100);
-  const [fileName, setFileName] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [initialSlices, setInitialSlices] = useState<Array<{ label: string; startSample: number; endSample: number }> | undefined>(undefined);
-  const [initialTriggers, setInitialTriggers] = useState<Array<{ triggerId: string; sliceIndex: number }> | undefined>(undefined);
-  const [initialPlaybackConfig, setInitialPlaybackConfig] = useState<{ polyphony: 'mono' | 'poly'; playbackMode: 'one-shot' | 'gate'; muteGroups: number[] } | undefined>(undefined);
-  const [editMode, setEditMode] = useState(false);
-  const [result, setResult] = useState<ChopperResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [dragOver, setDragOver] = useState(false);
-  const [libraryConnected, setLibraryConnected] = useState(false);
-  const [libraryRefreshKey, setLibraryRefreshKey] = useState(0);
-  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const [saveDialogDefaultName, setSaveDialogDefaultName] = useState('');
-  const [saveDialogDirs, setSaveDialogDirs] = useState<DirectoryItem[]>([]);
-  const [saveDialogLoading, setSaveDialogLoading] = useState(false);
-  const [saveDialogError, setSaveDialogError] = useState<string | null>(null);
-  const [samplesBrowsePath, setSamplesBrowsePath] = useState<string[]>([]);
-  /** Tracks the library origin of the currently loaded sample (for auto-save) */
-  const [libraryOrigin, setLibraryOrigin] = useState<{ name: string; path: string[] } | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Resolve for the promise-based save dialog
-  const saveResolverRef = useRef<{
-    resolve: (result: SaveDialogResult | null) => void;
-  } | null>(null);
-
-  // Load directory listing when save dialog opens
-  useEffect(() => {
-    if (!saveDialogOpen) return;
-    setSaveDialogLoading(true);
-    setSaveDialogError(null);
-    listChoppedSamples()
-      .then((tree) => {
-        const flat: DirectoryItem[] = [];
-        flattenDirectories(tree, flat, 0);
-        setSaveDialogDirs(flat);
-      })
-      .catch((err) => setSaveDialogError(err instanceof Error ? err.message : 'Failed to list directories'))
-      .finally(() => setSaveDialogLoading(false));
-  }, [saveDialogOpen]);
-
-  const handleCreateSaveFolder = useCallback(async (parentPath: string[], folderName: string) => {
-    await createSamplesFolder(parentPath, folderName);
-    // Refresh directory listing
-    const tree = await listChoppedSamples();
-    const flat: DirectoryItem[] = [];
-    flattenDirectories(tree, flat, 0);
-    setSaveDialogDirs(flat);
-  }, []);
-
-  const loadFile = useCallback(async (file: File) => {
-    setError(null);
-    setResult(null);
-    setInitialSlices(undefined);
-    setInitialTriggers(undefined);
-    setInitialPlaybackConfig(undefined);
-    setLibraryOrigin(null);
-    setEditMode(false);
-    try {
-      const buffer = await file.arrayBuffer();
-      const { samples: wavSamples, sampleRate: wavRate } = parseWavFile(buffer);
-      setSamples(wavSamples);
-      setSampleRate(wavRate);
-      setFileName(file.name);
-      setDialogOpen(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load file');
-    }
-  }, []);
-
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) loadFile(file);
-  }, [loadFile]);
-
-  const handleConfirm = useCallback((r: ChopperResult) => {
-    setResult(r);
-    console.log('Chopper result:', r);
-  }, []);
-
-  // Library: connect
-  const handleConnectLibrary = useCallback(async () => {
-    const connected = await pickLibraryDirectory();
-    setLibraryConnected(connected);
-    if (connected) setLibraryRefreshKey((k) => k + 1);
-  }, []);
-
-  // Check for existing library handle on mount
-  useState(() => {
-    getLibraryHandle().then((h) => setLibraryConnected(h !== null));
+function DevHarness() {
+  // Library connection
+  const library = useLibraryConnection({
+    pickerId: 'sample-chopper-library',
+    googleDrive: import.meta.env.VITE_GOOGLE_CLIENT_ID
+      ? { clientId: import.meta.env.VITE_GOOGLE_CLIENT_ID, clientSecret: import.meta.env.VITE_GOOGLE_CLIENT_SECRET }
+      : undefined,
   });
 
-  // Library: save callback for the dialog
-  const handleSave = useCallback(async (payload: ChopperSavePayload) => {
-    if (libraryOrigin) {
-      // Auto-save back to the location it was loaded from
-      await saveChoppedSample({ ...payload, name: libraryOrigin.name }, libraryOrigin.path);
-    } else {
-      // Open save dialog for name + directory selection
-      const result = await new Promise<SaveDialogResult | null>((resolve) => {
-        saveResolverRef.current = { resolve };
-        setSaveDialogDefaultName(payload.name.replace(/\.wav$/i, ''));
-        setSaveDialogOpen(true);
-      });
-      if (!result) return;
-      await saveChoppedSample({ ...payload, name: result.name }, result.path);
-      setLibraryOrigin({ name: result.name, path: result.path });
-    }
-    setLibraryRefreshKey((k) => k + 1);
-  }, [libraryOrigin]);
+  // Library state
+  const [libraryItems, setLibraryItems] = useState<LibraryTreeNode[]>([]);
+  const [selectedNodeInfo, setSelectedNodeInfo] = useState<{ directoryName: string; path: string[] } | null>(null);
+  const [selectedSampleMeta, setSelectedSampleMeta] = useState<SampleYaml | null>(null);
+  const [importProgress, setImportProgress] = useState<OperationProgress | undefined>(undefined);
+  const [isLoadingTree, setIsLoadingTree] = useState(false);
+  const [isLoadingMeta, setIsLoadingMeta] = useState(false);
+  const [metricsModalOpen, setMetricsModalOpen] = useState(false);
+  const { notifications, notify, dismiss } = useNotifications();
 
-  // Library browser: open a saved sample in the chopper
-  const handleOpenFromLibrary = useCallback(async (name: string, path: string[]) => {
+  // Chopper dialog state
+  const [chopperDialog, setChopperDialog] = useState<{
+    open: boolean;
+    samples: Int16Array | null;
+    sampleRate: number;
+    sourceName: string;
+    initialSlices?: Array<{ label: string; startSample: number; endSample: number }>;
+    initialTriggers?: Array<{ triggerId: string; sliceIndex: number }>;
+    initialPlaybackConfig?: { polyphony: 'mono' | 'poly'; playbackMode: 'one-shot' | 'gate'; muteGroups: number[] };
+    editMode: boolean;
+    origin?: { name: string; path: string[] };
+  } | null>(null);
+
+  // Result display
+  const [result, setResult] = useState<ChopperResult | null>(null);
+
+  // Drag-drop state
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load library tree when hook connects
+  const prevRootRef = React.useRef<unknown>(null);
+  useEffect(() => {
+    if (library.root && library.root !== prevRootRef.current) {
+      (async () => {
+        setIsLoadingTree(true);
+        try {
+          const items = await listCommonSamplesTree(library.root!);
+          setLibraryItems(items);
+        } finally {
+          setIsLoadingTree(false);
+        }
+      })();
+    }
+    prevRootRef.current = library.root;
+  }, [library.root]);
+
+  // Refresh library listing
+  const refreshLibrary = useCallback(async (clearCache = false) => {
+    if (!library.root) return;
+    setIsLoadingTree(true);
     try {
-      const payload = await loadChoppedSample(name, path);
-      setSamples(payload.sourceAudio.samples);
-      setSampleRate(payload.sourceAudio.sampleRate);
-      setFileName(payload.name);
-      setInitialSlices(payload.slices);
-      setInitialTriggers(payload.triggers);
-      setInitialPlaybackConfig(payload.playbackConfig);
-      setLibraryOrigin({ name, path });
-      setEditMode(true);
+      if (clearCache) library.clearCache();
+      const items = await listCommonSamplesTree(library.root);
+      setLibraryItems(items);
+    } finally {
+      setIsLoadingTree(false);
+    }
+  }, [library.root, library.clearCache]);
+
+  // Open sample in chopper from library
+  const handleOpenInChopper = useCallback(async (name: string, path?: string[]) => {
+    if (!library.root) return;
+    try {
+      const result = await loadSample(library.root, name, path);
+      const wav = parseWav(result.wavData);
+      setChopperDialog({
+        open: true,
+        samples: wav.samples,
+        sampleRate: wav.sampleRate,
+        sourceName: result.yaml.name,
+        initialSlices: result.yaml.slices?.map((s) => ({
+          label: s.label,
+          startSample: s.startSample,
+          endSample: s.endSample,
+        })),
+        initialTriggers: result.yaml.triggers,
+        initialPlaybackConfig: result.yaml.playback,
+        editMode: !!result.yaml.slices && result.yaml.slices.length > 0,
+        origin: { name, path: path ?? [] },
+      });
       setResult(null);
-      setError(null);
-      setDialogOpen(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load sample');
+      notify('error', `Failed to load sample: ${err instanceof Error ? err.message : 'unknown error'}`);
+    }
+  }, [library.root]);
+
+  // Save chopped sample back to library as sample.yaml + sample.wav
+  const handleSave = useCallback(async (payload: ChopperSavePayload) => {
+    if (!library.root) return;
+    const origin = chopperDialog?.origin;
+
+    const yaml: SampleYaml = {
+      format: 'sample',
+      version: 1,
+      name: payload.name,
+      file: 'sample.wav',
+      sampleRate: payload.sourceAudio.sampleRate,
+      slices: payload.slices.map((s) => ({ label: s.label, startSample: s.startSample, endSample: s.endSample })),
+      triggers: payload.triggers,
+      playback: payload.playbackConfig,
+      modifiedAt: new Date().toISOString(),
+    };
+
+    const wavData = createWav(payload.sourceAudio.samples, payload.sourceAudio.sampleRate);
+    const savePath = origin?.path ?? [];
+
+    try {
+      await saveSample(library.root, { name: payload.name, yaml, wavData }, savePath);
+      notify('info', `Saved chopped sample "${payload.name}"`);
+      await refreshLibrary();
+    } catch (err) {
+      notify('error', `Failed to save: ${err instanceof Error ? err.message : 'unknown error'}`);
+    }
+  }, [library.root, chopperDialog, refreshLibrary]);
+
+  // Load WAV from a local file (file picker or drag-drop)
+  const loadLocalWav = useCallback(async (file: File) => {
+    try {
+      const data = new Uint8Array(await file.arrayBuffer());
+      const wav = parseWav(data);
+      setChopperDialog({
+        open: true,
+        samples: wav.samples,
+        sampleRate: wav.sampleRate,
+        sourceName: file.name.replace(/\.wav$/i, ''),
+        editMode: false,
+      });
+      setResult(null);
+    } catch (err) {
+      notify('error', `Failed to load WAV: ${err instanceof Error ? err.message : 'unknown'}`);
     }
   }, []);
 
-  // Drop zone: accept both OS file drops and library sample drags
+  // Confirm handler — display result summary
+  const handleConfirm = useCallback((r: ChopperResult) => {
+    setResult(r);
+  }, []);
+
+  // Tree node selection — load metadata for detail panel
+  const handleTreeSelect = useCallback(async (treeNode: TreeNode) => {
+    if (treeNode.type !== 'sample') {
+      setSelectedSampleMeta(null);
+      setSelectedNodeInfo(null);
+      return;
+    }
+    const meta = treeNode.meta as { directoryName?: string; path?: string[] } | undefined;
+    const directoryName = meta?.directoryName ?? treeNode.name;
+    const path = meta?.path ?? [];
+    setSelectedNodeInfo({ directoryName, path });
+    if (!library.root) return;
+    setIsLoadingMeta(true);
+    try {
+      const yaml = await loadSampleMeta(library.root, directoryName, path);
+      setSelectedSampleMeta(yaml);
+    } catch {
+      setSelectedSampleMeta(null);
+    } finally {
+      setIsLoadingMeta(false);
+    }
+  }, [library.root]);
+
+  // Library CRUD operations
+  const handleCreateFolder = useCallback(async (name: string, parentPath: string[]) => {
+    if (!library.root) throw new Error('Not connected');
+    await createFolder(library.root, parentPath, name);
+    await refreshLibrary();
+    notify('info', `Created folder "${name}"`);
+  }, [library.root, refreshLibrary]);
+
+  const handleDeleteItem = useCallback(async (node: TreeNode) => {
+    const meta = node.meta as { directoryName?: string; path?: string[] } | undefined;
+    if (!library.root) throw new Error('Not connected');
+    await deleteItem(library.root, meta?.directoryName ?? node.name, meta?.path ?? []);
+  }, [library.root]);
+
+  const handleMoveItem = useCallback(async (node: TreeNode, targetPath: string[]) => {
+    const meta = node.meta as { path?: string[] } | undefined;
+    if (!library.root) return;
+    try {
+      await moveItem(library.root, node.name, meta?.path ?? [], targetPath);
+      await refreshLibrary();
+      notify('info', `Moved "${node.name}"`);
+    } catch (err) {
+      notify('error', `Move failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+    }
+  }, [library.root, refreshLibrary]);
+
+  const handleImportFiles = useCallback(async (files: File[], targetPath: string[]) => {
+    if (!library.root) return;
+    const wavFiles = files.filter((f) => f.name.toLowerCase().endsWith('.wav'));
+    const skipped = files.length - wavFiles.length;
+    if (skipped > 0) notify('error', `Skipped ${skipped} non-WAV file${skipped !== 1 ? 's' : ''}`);
+    if (wavFiles.length === 0) return;
+
+    const totalBytes = wavFiles.reduce((sum, f) => sum + f.size, 0);
+    let completedBytes = 0;
+    for (let i = 0; i < wavFiles.length; i++) {
+      const file = wavFiles[i]!;
+      setImportProgress({
+        currentStep: i + 1, totalSteps: wavFiles.length,
+        stepLabel: `Importing ${file.name}`,
+        bytesSent: 0, bytesTotal: file.size,
+        bytesSentAllSteps: completedBytes, bytesTotalAllSteps: totalBytes,
+      });
+      try {
+        const data = new Uint8Array(await file.arrayBuffer());
+        await importWavToCommonArea(library.root!, file.name, data, { targetPath });
+        completedBytes += file.size;
+      } catch (err) {
+        notify('error', `Import "${file.name}" failed: ${err instanceof Error ? err.message : 'unknown error'}`);
+        completedBytes += file.size;
+      }
+    }
+    setImportProgress(undefined);
+    await refreshLibrary();
+  }, [library.root, refreshLibrary]);
+
+  // Drop zone handlers
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-
-    // Check for library sample drag first
-    const libraryData = e.dataTransfer.getData(LIBRARY_MOVE_MIME);
-    if (libraryData) {
-      try {
-        const dragData = JSON.parse(libraryData) as LibraryMoveData;
-        handleOpenFromLibrary(dragData.name, dragData.path);
-        return;
-      } catch {
-        // Fall through to file drop
-      }
-    }
-
     const file = e.dataTransfer.files[0];
-    if (file) loadFile(file);
-  }, [loadFile, handleOpenFromLibrary]);
+    if (file) loadLocalWav(file);
+  }, [loadLocalWav]);
 
-  // Library browser: open a tone WAV in the chopper (raw audio, no slices)
-  const handleOpenTone = useCallback(async (tone: LibraryToneInfo) => {
-    try {
-      const { samples: toneSamples, sampleRate: toneRate } = await loadLibraryTone(tone);
-      setSamples(toneSamples);
-      setSampleRate(toneRate);
-      setFileName(`${tone.name} (${tone.device.toUpperCase()})`);
-      setInitialSlices(undefined);
-      setInitialTriggers(undefined);
-      setInitialPlaybackConfig(undefined);
-      setLibraryOrigin(null);
-      setEditMode(false);
-      setResult(null);
-      setError(null);
-      setDialogOpen(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tone');
-    }
-  }, []);
-
-  // Library browser: open a v2 drum kit with source WAV + pre-populated slices
-  const handleOpenDrumKit = useCallback(async (kit: LibraryDrumKitInfo) => {
-    try {
-      const payload = await loadLibraryDrumKit(kit);
-      setSamples(payload.samples);
-      setSampleRate(payload.sampleRate);
-      setFileName(`${kit.name} (${kit.device.toUpperCase()})`);
-      setInitialSlices(payload.slices);
-      setInitialTriggers(undefined);
-      setInitialPlaybackConfig(undefined);
-      setLibraryOrigin(null);
-      setEditMode(true);
-      setResult(null);
-      setError(null);
-      setDialogOpen(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load drum kit');
-    }
-  }, []);
-
-  const handleSaveDialogSave = useCallback((result: SaveDialogResult) => {
-    setSaveDialogOpen(false);
-    saveResolverRef.current?.resolve(result);
-    saveResolverRef.current = null;
-  }, []);
-
-  const handleSaveDialogCancel = useCallback(() => {
-    setSaveDialogOpen(false);
-    saveResolverRef.current?.resolve(null);
-    saveResolverRef.current = null;
-  }, []);
-
-  const fsaaAvailable = hasFileSystemAccess();
+  const cacheMetrics = library.getMetrics() as CacheMetricsData | undefined;
 
   return (
-    <div className="harness">
-      <h1>Sample Chopper Dev Harness</h1>
-
-      {/* Library connection status */}
-      {fsaaAvailable && (
-        <div className="library-bar">
-          <span className={`library-status ${libraryConnected ? 'connected' : ''}`}>
-            {libraryConnected ? 'Library connected' : 'Library not connected'}
-          </span>
-          <button className="library-btn" onClick={handleConnectLibrary}>
-            {libraryConnected ? 'Change Directory' : 'Connect Library'}
-          </button>
+    <div data-testid="sample-chopper-test-page" style={{ maxWidth: 960, margin: '0 auto', padding: 24 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+        <h1 className="ac-title-md" style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>
+          Sample Chopper
+        </h1>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {library.hasLocalFS && (
+            <button className="ac-btn ac-btn-sm" onClick={() => library.connect('local')}>
+              {library.activeBackend === 'local' ? 'Change Local' : 'Local FS'}
+            </button>
+          )}
+          {library.hasGoogleDrive && (
+            <button className="ac-btn ac-btn-sm" onClick={() => library.connect('google-drive')}>
+              {library.activeBackend === 'google-drive' ? 'Google Drive \u2713' : 'Google Drive'}
+            </button>
+          )}
+          {cacheMetrics && (
+            <button className="ac-btn ac-btn-sm" onClick={() => setMetricsModalOpen(true)}>
+              Cache Stats
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
-      <div className="harness-columns">
-        <div className="harness-main">
+      {/* Library browser with sample detail panel */}
+      {library.isConnected ? (
+        <LibraryBrowser
+          nodes={toTreeNodes(libraryItems)}
+          title={library.activeBackend === 'google-drive' ? 'Google Drive' : 'Sample Library'}
+          onCreateFolder={handleCreateFolder}
+          onDelete={handleDeleteItem}
+          onMove={handleMoveItem}
+          onRefresh={() => refreshLibrary(true)}
+          onImportFiles={handleImportFiles}
+          operationProgress={importProgress}
+          onSelect={handleTreeSelect}
+          loading={isLoadingTree}
+          emptyMessage="No samples — drop WAV files here or connect a library"
+          renderIcon={(node) => node.type === 'sample' ? <AudioFileIcon /> : undefined}
+          renderDetail={() => (
+            <SampleDetailPanel
+              sample={selectedSampleMeta}
+              loading={isLoadingMeta}
+              actions={
+                selectedSampleMeta && selectedNodeInfo ? (
+                  <button
+                    className="ac-btn ac-btn-sm ac-btn-primary"
+                    onClick={() => handleOpenInChopper(selectedNodeInfo.directoryName, selectedNodeInfo.path)}
+                  >
+                    Open in Chopper
+                  </button>
+                ) : undefined
+              }
+            />
+          )}
+        />
+      ) : (
+        <div style={{ textAlign: 'center', padding: 64 }}>
+          <p style={{ color: '#94a3b8', marginBottom: 24 }}>
+            Open a WAV file or connect a sample library
+          </p>
+          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+            {/* WAV file picker */}
+            <label
+              style={{
+                padding: '12px 24px', fontSize: 16, fontWeight: 600,
+                background: '#2563eb', color: '#fff', border: 'none',
+                borderRadius: 8, cursor: 'pointer', display: 'inline-block',
+              }}
+            >
+              Open WAV File
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".wav,audio/wav"
+                style={{ display: 'none' }}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) loadLocalWav(file);
+                }}
+              />
+            </label>
+            {library.hasLocalFS && (
+              <button
+                onClick={() => library.connect('local')}
+                style={{
+                  padding: '12px 24px', fontSize: 16, fontWeight: 600,
+                  background: 'transparent', color: '#94a3b8', border: '1px solid #334155',
+                  borderRadius: 8, cursor: 'pointer',
+                }}
+              >
+                Connect Library Folder
+              </button>
+            )}
+          </div>
+
+          {/* Drop zone */}
           <div
-            className={`drop-zone ${dragOver ? 'drag-over' : ''}`}
+            style={{
+              marginTop: 32, border: `2px dashed ${dragOver ? '#f59e0b' : '#334155'}`,
+              borderRadius: 12, padding: '48px 24px',
+              background: dragOver ? 'rgba(245, 158, 11, 0.05)' : 'transparent',
+              color: dragOver ? '#e2e8f0' : '#64748b',
+              transition: 'all 0.2s', cursor: 'pointer',
+            }}
             onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
             onDragLeave={() => setDragOver(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
           >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".wav"
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-            />
-            <p>Drop a WAV file or library sample here, or click to browse</p>
-            {fileName && <p className="file-name">Loaded: {fileName}</p>}
+            <p>Drop a WAV file here, or click to browse</p>
           </div>
-
-          {error && <div className="error">{error}</div>}
-
-          {samples && !dialogOpen && (
-            <div className="info">
-              <p><strong>{fileName}</strong></p>
-              <p>{sampleRate} Hz &middot; {samples.length} samples &middot; {((samples.length / sampleRate) * 1000).toFixed(0)}ms</p>
-              <button className="open-btn" onClick={() => setDialogOpen(true)}>
-                Open Chopper
-              </button>
-            </div>
-          )}
-
-          {result && (
-            <div className="result">
-              <h3>Result</h3>
-              <p>{result.sliceDefinitions.length} slices created:</p>
-              <table>
-                <thead>
-                  <tr><th>#</th><th>Label</th><th>Start</th><th>End</th><th>Duration</th></tr>
-                </thead>
-                <tbody>
-                  {result.sliceDefinitions.map((s, i) => (
-                    <tr key={i}>
-                      <td>{i + 1}</td>
-                      <td>{s.label}</td>
-                      <td>{s.startSample}</td>
-                      <td>{s.endSample}</td>
-                      <td>{((s.endSample - s.startSample) / sampleRate * 1000).toFixed(0)}ms</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
         </div>
+      )}
 
-        <div className="harness-sidebar">
-          <LibraryBrowser
-            connected={libraryConnected}
-            refreshKey={libraryRefreshKey}
-            onOpen={handleOpenFromLibrary}
-            onOpenTone={handleOpenTone}
-            onOpenDrumKit={handleOpenDrumKit}
-            onPathChange={setSamplesBrowsePath}
-          />
+      {/* Result summary (shown after dialog confirms) */}
+      {result && (
+        <div style={{ marginTop: 24, padding: 16, background: '#1a1a2e', borderRadius: 8, border: '1px solid #334155' }}>
+          <h3 style={{ fontSize: 14, fontWeight: 600, color: '#f59e0b', marginBottom: 8 }}>Result</h3>
+          <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 12 }}>
+            {result.sliceDefinitions.length} slices created
+          </p>
+          <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
+            <thead>
+              <tr>
+                {['#', 'Label', 'Start', 'End', 'Duration'].map((h) => (
+                  <th key={h} style={{ padding: '4px 8px', textAlign: 'left', borderBottom: '1px solid #334155', color: '#64748b', fontSize: 11, fontWeight: 500 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {result.sliceDefinitions.map((s, i) => (
+                <tr key={i}>
+                  <td style={{ padding: '4px 8px', borderBottom: '1px solid #1e293b', color: '#e2e8f0' }}>{i + 1}</td>
+                  <td style={{ padding: '4px 8px', borderBottom: '1px solid #1e293b', color: '#e2e8f0' }}>{s.label}</td>
+                  <td style={{ padding: '4px 8px', borderBottom: '1px solid #1e293b', color: '#e2e8f0' }}>{s.startSample}</td>
+                  <td style={{ padding: '4px 8px', borderBottom: '1px solid #1e293b', color: '#e2e8f0' }}>{s.endSample}</td>
+                  <td style={{ padding: '4px 8px', borderBottom: '1px solid #1e293b', color: '#e2e8f0' }}>{((s.endSample - s.startSample) / (chopperDialog?.sampleRate ?? 44100) * 1000).toFixed(0)}ms</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
+      )}
 
-      <SampleChopperDialog
-        open={dialogOpen}
-        onOpenChange={setDialogOpen}
-        samples={samples}
-        sampleRate={sampleRate}
-        sourceName={fileName}
-        onConfirm={handleConfirm}
-        editMode={editMode}
-        initialSlices={initialSlices}
-        initialTriggers={initialTriggers}
-        initialPlaybackConfig={initialPlaybackConfig}
-        onSave={libraryConnected ? handleSave : undefined}
-      />
+      {notifications.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <NotificationArea notifications={notifications} onDismiss={dismiss} />
+        </div>
+      )}
 
-      <SaveDialog
-        open={saveDialogOpen}
-        title="Save Sample"
-        defaultName={saveDialogDefaultName}
-        directories={saveDialogDirs}
-        loading={saveDialogLoading}
-        error={saveDialogError}
-        onSave={handleSaveDialogSave}
-        onCancel={handleSaveDialogCancel}
-        onCreateFolder={handleCreateSaveFolder}
+      {/* Sample Chopper Dialog */}
+      {chopperDialog && (
+        <SampleChopperDialog
+          open={chopperDialog.open}
+          onOpenChange={(open) => { if (!open) setChopperDialog(null); }}
+          samples={chopperDialog.samples}
+          sampleRate={chopperDialog.sampleRate}
+          sourceName={chopperDialog.sourceName}
+          editMode={chopperDialog.editMode}
+          initialSlices={chopperDialog.initialSlices}
+          initialTriggers={chopperDialog.initialTriggers}
+          initialPlaybackConfig={chopperDialog.initialPlaybackConfig}
+          onConfirm={handleConfirm}
+          onSave={library.isConnected ? handleSave : undefined}
+        />
+      )}
+
+      <CacheMetricsModal
+        open={metricsModalOpen}
+        metrics={cacheMetrics}
+        onClose={() => setMetricsModalOpen(false)}
+        onReset={() => library.resetMetrics()}
       />
     </div>
   );
 }
 
 const root = createRoot(document.getElementById('root')!);
-root.render(<App />);
+root.render(<React.StrictMode><DevHarness /></React.StrictMode>);

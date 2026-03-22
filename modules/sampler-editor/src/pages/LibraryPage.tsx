@@ -29,7 +29,7 @@ import { LoadSetDialog } from '@/components/library/LoadSetDialog';
 import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneDialog';
 import { ImportLibraryPatchDialog } from '@/components/library/ImportLibraryPatchDialog';
 import { ImportSamplesDialog } from '@/components/library/ImportSamplesDialog';
-import { SampleChopperDialog, type SliceDefinitionOutput, type InitialSliceDefinition } from '@audiocontrol/sample-chopper/ui';
+import { SampleChopperDialog, type SliceDefinitionOutput, type InitialSliceDefinition, type ChopperSavePayload } from '@audiocontrol/sample-chopper/ui';
 import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
@@ -55,7 +55,7 @@ import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialo
 import { DeleteDirectoryDialog } from '@/components/library/DeleteDirectoryDialog';
 import { MoveItemDialog } from '@/components/library/MoveItemDialog';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
-import { loadSample, loadSampleMeta, getNestedDirectory, sanitizeForFilename } from '@audiocontrol/sampler-library/browser';
+import { loadSample, loadSampleMeta, saveSample, createWav, getNestedDirectory, sanitizeForFilename, type SampleYaml } from '@audiocontrol/sampler-library/browser';
 import { parseYaml, stringifyYaml } from '@/lib/library-io';
 import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
@@ -431,6 +431,34 @@ export function LibraryPage() {
     }
   }, [libraryHandle, setError]);
 
+  // Handle chopper save — write sliced sample back to library as sample.yaml
+  const handleChopperSave = useCallback(async (payload: ChopperSavePayload) => {
+    if (!libraryHandle || !chopperDialog?.origin) return;
+
+    const yaml: SampleYaml = {
+      format: 'sample',
+      version: 1,
+      name: payload.name,
+      file: 'sample.wav',
+      sampleRate: payload.sourceAudio.sampleRate,
+      slices: payload.slices.map((s) => ({ label: s.label, startSample: s.startSample, endSample: s.endSample })),
+      triggers: payload.triggers,
+      playback: payload.playbackConfig,
+      modifiedAt: new Date().toISOString(),
+    };
+
+    const wavData = createWav(payload.sourceAudio.samples, payload.sourceAudio.sampleRate);
+    const savePath = chopperDialog.origin.path ?? [];
+
+    try {
+      await saveSample(libraryHandle, { name: payload.name, yaml, wavData }, savePath);
+      await handleRefreshLibrary();
+    } catch (err) {
+      console.error('[LibraryPage] Failed to save chopped sample:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save chopped sample');
+    }
+  }, [libraryHandle, chopperDialog, handleRefreshLibrary, setError]);
+
   // Handle loop editor save (loop points saved back to library)
   const handleLoopEditorSave = useCallback(async (loopStart: number, loopEnd: number) => {
     if (!loopEditorDialog?.origin || !libraryHandle) return;
@@ -725,6 +753,7 @@ export function LibraryPage() {
           sampleRate={chopperDialog.sampleRate}
           sourceName={chopperDialog.sampleName}
           onConfirm={() => { setChopperDialog(null); }}
+          onSave={libraryHandle ? handleChopperSave : undefined}
         />
       )}
     </div>

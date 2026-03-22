@@ -716,6 +716,9 @@ importers:
       vite:
         specifier: ^5.0.10
         version: 5.4.20(@types/node@22.19.8)
+      vite-plugin-mkcert:
+        specifier: ^1.17.9
+        version: 1.17.9(vite@5.4.20)
       vite-tsconfig-paths:
         specifier: ^6.1.1
         version: 6.1.1(typescript@5.9.2)(vite@5.4.20)
@@ -4382,7 +4385,7 @@ packages:
       std-env: 3.9.0
       strip-literal: 2.1.1
       test-exclude: 6.0.0
-      vitest: 1.6.1(@types/node@20.19.17)(jsdom@29.0.1)
+      vitest: 1.6.1(@types/node@22.19.8)
     transitivePeerDependencies:
       - supports-color
     dev: true
