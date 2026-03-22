@@ -108,5 +108,23 @@ export function seedMockLibrary(root: InMemoryDirectoryHandle): void {
 
   common.addDirectory(samples);
   library.addDirectory(common);
+
+  // Create empty device-specific directories so library scanners
+  // (listSets, listIndividualTones, etc.) don't throw NotFoundError.
+  // These list functions call getDirectoryHandle which throws if missing.
+  const s330 = new InMemoryDirectoryHandle('s330');
+  s330.addDirectory(new InMemoryDirectoryHandle('sets'));
+  s330.addDirectory(new InMemoryDirectoryHandle('tones'));
+  s330.addDirectory(new InMemoryDirectoryHandle('patches'));
+  s330.addDirectory(new InMemoryDirectoryHandle('drum-kits'));
+  library.addDirectory(s330);
+
+  const s550 = new InMemoryDirectoryHandle('s550');
+  s550.addDirectory(new InMemoryDirectoryHandle('sets'));
+  s550.addDirectory(new InMemoryDirectoryHandle('tones'));
+  s550.addDirectory(new InMemoryDirectoryHandle('patches'));
+  s550.addDirectory(new InMemoryDirectoryHandle('drum-kits'));
+  library.addDirectory(s550);
+
   root.addDirectory(library);
 }

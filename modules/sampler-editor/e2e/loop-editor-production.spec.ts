@@ -1,0 +1,204 @@
+/**
+ * Production-path E2E tests for the loop editor.
+ *
+ * Exercises the REAL user flow on both surfaces:
+ * - sampler-editor: Library page → browse mock samples → "Open in Loop Editor" → dialog
+ * - dev-harness: Library panel auto-loads → sample loads into inline editor
+ *
+ * Uses ?library=mock to auto-connect an in-memory library seeded with test signals.
+ * No fixture pages, no bypass routes — tests run against production code paths.
+ */
+
+import { test, expect, type Page } from '@playwright/test';
+
+// =========================================================================
+// Navigation helpers — each surface has a different path to the loop editor
+// =========================================================================
+
+async function openLoopEditorForSample(
+  page: Page,
+  projectName: string | undefined,
+  sampleName: string,
+): Promise<void> {
+  if (projectName === 'dev-harness') {
+    await openInDevHarness(page, sampleName);
+  } else {
+    await openInSamplerEditor(page, sampleName);
+  }
+}
+
+async function openInSamplerEditor(page: Page, sampleName: string): Promise<void> {
+  await page.goto('/roland/s330/editor/library?midi=mock&library=mock');
+
+  // Wait for mock library to auto-connect and tree to load
+  // Use exact match to avoid matching "decay-into-sustain" when looking for "sustain"
+  const treeNode = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${sampleName}$`) }).first();
+  await expect(treeNode).toBeVisible({ timeout: 10000 });
+
+  // Click the sample in the tree to select it
+  await treeNode.click();
+
+  // The sample detail panel should show an "Open in Loop Editor" action
+  const openBtn = page.getByRole('button', { name: /Loop Editor/i });
+  await expect(openBtn).toBeVisible({ timeout: 5000 });
+  await openBtn.click();
+
+  // Wait for the LoopEditorDialog to open
+  await expect(page.locator('[role="dialog"]')).toBeVisible({ timeout: 5000 });
+}
+
+async function openInDevHarness(page: Page, sampleName: string): Promise<void> {
+  await page.goto('/?library=mock');
+
+  // Wait for library to auto-connect and tree to appear
+  const treeNode = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${sampleName}$`) }).first();
+  await expect(treeNode).toBeVisible({ timeout: 10000 });
+
+  // Click the sample in the tree
+  await treeNode.click();
+
+  // Click "Load into Editor" in the detail panel
+  const loadBtn = page.getByRole('button', { name: /Load into Editor/i });
+  await expect(loadBtn).toBeVisible({ timeout: 5000 });
+  await loadBtn.click();
+
+  // Wait for the sample to load (the editor shows the sample name)
+  await expect(page.getByText(new RegExp(`${sampleName}.*Hz`))).toBeVisible({ timeout: 5000 });
+}
+
+// =========================================================================
+// Feature parity — every shared feature must be present on both surfaces
+// =========================================================================
+
+test.describe('Loop Editor — production path feature parity', () => {
+  test.beforeEach(async ({ page }, testInfo) => {
+    await openLoopEditorForSample(page, testInfo.project.name, 'sustain');
+  });
+
+  test('waveform canvas renders', async ({ page }) => {
+    await expect(page.locator('canvas').first()).toBeVisible();
+  });
+
+  test('auto-detect button', async ({ page }) => {
+    await expect(page.getByRole('button', { name: 'Auto-Detect' })).toBeVisible();
+  });
+
+  test('preview button', async ({ page }) => {
+    await expect(page.getByTestId('preview-loop-btn')).toBeVisible();
+  });
+
+  test('loop point input', async ({ page }) => {
+    await expect(page.getByTestId('loop-point-input')).toBeVisible();
+  });
+
+  test('end point input', async ({ page }) => {
+    await expect(page.getByTestId('end-point-input')).toBeVisible();
+  });
+
+  test('playback mode buttons', async ({ page }) => {
+    await expect(page.getByTestId('playback-mode-no-loop')).toBeVisible();
+    await expect(page.getByTestId('playback-mode-loop')).toBeVisible();
+    await expect(page.getByTestId('playback-mode-smoothed-loop')).toBeVisible();
+  });
+
+  test('discontinuity indicator', async ({ page }) => {
+    await expect(page.getByTestId('discontinuity-indicator')).toBeVisible();
+  });
+
+  test('crossfade length slider', async ({ page }) => {
+    await expect(page.getByTestId('crossfade-length-slider')).toBeVisible();
+    await expect(page.getByTestId('crossfade-length-value')).toBeVisible();
+  });
+
+  test('keyboard triggers MIDI voice indicator', async ({ page }) => {
+    await page.keyboard.down('z');
+    await expect(page.getByText('MIDI: 1 voice')).toBeVisible();
+    await page.keyboard.up('z');
+    await expect(page.getByText(/MIDI:/)).not.toBeVisible();
+  });
+
+  test('playback mode toggle works', async ({ page }) => {
+    // Default is loop
+    await expect(page.getByTestId('playback-mode-loop')).toHaveClass(/ac-btn-primary/);
+
+    // Switch to smoothed
+    await page.getByTestId('playback-mode-smoothed-loop').click();
+    await expect(page.getByTestId('playback-mode-smoothed-loop')).toHaveClass(/ac-btn-primary/);
+
+    // Switch to no-loop
+    await page.getByTestId('playback-mode-no-loop').click();
+    await expect(page.getByTestId('playback-mode-no-loop')).toHaveClass(/ac-btn-primary/);
+  });
+});
+
+// =========================================================================
+// Auto-detect — through production path
+// =========================================================================
+
+test.describe('Loop Editor — production path auto-detect', () => {
+  test('auto-detect finds candidates for sustain signal', async ({ page }, testInfo) => {
+    await openLoopEditorForSample(page, testInfo.project.name, 'sustain');
+
+    await page.getByRole('button', { name: 'Auto-Detect' }).click();
+    await expect(page.getByText('Searching...')).toBeVisible({ timeout: 2000 });
+    await expect(page.getByText('Searching...')).not.toBeVisible({ timeout: 15000 });
+
+    await expect(page.getByText(/Loop Candidates \(\d+\)/)).toBeVisible();
+  });
+
+  test('auto-detect finds candidates for decay-into-sustain', async ({ page }, testInfo) => {
+    await openLoopEditorForSample(page, testInfo.project.name, 'decay-into-sustain');
+
+    await page.getByRole('button', { name: 'Auto-Detect' }).click();
+    await expect(page.getByText('Searching...')).toBeVisible({ timeout: 2000 });
+    await expect(page.getByText('Searching...')).not.toBeVisible({ timeout: 15000 });
+
+    await expect(page.getByText(/Loop Candidates \(\d+\)/)).toBeVisible();
+  });
+
+  test('constant decay: no candidates (graceful)', async ({ page }, testInfo) => {
+    await openLoopEditorForSample(page, testInfo.project.name, 'constant-decay');
+
+    await page.getByRole('button', { name: 'Auto-Detect' }).click();
+    await expect(page.getByText('Searching...')).toBeVisible({ timeout: 2000 });
+    await expect(page.getByText('Searching...')).not.toBeVisible({ timeout: 15000 });
+
+    await expect(page.getByText(/Loop Candidates/)).not.toBeVisible();
+    await expect(page.getByRole('button', { name: 'Auto-Detect' })).toBeVisible();
+  });
+});
+
+// =========================================================================
+// Smoothing — through production path
+// =========================================================================
+
+test.describe('Loop Editor — production path smoothing', () => {
+  test('keyboard playback works in all three modes', async ({ page }, testInfo) => {
+    await openLoopEditorForSample(page, testInfo.project.name, 'sustain');
+
+    // Loop mode
+    await page.keyboard.down('z');
+    await expect(page.getByText('MIDI: 1 voice')).toBeVisible();
+    await page.keyboard.up('z');
+
+    // Smoothed mode
+    await page.getByTestId('playback-mode-smoothed-loop').click();
+    await page.keyboard.down('z');
+    await expect(page.getByText('MIDI: 1 voice')).toBeVisible();
+    await page.keyboard.up('z');
+
+    // No-loop mode
+    await page.getByTestId('playback-mode-no-loop').click();
+    await page.keyboard.down('z');
+    await expect(page.getByText('MIDI: 1 voice')).toBeVisible();
+    await page.keyboard.up('z');
+  });
+
+  test('discontinuity indicator shows for discontinuity signal', async ({ page }, testInfo) => {
+    await openLoopEditorForSample(page, testInfo.project.name, 'discontinuity');
+
+    const indicator = page.getByTestId('discontinuity-indicator');
+    await expect(indicator).toBeVisible();
+    await expect(indicator).toContainText('%');
+  });
+});

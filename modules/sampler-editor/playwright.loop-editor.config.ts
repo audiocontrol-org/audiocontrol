@@ -1,12 +1,11 @@
 /**
  * Playwright config for loop editor integration tests.
  *
- * Runs the same test suite against two surfaces:
- * 1. sampler-editor test page (/roland/s330/editor/test/loop-editor)
- * 2. loop-editor dev harness (standalone)
+ * Runs production-path tests against both surfaces:
+ * 1. sampler-editor — Library page → browse → Open in Loop Editor → dialog
+ * 2. dev-harness — Library panel → click sample → Load into Editor
  *
- * Servers are started by scripts/run-loop-editor-e2e.sh which binds
- * to OS-assigned ports and passes them via E2E_PORT_EDITOR / E2E_PORT_HARNESS.
+ * Servers are started by scripts/run-loop-editor-e2e.sh on OS-assigned ports.
  */
 
 import { defineConfig, devices } from '@playwright/test';
@@ -23,7 +22,7 @@ if (!editorPort || !harnessPort) {
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: ['loop-editor-parity.spec.ts', 'loop-editor-synth.spec.ts', 'loop-editor-autodetect.spec.ts', 'loop-editor-smoothing.spec.ts'],
+  testMatch: 'loop-editor-production.spec.ts',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -45,5 +44,4 @@ export default defineConfig({
       },
     },
   ],
-  // No webServer — servers are managed by run-loop-editor-e2e.sh
 });
