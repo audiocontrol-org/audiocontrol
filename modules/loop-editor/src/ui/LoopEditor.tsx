@@ -62,6 +62,16 @@ export interface LoopEditorProps {
   isSmoothing?: boolean;
   /** AudioPlayback implementation from the workflow environment */
   audio?: AudioPlayback;
+  /** Current playback mode for the three-way toggle */
+  playbackMode?: 'no-loop' | 'loop' | 'smoothed-loop';
+  /** Called when the user switches playback mode */
+  onPlaybackModeChange?: (mode: 'no-loop' | 'loop' | 'smoothed-loop') => void;
+  /** Discontinuity analysis at the current splice point */
+  discontinuity?: { normalizedAmplitudeStep: number; needsSmoothing: boolean } | null;
+  /** Current crossfade length in samples */
+  crossfadeLength?: number;
+  /** Called when user changes crossfade length */
+  onCrossfadeLengthChange?: (length: number) => void;
 }
 
 /** Waveform colors */
@@ -104,6 +114,11 @@ export function LoopEditor({
   onSmoothLoop,
   isSmoothing = false,
   audio,
+  playbackMode,
+  onPlaybackModeChange,
+  discontinuity,
+  crossfadeLength,
+  onCrossfadeLengthChange,
 }: LoopEditorProps): JSX.Element {
   const leftCanvasRef = useRef<HTMLCanvasElement>(null);
   const rightCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -480,8 +495,8 @@ export function LoopEditor({
 
   return (
     <div className={cn('card', className)} ref={containerRef} tabIndex={0} data-loop-editor>
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+        <div className="flex items-center gap-3 flex-wrap">
           <h4 className="font-medium text-s330-text">Loop Editor</h4>
           {onAutoDetect && (
             <button
@@ -510,6 +525,7 @@ export function LoopEditor({
                     disabled={!samples}
                     className="ac-btn ac-btn-xs ac-btn-ghost"
                     title="Preview loop (hear the splice point)"
+                    data-testid="preview-loop-btn"
                   >
                     &#9654; Preview
                   </button>
@@ -533,7 +549,61 @@ export function LoopEditor({
               )}
             </div>
           )}
-          {onSmoothLoop && (
+          {onPlaybackModeChange && (
+            <div className="flex items-center gap-1 border-l border-s330-accent/20 pl-3 ml-1">
+              <span className="text-xs text-s330-muted mr-1">Mode:</span>
+              {(['no-loop', 'loop', 'smoothed-loop'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => onPlaybackModeChange(mode)}
+                  className={cn(
+                    'ac-btn ac-btn-xs',
+                    playbackMode === mode ? 'ac-btn-primary' : 'ac-btn-ghost',
+                  )}
+                  data-testid={`playback-mode-${mode}`}
+                  title={{
+                    'no-loop': 'One-shot playback (no loop)',
+                    'loop': 'Loop with original samples (hear raw splice)',
+                    'smoothed-loop': 'Loop with crossfade smoothing applied',
+                  }[mode]}
+                >
+                  {{ 'no-loop': 'No Loop', 'loop': 'Loop', 'smoothed-loop': 'Smoothed' }[mode]}
+                </button>
+              ))}
+              {discontinuity && (
+                <span
+                  data-testid="discontinuity-indicator"
+                  className={cn(
+                    'text-xs ml-2 font-mono',
+                    discontinuity.needsSmoothing ? 'text-yellow-400' : 'text-green-400',
+                  )}
+                  title={`Amplitude step: ${(discontinuity.normalizedAmplitudeStep * 100).toFixed(1)}%`}
+                >
+                  {discontinuity.needsSmoothing ? '⚠' : '✓'} {(discontinuity.normalizedAmplitudeStep * 100).toFixed(1)}%
+                </span>
+              )}
+              {onCrossfadeLengthChange && crossfadeLength !== undefined && (
+                <div className="flex items-center gap-1 border-l border-s330-accent/20 pl-3 ml-1">
+                  <span className="text-xs text-s330-muted whitespace-nowrap">Xfade:</span>
+                  <input
+                    type="range"
+                    min={8}
+                    max={2048}
+                    step={8}
+                    value={crossfadeLength}
+                    onChange={(e) => onCrossfadeLengthChange(parseInt(e.target.value, 10))}
+                    className="w-20 h-1 accent-s330-highlight"
+                    data-testid="crossfade-length-slider"
+                    title={`Crossfade length: ${crossfadeLength} samples`}
+                  />
+                  <span className="text-xs font-mono text-s330-muted w-12" data-testid="crossfade-length-value">
+                    {crossfadeLength}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+          {onSmoothLoop && !onPlaybackModeChange && (
             <button
               onClick={() => onSmoothLoop('equal-power')}
               disabled={isSmoothing || isPlaying}
@@ -614,6 +684,7 @@ export function LoopEditor({
               onChange={(e) => { onEndPointChange?.(Math.max(loopPoint, parseInt(e.target.value) || 0)); }}
               onBlur={() => onCommit?.()}
               className="flex-1 min-w-0 text-sm font-mono bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text text-center"
+              data-testid="end-point-input"
             />
             <button onClick={() => nudgeEndPoint(1)} className="ac-btn ac-btn-xs ac-btn-ghost" title="Move end point +1 sample">&rsaquo;</button>
             <button onClick={() => nudgeEndPoint(100)} className="ac-btn ac-btn-xs ac-btn-ghost" title="Move end point +100 samples">&rsaquo;&rsaquo;</button>
@@ -630,6 +701,7 @@ export function LoopEditor({
               onChange={(e) => { onLoopPointChange?.(Math.min(endPoint, Math.max(startPoint, parseInt(e.target.value) || 0))); }}
               onBlur={() => onCommit?.()}
               className="flex-1 min-w-0 text-sm font-mono bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text text-center"
+              data-testid="loop-point-input"
             />
             <button onClick={() => nudgeLoopPoint(1)} className="ac-btn ac-btn-xs ac-btn-ghost" title="Move loop point +1 sample">&rsaquo;</button>
             <button onClick={() => nudgeLoopPoint(100)} className="ac-btn ac-btn-xs ac-btn-ghost" title="Move loop point +100 samples">&rsaquo;&rsaquo;</button>

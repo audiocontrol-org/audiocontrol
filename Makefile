@@ -32,6 +32,7 @@ D110_EDITOR        := $(MODULES_DIR)/d110-editor/.build-stamp
 JV1080_EDITOR      := $(MODULES_DIR)/jv1080-editor/.build-stamp
 SAMPLER_EDITOR     := $(MODULES_DIR)/sampler-editor/.build-stamp
 AUDIOTOOLS_CLI     := $(MODULES_DIR)/audiotools-cli/.build-stamp
+SYNTH_CORE         := $(MODULES_DIR)/synth-core/.build-stamp
 
 ALL_STAMPS := \
 	$(SHARED_MIDI) $(SAMPLER_LIB) $(AUDIOTOOLS_CONFIG) $(CANONICAL_MIDI) \
@@ -39,7 +40,8 @@ ALL_STAMPS := \
 	$(SAMPLER_ATTIC) $(SAMPLE_CHOPPER) $(EDITOR_CORE) $(LIB_DEVICE_UUID) \
 	$(SAMPLER_DEVICES) $(SAMPLER_MIDI) $(SAMPLER_LIBRARY) \
 	$(SAMPLER_TRANSLATE) $(SAMPLER_BACKUP) $(SAMPLER_EXPORT) $(LOOP_EDITOR) \
-	$(D110_EDITOR) $(JV1080_EDITOR) $(SAMPLER_EDITOR) $(AUDIOTOOLS_CLI)
+	$(D110_EDITOR) $(JV1080_EDITOR) $(SAMPLER_EDITOR) $(AUDIOTOOLS_CLI) \
+	$(SYNTH_CORE)
 
 INSTALL_STAMP := node_modules/.install-stamp
 
@@ -126,6 +128,12 @@ $(SAMPLE_CHOPPER): $(INSTALL_STAMP) $(SAMPLE_CHOPPER_SRC)
 	cd $(MODULES_DIR)/sample-chopper && pnpm build
 	@touch $@
 
+SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
+
+$(SYNTH_CORE): $(INSTALL_STAMP) $(SYNTH_CORE_SRC)
+	cd $(MODULES_DIR)/synth-core && pnpm build
+	@touch $@
+
 # ---------------------------------------------------------------------------
 # Layer 1
 # ---------------------------------------------------------------------------
@@ -175,7 +183,7 @@ $(SAMPLER_EXPORT): $(AUDIOTOOLS_CONFIG) $(SAMPLER_BACKUP) $(SAMPLER_DEVICES) $(S
 	cd $(MODULES_DIR)/sampler-export && pnpm build
 	@touch $@
 
-$(LOOP_EDITOR): $(EDITOR_CORE) $(SAMPLER_LIBRARY) $(LOOP_EDITOR_SRC)
+$(LOOP_EDITOR): $(EDITOR_CORE) $(SAMPLER_LIBRARY) $(SYNTH_CORE) $(LOOP_EDITOR_SRC)
 	cd $(MODULES_DIR)/loop-editor && pnpm build
 	@touch $@
 
@@ -191,7 +199,7 @@ $(JV1080_EDITOR): $(EDITOR_CORE) $(SAMPLER_DEVICES) $(SHARED_MIDI) $(JV1080_EDIT
 # Layer 4
 # ---------------------------------------------------------------------------
 
-$(SAMPLER_EDITOR): $(EDITOR_CORE) $(LOOP_EDITOR) $(SAMPLE_CHOPPER) $(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) $(SHARED_MIDI) $(SAMPLER_EDITOR_SRC)
+$(SAMPLER_EDITOR): $(EDITOR_CORE) $(LOOP_EDITOR) $(SAMPLE_CHOPPER) $(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) $(SHARED_MIDI) $(SYNTH_CORE) $(SAMPLER_EDITOR_SRC)
 	cd $(MODULES_DIR)/sampler-editor && pnpm build
 	@touch $@
 

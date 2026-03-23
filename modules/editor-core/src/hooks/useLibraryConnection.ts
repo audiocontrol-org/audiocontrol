@@ -11,6 +11,7 @@ import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/brows
 import type { LibraryConnection } from '@audiocontrol/sampler-library/browser';
 import { BrowserLibraryConnection } from '@audiocontrol/sampler-library/browser';
 import type { CacheMetrics } from '@audiocontrol/sampler-library/browser';
+import { isMockLibraryMode } from '@/transports/runtimeTransport';
 
 // =========================================================================
 // Types
@@ -148,12 +149,33 @@ export function useLibraryConnection(
     connectionRef.current?.resetMetrics?.();
   }, []);
 
-  // On mount: handle Google Drive OAuth redirect, then try session restore
+  // On mount: auto-connect mock library, or handle Google Drive OAuth redirect
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
 
     (async () => {
+      // 0. Mock library mode — auto-connect with in-memory test data
+      if (isMockLibraryMode()) {
+        try {
+          const { InMemoryDirectoryHandle, seedMockLibrary } = await import(
+            '@audiocontrol/sampler-library/testing'
+          );
+          const mockRoot = new InMemoryDirectoryHandle('mock-library');
+          seedMockLibrary(mockRoot);
+          connectionRef.current = {
+            connect: async () => true,
+            isConnected: () => true,
+            getRoot: () => mockRoot,
+          } as LibraryConnection;
+          setActiveBackend('local');
+          setRoot(mockRoot);
+        } catch (err) {
+          console.error('[useLibraryConnection] Failed to initialize mock library:', err);
+        }
+        return;
+      }
+
       // 1. Check for Google Drive OAuth redirect
       if (config.googleDrive) {
         const conn = await getGoogleDriveConnection();

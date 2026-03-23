@@ -640,7 +640,6 @@ export function TonesPage() {
                 loopSearchProgress={loopSearchProgress}
                 onSmoothLoop={handleSmoothLoop}
                 isSmoothingLoop={isSmoothingLoop}
-                workflowBasePath={config.basePath}
               />
             ) : (
               <div className="card text-center py-12 text-s330-muted">

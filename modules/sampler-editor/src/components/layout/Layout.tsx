@@ -34,7 +34,6 @@ function useLayoutConfig(): EditorLayoutConfig {
       { to: `${basePath}/patches`, label: 'Patches' },
       { to: `${basePath}/tones`, label: 'Tones' },
       { to: `${basePath}/library`, label: 'Library' },
-      { to: `${basePath}/workflows`, label: 'Workflows' },
     ],
     buildInfoConfig: {
       editorName: `${deviceName} Editor`,
