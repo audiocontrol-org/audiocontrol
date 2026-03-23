@@ -275,8 +275,10 @@ test.describe('Sample Editor — trim handles', () => {
     await expect(regionText).toBeVisible({ timeout: 5000 });
     const initialText = await regionText.textContent();
 
-    // Change slider value
-    await slider.fill('-20');
+    // Drag the slider thumb to change value (click near right end for less-negative threshold)
+    const box = await slider.boundingBox();
+    if (!box) throw new Error('Slider not found');
+    await page.mouse.click(box.x + box.width * 0.9, box.y + box.height / 2);
 
     // Region text should update (different threshold = different trim points)
     await expect(async () => {
@@ -301,16 +303,22 @@ test.describe('Sample Editor — trim handles', () => {
     const regionText = page.getByText(/Keep \d+/);
     const initialText = await regionText.textContent();
 
-    // Get the canvas and drag from the left handle area
+    // Get the canvas bounding box
     const canvas = page.locator('[role="dialog"] canvas').first();
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
 
-    // Drag from near the left edge (where start handle is at sample 0)
-    // to a point further right
-    await canvas.dispatchEvent('mousedown', { clientX: box.x + 5, clientY: box.y + box.height / 2 });
-    await canvas.dispatchEvent('mousemove', { clientX: box.x + 100, clientY: box.y + box.height / 2 });
-    await canvas.dispatchEvent('mouseup', { clientX: box.x + 100, clientY: box.y + box.height / 2 });
+    // The start handle is near the left side of the canvas.
+    // The region text shows "Keep 9000 → 60000" which means start is at
+    // sample 9000 out of 60000 total — so at ~15% of the canvas width.
+    const handleX = box.x + box.width * 0.15;
+    const centerY = box.y + box.height / 2;
+
+    // Use page.mouse for real browser events
+    await page.mouse.move(handleX, centerY);
+    await page.mouse.down();
+    await page.mouse.move(handleX + 100, centerY, { steps: 5 });
+    await page.mouse.up();
 
     // Region info should have changed
     await expect(async () => {
