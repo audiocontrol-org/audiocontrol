@@ -10,7 +10,7 @@
     },
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
-    "incremental": false,
+
     "resolveJsonModule": true,
     "isolatedModules": true,
     "module": "nodenext",

@@ -16,7 +16,7 @@
       "esnext"
     ],
     "allowJs": true,
-    "incremental": false,
+
     "resolveJsonModule": true,
     "isolatedModules": true,
   },
