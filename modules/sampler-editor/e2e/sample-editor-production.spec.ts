@@ -328,17 +328,54 @@ test.describe('Sample Editor — trim handles', () => {
     }).toPass({ timeout: 5000 });
   });
 
-  test('drag handle in split-pane mode', async ({ page }) => {
+  test('drag handle in split-pane mode moves handle, not waveform', async ({ page }) => {
     // Zoom in to get split pane
     await page.getByTitle('Zoom in (+)').click();
     await expect(page.locator('[role="dialog"] canvas')).toHaveCount(2, { timeout: 500 });
 
     // Get region info before drag
-    const regionText = page.getByText(/Keep \d+/);
+    const regionText = page.locator('[role="dialog"]').getByText(/Keep \d+/);
     await expect(regionText).toBeVisible({ timeout: 5000 });
     const initialText = await regionText.textContent();
 
-    // Drag on the left canvas (start handle)
+    // Drag on the left canvas (start handle) using page.mouse
+    const leftCanvas = page.locator('[role="dialog"] canvas').first();
+    const box = await leftCanvas.boundingBox();
+    if (!box) throw new Error('Left canvas not found');
+
+    const startX = box.x + box.width / 2;
+    const centerY = box.y + box.height / 2;
+
+    // Drag right by 80px in small steps
+    await page.mouse.move(startX, centerY);
+    await page.mouse.down();
+    await page.mouse.move(startX + 80, centerY, { steps: 5 });
+    await page.mouse.up();
+
+    // Region text should have changed (handle moved, trim region updated)
+    await expect(async () => {
+      const newText = await regionText.textContent();
+      expect(newText).not.toBe(initialText);
+    }).toPass({ timeout: 5000 });
+
+    // The waveform should still be in split-pane mode (2 canvases),
+    // NOT have zoomed or switched modes
+    await expect(page.locator('[role="dialog"] canvas')).toHaveCount(2);
+  });
+
+  test('consecutive small drags produce incremental handle movement', async ({ page }) => {
+    // This tests that the handle moves relative to the waveform (not re-centering).
+    // If the waveform re-centers on the handle after each drag, consecutive
+    // drags of the same pixel distance would produce the same absolute delta
+    // from the original position (because the starting pixel resets to center).
+    // With proper fixed-viewport behavior, each drag starts from where the
+    // previous one left off.
+    await page.getByTitle('Zoom in (+)').click();
+    await expect(page.locator('[role="dialog"] canvas')).toHaveCount(2, { timeout: 500 });
+
+    const regionText = page.locator('[role="dialog"]').getByText(/Keep \d+/);
+    await expect(regionText).toBeVisible({ timeout: 5000 });
+
     const leftCanvas = page.locator('[role="dialog"] canvas').first();
     const box = await leftCanvas.boundingBox();
     if (!box) throw new Error('Left canvas not found');
@@ -346,17 +383,66 @@ test.describe('Sample Editor — trim handles', () => {
     const centerX = box.x + box.width / 2;
     const centerY = box.y + box.height / 2;
 
-    await leftCanvas.dispatchEvent('mousedown', { clientX: centerX, clientY: centerY });
+    // Extract start value from region text
+    const parseStart = async () => {
+      const text = await regionText.textContent();
+      const match = text?.match(/Keep (\d+)/);
+      return match ? parseInt(match[1], 10) : 0;
+    };
 
-    // Move right by 50px
-    await page.mouse.move(centerX + 50, centerY);
+    const startBefore = await parseStart();
+
+    // First drag: right by 30px
+    await page.mouse.move(centerX, centerY);
+    await page.mouse.down();
+    await page.mouse.move(centerX + 30, centerY, { steps: 3 });
+    await page.mouse.up();
+    await page.waitForTimeout(100);
+    const startAfterDrag1 = await parseStart();
+
+    // Second drag: right by another 30px FROM CURRENT POSITION
+    // If the handle moved to a new position (not re-centered), we need to
+    // start from where it is now. With re-centering, the handle is back at
+    // center, so starting from center again would give the same delta.
+    await page.mouse.move(centerX + 30, centerY); // where the handle should be now
+    await page.mouse.down();
+    await page.mouse.move(centerX + 60, centerY, { steps: 3 });
+    await page.mouse.up();
+    await page.waitForTimeout(100);
+    const startAfterDrag2 = await parseStart();
+
+    // Both drags should have moved the start forward
+    expect(startAfterDrag1).toBeGreaterThan(startBefore);
+    expect(startAfterDrag2).toBeGreaterThan(startAfterDrag1);
+
+    // The increments should be roughly equal (same pixel distance)
+    const delta1 = startAfterDrag1 - startBefore;
+    const delta2 = startAfterDrag2 - startAfterDrag1;
+    // Allow 50% tolerance for rounding
+    expect(delta2).toBeGreaterThan(delta1 * 0.5);
+    expect(delta2).toBeLessThan(delta1 * 1.5);
+  });
+
+  test('dragging handle does not change zoom level', async ({ page }) => {
+    // Zoom in to 2x
+    await page.getByTitle('Zoom in (+)').click();
+    await expect(page.getByText('2x')).toBeVisible({ timeout: 500 });
+    await expect(page.locator('[role="dialog"] canvas')).toHaveCount(2, { timeout: 500 });
+
+    // Drag the right canvas (end handle)
+    const rightCanvas = page.locator('[role="dialog"] canvas').last();
+    const box = await rightCanvas.boundingBox();
+    if (!box) throw new Error('Right canvas not found');
+
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + box.width / 2 - 80, box.y + box.height / 2, { steps: 5 });
     await page.mouse.up();
 
-    // Region info should have changed
-    await expect(async () => {
-      const newText = await regionText.textContent();
-      expect(newText).not.toBe(initialText);
-    }).toPass({ timeout: 5000 });
+    // Zoom level should still be 2x — dragging should NOT zoom
+    await expect(page.getByText('2x')).toBeVisible();
+    // Should still be 2 canvases
+    await expect(page.locator('[role="dialog"] canvas')).toHaveCount(2);
   });
 });
 
