@@ -15,6 +15,10 @@
     "paths": {
       "@/*": ["src/*"]
     },
+
+    // Deviation: composite and incremental must be false here because
+    // @rollup/plugin-typescript does not support composite mode with
+    // declaration: false. Do not copy this pattern to other modules.
     "composite": false,
     "incremental": false,
     "noUnusedLocals": false,

@@ -23,7 +23,7 @@
   ],
   "scripts": {
     "dev": "vite --config dev/vite.config.ts",
-    "build": "pnpm test && tsup",
+    "build": "tsup",
     "build:lib": "tsup",
     "test": "vitest run",
     "test:watch": "vitest",
