@@ -68,7 +68,8 @@ export function WaveformDisplay({
   const hasTrimHandles = trimRegion != null && onTrimRegionChange != null;
   const useSplitPane = zoom > 1 && hasTrimHandles && trimRegion != null && samples != null && samples.length > 0;
 
-  // Observe container size
+  // Observe container size — re-run when switching between split/single pane
+  // so the observer attaches to the newly mounted container element.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -80,7 +81,7 @@ export function WaveformDisplay({
     });
     observer.observe(container);
     return () => observer.disconnect();
-  }, []);
+  }, [useSplitPane]);
 
   // Draw waveform
   useEffect(() => {
@@ -138,7 +139,7 @@ export function WaveformDisplay({
         ctx.stroke();
       }
     }
-  }, [samples, canvasWidth, height, selection, isPreview, trimRegion, hasTrimHandles]);
+  }, [samples, canvasWidth, height, selection, isPreview, trimRegion, hasTrimHandles, useSplitPane]);
 
   const pixelToSample = useCallback(
     (clientX: number): number => {

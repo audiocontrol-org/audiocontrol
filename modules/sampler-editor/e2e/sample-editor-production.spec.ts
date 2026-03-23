@@ -247,6 +247,36 @@ test.describe('Sample Editor — zoom', () => {
     await page.keyboard.press('0');
     await expect(page.getByText('1x')).toBeVisible({ timeout: 500 });
   });
+
+  test('waveform is visible after zooming in and back out', async ({ page }) => {
+    // Verify waveform canvas is visible at 1x
+    const canvas = page.locator('[role="dialog"] canvas');
+    await expect(canvas.first()).toBeVisible();
+    const boxBefore = await canvas.first().boundingBox();
+    expect(boxBefore).toBeTruthy();
+    expect(boxBefore!.height).toBeGreaterThan(50);
+
+    // Zoom in to split pane
+    await page.getByTitle('Zoom in (+)').click();
+    await expect(page.getByText('2x')).toBeVisible({ timeout: 500 });
+    await expect(canvas).toHaveCount(2, { timeout: 500 });
+
+    // Zoom back out to 1x
+    await page.getByTitle('Zoom out (-)').click();
+    await expect(page.getByText('1x')).toBeVisible({ timeout: 500 });
+
+    // Waveform canvas should still be visible with non-zero dimensions
+    await expect(canvas).toHaveCount(1, { timeout: 500 });
+    await expect(canvas.first()).toBeVisible();
+    const boxAfter = await canvas.first().boundingBox();
+    expect(boxAfter).toBeTruthy();
+    expect(boxAfter!.height).toBeGreaterThan(50);
+    expect(boxAfter!.width).toBeGreaterThan(100);
+
+    // The canvas backing store width attribute must be > 0 (otherwise nothing renders)
+    const canvasWidth = await canvas.first().getAttribute('width');
+    expect(parseInt(canvasWidth ?? '0', 10)).toBeGreaterThan(0);
+  });
 });
 
 // =========================================================================
