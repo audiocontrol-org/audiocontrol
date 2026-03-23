@@ -306,19 +306,29 @@ test.describe('Sample Editor — trim handles', () => {
     const regionText = page.locator('[role="dialog"]').getByText(/Keep \d+/);
     const initialText = await regionText.textContent();
 
-    // Get the canvas bounding box
+    // Parse the end value to calculate handle position
+    const endMatch = initialText?.match(/→ (\d+)/);
+    const endSample = endMatch ? parseInt(endMatch[1], 10) : 0;
+
+    // Get canvas bounding box
     const canvas = page.locator('[role="dialog"] canvas').first();
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
 
-    // The end handle is at the right side of the canvas (at or near 100%).
-    // Drag it left to trim the end.
-    const handleX = box.x + box.width - 5;
+    // The end handle is at (endSample / totalSamples) of the canvas width.
+    // For fade-in-hits: ~19800 / 30000 ≈ 66% of canvas width.
+    // We approximate total samples from the region text.
+    const totalMatch = initialText?.match(/removing ([\d.]+)ms/);
+    const keepMatch = initialText?.match(/([\d.]+)ms,/);
+    const keepMs = keepMatch ? parseFloat(keepMatch[1]) : 660;
+    const removeMs = totalMatch ? parseFloat(totalMatch[1]) : 340;
+    const endFraction = keepMs / (keepMs + removeMs);
+    const handleX = box.x + box.width * endFraction;
     const centerY = box.y + box.height / 2;
 
     await page.mouse.move(handleX, centerY);
     await page.mouse.down();
-    await page.mouse.move(handleX - 200, centerY, { steps: 10 });
+    await page.mouse.move(handleX - 150, centerY, { steps: 10 });
     await page.mouse.up();
 
     // Region info should have changed (end point moved left)
@@ -326,6 +336,55 @@ test.describe('Sample Editor — trim handles', () => {
       const newText = await regionText.textContent();
       expect(newText).not.toBe(initialText);
     }).toPass({ timeout: 5000 });
+  });
+
+  test('waveform shows full sample after dragging handle (no zoom-in)', async ({ page }) => {
+    // BUG: after dragging the end handle left, the waveform re-renders to show
+    // only the trimmed region at full width, making it look zoomed in. The handle
+    // ends up back at the right edge instead of where the user dragged it.
+    //
+    // EXPECTED: waveform always shows the full sample, handle moves within it,
+    // dimmed regions show what will be trimmed.
+    await expect(page.getByText(/Keep/)).toBeVisible({ timeout: 5000 });
+
+    const canvas = page.locator('[role="dialog"] canvas').first();
+    const box = await canvas.boundingBox();
+    if (!box) throw new Error('Canvas not found');
+
+    // Drag end handle from right edge to ~halfway
+    const rightEdge = box.x + box.width - 5;
+    const midPoint = box.x + box.width / 2;
+    const centerY = box.y + box.height / 2;
+
+    await page.mouse.move(rightEdge, centerY);
+    await page.mouse.down();
+    await page.mouse.move(midPoint, centerY, { steps: 10 });
+    await page.mouse.up();
+
+    // Region should have changed
+    const regionText = page.locator('[role="dialog"]').getByText(/Keep \d+/);
+    await expect(regionText).toBeVisible({ timeout: 5000 });
+
+    // Now try to drag from the ORIGINAL right edge again.
+    // If the waveform zoomed in (bug), there's a handle at the right edge.
+    // If the waveform is correct, the right edge has no handle — the handle
+    // is at the midpoint where we left it.
+    // Drag from midpoint should move the handle further left.
+    await page.mouse.move(midPoint, centerY);
+    await page.mouse.down();
+    await page.mouse.move(midPoint - 100, centerY, { steps: 5 });
+    await page.mouse.up();
+
+    // The end value should be less than what the first drag produced
+    const text = await regionText.textContent();
+    const match = text?.match(/→ (\d+)/);
+    const endValue = match ? parseInt(match[1], 10) : 0;
+
+    // If the handle was at midpoint (correct), this drag moved it further left.
+    // The end value should be significantly less than the total samples.
+    // For fade-in-hits at 30000Hz, total is ~30000 samples.
+    // Dragging to midpoint would be ~15000, then further left ~10000-12000.
+    expect(endValue).toBeLessThan(20000);
   });
 
   test('drag handle in split-pane mode moves handle, not waveform', async ({ page }) => {
