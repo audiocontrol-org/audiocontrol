@@ -35,11 +35,11 @@ EDITOR_LOG=$(mktemp)
 HARNESS_LOG=$(mktemp)
 
 # Start sampler-editor vite on port 0
-VISUAL_HTTP=1 npx vite --port 0 --force > "$EDITOR_LOG" 2>&1 &
+VISUAL_HTTP=1 npx vite --port 0 > "$EDITOR_LOG" 2>&1 &
 EDITOR_PID=$!
 
 # Start sample-editor dev harness vite on port 0
-(cd ../sample-editor && VISUAL_HTTP=1 npx vite --config dev/vite.config.ts --port 0 --force) > "$HARNESS_LOG" 2>&1 &
+(cd ../sample-editor && VISUAL_HTTP=1 npx vite --config dev/vite.config.ts --port 0) > "$HARNESS_LOG" 2>&1 &
 HARNESS_PID=$!
 
 # Wait for both servers to bind and report their ports
