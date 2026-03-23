@@ -9,6 +9,7 @@
 
 import { useRef, useEffect, useCallback, useState } from 'react';
 import { cn } from '@/ui/utils';
+import { SplitWaveformPane } from '@/ui/SplitWaveformPane';
 
 export interface WaveformDisplayProps {
   samples: Int16Array | null;
@@ -25,6 +26,8 @@ export interface WaveformDisplayProps {
   className?: string;
   /** When true, waveform is showing a preview (uses a different color). */
   isPreview?: boolean;
+  /** Zoom level (1 = full sample, >1 = split-pane mode centered on trim handles). */
+  zoom?: number;
 }
 
 const WAVEFORM_COLOR = '#4a9eff';
@@ -48,6 +51,7 @@ export function WaveformDisplay({
   height = 200,
   className,
   isPreview = false,
+  zoom = 1,
 }: WaveformDisplayProps): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -62,6 +66,7 @@ export function WaveformDisplay({
   const [cursorStyle, setCursorStyle] = useState<string>('crosshair');
 
   const hasTrimHandles = trimRegion != null && onTrimRegionChange != null;
+  const useSplitPane = zoom > 1 && hasTrimHandles && trimRegion != null && samples != null && samples.length > 0;
 
   // Observe container size
   useEffect(() => {
@@ -246,6 +251,21 @@ export function WaveformDisplay({
     trimDragRegion.current = null;
     selectionDragStart.current = null;
   }, []);
+
+  if (useSplitPane) {
+    return (
+      <SplitWaveformPane
+        samples={samples!}
+        sampleRate={sampleRate}
+        trimRegion={trimRegion!}
+        onTrimRegionChange={onTrimRegionChange!}
+        zoom={zoom}
+        height={height}
+        className={className}
+        isPreview={isPreview}
+      />
+    );
+  }
 
   return (
     <div ref={containerRef} className={cn('w-full rounded overflow-hidden', className)}>

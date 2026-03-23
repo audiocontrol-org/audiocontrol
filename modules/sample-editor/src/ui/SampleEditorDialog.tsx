@@ -9,7 +9,7 @@
  * LoopEditorDialog and SampleChopperDialog.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect, useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { cn } from '@/ui/utils';
 import { WaveformDisplay } from '@/ui/WaveformDisplay';
@@ -34,6 +34,53 @@ export function SampleEditorDialog({
   onSave,
 }: SampleEditorDialogProps): JSX.Element {
   const editor = useSampleEditor({ initialSamples, sampleRate });
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  const ZOOM_STEPS = [1, 2, 4, 8, 16, 32, 64] as const;
+  const [zoom, setZoom] = useState(1);
+
+  const zoomIn = useCallback(() => {
+    setZoom((z) => {
+      const idx = ZOOM_STEPS.indexOf(z as typeof ZOOM_STEPS[number]);
+      return idx < ZOOM_STEPS.length - 1 ? ZOOM_STEPS[idx + 1] : z;
+    });
+  }, []);
+
+  const zoomOut = useCallback(() => {
+    setZoom((z) => {
+      const idx = ZOOM_STEPS.indexOf(z as typeof ZOOM_STEPS[number]);
+      return idx > 0 ? ZOOM_STEPS[idx - 1] : z;
+    });
+  }, []);
+
+  const zoomReset = useCallback(() => { setZoom(1); }, []);
+
+  // Keyboard shortcuts for zoom
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!dialogRef.current?.contains(e.target as Node)) return;
+      // Ignore if typing in an input
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      switch (e.key) {
+        case '+': case '=':
+          zoomIn();
+          e.preventDefault();
+          break;
+        case '-':
+          zoomOut();
+          e.preventDefault();
+          break;
+        case '0':
+          zoomReset();
+          e.preventDefault();
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [zoomIn, zoomOut, zoomReset]);
 
   const handleSave = useCallback(() => {
     if (!editor.samples || !onSave) return;
@@ -51,7 +98,7 @@ export function SampleEditorDialog({
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-        <Dialog.Content className="fixed z-50 inset-4 bg-ac-panel border border-ac-accent rounded-lg shadow-xl overflow-hidden flex flex-col">
+        <Dialog.Content ref={dialogRef} className="fixed z-50 inset-4 bg-ac-panel border border-ac-accent rounded-lg shadow-xl overflow-hidden flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-4 border-b border-ac-accent shrink-0">
             <div>
@@ -80,6 +127,33 @@ export function SampleEditorDialog({
               >
                 Redo
               </button>
+
+              {/* Zoom controls */}
+              <div className="flex items-center gap-1 border-l border-ac-accent pl-2 ml-1">
+                <button
+                  className={cn('ac-btn ac-btn-sm', zoom <= 1 && 'opacity-50 cursor-not-allowed')}
+                  disabled={zoom <= 1}
+                  onClick={zoomOut}
+                  title="Zoom out (-)"
+                >
+                  -
+                </button>
+                <button
+                  className="ac-btn ac-btn-sm min-w-[40px] text-center"
+                  onClick={zoomReset}
+                  title="Reset zoom (0)"
+                >
+                  {zoom}x
+                </button>
+                <button
+                  className={cn('ac-btn ac-btn-sm', zoom >= 64 && 'opacity-50 cursor-not-allowed')}
+                  disabled={zoom >= 64}
+                  onClick={zoomIn}
+                  title="Zoom in (+)"
+                >
+                  +
+                </button>
+              </div>
 
               {/* Save */}
               {onSave && (
@@ -115,6 +189,7 @@ export function SampleEditorDialog({
               onTrimRegionChange={editor.setTrimRegion}
               height={220}
               isPreview={editor.preview !== null}
+              zoom={zoom}
             />
 
             <OperationPanel
