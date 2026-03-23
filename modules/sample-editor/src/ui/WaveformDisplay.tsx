@@ -1,8 +1,9 @@
 /**
- * WaveformDisplay — canvas-based waveform visualization with selection.
+ * WaveformDisplay — canvas-based waveform visualization with selection and trim handles.
  *
  * Renders a peak-decimated waveform on a <canvas> element.
- * Supports click-drag to create a selection region (for trim preview).
+ * Supports click-drag to create a selection region (for non-trim operations).
+ * When trimRegion is set, renders draggable trim handles instead.
  * Handles resize via ResizeObserver.
  */
 
@@ -12,10 +13,14 @@ import { cn } from '@/ui/utils';
 export interface WaveformDisplayProps {
   samples: Int16Array | null;
   sampleRate: number;
-  /** Optional selection region (for trim preview). */
+  /** Optional selection region (for non-trim operations). */
   selection?: { start: number; end: number } | null;
   /** Called when user drags to create/adjust selection. */
   onSelectionChange?: (sel: { start: number; end: number } | null) => void;
+  /** Trim region with draggable handles. Outside regions are dimmed. */
+  trimRegion?: { start: number; end: number } | null;
+  /** Called when user drags a trim handle. */
+  onTrimRegionChange?: (region: { start: number; end: number }) => void;
   height?: number;
   className?: string;
   /** When true, waveform is showing a preview (uses a different color). */
@@ -27,12 +32,19 @@ const PREVIEW_WAVEFORM_COLOR = '#f0a030';
 const SELECTION_COLOR = 'rgba(74, 158, 255, 0.25)';
 const BG_COLOR = '#1a1a2e';
 const CENTER_LINE_COLOR = '#333355';
+const TRIM_OVERLAY_COLOR = 'rgba(0, 0, 0, 0.55)';
+const TRIM_HANDLE_COLOR = '#f0a030';
+const HANDLE_HIT_PX = 6;
+
+type DragTarget = 'start' | 'end' | null;
 
 export function WaveformDisplay({
   samples,
   sampleRate,
   selection,
   onSelectionChange,
+  trimRegion,
+  onTrimRegionChange,
   height = 200,
   className,
   isPreview = false,
@@ -40,7 +52,16 @@ export function WaveformDisplay({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [canvasWidth, setCanvasWidth] = useState(800);
-  const dragStart = useRef<number | null>(null);
+
+  // Selection drag state (non-trim mode)
+  const selectionDragStart = useRef<number | null>(null);
+
+  // Trim handle drag state — refs to avoid re-renders during drag
+  const trimDragTarget = useRef<DragTarget>(null);
+  const trimDragRegion = useRef<{ start: number; end: number } | null>(null);
+  const [cursorStyle, setCursorStyle] = useState<string>('crosshair');
+
+  const hasTrimHandles = trimRegion != null && onTrimRegionChange != null;
 
   // Observe container size
   useEffect(() => {
@@ -81,8 +102,8 @@ export function WaveformDisplay({
 
     if (!samples || samples.length === 0) return;
 
-    // Selection overlay
-    if (selection) {
+    // Selection overlay (non-trim mode)
+    if (!hasTrimHandles && selection) {
       const x0 = (selection.start / samples.length) * w;
       const x1 = (selection.end / samples.length) * w;
       ctx.fillStyle = SELECTION_COLOR;
@@ -90,30 +111,29 @@ export function WaveformDisplay({
     }
 
     // Peak-decimated waveform
-    const samplesPerPixel = samples.length / w;
-    ctx.strokeStyle = isPreview ? PREVIEW_WAVEFORM_COLOR : WAVEFORM_COLOR;
-    ctx.lineWidth = 1;
+    drawWaveform(ctx, samples, w, h, isPreview);
 
-    ctx.beginPath();
-    for (let x = 0; x < w; x++) {
-      const start = Math.floor(x * samplesPerPixel);
-      const end = Math.min(Math.floor((x + 1) * samplesPerPixel), samples.length);
+    // Trim overlays and handles
+    if (hasTrimHandles && trimRegion) {
+      const xStart = (trimRegion.start / samples.length) * w;
+      const xEnd = (trimRegion.end / samples.length) * w;
 
-      let min = 0;
-      let max = 0;
-      for (let i = start; i < end; i++) {
-        if (samples[i] < min) min = samples[i];
-        if (samples[i] > max) max = samples[i];
+      // Dim the trimmed-away regions
+      ctx.fillStyle = TRIM_OVERLAY_COLOR;
+      ctx.fillRect(0, 0, xStart, h);
+      ctx.fillRect(xEnd, 0, w - xEnd, h);
+
+      // Draw handle lines
+      ctx.strokeStyle = TRIM_HANDLE_COLOR;
+      ctx.lineWidth = 2;
+      for (const x of [xStart, xEnd]) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, h);
+        ctx.stroke();
       }
-
-      const yMin = ((1 - max / 32768) * h) / 2;
-      const yMax = ((1 - min / 32768) * h) / 2;
-
-      ctx.moveTo(x + 0.5, yMin);
-      ctx.lineTo(x + 0.5, yMax);
     }
-    ctx.stroke();
-  }, [samples, canvasWidth, height, selection, isPreview]);
+  }, [samples, canvasWidth, height, selection, isPreview, trimRegion, hasTrimHandles]);
 
   const pixelToSample = useCallback(
     (clientX: number): number => {
@@ -126,27 +146,105 @@ export function WaveformDisplay({
     [samples],
   );
 
+  const pixelX = useCallback(
+    (clientX: number): number => {
+      const canvas = canvasRef.current;
+      if (!canvas) return 0;
+      const rect = canvas.getBoundingClientRect();
+      return clientX - rect.left;
+    },
+    [],
+  );
+
+  const sampleToPixelX = useCallback(
+    (sample: number): number => {
+      const canvas = canvasRef.current;
+      if (!canvas || !samples) return 0;
+      return (sample / samples.length) * canvas.getBoundingClientRect().width;
+    },
+    [samples],
+  );
+
+  // Detect which trim handle is near the cursor
+  const hitTestHandle = useCallback(
+    (clientX: number): DragTarget => {
+      if (!trimRegion || !samples) return null;
+      const px = pixelX(clientX);
+      const startPx = sampleToPixelX(trimRegion.start);
+      const endPx = sampleToPixelX(trimRegion.end);
+
+      if (Math.abs(px - startPx) <= HANDLE_HIT_PX) return 'start';
+      if (Math.abs(px - endPx) <= HANDLE_HIT_PX) return 'end';
+      return null;
+    },
+    [trimRegion, samples, pixelX, sampleToPixelX],
+  );
+
+  // --- Mouse handlers ---
+
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      if (!onSelectionChange || !samples) return;
-      dragStart.current = pixelToSample(e.clientX);
+      if (!samples) return;
+
+      if (hasTrimHandles) {
+        const target = hitTestHandle(e.clientX);
+        if (target) {
+          trimDragTarget.current = target;
+          trimDragRegion.current = trimRegion ? { ...trimRegion } : null;
+          e.preventDefault();
+        }
+        return;
+      }
+
+      // Non-trim: selection drag
+      if (onSelectionChange) {
+        selectionDragStart.current = pixelToSample(e.clientX);
+      }
     },
-    [onSelectionChange, samples, pixelToSample],
+    [samples, hasTrimHandles, hitTestHandle, trimRegion, onSelectionChange, pixelToSample],
   );
 
   const handleMouseMove = useCallback(
     (e: React.MouseEvent) => {
-      if (dragStart.current === null || !onSelectionChange || !samples) return;
+      if (!samples) return;
+
+      if (hasTrimHandles) {
+        // During drag: update region via ref, redraw via state on commit
+        if (trimDragTarget.current && trimDragRegion.current && onTrimRegionChange) {
+          const sample = Math.max(0, Math.min(samples.length, pixelToSample(e.clientX)));
+          const region = { ...trimDragRegion.current };
+
+          if (trimDragTarget.current === 'start') {
+            region.start = Math.min(sample, region.end - 1);
+          } else {
+            region.end = Math.max(sample, region.start + 1);
+          }
+
+          trimDragRegion.current = region;
+          onTrimRegionChange(region);
+          return;
+        }
+
+        // Hover: update cursor
+        const target = hitTestHandle(e.clientX);
+        setCursorStyle(target ? 'col-resize' : 'default');
+        return;
+      }
+
+      // Non-trim: selection drag
+      if (selectionDragStart.current === null || !onSelectionChange) return;
       const current = pixelToSample(e.clientX);
-      const start = Math.max(0, Math.min(dragStart.current, current));
-      const end = Math.min(samples.length, Math.max(dragStart.current, current));
+      const start = Math.max(0, Math.min(selectionDragStart.current, current));
+      const end = Math.min(samples.length, Math.max(selectionDragStart.current, current));
       onSelectionChange({ start, end });
     },
-    [onSelectionChange, samples, pixelToSample],
+    [samples, hasTrimHandles, onTrimRegionChange, hitTestHandle, onSelectionChange, pixelToSample],
   );
 
   const handleMouseUp = useCallback(() => {
-    dragStart.current = null;
+    trimDragTarget.current = null;
+    trimDragRegion.current = null;
+    selectionDragStart.current = null;
   }, []);
 
   return (
@@ -155,7 +253,8 @@ export function WaveformDisplay({
         ref={canvasRef}
         width={canvasWidth}
         height={height}
-        className="w-full cursor-crosshair"
+        className="w-full"
+        style={{ cursor: cursorStyle }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
@@ -163,4 +262,36 @@ export function WaveformDisplay({
       />
     </div>
   );
+}
+
+function drawWaveform(
+  ctx: CanvasRenderingContext2D,
+  samples: Int16Array,
+  w: number,
+  h: number,
+  isPreview: boolean,
+): void {
+  const samplesPerPixel = samples.length / w;
+  ctx.strokeStyle = isPreview ? PREVIEW_WAVEFORM_COLOR : WAVEFORM_COLOR;
+  ctx.lineWidth = 1;
+
+  ctx.beginPath();
+  for (let x = 0; x < w; x++) {
+    const start = Math.floor(x * samplesPerPixel);
+    const end = Math.min(Math.floor((x + 1) * samplesPerPixel), samples.length);
+
+    let min = 0;
+    let max = 0;
+    for (let i = start; i < end; i++) {
+      if (samples[i] < min) min = samples[i];
+      if (samples[i] > max) max = samples[i];
+    }
+
+    const yMin = ((1 - max / 32768) * h) / 2;
+    const yMax = ((1 - min / 32768) * h) / 2;
+
+    ctx.moveTo(x + 0.5, yMin);
+    ctx.lineTo(x + 0.5, yMax);
+  }
+  ctx.stroke();
 }

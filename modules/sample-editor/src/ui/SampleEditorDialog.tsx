@@ -111,6 +111,8 @@ export function SampleEditorDialog({
               sampleRate={editor.sampleRate}
               selection={editor.selection}
               onSelectionChange={editor.setSelection}
+              trimRegion={editor.trimRegion}
+              onTrimRegionChange={editor.setTrimRegion}
               height={220}
               isPreview={editor.preview !== null}
             />
@@ -119,6 +121,8 @@ export function SampleEditorDialog({
               samples={editor.samples}
               sampleRate={editor.sampleRate}
               selection={editor.selection}
+              trimRegion={editor.trimRegion}
+              onTrimRegionChange={editor.setTrimRegion}
               onPreview={editor.setPreview}
               onCommit={editor.commitPreview}
               onApply={editor.apply}

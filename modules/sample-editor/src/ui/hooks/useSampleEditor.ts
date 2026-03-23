@@ -23,6 +23,9 @@ export interface UseSampleEditorReturn {
   /** Selection region for trim. */
   selection: { start: number; end: number } | null;
   setSelection: (sel: { start: number; end: number } | null) => void;
+  /** Trim region with draggable handles. Null when trim tab is not active. */
+  trimRegion: { start: number; end: number } | null;
+  setTrimRegion: (region: { start: number; end: number } | null) => void;
   /** Apply an operation, pushing to history. */
   apply(label: string, operation: (samples: Int16Array, sr: number) => Int16Array): void;
   /** Undo/redo. */
@@ -61,6 +64,7 @@ export function useSampleEditor({
   }));
 
   const [selection, setSelection] = useState<{ start: number; end: number } | null>(null);
+  const [trimRegion, setTrimRegion] = useState<{ start: number; end: number } | null>(null);
   const [preview, setPreviewState] = useState<Int16Array | null>(null);
 
   const currentEntry = historyState.currentIndex >= 0
@@ -173,6 +177,8 @@ export function useSampleEditor({
     sampleRate,
     selection,
     setSelection,
+    trimRegion,
+    setTrimRegion,
     apply,
     canUndo,
     canRedo,

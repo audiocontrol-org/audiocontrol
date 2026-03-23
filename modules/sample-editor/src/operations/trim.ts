@@ -15,25 +15,24 @@ export function trimSamples(
 }
 
 /**
- * Auto-trim silence from start and end of sample. Returns trimmed copy.
+ * Find the first and last sample above the RMS threshold.
  *
- * Uses RMS-based detection with 10ms analysis windows.
- * Default threshold: -40dB.
+ * Returns `{ start, end }` where start..end is the region to keep.
+ * Uses 10ms analysis windows. When the entire sample is below threshold,
+ * returns `{ start: 0, end: 0 }`.
  */
-export function trimSilence(
+export function findTrimPoints(
   samples: Int16Array,
   sampleRate: number,
-  thresholdDb: number = -40,
-): Int16Array {
+  thresholdDb: number,
+): { start: number; end: number } {
   if (samples.length === 0) {
-    return new Int16Array(0);
+    return { start: 0, end: 0 };
   }
 
   const windowSize = Math.max(1, Math.floor(sampleRate * 0.01)); // 10ms windows
   const thresholdLinear = Math.pow(10, thresholdDb / 20);
-  // RMS threshold squared for comparison without sqrt
   const thresholdRmsSquared = thresholdLinear * thresholdLinear;
-  // Scale for Int16 range: peak is 32768
   const scale = 1 / 32768;
 
   // Scan from start to find first window above threshold
@@ -47,7 +46,7 @@ export function trimSilence(
   }
 
   if (firstAbove >= samples.length) {
-    return new Int16Array(0);
+    return { start: 0, end: 0 };
   }
 
   // Scan from end to find last window above threshold
@@ -61,10 +60,28 @@ export function trimSilence(
   }
 
   if (firstAbove >= lastAbove) {
-    return new Int16Array(0);
+    return { start: 0, end: 0 };
   }
 
-  return samples.slice(firstAbove, lastAbove);
+  return { start: firstAbove, end: lastAbove };
+}
+
+/**
+ * Auto-trim silence from start and end of sample. Returns trimmed copy.
+ *
+ * Uses RMS-based detection with 10ms analysis windows.
+ * Default threshold: -40dB.
+ */
+export function trimSilence(
+  samples: Int16Array,
+  sampleRate: number,
+  thresholdDb: number = -40,
+): Int16Array {
+  const { start, end } = findTrimPoints(samples, sampleRate, thresholdDb);
+  if (start >= end) {
+    return new Int16Array(0);
+  }
+  return samples.slice(start, end);
 }
 
 function computeRmsSquared(

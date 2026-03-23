@@ -12,7 +12,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
 import { cn } from '@/ui/utils';
-import { trimSamples, trimSilence } from '@/operations/trim';
+import { trimSamples, findTrimPoints } from '@/operations/trim';
 import { normalize, applyGain } from '@/operations/normalize';
 import { fadeIn, fadeOut } from '@/operations/fade';
 import { reverseSamples } from '@/operations/reverse';
@@ -24,6 +24,9 @@ export interface OperationPanelProps {
   samples: Int16Array | null;
   sampleRate: number;
   selection: { start: number; end: number } | null;
+  /** Trim region (what will be kept). Null when trim tab is not active. */
+  trimRegion: { start: number; end: number } | null;
+  onTrimRegionChange: (region: { start: number; end: number } | null) => void;
   /** Set a preview operation (called on parameter change). Null to clear. */
   onPreview: (operation: ((s: Int16Array, sr: number) => Int16Array) | null) => void;
   /** Commit the current preview to history. */
@@ -52,6 +55,8 @@ export function OperationPanel({
   samples,
   sampleRate,
   selection,
+  trimRegion,
+  onTrimRegionChange,
   onPreview,
   onCommit,
   onApply,
@@ -67,14 +72,27 @@ export function OperationPanel({
 
   const disabled = !samples || samples.length === 0;
 
-  // Clear preview when switching tabs
+  // Clear preview and trim region when switching tabs
   const handleTabChange = useCallback(
     (value: string) => {
       onPreview(null);
-      setActiveTab(value as OperationTab);
+      onTrimRegionChange(null);
+      const tab = value as OperationTab;
+      setActiveTab(tab);
+      // Initialize trim region when entering trim tab
+      if (tab === 'trim' && samples && samples.length > 0) {
+        onTrimRegionChange({ start: 0, end: samples.length });
+      }
     },
-    [onPreview],
+    [onPreview, onTrimRegionChange, samples],
   );
+
+  // Initialize trim region on mount if starting on trim tab
+  useEffect(() => {
+    if (activeTab === 'trim' && samples && samples.length > 0 && !trimRegion) {
+      onTrimRegionChange({ start: 0, end: samples.length });
+    }
+  }, [activeTab, samples, trimRegion, onTrimRegionChange]);
 
   // --- Preview triggers: update preview when parameters change ---
 
@@ -100,11 +118,29 @@ export function OperationPanel({
     );
   }, [activeTab, fadeDurationMs, fadeCurve, fadeDirection, disabled, onPreview]);
 
+  // When silence threshold changes, auto-detect trim points and update handles
   useEffect(() => {
-    if (disabled || activeTab !== 'trim') return;
-    const db = silenceThresholdDb;
-    onPreview((s, sr) => trimSilence(s, sr, db));
-  }, [activeTab, silenceThresholdDb, disabled, onPreview]);
+    if (disabled || activeTab !== 'trim' || !samples) return;
+    const points = findTrimPoints(samples, sampleRate, silenceThresholdDb);
+    if (points.start >= points.end) {
+      // Entire sample is below threshold — keep everything
+      onTrimRegionChange({ start: 0, end: samples.length });
+    } else {
+      onTrimRegionChange(points);
+    }
+  }, [activeTab, silenceThresholdDb, disabled, samples, sampleRate, onTrimRegionChange]);
+
+  // Update preview when trim region changes
+  useEffect(() => {
+    if (disabled || activeTab !== 'trim' || !trimRegion || !samples) return;
+    const { start, end } = trimRegion;
+    // Only show preview if region differs from full sample
+    if (start === 0 && end === samples.length) {
+      onPreview(null);
+    } else {
+      onPreview((s) => trimSamples(s, start, end));
+    }
+  }, [activeTab, trimRegion, disabled, samples, onPreview]);
 
   return (
     <Tabs.Root value={activeTab} onValueChange={handleTabChange}>
@@ -127,16 +163,24 @@ export function OperationPanel({
 
       <TrimTab
         disabled={disabled}
-        selection={selection}
+        samples={samples}
+        sampleRate={sampleRate}
+        trimRegion={trimRegion}
         hasPreview={hasPreview}
         silenceThresholdDb={silenceThresholdDb}
         onSilenceThresholdChange={setSilenceThresholdDb}
-        onTrimToSelection={() => {
-          if (!selection) return;
-          const { start, end } = selection;
-          onApply('Trim to Selection', (s) => trimSamples(s, start, end));
+        onApplyTrim={() => {
+          if (!trimRegion) return;
+          const { start, end } = trimRegion;
+          onApply('Trim', (s) => trimSamples(s, start, end));
+          // Reset trim region after apply (new sample will be full)
+          onTrimRegionChange(null);
         }}
-        onCommitTrimSilence={() => onCommit(`Trim Silence (${silenceThresholdDb} dB)`)}
+        onResetTrim={() => {
+          if (samples) {
+            onTrimRegionChange({ start: 0, end: samples.length });
+          }
+        }}
       />
 
       <NormalizeTab
@@ -192,30 +236,39 @@ export function OperationPanel({
 
 function TrimTab({
   disabled,
-  selection,
+  samples,
+  sampleRate,
+  trimRegion,
   hasPreview,
   silenceThresholdDb,
   onSilenceThresholdChange,
-  onTrimToSelection,
-  onCommitTrimSilence,
+  onApplyTrim,
+  onResetTrim,
 }: {
   disabled: boolean;
-  selection: { start: number; end: number } | null;
+  samples: Int16Array | null;
+  sampleRate: number;
+  trimRegion: { start: number; end: number } | null;
   hasPreview: boolean;
   silenceThresholdDb: number;
   onSilenceThresholdChange: (v: number) => void;
-  onTrimToSelection: () => void;
-  onCommitTrimSilence: () => void;
+  onApplyTrim: () => void;
+  onResetTrim: () => void;
 }): JSX.Element {
+  const totalSamples = samples?.length ?? 0;
+  const keepStart = trimRegion?.start ?? 0;
+  const keepEnd = trimRegion?.end ?? totalSamples;
+  const keepCount = keepEnd - keepStart;
+  const removedCount = totalSamples - keepCount;
+  const keepMs = sampleRate > 0 ? ((keepCount / sampleRate) * 1000).toFixed(1) : '0.0';
+  const removedMs = sampleRate > 0 ? ((removedCount / sampleRate) * 1000).toFixed(1) : '0.0';
+
   return (
     <Tabs.Content value="trim" className="space-y-3">
-      <button
-        className={cn('ac-btn ac-btn-sm', !selection && 'opacity-50 cursor-not-allowed')}
-        disabled={disabled || !selection}
-        onClick={onTrimToSelection}
-      >
-        Trim to Selection
-      </button>
+      <p className="text-xs text-ac-muted">
+        Drag the handles on the waveform to adjust the trim region, or use the
+        silence threshold to auto-detect.
+      </p>
       <div className="space-y-1">
         <label className="flex items-center justify-between text-xs text-ac-muted">
           <span>Silence Threshold</span>
@@ -231,13 +284,27 @@ function TrimTab({
           onChange={(e) => onSilenceThresholdChange(Number(e.target.value))}
         />
       </div>
-      <button
-        className={hasPreview ? APPLY_BTN : APPLY_BTN_INACTIVE}
-        disabled={disabled || !hasPreview}
-        onClick={onCommitTrimSilence}
-      >
-        Apply Trim Silence
-      </button>
+      {trimRegion && totalSamples > 0 && (
+        <div className="text-xs text-ac-muted font-mono">
+          Keep {keepStart} &rarr; {keepEnd} ({keepMs}ms, removing {removedMs}ms)
+        </div>
+      )}
+      <div className="flex gap-2">
+        <button
+          className={hasPreview ? APPLY_BTN : APPLY_BTN_INACTIVE}
+          disabled={disabled || !hasPreview}
+          onClick={onApplyTrim}
+        >
+          Apply Trim
+        </button>
+        <button
+          className="ac-btn ac-btn-sm"
+          disabled={disabled}
+          onClick={onResetTrim}
+        >
+          Reset
+        </button>
+      </div>
     </Tabs.Content>
   );
 }
