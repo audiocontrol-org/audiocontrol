@@ -255,30 +255,33 @@ test.describe('Sample Editor — zoom', () => {
 
 test.describe('Sample Editor — trim handles', () => {
   test.beforeEach(async ({ page }, testInfo) => {
-    await openEditorForSample(page, testInfo.project.name, 'leading-silence');
+    // Use fade-in-hits: has varying amplitudes, so threshold changes produce
+    // different trim points (unlike leading-silence where silence is absolute zero)
+    await openEditorForSample(page, testInfo.project.name, 'fade-in-hits');
     await page.getByRole('tab', { name: 'Trim' }).click();
   });
 
   test('trim silence auto-positions handles', async ({ page }) => {
-    // The leading-silence sample has 300ms of silence at the start
-    // Adjusting the silence threshold should move the trim handles
-    // and show updated region info
     await expect(page.getByText(/Keep/)).toBeVisible({ timeout: 5000 });
   });
 
   test('trim silence threshold slider is interactive', async ({ page }) => {
-    const slider = page.locator('input[type="range"]').first();
+    const slider = page.locator('[role="dialog"] input[type="range"]').first();
     await expect(slider).toBeVisible({ timeout: 500 });
 
     // Get initial region text
-    const regionText = page.getByText(/Keep \d+/);
+    const regionText = page.locator('[role="dialog"]').getByText(/Keep \d+/);
     await expect(regionText).toBeVisible({ timeout: 5000 });
     const initialText = await regionText.textContent();
 
-    // Drag the slider thumb to change value (click near right end for less-negative threshold)
+    // Drag the slider thumb to change value.
+    // The slider goes from -60 to -10. Click near the RIGHT end to set a
+    // high threshold (~-12dB). The fade-in-hits signal has hits at amplitudes
+    // 0.1 (-20dB), 0.3 (-10dB), 0.6 (-4dB), 0.9 (-1dB). At -12dB threshold,
+    // only the 0.3, 0.6, 0.9 hits are above threshold — different trim points.
     const box = await slider.boundingBox();
     if (!box) throw new Error('Slider not found');
-    await page.mouse.click(box.x + box.width * 0.9, box.y + box.height / 2);
+    await page.mouse.click(box.x + box.width * 0.95, box.y + box.height / 2);
 
     // Region text should update (different threshold = different trim points)
     await expect(async () => {
@@ -297,10 +300,10 @@ test.describe('Sample Editor — trim handles', () => {
     await expect(page.getByTitle(/undo/i)).toBeEnabled({ timeout: 500 });
   });
 
-  test('drag start handle in single-pane mode', async ({ page }) => {
+  test('drag end handle in single-pane mode', async ({ page }) => {
     // Get region info before drag
     await expect(page.getByText(/Keep/)).toBeVisible({ timeout: 5000 });
-    const regionText = page.getByText(/Keep \d+/);
+    const regionText = page.locator('[role="dialog"]').getByText(/Keep \d+/);
     const initialText = await regionText.textContent();
 
     // Get the canvas bounding box
@@ -308,19 +311,17 @@ test.describe('Sample Editor — trim handles', () => {
     const box = await canvas.boundingBox();
     if (!box) throw new Error('Canvas not found');
 
-    // The start handle is near the left side of the canvas.
-    // The region text shows "Keep 9000 → 60000" which means start is at
-    // sample 9000 out of 60000 total — so at ~15% of the canvas width.
-    const handleX = box.x + box.width * 0.15;
+    // The end handle is at the right side of the canvas (at or near 100%).
+    // Drag it left to trim the end.
+    const handleX = box.x + box.width - 5;
     const centerY = box.y + box.height / 2;
 
-    // Use page.mouse for real browser events
     await page.mouse.move(handleX, centerY);
     await page.mouse.down();
-    await page.mouse.move(handleX + 100, centerY, { steps: 5 });
+    await page.mouse.move(handleX - 200, centerY, { steps: 10 });
     await page.mouse.up();
 
-    // Region info should have changed
+    // Region info should have changed (end point moved left)
     await expect(async () => {
       const newText = await regionText.textContent();
       expect(newText).not.toBe(initialText);
