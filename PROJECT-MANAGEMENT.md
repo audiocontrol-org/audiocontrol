@@ -227,6 +227,8 @@ docs/
 
 ## Branch and Workplan Requirements
 
+> **See also:** [BRANCHING-AND-RELEASES.md](./BRANCHING-AND-RELEASES.md) for the full branching model, deployment workflow, and versioning scheme.
+
 ### Feature Branch Naming
 
 **Format:** `feature/<feature-slug>`
