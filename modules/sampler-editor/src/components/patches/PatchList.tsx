@@ -11,6 +11,14 @@ interface PatchListProps {
   patches: (SamplerPatch | undefined)[];
   selectedIndex: number | null;
   onSelect: (index: number | null) => void;
+  /** Which banks have been loaded */
+  loadedBanks: number[];
+  /** Number of patches per bank */
+  patchesPerBank: number;
+  /** Bank index currently being loaded (null if none) */
+  loadingBank?: number | null;
+  /** Called when user clicks an unloaded patch to load its bank */
+  onLoadBank?: (bankIndex: number) => void;
 }
 
 /**
@@ -21,7 +29,7 @@ function isPatchEmpty(patch: SamplerPatch): boolean {
   return name === '' || name === '            ' || name.trim() === '';
 }
 
-export function PatchList({ patches, selectedIndex, onSelect }: PatchListProps) {
+export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _loadedBanks, patchesPerBank, loadingBank, onLoadBank }: PatchListProps) {
   // Count loaded and non-empty patches
   const loadedPatches = patches.filter((p): p is SamplerPatch => p !== undefined);
   const nonEmptyCount = loadedPatches.filter(p => !isPatchEmpty(p)).length;
@@ -38,15 +46,27 @@ export function PatchList({ patches, selectedIndex, onSelect }: PatchListProps) 
           const isLoaded = patch !== undefined;
           const isEmpty = isLoaded && isPatchEmpty(patch);
           const isSelected = index === selectedIndex;
+          const bankIndex = Math.floor(index / patchesPerBank);
+
+          const isBankLoading = loadingBank === bankIndex;
+
+          const handleClick = () => {
+            if (isLoaded) {
+              onSelect(isSelected ? null : index);
+            } else if (!isBankLoading && onLoadBank) {
+              onLoadBank(bankIndex);
+            }
+          };
 
           return (
             <button
               key={index}
-              onClick={() => isLoaded && onSelect(isSelected ? null : index)}
-              disabled={!isLoaded}
+              onClick={handleClick}
+              disabled={isBankLoading}
               className={cn(
                 'w-full px-3 py-2 rounded text-left text-sm transition-colors',
-                isLoaded ? 'hover:bg-s330-accent/50' : 'cursor-wait',
+                isLoaded ? 'hover:bg-s330-accent/50' : 'hover:bg-s330-accent/20 cursor-pointer',
+                isBankLoading && 'cursor-wait',
                 isSelected
                   ? 'bg-s330-highlight text-white'
                   : !isLoaded
@@ -64,12 +84,17 @@ export function PatchList({ patches, selectedIndex, onSelect }: PatchListProps) 
                   'flex-1 mx-3 truncate',
                   (!isLoaded || isEmpty) && 'italic'
                 )}>
-                  {!isLoaded
+                  {isBankLoading
                     ? '(loading...)'
-                    : isEmpty
-                      ? '(empty)'
-                      : patch.common.name}
+                    : !isLoaded
+                      ? '(not loaded)'
+                      : isEmpty
+                        ? '(empty)'
+                        : patch.common.name}
                 </span>
+                {!isLoaded && !isBankLoading && (
+                  <span className="text-xs text-s330-muted/50">click to load</span>
+                )}
               </div>
             </button>
           );

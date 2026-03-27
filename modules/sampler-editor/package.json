@@ -14,6 +14,8 @@
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "test:e2e:loop-editor": "./scripts/run-loop-editor-e2e.sh",
+    "test:e2e:sample-chopper": "./scripts/run-sample-chopper-e2e.sh",
+    "test:e2e:sample-editor": "./scripts/run-sample-editor-e2e.sh",
     "visual:capture": "playwright test -c playwright.visual.config.ts",
     "visual:compare": "node ../../scripts/visual-compare.mjs .",
     "visual:baseline:update": "node ../../scripts/visual-update-baseline.mjs ."
@@ -40,6 +42,7 @@
     "@audiocontrol/loop-editor": "workspace:*",
     "@audiocontrol/synth-core": "workspace:*",
     "@audiocontrol/sample-chopper": "workspace:*",
+    "@audiocontrol/sample-editor": "workspace:*",
     "@audiocontrol/sampler-devices": "workspace:*",
     "@audiocontrol/sampler-library": "workspace:*",
     "@audiocontrol/shared-midi": "workspace:*",

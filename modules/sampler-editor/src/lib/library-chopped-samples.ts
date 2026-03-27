@@ -1,70 +1,57 @@
 /**
- * Chopped sample operations — listing, loading, and reading
- * chopped samples from the common library (library/common/samples/).
+ * Chopped sample operations — loading samples with slice data
+ * from the common library (library/common/samples/).
+ *
+ * Uses the unified sample.yaml format (samples with optional slices).
  */
 
 import { parseWav } from '@/core/midi/S330Client';
 import {
-  ChoppedSampleSchema,
-  type ChoppedSample,
-  type LibraryTreeNode,
+  SampleYamlSchema,
+  type SampleYaml,
   type StorageDirectoryHandle,
-  listChoppedSamplesTree as listChoppedSamplesTreeShared,
   getNestedDirectory,
 } from '@audiocontrol/sampler-library/browser';
 import { parseYaml } from '@/lib/library-io';
-
-// =========================================================================
-// Listing
-// =========================================================================
-
-/**
- * List all chopped samples from library/common/samples/ as a hierarchical tree.
- */
-export async function listChoppedSamplesTree(
-  directoryHandle: StorageDirectoryHandle
-): Promise<LibraryTreeNode[]> {
-  return listChoppedSamplesTreeShared(directoryHandle);
-}
 
 // =========================================================================
 // Loading
 // =========================================================================
 
 /**
- * Load a chopped sample manifest from library/common/samples/{path}/{name}/manifest.yaml.
+ * Load sample metadata from library/common/samples/{path}/{name}/sample.yaml.
  */
 export async function loadChoppedSampleManifest(
   directoryHandle: StorageDirectoryHandle,
   sampleName: string,
   path: string[] = []
-): Promise<ChoppedSample> {
+): Promise<SampleYaml> {
   const sampleDir = await getNestedDirectory(directoryHandle, [
     'library', 'common', 'samples', ...path, sampleName
   ]);
 
-  const manifestHandle = await sampleDir.getFileHandle('manifest.yaml');
-  const file = await manifestHandle.getFile();
+  const yamlHandle = await sampleDir.getFileHandle('sample.yaml');
+  const file = await yamlHandle.getFile();
   const text = await file.text();
   const parsed = parseYaml(text);
 
-  return ChoppedSampleSchema.parse(parsed);
+  return SampleYamlSchema.parse(parsed);
 }
 
 /**
- * Load the source WAV from a chopped sample in library/common/samples/.
+ * Load the WAV from a sample in library/common/samples/.
  */
 export async function loadChoppedSampleSource(
   directoryHandle: StorageDirectoryHandle,
   sampleName: string,
-  sourceFilename: string,
+  _sourceFilename: string,
   path: string[] = []
 ): Promise<{ samples: Int16Array; sampleRate: number }> {
   const sampleDir = await getNestedDirectory(directoryHandle, [
     'library', 'common', 'samples', ...path, sampleName
   ]);
 
-  const fileHandle = await sampleDir.getFileHandle(sourceFilename);
+  const fileHandle = await sampleDir.getFileHandle('sample.wav');
   const file = await fileHandle.getFile();
   const arrayBuffer = await file.arrayBuffer();
   const wavData = parseWav(arrayBuffer);

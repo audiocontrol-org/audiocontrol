@@ -25,6 +25,7 @@ import type { NoteInput } from '@audiocontrol/synth-core';
 import type { LoopCandidate, DiscontinuityAnalysis } from '@audiocontrol/sampler-library';
 import { createSmoothedCopy, analyzeDiscontinuity } from '@audiocontrol/sampler-library/browser';
 import { useLoopDetection } from '@/ui/hooks/useLoopDetection';
+import type { LoopEditorProps } from '@/ui/LoopEditor';
 
 export type PlaybackMode = 'no-loop' | 'loop' | 'smoothed-loop';
 
@@ -76,7 +77,12 @@ export interface UseLoopEditorReturn {
   audio: AudioPlayback;
 
   // Synth-core playback
+  midiEnabled: boolean;
+  setMidiEnabled: (enabled: boolean) => void;
   activeNotes: ReadonlySet<number>;
+
+  // Pre-packaged props for the LoopEditor component
+  editorProps: LoopEditorProps;
 
   // Reset — call when loading new sample data
   resetForNewSamples: (loopStart?: number, loopEnd?: number) => void;
@@ -180,17 +186,22 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
     prevIsSearchingRef.current = isSearching;
   }, [isSearching, candidates]);
 
+  // MIDI/keyboard playback toggle
+  const [midiEnabled, setMidiEnabled] = useState(true);
+
   // Shared note event dispatch — all input sources (keyboard, MIDI, external)
   // call through these refs. useSamplePlayer wires its handlers here once.
   const noteOnRef = useRef<((note: number, velocity: number) => void) | null>(null);
   const noteOffRef = useRef<((note: number) => void) | null>(null);
 
   const dispatchNoteOn = useCallback((note: number, velocity: number) => {
+    if (!midiEnabled) return;
     noteOnRef.current?.(note, velocity);
-  }, []);
+  }, [midiEnabled]);
   const dispatchNoteOff = useCallback((note: number) => {
+    if (!midiEnabled) return;
     noteOffRef.current?.(note);
-  }, []);
+  }, [midiEnabled]);
 
   // The single NoteInput passed to useSamplePlayer — stable reference.
   const playerInputRef = useRef<NoteInput | null>(null);
@@ -260,6 +271,40 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
     noteInput: playerInputRef.current,
   });
 
+  // Pre-packaged props object for spreading into <LoopEditor {...editorProps} />.
+  const editorProps: LoopEditorProps = useMemo(() => ({
+    samples,
+    sampleRate,
+    startPoint: 0,
+    loopPoint,
+    endPoint,
+    onLoopPointChange: setLoopPoint,
+    onEndPointChange: setEndPoint,
+    candidates,
+    selectedCandidateIndex,
+    onCandidateSelect: setSelectedCandidateIndex,
+    onApplyCandidate: handleApplyCandidate,
+    onAutoDetect: handleAutoDetect,
+    isSearching,
+    searchProgress: progress,
+    audio,
+    playbackMode,
+    onPlaybackModeChange: setPlaybackMode,
+    discontinuity,
+    crossfadeLength,
+    onCrossfadeLengthChange: setCrossfadeLength,
+    midiEnabled,
+    onMidiEnabledChange: setMidiEnabled,
+    activeNoteCount: activeNotes.size,
+  }), [
+    samples, sampleRate, loopPoint, endPoint, setLoopPoint, setEndPoint,
+    candidates, selectedCandidateIndex, setSelectedCandidateIndex,
+    handleApplyCandidate, handleAutoDetect, isSearching, progress,
+    audio, playbackMode, setPlaybackMode, discontinuity,
+    crossfadeLength, setCrossfadeLength, midiEnabled, setMidiEnabled,
+    activeNotes.size,
+  ]);
+
   return {
     loopPoint,
     endPoint,
@@ -280,6 +325,9 @@ export function useLoopEditor(params: UseLoopEditorParams): UseLoopEditorReturn 
     loopDetectionError,
     clearResults,
     audio,
+    editorProps,
+    midiEnabled,
+    setMidiEnabled,
     activeNotes,
     resetForNewSamples,
   };

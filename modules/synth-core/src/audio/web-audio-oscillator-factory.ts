@@ -142,6 +142,68 @@ export function createWebAudioOscillatorFactory(ctx: AudioContext): OscillatorFa
       return osc;
     },
 
+    createSliceOscillator(startSample: number, endSample: number, velocity: number): SampleOscillator {
+      if (!buffer) {
+        throw new Error('No sample buffer loaded — call setBuffer() before createSliceOscillator()');
+      }
+
+      const source = ctx.createBufferSource();
+      const gainNode = ctx.createGain();
+
+      source.buffer = buffer;
+      source.playbackRate.value = 1.0;
+      gainNode.gain.value = velocity / 127;
+
+      source.loop = false;
+
+      source.connect(gainNode);
+      gainNode.connect(ctx.destination);
+
+      let playing = true;
+      let entry: ActiveOscillatorEntry;
+
+      const osc: SampleOscillator = {
+        get note() { return -1; },
+        get isPlaying() { return playing; },
+
+        setLoopRegion(_enabled: boolean, _startSec: number, _endSec: number): void {
+          // Slices are one-shot; loop region is not applicable.
+        },
+
+        stop(fadeTimeSec?: number): void {
+          if (!playing) return;
+          playing = false;
+
+          const fade = fadeTimeSec ?? DEFAULT_FADE_SEC;
+          const now = ctx.currentTime;
+
+          gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+          gainNode.gain.linearRampToValueAtTime(0, now + fade);
+
+          try {
+            source.stop(now + fade);
+          } catch {
+            /* already stopped */
+          }
+
+          removeEntry(entry);
+        },
+      };
+
+      entry = { osc, source, gain: gainNode };
+      activeEntries.add(entry);
+
+      source.onended = () => {
+        playing = false;
+        removeEntry(entry);
+      };
+
+      const offsetSec = startSample / buffer.sampleRate;
+      const durationSec = (endSample - startSample) / buffer.sampleRate;
+      source.start(0, offsetSec, durationSec);
+      return osc;
+    },
+
     dispose(): void {
       stopAllActive();
       buffer = null;

@@ -5,7 +5,7 @@
  * Loads first bank (8 patches) by default for faster startup.
  */
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
 import { useS330Store } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
@@ -55,6 +55,9 @@ export function PatchesPage() {
   // Keep a ref to the S330 client
   const clientRef = useRef<SamplerClientInterface | null>(null);
 
+  // Bank loading state
+  const [loadingBank, setLoadingBank] = useState<number | null>(null);
+
   // Track if we've already initiated loading to prevent loops
   const hasInitiatedLoad = useRef(false);
 
@@ -79,11 +82,21 @@ export function PatchesPage() {
     config: { totalPatches, totalTones, patchesPerBank, tonesPerBank },
   });
 
+  // Load a bank with loading indicator
+  const loadPatchBankWithIndicator = useCallback(async (bankIndex: number, forceReload = false) => {
+    setLoadingBank(bankIndex);
+    try {
+      await loadPatchBank(bankIndex, forceReload);
+    } finally {
+      setLoadingBank(null);
+    }
+  }, [loadPatchBank]);
+
   // Load initial data (first bank of patches and tones)
   const loadInitialData = useCallback(async () => {
-    await loadPatchBank(0);
+    await loadPatchBankWithIndicator(0);
     await loadToneBank(0);
-  }, [loadPatchBank, loadToneBank]);
+  }, [loadPatchBankWithIndicator, loadToneBank]);
 
   // Load all patches and tones
   const loadAll = useCallback(async () => {
@@ -250,6 +263,10 @@ export function PatchesPage() {
                 patches={patches}
                 selectedIndex={selectedPatchIndex}
                 onSelect={selectPatch}
+                loadedBanks={loadedPatchBanks}
+                patchesPerBank={patchesPerBank}
+                loadingBank={loadingBank}
+                onLoadBank={(bank) => loadPatchBankWithIndicator(bank)}
               />
             </div>
           </div>

@@ -86,11 +86,6 @@ export function LoopEditorDialog({
               </Dialog.Description>
             </div>
             <div className="flex items-center gap-2">
-              {editor.activeNotes.size > 0 && (
-                <span className="text-xs text-s330-muted px-2">
-                  MIDI: {editor.activeNotes.size} {editor.activeNotes.size === 1 ? 'voice' : 'voices'}
-                </span>
-              )}
               {onSave && (
                 <button
                   onClick={handleSave}
@@ -109,28 +104,7 @@ export function LoopEditorDialog({
 
           {/* Editor */}
           <div className="flex-1 overflow-auto p-4">
-            <LoopEditor
-              samples={samples}
-              sampleRate={sampleRate}
-              startPoint={0}
-              loopPoint={editor.loopPoint}
-              endPoint={editor.endPoint}
-              onLoopPointChange={editor.setLoopPoint}
-              onEndPointChange={editor.setEndPoint}
-              candidates={editor.candidates}
-              selectedCandidateIndex={editor.selectedCandidateIndex}
-              onCandidateSelect={editor.setSelectedCandidateIndex}
-              onApplyCandidate={editor.handleApplyCandidate}
-              onAutoDetect={editor.handleAutoDetect}
-              isSearching={editor.isSearching}
-              searchProgress={editor.searchProgress}
-              audio={editor.audio}
-              playbackMode={editor.playbackMode}
-              onPlaybackModeChange={editor.setPlaybackMode}
-              discontinuity={editor.discontinuity}
-              crossfadeLength={editor.crossfadeLength}
-              onCrossfadeLengthChange={editor.setCrossfadeLength}
-            />
+            <LoopEditor {...editor.editorProps} />
           </div>
         </Dialog.Content>
       </Dialog.Portal>

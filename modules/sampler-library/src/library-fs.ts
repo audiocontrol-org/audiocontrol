@@ -22,7 +22,7 @@
 import { parse as parseYaml } from 'yaml';
 
 import type { StorageDirectoryHandle, StorageEntry } from './storage-handles.js';
-import { DrumKitBundleSchema, type DrumKitBundle, ChoppedSampleSchema, SampleYamlSchema, ProgramYamlSchema } from './schemas/index.js';
+import { DrumKitBundleSchema, type DrumKitBundle, SampleYamlSchema, ProgramYamlSchema } from './schemas/index.js';
 import { loadDrumKitBundle as parseDrumKitBundle } from './drum-kits/index.js';
 
 // =========================================================================
@@ -356,35 +356,6 @@ const detectPatch: ItemDetector = async (entry, parentDir, path) => {
   };
 };
 
-/** Detect a chopped sample: a directory containing `manifest.yaml` with a valid schema. */
-const detectChoppedSample: ItemDetector = async (entry, parentDir, path) => {
-  if (entry.kind !== 'directory') return null;
-
-  const subDir = await parentDir.getDirectoryHandle(entry.name);
-
-  try {
-    const manifestHandle = await subDir.getFileHandle('manifest.yaml');
-    const file = await manifestHandle.getFile();
-    const text = await file.text();
-    const parsed = parseYaml(text);
-    const result = ChoppedSampleSchema.safeParse(parsed);
-    if (!result.success) return null;
-
-    return {
-      id: [...path, entry.name].join('/'),
-      name: result.data.name,
-      type: 'chopped-sample',
-      path,
-      directoryName: entry.name,
-      sliceCount: result.data.slices.length,
-      variant: result.data.variant,
-      description: result.data.description,
-    };
-  } catch {
-    return null;
-  }
-};
-
 // =========================================================================
 // Tone scanning (wrapper over generic scanner)
 // =========================================================================
@@ -467,32 +438,6 @@ export async function listPatchesTree(
 }
 
 // =========================================================================
-// Chopped sample scanning
-// =========================================================================
-
-/**
- * Recursively scan a directory for chopped samples and build a tree structure.
- * A chopped sample is a directory containing a valid `manifest.yaml`.
- */
-export async function scanChoppedSamplesDirectory(
-  dir: StorageDirectoryHandle,
-  path: string[],
-): Promise<LibraryTreeNode[]> {
-  return scanLibraryDirectory(dir, path, detectChoppedSample);
-}
-
-/**
- * List all chopped samples from `library/common/samples/` as a hierarchical tree.
- */
-export async function listChoppedSamplesTree(
-  root: StorageDirectoryHandle,
-): Promise<LibraryTreeNode[]> {
-  const samplesDir = await getNestedDirectoryIfExists(root, ['library', 'common', 'samples']);
-  if (!samplesDir) return [];
-  return scanChoppedSamplesDirectory(samplesDir, []);
-}
-
-// =========================================================================
 // Common-area sample detection
 // =========================================================================
 
@@ -522,6 +467,7 @@ const detectSample: ItemDetector = async (entry, parentDir, path) => {
       path,
       directoryName: entry.name,
       description: result.data.description,
+      sliceCount: result.data.slices?.length,
     };
   } catch {
     return null;
@@ -564,17 +510,13 @@ const detectProgram: ItemDetector = async (entry, parentDir, path) => {
  * samples, programs, and legacy chopped samples.
  */
 const detectCommonItem: ItemDetector = async (entry, parentDir, path) => {
-  // Try sample first (files)
+  // Try sample first (directories with sample.yaml)
   const sample = await detectSample(entry, parentDir, path);
   if (sample) return sample;
 
   // Try program (directories with program.yaml)
   const program = await detectProgram(entry, parentDir, path);
   if (program) return program;
-
-  // Try legacy chopped sample (directories with manifest.yaml)
-  const chopped = await detectChoppedSample(entry, parentDir, path);
-  if (chopped) return chopped;
 
   return null;
 };

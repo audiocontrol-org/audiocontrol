@@ -32,13 +32,7 @@ async function openInSamplerEditor(page: Page, sampleName: string): Promise<void
 
   // Wait for mock library to auto-connect and tree to load
   // Use exact match to avoid matching "decay-into-sustain" when looking for "sustain"
-  // Find the sample in the SAMPLES category section (not CHOPPED SAMPLES).
-  // Each category is a TreeSection with a .ac-tree-section-title span.
-  // We need the last match since CHOPPED SAMPLES renders the same names as directories.
-  const allMatches = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${sampleName}$`) });
-  await expect(allMatches.first()).toBeVisible({ timeout: 10000 });
-  // The SAMPLES section renders after CHOPPED SAMPLES, so use .last()
-  const nameSpan = allMatches.last();
+  const nameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${sampleName}$`) }).first();
   await expect(nameSpan).toBeVisible({ timeout: 10000 });
 
   // Click the tree row (.ac-tree-node handles onClick, not the name span)

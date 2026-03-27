@@ -65,6 +65,9 @@ export function createMockOscillatorFactory(): {
     createOscillator(note: number, velocity: number): SampleOscillator {
       return createMockOscillator(note, velocity);
     },
+    createSliceOscillator(_startSample: number, _endSample: number, velocity: number): SampleOscillator {
+      return createMockOscillator(-1, velocity);
+    },
     dispose() {
       for (const osc of activeOscillators) {
         osc.stop();

@@ -72,6 +72,12 @@ export interface LoopEditorProps {
   crossfadeLength?: number;
   /** Called when user changes crossfade length */
   onCrossfadeLengthChange?: (length: number) => void;
+  /** Whether MIDI/keyboard playback is enabled */
+  midiEnabled?: boolean;
+  /** Called when MIDI toggle is clicked */
+  onMidiEnabledChange?: (enabled: boolean) => void;
+  /** Number of currently active MIDI voices */
+  activeNoteCount?: number;
 }
 
 /** Waveform colors */
@@ -119,6 +125,9 @@ export function LoopEditor({
   discontinuity,
   crossfadeLength,
   onCrossfadeLengthChange,
+  midiEnabled,
+  onMidiEnabledChange,
+  activeNoteCount,
 }: LoopEditorProps): JSX.Element {
   const leftCanvasRef = useRef<HTMLCanvasElement>(null);
   const rightCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -498,6 +507,7 @@ export function LoopEditor({
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-3 flex-wrap">
           <h4 className="font-medium text-s330-text">Loop Editor</h4>
+          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 cursor-help" title="This feature is still being designed and not all the wrinkles have been smoothed out yet.">Experimental</span>
           {onAutoDetect && (
             <button
               onClick={onAutoDetect}
@@ -600,6 +610,26 @@ export function LoopEditor({
                     {crossfadeLength}
                   </span>
                 </div>
+              )}
+            </div>
+          )}
+          {onMidiEnabledChange && (
+            <div className="flex items-center gap-1 border-l border-s330-accent/20 pl-3 ml-1">
+              <button
+                onClick={() => onMidiEnabledChange(!midiEnabled)}
+                className={cn(
+                  'ac-btn ac-btn-xs',
+                  midiEnabled ? 'ac-btn-primary' : 'ac-btn-ghost',
+                )}
+                data-testid="midi-toggle"
+                title={midiEnabled ? 'MIDI playback on — click to disable' : 'MIDI playback off — click to enable'}
+              >
+                MIDI {midiEnabled ? 'On' : 'Off'}
+              </button>
+              {midiEnabled && activeNoteCount != null && activeNoteCount > 0 && (
+                <span className="text-xs text-s330-muted">
+                  {activeNoteCount} {activeNoteCount === 1 ? 'voice' : 'voices'}
+                </span>
               )}
             </div>
           )}

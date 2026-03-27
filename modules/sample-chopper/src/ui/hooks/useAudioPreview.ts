@@ -1,11 +1,21 @@
 /**
  * Audio Preview Hook
  *
- * Provides audio playback functionality for previewing samples and slices
- * using the Web Audio API.
+ * Provides audio playback functionality for previewing samples and slices.
+ * Uses synth-core's OscillatorFactory for buffer management and voice creation,
+ * and PlaybackPositionTracker for position tracking.
  */
 
 import { useRef, useState, useCallback, useEffect, type MutableRefObject } from 'react';
+import {
+  createWebAudioOscillatorFactory,
+  createPlaybackPositionTracker,
+} from '@audiocontrol/synth-core';
+import type {
+  OscillatorFactory,
+  PlaybackPositionTracker,
+  SampleOscillator,
+} from '@audiocontrol/synth-core';
 
 export interface UseAudioPreviewOptions {
   /** Sample rate of the audio */
@@ -28,75 +38,76 @@ export interface UseAudioPreviewReturn {
 }
 
 /**
- * Hook for audio preview playback using Web Audio API
+ * Hook for audio preview playback using synth-core primitives
  */
 export function useAudioPreview({ sampleRate }: UseAudioPreviewOptions): UseAudioPreviewReturn {
   const audioContextRef = useRef<AudioContext | null>(null);
-  const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
-  const startTimeRef = useRef<number>(0);
-  const startSampleRef = useRef<number>(0);
+  const factoryRef = useRef<OscillatorFactory | null>(null);
+  const trackerRef = useRef<PlaybackPositionTracker | null>(null);
+  const oscillatorRef = useRef<SampleOscillator | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const playbackPositionRef = useRef<number | null>(null);
+  const startSampleRef = useRef<number>(0);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackPosition, setPlaybackPosition] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Initialize AudioContext lazily (requires user gesture)
-  const getAudioContext = useCallback((): AudioContext | null => {
-    if (!audioContextRef.current) {
-      try {
-        audioContextRef.current = new AudioContext();
-      } catch (err) {
-        setError('Failed to create audio context');
-        return null;
+  const getOrCreateEngine = useCallback((): {
+    ctx: AudioContext;
+    factory: OscillatorFactory;
+    tracker: PlaybackPositionTracker;
+  } | null => {
+    if (audioContextRef.current && factoryRef.current && trackerRef.current) {
+      if (audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume();
       }
+      return {
+        ctx: audioContextRef.current,
+        factory: factoryRef.current,
+        tracker: trackerRef.current,
+      };
     }
-    // Resume if suspended (browser autoplay policy)
-    if (audioContextRef.current.state === 'suspended') {
-      audioContextRef.current.resume();
+
+    try {
+      const ctx = new AudioContext();
+      audioContextRef.current = ctx;
+      factoryRef.current = createWebAudioOscillatorFactory(ctx);
+      trackerRef.current = createPlaybackPositionTracker(ctx);
+      return { ctx, factory: factoryRef.current, tracker: trackerRef.current };
+    } catch {
+      setError('Failed to create audio context');
+      return null;
     }
-    return audioContextRef.current;
   }, []);
 
-  // Convert Int16Array to Float32Array for Web Audio API
-  const int16ToFloat32 = useCallback((samples: Int16Array): Float32Array => {
-    const float32 = new Float32Array(samples.length);
-    for (let i = 0; i < samples.length; i++) {
-      // Convert from [-32768, 32767] to [-1.0, 1.0]
-      float32[i] = samples[i] / 32768;
-    }
-    return float32;
-  }, []);
-
-  // Update playback position during playback.
-  // Uses sourceNodeRef (set synchronously in play()) instead of isPlaying state
-  // to avoid stale-closure issues where the rAF callback captures isPlaying=false.
+  // Update playback position during playback via rAF loop
   const updatePlaybackPosition = useCallback(() => {
-    if (!audioContextRef.current || !sourceNodeRef.current) {
+    const tracker = trackerRef.current;
+    const osc = oscillatorRef.current;
+
+    if (!tracker || !osc || !osc.isPlaying) {
       setPlaybackPosition(null);
       playbackPositionRef.current = null;
+      setIsPlaying(false);
       return;
     }
 
-    const elapsed = audioContextRef.current.currentTime - startTimeRef.current;
-    const currentSample = startSampleRef.current + Math.floor(elapsed * sampleRate);
+    const currentSample = startSampleRef.current + tracker.getCurrentSample();
     playbackPositionRef.current = currentSample;
     setPlaybackPosition(currentSample);
 
     animationFrameRef.current = requestAnimationFrame(updatePlaybackPosition);
-  }, [sampleRate]);
+  }, []);
 
   // Stop playback
   const stop = useCallback(() => {
-    if (sourceNodeRef.current) {
-      try {
-        sourceNodeRef.current.stop();
-      } catch {
-        // Ignore errors if already stopped
-      }
-      sourceNodeRef.current.disconnect();
-      sourceNodeRef.current = null;
+    if (oscillatorRef.current) {
+      oscillatorRef.current.stop(0);
+      oscillatorRef.current = null;
+    }
+    if (trackerRef.current) {
+      trackerRef.current.stop();
     }
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
@@ -113,65 +124,48 @@ export function useAudioPreview({ sampleRate }: UseAudioPreviewOptions): UseAudi
       // Stop any current playback
       stop();
 
-      const ctx = getAudioContext();
-      if (!ctx) return;
+      const engine = getOrCreateEngine();
+      if (!engine) return;
 
       setError(null);
 
       try {
-        // Extract the portion to play
         const end = endSample ?? samples.length;
-        const portion = samples.slice(startSample, end);
-
-        if (portion.length === 0) {
+        if (end <= startSample) {
           setError('No audio to play');
           return;
         }
 
-        // Create AudioBuffer
-        const buffer = ctx.createBuffer(1, portion.length, sampleRate);
-        const channelData = buffer.getChannelData(0);
-        const float32Data = int16ToFloat32(portion);
-        channelData.set(float32Data);
+        // Load the full buffer and create a slice oscillator for the region
+        engine.factory.setBuffer(samples, sampleRate);
+        const osc = engine.factory.createSliceOscillator(startSample, end, 127);
 
-        // Create and configure source node
-        const source = ctx.createBufferSource();
-        source.buffer = buffer;
-        source.connect(ctx.destination);
-
-        // Track playback state
-        source.onended = () => {
-          setIsPlaying(false);
-          setPlaybackPosition(null);
-          playbackPositionRef.current = null;
-          sourceNodeRef.current = null;
-          if (animationFrameRef.current) {
-            cancelAnimationFrame(animationFrameRef.current);
-            animationFrameRef.current = null;
-          }
-        };
-
-        // Start playback
-        sourceNodeRef.current = source;
-        startTimeRef.current = ctx.currentTime;
+        oscillatorRef.current = osc;
         startSampleRef.current = startSample;
-        source.start();
+
+        // Start position tracking
+        engine.tracker.start(sampleRate);
+
         setIsPlaying(true);
 
-        // Start position updates
+        // Start position update loop
         animationFrameRef.current = requestAnimationFrame(updatePlaybackPosition);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Playback failed');
         setIsPlaying(false);
       }
     },
-    [stop, getAudioContext, sampleRate, int16ToFloat32, updatePlaybackPosition]
+    [stop, getOrCreateEngine, sampleRate, updatePlaybackPosition],
   );
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       stop();
+      trackerRef.current?.dispose();
+      trackerRef.current = null;
+      factoryRef.current?.dispose();
+      factoryRef.current = null;
       if (audioContextRef.current) {
         audioContextRef.current.close();
         audioContextRef.current = null;

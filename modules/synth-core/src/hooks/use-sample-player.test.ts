@@ -16,6 +16,7 @@ const mockStopAll = vi.fn();
 const mockGetActiveNotes = vi.fn(() => new Set<number>());
 const mockAllocatorDispose = vi.fn();
 const mockCreateOscillator = vi.fn();
+const mockCreateSliceOscillator = vi.fn();
 
 vi.mock('@/audio/web-audio-oscillator-factory', () => ({
   createWebAudioOscillatorFactory: (): OscillatorFactory => ({
@@ -23,6 +24,7 @@ vi.mock('@/audio/web-audio-oscillator-factory', () => ({
     setRootKey: mockSetRootKey,
     setLoopRegion: mockSetLoopRegion,
     createOscillator: mockCreateOscillator,
+    createSliceOscillator: mockCreateSliceOscillator,
     dispose: mockDispose,
   }),
 }));
@@ -31,8 +33,11 @@ vi.mock('@/voice/create-voice-allocator', () => ({
   createVoiceAllocator: () => ({
     noteOn: mockNoteOn,
     noteOff: mockNoteOff,
+    sliceOn: vi.fn(),
+    sliceOff: vi.fn(),
     stopAll: mockStopAll,
     getActiveNotes: mockGetActiveNotes,
+    getActiveSlices: vi.fn(() => new Set<number>()),
     dispose: mockAllocatorDispose,
   }),
 }));

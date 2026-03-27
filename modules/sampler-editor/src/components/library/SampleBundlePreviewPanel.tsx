@@ -22,7 +22,7 @@ import {
   parseNoteName,
   type ResolvedDrumKitBundle,
   type DetectedKit,
-  type ChoppedSample,
+  type SampleYaml,
   type StorageDirectoryHandle,
 } from '@audiocontrol/sampler-library/browser';
 
@@ -45,7 +45,7 @@ interface SampleBundlePreviewPanelProps {
   /** Pre-loaded drum kit bundle (for kits in subdirectories) */
   preloadedBundle?: ResolvedDrumKitBundle | null;
   /** Pre-loaded chopped sample manifest */
-  preloadedManifest?: ChoppedSample | null;
+  preloadedManifest?: SampleYaml | null;
   onImport?: () => void;
   onEditKit?: () => void;
 }
@@ -140,7 +140,7 @@ function MidiRangeVisualization({ bundle }: { bundle: ResolvedDrumKitBundle }): 
 // Chopped Sample sub-components
 // =========================================================================
 
-function ChoppedSampleSliceList({ manifest }: { manifest: ChoppedSample }): JSX.Element {
+function ChoppedSampleSliceList({ manifest }: { manifest: SampleYaml }): JSX.Element {
   // Build trigger map for display
   const triggerMap = new Map<number, string>();
   if (manifest.triggers) {
@@ -152,9 +152,9 @@ function ChoppedSampleSliceList({ manifest }: { manifest: ChoppedSample }): JSX.
   return (
     <div className="space-y-2">
       <div className="text-xs text-s330-muted uppercase tracking-wide">
-        Slices ({manifest.slices.length})
+        Slices ({manifest.slices!.length})
       </div>
-      {manifest.slices.map((slice, i) => {
+      {manifest.slices!.map((slice, i) => {
         const trigger = triggerMap.get(i);
         const midiMatch = trigger?.match(/^midi:(\d+)$/);
         const midiNote = midiMatch ? parseInt(midiMatch[1]!, 10) : undefined;
@@ -215,7 +215,7 @@ export function SampleBundlePreviewPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [bundle, setBundle] = useState<ResolvedDrumKitBundle | null>(null);
-  const [manifest, setManifest] = useState<ChoppedSample | null>(null);
+  const [manifest, setManifest] = useState<SampleYaml | null>(null);
 
   const isDrumKit = !!kitInfo || !!preloadedBundle;
 
@@ -377,19 +377,21 @@ export function SampleBundlePreviewPanel({
             <div className="flex gap-4 text-sm flex-wrap">
               <div className="bg-s330-bg rounded px-3 py-2">
                 <span className="text-s330-muted">Slices:</span>{' '}
-                <span className="text-s330-text font-medium">{manifest.slices.length}</span>
+                <span className="text-s330-text font-medium">{manifest.slices!.length}</span>
               </div>
               <div className="bg-s330-bg rounded px-3 py-2">
                 <span className="text-s330-muted">Source Rate:</span>{' '}
                 <span className="text-s330-text font-medium">{manifest.sampleRate / 1000}kHz</span>
               </div>
-              <div className="bg-s330-bg rounded px-3 py-2">
-                <span className="text-s330-muted">Variant:</span>{' '}
-                <span className="text-s330-text font-medium">{manifest.variant}</span>
-              </div>
+              {manifest.drumKit && (
+                <div className="bg-s330-bg rounded px-3 py-2">
+                  <span className="text-s330-muted">Type:</span>{' '}
+                  <span className="text-s330-text font-medium">Drum Kit</span>
+                </div>
+              )}
             </div>
 
-            {manifest.variant === 'drum-kit' && (
+            {manifest.drumKit && (
               <div className="bg-s330-bg rounded p-3 text-sm">
                 <div className="text-s330-muted text-xs uppercase tracking-wide mb-2">Drum Kit Metadata</div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
