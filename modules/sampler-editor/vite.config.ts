@@ -22,7 +22,7 @@ const buildTime = new Date().toISOString();
 const useMkcert = process.env.VISUAL_HTTP !== '1';
 
 export default defineConfig({
-  base: '/',
+  base: process.env.VITE_BASE_PATH || '/',
   plugins: [
     react(),
     ...(useMkcert

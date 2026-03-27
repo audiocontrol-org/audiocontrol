@@ -9,6 +9,7 @@
 [build.environment]
   NODE_VERSION = "20"
   PNPM_VERSION = "8.15.1"
+  VITE_BASE_PATH = "/roland/s330/editor/"
 
 # SPA routing - redirect all paths to index.html for React Router
 [[redirects]]
