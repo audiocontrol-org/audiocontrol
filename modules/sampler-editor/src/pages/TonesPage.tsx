@@ -25,8 +25,7 @@ import {
   type StorageDirectoryHandle,
 } from '@/lib/library-service';
 import { useLibraryConnection } from '@audiocontrol/editor-core';
-import { useLoopDetection } from '@audiocontrol/loop-editor/ui';
-import { createSmoothedCopy } from '@audiocontrol/sampler-library/browser';
+import { useLoopEditor } from '@audiocontrol/loop-editor/ui';
 
 export function TonesPage() {
   const config = useDeviceConfig();
@@ -89,24 +88,57 @@ export function TonesPage() {
   const [isLoadingLoopWaveData, setIsLoadingLoopWaveData] = useState(false);
   const [loopWaveDataProgress, setLoopWaveDataProgress] = useState<number | undefined>(undefined);
 
-  // Loop detection state
-  const [selectedLoopCandidateIndex, setSelectedLoopCandidateIndex] = useState<number | undefined>(undefined);
-  const {
-    isSearching: isSearchingLoopPoints,
-    progress: loopSearchProgress,
-    candidates: loopCandidates,
-    searchLoopPoints,
-    clearResults: clearLoopResults,
-  } = useLoopDetection();
+  // Loop editor hook — owns loop point state, detection, audio preview, and smoothing
+  const selectedToneForLoop = selectedToneIndex !== null ? tones[selectedToneIndex] : null;
+  const loopEditorSamples = selectedToneIndex !== null ? loopEditorWaveData.get(selectedToneIndex) ?? null : null;
+  const loopEditor = useLoopEditor({
+    samples: loopEditorSamples,
+    sampleRate: selectedToneForLoop?.sampleRate === '30kHz' ? 30000 : 15000,
+    initialLoopStart: selectedToneForLoop?.wave.loopPoint,
+    initialLoopEnd: selectedToneForLoop?.wave.endPoint,
+    rootKey: selectedToneForLoop?.originalKey,
+  });
 
-  // Loop smoothing state
-  const [isSmoothingLoop, setIsSmoothingLoop] = useState(false);
-
-  // Clear loop detection results when selected tone changes
+  // Sync loop editor's state back to device tone when changed via the loop editor UI
+  const prevLoopPointRef = useRef(loopEditor.loopPoint);
+  const prevEndPointRef = useRef(loopEditor.endPoint);
   useEffect(() => {
-    clearLoopResults();
-    setSelectedLoopCandidateIndex(undefined);
-  }, [selectedToneIndex, clearLoopResults]);
+    if (selectedToneIndex === null) return;
+    const currentTone = tones[selectedToneIndex];
+    if (!currentTone) return;
+
+    const loopChanged = loopEditor.loopPoint !== prevLoopPointRef.current;
+    const endChanged = loopEditor.endPoint !== prevEndPointRef.current;
+    prevLoopPointRef.current = loopEditor.loopPoint;
+    prevEndPointRef.current = loopEditor.endPoint;
+
+    if (!loopChanged && !endChanged) return;
+
+    // Only sync if the hook's values differ from the tone's values
+    if (
+      loopEditor.loopPoint !== currentTone.wave.loopPoint ||
+      loopEditor.endPoint !== currentTone.wave.endPoint
+    ) {
+      const updatedTone = {
+        ...currentTone,
+        wave: {
+          ...currentTone.wave,
+          loopPoint: loopEditor.loopPoint,
+          endPoint: loopEditor.endPoint,
+        },
+      };
+      setTone(selectedToneIndex, updatedTone, totalTones);
+    }
+  }, [loopEditor.loopPoint, loopEditor.endPoint, selectedToneIndex, tones, setTone, totalTones]);
+
+  // Reset loop editor when selected tone changes
+  useEffect(() => {
+    if (selectedToneIndex === null) return;
+    const tone = tones[selectedToneIndex];
+    if (tone) {
+      loopEditor.resetForNewSamples(tone.wave.loopPoint, tone.wave.endPoint);
+    }
+  }, [selectedToneIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize client when adapter changes
   useEffect(() => {
@@ -355,64 +387,6 @@ export function TonesPage() {
     }
   }, [selectedToneIndex, loopEditorWaveData, setError]);
 
-  // Auto-detect loop points
-  const handleAutoDetectLoopPoints = useCallback(() => {
-    if (selectedToneIndex === null) return;
-
-    const waveData = loopEditorWaveData.get(selectedToneIndex);
-    if (!waveData) return;
-
-    const selectedTone = tones[selectedToneIndex];
-    if (!selectedTone) return;
-
-    const sampleRate = selectedTone.sampleRate === '30kHz' ? 30000 : 15000;
-
-    // Clear previous results
-    clearLoopResults();
-    setSelectedLoopCandidateIndex(undefined);
-
-    // Create a copy of the wave data since it will be transferred to the worker
-    const samplesCopy = new Int16Array(waveData);
-
-    // Start the search
-    searchLoopPoints(samplesCopy, sampleRate, selectedTone.wave.endPoint);
-  }, [selectedToneIndex, loopEditorWaveData, tones, clearLoopResults, searchLoopPoints]);
-
-  // Smooth loop splice point with crossfade
-  const handleSmoothLoop = useCallback((mode: 'linear' | 'equal-power') => {
-    if (selectedToneIndex === null) return;
-
-    const waveData = loopEditorWaveData.get(selectedToneIndex);
-    if (!waveData) return;
-
-    const selectedTone = tones[selectedToneIndex];
-    if (!selectedTone) return;
-
-    setIsSmoothingLoop(true);
-
-    try {
-      // Create a smoothed copy of the wave data
-      const smoothedData = createSmoothedCopy(
-        waveData,
-        selectedTone.wave.loopPoint,
-        selectedTone.wave.endPoint,
-        { mode, crossfadeLength: 64 }
-      );
-
-      // Update the cached wave data with the smoothed version
-      setLoopEditorWaveData(prev => {
-        const newMap = new Map(prev);
-        newMap.set(selectedToneIndex, smoothedData);
-        return newMap;
-      });
-
-    } catch (err) {
-      console.error('[TonesPage] Failed to smooth loop:', err);
-      setError(err instanceof Error ? err.message : 'Failed to smooth loop');
-    } finally {
-      setIsSmoothingLoop(false);
-    }
-  }, [selectedToneIndex, loopEditorWaveData, tones, setError]);
 
   // Import sample from local file to device
   const handleImportSample = useCallback(async (params: {
@@ -628,18 +602,25 @@ export function TonesPage() {
                 isExportingToLibrary={isExportingToLibrary}
                 onImportSample={handleOpenImportDialog}
                 isImporting={isImporting}
-                waveData={loopEditorWaveData.get(selectedToneIndex!) ?? null}
+                waveData={loopEditorSamples}
                 isLoadingWaveData={isLoadingLoopWaveData}
                 waveDataLoadProgress={loopWaveDataProgress}
                 onLoadWaveData={handleLoadLoopWaveData}
-                loopCandidates={loopCandidates}
-                selectedLoopCandidateIndex={selectedLoopCandidateIndex}
-                onLoopCandidateSelect={setSelectedLoopCandidateIndex}
-                onAutoDetectLoopPoints={handleAutoDetectLoopPoints}
-                isSearchingLoopPoints={isSearchingLoopPoints}
-                loopSearchProgress={loopSearchProgress}
-                onSmoothLoop={handleSmoothLoop}
-                isSmoothingLoop={isSmoothingLoop}
+                loopCandidates={loopEditor.candidates}
+                selectedLoopCandidateIndex={loopEditor.selectedCandidateIndex}
+                onLoopCandidateSelect={loopEditor.setSelectedCandidateIndex}
+                onAutoDetectLoopPoints={loopEditor.handleAutoDetect}
+                isSearchingLoopPoints={loopEditor.isSearching}
+                loopSearchProgress={loopEditor.searchProgress}
+                audio={loopEditor.audio}
+                playbackMode={loopEditor.playbackMode}
+                onPlaybackModeChange={loopEditor.setPlaybackMode}
+                discontinuity={loopEditor.discontinuity}
+                crossfadeLength={loopEditor.crossfadeLength}
+                onCrossfadeLengthChange={loopEditor.setCrossfadeLength}
+                onLoopPointChange={loopEditor.setLoopPoint}
+                onEndPointChange={loopEditor.setEndPoint}
+                onApplyCandidate={loopEditor.handleApplyCandidate}
               />
             ) : (
               <div className="card text-center py-12 text-s330-muted">

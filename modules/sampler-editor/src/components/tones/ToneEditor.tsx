@@ -12,7 +12,9 @@
 
 import type { SamplerTone, SamplerEnvelope, SamplerEgPolarity, SamplerLevelCurve } from '@/core/midi/SamplerClient';
 import type { LoopCandidate } from '@audiocontrol/sampler-library';
+import type { DiscontinuityAnalysis } from '@audiocontrol/sampler-library';
 import { formatPercent } from '@audiocontrol/editor-core';
+import type { AudioPlayback } from '@audiocontrol/editor-core';
 import { midiNoteToName, cn, formatS330Number } from '@/lib/utils';
 import { ParameterSlider } from '@/components/ui/ParameterSlider';
 import { EnvelopeEditor } from '@/components/ui/EnvelopeEditor';
@@ -20,6 +22,7 @@ import { Tooltip } from '@/components/ui/Tooltip';
 import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
 import { LoopEditor } from '@audiocontrol/loop-editor/ui';
 import type { LoopDetectionProgress } from '@audiocontrol/loop-editor';
+import type { PlaybackMode } from '@audiocontrol/loop-editor/ui';
 
 interface ToneEditorProps {
     tone: SamplerTone;
@@ -59,9 +62,16 @@ interface ToneEditorProps {
     onAutoDetectLoopPoints?: () => void;
     isSearchingLoopPoints?: boolean;
     loopSearchProgress?: LoopDetectionProgress;
-    // Loop smoothing props
-    onSmoothLoop?: (mode: 'linear' | 'equal-power') => void;
-    isSmoothingLoop?: boolean;
+    // Loop editor hook props (from useLoopEditor)
+    audio?: AudioPlayback;
+    playbackMode?: PlaybackMode;
+    onPlaybackModeChange?: (mode: PlaybackMode) => void;
+    discontinuity?: DiscontinuityAnalysis | null;
+    crossfadeLength?: number;
+    onCrossfadeLengthChange?: (length: number) => void;
+    onLoopPointChange?: (loopPoint: number) => void;
+    onEndPointChange?: (endPoint: number) => void;
+    onApplyCandidate?: (loopStart: number, loopEnd: number) => void;
 }
 
 export function ToneEditor({
@@ -86,8 +96,15 @@ export function ToneEditor({
     onAutoDetectLoopPoints,
     isSearchingLoopPoints,
     loopSearchProgress,
-    onSmoothLoop,
-    isSmoothingLoop,
+    audio,
+    playbackMode,
+    onPlaybackModeChange,
+    discontinuity,
+    crossfadeLength,
+    onCrossfadeLengthChange,
+    onLoopPointChange,
+    onEndPointChange,
+    onApplyCandidate,
 }: ToneEditorProps) {
     const handleTvaEnvelopeChange = (envelope: SamplerEnvelope) => {
         onUpdate?.({ ...tone, tva: { ...tone.tva, envelope } });
@@ -357,14 +374,17 @@ export function ToneEditor({
                         loopPoint={tone.wave.loopPoint}
                         endPoint={tone.wave.endPoint}
                         onLoopPointChange={(loopPoint) => {
+                            onLoopPointChange?.(loopPoint);
                             const updatedTone = { ...tone, wave: { ...tone.wave, loopPoint } };
                             onUpdate?.(updatedTone);
                         }}
                         onEndPointChange={(endPoint) => {
+                            onEndPointChange?.(endPoint);
                             const updatedTone = { ...tone, wave: { ...tone.wave, endPoint } };
                             onUpdate?.(updatedTone);
                         }}
                         onApplyCandidate={(loopStart, loopEnd) => {
+                            onApplyCandidate?.(loopStart, loopEnd);
                             const updatedTone = { ...tone, wave: { ...tone.wave, loopPoint: loopStart, endPoint: loopEnd } };
                             onUpdate?.(updatedTone);
                         }}
@@ -377,8 +397,12 @@ export function ToneEditor({
                         onAutoDetect={onAutoDetectLoopPoints}
                         isSearching={isSearchingLoopPoints}
                         searchProgress={loopSearchProgress}
-                        onSmoothLoop={onSmoothLoop}
-                        isSmoothing={isSmoothingLoop}
+                        audio={audio}
+                        playbackMode={playbackMode}
+                        onPlaybackModeChange={onPlaybackModeChange}
+                        discontinuity={discontinuity}
+                        crossfadeLength={crossfadeLength}
+                        onCrossfadeLengthChange={onCrossfadeLengthChange}
                     />
                 </div>
             )}
