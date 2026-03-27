@@ -606,21 +606,7 @@ export function TonesPage() {
                 isLoadingWaveData={isLoadingLoopWaveData}
                 waveDataLoadProgress={loopWaveDataProgress}
                 onLoadWaveData={handleLoadLoopWaveData}
-                loopCandidates={loopEditor.candidates}
-                selectedLoopCandidateIndex={loopEditor.selectedCandidateIndex}
-                onLoopCandidateSelect={loopEditor.setSelectedCandidateIndex}
-                onAutoDetectLoopPoints={loopEditor.handleAutoDetect}
-                isSearchingLoopPoints={loopEditor.isSearching}
-                loopSearchProgress={loopEditor.searchProgress}
-                audio={loopEditor.audio}
-                playbackMode={loopEditor.playbackMode}
-                onPlaybackModeChange={loopEditor.setPlaybackMode}
-                discontinuity={loopEditor.discontinuity}
-                crossfadeLength={loopEditor.crossfadeLength}
-                onCrossfadeLengthChange={loopEditor.setCrossfadeLength}
-                onLoopPointChange={loopEditor.setLoopPoint}
-                onEndPointChange={loopEditor.setEndPoint}
-                onApplyCandidate={loopEditor.handleApplyCandidate}
+                loopEditorProps={loopEditor.editorProps}
               />
             ) : (
               <div className="card text-center py-12 text-s330-muted">

@@ -11,18 +11,14 @@
  */
 
 import type { SamplerTone, SamplerEnvelope, SamplerEgPolarity, SamplerLevelCurve } from '@/core/midi/SamplerClient';
-import type { LoopCandidate } from '@audiocontrol/sampler-library';
-import type { DiscontinuityAnalysis } from '@audiocontrol/sampler-library';
 import { formatPercent } from '@audiocontrol/editor-core';
-import type { AudioPlayback } from '@audiocontrol/editor-core';
 import { midiNoteToName, cn, formatS330Number } from '@/lib/utils';
 import { ParameterSlider } from '@/components/ui/ParameterSlider';
 import { EnvelopeEditor } from '@/components/ui/EnvelopeEditor';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { TONE_TOOLTIPS } from '@/constants/tone-tooltips';
 import { LoopEditor } from '@audiocontrol/loop-editor/ui';
-import type { LoopDetectionProgress } from '@audiocontrol/loop-editor';
-import type { PlaybackMode } from '@audiocontrol/loop-editor/ui';
+import type { LoopEditorProps } from '@audiocontrol/loop-editor/ui';
 
 interface ToneEditorProps {
     tone: SamplerTone;
@@ -55,23 +51,8 @@ interface ToneEditorProps {
     waveDataLoadProgress?: number;
     // Called when user wants to load wave data for loop editor
     onLoadWaveData?: () => void;
-    // Loop detection props
-    loopCandidates?: LoopCandidate[];
-    selectedLoopCandidateIndex?: number;
-    onLoopCandidateSelect?: (index: number) => void;
-    onAutoDetectLoopPoints?: () => void;
-    isSearchingLoopPoints?: boolean;
-    loopSearchProgress?: LoopDetectionProgress;
-    // Loop editor hook props (from useLoopEditor)
-    audio?: AudioPlayback;
-    playbackMode?: PlaybackMode;
-    onPlaybackModeChange?: (mode: PlaybackMode) => void;
-    discontinuity?: DiscontinuityAnalysis | null;
-    crossfadeLength?: number;
-    onCrossfadeLengthChange?: (length: number) => void;
-    onLoopPointChange?: (loopPoint: number) => void;
-    onEndPointChange?: (endPoint: number) => void;
-    onApplyCandidate?: (loopStart: number, loopEnd: number) => void;
+    // Pre-packaged props for the LoopEditor component (from useLoopEditor.editorProps)
+    loopEditorProps?: LoopEditorProps;
 }
 
 export function ToneEditor({
@@ -90,21 +71,7 @@ export function ToneEditor({
     isLoadingWaveData = false,
     waveDataLoadProgress,
     onLoadWaveData,
-    loopCandidates,
-    selectedLoopCandidateIndex,
-    onLoopCandidateSelect,
-    onAutoDetectLoopPoints,
-    isSearchingLoopPoints,
-    loopSearchProgress,
-    audio,
-    playbackMode,
-    onPlaybackModeChange,
-    discontinuity,
-    crossfadeLength,
-    onCrossfadeLengthChange,
-    onLoopPointChange,
-    onEndPointChange,
-    onApplyCandidate,
+    loopEditorProps,
 }: ToneEditorProps) {
     const handleTvaEnvelopeChange = (envelope: SamplerEnvelope) => {
         onUpdate?.({ ...tone, tva: { ...tone.tva, envelope } });
@@ -367,43 +334,14 @@ export function ToneEditor({
                             </button>
                         </div>
                     )}
-                    <LoopEditor
-                        samples={waveData ?? null}
-                        sampleRate={tone.sampleRate === '30kHz' ? 30000 : 15000}
-                        startPoint={tone.wave.startPoint}
-                        loopPoint={tone.wave.loopPoint}
-                        endPoint={tone.wave.endPoint}
-                        onLoopPointChange={(loopPoint) => {
-                            onLoopPointChange?.(loopPoint);
-                            const updatedTone = { ...tone, wave: { ...tone.wave, loopPoint } };
-                            onUpdate?.(updatedTone);
-                        }}
-                        onEndPointChange={(endPoint) => {
-                            onEndPointChange?.(endPoint);
-                            const updatedTone = { ...tone, wave: { ...tone.wave, endPoint } };
-                            onUpdate?.(updatedTone);
-                        }}
-                        onApplyCandidate={(loopStart, loopEnd) => {
-                            onApplyCandidate?.(loopStart, loopEnd);
-                            const updatedTone = { ...tone, wave: { ...tone.wave, loopPoint: loopStart, endPoint: loopEnd } };
-                            onUpdate?.(updatedTone);
-                        }}
-                        onCommit={onCommit}
-                        isLoading={isLoadingWaveData}
-                        loadingProgress={waveDataLoadProgress}
-                        candidates={loopCandidates}
-                        selectedCandidateIndex={selectedLoopCandidateIndex}
-                        onCandidateSelect={onLoopCandidateSelect}
-                        onAutoDetect={onAutoDetectLoopPoints}
-                        isSearching={isSearchingLoopPoints}
-                        searchProgress={loopSearchProgress}
-                        audio={audio}
-                        playbackMode={playbackMode}
-                        onPlaybackModeChange={onPlaybackModeChange}
-                        discontinuity={discontinuity}
-                        crossfadeLength={crossfadeLength}
-                        onCrossfadeLengthChange={onCrossfadeLengthChange}
-                    />
+                    {loopEditorProps && (
+                        <LoopEditor
+                            {...loopEditorProps}
+                            isLoading={isLoadingWaveData}
+                            loadingProgress={waveDataLoadProgress}
+                            onCommit={onCommit}
+                        />
+                    )}
                 </div>
             )}
 

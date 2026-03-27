@@ -72,6 +72,12 @@ export interface LoopEditorProps {
   crossfadeLength?: number;
   /** Called when user changes crossfade length */
   onCrossfadeLengthChange?: (length: number) => void;
+  /** Whether MIDI/keyboard playback is enabled */
+  midiEnabled?: boolean;
+  /** Called when MIDI toggle is clicked */
+  onMidiEnabledChange?: (enabled: boolean) => void;
+  /** Number of currently active MIDI voices */
+  activeNoteCount?: number;
 }
 
 /** Waveform colors */
@@ -119,6 +125,9 @@ export function LoopEditor({
   discontinuity,
   crossfadeLength,
   onCrossfadeLengthChange,
+  midiEnabled,
+  onMidiEnabledChange,
+  activeNoteCount,
 }: LoopEditorProps): JSX.Element {
   const leftCanvasRef = useRef<HTMLCanvasElement>(null);
   const rightCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -600,6 +609,26 @@ export function LoopEditor({
                     {crossfadeLength}
                   </span>
                 </div>
+              )}
+            </div>
+          )}
+          {onMidiEnabledChange && (
+            <div className="flex items-center gap-1 border-l border-s330-accent/20 pl-3 ml-1">
+              <button
+                onClick={() => onMidiEnabledChange(!midiEnabled)}
+                className={cn(
+                  'ac-btn ac-btn-xs',
+                  midiEnabled ? 'ac-btn-primary' : 'ac-btn-ghost',
+                )}
+                data-testid="midi-toggle"
+                title={midiEnabled ? 'MIDI playback on — click to disable' : 'MIDI playback off — click to enable'}
+              >
+                MIDI {midiEnabled ? 'On' : 'Off'}
+              </button>
+              {midiEnabled && activeNoteCount != null && activeNoteCount > 0 && (
+                <span className="text-xs text-s330-muted">
+                  {activeNoteCount} {activeNoteCount === 1 ? 'voice' : 'voices'}
+                </span>
               )}
             </div>
           )}
