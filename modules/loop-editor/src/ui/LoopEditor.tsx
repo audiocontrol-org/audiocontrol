@@ -507,6 +507,7 @@ export function LoopEditor({
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-3 flex-wrap">
           <h4 className="font-medium text-s330-text">Loop Editor</h4>
+          <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 cursor-help" title="This feature is still being designed and not all the wrinkles have been smoothed out yet.">Experimental</span>
           {onAutoDetect && (
             <button
               onClick={onAutoDetect}
