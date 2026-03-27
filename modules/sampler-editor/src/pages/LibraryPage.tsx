@@ -594,6 +594,7 @@ export function LibraryPage() {
         <div className="ac-page-header">
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-s330-text">Library</h2>
+            <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 cursor-help" title="This feature is still being designed and not all the wrinkles have been smoothed out yet.">Experimental</span>
             <LibraryConnectionUI
               activeBackend={library.activeBackend}
               isConnected={library.isConnected}
