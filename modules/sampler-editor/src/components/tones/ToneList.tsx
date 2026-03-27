@@ -11,6 +11,14 @@ interface ToneListProps {
   tones: (SamplerTone | undefined)[];
   selectedIndex: number | null;
   onSelect: (index: number | null) => void;
+  /** Which banks have been loaded */
+  loadedBanks: number[];
+  /** Number of tones per bank */
+  tonesPerBank: number;
+  /** Bank index currently being loaded (null if none) */
+  loadingBank?: number | null;
+  /** Called when user clicks an unloaded tone to load its bank */
+  onLoadBank?: (bankIndex: number) => void;
 }
 
 /**
@@ -21,7 +29,7 @@ function isToneEmpty(tone: SamplerTone): boolean {
   return name === '' || name === '        ' || name.trim() === '';
 }
 
-export function ToneList({ tones, selectedIndex, onSelect }: ToneListProps) {
+export function ToneList({ tones, selectedIndex, onSelect, loadedBanks: _loadedBanks, tonesPerBank, loadingBank, onLoadBank }: ToneListProps) {
   // Count loaded and non-empty tones
   const loadedTones = tones.filter((t): t is SamplerTone => t !== undefined);
   const nonEmptyCount = loadedTones.filter((t) => !isToneEmpty(t)).length;
@@ -38,15 +46,27 @@ export function ToneList({ tones, selectedIndex, onSelect }: ToneListProps) {
           const isLoaded = tone !== undefined;
           const isEmpty = isLoaded && isToneEmpty(tone);
           const isSelected = index === selectedIndex;
+          const bankIndex = Math.floor(index / tonesPerBank);
+
+          const isBankLoading = loadingBank === bankIndex;
+
+          const handleClick = () => {
+            if (isLoaded) {
+              onSelect(isSelected ? null : index);
+            } else if (!isBankLoading && onLoadBank) {
+              onLoadBank(bankIndex);
+            }
+          };
 
           return (
             <button
               key={index}
-              onClick={() => isLoaded && onSelect(isSelected ? null : index)}
-              disabled={!isLoaded}
+              onClick={handleClick}
+              disabled={isBankLoading}
               className={cn(
                 'w-full px-3 py-2 rounded text-left text-sm transition-colors',
-                isLoaded ? 'hover:bg-s330-accent/50' : 'cursor-wait',
+                isLoaded ? 'hover:bg-s330-accent/50' : 'hover:bg-s330-accent/20 cursor-pointer',
+                isBankLoading && 'cursor-wait',
                 isSelected
                   ? 'bg-s330-highlight text-white'
                   : !isLoaded
@@ -66,12 +86,17 @@ export function ToneList({ tones, selectedIndex, onSelect }: ToneListProps) {
                     (!isLoaded || isEmpty) && 'italic'
                   )}
                 >
-                  {!isLoaded
+                  {isBankLoading
                     ? '(loading...)'
-                    : isEmpty
-                      ? '(unnamed)'
-                      : tone.name}
+                    : !isLoaded
+                      ? '(not loaded)'
+                      : isEmpty
+                        ? '(unnamed)'
+                        : tone.name}
                 </span>
+                {!isLoaded && !isBankLoading && (
+                  <span className="text-xs text-s330-muted/50">click to load</span>
+                )}
               </div>
             </button>
           );

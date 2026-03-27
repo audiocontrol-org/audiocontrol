@@ -69,6 +69,9 @@ export function TonesPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState<number | undefined>(undefined);
 
+  // Bank loading state
+  const [loadingBank, setLoadingBank] = useState<number | null>(null);
+
   // Export to Library state
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isExportingToLibrary, setIsExportingToLibrary] = useState(false);
@@ -172,10 +175,20 @@ export function TonesPage() {
     },
   });
 
+  // Load a bank with loading indicator
+  const loadBankWithIndicator = useCallback(async (bankIndex: number, forceReload = false) => {
+    setLoadingBank(bankIndex);
+    try {
+      await loadToneBank(bankIndex, forceReload);
+    } finally {
+      setLoadingBank(null);
+    }
+  }, [loadToneBank]);
+
   // Load initial data (first bank)
   const loadInitialData = useCallback(async () => {
-    await loadToneBank(0);
-  }, [loadToneBank]);
+    await loadBankWithIndicator(0);
+  }, [loadBankWithIndicator]);
 
   // Load all tones
   const loadAll = useCallback(async () => {
@@ -585,6 +598,10 @@ export function TonesPage() {
                 tones={tones}
                 selectedIndex={selectedToneIndex}
                 onSelect={selectTone}
+                loadedBanks={loadedBanks}
+                tonesPerBank={tonesPerBank}
+                loadingBank={loadingBank}
+                onLoadBank={(bank) => loadBankWithIndicator(bank)}
               />
             </div>
           </div>
