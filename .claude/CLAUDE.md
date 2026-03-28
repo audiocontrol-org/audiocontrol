@@ -188,3 +188,59 @@ pnpm --filter <module> test          # Test specific module
 - Never add Claude attribution to git commits or pull requests
 - Never use `ts-node` — use `tsx`
 - Never call builds "production-ready"
+
+## Hardware E2E Testing (roland-sxx0-editor)
+
+The `roland-sxx0-editor` module includes hardware e2e tests that run against real Roland S-series samplers. These tests use a heartbeat/watchdog system to detect stuck tests quickly.
+
+### Heartbeat/Watchdog Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Orchestrator (run-hardware-e2e.sh)                     │
+│                                                         │
+│  ┌─────────────────────┐    ┌────────────────────────┐ │
+│  │  Test Runner        │    │  Watchdog Process      │ │
+│  │  (Playwright)       │    │  (monitors heartbeat)  │ │
+│  │                     │    │                        │ │
+│  │  Custom Reporter ───┼──► │  Reads heartbeat file  │ │
+│  │  writes heartbeat   │    │  every 500ms           │ │
+│  │  on every step      │    │                        │ │
+│  │                     │    │  Kills runner if       │ │
+│  │                     │    │  heartbeat stale >5s   │ │
+│  └─────────────────────┘    └────────────────────────┘ │
+│                                                         │
+│  Heartbeat file: /tmp/e2e-heartbeat-{pid}.json         │
+│  { "timestamp": 1234567890, "event": "stepBegin", ... } │
+└─────────────────────────────────────────────────────────┘
+```
+
+### How It Works
+
+1. **Heartbeat Reporter** (`e2e/reporters/heartbeat-reporter.ts`): Custom Playwright reporter that writes a JSON heartbeat file on every test event (`onTestBegin`, `onTestEnd`, `onStepBegin`, `onStepEnd`). The heartbeat includes the current timestamp, event type, and description.
+
+2. **Watchdog Process** (`scripts/watchdog.ts`): Background process that polls the heartbeat file every 500ms. If the heartbeat timestamp is older than 5 seconds, the watchdog kills the Playwright runner process with SIGKILL and exits with code 1.
+
+3. **Orchestrator** (`scripts/run-hardware-e2e.sh`): Shell script that starts Vite, Playwright, and the watchdog. It captures exit codes and reports when a stuck test is detected.
+
+### 5-Second Threshold
+
+The watchdog uses a 5-second stale threshold. If a test step takes longer than 5 seconds without producing a new heartbeat event, the test is considered stuck and terminated. This threshold is intentionally short to fail fast during hardware tests where hanging usually indicates a real problem (e.g., MIDI communication failure).
+
+### Running Hardware E2E Tests
+
+```bash
+cd modules/roland-sxx0-editor
+pnpm test:e2e:hardware
+```
+
+Prerequisites:
+- Roland S-330 or S-550 connected via MIDI
+- MIDI interface available
+
+### File Locations
+
+- **Reporter**: `modules/roland-sxx0-editor/e2e/reporters/heartbeat-reporter.ts`
+- **Watchdog**: `modules/roland-sxx0-editor/scripts/watchdog.ts`
+- **Runner**: `modules/roland-sxx0-editor/scripts/run-hardware-e2e.sh`
+- **Config**: `modules/roland-sxx0-editor/playwright.hardware.config.ts`
