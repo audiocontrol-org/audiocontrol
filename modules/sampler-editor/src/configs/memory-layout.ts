@@ -69,6 +69,14 @@ export function createS330MemoryLayout(): MemoryLayout {
     formatPatchSlot(index: number): string {
       return `P${bankSlotLabel(index, slotsPerBank)}`;
     },
+
+    formatPatchBankLabel(bankIndex: number, patchesPerBank: number): string {
+      const firstIndex = bankIndex * patchesPerBank;
+      const lastIndex = firstIndex + patchesPerBank - 1;
+      return `P${bankSlotLabel(firstIndex, slotsPerBank)}-P${bankSlotLabel(lastIndex, slotsPerBank)}`;
+    },
+
+    patchLabelsUseSerif: false,
   };
 }
 
@@ -135,7 +143,26 @@ export function createS550MemoryLayout(): MemoryLayout {
     },
 
     formatPatchSlot(index: number): string {
-      return `P${bankSlotLabel(index, slotsPerBank)}`;
+      // S-550 has two blocks of 16 patches each (I and II)
+      // Each block has 2 banks of 8 patches: I11-I18, I21-I28, II11-II18, II21-II28
+      const patchesPerBlock = 16;
+      const block = index < patchesPerBlock ? 'I' : 'II';
+      const blockLocalIndex = index % patchesPerBlock;
+      return `${block}${bankSlotLabel(blockLocalIndex, slotsPerBank)}`;
     },
+
+    formatPatchBankLabel(bankIndex: number, patchesPerBank: number): string {
+      // S-550 has 4 patch banks: I11-I18, I21-I28, II11-II18, II21-II28
+      const patchesPerBlock = 16;
+      const firstIndex = bankIndex * patchesPerBank;
+      const lastIndex = firstIndex + patchesPerBank - 1;
+      const firstBlock = firstIndex < patchesPerBlock ? 'I' : 'II';
+      const lastBlock = lastIndex < patchesPerBlock ? 'I' : 'II';
+      const firstLocalIndex = firstIndex % patchesPerBlock;
+      const lastLocalIndex = lastIndex % patchesPerBlock;
+      return `${firstBlock}${bankSlotLabel(firstLocalIndex, slotsPerBank)}-${lastBlock}${bankSlotLabel(lastLocalIndex, slotsPerBank)}`;
+    },
+
+    patchLabelsUseSerif: true,
   };
 }

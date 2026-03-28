@@ -93,6 +93,18 @@ export interface MemoryLayout {
    * Format a patch slot index for display (e.g., 0 → "P11").
    */
   formatPatchSlot(index: number): string;
+
+  /**
+   * Format a patch bank label for load buttons (e.g., bank 0 → "P11-P18" for S-330,
+   * or "I11-I18" for S-550 block I).
+   */
+  formatPatchBankLabel(bankIndex: number, patchesPerBank: number): string;
+
+  /**
+   * Whether patch labels use Roman numerals (I, II) and should be rendered in serif font.
+   * S-550 uses Roman numerals for blocks, S-330 uses P prefix.
+   */
+  patchLabelsUseSerif: boolean;
 }
 
 // =============================================================================

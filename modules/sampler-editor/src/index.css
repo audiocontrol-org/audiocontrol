@@ -17,3 +17,10 @@
     @apply bg-s330-panel rounded-lg p-4 shadow-lg;
   }
 }
+
+@layer utilities {
+  /* Serif font for Roman numerals (I, II) in S-550 patch labels */
+  .font-roman {
+    font-family: 'Times New Roman', Georgia, 'Noto Serif', serif !important;
+  }
+}

@@ -1,5 +1,5 @@
 /**
- * Patches page - View and edit S-330 patches
+ * Patches page - View and edit patches
  *
  * Data is cached in deviceDataStore and persists across page navigation.
  * Loads first bank (8 patches) by default for faster startup.
@@ -11,9 +11,11 @@ import { useS330Store } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useBankLoader } from '@/hooks/useBankLoader';
+import { getPatchBankCount, getToneBankCount } from '@/configs/types';
 import type { SamplerClientInterface, SamplerPatch, SamplerTone } from '@/core/midi/SamplerClient';
 import { PatchList } from '@/components/patches/PatchList';
 import { PatchEditor } from '@/components/patches/PatchEditor';
+import { PatchBankLabel } from '@/components/common/PatchLabel';
 import { cn } from '@/lib/utils';
 
 export function PatchesPage() {
@@ -171,12 +173,7 @@ export function PatchesPage() {
       {/* Sticky Header */}
       <div className="ac-page-sticky-header">
         <div className="ac-page-header">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-s330-text">Patches</h2>
-            <span className="text-sm text-s330-muted">
-              {loadedPatches.length} of {totalPatches} loaded
-            </span>
-          </div>
+          <h2 className="text-xl font-bold text-s330-text">Patches</h2>
           <div className="flex items-center gap-4 flex-1 justify-end">
             {/* Loading Progress (inline with buttons) */}
             {isLoading && loadingProgress !== null && (
@@ -190,50 +187,29 @@ export function PatchesPage() {
                 <p className="text-s330-muted text-xs mt-0.5 truncate">{loadingMessage}</p>
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-s330-muted">(Re)load:</span>
-              <button
-                onClick={() => loadPatchBank(0, true)}
-                disabled={isLoading}
-                className={cn('ac-btn ac-btn-sm', loadedPatchBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
-              >
-                P11-P18
-              </button>
-              <button
-                onClick={() => loadPatchBank(1, true)}
-                disabled={isLoading}
-                className={cn('ac-btn ac-btn-sm', loadedPatchBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
-              >
-                P21-P28
-              </button>
-              <button
-                onClick={() => loadToneBank(0, true)}
-                disabled={isLoading}
-                className={cn('ac-btn ac-btn-sm', loadedToneBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
-              >
-                T11-T18
-              </button>
-              <button
-                onClick={() => loadToneBank(1, true)}
-                disabled={isLoading}
-                className={cn('ac-btn ac-btn-sm', loadedToneBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
-              >
-                T21-T28
-              </button>
-              <button
-                onClick={() => loadToneBank(2, true)}
-                disabled={isLoading}
-                className={cn('ac-btn ac-btn-sm', loadedToneBanks.includes(2) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
-              >
-                T31-T38
-              </button>
-              <button
-                onClick={() => loadToneBank(3, true)}
-                disabled={isLoading}
-                className={cn('ac-btn ac-btn-sm', loadedToneBanks.includes(3) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
-              >
-                T41-T48
-              </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Patch bank buttons */}
+              {Array.from({ length: getPatchBankCount(config) }, (_, i) => (
+                <button
+                  key={`patch-${i}`}
+                  onClick={() => loadPatchBank(i, true)}
+                  disabled={isLoading}
+                  className={cn('ac-btn ac-btn-sm', loadedPatchBanks.includes(i) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
+                >
+                  <PatchBankLabel bankIndex={i} patchesPerBank={patchesPerBank} memoryLayout={config.memoryLayout} />
+                </button>
+              ))}
+              {/* Tone bank buttons */}
+              {Array.from({ length: getToneBankCount(config) }, (_, i) => (
+                <button
+                  key={`tone-${i}`}
+                  onClick={() => loadToneBank(i, true)}
+                  disabled={isLoading}
+                  className={cn('ac-btn ac-btn-sm', loadedToneBanks.includes(i) ? 'ac-btn-secondary' : 'ac-btn-primary', isLoading && 'opacity-50')}
+                >
+                  {config.memoryLayout.formatToneSlot(i * tonesPerBank)}-{config.memoryLayout.formatToneSlot(i * tonesPerBank + tonesPerBank - 1)}
+                </button>
+              ))}
               <button
                 onClick={loadAll}
                 disabled={isLoading}

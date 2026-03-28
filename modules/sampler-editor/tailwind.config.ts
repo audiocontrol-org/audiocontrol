@@ -10,6 +10,7 @@ export default {
     '../loop-editor/src/**/*.{js,ts,jsx,tsx}',
     '../sample-chopper/src/**/*.{js,ts,jsx,tsx}',
   ],
+  safelist: ['font-roman'],
   theme: {
     extend: {
       colors: {
@@ -26,6 +27,7 @@ export default {
       },
       fontFamily: {
         'mono': ['JetBrains Mono', 'Fira Code', 'monospace'],
+        'roman': ['Times New Roman', 'Georgia', 'serif'],
       },
     },
   },

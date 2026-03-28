@@ -12,6 +12,7 @@ import { ParameterSlider } from '@/components/ui/ParameterSlider';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { ToneZoneEditor } from './ToneZoneEditor';
 import { PATCH_TOOLTIPS } from '@/constants/patch-tooltips';
+import { PatchLabel } from '@/components/common/PatchLabel';
 
 interface PatchEditorProps {
   patch: SamplerPatch;
@@ -234,7 +235,9 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
       {/* Header */}
       <div className="card">
         <div className="mb-4">
-          <span className="text-sm text-s330-muted">Patch P{String(index + 11).padStart(2, '0')}</span>
+          <span className="text-sm text-s330-muted">
+            Patch <PatchLabel index={index} memoryLayout={config.memoryLayout} />
+          </span>
           {editingName ? (
             <input
               type="text"
