@@ -9,6 +9,7 @@
 - [Implement D-110 tone editor - partial parameters (#16)](https://github.com/audiocontrol-org/audiocontrol/issues/16)
 - [Implement D-110 multi/patch editor (#17)](https://github.com/audiocontrol-org/audiocontrol/issues/17)
 - [D-110 editor integration and polish (#18)](https://github.com/audiocontrol-org/audiocontrol/issues/18)
+- [Standardize BrowserRouter placement (#37)](https://github.com/audiocontrol-org/audiocontrol/issues/37)
 
 ---
 
