@@ -30,7 +30,7 @@ SAMPLER_EXPORT     := $(MODULES_DIR)/sampler-export/.build-stamp
 LOOP_EDITOR        := $(MODULES_DIR)/loop-editor/.build-stamp
 D110_EDITOR        := $(MODULES_DIR)/d110-editor/.build-stamp
 JV1080_EDITOR      := $(MODULES_DIR)/jv1080-editor/.build-stamp
-SAMPLER_EDITOR     := $(MODULES_DIR)/sampler-editor/.build-stamp
+ROLAND_SXX0_EDITOR := $(MODULES_DIR)/roland-sxx0-editor/.build-stamp
 AUDIOTOOLS_CLI     := $(MODULES_DIR)/audiotools-cli/.build-stamp
 SYNTH_CORE         := $(MODULES_DIR)/synth-core/.build-stamp
 SAMPLE_EDITOR_MOD  := $(MODULES_DIR)/sample-editor/.build-stamp
@@ -41,7 +41,7 @@ ALL_STAMPS := \
 	$(SAMPLER_ATTIC) $(SAMPLE_CHOPPER) $(EDITOR_CORE) $(LIB_DEVICE_UUID) \
 	$(SAMPLER_DEVICES) $(SAMPLER_MIDI) $(SAMPLER_LIBRARY) \
 	$(SAMPLER_TRANSLATE) $(SAMPLER_BACKUP) $(SAMPLER_EXPORT) $(LOOP_EDITOR) \
-	$(D110_EDITOR) $(JV1080_EDITOR) $(SAMPLER_EDITOR) $(AUDIOTOOLS_CLI) \
+	$(D110_EDITOR) $(JV1080_EDITOR) $(ROLAND_SXX0_EDITOR) $(AUDIOTOOLS_CLI) \
 	$(SYNTH_CORE) $(SAMPLE_EDITOR_MOD)
 
 INSTALL_STAMP := node_modules/.install-stamp
@@ -72,7 +72,7 @@ SAMPLER_EXPORT_SRC     := $(shell find $(MODULES_DIR)/sampler-export/src -name '
 LOOP_EDITOR_SRC        := $(shell find $(MODULES_DIR)/loop-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 D110_EDITOR_SRC        := $(shell find $(MODULES_DIR)/d110-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 JV1080_EDITOR_SRC      := $(shell find $(MODULES_DIR)/jv1080-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-SAMPLER_EDITOR_SRC     := $(shell find $(MODULES_DIR)/sampler-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
+ROLAND_SXX0_EDITOR_SRC := $(shell find $(MODULES_DIR)/roland-sxx0-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AUDIOTOOLS_CLI_SRC     := $(shell find $(MODULES_DIR)/audiotools-cli/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
@@ -206,8 +206,8 @@ $(JV1080_EDITOR): $(EDITOR_CORE) $(SAMPLER_DEVICES) $(SHARED_MIDI) $(JV1080_EDIT
 # Layer 4
 # ---------------------------------------------------------------------------
 
-$(SAMPLER_EDITOR): $(EDITOR_CORE) $(LOOP_EDITOR) $(SAMPLE_CHOPPER) $(SAMPLE_EDITOR_MOD) $(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) $(SHARED_MIDI) $(SYNTH_CORE) $(SAMPLER_EDITOR_SRC)
-	cd $(MODULES_DIR)/sampler-editor && pnpm build
+$(ROLAND_SXX0_EDITOR): $(EDITOR_CORE) $(LOOP_EDITOR) $(SAMPLE_CHOPPER) $(SAMPLE_EDITOR_MOD) $(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) $(SHARED_MIDI) $(SYNTH_CORE) $(ROLAND_SXX0_EDITOR_SRC)
+	cd $(MODULES_DIR)/roland-sxx0-editor && pnpm build
 	@touch $@
 
 $(AUDIOTOOLS_CLI): $(AUDIOTOOLS_CONFIG) $(LIB_DEVICE_UUID) $(SAMPLER_BACKUP) $(SAMPLER_EXPORT) $(AUDIOTOOLS_CLI_SRC)

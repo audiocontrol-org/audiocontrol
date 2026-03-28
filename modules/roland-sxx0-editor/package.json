@@ -1,12 +1,12 @@
 {
-  "name": "@audiocontrol/sampler-editor",
+  "name": "@audiocontrol/roland-sxx0-editor",
   "version": "0.1.0",
   "description": "Web-based editor for Roland S-series samplers (S-330, S-550)",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "build:deploy": "cd ../.. && pnpm install --frozen-lockfile && make modules/sampler-editor/.build-stamp",
+    "build": "tsc && vite build && cp ../../netlify/roland-sxx0-editor/_redirects ../../netlify/roland-sxx0-editor/_headers dist/",
+    "build:deploy": "cd ../.. && pnpm install --frozen-lockfile && make",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -34,8 +34,8 @@
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/oletizi/ol_dsp.git",
-    "directory": "modules/audio-tools/modules/sampler-editor"
+    "url": "https://github.com/audiocontrol-org/audiocontrol.git",
+    "directory": "modules/roland-sxx0-editor"
   },
   "dependencies": {
     "@audiocontrol/editor-core": "workspace:*",
