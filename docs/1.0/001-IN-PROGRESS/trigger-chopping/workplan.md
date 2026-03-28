@@ -1,7 +1,9 @@
 # Trigger Chopping - Workplan
 
 **GitHub Milestone:** TBD
-**GitHub Issues:** TBD
+**GitHub Issues:**
+
+- [Parent: [sample-chopper] Trigger Chopping Mode (#100)](https://github.com/audiocontrol-org/audiocontrol/issues/100)
 
 ## Technical Approach
 

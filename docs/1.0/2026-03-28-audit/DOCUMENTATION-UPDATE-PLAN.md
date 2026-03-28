@@ -133,10 +133,10 @@ All 125 issue links verified against `audiocontrol-org/audiocontrol` repo.
 ### Action Items
 
 - [x] ~~Close or reassign issues #35, #36, #37~~ — Added to correct workplans (jv1080-editor, roland-d110)
-- [ ] Consider creating issues for in-progress features without tracking:
-  - chopper-testing-infra
-  - sample-editor
-  - trigger-chopping
+- [x] ~~Create issues for in-progress features without tracking~~ — Created:
+  - [#98 chopper-testing-infra](https://github.com/audiocontrol-org/audiocontrol/issues/98)
+  - [#99 sample-editor](https://github.com/audiocontrol-org/audiocontrol/issues/99)
+  - [#100 trigger-chopping](https://github.com/audiocontrol-org/audiocontrol/issues/100)
 
 ---
 
