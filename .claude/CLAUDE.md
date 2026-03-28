@@ -127,6 +127,10 @@ make modules/sampler-devices/.build-stamp  # Build one module (and its deps)
 
 `pnpm -r build` still works but does **not** enforce build order — use `make` instead.
 
+## Deployment
+
+The web editors are deployed on Netlify.
+
 ### Other Commands
 
 ```bash
