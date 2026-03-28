@@ -34,16 +34,10 @@ export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _load
   const config = useDeviceConfig();
   const { memoryLayout } = config;
 
-  // Count loaded and non-empty patches
-  const loadedPatches = patches.filter((p): p is SamplerPatch => p !== undefined);
-  const nonEmptyCount = loadedPatches.filter(p => !isPatchEmpty(p)).length;
-
   return (
     <div className="card p-2">
-      <div className="flex items-center justify-between px-2 py-1 mb-2">
-        <span className="text-sm font-medium text-s330-text">
-          Patches ({nonEmptyCount} of {loadedPatches.length} used)
-        </span>
+      <div className="px-2 py-1 mb-2">
+        <span className="text-sm font-medium text-s330-text">Patches</span>
       </div>
       <div className="ac-scroll-list space-y-1">
         {patches.map((patch, index) => {
