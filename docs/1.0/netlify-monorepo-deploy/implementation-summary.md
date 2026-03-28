@@ -2,24 +2,26 @@
 
 ## Status
 
-In Progress
+Complete (pending external dependency)
 
 ## Completed
 
-- [ ] Phase 1: Rename module
-- [ ] Phase 2: Create Netlify config structure
-- [ ] Phase 3: Update Netlify site
-- [ ] Phase 4: Update deploy branch
-- [ ] Phase 5: Update documentation
-- [ ] Phase 6: External dependency (audiocontrol.org)
+- [x] Phase 1: Rename module (`sampler-editor` → `roland-sxx0-editor`)
+- [x] Phase 2: Create Netlify config structure (`netlify/roland-sxx0-editor/`)
+- [x] Phase 3: Update Netlify site (renamed to `roland-sxx0-editor`, updated build settings)
+- [x] Phase 4: Update deploy branch (`deploy/roland-sxx0-editor`)
+- [x] Phase 5: Update documentation (CLAUDE.md deployment section)
+- [ ] Phase 6: External dependency (audiocontrol.org proxy update)
 
 ## Key Decisions
 
-TBD
+- Per-site config uses `_redirects` and `_headers` files copied to dist during build
+- All sites use `make` as build command from repo root
+- Netlify API cannot change `repo_branch` (production branch) - must be set via UI or will auto-update on first deploy from new branch
 
 ## Lessons Learned
 
-TBD
+- Netlify's `repo_branch` setting doesn't update via API; allowed_branches does work
 
 ## Future Considerations
 
