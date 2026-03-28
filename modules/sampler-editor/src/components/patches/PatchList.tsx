@@ -4,7 +4,8 @@
 
 import type { SamplerPatch } from '@/core/midi/SamplerClient';
 import { cn } from '@/lib/utils';
-import { formatPatchSlot } from '@/lib/s330-format';
+import { useDeviceConfig } from '@/context/DeviceConfigContext';
+import { PatchLabel } from '@/components/common/PatchLabel';
 
 interface PatchListProps {
   /** Sparse array of patches - undefined = not loaded */
@@ -30,6 +31,9 @@ function isPatchEmpty(patch: SamplerPatch): boolean {
 }
 
 export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _loadedBanks, patchesPerBank, loadingBank, onLoadBank }: PatchListProps) {
+  const config = useDeviceConfig();
+  const { memoryLayout } = config;
+
   // Count loaded and non-empty patches
   const loadedPatches = patches.filter((p): p is SamplerPatch => p !== undefined);
   const nonEmptyCount = loadedPatches.filter(p => !isPatchEmpty(p)).length;
@@ -77,9 +81,7 @@ export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _load
               )}
             >
               <div className="flex items-center justify-between">
-                <span className="font-mono">
-                  {formatPatchSlot(index)}
-                </span>
+                <PatchLabel index={index} memoryLayout={memoryLayout} />
                 <span className={cn(
                   'flex-1 mx-3 truncate',
                   (!isLoaded || isEmpty) && 'italic'

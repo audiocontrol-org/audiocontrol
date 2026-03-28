@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { ToneSlotGroup } from '@/configs/types';
+import { PatchLabel } from '@/components/common/PatchLabel';
 
 /**
  * Data transfer format for dragged device items.
@@ -308,9 +309,11 @@ export function DeviceMemoryPanel({
                             : 'text-s330-muted/50 hover:bg-s330-accent/20'
                     )}
                   >
-                    <span className="w-8 text-xs font-mono text-s330-muted">
-                      {memoryLayout.formatPatchSlot(index)}
-                    </span>
+                    <PatchLabel
+                      index={index}
+                      memoryLayout={memoryLayout}
+                      className="w-8 text-xs text-s330-muted"
+                    />
                     <span className={cn('flex-1 truncate', !patch && 'italic')}>
                       {isDragOver ? 'Drop to import here' : patch?.common.name || (isLoaded ? '(empty)' : '(not loaded)')}
                     </span>
