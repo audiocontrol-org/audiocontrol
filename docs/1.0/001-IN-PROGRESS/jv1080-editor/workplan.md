@@ -10,6 +10,8 @@
 - [Implement JV-1080 system parameter controls (#23)](https://github.com/audiocontrol-org/audiocontrol/issues/23)
 - [Implement JV-1080 effects editor (type selection + core params) (#24)](https://github.com/audiocontrol-org/audiocontrol/issues/24)
 - [Add JV-1080 docs, validation notes, and integration polish (#25)](https://github.com/audiocontrol-org/audiocontrol/issues/25)
+- [Migrate JV-1080 to EditorLayout (#35)](https://github.com/audiocontrol-org/audiocontrol/issues/35)
+- [Migrate JV-1080 to Tailwind CSS (#36)](https://github.com/audiocontrol-org/audiocontrol/issues/36)
 - [Source parent in ol_dsp: [audio-tools] JV-1080 Editor (#49)](https://github.com/oletizi/ol_dsp/issues/49)
 - [Source task: Extract JV-1080 client from sampler-attic (#50)](https://github.com/oletizi/ol_dsp/issues/50)
 - [Source task: Create jv1080-editor web application scaffold (#51)](https://github.com/oletizi/ol_dsp/issues/51)

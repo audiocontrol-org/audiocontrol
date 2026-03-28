@@ -2,6 +2,9 @@
 
 **Feature:** Sample Chopper Testing Infrastructure
 **PRD:** [prd.md](./prd.md)
+**GitHub Issues:**
+
+- [Parent: [sample-chopper] Testing Infrastructure (#98)](https://github.com/audiocontrol-org/audiocontrol/issues/98)
 
 ## Implementation Phases
 

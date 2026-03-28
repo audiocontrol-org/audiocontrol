@@ -1,5 +1,133 @@
 # Roadmap: audiocontrol 1.0
 
+## Directory Structure
+
+Feature documentation is organized by implementation state:
+
+| Directory | Purpose | Count |
+|-----------|---------|-------|
+| `0000-INBOUND/` | Feature ideas not yet accepted | 0 |
+| `000-PENDING/` | Accepted, not started | 1 |
+| `001-IN-PROGRESS/` | Active development | 8 |
+| `002-BLOCKED/` | Blocked on dependencies | 1 |
+| `003-COMPLETE/` | Implemented | 15 |
+| `004-ARCHIVE/` | Superseded/abandoned | 1 |
+
+---
+
+## What's Next
+
+Full roadmap queue organized by readiness.
+
+### Ready to Work (Parallel)
+
+No blockers, can be worked independently.
+
+**In Progress:**
+
+| Feature | Status | GitHub | Notes |
+|---------|--------|--------|-------|
+| jv1080-editor | 85% | #4 | Needs hardware validation |
+| roland-d110 | Partial | #13 | Docs update + hardware validation |
+| s550-support | Phase 7 | #53 | Front panel cosmetics |
+| sample-editor | ~80% | #99 | Complete remaining phases |
+| synth-core | ~90% | — | Loop editor integration |
+| trigger-chopping | Partial | #100 | Verify implementation |
+| chopper-testing-infra | Partial | #98 | E2E test infrastructure |
+| edit-workflow-architecture | ~95% | #61 | Final polish |
+
+**Not Started (Ready):**
+
+| Feature | Phase | Prerequisites Met | Notes |
+|---------|-------|-------------------|-------|
+| sample-trim-normalize | 2 | ✓ (edit-workflow, library-common-area) | Crop + normalize |
+| http-midi-transport | H1 | ✓ (none) | Hardware track root |
+
+### Serial Dependencies
+
+Must be completed in order:
+
+| Feature | Phase | Blocked By | Unblocks |
+|---------|-------|------------|----------|
+| velocity-layer-editor | 3 | loop-editor (done) | device-migration-framework |
+| drum-kit-editor | 3 | common-area-chopping (partial) | device-migration-framework |
+| dsp-engine | 5 | sample-trim-normalize | effects-chain-editor |
+| effects-chain-editor | 5 | dsp-engine | — |
+| hardware-boot-config | H2 | http-midi-transport | kiosk-display-profiles |
+| kiosk-display-profiles | H3 | hardware-boot-config | electron-shell |
+| electron-shell | H4 | kiosk-display-profiles | gpio-input-bridge, standalone-chopper |
+| akai-s3000xl-editor | A1 | edit-workflow, library-common-area | akai-s5000-editor |
+| akai-s5000-editor | A2 | akai-s3000xl-editor | — |
+
+### Blocked
+
+| Feature | Blocker | Notes |
+|---------|---------|-------|
+| sample-format-consolidation | Dependencies unclear | Needs investigation |
+| synth-core-slice-playback | synth-core completion | Pending |
+| device-migration-framework | velocity-layer + drum-kit editors | Phase 4 |
+| gpio-input-bridge | electron-shell | Hardware track |
+| standalone-chopper-app | electron-shell + common-area-chopping | Hardware track |
+
+---
+
+## Feature Index
+
+Features organized by state. See `docs/1.0/<state>/<slug>/` for details.
+
+### 001-IN-PROGRESS (8)
+
+| Feature | Phase | GitHub | Status |
+|---------|-------|--------|--------|
+| edit-workflow-architecture | 1 | #61 | ~95% |
+| jv1080-editor | — | #4 | 85% |
+| roland-d110 | — | #13 | Partial |
+| s550-support | — | #53 | Phase 7 |
+| sample-editor | — | #99 | ~80% |
+| synth-core | — | — | ~90% |
+| trigger-chopping | — | #100 | Partial |
+| chopper-testing-infra | — | #98 | Partial |
+
+### 003-COMPLETE (15)
+
+| Feature | Phase | Summary |
+|---------|-------|---------|
+| library-common-area | 1 | Device-agnostic storage |
+| loop-editor | 2 | Loop detection + editing |
+| drum-kit-templates | 3 | Kit creation workflow |
+| sampler-library | — | YAML library format |
+| editor-core | — | Shared infrastructure |
+| sample-chopper-extraction | — | Standalone chopper module |
+| shared-library-ui | — | Shared library UI components |
+| streaming-storage | — | Progress reporting for file operations |
+| gdrive-library-perf | — | Storage caching layer |
+| portable-library-plugins | — | Plugin architecture for library browsers |
+| build-optimization | — | Makefile stamp files, incremental builds |
+| duplication-detection | — | jscpd integration |
+| netlify-monorepo-deploy | — | Per-site Netlify deployment |
+| trigger-architecture-simplification | — | Trigger hook decomposition |
+| library-sets | — | Library set management |
+
+### 002-BLOCKED (1)
+
+| Feature | Blocker |
+|---------|---------|
+| sample-format-consolidation | Dependencies unclear |
+
+### 000-PENDING (1)
+
+| Feature | Prerequisites |
+|---------|---------------|
+| synth-core-slice-playback | synth-core |
+
+### 004-ARCHIVE (1)
+
+| Feature | Notes |
+|---------|-------|
+| s330-editor | Superseded by s550-support |
+
+---
+
 ## Current State
 
 Date: 2026-03-28 (updated via codebase audit)
@@ -321,67 +449,3 @@ Key observations:
 - Akai editors validate that the architecture is truly device-agnostic — if the S3000XL editor requires Roland-specific workarounds, the architecture needs fixing
 - Cross-track dependencies: `kiosk-display-profiles` benefits from `edit-workflow-architecture`; `standalone-chopper-app` depends on `common-area-chopping`; `device-migration-framework` benefits from having both Roland and Akai editors to test against
 - Hardware phases H1–H3 live in the audiocontrol monorepo; H4–H6 live in `audiocontrol-org/hardware-deploy`
-
----
-
-## Feature Index
-
-**Last Updated:** 2026-03-28 (based on codebase audit)
-
-### Roadmap Features
-
-| Slug | Phase | Status | Summary |
-|------|-------|--------|---------|
-| `edit-workflow-architecture` | 1 | **~95% Complete** | Non-modal edit workflow pattern |
-| `library-common-area` | 1 | **Complete** | Device-agnostic sample storage and browsing |
-| `sample-trim-normalize` | 2 | Not started | Crop and normalize common-area samples |
-| `loop-editor-fixes` | 2 | **Complete** | Fix broken splice-point detection and crossfade |
-| `common-area-chopping` | 2 | **Partial** | Connect existing chopper to common-area samples |
-| `velocity-layer-editor` | 3 | Not started | Multi-sample velocity layer editing UI |
-| `drum-kit-editor` | 3 | **Complete** | Full drum kit creation and editing workflow |
-| `device-migration-framework` | 4 | Not started | Cross-device library object conversion |
-| `dsp-engine` | 5 | Not started | Offline DSP processing pipeline |
-| `effects-chain-editor` | 5 | Not started | Effects chain composition and application UI |
-| `akai-s3000xl-editor` | A1 | Not started | Web editor for Akai S3000XL (SysEx backend exists) |
-| `akai-s5000-editor` | A2 | Not started | Web editor for Akai S5000/S6000 (partial backend, needs SysEx client) |
-| `http-midi-transport` | H1 | Not started | MidiTransport via midi-server HTTP API |
-| `hardware-boot-config` | H2 | Not started | JSON boot config replacing URL-based device resolution |
-| `kiosk-display-profiles` | H3 | Not started | Touch-optimized CSS for 800×480 and 1024×600 displays |
-| `electron-shell` | H4 | Not started | Electron app packaging for RPi deployment |
-| `gpio-input-bridge` | H5 | Not started | Physical encoder/button to MIDI CC/HTTP bridge |
-| `standalone-chopper-app` | H6 | Not started | Self-contained RPi sample chopper |
-
-### Additional Implemented Features
-
-These features have `docs/1.0/<slug>/` documentation and are implemented:
-
-| Slug | Status | Summary |
-|------|--------|---------|
-| `s550-support` | **Complete (Phases 1-6)** | Unified S-series editor with S-330/S-550 support |
-| `editor-core` | **Complete** | Shared editor infrastructure, stores, components |
-| `synth-core` | **~90% Complete** | Sample playback synthesis engine |
-| `jv1080-editor` | **~85% Complete** | Roland JV-1080 system/effects editor |
-| `sampler-library` | **Complete** | YAML library format, converters, storage |
-| `sample-chopper-extraction` | **Complete** | Standalone chopper module extraction |
-| `sample-editor` | **Substantial** | Trim, normalize, fade, reverse operations |
-| `loop-editor` | **Complete** | Loop point detection and editing |
-| `trigger-architecture-simplification` | **Complete** | Trigger hook decomposition |
-| `trigger-chopping` | **Partial** | Real-time trigger capture |
-| `chopper-testing-infra` | **Partial** | E2E testing infrastructure |
-| `shared-library-ui` | **Complete** | Shared library UI components |
-| `streaming-storage` | **Complete** | Progress reporting for file operations |
-| `gdrive-library-perf` | **Complete** | Storage caching layer |
-| `portable-library-plugins` | **Complete** | Plugin architecture for library browsers |
-| `build-optimization` | **Complete** | Makefile stamp files, incremental builds |
-| `duplication-detection` | **Complete** | jscpd integration |
-| `netlify-monorepo-deploy` | **Complete** | Per-site Netlify deployment |
-
-### Archived Features
-
-| Slug | Status | Notes |
-|------|--------|-------|
-| `s330-editor` | **Archived** | Superseded by `s550-support` unified editor |
-| `sample-format-consolidation` | **Blocked** | Blocked on dependencies |
-| `synth-core-slice-playback` | **Deferred** | PRD exists, no implementation |
-
-Each feature slug corresponds to a `docs/1.0/<slug>/` directory containing a PRD and workplan. Hardware platform docs are in [`audiocontrol-hardware-device-platform/docs/1.0/hardware-device-platform/`](https://github.com/audiocontrol-org/audiocontrol-hardware-device-platform/tree/main/docs/1.0/hardware-device-platform).

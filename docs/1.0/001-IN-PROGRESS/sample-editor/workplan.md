@@ -2,6 +2,9 @@
 
 **Feature:** Sample Editor Module
 **PRD:** [prd.md](./prd.md)
+**GitHub Issues:**
+
+- [Parent: [sample-editor] Sample Editor Module (#99)](https://github.com/audiocontrol-org/audiocontrol/issues/99)
 
 ## Implementation Phases
 
