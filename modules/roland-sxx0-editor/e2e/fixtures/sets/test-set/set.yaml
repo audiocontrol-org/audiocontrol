@@ -1,0 +1,17 @@
+format: sampler-set
+device: s330
+version: 1
+name: Test Set
+description: E2E test fixture set
+createdAt: "2024-01-01T00:00:00.000Z"
+modifiedAt: "2024-01-01T00:00:00.000Z"
+tones:
+  - slot: 0
+    file: T01
+    waveAllocation:
+      bank: 0
+      segmentTop: 0
+      segmentLength: 1
+patches:
+  - slot: 0
+    file: P01
