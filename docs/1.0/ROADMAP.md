@@ -6,7 +6,8 @@ Feature documentation is organized by implementation state:
 
 | Directory | Purpose | Count |
 |-----------|---------|-------|
-| `000-PENDING/` | Not started | 1 |
+| `0000-INBOUND/` | Feature ideas not yet accepted | 0 |
+| `000-PENDING/` | Accepted, not started | 1 |
 | `001-IN-PROGRESS/` | Active development | 8 |
 | `002-BLOCKED/` | Blocked on dependencies | 1 |
 | `003-COMPLETE/` | Implemented | 15 |
