@@ -11,9 +11,9 @@
 - [Add shared ParameterSlider with formatters (#32)](https://github.com/audiocontrol-org/audiocontrol/issues/32)
 - [Add shared CollapsibleSection (#33)](https://github.com/audiocontrol-org/audiocontrol/issues/33)
 - [Create design system tokens (#34)](https://github.com/audiocontrol-org/audiocontrol/issues/34)
-- [Migrate JV-1080 to EditorLayout (#35)](https://github.com/audiocontrol-org/audiocontrol/issues/35)
-- [Migrate JV-1080 to Tailwind CSS (#36)](https://github.com/audiocontrol-org/audiocontrol/issues/36)
-- [Standardize BrowserRouter placement (#37)](https://github.com/audiocontrol-org/audiocontrol/issues/37)
+- [Migrate JV-1080 to EditorLayout (#35)](https://github.com/audiocontrol-org/audiocontrol/issues/35) *(tracked in jv1080-editor)*
+- [Migrate JV-1080 to Tailwind CSS (#36)](https://github.com/audiocontrol-org/audiocontrol/issues/36) *(tracked in jv1080-editor)*
+- [Standardize BrowserRouter placement (#37)](https://github.com/audiocontrol-org/audiocontrol/issues/37) *(tracked in roland-d110)*
 - [Parent: [editor-core] Harden shared design system across editors (#39)](https://github.com/audiocontrol-org/audiocontrol/issues/39)
 - [Normalize shared control and state styling across editor pages (#40)](https://github.com/audiocontrol-org/audiocontrol/issues/40)
 - [Document visual regression checklist for editor design system (#41)](https://github.com/audiocontrol-org/audiocontrol/issues/41)
