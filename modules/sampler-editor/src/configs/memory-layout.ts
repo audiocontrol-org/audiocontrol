@@ -76,6 +76,12 @@ export function createS330MemoryLayout(): MemoryLayout {
       return `P${bankSlotLabel(firstIndex, slotsPerBank)}-P${bankSlotLabel(lastIndex, slotsPerBank)}`;
     },
 
+    formatToneBankLabel(bankIndex: number, tonesPerBank: number): string {
+      const firstIndex = bankIndex * tonesPerBank;
+      const lastIndex = firstIndex + tonesPerBank - 1;
+      return `T${bankSlotLabel(firstIndex, slotsPerBank)}-T${bankSlotLabel(lastIndex, slotsPerBank)}`;
+    },
+
     patchLabelsUseSerif: false,
   };
 }
@@ -161,6 +167,12 @@ export function createS550MemoryLayout(): MemoryLayout {
       const firstLocalIndex = firstIndex % patchesPerBlock;
       const lastLocalIndex = lastIndex % patchesPerBlock;
       return `${firstBlock}${bankSlotLabel(firstLocalIndex, slotsPerBank)}-${lastBlock}${bankSlotLabel(lastLocalIndex, slotsPerBank)}`;
+    },
+
+    formatToneBankLabel(bankIndex: number, tonesPerBank: number): string {
+      const firstIndex = bankIndex * tonesPerBank;
+      const lastIndex = firstIndex + tonesPerBank - 1;
+      return `T${bankSlotLabel(firstIndex, slotsPerBank)}-T${bankSlotLabel(lastIndex, slotsPerBank)}`;
     },
 
     patchLabelsUseSerif: true,

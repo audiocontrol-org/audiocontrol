@@ -101,6 +101,11 @@ export interface MemoryLayout {
   formatPatchBankLabel(bankIndex: number, patchesPerBank: number): string;
 
   /**
+   * Format a tone bank label for load buttons (e.g., bank 0 → "T11-T18").
+   */
+  formatToneBankLabel(bankIndex: number, tonesPerBank: number): string;
+
+  /**
    * Whether patch labels use Roman numerals (I, II) and should be rendered in serif font.
    * S-550 uses Roman numerals for blocks, S-330 uses P prefix.
    */

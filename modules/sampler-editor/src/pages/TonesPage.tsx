@@ -1,8 +1,9 @@
 /**
- * Tones page - View and edit S-330 tones
+ * Tones page - View and edit sampler tones
  *
  * Data is cached in deviceDataStore and persists across page navigation.
  * Loads first bank (8 tones) by default for faster startup.
+ * The number of tone banks adapts to the device (S-330: 4 banks, S-550: 8 banks).
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -525,50 +526,20 @@ export function TonesPage() {
             )}
             <div className="flex items-center gap-2">
               <span className="text-sm text-s330-muted">(Re)load:</span>
-              <button
-                onClick={() => loadToneBank(0, true)}
-                disabled={isLoading}
-                className={cn(
-                  'ac-btn ac-btn-sm',
-                  loadedBanks.includes(0) ? 'ac-btn-secondary' : 'ac-btn-primary',
-                  isLoading && 'opacity-50'
-                )}
-              >
-                T11-T18
-              </button>
-              <button
-                onClick={() => loadToneBank(1, true)}
-                disabled={isLoading}
-                className={cn(
-                  'ac-btn ac-btn-sm',
-                  loadedBanks.includes(1) ? 'ac-btn-secondary' : 'ac-btn-primary',
-                  isLoading && 'opacity-50'
-                )}
-              >
-                T21-T28
-              </button>
-              <button
-                onClick={() => loadToneBank(2, true)}
-                disabled={isLoading}
-                className={cn(
-                  'ac-btn ac-btn-sm',
-                  loadedBanks.includes(2) ? 'ac-btn-secondary' : 'ac-btn-primary',
-                  isLoading && 'opacity-50'
-                )}
-              >
-                T31-T38
-              </button>
-              <button
-                onClick={() => loadToneBank(3, true)}
-                disabled={isLoading}
-                className={cn(
-                  'ac-btn ac-btn-sm',
-                  loadedBanks.includes(3) ? 'ac-btn-secondary' : 'ac-btn-primary',
-                  isLoading && 'opacity-50'
-                )}
-              >
-                T41-T48
-              </button>
+              {Array.from({ length: Math.ceil(totalTones / tonesPerBank) }, (_, bankIndex) => (
+                <button
+                  key={bankIndex}
+                  onClick={() => loadToneBank(bankIndex, true)}
+                  disabled={isLoading}
+                  className={cn(
+                    'ac-btn ac-btn-sm',
+                    loadedBanks.includes(bankIndex) ? 'ac-btn-secondary' : 'ac-btn-primary',
+                    isLoading && 'opacity-50'
+                  )}
+                >
+                  {config.memoryLayout.formatToneBankLabel(bankIndex, tonesPerBank)}
+                </button>
+              ))}
               <button
                 onClick={loadAll}
                 disabled={isLoading}
