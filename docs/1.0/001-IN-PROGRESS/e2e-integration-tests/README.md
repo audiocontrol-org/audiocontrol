@@ -22,5 +22,5 @@ Comprehensive e2e integration test suite for the roland-sxx0-editor module, with
 
 - Use existing port 0 infrastructure for dynamic server assignment
 - Grant MIDI permissions via Playwright context config
-- Use mock library or OPFS to bypass File System Access API permission prompts
+- Use OPFS (Origin Private File System) for library storage — no permission prompts required
 - Skip hardware tests gracefully when device unavailable

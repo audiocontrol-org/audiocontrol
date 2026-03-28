@@ -6,21 +6,29 @@
 
 ## Implementation Phases
 
-### Phase 1: Browser Permission Automation Research
+### Phase 1: OPFS Library Integration
 
-Investigate and implement solutions for automatic browser permission handling.
+Implement OPFS-based library storage for e2e tests.
 
 **Deliverables:**
-- Document findings on File System Access API permission automation
-- Implement mock library connection for tests that don't need real filesystem
+- OPFS initialization helper for test setup
+- Test fixture population utilities
+- Cleanup utilities for test isolation
 - Verify MIDI permission grants work reliably
-- Create test harness that bypasses permission prompts where possible
 
-**Approach Options:**
-1. **OPFS (Origin Private File System)** — Use browser-native storage that doesn't require permission prompts
-2. **Mock library injection** — Tests inject a mock library implementation via query param or global
-3. **CDP permission override** — Use Chrome DevTools Protocol to manipulate permission state
-4. **Pre-authenticated context** — Persist browser state with pre-granted permissions
+**Approach:**
+Tests use Origin Private File System (OPFS) for library storage:
+- No permission prompts required
+- Real filesystem semantics (same `StorageDirectoryHandle` API)
+- Isolated per-origin (no cross-test contamination)
+- Initialize via `navigator.storage.getDirectory()`
+
+```typescript
+// Example test setup
+const opfsRoot = await navigator.storage.getDirectory();
+const libraryDir = await opfsRoot.getDirectoryHandle('test-library', { create: true });
+await populateTestFixtures(libraryDir);
+```
 
 ### Phase 2: Test Infrastructure Setup
 
@@ -136,9 +144,9 @@ End-to-end workflows combining multiple features.
 
 ## Task Breakdown
 
-1. Research FSAA permission automation options
-2. Implement mock library for testing
-3. Create test fixtures (tones, patches, sets)
+1. Implement OPFS initialization and cleanup helpers
+2. Create test fixture population utilities
+3. Create test fixtures (tones, patches, sets as static files)
 4. Create helper functions (library, hardware, navigation)
 5. Write directory management tests
 6. Write tone operation tests
@@ -152,16 +160,16 @@ End-to-end workflows combining multiple features.
 ## Dependencies
 
 - Existing e2e infrastructure (port 0 scripts, playwright configs)
-- Mock library support in dev harness (from chopper-testing-infra)
+- OPFS support in target browsers (Chrome, Edge — already supported)
 - Hardware availability for connected tests
 
 ## Risk Mitigation
-
-**Risk:** File System Access API permissions cannot be automated
-**Mitigation:** Use OPFS or mock library for most tests; manual testing for real filesystem paths
 
 **Risk:** Hardware not available in CI
 **Mitigation:** Skip hardware tests gracefully; run them in local development
 
 **Risk:** Flaky tests due to MIDI timing
 **Mitigation:** Use longer timeouts; add retry logic; ensure single-worker execution
+
+**Risk:** OPFS quota limits in testing
+**Mitigation:** Clean up test data after each test; monitor storage usage

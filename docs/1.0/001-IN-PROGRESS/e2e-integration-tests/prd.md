@@ -59,11 +59,22 @@ This is already working in existing tests.
 
 **File System Access API:** Playwright does not support automatic permission grants for the File System Access API (`showDirectoryPicker`, `dirHandle.requestPermission`). This is a [known limitation](https://github.com/microsoft/playwright/issues/18267).
 
-**Workaround strategies:**
-1. **Mock library connection** — Tests use a mock library that bypasses `showDirectoryPicker` and works with in-memory or pre-staged filesystem data
-2. **Pre-authenticated contexts** — Reuse browser contexts with already-granted permissions (may require persisting browser state)
-3. **Origin Private File System (OPFS)** — Use OPFS which doesn't require permission prompts
-4. **CDP protocol** — Use Chrome DevTools Protocol to manipulate permission state directly
+**Solution: Origin Private File System (OPFS)**
+
+E2E tests will use OPFS for library storage. OPFS provides:
+- Real filesystem semantics (directories, files, read/write)
+- No permission prompts required
+- Same `FileSystemDirectoryHandle` API as native filesystem
+- Isolated per-origin storage (no cross-test contamination)
+- Synchronous access available via `createSyncAccessHandle()` if needed
+
+The application already supports OPFS via the `StorageDirectoryHandle` abstraction in `@audiocontrol/sampler-library`. Tests will initialize the library with OPFS instead of calling `showDirectoryPicker()`.
+
+```typescript
+// Test setup: get OPFS root for library
+const opfsRoot = await navigator.storage.getDirectory();
+const libraryDir = await opfsRoot.getDirectoryHandle('test-library', { create: true });
+```
 
 ### Hardware Availability
 
@@ -75,10 +86,12 @@ Tests requiring real hardware must:
 
 ## Open Questions
 
-1. Which workaround for File System Access API is most maintainable?
-2. Should tests use OPFS exclusively, or support both OPFS and native filesystem?
-3. What is the minimum hardware setup required for CI integration?
-4. Should we support multiple device types (S-330, S-550) in the same test suite?
+1. What is the minimum hardware setup required for CI integration?
+2. Should we support multiple device types (S-330, S-550) in the same test suite?
+
+## Decisions Made
+
+1. **OPFS for filesystem access** — Tests use Origin Private File System exclusively. This provides real filesystem semantics without permission prompts. Native filesystem testing (via `showDirectoryPicker`) requires manual testing.
 
 ---
 
@@ -234,22 +247,25 @@ Tests requiring real hardware must:
 - Import corrupted WAV file
 - Export to read-only location
 
-### 9. Library - File System Operations
+### 9. Library - File System Operations (OPFS)
 
 #### Scenarios
-- Connect to library directory (showDirectoryPicker)
-- Reconnect to previously used directory
-- Query permission status
-- Request permission upgrade (read -> readwrite)
-- Persist directory handle across sessions
+- Initialize OPFS library directory
+- Create library category structure (tones, patches, sets, etc.)
+- Read/write files within OPFS
+- Delete files and directories
+- List directory contents
+- Handle concurrent access from test setup/teardown
 
 #### Corner Cases
-- Directory deleted externally while connected
-- Permission revoked externally
-- Browser storage cleared
-- Multiple tabs accessing same library
-- Library on network drive (latency)
-- Library on removable media (ejection)
+- OPFS storage quota exceeded
+- Concurrent writes to same file
+- Deep directory nesting
+- Very large files (approaching quota)
+- Unicode filenames
+- Empty directories
+
+**Note:** Native filesystem operations via `showDirectoryPicker` require manual testing since Playwright cannot automate permission grants.
 
 ### 10. Sample Editor
 
@@ -367,12 +383,24 @@ Continue using existing infrastructure from `scripts/run-sample-editor-e2e.sh`:
 - Export as environment variables
 - Pass to Playwright config via `process.env`
 
-### Mock Library Support
-For tests not requiring real filesystem:
-- Use `?library=mock` query parameter
-- Pre-populated with representative test fixtures
-- Supports all CRUD operations in memory
-- Deterministic state for assertions
+### OPFS Library Support
+Tests use Origin Private File System for library storage:
+- Initialize via `navigator.storage.getDirectory()`
+- Pre-populate with test fixtures during setup
+- Clean up after each test for isolation
+- Same `StorageDirectoryHandle` API as native filesystem
+
+```typescript
+// Test fixture setup
+async function setupTestLibrary(fixtures: TestFixtures): Promise<FileSystemDirectoryHandle> {
+  const opfsRoot = await navigator.storage.getDirectory();
+  // Clear previous test data
+  try { await opfsRoot.removeEntry('test-library', { recursive: true }); } catch {}
+  const libraryDir = await opfsRoot.getDirectoryHandle('test-library', { create: true });
+  await populateFixtures(libraryDir, fixtures);
+  return libraryDir;
+}
+```
 
 ### Hardware Detection
 ```typescript
