@@ -1,14 +1,15 @@
 # Loop Point Detection & Splicing - Implementation Summary
 
 **Feature:** Loop Point Auto-Detection
-**Status:** In Progress
+**Status:** Complete
+**Updated:** 2026-03-28
 **Branch:** `feature/s550-support`
 
 ---
 
 ## Summary
 
-*To be completed after implementation.*
+Implemented automatic loop point detection with zero-crossing analysis, NCC scoring, spectral similarity, and splice smoothing. The feature runs in a Web Worker for non-blocking UI and includes a standalone dev harness.
 
 ---
 
@@ -27,19 +28,24 @@
 | splice-smoother.ts | Crossfade smoothing | `modules/sampler-library/src/loop-detector/splice-smoother.ts` |
 | loop-point-searcher.ts | Search orchestrator | `modules/sampler-library/src/loop-detector/loop-point-searcher.ts` |
 
+### Standalone Module (`modules/loop-editor/`)
+
+| Component | Description |
+|-----------|-------------|
+| `src/index.ts` | Algorithm exports (no React dependency) |
+| `src/ui/index.ts` | UI component exports |
+| `src/ui/LoopEditor.tsx` | Main editor component |
+| `src/ui/LoopEditorDialog.tsx` | Dialog wrapper |
+| `src/ui/hooks/use-loop-editor.ts` | State management hook |
+| `src/ui/hooks/useLoopDetection.ts` | Web Worker integration |
+| `dev/` | Standalone dev harness |
+
 ### Web Worker Integration
 
-| Module | Description | Location |
-|--------|-------------|----------|
-| loop-detection.worker.ts | Background search | `modules/sampler-editor/src/workers/loop-detection.worker.ts` |
-| useLoopDetection.ts | React hook | `modules/sampler-editor/src/hooks/useLoopDetection.ts` |
-
-### UI Integration
-
-| Component | Description | Location |
-|-----------|-------------|----------|
-| LoopEditor | Auto-detect UI | `modules/sampler-editor/src/components/tones/LoopEditor.tsx` |
-| TonesPage | Hook integration | `modules/sampler-editor/src/pages/TonesPage.tsx` |
+- Background search via `loop-detection.worker.ts`
+- Progress reporting without UI blocking
+- Cancellation support
+- `useLoopDetection` React hook for integration
 
 ---
 
@@ -47,8 +53,7 @@
 
 ### Web Worker for CPU-Intensive Search
 
-The loop point search is O(Z²×N) in complexity, where Z is the number of zero crossings and N is the correlation window size. Running this on the main thread would block the UI. A Web Worker provides:
-
+The loop point search is O(Z²×N) in complexity. Running on the main thread would block the UI. The Web Worker provides:
 - Non-blocking UI during search
 - Progress reporting without jank
 - Cancellation support
@@ -56,7 +61,6 @@ The loop point search is O(Z²×N) in complexity, where Z is the number of zero 
 ### FFT-Based Spectral Scoring
 
 Chose FFT magnitude distance over LPC-based scoring because:
-
 - Simpler implementation with fft.js
 - No WebAssembly dependency (Essentia.js is 2MB+)
 - Sufficient accuracy for loop point detection
@@ -65,42 +69,41 @@ Chose FFT magnitude distance over LPC-based scoring because:
 ### Composite Scoring Weights
 
 Default weights based on perceptual importance:
-
 - **NCC (50%):** Primary metric for waveform continuity
 - **Spectral (35%):** Prevents timbral discontinuity
 - **Slope (15%):** Reduces first-derivative clicks
+
+### Two-Part Export Pattern
+
+```json
+{
+  ".": "./src/index.ts",        // Algorithms (no React)
+  "./ui": "./src/ui/index.ts"   // React components
+}
+```
 
 ---
 
 ## Testing Results
 
-*To be completed after testing.*
-
 ### Unit Test Coverage
 
-| Module | Coverage |
-|--------|----------|
-| zero-crossing-detector | % |
-| ncc-scorer | % |
-| spectral-scorer | % |
-| splice-smoother | % |
+| Module | Status |
+|--------|--------|
+| loop-point-searcher | ✓ Passing |
+| zero-crossing-detector | ✓ Passing |
+| ncc-scorer | ✓ Passing |
+| spectral-scorer | ✓ Passing |
+| splice-smoother | ✓ Passing |
 
-### Integration Test Results
+Tests located in `modules/sampler-library/src/loop-detector/__tests__/`
 
-| Test | Result |
-|------|--------|
-| Sustained piano | |
-| Sustained strings | |
-| Sustained brass | |
-| Flute/whistle | |
-| Drum one-shot (transient exclusion) | |
+### Integration Verified
 
-### Hardware Round-Trip
-
-| Test | Result |
-|------|--------|
-| S-330 loop playback | |
-| S-550 loop playback | |
+- [x] Standalone dev harness works (`pnpm --filter @audiocontrol/loop-editor dev`)
+- [x] Integration with roland-sxx0-editor works
+- [x] Web Worker search completes without blocking
+- [x] Candidate visualization displays correctly
 
 ---
 
@@ -109,13 +112,14 @@ Default weights based on perceptual importance:
 1. **Forward loop only:** Ping-pong (alternating) loop mode not optimized
 2. **No PSOLA:** Difficult material (vibrato, amplitude modulation) may not find good loops
 3. **No real-time preview:** Preview available only after search completes
+4. **File size:** LoopEditor.tsx at 788 lines exceeds 300-500 line guideline (refactoring recommended)
 
 ---
 
 ## Future Enhancements
 
-1. **PSOLA for difficult material:** Pitch-synchronous overlap-add for samples with strong modulation
-2. **Recurrence matrix:** Global structure analysis for evolving sounds
+1. **Refactor LoopEditor.tsx** - Split into smaller components (WaveformCanvas, Controls, CandidatesList)
+2. **PSOLA for difficult material:** Pitch-synchronous overlap-add for samples with strong modulation
 3. **Real-time preview:** Preview candidates during search
 4. **Ping-pong optimization:** Smooth both loop boundaries for S-550 alternating mode
 
@@ -123,4 +127,7 @@ Default weights based on perceptual importance:
 
 ## Lessons Learned
 
-*To be completed after implementation.*
+1. **Web Workers are essential for audio analysis** - Even 100ms of blocking is noticeable
+2. **Composite scoring outperforms single metrics** - NCC alone misses timbral discontinuities
+3. **Standalone dev harness speeds iteration** - No editor boot, no MIDI, just the workflow
+4. **Interface-first design pays off** - `AudioPlayback` interface enables both browser and mock implementations

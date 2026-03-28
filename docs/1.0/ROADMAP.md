@@ -2,9 +2,9 @@
 
 ## Current State
 
-Date: 2026-03-18
+Date: 2026-03-28 (updated via codebase audit)
 
-The audiocontrol monorepo has working device communication, MIDI SysEx protocols, and web-based editors for the Roland S-330 (with S-550 support in progress). The core infrastructure is solid:
+The audiocontrol monorepo has working device communication, MIDI SysEx protocols, and web-based editors for the Roland S-330 and S-550 (both working). The core infrastructure is solid:
 
 - **Library schemas** — Device-agnostic base types (`BaseTone`, `BasePatch`) with device-specific extensions for S-330 and S-550. YAML-based storage with browser and Node.js backends.
 - **Roland S-Series** — Web editors for S-330 (working) and S-550 (in progress). Full SysEx protocols, YAML-to-protocol converters, tone/patch editing, key zone editor.
@@ -326,15 +326,19 @@ Key observations:
 
 ## Feature Index
 
+**Last Updated:** 2026-03-28 (based on codebase audit)
+
+### Roadmap Features
+
 | Slug | Phase | Status | Summary |
 |------|-------|--------|---------|
-| `edit-workflow-architecture` | 1 | Not started | Non-modal edit workflow pattern |
-| `library-common-area` | 1 | Not started | Device-agnostic sample storage and browsing |
+| `edit-workflow-architecture` | 1 | **~95% Complete** | Non-modal edit workflow pattern |
+| `library-common-area` | 1 | **Complete** | Device-agnostic sample storage and browsing |
 | `sample-trim-normalize` | 2 | Not started | Crop and normalize common-area samples |
-| `loop-editor-fixes` | 2 | Not started | Fix broken splice-point detection and crossfade |
-| `common-area-chopping` | 2 | Not started | Connect existing chopper to common-area samples |
+| `loop-editor-fixes` | 2 | **Complete** | Fix broken splice-point detection and crossfade |
+| `common-area-chopping` | 2 | **Partial** | Connect existing chopper to common-area samples |
 | `velocity-layer-editor` | 3 | Not started | Multi-sample velocity layer editing UI |
-| `drum-kit-editor` | 3 | Not started | Full drum kit creation and editing workflow |
+| `drum-kit-editor` | 3 | **Complete** | Full drum kit creation and editing workflow |
 | `device-migration-framework` | 4 | Not started | Cross-device library object conversion |
 | `dsp-engine` | 5 | Not started | Offline DSP processing pipeline |
 | `effects-chain-editor` | 5 | Not started | Effects chain composition and application UI |
@@ -346,5 +350,38 @@ Key observations:
 | `electron-shell` | H4 | Not started | Electron app packaging for RPi deployment |
 | `gpio-input-bridge` | H5 | Not started | Physical encoder/button to MIDI CC/HTTP bridge |
 | `standalone-chopper-app` | H6 | Not started | Self-contained RPi sample chopper |
+
+### Additional Implemented Features
+
+These features have `docs/1.0/<slug>/` documentation and are implemented:
+
+| Slug | Status | Summary |
+|------|--------|---------|
+| `s550-support` | **Complete (Phases 1-6)** | Unified S-series editor with S-330/S-550 support |
+| `editor-core` | **Complete** | Shared editor infrastructure, stores, components |
+| `synth-core` | **~90% Complete** | Sample playback synthesis engine |
+| `jv1080-editor` | **~85% Complete** | Roland JV-1080 system/effects editor |
+| `sampler-library` | **Complete** | YAML library format, converters, storage |
+| `sample-chopper-extraction` | **Complete** | Standalone chopper module extraction |
+| `sample-editor` | **Substantial** | Trim, normalize, fade, reverse operations |
+| `loop-editor` | **Complete** | Loop point detection and editing |
+| `trigger-architecture-simplification` | **Complete** | Trigger hook decomposition |
+| `trigger-chopping` | **Partial** | Real-time trigger capture |
+| `chopper-testing-infra` | **Partial** | E2E testing infrastructure |
+| `shared-library-ui` | **Complete** | Shared library UI components |
+| `streaming-storage` | **Complete** | Progress reporting for file operations |
+| `gdrive-library-perf` | **Complete** | Storage caching layer |
+| `portable-library-plugins` | **Complete** | Plugin architecture for library browsers |
+| `build-optimization` | **Complete** | Makefile stamp files, incremental builds |
+| `duplication-detection` | **Complete** | jscpd integration |
+| `netlify-monorepo-deploy` | **Complete** | Per-site Netlify deployment |
+
+### Archived Features
+
+| Slug | Status | Notes |
+|------|--------|-------|
+| `s330-editor` | **Archived** | Superseded by `s550-support` unified editor |
+| `sample-format-consolidation` | **Blocked** | Blocked on dependencies |
+| `synth-core-slice-playback` | **Deferred** | PRD exists, no implementation |
 
 Each feature slug corresponds to a `docs/1.0/<slug>/` directory containing a PRD and workplan. Hardware platform docs are in [`audiocontrol-hardware-device-platform/docs/1.0/hardware-device-platform/`](https://github.com/audiocontrol-org/audiocontrol-hardware-device-platform/tree/main/docs/1.0/hardware-device-platform).
