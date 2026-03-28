@@ -173,12 +173,7 @@ export function PatchesPage() {
       {/* Sticky Header */}
       <div className="ac-page-sticky-header">
         <div className="ac-page-header">
-          <div className="flex items-center gap-4">
-            <h2 className="text-xl font-bold text-s330-text">Patches</h2>
-            <span className="text-sm text-s330-muted">
-              {loadedPatches.length} of {totalPatches} loaded
-            </span>
-          </div>
+          <h2 className="text-xl font-bold text-s330-text">Patches</h2>
           <div className="flex items-center gap-4 flex-1 justify-end">
             {/* Loading Progress (inline with buttons) */}
             {isLoading && loadingProgress !== null && (
@@ -192,8 +187,7 @@ export function PatchesPage() {
                 <p className="text-s330-muted text-xs mt-0.5 truncate">{loadingMessage}</p>
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-s330-muted">(Re)load:</span>
+            <div className="flex items-center gap-2 flex-shrink-0">
               {/* Patch bank buttons */}
               {Array.from({ length: getPatchBankCount(config) }, (_, i) => (
                 <button
