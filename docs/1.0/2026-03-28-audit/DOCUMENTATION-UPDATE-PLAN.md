@@ -82,11 +82,61 @@ These were found to be 100% implemented with accurate docs:
 
 ## Priority 4: Workplan GitHub Links
 
-Many workplan.md files may have stale or missing GitHub issue links. This is lower priority but should be addressed:
+**Status**: ✅ Verified via `gh` CLI (2026-03-28)
 
-- Review all workplan.md files for broken issue links
-- Update milestone references if milestones have changed
-- Consider removing issue links for completed/closed features
+### Summary
+
+| Category | Workplans | With Links | Without Links |
+|----------|-----------|------------|---------------|
+| 003-COMPLETE | 15 | 2 | 13 |
+| 001-IN-PROGRESS | 8 | 5 | 3 |
+| 000-PENDING | 1 | 0 | 1 |
+| 002-BLOCKED | 1 | 0 | 1 |
+| 004-ARCHIVE | 1 | 1 | 0 |
+| **Total** | **26** | **8** | **18** |
+
+### Workplans with GitHub Links (125 total links)
+
+| Feature | Links | Status | Notes |
+|---------|-------|--------|-------|
+| editor-core | 55 | COMPLETE | Issues #27-46 |
+| shared-library-ui | 21 | COMPLETE | Issues #76-85 |
+| jv1080-editor | 19 | IN-PROGRESS | Issues #4, #20-25 + ol_dsp refs |
+| edit-workflow-architecture | 13 | IN-PROGRESS | Issues #61-67 |
+| roland-d110 | 8 | IN-PROGRESS | Issues #13-18 |
+| s550-support | 7 | IN-PROGRESS | Issues #53-58 |
+| s330-editor | 2 | ARCHIVE | Issue #8 (superseded) |
+
+### GitHub Issue Verification Results
+
+All 125 issue links verified against `audiocontrol-org/audiocontrol` repo.
+
+**Discrepancies Found** (3 issues):
+
+| Issue | Title | GitHub Status | Workplan | Notes |
+|-------|-------|---------------|----------|-------|
+| #35 | Migrate JV-1080 to EditorLayout | OPEN | editor-core (COMPLETE) | Migration task, not core infra |
+| #36 | Migrate JV-1080 to Tailwind CSS | OPEN | editor-core (COMPLETE) | Migration task, not core infra |
+| #37 | Standardize BrowserRouter placement | OPEN | editor-core (COMPLETE) | D-110 migration pending |
+
+**Analysis**: These 3 issues are consumer migration tasks listed in the editor-core workplan. The editor-core infrastructure itself is complete; these represent adoption work in downstream editors (JV-1080, D-110). The workplan status (COMPLETE) refers to the core library, not full ecosystem adoption.
+
+**Recommendation**: Close these issues or move them to jv1080-editor and roland-d110 workplans where they belong.
+
+### Other Findings
+
+1. **All other linked issues exist** - No broken links
+2. **Completed features** - All referenced issues are CLOSED (except #35-37 noted above)
+3. **In-progress features** - Mix of OPEN/CLOSED as expected
+4. **Archived features** - Issue #8 is CLOSED (correct)
+
+### Action Items
+
+- [ ] Close or reassign issues #35, #36, #37
+- [ ] Consider creating issues for in-progress features without tracking:
+  - chopper-testing-infra
+  - sample-editor
+  - trigger-chopping
 
 ---
 
@@ -118,8 +168,10 @@ These were fixed during the audit:
 | P1 Critical | 2 | 2 | 0 |
 | P2 Verify | 7 | 7 | 0 |
 | P3 Infrastructure | 4 | 4 | 0 |
-| P4 Workplan Links | TBD | 0 | TBD |
-| **Total** | **13+** | **13** | **0+** |
+| P4 Workplan Links | 8 | 8 | 0 |
+| **Total** | **21** | **21** | **0** |
+
+**P4 Note**: 3 action items identified (issues #35-37 reassignment, 3 missing issue links) - see Priority 4 section.
 
 ---
 
