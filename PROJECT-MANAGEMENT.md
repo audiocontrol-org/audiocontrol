@@ -364,3 +364,52 @@ When a weekly milestone completes:
 - [ ] Implementation issues created referencing parent
 - [ ] Issues assigned to milestone with appropriate labels
 - [ ] workplan.md updated with GitHub issue links
+
+---
+
+## Roadmap Queue Management
+
+The roadmap queue is the source of truth for what to work on next.
+
+### Finding the Queue
+
+**Location:** `audiocontrol-docs-roadmap/docs/1.0/ROADMAP.md`
+
+The ROADMAP.md contains:
+- **What's Next** — Full queue organized by readiness
+- **Feature Index** — All features by state directory
+
+### Using the Queue
+
+The "What's Next" section has three categories:
+
+| Category | Meaning |
+|----------|---------|
+| **Ready to Work (Parallel)** | No blockers, can be started immediately |
+| **Serial Dependencies** | Must wait for another feature to complete |
+| **Blocked** | Cannot proceed until blocker resolved |
+
+### Picking Work
+
+1. Check "Ready to Work (Parallel)" first
+2. Pick any feature from this list — they're independent
+3. If all parallel work is claimed, check "Serial Dependencies" for newly unblocked items
+
+### Completing Work
+
+When a feature is complete:
+
+1. Move feature directory from `001-IN-PROGRESS/` to `003-COMPLETE/`
+2. Update ROADMAP.md:
+   - Move row from "Ready to Work" to Feature Index under "003-COMPLETE"
+   - Check "Serial Dependencies" — move newly unblocked items to "Ready to Work"
+3. Update implementation-summary.md with completion details
+4. Commit: `docs: complete <feature-slug>`
+
+### Blocking Work
+
+If work becomes blocked:
+
+1. Move feature directory to `002-BLOCKED/`
+2. Update ROADMAP.md "Blocked" table with blocker description
+3. Document blocker in feature's README.md
