@@ -17,6 +17,7 @@
     "test:e2e:hardware": "./scripts/run-hardware-e2e.sh",
     "test:e2e:http-midi": "./scripts/run-http-midi-e2e.sh",
     "test:e2e:library": "./scripts/run-library-e2e.sh",
+    "test:e2e:device-library": "./scripts/run-device-library-e2e.sh",
     "test:e2e:loop-editor": "./scripts/run-loop-editor-e2e.sh",
     "test:e2e:sample-chopper": "./scripts/run-sample-chopper-e2e.sh",
     "test:e2e:sample-editor": "./scripts/run-sample-editor-e2e.sh",
