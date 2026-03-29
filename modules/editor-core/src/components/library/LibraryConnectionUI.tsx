@@ -21,8 +21,10 @@ export interface LibraryConnectionUIProps {
   hasLocalFS: boolean;
   /** Whether Google Drive credentials are configured. */
   hasGoogleDrive: boolean;
+  /** Whether OPFS is available in the browser. */
+  hasOPFS: boolean;
   /** Connect to a backend. */
-  onConnect: (backend: 'local' | 'google-drive') => void;
+  onConnect: (backend: 'local' | 'google-drive' | 'opfs') => void;
   /** Disconnect from the current backend. */
   onDisconnect: () => void;
   /** Optional CSS class. */
@@ -36,6 +38,7 @@ export interface LibraryConnectionUIProps {
 const BACKEND_LABELS: Record<string, string> = {
   local: 'Local Folder',
   'google-drive': 'Google Drive',
+  opfs: 'Browser Storage',
 };
 
 export function LibraryConnectionUI({
@@ -43,6 +46,7 @@ export function LibraryConnectionUI({
   isConnected,
   hasLocalFS,
   hasGoogleDrive,
+  hasOPFS,
   onConnect,
   onDisconnect,
   className,
@@ -82,7 +86,16 @@ export function LibraryConnectionUI({
           Google Drive
         </button>
       )}
-      {!hasLocalFS && !hasGoogleDrive && (
+      {hasOPFS && (
+        <button
+          className="ac-library-connection-btn"
+          data-testid="library-backend-opfs"
+          onClick={() => onConnect('opfs')}
+        >
+          Browser Storage
+        </button>
+      )}
+      {!hasLocalFS && !hasGoogleDrive && !hasOPFS && (
         <span className="ac-library-connection-none">
           No storage backends available
         </span>

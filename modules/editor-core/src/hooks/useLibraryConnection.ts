@@ -1,7 +1,7 @@
 /**
  * Reusable hook for managing library storage connections.
  *
- * Encapsulates backend selection (FSAA / Google Drive), OAuth redirect
+ * Encapsulates backend selection (FSAA / Google Drive / OPFS), OAuth redirect
  * handling, session restoration, and cache delegation. Consumers get
  * multi-backend support with a single hook call.
  */
@@ -11,13 +11,12 @@ import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/brows
 import type { LibraryConnection } from '@audiocontrol/sampler-library/browser';
 import { BrowserLibraryConnection } from '@audiocontrol/sampler-library/browser';
 import type { CacheMetrics } from '@audiocontrol/sampler-library/browser';
-import { isMockLibraryMode } from '@/transports/runtimeTransport';
 
 // =========================================================================
 // Types
 // =========================================================================
 
-export type LibraryBackend = 'none' | 'local' | 'google-drive';
+export type LibraryBackend = 'none' | 'local' | 'google-drive' | 'opfs';
 
 export interface GoogleDriveCredentials {
   clientId: string;
@@ -39,7 +38,7 @@ export interface UseLibraryConnectionResult {
   /** The library root handle, or null if not connected. */
   root: StorageDirectoryHandle | null;
   /** Connect to the specified backend. */
-  connect: (backend: 'local' | 'google-drive') => Promise<boolean>;
+  connect: (backend: 'local' | 'google-drive' | 'opfs') => Promise<boolean>;
   /** Disconnect from the current backend. */
   disconnect: () => void;
   /** Clear any cached directory data. */
@@ -52,6 +51,8 @@ export interface UseLibraryConnectionResult {
   hasLocalFS: boolean;
   /** Whether Google Drive credentials are configured. */
   hasGoogleDrive: boolean;
+  /** Whether the Origin Private File System is available. */
+  hasOPFS: boolean;
 }
 
 // =========================================================================
@@ -67,11 +68,13 @@ export function useLibraryConnection(
   // Connection instances — stable across renders
   const localRef = useRef<BrowserLibraryConnection | null>(null);
   const googleDriveRef = useRef<LibraryConnection | null>(null);
+  const opfsRef = useRef<LibraryConnection | null>(null);
   const connectionRef = useRef<LibraryConnection | null>(null);
   const initRef = useRef(false);
 
   const hasLocalFS = 'showDirectoryPicker' in globalThis;
   const hasGoogleDrive = config.googleDrive != null;
+  const hasOPFS = 'storage' in navigator;
 
   // Lazily create the FSAA connection
   const getLocalConnection = useCallback((): BrowserLibraryConnection => {
@@ -101,33 +104,60 @@ export function useLibraryConnection(
     return conn;
   }, [config.googleDrive?.clientId, config.googleDrive?.clientSecret]);
 
+  // Lazily create the OPFS connection
+  const getOPFSConnection = useCallback(async (): Promise<LibraryConnection | null> => {
+    if (!hasOPFS) return null;
+    if (opfsRef.current) return opfsRef.current;
+
+    // Dynamic import to avoid loading OPFS code when not needed
+    const { OPFSLibraryConnection } = await import('@audiocontrol/sampler-library/browser');
+    const conn = new OPFSLibraryConnection();
+    opfsRef.current = conn;
+    return conn;
+  }, [hasOPFS]);
+
   // Connect to a backend
-  const connect = useCallback(async (backend: 'local' | 'google-drive'): Promise<boolean> => {
-    if (backend === 'local') {
-      const conn = getLocalConnection();
-      const ok = await conn.connect();
-      if (ok) {
-        connectionRef.current = conn;
-        setActiveBackend('local');
-        setRoot(conn.getRoot());
+  const connect = useCallback(
+    async (backend: 'local' | 'google-drive' | 'opfs'): Promise<boolean> => {
+      if (backend === 'local') {
+        const conn = getLocalConnection();
+        const ok = await conn.connect();
+        if (ok) {
+          connectionRef.current = conn;
+          setActiveBackend('local');
+          setRoot(conn.getRoot());
+        }
+        return ok;
       }
-      return ok;
-    }
 
-    if (backend === 'google-drive') {
-      const conn = await getGoogleDriveConnection();
-      if (!conn) return false;
-      const ok = await conn.connect();
-      if (ok) {
-        connectionRef.current = conn;
-        setActiveBackend('google-drive');
-        setRoot(conn.getRoot());
+      if (backend === 'google-drive') {
+        const conn = await getGoogleDriveConnection();
+        if (!conn) return false;
+        const ok = await conn.connect();
+        if (ok) {
+          connectionRef.current = conn;
+          setActiveBackend('google-drive');
+          setRoot(conn.getRoot());
+        }
+        return ok;
       }
-      return ok;
-    }
 
-    return false;
-  }, [getLocalConnection, getGoogleDriveConnection]);
+      if (backend === 'opfs') {
+        const conn = await getOPFSConnection();
+        if (!conn) return false;
+        const ok = await conn.connect();
+        if (ok) {
+          connectionRef.current = conn;
+          setActiveBackend('opfs');
+          setRoot(conn.getRoot());
+        }
+        return ok;
+      }
+
+      return false;
+    },
+    [getLocalConnection, getGoogleDriveConnection, getOPFSConnection],
+  );
 
   // Disconnect
   const disconnect = useCallback(() => {
@@ -149,39 +179,21 @@ export function useLibraryConnection(
     connectionRef.current?.resetMetrics?.();
   }, []);
 
-  // On mount: auto-connect mock library, or handle Google Drive OAuth redirect
+  // On mount: handle Google Drive OAuth redirect
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
 
     (async () => {
-      // 0. Mock library mode — auto-connect with in-memory test data
-      if (isMockLibraryMode()) {
-        try {
-          const { InMemoryDirectoryHandle, seedMockLibrary } = await import(
-            '@audiocontrol/sampler-library/testing'
-          );
-          const mockRoot = new InMemoryDirectoryHandle('mock-library');
-          seedMockLibrary(mockRoot);
-          connectionRef.current = {
-            connect: async () => true,
-            isConnected: () => true,
-            getRoot: () => mockRoot,
-          } as LibraryConnection;
-          setActiveBackend('local');
-          setRoot(mockRoot);
-        } catch (err) {
-          console.error('[useLibraryConnection] Failed to initialize mock library:', err);
-        }
-        return;
-      }
-
-      // 1. Check for Google Drive OAuth redirect
+      // Check for Google Drive OAuth redirect
       if (config.googleDrive) {
         const conn = await getGoogleDriveConnection();
         if (conn) {
           // handleRedirect is specific to GoogleDriveLibraryConnection
-          const gdConn = conn as { handleRedirect?: () => Promise<boolean>; tryRestore?: () => Promise<boolean> };
+          const gdConn = conn as {
+            handleRedirect?: () => Promise<boolean>;
+            tryRestore?: () => Promise<boolean>;
+          };
 
           if (gdConn.handleRedirect) {
             const handled = await gdConn.handleRedirect();
@@ -222,5 +234,6 @@ export function useLibraryConnection(
     resetMetrics,
     hasLocalFS,
     hasGoogleDrive,
+    hasOPFS,
   };
 }

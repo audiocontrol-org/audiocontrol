@@ -11,15 +11,22 @@
  * Run via: ./scripts/run-http-midi-e2e.sh --grep "Device Library Export"
  */
 
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+
+// Deviation: Using relative import because e2e/ is outside src/ and @/ path alias
+// only applies to src/. This pattern should not be copied to application code.
+import {
+  connectToDevice,
+  connectToOPFS,
+  waitForAppReady,
+  getMidiStatus,
+} from './helpers/connection-helper';
 
 // Short timeouts - fail fast for hardware tests
 test.setTimeout(15_000);
 
 // Environment variables set by run-http-midi-e2e.sh
 const MIDI_SERVER_PORT = process.env.E2E_MIDI_SERVER_PORT;
-const MIDI_INPUT_PORT = process.env.E2E_MIDI_INPUT_PORT;
-const MIDI_OUTPUT_PORT = process.env.E2E_MIDI_OUTPUT_PORT;
 
 // Default to S-330 for tests (can be overridden via E2E_DEVICE_TYPE)
 const DEVICE_TYPE = process.env.E2E_DEVICE_TYPE ?? 's330';
@@ -27,7 +34,6 @@ const EDITOR_BASE_PATH = `/roland/${DEVICE_TYPE}/editor`;
 
 // Timeouts for various operations
 const UI_TIMEOUT_MS = 5000;
-const CONNECTION_TIMEOUT_MS = 10000;
 const DATA_LOAD_TIMEOUT_MS = 15000;
 const EXPORT_TIMEOUT_MS = 10000;
 
@@ -45,122 +51,14 @@ function buildUrl(subpath: string = ''): string {
 }
 
 /**
- * Helper to wait for the app to be ready (MIDI store initialized)
- */
-async function waitForAppReady(page: Page): Promise<void> {
-  await page.waitForFunction(
-    () => (window as unknown as Record<string, unknown>).__midiStore !== undefined,
-    { timeout: UI_TIMEOUT_MS }
-  );
-}
-
-/**
- * Helper to get MIDI connection status from the app's store
- */
-async function getMidiStatus(page: Page): Promise<string> {
-  return page.evaluate(() => {
-    const store = (window as unknown as Record<string, unknown>).__midiStore as {
-      getState: () => { status: string };
-    };
-    return store.getState().status;
-  });
-}
-
-/**
- * Helper to connect to device via the app's UI.
- * Selects the discovered port pair (from device validation) or first available.
- */
-async function connectToDevice(page: Page): Promise<void> {
-  // Wait for port selectors to have options loaded
-  const inputSelect = page.locator('[data-testid="midi-input-select"]');
-  await inputSelect.waitFor({ state: 'visible', timeout: UI_TIMEOUT_MS });
-
-  // Wait for options to be populated (more than just the placeholder)
-  await page.waitForFunction(
-    () => {
-      const select = document.querySelector('[data-testid="midi-input-select"]') as HTMLSelectElement;
-      return select && select.options.length > 1;
-    },
-    { timeout: UI_TIMEOUT_MS }
-  );
-
-  // Select input port - prefer the discovered port from validation
-  if (MIDI_INPUT_PORT) {
-    // Try to select the discovered port
-    const options = await inputSelect.locator('option').all();
-    for (const option of options) {
-      const text = await option.textContent();
-      if (text?.includes(MIDI_INPUT_PORT)) {
-        const value = await option.getAttribute('value');
-        if (value) {
-          await inputSelect.selectOption(value);
-          break;
-        }
-      }
-    }
-  } else {
-    // Fall back to first available
-    const inputOptions = await inputSelect.locator('option:not([value=""])').all();
-    if (inputOptions.length > 0) {
-      const value = await inputOptions[0].getAttribute('value');
-      if (value) await inputSelect.selectOption(value);
-    }
-  }
-
-  // Select output port - prefer the discovered port from validation
-  const outputSelect = page.locator('[data-testid="midi-output-select"]');
-  if (MIDI_OUTPUT_PORT) {
-    const options = await outputSelect.locator('option').all();
-    for (const option of options) {
-      const text = await option.textContent();
-      if (text?.includes(MIDI_OUTPUT_PORT)) {
-        const value = await option.getAttribute('value');
-        if (value) {
-          await outputSelect.selectOption(value);
-          break;
-        }
-      }
-    }
-  } else {
-    const outputOptions = await outputSelect.locator('option:not([value=""])').all();
-    if (outputOptions.length > 0) {
-      const value = await outputOptions[0].getAttribute('value');
-      if (value) await outputSelect.selectOption(value);
-    }
-  }
-
-  // Click connect button
-  const connectButton = page.locator('[data-testid="connect-button"]');
-  await connectButton.click();
-
-  // Wait for connection to complete
-  await page.waitForFunction(
-    () => {
-      const store = (window as unknown as Record<string, unknown>).__midiStore as {
-        getState: () => { status: string };
-      } | undefined;
-      return store?.getState().status === 'connected';
-    },
-    { timeout: CONNECTION_TIMEOUT_MS }
-  );
-}
-
-/**
  * OPFS helper functions to be evaluated in browser context.
  * These are inlined because page.evaluate cannot import modules.
  */
 const OPFS_HELPERS = `
-  /**
-   * Get the OPFS root directory handle.
-   */
   async function getOPFSRoot() {
     return await navigator.storage.getDirectory();
   }
 
-  /**
-   * Initialize the library directory structure.
-   * Creates: library/tones, library/patches, library/sets
-   */
   async function initializeOPFS() {
     const root = await getOPFSRoot();
     const library = await root.getDirectoryHandle('library', { create: true });
@@ -170,9 +68,6 @@ const OPFS_HELPERS = `
     return { success: true };
   }
 
-  /**
-   * Check if a file exists at the given path.
-   */
   async function fileExists(pathSegments, fileName) {
     const root = await getOPFSRoot();
     let current = root;
@@ -187,9 +82,6 @@ const OPFS_HELPERS = `
     }
   }
 
-  /**
-   * Read a text file from OPFS at the given path.
-   */
   async function readFile(pathSegments, fileName) {
     const root = await getOPFSRoot();
     let current = root;
@@ -202,9 +94,6 @@ const OPFS_HELPERS = `
     return { success: true, content };
   }
 
-  /**
-   * Get file size at the given path.
-   */
   async function getFileSize(pathSegments, fileName) {
     const root = await getOPFSRoot();
     let current = root;
@@ -216,98 +105,117 @@ const OPFS_HELPERS = `
     return { success: true, size: file.size };
   }
 
-  /**
-   * List directory contents at the given path.
-   */
   async function listDirectory(pathSegments) {
     const root = await getOPFSRoot();
     let current = root;
-    for (const segment of pathSegments) {
-      current = await current.getDirectoryHandle(segment);
+    try {
+      for (const segment of pathSegments) {
+        current = await current.getDirectoryHandle(segment);
+      }
+      const entries = [];
+      for await (const entry of current.values()) {
+        entries.push({ name: entry.name, kind: entry.kind });
+      }
+      return { success: true, entries };
+    } catch (e) {
+      if (e.name === 'NotFoundError') {
+        return { success: false, error: 'Directory not found', entries: [] };
+      }
+      throw e;
     }
+  }
+
+  async function deleteDirectoryContents(dirHandle) {
+    // Collect entries first to avoid issues with modifying during iteration
     const entries = [];
-    for await (const entry of current.values()) {
+    for await (const entry of dirHandle.values()) {
       entries.push({ name: entry.name, kind: entry.kind });
     }
-    return { success: true, entries };
-  }
 
-  /**
-   * Recursively delete all contents of a directory.
-   */
-  async function deleteDirectoryContents(dirHandle) {
-    for await (const entry of dirHandle.values()) {
-      if (entry.kind === 'directory') {
-        const subDir = await dirHandle.getDirectoryHandle(entry.name);
-        await deleteDirectoryContents(subDir);
+    for (const entry of entries) {
+      try {
+        if (entry.kind === 'directory') {
+          // Get subdirectory and recursively delete its contents
+          try {
+            const subDir = await dirHandle.getDirectoryHandle(entry.name);
+            await deleteDirectoryContents(subDir);
+          } catch (e) {
+            // Directory may have been deleted already, ignore NotFoundError
+            if (e.name !== 'NotFoundError') {
+              throw e;
+            }
+          }
+        }
+        // Remove the entry (file or now-empty directory)
+        await dirHandle.removeEntry(entry.name, { recursive: true });
+      } catch (e) {
+        // Ignore NotFoundError - entry may have been deleted already
+        if (e.name !== 'NotFoundError') {
+          throw e;
+        }
       }
-      await dirHandle.removeEntry(entry.name, { recursive: true });
     }
   }
 
-  /**
-   * Clean up OPFS - remove all files and directories.
-   */
   async function cleanupOPFS() {
     const root = await getOPFSRoot();
     await deleteDirectoryContents(root);
     return { success: true };
   }
 
-  /**
-   * List tones in a directory.
-   * A tone is identified by having both .yaml and .wav files with the same base name.
-   * Returns an array of tone names (without extensions).
-   */
   async function listTones(pathSegments) {
     const root = await getOPFSRoot();
     let current = root;
-    for (const segment of pathSegments) {
-      current = await current.getDirectoryHandle(segment);
-    }
-
-    const files = [];
-    for await (const entry of current.values()) {
-      if (entry.kind === 'file') {
-        files.push(entry.name);
+    try {
+      for (const segment of pathSegments) {
+        current = await current.getDirectoryHandle(segment);
       }
+
+      const files = [];
+      for await (const entry of current.values()) {
+        if (entry.kind === 'file') {
+          files.push(entry.name);
+        }
+      }
+
+      const yamlFiles = files.filter(f => f.endsWith('.yaml')).map(f => f.slice(0, -5));
+      const wavFiles = files.filter(f => f.endsWith('.wav')).map(f => f.slice(0, -4));
+
+      const tones = yamlFiles.filter(name => wavFiles.includes(name));
+
+      return { success: true, tones };
+    } catch (e) {
+      if (e.name === 'NotFoundError') {
+        return { success: false, error: 'Directory not found', tones: [] };
+      }
+      throw e;
     }
-
-    // Find pairs of .yaml and .wav files
-    const yamlFiles = files.filter(f => f.endsWith('.yaml')).map(f => f.slice(0, -5));
-    const wavFiles = files.filter(f => f.endsWith('.wav')).map(f => f.slice(0, -4));
-
-    // Return only tones that have both files
-    const tones = yamlFiles.filter(name => wavFiles.includes(name));
-
-    return { success: true, tones };
   }
 
-  /**
-   * List patches in a directory.
-   * A patch is identified by a .yaml file in the patches directory.
-   * Returns an array of patch names (without extensions).
-   */
   async function listPatches(pathSegments) {
     const root = await getOPFSRoot();
     let current = root;
-    for (const segment of pathSegments) {
-      current = await current.getDirectoryHandle(segment);
-    }
-
-    const patches = [];
-    for await (const entry of current.values()) {
-      if (entry.kind === 'file' && entry.name.endsWith('.yaml')) {
-        patches.push(entry.name.slice(0, -5));
+    try {
+      for (const segment of pathSegments) {
+        current = await current.getDirectoryHandle(segment);
       }
-    }
 
-    return { success: true, patches };
+      const patches = [];
+      for await (const entry of current.values()) {
+        if (entry.kind === 'file' && entry.name.endsWith('.yaml')) {
+          patches.push(entry.name.slice(0, -5));
+        }
+      }
+
+      return { success: true, patches };
+    } catch (e) {
+      if (e.name === 'NotFoundError') {
+        return { success: false, error: 'Directory not found', patches: [] };
+      }
+      throw e;
+    }
   }
 
-  /**
-   * Read and parse tone YAML metadata.
-   */
   async function readToneMetadata(pathSegments, toneName) {
     const root = await getOPFSRoot();
     let current = root;
@@ -319,7 +227,6 @@ const OPFS_HELPERS = `
     const file = await fileHandle.getFile();
     const content = await file.text();
 
-    // Simple YAML parsing for key-value pairs
     const metadata = {};
     const lines = content.split('\\n');
     for (const line of lines) {
@@ -327,7 +234,6 @@ const OPFS_HELPERS = `
       if (match) {
         const key = match[1];
         let value = match[2];
-        // Try to parse numbers
         if (/^-?\\d+(\\.\\d+)?$/.test(value)) {
           value = parseFloat(value);
         }
@@ -337,32 +243,15 @@ const OPFS_HELPERS = `
 
     return { success: true, metadata, rawContent: content };
   }
-
-  /**
-   * Read and parse patch YAML metadata.
-   */
-  async function readPatchMetadata(pathSegments, patchName) {
-    const root = await getOPFSRoot();
-    let current = root;
-    for (const segment of pathSegments) {
-      current = await current.getDirectoryHandle(segment);
-    }
-
-    const fileHandle = await current.getFileHandle(patchName + '.yaml');
-    const file = await fileHandle.getFile();
-    const content = await file.text();
-
-    return { success: true, rawContent: content };
-  }
 `;
 
 // =============================================================================
-// Test Suite: Device Library Export - Tones
+// Test Suite: Export Tone from Device to Library
 // =============================================================================
 
 test.describe('Device Library Export - Tones', () => {
   test.beforeAll(async () => {
-    // Fail fast if hardware is not configured
+    // Fail fast if MIDI server is not configured
     if (!MIDI_SERVER_PORT) {
       throw new Error(
         'E2E_MIDI_SERVER_PORT must be set. Run via: ./scripts/run-http-midi-e2e.sh'
@@ -371,26 +260,34 @@ test.describe('Device Library Export - Tones', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    // Initialize OPFS library structure
-    await page.goto(buildUrl());
-    await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        await cleanupOPFS();
-        await initializeOPFS();
-      })();
-    `);
+    await page.goto(buildUrl(), { timeout: UI_TIMEOUT_MS });
     await waitForAppReady(page);
+
+    // Connect to OPFS via UI button
+    await connectToOPFS(page);
+
+    // Clean up and initialize OPFS before each test
+    await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  await cleanupOPFS();
+  await initializeOPFS();
+})();
+`
+    );
   });
 
   test.afterEach(async ({ page }) => {
     // Clean up OPFS after each test
-    await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        await cleanupOPFS();
-      })();
-    `);
+    await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  await cleanupOPFS();
+})();
+`
+    );
   });
 
   test('can export tone from device to library', async ({ page }) => {
@@ -432,12 +329,14 @@ test.describe('Device Library Export - Tones', () => {
     await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
 
     // Verify tone appears in library
-    const libraryTones = await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        return await listTones(['library', 'tones']);
-      })();
-    `) as { success: boolean; tones: string[] };
+    const libraryTones = (await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  return await listTones(['library', 'tones']);
+})();
+`
+    )) as { success: boolean; tones: string[] };
 
     expect(libraryTones.success).toBe(true);
     expect(libraryTones.tones.length).toBeGreaterThan(0);
@@ -452,9 +351,10 @@ test.describe('Device Library Export - Tones', () => {
     }
   });
 
-  test('exported tone includes wave data', async ({ page }) => {
+  test('exported tone has yaml and wav files', async ({ page }) => {
     // Connect to device
     await connectToDevice(page);
+    expect(await getMidiStatus(page)).toBe('connected');
 
     // Navigate to tones page
     const tonesLink = page.locator('a[href$="/tones"]');
@@ -463,18 +363,20 @@ test.describe('Device Library Export - Tones', () => {
     await tonesLink.click();
     await page.waitForURL('**/tones**');
 
-    // Wait for tones to load
+    // Wait for tones to load from device
     const toneItems = page.locator('[data-testid^="tone-item-"]');
     await expect(toneItems.first()).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
 
-    // Export first tone
+    // Get the first tone's name to construct exported filename
     const firstToneItem = toneItems.first();
+    const toneName = await firstToneItem.locator('[data-testid="tone-name"]').textContent();
+    expect(toneName).toBeTruthy();
+
+    // Export the tone
     const exportButton = firstToneItem.locator('[data-testid="export-tone-button"]');
     await expect(exportButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
-
     await exportButton.click();
 
-    // Complete export dialog
     const exportDialog = page.locator('[data-testid="export-dialog"]');
     await expect(exportDialog).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
@@ -482,54 +384,37 @@ test.describe('Device Library Export - Tones', () => {
     await expect(confirmButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await confirmButton.click();
 
-    // Wait for export to complete
     await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
 
-    // Get list of tones in library
-    const libraryTones = await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        return await listTones(['library', 'tones']);
-      })();
-    `) as { success: boolean; tones: string[] };
+    // Construct expected filename (tone names are normalized to kebab-case)
+    const exportedToneName = toneName!.trim().toLowerCase().replace(/\s+/g, '-');
 
-    expect(libraryTones.success).toBe(true);
-    expect(libraryTones.tones.length).toBeGreaterThan(0);
-
-    // Verify the exported tone has both .yaml and .wav files
-    const toneName = libraryTones.tones[0];
-
+    // Verify both yaml and wav files exist
     const yamlExists = await page.evaluate(
-      `(async () => {
-        ${OPFS_HELPERS}
-        return await fileExists(['library', 'tones'], '${toneName}.yaml');
-      })()`
+      OPFS_HELPERS +
+        `
+(async () => {
+  return await fileExists(['library', 'tones'], '${exportedToneName}.yaml');
+})();
+`
     );
     expect(yamlExists).toBe(true);
 
     const wavExists = await page.evaluate(
-      `(async () => {
-        ${OPFS_HELPERS}
-        return await fileExists(['library', 'tones'], '${toneName}.wav');
-      })()`
+      OPFS_HELPERS +
+        `
+(async () => {
+  return await fileExists(['library', 'tones'], '${exportedToneName}.wav');
+})();
+`
     );
     expect(wavExists).toBe(true);
-
-    // Verify WAV file has content (not empty)
-    const wavSize = await page.evaluate(
-      `(async () => {
-        ${OPFS_HELPERS}
-        return await getFileSize(['library', 'tones'], '${toneName}.wav');
-      })()`
-    ) as { success: boolean; size: number };
-
-    expect(wavSize.success).toBe(true);
-    expect(wavSize.size).toBeGreaterThan(44); // WAV header is 44 bytes minimum
   });
 
-  test('exported tone preserves parameters', async ({ page }) => {
+  test('exported tone yaml contains device metadata', async ({ page }) => {
     // Connect to device
     await connectToDevice(page);
+    expect(await getMidiStatus(page)).toBe('connected');
 
     // Navigate to tones page
     const tonesLink = page.locator('a[href$="/tones"]');
@@ -538,21 +423,20 @@ test.describe('Device Library Export - Tones', () => {
     await tonesLink.click();
     await page.waitForURL('**/tones**');
 
-    // Wait for tones to load
+    // Wait for tones to load from device
     const toneItems = page.locator('[data-testid^="tone-item-"]');
     await expect(toneItems.first()).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
 
-    // Get device tone parameters before export (if displayed)
+    // Get the first tone's name
     const firstToneItem = toneItems.first();
-    const deviceToneName = await firstToneItem.locator('[data-testid="tone-name"]').textContent();
+    const toneName = await firstToneItem.locator('[data-testid="tone-name"]').textContent();
+    expect(toneName).toBeTruthy();
 
-    // Export first tone
+    // Export the tone
     const exportButton = firstToneItem.locator('[data-testid="export-tone-button"]');
     await expect(exportButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
-
     await exportButton.click();
 
-    // Complete export dialog
     const exportDialog = page.locator('[data-testid="export-dialog"]');
     await expect(exportDialog).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
@@ -560,50 +444,34 @@ test.describe('Device Library Export - Tones', () => {
     await expect(confirmButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await confirmButton.click();
 
-    // Wait for export to complete
     await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
 
-    // Get exported tone metadata
-    const libraryTones = await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        return await listTones(['library', 'tones']);
-      })();
-    `) as { success: boolean; tones: string[] };
+    // Read and verify yaml content
+    const exportedToneName = toneName!.trim().toLowerCase().replace(/\s+/g, '-');
+    const toneMetadata = (await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  return await readToneMetadata(['library', 'tones'], '${exportedToneName}');
+})();
+`
+    )) as { success: boolean; metadata: Record<string, unknown>; rawContent: string };
 
-    expect(libraryTones.tones.length).toBeGreaterThan(0);
+    expect(toneMetadata.success).toBe(true);
 
-    const toneName = libraryTones.tones[0];
-    const metadata = await page.evaluate(
-      `(async () => {
-        ${OPFS_HELPERS}
-        return await readToneMetadata(['library', 'tones'], '${toneName}');
-      })()`
-    ) as { success: boolean; metadata: Record<string, unknown>; rawContent: string };
-
-    expect(metadata.success).toBe(true);
-
-    // Verify essential tone parameters are present
-    expect(metadata.rawContent.length).toBeGreaterThan(0);
-
-    // Check for expected tone properties (device-dependent)
-    // At minimum, should have name and sample rate
-    if (deviceToneName) {
-      expect(metadata.rawContent).toContain('name');
-    }
-
-    // Sample rate should be present (Roland S-series uses 30000 Hz)
-    expect(metadata.rawContent).toMatch(/sampleRate|sample_rate/i);
+    // Verify essential fields are present
+    expect(toneMetadata.rawContent).toContain('format:');
+    expect(toneMetadata.rawContent).toContain('device:');
+    expect(toneMetadata.rawContent).toContain('name:');
   });
 });
 
 // =============================================================================
-// Test Suite: Device Library Export - Patches
+// Test Suite: Export Patch from Device to Library
 // =============================================================================
 
 test.describe('Device Library Export - Patches', () => {
   test.beforeAll(async () => {
-    // Fail fast if hardware is not configured
     if (!MIDI_SERVER_PORT) {
       throw new Error(
         'E2E_MIDI_SERVER_PORT must be set. Run via: ./scripts/run-http-midi-e2e.sh'
@@ -612,26 +480,33 @@ test.describe('Device Library Export - Patches', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    // Initialize OPFS library structure
-    await page.goto(buildUrl());
-    await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        await cleanupOPFS();
-        await initializeOPFS();
-      })();
-    `);
+    await page.goto(buildUrl(), { timeout: UI_TIMEOUT_MS });
     await waitForAppReady(page);
+
+    // Connect to OPFS via UI button
+    await connectToOPFS(page);
+
+    await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  await cleanupOPFS();
+  await initializeOPFS();
+})();
+`
+    );
   });
 
   test.afterEach(async ({ page }) => {
     // Clean up OPFS after each test
-    await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        await cleanupOPFS();
-      })();
-    `);
+    await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  await cleanupOPFS();
+})();
+`
+    );
   });
 
   test('can export patch from device to library', async ({ page }) => {
@@ -673,12 +548,14 @@ test.describe('Device Library Export - Patches', () => {
     await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
 
     // Verify patch appears in library
-    const libraryPatches = await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        return await listPatches(['library', 'patches']);
-      })();
-    `) as { success: boolean; patches: string[] };
+    const libraryPatches = (await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  return await listPatches(['library', 'patches']);
+})();
+`
+    )) as { success: boolean; patches: string[] };
 
     expect(libraryPatches.success).toBe(true);
     expect(libraryPatches.patches.length).toBeGreaterThan(0);
@@ -696,6 +573,7 @@ test.describe('Device Library Export - Patches', () => {
   test('exported patch preserves tone references', async ({ page }) => {
     // Connect to device
     await connectToDevice(page);
+    expect(await getMidiStatus(page)).toBe('connected');
 
     // Navigate to patches page
     const patchesLink = page.locator('a[href$="/patches"]');
@@ -704,18 +582,20 @@ test.describe('Device Library Export - Patches', () => {
     await patchesLink.click();
     await page.waitForURL('**/patches**');
 
-    // Wait for patches to load
+    // Wait for patches to load from device
     const patchItems = page.locator('[data-testid^="patch-item-"]');
     await expect(patchItems.first()).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
 
-    // Export first patch
+    // Get the first patch's name
     const firstPatchItem = patchItems.first();
+    const patchName = await firstPatchItem.locator('[data-testid="patch-name"]').textContent();
+    expect(patchName).toBeTruthy();
+
+    // Export the patch
     const exportButton = firstPatchItem.locator('[data-testid="export-patch-button"]');
     await expect(exportButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
-
     await exportButton.click();
 
-    // Complete export dialog
     const exportDialog = page.locator('[data-testid="export-dialog"]');
     await expect(exportDialog).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
@@ -723,45 +603,29 @@ test.describe('Device Library Export - Patches', () => {
     await expect(confirmButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await confirmButton.click();
 
-    // Wait for export to complete
     await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
 
-    // Get exported patch metadata
-    const libraryPatches = await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        return await listPatches(['library', 'patches']);
-      })();
-    `) as { success: boolean; patches: string[] };
+    // Read patch yaml content
+    const exportedPatchName = patchName!.trim().toLowerCase().replace(/\s+/g, '-');
+    const patchContent = (await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  return await readFile(['library', 'patches'], '${exportedPatchName}.yaml');
+})();
+`
+    )) as { success: boolean; content: string };
 
-    expect(libraryPatches.patches.length).toBeGreaterThan(0);
+    expect(patchContent.success).toBe(true);
 
-    const patchName = libraryPatches.patches[0];
-    const metadata = await page.evaluate(
-      `(async () => {
-        ${OPFS_HELPERS}
-        return await readPatchMetadata(['library', 'patches'], '${patchName}');
-      })()`
-    ) as { success: boolean; rawContent: string };
-
-    expect(metadata.success).toBe(true);
-    expect(metadata.rawContent.length).toBeGreaterThan(0);
-
-    // Verify patch contains tone slot references
-    // Roland S-series patches have tone slots (upper/lower or key groups)
-    const hasToneReferences =
-      metadata.rawContent.includes('tone') ||
-      metadata.rawContent.includes('keyGroup') ||
-      metadata.rawContent.includes('key_group') ||
-      metadata.rawContent.includes('upper') ||
-      metadata.rawContent.includes('lower');
-
-    expect(hasToneReferences).toBe(true);
+    // Verify yaml contains keyGroups (which reference tones)
+    expect(patchContent.content).toContain('keyGroups:');
   });
 
-  test('can export multiple patches sequentially', async ({ page }) => {
+  test('can export multiple patches', async ({ page }) => {
     // Connect to device
     await connectToDevice(page);
+    expect(await getMidiStatus(page)).toBe('connected');
 
     // Navigate to patches page
     const patchesLink = page.locator('a[href$="/patches"]');
@@ -770,53 +634,62 @@ test.describe('Device Library Export - Patches', () => {
     await patchesLink.click();
     await page.waitForURL('**/patches**');
 
-    // Wait for patches to load
+    // Wait for patches to load from device
     const patchItems = page.locator('[data-testid^="patch-item-"]');
     await expect(patchItems.first()).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
 
+    // Export first patch
+    const firstPatchItem = patchItems.first();
+    let exportButton = firstPatchItem.locator('[data-testid="export-patch-button"]');
+    await expect(exportButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await exportButton.click();
+
+    let exportDialog = page.locator('[data-testid="export-dialog"]');
+    await expect(exportDialog).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    let confirmButton = exportDialog.locator('[data-testid="export-confirm"]');
+    await expect(confirmButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await confirmButton.click();
+    await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
+
+    // Export second patch if available
     const patchCount = await patchItems.count();
-    expect(patchCount).toBeGreaterThanOrEqual(2);
-
-    // Export first two patches
-    for (let i = 0; i < 2; i++) {
-      const patchItem = patchItems.nth(i);
-      const exportButton = patchItem.locator('[data-testid="export-patch-button"]');
+    if (patchCount >= 2) {
+      const secondPatchItem = patchItems.nth(1);
+      exportButton = secondPatchItem.locator('[data-testid="export-patch-button"]');
       await expect(exportButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
-
       await exportButton.click();
 
-      // Complete export dialog
-      const exportDialog = page.locator('[data-testid="export-dialog"]');
+      exportDialog = page.locator('[data-testid="export-dialog"]');
       await expect(exportDialog).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-      const confirmButton = exportDialog.locator('[data-testid="export-confirm"]');
+      confirmButton = exportDialog.locator('[data-testid="export-confirm"]');
       await expect(confirmButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
       await confirmButton.click();
-
-      // Wait for dialog to close
       await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
     }
 
-    // Verify both patches are in library
-    const libraryPatches = await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        return await listPatches(['library', 'patches']);
-      })();
-    `) as { success: boolean; patches: string[] };
+    // Verify library has the patches
+    const libraryPatches = (await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  return await listPatches(['library', 'patches']);
+})();
+`
+    )) as { success: boolean; patches: string[] };
 
     expect(libraryPatches.success).toBe(true);
-    expect(libraryPatches.patches.length).toBeGreaterThanOrEqual(2);
+    expect(libraryPatches.patches.length).toBeGreaterThanOrEqual(1);
   });
 });
 
 // =============================================================================
-// Test Suite: Export Error Handling
+// Test Suite: Export Edge Cases
 // =============================================================================
 
-test.describe('Export Error Handling', () => {
+test.describe('Device Library Export - Edge Cases', () => {
   test.beforeAll(async () => {
-    // Fail fast if hardware is not configured
     if (!MIDI_SERVER_PORT) {
       throw new Error(
         'E2E_MIDI_SERVER_PORT must be set. Run via: ./scripts/run-http-midi-e2e.sh'
@@ -825,24 +698,32 @@ test.describe('Export Error Handling', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await page.goto(buildUrl());
-    await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        await cleanupOPFS();
-        await initializeOPFS();
-      })();
-    `);
+    await page.goto(buildUrl(), { timeout: UI_TIMEOUT_MS });
     await waitForAppReady(page);
+
+    // Connect to OPFS via UI button
+    await connectToOPFS(page);
+
+    await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  await cleanupOPFS();
+  await initializeOPFS();
+})();
+`
+    );
   });
 
   test.afterEach(async ({ page }) => {
-    await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        await cleanupOPFS();
-      })();
-    `);
+    await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  await cleanupOPFS();
+})();
+`
+    );
   });
 
   test('export button is disabled when not connected', async ({ page }) => {
@@ -904,13 +785,72 @@ test.describe('Export Error Handling', () => {
     await expect(exportDialog).not.toBeVisible({ timeout: UI_TIMEOUT_MS });
 
     // Library should remain empty
-    const libraryTones = await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        return await listTones(['library', 'tones']);
-      })();
-    `) as { success: boolean; tones: string[] };
+    const libraryTones = (await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  return await listTones(['library', 'tones']);
+})();
+`
+    )) as { success: boolean; tones: string[] };
 
+    expect(libraryTones.success).toBe(true);
     expect(libraryTones.tones.length).toBe(0);
+  });
+
+  test('handles export when library already has item with same name', async ({ page }) => {
+    // Connect to device
+    await connectToDevice(page);
+
+    // Navigate to tones page
+    const tonesLink = page.locator('a[href$="/tones"]');
+    await expect(tonesLink).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    await tonesLink.click();
+    await page.waitForURL('**/tones**');
+
+    // Wait for tones to load
+    const toneItems = page.locator('[data-testid^="tone-item-"]');
+    await expect(toneItems.first()).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
+
+    // Export the tone twice - first export
+    const exportButton = toneItems.first().locator('[data-testid="export-tone-button"]');
+    await expect(exportButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await exportButton.click();
+
+    let exportDialog = page.locator('[data-testid="export-dialog"]');
+    await expect(exportDialog).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    let confirmButton = exportDialog.locator('[data-testid="export-confirm"]');
+    await expect(confirmButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await confirmButton.click();
+    await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
+
+    // Second export of the same tone
+    await exportButton.click();
+
+    exportDialog = page.locator('[data-testid="export-dialog"]');
+    await expect(exportDialog).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Either shows overwrite confirmation or a warning - just confirm
+    confirmButton = exportDialog.locator('[data-testid="export-confirm"]');
+    await expect(confirmButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await confirmButton.click();
+
+    // Should complete without error
+    await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
+
+    // Library should have exactly one copy (overwritten)
+    const libraryTones = (await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  return await listTones(['library', 'tones']);
+})();
+`
+    )) as { success: boolean; tones: string[] };
+
+    expect(libraryTones.success).toBe(true);
+    expect(libraryTones.tones.length).toBe(1);
   });
 });

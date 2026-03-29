@@ -77,9 +77,53 @@ AUDIOTOOLS_CLI_SRC     := $(shell find $(MODULES_DIR)/audiotools-cli/src -name '
 SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean
+.PHONY: build clean test-e2e test-e2e-hardware test-e2e-library test-e2e-device-library test-e2e-ui
 
 build: $(ALL_STAMPS)
+
+# ---------------------------------------------------------------------------
+# E2E Test Infrastructure
+# ---------------------------------------------------------------------------
+
+# midi-server binary location (from sibling repo)
+MIDI_SERVER_REPO := $(realpath $(CURDIR)/../../midi-server-work/midi-server-sse-events)
+MIDI_SERVER_BIN := $(MIDI_SERVER_REPO)/build/MidiHttpServer_artefacts/Release/MidiHttpServer
+
+# Verify midi-server exists before running hardware tests
+.PHONY: check-midi-server
+check-midi-server:
+	@if [ ! -x "$(MIDI_SERVER_BIN)" ]; then \
+		echo "ERROR: midi-server not found at $(MIDI_SERVER_BIN)"; \
+		echo ""; \
+		echo "Build it first:"; \
+		echo "  cd $(MIDI_SERVER_REPO)"; \
+		echo "  cmake -B build -DCMAKE_BUILD_TYPE=Release"; \
+		echo "  cmake --build build"; \
+		exit 1; \
+	fi
+	@echo "✓ midi-server found: $(MIDI_SERVER_BIN)"
+
+# Run all e2e tests (UI + library, no hardware required)
+test-e2e: $(ROLAND_SXX0_EDITOR)
+	cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e
+
+# Run hardware e2e tests (requires device + midi-server)
+test-e2e-hardware: $(ROLAND_SXX0_EDITOR) check-midi-server
+	cd $(MODULES_DIR)/roland-sxx0-editor && \
+		MIDI_SERVER_BIN="$(MIDI_SERVER_BIN)" ./scripts/run-http-midi-e2e.sh
+
+# Run library e2e tests (OPFS, no hardware)
+test-e2e-library: $(ROLAND_SXX0_EDITOR)
+	cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-library-e2e.sh
+
+# Run device-library e2e tests (export/import between device and OPFS library)
+test-e2e-device-library: $(ROLAND_SXX0_EDITOR) check-midi-server
+	cd $(MODULES_DIR)/roland-sxx0-editor && \
+		MIDI_SERVER_BIN="$(MIDI_SERVER_BIN)" ./scripts/run-device-library-e2e.sh
+
+# Run basic UI navigation tests
+test-e2e-ui: $(ROLAND_SXX0_EDITOR)
+	cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e
 
 $(INSTALL_STAMP): pnpm-lock.yaml
 	pnpm install

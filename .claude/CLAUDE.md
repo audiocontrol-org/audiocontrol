@@ -189,6 +189,47 @@ pnpm --filter <module> test          # Test specific module
 - Never use `ts-node` — use `tsx`
 - Never call builds "production-ready"
 
+## E2E Testing Tenets
+
+E2E tests verify the application works correctly in real-world conditions. These principles are non-negotiable:
+
+### 1. Use devenv Infrastructure
+
+All e2e tests run within the devenv environment which provides:
+- Consistent Node.js version
+- Required system dependencies (midi-server, etc.)
+- Playwright browsers pre-configured
+- Environment variables set correctly
+
+```bash
+devenv shell
+cd modules/roland-sxx0-editor
+./scripts/run-http-midi-e2e.sh
+```
+
+### 2. No Mocking
+
+E2E tests must use real systems:
+- **Real MIDI hardware** — Tests run against actual Roland S-330/S-550 devices
+- **Real storage backends** — OPFS, local filesystem, or cloud storage (not in-memory mocks)
+- **Real browser APIs** — Web MIDI, File System Access API, OPFS
+- **Real network** — HTTP MIDI transport to midi-server
+
+If a test cannot run without mocks, it belongs in unit tests or integration tests, not e2e tests.
+
+### 3. No Workarounds or Hacks
+
+The goal is to **test the app for correctness**, not to make tests pass:
+- **No query parameter shortcuts** — Tests interact with the UI the same way users do
+- **No bypassing permission flows** — If users must click a button, tests must click that button
+- **No special test modes** — The app under test should be identical to production
+- **No stubbing browser APIs** — Use real APIs or skip the test
+
+If a test requires a workaround, that indicates either:
+1. A bug in the app that should be fixed
+2. A missing feature that should be built
+3. A test that shouldn't be an e2e test
+
 ## Hardware E2E Testing (roland-sxx0-editor)
 
 The `roland-sxx0-editor` module includes hardware e2e tests that run against real Roland S-series samplers. These tests use a heartbeat/watchdog system to detect stuck tests quickly.

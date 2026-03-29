@@ -16,13 +16,20 @@
 
 import { test, expect, type Page } from '@playwright/test';
 
+// Deviation: Using relative import because e2e/ is outside src/ and @/ path alias
+// only applies to src/. This pattern should not be copied to application code.
+import {
+  connectToDevice,
+  connectToOPFS,
+  waitForAppReady,
+  getMidiStatus,
+} from './helpers/connection-helper';
+
 // Short timeouts - fail fast for hardware tests
 test.setTimeout(15_000);
 
 // Environment variables set by run-http-midi-e2e.sh
 const MIDI_SERVER_PORT = process.env.E2E_MIDI_SERVER_PORT;
-const MIDI_INPUT_PORT = process.env.E2E_MIDI_INPUT_PORT;
-const MIDI_OUTPUT_PORT = process.env.E2E_MIDI_OUTPUT_PORT;
 
 // Default to S-330 for tests (can be overridden via E2E_DEVICE_TYPE)
 const DEVICE_TYPE = process.env.E2E_DEVICE_TYPE ?? 's330';
@@ -30,7 +37,6 @@ const EDITOR_BASE_PATH = `/roland/${DEVICE_TYPE}/editor`;
 
 // Timeouts for various operations
 const UI_TIMEOUT_MS = 5000;
-const CONNECTION_TIMEOUT_MS = 10000;
 const IMPORT_TIMEOUT_MS = 10000;
 
 // Test fixture content - based on e2e/fixtures/tones/basic-sine.yaml
@@ -125,12 +131,34 @@ const OPFS_HELPERS = `
   }
 
   async function deleteDirectoryContents(dirHandle) {
+    // Collect entries first to avoid issues with modifying during iteration
+    const entries = [];
     for await (const entry of dirHandle.values()) {
-      if (entry.kind === 'directory') {
-        const subDir = await dirHandle.getDirectoryHandle(entry.name);
-        await deleteDirectoryContents(subDir);
+      entries.push({ name: entry.name, kind: entry.kind });
+    }
+
+    for (const entry of entries) {
+      try {
+        if (entry.kind === 'directory') {
+          // Get subdirectory and recursively delete its contents
+          try {
+            const subDir = await dirHandle.getDirectoryHandle(entry.name);
+            await deleteDirectoryContents(subDir);
+          } catch (e) {
+            // Directory may have been deleted already, ignore NotFoundError
+            if (e.name !== 'NotFoundError') {
+              throw e;
+            }
+          }
+        }
+        // Remove the entry (file or now-empty directory)
+        await dirHandle.removeEntry(entry.name, { recursive: true });
+      } catch (e) {
+        // Ignore NotFoundError - entry may have been deleted already
+        if (e.name !== 'NotFoundError') {
+          throw e;
+        }
       }
-      await dirHandle.removeEntry(entry.name, { recursive: true });
     }
   }
 
@@ -169,14 +197,21 @@ const OPFS_HELPERS = `
   async function listDirectory(pathSegments) {
     const root = await getOPFSRoot();
     let current = root;
-    for (const segment of pathSegments) {
-      current = await current.getDirectoryHandle(segment);
+    try {
+      for (const segment of pathSegments) {
+        current = await current.getDirectoryHandle(segment);
+      }
+      const entries = [];
+      for await (const entry of current.values()) {
+        entries.push({ name: entry.name, kind: entry.kind });
+      }
+      return { success: true, entries };
+    } catch (e) {
+      if (e.name === 'NotFoundError') {
+        return { success: false, error: 'Directory not found', entries: [] };
+      }
+      throw e;
     }
-    const entries = [];
-    for await (const entry of current.values()) {
-      entries.push({ name: entry.name, kind: entry.kind });
-    }
-    return { success: true, entries };
   }
 `;
 
@@ -192,155 +227,67 @@ function buildUrl(subpath: string = ''): string {
 }
 
 /**
- * Wait for the app to be ready (MIDI store initialized)
- */
-async function waitForAppReady(page: Page): Promise<void> {
-  await page.waitForFunction(
-    () => (window as unknown as Record<string, unknown>).__midiStore !== undefined,
-    { timeout: UI_TIMEOUT_MS }
-  );
-}
-
-/**
- * Get MIDI connection status from the app's store
- */
-async function getMidiStatus(page: Page): Promise<string> {
-  return page.evaluate(() => {
-    const store = (window as unknown as Record<string, unknown>).__midiStore as {
-      getState: () => { status: string };
-    };
-    return store.getState().status;
-  });
-}
-
-/**
- * Connect to device via the app's UI.
- */
-async function connectToDevice(page: Page): Promise<void> {
-  const inputSelect = page.locator('[data-testid="midi-input-select"]');
-  await inputSelect.waitFor({ state: 'visible', timeout: UI_TIMEOUT_MS });
-
-  await page.waitForFunction(
-    () => {
-      const select = document.querySelector('[data-testid="midi-input-select"]') as HTMLSelectElement;
-      return select && select.options.length > 1;
-    },
-    { timeout: UI_TIMEOUT_MS }
-  );
-
-  // Select input port
-  if (MIDI_INPUT_PORT) {
-    const options = await inputSelect.locator('option').all();
-    for (const option of options) {
-      const text = await option.textContent();
-      if (text?.includes(MIDI_INPUT_PORT)) {
-        const value = await option.getAttribute('value');
-        if (value) {
-          await inputSelect.selectOption(value);
-          break;
-        }
-      }
-    }
-  } else {
-    const inputOptions = await inputSelect.locator('option:not([value=""])').all();
-    if (inputOptions.length > 0) {
-      const value = await inputOptions[0].getAttribute('value');
-      if (value) await inputSelect.selectOption(value);
-    }
-  }
-
-  // Select output port
-  const outputSelect = page.locator('[data-testid="midi-output-select"]');
-  if (MIDI_OUTPUT_PORT) {
-    const options = await outputSelect.locator('option').all();
-    for (const option of options) {
-      const text = await option.textContent();
-      if (text?.includes(MIDI_OUTPUT_PORT)) {
-        const value = await option.getAttribute('value');
-        if (value) {
-          await outputSelect.selectOption(value);
-          break;
-        }
-      }
-    }
-  } else {
-    const outputOptions = await outputSelect.locator('option:not([value=""])').all();
-    if (outputOptions.length > 0) {
-      const value = await outputOptions[0].getAttribute('value');
-      if (value) await outputSelect.selectOption(value);
-    }
-  }
-
-  // Click connect button
-  const connectButton = page.locator('[data-testid="connect-button"]');
-  await connectButton.click();
-
-  // Wait for connection
-  await page.waitForFunction(
-    () => {
-      const store = (window as unknown as Record<string, unknown>).__midiStore as {
-        getState: () => { status: string };
-      } | undefined;
-      return store?.getState().status === 'connected';
-    },
-    { timeout: CONNECTION_TIMEOUT_MS }
-  );
-}
-
-/**
  * Set up the test library with fixture data in OPFS.
  */
 async function setupTestLibrary(page: Page): Promise<void> {
-  await page.evaluate(`
-    ${OPFS_HELPERS}
-    (async () => {
-      // Clean up any existing data
-      await cleanupOPFS();
+  await page.evaluate(
+    OPFS_HELPERS +
+      `
+(async () => {
+  // Clean up any existing data
+  await cleanupOPFS();
 
-      // Create library structure
-      const root = await getOPFSRoot();
-      const library = await root.getDirectoryHandle('library', { create: true });
-      await library.getDirectoryHandle('tones', { create: true });
-      await library.getDirectoryHandle('patches', { create: true });
-      await library.getDirectoryHandle('sets', { create: true });
-    })();
-  `);
+  // Create library structure
+  const root = await getOPFSRoot();
+  const library = await root.getDirectoryHandle('library', { create: true });
+  await library.getDirectoryHandle('tones', { create: true });
+  await library.getDirectoryHandle('patches', { create: true });
+  await library.getDirectoryHandle('sets', { create: true });
+})();
+`
+  );
 
   // Write test tone fixture
-  await page.evaluate(`
-    ${OPFS_HELPERS}
-    (async () => {
-      await writeFile(
-        ['library', 'tones'],
-        'e2e-test-tone.yaml',
-        ${JSON.stringify(BASIC_TONE_YAML)}
-      );
-    })();
-  `);
+  await page.evaluate(
+    OPFS_HELPERS +
+      `
+(async () => {
+  await writeFile(
+    ['library', 'tones'],
+    'e2e-test-tone.yaml',
+    ${JSON.stringify(BASIC_TONE_YAML)}
+  );
+})();
+`
+  );
 
   // Write test patch fixture
-  await page.evaluate(`
-    ${OPFS_HELPERS}
-    (async () => {
-      await writeFile(
-        ['library', 'patches'],
-        'e2e-test-patch.yaml',
-        ${JSON.stringify(BASIC_PATCH_YAML)}
-      );
-    })();
-  `);
+  await page.evaluate(
+    OPFS_HELPERS +
+      `
+(async () => {
+  await writeFile(
+    ['library', 'patches'],
+    'e2e-test-patch.yaml',
+    ${JSON.stringify(BASIC_PATCH_YAML)}
+  );
+})();
+`
+  );
 }
 
 /**
  * Clean up OPFS after tests.
  */
 async function cleanupTestLibrary(page: Page): Promise<void> {
-  await page.evaluate(`
-    ${OPFS_HELPERS}
-    (async () => {
-      await cleanupOPFS();
-    })();
-  `);
+  await page.evaluate(
+    OPFS_HELPERS +
+      `
+(async () => {
+  await cleanupOPFS();
+})();
+`
+  );
 }
 
 // =============================================================================
@@ -360,6 +307,11 @@ test.describe('Import Tone from Library to Device', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(buildUrl(), { timeout: UI_TIMEOUT_MS });
     await waitForAppReady(page);
+
+    // Connect to OPFS via UI button
+    await connectToOPFS(page);
+
+    // Set up test library with fixtures
     await setupTestLibrary(page);
   });
 
@@ -499,6 +451,11 @@ test.describe('Import Patch from Library to Device', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(buildUrl(), { timeout: UI_TIMEOUT_MS });
     await waitForAppReady(page);
+
+    // Connect to OPFS via UI button
+    await connectToOPFS(page);
+
+    // Set up test library with fixtures
     await setupTestLibrary(page);
   });
 
@@ -565,19 +522,21 @@ test.describe('Import Patch from Library to Device', () => {
     await connectToDevice(page);
 
     // First, remove the tone from the library so patch references a missing tone
-    await page.evaluate(`
-      ${OPFS_HELPERS}
-      (async () => {
-        const root = await getOPFSRoot();
-        const library = await root.getDirectoryHandle('library');
-        const tones = await library.getDirectoryHandle('tones');
-        try {
-          await tones.removeEntry('e2e-test-tone.yaml');
-        } catch {
-          // Ignore if file doesn't exist
-        }
-      })();
-    `);
+    await page.evaluate(
+      OPFS_HELPERS +
+        `
+(async () => {
+  const root = await getOPFSRoot();
+  const library = await root.getDirectoryHandle('library');
+  const tones = await library.getDirectoryHandle('tones');
+  try {
+    await tones.removeEntry('e2e-test-tone.yaml');
+  } catch {
+    // Ignore if file doesn't exist
+  }
+})();
+`
+    );
 
     // Navigate to library
     const libraryLink = page.locator('[data-testid="library-nav-link"]');
