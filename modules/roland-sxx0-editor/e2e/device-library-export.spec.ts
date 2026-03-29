@@ -11,13 +11,14 @@
  * Run via: ./scripts/run-http-midi-e2e.sh --grep "Device Library Export"
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 // Deviation: Using relative import because e2e/ is outside src/ and @/ path alias
 // only applies to src/. This pattern should not be copied to application code.
 import {
   connectToDevice,
   connectToOPFS,
+  navigateToLibrary,
   waitForAppReady,
   getMidiStatus,
 } from './helpers/connection-helper';
@@ -52,198 +53,249 @@ function buildUrl(subpath: string = ''): string {
 
 /**
  * OPFS helper functions to be evaluated in browser context.
- * These are inlined because page.evaluate cannot import modules.
+ * These are wrapped in an object to avoid issues with async function declarations.
  */
-const OPFS_HELPERS = `
-  async function getOPFSRoot() {
-    return await navigator.storage.getDirectory();
-  }
+function createOPFSHelpers(deviceType: string): string {
+  return `
+    const opfsHelpers = {
+      deviceType: '${deviceType}',
 
-  async function initializeOPFS() {
-    const root = await getOPFSRoot();
-    const library = await root.getDirectoryHandle('library', { create: true });
-    await library.getDirectoryHandle('tones', { create: true });
-    await library.getDirectoryHandle('patches', { create: true });
-    await library.getDirectoryHandle('sets', { create: true });
-    return { success: true };
-  }
+      async getOPFSRoot() {
+        return await navigator.storage.getDirectory();
+      },
 
-  async function fileExists(pathSegments, fileName) {
-    const root = await getOPFSRoot();
-    let current = root;
-    try {
-      for (const segment of pathSegments) {
-        current = await current.getDirectoryHandle(segment);
-      }
-      await current.getFileHandle(fileName);
-      return true;
-    } catch {
-      return false;
-    }
-  }
+      async initializeOPFS() {
+        const root = await this.getOPFSRoot();
+        const library = await root.getDirectoryHandle('library', { create: true });
+        const deviceDir = await library.getDirectoryHandle(this.deviceType, { create: true });
+        await deviceDir.getDirectoryHandle('tones', { create: true });
+        await deviceDir.getDirectoryHandle('patches', { create: true });
+        await deviceDir.getDirectoryHandle('sets', { create: true });
+        return { success: true };
+      },
 
-  async function readFile(pathSegments, fileName) {
-    const root = await getOPFSRoot();
-    let current = root;
-    for (const segment of pathSegments) {
-      current = await current.getDirectoryHandle(segment);
-    }
-    const fileHandle = await current.getFileHandle(fileName);
-    const file = await fileHandle.getFile();
-    const content = await file.text();
-    return { success: true, content };
-  }
+      async fileExists(pathSegments, fileName) {
+        const root = await this.getOPFSRoot();
+        let current = root;
+        try {
+          for (const segment of pathSegments) {
+            current = await current.getDirectoryHandle(segment);
+          }
+          await current.getFileHandle(fileName);
+          return true;
+        } catch {
+          return false;
+        }
+      },
 
-  async function getFileSize(pathSegments, fileName) {
-    const root = await getOPFSRoot();
-    let current = root;
-    for (const segment of pathSegments) {
-      current = await current.getDirectoryHandle(segment);
-    }
-    const fileHandle = await current.getFileHandle(fileName);
-    const file = await fileHandle.getFile();
-    return { success: true, size: file.size };
-  }
+      async readFile(pathSegments, fileName) {
+        const root = await this.getOPFSRoot();
+        let current = root;
+        for (const segment of pathSegments) {
+          current = await current.getDirectoryHandle(segment);
+        }
+        const fileHandle = await current.getFileHandle(fileName);
+        const file = await fileHandle.getFile();
+        const content = await file.text();
+        return { success: true, content };
+      },
 
-  async function listDirectory(pathSegments) {
-    const root = await getOPFSRoot();
-    let current = root;
-    try {
-      for (const segment of pathSegments) {
-        current = await current.getDirectoryHandle(segment);
-      }
-      const entries = [];
-      for await (const entry of current.values()) {
-        entries.push({ name: entry.name, kind: entry.kind });
-      }
-      return { success: true, entries };
-    } catch (e) {
-      if (e.name === 'NotFoundError') {
-        return { success: false, error: 'Directory not found', entries: [] };
-      }
-      throw e;
-    }
-  }
+      async getFileSize(pathSegments, fileName) {
+        const root = await this.getOPFSRoot();
+        let current = root;
+        for (const segment of pathSegments) {
+          current = await current.getDirectoryHandle(segment);
+        }
+        const fileHandle = await current.getFileHandle(fileName);
+        const file = await fileHandle.getFile();
+        return { success: true, size: file.size };
+      },
 
-  async function deleteDirectoryContents(dirHandle) {
-    // Collect entries first to avoid issues with modifying during iteration
-    const entries = [];
-    for await (const entry of dirHandle.values()) {
-      entries.push({ name: entry.name, kind: entry.kind });
-    }
+      async listDirectory(pathSegments) {
+        const root = await this.getOPFSRoot();
+        let current = root;
+        try {
+          for (const segment of pathSegments) {
+            current = await current.getDirectoryHandle(segment);
+          }
+          const entries = [];
+          for await (const entry of current.values()) {
+            entries.push({ name: entry.name, kind: entry.kind });
+          }
+          return { success: true, entries };
+        } catch (e) {
+          if (e.name === 'NotFoundError') {
+            return { success: false, error: 'Directory not found', entries: [] };
+          }
+          throw e;
+        }
+      },
 
-    for (const entry of entries) {
-      try {
-        if (entry.kind === 'directory') {
-          // Get subdirectory and recursively delete its contents
+      async deleteDirectoryContents(dirHandle) {
+        const entries = [];
+        for await (const entry of dirHandle.values()) {
+          entries.push({ name: entry.name, kind: entry.kind });
+        }
+
+        for (const entry of entries) {
           try {
-            const subDir = await dirHandle.getDirectoryHandle(entry.name);
-            await deleteDirectoryContents(subDir);
+            if (entry.kind === 'directory') {
+              try {
+                const subDir = await dirHandle.getDirectoryHandle(entry.name);
+                await this.deleteDirectoryContents(subDir);
+              } catch (e) {
+                if (e.name !== 'NotFoundError') {
+                  throw e;
+                }
+              }
+            }
+            await dirHandle.removeEntry(entry.name, { recursive: true });
           } catch (e) {
-            // Directory may have been deleted already, ignore NotFoundError
             if (e.name !== 'NotFoundError') {
               throw e;
             }
           }
         }
-        // Remove the entry (file or now-empty directory)
-        await dirHandle.removeEntry(entry.name, { recursive: true });
-      } catch (e) {
-        // Ignore NotFoundError - entry may have been deleted already
-        if (e.name !== 'NotFoundError') {
+      },
+
+      async cleanupOPFS() {
+        const root = await this.getOPFSRoot();
+        await this.deleteDirectoryContents(root);
+        return { success: true };
+      },
+
+      async listTones(pathSegments) {
+        const root = await this.getOPFSRoot();
+        let current = root;
+        try {
+          for (const segment of pathSegments) {
+            current = await current.getDirectoryHandle(segment);
+          }
+
+          const files = [];
+          for await (const entry of current.values()) {
+            if (entry.kind === 'file') {
+              files.push(entry.name);
+            }
+          }
+
+          const yamlFiles = files.filter(f => f.endsWith('.yaml')).map(f => f.slice(0, -5));
+          const wavFiles = files.filter(f => f.endsWith('.wav')).map(f => f.slice(0, -4));
+
+          const tones = yamlFiles.filter(name => wavFiles.includes(name));
+
+          return { success: true, tones };
+        } catch (e) {
+          if (e.name === 'NotFoundError') {
+            return { success: false, error: 'Directory not found', tones: [] };
+          }
           throw e;
         }
-      }
-    }
-  }
+      },
 
-  async function cleanupOPFS() {
-    const root = await getOPFSRoot();
-    await deleteDirectoryContents(root);
-    return { success: true };
-  }
+      async listPatches(pathSegments) {
+        const root = await this.getOPFSRoot();
+        let current = root;
+        try {
+          for (const segment of pathSegments) {
+            current = await current.getDirectoryHandle(segment);
+          }
 
-  async function listTones(pathSegments) {
-    const root = await getOPFSRoot();
-    let current = root;
-    try {
-      for (const segment of pathSegments) {
-        current = await current.getDirectoryHandle(segment);
-      }
+          // Patches are directories containing patch.yaml
+          const patches = [];
+          for await (const entry of current.values()) {
+            if (entry.kind === 'directory') {
+              // Check if this directory contains a patch.yaml file
+              try {
+                const patchDir = await current.getDirectoryHandle(entry.name);
+                await patchDir.getFileHandle('patch.yaml');
+                patches.push(entry.name);
+              } catch {
+                // Directory doesn't contain patch.yaml, skip it
+              }
+            }
+          }
 
-      const files = [];
-      for await (const entry of current.values()) {
-        if (entry.kind === 'file') {
-          files.push(entry.name);
+          return { success: true, patches };
+        } catch (e) {
+          if (e.name === 'NotFoundError') {
+            return { success: false, error: 'Directory not found', patches: [] };
+          }
+          throw e;
         }
-      }
+      },
 
-      const yamlFiles = files.filter(f => f.endsWith('.yaml')).map(f => f.slice(0, -5));
-      const wavFiles = files.filter(f => f.endsWith('.wav')).map(f => f.slice(0, -4));
-
-      const tones = yamlFiles.filter(name => wavFiles.includes(name));
-
-      return { success: true, tones };
-    } catch (e) {
-      if (e.name === 'NotFoundError') {
-        return { success: false, error: 'Directory not found', tones: [] };
-      }
-      throw e;
-    }
-  }
-
-  async function listPatches(pathSegments) {
-    const root = await getOPFSRoot();
-    let current = root;
-    try {
-      for (const segment of pathSegments) {
-        current = await current.getDirectoryHandle(segment);
-      }
-
-      const patches = [];
-      for await (const entry of current.values()) {
-        if (entry.kind === 'file' && entry.name.endsWith('.yaml')) {
-          patches.push(entry.name.slice(0, -5));
+      async readToneMetadata(pathSegments, toneName) {
+        const root = await this.getOPFSRoot();
+        let current = root;
+        for (const segment of pathSegments) {
+          current = await current.getDirectoryHandle(segment);
         }
-      }
 
-      return { success: true, patches };
-    } catch (e) {
-      if (e.name === 'NotFoundError') {
-        return { success: false, error: 'Directory not found', patches: [] };
-      }
-      throw e;
-    }
-  }
+        const fileHandle = await current.getFileHandle(toneName + '.yaml');
+        const file = await fileHandle.getFile();
+        const content = await file.text();
 
-  async function readToneMetadata(pathSegments, toneName) {
-    const root = await getOPFSRoot();
-    let current = root;
-    for (const segment of pathSegments) {
-      current = await current.getDirectoryHandle(segment);
-    }
-
-    const fileHandle = await current.getFileHandle(toneName + '.yaml');
-    const file = await fileHandle.getFile();
-    const content = await file.text();
-
-    const metadata = {};
-    const lines = content.split('\\n');
-    for (const line of lines) {
-      const match = line.match(/^(\\w+):\\s*"?([^"]*)"?$/);
-      if (match) {
-        const key = match[1];
-        let value = match[2];
-        if (/^-?\\d+(\\.\\d+)?$/.test(value)) {
-          value = parseFloat(value);
+        const metadata = {};
+        const lines = content.split('\\n');
+        for (const line of lines) {
+          const match = line.match(/^(\\w+):\\s*"?([^"]*)"?$/);
+          if (match) {
+            const key = match[1];
+            let value = match[2];
+            if (/^-?\\d+(\\.\\d+)?$/.test(value)) {
+              value = parseFloat(value);
+            }
+            metadata[key] = value;
+          }
         }
-        metadata[key] = value;
-      }
-    }
 
-    return { success: true, metadata, rawContent: content };
-  }
-`;
+        return { success: true, metadata, rawContent: content };
+      },
+
+      async readPatchContent(pathSegments, patchName) {
+        const root = await this.getOPFSRoot();
+        let current = root;
+        for (const segment of pathSegments) {
+          current = await current.getDirectoryHandle(segment);
+        }
+        // Patches are directories containing patch.yaml
+        const patchDir = await current.getDirectoryHandle(patchName);
+        const fileHandle = await patchDir.getFileHandle('patch.yaml');
+        const file = await fileHandle.getFile();
+        const content = await file.text();
+        return { success: true, content };
+      }
+    };
+  `;
+}
+
+/**
+ * Initialize OPFS with clean library structure.
+ * For export tests, we want an empty library to export INTO.
+ * This should be called BEFORE connectToOPFS so the app sees the structure.
+ */
+async function initializeCleanOPFS(page: Page): Promise<void> {
+  await page.evaluate(`
+    (async () => {
+      ${createOPFSHelpers(DEVICE_TYPE)}
+      await opfsHelpers.cleanupOPFS();
+      await opfsHelpers.initializeOPFS();
+    })()
+  `);
+}
+
+/**
+ * Clean up OPFS storage.
+ */
+async function cleanupOPFS(page: Page): Promise<void> {
+  await page.evaluate(`
+    (async () => {
+      ${createOPFSHelpers(DEVICE_TYPE)}
+      await opfsHelpers.cleanupOPFS();
+    })()
+  `);
+}
 
 // =============================================================================
 // Test Suite: Export Tone from Device to Library
@@ -260,41 +312,31 @@ test.describe('Device Library Export - Tones', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    // Navigate to app (starts on Connect page)
     await page.goto(buildUrl(), { timeout: UI_TIMEOUT_MS });
     await waitForAppReady(page);
 
-    // Connect to OPFS via UI button
-    await connectToOPFS(page);
+    // Connect to MIDI device first (on Connect page)
+    await connectToDevice(page);
+    expect(await getMidiStatus(page)).toBe('connected');
 
-    // Clean up and initialize OPFS before each test
-    await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  await cleanupOPFS();
-  await initializeOPFS();
-})();
-`
-    );
+    // Navigate to Library page
+    await navigateToLibrary(page);
+
+    // For export tests: initialize clean OPFS BEFORE connecting
+    // The app loads library contents when connecting, and we want it empty
+    await initializeCleanOPFS(page);
+
+    // Now connect to OPFS - app will see empty library structure
+    await connectToOPFS(page);
   });
 
   test.afterEach(async ({ page }) => {
     // Clean up OPFS after each test
-    await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  await cleanupOPFS();
-})();
-`
-    );
+    await cleanupOPFS(page);
   });
 
   test('can export tone from device to library', async ({ page }) => {
-    // Connect to device
-    await connectToDevice(page);
-    expect(await getMidiStatus(page)).toBe('connected');
-
     // Navigate to tones page
     const tonesLink = page.locator('a[href$="/tones"]');
     await expect(tonesLink).toBeVisible({ timeout: UI_TIMEOUT_MS });
@@ -328,15 +370,13 @@ test.describe('Device Library Export - Tones', () => {
     // Wait for dialog to close (indicates export complete)
     await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
 
-    // Verify tone appears in library
-    const libraryTones = (await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  return await listTones(['library', 'tones']);
-})();
-`
-    )) as { success: boolean; tones: string[] };
+    // Verify tone appears in library (device-specific folder)
+    const libraryTones = (await page.evaluate(`
+      (async () => {
+        ${createOPFSHelpers(DEVICE_TYPE)}
+        return await opfsHelpers.listTones(['library', '${DEVICE_TYPE}', 'tones']);
+      })()
+    `)) as { success: boolean; tones: string[] };
 
     expect(libraryTones.success).toBe(true);
     expect(libraryTones.tones.length).toBeGreaterThan(0);
@@ -352,10 +392,6 @@ test.describe('Device Library Export - Tones', () => {
   });
 
   test('exported tone has yaml and wav files', async ({ page }) => {
-    // Connect to device
-    await connectToDevice(page);
-    expect(await getMidiStatus(page)).toBe('connected');
-
     // Navigate to tones page
     const tonesLink = page.locator('a[href$="/tones"]');
     await expect(tonesLink).toBeVisible({ timeout: UI_TIMEOUT_MS });
@@ -389,33 +425,25 @@ test.describe('Device Library Export - Tones', () => {
     // Construct expected filename (tone names are normalized to kebab-case)
     const exportedToneName = toneName!.trim().toLowerCase().replace(/\s+/g, '-');
 
-    // Verify both yaml and wav files exist
-    const yamlExists = await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  return await fileExists(['library', 'tones'], '${exportedToneName}.yaml');
-})();
-`
-    );
+    // Verify both yaml and wav files exist (in device-specific folder)
+    const yamlExists = await page.evaluate(`
+      (async () => {
+        ${createOPFSHelpers(DEVICE_TYPE)}
+        return await opfsHelpers.fileExists(['library', '${DEVICE_TYPE}', 'tones'], '${exportedToneName}.yaml');
+      })()
+    `);
     expect(yamlExists).toBe(true);
 
-    const wavExists = await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  return await fileExists(['library', 'tones'], '${exportedToneName}.wav');
-})();
-`
-    );
+    const wavExists = await page.evaluate(`
+      (async () => {
+        ${createOPFSHelpers(DEVICE_TYPE)}
+        return await opfsHelpers.fileExists(['library', '${DEVICE_TYPE}', 'tones'], '${exportedToneName}.wav');
+      })()
+    `);
     expect(wavExists).toBe(true);
   });
 
   test('exported tone yaml contains device metadata', async ({ page }) => {
-    // Connect to device
-    await connectToDevice(page);
-    expect(await getMidiStatus(page)).toBe('connected');
-
     // Navigate to tones page
     const tonesLink = page.locator('a[href$="/tones"]');
     await expect(tonesLink).toBeVisible({ timeout: UI_TIMEOUT_MS });
@@ -446,16 +474,14 @@ test.describe('Device Library Export - Tones', () => {
 
     await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
 
-    // Read and verify yaml content
+    // Read and verify yaml content (from device-specific folder)
     const exportedToneName = toneName!.trim().toLowerCase().replace(/\s+/g, '-');
-    const toneMetadata = (await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  return await readToneMetadata(['library', 'tones'], '${exportedToneName}');
-})();
-`
-    )) as { success: boolean; metadata: Record<string, unknown>; rawContent: string };
+    const toneMetadata = (await page.evaluate(`
+      (async () => {
+        ${createOPFSHelpers(DEVICE_TYPE)}
+        return await opfsHelpers.readToneMetadata(['library', '${DEVICE_TYPE}', 'tones'], '${exportedToneName}');
+      })()
+    `)) as { success: boolean; metadata: Record<string, unknown>; rawContent: string };
 
     expect(toneMetadata.success).toBe(true);
 
@@ -480,40 +506,30 @@ test.describe('Device Library Export - Patches', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    // Navigate to app (starts on Connect page)
     await page.goto(buildUrl(), { timeout: UI_TIMEOUT_MS });
     await waitForAppReady(page);
 
-    // Connect to OPFS via UI button
-    await connectToOPFS(page);
+    // Connect to MIDI device first (on Connect page)
+    await connectToDevice(page);
+    expect(await getMidiStatus(page)).toBe('connected');
 
-    await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  await cleanupOPFS();
-  await initializeOPFS();
-})();
-`
-    );
+    // Navigate to Library page
+    await navigateToLibrary(page);
+
+    // For export tests: initialize clean OPFS BEFORE connecting
+    await initializeCleanOPFS(page);
+
+    // Now connect to OPFS - app will see empty library structure
+    await connectToOPFS(page);
   });
 
   test.afterEach(async ({ page }) => {
     // Clean up OPFS after each test
-    await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  await cleanupOPFS();
-})();
-`
-    );
+    await cleanupOPFS(page);
   });
 
   test('can export patch from device to library', async ({ page }) => {
-    // Connect to device
-    await connectToDevice(page);
-    expect(await getMidiStatus(page)).toBe('connected');
-
     // Navigate to patches page
     const patchesLink = page.locator('a[href$="/patches"]');
     await expect(patchesLink).toBeVisible({ timeout: UI_TIMEOUT_MS });
@@ -547,15 +563,13 @@ test.describe('Device Library Export - Patches', () => {
     // Wait for dialog to close (indicates export complete)
     await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
 
-    // Verify patch appears in library
-    const libraryPatches = (await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  return await listPatches(['library', 'patches']);
-})();
-`
-    )) as { success: boolean; patches: string[] };
+    // Verify patch appears in library (device-specific folder)
+    const libraryPatches = (await page.evaluate(`
+      (async () => {
+        ${createOPFSHelpers(DEVICE_TYPE)}
+        return await opfsHelpers.listPatches(['library', '${DEVICE_TYPE}', 'patches']);
+      })()
+    `)) as { success: boolean; patches: string[] };
 
     expect(libraryPatches.success).toBe(true);
     expect(libraryPatches.patches.length).toBeGreaterThan(0);
@@ -571,10 +585,6 @@ test.describe('Device Library Export - Patches', () => {
   });
 
   test('exported patch preserves tone references', async ({ page }) => {
-    // Connect to device
-    await connectToDevice(page);
-    expect(await getMidiStatus(page)).toBe('connected');
-
     // Navigate to patches page
     const patchesLink = page.locator('a[href$="/patches"]');
     await expect(patchesLink).toBeVisible({ timeout: UI_TIMEOUT_MS });
@@ -605,16 +615,14 @@ test.describe('Device Library Export - Patches', () => {
 
     await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
 
-    // Read patch yaml content
+    // Read patch yaml content (from device-specific folder, patches are directories)
     const exportedPatchName = patchName!.trim().toLowerCase().replace(/\s+/g, '-');
-    const patchContent = (await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  return await readFile(['library', 'patches'], '${exportedPatchName}.yaml');
-})();
-`
-    )) as { success: boolean; content: string };
+    const patchContent = (await page.evaluate(`
+      (async () => {
+        ${createOPFSHelpers(DEVICE_TYPE)}
+        return await opfsHelpers.readPatchContent(['library', '${DEVICE_TYPE}', 'patches'], '${exportedPatchName}');
+      })()
+    `)) as { success: boolean; content: string };
 
     expect(patchContent.success).toBe(true);
 
@@ -623,10 +631,6 @@ test.describe('Device Library Export - Patches', () => {
   });
 
   test('can export multiple patches', async ({ page }) => {
-    // Connect to device
-    await connectToDevice(page);
-    expect(await getMidiStatus(page)).toBe('connected');
-
     // Navigate to patches page
     const patchesLink = page.locator('a[href$="/patches"]');
     await expect(patchesLink).toBeVisible({ timeout: UI_TIMEOUT_MS });
@@ -669,15 +673,13 @@ test.describe('Device Library Export - Patches', () => {
       await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
     }
 
-    // Verify library has the patches
-    const libraryPatches = (await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  return await listPatches(['library', 'patches']);
-})();
-`
-    )) as { success: boolean; patches: string[] };
+    // Verify library has the patches (in device-specific folder)
+    const libraryPatches = (await page.evaluate(`
+      (async () => {
+        ${createOPFSHelpers(DEVICE_TYPE)}
+        return await opfsHelpers.listPatches(['library', '${DEVICE_TYPE}', 'patches']);
+      })()
+    `)) as { success: boolean; patches: string[] };
 
     expect(libraryPatches.success).toBe(true);
     expect(libraryPatches.patches.length).toBeGreaterThanOrEqual(1);
@@ -698,32 +700,13 @@ test.describe('Device Library Export - Edge Cases', () => {
   });
 
   test.beforeEach(async ({ page }) => {
+    // Navigate to app (starts on Connect page)
     await page.goto(buildUrl(), { timeout: UI_TIMEOUT_MS });
     await waitForAppReady(page);
-
-    // Connect to OPFS via UI button
-    await connectToOPFS(page);
-
-    await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  await cleanupOPFS();
-  await initializeOPFS();
-})();
-`
-    );
   });
 
   test.afterEach(async ({ page }) => {
-    await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  await cleanupOPFS();
-})();
-`
-    );
+    await cleanupOPFS(page);
   });
 
   test('export button is disabled when not connected', async ({ page }) => {
@@ -751,8 +734,13 @@ test.describe('Device Library Export - Edge Cases', () => {
   });
 
   test('handles export cancellation gracefully', async ({ page }) => {
-    // Connect to device
+    // Connect to device first
     await connectToDevice(page);
+
+    // Navigate to Library page, initialize OPFS, then connect
+    await navigateToLibrary(page);
+    await initializeCleanOPFS(page);
+    await connectToOPFS(page);
 
     // Navigate to tones page
     const tonesLink = page.locator('a[href$="/tones"]');
@@ -784,23 +772,26 @@ test.describe('Device Library Export - Edge Cases', () => {
     // Dialog should close
     await expect(exportDialog).not.toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // Library should remain empty
-    const libraryTones = (await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  return await listTones(['library', 'tones']);
-})();
-`
-    )) as { success: boolean; tones: string[] };
+    // Library should remain empty (device-specific folder)
+    const libraryTones = (await page.evaluate(`
+      (async () => {
+        ${createOPFSHelpers(DEVICE_TYPE)}
+        return await opfsHelpers.listTones(['library', '${DEVICE_TYPE}', 'tones']);
+      })()
+    `)) as { success: boolean; tones: string[] };
 
     expect(libraryTones.success).toBe(true);
     expect(libraryTones.tones.length).toBe(0);
   });
 
   test('handles export when library already has item with same name', async ({ page }) => {
-    // Connect to device
+    // Connect to device first
     await connectToDevice(page);
+
+    // Navigate to Library page, initialize OPFS, then connect
+    await navigateToLibrary(page);
+    await initializeCleanOPFS(page);
+    await connectToOPFS(page);
 
     // Navigate to tones page
     const tonesLink = page.locator('a[href$="/tones"]');
@@ -840,15 +831,13 @@ test.describe('Device Library Export - Edge Cases', () => {
     // Should complete without error
     await expect(exportDialog).not.toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
 
-    // Library should have exactly one copy (overwritten)
-    const libraryTones = (await page.evaluate(
-      OPFS_HELPERS +
-        `
-(async () => {
-  return await listTones(['library', 'tones']);
-})();
-`
-    )) as { success: boolean; tones: string[] };
+    // Library should have exactly one copy (overwritten) - device-specific folder
+    const libraryTones = (await page.evaluate(`
+      (async () => {
+        ${createOPFSHelpers(DEVICE_TYPE)}
+        return await opfsHelpers.listTones(['library', '${DEVICE_TYPE}', 'tones']);
+      })()
+    `)) as { success: boolean; tones: string[] };
 
     expect(libraryTones.success).toBe(true);
     expect(libraryTones.tones.length).toBe(1);

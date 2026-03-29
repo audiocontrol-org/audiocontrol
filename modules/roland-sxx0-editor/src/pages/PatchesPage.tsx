@@ -11,11 +11,14 @@ import { useS330Store } from '@/stores/editorStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useBankLoader } from '@/hooks/useBankLoader';
+import { useLibraryExport } from '@/hooks/useLibraryExport';
 import { getPatchBankCount, getToneBankCount } from '@/configs/types';
 import type { SamplerClientInterface, SamplerPatch, SamplerTone } from '@/core/midi/SamplerClient';
 import { PatchList } from '@/components/patches/PatchList';
 import { PatchEditor } from '@/components/patches/PatchEditor';
 import { PatchBankLabel } from '@/components/common/PatchLabel';
+import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
+import { useLibraryConnection } from '@audiocontrol/editor-core';
 import { cn } from '@/lib/utils';
 
 export function PatchesPage() {
@@ -62,6 +65,19 @@ export function PatchesPage() {
 
   // Track if we've already initiated loading to prevent loops
   const hasInitiatedLoad = useRef(false);
+
+  // Library connection for export
+  const library = useLibraryConnection({ pickerId: 'sampler-library' });
+
+  // Library export hook - handles patch export with tone dependencies
+  const exportOps = useLibraryExport({
+    clientRef,
+    libraryHandle: library.root,
+    tones,
+    patches,
+    setIndividualTones: () => {}, // Not needed for this page
+    setIndividualPatches: () => {}, // Not needed for this page
+  });
 
   // Initialize client when adapter changes
   useEffect(() => {
@@ -128,6 +144,26 @@ export function PatchesPage() {
   const handlePatchUpdate = useCallback((index: number, patch: SamplerPatch) => {
     setPatch(index, patch, totalPatches);
   }, [setPatch, totalPatches]);
+
+  // Open export to library dialog for a specific patch
+  const handleOpenExportDialog = useCallback(async (patchIndex: number) => {
+    // Connect to library if not already connected
+    if (!library.isConnected && library.hasLocalFS) {
+      const ok = await library.connect('local');
+      if (!ok) return; // User cancelled
+    }
+
+    // Get the patch and trigger export via the hook's drag handler
+    const patch = patches[patchIndex];
+    if (patch) {
+      exportOps.handleDropDevicePatch({
+        source: 'device',
+        type: 'patch',
+        index: patchIndex,
+        name: patch.common.name || `Patch ${patchIndex + 1}`,
+      });
+    }
+  }, [library, patches, exportOps]);
 
   // Auto-load initial data when connected
   useEffect(() => {
@@ -243,6 +279,7 @@ export function PatchesPage() {
                 patchesPerBank={patchesPerBank}
                 loadingBank={loadingBank}
                 onLoadBank={(bank) => loadPatchBankWithIndicator(bank)}
+                onExportPatch={handleOpenExportDialog}
               />
             </div>
           </div>
@@ -271,6 +308,20 @@ export function PatchesPage() {
             Load Patches
           </button>
         </div>
+      )}
+
+      {/* Export to Library Dialog */}
+      {exportOps.exportPatchDialog && (
+        <ExportPatchDialog
+          open={!!exportOps.exportPatchDialog}
+          onOpenChange={(open) => { if (!open) exportOps.closeExportPatchDialog(); }}
+          patch={exportOps.exportPatchDialog.patch}
+          patchIndex={exportOps.exportPatchDialog.patchIndex}
+          onExport={exportOps.handleExportPatch}
+          isOperating={exportOps.isExporting}
+          progress={exportOps.exportPatchProgress}
+          error={exportOps.exportPatchError}
+        />
       )}
     </div>
   );

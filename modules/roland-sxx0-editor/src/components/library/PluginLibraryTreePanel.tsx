@@ -521,12 +521,16 @@ export function PluginLibraryTreePanel({
             ? { onDragOver: handlePatchDragOver, onDragEnter: handlePatchDragEnter, onDragLeave: handlePatchDragLeave, onDrop: handlePatchDrop }
             : {};
 
+          // Generate test ID for library sections: "patches" -> "library-patches-tab"
+          const sectionTestId = `library-${category.categoryId}-tab`;
+
           return (
             <TreeSection
               key={category.categoryId}
               title={category.title}
               nodes={nodes}
               category={category.categoryId}
+              data-testid={sectionTestId}
               expandedIds={expanded}
               selectedId={computeSelectedId(category.categoryId)}
               onToggleExpand={(nodeId) => onToggleExpand(category.categoryId, nodeId)}

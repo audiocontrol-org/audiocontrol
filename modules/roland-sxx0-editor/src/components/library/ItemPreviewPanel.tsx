@@ -134,6 +134,7 @@ function LibraryTonePreview({
           <button
             onClick={onImport}
             className="w-full ac-btn ac-btn-primary"
+            data-testid="import-to-device-button"
           >
             Import to Device
           </button>
@@ -295,6 +296,7 @@ function LibraryPatchPreview({
         <button
           onClick={onImport}
           className="w-full ac-btn ac-btn-primary"
+          data-testid="import-to-device-button"
         >
           Import to Device
         </button>

@@ -188,11 +188,32 @@ export async function connectToDevice(page: Page): Promise<void> {
 }
 
 /**
+ * Navigate to the Library page.
+ *
+ * This is separated from connectToOPFS so that test data can be written
+ * to OPFS BEFORE connecting. The app loads library contents when connecting,
+ * so data must exist before the connect button is clicked.
+ *
+ * @param page - Playwright page
+ */
+export async function navigateToLibrary(page: Page): Promise<void> {
+  const libraryLink = page.locator('[data-testid="library-nav-link"]');
+  await expect(libraryLink).toBeVisible({ timeout: UI_TIMEOUT_MS });
+  await libraryLink.click();
+  await page.waitForURL('**/library**');
+  console.log('Navigated to Library page');
+}
+
+/**
  * Connect to OPFS library backend via the UI.
  *
  * Clicks the "Browser Storage" button to connect to OPFS.
  * The app will then read/write from the same OPFS storage that
  * test code accesses via navigator.storage.getDirectory().
+ *
+ * IMPORTANT: The app loads library contents when this button is clicked.
+ * If you need test data to be visible to the app, write it to OPFS BEFORE
+ * calling this function.
  *
  * @param page - Playwright page
  * @throws Error if connection fails or timeout
