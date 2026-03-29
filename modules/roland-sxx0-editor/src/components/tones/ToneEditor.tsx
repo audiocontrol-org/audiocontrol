@@ -85,7 +85,7 @@ export function ToneEditor({
     const hasSampleData = tone.wave.endPoint > tone.wave.startPoint;
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" data-testid="tone-detail">
             {/* Header */}
             <div className="card">
                 <div className="mb-4 flex items-start justify-between">

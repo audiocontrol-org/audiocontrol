@@ -14,6 +14,13 @@ interface ParameterSliderProps {
   tooltip?: string;
 }
 
+/**
+ * Convert label to a valid test ID (lowercase, replace spaces/special chars with hyphens)
+ */
+function labelToTestId(label: string): string {
+  return `param-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+}
+
 export function ParameterSlider({
   label,
   value,
@@ -36,25 +43,29 @@ export function ParameterSlider({
     thumb: 'block w-4 h-4 bg-s330-text rounded-full focus:outline-none focus:ring-2 focus:ring-s330-highlight hover:bg-white transition-colors',
   };
 
+  const testId = labelToTestId(label);
+
   const slider = (
-    <CoreParameterSlider
-      label={label}
-      value={value}
-      onChange={onChange}
-      onCommit={onCommit}
-      min={min}
-      max={max}
-      step={step}
-      formatValue={formatValue}
-      disabled={disabled}
-      theme={theme}
-    />
+    <div data-testid={testId}>
+      <CoreParameterSlider
+        label={label}
+        value={value}
+        onChange={onChange}
+        onCommit={onCommit}
+        min={min}
+        max={max}
+        step={step}
+        formatValue={formatValue}
+        disabled={disabled}
+        theme={theme}
+      />
+    </div>
   );
 
   if (tooltip) {
     return (
       <Tooltip content={tooltip}>
-        <div>{slider}</div>
+        {slider}
       </Tooltip>
     );
   }

@@ -61,6 +61,7 @@ export function ToneList({ tones, selectedIndex, onSelect, loadedBanks: _loadedB
           return (
             <button
               key={index}
+              data-testid={`tone-item-${index}`}
               onClick={handleClick}
               disabled={isBankLoading}
               className={cn(

@@ -59,6 +59,7 @@ export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _load
           return (
             <button
               key={index}
+              data-testid={`patch-item-${index}`}
               onClick={handleClick}
               disabled={isBankLoading}
               className={cn(

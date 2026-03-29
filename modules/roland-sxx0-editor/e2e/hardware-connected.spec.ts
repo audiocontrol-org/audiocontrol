@@ -253,21 +253,11 @@ test.describe('Device State Reading', () => {
     await tonesLink.click();
     await page.waitForURL('**/tones**');
 
-    // Wait for tone list to populate or loading to complete
+    // Wait for tone items to appear (they render immediately, even if loading)
     const toneItems = page.locator('[data-testid^="tone-item-"]');
-    const loadingIndicator = page.locator('text=Loading');
+    await expect(toneItems.first()).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
 
-    // Either we have tone items, or we're loading
-    await expect(toneItems.first().or(loadingIndicator)).toBeVisible({
-      timeout: DATA_LOAD_TIMEOUT_MS,
-    });
-
-    // If loading, wait for it to finish
-    if (await loadingIndicator.isVisible()) {
-      await expect(loadingIndicator).not.toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
-    }
-
-    // Should have tone items after loading
+    // Should have tone items
     const toneCount = await toneItems.count();
     expect(toneCount).toBeGreaterThan(0);
   });
@@ -295,17 +285,11 @@ test.describe('Device State Reading', () => {
     await patchesLink.click();
     await page.waitForURL('**/patches**');
 
+    // Wait for patch items to appear (they render immediately, even if loading)
     const patchItems = page.locator('[data-testid^="patch-item-"]');
-    const loadingIndicator = page.locator('text=Loading');
+    await expect(patchItems.first()).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
 
-    await expect(patchItems.first().or(loadingIndicator)).toBeVisible({
-      timeout: DATA_LOAD_TIMEOUT_MS,
-    });
-
-    if (await loadingIndicator.isVisible()) {
-      await expect(loadingIndicator).not.toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
-    }
-
+    // Should have patch items
     const patchCount = await patchItems.count();
     expect(patchCount).toBeGreaterThan(0);
   });
