@@ -4,14 +4,15 @@
  * These tests use the external midi-server to handle MIDI communication,
  * bypassing the Web MIDI API which crashes in Playwright with SysEx permissions.
  *
- * This approach works around Playwright bug #29686 where auto-granted MIDI SysEx
- * permissions cause Chrome to crash.
- *
  * Servers are started by scripts/run-http-midi-e2e.sh on OS-assigned ports.
+ * The runner also validates device connectivity before starting tests.
  *
- * This config includes a heartbeat reporter that works with an external
- * watchdog process to detect stuck tests. The watchdog kills the runner
- * if no heartbeat is received for 5 seconds.
+ * Environment variables (set by runner):
+ *   E2E_VITE_PORT - Vite dev server port
+ *   E2E_MIDI_SERVER_PORT - midi-server HTTP port
+ *   E2E_MIDI_INPUT_PORT - Discovered MIDI input port name
+ *   E2E_MIDI_OUTPUT_PORT - Discovered MIDI output port name
+ *   E2E_DEVICE_ID - Roland device ID (usually 0)
  */
 
 import { defineConfig, devices } from '@playwright/test';
@@ -48,7 +49,6 @@ export default defineConfig({
     ignoreHTTPSErrors: true, // Vite uses self-signed certs
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
-    // NOTE: No MIDI permissions needed - HTTP transport doesn't use Web MIDI API
   },
   projects: [
     {

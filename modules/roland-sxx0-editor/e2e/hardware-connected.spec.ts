@@ -8,7 +8,7 @@
  * - HTTP MIDI: Run via ./scripts/run-http-midi-e2e.sh (fully automated)
  *
  * Tests interact with the app's UI, not raw MIDI APIs. Transport selection
- * happens via URL parameters and Playwright config.
+ * is pre-configured via localStorage by the test runner.
  *
  * Test categories:
  * 1. Device Connection Flow
@@ -21,10 +21,32 @@ import { test, expect, type Page } from '@playwright/test';
 // Short timeouts - fail fast for hardware tests
 test.setTimeout(15_000);
 
+// Environment variables set by run-http-midi-e2e.sh
+const MIDI_SERVER_PORT = process.env.E2E_MIDI_SERVER_PORT;
+const MIDI_INPUT_PORT = process.env.E2E_MIDI_INPUT_PORT;
+const MIDI_OUTPUT_PORT = process.env.E2E_MIDI_OUTPUT_PORT;
+
+// Default to S-330 for tests (can be overridden via E2E_DEVICE_TYPE)
+const DEVICE_TYPE = process.env.E2E_DEVICE_TYPE ?? 's330';
+const EDITOR_BASE_PATH = `/roland/${DEVICE_TYPE}/editor`;
+
 // Timeouts for various operations
 const UI_TIMEOUT_MS = 5000;
 const CONNECTION_TIMEOUT_MS = 10000;
 const DATA_LOAD_TIMEOUT_MS = 15000;
+
+/**
+ * Build URL with HTTP MIDI parameters if configured.
+ * Empty path or '/' goes to the editor root, other paths are appended.
+ */
+function buildUrl(subpath: string = ''): string {
+  // Normalize: empty string or '/' means editor root
+  const normalized = subpath === '/' ? '' : subpath;
+  const fullPath = normalized ? `${EDITOR_BASE_PATH}/${normalized}` : EDITOR_BASE_PATH;
+  if (!MIDI_SERVER_PORT) return fullPath;
+  const separator = fullPath.includes('?') ? '&' : '?';
+  return `${fullPath}${separator}midi=http&midiServerPort=${MIDI_SERVER_PORT}`;
+}
 
 /**
  * Helper to wait for the app to be ready (MIDI store initialized)
@@ -58,31 +80,64 @@ async function hasConnectionUI(page: Page): Promise<boolean> {
 
 /**
  * Helper to connect to device via the app's UI.
- * Selects the first available port pair and clicks connect.
+ * Selects the discovered port pair (from device validation) or first available.
  */
 async function connectToDevice(page: Page): Promise<void> {
-  // Wait for port selectors to be populated
-  await page.waitForSelector('[data-testid="midi-input-select"] option:not([value=""])', {
-    timeout: UI_TIMEOUT_MS,
-  });
-
-  // Select first available input port
+  // Wait for port selectors to have options loaded
   const inputSelect = page.locator('[data-testid="midi-input-select"]');
-  const inputOptions = await inputSelect.locator('option:not([value=""])').all();
-  if (inputOptions.length > 0) {
-    const value = await inputOptions[0].getAttribute('value');
-    if (value) {
-      await inputSelect.selectOption(value);
+  await inputSelect.waitFor({ state: 'visible', timeout: UI_TIMEOUT_MS });
+
+  // Wait for options to be populated (more than just the placeholder)
+  await page.waitForFunction(
+    () => {
+      const select = document.querySelector('[data-testid="midi-input-select"]') as HTMLSelectElement;
+      return select && select.options.length > 1;
+    },
+    { timeout: UI_TIMEOUT_MS }
+  );
+
+  // Select input port - prefer the discovered port from validation
+  if (MIDI_INPUT_PORT) {
+    // Try to select the discovered port
+    const options = await inputSelect.locator('option').all();
+    for (const option of options) {
+      const text = await option.textContent();
+      if (text?.includes(MIDI_INPUT_PORT)) {
+        const value = await option.getAttribute('value');
+        if (value) {
+          await inputSelect.selectOption(value);
+          break;
+        }
+      }
+    }
+  } else {
+    // Fall back to first available
+    const inputOptions = await inputSelect.locator('option:not([value=""])').all();
+    if (inputOptions.length > 0) {
+      const value = await inputOptions[0].getAttribute('value');
+      if (value) await inputSelect.selectOption(value);
     }
   }
 
-  // Select first available output port
+  // Select output port - prefer the discovered port from validation
   const outputSelect = page.locator('[data-testid="midi-output-select"]');
-  const outputOptions = await outputSelect.locator('option:not([value=""])').all();
-  if (outputOptions.length > 0) {
-    const value = await outputOptions[0].getAttribute('value');
-    if (value) {
-      await outputSelect.selectOption(value);
+  if (MIDI_OUTPUT_PORT) {
+    const options = await outputSelect.locator('option').all();
+    for (const option of options) {
+      const text = await option.textContent();
+      if (text?.includes(MIDI_OUTPUT_PORT)) {
+        const value = await option.getAttribute('value');
+        if (value) {
+          await outputSelect.selectOption(value);
+          break;
+        }
+      }
+    }
+  } else {
+    const outputOptions = await outputSelect.locator('option:not([value=""])').all();
+    if (outputOptions.length > 0) {
+      const value = await outputOptions[0].getAttribute('value');
+      if (value) await outputSelect.selectOption(value);
     }
   }
 
@@ -108,7 +163,7 @@ async function connectToDevice(page: Page): Promise<void> {
 
 test.describe('Device Connection Flow', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto(buildUrl());
     await waitForAppReady(page);
   });
 
@@ -119,38 +174,23 @@ test.describe('Device Connection Flow', () => {
 
   test('connection UI is available', async ({ page }) => {
     const hasUI = await hasConnectionUI(page);
-    if (!hasUI) {
-      test.skip(true, 'Connection UI not implemented yet');
-      return;
-    }
     expect(hasUI).toBe(true);
   });
 
   test('can connect to device', async ({ page }) => {
-    if (!(await hasConnectionUI(page))) {
-      test.skip(true, 'Connection UI not implemented yet');
-      return;
-    }
-
     await connectToDevice(page);
-
     const status = await getMidiStatus(page);
     expect(status).toBe('connected');
   });
 
   test('connection persists across navigation', async ({ page }) => {
-    if (!(await hasConnectionUI(page))) {
-      test.skip(true, 'Connection UI not implemented yet');
-      return;
-    }
-
     await connectToDevice(page);
 
     // Navigate to another page
-    const patchesLink = page.locator('a[href="/patches"]');
+    const patchesLink = page.locator('a[href$="/patches"]');
     if ((await patchesLink.count()) > 0) {
       await patchesLink.click();
-      await page.waitForURL('**/patches');
+      await page.waitForURL('**/patches**');
 
       const status = await getMidiStatus(page);
       expect(status).toBe('connected');
@@ -158,20 +198,10 @@ test.describe('Device Connection Flow', () => {
   });
 
   test('can disconnect from device', async ({ page }) => {
-    if (!(await hasConnectionUI(page))) {
-      test.skip(true, 'Connection UI not implemented yet');
-      return;
-    }
-
     await connectToDevice(page);
     expect(await getMidiStatus(page)).toBe('connected');
 
     const disconnectButton = page.locator('[data-testid="disconnect-button"]');
-    if ((await disconnectButton.count()) === 0) {
-      test.skip(true, 'Disconnect button not implemented yet');
-      return;
-    }
-
     await disconnectButton.click();
 
     await page.waitForFunction(
@@ -194,45 +224,36 @@ test.describe('Device Connection Flow', () => {
 
 test.describe('Device State Reading', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto(buildUrl());
     await waitForAppReady(page);
-
-    // Skip if no connection UI
-    if (!(await hasConnectionUI(page))) {
-      test.skip(true, 'Connection UI not implemented yet');
-      return;
-    }
-
-    // Connect to device
     await connectToDevice(page);
   });
 
   test('can navigate to tones page', async ({ page }) => {
-    const tonesLink = page.locator('a[href="/tones"]');
+    const tonesLink = page.locator('a[href$="/tones"]');
     if ((await tonesLink.count()) === 0) {
       test.skip(true, 'Tones page navigation not available');
       return;
     }
 
     await tonesLink.click();
-    await page.waitForURL('**/tones');
+    await page.waitForURL('**/tones**');
 
     // Should still be connected after navigation
     expect(await getMidiStatus(page)).toBe('connected');
   });
 
   test('tones page loads tone data from device', async ({ page }) => {
-    const tonesLink = page.locator('a[href="/tones"]');
+    const tonesLink = page.locator('a[href$="/tones"]');
     if ((await tonesLink.count()) === 0) {
       test.skip(true, 'Tones page navigation not available');
       return;
     }
 
     await tonesLink.click();
-    await page.waitForURL('**/tones');
+    await page.waitForURL('**/tones**');
 
     // Wait for tone list to populate or loading to complete
-    const toneList = page.locator('[data-testid="tone-list"]');
     const toneItems = page.locator('[data-testid^="tone-item-"]');
     const loadingIndicator = page.locator('text=Loading');
 
@@ -252,27 +273,27 @@ test.describe('Device State Reading', () => {
   });
 
   test('can navigate to patches page', async ({ page }) => {
-    const patchesLink = page.locator('a[href="/patches"]');
+    const patchesLink = page.locator('a[href$="/patches"]');
     if ((await patchesLink.count()) === 0) {
       test.skip(true, 'Patches page navigation not available');
       return;
     }
 
     await patchesLink.click();
-    await page.waitForURL('**/patches');
+    await page.waitForURL('**/patches**');
 
     expect(await getMidiStatus(page)).toBe('connected');
   });
 
   test('patches page loads patch data from device', async ({ page }) => {
-    const patchesLink = page.locator('a[href="/patches"]');
+    const patchesLink = page.locator('a[href$="/patches"]');
     if ((await patchesLink.count()) === 0) {
       test.skip(true, 'Patches page navigation not available');
       return;
     }
 
     await patchesLink.click();
-    await page.waitForURL('**/patches');
+    await page.waitForURL('**/patches**');
 
     const patchItems = page.locator('[data-testid^="patch-item-"]');
     const loadingIndicator = page.locator('text=Loading');
@@ -290,14 +311,14 @@ test.describe('Device State Reading', () => {
   });
 
   test('tone details show device parameters', async ({ page }) => {
-    const tonesLink = page.locator('a[href="/tones"]');
+    const tonesLink = page.locator('a[href$="/tones"]');
     if ((await tonesLink.count()) === 0) {
       test.skip(true, 'Tones page not available');
       return;
     }
 
     await tonesLink.click();
-    await page.waitForURL('**/tones');
+    await page.waitForURL('**/tones**');
 
     // Wait for tones to load
     const toneItems = page.locator('[data-testid^="tone-item-"]');
@@ -325,27 +346,21 @@ test.describe('Device State Reading', () => {
 
 test.describe('Sample Playback', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto(buildUrl());
     await waitForAppReady(page);
-
-    if (!(await hasConnectionUI(page))) {
-      test.skip(true, 'Connection UI not implemented yet');
-      return;
-    }
-
     await connectToDevice(page);
   });
 
   test('can trigger sample playback from UI', async ({ page }) => {
     // Navigate to tones
-    const tonesLink = page.locator('a[href="/tones"]');
+    const tonesLink = page.locator('a[href$="/tones"]');
     if ((await tonesLink.count()) === 0) {
       test.skip(true, 'Tones page not available');
       return;
     }
 
     await tonesLink.click();
-    await page.waitForURL('**/tones');
+    await page.waitForURL('**/tones**');
 
     // Wait for tones to load
     const toneItems = page.locator('[data-testid^="tone-item-"]');
@@ -375,14 +390,14 @@ test.describe('Sample Playback', () => {
 
   test('keyboard input triggers playback', async ({ page }) => {
     // Navigate to tones
-    const tonesLink = page.locator('a[href="/tones"]');
+    const tonesLink = page.locator('a[href$="/tones"]');
     if ((await tonesLink.count()) === 0) {
       test.skip(true, 'Tones page not available');
       return;
     }
 
     await tonesLink.click();
-    await page.waitForURL('**/tones');
+    await page.waitForURL('**/tones**');
 
     // Wait for tones to load
     const toneItems = page.locator('[data-testid^="tone-item-"]');
@@ -413,15 +428,12 @@ test.describe('Sample Playback', () => {
 
 test.describe('Error Handling', () => {
   test.beforeEach(async ({ page }) => {
-    await page.goto('/');
+    await page.goto(buildUrl());
     await waitForAppReady(page);
   });
 
   test('shows error state when connection fails', async ({ page }) => {
-    // This test verifies the UI handles connection errors gracefully
-    // We can't easily simulate a failed connection, but we can verify
-    // the error state exists in the store
-
+    // Verify the error state exists in the store
     const hasErrorState = await page.evaluate(() => {
       const store = (window as unknown as Record<string, unknown>).__midiStore as {
         getState: () => Record<string, unknown>;
@@ -435,19 +447,14 @@ test.describe('Error Handling', () => {
 
   test('displays connection error message in UI', async ({ page }) => {
     // Verify there's a place for error messages to appear
-    // The actual error display depends on the UI implementation
-
     const errorContainer = page.locator('[data-testid="connection-error"]').or(
       page.locator('[role="alert"]')
     );
 
-    // Error container should exist (even if hidden when no error)
-    // This is a smoke test for error UI presence
     const errorUIExists = (await errorContainer.count()) > 0 ||
       (await page.locator('.error-message').count()) > 0 ||
       (await page.locator('[data-testid="midi-error"]').count()) > 0;
 
-    // If no explicit error UI, that's okay - this is informational
     if (!errorUIExists) {
       console.log('Note: No dedicated error UI found - errors may be shown differently');
     }

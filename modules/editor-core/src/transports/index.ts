@@ -8,6 +8,8 @@ export {
   createWebMidiTransport,
 } from './webMidiTransport';
 export type {
+  TransportMode,
+  TransportConfig,
   RuntimeMockMidiConfig,
   RuntimeHttpMidiConfig,
   RuntimeMidiTransportConfig,
@@ -19,6 +21,11 @@ export {
   isHttpMidiMode,
   getHttpMidiServerUrl,
   isMockLibraryMode,
+  getSavedTransportConfig,
+  saveTransportConfig,
+  clearTransportConfig,
+  getActiveTransportMode,
+  getActiveHttpServerUrl,
 } from './runtimeTransport';
 export type {
   HttpMidiTransportConfig,
