@@ -362,9 +362,11 @@ const OPFS_HELPERS = `
 
 test.describe('Device Library Export - Tones', () => {
   test.beforeAll(async () => {
-    // Skip all tests in this suite if hardware is not configured
+    // Fail fast if hardware is not configured
     if (!MIDI_SERVER_PORT) {
-      test.skip(true, 'HTTP MIDI transport not configured - skipping hardware tests');
+      throw new Error(
+        'E2E_MIDI_SERVER_PORT must be set. Run via: ./scripts/run-http-midi-e2e.sh'
+      );
     }
   });
 
@@ -601,9 +603,11 @@ test.describe('Device Library Export - Tones', () => {
 
 test.describe('Device Library Export - Patches', () => {
   test.beforeAll(async () => {
-    // Skip all tests in this suite if hardware is not configured
+    // Fail fast if hardware is not configured
     if (!MIDI_SERVER_PORT) {
-      test.skip(true, 'HTTP MIDI transport not configured - skipping hardware tests');
+      throw new Error(
+        'E2E_MIDI_SERVER_PORT must be set. Run via: ./scripts/run-http-midi-e2e.sh'
+      );
     }
   });
 
@@ -812,8 +816,11 @@ test.describe('Device Library Export - Patches', () => {
 
 test.describe('Export Error Handling', () => {
   test.beforeAll(async () => {
+    // Fail fast if hardware is not configured
     if (!MIDI_SERVER_PORT) {
-      test.skip(true, 'HTTP MIDI transport not configured - skipping hardware tests');
+      throw new Error(
+        'E2E_MIDI_SERVER_PORT must be set. Run via: ./scripts/run-http-midi-e2e.sh'
+      );
     }
   });
 
