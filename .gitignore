@@ -43,3 +43,8 @@ modules/*/LICENSE
 
 # Local Netlify folder
 .netlify
+
+# devenv
+.devenv/
+.devenv.flake.nix
+devenv.lock

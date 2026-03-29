@@ -6,10 +6,16 @@
 # bypassing the Web MIDI API which crashes in Playwright with SysEx permissions.
 #
 # Prerequisites:
-#   - midi-server binary installed and in PATH
+#   - midi-server binary available via:
+#     1. $MIDI_SERVER_BIN environment variable (set by devenv), OR
+#     2. midi-server in PATH
 #   - Roland S-330 or S-550 connected via MIDI
 #
 # Usage:
+#   ./scripts/run-http-midi-e2e.sh [playwright args...]
+#
+# With devenv:
+#   devenv shell
 #   ./scripts/run-http-midi-e2e.sh [playwright args...]
 #
 
@@ -23,14 +29,35 @@ cd "$PROJECT_DIR"
 echo "=== HTTP MIDI E2E Test Runner ==="
 echo ""
 
-# Step 1: Verify midi-server is available
+# Step 1: Locate midi-server binary
+# Priority: $MIDI_SERVER_BIN (devenv) > PATH lookup
 echo "Step 1: Checking for midi-server..."
-if ! command -v midi-server &> /dev/null; then
-  echo "ERROR: midi-server not found in PATH"
-  echo "       Install midi-server from https://github.com/audiocontrol-org/midi-server"
+
+MIDI_SERVER_CMD=""
+
+if [ -n "${MIDI_SERVER_BIN:-}" ]; then
+  # devenv environment - use the provided binary path
+  if [ -x "$MIDI_SERVER_BIN" ]; then
+    MIDI_SERVER_CMD="$MIDI_SERVER_BIN"
+    echo "   Found (devenv): $MIDI_SERVER_CMD"
+  else
+    echo "ERROR: MIDI_SERVER_BIN is set but binary not found or not executable"
+    echo "       MIDI_SERVER_BIN=$MIDI_SERVER_BIN"
+    echo "       Run: devenv script build:midi-server"
+    exit 1
+  fi
+elif command -v midi-server &> /dev/null; then
+  # Fallback to PATH lookup
+  MIDI_SERVER_CMD="midi-server"
+  echo "   Found (PATH): $(which midi-server)"
+else
+  echo "ERROR: midi-server not found"
+  echo ""
+  echo "Options:"
+  echo "  1. Use devenv: cd to repo root, run 'devenv shell', then 'devenv script build:midi-server'"
+  echo "  2. Install midi-server from https://github.com/audiocontrol-org/midi-server"
   exit 1
 fi
-echo "   Found: $(which midi-server)"
 echo ""
 
 # Step 2: Start midi-server on dynamic port
@@ -73,7 +100,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Start midi-server with port 0 (OS assigns available port)
-midi-server --port 0 > "$MIDI_SERVER_LOG" 2>&1 &
+"$MIDI_SERVER_CMD" --port 0 > "$MIDI_SERVER_LOG" 2>&1 &
 MIDI_SERVER_PID=$!
 
 # Wait for server to start and extract port (max 10s)

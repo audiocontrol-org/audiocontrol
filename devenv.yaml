@@ -1,0 +1,126 @@
+# devenv.yaml for audiocontrol TypeScript monorepo
+#
+# This provides a declarative development environment that:
+# - Sets up Node.js, pnpm, and Playwright
+# - Imports midi-server from the sibling repo
+# - Makes the midi-server binary available as $MIDI_SERVER_BIN
+#
+# Usage:
+#   devenv shell              # Enter development shell
+#   pnpm test:e2e:http-midi   # Run e2e tests (midi-server auto-available)
+#
+# Cross-repo workflow:
+#   1. devenv shell           # Checks midi-server for changes
+#   2. devenv build           # Builds midi-server if needed
+#   3. Run tests              # $MIDI_SERVER_BIN is set
+
+inputs:
+  nixpkgs:
+    url: github:cachix/devenv-nixpkgs/rolling
+  midi-server:
+    url: path:../../midi-server-work/midi-server-sse-events
+
+languages:
+  javascript:
+    enable: true
+    package: pkgs.nodejs_22
+
+packages:
+  - pnpm
+  - git
+  - coreutils
+
+env:
+  # midi-server binary path from imported devenv
+  # This path is set after midi-server is built
+  MIDI_SERVER_BIN: ${inputs.midi-server.env.MIDI_SERVER_BINARY}
+
+  # Playwright browser installation
+  PLAYWRIGHT_BROWSERS_PATH: ${DEVENV_STATE}/playwright-browsers
+
+scripts:
+  install:
+    description: Install npm dependencies
+    exec: pnpm install --frozen-lockfile
+
+  build:
+    description: Build all modules
+    exec: make
+
+  build:midi-server:
+    description: Build midi-server from imported repo
+    exec: |
+      set -euo pipefail
+      echo "Building midi-server..."
+      (cd "${DEVENV_ROOT}/../../midi-server-work/midi-server-sse-events" && devenv script build)
+
+  test:
+    description: Run unit tests
+    exec: pnpm test
+
+  test:e2e:http-midi:
+    description: Run HTTP MIDI e2e tests
+    exec: |
+      set -euo pipefail
+      cd modules/roland-sxx0-editor
+      ./scripts/run-http-midi-e2e.sh
+
+  playwright:install:
+    description: Install Playwright browsers
+    exec: npx playwright install
+
+  check:midi-server:
+    description: Verify midi-server binary is available
+    exec: |
+      if [ -x "$MIDI_SERVER_BIN" ]; then
+        echo "midi-server binary: $MIDI_SERVER_BIN"
+        "$MIDI_SERVER_BIN" --version 2>/dev/null || echo "(version check not supported)"
+      else
+        echo "ERROR: midi-server binary not found at $MIDI_SERVER_BIN"
+        echo "Run: devenv script build:midi-server"
+        exit 1
+      fi
+
+enterShell: |
+  echo ""
+  echo "audiocontrol devenv environment"
+  echo "================================"
+  echo ""
+  if [ -x "$MIDI_SERVER_BIN" ]; then
+    echo "✓ midi-server: $MIDI_SERVER_BIN"
+  else
+    echo "✗ midi-server: not built"
+    echo "  Run: devenv script build:midi-server"
+  fi
+  echo ""
+  echo "Available commands:"
+  echo "  devenv script install           Install npm dependencies"
+  echo "  devenv script build             Build all modules"
+  echo "  devenv script build:midi-server Build midi-server"
+  echo "  devenv script test:e2e:http-midi Run HTTP MIDI e2e tests"
+  echo ""
+
+# Process orchestration via process-compose
+processes:
+  midi-server:
+    exec: |
+      if [ ! -x "$MIDI_SERVER_BIN" ]; then
+        echo "ERROR: midi-server not built. Run: devenv script build:midi-server"
+        exit 1
+      fi
+      exec "$MIDI_SERVER_BIN" --port 7777
+    process-compose:
+      readiness_probe:
+        http_get:
+          host: localhost
+          port: 7777
+          path: /health
+        initial_delay_seconds: 2
+        period_seconds: 1
+
+  vite:
+    exec: pnpm --filter roland-sxx0-editor vite --port 5173
+    process-compose:
+      depends_on:
+        midi-server:
+          condition: process_healthy
