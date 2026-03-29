@@ -3,22 +3,28 @@ import {
   createMockMidiTransport,
   type MockMidiTransportControls,
   type MockMidiTransportOptions,
-} from './mockMidiTransport';
-import { createWebMidiTransport } from './webMidiTransport';
-import type { MidiTransport } from './types';
+} from '@/transports/mockMidiTransport';
+import { createWebMidiTransport } from '@/transports/webMidiTransport';
+import { createHttpMidiTransport } from '@/transports/httpMidiTransport';
+import type { MidiTransport } from '@/transports/types';
 
 export interface RuntimeMockMidiConfig extends MockMidiTransportOptions {
   enabled?: boolean;
   autoSelectPorts?: boolean;
 }
 
+export interface RuntimeHttpMidiConfig {
+  serverUrl: string;
+}
+
 export interface RuntimeMidiTransportConfig {
   deviceName: string;
   mock?: RuntimeMockMidiConfig;
+  http?: RuntimeHttpMidiConfig;
 }
 
 export interface RuntimeMidiTransportResult {
-  mode: 'web' | 'mock';
+  mode: 'web' | 'mock' | 'http';
   transport: MidiTransport;
   controls?: MockMidiTransportControls;
 }
@@ -34,6 +40,16 @@ function getQueryParam(name: string): string | null {
 
 export function isMockMidiMode(): boolean {
   return getQueryParam('midi') === 'mock';
+}
+
+export function isHttpMidiMode(): boolean {
+  return getQueryParam('midi') === 'http';
+}
+
+export function getHttpMidiServerUrl(): string | null {
+  const port = getQueryParam('midiServerPort');
+  if (!port) return null;
+  return `http://localhost:${port}`;
 }
 
 export function isMockLibraryMode(): boolean {
@@ -60,19 +76,32 @@ function seedMockPortSelection(deviceName: string, inputs?: MidiPortInfo[], outp
 export function createRuntimeMidiTransport(
   config: RuntimeMidiTransportConfig
 ): RuntimeMidiTransportResult {
+  // HTTP mode takes precedence (for E2E testing)
+  if (isHttpMidiMode()) {
+    const serverUrl = config.http?.serverUrl ?? getHttpMidiServerUrl();
+    if (!serverUrl) {
+      throw new Error('HTTP MIDI mode requires midiServerPort URL parameter or http.serverUrl config');
+    }
+    return {
+      mode: 'http',
+      transport: createHttpMidiTransport({ serverUrl }),
+    };
+  }
+
+  // Mock mode
   const useMockMidi = Boolean(config.mock) && (config.mock?.enabled ?? isMockMidiMode());
-  if (!useMockMidi) {
-    return { mode: 'web', transport: createWebMidiTransport() };
+  if (useMockMidi) {
+    const runtime = createMockMidiTransport(config.mock);
+    if (config.mock?.autoSelectPorts ?? true) {
+      seedMockPortSelection(config.deviceName, config.mock?.inputs, config.mock?.outputs);
+    }
+    return {
+      mode: 'mock',
+      transport: runtime.transport,
+      controls: runtime.controls,
+    };
   }
 
-  const runtime = createMockMidiTransport(config.mock);
-  if (config.mock?.autoSelectPorts ?? true) {
-    seedMockPortSelection(config.deviceName, config.mock?.inputs, config.mock?.outputs);
-  }
-
-  return {
-    mode: 'mock',
-    transport: runtime.transport,
-    controls: runtime.controls,
-  };
+  // Default to web
+  return { mode: 'web', transport: createWebMidiTransport() };
 }
