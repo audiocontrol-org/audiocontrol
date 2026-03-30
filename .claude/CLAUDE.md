@@ -88,6 +88,31 @@ Never use conditionals in UI components to switch behavior based on device confi
 - Use `pnpm` for all package operations
 - Use `tsx` for running TypeScript (not `ts-node`)
 
+## Sub-Agent Delegation
+
+Delegate to sub-agents proactively — don't wait for the user to ask. The main agent should orchestrate; sub-agents should do the work.
+
+### When to delegate
+
+- **Research and investigation** — understanding component structure, tracing data flow, reading multiple files to answer a question
+- **Debugging** — diagnosing test failures, checking conditions across files, reading error screenshots and context
+- **Implementation** — making code changes across multiple files for a well-defined task
+- **Running tests** — executing test suites and reporting results
+
+### How to delegate
+
+- **Sub-agents research, main agent executes.** For code changes, have the sub-agent investigate and propose, then the main agent reviews and applies the changes. This keeps the user in the loop.
+- **Give complete context.** Sub-agents don't see prior conversation. Include the problem statement, relevant file paths, what's already been tried, and what output you need.
+- **Instruct agents to write to disk.** Agents often fail to persist their work. Always tell them to use the Write or Edit tool when they need to produce files.
+- **Run multiple agents in parallel** when tasks are independent.
+- **Don't duplicate work.** If you delegate research, don't also do the same searches yourself.
+
+### What NOT to delegate
+
+- Simple single-file reads or grep searches — use the tools directly
+- Git operations (commit, push, branch) — do these directly
+- Decisions that need user input — ask the user directly
+
 ## Monorepo Conventions
 
 - Each module is self-contained with clear boundaries
