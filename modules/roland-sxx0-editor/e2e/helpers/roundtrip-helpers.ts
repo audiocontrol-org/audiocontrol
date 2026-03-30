@@ -250,6 +250,139 @@ export async function exportedToneHasWav(
 }
 
 // ---------------------------------------------------------------------------
+// Patch OPFS Helpers
+// ---------------------------------------------------------------------------
+
+interface ToneFixtureEntry {
+  slotLabel: string;
+  yaml: string;
+  wavBase64: string;
+}
+
+/**
+ * Write a patch fixture (directory bundle) to OPFS.
+ * Creates: library/{device}/patches/{patchName}/patch.yaml
+ *          library/{device}/patches/{patchName}/tones/{slotLabel}.yaml + .wav
+ */
+export async function writePatchFixtureToOPFS(
+  page: Page,
+  deviceType: string,
+  patchName: string,
+  patchYaml: string,
+  tones: ReadonlyArray<ToneFixtureEntry>
+): Promise<void> {
+  await page.evaluate(
+    async ({
+      patchYaml,
+      tones,
+      device,
+      patchName,
+    }: {
+      patchYaml: string;
+      tones: ReadonlyArray<ToneFixtureEntry>;
+      device: string;
+      patchName: string;
+    }) => {
+      const root = await navigator.storage.getDirectory();
+      const lib = await root.getDirectoryHandle('library', { create: true });
+      const deviceDir = await lib.getDirectoryHandle(device, { create: true });
+      const patches = await deviceDir.getDirectoryHandle('patches', {
+        create: true,
+      });
+      const patchDir = await patches.getDirectoryHandle(patchName, {
+        create: true,
+      });
+
+      // Write patch.yaml
+      const yamlHandle = await patchDir.getFileHandle('patch.yaml', {
+        create: true,
+      });
+      const yamlWriter = await yamlHandle.createWritable();
+      await yamlWriter.write(patchYaml);
+      await yamlWriter.close();
+
+      // Write dependent tones
+      const tonesDir = await patchDir.getDirectoryHandle('tones', {
+        create: true,
+      });
+      for (const tone of tones) {
+        const toneYamlHandle = await tonesDir.getFileHandle(
+          `${tone.slotLabel}.yaml`,
+          { create: true }
+        );
+        const toneYamlWriter = await toneYamlHandle.createWritable();
+        await toneYamlWriter.write(tone.yaml);
+        await toneYamlWriter.close();
+
+        const binaryString = atob(tone.wavBase64);
+        const wavBytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          wavBytes[i] = binaryString.charCodeAt(i);
+        }
+        const wavHandle = await tonesDir.getFileHandle(
+          `${tone.slotLabel}.wav`,
+          { create: true }
+        );
+        const wavWriter = await wavHandle.createWritable();
+        await wavWriter.write(wavBytes);
+        await wavWriter.close();
+      }
+    },
+    { patchYaml, tones: [...tones], device: deviceType, patchName }
+  );
+}
+
+/**
+ * List patch subdirectory names in the OPFS library.
+ */
+export async function listExportedPatches(
+  page: Page,
+  deviceType: string
+): Promise<string[]> {
+  return page.evaluate(async (device: string) => {
+    const root = await navigator.storage.getDirectory();
+    const lib = await root.getDirectoryHandle('library');
+    const deviceDir = await lib.getDirectoryHandle(device);
+    const patches = await deviceDir.getDirectoryHandle('patches');
+
+    const dirs: string[] = [];
+    for await (const handle of (
+      patches as unknown as {
+        values(): AsyncIterableIterator<FileSystemHandle>;
+      }
+    ).values()) {
+      if (handle.kind === 'directory') {
+        dirs.push(handle.name);
+      }
+    }
+    return dirs;
+  }, deviceType);
+}
+
+/**
+ * Read a patch's patch.yaml from OPFS and return its text content.
+ */
+export async function readExportedPatchYaml(
+  page: Page,
+  deviceType: string,
+  patchName: string
+): Promise<string> {
+  return page.evaluate(
+    async ({ device, name }: { device: string; name: string }) => {
+      const root = await navigator.storage.getDirectory();
+      const lib = await root.getDirectoryHandle('library');
+      const deviceDir = await lib.getDirectoryHandle(device);
+      const patches = await deviceDir.getDirectoryHandle('patches');
+      const patchDir = await patches.getDirectoryHandle(name);
+      const handle = await patchDir.getFileHandle('patch.yaml');
+      const file = await handle.getFile();
+      return file.text();
+    },
+    { device: deviceType, name: patchName }
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Simple YAML Field Extractor
 // ---------------------------------------------------------------------------
 
