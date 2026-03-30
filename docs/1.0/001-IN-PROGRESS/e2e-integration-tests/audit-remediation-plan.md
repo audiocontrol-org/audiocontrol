@@ -9,9 +9,21 @@
 
 | Item | Link |
 |------|------|
-| **Milestone** | TBD - Add to next available weekly milestone |
-| **Parent Issue** | TBD - `[e2e] Remediate test infrastructure audit findings` |
-| **Labels** | `docs`, `refactor`, `enhancement` |
+| **Milestone** | [Week of Mar 30 - Apr 3](https://github.com/audiocontrol-org/audiocontrol/milestone/7) |
+| **Parent Issue** | [#102 - [e2e] Remediate test infrastructure audit findings](https://github.com/audiocontrol-org/audiocontrol/issues/102) |
+| **Labels** | `documentation`, `refactor`, `enhancement` |
+
+### Implementation Issues
+
+| Phase | Issue | Priority |
+|-------|-------|----------|
+| Phase 1 | [#103 - Triage disabled test suites](https://github.com/audiocontrol-org/audiocontrol/issues/103) | P0 |
+| Phase 1 | [#104 - Address akaitools skipped tests](https://github.com/audiocontrol-org/audiocontrol/issues/104) | P0 |
+| Phase 2 | [#105 - Remove placeholder test files](https://github.com/audiocontrol-org/audiocontrol/issues/105) | P1 |
+| Phase 3 | [#106 - Refactor oversized e2e test files](https://github.com/audiocontrol-org/audiocontrol/issues/106) | P2 |
+| Phase 4 | [#107 - Create centralized TESTING.md](https://github.com/audiocontrol-org/audiocontrol/issues/107) | P2 |
+| Phase 4 | [#108 - Relocate debug test files](https://github.com/audiocontrol-org/audiocontrol/issues/108) | P2 |
+| Phase 5 | [#109 - Document all skip markers](https://github.com/audiocontrol-org/audiocontrol/issues/109) | P3 |
 
 ---
 
@@ -37,6 +49,8 @@ This plan addresses findings from the E2E test infrastructure audit. Issues are 
 ## Phase 1: Critical Cleanup (P0)
 
 **Goal:** Remove or complete disabled test suites and skipped tests that consume code space without providing coverage.
+
+**Issues:** [#103](https://github.com/audiocontrol-org/audiocontrol/issues/103), [#104](https://github.com/audiocontrol-org/audiocontrol/issues/104)
 
 ### Task 1.1: Triage disabled launch-control-xl3 test suites
 
@@ -91,6 +105,8 @@ This plan addresses findings from the E2E test infrastructure audit. Issues are 
 ## Phase 2: Placeholder Cleanup (P1)
 
 **Goal:** Replace trivial placeholder tests with real tests or remove them.
+
+**Issue:** [#105](https://github.com/audiocontrol-org/audiocontrol/issues/105)
 
 ### Task 2.1: Remove or replace trivial basic.test.ts files
 
@@ -154,6 +170,8 @@ This plan addresses findings from the E2E test infrastructure audit. Issues are 
 
 **Goal:** Bring oversized test files under 500 lines per project guidelines.
 
+**Issue:** [#106](https://github.com/audiocontrol-org/audiocontrol/issues/106)
+
 ### Task 3.1: Refactor library-sets.spec.ts
 
 **File:** `modules/roland-sxx0-editor/e2e/library-sets.spec.ts` (1548 lines)
@@ -201,6 +219,8 @@ This plan addresses findings from the E2E test infrastructure audit. Issues are 
 ## Phase 4: Documentation (P2)
 
 **Goal:** Create centralized test documentation and improve discoverability.
+
+**Issues:** [#107](https://github.com/audiocontrol-org/audiocontrol/issues/107), [#108](https://github.com/audiocontrol-org/audiocontrol/issues/108)
 
 ### Task 4.1: Create root TESTING.md
 
@@ -253,6 +273,8 @@ This plan addresses findings from the E2E test infrastructure audit. Issues are 
 ## Phase 5: Code Quality (P2-P3)
 
 **Goal:** Enforce project conventions in test files.
+
+**Issue:** [#109](https://github.com/audiocontrol-org/audiocontrol/issues/109)
 
 ### Task 5.1: Fix import pattern violations
 
@@ -334,43 +356,3 @@ it.skip('should connect via SSH', ...)
 | Phase 5 | 2 tasks | 1 day |
 | **Total** | **16 tasks** | **~1 milestone** |
 
----
-
-## Issue Creation Template
-
-When creating GitHub issues from this plan, use:
-
-**Parent Issue:**
-```
-[e2e] Remediate test infrastructure audit findings
-
-## Overview
-Address findings from the E2E test infrastructure audit conducted 2026-03-29.
-
-## Documentation
-- Audit: docs/1.0/001-IN-PROGRESS/e2e-integration-tests/infrastructure-audit-2026-03-29.md
-- Remediation Plan: docs/1.0/001-IN-PROGRESS/e2e-integration-tests/audit-remediation-plan.md
-
-## Implementation Tasks
-- [ ] #NNN Phase 1: Critical cleanup
-- [ ] #NNN Phase 2: Placeholder cleanup
-- [ ] #NNN Phase 3: Test file refactoring
-- [ ] #NNN Phase 4: Documentation
-- [ ] #NNN Phase 5: Code quality
-```
-
-**Implementation Issues:**
-```
-[task title from plan]
-
-Part of #NNN
-
-## Context
-[relevant section from audit]
-
-## Acceptance Criteria
-[from plan]
-
-## Files
-[from plan]
-```
