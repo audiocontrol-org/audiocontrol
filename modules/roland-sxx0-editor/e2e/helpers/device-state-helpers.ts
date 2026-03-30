@@ -6,7 +6,7 @@
  * going through the UI.
  */
 
-import type { Page } from '@playwright/test';
+import { type Page, expect } from '@playwright/test';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -58,28 +58,59 @@ export interface DeviceMemoryState {
  * The button has `disabled={isLoading}` in LibraryPage.tsx.
  */
 export async function loadAllDeviceData(page: Page): Promise<void> {
-  const refreshButton = page.locator('button', { hasText: 'Refresh Device' });
-  await refreshButton.click();
+  const MAX_ATTEMPTS = 3;
 
-  // Wait for loading to start (button becomes disabled)
-  await page.waitForFunction(
-    () => {
-      const btn = Array.from(document.querySelectorAll('button'))
-        .find((b) => b.textContent?.includes('Refresh Device'));
-      return btn && btn.disabled;
-    },
-    { timeout: 5_000 }
-  );
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const refreshButton = page.locator('button', { hasText: 'Refresh Device' });
+    await expect(refreshButton).toBeVisible({ timeout: 5_000 });
+    await refreshButton.click();
 
-  // Wait for loading to finish (button re-enabled) -- generous timeout
-  // because loading all banks over MIDI to 1987 hardware is slow.
-  await page.waitForFunction(
-    () => {
-      const btn = Array.from(document.querySelectorAll('button'))
-        .find((b) => b.textContent?.includes('Refresh Device'));
-      return btn && !btn.disabled;
-    },
-    { timeout: 60_000 }
+    // Poll the store until all slots are loaded.
+    // Use periodic page.evaluate calls (not waitForFunction) so that
+    // each poll generates a Playwright step event for the heartbeat
+    // reporter. waitForFunction blocks without heartbeats and the
+    // watchdog kills the test.
+    const POLL_INTERVAL = 2_000;
+    const MAX_POLLS = 30; // 30 × 2s = 60s max
+    for (let poll = 0; poll < MAX_POLLS; poll++) {
+      await page.waitForTimeout(POLL_INTERVAL);
+      const loaded = await page.evaluate(() => {
+        const store = (window as Record<string, unknown>).__deviceDataStore as {
+          getState: () => { tones: unknown[]; patches: unknown[] };
+        } | undefined;
+        if (!store) return false;
+        const state = store.getState();
+        if (state.tones.length === 0 || state.patches.length === 0) return false;
+        const toneGaps = state.tones.filter((t) => t === undefined).length;
+        const patchGaps = state.patches.filter((p) => p === undefined).length;
+        return toneGaps === 0 && patchGaps === 0;
+      });
+      if (loaded) break;
+    }
+
+    // Check if all slots loaded successfully
+    const hasGaps = await page.evaluate(() => {
+      const store = (window as Record<string, unknown>).__deviceDataStore as {
+        getState: () => { tones: unknown[]; patches: unknown[] };
+      } | undefined;
+      if (!store) return true;
+      const state = store.getState();
+      const toneGaps = state.tones.filter((t) => t === undefined).length;
+      const patchGaps = state.patches.filter((p) => p === undefined).length;
+      return toneGaps > 0 || patchGaps > 0;
+    });
+
+    if (!hasGaps) {
+      return;
+    }
+
+    console.log(
+      `[loadAllDeviceData] Attempt ${attempt}/${MAX_ATTEMPTS}: some slots failed to load, retrying...`
+    );
+  }
+
+  console.warn(
+    `[loadAllDeviceData] Some slots still have gaps after ${MAX_ATTEMPTS} attempts`
   );
 }
 
