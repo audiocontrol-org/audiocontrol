@@ -203,9 +203,25 @@ All e2e tests run within the devenv environment which provides:
 
 ```bash
 devenv shell
-cd modules/roland-sxx0-editor
-./scripts/run-http-midi-e2e.sh
+make test-e2e-device-library   # Or other e2e target
 ```
+
+### E2E Test Make Targets
+
+Always use make targets to run e2e tests (not raw pnpm commands):
+
+```bash
+make test-e2e                  # All e2e tests (UI + library, no hardware)
+make test-e2e-ui               # Basic UI navigation tests
+make test-e2e-library          # Library tests (OPFS, no hardware)
+make test-e2e-device-library   # Device-library tests (requires hardware)
+make test-e2e-hardware         # Hardware tests (requires hardware)
+```
+
+The make targets handle:
+- Building dependencies in correct order
+- Checking midi-server availability
+- Setting environment variables (MIDI_SERVER_BIN)
 
 ### 2. No Mocking
 
@@ -271,11 +287,12 @@ The watchdog uses a 5-second stale threshold. If a test step takes longer than 5
 ### Running Hardware E2E Tests
 
 ```bash
-cd modules/roland-sxx0-editor
-pnpm test:e2e:hardware
+devenv shell
+make test-e2e-hardware
 ```
 
 Prerequisites:
+- Running inside devenv shell
 - Roland S-330 or S-550 connected via MIDI
 - MIDI interface available
 
