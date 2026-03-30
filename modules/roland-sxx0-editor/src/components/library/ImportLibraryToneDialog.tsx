@@ -232,6 +232,7 @@ export function ImportLibraryToneDialog({
     setTargetSlot(option.values.targetSlot);
     setWaveBank(option.values.waveBank);
     setSegmentTop(option.values.segmentTop);
+    setSegmentLength(option.values.segmentLength);
   }, [fitOptions]);
 
   return (

@@ -1741,6 +1741,7 @@ export function createS330Client(
             }
 
             // Use existing sendToneData which uses bufferWrite
+            console.log(`[S330Client] Tone wave alloc: bank=${tone.wave.bank}, segTop=${tone.wave.segmentTop}, segLen=${tone.wave.segmentLength}, start=${tone.wave.startPoint}, end=${tone.wave.endPoint}`);
             await this.sendToneData(toneIndex, tone);
 
             // Step 2: Send wave data using existing public method

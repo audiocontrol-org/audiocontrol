@@ -34,6 +34,7 @@ export interface ToneFitValues {
   targetSlot: number;
   waveBank: WaveBankIndex;
   segmentTop: number;
+  segmentLength: number;
 }
 
 export interface ContiguousFitValues {
@@ -49,6 +50,7 @@ export interface PatchFitValues {
     targetSlot: number;
     waveBank: WaveBankIndex;
     segmentTop: number;
+    segmentLength: number;
   }>;
 }
 
@@ -134,7 +136,7 @@ export function findToneBestFits(
         },
         toneCollisions: slotCollision,
         waveCollisions: bestSegCol,
-        values: { targetSlot: bestSlot, waveBank: bank, segmentTop: bestSeg },
+        values: { targetSlot: bestSlot, waveBank: bank, segmentTop: bestSeg, segmentLength: segmentsNeeded },
       });
     }
   }
@@ -295,6 +297,7 @@ export function findPatchBestFits(
         targetSlot: slot,
         waveBank: preferredBank,
         segmentTop: 0, // filled below
+        segmentLength: dep.segmentsNeeded,
       });
     }
 
