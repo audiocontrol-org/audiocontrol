@@ -112,6 +112,9 @@ export function ImportLibraryPatchDialog({
   const [selectedFitIndex, setSelectedFitIndex] = useState<number | null>(null);
   const [showBestFits, setShowBestFits] = useState(false);
 
+  // Track missing tones (referenced by patch but not found in library/manifest)
+  const [missingToneSlots, setMissingToneSlots] = useState<number[]>([]);
+
   // Load patch and manifest when dialog opens
   useEffect(() => {
     if (!open) return;
@@ -121,6 +124,7 @@ export function ImportLibraryPatchDialog({
     setPatch(null);
     setManifest(null);
     setToneMappings([]);
+    setMissingToneSlots([]);
 
     const loadData = async () => {
       try {
@@ -135,17 +139,28 @@ export function ImportLibraryPatchDialog({
           convertedPatch = convertYamlToS330Patch(bundle.patch);
           setPatch(convertedPatch);
 
-          // Collect dependent tone info
-          for (const [slot, toneData] of bundle.tones) {
-            const convertedTone = convertYamlToS330Tone(toneData.yaml);
-            dependentTones.push({
-              originalSlot: slot,
-              segmentsNeeded: toneData.segmentsNeeded,
-              fileName: `T${String(slot + 1).padStart(2, '0')}`,
-              preferredBank: convertedTone.wave.bank as 0 | 1 | 2 | 3,
-            });
+          // Analyze which tones the patch actually references
+          const requiredTones = getPatchToneDependencies(convertedPatch);
+          const missing: number[] = [];
+
+          // Collect dependent tone info from bundle
+          for (const slot of requiredTones) {
+            const toneData = bundle.tones.get(slot);
+            if (toneData) {
+              const convertedTone = convertYamlToS330Tone(toneData.yaml);
+              dependentTones.push({
+                originalSlot: slot,
+                segmentsNeeded: toneData.segmentsNeeded,
+                fileName: `T${String(slot + 1).padStart(2, '0')}`,
+                preferredBank: convertedTone.wave.bank as 0 | 1 | 2 | 3,
+              });
+            } else {
+              // Track tones referenced by patch but not found in bundle
+              missing.push(slot);
+            }
           }
 
+          setMissingToneSlots(missing);
           setManifest(null);
         } else {
           // Load from a set
@@ -159,6 +174,7 @@ export function ImportLibraryPatchDialog({
 
           // Analyze dependencies
           const requiredTones = getPatchToneDependencies(convertedPatch);
+          const missing: number[] = [];
 
           for (const slot of requiredTones) {
             const toneEntry = loadedManifest.tones.find((t) => t.slot === slot);
@@ -169,8 +185,13 @@ export function ImportLibraryPatchDialog({
                 fileName: toneEntry.file,
                 preferredBank: toneEntry.waveAllocation.bank,
               });
+            } else {
+              // Track tones referenced by patch but not found in manifest
+              missing.push(slot);
             }
           }
+
+          setMissingToneSlots(missing);
         }
 
         // Use smart allocation to find safe defaults for patch and all tones
@@ -467,6 +488,21 @@ export function ImportLibraryPatchDialog({
                   </p>
                 )}
               </div>
+
+              {/* Missing Tone Warning */}
+              {missingToneSlots.length > 0 && (
+                <div
+                  data-testid="missing-tone-warning"
+                  className="text-yellow-400 text-sm p-2 bg-yellow-900/20 rounded flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <span>
+                    Some referenced tones could not be found: {missingToneSlots.map(s => memoryLayout.formatToneSlot(s)).join(', ')}
+                  </span>
+                </div>
+              )}
 
               {/* Required Tones Section */}
               {toneMappings.length > 0 && (

@@ -86,6 +86,7 @@ export function ToneList({ tones, selectedIndex, onSelect, loadedBanks: _loadedB
                     'flex-1 mx-3 truncate',
                     (!isLoaded || isEmpty) && 'italic'
                   )}
+                  data-testid="tone-name"
                 >
                   {isBankLoading
                     ? '(loading...)'

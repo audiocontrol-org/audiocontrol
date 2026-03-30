@@ -142,6 +142,20 @@ End-to-end workflows combining multiple features.
 - Sample creation workflow: Record → Edit → Save to library
 - Drum kit creation: Import samples → Chop → Create kit → Send to device
 
+### Phase 9: UI Test ID Compliance
+
+Add missing data-testid attributes required by e2e tests.
+
+**Deliverables:**
+- Verify TreeView node IDs match expected test selectors
+- Add missing-tone-warning to ImportLibraryPatchDialog
+- Run all device-library e2e tests to verify compliance
+
+**Tests Fixed:**
+- device-library-export.spec.ts (6 tests)
+- device-library-import.spec.ts (5 tests)
+- hardware-device-sets.spec.ts (3 tests)
+
 ## Task Breakdown
 
 1. Implement OPFS initialization and cleanup helpers

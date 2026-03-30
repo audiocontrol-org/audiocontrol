@@ -108,7 +108,7 @@ export function SetItem({
   }, [isRenaming, handleRenameSubmit]);
 
   return (
-    <div>
+    <div data-testid={`set-item-${setInfo.name}`}>
       <div
         className={cn(
           'group w-full text-left px-2 py-1.5 rounded text-sm transition-colors',

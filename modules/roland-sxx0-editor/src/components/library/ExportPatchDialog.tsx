@@ -88,7 +88,7 @@ export function ExportPatchDialog({
     <Dialog.Root open={open} onOpenChange={handleClose}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-        <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-md p-6">
+        <Dialog.Content data-testid="export-dialog" className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-s330-panel border border-s330-accent rounded-lg shadow-xl w-full max-w-md p-6">
           <Dialog.Title className="text-lg font-bold text-s330-text mb-4">
             Export Patch to Library
           </Dialog.Title>
@@ -176,6 +176,7 @@ export function ExportPatchDialog({
                 <button
                   onClick={handleClose}
                   disabled={isOperating}
+                  data-testid="export-cancel"
                   className={cn(
                     'ac-btn ac-btn-ghost',
                     isOperating && 'opacity-50 cursor-not-allowed'
@@ -186,6 +187,7 @@ export function ExportPatchDialog({
                 <button
                   onClick={handleExport}
                   disabled={isOperating || !patchName.trim() || !patch}
+                  data-testid="export-confirm"
                   className={cn(
                     'ac-btn ac-btn-primary',
                     (isOperating || !patchName.trim() || !patch) && 'opacity-50 cursor-not-allowed'

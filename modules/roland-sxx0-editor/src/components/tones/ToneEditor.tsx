@@ -110,6 +110,7 @@ export function ToneEditor({
                                     <button
                                         onClick={onExportToLibrary}
                                         disabled={isExportingToLibrary || isExporting || !hasSampleData}
+                                        data-testid="export-tone-button"
                                         className={cn(
                                             'ac-btn ac-btn-sm',
                                             hasSampleData ? 'ac-btn-primary' : 'ac-btn-ghost opacity-50',
