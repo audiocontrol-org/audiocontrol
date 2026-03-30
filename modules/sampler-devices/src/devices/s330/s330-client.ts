@@ -607,6 +607,13 @@ export function createS330Client(
 
                 resetTimeout();
 
+                if (command === S330_COMMANDS.RJC) {
+                    // Ignore stale RJC — likely from a previous timed-out operation.
+                    // If the device truly rejected our RQD, we'll time out.
+                    console.warn('[S330Client] Ignoring stale RJC during RQD');
+                    return;
+                }
+
                 if (command === S330_COMMANDS.DAT) {
                     // DAT packet: F0 41 dev 1E 42 [addr 4B] [nibbles...] cs F7
                     // Extract and verify response address matches our request
@@ -1534,6 +1541,12 @@ export function createS330Client(
                         }
 
                         resetTimeout();
+
+                        if (command === S330_COMMANDS.RJC) {
+                            // Ignore stale RJC — likely from a previous timed-out operation.
+                            console.warn('[S330Client] Ignoring stale RJC during wave RQD');
+                            return;
+                        }
 
                         if (command === S330_COMMANDS.DAT) {
                             // DAT packet: F0 41 dev 1E 42 [addr 4B] [data...] cs F7
