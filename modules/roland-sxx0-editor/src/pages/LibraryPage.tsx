@@ -299,12 +299,12 @@ export function LibraryPage() {
       ensurePatchArraySize(totalPatches);
       for (let bank = 0; bank < toneBankCount; bank++) {
         setLoading(true, `Loading tones (bank ${bank + 1}/${toneBankCount})...`);
-        await clientRef.current.loadToneRange(bank * tonesPerBank, tonesPerBank, () => {}, (index: number, tone: SamplerTone) => setTone(index, tone, totalTones), false);
+        await clientRef.current.loadToneRange(bank * tonesPerBank, tonesPerBank, () => {}, (index: number, tone: SamplerTone) => setTone(index, tone, totalTones), true);
         markToneBankLoaded(bank);
       }
       for (let bank = 0; bank < patchBankCount; bank++) {
         setLoading(true, `Loading patches (bank ${bank + 1}/${patchBankCount})...`);
-        await clientRef.current.loadPatchRange(bank * patchesPerBank, patchesPerBank, () => {}, (index: number, patch: SamplerPatch) => setPatch(index, patch, totalPatches), false);
+        await clientRef.current.loadPatchRange(bank * patchesPerBank, patchesPerBank, () => {}, (index: number, patch: SamplerPatch) => setPatch(index, patch, totalPatches), true);
         markPatchBankLoaded(bank);
       }
     } catch (err) {
