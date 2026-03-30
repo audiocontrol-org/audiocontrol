@@ -191,12 +191,14 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 6.2.1 | Export tone from device to library | P0 | ❌ | |
-| 6.2.2 | Import tone from library to device | P0 | ❌ | |
-| 6.2.3 | Select target slot during import | P1 | ❌ | |
-| 6.2.4 | Show progress during import | P1 | ❌ | |
-| 6.2.5 | Handle device memory full | P1 | ❌ | |
-| 6.2.6 | Handle export of empty tone | P2 | ❌ | |
+| 6.2.1 | Tone round trip: import → export → compare | P0 | ✅ | `device-library-roundtrip.spec.ts` |
+| 6.2.2 | Tone import with auto-fit slot allocation | P0 | ❌ | Use "Find Best Fit" instead of manual slot selection |
+| 6.2.3 | Auto-fit selects non-conflicting tone slot | P1 | ❌ | Verify slot is empty after auto-fit |
+| 6.2.4 | Auto-fit selects non-conflicting wave bank/segments | P1 | ❌ | Verify no wave memory collision |
+| 6.2.5 | Auto-fit round trip: import with auto-fit → export → compare | P0 | ❌ | Full round trip using auto-fit allocation |
+| 6.2.6 | Show progress during import | P1 | ⚠️ | Implicit in round trip tests |
+| 6.2.7 | Handle device memory full | P1 | ❌ | |
+| 6.2.8 | Handle export of empty tone | P2 | ❌ | |
 
 ---
 
@@ -219,10 +221,12 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 7.2.1 | Export patch from device to library | P0 | ❌ | |
-| 7.2.2 | Import patch from library to device | P0 | ❌ | |
-| 7.2.3 | Handle patch with missing tone references | P1 | ❌ | |
-| 7.2.4 | Handle device memory full | P1 | ❌ | |
+| 7.2.1 | Patch round trip: import → export → compare | P0 | ✅ | `device-library-roundtrip.spec.ts` |
+| 7.2.2 | Patch import with auto-fit slot allocation | P0 | ❌ | Use "Find Best Fit" for patch + dependent tones |
+| 7.2.3 | Auto-fit allocates non-conflicting patch slot + tone slots + wave segments | P1 | ❌ | Verify all allocations are collision-free |
+| 7.2.4 | Auto-fit patch round trip: import with auto-fit → export → compare | P0 | ❌ | Full round trip using auto-fit allocation |
+| 7.2.5 | Handle patch with missing tone references | P1 | ❌ | |
+| 7.2.6 | Handle device memory full | P1 | ❌ | |
 
 ---
 
@@ -406,20 +410,28 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 ### Critical Gaps (P0 Not Tested)
 
-1. **Device ↔ Library Export** - Export tone/patch from device to library
-2. **Device ↔ Library Import** - Import tone/patch from library to device
-3. **Set Save to Library** - Save device state as set
-4. **Set Load from Library** - Load set to device
-5. **Multi-device support** - S-550 specific tests
+1. ~~**Device ↔ Library Export** - Export tone/patch from device to library~~ ✅ Covered by `device-library-roundtrip.spec.ts`
+2. ~~**Device ↔ Library Import** - Import tone/patch from library to device~~ ✅ Covered by `device-library-roundtrip.spec.ts`
+3. **Auto-Fit Slot Allocation** - "Find Best Fit" for tone and patch imports (suspected broken on S-550)
+4. **Set Save to Library** - Save device state as set
+5. **Set Load from Library** - Load set to device
+6. **Multi-device support** - S-550 specific tests
 
 ---
 
 ## Recommended Next Steps
 
-### Phase 1: Device ↔ Library Integration
-Create tests for the highest-gap area:
-- `device-library-export.spec.ts` - Export operations
-- `device-library-import.spec.ts` - Import operations
+### Phase 1: Device ↔ Library Integration ✅ COMPLETE
+Round-trip tests verify import → export → compare for both tones and patches:
+- `device-library-roundtrip.spec.ts` - Atomic round-trip tests (tone + patch)
+
+### Phase 1.5: Auto-Fit Slot Allocation (IN PROGRESS)
+Test the "Find Best Fit" feature that auto-allocates non-conflicting slots:
+- `device-library-roundtrip.spec.ts` - Add auto-fit variants of tone and patch round trips
+- Click "Find Best Fit" instead of manually selecting slot 0
+- Select the first (best) option from the BestFitPicker overlay
+- Verify the import succeeds with the auto-selected allocation
+- Suspected broken on S-550 — these tests will reveal the bug
 
 ### Phase 2: Set Operations
 - `device-set-save.spec.ts` - Save device to library
