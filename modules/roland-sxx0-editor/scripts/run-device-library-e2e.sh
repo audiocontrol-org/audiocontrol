@@ -17,6 +17,22 @@
 
 set -euo pipefail
 
+# Verify running inside devenv shell
+if [ -z "${DEVENV_ROOT:-}" ]; then
+  echo "ERROR: Not running inside devenv shell"
+  echo ""
+  echo "E2E tests require the devenv environment which provides:"
+  echo "  - midi-server binary"
+  echo "  - Correct Node.js version"
+  echo "  - Playwright browsers"
+  echo ""
+  echo "To fix, run:"
+  echo "  devenv shell"
+  echo "  pnpm test:e2e:device-library"
+  echo ""
+  exit 1
+fi
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
