@@ -206,7 +206,7 @@ s330:
 const testSetPatch01Yaml = `format: sampler-patch
 device: s330
 version: 1
-name: Test Patch 01
+name: Tst Patch 01
 level: 100
 keyGroups:
   - name: Test Tone 01

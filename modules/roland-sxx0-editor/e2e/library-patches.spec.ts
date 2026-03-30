@@ -20,7 +20,7 @@ tones:
     level: 100`;
 
 // Patch with multiple tones
-const MULTI_TONE_PATCH_YAML = `name: "Multi Tone Patch"
+const MULTI_TONE_PATCH_YAML = `name: "Multi Tone"
 tones:
   - name: "Bass Tone"
     keyRangeLow: 0
@@ -32,7 +32,7 @@ tones:
     level: 80`;
 
 // Patch with minimal fields (missing optional fields)
-const MINIMAL_PATCH_YAML = `name: "Minimal Patch"
+const MINIMAL_PATCH_YAML = `name: "Min Patch"
 tones: []`;
 
 // Patch with all optional fields
@@ -585,7 +585,7 @@ test.describe('Library Patch Operations', () => {
       `) as { success: boolean; metadata: { name: string; tones: Array<{ name: string; keyRangeLow: number; keyRangeHigh: number; level: number }> } };
 
       expect(result.success).toBe(true);
-      expect(result.metadata.name).toBe('Multi Tone Patch');
+      expect(result.metadata.name).toBe('Multi Tone');
       expect(result.metadata.tones).toHaveLength(2);
       expect(result.metadata.tones[0].name).toBe('Bass Tone');
       expect(result.metadata.tones[0].keyRangeLow).toBe(0);
@@ -615,7 +615,7 @@ test.describe('Library Patch Operations', () => {
       `) as { success: boolean; metadata: { name: string; tones: unknown[]; level?: number } };
 
       expect(result.success).toBe(true);
-      expect(result.metadata.name).toBe('Minimal Patch');
+      expect(result.metadata.name).toBe('Min Patch');
       expect(result.metadata.tones).toHaveLength(0);
       // Optional level field should not be present
       expect(result.metadata.level).toBeUndefined();
@@ -903,7 +903,7 @@ test.describe('Library Patch Operations', () => {
         })();
       `) as { content: string; size: number };
 
-      expect(result.content).toContain('Multi Tone Patch');
+      expect(result.content).toContain('Multi Tone');
       expect(result.content).toContain('Bass Tone');
       expect(result.content).toContain('Lead Tone');
       expect(result.size).toBeGreaterThan(0);
@@ -936,13 +936,13 @@ test.describe('Library Patch Operations', () => {
 
     test('handles patch with invalid tone references gracefully', async ({ page }) => {
       // Create a patch with malformed tone references
-      const malformedPatchYaml = `name: "Malformed Patch"
+      const malformedPatchYaml = `name: "Bad Patch"
 tones:
   - name: "Valid Tone"
     keyRangeLow: 0
     keyRangeHigh: 127
   - invalid_entry: true
-  - name: "Another Valid Tone"
+  - name: "Valid Tone 2"
     level: 100`;
 
       await page.evaluate(`
@@ -967,7 +967,7 @@ tones:
       expect(result.success).toBe(true);
       // Should find the valid tone names
       expect(result.toneNames).toContain('Valid Tone');
-      expect(result.toneNames).toContain('Another Valid Tone');
+      expect(result.toneNames).toContain('Valid Tone 2');
     });
 
     test('handles patch with empty tones array', async ({ page }) => {

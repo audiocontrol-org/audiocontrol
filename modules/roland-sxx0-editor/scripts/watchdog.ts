@@ -17,7 +17,7 @@
 import * as fs from 'node:fs';
 
 const POLL_INTERVAL_MS = 500;
-const STALE_THRESHOLD_MS = 20000; // Increased for library initialization waits
+const STALE_THRESHOLD_MS = 90000; // MIDI SysEx transfers to vintage hardware can take 60s+
 
 interface HeartbeatData {
   timestamp: number;

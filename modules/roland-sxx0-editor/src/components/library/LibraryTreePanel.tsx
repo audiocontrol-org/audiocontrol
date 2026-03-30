@@ -385,10 +385,11 @@ export function LibraryTreePanel({
                 Drag tones from device to export
               </div>
             ) : (
-              <div className="space-y-0.5">
+              <div className="space-y-0.5" data-testid="library-tones-list">
                 {individualTones.map((toneInfo) => (
                   <div
                     key={toneInfo.fileName}
+                    data-testid={`library-tone-${toneInfo.fileName}`}
                     onClick={() => onSelectIndividualTone(toneInfo.fileName)}
                     draggable
                     onDragStart={(e) => handleIndividualToneDragStart(e, toneInfo)}
@@ -489,10 +490,11 @@ export function LibraryTreePanel({
                 Drag patches from device to export
               </div>
             ) : (
-              <div className="space-y-0.5">
+              <div className="space-y-0.5" data-testid="library-patches-list">
                 {individualPatches.map((patchInfo) => (
                   <div
                     key={patchInfo.directoryName}
+                    data-testid={`library-patch-${patchInfo.directoryName}`}
                     onClick={() => onSelectIndividualPatch(patchInfo.directoryName)}
                     draggable
                     onDragStart={(e) => handleIndividualPatchDragStart(e, patchInfo)}

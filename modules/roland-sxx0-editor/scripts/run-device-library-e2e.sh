@@ -238,7 +238,7 @@ rm -f "$PLAYWRIGHT_LOG"
 if [ "$PLAYWRIGHT_EXIT" -eq 137 ]; then
   echo ""
   echo "=== STUCK TEST DETECTED ==="
-  echo "Test runner was killed by watchdog after 5 seconds of inactivity."
+  echo "Test runner was killed by watchdog (no heartbeat for 90s)."
   exit 1
 fi
 

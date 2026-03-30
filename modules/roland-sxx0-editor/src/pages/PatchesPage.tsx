@@ -149,8 +149,7 @@ export function PatchesPage() {
   const handleOpenExportDialog = useCallback(async (patchIndex: number) => {
     // Connect to library if not already connected
     if (!library.isConnected && library.hasLocalFS) {
-      const ok = await library.connect('local');
-      if (!ok) return; // User cancelled
+      await library.connect('local');
     }
 
     // Get the patch and trigger export via the hook's drag handler

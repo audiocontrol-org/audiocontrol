@@ -268,7 +268,6 @@ export function TonesPage() {
   }, [selectedToneIndex, setError, setTone, totalTones]);
 
   // Open export to library dialog
-  // Must pick directory first (requires user gesture), then open dialog
   // If toneIndex is provided, export that tone; otherwise export the selected tone
   const handleOpenExportDialog = useCallback(async (toneIndex?: number) => {
     const indexToExport = toneIndex ?? selectedToneIndex;
@@ -278,12 +277,8 @@ export function TonesPage() {
     setLibraryExportProgress(undefined);
     setExportToneIndex(indexToExport);
 
-    // Use existing library connection, or connect if not already
+    // If already connected, set the directory handle
     if (library.isConnected) {
-      setLibraryDirectoryHandle(library.root);
-    } else if (library.hasLocalFS) {
-      const ok = await library.connect('local');
-      if (!ok) return; // User cancelled
       setLibraryDirectoryHandle(library.root);
     }
 

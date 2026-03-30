@@ -106,11 +106,6 @@ export function useLibraryExport({
 
   // Handle drop from device memory to library (export tone) - opens dialog
   const handleDropDeviceTone = useCallback((data: DeviceDragData) => {
-    if (!libraryHandle || !clientRef.current) {
-      window.alert('Library or device not connected');
-      return;
-    }
-
     if (data.type !== 'tone') {
       return;
     }
@@ -125,15 +120,10 @@ export function useLibraryExport({
     setExportToneDialog({ tone, toneIndex: data.index });
     setExportProgress(undefined);
     setExportError(null);
-  }, [libraryHandle, clientRef, tones]);
+  }, [tones]);
 
   // Handle drop from device memory to library (export patch) - opens dialog
   const handleDropDevicePatch = useCallback((data: DeviceDragData) => {
-    if (!libraryHandle) {
-      window.alert('Library not connected');
-      return;
-    }
-
     if (data.type !== 'patch') {
       return;
     }
@@ -148,7 +138,7 @@ export function useLibraryExport({
     setExportPatchDialog({ patch, patchIndex: data.index });
     setExportPatchProgress(undefined);
     setExportPatchError(null);
-  }, [libraryHandle, patches]);
+  }, [patches]);
 
   // Handle export tone from dialog
   const handleExportTone = useCallback(async (toneName: string, toneIndex: number) => {

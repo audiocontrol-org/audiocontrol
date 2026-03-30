@@ -1437,7 +1437,7 @@ patches: [invalid`;
 
     test('handles set with missing referenced files', async ({ page }) => {
       // Create a set with manifest referencing files that don't exist
-      const manifestWithMissingRefs = `name: "Missing Refs Set"
+      const manifestWithMissingRefs = `name: "Missing Refs"
 created: "2024-01-01T00:00:00Z"
 device: "S-330"
 tones:

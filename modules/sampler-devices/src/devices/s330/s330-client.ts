@@ -671,6 +671,14 @@ export function createS330Client(
                 const command = response[4];
 
                 if (command === S330_COMMANDS.RJC) {
+                    if (phase === 'WSD') {
+                        // Ignore RJC during WSD phase — may be a stale response
+                        // from a previous timed-out operation. The real response
+                        // to our WSD will arrive shortly. If the device truly
+                        // rejected our WSD, we'll time out instead.
+                        console.warn(`[S330Client] Ignoring stale RJC during WSD phase`);
+                        return;
+                    }
                     clearTimeout(timeoutId);
                     midiAdapter.removeSysExListener(listener);
                     reject(new Error(`WSD rejected by S-330 in phase ${phase}`));
@@ -797,10 +805,10 @@ export function createS330Client(
         multiplier: 2,
         jitter: 0.3,
         isRetryable: (error: unknown) => {
-            // Only retry on timeout errors - rejections and communication errors
-            // indicate real problems that won't be fixed by retrying
+            // Retry on timeout and rejection errors — the device may send
+            // stale RJC responses from previous timed-out operations
             if (error instanceof Error) {
-                return error.message.includes('timeout');
+                return error.message.includes('timeout') || error.message.includes('rejected');
             }
             return false;
         },
@@ -983,6 +991,12 @@ export function createS330Client(
                 resetTimeout();
 
                 if (command === S330_COMMANDS.RJC) {
+                    if (phase === 'WSD') {
+                        // Ignore RJC during WSD phase — may be stale from
+                        // a previous timed-out operation.
+                        console.warn(`[S330Client] Ignoring stale RJC during wave WSD phase`);
+                        return;
+                    }
                     clearTimeout(timeoutId);
                     midiAdapter.removeSysExListener(listener);
                     reject(new Error(`Wave data rejected by S-330 in phase ${phase}`));

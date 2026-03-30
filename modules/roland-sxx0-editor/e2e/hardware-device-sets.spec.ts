@@ -561,7 +561,7 @@ wave:
     const testPatchYaml = `format: patch
 device: ${DEVICE_TYPE}
 version: 1
-name: Test Patch 01
+name: Tst Patch 01
 keyGroups: []
 `;
 
