@@ -294,8 +294,13 @@ export function TonesPage() {
     setLibraryExportError(null);
 
     try {
-      // Fetch fresh tone data from device (don't use stale cached data)
-      const tone = await clientRef.current.requestToneData(toneIndex);
+      // Use cached tone data if available (loaded via Refresh Device with forceReload),
+      // falling back to a fresh device read. Direct RQD can fail due to stale SysEx
+      // responses after import operations.
+      let tone = tones[toneIndex] ?? null;
+      if (!tone) {
+        tone = await clientRef.current.requestToneData(toneIndex);
+      }
       if (!tone) {
         throw new Error(`No tone data at slot ${toneIndex}`);
       }

@@ -1236,15 +1236,15 @@ export function createS330Client(
 
             return serialize(async () => {
                 try {
-                    // Request full tone data (256 bytes)
-                    // Tone address: 0x00, 0x03, toneIndex*2, 0x00
                     const byte2 = toneIndex * 2;
                     const address = [0x00, 0x03, byte2, 0x00];
-                    const data = await requestDataWithAddress(address, TONE_BLOCK_SIZE);
-
-                    // Use parseTone from s330-params.ts for proper 8-point envelope parsing
+                    const data = await withRetry(
+                        () => requestDataWithAddress(address, TONE_BLOCK_SIZE),
+                        wsdRetryOptions
+                    );
                     return parseTone(data);
                 } catch (err) {
+                    console.error(`[S330Client] requestToneData(${toneIndex}) failed after retries:`, err);
                     return null;
                 }
             });
@@ -1378,10 +1378,14 @@ export function createS330Client(
 
             return serialize(async () => {
                 // First, get the tone data to extract wave parameters
+                // Wrap in withRetry — RQD can fail from stale SysEx responses
                 const byte2 = toneIndex * 2;
                 const toneAddress = [0x00, 0x03, byte2, 0x00];
                 console.log('[S330Client] Fetching tone data from address:', toneAddress);
-                const toneData = await requestDataWithAddress(toneAddress, TONE_BLOCK_SIZE);
+                const toneData = await withRetry(
+                    () => requestDataWithAddress(toneAddress, TONE_BLOCK_SIZE),
+                    wsdRetryOptions
+                );
 
                 if (toneData.length < 26) {
                     throw new Error('Insufficient tone data received');
@@ -1444,11 +1448,15 @@ export function createS330Client(
                 const waveTimeoutMs = Math.max(timeoutMs * 4, bytesToFetch / 100);
 
                 // Use a modified request that supports progress reporting
-                const waveData = await requestWaveDataWithProgress(
-                    waveAddress,
-                    bytesToFetch,
-                    waveTimeoutMs,
-                    onProgress
+                // Wrap in withRetry — wave RQD can fail from stale SysEx responses
+                const waveData = await withRetry(
+                    () => requestWaveDataWithProgress(
+                        waveAddress,
+                        bytesToFetch,
+                        waveTimeoutMs,
+                        onProgress
+                    ),
+                    wsdRetryOptions
                 );
 
                 return {
