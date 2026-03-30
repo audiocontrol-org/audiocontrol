@@ -1,11 +1,21 @@
 /**
  * Helpers for device-library roundtrip e2e tests.
  *
- * Contains OPFS fixture management functions (browser-context) and
- * a minimal WAV generator for creating test audio fixtures.
+ * Contains OPFS fixture management functions (browser-context),
+ * a minimal WAV generator for creating test audio fixtures, and
+ * re-exports device state helpers for convenience.
  */
 
 import type { Page } from '@playwright/test';
+
+// Re-export device state helpers so existing imports keep working
+export {
+  loadAllDeviceData,
+  queryDeviceMemoryState,
+  type ToneSlotSummary,
+  type PatchSlotSummary,
+  type DeviceMemoryState,
+} from './device-state-helpers';
 
 // ---------------------------------------------------------------------------
 // Minimal WAV Generator
