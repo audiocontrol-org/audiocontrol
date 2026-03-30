@@ -17,7 +17,7 @@
 import * as fs from 'node:fs';
 
 const POLL_INTERVAL_MS = 500;
-const STALE_THRESHOLD_MS = 5000;
+const STALE_THRESHOLD_MS = 20000; // Increased for library initialization waits
 
 interface HeartbeatData {
   timestamp: number;

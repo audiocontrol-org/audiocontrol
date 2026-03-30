@@ -28,7 +28,7 @@ if [ -z "${DEVENV_ROOT:-}" ]; then
   echo ""
   echo "To fix, run:"
   echo "  devenv shell"
-  echo "  pnpm test:e2e:device-library"
+  echo "  make test-e2e-device-library"
   echo ""
   exit 1
 fi

@@ -4,24 +4,33 @@
  * Encapsulates backend selection (FSAA / Google Drive / OPFS), OAuth redirect
  * handling, session restoration, and cache delegation. Consumers get
  * multi-backend support with a single hook call.
+ *
+ * Connection state is stored in a global Zustand store so it persists
+ * across page navigation.
  */
 
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
-import type { LibraryConnection } from '@audiocontrol/sampler-library/browser';
-import { BrowserLibraryConnection } from '@audiocontrol/sampler-library/browser';
 import type { CacheMetrics } from '@audiocontrol/sampler-library/browser';
+import {
+  useLibraryConnectionStore,
+  connectToBackend,
+  disconnectFromBackend,
+  clearConnectionCache,
+  getConnectionMetrics,
+  resetConnectionMetrics,
+  handleGoogleDriveRedirect,
+  type LibraryConnectionConfig,
+  type LibraryBackend,
+  type GoogleDriveCredentials,
+} from '@/stores/libraryConnectionStore';
 
 // =========================================================================
 // Types
 // =========================================================================
 
-export type LibraryBackend = 'none' | 'local' | 'google-drive' | 'opfs';
-
-export interface GoogleDriveCredentials {
-  clientId: string;
-  clientSecret: string;
-}
+// Re-export types from store for backward compatibility
+export type { LibraryBackend, GoogleDriveCredentials } from '@/stores/libraryConnectionStore';
 
 export interface UseLibraryConnectionConfig {
   /** Identifier for FSAA directory picker memory. */
@@ -62,121 +71,46 @@ export interface UseLibraryConnectionResult {
 export function useLibraryConnection(
   config: UseLibraryConnectionConfig = {},
 ): UseLibraryConnectionResult {
-  const [activeBackend, setActiveBackend] = useState<LibraryBackend>('none');
-  const [root, setRoot] = useState<StorageDirectoryHandle | null>(null);
+  // Get state from global store
+  const activeBackend = useLibraryConnectionStore((s) => s.activeBackend);
+  const root = useLibraryConnectionStore((s) => s.root);
 
-  // Connection instances — stable across renders
-  const localRef = useRef<BrowserLibraryConnection | null>(null);
-  const googleDriveRef = useRef<LibraryConnection | null>(null);
-  const opfsRef = useRef<LibraryConnection | null>(null);
-  const connectionRef = useRef<LibraryConnection | null>(null);
   const initRef = useRef(false);
 
   const hasLocalFS = 'showDirectoryPicker' in globalThis;
   const hasGoogleDrive = config.googleDrive != null;
   const hasOPFS = 'storage' in navigator;
 
-  // Lazily create the FSAA connection
-  const getLocalConnection = useCallback((): BrowserLibraryConnection => {
-    if (!localRef.current) {
-      localRef.current = new BrowserLibraryConnection({
-        pickerId: config.pickerId ?? 'audiocontrol-library',
-        startIn: 'documents',
-      });
-    }
-    return localRef.current;
-  }, [config.pickerId]);
-
-  // Lazily create the Google Drive connection
-  const getGoogleDriveConnection = useCallback(async (): Promise<LibraryConnection | null> => {
-    if (!config.googleDrive) return null;
-    if (googleDriveRef.current) return googleDriveRef.current;
-
-    // Dynamic import to avoid loading Google Drive code when not needed
-    const { GoogleDriveLibraryConnection } = await import(
-      '@audiocontrol/sampler-library/google-drive'
-    );
-    const conn = new GoogleDriveLibraryConnection({
-      clientId: config.googleDrive.clientId,
-      clientSecret: config.googleDrive.clientSecret,
-    });
-    googleDriveRef.current = conn;
-    return conn;
-  }, [config.googleDrive?.clientId, config.googleDrive?.clientSecret]);
-
-  // Lazily create the OPFS connection
-  const getOPFSConnection = useCallback(async (): Promise<LibraryConnection | null> => {
-    if (!hasOPFS) return null;
-    if (opfsRef.current) return opfsRef.current;
-
-    // Dynamic import to avoid loading OPFS code when not needed
-    const { OPFSLibraryConnection } = await import('@audiocontrol/sampler-library/browser');
-    const conn = new OPFSLibraryConnection();
-    opfsRef.current = conn;
-    return conn;
-  }, [hasOPFS]);
+  // Build config object for store functions
+  const storeConfig: LibraryConnectionConfig = {
+    pickerId: config.pickerId,
+    googleDrive: config.googleDrive,
+  };
 
   // Connect to a backend
   const connect = useCallback(
     async (backend: 'local' | 'google-drive' | 'opfs'): Promise<boolean> => {
-      if (backend === 'local') {
-        const conn = getLocalConnection();
-        const ok = await conn.connect();
-        if (ok) {
-          connectionRef.current = conn;
-          setActiveBackend('local');
-          setRoot(conn.getRoot());
-        }
-        return ok;
-      }
-
-      if (backend === 'google-drive') {
-        const conn = await getGoogleDriveConnection();
-        if (!conn) return false;
-        const ok = await conn.connect();
-        if (ok) {
-          connectionRef.current = conn;
-          setActiveBackend('google-drive');
-          setRoot(conn.getRoot());
-        }
-        return ok;
-      }
-
-      if (backend === 'opfs') {
-        const conn = await getOPFSConnection();
-        if (!conn) return false;
-        const ok = await conn.connect();
-        if (ok) {
-          connectionRef.current = conn;
-          setActiveBackend('opfs');
-          setRoot(conn.getRoot());
-        }
-        return ok;
-      }
-
-      return false;
+      return connectToBackend(backend, storeConfig);
     },
-    [getLocalConnection, getGoogleDriveConnection, getOPFSConnection],
+    [storeConfig.pickerId, storeConfig.googleDrive?.clientId, storeConfig.googleDrive?.clientSecret],
   );
 
   // Disconnect
   const disconnect = useCallback(() => {
-    connectionRef.current = null;
-    setActiveBackend('none');
-    setRoot(null);
+    disconnectFromBackend();
   }, []);
 
   // Cache delegation
   const clearCache = useCallback(() => {
-    connectionRef.current?.clearCache?.();
+    clearConnectionCache();
   }, []);
 
   const getMetrics = useCallback((): CacheMetrics | undefined => {
-    return connectionRef.current?.getMetrics?.();
+    return getConnectionMetrics();
   }, []);
 
   const resetMetrics = useCallback(() => {
-    connectionRef.current?.resetMetrics?.();
+    resetConnectionMetrics();
   }, []);
 
   // On mount: handle Google Drive OAuth redirect
@@ -184,44 +118,10 @@ export function useLibraryConnection(
     if (initRef.current) return;
     initRef.current = true;
 
-    (async () => {
-      // Check for Google Drive OAuth redirect
-      if (config.googleDrive) {
-        const conn = await getGoogleDriveConnection();
-        if (conn) {
-          // handleRedirect is specific to GoogleDriveLibraryConnection
-          const gdConn = conn as {
-            handleRedirect?: () => Promise<boolean>;
-            tryRestore?: () => Promise<boolean>;
-          };
-
-          if (gdConn.handleRedirect) {
-            const handled = await gdConn.handleRedirect();
-            if (handled && gdConn.tryRestore) {
-              const restored = await gdConn.tryRestore();
-              if (restored) {
-                connectionRef.current = conn;
-                setActiveBackend('google-drive');
-                setRoot(conn.getRoot());
-                return;
-              }
-            }
-
-            // Try restoring an existing Google Drive session
-            if (!handled && gdConn.tryRestore) {
-              const restored = await gdConn.tryRestore();
-              if (restored) {
-                connectionRef.current = conn;
-                setActiveBackend('google-drive');
-                setRoot(conn.getRoot());
-                return;
-              }
-            }
-          }
-        }
-      }
-    })();
-  }, [config.googleDrive, getGoogleDriveConnection]);
+    if (config.googleDrive) {
+      void handleGoogleDriveRedirect(storeConfig);
+    }
+  }, [config.googleDrive, storeConfig]);
 
   return {
     activeBackend,
