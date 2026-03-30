@@ -271,6 +271,24 @@ If a test requires a workaround, that indicates either:
 2. A missing feature that should be built
 3. A test that shouldn't be an e2e test
 
+### 4. Device Tests Must Be Atomic Round Trips
+
+Tests that involve both the device and the library **must** follow this structure:
+
+1. **Create** a known-good fixture in the library (e.g., OPFS)
+2. **Import** the fixture TO the device — this must succeed first
+3. **Export** the same object FROM the device back to the library
+4. **Compare** the exported object against the original fixture
+5. **Pass only** if the round trip produces the same object
+
+Never test import or export in isolation against unknown device state. You cannot export what isn't on the device, and you cannot know what's on the device unless you put it there. Only round-trip comparison is deterministic.
+
+```
+Library (fixture) ──import──► Device ──export──► Library (result)
+       │                                              │
+       └──────────── compare for equality ────────────┘
+```
+
 ## Hardware E2E Testing (roland-sxx0-editor)
 
 The `roland-sxx0-editor` module includes hardware e2e tests that run against real Roland S-series samplers. These tests use a heartbeat/watchdog system to detect stuck tests quickly.
