@@ -11,6 +11,11 @@
 - [App Capabilities Audit](./app-capabilities-audit.md) - Application feature inventory
 - [Existing Tests Audit](./existing-tests-audit.md) - Current test coverage analysis
 
+### Infrastructure Audit (2026-03-29)
+
+- [Infrastructure Audit Report](./infrastructure-audit-2026-03-29.md) - Monorepo-wide e2e test infrastructure audit
+- [Audit Remediation Plan](./audit-remediation-plan.md) - Phased plan to address audit findings
+
 ## Overview
 
 Comprehensive E2E integration test suite for the roland-sxx0-editor module, with emphasis on Library functionality testing. Includes automated browser permission handling for Web MIDI API and File System Access API, hardware-connected tests for device communication, and a documented catalog of features, scenarios, and corner cases.
