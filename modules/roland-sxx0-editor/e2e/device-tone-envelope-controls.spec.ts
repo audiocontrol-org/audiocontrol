@@ -251,11 +251,15 @@ test.describe('Tone Envelope Controls', () => {
     await expect(sustainSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
     const originalValue = Number(await sustainSelect.inputValue());
-    console.log(`TVA sustain point: original=${originalValue}`);
+    console.log(`TVA sustain point: original=${originalValue}, options count: ${await sustainSelect.locator('option').count()}`);
     // Toggle between 0 and 2
     const newValue = originalValue === 2 ? 0 : 2;
+    console.log(`TVA sustain point: selecting ${newValue}`);
 
     await sustainSelect.selectOption(String(newValue));
+    // Verify the select actually changed
+    const afterSelect = Number(await sustainSelect.inputValue());
+    console.log(`TVA sustain point: after selectOption=${afterSelect}`);
     await page.waitForTimeout(WRITE_FLUSH_MS);
 
     // Read tone back from device hardware
