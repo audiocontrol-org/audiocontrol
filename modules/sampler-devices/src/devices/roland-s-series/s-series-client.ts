@@ -526,9 +526,11 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
 
                         resolve(denibblize(allNibbles));
                     } else if (command === S_SERIES_COMMANDS.RJC) {
-                        clearTimeout(timeoutId);
-                        midiAdapter.removeSysExListener(listener);
-                        reject(new Error('Request rejected by device'));
+                        // Ignore stale RJC — likely from a previous timed-out operation.
+                        // If the device truly rejected our RQD, we'll time out.
+                        console.warn(`[${config.deviceName}] Ignoring stale RJC during RQD`);
+                        resetTimeout();
+                        return;
                     } else if (command === S_SERIES_COMMANDS.ERR) {
                         clearTimeout(timeoutId);
                         midiAdapter.removeSysExListener(listener);

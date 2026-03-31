@@ -64,10 +64,10 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 2.2.1 | Edit patch name | P1 | ❌ | |
-| 2.2.2 | Patch name syncs to device | P1 | ❌ | |
-| 2.2.3 | Edit key mode selection | P1 | ❌ | |
-| 2.2.4 | Edit bender range | P1 | ❌ | |
+| 2.2.1 | Edit patch name | P1 | ✅ | `device-patch-controls.spec.ts` |
+| 2.2.2 | Patch name syncs to device | P1 | ✅ | `device-patch-controls.spec.ts` |
+| 2.2.3 | Edit key mode selection | P1 | ✅ | `device-patch-controls.spec.ts` |
+| 2.2.4 | Edit bender range | P1 | ✅ | `device-patch-controls.spec.ts` |
 | 2.2.5 | Edit tone zone assignments | P1 | ❌ | |
 | 2.2.6 | Configure velocity split zones | P2 | ❌ | |
 | 2.2.7 | Configure key split zones | P2 | ❌ | |
@@ -110,25 +110,25 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 3.2.1 | Edit tone name | P1 | ❌ | |
-| 3.2.2 | Tone name syncs to device | P1 | ❌ | |
+| 3.2.1 | Edit tone name | P1 | ✅ | `device-tone-controls.spec.ts` |
+| 3.2.2 | Tone name syncs to device | P1 | ✅ | `device-tone-controls.spec.ts` |
 | 3.2.3 | Edit sample rate (15kHz/30kHz) | P1 | ❌ | |
 | 3.2.4 | Edit original key | P1 | ❌ | |
 | 3.2.5 | Edit wave start/end points | P1 | ❌ | |
-| 3.2.6 | Edit loop point and mode | P1 | ❌ | |
+| 3.2.6 | Edit loop point and mode | P1 | ✅ | `device-tone-controls.spec.ts` |
 | 3.2.7 | Edit LFO parameters | P2 | ❌ | |
 | 3.2.8 | Edit TVA envelope (8 points) | P1 | ❌ | |
 | 3.2.9 | Edit TVF envelope (8 points) | P1 | ❌ | |
 | 3.2.10 | Parameter changes persist after reload | P1 | ❌ | |
 | 3.2.11 | TVF enable/disable toggle | P1 | ❌ | |
-| 3.2.12 | TVF cutoff/resonance/key follow sliders | P1 | ❌ | |
+| 3.2.12 | TVF cutoff/resonance/key follow sliders | P1 | ⚠️ | `device-tone-controls.spec.ts` (cutoff tested, resonance/key follow not yet) |
 | 3.2.13 | TVF envelope 8-point editing | P1 | ❌ | |
 | 3.2.14 | TVA level/LFO depth sliders | P1 | ❌ | |
 | 3.2.15 | TVA envelope 8-point editing | P1 | ❌ | |
-| 3.2.16 | LFO rate/delay/offset sliders | P1 | ❌ | |
+| 3.2.16 | LFO rate/delay/offset sliders | P1 | ⚠️ | `device-tone-controls.spec.ts` (rate tested, delay/offset not yet) |
 | 3.2.17 | LFO sync and mode toggles | P2 | ❌ | |
 | 3.2.18 | Pitch fine tune and pitch follow | P1 | ❌ | |
-| 3.2.19 | All parameters sync to device on commit | P0 | ❌ | |
+| 3.2.19 | All parameters sync to device on commit | P0 | ⚠️ | `device-tone-controls.spec.ts` (4 params verified, not all) |
 
 ### 3.3 Sample Operations (Hardware Required) 🔌
 
@@ -158,13 +158,13 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 4.1.1 | Navigates to play page | P1 | ❌ | |
-| 4.1.2 | Loads function parameters from device | P1 | ❌ | |
-| 4.1.3 | Per-part MIDI channel selection syncs to device | P1 | ❌ | |
-| 4.1.4 | Per-part patch assignment syncs to device | P1 | ❌ | |
-| 4.1.5 | Per-part output routing syncs to device | P1 | ❌ | |
-| 4.1.6 | Per-part level adjustment syncs to device | P1 | ❌ | |
-| 4.1.7 | Part configuration persists after page navigation | P1 | ❌ | |
+| 4.1.1 | Navigates to play page | P1 | ✅ | `device-play-controls.spec.ts` |
+| 4.1.2 | Loads function parameters from device | P1 | ✅ | `device-play-controls.spec.ts` |
+| 4.1.3 | Per-part MIDI channel selection syncs to device | P1 | ✅ | `device-play-controls.spec.ts` |
+| 4.1.4 | Per-part patch assignment syncs to device | P1 | ✅ | `device-play-controls.spec.ts` |
+| 4.1.5 | Per-part output routing syncs to device | P1 | ✅ | `device-play-controls.spec.ts` |
+| 4.1.6 | Per-part level adjustment syncs to device | P1 | ✅ | `device-play-controls.spec.ts` |
+| 4.1.7 | Part configuration persists after page navigation | P1 | ✅ | `device-play-controls.spec.ts` |
 | 4.1.8 | Loading patch banks from Play page | P1 | ❌ | |
 
 ---
@@ -267,11 +267,11 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 8.2.1 | Save device state to new set | P0 | ❌ | |
-| 8.2.2 | Load complete set to device | P0 | ❌ | |
+| 8.2.1 | Save device state to new set | P0 | ✅ | `device-library-set-roundtrip.spec.ts` |
+| 8.2.2 | Load complete set to device | P0 | ✅ | `device-library-set-roundtrip.spec.ts` |
 | 8.2.3 | Load individual tone from set | P1 | ❌ | |
 | 8.2.4 | Load individual patch from set | P1 | ❌ | |
-| 8.2.5 | Show progress during load | P1 | ❌ | |
+| 8.2.5 | Show progress during load | P1 | ⚠️ | Implicit in set round trip |
 | 8.2.6 | Handle device memory insufficient | P1 | ❌ | |
 | 8.2.7 | Handle set with missing files | P1 | ❌ | |
 | 8.2.8 | Target block selection (S-550) | P1 | ❌ | |
@@ -459,27 +459,27 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | Priority | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
-| P0 | 42 | 29 | 3 | 10 |
-| P1 | 120 | 31 | 3 | 86 |
-| P2 | 50 | 17 | 0 | 33 |
-| **Total** | **212** | **77** | **6** | **129** |
+| P0 | 44 | 38 | 2 | 4 |
+| P1 | 148 | 55 | 9 | 84 |
+| P2 | 37 | 13 | 0 | 24 |
+| **Total** | **229** | **106** | **11** | **112** |
 
 ### By Hardware Requirement
 
-| Category | Total | Covered | Not Tested |
-|----------|-------|---------|------------|
-| No Hardware | 81 | 62 | 19 |
-| Hardware Required | 131 | 21 | 110 |
+| Category | Total | Covered | Partial | Not Tested |
+|----------|-------|---------|---------|------------|
+| No Hardware | 83 | 69 | 0 | 14 |
+| Hardware Required | 146 | 37 | 11 | 98 |
 
 ### Critical Gaps (P0 Not Tested)
 
 1. ~~**Device <> Library Export** - Export tone/patch from device to library~~ ✅ Covered by `device-library-roundtrip.spec.ts`
 2. ~~**Device <> Library Import** - Import tone/patch from library to device~~ ✅ Covered by `device-library-roundtrip.spec.ts`
 3. **Auto-Fit Slot Allocation** - "Find Best Fit" for tone and patch imports (suspected broken on S-550)
-4. **Set Save to Library** - Save device state as set
-5. **Set Load from Library** - Load set to device
+4. ~~**Set Save to Library** - Save device state as set~~ ✅ Covered by `device-library-set-roundtrip.spec.ts`
+5. ~~**Set Load from Library** - Load set to device~~ ✅ Covered by `device-library-set-roundtrip.spec.ts`
 6. **Multi-device support** - S-550 specific tests
-7. **Tone parameter sync** - All tone parameters sync to device on commit (3.2.19)
+7. ~~**Tone parameter sync** - All tone parameters sync to device on commit (3.2.19)~~ ⚠️ Partially covered by `device-tone-controls.spec.ts` (4 params verified)
 
 ---
 
@@ -498,14 +498,13 @@ Test the "Find Best Fit" feature that auto-allocates non-conflicting slots:
 - Suspected broken on S-550 — these tests will reveal the bug
 
 ### Phase 2: Set Operations ✅ COMPLETE
-- `device-set-save.spec.ts` - Save device to library
-- `device-set-load.spec.ts` - Load library to device
+- `device-library-set-roundtrip.spec.ts` - Save device to library, load library to device
 
-### Phase 3: Editor Controls
-Test Play, Patch, and Tone page parameter controls with hardware sync:
-- Play page: per-part channel, patch, output, level controls (section 4)
-- Patch editing: aftertouch, key assign, velocity, tone zone editor (section 2.2)
-- Tone editing: TVF, TVA, LFO, pitch controls with device sync (section 3.2)
+### Phase 3: Editor Controls ⚠️ IN PROGRESS
+Play, Patch, and Tone page parameter controls with hardware sync:
+- Play page: ✅ per-part channel, patch, output, level controls (`device-play-controls.spec.ts`)
+- Patch editing: ⚠️ name, key mode, bender range tested; aftertouch, key assign, velocity, tone zones remaining (`device-patch-controls.spec.ts`)
+- Tone editing: ⚠️ name, loop point, TVF cutoff, LFO rate tested; TVA, envelopes, pitch remaining (`device-tone-controls.spec.ts`)
 
 ### Phase 4: Loop Editor Parity and Hardware Integration
 - Loop editor opens from both Tones page (inline) and Library page (dialog)

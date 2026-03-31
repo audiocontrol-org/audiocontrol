@@ -118,6 +118,9 @@ export interface ToneReadback {
     bank: number;
     segmentTop: number;
     segmentLength: number;
+    startPoint: number;
+    loopPoint: number;
+    endPoint: number;
   };
   tvf: {
     cutoff: number;
@@ -162,6 +165,9 @@ export async function readToneFromDevice(
         bank: tone.wave.bank,
         segmentTop: tone.wave.segmentTop,
         segmentLength: tone.wave.segmentLength,
+        startPoint: tone.wave.startPoint,
+        loopPoint: tone.wave.loopPoint,
+        endPoint: tone.wave.endPoint,
       },
       tvf: {
         cutoff: tone.tvf.cutoff,
