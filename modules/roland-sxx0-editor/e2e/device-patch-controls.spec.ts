@@ -151,6 +151,19 @@ async function navigateToPatchesPage(
   });
 }
 
+/**
+ * Change the key mode select to the given value and wait for the write to flush.
+ */
+async function setKeyMode(
+  page: import('@playwright/test').Page,
+  mode: string,
+): Promise<void> {
+  const keyModeSelect = page.locator('[data-testid="patch-key-mode"]');
+  await expect(keyModeSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+  await keyModeSelect.selectOption(mode);
+  await page.waitForTimeout(WRITE_FLUSH_MS);
+}
+
 // ===========================================================================
 // Test Suite
 // ===========================================================================
@@ -298,5 +311,193 @@ test.describe('Patch Editor Controls', () => {
     expect(devicePatch).not.toBeNull();
     // Allow ±1 tolerance — Radix slider arrow keys may over/undershoot by 1
     expect(Math.abs(devicePatch!.level - newValue)).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // Aftertouch Sensitivity Slider
+  // -------------------------------------------------------------------------
+
+  test('aftertouch sensitivity syncs to device', async ({ page }) => {
+    const container = page.locator('[data-testid="param-a-t-sense"]');
+    await expect(container).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const slider = container.locator('[role="slider"]');
+    await expect(slider).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = Number(
+      await slider.getAttribute('aria-valuenow') ?? '64',
+    );
+
+    // Set to 80 (unless already 80, then use 50)
+    const newValue = originalValue === 80 ? 50 : 80;
+    const diff = newValue - originalValue;
+
+    await slider.focus();
+    if (diff > 0) {
+      for (let i = 0; i < diff; i++) {
+        await slider.press('ArrowRight');
+      }
+    } else {
+      for (let i = 0; i < Math.abs(diff); i++) {
+        await slider.press('ArrowLeft');
+      }
+    }
+    await slider.blur();
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    // Allow ±1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    expect(Math.abs(devicePatch!.aftertouchSens - newValue)).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // Aftertouch Assign
+  // -------------------------------------------------------------------------
+
+  test('aftertouch assign change syncs to device', async ({ page }) => {
+    const atAssignSelect = page.locator('[data-testid="patch-at-assign"]');
+    await expect(atAssignSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = await atAssignSelect.inputValue();
+
+    // Toggle between 'volume' and 'modulation'
+    const newValue = originalValue === 'volume' ? 'modulation' : 'volume';
+    await atAssignSelect.selectOption(newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    expect(devicePatch!.aftertouchAssign).toBe(newValue);
+  });
+
+  // -------------------------------------------------------------------------
+  // Key Assign
+  // -------------------------------------------------------------------------
+
+  test('key assign change syncs to device', async ({ page }) => {
+    const keyAssignSelect = page.locator('[data-testid="patch-key-assign"]');
+    await expect(keyAssignSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = await keyAssignSelect.inputValue();
+
+    // Toggle between 'fix' and 'rotary'
+    const newValue = originalValue === 'fix' ? 'rotary' : 'fix';
+    await keyAssignSelect.selectOption(newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    expect(devicePatch!.keyAssign).toBe(newValue);
+  });
+
+  // -------------------------------------------------------------------------
+  // Output Assign
+  // -------------------------------------------------------------------------
+
+  test('output assign change syncs to device', async ({ page }) => {
+    const outputSelect = page.locator('[data-testid="patch-output"]');
+    await expect(outputSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = await outputSelect.inputValue();
+
+    // Change to output 3 (value '2') unless already there, then use output 1 (value '0')
+    const newValue = originalValue === '2' ? '0' : '2';
+    await outputSelect.selectOption(newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    expect(devicePatch!.outputAssign).toBe(Number(newValue));
+  });
+
+  // -------------------------------------------------------------------------
+  // Velocity Threshold Slider (V-Sw mode only)
+  // -------------------------------------------------------------------------
+
+  test('velocity threshold slider syncs to device', async ({ page }) => {
+    // The V-Sw Thresh slider is only active when key mode is 'v-sw'.
+    // Set key mode to v-sw first and wait for the write to flush.
+    await setKeyMode(page, 'v-sw');
+
+    const container = page.locator('[data-testid="param-v-sw-thresh"]');
+    await expect(container).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const slider = container.locator('[role="slider"]');
+    await expect(slider).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = Number(
+      await slider.getAttribute('aria-valuenow') ?? '64',
+    );
+
+    // Set to 90 (unless already 90, then use 60)
+    const newValue = originalValue === 90 ? 60 : 90;
+    const diff = newValue - originalValue;
+
+    await slider.focus();
+    if (diff > 0) {
+      for (let i = 0; i < diff; i++) {
+        await slider.press('ArrowRight');
+      }
+    } else {
+      for (let i = 0; i < Math.abs(diff); i++) {
+        await slider.press('ArrowLeft');
+      }
+    }
+    await slider.blur();
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    // Allow ±1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    expect(Math.abs(devicePatch!.velocityThreshold - newValue)).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // Velocity Mix Ratio Slider (V-Mix mode only)
+  // -------------------------------------------------------------------------
+
+  test('velocity mix ratio slider syncs to device', async ({ page }) => {
+    // The V-Mix Ratio slider is only active when key mode is 'v-mix'.
+    // Set key mode to v-mix first and wait for the write to flush.
+    await setKeyMode(page, 'v-mix');
+
+    const container = page.locator('[data-testid="param-v-mix-ratio"]');
+    await expect(container).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const slider = container.locator('[role="slider"]');
+    await expect(slider).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = Number(
+      await slider.getAttribute('aria-valuenow') ?? '64',
+    );
+
+    // Set to 100 (unless already 100, then use 70)
+    const newValue = originalValue === 100 ? 70 : 100;
+    const diff = newValue - originalValue;
+
+    await slider.focus();
+    if (diff > 0) {
+      for (let i = 0; i < diff; i++) {
+        await slider.press('ArrowRight');
+      }
+    } else {
+      for (let i = 0; i < Math.abs(diff); i++) {
+        await slider.press('ArrowLeft');
+      }
+    }
+    await slider.blur();
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    // Allow ±1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    expect(Math.abs(devicePatch!.velocityMixRatio - newValue)).toBeLessThanOrEqual(1);
   });
 });

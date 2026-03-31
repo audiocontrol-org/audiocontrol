@@ -55,7 +55,16 @@ MIDI_INPUT_PORT=$(echo "$DEVICE_JSON" | jq -r '.inputPort')
 MIDI_OUTPUT_PORT=$(echo "$DEVICE_JSON" | jq -r '.outputPort')
 DEVICE_ID=$(echo "$DEVICE_JSON" | jq -r '.deviceId')
 
-echo "   ✓ Device found"
+# Use E2E_DEVICE_TYPE from environment if set, otherwise default to s330.
+# Auto-detection can't reliably distinguish S-330 from S-550 via SysEx.
+# Override with: E2E_DEVICE_TYPE=s550 make test-e2e-roland-device
+if [ -n "${E2E_DEVICE_TYPE:-}" ]; then
+  DEVICE_TYPE="$E2E_DEVICE_TYPE"
+else
+  DEVICE_TYPE="s330"
+fi
+
+echo "   ✓ Device found (${DEVICE_TYPE})"
 echo "   Input:  $MIDI_INPUT_PORT"
 echo "   Output: $MIDI_OUTPUT_PORT"
 echo "   Device ID: $DEVICE_ID"
@@ -190,6 +199,7 @@ export E2E_MIDI_SERVER_PORT="$MIDI_SERVER_PORT"
 export E2E_MIDI_INPUT_PORT="$MIDI_INPUT_PORT"
 export E2E_MIDI_OUTPUT_PORT="$MIDI_OUTPUT_PORT"
 export E2E_DEVICE_ID="$DEVICE_ID"
+export E2E_DEVICE_TYPE="$DEVICE_TYPE"
 
 HEARTBEAT_FILE="/tmp/e2e-heartbeat-$$.json"
 export E2E_HEARTBEAT_FILE="$HEARTBEAT_FILE"

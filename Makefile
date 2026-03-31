@@ -88,7 +88,7 @@ build: $(ALL_STAMPS)
 # ---------------------------------------------------------------------------
 
 # devenv binary location (auto-installed if missing)
-DEVENV := $(shell command -v devenv 2>/dev/null)
+DEVENV := $(shell command -v devenv 2>/dev/null || echo $(HOME)/.nix-profile/bin/devenv)
 
 ifeq ($(DEVENV),)
 DEVENV := devenv
@@ -96,7 +96,7 @@ endif
 
 .PHONY: ensure-devenv
 ensure-devenv:
-	@command -v devenv >/dev/null 2>&1 || { \
+	@(command -v devenv >/dev/null 2>&1 || test -x "$(HOME)/.nix-profile/bin/devenv") || { \
 		echo ""; \
 		echo "ERROR: devenv is not installed."; \
 		echo ""; \
