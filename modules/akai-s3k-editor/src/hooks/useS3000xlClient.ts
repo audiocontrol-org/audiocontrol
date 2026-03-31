@@ -23,14 +23,11 @@ export function useS3000xlClient(): UseS3000xlClientResult {
   const deviceId = useMidiStore((s) => s.deviceId);
   const status = useMidiStore((s) => s.status);
 
-  const prevAdapterRef = useRef(adapter);
-  const prevDeviceIdRef = useRef(deviceId);
+  const prevAdapterRef = useRef<unknown>(undefined);
+  const prevDeviceIdRef = useRef<number | undefined>(undefined);
   const clientRef = useRef<S3000xlClientInterface | null>(null);
 
-  const adapterChanged = prevAdapterRef.current !== adapter;
-  const deviceIdChanged = prevDeviceIdRef.current !== deviceId;
-
-  if (adapterChanged || deviceIdChanged) {
+  if (prevAdapterRef.current !== adapter || prevDeviceIdRef.current !== deviceId) {
     prevAdapterRef.current = adapter;
     prevDeviceIdRef.current = deviceId;
 
