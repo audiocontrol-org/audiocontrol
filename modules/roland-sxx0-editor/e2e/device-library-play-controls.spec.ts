@@ -149,14 +149,8 @@ test.describe('Play Page Controls', () => {
   // -------------------------------------------------------------------------
 
   test('channel selection syncs to device', async ({ page }) => {
-    const partRows = page.locator(
-      '.grid.grid-cols-12.gap-2.py-1\\.5',
-    );
-    await expect(partRows.first()).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
-
-    // Part A (first row) has 3 selects: channel, patch, output
-    const channelSelect = partRows.first().locator('select').nth(0);
-    await expect(channelSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    const channelSelect = page.locator('[data-testid="part-0-channel"]');
+    await expect(channelSelect).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
 
     // Change channel to 5 (value "4" since 0-indexed, displays as 5)
     await channelSelect.selectOption('4');
@@ -166,13 +160,10 @@ test.describe('Play Page Controls', () => {
     await navigateAwayAndBackToPlay(page);
 
     // Re-locate and verify against fresh device data
-    const freshPartRows = page.locator(
-      '.grid.grid-cols-12.gap-2.py-1\\.5',
-    );
-    await expect(freshPartRows.first()).toBeVisible({
+    const freshChannelSelect = page.locator('[data-testid="part-0-channel"]');
+    await expect(freshChannelSelect).toBeVisible({
       timeout: DATA_LOAD_TIMEOUT_MS,
     });
-    const freshChannelSelect = freshPartRows.first().locator('select').nth(0);
     await expect(freshChannelSelect).toHaveValue('4', {
       timeout: UI_TIMEOUT_MS,
     });
@@ -183,14 +174,8 @@ test.describe('Play Page Controls', () => {
   // -------------------------------------------------------------------------
 
   test('output routing syncs to device', async ({ page }) => {
-    const partRows = page.locator(
-      '.grid.grid-cols-12.gap-2.py-1\\.5',
-    );
-    await expect(partRows.first()).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
-
-    // Output is the 3rd select in each part row
-    const outputSelect = partRows.first().locator('select').nth(2);
-    await expect(outputSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    const outputSelect = page.locator('[data-testid="part-0-output"]');
+    await expect(outputSelect).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
 
     // Change output to 3
     await outputSelect.selectOption('3');
@@ -199,13 +184,10 @@ test.describe('Play Page Controls', () => {
     // Navigate away and back to force fresh read from device
     await navigateAwayAndBackToPlay(page);
 
-    const freshPartRows = page.locator(
-      '.grid.grid-cols-12.gap-2.py-1\\.5',
-    );
-    await expect(freshPartRows.first()).toBeVisible({
+    const freshOutputSelect = page.locator('[data-testid="part-0-output"]');
+    await expect(freshOutputSelect).toBeVisible({
       timeout: DATA_LOAD_TIMEOUT_MS,
     });
-    const freshOutputSelect = freshPartRows.first().locator('select').nth(2);
     await expect(freshOutputSelect).toHaveValue('3', {
       timeout: UI_TIMEOUT_MS,
     });
@@ -216,13 +198,8 @@ test.describe('Play Page Controls', () => {
   // -------------------------------------------------------------------------
 
   test('level adjustment syncs to device', async ({ page }) => {
-    const partRows = page.locator(
-      '.grid.grid-cols-12.gap-2.py-1\\.5',
-    );
-    await expect(partRows.first()).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
-
-    const levelSlider = partRows.first().locator('input[type="range"]');
-    await expect(levelSlider).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    const levelSlider = page.locator('[data-testid="part-0-level"]');
+    await expect(levelSlider).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
 
     // Set level to 100 via fill() then dispatch events to trigger onCommit
     await levelSlider.fill('100');
@@ -232,16 +209,14 @@ test.describe('Play Page Controls', () => {
     // Navigate away and back to force fresh read from device
     await navigateAwayAndBackToPlay(page);
 
-    const freshPartRows = page.locator(
-      '.grid.grid-cols-12.gap-2.py-1\\.5',
-    );
-    await expect(freshPartRows.first()).toBeVisible({
+    const freshLevelSlider = page.locator('[data-testid="part-0-level"]');
+    await expect(freshLevelSlider).toBeVisible({
       timeout: DATA_LOAD_TIMEOUT_MS,
     });
-    const freshLevelSlider = freshPartRows.first().locator('input[type="range"]');
-    await expect(freshLevelSlider).toHaveValue('100', {
-      timeout: UI_TIMEOUT_MS,
-    });
+    // Allow ±1 tolerance for hardware readback rounding
+    const freshValue = Number(await freshLevelSlider.inputValue());
+    expect(freshValue).toBeGreaterThanOrEqual(99);
+    expect(freshValue).toBeLessThanOrEqual(101);
   });
 
   // -------------------------------------------------------------------------
@@ -249,14 +224,13 @@ test.describe('Play Page Controls', () => {
   // -------------------------------------------------------------------------
 
   test('patch assignment syncs to device', async ({ page }) => {
-    const partRows = page.locator(
-      '.grid.grid-cols-12.gap-2.py-1\\.5',
-    );
-    await expect(partRows.first()).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
+    const patchSelect = page.locator('[data-testid="part-0-patch"]');
+    await expect(patchSelect).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
 
-    // Patch is the 2nd select in each part row
-    const patchSelect = partRows.first().locator('select').nth(1);
-    await expect(patchSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    // Wait for patch options to be populated from device
+    await expect(
+      patchSelect.locator('option:not([value="-1"])'),
+    ).not.toHaveCount(0, { timeout: DATA_LOAD_TIMEOUT_MS });
 
     // Get available options (skip the "---" option at value -1)
     const options = await patchSelect.locator('option').all();
@@ -281,13 +255,10 @@ test.describe('Play Page Controls', () => {
     // Navigate away and back to force fresh read from device
     await navigateAwayAndBackToPlay(page);
 
-    const freshPartRows = page.locator(
-      '.grid.grid-cols-12.gap-2.py-1\\.5',
-    );
-    await expect(freshPartRows.first()).toBeVisible({
+    const freshPatchSelect = page.locator('[data-testid="part-0-patch"]');
+    await expect(freshPatchSelect).toBeVisible({
       timeout: DATA_LOAD_TIMEOUT_MS,
     });
-    const freshPatchSelect = freshPartRows.first().locator('select').nth(1);
     await expect(freshPatchSelect).toHaveValue(targetPatchValue, {
       timeout: UI_TIMEOUT_MS,
     });
