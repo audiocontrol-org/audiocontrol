@@ -129,3 +129,52 @@ export const VALUE_RANGES = {
     /** Partial count range */
     PARTIAL_COUNT: { min: 0x00, max: 0x1F },
 } as const;
+
+// =============================================================================
+// Wave Data Address Functions
+// =============================================================================
+
+/**
+ * S-330 segment address stride: 00 01 40 00H = 24576 in linear 7-bit address units.
+ *
+ * Each segment contains 12000 samples transmitted as 24000 bytes (2 bytes per 12-bit sample).
+ */
+const S330_SEGMENT_ADDR_STRIDE = 24576;
+
+/**
+ * S-330 Bank B offset: byte 1 = 0x20, which in the 7-bit address scheme
+ * equals 0x20 << 14 = 524288 linear address units.
+ */
+const S330_BANK_B_OFFSET = 0x20 << 14; // 524288
+
+/**
+ * Build wave data address for the S-330.
+ *
+ * The S-330 has 2 wave banks (A, B) with up to 18 segments each.
+ * Address layout is linear stride-based:
+ *   - Bank A base: 01 00 00 00H (offset 0)
+ *   - Bank B base: 01 20 00 00H (offset 0x20 << 14 = 524288)
+ *   - Segment stride: 00 01 40 00H = 24576 address units
+ *
+ * @param waveBank - Wave bank index (0 = Bank A, 1 = Bank B)
+ * @param segmentIndex - Segment index within the bank (0-17)
+ * @returns 4-byte address array
+ */
+export function buildWaveDataAddress(waveBank: number, segmentIndex: number): number[] {
+    if (waveBank < 0 || waveBank > 1) {
+        throw new Error(`S-330 wave bank ${waveBank} out of range (0-1)`);
+    }
+    if (segmentIndex < 0 || segmentIndex > 17) {
+        throw new Error(`Segment index ${segmentIndex} out of range (0-17)`);
+    }
+
+    const bankBaseAddr = waveBank === 0 ? 0 : S330_BANK_B_OFFSET;
+    const addrOffset = bankBaseAddr + (segmentIndex * S330_SEGMENT_ADDR_STRIDE);
+
+    return [
+        ADDR_WAVE_DATA[0],
+        (addrOffset >> 14) & 0x7f,
+        (addrOffset >> 7) & 0x7f,
+        addrOffset & 0x7e, // LSB must be even per Roland spec
+    ];
+}

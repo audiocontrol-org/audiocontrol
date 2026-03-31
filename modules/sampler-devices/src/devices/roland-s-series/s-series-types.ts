@@ -424,6 +424,18 @@ export interface SSeriesClientOptions {
      * Default: 150ms
      */
     writeFlushDelayMs?: number;
+
+    /**
+     * Build a 4-byte SysEx address for wave data given a wave bank and segment index.
+     *
+     * The S-330 and S-550 use different wave address formulas despite sharing the same
+     * SysEx model ID (0x1E). The S-330 uses a linear stride (24576 address units per
+     * segment) while the S-550 uses a structured formula (byte2 = segmentIndex * 8).
+     *
+     * When not provided, the standalone S-330 client defaults to the S-330 stride-based
+     * formula. Callers using the S-550 must supply the S-550 address builder.
+     */
+    buildWaveAddress?: (waveBank: number, segmentIndex: number) => number[];
 }
 
 // =============================================================================
