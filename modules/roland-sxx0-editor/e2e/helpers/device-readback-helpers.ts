@@ -114,6 +114,7 @@ export interface ToneReadback {
   loopMode: string;
   originalKey: number;
   outputAssign: number;
+  fineTune: number;
   wave: {
     bank: number;
     segmentTop: number;
@@ -161,6 +162,7 @@ export async function readToneFromDevice(
       loopMode: tone.loopMode,
       originalKey: tone.originalKey,
       outputAssign: tone.outputAssign,
+      fineTune: tone.fineTune,
       wave: {
         bank: tone.wave.bank,
         segmentTop: tone.wave.segmentTop,
@@ -195,10 +197,12 @@ export async function readToneFromDevice(
 export interface PatchReadback {
   name: string;
   keyMode: string;
+  keyAssign: string;
   benderRange: number;
   level: number;
   outputAssign: number;
   aftertouchSens: number;
+  aftertouchAssign: string;
   velocityThreshold: number;
 }
 
@@ -224,10 +228,12 @@ export async function readPatchFromDevice(
     return {
       name: (patch.common.name ?? '').trim(),
       keyMode: patch.common.keyMode,
+      keyAssign: patch.common.keyAssign,
       benderRange: patch.common.benderRange,
       level: patch.common.level,
       outputAssign: patch.common.outputAssign,
       aftertouchSens: patch.common.aftertouchSens,
+      aftertouchAssign: patch.common.aftertouchAssign,
       velocityThreshold: patch.common.velocityThreshold,
     };
     /* eslint-enable @typescript-eslint/no-explicit-any */

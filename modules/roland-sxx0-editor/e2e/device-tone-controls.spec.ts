@@ -154,6 +154,33 @@ async function navigateToTonesPage(
   });
 }
 
+/**
+ * Drive a ParameterSlider to a target value using arrow keys.
+ * Reads aria-valuenow to determine the current position, then presses
+ * ArrowRight or ArrowLeft the appropriate number of times.
+ */
+async function driveSliderToValue(
+  slider: import('@playwright/test').Locator,
+  targetValue: number,
+): Promise<void> {
+  const currentValue = Number(
+    await slider.getAttribute('aria-valuenow') ?? '64',
+  );
+  const diff = targetValue - currentValue;
+
+  await slider.focus();
+  if (diff > 0) {
+    for (let i = 0; i < diff; i++) {
+      await slider.press('ArrowRight');
+    }
+  } else {
+    for (let i = 0; i < Math.abs(diff); i++) {
+      await slider.press('ArrowLeft');
+    }
+  }
+  await slider.blur();
+}
+
 // ===========================================================================
 // Test Suite
 // ===========================================================================
@@ -268,26 +295,14 @@ test.describe('Tone Editor Controls', () => {
 
     // Set to 80 (unless already 80, then use 50)
     const newValue = originalValue === 80 ? 50 : 80;
-    const diff = newValue - originalValue;
-
-    await slider.focus();
-    if (diff > 0) {
-      for (let i = 0; i < diff; i++) {
-        await slider.press('ArrowRight');
-      }
-    } else {
-      for (let i = 0; i < Math.abs(diff); i++) {
-        await slider.press('ArrowLeft');
-      }
-    }
-    await slider.blur();
+    await driveSliderToValue(slider, newValue);
     await page.waitForTimeout(WRITE_FLUSH_MS);
 
     // Read tone back from device hardware
     const deviceTone = await readToneFromDevice(page, testToneIndex);
     expect(deviceTone).not.toBeNull();
     expect(deviceTone!.tvf.enabled).toBe(true);
-    // Allow ±1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
     expect(Math.abs(deviceTone!.tvf.cutoff - newValue)).toBeLessThanOrEqual(1);
   });
 
@@ -308,25 +323,142 @@ test.describe('Tone Editor Controls', () => {
 
     // Set to 90 (unless already 90, then use 40)
     const newValue = originalValue === 90 ? 40 : 90;
-    const diff = newValue - originalValue;
-
-    await slider.focus();
-    if (diff > 0) {
-      for (let i = 0; i < diff; i++) {
-        await slider.press('ArrowRight');
-      }
-    } else {
-      for (let i = 0; i < Math.abs(diff); i++) {
-        await slider.press('ArrowLeft');
-      }
-    }
-    await slider.blur();
+    await driveSliderToValue(slider, newValue);
     await page.waitForTimeout(WRITE_FLUSH_MS);
 
     // Read tone back from device hardware
     const deviceTone = await readToneFromDevice(page, testToneIndex);
     expect(deviceTone).not.toBeNull();
-    // Allow ±1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
     expect(Math.abs(deviceTone!.lfo.rate - newValue)).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // Original Key
+  // -------------------------------------------------------------------------
+
+  test('original key change syncs to device', async ({ page }) => {
+    const keyInput = page.locator('[data-testid="tone-original-key"]');
+    await expect(keyInput).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = Number(await keyInput.inputValue());
+
+    // Set to 72 (unless already 72, then use 48)
+    const newValue = originalValue === 72 ? 48 : 72;
+    await keyInput.fill(String(newValue));
+    // The onChange handler commits immediately, but blur ensures focus leaves
+    await keyInput.blur();
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    expect(deviceTone!.originalKey).toBe(newValue);
+  });
+
+  // -------------------------------------------------------------------------
+  // Output Assign
+  // -------------------------------------------------------------------------
+
+  test('output assign change syncs to device', async ({ page }) => {
+    const outputSelect = page.locator('[data-testid="tone-output"]');
+    await expect(outputSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = await outputSelect.inputValue();
+
+    // Toggle between '0' (Mix) and '1' (Out 1)
+    const newValue = originalValue === '1' ? '0' : '1';
+    await outputSelect.selectOption(newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    expect(deviceTone!.outputAssign).toBe(Number(newValue));
+  });
+
+  // -------------------------------------------------------------------------
+  // TVF Enabled
+  // -------------------------------------------------------------------------
+
+  test('TVF enabled checkbox syncs to device', async ({ page }) => {
+    const checkbox = page.locator('[data-testid="tone-tvf-enabled"]');
+    await expect(checkbox).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const wasChecked = await checkbox.isChecked();
+
+    // Toggle the checkbox
+    await checkbox.click();
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    expect(deviceTone!.tvf.enabled).toBe(!wasChecked);
+  });
+
+  // -------------------------------------------------------------------------
+  // TVA Level
+  // -------------------------------------------------------------------------
+
+  test('TVA level slider syncs to device', async ({ page }) => {
+    // Scope to the TVA card section to avoid ambiguity with any other
+    // "Level" slider on the page (e.g., patch level).
+    const tvaSection = page.locator(
+      '[data-testid="tone-detail"] .card:has(h4:has-text("TVA"))',
+    );
+    const levelContainer = tvaSection.locator('[data-testid="param-level"]');
+    await expect(levelContainer).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const slider = levelContainer.locator('[role="slider"]');
+    await expect(slider).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = Number(
+      await slider.getAttribute('aria-valuenow') ?? '100',
+    );
+
+    // Set to 95 (unless already 95, then use 70)
+    const newValue = originalValue === 95 ? 70 : 95;
+    await driveSliderToValue(slider, newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    expect(Math.abs(deviceTone!.tva.level - newValue)).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // Fine Tune
+  // -------------------------------------------------------------------------
+
+  test('fine tune slider syncs to device', async ({ page }) => {
+    const fineTuneContainer = page.locator('[data-testid="param-fine-tune"]');
+    await expect(fineTuneContainer).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const slider = fineTuneContainer.locator('[role="slider"]');
+    await expect(slider).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // The slider displays values 0-127 (offset by +64 from the stored -64..+63)
+    const originalSliderValue = Number(
+      await slider.getAttribute('aria-valuenow') ?? '64',
+    );
+
+    // Set slider to 74 (stored value = 10), unless already 74, then use 54 (stored = -10)
+    const newSliderValue = originalSliderValue === 74 ? 54 : 74;
+    await driveSliderToValue(slider, newSliderValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // The stored fineTune = sliderValue - 64
+    const expectedStoredValue = newSliderValue - 64;
+
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    expect(
+      Math.abs(deviceTone!.fineTune - expectedStoredValue),
+    ).toBeLessThanOrEqual(1);
   });
 });

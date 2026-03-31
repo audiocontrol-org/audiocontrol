@@ -299,4 +299,106 @@ test.describe('Patch Editor Controls', () => {
     // Allow ±1 tolerance — Radix slider arrow keys may over/undershoot by 1
     expect(Math.abs(devicePatch!.level - newValue)).toBeLessThanOrEqual(1);
   });
+
+  // -------------------------------------------------------------------------
+  // Aftertouch Sensitivity Slider
+  // -------------------------------------------------------------------------
+
+  test('aftertouch sensitivity syncs to device', async ({ page }) => {
+    const container = page.locator('[data-testid="param-a-t-sense"]');
+    await expect(container).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const slider = container.locator('[role="slider"]');
+    await expect(slider).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = Number(
+      await slider.getAttribute('aria-valuenow') ?? '64',
+    );
+
+    // Set to 80 (unless already 80, then use 50)
+    const newValue = originalValue === 80 ? 50 : 80;
+    const diff = newValue - originalValue;
+
+    await slider.focus();
+    if (diff > 0) {
+      for (let i = 0; i < diff; i++) {
+        await slider.press('ArrowRight');
+      }
+    } else {
+      for (let i = 0; i < Math.abs(diff); i++) {
+        await slider.press('ArrowLeft');
+      }
+    }
+    await slider.blur();
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    // Allow ±1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    expect(Math.abs(devicePatch!.aftertouchSens - newValue)).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // Aftertouch Assign
+  // -------------------------------------------------------------------------
+
+  test('aftertouch assign change syncs to device', async ({ page }) => {
+    const atAssignSelect = page.locator('[data-testid="patch-at-assign"]');
+    await expect(atAssignSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = await atAssignSelect.inputValue();
+
+    // Toggle between 'volume' and 'modulation'
+    const newValue = originalValue === 'volume' ? 'modulation' : 'volume';
+    await atAssignSelect.selectOption(newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    expect(devicePatch!.aftertouchAssign).toBe(newValue);
+  });
+
+  // -------------------------------------------------------------------------
+  // Key Assign
+  // -------------------------------------------------------------------------
+
+  test('key assign change syncs to device', async ({ page }) => {
+    const keyAssignSelect = page.locator('[data-testid="patch-key-assign"]');
+    await expect(keyAssignSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = await keyAssignSelect.inputValue();
+
+    // Toggle between 'fix' and 'rotary'
+    const newValue = originalValue === 'fix' ? 'rotary' : 'fix';
+    await keyAssignSelect.selectOption(newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    expect(devicePatch!.keyAssign).toBe(newValue);
+  });
+
+  // -------------------------------------------------------------------------
+  // Output Assign
+  // -------------------------------------------------------------------------
+
+  test('output assign change syncs to device', async ({ page }) => {
+    const outputSelect = page.locator('[data-testid="patch-output"]');
+    await expect(outputSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = await outputSelect.inputValue();
+
+    // Change to output 3 (value '2') unless already there, then use output 1 (value '0')
+    const newValue = originalValue === '2' ? '0' : '2';
+    await outputSelect.selectOption(newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    expect(devicePatch!.outputAssign).toBe(Number(newValue));
+  });
 });
