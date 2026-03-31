@@ -243,6 +243,16 @@ test.describe('Tone Envelope Controls', () => {
     );
     await expect(tvaSection).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
+    // Debug: list all selects in TVA section
+    const allSelects = tvaSection.locator('select');
+    const selectCount = await allSelects.count();
+    for (let i = 0; i < selectCount; i++) {
+      const val = await allSelects.nth(i).inputValue().catch(() => 'N/A');
+      const visible = await allSelects.nth(i).isVisible();
+      const optCount = await allSelects.nth(i).locator('option').count();
+      console.log(`TVA select[${i}]: value=${val}, visible=${visible}, options=${optCount}`);
+    }
+
     // The sustain/end point selects appear in both normal and expanded views.
     // The normal view has a grid with two selects: sustain (first) and end (second).
     // Scope to the grid container that's NOT inside the expanded overlay.
