@@ -295,9 +295,9 @@ test.describe('S3000XL Programs Page', () => {
       await page.waitForTimeout(1_500);
     });
 
-    // Skip: signed parameter encoding bug — byte2nibblesLE doesn't handle negative values.
-    // The generated ProgramHeader_writePANPOS passes the raw signed number to byte2nibblesLE
-    // which expects 0-255. Needs a fix in the code generator or a signed encoding wrapper.
+    // Skip: write encoding fixed (byte2nibblesLE handles signed), but the read
+    // path (parseProgramHeader) returns unsigned values for signed fields — e.g.,
+    // PANPOS -25 is stored as 231. Needs signed reinterpretation in the parser.
     test.skip('pan position round-trip persists to device', async ({ page }) => {
       test.setTimeout(60_000);
 

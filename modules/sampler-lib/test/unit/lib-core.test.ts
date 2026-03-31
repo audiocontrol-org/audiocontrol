@@ -83,11 +83,34 @@ describe(`Core library functions`, () => {
 
         expect(nibbles2byte(nibbles[0], nibbles[1])).toBe(255)
 
-        expect(() => byte2nibblesLE(-1)).toThrow()
+        expect(() => byte2nibblesLE(-129)).toThrow()
         expect(() => byte2nibblesLE(256)).toThrow()
         expect(() => nibbles2byte(-1, 0)).toThrow()
         expect(() => nibbles2byte(0, -1)).toThrow()
         expect(() => nibbles2byte(16, 0)).toThrow()
         expect(() => nibbles2byte(0, 16)).toThrow()
+    })
+
+    it(`Converts signed byte values to nibbles via two's complement`, () => {
+        // -1 => 255 (0xFF) => [0x0F, 0x0F]
+        let nibbles = byte2nibblesLE(-1)
+        expect(nibbles[0]).toBe(0x0F)
+        expect(nibbles[1]).toBe(0x0F)
+        expect(nibbles2byte(nibbles[0], nibbles[1])).toBe(255)
+
+        // -50 => 206 (0xCE) => [0x0E, 0x0C]
+        nibbles = byte2nibblesLE(-50)
+        expect(nibbles[0]).toBe(0x0E)
+        expect(nibbles[1]).toBe(0x0C)
+        expect(nibbles2byte(nibbles[0], nibbles[1])).toBe(206)
+
+        // -128 => 128 (0x80) => [0x00, 0x08]
+        nibbles = byte2nibblesLE(-128)
+        expect(nibbles[0]).toBe(0x00)
+        expect(nibbles[1]).toBe(0x08)
+        expect(nibbles2byte(nibbles[0], nibbles[1])).toBe(128)
+
+        // Boundary: -128 is valid, -129 is not
+        expect(() => byte2nibblesLE(-129)).toThrow()
     })
 })
