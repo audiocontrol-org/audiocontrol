@@ -2,6 +2,7 @@ import { useEffect, useCallback, useRef } from 'react';
 import { KeygroupList, KeygroupEditor } from '@/components/keygroups';
 import { useS3000xlClient } from '@/hooks/useS3000xlClient';
 import { useKeygroupLoader } from '@/hooks/useKeygroupLoader';
+import { useSampleNames } from '@/hooks/useSampleNames';
 import { useKeygroupStore } from '@/stores/keygroupStore';
 import { useProgramStore } from '@/stores/programStore';
 import { useEditorStore } from '@/stores/editorStore';
@@ -9,6 +10,7 @@ import { useEditorStore } from '@/stores/editorStore';
 export function KeygroupsPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
   const { loadKeygroups } = useKeygroupLoader(client);
+  const { sampleNames } = useSampleNames(client);
 
   const selectedProgramIndex = useEditorStore((s) => s.selectedProgramIndex);
   const selectedKeygroupIndex = useEditorStore((s) => s.selectedKeygroupIndex);
@@ -40,7 +42,7 @@ export function KeygroupsPage(): JSX.Element {
   }, [isConnected, selectedProgramIndex, selectedProgram, invalidateCache, selectKeygroup, loadKeygroups]);
 
   const handleParameterChange = useCallback(
-    async (field: string, value: number) => {
+    async (field: string, value: number | string) => {
       if (selectedKeygroupIndex === null || !client) return;
 
       const header = keygroups[selectedKeygroupIndex];
@@ -134,6 +136,7 @@ export function KeygroupsPage(): JSX.Element {
             <KeygroupEditor
               header={selectedHeader}
               keygroupIndex={selectedKeygroupIndex!}
+              sampleNames={sampleNames}
               onParameterChange={handleParameterChange}
             />
           ) : selectedKeygroupIndex !== null ? (

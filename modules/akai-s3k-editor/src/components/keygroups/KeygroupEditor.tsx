@@ -1,10 +1,12 @@
 import type { ReactNode } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3000xl-browser';
+import { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
 
 interface KeygroupEditorProps {
   header: KeygroupHeader;
   keygroupIndex: number;
-  onParameterChange: (field: string, value: number) => void;
+  sampleNames: string[];
+  onParameterChange: (field: string, value: number | string) => void;
 }
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -265,6 +267,7 @@ function PitchSection({
 export function KeygroupEditor({
   header,
   keygroupIndex,
+  sampleNames,
   onParameterChange,
 }: KeygroupEditorProps): JSX.Element {
   const changeNum = (field: string) => (value: number) =>
@@ -280,6 +283,11 @@ export function KeygroupEditor({
       </div>
 
       <NoteRangeSection header={header} changeNum={changeNum} />
+      <VelocityZoneEditor
+        header={header}
+        sampleNames={sampleNames}
+        onParameterChange={onParameterChange}
+      />
       <AmplitudeEnvelopeSection header={header} changeNum={changeNum} />
       <FilterSection header={header} changeNum={changeNum} />
       <FilterEnvelopeSection header={header} changeNum={changeNum} />
