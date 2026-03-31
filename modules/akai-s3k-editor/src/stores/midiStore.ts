@@ -19,3 +19,8 @@ export const useMidiStore = createMidiStore<null>({
   deviceIdRange: { min: 0, max: 127 },
   transport: transport.transport,
 });
+
+// Expose on window for E2E testing
+if (typeof window !== 'undefined') {
+  (window as unknown as Record<string, unknown>).__midiStore = useMidiStore;
+}

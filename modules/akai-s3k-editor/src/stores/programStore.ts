@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ProgramHeader } from '@audiocontrol/sampler-devices/s3000xl-browser';
+import type { ProgramHeader } from '@audiocontrol/sampler-devices/s3k';
 
 export interface ProgramStoreState {
   /** Sparse array of loaded program headers, indexed by program number (0-127) */
@@ -50,3 +50,8 @@ export const useProgramStore = create<ProgramStore>((set) => ({
     });
   },
 }));
+
+// Expose on window for E2E testing
+if (typeof window !== 'undefined') {
+  (window as unknown as Record<string, unknown>).__programStore = useProgramStore;
+}

@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3000xl-browser';
+import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
 
 interface KeygroupEditorProps {

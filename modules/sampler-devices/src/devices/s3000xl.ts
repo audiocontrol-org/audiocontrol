@@ -1,7 +1,7 @@
 //
 // GENERATED Fri Oct 03 2025 22:37:37 GMT-0700 (Pacific Daylight Time). DO NOT EDIT.
 //
-import {byte2nibblesLE, bytes2numberLE, nibbles2byte, newClientOutput} from "@audiocontrol/sampler-lib"
+import {byte2nibblesLE, bytes2numberLE, bytes2signedNumberLE, nibbles2byte, newClientOutput} from "@audiocontrol/sampler-lib"
 import {nextByte, akaiByte2String, string2AkaiBytes} from "@/utils/akai-utils.js"
 
 export interface ProgramHeader {
@@ -374,7 +374,7 @@ export function parseProgramHeader(data: number[], offset: number, o: ProgramHea
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.PANPOS = bytes2numberLE(b)
+    o.PANPOS = bytes2signedNumberLE(b)
 
     // Basic loudness of this program; Range: 0 to 99
     out.log('PRLOUD: offset: ' + reloff())
@@ -392,7 +392,7 @@ export function parseProgramHeader(data: number[], offset: number, o: ProgramHea
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.V_LOUD = bytes2numberLE(b)
+    o.V_LOUD = bytes2signedNumberLE(b)
 
     // Not used
     out.log('K_LOUD: offset: ' + reloff())
@@ -636,7 +636,7 @@ export function parseProgramHeader(data: number[], offset: number, o: ProgramHea
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.PTUNO = bytes2numberLE(b)
+    o.PTUNO = bytes2signedNumberLE(b)
 
     // Not used
     out.log('K_LRAT: offset: ' + reloff())
@@ -2041,7 +2041,7 @@ export function parseSampleHeader(data: number[], offset: number, o: SampleHeade
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.SHLTO = bytes2numberLE(b)
+    o.SHLTO = bytes2signedNumberLE(b)
 
 }
 
@@ -2780,7 +2780,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.KGTUNO = bytes2numberLE(b)
+    o.KGTUNO = bytes2signedNumberLE(b)
 
     // Basic filter frequency; Range: 0 to 99
     out.log('FILFRQ: offset: ' + reloff())
@@ -2860,7 +2860,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.V_ATT1 = bytes2numberLE(b)
+    o.V_ATT1 = bytes2signedNumberLE(b)
 
     // Note-on velocity dependence of envelope 1 release rate
     out.log('V_REL1: offset: ' + reloff())
@@ -2924,7 +2924,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.V_ATT2 = bytes2numberLE(b)
+    o.V_ATT2 = bytes2signedNumberLE(b)
 
     // Dependence of envelope 2 release on note-on velocity
     out.log('V_REL2: offset: ' + reloff())
@@ -3028,7 +3028,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VTUNO1 = bytes2numberLE(b)
+    o.VTUNO1 = bytes2signedNumberLE(b)
 
     // Velocity zone 1 loudness offset; Range: -50 to +50
     out.log('VLOUD1: offset: ' + reloff())
@@ -3036,7 +3036,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VLOUD1 = bytes2numberLE(b)
+    o.VLOUD1 = bytes2signedNumberLE(b)
 
     // Velocity zone 1 filter frequency offset
     out.log('VFREQ1: offset: ' + reloff())
@@ -3116,7 +3116,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VTUNO2 = bytes2numberLE(b)
+    o.VTUNO2 = bytes2signedNumberLE(b)
 
     // Velocity zone 2 loudness offset
     out.log('VLOUD2: offset: ' + reloff())
@@ -3124,7 +3124,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VLOUD2 = bytes2numberLE(b)
+    o.VLOUD2 = bytes2signedNumberLE(b)
 
     // Velocity zone 2 filter frequency offset
     out.log('VFREQ2: offset: ' + reloff())
@@ -3204,7 +3204,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VTUNO3 = bytes2numberLE(b)
+    o.VTUNO3 = bytes2signedNumberLE(b)
 
     // Velocity zone 3 loudness offset; -50 to +50
     out.log('VLOUD3: offset: ' + reloff())
@@ -3212,7 +3212,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VLOUD3 = bytes2numberLE(b)
+    o.VLOUD3 = bytes2signedNumberLE(b)
 
     // Velocity zone 3 filter frequency offset
     out.log('VFREQ3: offset: ' + reloff())
@@ -3292,7 +3292,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VTUNO4 = bytes2numberLE(b)
+    o.VTUNO4 = bytes2signedNumberLE(b)
 
     // Velocity zone 4 loudness offset
     out.log('VLOUD4: offset: ' + reloff())
@@ -3300,7 +3300,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VLOUD4 = bytes2numberLE(b)
+    o.VLOUD4 = bytes2signedNumberLE(b)
 
     // Velocity zone 4 filter frequency offset
     out.log('VFREQ4: offset: ' + reloff())
@@ -3436,7 +3436,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VSS1 = bytes2numberLE(b)
+    o.VSS1 = bytes2signedNumberLE(b)
 
     // Start point dependence on note-on velocity for sample in velocity zone 2
     out.log('VSS2: offset: ' + reloff())
@@ -3444,7 +3444,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VSS2 = bytes2numberLE(b)
+    o.VSS2 = bytes2signedNumberLE(b)
 
     // Start point dependence on note-on velocity for sample in velocity zone 3
     out.log('VSS3: offset: ' + reloff())
@@ -3452,7 +3452,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VSS3 = bytes2numberLE(b)
+    o.VSS3 = bytes2signedNumberLE(b)
 
     // Start point dependence on note-on velocity for sample in velocity zone 4
     out.log('VSS4: offset: ' + reloff())
@@ -3460,7 +3460,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VSS4 = bytes2numberLE(b)
+    o.VSS4 = bytes2signedNumberLE(b)
 
     // Not used
     out.log('KV_LO: offset: ' + reloff())
@@ -3676,7 +3676,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<1; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.K_FRQ2 = bytes2numberLE(b)
+    o.K_FRQ2 = bytes2signedNumberLE(b)
 
     // Attack rate of envelope 3
     out.log('ATTAK3: offset: ' + reloff())

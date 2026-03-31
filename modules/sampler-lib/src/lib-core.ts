@@ -290,6 +290,33 @@ export function bytes2numberLE(b: number[]) {
 }
 
 /**
+ * Converts a byte array to a signed number using little-endian byte order.
+ *
+ * Interprets the unsigned value from {@link bytes2numberLE} as a two's complement
+ * signed integer based on the byte length of the input array.
+ *
+ * @param b - Byte array to convert (1-4 bytes)
+ * @returns The signed numeric value
+ *
+ * @example
+ * ```typescript
+ * bytes2signedNumberLE([206]);        // -50  (1-byte: 206 > 127, so 206 - 256 = -50)
+ * bytes2signedNumberLE([0]);          // 0
+ * bytes2signedNumberLE([50]);         // 50
+ * bytes2signedNumberLE([0xCE, 0xFF]); // -50  (2-byte: 0xFFCE = 65486, 65486 - 65536 = -50)
+ * ```
+ */
+export function bytes2signedNumberLE(b: number[]) {
+    const unsigned = bytes2numberLE(b)
+    const bitCount = b.length * 8
+    const signBit = 1 << (bitCount - 1)
+    if (unsigned >= signBit) {
+        return unsigned - (1 << bitCount)
+    }
+    return unsigned
+}
+
+/**
  * Converts a byte array to a number using big-endian byte order.
  *
  * @param b - Byte array to convert
@@ -313,24 +340,30 @@ export function bytes2numberBE(b: number[]) {
 /**
  * Splits a byte into two nibbles (4-bit values) in little-endian order.
  *
- * @param byte - The byte to split (0-255)
+ * Accepts both unsigned (0 to 255) and signed (-128 to 127) byte values.
+ * Negative values are converted to their two's complement unsigned
+ * representation before splitting (e.g., -50 becomes 206 / 0xCE).
+ *
+ * @param byte - The byte to split (-128 to 255)
  * @returns Array containing [lowNibble, highNibble]
- * @throws {Error} If byte is not in the range 0-255
+ * @throws {Error} If byte is not in the range -128 to 255
  *
  * @example
  * ```typescript
  * byte2nibblesLE(0xAB); // [0x0B, 0x0A] (11, 10)
  * byte2nibblesLE(0x3F); // [0x0F, 0x03] (15, 3)
+ * byte2nibblesLE(-50);  // [0x0E, 0x0C] (14, 12) -- 0xCE = 206
+ * byte2nibblesLE(-1);   // [0x0F, 0x0F] (15, 15) -- 0xFF = 255
  * ```
  */
 export function byte2nibblesLE(byte: number) {
-    // Ensure the input is a valid byte (0-255)
-    if (byte < 0 || byte > 255) {
-        throw new Error("Input must be a valid byte (0-255).");
+    if (byte < -128 || byte > 255) {
+        throw new Error("Input must be a valid byte (-128 to 255).");
     }
-    // Extract the high and low nibbles
-    const highNibble = (byte >> 4) & 0x0F; // Shift right 4 bits and mask with 0x0F
-    const lowNibble = byte & 0x0F;         // Mask with 0x0F to get the lower nibble
+    // Convert signed to unsigned two's complement
+    const unsigned = byte < 0 ? byte + 256 : byte
+    const highNibble = (unsigned >> 4) & 0x0F;
+    const lowNibble = unsigned & 0x0F;
     return [lowNibble, highNibble]
 }
 

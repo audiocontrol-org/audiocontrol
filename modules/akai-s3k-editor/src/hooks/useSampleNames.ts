@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3000xl-browser';
+import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
 
 interface UseSampleNamesResult {
   sampleNames: string[];

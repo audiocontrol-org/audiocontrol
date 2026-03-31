@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3000xl-browser';
+import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
 import { useKeygroupStore } from '@/stores/keygroupStore';
 import { useEditorStore } from '@/stores/editorStore';
 
