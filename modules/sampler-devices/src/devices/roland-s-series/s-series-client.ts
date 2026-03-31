@@ -366,7 +366,13 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
     // Low-level MIDI Communication
     // =========================================================================
 
-    function sendAndReceive(message: number[]): Promise<number[]> {
+    /**
+     * Send a SysEx message and wait for a matching response.
+     * @param acceptCommands - If provided, only resolve on these command bytes.
+     *   Stale responses with other commands are logged and ignored.
+     *   If not provided, resolves on any valid S-series response (except RJC).
+     */
+    function sendAndReceive(message: number[], acceptCommands?: number[]): Promise<number[]> {
         return new Promise((resolve, reject) => {
             const timeout = setTimeout(() => {
                 midiAdapter.removeSysExListener(listener);
@@ -380,12 +386,20 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
                     response[2] === deviceId &&
                     response[3] === S_SERIES_MODEL_ID
                 ) {
-                    // Ignore stale RJC responses — the S-550 sends leftover
-                    // rejections from previous timed-out operations.
-                    if (response[4] === S_SERIES_COMMANDS.RJC) {
+                    const cmd = response[4];
+
+                    // Always ignore stale RJC
+                    if (cmd === S_SERIES_COMMANDS.RJC) {
                         console.warn(`[${config.deviceName}] Ignoring stale RJC in sendAndReceive`);
-                        return; // Stay listening for the real response
+                        return;
                     }
+
+                    // If caller specified acceptable commands, ignore anything else
+                    if (acceptCommands && !acceptCommands.includes(cmd)) {
+                        console.warn(`[${config.deviceName}] Ignoring stale 0x${cmd.toString(16)} (expected ${acceptCommands.map(c => '0x' + c.toString(16)).join('/')})`);
+                        return;
+                    }
+
                     clearTimeout(timeout);
                     midiAdapter.removeSysExListener(listener);
                     resolve(response);
@@ -540,7 +554,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             0xf7,
         ];
 
-        const wsdResponse = await sendAndReceive(wsd);
+        const wsdResponse = await sendAndReceive(wsd, [S_SERIES_COMMANDS.ACK, S_SERIES_COMMANDS.ERR]);
         if (wsdResponse[4] !== S_SERIES_COMMANDS.ACK) {
             throw new Error(`WSD rejected: got ${wsdResponse[4].toString(16)}`);
         }
@@ -575,7 +589,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
                 0xf7,
             ];
 
-            const datResponse = await sendAndReceive(dat);
+            const datResponse = await sendAndReceive(dat, [S_SERIES_COMMANDS.ACK, S_SERIES_COMMANDS.ERR]);
             if (datResponse[4] !== S_SERIES_COMMANDS.ACK) {
                 throw new Error(`DAT rejected: got ${datResponse[4].toString(16)}`);
             }
@@ -590,7 +604,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             0xf7,
         ];
 
-        const eodResponse = await sendAndReceive(eod);
+        const eodResponse = await sendAndReceive(eod, [S_SERIES_COMMANDS.ACK, S_SERIES_COMMANDS.ERR]);
         if (eodResponse[4] !== S_SERIES_COMMANDS.ACK) {
             throw new Error(`EOD rejected: got ${eodResponse[4].toString(16)}`);
         }
@@ -625,7 +639,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             0xf7,
         ];
 
-        const wsdResponse = await sendAndReceive(wsd);
+        const wsdResponse = await sendAndReceive(wsd, [S_SERIES_COMMANDS.ACK, S_SERIES_COMMANDS.ERR]);
         if (wsdResponse[4] !== S_SERIES_COMMANDS.ACK) {
             throw new Error(`Wave WSD rejected: got ${wsdResponse[4].toString(16)}`);
         }
@@ -663,7 +677,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
                 0xf7,
             ];
 
-            const datResponse = await sendAndReceive(dat);
+            const datResponse = await sendAndReceive(dat, [S_SERIES_COMMANDS.ACK, S_SERIES_COMMANDS.ERR]);
             if (datResponse[4] !== S_SERIES_COMMANDS.ACK) {
                 throw new Error(`Wave DAT rejected at offset ${offset}`);
             }
@@ -681,7 +695,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             0xf7,
         ];
 
-        const eodResponse = await sendAndReceive(eod);
+        const eodResponse = await sendAndReceive(eod, [S_SERIES_COMMANDS.ACK, S_SERIES_COMMANDS.ERR]);
         if (eodResponse[4] !== S_SERIES_COMMANDS.ACK) {
             throw new Error(`Wave EOD rejected`);
         }
