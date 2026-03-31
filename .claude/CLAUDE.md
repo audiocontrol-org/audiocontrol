@@ -229,7 +229,7 @@ All e2e tests are invoked via `make test-e2e-*` targets. The Make targets handle
 - Running tests inside the devenv environment
 
 ```bash
-make test-e2e-device           # Just run it — make handles the rest
+make test-e2e-roland-device           # Just run it — make handles the rest
 ```
 
 ### E2E Test Make Targets
@@ -237,18 +237,17 @@ make test-e2e-device           # Just run it — make handles the rest
 Always use make targets to run e2e tests (not raw pnpm commands):
 
 ```bash
-make test-e2e                  # All e2e tests (UI + library, no hardware)
-make test-e2e-ui               # Basic UI navigation tests
-make test-e2e-library          # Library tests (OPFS, no hardware)
-make test-e2e-device           # Device tests (requires hardware + midi-server)
-make test-e2e-hardware         # Hardware tests (requires hardware)
-make test-e2e-s3k-hardware     # S3000XL hardware tests
+make test-e2e-roland                  # All Roland e2e tests (UI + library, no device)
+make test-e2e-roland-device           # Roland device tests (requires hardware + midi-server)
+make test-e2e-roland-library          # Roland library tests (OPFS, no device)
+make test-e2e-roland-ui               # Roland UI navigation tests
+make test-e2e-s3k-device              # S3000XL device tests (requires hardware + midi-server)
 ```
 
 Pass arguments to test runners via ARGS:
 ```bash
-make test-e2e-device ARGS="--grep 'Tone Editor'"
-E2E_DEVICE_TYPE=s550 make test-e2e-device ARGS="--grep 'set round trip'"
+make test-e2e-roland-device ARGS="--grep 'Tone Editor'"
+E2E_DEVICE_TYPE=s550 make test-e2e-roland-device ARGS="--grep 'set round trip'"
 ```
 
 ### 2. No Mocking

@@ -79,7 +79,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean clean-deps test-e2e test-e2e-hardware test-e2e-library test-e2e-device test-e2e-device-library test-e2e-ui ensure-devenv ensure-playwright test-e2e-s3k-hardware
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-ui test-e2e-s3k-device
 
 build: $(ALL_STAMPS)
 
@@ -139,37 +139,35 @@ ensure-playwright: ensure-devenv
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/e2e-infra && npx playwright install chromium"
 
 # Extra arguments passed to e2e test runners (e.g., Playwright --grep).
-# Usage: make test-e2e-device-library ARGS="--grep 'set round trip'"
+# Usage: make test-e2e-roland-device ARGS="--grep 'Tone Editor'"
 ARGS ?=
 
-# Run all e2e tests (UI + library, no hardware required)
-test-e2e: $(ROLAND_SXX0_EDITOR) ensure-playwright
+# ---------------------------------------------------------------------------
+# Roland sxx0 E2E Tests
+# ---------------------------------------------------------------------------
+
+# All Roland e2e tests (UI + library, no device required)
+test-e2e-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e $(ARGS)"
 
-# Run hardware e2e tests (requires device + midi-server)
-test-e2e-hardware: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwright
+# Roland device tests (requires connected S-330/S-550 + midi-server)
+test-e2e-roland-device: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh $(ARGS)"
 
-# Run library e2e tests (OPFS, no hardware)
-test-e2e-library: $(ROLAND_SXX0_EDITOR) ensure-playwright
+# Roland library tests (OPFS, no device required)
+test-e2e-roland-library: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-library-e2e.sh $(ARGS)"
 
-# Run device e2e tests (requires hardware: import/export, editor controls, sets)
-test-e2e-device: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-device-library-e2e.sh $(ARGS)"
-
-# Alias for backward compatibility
-test-e2e-device-library: test-e2e-device
-
-# Run basic UI navigation tests
-test-e2e-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
+# Roland UI navigation tests (no device required)
+test-e2e-roland-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e $(ARGS)"
 
 # ---------------------------------------------------------------------------
 # S3000XL E2E Tests
 # ---------------------------------------------------------------------------
 
-test-e2e-s3k-hardware: $(AKAI_S3K_EDITOR) check-midi-server ensure-playwright
+# S3000XL device tests (requires connected S3000XL + midi-server)
+test-e2e-s3k-device: $(AKAI_S3K_EDITOR) check-midi-server ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh $(ARGS)"
 
 $(INSTALL_STAMP): pnpm-lock.yaml
