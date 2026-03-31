@@ -299,6 +299,13 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
 
     let connected = false;
 
+    // Multi-mode function parameter addresses (shared across S-330 and S-550)
+    const MULTI_CHANNELS_ADDRESS = [0x00, 0x01, 0x00, 0x22];
+    const MULTI_PATCHES_ADDRESS = [0x00, 0x01, 0x00, 0x32];
+    const MULTI_OUTPUTS_ADDRESS = [0x00, 0x01, 0x00, 0x42];
+    const MULTI_LEVELS_ADDRESS = [0x00, 0x01, 0x00, 0x56];
+    const MULTI_PART_COUNT = 8;
+
     // Patch and tone caches for progressive loading
     let patchCache: (TPatch | undefined)[] = new Array(config.patchCount).fill(undefined);
     let toneCache: (TTone | undefined)[] = new Array(config.toneCount).fill(undefined);
@@ -1082,25 +1089,152 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
         // === Multi Mode Configuration ===
 
         async requestFunctionParameters(): Promise<MultiPartConfig[]> {
-            // This would need device-specific implementation
-            // For now, return empty array
-            return [];
+            return serialize(async () => {
+                try {
+                    const channelData = await requestDataWithAddress(
+                        MULTI_CHANNELS_ADDRESS,
+                        MULTI_PART_COUNT
+                    );
+                    const patchData = await requestDataWithAddress(
+                        MULTI_PATCHES_ADDRESS,
+                        MULTI_PART_COUNT
+                    );
+
+                    let outputData: number[];
+                    try {
+                        outputData = await requestDataWithAddress(
+                            MULTI_OUTPUTS_ADDRESS,
+                            MULTI_PART_COUNT
+                        );
+                    } catch {
+                        // Output parameters may not exist on all firmware versions
+                        outputData = [1, 1, 1, 1, 1, 1, 1, 1];
+                    }
+
+                    const levelData = await requestDataWithAddress(
+                        MULTI_LEVELS_ADDRESS,
+                        MULTI_PART_COUNT
+                    );
+
+                    const parts: MultiPartConfig[] = [];
+                    for (let i = 0; i < MULTI_PART_COUNT; i++) {
+                        parts.push({
+                            channel: channelData[i] ?? 0,
+                            patchIndex: patchData[i] ?? 0,
+                            output: outputData[i] ?? 1,
+                            level: levelData[i] ?? 127,
+                        });
+                    }
+
+                    return parts;
+                } catch {
+                    // Return default configuration
+                    return Array.from({ length: MULTI_PART_COUNT }, (_, i) => ({
+                        channel: i,
+                        patchIndex: 0,
+                        output: 1,
+                        level: 127,
+                    }));
+                }
+            });
         },
 
-        async setMultiChannel(_part: number, _channel: number): Promise<void> {
-            // Device-specific implementation needed
+        /**
+         * Set MIDI receive channel for a multi mode part.
+         * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+         */
+        async setMultiChannel(part: number, channel: number): Promise<void> {
+            if (part < 0 || part > 7) {
+                throw new Error(`Invalid part number: ${part} (must be 0-7)`);
+            }
+            if (channel < 0 || channel > 15) {
+                throw new Error(`Invalid channel: ${channel} (must be 0-15)`);
+            }
+
+            return serialize(async () => {
+                const allChannelData = await requestDataWithAddress(
+                    MULTI_CHANNELS_ADDRESS,
+                    MULTI_PART_COUNT
+                );
+                const newChannelData = [...allChannelData];
+                newChannelData[part] = channel;
+                await sendData(MULTI_CHANNELS_ADDRESS, newChannelData);
+            });
         },
 
-        async setMultiPatch(_part: number, _patchIndex: number | null): Promise<void> {
-            // Device-specific implementation needed
+        /**
+         * Set patch assignment for a multi mode part.
+         * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+         */
+        async setMultiPatch(part: number, patchIndex: number | null): Promise<void> {
+            if (part < 0 || part > 7) {
+                throw new Error(`Invalid part number: ${part} (must be 0-7)`);
+            }
+            const value = patchIndex === null ? 0x7f : patchIndex;
+            if (patchIndex !== null && (patchIndex < 0 || patchIndex > 63)) {
+                throw new Error(`Invalid patch index: ${patchIndex} (must be 0-63 or null)`);
+            }
+
+            return serialize(async () => {
+                const allPatchData = await requestDataWithAddress(
+                    MULTI_PATCHES_ADDRESS,
+                    MULTI_PART_COUNT
+                );
+                const newPatchData = [...allPatchData];
+                newPatchData[part] = value;
+                await sendData(MULTI_PATCHES_ADDRESS, newPatchData);
+            });
         },
 
-        async setMultiOutput(_part: number, _output: number): Promise<void> {
-            // Device-specific implementation needed
+        /**
+         * Set output assignment for a multi mode part.
+         * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+         */
+        async setMultiOutput(part: number, output: number): Promise<void> {
+            if (part < 0 || part > 7) {
+                throw new Error(`Invalid part number: ${part} (must be 0-7)`);
+            }
+            if (output < 0 || output > 8) {
+                throw new Error(`Invalid output: ${output} (must be 0-8)`);
+            }
+
+            return serialize(async () => {
+                let allOutputData: number[];
+                try {
+                    allOutputData = await requestDataWithAddress(
+                        MULTI_OUTPUTS_ADDRESS,
+                        MULTI_PART_COUNT
+                    );
+                } catch {
+                    allOutputData = [1, 1, 1, 1, 1, 1, 1, 1];
+                }
+                const newOutputData = [...allOutputData];
+                newOutputData[part] = output;
+                await sendData(MULTI_OUTPUTS_ADDRESS, newOutputData);
+            });
         },
 
-        async setMultiLevel(_part: number, _level: number): Promise<void> {
-            // Device-specific implementation needed
+        /**
+         * Set level for a multi mode part.
+         * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+         */
+        async setMultiLevel(part: number, level: number): Promise<void> {
+            if (part < 0 || part > 7) {
+                throw new Error(`Invalid part number: ${part} (must be 0-7)`);
+            }
+            if (level < 0 || level > 127) {
+                throw new Error(`Invalid level: ${level} (must be 0-127)`);
+            }
+
+            return serialize(async () => {
+                const allLevelData = await requestDataWithAddress(
+                    MULTI_LEVELS_ADDRESS,
+                    MULTI_PART_COUNT
+                );
+                const newLevelData = [...allLevelData];
+                newLevelData[part] = level;
+                await sendData(MULTI_LEVELS_ADDRESS, newLevelData);
+            });
         },
 
         // === MIDI Panic ===
