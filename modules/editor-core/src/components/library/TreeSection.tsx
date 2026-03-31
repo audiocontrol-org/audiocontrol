@@ -24,6 +24,8 @@ export interface TreeSectionProps {
   nodes: TreeNode[];
   /** Category identifier for this section */
   category: string;
+  /** Test ID for e2e testing */
+  'data-testid'?: string;
   /** Set of expanded node IDs */
   expandedIds: Set<string>;
   /** Currently selected node ID */
@@ -82,6 +84,7 @@ export function TreeSection({
   title,
   nodes,
   category,
+  'data-testid': testId,
   expandedIds,
   selectedId,
   onToggleExpand,
@@ -119,6 +122,7 @@ export function TreeSection({
       onDragLeave={onDragLeave}
       onDrop={onDrop}
       data-category={category}
+      data-testid={testId}
     >
       {/* Section header */}
       <div className="ac-tree-section-header">
@@ -137,24 +141,26 @@ export function TreeSection({
       {nodes.length === 0 && !isDragOver ? (
         <div className="ac-tree-section-empty">{emptyMessage}</div>
       ) : (
-        <TreeView
-          nodes={nodes}
-          expandedIds={expandedIds}
-          onToggleExpand={onToggleExpand}
-          selectedId={selectedId}
-          onSelect={onSelect}
-          onContextMenu={onContextMenu}
-          onDrop={onTreeDrop}
-          onDragOver={onTreeDragOver}
-          renderIcon={renderIcon}
-          renderTrailing={renderTrailing}
-          onDelete={onDelete}
-          onCreateFolder={onCreateFolder}
-          draggable={draggable}
-          onDragStart={onDragStart}
-          onRename={onRename}
-          enableInlineRename={enableInlineRename}
-        />
+        <div data-testid={testId ? `${testId.replace('-tab', '-list')}` : undefined}>
+          <TreeView
+            nodes={nodes}
+            expandedIds={expandedIds}
+            onToggleExpand={onToggleExpand}
+            selectedId={selectedId}
+            onSelect={onSelect}
+            onContextMenu={onContextMenu}
+            onDrop={onTreeDrop}
+            onDragOver={onTreeDragOver}
+            renderIcon={renderIcon}
+            renderTrailing={renderTrailing}
+            onDelete={onDelete}
+            onCreateFolder={onCreateFolder}
+            draggable={draggable}
+            onDragStart={onDragStart}
+            onRename={onRename}
+            enableInlineRename={enableInlineRename}
+          />
+        </div>
       )}
 
       {/* Drop zone indicator */}

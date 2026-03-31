@@ -401,6 +401,7 @@ export type {
 export type { LibraryConnection } from './library-connection.js';
 export { BrowserLibraryConnection } from './browser-library-connection.js';
 export type { BrowserLibraryConnectionOptions } from './browser-library-connection.js';
+export { OPFSLibraryConnection } from './opfs-library-connection.js';
 
 // Cached storage decorator
 export { withCache, StorageCache, CachedStorageDirectoryHandle } from './cached-storage.js';

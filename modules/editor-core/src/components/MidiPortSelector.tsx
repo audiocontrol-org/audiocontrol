@@ -6,6 +6,7 @@ export interface MidiPortSelectorProps {
   value: string | null;
   onChange: (value: string) => void;
   disabled?: boolean;
+  testId?: string;
 }
 
 export function MidiPortSelector({
@@ -14,6 +15,7 @@ export function MidiPortSelector({
   value,
   onChange,
   disabled = false,
+  testId,
 }: MidiPortSelectorProps): JSX.Element {
   return (
     <div className="ac-field">
@@ -23,6 +25,7 @@ export function MidiPortSelector({
         value={value ?? ''}
         onChange={(event) => onChange(event.target.value)}
         disabled={disabled}
+        data-testid={testId}
       >
         <option value="">Select a port...</option>
         {ports.map((port) => (

@@ -66,8 +66,15 @@ export function useLibraryImportDialogs({
   const [operationError, setOperationError] = useState<string | null>(null);
   const [isSaveDialogOpen, setIsSaveDialogOpen] = useState(false);
   const [isLoadDialogOpen, setIsLoadDialogOpen] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [loadSuccess, setLoadSuccess] = useState(false);
 
-  const resetProgress = useCallback(() => { setOperationError(null); setOperationProgress(undefined); }, []);
+  const resetProgress = useCallback(() => {
+    setOperationError(null);
+    setOperationProgress(undefined);
+    setSaveSuccess(false);
+    setLoadSuccess(false);
+  }, []);
 
   const handleOpenImportToneDialog = useCallback((setName: string, toneFile: string) => {
     resetProgress(); setImportToneDialog({ setName, toneFile });
@@ -176,6 +183,7 @@ export function useLibraryImportDialogs({
     const mkProgress = (p: Partial<OperationProgress>): OperationProgress => ({ currentStep: 1, totalSteps: 1, stepLabel: 'Saving...', bytesSent: 0, bytesTotal: 100, bytesSentAllSteps: 0, bytesTotalAllSteps: 100, ...p });
     setOperationProgress(mkProgress({ currentStep: 0, stepLabel: 'Preparing...' }));
     setOperationError(null);
+    setSaveSuccess(false);
     const client = clientRef.current;
     try {
       await saveDeviceToSetIncremental(
@@ -187,8 +195,8 @@ export function useLibraryImportDialogs({
         (status) => setOperationProgress((prev) => prev ? { ...prev, stepLabel: status } : mkProgress({ stepLabel: status }))
       );
       setOperationProgress(mkProgress({ stepLabel: 'Save complete', bytesSent: 100 }));
+      setSaveSuccess(true);
       await handleRefreshLibrary();
-      setIsSaveDialogOpen(false);
     } catch (err) {
       console.error('[LibraryPage] Failed to save set:', err);
       setOperationError(err instanceof Error ? err.message : 'Failed to save set');
@@ -200,6 +208,7 @@ export function useLibraryImportDialogs({
     const { toneIndexOffset: toneOffset, waveBankOffset } = target;
     setOperationProgress({ currentStep: 1, totalSteps: 1, stepLabel: 'Reading set from library...', bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: 0, bytesTotalAllSteps: 0 });
     setOperationError(null);
+    setLoadSuccess(false);
     try {
       const deviceState = await loadSetToDevice(libraryHandle, selection.name, (progress) => {
         let stepLabel = 'Reading manifest...';
@@ -236,17 +245,34 @@ export function useLibraryImportDialogs({
       }
 
       setOperationProgress({ currentStep: totalItems, totalSteps: totalItems, stepLabel: `Loaded ${deviceState.tones.size} tones and ${deviceState.patches.size} patches`, bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: bytesTotalAllSteps, bytesTotalAllSteps });
+      setLoadSuccess(true);
       await new Promise((resolve) => setTimeout(resolve, 500));
-      setIsLoadDialogOpen(false);
     } catch (err) {
       console.error('[LibraryPage] Failed to load set:', err);
       setOperationError(err instanceof Error ? err.message : 'Failed to load set');
     }
   }, [libraryHandle, clientRef, selection, setTone, totalTones]);
 
+  // Wrapped setters that reset success state
+  const handleSetIsSaveDialogOpen = useCallback((open: boolean) => {
+    if (!open) {
+      setSaveSuccess(false);
+    }
+    setIsSaveDialogOpen(open);
+  }, []);
+
+  const handleSetIsLoadDialogOpen = useCallback((open: boolean) => {
+    if (!open) {
+      setLoadSuccess(false);
+    }
+    setIsLoadDialogOpen(open);
+  }, []);
+
   return {
     importToneDialog, importPatchDialog, isImporting, operationProgress, operationError,
-    isSaveDialogOpen, setIsSaveDialogOpen, isLoadDialogOpen, setIsLoadDialogOpen,
+    isSaveDialogOpen, setIsSaveDialogOpen: handleSetIsSaveDialogOpen,
+    isLoadDialogOpen, setIsLoadDialogOpen: handleSetIsLoadDialogOpen,
+    saveSuccess, loadSuccess,
     setImportToneDialog, setImportPatchDialog,
     handleOpenImportToneDialog, handleOpenImportPatchDialog,
     handleOpenImportIndividualToneDialog, handleOpenImportIndividualPatchDialog,

@@ -1,0 +1,53 @@
+format: sampler-tone
+device: s330
+version: 1
+name: Test Tone 01
+wave:
+  file: T01.wav
+  sampleRate: 30000
+  loopMode: forward
+  startPoint: 0
+  endPoint: 1000
+  loopPoint: 0
+s330:
+  originalKey: 60
+  outputAssign: 0
+  transpose: 0
+  fineTune: 0
+  lfo:
+    rate: 0
+    sync: false
+    delay: 0
+    mode: normal
+    polarity: false
+    offset: 64
+  tvf:
+    cutoff: 127
+    resonance: 0
+    keyFollow: 64
+    lfoDepth: 0
+    egDepth: 0
+    egPolarity: normal
+    levelCurve: 0
+    keyRateFollow: 64
+    velRateFollow: 64
+    enabled: false
+    envelope:
+      levels: [127, 127, 127, 127, 127, 127, 127, 0]
+      rates: [127, 127, 127, 127, 127, 127, 127, 127]
+      sustainPoint: 3
+      endPoint: 8
+  tva:
+    level: 100
+    lfoDepth: 0
+    keyRate: 64
+    velRate: 64
+    levelCurve: 0
+    envelope:
+      levels: [127, 127, 127, 127, 127, 127, 127, 0]
+      rates: [127, 127, 127, 127, 127, 127, 127, 127]
+      sustainPoint: 3
+      endPoint: 8
+  benderEnabled: true
+  aftertouchEnabled: true
+  pitchFollow: true

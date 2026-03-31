@@ -65,7 +65,7 @@ function createSeriesPatchExtensionSchema(maxTone: number) {
     keyAssign: S330KeyAssignSchema.optional(),
     outputAssign: z.number().int().min(0).max(8).optional(),
     toneLayer1: z.array(z.number().int().min(-1).max(maxTone)).length(109).optional(),
-    toneLayer2: z.array(z.number().int().min(0).max(maxTone)).length(109).optional(),
+    toneLayer2: z.array(z.number().int().min(-1).max(maxTone)).length(109).optional(),
   });
 }
 

@@ -94,7 +94,7 @@ export interface OperationErrorBannerProps {
 
 export function OperationErrorBanner({ error }: OperationErrorBannerProps): JSX.Element {
   return (
-    <div className="ac-operation-error">{error}</div>
+    <div className="ac-operation-error" data-testid="import-error">{error}</div>
   );
 }
 

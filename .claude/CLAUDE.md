@@ -88,6 +88,31 @@ Never use conditionals in UI components to switch behavior based on device confi
 - Use `pnpm` for all package operations
 - Use `tsx` for running TypeScript (not `ts-node`)
 
+## Sub-Agent Delegation
+
+Delegate to sub-agents proactively — don't wait for the user to ask. The main agent should orchestrate; sub-agents should do the work.
+
+### When to delegate
+
+- **Research and investigation** — understanding component structure, tracing data flow, reading multiple files to answer a question
+- **Debugging** — diagnosing test failures, checking conditions across files, reading error screenshots and context
+- **Implementation** — making code changes across multiple files for a well-defined task
+- **Running tests** — executing test suites and reporting results
+
+### How to delegate
+
+- **Sub-agents research, main agent executes.** For code changes, have the sub-agent investigate and propose, then the main agent reviews and applies the changes. This keeps the user in the loop.
+- **Give complete context.** Sub-agents don't see prior conversation. Include the problem statement, relevant file paths, what's already been tried, and what output you need.
+- **Instruct agents to write to disk.** Agents often fail to persist their work. Always tell them to use the Write or Edit tool when they need to produce files.
+- **Run multiple agents in parallel** when tasks are independent.
+- **Don't duplicate work.** If you delegate research, don't also do the same searches yourself.
+
+### What NOT to delegate
+
+- Simple single-file reads or grep searches — use the tools directly
+- Git operations (commit, push, branch) — do these directly
+- Decisions that need user input — ask the user directly
+
 ## Monorepo Conventions
 
 - Each module is self-contained with clear boundaries
@@ -188,3 +213,135 @@ pnpm --filter <module> test          # Test specific module
 - Never add Claude attribution to git commits or pull requests
 - Never use `ts-node` — use `tsx`
 - Never call builds "production-ready"
+
+## E2E Testing Tenets
+
+E2E tests verify the application works correctly in real-world conditions. These principles are non-negotiable:
+
+### 1. Use devenv Infrastructure
+
+All e2e tests run within the devenv environment which provides:
+- Consistent Node.js version
+- Required system dependencies (midi-server, etc.)
+- Playwright browsers pre-configured
+- Environment variables set correctly
+
+```bash
+devenv shell
+make test-e2e-device-library   # Or other e2e target
+```
+
+### E2E Test Make Targets
+
+Always use make targets to run e2e tests (not raw pnpm commands):
+
+```bash
+make test-e2e                  # All e2e tests (UI + library, no hardware)
+make test-e2e-ui               # Basic UI navigation tests
+make test-e2e-library          # Library tests (OPFS, no hardware)
+make test-e2e-device-library   # Device-library tests (requires hardware)
+make test-e2e-hardware         # Hardware tests (requires hardware)
+```
+
+The make targets handle:
+- Building dependencies in correct order
+- Checking midi-server availability
+- Setting environment variables (MIDI_SERVER_BIN)
+
+### 2. No Mocking
+
+E2E tests must use real systems:
+- **Real MIDI hardware** — Tests run against actual Roland S-330/S-550 devices
+- **Real storage backends** — OPFS, local filesystem, or cloud storage (not in-memory mocks)
+- **Real browser APIs** — Web MIDI, File System Access API, OPFS
+- **Real network** — HTTP MIDI transport to midi-server
+
+If a test cannot run without mocks, it belongs in unit tests or integration tests, not e2e tests.
+
+### 3. No Workarounds or Hacks
+
+The goal is to **test the app for correctness**, not to make tests pass:
+- **No query parameter shortcuts** — Tests interact with the UI the same way users do
+- **No bypassing permission flows** — If users must click a button, tests must click that button
+- **No special test modes** — The app under test should be identical to production
+- **No stubbing browser APIs** — Use real APIs or skip the test
+
+If a test requires a workaround, that indicates either:
+1. A bug in the app that should be fixed
+2. A missing feature that should be built
+3. A test that shouldn't be an e2e test
+
+### 4. Device Tests Must Be Atomic Round Trips
+
+Tests that involve both the device and the library **must** follow this structure:
+
+1. **Create** a known-good fixture in the library (e.g., OPFS)
+2. **Import** the fixture TO the device — this must succeed first
+3. **Export** the same object FROM the device back to the library
+4. **Compare** the exported object against the original fixture
+5. **Pass only** if the round trip produces the same object
+
+Never test import or export in isolation against unknown device state. You cannot export what isn't on the device, and you cannot know what's on the device unless you put it there. Only round-trip comparison is deterministic.
+
+```
+Library (fixture) ──import──► Device ──export──► Library (result)
+       │                                              │
+       └──────────── compare for equality ────────────┘
+```
+
+## Hardware E2E Testing (roland-sxx0-editor)
+
+The `roland-sxx0-editor` module includes hardware e2e tests that run against real Roland S-series samplers. These tests use a heartbeat/watchdog system to detect stuck tests quickly.
+
+### Heartbeat/Watchdog Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Orchestrator (run-hardware-e2e.sh)                     │
+│                                                         │
+│  ┌─────────────────────┐    ┌────────────────────────┐ │
+│  │  Test Runner        │    │  Watchdog Process      │ │
+│  │  (Playwright)       │    │  (monitors heartbeat)  │ │
+│  │                     │    │                        │ │
+│  │  Custom Reporter ───┼──► │  Reads heartbeat file  │ │
+│  │  writes heartbeat   │    │  every 500ms           │ │
+│  │  on every step      │    │                        │ │
+│  │                     │    │  Kills runner if       │ │
+│  │                     │    │  heartbeat stale >5s   │ │
+│  └─────────────────────┘    └────────────────────────┘ │
+│                                                         │
+│  Heartbeat file: /tmp/e2e-heartbeat-{pid}.json         │
+│  { "timestamp": 1234567890, "event": "stepBegin", ... } │
+└─────────────────────────────────────────────────────────┘
+```
+
+### How It Works
+
+1. **Heartbeat Reporter** (`e2e/reporters/heartbeat-reporter.ts`): Custom Playwright reporter that writes a JSON heartbeat file on every test event (`onTestBegin`, `onTestEnd`, `onStepBegin`, `onStepEnd`). The heartbeat includes the current timestamp, event type, and description.
+
+2. **Watchdog Process** (`scripts/watchdog.ts`): Background process that polls the heartbeat file every 500ms. If the heartbeat timestamp is older than 5 seconds, the watchdog kills the Playwright runner process with SIGKILL and exits with code 1.
+
+3. **Orchestrator** (`scripts/run-hardware-e2e.sh`): Shell script that starts Vite, Playwright, and the watchdog. It captures exit codes and reports when a stuck test is detected.
+
+### 5-Second Threshold
+
+The watchdog uses a 5-second stale threshold. If a test step takes longer than 5 seconds without producing a new heartbeat event, the test is considered stuck and terminated. This threshold is intentionally short to fail fast during hardware tests where hanging usually indicates a real problem (e.g., MIDI communication failure).
+
+### Running Hardware E2E Tests
+
+```bash
+devenv shell
+make test-e2e-hardware
+```
+
+Prerequisites:
+- Running inside devenv shell
+- Roland S-330 or S-550 connected via MIDI
+- MIDI interface available
+
+### File Locations
+
+- **Reporter**: `modules/roland-sxx0-editor/e2e/reporters/heartbeat-reporter.ts`
+- **Watchdog**: `modules/roland-sxx0-editor/scripts/watchdog.ts`
+- **Runner**: `modules/roland-sxx0-editor/scripts/run-hardware-e2e.sh`
+- **Config**: `modules/roland-sxx0-editor/playwright.hardware.config.ts`

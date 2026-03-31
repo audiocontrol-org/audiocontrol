@@ -80,6 +80,8 @@ export function TonesPage() {
   const [libraryExportError, setLibraryExportError] = useState<string | null>(null);
   const library = useLibraryConnection({ pickerId: 'sampler-library' });
   const [libraryDirectoryHandle, setLibraryDirectoryHandle] = useState<StorageDirectoryHandle | null>(null);
+  // Track which tone is being exported (can be different from selected tone when exporting from list)
+  const [exportToneIndex, setExportToneIndex] = useState<number | null>(null);
 
   // Import Sample state
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
@@ -266,22 +268,22 @@ export function TonesPage() {
   }, [selectedToneIndex, setError, setTone, totalTones]);
 
   // Open export to library dialog
-  // Must pick directory first (requires user gesture), then open dialog
-  const handleOpenExportDialog = useCallback(async () => {
+  // If toneIndex is provided, export that tone; otherwise export the selected tone
+  const handleOpenExportDialog = useCallback(async (toneIndex?: number) => {
+    const indexToExport = toneIndex ?? selectedToneIndex;
+    if (indexToExport === null) return;
+
     setLibraryExportError(null);
     setLibraryExportProgress(undefined);
+    setExportToneIndex(indexToExport);
 
-    // Use existing library connection, or connect if not already
+    // If already connected, set the directory handle
     if (library.isConnected) {
-      setLibraryDirectoryHandle(library.root);
-    } else if (library.hasLocalFS) {
-      const ok = await library.connect('local');
-      if (!ok) return; // User cancelled
       setLibraryDirectoryHandle(library.root);
     }
 
     setIsExportDialogOpen(true);
-  }, [library]);
+  }, [library, selectedToneIndex]);
 
   // Export tone to library
   // toneIndex is passed from the dialog to ensure we export the correct tone
@@ -292,8 +294,13 @@ export function TonesPage() {
     setLibraryExportError(null);
 
     try {
-      // Fetch fresh tone data from device (don't use stale cached data)
-      const tone = await clientRef.current.requestToneData(toneIndex);
+      // Use cached tone data if available (loaded via Refresh Device with forceReload),
+      // falling back to a fresh device read. Direct RQD can fail due to stale SysEx
+      // responses after import operations.
+      let tone = tones[toneIndex] ?? null;
+      if (!tone) {
+        tone = await clientRef.current.requestToneData(toneIndex);
+      }
       if (!tone) {
         throw new Error(`No tone data at slot ${toneIndex}`);
       }
@@ -573,6 +580,8 @@ export function TonesPage() {
                 tonesPerBank={tonesPerBank}
                 loadingBank={loadingBank}
                 onLoadBank={(bank) => loadBankWithIndicator(bank)}
+                onExportTone={handleOpenExportDialog}
+                canExportToLibrary={library.isConnected}
               />
             </div>
           </div>
@@ -586,7 +595,7 @@ export function TonesPage() {
                 onExportSample={handleExportSample}
                 isExporting={isExporting}
                 exportProgress={exportProgress}
-                onExportToLibrary={handleOpenExportDialog}
+                onExportToLibrary={() => handleOpenExportDialog()}
                 isExportingToLibrary={isExportingToLibrary}
                 onImportSample={handleOpenImportDialog}
                 isImporting={isImporting}
@@ -616,12 +625,15 @@ export function TonesPage() {
       )}
 
       {/* Export to Library Dialog */}
-      {selectedTone && (
+      {exportToneIndex !== null && tones[exportToneIndex] && (
         <ExportToneDialog
           open={isExportDialogOpen}
-          onOpenChange={setIsExportDialogOpen}
-          tone={selectedTone}
-          toneIndex={selectedToneIndex!}
+          onOpenChange={(open) => {
+            setIsExportDialogOpen(open);
+            if (!open) setExportToneIndex(null);
+          }}
+          tone={tones[exportToneIndex]!}
+          toneIndex={exportToneIndex}
           onExport={handleExportToLibrary}
           isOperating={isExportingToLibrary}
           progress={libraryExportProgress}

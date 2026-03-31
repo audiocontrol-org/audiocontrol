@@ -1,0 +1,13 @@
+# devenv.yaml for audiocontrol TypeScript monorepo
+#
+# This provides a declarative development environment that:
+# - Sets up Node.js, pnpm, and Playwright
+# - Provides scripts for building and testing
+#
+# Usage:
+#   devenv shell              # Enter development shell
+#   devenv up                 # Start services (if configured)
+
+inputs:
+  nixpkgs:
+    url: github:cachix/devenv-nixpkgs/rolling

@@ -20,6 +20,8 @@ interface PatchListProps {
   loadingBank?: number | null;
   /** Called when user clicks an unloaded patch to load its bank */
   onLoadBank?: (bankIndex: number) => void;
+  /** Called when user clicks the export button on a patch */
+  onExportPatch?: (index: number) => void;
 }
 
 /**
@@ -30,7 +32,7 @@ function isPatchEmpty(patch: SamplerPatch): boolean {
   return name === '' || name === '            ' || name.trim() === '';
 }
 
-export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _loadedBanks, patchesPerBank, loadingBank, onLoadBank }: PatchListProps) {
+export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _loadedBanks, patchesPerBank, loadingBank, onLoadBank, onExportPatch }: PatchListProps) {
   const config = useDeviceConfig();
   const { memoryLayout } = config;
 
@@ -59,6 +61,7 @@ export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _load
           return (
             <button
               key={index}
+              data-testid={`patch-item-${index}`}
               onClick={handleClick}
               disabled={isBankLoading}
               className={cn(
@@ -76,10 +79,13 @@ export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _load
             >
               <div className="flex items-center justify-between">
                 <PatchLabel index={index} memoryLayout={memoryLayout} />
-                <span className={cn(
-                  'flex-1 mx-3 truncate',
-                  (!isLoaded || isEmpty) && 'italic'
-                )}>
+                <span
+                  className={cn(
+                    'flex-1 mx-3 truncate',
+                    (!isLoaded || isEmpty) && 'italic'
+                  )}
+                  data-testid="patch-name"
+                >
                   {isBankLoading
                     ? '(loading...)'
                     : !isLoaded
@@ -90,6 +96,25 @@ export function PatchList({ patches, selectedIndex, onSelect, loadedBanks: _load
                 </span>
                 {!isLoaded && !isBankLoading && (
                   <span className="text-xs text-s330-muted/50">click to load</span>
+                )}
+                {isLoaded && !isEmpty && onExportPatch && (
+                  <button
+                    type="button"
+                    data-testid="export-patch-button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onExportPatch(index);
+                    }}
+                    className={cn(
+                      'ml-2 px-2 py-0.5 text-xs rounded transition-colors',
+                      isSelected
+                        ? 'bg-white/20 hover:bg-white/30 text-white'
+                        : 'bg-s330-accent/50 hover:bg-s330-accent text-s330-text'
+                    )}
+                    title="Export patch to library"
+                  >
+                    Export
+                  </button>
                 )}
               </div>
             </button>

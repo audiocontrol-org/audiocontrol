@@ -299,12 +299,12 @@ export function LibraryPage() {
       ensurePatchArraySize(totalPatches);
       for (let bank = 0; bank < toneBankCount; bank++) {
         setLoading(true, `Loading tones (bank ${bank + 1}/${toneBankCount})...`);
-        await clientRef.current.loadToneRange(bank * tonesPerBank, tonesPerBank, () => {}, (index: number, tone: SamplerTone) => setTone(index, tone, totalTones), false);
+        await clientRef.current.loadToneRange(bank * tonesPerBank, tonesPerBank, () => {}, (index: number, tone: SamplerTone) => setTone(index, tone, totalTones), true);
         markToneBankLoaded(bank);
       }
       for (let bank = 0; bank < patchBankCount; bank++) {
         setLoading(true, `Loading patches (bank ${bank + 1}/${patchBankCount})...`);
-        await clientRef.current.loadPatchRange(bank * patchesPerBank, patchesPerBank, () => {}, (index: number, patch: SamplerPatch) => setPatch(index, patch, totalPatches), false);
+        await clientRef.current.loadPatchRange(bank * patchesPerBank, patchesPerBank, () => {}, (index: number, patch: SamplerPatch) => setPatch(index, patch, totalPatches), true);
         markPatchBankLoaded(bank);
       }
     } catch (err) {
@@ -600,14 +600,15 @@ export function LibraryPage() {
               isConnected={library.isConnected}
               hasLocalFS={library.hasLocalFS}
               hasGoogleDrive={library.hasGoogleDrive}
+              hasOPFS={library.hasOPFS}
               onConnect={library.connect}
               onDisconnect={library.disconnect}
             />
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleLoadDeviceData} disabled={isLoading} className={cn('ac-btn ac-btn-sm ac-btn-secondary', isLoading && 'opacity-50')}>Refresh Device</button>
-            <button onClick={importDialogs.handleOpenSaveDialog} disabled={!libraryHandle || isLoading} className={cn('ac-btn ac-btn-sm ac-btn-primary', (!libraryHandle || isLoading) && 'opacity-50')}>Save to Library...</button>
-            <button onClick={importDialogs.handleOpenLoadDialog} disabled={!libraryHandle || !selection || selection.type !== 'set'} className={cn('ac-btn ac-btn-sm ac-btn-secondary', (!libraryHandle || !selection || selection.type !== 'set') && 'opacity-50')}>Load Selected Set</button>
+            <button onClick={importDialogs.handleOpenSaveDialog} disabled={!libraryHandle || isLoading} data-testid="save-set-button" className={cn('ac-btn ac-btn-sm ac-btn-primary', (!libraryHandle || isLoading) && 'opacity-50')}>Save to Library...</button>
+            <button onClick={importDialogs.handleOpenLoadDialog} disabled={!libraryHandle || !selection || selection.type !== 'set'} data-testid="load-set-button" className={cn('ac-btn ac-btn-sm ac-btn-secondary', (!libraryHandle || !selection || selection.type !== 'set') && 'opacity-50')}>Load Selected Set</button>
           </div>
         </div>
       </div>
@@ -709,6 +710,7 @@ export function LibraryPage() {
         onSave={importDialogs.handleSaveSet} isSaving={importDialogs.operationProgress !== undefined}
         progress={importDialogs.operationProgress ? getOverallPercent(importDialogs.operationProgress) : undefined}
         error={importDialogs.operationError} statusMessage={importDialogs.operationProgress?.stepLabel ?? null}
+        success={importDialogs.saveSuccess}
       />
       <LoadSetDialog
         open={importDialogs.isLoadDialogOpen} onOpenChange={importDialogs.setIsLoadDialogOpen}
@@ -717,6 +719,7 @@ export function LibraryPage() {
         progress={importDialogs.operationProgress} error={importDialogs.operationError}
         importTargets={config.memoryLayout.importTargets} deviceTones={tones}
         toneGroups={config.memoryLayout.toneGroups} formatToneSlot={config.memoryLayout.formatToneSlot}
+        success={importDialogs.loadSuccess}
       />
       {importDialogs.importToneDialog && libraryHandle && (
         <ImportLibraryToneDialog

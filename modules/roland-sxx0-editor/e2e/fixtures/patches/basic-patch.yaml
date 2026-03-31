@@ -1,0 +1,23 @@
+format: sampler-patch
+device: s330
+version: 1
+name: Basic Patch
+level: 100
+keyGroups:
+  - name: Basic Sine
+    tone: basic-sine
+    keyRange: [0, 127]
+    velocityRange: [1, 127]
+    level: 100
+    pan: center
+s330:
+  benderRange: 2
+  aftertouchSens: 64
+  keyMode: normal
+  velocityThreshold: 64
+  octaveShift: 0
+  detune: 0
+  velocityMixRatio: 64
+  aftertouchAssign: modulation
+  keyAssign: rotary
+  outputAssign: 0

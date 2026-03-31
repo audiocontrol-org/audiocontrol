@@ -63,19 +63,30 @@ export function EditorLayout({
             </h1>
             <nav>
               <ul className="ac-site-nav">
-                {navItems.map((item) => (
-                  <li key={item.to}>
-                    <NavLink
-                      to={item.to}
-                      className="ac-site-nav-link"
-                      data-active={undefined}
-                    >
-                      {({ isActive }) => (
-                        <span data-active={isActive || undefined}>{item.label}</span>
-                      )}
-                    </NavLink>
-                  </li>
-                ))}
+                {navItems.map((item) => {
+                  // Generate test ID from label: "Library" -> "library-nav-link"
+                  // For device-specific pages (Tones, Patches), prefix with "device-"
+                  // to distinguish from library pages (library-tones, library-patches)
+                  const labelSlug = item.label.toLowerCase().replace(/\s+/g, '-');
+                  const isDevicePage = labelSlug === 'tones' || labelSlug === 'patches';
+                  const testId = isDevicePage
+                    ? `device-${labelSlug}-nav-link`
+                    : `${labelSlug}-nav-link`;
+                  return (
+                    <li key={item.to}>
+                      <NavLink
+                        to={item.to}
+                        className="ac-site-nav-link"
+                        data-active={undefined}
+                        data-testid={testId}
+                      >
+                        {({ isActive }) => (
+                          <span data-active={isActive || undefined}>{item.label}</span>
+                        )}
+                      </NavLink>
+                    </li>
+                  );
+                })}
               </ul>
             </nav>
           </div>

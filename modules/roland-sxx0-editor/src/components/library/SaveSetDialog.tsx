@@ -16,6 +16,7 @@ interface SaveSetDialogProps {
   progress?: number;
   error: string | null;
   statusMessage?: string | null;
+  success?: boolean;
 }
 
 export function SaveSetDialog({
@@ -26,6 +27,7 @@ export function SaveSetDialog({
   progress,
   error,
   statusMessage,
+  success,
 }: SaveSetDialogProps): JSX.Element {
   const [setName, setSetName] = useState('');
   const [description, setDescription] = useState('');
@@ -77,6 +79,7 @@ export function SaveSetDialog({
                 onChange={(e) => setSetName(e.target.value)}
                 disabled={isSaving}
                 placeholder="e.g., My_Drum_Kit"
+                data-testid="set-name-input"
                 className={cn(
                   'w-full px-3 py-2 rounded',
                   'bg-s330-bg border border-s330-accent',
@@ -118,7 +121,7 @@ export function SaveSetDialog({
 
             {/* Progress Bar */}
             {isSaving && progress !== undefined && (
-              <div>
+              <div data-testid="save-progress">
                 <div className="h-2 bg-s330-bg rounded-full overflow-hidden">
                   <div
                     className="h-full bg-s330-highlight transition-all duration-150"
@@ -128,6 +131,16 @@ export function SaveSetDialog({
                 <p className="text-xs text-s330-muted mt-1">
                   {statusMessage || (progress < 50 ? 'Reading wave data...' : 'Saving to library...')}
                 </p>
+              </div>
+            )}
+
+            {/* Success */}
+            {success && (
+              <div
+                data-testid="save-success"
+                className="p-3 bg-green-500/10 border border-green-500/30 rounded"
+              >
+                <p className="text-sm text-green-400">Set saved successfully!</p>
               </div>
             )}
 
@@ -152,6 +165,7 @@ export function SaveSetDialog({
             <button
               onClick={handleSave}
               disabled={!setName.trim() || isSaving}
+              data-testid="confirm-save-set"
               className={cn(
                 'ac-btn ac-btn-primary',
                 (!setName.trim() || isSaving) && 'opacity-50'

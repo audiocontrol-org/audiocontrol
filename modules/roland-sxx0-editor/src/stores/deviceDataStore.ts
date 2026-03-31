@@ -163,3 +163,14 @@ export const selectLoadedPatches = (state: DeviceDataState) =>
 
 export const selectLoadedTones = (state: DeviceDataState) =>
   state.tones.filter((t): t is Tone => t !== undefined);
+
+// Expose on window for E2E testing
+declare global {
+  interface Window {
+    __deviceDataStore?: typeof useDeviceDataStore;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.__deviceDataStore = useDeviceDataStore;
+}

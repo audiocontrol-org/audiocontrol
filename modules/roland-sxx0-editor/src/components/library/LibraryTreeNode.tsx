@@ -268,6 +268,11 @@ export function LibraryTreeNodeComponent({
         role="treeitem"
         tabIndex={isEditing ? -1 : 0}
         aria-expanded={isDirectory ? isExpanded : undefined}
+        data-testid={
+          isDirectory
+            ? `library-directory-${node.name}`
+            : `library-${node.type}-${node.fileName ?? node.directoryName ?? node.name}`
+        }
       >
         {/* Expand/collapse chevron for directories */}
         {isDirectory && (
@@ -417,6 +422,7 @@ export function TreeSection({
         'p-2 border-t border-s330-accent/30 transition-colors',
         isDragOver && 'bg-s330-highlight/10 border-s330-highlight'
       )}
+      data-testid={`library-${category}-section`}
       onDragOver={onDragOver}
       onDragEnter={onDragEnter}
       onDragLeave={onDragLeave}
@@ -437,7 +443,7 @@ export function TreeSection({
           {emptyMessage}
         </div>
       ) : (
-        <div className="space-y-0.5" role="tree">
+        <div className="space-y-0.5" role="tree" data-testid={`library-${category}-list`}>
           {nodes.map((node) => (
             <LibraryTreeNodeComponent
               key={node.id}

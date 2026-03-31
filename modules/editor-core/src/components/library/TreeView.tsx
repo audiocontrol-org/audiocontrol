@@ -260,11 +260,18 @@ function TreeNodeRow({
       ? 'ac-tree-node--drag-over'
       : '';
 
+  // Generate data-testid for e2e testing
+  // Pattern: library-{type}-{slugified-id} (e.g., library-tone-my-tone, library-patch-bass-patch)
+  const testId = node.type !== 'directory'
+    ? `library-${node.type}-${node.id.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
+    : undefined;
+
   return (
     <div>
       <div
         className={`ac-tree-node ${stateClass}${isEditing ? ' ac-tree-node--editing' : ''}`}
         style={{ paddingLeft }}
+        data-testid={testId}
         onClick={handleClick}
         onDoubleClick={canRename ? handleDoubleClick : undefined}
         onContextMenu={onContextMenu ? handleContextMenu : undefined}

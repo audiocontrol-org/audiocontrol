@@ -68,6 +68,7 @@ import {
     PATCH_PARAMS,
     buildPatchParamAddress,
     ADDR_WAVE_DATA,
+    buildWaveDataAddress as s330BuildWaveDataAddress,
 } from './s330-addresses.js';
 
 import {
@@ -369,6 +370,14 @@ export function createS330Client(
     const timeoutMs = options.timeoutMs ?? TIMING.ACK_TIMEOUT_MS;
     const writeFlushDelayMs = options.writeFlushDelayMs ?? 150;
 
+    // Wave address builder: use injected function or default to S-330 formula.
+    // The S-330 and S-550 share the same SysEx model ID (0x1E) but use different
+    // wave address calculations. The S-330 uses a linear stride (24576 address
+    // units per segment) while the S-550 uses a structured formula
+    // (byte2 = segmentIndex * 8). Callers targeting the S-550 must supply the
+    // S-550 address builder via options.buildWaveAddress.
+    const buildWaveAddress = options.buildWaveAddress ?? s330BuildWaveDataAddress;
+
     let connected = false;
 
     // Patch and tone caches for progressive loading
@@ -598,6 +607,13 @@ export function createS330Client(
 
                 resetTimeout();
 
+                if (command === S330_COMMANDS.RJC) {
+                    // Ignore stale RJC — likely from a previous timed-out operation.
+                    // If the device truly rejected our RQD, we'll time out.
+                    console.warn('[S330Client] Ignoring stale RJC during RQD');
+                    return;
+                }
+
                 if (command === S330_COMMANDS.DAT) {
                     // DAT packet: F0 41 dev 1E 42 [addr 4B] [nibbles...] cs F7
                     // Extract and verify response address matches our request
@@ -671,6 +687,14 @@ export function createS330Client(
                 const command = response[4];
 
                 if (command === S330_COMMANDS.RJC) {
+                    if (phase === 'WSD') {
+                        // Ignore RJC during WSD phase — may be a stale response
+                        // from a previous timed-out operation. The real response
+                        // to our WSD will arrive shortly. If the device truly
+                        // rejected our WSD, we'll time out instead.
+                        console.warn(`[S330Client] Ignoring stale RJC during WSD phase`);
+                        return;
+                    }
                     clearTimeout(timeoutId);
                     midiAdapter.removeSysExListener(listener);
                     reject(new Error(`WSD rejected by S-330 in phase ${phase}`));
@@ -707,7 +731,8 @@ export function createS330Client(
                             0xf7,
                         ];
 
-                        console.log(`[S330Client] sendData sending DAT (${nibblized.length} nibbles)`);
+                        // Log addr(4) + first 40 nibbles (= 20 decoded bytes, covering wave alloc at bytes 13-15)
+                        console.log(`[S330Client] sendData sending DAT (${nibblized.length} nibbles): ${datMessage.slice(5, 49).map((b: number) => b.toString(16).padStart(2, '0')).join(' ')}...`);
                         midiAdapter.send(datMessage);
                     } else if (phase === 'DAT') {
                         // Received ACK for DAT - send EOD
@@ -797,10 +822,10 @@ export function createS330Client(
         multiplier: 2,
         jitter: 0.3,
         isRetryable: (error: unknown) => {
-            // Only retry on timeout errors - rejections and communication errors
-            // indicate real problems that won't be fixed by retrying
+            // Retry on timeout and rejection errors — the device may send
+            // stale RJC responses from previous timed-out operations
             if (error instanceof Error) {
-                return error.message.includes('timeout');
+                return error.message.includes('timeout') || error.message.includes('rejected');
             }
             return false;
         },
@@ -852,22 +877,8 @@ export function createS330Client(
     ): Promise<void> {
         const { data, waveBank, segmentTop } = input;
 
-        // Calculate wave address using same logic as requestWaveData
-        const SEGMENT_ADDR_STRIDE = 24576; // 00 01 40 00H in 7-bit hex
-
-        // Bank base addresses from S-330 MIDI Implementation:
-        // Bank A: 01 00 00 00H (offset 0)
-        // Bank B: 01 20 00 00H (offset 0x20 << 14 = 524288)
-        const BANK_B_OFFSET = 0x20 << 14; // 524288
-        const bankBaseAddr = waveBank === 0 ? 0 : BANK_B_OFFSET;
-        const addrOffset = bankBaseAddr + (segmentTop * SEGMENT_ADDR_STRIDE);
-
-        const waveAddress = [
-            ADDR_WAVE_DATA[0],
-            (addrOffset >> 14) & 0x7f,
-            (addrOffset >> 7) & 0x7f,
-            addrOffset & 0x7e,
-        ];
+        // Build wave address using injected (or default S-330) address builder
+        const waveAddress = buildWaveAddress(waveBank, segmentTop);
 
         console.log(`[S330Client] Sending wave data: ${data.length} bytes to bank=${waveBank}, segment=${segmentTop}`);
         console.log(`[S330Client] Wave address: ${waveAddress.map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
@@ -983,6 +994,12 @@ export function createS330Client(
                 resetTimeout();
 
                 if (command === S330_COMMANDS.RJC) {
+                    if (phase === 'WSD') {
+                        // Ignore RJC during WSD phase — may be stale from
+                        // a previous timed-out operation.
+                        console.warn(`[S330Client] Ignoring stale RJC during wave WSD phase`);
+                        return;
+                    }
                     clearTimeout(timeoutId);
                     midiAdapter.removeSysExListener(listener);
                     reject(new Error(`Wave data rejected by S-330 in phase ${phase}`));
@@ -1219,15 +1236,15 @@ export function createS330Client(
 
             return serialize(async () => {
                 try {
-                    // Request full tone data (256 bytes)
-                    // Tone address: 0x00, 0x03, toneIndex*2, 0x00
                     const byte2 = toneIndex * 2;
                     const address = [0x00, 0x03, byte2, 0x00];
-                    const data = await requestDataWithAddress(address, TONE_BLOCK_SIZE);
-
-                    // Use parseTone from s330-params.ts for proper 8-point envelope parsing
+                    const data = await withRetry(
+                        () => requestDataWithAddress(address, TONE_BLOCK_SIZE),
+                        wsdRetryOptions
+                    );
                     return parseTone(data);
                 } catch (err) {
+                    console.error(`[S330Client] requestToneData(${toneIndex}) failed after retries:`, err);
                     return null;
                 }
             });
@@ -1361,10 +1378,14 @@ export function createS330Client(
 
             return serialize(async () => {
                 // First, get the tone data to extract wave parameters
+                // Wrap in withRetry — RQD can fail from stale SysEx responses
                 const byte2 = toneIndex * 2;
                 const toneAddress = [0x00, 0x03, byte2, 0x00];
                 console.log('[S330Client] Fetching tone data from address:', toneAddress);
-                const toneData = await requestDataWithAddress(toneAddress, TONE_BLOCK_SIZE);
+                const toneData = await withRetry(
+                    () => requestDataWithAddress(toneAddress, TONE_BLOCK_SIZE),
+                    wsdRetryOptions
+                );
 
                 if (toneData.length < 26) {
                     throw new Error('Insufficient tone data received');
@@ -1403,53 +1424,16 @@ export function createS330Client(
                     loopMode,
                 });
 
-                // Calculate wave memory address and fetch size
-                // S-330 Memory Map (from MIDI Implementation documentation):
-                //   - Wave data A (×18 segments): base address 01 00 00 00H
-                //   - Wave data B (×18 segments): base address 01 20 00 00H
-                //
-                // Wave data location is determined ONLY by:
-                //   - waveBank: which bank (A=0, B=1)
-                //   - waveSegmentTop: starting segment index
-                //   - waveSegmentLength: number of segments allocated
-                //
-                // startPoint/endPoint/loopPoint are PLAYBACK parameters, not memory addresses.
-                //
-                // S-330 Wave Memory Address Calculation
-                // IMPORTANT: Address space differs from data size!
-                //
-                // From documentation:
-                //   - Bank A base: 01 00 00 00H, Bank B base: 01 20 00 00H
-                //   - Difference: 0x20 in byte 1 = 32 × 2^14 = 524288 address units per bank
-                //   - Each bank has 18 segments
-                //
-                // Wave data format:
-                //   - 12-bit samples transmitted as 2 bytes (7-bit MIDI encoding)
-                //   - Each segment: 12,000 samples = 24,000 bytes when transmitted
-                //
-                // S-330 Wave Memory Address Calculation
-                // (from MIDI Implementation documentation, Section 4: Address mapping)
-                //
-                // Addresses are 7-bit hex (00-7F per byte), 4 bytes: AA BB CC DD
-                //   - Bank A base: 01 00 00 00H
-                //   - Bank B base: 01 20 00 00H
-                //   - Segment stride: 00 01 40 00H = 24576 address units
+                // Calculate wave memory address using injected (or default S-330) address builder.
                 //
                 // Each segment contains 12000 samples (0.4s at 30kHz, 0.8s at 15kHz)
                 // transmitted as 24000 bytes (2 bytes per 12-bit sample).
-                //
                 const SEGMENT_SIZE_SAMPLES = 12000;
-                const SEGMENT_DATA_BYTES = SEGMENT_SIZE_SAMPLES * 2; // 24000 bytes
-                const SEGMENT_ADDR_STRIDE = 24576; // 00 01 40 00H in 7-bit hex
 
-                // Bank base addresses from S-330 MIDI Implementation:
-                // Bank A: 01 00 00 00H (offset 0)
-                // Bank B: 01 20 00 00H (offset 0x20 << 14 = 524288)
-                const BANK_B_OFFSET = 0x20 << 14; // 524288
-                const bankBaseAddr = waveBank === 0 ? 0 : BANK_B_OFFSET;
-                const addrOffset = bankBaseAddr + (waveSegmentTop * SEGMENT_ADDR_STRIDE);
+                // Build wave address using device-specific formula
+                const waveAddress = buildWaveAddress(waveBank, waveSegmentTop);
 
-                // Fetch size based on segment length (each segment = 12000 samples × 2 bytes)
+                // Fetch size based on segment length (each segment = 12000 samples x 2 bytes)
                 const sampleCount = waveSegmentLength * SEGMENT_SIZE_SAMPLES;
                 const bytesToFetch = sampleCount * 2;
 
@@ -1458,26 +1442,21 @@ export function createS330Client(
                 }
 
                 console.log(`[S330Client] Fetching wave data: ${sampleCount} samples (${waveSegmentLength} segments), ${bytesToFetch} bytes`);
-                console.log(`[S330Client] Wave address: bank=${waveBank}, segmentTop=${waveSegmentTop}, addrOffset=${addrOffset}`);
-
-                // The address bytes encode a 28-bit offset in 7-bit chunks
-                // Note: LSB must be even per Roland spec (*3-1: lowest bit of LSB should be 0)
-                const waveAddress = [
-                    ADDR_WAVE_DATA[0],
-                    (addrOffset >> 14) & 0x7f,
-                    (addrOffset >> 7) & 0x7f,
-                    addrOffset & 0x7e, // Must be even per documentation
-                ];
+                console.log(`[S330Client] Wave address: bank=${waveBank}, segmentTop=${waveSegmentTop}, address=${waveAddress.map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
 
                 // Fetch wave data with extended timeout for large samples
                 const waveTimeoutMs = Math.max(timeoutMs * 4, bytesToFetch / 100);
 
                 // Use a modified request that supports progress reporting
-                const waveData = await requestWaveDataWithProgress(
-                    waveAddress,
-                    bytesToFetch,
-                    waveTimeoutMs,
-                    onProgress
+                // Wrap in withRetry — wave RQD can fail from stale SysEx responses
+                const waveData = await withRetry(
+                    () => requestWaveDataWithProgress(
+                        waveAddress,
+                        bytesToFetch,
+                        waveTimeoutMs,
+                        onProgress
+                    ),
+                    wsdRetryOptions
                 );
 
                 return {
@@ -1570,6 +1549,12 @@ export function createS330Client(
                         }
 
                         resetTimeout();
+
+                        if (command === S330_COMMANDS.RJC) {
+                            // Ignore stale RJC — likely from a previous timed-out operation.
+                            console.warn('[S330Client] Ignoring stale RJC during wave RQD');
+                            return;
+                        }
 
                         if (command === S330_COMMANDS.DAT) {
                             // DAT packet: F0 41 dev 1E 42 [addr 4B] [data...] cs F7
@@ -1727,6 +1712,7 @@ export function createS330Client(
             }
 
             // Use existing sendToneData which uses bufferWrite
+            console.log(`[S330Client] Tone wave alloc: bank=${tone.wave.bank}, segTop=${tone.wave.segmentTop}, segLen=${tone.wave.segmentLength}, start=${tone.wave.startPoint}, end=${tone.wave.endPoint}`);
             await this.sendToneData(toneIndex, tone);
 
             // Step 2: Send wave data using existing public method
@@ -1750,7 +1736,8 @@ export function createS330Client(
             // Step 3: Re-send tone parameters AFTER wave upload
             // The S-330 may need tone params to be set after wave data is in place
             // for the sample rate and other playback parameters to take effect correctly.
-            console.log('[S330Client] Step 3: Re-sending tone parameters...');
+            console.log(`[S330Client] Step 3: Re-sending tone parameters...`);
+            console.log(`[S330Client] Step 3 wave alloc: bank=${tone.wave.bank}, segTop=${tone.wave.segmentTop}, segLen=${tone.wave.segmentLength}`);
             await this.sendToneData(toneIndex, tone);
 
             console.log(`[S330Client] Tone ${toneIndex} imported successfully`);

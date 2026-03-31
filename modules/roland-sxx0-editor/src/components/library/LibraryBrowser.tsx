@@ -229,6 +229,7 @@ export function LibraryBrowser({
         <Tabs.List className="flex border-b border-s330-accent">
           <Tabs.Trigger
             value="tones"
+            data-testid="library-tones-tab"
             className={cn(
               'flex-1 px-3 py-2 text-sm transition-colors',
               selectedCategory === 'tones'
@@ -240,6 +241,7 @@ export function LibraryBrowser({
           </Tabs.Trigger>
           <Tabs.Trigger
             value="patches"
+            data-testid="library-patches-tab"
             className={cn(
               'flex-1 px-3 py-2 text-sm transition-colors',
               selectedCategory === 'patches'
@@ -251,6 +253,7 @@ export function LibraryBrowser({
           </Tabs.Trigger>
           <Tabs.Trigger
             value="templates"
+            data-testid="library-templates-tab"
             className={cn(
               'flex-1 px-3 py-2 text-sm transition-colors',
               selectedCategory === 'templates'

@@ -31,6 +31,7 @@ interface LoadSetDialogProps extends OperationState {
   deviceTones?: (SamplerTone | undefined)[];
   toneGroups?: ToneSlotGroup[];
   formatToneSlot?: (index: number) => string;
+  success?: boolean;
 }
 
 export function LoadSetDialog({
@@ -45,6 +46,7 @@ export function LoadSetDialog({
   deviceTones,
   toneGroups,
   formatToneSlot,
+  success,
 }: LoadSetDialogProps): JSX.Element {
   const [selectedTargetIndex, setSelectedTargetIndex] = useState(0);
 
@@ -143,10 +145,26 @@ export function LoadSetDialog({
             </div>
 
             {isOperating && progress && (
-              <OperationProgressBar progress={progress} />
+              <div data-testid="load-progress">
+                <OperationProgressBar progress={progress} />
+              </div>
             )}
 
-            {operationError && <OperationErrorBanner error={operationError} />}
+            {/* Success */}
+            {success && (
+              <div
+                data-testid="load-success"
+                className="p-3 bg-green-500/10 border border-green-500/30 rounded"
+              >
+                <p className="text-sm text-green-400">Set loaded successfully!</p>
+              </div>
+            )}
+
+            {operationError && (
+              <div data-testid="load-error">
+                <OperationErrorBanner error={operationError} />
+              </div>
+            )}
           </div>
 
           {/* Actions */}
@@ -162,6 +180,7 @@ export function LoadSetDialog({
             <button
               onClick={handleLoad}
               disabled={isOperating}
+              data-testid="confirm-load-set"
               className={cn(
                 'ac-btn ac-btn-primary',
                 isOperating && 'opacity-50'

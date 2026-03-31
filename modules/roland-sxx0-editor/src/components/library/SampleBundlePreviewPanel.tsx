@@ -449,7 +449,7 @@ export function SampleBundlePreviewPanel({
             </button>
           )}
           {onImport && (
-            <button onClick={onImport} className="w-full ac-btn ac-btn-primary">
+            <button onClick={onImport} className="w-full ac-btn ac-btn-primary" data-testid="import-to-device-button">
               Import to Device
             </button>
           )}
