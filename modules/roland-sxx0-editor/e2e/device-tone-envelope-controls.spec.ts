@@ -243,28 +243,14 @@ test.describe('Tone Envelope Controls', () => {
     );
     await expect(tvaSection).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // Debug: list all selects in TVA section
-    const allSelects = tvaSection.locator('select');
-    const selectCount = await allSelects.count();
-    for (let i = 0; i < selectCount; i++) {
-      const val = await allSelects.nth(i).inputValue().catch(() => 'N/A');
-      const visible = await allSelects.nth(i).isVisible();
-      const optCount = await allSelects.nth(i).locator('option').count();
-      console.log(`TVA select[${i}]: value=${val}, visible=${visible}, options=${optCount}`);
-    }
-
-    // The sustain/end point selects appear in both normal and expanded views.
-    // The normal view has a grid with two selects: sustain (first) and end (second).
-    // Scope to the grid container that's NOT inside the expanded overlay.
-    const selectGrid = tvaSection.locator('.grid.grid-cols-2').last();
-    const sustainSelect = selectGrid.locator('select').first();
+    // TVA section has 3 visible selects:
+    // [0]=Level Curve (6 opts), [1]=Sustain Point (8 opts), [2]=End Point (8 opts)
+    const sustainSelect = tvaSection.locator('select').nth(1);
     await expect(sustainSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
     const originalValue = Number(await sustainSelect.inputValue());
-    console.log(`TVA sustain point: original=${originalValue}, options count: ${await sustainSelect.locator('option').count()}`);
     // Toggle between 0 and 2
     const newValue = originalValue === 2 ? 0 : 2;
-    console.log(`TVA sustain point: selecting ${newValue}`);
 
     await sustainSelect.selectOption(String(newValue));
     // Verify the select actually changed
@@ -345,9 +331,9 @@ test.describe('Tone Envelope Controls', () => {
     );
     await expect(tvfSection).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // Scope to the normal view grid (not the expanded overlay)
-    const selectGrid = tvfSection.locator('.grid.grid-cols-2').last();
-    const sustainSelect = selectGrid.locator('select').first();
+    // TVF section has 3 visible selects:
+    // [0]=Level Curve, [1]=Sustain Point, [2]=End Point
+    const sustainSelect = tvfSection.locator('select').nth(1);
     await expect(sustainSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await expect(sustainSelect).toBeEnabled();
 
