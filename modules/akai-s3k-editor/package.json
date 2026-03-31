@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e:hardware": "./scripts/run-http-midi-e2e.sh",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc --noEmit"
   },
@@ -30,6 +31,8 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@audiocontrol/e2e-infra": "workspace:*",
+    "@playwright/test": "^1.57.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/react": "^18.2.43",

@@ -79,7 +79,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean test-e2e test-e2e-hardware test-e2e-library test-e2e-device test-e2e-device-library test-e2e-ui ensure-playwright
+.PHONY: build clean test-e2e test-e2e-hardware test-e2e-library test-e2e-device test-e2e-device-library test-e2e-ui ensure-playwright ensure-playwright-s3k test-e2e-s3k-hardware
 
 build: $(ALL_STAMPS)
 
@@ -139,6 +139,16 @@ test-e2e-device-library: test-e2e-device
 # Run basic UI navigation tests
 test-e2e-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e $(ARGS)"
+
+# ---------------------------------------------------------------------------
+# S3000XL E2E Tests
+# ---------------------------------------------------------------------------
+
+ensure-playwright-s3k:
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && npx playwright install chromium"
+
+test-e2e-s3k-hardware: $(AKAI_S3K_EDITOR) check-midi-server ensure-playwright-s3k
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh $(ARGS)"
 
 $(INSTALL_STAMP): pnpm-lock.yaml
 	pnpm install

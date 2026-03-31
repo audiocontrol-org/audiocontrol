@@ -81,6 +81,12 @@ importers:
         specifier: ^4.4.7
         version: 4.5.7(@types/react@18.3.27)(react@18.3.1)
     devDependencies:
+      '@audiocontrol/e2e-infra':
+        specifier: workspace:*
+        version: link:../e2e-infra
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.58.1
       '@testing-library/jest-dom':
         specifier: ^6.9.1
         version: 6.9.1
@@ -337,6 +343,22 @@ importers:
       vitest:
         specifier: ^1.1.0
         version: 1.6.1(@vitest/browser@1.6.1)(jsdom@29.0.1)
+
+  modules/e2e-infra:
+    dependencies:
+      easymidi:
+        specifier: ^3.1.0
+        version: 3.1.0
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.57.0
+        version: 1.58.1
+      tsx:
+        specifier: ^4.7.0
+        version: 4.20.5
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.2
 
   modules/editor-core:
     dependencies:
