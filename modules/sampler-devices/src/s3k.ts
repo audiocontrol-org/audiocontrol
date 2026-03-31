@@ -104,3 +104,12 @@ export * from "@/model/model-akai-s3000xl.js"
 export * from "@/utils/akai-utils.js"
 export * from "@/io/akaitools-core.js"
 export * from "@/io/akaitools.js"
+
+// S3000XL MIDI SysEx client
+export type {
+  ProgressCallback,
+  S3000xlClientOptions,
+  S3000xlClientInterface,
+  S3000xlClientDeps,
+} from "@/devices/s3000xl/s3000xl-types.js"
+export { createS3000xlClient } from "@/devices/s3000xl/s3000xl-client.js"

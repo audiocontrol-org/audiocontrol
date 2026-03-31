@@ -1,0 +1,84 @@
+import { describe, it, expect } from 'vitest';
+import { toTreeNode } from '@/lib/library-tree';
+import type { LibraryTreeNode } from '@audiocontrol/sampler-library/browser';
+
+describe('toTreeNode', () => {
+  it('converts a flat LibraryTreeNode', () => {
+    const input: LibraryTreeNode = {
+      id: 'kick',
+      name: 'kick',
+      type: 'sample',
+      path: ['drums'],
+      fileName: 'kick',
+    };
+
+    const result = toTreeNode(input);
+
+    expect(result.id).toBe('kick');
+    expect(result.name).toBe('kick');
+    expect(result.type).toBe('sample');
+    expect(result.children).toBeUndefined();
+    expect(result.meta).toEqual({
+      fileName: 'kick',
+      directoryName: undefined,
+      path: ['drums'],
+      toneCount: undefined,
+      kitCount: undefined,
+      sampleCount: undefined,
+      sliceCount: undefined,
+      description: undefined,
+    });
+  });
+
+  it('converts a directory with children recursively', () => {
+    const input: LibraryTreeNode = {
+      id: 'drums',
+      name: 'drums',
+      type: 'directory',
+      path: [],
+      children: [
+        {
+          id: 'drums/kick',
+          name: 'kick',
+          type: 'sample',
+          path: ['drums'],
+          fileName: 'kick',
+        },
+      ],
+    };
+
+    const result = toTreeNode(input);
+
+    expect(result.type).toBe('directory');
+    expect(result.children).toHaveLength(1);
+    expect(result.children?.[0].id).toBe('drums/kick');
+    expect(result.children?.[0].type).toBe('sample');
+  });
+
+  it('preserves all metadata fields', () => {
+    const input: LibraryTreeNode = {
+      id: 'kit1',
+      name: 'Kit 1',
+      type: 'drum-kit',
+      path: [],
+      directoryName: 'kit-1',
+      kitCount: 8,
+      sampleCount: 16,
+      description: 'A drum kit',
+      sliceCount: 4,
+    };
+
+    const result = toTreeNode(input);
+
+    expect(result.meta).toEqual({
+      fileName: undefined,
+      directoryName: 'kit-1',
+      path: [],
+      toneCount: undefined,
+      kitCount: 8,
+      sampleCount: 16,
+      sliceCount: 4,
+      description: 'A drum kit',
+    });
+  });
+});

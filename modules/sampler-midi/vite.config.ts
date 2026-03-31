@@ -20,8 +20,7 @@ export default defineConfig({
     },
     rollupOptions: {
       external: [
-        '@audiocontrol/sampler-devices',
-        '@audiocontrol/sampler-lib',
+        /^@audiocontrol\//,
         'easymidi',
         'pathe',
         // Node.js built-ins

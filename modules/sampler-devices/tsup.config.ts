@@ -2,7 +2,7 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
     // entry: ["src-deprecated/index.ts"],
-    entry: ["src/index.ts", "src/s3k.ts", "src/s5k.ts", "src/s330.ts", "src/s550.ts", "src/jv1080.ts", "src/roland-s-series.ts"],
+    entry: ["src/index.ts", "src/s3k.ts", "src/s3000xl-browser.ts", "src/s5k.ts", "src/s330.ts", "src/s550.ts", "src/jv1080.ts", "src/roland-s-series.ts"],
     format: ["cjs", "esm"], // Build for commonJS and ESmodules
     dts: true, // Generate declaration file (.d.ts)
     // experimentalDts: true,

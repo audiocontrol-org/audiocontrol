@@ -5,7 +5,7 @@ import { describe, it, expect } from 'vitest';
 import fs from "fs/promises";
 import {mapLogicAutoSampler} from "@/lib-translate.js";
 import {tmpdir} from "node:os";
-import {newServerConfig} from "@audiocontrol/sampler-lib";
+import {newServerConfig} from "@audiocontrol/sampler-lib/server";
 
 describe(`lib-translate-s3k integration test`, () => {
     // Skipping: Requires external test data at /Users/orion/.audiotools/source/auto/MOOGC
