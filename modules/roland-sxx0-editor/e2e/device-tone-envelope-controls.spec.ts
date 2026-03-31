@@ -243,18 +243,16 @@ test.describe('Tone Envelope Controls', () => {
     );
     await expect(tvaSection).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // The sustain point select is labeled "Sustain Point" inside the TVA card.
-    // There may be duplicate selects (normal + expanded view), so take the
-    // first visible one in the normal (non-overlay) view.
-    const sustainSelect = tvaSection
-      .locator('label:has-text("Sustain Point")')
-      .locator('..')
-      .locator('select')
-      .first();
+    // The sustain/end point selects appear in both normal and expanded views.
+    // The normal view has a grid with two selects: sustain (first) and end (second).
+    // Scope to the grid container that's NOT inside the expanded overlay.
+    const selectGrid = tvaSection.locator('.grid.grid-cols-2').last();
+    const sustainSelect = selectGrid.locator('select').first();
     await expect(sustainSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
     const originalValue = Number(await sustainSelect.inputValue());
-    // Toggle between 0 and 2 (display labels "1" and "3")
+    console.log(`TVA sustain point: original=${originalValue}`);
+    // Toggle between 0 and 2
     const newValue = originalValue === 2 ? 0 : 2;
 
     await sustainSelect.selectOption(String(newValue));
@@ -333,17 +331,14 @@ test.describe('Tone Envelope Controls', () => {
     );
     await expect(tvfSection).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // The sustain point select is labeled "Sustain Point" inside the TVF card
-    const sustainSelect = tvfSection
-      .locator('label:has-text("Sustain Point")')
-      .locator('..')
-      .locator('select')
-      .first();
+    // Scope to the normal view grid (not the expanded overlay)
+    const selectGrid = tvfSection.locator('.grid.grid-cols-2').last();
+    const sustainSelect = selectGrid.locator('select').first();
     await expect(sustainSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await expect(sustainSelect).toBeEnabled();
 
     const originalValue = Number(await sustainSelect.inputValue());
-    // Toggle between 0 and 2 (display labels "1" and "3")
+    console.log(`TVF sustain point: original=${originalValue}`);
     const newValue = originalValue === 2 ? 0 : 2;
 
     await sustainSelect.selectOption(String(newValue));
