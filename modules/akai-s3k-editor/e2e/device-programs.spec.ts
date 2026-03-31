@@ -79,6 +79,26 @@ function numberInputByLabel(
     .locator('input[type="number"]');
 }
 
+/**
+ * Locate a NumberInput by label within a specific section.
+ *
+ * Use this when label text is ambiguous across sections (e.g. "Rate"
+ * appears in both LFO 1 and LFO 2).
+ */
+function numberInputByLabelInSection(
+  page: import('@playwright/test').Page,
+  sectionTitle: string,
+  label: string,
+): import('@playwright/test').Locator {
+  const section = page.locator('.border.border-gray-700', {
+    has: page.locator('.bg-gray-800', { hasText: sectionTitle }),
+  });
+  return section
+    .locator('.flex.items-center.justify-between', { hasText: label })
+    .filter({ has: page.locator('input[type="number"]') })
+    .locator('input[type="number"]');
+}
+
 test.describe('S3000XL Programs Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(url());
@@ -317,6 +337,103 @@ test.describe('S3000XL Programs Page', () => {
       await selectFirstProgramAndWaitForEditor(page);
 
       const reloadedInput = numberInputByLabel(page, 'Pan Position');
+      await expect(reloadedInput).toHaveValue(testValue);
+
+      await reloadedInput.fill(originalValue);
+      await page.waitForTimeout(1_500);
+    });
+
+    /**
+     * Round-trip test for LFO 1 Rate (LFORAT).
+     *
+     * Uses section-scoped locator because "Rate" also appears in LFO 2 (Pan).
+     */
+    test('LFO 1 rate round-trip persists to device', async ({ page }) => {
+      test.setTimeout(60_000);
+
+      await navigateToPrograms(page);
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      const rateInput = numberInputByLabelInSection(page, 'LFO 1', 'Rate');
+      await expect(rateInput).toBeVisible();
+
+      const originalValue = await rateInput.inputValue();
+      const testValue = originalValue === '40' ? '65' : '40';
+
+      await rateInput.fill(testValue);
+      await expect(rateInput).toHaveValue(testValue);
+      await page.waitForTimeout(1_500);
+
+      await page.locator('button', { hasText: 'Refresh' }).click();
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      const reloadedInput = numberInputByLabelInSection(page, 'LFO 1', 'Rate');
+      await expect(reloadedInput).toHaveValue(testValue);
+
+      await reloadedInput.fill(originalValue);
+      await page.waitForTimeout(1_500);
+    });
+
+    /**
+     * Round-trip test for Portamento Time (PORTIME).
+     *
+     * Uses section-scoped locator for clarity, since "Time" is a generic label.
+     */
+    test('portamento time round-trip persists to device', async ({ page }) => {
+      test.setTimeout(60_000);
+
+      await navigateToPrograms(page);
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      const timeInput = numberInputByLabelInSection(page, 'Portamento', 'Time');
+      await expect(timeInput).toBeVisible();
+
+      const originalValue = await timeInput.inputValue();
+      const testValue = originalValue === '30' ? '55' : '30';
+
+      await timeInput.fill(testValue);
+      await expect(timeInput).toHaveValue(testValue);
+      await page.waitForTimeout(1_500);
+
+      await page.locator('button', { hasText: 'Refresh' }).click();
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      const reloadedInput = numberInputByLabelInSection(page, 'Portamento', 'Time');
+      await expect(reloadedInput).toHaveValue(testValue);
+
+      await reloadedInput.fill(originalValue);
+      await page.waitForTimeout(1_500);
+    });
+
+    /**
+     * Round-trip test for Soft Pedal Loudness Reduction (SPLOUD).
+     */
+    test('soft pedal loudness round-trip persists to device', async ({ page }) => {
+      test.setTimeout(60_000);
+
+      await navigateToPrograms(page);
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      const loudnessInput = numberInputByLabel(page, 'Loudness Reduction');
+      await expect(loudnessInput).toBeVisible();
+
+      const originalValue = await loudnessInput.inputValue();
+      const testValue = originalValue === '20' ? '45' : '20';
+
+      await loudnessInput.fill(testValue);
+      await expect(loudnessInput).toHaveValue(testValue);
+      await page.waitForTimeout(1_500);
+
+      await page.locator('button', { hasText: 'Refresh' }).click();
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      const reloadedInput = numberInputByLabel(page, 'Loudness Reduction');
       await expect(reloadedInput).toHaveValue(testValue);
 
       await reloadedInput.fill(originalValue);
