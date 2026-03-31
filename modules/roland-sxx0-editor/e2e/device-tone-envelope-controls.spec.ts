@@ -217,7 +217,9 @@ test.describe('Tone Envelope Controls', () => {
     const newRate = originalRate === 50 ? 80 : 50;
     console.log(`TVA rate: original=${originalRate}, setting to=${newRate}`);
 
-    await firstRateInput.fill(String(newRate));
+    await firstRateInput.click();
+    await firstRateInput.press('Control+a');
+    await firstRateInput.type(String(newRate));
     // onChange fires on fill and calls onCommit immediately
     await firstRateInput.blur();
     await page.waitForTimeout(WRITE_FLUSH_MS);
