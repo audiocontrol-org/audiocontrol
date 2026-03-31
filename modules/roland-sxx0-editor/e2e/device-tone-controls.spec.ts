@@ -307,6 +307,88 @@ test.describe('Tone Editor Controls', () => {
   });
 
   // -------------------------------------------------------------------------
+  // TVF Resonance
+  // -------------------------------------------------------------------------
+
+  test('TVF resonance slider syncs to device', async ({ page }) => {
+    // Ensure TVF is enabled
+    const tvfCheckbox = page.locator('#tvfEnabled');
+    await expect(tvfCheckbox).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const isEnabled = await tvfCheckbox.isChecked();
+    if (!isEnabled) {
+      await tvfCheckbox.click();
+      await page.waitForTimeout(WRITE_FLUSH_MS);
+    }
+
+    const resonanceContainer = page.locator('[data-testid="param-resonance"]');
+    await expect(resonanceContainer).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const slider = resonanceContainer.locator('[role="slider"]');
+    await expect(slider).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = Number(
+      await slider.getAttribute('aria-valuenow') ?? '64',
+    );
+
+    // Set to 85 (unless already 85, then use 45)
+    const newValue = originalValue === 85 ? 45 : 85;
+    await driveSliderToValue(slider, newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    expect(deviceTone!.tvf.enabled).toBe(true);
+    // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    expect(
+      Math.abs(deviceTone!.tvf.resonance - newValue),
+    ).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // TVF Key Follow
+  // -------------------------------------------------------------------------
+
+  test('TVF key follow slider syncs to device', async ({ page }) => {
+    // Ensure TVF is enabled
+    const tvfCheckbox = page.locator('#tvfEnabled');
+    await expect(tvfCheckbox).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const isEnabled = await tvfCheckbox.isChecked();
+    if (!isEnabled) {
+      await tvfCheckbox.click();
+      await page.waitForTimeout(WRITE_FLUSH_MS);
+    }
+
+    const keyFollowContainer = page.locator(
+      '[data-testid="param-key-follow"]',
+    );
+    await expect(keyFollowContainer).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const slider = keyFollowContainer.locator('[role="slider"]');
+    await expect(slider).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = Number(
+      await slider.getAttribute('aria-valuenow') ?? '64',
+    );
+
+    // Set to 75 (unless already 75, then use 55)
+    const newValue = originalValue === 75 ? 55 : 75;
+    await driveSliderToValue(slider, newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    expect(deviceTone!.tvf.enabled).toBe(true);
+    // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    expect(
+      Math.abs(deviceTone!.tvf.keyFollow - newValue),
+    ).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
   // LFO Rate
   // -------------------------------------------------------------------------
 
@@ -331,6 +413,33 @@ test.describe('Tone Editor Controls', () => {
     expect(deviceTone).not.toBeNull();
     // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
     expect(Math.abs(deviceTone!.lfo.rate - newValue)).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // LFO Delay
+  // -------------------------------------------------------------------------
+
+  test('LFO delay slider syncs to device', async ({ page }) => {
+    const delayContainer = page.locator('[data-testid="param-delay"]');
+    await expect(delayContainer).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const slider = delayContainer.locator('[role="slider"]');
+    await expect(slider).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = Number(
+      await slider.getAttribute('aria-valuenow') ?? '64',
+    );
+
+    // Set to 85 (unless already 85, then use 35)
+    const newValue = originalValue === 85 ? 35 : 85;
+    await driveSliderToValue(slider, newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    expect(Math.abs(deviceTone!.lfo.delay - newValue)).toBeLessThanOrEqual(1);
   });
 
   // -------------------------------------------------------------------------
@@ -427,6 +536,26 @@ test.describe('Tone Editor Controls', () => {
     expect(deviceTone).not.toBeNull();
     // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
     expect(Math.abs(deviceTone!.tva.level - newValue)).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // Pitch Follow
+  // -------------------------------------------------------------------------
+
+  test('pitch follow checkbox syncs to device', async ({ page }) => {
+    const checkbox = page.locator('[data-testid="tone-pitch-follow"]');
+    await expect(checkbox).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const wasChecked = await checkbox.isChecked();
+
+    // Toggle the checkbox
+    await checkbox.click();
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    expect(deviceTone!.pitchFollow).toBe(!wasChecked);
   });
 
   // -------------------------------------------------------------------------

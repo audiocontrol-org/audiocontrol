@@ -115,6 +115,7 @@ export interface ToneReadback {
   originalKey: number;
   outputAssign: number;
   fineTune: number;
+  pitchFollow: boolean;
   wave: {
     bank: number;
     segmentTop: number;
@@ -125,6 +126,8 @@ export interface ToneReadback {
   };
   tvf: {
     cutoff: number;
+    resonance: number;
+    keyFollow: number;
     enabled: boolean;
   };
   tva: {
@@ -132,6 +135,7 @@ export interface ToneReadback {
   };
   lfo: {
     rate: number;
+    delay: number;
   };
 }
 
@@ -163,6 +167,7 @@ export async function readToneFromDevice(
       originalKey: tone.originalKey,
       outputAssign: tone.outputAssign,
       fineTune: tone.fineTune,
+      pitchFollow: tone.pitchFollow,
       wave: {
         bank: tone.wave.bank,
         segmentTop: tone.wave.segmentTop,
@@ -173,6 +178,8 @@ export async function readToneFromDevice(
       },
       tvf: {
         cutoff: tone.tvf.cutoff,
+        resonance: tone.tvf.resonance,
+        keyFollow: tone.tvf.keyFollow,
         enabled: tone.tvf.enabled,
       },
       tva: {
@@ -180,6 +187,7 @@ export async function readToneFromDevice(
       },
       lfo: {
         rate: tone.lfo.rate,
+        delay: tone.lfo.delay,
       },
     };
     /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -204,6 +212,7 @@ export interface PatchReadback {
   aftertouchSens: number;
   aftertouchAssign: string;
   velocityThreshold: number;
+  velocityMixRatio: number;
 }
 
 /**
@@ -235,6 +244,7 @@ export async function readPatchFromDevice(
       aftertouchSens: patch.common.aftertouchSens,
       aftertouchAssign: patch.common.aftertouchAssign,
       velocityThreshold: patch.common.velocityThreshold,
+      velocityMixRatio: patch.common.velocityMixRatio,
     };
     /* eslint-enable @typescript-eslint/no-explicit-any */
   }, patchIndex);
