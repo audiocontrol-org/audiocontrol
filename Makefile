@@ -111,25 +111,29 @@ check-midi-server:
 ensure-playwright:
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && npx playwright install chromium"
 
+# Extra arguments passed to e2e test runners (e.g., Playwright --grep).
+# Usage: make test-e2e-device-library ARGS="--grep 'set round trip'"
+ARGS ?=
+
 # Run all e2e tests (UI + library, no hardware required)
 test-e2e: $(ROLAND_SXX0_EDITOR) ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e"
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e $(ARGS)"
 
 # Run hardware e2e tests (requires device + midi-server)
 test-e2e-hardware: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh"
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh $(ARGS)"
 
 # Run library e2e tests (OPFS, no hardware)
 test-e2e-library: $(ROLAND_SXX0_EDITOR) ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-library-e2e.sh"
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-library-e2e.sh $(ARGS)"
 
 # Run device-library e2e tests (export/import between device and OPFS library)
 test-e2e-device-library: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-device-library-e2e.sh"
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-device-library-e2e.sh $(ARGS)"
 
 # Run basic UI navigation tests
 test-e2e-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e"
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e $(ARGS)"
 
 $(INSTALL_STAMP): pnpm-lock.yaml
 	pnpm install

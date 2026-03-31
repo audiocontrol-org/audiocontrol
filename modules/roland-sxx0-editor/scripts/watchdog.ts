@@ -17,7 +17,7 @@
 import * as fs from 'node:fs';
 
 const POLL_INTERVAL_MS = 500;
-const STALE_THRESHOLD_MS = 90000; // MIDI SysEx transfers to vintage hardware can take 60s+
+const STALE_THRESHOLD_MS = 10000; // Must exceed UI_TIMEOUT_MS (5s) since expect() is a single step
 
 interface HeartbeatData {
   timestamp: number;

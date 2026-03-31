@@ -92,6 +92,14 @@ class HeartbeatReporter implements Reporter {
     this.writeHeartbeat('stepEnd', `${test.title}: ${step.title} completed`);
   }
 
+  onStdOut(chunk: string | Buffer, _test?: TestCase, _result?: TestResult): void {
+    const text = typeof chunk === 'string' ? chunk : chunk.toString();
+    // Update heartbeat on any MIDI activity logged by the test's console listener
+    if (text.includes('S330Client') || text.includes('S550Client') || text.includes('BROWSER:')) {
+      this.writeHeartbeat('midiActivity', text.trim().slice(0, 100));
+    }
+  }
+
   onEnd(_result: FullResult): void {
     this.writeHeartbeat('end', 'Test suite completed');
     this.cleanup();
