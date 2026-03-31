@@ -218,17 +218,18 @@ pnpm --filter <module> test          # Test specific module
 
 E2E tests verify the application works correctly in real-world conditions. These principles are non-negotiable:
 
-### 1. Use devenv Infrastructure
+### 1. Use Make Targets with devenv
 
-All e2e tests run within the devenv environment which provides:
-- Consistent Node.js version
-- Required system dependencies (midi-server, etc.)
-- Playwright browsers pre-configured
-- Environment variables set correctly
+All e2e tests are invoked via `make test-e2e-*` targets. The Make targets handle everything:
+- Bootstrapping devenv (auto-installed if missing)
+- Building dependencies in correct order
+- Cloning and building midi-server (auto-provisioned to `.deps/`)
+- Installing Playwright browsers
+- Setting environment variables
+- Running tests inside the devenv environment
 
 ```bash
-devenv shell
-make test-e2e-device           # Or other e2e target
+make test-e2e-device           # Just run it — make handles the rest
 ```
 
 ### E2E Test Make Targets
@@ -241,6 +242,7 @@ make test-e2e-ui               # Basic UI navigation tests
 make test-e2e-library          # Library tests (OPFS, no hardware)
 make test-e2e-device           # Device tests (requires hardware + midi-server)
 make test-e2e-hardware         # Hardware tests (requires hardware)
+make test-e2e-s3k-hardware     # S3000XL hardware tests
 ```
 
 Pass arguments to test runners via ARGS:
@@ -248,11 +250,6 @@ Pass arguments to test runners via ARGS:
 make test-e2e-device ARGS="--grep 'Tone Editor'"
 E2E_DEVICE_TYPE=s550 make test-e2e-device ARGS="--grep 'set round trip'"
 ```
-
-The make targets handle:
-- Building dependencies in correct order
-- Checking midi-server availability
-- Setting environment variables (MIDI_SERVER_BIN)
 
 ### 2. No Mocking
 

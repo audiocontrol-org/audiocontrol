@@ -22,6 +22,10 @@
     pkgs.pnpm
     pkgs.git
     pkgs.coreutils
+    pkgs.cmake
+    pkgs.pkg-config
+  ] ++ lib.optionals pkgs.stdenv.isLinux [
+    pkgs.alsa-lib
   ];
 
   # Environment variables

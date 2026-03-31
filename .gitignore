@@ -44,6 +44,9 @@ modules/*/LICENSE
 # Local Netlify folder
 .netlify
 
+# Auto-provisioned build dependencies
+.deps/
+
 # devenv
 .devenv/
 .devenv.flake.nix

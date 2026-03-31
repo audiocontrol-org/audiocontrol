@@ -79,7 +79,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean test-e2e test-e2e-hardware test-e2e-library test-e2e-device test-e2e-device-library test-e2e-ui ensure-playwright ensure-playwright-s3k test-e2e-s3k-hardware
+.PHONY: build clean clean-deps test-e2e test-e2e-hardware test-e2e-library test-e2e-device test-e2e-device-library test-e2e-ui ensure-devenv ensure-playwright test-e2e-s3k-hardware
 
 build: $(ALL_STAMPS)
 
@@ -87,31 +87,56 @@ build: $(ALL_STAMPS)
 # E2E Test Infrastructure
 # ---------------------------------------------------------------------------
 
-# devenv binary location (override with DEVENV=/path/to/devenv if needed)
-DEVENV := $(shell command -v devenv 2>/dev/null || echo $(HOME)/.nix-profile/bin/devenv)
+# devenv binary location (auto-installed if missing)
+DEVENV := $(shell command -v devenv 2>/dev/null)
 
-# midi-server binary location (from sibling repo) — used by check-midi-server for debugging
-MIDI_SERVER_REPO := $(realpath $(CURDIR)/../../midi-server-work/midi-server-sse-events)
-MIDI_SERVER_BIN := $(MIDI_SERVER_REPO)/build/MidiHttpServer_artefacts/Release/MidiHttpServer
+ifeq ($(DEVENV),)
+DEVENV := devenv
+endif
 
-# Verify midi-server exists before running hardware tests
-.PHONY: check-midi-server
-check-midi-server:
-	@if [ ! -x "$(MIDI_SERVER_BIN)" ]; then \
-		echo "ERROR: midi-server not found at $(MIDI_SERVER_BIN)"; \
+.PHONY: ensure-devenv
+ensure-devenv:
+	@command -v devenv >/dev/null 2>&1 || { \
 		echo ""; \
-		echo "Build it first:"; \
-		echo "  cd $(MIDI_SERVER_REPO)"; \
-		echo "  cmake -B build -DCMAKE_BUILD_TYPE=Release"; \
-		echo "  cmake --build build"; \
+		echo "ERROR: devenv is not installed."; \
+		echo ""; \
+		echo "Install it (one-time, requires sudo):"; \
+		echo ""; \
+		echo "  curl -sSfL https://artifacts.nixos.org/nix-installer | sh -s -- install"; \
+		echo "  nix profile install nixpkgs#bashInteractive"; \
+		echo "  nix profile install nixpkgs#devenv"; \
+		echo ""; \
+		echo "Then restart your shell and re-run make."; \
+		echo "See https://devenv.sh/getting-started/ for details."; \
+		echo ""; \
 		exit 1; \
-	fi
-	@echo "✓ midi-server found: $(MIDI_SERVER_BIN)"
+	}
+	@echo "✓ devenv ready: $$(command -v devenv)"
 
-# Ensure Playwright browsers are installed
+# midi-server: auto-provisioned for hardware E2E tests
+MIDI_SERVER_DEPS_DIR := $(CURDIR)/.deps/midi-server
+MIDI_SERVER_REPO_URL := https://github.com/audiocontrol-org/midi-server.git
+MIDI_SERVER_BIN := $(MIDI_SERVER_DEPS_DIR)/build/MidiHttpServer_artefacts/Release/MidiHttpServer
+MIDI_SERVER_STAMP := $(MIDI_SERVER_DEPS_DIR)/.build-stamp
+
+$(MIDI_SERVER_DEPS_DIR)/CMakeLists.txt:
+	@mkdir -p .deps
+	git clone --depth 1 $(MIDI_SERVER_REPO_URL) $(MIDI_SERVER_DEPS_DIR)
+
+$(MIDI_SERVER_STAMP): $(MIDI_SERVER_DEPS_DIR)/CMakeLists.txt
+	cd $(MIDI_SERVER_DEPS_DIR) && cmake -B build -DCMAKE_BUILD_TYPE=Release
+	cd $(MIDI_SERVER_DEPS_DIR) && cmake --build build
+	@touch $@
+
+.PHONY: check-midi-server
+check-midi-server: ensure-devenv $(MIDI_SERVER_STAMP)
+	@test -x "$(MIDI_SERVER_BIN)" || (echo "ERROR: midi-server binary not found at $(MIDI_SERVER_BIN)" && exit 1)
+	@echo "✓ midi-server ready: $(MIDI_SERVER_BIN)"
+
+# Ensure Playwright browsers are installed (once, in e2e-infra)
 .PHONY: ensure-playwright
-ensure-playwright:
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && npx playwright install chromium"
+ensure-playwright: ensure-devenv
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/e2e-infra && npx playwright install chromium"
 
 # Extra arguments passed to e2e test runners (e.g., Playwright --grep).
 # Usage: make test-e2e-device-library ARGS="--grep 'set round trip'"
@@ -144,10 +169,7 @@ test-e2e-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
 # S3000XL E2E Tests
 # ---------------------------------------------------------------------------
 
-ensure-playwright-s3k:
-	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && npx playwright install chromium"
-
-test-e2e-s3k-hardware: $(AKAI_S3K_EDITOR) check-midi-server ensure-playwright-s3k
+test-e2e-s3k-hardware: $(AKAI_S3K_EDITOR) check-midi-server ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh $(ARGS)"
 
 $(INSTALL_STAMP): pnpm-lock.yaml
@@ -296,3 +318,6 @@ clean:
 	rm -f $(MODULES_DIR)/*/.build-stamp
 	rm -f $(INSTALL_STAMP)
 	rm -f $(MODULES_DIR)/*/*.tsbuildinfo
+
+clean-deps:
+	rm -rf .deps
