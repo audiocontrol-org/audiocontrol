@@ -252,7 +252,16 @@ test.describe('Tone Envelope Controls', () => {
     // Toggle between 0 and 2
     const newValue = originalValue === 2 ? 0 : 2;
 
-    await sustainSelect.selectOption(String(newValue));
+    // Use evaluate to set value and trigger React onChange directly
+    await sustainSelect.evaluate((el, val) => {
+      const select = el as HTMLSelectElement;
+      const nativeSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLSelectElement.prototype, 'value'
+      )!.set!;
+      nativeSetter.call(select, String(val));
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    }, newValue);
+    console.log(`TVA sustain: set to ${newValue}, readback=${await sustainSelect.inputValue()}`);
     // Verify the select actually changed
     const afterSelect = Number(await sustainSelect.inputValue());
     console.log(`TVA sustain point: after selectOption=${afterSelect}`);
