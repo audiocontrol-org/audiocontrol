@@ -95,10 +95,12 @@ function attachConsoleDebugListener(page: Page): void {
 const KIT_FIXTURE_NAME = 'e2e-kit';
 
 /**
- * V2 drum kit bundle YAML with 2 slices.
+ * V2 drum kit bundle YAML with 4 slices (complete kit).
  *
  * Uses drum-kit-bundle format with source WAV and slice definitions.
  * Each slice is 15000 samples (0.5s at 30kHz).
+ * Total: 60000 samples = 2 seconds at 30kHz.
+ * 4 slices form a complete kit (kick, snare, hhClosed, hhOpen).
  */
 const KIT_YAML = `format: drum-kit-bundle
 version: 2
@@ -113,10 +115,16 @@ slices:
   - label: Snare
     startSample: 15000
     endSample: 30000
+  - label: hhClosed
+    startSample: 30000
+    endSample: 45000
+  - label: hhOpen
+    startSample: 45000
+    endSample: 60000
 `;
 
-/** Minimal WAV: 1 second of silence at 30kHz (30000 samples) */
-const KIT_WAV_BASE64 = createMinimalWavBase64(30000, 1);
+/** Minimal WAV: 2 seconds of silence at 30kHz (60000 samples) */
+const KIT_WAV_BASE64 = createMinimalWavBase64(30000, 2);
 
 // ---------------------------------------------------------------------------
 // OPFS Helper
