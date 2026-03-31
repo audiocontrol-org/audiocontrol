@@ -47,6 +47,9 @@ importers:
       '@audiocontrol/sampler-devices':
         specifier: workspace:*
         version: link:../sampler-devices
+      '@audiocontrol/sampler-library':
+        specifier: workspace:*
+        version: link:../sampler-library
       '@audiocontrol/shared-midi':
         specifier: workspace:*
         version: link:../shared-midi
