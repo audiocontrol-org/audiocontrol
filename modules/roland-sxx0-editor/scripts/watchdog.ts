@@ -17,7 +17,7 @@
 import * as fs from 'node:fs';
 
 const POLL_INTERVAL_MS = 500;
-const STALE_THRESHOLD_MS = 5000; // UI responds in <1s; MIDI heartbeats every ~100ms during transfers
+const STALE_THRESHOLD_MS = 10000; // Covers UI navigation + initial bank load; MIDI heartbeats keep it alive during transfers
 
 interface HeartbeatData {
   timestamp: number;

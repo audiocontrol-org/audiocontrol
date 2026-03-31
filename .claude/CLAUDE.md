@@ -228,7 +228,7 @@ All e2e tests run within the devenv environment which provides:
 
 ```bash
 devenv shell
-make test-e2e-device-library   # Or other e2e target
+make test-e2e-device           # Or other e2e target
 ```
 
 ### E2E Test Make Targets
@@ -239,8 +239,14 @@ Always use make targets to run e2e tests (not raw pnpm commands):
 make test-e2e                  # All e2e tests (UI + library, no hardware)
 make test-e2e-ui               # Basic UI navigation tests
 make test-e2e-library          # Library tests (OPFS, no hardware)
-make test-e2e-device-library   # Device-library tests (requires hardware)
+make test-e2e-device           # Device tests (requires hardware + midi-server)
 make test-e2e-hardware         # Hardware tests (requires hardware)
+```
+
+Pass arguments to test runners via ARGS:
+```bash
+make test-e2e-device ARGS="--grep 'Tone Editor'"
+E2E_DEVICE_TYPE=s550 make test-e2e-device ARGS="--grep 'set round trip'"
 ```
 
 The make targets handle:

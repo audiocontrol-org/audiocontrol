@@ -687,17 +687,12 @@ export function createS330Client(
                 const command = response[4];
 
                 if (command === S330_COMMANDS.RJC) {
-                    if (phase === 'WSD') {
-                        // Ignore RJC during WSD phase — may be a stale response
-                        // from a previous timed-out operation. The real response
-                        // to our WSD will arrive shortly. If the device truly
-                        // rejected our WSD, we'll time out instead.
-                        console.warn(`[S330Client] Ignoring stale RJC during WSD phase`);
-                        return;
-                    }
-                    clearTimeout(timeoutId);
-                    midiAdapter.removeSysExListener(listener);
-                    reject(new Error(`WSD rejected by S-330 in phase ${phase}`));
+                    // Ignore stale RJC in any phase — the S-550 sends leftover
+                    // RJC responses from previous timed-out operations. These
+                    // arrive asynchronously and don't correspond to the current
+                    // WSD/DAT/EOD exchange. If the device truly rejects our
+                    // request, we'll time out waiting for the real ACK.
+                    console.warn(`[S330Client] Ignoring stale RJC during ${phase} phase`);
                     return;
                 }
                 if (command === S330_COMMANDS.ERR) {
@@ -994,15 +989,7 @@ export function createS330Client(
                 resetTimeout();
 
                 if (command === S330_COMMANDS.RJC) {
-                    if (phase === 'WSD') {
-                        // Ignore RJC during WSD phase — may be stale from
-                        // a previous timed-out operation.
-                        console.warn(`[S330Client] Ignoring stale RJC during wave WSD phase`);
-                        return;
-                    }
-                    clearTimeout(timeoutId);
-                    midiAdapter.removeSysExListener(listener);
-                    reject(new Error(`Wave data rejected by S-330 in phase ${phase}`));
+                    console.warn(`[S330Client] Ignoring stale RJC during wave ${phase} phase`);
                     return;
                 }
                 if (command === S330_COMMANDS.ERR) {

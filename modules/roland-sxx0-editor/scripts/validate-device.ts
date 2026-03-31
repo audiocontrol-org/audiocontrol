@@ -26,8 +26,9 @@ const RQD_COMMAND = 0x41;
 const S_SERIES_RESPONSES = {
   DAT: 0x42,  // Data response
   ACK: 0x43,  // Acknowledge
-  EOD: 0x44,  // End of data
-  ERR: 0x4F,  // Error (but still proves device is there!)
+  EOD: 0x45,  // End of data
+  ERR: 0x4E,  // Communication error
+  RJC: 0x4F,  // Rejection (request denied)
 };
 
 // Ports to exclude (loopback, virtual, network)
@@ -77,7 +78,93 @@ interface DiscoveryResult {
   inputPort?: string;
   outputPort?: string;
   deviceId?: number;
+  deviceType?: 's330' | 's550';
   responseType?: string;
+}
+
+/**
+ * Detect whether the connected device is an S-330 or S-550 by probing
+ * wave wave stride at address [0x01, 0x40, 0x00, 0x00].
+ * - S-550: has 4 wave banks (A-D), wave stride responds with data
+ * - S-330: has 2 wave banks (A-B), wave stride is rejected
+ */
+async function detectDeviceType(
+  inputName: string,
+  outputName: string,
+  deviceId: number,
+): Promise<'s330' | 's550'> {
+  return new Promise((resolve) => {
+    let input: easymidi.Input | null = null;
+    let output: easymidi.Output | null = null;
+    let resolved = false;
+
+    const cleanup = () => {
+      if (!resolved) {
+        resolved = true;
+        input?.close();
+        output?.close();
+      }
+    };
+
+    // Default to S-330 on timeout (safer assumption)
+    const timeout = setTimeout(() => {
+      console.error('    Device type detection timed out, defaulting to S-330');
+      cleanup();
+      resolve('s330');
+    }, TIMEOUT_MS);
+
+    try {
+      input = new easymidi.Input(inputName);
+      output = new easymidi.Output(outputName);
+
+      input.on('sysex', (msg) => {
+        const bytes = msg.bytes;
+        if (bytes.length < 5) return;
+        if (bytes[1] !== ROLAND_ID) return;
+        if (bytes[3] !== S_SERIES_MODEL_ID) return;
+
+        const command = bytes[4];
+        const hex = bytes.map((b: number) => b.toString(16).padStart(2, '0')).join(' ');
+        console.error(`    wave stride response: ${hex} (command 0x${command.toString(16)})`);
+        clearTimeout(timeout);
+        cleanup();
+
+        if (command === S_SERIES_RESPONSES.DAT || command === S_SERIES_RESPONSES.EOD || command === S_SERIES_RESPONSES.ACK) {
+          // wave stride exists → S-550
+          console.error('    wave stride probe: data received → S-550 detected');
+          resolve('s550');
+        } else {
+          // RJC or ERR → wave stride doesn't exist → S-330
+          console.error(`    wave stride probe: command 0x${command.toString(16)} → S-330 detected`);
+          resolve('s330');
+        }
+      });
+
+      // Read tone 1 parameters (the auto-fit import target).
+      // Tone 1 address: [0x00, 0x03, 0x02, 0x00], full 256-byte block.
+      // Check what segmentTop and segmentLength the device actually stored.
+      const address = [0x00, 0x03, 0x02, 0x00];
+      // Request 4 nibbles (2 bytes) starting at the wave allocation offset
+      // Actually, request a larger block to see the full wave params
+      // Tone offsets: byte 13=bank, 14=segTop, 15=segLen, 16-18=startPoint
+      // Request 32 nibbles (16 bytes) to get wave allocation fields
+      const size = [0x00, 0x00, 0x00, 0x20];
+      const sum = address.reduce((a, b) => a + b, 0) + size.reduce((a, b) => a + b, 0);
+      const checksum = (128 - (sum & 0x7F)) % 128;
+      const probe = [
+        0xF0, ROLAND_ID, deviceId, S_SERIES_MODEL_ID, RQD_COMMAND,
+        ...address, ...size, checksum, 0xF7,
+      ];
+
+      console.error(`    Probing wave wave stride: ${probe.map(b => b.toString(16).padStart(2, '0')).join(' ')}`);
+      output.send('sysex', probe as unknown[]);
+    } catch (e) {
+      console.error(`    Device type detection error: ${e}, defaulting to S-330`);
+      clearTimeout(timeout);
+      cleanup();
+      resolve('s330');
+    }
+  });
 }
 
 async function main() {
@@ -126,7 +213,12 @@ async function main() {
   for (const [inPort, outPort] of portsToTry) {
     const result = await tryPort(inPort, outPort, deviceId);
     if (result.found) {
-      console.error(`\n✓ S-series device found on: ${outPort} (device ID ${deviceId})`);
+      // Detect device type (S-330 vs S-550)
+      console.error('\nDetecting device type...');
+      const deviceType = await detectDeviceType(inPort, outPort, deviceId);
+      result.deviceType = deviceType;
+
+      console.error(`\n✓ ${deviceType.toUpperCase()} found on: ${outPort} (device ID ${deviceId})`);
       outputResult(result);
       process.exit(0);
     }
