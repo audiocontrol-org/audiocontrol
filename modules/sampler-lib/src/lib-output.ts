@@ -1,0 +1,140 @@
+/**
+ * Process output abstractions — browser-safe.
+ *
+ * These types and factories work in both Node.js and browser environments.
+ * They were extracted from lib-io.ts to allow browser bundles to import
+ * them without pulling in Node.js dependencies (fs, etc.).
+ *
+ * @packageDocumentation
+ */
+
+import { timestamp } from "@/lib-core";
+
+/**
+ * Interface for process output handling.
+ *
+ * @remarks
+ * Provides a unified interface for logging, error reporting, and data output
+ * across different execution contexts (server/client, streams, etc.).
+ */
+export interface ProcessOutput {
+    /**
+     * Logs a message (debug/info level).
+     *
+     * @param msg - Message string or object to log
+     */
+    log(msg: string | Object): void
+
+    /**
+     * Reports an error.
+     *
+     * @param msg - Error message, Error object, or object to report
+     */
+    error(msg: string | Error | Object): void
+
+    /**
+     * Writes output data.
+     *
+     * @param data - Data string or object to write
+     */
+    write(data: string | Object): void
+}
+
+/**
+ * Function type for writing output data.
+ */
+export type WriteFunction = (v: string | Object) => void
+
+/**
+ * Function type for error reporting.
+ */
+export type ErrorFunction = (v: string | Object | Error) => void
+
+/**
+ * Basic implementation of ProcessOutput with configurable output functions.
+ *
+ * @internal
+ */
+class BasicOutput implements ProcessOutput {
+    private readonly debug: boolean;
+
+    private readonly writeFunction: WriteFunction
+    private readonly errorFunction: ErrorFunction
+    private readonly newline: string;
+    private readonly prefix: string;
+
+    constructor(writeFunction: WriteFunction, errorFunction: ErrorFunction, newline = '\n', debug = true, prefix: string) {
+        this.newline = newline
+        this.writeFunction = writeFunction
+        this.errorFunction = errorFunction
+        this.debug = debug
+        this.prefix = prefix
+    }
+
+    write(msg: string | Buffer) {
+        this.writeFunction(msg)
+    }
+
+    error(msg: string | Error) {
+        this.errorFunction(msg)
+    }
+
+    log(msg: string | Buffer) {
+        if (this.debug) {
+            this.writeFunction(timestamp() + ': ' + this.prefix + ': ' + msg + this.newline)
+        }
+    }
+}
+
+/**
+ * Minimal writable interface for stream output.
+ */
+export interface Writeable {
+    /**
+     * Writes data to the stream.
+     *
+     * @param v - Data to write
+     */
+    write(v: string | Object): void
+}
+
+/**
+ * Creates a ProcessOutput instance that writes to streams.
+ *
+ * @param outstream - Stream for normal output
+ * @param errstream - Stream for error output
+ * @param debug - Whether to enable debug logging (default: true)
+ * @param prefix - Prefix for log messages (default: '')
+ * @returns ProcessOutput instance configured for stream output
+ *
+ * @example
+ * ```typescript
+ * const output = newStreamOutput(process.stdout, process.stderr, true, 'MyApp');
+ * output.log('Starting process...');
+ * output.error(new Error('Something failed'));
+ * ```
+ */
+export function newStreamOutput(outstream: Writeable, errstream: Writeable, debug = true, prefix = ''): ProcessOutput {
+    return new BasicOutput((msg: string | Object) => outstream.write(msg), (msg) => errstream.write(msg), '\n', debug, prefix)
+}
+
+/**
+ * Creates a ProcessOutput instance for client/browser environments.
+ *
+ * @param debug - Whether to enable debug logging (default: true)
+ * @param prefix - Prefix for log messages (default: '')
+ * @returns ProcessOutput instance configured for client output
+ *
+ * @example
+ * ```typescript
+ * const output = newClientOutput(true, 'UI');
+ * output.log('UI component mounted');
+ * output.error('Validation failed');
+ * ```
+ *
+ * @remarks
+ * Uses console.info and console.error. Does not append newlines (browser consoles handle this).
+ */
+export function newClientOutput(debug = true, prefix = ''): ProcessOutput {
+    return new BasicOutput(console.info, console.error, '', debug, prefix)
+}

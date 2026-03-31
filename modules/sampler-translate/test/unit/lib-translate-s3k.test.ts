@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fsp from 'fs/promises';
 import fs from 'fs'
 import {newAkaiToolsConfig, newAkaitools, Akaitools} from "@audiocontrol/sampler-devices/s3k";
-import {newServerConfig, ServerConfig} from "@audiocontrol/sampler-lib";
+import {newServerConfig, ServerConfig} from "@audiocontrol/sampler-lib/server";
 import {ExecutionResult} from "@audiocontrol/sampler-devices";
 import {newDefaultSampleFactory, Sample} from "@/sample.js";
 import {map} from "@/lib-translate-s3k.js"

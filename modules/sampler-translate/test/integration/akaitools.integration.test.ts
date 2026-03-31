@@ -29,7 +29,7 @@ import {
 } from "@audiocontrol/sampler-devices/s3k";
 import {byte2nibblesLE, nibbles2byte} from "@audiocontrol/sampler-lib";
 import {akaiByte2String, nextByte} from "@audiocontrol/sampler-devices/s3k";
-import {newServerConfig} from "@audiocontrol/sampler-lib";
+import {newServerConfig} from "@audiocontrol/sampler-lib/server";
 import {AkaiRecordResult, AkaiRecordType, AkaiToolsConfig, RemoteDisk} from "@audiocontrol/sampler-devices/s3k";
 import {it} from "mocha";
 

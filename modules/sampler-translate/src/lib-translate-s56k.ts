@@ -8,7 +8,8 @@ import path, * as Path from "path";
 import { mpc } from "@/lib-akai-mpc.js";
 import { AkaiS56ProgramResult, Kloc, newProgramFromBuffer, Zone } from "@audiocontrol/sampler-devices";
 import { decent } from '@/lib-decent.js';
-import { newSampleFromBuffer, pad } from "@audiocontrol/sampler-lib";
+import { pad } from "@audiocontrol/sampler-lib";
+import { newSampleFromBuffer } from "@audiocontrol/sampler-lib/server";
 
 // Temporary Progress interface until lib-jobs is migrated
 export interface Progress {

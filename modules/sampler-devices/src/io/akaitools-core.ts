@@ -1,4 +1,4 @@
-import { newServerConfig } from "@audiocontrol/sampler-lib";
+import { newServerConfig } from "@audiocontrol/sampler-lib/server";
 import {
     AkaiDiskResult,
     AkaiProgramFile,

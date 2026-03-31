@@ -22,8 +22,6 @@ import {
   parseSampleHeader,
 } from '@/devices/s3000xl.js';
 import type { ProgramHeader, KeygroupHeader, SampleHeader } from '@/devices/s3000xl.js';
-import { byte2nibblesLE } from '@audiocontrol/sampler-lib';
-import { nextByte } from '@/utils/akai-utils.js';
 import type { S3000xlClientOptions, S3000xlClientInterface } from '@/devices/s3000xl/s3000xl-types.js';
 import {
   AkaiOpcode,
@@ -36,6 +34,26 @@ import {
 } from '@/devices/s3000xl/s3000xl-protocol.js';
 
 const AKAI_NAME_LENGTH = 12;
+
+// =========================================================================
+// Inline nibble utilities (avoids sampler-lib dependency for browser compat)
+// =========================================================================
+
+/** Split a byte into [lowNibble, highNibble] (little-endian). */
+function byte2nibblesLE(byte: number): number[] {
+  return [byte & 0x0f, (byte >> 4) & 0x0f];
+}
+
+/** Combine two nibbles into a byte. */
+function nibbles2byte(low: number, high: number): number {
+  return (high << 4) | (low & 0x0f);
+}
+
+/** Read next byte from nibble stream, advancing offset by 2. */
+function nextByte(nibbles: number[], v: { value: number; offset: number }): void {
+  v.value = nibbles2byte(nibbles[v.offset], nibbles[v.offset + 1]);
+  v.offset += 2;
+}
 
 /**
  * Create a new S3000XL client instance.
@@ -114,10 +132,6 @@ export function createS3000xlClient(
   // Core SysEx Communication
   // =========================================================================
 
-  /**
-   * Send a SysEx message and wait for the response with timeout.
-   * Validates the response manufacturer ID.
-   */
   function sendAndReceive(message: number[]): Promise<number[]> {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -141,10 +155,6 @@ export function createS3000xlClient(
     });
   }
 
-  /**
-   * Send an opcode + data command and return the raw response.
-   * Does NOT serialize — callers must serialize if needed.
-   */
   async function sendCommandInternal(opcode: number, data: number[]): Promise<number[]> {
     const message = buildAkaiSysEx(channel, opcode, data);
     const response = await sendAndReceive(message);
@@ -160,9 +170,6 @@ export function createS3000xlClient(
     return response;
   }
 
-  /**
-   * Send a command with serialization and retry.
-   */
   function sendCommandWithRetry(opcode: number, data: number[]): Promise<number[]> {
     return serialize(() =>
       withRetry(() => sendCommandInternal(opcode, data), {
@@ -179,7 +186,6 @@ export function createS3000xlClient(
   function parseProgramFromResponse(response: number[]): ProgramHeader {
     const header = {} as ProgramHeader;
     const v = { value: 0, offset: 5 };
-    // Skip PNUMBER byte
     nextByte(response, v);
     const headerData = response.slice(v.offset, response.length - 1);
     parseProgramHeader(headerData, 1, header);
@@ -190,10 +196,7 @@ export function createS3000xlClient(
   function parseKeygroupFromResponse(response: number[]): KeygroupHeader {
     const header = {} as KeygroupHeader;
     const v = { value: 0, offset: 5 };
-    // Skip PNUMBER byte
     nextByte(response, v);
-    // Skip KNUMBER byte (keygroup number is at next position)
-    // Note: parseKeygroupHeader expects offset 0 after KNUMBER
     const headerData = response.slice(v.offset, response.length - 1);
     parseKeygroupHeader(headerData, 0, header);
     header.raw = response;
@@ -203,7 +206,6 @@ export function createS3000xlClient(
   function parseSampleFromResponse(response: number[]): SampleHeader {
     const header = {} as SampleHeader;
     const v = { value: 0, offset: 5 };
-    // Skip SNUMBER byte
     nextByte(response, v);
     parseSampleHeader(response.slice(v.offset, response.length - 1), 0, header);
     header.raw = response;
