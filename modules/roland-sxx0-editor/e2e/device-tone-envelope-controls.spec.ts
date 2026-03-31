@@ -217,9 +217,17 @@ test.describe('Tone Envelope Controls', () => {
     const newRate = originalRate === 50 ? 80 : 50;
     console.log(`TVA rate: original=${originalRate}, setting to=${newRate}`);
 
-    await firstRateInput.click();
-    await firstRateInput.press('Control+a');
-    await firstRateInput.type(String(newRate));
+    // Use evaluate to set the value and dispatch events directly,
+    // bypassing React's controlled input quirks with keystroke-by-keystroke updates.
+    await firstRateInput.evaluate((el, val) => {
+      const input = el as HTMLInputElement;
+      const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype, 'value'
+      )!.set!;
+      nativeInputValueSetter.call(input, String(val));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    }, newRate);
     // onChange fires on fill and calls onCommit immediately
     await firstRateInput.blur();
     await page.waitForTimeout(WRITE_FLUSH_MS);
