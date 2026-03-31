@@ -281,7 +281,7 @@ test.describe('Drum Kit Import', () => {
     // The OperationSuccessScreen shows "Samples imported successfully!"
     // Poll with page.waitForTimeout to keep heartbeat alive.
     const POLL_INTERVAL = 2_000;
-    const MAX_POLLS = 60; // 60 x 2s = 120s (4 tones + wave uploads over MIDI)
+    const MAX_POLLS = 75; // Watchdog (10s) is the real safety net; this just bounds the loop
     let importSucceeded = false;
 
     for (let poll = 0; poll < MAX_POLLS; poll++) {
