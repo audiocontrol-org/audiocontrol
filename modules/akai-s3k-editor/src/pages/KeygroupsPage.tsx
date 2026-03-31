@@ -6,6 +6,7 @@ import { useSampleNames } from '@/hooks/useSampleNames';
 import { useKeygroupStore } from '@/stores/keygroupStore';
 import { useProgramStore } from '@/stores/programStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { writeKeygroupField } from '@/lib/keygroup-writers';
 
 export function KeygroupsPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
@@ -49,10 +50,11 @@ export function KeygroupsPage(): JSX.Element {
       if (!header) return;
 
       // Update local store optimistically
-      const updated = { ...header, [field]: value };
+      const updated = { ...header, [field]: value, raw: [...header.raw] };
       useKeygroupStore.getState().setKeygroup(selectedKeygroupIndex, updated);
 
-      // Write back to device
+      // Encode value into raw SysEx bytes, then write to device
+      writeKeygroupField(updated, field, value);
       await client.writeKeygroupHeader(updated);
     },
     [selectedKeygroupIndex, client, keygroups],
@@ -62,9 +64,10 @@ export function KeygroupsPage(): JSX.Element {
     if (selectedProgramIndex === null || !selectedProgram) return;
     lastLoadedProgram.current = null;
     invalidateCache();
+    if (client) client.invalidateKeygroupCache();
     selectKeygroup(null);
     loadKeygroups(selectedProgramIndex, selectedProgram.GROUPS);
-  }, [selectedProgramIndex, selectedProgram, invalidateCache, selectKeygroup, loadKeygroups]);
+  }, [selectedProgramIndex, selectedProgram, client, invalidateCache, selectKeygroup, loadKeygroups]);
 
   const selectedHeader =
     selectedKeygroupIndex !== null ? keygroups[selectedKeygroupIndex] : undefined;
