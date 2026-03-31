@@ -64,10 +64,10 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 2.2.1 | Edit patch name | P1 | ✅ | `device-library-patch-controls.spec.ts` |
-| 2.2.2 | Patch name syncs to device | P1 | ✅ | `device-library-patch-controls.spec.ts` |
-| 2.2.3 | Edit key mode selection | P1 | ✅ | `device-library-patch-controls.spec.ts` |
-| 2.2.4 | Edit bender range | P1 | ✅ | `device-library-patch-controls.spec.ts` |
+| 2.2.1 | Edit patch name | P1 | ✅ | `device-patch-controls.spec.ts` |
+| 2.2.2 | Patch name syncs to device | P1 | ✅ | `device-patch-controls.spec.ts` |
+| 2.2.3 | Edit key mode selection | P1 | ✅ | `device-patch-controls.spec.ts` |
+| 2.2.4 | Edit bender range | P1 | ✅ | `device-patch-controls.spec.ts` |
 | 2.2.5 | Edit tone zone assignments | P1 | ❌ | |
 | 2.2.6 | Configure velocity split zones | P2 | ❌ | |
 | 2.2.7 | Configure key split zones | P2 | ❌ | |
@@ -110,25 +110,25 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 3.2.1 | Edit tone name | P1 | ✅ | `device-library-tone-controls.spec.ts` |
-| 3.2.2 | Tone name syncs to device | P1 | ✅ | `device-library-tone-controls.spec.ts` |
+| 3.2.1 | Edit tone name | P1 | ✅ | `device-tone-controls.spec.ts` |
+| 3.2.2 | Tone name syncs to device | P1 | ✅ | `device-tone-controls.spec.ts` |
 | 3.2.3 | Edit sample rate (15kHz/30kHz) | P1 | ❌ | |
 | 3.2.4 | Edit original key | P1 | ❌ | |
 | 3.2.5 | Edit wave start/end points | P1 | ❌ | |
-| 3.2.6 | Edit loop point and mode | P1 | ✅ | `device-library-tone-controls.spec.ts` |
+| 3.2.6 | Edit loop point and mode | P1 | ✅ | `device-tone-controls.spec.ts` |
 | 3.2.7 | Edit LFO parameters | P2 | ❌ | |
 | 3.2.8 | Edit TVA envelope (8 points) | P1 | ❌ | |
 | 3.2.9 | Edit TVF envelope (8 points) | P1 | ❌ | |
 | 3.2.10 | Parameter changes persist after reload | P1 | ❌ | |
 | 3.2.11 | TVF enable/disable toggle | P1 | ❌ | |
-| 3.2.12 | TVF cutoff/resonance/key follow sliders | P1 | ⚠️ | `device-library-tone-controls.spec.ts` (cutoff tested, resonance/key follow not yet) |
+| 3.2.12 | TVF cutoff/resonance/key follow sliders | P1 | ⚠️ | `device-tone-controls.spec.ts` (cutoff tested, resonance/key follow not yet) |
 | 3.2.13 | TVF envelope 8-point editing | P1 | ❌ | |
 | 3.2.14 | TVA level/LFO depth sliders | P1 | ❌ | |
 | 3.2.15 | TVA envelope 8-point editing | P1 | ❌ | |
-| 3.2.16 | LFO rate/delay/offset sliders | P1 | ⚠️ | `device-library-tone-controls.spec.ts` (rate tested, delay/offset not yet) |
+| 3.2.16 | LFO rate/delay/offset sliders | P1 | ⚠️ | `device-tone-controls.spec.ts` (rate tested, delay/offset not yet) |
 | 3.2.17 | LFO sync and mode toggles | P2 | ❌ | |
 | 3.2.18 | Pitch fine tune and pitch follow | P1 | ❌ | |
-| 3.2.19 | All parameters sync to device on commit | P0 | ⚠️ | `device-library-tone-controls.spec.ts` (4 params verified, not all) |
+| 3.2.19 | All parameters sync to device on commit | P0 | ⚠️ | `device-tone-controls.spec.ts` (4 params verified, not all) |
 
 ### 3.3 Sample Operations (Hardware Required) 🔌
 
@@ -158,13 +158,13 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 4.1.1 | Navigates to play page | P1 | ✅ | `device-library-play-controls.spec.ts` |
-| 4.1.2 | Loads function parameters from device | P1 | ✅ | `device-library-play-controls.spec.ts` |
-| 4.1.3 | Per-part MIDI channel selection syncs to device | P1 | ✅ | `device-library-play-controls.spec.ts` |
-| 4.1.4 | Per-part patch assignment syncs to device | P1 | ✅ | `device-library-play-controls.spec.ts` |
-| 4.1.5 | Per-part output routing syncs to device | P1 | ✅ | `device-library-play-controls.spec.ts` |
-| 4.1.6 | Per-part level adjustment syncs to device | P1 | ✅ | `device-library-play-controls.spec.ts` |
-| 4.1.7 | Part configuration persists after page navigation | P1 | ✅ | `device-library-play-controls.spec.ts` |
+| 4.1.1 | Navigates to play page | P1 | ✅ | `device-play-controls.spec.ts` |
+| 4.1.2 | Loads function parameters from device | P1 | ✅ | `device-play-controls.spec.ts` |
+| 4.1.3 | Per-part MIDI channel selection syncs to device | P1 | ✅ | `device-play-controls.spec.ts` |
+| 4.1.4 | Per-part patch assignment syncs to device | P1 | ✅ | `device-play-controls.spec.ts` |
+| 4.1.5 | Per-part output routing syncs to device | P1 | ✅ | `device-play-controls.spec.ts` |
+| 4.1.6 | Per-part level adjustment syncs to device | P1 | ✅ | `device-play-controls.spec.ts` |
+| 4.1.7 | Part configuration persists after page navigation | P1 | ✅ | `device-play-controls.spec.ts` |
 | 4.1.8 | Loading patch banks from Play page | P1 | ❌ | |
 
 ---
@@ -479,7 +479,7 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 4. ~~**Set Save to Library** - Save device state as set~~ ✅ Covered by `device-library-set-roundtrip.spec.ts`
 5. ~~**Set Load from Library** - Load set to device~~ ✅ Covered by `device-library-set-roundtrip.spec.ts`
 6. **Multi-device support** - S-550 specific tests
-7. ~~**Tone parameter sync** - All tone parameters sync to device on commit (3.2.19)~~ ⚠️ Partially covered by `device-library-tone-controls.spec.ts` (4 params verified)
+7. ~~**Tone parameter sync** - All tone parameters sync to device on commit (3.2.19)~~ ⚠️ Partially covered by `device-tone-controls.spec.ts` (4 params verified)
 
 ---
 
@@ -502,9 +502,9 @@ Test the "Find Best Fit" feature that auto-allocates non-conflicting slots:
 
 ### Phase 3: Editor Controls ⚠️ IN PROGRESS
 Play, Patch, and Tone page parameter controls with hardware sync:
-- Play page: ✅ per-part channel, patch, output, level controls (`device-library-play-controls.spec.ts`)
-- Patch editing: ⚠️ name, key mode, bender range tested; aftertouch, key assign, velocity, tone zones remaining (`device-library-patch-controls.spec.ts`)
-- Tone editing: ⚠️ name, loop point, TVF cutoff, LFO rate tested; TVA, envelopes, pitch remaining (`device-library-tone-controls.spec.ts`)
+- Play page: ✅ per-part channel, patch, output, level controls (`device-play-controls.spec.ts`)
+- Patch editing: ⚠️ name, key mode, bender range tested; aftertouch, key assign, velocity, tone zones remaining (`device-patch-controls.spec.ts`)
+- Tone editing: ⚠️ name, loop point, TVF cutoff, LFO rate tested; TVA, envelopes, pitch remaining (`device-tone-controls.spec.ts`)
 
 ### Phase 4: Loop Editor Parity and Hardware Integration
 - Loop editor opens from both Tones page (inline) and Library page (dialog)
