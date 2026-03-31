@@ -1,16 +1,20 @@
 /**
- * E2E tests for Play page part controls.
+ * E2E tests for Play page part controls — verified via device readback.
  *
- * Verifies that changes made via the Play page UI are persisted on the
- * device by navigating away and back to force a fresh load of function
- * parameters.
+ * After changing a control value in the UI, these tests navigate away
+ * and back to force a fresh SysEx read of function parameters from the
+ * hardware. Unlike tone/patch data, function parameters are NOT cached
+ * by the client — requestFunctionParameters() always sends a SysEx RQ1
+ * request to the device. Navigating back to the Play page triggers this
+ * fresh read, making it a valid device readback.
  *
  * Pattern:
  *   1. Connect to device, navigate to Play page
  *   2. Change a control value via the UI
- *   3. Navigate to a different page (flushes pending writes)
- *   4. Navigate back to Play page (triggers fresh load)
- *   5. Assert the control shows the new value
+ *   3. Wait for the buffered MIDI write to flush
+ *   4. Navigate away (Patches) then back to Play
+ *   5. requestFunctionParameters() fires, reading fresh from device
+ *   6. Assert the control shows the device value
  *
  * Prerequisites:
  *   - Roland S-330 or S-550 connected via MIDI
@@ -42,6 +46,9 @@ const EDITOR_BASE_PATH = `/roland/${DEVICE_TYPE}/editor`;
 
 const UI_TIMEOUT_MS = 2_000;
 const DATA_LOAD_TIMEOUT_MS = 15_000;
+
+/** Time to wait after a UI change for the buffered MIDI write to flush. */
+const WRITE_FLUSH_MS = 500;
 
 // ---------------------------------------------------------------------------
 // URL Builder
@@ -83,8 +90,12 @@ function attachConsoleDebugListener(
 // ---------------------------------------------------------------------------
 
 /**
- * Navigate away from the current page to Patches, then back to Play.
- * This forces the app to re-request function parameters from the device.
+ * Navigate away from Play to Patches, then back to Play.
+ *
+ * This forces a fresh requestFunctionParameters() call which sends
+ * SysEx RQ1 requests to read all function parameters from the device.
+ * Unlike tone/patch data, function parameters have no client-side cache,
+ * so this is a genuine device readback.
  */
 async function navigateAwayAndBackToPlay(
   page: import('@playwright/test').Page,
@@ -97,7 +108,7 @@ async function navigateAwayAndBackToPlay(
   await playLink.click();
   await page.waitForURL('**/play**');
 
-  // Wait for parts grid to re-render with fresh data
+  // Wait for parts grid to re-render with fresh data from device
   await page.waitForTimeout(1_000);
 }
 
@@ -137,34 +148,23 @@ test.describe('Play Page Controls', () => {
   // -------------------------------------------------------------------------
 
   test('channel selection syncs to device', async ({ page }) => {
-    // Part A (index 0) channel select is the first select in the first part row.
-    // The grid has columns: label, VAL, CH, Patch, Out, Level.
-    // Each part row has 3 select elements: channel, patch, output.
-    // Part A's channel select is the 1st select in the 1st row.
-
-    // Locate all part rows via the grid structure
     const partRows = page.locator(
       '.grid.grid-cols-12.gap-2.py-1\\.5',
     );
     await expect(partRows.first()).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
 
     // Part A (first row) has 3 selects: channel, patch, output
-    const partASelects = partRows.first().locator('select');
-
-    // Channel is the first select (col-span-1 text-center)
-    const channelSelect = partASelects.nth(0);
+    const channelSelect = partRows.first().locator('select').nth(0);
     await expect(channelSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
     // Change channel to 5 (value "4" since 0-indexed, displays as 5)
     await channelSelect.selectOption('4');
+    await page.waitForTimeout(WRITE_FLUSH_MS);
 
-    // Wait briefly for MIDI write to complete
-    await page.waitForTimeout(500);
-
-    // Navigate away and back to force fresh read
+    // Navigate away and back to force fresh read from device
     await navigateAwayAndBackToPlay(page);
 
-    // Re-locate and verify
+    // Re-locate and verify against fresh device data
     const freshPartRows = page.locator(
       '.grid.grid-cols-12.gap-2.py-1\\.5',
     );
@@ -193,9 +193,9 @@ test.describe('Play Page Controls', () => {
 
     // Change output to 3
     await outputSelect.selectOption('3');
+    await page.waitForTimeout(WRITE_FLUSH_MS);
 
-    await page.waitForTimeout(500);
-
+    // Navigate away and back to force fresh read from device
     await navigateAwayAndBackToPlay(page);
 
     const freshPartRows = page.locator(
@@ -220,16 +220,15 @@ test.describe('Play Page Controls', () => {
     );
     await expect(partRows.first()).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
 
-    // Level slider is the input[type="range"] in each part row
     const levelSlider = partRows.first().locator('input[type="range"]');
     await expect(levelSlider).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
     // Set level to 100 via fill() then dispatch events to trigger onCommit
     await levelSlider.fill('100');
     await levelSlider.dispatchEvent('mouseup');
+    await page.waitForTimeout(WRITE_FLUSH_MS);
 
-    await page.waitForTimeout(500);
-
+    // Navigate away and back to force fresh read from device
     await navigateAwayAndBackToPlay(page);
 
     const freshPartRows = page.locator(
@@ -258,7 +257,7 @@ test.describe('Play Page Controls', () => {
     const patchSelect = partRows.first().locator('select').nth(1);
     await expect(patchSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // Get available options (skip the first "---" option at value -1)
+    // Get available options (skip the "---" option at value -1)
     const options = await patchSelect.locator('option').all();
     const availableOptions = [];
     for (const opt of options) {
@@ -276,9 +275,9 @@ test.describe('Play Page Controls', () => {
     // Assign the first available patch
     const targetPatchValue = availableOptions[0];
     await patchSelect.selectOption(targetPatchValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
 
-    await page.waitForTimeout(500);
-
+    // Navigate away and back to force fresh read from device
     await navigateAwayAndBackToPlay(page);
 
     const freshPartRows = page.locator(

@@ -1,16 +1,20 @@
 /**
- * E2E tests for Patch editor controls.
+ * E2E tests for Patch editor controls — verified via device readback.
  *
- * Verifies that changes made via the Patch editor UI are persisted on the
- * device by navigating away and back to force a fresh load from hardware.
+ * After changing a control value in the UI, these tests force a fresh
+ * SysEx read of all patch data from the hardware (via the Library page's
+ * "Refresh Device" button) and assert against the device's actual memory.
+ * This is stronger than navigate-away-and-back, which may serve cached
+ * data from the client or store.
  *
  * Pattern:
  *   1. Connect to device, navigate to Patches page
  *   2. Select a non-empty patch
  *   3. Change a control value via the UI
- *   4. Navigate to a different page (flushes pending writes)
- *   5. Navigate back and re-select the same patch
- *   6. Assert the control shows the new value
+ *   4. Wait for the buffered MIDI write to flush
+ *   5. Invalidate caches, navigate to Library, click Refresh Device
+ *   6. Read the fresh patch from __deviceDataStore
+ *   7. Assert the device value matches what was set
  *
  * Prerequisites:
  *   - Roland S-330 or S-550 connected via MIDI
@@ -30,12 +34,13 @@ import {
   waitForAppReady,
   getMidiStatus,
 } from './helpers/connection-helper';
+import { readPatchFromDevice } from './helpers/device-readback-helpers';
 
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
-test.setTimeout(60_000);
+test.setTimeout(120_000);
 
 const MIDI_SERVER_PORT = process.env.E2E_MIDI_SERVER_PORT;
 const DEVICE_TYPE = process.env.E2E_DEVICE_TYPE ?? 's330';
@@ -43,6 +48,9 @@ const EDITOR_BASE_PATH = `/roland/${DEVICE_TYPE}/editor`;
 
 const UI_TIMEOUT_MS = 2_000;
 const DATA_LOAD_TIMEOUT_MS = 15_000;
+
+/** Time to wait after a UI change for the buffered MIDI write to flush. */
+const WRITE_FLUSH_MS = 500;
 
 // ---------------------------------------------------------------------------
 // URL Builder
@@ -101,7 +109,6 @@ async function findFirstNonEmptyPatchIndex(
 
     const name = await nameEl.textContent();
     if (name && name.trim() && !name.includes('(empty)')) {
-      // Extract index from data-testid="patch-item-{index}"
       const testId = await item.getAttribute('data-testid');
       if (testId) {
         const match = testId.match(/patch-item-(\d+)/);
@@ -110,28 +117,6 @@ async function findFirstNonEmptyPatchIndex(
     }
   }
   return null;
-}
-
-/**
- * Navigate away from Patches to Play, then back to Patches.
- * Forces a fresh load of patch data from the device.
- */
-async function navigateAwayAndBackToPatches(
-  page: import('@playwright/test').Page,
-): Promise<void> {
-  const playLink = page.locator('a[href$="/play"]');
-  await playLink.click();
-  await page.waitForURL('**/play**');
-
-  const patchesLink = page.locator('a[href$="/patches"]');
-  await patchesLink.click();
-  await page.waitForURL('**/patches**');
-
-  // Wait for patch list to re-render
-  const patchItems = page.locator('[data-testid^="patch-item-"]');
-  await expect(patchItems.first()).toBeVisible({
-    timeout: DATA_LOAD_TIMEOUT_MS,
-  });
 }
 
 /**
@@ -147,6 +132,22 @@ async function selectPatch(
 
   // Wait for patch editor to appear
   await page.waitForTimeout(500);
+}
+
+/**
+ * Navigate to the Patches page and wait for items to render.
+ */
+async function navigateToPatchesPage(
+  page: import('@playwright/test').Page,
+): Promise<void> {
+  const patchesLink = page.locator('a[href$="/patches"]');
+  await patchesLink.click();
+  await page.waitForURL('**/patches**');
+
+  const patchItems = page.locator('[data-testid^="patch-item-"]');
+  await expect(patchItems.first()).toBeVisible({
+    timeout: DATA_LOAD_TIMEOUT_MS,
+  });
 }
 
 // ===========================================================================
@@ -174,17 +175,9 @@ test.describe('Patch Editor Controls', () => {
     expect(await getMidiStatus(page)).toBe('connected');
 
     // 2. Navigate to Patches page
-    const patchesLink = page.locator('a[href$="/patches"]');
-    await patchesLink.click();
-    await page.waitForURL('**/patches**');
+    await navigateToPatchesPage(page);
 
-    // 3. Wait for patch items to load
-    const patchItems = page.locator('[data-testid^="patch-item-"]');
-    await expect(patchItems.first()).toBeVisible({
-      timeout: DATA_LOAD_TIMEOUT_MS,
-    });
-
-    // 4. Find and select the first non-empty patch
+    // 3. Find and select the first non-empty patch
     const foundIndex = await findFirstNonEmptyPatchIndex(page);
     if (foundIndex === null) {
       test.skip(true, 'No non-empty patches found on device');
@@ -199,8 +192,7 @@ test.describe('Patch Editor Controls', () => {
   // -------------------------------------------------------------------------
 
   test('patch name edit syncs to device', async ({ page }) => {
-    // The patch name is displayed as an h3 that becomes an input on click.
-    // Click the name to enter edit mode.
+    // Click the name display to enter edit mode
     const nameDisplay = page.locator('h3.font-mono');
     await expect(nameDisplay).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await nameDisplay.click();
@@ -212,18 +204,12 @@ test.describe('Patch Editor Controls', () => {
     // Clear and type new name
     await nameInput.fill('TESTPCH');
     await nameInput.press('Enter');
+    await page.waitForTimeout(WRITE_FLUSH_MS);
 
-    await page.waitForTimeout(500);
-
-    // Navigate away and back
-    await navigateAwayAndBackToPatches(page);
-    await selectPatch(page, testPatchIndex);
-
-    // Verify the name persisted (may be padded by device)
-    const freshNameDisplay = page.locator('h3.font-mono');
-    await expect(freshNameDisplay).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    const nameText = await freshNameDisplay.textContent();
-    expect(nameText?.trim()).toBe('TESTPCH');
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    expect(devicePatch!.name).toBe('TESTPCH');
   });
 
   // -------------------------------------------------------------------------
@@ -231,32 +217,23 @@ test.describe('Patch Editor Controls', () => {
   // -------------------------------------------------------------------------
 
   test('key mode change syncs to device', async ({ page }) => {
-    // Key Mode is a select element labeled "Key Mode"
     const keyModeSelect = page
       .locator('label:has-text("Key Mode")')
       .locator('..')
       .locator('select');
     await expect(keyModeSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // Record current value so we can restore later if needed
     const originalValue = await keyModeSelect.inputValue();
 
     // Change to 'v-sw' (unless already v-sw, then use 'normal')
     const newValue = originalValue === 'v-sw' ? 'normal' : 'v-sw';
     await keyModeSelect.selectOption(newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
 
-    await page.waitForTimeout(500);
-
-    await navigateAwayAndBackToPatches(page);
-    await selectPatch(page, testPatchIndex);
-
-    const freshKeyModeSelect = page
-      .locator('label:has-text("Key Mode")')
-      .locator('..')
-      .locator('select');
-    await expect(freshKeyModeSelect).toHaveValue(newValue, {
-      timeout: UI_TIMEOUT_MS,
-    });
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    expect(devicePatch!.keyMode).toBe(newValue);
   });
 
   // -------------------------------------------------------------------------
@@ -264,7 +241,6 @@ test.describe('Patch Editor Controls', () => {
   // -------------------------------------------------------------------------
 
   test('bender range change syncs to device', async ({ page }) => {
-    // P.Bend Range is a select element
     const benderSelect = page
       .locator('label:has-text("P.Bend Range")')
       .locator('..')
@@ -276,19 +252,12 @@ test.describe('Patch Editor Controls', () => {
     // Change to 5 (unless already 5, then use 3)
     const newValue = originalValue === '5' ? '3' : '5';
     await benderSelect.selectOption(newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
 
-    await page.waitForTimeout(500);
-
-    await navigateAwayAndBackToPatches(page);
-    await selectPatch(page, testPatchIndex);
-
-    const freshBenderSelect = page
-      .locator('label:has-text("P.Bend Range")')
-      .locator('..')
-      .locator('select');
-    await expect(freshBenderSelect).toHaveValue(newValue, {
-      timeout: UI_TIMEOUT_MS,
-    });
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    expect(devicePatch!.benderRange).toBe(Number(newValue));
   });
 
   // -------------------------------------------------------------------------
@@ -296,29 +265,21 @@ test.describe('Patch Editor Controls', () => {
   // -------------------------------------------------------------------------
 
   test('level slider syncs to device', async ({ page }) => {
-    // The Level ParameterSlider has data-testid="param-level"
     const levelContainer = page.locator('[data-testid="param-level"]');
     await expect(levelContainer).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // The Radix slider thumb is the interactive element.
-    // Use the slider role to set the value.
     const slider = levelContainer.locator('[role="slider"]');
     await expect(slider).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // Get the current value
-    const originalValue = await slider.getAttribute('aria-valuenow');
+    const originalValue = Number(
+      await slider.getAttribute('aria-valuenow') ?? '127',
+    );
 
     // Set to 100 (unless already 100, then use 80)
-    const newValue = originalValue === '100' ? 80 : 100;
+    const newValue = originalValue === 100 ? 80 : 100;
+    const diff = newValue - originalValue;
 
-    // Use keyboard to set precise value: focus, then use arrow keys
-    // Or use evaluate to programmatically trigger the change
     await slider.focus();
-
-    // Calculate steps needed from current to target
-    const current = Number(originalValue ?? 127);
-    const diff = newValue - current;
-
     if (diff > 0) {
       for (let i = 0; i < diff; i++) {
         await slider.press('ArrowRight');
@@ -328,19 +289,12 @@ test.describe('Patch Editor Controls', () => {
         await slider.press('ArrowLeft');
       }
     }
-
-    // Blur to trigger onCommit
     await slider.blur();
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
 
-    await navigateAwayAndBackToPatches(page);
-    await selectPatch(page, testPatchIndex);
-
-    const freshLevelContainer = page.locator('[data-testid="param-level"]');
-    const freshSlider = freshLevelContainer.locator('[role="slider"]');
-    await expect(freshSlider).toBeVisible({ timeout: UI_TIMEOUT_MS });
-
-    const persistedValue = await freshSlider.getAttribute('aria-valuenow');
-    expect(Number(persistedValue)).toBe(newValue);
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+    expect(devicePatch!.level).toBe(newValue);
   });
 });

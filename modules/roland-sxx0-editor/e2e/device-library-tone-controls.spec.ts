@@ -1,16 +1,20 @@
 /**
- * E2E tests for Tone editor controls.
+ * E2E tests for Tone editor controls — verified via device readback.
  *
- * Verifies that changes made via the Tone editor UI are persisted on the
- * device by navigating away and back to force a fresh load from hardware.
+ * After changing a control value in the UI, these tests force a fresh
+ * SysEx read of all tone data from the hardware (via the Library page's
+ * "Refresh Device" button) and assert against the device's actual memory.
+ * This is stronger than navigate-away-and-back, which may serve cached
+ * data from the client or store.
  *
  * Pattern:
  *   1. Connect to device, navigate to Tones page
  *   2. Select a non-empty tone (one with wave data)
  *   3. Change a control value via the UI
- *   4. Navigate to a different page (flushes pending writes)
- *   5. Navigate back and re-select the same tone
- *   6. Assert the control shows the new value
+ *   4. Wait for the buffered MIDI write to flush
+ *   5. Invalidate caches, navigate to Library, click Refresh Device
+ *   6. Read the fresh tone from __deviceDataStore
+ *   7. Assert the device value matches what was set
  *
  * Prerequisites:
  *   - Roland S-330 or S-550 connected via MIDI
@@ -30,12 +34,13 @@ import {
   waitForAppReady,
   getMidiStatus,
 } from './helpers/connection-helper';
+import { readToneFromDevice } from './helpers/device-readback-helpers';
 
 // ---------------------------------------------------------------------------
 // Configuration
 // ---------------------------------------------------------------------------
 
-test.setTimeout(60_000);
+test.setTimeout(120_000);
 
 const MIDI_SERVER_PORT = process.env.E2E_MIDI_SERVER_PORT;
 const DEVICE_TYPE = process.env.E2E_DEVICE_TYPE ?? 's330';
@@ -43,6 +48,9 @@ const EDITOR_BASE_PATH = `/roland/${DEVICE_TYPE}/editor`;
 
 const UI_TIMEOUT_MS = 2_000;
 const DATA_LOAD_TIMEOUT_MS = 15_000;
+
+/** Time to wait after a UI change for the buffered MIDI write to flush. */
+const WRITE_FLUSH_MS = 500;
 
 // ---------------------------------------------------------------------------
 // URL Builder
@@ -113,28 +121,6 @@ async function findFirstNonEmptyToneIndex(
 }
 
 /**
- * Navigate away from Tones to Play, then back to Tones.
- * Forces a fresh load of tone data from the device.
- */
-async function navigateAwayAndBackToTones(
-  page: import('@playwright/test').Page,
-): Promise<void> {
-  const playLink = page.locator('a[href$="/play"]');
-  await playLink.click();
-  await page.waitForURL('**/play**');
-
-  const tonesLink = page.locator('a[href$="/tones"]');
-  await tonesLink.click();
-  await page.waitForURL('**/tones**');
-
-  // Wait for tone list to re-render
-  const toneItems = page.locator('[data-testid^="tone-item-"]');
-  await expect(toneItems.first()).toBeVisible({
-    timeout: DATA_LOAD_TIMEOUT_MS,
-  });
-}
-
-/**
  * Select a tone by its index in the list.
  */
 async function selectTone(
@@ -143,11 +129,28 @@ async function selectTone(
 ): Promise<void> {
   const toneItem = page.locator(`[data-testid="tone-item-${toneIndex}"]`);
   await expect(toneItem).toBeVisible({ timeout: UI_TIMEOUT_MS });
-  await toneItem.click();
+  // Click the button inside the tone item (the div wrapper doesn't handle clicks)
+  await toneItem.locator('button').first().click();
 
-  // Wait for tone editor to appear
+  // Wait for tone editor to appear (may need bank load from device)
   const toneDetail = page.locator('[data-testid="tone-detail"]');
-  await expect(toneDetail).toBeVisible({ timeout: UI_TIMEOUT_MS });
+  await expect(toneDetail).toBeVisible({ timeout: DATA_LOAD_TIMEOUT_MS });
+}
+
+/**
+ * Navigate to the Tones page and wait for items to render.
+ */
+async function navigateToTonesPage(
+  page: import('@playwright/test').Page,
+): Promise<void> {
+  const tonesLink = page.locator('a[href$="/tones"]');
+  await tonesLink.click();
+  await page.waitForURL('**/tones**');
+
+  const toneItems = page.locator('[data-testid^="tone-item-"]');
+  await expect(toneItems.first()).toBeVisible({
+    timeout: DATA_LOAD_TIMEOUT_MS,
+  });
 }
 
 // ===========================================================================
@@ -175,24 +178,19 @@ test.describe('Tone Editor Controls', () => {
     expect(await getMidiStatus(page)).toBe('connected');
 
     // 2. Navigate to Tones page
-    const tonesLink = page.locator('a[href$="/tones"]');
-    await tonesLink.click();
-    await page.waitForURL('**/tones**');
+    await navigateToTonesPage(page);
 
-    // 3. Wait for tone items to load
-    const toneItems = page.locator('[data-testid^="tone-item-"]');
-    await expect(toneItems.first()).toBeVisible({
-      timeout: DATA_LOAD_TIMEOUT_MS,
-    });
-
-    // 4. Find and select the first non-empty tone
+    // 3. Find and select the first non-empty tone
     const foundIndex = await findFirstNonEmptyToneIndex(page);
+    console.log(`Found non-empty tone at index: ${foundIndex}`);
     if (foundIndex === null) {
       test.skip(true, 'No non-empty tones found on device');
       return;
     }
     testToneIndex = foundIndex;
+    console.log(`Selecting tone ${testToneIndex}...`);
     await selectTone(page, testToneIndex);
+    console.log('Tone selected, editor visible');
   });
 
   // -------------------------------------------------------------------------
@@ -200,7 +198,6 @@ test.describe('Tone Editor Controls', () => {
   // -------------------------------------------------------------------------
 
   test('tone name edit syncs to device', async ({ page }) => {
-    // The tone name input is a text input with maxLength=8 inside tone-detail
     const nameInput = page.locator(
       '[data-testid="tone-detail"] input[type="text"][maxlength="8"]',
     );
@@ -209,20 +206,12 @@ test.describe('Tone Editor Controls', () => {
     // Clear and type new name, then blur to trigger onCommit
     await nameInput.fill('TESTTNE');
     await nameInput.blur();
+    await page.waitForTimeout(WRITE_FLUSH_MS);
 
-    await page.waitForTimeout(500);
-
-    // Navigate away and back
-    await navigateAwayAndBackToTones(page);
-    await selectTone(page, testToneIndex);
-
-    // Verify the name persisted (may be padded by device)
-    const freshNameInput = page.locator(
-      '[data-testid="tone-detail"] input[type="text"][maxlength="8"]',
-    );
-    await expect(freshNameInput).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    const persistedName = await freshNameInput.inputValue();
-    expect(persistedName.trim()).toBe('TESTTNE');
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    expect(deviceTone!.name).toBe('TESTTNE');
   });
 
   // -------------------------------------------------------------------------
@@ -230,7 +219,6 @@ test.describe('Tone Editor Controls', () => {
   // -------------------------------------------------------------------------
 
   test('loop mode change syncs to device', async ({ page }) => {
-    // Loop Mode is a select inside tone-detail, labeled "Loop Mode"
     const loopModeSelect = page
       .locator('[data-testid="tone-detail"]')
       .locator('label:has-text("Loop Mode")')
@@ -243,20 +231,12 @@ test.describe('Tone Editor Controls', () => {
     // Toggle between 'alternating' and 'forward'
     const newValue = originalValue === 'alternating' ? 'forward' : 'alternating';
     await loopModeSelect.selectOption(newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
 
-    await page.waitForTimeout(500);
-
-    await navigateAwayAndBackToTones(page);
-    await selectTone(page, testToneIndex);
-
-    const freshLoopModeSelect = page
-      .locator('[data-testid="tone-detail"]')
-      .locator('label:has-text("Loop Mode")')
-      .locator('..')
-      .locator('select');
-    await expect(freshLoopModeSelect).toHaveValue(newValue, {
-      timeout: UI_TIMEOUT_MS,
-    });
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    expect(deviceTone!.loopMode).toBe(newValue);
   });
 
   // -------------------------------------------------------------------------
@@ -264,14 +244,14 @@ test.describe('Tone Editor Controls', () => {
   // -------------------------------------------------------------------------
 
   test('TVF cutoff slider syncs to device', async ({ page }) => {
-    // First, ensure TVF is enabled
+    // Ensure TVF is enabled
     const tvfCheckbox = page.locator('#tvfEnabled');
     await expect(tvfCheckbox).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
     const isEnabled = await tvfCheckbox.isChecked();
     if (!isEnabled) {
       await tvfCheckbox.click();
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(WRITE_FLUSH_MS);
     }
 
     // TVF Cutoff uses ParameterSlider with data-testid="param-cutoff"
@@ -300,25 +280,13 @@ test.describe('Tone Editor Controls', () => {
       }
     }
     await slider.blur();
+    await page.waitForTimeout(WRITE_FLUSH_MS);
 
-    await page.waitForTimeout(500);
-
-    await navigateAwayAndBackToTones(page);
-    await selectTone(page, testToneIndex);
-
-    // Verify TVF is still enabled after reload
-    const freshCheckbox = page.locator('#tvfEnabled');
-    const stillEnabled = await freshCheckbox.isChecked();
-    expect(stillEnabled).toBe(true);
-
-    const freshCutoffContainer = page.locator('[data-testid="param-cutoff"]');
-    const freshSlider = freshCutoffContainer.locator('[role="slider"]');
-    await expect(freshSlider).toBeVisible({ timeout: UI_TIMEOUT_MS });
-
-    const persistedValue = Number(
-      await freshSlider.getAttribute('aria-valuenow'),
-    );
-    expect(persistedValue).toBe(newValue);
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    expect(deviceTone!.tvf.enabled).toBe(true);
+    expect(deviceTone!.tvf.cutoff).toBe(newValue);
   });
 
   // -------------------------------------------------------------------------
@@ -326,7 +294,6 @@ test.describe('Tone Editor Controls', () => {
   // -------------------------------------------------------------------------
 
   test('LFO rate slider syncs to device', async ({ page }) => {
-    // LFO Rate uses ParameterSlider with data-testid="param-rate"
     const rateContainer = page.locator('[data-testid="param-rate"]');
     await expect(rateContainer).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
@@ -352,19 +319,11 @@ test.describe('Tone Editor Controls', () => {
       }
     }
     await slider.blur();
+    await page.waitForTimeout(WRITE_FLUSH_MS);
 
-    await page.waitForTimeout(500);
-
-    await navigateAwayAndBackToTones(page);
-    await selectTone(page, testToneIndex);
-
-    const freshRateContainer = page.locator('[data-testid="param-rate"]');
-    const freshSlider = freshRateContainer.locator('[role="slider"]');
-    await expect(freshSlider).toBeVisible({ timeout: UI_TIMEOUT_MS });
-
-    const persistedValue = Number(
-      await freshSlider.getAttribute('aria-valuenow'),
-    );
-    expect(persistedValue).toBe(newValue);
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    expect(deviceTone!.lfo.rate).toBe(newValue);
   });
 });
