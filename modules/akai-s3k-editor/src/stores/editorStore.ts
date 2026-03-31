@@ -3,6 +3,8 @@ import { create } from 'zustand';
 export interface EditorStoreState {
   /** Index of the currently selected program, or null if none selected */
   selectedProgramIndex: number | null;
+  /** Index of the currently selected keygroup, or null if none selected */
+  selectedKeygroupIndex: number | null;
   /** Whether a loading operation is in progress */
   isLoading: boolean;
   /** Human-readable message describing the current loading operation */
@@ -16,6 +18,8 @@ export interface EditorStoreState {
 export interface EditorStoreActions {
   /** Select a program by index, or deselect with null */
   selectProgram(index: number | null): void;
+  /** Select a keygroup by index, or deselect with null */
+  selectKeygroup(index: number | null): void;
   /** Set loading state with an optional message */
   setLoading(isLoading: boolean, message?: string): void;
   /** Update progress based on current item and total count */
@@ -30,13 +34,18 @@ export type EditorStore = EditorStoreState & EditorStoreActions;
 
 export const useEditorStore = create<EditorStore>((set) => ({
   selectedProgramIndex: null,
+  selectedKeygroupIndex: null,
   isLoading: false,
   loadingMessage: null,
   loadingProgress: null,
   error: null,
 
   selectProgram(index: number | null) {
-    set({ selectedProgramIndex: index, error: null });
+    set({ selectedProgramIndex: index, selectedKeygroupIndex: null, error: null });
+  },
+
+  selectKeygroup(index: number | null) {
+    set({ selectedKeygroupIndex: index, error: null });
   },
 
   setLoading(isLoading: boolean, message?: string) {

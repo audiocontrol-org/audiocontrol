@@ -16,6 +16,7 @@ function useLayoutConfig(): EditorLayoutConfig {
     navItems: [
       { to: BASE_PATH, label: 'Connect' },
       { to: `${BASE_PATH}/programs`, label: 'Programs' },
+      { to: `${BASE_PATH}/keygroups`, label: 'Keygroups' },
       { to: `${BASE_PATH}/library`, label: 'Library' },
     ],
     buildInfoConfig: {
