@@ -1,5 +1,5 @@
 import * as easymidi from "easymidi"
-import {newServerOutput} from "@audiocontrol/sampler-lib";
+import {newServerOutput} from "@audiocontrol/sampler-lib/server";
 import { describe, it, expect } from 'vitest';
 import {newDevice} from "@/client/client-akai-s3000xl.js";
 

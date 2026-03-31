@@ -1,0 +1,17 @@
+{
+  "name": "@audiocontrol/e2e-infra",
+  "version": "0.1.0",
+  "description": "Shared E2E testing infrastructure for audiocontrol editors",
+  "type": "module",
+  "scripts": {
+    "test": "echo 'no tests yet'"
+  },
+  "dependencies": {
+    "@playwright/test": "^1.57.0",
+    "easymidi": "^3.1.0",
+    "tsx": "^4.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0"
+  }
+}

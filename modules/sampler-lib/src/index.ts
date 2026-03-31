@@ -1,12 +1,12 @@
 /**
  * @module sampler-lib
- * @description Core library for sampler operations, including utilities, I/O, configuration management,
- * and data models for audio samples.
+ * @description Browser-safe core library for sampler operations, including utilities,
+ * output abstractions, and client configuration.
+ *
+ * For Node.js-only modules (fs, wavefile, server config, backup paths),
+ * import from '@audiocontrol/sampler-lib/server' instead.
  */
 
 export * from "./lib-core"
-export * from "./lib-io"
+export * from "./lib-output"
 export * from "./lib-config-client"
-export * from "./lib-config-server"
-export * from "./model/sample"
-export * from "./backup-paths"
