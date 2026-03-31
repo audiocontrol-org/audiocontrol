@@ -339,6 +339,7 @@ export function PlayPage() {
               {/* Channel - editable dropdown (0-15 stored, display as 1-16) */}
               <div className="col-span-1 text-center">
                 <select
+                  data-testid={`part-${index}-channel`}
                   value={part.channel}
                   onChange={(e) => handleChannelChange(index, Number(e.target.value))}
                   onClick={(e) => e.stopPropagation()}
@@ -360,6 +361,7 @@ export function PlayPage() {
               {/* Patch - editable dropdown */}
               <div className="col-span-4">
                 <select
+                  data-testid={`part-${index}-patch`}
                   value={part.patchIndex ?? -1}
                   onChange={(e) => {
                     const value = Number(e.target.value);
@@ -388,6 +390,7 @@ export function PlayPage() {
               {/* Output - editable dropdown (1-8 for individual outputs) */}
               <div className="col-span-1 text-center">
                 <select
+                  data-testid={`part-${index}-output`}
                   value={part.output}
                   onChange={(e) => handleOutputChange(index, Number(e.target.value))}
                   onClick={(e) => e.stopPropagation()}
@@ -409,6 +412,7 @@ export function PlayPage() {
               {/* Level - slider with value display */}
               <div className="col-span-4 flex items-center gap-2">
                 <input
+                  data-testid={`part-${index}-level`}
                   type="range"
                   min={0}
                   max={127}

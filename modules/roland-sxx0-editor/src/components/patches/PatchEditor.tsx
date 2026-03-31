@@ -254,6 +254,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
               }}
               autoFocus
               maxLength={12}
+              data-testid="patch-name-input"
               className={cn(
                 'text-xl font-bold font-mono w-full',
                 'bg-s330-panel border border-s330-highlight rounded px-2 py-1',
@@ -283,6 +284,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
               <select
                 value={common.keyMode}
                 onChange={(e) => handleKeyModeChange(e.target.value as 'normal' | 'v-sw' | 'x-fade' | 'v-mix' | 'unison')}
+                data-testid="patch-key-mode"
                 className={cn(
                   'w-full px-2 py-1.5 text-sm font-mono',
                   'bg-s330-panel border border-s330-accent rounded',
@@ -306,6 +308,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
               <select
                 value={common.keyAssign}
                 onChange={(e) => handleKeyAssignChange(e.target.value as 'rotary' | 'fix')}
+                data-testid="patch-key-assign"
                 className={cn(
                   'w-full px-2 py-1.5 text-sm font-mono',
                   'bg-s330-panel border border-s330-accent rounded',
@@ -326,6 +329,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
               <select
                 value={common.benderRange}
                 onChange={(e) => handleBenderRangeChange(Number(e.target.value))}
+                data-testid="patch-bender-range"
                 className={cn(
                   'w-full px-2 py-1.5 text-sm font-mono',
                   'bg-s330-panel border border-s330-accent rounded',
@@ -349,6 +353,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
               <select
                 value={common.aftertouchAssign}
                 onChange={(e) => handleAftertouchAssignChange(e.target.value as 'modulation' | 'volume' | 'bend+' | 'bend-' | 'filter')}
+                data-testid="patch-at-assign"
                 className={cn(
                   'w-full px-2 py-1.5 text-sm font-mono',
                   'bg-s330-panel border border-s330-accent rounded',
@@ -388,6 +393,7 @@ export function PatchEditor({ patch, index, tones, onUpdate }: PatchEditorProps)
               <select
                 value={common.outputAssign}
                 onChange={(e) => handleOutputChange(Number(e.target.value))}
+                data-testid="patch-output"
                 className={cn(
                   'w-full px-2 py-1.5 text-sm font-mono',
                   'bg-s330-panel border border-s330-accent rounded',

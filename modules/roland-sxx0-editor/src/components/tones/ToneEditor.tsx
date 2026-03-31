@@ -97,6 +97,7 @@ export function ToneEditor({
                             onChange={(e) => onUpdate?.({ ...tone, name: e.target.value.slice(0, 8) })}
                             onBlur={() => onCommit?.()}
                             placeholder="(unnamed)"
+                            data-testid="tone-name-input"
                             maxLength={8}
                             className="block text-xl font-bold text-s330-text font-mono bg-transparent border-b border-s330-accent/50 focus:border-s330-highlight focus:outline-none w-full max-w-[10ch]"
                         />
@@ -206,6 +207,7 @@ export function ToneEditor({
                                         onUpdate?.(updatedTone);
                                         onCommit?.(updatedTone);
                                     }}
+                                    data-testid="tone-original-key"
                                     className="w-16 text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
                                 />
                                 <span className="text-sm text-s330-muted">{midiNoteToName(tone.originalKey)}</span>
@@ -228,6 +230,7 @@ export function ToneEditor({
                                     onUpdate?.(updatedTone);
                                     onCommit?.(updatedTone);
                                 }}
+                                data-testid="tone-loop-mode"
                                 className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
                             >
                                 <option value="forward">Forward</option>
@@ -247,6 +250,7 @@ export function ToneEditor({
                                     onUpdate?.(updatedTone);
                                     onCommit?.(updatedTone);
                                 }}
+                                data-testid="tone-output"
                                 className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
                             >
                                 <option value={0}>Mix</option>
@@ -363,6 +367,7 @@ export function ToneEditor({
                             type="checkbox"
                             id="tvfEnabled"
                             checked={tone.tvf.enabled}
+                            data-testid="tone-tvf-enabled"
                             onChange={(e) => {
                                 const updatedTone = { ...tone, tvf: { ...tone.tvf, enabled: e.target.checked } };
                                 onUpdate?.(updatedTone);
@@ -454,6 +459,7 @@ export function ToneEditor({
                                     onCommit?.(updatedTone);
                                 }}
                                 disabled={!tone.tvf.enabled}
+                                data-testid="tone-tvf-polarity"
                                 className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text disabled:opacity-50"
                             >
                                 <option value="normal">Normal</option>
@@ -472,6 +478,7 @@ export function ToneEditor({
                                     onCommit?.(updatedTone);
                                 }}
                                 disabled={!tone.tvf.enabled}
+                                data-testid="tone-tvf-curve"
                                 className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text disabled:opacity-50"
                             >
                                 {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -526,6 +533,7 @@ export function ToneEditor({
                                 type="checkbox"
                                 id="lfoSync"
                                 checked={tone.lfo.sync}
+                                data-testid="tone-lfo-sync"
                                 onChange={(e) => {
                                     const updatedTone = { ...tone, lfo: { ...tone.lfo, sync: e.target.checked } };
                                     onUpdate?.(updatedTone);
@@ -598,6 +606,7 @@ export function ToneEditor({
                                 type="checkbox"
                                 id="pitchFollow"
                                 checked={tone.pitchFollow}
+                                data-testid="tone-pitch-follow"
                                 onChange={(e) => {
                                     const updatedTone = { ...tone, pitchFollow: e.target.checked };
                                     onUpdate?.(updatedTone);
@@ -696,6 +705,7 @@ export function ToneEditor({
                                 onUpdate?.(updatedTone);
                                 onCommit?.(updatedTone);
                             }}
+                            data-testid="tone-tva-curve"
                             className="w-full text-sm bg-s330-bg border border-s330-accent/30 rounded px-2 py-1 text-s330-text"
                         >
                             {[0, 1, 2, 3, 4, 5].map((i) => (
