@@ -131,3 +131,20 @@ https://audiocontrol.org/akai/s3000xl/editor
 - [ ] Should the S3000XL editor support the S1000/S1100 (same SysEx protocol, fewer features)?
 - [ ] What level of sample header editing is useful without waveform visualization?
 - [ ] Should modulation routing use a visual node-graph or a simpler table/grid layout?
+
+## Future Scope
+
+- **Pi-SCSI integration** — The S3000XL has a Pi-SCSI device attached. Explore reading/writing sampler data via Pi-SCSI for disk-level access beyond SysEx. The library plugin and data format work should accommodate both SysEx and disk-level data paths.
+
+## Testing Approach
+
+- **Unit tests** — Vitest for all public functions, 80%+ code coverage target, dependency injection for testability (no module stubbing)
+- **E2E tests** — Same tooling and approach as `roland-sxx0-editor`: Playwright with heartbeat/watchdog system, make targets, and real hardware when available. The existing `roland-sxx0-editor` E2E infrastructure is being expanded and will serve as the template.
+
+## Auto-Generated Types
+
+`ProgramHeader`, `KeygroupHeader`, and `SampleHeader` types in `sampler-devices` are auto-generated. The generation code was ported from [@oletizi/ol-dsp](https://github.com/oletizi/ol-dsp) on GitHub.
+
+## Existing Akai Data Format Code
+
+The repo already contains significant code for reading and writing Akai data formats. The library plugin will need to expand on this existing code to support full program/sample serialization for library storage.

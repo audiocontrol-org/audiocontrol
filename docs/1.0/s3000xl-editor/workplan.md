@@ -251,6 +251,8 @@ const s3000xlConfig: DeviceConfig = {
 - Program serialization/deserialization for library storage
 - Sample header serialization
 - Library categories: Programs, Samples
+- Build on existing Akai data format reading/writing code in the repo
+- Design data paths to accommodate future Pi-SCSI integration (disk-level access alongside SysEx)
 
 **Library features (reuse from editor-core):**
 - TreeView for browsing library sets
