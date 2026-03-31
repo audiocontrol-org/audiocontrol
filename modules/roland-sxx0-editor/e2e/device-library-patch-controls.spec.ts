@@ -49,8 +49,9 @@ const EDITOR_BASE_PATH = `/roland/${DEVICE_TYPE}/editor`;
 const UI_TIMEOUT_MS = 2_000;
 const DATA_LOAD_TIMEOUT_MS = 15_000;
 
-/** Time to wait after a UI change for the buffered MIDI write to flush. */
-const WRITE_FLUSH_MS = 500;
+/** Time to wait after a UI change for the buffered MIDI write to flush
+ *  and for the device to finish processing the parameter write. */
+const WRITE_FLUSH_MS = 2500;
 
 // ---------------------------------------------------------------------------
 // URL Builder
