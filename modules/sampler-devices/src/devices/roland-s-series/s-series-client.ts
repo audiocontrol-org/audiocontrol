@@ -380,6 +380,12 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
                     response[2] === deviceId &&
                     response[3] === S_SERIES_MODEL_ID
                 ) {
+                    // Ignore stale RJC responses — the S-550 sends leftover
+                    // rejections from previous timed-out operations.
+                    if (response[4] === S_SERIES_COMMANDS.RJC) {
+                        console.warn(`[${config.deviceName}] Ignoring stale RJC in sendAndReceive`);
+                        return; // Stay listening for the real response
+                    }
                     clearTimeout(timeout);
                     midiAdapter.removeSysExListener(listener);
                     resolve(response);
