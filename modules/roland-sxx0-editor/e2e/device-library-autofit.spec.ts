@@ -60,7 +60,7 @@ const MIDI_SERVER_PORT = process.env.E2E_MIDI_SERVER_PORT;
 const DEVICE_TYPE = process.env.E2E_DEVICE_TYPE ?? 's330';
 const EDITOR_BASE_PATH = `/roland/${DEVICE_TYPE}/editor`;
 
-const UI_TIMEOUT_MS = 5_000;
+const UI_TIMEOUT_MS = 2_000;
 const MIDI_TRANSFER_TIMEOUT_MS = 60_000;
 const EXPORT_TIMEOUT_MS = 60_000;
 

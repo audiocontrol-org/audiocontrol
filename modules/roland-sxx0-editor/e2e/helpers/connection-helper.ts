@@ -14,8 +14,8 @@ const MIDI_INPUT_PORT = process.env.E2E_MIDI_INPUT_PORT;
 const MIDI_OUTPUT_PORT = process.env.E2E_MIDI_OUTPUT_PORT;
 
 // Timeouts
-const UI_TIMEOUT_MS = 5000;
-const CONNECTION_TIMEOUT_MS = 10000;
+const UI_TIMEOUT_MS = 2000;
+const CONNECTION_TIMEOUT_MS = 5000;
 
 /**
  * Result of port selection attempt.
