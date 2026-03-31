@@ -1,7 +1,7 @@
 # Comprehensive E2E Test Plan: Roland S-330/S-550 Editor
 
-**Generated:** 2026-03-29
-**Version:** 1.1
+**Generated:** 2026-03-31
+**Version:** 1.2
 **Based on:** Application capabilities audit and existing test review
 
 ## Document Purpose
@@ -315,9 +315,9 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 10.2.1 | Loop editor opens from Tones page (hardware, inline) | P1 | ❌ | 🔌 Inline loop editor on Tones page |
+| 10.2.1 | Loop editor opens from Tones page (hardware, inline) | P1 | ✅ | `device-loop-editor.spec.ts` |
 | 10.2.2 | Loop editor opens from Library page (dialog) | P1 | ❌ | Library surface opens loop editor in dialog |
-| 10.2.3 | Loop point changes sync to device | P1 | ❌ | 🔌 Verify DT1 write after loop point edit |
+| 10.2.3 | Loop point changes sync to device | P1 | ✅ | `device-loop-editor.spec.ts` |
 | 10.2.4 | Parity: same loop operations produce same results on both surfaces | P1 | ❌ | Compare inline (Tones) vs dialog (Library) behavior |
 | 10.2.5 | Auto-detect works with real device wave data | P1 | ❌ | 🔌 Auto-detect on a tone loaded from hardware |
 
@@ -355,11 +355,11 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 12.1 | Import v1 format drum kit | P1 | ❌ | |
-| 12.2 | Import v2 format drum kit | P1 | ❌ | |
+| 12.1 | Import v1 format drum kit | P1 | ⚠️ | `device-drumkit.spec.ts` (v2 tested, v1 not yet) |
+| 12.2 | Import v2 format drum kit | P1 | ✅ | `device-drumkit.spec.ts` |
 | 12.3 | Automatic MIDI note assignment | P2 | ❌ | |
 | 12.4 | Base note configuration | P2 | ❌ | |
-| 12.5 | Progress tracking | P2 | ❌ | |
+| 12.5 | Progress tracking | P2 | ⚠️ | Implicit in drum kit import test |
 | 12.6 | Handle missing sample files | P1 | ❌ | |
 
 ---
@@ -460,16 +460,16 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | Priority | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | P0 | 44 | 38 | 2 | 4 |
-| P1 | 148 | 55 | 9 | 84 |
-| P2 | 37 | 13 | 0 | 24 |
-| **Total** | **229** | **106** | **11** | **112** |
+| P1 | 148 | 58 | 10 | 80 |
+| P2 | 37 | 13 | 1 | 23 |
+| **Total** | **229** | **109** | **13** | **107** |
 
 ### By Hardware Requirement
 
 | Category | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | No Hardware | 83 | 69 | 0 | 14 |
-| Hardware Required | 146 | 37 | 11 | 98 |
+| Hardware Required | 146 | 40 | 13 | 93 |
 
 ### Critical Gaps (P0 Not Tested)
 
@@ -502,21 +502,25 @@ Test the "Find Best Fit" feature that auto-allocates non-conflicting slots:
 
 ### Phase 3: Editor Controls ⚠️ IN PROGRESS
 Play, Patch, and Tone page parameter controls with hardware sync:
-- Play page: ✅ per-part channel, patch, output, level controls (`device-play-controls.spec.ts`)
+- Play page: ✅ COMPLETE - per-part channel, patch, output, level controls (`device-play-controls.spec.ts`)
 - Patch editing: ⚠️ name, key mode, bender range tested; aftertouch, key assign, velocity, tone zones remaining (`device-patch-controls.spec.ts`)
 - Tone editing: ⚠️ name, loop point, TVF cutoff, LFO rate tested; TVA, envelopes, pitch remaining (`device-tone-controls.spec.ts`)
 
-### Phase 4: Loop Editor Parity and Hardware Integration
-- Loop editor opens from both Tones page (inline) and Library page (dialog)
-- Loop point changes sync to device via DT1 write
-- Parity verification: same operations produce same results on both surfaces
-- Auto-detect with real device wave data
+### Phase 4: Loop Editor Parity and Hardware Integration ✅ COMPLETE
+Loop editor hardware sync tests pass:
+- ✅ Loop editor opens from Tones page (inline) (`device-loop-editor.spec.ts`)
+- ✅ Loop point changes sync to device via DT1 write (`device-loop-editor.spec.ts`)
+- ❌ Loop editor opens from Library page (dialog) - not yet tested
+- ❌ Parity verification: same operations produce same results on both surfaces
+- ❌ Auto-detect with real device wave data
 
-### Phase 5: Drum Kit and Slice Workflows
-- Sample chopper with device tones (section 11.2)
-- Drum kit creation from slices (section 13.1)
-- MIDI note assignment, output config, save to library
-- Slice boundary persistence after save/reload
+### Phase 5: Drum Kit and Slice Workflows ⚠️ PARTIAL
+- ✅ Drum kit v2 format import (`device-drumkit.spec.ts`)
+- ⚠️ Drum kit v1 format import - not yet tested
+- ❌ Sample chopper save-to-library not yet tested
+- ❌ Drum kit creation from slices (section 13.1)
+- ❌ MIDI note assignment, output config, save to library
+- ❌ Slice boundary persistence after save/reload
 
 ### Phase 6: Error Scenarios
 - `device-error-recovery.spec.ts` - Connection/data errors
