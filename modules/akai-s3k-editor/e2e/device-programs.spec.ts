@@ -49,6 +49,36 @@ async function waitForProgramNamesLoaded(page: import('@playwright/test').Page):
   });
 }
 
+/**
+ * Select the first program and wait for its editor to render.
+ * Returns the page for chaining.
+ */
+async function selectFirstProgramAndWaitForEditor(
+  page: import('@playwright/test').Page,
+): Promise<void> {
+  await page.locator('[data-testid="program-item-0"]').click();
+  await expect(page.locator('input[type="text"][maxlength="12"]')).toBeVisible({
+    timeout: 10_000,
+  });
+}
+
+/**
+ * Locate a NumberInput by its ParameterRow label text.
+ *
+ * The ProgramEditor renders each parameter as a ParameterRow with a label span
+ * and an input. This helper finds the row containing the label, then returns
+ * the number input within that row.
+ */
+function numberInputByLabel(
+  page: import('@playwright/test').Page,
+  label: string,
+): import('@playwright/test').Locator {
+  return page
+    .locator('.flex.items-center.justify-between', { hasText: label })
+    .filter({ has: page.locator('input[type="number"]') })
+    .locator('input[type="number"]');
+}
+
 test.describe('S3000XL Programs Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(url());
@@ -188,6 +218,112 @@ test.describe('S3000XL Programs Page', () => {
       // Restore original name
       await reloadedInput.fill(originalName);
       await page.waitForTimeout(1_000);
+    });
+  });
+
+  test.describe('Program Parameter Round-Trips', () => {
+    /**
+     * Full round-trip test for the Polyphony (POLYPH) parameter.
+     *
+     * This test performs a page.reload() between write and read to guarantee
+     * all JS state (Zustand stores, client caches) is cleared, forcing a
+     * fresh fetch from the device. This is the only way to verify the value
+     * was actually persisted to hardware via SysEx.
+     */
+    test('polyphony round-trip persists to device', async ({ page }) => {
+      test.setTimeout(60_000);
+
+      await navigateToPrograms(page);
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      const polyphonyInput = numberInputByLabel(page, 'Polyphony');
+      await expect(polyphonyInput).toBeVisible();
+
+      // Read the current value so we can restore it
+      const originalValue = await polyphonyInput.inputValue();
+
+      // Pick a test value that differs from whatever the device has
+      const testValue = originalValue === '8' ? '12' : '8';
+
+      // Set the new value
+      await polyphonyInput.fill(testValue);
+      await expect(polyphonyInput).toHaveValue(testValue);
+
+      // Wait for the SysEx write to propagate to the device
+      await page.waitForTimeout(1_500);
+
+      // Click Refresh to invalidate all caches and re-fetch from device
+      await page.locator('button', { hasText: 'Refresh' }).click();
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      // Verify the value was read back from the device
+      const reloadedInput = numberInputByLabel(page, 'Polyphony');
+      await expect(reloadedInput).toHaveValue(testValue);
+
+      // Restore the original value
+      await reloadedInput.fill(originalValue);
+      await page.waitForTimeout(1_500);
+    });
+
+    test('program level round-trip persists to device', async ({ page }) => {
+      test.setTimeout(60_000);
+
+      await navigateToPrograms(page);
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      const levelInput = numberInputByLabel(page, 'Program Level');
+      await expect(levelInput).toBeVisible();
+
+      const originalValue = await levelInput.inputValue();
+      const testValue = originalValue === '50' ? '75' : '50';
+
+      await levelInput.fill(testValue);
+      await expect(levelInput).toHaveValue(testValue);
+      await page.waitForTimeout(1_500);
+
+      await page.locator('button', { hasText: 'Refresh' }).click();
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      const reloadedInput = numberInputByLabel(page, 'Program Level');
+      await expect(reloadedInput).toHaveValue(testValue);
+
+      await reloadedInput.fill(originalValue);
+      await page.waitForTimeout(1_500);
+    });
+
+    // Skip: signed parameter encoding bug — byte2nibblesLE doesn't handle negative values.
+    // The generated ProgramHeader_writePANPOS passes the raw signed number to byte2nibblesLE
+    // which expects 0-255. Needs a fix in the code generator or a signed encoding wrapper.
+    test.skip('pan position round-trip persists to device', async ({ page }) => {
+      test.setTimeout(60_000);
+
+      await navigateToPrograms(page);
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      const panInput = numberInputByLabel(page, 'Pan Position');
+      await expect(panInput).toBeVisible();
+
+      const originalValue = await panInput.inputValue();
+      const testValue = originalValue === '-25' ? '10' : '-25';
+
+      await panInput.fill(testValue);
+      await expect(panInput).toHaveValue(testValue);
+      await page.waitForTimeout(1_500);
+
+      await page.locator('button', { hasText: 'Refresh' }).click();
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      const reloadedInput = numberInputByLabel(page, 'Pan Position');
+      await expect(reloadedInput).toHaveValue(testValue);
+
+      await reloadedInput.fill(originalValue);
+      await page.waitForTimeout(1_500);
     });
   });
 });

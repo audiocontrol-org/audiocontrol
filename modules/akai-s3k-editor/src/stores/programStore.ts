@@ -50,3 +50,8 @@ export const useProgramStore = create<ProgramStore>((set) => ({
     });
   },
 }));
+
+// Expose on window for E2E testing
+if (typeof window !== 'undefined') {
+  (window as unknown as Record<string, unknown>).__programStore = useProgramStore;
+}

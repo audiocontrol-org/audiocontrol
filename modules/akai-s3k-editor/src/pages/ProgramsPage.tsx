@@ -93,7 +93,11 @@ export function ProgramsPage(): JSX.Element {
             )}
             <button
               className="ac-btn ac-btn-sm ac-btn-secondary"
-              onClick={loadProgramNames}
+              onClick={() => {
+                useProgramStore.getState().invalidateCache();
+                if (client) client.invalidateProgramCache();
+                loadProgramNames();
+              }}
               disabled={isLoading}
             >
               Refresh
