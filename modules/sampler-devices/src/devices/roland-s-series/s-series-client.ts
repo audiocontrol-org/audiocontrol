@@ -299,6 +299,13 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
 
     let connected = false;
 
+    // Multi-mode function parameter addresses (shared across S-330 and S-550)
+    const MULTI_CHANNELS_ADDRESS = [0x00, 0x01, 0x00, 0x22];
+    const MULTI_PATCHES_ADDRESS = [0x00, 0x01, 0x00, 0x32];
+    const MULTI_OUTPUTS_ADDRESS = [0x00, 0x01, 0x00, 0x42];
+    const MULTI_LEVELS_ADDRESS = [0x00, 0x01, 0x00, 0x56];
+    const MULTI_PART_COUNT = 8;
+
     // Patch and tone caches for progressive loading
     let patchCache: (TPatch | undefined)[] = new Array(config.patchCount).fill(undefined);
     let toneCache: (TTone | undefined)[] = new Array(config.toneCount).fill(undefined);
@@ -366,12 +373,25 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
     // Low-level MIDI Communication
     // =========================================================================
 
-    function sendAndReceive(message: number[]): Promise<number[]> {
+    /**
+     * Send a SysEx message and wait for a matching response.
+     * @param acceptCommands - If provided, only resolve on these command bytes.
+     *   Stale responses with other commands are logged and ignored.
+     *   If not provided, resolves on any valid S-series response (except RJC).
+     */
+    function sendAndReceive(message: number[], acceptCommands?: number[]): Promise<number[]> {
         return new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
+            let timeoutId = setTimeout(onTimeout, timeoutMs);
+
+            function onTimeout() {
                 midiAdapter.removeSysExListener(listener);
                 reject(new Error(`${config.deviceName} response timeout`));
-            }, timeoutMs);
+            }
+
+            function resetTimeout() {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(onTimeout, timeoutMs);
+            }
 
             function listener(response: number[]) {
                 if (
@@ -380,7 +400,23 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
                     response[2] === deviceId &&
                     response[3] === S_SERIES_MODEL_ID
                 ) {
-                    clearTimeout(timeout);
+                    const cmd = response[4];
+
+                    // Always ignore stale RJC
+                    if (cmd === S_SERIES_COMMANDS.RJC) {
+                        console.warn(`[${config.deviceName}] Ignoring stale RJC in sendAndReceive`);
+                        resetTimeout(); // Reset timeout — stale response consumed time
+                        return;
+                    }
+
+                    // If caller specified acceptable commands, ignore anything else
+                    if (acceptCommands && !acceptCommands.includes(cmd)) {
+                        console.warn(`[${config.deviceName}] Ignoring stale 0x${cmd.toString(16)} (expected ${acceptCommands.map(c => '0x' + c.toString(16)).join('/')})`);
+                        resetTimeout(); // Reset timeout — stale response consumed time
+                        return;
+                    }
+
+                    clearTimeout(timeoutId);
                     midiAdapter.removeSysExListener(listener);
                     resolve(response);
                 }
@@ -508,9 +544,9 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
     }
 
     /**
-     * Send data using WSD/DAT/EOD handshake
+     * Send data using WSD/DAT/EOD handshake (single attempt)
      */
-    async function sendData(address: number[], data: number[]): Promise<void> {
+    async function sendDataAttempt(address: number[], data: number[]): Promise<void> {
         const nibbled = nibblize(data);
         const sizeInNibbles = nibbled.length;
 
@@ -534,7 +570,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             0xf7,
         ];
 
-        const wsdResponse = await sendAndReceive(wsd);
+        const wsdResponse = await sendAndReceive(wsd, [S_SERIES_COMMANDS.ACK, S_SERIES_COMMANDS.ERR]);
         if (wsdResponse[4] !== S_SERIES_COMMANDS.ACK) {
             throw new Error(`WSD rejected: got ${wsdResponse[4].toString(16)}`);
         }
@@ -569,7 +605,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
                 0xf7,
             ];
 
-            const datResponse = await sendAndReceive(dat);
+            const datResponse = await sendAndReceive(dat, [S_SERIES_COMMANDS.ACK, S_SERIES_COMMANDS.ERR]);
             if (datResponse[4] !== S_SERIES_COMMANDS.ACK) {
                 throw new Error(`DAT rejected: got ${datResponse[4].toString(16)}`);
             }
@@ -584,10 +620,33 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             0xf7,
         ];
 
-        const eodResponse = await sendAndReceive(eod);
+        const eodResponse = await sendAndReceive(eod, [S_SERIES_COMMANDS.ACK, S_SERIES_COMMANDS.ERR]);
         if (eodResponse[4] !== S_SERIES_COMMANDS.ACK) {
             throw new Error(`EOD rejected: got ${eodResponse[4].toString(16)}`);
         }
+    }
+
+    /** Retry options for WSD write operations. */
+    const wsdRetryOptions: RetryOptions = {
+        maxRetries: 3,
+        initialDelayMs: 100,
+        maxDelayMs: 2000,
+        multiplier: 2,
+        jitter: 0.3,
+        isRetryable: (error: unknown) => {
+            if (error instanceof Error) {
+                return error.message.includes('timeout') || error.message.includes('rejected');
+            }
+            return false;
+        },
+        onRetry: (attempt, error, delayMs) => {
+            console.log(`[${config.deviceName}] WSD retry ${attempt} after ${delayMs}ms: ${error}`);
+        },
+    };
+
+    /** Send data with retry logic. */
+    async function sendData(address: number[], data: number[]): Promise<void> {
+        return withRetry(() => sendDataAttempt(address, data), wsdRetryOptions);
     }
 
     /**
@@ -619,7 +678,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             0xf7,
         ];
 
-        const wsdResponse = await sendAndReceive(wsd);
+        const wsdResponse = await sendAndReceive(wsd, [S_SERIES_COMMANDS.ACK, S_SERIES_COMMANDS.ERR]);
         if (wsdResponse[4] !== S_SERIES_COMMANDS.ACK) {
             throw new Error(`Wave WSD rejected: got ${wsdResponse[4].toString(16)}`);
         }
@@ -657,7 +716,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
                 0xf7,
             ];
 
-            const datResponse = await sendAndReceive(dat);
+            const datResponse = await sendAndReceive(dat, [S_SERIES_COMMANDS.ACK, S_SERIES_COMMANDS.ERR]);
             if (datResponse[4] !== S_SERIES_COMMANDS.ACK) {
                 throw new Error(`Wave DAT rejected at offset ${offset}`);
             }
@@ -675,7 +734,7 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
             0xf7,
         ];
 
-        const eodResponse = await sendAndReceive(eod);
+        const eodResponse = await sendAndReceive(eod, [S_SERIES_COMMANDS.ACK, S_SERIES_COMMANDS.ERR]);
         if (eodResponse[4] !== S_SERIES_COMMANDS.ACK) {
             throw new Error(`Wave EOD rejected`);
         }
@@ -1030,25 +1089,152 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
         // === Multi Mode Configuration ===
 
         async requestFunctionParameters(): Promise<MultiPartConfig[]> {
-            // This would need device-specific implementation
-            // For now, return empty array
-            return [];
+            return serialize(async () => {
+                try {
+                    const channelData = await requestDataWithAddress(
+                        MULTI_CHANNELS_ADDRESS,
+                        MULTI_PART_COUNT
+                    );
+                    const patchData = await requestDataWithAddress(
+                        MULTI_PATCHES_ADDRESS,
+                        MULTI_PART_COUNT
+                    );
+
+                    let outputData: number[];
+                    try {
+                        outputData = await requestDataWithAddress(
+                            MULTI_OUTPUTS_ADDRESS,
+                            MULTI_PART_COUNT
+                        );
+                    } catch {
+                        // Output parameters may not exist on all firmware versions
+                        outputData = [1, 1, 1, 1, 1, 1, 1, 1];
+                    }
+
+                    const levelData = await requestDataWithAddress(
+                        MULTI_LEVELS_ADDRESS,
+                        MULTI_PART_COUNT
+                    );
+
+                    const parts: MultiPartConfig[] = [];
+                    for (let i = 0; i < MULTI_PART_COUNT; i++) {
+                        parts.push({
+                            channel: channelData[i] ?? 0,
+                            patchIndex: patchData[i] ?? 0,
+                            output: outputData[i] ?? 1,
+                            level: levelData[i] ?? 127,
+                        });
+                    }
+
+                    return parts;
+                } catch {
+                    // Return default configuration
+                    return Array.from({ length: MULTI_PART_COUNT }, (_, i) => ({
+                        channel: i,
+                        patchIndex: 0,
+                        output: 1,
+                        level: 127,
+                    }));
+                }
+            });
         },
 
-        async setMultiChannel(_part: number, _channel: number): Promise<void> {
-            // Device-specific implementation needed
+        /**
+         * Set MIDI receive channel for a multi mode part.
+         * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+         */
+        async setMultiChannel(part: number, channel: number): Promise<void> {
+            if (part < 0 || part > 7) {
+                throw new Error(`Invalid part number: ${part} (must be 0-7)`);
+            }
+            if (channel < 0 || channel > 15) {
+                throw new Error(`Invalid channel: ${channel} (must be 0-15)`);
+            }
+
+            return serialize(async () => {
+                const allChannelData = await requestDataWithAddress(
+                    MULTI_CHANNELS_ADDRESS,
+                    MULTI_PART_COUNT
+                );
+                const newChannelData = [...allChannelData];
+                newChannelData[part] = channel;
+                await sendData(MULTI_CHANNELS_ADDRESS, newChannelData);
+            });
         },
 
-        async setMultiPatch(_part: number, _patchIndex: number | null): Promise<void> {
-            // Device-specific implementation needed
+        /**
+         * Set patch assignment for a multi mode part.
+         * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+         */
+        async setMultiPatch(part: number, patchIndex: number | null): Promise<void> {
+            if (part < 0 || part > 7) {
+                throw new Error(`Invalid part number: ${part} (must be 0-7)`);
+            }
+            const value = patchIndex === null ? 0x7f : patchIndex;
+            if (patchIndex !== null && (patchIndex < 0 || patchIndex > 63)) {
+                throw new Error(`Invalid patch index: ${patchIndex} (must be 0-63 or null)`);
+            }
+
+            return serialize(async () => {
+                const allPatchData = await requestDataWithAddress(
+                    MULTI_PATCHES_ADDRESS,
+                    MULTI_PART_COUNT
+                );
+                const newPatchData = [...allPatchData];
+                newPatchData[part] = value;
+                await sendData(MULTI_PATCHES_ADDRESS, newPatchData);
+            });
         },
 
-        async setMultiOutput(_part: number, _output: number): Promise<void> {
-            // Device-specific implementation needed
+        /**
+         * Set output assignment for a multi mode part.
+         * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+         */
+        async setMultiOutput(part: number, output: number): Promise<void> {
+            if (part < 0 || part > 7) {
+                throw new Error(`Invalid part number: ${part} (must be 0-7)`);
+            }
+            if (output < 0 || output > 8) {
+                throw new Error(`Invalid output: ${output} (must be 0-8)`);
+            }
+
+            return serialize(async () => {
+                let allOutputData: number[];
+                try {
+                    allOutputData = await requestDataWithAddress(
+                        MULTI_OUTPUTS_ADDRESS,
+                        MULTI_PART_COUNT
+                    );
+                } catch {
+                    allOutputData = [1, 1, 1, 1, 1, 1, 1, 1];
+                }
+                const newOutputData = [...allOutputData];
+                newOutputData[part] = output;
+                await sendData(MULTI_OUTPUTS_ADDRESS, newOutputData);
+            });
         },
 
-        async setMultiLevel(_part: number, _level: number): Promise<void> {
-            // Device-specific implementation needed
+        /**
+         * Set level for a multi mode part.
+         * Uses WSD/DAT/EOD protocol (DT1 does not work for function parameters).
+         */
+        async setMultiLevel(part: number, level: number): Promise<void> {
+            if (part < 0 || part > 7) {
+                throw new Error(`Invalid part number: ${part} (must be 0-7)`);
+            }
+            if (level < 0 || level > 127) {
+                throw new Error(`Invalid level: ${level} (must be 0-127)`);
+            }
+
+            return serialize(async () => {
+                const allLevelData = await requestDataWithAddress(
+                    MULTI_LEVELS_ADDRESS,
+                    MULTI_PART_COUNT
+                );
+                const newLevelData = [...allLevelData];
+                newLevelData[part] = level;
+                await sendData(MULTI_LEVELS_ADDRESS, newLevelData);
+            });
         },
 
         // === MIDI Panic ===

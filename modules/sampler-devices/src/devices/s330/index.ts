@@ -128,6 +128,7 @@ export {
     buildPatchParamAddress,
     buildToneAddress,
     buildSystemAddress,
+    buildWaveDataAddress,
     calculateChecksum,
 } from './s330-addresses.js';
 

@@ -1,6 +1,6 @@
 # Roland S-Series SysEx Protocol (S-330 / S-550)
 
-This document describes the MIDI System Exclusive protocol used by the Roland S-330 and S-550 samplers. Both devices share model ID `0x1E` and use identical command structure and data encoding. The only differences are memory layout constants (patch/tone counts, wave bank counts).
+This document describes the MIDI System Exclusive protocol used by the Roland S-330 and S-550 samplers. Both devices share model ID `0x1E` and use identical command structure and data encoding. Key differences: memory layout constants (patch/tone counts, wave bank counts) and **wave segment addressing** (see "Wave Address Calculation" section — the stride formula differs between devices).
 
 Focus areas include the RQD/WSD handshake protocol, the DAT packet format with address headers, and the distinction between nibblized parameter data and 7-bit encoded wave data.
 
@@ -145,43 +145,110 @@ Each bank contains 18 segments. Key measurements:
 
 | Property | Value | Notes |
 |----------|-------|-------|
-| Segment stride | 00 01 40 00H = 24576 | Address units between segments |
 | Samples per segment | 12000 | 0.4s at 30kHz, 0.8s at 15kHz |
 | Data bytes per segment | 24000 | 2 bytes per 12-bit sample |
-| Padding per segment | 576 | Unused address space |
-| Bank size | 442368 | 18 × 24576 |
 
-#### Calculating Wave Addresses
+#### Wave Address Calculation: S-330 vs S-550
 
-To fetch wave data for a tone:
+**IMPORTANT**: The S-330 and S-550 use different wave segment addressing despite sharing the same SysEx protocol (model ID 0x1E). Using the wrong addressing formula causes wave data to be written to incorrect physical memory locations. The device ACKs the write but the tone's wave allocation reads back as empty.
+
+##### S-330 Wave Addressing
+
+The S-330 uses a linear stride in flat address space:
 
 ```typescript
-// From tone parameters:
-// - waveBank: 0=A, 1=B
-// - waveSegmentTop: starting segment index (0-17)
-// - waveSegmentLength: number of segments
+const SEGMENT_ADDR_STRIDE = 24576;  // 00 01 40 00H in 7-bit encoding
+const bankBaseAddr = waveBank === 0 ? 0 : (0x20 << 14);  // Bank B = 0x20 in byte 1
 
-const SEGMENT_ADDR_STRIDE = 24576;  // 00 01 40 00H
-const BANK_ADDR_SIZE = SEGMENT_ADDR_STRIDE * 18;
-
-const bankBaseAddr = waveBank * BANK_ADDR_SIZE;
 const addrOffset = bankBaseAddr + (waveSegmentTop * SEGMENT_ADDR_STRIDE);
 
-// Encode as 4-byte 7-bit address
 const address = [
     0x01,                        // Wave memory area
     (addrOffset >> 14) & 0x7F,   // BB
     (addrOffset >> 7) & 0x7F,    // CC
     addrOffset & 0x7E            // DD - LSB must be even
 ];
+```
 
+Examples (S-330):
+| Segment | Address | Notes |
+|---------|---------|-------|
+| Bank A, seg 0 | `01 00 00 00` | |
+| Bank A, seg 1 | `01 00 40 00` | Stride visible in byte 2 |
+| Bank A, seg 12 | `01 12 00 00` | Stride wraps into byte 1 |
+| Bank B, seg 0 | `01 20 00 00` | |
+
+S-330 properties:
+- Segment stride: 24576 (00 01 40 00H) flat address units
+- Padding per segment: 576 unused address units
+- Bank size: 442368 (18 × 24576)
+- 2 wave banks (A, B)
+
+##### S-550 Wave Addressing
+
+The S-550 uses a simplified structured address with bank base + segment index:
+
+```typescript
+const WAVE_BANK_BASE = { 0: 0x00, 1: 0x20, 2: 0x40, 3: 0x60 };
+
+const byte1 = WAVE_BANK_BASE[absoluteWaveBank];
+const byte2 = (segmentIndex * 8) & 0x7F;  // Segment stride is 8 in byte 2
+
+const address = [0x01, byte1, byte2, 0x00];
+```
+
+Examples (S-550):
+| Segment | Address | Notes |
+|---------|---------|-------|
+| Bank A, seg 0 | `01 00 00 00` | Same as S-330 |
+| Bank A, seg 1 | `01 00 08 00` | Different from S-330 |
+| Bank A, seg 12 | `01 00 60 00` | Very different from S-330's `01 12 00 00` |
+| Bank B, seg 0 | `01 20 00 00` | Same as S-330 |
+| Bank C, seg 0 | `01 40 00 00` | S-550 only |
+| Bank D, seg 0 | `01 60 00 00` | S-550 only |
+
+S-550 properties:
+- Segment stride: 8 in byte 2 position
+- 4 wave banks (A, B, C, D)
+- Max uniquely addressable segments per bank: 16 (byte2 wraps at segment 16 due to `& 0x7F`)
+
+**Discovery date**: 2026-03-30. Empirical probe results below.
+
+##### Empirical S-550 Probe Results (2026-03-30)
+
+A full memory probe wrote unique identifiable data to every segment on every bank of a physical S-550, then read it all back. Results:
+
+**Write phase**: All 4 banks (A-D) × 18 segments accept WSD writes using the S-330 stride formula. The S-550 `buildWaveDataAddress` formula (byte2 = segment×8) was tested earlier and all writes were rejected — **that formula is wrong**. Both devices use the same stride (24576).
+
+**Read phase**: Only **even-numbered segments** (0, 2, 4, 6, 8, 10, 12, 14, 16) are readable via RQD. Odd segments (1, 3, 5, ...) return RJC despite successful writes. All 32 readable segments returned correct marker data (100% match).
+
+| Bank | Writable segments | Readable segments | Notes |
+|------|------------------|-------------------|-------|
+| A (0) | 0-17 (all 18) | 0,2,4,6,8,10,12,14,16 (9) | |
+| B (1) | 0-17 (all 18) | 0,2,4,6,8,10,12,14,16 (9) | |
+| C (2) | 0-17 (all 18) | 0,2,4,6,8,10,12,14,16 (9) | |
+| D (3) | 0-8 (9 tested) | 0,2,4,6,8 (5 tested) | Tone slots exhausted at index 63 |
+
+**Aliasing test**: Wrote 0xAAA to segment 0, then 0xBBB to segment 1, then re-read segment 0. Marker was still 0xAAA — **no aliasing**. Odd segments are distinct physical memory that accepts writes but cannot be read back via RQD. The data is likely accessible through audio playback but not through the SysEx protocol.
+
+**Implication for import**: When importing a tone to an odd segment, the wave data IS written to the device, but `requestWaveData` cannot verify it. The tone's `segmentLength` reads back as 0 because the device's RQD-based tone read may also fail to detect wave data at odd segments. The app's `importTone` writes to odd segments successfully, but the re-read after import sees `segmentLength=0` because the verification read fails.
+
+**Corrected understanding**: The S-550's `s550-addresses.ts` `buildWaveDataAddress` function is incorrect. Both S-330 and S-550 use the same linear stride formula (24576 address units per segment). The S-550 additionally supports banks C and D at offsets 0x40 and 0x60 in byte 1.
+
+##### Segment 0 Coincidence
+
+Both formulas produce `01 00 00 00` for segment 0 of bank A (and `01 20 00 00` for bank B segment 0). This is why basic import/export works — most tests default to segment 0. The bug only manifests at segments > 0.
+
+#### Request Size
+
+```typescript
 // Request size in bytes (NOT address units)
 const bytesToFetch = waveSegmentLength * 12000 * 2;
 ```
 
 #### Important Notes
 
-1. **Segment stride ≠ data size**: Each segment occupies 24576 address units but contains only 24000 bytes of sample data.
+1. **Device-specific addressing is required**: The wave address calculation MUST use the correct formula for the connected device. Both devices ACK writes to any address, but only the correctly addressed writes persist.
 
 2. **startPoint/endPoint/loopPoint** in tone parameters are playback offsets relative to the segment, NOT memory addresses.
 
