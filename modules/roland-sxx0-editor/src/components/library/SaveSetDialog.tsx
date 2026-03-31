@@ -154,25 +154,35 @@ export function SaveSetDialog({
 
           {/* Actions */}
           <div className="flex justify-end gap-3 mt-6">
-            <Dialog.Close asChild>
-              <button
-                className="ac-btn ac-btn-secondary"
-                disabled={isSaving}
-              >
-                Cancel
-              </button>
-            </Dialog.Close>
-            <button
-              onClick={handleSave}
-              disabled={!setName.trim() || isSaving}
-              data-testid="confirm-save-set"
-              className={cn(
-                'ac-btn ac-btn-primary',
-                (!setName.trim() || isSaving) && 'opacity-50'
-              )}
-            >
-              {isSaving ? 'Saving...' : 'Save Set'}
-            </button>
+            {success ? (
+              <Dialog.Close asChild>
+                <button className="ac-btn ac-btn-primary">
+                  Done
+                </button>
+              </Dialog.Close>
+            ) : (
+              <>
+                <Dialog.Close asChild>
+                  <button
+                    className="ac-btn ac-btn-secondary"
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </button>
+                </Dialog.Close>
+                <button
+                  onClick={handleSave}
+                  disabled={!setName.trim() || isSaving}
+                  data-testid="confirm-save-set"
+                  className={cn(
+                    'ac-btn ac-btn-primary',
+                    (!setName.trim() || isSaving) && 'opacity-50'
+                  )}
+                >
+                  {isSaving ? 'Saving...' : 'Save Set'}
+                </button>
+              </>
+            )}
           </div>
         </Dialog.Content>
       </Dialog.Portal>

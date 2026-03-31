@@ -44,6 +44,8 @@ test.setTimeout(300_000); // 5 minutes -- set operations are slow
 const MIDI_SERVER_PORT = process.env.E2E_MIDI_SERVER_PORT;
 const DEVICE_TYPE = process.env.E2E_DEVICE_TYPE ?? 's330';
 const EDITOR_BASE_PATH = `/roland/${DEVICE_TYPE}/editor`;
+// Library paths are hardcoded to 's330' in LibraryPage.tsx (lines 513, 558)
+const LIBRARY_DEVICE = 's330';
 
 const UI_TIMEOUT_MS = 2_000;
 const MIDI_TRANSFER_TIMEOUT_MS = 60_000;
@@ -70,8 +72,10 @@ function buildUrl(subpath = ''): string {
 
 const TONE_FIXTURE_NAME = 'rt-tone';
 
+// Fixture uses 's330' for device/extension because the library path
+// is hardcoded to library/s330/ in LibraryPage.tsx
 const TONE_YAML = `format: sampler-tone
-device: ${DEVICE_TYPE}
+device: s330
 version: 1
 name: "RT Tone"
 wave:
@@ -81,7 +85,7 @@ wave:
   startPoint: 0
   endPoint: 30000
   loopPoint: 0
-${DEVICE_TYPE}:
+s330:
   originalKey: 60
   outputAssign: 0
 `;
@@ -123,15 +127,15 @@ async function importToneFixtureToDevice(
   // Write tone fixture to OPFS
   await writeToneFixtureToOPFS(
     page,
-    DEVICE_TYPE,
+    LIBRARY_DEVICE,
     TONE_FIXTURE_NAME,
     TONE_YAML,
     TONE_WAV_BASE64
   );
 
   // Connect to OPFS so the app sees the fixture (skip if already connected)
-  const opfsButton = page.locator('[data-testid="library-backend-opfs"]');
-  if (await opfsButton.isVisible().catch(() => false)) {
+  const opfsBtn = page.locator('[data-testid="library-backend-opfs"]');
+  if (await opfsBtn.isVisible().catch(() => false)) {
     await connectToOPFS(page);
   }
 
@@ -267,7 +271,7 @@ test.describe('Device Set Round Trip', () => {
     await navigateToLibrary(page);
 
     // 3. Clean OPFS so each test starts fresh
-    await initializeCleanOPFS(page, DEVICE_TYPE);
+    await initializeCleanOPFS(page, LIBRARY_DEVICE);
   });
 
   test.afterEach(async ({ page }) => {
@@ -293,15 +297,13 @@ test.describe('Device Set Round Trip', () => {
         'Device has no occupied tones -- importing fixture tone to slot 0'
       );
       await importToneFixtureToDevice(page);
-
-      // Re-initialize OPFS clean for the set test (remove the tone fixture)
-      await initializeCleanOPFS(page, DEVICE_TYPE);
-
       // Reload device data to reflect the import
-      await connectToOPFS(page);
       await loadAllDeviceData(page);
-    } else {
-      // Device already has data — just connect OPFS for the set operations
+    }
+
+    // Ensure OPFS is connected (skip if already connected)
+    const opfsConnectBtn = page.locator('[data-testid="library-backend-opfs"]');
+    if (await opfsConnectBtn.isVisible().catch(() => false)) {
       await connectToOPFS(page);
     }
 
@@ -356,9 +358,15 @@ test.describe('Device Set Round Trip', () => {
 
     console.log('Set saved successfully');
 
-    // Close the save dialog — press Escape (works regardless of button state)
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(500);
+    // Close the save dialog
+    const closeSaveDialog = page.locator('button', { hasText: 'Done' });
+    if (await closeSaveDialog.isVisible().catch(() => false)) {
+      await closeSaveDialog.click();
+    } else {
+      // Fallback: Cancel also closes the dialog
+      await page.locator('button', { hasText: 'Cancel' }).click();
+    }
+    await expect(page.locator('[data-testid="set-name-input"]')).not.toBeVisible({ timeout: UI_TIMEOUT_MS });
     console.log('Save dialog closed');
 
     // Step 4: Verify set appears in library tree
@@ -404,8 +412,13 @@ test.describe('Device Set Round Trip', () => {
     console.log('Set loaded successfully');
 
     // Close the load dialog
-    const cancelAfterLoad = page.locator('button', { hasText: 'Cancel' });
-    await cancelAfterLoad.click();
+    const closeLoadDialog = page.locator('button', { hasText: 'Done' });
+    if (await closeLoadDialog.isVisible().catch(() => false)) {
+      await closeLoadDialog.click();
+    } else {
+      // Fallback: Cancel also closes the dialog
+      await page.locator('button', { hasText: 'Cancel' }).click();
+    }
 
     // Step 7: Reload device data and snapshot "after" state
     await loadAllDeviceData(page);

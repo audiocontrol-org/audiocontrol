@@ -194,8 +194,8 @@ export function useLibraryImportDialogs({
         (progress) => setOperationProgress((prev) => prev ? { ...prev, bytesSent: Math.floor(progress) } : mkProgress({ bytesSent: Math.floor(progress) })),
         (status) => setOperationProgress((prev) => prev ? { ...prev, stepLabel: status } : mkProgress({ stepLabel: status }))
       );
-      setOperationProgress(mkProgress({ stepLabel: 'Save complete', bytesSent: 100 }));
       setSaveSuccess(true);
+      setOperationProgress(undefined); // Clear progress so dialog can close (isSaving=false)
       await handleRefreshLibrary();
     } catch (err) {
       console.error('[LibraryPage] Failed to save set:', err);
@@ -246,6 +246,7 @@ export function useLibraryImportDialogs({
 
       setOperationProgress({ currentStep: totalItems, totalSteps: totalItems, stepLabel: `Loaded ${deviceState.tones.size} tones and ${deviceState.patches.size} patches`, bytesSent: 0, bytesTotal: 0, bytesSentAllSteps: bytesTotalAllSteps, bytesTotalAllSteps });
       setLoadSuccess(true);
+      setOperationProgress(undefined); // Clear progress so dialog can close (isOperating=false)
       await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (err) {
       console.error('[LibraryPage] Failed to load set:', err);

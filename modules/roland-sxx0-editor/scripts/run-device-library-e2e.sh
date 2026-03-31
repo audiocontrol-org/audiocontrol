@@ -70,9 +70,16 @@ fi
 MIDI_INPUT_PORT=$(echo "$DEVICE_JSON" | jq -r '.inputPort')
 MIDI_OUTPUT_PORT=$(echo "$DEVICE_JSON" | jq -r '.outputPort')
 DEVICE_ID=$(echo "$DEVICE_JSON" | jq -r '.deviceId')
-DEVICE_TYPE=$(echo "$DEVICE_JSON" | jq -r '.deviceType // "s330"')
-
-echo "   Device found: ${DEVICE_TYPE}"
+# Use E2E_DEVICE_TYPE from environment if set, otherwise use auto-detected value.
+# Auto-detection can't reliably distinguish S-330 from S-550 via SysEx.
+# Override with: E2E_DEVICE_TYPE=s550 make test-e2e-device-library
+if [ -n "${E2E_DEVICE_TYPE:-}" ]; then
+  DEVICE_TYPE="$E2E_DEVICE_TYPE"
+  echo "   Device type (from env): ${DEVICE_TYPE}"
+else
+  DEVICE_TYPE=$(echo "$DEVICE_JSON" | jq -r '.deviceType // "s330"')
+  echo "   Device type (auto-detected): ${DEVICE_TYPE}"
+fi
 echo "   Input:  $MIDI_INPUT_PORT"
 echo "   Output: $MIDI_OUTPUT_PORT"
 echo "   Device ID: $DEVICE_ID"

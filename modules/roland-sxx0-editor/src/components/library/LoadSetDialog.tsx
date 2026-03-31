@@ -169,25 +169,35 @@ export function LoadSetDialog({
 
           {/* Actions */}
           <div className="flex justify-end gap-3 mt-6">
-            <Dialog.Close asChild>
-              <button
-                className="ac-btn ac-btn-secondary"
-                disabled={isOperating}
-              >
-                Cancel
-              </button>
-            </Dialog.Close>
-            <button
-              onClick={handleLoad}
-              disabled={isOperating}
-              data-testid="confirm-load-set"
-              className={cn(
-                'ac-btn ac-btn-primary',
-                isOperating && 'opacity-50'
-              )}
-            >
-              <OperationButtonContent isOperating={isOperating} label="Load Set" operatingLabel="Loading..." />
-            </button>
+            {success ? (
+              <Dialog.Close asChild>
+                <button className="ac-btn ac-btn-primary">
+                  Done
+                </button>
+              </Dialog.Close>
+            ) : (
+              <>
+                <Dialog.Close asChild>
+                  <button
+                    className="ac-btn ac-btn-secondary"
+                    disabled={isOperating}
+                  >
+                    Cancel
+                  </button>
+                </Dialog.Close>
+                <button
+                  onClick={handleLoad}
+                  disabled={isOperating}
+                  data-testid="confirm-load-set"
+                  className={cn(
+                    'ac-btn ac-btn-primary',
+                    isOperating && 'opacity-50'
+                  )}
+                >
+                  <OperationButtonContent isOperating={isOperating} label="Load Set" operatingLabel="Loading..." />
+                </button>
+              </>
+            )}
           </div>
         </Dialog.Content>
       </Dialog.Portal>
