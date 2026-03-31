@@ -77,7 +77,7 @@ AUDIOTOOLS_CLI_SRC     := $(shell find $(MODULES_DIR)/audiotools-cli/src -name '
 SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean test-e2e test-e2e-hardware test-e2e-library test-e2e-device-library test-e2e-ui ensure-playwright
+.PHONY: build clean test-e2e test-e2e-hardware test-e2e-library test-e2e-device test-e2e-device-library test-e2e-ui ensure-playwright
 
 build: $(ALL_STAMPS)
 
@@ -127,9 +127,12 @@ test-e2e-hardware: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwright
 test-e2e-library: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-library-e2e.sh $(ARGS)"
 
-# Run device-library e2e tests (export/import between device and OPFS library)
-test-e2e-device-library: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwright
+# Run device e2e tests (requires hardware: import/export, editor controls, sets)
+test-e2e-device: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-device-library-e2e.sh $(ARGS)"
+
+# Alias for backward compatibility
+test-e2e-device-library: test-e2e-device
 
 # Run basic UI navigation tests
 test-e2e-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
