@@ -34,6 +34,7 @@ ROLAND_SXX0_EDITOR := $(MODULES_DIR)/roland-sxx0-editor/.build-stamp
 AUDIOTOOLS_CLI     := $(MODULES_DIR)/audiotools-cli/.build-stamp
 SYNTH_CORE         := $(MODULES_DIR)/synth-core/.build-stamp
 SAMPLE_EDITOR_MOD  := $(MODULES_DIR)/sample-editor/.build-stamp
+AKAI_S3K_EDITOR    := $(MODULES_DIR)/akai-s3k-editor/.build-stamp
 
 ALL_STAMPS := \
 	$(SHARED_MIDI) $(SAMPLER_LIB) $(AUDIOTOOLS_CONFIG) $(CANONICAL_MIDI) \
@@ -42,7 +43,7 @@ ALL_STAMPS := \
 	$(SAMPLER_DEVICES) $(SAMPLER_MIDI) $(SAMPLER_LIBRARY) \
 	$(SAMPLER_TRANSLATE) $(SAMPLER_BACKUP) $(SAMPLER_EXPORT) $(LOOP_EDITOR) \
 	$(D110_EDITOR) $(JV1080_EDITOR) $(ROLAND_SXX0_EDITOR) $(AUDIOTOOLS_CLI) \
-	$(SYNTH_CORE) $(SAMPLE_EDITOR_MOD)
+	$(SYNTH_CORE) $(SAMPLE_EDITOR_MOD) $(AKAI_S3K_EDITOR)
 
 INSTALL_STAMP := node_modules/.install-stamp
 
@@ -76,6 +77,7 @@ ROLAND_SXX0_EDITOR_SRC := $(shell find $(MODULES_DIR)/roland-sxx0-editor/src -na
 AUDIOTOOLS_CLI_SRC     := $(shell find $(MODULES_DIR)/audiotools-cli/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
+AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
 .PHONY: build clean test-e2e test-e2e-hardware test-e2e-library test-e2e-device-library test-e2e-ui ensure-playwright
 
@@ -254,6 +256,10 @@ $(D110_EDITOR): $(EDITOR_CORE) $(SHARED_MIDI) $(D110_EDITOR_SRC)
 
 $(JV1080_EDITOR): $(EDITOR_CORE) $(SAMPLER_DEVICES) $(SHARED_MIDI) $(JV1080_EDITOR_SRC)
 	cd $(MODULES_DIR)/jv1080-editor && pnpm build
+	@touch $@
+
+$(AKAI_S3K_EDITOR): $(EDITOR_CORE) $(SAMPLER_DEVICES) $(SHARED_MIDI) $(AKAI_S3K_EDITOR_SRC)
+	cd $(MODULES_DIR)/akai-s3k-editor && pnpm build
 	@touch $@
 
 # ---------------------------------------------------------------------------

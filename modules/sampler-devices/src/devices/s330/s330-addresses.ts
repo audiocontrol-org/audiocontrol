@@ -83,6 +83,41 @@ export const TONE_STRIDE = 2;
 /** Wave data base address */
 export const ADDR_WAVE_DATA = [0x01, 0x00, 0x00, 0x00] as const;
 
+/**
+ * S-330 wave segment stride in 7-bit address units.
+ * Each segment is 24576 address units apart in the linear address space.
+ */
+const S330_WAVE_SEGMENT_STRIDE = 24576;
+
+/**
+ * Build a wave data address for the S-330.
+ *
+ * The S-330 uses a linear stride: each segment is 24576 address units apart.
+ * Banks A (0) and B (1) are supported.
+ *
+ * @param waveBank - Wave bank index (0 = A, 1 = B)
+ * @param segmentIndex - Segment index within the bank
+ * @returns 4-byte address array
+ */
+export function buildWaveDataAddress(waveBank: number, segmentIndex: number): number[] {
+    if (waveBank < 0 || waveBank > 1) {
+        throw new Error(`S-330 wave bank ${waveBank} out of range (0-1)`);
+    }
+
+    // Linear address: base + (bank * segments_per_bank + segment) * stride
+    // S-330 has 18 segments per bank
+    const segmentsPerBank = 18;
+    const linearOffset = (waveBank * segmentsPerBank + segmentIndex) * S330_WAVE_SEGMENT_STRIDE;
+
+    // Encode as 4-byte 7-bit address (same encoding as S-550)
+    return [
+        0x01,
+        (linearOffset >> 14) & 0x7f,
+        (linearOffset >> 7) & 0x7f,
+        linearOffset & 0x7f,
+    ];
+}
+
 // =============================================================================
 // System Parameter Offsets
 // =============================================================================

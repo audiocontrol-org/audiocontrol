@@ -36,8 +36,96 @@ importers:
         specifier: ^4.7.0
         version: 4.20.5
       typescript:
-        specifier: ^5.3.3
+        specifier: ^5.9.2
         version: 5.9.2
+
+  modules/akai-s3k-editor:
+    dependencies:
+      '@audiocontrol/editor-core':
+        specifier: workspace:*
+        version: link:../editor-core
+      '@audiocontrol/sampler-devices':
+        specifier: workspace:*
+        version: link:../sampler-devices
+      '@audiocontrol/shared-midi':
+        specifier: workspace:*
+        version: link:../shared-midi
+      '@radix-ui/react-slider':
+        specifier: ^1.1.2
+        version: 1.3.6(@types/react-dom@18.3.7)(@types/react@18.3.27)(react-dom@18.3.1)(react@18.3.1)
+      '@radix-ui/react-tooltip':
+        specifier: ^1.0.7
+        version: 1.2.8(@types/react-dom@18.3.7)(@types/react@18.3.27)(react-dom@18.3.1)(react@18.3.1)
+      '@tanstack/react-query':
+        specifier: ^5.17.0
+        version: 5.90.20(react@18.3.1)
+      clsx:
+        specifier: ^2.1.0
+        version: 2.1.1
+      react:
+        specifier: ^18.2.0
+        version: 18.3.1
+      react-dom:
+        specifier: ^18.2.0
+        version: 18.3.1(react@18.3.1)
+      react-router-dom:
+        specifier: ^6.21.0
+        version: 6.30.3(react-dom@18.3.1)(react@18.3.1)
+      tailwind-merge:
+        specifier: ^2.2.0
+        version: 2.6.1
+      zustand:
+        specifier: ^4.4.7
+        version: 4.5.7(@types/react@18.3.27)(react@18.3.1)
+    devDependencies:
+      '@testing-library/jest-dom':
+        specifier: ^6.9.1
+        version: 6.9.1
+      '@testing-library/react':
+        specifier: ^16.3.2
+        version: 16.3.2(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7)(@types/react@18.3.27)(react-dom@18.3.1)(react@18.3.1)
+      '@types/react':
+        specifier: ^18.2.43
+        version: 18.3.27
+      '@types/react-dom':
+        specifier: ^18.2.17
+        version: 18.3.7(@types/react@18.3.27)
+      '@types/webmidi':
+        specifier: ^2.0.10
+        version: 2.1.0
+      '@typescript-eslint/eslint-plugin':
+        specifier: ^6.14.0
+        version: 6.21.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.1)(typescript@5.9.2)
+      '@typescript-eslint/parser':
+        specifier: ^6.14.0
+        version: 6.21.0(eslint@8.57.1)(typescript@5.9.2)
+      '@vitejs/plugin-react':
+        specifier: ^4.2.1
+        version: 4.7.0(vite@5.4.20)
+      autoprefixer:
+        specifier: ^10.4.16
+        version: 10.4.24(postcss@8.5.6)
+      jsdom:
+        specifier: ^29.0.1
+        version: 29.0.1
+      postcss:
+        specifier: ^8.4.32
+        version: 8.5.6
+      tailwindcss:
+        specifier: ^3.4.0
+        version: 3.4.19(tsx@4.20.5)(yaml@2.8.3)
+      typescript:
+        specifier: ^5.3.0
+        version: 5.9.2
+      vite:
+        specifier: ^5.0.10
+        version: 5.4.20(@types/node@22.19.8)
+      vite-plugin-mkcert:
+        specifier: ^1.17.9
+        version: 1.17.9(vite@5.4.20)
+      vitest:
+        specifier: ^1.1.0
+        version: 1.6.1(@vitest/browser@1.6.1)(jsdom@29.0.1)
 
   modules/ardour-midi-maps:
     devDependencies:
@@ -236,7 +324,7 @@ importers:
         version: 8.5.6
       tailwindcss:
         specifier: ^3.4.0
-        version: 3.4.19(tsx@4.20.5)(yaml@2.8.2)
+        version: 3.4.19(tsx@4.20.5)(yaml@2.8.3)
       typescript:
         specifier: ^5.3.0
         version: 5.9.2
@@ -294,7 +382,7 @@ importers:
         version: 6.30.3(react-dom@18.3.1)(react@18.3.1)
       tailwindcss:
         specifier: ^3.4.0
-        version: 3.4.19(tsx@4.20.5)(yaml@2.8.2)
+        version: 3.4.19(tsx@4.20.5)(yaml@2.8.3)
       tsc-alias:
         specifier: ^1.8.16
         version: 1.8.16
@@ -367,7 +455,7 @@ importers:
         version: 8.5.6
       tailwindcss:
         specifier: ^3.4.0
-        version: 3.4.19(tsx@4.20.5)(yaml@2.8.2)
+        version: 3.4.19(tsx@4.20.5)(yaml@2.8.3)
       typescript:
         specifier: ^5.3.0
         version: 5.9.2
@@ -526,7 +614,7 @@ importers:
         version: 7.1.4(mocha@11.7.5)
       tsup:
         specifier: ^8.3.6
-        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.2)
+        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.3)
       tsx:
         specifier: ^4.19.2
         version: 4.20.5
@@ -1110,7 +1198,7 @@ importers:
         version: 7.1.4(mocha@11.7.5)
       tsup:
         specifier: ^8.3.6
-        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.2)
+        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.3)
       tsx:
         specifier: ^4.19.2
         version: 4.20.5
@@ -1150,7 +1238,7 @@ importers:
         version: 3.2.4(vitest@3.2.4)
       tsup:
         specifier: ^8.3.6
-        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.2)
+        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.3)
       tsx:
         specifier: ^4.19.2
         version: 4.20.5
@@ -1294,7 +1382,7 @@ importers:
         version: 1.6.1(vitest@1.6.1)
       tsup:
         specifier: ^8.3.6
-        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.2)
+        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.3)
       tsx:
         specifier: ^4.19.2
         version: 4.20.5

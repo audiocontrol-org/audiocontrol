@@ -424,6 +424,12 @@ export interface SSeriesClientOptions {
      * Default: 150ms
      */
     writeFlushDelayMs?: number;
+    /**
+     * Custom wave address builder function.
+     * The S-330 and S-550 use different wave address calculations.
+     * If not provided, the S-330 default formula is used.
+     */
+    buildWaveAddress?: (waveBank: number, segmentIndex: number) => number[];
 }
 
 // =============================================================================
