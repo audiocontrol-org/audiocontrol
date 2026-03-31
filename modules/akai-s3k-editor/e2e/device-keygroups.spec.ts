@@ -99,6 +99,46 @@ function numberInputByLabel(
     .locator('input[type="number"]');
 }
 
+/**
+ * Locate a NumberInput by label within a specific named section.
+ *
+ * Scopes the search to a Section component with the given title, avoiding
+ * ambiguity when multiple sections share the same parameter label names
+ * (e.g. "Attack" in Amplitude Envelope vs Filter Envelope).
+ */
+function numberInputByLabelInSection(
+  page: import('@playwright/test').Page,
+  sectionTitle: string,
+  label: string,
+): import('@playwright/test').Locator {
+  const section = page.locator('.border.border-gray-700', {
+    has: page.locator('.bg-gray-800', { hasText: sectionTitle }),
+  });
+  return section
+    .locator('.flex.items-center.justify-between', { hasText: label })
+    .filter({ has: page.locator('input[type="number"]') })
+    .locator('input[type="number"]');
+}
+
+/**
+ * Like numberInputByLabelInSection but uses exact text matching on the label
+ * span to avoid ambiguity (e.g., "Attack" vs "Vel -> Attack").
+ */
+function numberInputByExactLabelInSection(
+  page: import('@playwright/test').Page,
+  sectionTitle: string,
+  label: string,
+): import('@playwright/test').Locator {
+  const section = page.locator('.border.border-gray-700', {
+    has: page.locator('.bg-gray-800', { hasText: sectionTitle }),
+  });
+  return section
+    .locator('.flex.items-center.justify-between')
+    .filter({ has: page.locator(`span.text-sm.text-gray-400 >> text="${label}"`) })
+    .filter({ has: page.locator('input[type="number"]') })
+    .locator('input[type="number"]');
+}
+
 test.describe('S3000XL Keygroups Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(url());
@@ -198,6 +238,73 @@ test.describe('S3000XL Keygroups Page', () => {
 
       // Verify the value was read back from the device
       const reloadedInput = numberInputByLabel(page, 'Frequency');
+      await expect(reloadedInput).toHaveValue(testValue);
+
+      // Restore the original value
+      await reloadedInput.fill(originalValue);
+      await page.waitForTimeout(1_500);
+    });
+  });
+
+  test.describe('Keygroup Envelope Parameters', () => {
+    test.beforeEach(async ({ page }) => {
+      await selectFirstProgram(page);
+      await navigateToKeygroups(page);
+      await waitForKeygroupListLoaded(page);
+      await selectFirstKeygroupAndWaitForEditor(page);
+    });
+
+    test('amplitude envelope inputs are displayed', async ({ page }) => {
+      // The Amplitude Envelope (Env 1) section renders ADSR inputs
+      const ampEnvSection = page.locator('.border.border-gray-700', {
+        has: page.locator('.bg-gray-800', { hasText: 'Amplitude Envelope' }),
+      });
+      await expect(ampEnvSection).toBeVisible();
+
+      const attackInput = numberInputByExactLabelInSection(page, 'Amplitude Envelope', 'Attack');
+      const decayInput = numberInputByExactLabelInSection(page, 'Amplitude Envelope', 'Decay');
+      const sustainInput = numberInputByExactLabelInSection(page, 'Amplitude Envelope', 'Sustain');
+      const releaseInput = numberInputByExactLabelInSection(page, 'Amplitude Envelope', 'Release');
+
+      await expect(attackInput).toBeVisible();
+      await expect(decayInput).toBeVisible();
+      await expect(sustainInput).toBeVisible();
+      await expect(releaseInput).toBeVisible();
+
+      // Verify each input has a finite numeric value
+      for (const input of [attackInput, decayInput, sustainInput, releaseInput]) {
+        const value = Number(await input.inputValue());
+        expect(Number.isFinite(value)).toBe(true);
+      }
+    });
+
+    test('amplitude envelope attack round-trip persists to device', async ({ page }) => {
+      test.setTimeout(60_000);
+
+      // Use section-scoped locator to avoid matching Filter Envelope's "Attack" label
+      const attackInput = numberInputByExactLabelInSection(page, 'Amplitude Envelope', 'Attack');
+      await expect(attackInput).toBeVisible();
+
+      // Read the current value so we can restore it
+      const originalValue = await attackInput.inputValue();
+
+      // Pick a test value that differs from whatever the device has
+      const testValue = originalValue === '30' ? '60' : '30';
+
+      // Set the new value
+      await attackInput.fill(testValue);
+      await expect(attackInput).toHaveValue(testValue);
+
+      // Wait for the SysEx write to propagate to the device
+      await page.waitForTimeout(1_500);
+
+      // Click Refresh to invalidate caches and re-fetch from device
+      await page.locator('button', { hasText: 'Refresh' }).click();
+      await waitForKeygroupListLoaded(page);
+      await selectFirstKeygroupAndWaitForEditor(page);
+
+      // Verify the value was read back from the device
+      const reloadedInput = numberInputByExactLabelInSection(page, 'Amplitude Envelope', 'Attack');
       await expect(reloadedInput).toHaveValue(testValue);
 
       // Restore the original value

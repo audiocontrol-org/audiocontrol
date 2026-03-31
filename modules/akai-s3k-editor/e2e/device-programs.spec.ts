@@ -323,4 +323,48 @@ test.describe('S3000XL Programs Page', () => {
       await page.waitForTimeout(1_500);
     });
   });
+
+  test.describe('Program Section Visibility', () => {
+    test.beforeEach(async ({ page }) => {
+      await navigateToPrograms(page);
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+    });
+
+    test('Output section displays parameters', async ({ page }) => {
+      // The Output section should render with its key parameter labels
+      const outputSection = page.locator('.border.border-gray-700', {
+        has: page.locator('.bg-gray-800', { hasText: 'Output' }),
+      }).filter({ hasText: 'Output Routing' });
+
+      await expect(outputSection).toBeVisible();
+      await expect(outputSection.locator('text=Output Routing')).toBeVisible();
+      await expect(outputSection.locator('text=Stereo Level')).toBeVisible();
+      await expect(outputSection.locator('text=Program Level')).toBeVisible();
+    });
+
+    test('LFO 1 section displays parameters', async ({ page }) => {
+      // The LFO 1 section should render with Rate, Depth, and Delay
+      const lfo1Section = page.locator('.border.border-gray-700').filter({
+        has: page.locator('.bg-gray-800', { hasText: /^LFO 1$/ }),
+      });
+
+      await expect(lfo1Section).toBeVisible();
+      await expect(lfo1Section.locator('text=Rate')).toBeVisible();
+      await expect(lfo1Section.locator('text=Depth')).toBeVisible();
+      await expect(lfo1Section.locator('text=Delay')).toBeVisible();
+    });
+
+    test('Soft Pedal section displays parameters', async ({ page }) => {
+      // The Soft Pedal section should render with its three parameters
+      const softPedalSection = page.locator('.border.border-gray-700', {
+        has: page.locator('.bg-gray-800', { hasText: 'Soft Pedal' }),
+      });
+
+      await expect(softPedalSection).toBeVisible();
+      await expect(softPedalSection.locator('text=Loudness Reduction')).toBeVisible();
+      await expect(softPedalSection.locator('text=Attack Stretch')).toBeVisible();
+      await expect(softPedalSection.locator('text=Filter Reduction')).toBeVisible();
+    });
+  });
 });
