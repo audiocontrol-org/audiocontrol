@@ -173,14 +173,29 @@ async function navigateToTonesPage(
 async function loadWaveDataAndWaitForLoopEditor(
   page: import('@playwright/test').Page,
 ): Promise<void> {
+  // Check if loop editor is already visible (wave data cached from prior test)
+  const loopInput = page.getByTestId('loop-point-input');
+  if (await loopInput.isVisible().catch(() => false)) {
+    console.log('Loop editor already visible (wave data cached)');
+    return;
+  }
+
+  // Click "Load Wave Data" button to fetch from device
   const loadButton = page.getByRole('button', { name: 'Load Wave Data' });
   await expect(loadButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
   await loadButton.click();
 
-  // Wait for loop editor to render (loop-point-input proves it loaded)
-  await expect(page.getByTestId('loop-point-input')).toBeVisible({
-    timeout: WAVE_LOAD_TIMEOUT_MS,
-  });
+  // Wait for loop editor to render — use polling for heartbeat safety
+  // (wave data fetch over MIDI is slow and generates console output)
+  const POLL_MS = 2_000;
+  const MAX_POLLS = WAVE_LOAD_TIMEOUT_MS / POLL_MS;
+  for (let i = 0; i < MAX_POLLS; i++) {
+    await page.waitForTimeout(POLL_MS);
+    if (await loopInput.isVisible().catch(() => false)) return;
+    if (i % 5 === 0 && i > 0) console.log(`  Waiting for wave data... (${i * POLL_MS / 1000}s)`);
+  }
+  // Final check with proper assertion for error message
+  await expect(loopInput).toBeVisible({ timeout: 1000 });
 }
 
 // ===========================================================================
