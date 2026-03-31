@@ -295,10 +295,7 @@ test.describe('S3000XL Programs Page', () => {
       await page.waitForTimeout(1_500);
     });
 
-    // Skip: write encoding fixed (byte2nibblesLE handles signed), but the read
-    // path (parseProgramHeader) returns unsigned values for signed fields — e.g.,
-    // PANPOS -25 is stored as 231. Needs signed reinterpretation in the parser.
-    test.skip('pan position round-trip persists to device', async ({ page }) => {
+    test('pan position round-trip persists to device', async ({ page }) => {
       test.setTimeout(60_000);
 
       await navigateToPrograms(page);

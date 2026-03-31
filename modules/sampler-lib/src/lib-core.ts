@@ -290,6 +290,33 @@ export function bytes2numberLE(b: number[]) {
 }
 
 /**
+ * Converts a byte array to a signed number using little-endian byte order.
+ *
+ * Interprets the unsigned value from {@link bytes2numberLE} as a two's complement
+ * signed integer based on the byte length of the input array.
+ *
+ * @param b - Byte array to convert (1-4 bytes)
+ * @returns The signed numeric value
+ *
+ * @example
+ * ```typescript
+ * bytes2signedNumberLE([206]);        // -50  (1-byte: 206 > 127, so 206 - 256 = -50)
+ * bytes2signedNumberLE([0]);          // 0
+ * bytes2signedNumberLE([50]);         // 50
+ * bytes2signedNumberLE([0xCE, 0xFF]); // -50  (2-byte: 0xFFCE = 65486, 65486 - 65536 = -50)
+ * ```
+ */
+export function bytes2signedNumberLE(b: number[]) {
+    const unsigned = bytes2numberLE(b)
+    const bitCount = b.length * 8
+    const signBit = 1 << (bitCount - 1)
+    if (unsigned >= signBit) {
+        return unsigned - (1 << bitCount)
+    }
+    return unsigned
+}
+
+/**
  * Converts a byte array to a number using big-endian byte order.
  *
  * @param b - Byte array to convert
