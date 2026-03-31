@@ -102,6 +102,20 @@ async function navigateToLibraryAndRefresh(page: Page): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Envelope Readback
+// ---------------------------------------------------------------------------
+
+/**
+ * Shape of 8-point envelope data returned by device readback.
+ */
+export interface EnvelopeReadback {
+  rates: number[];
+  levels: number[];
+  sustainPoint: number;
+  endPoint: number;
+}
+
+// ---------------------------------------------------------------------------
 // Tone Readback
 // ---------------------------------------------------------------------------
 
@@ -129,9 +143,11 @@ export interface ToneReadback {
     resonance: number;
     keyFollow: number;
     enabled: boolean;
+    envelope: EnvelopeReadback;
   };
   tva: {
     level: number;
+    envelope: EnvelopeReadback;
   };
   lfo: {
     rate: number;
@@ -181,9 +197,21 @@ export async function readToneFromDevice(
         resonance: tone.tvf.resonance,
         keyFollow: tone.tvf.keyFollow,
         enabled: tone.tvf.enabled,
+        envelope: {
+          rates: [...tone.tvf.envelope.rates],
+          levels: [...tone.tvf.envelope.levels],
+          sustainPoint: tone.tvf.envelope.sustainPoint,
+          endPoint: tone.tvf.envelope.endPoint,
+        },
       },
       tva: {
         level: tone.tva.level,
+        envelope: {
+          rates: [...tone.tva.envelope.rates],
+          levels: [...tone.tva.envelope.levels],
+          sustainPoint: tone.tva.envelope.sustainPoint,
+          endPoint: tone.tva.envelope.endPoint,
+        },
       },
       lfo: {
         rate: tone.lfo.rate,
@@ -213,6 +241,7 @@ export interface PatchReadback {
   aftertouchAssign: string;
   velocityThreshold: number;
   velocityMixRatio: number;
+  toneLayer1: number[];
 }
 
 /**
@@ -245,6 +274,7 @@ export async function readPatchFromDevice(
       aftertouchAssign: patch.common.aftertouchAssign,
       velocityThreshold: patch.common.velocityThreshold,
       velocityMixRatio: patch.common.velocityMixRatio,
+      toneLayer1: [...patch.common.toneLayer1],
     };
     /* eslint-enable @typescript-eslint/no-explicit-any */
   }, patchIndex);
