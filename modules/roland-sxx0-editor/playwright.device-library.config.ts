@@ -36,7 +36,7 @@ if (!midiServerPort) {
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: 'device-library-*.spec.ts',
+  testMatch: 'device-*.spec.ts',
   fullyParallel: false, // Sequential for hardware tests
   forbidOnly: !!process.env.CI,
   retries: 0, // No retries for hardware tests
