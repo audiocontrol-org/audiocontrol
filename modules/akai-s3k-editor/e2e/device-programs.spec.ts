@@ -99,6 +99,51 @@ function numberInputByLabelInSection(
     .locator('input[type="number"]');
 }
 
+/**
+ * Locate a <select> element by its ParameterRow label text.
+ *
+ * The ProgramEditor renders SelectInput as a <select> inside a ParameterRow.
+ * This helper finds the row containing the label, then returns the select.
+ */
+function selectByLabel(
+  page: import('@playwright/test').Page,
+  label: string,
+): import('@playwright/test').Locator {
+  return page
+    .locator('.flex.items-center.justify-between', { hasText: label })
+    .locator('select');
+}
+
+/**
+ * Locate a Toggle button by its ParameterRow label text within a section.
+ *
+ * The Toggle component renders as a <button> (not a checkbox). Its checked
+ * state is indicated by the `bg-blue-600` CSS class (checked) vs `bg-gray-600`
+ * (unchecked).
+ */
+function toggleByLabelInSection(
+  page: import('@playwright/test').Page,
+  sectionTitle: string,
+  label: string,
+): import('@playwright/test').Locator {
+  const section = page.locator('.border.border-gray-700', {
+    has: page.locator('.bg-gray-800', { hasText: sectionTitle }),
+  });
+  return section
+    .locator('.flex.items-center.justify-between', { hasText: label })
+    .locator('button');
+}
+
+/**
+ * Read the checked state of a Toggle button.
+ *
+ * The Toggle uses `bg-blue-600` when on and `bg-gray-600` when off.
+ */
+async function isToggleChecked(toggle: import('@playwright/test').Locator): Promise<boolean> {
+  const classes = await toggle.getAttribute('class');
+  return classes?.includes('bg-blue-600') ?? false;
+}
+
 test.describe('S3000XL Programs Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto(url());
@@ -437,6 +482,96 @@ test.describe('S3000XL Programs Page', () => {
       await expect(reloadedInput).toHaveValue(testValue);
 
       await reloadedInput.fill(originalValue);
+      await page.waitForTimeout(1_500);
+    });
+  });
+
+  test.describe('Select and Toggle Round-Trips', () => {
+    /**
+     * Round-trip test for Priority (PRIORT) select parameter.
+     *
+     * The Priority select renders in the Basic section with options:
+     * Low (0), Normal (1), High (2), Hold (3).
+     */
+    test('priority select round-trip persists to device', async ({ page }) => {
+      test.setTimeout(60_000);
+
+      await navigateToPrograms(page);
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      const prioritySelect = selectByLabel(page, 'Priority');
+      await expect(prioritySelect).toBeVisible();
+
+      // Read the current value so we can restore it
+      const originalValue = await prioritySelect.inputValue();
+
+      // Pick a test value that differs from whatever the device has
+      // Toggle between Low (0) and High (2)
+      const testValue = originalValue === '0' ? '2' : '0';
+
+      // Set the new value
+      await prioritySelect.selectOption(testValue);
+      await expect(prioritySelect).toHaveValue(testValue);
+
+      // Wait for the SysEx write to propagate to the device
+      await page.waitForTimeout(1_500);
+
+      // Click Refresh to invalidate all caches and re-fetch from device
+      await page.locator('button', { hasText: 'Refresh' }).click();
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      // Verify the value was read back from the device
+      const reloadedSelect = selectByLabel(page, 'Priority');
+      await expect(reloadedSelect).toHaveValue(testValue);
+
+      // Restore the original value
+      await reloadedSelect.selectOption(originalValue);
+      await page.waitForTimeout(1_500);
+    });
+
+    /**
+     * Round-trip test for Legato (LEGATO) toggle parameter.
+     *
+     * The Legato toggle renders in the Advanced section as a <button>.
+     * Its checked state is indicated by the `bg-blue-600` class.
+     */
+    test('legato toggle round-trip persists to device', async ({ page }) => {
+      test.setTimeout(60_000);
+
+      await navigateToPrograms(page);
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      const legatoToggle = toggleByLabelInSection(page, 'Advanced', 'Legato');
+      await expect(legatoToggle).toBeVisible();
+
+      // Read the current checked state
+      const originalChecked = await isToggleChecked(legatoToggle);
+
+      // Click to toggle the value
+      await legatoToggle.click();
+
+      // Verify the toggle changed state locally
+      const afterClickChecked = await isToggleChecked(legatoToggle);
+      expect(afterClickChecked).toBe(!originalChecked);
+
+      // Wait for the SysEx write to propagate to the device
+      await page.waitForTimeout(1_500);
+
+      // Click Refresh to invalidate all caches and re-fetch from device
+      await page.locator('button', { hasText: 'Refresh' }).click();
+      await waitForProgramNamesLoaded(page);
+      await selectFirstProgramAndWaitForEditor(page);
+
+      // Verify the value was read back from the device
+      const reloadedToggle = toggleByLabelInSection(page, 'Advanced', 'Legato');
+      const reloadedChecked = await isToggleChecked(reloadedToggle);
+      expect(reloadedChecked).toBe(!originalChecked);
+
+      // Restore the original value
+      await reloadedToggle.click();
       await page.waitForTimeout(1_500);
     });
   });

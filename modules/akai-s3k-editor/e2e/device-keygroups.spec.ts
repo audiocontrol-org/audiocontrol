@@ -311,5 +311,43 @@ test.describe('S3000XL Keygroups Page', () => {
       await reloadedInput.fill(originalValue);
       await page.waitForTimeout(1_500);
     });
+
+    /**
+     * Round-trip test for Amplitude Envelope Sustain (SUSTN1).
+     *
+     * Uses exact label matching to avoid ambiguity with other envelope parameters.
+     */
+    test('amplitude envelope sustain round-trip persists to device', async ({ page }) => {
+      test.setTimeout(60_000);
+
+      const sustainInput = numberInputByExactLabelInSection(page, 'Amplitude Envelope', 'Sustain');
+      await expect(sustainInput).toBeVisible();
+
+      // Read the current value so we can restore it
+      const originalValue = await sustainInput.inputValue();
+
+      // Pick a test value that differs from whatever the device has
+      const testValue = originalValue === '40' ? '70' : '40';
+
+      // Set the new value
+      await sustainInput.fill(testValue);
+      await expect(sustainInput).toHaveValue(testValue);
+
+      // Wait for the SysEx write to propagate to the device
+      await page.waitForTimeout(1_500);
+
+      // Click Refresh to invalidate caches and re-fetch from device
+      await page.locator('button', { hasText: 'Refresh' }).click();
+      await waitForKeygroupListLoaded(page);
+      await selectFirstKeygroupAndWaitForEditor(page);
+
+      // Verify the value was read back from the device
+      const reloadedInput = numberInputByExactLabelInSection(page, 'Amplitude Envelope', 'Sustain');
+      await expect(reloadedInput).toHaveValue(testValue);
+
+      // Restore the original value
+      await reloadedInput.fill(originalValue);
+      await page.waitForTimeout(1_500);
+    });
   });
 });
