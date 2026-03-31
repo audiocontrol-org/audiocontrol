@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3000xl-browser';
+import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 
 interface VelocityZoneEditorProps {
   header: KeygroupHeader;

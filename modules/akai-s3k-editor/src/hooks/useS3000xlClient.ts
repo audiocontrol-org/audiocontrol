@@ -3,7 +3,7 @@ import { useMidiStore } from '@/stores/midiStore';
 import {
   createS3000xlClient,
   type S3000xlClientInterface,
-} from '@audiocontrol/sampler-devices/s3000xl-browser';
+} from '@audiocontrol/sampler-devices/s3k';
 
 interface UseS3000xlClientResult {
   client: S3000xlClientInterface | null;
@@ -32,7 +32,15 @@ export function useS3000xlClient(): UseS3000xlClientResult {
     prevDeviceIdRef.current = deviceId;
 
     if (adapter) {
-      clientRef.current = createS3000xlClient(adapter, { channel: 0, deviceId });
+      // writeFlushDelayMs: 0 — The S3000XL protocol sends the entire header on
+      // each write, so buffered write coalescing provides no benefit. Immediate
+      // writes avoid a race where navigating away before the flush timer fires
+      // causes the write to be silently dropped.
+      clientRef.current = createS3000xlClient(adapter, {
+        channel: 0,
+        deviceId,
+        writeFlushDelayMs: 0,
+      });
     } else {
       clientRef.current = null;
     }

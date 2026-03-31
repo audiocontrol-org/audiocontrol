@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ProgramHeader } from '@audiocontrol/sampler-devices/s3000xl-browser';
+import type { ProgramHeader } from '@audiocontrol/sampler-devices/s3k';
 
 export interface ProgramStoreState {
   /** Sparse array of loaded program headers, indexed by program number (0-127) */

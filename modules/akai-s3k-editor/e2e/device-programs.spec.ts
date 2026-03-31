@@ -103,7 +103,7 @@ test.describe('S3000XL Programs Page', () => {
       await loadAllButton.click();
 
       // Should show loading progress
-      await expect(page.locator('text=Loading')).toBeVisible({ timeout: 5_000 });
+      await expect(page.locator('[data-testid="loading-status"]')).toBeVisible({ timeout: 5_000 });
 
       // Wait for loading to finish (button re-enabled)
       await expect(loadAllButton).toBeEnabled({ timeout: 30_000 });
@@ -138,7 +138,7 @@ test.describe('S3000XL Programs Page', () => {
       await expect(nameInput).toHaveValue(testName);
 
       // The editor title should update to show the new name
-      await expect(page.locator('text=E2ETEST')).toBeVisible();
+      await expect(page.locator(`text=Program 1: ${testName}`)).toBeVisible();
 
       // Restore original name to avoid polluting device state for other tests
       await nameInput.fill(originalName);

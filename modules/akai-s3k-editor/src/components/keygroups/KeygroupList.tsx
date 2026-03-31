@@ -1,4 +1,4 @@
-import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3000xl-browser';
+import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 
 interface KeygroupListProps {
   keygroups: (KeygroupHeader | undefined)[];

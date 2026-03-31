@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import type { ProgramHeader } from '@audiocontrol/sampler-devices/s3000xl-browser';
+import type { ProgramHeader } from '@audiocontrol/sampler-devices/s3k';
 
 interface ProgramEditorProps {
   header: ProgramHeader;

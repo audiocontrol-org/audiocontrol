@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3000xl-browser';
+import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 
 export interface KeygroupStoreState {
   /** Sparse array of loaded keygroup headers, indexed by keygroup number */

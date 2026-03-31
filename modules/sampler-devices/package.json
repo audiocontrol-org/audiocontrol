@@ -14,10 +14,10 @@
       "import": "./dist/s3k.js",
       "require": "./dist/s3k.cjs"
     },
-    "./s3000xl-browser": {
-      "types": "./dist/s3000xl-browser.d.ts",
-      "import": "./dist/s3000xl-browser.js",
-      "require": "./dist/s3000xl-browser.cjs"
+    "./s3k-server": {
+      "types": "./dist/s3k-server.d.ts",
+      "import": "./dist/s3k-server.js",
+      "require": "./dist/s3k-server.cjs"
     },
     "./s5k": {
       "types": "./dist/s5k.d.ts",

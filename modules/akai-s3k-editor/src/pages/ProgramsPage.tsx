@@ -4,6 +4,7 @@ import { useS3000xlClient } from '@/hooks/useS3000xlClient';
 import { useProgramLoader } from '@/hooks/useProgramLoader';
 import { useProgramStore } from '@/stores/programStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { writeProgramField } from '@/lib/program-writers';
 
 export function ProgramsPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
@@ -47,10 +48,19 @@ export function ProgramsPage(): JSX.Element {
       if (!header) return;
 
       // Update local store optimistically
-      const updated = { ...header, [field]: value };
+      const updated = { ...header, [field]: value, raw: [...header.raw] };
       useProgramStore.getState().setProgram(selectedProgramIndex, updated);
 
-      // Write back to device
+      // Keep program names list in sync when name changes
+      if (field === 'PRNAME' && typeof value === 'string') {
+        const names = [...useProgramStore.getState().programNames];
+        names[selectedProgramIndex] = value;
+        useProgramStore.getState().setProgramNames(names);
+        client.invalidateProgramCache();
+      }
+
+      // Encode value into raw SysEx bytes, then write to device
+      writeProgramField(updated, field, value);
       await client.writeProgramHeader(updated);
     },
     [selectedProgramIndex, client, programs],
@@ -76,7 +86,7 @@ export function ProgramsPage(): JSX.Element {
           <h2 className="text-xl font-bold">Programs</h2>
           <div className="flex items-center gap-2">
             {isLoading && (
-              <span className="text-sm text-gray-400">
+              <span className="text-sm text-gray-400" data-testid="loading-status">
                 {loadingMessage}
                 {loadingProgress !== null && ` (${loadingProgress}%)`}
               </span>
@@ -111,7 +121,7 @@ export function ProgramsPage(): JSX.Element {
             programNames={programNames}
             selectedIndex={selectedProgramIndex}
             onSelect={selectProgram}
-            isLoading={isLoading}
+            isLoading={isLoading && !namesLoaded}
           />
         </div>
 
