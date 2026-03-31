@@ -215,6 +215,7 @@ test.describe('Tone Envelope Controls', () => {
     const originalRate = Number(await firstRateInput.inputValue());
     // Toggle between two values; rate range is 1-127
     const newRate = originalRate === 50 ? 80 : 50;
+    console.log(`TVA rate: original=${originalRate}, setting to=${newRate}`);
 
     await firstRateInput.fill(String(newRate));
     // onChange fires on fill and calls onCommit immediately
@@ -224,6 +225,8 @@ test.describe('Tone Envelope Controls', () => {
     // Read tone back from device hardware
     const deviceTone = await readToneFromDevice(page, testToneIndex);
     expect(deviceTone).not.toBeNull();
+    console.log(`TVA envelope rates from device: ${JSON.stringify(deviceTone!.tva.envelope.rates)}`);
+    console.log(`TVA envelope levels from device: ${JSON.stringify(deviceTone!.tva.envelope.levels)}`);
     // Check envelope rate at point 0 with +-1 tolerance
     expect(
       Math.abs(deviceTone!.tva.envelope.rates[0] - newRate),
