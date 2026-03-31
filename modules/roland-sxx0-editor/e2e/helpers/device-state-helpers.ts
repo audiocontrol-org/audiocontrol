@@ -144,10 +144,13 @@ export async function queryDeviceMemoryState(
           waveBank: -1, segmentTop: -1, segmentLength: 0,
         };
       }
-      const empty = tone.wave.segmentLength === 0;
+      const name = (tone.name ?? '').trim();
+      // A tone is empty if it has no wave allocation AND no name.
+      // Sub-tones (monolithic drum kits) have segmentLength=0 but a name.
+      const empty = tone.wave.segmentLength === 0 && name === '';
       return {
         index,
-        name: (tone.name ?? '').trim(),
+        name,
         empty,
         waveBank: tone.wave.bank,
         segmentTop: tone.wave.segmentTop,
