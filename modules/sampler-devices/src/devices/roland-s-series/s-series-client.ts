@@ -374,10 +374,17 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
      */
     function sendAndReceive(message: number[], acceptCommands?: number[]): Promise<number[]> {
         return new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
+            let timeoutId = setTimeout(onTimeout, timeoutMs);
+
+            function onTimeout() {
                 midiAdapter.removeSysExListener(listener);
                 reject(new Error(`${config.deviceName} response timeout`));
-            }, timeoutMs);
+            }
+
+            function resetTimeout() {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(onTimeout, timeoutMs);
+            }
 
             function listener(response: number[]) {
                 if (
@@ -391,16 +398,18 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
                     // Always ignore stale RJC
                     if (cmd === S_SERIES_COMMANDS.RJC) {
                         console.warn(`[${config.deviceName}] Ignoring stale RJC in sendAndReceive`);
+                        resetTimeout(); // Reset timeout — stale response consumed time
                         return;
                     }
 
                     // If caller specified acceptable commands, ignore anything else
                     if (acceptCommands && !acceptCommands.includes(cmd)) {
                         console.warn(`[${config.deviceName}] Ignoring stale 0x${cmd.toString(16)} (expected ${acceptCommands.map(c => '0x' + c.toString(16)).join('/')})`);
+                        resetTimeout(); // Reset timeout — stale response consumed time
                         return;
                     }
 
-                    clearTimeout(timeout);
+                    clearTimeout(timeoutId);
                     midiAdapter.removeSysExListener(listener);
                     resolve(response);
                 }
