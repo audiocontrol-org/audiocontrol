@@ -537,9 +537,9 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
     }
 
     /**
-     * Send data using WSD/DAT/EOD handshake
+     * Send data using WSD/DAT/EOD handshake (single attempt)
      */
-    async function sendData(address: number[], data: number[]): Promise<void> {
+    async function sendDataAttempt(address: number[], data: number[]): Promise<void> {
         const nibbled = nibblize(data);
         const sizeInNibbles = nibbled.length;
 
@@ -617,6 +617,29 @@ export function createSSeriesClient<TPatch, TTone, TPatchCommon>(
         if (eodResponse[4] !== S_SERIES_COMMANDS.ACK) {
             throw new Error(`EOD rejected: got ${eodResponse[4].toString(16)}`);
         }
+    }
+
+    /** Retry options for WSD write operations. */
+    const wsdRetryOptions: RetryOptions = {
+        maxRetries: 3,
+        initialDelayMs: 100,
+        maxDelayMs: 2000,
+        multiplier: 2,
+        jitter: 0.3,
+        isRetryable: (error: unknown) => {
+            if (error instanceof Error) {
+                return error.message.includes('timeout') || error.message.includes('rejected');
+            }
+            return false;
+        },
+        onRetry: (attempt, error, delayMs) => {
+            console.log(`[${config.deviceName}] WSD retry ${attempt} after ${delayMs}ms: ${error}`);
+        },
+    };
+
+    /** Send data with retry logic. */
+    async function sendData(address: number[], data: number[]): Promise<void> {
+        return withRetry(() => sendDataAttempt(address, data), wsdRetryOptions);
     }
 
     /**
