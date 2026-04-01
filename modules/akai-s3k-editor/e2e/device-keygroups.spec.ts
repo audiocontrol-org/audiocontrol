@@ -366,9 +366,7 @@ test.describe('S3000XL Keygroups Page', () => {
      * value was persisted. This is the primary test for keygroup note range
      * round-trip (plan item 3.9.2).
      */
-    // Skip: keygroup write offset bug — KNUMBER byte in raw shifts field offsets.
-    // Needs careful investigation of generated parse/write offset alignment.
-    test.skip('low note round-trip persists to device', async ({ page }) => {
+    test('low note round-trip persists to device', async ({ page }) => {
       test.setTimeout(60_000);
 
       const noteRangeSection = page.locator('.border.border-gray-700', {

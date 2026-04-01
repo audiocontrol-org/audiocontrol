@@ -87,31 +87,12 @@ build: $(ALL_STAMPS)
 # E2E Test Infrastructure
 # ---------------------------------------------------------------------------
 
-# devenv binary location (auto-installed if missing)
-DEVENV := $(shell command -v devenv 2>/dev/null || echo $(HOME)/.nix-profile/bin/devenv)
-
-ifeq ($(DEVENV),)
-DEVENV := devenv
-endif
+# devenv binary location
+DEVENV := $(shell command -v devenv 2>/dev/null || echo devenv)
 
 .PHONY: ensure-devenv
 ensure-devenv:
-	@(command -v devenv >/dev/null 2>&1 || test -x "$(HOME)/.nix-profile/bin/devenv") || { \
-		echo ""; \
-		echo "ERROR: devenv is not installed."; \
-		echo ""; \
-		echo "Install it (one-time, requires sudo):"; \
-		echo ""; \
-		echo "  curl -sSfL https://artifacts.nixos.org/nix-installer | sh -s -- install"; \
-		echo "  nix profile install nixpkgs#bashInteractive"; \
-		echo "  nix profile install nixpkgs#devenv"; \
-		echo ""; \
-		echo "Then restart your shell and re-run make."; \
-		echo "See https://devenv.sh/getting-started/ for details."; \
-		echo ""; \
-		exit 1; \
-	}
-	@echo "✓ devenv ready: $$(command -v devenv)"
+	@command -v devenv >/dev/null 2>&1 || { echo "ERROR: devenv not installed. See https://devenv.sh/getting-started/"; exit 1; }
 
 # midi-server: auto-provisioned for hardware E2E tests
 MIDI_SERVER_DEPS_DIR := $(CURDIR)/.deps/midi-server

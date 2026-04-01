@@ -67,6 +67,7 @@ specs:
         f: 'pan'
         l: 'Pan'
         d: 'Balance between left and right outputs; Range: -50 to +50'
+        signed: true
 
       - n: 'PRLOUD'
         f: 'programLevel'
@@ -77,6 +78,7 @@ specs:
         f: 'velocityToAmp'
         l: 'Vel -> Amp'
         d: 'Note-on velocity dependence of loudness; Range: -50 to +50'
+        signed: true
 
       - n: 'K_LOUD'
         d: 'Not used'
@@ -187,6 +189,7 @@ specs:
         l: 'Tuning'
         d: 'Tuning offset of program; -50.00 to +50.00 (fraction is binary)'
         s: 2
+        signed: true
 
       - n: 'K_LRAT'
         d: 'Not used'
@@ -475,9 +478,11 @@ specs:
 
       - n: 'SHLTO'
         d: 'Tuning offset of hold loop; Range: -50 to +50'
+        signed: true
   - name: KeygroupHeader
     className: Keygroup
     headerOffset: 0
+    rawOffset: 1
     fields:
       - n: 'KGIDENT'
         d: 'Block identifier (internal use); Should equal 2'
@@ -497,6 +502,7 @@ specs:
       - n: 'KGTUNO'
         d: 'Keygroup tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
         s: 2
+        signed: true
 
       - n: 'FILFRQ'
         d: 'Basic filter frequency; Range: 0 to 99'
@@ -527,6 +533,7 @@ specs:
 
       - n: 'V_ATT1'
         d: 'Note-on velocity dependence of envelope 1 attack rate; Range: -50 to +50'
+        signed: true
 
       - n: 'V_REL1'
         d: 'Note-on velocity dependence of envelope 1 release rate'
@@ -551,6 +558,7 @@ specs:
 
       - n: 'V_ATT2'
         d: 'Dependence of envelope 2 attack on note-on velocity; Range: -50 to 50'
+        signed: true
 
       - n: 'V_REL2'
         d: 'Dependence of envelope 2 release on note-on velocity'
@@ -596,9 +604,11 @@ specs:
       - n: 'VTUNO1'
         d: 'Velocity zone 1 tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
         s: 2
+        signed: true
 
       - n: 'VLOUD1'
         d: 'Velocity zone 1 loudness offset; Range: -50 to +50'
+        signed: true
 
       - n: 'VFREQ1'
         d: 'Velocity zone 1 filter frequency offset'
@@ -636,9 +646,11 @@ specs:
       - n: 'VTUNO2'
         d: 'Velocity zone 2 tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
         s: 2
+        signed: true
 
       - n: 'VLOUD2'
         d: 'Velocity zone 2 loudness offset'
+        signed: true
 
       - n: 'VFREQ2'
         d: 'Velocity zone 2 filter frequency offset'
@@ -676,9 +688,11 @@ specs:
       - n: 'VTUNO3'
         d: 'Velocity zone 3 tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
         s: 2
+        signed: true
 
       - n: 'VLOUD3'
         d: 'Velocity zone 3 loudness offset; -50 to +50'
+        signed: true
 
       - n: 'VFREQ3'
         d: 'Velocity zone 3 filter frequency offset'
@@ -716,9 +730,11 @@ specs:
       - n: 'VTUNO4'
         d: 'Velocity zone 4 tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
         s: 2
+        signed: true
 
       - n: 'VLOUD4'
         d: 'Velocity zone 4 loudness offset'
+        signed: true
 
       - n: 'VFREQ4'
         d: 'Velocity zone 4 filter frequency offset'
@@ -772,18 +788,22 @@ specs:
       - n: 'VSS1'
         d: 'Start point dependence on note-on velocity for sample in velocity zone 1; Range: -9999 to +9999 data points'
         s: 2
+        signed: true
 
       - n: 'VSS2'
         d: 'Start point dependence on note-on velocity for sample in velocity zone 2'
         s: 2
+        signed: true
 
       - n: 'VSS3'
         d: 'Start point dependence on note-on velocity for sample in velocity zone 3'
         s: 2
+        signed: true
 
       - n: 'VSS4'
         d: 'Start point dependence on note-on velocity for sample in velocity zone 4'
         s: 2
+        signed: true
 
       - n: 'KV_LO'
         d: 'Not used'
@@ -866,6 +886,7 @@ specs:
 
       - n: 'K_FRQ2'
         d: 'Second filter key follow; Range: -24 to +24 semitones'
+        signed: true
 
       - n: 'ATTAK3'
         d: 'Attack rate of envelope 3'

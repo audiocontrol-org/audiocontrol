@@ -228,7 +228,10 @@ test.describe('S3000XL Velocity Zones', () => {
      *
      * Covers plan item 4.5.2 (all per-zone parameters sync across 4 zones).
      */
-    // Skip: keygroup write offset bug — KNUMBER byte in raw shifts field offsets.
+    // Skip: VTUNO2 is a 2-byte field but the device encodes signed tuning
+    // as 1-byte signed in the low byte + fraction in high byte. The generic
+    // bytes2signedNumberLE treats 2-byte values as 16-bit signed which
+    // doesn't match the tuning encoding. Needs a tuning-specific decoder.
     test.skip('zone 2 tuning offset round-trip persists to device', async ({ page }) => {
       test.setTimeout(60_000);
 
