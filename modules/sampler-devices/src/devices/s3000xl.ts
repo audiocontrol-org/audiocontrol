@@ -1,7 +1,7 @@
 //
-// GENERATED Tue Mar 31 2026 18:29:34 GMT-0700 (Pacific Daylight Time). DO NOT EDIT.
+// GENERATED Tue Mar 31 2026 18:57:07 GMT-0700 (Pacific Daylight Time). DO NOT EDIT.
 //
-import {byte2nibblesLE, bytes2numberLE, bytes2signedNumberLE, nibbles2byte, newClientOutput} from "@audiocontrol/sampler-lib"
+import {byte2nibblesLE, bytes2numberLE, bytes2signedNumberLE, bytes2tuningLE, nibbles2byte, newClientOutput} from "@audiocontrol/sampler-lib"
 import {nextByte, akaiByte2String, string2AkaiBytes} from "@/utils/akai-utils.js"
 
 export interface ProgramHeader {
@@ -636,7 +636,7 @@ export function parseProgramHeader(data: number[], offset: number, o: ProgramHea
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.PTUNO = bytes2signedNumberLE(b)
+    o.PTUNO = bytes2tuningLE(b)
 
     // Not used
     out.log('K_LRAT: offset: ' + reloff())
@@ -1309,6 +1309,9 @@ export function ProgramHeader_writePTUNO(header: ProgramHeader, v: number) {
     const d = byte2nibblesLE(v)
     header.raw[137] = d[0]
     header.raw[137 + 1] = d[1]
+    // Zero out the fraction byte (high byte of tuning field)
+    header.raw[137 + 2] = 0
+    header.raw[137 + 3] = 0
 }
 
 export function ProgramHeader_writeK_LRAT(header: ProgramHeader, v: number) {
@@ -2780,7 +2783,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.KGTUNO = bytes2signedNumberLE(b)
+    o.KGTUNO = bytes2tuningLE(b)
 
     // Basic filter frequency; Range: 0 to 99
     out.log('FILFRQ: offset: ' + reloff())
@@ -3028,7 +3031,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VTUNO1 = bytes2signedNumberLE(b)
+    o.VTUNO1 = bytes2tuningLE(b)
 
     // Velocity zone 1 loudness offset; Range: -50 to +50
     out.log('VLOUD1: offset: ' + reloff())
@@ -3116,7 +3119,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VTUNO2 = bytes2signedNumberLE(b)
+    o.VTUNO2 = bytes2tuningLE(b)
 
     // Velocity zone 2 loudness offset
     out.log('VLOUD2: offset: ' + reloff())
@@ -3204,7 +3207,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VTUNO3 = bytes2signedNumberLE(b)
+    o.VTUNO3 = bytes2tuningLE(b)
 
     // Velocity zone 3 loudness offset; -50 to +50
     out.log('VLOUD3: offset: ' + reloff())
@@ -3292,7 +3295,7 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
     for (let i=0; i<2; i++) {
         b.push(nextByte(data, v).value)
     }
-    o.VTUNO4 = bytes2signedNumberLE(b)
+    o.VTUNO4 = bytes2tuningLE(b)
 
     // Velocity zone 4 loudness offset
     out.log('VLOUD4: offset: ' + reloff())
@@ -3838,6 +3841,9 @@ export function KeygroupHeader_writeKGTUNO(header: KeygroupHeader, v: number) {
     const d = byte2nibblesLE(v)
     header.raw[18] = d[0]
     header.raw[18 + 1] = d[1]
+    // Zero out the fraction byte (high byte of tuning field)
+    header.raw[18 + 2] = 0
+    header.raw[18 + 3] = 0
 }
 
 export function KeygroupHeader_writeFILFRQ(header: KeygroupHeader, v: number) {
@@ -4088,6 +4094,9 @@ export function KeygroupHeader_writeVTUNO1(header: KeygroupHeader, v: number) {
     const d = byte2nibblesLE(v)
     header.raw[104] = d[0]
     header.raw[104 + 1] = d[1]
+    // Zero out the fraction byte (high byte of tuning field)
+    header.raw[104 + 2] = 0
+    header.raw[104 + 3] = 0
 }
 
 export function KeygroupHeader_writeVLOUD1(header: KeygroupHeader, v: number) {
@@ -4178,6 +4187,9 @@ export function KeygroupHeader_writeVTUNO2(header: KeygroupHeader, v: number) {
     const d = byte2nibblesLE(v)
     header.raw[152] = d[0]
     header.raw[152 + 1] = d[1]
+    // Zero out the fraction byte (high byte of tuning field)
+    header.raw[152 + 2] = 0
+    header.raw[152 + 3] = 0
 }
 
 export function KeygroupHeader_writeVLOUD2(header: KeygroupHeader, v: number) {
@@ -4268,6 +4280,9 @@ export function KeygroupHeader_writeVTUNO3(header: KeygroupHeader, v: number) {
     const d = byte2nibblesLE(v)
     header.raw[200] = d[0]
     header.raw[200 + 1] = d[1]
+    // Zero out the fraction byte (high byte of tuning field)
+    header.raw[200 + 2] = 0
+    header.raw[200 + 3] = 0
 }
 
 export function KeygroupHeader_writeVLOUD3(header: KeygroupHeader, v: number) {
@@ -4358,6 +4373,9 @@ export function KeygroupHeader_writeVTUNO4(header: KeygroupHeader, v: number) {
     const d = byte2nibblesLE(v)
     header.raw[248] = d[0]
     header.raw[248 + 1] = d[1]
+    // Zero out the fraction byte (high byte of tuning field)
+    header.raw[248 + 2] = 0
+    header.raw[248 + 3] = 0
 }
 
 export function KeygroupHeader_writeVLOUD4(header: KeygroupHeader, v: number) {

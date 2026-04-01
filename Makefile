@@ -87,12 +87,12 @@ build: $(ALL_STAMPS)
 # E2E Test Infrastructure
 # ---------------------------------------------------------------------------
 
-# devenv binary location
-DEVENV := $(shell command -v devenv 2>/dev/null || echo devenv)
+# devenv binary location (falls back to nix-profile path)
+DEVENV := $(shell command -v devenv 2>/dev/null || echo $(HOME)/.nix-profile/bin/devenv)
 
 .PHONY: ensure-devenv
 ensure-devenv:
-	@command -v devenv >/dev/null 2>&1 || { echo "ERROR: devenv not installed. See https://devenv.sh/getting-started/"; exit 1; }
+	@(command -v devenv >/dev/null 2>&1 || test -x "$(HOME)/.nix-profile/bin/devenv") || { echo "ERROR: devenv not installed. See https://devenv.sh/getting-started/"; exit 1; }
 
 # midi-server: auto-provisioned for hardware E2E tests
 MIDI_SERVER_DEPS_DIR := $(CURDIR)/.deps/midi-server

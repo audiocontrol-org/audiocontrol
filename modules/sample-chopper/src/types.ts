@@ -122,9 +122,13 @@ export interface SliceResult {
 }
 
 /**
- * Default drum type labels in standard order.
+ * Default slice labels — ordinal names for general-purpose chopping.
+ * Users can override with custom labels (e.g., drum names) in the UI.
  */
-export const DEFAULT_DRUM_TYPES = ['kick', 'snare', 'hhc', 'hho'];
+export const DEFAULT_SLICE_LABELS = ['S1', 'S2', 'S3', 'S4'];
+
+/** @deprecated Use DEFAULT_SLICE_LABELS instead */
+export const DEFAULT_DRUM_TYPES = DEFAULT_SLICE_LABELS;
 
 /**
  * Default base MIDI note (C2).
