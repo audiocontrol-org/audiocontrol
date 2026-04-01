@@ -91,13 +91,14 @@ test.describe('Chopper Save — save slices to library', () => {
   });
 
   test('fixed slicing then Save writes sample.yaml with slice definitions', async ({ page }) => {
-    // Step 1: Find and click the sample in the Samples section of the library tree.
-    // Tree nodes use data-testid="library-{type}-{directoryName}".
-    const sampleNode = page.locator(
-      `[data-testid="library-sample-${SAMPLE_FIXTURE_NAME}"]`,
-    );
-    await expect(sampleNode).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    await sampleNode.click();
+    // Step 1: Find and click the sample in the library tree using CSS class selector.
+    // Use the same pattern as sample-chopper-production.spec.ts
+    const sampleNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${SAMPLE_FIXTURE_NAME}$`) }).first();
+    await expect(sampleNameSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Click the parent tree node
+    const treeNode = sampleNameSpan.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
+    await treeNode.click();
 
     // Step 2: Click "Open in Chopper" in the preview panel
     const chopButton = page.getByRole('button', { name: 'Open in Chopper' });
@@ -142,11 +143,11 @@ test.describe('Chopper Save — save slices to library', () => {
   });
 
   test('fixed slicing with 8 slices saves correct count', async ({ page }) => {
-    const sampleNode = page.locator(
-      `[data-testid="library-sample-${SAMPLE_FIXTURE_NAME}"]`,
-    );
-    await expect(sampleNode).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    await sampleNode.click();
+    const sampleNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${SAMPLE_FIXTURE_NAME}$`) }).first();
+    await expect(sampleNameSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const treeNode = sampleNameSpan.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
+    await treeNode.click();
 
     const chopButton = page.getByRole('button', { name: 'Open in Chopper' });
     await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
@@ -175,11 +176,11 @@ test.describe('Chopper Save — save slices to library', () => {
   });
 
   test('Save button is disabled when no slices exist', async ({ page }) => {
-    const sampleNode = page.locator(
-      `[data-testid="library-sample-${SAMPLE_FIXTURE_NAME}"]`,
-    );
-    await expect(sampleNode).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    await sampleNode.click();
+    const sampleNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${SAMPLE_FIXTURE_NAME}$`) }).first();
+    await expect(sampleNameSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const treeNode = sampleNameSpan.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
+    await treeNode.click();
 
     const chopButton = page.getByRole('button', { name: 'Open in Chopper' });
     await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
@@ -224,12 +225,13 @@ test.describe('Chopper Save — chop into drum kit', () => {
   });
 
   test('Chop into Drum Kit opens chopper with kit output config', async ({ page }) => {
-    // Step 1: Select the individual tone in the library tree
-    const toneNode = page.locator(
-      `[data-testid="library-tone-${TONE_FIXTURE_NAME}"]`,
-    );
-    await expect(toneNode).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    await toneNode.click();
+    // Step 1: Select the individual tone in the library tree using CSS class selector.
+    // Find the tone by name and click its tree node
+    const toneNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${TONE_FIXTURE_NAME}$`) }).first();
+    await expect(toneNameSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const treeNode = toneNameSpan.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
+    await treeNode.click();
 
     // Step 2: Click "Chop into Drum Kit" in the preview panel
     const chopButton = page.getByRole('button', { name: 'Chop into Drum Kit' });
@@ -252,11 +254,11 @@ test.describe('Chopper Save — chop into drum kit', () => {
   });
 
   test('Chop into Drum Kit shows slices with Fixed method', async ({ page }) => {
-    const toneNode = page.locator(
-      `[data-testid="library-tone-${TONE_FIXTURE_NAME}"]`,
-    );
-    await expect(toneNode).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    await toneNode.click();
+    const toneNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${TONE_FIXTURE_NAME}$`) }).first();
+    await expect(toneNameSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const treeNode = toneNameSpan.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
+    await treeNode.click();
 
     const chopButton = page.getByRole('button', { name: 'Chop into Drum Kit' });
     await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
@@ -288,11 +290,11 @@ test.describe('Chopper Save — chop into drum kit', () => {
    * onConfirm callback.
    */
   test.fixme('saving drum kit creates kit.yaml in OPFS', async ({ page }) => {
-    const toneNode = page.locator(
-      `[data-testid="library-tone-${TONE_FIXTURE_NAME}"]`,
-    );
-    await expect(toneNode).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    await toneNode.click();
+    const toneNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${TONE_FIXTURE_NAME}$`) }).first();
+    await expect(toneNameSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const treeNode = toneNameSpan.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
+    await treeNode.click();
 
     const chopButton = page.getByRole('button', { name: 'Chop into Drum Kit' });
     await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
