@@ -19,6 +19,7 @@ interface Spec {
         s?: number, // size in bytes; 1 if undefined
         t?: string,  // type; number if undefined
         signed?: boolean // use signed number conversion for this field
+        tuning?: boolean // use tuning-specific decode (signed low byte + fractional high byte)
     }[]
 }
 
@@ -32,7 +33,7 @@ export function genImports() {
     return `//
 // GENERATED ${new Date()}. DO NOT EDIT.
 //
-import {byte2nibblesLE, bytes2numberLE, bytes2signedNumberLE, nibbles2byte, newClientOutput} from "@audiocontrol/sampler-lib"
+import {byte2nibblesLE, bytes2numberLE, bytes2signedNumberLE, bytes2tuningLE, nibbles2byte, newClientOutput} from "@audiocontrol/sampler-lib"
 import {nextByte, akaiByte2String, string2AkaiBytes} from "@/utils/akai-utils.js"
 
 `
@@ -132,6 +133,15 @@ export async function genSetters(spec: Spec) {
             } else {
                 rv += `    // IMPLEMENT ME for field: ${field.t}`
             }
+        } else if (field.tuning) {
+            // Tuning fields are 2 bytes: low byte = signed integer, high byte = fraction.
+            // Write the integer part to the low byte and zero out the fraction byte.
+            rv += `    const d = byte2nibblesLE(v)\n`
+            rv += `    header.raw[${offset}] = d[0]\n`
+            rv += `    header.raw[${offset} + 1] = d[1]\n`
+            rv += `    // Zero out the fraction byte (high byte of tuning field)\n`
+            rv += `    header.raw[${offset} + 2] = 0\n`
+            rv += `    header.raw[${offset} + 3] = 0\n`
         } else {
             //         const d = byte2nibblesLE(polyphony)
             //         header.raw[offset] = d[0]
@@ -175,7 +185,7 @@ export async function genParser(spec: Spec) {
             rv += `    for (let i=0; i<${field.s ? field.s : 1}; i++) {\n`
             rv += '        b.push(nextByte(data, v).value)\n'
             rv += `    }\n`
-            const numberFn = field.signed ? 'bytes2signedNumberLE' : 'bytes2numberLE'
+            const numberFn = field.tuning ? 'bytes2tuningLE' : (field.signed ? 'bytes2signedNumberLE' : 'bytes2numberLE')
             rv += `    o.${field.n} = ${numberFn}(b)\n`
         }
         rv += '\n'

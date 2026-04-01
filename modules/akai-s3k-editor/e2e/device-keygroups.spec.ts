@@ -418,14 +418,11 @@ test.describe('S3000XL Keygroups Page', () => {
 
   test.describe('Keygroup Chain Navigation', () => {
     /**
-     * Navigate from keygroup 1 to keygroup 2 and verify the editor
-     * title updates to reflect the selected keygroup index.
+     * Create a second keygroup, navigate to it, verify the editor title
+     * updates, then delete it to clean up.
      *
      * Covers plan items 3.8.1 (navigate between keygroups) and
      * 3.8.4 (keygroup index updates in editor title).
-     *
-     * This test requires the first program to have at least 2 keygroups.
-     * If only 1 keygroup exists, the test is skipped.
      */
     test('navigate from keygroup 1 to keygroup 2', async ({ page }) => {
       test.setTimeout(60_000);
@@ -434,10 +431,14 @@ test.describe('S3000XL Keygroups Page', () => {
       await navigateToKeygroups(page);
       await waitForKeygroupListLoaded(page);
 
-      // Check if KG 2 exists; skip if the program has only 1 keygroup
+      // Create a second keygroup via the Add Keygroup button
+      const addBtn = page.locator('[data-testid="add-keygroup-btn"]');
+      await expect(addBtn).toBeVisible();
+      await addBtn.click();
+
+      // Wait for KG 2 to appear in the list after the device responds
       const kg2Button = page.locator('button', { hasText: 'KG 2' });
-      const kg2Visible = await kg2Button.isVisible().catch(() => false);
-      test.skip(!kg2Visible, 'Program has only 1 keygroup — cannot test multi-keygroup navigation');
+      await expect(kg2Button).toBeVisible({ timeout: 15_000 });
 
       // Select KG 1 and verify editor title
       await page.locator('button', { hasText: 'KG 1' }).click();
@@ -456,6 +457,16 @@ test.describe('S3000XL Keygroups Page', () => {
       await expect(lowNoteInput).toBeVisible();
       const lowValue = Number(await lowNoteInput.inputValue());
       expect(Number.isFinite(lowValue)).toBe(true);
+
+      // Clean up: select KG 2 and delete it
+      // KG 2 is already selected, so click Delete Keygroup
+      const deleteBtn = page.locator('[data-testid="delete-keygroup-btn"]');
+      await expect(deleteBtn).toBeEnabled();
+      await deleteBtn.click();
+
+      // Wait for the list to refresh — KG 2 should be gone
+      await waitForKeygroupListLoaded(page);
+      await expect(kg2Button).not.toBeVisible({ timeout: 10_000 });
     });
   });
 });

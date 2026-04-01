@@ -317,6 +317,38 @@ export function bytes2signedNumberLE(b: number[]) {
 }
 
 /**
+ * Decodes an Akai S3000XL tuning field from a 2-byte array.
+ *
+ * The S3000XL stores tuning as two independent bytes (not a 16-bit integer):
+ * - Byte 0 (low): signed integer part (-50 to +50), stored as two's complement
+ * - Byte 1 (high): fractional part (0-255 maps to 0.00 to ~0.99)
+ *
+ * The Akai documentation describes this as "-50.00 to +50.00 (fraction is binary)".
+ * This function returns only the signed integer part since the editor UI does not
+ * display sub-semitone fractions.
+ *
+ * This differs from {@link bytes2signedNumberLE} which treats both bytes as a single
+ * 16-bit signed integer. For tuning fields, the two bytes are independent: the low
+ * byte is a signed 8-bit integer and the high byte is an unsigned 8-bit fraction.
+ *
+ * @param b - 2-byte array [integerByte, fractionByte]
+ * @returns The signed integer tuning value (-50 to +50)
+ *
+ * @example
+ * ```typescript
+ * bytes2tuningLE([241, 0]);   // -15  (241 > 127, so 241 - 256 = -15)
+ * bytes2tuningLE([50, 0]);    //  50
+ * bytes2tuningLE([206, 128]); // -50  (206 > 127, so 206 - 256 = -50; fraction byte ignored)
+ * bytes2tuningLE([0, 0]);     //   0
+ * bytes2tuningLE([1, 128]);   //   1  (fraction byte 128 = 0.5, ignored)
+ * ```
+ */
+export function bytes2tuningLE(b: number[]): number {
+    const intByte = b[0]
+    return intByte > 127 ? intByte - 256 : intByte
+}
+
+/**
  * Converts a byte array to a number using big-endian byte order.
  *
  * @param b - Byte array to convert

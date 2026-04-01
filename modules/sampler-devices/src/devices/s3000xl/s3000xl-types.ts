@@ -60,6 +60,37 @@ export interface S3000xlClientInterface {
   /** Write a modified sample header back to the device */
   writeSampleHeader(header: SampleHeader): Promise<void>;
 
+  /**
+   * Create a new keygroup in the specified program.
+   *
+   * Clones an existing keygroup (or uses the provided template) and sends it
+   * to the device with the new keygroup index. The device auto-increments
+   * the program's GROUPS count and manages the NXTKG chain.
+   *
+   * @param programNumber - Index of the program to add the keygroup to
+   * @param keygroupNumber - Index for the new keygroup (should equal current GROUPS count)
+   * @param template - Optional keygroup header to use as the base; if omitted, keygroup 0 is cloned
+   */
+  createKeygroup(
+    programNumber: number,
+    keygroupNumber: number,
+    template?: KeygroupHeader,
+  ): Promise<void>;
+
+  /**
+   * Delete a keygroup from the specified program.
+   *
+   * Sends the DELK opcode to remove the keygroup at the given index.
+   * The device auto-decrements the program's GROUPS count.
+   *
+   * @param programNumber - Index of the program containing the keygroup
+   * @param keygroupNumber - Index of the keygroup to delete
+   */
+  deleteKeygroup(
+    programNumber: number,
+    keygroupNumber: number,
+  ): Promise<void>;
+
   /** Invalidate any cached program data, forcing a fresh fetch on next request */
   invalidateProgramCache(): void;
 
