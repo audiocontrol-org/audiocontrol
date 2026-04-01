@@ -9,6 +9,8 @@ specs:
       # d: field description;
       # s: field size (default: 1);
       # t: field type (default: number);
+      # signed: use signed number conversion
+      # tuning: use tuning-specific decode (signed low byte + fractional high byte)
       - n: 'KGRP1'
         d: "Block address of first keygroup (internal use)"
         s: 2
@@ -189,7 +191,7 @@ specs:
         l: 'Tuning'
         d: 'Tuning offset of program; -50.00 to +50.00 (fraction is binary)'
         s: 2
-        signed: true
+        tuning: true
 
       - n: 'K_LRAT'
         d: 'Not used'
@@ -502,7 +504,7 @@ specs:
       - n: 'KGTUNO'
         d: 'Keygroup tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
         s: 2
-        signed: true
+        tuning: true
 
       - n: 'FILFRQ'
         d: 'Basic filter frequency; Range: 0 to 99'
@@ -604,7 +606,7 @@ specs:
       - n: 'VTUNO1'
         d: 'Velocity zone 1 tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
         s: 2
-        signed: true
+        tuning: true
 
       - n: 'VLOUD1'
         d: 'Velocity zone 1 loudness offset; Range: -50 to +50'
@@ -646,7 +648,7 @@ specs:
       - n: 'VTUNO2'
         d: 'Velocity zone 2 tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
         s: 2
-        signed: true
+        tuning: true
 
       - n: 'VLOUD2'
         d: 'Velocity zone 2 loudness offset'
@@ -688,7 +690,7 @@ specs:
       - n: 'VTUNO3'
         d: 'Velocity zone 3 tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
         s: 2
-        signed: true
+        tuning: true
 
       - n: 'VLOUD3'
         d: 'Velocity zone 3 loudness offset; -50 to +50'
@@ -730,7 +732,7 @@ specs:
       - n: 'VTUNO4'
         d: 'Velocity zone 4 tuning offset; Range: -50.00 to +50.00 (fraction is binary)'
         s: 2
-        signed: true
+        tuning: true
 
       - n: 'VLOUD4'
         d: 'Velocity zone 4 loudness offset'

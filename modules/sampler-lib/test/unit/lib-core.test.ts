@@ -5,6 +5,7 @@ import {
     bytes2numberBE,
     bytes2numberLE,
     bytes2signedNumberLE,
+    bytes2tuningLE,
     natural2real,
     newSequence, nibbles2byte,
     pad,
@@ -156,6 +157,46 @@ describe(`Core library functions`, () => {
             const nibbles = byte2nibblesLE(signedValue)
             const unsignedByte = nibbles2byte(nibbles[0], nibbles[1])
             expect(bytes2signedNumberLE([unsignedByte])).toBe(signedValue)
+        })
+    })
+
+    describe('bytes2tuningLE', () => {
+        it('decodes positive tuning values from the low byte', () => {
+            expect(bytes2tuningLE([0, 0])).toBe(0)
+            expect(bytes2tuningLE([1, 0])).toBe(1)
+            expect(bytes2tuningLE([50, 0])).toBe(50)
+            expect(bytes2tuningLE([127, 0])).toBe(127)
+        })
+
+        it('decodes negative tuning values from the low byte via two\'s complement', () => {
+            // -15 stored as 241 (0xF1) in the low byte
+            expect(bytes2tuningLE([241, 0])).toBe(-15)
+            // -50 stored as 206 (0xCE) in the low byte
+            expect(bytes2tuningLE([206, 0])).toBe(-50)
+            // -1 stored as 255 (0xFF) in the low byte
+            expect(bytes2tuningLE([255, 0])).toBe(-1)
+            // -128 stored as 128 (0x80)
+            expect(bytes2tuningLE([128, 0])).toBe(-128)
+        })
+
+        it('ignores the high byte (fraction)', () => {
+            // Fraction byte should not affect the integer result
+            expect(bytes2tuningLE([241, 128])).toBe(-15)
+            expect(bytes2tuningLE([50, 200])).toBe(50)
+            expect(bytes2tuningLE([0, 255])).toBe(0)
+            expect(bytes2tuningLE([206, 128])).toBe(-50)
+        })
+
+        it('round-trips with byte2nibblesLE for signed tuning values', () => {
+            // Simulate the S3000XL sysex write/read path:
+            // write: signed value -> byte2nibblesLE -> raw nibbles (low byte only)
+            // read:  raw nibbles -> nextByte (reassembles bytes) -> bytes2tuningLE
+            for (const value of [-50, -15, -1, 0, 1, 15, 50]) {
+                const nibbles = byte2nibblesLE(value)
+                const unsignedByte = nibbles2byte(nibbles[0], nibbles[1])
+                // High byte is 0 (fraction cleared by setter)
+                expect(bytes2tuningLE([unsignedByte, 0])).toBe(value)
+            }
         })
     })
 })
