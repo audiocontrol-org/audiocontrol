@@ -449,7 +449,7 @@ export function PlayPage() {
 
       {/* Error display */}
       {error && (
-        <div className="ac-alert ac-alert-error">
+        <div data-testid="error-message" className="ac-alert ac-alert-error">
           <p className="ac-text-error text-sm">{error}</p>
         </div>
       )}
