@@ -27,6 +27,9 @@ import {
 } from '@/lib/library-service';
 import { useLibraryConnection } from '@audiocontrol/editor-core';
 import { useLoopEditor } from '@audiocontrol/loop-editor/ui';
+import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
+import { S330KitOutputConfig } from '@/components/library/S330KitOutputConfig';
+import { useDeviceToneChopper } from '@/hooks/useDeviceToneChopper';
 
 export function TonesPage() {
   const config = useDeviceConfig();
@@ -93,6 +96,9 @@ export function TonesPage() {
   const [loopEditorWaveData, setLoopEditorWaveData] = useState<Map<number, Int16Array>>(new Map());
   const [isLoadingLoopWaveData, setIsLoadingLoopWaveData] = useState(false);
   const [loopWaveDataProgress, setLoopWaveDataProgress] = useState<number | undefined>(undefined);
+
+  // Sample chopper hook — chop device tones into drum kits
+  const chopper = useDeviceToneChopper({ clientRef, libraryDirectoryHandle });
 
   // Loop editor hook — owns loop point state, detection, audio preview, and smoothing
   const selectedToneForLoop = selectedToneIndex !== null ? tones[selectedToneIndex] : null;
@@ -601,6 +607,12 @@ export function TonesPage() {
                 isExportingToLibrary={isExportingToLibrary}
                 onImportSample={handleOpenImportDialog}
                 isImporting={isImporting}
+                onChopSample={() => {
+                  if (selectedToneIndex !== null && selectedTone) {
+                    chopper.openChopper(selectedToneIndex, selectedTone);
+                  }
+                }}
+                isLoadingChopWaveData={chopper.isLoadingWav}
                 waveData={loopEditorSamples}
                 isLoadingWaveData={isLoadingLoopWaveData}
                 waveDataLoadProgress={loopWaveDataProgress}
@@ -656,6 +668,23 @@ export function TonesPage() {
           error={importError}
         />
       )}
+
+      {/* Sample Chopper Dialog */}
+      <SampleChopperDialog
+        open={chopper.chopperOpen}
+        onOpenChange={(open) => { if (!open) chopper.closeChopper(); }}
+        samples={chopper.chopperSamples}
+        sampleRate={chopper.chopperSampleRate}
+        sourceName={selectedTone?.name ?? ''}
+        onConfirm={chopper.handleConfirm}
+        renderOutputConfig={(state) => (
+          <S330KitOutputConfig
+            state={state}
+            config={chopper.kitConfig}
+            onConfigChange={chopper.setKitConfig}
+          />
+        )}
+      />
     </div>
   );
 }

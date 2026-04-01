@@ -43,6 +43,10 @@ interface ToneEditorProps {
     onImportSample?: () => void;
     // Whether sample import is in progress
     isImporting?: boolean;
+    // Called when user clicks Chop into Drum Kit button
+    onChopSample?: () => void;
+    // Whether wave data is loading for the chopper
+    isLoadingChopWaveData?: boolean;
     // Wave data for loop editor (16-bit signed samples)
     waveData?: Int16Array | null;
     // Whether wave data is currently loading
@@ -67,6 +71,8 @@ export function ToneEditor({
     isExportingToLibrary = false,
     onImportSample,
     isImporting = false,
+    onChopSample,
+    isLoadingChopWaveData = false,
     waveData,
     isLoadingWaveData = false,
     waveDataLoadProgress,
@@ -170,6 +176,30 @@ export function ToneEditor({
                                             </>
                                         ) : (
                                             'Import Sample'
+                                        )}
+                                    </button>
+                                </Tooltip>
+                            )}
+                            {/* Chop into Drum Kit Button */}
+                            {onChopSample && (
+                                <Tooltip content={hasSampleData ? 'Slice this sample into a drum kit' : 'No sample data to chop'}>
+                                    <button
+                                        onClick={onChopSample}
+                                        disabled={isLoadingChopWaveData || !hasSampleData}
+                                        data-testid="chop-tone-button"
+                                        className={cn(
+                                            'ac-btn ac-btn-sm ac-btn-ghost',
+                                            !hasSampleData && 'opacity-50',
+                                            isLoadingChopWaveData && 'opacity-50 cursor-wait'
+                                        )}
+                                    >
+                                        {isLoadingChopWaveData ? (
+                                            <>
+                                                <span className="inline-block w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
+                                                Loading...
+                                            </>
+                                        ) : (
+                                            'Chop into Drum Kit'
                                         )}
                                     </button>
                                 </Tooltip>

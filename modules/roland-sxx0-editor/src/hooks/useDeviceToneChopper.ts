@@ -1,0 +1,93 @@
+/**
+ * Hook for opening the sample chopper on a device tone and saving
+ * the result as a drum kit to the library.
+ */
+
+import { useCallback, useState, type RefObject } from 'react';
+import type { ChopperResult } from '@audiocontrol/sample-chopper/ui';
+import type { SamplerClientInterface, SamplerTone } from '@/core/midi/SamplerClient';
+import type { S330KitConfig } from '@/components/library/S330KitOutputConfig';
+import { unpack12BitTo16Bit } from '@/lib/wave-export';
+import { saveDrumKitToLibrary, type StorageDirectoryHandle } from '@/lib/library-service';
+
+interface UseDeviceToneChopperOptions {
+  clientRef: RefObject<SamplerClientInterface | null>;
+  libraryDirectoryHandle: StorageDirectoryHandle | null;
+}
+
+const DEFAULT_KIT_CONFIG: S330KitConfig = {
+  name: '',
+  sampleRate: 15000,
+  baseNote: 36,
+  transpose: 0,
+  velocitySensitivity: 2,
+};
+
+export function useDeviceToneChopper({ clientRef, libraryDirectoryHandle }: UseDeviceToneChopperOptions) {
+  const [chopperOpen, setChopperOpen] = useState(false);
+  const [chopperSamples, setChopperSamples] = useState<Int16Array | null>(null);
+  const [chopperSampleRate, setChopperSampleRate] = useState(15000);
+  const [kitConfig, setKitConfig] = useState<S330KitConfig>(DEFAULT_KIT_CONFIG);
+  const [isLoadingWav, setIsLoadingWav] = useState(false);
+
+  const openChopper = useCallback(async (toneIndex: number, tone: SamplerTone) => {
+    if (!clientRef.current) return;
+
+    setIsLoadingWav(true);
+    try {
+      const waveResponse = await clientRef.current.requestWaveData(toneIndex);
+      const samples = unpack12BitTo16Bit(waveResponse.data);
+      const sampleRate = tone.sampleRate === '30kHz' ? 30000 : 15000;
+
+      setChopperSamples(samples);
+      setChopperSampleRate(sampleRate);
+      setKitConfig((prev) => ({
+        ...prev,
+        name: prev.name || tone.name.trim().toUpperCase().slice(0, 12),
+      }));
+      setChopperOpen(true);
+    } finally {
+      setIsLoadingWav(false);
+    }
+  }, [clientRef]);
+
+  const closeChopper = useCallback(() => {
+    setChopperOpen(false);
+    setChopperSamples(null);
+  }, []);
+
+  const handleConfirm = useCallback(async (result: ChopperResult) => {
+    if (!libraryDirectoryHandle) return;
+
+    try {
+      await saveDrumKitToLibrary(
+        libraryDirectoryHandle,
+        kitConfig.name || 'DRUM-KIT',
+        result.sourceAudio,
+        result.sliceDefinitions,
+        {
+          name: kitConfig.name || 'DRUM-KIT',
+          sampleRate: kitConfig.sampleRate,
+          baseNote: kitConfig.baseNote,
+          transpose: kitConfig.transpose !== 0 ? kitConfig.transpose : undefined,
+          velocitySensitivity: kitConfig.velocitySensitivity,
+        },
+      );
+      closeChopper();
+    } catch (err) {
+      console.error('[useDeviceToneChopper] Failed to save drum kit:', err);
+    }
+  }, [libraryDirectoryHandle, kitConfig, closeChopper]);
+
+  return {
+    chopperOpen,
+    chopperSamples,
+    chopperSampleRate,
+    kitConfig,
+    setKitConfig,
+    isLoadingWav,
+    openChopper,
+    closeChopper,
+    handleConfirm,
+  };
+}
