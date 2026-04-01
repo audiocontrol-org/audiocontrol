@@ -22,3 +22,7 @@ export type {
 } from '@/devices/s3000xl/s3000xl-types.js';
 
 export { createS3000xlClient } from '@/devices/s3000xl/s3000xl-client.js';
+
+export { S3K_SDS_BITS_PER_WORD } from '@/devices/s3000xl/s3000xl-sds-config.js';
+
+export type { SdsTransferProgress, SdsDumpHeader, SdsLoopType } from '@audiocontrol/midi-core';

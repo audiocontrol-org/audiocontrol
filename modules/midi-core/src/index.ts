@@ -29,4 +29,4 @@ export {
 } from './retry';
 
 // SDS protocol
-export * from './sds';
+export * from './sds/index';
