@@ -309,7 +309,7 @@ test.describe('Patch Editor Controls', () => {
     // Read patch back from device hardware
     const devicePatch = await readPatchFromDevice(page, testPatchIndex);
     expect(devicePatch).not.toBeNull();
-    // Allow ±1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
     expect(Math.abs(devicePatch!.level - newValue)).toBeLessThanOrEqual(1);
   });
 
@@ -348,7 +348,7 @@ test.describe('Patch Editor Controls', () => {
     // Read patch back from device hardware
     const devicePatch = await readPatchFromDevice(page, testPatchIndex);
     expect(devicePatch).not.toBeNull();
-    // Allow ±1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
     expect(Math.abs(devicePatch!.aftertouchSens - newValue)).toBeLessThanOrEqual(1);
   });
 
@@ -454,7 +454,7 @@ test.describe('Patch Editor Controls', () => {
     // Read patch back from device hardware
     const devicePatch = await readPatchFromDevice(page, testPatchIndex);
     expect(devicePatch).not.toBeNull();
-    // Allow ±1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
     expect(Math.abs(devicePatch!.velocityThreshold - newValue)).toBeLessThanOrEqual(1);
   });
 
@@ -497,7 +497,79 @@ test.describe('Patch Editor Controls', () => {
     // Read patch back from device hardware
     const devicePatch = await readPatchFromDevice(page, testPatchIndex);
     expect(devicePatch).not.toBeNull();
-    // Allow ±1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
     expect(Math.abs(devicePatch!.velocityMixRatio - newValue)).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // Tone Zone Assignment (Layer 1)
+  // -------------------------------------------------------------------------
+
+  test('tone zone assignment syncs to device', async ({ page }) => {
+    // Ensure key mode is 'normal' so Layer 1 is the only active layer.
+    // This simplifies the test — we only need to verify toneLayer1.
+    await setKeyMode(page, 'normal');
+
+    // Find the Tone Mapping card section
+    const toneMappingSection = page.locator(
+      '.card:has(h4:has-text("Tone Mapping"))',
+    );
+    await expect(toneMappingSection).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Check if there are existing zone bars. If none, add one first.
+    const zoneBars = toneMappingSection.locator(
+      '.relative.h-12 button',
+    );
+    const zoneCount = await zoneBars.count();
+
+    if (zoneCount === 0) {
+      // Click "Add Zone" to create a zone
+      const addZoneBtn = toneMappingSection
+        .getByText('+ Add Zone')
+        .first();
+      await expect(addZoneBtn).toBeVisible({ timeout: UI_TIMEOUT_MS });
+      await addZoneBtn.click();
+      await page.waitForTimeout(500);
+    } else {
+      // Click the first zone bar to select it
+      await zoneBars.first().click();
+      await page.waitForTimeout(500);
+    }
+
+    // The zone edit panel should now be visible with Tone/Start Key/End Key
+    const editPanel = toneMappingSection.locator(
+      'text=Editing Zone',
+    );
+    await expect(editPanel).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Read the current tone dropdown value
+    const toneSelect = toneMappingSection
+      .locator('label:has-text("Tone")')
+      .locator('..')
+      .locator('select')
+      .first();
+    await expect(toneSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalTone = Number(await toneSelect.inputValue());
+    // Toggle between tone 0 and tone 1
+    const newTone = originalTone === 1 ? 0 : 1;
+    await toneSelect.selectOption(String(newTone));
+
+    // Click Apply to commit the staged changes
+    const applyBtn = toneMappingSection.getByText('Apply');
+    await expect(applyBtn).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await applyBtn.click();
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read patch back from device hardware
+    const devicePatch = await readPatchFromDevice(page, testPatchIndex);
+    expect(devicePatch).not.toBeNull();
+
+    // Verify that at least one entry in toneLayer1 matches the new tone.
+    // The zone spans a key range, so multiple entries may be set to newTone.
+    const matchingEntries = devicePatch!.toneLayer1.filter(
+      (t) => t === newTone,
+    );
+    expect(matchingEntries.length).toBeGreaterThan(0);
   });
 });
