@@ -25,7 +25,7 @@
       "@audiocontrol/sampler-lib",
       "@audiocontrol/sampler-midi",
       "@audiocontrol/sampler-translate",
-      "@audiocontrol/shared-midi"
+      "@audiocontrol/midi-core"
     ]
   ],
   "linked": [],

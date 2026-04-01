@@ -8,14 +8,14 @@
  * - Factory function (no classes)
  * - Request serialization queue (one SysEx in flight at a time)
  * - Write buffer with configurable flush delay
- * - Retry via withRetry from shared-midi
+ * - Retry via withRetry from midi-core
  * - Response validation
  *
  * Protocol reference: https://lakai.sourceforge.net/docs/s2800_sysex.html
  */
 
-import type { MidiIO } from '@audiocontrol/shared-midi';
-import { withRetry } from '@audiocontrol/shared-midi';
+import type { MidiIO, SdsDumpHeader, SdsLoopType, SdsTransferProgress } from '@audiocontrol/midi-core';
+import { withRetry, createSdsSender, requestSample, LOOP_OFF } from '@audiocontrol/midi-core';
 import {
   parseProgramHeader,
   parseKeygroupHeader,
@@ -32,6 +32,7 @@ import {
   isErrorResponse,
   parseNameList,
 } from '@/devices/s3000xl/s3000xl-protocol.js';
+import { S3K_SDS_BITS_PER_WORD } from '@/devices/s3000xl/s3000xl-sds-config.js';
 
 const AKAI_NAME_LENGTH = 12;
 
@@ -233,6 +234,31 @@ export function createS3000xlClient(
   }
 
   // =========================================================================
+  // SDS Transfer Helpers
+  // =========================================================================
+
+  function buildSdsHeader(
+    sampleNumber: number,
+    sampleData: Int16Array,
+    sampleRate: number,
+    sdsOptions?: {
+      loopStart?: number;
+      loopEnd?: number;
+      loopType?: SdsLoopType;
+    },
+  ): SdsDumpHeader {
+    return {
+      sampleNumber,
+      sampleFormat: S3K_SDS_BITS_PER_WORD,
+      samplePeriodNs: Math.round(1_000_000_000 / sampleRate),
+      sampleLength: sampleData.length,
+      loopStart: sdsOptions?.loopStart ?? 0,
+      loopEnd: sdsOptions?.loopEnd ?? 0,
+      loopType: sdsOptions?.loopType ?? LOOP_OFF,
+    };
+  }
+
+  // =========================================================================
   // Public Interface
   // =========================================================================
 
@@ -313,6 +339,68 @@ export function createS3000xlClient(
       await bufferWrite(key, AkaiOpcode.SDATA, header.raw);
     },
 
+    async sendSampleViaSds(
+      sampleNumber: number,
+      sampleData: Int16Array,
+      sampleRate: number,
+      sdsOptions?: {
+        loopStart?: number;
+        loopEnd?: number;
+        loopType?: SdsLoopType;
+        onProgress?: (progress: SdsTransferProgress) => void;
+      },
+    ): Promise<void> {
+      const header = buildSdsHeader(sampleNumber, sampleData, sampleRate, sdsOptions);
+
+      return serialize(async () => {
+        const sender = createSdsSender(midiIO, {
+          channel,
+          header,
+          samples: sampleData,
+          mode: 'closed-loop',
+          onProgress: sdsOptions?.onProgress,
+        });
+        await sender.start();
+        // The S3000XL needs time to commit the sample to memory after
+        // the last ACK. Sending Akai SysEx (e.g., RSLIST) too soon can
+        // cause the device to discard the sample.
+        await new Promise((r) => setTimeout(r, 3000));
+      });
+    },
+
+    async receiveSampleViaSds(
+      sampleNumber: number,
+      onProgress?: (progress: SdsTransferProgress) => void,
+    ): Promise<{ header: SdsDumpHeader; samples: Int16Array }> {
+      return serialize(() => {
+        return new Promise<{ header: SdsDumpHeader; samples: Int16Array }>((resolve, reject) => {
+          let receivedHeader: SdsDumpHeader | undefined;
+
+          requestSample(midiIO, channel, sampleNumber, {
+            channel,
+            onHeader(header: SdsDumpHeader) {
+              receivedHeader = header;
+            },
+            onProgress,
+            onComplete(samples: Int16Array | Int32Array) {
+              if (!receivedHeader) {
+                reject(new Error('SDS transfer completed without receiving a dump header'));
+                return;
+              }
+              // S3000XL is 16-bit; cast to Int16Array
+              const int16Samples = samples instanceof Int16Array
+                ? samples
+                : new Int16Array(samples);
+              resolve({ header: receivedHeader, samples: int16Samples });
+            },
+            onError(error: Error) {
+              reject(error);
+            },
+          });
+        });
+      });
+    },
+
     async createKeygroup(
       programNumber: number,
       keygroupNumber: number,
@@ -343,6 +431,17 @@ export function createS3000xlClient(
       const data = byte2nibblesLE(programNumber).concat(keygroupNumber);
       await sendCommandWithRetry(AkaiOpcode.DELK, data);
       invalidateAllKeygroupAndProgramCaches();
+    },
+
+    async deleteSample(sampleNumber: number): Promise<void> {
+      await sendCommandWithRetry(AkaiOpcode.DELS, byte2nibblesLE(sampleNumber));
+      sampleNamesCache = undefined;
+      sampleHeaderCache.clear();
+    },
+
+    async refreshSampleNames(): Promise<string[]> {
+      sampleNamesCache = undefined;
+      return client.fetchSampleNames();
     },
 
     invalidateProgramCache(): void {

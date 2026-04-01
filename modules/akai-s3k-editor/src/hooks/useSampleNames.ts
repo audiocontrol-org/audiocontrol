@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
 
 interface UseSampleNamesResult {
   sampleNames: string[];
   isLoading: boolean;
+  refreshSampleNames: () => Promise<void>;
 }
 
 /**
@@ -44,5 +45,16 @@ export function useSampleNames(client: S3000xlClientInterface | null): UseSample
     };
   }, [client]);
 
-  return { sampleNames, isLoading };
+  const refreshSampleNames = useCallback(async () => {
+    if (!client) return;
+    setIsLoading(true);
+    try {
+      const names = await client.refreshSampleNames();
+      setSampleNames(names);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [client]);
+
+  return { sampleNames, isLoading, refreshSampleNames };
 }

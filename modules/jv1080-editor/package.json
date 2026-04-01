@@ -34,7 +34,7 @@
   "dependencies": {
     "@audiocontrol/editor-core": "workspace:*",
     "@audiocontrol/sampler-devices": "workspace:*",
-    "@audiocontrol/shared-midi": "workspace:*",
+    "@audiocontrol/midi-core": "workspace:*",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.0",

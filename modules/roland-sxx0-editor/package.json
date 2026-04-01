@@ -50,7 +50,7 @@
     "@audiocontrol/sample-editor": "workspace:*",
     "@audiocontrol/sampler-devices": "workspace:*",
     "@audiocontrol/sampler-library": "workspace:*",
-    "@audiocontrol/shared-midi": "workspace:*",
+    "@audiocontrol/midi-core": "workspace:*",
     "yaml": "^2.7.0",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",

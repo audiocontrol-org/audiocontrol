@@ -41,7 +41,7 @@ import {
 
 import { clampWaveParams } from './s-series-wave-format.js';
 
-import { withRetry, type RetryOptions } from '@audiocontrol/shared-midi';
+import { withRetry, type RetryOptions } from '@audiocontrol/midi-core';
 
 // =============================================================================
 // Callback Types

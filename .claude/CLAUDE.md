@@ -129,6 +129,10 @@ Delegate to sub-agents proactively — don't wait for the user to ask. The main 
 - Preserve proprietary sampler format specifications exactly
 - Use the `midisnoop` binary (installed in PATH) to observe MIDI conversations
 
+## S3000XL SDS Storage Behavior
+
+The S3000XL uses the SDS sample number in the Dump Header to determine overwrite vs create: if the number matches an existing sample's RSLIST index, the device overwrites that sample in place. If the number doesn't match, a new sample is created at the end of the RSLIST. To replace a sample, send with its RSLIST index. To add a new sample, send with an unused number (e.g., current sample count). Confirmed via hardware testing.
+
 ## URL Convention for Editors
 
 Editors are served under audiocontrol.org:

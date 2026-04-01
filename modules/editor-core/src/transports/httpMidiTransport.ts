@@ -9,7 +9,7 @@
  * permissions cause Chrome to crash in Playwright.
  */
 
-import type { MidiIO, MidiPortInfo, SysExCallback } from '@audiocontrol/shared-midi';
+import type { MidiIO, MidiPortInfo, SysExCallback } from '@audiocontrol/midi-core';
 import type {
   MidiTransport,
   MidiTransportBrowserInfo,
@@ -78,15 +78,26 @@ function createHttpMidiAdapter(
     console.error('[HttpMidiTransport] SSE error:', err);
   };
 
+  // Serialize HTTP POSTs and await each to completion.
+  // The browser's event loop may batch or delay fire-and-forget fetch() calls,
+  // causing SDS closed-loop transfers to fail (device ACKs packets but doesn't
+  // create the sample). Awaiting each send ensures the MIDI message is fully
+  // delivered before the next send is queued.
+  let sendQueue: Promise<void> = Promise.resolve();
+
   const adapter: MidiIO = {
     send: (message: number[]) => {
-      // Fire-and-forget send (don't await to match Web MIDI behavior)
-      fetch(`${serverUrl}/port/${encodeURIComponent(outputId)}/send`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message }),
-      }).catch((err) => {
-        console.error('[HttpMidiTransport] Send error:', err);
+      sendQueue = sendQueue.then(async () => {
+        try {
+          const res = await fetch(`${serverUrl}/port/${encodeURIComponent(outputId)}/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message }),
+          });
+          await res.text();
+        } catch (err) {
+          console.error('[HttpMidiTransport] Send error:', err);
+        }
       });
     },
     onSysEx: (callback: SysExCallback) => {

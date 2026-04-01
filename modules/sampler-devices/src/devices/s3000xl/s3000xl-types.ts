@@ -1,4 +1,4 @@
-import type { MidiIO } from '@audiocontrol/shared-midi';
+import type { MidiIO, SdsLoopType, SdsTransferProgress, SdsDumpHeader } from '@audiocontrol/midi-core';
 import type { ProgramHeader, KeygroupHeader, SampleHeader } from '@/devices/s3000xl.js';
 
 export type { ProgramHeader, KeygroupHeader, SampleHeader };
@@ -60,6 +60,25 @@ export interface S3000xlClientInterface {
   /** Write a modified sample header back to the device */
   writeSampleHeader(header: SampleHeader): Promise<void>;
 
+  /** Send a sample to the device via MIDI Sample Dump Standard */
+  sendSampleViaSds(
+    sampleNumber: number,
+    sampleData: Int16Array,
+    sampleRate: number,
+    options?: {
+      loopStart?: number;
+      loopEnd?: number;
+      loopType?: SdsLoopType;
+      onProgress?: (progress: SdsTransferProgress) => void;
+    },
+  ): Promise<void>;
+
+  /** Receive a sample from the device via MIDI Sample Dump Standard */
+  receiveSampleViaSds(
+    sampleNumber: number,
+    onProgress?: (progress: SdsTransferProgress) => void,
+  ): Promise<{ header: SdsDumpHeader; samples: Int16Array }>;
+
   /**
    * Create a new keygroup in the specified program.
    *
@@ -90,6 +109,12 @@ export interface S3000xlClientInterface {
     programNumber: number,
     keygroupNumber: number,
   ): Promise<void>;
+
+  /** Delete a sample from the device by its RSLIST index */
+  deleteSample(sampleNumber: number): Promise<void>;
+
+  /** Force refresh of sample names from device (invalidates cache and re-fetches) */
+  refreshSampleNames(): Promise<string[]>;
 
   /** Invalidate any cached program data, forcing a fresh fetch on next request */
   invalidateProgramCache(): void;

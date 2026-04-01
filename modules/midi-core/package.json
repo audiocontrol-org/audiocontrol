@@ -1,0 +1,36 @@
+{
+  "name": "@audiocontrol/midi-core",
+  "version": "0.1.0",
+  "description": "Core MIDI utilities for AudioControl editors",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "midi",
+    "webmidi",
+    "sysex"
+  ],
+  "author": "Orion Letizi",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "tsup": "^8.3.6",
+    "typescript": "^5.3.0",
+    "vitest": "^4.1.2"
+  }
+}

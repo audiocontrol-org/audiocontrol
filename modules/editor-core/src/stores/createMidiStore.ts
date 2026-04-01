@@ -3,7 +3,7 @@ import {
   type ConnectionStatus,
   type MidiIO,
   type MidiPortInfo,
-} from '@audiocontrol/shared-midi';
+} from '@audiocontrol/midi-core';
 import { createWebMidiTransport } from '../transports/webMidiTransport';
 import type { MidiTransport, MidiTransportConnection, MidiTransportPorts } from '../transports/types';
 

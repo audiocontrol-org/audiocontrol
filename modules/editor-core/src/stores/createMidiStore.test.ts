@@ -7,7 +7,7 @@ const mockGetBrowserCompatibility = vi.hoisted(() => vi.fn());
 const mockRequestMidiAccess = vi.hoisted(() => vi.fn());
 const mockCreateWebMidiAdapter = vi.hoisted(() => vi.fn());
 
-vi.mock('@audiocontrol/shared-midi', () => ({
+vi.mock('@audiocontrol/midi-core', () => ({
   isWebMidiSupported: mockIsWebMidiSupported,
   getBrowserCompatibility: mockGetBrowserCompatibility,
   requestMidiAccess: mockRequestMidiAccess,
