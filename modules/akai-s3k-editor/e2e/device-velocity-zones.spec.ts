@@ -228,7 +228,7 @@ test.describe('S3000XL Velocity Zones', () => {
      *
      * Covers plan item 4.5.2 (all per-zone parameters sync across 4 zones).
      */
-    // Skip: generated KeygroupHeader_writeVTUNO2 offset doesn't match raw SysEx layout.
+    // Skip: keygroup write offset bug — KNUMBER byte in raw shifts field offsets.
     test.skip('zone 2 tuning offset round-trip persists to device', async ({ page }) => {
       test.setTimeout(60_000);
 

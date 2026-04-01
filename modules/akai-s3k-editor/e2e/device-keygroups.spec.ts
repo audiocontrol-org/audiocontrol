@@ -366,8 +366,8 @@ test.describe('S3000XL Keygroups Page', () => {
      * value was persisted. This is the primary test for keygroup note range
      * round-trip (plan item 3.9.2).
      */
-    // Skip: generated KeygroupHeader_writeLONOTE offset doesn't match raw SysEx layout.
-    // The raw array includes the SysEx prefix but the writer offset assumes header-only start.
+    // Skip: keygroup write offset bug — KNUMBER byte in raw shifts field offsets.
+    // Needs careful investigation of generated parse/write offset alignment.
     test.skip('low note round-trip persists to device', async ({ page }) => {
       test.setTimeout(60_000);
 

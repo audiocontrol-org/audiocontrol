@@ -196,9 +196,16 @@ export function createS3000xlClient(
   function parseKeygroupFromResponse(response: number[]): KeygroupHeader {
     const header = {} as KeygroupHeader;
     const v = { value: 0, offset: 5 };
+    // Skip PNUMBER (2 nibbles)
     nextByte(response, v);
+    // KNUMBER is at v.offset (1 raw byte — not nibblized)
+    // The generated parseKeygroupHeader expects raw to start at KNUMBER,
+    // and its write functions use offsets that include KNUMBER at position 0.
+    // So we slice from v.offset (including KNUMBER) and pass offset 0.
     const headerData = response.slice(v.offset, response.length - 1);
     parseKeygroupHeader(headerData, 0, header);
+    // Store the full response as raw — write functions and writeProgramHeader
+    // send this back to the device wrapped in a new SysEx envelope.
     header.raw = response;
     return header;
   }
