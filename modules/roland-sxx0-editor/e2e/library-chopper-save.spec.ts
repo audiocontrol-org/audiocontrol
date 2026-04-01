@@ -69,11 +69,11 @@ fineTune: 0`;
 
 test.describe('Chopper Save — save slices to library', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to the Library page
-    await page.goto('/library');
+    // Navigate to the Library page with mock mode (auto-connects library)
+    await page.goto('/roland/s330/editor/library?midi=mock&library=mock');
     await page.waitForLoadState('networkidle');
 
-    // Clean OPFS and write sample fixture BEFORE connecting
+    // Clean OPFS and write sample fixture
     await initializeCleanOPFS(page, LIBRARY_DEVICE);
     await writeSampleFixtureToOPFS(
       page,
@@ -82,8 +82,10 @@ test.describe('Chopper Save — save slices to library', () => {
       SAMPLE_WAV_BASE64,
     );
 
-    // Connect to OPFS library backend via UI
-    await connectToOPFSBackend(page);
+    // Refresh the library view to pick up the new fixture
+    // In mock mode, library is auto-connected — no manual OPFS button click needed
+    await page.reload();
+    await page.waitForLoadState('networkidle');
   });
 
   test.afterEach(async ({ page }) => {
@@ -201,11 +203,11 @@ test.describe('Chopper Save — save slices to library', () => {
 
 test.describe('Chopper Save — chop into drum kit', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to the Library page
-    await page.goto('/library');
+    // Navigate to the Library page with mock mode
+    await page.goto('/roland/s330/editor/library?midi=mock&library=mock');
     await page.waitForLoadState('networkidle');
 
-    // Clean OPFS and write tone fixture BEFORE connecting
+    // Clean OPFS and write tone fixture
     await initializeCleanOPFS(page, LIBRARY_DEVICE);
     await writeToneFixtureToOPFS(
       page,
@@ -215,8 +217,9 @@ test.describe('Chopper Save — chop into drum kit', () => {
       SAMPLE_WAV_BASE64,
     );
 
-    // Connect to OPFS library backend via UI
-    await connectToOPFSBackend(page);
+    // Refresh to pick up fixtures (library auto-connected in mock mode)
+    await page.reload();
+    await page.waitForLoadState('networkidle');
   });
 
   test.afterEach(async ({ page }) => {
