@@ -677,6 +677,7 @@ export function TonesPage() {
         sampleRate={chopper.chopperSampleRate}
         sourceName={selectedTone?.name ?? ''}
         onConfirm={chopper.handleConfirm}
+        onSave={libraryDirectoryHandle ? chopper.handleSave : undefined}
         renderOutputConfig={(state) => (
           <S330KitOutputConfig
             state={state}

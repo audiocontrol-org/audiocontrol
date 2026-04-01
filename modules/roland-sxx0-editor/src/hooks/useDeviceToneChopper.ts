@@ -4,7 +4,8 @@
  */
 
 import { useCallback, useState, type RefObject } from 'react';
-import type { ChopperResult } from '@audiocontrol/sample-chopper/ui';
+import type { ChopperResult, ChopperSavePayload } from '@audiocontrol/sample-chopper/ui';
+import { saveSample, createWav, type SampleYaml } from '@audiocontrol/sampler-library/browser';
 import type { SamplerClientInterface, SamplerTone } from '@/core/midi/SamplerClient';
 import type { S330KitConfig } from '@/components/library/S330KitOutputConfig';
 import { unpack12BitTo16Bit } from '@/lib/wave-export';
@@ -79,6 +80,31 @@ export function useDeviceToneChopper({ clientRef, libraryDirectoryHandle }: UseD
     }
   }, [libraryDirectoryHandle, kitConfig, closeChopper]);
 
+  const handleSave = useCallback(async (payload: ChopperSavePayload) => {
+    if (!libraryDirectoryHandle) return;
+
+    const yaml: SampleYaml = {
+      format: 'sample',
+      version: 1,
+      name: payload.name,
+      file: 'sample.wav',
+      sampleRate: payload.sourceAudio.sampleRate,
+      slices: payload.slices.map((s) => ({ label: s.label, startSample: s.startSample, endSample: s.endSample })),
+      triggers: payload.triggers,
+      playback: payload.playbackConfig,
+      modifiedAt: new Date().toISOString(),
+    };
+
+    const wavData = createWav(payload.sourceAudio.samples, payload.sourceAudio.sampleRate);
+
+    try {
+      await saveSample(libraryDirectoryHandle, { name: payload.name, yaml, wavData }, []);
+      closeChopper();
+    } catch (err) {
+      console.error('[useDeviceToneChopper] Failed to save chopped sample:', err);
+    }
+  }, [libraryDirectoryHandle, closeChopper]);
+
   return {
     chopperOpen,
     chopperSamples,
@@ -89,5 +115,6 @@ export function useDeviceToneChopper({ clientRef, libraryDirectoryHandle }: UseD
     openChopper,
     closeChopper,
     handleConfirm,
+    handleSave,
   };
 }

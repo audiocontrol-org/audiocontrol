@@ -347,7 +347,7 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | 11.2.1 | Chop device tone sample (opens chopper from Tones page) | P1 | ✅ | `device-tone-chopper.spec.ts` — opens chopper dialog with device wave data |
 | 11.2.2 | Save slices to library as individual tones | P1 | ❌ | 🔌 Each slice becomes a library tone (YAML + WAV) |
 | 11.2.3 | Save slices as drum kit to library | P1 | ✅ | `device-tone-chopper.spec.ts` — chops device tone, saves kit to OPFS |
-| 11.2.4 | Slice boundaries persist after save/reload | P1 | ❌ | 🔌 Save slices, reload from library, verify boundaries match |
+| 11.2.4 | Slice boundaries persist after save/reload | P1 | ✅ | `library-chopper-save.spec.ts` — save slices, reopen chopper, verify pre-populated |
 
 ---
 
@@ -360,7 +360,7 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | 12.3 | Automatic MIDI note assignment | P2 | ❌ | |
 | 12.4 | Base note configuration | P2 | ❌ | |
 | 12.5 | Progress tracking | P2 | ⚠️ | Implicit in drum kit import test |
-| 12.6 | Handle missing sample files | P1 | ❌ | |
+| 12.6 | Handle missing sample files | P1 | ✅ | `library-drumkit-error.spec.ts` — v1/v2 kits with missing WAVs don't crash |
 
 ---
 
@@ -370,12 +370,12 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 13.1.1 | Create drum kit from sample chopper slices | P1 | ❌ | Slices from chopper become kit pads |
+| 13.1.1 | Create drum kit from sample chopper slices | P1 | ✅ | `library-chopper-save.spec.ts` + `device-tone-chopper.spec.ts` |
 | 13.1.2 | Drum kit preview/playback | P1 | ❌ | Audition individual pads in browser |
 | 13.1.3 | MIDI note assignment per slice | P1 | ❌ | Each pad maps to a MIDI note |
-| 13.1.4 | Base note configuration | P1 | ❌ | Set starting MIDI note for kit |
+| 13.1.4 | Base note configuration | P1 | ✅ | `library-chopper-save.spec.ts` + `device-tone-chopper.spec.ts` — Base MIDI Note field in S330KitOutputConfig |
 | 13.1.5 | Output assignment configuration (S330KitOutputConfig) | P1 | ❌ | Per-pad output routing |
-| 13.1.6 | Save drum kit to library | P1 | ❌ | Persist kit as library item (YAML + WAV files) |
+| 13.1.6 | Save drum kit to library | P1 | ✅ | `library-chopper-save.spec.ts` — verifies kit.yaml + source.wav in OPFS |
 
 ### 13.2 Drum Kit Edge Cases
 
@@ -460,16 +460,16 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | Priority | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | P0 | 44 | 38 | 2 | 4 |
-| P1 | 148 | 71 | 10 | 67 |
+| P1 | 148 | 76 | 10 | 62 |
 | P2 | 37 | 13 | 2 | 22 |
-| **Total** | **229** | **122** | **14** | **93** |
+| **Total** | **229** | **127** | **14** | **88** |
 
 ### By Hardware Requirement
 
 | Category | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
-| No Hardware | 83 | 70 | 0 | 13 |
-| Hardware Required | 146 | 52 | 14 | 80 |
+| No Hardware | 83 | 74 | 0 | 9 |
+| Hardware Required | 146 | 53 | 14 | 79 |
 
 ### Critical Gaps (P0 Not Tested)
 

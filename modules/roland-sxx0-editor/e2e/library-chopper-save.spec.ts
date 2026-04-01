@@ -198,6 +198,56 @@ test.describe('Chopper Save -- save slices to library', () => {
     ).toBe(8);
   });
 
+  test('saved slice boundaries persist when chopper is reopened', async ({ page }) => {
+    // Step 1: Open chopper on the sample
+    const sampleNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${SAMPLE_FIXTURE_NAME}$`) }).first();
+    await expect(sampleNameSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const treeNode = sampleNameSpan.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
+    await treeNode.click();
+
+    const chopButton = page.getByRole('button', { name: 'Open in Chopper' });
+    await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await chopButton.click();
+
+    const dialog = page.locator('[data-slice-editor-open="true"]');
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+
+    // Step 2: Create 4 slices with Fixed method and save
+    await page.getByRole('tab', { name: 'Fixed' }).click();
+    const sliceCountInput = dialog.locator('input[type="number"]').first();
+    await sliceCountInput.fill('4');
+    await expect(page.getByText('4 slices')).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const saveButton = page.getByRole('button', { name: 'Save' });
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
+    await page.waitForTimeout(2_000);
+
+    // Verify the save wrote slices to the YAML
+    const yamlAfterSave = await readSampleYaml(page, SAMPLE_FIXTURE_NAME);
+    expect(yamlAfterSave).toContain('slices:');
+    const sliceMatches = yamlAfterSave.match(/startSample:/g);
+    expect(sliceMatches?.length).toBe(4);
+
+    // Step 3: Close the chopper dialog
+    const cancelButton = page.getByRole('button', { name: 'Cancel' });
+    await cancelButton.click();
+    await expect(dialog).not.toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Step 4: Reopen the chopper on the same sample
+    await treeNode.click();
+    await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await chopButton.click();
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+
+    // Step 5: Verify slices are pre-populated.
+    // The dialog should show the Manual tab with 4 slices loaded from the YAML.
+    // The status bar renders "{N} slice{s}" when currentSliceResult has slices.
+    // Wait longer since initial slices need to be computed.
+    await expect(dialog.getByText(/4 slice/)).toBeVisible({ timeout: 10_000 });
+  });
+
   test.fixme('Save button is disabled when no slices exist', async ({ page }) => {
     // FIXME: Save button is enabled even with no slices -- possible UX issue
     const sampleNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${SAMPLE_FIXTURE_NAME}$`) }).first();

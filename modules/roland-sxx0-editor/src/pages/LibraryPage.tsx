@@ -125,6 +125,8 @@ export function LibraryPage() {
   const [chopperDialog, setChopperDialog] = useState<{
     open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
     origin: { name: string; type: string; path?: string[] } | null;
+    initialSlices?: InitialSliceDefinition[];
+    initialLabels?: string;
   } | null>(null);
   const [sampleEditorDialog, setSampleEditorDialog] = useState<{
     open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
@@ -426,9 +428,26 @@ export function LibraryPage() {
         throw new Error(`Unsupported node type for chopper: ${nodeType}`);
       }
 
+      // Load existing slice definitions from sample metadata (if any)
+      let initialSlices: InitialSliceDefinition[] | undefined;
+      let initialLabels: string | undefined;
+      if (nodeType === 'sample') {
+        const meta = await loadSampleMeta(libraryHandle, name, path);
+        if (meta.slices && meta.slices.length > 0) {
+          initialSlices = meta.slices.map((s) => ({
+            label: s.label,
+            startSample: s.startSample,
+            endSample: s.endSample,
+          }));
+          initialLabels = meta.slices.map((s) => s.label).join(',');
+        }
+      }
+
       setChopperDialog({
         open: true, samples, sampleRate, sampleName: name,
         origin: { name, type: nodeType, path },
+        initialSlices,
+        initialLabels,
       });
     } catch (err) {
       console.error('[LibraryPage] Failed to load WAV for chopper:', err);
@@ -824,6 +843,9 @@ export function LibraryPage() {
           samples={chopperDialog.samples}
           sampleRate={chopperDialog.sampleRate}
           sourceName={chopperDialog.sampleName}
+          editMode={!!chopperDialog.initialSlices}
+          initialSlices={chopperDialog.initialSlices}
+          initialLabels={chopperDialog.initialLabels}
           onConfirm={() => { setChopperDialog(null); }}
           onSave={libraryHandle ? handleChopperSave : undefined}
         />
