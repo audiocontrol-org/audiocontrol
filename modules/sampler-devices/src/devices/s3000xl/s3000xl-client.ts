@@ -35,6 +35,14 @@ import {
 
 const AKAI_NAME_LENGTH = 12;
 
+/**
+ * Byte index of KNUMBER in a keygroup SysEx response.
+ *
+ * Response format: [F0, 47, ch, opcode, 48, PNUMBER_lo, PNUMBER_hi, KNUMBER, ...data, F7]
+ * Index:            0    1   2    3       4      5            6          7
+ */
+const KNUMBER_RAW_INDEX = 7;
+
 // =========================================================================
 // Inline nibble utilities (avoids sampler-lib dependency for browser compat)
 // =========================================================================
@@ -180,6 +188,15 @@ export function createS3000xlClient(
   }
 
   // =========================================================================
+  // Cache Invalidation Helpers
+  // =========================================================================
+
+  function invalidateAllKeygroupAndProgramCaches(): void {
+    keygroupHeaderCache.clear();
+    programHeaderCache.clear();
+  }
+
+  // =========================================================================
   // Header Parsing Helpers
   // =========================================================================
 
@@ -294,6 +311,38 @@ export function createS3000xlClient(
     async writeSampleHeader(header: SampleHeader): Promise<void> {
       const key = `sample:${header.SHNAME}`;
       await bufferWrite(key, AkaiOpcode.SDATA, header.raw);
+    },
+
+    async createKeygroup(
+      programNumber: number,
+      keygroupNumber: number,
+      template?: KeygroupHeader,
+    ): Promise<void> {
+      let rawData: number[];
+
+      if (template) {
+        rawData = [...template.raw];
+      } else {
+        // Clone keygroup 0 as a template
+        const kg0 = await client.fetchKeygroupHeader(programNumber, 0);
+        rawData = [...kg0.raw];
+      }
+
+      // Set KNUMBER to the new keygroup index
+      rawData[KNUMBER_RAW_INDEX] = keygroupNumber;
+
+      const key = `createKeygroup:${programNumber}:${keygroupNumber}`;
+      await bufferWrite(key, AkaiOpcode.KDATA, rawData);
+      invalidateAllKeygroupAndProgramCaches();
+    },
+
+    async deleteKeygroup(
+      programNumber: number,
+      keygroupNumber: number,
+    ): Promise<void> {
+      const data = byte2nibblesLE(programNumber).concat(keygroupNumber);
+      await sendCommandWithRetry(AkaiOpcode.DELK, data);
+      invalidateAllKeygroupAndProgramCaches();
     },
 
     invalidateProgramCache(): void {

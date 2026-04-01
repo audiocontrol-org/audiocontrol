@@ -20,8 +20,10 @@ export function KeygroupsPage(): JSX.Element {
   const loadingMessage = useEditorStore((s) => s.loadingMessage);
   const loadingProgress = useEditorStore((s) => s.loadingProgress);
   const error = useEditorStore((s) => s.error);
+  const setError = useEditorStore((s) => s.setError);
 
   const programs = useProgramStore((s) => s.programs);
+  const setProgram = useProgramStore((s) => s.setProgram);
   const keygroups = useKeygroupStore((s) => s.keygroups);
   const keygroupCount = useKeygroupStore((s) => s.keygroupCount);
   const invalidateCache = useKeygroupStore((s) => s.invalidateCache);
@@ -60,14 +62,58 @@ export function KeygroupsPage(): JSX.Element {
     [selectedKeygroupIndex, client, keygroups],
   );
 
-  const handleRefresh = useCallback(() => {
-    if (selectedProgramIndex === null || !selectedProgram) return;
+  /**
+   * Refresh keygroups from device: invalidate caches, re-fetch the program
+   * header (to get updated GROUPS count), then reload all keygroups.
+   */
+  const refreshFromDevice = useCallback(async () => {
+    if (selectedProgramIndex === null || !client) return;
+
     lastLoadedProgram.current = null;
     invalidateCache();
-    if (client) client.invalidateKeygroupCache();
+    client.invalidateKeygroupCache();
+    client.invalidateProgramCache();
     selectKeygroup(null);
-    loadKeygroups(selectedProgramIndex, selectedProgram.GROUPS);
-  }, [selectedProgramIndex, selectedProgram, client, invalidateCache, selectKeygroup, loadKeygroups]);
+
+    // Re-fetch program header to get the updated GROUPS count
+    const freshProgram = await client.fetchProgramHeader(selectedProgramIndex);
+    setProgram(selectedProgramIndex, freshProgram);
+    await loadKeygroups(selectedProgramIndex, freshProgram.GROUPS);
+  }, [selectedProgramIndex, client, invalidateCache, selectKeygroup, loadKeygroups, setProgram]);
+
+  const handleRefresh = useCallback(() => {
+    refreshFromDevice().catch((err) => {
+      const message = err instanceof Error ? err.message : 'Failed to refresh keygroups';
+      setError(message);
+    });
+  }, [refreshFromDevice, setError]);
+
+  const handleAddKeygroup = useCallback(async () => {
+    if (selectedProgramIndex === null || !client || !selectedProgram) return;
+
+    try {
+      await client.createKeygroup(selectedProgramIndex, selectedProgram.GROUPS);
+      await refreshFromDevice();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create keygroup';
+      setError(message);
+    }
+  }, [selectedProgramIndex, client, selectedProgram, refreshFromDevice, setError]);
+
+  const handleDeleteKeygroup = useCallback(async () => {
+    if (selectedProgramIndex === null || selectedKeygroupIndex === null || !client) return;
+
+    try {
+      await client.deleteKeygroup(selectedProgramIndex, selectedKeygroupIndex);
+      await refreshFromDevice();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete keygroup';
+      setError(message);
+    }
+  }, [selectedProgramIndex, selectedKeygroupIndex, client, refreshFromDevice, setError]);
+
+  const canDelete =
+    selectedKeygroupIndex !== null && keygroupCount > 1 && !isLoading;
 
   const selectedHeader =
     selectedKeygroupIndex !== null ? keygroups[selectedKeygroupIndex] : undefined;
@@ -106,6 +152,22 @@ export function KeygroupsPage(): JSX.Element {
                 {loadingProgress !== null && ` (${loadingProgress}%)`}
               </span>
             )}
+            <button
+              className="ac-btn ac-btn-sm ac-btn-secondary"
+              onClick={handleAddKeygroup}
+              disabled={isLoading}
+              data-testid="add-keygroup-btn"
+            >
+              Add Keygroup
+            </button>
+            <button
+              className="ac-btn ac-btn-sm ac-btn-secondary"
+              onClick={handleDeleteKeygroup}
+              disabled={!canDelete}
+              data-testid="delete-keygroup-btn"
+            >
+              Delete Keygroup
+            </button>
             <button
               className="ac-btn ac-btn-sm ac-btn-secondary"
               onClick={handleRefresh}
