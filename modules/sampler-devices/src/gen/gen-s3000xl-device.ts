@@ -7,13 +7,18 @@ interface Spec {
     name: string
     className: string
     headerOffset: number
+    /** Raw byte offset to add to HEADER_START for write functions.
+     *  Overrides headerOffset * 2 when set. Use for headers with
+     *  non-nibblized prefix bytes (e.g., KNUMBER in keygroup response). */
+    rawOffset?: number
     fields: {
         n: string,  // name
         f?: string,  // function name root
         l?: string, // label
         d: string,  // description
         s?: number, // size in bytes; 1 if undefined
-        t?: string   // type; number if undefined
+        t?: string,  // type; number if undefined
+        signed?: boolean // use signed number conversion for this field
     }[]
 }
 
@@ -27,7 +32,7 @@ export function genImports() {
     return `//
 // GENERATED ${new Date()}. DO NOT EDIT.
 //
-import {byte2nibblesLE, bytes2numberLE, nibbles2byte, newClientOutput} from "@audiocontrol/sampler-lib"
+import {byte2nibblesLE, bytes2numberLE, bytes2signedNumberLE, nibbles2byte, newClientOutput} from "@audiocontrol/sampler-lib"
 import {nextByte, akaiByte2String, string2AkaiBytes} from "@/utils/akai-utils.js"
 
 `
@@ -103,7 +108,7 @@ function writeFunctionName(spec: Spec, field: any) {
 
 export async function genSetters(spec: Spec) {
     let rv = ''
-    let offset = HEADER_START + spec.headerOffset * 2
+    let offset = HEADER_START + (spec.rawOffset ?? spec.headerOffset * 2)
     for (const field of spec.fields) {
         const fname = writeFunctionName(spec, field)
         rv += `export function ${fname}(header: ${spec.name}, v: ${field.t ? field.t : 'number'}) {\n`
@@ -170,7 +175,8 @@ export async function genParser(spec: Spec) {
             rv += `    for (let i=0; i<${field.s ? field.s : 1}; i++) {\n`
             rv += '        b.push(nextByte(data, v).value)\n'
             rv += `    }\n`
-            rv += `    o.${field.n} = bytes2numberLE(b)\n`
+            const numberFn = field.signed ? 'bytes2signedNumberLE' : 'bytes2numberLE'
+            rv += `    o.${field.n} = ${numberFn}(b)\n`
         }
         rv += '\n'
     }

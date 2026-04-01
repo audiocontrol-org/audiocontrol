@@ -196,7 +196,10 @@ export function createS3000xlClient(
   function parseKeygroupFromResponse(response: number[]): KeygroupHeader {
     const header = {} as KeygroupHeader;
     const v = { value: 0, offset: 5 };
+    // Skip PNUMBER (2 nibbles)
     nextByte(response, v);
+    // Skip KNUMBER (1 raw byte, not nibblized)
+    v.offset += 1;
     const headerData = response.slice(v.offset, response.length - 1);
     parseKeygroupHeader(headerData, 0, header);
     header.raw = response;

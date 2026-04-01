@@ -1,5 +1,5 @@
 //
-// GENERATED Fri Oct 03 2025 22:37:37 GMT-0700 (Pacific Daylight Time). DO NOT EDIT.
+// GENERATED Tue Mar 31 2026 18:29:34 GMT-0700 (Pacific Daylight Time). DO NOT EDIT.
 //
 import {byte2nibblesLE, bytes2numberLE, bytes2signedNumberLE, nibbles2byte, newClientOutput} from "@audiocontrol/sampler-lib"
 import {nextByte, akaiByte2String, string2AkaiBytes} from "@/utils/akai-utils.js"
@@ -3802,265 +3802,265 @@ export function parseKeygroupHeader(data: number[], offset: number, o: KeygroupH
 
 export function KeygroupHeader_writeKGIDENT(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeKGIDENT')
-    out.log('Offset: ' + 7)
+    out.log('Offset: ' + 8)
     const d = byte2nibblesLE(v)
-    header.raw[7] = d[0]
-    header.raw[7 + 1] = d[1]
+    header.raw[8] = d[0]
+    header.raw[8 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeNXTKG(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeNXTKG')
-    out.log('Offset: ' + 9)
+    out.log('Offset: ' + 10)
     const d = byte2nibblesLE(v)
-    header.raw[9] = d[0]
-    header.raw[9 + 1] = d[1]
+    header.raw[10] = d[0]
+    header.raw[10 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeLONOTE(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeLONOTE')
-    out.log('Offset: ' + 13)
+    out.log('Offset: ' + 14)
     const d = byte2nibblesLE(v)
-    header.raw[13] = d[0]
-    header.raw[13 + 1] = d[1]
+    header.raw[14] = d[0]
+    header.raw[14 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeHINOTE(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeHINOTE')
-    out.log('Offset: ' + 15)
+    out.log('Offset: ' + 16)
     const d = byte2nibblesLE(v)
-    header.raw[15] = d[0]
-    header.raw[15 + 1] = d[1]
+    header.raw[16] = d[0]
+    header.raw[16 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeKGTUNO(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeKGTUNO')
-    out.log('Offset: ' + 17)
+    out.log('Offset: ' + 18)
     const d = byte2nibblesLE(v)
-    header.raw[17] = d[0]
-    header.raw[17 + 1] = d[1]
+    header.raw[18] = d[0]
+    header.raw[18 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeFILFRQ(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeFILFRQ')
-    out.log('Offset: ' + 21)
+    out.log('Offset: ' + 22)
     const d = byte2nibblesLE(v)
-    header.raw[21] = d[0]
-    header.raw[21 + 1] = d[1]
+    header.raw[22] = d[0]
+    header.raw[22 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeK_FREQ(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeK_FREQ')
-    out.log('Offset: ' + 23)
+    out.log('Offset: ' + 24)
     const d = byte2nibblesLE(v)
-    header.raw[23] = d[0]
-    header.raw[23 + 1] = d[1]
+    header.raw[24] = d[0]
+    header.raw[24 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeV_FREQ(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeV_FREQ')
-    out.log('Offset: ' + 25)
+    out.log('Offset: ' + 26)
     const d = byte2nibblesLE(v)
-    header.raw[25] = d[0]
-    header.raw[25 + 1] = d[1]
+    header.raw[26] = d[0]
+    header.raw[26 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeP_FREQ(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeP_FREQ')
-    out.log('Offset: ' + 27)
+    out.log('Offset: ' + 28)
     const d = byte2nibblesLE(v)
-    header.raw[27] = d[0]
-    header.raw[27 + 1] = d[1]
+    header.raw[28] = d[0]
+    header.raw[28 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeE_FREQ(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeE_FREQ')
-    out.log('Offset: ' + 29)
+    out.log('Offset: ' + 30)
     const d = byte2nibblesLE(v)
-    header.raw[29] = d[0]
-    header.raw[29 + 1] = d[1]
+    header.raw[30] = d[0]
+    header.raw[30 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeATTAK1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeATTAK1')
-    out.log('Offset: ' + 31)
+    out.log('Offset: ' + 32)
     const d = byte2nibblesLE(v)
-    header.raw[31] = d[0]
-    header.raw[31 + 1] = d[1]
+    header.raw[32] = d[0]
+    header.raw[32 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeDECAY1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeDECAY1')
-    out.log('Offset: ' + 33)
+    out.log('Offset: ' + 34)
     const d = byte2nibblesLE(v)
-    header.raw[33] = d[0]
-    header.raw[33 + 1] = d[1]
+    header.raw[34] = d[0]
+    header.raw[34 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeSUSTN1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeSUSTN1')
-    out.log('Offset: ' + 35)
+    out.log('Offset: ' + 36)
     const d = byte2nibblesLE(v)
-    header.raw[35] = d[0]
-    header.raw[35 + 1] = d[1]
+    header.raw[36] = d[0]
+    header.raw[36 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeRELSE1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeRELSE1')
-    out.log('Offset: ' + 37)
+    out.log('Offset: ' + 38)
     const d = byte2nibblesLE(v)
-    header.raw[37] = d[0]
-    header.raw[37 + 1] = d[1]
+    header.raw[38] = d[0]
+    header.raw[38 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeV_ATT1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeV_ATT1')
-    out.log('Offset: ' + 39)
+    out.log('Offset: ' + 40)
     const d = byte2nibblesLE(v)
-    header.raw[39] = d[0]
-    header.raw[39 + 1] = d[1]
+    header.raw[40] = d[0]
+    header.raw[40 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeV_REL1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeV_REL1')
-    out.log('Offset: ' + 41)
+    out.log('Offset: ' + 42)
     const d = byte2nibblesLE(v)
-    header.raw[41] = d[0]
-    header.raw[41 + 1] = d[1]
+    header.raw[42] = d[0]
+    header.raw[42 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeO_REL1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeO_REL1')
-    out.log('Offset: ' + 43)
+    out.log('Offset: ' + 44)
     const d = byte2nibblesLE(v)
-    header.raw[43] = d[0]
-    header.raw[43 + 1] = d[1]
+    header.raw[44] = d[0]
+    header.raw[44 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeK_DAR1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeK_DAR1')
-    out.log('Offset: ' + 45)
+    out.log('Offset: ' + 46)
     const d = byte2nibblesLE(v)
-    header.raw[45] = d[0]
-    header.raw[45 + 1] = d[1]
+    header.raw[46] = d[0]
+    header.raw[46 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV2R1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV2R1')
-    out.log('Offset: ' + 47)
+    out.log('Offset: ' + 48)
     const d = byte2nibblesLE(v)
-    header.raw[47] = d[0]
-    header.raw[47 + 1] = d[1]
+    header.raw[48] = d[0]
+    header.raw[48 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV2R3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV2R3')
-    out.log('Offset: ' + 49)
+    out.log('Offset: ' + 50)
     const d = byte2nibblesLE(v)
-    header.raw[49] = d[0]
-    header.raw[49 + 1] = d[1]
+    header.raw[50] = d[0]
+    header.raw[50 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV2L3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV2L3')
-    out.log('Offset: ' + 51)
+    out.log('Offset: ' + 52)
     const d = byte2nibblesLE(v)
-    header.raw[51] = d[0]
-    header.raw[51 + 1] = d[1]
+    header.raw[52] = d[0]
+    header.raw[52 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV2R4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV2R4')
-    out.log('Offset: ' + 53)
+    out.log('Offset: ' + 54)
     const d = byte2nibblesLE(v)
-    header.raw[53] = d[0]
-    header.raw[53 + 1] = d[1]
+    header.raw[54] = d[0]
+    header.raw[54 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeV_ATT2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeV_ATT2')
-    out.log('Offset: ' + 55)
+    out.log('Offset: ' + 56)
     const d = byte2nibblesLE(v)
-    header.raw[55] = d[0]
-    header.raw[55 + 1] = d[1]
+    header.raw[56] = d[0]
+    header.raw[56 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeV_REL2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeV_REL2')
-    out.log('Offset: ' + 57)
+    out.log('Offset: ' + 58)
     const d = byte2nibblesLE(v)
-    header.raw[57] = d[0]
-    header.raw[57 + 1] = d[1]
+    header.raw[58] = d[0]
+    header.raw[58 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeO_REL2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeO_REL2')
-    out.log('Offset: ' + 59)
+    out.log('Offset: ' + 60)
     const d = byte2nibblesLE(v)
-    header.raw[59] = d[0]
-    header.raw[59 + 1] = d[1]
+    header.raw[60] = d[0]
+    header.raw[60 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeK_DAR2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeK_DAR2')
-    out.log('Offset: ' + 61)
+    out.log('Offset: ' + 62)
     const d = byte2nibblesLE(v)
-    header.raw[61] = d[0]
-    header.raw[61 + 1] = d[1]
+    header.raw[62] = d[0]
+    header.raw[62 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeV_ENV2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeV_ENV2')
-    out.log('Offset: ' + 63)
+    out.log('Offset: ' + 64)
     const d = byte2nibblesLE(v)
-    header.raw[63] = d[0]
-    header.raw[63 + 1] = d[1]
+    header.raw[64] = d[0]
+    header.raw[64 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeE_PTCH(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeE_PTCH')
-    out.log('Offset: ' + 65)
+    out.log('Offset: ' + 66)
     const d = byte2nibblesLE(v)
-    header.raw[65] = d[0]
-    header.raw[65 + 1] = d[1]
+    header.raw[66] = d[0]
+    header.raw[66 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVXFADE(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVXFADE')
-    out.log('Offset: ' + 67)
+    out.log('Offset: ' + 68)
     const d = byte2nibblesLE(v)
-    header.raw[67] = d[0]
-    header.raw[67 + 1] = d[1]
+    header.raw[68] = d[0]
+    header.raw[68 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVZONES(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVZONES')
-    out.log('Offset: ' + 69)
+    out.log('Offset: ' + 70)
     const d = byte2nibblesLE(v)
-    header.raw[69] = d[0]
-    header.raw[69 + 1] = d[1]
+    header.raw[70] = d[0]
+    header.raw[70 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeLKXF(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeLKXF')
-    out.log('Offset: ' + 71)
+    out.log('Offset: ' + 72)
     const d = byte2nibblesLE(v)
-    header.raw[71] = d[0]
-    header.raw[71 + 1] = d[1]
+    header.raw[72] = d[0]
+    header.raw[72 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeRKXF(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeRKXF')
-    out.log('Offset: ' + 73)
+    out.log('Offset: ' + 74)
     const d = byte2nibblesLE(v)
-    header.raw[73] = d[0]
-    header.raw[73 + 1] = d[1]
+    header.raw[74] = d[0]
+    header.raw[74 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeSNAME1(header: KeygroupHeader, v: string) {
     const out = newClientOutput(false, 'KeygroupHeader_writeSNAME1')
-    out.log('Offset: ' + 75)
+    out.log('Offset: ' + 76)
     const data = string2AkaiBytes(v)
-    for (let i = 75, j = 0; i < 75 + 12 * 2; i += 2, j++) {
+    for (let i = 76, j = 0; i < 76 + 12 * 2; i += 2, j++) {
         const nibbles = byte2nibblesLE(data[j])
         header.raw[i] = nibbles[0]
         header.raw[i + 1] = nibbles[1]    }
@@ -4068,89 +4068,89 @@ export function KeygroupHeader_writeSNAME1(header: KeygroupHeader, v: string) {
 
 export function KeygroupHeader_writeLOVEL1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeLOVEL1')
-    out.log('Offset: ' + 99)
+    out.log('Offset: ' + 100)
     const d = byte2nibblesLE(v)
-    header.raw[99] = d[0]
-    header.raw[99 + 1] = d[1]
+    header.raw[100] = d[0]
+    header.raw[100 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeHIVEL1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeHIVEL1')
-    out.log('Offset: ' + 101)
+    out.log('Offset: ' + 102)
     const d = byte2nibblesLE(v)
-    header.raw[101] = d[0]
-    header.raw[101 + 1] = d[1]
+    header.raw[102] = d[0]
+    header.raw[102 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVTUNO1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVTUNO1')
-    out.log('Offset: ' + 103)
+    out.log('Offset: ' + 104)
     const d = byte2nibblesLE(v)
-    header.raw[103] = d[0]
-    header.raw[103 + 1] = d[1]
+    header.raw[104] = d[0]
+    header.raw[104 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVLOUD1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVLOUD1')
-    out.log('Offset: ' + 107)
+    out.log('Offset: ' + 108)
     const d = byte2nibblesLE(v)
-    header.raw[107] = d[0]
-    header.raw[107 + 1] = d[1]
+    header.raw[108] = d[0]
+    header.raw[108 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVFREQ1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVFREQ1')
-    out.log('Offset: ' + 109)
+    out.log('Offset: ' + 110)
     const d = byte2nibblesLE(v)
-    header.raw[109] = d[0]
-    header.raw[109 + 1] = d[1]
+    header.raw[110] = d[0]
+    header.raw[110 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVPANO1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVPANO1')
-    out.log('Offset: ' + 111)
+    out.log('Offset: ' + 112)
     const d = byte2nibblesLE(v)
-    header.raw[111] = d[0]
-    header.raw[111 + 1] = d[1]
+    header.raw[112] = d[0]
+    header.raw[112 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeZPLAY1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeZPLAY1')
-    out.log('Offset: ' + 113)
+    out.log('Offset: ' + 114)
     const d = byte2nibblesLE(v)
-    header.raw[113] = d[0]
-    header.raw[113 + 1] = d[1]
+    header.raw[114] = d[0]
+    header.raw[114 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeLVXF1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeLVXF1')
-    out.log('Offset: ' + 115)
+    out.log('Offset: ' + 116)
     const d = byte2nibblesLE(v)
-    header.raw[115] = d[0]
-    header.raw[115 + 1] = d[1]
+    header.raw[116] = d[0]
+    header.raw[116 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeHVXF1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeHVXF1')
-    out.log('Offset: ' + 117)
+    out.log('Offset: ' + 118)
     const d = byte2nibblesLE(v)
-    header.raw[117] = d[0]
-    header.raw[117 + 1] = d[1]
+    header.raw[118] = d[0]
+    header.raw[118 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeSBADD1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeSBADD1')
-    out.log('Offset: ' + 119)
+    out.log('Offset: ' + 120)
     const d = byte2nibblesLE(v)
-    header.raw[119] = d[0]
-    header.raw[119 + 1] = d[1]
+    header.raw[120] = d[0]
+    header.raw[120 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeSNAME2(header: KeygroupHeader, v: string) {
     const out = newClientOutput(false, 'KeygroupHeader_writeSNAME2')
-    out.log('Offset: ' + 123)
+    out.log('Offset: ' + 124)
     const data = string2AkaiBytes(v)
-    for (let i = 123, j = 0; i < 123 + 12 * 2; i += 2, j++) {
+    for (let i = 124, j = 0; i < 124 + 12 * 2; i += 2, j++) {
         const nibbles = byte2nibblesLE(data[j])
         header.raw[i] = nibbles[0]
         header.raw[i + 1] = nibbles[1]    }
@@ -4158,89 +4158,89 @@ export function KeygroupHeader_writeSNAME2(header: KeygroupHeader, v: string) {
 
 export function KeygroupHeader_writeLOVEL2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeLOVEL2')
-    out.log('Offset: ' + 147)
+    out.log('Offset: ' + 148)
     const d = byte2nibblesLE(v)
-    header.raw[147] = d[0]
-    header.raw[147 + 1] = d[1]
+    header.raw[148] = d[0]
+    header.raw[148 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeHIVEL2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeHIVEL2')
-    out.log('Offset: ' + 149)
+    out.log('Offset: ' + 150)
     const d = byte2nibblesLE(v)
-    header.raw[149] = d[0]
-    header.raw[149 + 1] = d[1]
+    header.raw[150] = d[0]
+    header.raw[150 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVTUNO2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVTUNO2')
-    out.log('Offset: ' + 151)
+    out.log('Offset: ' + 152)
     const d = byte2nibblesLE(v)
-    header.raw[151] = d[0]
-    header.raw[151 + 1] = d[1]
+    header.raw[152] = d[0]
+    header.raw[152 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVLOUD2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVLOUD2')
-    out.log('Offset: ' + 155)
+    out.log('Offset: ' + 156)
     const d = byte2nibblesLE(v)
-    header.raw[155] = d[0]
-    header.raw[155 + 1] = d[1]
+    header.raw[156] = d[0]
+    header.raw[156 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVFREQ2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVFREQ2')
-    out.log('Offset: ' + 157)
+    out.log('Offset: ' + 158)
     const d = byte2nibblesLE(v)
-    header.raw[157] = d[0]
-    header.raw[157 + 1] = d[1]
+    header.raw[158] = d[0]
+    header.raw[158 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVPANO2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVPANO2')
-    out.log('Offset: ' + 159)
+    out.log('Offset: ' + 160)
     const d = byte2nibblesLE(v)
-    header.raw[159] = d[0]
-    header.raw[159 + 1] = d[1]
+    header.raw[160] = d[0]
+    header.raw[160 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeZPLAY2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeZPLAY2')
-    out.log('Offset: ' + 161)
+    out.log('Offset: ' + 162)
     const d = byte2nibblesLE(v)
-    header.raw[161] = d[0]
-    header.raw[161 + 1] = d[1]
+    header.raw[162] = d[0]
+    header.raw[162 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeLVXF2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeLVXF2')
-    out.log('Offset: ' + 163)
+    out.log('Offset: ' + 164)
     const d = byte2nibblesLE(v)
-    header.raw[163] = d[0]
-    header.raw[163 + 1] = d[1]
+    header.raw[164] = d[0]
+    header.raw[164 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeHVXF2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeHVXF2')
-    out.log('Offset: ' + 165)
+    out.log('Offset: ' + 166)
     const d = byte2nibblesLE(v)
-    header.raw[165] = d[0]
-    header.raw[165 + 1] = d[1]
+    header.raw[166] = d[0]
+    header.raw[166 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeSBADD2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeSBADD2')
-    out.log('Offset: ' + 167)
+    out.log('Offset: ' + 168)
     const d = byte2nibblesLE(v)
-    header.raw[167] = d[0]
-    header.raw[167 + 1] = d[1]
+    header.raw[168] = d[0]
+    header.raw[168 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeSNAME3(header: KeygroupHeader, v: string) {
     const out = newClientOutput(false, 'KeygroupHeader_writeSNAME3')
-    out.log('Offset: ' + 171)
+    out.log('Offset: ' + 172)
     const data = string2AkaiBytes(v)
-    for (let i = 171, j = 0; i < 171 + 12 * 2; i += 2, j++) {
+    for (let i = 172, j = 0; i < 172 + 12 * 2; i += 2, j++) {
         const nibbles = byte2nibblesLE(data[j])
         header.raw[i] = nibbles[0]
         header.raw[i + 1] = nibbles[1]    }
@@ -4248,89 +4248,89 @@ export function KeygroupHeader_writeSNAME3(header: KeygroupHeader, v: string) {
 
 export function KeygroupHeader_writeLOVEL3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeLOVEL3')
-    out.log('Offset: ' + 195)
+    out.log('Offset: ' + 196)
     const d = byte2nibblesLE(v)
-    header.raw[195] = d[0]
-    header.raw[195 + 1] = d[1]
+    header.raw[196] = d[0]
+    header.raw[196 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeHIVEL3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeHIVEL3')
-    out.log('Offset: ' + 197)
+    out.log('Offset: ' + 198)
     const d = byte2nibblesLE(v)
-    header.raw[197] = d[0]
-    header.raw[197 + 1] = d[1]
+    header.raw[198] = d[0]
+    header.raw[198 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVTUNO3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVTUNO3')
-    out.log('Offset: ' + 199)
+    out.log('Offset: ' + 200)
     const d = byte2nibblesLE(v)
-    header.raw[199] = d[0]
-    header.raw[199 + 1] = d[1]
+    header.raw[200] = d[0]
+    header.raw[200 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVLOUD3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVLOUD3')
-    out.log('Offset: ' + 203)
+    out.log('Offset: ' + 204)
     const d = byte2nibblesLE(v)
-    header.raw[203] = d[0]
-    header.raw[203 + 1] = d[1]
+    header.raw[204] = d[0]
+    header.raw[204 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVFREQ3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVFREQ3')
-    out.log('Offset: ' + 205)
+    out.log('Offset: ' + 206)
     const d = byte2nibblesLE(v)
-    header.raw[205] = d[0]
-    header.raw[205 + 1] = d[1]
+    header.raw[206] = d[0]
+    header.raw[206 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVPANO3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVPANO3')
-    out.log('Offset: ' + 207)
+    out.log('Offset: ' + 208)
     const d = byte2nibblesLE(v)
-    header.raw[207] = d[0]
-    header.raw[207 + 1] = d[1]
+    header.raw[208] = d[0]
+    header.raw[208 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeZPLAY3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeZPLAY3')
-    out.log('Offset: ' + 209)
+    out.log('Offset: ' + 210)
     const d = byte2nibblesLE(v)
-    header.raw[209] = d[0]
-    header.raw[209 + 1] = d[1]
+    header.raw[210] = d[0]
+    header.raw[210 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeLVXF3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeLVXF3')
-    out.log('Offset: ' + 211)
+    out.log('Offset: ' + 212)
     const d = byte2nibblesLE(v)
-    header.raw[211] = d[0]
-    header.raw[211 + 1] = d[1]
+    header.raw[212] = d[0]
+    header.raw[212 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeHVXF3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeHVXF3')
-    out.log('Offset: ' + 213)
+    out.log('Offset: ' + 214)
     const d = byte2nibblesLE(v)
-    header.raw[213] = d[0]
-    header.raw[213 + 1] = d[1]
+    header.raw[214] = d[0]
+    header.raw[214 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeSBADD3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeSBADD3')
-    out.log('Offset: ' + 215)
+    out.log('Offset: ' + 216)
     const d = byte2nibblesLE(v)
-    header.raw[215] = d[0]
-    header.raw[215 + 1] = d[1]
+    header.raw[216] = d[0]
+    header.raw[216 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeSNAME4(header: KeygroupHeader, v: string) {
     const out = newClientOutput(false, 'KeygroupHeader_writeSNAME4')
-    out.log('Offset: ' + 219)
+    out.log('Offset: ' + 220)
     const data = string2AkaiBytes(v)
-    for (let i = 219, j = 0; i < 219 + 12 * 2; i += 2, j++) {
+    for (let i = 220, j = 0; i < 220 + 12 * 2; i += 2, j++) {
         const nibbles = byte2nibblesLE(data[j])
         header.raw[i] = nibbles[0]
         header.raw[i + 1] = nibbles[1]    }
@@ -4338,530 +4338,530 @@ export function KeygroupHeader_writeSNAME4(header: KeygroupHeader, v: string) {
 
 export function KeygroupHeader_writeLOVEL4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeLOVEL4')
-    out.log('Offset: ' + 243)
+    out.log('Offset: ' + 244)
     const d = byte2nibblesLE(v)
-    header.raw[243] = d[0]
-    header.raw[243 + 1] = d[1]
+    header.raw[244] = d[0]
+    header.raw[244 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeHIVEL4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeHIVEL4')
-    out.log('Offset: ' + 245)
+    out.log('Offset: ' + 246)
     const d = byte2nibblesLE(v)
-    header.raw[245] = d[0]
-    header.raw[245 + 1] = d[1]
+    header.raw[246] = d[0]
+    header.raw[246 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVTUNO4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVTUNO4')
-    out.log('Offset: ' + 247)
+    out.log('Offset: ' + 248)
     const d = byte2nibblesLE(v)
-    header.raw[247] = d[0]
-    header.raw[247 + 1] = d[1]
+    header.raw[248] = d[0]
+    header.raw[248 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVLOUD4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVLOUD4')
-    out.log('Offset: ' + 251)
+    out.log('Offset: ' + 252)
     const d = byte2nibblesLE(v)
-    header.raw[251] = d[0]
-    header.raw[251 + 1] = d[1]
+    header.raw[252] = d[0]
+    header.raw[252 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVFREQ4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVFREQ4')
-    out.log('Offset: ' + 253)
+    out.log('Offset: ' + 254)
     const d = byte2nibblesLE(v)
-    header.raw[253] = d[0]
-    header.raw[253 + 1] = d[1]
+    header.raw[254] = d[0]
+    header.raw[254 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVPANO4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVPANO4')
-    out.log('Offset: ' + 255)
+    out.log('Offset: ' + 256)
     const d = byte2nibblesLE(v)
-    header.raw[255] = d[0]
-    header.raw[255 + 1] = d[1]
+    header.raw[256] = d[0]
+    header.raw[256 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeZPLAY4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeZPLAY4')
-    out.log('Offset: ' + 257)
+    out.log('Offset: ' + 258)
     const d = byte2nibblesLE(v)
-    header.raw[257] = d[0]
-    header.raw[257 + 1] = d[1]
+    header.raw[258] = d[0]
+    header.raw[258 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeLVXF4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeLVXF4')
-    out.log('Offset: ' + 259)
+    out.log('Offset: ' + 260)
     const d = byte2nibblesLE(v)
-    header.raw[259] = d[0]
-    header.raw[259 + 1] = d[1]
+    header.raw[260] = d[0]
+    header.raw[260 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeHVXF4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeHVXF4')
-    out.log('Offset: ' + 261)
+    out.log('Offset: ' + 262)
     const d = byte2nibblesLE(v)
-    header.raw[261] = d[0]
-    header.raw[261 + 1] = d[1]
+    header.raw[262] = d[0]
+    header.raw[262 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeSBADD4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeSBADD4')
-    out.log('Offset: ' + 263)
+    out.log('Offset: ' + 264)
     const d = byte2nibblesLE(v)
-    header.raw[263] = d[0]
-    header.raw[263 + 1] = d[1]
+    header.raw[264] = d[0]
+    header.raw[264 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeKBEAT(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeKBEAT')
-    out.log('Offset: ' + 267)
+    out.log('Offset: ' + 268)
     const d = byte2nibblesLE(v)
-    header.raw[267] = d[0]
-    header.raw[267 + 1] = d[1]
+    header.raw[268] = d[0]
+    header.raw[268 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeAHOLD(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeAHOLD')
-    out.log('Offset: ' + 269)
+    out.log('Offset: ' + 270)
     const d = byte2nibblesLE(v)
-    header.raw[269] = d[0]
-    header.raw[269 + 1] = d[1]
+    header.raw[270] = d[0]
+    header.raw[270 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeCP1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeCP1')
-    out.log('Offset: ' + 271)
+    out.log('Offset: ' + 272)
     const d = byte2nibblesLE(v)
-    header.raw[271] = d[0]
-    header.raw[271 + 1] = d[1]
+    header.raw[272] = d[0]
+    header.raw[272 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeCP2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeCP2')
-    out.log('Offset: ' + 273)
+    out.log('Offset: ' + 274)
     const d = byte2nibblesLE(v)
-    header.raw[273] = d[0]
-    header.raw[273 + 1] = d[1]
+    header.raw[274] = d[0]
+    header.raw[274 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeCP3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeCP3')
-    out.log('Offset: ' + 275)
+    out.log('Offset: ' + 276)
     const d = byte2nibblesLE(v)
-    header.raw[275] = d[0]
-    header.raw[275 + 1] = d[1]
+    header.raw[276] = d[0]
+    header.raw[276 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeCP4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeCP4')
-    out.log('Offset: ' + 277)
+    out.log('Offset: ' + 278)
     const d = byte2nibblesLE(v)
-    header.raw[277] = d[0]
-    header.raw[277 + 1] = d[1]
+    header.raw[278] = d[0]
+    header.raw[278 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVZOUT1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVZOUT1')
-    out.log('Offset: ' + 279)
+    out.log('Offset: ' + 280)
     const d = byte2nibblesLE(v)
-    header.raw[279] = d[0]
-    header.raw[279 + 1] = d[1]
+    header.raw[280] = d[0]
+    header.raw[280 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVZOUT2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVZOUT2')
-    out.log('Offset: ' + 281)
+    out.log('Offset: ' + 282)
     const d = byte2nibblesLE(v)
-    header.raw[281] = d[0]
-    header.raw[281 + 1] = d[1]
+    header.raw[282] = d[0]
+    header.raw[282 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVZOUT3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVZOUT3')
-    out.log('Offset: ' + 283)
+    out.log('Offset: ' + 284)
     const d = byte2nibblesLE(v)
-    header.raw[283] = d[0]
-    header.raw[283 + 1] = d[1]
+    header.raw[284] = d[0]
+    header.raw[284 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVZOUT4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVZOUT4')
-    out.log('Offset: ' + 285)
+    out.log('Offset: ' + 286)
     const d = byte2nibblesLE(v)
-    header.raw[285] = d[0]
-    header.raw[285 + 1] = d[1]
+    header.raw[286] = d[0]
+    header.raw[286 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVSS1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVSS1')
-    out.log('Offset: ' + 287)
+    out.log('Offset: ' + 288)
     const d = byte2nibblesLE(v)
-    header.raw[287] = d[0]
-    header.raw[287 + 1] = d[1]
+    header.raw[288] = d[0]
+    header.raw[288 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVSS2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVSS2')
-    out.log('Offset: ' + 291)
+    out.log('Offset: ' + 292)
     const d = byte2nibblesLE(v)
-    header.raw[291] = d[0]
-    header.raw[291 + 1] = d[1]
+    header.raw[292] = d[0]
+    header.raw[292 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVSS3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVSS3')
-    out.log('Offset: ' + 295)
+    out.log('Offset: ' + 296)
     const d = byte2nibblesLE(v)
-    header.raw[295] = d[0]
-    header.raw[295 + 1] = d[1]
+    header.raw[296] = d[0]
+    header.raw[296 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeVSS4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVSS4')
-    out.log('Offset: ' + 299)
+    out.log('Offset: ' + 300)
     const d = byte2nibblesLE(v)
-    header.raw[299] = d[0]
-    header.raw[299 + 1] = d[1]
+    header.raw[300] = d[0]
+    header.raw[300 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeKV_LO(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeKV_LO')
-    out.log('Offset: ' + 303)
+    out.log('Offset: ' + 304)
     const d = byte2nibblesLE(v)
-    header.raw[303] = d[0]
-    header.raw[303 + 1] = d[1]
+    header.raw[304] = d[0]
+    header.raw[304 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeFILQ(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeFILQ')
-    out.log('Offset: ' + 305)
+    out.log('Offset: ' + 306)
     const d = byte2nibblesLE(v)
-    header.raw[305] = d[0]
-    header.raw[305 + 1] = d[1]
+    header.raw[306] = d[0]
+    header.raw[306 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeL_PTCH(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeL_PTCH')
-    out.log('Offset: ' + 307)
+    out.log('Offset: ' + 308)
     const d = byte2nibblesLE(v)
-    header.raw[307] = d[0]
-    header.raw[307 + 1] = d[1]
+    header.raw[308] = d[0]
+    header.raw[308 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeMODVFILT1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeMODVFILT1')
-    out.log('Offset: ' + 309)
+    out.log('Offset: ' + 310)
     const d = byte2nibblesLE(v)
-    header.raw[309] = d[0]
-    header.raw[309 + 1] = d[1]
+    header.raw[310] = d[0]
+    header.raw[310 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeMODVFILT2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeMODVFILT2')
-    out.log('Offset: ' + 311)
+    out.log('Offset: ' + 312)
     const d = byte2nibblesLE(v)
-    header.raw[311] = d[0]
-    header.raw[311 + 1] = d[1]
+    header.raw[312] = d[0]
+    header.raw[312 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeMODVFILT3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeMODVFILT3')
-    out.log('Offset: ' + 313)
+    out.log('Offset: ' + 314)
     const d = byte2nibblesLE(v)
-    header.raw[313] = d[0]
-    header.raw[313 + 1] = d[1]
+    header.raw[314] = d[0]
+    header.raw[314 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeMODVPITCH(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeMODVPITCH')
-    out.log('Offset: ' + 315)
+    out.log('Offset: ' + 316)
     const d = byte2nibblesLE(v)
-    header.raw[315] = d[0]
-    header.raw[315 + 1] = d[1]
+    header.raw[316] = d[0]
+    header.raw[316 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeMODVAMP3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeMODVAMP3')
-    out.log('Offset: ' + 317)
+    out.log('Offset: ' + 318)
     const d = byte2nibblesLE(v)
-    header.raw[317] = d[0]
-    header.raw[317 + 1] = d[1]
+    header.raw[318] = d[0]
+    header.raw[318 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV2L1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV2L1')
-    out.log('Offset: ' + 319)
+    out.log('Offset: ' + 320)
     const d = byte2nibblesLE(v)
-    header.raw[319] = d[0]
-    header.raw[319 + 1] = d[1]
+    header.raw[320] = d[0]
+    header.raw[320 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV2R2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV2R2')
-    out.log('Offset: ' + 321)
+    out.log('Offset: ' + 322)
     const d = byte2nibblesLE(v)
-    header.raw[321] = d[0]
-    header.raw[321 + 1] = d[1]
+    header.raw[322] = d[0]
+    header.raw[322 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV2L2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV2L2')
-    out.log('Offset: ' + 323)
+    out.log('Offset: ' + 324)
     const d = byte2nibblesLE(v)
-    header.raw[323] = d[0]
-    header.raw[323 + 1] = d[1]
+    header.raw[324] = d[0]
+    header.raw[324 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV2L4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV2L4')
-    out.log('Offset: ' + 325)
+    out.log('Offset: ' + 326)
     const d = byte2nibblesLE(v)
-    header.raw[325] = d[0]
-    header.raw[325 + 1] = d[1]
+    header.raw[326] = d[0]
+    header.raw[326 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeKGMUTE(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeKGMUTE')
-    out.log('Offset: ' + 327)
+    out.log('Offset: ' + 328)
     const d = byte2nibblesLE(v)
-    header.raw[327] = d[0]
-    header.raw[327 + 1] = d[1]
+    header.raw[328] = d[0]
+    header.raw[328 + 1] = d[1]
 }
 
 export function KeygroupHeader_writePFXCHAN(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writePFXCHAN')
-    out.log('Offset: ' + 329)
+    out.log('Offset: ' + 330)
     const d = byte2nibblesLE(v)
-    header.raw[329] = d[0]
-    header.raw[329 + 1] = d[1]
+    header.raw[330] = d[0]
+    header.raw[330 + 1] = d[1]
 }
 
 export function KeygroupHeader_writePFXSLEV(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writePFXSLEV')
-    out.log('Offset: ' + 331)
+    out.log('Offset: ' + 332)
     const d = byte2nibblesLE(v)
-    header.raw[331] = d[0]
-    header.raw[331 + 1] = d[1]
+    header.raw[332] = d[0]
+    header.raw[332 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeReserved_1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeReserved_1')
-    out.log('Offset: ' + 333)
+    out.log('Offset: ' + 334)
     const d = byte2nibblesLE(v)
-    header.raw[333] = d[0]
-    header.raw[333 + 1] = d[1]
+    header.raw[334] = d[0]
+    header.raw[334 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeLSI2_ON(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeLSI2_ON')
-    out.log('Offset: ' + 343)
+    out.log('Offset: ' + 344)
     const d = byte2nibblesLE(v)
-    header.raw[343] = d[0]
-    header.raw[343 + 1] = d[1]
+    header.raw[344] = d[0]
+    header.raw[344 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeFLT2GAIN(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeFLT2GAIN')
-    out.log('Offset: ' + 345)
+    out.log('Offset: ' + 346)
     const d = byte2nibblesLE(v)
-    header.raw[345] = d[0]
-    header.raw[345 + 1] = d[1]
+    header.raw[346] = d[0]
+    header.raw[346 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeFLT2MODE(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeFLT2MODE')
-    out.log('Offset: ' + 347)
+    out.log('Offset: ' + 348)
     const d = byte2nibblesLE(v)
-    header.raw[347] = d[0]
-    header.raw[347 + 1] = d[1]
+    header.raw[348] = d[0]
+    header.raw[348 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeFLT2Q(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeFLT2Q')
-    out.log('Offset: ' + 349)
+    out.log('Offset: ' + 350)
     const d = byte2nibblesLE(v)
-    header.raw[349] = d[0]
-    header.raw[349 + 1] = d[1]
+    header.raw[350] = d[0]
+    header.raw[350 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeTONEFREQ(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeTONEFREQ')
-    out.log('Offset: ' + 351)
+    out.log('Offset: ' + 352)
     const d = byte2nibblesLE(v)
-    header.raw[351] = d[0]
-    header.raw[351 + 1] = d[1]
+    header.raw[352] = d[0]
+    header.raw[352 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeTONESLOP(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeTONESLOP')
-    out.log('Offset: ' + 353)
+    out.log('Offset: ' + 354)
     const d = byte2nibblesLE(v)
-    header.raw[353] = d[0]
-    header.raw[353 + 1] = d[1]
+    header.raw[354] = d[0]
+    header.raw[354 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeMODVFLT2_1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeMODVFLT2_1')
-    out.log('Offset: ' + 355)
+    out.log('Offset: ' + 356)
     const d = byte2nibblesLE(v)
-    header.raw[355] = d[0]
-    header.raw[355 + 1] = d[1]
+    header.raw[356] = d[0]
+    header.raw[356 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeMODVFLT2_2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeMODVFLT2_2')
-    out.log('Offset: ' + 357)
+    out.log('Offset: ' + 358)
     const d = byte2nibblesLE(v)
-    header.raw[357] = d[0]
-    header.raw[357 + 1] = d[1]
+    header.raw[358] = d[0]
+    header.raw[358 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeMODVFLT2_3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeMODVFLT2_3')
-    out.log('Offset: ' + 359)
+    out.log('Offset: ' + 360)
     const d = byte2nibblesLE(v)
-    header.raw[359] = d[0]
-    header.raw[359 + 1] = d[1]
+    header.raw[360] = d[0]
+    header.raw[360 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeFIL2FR(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeFIL2FR')
-    out.log('Offset: ' + 361)
+    out.log('Offset: ' + 362)
     const d = byte2nibblesLE(v)
-    header.raw[361] = d[0]
-    header.raw[361 + 1] = d[1]
+    header.raw[362] = d[0]
+    header.raw[362 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeK_FRQ2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeK_FRQ2')
-    out.log('Offset: ' + 363)
+    out.log('Offset: ' + 364)
     const d = byte2nibblesLE(v)
-    header.raw[363] = d[0]
-    header.raw[363 + 1] = d[1]
+    header.raw[364] = d[0]
+    header.raw[364 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeATTAK3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeATTAK3')
-    out.log('Offset: ' + 365)
+    out.log('Offset: ' + 366)
     const d = byte2nibblesLE(v)
-    header.raw[365] = d[0]
-    header.raw[365 + 1] = d[1]
+    header.raw[366] = d[0]
+    header.raw[366 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV3L1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV3L1')
-    out.log('Offset: ' + 367)
+    out.log('Offset: ' + 368)
     const d = byte2nibblesLE(v)
-    header.raw[367] = d[0]
-    header.raw[367 + 1] = d[1]
+    header.raw[368] = d[0]
+    header.raw[368 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV3R2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV3R2')
-    out.log('Offset: ' + 369)
+    out.log('Offset: ' + 370)
     const d = byte2nibblesLE(v)
-    header.raw[369] = d[0]
-    header.raw[369 + 1] = d[1]
+    header.raw[370] = d[0]
+    header.raw[370 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV3L2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV3L2')
-    out.log('Offset: ' + 371)
+    out.log('Offset: ' + 372)
     const d = byte2nibblesLE(v)
-    header.raw[371] = d[0]
-    header.raw[371 + 1] = d[1]
+    header.raw[372] = d[0]
+    header.raw[372 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV3R3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV3R3')
-    out.log('Offset: ' + 373)
+    out.log('Offset: ' + 374)
     const d = byte2nibblesLE(v)
-    header.raw[373] = d[0]
-    header.raw[373 + 1] = d[1]
+    header.raw[374] = d[0]
+    header.raw[374 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV3L3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV3L3')
-    out.log('Offset: ' + 375)
+    out.log('Offset: ' + 376)
     const d = byte2nibblesLE(v)
-    header.raw[375] = d[0]
-    header.raw[375 + 1] = d[1]
+    header.raw[376] = d[0]
+    header.raw[376 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV3R4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV3R4')
-    out.log('Offset: ' + 377)
+    out.log('Offset: ' + 378)
     const d = byte2nibblesLE(v)
-    header.raw[377] = d[0]
-    header.raw[377 + 1] = d[1]
+    header.raw[378] = d[0]
+    header.raw[378 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeENV3L4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeENV3L4')
-    out.log('Offset: ' + 379)
+    out.log('Offset: ' + 380)
     const d = byte2nibblesLE(v)
-    header.raw[379] = d[0]
-    header.raw[379 + 1] = d[1]
+    header.raw[380] = d[0]
+    header.raw[380 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeV_ATT3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeV_ATT3')
-    out.log('Offset: ' + 381)
+    out.log('Offset: ' + 382)
     const d = byte2nibblesLE(v)
-    header.raw[381] = d[0]
-    header.raw[381 + 1] = d[1]
+    header.raw[382] = d[0]
+    header.raw[382 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeV_REL3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeV_REL3')
-    out.log('Offset: ' + 383)
+    out.log('Offset: ' + 384)
     const d = byte2nibblesLE(v)
-    header.raw[383] = d[0]
-    header.raw[383 + 1] = d[1]
+    header.raw[384] = d[0]
+    header.raw[384 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeO_REL3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeO_REL3')
-    out.log('Offset: ' + 385)
+    out.log('Offset: ' + 386)
     const d = byte2nibblesLE(v)
-    header.raw[385] = d[0]
-    header.raw[385 + 1] = d[1]
+    header.raw[386] = d[0]
+    header.raw[386 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeK_DAR3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeK_DAR3')
-    out.log('Offset: ' + 387)
+    out.log('Offset: ' + 388)
     const d = byte2nibblesLE(v)
-    header.raw[387] = d[0]
-    header.raw[387 + 1] = d[1]
+    header.raw[388] = d[0]
+    header.raw[388 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeV_ENV3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeV_ENV3')
-    out.log('Offset: ' + 389)
+    out.log('Offset: ' + 390)
     const d = byte2nibblesLE(v)
-    header.raw[389] = d[0]
-    header.raw[389 + 1] = d[1]
+    header.raw[390] = d[0]
+    header.raw[390 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeKFXCHAN(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeKFXCHAN')
-    out.log('Offset: ' + 391)
+    out.log('Offset: ' + 392)
     const d = byte2nibblesLE(v)
-    header.raw[391] = d[0]
-    header.raw[391 + 1] = d[1]
+    header.raw[392] = d[0]
+    header.raw[392 + 1] = d[1]
 }
 
 export function KeygroupHeader_writeKFXSLEV(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeKFXSLEV')
-    out.log('Offset: ' + 393)
+    out.log('Offset: ' + 394)
     const d = byte2nibblesLE(v)
-    header.raw[393] = d[0]
-    header.raw[393 + 1] = d[1]
+    header.raw[394] = d[0]
+    header.raw[394 + 1] = d[1]
 }
 
 
