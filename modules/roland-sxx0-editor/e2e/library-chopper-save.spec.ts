@@ -7,6 +7,10 @@
  *     Open chopper on a common-area sample, slice with Fixed method,
  *     click Save, verify sample.yaml with slice definitions written to OPFS.
  *
+ *   11.2.2 -- Save writes slice labels
+ *     Open chopper on a common-area sample, slice with Fixed method,
+ *     click Save, verify sample.yaml contains label fields (S1..S4).
+ *
  *   11.2.3 -- Chop into Drum Kit (save slices as drum kit)
  *     Open chopper on an individual library tone via "Chop into Drum Kit",
  *     slice, verify drum kit output config renders, confirm creates
@@ -246,6 +250,52 @@ test.describe('Chopper Save -- save slices to library', () => {
     // The status bar renders "{N} slice{s}" when currentSliceResult has slices.
     // Wait longer since initial slices need to be computed.
     await expect(dialog.getByText(/4 slice/)).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('Save writes sample.yaml with correct slice labels', async ({ page }) => {
+    // Step 1: Open the sample in the chopper
+    const sampleNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${SAMPLE_FIXTURE_NAME}$`) }).first();
+    await expect(sampleNameSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const treeNode = sampleNameSpan.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
+    await treeNode.click();
+
+    const chopButton = page.getByRole('button', { name: 'Open in Chopper' });
+    await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await chopButton.click();
+
+    const dialog = page.locator('[data-slice-editor-open="true"]');
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+
+    // Step 2: Switch to Fixed tab and set 4 slices
+    await page.getByRole('tab', { name: 'Fixed' }).click();
+    const sliceCountInput = dialog.locator('input[type="number"]').first();
+    await sliceCountInput.fill('4');
+    await expect(page.getByText('4 slices')).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Step 3: Click Save and wait for completion
+    const saveButton = page.getByRole('button', { name: 'Save' });
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
+    await page.waitForTimeout(2_000);
+
+    // Step 4: Read saved YAML and verify label fields
+    const yamlContent = await readSampleYaml(page, SAMPLE_FIXTURE_NAME);
+    expect(yamlContent).toContain('slices:');
+
+    // The default kit labels are S1,S2,S3,S4 — the chopper uppercases them
+    // and assigns one per slice in order.
+    const labelMatches = yamlContent.match(/label:/g);
+    expect(
+      labelMatches?.length,
+      `Expected 4 label fields in sample.yaml, found ${labelMatches?.length ?? 0}`,
+    ).toBe(4);
+
+    // Verify each default label is present
+    expect(yamlContent).toContain('label: S1');
+    expect(yamlContent).toContain('label: S2');
+    expect(yamlContent).toContain('label: S3');
+    expect(yamlContent).toContain('label: S4');
   });
 
   test.fixme('Save button is disabled when no slices exist', async ({ page }) => {

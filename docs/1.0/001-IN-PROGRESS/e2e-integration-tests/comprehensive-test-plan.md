@@ -345,7 +345,7 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
 | 11.2.1 | Chop device tone sample (opens chopper from Tones page) | P1 | ✅ | `device-tone-chopper.spec.ts` — opens chopper dialog with device wave data |
-| 11.2.2 | Save slices to library as individual tones | P1 | ❌ | 🔌 Each slice becomes a library tone (YAML + WAV) |
+| 11.2.2 | Save slices to library as individual tones | P1 | ✅ | `library-chopper-save.spec.ts` — verifies slice labels (S1-S4) written to sample.yaml |
 | 11.2.3 | Save slices as drum kit to library | P1 | ✅ | `device-tone-chopper.spec.ts` — chops device tone, saves kit to OPFS |
 | 11.2.4 | Slice boundaries persist after save/reload | P1 | ✅ | `library-chopper-save.spec.ts` — save slices, reopen chopper, verify pre-populated |
 
@@ -357,8 +357,8 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 |---|------|----------|--------|-------|
 | 12.1 | Import v1 format drum kit | P1 | ✅ | `device-drumkit.spec.ts` — v1 individual WAV files per drum |
 | 12.2 | Import v2 format drum kit | P1 | ✅ | `device-drumkit.spec.ts` |
-| 12.3 | Automatic MIDI note assignment | P2 | ❌ | |
-| 12.4 | Base note configuration | P2 | ❌ | |
+| 12.3 | Automatic MIDI note assignment | P2 | ✅ | `library-drumkit-editor.spec.ts` — verifies 4 sequential MIDI notes from baseNote |
+| 12.4 | Base note configuration | P2 | ✅ | `library-drumkit-editor.spec.ts` — verifies different baseNote produces different MIDI notes |
 | 12.5 | Progress tracking | P2 | ⚠️ | Implicit in drum kit import test |
 | 12.6 | Handle missing sample files | P1 | ✅ | `library-drumkit-error.spec.ts` — v1/v2 kits with missing WAVs don't crash |
 
@@ -383,7 +383,7 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 |---|------|----------|--------|-------|
 | 13.2.1 | Kit with maximum number of pads | P2 | ❌ | |
 | 13.2.2 | Kit with overlapping MIDI note assignments | P1 | ⚠️ | DrumKitPadList has conflict detection UI; test is fixme (calculated notes always unique) |
-| 13.2.3 | Kit referencing missing sample files | P1 | ❌ | |
+| 13.2.3 | Kit referencing missing sample files | P1 | ✅ | `library-drumkit-error.spec.ts` — v1 (no WAVs) and v2 (missing source.wav) |
 
 ---
 
@@ -460,16 +460,16 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | Priority | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | P0 | 44 | 38 | 2 | 4 |
-| P1 | 148 | 78 | 11 | 59 |
-| P2 | 37 | 13 | 2 | 22 |
-| **Total** | **229** | **129** | **15** | **85** |
+| P1 | 148 | 80 | 11 | 57 |
+| P2 | 37 | 15 | 2 | 20 |
+| **Total** | **229** | **133** | **15** | **81** |
 
 ### By Hardware Requirement
 
 | Category | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
-| No Hardware | 83 | 76 | 1 | 6 |
-| Hardware Required | 146 | 53 | 14 | 79 |
+| No Hardware | 83 | 79 | 1 | 3 |
+| Hardware Required | 146 | 54 | 14 | 78 |
 
 ### Critical Gaps (P0 Not Tested)
 

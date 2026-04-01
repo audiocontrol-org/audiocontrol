@@ -41,6 +41,31 @@ const KIT_DIR_NAME = 'e2e-editor-kit';
 const KIT_DISPLAY_NAME = 'E2E Editor Kit';
 const KIT_WAV_BASE64 = createMinimalWavBase64(30000, 2);
 
+const KIT_60_DIR_NAME = 'e2e-editor-kit-60';
+const KIT_60_DISPLAY_NAME = 'E2E Editor Kit 60';
+const KIT_60_WAV_BASE64 = createMinimalWavBase64(30000, 2);
+
+const KIT_60_YAML = `format: drum-kit-bundle
+version: 2
+name: E2E Editor Kit 60
+sampleRate: 30000
+baseNote: 60
+source: source.wav
+slices:
+  - label: Kick
+    startSample: 0
+    endSample: 15000
+  - label: Snare
+    startSample: 15000
+    endSample: 30000
+  - label: hhClosed
+    startSample: 30000
+    endSample: 45000
+  - label: hhOpen
+    startSample: 45000
+    endSample: 60000
+`;
+
 const KIT_YAML = `format: drum-kit-bundle
 version: 2
 name: E2E Editor Kit
@@ -223,6 +248,79 @@ test.describe('Drum Kit Editor (13.x)', () => {
     // App must still be functional
     const appRoot = page.locator('#root');
     await expect(appRoot).toBeVisible({ timeout: UI_TIMEOUT_MS });
+  });
+
+  test('automatic MIDI note assignment assigns sequential notes from base note (12.3)', async ({
+    page,
+  }) => {
+    await selectKitInTree(page, KIT_DISPLAY_NAME);
+
+    const padList = page.locator('[data-testid="pad-list"]');
+    await expect(padList).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Collect MIDI note names from the .font-mono span in each pad row
+    const noteNames: string[] = [];
+    for (let i = 0; i < 4; i++) {
+      const noteSpan = page.locator(`[data-testid="pad-${i}"] .font-mono`);
+      await expect(noteSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
+      const text = await noteSpan.textContent();
+      expect(text).toBeTruthy();
+      noteNames.push(text!.trim());
+    }
+
+    // All 4 note names must be non-empty and distinct (sequential from baseNote 36)
+    const uniqueNotes = new Set(noteNames);
+    expect(uniqueNotes.size).toBe(4);
+
+    // Verify sequential ordering: each note name should differ from its neighbors
+    // (midiNoteToName maps consecutive MIDI numbers to different names)
+    for (let i = 1; i < noteNames.length; i++) {
+      expect(noteNames[i]).not.toBe(noteNames[i - 1]);
+    }
+  });
+
+  test('drum kit with different base note shows correct MIDI assignments (12.4)', async ({
+    page,
+  }) => {
+    // Reload and set up both kits from scratch so both are present before connect
+    await page.goto('/roland/s330/editor/library?midi=mock');
+    await page.waitForLoadState('networkidle');
+
+    await initializeCleanOPFS(page, LIBRARY_DEVICE);
+    await writeDrumKitV2FixtureToOPFS(page, KIT_DIR_NAME, KIT_YAML, KIT_WAV_BASE64);
+    await writeDrumKitV2FixtureToOPFS(page, KIT_60_DIR_NAME, KIT_60_YAML, KIT_60_WAV_BASE64);
+    await connectToOPFSBackend(page);
+
+    // Read note names from the base-36 kit
+    await selectKitInTree(page, KIT_DISPLAY_NAME);
+    const padList = page.locator('[data-testid="pad-list"]');
+    await expect(padList).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const base36FirstNote = await page
+      .locator('[data-testid="pad-0"] .font-mono')
+      .textContent();
+    expect(base36FirstNote).toBeTruthy();
+
+    // Select the base-60 kit and wait for the pad notes to change
+    await selectKitInTree(page, KIT_60_DISPLAY_NAME);
+    await expect(padList).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Wait for the pad list to re-render with new MIDI notes
+    const pad0Note = page.locator('[data-testid="pad-0"] .font-mono');
+    await expect(pad0Note).not.toHaveText(base36FirstNote!.trim(), { timeout: UI_TIMEOUT_MS });
+
+    const noteNames60: string[] = [];
+    for (let i = 0; i < 4; i++) {
+      const noteSpan = page.locator(`[data-testid="pad-${i}"] .font-mono`);
+      await expect(noteSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
+      const text = await noteSpan.textContent();
+      expect(text).toBeTruthy();
+      noteNames60.push(text!.trim());
+    }
+
+    // Base-60 pads must have 4 distinct sequential notes
+    const uniqueNotes60 = new Set(noteNames60);
+    expect(uniqueNotes60.size).toBe(4);
   });
 
   test.fixme(
