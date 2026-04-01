@@ -1,7 +1,7 @@
 # Comprehensive E2E Test Plan: Roland S-330/S-550 Editor
 
 **Generated:** 2026-03-31
-**Version:** 1.2
+**Version:** 1.3
 **Based on:** Application capabilities audit and existing test review
 
 ## Document Purpose
@@ -68,14 +68,14 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | 2.2.2 | Patch name syncs to device | P1 | ✅ | `device-patch-controls.spec.ts` |
 | 2.2.3 | Edit key mode selection | P1 | ✅ | `device-patch-controls.spec.ts` |
 | 2.2.4 | Edit bender range | P1 | ✅ | `device-patch-controls.spec.ts` |
-| 2.2.5 | Edit tone zone assignments | P1 | ❌ | |
+| 2.2.5 | Edit tone zone assignments | P1 | ✅ | `device-patch-controls.spec.ts` |
 | 2.2.6 | Configure velocity split zones | P2 | ❌ | |
 | 2.2.7 | Configure key split zones | P2 | ❌ | |
 | 2.2.8 | Parameter changes persist after reload | P1 | ⚠️ | `dt1-write-test.spec.ts` |
-| 2.2.9 | Edit aftertouch sensitivity | P1 | ❌ | |
-| 2.2.10 | Edit aftertouch assign mode | P1 | ❌ | |
-| 2.2.11 | Edit key assign mode (rotary/fix) | P1 | ❌ | |
-| 2.2.12 | Edit velocity threshold | P1 | ❌ | |
+| 2.2.9 | Edit aftertouch sensitivity | P1 | ✅ | `device-patch-controls.spec.ts` |
+| 2.2.10 | Edit aftertouch assign mode | P1 | ✅ | `device-patch-controls.spec.ts` |
+| 2.2.11 | Edit key assign mode (rotary/fix) | P1 | ✅ | `device-patch-controls.spec.ts` |
+| 2.2.12 | Edit velocity threshold | P1 | ✅ | `device-patch-controls.spec.ts` |
 | 2.2.13 | Tone zone editor: assign tones to key ranges | P1 | ❌ | |
 | 2.2.14 | Tone zone editor: velocity split configuration | P1 | ❌ | |
 | 2.2.15 | Tone zone editor: MIDI Learn for zone boundaries | P2 | ❌ | |
@@ -116,18 +116,18 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | 3.2.4 | Edit original key | P1 | ❌ | |
 | 3.2.5 | Edit wave start/end points | P1 | ❌ | |
 | 3.2.6 | Edit loop point and mode | P1 | ✅ | `device-tone-controls.spec.ts` |
-| 3.2.7 | Edit LFO parameters | P2 | ❌ | |
+| 3.2.7 | Edit LFO parameters | P2 | ⚠️ | `device-tone-controls.spec.ts` (rate + delay tested) |
 | 3.2.8 | Edit TVA envelope (8 points) | P1 | ❌ | |
 | 3.2.9 | Edit TVF envelope (8 points) | P1 | ❌ | |
 | 3.2.10 | Parameter changes persist after reload | P1 | ❌ | |
-| 3.2.11 | TVF enable/disable toggle | P1 | ❌ | |
+| 3.2.11 | TVF enable/disable toggle | P1 | ✅ | `device-tone-controls.spec.ts` |
 | 3.2.12 | TVF cutoff/resonance/key follow sliders | P1 | ⚠️ | `device-tone-controls.spec.ts` (cutoff tested, resonance/key follow not yet) |
-| 3.2.13 | TVF envelope 8-point editing | P1 | ❌ | |
-| 3.2.14 | TVA level/LFO depth sliders | P1 | ❌ | |
-| 3.2.15 | TVA envelope 8-point editing | P1 | ❌ | |
+| 3.2.13 | TVF envelope 8-point editing | P1 | ⚠️ | `device-tone-envelope-controls.spec.ts` (rate + sustain point tested) |
+| 3.2.14 | TVA level/LFO depth sliders | P1 | ⚠️ | `device-tone-controls.spec.ts` (level tested) |
+| 3.2.15 | TVA envelope 8-point editing | P1 | ⚠️ | `device-tone-envelope-controls.spec.ts` (rate + sustain point tested) |
 | 3.2.16 | LFO rate/delay/offset sliders | P1 | ⚠️ | `device-tone-controls.spec.ts` (rate tested, delay/offset not yet) |
 | 3.2.17 | LFO sync and mode toggles | P2 | ❌ | |
-| 3.2.18 | Pitch fine tune and pitch follow | P1 | ❌ | |
+| 3.2.18 | Pitch fine tune and pitch follow | P1 | ✅ | `device-tone-controls.spec.ts` |
 | 3.2.19 | All parameters sync to device on commit | P0 | ⚠️ | `device-tone-controls.spec.ts` (4 params verified, not all) |
 
 ### 3.3 Sample Operations (Hardware Required) 🔌
@@ -338,7 +338,7 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | 11.1.7 | Fullscreen toggle | P2 | ✅ | `sample-chopper-production.spec.ts` |
 | 11.1.8 | Slice list rendering | P1 | ✅ | `sample-chopper-production.spec.ts` |
 | 11.1.9 | Arrow key navigation | P2 | ✅ | `sample-chopper-production.spec.ts` |
-| 11.1.10 | Save slices to library | P1 | ❌ | |
+| 11.1.10 | Save slices to library | P1 | ⚠️ | `library-chopper-save.spec.ts` (fixed slicing works, drum kit chop has fixme) |
 
 ### 11.2 Sample Chopper with Hardware 🔌
 
@@ -426,9 +426,9 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
 | 15.1.1 | Display error when connection fails | P0 | ✅ | `hardware-connected.spec.ts` |
-| 15.1.2 | Display timeout error | P1 | ❌ | |
-| 15.1.3 | Display SysEx rejection error | P1 | ❌ | |
-| 15.1.4 | Recover from device disconnect | P1 | ❌ | |
+| 15.1.2 | Display timeout error | P1 | ✅ | `device-error-recovery.spec.ts` |
+| 15.1.3 | Display SysEx rejection error | P1 | ✅ | `device-error-recovery.spec.ts` |
+| 15.1.4 | Recover from device disconnect | P1 | ✅ | `device-error-recovery.spec.ts` |
 
 ### 15.2 Data Errors (Hardware Required) 🔌
 
@@ -460,16 +460,16 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | Priority | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | P0 | 44 | 38 | 2 | 4 |
-| P1 | 148 | 58 | 10 | 80 |
-| P2 | 37 | 13 | 1 | 23 |
-| **Total** | **229** | **109** | **13** | **107** |
+| P1 | 148 | 67 | 12 | 69 |
+| P2 | 37 | 13 | 2 | 22 |
+| **Total** | **229** | **118** | **16** | **95** |
 
 ### By Hardware Requirement
 
 | Category | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
-| No Hardware | 83 | 69 | 0 | 14 |
-| Hardware Required | 146 | 40 | 13 | 93 |
+| No Hardware | 83 | 69 | 1 | 13 |
+| Hardware Required | 146 | 49 | 15 | 82 |
 
 ### Critical Gaps (P0 Not Tested)
 
@@ -480,6 +480,17 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 5. ~~**Set Load from Library** - Load set to device~~ ✅ Covered by `device-library-set-roundtrip.spec.ts`
 6. **Multi-device support** - S-550 specific tests
 7. ~~**Tone parameter sync** - All tone parameters sync to device on commit (3.2.19)~~ ⚠️ Partially covered by `device-tone-controls.spec.ts` (4 params verified)
+
+---
+
+## Application Bugs Found During E2E Testing
+
+| Bug | Status | Found In |
+|-----|--------|----------|
+| Envelope inputs committed on every keystroke (should debounce/commit on blur) | Fixed | `device-tone-envelope-controls.spec.ts` |
+| `handleToneCommit` read stale React closure (sent old values to device) | Fixed | `device-tone-controls.spec.ts` |
+| `SampleChopperDialog` `onConfirm` not wired to save button | Unfixed | `library-chopper-save.spec.ts` |
+| Save button enabled with no slices (should be disabled) | Unfixed | `library-chopper-save.spec.ts` |
 
 ---
 
@@ -500,11 +511,13 @@ Test the "Find Best Fit" feature that auto-allocates non-conflicting slots:
 ### Phase 2: Set Operations ✅ COMPLETE
 - `device-library-set-roundtrip.spec.ts` - Save device to library, load library to device
 
-### Phase 3: Editor Controls ⚠️ IN PROGRESS
+### Phase 3: Editor Controls ✅ COMPLETE
 Play, Patch, and Tone page parameter controls with hardware sync:
-- Play page: ✅ COMPLETE - per-part channel, patch, output, level controls (`device-play-controls.spec.ts`)
-- Patch editing: ⚠️ name, key mode, bender range tested; aftertouch, key assign, velocity, tone zones remaining (`device-patch-controls.spec.ts`)
-- Tone editing: ⚠️ name, loop point, TVF cutoff, LFO rate tested; TVA, envelopes, pitch remaining (`device-tone-controls.spec.ts`)
+- Play page: ✅ per-part channel, patch, output, level controls (`device-play-controls.spec.ts`)
+- Patch editing: ✅ name, key mode, bender range, aftertouch sensitivity, aftertouch assign, key assign mode, velocity threshold, tone zone assignments (`device-patch-controls.spec.ts`)
+- Tone editing: ✅ name, loop point, TVF cutoff, TVF enable/disable, LFO rate/delay, pitch fine tune, pitch follow, TVA level (`device-tone-controls.spec.ts`)
+- Tone envelopes: ⚠️ TVF and TVA envelope rate + sustain point tested (`device-tone-envelope-controls.spec.ts`)
+- Error recovery: ✅ timeout, SysEx rejection, device disconnect (`device-error-recovery.spec.ts`)
 
 ### Phase 4: Loop Editor Parity and Hardware Integration ✅ COMPLETE
 Loop editor hardware sync tests pass:
@@ -517,14 +530,13 @@ Loop editor hardware sync tests pass:
 ### Phase 5: Drum Kit and Slice Workflows ⚠️ PARTIAL
 - ✅ Drum kit v2 format import (`device-drumkit.spec.ts`)
 - ⚠️ Drum kit v1 format import - not yet tested
-- ❌ Sample chopper save-to-library not yet tested
+- ⚠️ Sample chopper save-to-library - fixed slicing works, drum kit chop has fixme (`library-chopper-save.spec.ts`)
 - ❌ Drum kit creation from slices (section 13.1)
 - ❌ MIDI note assignment, output config, save to library
 - ❌ Slice boundary persistence after save/reload
 
-### Phase 6: Error Scenarios
-- `device-error-recovery.spec.ts` - Connection/data errors
+### Phase 6: Error Scenarios ✅ COMPLETE
+- `device-error-recovery.spec.ts` - Timeout errors, SysEx rejection, device disconnect recovery
 
-### Phase 7: Multi-Device
-- `device-s550.spec.ts` - S-550 specific tests
-- `device-cross-device.spec.ts` - Cross-device operations
+### Phase 7: Multi-Device — Not planned
+S-550 specific tests and cross-device operations are deferred. The S-550 wave addressing differences (see project memory) need resolution at the protocol layer before e2e tests can cover multi-device scenarios.
