@@ -344,9 +344,9 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 11.2.1 | Chop device tone sample (opens chopper from Tones page) | P1 | ❌ | 🔌 Open chopper on a tone loaded from device |
+| 11.2.1 | Chop device tone sample (opens chopper from Tones page) | P1 | ✅ | `device-tone-chopper.spec.ts` — opens chopper dialog with device wave data |
 | 11.2.2 | Save slices to library as individual tones | P1 | ❌ | 🔌 Each slice becomes a library tone (YAML + WAV) |
-| 11.2.3 | Save slices as drum kit to library | P1 | ❌ | 🔌 Slices saved as drum kit with MIDI note mapping |
+| 11.2.3 | Save slices as drum kit to library | P1 | ✅ | `device-tone-chopper.spec.ts` — chops device tone, saves kit to OPFS |
 | 11.2.4 | Slice boundaries persist after save/reload | P1 | ❌ | 🔌 Save slices, reload from library, verify boundaries match |
 
 ---
@@ -355,7 +355,7 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 12.1 | Import v1 format drum kit | P1 | ⚠️ | `device-drumkit.spec.ts` (v2 tested, v1 not yet) |
+| 12.1 | Import v1 format drum kit | P1 | ✅ | `device-drumkit.spec.ts` — v1 individual WAV files per drum |
 | 12.2 | Import v2 format drum kit | P1 | ✅ | `device-drumkit.spec.ts` |
 | 12.3 | Automatic MIDI note assignment | P2 | ❌ | |
 | 12.4 | Base note configuration | P2 | ❌ | |
@@ -460,16 +460,16 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | Priority | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | P0 | 44 | 38 | 2 | 4 |
-| P1 | 148 | 68 | 11 | 69 |
+| P1 | 148 | 71 | 10 | 67 |
 | P2 | 37 | 13 | 2 | 22 |
-| **Total** | **229** | **119** | **15** | **95** |
+| **Total** | **229** | **122** | **14** | **93** |
 
 ### By Hardware Requirement
 
 | Category | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | No Hardware | 83 | 70 | 0 | 13 |
-| Hardware Required | 146 | 49 | 15 | 82 |
+| Hardware Required | 146 | 52 | 14 | 80 |
 
 ### Critical Gaps (P0 Not Tested)
 
