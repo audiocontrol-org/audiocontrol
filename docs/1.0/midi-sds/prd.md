@@ -77,10 +77,23 @@ Adding a generic SDS implementation to `shared-midi` would:
 
 ## Open Questions
 
-- [ ] Does the S3000XL require any proprietary handshake before accepting SDS transfers, or does it accept standard SDS messages directly?
+- [x] Does the S3000XL require any proprietary handshake before accepting SDS transfers, or does it accept standard SDS messages directly?
+  - **Resolved:** No proprietary handshake needed. The S3000XL supports standard MIDI SDS ("OPEN" protocol) directly. The "S3000" protocol is a proprietary superset for Akai-to-Akai transfers that includes loop and program data. (Source: S3000XL Operator's Manual, p.235)
 - [ ] What is the maximum packet size the S3000XL can buffer for SDS transfers?
-- [ ] Should the generic SDS implementation live in `shared-midi` or a new `midi-sds` module?
+  - Standard SDS uses 120-byte data packets. To be validated via hardware testing.
+- [x] Should the generic SDS implementation live in `shared-midi` or a new `midi-sds` module?
+  - **Resolved:** Lives in `midi-core` (renamed from `shared-midi`) under `src/sds/`. The module was renamed to align with the `editor-core` naming convention.
 - [ ] Do we need to support the extended SDS messages (Sample Name Transmission, Sample Header Extension) for the S3000XL?
+  - The S3000XL's "OPEN" protocol transfers samples only (no programs, loops, or names). Extended SDS messages may not be supported — to be validated via hardware testing.
+
+### Notes from S3000XL Operator's Manual (p.235)
+
+- The SDS channel is a "logical channel" (SysEx device ID), not a MIDI channel. Both devices must be set to the same channel.
+- Requires a MIDI loop (bidirectional connection) for closed-loop handshake with error detection/correction.
+- The S3000XL is 16-bit; it accepts lower bit depths by truncating low bits during transfer.
+- Sample number can be overridden (not tied to internal memory order).
+- Transfer types available on the S3000XL EXCL page: ALL SAMPLES, ALL PROGRAMS, CURRENT PROGRAM, CURRENT SAMPLE, EVERYTHING.
+- "OPEN" = standard MIDI SDS (samples only). "S3000" = proprietary superset (everything including loops/programs).
 
 ## Appendix
 
