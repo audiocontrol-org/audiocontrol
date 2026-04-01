@@ -261,7 +261,7 @@ export function SampleTransferPanel({
 }: SampleTransferPanelProps): JSX.Element {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [receiveResult, setReceiveResult] = useState<SdsReceiveResult | null>(null);
-  const { transferState, sendToDevice, receiveFromDevice, deleteSample, clearError } =
+  const { transferState, sendToDevice, receiveFromDevice, clearError } =
     useSampleTransfer(client);
   const [parseError, setParseError] = useState<string | null>(null);
   const [pendingWav, setPendingWav] = useState<{ info: WavFileInfo; fileName: string } | null>(null);
