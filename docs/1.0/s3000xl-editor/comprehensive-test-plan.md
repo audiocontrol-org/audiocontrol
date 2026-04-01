@@ -41,7 +41,7 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 | 1.2.7 | Handles device disconnected mid-operation | P1 | ❌ | |
 | 1.2.8 | HTTP MIDI transport connects via midi-server | P0 | ❌ | |
 | 1.2.9 | Web MIDI transport requests SysEx permission | P1 | ❌ | |
-| 1.2.10 | "Continue to Programs" navigates to /programs | P1 | ❌ | |
+| 1.2.10 | "Continue to Programs" navigates to /programs | P1 | ✅ | `device-connected.spec.ts` — 'connection persists across navigation' clicks programs link |
 
 ---
 
@@ -51,14 +51,14 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 2.1.1 | Navigates to programs page | P0 | ❌ | |
-| 2.1.2 | Connection persists after navigation | P0 | ❌ | |
-| 2.1.3 | Program names load from device | P0 | ❌ | |
+| 2.1.1 | Navigates to programs page | P0 | ✅ | `device-programs.spec.ts` — 'navigates to programs page' |
+| 2.1.2 | Connection persists after navigation | P0 | ✅ | `device-connected.spec.ts` — 'connection persists across navigation' |
+| 2.1.3 | Program names load from device | P0 | ✅ | `device-programs.spec.ts` — 'program list loads program names from device' |
 | 2.1.4 | Shows loading state during name fetch | P1 | ❌ | |
-| 2.1.5 | Displays loading progress percentage | P1 | ❌ | |
-| 2.1.6 | Selecting program loads program header | P1 | ❌ | |
-| 2.1.7 | Refresh button reloads program names | P1 | ❌ | |
-| 2.1.8 | Load All button fetches all program headers | P1 | ❌ | |
+| 2.1.5 | Displays loading progress percentage | P1 | ✅ | `device-programs.spec.ts` — 'Load All button fetches all program headers' checks loading-status |
+| 2.1.6 | Selecting program loads program header | P1 | ✅ | `device-programs.spec.ts` — 'selecting a program shows the editor panel' |
+| 2.1.7 | Refresh button reloads program names | P1 | ✅ | `device-programs.spec.ts` — used in all round-trip tests via Refresh click |
+| 2.1.8 | Load All button fetches all program headers | P1 | ✅ | `device-programs.spec.ts` — 'Load All button fetches all program headers' |
 | 2.1.9 | Displays empty/unnamed programs distinctly | P2 | ❌ | |
 | 2.1.10 | "Connect first" message when not connected | P1 | ❌ | |
 
@@ -66,22 +66,22 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 2.2.1 | Edit program name (PRNAME, 12 char max) | P0 | ❌ | |
-| 2.2.2 | Program name syncs to device | P0 | ❌ | |
+| 2.2.1 | Edit program name (PRNAME, 12 char max) | P0 | ✅ | `device-programs.spec.ts` — 'can edit program name' |
+| 2.2.2 | Program name syncs to device | P0 | ✅ | `device-programs.spec.ts` — 'program name round-trip persists to device' |
 | 2.2.3 | Edit MIDI program number (PRGNUM, 0-128) | P1 | ❌ | |
 | 2.2.4 | Edit MIDI channel (PMCHAN, 0-255) | P1 | ❌ | |
-| 2.2.5 | Edit polyphony (POLYPH, 0-31) | P1 | ❌ | |
-| 2.2.6 | Edit priority (Low/Normal/High/Hold) | P1 | ❌ | |
+| 2.2.5 | Edit polyphony (POLYPH, 0-31) | P1 | ✅ | `device-programs.spec.ts` — 'polyphony round-trip persists to device' |
+| 2.2.6 | Edit priority (Low/Normal/High/Hold) | P1 | ✅ | `device-programs.spec.ts` — 'priority select round-trip persists to device' |
 | 2.2.7 | Edit voice stealing (Oldest/Quietest) | P1 | ❌ | |
 
 ### 2.3 Program Editing: Output (Hardware Required) 🔌
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 2.3.1 | Edit output routing (OUTPUT, 0-99) | P1 | ❌ | |
-| 2.3.2 | Edit stereo level (STEREO, 0-99) | P1 | ❌ | |
-| 2.3.3 | Edit pan position (PANPOS, -50 to 50) | P1 | ❌ | |
-| 2.3.4 | Edit program level (PRLOUD, 0-99) | P1 | ❌ | |
+| 2.3.1 | Edit output routing (OUTPUT, 0-99) | P1 | ⚠️ | `device-programs.spec.ts` — 'Output section displays parameters' verifies visibility only |
+| 2.3.2 | Edit stereo level (STEREO, 0-99) | P1 | ⚠️ | `device-programs.spec.ts` — 'Output section displays parameters' verifies visibility only |
+| 2.3.3 | Edit pan position (PANPOS, -50 to 50) | P1 | ✅ | `device-programs.spec.ts` — 'pan position round-trip persists to device' |
+| 2.3.4 | Edit program level (PRLOUD, 0-99) | P1 | ✅ | `device-programs.spec.ts` — 'program level round-trip persists to device' |
 | 2.3.5 | Edit velocity to amp (V_LOUD, -50 to 50) | P1 | ❌ | |
 | 2.3.6 | Edit effects bus (PFXCHAN, 0-4) | P1 | ❌ | |
 
@@ -100,16 +100,16 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
 | 2.5.1 | Toggle portamento enable (PORTEN) | P1 | ❌ | |
-| 2.5.2 | Edit portamento time (PORTIME, 0-99) | P1 | ❌ | |
+| 2.5.2 | Edit portamento time (PORTIME, 0-99) | P1 | ✅ | `device-programs.spec.ts` — 'portamento time round-trip persists to device' |
 | 2.5.3 | Edit portamento type (Rate/Time) | P1 | ❌ | |
 
 ### 2.6 Program Editing: LFO 1 (Hardware Required) 🔌
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 2.6.1 | Edit LFO rate (LFORAT, 0-99) | P1 | ❌ | |
-| 2.6.2 | Edit LFO depth (LFODEP, 0-99) | P1 | ❌ | |
-| 2.6.3 | Edit LFO delay (LFODEL, 0-99) | P1 | ❌ | |
+| 2.6.1 | Edit LFO rate (LFORAT, 0-99) | P1 | ✅ | `device-programs.spec.ts` — 'LFO 1 rate round-trip persists to device' |
+| 2.6.2 | Edit LFO depth (LFODEP, 0-99) | P1 | ⚠️ | `device-programs.spec.ts` — 'LFO 1 section displays parameters' verifies visibility only |
+| 2.6.3 | Edit LFO delay (LFODEL, 0-99) | P1 | ⚠️ | `device-programs.spec.ts` — 'LFO 1 section displays parameters' verifies visibility only |
 | 2.6.4 | Edit LFO waveform (Triangle/Sawtooth/Square) | P1 | ❌ | |
 | 2.6.5 | Toggle LFO desync (DESYNC) | P1 | ❌ | |
 
@@ -135,16 +135,16 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 2.9.1 | Edit loudness reduction (SPLOUD, 0-99) | P1 | ❌ | |
-| 2.9.2 | Edit attack stretch (SPATT, 0-99) | P1 | ❌ | |
-| 2.9.3 | Edit filter reduction (SPFILT, 0-99) | P1 | ❌ | |
+| 2.9.1 | Edit loudness reduction (SPLOUD, 0-99) | P1 | ✅ | `device-programs.spec.ts` — 'soft pedal loudness round-trip persists to device' |
+| 2.9.2 | Edit attack stretch (SPATT, 0-99) | P1 | ⚠️ | `device-programs.spec.ts` — 'Soft Pedal section displays parameters' verifies visibility only |
+| 2.9.3 | Edit filter reduction (SPFILT, 0-99) | P1 | ⚠️ | `device-programs.spec.ts` — 'Soft Pedal section displays parameters' verifies visibility only |
 
 ### 2.10 Program Editing: Advanced (Hardware Required) 🔌
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
 | 2.10.1 | Toggle keygroup crossfade (KXFADE) | P1 | ❌ | |
-| 2.10.2 | Toggle legato (LEGATO) | P1 | ❌ | |
+| 2.10.2 | Toggle legato (LEGATO) | P1 | ✅ | `device-programs.spec.ts` — 'legato toggle round-trip persists to device' |
 | 2.10.3 | Edit bend mode (Normal/Held) | P1 | ❌ | |
 | 2.10.4 | Keygroup count (GROUPS) displays read-only | P2 | ❌ | |
 
@@ -152,12 +152,12 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 2.11.1 | Edit parameter, re-read from device, verify match | P0 | ❌ | |
-| 2.11.2 | All Basic section parameters sync to device | P0 | ❌ | |
-| 2.11.3 | All Output section parameters sync to device | P1 | ❌ | |
+| 2.11.1 | Edit parameter, re-read from device, verify match | P0 | ✅ | `device-programs.spec.ts` — 'program name round-trip persists to device' + all round-trip tests |
+| 2.11.2 | All Basic section parameters sync to device | P0 | ⚠️ | `device-programs.spec.ts` — polyphony and priority covered; PRGNUM, PMCHAN, voice stealing not tested |
+| 2.11.3 | All Output section parameters sync to device | P1 | ⚠️ | `device-programs.spec.ts` — program level and pan position covered; output routing, stereo level, V_LOUD, PFXCHAN not tested |
 | 2.11.4 | All Pitch section parameters sync to device | P1 | ❌ | |
-| 2.11.5 | All LFO parameters sync to device | P1 | ❌ | |
-| 2.11.6 | All toggle parameters sync to device | P1 | ❌ | |
+| 2.11.5 | All LFO parameters sync to device | P1 | ⚠️ | `device-programs.spec.ts` — LFO 1 rate covered; depth, delay, waveform, desync, mod sources, LFO 2 not tested |
+| 2.11.6 | All toggle parameters sync to device | P1 | ⚠️ | `device-programs.spec.ts` — legato covered; portamento enable, KXFADE, LFO2TRIG, DESYNC not tested |
 
 ### 2.12 Program Edge Cases (Hardware Required) 🔌
 
@@ -177,13 +177,13 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 3.1.1 | Navigates to keygroups page | P0 | ❌ | |
-| 3.1.2 | Requires program selection first | P0 | ❌ | |
-| 3.1.3 | Keygroup list loads from device | P0 | ❌ | |
+| 3.1.1 | Navigates to keygroups page | P0 | ✅ | `device-keygroups.spec.ts` — 'navigates to keygroups page' |
+| 3.1.2 | Requires program selection first | P0 | ✅ | `device-keygroups.spec.ts` — 'shows prompt when no program is selected' |
+| 3.1.3 | Keygroup list loads from device | P0 | ✅ | `device-keygroups.spec.ts` — 'keygroup list loads after program selection' |
 | 3.1.4 | Shows loading state during keygroup fetch | P1 | ❌ | |
-| 3.1.5 | Displays keygroup note range (low-high) | P1 | ❌ | |
-| 3.1.6 | Selecting keygroup shows editor | P1 | ❌ | |
-| 3.1.7 | Refresh button reloads keygroups | P1 | ❌ | |
+| 3.1.5 | Displays keygroup note range (low-high) | P1 | ✅ | `device-keygroups.spec.ts` — 'note range inputs are displayed with values' |
+| 3.1.6 | Selecting keygroup shows editor | P1 | ✅ | `device-keygroups.spec.ts` — 'selecting a keygroup shows the editor' |
+| 3.1.7 | Refresh button reloads keygroups | P1 | ✅ | `device-keygroups.spec.ts` — used in all round-trip tests via Refresh click |
 | 3.1.8 | Switching selected program reloads keygroups | P1 | ❌ | |
 | 3.1.9 | Page title shows selected program name | P2 | ❌ | |
 
@@ -191,8 +191,8 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 3.2.1 | Edit low note (LONOTE, 21-127) | P1 | ❌ | |
-| 3.2.2 | Edit high note (HINOTE, 21-127) | P1 | ❌ | |
+| 3.2.1 | Edit low note (LONOTE, 21-127) | P1 | ⚠️ | `device-keygroups.spec.ts` — 'note range inputs are displayed with values' verifies display, no edit round-trip |
+| 3.2.2 | Edit high note (HINOTE, 21-127) | P1 | ⚠️ | `device-keygroups.spec.ts` — 'note range inputs are displayed with values' verifies display, no edit round-trip |
 | 3.2.3 | Edit tuning offset (KGTUNO, -50 to 50) | P1 | ❌ | |
 | 3.2.4 | Note name display updates with MIDI note value | P2 | ❌ | |
 
@@ -200,10 +200,10 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 3.3.1 | Edit attack (ATTAK1, 0-99) | P1 | ❌ | |
-| 3.3.2 | Edit decay (DECAY1, 0-99) | P1 | ❌ | |
-| 3.3.3 | Edit sustain (SUSTN1, 0-99) | P1 | ❌ | |
-| 3.3.4 | Edit release (RELSE1, 0-99) | P1 | ❌ | |
+| 3.3.1 | Edit attack (ATTAK1, 0-99) | P1 | ✅ | `device-keygroups.spec.ts` — 'amplitude envelope attack round-trip persists to device' |
+| 3.3.2 | Edit decay (DECAY1, 0-99) | P1 | ⚠️ | `device-keygroups.spec.ts` — 'amplitude envelope inputs are displayed' verifies visibility only |
+| 3.3.3 | Edit sustain (SUSTN1, 0-99) | P1 | ✅ | `device-keygroups.spec.ts` — 'amplitude envelope sustain round-trip persists to device' |
+| 3.3.4 | Edit release (RELSE1, 0-99) | P1 | ⚠️ | `device-keygroups.spec.ts` — 'amplitude envelope inputs are displayed' verifies visibility only |
 | 3.3.5 | Edit velocity to attack (V_ATT1, -50 to 50) | P1 | ❌ | |
 | 3.3.6 | Edit velocity to release (V_REL1, -50 to 50) | P1 | ❌ | |
 | 3.3.7 | Edit off velocity to release (O_REL1, -50 to 50) | P1 | ❌ | |
@@ -213,7 +213,7 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 3.4.1 | Edit filter frequency (FILFRQ, 0-99) | P1 | ❌ | |
+| 3.4.1 | Edit filter frequency (FILFRQ, 0-99) | P1 | ✅ | `device-keygroups.spec.ts` — 'filter frequency round-trip persists to device' |
 | 3.4.2 | Edit filter resonance (FILQ, 0-15) | P1 | ❌ | |
 | 3.4.3 | Edit key tracking (K_FREQ, -50 to 50) | P1 | ❌ | |
 | 3.4.4 | Edit velocity to filter (V_FREQ, -50 to 50) | P1 | ❌ | |
@@ -265,10 +265,10 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 3.9.1 | Edit parameter, re-read from device, verify match | P0 | ❌ | |
-| 3.9.2 | All Note Range parameters sync to device | P0 | ❌ | |
-| 3.9.3 | All Amplitude Envelope parameters sync to device | P1 | ❌ | |
-| 3.9.4 | All Filter parameters sync to device | P1 | ❌ | |
+| 3.9.1 | Edit parameter, re-read from device, verify match | P0 | ✅ | `device-keygroups.spec.ts` — filter frequency, amp envelope attack, amp envelope sustain round-trips |
+| 3.9.2 | All Note Range parameters sync to device | P0 | ❌ | Display verified but no edit round-trip for LONOTE, HINOTE, KGTUNO |
+| 3.9.3 | All Amplitude Envelope parameters sync to device | P1 | ⚠️ | `device-keygroups.spec.ts` — attack and sustain round-trips covered; decay, release, and mod amounts not tested |
+| 3.9.4 | All Filter parameters sync to device | P1 | ⚠️ | `device-keygroups.spec.ts` — frequency round-trip covered; resonance, key tracking, and mod amounts not tested |
 | 3.9.5 | All Filter Envelope parameters sync to device | P1 | ❌ | |
 | 3.9.6 | Crossfade parameters sync to device | P1 | ❌ | |
 
@@ -289,8 +289,8 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 4.1.1 | Zone 1 active by default | P1 | ❌ | |
-| 4.1.2 | Click to switch between 4 velocity zones | P1 | ❌ | |
+| 4.1.1 | Zone 1 active by default | P1 | ✅ | `device-velocity-zones.spec.ts` — 'velocity zone tabs are visible' + 'sample name is displayed for active zone' (Zone 1 default) |
+| 4.1.2 | Click to switch between 4 velocity zones | P1 | ✅ | `device-velocity-zones.spec.ts` — 'clicking zone tab shows zone parameters' |
 | 4.1.3 | Zone tabs show sample name when assigned | P2 | ❌ | |
 | 4.1.4 | Active zone tab visually distinct | P2 | ❌ | |
 
@@ -298,7 +298,7 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 4.2.1 | Sample dropdown lists resident samples | P0 | ❌ | |
+| 4.2.1 | Sample dropdown lists resident samples | P0 | ✅ | `device-sample-headers.spec.ts` — 'sample names are loaded in velocity zone dropdown' + 'sample dropdown options contain non-empty sample names' |
 | 4.2.2 | Assign sample to zone 1 (SNAME1) | P0 | ❌ | |
 | 4.2.3 | Assign sample to zone 2 (SNAME2) | P1 | ❌ | |
 | 4.2.4 | Assign sample to zone 3 (SNAME3) | P1 | ❌ | |
@@ -310,9 +310,9 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 4.3.1 | Edit low velocity (LOVEL1-4, 0-127) | P1 | ❌ | |
-| 4.3.2 | Edit high velocity (HIVEL1-4, 0-127) | P1 | ❌ | |
-| 4.3.3 | Edit tuning offset (VTUNO1-4, -50 to 50) | P1 | ❌ | |
+| 4.3.1 | Edit low velocity (LOVEL1-4, 0-127) | P1 | ⚠️ | `device-velocity-zones.spec.ts` — display verified + Zone 1 round-trip; zones 2-4 not tested |
+| 4.3.2 | Edit high velocity (HIVEL1-4, 0-127) | P1 | ⚠️ | `device-velocity-zones.spec.ts` — display verified; no edit round-trip |
+| 4.3.3 | Edit tuning offset (VTUNO1-4, -50 to 50) | P1 | ⚠️ | `device-velocity-zones.spec.ts` — 'clicking zone tab shows zone parameters' verifies visibility only |
 | 4.3.4 | Edit loudness offset (VLOUD1-4, -50 to 50) | P1 | ❌ | |
 | 4.3.5 | Edit filter freq offset (VFREQ1-4, -50 to 50) | P1 | ❌ | |
 | 4.3.6 | Edit pan offset (VPANO1-4, -50 to 50) | P1 | ❌ | |
@@ -325,14 +325,14 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 | 4.4.1 | Configure zone 1: 0-31, zone 2: 32-63, zone 3: 64-95, zone 4: 96-127 | P1 | ❌ | |
 | 4.4.2 | Overlapping velocity ranges (for crossfade) | P2 | ❌ | |
 | 4.4.3 | Single-zone full range (0-127) | P1 | ❌ | |
-| 4.4.4 | Velocity zone parameters sync to device | P0 | ❌ | |
+| 4.4.4 | Velocity zone parameters sync to device | P0 | ✅ | `device-velocity-zones.spec.ts` — 'velocity range round-trip persists to device' |
 
 ### 4.5 Velocity Zone Round-Trip (Hardware Required) 🔌
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 4.5.1 | Edit zone parameter, re-read from device, verify match | P0 | ❌ | |
-| 4.5.2 | All per-zone parameters sync across 4 zones | P0 | ❌ | |
+| 4.5.1 | Edit zone parameter, re-read from device, verify match | P0 | ✅ | `device-velocity-zones.spec.ts` — 'velocity range round-trip persists to device' |
+| 4.5.2 | All per-zone parameters sync across 4 zones | P0 | ❌ | Only Zone 1 low velocity tested |
 | 4.5.3 | Sample name persists after round-trip | P0 | ❌ | |
 
 ---
@@ -464,30 +464,31 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 
 | Priority | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
-| P0 | 34 | 4 | 0 | 30 |
-| P1 | 140 | 0 | 0 | 140 |
+| P0 | 34 | 16 | 1 | 17 |
+| P1 | 140 | 14 | 12 | 114 |
 | P2 | 19 | 0 | 0 | 19 |
-| **Total** | **193** | **4** | **0** | **189** |
+| **Total** | **193** | **30** | **13** | **150** |
 
 ### By Hardware Requirement
 
 | Category | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
-| No Hardware | 25 | 0 | 0 | 25 |
-| Hardware Required | 168 | 4 | 0 | 164 |
+| No Hardware | 25 | 2 | 0 | 23 |
+| Hardware Required | 168 | 28 | 13 | 127 |
 
 ### Critical Gaps (P0 Not Tested)
 
-1. **Program name edit + sync** - Program name edits syncing to device (2.2.1, 2.2.2)
-2. **Program round-trip** - Edit parameter, re-read from device, verify (2.11.1, 2.11.2)
-3. **Keygroup list loading** - Keygroup list loads from device (3.1.1-3.1.3)
-4. **Keygroup round-trip** - Edit parameter, re-read from device, verify (3.9.1, 3.9.2)
-5. **Velocity zone sample assignment** - Assign sample and verify sync (4.2.1, 4.2.2, 4.2.7)
-6. **Velocity zone round-trip** - Per-zone parameter sync verification (4.5.1-4.5.3)
+1. **Device disconnect** - Can disconnect from device (1.2.3)
+2. **HTTP MIDI transport connection** - HTTP MIDI transport connects via midi-server (1.2.8)
+3. **Note range round-trip** - All Note Range parameters sync to device (3.9.2)
+4. **Velocity zone sample assignment** - Assign sample and verify sync (4.2.2, 4.2.7)
+5. **Velocity zone multi-zone sync** - All per-zone parameters sync across 4 zones (4.5.2)
+6. **Velocity zone sample round-trip** - Sample name persists after round-trip (4.5.3)
 7. **Library OPFS connection** - Connect to OPFS storage backend (5.1.1, 5.1.3)
 8. **Library device integration** - Export/import programs and samples (5.5.1-5.5.5, requires SDS)
 9. **Modulation round-trip** - Modulation assignments sync to device (6.3.1, 6.3.2)
 10. **HTTP MIDI transport** - midi-server health check, port operations, SysEx round-trip (8.1-8.6)
+11. **Error handling** - Display error when connection fails (7.1.1)
 
 ---
 
@@ -497,22 +498,23 @@ This document provides a full-coverage test plan for the akai-s3k-editor applica
 Verify midi-server connectivity and SysEx round-trip for S3000XL protocol:
 - Health check, port enumeration, port open/close, SysEx round-trip (section 8)
 
-### Phase 2: Program Editing with Hardware Sync
-Program list loading and parameter editing with device verification:
-- Program name load, edit, sync to device (sections 2.1-2.2)
-- Basic and Output section round-trip tests (section 2.11)
+### Phase 2: Keygroup Note Range and Navigation
+Keygroup note range round-trip and multi-keygroup navigation:
+- Note range edit round-trips: LONOTE, HINOTE, KGTUNO (section 3.2, 3.9.2)
+- Multi-keygroup navigation (section 3.8)
 
-### Phase 3: Keygroup Editing with Hardware Sync
-Keygroup list loading and parameter editing with device verification:
-- Keygroup list from selected program (section 3.1)
-- Note Range and Filter section editing (sections 3.2, 3.4)
-- Keygroup chain navigation (section 3.8)
-
-### Phase 4: Velocity Zone Editing
+### Phase 3: Velocity Zone Sample Assignment
 Sample assignment and per-zone parameter editing:
-- Sample dropdown from resident sample list (section 4.2)
-- Per-zone parameter editing across 4 zones (section 4.3)
-- Velocity range configuration (section 4.4)
+- Assign sample to zone 1, verify sync (4.2.2, 4.2.7)
+- Per-zone parameter round-trips across multiple zones (4.5.2)
+- Sample name persistence round-trip (4.5.3)
+
+### Phase 4: Remaining Program Parameter Round-Trips
+Fill in partial coverage for program sections:
+- Output section: output routing, stereo level (2.3.1, 2.3.2)
+- Pitch section: all parameters (section 2.4)
+- Portamento: enable toggle, type select (2.5.1, 2.5.3)
+- LFO 1: depth, delay, waveform (2.6.2-2.6.4)
 
 ### Phase 5: Library Operations
 OPFS storage and sample management (no hardware required):
