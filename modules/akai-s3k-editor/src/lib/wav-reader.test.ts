@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseWavFile, type WavFileInfo } from '@/lib/wav-reader';
+import { parseWavFile } from '@/lib/wav-reader';
 
 /**
  * Build a minimal valid WAV file buffer for testing.

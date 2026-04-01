@@ -161,6 +161,7 @@ $(INSTALL_STAMP): pnpm-lock.yaml
 
 # midi-core has no build script — just stamp it
 $(MIDI_CORE): $(INSTALL_STAMP) $(MIDI_CORE_SRC)
+	cd $(MODULES_DIR)/midi-core && pnpm build
 	@touch $@
 
 $(SAMPLER_LIB): $(INSTALL_STAMP) $(SAMPLER_LIB_SRC)

@@ -78,18 +78,18 @@ function ReceivedSampleInfo({
   const hasLoop = header.loopType !== 127;
 
   return (
-    <div className="border border-gray-700 rounded-lg bg-gray-800/50 p-3 mt-4">
+    <div data-testid="sds-received-info" className="border border-gray-700 rounded-lg bg-gray-800/50 p-3 mt-4">
       <h3 className="text-sm font-medium text-gray-300 mb-2">
         Received Sample
       </h3>
       <div className="space-y-1">
         <p className="text-sm text-gray-200">
           <span className="text-gray-400">Sample #{header.sampleNumber}:</span>{' '}
-          {samples.length.toLocaleString()} samples
+          <span data-testid="sds-received-sample-count">{samples.length.toLocaleString()}</span> samples
         </p>
         <p className="text-sm text-gray-200">
           <span className="text-gray-400">Format:</span>{' '}
-          {sampleRate.toLocaleString()} Hz, {header.sampleFormat}-bit
+          <span data-testid="sds-received-sample-rate">{sampleRate.toLocaleString()}</span> Hz, {header.sampleFormat}-bit
         </p>
         {hasLoop && (
           <p className="text-sm text-gray-200">
@@ -104,7 +104,7 @@ function ReceivedSampleInfo({
         </p>
       </div>
       <div className="mt-3">
-        <button className="ac-btn ac-btn-sm ac-btn-primary" onClick={onDownload}>
+        <button data-testid="sds-download-button" className="ac-btn ac-btn-sm ac-btn-primary" onClick={onDownload}>
           Download as WAV
         </button>
       </div>
@@ -130,7 +130,7 @@ function TransferProgress({ state }: { state: TransferState }) {
             <span>
               {direction === 'receive' ? 'Receiving' : 'Sending'} sample...
             </span>
-            <span>{percentage}%</span>
+            <span data-testid="sds-progress-percent">{percentage}%</span>
           </div>
 
           <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
@@ -150,7 +150,7 @@ function TransferProgress({ state }: { state: TransferState }) {
       )}
 
       {error && (
-        <div className="p-3 bg-red-900/30 border border-red-700 rounded text-red-300 text-sm">
+        <div data-testid="sds-error" className="p-3 bg-red-900/30 border border-red-700 rounded text-red-300 text-sm">
           {error}
         </div>
       )}
@@ -257,6 +257,7 @@ export function SampleTransferPanel({
           </label>
           <select
             id="sample-select"
+            data-testid="sds-sample-select"
             className="w-full rounded border border-gray-600 bg-gray-700 px-3 py-2 text-gray-200 text-sm
                        focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500
                        disabled:opacity-50 disabled:cursor-not-allowed"
@@ -278,6 +279,7 @@ export function SampleTransferPanel({
         {/* Action buttons */}
         <div className="flex items-center gap-3">
           <button
+            data-testid="sds-receive-button"
             className="ac-btn ac-btn-sm ac-btn-primary"
             onClick={handleReceive}
             disabled={
@@ -289,12 +291,14 @@ export function SampleTransferPanel({
 
           <input
             ref={fileInputRef}
+            data-testid="sds-file-input"
             type="file"
             accept=".wav,audio/wav"
             className="hidden"
             onChange={handleFileSelected}
           />
           <button
+            data-testid="sds-send-button"
             className="ac-btn ac-btn-sm ac-btn-secondary"
             onClick={handleSendClick}
             disabled={selectedIndex === null || transferState.isTransferring}
@@ -310,7 +314,7 @@ export function SampleTransferPanel({
 
         {/* Parse error */}
         {parseError && (
-          <div className="p-3 bg-red-900/30 border border-red-700 rounded text-red-300 text-sm">
+          <div data-testid="sds-parse-error" className="p-3 bg-red-900/30 border border-red-700 rounded text-red-300 text-sm">
             {parseError}
           </div>
         )}

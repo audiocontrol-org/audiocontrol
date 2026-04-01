@@ -765,6 +765,9 @@ importers:
 
   modules/midi-core:
     devDependencies:
+      tsup:
+        specifier: ^8.3.6
+        version: 8.5.1(postcss@8.5.6)(tsx@4.20.5)(typescript@5.9.2)(yaml@2.8.2)
       typescript:
         specifier: ^5.3.0
         version: 5.9.2
@@ -6157,7 +6160,7 @@ packages:
   /fix-dts-default-cjs-exports@1.0.1:
     resolution: {integrity: sha512-pVIECanWFC61Hzl2+oOCtoJ3F17kglZC/6N94eRWycFgBH35hHx0Li604ZIzhseh97mf2p0cv7vVrOZGoqhlEg==}
     dependencies:
-      magic-string: 0.30.19
+      magic-string: 0.30.21
       mlly: 1.8.0
       rollup: 4.52.2
     dev: true

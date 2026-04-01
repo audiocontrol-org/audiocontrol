@@ -62,17 +62,22 @@ Validated against a real Akai S3000XL via MIDI (828mk3 interface).
 - **Dump requests supported** — device responds to `F0 7E cc 03 sl sh F7` automatically (no front-panel interaction needed)
 - **Packet counter wraps at 128** — confirmed in 552-packet transfer
 - **No proprietary handshake needed** — standard SDS works directly
+- **Send-to-device sample number mapping is unresolved** — sending a sample via SDS with a given sample number does NOT overwrite the existing sample at that slot index. The S3000XL ACKs all packets (transfer appears successful) but the original sample remains unchanged when read back via dump request. The SDS sample number in the dump header may not correspond to the internal sample slot index returned by RSLIST. Further investigation needed (see Known Limitations).
 
 ## Testing
 
-- 77 unit tests (messages, encoding) — `cd modules/midi-core && npx vitest run`
+- 96 unit tests (messages, encoding, transfer state machines) — `cd modules/midi-core && npx vitest run`
+- E2E tests (requires S3000XL hardware):
+  - `make test-e2e-s3k-device ARGS="--grep 'SDS'"` — 4/5 passing
+  - Passing: navigation, button states, receive from device, send to device
+  - Failing: round-trip comparison (send then receive back) — see Known Limitations
 - Hardware test script:
   - `tsx scripts/sds-hardware-test.ts request [sampleNumber] [channel]` — automated dump request + receive
   - `tsx scripts/sds-hardware-test.ts listen [channel]` — wait for device-initiated dump
 
 ## Known Limitations
 
-- "Send to Device" UI button is stubbed — needs File System Access API integration for file picker
+- **Send-to-device round-trip not yet working** — the S3000XL ACKs all sent packets but does not appear to store the sample at the expected slot. When the same slot is read back via dump request, the original sample is returned unchanged. Root cause under investigation — possibilities: (1) SDS sample numbers don't map to RSLIST indices, (2) the S3000XL stores SDS-received samples in a separate staging area, (3) additional proprietary commands are needed to commit the sample to a slot.
 - SDS extensions (Sample Name, Header Extension) not implemented — not needed for S3000XL
 - Transfer speed is limited by MIDI bandwidth (~25s for 1 second of 22kHz audio)
 - No sample rate conversion during transfer

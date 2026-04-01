@@ -3,12 +3,16 @@
  * SDS hardware tests against a connected Akai S3000XL.
  *
  * Modes:
- *   request  — Send a dump request, receive the sample automatically (default)
- *   listen   — Wait for a device-initiated dump, receive with ACKs
+ *   request    — Send a dump request, receive the sample automatically (default)
+ *   listen     — Wait for a device-initiated dump, receive with ACKs
+ *   send       — Send a generated test sample to the device
+ *   roundtrip  — Send a test sample, receive it back, compare
  *
  * Usage:
  *   tsx scripts/sds-hardware-test.ts request [sampleNumber] [channel]
  *   tsx scripts/sds-hardware-test.ts listen [channel]
+ *   tsx scripts/sds-hardware-test.ts send [sampleNumber] [channel]
+ *   tsx scripts/sds-hardware-test.ts roundtrip [sampleNumber] [channel]
  *
  * Defaults: sampleNumber=3, channel=0 (S3000XL "logical channel 1" = 0x00)
  */
@@ -17,9 +21,14 @@ import * as easymidi from 'easymidi';
 import {
   parseSdsMessage,
   buildAck,
+  buildDumpHeader,
   buildDumpRequest,
+  buildDataPacket,
   validateChecksum,
 } from '../modules/midi-core/src/sds/sds-messages';
+import { samplesToPackets } from '../modules/midi-core/src/sds/sds-encoding';
+import { LOOP_OFF, PACKET_COUNTER_MAX } from '../modules/midi-core/src/sds/sds-constants';
+import type { SdsDumpHeader } from '../modules/midi-core/src/sds/sds-types';
 
 const EXCLUDED_PORT_PATTERNS = [/^IAC /i, /^Network /i, /^virtual/i];
 
@@ -39,21 +48,49 @@ function findPort(): { inputName: string; outputName: string } {
 }
 
 // ---------------------------------------------------------------------------
-// Shared closed-loop receiver
+// Generate a known test sample
 // ---------------------------------------------------------------------------
+
+function generateTestSample(numSamples: number): Int16Array {
+  const samples = new Int16Array(numSamples);
+  for (let i = 0; i < numSamples; i++) {
+    // Triangle wave — easy to verify, covers full 16-bit range
+    const phase = (i % 256) / 256;
+    const value = phase < 0.5
+      ? Math.round(-32768 + phase * 2 * 65535)
+      : Math.round(32767 - (phase - 0.5) * 2 * 65535);
+    samples[i] = value;
+  }
+  return samples;
+}
+
+// ---------------------------------------------------------------------------
+// Closed-loop receiver (returns sample data)
+// ---------------------------------------------------------------------------
+
+interface ReceiveResult {
+  packets: number;
+  expected: number;
+  checksumErrors: number;
+  elapsedS: string;
+  header?: SdsDumpHeader;
+  samples?: Int16Array;
+}
 
 function receiveWithAcks(
   input: easymidi.Input,
   output: easymidi.Output,
   channel: number,
   timeoutMs: number,
-): Promise<{ packets: number; expected: number; checksumErrors: number; elapsedS: string }> {
+): Promise<ReceiveResult> {
   return new Promise((resolve) => {
     let expectedPackets = 0;
     let packetsReceived = 0;
     let headerSeen = false;
     let checksumErrors = 0;
     let startTime = 0;
+    let receivedHeader: SdsDumpHeader | undefined;
+    const receivedPacketData: Uint8Array[] = [];
 
     const timeout = setTimeout(() => {
       finish('Timeout');
@@ -70,7 +107,22 @@ function receiveWithAcks(
       console.log(`  Checksum errors: ${checksumErrors}`);
       console.log(`  Time: ${elapsed}s`);
 
-      resolve({ packets: packetsReceived, expected: expectedPackets, checksumErrors, elapsedS: elapsed });
+      // Decode samples if we have complete data
+      let samples: Int16Array | undefined;
+      if (receivedHeader && packetsReceived === expectedPackets && expectedPackets > 0) {
+        const { packetsToSamples } = require('../modules/midi-core/src/sds/sds-encoding');
+        const decoded = packetsToSamples(receivedPacketData, receivedHeader.sampleFormat, receivedHeader.sampleLength);
+        samples = decoded instanceof Int16Array ? decoded : new Int16Array(decoded);
+      }
+
+      resolve({
+        packets: packetsReceived,
+        expected: expectedPackets,
+        checksumErrors,
+        elapsedS: elapsed,
+        header: receivedHeader,
+        samples,
+      });
     }
 
     input.on('sysex', (msg) => {
@@ -82,6 +134,7 @@ function receiveWithAcks(
 
         if (parsed.type === 'dump-header') {
           headerSeen = true;
+          receivedHeader = parsed.header;
           startTime = Date.now();
           const bpw = Math.ceil(parsed.header.sampleFormat / 7);
           expectedPackets = Math.ceil((parsed.header.sampleLength * bpw) / 120);
@@ -101,6 +154,7 @@ function receiveWithAcks(
             console.log(`  Packet ${parsed.packet.packetNumber} CHECKSUM ERROR (${checksumErrors} total)`);
           }
 
+          receivedPacketData.push(parsed.packet.data);
           packetsReceived++;
           const pct = Math.round((packetsReceived / expectedPackets) * 100);
 
@@ -118,6 +172,107 @@ function receiveWithAcks(
         console.log(`  [parse error] ${(err as Error).message}`);
       }
     });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Closed-loop sender
+// ---------------------------------------------------------------------------
+
+function sendWithAcks(
+  input: easymidi.Input,
+  output: easymidi.Output,
+  channel: number,
+  header: SdsDumpHeader,
+  samples: Int16Array,
+  timeoutMs: number,
+): Promise<{ packets: number; expected: number; elapsedS: string; success: boolean }> {
+  return new Promise((resolve) => {
+    const packets = samplesToPackets(samples, header.sampleFormat);
+    const totalPackets = packets.length;
+    let currentPacket = 0;
+    let waitingForHeaderAck = true;
+    const startTime = Date.now();
+
+    console.log(`Sending ${totalPackets} packets...`);
+
+    const timeout = setTimeout(() => {
+      finish('Timeout');
+    }, timeoutMs);
+
+    function resetTimeout(): void {
+      clearTimeout(timeout);
+      setTimeout(() => finish('Timeout'), timeoutMs);
+    }
+
+    function finish(reason: string): void {
+      clearTimeout(timeout);
+      input.removeAllListeners('sysex');
+
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      const success = reason === 'Complete';
+
+      console.log(`\n=== Send Result: ${reason} ===`);
+      console.log(`  Packets: ${currentPacket}/${totalPackets}`);
+      console.log(`  Time: ${elapsed}s`);
+
+      resolve({ packets: currentPacket, expected: totalPackets, elapsedS: elapsed, success });
+    }
+
+    function sendNextPacket(): void {
+      if (currentPacket >= totalPackets) {
+        finish('Complete');
+        return;
+      }
+
+      const packetNumber = currentPacket % PACKET_COUNTER_MAX;
+      const pct = Math.round(((currentPacket + 1) / totalPackets) * 100);
+
+      if (totalPackets <= 20 || pct % 10 === 0 || currentPacket === totalPackets - 1) {
+        console.log(`  Sending packet ${packetNumber} (${currentPacket + 1}/${totalPackets} = ${pct}%)`);
+      }
+
+      output.send('sysex', buildDataPacket(channel, packetNumber, packets[currentPacket]!) as unknown[]);
+    }
+
+    input.on('sysex', (msg) => {
+      const bytes: number[] = msg.bytes;
+      if (bytes.length < 4 || bytes[1] !== 0x7e) return;
+
+      try {
+        const parsed = parseSdsMessage(bytes);
+
+        if (parsed.type === 'ack') {
+          resetTimeout();
+
+          if (waitingForHeaderAck) {
+            console.log('  Header ACKed');
+            waitingForHeaderAck = false;
+            sendNextPacket();
+          } else {
+            currentPacket++;
+            sendNextPacket();
+          }
+        } else if (parsed.type === 'nak') {
+          console.log(`  NAK for packet ${parsed.packetNumber} — retransmitting`);
+          resetTimeout();
+          sendNextPacket(); // Retransmit current packet
+        } else if (parsed.type === 'cancel') {
+          console.log('  CANCEL received from device');
+          finish('Cancelled by device');
+        } else if (parsed.type === 'wait') {
+          console.log('  WAIT received — pausing');
+          resetTimeout();
+          // Don't send anything, wait for ACK to resume
+        }
+      } catch {
+        // Ignore non-SDS messages
+      }
+    });
+
+    // Send dump header
+    console.log('Sending Dump Header...');
+    output.send('sysex', buildDumpHeader(channel, header) as unknown[]);
   });
 }
 
@@ -168,8 +323,119 @@ async function main(): Promise<void> {
         process.exitCode = 1;
       }
 
+    } else if (mode === 'send') {
+      const sampleNumber = Number(process.argv[3] ?? 3);
+      const channel = Number(process.argv[4] ?? 0);
+      const numSamples = 256;
+
+      console.log(`Sending ${numSamples}-sample test waveform to slot #${sampleNumber}, channel ${channel}\n`);
+
+      const samples = generateTestSample(numSamples);
+      const header: SdsDumpHeader = {
+        sampleNumber,
+        sampleFormat: 16,
+        samplePeriodNs: 22676, // ~44100Hz
+        sampleLength: numSamples,
+        loopStart: 0,
+        loopEnd: 0,
+        loopType: LOOP_OFF,
+      };
+
+      const result = await sendWithAcks(input, output, channel, header, samples, 30000);
+
+      if (result.success) {
+        console.log('\nSDS send: SUCCESS');
+      } else {
+        console.log('\nSDS send: FAILED');
+        process.exitCode = 1;
+      }
+
+    } else if (mode === 'roundtrip') {
+      const sampleNumber = Number(process.argv[3] ?? 3);
+      const channel = Number(process.argv[4] ?? 0);
+      const numSamples = 256;
+
+      console.log(`=== Round-trip test: slot #${sampleNumber}, ${numSamples} samples, channel ${channel} ===\n`);
+
+      // 1. Generate known sample
+      const sentSamples = generateTestSample(numSamples);
+      const header: SdsDumpHeader = {
+        sampleNumber,
+        sampleFormat: 16,
+        samplePeriodNs: 22676, // ~44100Hz
+        sampleLength: numSamples,
+        loopStart: 0,
+        loopEnd: 0,
+        loopType: LOOP_OFF,
+      };
+
+      console.log('--- Step 1: Send to device ---');
+      const sendResult = await sendWithAcks(input, output, channel, header, sentSamples, 30000);
+
+      if (!sendResult.success) {
+        console.log('\nRound-trip FAILED at send step');
+        process.exitCode = 1;
+        return;
+      }
+
+      // Brief pause to let device settle
+      await new Promise(r => setTimeout(r, 2000));
+
+      console.log('\n--- Step 2: Receive back from device ---');
+      const request = buildDumpRequest(channel, sampleNumber);
+      output.send('sysex', request as unknown[]);
+
+      const recvResult = await receiveWithAcks(input, output, channel, 60000);
+
+      if (recvResult.packets !== recvResult.expected || recvResult.expected === 0) {
+        console.log('\nRound-trip FAILED at receive step');
+        process.exitCode = 1;
+        return;
+      }
+
+      // 3. Compare
+      console.log('\n--- Step 3: Compare ---');
+
+      if (!recvResult.samples) {
+        console.log('No sample data decoded');
+        process.exitCode = 1;
+        return;
+      }
+
+      if (recvResult.samples.length !== sentSamples.length) {
+        console.log(`Length mismatch: sent ${sentSamples.length}, received ${recvResult.samples.length}`);
+        process.exitCode = 1;
+        return;
+      }
+
+      let mismatches = 0;
+      let maxDiff = 0;
+      for (let i = 0; i < sentSamples.length; i++) {
+        const diff = Math.abs(sentSamples[i] - recvResult.samples[i]);
+        if (diff > 0) {
+          mismatches++;
+          maxDiff = Math.max(maxDiff, diff);
+          if (mismatches <= 5) {
+            console.log(`  Sample ${i}: sent=${sentSamples[i]}, received=${recvResult.samples[i]}, diff=${diff}`);
+          }
+        }
+      }
+
+      if (mismatches === 0) {
+        console.log(`  ${sentSamples.length} samples compared: EXACT MATCH`);
+        console.log('\nRound-trip: SUCCESS');
+      } else {
+        console.log(`  ${mismatches}/${sentSamples.length} samples differ, max diff=${maxDiff}`);
+        if (maxDiff <= 1) {
+          console.log('\nRound-trip: SUCCESS (within quantization tolerance)');
+        } else {
+          console.log('\nRound-trip: FAILED (data mismatch)');
+          process.exitCode = 1;
+        }
+      }
+
     } else {
-      console.error(`Unknown mode: ${mode}. Use "request" or "listen".`);
+      console.error(`Unknown mode: ${mode}. Use "request", "listen", "send", or "roundtrip".`);
       process.exitCode = 1;
     }
   } finally {

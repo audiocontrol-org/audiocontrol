@@ -1,9 +1,6 @@
 import { useCallback, useState } from 'react';
-import type {
-  S3000xlClientInterface,
-  SdsTransferProgress,
-  SdsDumpHeader,
-} from '@audiocontrol/sampler-devices/s3k';
+import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
+import type { SdsTransferProgress, SdsDumpHeader } from '@audiocontrol/midi-core';
 
 export interface TransferState {
   isTransferring: boolean;
@@ -47,6 +44,7 @@ export function useSampleTransfer(client: S3000xlClientInterface | null) {
       try {
         await client.sendSampleViaSds(sampleNumber, sampleData, sampleRate, {
           onProgress: (progress) => {
+            console.log(`[S3000XL SDS] send ${progress.packetsSent}/${progress.packetsTotal}`);
             setTransferState((prev) => ({ ...prev, progress }));
           },
         });
@@ -81,6 +79,7 @@ export function useSampleTransfer(client: S3000xlClientInterface | null) {
         const result = await client.receiveSampleViaSds(
           sampleNumber,
           (progress) => {
+            console.log(`[S3000XL SDS] receive ${progress.packetsSent}/${progress.packetsTotal}`);
             setTransferState((prev) => ({ ...prev, progress }));
           },
         );
