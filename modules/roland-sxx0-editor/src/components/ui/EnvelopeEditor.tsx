@@ -151,7 +151,7 @@ export function EnvelopeEditor({
                                     value={sustainPoint}
                                     onChange={(e) => {
                                         updateSustainPoint(Number(e.target.value));
-                                        onCommit?.();
+                                        setTimeout(() => onCommit?.(), 0);
                                     }}
                                     disabled={disabled}
                                 >
@@ -171,7 +171,7 @@ export function EnvelopeEditor({
                                     value={endPoint}
                                     onChange={(e) => {
                                         updateEndPoint(Number(e.target.value));
-                                        onCommit?.();
+                                        setTimeout(() => onCommit?.(), 0);
                                     }}
                                     disabled={disabled}
                                 >
@@ -201,7 +201,8 @@ export function EnvelopeEditor({
                             value={sustainPoint}
                             onChange={(e) => {
                                 updateSustainPoint(Number(e.target.value));
-                                onCommit?.();
+                                // Defer commit to after React flushes the state update
+                                setTimeout(() => onCommit?.(), 0);
                             }}
                             disabled={disabled}
                         >
@@ -221,7 +222,7 @@ export function EnvelopeEditor({
                             value={endPoint}
                             onChange={(e) => {
                                 updateEndPoint(Number(e.target.value));
-                                onCommit?.();
+                                setTimeout(() => onCommit?.(), 0);
                             }}
                             disabled={disabled}
                         >
