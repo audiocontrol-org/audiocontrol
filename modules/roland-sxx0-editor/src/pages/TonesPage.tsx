@@ -218,7 +218,9 @@ export function TonesPage() {
     (tone?: SamplerTone) => {
       if (selectedToneIndex === null || !clientRef.current) return;
 
-      const toneData = tone ?? tones[selectedToneIndex];
+      // Read from Zustand store directly (not the React closure `tones`)
+      // to get the latest value after synchronous store updates.
+      const toneData = tone ?? useDeviceDataStore.getState().tones[selectedToneIndex];
       if (!toneData) return;
 
       clientRef.current.sendToneData(selectedToneIndex, toneData).catch((err) => {
@@ -226,7 +228,7 @@ export function TonesPage() {
         setError(err instanceof Error ? err.message : 'Failed to send tone data');
       });
     },
-    [selectedToneIndex, tones, setError]
+    [selectedToneIndex, setError]
   );
 
   // Export sample as WAV file

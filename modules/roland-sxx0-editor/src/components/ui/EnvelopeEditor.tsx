@@ -151,7 +151,7 @@ export function EnvelopeEditor({
                                     value={sustainPoint}
                                     onChange={(e) => {
                                         updateSustainPoint(Number(e.target.value));
-                                        queueMicrotask(() => onCommit?.());
+                                        onCommit?.();
                                     }}
                                     disabled={disabled}
                                 >
@@ -171,7 +171,7 @@ export function EnvelopeEditor({
                                     value={endPoint}
                                     onChange={(e) => {
                                         updateEndPoint(Number(e.target.value));
-                                        queueMicrotask(() => onCommit?.());
+                                        onCommit?.();
                                     }}
                                     disabled={disabled}
                                 >
@@ -202,7 +202,7 @@ export function EnvelopeEditor({
                             onChange={(e) => {
                                 updateSustainPoint(Number(e.target.value));
                                 // Defer commit to after React flushes the state update
-                                queueMicrotask(() => onCommit?.());
+                                onCommit?.();
                             }}
                             disabled={disabled}
                         >
@@ -222,7 +222,7 @@ export function EnvelopeEditor({
                             value={endPoint}
                             onChange={(e) => {
                                 updateEndPoint(Number(e.target.value));
-                                queueMicrotask(() => onCommit?.());
+                                onCommit?.();
                             }}
                             disabled={disabled}
                         >
