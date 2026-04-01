@@ -519,21 +519,23 @@ Play, Patch, and Tone page parameter controls with hardware sync:
 - Tone envelopes: ⚠️ TVF and TVA envelope rate + sustain point tested (`device-tone-envelope-controls.spec.ts`)
 - Error recovery: ✅ timeout, SysEx rejection, device disconnect (`device-error-recovery.spec.ts`)
 
-### Phase 4: Loop Editor Parity and Hardware Integration ✅ COMPLETE
+### Phase 4: Loop Editor Parity and Hardware Integration ⚠️ PARTIAL
 Loop editor hardware sync tests pass:
 - ✅ Loop editor opens from Tones page (inline) (`device-loop-editor.spec.ts`)
 - ✅ Loop point changes sync to device via DT1 write (`device-loop-editor.spec.ts`)
-- ❌ Loop editor opens from Library page (dialog) - not yet tested
+- ❌ Loop editor opens from Library page (dialog) — not yet tested
 - ❌ Parity verification: same operations produce same results on both surfaces
 - ❌ Auto-detect with real device wave data
 
-### Phase 5: Drum Kit and Slice Workflows ⚠️ PARTIAL
-- ✅ Drum kit v2 format import (`device-drumkit.spec.ts`)
-- ⚠️ Drum kit v1 format import - not yet tested
-- ⚠️ Sample chopper save-to-library - fixed slicing works, drum kit chop has fixme (`library-chopper-save.spec.ts`)
-- ❌ Drum kit creation from slices (section 13.1)
-- ❌ MIDI note assignment, output config, save to library
-- ❌ Slice boundary persistence after save/reload
+### Phase 5: Drum Kit and Slice Workflows ✅ COMPLETE
+- ✅ Drum kit v1 + v2 format import (`device-drumkit.spec.ts`)
+- ✅ Sample chopper save-to-library — fixed slicing, slice labels, drum kit creation (`library-chopper-save.spec.ts`)
+- ✅ Chop device tone into drum kit (`device-tone-chopper.spec.ts`)
+- ✅ Slice boundary persistence after save/reload (`library-chopper-save.spec.ts`)
+- ✅ Drum kit pad preview with playback + MIDI notes (`library-drumkit-editor.spec.ts`)
+- ✅ MIDI note assignment + base note config (`library-drumkit-editor.spec.ts`)
+- ✅ Missing sample file handling (`library-drumkit-error.spec.ts`)
+- ⚠️ Per-pad output routing deferred (S-330 architecture limitation)
 
 ### Phase 6: Error Scenarios ✅ COMPLETE
 - `device-error-recovery.spec.ts` - Timeout errors, SysEx rejection, device disconnect recovery
