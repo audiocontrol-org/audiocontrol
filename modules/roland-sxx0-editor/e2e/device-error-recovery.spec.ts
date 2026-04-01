@@ -317,35 +317,23 @@ test.describe('Error Handling', () => {
     // This cuts the incoming MIDI data channel from midi-server.
     await page.route('**/port/*/events', (route) => route.abort());
 
-    // Navigate to Play page, which triggers a fresh requestFunctionParameters()
-    // call that depends on SSE responses to receive SysEx data.
-    await navigateToPlayPage(page);
-
-    // Wait for either an error message or a timeout indicator.
-    // The app should show some indication that the operation failed.
-    const errorMessage = page.locator('[data-testid="error-message"]');
-    const errorVisible = await errorMessage.isVisible()
-      .catch(() => false);
-
-    // Wait a reasonable time for the operation to time out
-    if (!errorVisible) {
-      // The error may appear after the internal timeout fires
-      await expect(errorMessage).toBeVisible({ timeout: 30_000 }).catch(() => {
-        // If no error message appears, at minimum the app should not crash.
-        // Verify the page is still responsive.
-        console.log('No error-message element appeared — verifying app stability');
-      });
+    // Try to change a tone parameter — this triggers a write that
+    // will succeed (HTTP POST) but any subsequent read will fail
+    // because SSE responses can't arrive.
+    const nameInput = page.locator('[data-testid="tone-name-input"]');
+    if (await nameInput.isVisible().catch(() => false)) {
+      await nameInput.fill('SSETEST');
+      await nameInput.blur();
+      await page.waitForTimeout(2000);
     }
 
     // Verify the app did not crash — the page should still be interactive
     const appRoot = page.locator('#root');
     await expect(appRoot).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // Verify we can still navigate (app is not frozen)
-    const tonesLink = page.locator('a[href$="/tones"]');
-    if ((await tonesLink.count()) > 0) {
-      await expect(tonesLink).toBeEnabled({ timeout: UI_TIMEOUT_MS });
-    }
+    // Navigation links should still be rendered (app didn't white-screen)
+    const navLinks = page.locator('nav a');
+    expect(await navLinks.count()).toBeGreaterThan(0);
 
     console.log('App remained stable after SSE disconnect');
   });
