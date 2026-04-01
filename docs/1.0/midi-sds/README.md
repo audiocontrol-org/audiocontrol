@@ -1,11 +1,11 @@
 # MIDI Sample Dump Standard (SDS) Support
 
-**Status:** Planning
+**Status:** Implemented (Phases 1-3), hardware validated
 **Feature Branch:** `feature/midi-sds`
 
 ## Overview
 
-Generic MIDI Sample Dump Standard (SDS) implementation in `shared-midi`, with integration into the Akai S3000XL client and sample editor. SDS enables device-agnostic sample transfer over MIDI using the universal Non-Real Time SysEx protocol (ID `0x7E`).
+Generic MIDI Sample Dump Standard (SDS) implementation in `midi-core`, with integration into the Akai S3000XL client and sample editor. SDS enables device-agnostic sample transfer over MIDI using the universal Non-Real Time SysEx protocol (ID `0x7E`).
 
 ## Tracking
 

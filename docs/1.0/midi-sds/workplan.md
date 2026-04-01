@@ -7,11 +7,11 @@
 
 ## Technical Approach
 
-Build a generic MIDI SDS implementation in `shared-midi` following the same patterns used by the Roland S-series protocol layer (`s-series-messages.ts`, `s-series-constants.ts`). The implementation is structured as pure functions for message building/parsing/encoding, plus a transfer state machine for managing closed-loop handshake sequences. The S3000XL client in `sampler-devices` integrates SDS as an alternative sample transfer method alongside its existing proprietary RSPACK/ASPACK protocol.
+Built a generic MIDI SDS implementation in `midi-core` (renamed from `shared-midi`) following the same patterns used by the Roland S-series protocol layer. The implementation is structured as pure functions for message building/parsing/encoding, plus transfer state machines for managing closed-loop and open-loop handshake sequences. The S3000XL client in `sampler-devices` integrates SDS as an alternative sample transfer method alongside its existing proprietary RSPACK/ASPACK protocol.
 
 **Key architectural decisions:**
 
-- **Generic in `shared-midi`** -- SDS is device-agnostic, so it belongs in the shared MIDI layer, not in any device-specific module
+- **Generic in `midi-core`** -- SDS is device-agnostic, so it belongs in the shared MIDI layer, not in any device-specific module
 - **Pure functions for protocol** -- Message builders, parsers, and encoding are stateless pure functions (easy to test, no side effects)
 - **State machine for transfers** -- Closed-loop transfer uses an explicit state machine that accepts MIDI messages as inputs and produces MIDI messages as outputs, with the transport layer injected
 - **Composition with device clients** -- The S3000XL client composes the SDS transfer functions with its existing request queue and MidiIO adapter rather than inheriting from an SDS base class
@@ -19,17 +19,17 @@ Build a generic MIDI SDS implementation in `shared-midi` following the same patt
 
 ## Implementation Phases
 
-### Phase 1: SDS Protocol Layer in `shared-midi`
+### Phase 1: SDS Protocol Layer in `midi-core` -- COMPLETE
 
-Build the core SDS protocol implementation as pure functions and types.
+Built the core SDS protocol implementation as pure functions and types.
 
-#### 1.1 Types and Constants
+#### 1.1 Types and Constants -- COMPLETE
 
-Define all SDS-related types, constants, and message identifiers.
+Defined all SDS-related types, constants, and message identifiers.
 
-**Files to create:**
-- `modules/shared-midi/src/sds/sds-types.ts` -- Interfaces for SDS messages (DumpHeader, DataPacket, DumpRequest, Ack, Nak, Wait, Cancel)
-- `modules/shared-midi/src/sds/sds-constants.ts` -- Protocol constants (command bytes, max packet size, encoding parameters)
+**Files created:**
+- `modules/midi-core/src/sds/sds-types.ts` -- Interfaces for SDS messages (DumpHeader, DataPacket, DumpRequest, Ack, Nak, Wait, Cancel)
+- `modules/midi-core/src/sds/sds-constants.ts` -- Protocol constants (command bytes, max packet size, encoding parameters)
 
 **Key types:**
 
@@ -58,12 +58,12 @@ interface SdsTransferProgress {
 }
 ```
 
-#### 1.2 Message Builders and Parsers
+#### 1.2 Message Builders and Parsers -- COMPLETE
 
 Pure functions to build and parse all 7 SDS message types.
 
-**Files to create:**
-- `modules/shared-midi/src/sds/sds-messages.ts` -- Builder and parser functions
+**Files created:**
+- `modules/midi-core/src/sds/sds-messages.ts` -- Builder and parser functions
 
 **Functions:**
 
@@ -84,12 +84,12 @@ Pure functions to build and parse all 7 SDS message types.
 - Parser round-trips with builders (build -> parse -> compare)
 - Checksum validation catches single-bit errors
 
-#### 1.3 Sample Data Encoding/Decoding
+#### 1.3 Sample Data Encoding/Decoding -- COMPLETE
 
 7-bit MIDI encoding for sample data at any bit depth (8-28 bits).
 
-**Files to create:**
-- `modules/shared-midi/src/sds/sds-encoding.ts` -- Encode/decode functions
+**Files created:**
+- `modules/midi-core/src/sds/sds-encoding.ts` -- Encode/decode functions
 
 **Functions:**
 
@@ -110,13 +110,16 @@ Pure functions to build and parse all 7 SDS message types.
 - Correct left-justification for all bit depths
 - Last packet correctly zero-padded
 
-#### 1.4 Transfer State Machine
+#### 1.4 Transfer State Machine -- COMPLETE
 
 Closed-loop and open-loop transfer logic.
 
-**Files to create:**
-- `modules/shared-midi/src/sds/sds-transfer.ts` -- Transfer state machine
-- `modules/shared-midi/src/sds/index.ts` -- Public API barrel export
+**Files created:**
+- `modules/midi-core/src/sds/sds-sender.ts` -- Open-loop and closed-loop sender
+- `modules/midi-core/src/sds/sds-receiver.ts` -- Closed-loop receiver with checksum validation
+- `modules/midi-core/src/sds/sds-transfer.ts` -- Re-exports and `requestSample()` convenience function
+- `modules/midi-core/src/sds/sds-transfer-util.ts` -- Shared helpers
+- `modules/midi-core/src/sds/index.ts` -- Public API barrel export
 
 **Interfaces:**
 
@@ -164,16 +167,17 @@ interface SdsReceiverOptions {
 - Progress callback fires with correct counts
 - NAK triggers retransmit up to maxRetries, then errors
 
-### Phase 2: S3000XL SDS Integration in `sampler-devices`
+### Phase 2: S3000XL SDS Integration in `sampler-devices` -- COMPLETE
 
-Wire the generic SDS implementation into the S3000XL client.
+Wired the generic SDS implementation into the S3000XL client.
 
-#### 2.1 Add SDS Methods to S3000XL Client Interface
+#### 2.1 Add SDS Methods to S3000XL Client Interface -- COMPLETE
 
-Extend the S3000XL client interface with SDS sample transfer methods.
+Extended the S3000XL client interface with SDS sample transfer methods.
 
-**Files to modify:**
-- `modules/sampler-devices/src/devices/s3000xl/s3000xl-client.ts` -- Add SDS transfer methods
+**Files modified:**
+- `modules/sampler-devices/src/devices/s3000xl/s3000xl-types.ts` -- Added `sendSampleViaSds()` and `receiveSampleViaSds()` to interface
+- `modules/sampler-devices/src/devices/s3000xl/s3000xl-client.ts` -- Implemented both methods with serialization queue
 
 **New methods:**
 
@@ -204,35 +208,37 @@ receiveSampleViaSds(
 - Transfer errors are reported with descriptive messages
 - Progress callbacks propagate from SDS layer to caller
 
-#### 2.2 S3000XL SDS Configuration
+#### 2.2 S3000XL SDS Configuration -- COMPLETE
 
-Determine and configure S3000XL-specific SDS parameters.
+Determined and configured S3000XL-specific SDS parameters via hardware testing.
 
-**Files to create/modify:**
+**Files created:**
 - `modules/sampler-devices/src/devices/s3000xl/s3000xl-sds-config.ts` -- S3000XL SDS configuration
 
-**Configuration:**
-- MIDI channel mapping (S3000XL SysEx channel to SDS channel)
-- Sample number mapping (if S3000XL sample indices differ from SDS sample numbers)
-- Supported bit depths (S3000XL is 16-bit)
-- Timeout values tuned for S3000XL response times
+**Configuration (validated against hardware):**
+- SDS channel = Akai SysEx channel (0-indexed; "logical channel 1" on device = byte 0x00 on wire)
+- Sample numbers map directly (no translation needed)
+- S3000XL is 16-bit (`S3K_SDS_BITS_PER_WORD = 16`)
+- Default timeouts work well (S3000XL sends bursts of ~50 packets, then waits for ACKs)
+- Dump requests (`F0 7E cc 03 sl sh F7`) are supported — device responds automatically
 
-**Success criteria:**
-- Configuration values validated against hardware testing
-- Open questions from PRD resolved through hardware experimentation
+### Phase 3: S3000XL Editor UI for Sample Transfer -- COMPLETE
 
-### Phase 3: S3000XL Editor UI for Sample Transfer
+Added sample transfer UI to the Akai S3000XL sample editor.
 
-Add sample send/receive UI to the Akai S3000XL sample editor.
+#### 3.1 Sample Transfer UI Components -- COMPLETE
 
-#### 3.1 Sample Transfer UI Components
+Added a dedicated Samples page with transfer controls.
 
-Add transfer controls to the sample header view in `akai-s3k-editor`.
+**Files created:**
+- `modules/akai-s3k-editor/src/components/samples/SampleTransferPanel.tsx` -- Transfer UI panel with sample dropdown, progress bar, error display
+- `modules/akai-s3k-editor/src/components/samples/index.ts` -- Barrel export
+- `modules/akai-s3k-editor/src/hooks/useSampleTransfer.ts` -- Transfer state management hook
+- `modules/akai-s3k-editor/src/pages/SamplesPage.tsx` -- Samples page
 
-**Files to create/modify:**
-- `modules/akai-s3k-editor/src/components/SampleTransferPanel.tsx` -- Transfer UI panel
-- `modules/akai-s3k-editor/src/components/TransferProgressBar.tsx` -- Progress indicator
-- Wire into existing sample header page
+**Files modified:**
+- `modules/akai-s3k-editor/src/App.tsx` -- Added `/akai/s3000xl/editor/samples` route
+- `modules/akai-s3k-editor/src/components/layout/Layout.tsx` -- Added "Samples" nav item
 
 **UI elements:**
 - "Send to Device" button (sends a local sample to the S3000XL via SDS)
@@ -248,14 +254,15 @@ Add transfer controls to the sample header view in `akai-s3k-editor`.
 - Errors are displayed clearly with actionable messages
 - Cancel stops the transfer cleanly
 
-### Phase 4: Testing
+### Phase 4: Testing -- PARTIALLY COMPLETE
 
-#### 4.1 Unit Tests for SDS Protocol Layer
+#### 4.1 Unit Tests for SDS Protocol Layer -- COMPLETE
 
-**Files to create:**
-- `modules/shared-midi/src/sds/__tests__/sds-messages.test.ts`
-- `modules/shared-midi/src/sds/__tests__/sds-encoding.test.ts`
-- `modules/shared-midi/src/sds/__tests__/sds-transfer.test.ts`
+77 unit tests passing.
+
+**Files created:**
+- `modules/midi-core/src/sds/__tests__/sds-messages.test.ts` -- 42 tests (builders, parser, checksum)
+- `modules/midi-core/src/sds/__tests__/sds-encoding.test.ts` -- 35 tests (encoding, decoding, packets)
 
 **Test coverage:**
 - Message builder output matches SDS spec byte-for-byte
@@ -268,35 +275,47 @@ Add transfer controls to the sample header view in `akai-s3k-editor`.
 - Timeout and retry behavior
 - Progress callback accuracy
 
-#### 4.2 Integration Tests with S3000XL Hardware
+#### 4.2 Hardware Validation with S3000XL -- COMPLETE
 
-**Files to create:**
-- Tests in S3000XL e2e test suite (requires hardware)
+Validated protocol against real Akai S3000XL hardware.
 
-**Test scenarios:**
-- Send a known sample via SDS, read it back via SDS, compare
-- Send via SDS, verify sample header on device matches
+**Files created:**
+- `scripts/sds-hardware-test.ts` -- Hardware test script (request and listen modes)
+
+**Test results:**
+
+| Test | Sample | Result |
+|------|--------|--------|
+| Open-loop receive (small, 256 samples) | PULSE | 7/7 packets, 0 errors |
+| Dump request + closed-loop receive (small) | PULSE | 7/7 packets, 0 errors |
+| Closed-loop receive (large, 22,051 samples) | Sample #4 | 552/552 packets, 0 errors, 25.7s |
+| Automated dump request (large) | Sample #4 | 552/552 packets, 0 errors, 25.7s |
+
+**Remaining test scenarios (future):**
+- Send a known sample via SDS, read it back via SDS, compare (round-trip)
 - Trigger NAK by corrupting a packet, verify retransmit
 - Cancel mid-transfer, verify device state is clean
 
 ## Task Breakdown
 
-| # | Task | Phase | Est. |
-|---|------|-------|------|
-| 1 | Define SDS types and constants | 1.1 | 0.5d |
-| 2 | Implement SDS message builders | 1.2 | 1d |
-| 3 | Implement SDS message parsers | 1.2 | 1d |
-| 4 | Implement 7-bit sample encoding/decoding | 1.3 | 1d |
-| 5 | Implement packet splitting/reassembly | 1.3 | 0.5d |
-| 6 | Implement closed-loop sender state machine | 1.4 | 1.5d |
-| 7 | Implement closed-loop receiver state machine | 1.4 | 1.5d |
-| 8 | Implement open-loop sender | 1.4 | 0.5d |
-| 9 | Write unit tests for protocol layer | 4.1 | 1.5d |
-| 10 | Add SDS methods to S3000XL client | 2.1 | 1d |
-| 11 | Create S3000XL SDS configuration | 2.2 | 0.5d |
-| 12 | Build sample transfer UI panel | 3.1 | 1d |
-| 13 | Build transfer progress bar | 3.1 | 0.5d |
-| 14 | Hardware integration testing with S3000XL | 4.2 | 1d |
+| # | Task | Phase | Status |
+|---|------|-------|--------|
+| 1 | Define SDS types and constants | 1.1 | Done |
+| 2 | Implement SDS message builders | 1.2 | Done |
+| 3 | Implement SDS message parsers | 1.2 | Done |
+| 4 | Implement 7-bit sample encoding/decoding | 1.3 | Done |
+| 5 | Implement packet splitting/reassembly | 1.3 | Done |
+| 6 | Implement closed-loop sender state machine | 1.4 | Done |
+| 7 | Implement closed-loop receiver state machine | 1.4 | Done |
+| 8 | Implement open-loop sender | 1.4 | Done |
+| 9 | Write unit tests for protocol layer | 4.1 | Done (77 tests) |
+| 10 | Add SDS methods to S3000XL client | 2.1 | Done |
+| 11 | Create S3000XL SDS configuration | 2.2 | Done |
+| 12 | Build sample transfer UI page | 3.1 | Done |
+| 13 | Build transfer progress bar | 3.1 | Done |
+| 14 | Hardware validation with S3000XL | 4.2 | Done |
+| 15 | Round-trip send/receive test | 4.2 | TODO |
+| 16 | File picker for "Send to Device" | 3.1 | TODO |
 
 ## Dependencies
 

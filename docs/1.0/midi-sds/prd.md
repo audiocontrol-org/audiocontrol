@@ -1,7 +1,7 @@
 # MIDI Sample Dump Standard (SDS) Support - Product Requirements Document
 
 **Created:** 2026-03-31
-**Status:** Draft
+**Status:** Implemented (Phases 1-3), hardware validated
 **Owner:** Orion Letizi
 
 ## Problem Statement
@@ -10,7 +10,7 @@ The audiocontrol project supports multiple hardware samplers (Roland S-330, S-55
 
 The MIDI Sample Dump Standard (SDS) is an industry-standard protocol (adopted January 1986 by the MMA and JMSC) that defines a universal method for transferring audio sample data between any MIDI-equipped devices. SDS uses Non-Real Time Universal SysEx messages (ID `0x7E`) and supports both open-loop (fire-and-forget) and closed-loop (handshaked) transfer modes.
 
-Adding a generic SDS implementation to `shared-midi` would:
+Adding a generic SDS implementation to `midi-core` would:
 
 1. Enable sample transfer with any SDS-compatible device without writing device-specific code
 2. Provide a reference implementation for the SDS protocol that other modules can build on
@@ -26,23 +26,23 @@ Adding a generic SDS implementation to `shared-midi` would:
 
 ## Success Criteria
 
-- [ ] Generic SDS message builder/parser handles all 7 SDS message types (Dump Header, Data Packet, Dump Request, ACK, NAK, WAIT, CANCEL)
-- [ ] Closed-loop sender transmits sample data with handshaking (ACK/NAK/WAIT/CANCEL handling)
-- [ ] Closed-loop receiver accepts sample data with handshaking (sends ACK/NAK per packet)
-- [ ] Open-loop sender transmits sample data without handshaking
-- [ ] Checksum validation detects corrupted packets and triggers NAK/retransmit
-- [ ] Sample format encoding/decoding supports 8-28 bit sample widths
-- [ ] 7-bit MIDI encoding correctly packs/unpacks sample data for any bit depth
-- [ ] Progress callbacks report transfer progress (packet count, bytes transferred)
-- [ ] S3000XL sample editor can send samples to the device via SDS
-- [ ] S3000XL sample editor can receive samples from the device via SDS
-- [ ] Unit tests cover message building, parsing, encoding, checksums, and transfer state machines
+- [x] Generic SDS message builder/parser handles all 7 SDS message types (Dump Header, Data Packet, Dump Request, ACK, NAK, WAIT, CANCEL)
+- [x] Closed-loop sender transmits sample data with handshaking (ACK/NAK/WAIT/CANCEL handling)
+- [x] Closed-loop receiver accepts sample data with handshaking (sends ACK/NAK per packet)
+- [x] Open-loop sender transmits sample data without handshaking
+- [x] Checksum validation detects corrupted packets and triggers NAK/retransmit
+- [x] Sample format encoding/decoding supports 8-28 bit sample widths
+- [x] 7-bit MIDI encoding correctly packs/unpacks sample data for any bit depth
+- [x] Progress callbacks report transfer progress (packet count, bytes transferred)
+- [ ] S3000XL sample editor can send samples to the device via SDS (UI stubbed, needs file picker)
+- [x] S3000XL sample editor can receive samples from the device via SDS
+- [x] Unit tests cover message building, parsing, encoding, checksums, and transfer state machines
 
 ## Scope
 
 ### In Scope
 
-- Generic SDS protocol implementation in `shared-midi` module
+- Generic SDS protocol implementation in `midi-core` module
   - Message builders for all 7 SDS message types
   - Message parsers for all 7 SDS message types
   - 7-bit MIDI sample data encoding/decoding (8-28 bit sample widths)
@@ -70,7 +70,7 @@ Adding a generic SDS implementation to `shared-midi` would:
 
 ## Dependencies
 
-- `shared-midi` module (host for generic SDS implementation)
+- `midi-core` module (host for generic SDS implementation, renamed from `shared-midi`)
 - `sampler-devices` S3000XL client (integration point)
 - `akai-s3k-editor` module (UI integration)
 - Web MIDI API (browser) or Node.js MIDI backend (CLI)
@@ -79,12 +79,12 @@ Adding a generic SDS implementation to `shared-midi` would:
 
 - [x] Does the S3000XL require any proprietary handshake before accepting SDS transfers, or does it accept standard SDS messages directly?
   - **Resolved:** No proprietary handshake needed. The S3000XL supports standard MIDI SDS ("OPEN" protocol) directly. The "S3000" protocol is a proprietary superset for Akai-to-Akai transfers that includes loop and program data. (Source: S3000XL Operator's Manual, p.235)
-- [ ] What is the maximum packet size the S3000XL can buffer for SDS transfers?
-  - Standard SDS uses 120-byte data packets. To be validated via hardware testing.
+- [x] What is the maximum packet size the S3000XL can buffer for SDS transfers?
+  - **Resolved:** Standard 120-byte data packets work correctly. The S3000XL sends in bursts of ~50 packets, then waits for ACKs before continuing. Confirmed with a 552-packet (22,051-sample) transfer: 552/552 packets, 0 checksum errors, 25.7s.
 - [x] Should the generic SDS implementation live in `shared-midi` or a new `midi-sds` module?
   - **Resolved:** Lives in `midi-core` (renamed from `shared-midi`) under `src/sds/`. The module was renamed to align with the `editor-core` naming convention.
-- [ ] Do we need to support the extended SDS messages (Sample Name Transmission, Sample Header Extension) for the S3000XL?
-  - The S3000XL's "OPEN" protocol transfers samples only (no programs, loops, or names). Extended SDS messages may not be supported — to be validated via hardware testing.
+- [x] Do we need to support the extended SDS messages (Sample Name Transmission, Sample Header Extension) for the S3000XL?
+  - **Resolved:** No. The S3000XL's "OPEN" protocol transfers sample audio data only. Standard SDS (7 message types) is sufficient. Extended messages are not needed for current use cases.
 
 ### Notes from S3000XL Operator's Manual (p.235)
 

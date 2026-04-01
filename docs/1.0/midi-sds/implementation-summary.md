@@ -59,14 +59,16 @@ Validated against a real Akai S3000XL via MIDI (828mk3 interface).
 - **Open-loop for small transfers** — sends all packets without waiting (fits in device buffer)
 - **Standard SDS only** — "OPEN" protocol on device; "S3000" protocol is proprietary superset
 - **Channel is 0-indexed** — "logical channel 1" on device = byte `0x00` on wire
-- **Dump requests supported** — device responds to `F0 7E cc 03 sl sh F7`
+- **Dump requests supported** — device responds to `F0 7E cc 03 sl sh F7` automatically (no front-panel interaction needed)
 - **Packet counter wraps at 128** — confirmed in 552-packet transfer
 - **No proprietary handshake needed** — standard SDS works directly
 
 ## Testing
 
 - 77 unit tests (messages, encoding) — `cd modules/midi-core && npx vitest run`
-- Hardware test script — `tsx scripts/sds-hardware-test.ts [channel]`
+- Hardware test script:
+  - `tsx scripts/sds-hardware-test.ts request [sampleNumber] [channel]` — automated dump request + receive
+  - `tsx scripts/sds-hardware-test.ts listen [channel]` — wait for device-initiated dump
 
 ## Known Limitations
 

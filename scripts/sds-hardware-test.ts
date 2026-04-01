@@ -1,23 +1,25 @@
 #!/usr/bin/env npx tsx
 /**
- * SDS closed-loop receive test against a connected Akai S3000XL.
+ * SDS hardware tests against a connected Akai S3000XL.
  *
- * Listens for a device-initiated dump, sends ACKs, reports results.
+ * Modes:
+ *   request  — Send a dump request, receive the sample automatically (default)
+ *   listen   — Wait for a device-initiated dump, receive with ACKs
  *
- * Usage (inside devenv shell):
- *   tsx scripts/sds-hardware-test.ts [channel]
+ * Usage:
+ *   tsx scripts/sds-hardware-test.ts request [sampleNumber] [channel]
+ *   tsx scripts/sds-hardware-test.ts listen [channel]
  *
- * Default channel: 0 (S3000XL "logical channel 1" = 0x00 on the wire)
+ * Defaults: sampleNumber=3, channel=0 (S3000XL "logical channel 1" = 0x00)
  */
 
 import * as easymidi from 'easymidi';
 import {
   parseSdsMessage,
   buildAck,
+  buildDumpRequest,
   validateChecksum,
 } from '../modules/midi-core/src/sds/sds-messages';
-
-const SDS_CHANNEL = Number(process.argv[2] ?? 0);
 
 const EXCLUDED_PORT_PATTERNS = [/^IAC /i, /^Network /i, /^virtual/i];
 
@@ -36,16 +38,16 @@ function findPort(): { inputName: string; outputName: string } {
   throw new Error('No matching MIDI input/output pair found');
 }
 
-async function main(): Promise<void> {
-  const { inputName, outputName } = findPort();
-  console.log(`Using: ${inputName} / ${outputName}`);
-  console.log(`SDS channel: ${SDS_CHANNEL}`);
-  console.log('\nInitiate a CURRENT SAMPLE dump from the S3000XL EXCL page.');
-  console.log('Waiting up to 120 seconds...\n');
+// ---------------------------------------------------------------------------
+// Shared closed-loop receiver
+// ---------------------------------------------------------------------------
 
-  const input = new easymidi.Input(inputName);
-  const output = new easymidi.Output(outputName);
-
+function receiveWithAcks(
+  input: easymidi.Input,
+  output: easymidi.Output,
+  channel: number,
+  timeoutMs: number,
+): Promise<{ packets: number; expected: number; checksumErrors: number; elapsedS: string }> {
   return new Promise((resolve) => {
     let expectedPackets = 0;
     let packetsReceived = 0;
@@ -55,28 +57,24 @@ async function main(): Promise<void> {
 
     const timeout = setTimeout(() => {
       finish('Timeout');
-    }, 120000);
+    }, timeoutMs);
 
     function finish(reason: string): void {
       clearTimeout(timeout);
       input.removeAllListeners('sysex');
 
-      const elapsed = startTime ? ((Date.now() - startTime) / 1000).toFixed(1) : '?';
+      const elapsed = startTime ? ((Date.now() - startTime) / 1000).toFixed(1) : '0';
 
       console.log(`\n=== Result: ${reason} ===`);
       console.log(`  Packets: ${packetsReceived}/${expectedPackets}`);
       console.log(`  Checksum errors: ${checksumErrors}`);
       console.log(`  Time: ${elapsed}s`);
 
-      input.close();
-      output.close();
-      resolve();
+      resolve({ packets: packetsReceived, expected: expectedPackets, checksumErrors, elapsedS: elapsed });
     }
 
     input.on('sysex', (msg) => {
       const bytes: number[] = msg.bytes;
-
-      // Skip non-SDS messages
       if (bytes.length < 4 || bytes[1] !== 0x7e) return;
 
       try {
@@ -93,13 +91,12 @@ async function main(): Promise<void> {
           console.log(`  Loop: start=${parsed.header.loopStart}, end=${parsed.header.loopEnd}, type=${parsed.header.loopType}`);
           console.log(`  Expecting ${expectedPackets} packets`);
           console.log('  → ACK header');
-          output.send('sysex', buildAck(SDS_CHANNEL, 0) as unknown[]);
+          output.send('sysex', buildAck(channel, 0) as unknown[]);
 
         } else if (parsed.type === 'data-packet') {
-          if (!headerSeen) return; // Ignore stray packets
+          if (!headerSeen) return;
 
-          // Validate checksum
-          if (!validateChecksum(parsed.packet, SDS_CHANNEL)) {
+          if (!validateChecksum(parsed.packet, channel)) {
             checksumErrors++;
             console.log(`  Packet ${parsed.packet.packetNumber} CHECKSUM ERROR (${checksumErrors} total)`);
           }
@@ -107,13 +104,11 @@ async function main(): Promise<void> {
           packetsReceived++;
           const pct = Math.round((packetsReceived / expectedPackets) * 100);
 
-          // Log every 10% or every packet for small transfers
           if (expectedPackets <= 20 || pct % 10 === 0 || packetsReceived === expectedPackets) {
             console.log(`  Packet ${parsed.packet.packetNumber} (${packetsReceived}/${expectedPackets} = ${pct}%)`);
           }
 
-          // ACK
-          output.send('sysex', buildAck(SDS_CHANNEL, parsed.packet.packetNumber) as unknown[]);
+          output.send('sysex', buildAck(channel, parsed.packet.packetNumber) as unknown[]);
 
           if (packetsReceived >= expectedPackets) {
             finish('Complete');
@@ -124,6 +119,63 @@ async function main(): Promise<void> {
       }
     });
   });
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
+async function main(): Promise<void> {
+  const mode = process.argv[2] ?? 'request';
+  const { inputName, outputName } = findPort();
+  const input = new easymidi.Input(inputName);
+  const output = new easymidi.Output(outputName);
+
+  console.log(`Using: ${inputName} / ${outputName}\n`);
+
+  try {
+    if (mode === 'request') {
+      const sampleNumber = Number(process.argv[3] ?? 3);
+      const channel = Number(process.argv[4] ?? 0);
+
+      console.log(`Sending SDS Dump Request for sample #${sampleNumber}, channel ${channel}`);
+      const request = buildDumpRequest(channel, sampleNumber);
+      console.log(`  → [${request.map(b => b.toString(16).padStart(2, '0')).join(' ')}]\n`);
+
+      output.send('sysex', request as unknown[]);
+
+      const result = await receiveWithAcks(input, output, channel, 60000);
+
+      if (result.packets === result.expected && result.expected > 0) {
+        console.log('\nSDS dump request + closed-loop receive: SUCCESS');
+      } else {
+        console.log('\nSDS dump request: INCOMPLETE or NO RESPONSE');
+        process.exitCode = 1;
+      }
+
+    } else if (mode === 'listen') {
+      const channel = Number(process.argv[3] ?? 0);
+
+      console.log(`Listening for SDS dump on channel ${channel}`);
+      console.log('Initiate a CURRENT SAMPLE dump from the S3000XL EXCL page.\n');
+
+      const result = await receiveWithAcks(input, output, channel, 120000);
+
+      if (result.packets === result.expected && result.expected > 0) {
+        console.log('\nClosed-loop receive: SUCCESS');
+      } else {
+        console.log('\nClosed-loop receive: INCOMPLETE or NO DATA');
+        process.exitCode = 1;
+      }
+
+    } else {
+      console.error(`Unknown mode: ${mode}. Use "request" or "listen".`);
+      process.exitCode = 1;
+    }
+  } finally {
+    input.close();
+    output.close();
+  }
 }
 
 main();
