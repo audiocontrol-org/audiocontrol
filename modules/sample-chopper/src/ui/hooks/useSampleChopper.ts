@@ -16,7 +16,7 @@ import type {
   SliceConfig,
   SliceResult,
 } from '@/types.js';
-import { DEFAULT_DRUM_TYPES } from '@/types.js';
+import { DEFAULT_SLICE_LABELS } from '@/types.js';
 import type { SliceMarker, SliceChange } from '@/ui/components/WaveformEditor.js';
 import { useSliceHistory, type HistoryEntry } from '@/ui/hooks/useSliceHistory.js';
 
@@ -94,7 +94,7 @@ export function useSampleChopper({
   const [transientMinGap, setTransientMinGap] = useState(100);
   const [transientPrePad, setTransientPrePad] = useState(5);
   const [fixedCount, setFixedCount] = useState(16);
-  const [kitLabels, setKitLabels] = useState(externalLabels ?? DEFAULT_DRUM_TYPES.join(','));
+  const [kitLabels, setKitLabels] = useState(externalLabels ?? DEFAULT_SLICE_LABELS.join(','));
   const [autoSliceResult, setAutoSliceResult] = useState<SliceResult | null>(null);
   const [selectedSlice, setSelectedSlice] = useState<number | undefined>(undefined);
   const [sliceError, setSliceError] = useState<string | null>(null);
