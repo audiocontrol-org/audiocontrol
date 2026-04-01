@@ -13,8 +13,8 @@ export type {
   MidiConnectionState,
   WebMidiAccess,
   BrowserCompatibility,
-} from '@audiocontrol/shared-midi';
+} from '@audiocontrol/midi-core';
 
 // S-330 specific type alias for MidiIO
-import type { MidiIO } from '@audiocontrol/shared-midi';
+import type { MidiIO } from '@audiocontrol/midi-core';
 export type S330MidiIO = MidiIO;

@@ -8,7 +8,7 @@ SHELL := /bin/bash
 MODULES_DIR := modules
 
 # Stamp file targets
-SHARED_MIDI       := $(MODULES_DIR)/shared-midi/.build-stamp
+MIDI_CORE      := $(MODULES_DIR)/midi-core/.build-stamp
 SAMPLER_LIB       := $(MODULES_DIR)/sampler-lib/.build-stamp
 AUDIOTOOLS_CONFIG  := $(MODULES_DIR)/audiotools-config/.build-stamp
 CANONICAL_MIDI     := $(MODULES_DIR)/canonical-midi-maps/.build-stamp
@@ -37,7 +37,7 @@ SAMPLE_EDITOR_MOD  := $(MODULES_DIR)/sample-editor/.build-stamp
 AKAI_S3K_EDITOR    := $(MODULES_DIR)/akai-s3k-editor/.build-stamp
 
 ALL_STAMPS := \
-	$(SHARED_MIDI) $(SAMPLER_LIB) $(AUDIOTOOLS_CONFIG) $(CANONICAL_MIDI) \
+	$(MIDI_CORE) $(SAMPLER_LIB) $(AUDIOTOOLS_CONFIG) $(CANONICAL_MIDI) \
 	$(ARDOUR_MIDI) $(LAUNCH_CONTROL) $(LAUNCH_CONTROL_ED) $(LIB_RUNTIME) \
 	$(SAMPLER_ATTIC) $(SAMPLE_CHOPPER) $(EDITOR_CORE) $(LIB_DEVICE_UUID) \
 	$(SAMPLER_DEVICES) $(SAMPLER_MIDI) $(SAMPLER_LIBRARY) \
@@ -51,7 +51,7 @@ INSTALL_STAMP := node_modules/.install-stamp
 # Source file lists — enables Make to detect actual file changes
 # ---------------------------------------------------------------------------
 
-SHARED_MIDI_SRC       := $(shell find $(MODULES_DIR)/shared-midi/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
+MIDI_CORE_SRC       := $(shell find $(MODULES_DIR)/midi-core/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLER_LIB_SRC       := $(shell find $(MODULES_DIR)/sampler-lib/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AUDIOTOOLS_CONFIG_SRC  := $(shell find $(MODULES_DIR)/audiotools-config/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 CANONICAL_MIDI_SRC     := $(shell find $(MODULES_DIR)/canonical-midi-maps/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
@@ -159,8 +159,8 @@ $(INSTALL_STAMP): pnpm-lock.yaml
 # Layer 0 — no workspace dependencies
 # ---------------------------------------------------------------------------
 
-# shared-midi has no build script — just stamp it
-$(SHARED_MIDI): $(INSTALL_STAMP) $(SHARED_MIDI_SRC)
+# midi-core has no build script — just stamp it
+$(MIDI_CORE): $(INSTALL_STAMP) $(MIDI_CORE_SRC)
 	@touch $@
 
 $(SAMPLER_LIB): $(INSTALL_STAMP) $(SAMPLER_LIB_SRC)
@@ -211,7 +211,7 @@ $(SYNTH_CORE): $(INSTALL_STAMP) $(SYNTH_CORE_SRC)
 # Layer 1
 # ---------------------------------------------------------------------------
 
-$(EDITOR_CORE): $(SHARED_MIDI) $(SAMPLER_LIBRARY) $(EDITOR_CORE_SRC)
+$(EDITOR_CORE): $(MIDI_CORE) $(SAMPLER_LIBRARY) $(EDITOR_CORE_SRC)
 	cd $(MODULES_DIR)/editor-core && pnpm build
 	@touch $@
 
@@ -219,7 +219,7 @@ $(LIB_DEVICE_UUID): $(SAMPLER_LIB) $(LIB_DEVICE_UUID_SRC)
 	cd $(MODULES_DIR)/lib-device-uuid && pnpm build
 	@touch $@
 
-$(SAMPLER_DEVICES): $(SAMPLER_LIB) $(SHARED_MIDI) $(SAMPLER_DEVICES_SRC)
+$(SAMPLER_DEVICES): $(SAMPLER_LIB) $(MIDI_CORE) $(SAMPLER_DEVICES_SRC)
 	cd $(MODULES_DIR)/sampler-devices && pnpm build
 	@touch $@
 
@@ -264,15 +264,15 @@ $(SAMPLE_EDITOR_MOD): $(SYNTH_CORE) $(SAMPLER_LIBRARY) $(SAMPLE_EDITOR_SRC)
 	cd $(MODULES_DIR)/sample-editor && pnpm build
 	@touch $@
 
-$(D110_EDITOR): $(EDITOR_CORE) $(SHARED_MIDI) $(D110_EDITOR_SRC)
+$(D110_EDITOR): $(EDITOR_CORE) $(MIDI_CORE) $(D110_EDITOR_SRC)
 	cd $(MODULES_DIR)/d110-editor && pnpm build
 	@touch $@
 
-$(JV1080_EDITOR): $(EDITOR_CORE) $(SAMPLER_DEVICES) $(SHARED_MIDI) $(JV1080_EDITOR_SRC)
+$(JV1080_EDITOR): $(EDITOR_CORE) $(SAMPLER_DEVICES) $(MIDI_CORE) $(JV1080_EDITOR_SRC)
 	cd $(MODULES_DIR)/jv1080-editor && pnpm build
 	@touch $@
 
-$(AKAI_S3K_EDITOR): $(EDITOR_CORE) $(SAMPLER_DEVICES) $(SHARED_MIDI) $(AKAI_S3K_EDITOR_SRC)
+$(AKAI_S3K_EDITOR): $(EDITOR_CORE) $(SAMPLER_DEVICES) $(MIDI_CORE) $(AKAI_S3K_EDITOR_SRC)
 	cd $(MODULES_DIR)/akai-s3k-editor && pnpm build
 	@touch $@
 
@@ -280,7 +280,7 @@ $(AKAI_S3K_EDITOR): $(EDITOR_CORE) $(SAMPLER_DEVICES) $(SHARED_MIDI) $(AKAI_S3K_
 # Layer 4
 # ---------------------------------------------------------------------------
 
-$(ROLAND_SXX0_EDITOR): $(EDITOR_CORE) $(LOOP_EDITOR) $(SAMPLE_CHOPPER) $(SAMPLE_EDITOR_MOD) $(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) $(SHARED_MIDI) $(SYNTH_CORE) $(ROLAND_SXX0_EDITOR_SRC)
+$(ROLAND_SXX0_EDITOR): $(EDITOR_CORE) $(LOOP_EDITOR) $(SAMPLE_CHOPPER) $(SAMPLE_EDITOR_MOD) $(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) $(MIDI_CORE) $(SYNTH_CORE) $(ROLAND_SXX0_EDITOR_SRC)
 	cd $(MODULES_DIR)/roland-sxx0-editor && pnpm build
 	@touch $@
 

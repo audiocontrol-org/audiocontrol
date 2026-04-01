@@ -1,4 +1,4 @@
-import type { MidiPortInfo } from '@audiocontrol/shared-midi';
+import type { MidiPortInfo } from '@audiocontrol/midi-core';
 
 export interface MidiPortSelectorProps {
   label: string;

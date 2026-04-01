@@ -8,14 +8,14 @@
  * - Factory function (no classes)
  * - Request serialization queue (one SysEx in flight at a time)
  * - Write buffer with configurable flush delay
- * - Retry via withRetry from shared-midi
+ * - Retry via withRetry from midi-core
  * - Response validation
  *
  * Protocol reference: https://lakai.sourceforge.net/docs/s2800_sysex.html
  */
 
-import type { MidiIO } from '@audiocontrol/shared-midi';
-import { withRetry } from '@audiocontrol/shared-midi';
+import type { MidiIO } from '@audiocontrol/midi-core';
+import { withRetry } from '@audiocontrol/midi-core';
 import {
   parseProgramHeader,
   parseKeygroupHeader,

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { MidiIO } from '@audiocontrol/shared-midi';
+import type { MidiIO } from '@audiocontrol/midi-core';
 import { createS3000xlClient } from '@/devices/s3000xl/s3000xl-client.js';
 import {
   AkaiOpcode,

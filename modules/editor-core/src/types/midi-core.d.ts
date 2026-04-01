@@ -1,4 +1,4 @@
-declare module '@audiocontrol/shared-midi' {
+declare module '@audiocontrol/midi-core' {
   export interface MidiPortInfo {
     id: string;
     name: string;

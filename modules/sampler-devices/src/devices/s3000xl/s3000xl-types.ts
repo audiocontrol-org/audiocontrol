@@ -1,4 +1,4 @@
-import type { MidiIO } from '@audiocontrol/shared-midi';
+import type { MidiIO } from '@audiocontrol/midi-core';
 import type { ProgramHeader, KeygroupHeader, SampleHeader } from '@/devices/s3000xl.js';
 
 export type { ProgramHeader, KeygroupHeader, SampleHeader };

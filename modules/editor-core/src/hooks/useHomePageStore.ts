@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { MidiPortInfo } from '@audiocontrol/shared-midi';
+import type { MidiPortInfo } from '@audiocontrol/midi-core';
 import type { MidiConnectionPageStore } from '../components/MidiConnectionPage';
 
 export interface HomePageMidiStore {

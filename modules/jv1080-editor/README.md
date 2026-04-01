@@ -1,6 +1,6 @@
 # @audiocontrol/jv1080-editor
 
-Web editor for Roland JV-1080, built on top of `@audiocontrol/sampler-devices` and `@audiocontrol/shared-midi`.
+Web editor for Roland JV-1080, built on top of `@audiocontrol/sampler-devices` and `@audiocontrol/midi-core`.
 
 ## Status
 
@@ -15,7 +15,7 @@ Hardware validation remains pending.
 ## Architecture
 
 - Transport and browser MIDI:
-  - `@audiocontrol/shared-midi`
+  - `@audiocontrol/midi-core`
 - Device protocol client:
   - `@audiocontrol/sampler-devices/jv1080`
 - UI state:

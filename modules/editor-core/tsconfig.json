@@ -16,7 +16,7 @@
     "jsx": "react-jsx",
     "baseUrl": ".",
     "paths": {
-      "@audiocontrol/shared-midi": ["src/types/shared-midi.d.ts"],
+      "@audiocontrol/midi-core": ["src/types/midi-core.d.ts"],
       "@/*": ["src/*"]
     },
     "outDir": "dist",
