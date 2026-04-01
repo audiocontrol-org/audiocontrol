@@ -252,7 +252,9 @@ test.describe('Tone Envelope Controls', () => {
     // Toggle between 0 and 2
     const newValue = originalValue === 2 ? 0 : 2;
 
-    await sustainSelect.selectOption(String(newValue));
+    // Labels are 1-indexed ("1"-"8") but values are 0-indexed ("0"-"7").
+    // Must select by value explicitly to avoid label/value mismatch.
+    await sustainSelect.selectOption({ value: String(newValue) });
     console.log(`TVA sustain: set to ${newValue}, readback=${await sustainSelect.inputValue()}`);
     // Verify the select actually changed
     const afterSelect = Number(await sustainSelect.inputValue());
@@ -342,7 +344,7 @@ test.describe('Tone Envelope Controls', () => {
     console.log(`TVF sustain point: original=${originalValue}`);
     const newValue = originalValue === 2 ? 0 : 2;
 
-    await sustainSelect.selectOption(String(newValue));
+    await sustainSelect.selectOption({ value: String(newValue) });
     await page.waitForTimeout(WRITE_FLUSH_MS);
 
     // Read tone back from device hardware
