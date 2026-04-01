@@ -35,7 +35,8 @@ export type {
 } from './types.js';
 
 export {
-  DEFAULT_DRUM_TYPES,
+  DEFAULT_SLICE_LABELS,
+  DEFAULT_DRUM_TYPES, // deprecated alias
   DEFAULT_BASE_NOTE,
 } from './types.js';
 
