@@ -781,6 +781,19 @@ export function SampleChopperDialog({
                   {isSaving ? 'Saving...' : 'Save'}
                 </button>
               )}
+              {!onSave && renderOutputConfig && (
+                <button
+                  onClick={handleConfirm}
+                  disabled={!chopper.currentSliceResult || chopper.currentSliceResult.slices.length === 0}
+                  className={cn(
+                    'ac-btn ac-btn-primary',
+                    (!chopper.currentSliceResult || chopper.currentSliceResult.slices.length === 0) &&
+                      'opacity-50 cursor-not-allowed'
+                  )}
+                >
+                  Create Drum Kit
+                </button>
+              )}
               <button onClick={handleClose} className="ac-btn ac-btn-ghost">
                 Cancel
               </button>
