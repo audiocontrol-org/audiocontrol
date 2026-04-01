@@ -225,7 +225,7 @@ function SendConfirmPanel({
                 Replace &ldquo;{selectedSampleName}&rdquo; (sample #{selectedIndex})
               </span>
               <p className="text-xs text-amber-400 ml-0">
-                Deletes {selectedSampleName} first. Programs referencing this sample will lose their assignment.
+                Overwrites the sample data in this slot. Programs referencing this sample will use the new audio.
               </p>
             </div>
           </label>
@@ -316,10 +316,13 @@ export function SampleTransferPanel({
 
     try {
       if (sendMode === 'replace' && selectedIndex !== null) {
-        await deleteSample(selectedIndex);
+        // Overwrite: use the selected sample's index as the SDS sample number.
+        // The S3000XL overwrites when the SDS sample number matches an existing sample.
         await sendToDevice(selectedIndex, pendingWav.info.samples, pendingWav.info.sampleRate);
       } else {
-        await sendToDevice(0, pendingWav.info.samples, pendingWav.info.sampleRate);
+        // Add new: use a sample number that doesn't match any existing sample.
+        // sampleNames.length is the next unused index.
+        await sendToDevice(sampleNames.length, pendingWav.info.samples, pendingWav.info.sampleRate);
       }
       setPendingWav(null);
       // Brief delay to let device commit the sample before refreshing the list
@@ -329,7 +332,7 @@ export function SampleTransferPanel({
       const message = err instanceof Error ? err.message : String(err);
       setParseError(message);
     }
-  }, [pendingWav, sendMode, selectedIndex, deleteSample, sendToDevice, onSampleListChanged]);
+  }, [pendingWav, sendMode, selectedIndex, sampleNames.length, sendToDevice, onSampleListChanged]);
 
   const handleCancelSend = useCallback(() => {
     setPendingWav(null);

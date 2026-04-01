@@ -62,7 +62,7 @@ Validated against a real Akai S3000XL via MIDI (828mk3 interface).
 - **Dump requests supported** — device responds to `F0 7E cc 03 sl sh F7` automatically (no front-panel interaction needed)
 - **Packet counter wraps at 128** — confirmed in 552-packet transfer
 - **No proprietary handshake needed** — standard SDS works directly
-- **SDS send always creates a new sample** — the S3000XL appends incoming SDS samples to the end of its RSLIST regardless of the SDS sample number. The SDS sample number is metadata, not a storage address. To "replace" a sample: delete old via DELS, send new via SDS, new sample appears at end of list. Confirmed via hardware testing (sample count 6→7→8 with different SDS numbers).
+- **SDS sample number controls overwrite vs create** — if the SDS sample number matches an existing sample, the device overwrites that sample's data. If it doesn't match, a new sample is created and appended to the end of the RSLIST. Confirmed via hardware testing.
 
 ## Testing
 
@@ -77,7 +77,7 @@ Validated against a real Akai S3000XL via MIDI (828mk3 interface).
 
 ## Known Limitations
 
-- **SDS sample number ≠ RSLIST index** — the SDS sample number in the dump header is independent of the device's internal sample list order. Send always appends; to replace, delete first then send. The new sample will be at the end of RSLIST, not at the original position. Deleting a sample shifts indices of subsequent samples, which may break program keygroup references.
+- **SDS sample number = RSLIST index for overwrite** — sending with a sample number matching an existing RSLIST index overwrites that sample in place. Sending with an unused number creates a new slot at the end. No need to delete before replacing.
 - SDS extensions (Sample Name, Header Extension) not implemented — not needed for S3000XL
 - Transfer speed is limited by MIDI bandwidth (~25s for 1 second of 22kHz audio)
 - No sample rate conversion during transfer
