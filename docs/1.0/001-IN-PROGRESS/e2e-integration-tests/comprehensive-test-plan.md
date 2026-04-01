@@ -338,7 +338,7 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | 11.1.7 | Fullscreen toggle | P2 | ✅ | `sample-chopper-production.spec.ts` |
 | 11.1.8 | Slice list rendering | P1 | ✅ | `sample-chopper-production.spec.ts` |
 | 11.1.9 | Arrow key navigation | P2 | ✅ | `sample-chopper-production.spec.ts` |
-| 11.1.10 | Save slices to library | P1 | ⚠️ | `library-chopper-save.spec.ts` (fixed slicing works, drum kit chop has fixme) |
+| 11.1.10 | Save slices to library | P1 | ✅ | `library-chopper-save.spec.ts` (fixed slicing, 8 slices, drum kit open, slices render, kit YAML save) |
 
 ### 11.2 Sample Chopper with Hardware 🔌
 
@@ -460,15 +460,15 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | Priority | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | P0 | 44 | 38 | 2 | 4 |
-| P1 | 148 | 67 | 12 | 69 |
+| P1 | 148 | 68 | 11 | 69 |
 | P2 | 37 | 13 | 2 | 22 |
-| **Total** | **229** | **118** | **16** | **95** |
+| **Total** | **229** | **119** | **15** | **95** |
 
 ### By Hardware Requirement
 
 | Category | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
-| No Hardware | 83 | 69 | 1 | 13 |
+| No Hardware | 83 | 70 | 0 | 13 |
 | Hardware Required | 146 | 49 | 15 | 82 |
 
 ### Critical Gaps (P0 Not Tested)
