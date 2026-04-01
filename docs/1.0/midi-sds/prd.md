@@ -94,6 +94,7 @@ Adding a generic SDS implementation to `midi-core` would:
 - Sample number can be overridden (not tied to internal memory order).
 - Transfer types available on the S3000XL EXCL page: ALL SAMPLES, ALL PROGRAMS, CURRENT PROGRAM, CURRENT SAMPLE, EVERYTHING.
 - "OPEN" = standard MIDI SDS (samples only). "S3000" = proprietary superset (everything including loops/programs).
+- **SDS receive always creates a new sample slot** (confirmed via hardware testing). The SDS sample number is metadata, not a storage address. To replace, delete old sample first (`DELS` opcode), then send new. New sample appears at end of RSLIST.
 
 ## Appendix
 

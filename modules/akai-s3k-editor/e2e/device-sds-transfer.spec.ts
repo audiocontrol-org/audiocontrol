@@ -71,22 +71,19 @@ test.describe('SDS Sample Transfer', () => {
     expect(count).toBeGreaterThan(1);
   });
 
-  test('buttons are disabled with no selection, enabled after selection', async ({ page }) => {
+  test('receive button is disabled with no selection, enabled after selection', async ({ page }) => {
     test.setTimeout(15_000);
 
     const receiveBtn = page.locator('[data-testid="sds-receive-button"]');
-    const sendBtn = page.locator('[data-testid="sds-send-button"]');
 
-    // Disabled with no selection
+    // Receive disabled with no selection
     await expect(receiveBtn).toBeDisabled();
-    await expect(sendBtn).toBeDisabled();
 
     // Select first sample
     await selectSample(page, 0);
 
     // Now enabled
     await expect(receiveBtn).toBeEnabled();
-    await expect(sendBtn).toBeEnabled();
   });
 
   // --- Suite 2: Receive ---
@@ -117,24 +114,27 @@ test.describe('SDS Sample Transfer', () => {
   });
 
   // --- Suite 3: Round-Trip ---
+  //
+  // The S3000XL always creates a NEW sample slot when receiving SDS data.
+  // It never overwrites. So the round-trip is:
+  //   1. Count samples before send
+  //   2. Send new sample via SDS ("Add as new")
+  //   3. Sample list refreshes — new sample appears at the end
+  //   4. Select the newly created last sample
+  //   5. Receive it back and compare metadata
 
   test.describe.serial('round-trip: send then receive', () => {
-    // Use the last sample slot to avoid overwriting user data.
-    // The dropdown options are "index: name", so we select the last one.
-    let targetSlot: number;
+    let sampleCountBefore: number;
 
     test('send test sample to device via SDS', async ({ page }) => {
       test.setTimeout(ROUND_TRIP_TIMEOUT_MS);
 
-      // Determine the last sample slot
+      // Count samples before send
       const select = page.locator('[data-testid="sds-sample-select"]');
-      const options = select.locator('option');
-      const count = await options.count();
-      // First option is placeholder, so last sample is count - 2
-      targetSlot = count - 2;
-      expect(targetSlot).toBeGreaterThanOrEqual(0);
-
-      await selectSample(page, targetSlot);
+      const optionsBefore = select.locator('option');
+      const countBefore = await optionsBefore.count();
+      // First option is placeholder
+      sampleCountBefore = countBefore - 1;
 
       // Generate test WAV and write to temp file
       const wavBuffer = generateTestWavBuffer(TEST_NUM_SAMPLES, TEST_SAMPLE_RATE);
@@ -142,11 +142,19 @@ test.describe('SDS Sample Transfer', () => {
       fs.writeFileSync(tmpFile, wavBuffer);
 
       try {
-        // Intercept file chooser and provide our test WAV
+        // Click Send → file picker → provide test WAV
         const fileChooserPromise = page.waitForEvent('filechooser');
         await page.locator('[data-testid="sds-send-button"]').click();
         const fileChooser = await fileChooserPromise;
         await fileChooser.setFiles(tmpFile);
+
+        // Confirmation panel appears — "Add as new" is the default
+        await expect(page.locator('[data-testid="sds-send-confirm-panel"]')).toBeVisible({
+          timeout: 5_000,
+        });
+
+        // Click Send to confirm
+        await page.locator('[data-testid="sds-send-confirm-button"]').click();
 
         // Wait for progress to start
         await expect(page.locator('[data-testid="sds-progress-percent"]')).toBeVisible({
@@ -166,15 +174,28 @@ test.describe('SDS Sample Transfer', () => {
       }
     });
 
-    test('receive same sample back and compare', async ({ page }) => {
+    test('receive newly created sample back and compare', async ({ page }) => {
       test.setTimeout(ROUND_TRIP_TIMEOUT_MS);
 
-      // Navigate back to samples page (new page context in serial test)
+      // beforeEach already connected and navigated to Samples, but the
+      // sample list was fetched before the device committed the new sample.
+      // Navigate away and back to force a fresh fetch from the device.
+      await page.waitForTimeout(2000);
+      await page.locator('a[href*="programs"]').click();
+      await page.waitForURL('**/programs**');
       await navigateToSamples(page);
       await waitForSampleNamesLoaded(page);
 
-      // Select the same slot we sent to
-      await selectSample(page, targetSlot);
+      // Verify sample count increased by 1
+      const select = page.locator('[data-testid="sds-sample-select"]');
+      const options = select.locator('option');
+      const count = await options.count();
+      const currentSampleCount = count - 1; // subtract placeholder
+      expect(currentSampleCount).toBe(sampleCountBefore + 1);
+
+      // Select the last sample (the one we just sent)
+      const newSampleIndex = currentSampleCount - 1;
+      await selectSample(page, newSampleIndex);
 
       // Click receive
       await page.locator('[data-testid="sds-receive-button"]').click();

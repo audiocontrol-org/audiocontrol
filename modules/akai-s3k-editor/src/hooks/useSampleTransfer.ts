@@ -99,9 +99,19 @@ export function useSampleTransfer(client: S3000xlClientInterface | null) {
     [client],
   );
 
+  const deleteSample = useCallback(
+    async (sampleNumber: number): Promise<void> => {
+      if (!client) {
+        throw new Error('Cannot delete sample: client is not connected');
+      }
+      await client.deleteSample(sampleNumber);
+    },
+    [client],
+  );
+
   const clearError = useCallback(() => {
     setTransferState((prev) => ({ ...prev, error: null }));
   }, []);
 
-  return { transferState, sendToDevice, receiveFromDevice, clearError };
+  return { transferState, sendToDevice, receiveFromDevice, deleteSample, clearError };
 }

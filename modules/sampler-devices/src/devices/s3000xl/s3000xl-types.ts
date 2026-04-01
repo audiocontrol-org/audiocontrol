@@ -110,6 +110,12 @@ export interface S3000xlClientInterface {
     keygroupNumber: number,
   ): Promise<void>;
 
+  /** Delete a sample from the device by its RSLIST index */
+  deleteSample(sampleNumber: number): Promise<void>;
+
+  /** Force refresh of sample names from device (invalidates cache and re-fetches) */
+  refreshSampleNames(): Promise<string[]>;
+
   /** Invalidate any cached program data, forcing a fresh fetch on next request */
   invalidateProgramCache(): void;
 

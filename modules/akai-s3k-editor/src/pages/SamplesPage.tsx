@@ -1,10 +1,15 @@
+import { useCallback } from 'react';
 import { useS3000xlClient } from '@/hooks/useS3000xlClient';
 import { useSampleNames } from '@/hooks/useSampleNames';
 import { SampleTransferPanel } from '@/components/samples';
 
 export function SamplesPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
-  const { sampleNames, isLoading } = useSampleNames(client);
+  const { sampleNames, isLoading, refreshSampleNames } = useSampleNames(client);
+
+  const handleSampleListChanged = useCallback(async () => {
+    if (client) await refreshSampleNames();
+  }, [client, refreshSampleNames]);
 
   if (!isConnected) {
     return (
@@ -32,6 +37,7 @@ export function SamplesPage(): JSX.Element {
           <SampleTransferPanel
             client={client}
             sampleNames={sampleNames}
+            onSampleListChanged={handleSampleListChanged}
           />
         )}
       </div>

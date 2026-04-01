@@ -11,7 +11,10 @@ import { parseWavFile, type WavFileInfo } from '@/lib/wav-reader';
 interface SampleTransferPanelProps {
   client: S3000xlClientInterface;
   sampleNames: string[];
+  onSampleListChanged: () => Promise<void>;
 }
+
+type SendMode = 'add-new' | 'replace';
 
 const LOOP_TYPE_LABELS: Record<number, string> = {
   0: 'forward',
@@ -158,26 +161,118 @@ function TransferProgress({ state }: { state: TransferState }) {
   );
 }
 
+interface SendConfirmPanelProps {
+  wavInfo: WavFileInfo;
+  fileName: string;
+  sendMode: SendMode;
+  onSendModeChange: (mode: SendMode) => void;
+  selectedIndex: number | null;
+  selectedSampleName: string | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+  isTransferring: boolean;
+}
+
+function SendConfirmPanel({
+  wavInfo,
+  fileName,
+  sendMode,
+  onSendModeChange,
+  selectedIndex,
+  selectedSampleName,
+  onConfirm,
+  onCancel,
+  isTransferring,
+}: SendConfirmPanelProps) {
+  const canReplace = selectedIndex !== null;
+
+  return (
+    <div data-testid="sds-send-confirm-panel" className="border border-gray-700 rounded-lg bg-gray-800/50 p-4 mt-4">
+      <h3 className="text-sm font-medium text-gray-300 mb-3">Send to Device</h3>
+
+      <WavFileInfoDisplay info={wavInfo} fileName={fileName} />
+
+      <div className="mt-4 space-y-3">
+        <label className="flex items-start gap-2 cursor-pointer">
+          <input
+            type="radio"
+            name="send-mode"
+            data-testid="sds-send-mode-add"
+            className="mt-0.5"
+            checked={sendMode === 'add-new'}
+            onChange={() => onSendModeChange('add-new')}
+          />
+          <div>
+            <span className="text-sm text-gray-200">Add as new sample</span>
+            <p className="text-xs text-gray-400 ml-0">
+              Creates a new sample slot on the device. No existing data is affected.
+            </p>
+          </div>
+        </label>
+
+        {canReplace && (
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="radio"
+              name="send-mode"
+              data-testid="sds-send-mode-replace"
+              className="mt-0.5"
+              checked={sendMode === 'replace'}
+              onChange={() => onSendModeChange('replace')}
+            />
+            <div>
+              <span className="text-sm text-gray-200">
+                Replace &ldquo;{selectedSampleName}&rdquo; (sample #{selectedIndex})
+              </span>
+              <p className="text-xs text-amber-400 ml-0">
+                Deletes {selectedSampleName} first. Programs referencing this sample will lose their assignment.
+              </p>
+            </div>
+          </label>
+        )}
+      </div>
+
+      <div className="mt-4 flex justify-end gap-2">
+        <button
+          data-testid="sds-send-cancel-button"
+          className="ac-btn ac-btn-sm ac-btn-secondary"
+          onClick={onCancel}
+          disabled={isTransferring}
+        >
+          Cancel
+        </button>
+        <button
+          data-testid="sds-send-confirm-button"
+          className="ac-btn ac-btn-sm ac-btn-primary"
+          onClick={onConfirm}
+          disabled={isTransferring}
+        >
+          Send
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function SampleTransferPanel({
   client,
   sampleNames,
+  onSampleListChanged,
 }: SampleTransferPanelProps): JSX.Element {
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
-  const [receiveResult, setReceiveResult] = useState<SdsReceiveResult | null>(
-    null,
-  );
-  const { transferState, sendToDevice, receiveFromDevice, clearError } = useSampleTransfer(client);
-  const [wavInfo, setWavInfo] = useState<WavFileInfo | null>(null);
-  const [wavFileName, setWavFileName] = useState<string | null>(null);
+  const [receiveResult, setReceiveResult] = useState<SdsReceiveResult | null>(null);
+  const { transferState, sendToDevice, receiveFromDevice, deleteSample, clearError } =
+    useSampleTransfer(client);
   const [parseError, setParseError] = useState<string | null>(null);
+  const [pendingWav, setPendingWav] = useState<{ info: WavFileInfo; fileName: string } | null>(null);
+  const [sendMode, setSendMode] = useState<SendMode>('add-new');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleReceive = useCallback(async () => {
     if (selectedIndex === null) return;
     clearError();
     setReceiveResult(null);
-    setWavInfo(null);
-    setWavFileName(null);
+    setPendingWav(null);
     setParseError(null);
     const result = await receiveFromDevice(selectedIndex);
     if (result) {
@@ -186,11 +281,10 @@ export function SampleTransferPanel({
   }, [selectedIndex, receiveFromDevice, clearError]);
 
   const handleSendClick = useCallback(() => {
-    if (selectedIndex === null) return;
     clearError();
     setParseError(null);
     fileInputRef.current?.click();
-  }, [selectedIndex, clearError]);
+  }, [clearError]);
 
   const handleFileSelected = useCallback(
     async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -199,35 +293,55 @@ export function SampleTransferPanel({
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
-      if (!file || selectedIndex === null) return;
+      if (!file) return;
 
       setParseError(null);
-      setWavInfo(null);
-      setWavFileName(null);
       setReceiveResult(null);
 
       try {
         const arrayBuffer = await file.arrayBuffer();
         const info = parseWavFile(arrayBuffer);
-        setWavInfo(info);
-        setWavFileName(file.name);
-
-        await sendToDevice(selectedIndex, info.samples, info.sampleRate);
+        setPendingWav({ info, fileName: file.name });
+        setSendMode('add-new');
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
         setParseError(message);
       }
     },
-    [selectedIndex, sendToDevice],
+    [],
   );
+
+  const handleConfirmSend = useCallback(async () => {
+    if (!pendingWav) return;
+
+    try {
+      if (sendMode === 'replace' && selectedIndex !== null) {
+        await deleteSample(selectedIndex);
+        await sendToDevice(selectedIndex, pendingWav.info.samples, pendingWav.info.sampleRate);
+      } else {
+        await sendToDevice(0, pendingWav.info.samples, pendingWav.info.sampleRate);
+      }
+      setPendingWav(null);
+      // Brief delay to let device commit the sample before refreshing the list
+      await new Promise((r) => setTimeout(r, 1500));
+      await onSampleListChanged();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setParseError(message);
+    }
+  }, [pendingWav, sendMode, selectedIndex, deleteSample, sendToDevice, onSampleListChanged]);
+
+  const handleCancelSend = useCallback(() => {
+    setPendingWav(null);
+    setSendMode('add-new');
+  }, []);
 
   const handleSampleChange = useCallback(
     (e: React.ChangeEvent<HTMLSelectElement>) => {
       const val = e.target.value;
       setSelectedIndex(val === '' ? null : Number(val));
       setReceiveResult(null);
-      setWavInfo(null);
-      setWavFileName(null);
+      setPendingWav(null);
       setParseError(null);
     },
     [],
@@ -239,6 +353,7 @@ export function SampleTransferPanel({
   }, [receiveResult]);
 
   const hasSamples = sampleNames.length > 0;
+  const selectedSampleName = selectedIndex !== null ? sampleNames[selectedIndex] ?? null : null;
 
   return (
     <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
@@ -301,15 +416,25 @@ export function SampleTransferPanel({
             data-testid="sds-send-button"
             className="ac-btn ac-btn-sm ac-btn-secondary"
             onClick={handleSendClick}
-            disabled={selectedIndex === null || transferState.isTransferring}
+            disabled={transferState.isTransferring}
           >
             Send to Device
           </button>
         </div>
 
-        {/* WAV file info (shown after file is parsed for send) */}
-        {wavInfo && wavFileName && (
-          <WavFileInfoDisplay info={wavInfo} fileName={wavFileName} />
+        {/* Send confirmation panel */}
+        {pendingWav && !transferState.isTransferring && (
+          <SendConfirmPanel
+            wavInfo={pendingWav.info}
+            fileName={pendingWav.fileName}
+            sendMode={sendMode}
+            onSendModeChange={setSendMode}
+            selectedIndex={selectedIndex}
+            selectedSampleName={selectedSampleName}
+            onConfirm={handleConfirmSend}
+            onCancel={handleCancelSend}
+            isTransferring={transferState.isTransferring}
+          />
         )}
 
         {/* Parse error */}

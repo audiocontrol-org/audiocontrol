@@ -62,7 +62,7 @@ Validated against a real Akai S3000XL via MIDI (828mk3 interface).
 - **Dump requests supported** — device responds to `F0 7E cc 03 sl sh F7` automatically (no front-panel interaction needed)
 - **Packet counter wraps at 128** — confirmed in 552-packet transfer
 - **No proprietary handshake needed** — standard SDS works directly
-- **Send-to-device sample number mapping is unresolved** — sending a sample via SDS with a given sample number does NOT overwrite the existing sample at that slot index. The S3000XL ACKs all packets (transfer appears successful) but the original sample remains unchanged when read back via dump request. The SDS sample number in the dump header may not correspond to the internal sample slot index returned by RSLIST. Further investigation needed (see Known Limitations).
+- **SDS send always creates a new sample** — the S3000XL appends incoming SDS samples to the end of its RSLIST regardless of the SDS sample number. The SDS sample number is metadata, not a storage address. To "replace" a sample: delete old via DELS, send new via SDS, new sample appears at end of list. Confirmed via hardware testing (sample count 6→7→8 with different SDS numbers).
 
 ## Testing
 
@@ -77,7 +77,7 @@ Validated against a real Akai S3000XL via MIDI (828mk3 interface).
 
 ## Known Limitations
 
-- **Send-to-device round-trip not yet working** — the S3000XL ACKs all sent packets but does not appear to store the sample at the expected slot. When the same slot is read back via dump request, the original sample is returned unchanged. Root cause under investigation — possibilities: (1) SDS sample numbers don't map to RSLIST indices, (2) the S3000XL stores SDS-received samples in a separate staging area, (3) additional proprietary commands are needed to commit the sample to a slot.
+- **SDS sample number ≠ RSLIST index** — the SDS sample number in the dump header is independent of the device's internal sample list order. Send always appends; to replace, delete first then send. The new sample will be at the end of RSLIST, not at the original position. Deleting a sample shifts indices of subsequent samples, which may break program keygroup references.
 - SDS extensions (Sample Name, Header Extension) not implemented — not needed for S3000XL
 - Transfer speed is limited by MIDI bandwidth (~25s for 1 second of 22kHz audio)
 - No sample rate conversion during transfer

@@ -361,6 +361,10 @@ export function createS3000xlClient(
           onProgress: sdsOptions?.onProgress,
         });
         await sender.start();
+        // The S3000XL needs time to commit the sample to memory after
+        // the last ACK. Sending Akai SysEx (e.g., RSLIST) too soon can
+        // cause the device to discard the sample.
+        await new Promise((r) => setTimeout(r, 3000));
       });
     },
 
@@ -427,6 +431,17 @@ export function createS3000xlClient(
       const data = byte2nibblesLE(programNumber).concat(keygroupNumber);
       await sendCommandWithRetry(AkaiOpcode.DELK, data);
       invalidateAllKeygroupAndProgramCaches();
+    },
+
+    async deleteSample(sampleNumber: number): Promise<void> {
+      await sendCommandWithRetry(AkaiOpcode.DELS, byte2nibblesLE(sampleNumber));
+      sampleNamesCache = undefined;
+      sampleHeaderCache.clear();
+    },
+
+    async refreshSampleNames(): Promise<string[]> {
+      sampleNamesCache = undefined;
+      return client.fetchSampleNames();
     },
 
     invalidateProgramCache(): void {

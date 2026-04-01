@@ -129,6 +129,10 @@ Delegate to sub-agents proactively — don't wait for the user to ask. The main 
 - Preserve proprietary sampler format specifications exactly
 - Use the `midisnoop` binary (installed in PATH) to observe MIDI conversations
 
+## S3000XL SDS Storage Behavior
+
+The S3000XL always creates a new sample slot when receiving SDS data — it never overwrites. The SDS sample number in the Dump Header is metadata, not a storage address. To replace a sample, delete the old one first (`DELS` opcode 0x14), then send the new one via SDS. The new sample appears at the end of the RSLIST, not at the original index. Deleting samples shifts the indices of all subsequent samples, which may break program keygroup references. This was confirmed via hardware testing (sending to both new and existing sample numbers always appends).
+
 ## URL Convention for Editors
 
 Editors are served under audiocontrol.org:
