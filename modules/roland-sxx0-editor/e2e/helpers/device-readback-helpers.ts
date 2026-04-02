@@ -147,6 +147,7 @@ export interface ToneReadback {
   };
   tva: {
     level: number;
+    lfoDepth: number;
     envelope: EnvelopeReadback;
   };
   lfo: {
@@ -206,6 +207,7 @@ export async function readToneFromDevice(
       },
       tva: {
         level: tone.tva.level,
+        lfoDepth: tone.tva.lfoDepth,
         envelope: {
           rates: [...tone.tva.envelope.rates],
           levels: [...tone.tva.envelope.levels],
