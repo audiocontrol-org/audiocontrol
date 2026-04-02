@@ -125,6 +125,40 @@ The bridge daemon connects to the Unix socket and relays SysEx between the SCSI 
 4. Capture actual SEND with SysEx payload data
 5. Implement bridge daemon socket relay
 
-## Raw Trace
+## SCMP Device Implementation Progress
 
-Full trace saved at: `s3k:/tmp/s2p_live.log` (167 lines)
+Built a custom SCSI2Pi device type (SCMP) at `audiocontrol-org/scsi2pi` branch `feature/midi-processor`.
+
+### What works:
+| Command | Opcode | Status |
+|---------|--------|--------|
+| TEST UNIT READY | 0x00 | ✅ GOOD |
+| INQUIRY | 0x12 | ✅ Returns 7 bytes, processor type 0x03 |
+| RETRIEVE STATS | 0x09 | ✅ StatusPhase GOOD |
+| SET INTERFACE MODE | 0x0C | ✅ Receives config data (21-63 bytes) via DataOutPhase |
+| ENABLE INTERFACE | 0x0E | ✅ StatusPhase GOOD |
+| SET MULTICAST ADDR | 0x0D | ❌ MESSAGE IN timeout (see below) |
+
+### The 0x0D problem:
+
+The S3000XL sends `CDB 0d:00:00:00:00:00` (vendor-specific, zero transfer length). After COMMAND phase, our device enters STATUS phase with GOOD. The controller then transitions to MESSAGE IN to send COMMAND COMPLETE (1 byte). The S3000XL **does not ACK** this byte — 3-second timeout, then bus RESET.
+
+Tried:
+- `StatusPhase()` — MESSAGE IN timeout
+- `DataOutPhase(0)` — skipped by controller, same as StatusPhase
+- `DataOutPhase(512)` — DATA OUT entered, S3000XL sends 0 bytes, timeout
+- `DataInPhase(0)` — skipped by controller, same as StatusPhase
+- Akai vendor/product in INQUIRY — no change
+- SCHD (hard drive) device type — same 0x0D behavior
+
+Opcode 0x0D is **vendor-specific** per the T10 SCSI standards (not the standard SEND command, which is 0x0A). The S3000XL firmware may handle the SCSI bus phases differently for this vendor command — possibly skipping MESSAGE IN entirely, or expecting a non-standard phase sequence.
+
+### Next steps:
+
+1. **Capture working traffic** — run MESA II (Akai's Mac OS 9 SCSI editor) in SheepShaver emulator with virtual SCSI passthrough to see what a working implementation does for 0x0D
+2. **Consult SCSI2Pi maintainer** — he may recognize the MESSAGE IN timeout pattern or know of vendor-specific command quirks
+3. **Try modifying SCSI2Pi controller** — skip MESSAGE IN for vendor commands, go directly from STATUS to BUS FREE
+
+## Raw Traces
+
+Full traces saved at: `s3k:/tmp/s2p-capture.log` (multiple runs, timestamped)
