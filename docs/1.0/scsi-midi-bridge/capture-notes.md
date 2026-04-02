@@ -90,18 +90,40 @@ The remote SCSI device must:
 
 Neither built-in type supports the S3000XL's MIDI-via-SCSI protocol.
 
+## SCSI2Pi Extensibility Analysis
+
+**SCSI2Pi has no plugin system.** Device types are hardcoded in `device_factory.cpp` with compile-time `BUILD_*` guards and a switch statement. Adding a new device type requires modifying the source:
+- Add a new `PbDeviceType` enum value in the protobuf definition
+- Add a new case in `DeviceFactory::CreateDevice()`
+- Implement the device class inheriting from `PrimaryDevice`
+
+**The DaynaPort device (`SCDP`) uses the same SCSI opcodes** as the S3000XL's MIDI-via-SCSI:
+- `0x09` = `CMD_SCSILINK_STATS` (DaynaPort) / RECEIVE (S3000XL)
+- `0x0C` = `CMD_SCSILINK_SET` (DaynaPort) / SET INTERFACE MODE (S3000XL)
+- `0x0D` = `SetMcastAddr` (DaynaPort) / SEND (S3000XL)
+
+The DaynaPort pipes data to/from a TAP network interface. A MIDI processor device would pipe data to/from a socket (for the bridge daemon).
+
+## Recommendation: Fork SCSI2Pi
+
+A standalone SCSI target would require reimplementing all low-level SCSI bus handling (GPIO, selection, bus phases, data transfer) — hundreds of lines of timing-critical code that SCSI2Pi already handles correctly.
+
+**Recommended approach:** Fork SCSI2Pi and add a `SCMP` (SCSI MIDI Processor) device type based on the DaynaPort pattern:
+1. Responds to INQUIRY as device type `0x03` (Processor)
+2. Accepts SEND (`0x0D`) — pipes DATA OUT to a Unix domain socket
+3. Accepts `0x0C` — accepts 84-byte config data with GOOD status
+4. Responds to RECEIVE (`0x09`) — reads queued data from the socket
+5. Returns GOOD for zero-length SEND probes
+
+The bridge daemon connects to the Unix socket and relays SysEx between the SCSI device and the network (audiocontrol).
+
 ## Next Steps
 
-1. **Custom SCSI processor device** — implement a SCSI2Pi device type (or standalone SCSI target) that:
-   - Reports as processor device type in INQUIRY
-   - Accepts SEND (0x0D) with arbitrary data and pipes it to the bridge daemon
-   - Accepts proprietary 0x0C with 84-byte config data
-   - Responds to RECEIVE (0x09) with queued SysEx data from the bridge
-   - Returns GOOD status for zero-length SEND probes
-
-2. **Investigate SCSI2Pi extensibility** — can custom device types be added without forking? Check s2p plugin/extension architecture.
-
-3. **Capture actual SEND with data** — the current capture only shows the 0-byte probe SEND. Once the device accepts the probe, we need to capture a real SEND with SysEx payload to confirm the data format.
+1. Fork SCSI2Pi repository
+2. Implement SCMP device type (based on DaynaPort template)
+3. Test with S3000XL — verify it completes the full SEND sequence
+4. Capture actual SEND with SysEx payload data
+5. Implement bridge daemon socket relay
 
 ## Raw Trace
 
