@@ -112,19 +112,19 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 |---|------|----------|--------|-------|
 | 3.2.1 | Edit tone name | P1 | ✅ | `device-tone-controls.spec.ts` |
 | 3.2.2 | Tone name syncs to device | P1 | ✅ | `device-tone-controls.spec.ts` |
-| 3.2.3 | Edit sample rate (15kHz/30kHz) | P1 | ❌ | |
-| 3.2.4 | Edit original key | P1 | ❌ | |
-| 3.2.5 | Edit wave start/end points | P1 | ❌ | |
+| 3.2.3 | Edit sample rate (15kHz/30kHz) | P1 | ❌ | Read-only in UI — no editable control |
+| 3.2.4 | Edit original key | P1 | ✅ | `device-tone-controls.spec.ts` |
+| 3.2.5 | Edit wave start/end points | P1 | ❌ | Inputs have no data-testid — needs testid addition |
 | 3.2.6 | Edit loop point and mode | P1 | ✅ | `device-tone-controls.spec.ts` |
 | 3.2.7 | Edit LFO parameters | P2 | ⚠️ | `device-tone-controls.spec.ts` (rate + delay tested) |
-| 3.2.8 | Edit TVA envelope (8 points) | P1 | ❌ | |
-| 3.2.9 | Edit TVF envelope (8 points) | P1 | ❌ | |
+| 3.2.8 | Edit TVA envelope (8 points) | P1 | ✅ | `device-tone-envelope-controls.spec.ts` (rate + sustain + level tested) |
+| 3.2.9 | Edit TVF envelope (8 points) | P1 | ✅ | `device-tone-envelope-controls.spec.ts` (rate + sustain + level + end point tested) |
 | 3.2.10 | Parameter changes persist after reload | P1 | ❌ | |
 | 3.2.11 | TVF enable/disable toggle | P1 | ✅ | `device-tone-controls.spec.ts` |
-| 3.2.12 | TVF cutoff/resonance/key follow sliders | P1 | ⚠️ | `device-tone-controls.spec.ts` (cutoff tested, resonance/key follow not yet) |
-| 3.2.13 | TVF envelope 8-point editing | P1 | ⚠️ | `device-tone-envelope-controls.spec.ts` (rate + sustain point tested) |
-| 3.2.14 | TVA level/LFO depth sliders | P1 | ⚠️ | `device-tone-controls.spec.ts` (level tested) |
-| 3.2.15 | TVA envelope 8-point editing | P1 | ⚠️ | `device-tone-envelope-controls.spec.ts` (rate + sustain point tested) |
+| 3.2.12 | TVF cutoff/resonance/key follow sliders | P1 | ✅ | `device-tone-controls.spec.ts` (cutoff + resonance + key follow all tested) |
+| 3.2.13 | TVF envelope 8-point editing | P1 | ✅ | `device-tone-envelope-controls.spec.ts` (rate + sustain + level + end point) |
+| 3.2.14 | TVA level/LFO depth sliders | P1 | ⚠️ | `device-tone-controls.spec.ts` (level tested, LFO depth fixme — commit issue) |
+| 3.2.15 | TVA envelope 8-point editing | P1 | ✅ | `device-tone-envelope-controls.spec.ts` (rate + sustain + level tested) |
 | 3.2.16 | LFO rate/delay/offset sliders | P1 | ⚠️ | `device-tone-controls.spec.ts` (rate tested, delay/offset not yet) |
 | 3.2.17 | LFO sync and mode toggles | P2 | ❌ | |
 | 3.2.18 | Pitch fine tune and pitch follow | P1 | ✅ | `device-tone-controls.spec.ts` |
@@ -460,16 +460,16 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | Priority | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | P0 | 44 | 38 | 2 | 4 |
-| P1 | 148 | 80 | 11 | 57 |
+| P1 | 148 | 86 | 8 | 54 |
 | P2 | 37 | 15 | 2 | 20 |
-| **Total** | **229** | **133** | **15** | **81** |
+| **Total** | **229** | **139** | **12** | **78** |
 
 ### By Hardware Requirement
 
 | Category | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | No Hardware | 83 | 79 | 1 | 3 |
-| Hardware Required | 146 | 54 | 14 | 78 |
+| Hardware Required | 146 | 60 | 11 | 75 |
 
 ### Critical Gaps (P0 Not Tested)
 
