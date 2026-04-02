@@ -38,6 +38,14 @@ pub struct ScsiDevice {
 #[derive(Deserialize)]
 pub struct SendRequest {
     pub message: Vec<u8>,
+    /// If true (default), poll for a response after sending.
+    /// Set to false for fire-and-forget writes.
+    #[serde(default = "default_true")]
+    pub expect_response: bool,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Serialize)]
@@ -82,10 +90,16 @@ pub async fn sds_send(
     }
 
     let mut s2p = state.s2p.lock().await;
-    let response = s2p
-        .send_and_receive(&body.message)
-        .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+    let response = if body.expect_response {
+        s2p.send_and_receive(&body.message)
+            .await
+            .map_err(|e| (StatusCode::BAD_GATEWAY, e))?
+    } else {
+        s2p.send_sysex(&body.message)
+            .await
+            .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+        Vec::new()
+    };
 
     // If we got a SysEx response, also broadcast it to WebSocket clients
     if !response.is_empty() && response[0] == 0xF0 {

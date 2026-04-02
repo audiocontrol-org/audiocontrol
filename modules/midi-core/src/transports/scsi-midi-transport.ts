@@ -120,15 +120,24 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
     send(message: number[]): void {
       sendQueue = sendQueue.then(async () => {
         try {
+          // Determine if this message expects a response from the device.
+          // In the Akai SysEx protocol, the opcode is at byte index 3.
+          // Even opcodes (0x00, 0x02, 0x04, 0x06, ...) are requests that
+          // expect a response. Odd opcodes (0x07, 0x09, 0x0B, ...) are
+          // data/write commands that are fire-and-forget.
+          // SDS messages (manufacturer 0x7E) always expect responses.
+          const isAkaiSysEx = message.length >= 5 && message[1] === 0x47;
+          const akaiOpcode = isAkaiSysEx ? message[3] : -1;
+          const expectResponse = !isAkaiSysEx || (akaiOpcode & 1) === 0;
+
           const res = await fetch(`${bridgeUrl}/sds/send`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message }),
+            body: JSON.stringify({ message, expect_response: expectResponse }),
           });
-          // The bridge polls for a response after sending. If the device
-          // responded, the response is included in the HTTP body. Dispatch
-          // it to listeners (this is the primary path when WebSocket is
-          // unavailable due to mixed-content blocking).
+          // The bridge polls for a response after sending (when expect_response
+          // is true). If the device responded, dispatch it to listeners.
+          // This is the primary data path when WebSocket is unavailable.
           const body = await res.json() as { ok: boolean; response: number[] };
           if (body.response && body.response.length > 0 && body.response[0] === 0xf0) {
             listeners.forEach((cb) => cb(body.response));

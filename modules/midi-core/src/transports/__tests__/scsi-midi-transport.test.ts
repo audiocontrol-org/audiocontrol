@@ -178,11 +178,13 @@ describe('adapter.send()', () => {
   it('posts message to /sds/send', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
+      json: () => Promise.resolve({ ok: true, response: [] }),
       text: () => Promise.resolve('ok'),
     });
     vi.stubGlobal('fetch', fetchMock);
 
     const transport = createScsiMidiTransport({ bridgeUrl: BRIDGE_URL });
+    // SDS message (manufacturer 0x7E) — expects response
     const message = [0xf0, 0x7e, 0x00, 0xf7];
 
     transport.adapter.send(message);
@@ -193,7 +195,7 @@ describe('adapter.send()', () => {
     expect(fetchMock).toHaveBeenCalledWith(`${BRIDGE_URL}/sds/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, expect_response: true }),
     });
   });
 
@@ -202,11 +204,11 @@ describe('adapter.send()', () => {
     let resolvers: Array<() => void> = [];
 
     const fetchMock = vi.fn().mockImplementation(() => {
-      return new Promise<{ ok: boolean; text: () => Promise<string> }>((resolve) => {
+      return new Promise<{ ok: boolean; json: () => Promise<unknown>; text: () => Promise<string> }>((resolve) => {
         const idx = resolvers.length;
         resolvers.push(() => {
           callOrder.push(idx);
-          resolve({ ok: true, text: () => Promise.resolve('ok') });
+          resolve({ ok: true, json: () => Promise.resolve({ ok: true, response: [] }), text: () => Promise.resolve('ok') });
         });
       });
     });
