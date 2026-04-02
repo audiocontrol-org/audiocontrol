@@ -159,6 +159,44 @@ Opcode 0x0D is **vendor-specific** per the T10 SCSI standards (not the standard 
 2. **Consult SCSI2Pi maintainer** — he may recognize the MESSAGE IN timeout pattern or know of vendor-specific command quirks
 3. **Try modifying SCSI2Pi controller** — skip MESSAGE IN for vendor commands, go directly from STATUS to BUS FREE
 
+## FULL PROTOCOL DECODED (2026-04-02)
+
+The complete SCSI MIDI protocol for the Akai S3000XL:
+
+| Step | CDB | Direction | Purpose |
+|------|-----|-----------|---------|
+| 1. Init | `09:00:01:01:00:00` | No data | Activate MIDI-via-SCSI session |
+| 2. Send | `0C:00:00:00:LL:00` | DATA OUT (LL bytes) | Send MIDI SysEx to S3000XL |
+| 3. Poll | `0D:00:00:00:00:00` | DATA IN (3 bytes) | Read pending response byte count (`00 HH LL`) |
+| 4. Read | `0E:00:00:00:LL:00` | DATA IN (LL bytes) | Read buffered SysEx response |
+
+### Confirmed working:
+
+```
+# Activate session
+s2pexec -i 6 -c 09:00:01:01:00:00
+
+# Send Akai RSLIST command
+echo -ne '\xf0\x47\x00\x04\x48\xf7' > /tmp/rslist.bin
+s2pexec -i 6 -c 0c:00:00:00:06:00 -f /tmp/rslist.bin
+
+# Poll for response
+s2pexec -i 6 -c 0d:00:00:00:00:00 -b 4 -F /tmp/poll.bin
+# Returns: 00 00 44 (68 bytes available)
+
+# Read response
+s2pexec -i 6 -c 0e:00:00:00:44:00 -b 128 -F /tmp/response.bin
+# Returns: F0 47 00 05 48 05 00 ... F7 (complete SLIST with 5 sample names)
+```
+
+### Implications:
+
+- **Fully automated** — no front-panel interaction needed
+- **Same protocol as MIDI** — all Akai SysEx commands (RSLIST, RPDATA, RSPACK, ASPACK, etc.) work
+- **Much faster than MIDI** — SCSI bus speed vs 31.25kbaud
+- **The SCMP target device is NOT needed for initiator-mode access** — we can use `s2pexec` directly
+- **But s2pexec can't coexist with s2p** — bridge daemon must stop/start s2p for each SCSI operation, OR we implement the initiator commands within s2p itself
+
 ## Raw Traces
 
 Full traces saved at: `s3k:/tmp/s2p-capture.log` (multiple runs, timestamped)
