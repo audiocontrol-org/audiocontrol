@@ -125,8 +125,14 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message }),
           });
-          // Wait for the response body to ensure delivery
-          await res.text();
+          // The bridge polls for a response after sending. If the device
+          // responded, the response is included in the HTTP body. Dispatch
+          // it to listeners (this is the primary path when WebSocket is
+          // unavailable due to mixed-content blocking).
+          const body = await res.json() as { ok: boolean; response: number[] };
+          if (body.response && body.response.length > 0 && body.response[0] === 0xf0) {
+            listeners.forEach((cb) => cb(body.response));
+          }
         } catch (err) {
           console.error('[ScsiMidiTransport] Send error:', err);
         }
@@ -153,15 +159,23 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
       );
     });
 
-    // Open WebSocket for incoming SysEx
-    const wsUrl = wsUrlFromHttp(bridgeUrl, '/sds/stream');
-    ws = new WebSocket(wsUrl);
+    // Open WebSocket for incoming SysEx.
+    // This may fail (e.g., mixed-content: HTTPS page → ws:// connection).
+    // WebSocket is only needed for receiving unsolicited SysEx from the device;
+    // send/poll/read still work via HTTP. Treat WS failure as non-fatal.
+    try {
+      const wsUrl = wsUrlFromHttp(bridgeUrl, '/sds/stream');
+      ws = new WebSocket(wsUrl);
 
-    ws.addEventListener('message', handleWsMessage);
+      ws.addEventListener('message', handleWsMessage);
 
-    ws.addEventListener('error', (err) => {
-      console.error('[ScsiMidiTransport] WebSocket error:', err);
-    });
+      ws.addEventListener('error', (err) => {
+        console.warn('[ScsiMidiTransport] WebSocket error (incoming SysEx will use polling):', err);
+      });
+    } catch (err) {
+      console.warn('[ScsiMidiTransport] WebSocket not available (mixed-content or network error):', err);
+      // Continue without WebSocket — HTTP polling still works
+    }
 
     return status;
   }

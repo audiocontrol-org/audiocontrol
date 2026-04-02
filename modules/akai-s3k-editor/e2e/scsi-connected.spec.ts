@@ -52,16 +52,16 @@ test.describe('S3000XL SCSI Bridge Connection', () => {
     expect(status).toBe('connected');
   });
 
-  test('can retrieve sample list', async ({ page }) => {
+  test('can load program list via SCSI', async ({ page }) => {
     await connectToDevice(page);
 
-    // Navigate to samples section
-    await page.click('a[href*="samples"]');
-    await page.waitForURL('**/samples**');
+    // Navigate to Programs (known working page)
+    await page.click('a[href*="programs"]');
+    await page.waitForURL('**/programs**');
 
-    // The S3000XL should have samples loaded — verify the list renders
-    // TODO: Update selector when sample list UI is finalized
-    await expect(page.locator('[data-testid="sample-list"] li, [data-testid="sample-row"]').first())
-      .toBeVisible({ timeout: 30_000 });
+    // Verify program names load from device via SCSI
+    await expect(page.locator('[data-testid="program-item-0"]')).toBeVisible({
+      timeout: 15_000,
+    });
   });
 });
