@@ -452,24 +452,38 @@ test.describe('Tone Envelope Controls', () => {
     );
     await expect(tvfSection).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // TVF section has 3 visible selects:
-    // [0]=Level Curve, [1]=Sustain Point, [2]=End Point
-    const endPointSelect = tvfSection.locator('select').nth(2);
+    // TVF section selects: [0]=EG Polarity, [1]=Level Curve, [2]=Sustain Point, [3]=End Point
+    const endPointSelect = tvfSection.locator('select').nth(3);
     await expect(endPointSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await expect(endPointSelect).toBeEnabled();
 
-    const originalValue = Number(await endPointSelect.inputValue());
-    console.log(`TVF end point: original=${originalValue}`);
-    // Toggle between 6 and 4 (mid-range values, must be > sustainPoint)
-    const newValue = originalValue === 6 ? 4 : 6;
+    // Read sustain point first — end point options <= sustainPoint are disabled
+    const sustainSelect = tvfSection.locator('select').nth(2);
+    const sustainValue = Number(await sustainSelect.inputValue());
 
-    await endPointSelect.selectOption({ value: String(newValue) });
-    console.log(`TVF end point: set to ${newValue}, readback=${await endPointSelect.inputValue()}`);
+    const originalValue = Number(await endPointSelect.inputValue());
+    console.log(`TVF end point: original=${originalValue}, sustain=${sustainValue}`);
+
+    // Pick a valid end point > sustainPoint and different from current
+    // End point options are 1-8, disabled when <= sustainPoint
+    // Try sustainPoint+2 first, fall back to sustainPoint+1 if that matches original
+    let candidate = Math.min(sustainValue + 2, 8);
+    if (candidate === originalValue) {
+      candidate = Math.min(sustainValue + 1, 8);
+    }
+    if (candidate === originalValue || candidate <= sustainValue) {
+      // Last resort: try 7 (should always be valid if sustain < 7)
+      candidate = Math.min(7, 8);
+    }
+    const clampedValue = candidate;
+    console.log(`TVF end point: setting to ${clampedValue}`);
+
+    await endPointSelect.selectOption({ value: String(clampedValue) });
     await page.waitForTimeout(WRITE_FLUSH_MS);
 
     const deviceTone = await readToneFromDevice(page, testToneIndex);
     expect(deviceTone).not.toBeNull();
     expect(deviceTone!.tvf.enabled).toBe(true);
-    expect(deviceTone!.tvf.envelope.endPoint).toBe(newValue);
+    expect(deviceTone!.tvf.envelope.endPoint).toBe(clampedValue);
   });
 });
