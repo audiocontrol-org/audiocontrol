@@ -67,10 +67,9 @@ cleanup() {
   fi
   [ -n "${VITE_PID:-}" ] && kill "$VITE_PID" 2>/dev/null || true
 
-  # Remote processes on Pi
-  ssh -o ConnectTimeout=5 "$PI_SSH" \
-    "sudo pkill -f e2e-s2p 2>/dev/null || true; pkill -f e2e-scsi-midi-bridge 2>/dev/null || true" \
-    2>/dev/null || true
+  # Remote processes on Pi (sudo killall is NOPASSWD in sudoers)
+  ssh -o ConnectTimeout=5 "$PI_SSH" "sudo killall s2p-midi 2>/dev/null; true" 2>/dev/null || true
+  ssh -o ConnectTimeout=5 "$PI_SSH" "killall e2e-scsi-midi-bridge 2>/dev/null; true" 2>/dev/null || true
 
   # Temp files
   rm -f "${VITE_LOG:-}" "${HEARTBEAT_FILE:-}"
@@ -102,7 +101,9 @@ echo ""
 # ---------------------------------------------------------------------------
 
 echo "Step 2: Pre-flight cleanup on Pi..."
-ssh "$PI_SSH" "sudo pkill -f e2e-s2p 2>/dev/null || true; pkill -f e2e-scsi-midi-bridge 2>/dev/null || true"
+ssh "$PI_SSH" "sudo killall s2p-midi 2>/dev/null; true" || true
+ssh "$PI_SSH" "killall e2e-scsi-midi-bridge 2>/dev/null; true" || true
+ssh "$PI_SSH" "killall scsi-midi-bridge 2>/dev/null; true" || true
 sleep 1
 echo "   Done"
 echo ""
@@ -112,10 +113,11 @@ echo ""
 # ---------------------------------------------------------------------------
 
 echo "Step 3: Deploying binaries to Pi..."
-scp -q "$S2P_BIN" "$PI_SSH:/tmp/e2e-s2p"
+# Deploy as /tmp/s2p-midi (matches existing sudoers NOPASSWD rule)
+scp -q "$S2P_BIN" "$PI_SSH:/tmp/s2p-midi"
 scp -q "$SCSI_BRIDGE_BIN" "$PI_SSH:/tmp/e2e-scsi-midi-bridge"
-ssh "$PI_SSH" "chmod +x /tmp/e2e-s2p /tmp/e2e-scsi-midi-bridge"
-echo "   s2p → /tmp/e2e-s2p"
+ssh "$PI_SSH" "chmod +x /tmp/s2p-midi /tmp/e2e-scsi-midi-bridge"
+echo "   s2p → /tmp/s2p-midi"
 echo "   bridge → /tmp/e2e-scsi-midi-bridge"
 echo ""
 
@@ -124,7 +126,9 @@ echo ""
 # ---------------------------------------------------------------------------
 
 echo "Step 4: Starting s2p on Pi..."
-ssh "$PI_SSH" "sudo nohup /tmp/e2e-s2p --port 6868 > /tmp/e2e-s2p.log 2>&1 &"
+# sudo /tmp/s2p-midi is NOPASSWD in sudoers. Background from shell, not nohup
+# (nohup changes the command string and breaks sudoers matching).
+ssh "$PI_SSH" "sudo -n /tmp/s2p-midi --port 6868 > /tmp/e2e-s2p.log 2>&1 &"
 
 # Wait for port 6868
 MAX_WAIT=30
