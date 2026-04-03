@@ -161,17 +161,66 @@ Relevant to our test failure — the S3000XL prevents deleting the last keygroup
 
 ### Protocol Implications
 
-1. **Sample data uses Akai proprietary commands** — `BuildSampleDataRequest` builds RSPACK (opcode 0x0C) requests with offset and length parameters. The response comes back via the standard SCSI MIDI response buffer (poll 0x0D, read 0x0E), same as RPDATA/PDATA.
+1. **`GetSampleData` uses opcode 0x0B (SDATA), not 0x0C (RSPACK)** — Confirmed via 68k disassembly. The function pushes `#$0B` as the opcode parameter to `BuildSampleDataRequest`. SDATA is the "Sample Data" opcode used for both responses and writes. In this context it may be building a write command to send sample data TO the sampler, not a read request. The `GetSampleData` name reflects the MESA framework's perspective (getting data from a file to send to the device).
 
-2. **No SDS over SCSI** — MESA does not use standard MIDI SDS for sample transfer. The "Sample data can only be transferred... using SCSI" message confirms sample data goes exclusively through the SCSI path using Akai proprietary commands.
+2. **No SDS over SCSI** — MESA does not use standard MIDI SDS for sample transfer. The "Sample data can only be transferred... using SCSI" message confirms sample data goes exclusively through the SCSI path.
 
-3. **`GetSampleData(sampleIdx, offset, length, outPtr)`** — reads sample data in chunks with explicit offset and length. This is a request/response pattern, not streaming. Each chunk request gets a response through the SCSI MIDI poll/read cycle.
+3. **'BULK' transfer mode** — `GetSampleData` pushes the `'BULK'` identifier (ASCII `0x42554C4B`) and a chunk size of 192 bytes (`0x00C0`) before calling the transport. This suggests the SCSI Plug handles 'BULK' transfers differently from regular SysEx sends — possibly using direct SCSI block commands rather than the MIDI-via-SCSI SysEx channel (CDB 0x0C/0x0D/0x0E).
 
-4. **The SCSI Plug's `SetSCSIMIDIMode`** — may be required before any MIDI-via-SCSI communication. We send CDB 0x09 (init) but may be missing the SET INTERFACE MODE configuration step.
+4. **RSPACK (0x0C) does not work over SCSI MIDI** — Tested with multiple parameter formats (nibblized, raw LE, with/without interval byte, various lengths). The S3000XL returns empty responses for all RSPACK variants. Other read commands (RPDATA 0x06, RKDATA 0x08, RSDATA 0x0A, RSLIST 0x04, RSTAT 0x00) all work correctly over the SCSI MIDI channel.
 
-## Next Steps
+5. **The SCSI Plug may bypass the MIDI-via-SCSI protocol for sample data** — The SCSI Plug's `SCSICommand` method can issue arbitrary SCSI CDBs. For 'BULK' sample transfers, MESA may read/write sample data using direct SCSI block READ/WRITE commands to the S3000XL's memory, bypassing the SysEx-over-SCSI protocol entirely. This would explain why sample data transfer is SCSI-only — it uses native SCSI block transfer capabilities that have no MIDI equivalent.
 
-1. **Test RSPACK (opcode 0x0C) for reading sample waveform data** — this should work the same as RPDATA since it's a request/response pattern
-2. **Test ASPACK (opcode 0x0D) for writing sample waveform data** — same pattern as PDATA writes
-3. **Investigate `SetSCSIMIDIMode`** — the 84-byte config may be needed for full protocol support
-4. **Consider disassembly** — if the opcode formats don't match expectations, the 68k code in the SCSI Plug (12KB) is small enough to disassemble fully
+### 68k Disassembly: GetSampleData
+
+```
+GetSampleData__12CAkaiSamplerFsllPs at 0x06ae09:
+
+  06ae15: move.l  #'BULK',-(sp)       ; transfer mode identifier
+  06ae1b: pea     $00C0.w             ; chunk size = 192 bytes
+  06ae1f: clr.b   -(sp)               ; flag = 0
+  06ae21: move.w  16(a6),-(sp)        ; sampleIdx parameter
+  06ae25: move.b  #$0B,-(sp)          ; opcode = SDATA (0x0B)
+  06ae29: move.b  14(a2),-(sp)        ; channel from object
+  06ae2d: move.l  12(a6),-(sp)        ; offset parameter
+  06ae31: pea     -512(a6)            ; local buffer (512 bytes)
+  06ae35: move.l  a2,-(sp)            ; this pointer
+  06ae37: ...                          ; vtable call to BuildSampleDataRequest
+```
+
+### RSPACK Format (from S1000 SysEx spec)
+
+```
+F0 47 cc 0C 48 ss ss oo oo oo oo nn nn nn nn ii F7
+
+  cc      — MIDI channel
+  ss ss   — sample number (16-bit LE)
+  oo ×4   — offset from start of sample (32-bit LE, in sample words)
+  nn ×4   — number of samples requested (32-bit LE)
+  ii      — interval mode: 0=single, 1=average, 2=peak
+```
+
+Tested and confirmed: S3000XL does not respond to RSPACK over the SCSI MIDI channel.
+
+## Investigation Status
+
+### What works over SCSI MIDI (CDB 0x0C send, 0x0D poll, 0x0E read):
+- ✅ Parameter reads: RSTAT, RSLIST, RPLIST, RPDATA, RKDATA, RSDATA
+- ✅ Parameter writes: PDATA, KDATA, SDATA (headers)
+- ✅ SDS send (upload sample TO device): Dump Header + Data Packets + ACKs
+- ❌ SDS receive (download sample FROM device): Dump Header arrives but Data Packets don't
+- ❌ RSPACK (request sample waveform data): no response
+- ❌ ASPACK (accept sample waveform data): untested but likely same issue
+
+### Hypothesis: Direct SCSI block transfer
+MESA's sample data transfer likely uses direct SCSI READ/WRITE commands to access the S3000XL's sample memory, not the MIDI-via-SCSI SysEx channel. Evidence:
+- 'BULK' identifier in GetSampleData suggests a different transfer mode
+- SCSI Plug has raw `SCSICommand` capability
+- RSPACK doesn't work over SCSI MIDI
+- "Sample data can only be transferred using SCSI" — because it uses native SCSI, not SysEx
+
+### Next Steps
+1. **Disassemble `SMSendData` in SCSI Plug** — determine what CDB it uses for 'BULK' mode
+2. **Try SCSI READ (CDB 0x08/0x28)** — direct block read to S3000XL memory
+3. **Investigate S3000XL SCSI disk protocol** — the S3000XL presents itself as a SCSI device; its disk contents (samples, programs) may be readable via standard SCSI block commands
+4. **Capture live MESA II traffic** — definitive answer via SheepShaver SCSI passthrough
