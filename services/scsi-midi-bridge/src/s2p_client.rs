@@ -250,14 +250,15 @@ impl S2pClient {
         Ok(midi_resp.bytes.get(&1).cloned().unwrap_or_default())
     }
 
-    /// Send SysEx, then poll+read the COMPLETE response. The S3000XL may
-    /// split large responses across multiple poll cycles (e.g., a 392-byte
-    /// program header arrives as 240 + 152 bytes). Read until we see F7
-    /// (SysEx end) or no more data is pending.
+    /// Send SysEx, then poll+read ALL available response data. The S3000XL
+    /// may send multiple SysEx messages (e.g., WAIT + Dump Header for SDS)
+    /// or split large messages across poll cycles (e.g., 392-byte program
+    /// header as 240 + 152 bytes). Read until no more data is pending.
     pub async fn send_and_receive(&mut self, sysex: &[u8]) -> Result<Vec<u8>, String> {
         self.send_sysex(sysex).await?;
 
         let mut result = Vec::new();
+        let mut empty_polls = 0;
 
         for attempt in 0..30 {
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
@@ -266,15 +267,15 @@ impl S2pClient {
                 eprintln!("[s2p] poll attempt {}: {pending} bytes pending", attempt + 1);
                 let chunk = self.read(pending).await?;
                 result.extend_from_slice(&chunk);
-
-                // Check if we have a complete SysEx message (ends with F7)
-                if result.last() == Some(&0xF7) {
+                empty_polls = 0;
+                // Keep reading — more data may follow in the next poll cycle
+            } else if !result.is_empty() {
+                // Had data but nothing pending now. Wait one more cycle in case
+                // the device is still preparing the next chunk (e.g., WAIT → ACK).
+                empty_polls += 1;
+                if empty_polls >= 2 {
                     return Ok(result);
                 }
-                // Keep reading — more data may follow
-            } else if !result.is_empty() {
-                // Had data but no more pending — return what we have
-                return Ok(result);
             }
         }
 

@@ -125,11 +125,22 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message }),
           });
-          // The bridge always polls for a response. Dispatch any SysEx
-          // response to listeners (both read responses and write ACKs).
+          // The bridge returns all available data, which may contain multiple
+          // concatenated SysEx messages (e.g., WAIT + Dump Header for SDS).
+          // Split on F7 boundaries and dispatch each complete message.
           const body = await res.json() as { ok: boolean; response: number[] };
-          if (body.response && body.response.length > 0 && body.response[0] === 0xf0) {
-            listeners.forEach((cb) => cb(body.response));
+          if (body.response && body.response.length > 0) {
+            const data = body.response;
+            let start = 0;
+            for (let i = 0; i < data.length; i++) {
+              if (data[i] === 0xf7) {
+                const msg = data.slice(start, i + 1);
+                if (msg[0] === 0xf0) {
+                  listeners.forEach((cb) => cb(msg));
+                }
+                start = i + 1;
+              }
+            }
           }
         } catch (err) {
           console.error('[ScsiMidiTransport] Send error:', err);
