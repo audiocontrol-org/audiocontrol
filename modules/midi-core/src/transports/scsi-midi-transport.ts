@@ -100,11 +100,14 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
   // to receive data the device sends autonomously.
   let pollInterval: ReturnType<typeof setInterval> | null = null;
   let pollInFlight = false;
+  let sendInFlight = false;
 
   function startPolling(): void {
     if (pollInterval || ws) return; // Don't poll if WebSocket is working
     pollInterval = setInterval(async () => {
-      if (pollInFlight || listeners.size === 0) return;
+      // Don't poll while a send is in flight — avoids race condition where
+      // the poll loop reads a response meant for the send's callback chain.
+      if (pollInFlight || sendInFlight || listeners.size === 0) return;
       pollInFlight = true;
       try {
         const res = await fetch(`${bridgeUrl}/sds/poll`);
@@ -117,7 +120,7 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
       } finally {
         pollInFlight = false;
       }
-    }, 100); // Poll every 100ms
+    }, 50); // Poll every 50ms for responsive SDS handshake
   }
 
   function stopPolling(): void {
@@ -162,6 +165,7 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
   const adapter: MidiIO = {
     send(message: number[]): void {
       sendQueue = sendQueue.then(async () => {
+        sendInFlight = true;
         try {
           const res = await fetch(`${bridgeUrl}/sds/send`, {
             method: 'POST',
@@ -174,6 +178,8 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
           }
         } catch (err) {
           console.error('[ScsiMidiTransport] Send error:', err);
+        } finally {
+          sendInFlight = false;
         }
       });
     },
