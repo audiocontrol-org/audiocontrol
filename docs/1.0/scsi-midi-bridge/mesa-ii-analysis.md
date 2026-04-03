@@ -224,3 +224,35 @@ MESA's sample data transfer likely uses direct SCSI READ/WRITE commands to acces
 2. **Try SCSI READ (CDB 0x08/0x28)** — direct block read to S3000XL memory
 3. **Investigate S3000XL SCSI disk protocol** — the S3000XL presents itself as a SCSI device; its disk contents (samples, programs) may be readable via standard SCSI block commands
 4. **Capture live MESA II traffic** — definitive answer via SheepShaver SCSI passthrough
+
+## Resolution: Disk Image Access
+
+### How MESA transfers sample data
+
+MESA's "Sample data can only be transferred using SCSI" does NOT mean SysEx-over-SCSI. It means MESA reads/writes sample waveform data directly from/to the **Akai disk images** on the SCSI bus. The S3000XL stores samples on its SCSI disks, and MESA accesses those disks directly.
+
+The audiocontrol codebase already has a complete Akai disk image extractor:
+- `modules/sampler-export/src/lib/extractor/disk-extractor.ts` — reads `.hds` disk images
+- Uses `akaitools` from `sampler-devices` to parse the Akai filesystem format
+- Can extract programs, samples (as AIFF/WAV), and convert to SFZ/DecentSampler
+
+### Architecture for sample data over SCSI
+
+Since the disk images are served from the Pi's filesystem via s2p:
+
+1. **Read sample from device**: The sample waveform data lives in the `.hds` disk image files at `/home/orion/images/` on the Pi. Use the existing `sampler-export` extractor to read them directly — no SCSI SysEx needed.
+
+2. **Write sample to device**: Use SDS send over SCSI MIDI (already working — confirmed with direct protobuf test) to upload waveform data to the S3000XL's RAM.
+
+3. **Sync after write**: After SDS upload, tell the S3000XL to save to disk. The waveform data then appears in the `.hds` disk image, readable by the extractor.
+
+### No RSPACK needed
+
+RSPACK (opcode 0x0C) is designed for reading sample data via SysEx, but:
+- It doesn't work over the SCSI MIDI channel (confirmed by testing)
+- MESA doesn't use it — it reads from the disk directly
+- Our existing disk extractor already handles the Akai format
+
+The sample data transfer problem is solved by combining:
+- SDS send (SCSI MIDI) for uploading samples to RAM
+- Direct disk image access for downloading samples from the device
