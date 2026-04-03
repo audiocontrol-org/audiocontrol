@@ -54,6 +54,11 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1920, height: 1080 },
+        launchOptions: {
+          // The SCSI bridge runs on plain HTTP on the Pi. Allow mixed-content
+          // requests (HTTPS page → HTTP bridge) to avoid silent fetch failures.
+          args: ['--allow-running-insecure-content'],
+        },
       },
     },
   ],
