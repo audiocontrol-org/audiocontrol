@@ -144,11 +144,11 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 3.4.1 | Tone with no wave data | P1 | ❌ | |
+| 3.4.1 | Tone with no wave data | P1 | ✅ | `device-tone-edge-cases.spec.ts` — skips if no empty slots, verifies export disabled |
 | 3.4.2 | Tone with very short loop (<10 samples) | P2 | ❌ | |
 | 3.4.3 | Parameter value boundaries (min/max) | P2 | ❌ | |
-| 3.4.4 | Import WAV with unsupported format | P1 | ❌ | |
-| 3.4.5 | Import corrupted WAV file | P1 | ❌ | |
+| 3.4.4 | Import WAV with unsupported format | P1 | ✅ | `device-tone-edge-cases.spec.ts` — uploads MP3, verifies error shown |
+| 3.4.5 | Import corrupted WAV file | P1 | ✅ | `device-tone-edge-cases.spec.ts` — uploads corrupt WAV, verifies error shown |
 
 ---
 
@@ -269,8 +269,8 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 |---|------|----------|--------|-------|
 | 8.2.1 | Save device state to new set | P0 | ✅ | `device-library-set-roundtrip.spec.ts` |
 | 8.2.2 | Load complete set to device | P0 | ✅ | `device-library-set-roundtrip.spec.ts` |
-| 8.2.3 | Load individual tone from set | P1 | ❌ | |
-| 8.2.4 | Load individual patch from set | P1 | ❌ | |
+| 8.2.3 | Load individual tone from set | P1 | ⚠️ | `device-set-individual-load.spec.ts` — written, not yet verified on hardware (S-550 RQD timeout) |
+| 8.2.4 | Load individual patch from set | P1 | ⚠️ | `device-set-individual-load.spec.ts` — written, not yet verified on hardware |
 | 8.2.5 | Show progress during load | P1 | ⚠️ | Implicit in set round trip |
 | 8.2.6 | Handle device memory insufficient | P1 | ❌ | |
 | 8.2.7 | Handle set with missing files | P1 | ❌ | |
@@ -460,16 +460,16 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | Priority | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | P0 | 44 | 38 | 2 | 4 |
-| P1 | 148 | 89 | 8 | 51 |
+| P1 | 148 | 92 | 10 | 46 |
 | P2 | 37 | 15 | 2 | 20 |
-| **Total** | **229** | **142** | **12** | **75** |
+| **Total** | **229** | **145** | **14** | **70** |
 
 ### By Hardware Requirement
 
 | Category | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | No Hardware | 83 | 79 | 1 | 3 |
-| Hardware Required | 146 | 63 | 11 | 72 |
+| Hardware Required | 146 | 66 | 13 | 67 |
 
 ### Critical Gaps (P0 Not Tested)
 
