@@ -1,13 +1,18 @@
 /**
  * Item type plugins for S3000XL library categories.
  *
- * Defines rendering and behavior for samples (WAV files) and programs
- * (YAML files) in the library browser. Uses editor-core's generic icons
- * since the S3000XL doesn't need custom icon components.
+ * Defines rendering and behavior for samples, chopped samples, drum kits,
+ * and programs in the library browser. Uses dedicated SVG icon components
+ * from LibraryIcons to distinguish item types visually.
  */
 
-import { AudioFileIcon, FileIcon } from '@audiocontrol/editor-core';
 import type { ItemTypePlugin } from '@audiocontrol/editor-core';
+import {
+  SampleIcon,
+  ChoppedSampleIcon,
+  DrumKitIcon,
+  ProgramIcon,
+} from '@/components/library/LibraryIcons';
 
 // =========================================================================
 // Metadata types
@@ -15,8 +20,25 @@ import type { ItemTypePlugin } from '@audiocontrol/editor-core';
 
 export interface SampleMeta {
   fileName?: string;
+  directoryName?: string;
   path?: string[];
   description?: string;
+}
+
+export interface ChoppedSampleMeta {
+  directoryName?: string;
+  path?: string[];
+  description?: string;
+  sliceCount?: number;
+  variant?: string;
+}
+
+export interface DrumKitSampleMeta {
+  directoryName?: string;
+  path?: string[];
+  description?: string;
+  sliceCount?: number;
+  variant?: string;
 }
 
 export interface ProgramMeta {
@@ -38,9 +60,71 @@ export const sampleItemType: ItemTypePlugin<SampleMeta> = {
   typeId: 'sample',
   displayName: 'Sample',
 
-  renderIcon: () => <AudioFileIcon />,
+  renderIcon: () => <SampleIcon />,
 
   renderTrailing: () => null,
+
+  isDraggable: () => true,
+
+  supportsRename: true,
+
+  getContextMenuActions: () => [
+    { id: 'rename', label: 'Rename', icon: null },
+    { id: 'move', label: 'Move to...', icon: null },
+    { separator: true },
+    { id: 'delete', label: 'Delete', icon: null, danger: true },
+  ],
+};
+
+// =========================================================================
+// Chopped sample item type
+// =========================================================================
+
+export const choppedSampleItemType: ItemTypePlugin<ChoppedSampleMeta> = {
+  typeId: 'chopped-sample',
+  displayName: 'Chopped Sample',
+
+  renderIcon: () => <ChoppedSampleIcon />,
+
+  renderTrailing: (meta) => {
+    if (meta.sliceCount === undefined) return null;
+    return (
+      <span className="text-xs text-gray-400">
+        {meta.sliceCount} slice{meta.sliceCount !== 1 ? 's' : ''}
+      </span>
+    );
+  },
+
+  isDraggable: () => true,
+
+  supportsRename: true,
+
+  getContextMenuActions: () => [
+    { id: 'rename', label: 'Rename', icon: null },
+    { id: 'move', label: 'Move to...', icon: null },
+    { separator: true },
+    { id: 'delete', label: 'Delete', icon: null, danger: true },
+  ],
+};
+
+// =========================================================================
+// Drum kit item type (sample with slices + drumKit metadata)
+// =========================================================================
+
+export const drumKitItemType: ItemTypePlugin<DrumKitSampleMeta> = {
+  typeId: 'drum-kit',
+  displayName: 'Drum Kit',
+
+  renderIcon: () => <DrumKitIcon />,
+
+  renderTrailing: (meta) => {
+    if (meta.sliceCount === undefined) return null;
+    return (
+      <span className="text-xs text-gray-400">
+        {meta.sliceCount} pad{meta.sliceCount !== 1 ? 's' : ''}
+      </span>
+    );
+  },
 
   isDraggable: () => true,
 
@@ -62,7 +146,7 @@ export const programItemType: ItemTypePlugin<ProgramMeta> = {
   typeId: 'program',
   displayName: 'Program',
 
-  renderIcon: () => <FileIcon />,
+  renderIcon: () => <ProgramIcon />,
 
   renderTrailing: () => null,
 

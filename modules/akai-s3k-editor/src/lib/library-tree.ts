@@ -24,6 +24,7 @@ export function toTreeNode(node: LibraryTreeNode): TreeNode {
       sampleCount: node.sampleCount,
       sliceCount: node.sliceCount,
       description: node.description,
+      variant: node.variant,
     },
   };
 }

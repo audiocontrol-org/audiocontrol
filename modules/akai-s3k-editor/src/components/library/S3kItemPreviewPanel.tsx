@@ -2,8 +2,9 @@
  * S3K preview panel for the library browser.
  *
  * Context-aware panel that displays details and actions based on the
- * currently selected item. Supports library samples, library programs,
- * device programs, device samples, and directories.
+ * currently selected item. Supports library samples, chopped samples,
+ * drum kits, library programs, device programs, device samples, and
+ * directories.
  *
  * Action buttons:
  * - "Send to Device" — triggers SDS transfer from library to device (samples)
@@ -12,7 +13,12 @@
  */
 
 import type { ItemSelection, PreviewContext } from '@audiocontrol/editor-core';
-import type { SampleMeta, ProgramMeta } from '@/plugins/item-types';
+import type {
+  SampleMeta,
+  ChoppedSampleMeta,
+  DrumKitSampleMeta,
+  ProgramMeta,
+} from '@/plugins/item-types';
 
 // =========================================================================
 // Types
@@ -84,6 +90,78 @@ function SamplePreview({
     <div className="p-4">
       <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value="Sample" />
+      <MetaRow label="Path" value={pathDisplay} />
+      <MetaRow label="Description" value={meta.description} />
+
+      {customState?.onSendSampleToDevice && (
+        <div className="mt-4">
+          <button
+            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
+            onClick={() => customState.onSendSampleToDevice!(
+              selection.node.name,
+              meta.path,
+            )}
+            data-testid="preview-send-to-device"
+          >
+            Send to Device
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ChoppedSamplePreview({
+  selection,
+  customState,
+}: {
+  selection: ItemSelection;
+  customState: S3kPreviewCustomState | undefined;
+}): JSX.Element {
+  const meta = selection.meta as ChoppedSampleMeta;
+  const pathDisplay = meta.path?.join('/') || '/';
+
+  return (
+    <div className="p-4">
+      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <MetaRow label="Type" value="Chopped Sample" />
+      <MetaRow label="Slices" value={meta.sliceCount} />
+      <MetaRow label="Path" value={pathDisplay} />
+      <MetaRow label="Description" value={meta.description} />
+
+      {customState?.onSendSampleToDevice && (
+        <div className="mt-4">
+          <button
+            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
+            onClick={() => customState.onSendSampleToDevice!(
+              selection.node.name,
+              meta.path,
+            )}
+            data-testid="preview-send-to-device"
+          >
+            Send to Device
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DrumKitPreview({
+  selection,
+  customState,
+}: {
+  selection: ItemSelection;
+  customState: S3kPreviewCustomState | undefined;
+}): JSX.Element {
+  const meta = selection.meta as DrumKitSampleMeta;
+  const pathDisplay = meta.path?.join('/') || '/';
+
+  return (
+    <div className="p-4">
+      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <MetaRow label="Type" value="Drum Kit" />
+      <MetaRow label="Pads" value={meta.sliceCount} />
       <MetaRow label="Path" value={pathDisplay} />
       <MetaRow label="Description" value={meta.description} />
 
@@ -250,6 +328,14 @@ export function S3kPreviewPanelAdapter({
 
   if (selection.node.type === 'sample') {
     return <SamplePreview selection={selection} customState={customState} />;
+  }
+
+  if (selection.node.type === 'chopped-sample') {
+    return <ChoppedSamplePreview selection={selection} customState={customState} />;
+  }
+
+  if (selection.node.type === 'drum-kit') {
+    return <DrumKitPreview selection={selection} customState={customState} />;
   }
 
   if (selection.node.type === 'program') {

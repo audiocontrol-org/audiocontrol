@@ -27,6 +27,7 @@ describe('toTreeNode', () => {
       sampleCount: undefined,
       sliceCount: undefined,
       description: undefined,
+      variant: undefined,
     });
   });
 
@@ -66,6 +67,7 @@ describe('toTreeNode', () => {
       sampleCount: 16,
       description: 'A drum kit',
       sliceCount: 4,
+      variant: 'drum-kit',
     };
 
     const result = toTreeNode(input);
@@ -79,6 +81,34 @@ describe('toTreeNode', () => {
       sampleCount: 16,
       sliceCount: 4,
       description: 'A drum kit',
+      variant: 'drum-kit',
+    });
+  });
+
+  it('converts a chopped-sample node with variant', () => {
+    const input: LibraryTreeNode = {
+      id: 'break',
+      name: 'Amen Break',
+      type: 'chopped-sample',
+      path: ['breaks'],
+      directoryName: 'amen-break',
+      sliceCount: 8,
+      variant: 'generic',
+    };
+
+    const result = toTreeNode(input);
+
+    expect(result.type).toBe('chopped-sample');
+    expect(result.meta).toEqual({
+      fileName: undefined,
+      directoryName: 'amen-break',
+      path: ['breaks'],
+      toneCount: undefined,
+      kitCount: undefined,
+      sampleCount: undefined,
+      sliceCount: 8,
+      description: undefined,
+      variant: 'generic',
     });
   });
 });

@@ -4,12 +4,22 @@
  * Creates category plugins for the two common-area sections the S3000XL
  * library currently supports: samples (WAV) and programs (YAML).
  *
- * Future phases may add device-specific categories for Akai program
- * bundles once the sampler-library schema supports them.
+ * The Samples category recognizes three item types:
+ * - sample: regular WAV sample
+ * - chopped-sample: sample with slice definitions
+ * - drum-kit: sample with slice definitions + drum kit metadata
+ *
+ * The Programs category recognizes one item type:
+ * - program: S3000XL program YAML bundle
  */
 
 import type { CategoryPlugin, CategoryCallbacks } from '@audiocontrol/editor-core';
-import { sampleItemType, programItemType } from '@/plugins/item-types';
+import {
+  sampleItemType,
+  choppedSampleItemType,
+  drumKitItemType,
+  programItemType,
+} from '@/plugins/item-types';
 
 // =========================================================================
 // Header action component
@@ -40,7 +50,7 @@ function NewFolderButton({ onClick }: { onClick: () => void }): JSX.Element {
 }
 
 // =========================================================================
-// Samples category (common-area WAV files)
+// Samples category (common-area: samples, chopped samples, drum kits)
 // =========================================================================
 
 export function createSamplesCategory(): CategoryPlugin {
@@ -49,6 +59,8 @@ export function createSamplesCategory(): CategoryPlugin {
     title: 'Samples',
     itemTypes: {
       sample: sampleItemType,
+      'chopped-sample': choppedSampleItemType,
+      'drum-kit': drumKitItemType,
     },
     emptyMessage: 'No samples in library. Import WAV files to get started.',
     dropMessage: 'Drop to add sample',
