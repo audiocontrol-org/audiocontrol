@@ -1,10 +1,13 @@
 /**
- * Hook managing state and handlers for the three editor dialogs:
- * Loop Editor, Sample Editor, and Sample Chopper.
+ * Hook managing state and handlers for the editor dialogs:
+ * Loop Editor, Sample Editor, Sample Chopper, and Drum Kit Editor.
  *
  * Loads audio from the common-area library, opens dialogs with parsed
  * WAV data, and saves results back. Device-agnostic — works with any
  * sample stored in the common area.
+ *
+ * Kit configuration (S3kKitConfig) is exposed for the chopper dialog's
+ * renderOutputConfig prop, which must be constructed in a .tsx file.
  */
 
 import { useState, useCallback } from 'react';
@@ -21,6 +24,10 @@ import {
   type SampleYaml,
 } from '@audiocontrol/sampler-library/browser';
 import type { ChopperSavePayload } from '@audiocontrol/sample-chopper/ui';
+import {
+  DEFAULT_S3K_KIT_CONFIG,
+  type S3kKitConfig,
+} from '@/components/library/S3kKitOutputConfig';
 
 // =========================================================================
 // State types
@@ -43,19 +50,30 @@ interface LoopEditorDialogState extends EditorDialogBase {
 type SampleEditorDialogState = EditorDialogBase;
 type ChopperDialogState = EditorDialogBase;
 
+interface DrumKitEditorDialogState {
+  open: boolean;
+  kitName: string;
+  kitPath: string[];
+}
+
 export interface EditorDialogsResult {
   loopEditor: LoopEditorDialogState | null;
   sampleEditor: SampleEditorDialogState | null;
   chopper: ChopperDialogState | null;
+  drumKitEditor: DrumKitEditorDialogState | null;
+  kitConfig: S3kKitConfig;
+  setKitConfig: (config: S3kKitConfig) => void;
   handleOpenInLoopEditor: (name: string, type: string, path?: string[]) => void;
   handleOpenInSampleEditor: (name: string, type: string, path?: string[]) => void;
   handleOpenInChopper: (name: string, type: string, path?: string[]) => void;
+  handleOpenDrumKitEditor: (name: string, path?: string[]) => void;
   handleLoopEditorSave: (loopStart: number, loopEnd: number) => Promise<void>;
   handleSampleEditorSave: (samples: Int16Array, sampleRate: number) => Promise<void>;
   handleChopperSave: (payload: ChopperSavePayload) => Promise<void>;
   closeLoopEditor: () => void;
   closeSampleEditor: () => void;
   closeChopper: () => void;
+  closeDrumKitEditor: () => void;
 }
 
 // =========================================================================
@@ -70,6 +88,8 @@ export function useEditorDialogs(
   const [loopEditor, setLoopEditor] = useState<LoopEditorDialogState | null>(null);
   const [sampleEditor, setSampleEditor] = useState<SampleEditorDialogState | null>(null);
   const [chopper, setChopper] = useState<ChopperDialogState | null>(null);
+  const [drumKitEditor, setDrumKitEditor] = useState<DrumKitEditorDialogState | null>(null);
+  const [kitConfig, setKitConfig] = useState<S3kKitConfig>(DEFAULT_S3K_KIT_CONFIG);
 
   // ---------------------------------------------------------------------------
   // Open handlers — load WAV data from library, parse, and set dialog state
@@ -135,6 +155,8 @@ export function useEditorDialogs(
         }
         const result = await loadSample(libraryRoot, name, path);
         const wav = parseWav(result.wavData);
+        // Reset kit config for new chopper session, pre-fill name from sample
+        setKitConfig({ ...DEFAULT_S3K_KIT_CONFIG, name: name.substring(0, 12).toUpperCase() });
         setChopper({
           open: true,
           samples: wav.samples,
@@ -148,6 +170,13 @@ export function useEditorDialogs(
       }
     },
     [libraryRoot, onError],
+  );
+
+  const handleOpenDrumKitEditor = useCallback(
+    (name: string, path?: string[]) => {
+      setDrumKitEditor({ open: true, kitName: name, kitPath: path ?? [] });
+    },
+    [],
   );
 
   // ---------------------------------------------------------------------------
@@ -207,10 +236,12 @@ export function useEditorDialogs(
     async (payload: ChopperSavePayload) => {
       if (!chopper?.origin || !libraryRoot) return;
 
+      const kitName = kitConfig.name || payload.name;
+
       const yaml: SampleYaml = {
         format: 'sample',
         version: 1,
-        name: payload.name,
+        name: kitName,
         file: 'sample.wav',
         sampleRate: payload.sourceAudio.sampleRate,
         slices: payload.slices.map((s) => ({
@@ -220,6 +251,11 @@ export function useEditorDialogs(
         })),
         triggers: payload.triggers,
         playback: payload.playbackConfig,
+        drumKit: {
+          baseNote: kitConfig.baseNote,
+          transpose: kitConfig.transpose !== 0 ? kitConfig.transpose : undefined,
+          velocitySensitivity: kitConfig.velocitySensitivity,
+        },
         modifiedAt: new Date().toISOString(),
       };
 
@@ -227,14 +263,14 @@ export function useEditorDialogs(
       const savePath = chopper.origin.path ?? [];
 
       try {
-        await saveSample(libraryRoot, { name: payload.name, yaml, wavData }, savePath);
+        await saveSample(libraryRoot, { name: kitName, yaml, wavData }, savePath);
         onRefresh();
       } catch (err) {
         console.error('[useEditorDialogs] Failed to save chopped sample:', err);
         onError(err instanceof Error ? err.message : 'Failed to save chopped sample');
       }
     },
-    [chopper, libraryRoot, onRefresh, onError],
+    [chopper, libraryRoot, kitConfig, onRefresh, onError],
   );
 
   // ---------------------------------------------------------------------------
@@ -244,19 +280,25 @@ export function useEditorDialogs(
   const closeLoopEditor = useCallback(() => setLoopEditor(null), []);
   const closeSampleEditor = useCallback(() => setSampleEditor(null), []);
   const closeChopper = useCallback(() => setChopper(null), []);
+  const closeDrumKitEditor = useCallback(() => setDrumKitEditor(null), []);
 
   return {
     loopEditor,
     sampleEditor,
     chopper,
+    drumKitEditor,
+    kitConfig,
+    setKitConfig,
     handleOpenInLoopEditor,
     handleOpenInSampleEditor,
     handleOpenInChopper,
+    handleOpenDrumKitEditor,
     handleLoopEditorSave,
     handleSampleEditorSave,
     handleChopperSave,
     closeLoopEditor,
     closeSampleEditor,
     closeChopper,
+    closeDrumKitEditor,
   };
 }

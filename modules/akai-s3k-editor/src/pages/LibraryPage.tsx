@@ -20,6 +20,7 @@
  * - Loop Editor: edit loop points on samples
  * - Sample Editor: trim, normalize, fade, reverse samples
  * - Sample Chopper: slice samples into drum kits
+ * - Drum Kit Editor: edit kit metadata and per-pad configuration
  */
 
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
@@ -58,6 +59,8 @@ import { ExportProgramDialog } from '@/components/library/ExportProgramDialog';
 import { ImportProgramDialog } from '@/components/library/ImportProgramDialog';
 import { ImportDrumKitDialog } from '@/components/library/ImportDrumKitDialog';
 import { ImportInstrumentDialog } from '@/components/library/ImportInstrumentDialog';
+import { DrumKitEditorDialog } from '@/components/library/DrumKitEditorDialog';
+import { S3kKitOutputConfig } from '@/components/library/S3kKitOutputConfig';
 import type { S3kPreviewCustomState } from '@/components/library/S3kItemPreviewPanel';
 
 const PICKER_ID = 'akai-s3k-library';
@@ -280,6 +283,7 @@ export function LibraryPage(): JSX.Element {
     onOpenInLoopEditor: hasLibrary ? editorDialogs.handleOpenInLoopEditor : undefined,
     onOpenInSampleEditor: hasLibrary ? editorDialogs.handleOpenInSampleEditor : undefined,
     onOpenInChopper: hasLibrary ? editorDialogs.handleOpenInChopper : undefined,
+    onEditDrumKit: hasLibrary ? editorDialogs.handleOpenDrumKitEditor : undefined,
   }), [
     canTransfer, hasLibrary,
     handleSendSampleToDevice, handleSaveDeviceSampleToLibrary,
@@ -288,6 +292,7 @@ export function LibraryPage(): JSX.Element {
     editorDialogs.handleOpenInLoopEditor,
     editorDialogs.handleOpenInSampleEditor,
     editorDialogs.handleOpenInChopper,
+    editorDialogs.handleOpenDrumKitEditor,
   ]);
 
   const deviceMemoryState = useMemo<S3kMemoryPanelState>(() => ({
@@ -515,6 +520,13 @@ export function LibraryPage(): JSX.Element {
           sourceName={editorDialogs.chopper.sampleName}
           onConfirm={() => { editorDialogs.closeChopper(); }}
           onSave={root ? editorDialogs.handleChopperSave : undefined}
+          renderOutputConfig={(state) => (
+            <S3kKitOutputConfig
+              state={state}
+              config={editorDialogs.kitConfig}
+              onConfigChange={editorDialogs.setKitConfig}
+            />
+          )}
         />
       )}
       {editorDialogs.sampleEditor && (
@@ -525,6 +537,16 @@ export function LibraryPage(): JSX.Element {
           sampleRate={editorDialogs.sampleEditor.sampleRate}
           sampleName={editorDialogs.sampleEditor.sampleName}
           onSave={root ? editorDialogs.handleSampleEditorSave : undefined}
+        />
+      )}
+      {editorDialogs.drumKitEditor && root && (
+        <DrumKitEditorDialog
+          open={editorDialogs.drumKitEditor.open}
+          onClose={editorDialogs.closeDrumKitEditor}
+          kitName={editorDialogs.drumKitEditor.kitName}
+          kitPath={editorDialogs.drumKitEditor.kitPath}
+          libraryRoot={root}
+          onSave={refreshLibrary}
         />
       )}
     </div>

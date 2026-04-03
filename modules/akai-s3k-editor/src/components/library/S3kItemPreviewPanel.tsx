@@ -15,6 +15,7 @@
  * - "Open in Loop Editor" — opens loop point editor for samples
  * - "Open in Editor" — opens sample editor for destructive editing
  * - "Chop into Drum Kit" — opens sample chopper for slicing into drum kit
+ * - "Edit Kit" — opens standalone drum kit editor for metadata/pad editing
  */
 
 import type { ItemSelection, PreviewContext } from '@audiocontrol/editor-core';
@@ -57,6 +58,8 @@ export interface S3kPreviewCustomState {
   onOpenInSampleEditor?: (name: string, type: string, path?: string[]) => void;
   /** Callback for "Chop into Drum Kit" action (sample) */
   onOpenInChopper?: (name: string, type: string, path?: string[]) => void;
+  /** Callback for "Edit Kit" action (drum kit) */
+  onEditDrumKit?: (name: string, path?: string[]) => void;
 }
 
 // =========================================================================
@@ -253,6 +256,19 @@ function DrumKitPreview({
       <MetaRow label="Description" value={meta.description} />
 
       <div className="mt-4 flex gap-2 flex-wrap">
+        {customState?.onEditDrumKit && (
+          <button
+            className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
+            onClick={() => customState.onEditDrumKit!(
+              selection.node.name,
+              meta.path,
+            )}
+            data-testid="preview-edit-drum-kit"
+          >
+            Edit Kit
+          </button>
+        )}
+
         {customState?.onSendSampleToDevice && (
           <button
             className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
