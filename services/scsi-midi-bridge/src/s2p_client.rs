@@ -250,20 +250,34 @@ impl S2pClient {
         Ok(midi_resp.bytes.get(&1).cloned().unwrap_or_default())
     }
 
-    /// Send SysEx, then poll+read the response. Returns the response bytes.
+    /// Send SysEx, then poll+read the COMPLETE response. The S3000XL may
+    /// split large responses across multiple poll cycles (e.g., a 392-byte
+    /// program header arrives as 240 + 152 bytes). Read until we see F7
+    /// (SysEx end) or no more data is pending.
     pub async fn send_and_receive(&mut self, sysex: &[u8]) -> Result<Vec<u8>, String> {
         self.send_sysex(sysex).await?;
 
-        // Poll for response with retries
-        for attempt in 0..20 {
+        let mut result = Vec::new();
+
+        for attempt in 0..30 {
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
             let pending = self.poll().await?;
             if pending > 0 {
                 eprintln!("[s2p] poll attempt {}: {pending} bytes pending", attempt + 1);
-                return self.read(pending).await;
+                let chunk = self.read(pending).await?;
+                result.extend_from_slice(&chunk);
+
+                // Check if we have a complete SysEx message (ends with F7)
+                if result.last() == Some(&0xF7) {
+                    return Ok(result);
+                }
+                // Keep reading — more data may follow
+            } else if !result.is_empty() {
+                // Had data but no more pending — return what we have
+                return Ok(result);
             }
         }
 
-        Ok(Vec::new())
+        Ok(result)
     }
 }

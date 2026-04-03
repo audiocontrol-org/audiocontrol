@@ -120,30 +120,16 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
     send(message: number[]): void {
       sendQueue = sendQueue.then(async () => {
         try {
-          // Akai SysEx protocol: even opcodes (0x00, 0x02, 0x04, 0x06, ...)
-          // are requests that produce a response. Odd opcodes (0x07, 0x09,
-          // 0x0B, ...) are data/write commands — no response expected.
-          // When expect_response is false, the bridge skips poll+read,
-          // preventing it from consuming a response meant for a prior request.
-          const isAkaiSysEx = message.length >= 5 && message[1] === 0x47;
-          const akaiOpcode = isAkaiSysEx ? message[3] : -1;
-          const expectResponse = !isAkaiSysEx || (akaiOpcode & 1) === 0;
-
           const res = await fetch(`${bridgeUrl}/sds/send`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message, expect_response: expectResponse }),
+            body: JSON.stringify({ message }),
           });
+          // The bridge always polls for a response. Dispatch any SysEx
+          // response to listeners (both read responses and write ACKs).
           const body = await res.json() as { ok: boolean; response: number[] };
           if (body.response && body.response.length > 0 && body.response[0] === 0xf0) {
-            // Real response from device — dispatch to listeners
             listeners.forEach((cb) => cb(body.response));
-          } else if (!expectResponse && isAkaiSysEx) {
-            // Write command with no poll — synthesize a minimal ACK so the
-            // client's sendAndReceive resolves instead of timing out.
-            // Format: F0 47 <channel> <opcode+1> 48 F7 (echo opcode as response)
-            const syntheticAck = [0xf0, 0x47, message[2], akaiOpcode, 0x48, 0xf7];
-            listeners.forEach((cb) => cb(syntheticAck));
           }
         } catch (err) {
           console.error('[ScsiMidiTransport] Send error:', err);

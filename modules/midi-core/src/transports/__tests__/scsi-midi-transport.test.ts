@@ -195,7 +195,7 @@ describe('adapter.send()', () => {
     expect(fetchMock).toHaveBeenCalledWith(`${BRIDGE_URL}/sds/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message, expect_response: true }),
+      body: JSON.stringify({ message }),
     });
   });
 
