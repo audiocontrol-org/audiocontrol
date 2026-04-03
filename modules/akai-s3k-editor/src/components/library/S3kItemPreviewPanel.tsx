@@ -3,14 +3,15 @@
  *
  * Context-aware panel that displays details and actions based on the
  * currently selected item. Supports library samples, chopped samples,
- * drum kits, library programs, device programs, device samples, and
- * directories.
+ * drum kits, common-area programs, S3K programs, device programs,
+ * device samples, and directories.
  *
  * Action buttons:
  * - "Send to Device" — triggers SDS transfer from library to device (samples)
  * - "Save to Library" — triggers export from device to library (samples, programs)
- * - "Send to Device" — triggers import from library to device (programs)
+ * - "Send to Device" — triggers import from library to device (S3K programs)
  * - "Import as Drum Program" — imports drum kit slices as program + samples
+ * - "Import to Device" — converts common-area program zones to S3K keygroups
  */
 
 import type { ItemSelection, PreviewContext } from '@audiocontrol/editor-core';
@@ -25,11 +26,19 @@ import type {
 // Types
 // =========================================================================
 
+/** Meta for common-area programs detected from the samples tree. */
+interface CommonProgramMeta {
+  directoryName?: string;
+  path?: string[];
+  kitCount?: number;
+  description?: string;
+}
+
 /** Custom state passed through PreviewContext.customState */
 export interface S3kPreviewCustomState {
   /** Callback for "Send to Device" action (sample) */
   onSendSampleToDevice?: (name: string, path?: string[]) => void;
-  /** Callback for "Send to Device" action (library program) */
+  /** Callback for "Send to Device" action (S3K library program) */
   onSendProgramToDevice?: (dirName: string, name: string) => void;
   /** Callback for "Save to Library" action (device sample) */
   onSaveDeviceSampleToLibrary?: (index: number, name: string) => void;
@@ -37,6 +46,8 @@ export interface S3kPreviewCustomState {
   onSaveDeviceProgramToLibrary?: (index: number, name: string) => void;
   /** Callback for "Import as Drum Program" action (drum kit) */
   onImportDrumKit?: (name: string, path?: string[]) => void;
+  /** Callback for "Import to Device" action (common-area program) */
+  onImportInstrument?: (dirName: string, path: string[]) => void;
 }
 
 // =========================================================================
@@ -199,7 +210,11 @@ function DrumKitPreview({
   );
 }
 
-function ProgramPreview({
+/**
+ * Preview for S3K-specific programs (from the programs category,
+ * stored as program.s3k.yaml with raw SysEx data).
+ */
+function S3kProgramPreview({
   selection,
   customState,
 }: {
@@ -226,6 +241,46 @@ function ProgramPreview({
             data-testid="preview-send-program-to-device"
           >
             Send to Device
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Preview for common-area programs (from the samples category,
+ * stored as program.yaml with device-agnostic zones).
+ */
+function CommonProgramPreview({
+  selection,
+  customState,
+}: {
+  selection: ItemSelection;
+  customState: S3kPreviewCustomState | undefined;
+}): JSX.Element {
+  const meta = selection.meta as CommonProgramMeta;
+  const pathDisplay = meta.path?.join('/') || '/';
+
+  return (
+    <div className="p-4">
+      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <MetaRow label="Type" value="Instrument" />
+      <MetaRow label="Zones" value={meta.kitCount} />
+      <MetaRow label="Path" value={pathDisplay} />
+      <MetaRow label="Description" value={meta.description} />
+
+      {customState?.onImportInstrument && meta.directoryName && (
+        <div className="mt-4">
+          <button
+            className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded transition-colors"
+            onClick={() => customState.onImportInstrument!(
+              meta.directoryName!,
+              meta.path ?? [],
+            )}
+            data-testid="preview-import-instrument"
+          >
+            Import to Device
           </button>
         </div>
       )}
@@ -302,6 +357,21 @@ function DeviceProgramPreview({
 }
 
 // =========================================================================
+// Helpers
+// =========================================================================
+
+/**
+ * Distinguish common-area programs from S3K-specific programs.
+ *
+ * Common-area programs come from the samples tree and have
+ * `directoryName` + `path` in their meta. S3K programs come from the
+ * programs category and have `dirName` + `keygroupCount`.
+ */
+function isCommonAreaProgram(meta: Record<string, unknown>): boolean {
+  return 'directoryName' in meta && !('dirName' in meta);
+}
+
+// =========================================================================
 // Main preview panel adapter
 // =========================================================================
 
@@ -355,7 +425,11 @@ export function S3kPreviewPanelAdapter({
   }
 
   if (selection.node.type === 'program') {
-    return <ProgramPreview selection={selection} customState={customState} />;
+    const meta = (selection.meta ?? {}) as Record<string, unknown>;
+    if (isCommonAreaProgram(meta)) {
+      return <CommonProgramPreview selection={selection} customState={customState} />;
+    }
+    return <S3kProgramPreview selection={selection} customState={customState} />;
   }
 
   // Fallback for unknown types

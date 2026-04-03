@@ -14,6 +14,7 @@
  * - Sample SDS: SendSampleDialog, ReceiveSampleDialog
  * - Program SysEx: ExportProgramDialog, ImportProgramDialog
  * - Drum Kit: ImportDrumKitDialog
+ * - Instrument: ImportInstrumentDialog (common-area program -> S3K keygroups)
  */
 
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
@@ -41,11 +42,13 @@ import { useDeviceLibraryData } from '@/hooks/useDeviceLibraryData';
 import { useLibraryPrograms } from '@/hooks/useLibraryPrograms';
 import { useProgramTransfer } from '@/hooks/useProgramTransfer';
 import { useDrumKitTransfer } from '@/hooks/useDrumKitTransfer';
+import { useInstrumentTransfer } from '@/hooks/useInstrumentTransfer';
 import { SendSampleDialog } from '@/components/library/SendSampleDialog';
 import { ReceiveSampleDialog } from '@/components/library/ReceiveSampleDialog';
 import { ExportProgramDialog } from '@/components/library/ExportProgramDialog';
 import { ImportProgramDialog } from '@/components/library/ImportProgramDialog';
 import { ImportDrumKitDialog } from '@/components/library/ImportDrumKitDialog';
+import { ImportInstrumentDialog } from '@/components/library/ImportInstrumentDialog';
 import type { S3kPreviewCustomState } from '@/components/library/S3kItemPreviewPanel';
 
 const PICKER_ID = 'akai-s3k-library';
@@ -82,18 +85,12 @@ function useLibraryTreeData(root: StorageDirectoryHandle | null) {
   const setLoading = useLibraryStore((s) => s.setLoading);
   const setError = useLibraryStore((s) => s.setError);
   const clear = useLibraryStore((s) => s.clear);
-
   const { refreshPrograms } = useLibraryPrograms(root);
 
   const refresh = useCallback(async () => {
-    if (!root) {
-      clear();
-      return;
-    }
-
+    if (!root) { clear(); return; }
     setLoading(true);
     setError(null);
-
     try {
       const sampleTreeNodes = await listCommonSamplesTree(root);
       setSampleNodes(sampleTreeNodes.map(toTreeNode));
@@ -117,16 +114,11 @@ export function LibraryPage(): JSX.Element {
   const {
     activeBackend,
     isConnected: isLibraryConnected,
-    root,
-    connect,
-    disconnect,
-    hasLocalFS,
-    hasGoogleDrive,
-    hasOPFS,
+    root, connect, disconnect,
+    hasLocalFS, hasGoogleDrive, hasOPFS,
   } = useLibraryConnection({ pickerId: PICKER_ID });
 
   const { refresh: refreshLibrary, refreshPrograms } = useLibraryTreeData(root);
-
   const { client, isConnected: isDeviceConnected } = useS3000xlClient();
   const { refresh: refreshDevice, isLoading: isDeviceLoading } =
     useDeviceLibraryData(client, isDeviceConnected);
@@ -144,17 +136,12 @@ export function LibraryPage(): JSX.Element {
 
   const [selection, setSelection] = useState<ItemSelection | null>(null);
   const [expandedPaths, setExpandedPaths] = useState<Record<string, Set<string>>>({});
-
-  // Sample dialog state
   const [sendDialog, setSendDialog] = useState<SendDialogState>(SEND_DIALOG_CLOSED);
   const [receiveDialog, setReceiveDialog] = useState<ReceiveDialogState>(RECEIVE_DIALOG_CLOSED);
 
-  // Program dialog state
   const programTransfer = useProgramTransfer(isDeviceConnected, !!root);
-
-  // Drum kit dialog state
   const drumKitTransfer = useDrumKitTransfer(isDeviceConnected, !!root);
-
+  const instrumentTransfer = useInstrumentTransfer(isDeviceConnected, !!root);
   const hasInitiatedScan = useRef(false);
 
   // Scan library on first connect
@@ -175,14 +162,13 @@ export function LibraryPage(): JSX.Element {
     }
   }, [isLibraryConnected, clear]);
 
-  // Map store data to plugin category format
   const categoryData = useMemo<Record<string, TreeNode[]>>(() => ({
     samples: sampleNodes,
     programs: programNodes,
   }), [sampleNodes, programNodes]);
 
   // -----------------------------------------------------------------------
-  // Device memory selection — creates preview-compatible ItemSelection
+  // Device memory selection
   // -----------------------------------------------------------------------
 
   const handleDeviceSelectProgram = useCallback(
@@ -218,7 +204,7 @@ export function LibraryPage(): JSX.Element {
   );
 
   // -----------------------------------------------------------------------
-  // Sample dialog callbacks
+  // Dialog callbacks
   // -----------------------------------------------------------------------
 
   const handleSendSampleToDevice = useCallback(
@@ -237,14 +223,8 @@ export function LibraryPage(): JSX.Element {
     [client, root],
   );
 
-  // -----------------------------------------------------------------------
-  // Program dialog callbacks
-  // -----------------------------------------------------------------------
-
   const handleSaveDeviceProgramToLibrary = useCallback(
-    (index: number, name: string) => {
-      programTransfer.openExportDialog(index, name);
-    },
+    (index: number, name: string) => { programTransfer.openExportDialog(index, name); },
     [programTransfer],
   );
 
@@ -258,13 +238,13 @@ export function LibraryPage(): JSX.Element {
     [programTransfer, selectedDeviceType, selectedDeviceIndex, deviceProgramNames.length],
   );
 
-  const handleExportComplete = useCallback(async () => {
-    await refreshPrograms();
-  }, [refreshPrograms]);
+  const handleImportInstrument = useCallback(
+    (dirName: string, path: string[]) => { instrumentTransfer.openDialog(dirName, path); },
+    [instrumentTransfer],
+  );
 
-  const handleImportComplete = useCallback(async () => {
-    await refreshDevice();
-  }, [refreshDevice]);
+  const handleExportComplete = useCallback(async () => { await refreshPrograms(); }, [refreshPrograms]);
+  const handleImportComplete = useCallback(async () => { await refreshDevice(); }, [refreshDevice]);
 
   // -----------------------------------------------------------------------
   // Preview state
@@ -278,18 +258,12 @@ export function LibraryPage(): JSX.Element {
     onSaveDeviceProgramToLibrary: canTransfer ? handleSaveDeviceProgramToLibrary : undefined,
     onSendProgramToDevice: canTransfer ? handleSendProgramToDevice : undefined,
     onImportDrumKit: canTransfer ? drumKitTransfer.openDialog : undefined,
+    onImportInstrument: canTransfer ? handleImportInstrument : undefined,
   }), [
-    canTransfer,
-    handleSendSampleToDevice,
-    handleSaveDeviceSampleToLibrary,
-    handleSaveDeviceProgramToLibrary,
-    handleSendProgramToDevice,
-    drumKitTransfer.openDialog,
+    canTransfer, handleSendSampleToDevice, handleSaveDeviceSampleToLibrary,
+    handleSaveDeviceProgramToLibrary, handleSendProgramToDevice,
+    drumKitTransfer.openDialog, handleImportInstrument,
   ]);
-
-  // -----------------------------------------------------------------------
-  // Device memory panel state
-  // -----------------------------------------------------------------------
 
   const deviceMemoryState = useMemo<S3kMemoryPanelState>(() => ({
     programNames: deviceProgramNames,
@@ -429,7 +403,7 @@ export function LibraryPage(): JSX.Element {
         />
       </div>
 
-      {/* Sample Transfer Dialogs */}
+      {/* Transfer Dialogs (all require device client + library root) */}
       {client && root && (
         <>
           <SendSampleDialog
@@ -451,25 +425,25 @@ export function LibraryPage(): JSX.Element {
             libraryRoot={root}
             onTransferComplete={() => refreshLibrary()}
           />
-        </>
-      )}
-
-      {/* Drum Kit Import Dialog */}
-      {client && root && (
-        <ImportDrumKitDialog
-          open={drumKitTransfer.dialog.open}
-          onClose={drumKitTransfer.closeDialog}
-          sampleName={drumKitTransfer.dialog.sampleName}
-          samplePath={drumKitTransfer.dialog.samplePath}
-          client={client}
-          libraryRoot={root}
-          onImportComplete={() => refreshDevice()}
-        />
-      )}
-
-      {/* Program Transfer Dialogs */}
-      {client && root && (
-        <>
+          <ImportDrumKitDialog
+            open={drumKitTransfer.dialog.open}
+            onClose={drumKitTransfer.closeDialog}
+            sampleName={drumKitTransfer.dialog.sampleName}
+            samplePath={drumKitTransfer.dialog.samplePath}
+            client={client}
+            libraryRoot={root}
+            onImportComplete={() => refreshDevice()}
+          />
+          <ImportInstrumentDialog
+            open={instrumentTransfer.dialog.open}
+            onClose={instrumentTransfer.closeDialog}
+            programDirName={instrumentTransfer.dialog.programDirName}
+            programPath={instrumentTransfer.dialog.programPath}
+            client={client}
+            libraryRoot={root}
+            deviceSampleNames={deviceSampleNames}
+            onImportComplete={handleImportComplete}
+          />
           <ExportProgramDialog
             open={programTransfer.exportDialog.open}
             onClose={programTransfer.closeExportDialog}
