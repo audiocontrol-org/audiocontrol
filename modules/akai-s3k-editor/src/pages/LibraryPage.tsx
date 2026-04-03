@@ -9,6 +9,10 @@
  * Uses the plugin architecture for device-agnostic library browsing.
  * The s3kLibraryPlugin defines categories, item types, memory config,
  * and preview panel rendering. This page wires up data and callbacks.
+ *
+ * Transfer dialogs:
+ * - Sample SDS: SendSampleDialog, ReceiveSampleDialog
+ * - Program SysEx: ExportProgramDialog, ImportProgramDialog
  */
 
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
@@ -30,26 +34,53 @@ import {
 import { useLibraryStore } from '@/stores/libraryStore';
 import { toTreeNode } from '@/lib/library-tree';
 import { s3kLibraryPlugin } from '@/plugins/s3k-library-plugin';
+import type { S3kMemoryPanelState } from '@/plugins/s3k-library-plugin';
+import { useS3000xlClient } from '@/hooks/useS3000xlClient';
+import { useDeviceLibraryData } from '@/hooks/useDeviceLibraryData';
+import { useLibraryPrograms } from '@/hooks/useLibraryPrograms';
+import { useProgramTransfer } from '@/hooks/useProgramTransfer';
+import { SendSampleDialog } from '@/components/library/SendSampleDialog';
+import { ReceiveSampleDialog } from '@/components/library/ReceiveSampleDialog';
+import { ExportProgramDialog } from '@/components/library/ExportProgramDialog';
+import { ImportProgramDialog } from '@/components/library/ImportProgramDialog';
+import type { S3kPreviewCustomState } from '@/components/library/S3kItemPreviewPanel';
 
 const PICKER_ID = 'akai-s3k-library';
 
 // =========================================================================
-// Data loading
+// Sample dialog state
 // =========================================================================
 
-/**
- * Hook for loading and refreshing library tree data.
- *
- * Scans the common-area samples directory, converting results into
- * editor-core TreeNodes for the plugin browser. Programs tree scanning
- * will be added when sampler-library exports listCommonProgramsTree.
- */
+interface SendDialogState {
+  open: boolean;
+  sampleName: string;
+  samplePath: string[];
+}
+
+interface ReceiveDialogState {
+  open: boolean;
+  sampleIndex: number;
+  sampleName: string;
+}
+
+const SEND_DIALOG_CLOSED: SendDialogState = {
+  open: false, sampleName: '', samplePath: [],
+};
+const RECEIVE_DIALOG_CLOSED: ReceiveDialogState = {
+  open: false, sampleIndex: 0, sampleName: '',
+};
+
+// =========================================================================
+// Data loading hook
+// =========================================================================
+
 function useLibraryTreeData(root: StorageDirectoryHandle | null) {
   const setSampleNodes = useLibraryStore((s) => s.setSampleNodes);
-  const setProgramNodes = useLibraryStore((s) => s.setProgramNodes);
   const setLoading = useLibraryStore((s) => s.setLoading);
   const setError = useLibraryStore((s) => s.setError);
   const clear = useLibraryStore((s) => s.clear);
+
+  const { refreshPrograms } = useLibraryPrograms(root);
 
   const refresh = useCallback(async () => {
     if (!root) {
@@ -63,18 +94,16 @@ function useLibraryTreeData(root: StorageDirectoryHandle | null) {
     try {
       const sampleTreeNodes = await listCommonSamplesTree(root);
       setSampleNodes(sampleTreeNodes.map(toTreeNode));
-      // Programs tree scanning will be added when sampler-library
-      // exports listCommonProgramsTree. For now, programs is empty.
-      setProgramNodes([]);
+      await refreshPrograms();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to scan library';
       setError(message);
     } finally {
       setLoading(false);
     }
-  }, [root, setSampleNodes, setProgramNodes, setLoading, setError, clear]);
+  }, [root, setSampleNodes, setLoading, setError, clear, refreshPrograms]);
 
-  return { refresh };
+  return { refresh, refreshPrograms };
 }
 
 // =========================================================================
@@ -84,7 +113,7 @@ function useLibraryTreeData(root: StorageDirectoryHandle | null) {
 export function LibraryPage(): JSX.Element {
   const {
     activeBackend,
-    isConnected,
+    isConnected: isLibraryConnected,
     root,
     connect,
     disconnect,
@@ -93,36 +122,52 @@ export function LibraryPage(): JSX.Element {
     hasOPFS,
   } = useLibraryConnection({ pickerId: PICKER_ID });
 
-  const { refresh } = useLibraryTreeData(root);
+  const { refresh: refreshLibrary, refreshPrograms } = useLibraryTreeData(root);
+
+  const { client, isConnected: isDeviceConnected } = useS3000xlClient();
+  const { refresh: refreshDevice, isLoading: isDeviceLoading } =
+    useDeviceLibraryData(client, isDeviceConnected);
 
   const sampleNodes = useLibraryStore((s) => s.sampleNodes);
   const programNodes = useLibraryStore((s) => s.programNodes);
   const loading = useLibraryStore((s) => s.loading);
   const error = useLibraryStore((s) => s.error);
   const clear = useLibraryStore((s) => s.clear);
+  const deviceProgramNames = useLibraryStore((s) => s.deviceProgramNames);
+  const deviceSampleNames = useLibraryStore((s) => s.deviceSampleNames);
+  const selectedDeviceIndex = useLibraryStore((s) => s.selectedDeviceIndex);
+  const selectedDeviceType = useLibraryStore((s) => s.selectedDeviceType);
+  const setSelectedDevice = useLibraryStore((s) => s.setSelectedDevice);
 
   const [selection, setSelection] = useState<ItemSelection | null>(null);
   const [expandedPaths, setExpandedPaths] = useState<Record<string, Set<string>>>({});
+
+  // Sample dialog state
+  const [sendDialog, setSendDialog] = useState<SendDialogState>(SEND_DIALOG_CLOSED);
+  const [receiveDialog, setReceiveDialog] = useState<ReceiveDialogState>(RECEIVE_DIALOG_CLOSED);
+
+  // Program dialog state
+  const programTransfer = useProgramTransfer(isDeviceConnected, !!root);
 
   const hasInitiatedScan = useRef(false);
 
   // Scan library on first connect
   useEffect(() => {
-    if (isConnected && root && !hasInitiatedScan.current) {
+    if (isLibraryConnected && root && !hasInitiatedScan.current) {
       hasInitiatedScan.current = true;
-      void refresh();
+      void refreshLibrary();
     }
-  }, [isConnected, root, refresh]);
+  }, [isLibraryConnected, root, refreshLibrary]);
 
   // Clear data on disconnect
   useEffect(() => {
-    if (!isConnected) {
+    if (!isLibraryConnected) {
       hasInitiatedScan.current = false;
       clear();
       setSelection(null);
       setExpandedPaths({});
     }
-  }, [isConnected, clear]);
+  }, [isLibraryConnected, clear]);
 
   // Map store data to plugin category format
   const categoryData = useMemo<Record<string, TreeNode[]>>(() => ({
@@ -131,91 +176,210 @@ export function LibraryPage(): JSX.Element {
   }), [sampleNodes, programNodes]);
 
   // -----------------------------------------------------------------------
-  // Callbacks
+  // Device memory selection — creates preview-compatible ItemSelection
+  // -----------------------------------------------------------------------
+
+  const handleDeviceSelectProgram = useCallback(
+    (index: number) => {
+      setSelectedDevice('program', index);
+      setSelection({
+        categoryId: 'device',
+        node: {
+          id: `device-program:${index}`,
+          name: deviceProgramNames[index] ?? `Program ${index}`,
+          type: 'device-program',
+        },
+        meta: { deviceIndex: index },
+      });
+    },
+    [setSelectedDevice, deviceProgramNames],
+  );
+
+  const handleDeviceSelectSample = useCallback(
+    (index: number) => {
+      setSelectedDevice('sample', index);
+      setSelection({
+        categoryId: 'device',
+        node: {
+          id: `device-sample:${index}`,
+          name: deviceSampleNames[index] ?? `Sample ${index}`,
+          type: 'device-sample',
+        },
+        meta: { deviceIndex: index },
+      });
+    },
+    [setSelectedDevice, deviceSampleNames],
+  );
+
+  // -----------------------------------------------------------------------
+  // Sample dialog callbacks
+  // -----------------------------------------------------------------------
+
+  const handleSendSampleToDevice = useCallback(
+    (name: string, path?: string[]) => {
+      if (!client || !root) return;
+      setSendDialog({ open: true, sampleName: name, samplePath: path ?? [] });
+    },
+    [client, root],
+  );
+
+  const handleSaveDeviceSampleToLibrary = useCallback(
+    (index: number, name: string) => {
+      if (!client || !root) return;
+      setReceiveDialog({ open: true, sampleIndex: index, sampleName: name });
+    },
+    [client, root],
+  );
+
+  // -----------------------------------------------------------------------
+  // Program dialog callbacks
+  // -----------------------------------------------------------------------
+
+  const handleSaveDeviceProgramToLibrary = useCallback(
+    (index: number, name: string) => {
+      programTransfer.openExportDialog(index, name);
+    },
+    [programTransfer],
+  );
+
+  const handleSendProgramToDevice = useCallback(
+    (dirName: string, name: string) => {
+      // Use the currently selected device program slot, or append after
+      // the last existing program
+      const targetSlot = selectedDeviceType === 'program' && selectedDeviceIndex !== null
+        ? selectedDeviceIndex
+        : deviceProgramNames.length;
+      programTransfer.openImportDialog(dirName, name, targetSlot);
+    },
+    [programTransfer, selectedDeviceType, selectedDeviceIndex, deviceProgramNames.length],
+  );
+
+  const handleExportComplete = useCallback(async () => {
+    await refreshPrograms();
+  }, [refreshPrograms]);
+
+  const handleImportComplete = useCallback(async () => {
+    await refreshDevice();
+  }, [refreshDevice]);
+
+  // -----------------------------------------------------------------------
+  // Preview state
+  // -----------------------------------------------------------------------
+
+  const canTransfer = isDeviceConnected && !!root;
+
+  const previewState = useMemo<S3kPreviewCustomState>(() => ({
+    onSendSampleToDevice: canTransfer ? handleSendSampleToDevice : undefined,
+    onSaveDeviceSampleToLibrary: canTransfer ? handleSaveDeviceSampleToLibrary : undefined,
+    onSaveDeviceProgramToLibrary: canTransfer ? handleSaveDeviceProgramToLibrary : undefined,
+    onSendProgramToDevice: canTransfer ? handleSendProgramToDevice : undefined,
+  }), [
+    canTransfer,
+    handleSendSampleToDevice,
+    handleSaveDeviceSampleToLibrary,
+    handleSaveDeviceProgramToLibrary,
+    handleSendProgramToDevice,
+  ]);
+
+  // -----------------------------------------------------------------------
+  // Device memory panel state
+  // -----------------------------------------------------------------------
+
+  const deviceMemoryState = useMemo<S3kMemoryPanelState>(() => ({
+    programNames: deviceProgramNames,
+    sampleNames: deviceSampleNames,
+    selectedIndex: selectedDeviceIndex,
+    selectedType: selectedDeviceType,
+    onSelectProgram: handleDeviceSelectProgram,
+    onSelectSample: handleDeviceSelectSample,
+    onRefresh: () => void refreshDevice(),
+    isConnected: isDeviceConnected,
+    isLoading: isDeviceLoading,
+  }), [
+    deviceProgramNames, deviceSampleNames,
+    selectedDeviceIndex, selectedDeviceType,
+    handleDeviceSelectProgram, handleDeviceSelectSample,
+    refreshDevice, isDeviceConnected, isDeviceLoading,
+  ]);
+
+  // -----------------------------------------------------------------------
+  // Standard library callbacks
   // -----------------------------------------------------------------------
 
   const handleConnect = useCallback(
-    (backend: 'local' | 'google-drive' | 'opfs') => {
-      void connect(backend);
-    },
+    (backend: 'local' | 'google-drive' | 'opfs') => { void connect(backend); },
     [connect],
   );
 
   const handleToggleExpand = useCallback(
     (categoryId: string, nodeId: string) => {
       setExpandedPaths((prev) => {
-        const categorySet = new Set(prev[categoryId] ?? []);
-        if (categorySet.has(nodeId)) {
-          categorySet.delete(nodeId);
-        } else {
-          categorySet.add(nodeId);
-        }
-        return { ...prev, [categoryId]: categorySet };
+        const set = new Set(prev[categoryId] ?? []);
+        if (set.has(nodeId)) set.delete(nodeId); else set.add(nodeId);
+        return { ...prev, [categoryId]: set };
       });
     },
     [],
   );
 
   const handleCreateFolder = useCallback(
-    async (_categoryId: string, parentPath: string[]) => {
+    async (_catId: string, parentPath: string[]) => {
       if (!root) return;
       const name = window.prompt('Folder name:');
       if (!name) return;
       await createFolder(root, parentPath, name);
-      void refresh();
+      void refreshLibrary();
     },
-    [root, refresh],
+    [root, refreshLibrary],
   );
 
   const handleDelete = useCallback(
-    async (_categoryId: string, node: TreeNode) => {
+    async (_catId: string, node: TreeNode) => {
       if (!root) return;
       const meta = node.meta as { path?: string[] } | undefined;
       await deleteItem(root, node.name, meta?.path ?? []);
-      void refresh();
+      void refreshLibrary();
     },
-    [root, refresh],
+    [root, refreshLibrary],
   );
 
   const handleMove = useCallback(
-    async (_categoryId: string, node: TreeNode, targetPath: string[]) => {
+    async (_catId: string, node: TreeNode, targetPath: string[]) => {
       if (!root) return;
       const meta = node.meta as { path?: string[] } | undefined;
       await moveItem(root, node.name, meta?.path ?? [], targetPath);
-      void refresh();
+      void refreshLibrary();
     },
-    [root, refresh],
+    [root, refreshLibrary],
   );
 
   const handleRename = useCallback(
-    async (_categoryId: string, _node: TreeNode, _newName: string) => {
-      // Rename support will be added when sampler-library exports renameItem
+    async (_catId: string, _node: TreeNode, _newName: string) => {
       throw new Error('Rename not yet implemented');
     },
     [],
   );
 
   const handleFileDrop = useCallback(
-    async (_categoryId: string, files: File[], targetPath: string[]) => {
+    async (_catId: string, files: File[], targetPath: string[]) => {
       if (!root) return;
       for (const file of files) {
-        const buffer = await file.arrayBuffer();
-        const data = new Uint8Array(buffer);
-        await importWavToCommonArea(root, file.name, data, { targetPath });
+        const buf = await file.arrayBuffer();
+        await importWavToCommonArea(root, file.name, new Uint8Array(buf), { targetPath });
       }
-      void refresh();
+      void refreshLibrary();
     },
-    [root, refresh],
+    [root, refreshLibrary],
   );
 
   // -----------------------------------------------------------------------
-  // Slots
+  // Render
   // -----------------------------------------------------------------------
 
   const connectionSlot = (
     <LibraryConnectionUI
       activeBackend={activeBackend}
-      isConnected={isConnected}
+      isConnected={isLibraryConnected}
       hasLocalFS={hasLocalFS}
       hasGoogleDrive={hasGoogleDrive}
       hasOPFS={hasOPFS}
@@ -224,12 +388,9 @@ export function LibraryPage(): JSX.Element {
     />
   );
 
-  // PluginLibraryBrowser.libraryHandle is typed as FileSystemDirectoryHandle
-  // but only uses it for truthiness checks. StorageDirectoryHandle is the
-  // broader abstraction from sampler-library that wraps OPFS, local FS, etc.
   // Guideline deviation: casting StorageDirectoryHandle to
-  // FileSystemDirectoryHandle because the component only checks truthiness.
-  // The prop type should be widened in editor-core; this cast is temporary.
+  // FileSystemDirectoryHandle because PluginLibraryBrowser only checks
+  // truthiness. The prop type should be widened in editor-core.
   const libraryHandle = root as unknown as FileSystemDirectoryHandle | null;
 
   return (
@@ -248,17 +409,70 @@ export function LibraryPage(): JSX.Element {
           selection={selection}
           onSelectionChange={setSelection}
           onToggleExpand={handleToggleExpand}
-          onRefresh={refresh}
+          onRefresh={refreshLibrary}
           onCreateFolder={handleCreateFolder}
           onDelete={handleDelete}
           onMove={handleMove}
           onRename={handleRename}
           onFileDrop={handleFileDrop}
+          deviceMemoryState={deviceMemoryState}
+          previewState={previewState}
           loading={loading}
           error={error ?? undefined}
           connectionSlot={connectionSlot}
         />
       </div>
+
+      {/* Sample Transfer Dialogs */}
+      {client && root && (
+        <>
+          <SendSampleDialog
+            open={sendDialog.open}
+            onClose={() => setSendDialog(SEND_DIALOG_CLOSED)}
+            sampleName={sendDialog.sampleName}
+            samplePath={sendDialog.samplePath}
+            client={client}
+            libraryRoot={root}
+            deviceSampleCount={deviceSampleNames.length}
+            onTransferComplete={() => refreshDevice()}
+          />
+          <ReceiveSampleDialog
+            open={receiveDialog.open}
+            onClose={() => setReceiveDialog(RECEIVE_DIALOG_CLOSED)}
+            sampleIndex={receiveDialog.sampleIndex}
+            sampleName={receiveDialog.sampleName}
+            client={client}
+            libraryRoot={root}
+            onTransferComplete={() => refreshLibrary()}
+          />
+        </>
+      )}
+
+      {/* Program Transfer Dialogs */}
+      {client && root && (
+        <>
+          <ExportProgramDialog
+            open={programTransfer.exportDialog.open}
+            onClose={programTransfer.closeExportDialog}
+            programIndex={programTransfer.exportDialog.programIndex}
+            programName={programTransfer.exportDialog.programName}
+            client={client}
+            libraryRoot={root}
+            onExportComplete={handleExportComplete}
+          />
+          <ImportProgramDialog
+            open={programTransfer.importDialog.open}
+            onClose={programTransfer.closeImportDialog}
+            programDirName={programTransfer.importDialog.programDirName}
+            programName={programTransfer.importDialog.programName}
+            targetProgramIndex={programTransfer.importDialog.targetProgramIndex}
+            client={client}
+            libraryRoot={root}
+            deviceSampleNames={deviceSampleNames}
+            onImportComplete={handleImportComplete}
+          />
+        </>
+      )}
     </div>
   );
 }

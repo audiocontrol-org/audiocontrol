@@ -5,8 +5,10 @@
  * currently selected item. Supports library samples, library programs,
  * device programs, device samples, and directories.
  *
- * Action buttons (Send to Device, Save to Library) are stubs pending
- * SDS transfer and device memory integration in a future phase.
+ * Action buttons:
+ * - "Send to Device" — triggers SDS transfer from library to device (samples)
+ * - "Save to Library" — triggers export from device to library (samples, programs)
+ * - "Send to Device" — triggers import from library to device (programs)
  */
 
 import type { ItemSelection, PreviewContext } from '@audiocontrol/editor-core';
@@ -20,8 +22,12 @@ import type { SampleMeta, ProgramMeta } from '@/plugins/item-types';
 export interface S3kPreviewCustomState {
   /** Callback for "Send to Device" action (sample) */
   onSendSampleToDevice?: (name: string, path?: string[]) => void;
-  /** Callback for "Send to Device" action (program) */
-  onSendProgramToDevice?: (name: string, path?: string[]) => void;
+  /** Callback for "Send to Device" action (library program) */
+  onSendProgramToDevice?: (dirName: string, name: string) => void;
+  /** Callback for "Save to Library" action (device sample) */
+  onSaveDeviceSampleToLibrary?: (index: number, name: string) => void;
+  /** Callback for "Save to Library" action (device program) */
+  onSaveDeviceProgramToLibrary?: (index: number, name: string) => void;
 }
 
 // =========================================================================
@@ -89,6 +95,7 @@ function SamplePreview({
               selection.node.name,
               meta.path,
             )}
+            data-testid="preview-send-to-device"
           >
             Send to Device
           </button>
@@ -106,24 +113,93 @@ function ProgramPreview({
   customState: S3kPreviewCustomState | undefined;
 }): JSX.Element {
   const meta = selection.meta as ProgramMeta;
-  const pathDisplay = meta.path?.join('/') || '/';
 
   return (
     <div className="p-4">
       <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
-      <MetaRow label="Type" value="Program" />
-      <MetaRow label="Path" value={pathDisplay} />
+      <MetaRow label="Type" value="S3000XL Program" />
+      <MetaRow label="Keygroups" value={meta.keygroupCount} />
+      <MetaRow label="Samples" value={meta.sampleReferences?.join(', ')} />
 
-      {customState?.onSendProgramToDevice && (
+      {customState?.onSendProgramToDevice && meta.dirName && (
         <div className="mt-4">
           <button
             className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
             onClick={() => customState.onSendProgramToDevice!(
+              meta.dirName!,
               selection.node.name,
-              meta.path,
             )}
+            data-testid="preview-send-program-to-device"
           >
             Send to Device
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Preview for a device-side sample (selected from DeviceMemoryPanel). */
+function DeviceSamplePreview({
+  selection,
+  customState,
+}: {
+  selection: ItemSelection;
+  customState: S3kPreviewCustomState | undefined;
+}): JSX.Element {
+  const meta = selection.meta as { deviceIndex: number };
+
+  return (
+    <div className="p-4">
+      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <MetaRow label="Type" value="Device Sample" />
+      <MetaRow label="Slot" value={`#${meta.deviceIndex}`} />
+
+      {customState?.onSaveDeviceSampleToLibrary && (
+        <div className="mt-4">
+          <button
+            className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 text-white rounded transition-colors"
+            onClick={() => customState.onSaveDeviceSampleToLibrary!(
+              meta.deviceIndex,
+              selection.node.name,
+            )}
+            data-testid="preview-save-to-library"
+          >
+            Save to Library
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Preview for a device-side program (selected from DeviceMemoryPanel). */
+function DeviceProgramPreview({
+  selection,
+  customState,
+}: {
+  selection: ItemSelection;
+  customState: S3kPreviewCustomState | undefined;
+}): JSX.Element {
+  const meta = selection.meta as { deviceIndex: number };
+
+  return (
+    <div className="p-4">
+      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <MetaRow label="Type" value="Device Program" />
+      <MetaRow label="Slot" value={`#${meta.deviceIndex}`} />
+
+      {customState?.onSaveDeviceProgramToLibrary && (
+        <div className="mt-4">
+          <button
+            className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 text-white rounded transition-colors"
+            onClick={() => customState.onSaveDeviceProgramToLibrary!(
+              meta.deviceIndex,
+              selection.node.name,
+            )}
+            data-testid="preview-save-program-to-library"
+          >
+            Save to Library
           </button>
         </div>
       )}
@@ -162,6 +238,14 @@ export function S3kPreviewPanelAdapter({
 
   if (selection.node.type === 'directory') {
     return <DirectoryPreview selection={selection} />;
+  }
+
+  if (selection.node.type === 'device-sample') {
+    return <DeviceSamplePreview selection={selection} customState={customState} />;
+  }
+
+  if (selection.node.type === 'device-program') {
+    return <DeviceProgramPreview selection={selection} customState={customState} />;
   }
 
   if (selection.node.type === 'sample') {

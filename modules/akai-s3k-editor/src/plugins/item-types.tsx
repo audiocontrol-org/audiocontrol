@@ -22,6 +22,12 @@ export interface SampleMeta {
 export interface ProgramMeta {
   directoryName?: string;
   path?: string[];
+  /** Filesystem directory name (sanitized, used for storage lookup) */
+  dirName?: string;
+  /** Number of keygroups in the program */
+  keygroupCount?: number;
+  /** Sample names referenced by the program's zones */
+  sampleReferences?: string[];
 }
 
 // =========================================================================
