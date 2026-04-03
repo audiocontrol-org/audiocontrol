@@ -141,6 +141,7 @@ export function ToneEditor({
                                     <button
                                         onClick={onExportSample}
                                         disabled={isExporting || isExportingToLibrary || !hasSampleData}
+                                        data-testid="export-sample-button"
                                         className={cn(
                                             'ac-btn ac-btn-sm',
                                             hasSampleData ? 'ac-btn-secondary' : 'ac-btn-ghost opacity-50',
