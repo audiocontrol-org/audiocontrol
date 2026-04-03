@@ -112,6 +112,31 @@ pub async fn sds_send(
     }))
 }
 
+/// Poll for pending SysEx data from the device without sending anything.
+/// Used for SDS streaming: the device sends data packets autonomously
+/// after the initial handshake. The transport calls this in a loop.
+pub async fn sds_poll(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<SendResponse>, (StatusCode, String)> {
+    let s2p = state.s2p.lock().await;
+
+    // Poll for any pending data
+    let pending = s2p.poll().await.map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+    if pending == 0 {
+        return Ok(Json(SendResponse {
+            ok: true,
+            response: vec![],
+        }));
+    }
+
+    let data = s2p.read(pending).await.map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+
+    Ok(Json(SendResponse {
+        ok: true,
+        response: data,
+    }))
+}
+
 pub async fn sds_stream(
     State(state): State<Arc<AppState>>,
     ws: WebSocketUpgrade,

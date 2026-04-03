@@ -37,6 +37,7 @@ async fn main() {
         .route("/status", get(routes::status))
         .route("/scsi/scan", get(routes::scsi_scan))
         .route("/sds/send", post(routes::sds_send))
+        .route("/sds/poll", get(routes::sds_poll))
         .route("/sds/stream", get(routes::sds_stream))
         .with_state(state)
         .layer(CorsLayer::permissive());

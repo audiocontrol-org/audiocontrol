@@ -93,10 +93,53 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
   let ws: WebSocket | null = null;
 
   // Serialize sends -- same pattern as httpMidiTransport.
-  // Awaiting each send ensures the MIDI message is fully delivered before the
-  // next send is queued. Without this, the browser may batch or delay
-  // fire-and-forget fetch() calls, causing SDS closed-loop transfers to fail.
   let sendQueue: Promise<void> = Promise.resolve();
+
+  // Background poll loop for incoming SysEx (SDS data packets, etc.)
+  // When WebSocket is unavailable, this polls GET /sds/poll periodically
+  // to receive data the device sends autonomously.
+  let pollInterval: ReturnType<typeof setInterval> | null = null;
+  let pollInFlight = false;
+
+  function startPolling(): void {
+    if (pollInterval || ws) return; // Don't poll if WebSocket is working
+    pollInterval = setInterval(async () => {
+      if (pollInFlight || listeners.size === 0) return;
+      pollInFlight = true;
+      try {
+        const res = await fetch(`${bridgeUrl}/sds/poll`);
+        const body = await res.json() as { ok: boolean; response: number[] };
+        if (body.response && body.response.length > 0) {
+          dispatchResponses(body.response);
+        }
+      } catch {
+        // Ignore poll errors — bridge may be temporarily busy
+      } finally {
+        pollInFlight = false;
+      }
+    }, 100); // Poll every 100ms
+  }
+
+  function stopPolling(): void {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  }
+
+  /** Split concatenated SysEx on F7 boundaries and dispatch each message. */
+  function dispatchResponses(data: number[]): void {
+    let start = 0;
+    for (let i = 0; i < data.length; i++) {
+      if (data[i] === 0xf7) {
+        const msg = data.slice(start, i + 1);
+        if (msg[0] === 0xf0) {
+          listeners.forEach((cb) => cb(msg));
+        }
+        start = i + 1;
+      }
+    }
+  }
 
   function handleWsMessage(event: MessageEvent): void {
     try {
@@ -125,22 +168,9 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ message }),
           });
-          // The bridge returns all available data, which may contain multiple
-          // concatenated SysEx messages (e.g., WAIT + Dump Header for SDS).
-          // Split on F7 boundaries and dispatch each complete message.
           const body = await res.json() as { ok: boolean; response: number[] };
           if (body.response && body.response.length > 0) {
-            const data = body.response;
-            let start = 0;
-            for (let i = 0; i < data.length; i++) {
-              if (data[i] === 0xf7) {
-                const msg = data.slice(start, i + 1);
-                if (msg[0] === 0xf0) {
-                  listeners.forEach((cb) => cb(msg));
-                }
-                start = i + 1;
-              }
-            }
+            dispatchResponses(body.response);
           }
         } catch (err) {
           console.error('[ScsiMidiTransport] Send error:', err);
@@ -150,10 +180,14 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
 
     onSysEx(callback: SysExCallback): void {
       listeners.add(callback);
+      startPolling();
     },
 
     removeSysExListener(callback: SysExCallback): void {
       listeners.delete(callback);
+      if (listeners.size === 0) {
+        stopPolling();
+      }
     },
   };
 
@@ -190,6 +224,7 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
   }
 
   function disconnect(): void {
+    stopPolling();
     if (ws) {
       ws.removeEventListener('message', handleWsMessage);
       ws.close();
