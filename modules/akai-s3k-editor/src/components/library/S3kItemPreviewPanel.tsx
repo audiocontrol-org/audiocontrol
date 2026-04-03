@@ -10,6 +10,7 @@
  * - "Send to Device" — triggers SDS transfer from library to device (samples)
  * - "Save to Library" — triggers export from device to library (samples, programs)
  * - "Send to Device" — triggers import from library to device (programs)
+ * - "Import as Drum Program" — imports drum kit slices as program + samples
  */
 
 import type { ItemSelection, PreviewContext } from '@audiocontrol/editor-core';
@@ -34,6 +35,8 @@ export interface S3kPreviewCustomState {
   onSaveDeviceSampleToLibrary?: (index: number, name: string) => void;
   /** Callback for "Save to Library" action (device program) */
   onSaveDeviceProgramToLibrary?: (index: number, name: string) => void;
+  /** Callback for "Import as Drum Program" action (drum kit) */
+  onImportDrumKit?: (name: string, path?: string[]) => void;
 }
 
 // =========================================================================
@@ -165,8 +168,8 @@ function DrumKitPreview({
       <MetaRow label="Path" value={pathDisplay} />
       <MetaRow label="Description" value={meta.description} />
 
-      {customState?.onSendSampleToDevice && (
-        <div className="mt-4">
+      <div className="mt-4 flex gap-2 flex-wrap">
+        {customState?.onSendSampleToDevice && (
           <button
             className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
             onClick={() => customState.onSendSampleToDevice!(
@@ -177,8 +180,21 @@ function DrumKitPreview({
           >
             Send to Device
           </button>
-        </div>
-      )}
+        )}
+
+        {customState?.onImportDrumKit && (
+          <button
+            className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded transition-colors"
+            onClick={() => customState.onImportDrumKit!(
+              selection.node.name,
+              meta.path,
+            )}
+            data-testid="preview-import-drum-kit"
+          >
+            Import as Drum Program
+          </button>
+        )}
+      </div>
     </div>
   );
 }

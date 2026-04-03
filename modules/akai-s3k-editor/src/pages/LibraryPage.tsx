@@ -13,6 +13,7 @@
  * Transfer dialogs:
  * - Sample SDS: SendSampleDialog, ReceiveSampleDialog
  * - Program SysEx: ExportProgramDialog, ImportProgramDialog
+ * - Drum Kit: ImportDrumKitDialog
  */
 
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
@@ -39,10 +40,12 @@ import { useS3000xlClient } from '@/hooks/useS3000xlClient';
 import { useDeviceLibraryData } from '@/hooks/useDeviceLibraryData';
 import { useLibraryPrograms } from '@/hooks/useLibraryPrograms';
 import { useProgramTransfer } from '@/hooks/useProgramTransfer';
+import { useDrumKitTransfer } from '@/hooks/useDrumKitTransfer';
 import { SendSampleDialog } from '@/components/library/SendSampleDialog';
 import { ReceiveSampleDialog } from '@/components/library/ReceiveSampleDialog';
 import { ExportProgramDialog } from '@/components/library/ExportProgramDialog';
 import { ImportProgramDialog } from '@/components/library/ImportProgramDialog';
+import { ImportDrumKitDialog } from '@/components/library/ImportDrumKitDialog';
 import type { S3kPreviewCustomState } from '@/components/library/S3kItemPreviewPanel';
 
 const PICKER_ID = 'akai-s3k-library';
@@ -149,6 +152,9 @@ export function LibraryPage(): JSX.Element {
   // Program dialog state
   const programTransfer = useProgramTransfer(isDeviceConnected, !!root);
 
+  // Drum kit dialog state
+  const drumKitTransfer = useDrumKitTransfer(isDeviceConnected, !!root);
+
   const hasInitiatedScan = useRef(false);
 
   // Scan library on first connect
@@ -244,8 +250,6 @@ export function LibraryPage(): JSX.Element {
 
   const handleSendProgramToDevice = useCallback(
     (dirName: string, name: string) => {
-      // Use the currently selected device program slot, or append after
-      // the last existing program
       const targetSlot = selectedDeviceType === 'program' && selectedDeviceIndex !== null
         ? selectedDeviceIndex
         : deviceProgramNames.length;
@@ -273,12 +277,14 @@ export function LibraryPage(): JSX.Element {
     onSaveDeviceSampleToLibrary: canTransfer ? handleSaveDeviceSampleToLibrary : undefined,
     onSaveDeviceProgramToLibrary: canTransfer ? handleSaveDeviceProgramToLibrary : undefined,
     onSendProgramToDevice: canTransfer ? handleSendProgramToDevice : undefined,
+    onImportDrumKit: canTransfer ? drumKitTransfer.openDialog : undefined,
   }), [
     canTransfer,
     handleSendSampleToDevice,
     handleSaveDeviceSampleToLibrary,
     handleSaveDeviceProgramToLibrary,
     handleSendProgramToDevice,
+    drumKitTransfer.openDialog,
   ]);
 
   // -----------------------------------------------------------------------
@@ -446,6 +452,19 @@ export function LibraryPage(): JSX.Element {
             onTransferComplete={() => refreshLibrary()}
           />
         </>
+      )}
+
+      {/* Drum Kit Import Dialog */}
+      {client && root && (
+        <ImportDrumKitDialog
+          open={drumKitTransfer.dialog.open}
+          onClose={drumKitTransfer.closeDialog}
+          sampleName={drumKitTransfer.dialog.sampleName}
+          samplePath={drumKitTransfer.dialog.samplePath}
+          client={client}
+          libraryRoot={root}
+          onImportComplete={() => refreshDevice()}
+        />
       )}
 
       {/* Program Transfer Dialogs */}
