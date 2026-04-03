@@ -134,9 +134,9 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 
 | # | Test | Priority | Status | Notes |
 |---|------|----------|--------|-------|
-| 3.3.1 | Export sample as WAV download | P1 | ❌ | |
-| 3.3.2 | Import sample from WAV file | P1 | ❌ | |
-| 3.3.3 | Wave bank selection during import | P1 | ❌ | |
+| 3.3.1 | Export sample as WAV download | P1 | ✅ | `device-sample-operations.spec.ts` — downloads WAV, verifies filename |
+| 3.3.2 | Import sample from WAV file | P1 | ✅ | `device-sample-operations.spec.ts` — uploads WAV, verifies tone name + segments on device |
+| 3.3.3 | Wave bank selection during import | P1 | ✅ | `device-sample-operations.spec.ts` — imports to bank B, verifies wave.bank=1 |
 | 3.3.4 | Sample rate conversion accuracy | P2 | ❌ | |
 | 3.3.5 | Large WAV file handling | P2 | ❌ | |
 
@@ -460,16 +460,16 @@ This document provides a full-coverage test plan for the roland-sxx0-editor appl
 | Priority | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | P0 | 44 | 38 | 2 | 4 |
-| P1 | 148 | 86 | 8 | 54 |
+| P1 | 148 | 89 | 8 | 51 |
 | P2 | 37 | 15 | 2 | 20 |
-| **Total** | **229** | **139** | **12** | **78** |
+| **Total** | **229** | **142** | **12** | **75** |
 
 ### By Hardware Requirement
 
 | Category | Total | Covered | Partial | Not Tested |
 |----------|-------|---------|---------|------------|
 | No Hardware | 83 | 79 | 1 | 3 |
-| Hardware Required | 146 | 60 | 11 | 75 |
+| Hardware Required | 146 | 63 | 11 | 72 |
 
 ### Critical Gaps (P0 Not Tested)
 
