@@ -15,6 +15,11 @@
  * - Program SysEx: ExportProgramDialog, ImportProgramDialog
  * - Drum Kit: ImportDrumKitDialog
  * - Instrument: ImportInstrumentDialog (common-area program -> S3K keygroups)
+ *
+ * Editor dialogs (device-agnostic):
+ * - Loop Editor: edit loop points on samples
+ * - Sample Editor: trim, normalize, fade, reverse samples
+ * - Sample Chopper: slice samples into drum kits
  */
 
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
@@ -33,6 +38,9 @@ import {
   importWavToCommonArea,
   listCommonSamplesTree,
 } from '@audiocontrol/sampler-library/browser';
+import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
+import { SampleEditorDialog } from '@audiocontrol/sample-editor/ui';
+import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
 import { useLibraryStore } from '@/stores/libraryStore';
 import { toTreeNode } from '@/lib/library-tree';
 import { s3kLibraryPlugin } from '@/plugins/s3k-library-plugin';
@@ -43,6 +51,7 @@ import { useLibraryPrograms } from '@/hooks/useLibraryPrograms';
 import { useProgramTransfer } from '@/hooks/useProgramTransfer';
 import { useDrumKitTransfer } from '@/hooks/useDrumKitTransfer';
 import { useInstrumentTransfer } from '@/hooks/useInstrumentTransfer';
+import { useEditorDialogs } from '@/hooks/useEditorDialogs';
 import { SendSampleDialog } from '@/components/library/SendSampleDialog';
 import { ReceiveSampleDialog } from '@/components/library/ReceiveSampleDialog';
 import { ExportProgramDialog } from '@/components/library/ExportProgramDialog';
@@ -128,6 +137,7 @@ export function LibraryPage(): JSX.Element {
   const loading = useLibraryStore((s) => s.loading);
   const error = useLibraryStore((s) => s.error);
   const clear = useLibraryStore((s) => s.clear);
+  const setError = useLibraryStore((s) => s.setError);
   const deviceProgramNames = useLibraryStore((s) => s.deviceProgramNames);
   const deviceSampleNames = useLibraryStore((s) => s.deviceSampleNames);
   const selectedDeviceIndex = useLibraryStore((s) => s.selectedDeviceIndex);
@@ -142,6 +152,13 @@ export function LibraryPage(): JSX.Element {
   const programTransfer = useProgramTransfer(isDeviceConnected, !!root);
   const drumKitTransfer = useDrumKitTransfer(isDeviceConnected, !!root);
   const instrumentTransfer = useInstrumentTransfer(isDeviceConnected, !!root);
+
+  const handleEditorError = useCallback(
+    (message: string) => setError(message),
+    [setError],
+  );
+  const editorDialogs = useEditorDialogs(root, refreshLibrary, handleEditorError);
+
   const hasInitiatedScan = useRef(false);
 
   // Scan library on first connect
@@ -251,6 +268,7 @@ export function LibraryPage(): JSX.Element {
   // -----------------------------------------------------------------------
 
   const canTransfer = isDeviceConnected && !!root;
+  const hasLibrary = !!root;
 
   const previewState = useMemo<S3kPreviewCustomState>(() => ({
     onSendSampleToDevice: canTransfer ? handleSendSampleToDevice : undefined,
@@ -259,10 +277,17 @@ export function LibraryPage(): JSX.Element {
     onSendProgramToDevice: canTransfer ? handleSendProgramToDevice : undefined,
     onImportDrumKit: canTransfer ? drumKitTransfer.openDialog : undefined,
     onImportInstrument: canTransfer ? handleImportInstrument : undefined,
+    onOpenInLoopEditor: hasLibrary ? editorDialogs.handleOpenInLoopEditor : undefined,
+    onOpenInSampleEditor: hasLibrary ? editorDialogs.handleOpenInSampleEditor : undefined,
+    onOpenInChopper: hasLibrary ? editorDialogs.handleOpenInChopper : undefined,
   }), [
-    canTransfer, handleSendSampleToDevice, handleSaveDeviceSampleToLibrary,
+    canTransfer, hasLibrary,
+    handleSendSampleToDevice, handleSaveDeviceSampleToLibrary,
     handleSaveDeviceProgramToLibrary, handleSendProgramToDevice,
     drumKitTransfer.openDialog, handleImportInstrument,
+    editorDialogs.handleOpenInLoopEditor,
+    editorDialogs.handleOpenInSampleEditor,
+    editorDialogs.handleOpenInChopper,
   ]);
 
   const deviceMemoryState = useMemo<S3kMemoryPanelState>(() => ({
@@ -465,6 +490,42 @@ export function LibraryPage(): JSX.Element {
             onImportComplete={handleImportComplete}
           />
         </>
+      )}
+
+      {/* Editor Dialogs (require library root only, no device) */}
+      {editorDialogs.loopEditor && (
+        <LoopEditorDialog
+          open={editorDialogs.loopEditor.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeLoopEditor(); }}
+          samples={editorDialogs.loopEditor.samples}
+          sampleRate={editorDialogs.loopEditor.sampleRate}
+          sampleName={editorDialogs.loopEditor.sampleName}
+          loopStart={editorDialogs.loopEditor.loopStart}
+          loopEnd={editorDialogs.loopEditor.loopEnd}
+          rootKey={editorDialogs.loopEditor.rootKey}
+          onSave={editorDialogs.handleLoopEditorSave}
+        />
+      )}
+      {editorDialogs.chopper && (
+        <SampleChopperDialog
+          open={editorDialogs.chopper.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeChopper(); }}
+          samples={editorDialogs.chopper.samples}
+          sampleRate={editorDialogs.chopper.sampleRate}
+          sourceName={editorDialogs.chopper.sampleName}
+          onConfirm={() => { editorDialogs.closeChopper(); }}
+          onSave={root ? editorDialogs.handleChopperSave : undefined}
+        />
+      )}
+      {editorDialogs.sampleEditor && (
+        <SampleEditorDialog
+          open={editorDialogs.sampleEditor.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeSampleEditor(); }}
+          samples={editorDialogs.sampleEditor.samples}
+          sampleRate={editorDialogs.sampleEditor.sampleRate}
+          sampleName={editorDialogs.sampleEditor.sampleName}
+          onSave={root ? editorDialogs.handleSampleEditorSave : undefined}
+        />
       )}
     </div>
   );

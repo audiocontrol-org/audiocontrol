@@ -69,6 +69,10 @@ export const sampleItemType: ItemTypePlugin<SampleMeta> = {
   supportsRename: true,
 
   getContextMenuActions: () => [
+    { id: 'open-loop-editor', label: 'Loop Editor', icon: null },
+    { id: 'open-sample-editor', label: 'Edit Sample', icon: null },
+    { id: 'open-chopper', label: 'Chop', icon: null },
+    { separator: true },
     { id: 'rename', label: 'Rename', icon: null },
     { id: 'move', label: 'Move to...', icon: null },
     { separator: true },
@@ -100,6 +104,10 @@ export const choppedSampleItemType: ItemTypePlugin<ChoppedSampleMeta> = {
   supportsRename: true,
 
   getContextMenuActions: () => [
+    { id: 'open-loop-editor', label: 'Loop Editor', icon: null },
+    { id: 'open-sample-editor', label: 'Edit Sample', icon: null },
+    { id: 'open-chopper', label: 'Chop', icon: null },
+    { separator: true },
     { id: 'rename', label: 'Rename', icon: null },
     { id: 'move', label: 'Move to...', icon: null },
     { separator: true },

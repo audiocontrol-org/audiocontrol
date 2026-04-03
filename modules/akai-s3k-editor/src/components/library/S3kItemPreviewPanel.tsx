@@ -12,6 +12,9 @@
  * - "Send to Device" — triggers import from library to device (S3K programs)
  * - "Import as Drum Program" — imports drum kit slices as program + samples
  * - "Import to Device" — converts common-area program zones to S3K keygroups
+ * - "Open in Loop Editor" — opens loop point editor for samples
+ * - "Open in Editor" — opens sample editor for destructive editing
+ * - "Chop into Drum Kit" — opens sample chopper for slicing into drum kit
  */
 
 import type { ItemSelection, PreviewContext } from '@audiocontrol/editor-core';
@@ -48,6 +51,12 @@ export interface S3kPreviewCustomState {
   onImportDrumKit?: (name: string, path?: string[]) => void;
   /** Callback for "Import to Device" action (common-area program) */
   onImportInstrument?: (dirName: string, path: string[]) => void;
+  /** Callback for "Open in Loop Editor" action (sample) */
+  onOpenInLoopEditor?: (name: string, type: string, path?: string[]) => void;
+  /** Callback for "Open in Editor" action (sample) */
+  onOpenInSampleEditor?: (name: string, type: string, path?: string[]) => void;
+  /** Callback for "Chop into Drum Kit" action (sample) */
+  onOpenInChopper?: (name: string, type: string, path?: string[]) => void;
 }
 
 // =========================================================================
@@ -90,6 +99,56 @@ function DirectoryPreview({ selection }: { selection: ItemSelection }): JSX.Elem
   );
 }
 
+/** Shared editor action buttons for samples and chopped samples. */
+function EditorActions({
+  name,
+  nodeType,
+  path,
+  customState,
+}: {
+  name: string;
+  nodeType: string;
+  path?: string[];
+  customState: S3kPreviewCustomState | undefined;
+}): JSX.Element | null {
+  const hasActions = customState?.onOpenInLoopEditor
+    || customState?.onOpenInSampleEditor
+    || customState?.onOpenInChopper;
+  if (!hasActions) return null;
+
+  return (
+    <div className="mt-3 flex gap-2 flex-wrap">
+      {customState.onOpenInLoopEditor && (
+        <button
+          className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
+          onClick={() => customState.onOpenInLoopEditor!(name, nodeType, path)}
+          data-testid="preview-open-loop-editor"
+        >
+          Loop Editor
+        </button>
+      )}
+      {customState.onOpenInSampleEditor && (
+        <button
+          className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
+          onClick={() => customState.onOpenInSampleEditor!(name, nodeType, path)}
+          data-testid="preview-open-sample-editor"
+        >
+          Edit Sample
+        </button>
+      )}
+      {customState.onOpenInChopper && (
+        <button
+          className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
+          onClick={() => customState.onOpenInChopper!(name, nodeType, path)}
+          data-testid="preview-open-chopper"
+        >
+          Chop
+        </button>
+      )}
+    </div>
+  );
+}
+
 function SamplePreview({
   selection,
   customState,
@@ -121,6 +180,13 @@ function SamplePreview({
           </button>
         </div>
       )}
+
+      <EditorActions
+        name={selection.node.name}
+        nodeType={selection.node.type}
+        path={meta.path}
+        customState={customState}
+      />
     </div>
   );
 }
@@ -157,6 +223,13 @@ function ChoppedSamplePreview({
           </button>
         </div>
       )}
+
+      <EditorActions
+        name={selection.node.name}
+        nodeType={selection.node.type}
+        path={meta.path}
+        customState={customState}
+      />
     </div>
   );
 }
