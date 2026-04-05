@@ -32,4 +32,30 @@ declare module '@audiocontrol/midi-core' {
   export function getBrowserCompatibility(): BrowserCompatibility;
   export function requestMidiAccess(): Promise<WebMidiAccess>;
   export function createWebMidiAdapter(input: MIDIInput, output: MIDIOutput): MidiIO;
+
+  // SCSI MIDI transport types
+  export interface ScsiMidiBridgeStatus {
+    version: string;
+    scsi2piVersion: string;
+    boardId: number;
+    samplerReachable: boolean;
+  }
+
+  export interface ScsiDevice {
+    id: number;
+    vendor: string;
+    product: string;
+    revision: string;
+  }
+
+  export interface ScsiMidiTransportOptions {
+    bridgeUrl: string;
+  }
+
+  export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
+    adapter: MidiIO;
+    connect: () => Promise<ScsiMidiBridgeStatus>;
+    disconnect: () => void;
+    scanDevices: () => Promise<ScsiDevice[]>;
+  };
 }

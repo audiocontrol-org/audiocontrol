@@ -12,6 +12,7 @@ export type {
   TransportConfig,
   RuntimeMockMidiConfig,
   RuntimeHttpMidiConfig,
+  RuntimeScsiMidiConfig,
   RuntimeMidiTransportConfig,
   RuntimeMidiTransportResult,
 } from './runtimeTransport';
@@ -19,13 +20,16 @@ export {
   createRuntimeMidiTransport,
   isMockMidiMode,
   isHttpMidiMode,
+  isScsiMidiMode,
   getHttpMidiServerUrl,
+  getScsiBridgeUrl,
   isMockLibraryMode,
   getSavedTransportConfig,
   saveTransportConfig,
   clearTransportConfig,
   getActiveTransportMode,
   getActiveHttpServerUrl,
+  getActiveScsiUrl,
 } from './runtimeTransport';
 export type {
   HttpMidiTransportConfig,
@@ -33,6 +37,12 @@ export type {
 export {
   createHttpMidiTransport,
 } from './httpMidiTransport';
+export type {
+  ScsiMidiTransportConfig,
+} from './scsiMidiTransport';
+export {
+  createScsiMidiTransport,
+} from './scsiMidiTransport';
 export type {
   MockMidiTransportOptions,
   MockMidiTransportControls,

@@ -6,6 +6,7 @@ import {
   saveTransportConfig,
   getActiveTransportMode,
   getActiveHttpServerUrl,
+  getActiveScsiUrl,
 } from '@/transports/runtimeTransport';
 
 export interface TransportSelectorProps {
@@ -13,6 +14,7 @@ export interface TransportSelectorProps {
 }
 
 const DEFAULT_HTTP_URL = 'http://localhost:7777';
+const DEFAULT_SCSI_URL = 'http://s3k.local:7033';
 
 /**
  * Component for selecting MIDI transport type.
@@ -23,29 +25,35 @@ const DEFAULT_HTTP_URL = 'http://localhost:7777';
 export function TransportSelector({ disabled = false }: TransportSelectorProps): JSX.Element {
   const currentMode = getActiveTransportMode();
   const currentHttpUrl = getActiveHttpServerUrl() ?? DEFAULT_HTTP_URL;
+  const currentScsiUrl = getActiveScsiUrl() ?? DEFAULT_SCSI_URL;
 
   const [selectedMode, setSelectedMode] = useState<TransportMode>(currentMode);
   const [httpUrl, setHttpUrl] = useState(currentHttpUrl);
+  const [scsiUrl, setScsiUrl] = useState(currentScsiUrl);
   const [showHttpConfig, setShowHttpConfig] = useState(currentMode === 'http');
+  const [showScsiConfig, setShowScsiConfig] = useState(currentMode === 'scsi');
 
   const hasChanges = selectedMode !== currentMode ||
-    (selectedMode === 'http' && httpUrl !== currentHttpUrl);
+    (selectedMode === 'http' && httpUrl !== currentHttpUrl) ||
+    (selectedMode === 'scsi' && scsiUrl !== currentScsiUrl);
 
   const handleModeChange = useCallback((mode: TransportMode) => {
     setSelectedMode(mode);
     setShowHttpConfig(mode === 'http');
+    setShowScsiConfig(mode === 'scsi');
   }, []);
 
   const handleApply = useCallback(() => {
     const config: TransportConfig = {
       mode: selectedMode,
       httpServerUrl: selectedMode === 'http' ? httpUrl : undefined,
+      scsiBridgeUrl: selectedMode === 'scsi' ? scsiUrl : undefined,
     };
     saveTransportConfig(config);
 
     // Reload to apply new transport
     window.location.reload();
-  }, [selectedMode, httpUrl]);
+  }, [selectedMode, httpUrl, scsiUrl]);
 
   return (
     <div className="ac-stack-sm">
@@ -78,6 +86,19 @@ export function TransportSelector({ disabled = false }: TransportSelectorProps):
             <span>HTTP MIDI Server</span>
             <span className="ac-text-muted ac-text-sm"> — External midi-server process</span>
           </label>
+          <label className="ac-radio-label">
+            <input
+              type="radio"
+              name="transport"
+              value="scsi"
+              checked={selectedMode === 'scsi'}
+              onChange={() => handleModeChange('scsi')}
+              disabled={disabled}
+              className="ac-radio"
+            />
+            <span>SCSI Bridge</span>
+            <span className="ac-text-muted ac-text-sm"> — MIDI via SCSI bridge on Raspberry Pi</span>
+          </label>
         </div>
       </div>
 
@@ -98,12 +119,31 @@ export function TransportSelector({ disabled = false }: TransportSelectorProps):
         </div>
       )}
 
+      {showScsiConfig && (
+        <div className="ac-field ac-ml-4">
+          <label className="ac-label">Bridge URL</label>
+          <input
+            type="text"
+            value={scsiUrl}
+            onChange={(e) => setScsiUrl(e.target.value)}
+            placeholder={DEFAULT_SCSI_URL}
+            disabled={disabled}
+            className="ac-input"
+          />
+          <p className="ac-text-muted ac-text-sm ac-mt-1">
+            The SCSI bridge daemon must be running at this address.
+          </p>
+        </div>
+      )}
+
       {hasChanges && (
         <div className="ac-mt-2">
           <button
             type="button"
             onClick={handleApply}
-            disabled={disabled || (selectedMode === 'http' && !httpUrl)}
+            disabled={disabled ||
+              (selectedMode === 'http' && !httpUrl) ||
+              (selectedMode === 'scsi' && !scsiUrl)}
             className="ac-btn ac-btn-primary"
           >
             Apply & Reload
