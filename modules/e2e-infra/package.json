@@ -3,15 +3,22 @@
   "version": "0.1.0",
   "description": "Shared E2E testing infrastructure for audiocontrol editors",
   "type": "module",
+  "imports": {
+    "#node/*": "./src/node/*"
+  },
   "scripts": {
-    "test": "echo 'no tests yet'"
+    "test": "echo 'no tests yet'",
+    "scsi-write-test": "tsx src/node/scsi-write-test.ts"
   },
   "dependencies": {
+    "@audiocontrol/midi-core": "workspace:*",
+    "@audiocontrol/sampler-devices": "workspace:*",
     "@playwright/test": "^1.57.0",
     "easymidi": "^3.1.0",
     "tsx": "^4.7.0"
   },
   "devDependencies": {
+    "@tsconfig/recommended": "^1.0.7",
     "typescript": "^5.3.0"
   }
 }

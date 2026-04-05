@@ -78,6 +78,7 @@ export function createS3000xlClient(
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMING.TIMEOUT_MS;
   const writeFlushDelayMs = options?.writeFlushDelayMs ?? DEFAULT_TIMING.WRITE_FLUSH_DELAY_MS;
   const maxRetries = options?.maxRetries ?? DEFAULT_TIMING.MAX_RETRIES;
+  const noCache = options?.noCache ?? false;
 
   // Caches
   let programNamesCache: string[] | undefined;
@@ -264,46 +265,50 @@ export function createS3000xlClient(
 
   const client: S3000xlClientInterface = {
     async fetchProgramNames(): Promise<string[]> {
-      if (programNamesCache) return [...programNamesCache];
+      if (!noCache && programNamesCache) return [...programNamesCache];
 
       const response = await sendCommandWithRetry(AkaiOpcode.RPLIST, []);
       const names = parseNameList(response, AKAI_NAME_LENGTH);
-      programNamesCache = names;
+      if (!noCache) programNamesCache = names;
       return [...names];
     },
 
     async fetchSampleNames(): Promise<string[]> {
-      if (sampleNamesCache) return [...sampleNamesCache];
+      if (!noCache && sampleNamesCache) return [...sampleNamesCache];
 
       const response = await sendCommandWithRetry(AkaiOpcode.RSLIST, []);
       const names = parseNameList(response, AKAI_NAME_LENGTH);
-      sampleNamesCache = names;
+      if (!noCache) sampleNamesCache = names;
       return [...names];
     },
 
     async fetchProgramHeader(programNumber: number): Promise<ProgramHeader> {
-      const cached = programHeaderCache.get(programNumber);
-      if (cached) return cached;
+      if (!noCache) {
+        const cached = programHeaderCache.get(programNumber);
+        if (cached) return cached;
+      }
 
       const response = await sendCommandWithRetry(
         AkaiOpcode.RPDATA,
         byte2nibblesLE(programNumber),
       );
       const header = parseProgramFromResponse(response);
-      programHeaderCache.set(programNumber, header);
+      if (!noCache) programHeaderCache.set(programNumber, header);
       return header;
     },
 
     async fetchSampleHeader(sampleNumber: number): Promise<SampleHeader> {
-      const cached = sampleHeaderCache.get(sampleNumber);
-      if (cached) return cached;
+      if (!noCache) {
+        const cached = sampleHeaderCache.get(sampleNumber);
+        if (cached) return cached;
+      }
 
       const response = await sendCommandWithRetry(
         AkaiOpcode.RSDATA,
         byte2nibblesLE(sampleNumber),
       );
       const header = parseSampleFromResponse(response);
-      sampleHeaderCache.set(sampleNumber, header);
+      if (!noCache) sampleHeaderCache.set(sampleNumber, header);
       return header;
     },
 
@@ -312,31 +317,36 @@ export function createS3000xlClient(
       keygroupNumber: number,
     ): Promise<KeygroupHeader> {
       const cacheKey = `${programNumber}:${keygroupNumber}`;
-      const cached = keygroupHeaderCache.get(cacheKey);
-      if (cached) return cached;
+      if (!noCache) {
+        const cached = keygroupHeaderCache.get(cacheKey);
+        if (cached) return cached;
+      }
 
       const response = await sendCommandWithRetry(
         AkaiOpcode.RKDATA,
         byte2nibblesLE(programNumber).concat(keygroupNumber),
       );
       const header = parseKeygroupFromResponse(response);
-      keygroupHeaderCache.set(cacheKey, header);
+      if (!noCache) keygroupHeaderCache.set(cacheKey, header);
       return header;
     },
 
     async writeProgramHeader(header: ProgramHeader): Promise<void> {
       const key = `program:${header.PRNAME}`;
-      await bufferWrite(key, AkaiOpcode.PDATA, header.raw);
+      // raw is the full SysEx message [F0 47 ch opcode 48 ...payload... F7].
+      // bufferWrite wraps data in buildAkaiSysEx which adds the envelope,
+      // so we must strip the 5-byte header and 1-byte F7 to avoid double-framing.
+      await bufferWrite(key, AkaiOpcode.PDATA, header.raw.slice(5, -1));
     },
 
     async writeKeygroupHeader(header: KeygroupHeader): Promise<void> {
       const key = `keygroup:${header.raw?.slice(0, 8).join(',')}`;
-      await bufferWrite(key, AkaiOpcode.KDATA, header.raw);
+      await bufferWrite(key, AkaiOpcode.KDATA, header.raw.slice(5, -1));
     },
 
     async writeSampleHeader(header: SampleHeader): Promise<void> {
       const key = `sample:${header.SHNAME}`;
-      await bufferWrite(key, AkaiOpcode.SDATA, header.raw);
+      await bufferWrite(key, AkaiOpcode.SDATA, header.raw.slice(5, -1));
     },
 
     async sendSampleViaSds(
@@ -416,11 +426,13 @@ export function createS3000xlClient(
         rawData = [...kg0.raw];
       }
 
-      // Set KNUMBER to the new keygroup index
-      rawData[KNUMBER_RAW_INDEX] = keygroupNumber;
+      // Strip SysEx envelope (5-byte header + F7) to get payload,
+      // then set KNUMBER in the payload (KNUMBER_RAW_INDEX - 5 = offset within payload)
+      const payload = rawData.slice(5, -1);
+      payload[KNUMBER_RAW_INDEX - 5] = keygroupNumber;
 
       const key = `createKeygroup:${programNumber}:${keygroupNumber}`;
-      await bufferWrite(key, AkaiOpcode.KDATA, rawData);
+      await bufferWrite(key, AkaiOpcode.KDATA, payload);
       invalidateAllKeygroupAndProgramCaches();
     },
 

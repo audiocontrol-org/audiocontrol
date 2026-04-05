@@ -24,6 +24,9 @@ export interface S3000xlClientOptions {
 
   /** Maximum number of retry attempts for failed commands. Default: 3 */
   readonly maxRetries: number;
+
+  /** Bypass all caching — every read fetches fresh from the device. Default: false */
+  readonly noCache: boolean;
 }
 
 /**
