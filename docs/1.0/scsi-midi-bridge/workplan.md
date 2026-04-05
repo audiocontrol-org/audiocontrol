@@ -7,129 +7,96 @@
 
 ## Technical Approach
 
-Build a network bridge between audiocontrol (browser) and the SCSI bus, allowing the existing SDS protocol layer to operate over SCSI instead of a MIDI cable. The architecture has three parts:
+Built a network bridge between audiocontrol (browser) and the SCSI bus, allowing the existing SDS protocol layer and Akai SysEx commands to operate over SCSI instead of a MIDI cable. The architecture has three parts:
 
-1. **Pi bridge daemon (Rust)** -- HTTP/WebSocket server running on the Raspberry Pi. It receives SysEx data from audiocontrol over WiFi and forwards it to the S3000XL over the SCSI bus by shelling out to `s2pexec`. It also receives SCSI data from the sampler and streams it back to audiocontrol via WebSocket.
+1. **Pi bridge daemon (Rust)** -- HTTP/WebSocket server running on the Raspberry Pi (`services/scsi-midi-bridge/`). It receives SysEx data from audiocontrol over WiFi and forwards it to the S3000XL over the SCSI bus via the s2p protobuf API. Responses are read back and dispatched to the browser via HTTP response body and WebSocket broadcast.
 
-2. **`ScsiMidiTransport` (TypeScript)** -- A new `SysexTransport` implementation in `sampler-devices` (or `midi-core`) that talks to the Pi bridge over HTTP/WebSocket. Because it implements the same interface as the MIDI cable transport, the existing `SdsClient` works without modification.
+2. **`ScsiMidiTransport` (TypeScript)** -- A `MidiIO` implementation in `midi-core` (`src/transports/scsi-midi-transport.ts`) that talks to the Pi bridge over HTTP/WebSocket. Because it implements the same `MidiIO` interface as Web MIDI and HTTP MIDI transports, the existing S3000XL client and SDS layer work without modification.
 
-3. **Capture session** -- Before implementing the write/read paths, we must capture a live MIDI-via-SCSI conversation between two Akai devices (or between SCSI2Pi and the S3000XL) to determine the exact CDB format, framing, and message boundary behavior. This is the critical unknown.
+3. **Capture session** -- Captured live MIDI-via-SCSI traffic using SCSI2Pi trace mode. Fully decoded the 4-step CDB protocol (INIT, SEND, POLL, READ). Also reverse-engineered MESA II's SCSI Plug binary to understand Akai's own implementation.
 
 **Key architectural decisions:**
 
-- **Same `SysexTransport` interface** -- The SCSI bridge is a transport-layer concern only. The SDS protocol, S3000XL client, and editor UI are unchanged.
-- **Rust for the Pi daemon** -- Low overhead, no runtime, suitable for a headless systemd service on a Pi. Shells out to `s2pexec` rather than reimplementing SCSI initiator logic.
-- **HTTP for one-shot, WebSocket for streaming** -- `POST /sds/send` for simple fire-and-forget sends; `WS /sds/stream` for closed-loop handshaking where latency matters.
-- **Capture before code** -- Phase 3 (capture session) is the critical path. The write and read path implementations depend entirely on what the capture reveals about CDB format and message framing.
+- **Same `MidiIO` interface** -- The SCSI bridge is a transport-layer concern only. The SDS protocol, S3000XL client, and editor UI are unchanged.
+- **Rust for the Pi daemon** -- Low overhead, no runtime, suitable for a headless systemd service on a Pi.
+- **s2p protobuf API, not s2pexec** -- s2pexec and s2p cannot coexist (both need exclusive GPIO access). The bridge daemon communicates with the running s2p process via its protobuf API on port 6868, with hand-encoded protobuf messages (no protoc dependency).
+- **HTTP for sends, polling for receives** -- `POST /sds/send` sends SysEx and returns the response. `GET /sds/poll` checks for pending incoming data. WebSocket (`WS /sds/stream`) provides real-time receive when available, with HTTP polling as fallback (every 50ms).
+- **Capture before code** -- Phase 3 (capture session) was the critical path and is now complete.
 
 ## Implementation Phases
 
 Phase 1 (SDS over MIDI cable) is complete. See [midi-sds workplan](https://github.com/audiocontrol-org/audiocontrol/blob/feature/midi-sds/docs/1.0/midi-sds/workplan.md) for details. Phases below continue the numbering from that workplan.
 
-### Phase 2: SCSI Bus Connectivity
+### Phase 2: SCSI Bus Connectivity — COMPLETE
 
-Stand up the Pi bridge daemon with status and discovery endpoints. Confirm audiocontrol can reach the Pi and enumerate SCSI devices over WiFi.
+Stood up the Pi bridge daemon with status, discovery, and SysEx relay endpoints. Confirmed audiocontrol can reach the Pi and enumerate SCSI devices over WiFi.
 
-#### 2.1 Pi Bridge Daemon Scaffold
+#### 2.1 Pi Bridge Daemon — COMPLETE
 
-Create the Rust project for the bridge daemon. Implement `GET /status` and `GET /scsi/scan`.
+**Implementation:** `services/scsi-midi-bridge/` (Rust, Axum 0.7, Tokio)
 
-**Tasks:**
+- `src/main.rs` — HTTP server on port 7033 with CORS, shared s2p client state
+- `src/routes.rs` — All endpoints: `/health`, `/status`, `/scsi/scan`, `/sds/send`, `/sds/poll`, `/sds/stream`
+- `src/s2p_client.rs` — Hand-encoded protobuf client for s2p API (port 6868). Operations: MIDI_INIT (200), MIDI_SEND (201), MIDI_POLL (202), MIDI_READ (203). Multi-chunk response handling with 30-retry polling loop.
+- `src/config.rs` — CLI args: `--port`, `--s2p-host`, `--s2p-port`, `--target-id`
 
-| # | Task | GitHub Issue |
-|---|------|-------------|
-| 1 | Scaffold Rust project with HTTP server (axum or actix-web) | TBD |
-| 2 | Implement `GET /status` (version, SCSI2Pi version, board ID) | TBD |
-| 3 | Implement `GET /scsi/scan` (shell out to `s2pexec --scan` or equivalent) | TBD |
-| 4 | Add sampler reachability check to `/status` (SCSI INQUIRY) | TBD |
-| 5 | Create systemd unit file, install alongside `s2p` | TBD |
+#### 2.2 ScsiMidiTransport — COMPLETE
 
-**Acceptance criteria:**
-- `curl http://s3k:PORT/status` returns JSON with version, SCSI2Pi version, board ID, and `samplerReachable: true`
-- `curl http://s3k:PORT/scsi/scan` returns JSON array with S3000XL identified by vendor/product/revision
-- Daemon starts on boot via systemd, does not interfere with `s2p`
+**Implementation:** `modules/midi-core/src/transports/scsi-midi-transport.ts` (247 lines)
 
-#### 2.2 ScsiMidiTransport Scaffold
+- Factory: `createScsiMidiTransport(options)` returns `{ adapter: MidiIO, connect, disconnect, scanDevices }`
+- Send: serialized queue → `POST /sds/send` → dispatch response to listeners
+- Receive: WebSocket `/sds/stream` (primary) with HTTP polling `/sds/poll` every 50ms (fallback)
+- 22 unit tests in `__tests__/scsi-midi-transport.test.ts`
 
-Create the TypeScript transport class. Wire it to the bridge daemon status endpoint for connection verification.
+### Phase 3: Capture Session — COMPLETE
 
-**Tasks:**
+Captured live MIDI-via-SCSI traffic from the S3000XL and fully decoded the protocol. Also reverse-engineered MESA II's SCSI Plug binary for additional confirmation.
 
-| # | Task | GitHub Issue |
-|---|------|-------------|
-| 6 | Create `ScsiMidiTransport` implementing `SysexTransport` interface | TBD |
-| 7 | Implement `connect()` -- verify bridge reachable via `GET /status` | TBD |
-| 8 | Implement `disconnect()` -- close WebSocket, clear state | TBD |
-| 9 | Add SCSI device enumeration method (calls `GET /scsi/scan`) | TBD |
-| 10 | Unit tests for transport connection/disconnection lifecycle | TBD |
+**Findings documented in:**
+- [capture-notes.md](capture-notes.md) — Full CDB protocol decode, SCMP device implementation attempts, raw traces
+- [mesa-ii-analysis.md](mesa-ii-analysis.md) — MESA II binary analysis, sample data transfer discovery
+- [findings-phase2.md](findings-phase2.md) — s2pexec/s2p bus contention constraint
 
-**Acceptance criteria:**
-- `ScsiMidiTransport.connect()` succeeds when bridge daemon is running, throws when unreachable
-- Device enumeration returns parsed SCSI device list from bridge
-- Transport implements full `SysexTransport` interface (send/onMessage stubbed for Phase 4/5)
+**Protocol decoded:**
 
-### Phase 3: Capture Session (CRITICAL PATH)
+| Step | CDB | Direction | Purpose |
+|------|-----|-----------|---------|
+| 1. Init | `09:00:01:01:00:00` | No data | Activate MIDI-via-SCSI session |
+| 2. Send | `0C:00:00:00:LL:00` | DATA OUT (LL bytes) | Send SysEx to S3000XL |
+| 3. Poll | `0D:00:00:00:00:00` | DATA IN (3 bytes) | Read pending response byte count (`00 HH LL`) |
+| 4. Read | `0E:00:00:00:LL:00` | DATA IN (LL bytes) | Read buffered SysEx response |
 
-Capture a live MIDI-via-SCSI dump from the S3000XL to determine the exact protocol details. This phase is research, not code -- the output is documentation that unblocks Phases 4 and 5.
+**Key discovery:** MESA II transfers sample waveform data via direct SCSI disk image access, NOT via SysEx-over-SCSI. The "Sample data can only be transferred using SCSI" message in MESA refers to native SCSI block reads, not the MIDI-via-SCSI channel. RSPACK (0x0C) does not work over the SCSI MIDI channel.
 
-**Tasks:**
+### Phase 4: Write Path (Laptop to Sampler) — COMPLETE
 
-| # | Task | GitHub Issue |
-|---|------|-------------|
-| 11 | Configure SCSI2Pi trace logging for SCSI bus traffic | TBD |
-| 12 | Trigger a MIDI-via-SCSI sample dump from S3000XL (device-initiated) | TBD |
-| 13 | Capture and analyze CDB bytes, data phase content, message framing | TBD |
-| 14 | Determine: one SCSI WRITE per SysEx message vs. continuous stream | TBD |
-| 15 | Document findings in `docs/1.0/scsi-midi-bridge/capture-notes.md` | TBD |
+Implemented the send direction. All Akai SysEx commands (parameter reads/writes) and SDS sample uploads work over SCSI.
 
-**Acceptance criteria:**
-- Exact CDB format documented (command byte, LBA fields, transfer length)
-- Message framing behavior documented (per-message or streaming)
-- Data phase content confirmed to be byte-for-byte standard MIDI SysEx
-- Findings sufficient to implement Phases 4 and 5
+**Implementation:**
+- `POST /sds/send` on bridge: accepts SysEx bytes, calls `s2p_client.send_and_receive()`, returns response
+- `ScsiMidiTransport.send()`: serialized HTTP POST queue, dispatches responses to listeners
+- S3000XL client works identically with SCSI transport or Web MIDI transport (same `MidiIO` interface)
+- 7 E2E test suites (`modules/akai-s3k-editor/e2e/scsi-*.spec.ts`) covering programs, keygroups, velocity zones, sample headers, SDS transfer
 
-**Open risks:**
-- If the S3000XL requires a specific SCSI device type (e.g., processor) on the other end, the Pi may need to register as that device type. This may require SCSI2Pi configuration or patching.
-- If the CDB is undocumented and the capture is ambiguous, additional experimentation may be needed.
+**Open investigation:** Write-readback tests return stale values. Under investigation in `feature/scsi-write-validation` to determine whether writes genuinely don't persist or the E2E test infrastructure (caching, browser state) is the issue.
 
-### Phase 4: Write Path (Laptop to Sampler)
+### Phase 5: Read Path (Sampler to Laptop) — PARTIAL (firmware limitation)
 
-Implement the send direction: audiocontrol sends SysEx to the Pi bridge, which forwards it to the S3000XL over the SCSI bus.
+Request/response reads work (all Akai SysEx read commands). Autonomous device-initiated streaming (SDS Data Packets) does NOT work due to S3000XL firmware limitation.
 
-**Tasks:**
+**What works:**
+- `WS /sds/stream` on bridge: bidirectional WebSocket relay (implemented)
+- `GET /sds/poll` on bridge: HTTP polling for pending SysEx (implemented, 50ms interval)
+- `ScsiMidiTransport.onSysEx()`: listener callback with WebSocket + polling fallback (implemented)
+- All request/response Akai SysEx commands: RPLIST, RSLIST, RPDATA, RKDATA, RSDATA
+- SDS Dump Header arrives when device initiates a dump
 
-| # | Task | GitHub Issue |
-|---|------|-------------|
-| 16 | Implement `POST /sds/send` on Pi bridge (accept SysEx, send via `s2pexec`) | TBD |
-| 17 | Implement `ScsiMidiTransport.send()` (HTTP POST to bridge) | TBD |
-| 18 | Wire `SdsClient` to use `ScsiMidiTransport` as an alternative to MIDI transport | TBD |
-| 19 | End-to-end test: drag WAV into audiocontrol, verify sample loads in S3000XL RAM | TBD |
+**What does NOT work:**
+- SDS Data Packets do not arrive after the Dump Header — the S3000XL firmware does not route autonomous SDS Data Packets through the SCSI response buffer. Over a MIDI cable, Data Packets go to the MIDI OUT port; the firmware has no equivalent path for SCSI streaming.
+- RSPACK (request sample waveform data, opcode 0x0C) returns empty responses over SCSI MIDI
 
-**Acceptance criteria:**
-- A WAV file sent from audiocontrol via SCSI bridge loads into S3000XL RAM and plays back correctly
-- `SdsClient` works identically whether using MIDI cable transport or SCSI bridge transport
-- Transfer is measurably faster than MIDI cable for equivalent sample data
-
-### Phase 5: Read Path (Sampler to Laptop)
-
-Implement the receive direction: the S3000XL sends SysEx over SCSI, the Pi bridge streams it to audiocontrol via WebSocket.
-
-**Tasks:**
-
-| # | Task | GitHub Issue |
-|---|------|-------------|
-| 20 | Implement `WS /sds/stream` on Pi bridge (bidirectional SysEx relay) | TBD |
-| 21 | Implement `ScsiMidiTransport.onMessage()` (WebSocket listener) | TBD |
-| 22 | Handle SCSI target-mode receive on Pi (accept sampler-initiated writes) | TBD |
-| 23 | End-to-end test: trigger dump on S3000XL, verify sample appears in audiocontrol | TBD |
-
-**Acceptance criteria:**
-- A sample dump triggered on the S3000XL front panel arrives in audiocontrol via the SCSI bridge
-- WebSocket stream correctly frames individual SysEx messages
-- Closed-loop handshaking works over WebSocket (ACK/NAK round-trip latency acceptable)
-
-**Open risks:**
-- Read path requires the Pi to act as a SCSI target (accepting writes from the sampler). This depends on SCSI2Pi's ability to register a custom device type or processor target. See Open Question 1 in the PRD.
+**Workaround:** Sample waveform data download uses the existing `sampler-export` disk image extractor. The S3000XL's SCSI disks are served as `.hds` images by s2p on the Pi filesystem, and `sampler-export` can read them directly. This is also how MESA II transfers sample data (confirmed via binary analysis).
 
 ### Phase 6: Akai Extended Protocol (Deferred)
 
@@ -141,35 +108,36 @@ This phase is deferred and will be planned separately once Phases 2-5 are valida
 
 | # | Task | Phase | Status |
 |---|------|-------|--------|
-| 1 | Scaffold Rust bridge daemon project | 2.1 | TODO |
-| 2 | Implement `GET /status` | 2.1 | TODO |
-| 3 | Implement `GET /scsi/scan` | 2.1 | TODO |
-| 4 | Add sampler reachability to `/status` | 2.1 | TODO |
-| 5 | Create systemd unit file | 2.1 | TODO |
-| 6 | Create `ScsiMidiTransport` class | 2.2 | TODO |
-| 7 | Implement `connect()` | 2.2 | TODO |
-| 8 | Implement `disconnect()` | 2.2 | TODO |
-| 9 | Add SCSI device enumeration | 2.2 | TODO |
-| 10 | Unit tests for transport lifecycle | 2.2 | TODO |
-| 11 | Configure SCSI2Pi trace logging | 3 | TODO |
-| 12 | Trigger MIDI-via-SCSI dump from S3000XL | 3 | TODO |
-| 13 | Analyze CDB and data phase content | 3 | TODO |
-| 14 | Determine message framing behavior | 3 | TODO |
-| 15 | Document capture findings | 3 | TODO |
-| 16 | Implement `POST /sds/send` on bridge | 4 | TODO |
-| 17 | Implement `ScsiMidiTransport.send()` | 4 | TODO |
-| 18 | Wire `SdsClient` to SCSI transport | 4 | TODO |
-| 19 | E2E test: send WAV via SCSI bridge | 4 | TODO |
-| 20 | Implement `WS /sds/stream` on bridge | 5 | TODO |
-| 21 | Implement `ScsiMidiTransport.onMessage()` | 5 | TODO |
-| 22 | Handle SCSI target-mode receive on Pi | 5 | TODO |
-| 23 | E2E test: receive dump via SCSI bridge | 5 | TODO |
+| 1 | Scaffold Rust bridge daemon project | 2.1 | DONE |
+| 2 | Implement `GET /status` | 2.1 | DONE |
+| 3 | Implement `GET /scsi/scan` | 2.1 | DONE (hardcoded to S3000XL at ID 6) |
+| 4 | Add sampler reachability to `/status` | 2.1 | DONE |
+| 5 | Create systemd unit file | 2.1 | DONE (deployed to Pi, not version-controlled) |
+| 6 | Create `ScsiMidiTransport` class | 2.2 | DONE |
+| 7 | Implement `connect()` | 2.2 | DONE |
+| 8 | Implement `disconnect()` | 2.2 | DONE |
+| 9 | Add SCSI device enumeration | 2.2 | DONE |
+| 10 | Unit tests for transport lifecycle | 2.2 | DONE (22 tests) |
+| 11 | Configure SCSI2Pi trace logging | 3 | DONE |
+| 12 | Trigger MIDI-via-SCSI dump from S3000XL | 3 | DONE |
+| 13 | Analyze CDB and data phase content | 3 | DONE |
+| 14 | Determine message framing behavior | 3 | DONE (poll-based, not streaming) |
+| 15 | Document capture findings | 3 | DONE (capture-notes.md, mesa-ii-analysis.md) |
+| 16 | Implement `POST /sds/send` on bridge | 4 | DONE |
+| 17 | Implement `ScsiMidiTransport.send()` | 4 | DONE |
+| 18 | Wire S3000XL client to SCSI transport | 4 | DONE |
+| 19 | E2E tests: SCSI MIDI bridge | 4 | DONE (7 suites, 40+ tests) |
+| 20 | Implement `WS /sds/stream` on bridge | 5 | DONE |
+| 21 | Implement `ScsiMidiTransport.onSysEx()` | 5 | DONE (WebSocket + polling fallback) |
+| 22 | Handle SCSI target-mode receive on Pi | 5 | BLOCKED (firmware limitation — SDS Data Packets not routed over SCSI) |
+| 23 | E2E test: receive dump via SCSI bridge | 5 | BLOCKED (same firmware limitation) |
 
-## Dependencies
+## Known Limitations
 
-- Phase 2 can begin immediately (no blockers)
-- Phase 3 can run in parallel with Phase 2 (only requires Pi + S3000XL hardware, not bridge code)
-- Phase 4 depends on Phase 2 (bridge daemon must exist) and Phase 3 (CDB format must be known)
-- Phase 5 depends on Phase 2 (transport class must exist) and Phase 3 (framing must be known)
-- Phase 5 may also depend on SCSI2Pi capabilities for target-mode operation (Open Question 1)
-- Phase 6 is deferred and depends on Phases 4 and 5
+1. **SDS Data Packet streaming over SCSI** — The S3000XL firmware does not route autonomous SDS Data Packets through the SCSI response buffer. The Dump Header arrives, but Data Packets do not follow. This is a firmware limitation, not a bridge issue. Workaround: read sample waveform data from disk images via `sampler-export`.
+
+2. **RSPACK over SCSI MIDI** — The RSPACK opcode (0x0C, request sample data) returns empty responses over the SCSI MIDI channel. All other Akai SysEx opcodes work. MESA II also does not use RSPACK — it reads sample data from disk images directly.
+
+3. **SCSI device scan is hardcoded** — `/scsi/scan` returns a hardcoded entry for S3000XL at ID 6. The s2p protobuf API does not expose full SCSI bus scanning.
+
+4. **Write persistence under investigation** — E2E readback tests after writes return stale values. Being investigated in `feature/scsi-write-validation`.

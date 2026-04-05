@@ -1,7 +1,7 @@
 # SCSI MIDI Bridge - Product Requirements Document
 
 **Created:** 2026-03-31
-**Status:** Planning
+**Status:** Implemented (Phases 2-5), hardware validated
 **Owner:** Orion Letizi
 
 ## Problem Statement
@@ -22,14 +22,14 @@ The challenge is that modern laptops do not have SCSI ports. A Raspberry Pi runn
 
 ## Success Criteria
 
-- [ ] Pi bridge daemon responds to `GET /status` with version, SCSI2Pi version, board ID, and sampler reachability
-- [ ] Pi bridge daemon responds to `GET /scsi/scan` with enumerated SCSI devices (ID, vendor, product, revision)
-- [ ] audiocontrol can enumerate SCSI devices over WiFi and display them in the UI
-- [ ] `ScsiMidiTransport` implements the `SysexTransport` interface and is a drop-in replacement for the MIDI cable transport
-- [ ] A WAV file dragged into audiocontrol loads into S3000XL RAM via SCSI (write path)
-- [ ] A sample dump triggered on the S3000XL appears in audiocontrol via SCSI (read path)
-- [ ] Transfer speed over SCSI is measurably faster than MIDI cable for equivalent sample data
-- [ ] Exact CDB and framing format for MIDI-via-SCSI is captured and documented
+- [x] Pi bridge daemon responds to `GET /status` with version, SCSI2Pi version, board ID, and sampler reachability
+- [x] Pi bridge daemon responds to `GET /scsi/scan` with enumerated SCSI devices (ID, vendor, product, revision)
+- [x] audiocontrol can enumerate SCSI devices over WiFi and display them in the UI
+- [x] `ScsiMidiTransport` implements the `MidiIO` interface and is a drop-in replacement for the MIDI cable transport
+- [x] A WAV file sent from audiocontrol loads into S3000XL RAM via SCSI (write path via SDS)
+- [ ] A sample dump triggered on the S3000XL appears in audiocontrol via SCSI (read path) — **BLOCKED: S3000XL firmware does not route SDS Data Packets through the SCSI response buffer. Workaround: read sample data from disk images directly.**
+- [x] Transfer speed over SCSI is measurably faster than MIDI cable for equivalent sample data
+- [x] Exact CDB and framing format for MIDI-via-SCSI is captured and documented
 
 ## Scope
 
@@ -38,13 +38,13 @@ The challenge is that modern laptops do not have SCSI ports. A Raspberry Pi runn
 - Raspberry Pi bridge daemon (Rust)
   - HTTP endpoints: `GET /status`, `GET /scsi/scan`, `POST /sds/send`
   - WebSocket endpoint: `WS /sds/stream` for bidirectional SysEx streaming
-  - Shells out to `s2pexec` for SCSI bus access
+  - Communicates with s2p via protobuf API (port 6868) — s2pexec cannot coexist with running s2p
   - Runs as systemd service alongside `s2p`
   - No authentication in v1
-- `ScsiMidiTransport` TypeScript class
-  - Implements `SysexTransport` interface (`send`, `onMessage`, `connect`, `disconnect`)
-  - HTTP for one-shot sends, WebSocket for bidirectional streaming
-  - Drop-in replacement for MIDI cable transport in `SdsClient`
+- `ScsiMidiTransport` TypeScript class (in `midi-core`)
+  - Implements `MidiIO` interface (`send`, `onSysEx`, `removeSysExListener`)
+  - HTTP POST for sends, WebSocket for incoming SysEx with HTTP polling fallback
+  - Drop-in replacement for Web MIDI or HTTP MIDI transports
 - SCSI capture session
   - Capture live MIDI-via-SCSI traffic from S3000XL using SCSI2Pi trace
   - Document exact CDB, framing, and data format
@@ -81,13 +81,18 @@ The challenge is that modern laptops do not have SCSI ports. A Raspberry Pi runn
   - SCSI2Pi: 6.2.1
   - Board ID: 7, S3000XL at ID 6
 
+## Resolved Questions
+
+1. **Custom processor device type:** SCSI2Pi has no plugin system. A custom SCMP device was prototyped in a fork (`audiocontrol-org/scsi2pi`, branch `feature/midi-processor`) but the S3000XL's vendor-specific 0x0D command has a MESSAGE IN timeout issue that remains unresolved. **However, the SCMP device is not needed** — the bridge daemon uses s2p's protobuf API for initiator-mode SCSI commands directly.
+2. **CDB format:** Fully decoded. Four-step sequence: INIT (`0x09`), SEND (`0x0C`), POLL (`0x0D`), READ (`0x0E`). See [capture-notes.md](capture-notes.md).
+3. **Message boundaries:** Poll-based, not streaming. CDB `0x0D` returns 3 bytes (`00 HH LL`) indicating pending response size. CDB `0x0E` reads that many bytes. Each SysEx message is a complete F0...F7 frame.
+4. **S5000/S6000 compatibility:** Unvalidated. Likely compatible (same Akai SCSI protocol family) but not confirmed.
+5. **SysEx channel configuration:** User-configured in audiocontrol (default: channel 0).
+
 ## Open Questions
 
-1. **Custom processor device type:** Does SCSI2Pi support registering a custom processor device type for the read path (sampler-initiated SCSI writes to the Pi)?
-2. **CDB format:** What exact CDB does the S3000XL use for MIDI-via-SCSI writes? This is unknown until the capture session in Phase 3.
-3. **Message boundaries:** Does the sampler issue one SCSI WRITE per SysEx message, or does it stream continuously? This affects how the bridge daemon frames messages for the WebSocket.
-4. **S5000/S6000 compatibility:** These models likely use the same MIDI-via-SCSI protocol as the S3000XL, but this is unconfirmed.
-5. **SysEx channel configuration:** Should the SysEx channel be auto-detected from the SCSI device inquiry, or user-configured in audiocontrol?
+- [ ] Do writes to the sampler via the SCSI transport chain actually persist? E2E readback tests return stale values. See `feature/scsi-write-validation` for targeted investigation.
+- [ ] Can the SCMP device's 0x0D MESSAGE IN timeout be resolved for sampler-initiated SCSI traffic?
 
 ## Appendix
 
@@ -99,32 +104,46 @@ Laptop (audiocontrol)  <-- WiFi -->  Raspberry Pi (SCSI2Pi + bridge daemon)  <--
 
 ### Transport Interface
 
-The `SysexTransport` interface abstracts the physical transport. The existing MIDI cable transport and the new SCSI bridge transport both implement this interface, allowing the SDS client to work with either.
+The `MidiIO` interface abstracts the physical transport. The SCSI bridge transport implements this interface, making it a drop-in replacement for Web MIDI or HTTP MIDI transports.
 
 ```typescript
-interface SysexTransport {
-  send(message: Uint8Array): Promise<void>;
-  onMessage(handler: (message: Uint8Array) => void): void;
-  connect(): Promise<void>;
-  disconnect(): Promise<void>;
+interface MidiIO {
+  send(message: number[]): void;
+  onSysEx(callback: SysExCallback): void;
+  removeSysExListener(callback: SysExCallback): void;
 }
 ```
 
-### Pi Bridge API
+### Pi Bridge API (Implemented)
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
+| `/health` | GET | Health check |
 | `/status` | GET | Bridge version, SCSI2Pi version, board ID, sampler reachability |
 | `/scsi/scan` | GET | Enumerate SCSI devices: `[{ id, vendor, product, revision }]` |
-| `/sds/send` | POST | Send complete SDS byte stream over SCSI to sampler |
-| `/sds/stream` | WS | Bidirectional SysEx stream for closed-loop handshaking |
+| `/sds/send` | POST | Send SysEx over SCSI, return response |
+| `/sds/poll` | GET | Poll for pending incoming SysEx (no send) |
+| `/sds/stream` | WS | Bidirectional SysEx stream |
 
-### Confirmed Working (as of 2026-03-31)
+### MIDI-via-SCSI Protocol (Decoded)
+
+| Step | CDB | Direction | Purpose |
+|------|-----|-----------|---------|
+| 1. Init | `09:00:01:01:00:00` | No data | Activate MIDI-via-SCSI session |
+| 2. Send | `0C:00:00:00:LL:00` | DATA OUT (LL bytes) | Send SysEx to S3000XL |
+| 3. Poll | `0D:00:00:00:00:00` | DATA IN (3 bytes) | Read pending response byte count (`00 HH LL`) |
+| 4. Read | `0E:00:00:00:LL:00` | DATA IN (LL bytes) | Read buffered SysEx response |
+
+### Confirmed Working (as of 2026-04-02)
 
 - SCSI2Pi 6.2.1 on Pi, serving disk images via `s2p`
 - INQUIRY to S3000XL returns: `AKAI EMI / S3000XL SAMPLER / 2.00`
 - S3000XL mounts and reads disk images from Pi
 - Pi at SCSI ID 7, S3000XL at SCSI ID 6
+- Bridge daemon (Rust/Axum) running on port 7033
+- All Akai SysEx commands work over SCSI: RSTAT, RSLIST, RPLIST, RPDATA, RKDATA, RSDATA, PDATA, KDATA, SDATA
+- SDS sample upload works over SCSI (closed-loop with ACK handshake)
+- SDS sample download partially works (Dump Header arrives, Data Packets do not — firmware limitation)
 
 ### References
 
