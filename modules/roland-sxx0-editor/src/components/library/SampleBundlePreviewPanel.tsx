@@ -11,17 +11,18 @@
  * For chopped samples, shows slice list with trigger mappings.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   loadDrumKitBundle,
+  loadDrumKitSource,
   loadChoppedSampleManifest,
   type DrumKitInfo,
 } from '@/lib/library-service';
+import { DrumKitPadList } from '@/components/library/DrumKitPadList';
 import {
   midiNoteToName,
   parseNoteName,
   type ResolvedDrumKitBundle,
-  type DetectedKit,
   type SampleYaml,
   type StorageDirectoryHandle,
 } from '@audiocontrol/sampler-library/browser';
@@ -51,60 +52,8 @@ interface SampleBundlePreviewPanelProps {
 }
 
 // =========================================================================
-// Drum Kit sub-components (preserved from DrumKitPreviewPanel)
+// Drum Kit sub-components
 // =========================================================================
-
-function formatDrumType(type: string): string {
-  const typeMap: Record<string, string> = {
-    kick: 'Kick',
-    snare: 'Snare',
-    hhClosed: 'Closed HH',
-    hhOpen: 'Open HH',
-  };
-  return typeMap[type] ?? type;
-}
-
-function KitDisplay({ kit }: { kit: DetectedKit }): JSX.Element {
-  const drumOrder = ['kick', 'snare', 'hhClosed', 'hhOpen'] as const;
-
-  return (
-    <div className="bg-s330-bg rounded p-3 text-sm">
-      <div className="flex items-center justify-between mb-2">
-        <span className="font-medium text-s330-text">
-          Kit {String(kit.kitNumber).padStart(2, '0')}
-        </span>
-        <span className="text-xs text-s330-muted">
-          {midiNoteToName(kit.midiNotes.kick)} - {midiNoteToName(kit.midiNotes.hhOpen)}
-        </span>
-      </div>
-
-      <div className="space-y-1.5">
-        {drumOrder.map((type) => {
-          const sample = kit.samples[type];
-          const midiNote = kit.midiNotes[type];
-
-          return (
-            <div key={type} className="flex items-center gap-2 text-xs">
-              <span className="w-8 text-s330-muted">{midiNoteToName(midiNote)}</span>
-              <span className="w-16 text-s330-muted">{formatDrumType(type)}</span>
-              {sample ? (
-                <span className="flex-1 truncate text-s330-text">{sample}</span>
-              ) : (
-                <span className="flex-1 text-s330-muted/50 italic">missing</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {!kit.isComplete && (
-        <div className="mt-2 text-xs text-yellow-500">
-          Warning: Kit is incomplete
-        </div>
-      )}
-    </div>
-  );
-}
 
 function MidiRangeVisualization({ bundle }: { bundle: ResolvedDrumKitBundle }): JSX.Element {
   if (bundle.kits.length === 0) return <></>;
@@ -217,13 +166,34 @@ export function SampleBundlePreviewPanel({
   const [bundle, setBundle] = useState<ResolvedDrumKitBundle | null>(null);
   const [manifest, setManifest] = useState<SampleYaml | null>(null);
 
+  // Audio state for drum kit pad preview
+  const [audioSamples, setAudioSamples] = useState<Int16Array | null>(null);
+  const [isLoadingAudio, setIsLoadingAudio] = useState(false);
+
   const isDrumKit = !!kitInfo || !!preloadedBundle;
+
+  const handleLoadAudio = useCallback(async () => {
+    if (!libraryHandle || !bundle?.source) return;
+    const kitName = kitInfo?.directoryName ?? '';
+    if (!kitName) return;
+
+    setIsLoadingAudio(true);
+    try {
+      const result = await loadDrumKitSource(libraryHandle, kitName, bundle.source);
+      setAudioSamples(result.samples);
+    } catch (err) {
+      console.error('[SampleBundlePreviewPanel] Failed to load audio:', err);
+    } finally {
+      setIsLoadingAudio(false);
+    }
+  }, [libraryHandle, bundle, kitInfo]);
 
   // Load data when selection changes
   useEffect(() => {
     setBundle(null);
     setManifest(null);
     setError(null);
+    setAudioSamples(null);
 
     if (preloadedBundle) {
       setBundle(preloadedBundle);
@@ -338,14 +308,13 @@ export function SampleBundlePreviewPanel({
 
             <MidiRangeVisualization bundle={bundle} />
 
-            <div className="space-y-2">
-              <div className="text-xs text-s330-muted uppercase tracking-wide">
-                Detected Kits
-              </div>
-              {bundle.kits.map((kit) => (
-                <KitDisplay key={kit.kitNumber} kit={kit} />
-              ))}
-            </div>
+            <DrumKitPadList
+              bundle={bundle}
+              samples={audioSamples}
+              sampleRate={bundle.sampleRate}
+              isLoadingAudio={isLoadingAudio}
+              onLoadAudio={handleLoadAudio}
+            />
 
             {!bundle.allComplete && (
               <div className="bg-yellow-500/10 border border-yellow-500/30 rounded p-3 text-sm text-yellow-500">

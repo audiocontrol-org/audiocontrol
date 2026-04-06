@@ -1,8 +1,9 @@
 /**
- * E2E test for importing a drum kit from the library to the device.
+ * E2E tests for importing drum kits from the library to the device.
  *
- * Tests the drum kit import flow:
- *   1. Write a v2 drum kit fixture (kit.yaml + source.wav) to OPFS
+ * Tests both v1 (individual WAV files per drum) and v2 (single source WAV
+ * with slice definitions) drum kit import flows:
+ *   1. Write a drum kit fixture to OPFS
  *   2. Connect to OPFS library
  *   3. Select the drum kit in the library tree
  *   4. Import to device via ImportSamplesDialog
@@ -127,6 +128,30 @@ slices:
 const KIT_WAV_BASE64 = createMinimalWavBase64(30000, 2);
 
 // ---------------------------------------------------------------------------
+// V1 Drum Kit Fixture (individual WAV files per drum)
+// ---------------------------------------------------------------------------
+
+const V1_KIT_FIXTURE_NAME = 'e2e-kit-v1';
+
+const V1_KIT_YAML = `format: drum-kit-bundle
+version: 1
+name: E2E Kit V1
+sampleRate: 30000
+baseNote: 36
+`;
+
+/** Each drum sample: 0.5 seconds of silence at 30kHz (15000 samples) */
+const DRUM_WAV_BASE64 = createMinimalWavBase64(30000, 0.5);
+
+/** V1 drum filenames -- must match parser patterns in drum-kit-parser.ts */
+const V1_DRUM_FILENAMES = [
+  'KICK 01.wav',
+  'SNARE 01.wav',
+  'HHC 01.wav',
+  'HHO 01.wav',
+];
+
+// ---------------------------------------------------------------------------
 // OPFS Helper
 // ---------------------------------------------------------------------------
 
@@ -191,6 +216,214 @@ async function writeDrumKitFixtureToOPFS(
   );
 }
 
+// ---------------------------------------------------------------------------
+// V1 OPFS Helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Write a v1 drum kit fixture to OPFS (individual WAV files per drum).
+ *
+ * Creates: library/s330/drum-kits/{kitName}/kit.yaml
+ *          library/s330/drum-kits/{kitName}/KICK 01.wav
+ *          library/s330/drum-kits/{kitName}/SNARE 01.wav
+ *          library/s330/drum-kits/{kitName}/HHC 01.wav
+ *          library/s330/drum-kits/{kitName}/HHO 01.wav
+ *
+ * Must be called BEFORE connectToOPFS -- the app reads library on connect.
+ */
+async function writeDrumKitV1FixtureToOPFS(
+  page: Page,
+  kitName: string,
+  kitYaml: string,
+  drumWavBase64: string,
+  drumFilenames: readonly string[]
+): Promise<void> {
+  await page.evaluate(
+    async ({
+      kitName,
+      kitYaml,
+      drumWavBase64,
+      drumFilenames,
+      device,
+    }: {
+      kitName: string;
+      kitYaml: string;
+      drumWavBase64: string;
+      drumFilenames: readonly string[];
+      device: string;
+    }) => {
+      const root = await navigator.storage.getDirectory();
+      const lib = await root.getDirectoryHandle('library', { create: true });
+      const deviceDir = await lib.getDirectoryHandle(device, { create: true });
+      const drumKitsDir = await deviceDir.getDirectoryHandle('drum-kits', {
+        create: true,
+      });
+      const kitDir = await drumKitsDir.getDirectoryHandle(kitName, {
+        create: true,
+      });
+
+      // Write kit.yaml
+      const yamlHandle = await kitDir.getFileHandle('kit.yaml', {
+        create: true,
+      });
+      const yamlWriter = await yamlHandle.createWritable();
+      await yamlWriter.write(kitYaml);
+      await yamlWriter.close();
+
+      // Decode WAV base64 once (all drums use the same silent WAV)
+      const binaryString = atob(drumWavBase64);
+      const wavBytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        wavBytes[i] = binaryString.charCodeAt(i);
+      }
+
+      // Write each drum WAV file
+      for (const filename of drumFilenames) {
+        const wavHandle = await kitDir.getFileHandle(filename, {
+          create: true,
+        });
+        const wavWriter = await wavHandle.createWritable();
+        await wavWriter.write(wavBytes);
+        await wavWriter.close();
+      }
+    },
+    {
+      kitName,
+      kitYaml,
+      drumWavBase64,
+      drumFilenames: [...drumFilenames],
+      device: LIBRARY_DEVICE,
+    }
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shared Import + Verify Flow
+// ---------------------------------------------------------------------------
+
+/**
+ * Select a drum kit from the library tree, import it to the device via the
+ * ImportSamplesDialog, wait for success, and verify tones on the device.
+ *
+ * Shared between v1 and v2 drum kit import tests to avoid duplication.
+ */
+async function importDrumKitAndVerify(
+  page: Page,
+  kitFixtureName: string
+): Promise<void> {
+  // Snapshot device state before import
+  await loadAllDeviceData(page);
+  const stateBefore = await queryDeviceMemoryState(page);
+  console.log(
+    `Device state before import: ${stateBefore.occupiedToneCount} tones, ` +
+      `${stateBefore.occupiedPatchCount} patches occupied`
+  );
+
+  // Connect to OPFS -- app reads library contents on connect
+  await connectToOPFS(page);
+
+  // Switch to drum kits tab
+  const drumKitsTab = page.locator('[data-testid="library-drumKits-tab"]');
+  await expect(drumKitsTab).toBeVisible({ timeout: UI_TIMEOUT_MS });
+  await drumKitsTab.click();
+
+  // Wait for kit to appear in tree and select it
+  const kitItem = page.locator(
+    `[data-testid="library-drum-kit-${kitFixtureName}"]`
+  );
+  await expect(kitItem).toBeVisible({ timeout: UI_TIMEOUT_MS });
+  await kitItem.click();
+
+  // Click "Import to Device" in the preview panel
+  const importButton = page.locator(
+    '[data-testid="import-to-device-button"]'
+  );
+  await expect(importButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+  await importButton.click();
+
+  // ImportSamplesDialog opens -- accept defaults and click import
+  const importSamplesButton = page.locator('button', {
+    hasText: 'Import Samples',
+  });
+  await expect(importSamplesButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+  await importSamplesButton.click();
+
+  // Wait for import success (heartbeat-safe polling)
+  const POLL_INTERVAL = 2_000;
+  const MAX_POLLS = 75; // Watchdog (10s) is the real safety net; this just bounds the loop
+  let importSucceeded = false;
+
+  for (let poll = 0; poll < MAX_POLLS; poll++) {
+    await page.waitForTimeout(POLL_INTERVAL);
+    const successVisible = await page
+      .locator('text=Samples imported successfully')
+      .isVisible();
+    if (successVisible) {
+      importSucceeded = true;
+      break;
+    }
+
+    // Check for error
+    const errorVisible = await page
+      .locator('.ac-operation-error')
+      .isVisible();
+    if (errorVisible) {
+      const errorText = await page
+        .locator('.ac-operation-error')
+        .textContent();
+      throw new Error(`Import failed with error: ${errorText}`);
+    }
+  }
+
+  expect(
+    importSucceeded,
+    'Expected import to succeed within timeout'
+  ).toBe(true);
+
+  // Close the success dialog by clicking "Done"
+  const doneButton = page.locator('button', { hasText: 'Done' });
+  await expect(doneButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+  await doneButton.click();
+
+  // Wait for write flush to ensure device has processed all MIDI
+  await page.waitForTimeout(WRITE_FLUSH_MS);
+
+  // Reload device data to see the imported tones and patch
+  await loadAllDeviceData(page);
+  const stateAfter = await queryDeviceMemoryState(page);
+  console.log(
+    `Device state after import: ${stateAfter.occupiedToneCount} tones, ` +
+      `${stateAfter.occupiedPatchCount} patches occupied`
+  );
+
+  // Verify drum kit tones exist on device (by name, not count delta --
+  // the device may already have these tones from a prior run)
+  expect(
+    stateAfter.occupiedToneCount,
+    `Expected at least 4 occupied tones for drum kit, got ${stateAfter.occupiedToneCount}`
+  ).toBeGreaterThanOrEqual(4);
+
+  // Verify tone names include "KICK" and "SNARE"
+  // The device uppercases and may truncate names to 8 chars.
+  const toneNames = stateAfter.tones
+    .filter((t) => !t.empty)
+    .map((t) => t.name.trim());
+
+  console.log(`Occupied tone names: ${toneNames.join(', ')}`);
+
+  const hasKick = toneNames.some((name) => name.includes('KICK'));
+  const hasSnare = toneNames.some((name) => name.includes('SNARE'));
+
+  expect(
+    hasKick,
+    `Expected a tone named "KICK" on device. Found tones: [${toneNames.join(', ')}]`
+  ).toBe(true);
+  expect(
+    hasSnare,
+    `Expected a tone named "SNARE" on device. Found tones: [${toneNames.join(', ')}]`
+  ).toBe(true);
+}
+
 // ===========================================================================
 // Test Suite
 // ===========================================================================
@@ -222,20 +455,12 @@ test.describe('Drum Kit Import', () => {
     await cleanupOPFS(page);
   });
 
-  test('drum kit import creates tones and patch on device', async ({
+  test('v2 drum kit import creates tones and patch on device', async ({
     page,
   }) => {
     attachConsoleDebugListener(page);
 
-    // Step 1: Snapshot device state before import
-    await loadAllDeviceData(page);
-    const stateBefore = await queryDeviceMemoryState(page);
-    console.log(
-      `Device state before import: ${stateBefore.occupiedToneCount} tones, ` +
-        `${stateBefore.occupiedPatchCount} patches occupied`
-    );
-
-    // Step 2: Write drum kit fixture to OPFS BEFORE connecting to library
+    // Write v2 drum kit fixture to OPFS BEFORE connecting to library
     await writeDrumKitFixtureToOPFS(
       page,
       KIT_FIXTURE_NAME,
@@ -243,119 +468,23 @@ test.describe('Drum Kit Import', () => {
       KIT_WAV_BASE64
     );
 
-    // Step 3: Connect to OPFS -- app reads library contents on connect
-    await connectToOPFS(page);
+    await importDrumKitAndVerify(page, KIT_FIXTURE_NAME);
+  });
 
-    // Step 4: Switch to drum kits tab
-    const drumKitsTab = page.locator(
-      '[data-testid="library-drumKits-tab"]'
-    );
-    await expect(drumKitsTab).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    await drumKitsTab.click();
+  test('v1 drum kit import creates tones and patch on device', async ({
+    page,
+  }) => {
+    attachConsoleDebugListener(page);
 
-    // Step 5: Wait for kit to appear in tree and select it
-    // Tree node testid: library-drum-kit-{directoryName}
-    const kitItem = page.locator(
-      `[data-testid="library-drum-kit-${KIT_FIXTURE_NAME}"]`
-    );
-    await expect(kitItem).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    await kitItem.click();
-
-    // Step 6: Click "Import to Device" in the preview panel
-    const importButton = page.locator(
-      '[data-testid="import-to-device-button"]'
-    );
-    await expect(importButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    await importButton.click();
-
-    // Step 7: ImportSamplesDialog opens -- accept defaults and click import
-    // The dialog shows tone slot, wave bank, segment, and patch slot selectors.
-    // Accept defaults (slot 0, bank 0, segment 0, patch 0).
-    const importSamplesButton = page.locator('button', {
-      hasText: 'Import Samples',
-    });
-    await expect(importSamplesButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    await importSamplesButton.click();
-
-    // Step 8: Wait for import success (heartbeat-safe polling)
-    // The OperationSuccessScreen shows "Samples imported successfully!"
-    // Poll with page.waitForTimeout to keep heartbeat alive.
-    const POLL_INTERVAL = 2_000;
-    const MAX_POLLS = 75; // Watchdog (10s) is the real safety net; this just bounds the loop
-    let importSucceeded = false;
-
-    for (let poll = 0; poll < MAX_POLLS; poll++) {
-      await page.waitForTimeout(POLL_INTERVAL);
-      const successVisible = await page
-        .locator('text=Samples imported successfully')
-        .isVisible();
-      if (successVisible) {
-        importSucceeded = true;
-        break;
-      }
-
-      // Check for error
-      const errorVisible = await page
-        .locator('.ac-operation-error')
-        .isVisible();
-      if (errorVisible) {
-        const errorText = await page
-          .locator('.ac-operation-error')
-          .textContent();
-        throw new Error(`Import failed with error: ${errorText}`);
-      }
-    }
-
-    expect(
-      importSucceeded,
-      'Expected import to succeed within timeout'
-    ).toBe(true);
-
-    // Step 9: Close the success dialog by clicking "Done"
-    const doneButton = page.locator('button', { hasText: 'Done' });
-    await expect(doneButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    await doneButton.click();
-
-    // Step 10: Wait for write flush to ensure device has processed all MIDI
-    await page.waitForTimeout(WRITE_FLUSH_MS);
-
-    // Step 11: Reload device data to see the imported tones and patch
-    await loadAllDeviceData(page);
-    const stateAfter = await queryDeviceMemoryState(page);
-    console.log(
-      `Device state after import: ${stateAfter.occupiedToneCount} tones, ` +
-        `${stateAfter.occupiedPatchCount} patches occupied`
+    // Write v1 drum kit fixture to OPFS BEFORE connecting to library
+    await writeDrumKitV1FixtureToOPFS(
+      page,
+      V1_KIT_FIXTURE_NAME,
+      V1_KIT_YAML,
+      DRUM_WAV_BASE64,
+      V1_DRUM_FILENAMES
     );
 
-    // Step 12: Verify drum kit tones exist on device (by name, not count delta —
-    // the device may already have these tones from a prior run)
-    const occupiedToneNames = stateAfter.tones
-      .filter((t) => !t.empty)
-      .map((t) => t.name.trim().toUpperCase());
-
-    console.log(`Occupied tone names: ${occupiedToneNames.join(', ')}`);
-
-    expect(
-      stateAfter.occupiedToneCount,
-      `Expected at least 4 occupied tones for drum kit, got ${stateAfter.occupiedToneCount}`
-    ).toBeGreaterThanOrEqual(4);
-
-    // Step 14: Verify tone names match slice labels ("KICK", "SNARE")
-    // The device uppercases and may truncate names to 8 chars.
-    const toneNames = stateAfter.tones
-      .filter((t) => !t.empty)
-      .map((t) => t.name.trim());
-
-    const hasKick = toneNames.some((name) => name.includes('KICK'));
-    const hasSnare = toneNames.some((name) => name.includes('SNARE'));
-
-    expect(
-      hasKick,
-      `Expected a tone named "KICK" on device. Found tones: [${toneNames.join(', ')}]`
-    ).toBe(true);
-    expect(
-      hasSnare,
-      `Expected a tone named "SNARE" on device. Found tones: [${toneNames.join(', ')}]`
-    ).toBe(true);
+    await importDrumKitAndVerify(page, V1_KIT_FIXTURE_NAME);
   });
 });

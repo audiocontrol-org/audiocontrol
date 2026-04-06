@@ -3,11 +3,15 @@
  *
  * Tests the following scenarios (library-only, no hardware required):
  *
- *   11.1.10 — Save slices to library
+ *   11.1.10 -- Save slices to library
  *     Open chopper on a common-area sample, slice with Fixed method,
  *     click Save, verify sample.yaml with slice definitions written to OPFS.
  *
- *   11.2.3 — Chop into Drum Kit (save slices as drum kit)
+ *   11.2.2 -- Save writes slice labels
+ *     Open chopper on a common-area sample, slice with Fixed method,
+ *     click Save, verify sample.yaml contains label fields (S1..S4).
+ *
+ *   11.2.3 -- Chop into Drum Kit (save slices as drum kit)
  *     Open chopper on an individual library tone via "Chop into Drum Kit",
  *     slice, verify drum kit output config renders, confirm creates
  *     kit.yaml in OPFS drum-kits directory.
@@ -54,22 +58,45 @@ const UI_TIMEOUT_MS = 5_000;
 const SAMPLE_WAV_BASE64 = createMinimalWavBase64(30000, 2);
 const SAMPLE_FIXTURE_NAME = 'e2e-chop-source';
 
-/** Tone fixture: same audio but stored as an individual tone. */
+/**
+ * Tone fixture: same audio but stored as an individual tone.
+ *
+ * Must conform to ToneYamlSchema from sampler-library, which requires:
+ * format, device, version, name, wave (with file, sampleRate, loopMode),
+ * and a device-specific extension object (s330).
+ */
 const TONE_FIXTURE_NAME = 'e2e-chop-tone';
-const TONE_YAML = `name: "E2E Chop Tone"
-sampleRate: 30000
-loopStart: 0
-loopEnd: 59999
-rootKey: 60
-fineTune: 0`;
+const TONE_YAML = `format: sampler-tone
+device: s330
+version: 1
+name: E2E-CHOPTONE
+wave:
+  file: e2e-chop-tone.wav
+  sampleRate: 30000
+  loopMode: forward
+  startPoint: 0
+  endPoint: 59999
+  loopPoint: 0
+s330:
+  originalKey: 60
+  outputAssign: 0
+  transpose: 0
+  fineTune: 0
+  tva:
+    level: 100
+    envelope:
+      levels: [127, 127, 127, 127, 127, 127, 127, 0]
+      rates: [127, 127, 127, 127, 127, 127, 127, 127]
+      sustainPoint: 3
+      endPoint: 8`;
 
 // ===========================================================================
 // Test Suite: Save Slices to Library (11.1.10)
 // ===========================================================================
 
-test.describe('Chopper Save — save slices to library', () => {
+test.describe('Chopper Save -- save slices to library', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to Library page (no mock — uses real OPFS)
+    // Navigate to Library page (no mock -- uses real OPFS)
     await page.goto('/roland/s330/editor/library?midi=mock');
     await page.waitForLoadState('networkidle');
 
@@ -175,8 +202,104 @@ test.describe('Chopper Save — save slices to library', () => {
     ).toBe(8);
   });
 
+  test('saved slice boundaries persist when chopper is reopened', async ({ page }) => {
+    // Step 1: Open chopper on the sample
+    const sampleNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${SAMPLE_FIXTURE_NAME}$`) }).first();
+    await expect(sampleNameSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const treeNode = sampleNameSpan.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
+    await treeNode.click();
+
+    const chopButton = page.getByRole('button', { name: 'Open in Chopper' });
+    await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await chopButton.click();
+
+    const dialog = page.locator('[data-slice-editor-open="true"]');
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+
+    // Step 2: Create 4 slices with Fixed method and save
+    await page.getByRole('tab', { name: 'Fixed' }).click();
+    const sliceCountInput = dialog.locator('input[type="number"]').first();
+    await sliceCountInput.fill('4');
+    await expect(page.getByText('4 slices')).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const saveButton = page.getByRole('button', { name: 'Save' });
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
+    await page.waitForTimeout(2_000);
+
+    // Verify the save wrote slices to the YAML
+    const yamlAfterSave = await readSampleYaml(page, SAMPLE_FIXTURE_NAME);
+    expect(yamlAfterSave).toContain('slices:');
+    const sliceMatches = yamlAfterSave.match(/startSample:/g);
+    expect(sliceMatches?.length).toBe(4);
+
+    // Step 3: Close the chopper dialog
+    const cancelButton = page.getByRole('button', { name: 'Cancel' });
+    await cancelButton.click();
+    await expect(dialog).not.toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Step 4: Reopen the chopper on the same sample
+    await treeNode.click();
+    await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await chopButton.click();
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+
+    // Step 5: Verify slices are pre-populated.
+    // The dialog should show the Manual tab with 4 slices loaded from the YAML.
+    // The status bar renders "{N} slice{s}" when currentSliceResult has slices.
+    // Wait longer since initial slices need to be computed.
+    await expect(dialog.getByText(/4 slice/)).toBeVisible({ timeout: 10_000 });
+  });
+
+  test('Save writes sample.yaml with correct slice labels', async ({ page }) => {
+    // Step 1: Open the sample in the chopper
+    const sampleNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${SAMPLE_FIXTURE_NAME}$`) }).first();
+    await expect(sampleNameSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const treeNode = sampleNameSpan.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
+    await treeNode.click();
+
+    const chopButton = page.getByRole('button', { name: 'Open in Chopper' });
+    await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await chopButton.click();
+
+    const dialog = page.locator('[data-slice-editor-open="true"]');
+    await expect(dialog).toBeVisible({ timeout: 10_000 });
+
+    // Step 2: Switch to Fixed tab and set 4 slices
+    await page.getByRole('tab', { name: 'Fixed' }).click();
+    const sliceCountInput = dialog.locator('input[type="number"]').first();
+    await sliceCountInput.fill('4');
+    await expect(page.getByText('4 slices')).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Step 3: Click Save and wait for completion
+    const saveButton = page.getByRole('button', { name: 'Save' });
+    await expect(saveButton).toBeEnabled();
+    await saveButton.click();
+    await page.waitForTimeout(2_000);
+
+    // Step 4: Read saved YAML and verify label fields
+    const yamlContent = await readSampleYaml(page, SAMPLE_FIXTURE_NAME);
+    expect(yamlContent).toContain('slices:');
+
+    // The default kit labels are S1,S2,S3,S4 — the chopper uppercases them
+    // and assigns one per slice in order.
+    const labelMatches = yamlContent.match(/label:/g);
+    expect(
+      labelMatches?.length,
+      `Expected 4 label fields in sample.yaml, found ${labelMatches?.length ?? 0}`,
+    ).toBe(4);
+
+    // Verify each default label is present
+    expect(yamlContent).toContain('label: S1');
+    expect(yamlContent).toContain('label: S2');
+    expect(yamlContent).toContain('label: S3');
+    expect(yamlContent).toContain('label: S4');
+  });
+
   test.fixme('Save button is disabled when no slices exist', async ({ page }) => {
-    // FIXME: Save button is enabled even with no slices — possible UX issue
+    // FIXME: Save button is enabled even with no slices -- possible UX issue
     const sampleNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${SAMPLE_FIXTURE_NAME}$`) }).first();
     await expect(sampleNameSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
@@ -201,9 +324,9 @@ test.describe('Chopper Save — save slices to library', () => {
 // Test Suite: Chop into Drum Kit (11.2.3)
 // ===========================================================================
 
-test.describe('Chopper Save — chop into drum kit', () => {
+test.describe('Chopper Save -- chop into drum kit', () => {
   test.beforeEach(async ({ page }) => {
-    // Navigate to Library page (no mock — uses real OPFS)
+    // Navigate to Library page (no mock -- uses real OPFS)
     await page.goto('/roland/s330/editor/library?midi=mock');
     await page.waitForLoadState('networkidle');
 
@@ -225,8 +348,7 @@ test.describe('Chopper Save — chop into drum kit', () => {
     await cleanupOPFS(page);
   });
 
-  test.fixme('Chop into Drum Kit opens chopper with kit output config', async ({ page }) => {
-    // FIXME: "Chop into Drum Kit" button not found — tone fixture may need different format/path
+  test('Chop into Drum Kit opens chopper with kit output config', async ({ page }) => {
     // Step 1: Select the individual tone in the library tree using CSS class selector.
     // Find the tone by name and click its tree node
     const toneNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${TONE_FIXTURE_NAME}$`) }).first();
@@ -248,15 +370,14 @@ test.describe('Chopper Save — chop into drum kit', () => {
     // This is the S330KitOutputConfig render prop content.
     await expect(page.getByText('Drum Kit Output')).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // Step 5: Verify kit config fields are present
-    await expect(page.getByText('Kit Name (max 12 chars)')).toBeVisible();
-    await expect(page.getByText('Sample Rate')).toBeVisible();
-    await expect(page.getByText('Base MIDI Note')).toBeVisible();
-    await expect(page.getByText('Labels (comma-separated)')).toBeVisible();
+    // Step 5: Verify kit config fields are present (scoped to dialog to avoid strict-mode violations)
+    await expect(dialog.getByText('Kit Name (max 12 chars)')).toBeVisible();
+    await expect(dialog.getByText('Sample Rate')).toBeVisible();
+    await expect(dialog.getByText('Base MIDI Note')).toBeVisible();
+    await expect(dialog.getByText('Labels (comma-separated)')).toBeVisible();
   });
 
-  test.fixme('Chop into Drum Kit shows slices with Fixed method', async ({ page }) => {
-    // FIXME: Same issue as above — "Chop into Drum Kit" button not found
+  test('Chop into Drum Kit shows slices with Fixed method', async ({ page }) => {
     const toneNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${TONE_FIXTURE_NAME}$`) }).first();
     await expect(toneNameSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
@@ -282,17 +403,7 @@ test.describe('Chopper Save — chop into drum kit', () => {
     await expect(page.getByText(/\d+ms/).first()).toBeVisible({ timeout: UI_TIMEOUT_MS });
   });
 
-  /**
-   * BUG/GAP: The SampleChopperDialog does not render a Confirm/Save button
-   * when only onConfirm is provided (no onSave). The "Chop into Drum Kit"
-   * flow from ItemPreviewPanel only wires onConfirm, so there is no way
-   * for the user to trigger the drum kit save from the chopper dialog.
-   *
-   * This test documents the expected behavior when the button is added.
-   * Remove .fixme when the dialog renders a confirm/save button for the
-   * onConfirm callback.
-   */
-  test.fixme('saving drum kit creates kit.yaml in OPFS', async ({ page }) => {
+  test('saving drum kit creates kit.yaml in OPFS', async ({ page }) => {
     const toneNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${TONE_FIXTURE_NAME}$`) }).first();
     await expect(toneNameSpan).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
@@ -312,10 +423,9 @@ test.describe('Chopper Save — chop into drum kit', () => {
     await sliceCountInput.fill('4');
     await expect(page.getByText('4 slices')).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // Confirm/Save the drum kit
-    // NOTE: This button does not yet exist in the dialog when only onConfirm
-    // is provided. When implemented, update this selector.
-    const confirmButton = page.getByRole('button', { name: /Save|Confirm|Create Kit/ });
+    // Click "Create Drum Kit" button (added to SampleChopperDialog footer
+    // when renderOutputConfig is provided and onSave is not)
+    const confirmButton = page.getByRole('button', { name: 'Create Drum Kit' });
     await expect(confirmButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await confirmButton.click();
 
