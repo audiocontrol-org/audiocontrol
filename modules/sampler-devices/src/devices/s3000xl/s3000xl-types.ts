@@ -1,7 +1,7 @@
 import type { MidiIO, SdsLoopType, SdsTransferProgress, SdsDumpHeader } from '@audiocontrol/midi-core';
-import type { ProgramHeader, KeygroupHeader, SampleHeader } from '@/devices/s3000xl.js';
+import type { ProgramHeader, KeygroupHeader, SampleHeader, MiscellaneousData } from '@/devices/s3000xl.js';
 
-export type { ProgramHeader, KeygroupHeader, SampleHeader };
+export type { ProgramHeader, KeygroupHeader, SampleHeader, MiscellaneousData };
 
 /** Progress callback for long-running operations */
 export type ProgressCallback = (current: number, total: number, label?: string) => void;
@@ -62,6 +62,12 @@ export interface S3000xlClientInterface {
 
   /** Write a modified sample header back to the device */
   writeSampleHeader(header: SampleHeader): Promise<void>;
+
+  /** Fetch the miscellaneous (global/multi) data block from the device */
+  fetchMiscData(): Promise<MiscellaneousData>;
+
+  /** Write modified miscellaneous data back to the device */
+  writeMiscData(data: MiscellaneousData): Promise<void>;
 
   /** Send a sample to the device via MIDI Sample Dump Standard */
   sendSampleViaSds(

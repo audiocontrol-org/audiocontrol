@@ -129,6 +129,15 @@ Delegate to sub-agents proactively — don't wait for the user to ask. The main 
 - Preserve proprietary sampler format specifications exactly
 - Use the `midisnoop` binary (installed in PATH) to observe MIDI conversations
 
+## S3000XL SysEx Exclusive Channel
+
+The `cc` byte in Akai SysEx messages (`F0 47 cc ...`) is the **exclusive channel**, NOT the MIDI channel. It's an Akai-specific control address that selects which device responds to SysEx commands. This allows independent control of multiple Akai devices on the same SCSI bus (e.g., S3000XL at SCSI ID 6 on exclusive channel 0, S5000 at SCSI ID 5 on exclusive channel 1).
+
+- Stored in MiscellaneousData as `EXCHAN` (0-based in protocol, 1-based on front panel UI)
+- Default: 0 (displayed as "1" on the device)
+- **Do not write EXCHAN via SysEx without immediate restore** — changing it mid-session causes the device to stop responding on the original channel
+- The `--channel` CLI argument sets this exclusive channel, not the MIDI playback channel
+
 ## S3000XL SDS Storage Behavior
 
 The S3000XL uses the SDS sample number in the Dump Header to determine overwrite vs create: if the number matches an existing sample's RSLIST index, the device overwrites that sample in place. If the number doesn't match, a new sample is created at the end of the RSLIST. To replace a sample, send with its RSLIST index. To add a new sample, send with an unused number (e.g., current sample count). Confirmed via hardware testing.

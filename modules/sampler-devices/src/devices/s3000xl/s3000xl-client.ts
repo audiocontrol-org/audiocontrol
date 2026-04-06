@@ -20,8 +20,9 @@ import {
   parseProgramHeader,
   parseKeygroupHeader,
   parseSampleHeader,
+  parseMiscellaneousData,
 } from '@/devices/s3000xl.js';
-import type { ProgramHeader, KeygroupHeader, SampleHeader } from '@/devices/s3000xl.js';
+import type { ProgramHeader, KeygroupHeader, SampleHeader, MiscellaneousData } from '@/devices/s3000xl.js';
 import type { S3000xlClientOptions, S3000xlClientInterface } from '@/devices/s3000xl/s3000xl-types.js';
 import {
   AkaiOpcode,
@@ -347,6 +348,20 @@ export function createS3000xlClient(
     async writeSampleHeader(header: SampleHeader): Promise<void> {
       const key = `sample:${header.SHNAME}`;
       await bufferWrite(key, AkaiOpcode.SDATA, header.raw.slice(5, -1));
+    },
+
+    async fetchMiscData(): Promise<MiscellaneousData> {
+      const response = await sendCommandWithRetry(AkaiOpcode.RMDATA, []);
+      const data = {} as MiscellaneousData;
+      const { data: payload } = parseAkaiResponse(response);
+      parseMiscellaneousData(payload, 0, data);
+      data.raw = response;
+      return data;
+    },
+
+    async writeMiscData(data: MiscellaneousData): Promise<void> {
+      const key = 'miscData';
+      await bufferWrite(key, AkaiOpcode.MDATA, data.raw.slice(5, -1));
     },
 
     async sendSampleViaSds(

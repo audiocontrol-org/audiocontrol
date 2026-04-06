@@ -167,14 +167,20 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
       sendQueue = sendQueue.then(async () => {
         sendInFlight = true;
         try {
-          const res = await fetch(`${bridgeUrl}/sds/send`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message }),
-          });
-          const body = await res.json() as { ok: boolean; response: number[] };
-          if (body.response && body.response.length > 0) {
-            dispatchResponses(body.response);
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            // Send via WebSocket — response arrives through handleWsMessage
+            ws.send(JSON.stringify({ type: 'send', message }));
+          } else {
+            // Fallback to HTTP POST
+            const res = await fetch(`${bridgeUrl}/sds/send`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ message }),
+            });
+            const body = await res.json() as { ok: boolean; response: number[] };
+            if (body.response && body.response.length > 0) {
+              dispatchResponses(body.response);
+            }
           }
         } catch (err) {
           console.error('[ScsiMidiTransport] Send error:', err);
