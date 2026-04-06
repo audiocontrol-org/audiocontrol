@@ -148,6 +148,7 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to initialize MIDI';
+        console.error('[MidiStore] Initialization failed:', message);
         set({ error: message, status: 'error' });
       }
     },
@@ -197,6 +198,7 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
         saveToStorage(inputId, outputId, deviceId);
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to connect';
+        console.error('[MidiStore] Connection failed:', message);
         set({ error: message, status: 'error' });
       }
     },
