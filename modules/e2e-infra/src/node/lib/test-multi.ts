@@ -1,118 +1,117 @@
 /**
  * Multi (miscellaneous data) tests.
  *
- * The S3000XL's RMDATA (0x10) / MDATA (0x11) opcodes access the device's
- * miscellaneous data block — global settings and multi-timbral configuration.
+ * Tests the MiscellaneousData structure via the typed client API.
+ * The S1000 spec defines 6 fields (BMCHAN, BMOMNI, PSELEN, SELPNM, OMNOVR, EXCHAN).
+ * The S3000XL returns 48 bytes total — the first 6 match S1000, the rest are extensions.
  */
 
 import type { TestContext, TestResult } from '@/node/lib/test-types.js';
 
-const RMDATA = 0x10;
-const MDATA = 0x11;
+function delay(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 export async function runMultiTests(ctx: TestContext): Promise<TestResult[]> {
   const results: TestResult[] = [];
   results.push(await testReadMiscData(ctx));
-  results.push(await testWriteMiscField(ctx));
+  results.push(await testWriteMiscProgramSelect(ctx));
+  results.push(await testWriteMiscSelectedProgram(ctx));
   return results;
 }
 
-/**
- * Read the miscellaneous data block and decode the nibble-encoded bytes.
- */
 async function testReadMiscData(ctx: TestContext): Promise<TestResult> {
   const name = 'multi-read-misc-data';
   try {
-    const response = await ctx.client.sendCommand(RMDATA, []);
-    ctx.log(`  Raw response: ${response.length} nibbles`);
+    const misc = await ctx.client.fetchMiscData();
+    ctx.log(`  BMCHAN (Basic MIDI Channel): ${misc.BMCHAN}`);
+    ctx.log(`  BMOMNI (Basic Channel Omni): ${misc.BMOMNI}`);
+    ctx.log(`  PSELEN (Program Select Enable): ${misc.PSELEN}`);
+    ctx.log(`  SELPNM (Selected Program Number): ${misc.SELPNM}`);
+    ctx.log(`  OMNOVR (Omni Override): ${misc.OMNOVR}`);
+    ctx.log(`  EXCHAN (Exclusive Channel): ${misc.EXCHAN}`);
+    ctx.log(`  MSTUNE (Master Tune): ${misc.MSTUNE}`);
 
-    // Decode nibble pairs into bytes
-    const bytes: number[] = [];
-    for (let i = 0; i < response.length - 1; i += 2) {
-      bytes.push((response[i + 1] << 4) | response[i]);
-    }
-    ctx.log(`  Decoded: ${bytes.length} bytes`);
-    ctx.log(`  Hex: ${bytes.map((b) => b.toString(16).padStart(2, '0')).join(' ')}`);
-
-    // Try to identify known fields from the S2000 spec:
-    // Bytes 0-1: some header/ID
-    // The structure likely contains global settings
-    for (let i = 0; i < bytes.length; i++) {
-      if (bytes[i] !== 0) {
-        ctx.log(`  byte[${i}] = ${bytes[i]} (0x${bytes[i].toString(16)})`);
-      }
-    }
-
-    return {
-      name,
-      status: 'PASS',
-      detail: `${bytes.length} bytes decoded from ${response.length} nibbles`,
-    };
+    return { name, status: 'PASS', detail: `BMCHAN=${misc.BMCHAN} PSELEN=${misc.PSELEN} SELPNM=${misc.SELPNM}` };
   } catch (err) {
     return { name, status: 'ERROR', detail: String(err) };
   }
 }
 
-/**
- * Write a field in the miscellaneous data block and verify it persists.
- * We send the full MDATA block back with one byte changed.
- */
-async function testWriteMiscField(ctx: TestContext): Promise<TestResult> {
-  const name = 'multi-write-misc-field';
+async function testWriteMiscProgramSelect(ctx: TestContext): Promise<TestResult> {
+  const name = 'multi-write-program-select';
   try {
-    // 1. Read original
-    const original = await ctx.client.sendCommand(RMDATA, []);
-    ctx.log(`  Original misc data: ${original.length} nibbles`);
+    const original = await ctx.client.fetchMiscData();
+    const originalVal = original.PSELEN;
+    ctx.log(`  Original PSELEN: ${originalVal}`);
 
-    // 2. Find a non-zero byte to modify (pick one that's likely a setting, not an ID)
-    // Try byte index 4 (nibble index 8-9) — skip the first few which may be identifiers
-    const testNibbleIndex = 8;
-    const originalLo = original[testNibbleIndex];
-    const originalHi = original[testNibbleIndex + 1];
-    const originalByte = (originalHi << 4) | originalLo;
-    ctx.log(`  Target nibbles[${testNibbleIndex}]: lo=${originalLo} hi=${originalHi} (byte=${originalByte})`);
+    const testVal = originalVal === 0 ? 1 : 0;
+    const modified = { ...original, raw: [...original.raw] };
 
-    // Pick a different value
-    const testByte = originalByte === 42 ? 43 : 42;
-    const testLo = testByte & 0x0f;
-    const testHi = (testByte >> 4) & 0x0f;
+    // Import the write function dynamically
+    const s3k = await import('@audiocontrol/sampler-devices/s3k');
+    (s3k as Record<string, Function>)['MiscellaneousData_writePSELEN'](modified, testVal);
 
-    // 3. Clone and modify
-    const modified = [...original];
-    modified[testNibbleIndex] = testLo;
-    modified[testNibbleIndex + 1] = testHi;
+    await ctx.client.writeMiscData(modified);
+    ctx.log(`  Wrote PSELEN: ${testVal}`);
+    await delay(ctx.writeDelayMs);
 
-    // 4. Write back via MDATA
-    ctx.log(`  Writing misc data with byte[4]=${testByte}...`);
-    try {
-      await ctx.client.sendCommand(MDATA, modified);
-    } catch (err) {
-      // MDATA write may return REPLY which sendCommand treats as response
-      ctx.log(`  Write response: ${err}`);
+    const readback = await ctx.client.fetchMiscData();
+    ctx.log(`  Readback PSELEN: ${readback.PSELEN}`);
+
+    // Restore
+    if (!ctx.noRestore) {
+      await ctx.client.writeMiscData(original);
+      await delay(ctx.writeDelayMs);
     }
 
-    // 5. Read back
-    const readback = await ctx.client.sendCommand(RMDATA, []);
-    const readbackLo = readback[testNibbleIndex];
-    const readbackHi = readback[testNibbleIndex + 1];
-    const readbackByte = (readbackHi << 4) | readbackLo;
-    ctx.log(`  Readback byte[4]: ${readbackByte}`);
-
-    // 6. Restore original
-    await ctx.client.sendCommand(MDATA, original).catch(() => {});
-
-    if (readbackByte === testByte) {
-      return { name, status: 'PASS', detail: `byte[4]: ${originalByte} -> ${readbackByte}` };
-    } else if (readbackByte === originalByte) {
-      return { name, status: 'FAIL', detail: `Write did not persist — got original ${originalByte}` };
+    if (readback.PSELEN === testVal) {
+      return { name, status: 'PASS', detail: `${originalVal} -> ${readback.PSELEN}` };
+    } else if (readback.PSELEN === originalVal) {
+      return { name, status: 'FAIL', detail: `Write did not persist — got original ${originalVal}` };
     } else {
-      return { name, status: 'ERROR', detail: `Unexpected readback: ${readbackByte}` };
+      return { name, status: 'ERROR', detail: `Unexpected readback: ${readback.PSELEN}` };
     }
   } catch (err) {
     return { name, status: 'ERROR', detail: String(err) };
   }
 }
 
-function formatHex(bytes: number[]): string {
-  return bytes.map((b) => b.toString(16).padStart(2, '0').toUpperCase()).join(' ');
+async function testWriteMiscSelectedProgram(ctx: TestContext): Promise<TestResult> {
+  const name = 'multi-write-selected-program';
+  try {
+    const original = await ctx.client.fetchMiscData();
+    const originalVal = original.SELPNM;
+    ctx.log(`  Original SELPNM: ${originalVal}`);
+
+    // Pick a different selected program number (safe — doesn't affect communication)
+    const testVal = originalVal === 0 ? 1 : 0;
+    const modified = { ...original, raw: [...original.raw] };
+
+    const s3k = await import('@audiocontrol/sampler-devices/s3k');
+    (s3k as Record<string, Function>)['MiscellaneousData_writeSELPNM'](modified, testVal);
+
+    await ctx.client.writeMiscData(modified);
+    ctx.log(`  Wrote SELPNM: ${testVal}`);
+    await delay(ctx.writeDelayMs);
+
+    const readback = await ctx.client.fetchMiscData();
+    ctx.log(`  Readback SELPNM: ${readback.SELPNM}`);
+
+    // Restore
+    if (!ctx.noRestore) {
+      await ctx.client.writeMiscData(original);
+      await delay(ctx.writeDelayMs);
+    }
+
+    if (readback.SELPNM === testVal) {
+      return { name, status: 'PASS', detail: `${originalVal} -> ${readback.SELPNM}` };
+    } else if (readback.SELPNM === originalVal) {
+      return { name, status: 'FAIL', detail: `Write did not persist — got original ${originalVal}` };
+    } else {
+      return { name, status: 'ERROR', detail: `Unexpected readback: ${readback.SELPNM}` };
+    }
+  } catch (err) {
+    return { name, status: 'ERROR', detail: String(err) };
+  }
 }

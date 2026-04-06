@@ -934,3 +934,170 @@ specs:
 
       - n: 'KFXSLEV'
         d: 'Keygroup override Effects Send level; Range: 0 to 99'
+
+  - name: MiscellaneousData
+    className: Miscellaneous
+    headerOffset: 0
+    rawOffset: -2
+    fields:
+      # S1000 base fields (bytes 0-5)
+      - n: 'BMCHAN'
+        f: 'basicMidiChannel'
+        l: 'Basic MIDI Channel'
+        d: 'Basic MIDI channel for MIDI program select; Range: 0-15'
+
+      - n: 'BMOMNI'
+        f: 'basicChannelOmni'
+        l: 'Basic Channel Omni'
+        d: 'Basic channel omni mode; 0=OFF, 1=ON'
+
+      - n: 'PSELEN'
+        f: 'programSelectEnable'
+        l: 'Program Select Enable'
+        d: 'MIDI program select enable; 0=OFF, 1=ON'
+
+      - n: 'SELPNM'
+        f: 'selectedProgramNumber'
+        l: 'Selected Program'
+        d: 'Currently selected program number; Range: 0-127'
+
+      - n: 'OMNOVR'
+        f: 'omniOverride'
+        l: 'Omni Override'
+        d: 'MIDI play commands omni override; 0=OFF, 1=ON'
+
+      - n: 'EXCHAN'
+        f: 'exclusiveChannel'
+        l: 'Exclusive Channel'
+        d: 'MIDI exclusive channel; Range: 0-127'
+
+      # S3000XL extensions (bytes 6-47, field names TBD pending reverse engineering)
+      # The S3000XL returns 48 bytes total. The first 6 match the S1000 spec.
+      # Remaining bytes are S3000XL-specific global/multi settings.
+      - n: 'MSTUNE'
+        f: 'masterTune'
+        l: 'Master Tune'
+        d: 'Master tune offset; observed value 50 (0x32) on device'
+
+      - n: 'MDATA07'
+        d: 'S3000XL miscellaneous byte 7; observed value 9'
+
+      - n: 'MDATA08'
+        d: 'S3000XL miscellaneous byte 8; observed value 12'
+
+      - n: 'MDATA09'
+        d: 'S3000XL miscellaneous byte 9; observed value 255 (0xFF)'
+
+      - n: 'MDATA10'
+        d: 'S3000XL miscellaneous byte 10'
+
+      - n: 'MDATA11'
+        d: 'S3000XL miscellaneous byte 11'
+
+      - n: 'MDATA12'
+        d: 'S3000XL miscellaneous byte 12'
+
+      - n: 'MDATA13'
+        d: 'S3000XL miscellaneous byte 13'
+
+      - n: 'MDATA14'
+        d: 'S3000XL miscellaneous byte 14'
+
+      - n: 'MDATA15'
+        d: 'S3000XL miscellaneous byte 15'
+
+      - n: 'MDATA16'
+        d: 'S3000XL miscellaneous byte 16'
+
+      - n: 'MDATA17'
+        d: 'S3000XL miscellaneous byte 17'
+
+      - n: 'MDATA18'
+        d: 'S3000XL miscellaneous byte 18'
+
+      - n: 'MDATA19'
+        d: 'S3000XL miscellaneous byte 19'
+
+      - n: 'MDATA20'
+        d: 'S3000XL miscellaneous byte 20'
+
+      - n: 'MDATA21'
+        d: 'S3000XL miscellaneous byte 21'
+
+      - n: 'MDATA22'
+        d: 'S3000XL miscellaneous byte 22'
+
+      - n: 'MDATA23'
+        d: 'S3000XL miscellaneous byte 23'
+
+      - n: 'MDATA24'
+        d: 'S3000XL miscellaneous byte 24'
+
+      - n: 'MDATA25'
+        d: 'S3000XL miscellaneous byte 25'
+
+      - n: 'MDATA26'
+        d: 'S3000XL miscellaneous byte 26'
+
+      - n: 'MDATA27'
+        d: 'S3000XL miscellaneous byte 27'
+
+      - n: 'MDATA28'
+        d: 'S3000XL miscellaneous byte 28'
+
+      - n: 'MDATA29'
+        d: 'S3000XL miscellaneous byte 29'
+
+      - n: 'MDATA30'
+        d: 'S3000XL miscellaneous byte 30'
+
+      - n: 'MDATA31'
+        d: 'S3000XL miscellaneous byte 31'
+
+      - n: 'MDATA32'
+        d: 'S3000XL miscellaneous byte 32'
+
+      - n: 'MDATA33'
+        d: 'S3000XL miscellaneous byte 33'
+
+      - n: 'MDATA34'
+        d: 'S3000XL miscellaneous byte 34'
+
+      - n: 'MDATA35'
+        d: 'S3000XL miscellaneous byte 35'
+
+      - n: 'MDATA36'
+        d: 'S3000XL miscellaneous byte 36'
+
+      - n: 'MDATA37'
+        d: 'S3000XL miscellaneous byte 37'
+
+      - n: 'MDATA38'
+        d: 'S3000XL miscellaneous byte 38'
+
+      - n: 'MDATA39'
+        d: 'S3000XL miscellaneous byte 39'
+
+      - n: 'MDATA40'
+        d: 'S3000XL miscellaneous byte 40'
+
+      - n: 'MDATA41'
+        d: 'S3000XL miscellaneous byte 41'
+
+      - n: 'MDATA42'
+        d: 'S3000XL miscellaneous byte 42'
+
+      - n: 'MDATA43'
+        d: 'S3000XL miscellaneous byte 43'
+
+      - n: 'MDATA44'
+        d: 'S3000XL miscellaneous byte 44'
+
+      - n: 'MDATA45'
+        d: 'S3000XL miscellaneous byte 45'
+
+      - n: 'MDATA46'
+        d: 'S3000XL miscellaneous byte 46'
+
+      - n: 'MDATA47'
+        d: 'S3000XL miscellaneous byte 47'

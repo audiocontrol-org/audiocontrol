@@ -1,5 +1,5 @@
 //
-// GENERATED Tue Mar 31 2026 18:57:07 GMT-0700 (Pacific Daylight Time). DO NOT EDIT.
+// GENERATED Sun Apr 05 2026 19:36:40 GMT-0700 (Pacific Daylight Time). DO NOT EDIT.
 //
 import {byte2nibblesLE, bytes2numberLE, bytes2signedNumberLE, bytes2tuningLE, nibbles2byte, newClientOutput} from "@audiocontrol/sampler-lib"
 import {nextByte, akaiByte2String, string2AkaiBytes} from "@/utils/akai-utils.js"
@@ -4880,6 +4880,946 @@ export function KeygroupHeader_writeKFXSLEV(header: KeygroupHeader, v: number) {
     const d = byte2nibblesLE(v)
     header.raw[394] = d[0]
     header.raw[394 + 1] = d[1]
+}
+
+
+
+export interface MiscellaneousData {
+  BMCHAN: number    // Basic MIDI channel for MIDI program select; Range: 0-15
+  BMCHANLabel: string
+
+  BMOMNI: number    // Basic channel omni mode; 0=OFF, 1=ON
+  BMOMNILabel: string
+
+  PSELEN: number    // MIDI program select enable; 0=OFF, 1=ON
+  PSELENLabel: string
+
+  SELPNM: number    // Currently selected program number; Range: 0-127
+  SELPNMLabel: string
+
+  OMNOVR: number    // MIDI play commands omni override; 0=OFF, 1=ON
+  OMNOVRLabel: string
+
+  EXCHAN: number    // MIDI exclusive channel; Range: 0-127
+  EXCHANLabel: string
+
+  MSTUNE: number    // Master tune offset; observed value 50 (0x32) on device
+  MSTUNELabel: string
+
+  MDATA07: number    // S3000XL miscellaneous byte 7; observed value 9
+  MDATA07Label: string
+
+  MDATA08: number    // S3000XL miscellaneous byte 8; observed value 12
+  MDATA08Label: string
+
+  MDATA09: number    // S3000XL miscellaneous byte 9; observed value 255 (0xFF)
+  MDATA09Label: string
+
+  MDATA10: number    // S3000XL miscellaneous byte 10
+  MDATA10Label: string
+
+  MDATA11: number    // S3000XL miscellaneous byte 11
+  MDATA11Label: string
+
+  MDATA12: number    // S3000XL miscellaneous byte 12
+  MDATA12Label: string
+
+  MDATA13: number    // S3000XL miscellaneous byte 13
+  MDATA13Label: string
+
+  MDATA14: number    // S3000XL miscellaneous byte 14
+  MDATA14Label: string
+
+  MDATA15: number    // S3000XL miscellaneous byte 15
+  MDATA15Label: string
+
+  MDATA16: number    // S3000XL miscellaneous byte 16
+  MDATA16Label: string
+
+  MDATA17: number    // S3000XL miscellaneous byte 17
+  MDATA17Label: string
+
+  MDATA18: number    // S3000XL miscellaneous byte 18
+  MDATA18Label: string
+
+  MDATA19: number    // S3000XL miscellaneous byte 19
+  MDATA19Label: string
+
+  MDATA20: number    // S3000XL miscellaneous byte 20
+  MDATA20Label: string
+
+  MDATA21: number    // S3000XL miscellaneous byte 21
+  MDATA21Label: string
+
+  MDATA22: number    // S3000XL miscellaneous byte 22
+  MDATA22Label: string
+
+  MDATA23: number    // S3000XL miscellaneous byte 23
+  MDATA23Label: string
+
+  MDATA24: number    // S3000XL miscellaneous byte 24
+  MDATA24Label: string
+
+  MDATA25: number    // S3000XL miscellaneous byte 25
+  MDATA25Label: string
+
+  MDATA26: number    // S3000XL miscellaneous byte 26
+  MDATA26Label: string
+
+  MDATA27: number    // S3000XL miscellaneous byte 27
+  MDATA27Label: string
+
+  MDATA28: number    // S3000XL miscellaneous byte 28
+  MDATA28Label: string
+
+  MDATA29: number    // S3000XL miscellaneous byte 29
+  MDATA29Label: string
+
+  MDATA30: number    // S3000XL miscellaneous byte 30
+  MDATA30Label: string
+
+  MDATA31: number    // S3000XL miscellaneous byte 31
+  MDATA31Label: string
+
+  MDATA32: number    // S3000XL miscellaneous byte 32
+  MDATA32Label: string
+
+  MDATA33: number    // S3000XL miscellaneous byte 33
+  MDATA33Label: string
+
+  MDATA34: number    // S3000XL miscellaneous byte 34
+  MDATA34Label: string
+
+  MDATA35: number    // S3000XL miscellaneous byte 35
+  MDATA35Label: string
+
+  MDATA36: number    // S3000XL miscellaneous byte 36
+  MDATA36Label: string
+
+  MDATA37: number    // S3000XL miscellaneous byte 37
+  MDATA37Label: string
+
+  MDATA38: number    // S3000XL miscellaneous byte 38
+  MDATA38Label: string
+
+  MDATA39: number    // S3000XL miscellaneous byte 39
+  MDATA39Label: string
+
+  MDATA40: number    // S3000XL miscellaneous byte 40
+  MDATA40Label: string
+
+  MDATA41: number    // S3000XL miscellaneous byte 41
+  MDATA41Label: string
+
+  MDATA42: number    // S3000XL miscellaneous byte 42
+  MDATA42Label: string
+
+  MDATA43: number    // S3000XL miscellaneous byte 43
+  MDATA43Label: string
+
+  MDATA44: number    // S3000XL miscellaneous byte 44
+  MDATA44Label: string
+
+  MDATA45: number    // S3000XL miscellaneous byte 45
+  MDATA45Label: string
+
+  MDATA46: number    // S3000XL miscellaneous byte 46
+  MDATA46Label: string
+
+  MDATA47: number    // S3000XL miscellaneous byte 47
+  MDATA47Label: string
+
+  raw: number[] // Raw sysex message data
+}
+
+
+export function parseMiscellaneousData(data: number[], offset: number, o: MiscellaneousData) {
+    const out = newClientOutput(false, 'parseMiscellaneousData')
+    const v = {value: 0, offset: offset * 2}
+
+    let b: number[]
+    function reloff() {
+        // This calculates the current offset into the header data so it will match with the Akai sysex docs for sanity checking. See https://lakai.sourceforge.net/docs/s2800_sysex.html
+        // As such, The math here is weird: 
+        // * Each offset "byte" in the docs is actually two little-endian nibbles, each of which take up a slot in the midi data array--hence v.offset /2 
+        return (v.offset / 2)
+    }
+
+    // Basic MIDI channel for MIDI program select; Range: 0-15
+    out.log('BMCHAN: offset: ' + reloff())
+    o["BMCHANLabel"] = "Basic MIDI Channel"
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.BMCHAN = bytes2numberLE(b)
+
+    // Basic channel omni mode; 0=OFF, 1=ON
+    out.log('BMOMNI: offset: ' + reloff())
+    o["BMOMNILabel"] = "Basic Channel Omni"
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.BMOMNI = bytes2numberLE(b)
+
+    // MIDI program select enable; 0=OFF, 1=ON
+    out.log('PSELEN: offset: ' + reloff())
+    o["PSELENLabel"] = "Program Select Enable"
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.PSELEN = bytes2numberLE(b)
+
+    // Currently selected program number; Range: 0-127
+    out.log('SELPNM: offset: ' + reloff())
+    o["SELPNMLabel"] = "Selected Program"
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.SELPNM = bytes2numberLE(b)
+
+    // MIDI play commands omni override; 0=OFF, 1=ON
+    out.log('OMNOVR: offset: ' + reloff())
+    o["OMNOVRLabel"] = "Omni Override"
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.OMNOVR = bytes2numberLE(b)
+
+    // MIDI exclusive channel; Range: 0-127
+    out.log('EXCHAN: offset: ' + reloff())
+    o["EXCHANLabel"] = "Exclusive Channel"
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.EXCHAN = bytes2numberLE(b)
+
+    // Master tune offset; observed value 50 (0x32) on device
+    out.log('MSTUNE: offset: ' + reloff())
+    o["MSTUNELabel"] = "Master Tune"
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MSTUNE = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 7; observed value 9
+    out.log('MDATA07: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA07 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 8; observed value 12
+    out.log('MDATA08: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA08 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 9; observed value 255 (0xFF)
+    out.log('MDATA09: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA09 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 10
+    out.log('MDATA10: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA10 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 11
+    out.log('MDATA11: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA11 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 12
+    out.log('MDATA12: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA12 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 13
+    out.log('MDATA13: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA13 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 14
+    out.log('MDATA14: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA14 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 15
+    out.log('MDATA15: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA15 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 16
+    out.log('MDATA16: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA16 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 17
+    out.log('MDATA17: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA17 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 18
+    out.log('MDATA18: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA18 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 19
+    out.log('MDATA19: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA19 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 20
+    out.log('MDATA20: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA20 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 21
+    out.log('MDATA21: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA21 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 22
+    out.log('MDATA22: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA22 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 23
+    out.log('MDATA23: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA23 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 24
+    out.log('MDATA24: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA24 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 25
+    out.log('MDATA25: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA25 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 26
+    out.log('MDATA26: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA26 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 27
+    out.log('MDATA27: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA27 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 28
+    out.log('MDATA28: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA28 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 29
+    out.log('MDATA29: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA29 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 30
+    out.log('MDATA30: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA30 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 31
+    out.log('MDATA31: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA31 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 32
+    out.log('MDATA32: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA32 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 33
+    out.log('MDATA33: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA33 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 34
+    out.log('MDATA34: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA34 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 35
+    out.log('MDATA35: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA35 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 36
+    out.log('MDATA36: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA36 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 37
+    out.log('MDATA37: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA37 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 38
+    out.log('MDATA38: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA38 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 39
+    out.log('MDATA39: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA39 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 40
+    out.log('MDATA40: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA40 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 41
+    out.log('MDATA41: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA41 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 42
+    out.log('MDATA42: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA42 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 43
+    out.log('MDATA43: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA43 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 44
+    out.log('MDATA44: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA44 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 45
+    out.log('MDATA45: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA45 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 46
+    out.log('MDATA46: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA46 = bytes2numberLE(b)
+
+    // S3000XL miscellaneous byte 47
+    out.log('MDATA47: offset: ' + reloff())
+    b = []
+    for (let i=0; i<1; i++) {
+        b.push(nextByte(data, v).value)
+    }
+    o.MDATA47 = bytes2numberLE(b)
+
+}
+
+export function MiscellaneousData_writeBMCHAN(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeBMCHAN')
+    out.log('Offset: ' + 5)
+    const d = byte2nibblesLE(v)
+    header.raw[5] = d[0]
+    header.raw[5 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeBMOMNI(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeBMOMNI')
+    out.log('Offset: ' + 7)
+    const d = byte2nibblesLE(v)
+    header.raw[7] = d[0]
+    header.raw[7 + 1] = d[1]
+}
+
+export function MiscellaneousData_writePSELEN(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writePSELEN')
+    out.log('Offset: ' + 9)
+    const d = byte2nibblesLE(v)
+    header.raw[9] = d[0]
+    header.raw[9 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeSELPNM(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeSELPNM')
+    out.log('Offset: ' + 11)
+    const d = byte2nibblesLE(v)
+    header.raw[11] = d[0]
+    header.raw[11 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeOMNOVR(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeOMNOVR')
+    out.log('Offset: ' + 13)
+    const d = byte2nibblesLE(v)
+    header.raw[13] = d[0]
+    header.raw[13 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeEXCHAN(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeEXCHAN')
+    out.log('Offset: ' + 15)
+    const d = byte2nibblesLE(v)
+    header.raw[15] = d[0]
+    header.raw[15 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMSTUNE(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMSTUNE')
+    out.log('Offset: ' + 17)
+    const d = byte2nibblesLE(v)
+    header.raw[17] = d[0]
+    header.raw[17 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA07(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA07')
+    out.log('Offset: ' + 19)
+    const d = byte2nibblesLE(v)
+    header.raw[19] = d[0]
+    header.raw[19 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA08(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA08')
+    out.log('Offset: ' + 21)
+    const d = byte2nibblesLE(v)
+    header.raw[21] = d[0]
+    header.raw[21 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA09(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA09')
+    out.log('Offset: ' + 23)
+    const d = byte2nibblesLE(v)
+    header.raw[23] = d[0]
+    header.raw[23 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA10(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA10')
+    out.log('Offset: ' + 25)
+    const d = byte2nibblesLE(v)
+    header.raw[25] = d[0]
+    header.raw[25 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA11(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA11')
+    out.log('Offset: ' + 27)
+    const d = byte2nibblesLE(v)
+    header.raw[27] = d[0]
+    header.raw[27 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA12(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA12')
+    out.log('Offset: ' + 29)
+    const d = byte2nibblesLE(v)
+    header.raw[29] = d[0]
+    header.raw[29 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA13(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA13')
+    out.log('Offset: ' + 31)
+    const d = byte2nibblesLE(v)
+    header.raw[31] = d[0]
+    header.raw[31 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA14(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA14')
+    out.log('Offset: ' + 33)
+    const d = byte2nibblesLE(v)
+    header.raw[33] = d[0]
+    header.raw[33 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA15(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA15')
+    out.log('Offset: ' + 35)
+    const d = byte2nibblesLE(v)
+    header.raw[35] = d[0]
+    header.raw[35 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA16(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA16')
+    out.log('Offset: ' + 37)
+    const d = byte2nibblesLE(v)
+    header.raw[37] = d[0]
+    header.raw[37 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA17(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA17')
+    out.log('Offset: ' + 39)
+    const d = byte2nibblesLE(v)
+    header.raw[39] = d[0]
+    header.raw[39 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA18(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA18')
+    out.log('Offset: ' + 41)
+    const d = byte2nibblesLE(v)
+    header.raw[41] = d[0]
+    header.raw[41 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA19(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA19')
+    out.log('Offset: ' + 43)
+    const d = byte2nibblesLE(v)
+    header.raw[43] = d[0]
+    header.raw[43 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA20(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA20')
+    out.log('Offset: ' + 45)
+    const d = byte2nibblesLE(v)
+    header.raw[45] = d[0]
+    header.raw[45 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA21(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA21')
+    out.log('Offset: ' + 47)
+    const d = byte2nibblesLE(v)
+    header.raw[47] = d[0]
+    header.raw[47 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA22(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA22')
+    out.log('Offset: ' + 49)
+    const d = byte2nibblesLE(v)
+    header.raw[49] = d[0]
+    header.raw[49 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA23(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA23')
+    out.log('Offset: ' + 51)
+    const d = byte2nibblesLE(v)
+    header.raw[51] = d[0]
+    header.raw[51 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA24(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA24')
+    out.log('Offset: ' + 53)
+    const d = byte2nibblesLE(v)
+    header.raw[53] = d[0]
+    header.raw[53 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA25(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA25')
+    out.log('Offset: ' + 55)
+    const d = byte2nibblesLE(v)
+    header.raw[55] = d[0]
+    header.raw[55 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA26(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA26')
+    out.log('Offset: ' + 57)
+    const d = byte2nibblesLE(v)
+    header.raw[57] = d[0]
+    header.raw[57 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA27(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA27')
+    out.log('Offset: ' + 59)
+    const d = byte2nibblesLE(v)
+    header.raw[59] = d[0]
+    header.raw[59 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA28(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA28')
+    out.log('Offset: ' + 61)
+    const d = byte2nibblesLE(v)
+    header.raw[61] = d[0]
+    header.raw[61 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA29(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA29')
+    out.log('Offset: ' + 63)
+    const d = byte2nibblesLE(v)
+    header.raw[63] = d[0]
+    header.raw[63 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA30(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA30')
+    out.log('Offset: ' + 65)
+    const d = byte2nibblesLE(v)
+    header.raw[65] = d[0]
+    header.raw[65 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA31(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA31')
+    out.log('Offset: ' + 67)
+    const d = byte2nibblesLE(v)
+    header.raw[67] = d[0]
+    header.raw[67 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA32(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA32')
+    out.log('Offset: ' + 69)
+    const d = byte2nibblesLE(v)
+    header.raw[69] = d[0]
+    header.raw[69 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA33(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA33')
+    out.log('Offset: ' + 71)
+    const d = byte2nibblesLE(v)
+    header.raw[71] = d[0]
+    header.raw[71 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA34(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA34')
+    out.log('Offset: ' + 73)
+    const d = byte2nibblesLE(v)
+    header.raw[73] = d[0]
+    header.raw[73 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA35(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA35')
+    out.log('Offset: ' + 75)
+    const d = byte2nibblesLE(v)
+    header.raw[75] = d[0]
+    header.raw[75 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA36(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA36')
+    out.log('Offset: ' + 77)
+    const d = byte2nibblesLE(v)
+    header.raw[77] = d[0]
+    header.raw[77 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA37(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA37')
+    out.log('Offset: ' + 79)
+    const d = byte2nibblesLE(v)
+    header.raw[79] = d[0]
+    header.raw[79 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA38(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA38')
+    out.log('Offset: ' + 81)
+    const d = byte2nibblesLE(v)
+    header.raw[81] = d[0]
+    header.raw[81 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA39(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA39')
+    out.log('Offset: ' + 83)
+    const d = byte2nibblesLE(v)
+    header.raw[83] = d[0]
+    header.raw[83 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA40(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA40')
+    out.log('Offset: ' + 85)
+    const d = byte2nibblesLE(v)
+    header.raw[85] = d[0]
+    header.raw[85 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA41(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA41')
+    out.log('Offset: ' + 87)
+    const d = byte2nibblesLE(v)
+    header.raw[87] = d[0]
+    header.raw[87 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA42(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA42')
+    out.log('Offset: ' + 89)
+    const d = byte2nibblesLE(v)
+    header.raw[89] = d[0]
+    header.raw[89 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA43(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA43')
+    out.log('Offset: ' + 91)
+    const d = byte2nibblesLE(v)
+    header.raw[91] = d[0]
+    header.raw[91 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA44(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA44')
+    out.log('Offset: ' + 93)
+    const d = byte2nibblesLE(v)
+    header.raw[93] = d[0]
+    header.raw[93 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA45(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA45')
+    out.log('Offset: ' + 95)
+    const d = byte2nibblesLE(v)
+    header.raw[95] = d[0]
+    header.raw[95 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA46(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA46')
+    out.log('Offset: ' + 97)
+    const d = byte2nibblesLE(v)
+    header.raw[97] = d[0]
+    header.raw[97 + 1] = d[1]
+}
+
+export function MiscellaneousData_writeMDATA47(header: MiscellaneousData, v: number) {
+    const out = newClientOutput(false, 'MiscellaneousData_writeMDATA47')
+    out.log('Offset: ' + 99)
+    const d = byte2nibblesLE(v)
+    header.raw[99] = d[0]
+    header.raw[99 + 1] = d[1]
 }
 
 
