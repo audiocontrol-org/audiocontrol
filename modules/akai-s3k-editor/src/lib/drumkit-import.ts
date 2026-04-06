@@ -269,10 +269,7 @@ export async function importDrumKitToDevice(
   writeProgramField(programHeader, 'PRNAME', programName);
   writeProgramField(programHeader, 'GROUPS', slices.length);
 
-  // Patch the program number in the raw SysEx
-  patchProgramNumber(programHeader.raw, programIndex);
-
-  await client.writeProgramHeader(programHeader);
+  await client.createProgram(programIndex, programHeader);
 
   // -----------------------------------------------------------------------
   // Phase 4: Create keygroups
@@ -316,11 +313,9 @@ export async function importDrumKitToDevice(
     writeKeygroupField(kgHeader, 'ZPLAY1', 4);
 
     if (i === 0) {
-      // First keygroup: write directly (overwrites the default kg 0)
-      patchKeygroupNumbers(kgHeader.raw, programIndex, 0);
+      // Keygroup 0 already exists from createProgram — overwrite with our config
       await client.writeKeygroupHeader(kgHeader);
     } else {
-      // Subsequent keygroups: use createKeygroup
       await client.createKeygroup(programIndex, i, kgHeader);
     }
   }
@@ -338,35 +333,3 @@ export async function importDrumKitToDevice(
   };
 }
 
-// =========================================================================
-// Raw byte patching (same approach as ImportProgramDialog)
-// =========================================================================
-
-/**
- * Byte indices in SysEx response for program number.
- * Response format: [F0, 47, ch, opcode, 48, PNUM_lo, PNUM_hi, ...data, F7]
- */
-const PNUMBER_LO_INDEX = 5;
-const PNUMBER_HI_INDEX = 6;
-const KNUMBER_RAW_INDEX = 7;
-
-function byte2nibblesLE(byte: number): [number, number] {
-  return [byte & 0x0f, (byte >> 4) & 0x0f];
-}
-
-function patchProgramNumber(raw: number[], programNumber: number): void {
-  const [lo, hi] = byte2nibblesLE(programNumber);
-  raw[PNUMBER_LO_INDEX] = lo;
-  raw[PNUMBER_HI_INDEX] = hi;
-}
-
-function patchKeygroupNumbers(
-  raw: number[],
-  programNumber: number,
-  keygroupNumber: number,
-): void {
-  const [lo, hi] = byte2nibblesLE(programNumber);
-  raw[PNUMBER_LO_INDEX] = lo;
-  raw[PNUMBER_HI_INDEX] = hi;
-  raw[KNUMBER_RAW_INDEX] = keygroupNumber;
-}

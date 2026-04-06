@@ -263,6 +263,36 @@ export function LibraryPage(): JSX.Element {
     [instrumentTransfer],
   );
 
+  const handleDeleteDeviceProgram = useCallback(
+    async (index: number, name: string) => {
+      if (!client) return;
+      if (!window.confirm(`Delete program "${name.trim()}" (#${index}) from device?`)) return;
+      try {
+        await client.deleteProgram(index);
+        await refreshDevice();
+        setSelection(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete program');
+      }
+    },
+    [client, refreshDevice, setError],
+  );
+
+  const handleDeleteDeviceSample = useCallback(
+    async (index: number, name: string) => {
+      if (!client) return;
+      if (!window.confirm(`Delete sample "${name.trim()}" (#${index}) from device?`)) return;
+      try {
+        await client.deleteSample(index);
+        await refreshDevice();
+        setSelection(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to delete sample');
+      }
+    },
+    [client, refreshDevice, setError],
+  );
+
   const handleExportComplete = useCallback(async () => { await refreshPrograms(); }, [refreshPrograms]);
   const handleImportComplete = useCallback(async () => { await refreshDevice(); }, [refreshDevice]);
 
@@ -280,15 +310,18 @@ export function LibraryPage(): JSX.Element {
     onSendProgramToDevice: canTransfer ? handleSendProgramToDevice : undefined,
     onImportDrumKit: canTransfer ? drumKitTransfer.openDialog : undefined,
     onImportInstrument: canTransfer ? handleImportInstrument : undefined,
+    onDeleteDeviceProgram: isDeviceConnected ? handleDeleteDeviceProgram : undefined,
+    onDeleteDeviceSample: isDeviceConnected ? handleDeleteDeviceSample : undefined,
     onOpenInLoopEditor: hasLibrary ? editorDialogs.handleOpenInLoopEditor : undefined,
     onOpenInSampleEditor: hasLibrary ? editorDialogs.handleOpenInSampleEditor : undefined,
     onOpenInChopper: hasLibrary ? editorDialogs.handleOpenInChopper : undefined,
     onEditDrumKit: hasLibrary ? editorDialogs.handleOpenDrumKitEditor : undefined,
   }), [
-    canTransfer, hasLibrary,
+    canTransfer, hasLibrary, isDeviceConnected,
     handleSendSampleToDevice, handleSaveDeviceSampleToLibrary,
     handleSaveDeviceProgramToLibrary, handleSendProgramToDevice,
     drumKitTransfer.openDialog, handleImportInstrument,
+    handleDeleteDeviceProgram, handleDeleteDeviceSample,
     editorDialogs.handleOpenInLoopEditor,
     editorDialogs.handleOpenInSampleEditor,
     editorDialogs.handleOpenInChopper,

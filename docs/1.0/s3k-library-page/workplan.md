@@ -469,6 +469,38 @@ Build the context-aware right column that adapts to the current selection.
 | 16 | Write unit tests for serialization and drag data | 7.1 | 0.5d |
 | 17 | Write E2E tests with S3000XL hardware | 7.2 | 1d |
 
+## Known Issues to Fix
+
+### Node.js Module Pollution in Browser Code
+
+The `akai-s3k-editor` Vite build fails because browser-targeted code transitively imports Node.js modules (`os`, `path`, `fs`) via `sampler-lib/server`. This is legacy cruft from the original project architecture, which used a Node.js API server to talk to samplers. The new project uses WebMIDI directly in the browser, but several modules still re-export or depend on Node.js-only code paths.
+
+**What needs to happen:**
+- Audit import chains in `akai-s3k-editor` and other browser modules for Node.js dependencies
+- Ensure subpath exports (e.g., `sampler-lib/server` vs `sampler-lib`) cleanly separate browser-safe and Node-only code
+- Remove or gate any remaining Node.js-only imports from browser entry points
+
+### Replace akaitools (Perl) with Browser-Safe TypeScript
+
+The codebase currently depends on `akaitools`, a Perl library, for reading and writing Akai disk images, programs, and samples. This dependency lives in `sampler-devices/src/io/akaitools*.ts` — TypeScript wrappers that shell out to Perl binaries. This obviously cannot run in the browser, and is part of the legacy Node.js API server architecture that should be retired.
+
+The `akaitools` Perl source is an excellent reference implementation for the Akai binary formats (disk structure, program headers, keygroup headers, sample headers). We need this functionality for library operations like reading/writing `.a3p` program files and `.a3s` sample files directly in the browser.
+
+**What needs to happen:**
+- Use the `akaitools` Perl source as a reference to create a browser-safe TypeScript implementation of Akai binary format parsing and serialization
+- Cover at minimum: program file read/write, keygroup parsing, sample header parsing, nibble encoding/decoding (some of this already exists in `sampler-devices/src/devices/s3000xl/`)
+- The new implementation should work with `Uint8Array` / `ArrayBuffer` — no filesystem, no child processes
+- Migrate `sampler-export` and any other consumers off the Perl-based `readAkaiData` / `writeAkaiData` to the new TypeScript implementation
+- Eventually remove the akaitools Perl dependency entirely
+
+### E2E Tests in Default Test Target
+
+The `akai-s3k-editor` module's default `pnpm test` target (Vitest) collects both unit tests and Playwright e2e spec files. The e2e specs fail at collection time because they import from `e2e-infra` and reference hardware-specific globals. E2E tests should only run via dedicated `make test-e2e-*` targets, never as part of the default `pnpm test` / `vitest run`.
+
+**What needs to happen:**
+- Configure `vitest.config.ts` in `akai-s3k-editor` to exclude `e2e/` from the default test glob
+- Ensure `make test-e2e-*` targets continue to work independently via Playwright configs
+
 ## Dependencies
 
 - Phase 1 and Phase 6 can be developed in parallel

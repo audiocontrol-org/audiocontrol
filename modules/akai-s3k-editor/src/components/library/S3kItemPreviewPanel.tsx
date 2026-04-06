@@ -60,6 +60,10 @@ export interface S3kPreviewCustomState {
   onOpenInChopper?: (name: string, type: string, path?: string[]) => void;
   /** Callback for "Edit Kit" action (drum kit) */
   onEditDrumKit?: (name: string, path?: string[]) => void;
+  /** Callback for "Delete" action (device program) */
+  onDeleteDeviceProgram?: (index: number, name: string) => void;
+  /** Callback for "Delete" action (device sample) */
+  onDeleteDeviceSample?: (index: number, name: string) => void;
 }
 
 // =========================================================================
@@ -393,8 +397,8 @@ function DeviceSamplePreview({
       <MetaRow label="Type" value="Device Sample" />
       <MetaRow label="Slot" value={`#${meta.deviceIndex}`} />
 
-      {customState?.onSaveDeviceSampleToLibrary && (
-        <div className="mt-4">
+      <div className="mt-4 flex gap-2 flex-wrap">
+        {customState?.onSaveDeviceSampleToLibrary && (
           <button
             className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 text-white rounded transition-colors"
             onClick={() => customState.onSaveDeviceSampleToLibrary!(
@@ -405,8 +409,20 @@ function DeviceSamplePreview({
           >
             Save to Library
           </button>
-        </div>
-      )}
+        )}
+        {customState?.onDeleteDeviceSample && (
+          <button
+            className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
+            onClick={() => customState.onDeleteDeviceSample!(
+              meta.deviceIndex,
+              selection.node.name,
+            )}
+            data-testid="preview-delete-device-sample"
+          >
+            Delete from Device
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -427,8 +443,8 @@ function DeviceProgramPreview({
       <MetaRow label="Type" value="Device Program" />
       <MetaRow label="Slot" value={`#${meta.deviceIndex}`} />
 
-      {customState?.onSaveDeviceProgramToLibrary && (
-        <div className="mt-4">
+      <div className="mt-4 flex gap-2 flex-wrap">
+        {customState?.onSaveDeviceProgramToLibrary && (
           <button
             className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 text-white rounded transition-colors"
             onClick={() => customState.onSaveDeviceProgramToLibrary!(
@@ -439,8 +455,20 @@ function DeviceProgramPreview({
           >
             Save to Library
           </button>
-        </div>
-      )}
+        )}
+        {customState?.onDeleteDeviceProgram && (
+          <button
+            className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
+            onClick={() => customState.onDeleteDeviceProgram!(
+              meta.deviceIndex,
+              selection.node.name,
+            )}
+            data-testid="preview-delete-device-program"
+          >
+            Delete from Device
+          </button>
+        )}
+      </div>
     </div>
   );
 }

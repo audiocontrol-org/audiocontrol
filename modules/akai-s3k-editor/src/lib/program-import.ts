@@ -119,35 +119,6 @@ export function resolveZoneSamples(
 }
 
 // =========================================================================
-// Raw byte patching (same approach as drumkit-import)
-// =========================================================================
-
-const PNUMBER_LO_INDEX = 5;
-const PNUMBER_HI_INDEX = 6;
-const KNUMBER_RAW_INDEX = 7;
-
-function byte2nibblesLE(byte: number): [number, number] {
-  return [byte & 0x0f, (byte >> 4) & 0x0f];
-}
-
-function patchProgramNumber(raw: number[], programNumber: number): void {
-  const [lo, hi] = byte2nibblesLE(programNumber);
-  raw[PNUMBER_LO_INDEX] = lo;
-  raw[PNUMBER_HI_INDEX] = hi;
-}
-
-function patchKeygroupNumbers(
-  raw: number[],
-  programNumber: number,
-  keygroupNumber: number,
-): void {
-  const [lo, hi] = byte2nibblesLE(programNumber);
-  raw[PNUMBER_LO_INDEX] = lo;
-  raw[PNUMBER_HI_INDEX] = hi;
-  raw[KNUMBER_RAW_INDEX] = keygroupNumber;
-}
-
-// =========================================================================
 // Main import function
 // =========================================================================
 
@@ -216,8 +187,7 @@ export async function importInstrumentToDevice(
   writeProgramField(programHeader, 'PRNAME', programName);
   writeProgramField(programHeader, 'GROUPS', validZones.length);
 
-  patchProgramNumber(programHeader.raw, programIndex);
-  await client.writeProgramHeader(programHeader);
+  await client.createProgram(programIndex, programHeader);
 
   // -------------------------------------------------------------------
   // Phase 3: Create keygroups
@@ -260,7 +230,7 @@ export async function importInstrumentToDevice(
     }
 
     if (i === 0) {
-      patchKeygroupNumbers(kgHeader.raw, programIndex, 0);
+      // Keygroup 0 already exists from createProgram — overwrite with our config
       await client.writeKeygroupHeader(kgHeader);
     } else {
       await client.createKeygroup(programIndex, i, kgHeader);
