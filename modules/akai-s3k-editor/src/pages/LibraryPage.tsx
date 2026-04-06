@@ -53,6 +53,7 @@ import { useProgramTransfer } from '@/hooks/useProgramTransfer';
 import { useDrumKitTransfer } from '@/hooks/useDrumKitTransfer';
 import { useInstrumentTransfer } from '@/hooks/useInstrumentTransfer';
 import { useEditorDialogs } from '@/hooks/useEditorDialogs';
+import { deleteStoredProgram } from '@/lib/program-storage';
 import { SendSampleDialog } from '@/components/library/SendSampleDialog';
 import { ReceiveSampleDialog } from '@/components/library/ReceiveSampleDialog';
 import { ExportProgramDialog } from '@/components/library/ExportProgramDialog';
@@ -377,13 +378,20 @@ export function LibraryPage(): JSX.Element {
   );
 
   const handleDelete = useCallback(
-    async (_catId: string, node: TreeNode) => {
+    async (catId: string, node: TreeNode) => {
       if (!root) return;
-      const meta = node.meta as { path?: string[] } | undefined;
-      await deleteItem(root, node.name, meta?.path ?? []);
-      void refreshLibrary();
+      if (catId === 'programs') {
+        const meta = node.meta as { dirName?: string } | undefined;
+        const dirName = meta?.dirName ?? node.name;
+        await deleteStoredProgram(root, dirName);
+        void refreshPrograms();
+      } else {
+        const meta = node.meta as { path?: string[] } | undefined;
+        await deleteItem(root, node.name, meta?.path ?? []);
+        void refreshLibrary();
+      }
     },
-    [root, refreshLibrary],
+    [root, refreshLibrary, refreshPrograms],
   );
 
   const handleMove = useCallback(
@@ -514,6 +522,7 @@ export function LibraryPage(): JSX.Element {
             programName={programTransfer.exportDialog.programName}
             client={client}
             libraryRoot={root}
+            deviceSampleNames={deviceSampleNames}
             onExportComplete={handleExportComplete}
           />
           <ImportProgramDialog

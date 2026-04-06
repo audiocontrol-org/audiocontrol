@@ -91,6 +91,29 @@ export async function saveProgramToLibrary(
 }
 
 /**
+ * Save a sample WAV file into a program's directory bundle.
+ *
+ * Stores at: `programs/{programName}/samples/{sampleName}.wav`
+ */
+export async function saveProgramSample(
+  root: StorageDirectoryHandle,
+  programName: string,
+  sampleName: string,
+  wavData: ArrayBuffer,
+): Promise<void> {
+  const programsDir = await getProgramsDir(root);
+  const safeProgramName = sanitizeForFilename(programName);
+  const safeSampleName = sanitizeForFilename(sampleName.trim());
+
+  const programDir = await programsDir.getDirectoryHandle(safeProgramName, { create: true });
+  const samplesDir = await programDir.getDirectoryHandle('samples', { create: true });
+  const fileHandle = await samplesDir.getFileHandle(`${safeSampleName}.wav`, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(wavData);
+  await writable.close();
+}
+
+/**
  * Load a serialized program YAML string from the library.
  *
  * @returns The raw YAML text, ready for deserializeProgram()
