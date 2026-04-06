@@ -1,5 +1,5 @@
 //
-// GENERATED Sun Apr 05 2026 19:36:40 GMT-0700 (Pacific Daylight Time). DO NOT EDIT.
+// GENERATED Sun Apr 05 2026 20:07:40 GMT-0700 (Pacific Daylight Time). DO NOT EDIT.
 //
 import {byte2nibblesLE, bytes2numberLE, bytes2signedNumberLE, bytes2tuningLE, nibbles2byte, newClientOutput} from "@audiocontrol/sampler-lib"
 import {nextByte, akaiByte2String, string2AkaiBytes} from "@/utils/akai-utils.js"
@@ -974,9 +974,12 @@ export function parseProgramHeader(data: number[], offset: number, o: ProgramHea
 export function ProgramHeader_writeKGRP1(header: ProgramHeader, v: number) {
     const out = newClientOutput(false, 'ProgramHeader_writeKGRP1')
     out.log('Offset: ' + 9)
-    const d = byte2nibblesLE(v)
-    header.raw[9] = d[0]
-    header.raw[9 + 1] = d[1]
+    let tmp = v
+    header.raw[9] = tmp & 0x0f
+    header.raw[10] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[11] = tmp & 0x0f
+    header.raw[12] = (tmp >> 4) & 0x0f
 }
 
 export function ProgramHeader_writePRNAME(header: ProgramHeader, v: string) {
@@ -1605,9 +1608,27 @@ export function ProgramHeader_writeLFO2TRIG(header: ProgramHeader, v: number) {
 export function ProgramHeader_writeRESERVED_1(header: ProgramHeader, v: number) {
     const out = newClientOutput(false, 'ProgramHeader_writeRESERVED_1')
     out.log('Offset: ' + 213)
-    const d = byte2nibblesLE(v)
-    header.raw[213] = d[0]
-    header.raw[213 + 1] = d[1]
+    let tmp = v
+    header.raw[213] = tmp & 0x0f
+    header.raw[214] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[215] = tmp & 0x0f
+    header.raw[216] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[217] = tmp & 0x0f
+    header.raw[218] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[219] = tmp & 0x0f
+    header.raw[220] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[221] = tmp & 0x0f
+    header.raw[222] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[223] = tmp & 0x0f
+    header.raw[224] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[225] = tmp & 0x0f
+    header.raw[226] = (tmp >> 4) & 0x0f
 }
 
 export function ProgramHeader_writePORTIME(header: ProgramHeader, v: number) {
@@ -2125,169 +2146,448 @@ export function SampleHeader_writeSPTYPE(header: SampleHeader, v: number) {
 export function SampleHeader_writeSTUNO(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeSTUNO')
     out.log('Offset: ' + 47)
-    const d = byte2nibblesLE(v)
-    header.raw[47] = d[0]
-    header.raw[47 + 1] = d[1]
+    let tmp = v
+    header.raw[47] = tmp & 0x0f
+    header.raw[48] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[49] = tmp & 0x0f
+    header.raw[50] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeSLOCAT(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeSLOCAT')
     out.log('Offset: ' + 51)
-    const d = byte2nibblesLE(v)
-    header.raw[51] = d[0]
-    header.raw[51 + 1] = d[1]
+    let tmp = v
+    header.raw[51] = tmp & 0x0f
+    header.raw[52] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[53] = tmp & 0x0f
+    header.raw[54] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[55] = tmp & 0x0f
+    header.raw[56] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[57] = tmp & 0x0f
+    header.raw[58] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeSLNGTH(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeSLNGTH')
     out.log('Offset: ' + 59)
-    const d = byte2nibblesLE(v)
-    header.raw[59] = d[0]
-    header.raw[59 + 1] = d[1]
+    let tmp = v
+    header.raw[59] = tmp & 0x0f
+    header.raw[60] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[61] = tmp & 0x0f
+    header.raw[62] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[63] = tmp & 0x0f
+    header.raw[64] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[65] = tmp & 0x0f
+    header.raw[66] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeSSTART(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeSSTART')
     out.log('Offset: ' + 67)
-    const d = byte2nibblesLE(v)
-    header.raw[67] = d[0]
-    header.raw[67 + 1] = d[1]
+    let tmp = v
+    header.raw[67] = tmp & 0x0f
+    header.raw[68] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[69] = tmp & 0x0f
+    header.raw[70] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[71] = tmp & 0x0f
+    header.raw[72] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[73] = tmp & 0x0f
+    header.raw[74] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeSMPEND(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeSMPEND')
     out.log('Offset: ' + 75)
-    const d = byte2nibblesLE(v)
-    header.raw[75] = d[0]
-    header.raw[75 + 1] = d[1]
+    let tmp = v
+    header.raw[75] = tmp & 0x0f
+    header.raw[76] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[77] = tmp & 0x0f
+    header.raw[78] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[79] = tmp & 0x0f
+    header.raw[80] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[81] = tmp & 0x0f
+    header.raw[82] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeLOOPAT1(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeLOOPAT1')
     out.log('Offset: ' + 83)
-    const d = byte2nibblesLE(v)
-    header.raw[83] = d[0]
-    header.raw[83 + 1] = d[1]
+    let tmp = v
+    header.raw[83] = tmp & 0x0f
+    header.raw[84] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[85] = tmp & 0x0f
+    header.raw[86] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[87] = tmp & 0x0f
+    header.raw[88] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[89] = tmp & 0x0f
+    header.raw[90] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeLLNGTH1(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeLLNGTH1')
     out.log('Offset: ' + 91)
-    const d = byte2nibblesLE(v)
-    header.raw[91] = d[0]
-    header.raw[91 + 1] = d[1]
+    let tmp = v
+    header.raw[91] = tmp & 0x0f
+    header.raw[92] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[93] = tmp & 0x0f
+    header.raw[94] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[95] = tmp & 0x0f
+    header.raw[96] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[97] = tmp & 0x0f
+    header.raw[98] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[99] = tmp & 0x0f
+    header.raw[100] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[101] = tmp & 0x0f
+    header.raw[102] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeLDWELL1(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeLDWELL1')
     out.log('Offset: ' + 103)
-    const d = byte2nibblesLE(v)
-    header.raw[103] = d[0]
-    header.raw[103 + 1] = d[1]
+    let tmp = v
+    header.raw[103] = tmp & 0x0f
+    header.raw[104] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[105] = tmp & 0x0f
+    header.raw[106] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeLOOPAT2(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeLOOPAT2')
     out.log('Offset: ' + 107)
-    const d = byte2nibblesLE(v)
-    header.raw[107] = d[0]
-    header.raw[107 + 1] = d[1]
+    let tmp = v
+    header.raw[107] = tmp & 0x0f
+    header.raw[108] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[109] = tmp & 0x0f
+    header.raw[110] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[111] = tmp & 0x0f
+    header.raw[112] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[113] = tmp & 0x0f
+    header.raw[114] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeLLNGTH2(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeLLNGTH2')
     out.log('Offset: ' + 115)
-    const d = byte2nibblesLE(v)
-    header.raw[115] = d[0]
-    header.raw[115 + 1] = d[1]
+    let tmp = v
+    header.raw[115] = tmp & 0x0f
+    header.raw[116] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[117] = tmp & 0x0f
+    header.raw[118] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[119] = tmp & 0x0f
+    header.raw[120] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[121] = tmp & 0x0f
+    header.raw[122] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[123] = tmp & 0x0f
+    header.raw[124] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[125] = tmp & 0x0f
+    header.raw[126] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeLDWELL2(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeLDWELL2')
     out.log('Offset: ' + 127)
-    const d = byte2nibblesLE(v)
-    header.raw[127] = d[0]
-    header.raw[127 + 1] = d[1]
+    let tmp = v
+    header.raw[127] = tmp & 0x0f
+    header.raw[128] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[129] = tmp & 0x0f
+    header.raw[130] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeLOOPAT3(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeLOOPAT3')
     out.log('Offset: ' + 131)
-    const d = byte2nibblesLE(v)
-    header.raw[131] = d[0]
-    header.raw[131 + 1] = d[1]
+    let tmp = v
+    header.raw[131] = tmp & 0x0f
+    header.raw[132] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[133] = tmp & 0x0f
+    header.raw[134] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[135] = tmp & 0x0f
+    header.raw[136] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[137] = tmp & 0x0f
+    header.raw[138] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeLLNGTH3(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeLLNGTH3')
     out.log('Offset: ' + 139)
-    const d = byte2nibblesLE(v)
-    header.raw[139] = d[0]
-    header.raw[139 + 1] = d[1]
+    let tmp = v
+    header.raw[139] = tmp & 0x0f
+    header.raw[140] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[141] = tmp & 0x0f
+    header.raw[142] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[143] = tmp & 0x0f
+    header.raw[144] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[145] = tmp & 0x0f
+    header.raw[146] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[147] = tmp & 0x0f
+    header.raw[148] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[149] = tmp & 0x0f
+    header.raw[150] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeLDWELL3(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeLDWELL3')
     out.log('Offset: ' + 151)
-    const d = byte2nibblesLE(v)
-    header.raw[151] = d[0]
-    header.raw[151 + 1] = d[1]
+    let tmp = v
+    header.raw[151] = tmp & 0x0f
+    header.raw[152] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[153] = tmp & 0x0f
+    header.raw[154] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeLOOPAT4(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeLOOPAT4')
     out.log('Offset: ' + 155)
-    const d = byte2nibblesLE(v)
-    header.raw[155] = d[0]
-    header.raw[155 + 1] = d[1]
+    let tmp = v
+    header.raw[155] = tmp & 0x0f
+    header.raw[156] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[157] = tmp & 0x0f
+    header.raw[158] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[159] = tmp & 0x0f
+    header.raw[160] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[161] = tmp & 0x0f
+    header.raw[162] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeLLNGTH4(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeLLNGTH4')
     out.log('Offset: ' + 163)
-    const d = byte2nibblesLE(v)
-    header.raw[163] = d[0]
-    header.raw[163 + 1] = d[1]
+    let tmp = v
+    header.raw[163] = tmp & 0x0f
+    header.raw[164] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[165] = tmp & 0x0f
+    header.raw[166] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[167] = tmp & 0x0f
+    header.raw[168] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[169] = tmp & 0x0f
+    header.raw[170] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[171] = tmp & 0x0f
+    header.raw[172] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[173] = tmp & 0x0f
+    header.raw[174] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeLDWELL4(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeLDWELL4')
     out.log('Offset: ' + 175)
-    const d = byte2nibblesLE(v)
-    header.raw[175] = d[0]
-    header.raw[175 + 1] = d[1]
+    let tmp = v
+    header.raw[175] = tmp & 0x0f
+    header.raw[176] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[177] = tmp & 0x0f
+    header.raw[178] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeSLXY1(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeSLXY1')
     out.log('Offset: ' + 179)
-    const d = byte2nibblesLE(v)
-    header.raw[179] = d[0]
-    header.raw[179 + 1] = d[1]
+    let tmp = v
+    header.raw[179] = tmp & 0x0f
+    header.raw[180] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[181] = tmp & 0x0f
+    header.raw[182] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[183] = tmp & 0x0f
+    header.raw[184] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[185] = tmp & 0x0f
+    header.raw[186] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[187] = tmp & 0x0f
+    header.raw[188] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[189] = tmp & 0x0f
+    header.raw[190] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[191] = tmp & 0x0f
+    header.raw[192] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[193] = tmp & 0x0f
+    header.raw[194] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[195] = tmp & 0x0f
+    header.raw[196] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[197] = tmp & 0x0f
+    header.raw[198] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[199] = tmp & 0x0f
+    header.raw[200] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[201] = tmp & 0x0f
+    header.raw[202] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeSLXY2(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeSLXY2')
     out.log('Offset: ' + 203)
-    const d = byte2nibblesLE(v)
-    header.raw[203] = d[0]
-    header.raw[203 + 1] = d[1]
+    let tmp = v
+    header.raw[203] = tmp & 0x0f
+    header.raw[204] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[205] = tmp & 0x0f
+    header.raw[206] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[207] = tmp & 0x0f
+    header.raw[208] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[209] = tmp & 0x0f
+    header.raw[210] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[211] = tmp & 0x0f
+    header.raw[212] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[213] = tmp & 0x0f
+    header.raw[214] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[215] = tmp & 0x0f
+    header.raw[216] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[217] = tmp & 0x0f
+    header.raw[218] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[219] = tmp & 0x0f
+    header.raw[220] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[221] = tmp & 0x0f
+    header.raw[222] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[223] = tmp & 0x0f
+    header.raw[224] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[225] = tmp & 0x0f
+    header.raw[226] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeSLXY3(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeSLXY3')
     out.log('Offset: ' + 227)
-    const d = byte2nibblesLE(v)
-    header.raw[227] = d[0]
-    header.raw[227 + 1] = d[1]
+    let tmp = v
+    header.raw[227] = tmp & 0x0f
+    header.raw[228] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[229] = tmp & 0x0f
+    header.raw[230] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[231] = tmp & 0x0f
+    header.raw[232] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[233] = tmp & 0x0f
+    header.raw[234] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[235] = tmp & 0x0f
+    header.raw[236] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[237] = tmp & 0x0f
+    header.raw[238] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[239] = tmp & 0x0f
+    header.raw[240] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[241] = tmp & 0x0f
+    header.raw[242] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[243] = tmp & 0x0f
+    header.raw[244] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[245] = tmp & 0x0f
+    header.raw[246] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[247] = tmp & 0x0f
+    header.raw[248] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[249] = tmp & 0x0f
+    header.raw[250] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeSLXY4(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeSLXY4')
     out.log('Offset: ' + 251)
-    const d = byte2nibblesLE(v)
-    header.raw[251] = d[0]
-    header.raw[251 + 1] = d[1]
+    let tmp = v
+    header.raw[251] = tmp & 0x0f
+    header.raw[252] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[253] = tmp & 0x0f
+    header.raw[254] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[255] = tmp & 0x0f
+    header.raw[256] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[257] = tmp & 0x0f
+    header.raw[258] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[259] = tmp & 0x0f
+    header.raw[260] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[261] = tmp & 0x0f
+    header.raw[262] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[263] = tmp & 0x0f
+    header.raw[264] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[265] = tmp & 0x0f
+    header.raw[266] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[267] = tmp & 0x0f
+    header.raw[268] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[269] = tmp & 0x0f
+    header.raw[270] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[271] = tmp & 0x0f
+    header.raw[272] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[273] = tmp & 0x0f
+    header.raw[274] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeSSPARE(header: SampleHeader, v: number) {
@@ -2309,17 +2609,23 @@ export function SampleHeader_writeSWCOMM(header: SampleHeader, v: number) {
 export function SampleHeader_writeSSPAIR(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeSSPAIR')
     out.log('Offset: ' + 279)
-    const d = byte2nibblesLE(v)
-    header.raw[279] = d[0]
-    header.raw[279 + 1] = d[1]
+    let tmp = v
+    header.raw[279] = tmp & 0x0f
+    header.raw[280] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[281] = tmp & 0x0f
+    header.raw[282] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeSSRATE(header: SampleHeader, v: number) {
     const out = newClientOutput(false, 'SampleHeader_writeSSRATE')
     out.log('Offset: ' + 283)
-    const d = byte2nibblesLE(v)
-    header.raw[283] = d[0]
-    header.raw[283 + 1] = d[1]
+    let tmp = v
+    header.raw[283] = tmp & 0x0f
+    header.raw[284] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[285] = tmp & 0x0f
+    header.raw[286] = (tmp >> 4) & 0x0f
 }
 
 export function SampleHeader_writeSHLTO(header: SampleHeader, v: number) {
@@ -3814,9 +4120,12 @@ export function KeygroupHeader_writeKGIDENT(header: KeygroupHeader, v: number) {
 export function KeygroupHeader_writeNXTKG(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeNXTKG')
     out.log('Offset: ' + 10)
-    const d = byte2nibblesLE(v)
-    header.raw[10] = d[0]
-    header.raw[10 + 1] = d[1]
+    let tmp = v
+    header.raw[10] = tmp & 0x0f
+    header.raw[11] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[12] = tmp & 0x0f
+    header.raw[13] = (tmp >> 4) & 0x0f
 }
 
 export function KeygroupHeader_writeLONOTE(header: KeygroupHeader, v: number) {
@@ -4150,9 +4459,12 @@ export function KeygroupHeader_writeHVXF1(header: KeygroupHeader, v: number) {
 export function KeygroupHeader_writeSBADD1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeSBADD1')
     out.log('Offset: ' + 120)
-    const d = byte2nibblesLE(v)
-    header.raw[120] = d[0]
-    header.raw[120 + 1] = d[1]
+    let tmp = v
+    header.raw[120] = tmp & 0x0f
+    header.raw[121] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[122] = tmp & 0x0f
+    header.raw[123] = (tmp >> 4) & 0x0f
 }
 
 export function KeygroupHeader_writeSNAME2(header: KeygroupHeader, v: string) {
@@ -4243,9 +4555,12 @@ export function KeygroupHeader_writeHVXF2(header: KeygroupHeader, v: number) {
 export function KeygroupHeader_writeSBADD2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeSBADD2')
     out.log('Offset: ' + 168)
-    const d = byte2nibblesLE(v)
-    header.raw[168] = d[0]
-    header.raw[168 + 1] = d[1]
+    let tmp = v
+    header.raw[168] = tmp & 0x0f
+    header.raw[169] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[170] = tmp & 0x0f
+    header.raw[171] = (tmp >> 4) & 0x0f
 }
 
 export function KeygroupHeader_writeSNAME3(header: KeygroupHeader, v: string) {
@@ -4336,9 +4651,12 @@ export function KeygroupHeader_writeHVXF3(header: KeygroupHeader, v: number) {
 export function KeygroupHeader_writeSBADD3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeSBADD3')
     out.log('Offset: ' + 216)
-    const d = byte2nibblesLE(v)
-    header.raw[216] = d[0]
-    header.raw[216 + 1] = d[1]
+    let tmp = v
+    header.raw[216] = tmp & 0x0f
+    header.raw[217] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[218] = tmp & 0x0f
+    header.raw[219] = (tmp >> 4) & 0x0f
 }
 
 export function KeygroupHeader_writeSNAME4(header: KeygroupHeader, v: string) {
@@ -4429,9 +4747,12 @@ export function KeygroupHeader_writeHVXF4(header: KeygroupHeader, v: number) {
 export function KeygroupHeader_writeSBADD4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeSBADD4')
     out.log('Offset: ' + 264)
-    const d = byte2nibblesLE(v)
-    header.raw[264] = d[0]
-    header.raw[264 + 1] = d[1]
+    let tmp = v
+    header.raw[264] = tmp & 0x0f
+    header.raw[265] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[266] = tmp & 0x0f
+    header.raw[267] = (tmp >> 4) & 0x0f
 }
 
 export function KeygroupHeader_writeKBEAT(header: KeygroupHeader, v: number) {
@@ -4517,33 +4838,45 @@ export function KeygroupHeader_writeVZOUT4(header: KeygroupHeader, v: number) {
 export function KeygroupHeader_writeVSS1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVSS1')
     out.log('Offset: ' + 288)
-    const d = byte2nibblesLE(v)
-    header.raw[288] = d[0]
-    header.raw[288 + 1] = d[1]
+    let tmp = v
+    header.raw[288] = tmp & 0x0f
+    header.raw[289] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[290] = tmp & 0x0f
+    header.raw[291] = (tmp >> 4) & 0x0f
 }
 
 export function KeygroupHeader_writeVSS2(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVSS2')
     out.log('Offset: ' + 292)
-    const d = byte2nibblesLE(v)
-    header.raw[292] = d[0]
-    header.raw[292 + 1] = d[1]
+    let tmp = v
+    header.raw[292] = tmp & 0x0f
+    header.raw[293] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[294] = tmp & 0x0f
+    header.raw[295] = (tmp >> 4) & 0x0f
 }
 
 export function KeygroupHeader_writeVSS3(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVSS3')
     out.log('Offset: ' + 296)
-    const d = byte2nibblesLE(v)
-    header.raw[296] = d[0]
-    header.raw[296 + 1] = d[1]
+    let tmp = v
+    header.raw[296] = tmp & 0x0f
+    header.raw[297] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[298] = tmp & 0x0f
+    header.raw[299] = (tmp >> 4) & 0x0f
 }
 
 export function KeygroupHeader_writeVSS4(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeVSS4')
     out.log('Offset: ' + 300)
-    const d = byte2nibblesLE(v)
-    header.raw[300] = d[0]
-    header.raw[300 + 1] = d[1]
+    let tmp = v
+    header.raw[300] = tmp & 0x0f
+    header.raw[301] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[302] = tmp & 0x0f
+    header.raw[303] = (tmp >> 4) & 0x0f
 }
 
 export function KeygroupHeader_writeKV_LO(header: KeygroupHeader, v: number) {
@@ -4669,9 +5002,21 @@ export function KeygroupHeader_writePFXSLEV(header: KeygroupHeader, v: number) {
 export function KeygroupHeader_writeReserved_1(header: KeygroupHeader, v: number) {
     const out = newClientOutput(false, 'KeygroupHeader_writeReserved_1')
     out.log('Offset: ' + 334)
-    const d = byte2nibblesLE(v)
-    header.raw[334] = d[0]
-    header.raw[334 + 1] = d[1]
+    let tmp = v
+    header.raw[334] = tmp & 0x0f
+    header.raw[335] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[336] = tmp & 0x0f
+    header.raw[337] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[338] = tmp & 0x0f
+    header.raw[339] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[340] = tmp & 0x0f
+    header.raw[341] = (tmp >> 4) & 0x0f
+    tmp = tmp >> 8
+    header.raw[342] = tmp & 0x0f
+    header.raw[343] = (tmp >> 4) & 0x0f
 }
 
 export function KeygroupHeader_writeLSI2_ON(header: KeygroupHeader, v: number) {

@@ -120,8 +120,7 @@ export const SAMPLE_FIELD_SPECS: FieldSpec<SampleHeader>[] = [
     type: 'number',
     writeFn: 'SampleHeader_writeLLNGTH1',
     read: (h) => h.LLNGTH1,
-    testValue: 0,
-    skip: 'Loop length (6 bytes) — device-managed based on loop points and sample length',
+    testValue: 1000,
   },
   {
     field: 'LDWELL1',
@@ -198,8 +197,7 @@ export const SAMPLE_FIELD_SPECS: FieldSpec<SampleHeader>[] = [
     type: 'number',
     writeFn: 'SampleHeader_writeSLXY1',
     read: (h) => h.SLXY1,
-    testValue: 0,
-    skip: 'Relative loop factors (12 bytes) — complex multi-byte field, device-managed',
+    testValue: 100,
   },
   {
     field: 'SLXY2',
