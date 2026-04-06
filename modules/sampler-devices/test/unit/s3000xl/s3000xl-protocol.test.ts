@@ -74,9 +74,14 @@ describe('parseAkaiResponse', () => {
 });
 
 describe('isErrorResponse', () => {
-  it('returns true for REPLY opcode', () => {
-    const response = [SYSEX_START, AKAI_MANUFACTURER_ID, 0x00, AkaiOpcode.REPLY, S3000XL_DEVICE_ID, 0x00, SYSEX_END];
+  it('returns true for REPLY with non-zero error code', () => {
+    const response = [SYSEX_START, AKAI_MANUFACTURER_ID, 0x00, AkaiOpcode.REPLY, S3000XL_DEVICE_ID, 0x01, SYSEX_END];
     expect(isErrorResponse(response)).toBe(true);
+  });
+
+  it('returns false for REPLY with error code 0 (OK)', () => {
+    const response = [SYSEX_START, AKAI_MANUFACTURER_ID, 0x00, AkaiOpcode.REPLY, S3000XL_DEVICE_ID, 0x00, SYSEX_END];
+    expect(isErrorResponse(response)).toBe(false);
   });
 
   it('returns false for non-REPLY opcode', () => {

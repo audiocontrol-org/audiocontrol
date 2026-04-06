@@ -246,13 +246,41 @@ make test-e2e-roland-device           # Roland device tests (requires hardware +
 make test-e2e-roland-library          # Roland library tests (OPFS, no device)
 make test-e2e-roland-ui               # Roland UI navigation tests
 make test-e2e-s3k-device              # S3000XL device tests (requires hardware + midi-server)
+make test-e2e-s3k-scsi                # S3000XL SCSI tests (Playwright, requires Pi + S3000XL)
+make test-scsi-write-validation       # SCSI write validation (Node.js CLI, requires Pi + S3000XL)
 ```
 
 Pass arguments to test runners via ARGS:
 ```bash
 make test-e2e-roland-device ARGS="--grep 'Tone Editor'"
 E2E_DEVICE_TYPE=s550 make test-e2e-roland-device ARGS="--grep 'set round trip'"
+make test-scsi-write-validation ARGS="--test writes --verbose"
 ```
+
+### SCSI E2E Test Provisioning
+
+SCSI-based e2e tests (both Playwright and Node.js CLI) use a shared provisioning pipeline managed by Make and shell scripts in `modules/e2e-infra/scripts/`. **Never bypass this pipeline by calling scripts directly.**
+
+**Provisioning flow (handled automatically by Make targets):**
+
+1. **Build ARM64 binaries** — `check-scsi-bridge` cross-compiles s2p (scsi2pi fork) and scsi-midi-bridge (Rust) for the Pi via Docker
+2. **Deploy to Pi** — Runner scripts SCP binaries to `/tmp/s2p-midi` and `/tmp/e2e-scsi-midi-bridge` on the Pi
+3. **Start daemons** — s2p on port 6868 (sudo, NOPASSWD), bridge on port 7033
+4. **Validate** — Confirms S3000XL is reachable via bridge `/status` endpoint
+5. **Run tests** — Playwright (browser) or tsx (Node.js CLI) depending on target
+6. **Cleanup** — Trap kills remote daemons on exit
+
+**Runner scripts in `modules/e2e-infra/scripts/`:**
+- `run-scsi-midi-e2e.sh` — Full provisioning + Playwright (steps 1-6, used by `test-e2e-s3k-scsi`)
+- `run-scsi-node-e2e.sh` — Full provisioning + Node.js tsx (steps 1-6, used by `test-scsi-write-validation`)
+
+**Key variables (set by Make, consumed by runner scripts):**
+- `S2P_BIN` — Path to cross-compiled s2p binary
+- `SCSI_BRIDGE_BIN` — Path to cross-compiled scsi-midi-bridge binary
+- `SCSI_PI_HOST` — Pi hostname (default: `s3k.local`)
+- `SCSI_PI_USER` — Pi SSH user (default: `orion`)
+
+**When adding new SCSI e2e tests:** Create a Make target that depends on `check-scsi-bridge`, sets the environment variables above, and delegates to one of the shared runner scripts. Do not build, deploy, or start daemons manually.
 
 ### 2. No Mocking
 

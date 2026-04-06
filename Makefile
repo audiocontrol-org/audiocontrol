@@ -79,7 +79,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-ui test-e2e-s3k-device
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-scsi check-scsi-bridge test-scsi-write-validation
 
 build: $(ALL_STAMPS)
 
@@ -150,6 +150,90 @@ test-e2e-roland-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
 # S3000XL device tests (requires connected S3000XL + midi-server)
 test-e2e-s3k-device: $(AKAI_S3K_EDITOR) check-midi-server ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh $(ARGS)"
+
+# ---------------------------------------------------------------------------
+# SCSI MIDI Bridge E2E Tests
+# ---------------------------------------------------------------------------
+
+# Pi connection (override: make test-e2e-s3k-scsi SCSI_PI_HOST=10.0.0.57)
+SCSI_PI_HOST ?= s3k.local
+SCSI_PI_USER ?= orion
+
+# scsi2pi source: override to use local checkout during development
+# Usage: make test-e2e-s3k-scsi SCSI2PI_DIR=~/work/scsi2pi-work/scsi2pi
+SCSI2PI_DIR ?=
+SCSI2PI_DEPS_DIR := $(CURDIR)/.deps/scsi2pi
+SCSI2PI_REPO_URL := https://github.com/audiocontrol-org/scsi2pi.git
+SCSI2PI_REPO_BRANCH := feature/midi-processor
+
+ifdef SCSI2PI_DIR
+  SCSI2PI_EFFECTIVE_DIR := $(SCSI2PI_DIR)
+else
+  SCSI2PI_EFFECTIVE_DIR := $(SCSI2PI_DEPS_DIR)
+endif
+
+S2P_BIN := $(SCSI2PI_EFFECTIVE_DIR)/.docker-build/s2p
+S2P_STAMP := $(SCSI2PI_EFFECTIVE_DIR)/.docker-build-stamp
+
+# scsi-midi-bridge (in-tree Rust service)
+SCSI_BRIDGE_SRC_DIR := $(CURDIR)/services/scsi-midi-bridge
+SCSI_BRIDGE_BIN := $(SCSI_BRIDGE_SRC_DIR)/.docker-build/scsi-midi-bridge
+SCSI_BRIDGE_STAMP := $(SCSI_BRIDGE_SRC_DIR)/.docker-build-stamp
+
+# Clone scsi2pi to .deps/ (skipped when SCSI2PI_DIR is set)
+ifndef SCSI2PI_DIR
+$(SCSI2PI_DEPS_DIR)/Dockerfile:
+	@mkdir -p .deps
+	git clone --depth 1 -b $(SCSI2PI_REPO_BRANCH) $(SCSI2PI_REPO_URL) $(SCSI2PI_DEPS_DIR)
+
+$(S2P_STAMP): $(SCSI2PI_DEPS_DIR)/Dockerfile
+else
+$(S2P_STAMP): $(shell find $(SCSI2PI_DIR)/cpp -name '*.cpp' -o -name '*.h' 2>/dev/null | head -50)
+endif
+	cd $(SCSI2PI_EFFECTIVE_DIR) && \
+		docker build --platform linux/arm64 -t scsi2pi-build -f Dockerfile . && \
+		docker run --rm --platform linux/arm64 -v "$$(cd $(SCSI2PI_EFFECTIVE_DIR) && pwd):/src" scsi2pi-build make -C /src/cpp -j4 && \
+		mkdir -p .docker-build && \
+		cp cpp/bin/s2p .docker-build/s2p
+	@touch $@
+
+$(SCSI_BRIDGE_STAMP): $(shell find $(SCSI_BRIDGE_SRC_DIR)/src -name '*.rs' 2>/dev/null) $(SCSI_BRIDGE_SRC_DIR)/Cargo.toml
+	cd $(SCSI_BRIDGE_SRC_DIR) && \
+		docker build --platform linux/arm64 -t scsi-midi-bridge-build -f Dockerfile.arm64 . && \
+		docker create --name bridge-extract scsi-midi-bridge-build true && \
+		mkdir -p .docker-build && \
+		docker cp bridge-extract:/src/target/release/scsi-midi-bridge .docker-build/scsi-midi-bridge ; \
+		docker rm bridge-extract
+	@touch $@
+
+.PHONY: check-scsi-bridge
+check-scsi-bridge: $(S2P_STAMP) $(SCSI_BRIDGE_STAMP)
+	@test -f "$(S2P_BIN)" || (echo "ERROR: s2p binary not found at $(S2P_BIN)" && exit 1)
+	@test -f "$(SCSI_BRIDGE_BIN)" || (echo "ERROR: scsi-midi-bridge binary not found at $(SCSI_BRIDGE_BIN)" && exit 1)
+	@echo "✓ s2p ready: $(S2P_BIN)"
+	@echo "✓ scsi-midi-bridge ready: $(SCSI_BRIDGE_BIN)"
+
+# SCSI write validation (Node.js CLI — no browser, no Playwright)
+# Provisions Pi (deploys s2p + bridge, starts daemons, validates), then runs CLI tests.
+# Usage: make test-scsi-write-validation
+# Usage: make test-scsi-write-validation ARGS="--test writes --verbose"
+test-scsi-write-validation: $(SAMPLER_DEVICES) $(MIDI_CORE) check-scsi-bridge
+	SCSI_PI_HOST='$(SCSI_PI_HOST)' \
+	SCSI_PI_USER='$(SCSI_PI_USER)' \
+	S2P_BIN='$(S2P_BIN)' \
+	SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+	E2E_NODE_SCRIPT=src/node/scsi-write-test.ts \
+	$(MODULES_DIR)/e2e-infra/scripts/run-scsi-node-e2e.sh $(ARGS)
+
+# S3000XL SCSI tests (requires Pi with S3000XL connected via SCSI)
+test-e2e-s3k-scsi: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
+	$(DEVENV) shell --quiet -- bash -c "\
+		cd $(MODULES_DIR)/akai-s3k-editor && \
+		SCSI_PI_HOST='$(SCSI_PI_HOST)' \
+		SCSI_PI_USER='$(SCSI_PI_USER)' \
+		S2P_BIN='$(S2P_BIN)' \
+		SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+		./scripts/run-scsi-midi-e2e.sh $(ARGS)"
 
 $(INSTALL_STAMP): pnpm-lock.yaml
 	pnpm install
