@@ -38,6 +38,7 @@ export interface MidiStoreState<TClient> {
 export interface MidiStoreActions {
   initialize: () => Promise<void>;
   refresh: () => Promise<void>;
+  reconnect: () => Promise<void>;
   connect: (inputId: string, outputId: string) => Promise<void>;
   disconnect: () => Promise<void>;
   setDeviceId: (id: number) => void;
@@ -120,11 +121,13 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
       }
 
       try {
-        set({ error: null });
+        set({ error: null, status: 'connecting' });
         const saved = loadFromStorage();
         set({ deviceId: saved.deviceId });
 
+        console.log(`[MidiStore] Initializing ${transport.kind} transport...`);
         const ports = await transport.initialize();
+        console.log(`[MidiStore] Transport initialized: ${ports.inputs.length} input(s), ${ports.outputs.length} output(s)`);
         set({
           inputs: ports.inputs,
           outputs: ports.outputs,
@@ -145,6 +148,12 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
         } else if (transport.kind !== 'web-midi' && ports.inputs.length > 0 && ports.outputs.length > 0) {
           // Non-web transports auto-connect to the first device
           await get().connect(ports.inputs[0].id, ports.outputs[0].id);
+        } else if (transport.kind !== 'web-midi') {
+          console.error('[MidiStore] No devices found on SCSI bus');
+          set({ error: 'No devices found. Ensure the sampler is powered on and connected.', status: 'error' });
+        } else {
+          // Web MIDI: waiting for user to select ports
+          set({ status: 'disconnected' });
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to initialize MIDI';
@@ -168,6 +177,11 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
         // Some transports require initialize before refresh.
         await get().initialize();
       }
+    },
+
+    reconnect: async () => {
+      await get().disconnect();
+      await get().initialize();
     },
 
     connect: async (inputId: string, outputId: string) => {

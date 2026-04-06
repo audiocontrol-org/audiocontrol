@@ -27,6 +27,7 @@ const baseStore: MidiConnectionPageStore = {
   setSelectedOutputId: vi.fn(),
   setDeviceId: vi.fn(),
   refresh: vi.fn(async () => undefined),
+  reconnect: vi.fn(async () => undefined),
   connect: vi.fn(async () => undefined),
   disconnect: vi.fn(async () => undefined),
 };
