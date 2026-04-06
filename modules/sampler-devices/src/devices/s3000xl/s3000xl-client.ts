@@ -445,6 +445,35 @@ export function createS3000xlClient(
       invalidateAllKeygroupAndProgramCaches();
     },
 
+    async createProgram(
+      programNumber: number,
+      template?: ProgramHeader,
+    ): Promise<void> {
+      let rawData: number[];
+
+      if (template) {
+        rawData = [...template.raw];
+      } else {
+        const p0 = await client.fetchProgramHeader(0);
+        rawData = [...p0.raw];
+      }
+
+      // The payload (after stripping 5-byte SysEx header and F7) starts with
+      // pp_lo, pp_hi (program number nibbles) followed by the header data.
+      // To create a new program, set pp,pp to the target program index.
+      // Per S1000 spec: if pp,pp is above the highest existing program number,
+      // a new program is created.
+      const payload = rawData.slice(5, -1);
+      const prgNibbles = byte2nibblesLE(programNumber);
+      payload[0] = prgNibbles[0];
+      payload[1] = prgNibbles[1];
+
+      const key = `createProgram:${programNumber}`;
+      await bufferWrite(key, AkaiOpcode.PDATA, payload);
+      programNamesCache = undefined;
+      programHeaderCache.clear();
+    },
+
     async deleteProgram(programNumber: number): Promise<void> {
       await sendCommandWithRetry(AkaiOpcode.DELP, byte2nibblesLE(programNumber));
       programNamesCache = undefined;

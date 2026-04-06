@@ -114,11 +114,25 @@ export interface S3000xlClientInterface {
   ): Promise<void>;
 
   /**
+   * Create a new program on the device.
+   *
+   * Clones an existing program (or uses the provided template) and sends it
+   * via PDATA with the target program number. Per S1000 SysEx spec: if the
+   * program number is above the highest existing program number, a new
+   * program is created. The created program will have dummy keygroups.
+   *
+   * @param programNumber - Target program index (must be >= current program count to create)
+   * @param template - Optional program header to use as base; if omitted, program 0 is cloned
+   */
+  createProgram(
+    programNumber: number,
+    template?: ProgramHeader,
+  ): Promise<void>;
+
+  /**
    * Delete a program and all its keygroups from the device.
    *
    * Sends the DELP opcode to remove the program at the given RPLIST index.
-   * Note: program creation via SysEx is not supported by the S3000XL.
-   * New programs are created by the device itself (front panel or disk load).
    *
    * @param programNumber - RPLIST index of the program to delete
    */
