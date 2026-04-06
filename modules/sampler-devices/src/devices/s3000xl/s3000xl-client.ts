@@ -445,6 +445,13 @@ export function createS3000xlClient(
       invalidateAllKeygroupAndProgramCaches();
     },
 
+    async deleteProgram(programNumber: number): Promise<void> {
+      await sendCommandWithRetry(AkaiOpcode.DELP, byte2nibblesLE(programNumber));
+      programNamesCache = undefined;
+      programHeaderCache.clear();
+      invalidateAllKeygroupAndProgramCaches();
+    },
+
     async deleteSample(sampleNumber: number): Promise<void> {
       await sendCommandWithRetry(AkaiOpcode.DELS, byte2nibblesLE(sampleNumber));
       sampleNamesCache = undefined;

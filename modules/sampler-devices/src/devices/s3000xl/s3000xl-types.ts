@@ -113,6 +113,17 @@ export interface S3000xlClientInterface {
     keygroupNumber: number,
   ): Promise<void>;
 
+  /**
+   * Delete a program and all its keygroups from the device.
+   *
+   * Sends the DELP opcode to remove the program at the given RPLIST index.
+   * Note: program creation via SysEx is not supported by the S3000XL.
+   * New programs are created by the device itself (front panel or disk load).
+   *
+   * @param programNumber - RPLIST index of the program to delete
+   */
+  deleteProgram(programNumber: number): Promise<void>;
+
   /** Delete a sample from the device by its RSLIST index */
   deleteSample(sampleNumber: number): Promise<void>;
 
