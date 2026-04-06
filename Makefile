@@ -200,6 +200,7 @@ endif
 $(SCSI_BRIDGE_STAMP): $(shell find $(SCSI_BRIDGE_SRC_DIR)/src -name '*.rs' 2>/dev/null) $(SCSI_BRIDGE_SRC_DIR)/Cargo.toml
 	cd $(SCSI_BRIDGE_SRC_DIR) && \
 		docker build --platform linux/arm64 -t scsi-midi-bridge-build -f Dockerfile.arm64 . && \
+		docker rm -f bridge-extract 2>/dev/null; \
 		docker create --name bridge-extract scsi-midi-bridge-build true && \
 		mkdir -p .docker-build && \
 		docker cp bridge-extract:/src/target/release/scsi-midi-bridge .docker-build/scsi-midi-bridge ; \
