@@ -19,6 +19,9 @@ import { createLoggingMidiIO } from '@/node/lib/logging-midi-io.js';
 import { runConnectionTests } from '@/node/lib/test-connection.js';
 import { runReadTests } from '@/node/lib/test-reads.js';
 import { runWriteTests } from '@/node/lib/test-writes.js';
+import { runAllFieldTests } from '@/node/lib/test-all-fields.js';
+import { runStructureTests } from '@/node/lib/test-structure.js';
+import { runMultiTests } from '@/node/lib/test-multi.js';
 import { runSdsTests } from '@/node/lib/test-sds.js';
 import type { TestContext, TestResult } from '@/node/lib/test-types.js';
 
@@ -103,9 +106,10 @@ Available tests:
                read-keygroup-header, read-sample-header
   Writes:      write-program-name, write-polyphony, write-filter-freq,
                write-sample-name
+  All Fields:  (runs all 248 field write-readback tests)
   SDS:         sds-round-trip
 
-Test groups:  connection, reads, writes, sds, all
+Test groups:  connection, reads, writes, all-fields, sds, all
 `);
 }
 
@@ -122,6 +126,9 @@ const TEST_GROUPS: TestGroup[] = [
   { name: 'connection', run: runConnectionTests },
   { name: 'reads', run: runReadTests },
   { name: 'writes', run: runWriteTests },
+  { name: 'all-fields', run: runAllFieldTests },
+  { name: 'structure', run: runStructureTests },
+  { name: 'multi', run: runMultiTests },
   { name: 'sds', run: runSdsTests },
 ];
 
