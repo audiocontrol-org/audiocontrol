@@ -506,10 +506,18 @@ impl MidiStreamClient {
             "midi stream: sent MSG_SEND"
         );
 
-        // Read response frame
-        let (msg_type, payload) = read_frame(stream)
-            .await
-            .map_err(|e| (true, format!("midi stream recv: {e}")))?;
+        // Read response frame with timeout — SDS or slow device responses
+        // may take several seconds. Don't clear connection on timeout.
+        let read_result = tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            read_frame(stream),
+        ).await;
+
+        let (msg_type, payload) = match read_result {
+            Ok(Ok(frame)) => frame,
+            Ok(Err(e)) => return Err((true, format!("midi stream recv: {e}"))),
+            Err(_) => return Err((false, "midi stream recv: timeout (10s)".to_string())),
+        };
         let t_total = t_start.elapsed();
 
         match msg_type {
@@ -534,13 +542,19 @@ impl MidiStreamClient {
                 // Don't tear down the connection on application-level errors
                 Err((false, format!("midi stream error: {err_msg}")))
             }
-            _ => Err((
-                true,
-                format!(
+            _ => {
+                warn!(
+                    msg_type = msg_type,
+                    payload_len = payload.len(),
+                    "midi stream: unexpected message type (keeping connection)"
+                );
+                // Don't tear down on unexpected types — may be a protocol
+                // mismatch but the TCP connection is likely still usable
+                Err((false, format!(
                     "midi stream: unexpected message type={msg_type} payload_len={}",
                     payload.len()
-                ),
-            )),
+                )))
+            }
         }
     }
 
