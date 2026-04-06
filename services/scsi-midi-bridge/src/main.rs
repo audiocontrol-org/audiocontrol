@@ -14,7 +14,7 @@ use tracing_subscriber::EnvFilter;
 
 use config::Config;
 use routes::AppState;
-use s2p_client::S2pClient;
+use s2p_client::{MidiStreamClient, S2pClient};
 
 #[tokio::main]
 async fn main() {
@@ -35,10 +35,17 @@ async fn main() {
         config.target_id,
     );
 
+    let midi_stream = MidiStreamClient::new(
+        config.s2p_host.clone(),
+        config.midi_port,
+        config.target_id,
+    );
+
     let (ws_tx, _) = broadcast::channel::<Vec<u8>>(64);
 
     let state = Arc::new(AppState {
         s2p: Mutex::new(s2p),
+        midi_stream: Mutex::new(midi_stream),
         ws_tx,
     });
 
@@ -58,6 +65,7 @@ async fn main() {
         addr = %addr,
         s2p_host = %config.s2p_host,
         s2p_port = config.s2p_port,
+        midi_port = config.midi_port,
         target_id = config.target_id,
         "scsi-midi-bridge starting"
     );
