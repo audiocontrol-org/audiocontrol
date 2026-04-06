@@ -1,12 +1,15 @@
 use std::sync::Arc;
+use std::time::Instant;
 
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{State, WebSocketUpgrade};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
 use serde::{Deserialize, Serialize};
 use tokio::sync::Mutex;
+use tracing::{info, info_span, Instrument};
+use uuid::Uuid;
 
 use crate::s2p_client::S2pClient;
 
@@ -54,6 +57,16 @@ pub struct SendResponse {
     pub response: Vec<u8>,
 }
 
+// -- Helpers ------------------------------------------------------------------
+
+fn extract_request_id(headers: &HeaderMap) -> String {
+    headers
+        .get("x-request-id")
+        .and_then(|v| v.to_str().ok())
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| Uuid::new_v4().to_string()[..8].to_string())
+}
+
 // -- Handlers -----------------------------------------------------------------
 
 pub async fn status(State(state): State<Arc<AppState>>) -> Json<StatusResponse> {
@@ -82,34 +95,51 @@ pub async fn scsi_scan(State(state): State<Arc<AppState>>) -> Json<Vec<ScsiDevic
 }
 
 pub async fn sds_send(
+    headers: HeaderMap,
     State(state): State<Arc<AppState>>,
     Json(body): Json<SendRequest>,
 ) -> Result<Json<SendResponse>, (StatusCode, String)> {
-    if body.message.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "message is empty".to_string()));
+    let req_id = extract_request_id(&headers);
+    let span = info_span!("sds_send", req_id = %req_id, msg_bytes = body.message.len());
+
+    async move {
+        let t0 = Instant::now();
+
+        if body.message.is_empty() {
+            return Err((StatusCode::BAD_REQUEST, "message is empty".to_string()));
+        }
+
+        let mut s2p = state.s2p.lock().await;
+        let response = if body.expect_response {
+            s2p.send_and_receive(&body.message)
+                .await
+                .map_err(|e| (StatusCode::BAD_GATEWAY, e))?
+        } else {
+            s2p.send_sysex(&body.message)
+                .await
+                .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+            Vec::new()
+        };
+
+        let elapsed = t0.elapsed();
+        info!(
+            total_ms = elapsed.as_millis() as u64,
+            response_bytes = response.len(),
+            "request complete"
+        );
+
+        // If we got a SysEx response, also broadcast it to WebSocket clients
+        if !response.is_empty() && response[0] == 0xF0 {
+            let _ = state.ws_tx.send(response.clone());
+        }
+
+        Ok(Json(SendResponse {
+            ok: true,
+            response,
+        }))
     }
-
-    let mut s2p = state.s2p.lock().await;
-    let response = if body.expect_response {
-        s2p.send_and_receive(&body.message)
-            .await
-            .map_err(|e| (StatusCode::BAD_GATEWAY, e))?
-    } else {
-        s2p.send_sysex(&body.message)
-            .await
-            .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
-        Vec::new()
-    };
-
-    // If we got a SysEx response, also broadcast it to WebSocket clients
-    if !response.is_empty() && response[0] == 0xF0 {
-        let _ = state.ws_tx.send(response.clone());
-    }
-
-    Ok(Json(SendResponse {
-        ok: true,
-        response,
-    }))
+    .instrument(span)
+    .await
 }
 
 /// Poll for pending SysEx data from the device without sending anything.
@@ -146,7 +176,7 @@ pub async fn sds_stream(
 }
 
 async fn handle_ws(mut socket: WebSocket, mut rx: tokio::sync::broadcast::Receiver<Vec<u8>>) {
-    eprintln!("[ws] client connected");
+    info!("WebSocket client connected");
 
     loop {
         tokio::select! {
@@ -170,5 +200,5 @@ async fn handle_ws(mut socket: WebSocket, mut rx: tokio::sync::broadcast::Receiv
         }
     }
 
-    eprintln!("[ws] client disconnected");
+    info!("WebSocket client disconnected");
 }
