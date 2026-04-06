@@ -8,20 +8,21 @@
  * - Factory function (no classes)
  * - Request serialization queue (one SysEx in flight at a time)
  * - Write buffer with configurable flush delay
- * - Retry via withRetry from shared-midi
+ * - Retry via withRetry from midi-core
  * - Response validation
  *
  * Protocol reference: https://lakai.sourceforge.net/docs/s2800_sysex.html
  */
 
-import type { MidiIO } from '@audiocontrol/shared-midi';
-import { withRetry } from '@audiocontrol/shared-midi';
+import type { MidiIO, SdsDumpHeader, SdsLoopType, SdsTransferProgress } from '@audiocontrol/midi-core';
+import { withRetry, createSdsSender, requestSample, LOOP_OFF } from '@audiocontrol/midi-core';
 import {
   parseProgramHeader,
   parseKeygroupHeader,
   parseSampleHeader,
+  parseMiscellaneousData,
 } from '@/devices/s3000xl.js';
-import type { ProgramHeader, KeygroupHeader, SampleHeader } from '@/devices/s3000xl.js';
+import type { ProgramHeader, KeygroupHeader, SampleHeader, MiscellaneousData } from '@/devices/s3000xl.js';
 import type { S3000xlClientOptions, S3000xlClientInterface } from '@/devices/s3000xl/s3000xl-types.js';
 import {
   AkaiOpcode,
@@ -32,6 +33,7 @@ import {
   isErrorResponse,
   parseNameList,
 } from '@/devices/s3000xl/s3000xl-protocol.js';
+import { S3K_SDS_BITS_PER_WORD } from '@/devices/s3000xl/s3000xl-sds-config.js';
 
 const AKAI_NAME_LENGTH = 12;
 
@@ -77,6 +79,7 @@ export function createS3000xlClient(
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMING.TIMEOUT_MS;
   const writeFlushDelayMs = options?.writeFlushDelayMs ?? DEFAULT_TIMING.WRITE_FLUSH_DELAY_MS;
   const maxRetries = options?.maxRetries ?? DEFAULT_TIMING.MAX_RETRIES;
+  const noCache = options?.noCache ?? false;
 
   // Caches
   let programNamesCache: string[] | undefined;
@@ -233,51 +236,80 @@ export function createS3000xlClient(
   }
 
   // =========================================================================
+  // SDS Transfer Helpers
+  // =========================================================================
+
+  function buildSdsHeader(
+    sampleNumber: number,
+    sampleData: Int16Array,
+    sampleRate: number,
+    sdsOptions?: {
+      loopStart?: number;
+      loopEnd?: number;
+      loopType?: SdsLoopType;
+    },
+  ): SdsDumpHeader {
+    return {
+      sampleNumber,
+      sampleFormat: S3K_SDS_BITS_PER_WORD,
+      samplePeriodNs: Math.round(1_000_000_000 / sampleRate),
+      sampleLength: sampleData.length,
+      loopStart: sdsOptions?.loopStart ?? 0,
+      loopEnd: sdsOptions?.loopEnd ?? 0,
+      loopType: sdsOptions?.loopType ?? LOOP_OFF,
+    };
+  }
+
+  // =========================================================================
   // Public Interface
   // =========================================================================
 
   const client: S3000xlClientInterface = {
     async fetchProgramNames(): Promise<string[]> {
-      if (programNamesCache) return [...programNamesCache];
+      if (!noCache && programNamesCache) return [...programNamesCache];
 
       const response = await sendCommandWithRetry(AkaiOpcode.RPLIST, []);
       const names = parseNameList(response, AKAI_NAME_LENGTH);
-      programNamesCache = names;
+      if (!noCache) programNamesCache = names;
       return [...names];
     },
 
     async fetchSampleNames(): Promise<string[]> {
-      if (sampleNamesCache) return [...sampleNamesCache];
+      if (!noCache && sampleNamesCache) return [...sampleNamesCache];
 
       const response = await sendCommandWithRetry(AkaiOpcode.RSLIST, []);
       const names = parseNameList(response, AKAI_NAME_LENGTH);
-      sampleNamesCache = names;
+      if (!noCache) sampleNamesCache = names;
       return [...names];
     },
 
     async fetchProgramHeader(programNumber: number): Promise<ProgramHeader> {
-      const cached = programHeaderCache.get(programNumber);
-      if (cached) return cached;
+      if (!noCache) {
+        const cached = programHeaderCache.get(programNumber);
+        if (cached) return cached;
+      }
 
       const response = await sendCommandWithRetry(
         AkaiOpcode.RPDATA,
         byte2nibblesLE(programNumber),
       );
       const header = parseProgramFromResponse(response);
-      programHeaderCache.set(programNumber, header);
+      if (!noCache) programHeaderCache.set(programNumber, header);
       return header;
     },
 
     async fetchSampleHeader(sampleNumber: number): Promise<SampleHeader> {
-      const cached = sampleHeaderCache.get(sampleNumber);
-      if (cached) return cached;
+      if (!noCache) {
+        const cached = sampleHeaderCache.get(sampleNumber);
+        if (cached) return cached;
+      }
 
       const response = await sendCommandWithRetry(
         AkaiOpcode.RSDATA,
         byte2nibblesLE(sampleNumber),
       );
       const header = parseSampleFromResponse(response);
-      sampleHeaderCache.set(sampleNumber, header);
+      if (!noCache) sampleHeaderCache.set(sampleNumber, header);
       return header;
     },
 
@@ -286,31 +318,112 @@ export function createS3000xlClient(
       keygroupNumber: number,
     ): Promise<KeygroupHeader> {
       const cacheKey = `${programNumber}:${keygroupNumber}`;
-      const cached = keygroupHeaderCache.get(cacheKey);
-      if (cached) return cached;
+      if (!noCache) {
+        const cached = keygroupHeaderCache.get(cacheKey);
+        if (cached) return cached;
+      }
 
       const response = await sendCommandWithRetry(
         AkaiOpcode.RKDATA,
         byte2nibblesLE(programNumber).concat(keygroupNumber),
       );
       const header = parseKeygroupFromResponse(response);
-      keygroupHeaderCache.set(cacheKey, header);
+      if (!noCache) keygroupHeaderCache.set(cacheKey, header);
       return header;
     },
 
     async writeProgramHeader(header: ProgramHeader): Promise<void> {
       const key = `program:${header.PRNAME}`;
-      await bufferWrite(key, AkaiOpcode.PDATA, header.raw);
+      // raw is the full SysEx message [F0 47 ch opcode 48 ...payload... F7].
+      // bufferWrite wraps data in buildAkaiSysEx which adds the envelope,
+      // so we must strip the 5-byte header and 1-byte F7 to avoid double-framing.
+      await bufferWrite(key, AkaiOpcode.PDATA, header.raw.slice(5, -1));
     },
 
     async writeKeygroupHeader(header: KeygroupHeader): Promise<void> {
       const key = `keygroup:${header.raw?.slice(0, 8).join(',')}`;
-      await bufferWrite(key, AkaiOpcode.KDATA, header.raw);
+      await bufferWrite(key, AkaiOpcode.KDATA, header.raw.slice(5, -1));
     },
 
     async writeSampleHeader(header: SampleHeader): Promise<void> {
       const key = `sample:${header.SHNAME}`;
-      await bufferWrite(key, AkaiOpcode.SDATA, header.raw);
+      await bufferWrite(key, AkaiOpcode.SDATA, header.raw.slice(5, -1));
+    },
+
+    async fetchMiscData(): Promise<MiscellaneousData> {
+      const response = await sendCommandWithRetry(AkaiOpcode.RMDATA, []);
+      const data = {} as MiscellaneousData;
+      const { data: payload } = parseAkaiResponse(response);
+      parseMiscellaneousData(payload, 0, data);
+      data.raw = response;
+      return data;
+    },
+
+    async writeMiscData(data: MiscellaneousData): Promise<void> {
+      const key = 'miscData';
+      await bufferWrite(key, AkaiOpcode.MDATA, data.raw.slice(5, -1));
+    },
+
+    async sendSampleViaSds(
+      sampleNumber: number,
+      sampleData: Int16Array,
+      sampleRate: number,
+      sdsOptions?: {
+        loopStart?: number;
+        loopEnd?: number;
+        loopType?: SdsLoopType;
+        onProgress?: (progress: SdsTransferProgress) => void;
+      },
+    ): Promise<void> {
+      const header = buildSdsHeader(sampleNumber, sampleData, sampleRate, sdsOptions);
+
+      return serialize(async () => {
+        const sender = createSdsSender(midiIO, {
+          channel,
+          header,
+          samples: sampleData,
+          mode: 'closed-loop',
+          onProgress: sdsOptions?.onProgress,
+        });
+        await sender.start();
+        // The S3000XL needs time to commit the sample to memory after
+        // the last ACK. Sending Akai SysEx (e.g., RSLIST) too soon can
+        // cause the device to discard the sample.
+        await new Promise((r) => setTimeout(r, 3000));
+      });
+    },
+
+    async receiveSampleViaSds(
+      sampleNumber: number,
+      onProgress?: (progress: SdsTransferProgress) => void,
+    ): Promise<{ header: SdsDumpHeader; samples: Int16Array }> {
+      return serialize(() => {
+        return new Promise<{ header: SdsDumpHeader; samples: Int16Array }>((resolve, reject) => {
+          let receivedHeader: SdsDumpHeader | undefined;
+
+          requestSample(midiIO, channel, sampleNumber, {
+            channel,
+            onHeader(header: SdsDumpHeader) {
+              receivedHeader = header;
+            },
+            onProgress,
+            onComplete(samples: Int16Array | Int32Array) {
+              if (!receivedHeader) {
+                reject(new Error('SDS transfer completed without receiving a dump header'));
+                return;
+              }
+              // S3000XL is 16-bit; cast to Int16Array
+              const int16Samples = samples instanceof Int16Array
+                ? samples
+                : new Int16Array(samples);
+              resolve({ header: receivedHeader, samples: int16Samples });
+            },
+            onError(error: Error) {
+              reject(error);
+            },
+          });
+        });
+      });
     },
 
     async createKeygroup(
@@ -328,11 +441,13 @@ export function createS3000xlClient(
         rawData = [...kg0.raw];
       }
 
-      // Set KNUMBER to the new keygroup index
-      rawData[KNUMBER_RAW_INDEX] = keygroupNumber;
+      // Strip SysEx envelope (5-byte header + F7) to get payload,
+      // then set KNUMBER in the payload (KNUMBER_RAW_INDEX - 5 = offset within payload)
+      const payload = rawData.slice(5, -1);
+      payload[KNUMBER_RAW_INDEX - 5] = keygroupNumber;
 
       const key = `createKeygroup:${programNumber}:${keygroupNumber}`;
-      await bufferWrite(key, AkaiOpcode.KDATA, rawData);
+      await bufferWrite(key, AkaiOpcode.KDATA, payload);
       invalidateAllKeygroupAndProgramCaches();
     },
 
@@ -343,6 +458,53 @@ export function createS3000xlClient(
       const data = byte2nibblesLE(programNumber).concat(keygroupNumber);
       await sendCommandWithRetry(AkaiOpcode.DELK, data);
       invalidateAllKeygroupAndProgramCaches();
+    },
+
+    async createProgram(
+      programNumber: number,
+      template?: ProgramHeader,
+    ): Promise<void> {
+      let rawData: number[];
+
+      if (template) {
+        rawData = [...template.raw];
+      } else {
+        const p0 = await client.fetchProgramHeader(0);
+        rawData = [...p0.raw];
+      }
+
+      // The payload (after stripping 5-byte SysEx header and F7) starts with
+      // pp_lo, pp_hi (program number nibbles) followed by the header data.
+      // To create a new program, set pp,pp to the target program index.
+      // Per S1000 spec: if pp,pp is above the highest existing program number,
+      // a new program is created.
+      const payload = rawData.slice(5, -1);
+      const prgNibbles = byte2nibblesLE(programNumber);
+      payload[0] = prgNibbles[0];
+      payload[1] = prgNibbles[1];
+
+      const key = `createProgram:${programNumber}`;
+      await bufferWrite(key, AkaiOpcode.PDATA, payload);
+      programNamesCache = undefined;
+      programHeaderCache.clear();
+    },
+
+    async deleteProgram(programNumber: number): Promise<void> {
+      await sendCommandWithRetry(AkaiOpcode.DELP, byte2nibblesLE(programNumber));
+      programNamesCache = undefined;
+      programHeaderCache.clear();
+      invalidateAllKeygroupAndProgramCaches();
+    },
+
+    async deleteSample(sampleNumber: number): Promise<void> {
+      await sendCommandWithRetry(AkaiOpcode.DELS, byte2nibblesLE(sampleNumber));
+      sampleNamesCache = undefined;
+      sampleHeaderCache.clear();
+    },
+
+    async refreshSampleNames(): Promise<string[]> {
+      sampleNamesCache = undefined;
+      return client.fetchSampleNames();
     },
 
     invalidateProgramCache(): void {

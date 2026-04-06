@@ -48,6 +48,21 @@ export function buildUrl(basePath: string, subpath: string = '', midiServerPort?
 }
 
 /**
+ * Build a URL for an editor page with SCSI MIDI bridge parameters.
+ *
+ * @param basePath - Editor base path (e.g., '/akai/s3000xl/editor')
+ * @param subpath - Optional subpath within the editor
+ * @param bridgeUrl - SCSI bridge URL (e.g., 'http://s3k.local:7033')
+ */
+export function buildScsiUrl(basePath: string, subpath: string = '', bridgeUrl?: string): string {
+  const normalized = subpath === '/' ? '' : subpath;
+  const fullPath = normalized ? `${basePath}/${normalized}` : basePath;
+  if (!bridgeUrl) return fullPath;
+  const separator = fullPath.includes('?') ? '&' : '?';
+  return `${fullPath}${separator}midi=scsi&scsiBridgeUrl=${encodeURIComponent(bridgeUrl)}`;
+}
+
+/**
  * Select a port from a dropdown, with fallback logic.
  *
  * Selection priority:

@@ -1,4 +1,4 @@
-import type { MidiPortInfo } from '@audiocontrol/shared-midi';
+import type { MidiPortInfo } from '@audiocontrol/midi-core';
 import {
   createMockMidiTransport,
   type MockMidiTransportControls,
@@ -6,9 +6,10 @@ import {
 } from '@/transports/mockMidiTransport';
 import { createWebMidiTransport } from '@/transports/webMidiTransport';
 import { createHttpMidiTransport } from '@/transports/httpMidiTransport';
+import { createScsiMidiTransport } from '@/transports/scsiMidiTransport';
 import type { MidiTransport } from '@/transports/types';
 
-export type TransportMode = 'web' | 'mock' | 'http';
+export type TransportMode = 'web' | 'mock' | 'http' | 'scsi';
 
 export interface RuntimeMockMidiConfig extends MockMidiTransportOptions {
   enabled?: boolean;
@@ -19,10 +20,15 @@ export interface RuntimeHttpMidiConfig {
   serverUrl: string;
 }
 
+export interface RuntimeScsiMidiConfig {
+  bridgeUrl: string;
+}
+
 export interface RuntimeMidiTransportConfig {
   deviceName: string;
   mock?: RuntimeMockMidiConfig;
   http?: RuntimeHttpMidiConfig;
+  scsi?: RuntimeScsiMidiConfig;
 }
 
 export interface RuntimeMidiTransportResult {
@@ -34,6 +40,7 @@ export interface RuntimeMidiTransportResult {
 export interface TransportConfig {
   mode: TransportMode;
   httpServerUrl?: string;
+  scsiBridgeUrl?: string;
 }
 
 const TRANSPORT_STORAGE_KEY = 'midi-transport-config';
@@ -55,10 +62,18 @@ export function isHttpMidiMode(): boolean {
   return getQueryParam('midi') === 'http';
 }
 
+export function isScsiMidiMode(): boolean {
+  return getQueryParam('midi') === 'scsi';
+}
+
 export function getHttpMidiServerUrl(): string | null {
   const port = getQueryParam('midiServerPort');
   if (!port) return null;
   return `http://localhost:${port}`;
+}
+
+export function getScsiBridgeUrl(): string | null {
+  return getQueryParam('scsiBridgeUrl');
 }
 
 export function isMockLibraryMode(): boolean {
@@ -110,6 +125,7 @@ export function clearTransportConfig(): void {
 export function getActiveTransportMode(): TransportMode {
   // URL params take precedence (for E2E testing)
   if (isHttpMidiMode()) return 'http';
+  if (isScsiMidiMode()) return 'scsi';
   if (isMockMidiMode()) return 'mock';
 
   // Check localStorage
@@ -132,6 +148,23 @@ export function getActiveHttpServerUrl(): string | null {
   const saved = getSavedTransportConfig();
   if (saved?.mode === 'http' && saved.httpServerUrl) {
     return saved.httpServerUrl;
+  }
+
+  return null;
+}
+
+/**
+ * Get the SCSI bridge URL from URL params or localStorage.
+ */
+export function getActiveScsiUrl(): string | null {
+  // URL params take precedence
+  const urlParam = getScsiBridgeUrl();
+  if (urlParam) return urlParam;
+
+  // Check localStorage
+  const saved = getSavedTransportConfig();
+  if (saved?.mode === 'scsi' && saved.scsiBridgeUrl) {
+    return saved.scsiBridgeUrl;
   }
 
   return null;
@@ -171,6 +204,21 @@ export function createRuntimeMidiTransport(
     return {
       mode: 'http',
       transport: createHttpMidiTransport({ serverUrl }),
+    };
+  }
+
+  // SCSI mode
+  if (activeMode === 'scsi') {
+    const bridgeUrl = config.scsi?.bridgeUrl ?? getActiveScsiUrl();
+    if (!bridgeUrl) {
+      throw new Error(
+        'SCSI MIDI mode requires bridge URL. ' +
+        'Set via URL parameter (?midi=scsi&scsiBridgeUrl=URL) or connection settings.'
+      );
+    }
+    return {
+      mode: 'scsi',
+      transport: createScsiMidiTransport({ bridgeUrl }),
     };
   }
 

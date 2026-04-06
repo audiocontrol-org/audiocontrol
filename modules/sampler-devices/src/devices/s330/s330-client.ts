@@ -84,7 +84,7 @@ import {
 
 import { createTone } from './s330-tone-factory.js';
 import { clampWaveParams } from '../roland-s-series/index.js';
-import { withRetry, type RetryOptions } from '@audiocontrol/shared-midi';
+import { withRetry, type RetryOptions } from '@audiocontrol/midi-core';
 
 // =============================================================================
 // Data Types

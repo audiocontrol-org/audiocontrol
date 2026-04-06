@@ -1,4 +1,4 @@
-import type { MidiIO, MidiPortInfo } from '@audiocontrol/shared-midi';
+import type { MidiIO, MidiPortInfo } from '@audiocontrol/midi-core';
 
 export interface MidiTransportBrowserInfo {
   supported: boolean;

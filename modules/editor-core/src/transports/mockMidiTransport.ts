@@ -1,4 +1,4 @@
-import type { MidiIO, MidiPortInfo, SysExCallback } from '@audiocontrol/shared-midi';
+import type { MidiIO, MidiPortInfo, SysExCallback } from '@audiocontrol/midi-core';
 import type {
   MidiTransport,
   MidiTransportBrowserInfo,

@@ -1,0 +1,14 @@
+[Unit]
+Description=SCSI MIDI Bridge for audiocontrol
+After=network.target s2p.service
+Wants=s2p.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/scsi-midi-bridge --port 7033
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

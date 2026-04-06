@@ -13,10 +13,10 @@ export type {
   MidiConnectionState,
   WebMidiAccess,
   BrowserCompatibility,
-} from '@audiocontrol/shared-midi';
+} from '@audiocontrol/midi-core';
 
 // D-110 specific type alias for MidiIO
-import type { MidiIO } from '@audiocontrol/shared-midi';
+import type { MidiIO } from '@audiocontrol/midi-core';
 export type D110MidiIO = MidiIO;
 
 /**

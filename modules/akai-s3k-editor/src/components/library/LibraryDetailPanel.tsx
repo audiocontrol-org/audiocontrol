@@ -5,8 +5,11 @@
  * chopped-sample, or directory). For samples, shows intrinsic properties
  * like sample rate and loop mode. For programs, shows zone count.
  *
- * TODO: Add "Export to Device" button when S3000XL SDS transfer is
- * implemented in sampler-devices.
+ * SDS (Sample Dump Standard) transfer is now implemented in the S3000XL
+ * client (sendSampleViaSds / receiveSampleViaSds). The Samples page
+ * exposes the transfer UI. A future phase will add an inline
+ * "Export to Device" button here that sends the selected library sample
+ * directly to the device via SDS.
  */
 
 import type { TreeNode } from '@audiocontrol/editor-core';
@@ -100,11 +103,6 @@ export function LibraryDetailPanel({ node }: LibraryDetailPanelProps): JSX.Eleme
       {node.type !== 'directory' && node.type !== 'sample' && node.type !== 'program' && (
         <GenericDetail node={node} />
       )}
-
-      {/* TODO: Export-to-device button will go here once S3000XL SDS
-          (Sample Dump Standard) is implemented in sampler-devices.
-          The S3000XL client currently only supports header read/write,
-          not bulk sample/program transfer via MIDI. */}
     </div>
   );
 }

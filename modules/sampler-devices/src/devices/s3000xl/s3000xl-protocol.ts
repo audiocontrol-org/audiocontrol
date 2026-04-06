@@ -131,13 +131,21 @@ export function parseAkaiResponse(message: number[]): {
 }
 
 /**
- * Check whether a SysEx response is an error reply (REPLY opcode).
+ * Check whether a SysEx response is an error reply.
+ *
+ * REPLY (0x16) with data byte 0x00 means OK (write accepted).
+ * REPLY with any non-zero data byte is an error code.
  */
 export function isErrorResponse(message: number[]): boolean {
   if (message.length < MIN_RESPONSE_LENGTH) {
     return false;
   }
-  return message[OPCODE_INDEX] === AkaiOpcode.REPLY;
+  if (message[OPCODE_INDEX] !== AkaiOpcode.REPLY) {
+    return false;
+  }
+  // Data byte follows the device ID at index 5
+  const errorCode = message.length > 5 ? message[5] : 0;
+  return errorCode !== 0;
 }
 
 /**

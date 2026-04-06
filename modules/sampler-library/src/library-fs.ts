@@ -445,6 +445,11 @@ export async function listPatchesTree(
  * Detect a common-area sample: a directory containing `sample.yaml`
  * with `format: 'sample'`.
  *
+ * Discriminates node type based on YAML content:
+ * - `slices` + `drumKit` present  -> type: 'drum-kit', variant: 'drum-kit'
+ * - `slices` present (no drumKit) -> type: 'chopped-sample', variant: 'generic'
+ * - neither                       -> type: 'sample'
+ *
  * Samples are stored as directory bundles:
  *   {name}/sample.yaml + sample.wav
  */
@@ -460,14 +465,30 @@ const detectSample: ItemDetector = async (entry, parentDir, path) => {
     const result = SampleYamlSchema.safeParse(parsed);
     if (!result.success) return null;
 
+    const data = result.data;
+    const hasSlices = data.slices !== undefined && data.slices.length > 0;
+    const hasDrumKit = data.drumKit !== undefined;
+
+    // Discriminate node type: drum-kit > chopped-sample > sample
+    let type: LibraryTreeNode['type'] = 'sample';
+    let variant: string | undefined;
+    if (hasSlices && hasDrumKit) {
+      type = 'drum-kit';
+      variant = 'drum-kit';
+    } else if (hasSlices) {
+      type = 'chopped-sample';
+      variant = 'generic';
+    }
+
     return {
       id: [...path, entry.name].join('/'),
-      name: result.data.name,
-      type: 'sample',
+      name: data.name,
+      type,
       path,
       directoryName: entry.name,
-      description: result.data.description,
-      sliceCount: result.data.slices?.length,
+      description: data.description,
+      sliceCount: data.slices?.length,
+      variant,
     };
   } catch {
     return null;

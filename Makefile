@@ -8,7 +8,7 @@ SHELL := /bin/bash
 MODULES_DIR := modules
 
 # Stamp file targets
-SHARED_MIDI       := $(MODULES_DIR)/shared-midi/.build-stamp
+MIDI_CORE      := $(MODULES_DIR)/midi-core/.build-stamp
 SAMPLER_LIB       := $(MODULES_DIR)/sampler-lib/.build-stamp
 AUDIOTOOLS_CONFIG  := $(MODULES_DIR)/audiotools-config/.build-stamp
 CANONICAL_MIDI     := $(MODULES_DIR)/canonical-midi-maps/.build-stamp
@@ -37,7 +37,7 @@ SAMPLE_EDITOR_MOD  := $(MODULES_DIR)/sample-editor/.build-stamp
 AKAI_S3K_EDITOR    := $(MODULES_DIR)/akai-s3k-editor/.build-stamp
 
 ALL_STAMPS := \
-	$(SHARED_MIDI) $(SAMPLER_LIB) $(AUDIOTOOLS_CONFIG) $(CANONICAL_MIDI) \
+	$(MIDI_CORE) $(SAMPLER_LIB) $(AUDIOTOOLS_CONFIG) $(CANONICAL_MIDI) \
 	$(ARDOUR_MIDI) $(LAUNCH_CONTROL) $(LAUNCH_CONTROL_ED) $(LIB_RUNTIME) \
 	$(SAMPLER_ATTIC) $(SAMPLE_CHOPPER) $(EDITOR_CORE) $(LIB_DEVICE_UUID) \
 	$(SAMPLER_DEVICES) $(SAMPLER_MIDI) $(SAMPLER_LIBRARY) \
@@ -51,7 +51,7 @@ INSTALL_STAMP := node_modules/.install-stamp
 # Source file lists — enables Make to detect actual file changes
 # ---------------------------------------------------------------------------
 
-SHARED_MIDI_SRC       := $(shell find $(MODULES_DIR)/shared-midi/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
+MIDI_CORE_SRC       := $(shell find $(MODULES_DIR)/midi-core/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLER_LIB_SRC       := $(shell find $(MODULES_DIR)/sampler-lib/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AUDIOTOOLS_CONFIG_SRC  := $(shell find $(MODULES_DIR)/audiotools-config/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 CANONICAL_MIDI_SRC     := $(shell find $(MODULES_DIR)/canonical-midi-maps/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
@@ -79,7 +79,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-ui test-e2e-s3k-device
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-scsi check-scsi-bridge test-scsi-write-validation
 
 build: $(ALL_STAMPS)
 
@@ -151,6 +151,91 @@ test-e2e-roland-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
 test-e2e-s3k-device: $(AKAI_S3K_EDITOR) check-midi-server ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh $(ARGS)"
 
+# ---------------------------------------------------------------------------
+# SCSI MIDI Bridge E2E Tests
+# ---------------------------------------------------------------------------
+
+# Pi connection (override: make test-e2e-s3k-scsi SCSI_PI_HOST=10.0.0.57)
+SCSI_PI_HOST ?= s3k.local
+SCSI_PI_USER ?= orion
+
+# scsi2pi source: override to use local checkout during development
+# Usage: make test-e2e-s3k-scsi SCSI2PI_DIR=~/work/scsi2pi-work/scsi2pi
+SCSI2PI_DIR ?=
+SCSI2PI_DEPS_DIR := $(CURDIR)/.deps/scsi2pi
+SCSI2PI_REPO_URL := https://github.com/audiocontrol-org/scsi2pi.git
+SCSI2PI_REPO_BRANCH := feature/midi-processor
+
+ifdef SCSI2PI_DIR
+  SCSI2PI_EFFECTIVE_DIR := $(SCSI2PI_DIR)
+else
+  SCSI2PI_EFFECTIVE_DIR := $(SCSI2PI_DEPS_DIR)
+endif
+
+S2P_BIN := $(SCSI2PI_EFFECTIVE_DIR)/.docker-build/s2p
+S2P_STAMP := $(SCSI2PI_EFFECTIVE_DIR)/.docker-build-stamp
+
+# scsi-midi-bridge (in-tree Rust service)
+SCSI_BRIDGE_SRC_DIR := $(CURDIR)/services/scsi-midi-bridge
+SCSI_BRIDGE_BIN := $(SCSI_BRIDGE_SRC_DIR)/.docker-build/scsi-midi-bridge
+SCSI_BRIDGE_STAMP := $(SCSI_BRIDGE_SRC_DIR)/.docker-build-stamp
+
+# Clone scsi2pi to .deps/ (skipped when SCSI2PI_DIR is set)
+ifndef SCSI2PI_DIR
+$(SCSI2PI_DEPS_DIR)/Dockerfile:
+	@mkdir -p .deps
+	git clone --depth 1 -b $(SCSI2PI_REPO_BRANCH) $(SCSI2PI_REPO_URL) $(SCSI2PI_DEPS_DIR)
+
+$(S2P_STAMP): $(SCSI2PI_DEPS_DIR)/Dockerfile
+else
+$(S2P_STAMP): $(shell find $(SCSI2PI_DIR)/cpp -name '*.cpp' -o -name '*.h' 2>/dev/null | head -50)
+endif
+	cd $(SCSI2PI_EFFECTIVE_DIR) && \
+		docker build --platform linux/arm64 -t scsi2pi-build -f Dockerfile . && \
+		docker run --rm --platform linux/arm64 -v "$$(cd $(SCSI2PI_EFFECTIVE_DIR) && pwd):/src" scsi2pi-build make -C /src/cpp -j4 && \
+		mkdir -p .docker-build && \
+		cp cpp/bin/s2p .docker-build/s2p
+	@touch $@
+
+$(SCSI_BRIDGE_STAMP): $(shell find $(SCSI_BRIDGE_SRC_DIR)/src -name '*.rs' 2>/dev/null) $(SCSI_BRIDGE_SRC_DIR)/Cargo.toml
+	cd $(SCSI_BRIDGE_SRC_DIR) && \
+		docker build --platform linux/arm64 -t scsi-midi-bridge-build -f Dockerfile.arm64 . && \
+		docker rm -f bridge-extract 2>/dev/null; \
+		docker create --name bridge-extract scsi-midi-bridge-build true && \
+		mkdir -p .docker-build && \
+		docker cp bridge-extract:/src/target/release/scsi-midi-bridge .docker-build/scsi-midi-bridge ; \
+		docker rm bridge-extract
+	@touch $@
+
+.PHONY: check-scsi-bridge
+check-scsi-bridge: $(S2P_STAMP) $(SCSI_BRIDGE_STAMP)
+	@test -f "$(S2P_BIN)" || (echo "ERROR: s2p binary not found at $(S2P_BIN)" && exit 1)
+	@test -f "$(SCSI_BRIDGE_BIN)" || (echo "ERROR: scsi-midi-bridge binary not found at $(SCSI_BRIDGE_BIN)" && exit 1)
+	@echo "✓ s2p ready: $(S2P_BIN)"
+	@echo "✓ scsi-midi-bridge ready: $(SCSI_BRIDGE_BIN)"
+
+# SCSI write validation (Node.js CLI — no browser, no Playwright)
+# Provisions Pi (deploys s2p + bridge, starts daemons, validates), then runs CLI tests.
+# Usage: make test-scsi-write-validation
+# Usage: make test-scsi-write-validation ARGS="--test writes --verbose"
+test-scsi-write-validation: $(SAMPLER_DEVICES) $(MIDI_CORE) check-scsi-bridge
+	SCSI_PI_HOST='$(SCSI_PI_HOST)' \
+	SCSI_PI_USER='$(SCSI_PI_USER)' \
+	S2P_BIN='$(S2P_BIN)' \
+	SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+	E2E_NODE_SCRIPT=src/node/scsi-write-test.ts \
+	$(MODULES_DIR)/e2e-infra/scripts/run-scsi-node-e2e.sh $(ARGS)
+
+# S3000XL SCSI tests (requires Pi with S3000XL connected via SCSI)
+test-e2e-s3k-scsi: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
+	$(DEVENV) shell --quiet -- bash -c "\
+		cd $(MODULES_DIR)/akai-s3k-editor && \
+		SCSI_PI_HOST='$(SCSI_PI_HOST)' \
+		SCSI_PI_USER='$(SCSI_PI_USER)' \
+		S2P_BIN='$(S2P_BIN)' \
+		SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+		./scripts/run-scsi-midi-e2e.sh $(ARGS)"
+
 $(INSTALL_STAMP): pnpm-lock.yaml
 	pnpm install
 	@touch $@
@@ -159,8 +244,9 @@ $(INSTALL_STAMP): pnpm-lock.yaml
 # Layer 0 — no workspace dependencies
 # ---------------------------------------------------------------------------
 
-# shared-midi has no build script — just stamp it
-$(SHARED_MIDI): $(INSTALL_STAMP) $(SHARED_MIDI_SRC)
+# midi-core has no build script — just stamp it
+$(MIDI_CORE): $(INSTALL_STAMP) $(MIDI_CORE_SRC)
+	cd $(MODULES_DIR)/midi-core && pnpm build
 	@touch $@
 
 $(SAMPLER_LIB): $(INSTALL_STAMP) $(SAMPLER_LIB_SRC)
@@ -211,7 +297,7 @@ $(SYNTH_CORE): $(INSTALL_STAMP) $(SYNTH_CORE_SRC)
 # Layer 1
 # ---------------------------------------------------------------------------
 
-$(EDITOR_CORE): $(SHARED_MIDI) $(SAMPLER_LIBRARY) $(EDITOR_CORE_SRC)
+$(EDITOR_CORE): $(MIDI_CORE) $(SAMPLER_LIBRARY) $(EDITOR_CORE_SRC)
 	cd $(MODULES_DIR)/editor-core && pnpm build
 	@touch $@
 
@@ -219,7 +305,7 @@ $(LIB_DEVICE_UUID): $(SAMPLER_LIB) $(LIB_DEVICE_UUID_SRC)
 	cd $(MODULES_DIR)/lib-device-uuid && pnpm build
 	@touch $@
 
-$(SAMPLER_DEVICES): $(SAMPLER_LIB) $(SHARED_MIDI) $(SAMPLER_DEVICES_SRC)
+$(SAMPLER_DEVICES): $(SAMPLER_LIB) $(MIDI_CORE) $(SAMPLER_DEVICES_SRC)
 	cd $(MODULES_DIR)/sampler-devices && pnpm build
 	@touch $@
 
@@ -264,15 +350,15 @@ $(SAMPLE_EDITOR_MOD): $(SYNTH_CORE) $(SAMPLER_LIBRARY) $(SAMPLE_EDITOR_SRC)
 	cd $(MODULES_DIR)/sample-editor && pnpm build
 	@touch $@
 
-$(D110_EDITOR): $(EDITOR_CORE) $(SHARED_MIDI) $(D110_EDITOR_SRC)
+$(D110_EDITOR): $(EDITOR_CORE) $(MIDI_CORE) $(D110_EDITOR_SRC)
 	cd $(MODULES_DIR)/d110-editor && pnpm build
 	@touch $@
 
-$(JV1080_EDITOR): $(EDITOR_CORE) $(SAMPLER_DEVICES) $(SHARED_MIDI) $(JV1080_EDITOR_SRC)
+$(JV1080_EDITOR): $(EDITOR_CORE) $(SAMPLER_DEVICES) $(MIDI_CORE) $(JV1080_EDITOR_SRC)
 	cd $(MODULES_DIR)/jv1080-editor && pnpm build
 	@touch $@
 
-$(AKAI_S3K_EDITOR): $(EDITOR_CORE) $(SAMPLER_DEVICES) $(SHARED_MIDI) $(AKAI_S3K_EDITOR_SRC)
+$(AKAI_S3K_EDITOR): $(EDITOR_CORE) $(LOOP_EDITOR) $(SAMPLE_CHOPPER) $(SAMPLE_EDITOR_MOD) $(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) $(MIDI_CORE) $(SYNTH_CORE) $(AKAI_S3K_EDITOR_SRC)
 	cd $(MODULES_DIR)/akai-s3k-editor && pnpm build
 	@touch $@
 
@@ -280,7 +366,7 @@ $(AKAI_S3K_EDITOR): $(EDITOR_CORE) $(SAMPLER_DEVICES) $(SHARED_MIDI) $(AKAI_S3K_
 # Layer 4
 # ---------------------------------------------------------------------------
 
-$(ROLAND_SXX0_EDITOR): $(EDITOR_CORE) $(LOOP_EDITOR) $(SAMPLE_CHOPPER) $(SAMPLE_EDITOR_MOD) $(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) $(SHARED_MIDI) $(SYNTH_CORE) $(ROLAND_SXX0_EDITOR_SRC)
+$(ROLAND_SXX0_EDITOR): $(EDITOR_CORE) $(LOOP_EDITOR) $(SAMPLE_CHOPPER) $(SAMPLE_EDITOR_MOD) $(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) $(MIDI_CORE) $(SYNTH_CORE) $(ROLAND_SXX0_EDITOR_SRC)
 	cd $(MODULES_DIR)/roland-sxx0-editor && pnpm build
 	@touch $@
 

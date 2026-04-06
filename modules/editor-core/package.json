@@ -36,7 +36,7 @@
   },
   "dependencies": {
     "@audiocontrol/sampler-library": "workspace:*",
-    "@audiocontrol/shared-midi": "workspace:*",
+    "@audiocontrol/midi-core": "workspace:*",
     "@radix-ui/react-slider": "^1.1.2",
     "zustand": "^4.4.7"
   },

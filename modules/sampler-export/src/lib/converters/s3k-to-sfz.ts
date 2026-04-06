@@ -17,8 +17,8 @@ import {
     ProgramHeader,
     KeygroupHeader,
     SampleHeader,
-    readAkaiData,
 } from "@audiocontrol/sampler-devices/s3k";
+import { readAkaiData } from "@audiocontrol/sampler-devices";
 
 /**
  * Keygroup data extracted from S3K program

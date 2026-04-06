@@ -3,8 +3,8 @@ import {
   getBrowserCompatibility,
   isWebMidiSupported,
   requestMidiAccess,
-} from '@audiocontrol/shared-midi';
-import type { MidiPortInfo } from '@audiocontrol/shared-midi';
+} from '@audiocontrol/midi-core';
+import type { MidiPortInfo } from '@audiocontrol/midi-core';
 import type { MidiTransport, MidiTransportConnection, MidiTransportPorts } from './types';
 
 function getInputById(inputs: MIDIInputMap, targetId: string): MIDIInput | null {
