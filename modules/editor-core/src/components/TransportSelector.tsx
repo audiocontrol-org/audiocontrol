@@ -11,10 +11,12 @@ import {
 
 export interface TransportSelectorProps {
   disabled?: boolean;
+  /** When true, the Web MIDI option is disabled (e.g., browser doesn't support it) */
+  webMidiUnsupported?: boolean;
 }
 
 const DEFAULT_HTTP_URL = 'http://localhost:7777';
-const DEFAULT_SCSI_URL = 'http://s3k.local:7033';
+const DEFAULT_SCSI_URL = '/scsi-bridge';
 
 /**
  * Component for selecting MIDI transport type.
@@ -22,16 +24,17 @@ const DEFAULT_SCSI_URL = 'http://s3k.local:7033';
  * When the transport is changed, the configuration is saved to localStorage
  * and the page is reloaded to apply the new transport.
  */
-export function TransportSelector({ disabled = false }: TransportSelectorProps): JSX.Element {
+export function TransportSelector({ disabled = false, webMidiUnsupported = false }: TransportSelectorProps): JSX.Element {
   const currentMode = getActiveTransportMode();
   const currentHttpUrl = getActiveHttpServerUrl() ?? DEFAULT_HTTP_URL;
   const currentScsiUrl = getActiveScsiUrl() ?? DEFAULT_SCSI_URL;
 
-  const [selectedMode, setSelectedMode] = useState<TransportMode>(currentMode);
+  const initialMode = (webMidiUnsupported && currentMode === 'web') ? 'scsi' as TransportMode : currentMode;
+  const [selectedMode, setSelectedMode] = useState<TransportMode>(initialMode);
   const [httpUrl, setHttpUrl] = useState(currentHttpUrl);
   const [scsiUrl, setScsiUrl] = useState(currentScsiUrl);
-  const [showHttpConfig, setShowHttpConfig] = useState(currentMode === 'http');
-  const [showScsiConfig, setShowScsiConfig] = useState(currentMode === 'scsi');
+  const [showHttpConfig, setShowHttpConfig] = useState(initialMode === 'http');
+  const [showScsiConfig, setShowScsiConfig] = useState(initialMode === 'scsi');
 
   const hasChanges = selectedMode !== currentMode ||
     (selectedMode === 'http' && httpUrl !== currentHttpUrl) ||
@@ -67,11 +70,13 @@ export function TransportSelector({ disabled = false }: TransportSelectorProps):
               value="web"
               checked={selectedMode === 'web'}
               onChange={() => handleModeChange('web')}
-              disabled={disabled}
+              disabled={disabled || webMidiUnsupported}
               className="ac-radio"
             />
             <span>Web MIDI API</span>
-            <span className="ac-text-muted ac-text-sm"> — Browser's native MIDI</span>
+            <span className="ac-text-muted ac-text-sm">
+              {webMidiUnsupported ? ' — Not available in this browser' : ' — Browser\'s native MIDI'}
+            </span>
           </label>
           <label className="ac-radio-label">
             <input

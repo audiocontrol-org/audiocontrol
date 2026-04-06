@@ -86,6 +86,19 @@
   --ac-color-selected: var(--ac-roland-primary);
 }
 
+:root[data-editor='s3000xl'] {
+  --ac-color-surface-canvas: #111214;
+  --ac-color-surface-panel: #1a1c20;
+  --ac-color-border-subtle: #2e3138;
+  --ac-color-text-primary: #e8e6e3;
+  --ac-color-text-muted: #8a8d93;
+  --ac-color-accent: #d4a843;
+  --ac-color-success: #4ade80;
+  --ac-color-warning: #e0b24f;
+  --ac-color-danger: #fb7185;
+  --ac-color-selected: #d4a843;
+}
+
 :root[data-editor='jv1080'] {
   --ac-color-surface-canvas: #0f172a;
   --ac-color-surface-panel: #111827;

@@ -51,6 +51,13 @@ function stripTrailingSlash(url: string): string {
 
 function wsUrlFromHttp(httpUrl: string, path: string): string {
   const base = stripTrailingSlash(httpUrl);
+  // Relative URL (e.g., "/scsi-bridge") — derive WebSocket URL from page origin
+  if (base.startsWith('/')) {
+    const protocol = typeof window !== 'undefined' && window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const host = typeof window !== 'undefined' ? window.location.host : 'localhost';
+    return `${protocol}//${host}${base}${path}`;
+  }
+  // Absolute URL — swap http(s) for ws(s)
   const wsBase = base.replace(/^http/, 'ws');
   return `${wsBase}${path}`;
 }

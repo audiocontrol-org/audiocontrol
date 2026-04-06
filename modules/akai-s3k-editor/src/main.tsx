@@ -9,6 +9,9 @@ import '@/index.css';
 
 initLogCapture();
 
+// Set device theme for editor-core design tokens
+document.documentElement.dataset.editor = 's3000xl';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

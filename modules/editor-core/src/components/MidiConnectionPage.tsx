@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { MidiPortInfo } from '@audiocontrol/midi-core';
 import { MidiPortSelector } from '@/components/MidiPortSelector';
 import { TransportSelector } from '@/components/TransportSelector';
-import { getActiveTransportMode } from '@/transports/runtimeTransport';
+import { getActiveTransportMode, clearTransportConfig } from '@/transports/runtimeTransport';
 
 export interface MidiConnectionPageConfig {
   deviceName: string;
@@ -69,7 +69,7 @@ export function MidiConnectionPage({
 
   if (!store.isSupported && store.browserInfo.requiresSecureContext) {
     return (
-      <div className="ac-container-md">
+      <div className="ac-container-md ac-stack-lg">
         <section className="ac-card">
           <h2 className="ac-title-lg">{config.secureContextTitle ?? 'Secure Connection Required'}</h2>
           <p>The Web MIDI API requires a secure context (HTTPS or localhost).</p>
@@ -83,6 +83,12 @@ export function MidiConnectionPage({
               </li>
             ))}
           </ul>
+          <p className="ac-mt-3">
+            Alternatively, connect using an alternative MIDI transport:
+          </p>
+          <div className="ac-mt-3">
+            <TransportSelector disabled={false} webMidiUnsupported={!store.isSupported} />
+          </div>
         </section>
       </div>
     );
@@ -90,13 +96,19 @@ export function MidiConnectionPage({
 
   if (!store.isSupported) {
     return (
-      <div className="ac-container-md">
+      <div className="ac-container-md ac-stack-lg">
         <section className="ac-card">
-          <h2 className="ac-title-lg">Browser Not Supported</h2>
+          <h2 className="ac-title-lg">Connect to {config.deviceName}</h2>
           <p>
             The Web MIDI API is not available in {store.browserInfo.browser}.
           </p>
           <p className="ac-text-muted">{store.browserInfo.notes}</p>
+          <p className="ac-mt-3">
+            You can connect using an alternative MIDI transport:
+          </p>
+          <div className="ac-mt-3">
+            <TransportSelector disabled={false} webMidiUnsupported={!store.isSupported} />
+          </div>
         </section>
       </div>
     );
@@ -126,59 +138,84 @@ export function MidiConnectionPage({
           </p>
         )}
 
-        {store.error ? <p className="ac-text-error ac-mt-2">{store.error}</p> : null}
+        {store.error ? (
+          <>
+            <p className="ac-text-error ac-mt-2">{store.error}</p>
+            {transportMode !== 'web' && (
+              <div className="ac-mt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    clearTransportConfig();
+                    window.location.reload();
+                  }}
+                  className="ac-btn ac-btn-sm"
+                >
+                  Reset Transport
+                </button>
+                <div className="ac-mt-3">
+                  <TransportSelector disabled={isConnected} webMidiUnsupported={!store.isSupported} />
+                </div>
+              </div>
+            )}
+          </>
+        ) : null}
 
-        <div className="ac-grid-2 ac-mt-3">
-          <MidiPortSelector
-            label={config.inputLabel}
-            ports={store.inputs}
-            value={store.selectedInputId}
-            onChange={store.setSelectedInputId}
-            disabled={store.status === 'connected' || store.status === 'connecting'}
-            testId="midi-input-select"
-          />
-          <MidiPortSelector
-            label={config.outputLabel}
-            ports={store.outputs}
-            value={store.selectedOutputId}
-            onChange={store.setSelectedOutputId}
-            disabled={store.status === 'connected' || store.status === 'connecting'}
-            testId="midi-output-select"
-          />
-        </div>
+        {transportMode === 'web' && (
+          <>
+            <div className="ac-grid-2 ac-mt-3">
+              <MidiPortSelector
+                label={config.inputLabel}
+                ports={store.inputs}
+                value={store.selectedInputId}
+                onChange={store.setSelectedInputId}
+                disabled={store.status === 'connected' || store.status === 'connecting'}
+                testId="midi-input-select"
+              />
+              <MidiPortSelector
+                label={config.outputLabel}
+                ports={store.outputs}
+                value={store.selectedOutputId}
+                onChange={store.setSelectedOutputId}
+                disabled={store.status === 'connected' || store.status === 'connecting'}
+                testId="midi-output-select"
+              />
+            </div>
 
-        <div className="ac-row ac-mt-4">
-          {isConnected ? (
-            <>
-              <button
-                type="button"
-                onClick={() => void store.disconnect()}
-                className="ac-btn"
-                data-testid="disconnect-button"
-              >
-                Disconnect
-              </button>
-              <button type="button" onClick={onContinue} className="ac-btn">
-                {config.continueLabel}
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => void store.connect()}
-                disabled={!canConnect || store.status === 'connecting'}
-                className="ac-btn"
-                data-testid="connect-button"
-              >
-                {store.status === 'connecting' ? 'Connecting...' : 'Connect'}
-              </button>
-              <button type="button" onClick={() => void store.refresh()} className="ac-btn">
-                Refresh Ports
-              </button>
-            </>
-          )}
-        </div>
+            <div className="ac-row ac-mt-4">
+              {isConnected ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void store.disconnect()}
+                    className="ac-btn"
+                    data-testid="disconnect-button"
+                  >
+                    Disconnect
+                  </button>
+                  <button type="button" onClick={onContinue} className="ac-btn">
+                    {config.continueLabel}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void store.connect()}
+                    disabled={!canConnect || store.status === 'connecting'}
+                    className="ac-btn"
+                    data-testid="connect-button"
+                  >
+                    {store.status === 'connecting' ? 'Connecting...' : 'Connect'}
+                  </button>
+                  <button type="button" onClick={() => void store.refresh()} className="ac-btn">
+                    Refresh Ports
+                  </button>
+                </>
+              )}
+            </div>
+          </>
+        )}
       </section>
 
       <section className="ac-card">
