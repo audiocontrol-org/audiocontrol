@@ -136,12 +136,15 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
           void get().refresh();
         });
 
-        if (saved.inputId && saved.outputId) {
-          const inputAvailable = ports.inputs.some((port) => port.id === saved.inputId);
-          const outputAvailable = ports.outputs.some((port) => port.id === saved.outputId);
-          if (inputAvailable && outputAvailable) {
-            await get().connect(saved.inputId, saved.outputId);
-          }
+        // Restore saved port selection or auto-connect
+        const savedInputAvailable = saved.inputId && ports.inputs.some((p) => p.id === saved.inputId);
+        const savedOutputAvailable = saved.outputId && ports.outputs.some((p) => p.id === saved.outputId);
+
+        if (savedInputAvailable && savedOutputAvailable) {
+          await get().connect(saved.inputId!, saved.outputId!);
+        } else if (transport.kind !== 'web-midi' && ports.inputs.length > 0 && ports.outputs.length > 0) {
+          // Non-web transports auto-connect to the first device
+          await get().connect(ports.inputs[0].id, ports.outputs[0].id);
         }
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to initialize MIDI';

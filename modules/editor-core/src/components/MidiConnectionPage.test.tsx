@@ -32,7 +32,7 @@ const baseStore: MidiConnectionPageStore = {
 };
 
 describe('MidiConnectionPage', () => {
-  it('renders unsupported browser warning', () => {
+  it('renders unsupported browser with transport selector', () => {
     const html = renderToStaticMarkup(
       <MidiConnectionPage
         config={baseConfig}
@@ -42,11 +42,12 @@ describe('MidiConnectionPage', () => {
       />
     );
 
-    expect(html).toContain('Browser Not Supported');
-    expect(html).toContain('Chrome');
+    expect(html).toContain('Connect to Test Device');
+    expect(html).toContain('not available in Chrome');
+    expect(html).toContain('MIDI Transport');
   });
 
-  it('renders secure-context warning when required', () => {
+  it('renders secure-context warning with transport selector', () => {
     const html = renderToStaticMarkup(
       <MidiConnectionPage
         config={{
@@ -64,6 +65,7 @@ describe('MidiConnectionPage', () => {
     );
 
     expect(html).toContain('Secure Context Needed');
+    expect(html).toContain('MIDI Transport');
   });
 
   it('renders connect flow and device range', () => {

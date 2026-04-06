@@ -24,6 +24,13 @@ export default defineConfig({
     port: 3300,
     host: true,
     allowedHosts: ['orion-m1', 'orion-m4'],
+    proxy: {
+      '/scsi-bridge': {
+        target: 'http://s3k.local:7033',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/scsi-bridge/, ''),
+      },
+    },
   },
   build: {
     outDir: 'dist',
