@@ -79,7 +79,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-scsi check-scsi-bridge test-scsi-write-validation
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-scsi check-scsi-bridge test-scsi-write-validation dev-scsi
 
 build: $(ALL_STAMPS)
 
@@ -234,6 +234,21 @@ test-e2e-s3k-scsi: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
 		S2P_BIN='$(S2P_BIN)' \
 		SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
 		./scripts/run-scsi-midi-e2e.sh $(ARGS)"
+
+# ---------------------------------------------------------------------------
+# Dev Environment: S3K with SCSI bridge
+# ---------------------------------------------------------------------------
+
+# Provision Pi (if needed) and start S3K editor with SCSI bridge proxy.
+# Idempotent: skips provisioning if daemons are already running.
+# Usage: make dev-scsi
+# Usage: make dev-scsi SCSI_PI_HOST=10.0.0.57
+dev-scsi: $(AKAI_S3K_EDITOR) check-scsi-bridge
+	SCSI_PI_HOST='$(SCSI_PI_HOST)' \
+	SCSI_PI_USER='$(SCSI_PI_USER)' \
+	S2P_BIN='$(S2P_BIN)' \
+	SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+	./scripts/dev-scsi.sh
 
 $(INSTALL_STAMP): pnpm-lock.yaml
 	pnpm install
