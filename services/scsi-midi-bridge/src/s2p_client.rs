@@ -352,3 +352,201 @@ impl S2pClient {
         Ok(result)
     }
 }
+
+// -- MIDI streaming client (port 6870) ----------------------------------------
+
+// Message types for the streaming protocol
+const MSG_INIT: u8 = 0x01;
+const MSG_SEND: u8 = 0x02;
+const MSG_DATA: u8 = 0x03;
+const MSG_ERROR: u8 = 0x04;
+
+async fn write_frame(stream: &mut TcpStream, msg_type: u8, payload: &[u8]) -> Result<(), String> {
+    let len = (1 + payload.len()) as u32;
+    stream.write_all(&len.to_le_bytes()).await.map_err(|e| format!("write len: {e}"))?;
+    stream.write_all(&[msg_type]).await.map_err(|e| format!("write type: {e}"))?;
+    stream.write_all(payload).await.map_err(|e| format!("write payload: {e}"))?;
+    Ok(())
+}
+
+async fn read_frame(stream: &mut TcpStream) -> Result<(u8, Vec<u8>), String> {
+    let mut len_buf = [0u8; 4];
+    stream.read_exact(&mut len_buf).await.map_err(|e| format!("read len: {e}"))?;
+    let msg_len = u32::from_le_bytes(len_buf) as usize;
+    if msg_len == 0 {
+        return Err("read frame: zero-length message".to_string());
+    }
+    let mut type_buf = [0u8; 1];
+    stream.read_exact(&mut type_buf).await.map_err(|e| format!("read type: {e}"))?;
+    let payload_len = msg_len - 1;
+    let mut payload = vec![0u8; payload_len];
+    if payload_len > 0 {
+        stream.read_exact(&mut payload).await.map_err(|e| format!("read payload: {e}"))?;
+    }
+    Ok((type_buf[0], payload))
+}
+
+pub struct MidiStreamClient {
+    host: String,
+    port: u16,
+    target_id: u8,
+    stream: Option<TcpStream>,
+}
+
+impl MidiStreamClient {
+    pub fn new(host: String, port: u16, target_id: u8) -> Self {
+        Self {
+            host,
+            port,
+            target_id,
+            stream: None,
+        }
+    }
+
+    /// Connect to the streaming server and perform the init handshake.
+    async fn connect(&mut self) -> Result<(), String> {
+        let addr = format!("{}:{}", self.host, self.port);
+        info!(addr = %addr, "midi stream: connecting");
+
+        let t0 = Instant::now();
+        let tcp = TcpStream::connect(&addr)
+            .await
+            .map_err(|e| format!("midi stream connect: {e}"))?;
+        tcp.set_nodelay(true)
+            .map_err(|e| format!("set TCP_NODELAY: {e}"))?;
+        let t_connect = t0.elapsed();
+
+        self.stream = Some(tcp);
+
+        // Send MSG_INIT with target_id
+        let stream = self.stream.as_mut().unwrap();
+        write_frame(stream, MSG_INIT, &[self.target_id]).await?;
+
+        // Read init response
+        let (msg_type, payload) = read_frame(stream).await?;
+        let t_init = t0.elapsed();
+
+        match msg_type {
+            MSG_INIT if !payload.is_empty() && payload[0] == 1 => {
+                info!(
+                    connect_ms = t_connect.as_millis() as u64,
+                    init_ms = t_init.as_millis() as u64,
+                    "midi stream: connected and initialized"
+                );
+                Ok(())
+            }
+            MSG_ERROR => {
+                let err_msg = String::from_utf8_lossy(&payload).to_string();
+                self.stream = None;
+                Err(format!("midi stream init error: {err_msg}"))
+            }
+            _ => {
+                self.stream = None;
+                Err(format!(
+                    "midi stream init: unexpected response type={msg_type} payload_len={}",
+                    payload.len()
+                ))
+            }
+        }
+    }
+
+    /// Ensure we have an active connection, reconnecting if needed.
+    async fn ensure_connected(&mut self) -> Result<(), String> {
+        if self.stream.is_some() {
+            return Ok(());
+        }
+        self.connect().await
+    }
+
+    /// Send SysEx and read the response via the streaming protocol.
+    pub async fn send_and_receive(&mut self, sysex: &[u8]) -> Result<Vec<u8>, String> {
+        let t_start = Instant::now();
+
+        self.ensure_connected().await?;
+        let t_connected = t_start.elapsed();
+
+        // Perform I/O on the stream, capturing the result to handle errors after
+        // releasing the borrow so we can clear self.stream on failure.
+        let io_result = Self::do_send_receive(
+            self.stream.as_mut().unwrap(),
+            sysex,
+            t_start,
+            t_connected,
+        )
+        .await;
+
+        match io_result {
+            Ok(payload) => Ok(payload),
+            Err((clear_conn, msg)) => {
+                if clear_conn {
+                    self.stream = None;
+                }
+                Err(msg)
+            }
+        }
+    }
+
+    /// Inner I/O helper that borrows only the TcpStream. Returns Err((should_clear, message)).
+    async fn do_send_receive(
+        stream: &mut TcpStream,
+        sysex: &[u8],
+        t_start: Instant,
+        t_connected: std::time::Duration,
+    ) -> Result<Vec<u8>, (bool, String)> {
+        // Send MSG_SEND with sysex payload
+        write_frame(stream, MSG_SEND, sysex)
+            .await
+            .map_err(|e| (true, format!("midi stream send: {e}")))?;
+        let t_sent = t_start.elapsed();
+
+        debug!(
+            sysex_bytes = sysex.len(),
+            connect_ms = t_connected.as_millis() as u64,
+            send_ms = (t_sent - t_connected).as_millis() as u64,
+            "midi stream: sent MSG_SEND"
+        );
+
+        // Read response frame
+        let (msg_type, payload) = read_frame(stream)
+            .await
+            .map_err(|e| (true, format!("midi stream recv: {e}")))?;
+        let t_total = t_start.elapsed();
+
+        match msg_type {
+            MSG_DATA => {
+                info!(
+                    total_ms = t_total.as_millis() as u64,
+                    connect_ms = t_connected.as_millis() as u64,
+                    send_ms = (t_sent - t_connected).as_millis() as u64,
+                    recv_ms = (t_total - t_sent).as_millis() as u64,
+                    response_bytes = payload.len(),
+                    "midi stream: send_and_receive complete"
+                );
+                Ok(payload)
+            }
+            MSG_ERROR => {
+                let err_msg = String::from_utf8_lossy(&payload).to_string();
+                warn!(
+                    total_ms = t_total.as_millis() as u64,
+                    error = %err_msg,
+                    "midi stream: server error"
+                );
+                // Don't tear down the connection on application-level errors
+                Err((false, format!("midi stream error: {err_msg}")))
+            }
+            _ => Err((
+                true,
+                format!(
+                    "midi stream: unexpected message type={msg_type} payload_len={}",
+                    payload.len()
+                ),
+            )),
+        }
+    }
+
+    /// Check if the streaming server is reachable by attempting a TCP connection.
+    pub async fn is_reachable(&self) -> bool {
+        let addr = format!("{}:{}", self.host, self.port);
+        TcpStream::connect(&addr).await.is_ok()
+    }
+}

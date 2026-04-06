@@ -23,6 +23,7 @@ import { runAllFieldTests } from '@/node/lib/test-all-fields.js';
 import { runStructureTests } from '@/node/lib/test-structure.js';
 import { runMultiTests } from '@/node/lib/test-multi.js';
 import { runLatencyTests } from '@/node/lib/test-latency.js';
+import { runStreamingTests } from '@/node/lib/test-streaming.js';
 import { runSdsTests } from '@/node/lib/test-sds.js';
 import type { TestContext, TestResult } from '@/node/lib/test-types.js';
 
@@ -131,6 +132,7 @@ const TEST_GROUPS: TestGroup[] = [
   { name: 'structure', run: runStructureTests },
   { name: 'multi', run: runMultiTests },
   { name: 'latency', run: runLatencyTests },
+  { name: 'streaming', run: runStreamingTests },
   { name: 'sds', run: runSdsTests },
 ];
 

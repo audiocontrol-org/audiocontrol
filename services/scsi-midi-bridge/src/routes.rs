@@ -11,11 +11,12 @@ use tokio::sync::Mutex;
 use tracing::{info, info_span, Instrument};
 use uuid::Uuid;
 
-use crate::s2p_client::S2pClient;
+use crate::s2p_client::{MidiStreamClient, S2pClient};
 
 /// Shared application state.
 pub struct AppState {
     pub s2p: Mutex<S2pClient>,
+    pub midi_stream: Mutex<MidiStreamClient>,
     pub ws_tx: tokio::sync::broadcast::Sender<Vec<u8>>,
 }
 
@@ -70,7 +71,13 @@ fn extract_request_id(headers: &HeaderMap) -> String {
 // -- Handlers -----------------------------------------------------------------
 
 pub async fn status(State(state): State<Arc<AppState>>) -> Json<StatusResponse> {
-    let reachable = state.s2p.lock().await.is_reachable().await;
+    // Prefer streaming client reachability; fall back to protobuf
+    let stream_reachable = state.midi_stream.lock().await.is_reachable().await;
+    let reachable = if stream_reachable {
+        true
+    } else {
+        state.s2p.lock().await.is_reachable().await
+    };
     Json(StatusResponse {
         version: env!("CARGO_PKG_VERSION").to_string(),
         scsi2pi_version: "6.2.1".to_string(),
@@ -109,16 +116,28 @@ pub async fn sds_send(
             return Err((StatusCode::BAD_REQUEST, "message is empty".to_string()));
         }
 
-        let mut s2p = state.s2p.lock().await;
-        let response = if body.expect_response {
-            s2p.send_and_receive(&body.message)
-                .await
-                .map_err(|e| (StatusCode::BAD_GATEWAY, e))?
-        } else {
-            s2p.send_sysex(&body.message)
-                .await
-                .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
-            Vec::new()
+        // Try streaming client first
+        let response = {
+            let mut stream = state.midi_stream.lock().await;
+            stream.send_and_receive(&body.message).await
+        };
+
+        let response = match response {
+            Ok(data) => data,
+            Err(e) => {
+                tracing::warn!("Streaming client failed ({e}), falling back to protobuf");
+                let mut s2p = state.s2p.lock().await;
+                if body.expect_response {
+                    s2p.send_and_receive(&body.message)
+                        .await
+                        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?
+                } else {
+                    s2p.send_sysex(&body.message)
+                        .await
+                        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+                    Vec::new()
+                }
+            }
         };
 
         let elapsed = t0.elapsed();
@@ -172,15 +191,19 @@ pub async fn sds_stream(
     ws: WebSocketUpgrade,
 ) -> impl IntoResponse {
     let rx = state.ws_tx.subscribe();
-    ws.on_upgrade(move |socket| handle_ws(socket, rx))
+    ws.on_upgrade(move |socket| handle_ws(socket, rx, state))
 }
 
-async fn handle_ws(mut socket: WebSocket, mut rx: tokio::sync::broadcast::Receiver<Vec<u8>>) {
+async fn handle_ws(
+    mut socket: WebSocket,
+    mut rx: tokio::sync::broadcast::Receiver<Vec<u8>>,
+    state: Arc<AppState>,
+) {
     info!("WebSocket client connected");
 
     loop {
         tokio::select! {
-            // Forward SysEx from s2p to WebSocket client
+            // Forward broadcast SysEx to WebSocket client
             Ok(data) = rx.recv() => {
                 let msg = serde_json::json!({
                     "type": "sysex",
@@ -190,11 +213,47 @@ async fn handle_ws(mut socket: WebSocket, mut rx: tokio::sync::broadcast::Receiv
                     break;
                 }
             }
-            // Client messages (we don't expect any, but drain to detect close)
+            // Handle client messages
             msg = socket.recv() => {
                 match msg {
-                    Some(Ok(_)) => {}
-                    _ => break,
+                    Some(Ok(Message::Text(text))) => {
+                        // Parse send request
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
+                            if parsed["type"] == "send" {
+                                if let Some(arr) = parsed["message"].as_array() {
+                                    let message: Vec<u8> = arr.iter()
+                                        .filter_map(|v| v.as_u64().map(|n| n as u8))
+                                        .collect();
+
+                                    if !message.is_empty() {
+                                        // Try streaming client first
+                                        let response = {
+                                            let mut stream = state.midi_stream.lock().await;
+                                            stream.send_and_receive(&message).await
+                                        };
+
+                                        let response = match response {
+                                            Ok(data) => data,
+                                            Err(_) => {
+                                                let mut s2p = state.s2p.lock().await;
+                                                s2p.send_and_receive(&message).await.unwrap_or_default()
+                                            }
+                                        };
+
+                                        let reply = serde_json::json!({
+                                            "type": "sysex",
+                                            "data": response,
+                                        });
+                                        if socket.send(Message::Text(reply.to_string().into())).await.is_err() {
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Some(Ok(_)) => {} // Ignore binary, ping, pong
+                    _ => break, // Connection closed or error
                 }
             }
         }
