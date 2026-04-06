@@ -79,7 +79,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-scsi check-scsi-bridge
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-scsi check-scsi-bridge test-scsi-write-validation
 
 build: $(ALL_STAMPS)
 
@@ -212,6 +212,18 @@ check-scsi-bridge: $(S2P_STAMP) $(SCSI_BRIDGE_STAMP)
 	@test -f "$(SCSI_BRIDGE_BIN)" || (echo "ERROR: scsi-midi-bridge binary not found at $(SCSI_BRIDGE_BIN)" && exit 1)
 	@echo "✓ s2p ready: $(S2P_BIN)"
 	@echo "✓ scsi-midi-bridge ready: $(SCSI_BRIDGE_BIN)"
+
+# SCSI write validation (Node.js CLI — no browser, no Playwright)
+# Provisions Pi (deploys s2p + bridge, starts daemons, validates), then runs CLI tests.
+# Usage: make test-scsi-write-validation
+# Usage: make test-scsi-write-validation ARGS="--test writes --verbose"
+test-scsi-write-validation: $(SAMPLER_DEVICES) $(MIDI_CORE) check-scsi-bridge
+	SCSI_PI_HOST='$(SCSI_PI_HOST)' \
+	SCSI_PI_USER='$(SCSI_PI_USER)' \
+	S2P_BIN='$(S2P_BIN)' \
+	SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+	E2E_NODE_SCRIPT=src/node/scsi-write-test.ts \
+	$(MODULES_DIR)/e2e-infra/scripts/run-scsi-node-e2e.sh $(ARGS)
 
 # S3000XL SCSI tests (requires Pi with S3000XL connected via SCSI)
 test-e2e-s3k-scsi: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright

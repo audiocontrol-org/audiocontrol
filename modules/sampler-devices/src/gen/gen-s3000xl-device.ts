@@ -143,12 +143,22 @@ export async function genSetters(spec: Spec) {
             rv += `    header.raw[${offset} + 2] = 0\n`
             rv += `    header.raw[${offset} + 3] = 0\n`
         } else {
-            //         const d = byte2nibblesLE(polyphony)
-            //         header.raw[offset] = d[0]
-            //         header.raw[offset + 1] = d[1]
-            rv += `    const d = byte2nibblesLE(v)\n`
-            rv += `    header.raw[${offset}] = d[0]\n`
-            rv += `    header.raw[${offset} + 1] = d[1]\n`
+            const size = field.s ?? 1
+            if (size === 1) {
+                rv += `    const d = byte2nibblesLE(v)\n`
+                rv += `    header.raw[${offset}] = d[0]\n`
+                rv += `    header.raw[${offset} + 1] = d[1]\n`
+            } else {
+                // Multi-byte field: write each byte as a nibble pair, little-endian
+                rv += `    let tmp = v\n`
+                for (let b = 0; b < size; b++) {
+                    rv += `    header.raw[${offset + b * 2}] = tmp & 0x0f\n`
+                    rv += `    header.raw[${offset + b * 2 + 1}] = (tmp >> 4) & 0x0f\n`
+                    if (b < size - 1) {
+                        rv += `    tmp = tmp >> 8\n`
+                    }
+                }
+            }
         }
         rv += `}\n\n`
         offset += field.s ? field.s * 2 : 2

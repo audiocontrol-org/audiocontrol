@@ -1,7 +1,7 @@
 import type { MidiIO, SdsLoopType, SdsTransferProgress, SdsDumpHeader } from '@audiocontrol/midi-core';
-import type { ProgramHeader, KeygroupHeader, SampleHeader } from '@/devices/s3000xl.js';
+import type { ProgramHeader, KeygroupHeader, SampleHeader, MiscellaneousData } from '@/devices/s3000xl.js';
 
-export type { ProgramHeader, KeygroupHeader, SampleHeader };
+export type { ProgramHeader, KeygroupHeader, SampleHeader, MiscellaneousData };
 
 /** Progress callback for long-running operations */
 export type ProgressCallback = (current: number, total: number, label?: string) => void;
@@ -24,6 +24,9 @@ export interface S3000xlClientOptions {
 
   /** Maximum number of retry attempts for failed commands. Default: 3 */
   readonly maxRetries: number;
+
+  /** Bypass all caching — every read fetches fresh from the device. Default: false */
+  readonly noCache: boolean;
 }
 
 /**
@@ -59,6 +62,12 @@ export interface S3000xlClientInterface {
 
   /** Write a modified sample header back to the device */
   writeSampleHeader(header: SampleHeader): Promise<void>;
+
+  /** Fetch the miscellaneous (global/multi) data block from the device */
+  fetchMiscData(): Promise<MiscellaneousData>;
+
+  /** Write modified miscellaneous data back to the device */
+  writeMiscData(data: MiscellaneousData): Promise<void>;
 
   /** Send a sample to the device via MIDI Sample Dump Standard */
   sendSampleViaSds(
@@ -109,6 +118,31 @@ export interface S3000xlClientInterface {
     programNumber: number,
     keygroupNumber: number,
   ): Promise<void>;
+
+  /**
+   * Create a new program on the device.
+   *
+   * Clones an existing program (or uses the provided template) and sends it
+   * via PDATA with the target program number. Per S1000 SysEx spec: if the
+   * program number is above the highest existing program number, a new
+   * program is created. The created program will have dummy keygroups.
+   *
+   * @param programNumber - Target program index (must be >= current program count to create)
+   * @param template - Optional program header to use as base; if omitted, program 0 is cloned
+   */
+  createProgram(
+    programNumber: number,
+    template?: ProgramHeader,
+  ): Promise<void>;
+
+  /**
+   * Delete a program and all its keygroups from the device.
+   *
+   * Sends the DELP opcode to remove the program at the given RPLIST index.
+   *
+   * @param programNumber - RPLIST index of the program to delete
+   */
+  deleteProgram(programNumber: number): Promise<void>;
 
   /** Delete a sample from the device by its RSLIST index */
   deleteSample(sampleNumber: number): Promise<void>;

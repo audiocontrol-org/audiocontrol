@@ -10,6 +10,7 @@ use axum::Router;
 use clap::Parser;
 use tokio::sync::{broadcast, Mutex};
 use tower_http::cors::CorsLayer;
+use tracing_subscriber::EnvFilter;
 
 use config::Config;
 use routes::AppState;
@@ -17,6 +18,15 @@ use s2p_client::S2pClient;
 
 #[tokio::main]
 async fn main() {
+    // Initialize tracing — defaults to INFO, override with RUST_LOG env var
+    tracing_subscriber::fmt()
+        .with_env_filter(
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
+        )
+        .with_target(false)
+        .with_timer(tracing_subscriber::fmt::time::uptime())
+        .init();
+
     let config = Config::parse();
 
     let s2p = S2pClient::new(
@@ -43,13 +53,13 @@ async fn main() {
         .layer(CorsLayer::permissive());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
-    eprintln!(
-        "scsi-midi-bridge v{} on {} (s2p at {}:{}, target ID {})",
-        env!("CARGO_PKG_VERSION"),
-        addr,
-        config.s2p_host,
-        config.s2p_port,
-        config.target_id,
+    tracing::info!(
+        version = env!("CARGO_PKG_VERSION"),
+        addr = %addr,
+        s2p_host = %config.s2p_host,
+        s2p_port = config.s2p_port,
+        target_id = config.target_id,
+        "scsi-midi-bridge starting"
     );
 
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();

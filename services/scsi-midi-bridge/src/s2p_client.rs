@@ -6,8 +6,10 @@
 //! We hand-encode the protobuf messages to avoid a build-time protoc dependency.
 
 use std::collections::HashMap;
+use std::time::Instant;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
+use tracing::{debug, info, warn};
 
 // -- Protobuf encoding helpers ------------------------------------------------
 
@@ -88,6 +90,16 @@ const MIDI_SEND: u64 = 201;
 const MIDI_POLL: u64 = 202;
 const MIDI_READ: u64 = 203;
 
+fn op_name(op: u64) -> &'static str {
+    match op {
+        200 => "MIDI_INIT",
+        201 => "MIDI_SEND",
+        202 => "MIDI_POLL",
+        203 => "MIDI_READ",
+        _ => "UNKNOWN",
+    }
+}
+
 fn build_midi_request(target_id: u8) -> Vec<u8> {
     let mut buf = Vec::new();
     buf.push(0x08); // field 1, varint
@@ -152,11 +164,14 @@ impl S2pClient {
         }
     }
 
-    async fn send_command(&self, payload: &[u8]) -> Result<Fields, String> {
+    async fn send_command(&self, operation: u64, payload: &[u8]) -> Result<Fields, String> {
+        let t0 = Instant::now();
+
         let addr = format!("{}:{}", self.host, self.port);
         let mut stream = TcpStream::connect(&addr)
             .await
             .map_err(|e| format!("s2p connect error: {e}"))?;
+        let t_connect = t0.elapsed();
 
         // Send: "RASCSI" + 4-byte LE length + payload
         stream
@@ -171,6 +186,7 @@ impl S2pClient {
             .write_all(payload)
             .await
             .map_err(|e| format!("write payload: {e}"))?;
+        let t_send = t0.elapsed();
 
         // Read response: 4-byte LE length + payload
         let mut len_buf = [0u8; 4];
@@ -185,6 +201,17 @@ impl S2pClient {
             .read_exact(&mut resp_buf)
             .await
             .map_err(|e| format!("read payload: {e}"))?;
+        let t_total = t0.elapsed();
+
+        debug!(
+            op = op_name(operation),
+            tcp_connect_ms = t_connect.as_millis() as u64,
+            send_ms = (t_send - t_connect).as_millis() as u64,
+            recv_ms = (t_total - t_send).as_millis() as u64,
+            total_ms = t_total.as_millis() as u64,
+            resp_bytes = resp_len,
+            "s2p command"
+        );
 
         Ok(Fields::parse(&resp_buf))
     }
@@ -196,12 +223,14 @@ impl S2pClient {
 
     pub async fn ensure_init(&mut self) -> Result<(), String> {
         if self.initialized {
+            debug!("MIDI_INIT: already initialized, skip");
             return Ok(());
         }
         let cmd = build_midi_init(self.target_id);
-        let result = self.send_command(&cmd).await?;
+        let result = self.send_command(MIDI_INIT, &cmd).await?;
         if result.status() {
             self.initialized = true;
+            info!("MIDI_INIT: success");
             Ok(())
         } else {
             Err("MIDI_INIT failed".to_string())
@@ -211,7 +240,7 @@ impl S2pClient {
     pub async fn send_sysex(&mut self, sysex: &[u8]) -> Result<(), String> {
         self.ensure_init().await?;
         let cmd = build_midi_send(self.target_id, sysex);
-        let result = self.send_command(&cmd).await?;
+        let result = self.send_command(MIDI_SEND, &cmd).await?;
         if result.status() {
             Ok(())
         } else {
@@ -222,7 +251,7 @@ impl S2pClient {
     /// Poll for pending response bytes. Returns the byte count.
     pub async fn poll(&self) -> Result<u32, String> {
         let cmd = build_midi_poll(self.target_id);
-        let result = self.send_command(&cmd).await?;
+        let result = self.send_command(MIDI_POLL, &cmd).await?;
         if !result.status() {
             return Err("MIDI_POLL failed".to_string());
         }
@@ -238,7 +267,7 @@ impl S2pClient {
     /// Read pending SysEx data.
     pub async fn read(&self, length: u32) -> Result<Vec<u8>, String> {
         let cmd = build_midi_read(self.target_id, length);
-        let result = self.send_command(&cmd).await?;
+        let result = self.send_command(MIDI_READ, &cmd).await?;
         if !result.status() {
             return Err("MIDI_READ failed".to_string());
         }
@@ -255,17 +284,38 @@ impl S2pClient {
     /// or split large messages across poll cycles (e.g., 392-byte program
     /// header as 240 + 152 bytes). Read until no more data is pending.
     pub async fn send_and_receive(&mut self, sysex: &[u8]) -> Result<Vec<u8>, String> {
+        let t_start = Instant::now();
+
         self.send_sysex(sysex).await?;
+        let t_after_send = t_start.elapsed();
 
         let mut result = Vec::new();
         let mut empty_polls = 0;
+        let mut total_poll_sleep_ms: u64 = 0;
+        let mut total_s2p_io_ms: u64 = 0;
+        let mut poll_count = 0u32;
 
         for attempt in 0..30 {
+            let t_sleep_start = Instant::now();
             tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+            total_poll_sleep_ms += t_sleep_start.elapsed().as_millis() as u64;
+
+            let t_poll_start = Instant::now();
             let pending = self.poll().await?;
+            total_s2p_io_ms += t_poll_start.elapsed().as_millis() as u64;
+            poll_count += 1;
+
             if pending > 0 {
-                eprintln!("[s2p] poll attempt {}: {pending} bytes pending", attempt + 1);
+                debug!(
+                    attempt = attempt + 1,
+                    pending_bytes = pending,
+                    "poll: data ready"
+                );
+
+                let t_read_start = Instant::now();
                 let chunk = self.read(pending).await?;
+                total_s2p_io_ms += t_read_start.elapsed().as_millis() as u64;
+
                 result.extend_from_slice(&chunk);
                 empty_polls = 0;
                 // Keep reading — more data may follow in the next poll cycle
@@ -274,10 +324,30 @@ impl S2pClient {
                 // the device is still preparing the next chunk (e.g., WAIT → ACK).
                 empty_polls += 1;
                 if empty_polls >= 2 {
+                    let t_total = t_start.elapsed();
+                    info!(
+                        total_ms = t_total.as_millis() as u64,
+                        send_ms = t_after_send.as_millis() as u64,
+                        poll_sleep_ms = total_poll_sleep_ms,
+                        s2p_io_ms = total_s2p_io_ms,
+                        poll_count = poll_count,
+                        response_bytes = result.len(),
+                        "send_and_receive complete"
+                    );
                     return Ok(result);
                 }
+            } else {
+                debug!(attempt = attempt + 1, "poll: no data yet");
             }
         }
+
+        let t_total = t_start.elapsed();
+        warn!(
+            total_ms = t_total.as_millis() as u64,
+            poll_count = poll_count,
+            response_bytes = result.len(),
+            "send_and_receive: max attempts reached"
+        );
 
         Ok(result)
     }
