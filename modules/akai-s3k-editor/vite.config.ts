@@ -3,6 +3,14 @@ import react from '@vitejs/plugin-react';
 import mkcert from 'vite-plugin-mkcert';
 import path from 'path';
 
+// Prevent Vite dev server from crashing on TLS connection resets
+// (common with mobile Safari dropping connections)
+process.on('uncaughtException', (err) => {
+  if ('code' in err && err.code === 'ECONNRESET') return;
+  console.error('Uncaught exception:', err);
+  process.exit(1);
+});
+
 const useMkcert = process.env.VISUAL_HTTP !== '1';
 
 export default defineConfig({
@@ -29,6 +37,7 @@ export default defineConfig({
         target: 'http://s3k.local:7033',
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/scsi-bridge/, ''),
+        ws: true,
       },
     },
   },
