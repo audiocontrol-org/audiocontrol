@@ -506,9 +506,14 @@ impl MidiStreamClient {
             "midi stream: sent MSG_SEND"
         );
 
-        // Read response frame
-        let (msg_type, payload) = read_frame(stream)
+        // Read response frame with timeout — prevents a stuck SCSI bus from
+        // holding the midi_stream mutex indefinitely and blocking all clients.
+        let (msg_type, payload) = tokio::time::timeout(
+            std::time::Duration::from_secs(10),
+            read_frame(stream),
+        )
             .await
+            .map_err(|_| (true, "midi stream recv: timed out after 10s".to_string()))?
             .map_err(|e| (true, format!("midi stream recv: {e}")))?;
         let t_total = t_start.elapsed();
 
