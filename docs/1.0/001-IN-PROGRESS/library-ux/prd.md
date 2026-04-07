@@ -1,126 +1,116 @@
-# Roland S-330/S-550 Library Page UX Improvements
+# Library UX Improvements - Product Requirements Document
 
 **Created:** 2026-03-30
-**Status:** Draft
-**Owner:** TBD
+**Updated:** 2026-04-07
+**Status:** Approved
+**Owner:** Orion Letizi
 
 ## Problem Statement
 
-The roland-sxx0-editor Library page provides powerful functionality for managing sampler tones, patches, sets, drum kits, and samples across device memory and the local library. However, the current implementation has UX rough edges that create friction for users:
+Both the Roland S-330/S-550 editor and the Akai S3000XL editor have library pages for managing samples, programs, and device memory. However, the two implementations have diverged:
 
-1. **Visual complexity** — The three-column layout (device memory, library browser, preview panel) can be overwhelming, especially for new users
-2. **Discoverability issues** — Key workflows like drag-and-drop import/export, context menus, and keyboard shortcuts are not immediately obvious
-3. **Feedback gaps** — Long-running operations (import, export, device communication) lack clear progress indication and error recovery paths
-4. **Navigation friction** — Moving between deep library hierarchies and device slots requires many clicks
-5. **Code complexity** — The LibraryPage component is 908 lines, indicating potential for simplification
+1. **Implementation divergence** - The S3K editor uses `PluginLibraryBrowser` from editor-core (the shared component). The Roland editor does NOT - it has its own bespoke three-column layout built from `DeviceMemoryPanel`, `PluginLibraryTreePanel`, and `ItemPreviewPanel`. This means UX improvements must be made twice and drift over time.
+
+2. **Roland LibraryPage complexity** - The Roland editor's `LibraryPage.tsx` is 908 lines (violating the 500-line guideline) with 11+ dialogs managed inline, complex state management, and tightly coupled selection/operation logic.
+
+3. **UX rough edges** - Both editors lack visual polish: empty states are unhelpful, drag-and-drop has no affordances, there are no loading skeletons, keyboard navigation is missing, and progress indicators are minimal.
+
+4. **Roland is the UX reference** - The Roland library page is the more mature implementation and the standard that `PluginLibraryBrowser` was based on. But the shared component has drifted from the reference.
 
 ## User Stories
 
-### Primary Workflows
+### Alignment
 
-1. **As a user**, I want to quickly import a tone from my library to the device so I can use it in my music production
-2. **As a user**, I want to export my device patches to the library so I can back them up or organize them
-3. **As a user**, I want to manage my library organization (folders, naming) without losing context of what's on the device
-4. **As a user**, I want to preview library items before importing them to understand what they contain
-5. **As a user**, I want to load and save complete sets so I can switch between different project configurations
+- As a developer, I want both editors to use the same `PluginLibraryBrowser` component so that UX improvements land in both editors automatically
+- As a developer, I want shared hooks for common patterns (editor dialogs, library data loading) so I don't reimplement the same logic per editor
+- As a developer, I want each editor's LibraryPage under 500 lines so the code is maintainable
 
-### Pain Points to Address
+### UX
 
-1. **As a user**, I get confused about which panel is focused and where my next action will apply
-2. **As a user**, I don't realize I can drag items between panels until I accidentally discover it
-3. **As a user**, I lose my place in the library tree when switching between categories
-4. **As a user**, I can't easily tell which device slots are empty vs populated
-5. **As a user**, error messages don't help me understand what went wrong or how to fix it
+- As a user, I want clear visual hierarchy showing which panel is focused and what actions are available
+- As a user, I want drag-and-drop to be discoverable (grab cursors, drop zone highlights, invalid target indicators)
+- As a user, I want loading skeletons instead of blank panels while data loads
+- As a user, I want progress bars for import/export operations with cancellation support where possible
+- As a user, I want keyboard navigation (arrow keys, Enter, Escape, Delete) for all common workflows
+- As a user, I want empty states that guide me toward the next action instead of showing blank panels
+- As a user, I want error messages that explain what went wrong and how to recover
+
+### Device-Specific
+
+- As a Roland editor user, I want Sets to continue working as a device-specific category in the library browser
+- As an S3K editor user, I want the same visual quality and interaction patterns as the Roland editor
 
 ## Success Criteria
 
-### User Experience
-- [ ] New users can complete import/export workflows within 2 interactions
-- [ ] Visual hierarchy clearly indicates focus and available actions
-- [ ] All operations provide clear progress feedback
-- [ ] Error states include actionable recovery suggestions
-- [ ] Keyboard navigation supports all common workflows
+### Alignment
+- [ ] Roland editor uses `PluginLibraryBrowser` from editor-core (same component as S3K)
+- [ ] Roland `LibraryPage.tsx` is under 500 lines
+- [ ] Shared `useEditorDialogs` hook in editor-core used by both editors
+- [ ] `PluginLibraryBrowser` matches Roland's UX standard (context menus, all category types)
+- [ ] `libraryHandle` prop type widened to accept `StorageDirectoryHandle`
 
-### Code Quality
-- [ ] LibraryPage component reduced to <500 lines via extraction
-- [ ] Shared patterns extracted to editor-core where applicable
-- [ ] Test coverage for new/modified components
-- [ ] No regression in existing E2E tests
+### UX
+- [ ] All panels have focus indicators
+- [ ] Empty states show guidance and action prompts
+- [ ] Loading skeletons shown during async operations
+- [ ] Drag-and-drop has visual affordances (grab cursor, drop zones, invalid targets)
+- [ ] Keyboard navigation works for tree browsing (arrows, Enter, Escape, Delete)
+- [ ] Import/export operations show progress bars
+
+### Regression Safety
+- [ ] All existing Roland E2E tests pass after migration
+- [ ] All existing S3K E2E tests pass
+- [ ] No visual regression in either editor
+- [ ] Sets functionality preserved in Roland editor
 
 ## Scope
 
 ### In Scope
 
-1. **Visual polish**
-   - Panel focus indicators
-   - Empty state designs
-   - Loading states and skeletons
-   - Progress indicators for operations
+**Alignment work:**
+- Extract Roland LibraryPage into hooks (editor dialogs, data loading, selection mapping, operation handlers)
+- Upstream Roland patterns to editor-core (context menu wiring, Sets as CategoryPlugin)
+- Migrate Roland to `PluginLibraryBrowser`
+- Extract shared `useEditorDialogs` hook to editor-core with `WavLoaderStrategy` interface
+- Delete bespoke Roland layout components after migration
 
-2. **Interaction improvements**
-   - Drag-and-drop affordances (drop zones, cursor feedback)
-   - Context menu organization and keyboard shortcuts
-   - Breadcrumb navigation for deep hierarchies
-   - Keyboard navigation (arrow keys, Enter, Escape)
-
-3. **Feedback improvements**
-   - Operation progress with cancel support where possible
-   - Error messages with recovery suggestions
-   - Success confirmations for destructive actions
-   - Undo support for reversible operations
-
-4. **Code refactoring**
-   - Extract reusable components
-   - Simplify state management
-   - Improve component composition
+**UX polish (in shared components, benefiting both editors):**
+- Panel focus indicators
+- Empty state designs with guidance text
+- Loading skeleton placeholders
+- Progress bar indicators for operations
+- Drag-and-drop affordances
+- Keyboard navigation in tree views
+- Context menu improvements
 
 ### Out of Scope
 
 - New library features (new item types, new operations)
+- Vendor-agnostic "Multi" concept (deferred; Sets remain device-specific)
 - Device protocol changes
-- Performance optimization (separate effort if needed)
-- Mobile/responsive layout (desktop-first editor)
+- Performance optimization
+- Mobile/responsive layout
+- Sample rate conversion
+- Automatic sample dependency resolution
 
-## Dependencies and Constraints
+## Dependencies
 
-### Dependencies
-- editor-core shared components (may need enhancements)
-- Existing library-service.ts APIs
-- Plugin architecture for device-specific behavior
+- `editor-core` PluginLibraryBrowser and plugin interfaces (will be modified)
+- Existing Roland plugin architecture (s330-library-plugin, s550-library-plugin)
+- Existing S3K plugin architecture (s3k-library-plugin)
+- `sampler-library` filesystem operations (unchanged)
+- Existing E2E test infrastructure
 
-### Constraints
-- Must maintain backwards compatibility with existing library formats
-- Must not break existing E2E tests
-- Must work with both S-330 and S-550 device configurations
+## Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Migration vs shared hooks only | Migrate Roland to PluginLibraryBrowser | Eliminates divergence at the source; all future UX work lands in one place |
+| UX reference standard | Roland editor | More mature implementation, what PluginLibraryBrowser was based on |
+| Sets modeling | Device-specific CategoryPlugin | Sets are vendor-specific state snapshots; Multi concept deferred |
+| Library browser scope | Show both device-specific and common-area categories | Users need access to both areas |
+| Priority ordering | Alignment first, polish second | UX polish on shared components benefits both editors only after alignment |
 
 ## Open Questions
 
-1. Should we conduct user research to identify specific pain points, or proceed with heuristic evaluation?
-2. Are there specific workflows from the S3K editor UX effort that should inform this work?
-3. What is the priority order for the improvements listed above?
-4. Should keyboard shortcuts be customizable?
-
-## Technical Notes
-
-### Current Architecture
-
-The LibraryPage uses a three-column layout:
-- **Left:** DeviceMemoryPanel (tones/patches on device)
-- **Center:** PluginLibraryTreePanel (library browser with tree navigation)
-- **Right:** ItemPreviewPanel / SampleBundlePreviewPanel (preview with actions)
-
-Key hooks and utilities:
-- `useLibraryConnection` — OPFS/native filesystem connection
-- `useLibraryExport` — Export operations to library
-- `useLibraryImportDialogs` — Import dialog state management
-- `useDirectoryOperations` — Folder CRUD operations
-- Plugin architecture — Device-specific item types and behaviors
-
-### Dialogs (11 total)
-- SaveSetDialog, LoadSetDialog
-- ImportLibraryToneDialog, ImportLibraryPatchDialog, ImportSamplesDialog
-- ExportToneDialog, ExportPatchDialog
-- CreateDirectoryDialog, RenameDirectoryDialog, DeleteDirectoryDialog, MoveItemDialog
-- SampleChopperDialog, LoopEditorDialog, SampleEditorDialog
-
-This dialog complexity suggests potential for consolidation or workflow simplification.
+- [ ] Can Sets be cleanly modeled as a `CategoryPlugin`, or do they need a `headerSections` render slot in PluginLibraryBrowser? (to be determined during Phase 2 prototyping)

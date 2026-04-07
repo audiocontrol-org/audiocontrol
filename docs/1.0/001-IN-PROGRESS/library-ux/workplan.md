@@ -1,271 +1,339 @@
 # Library UX Improvements - Workplan
 
 **Source PRD:** [prd.md](./prd.md)
-**Created:** 2026-03-30
-
----
-
-## GitHub Tracking
-
-| Item | Link |
-|------|------|
-| **Milestone** | TBD |
-| **Parent Issue** | TBD - `[roland-sxx0-editor] Library page UX improvements` |
-| **Labels** | `s330-editor`, `enhancement`, `refactor` |
+**Updated:** 2026-04-07
 
 ---
 
 ## Overview
 
-This workplan addresses UX rough edges in the roland-sxx0-editor Library page through visual polish, interaction improvements, and code refactoring.
+Align both editors on `PluginLibraryBrowser`, then polish the shared components. The Roland editor is the UX reference standard; `PluginLibraryBrowser` must match it before Roland migrates onto it.
 
 ### Current State
-- LibraryPage.tsx: 908 lines (exceeds 500-line guideline)
-- 11 dialogs managed in single component
-- Three-column layout with complex state interactions
-- Plugin architecture for S-330/S-550 device differences
+- **Roland** `LibraryPage.tsx`: 908 lines, bespoke three-column layout, 11+ inline dialogs
+- **S3K** `LibraryPage.tsx`: 596 lines, uses `PluginLibraryBrowser` from editor-core
+- **editor-core** `PluginLibraryBrowser`: shared component that S3K uses but Roland doesn't
 
 ### Target State
-- LibraryPage.tsx: <500 lines via component extraction
-- Clear visual hierarchy and focus management
-- Discoverable interactions with affordances
-- Consistent feedback for all operations
+- Both editors use `PluginLibraryBrowser` from editor-core
+- Roland `LibraryPage.tsx` under 500 lines via hook extraction
+- Shared `useEditorDialogs` hook in editor-core
+- UX polish (empty states, skeletons, keyboard nav, drag-drop affordances) in shared components
 
 ---
 
-## Phase 1: Visual Polish
+## Phase 1: Extract Roland LibraryPage into Hooks
 
-**Goal:** Improve visual hierarchy and feedback without changing functionality.
+**Goal:** Get Roland's `LibraryPage.tsx` under 500 lines via pure refactoring. No rendering changes, no behavior changes.
 
-### Task 1.1: Panel focus indicators
+### Task 1.1: Extract editor dialog management
 
-Add visual indicators showing which panel is currently focused/active.
+Create `modules/roland-sxx0-editor/src/hooks/useRolandEditorDialogs.ts`
+
+Move all dialog state (slice editor, loop editor, chopper, sample editor) and their open/close/save handlers out of LibraryPage. Follow the pattern of S3K's `useEditorDialogs` (`modules/akai-s3k-editor/src/hooks/useEditorDialogs.ts`).
 
 **Files:**
-- `src/pages/LibraryPage.tsx`
-- `src/components/library/DeviceMemoryPanel.tsx`
-- `src/components/library/PluginLibraryTreePanel.tsx`
-- `src/components/library/ItemPreviewPanel.tsx`
+- Create: `modules/roland-sxx0-editor/src/hooks/useRolandEditorDialogs.ts`
+- Modify: `modules/roland-sxx0-editor/src/pages/LibraryPage.tsx`
 
 **Acceptance Criteria:**
-- [ ] Active panel has distinct border/highlight
-- [ ] Focus moves correctly with Tab key
-- [ ] Click on panel focuses it
+- [ ] All dialog state and handlers extracted to hook
+- [ ] LibraryPage imports and calls the hook
+- [ ] No rendering or behavioral changes
+- [ ] Builds cleanly
 
-### Task 1.2: Empty state designs
+### Task 1.2: Extract library data loading
 
-Add meaningful empty states for panels and lists.
+Create `modules/roland-sxx0-editor/src/hooks/useRolandLibraryData.ts`
 
-**Acceptance Criteria:**
-- [ ] Device memory shows helpful message when no banks loaded
-- [ ] Library browser shows guidance when library not connected
-- [ ] Preview panel shows prompt when nothing selected
-- [ ] Empty folders show "No items" with action suggestion
+Move `loadAllLibraryData`, the loading useEffect, refresh handlers, and all tree state (`tonesTree`, `patchesTree`, `drumKitsTree`, `commonSamplesTree`, `sets`, `drumKits`) out of LibraryPage.
 
-### Task 1.3: Loading states and skeletons
-
-Add skeleton loading states for async operations.
+**Files:**
+- Create: `modules/roland-sxx0-editor/src/hooks/useRolandLibraryData.ts`
+- Modify: `modules/roland-sxx0-editor/src/pages/LibraryPage.tsx`
 
 **Acceptance Criteria:**
-- [ ] Library tree shows skeleton while loading
-- [ ] Preview panel shows skeleton while loading item details
-- [ ] Device slots show loading indicator during fetch
+- [ ] All data loading state and effects extracted
+- [ ] Refresh callbacks exposed from hook
+- [ ] No rendering or behavioral changes
 
-### Task 1.4: Operation progress indicators
+### Task 1.3: Extract selection mapping
 
-Improve progress feedback for import/export operations.
+Create `modules/roland-sxx0-editor/src/hooks/useRolandSelectionMapping.ts`
+
+Move `handlePluginSelectionChange` and related selection state. This callback maps editor-core's `ItemSelection` to Roland's page-level `ItemSelection` type and handles side effects (e.g., loading drum kit bundles on selection).
+
+**Files:**
+- Create: `modules/roland-sxx0-editor/src/hooks/useRolandSelectionMapping.ts`
+- Modify: `modules/roland-sxx0-editor/src/pages/LibraryPage.tsx`
 
 **Acceptance Criteria:**
-- [ ] All operations show progress bar with percentage
-- [ ] Long operations show estimated time or step count
-- [ ] Cancel button available where operation is cancellable
-- [ ] Success/failure shown clearly on completion
+- [ ] Selection mapping logic extracted to hook
+- [ ] Side effects (drum kit bundle loading) preserved
+- [ ] No rendering or behavioral changes
+
+### Task 1.4: Extract operation handlers
+
+Move complex operation logic (sample/loop/chopper save callbacks) into existing hooks.
+
+**Files:**
+- Modify: `modules/roland-sxx0-editor/src/hooks/useLibraryExport.ts`
+- Modify: `modules/roland-sxx0-editor/src/hooks/useLibraryImportDialogs.ts`
+- Modify: `modules/roland-sxx0-editor/src/pages/LibraryPage.tsx`
+
+**Acceptance Criteria:**
+- [ ] Save handlers for sample editor, loop editor, chopper extracted
+- [ ] LibraryPage under 500 lines
+- [ ] No rendering or behavioral changes
+
+**Phase 1 Verification:** All existing E2E tests pass (`make test-e2e-roland-library`, `make test-e2e-roland-ui`). No visual changes.
 
 ---
 
-## Phase 2: Interaction Improvements
+## Phase 2: Upstream Roland Patterns to editor-core
 
-**Goal:** Make interactions more discoverable and efficient.
+**Goal:** Make `PluginLibraryBrowser` capable of everything Roland's bespoke layout does. Roland's UX is the standard.
 
-### Task 2.1: Drag-and-drop affordances
+### Task 2.1: Audit Roland vs PluginLibraryBrowser gaps
 
-Add visual cues for drag-and-drop support.
+Read these files side-by-side and document every feature in Roland's bespoke components that `PluginLibraryBrowser` lacks:
 
-**Acceptance Criteria:**
-- [ ] Draggable items show grab cursor on hover
-- [ ] Drop zones highlight when dragging over
-- [ ] Invalid drop targets show "not allowed" indicator
-- [ ] Drag preview shows item being moved
+- `modules/roland-sxx0-editor/src/components/library/PluginLibraryTreePanel.tsx` (Roland's bespoke tree panel)
+- `modules/editor-core/src/components/library/PluginLibraryBrowser.tsx` (shared component)
+- `modules/roland-sxx0-editor/src/components/library/DeviceMemoryPanel.tsx`
+- `modules/roland-sxx0-editor/src/components/library/ItemPreviewPanel.tsx`
 
-### Task 2.2: Context menu organization
-
-Review and improve context menu structure.
-
-**Acceptance Criteria:**
-- [ ] Related actions grouped logically
-- [ ] Keyboard shortcuts shown next to actions
-- [ ] Destructive actions visually distinct
-- [ ] Most common actions at top
-
-### Task 2.3: Keyboard navigation
-
-Add comprehensive keyboard support.
+**Known gaps:**
+- Context menu rendering and action wiring
+- Sets section with expandable manifests
+- Device memory panel rendering differences
+- `libraryHandle` typed as `FileSystemDirectoryHandle` (S3K casts `StorageDirectoryHandle`)
 
 **Acceptance Criteria:**
-- [ ] Arrow keys navigate within panels
-- [ ] Enter activates/opens selected item
-- [ ] Escape closes dialogs and deselects
-- [ ] Common actions have keyboard shortcuts
-- [ ] Shortcuts documented in help/tooltip
+- [ ] Complete gap list documented
+- [ ] Each gap has a proposed resolution (upstream vs plugin-level vs skip)
 
-### Task 2.4: Breadcrumb navigation
+### Task 2.2: Add context menu support to PluginLibraryBrowser
 
-Add breadcrumbs for deep library hierarchies.
+Roland's `PluginLibraryTreePanel` renders `ContextMenu` internally and converts `PluginContextMenuAction` to `ContextMenuAction` with click handlers. Upstream this pattern into `PluginLibraryBrowser`.
+
+**Files:**
+- Modify: `modules/editor-core/src/components/library/PluginLibraryBrowser.tsx`
 
 **Acceptance Criteria:**
-- [ ] Current path shown as clickable breadcrumbs
-- [ ] Click breadcrumb segment to navigate up
-- [ ] Truncation for very deep paths
-- [ ] Home/root always accessible
+- [ ] PluginLibraryBrowser renders context menus using plugin-provided `getContextMenuActions`
+- [ ] `onContextMenuAction` callback dispatches to consumer
+- [ ] S3K editor gets context menus for free (already defines actions in plugin)
+
+### Task 2.3: Model Sets as a CategoryPlugin
+
+Create a Sets category definition for the Roland plugin. Sets become a `CategoryPlugin` with `categoryId: 'sets'`. Set manifest loading and expansion logic moves from `PluginLibraryTreePanel` into a `useSetsTree` hook that produces `TreeNode[]`.
+
+If Sets don't fit cleanly as a `CategoryPlugin`, fall back to a `headerSections` render slot in `PluginLibraryBrowser`.
+
+**Files:**
+- Create: `modules/roland-sxx0-editor/src/plugins/shared/sets-category.ts`
+- Create: `modules/roland-sxx0-editor/src/hooks/useSetsTree.ts`
+- Modify: `modules/roland-sxx0-editor/src/plugins/s330-library-plugin.tsx`
+- Modify: `modules/roland-sxx0-editor/src/plugins/s550-library-plugin.tsx`
+
+**Acceptance Criteria:**
+- [ ] Sets rendered via CategoryPlugin or headerSections slot
+- [ ] Set expansion/manifest loading preserved
+- [ ] No behavioral regression
+
+### Task 2.4: Widen `libraryHandle` prop type
+
+**Files:**
+- Modify: `modules/editor-core/src/components/library/PluginLibraryBrowser.tsx`
+- Modify: `modules/akai-s3k-editor/src/pages/LibraryPage.tsx` (remove cast)
+
+**Acceptance Criteria:**
+- [ ] Prop accepts `StorageDirectoryHandle`
+- [ ] S3K no longer needs the `as unknown as FileSystemDirectoryHandle` cast
+
+### Task 2.5: Extract shared useEditorDialogs to editor-core
+
+Generalize the pattern from S3K's `useEditorDialogs` and Roland's `useRolandEditorDialogs`. The shared hook accepts a `WavLoaderStrategy` interface:
+
+```typescript
+interface WavLoaderStrategy {
+  loadWav(root, name, nodeType, path?): Promise<WavData>;
+  saveLoopPoints(root, name, nodeType, path?, loopStart, loopEnd): Promise<void>;
+  saveSample(root, name, nodeType, path?, samples, sampleRate): Promise<void>;
+}
+```
+
+Each editor provides a device-specific strategy. The hook manages dialog state identically.
+
+**Files:**
+- Create: `modules/editor-core/src/hooks/useEditorDialogs.ts`
+- Modify: `modules/akai-s3k-editor/src/hooks/useEditorDialogs.ts` (delegate to shared)
+- Modify: `modules/roland-sxx0-editor/src/hooks/useRolandEditorDialogs.ts` (delegate to shared)
+
+**Acceptance Criteria:**
+- [ ] Shared hook in editor-core
+- [ ] Both editors use it with device-specific strategies
+- [ ] No behavioral regression
+
+**Phase 2 Verification:** Build both editors (`make`). All existing E2E tests pass.
 
 ---
 
-## Phase 3: Code Refactoring
+## Phase 3: Migrate Roland to PluginLibraryBrowser
 
-**Goal:** Simplify LibraryPage and improve maintainability.
+**Goal:** Replace Roland's bespoke three-column layout with `PluginLibraryBrowser`. Highest-risk phase.
 
-### Task 3.1: Extract dialog management
+### Task 3.1: Update Roland plugins for complete rendering
 
-Move dialog state and handlers to dedicated hook.
-
-**Files:**
-- Create `src/hooks/useLibraryDialogs.ts`
-- Modify `src/pages/LibraryPage.tsx`
-
-**Acceptance Criteria:**
-- [ ] All dialog state in single hook
-- [ ] Dialog open/close handlers centralized
-- [ ] LibraryPage reduced by ~150 lines
-
-### Task 3.2: Extract panel coordination
-
-Move panel selection and focus state to dedicated hook.
+Ensure plugins provide everything `PluginLibraryBrowser` needs:
+- Device memory panel via `deviceMemory.renderMemoryPanel`
+- Preview panel via `previewPanel.renderPreview`
+- All categories including Sets
+- Context menu actions for all item types
 
 **Files:**
-- Create `src/hooks/useLibraryPanels.ts`
-- Modify `src/pages/LibraryPage.tsx`
+- Modify: `modules/roland-sxx0-editor/src/plugins/s330-library-plugin.tsx`
+- Modify: `modules/roland-sxx0-editor/src/plugins/s550-library-plugin.tsx`
+- Modify: `modules/roland-sxx0-editor/src/plugins/shared/categories.tsx`
 
 **Acceptance Criteria:**
-- [ ] Panel focus state managed in hook
-- [ ] Selection synchronization logic extracted
-- [ ] LibraryPage reduced by ~100 lines
+- [ ] Plugins fully configure PluginLibraryBrowser
+- [ ] All item types have context menu actions
+- [ ] Both s330 and s550 plugins updated
 
-### Task 3.3: Consolidate preview panels
+### Task 3.2: Rewrite LibraryPage to use PluginLibraryBrowser
 
-Unify preview panel rendering logic.
+Replace the bespoke three-column grid with a single `<PluginLibraryBrowser>` call. Model after S3K's `LibraryPage.tsx`.
 
 **Files:**
-- `src/components/library/ItemPreviewPanel.tsx`
-- `src/components/library/SampleBundlePreviewPanel.tsx`
-- `src/components/library/CommonSamplePreviewPanel.tsx`
+- Modify: `modules/roland-sxx0-editor/src/pages/LibraryPage.tsx`
 
 **Acceptance Criteria:**
-- [ ] Single entry point for preview rendering
-- [ ] Type-based dispatch to specialized content
-- [ ] Shared action button patterns
+- [ ] Uses `PluginLibraryBrowser` from editor-core
+- [ ] All categories rendered (tones, patches, drumKits, commonSamples, sets)
+- [ ] Device memory panel works
+- [ ] Preview panel works
+- [ ] All dialogs still work
+- [ ] LibraryPage.tsx is 350-400 lines
 
-### Task 3.4: Extract operation handlers
+### Task 3.3: Delete bespoke components
 
-Move complex operation logic out of LibraryPage.
+**Files to delete:**
+- `modules/roland-sxx0-editor/src/components/library/PluginLibraryTreePanel.tsx` (~579 lines)
+- Any other now-unused bespoke layout components
 
-**Files:**
-- Enhance `src/hooks/useLibraryExport.ts`
-- Enhance `src/hooks/useLibraryImportDialogs.ts`
-- Modify `src/pages/LibraryPage.tsx`
+**Files to keep** (still used by plugin adapters):
+- `DeviceMemoryPanel.tsx` (rendered by plugin's `renderMemoryPanel`)
+- `ItemPreviewPanel.tsx` (rendered by plugin's `renderPreview`)
+- `SampleBundlePreviewPanel.tsx`, `CommonSamplePreviewPanel.tsx` (sub-panels)
+- All dialog components
 
-**Acceptance Criteria:**
-- [ ] Sample editor save logic extracted
-- [ ] Loop editor save logic extracted
-- [ ] Chopper save logic extracted
-- [ ] LibraryPage reduced by ~150 lines
+### Task 3.4: Preserve test selectors
+
+Add `data-testid` attributes to `PluginLibraryBrowser` and `TreeSection` in editor-core to match existing Roland E2E test selectors.
+
+**E2E test files to verify:**
+- `modules/roland-sxx0-editor/e2e/library-sets.spec.ts`
+- `modules/roland-sxx0-editor/e2e/library-directories.spec.ts`
+- `modules/roland-sxx0-editor/e2e/library-opfs.spec.ts`
+- `modules/roland-sxx0-editor/e2e/library-chopper-save.spec.ts`
+
+**Phase 3 Verification:** All Roland E2E tests pass. All S3K E2E tests pass. Visual regression check on both editors.
 
 ---
 
-## Phase 4: Testing and Documentation
+## Phase 4: UX Polish on Shared Components
 
-**Goal:** Ensure quality and document changes.
+**Goal:** Improve UX in editor-core so both editors benefit simultaneously.
 
-### Task 4.1: Update E2E tests
+### Task 4.1: Empty states
 
-Verify and update E2E tests for changed interactions.
+- `PluginLibraryBrowser`: styled empty state with icon and connect prompt
+- `TreeSection`: empty category message with icon and action hint
 
-**Acceptance Criteria:**
-- [ ] All existing library E2E tests pass
-- [ ] New keyboard navigation tested
-- [ ] Focus management tested
-- [ ] No regression in test coverage
+**Files:**
+- Modify: `modules/editor-core/src/components/library/PluginLibraryBrowser.tsx`
+- Modify: `modules/editor-core/src/components/library/TreeSection.tsx`
 
-### Task 4.2: Add component tests
+### Task 4.2: Loading skeletons
 
-Add unit tests for extracted hooks and components.
+Replace "Loading library..." text with animated skeleton placeholders matching tree section layout.
 
-**Acceptance Criteria:**
-- [ ] useLibraryDialogs hook tested
-- [ ] useLibraryPanels hook tested
-- [ ] Focus management logic tested
+**Files:**
+- Modify: `modules/editor-core/src/components/library/PluginLibraryBrowser.tsx`
+- Create: `modules/editor-core/src/components/library/TreeSkeleton.tsx` (if needed)
 
-### Task 4.3: Update documentation
+### Task 4.3: Progress indicators
 
-Document new keyboard shortcuts and interactions.
+Progress bar component for import/export operations. Inline progress in preview panel during active transfers.
 
-**Acceptance Criteria:**
-- [ ] Keyboard shortcuts listed in app help
-- [ ] README updated with UX changes
-- [ ] CHANGELOG entry added
+**Files:**
+- Modify: `modules/editor-core/src/components/library/PluginLibraryBrowser.tsx`
+
+### Task 4.4: Drag-drop affordances
+
+- Grab cursor on draggable items
+- Drop zone highlight during drag
+- Invalid drop target indicator
+- Drag preview showing item name/icon
+
+**Files:**
+- Modify: `modules/editor-core/src/components/library/TreeView.tsx`
+- Modify: `modules/editor-core/src/components/library/TreeSection.tsx`
+- Modify: `modules/editor-core/src/design/library.css`
+
+### Task 4.5: Keyboard navigation
+
+- Arrow keys: up/down to move selection, left/right to collapse/expand
+- Enter to select/activate
+- Delete to delete with confirmation
+- Escape to deselect/close
+
+**Files:**
+- Modify: `modules/editor-core/src/components/library/TreeView.tsx`
+
+**Phase 4 Verification:** Manual testing on both editors. All E2E tests pass.
 
 ---
 
-## Dependencies
+## Dependency Graph
 
-| Task | Depends On |
+```
+Phase 1 (pure Roland refactor, no deps)
+  1.1 -> 1.2 -> 1.3 -> 1.4
+
+Phase 2 (editor-core changes, depends on Phase 1)
+  2.1 (audit) -> 2.2, 2.3, 2.4, 2.5 (can parallelize after audit)
+
+Phase 3 (depends on Phase 1 + Phase 2)
+  3.1 -> 3.2 -> 3.3 + 3.4
+
+Phase 4 (depends on Phase 3, tasks independent)
+  4.1, 4.2, 4.3, 4.4, 4.5 (parallel)
+```
+
+---
+
+## Risk Mitigation
+
+| Risk | Mitigation |
 |------|------------|
-| Phase 2 | Phase 1 (visual indicators needed for interaction feedback) |
-| Phase 3 | Phase 1-2 (refactoring after behavior is finalized) |
-| Phase 4 | Phase 1-3 |
+| E2E breakage during migration (Phase 3) | Run `make test-e2e-roland` after each step. Add `data-testid` attrs early. |
+| Sets don't fit as CategoryPlugin | Prototype first; fall back to `headerSections` render slot if needed. |
+| Selection type divergence | Roland page-level `ItemSelection` may persist for dialog callbacks; mapping hook bridges it to editor-core's type. |
+| Two Roland plugins (s330/s550) | Both implement same `DeviceLibraryPlugin` interface. Test with both device configs. |
 
 ---
 
-## Success Criteria
+## Critical Files
 
-### Phase 1 Complete When:
-- [ ] All panels have clear focus indicators
-- [ ] Empty states guide user actions
-- [ ] Loading states prevent confusion
-- [ ] Operation progress is always visible
-
-### Phase 2 Complete When:
-- [ ] Drag-and-drop is visually discoverable
-- [ ] Keyboard users can complete all workflows
-- [ ] Deep navigation is efficient
-
-### Phase 3 Complete When:
-- [ ] LibraryPage.tsx is <500 lines
-- [ ] No functional regression
-- [ ] Code is more maintainable
-
-### Phase 4 Complete When:
-- [ ] All E2E tests pass
-- [ ] New functionality tested
-- [ ] Changes documented
-
----
-
-## Estimated Scope
-
-| Phase | Tasks | Effort |
-|-------|-------|--------|
-| Phase 1 | 4 tasks | 2-3 days |
-| Phase 2 | 4 tasks | 3-4 days |
-| Phase 3 | 4 tasks | 2-3 days |
-| Phase 4 | 3 tasks | 1-2 days |
-| **Total** | **15 tasks** | **~2 milestones** |
+| File | Role |
+|------|------|
+| `modules/roland-sxx0-editor/src/pages/LibraryPage.tsx` | 908-line file to decompose and migrate |
+| `modules/editor-core/src/components/library/PluginLibraryBrowser.tsx` | Shared component to match Roland UX |
+| `modules/editor-core/src/components/library/plugins/types.ts` | Plugin interface definitions |
+| `modules/roland-sxx0-editor/src/components/library/PluginLibraryTreePanel.tsx` | Bespoke component to be replaced |
+| `modules/roland-sxx0-editor/src/plugins/shared/categories.tsx` | Category definitions to extend with Sets |
+| `modules/akai-s3k-editor/src/hooks/useEditorDialogs.ts` | Pattern to generalize into editor-core |
+| `modules/akai-s3k-editor/src/pages/LibraryPage.tsx` | Reference for PluginLibraryBrowser usage |

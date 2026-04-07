@@ -1,7 +1,9 @@
 # S3000XL Library Page Conformance
 
-**Status:** Planning
+**Status:** Superseded
 **Feature Branch:** `feature/s3k-library-page`
+
+> **Note:** This feature effort has been superseded by the [Library UX Improvements](../001-IN-PROGRESS/library-ux/) initiative, which covers both the Roland S-330/S-550 and Akai S3000XL editors with a unified alignment and polish strategy. The S3K library page already has a three-column layout, plugin architecture, and transfer dialogs implemented. Remaining work (UX polish, shared code extraction, editor parity) is tracked under the library-ux effort.
 
 ## Overview
 
