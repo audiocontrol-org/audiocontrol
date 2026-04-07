@@ -16,10 +16,14 @@ import {
   parseSampleHeaderFromDisk,
   extractSampleAudio,
   akaiSampleToWav,
+  akaiSampleToCommon,
+  akaiProgramToCommon,
   isAkaiSample,
   isAkaiProgram,
+  type AkaiDiskSampleHeader,
 } from '@audiocontrol/sampler-devices/s3k';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
+import { saveSample, type SampleSavePayload } from '@audiocontrol/sampler-library/browser';
 import {
   serializeDiskProgram,
 } from '@/lib/program-serialization';
@@ -54,6 +58,165 @@ export interface DiskToLibraryDialogProps {
 }
 
 type DialogPhase = 'confirm' | 'saving' | 'success' | 'error';
+type SaveTarget = 's3k' | 'common';
+
+// =========================================================================
+// Save helpers
+// =========================================================================
+
+/** Extract a sample's WAV and header from partition data. */
+function extractSample(
+  partitionData: Uint8Array,
+  volumeStartBlock: number,
+  sampleName: string,
+): { wav: Uint8Array; header: AkaiDiskSampleHeader } | null {
+  const files = parseFileList(partitionData, volumeStartBlock);
+  const sampleFile = files.find(
+    (f) => isAkaiSample(f.type) && f.name.trim() === sampleName,
+  );
+  if (!sampleFile) return null;
+
+  const sampleData = readFileData(partitionData, sampleFile);
+  const header = parseSampleHeaderFromDisk(sampleData);
+  const pcm = extractSampleAudio(sampleData, header);
+  const wav = akaiSampleToWav(header, pcm);
+  return { wav, header };
+}
+
+/** Save to S3K library section (raw Akai bytes, no translation). */
+async function saveToS3kLibrary(
+  file: AkaiDiskFileEntry,
+  fileData: Uint8Array,
+  partitionData: Uint8Array,
+  volumeStartBlock: number,
+  name: string,
+  libraryRoot: StorageDirectoryHandle,
+  setSavedSampleCount: (n: number) => void,
+) {
+  if (isAkaiProgram(file.type)) {
+    const program = parseProgramFromDisk(fileData);
+    const yaml = serializeDiskProgram(program, fileData);
+    await saveProgramToLibrary(libraryRoot, name, yaml);
+
+    let samplesFound = 0;
+    for (const kg of program.keygroups) {
+      for (const sampleName of kg.sampleNames) {
+        const trimmed = sampleName.trim();
+        if (!trimmed) continue;
+        try {
+          const result = extractSample(partitionData, volumeStartBlock, trimmed);
+          if (result) {
+            await saveProgramSample(libraryRoot, name, trimmed, result.wav.buffer as ArrayBuffer);
+            samplesFound++;
+          }
+        } catch (err) {
+          console.warn(`Failed to save sample "${trimmed}":`, err);
+        }
+      }
+    }
+    setSavedSampleCount(samplesFound);
+  } else if (isAkaiSample(file.type)) {
+    const header = parseSampleHeaderFromDisk(fileData);
+    const pcm = extractSampleAudio(fileData, header);
+    const wav = akaiSampleToWav(header, pcm);
+
+    const yaml = [
+      'format: s3000xl-disk-sample',
+      'version: 1',
+      `name: "${name}"`,
+      `sampleRate: ${header.sampleRate}`,
+      `sampleLength: ${header.sampleLength}`,
+    ].join('\n');
+
+    await saveProgramToLibrary(libraryRoot, name, yaml);
+    await saveProgramSample(libraryRoot, name, name, wav.buffer as ArrayBuffer);
+    setSavedSampleCount(1);
+  }
+}
+
+/** Save to common library section (translated to vendor-neutral format). */
+async function saveToCommonLibrary(
+  file: AkaiDiskFileEntry,
+  fileData: Uint8Array,
+  partitionData: Uint8Array,
+  volumeStartBlock: number,
+  name: string,
+  libraryRoot: StorageDirectoryHandle,
+) {
+  if (isAkaiSample(file.type)) {
+    const header = parseSampleHeaderFromDisk(fileData);
+    const pcm = extractSampleAudio(fileData, header);
+    const wav = akaiSampleToWav(header, pcm);
+    const commonSample = akaiSampleToCommon(header);
+    commonSample.name = name;
+
+    await saveSample(libraryRoot, {
+      name,
+      yaml: commonSample as SampleSavePayload['yaml'],
+      wavData: wav.buffer as ArrayBuffer,
+    });
+  } else if (isAkaiProgram(file.type)) {
+    const program = parseProgramFromDisk(fileData);
+    const volumeFiles = parseFileList(partitionData, volumeStartBlock);
+
+    // Collect sample headers for root key info
+    const sampleHeaders = new Map<string, AkaiDiskSampleHeader>();
+    const allSampleNames = new Set<string>();
+    for (const kg of program.keygroups) {
+      for (const sn of kg.sampleNames) {
+        const trimmed = sn.trim();
+        if (trimmed) allSampleNames.add(trimmed);
+      }
+    }
+
+    // Save each referenced sample to common library
+    for (const sampleName of allSampleNames) {
+      const sampleFile = volumeFiles.find(
+        (f) => isAkaiSample(f.type) && f.name.trim() === sampleName,
+      );
+      if (!sampleFile) continue;
+
+      try {
+        const sampleData = readFileData(partitionData, sampleFile);
+        const header = parseSampleHeaderFromDisk(sampleData);
+        const pcm = extractSampleAudio(sampleData, header);
+        const wav = akaiSampleToWav(header, pcm);
+        sampleHeaders.set(sampleName, header);
+
+        const commonSample = akaiSampleToCommon(header);
+        commonSample.name = sampleName;
+
+        await saveSample(libraryRoot, {
+          name: sampleName,
+          yaml: commonSample as SampleSavePayload['yaml'],
+          wavData: wav.buffer as ArrayBuffer,
+        });
+      } catch (err) {
+        console.warn(`Failed to save sample "${sampleName}" to common library:`, err);
+      }
+    }
+
+    // Save program metadata to common library
+    // (programs are stored as directory bundles under library/common/samples/)
+    const commonProgram = akaiProgramToCommon(program, sampleHeaders);
+    commonProgram.name = name;
+
+    // Write program.yaml to a program bundle directory
+    const { stringify: stringifyYaml } = await import('yaml');
+    const programYaml = stringifyYaml(commonProgram, { indent: 2 });
+
+    // Use saveProgramToLibrary to create the directory structure,
+    // then write program.yaml into it
+    const { getNestedDirectory } = await import('@audiocontrol/sampler-library/browser');
+    const programDir = await getNestedDirectory(libraryRoot, [
+      'library', 'common', 'samples', name,
+    ]);
+    const fileHandle = await programDir.getFileHandle('program.yaml', { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(programYaml);
+    await writable.close();
+  }
+}
 
 // =========================================================================
 // Component
@@ -70,6 +233,7 @@ export function DiskToLibraryDialog({
 }: DiskToLibraryDialogProps) {
   const [phase, setPhase] = useState<DialogPhase>('confirm');
   const [saveName, setSaveName] = useState('');
+  const [saveTarget, setSaveTarget] = useState<SaveTarget>('s3k');
   const [errorMessage, setErrorMessage] = useState('');
   const [savedSampleCount, setSavedSampleCount] = useState(0);
 
@@ -78,6 +242,7 @@ export function DiskToLibraryDialog({
     if (open && file) {
       setPhase('confirm');
       setSaveName(file.name.trim());
+      setSaveTarget('s3k');
       setErrorMessage('');
       setSavedSampleCount(0);
     }
@@ -97,63 +262,10 @@ export function DiskToLibraryDialog({
     try {
       const fileData = readFileData(partitionData, file);
 
-      if (isAkaiProgram(file.type)) {
-        // Parse program and serialize to YAML
-        const program = parseProgramFromDisk(fileData);
-        const yaml = serializeDiskProgram(program, fileData);
-        await saveProgramToLibrary(libraryRoot, name, yaml);
-
-        // Find and save referenced sample files from the same volume
-        const volumeFiles = parseFileList(partitionData, volumeStartBlock);
-        let samplesFound = 0;
-
-        for (const kg of program.keygroups) {
-          for (const sampleName of kg.sampleNames) {
-            const trimmed = sampleName.trim();
-            if (!trimmed) continue;
-
-            const sampleFile = volumeFiles.find(
-              (f) => isAkaiSample(f.type) && f.name.trim() === trimmed,
-            );
-            if (!sampleFile) continue;
-
-            try {
-              const sampleData = readFileData(partitionData, sampleFile);
-              const header = parseSampleHeaderFromDisk(sampleData);
-              const pcm = extractSampleAudio(sampleData, header);
-              const wav = akaiSampleToWav(header, pcm);
-              await saveProgramSample(
-                libraryRoot,
-                name,
-                trimmed,
-                wav.buffer as ArrayBuffer,
-              );
-              samplesFound++;
-            } catch (err) {
-              console.warn(`Failed to save sample "${trimmed}":`, err);
-            }
-          }
-        }
-
-        setSavedSampleCount(samplesFound);
-      } else if (isAkaiSample(file.type)) {
-        // Save sample directly as a standalone program bundle with just the WAV
-        const header = parseSampleHeaderFromDisk(fileData);
-        const pcm = extractSampleAudio(fileData, header);
-        const wav = akaiSampleToWav(header, pcm);
-
-        // Store as a simple program bundle with just the sample
-        const yaml = [
-          'format: s3000xl-disk-sample',
-          'version: 1',
-          `name: "${name}"`,
-          `sampleRate: ${header.sampleRate}`,
-          `sampleLength: ${header.sampleLength}`,
-        ].join('\n');
-
-        await saveProgramToLibrary(libraryRoot, name, yaml);
-        await saveProgramSample(libraryRoot, name, name, wav.buffer as ArrayBuffer);
-        setSavedSampleCount(1);
+      if (saveTarget === 'common') {
+        await saveToCommonLibrary(file, fileData, partitionData, volumeStartBlock, name, libraryRoot);
+      } else {
+        await saveToS3kLibrary(file, fileData, partitionData, volumeStartBlock, name, libraryRoot, setSavedSampleCount);
       }
 
       setPhase('success');
@@ -162,7 +274,7 @@ export function DiskToLibraryDialog({
       setErrorMessage(err instanceof Error ? err.message : String(err));
       setPhase('error');
     }
-  }, [file, partitionData, volumeStartBlock, saveName, libraryRoot, onTransferComplete]);
+  }, [file, partitionData, volumeStartBlock, saveName, saveTarget, libraryRoot, onTransferComplete]);
 
   if (!file) return null;
 
@@ -179,17 +291,32 @@ export function DiskToLibraryDialog({
             {Math.round(file.size / 1024)} KB) from disk to the S3K library.
           </DialogDescription>
 
-          <div className="my-4">
-            <label className="block text-sm text-gray-400 mb-1">
-              Save as:
-            </label>
-            <input
-              type="text"
-              value={saveName}
-              onChange={(e) => setSaveName(e.target.value)}
-              className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-blue-500"
-              maxLength={12}
-            />
+          <div className="my-4 space-y-3">
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">
+                Save as:
+              </label>
+              <input
+                type="text"
+                value={saveName}
+                onChange={(e) => setSaveName(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-100 focus:outline-none focus:border-blue-500"
+                maxLength={128}
+              />
+            </div>
+            <div>
+              <label className="block text-sm text-gray-400 mb-1">
+                Destination:
+              </label>
+              <select
+                className="w-full bg-gray-800 border border-gray-600 rounded px-3 py-1.5 text-sm text-gray-100"
+                value={saveTarget}
+                onChange={(e) => setSaveTarget(e.target.value as SaveTarget)}
+              >
+                <option value="s3k">S3K Library (Akai native format)</option>
+                <option value="common">Common Library (vendor-neutral)</option>
+              </select>
+            </div>
           </div>
 
           <DialogActions>
