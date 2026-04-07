@@ -439,10 +439,7 @@ export function LibraryPage(): JSX.Element {
     />
   );
 
-  // Guideline deviation: casting StorageDirectoryHandle to
-  // FileSystemDirectoryHandle because PluginLibraryBrowser only checks
-  // truthiness. The prop type should be widened in editor-core.
-  const libraryHandle = root as unknown as FileSystemDirectoryHandle | null;
+  const libraryHandle = root;
 
   return (
     <div className="ac-page">

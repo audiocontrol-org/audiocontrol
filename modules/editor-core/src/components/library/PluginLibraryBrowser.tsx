@@ -32,8 +32,10 @@ export interface PluginLibraryBrowserProps {
   /** The device library plugin providing all configuration */
   plugin: DeviceLibraryPlugin;
 
-  /** File system handle for the library (null if not connected) */
-  libraryHandle: FileSystemDirectoryHandle | null;
+  /** File system handle for the library (null if not connected).
+   * Accepts FileSystemDirectoryHandle (native) or StorageDirectoryHandle
+   * (sampler-library abstraction). Only checked for truthiness. */
+  libraryHandle: { readonly name: string } | null;
 
   /** Tree data for each category, keyed by categoryId */
   categoryData: Record<string, TreeNode[]>;
