@@ -144,7 +144,10 @@ Upload (browser → device):
 - `scsi_midi.rs`: `upload_sample()` — SDS Dump Header + Data Packet encoding (40 samples/packet), per-packet ACK handshake, 3s device commit wait
 - `routes.rs`: WebSocket handlers for `sample-download` and `sample-upload` messages with mpsc channel forwarding to WebSocket
 
-6.3 **TypeScript client** — DEFERRED (browser integration not yet needed; e2e tests use WebSocket directly)
+6.3 **TypeScript client** — DONE
+- `scsi-disk-client.ts`: `downloadSample()` and `uploadSample()` on `ScsiDiskClient` interface with streaming callbacks (`onHeader`, `onData`, `onProgress`, `onComplete`)
+- Shared `sampleTransfer()` WebSocket helper handles both directions
+- Types exported: `SampleTransferHeader`, `SampleTransferProgress`, `SampleDownloadCallbacks`, `SampleUploadCallbacks`
 
 **Key bugs fixed during implementation:**
 - Akai char table was off by 1 (space=10, letters start at 11, not 10)
@@ -193,7 +196,7 @@ This phase is deferred and will be planned separately once Phases 2-6 are valida
 | 24 | Add SCSI MIDI transport methods (raw CDBs via SCSI_EXEC) | 6.1 | DONE |
 | 25 | WebSocket streaming sample download handler | 6.2 | DONE |
 | 26 | WebSocket streaming sample upload handler | 6.2 | DONE |
-| 27 | TypeScript downloadSample/uploadSample with progress | 6.3 | DEFERRED |
+| 27 | TypeScript downloadSample/uploadSample with progress | 6.3 | DONE |
 | 28 | E2E test: SDS download + upload round-trip | 6 | DONE |
 | 29 | Deploy target (`make deploy-scsi-bridge`) | 6 | DONE |
 | 30 | Build ID in bridge `/status` response | 6 | DONE |
