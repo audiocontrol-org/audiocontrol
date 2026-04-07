@@ -1,6 +1,7 @@
 mod config;
 mod routes;
 mod s2p_client;
+mod scsi_midi;
 
 use std::net::SocketAddr;
 use std::sync::Arc;

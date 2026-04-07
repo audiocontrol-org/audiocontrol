@@ -12,6 +12,7 @@ use tracing::{info, info_span, Instrument};
 use uuid::Uuid;
 
 use crate::s2p_client::{MidiStreamClient, S2pClient};
+use crate::scsi_midi;
 
 /// Shared application state.
 pub struct AppState {
@@ -247,6 +248,9 @@ async fn handle_ws(
 ) {
     info!("WebSocket client connected");
 
+    // Channel for streaming download messages back to the WS handler
+    let (dl_tx, mut dl_rx) = tokio::sync::mpsc::channel::<serde_json::Value>(64);
+
     loop {
         tokio::select! {
             // Forward broadcast SysEx to WebSocket client
@@ -259,42 +263,29 @@ async fn handle_ws(
                     break;
                 }
             }
+            // Forward download progress messages to WebSocket client
+            Some(dl_msg) = dl_rx.recv() => {
+                if socket.send(Message::Text(dl_msg.to_string().into())).await.is_err() {
+                    break;
+                }
+            }
             // Handle client messages
             msg = socket.recv() => {
                 match msg {
                     Some(Ok(Message::Text(text))) => {
-                        // Parse send request
                         if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(&text) {
-                            if parsed["type"] == "send" {
-                                if let Some(arr) = parsed["message"].as_array() {
-                                    let message: Vec<u8> = arr.iter()
-                                        .filter_map(|v| v.as_u64().map(|n| n as u8))
-                                        .collect();
+                            let msg_type = parsed["type"].as_str().unwrap_or("");
 
-                                    if !message.is_empty() {
-                                        // Try streaming client first
-                                        let response = {
-                                            let mut stream = state.midi_stream.lock().await;
-                                            stream.send_and_receive(&message).await
-                                        };
-
-                                        let response = match response {
-                                            Ok(data) => data,
-                                            Err(_) => {
-                                                let mut s2p = state.s2p.lock().await;
-                                                s2p.send_and_receive(&message).await.unwrap_or_default()
-                                            }
-                                        };
-
-                                        let reply = serde_json::json!({
-                                            "type": "sysex",
-                                            "data": response,
-                                        });
-                                        if socket.send(Message::Text(reply.to_string().into())).await.is_err() {
-                                            break;
-                                        }
-                                    }
+                            match msg_type {
+                                "send" => {
+                                    handle_ws_send(&mut socket, &state, &parsed).await;
                                 }
+                                "sample-download" => {
+                                    handle_ws_sample_download(
+                                        &state, &parsed, dl_tx.clone(),
+                                    ).await;
+                                }
+                                _ => {}
                             }
                         }
                     }
@@ -306,6 +297,146 @@ async fn handle_ws(
     }
 
     info!("WebSocket client disconnected");
+}
+
+/// Handle a "send" WebSocket message (SysEx send+receive).
+async fn handle_ws_send(
+    socket: &mut WebSocket,
+    state: &Arc<AppState>,
+    parsed: &serde_json::Value,
+) {
+    if let Some(arr) = parsed["message"].as_array() {
+        let message: Vec<u8> = arr.iter()
+            .filter_map(|v| v.as_u64().map(|n| n as u8))
+            .collect();
+
+        if !message.is_empty() {
+            // Try streaming client first
+            let response = {
+                let mut stream = state.midi_stream.lock().await;
+                stream.send_and_receive(&message).await
+            };
+
+            let response = match response {
+                Ok(data) => data,
+                Err(_) => {
+                    let mut s2p = state.s2p.lock().await;
+                    s2p.send_and_receive(&message).await.unwrap_or_default()
+                }
+            };
+
+            let reply = serde_json::json!({
+                "type": "sysex",
+                "data": response,
+            });
+            let _ = socket.send(Message::Text(reply.to_string().into())).await;
+        }
+    }
+}
+
+/// Handle a "sample-download" WebSocket message.
+/// Spawns the download as a background task, streaming progress via mpsc channel.
+async fn handle_ws_sample_download(
+    state: &Arc<AppState>,
+    parsed: &serde_json::Value,
+    tx: tokio::sync::mpsc::Sender<serde_json::Value>,
+) {
+    let target_id = parsed["target_id"].as_u64().unwrap_or(6) as u8;
+    let sample_number = parsed["sample_number"].as_u64().unwrap_or(0) as u16;
+    let channel = parsed["channel"].as_u64().unwrap_or(0) as u8;
+    let state = Arc::clone(state);
+
+    tokio::spawn(async move {
+        info!(
+            target_id,
+            sample_number,
+            channel,
+            "starting sample download task"
+        );
+
+        let s2p = state.s2p.lock().await;
+
+        // Channels for collecting header/data from the download closures.
+        // The closures run synchronously inside the download loop, so we use
+        // blocking_send on a bounded channel to avoid requiring the closures
+        // to be async.
+        let (header_tx, mut header_rx) = tokio::sync::mpsc::channel::<serde_json::Value>(1);
+        let (data_tx, mut data_rx) = tokio::sync::mpsc::channel::<serde_json::Value>(128);
+
+        let tx_header = tx.clone();
+        let tx_data = tx.clone();
+        let tx_done = tx.clone();
+
+        // Run the download. The closures push messages into local channels,
+        // and a forwarding task relays them to the WS handler's channel.
+        let forward_handle = tokio::spawn(async move {
+            loop {
+                tokio::select! {
+                    Some(msg) = header_rx.recv() => {
+                        let _ = tx_header.send(msg).await;
+                    }
+                    Some(msg) = data_rx.recv() => {
+                        let _ = tx_data.send(msg).await;
+                    }
+                    else => break,
+                }
+            }
+        });
+
+        // The closures need to send synchronously. Use try_send to avoid
+        // blocking the SCSI poll loop.
+        let header_sender = header_tx;
+        let data_sender = data_tx;
+
+        let result = scsi_midi::download_sample(
+            &*s2p,
+            target_id,
+            sample_number,
+            channel,
+            |header| {
+                let msg = serde_json::json!({
+                    "type": "sample-header",
+                    "name": header.name,
+                    "sampleRate": header.sample_rate,
+                    "sampleCount": header.sample_count,
+                });
+                let _ = header_sender.try_send(msg);
+            },
+            |pcm_chunk, transferred, total| {
+                let samples: Vec<i16> = pcm_chunk.to_vec();
+                let msg = serde_json::json!({
+                    "type": "sample-data",
+                    "samples": samples,
+                    "transferred": transferred,
+                    "total": total,
+                });
+                let _ = data_sender.try_send(msg);
+            },
+        ).await;
+
+        // Drop senders so the forward task exits
+        drop(header_sender);
+        drop(data_sender);
+        let _ = forward_handle.await;
+
+        // Send completion or error
+        match result {
+            Ok(total) => {
+                let msg = serde_json::json!({
+                    "type": "sample-complete",
+                    "totalSamples": total,
+                });
+                let _ = tx_done.send(msg).await;
+            }
+            Err(e) => {
+                let msg = serde_json::json!({
+                    "type": "sample-error",
+                    "error": e,
+                });
+                let _ = tx_done.send(msg).await;
+            }
+        }
+    });
 }
 
 // -- SCSI disk handlers -------------------------------------------------------

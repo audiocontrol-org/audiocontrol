@@ -156,6 +156,12 @@ pub struct ScsiExecResult {
     pub bytes_transferred: u32,
 }
 
+pub struct SampleDownloadHeader {
+    pub name: String,
+    pub sample_rate: u32,
+    pub sample_count: u32,
+}
+
 fn build_scsi_request(
     target_id: u8,
     lun: u8,
@@ -324,6 +330,63 @@ impl S2pClient {
             data_in: scsi_resp.bytes.get(&3).cloned().unwrap_or_default(),
             bytes_transferred: scsi_resp.varints.get(&4).copied().unwrap_or(0) as u32,
         })
+    }
+
+    // -- SCSI MIDI transport (vendor-specific CDBs) ----------------------------
+
+    /// Enable MIDI mode on the SCSI device (CDB 0x09).
+    pub async fn scsi_midi_enable(&self, target_id: u8) -> Result<(), String> {
+        let cdb = vec![0x09, 0x00, 0x01, 0x00, 0x00, 0x00];
+        let _result = self.execute_scsi(target_id, 0, &cdb, &[], 0, 10).await?;
+        // Status may be non-zero but device still accepts — don't fail
+        Ok(())
+    }
+
+    /// Disable MIDI mode (CDB 0x09).
+    pub async fn scsi_midi_disable(&self, target_id: u8) -> Result<(), String> {
+        let cdb = vec![0x09, 0x00, 0x00, 0x00, 0x00, 0x00];
+        self.execute_scsi(target_id, 0, &cdb, &[], 0, 10).await?;
+        Ok(())
+    }
+
+    /// Send MIDI SysEx data to device (CDB 0x0C). Flag byte is always 0x00.
+    pub async fn scsi_midi_send(&self, target_id: u8, data: &[u8]) -> Result<(), String> {
+        let len = data.len();
+        let cdb = vec![
+            0x0C, 0x00,
+            ((len >> 16) & 0xFF) as u8,
+            ((len >> 8) & 0xFF) as u8,
+            (len & 0xFF) as u8,
+            0x00, // flag=0x00, NOT 0x80 — S3000XL rejects 0x80
+        ];
+        // Send may return CHECK CONDITION but data is still accepted — ignore status
+        let _ = self.execute_scsi(target_id, 0, &cdb, data, 0, 10).await;
+        Ok(())
+    }
+
+    /// Poll for available MIDI bytes (CDB 0x0D). Returns 24-bit byte count.
+    pub async fn scsi_midi_poll(&self, target_id: u8) -> Result<u32, String> {
+        let cdb = vec![0x0D, 0x00, 0x00, 0x00, 0x00, 0x00];
+        let result = self.execute_scsi(target_id, 0, &cdb, &[], 3, 10).await?;
+        let d = &result.data_in;
+        if d.len() >= 3 {
+            Ok(((d[0] as u32) << 16) | ((d[1] as u32) << 8) | (d[2] as u32))
+        } else {
+            Ok(0)
+        }
+    }
+
+    /// Read MIDI bytes from device (CDB 0x0E). Returns raw bytes.
+    pub async fn scsi_midi_read(&self, target_id: u8, length: u32) -> Result<Vec<u8>, String> {
+        let cdb = vec![
+            0x0E, 0x00,
+            ((length >> 16) & 0xFF) as u8,
+            ((length >> 8) & 0xFF) as u8,
+            (length & 0xFF) as u8,
+            0x00,
+        ];
+        let result = self.execute_scsi(target_id, 0, &cdb, &[], length, 10).await?;
+        Ok(result.data_in)
     }
 
     pub async fn send_sysex(&mut self, sysex: &[u8]) -> Result<(), String> {
