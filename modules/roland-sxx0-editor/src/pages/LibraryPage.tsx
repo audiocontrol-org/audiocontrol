@@ -41,20 +41,14 @@ import {
 import { useDirectoryOperations } from '@/hooks/useDirectoryOperations';
 import { useLibraryExport } from '@/hooks/useLibraryExport';
 import { useLibraryImportDialogs } from '@/hooks/useLibraryImportDialogs';
-import {
-  listSets, listDrumKits, listIndividualTones, listIndividualPatches,
-  listIndividualTonesTree, listIndividualPatchesTree, listDrumKitsTree,
-  listCommonSamplesTree,
-  loadDrumKitBundle,
-  type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo, type LibraryTreeNode,
-  type StorageDirectoryHandle,
-} from '@/lib/library-service';
+import { loadDrumKitBundle } from '@/lib/library-service';
 import { CreateDirectoryDialog } from '@/components/library/CreateDirectoryDialog';
 import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialog';
 import { DeleteDirectoryDialog } from '@/components/library/DeleteDirectoryDialog';
 import { MoveItemDialog } from '@/components/library/MoveItemDialog';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 import { useRolandEditorDialogs } from '@/hooks/useRolandEditorDialogs';
+import { useRolandLibraryData } from '@/hooks/useRolandLibraryData';
 import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 
@@ -66,16 +60,6 @@ export interface ItemSelection {
   name?: string;
   setName?: string;
   path?: string[];
-}
-
-/** Load all library data from a directory handle */
-async function loadAllLibraryData(handle: StorageDirectoryHandle) {
-  const [setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, commonSamplesTreeData] = await Promise.all([
-    listSets(handle), listDrumKits(handle), listIndividualTones(handle), listIndividualPatches(handle),
-    listIndividualTonesTree(handle), listIndividualPatchesTree(handle), listDrumKitsTree(handle),
-    listCommonSamplesTree(handle),
-  ]);
-  return { setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, commonSamplesTreeData };
 }
 
 export function LibraryPage() {
@@ -96,19 +80,10 @@ export function LibraryPage() {
   } = useDeviceDataStore();
 
   const {
-    sets, setSets, isLoading, setLoading, setError, error,
+    sets, isLoading, setLoading, setError, error,
     expandedPaths, toggleDirectoryExpanded,
   } = useLibraryStore();
 
-  const [drumKits, setDrumKits] = useState<DrumKitInfo[]>([]);
-  const [selectedDrumKitBundle, setSelectedDrumKitBundle] = useState<ResolvedDrumKitBundle | null>(null);
-  // Flat lists used for legacy hooks but not read directly (trees used for display)
-  const [, setIndividualTones] = useState<LibraryToneInfo[]>([]);
-  const [, setIndividualPatches] = useState<LibraryPatchInfo[]>([]);
-  const [tonesTree, setTonesTree] = useState<LibraryTreeNode[]>([]);
-  const [patchesTree, setPatchesTree] = useState<LibraryTreeNode[]>([]);
-  const [drumKitsTree, setDrumKitsTree] = useState<LibraryTreeNode[]>([]);
-  const [commonSamplesTree, setCommonSamplesTree] = useState<LibraryTreeNode[]>([]);
   const [selection, setSelection] = useState<ItemSelection | null>(null);
   const library = useLibraryConnection({
     pickerId: 'sampler-library',
@@ -119,13 +94,14 @@ export function LibraryPage() {
   const libraryHandle = library.root;
   const clientRef = useRef<SamplerClientInterface | null>(null);
 
-  // Map library data to plugin category format
-  const categoryData = useMemo(() => ({
-    tones: tonesTree,
-    patches: patchesTree,
-    drumKits: drumKitsTree,
-    commonSamples: commonSamplesTree,
-  }), [tonesTree, patchesTree, drumKitsTree, commonSamplesTree]);
+  const libraryData = useRolandLibraryData(libraryHandle);
+  const {
+    categoryData, drumKits, tonesTree, patchesTree, drumKitsTree,
+    selectedDrumKitBundle, setSelectedDrumKitBundle,
+    setIndividualTones, setIndividualPatches,
+    setTonesTree, setPatchesTree, setDrumKits, setDrumKitsTree,
+    handleRefreshLibrary,
+  } = libraryData;
 
   // Handle plugin selection change
   const handlePluginSelectionChange = useCallback((pluginSelection: PluginItemSelection | null) => {
@@ -215,23 +191,6 @@ export function LibraryPage() {
     openImportSamplesDialog, closeImportSamplesDialog, handleImportSamples,
   } = useImportSamples({ clientRef, libraryHandle, setTone: setToneForHook, setPatch: setPatchForHook });
 
-  const applyLibraryData = useCallback((data: Awaited<ReturnType<typeof loadAllLibraryData>>) => {
-    setSets(data.setList); setDrumKits(data.kitList); setIndividualTones(data.toneList);
-    setIndividualPatches(data.patchList); setTonesTree(data.tonesTreeData);
-    setPatchesTree(data.patchesTreeData); setDrumKitsTree(data.drumKitsTreeData);
-    setCommonSamplesTree(data.commonSamplesTreeData);
-  }, [setSets]);
-
-  const handleRefreshLibrary = useCallback(async () => {
-    if (!libraryHandle) return;
-    setLoading(true, 'Refreshing library...');
-    try { applyLibraryData(await loadAllLibraryData(libraryHandle)); }
-    catch (err) {
-      console.error('[LibraryPage] Failed to refresh library:', err);
-      setError(err instanceof Error ? err.message : 'Failed to refresh library');
-    } finally { setLoading(false); }
-  }, [libraryHandle, applyLibraryData, setLoading, setError]);
-
   const editorDialogs = useRolandEditorDialogs({
     libraryHandle,
     selection,
@@ -263,19 +222,6 @@ export function LibraryPage() {
     clientRef, libraryHandle, setTone, setPatch, totalTones, totalPatches,
     openImportDrumKitDialog: openImportDrumKitDialogCompat, selection, handleRefreshLibrary,
   });
-
-  // Load library data when connection becomes available
-  useEffect(() => {
-    if (!libraryHandle) return;
-    setLoading(true, 'Loading library...');
-    loadAllLibraryData(libraryHandle)
-      .then(applyLibraryData)
-      .catch((err) => {
-        console.error('[LibraryPage] Failed to load library:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load library');
-      })
-      .finally(() => setLoading(false));
-  }, [libraryHandle, applyLibraryData, setLoading, setError]);
 
   const handleLoadDeviceData = useCallback(async () => {
     if (!clientRef.current) return;
