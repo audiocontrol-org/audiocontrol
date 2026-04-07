@@ -81,7 +81,7 @@ Implemented the send direction. All Akai SysEx commands (parameter reads/writes)
 
 **Open investigation:** Write-readback tests return stale values. Under investigation in `feature/scsi-write-validation` to determine whether writes genuinely don't persist or the E2E test infrastructure (caching, browser state) is the issue.
 
-### Phase 5: Read Path (Sampler to Laptop) — PARTIAL (firmware limitation)
+### Phase 5: Read Path (Sampler to Laptop) — PARTIAL (resolved in Phase 6)
 
 Request/response reads work (all Akai SysEx read commands). Autonomous device-initiated streaming (SDS Data Packets) does NOT work due to S3000XL firmware limitation.
 
@@ -98,11 +98,61 @@ Request/response reads work (all Akai SysEx read commands). Autonomous device-in
 
 **Workaround:** Sample waveform data download uses the existing `sampler-export` disk image extractor. The S3000XL's SCSI disks are served as `.hds` images by s2p on the Pi filesystem, and `sampler-export` can read them directly. This is also how MESA II transfers sample data (confirmed via binary analysis).
 
-### Phase 6: Akai Extended Protocol (Deferred)
+### Phase 6: SDS Sample Transfer via SCSI_EXEC — PLANNING
+
+**Breakthrough (issue #141):** SDS sample download over SCSI works when using `SCSI_EXEC` (op 210) with raw vendor-specific CDBs instead of the `MIDI_*` abstraction layer (ops 200-203). Working C++ implementation at `audiocontrol-org/mesa-plug-harness`.
+
+The key findings that unblocked this:
+1. **Use SCSI_EXEC with raw CDBs** (0x09/0x0C/0x0D/0x0E) — not `MIDI_SEND`/`MIDI_POLL`/`MIDI_READ`
+2. **Read ALL available bytes per poll** — don't stop at F7 boundaries during CDB 0x0E reads. Parse multiple SDS messages from the buffer afterward.
+3. **CDB byte 5 = 0x00** — device rejects 0x80 with CHECK CONDITION
+4. **RSPACK works** with 7-bit encoding (not nibble encoding)
+
+**Architecture: Bridge-local SDS dance with WebSocket streaming to browser**
+
+The bridge performs the entire SDS protocol (RSPACK, poll, read, ACK loop) locally on the Pi using localhost TCP to s2p. PCM audio data streams to/from the browser via WebSocket chunks — no full-sample buffering in the bridge since large samples can exceed available RAM.
+
+```
+Download (device → browser):
+  Browser sends WS: sample-request {targetId, sampleNumber}
+  Bridge: SCSI_EXEC MIDI init → RSDATA (get header) → RSPACK (trigger SDS)
+  Bridge: poll+read loop → decode SDS → ACK each packet → stream PCM chunks to WS
+  Browser receives: sample-header (name, rate, count, estimated time)
+                    sample-data chunks (with progress: transferred/total)
+                    sample-complete
+
+Upload (browser → device):
+  Browser sends WS: sample-upload {targetId, sampleNumber, sampleRate, sampleCount}
+  Browser streams WS: sample-data chunks
+  Bridge: SCSI_EXEC MIDI init → encode PCM to SDS → send packets → wait for ACK
+  Browser receives: progress updates, upload-complete
+```
+
+**Progress reporting** — the client must be able to show:
+- Total sample size and estimated transfer time (from header, before transfer starts)
+- Transfer progress (samples transferred / total, elapsed / remaining)
+- That transfer is active and not stuck (continuous progress updates)
+
+**Implementation plan:**
+
+6.1 **SCSI MIDI transport in bridge S2pClient** — Add `scsi_midi_enable/disable/send/poll/read` methods that build CDBs and call `execute_scsi()`. Use a persistent TCP connection to s2p for the duration of a transfer.
+
+6.2 **WebSocket sample transfer handler** — Extend the bidirectional WS handler to accept `sample-request` and `sample-upload` messages. The handler runs the SDS dance locally, streaming PCM chunks and progress updates to the WebSocket.
+
+6.3 **TypeScript client** — Add `downloadSample()` and `uploadSample()` to `ScsiDiskClient` with streaming callbacks for header, progress, data chunks, and completion.
+
+**Files to modify:**
+- `services/scsi-midi-bridge/src/s2p_client.rs` — SCSI MIDI transport + persistent connection
+- `services/scsi-midi-bridge/src/routes.rs` — WS sample transfer handler
+- `modules/midi-core/src/transports/scsi-disk-client.ts` — downloadSample/uploadSample
+
+**Reference implementation:** `~/work/scsi2pi-work/mesa-plug-harness/src/s3k_client.cpp`
+
+### Phase 7: Akai Extended Protocol (Deferred)
 
 Extend the bridge for Akai-specific SysEx messages beyond SDS: programs, loops, keygroups, and full program transfer including loop points. This phase uses the Akai "S3000" protocol (proprietary superset of SDS).
 
-This phase is deferred and will be planned separately once Phases 2-5 are validated.
+This phase is deferred and will be planned separately once Phases 2-6 are validated.
 
 ## Task Breakdown
 
@@ -129,15 +179,19 @@ This phase is deferred and will be planned separately once Phases 2-5 are valida
 | 19 | E2E tests: SCSI MIDI bridge | 4 | DONE (7 suites, 40+ tests) |
 | 20 | Implement `WS /sds/stream` on bridge | 5 | DONE |
 | 21 | Implement `ScsiMidiTransport.onSysEx()` | 5 | DONE (WebSocket + polling fallback) |
-| 22 | Handle SCSI target-mode receive on Pi | 5 | BLOCKED (firmware limitation — SDS Data Packets not routed over SCSI) |
-| 23 | E2E test: receive dump via SCSI bridge | 5 | BLOCKED (same firmware limitation) |
+| 22 | Handle SCSI target-mode receive on Pi | 5 | RESOLVED via SCSI_EXEC in Phase 6 |
+| 23 | E2E test: receive dump via SCSI bridge | 5 | RESOLVED via SCSI_EXEC in Phase 6 |
+| 24 | Add SCSI MIDI transport methods (raw CDBs via SCSI_EXEC) | 6.1 | PLANNING |
+| 25 | WebSocket streaming sample download handler | 6.2 | PLANNING |
+| 26 | WebSocket streaming sample upload handler | 6.2 | PLANNING |
+| 27 | TypeScript downloadSample/uploadSample with progress | 6.3 | PLANNING |
 
 ## Known Limitations
 
-1. **SDS Data Packet streaming over SCSI** — The S3000XL firmware does not route autonomous SDS Data Packets through the SCSI response buffer. The Dump Header arrives, but Data Packets do not follow. This is a firmware limitation, not a bridge issue. Workaround: read sample waveform data from disk images via `sampler-export`.
+1. ~~**SDS Data Packet streaming over SCSI**~~ — **RESOLVED.** SDS Data Packets DO arrive when using `SCSI_EXEC` with raw CDBs. The earlier failure was due to using s2p's `MIDI_*` abstraction layer which has buffering/timing issues. See Phase 6.
 
-2. **RSPACK over SCSI MIDI** — The RSPACK opcode (0x0C, request sample data) returns empty responses over the SCSI MIDI channel. All other Akai SysEx opcodes work. MESA II also does not use RSPACK — it reads sample data from disk images directly.
+2. ~~**RSPACK over SCSI MIDI**~~ — **RESOLVED.** RSPACK works when sent via `SCSI_EXEC` (raw CDB 0x0C) with 7-bit encoding and flag byte 0x00. The earlier failure was due to incorrect encoding (nibble vs 7-bit) and using the MIDI abstraction layer.
 
-3. **SCSI device scan is hardcoded** — `/scsi/scan` returns a hardcoded entry for S3000XL at ID 6. The s2p protobuf API does not expose full SCSI bus scanning.
+3. **SCSI device scan is hardcoded** — `/scsi/scan` returns a hardcoded entry for S3000XL at ID 6. The s2p protobuf API does not expose full SCSI bus scanning. The SCSI Disk Browser feature adds `GET /scsi/inquiry/:id` for per-target discovery.
 
-4. **Write persistence under investigation** — E2E readback tests after writes return stale values. Being investigated in `feature/scsi-write-validation`.
+4. ~~**Write persistence under investigation**~~ — **RESOLVED** in `feature/scsi-write-validation`. Three client bugs fixed (double-framing, REPLY error detection, multi-byte writes). All 248 writable fields pass hardware validation.
