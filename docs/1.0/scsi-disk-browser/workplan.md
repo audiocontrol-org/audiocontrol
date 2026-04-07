@@ -374,7 +374,7 @@ User selects a program or sample in the library, clicks "Send to Disk":
 **Files to create:**
 - `modules/akai-s3k-editor/src/components/library/LibraryToDiskDialog.tsx`
 
-### Phase 6: Akai ↔ Common Library Translation — PLANNING
+### Phase 6: Akai ↔ Common Library Translation — COMPLETE
 
 Translate between Akai-native disk format and the vendor-neutral common library format (`ProgramYaml`, `SampleYaml` from `sampler-library`).
 
@@ -453,13 +453,13 @@ Extend disk browser and library UI with translation-aware transfer actions:
 | 12 | Build upload dialog (library → disk) | 3.2 | PLANNING |
 | 13 | Write unit tests for disk format parser | 4.1 | DONE (15 tests) |
 | 14 | Write integration tests with hardware | 4.2 | DONE (SDS transfer e2e) |
-| 15 | S3K library storage for disk-origin objects | 5.1 | PLANNING |
-| 16 | Disk write serialization (FAT alloc, directory update) | 5.2 | PLANNING |
-| 17 | Disk → S3K Library download dialog | 5.3 | PLANNING |
-| 18 | S3K Library → Disk upload dialog | 5.4 | PLANNING |
-| 19 | Akai → common library translation | 6.1 | PLANNING |
-| 20 | Common library → Akai translation | 6.2 | PLANNING |
-| 21 | Translation-aware transfer UI | 6.3 | PLANNING |
+| 15 | S3K library storage for disk-origin objects | 5.1 | DONE |
+| 16 | Disk write serialization (FAT alloc, directory update) | 5.2 | DONE (12 unit tests) |
+| 17 | Disk → S3K Library download dialog | 5.3 | DONE |
+| 18 | S3K Library → Disk upload dialog | 5.4 | DONE |
+| 19 | Akai → common library translation | 6.1 | DONE (12 unit tests) |
+| 20 | Common library → Akai translation | 6.2 | DONE |
+| 21 | Translation-aware transfer UI | 6.3 | DONE (destination selector in DiskToLibraryDialog) |
 | 22 | Disk write round-trip e2e tests | 7.1 | PLANNING |
 | 23 | Library transfer round-trip e2e tests | 7.2 | PLANNING |
 
