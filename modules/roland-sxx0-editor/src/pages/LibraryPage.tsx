@@ -29,7 +29,7 @@ import { LoadSetDialog } from '@/components/library/LoadSetDialog';
 import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneDialog';
 import { ImportLibraryPatchDialog } from '@/components/library/ImportLibraryPatchDialog';
 import { ImportSamplesDialog } from '@/components/library/ImportSamplesDialog';
-import { SampleChopperDialog, type SliceDefinitionOutput, type InitialSliceDefinition, type ChopperSavePayload } from '@audiocontrol/sample-chopper/ui';
+import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
 import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
 import { SampleEditorDialog } from '@audiocontrol/sample-editor/ui';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
@@ -45,19 +45,16 @@ import {
   listSets, listDrumKits, listIndividualTones, listIndividualPatches,
   listIndividualTonesTree, listIndividualPatchesTree, listDrumKitsTree,
   listCommonSamplesTree,
-  loadDrumKitBundle, loadDrumKitSource, saveDrumKitSource, updateDrumKitSlices,
-  loadIndividualTone, loadIndividualToneWavSamples,
+  loadDrumKitBundle,
   type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo, type LibraryTreeNode,
   type StorageDirectoryHandle,
 } from '@/lib/library-service';
-import { parseWav } from '@/core/midi/S330Client';
 import { CreateDirectoryDialog } from '@/components/library/CreateDirectoryDialog';
 import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialog';
 import { DeleteDirectoryDialog } from '@/components/library/DeleteDirectoryDialog';
 import { MoveItemDialog } from '@/components/library/MoveItemDialog';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
-import { loadSample, loadSampleMeta, saveSample, createWav, getNestedDirectory, sanitizeForFilename, type SampleYaml } from '@audiocontrol/sampler-library/browser';
-import { parseYaml, stringifyYaml } from '@/lib/library-io';
+import { useRolandEditorDialogs } from '@/hooks/useRolandEditorDialogs';
 import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 
@@ -112,26 +109,6 @@ export function LibraryPage() {
   const [patchesTree, setPatchesTree] = useState<LibraryTreeNode[]>([]);
   const [drumKitsTree, setDrumKitsTree] = useState<LibraryTreeNode[]>([]);
   const [commonSamplesTree, setCommonSamplesTree] = useState<LibraryTreeNode[]>([]);
-  const [sliceEditDialog, setSliceEditDialog] = useState<{
-    open: boolean; kitName: string; path?: string[];
-    samples: Int16Array | null; sampleRate: number; slices: InitialSliceDefinition[];
-    kitConfig: { name: string; sampleRate: 15000 | 30000; baseNote: number; transpose?: number; velocitySensitivity?: number };
-  } | null>(null);
-  const [loopEditorDialog, setLoopEditorDialog] = useState<{
-    open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
-    loopStart?: number; loopEnd?: number; rootKey?: number;
-    origin: { name: string; type: string; path?: string[] } | null;
-  } | null>(null);
-  const [chopperDialog, setChopperDialog] = useState<{
-    open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
-    origin: { name: string; type: string; path?: string[] } | null;
-    initialSlices?: InitialSliceDefinition[];
-    initialLabels?: string;
-  } | null>(null);
-  const [sampleEditorDialog, setSampleEditorDialog] = useState<{
-    open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
-    origin: { name: string; type: string; path?: string[] } | null;
-  } | null>(null);
   const [selection, setSelection] = useState<ItemSelection | null>(null);
   const library = useLibraryConnection({
     pickerId: 'sampler-library',
@@ -255,6 +232,16 @@ export function LibraryPage() {
     } finally { setLoading(false); }
   }, [libraryHandle, applyLibraryData, setLoading, setError]);
 
+  const editorDialogs = useRolandEditorDialogs({
+    libraryHandle,
+    selection,
+    selectedDrumKitBundle,
+    setSelectedDrumKitBundle,
+    setLoading: (loading: boolean, message?: string) => setLoading(loading, message),
+    onError: (message: string) => setError(message),
+    onRefresh: handleRefreshLibrary,
+  });
+
   // Extracted hooks
   const directoryOps = useDirectoryOperations({
     libraryHandle, handleRefreshLibrary, setError, tonesTree, patchesTree, drumKitsTree,
@@ -332,297 +319,7 @@ export function LibraryPage() {
     }
   }, [selection, selectedDrumKitBundle, openImportSamplesDialog]);
 
-  // Kit editing handlers
-  const handleEditKit = useCallback(async () => {
-    if (!libraryHandle || !selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) return;
-    const bundle = selectedDrumKitBundle;
-    if (!bundle.source || !bundle.slices) { console.error('[LibraryPage] Cannot edit kit: not v2 format'); return; }
-    setLoading(true, 'Loading source audio...');
-    try {
-      const sourceWav = await loadDrumKitSource(libraryHandle, selection.name!, bundle.source, selection.path);
-      setSliceEditDialog({
-        open: true, kitName: selection.name!, path: selection.path,
-        samples: sourceWav.samples, sampleRate: sourceWav.sampleRate,
-        slices: bundle.slices.map((s) => ({ label: s.label, startSample: s.startSample, endSample: s.endSample })),
-        kitConfig: { name: bundle.name, sampleRate: bundle.sampleRate, baseNote: bundle.baseNote, transpose: bundle.transpose, velocitySensitivity: bundle.velocitySensitivity },
-      });
-    } catch (err) {
-      console.error('[LibraryPage] Failed to load source audio:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load source audio');
-    } finally { setLoading(false); }
-  }, [libraryHandle, selection, selectedDrumKitBundle, setLoading, setError]);
-
-  // Open the sample editor on a drum kit's source audio
-  const handleOpenDrumKitInSampleEditor = useCallback(async () => {
-    if (!libraryHandle || !selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) return;
-    const bundle = selectedDrumKitBundle;
-    if (!bundle.source) return;
-
-    setLoading(true, 'Loading source audio...');
-    try {
-      const sourceWav = await loadDrumKitSource(libraryHandle, selection.name!, bundle.source, selection.path);
-      setSampleEditorDialog({
-        open: true,
-        samples: sourceWav.samples,
-        sampleRate: sourceWav.sampleRate,
-        sampleName: bundle.name || selection.name!,
-        origin: { name: selection.name!, type: 'drumKit', path: selection.path },
-      });
-    } catch (err) {
-      console.error('[LibraryPage] Failed to load source audio for sample editor:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load source audio');
-    } finally {
-      setLoading(false);
-    }
-  }, [libraryHandle, selection, selectedDrumKitBundle, setLoading, setError]);
-
-  const handleSlicesUpdated = useCallback(async (slices: SliceDefinitionOutput[], kitConfig: { transpose?: number; velocitySensitivity?: number }) => {
-    if (!libraryHandle || !sliceEditDialog) return;
-    setLoading(true, 'Saving slice changes...');
-    try {
-      await updateDrumKitSlices(libraryHandle, sliceEditDialog.kitName, slices, kitConfig, sliceEditDialog.path);
-      setSelectedDrumKitBundle(await loadDrumKitBundle(libraryHandle, sliceEditDialog.kitName, sliceEditDialog.path));
-    } catch (err) {
-      console.error('[LibraryPage] Failed to update slices:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save slices');
-    } finally { setLoading(false); setSliceEditDialog(null); }
-  }, [libraryHandle, sliceEditDialog, setLoading, setError]);
-
-  // Open in Loop Editor: loads WAV samples and opens the LoopEditorDialog
-  const handleOpenInLoopEditor = useCallback(async (name: string, nodeType: string, path?: string[]) => {
-    if (!libraryHandle) return;
-    try {
-      let samples: Int16Array;
-      let sampleRate: number;
-      let loopStart: number | undefined;
-      let loopEnd: number | undefined;
-      let rootKey: number | undefined;
-
-      if (nodeType === 'tone' || nodeType === 'individualTone') {
-        // Load raw WAV for audio, and YAML separately for loop points
-        const [wavResult, toneResult] = await Promise.all([
-          loadIndividualToneWavSamples(libraryHandle, name, path ?? []),
-          loadIndividualTone(libraryHandle, name, path ?? []),
-        ]);
-        samples = wavResult.samples;
-        sampleRate = wavResult.sampleRate;
-        loopStart = toneResult.yaml.wave.loopPoint;
-        loopEnd = toneResult.yaml.wave.endPoint;
-        rootKey = toneResult.yaml.s330?.originalKey ?? toneResult.yaml.s550?.originalKey;
-      } else if (nodeType === 'sample') {
-        const result = await loadSample(libraryHandle, name, path);
-        const wav = parseWav(result.wavData);
-        samples = wav.samples;
-        sampleRate = wav.sampleRate;
-        loopStart = result.yaml.loopStart;
-        loopEnd = result.yaml.loopEnd;
-        rootKey = typeof result.yaml.rootKey === 'number' ? result.yaml.rootKey : undefined;
-      } else {
-        throw new Error(`Unsupported node type for loop editor: ${nodeType}`);
-      }
-
-      setLoopEditorDialog({
-        open: true, samples, sampleRate, sampleName: name,
-        loopStart, loopEnd, rootKey,
-        origin: { name, type: nodeType, path },
-      });
-    } catch (err) {
-      console.error('[LibraryPage] Failed to load WAV for loop editor:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load sample');
-    }
-  }, [libraryHandle, setError]);
-
-  // Open in Chopper: loads WAV samples and opens the SampleChopperDialog
-  const handleOpenInChopper = useCallback(async (name: string, nodeType: string, path?: string[]) => {
-    if (!libraryHandle) return;
-    try {
-      let samples: Int16Array;
-      let sampleRate: number;
-
-      if (nodeType === 'tone' || nodeType === 'individualTone') {
-        const result = await loadIndividualToneWavSamples(libraryHandle, name, path ?? []);
-        samples = result.samples;
-        sampleRate = result.sampleRate;
-      } else if (nodeType === 'sample') {
-        const result = await loadSample(libraryHandle, name, path);
-        const wav = parseWav(result.wavData);
-        samples = wav.samples;
-        sampleRate = wav.sampleRate;
-      } else {
-        throw new Error(`Unsupported node type for chopper: ${nodeType}`);
-      }
-
-      // Load existing slice definitions from sample metadata (if any)
-      let initialSlices: InitialSliceDefinition[] | undefined;
-      let initialLabels: string | undefined;
-      if (nodeType === 'sample') {
-        const meta = await loadSampleMeta(libraryHandle, name, path);
-        if (meta.slices && meta.slices.length > 0) {
-          initialSlices = meta.slices.map((s) => ({
-            label: s.label,
-            startSample: s.startSample,
-            endSample: s.endSample,
-          }));
-          initialLabels = meta.slices.map((s) => s.label).join(',');
-        }
-      }
-
-      setChopperDialog({
-        open: true, samples, sampleRate, sampleName: name,
-        origin: { name, type: nodeType, path },
-        initialSlices,
-        initialLabels,
-      });
-    } catch (err) {
-      console.error('[LibraryPage] Failed to load WAV for chopper:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load sample');
-    }
-  }, [libraryHandle, setError]);
-
-  // Handle chopper save — write sliced sample back to library as sample.yaml
-  const handleChopperSave = useCallback(async (payload: ChopperSavePayload) => {
-    if (!libraryHandle || !chopperDialog?.origin) return;
-
-    const yaml: SampleYaml = {
-      format: 'sample',
-      version: 1,
-      name: payload.name,
-      file: 'sample.wav',
-      sampleRate: payload.sourceAudio.sampleRate,
-      slices: payload.slices.map((s) => ({ label: s.label, startSample: s.startSample, endSample: s.endSample })),
-      triggers: payload.triggers,
-      playback: payload.playbackConfig,
-      modifiedAt: new Date().toISOString(),
-    };
-
-    const wavData = createWav(payload.sourceAudio.samples, payload.sourceAudio.sampleRate);
-    const savePath = chopperDialog.origin.path ?? [];
-
-    try {
-      await saveSample(libraryHandle, { name: payload.name, yaml, wavData }, savePath);
-      await handleRefreshLibrary();
-    } catch (err) {
-      console.error('[LibraryPage] Failed to save chopped sample:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save chopped sample');
-    }
-  }, [libraryHandle, chopperDialog, handleRefreshLibrary, setError]);
-
-  // Open in Sample Editor: loads WAV samples and opens the SampleEditorDialog
-  const handleOpenInSampleEditor = useCallback(async (name: string, nodeType: string, path?: string[]) => {
-    if (!libraryHandle) return;
-    try {
-      let samples: Int16Array;
-      let sampleRate: number;
-
-      if (nodeType === 'tone' || nodeType === 'individualTone') {
-        const result = await loadIndividualToneWavSamples(libraryHandle, name, path ?? []);
-        samples = result.samples;
-        sampleRate = result.sampleRate;
-      } else if (nodeType === 'sample') {
-        const result = await loadSample(libraryHandle, name, path);
-        const wav = parseWav(result.wavData);
-        samples = wav.samples;
-        sampleRate = wav.sampleRate;
-      } else {
-        throw new Error(`Unsupported node type for sample editor: ${nodeType}`);
-      }
-
-      setSampleEditorDialog({
-        open: true, samples, sampleRate, sampleName: name,
-        origin: { name, type: nodeType, path },
-      });
-    } catch (err) {
-      console.error('[LibraryPage] Failed to load WAV for sample editor:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load sample');
-    }
-  }, [libraryHandle, setError]);
-
-  // Handle sample editor save — write modified audio back to library
-  const handleSampleEditorSave = useCallback(async (samples: Int16Array, sampleRate: number) => {
-    if (!libraryHandle || !sampleEditorDialog?.origin) return;
-    const { name, type: nodeType, path } = sampleEditorDialog.origin;
-
-    try {
-      if (nodeType === 'sample') {
-        const existingMeta = await loadSampleMeta(libraryHandle, name, path ?? []);
-        existingMeta.sampleRate = sampleRate;
-        existingMeta.modifiedAt = new Date().toISOString();
-
-        const wavData = createWav(samples, sampleRate);
-        await saveSample(libraryHandle, { name, yaml: existingMeta, wavData }, path ?? []);
-      } else if (nodeType === 'tone' || nodeType === 'individualTone') {
-        // Write updated WAV back to the tone's directory
-        const wavData = createWav(samples, sampleRate);
-        const fullPath = ['library', 's330', 'tones', ...(path ?? [])];
-        const tonesDir = await getNestedDirectory(libraryHandle, fullPath);
-        const wavHandle = await tonesDir.getFileHandle(`${name}.wav`, { create: true });
-        const writable = await wavHandle.createWritable();
-        await writable.write(wavData);
-        await writable.close();
-      } else if (nodeType === 'drumKit') {
-        // Write updated source WAV back to the drum kit directory
-        const bundle = selectedDrumKitBundle;
-        if (!bundle?.source) throw new Error('Cannot save: drum kit has no source file');
-        await saveDrumKitSource(libraryHandle, name, bundle.source, samples, sampleRate, path);
-      }
-      await handleRefreshLibrary();
-    } catch (err) {
-      console.error('[LibraryPage] Failed to save edited sample:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save edited sample');
-    }
-  }, [libraryHandle, sampleEditorDialog, selectedDrumKitBundle, handleRefreshLibrary, setError]);
-
-  // Handle loop editor save (loop points saved back to library)
-  const handleLoopEditorSave = useCallback(async (loopStart: number, loopEnd: number) => {
-    if (!loopEditorDialog?.origin || !libraryHandle) return;
-    const { name, type: nodeType, path } = loopEditorDialog.origin;
-
-    console.log('[LibraryPage] handleLoopEditorSave:', { name, nodeType, path, loopStart, loopEnd });
-    try {
-      if (nodeType === 'sample') {
-        // Common sample: update sample.yaml loopStart/loopEnd
-        console.log('[LibraryPage] Loading sample meta:', { name, path: path ?? [] });
-        const yaml = await loadSampleMeta(libraryHandle, name, path ?? []);
-        yaml.loopStart = loopStart;
-        yaml.loopEnd = loopEnd;
-        yaml.loopMode = 'forward';
-        yaml.modifiedAt = new Date().toISOString();
-
-        const fullPath = ['library', 'common', 'samples', ...(path ?? [])];
-        const safeName = sanitizeForFilename(name);
-        console.log('[LibraryPage] Navigating to:', { fullPath, safeName });
-        const samplesDir = await getNestedDirectory(libraryHandle, fullPath);
-        console.log('[LibraryPage] Got samplesDir, getting sampleDir:', safeName);
-        const sampleDir = await samplesDir.getDirectoryHandle(safeName);
-        console.log('[LibraryPage] Got sampleDir, writing sample.yaml');
-        const yamlHandle = await sampleDir.getFileHandle('sample.yaml', { create: true });
-        const writable = await yamlHandle.createWritable();
-        await writable.write(stringifyYaml(yaml, { indent: 2, lineWidth: 120 }));
-        await writable.close();
-        console.log('[LibraryPage] Sample YAML saved successfully');
-      } else if (nodeType === 'tone') {
-        // Individual tone: update tone YAML's wave.loopPoint
-        // All S-series devices share the s330 library section
-        const fullPath = ['library', 's330', 'tones', ...(path ?? [])];
-        console.log('[LibraryPage] Navigating to tone dir:', { fullPath, name });
-        const tonesDir = await getNestedDirectory(libraryHandle, fullPath);
-        const toneHandle = await tonesDir.getFileHandle(`${name}.yaml`);
-        const toneFile = await toneHandle.getFile();
-        const yaml = parseYaml(await toneFile.text());
-        if (yaml.wave) {
-          yaml.wave.loopPoint = loopStart;
-          yaml.wave.endPoint = loopEnd;
-          yaml.wave.loopMode = 'forward';
-        }
-        const writable = await toneHandle.createWritable();
-        await writable.write(stringifyYaml(yaml, { indent: 2, lineWidth: 120 }));
-        await writable.close();
-      }
-    } catch (err) {
-      console.error('[LibraryPage] Failed to save loop points:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save loop points');
-    }
-  }, [loopEditorDialog, libraryHandle, setError]);
+  // Kit editing and editor dialog handlers are in editorDialogs hook
 
   if (!isConnected) {
     return (
@@ -716,9 +413,9 @@ export function LibraryPage() {
             onDeleteIndividualTone={directoryOps.handleDeleteIndividualTone}
             onDeleteIndividualPatch={directoryOps.handleDeleteIndividualPatch}
             onDeleteDrumKit={directoryOps.handleDeleteDrumKit}
-            onOpenInLoopEditor={handleOpenInLoopEditor}
-            onOpenInChopper={handleOpenInChopper}
-            onOpenInSampleEditor={handleOpenInSampleEditor}
+            onOpenInLoopEditor={editorDialogs.handleOpenInLoopEditor}
+            onOpenInChopper={editorDialogs.handleOpenInChopper}
+            onOpenInSampleEditor={editorDialogs.handleOpenInSampleEditor}
           />
         </div>
         <div className="card p-0 overflow-hidden h-full">
@@ -728,17 +425,17 @@ export function LibraryPage() {
               libraryHandle={libraryHandle}
               preloadedBundle={selectedDrumKitBundle}
               onImport={handleOpenSamplesImport}
-              onEditKit={handleEditKit}
-              onOpenSampleEditor={handleOpenDrumKitInSampleEditor}
+              onEditKit={editorDialogs.handleEditKit}
+              onOpenSampleEditor={editorDialogs.handleOpenDrumKitInSampleEditor}
             />
           ) : selection?.type === 'sample' || selection?.type === 'program' ? (
             <CommonSamplePreviewPanel
               selection={selection ? { type: selection.type as 'sample' | 'program', name: selection.name!, path: selection.path } : null}
               libraryHandle={libraryHandle}
               onPromoteToDevice={() => handleRefreshLibrary()}
-              onOpenInLoopEditor={(name, path) => handleOpenInLoopEditor(name, 'sample', path)}
-              onOpenInChopper={(name, path) => handleOpenInChopper(name, 'sample', path)}
-              onOpenInSampleEditor={(name, path) => handleOpenInSampleEditor(name, 'sample', path)}
+              onOpenInLoopEditor={(name, path) => editorDialogs.handleOpenInLoopEditor(name, 'sample', path)}
+              onOpenInChopper={(name, path) => editorDialogs.handleOpenInChopper(name, 'sample', path)}
+              onOpenInSampleEditor={(name, path) => editorDialogs.handleOpenInSampleEditor(name, 'sample', path)}
             />
           ) : (
             <ItemPreviewPanel
@@ -747,8 +444,8 @@ export function LibraryPage() {
               onImportIndividualTone={importDialogs.handleOpenImportIndividualToneDialog}
               onImportIndividualPatch={importDialogs.handleOpenImportIndividualPatchDialog}
               onLoadSet={importDialogs.handleOpenLoadDialog}
-              onOpenInLoopEditor={handleOpenInLoopEditor}
-              onOpenInSampleEditor={handleOpenInSampleEditor}
+              onOpenInLoopEditor={editorDialogs.handleOpenInLoopEditor}
+              onOpenInSampleEditor={editorDialogs.handleOpenInSampleEditor}
             />
           )}
         </div>
@@ -801,27 +498,15 @@ export function LibraryPage() {
           progress={samplesProgress} error={samplesError}
         />
       )}
-      {sliceEditDialog && (
+      {editorDialogs.sliceEditDialog && (
         <SampleChopperDialog
-          open={sliceEditDialog.open} onOpenChange={(open) => { if (!open) setSliceEditDialog(null); }}
-          samples={sliceEditDialog.samples} sampleRate={sliceEditDialog.sampleRate}
-          sourceName={sliceEditDialog.kitName} onConfirm={() => {}} editMode={true}
-          initialSlices={sliceEditDialog.slices}
-          initialLabels={sliceEditDialog.slices?.map((s) => s.label).join(',')}
-          onSlicesUpdated={(slices) => handleSlicesUpdated(slices, {})}
-          onOpenSampleEditor={() => {
-            const dialog = sliceEditDialog;
-            if (dialog) {
-              setSliceEditDialog(null);
-              setSampleEditorDialog({
-                open: true,
-                samples: dialog.samples,
-                sampleRate: dialog.sampleRate,
-                sampleName: dialog.kitName,
-                origin: { name: dialog.kitName, type: 'drumKit', path: dialog.path },
-              });
-            }
-          }}
+          open={editorDialogs.sliceEditDialog.open} onOpenChange={(open) => { if (!open) editorDialogs.closeSliceEditDialog(); }}
+          samples={editorDialogs.sliceEditDialog.samples} sampleRate={editorDialogs.sliceEditDialog.sampleRate}
+          sourceName={editorDialogs.sliceEditDialog.kitName} onConfirm={() => {}} editMode={true}
+          initialSlices={editorDialogs.sliceEditDialog.slices}
+          initialLabels={editorDialogs.sliceEditDialog.slices?.map((s) => s.label).join(',')}
+          onSlicesUpdated={(slices) => editorDialogs.handleSlicesUpdated(slices, {})}
+          onOpenSampleEditor={editorDialogs.handleOpenSliceEditorFromSampleEditor}
         />
       )}
       <ExportToneDialog
@@ -866,41 +551,41 @@ export function LibraryPage() {
         currentPath={directoryOps.moveItemDialog?.sourcePath ?? []}
         category={directoryOps.moveItemDialog?.category ?? 'tones'} categoryTree={directoryOps.getMoveDialogTree()}
       />
-      {loopEditorDialog && (
+      {editorDialogs.loopEditorDialog && (
         <LoopEditorDialog
-          open={loopEditorDialog.open}
-          onOpenChange={(open) => { if (!open) setLoopEditorDialog(null); }}
-          samples={loopEditorDialog.samples}
-          sampleRate={loopEditorDialog.sampleRate}
-          sampleName={loopEditorDialog.sampleName}
-          loopStart={loopEditorDialog.loopStart}
-          loopEnd={loopEditorDialog.loopEnd}
-          rootKey={loopEditorDialog.rootKey}
-          onSave={handleLoopEditorSave}
+          open={editorDialogs.loopEditorDialog.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeLoopEditor(); }}
+          samples={editorDialogs.loopEditorDialog.samples}
+          sampleRate={editorDialogs.loopEditorDialog.sampleRate}
+          sampleName={editorDialogs.loopEditorDialog.sampleName}
+          loopStart={editorDialogs.loopEditorDialog.loopStart}
+          loopEnd={editorDialogs.loopEditorDialog.loopEnd}
+          rootKey={editorDialogs.loopEditorDialog.rootKey}
+          onSave={editorDialogs.handleLoopEditorSave}
         />
       )}
-      {chopperDialog && (
+      {editorDialogs.chopperDialog && (
         <SampleChopperDialog
-          open={chopperDialog.open}
-          onOpenChange={(open) => { if (!open) setChopperDialog(null); }}
-          samples={chopperDialog.samples}
-          sampleRate={chopperDialog.sampleRate}
-          sourceName={chopperDialog.sampleName}
-          editMode={!!chopperDialog.initialSlices}
-          initialSlices={chopperDialog.initialSlices}
-          initialLabels={chopperDialog.initialLabels}
-          onConfirm={() => { setChopperDialog(null); }}
-          onSave={libraryHandle ? handleChopperSave : undefined}
+          open={editorDialogs.chopperDialog.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeChopper(); }}
+          samples={editorDialogs.chopperDialog.samples}
+          sampleRate={editorDialogs.chopperDialog.sampleRate}
+          sourceName={editorDialogs.chopperDialog.sampleName}
+          editMode={!!editorDialogs.chopperDialog.initialSlices}
+          initialSlices={editorDialogs.chopperDialog.initialSlices}
+          initialLabels={editorDialogs.chopperDialog.initialLabels}
+          onConfirm={() => { editorDialogs.closeChopper(); }}
+          onSave={libraryHandle ? editorDialogs.handleChopperSave : undefined}
         />
       )}
-      {sampleEditorDialog && (
+      {editorDialogs.sampleEditorDialog && (
         <SampleEditorDialog
-          open={sampleEditorDialog.open}
-          onOpenChange={(open) => { if (!open) setSampleEditorDialog(null); }}
-          samples={sampleEditorDialog.samples}
-          sampleRate={sampleEditorDialog.sampleRate}
-          sampleName={sampleEditorDialog.sampleName}
-          onSave={libraryHandle ? handleSampleEditorSave : undefined}
+          open={editorDialogs.sampleEditorDialog.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeSampleEditor(); }}
+          samples={editorDialogs.sampleEditorDialog.samples}
+          sampleRate={editorDialogs.sampleEditorDialog.sampleRate}
+          sampleName={editorDialogs.sampleEditorDialog.sampleName}
+          onSave={libraryHandle ? editorDialogs.handleSampleEditorSave : undefined}
         />
       )}
     </div>
