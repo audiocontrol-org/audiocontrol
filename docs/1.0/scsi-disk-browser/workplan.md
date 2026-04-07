@@ -27,6 +27,30 @@ Layer disk block I/O on top of the existing SCSI-over-network infrastructure. Th
 - **Block-level caching in the browser** — Reading disk structure requires multiple round-trips (partition table, volume directory, file entries). Cache blocks in memory to avoid redundant network reads during a browsing session.
 - **Composition with existing library page** — The disk browser is a new panel/tab on the library page, not a separate page. It shares the library store and can transfer items between disk and browser library.
 
+## MESA II SCSI Protocol Findings
+
+Static analysis of MESA II's SCSI Plug binary (`~/work/scsi2pi-work/mesa-plug-harness/SCSI-PROTOCOL.md`) revealed the exact SCSI CDB protocol used by Akai's own software. Key findings relevant to this feature:
+
+**For the disk browser:** MESA II uses standard SCSI commands (INQUIRY `$12`, TEST UNIT READY `$00`) alongside vendor-specific MIDI commands (`$09`, `$0C`, `$0D`, `$0E`). The disk browser only needs standard SCSI commands, which are already supported by SCSI_EXEC.
+
+**For the SDS sample data issue (related to #141):** MESA II sets CDB byte 5 as a flag (`$80` = expecting reply, `$00` = fire-and-forget). Our s2p MIDI CDB handlers always send `$00` in byte 5. This flag may be what tells the device to buffer its SDS response for retrieval via the poll/read channel. Additionally, MESA drains pending data before every send and calls TestUnitReady before every command.
+
+**Protobuf field mappings (from `s2p_interface.proto`):**
+
+PbScsiRequest (field 21 of PbCommand):
+- field 1 (varint): target_id
+- field 2 (varint): target_lun  
+- field 3 (bytes): cdb
+- field 4 (bytes): data_out
+- field 5 (varint): expected_data_in
+- field 6 (varint): timeout_seconds
+
+PbScsiResponse (field 102 of PbResult):
+- field 1 (varint): status
+- field 2 (bytes): sense_data
+- field 3 (bytes): data_in
+- field 4 (varint): bytes_transferred
+
 ## Implementation Phases
 
 ### Phase 1: Bridge SCSI_EXEC Extension
