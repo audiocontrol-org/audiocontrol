@@ -1,9 +1,20 @@
 # SCSI Disk Browser - Workplan
 
-**GitHub Milestone:** TBD
+**GitHub Milestone:** [Week of Apr 6-10](https://github.com/audiocontrol-org/audiocontrol/milestone/9)
 **GitHub Issues:**
 
-- Parent: TBD
+- [Parent: [scsi-bridge] SCSI Disk Browser (#148)](https://github.com/audiocontrol-org/audiocontrol/issues/148)
+- [Add SCSI_EXEC protobuf encoding to bridge S2pClient (#149)](https://github.com/audiocontrol-org/audiocontrol/issues/149)
+- [Add HTTP endpoints for SCSI block read/write/inquiry/capacity (#150)](https://github.com/audiocontrol-org/audiocontrol/issues/150)
+- [Build TypeScript ScsiDiskClient for browser (#151)](https://github.com/audiocontrol-org/audiocontrol/issues/151)
+- [Implement Akai partition table and volume directory parser (#152)](https://github.com/audiocontrol-org/audiocontrol/issues/152)
+- [Implement Akai program and sample header disk parser/serializer (#153)](https://github.com/audiocontrol-org/audiocontrol/issues/153)
+- [Implement browser-safe WAV to/from Akai sample conversion (#154)](https://github.com/audiocontrol-org/audiocontrol/issues/154)
+- [Build disk browser UI component and store (#155)](https://github.com/audiocontrol-org/audiocontrol/issues/155)
+- [Build disk download dialog (#156)](https://github.com/audiocontrol-org/audiocontrol/issues/156)
+- [Build disk upload dialog (#157)](https://github.com/audiocontrol-org/audiocontrol/issues/157)
+- [Write unit tests for Akai disk format parser (#158)](https://github.com/audiocontrol-org/audiocontrol/issues/158)
+- [Write integration tests with hardware (#159)](https://github.com/audiocontrol-org/audiocontrol/issues/159)
 
 ## Technical Approach
 

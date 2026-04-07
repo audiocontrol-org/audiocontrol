@@ -9,8 +9,8 @@ Read and write Akai-formatted SCSI disks over the network from the S3000XL web e
 
 ## Tracking
 
-- **GitHub Issue:** TBD
-- **GitHub Milestone:** TBD
+- **GitHub Issue:** [#148 - [scsi-bridge] SCSI Disk Browser](https://github.com/audiocontrol-org/audiocontrol/issues/148)
+- **GitHub Milestone:** [Week of Apr 6-10](https://github.com/audiocontrol-org/audiocontrol/milestone/9)
 
 ## Documentation
 
