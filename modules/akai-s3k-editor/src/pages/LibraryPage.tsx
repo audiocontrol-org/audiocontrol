@@ -55,7 +55,9 @@ import { useInstrumentTransfer } from '@/hooks/useInstrumentTransfer';
 import { useEditorDialogs } from '@/hooks/useEditorDialogs';
 import { deleteStoredProgram } from '@/lib/program-storage';
 import { DiskBrowserPanel } from '@/components/library/DiskBrowserPanel';
+import { DiskToLibraryDialog } from '@/components/library/DiskToLibraryDialog';
 import { getActiveScsiUrl } from '@audiocontrol/editor-core';
+import type { AkaiDiskFileEntry } from '@audiocontrol/sampler-devices/s3k';
 import { SendSampleDialog } from '@/components/library/SendSampleDialog';
 import { ReceiveSampleDialog } from '@/components/library/ReceiveSampleDialog';
 import { ExportProgramDialog } from '@/components/library/ExportProgramDialog';
@@ -89,6 +91,17 @@ const SEND_DIALOG_CLOSED: SendDialogState = {
 };
 const RECEIVE_DIALOG_CLOSED: ReceiveDialogState = {
   open: false, sampleIndex: 0, sampleName: '',
+};
+
+interface DiskToLibraryDialogState {
+  open: boolean;
+  file: AkaiDiskFileEntry | null;
+  partitionData: Uint8Array | null;
+  volumeStartBlock: number;
+}
+
+const DISK_TO_LIBRARY_CLOSED: DiskToLibraryDialogState = {
+  open: false, file: null, partitionData: null, volumeStartBlock: 0,
 };
 
 // =========================================================================
@@ -154,6 +167,7 @@ export function LibraryPage(): JSX.Element {
   const [expandedPaths, setExpandedPaths] = useState<Record<string, Set<string>>>({});
   const [sendDialog, setSendDialog] = useState<SendDialogState>(SEND_DIALOG_CLOSED);
   const [receiveDialog, setReceiveDialog] = useState<ReceiveDialogState>(RECEIVE_DIALOG_CLOSED);
+  const [diskToLibrary, setDiskToLibrary] = useState<DiskToLibraryDialogState>(DISK_TO_LIBRARY_CLOSED);
 
   const programTransfer = useProgramTransfer(isDeviceConnected, !!root);
   const drumKitTransfer = useDrumKitTransfer(isDeviceConnected, !!root);
@@ -477,7 +491,12 @@ export function LibraryPage(): JSX.Element {
           />
         </div>
         <div className="w-72 border-l border-neutral-700 overflow-y-auto">
-          <DiskBrowserPanel bridgeUrl={getActiveScsiUrl()} />
+          <DiskBrowserPanel
+            bridgeUrl={getActiveScsiUrl()}
+            onSaveToLibrary={root ? (file, _targetId, partitionData, volumeStartBlock) => {
+              setDiskToLibrary({ open: true, file, partitionData, volumeStartBlock });
+            } : undefined}
+          />
         </div>
       </div>
 
@@ -544,6 +563,19 @@ export function LibraryPage(): JSX.Element {
             onImportComplete={handleImportComplete}
           />
         </>
+      )}
+
+      {/* Disk-to-Library Dialog (requires library root only, no device) */}
+      {root && (
+        <DiskToLibraryDialog
+          open={diskToLibrary.open}
+          onClose={() => setDiskToLibrary(DISK_TO_LIBRARY_CLOSED)}
+          file={diskToLibrary.file}
+          partitionData={diskToLibrary.partitionData}
+          volumeStartBlock={diskToLibrary.volumeStartBlock}
+          libraryRoot={root}
+          onTransferComplete={() => refreshLibrary()}
+        />
       )}
 
       {/* Editor Dialogs (require library root only, no device) */}

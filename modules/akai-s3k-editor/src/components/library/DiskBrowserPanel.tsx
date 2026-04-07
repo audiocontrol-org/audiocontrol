@@ -21,14 +21,22 @@ import { BLOCK_SIZE } from '@audiocontrol/sampler-devices/s3k';
 
 interface VolumeWithFiles {
   name: string;
+  startBlock: number;
   files: AkaiDiskFileEntry[];
 }
 
 interface Props {
   bridgeUrl: string | null;
+  /** Called when the user wants to save a file to the library. */
+  onSaveToLibrary?: (
+    file: AkaiDiskFileEntry,
+    targetId: number,
+    partitionData: Uint8Array,
+    volumeStartBlock: number,
+  ) => void;
 }
 
-export function DiskBrowserPanel({ bridgeUrl }: Props) {
+export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
   const {
     loading,
     error,
@@ -78,7 +86,7 @@ export function DiskBrowserPanel({ bridgeUrl }: Props) {
         const vols: AkaiDiskVolumeEntry[] = parseVolumeList(partData);
         for (const vol of vols) {
           const files = parseFileList(partData, vol.startBlock);
-          allVolumes.push({ name: vol.name, files });
+          allVolumes.push({ name: vol.name, startBlock: vol.startBlock, files });
         }
       }
 
@@ -169,6 +177,24 @@ export function DiskBrowserPanel({ bridgeUrl }: Props) {
             onToggle={() => handleExpandTarget(target)}
             onSelectFile={setSelectedFile}
             onDownloadSample={(file) => handleDownload(target.id, file)}
+            onSaveToLibrary={onSaveToLibrary ? (file, vol) => {
+              const data = partitionData.get(target.id);
+              if (data) {
+                // Find partition-level data for this volume
+                const partitions = parsePartitionTable(data);
+                for (const partition of partitions) {
+                  const partStart = partition.offsetInBlocks * BLOCK_SIZE;
+                  if (partStart + BLOCK_SIZE > data.length) continue;
+                  const partData = data.subarray(partStart);
+                  // Check if this partition contains the volume
+                  const vols = parseVolumeList(partData);
+                  if (vols.some(v => v.startBlock === vol.startBlock)) {
+                    onSaveToLibrary(file, target.id, partData, vol.startBlock);
+                    return;
+                  }
+                }
+              }
+            } : undefined}
           />
         ))}
       </div>
@@ -188,6 +214,7 @@ interface TargetNodeProps {
   onToggle: () => void;
   onSelectFile: (file: AkaiDiskFileEntry) => void;
   onDownloadSample: (file: AkaiDiskFileEntry) => void;
+  onSaveToLibrary?: (file: AkaiDiskFileEntry, volume: VolumeWithFiles) => void;
 }
 
 function TargetNode({
@@ -198,6 +225,7 @@ function TargetNode({
   onToggle,
   onSelectFile,
   onDownloadSample,
+  onSaveToLibrary,
 }: TargetNodeProps) {
   const sizeMB = Math.round(
     (target.blockCount * target.blockSize) / 1024 / 1024,
@@ -225,6 +253,7 @@ function TargetNode({
             selectedFile={selectedFile}
             onSelectFile={onSelectFile}
             onDownloadSample={onDownloadSample}
+            onSaveToLibrary={onSaveToLibrary ? (file) => onSaveToLibrary(file, vol) : undefined}
           />
         ))}
     </div>
@@ -236,6 +265,7 @@ interface VolumeNodeProps {
   selectedFile: AkaiDiskFileEntry | null;
   onSelectFile: (file: AkaiDiskFileEntry) => void;
   onDownloadSample: (file: AkaiDiskFileEntry) => void;
+  onSaveToLibrary?: (file: AkaiDiskFileEntry) => void;
 }
 
 function VolumeNode({
@@ -243,6 +273,7 @@ function VolumeNode({
   selectedFile,
   onSelectFile,
   onDownloadSample,
+  onSaveToLibrary,
 }: VolumeNodeProps) {
   return (
     <div className="ml-4">
@@ -263,6 +294,7 @@ function VolumeNode({
               onDownloadSample(file);
             }
           }}
+          onSaveToLibrary={onSaveToLibrary ? () => onSaveToLibrary(file) : undefined}
         />
       ))}
     </div>
@@ -274,9 +306,10 @@ interface FileNodeProps {
   isSelected: boolean;
   onSelect: () => void;
   onDoubleClick: () => void;
+  onSaveToLibrary?: () => void;
 }
 
-function FileNode({ file, isSelected, onSelect, onDoubleClick }: FileNodeProps) {
+function FileNode({ file, isSelected, onSelect, onDoubleClick, onSaveToLibrary }: FileNodeProps) {
   const typeLabel =
     file.type === FILE_TYPE_SAMPLE
       ? 'Sample'
@@ -287,25 +320,37 @@ function FileNode({ file, isSelected, onSelect, onDoubleClick }: FileNodeProps) 
   const sizeKB = file.size > 0 ? `${Math.round(file.size / 1024)} KB` : '';
 
   return (
-    <button
-      type="button"
-      className={`w-full text-left flex items-center gap-1 px-6 py-0.5 text-sm rounded transition-colors cursor-pointer ${
-        isSelected
-          ? 'bg-blue-600 text-white'
-          : 'text-gray-300 hover:bg-gray-700'
-      }`}
-      onClick={onSelect}
-      onDoubleClick={onDoubleClick}
-    >
-      <span>{file.name}</span>
-      <span
-        className={`ml-auto tabular-nums ${
-          isSelected ? 'text-blue-200' : 'text-gray-500'
+    <div className="flex items-center">
+      <button
+        type="button"
+        className={`flex-1 text-left flex items-center gap-1 px-6 py-0.5 text-sm rounded transition-colors cursor-pointer ${
+          isSelected
+            ? 'bg-blue-600 text-white'
+            : 'text-gray-300 hover:bg-gray-700'
         }`}
+        onClick={onSelect}
+        onDoubleClick={onDoubleClick}
       >
-        {typeLabel}
-        {sizeKB && ` (${sizeKB})`}
-      </span>
-    </button>
+        <span>{file.name}</span>
+        <span
+          className={`ml-auto tabular-nums ${
+            isSelected ? 'text-blue-200' : 'text-gray-500'
+          }`}
+        >
+          {typeLabel}
+          {sizeKB && ` (${sizeKB})`}
+        </span>
+      </button>
+      {isSelected && onSaveToLibrary && (
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onSaveToLibrary(); }}
+          className="px-1.5 py-0.5 text-xs text-blue-300 hover:text-white"
+          title="Save to Library"
+        >
+          +Lib
+        </button>
+      )}
+    </div>
   );
 }
