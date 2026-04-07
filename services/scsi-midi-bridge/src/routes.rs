@@ -27,6 +27,7 @@ pub struct AppState {
 #[serde(rename_all = "camelCase")]
 pub struct StatusResponse {
     pub version: String,
+    pub build_id: String,
     pub scsi2pi_version: String,
     pub board_id: u8,
     pub sampler_reachable: bool,
@@ -127,6 +128,7 @@ pub async fn status(State(state): State<Arc<AppState>>) -> Json<StatusResponse> 
     let reachable = state.s2p.lock().await.is_reachable().await;
     Json(StatusResponse {
         version: env!("CARGO_PKG_VERSION").to_string(),
+        build_id: format!("{}@{}", env!("BUILD_GIT_HASH"), env!("BUILD_TIMESTAMP")),
         scsi2pi_version: "6.2.1".to_string(),
         board_id: 7,
         sampler_reachable: reachable,

@@ -66,8 +66,10 @@ async fn main() {
         .layer(CorsLayer::permissive());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
+    let build_id = format!("{}@{}", env!("BUILD_GIT_HASH"), env!("BUILD_TIMESTAMP"));
     tracing::info!(
         version = env!("CARGO_PKG_VERSION"),
+        build_id = %build_id,
         addr = %addr,
         s2p_host = %config.s2p_host,
         s2p_port = config.s2p_port,

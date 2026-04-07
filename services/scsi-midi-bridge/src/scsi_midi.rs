@@ -7,17 +7,18 @@
 use crate::s2p_client::{S2pClient, SampleDownloadHeader};
 use tracing::{debug, info, warn};
 
-/// Akai character encoding table (subset — printable ASCII range).
-/// The S3000XL uses a proprietary character set for sample/program names.
+/// Akai character encoding table.
+/// 0-9: '0'-'9', 10: ' ', 11-36: 'A'-'Z', 37-62: 'a'-'z', 63: '#', 64: '+', 65: '-', 66: '.'
 fn akai_char(code: u8) -> char {
     match code {
         0..=9 => (b'0' + code) as char,
-        10..=35 => (b'A' + code - 10) as char,
-        36 => '#',
-        37 => '+',
-        38 => '-',
-        39 => '.',
-        40 => ' ',
+        10 => ' ',
+        11..=36 => (b'A' + code - 11) as char,
+        37..=62 => (b'a' + code - 37) as char,
+        63 => '#',
+        64 => '+',
+        65 => '-',
+        66 => '.',
         _ => '?',
     }
 }
@@ -116,7 +117,7 @@ where
         .find(|m| m.len() > 5 && m[0] == 0xF0 && m[1] == 0x47 && m[3] == 0x0B && m[4] == 0x48)
         .ok_or_else(|| "no RSDATA response received".to_string())?;
 
-    debug!(
+    info!(
         rsdata_len = rsdata_resp.len(),
         rsdata_hex = %rsdata_resp.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" "),
         "raw RSDATA response"
@@ -384,9 +385,12 @@ mod tests {
     fn test_akai_char() {
         assert_eq!(akai_char(0), '0');
         assert_eq!(akai_char(9), '9');
-        assert_eq!(akai_char(10), 'A');
-        assert_eq!(akai_char(35), 'Z');
-        assert_eq!(akai_char(40), ' ');
+        assert_eq!(akai_char(10), ' ');
+        assert_eq!(akai_char(11), 'A');
+        assert_eq!(akai_char(36), 'Z');
+        assert_eq!(akai_char(37), 'a');
+        assert_eq!(akai_char(62), 'z');
+        assert_eq!(akai_char(63), '#');
     }
 
     #[test]
@@ -448,9 +452,8 @@ mod tests {
         // SPITCH at 4: don't care
 
         // SHNAME at 6: encode "SCSITEST    " (12 chars)
-        // Akai encoding: S=28, C=12, I=18, T=29, E=14
-        // 'S' = 28 -> nibbles 0x0C, 0x01 (low=0xC, high=0x1 → 0x1C = 28)
-        let name_akai: [u8; 12] = [28, 12, 28, 18, 29, 14, 28, 29, 40, 40, 40, 40];
+        // Akai encoding: 10=' ', 11='A', 12='B', 13='C', ... S=29, C=13, I=19, T=30, E=15
+        let name_akai: [u8; 12] = [29, 13, 29, 19, 30, 15, 29, 30, 10, 10, 10, 10];
         for (i, &ch) in name_akai.iter().enumerate() {
             nibbles[6 + i * 2] = ch & 0x0F;
             nibbles[6 + i * 2 + 1] = (ch >> 4) & 0x0F;

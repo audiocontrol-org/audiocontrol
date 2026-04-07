@@ -25,6 +25,7 @@ import { runMultiTests } from '@/node/lib/test-multi.js';
 import { runLatencyTests } from '@/node/lib/test-latency.js';
 import { runStreamingTests } from '@/node/lib/test-streaming.js';
 import { runSdsTests } from '@/node/lib/test-sds.js';
+import { runScsiSdsTransferTests } from '@/node/lib/test-scsi-sds-transfer.js';
 import type { TestContext, TestResult } from '@/node/lib/test-types.js';
 
 // ---------------------------------------------------------------------------
@@ -110,8 +111,9 @@ Available tests:
                write-sample-name
   All Fields:  (runs all 248 field write-readback tests)
   SDS:         sds-round-trip
+  SCSI SDS:    scsi-sds-download
 
-Test groups:  connection, reads, writes, all-fields, sds, all
+Test groups:  connection, reads, writes, all-fields, sds, scsi-sds-transfer, all
 `);
 }
 
@@ -134,6 +136,7 @@ const TEST_GROUPS: TestGroup[] = [
   { name: 'latency', run: runLatencyTests },
   { name: 'streaming', run: runStreamingTests },
   { name: 'sds', run: runSdsTests },
+  { name: 'scsi-sds-transfer', run: runScsiSdsTransferTests },
 ];
 
 const TEST_NAME_TO_GROUP: Record<string, string> = {
@@ -149,6 +152,7 @@ const TEST_NAME_TO_GROUP: Record<string, string> = {
   'write-filter-freq': 'writes',
   'write-sample-name': 'writes',
   'sds-round-trip': 'sds',
+  'scsi-sds-download': 'scsi-sds-transfer',
 };
 
 // ---------------------------------------------------------------------------

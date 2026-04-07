@@ -40,8 +40,8 @@ echo "Step 1: Stopping existing daemons..."
 # Kill bridge processes (not root-owned)
 ssh "$PI_SSH" "killall e2e-scsi-midi-bridge 2>/dev/null; killall scsi-midi-bridge 2>/dev/null; true"
 
-# Kill s2p (root-owned, requires sudo killall)
-ssh "$PI_SSH" "sudo killall s2p-midi 2>/dev/null; sudo killall s2p 2>/dev/null; true"
+# Kill s2p (root-owned, requires sudo killall). Use -9 to avoid graceful shutdown delays.
+ssh "$PI_SSH" "sudo killall -9 s2p-midi 2>/dev/null; sudo killall -9 s2p 2>/dev/null; true"
 
 # Wait for s2p to actually exit — exponential backoff, 10s hard timeout
 wait_for_exit() {
