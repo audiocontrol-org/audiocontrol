@@ -59,9 +59,27 @@ Read and write Akai-formatted SCSI disk images over the network from the S3000XL
 
 **Unit tests:** 15 passing (character encoding + parser)
 
+## Remaining Work (Phases 5-7)
+
+### Phase 5: Disk ↔ S3K Library Transfer
+- S3K library storage for disk-origin objects (raw Akai bytes as base64)
+- Disk write serialization (FAT allocation, directory entry creation)
+- Download dialog (disk → S3K library)
+- Upload dialog (S3K library → disk)
+
+### Phase 6: Akai ↔ Common Library Translation
+- Akai program/sample → vendor-neutral ProgramYaml/SampleYaml
+- Vendor-neutral → Akai format (reverse translation)
+- Translation-aware transfer UI actions
+
+### Phase 7: Integration Tests
+- Disk write round-trip (read → write → read → compare)
+- Library transfer round-trip with translation verification
+
+See `workplan.md` for detailed implementation plan.
+
 ## Known Limitations
 
 1. **512-byte block alignment** — s2p serves disk images with 512-byte blocks but Akai uses 8192-byte blocks internally. The parser handles this via byte offsets, but multi-block reads require calculating the correct LBA.
-2. **Read-only first pass** — Write support (upload to disk) is implemented in the bridge but the parser's serialization functions haven't been tested against hardware.
-3. **Sample extraction offsets** — The program keygroup velocity zone sample name offsets and sample header size are first-pass estimates. Need validation against more disk images.
-4. **Large transfer performance** — Reading a full sample (1+ MB) requires many 512-byte block reads. A batch/chunked read endpoint could improve performance.
+2. **Sample extraction offsets** — The program keygroup velocity zone sample name offsets and sample header size are first-pass estimates. Need validation against more disk images.
+3. **Large transfer performance** — Reading a full sample (1+ MB) requires many 512-byte block reads. A batch/chunked read endpoint could improve performance.
