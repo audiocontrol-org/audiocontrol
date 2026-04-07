@@ -111,3 +111,10 @@ export type {
   S3000xlClientDeps,
 } from "@/devices/s3000xl/s3000xl-types.js"
 export { createS3000xlClient } from "@/devices/s3000xl/s3000xl-client.js"
+
+// Akai disk format parser (browser-safe)
+export * from "@/devices/s3000xl/akai-disk-format.js"
+export * from "@/devices/s3000xl/akai-disk-parser.js"
+export * from "@/devices/s3000xl/akai-disk-program.js"
+export * from "@/devices/s3000xl/akai-disk-sample.js"
+export * from "@/devices/s3000xl/akai-wav-convert.js"
