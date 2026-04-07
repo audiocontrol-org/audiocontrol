@@ -56,6 +56,11 @@ async fn main() {
         .route("/sds/send", post(routes::sds_send))
         .route("/sds/poll", get(routes::sds_poll))
         .route("/sds/stream", get(routes::sds_stream))
+        .route("/scsi/exec", post(routes::scsi_exec))
+        .route("/scsi/inquiry/:target_id", get(routes::scsi_inquiry))
+        .route("/scsi/capacity/:target_id", get(routes::scsi_capacity))
+        .route("/scsi/read", post(routes::scsi_read))
+        .route("/scsi/write", post(routes::scsi_write))
         .with_state(state)
         .layer(CorsLayer::permissive());
 
