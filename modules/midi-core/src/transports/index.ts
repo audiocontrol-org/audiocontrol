@@ -10,4 +10,8 @@ export {
   type ScsiDiskClient,
   type ScsiInquiryResult,
   type ScsiCapacityResult,
+  type SampleTransferHeader,
+  type SampleTransferProgress,
+  type SampleDownloadCallbacks,
+  type SampleUploadCallbacks,
 } from './scsi-disk-client';

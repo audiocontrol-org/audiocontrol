@@ -17,11 +17,47 @@ export interface ScsiCapacityResult {
   blockSize: number;
 }
 
+export interface SampleTransferHeader {
+  name: string;
+  sampleRate: number;
+  sampleCount: number;
+}
+
+export interface SampleTransferProgress {
+  transferred: number;
+  total: number;
+}
+
+export interface SampleDownloadCallbacks {
+  onHeader: (header: SampleTransferHeader) => void;
+  onData: (samples: Int16Array, progress: SampleTransferProgress) => void;
+  onComplete: (totalSamples: number) => void;
+}
+
+export interface SampleUploadCallbacks {
+  onProgress: (progress: SampleTransferProgress) => void;
+  onComplete: (totalSamples: number) => void;
+}
+
 export interface ScsiDiskClient {
   inquiry(targetId: number): Promise<ScsiInquiryResult>;
   readCapacity(targetId: number): Promise<ScsiCapacityResult>;
   readBlocks(targetId: number, lba: number, count: number): Promise<Uint8Array>;
   writeBlocks(targetId: number, lba: number, data: Uint8Array): Promise<void>;
+  downloadSample(
+    targetId: number,
+    sampleNumber: number,
+    channel: number,
+    callbacks: SampleDownloadCallbacks,
+  ): Promise<void>;
+  uploadSample(
+    targetId: number,
+    sampleNumber: number,
+    channel: number,
+    sampleRate: number,
+    samples: Int16Array,
+    callbacks: SampleUploadCallbacks,
+  ): Promise<void>;
 }
 
 function stripTrailingSlash(url: string): string {
@@ -85,5 +121,122 @@ export function createScsiDiskClient(bridgeUrl: string): ScsiDiskClient {
         throw new Error(`SCSI WRITE failed: status ${resp.status}`);
       }
     },
+
+    downloadSample(
+      targetId: number,
+      sampleNumber: number,
+      channel: number,
+      callbacks: SampleDownloadCallbacks,
+    ): Promise<void> {
+      return sampleTransfer(baseUrl, {
+        type: 'sample-download',
+        target_id: targetId,
+        sample_number: sampleNumber,
+        channel,
+      }, callbacks);
+    },
+
+    uploadSample(
+      targetId: number,
+      sampleNumber: number,
+      channel: number,
+      sampleRate: number,
+      samples: Int16Array,
+      callbacks: SampleUploadCallbacks,
+    ): Promise<void> {
+      return sampleTransfer(baseUrl, {
+        type: 'sample-upload',
+        target_id: targetId,
+        sample_number: sampleNumber,
+        channel,
+        sample_rate: sampleRate,
+        samples: Array.from(samples),
+      }, callbacks);
+    },
   };
+}
+
+/** Shared WebSocket transfer logic for download and upload. */
+function sampleTransfer(
+  baseUrl: string,
+  request: Record<string, unknown>,
+  callbacks: SampleDownloadCallbacks | SampleUploadCallbacks,
+): Promise<void> {
+  const wsUrl = baseUrl.replace(/^http/, 'ws') + '/sds/stream';
+
+  return new Promise<void>((resolve, reject) => {
+    const ws = new WebSocket(wsUrl);
+    const timeoutMs = 120_000;
+    const timeout = setTimeout(() => {
+      ws.close();
+      reject(new Error('sample transfer timed out'));
+    }, timeoutMs);
+
+    ws.addEventListener('open', () => {
+      ws.send(JSON.stringify(request));
+    });
+
+    ws.addEventListener('message', (event) => {
+      const msg = JSON.parse(String(event.data));
+
+      switch (msg.type) {
+        case 'sample-header':
+          if ('onHeader' in callbacks) {
+            callbacks.onHeader({
+              name: msg.name,
+              sampleRate: msg.sampleRate,
+              sampleCount: msg.sampleCount,
+            });
+          }
+          break;
+
+        case 'sample-data':
+          if ('onData' in callbacks) {
+            callbacks.onData(
+              new Int16Array(msg.samples),
+              { transferred: msg.transferred, total: msg.total },
+            );
+          }
+          break;
+
+        case 'upload-progress':
+          if ('onProgress' in callbacks) {
+            callbacks.onProgress({
+              transferred: msg.transferred,
+              total: msg.total,
+            });
+          }
+          break;
+
+        case 'sample-complete':
+          clearTimeout(timeout);
+          ws.close();
+          if ('onComplete' in callbacks) {
+            callbacks.onComplete(msg.totalSamples);
+          }
+          resolve();
+          break;
+
+        case 'upload-complete':
+          clearTimeout(timeout);
+          ws.close();
+          if ('onComplete' in callbacks) {
+            callbacks.onComplete(msg.totalSamples);
+          }
+          resolve();
+          break;
+
+        case 'sample-error':
+          clearTimeout(timeout);
+          ws.close();
+          reject(new Error(msg.error));
+          break;
+      }
+    });
+
+    ws.addEventListener('error', () => {
+      clearTimeout(timeout);
+      reject(new Error('WebSocket connection error'));
+    });
+  });
 }
