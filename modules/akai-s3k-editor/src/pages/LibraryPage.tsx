@@ -54,6 +54,8 @@ import { useDrumKitTransfer } from '@/hooks/useDrumKitTransfer';
 import { useInstrumentTransfer } from '@/hooks/useInstrumentTransfer';
 import { useEditorDialogs } from '@/hooks/useEditorDialogs';
 import { deleteStoredProgram } from '@/lib/program-storage';
+import { DiskBrowserPanel } from '@/components/library/DiskBrowserPanel';
+import { getActiveScsiUrl } from '@audiocontrol/editor-core';
 import { SendSampleDialog } from '@/components/library/SendSampleDialog';
 import { ReceiveSampleDialog } from '@/components/library/ReceiveSampleDialog';
 import { ExportProgramDialog } from '@/components/library/ExportProgramDialog';
@@ -451,27 +453,32 @@ export function LibraryPage(): JSX.Element {
           <h2 className="text-xl font-bold">Library</h2>
         </div>
       </div>
-      <div className="ac-page-content" style={{ height: 'calc(100vh - 8rem)' }}>
-        <PluginLibraryBrowser
-          plugin={s3kLibraryPlugin}
-          libraryHandle={libraryHandle}
-          categoryData={categoryData}
-          expandedPaths={expandedPaths}
-          selection={selection}
-          onSelectionChange={setSelection}
-          onToggleExpand={handleToggleExpand}
-          onRefresh={refreshLibrary}
-          onCreateFolder={handleCreateFolder}
-          onDelete={handleDelete}
-          onMove={handleMove}
-          onRename={handleRename}
-          onFileDrop={handleFileDrop}
-          deviceMemoryState={deviceMemoryState}
-          previewState={previewState}
-          loading={loading}
-          error={error ?? undefined}
-          connectionSlot={connectionSlot}
-        />
+      <div className="ac-page-content flex" style={{ height: 'calc(100vh - 8rem)' }}>
+        <div className="flex-1 min-w-0">
+          <PluginLibraryBrowser
+            plugin={s3kLibraryPlugin}
+            libraryHandle={libraryHandle}
+            categoryData={categoryData}
+            expandedPaths={expandedPaths}
+            selection={selection}
+            onSelectionChange={setSelection}
+            onToggleExpand={handleToggleExpand}
+            onRefresh={refreshLibrary}
+            onCreateFolder={handleCreateFolder}
+            onDelete={handleDelete}
+            onMove={handleMove}
+            onRename={handleRename}
+            onFileDrop={handleFileDrop}
+            deviceMemoryState={deviceMemoryState}
+            previewState={previewState}
+            loading={loading}
+            error={error ?? undefined}
+            connectionSlot={connectionSlot}
+          />
+        </div>
+        <div className="w-72 border-l border-neutral-700 overflow-y-auto">
+          <DiskBrowserPanel bridgeUrl={getActiveScsiUrl()} />
+        </div>
       </div>
 
       {/* Transfer Dialogs (all require device client + library root) */}
