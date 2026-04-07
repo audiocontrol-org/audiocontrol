@@ -15,6 +15,7 @@ export interface HomePageMidiStore {
   deviceId: number;
   setDeviceId: (id: number) => void;
   refresh: () => Promise<void>;
+  reconnect: () => Promise<void>;
   connect: (inputId: string, outputId: string) => Promise<void>;
   disconnect: () => Promise<void>;
 }
@@ -60,6 +61,7 @@ export function useHomePageStore(
     setSelectedOutputId,
     setDeviceId: midi.setDeviceId,
     refresh: midi.refresh,
+    reconnect: midi.reconnect,
     connect: async () => {
       if (selectedInputId && selectedOutputId) {
         await midi.connect(selectedInputId, selectedOutputId);

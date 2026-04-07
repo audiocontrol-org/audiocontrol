@@ -195,6 +195,21 @@
   color: var(--ac-color-text-primary);
 }
 
+.ac-link {
+  color: var(--ac-color-accent);
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+}
+
+.ac-link:hover {
+  text-decoration-color: var(--ac-color-accent);
+}
+
 .ac-radio {
   accent-color: var(--ac-color-accent);
 }

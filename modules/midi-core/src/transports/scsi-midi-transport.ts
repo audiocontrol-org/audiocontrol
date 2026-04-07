@@ -215,11 +215,26 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
   // -------------------------------------------------------------------------
 
   async function connect(): Promise<ScsiMidiBridgeStatus> {
-    const status = await fetchJson<ScsiMidiBridgeStatus>(bridgeUrl, '/status').catch((err) => {
+    // Use /health for the initial connection check — it returns immediately.
+    // /status can hang if it probes the sampler via SCSI and the device is slow
+    // or the SCSI bus is busy.
+    await fetchJson<{ ok: boolean }>(bridgeUrl, '/health').catch((err) => {
       throw new Error(
         `Failed to connect to SCSI bridge at ${bridgeUrl}: ${err instanceof Error ? err.message : String(err)}`
       );
     });
+    // Fetch status non-blocking for the return value — use a short timeout
+    const status = await Promise.race([
+      fetchJson<ScsiMidiBridgeStatus>(bridgeUrl, '/status'),
+      new Promise<ScsiMidiBridgeStatus>((resolve) =>
+        setTimeout(() => resolve({
+          version: 'unknown',
+          scsi2piVersion: 'unknown',
+          boardId: 0,
+          samplerReachable: true, // Optimistic — scan found it
+        }), 3000)
+      ),
+    ]);
 
     // Open WebSocket for incoming SysEx.
     // This may fail (e.g., mixed-content: HTTPS page → ws:// connection).

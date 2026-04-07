@@ -20,6 +20,8 @@ import {
   getConnectionMetrics,
   resetConnectionMetrics,
   handleGoogleDriveRedirect,
+  getLocalConnection,
+  setActiveConnection,
   type LibraryConnectionConfig,
   type LibraryBackend,
   type GoogleDriveCredentials,
@@ -113,7 +115,7 @@ export function useLibraryConnection(
     resetConnectionMetrics();
   }, []);
 
-  // On mount: handle Google Drive OAuth redirect
+  // On mount: try to restore previous connections
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
@@ -121,7 +123,18 @@ export function useLibraryConnection(
     if (config.googleDrive) {
       void handleGoogleDriveRedirect(storeConfig);
     }
-  }, [config.googleDrive, storeConfig]);
+
+    // Try to restore a previously selected local directory
+    if (hasLocalFS && activeBackend === 'none') {
+      const conn = getLocalConnection(storeConfig);
+      void conn.tryRestore().then((restored) => {
+        if (restored) {
+          setActiveConnection(conn);
+          useLibraryConnectionStore.getState().setConnected('local', conn.getRoot());
+        }
+      });
+    }
+  }, [config.googleDrive, storeConfig, hasLocalFS, activeBackend]);
 
   return {
     activeBackend,
