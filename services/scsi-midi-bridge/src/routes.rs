@@ -287,6 +287,11 @@ async fn handle_ws(
                                         &state, &parsed, dl_tx.clone(),
                                     ).await;
                                 }
+                                "sample-upload" => {
+                                    handle_ws_sample_upload(
+                                        &state, &parsed, dl_tx.clone(),
+                                    ).await;
+                                }
                                 _ => {}
                             }
                         }
@@ -426,6 +431,89 @@ async fn handle_ws_sample_download(
             Ok(total) => {
                 let msg = serde_json::json!({
                     "type": "sample-complete",
+                    "totalSamples": total,
+                });
+                let _ = tx_done.send(msg).await;
+            }
+            Err(e) => {
+                let msg = serde_json::json!({
+                    "type": "sample-error",
+                    "error": e,
+                });
+                let _ = tx_done.send(msg).await;
+            }
+        }
+    });
+}
+
+/// Handle a "sample-upload" WebSocket message.
+/// Expects all samples in the message body (suitable for samples that fit in a
+/// single WebSocket frame — large samples will need chunked streaming later).
+async fn handle_ws_sample_upload(
+    state: &Arc<AppState>,
+    parsed: &serde_json::Value,
+    tx: tokio::sync::mpsc::Sender<serde_json::Value>,
+) {
+    let target_id = parsed["target_id"].as_u64().unwrap_or(6) as u8;
+    let sample_number = parsed["sample_number"].as_u64().unwrap_or(0) as u16;
+    let channel = parsed["channel"].as_u64().unwrap_or(0) as u8;
+    let sample_rate = parsed["sample_rate"].as_u64().unwrap_or(44100) as u32;
+
+    let samples: Vec<i16> = parsed["samples"]
+        .as_array()
+        .map(|arr| arr.iter().filter_map(|v| v.as_i64().map(|n| n as i16)).collect())
+        .unwrap_or_default();
+
+    if samples.is_empty() {
+        let msg = serde_json::json!({"type": "sample-error", "error": "no samples provided"});
+        let _ = tx.send(msg).await;
+        return;
+    }
+
+    let state = Arc::clone(state);
+
+    tokio::spawn(async move {
+        let total = samples.len() as u32;
+        info!(target_id, sample_number, total, sample_rate, "starting sample upload task");
+
+        let s2p = state.s2p.lock().await;
+
+        let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel::<serde_json::Value>(128);
+        let tx_progress = tx.clone();
+        let tx_done = tx.clone();
+
+        let forward_handle = tokio::spawn(async move {
+            while let Some(msg) = progress_rx.recv().await {
+                let _ = tx_progress.send(msg).await;
+            }
+        });
+
+        let progress_sender = progress_tx;
+
+        let result = scsi_midi::upload_sample(
+            &*s2p,
+            target_id,
+            sample_number,
+            channel,
+            sample_rate,
+            &samples,
+            |sent, total| {
+                let msg = serde_json::json!({
+                    "type": "upload-progress",
+                    "transferred": sent,
+                    "total": total,
+                });
+                let _ = progress_sender.try_send(msg);
+            },
+        ).await;
+
+        drop(progress_sender);
+        let _ = forward_handle.await;
+
+        match result {
+            Ok(total) => {
+                let msg = serde_json::json!({
+                    "type": "upload-complete",
                     "totalSamples": total,
                 });
                 let _ = tx_done.send(msg).await;

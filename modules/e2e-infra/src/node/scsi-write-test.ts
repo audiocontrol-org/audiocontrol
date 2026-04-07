@@ -153,6 +153,7 @@ const TEST_NAME_TO_GROUP: Record<string, string> = {
   'write-sample-name': 'writes',
   'sds-round-trip': 'sds',
   'scsi-sds-download': 'scsi-sds-transfer',
+  'scsi-sds-round-trip': 'scsi-sds-transfer',
 };
 
 // ---------------------------------------------------------------------------

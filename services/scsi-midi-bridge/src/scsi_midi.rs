@@ -228,6 +228,185 @@ where
     Ok(samples_received)
 }
 
+// ==========================================================================
+// Upload: browser → device
+// ==========================================================================
+
+/// Upload a sample to the S3000XL via SDS over SCSI.
+///
+/// Calls `on_progress` after each packet with (samples_sent, total_samples).
+/// All SCSI commands execute locally on the Pi.
+pub async fn upload_sample<F>(
+    s2p: &S2pClient,
+    target_id: u8,
+    sample_number: u16,
+    channel: u8,
+    sample_rate: u32,
+    samples: &[i16],
+    mut on_progress: F,
+) -> Result<u32, String>
+where
+    F: FnMut(u32, u32),
+{
+    let total = samples.len() as u32;
+    info!(target_id, sample_number, total, sample_rate, "starting sample upload");
+
+    s2p.scsi_midi_enable(target_id).await?;
+    let result = upload_sample_inner(
+        s2p, target_id, sample_number, channel, sample_rate, samples, &mut on_progress,
+    ).await;
+    let _ = s2p.scsi_midi_disable(target_id).await;
+    result
+}
+
+async fn upload_sample_inner<F>(
+    s2p: &S2pClient,
+    target_id: u8,
+    sample_number: u16,
+    channel: u8,
+    sample_rate: u32,
+    samples: &[i16],
+    on_progress: &mut F,
+) -> Result<u32, String>
+where
+    F: FnMut(u32, u32),
+{
+    let total = samples.len() as u32;
+    let sn_lo = (sample_number & 0x7F) as u8;
+    let sn_hi = ((sample_number >> 7) & 0x7F) as u8;
+
+    // 1. Build and send SDS Dump Header
+    let period_ns = 1_000_000_000u32 / sample_rate;
+    let dump_header = vec![
+        0xF0, 0x7E, channel, 0x01,       // SDS Dump Header
+        sn_lo, sn_hi,                     // sample number (7-bit)
+        16,                               // bits per sample
+        (period_ns & 0x7F) as u8,         // period (3 bytes, 7-bit)
+        ((period_ns >> 7) & 0x7F) as u8,
+        ((period_ns >> 14) & 0x7F) as u8,
+        (total & 0x7F) as u8,            // sample length (3 bytes, 7-bit)
+        ((total >> 7) & 0x7F) as u8,
+        ((total >> 14) & 0x7F) as u8,
+        0, 0, 0,                          // loop start = 0
+        0, 0, 0,                          // loop end = 0
+        0,                                // loop type = off
+        0xF7,
+    ];
+
+    info!("sending SDS Dump Header");
+    s2p.scsi_midi_send(target_id, &dump_header).await?;
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+    // Wait for ACK
+    wait_for_ack(s2p, target_id, 30).await
+        .map_err(|e| format!("no ACK for dump header: {e}"))?;
+
+    // 2. Send data packets: 40 samples per packet
+    let samples_per_packet = 40usize;
+    let mut pkt_num: u8 = 0;
+    let mut offset = 0usize;
+
+    while offset < samples.len() {
+        let pkt = encode_sds_data_packet(channel, pkt_num, samples, offset, samples_per_packet);
+
+        s2p.scsi_midi_send(target_id, &pkt).await?;
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+
+        wait_for_ack(s2p, target_id, 15).await
+            .map_err(|e| format!("no ACK for packet {pkt_num}: {e}"))?;
+
+        offset += samples_per_packet;
+        pkt_num = (pkt_num + 1) & 0x7F;
+
+        let sent = (offset as u32).min(total);
+        on_progress(sent, total);
+
+        debug!(
+            pkt_num,
+            progress = format!("{}/{}", sent, total),
+            "SDS upload packet sent"
+        );
+    }
+
+    // Wait for device to commit the sample
+    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+
+    info!(total, "sample upload complete");
+    Ok(total)
+}
+
+/// Encode a 16-bit PCM sample into 3 SDS bytes (7-bit encoding, MSB first).
+fn encode_sds_sample(sample: i16) -> [u8; 3] {
+    let raw = sample as u16;
+    [
+        ((raw >> 9) & 0x7F) as u8,
+        ((raw >> 2) & 0x7F) as u8,
+        ((raw << 5) & 0x60) as u8,
+    ]
+}
+
+/// Build an SDS Data Packet (F0 7E ch 02 pp [120 bytes] checksum F7).
+fn encode_sds_data_packet(
+    channel: u8,
+    pkt_num: u8,
+    samples: &[i16],
+    offset: usize,
+    samples_per_packet: usize,
+) -> Vec<u8> {
+    let mut pkt = Vec::with_capacity(127);
+    pkt.push(0xF0);
+    pkt.push(0x7E);
+    pkt.push(channel);
+    pkt.push(0x02); // Data Packet
+    pkt.push(pkt_num & 0x7F);
+
+    let mut checksum = 0x7Eu8 ^ channel ^ 0x02u8 ^ (pkt_num & 0x7F);
+
+    for i in 0..samples_per_packet {
+        let s = if offset + i < samples.len() {
+            samples[offset + i]
+        } else {
+            0 // pad with silence
+        };
+        let enc = encode_sds_sample(s);
+        checksum ^= enc[0];
+        checksum ^= enc[1];
+        checksum ^= enc[2];
+        pkt.extend_from_slice(&enc);
+    }
+
+    pkt.push(checksum & 0x7F);
+    pkt.push(0xF7);
+    pkt
+}
+
+/// Poll+read until we get an ACK (F0 7E ch 7F pp F7).
+/// Returns Ok on ACK, Err on timeout or NAK.
+async fn wait_for_ack(s2p: &S2pClient, target_id: u8, max_retries: u32) -> Result<(), String> {
+    for _ in 0..max_retries {
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        let pending = s2p.scsi_midi_poll(target_id).await?;
+        if pending == 0 {
+            continue;
+        }
+        let data = s2p.scsi_midi_read(target_id, pending).await?;
+        let (messages, _) = extract_sysex_messages(&data);
+        for msg in &messages {
+            if msg.len() >= 6 && msg[1] == 0x7E && msg[3] == 0x7F {
+                return Ok(()); // ACK
+            }
+            if msg.len() >= 6 && msg[1] == 0x7E && msg[3] == 0x7E {
+                return Err("NAK received".to_string());
+            }
+        }
+    }
+    Err("timeout waiting for ACK".to_string())
+}
+
+// ==========================================================================
+// Shared helpers
+// ==========================================================================
+
 /// Decode 16-bit PCM samples from an SDS Data Packet.
 /// SDS uses 7-bit encoding: each 16-bit sample is 3 bytes (MSB first).
 /// raw = (p[0] << 9) | (p[1] << 2) | (p[2] >> 5), interpreted as i16.
@@ -500,5 +679,43 @@ mod tests {
         // 100000 = 0x000186A0 → LE bytes 0xA0 0x86 0x01 0x00
         let nibbles2 = [0x00, 0x0A, 0x06, 0x08, 0x01, 0x00, 0x00, 0x00];
         assert_eq!(decode_nibble_u32(&nibbles2, 0), 100000);
+    }
+
+    #[test]
+    fn test_encode_decode_sds_round_trip() {
+        // Encode some samples, build a packet, decode it, and verify round-trip
+        let original: Vec<i16> = vec![0, 32767, -32768, 1234, -5678];
+        let pkt = encode_sds_data_packet(0, 0, &original, 0, 40);
+        let decoded = decode_sds_packet(&pkt);
+
+        // First 5 decoded samples should match the originals
+        for i in 0..original.len() {
+            assert_eq!(
+                decoded[i], original[i],
+                "sample {} mismatch: encoded {} decoded {}",
+                i, original[i], decoded[i]
+            );
+        }
+        // Remaining should be zero-padded
+        for i in original.len()..decoded.len() {
+            assert_eq!(decoded[i], 0, "pad sample {} should be 0", i);
+        }
+    }
+
+    #[test]
+    fn test_encode_sds_sample_extremes() {
+        // Silence
+        let enc = encode_sds_sample(0);
+        assert_eq!(enc, [0, 0, 0]);
+
+        // Max positive
+        let enc = encode_sds_sample(32767);
+        let decoded = ((enc[0] as u16) << 9) | ((enc[1] as u16) << 2) | ((enc[2] as u16) >> 5);
+        assert_eq!(decoded as i16, 32767);
+
+        // Max negative
+        let enc = encode_sds_sample(-32768);
+        let decoded = ((enc[0] as u16) << 9) | ((enc[1] as u16) << 2) | ((enc[2] as u16) >> 5);
+        assert_eq!(decoded as i16, -32768);
     }
 }
