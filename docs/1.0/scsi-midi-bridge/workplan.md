@@ -98,7 +98,7 @@ Request/response reads work (all Akai SysEx read commands). Autonomous device-in
 
 **Workaround:** Sample waveform data download uses the existing `sampler-export` disk image extractor. The S3000XL's SCSI disks are served as `.hds` images by s2p on the Pi filesystem, and `sampler-export` can read them directly. This is also how MESA II transfers sample data (confirmed via binary analysis).
 
-### Phase 6: SDS Sample Transfer via SCSI_EXEC — PLANNING
+### Phase 6: SDS Sample Transfer via SCSI_EXEC — COMPLETE
 
 **Breakthrough (issue #141):** SDS sample download over SCSI works when using `SCSI_EXEC` (op 210) with raw vendor-specific CDBs instead of the `MIDI_*` abstraction layer (ops 200-203). Working C++ implementation at `audiocontrol-org/mesa-plug-harness`.
 
@@ -133,18 +133,27 @@ Upload (browser → device):
 - Transfer progress (samples transferred / total, elapsed / remaining)
 - That transfer is active and not stuck (continuous progress updates)
 
-**Implementation plan:**
+**Implementation:**
 
-6.1 **SCSI MIDI transport in bridge S2pClient** — Add `scsi_midi_enable/disable/send/poll/read` methods that build CDBs and call `execute_scsi()`. Use a persistent TCP connection to s2p for the duration of a transfer.
+6.1 **SCSI MIDI transport in bridge S2pClient** — DONE
+- `s2p_client.rs`: `scsi_midi_enable/disable/send/poll/read` methods using `execute_scsi()` with raw CDBs
+- Akai character encoding table (0-66 → ASCII), nibble encode/decode helpers
 
-6.2 **WebSocket sample transfer handler** — Extend the bidirectional WS handler to accept `sample-request` and `sample-upload` messages. The handler runs the SDS dance locally, streaming PCM chunks and progress updates to the WebSocket.
+6.2 **WebSocket sample transfer handlers** — DONE
+- `scsi_midi.rs`: `download_sample()` — RSDATA header fetch, RSPACK trigger, poll/read/decode/ACK loop, streams decoded PCM via callback
+- `scsi_midi.rs`: `upload_sample()` — SDS Dump Header + Data Packet encoding (40 samples/packet), per-packet ACK handshake, 3s device commit wait
+- `routes.rs`: WebSocket handlers for `sample-download` and `sample-upload` messages with mpsc channel forwarding to WebSocket
 
-6.3 **TypeScript client** — Add `downloadSample()` and `uploadSample()` to `ScsiDiskClient` with streaming callbacks for header, progress, data chunks, and completion.
+6.3 **TypeScript client** — DEFERRED (browser integration not yet needed; e2e tests use WebSocket directly)
 
-**Files to modify:**
-- `services/scsi-midi-bridge/src/s2p_client.rs` — SCSI MIDI transport + persistent connection
-- `services/scsi-midi-bridge/src/routes.rs` — WS sample transfer handler
-- `modules/midi-core/src/transports/scsi-disk-client.ts` — downloadSample/uploadSample
+**Key bugs fixed during implementation:**
+- Akai char table was off by 1 (space=10, letters start at 11, not 10)
+- RSDATA nibble offsets: name at offset 6 (not 0), SLNGTH at 52 (not 24), SSRATE at 276
+- RSPACK count encoding: 7-bit per byte (`cnt >> 7`, not mixed bit-shifts)
+
+**E2E tests:** `make test-scsi-sds-transfer` — hardware-verified download + upload round-trip (256-sample sine wave upload → download → verify count)
+
+**Build/deploy:** `make deploy-scsi-bridge` — cross-compile via Docker volume mount, deploy to Pi, deterministic daemon shutdown with exponential backoff. Bridge `/status` includes `buildId` (git hash + timestamp) for deployment verification.
 
 **Reference implementation:** `~/work/scsi2pi-work/mesa-plug-harness/src/s3k_client.cpp`
 
@@ -181,10 +190,13 @@ This phase is deferred and will be planned separately once Phases 2-6 are valida
 | 21 | Implement `ScsiMidiTransport.onSysEx()` | 5 | DONE (WebSocket + polling fallback) |
 | 22 | Handle SCSI target-mode receive on Pi | 5 | RESOLVED via SCSI_EXEC in Phase 6 |
 | 23 | E2E test: receive dump via SCSI bridge | 5 | RESOLVED via SCSI_EXEC in Phase 6 |
-| 24 | Add SCSI MIDI transport methods (raw CDBs via SCSI_EXEC) | 6.1 | PLANNING |
-| 25 | WebSocket streaming sample download handler | 6.2 | PLANNING |
-| 26 | WebSocket streaming sample upload handler | 6.2 | PLANNING |
-| 27 | TypeScript downloadSample/uploadSample with progress | 6.3 | PLANNING |
+| 24 | Add SCSI MIDI transport methods (raw CDBs via SCSI_EXEC) | 6.1 | DONE |
+| 25 | WebSocket streaming sample download handler | 6.2 | DONE |
+| 26 | WebSocket streaming sample upload handler | 6.2 | DONE |
+| 27 | TypeScript downloadSample/uploadSample with progress | 6.3 | DEFERRED |
+| 28 | E2E test: SDS download + upload round-trip | 6 | DONE |
+| 29 | Deploy target (`make deploy-scsi-bridge`) | 6 | DONE |
+| 30 | Build ID in bridge `/status` response | 6 | DONE |
 
 ## Known Limitations
 
