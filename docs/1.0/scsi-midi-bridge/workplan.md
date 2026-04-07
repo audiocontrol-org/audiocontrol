@@ -160,11 +160,9 @@ Upload (browser → device):
 
 **Reference implementation:** `~/work/scsi2pi-work/mesa-plug-harness/src/s3k_client.cpp`
 
-### Phase 7: Akai Extended Protocol (Deferred)
+### Phase 7: Akai Extended Protocol — NOT NEEDED
 
-Extend the bridge for Akai-specific SysEx messages beyond SDS: programs, loops, keygroups, and full program transfer including loop points. This phase uses the Akai "S3000" protocol (proprietary superset of SDS).
-
-This phase is deferred and will be planned separately once Phases 2-6 are validated.
+Originally planned to add Akai-proprietary SysEx for program/keygroup/loop transfer over SCSI. This is unnecessary — `ScsiMidiTransport` (Phase 2.2) implements the `MidiIO` interface, so the existing S3000XL client already sends all Akai SysEx commands (RPDATA, RSDATA, RKDATA, WPDATA, etc.) over SCSI transparently. All 248 writable fields are hardware-validated (Phase 4). Sample waveform data transfers via SDS over SCSI_EXEC (Phase 6). No additional protocol work is required.
 
 ## Task Breakdown
 
