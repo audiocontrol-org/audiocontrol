@@ -92,6 +92,18 @@ Both the Roland S-330/S-550 editor and the Akai S3000XL editor have library page
 - Mobile/responsive layout
 - Sample rate conversion
 - Automatic sample dependency resolution
+- Akai disk browsing and disk object transfer via PiSCSI (see [Future Integration](#future-integration))
+
+## Future Integration
+
+A parallel effort on branch `feature/scsi-disk-browser` is implementing Akai-formatted disk browsing and object transfer between PiSCSI and the local library. That work depends on S3K SCSI protocol and disk format details, so it is out of scope for this effort.
+
+However, once the disk browser work is complete, the library UX will need to integrate:
+- Browsing Akai-formatted disk images (volumes, partitions, programs, samples) from the library page
+- Transferring disk objects to/from the local library with format translation (Akai disk format to common-area YAML/WAV)
+- Presenting disk contents alongside device memory and library storage in the three-column layout
+
+The `PluginLibraryBrowser` alignment done here should make that integration straightforward — the disk browser can be modeled as another data source feeding into the existing plugin architecture.
 
 ## Dependencies
 
