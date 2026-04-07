@@ -135,7 +135,8 @@ export function useDiskBrowser(bridgeUrl: string | null) {
       const header = parseSampleHeaderFromDisk(fileData);
       const pcm = extractSampleAudio(fileData, header);
       const wav = akaiSampleToWav(header, pcm);
-      return new Blob([wav], { type: 'audio/wav' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      return new Blob([wav as any], { type: 'audio/wav' });
     },
     [],
   );
