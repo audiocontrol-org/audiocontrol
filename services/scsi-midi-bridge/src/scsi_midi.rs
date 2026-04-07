@@ -116,6 +116,11 @@ where
         .find(|m| m.len() > 5 && m[0] == 0xF0 && m[1] == 0x47 && m[3] == 0x0B && m[4] == 0x48)
         .ok_or_else(|| "no RSDATA response received".to_string())?;
 
+    debug!(
+        rsdata_len = rsdata_resp.len(),
+        rsdata_hex = %rsdata_resp.iter().map(|b| format!("{:02X}", b)).collect::<Vec<_>>().join(" "),
+        "raw RSDATA response"
+    );
     let header = parse_rsdata_header(rsdata_resp)?;
     let total_samples = header.sample_count;
     info!(
@@ -131,15 +136,17 @@ where
     }
 
     // 3. Send RSPACK to request sample data transfer
-    let sample_count_bytes = total_samples.to_le_bytes();
+    // Count uses 7-bit encoding per byte (same as C++ reference):
+    //   byte0 = cnt & 0x7F, byte1 = (cnt >> 7) & 0x7F, etc.
+    let cnt = total_samples;
     let rspack = vec![
         0xF0, 0x47, channel, 0x0C, 0x48,
         sn_lo, sn_hi,
-        0x00, 0x00, 0x00, 0x00, // offset = 0 (4 nibbles, 7-bit)
-        (sample_count_bytes[0] & 0x7F),
-        ((sample_count_bytes[0] >> 7) | (sample_count_bytes[1] << 1)) & 0x7F,
-        ((sample_count_bytes[1] >> 6) | (sample_count_bytes[2] << 2)) & 0x7F,
-        ((sample_count_bytes[2] >> 5) | (sample_count_bytes[3] << 3)) & 0x7F,
+        0x00, 0x00, 0x00, 0x00, // offset = 0 (4 bytes, 7-bit)
+        (cnt & 0x7F) as u8,
+        ((cnt >> 7) & 0x7F) as u8,
+        ((cnt >> 14) & 0x7F) as u8,
+        ((cnt >> 21) & 0x7F) as u8,
         0x01, // SDS format
         0x00, // reserved
         0xF7,
@@ -245,7 +252,46 @@ fn decode_sds_packet(msg: &[u8]) -> Vec<i16> {
     samples
 }
 
+/// Decode a nibble-encoded u16 (little-endian) from 4 nibbles.
+fn decode_nibble_u16(nibbles: &[u8], offset: usize) -> u16 {
+    let b0 = decode_nibble_byte(nibbles[offset], nibbles[offset + 1]) as u16;
+    let b1 = decode_nibble_byte(nibbles[offset + 2], nibbles[offset + 3]) as u16;
+    b0 | (b1 << 8)
+}
+
+/// Decode a nibble-encoded u32 (little-endian) from 8 nibbles.
+fn decode_nibble_u32(nibbles: &[u8], offset: usize) -> u32 {
+    let b0 = decode_nibble_byte(nibbles[offset], nibbles[offset + 1]) as u32;
+    let b1 = decode_nibble_byte(nibbles[offset + 2], nibbles[offset + 3]) as u32;
+    let b2 = decode_nibble_byte(nibbles[offset + 4], nibbles[offset + 5]) as u32;
+    let b3 = decode_nibble_byte(nibbles[offset + 6], nibbles[offset + 7]) as u32;
+    b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)
+}
+
 /// Parse an RSDATA response to extract sample name, length, and rate.
+///
+/// Nibble layout (from Akai S2800/S3000 SysEx specification):
+///   Offset  Field     Size (bytes → nibbles)
+///   0       SHIDENT   1 → 2
+///   2       SBANDW    1 → 2
+///   4       SPITCH    1 → 2
+///   6       SHNAME    12 → 24
+///   30      SSRVLD    1 → 2
+///   32      SLOOPS    1 → 2
+///   34      SALOOP    1 → 2
+///   36      SHLOOP    1 → 2
+///   38      SPTYPE    1 → 2
+///   40      STUNO     2 → 4
+///   44      SLOCAT    4 → 8
+///   52      SLNGTH    4 → 8   ← sample count
+///   60      SSTART    4 → 8
+///   68      SMPEND    4 → 8
+///   76      loops     48 → 96  (4 × 12 bytes)
+///   172     SLXY      48 → 96  (4 × 12 bytes)
+///   268     SSPARE    1 → 2
+///   270     SWCOMM    1 → 2
+///   272     SSPAIR    2 → 4
+///   276     SSRATE    2 → 4   ← sample rate
 fn parse_rsdata_header(msg: &[u8]) -> Result<SampleDownloadHeader, String> {
     // RSDATA response: F0 47 ch 0B 48 sn_lo sn_hi [nibble-encoded header...] F7
     if msg.len() < 10 {
@@ -255,33 +301,32 @@ fn parse_rsdata_header(msg: &[u8]) -> Result<SampleDownloadHeader, String> {
     // Nibble-encoded payload starts after F0 47 ch 0B 48 sn_lo sn_hi (index 7)
     let nibbles = &msg[7..msg.len() - 1]; // exclude trailing F7
 
-    // Name: first 12 bytes = 24 nibbles (Akai character encoding)
+    // SHNAME: 12 bytes = 24 nibbles starting at nibble offset 6
+    // (after SHIDENT:2 + SBANDW:2 + SPITCH:2)
+    let name_start = 6;
     let mut name = String::new();
-    let mut ni = 0;
-    for _ in 0..12 {
-        if ni + 1 < nibbles.len() {
+    if name_start + 24 <= nibbles.len() {
+        for i in 0..12 {
+            let ni = name_start + i * 2;
             let byte = decode_nibble_byte(nibbles[ni], nibbles[ni + 1]);
             name.push(akai_char(byte));
-            ni += 2;
         }
     }
     let name = name.trim_end().to_string();
 
-    // Sample length: 4 bytes = 8 nibbles starting at nibble offset 24
-    // (after the 12-byte name)
-    let sample_count = if ni + 8 <= nibbles.len() {
-        let b0 = decode_nibble_byte(nibbles[ni], nibbles[ni + 1]) as u32;
-        let b1 = decode_nibble_byte(nibbles[ni + 2], nibbles[ni + 3]) as u32;
-        let b2 = decode_nibble_byte(nibbles[ni + 4], nibbles[ni + 5]) as u32;
-        let b3 = decode_nibble_byte(nibbles[ni + 6], nibbles[ni + 7]) as u32;
-        b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)
+    // SLNGTH: 4 bytes = 8 nibbles at offset 52
+    let sample_count = if 52 + 8 <= nibbles.len() {
+        decode_nibble_u32(nibbles, 52)
     } else {
         0
     };
 
-    // Sample rate: hardcode to 44100 for first pass. The SSRATE field is
-    // deep in the header (~140 nibbles in) and can be parsed later.
-    let sample_rate = 44100;
+    // SSRATE: 2 bytes = 4 nibbles at offset 276
+    let sample_rate = if 276 + 4 <= nibbles.len() {
+        decode_nibble_u16(nibbles, 276) as u32
+    } else {
+        44100 // fallback if response is truncated
+    };
 
     Ok(SampleDownloadHeader {
         name,
@@ -377,5 +422,80 @@ mod tests {
         // 3 data bytes = 1 sample: (0x40 << 9) | (0x00 << 2) | (0x00 >> 5) = 0x8000
         assert_eq!(samples.len(), 1);
         assert_eq!(samples[0], i16::MIN); // 0x8000 as i16 = -32768
+    }
+
+    #[test]
+    fn test_parse_rsdata_header() {
+        // Build a synthetic RSDATA response with known values.
+        // Format: F0 47 ch 0B 48 sn_lo sn_hi [nibblized header...] F7
+        //
+        // Nibble layout:
+        //   0-1: SHIDENT (1 byte)
+        //   2-3: SBANDW (1 byte)
+        //   4-5: SPITCH (1 byte)
+        //   6-29: SHNAME (12 bytes)
+        //   30-51: various fields (SSRVLD..SLOCAT = 11 bytes)
+        //   52-59: SLNGTH (4 bytes) = sample count
+        //   60-275: other fields
+        //   276-279: SSRATE (2 bytes) = sample rate
+
+        // We need at least 280 nibble bytes after the SysEx header
+        let mut msg = vec![0xF0, 0x47, 0x00, 0x0B, 0x48, 0x00, 0x00]; // header + sn
+        let mut nibbles = vec![0u8; 280];
+
+        // SHIDENT at 0: don't care
+        // SBANDW at 2: don't care
+        // SPITCH at 4: don't care
+
+        // SHNAME at 6: encode "SCSITEST    " (12 chars)
+        // Akai encoding: S=28, C=12, I=18, T=29, E=14
+        // 'S' = 28 -> nibbles 0x0C, 0x01 (low=0xC, high=0x1 → 0x1C = 28)
+        let name_akai: [u8; 12] = [28, 12, 28, 18, 29, 14, 28, 29, 40, 40, 40, 40];
+        for (i, &ch) in name_akai.iter().enumerate() {
+            nibbles[6 + i * 2] = ch & 0x0F;
+            nibbles[6 + i * 2 + 1] = (ch >> 4) & 0x0F;
+        }
+
+        // SLNGTH at 52: encode 256 (0x00000100) as 4 LE bytes nibblized
+        // byte 0 = 0x00 → nibbles 0x00, 0x00
+        // byte 1 = 0x01 → nibbles 0x01, 0x00
+        // byte 2 = 0x00 → nibbles 0x00, 0x00
+        // byte 3 = 0x00 → nibbles 0x00, 0x00
+        nibbles[52] = 0x00; nibbles[53] = 0x00;
+        nibbles[54] = 0x01; nibbles[55] = 0x00;
+        nibbles[56] = 0x00; nibbles[57] = 0x00;
+        nibbles[58] = 0x00; nibbles[59] = 0x00;
+
+        // SSRATE at 276: encode 44100 (0xAC44) as 2 LE bytes nibblized
+        // byte 0 = 0x44 → nibbles 0x04, 0x04
+        // byte 1 = 0xAC → nibbles 0x0C, 0x0A
+        nibbles[276] = 0x04; nibbles[277] = 0x04;
+        nibbles[278] = 0x0C; nibbles[279] = 0x0A;
+
+        msg.extend_from_slice(&nibbles);
+        msg.push(0xF7);
+
+        let header = parse_rsdata_header(&msg).unwrap();
+        assert_eq!(header.name, "SCSITEST");
+        assert_eq!(header.sample_count, 256);
+        assert_eq!(header.sample_rate, 44100);
+    }
+
+    #[test]
+    fn test_decode_nibble_u16() {
+        // 44100 = 0xAC44 → LE bytes 0x44, 0xAC → nibbles 0x04 0x04 0x0C 0x0A
+        let nibbles = [0x04, 0x04, 0x0C, 0x0A];
+        assert_eq!(decode_nibble_u16(&nibbles, 0), 44100);
+    }
+
+    #[test]
+    fn test_decode_nibble_u32() {
+        // 256 = 0x00000100 → LE bytes 0x00 0x01 0x00 0x00
+        let nibbles = [0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00];
+        assert_eq!(decode_nibble_u32(&nibbles, 0), 256);
+
+        // 100000 = 0x000186A0 → LE bytes 0xA0 0x86 0x01 0x00
+        let nibbles2 = [0x00, 0x0A, 0x06, 0x08, 0x01, 0x00, 0x00, 0x00];
+        assert_eq!(decode_nibble_u32(&nibbles2, 0), 100000);
     }
 }

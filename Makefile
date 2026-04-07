@@ -237,6 +237,21 @@ test-e2e-s3k-scsi: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
 		./scripts/run-scsi-midi-e2e.sh $(ARGS)"
 
 # ---------------------------------------------------------------------------
+# Deploy: build and deploy SCSI bridge (and s2p) to Pi
+# ---------------------------------------------------------------------------
+
+# Build ARM64 binaries, deploy to Pi, restart daemons, validate.
+# Usage: make deploy-scsi-bridge
+# Usage: make deploy-scsi-bridge SCSI_PI_HOST=10.0.0.57
+.PHONY: deploy-scsi-bridge
+deploy-scsi-bridge: check-scsi-bridge
+	SCSI_PI_HOST='$(SCSI_PI_HOST)' \
+	SCSI_PI_USER='$(SCSI_PI_USER)' \
+	S2P_BIN='$(S2P_BIN)' \
+	SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+	$(MODULES_DIR)/e2e-infra/scripts/deploy-scsi-bridge.sh
+
+# ---------------------------------------------------------------------------
 # Dev Environment: S3K with SCSI bridge
 # ---------------------------------------------------------------------------
 
