@@ -293,6 +293,29 @@ export async function loadDrumKitSource(
 }
 
 /**
+ * Save updated source audio back to a v2 drum kit bundle.
+ * Overwrites the existing source WAV file.
+ */
+export async function saveDrumKitSource(
+  directoryHandle: StorageDirectoryHandle,
+  kitName: string,
+  sourceFilename: string,
+  samples: Int16Array,
+  sampleRate: number,
+  path: string[] = []
+): Promise<void> {
+  const kitDir = await getNestedDirectory(directoryHandle, [
+    'library', 's330', 'drum-kits', ...path, kitName
+  ]);
+
+  const wavBlob = createWavBlobFromSamples(samples, sampleRate);
+  const wavHandle = await kitDir.getFileHandle(sourceFilename, { create: true });
+  const writable = await wavHandle.createWritable();
+  await writable.write(await wavBlob.arrayBuffer());
+  await writable.close();
+}
+
+/**
  * Update the slice definitions and optionally kit config in an existing v2 drum kit.
  */
 export async function updateDrumKitSlices(
