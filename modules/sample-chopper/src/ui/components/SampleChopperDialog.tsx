@@ -99,6 +99,8 @@ export interface SampleChopperDialogProps {
     playbackMode: 'one-shot' | 'gate';
     muteGroups: number[];
   };
+  /** Callback to open the sample editor on the source audio */
+  onOpenSampleEditor?: () => void;
 }
 
 export function SampleChopperDialog({
@@ -116,6 +118,7 @@ export function SampleChopperDialog({
   onSave,
   initialTriggers,
   initialPlaybackConfig,
+  onOpenSampleEditor,
 }: SampleChopperDialogProps): JSX.Element {
   const chopper = useSampleChopper({
     samples,
@@ -779,6 +782,28 @@ export function SampleChopperDialog({
                   )}
                 >
                   {isSaving ? 'Saving...' : 'Save'}
+                </button>
+              )}
+              {!onSave && renderOutputConfig && (
+                <button
+                  onClick={handleConfirm}
+                  disabled={!chopper.currentSliceResult || chopper.currentSliceResult.slices.length === 0}
+                  className={cn(
+                    'ac-btn ac-btn-primary',
+                    (!chopper.currentSliceResult || chopper.currentSliceResult.slices.length === 0) &&
+                      'opacity-50 cursor-not-allowed'
+                  )}
+                >
+                  Create Drum Kit
+                </button>
+              )}
+              {onOpenSampleEditor && (
+                <button
+                  onClick={onOpenSampleEditor}
+                  className="ac-btn ac-btn-ghost"
+                  data-testid="chopper-edit-sample-button"
+                >
+                  Edit Sample
                 </button>
               )}
               <button onClick={handleClose} className="ac-btn ac-btn-ghost">

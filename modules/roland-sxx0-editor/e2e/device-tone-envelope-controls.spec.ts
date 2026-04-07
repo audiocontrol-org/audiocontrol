@@ -353,4 +353,137 @@ test.describe('Tone Envelope Controls', () => {
     expect(deviceTone!.tvf.enabled).toBe(true);
     expect(deviceTone!.tvf.envelope.sustainPoint).toBe(newValue);
   });
+
+  // -------------------------------------------------------------------------
+  // TVA Envelope Level Edit (3.2.8)
+  // -------------------------------------------------------------------------
+
+  test('TVA envelope level change syncs to device', async ({ page }) => {
+    const tvaSection = page.locator(
+      '[data-testid="tone-detail"] .card:has(h4:has-text("TVA"))',
+    );
+    await expect(tvaSection).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Level inputs are in the second data row of the envelope table
+    const levelsRow = tvaSection.locator('table tbody tr').nth(1);
+    const levelInput = levelsRow.locator('input[type="number"]').nth(1); // Point 2
+
+    await expect(levelInput).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalLevel = Number(await levelInput.inputValue());
+    const newLevel = originalLevel === 90 ? 60 : 90;
+    console.log(`TVA level[1]: original=${originalLevel}, setting to=${newLevel}`);
+
+    await levelInput.fill(String(newLevel));
+    await levelInput.blur();
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    console.log(`TVA envelope levels from device: ${JSON.stringify(deviceTone!.tva.envelope.levels)}`);
+    expect(
+      Math.abs(deviceTone!.tva.envelope.levels[1] - newLevel),
+      `Expected TVA level[1] ~${newLevel}, got ${deviceTone!.tva.envelope.levels[1]}`,
+    ).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // TVF Envelope Level Edit (3.2.9)
+  // -------------------------------------------------------------------------
+
+  test('TVF envelope level change syncs to device', async ({ page }) => {
+    // Ensure TVF is enabled so envelope inputs are interactive
+    const tvfCheckbox = page.locator('[data-testid="tone-tvf-enabled"]');
+    await expect(tvfCheckbox).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const isEnabled = await tvfCheckbox.isChecked();
+    if (!isEnabled) {
+      await tvfCheckbox.click();
+      await page.waitForTimeout(WRITE_FLUSH_MS);
+    }
+
+    const tvfSection = page.locator(
+      '[data-testid="tone-detail"] .card:has(h4:has-text("TVF"))',
+    );
+    await expect(tvfSection).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Level inputs are in the second data row of the envelope table
+    const levelsRow = tvfSection.locator('table tbody tr').nth(1);
+    const levelInput = levelsRow.locator('input[type="number"]').nth(1); // Point 2
+
+    await expect(levelInput).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await expect(levelInput).toBeEnabled();
+
+    const originalLevel = Number(await levelInput.inputValue());
+    const newLevel = originalLevel === 85 ? 55 : 85;
+    console.log(`TVF level[1]: original=${originalLevel}, setting to=${newLevel}`);
+
+    await levelInput.fill(String(newLevel));
+    await levelInput.blur();
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    expect(deviceTone!.tvf.enabled).toBe(true);
+    console.log(`TVF envelope levels from device: ${JSON.stringify(deviceTone!.tvf.envelope.levels)}`);
+    expect(
+      Math.abs(deviceTone!.tvf.envelope.levels[1] - newLevel),
+      `Expected TVF level[1] ~${newLevel}, got ${deviceTone!.tvf.envelope.levels[1]}`,
+    ).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
+  // TVF Envelope End Point (3.2.13)
+  // -------------------------------------------------------------------------
+
+  test('TVF envelope end point change syncs to device', async ({ page }) => {
+    // Ensure TVF is enabled so envelope controls are interactive
+    const tvfCheckbox = page.locator('[data-testid="tone-tvf-enabled"]');
+    await expect(tvfCheckbox).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const isEnabled = await tvfCheckbox.isChecked();
+    if (!isEnabled) {
+      await tvfCheckbox.click();
+      await page.waitForTimeout(WRITE_FLUSH_MS);
+    }
+
+    const tvfSection = page.locator(
+      '[data-testid="tone-detail"] .card:has(h4:has-text("TVF"))',
+    );
+    await expect(tvfSection).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // TVF section selects: [0]=EG Polarity, [1]=Level Curve, [2]=Sustain Point, [3]=End Point
+    const endPointSelect = tvfSection.locator('select').nth(3);
+    await expect(endPointSelect).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await expect(endPointSelect).toBeEnabled();
+
+    // Read sustain point first — end point options <= sustainPoint are disabled
+    const sustainSelect = tvfSection.locator('select').nth(2);
+    const sustainValue = Number(await sustainSelect.inputValue());
+
+    const originalValue = Number(await endPointSelect.inputValue());
+    console.log(`TVF end point: original=${originalValue}, sustain=${sustainValue}`);
+
+    // Pick a valid end point > sustainPoint and different from current
+    // End point options are 1-8, disabled when <= sustainPoint
+    // Try sustainPoint+2 first, fall back to sustainPoint+1 if that matches original
+    let candidate = Math.min(sustainValue + 2, 8);
+    if (candidate === originalValue) {
+      candidate = Math.min(sustainValue + 1, 8);
+    }
+    if (candidate === originalValue || candidate <= sustainValue) {
+      // Last resort: try 7 (should always be valid if sustain < 7)
+      candidate = Math.min(7, 8);
+    }
+    const clampedValue = candidate;
+    console.log(`TVF end point: setting to ${clampedValue}`);
+
+    await endPointSelect.selectOption({ value: String(clampedValue) });
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    expect(deviceTone!.tvf.enabled).toBe(true);
+    expect(deviceTone!.tvf.envelope.endPoint).toBe(clampedValue);
+  });
 });

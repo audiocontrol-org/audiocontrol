@@ -45,7 +45,7 @@ import {
   listSets, listDrumKits, listIndividualTones, listIndividualPatches,
   listIndividualTonesTree, listIndividualPatchesTree, listDrumKitsTree,
   listCommonSamplesTree,
-  loadDrumKitBundle, loadDrumKitSource, updateDrumKitSlices,
+  loadDrumKitBundle, loadDrumKitSource, saveDrumKitSource, updateDrumKitSlices,
   loadIndividualTone, loadIndividualToneWavSamples,
   type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo, type LibraryTreeNode,
   type StorageDirectoryHandle,
@@ -125,6 +125,8 @@ export function LibraryPage() {
   const [chopperDialog, setChopperDialog] = useState<{
     open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
     origin: { name: string; type: string; path?: string[] } | null;
+    initialSlices?: InitialSliceDefinition[];
+    initialLabels?: string;
   } | null>(null);
   const [sampleEditorDialog, setSampleEditorDialog] = useState<{
     open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
@@ -350,6 +352,30 @@ export function LibraryPage() {
     } finally { setLoading(false); }
   }, [libraryHandle, selection, selectedDrumKitBundle, setLoading, setError]);
 
+  // Open the sample editor on a drum kit's source audio
+  const handleOpenDrumKitInSampleEditor = useCallback(async () => {
+    if (!libraryHandle || !selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) return;
+    const bundle = selectedDrumKitBundle;
+    if (!bundle.source) return;
+
+    setLoading(true, 'Loading source audio...');
+    try {
+      const sourceWav = await loadDrumKitSource(libraryHandle, selection.name!, bundle.source, selection.path);
+      setSampleEditorDialog({
+        open: true,
+        samples: sourceWav.samples,
+        sampleRate: sourceWav.sampleRate,
+        sampleName: bundle.name || selection.name!,
+        origin: { name: selection.name!, type: 'drumKit', path: selection.path },
+      });
+    } catch (err) {
+      console.error('[LibraryPage] Failed to load source audio for sample editor:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load source audio');
+    } finally {
+      setLoading(false);
+    }
+  }, [libraryHandle, selection, selectedDrumKitBundle, setLoading, setError]);
+
   const handleSlicesUpdated = useCallback(async (slices: SliceDefinitionOutput[], kitConfig: { transpose?: number; velocitySensitivity?: number }) => {
     if (!libraryHandle || !sliceEditDialog) return;
     setLoading(true, 'Saving slice changes...');
@@ -426,9 +452,26 @@ export function LibraryPage() {
         throw new Error(`Unsupported node type for chopper: ${nodeType}`);
       }
 
+      // Load existing slice definitions from sample metadata (if any)
+      let initialSlices: InitialSliceDefinition[] | undefined;
+      let initialLabels: string | undefined;
+      if (nodeType === 'sample') {
+        const meta = await loadSampleMeta(libraryHandle, name, path);
+        if (meta.slices && meta.slices.length > 0) {
+          initialSlices = meta.slices.map((s) => ({
+            label: s.label,
+            startSample: s.startSample,
+            endSample: s.endSample,
+          }));
+          initialLabels = meta.slices.map((s) => s.label).join(',');
+        }
+      }
+
       setChopperDialog({
         open: true, samples, sampleRate, sampleName: name,
         origin: { name, type: nodeType, path },
+        initialSlices,
+        initialLabels,
       });
     } catch (err) {
       console.error('[LibraryPage] Failed to load WAV for chopper:', err);
@@ -516,13 +559,18 @@ export function LibraryPage() {
         const writable = await wavHandle.createWritable();
         await writable.write(wavData);
         await writable.close();
+      } else if (nodeType === 'drumKit') {
+        // Write updated source WAV back to the drum kit directory
+        const bundle = selectedDrumKitBundle;
+        if (!bundle?.source) throw new Error('Cannot save: drum kit has no source file');
+        await saveDrumKitSource(libraryHandle, name, bundle.source, samples, sampleRate, path);
       }
       await handleRefreshLibrary();
     } catch (err) {
       console.error('[LibraryPage] Failed to save edited sample:', err);
       setError(err instanceof Error ? err.message : 'Failed to save edited sample');
     }
-  }, [libraryHandle, sampleEditorDialog, handleRefreshLibrary, setError]);
+  }, [libraryHandle, sampleEditorDialog, selectedDrumKitBundle, handleRefreshLibrary, setError]);
 
   // Handle loop editor save (loop points saved back to library)
   const handleLoopEditorSave = useCallback(async (loopStart: number, loopEnd: number) => {
@@ -681,6 +729,7 @@ export function LibraryPage() {
               preloadedBundle={selectedDrumKitBundle}
               onImport={handleOpenSamplesImport}
               onEditKit={handleEditKit}
+              onOpenSampleEditor={handleOpenDrumKitInSampleEditor}
             />
           ) : selection?.type === 'sample' || selection?.type === 'program' ? (
             <CommonSamplePreviewPanel
@@ -760,6 +809,19 @@ export function LibraryPage() {
           initialSlices={sliceEditDialog.slices}
           initialLabels={sliceEditDialog.slices?.map((s) => s.label).join(',')}
           onSlicesUpdated={(slices) => handleSlicesUpdated(slices, {})}
+          onOpenSampleEditor={() => {
+            const dialog = sliceEditDialog;
+            if (dialog) {
+              setSliceEditDialog(null);
+              setSampleEditorDialog({
+                open: true,
+                samples: dialog.samples,
+                sampleRate: dialog.sampleRate,
+                sampleName: dialog.kitName,
+                origin: { name: dialog.kitName, type: 'drumKit', path: dialog.path },
+              });
+            }
+          }}
         />
       )}
       <ExportToneDialog
@@ -824,6 +886,9 @@ export function LibraryPage() {
           samples={chopperDialog.samples}
           sampleRate={chopperDialog.sampleRate}
           sourceName={chopperDialog.sampleName}
+          editMode={!!chopperDialog.initialSlices}
+          initialSlices={chopperDialog.initialSlices}
+          initialLabels={chopperDialog.initialLabels}
           onConfirm={() => { setChopperDialog(null); }}
           onSave={libraryHandle ? handleChopperSave : undefined}
         />

@@ -178,11 +178,13 @@ export function ImportSampleDialog({
                   accept=".wav,audio/wav"
                   onChange={handleFileSelect}
                   disabled={isOperating}
+                  data-testid="import-file-input"
                   className="hidden"
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isOperating}
+                  data-testid="import-file-select"
                   className={cn(
                     'w-full py-8 border-2 border-dashed rounded-lg text-center',
                     'hover:border-s330-highlight hover:bg-s330-highlight/5',
@@ -238,6 +240,7 @@ export function ImportSampleDialog({
                   value={name}
                   onChange={(e) => setName(e.target.value.slice(0, 8))}
                   disabled={isOperating}
+                  data-testid="import-tone-name"
                   maxLength={8}
                   className={cn(
                     'w-full bg-s330-bg border rounded px-3 py-2 text-s330-text font-mono',
@@ -259,6 +262,7 @@ export function ImportSampleDialog({
                   value={targetSampleRate}
                   onChange={(e) => setTargetSampleRate(e.target.value as '15kHz' | '30kHz')}
                   disabled={isOperating}
+                  data-testid="import-sample-rate"
                   className={cn(
                     'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
@@ -281,6 +285,7 @@ export function ImportSampleDialog({
                     value={waveBank}
                     onChange={(e) => setWaveBank(Number(e.target.value) as 0 | 1)}
                     disabled={isOperating}
+                    data-testid="import-wave-bank"
                     className={cn(
                       'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                       'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
@@ -300,6 +305,7 @@ export function ImportSampleDialog({
                     value={targetSegment}
                     onChange={(e) => setTargetSegment(Number(e.target.value))}
                     disabled={isOperating}
+                    data-testid="import-segment"
                     className={cn(
                       'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                       'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
@@ -328,6 +334,7 @@ export function ImportSampleDialog({
                   value={loopMode}
                   onChange={(e) => setLoopMode(e.target.value as typeof loopMode)}
                   disabled={isOperating}
+                  data-testid="import-loop-mode"
                   className={cn(
                     'w-full bg-s330-bg border border-s330-accent/50 rounded px-3 py-2 text-s330-text',
                     'focus:outline-none focus:ring-2 focus:ring-s330-highlight',
@@ -362,6 +369,7 @@ export function ImportSampleDialog({
                 <button
                   onClick={handleImport}
                   disabled={isOperating || !wavFile || !name.trim()}
+                  data-testid="import-submit"
                   className={cn(
                     'ac-btn ac-btn-primary',
                     (isOperating || !wavFile || !name.trim()) && 'opacity-50 cursor-not-allowed'

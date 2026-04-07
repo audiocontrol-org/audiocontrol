@@ -559,6 +559,44 @@ test.describe('Tone Editor Controls', () => {
   });
 
   // -------------------------------------------------------------------------
+  // TVA LFO Depth
+  // -------------------------------------------------------------------------
+
+  test.fixme('TVA LFO depth slider syncs to device', async ({ page }) => {
+    // FIXME: Slider value changes but doesn't commit to device. Investigate
+    // whether ParameterSlider onCommit fires on arrow key + blur.
+    // Scope to the TVA card section — both TVA and TVF have a "LFO Depth"
+    // slider, so we must disambiguate by section.
+    const tvaSection = page.locator(
+      '[data-testid="tone-detail"] .card:has(h4:has-text("TVA"))',
+    );
+    const lfoDepthContainer = tvaSection.locator(
+      '[data-testid="param-lfo-depth"]',
+    );
+    await expect(lfoDepthContainer).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const slider = lfoDepthContainer.locator('[role="slider"]');
+    await expect(slider).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    const originalValue = Number(
+      await slider.getAttribute('aria-valuenow') ?? '0',
+    );
+
+    // Set to 60 (unless already 60, then use 35)
+    const newValue = originalValue === 60 ? 35 : 60;
+    await driveSliderToValue(slider, newValue);
+    await page.waitForTimeout(WRITE_FLUSH_MS);
+
+    // Read tone back from device hardware
+    const deviceTone = await readToneFromDevice(page, testToneIndex);
+    expect(deviceTone).not.toBeNull();
+    // Allow +-1 tolerance — Radix slider arrow keys may over/undershoot by 1
+    expect(
+      Math.abs(deviceTone!.tva.lfoDepth - newValue),
+    ).toBeLessThanOrEqual(1);
+  });
+
+  // -------------------------------------------------------------------------
   // Fine Tune
   // -------------------------------------------------------------------------
 
