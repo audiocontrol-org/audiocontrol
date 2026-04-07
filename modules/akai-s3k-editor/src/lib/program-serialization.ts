@@ -14,7 +14,7 @@
  */
 
 import { stringify as stringifyYaml, parse as parseYaml } from 'yaml';
-import type { ProgramHeader, KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
+import type { ProgramHeader, KeygroupHeader, AkaiDiskProgram } from '@audiocontrol/sampler-devices/s3k';
 
 // =========================================================================
 // Types
@@ -176,4 +176,138 @@ export function decodeSerializedRaw(serialized: SerializedProgram): {
     programRaw: decodeRaw(serialized.programRaw),
     keygroupsRaw: serialized.keygroupsRaw.map(decodeRaw),
   };
+}
+
+// =========================================================================
+// Disk-origin serialization
+// =========================================================================
+
+/** Serialized disk-origin program stored as YAML in the S3K library. */
+export interface SerializedDiskProgram {
+  format: 's3000xl-disk-program';
+  version: 1;
+  name: string;
+  keygroupCount: number;
+  sampleReferences: string[];
+  /** Raw on-disk file bytes (program header + keygroups), base64 */
+  fileRaw: string;
+  /** Human-readable parsed fields (informational) */
+  program: Record<string, unknown>;
+  keygroups: Record<string, unknown>[];
+}
+
+/** Base64-encode a Uint8Array. */
+function encodeBytes(data: Uint8Array): string {
+  let binary = '';
+  for (let i = 0; i < data.length; i++) {
+    binary += String.fromCharCode(data[i]);
+  }
+  return btoa(binary);
+}
+
+/** Decode base64 to Uint8Array. */
+function decodeBytes(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const result = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    result[i] = binary.charCodeAt(i);
+  }
+  return result;
+}
+
+/**
+ * Serialize a disk-origin program to YAML for S3K library storage.
+ *
+ * Stores the complete raw file bytes (as read from disk via readFileData)
+ * so they can be written back to any Akai disk without loss.
+ */
+export function serializeDiskProgram(diskProgram: AkaiDiskProgram, fileData: Uint8Array): string {
+  const sampleNames = new Set<string>();
+  for (const kg of diskProgram.keygroups) {
+    for (const name of kg.sampleNames) {
+      const trimmed = name.trim();
+      if (trimmed.length > 0) {
+        sampleNames.add(trimmed);
+      }
+    }
+  }
+
+  const serialized: SerializedDiskProgram = {
+    format: 's3000xl-disk-program',
+    version: 1,
+    name: diskProgram.name,
+    keygroupCount: diskProgram.numKeygroups,
+    sampleReferences: [...sampleNames].sort(),
+    fileRaw: encodeBytes(fileData),
+    program: {
+      name: diskProgram.name,
+      midiProgramNumber: diskProgram.midiProgramNumber,
+      midiChannel: diskProgram.midiChannel,
+      polyphony: diskProgram.polyphony,
+      numKeygroups: diskProgram.numKeygroups,
+    },
+    keygroups: diskProgram.keygroups.map((kg) => ({
+      lowNote: kg.lowNote,
+      highNote: kg.highNote,
+      sampleNames: kg.sampleNames,
+    })),
+  };
+
+  return stringifyYaml(serialized, { indent: 2, lineWidth: 120 });
+}
+
+/**
+ * Deserialize a disk-origin program YAML back to structured data.
+ */
+export function deserializeDiskProgram(yamlContent: string): SerializedDiskProgram {
+  const parsed = parseYaml(yamlContent) as Record<string, unknown>;
+
+  if (parsed.format !== 's3000xl-disk-program') {
+    throw new Error(
+      `Invalid format: expected "s3000xl-disk-program", got "${String(parsed.format)}"`,
+    );
+  }
+  if (parsed.version !== 1) {
+    throw new Error(`Unsupported version: expected 1, got ${String(parsed.version)}`);
+  }
+  if (typeof parsed.fileRaw !== 'string') {
+    throw new Error('Missing fileRaw field');
+  }
+
+  return {
+    format: 's3000xl-disk-program',
+    version: 1,
+    name: String(parsed.name ?? ''),
+    keygroupCount: Number(parsed.keygroupCount ?? 0),
+    sampleReferences: Array.isArray(parsed.sampleReferences)
+      ? (parsed.sampleReferences as string[])
+      : [],
+    fileRaw: parsed.fileRaw,
+    program: (parsed.program ?? {}) as Record<string, unknown>,
+    keygroups: Array.isArray(parsed.keygroups)
+      ? (parsed.keygroups as Record<string, unknown>[])
+      : [],
+  };
+}
+
+/**
+ * Decode the raw file bytes from a serialized disk-origin program.
+ * Returns the complete on-disk file data ready to write back to an Akai disk.
+ */
+export function decodeDiskProgramRaw(serialized: SerializedDiskProgram): Uint8Array {
+  return decodeBytes(serialized.fileRaw);
+}
+
+/**
+ * Determine whether a serialized YAML is SysEx-origin or disk-origin
+ * by quick-scanning for the format field.
+ */
+export function detectProgramFormat(yamlContent: string): 's3000xl-program' | 's3000xl-disk-program' | 'unknown' {
+  if (yamlContent.includes('format: s3000xl-disk-program')) {
+    return 's3000xl-disk-program';
+  }
+  if (yamlContent.includes('format: s3000xl-program')) {
+    return 's3000xl-program';
+  }
+  return 'unknown';
 }
