@@ -87,11 +87,29 @@ export const TYPE_DIR_S1000 = 1;
 /** Directory entry type: S3000-series volume. */
 export const TYPE_DIR_S3000 = 3;
 
-/** File entry type: program file. */
-export const FILE_TYPE_PROGRAM = 0x70;
+/**
+ * File entry type codes.
+ * S1000 uses 0x7x, S3000 uses 0xFx. The low nibble identifies the file type.
+ * Use isProgram()/isSample() helpers for reliable matching.
+ */
+export const FILE_TYPE_PROGRAM_S1000 = 0x70;
+export const FILE_TYPE_SAMPLE_S1000 = 0x73;
+export const FILE_TYPE_PROGRAM_S3000 = 0xf0;
+export const FILE_TYPE_SAMPLE_S3000 = 0xf3;
 
-/** File entry type: sample file. */
-export const FILE_TYPE_SAMPLE = 0x73;
+/** Check if a file type code represents a program (works for both S1000 and S3000). */
+export function isAkaiProgram(type: number): boolean {
+  return (type & 0x0f) === 0x00 && type !== 0;
+}
+
+/** Check if a file type code represents a sample (works for both S1000 and S3000). */
+export function isAkaiSample(type: number): boolean {
+  return (type & 0x0f) === 0x03;
+}
+
+// Legacy aliases
+export const FILE_TYPE_PROGRAM = FILE_TYPE_PROGRAM_S3000;
+export const FILE_TYPE_SAMPLE = FILE_TYPE_SAMPLE_S3000;
 
 // ---------------------------------------------------------------------------
 // Akai character encoding
