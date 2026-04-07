@@ -3,7 +3,7 @@
  *
  * Saves and loads serialized S3000XL programs to/from the library
  * directory tree. Programs are stored as directory bundles under
- * `library/common/programs/{sanitized-name}/program.s3k.yaml`.
+ * `library/s3k/programs/{sanitized-name}/program.s3k.yaml`.
  *
  * Uses the abstract StorageDirectoryHandle interface from sampler-library,
  * so it works with OPFS, local FS, or any other backend.
@@ -15,7 +15,7 @@ import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/brows
 // Constants
 // =========================================================================
 
-const PROGRAMS_PATH = ['library', 'common', 'programs'];
+const PROGRAMS_PATH = ['library', 's3k', 'programs'];
 const MANIFEST_FILENAME = 'program.s3k.yaml';
 
 // =========================================================================
@@ -91,6 +91,29 @@ export async function saveProgramToLibrary(
 }
 
 /**
+ * Save a sample WAV file into a program's directory bundle.
+ *
+ * Stores at: `programs/{programName}/samples/{sampleName}.wav`
+ */
+export async function saveProgramSample(
+  root: StorageDirectoryHandle,
+  programName: string,
+  sampleName: string,
+  wavData: ArrayBuffer,
+): Promise<void> {
+  const programsDir = await getProgramsDir(root);
+  const safeProgramName = sanitizeForFilename(programName);
+  const safeSampleName = sanitizeForFilename(sampleName.trim());
+
+  const programDir = await programsDir.getDirectoryHandle(safeProgramName, { create: true });
+  const samplesDir = await programDir.getDirectoryHandle('samples', { create: true });
+  const fileHandle = await samplesDir.getFileHandle(`${safeSampleName}.wav`, { create: true });
+  const writable = await fileHandle.createWritable();
+  await writable.write(wavData);
+  await writable.close();
+}
+
+/**
  * Load a serialized program YAML string from the library.
  *
  * @returns The raw YAML text, ready for deserializeProgram()
@@ -126,7 +149,7 @@ export interface StoredProgramInfo {
 /**
  * List all S3000XL programs stored in the library.
  *
- * Scans `library/common/programs/` for directories containing
+ * Scans `library/s3k/programs/` for directories containing
  * `program.s3k.yaml` and returns summary info for each.
  */
 export async function listStoredPrograms(

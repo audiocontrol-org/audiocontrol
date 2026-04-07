@@ -120,13 +120,10 @@ fn extract_request_id(headers: &HeaderMap) -> String {
 // -- Handlers -----------------------------------------------------------------
 
 pub async fn status(State(state): State<Arc<AppState>>) -> Json<StatusResponse> {
-    // Prefer streaming client reachability; fall back to protobuf
-    let stream_reachable = state.midi_stream.lock().await.is_reachable().await;
-    let reachable = if stream_reachable {
-        true
-    } else {
-        state.s2p.lock().await.is_reachable().await
-    };
+    // Check reachability via s2p protobuf API (TCP connect check).
+    // Do NOT use the midi_stream mutex here — a stuck SCSI operation holding
+    // the mutex would make /status hang, which cascades to block all clients.
+    let reachable = state.s2p.lock().await.is_reachable().await;
     Json(StatusResponse {
         version: env!("CARGO_PKG_VERSION").to_string(),
         scsi2pi_version: "6.2.1".to_string(),

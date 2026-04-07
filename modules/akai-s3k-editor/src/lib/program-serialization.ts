@@ -78,7 +78,7 @@ function extractFields(header: Record<string, unknown>): Record<string, unknown>
 }
 
 /** Extract sample names from keygroup SNAME1-4 fields. */
-function extractSampleReferences(keygroups: KeygroupHeader[]): string[] {
+export function extractSampleReferences(keygroups: KeygroupHeader[]): string[] {
   const names = new Set<string>();
   for (const kg of keygroups) {
     for (const field of ['SNAME1', 'SNAME2', 'SNAME3', 'SNAME4'] as const) {

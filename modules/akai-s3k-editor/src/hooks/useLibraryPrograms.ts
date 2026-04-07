@@ -1,7 +1,7 @@
 /**
  * Hook for scanning S3000XL programs from library storage.
  *
- * Scans the `library/common/programs/` directory for serialized
+ * Scans the `library/s3k/programs/` directory for serialized
  * S3000XL program bundles (directories with `program.s3k.yaml`)
  * and converts them to TreeNode format for the library browser.
  */
