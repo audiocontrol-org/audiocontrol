@@ -6,19 +6,36 @@
 
 ## Problem Statement
 
-The audiocontrol SCSI-over-network stack can send SysEx commands and SDS sample uploads to the Akai S3000XL over SCSI, but **receiving sample waveform data over SCSI remains unsolved** — the S3000XL firmware does not route SDS Data Packets through its SCSI response buffer, and the RSPACK opcode returns empty responses over the SCSI MIDI channel.
-
-Meanwhile, the MESA II reverse-engineering effort revealed that Akai's own software **never transfers sample data via SysEx**. MESA II reads and writes sample waveform data by directly accessing the Akai-formatted SCSI disks using native SCSI READ/WRITE block commands. The "Sample data can only be transferred using SCSI" message in MESA refers to native SCSI block I/O, not the MIDI-via-SCSI channel.
+The audiocontrol SCSI-over-network stack can send SysEx commands and
+SDS sample uploads to the Akai S3000XL over SCSI, but **receiving
+sample waveform data over SCSI remains unsolved** — the S3000XL
+firmware does not route SDS Data Packets through its SCSI response
+buffer, and the RSPACK opcode returns empty responses over the SCSI
+MIDI channel.
 
 The infrastructure to do this over the network already exists across three repos:
 
-1. **scsi2pi fork** (`audiocontrol-org/scsi2pi`) — The `SCSI_EXEC` protobuf operation (op 210) supports READ(6/10) and WRITE(6/10) against emulated disk images served by s2p. This is the same operation the SheepShaver network SCSI backend uses to boot Mac OS 9 and mount disk images remotely.
+1. **scsi2pi fork** (`audiocontrol-org/scsi2pi`) — The `SCSI_EXEC`
+   protobuf operation (op 210) supports READ(6/10) and WRITE(6/10)
+   against emulated disk images served by s2p. This is the same
+   operation the SheepShaver network SCSI backend uses to boot Mac OS
+   9 and mount disk images remotely.
 
-2. **Rust bridge daemon** (`services/scsi-midi-bridge/`) — Runs on the Pi and bridges browser HTTP/WebSocket to the s2p protobuf API. Currently only supports MIDI operations (200-203); needs extension to support `SCSI_EXEC` (210) for disk block I/O.
+2. **Rust bridge daemon** (`services/scsi-midi-bridge/`) — Runs on the
+   Pi and bridges browser HTTP/WebSocket to the s2p protobuf
+   API. Currently only supports MIDI operations (200-203); needs
+   extension to support `SCSI_EXEC` (210) for disk block I/O.
 
-3. **Akai disk format knowledge** — The codebase has complete TypeScript types for the Akai disk hierarchy (partitions, volumes, programs, samples) in `sampler-devices`, and `sampler-export` has a disk image extractor. However, the existing disk I/O shells out to Perl `akaitools` binaries and cannot run in the browser.
+3. **Akai disk format knowledge** — The codebase has complete
+   TypeScript types for the Akai disk hierarchy (partitions, volumes,
+   programs, samples) in `sampler-devices`, and `sampler-export` has a
+   disk image extractor. However, the existing disk I/O shells out to
+   Perl `akaitools` binaries and cannot run in the browser.
 
-This feature connects these pieces: extend the bridge with SCSI block I/O endpoints, build a browser-safe TypeScript Akai disk parser, and add a disk browser to the S3000XL editor library page that reads and writes Akai disks over the network.
+This feature connects these pieces: extend the bridge with SCSI block
+I/O endpoints, build a browser-safe TypeScript Akai disk parser, and
+add a disk browser to the S3000XL editor library page that reads and
+writes Akai disks over the network.
 
 ## User Stories
 
