@@ -9,13 +9,12 @@
  * Uses the plugin architecture for device-agnostic library browsing.
  */
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useMemo } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useLibraryStore } from '@/stores/libraryStore';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
-import type { ItemSelection as PluginItemSelection } from '@audiocontrol/editor-core';
 import { useLibraryConnection, LibraryConnectionUI } from '@audiocontrol/editor-core';
 import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
 import { PluginLibraryTreePanel } from '@/components/library/PluginLibraryTreePanel';
@@ -41,7 +40,7 @@ import {
 import { useDirectoryOperations } from '@/hooks/useDirectoryOperations';
 import { useLibraryExport } from '@/hooks/useLibraryExport';
 import { useLibraryImportDialogs } from '@/hooks/useLibraryImportDialogs';
-import { loadDrumKitBundle } from '@/lib/library-service';
+
 import { CreateDirectoryDialog } from '@/components/library/CreateDirectoryDialog';
 import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialog';
 import { DeleteDirectoryDialog } from '@/components/library/DeleteDirectoryDialog';
@@ -49,6 +48,7 @@ import { MoveItemDialog } from '@/components/library/MoveItemDialog';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 import { useRolandEditorDialogs } from '@/hooks/useRolandEditorDialogs';
 import { useRolandLibraryData } from '@/hooks/useRolandLibraryData';
+import { useRolandSelectionMapping } from '@/hooks/useRolandSelectionMapping';
 import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 
@@ -84,7 +84,6 @@ export function LibraryPage() {
     expandedPaths, toggleDirectoryExpanded,
   } = useLibraryStore();
 
-  const [selection, setSelection] = useState<ItemSelection | null>(null);
   const library = useLibraryConnection({
     pickerId: 'sampler-library',
     googleDrive: import.meta.env.VITE_GOOGLE_CLIENT_ID
@@ -103,79 +102,10 @@ export function LibraryPage() {
     handleRefreshLibrary,
   } = libraryData;
 
-  // Handle plugin selection change
-  const handlePluginSelectionChange = useCallback((pluginSelection: PluginItemSelection | null) => {
-    if (!pluginSelection) {
-      setSelection(null);
-      setSelectedDrumKitBundle(null);
-      return;
-    }
-
-    const { categoryId, node, meta } = pluginSelection;
-    const nodeMeta = meta as { fileName?: string; directoryName?: string; path?: string[] };
-
-    // Map plugin selection to page selection
-    let pageSelection: ItemSelection;
-
-    if (categoryId === 'tones') {
-      pageSelection = {
-        source: 'library',
-        type: 'individualTone',
-        name: nodeMeta.fileName ?? node.name,
-        path: nodeMeta.path,
-      };
-    } else if (categoryId === 'patches') {
-      pageSelection = {
-        source: 'library',
-        type: 'individualPatch',
-        name: nodeMeta.directoryName ?? node.name,
-        path: nodeMeta.path,
-      };
-    } else if (categoryId === 'drumKits') {
-      pageSelection = {
-        source: 'library',
-        type: 'drumKit',
-        name: nodeMeta.directoryName ?? node.name,
-        path: nodeMeta.path,
-      };
-      // Load drum kit bundle
-      if (libraryHandle) {
-        loadDrumKitBundle(libraryHandle, nodeMeta.directoryName ?? node.name, nodeMeta.path)
-          .then(setSelectedDrumKitBundle)
-          .catch((err) => console.error('[LibraryPage] Failed to load drum kit bundle:', err));
-      }
-    } else if (categoryId === 'commonSamples') {
-      // Determine type from node type
-      if (node.type === 'program') {
-        pageSelection = {
-          source: 'library',
-          type: 'program',
-          name: nodeMeta.directoryName ?? node.name,
-          path: nodeMeta.path,
-        };
-      } else {
-        // sample (including samples with slices, formerly "chopped samples")
-        pageSelection = {
-          source: 'library',
-          type: 'sample',
-          name: nodeMeta.directoryName ?? node.name,
-          path: nodeMeta.path,
-        };
-      }
-    } else {
-      // Unknown category, default to tone
-      pageSelection = {
-        source: 'library',
-        type: 'individualTone',
-        name: node.name,
-        path: nodeMeta.path,
-      };
-    }
-
-    setSelection(pageSelection);
-    // Clear other selection state when not relevant
-    if (categoryId !== 'drumKits') setSelectedDrumKitBundle(null);
-  }, [libraryHandle]);
+  const {
+    selection, setSelection,
+    handlePluginSelectionChange, handleSelectDevice, handleSelectLibrary,
+  } = useRolandSelectionMapping(libraryHandle, setSelectedDrumKitBundle);
 
   useEffect(() => {
     if (!adapter) { clientRef.current = null; return; }
@@ -247,13 +177,6 @@ export function LibraryPage() {
       setError(err instanceof Error ? err.message : 'Failed to load from device');
     } finally { setLoading(false); }
   }, [setLoading, setError, setTone, setPatch, ensureToneArraySize, ensurePatchArraySize, markToneBankLoaded, markPatchBankLoaded, totalTones, tonesPerBank, totalPatches, patchesPerBank]);
-
-  // Selection handlers
-  const handleSelectDevice = useCallback((type: 'tone' | 'patch', index: number) => setSelection({ source: 'device', type, index }), []);
-  const handleSelectLibrary = useCallback((type: 'tone' | 'patch' | 'set', name: string, setName?: string) => {
-    setSelection({ source: 'library', type, name, setName });
-    setSelectedDrumKitBundle(null);
-  }, []);
 
   // Import handlers
   const handleOpenSamplesImport = useCallback(() => {
