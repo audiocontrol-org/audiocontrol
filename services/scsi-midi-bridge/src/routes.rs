@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use axum::extract::ws::{Message, WebSocket};
 use axum::extract::{State, WebSocketUpgrade};
@@ -7,18 +7,25 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::Json;
 use serde::{Deserialize, Serialize};
-use tokio::sync::Mutex;
+use tokio::sync::{mpsc, oneshot};
 use tracing::{info, info_span, Instrument};
 use uuid::Uuid;
 
-use crate::s2p_client::{MidiStreamClient, S2pClient};
-use crate::scsi_midi;
+use crate::worker::{AppState, ScsiWork};
 
-/// Shared application state.
-pub struct AppState {
-    pub s2p: Mutex<S2pClient>,
-    pub midi_stream: Mutex<MidiStreamClient>,
-    pub ws_tx: tokio::sync::broadcast::Sender<Vec<u8>>,
+/// Submit a work item and await the reply with a timeout.
+async fn submit_and_await<T>(
+    scsi_tx: &mpsc::Sender<ScsiWork>,
+    timeout: Duration,
+    make_work: impl FnOnce(oneshot::Sender<T>) -> ScsiWork,
+) -> Result<T, (StatusCode, String)> {
+    let (tx, rx) = oneshot::channel();
+    scsi_tx.send(make_work(tx)).await
+        .map_err(|_| (StatusCode::SERVICE_UNAVAILABLE, "SCSI worker not running".to_string()))?;
+    tokio::time::timeout(timeout, rx)
+        .await
+        .map_err(|_| (StatusCode::GATEWAY_TIMEOUT, "SCSI operation timed out".to_string()))?
+        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "worker channel closed".to_string()))
 }
 
 // -- Request/Response types ---------------------------------------------------
@@ -121,32 +128,43 @@ fn extract_request_id(headers: &HeaderMap) -> String {
 
 // -- Handlers -----------------------------------------------------------------
 
-pub async fn status(State(state): State<Arc<AppState>>) -> Json<StatusResponse> {
-    // Check reachability via s2p protobuf API (TCP connect check).
-    // Do NOT use the midi_stream mutex here — a stuck SCSI operation holding
-    // the mutex would make /status hang, which cascades to block all clients.
-    let reachable = state.s2p.lock().await.is_reachable().await;
-    Json(StatusResponse {
+pub async fn status(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<StatusResponse>, (StatusCode, String)> {
+    let reachable = submit_and_await(
+        &state.scsi_tx,
+        Duration::from_secs(3),
+        |reply| ScsiWork::IsReachable { reply },
+    ).await?;
+
+    Ok(Json(StatusResponse {
         version: env!("CARGO_PKG_VERSION").to_string(),
         build_id: format!("{}@{}", env!("BUILD_GIT_HASH"), env!("BUILD_TIMESTAMP")),
         scsi2pi_version: "6.2.1".to_string(),
         board_id: 7,
         sampler_reachable: reachable,
-    })
+    }))
 }
 
-pub async fn scsi_scan(State(state): State<Arc<AppState>>) -> Json<Vec<ScsiDevice>> {
-    let reachable = state.s2p.lock().await.is_reachable().await;
+pub async fn scsi_scan(
+    State(state): State<Arc<AppState>>,
+) -> Result<Json<Vec<ScsiDevice>>, (StatusCode, String)> {
+    let reachable = submit_and_await(
+        &state.scsi_tx,
+        Duration::from_secs(3),
+        |reply| ScsiWork::IsReachable { reply },
+    ).await?;
+
     if reachable {
         // Return the known target — full bus scan would require additional s2p API
-        Json(vec![ScsiDevice {
+        Ok(Json(vec![ScsiDevice {
             id: 6,
             vendor: "AKAI".to_string(),
             product: "S3000XL".to_string(),
             revision: "2.00".to_string(),
-        }])
+        }]))
     } else {
-        Json(vec![])
+        Ok(Json(vec![]))
     }
 }
 
@@ -165,29 +183,16 @@ pub async fn sds_send(
             return Err((StatusCode::BAD_REQUEST, "message is empty".to_string()));
         }
 
-        // Try streaming client first
-        let response = {
-            let mut stream = state.midi_stream.lock().await;
-            stream.send_and_receive(&body.message).await
-        };
-
-        let response = match response {
-            Ok(data) => data,
-            Err(e) => {
-                tracing::warn!("Streaming client failed ({e}), falling back to protobuf");
-                let mut s2p = state.s2p.lock().await;
-                if body.expect_response {
-                    s2p.send_and_receive(&body.message)
-                        .await
-                        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?
-                } else {
-                    s2p.send_sysex(&body.message)
-                        .await
-                        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
-                    Vec::new()
-                }
-            }
-        };
+        let response = submit_and_await(
+            &state.scsi_tx,
+            Duration::from_secs(5),
+            |reply| ScsiWork::SysExSendReceive {
+                message: body.message,
+                expect_response: body.expect_response,
+                reply,
+            },
+        ).await?
+        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
 
         let elapsed = t0.elapsed();
         info!(
@@ -195,11 +200,6 @@ pub async fn sds_send(
             response_bytes = response.len(),
             "request complete"
         );
-
-        // If we got a SysEx response, also broadcast it to WebSocket clients
-        if !response.is_empty() && response[0] == 0xF0 {
-            let _ = state.ws_tx.send(response.clone());
-        }
 
         Ok(Json(SendResponse {
             ok: true,
@@ -216,18 +216,12 @@ pub async fn sds_send(
 pub async fn sds_poll(
     State(state): State<Arc<AppState>>,
 ) -> Result<Json<SendResponse>, (StatusCode, String)> {
-    let s2p = state.s2p.lock().await;
-
-    // Poll for any pending data
-    let pending = s2p.poll().await.map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
-    if pending == 0 {
-        return Ok(Json(SendResponse {
-            ok: true,
-            response: vec![],
-        }));
-    }
-
-    let data = s2p.read(pending).await.map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+    let data = submit_and_await(
+        &state.scsi_tx,
+        Duration::from_secs(3),
+        |reply| ScsiWork::Poll { reply },
+    ).await?
+    .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
 
     Ok(Json(SendResponse {
         ok: true,
@@ -318,18 +312,19 @@ async fn handle_ws_send(
             .collect();
 
         if !message.is_empty() {
-            // Try streaming client first
-            let response = {
-                let mut stream = state.midi_stream.lock().await;
-                stream.send_and_receive(&message).await
-            };
+            let result = submit_and_await(
+                &state.scsi_tx,
+                Duration::from_secs(5),
+                |reply| ScsiWork::SysExSendReceive {
+                    message,
+                    expect_response: true,
+                    reply,
+                },
+            ).await;
 
-            let response = match response {
-                Ok(data) => data,
-                Err(_) => {
-                    let mut s2p = state.s2p.lock().await;
-                    s2p.send_and_receive(&message).await.unwrap_or_default()
-                }
+            let response = match result {
+                Ok(Ok(data)) => data,
+                Ok(Err(_)) | Err(_) => Vec::new(),
             };
 
             let reply = serde_json::json!({
@@ -342,91 +337,57 @@ async fn handle_ws_send(
 }
 
 /// Handle a "sample-download" WebSocket message.
-/// Spawns the download as a background task, streaming progress via mpsc channel.
+/// Submits the download to the SCSI worker and forwards progress via the WS channel.
 async fn handle_ws_sample_download(
     state: &Arc<AppState>,
     parsed: &serde_json::Value,
-    tx: tokio::sync::mpsc::Sender<serde_json::Value>,
+    tx: mpsc::Sender<serde_json::Value>,
 ) {
     let target_id = parsed["target_id"].as_u64().unwrap_or(6) as u8;
     let sample_number = parsed["sample_number"].as_u64().unwrap_or(0) as u16;
     let channel = parsed["channel"].as_u64().unwrap_or(0) as u8;
-    let state = Arc::clone(state);
+    let scsi_tx = state.scsi_tx.clone();
 
     tokio::spawn(async move {
-        info!(
-            target_id,
-            sample_number,
-            channel,
-            "starting sample download task"
-        );
+        info!(target_id, sample_number, channel, "starting sample download task");
 
-        let s2p = state.s2p.lock().await;
-
-        // Channels for collecting header/data from the download closures.
-        // The closures run synchronously inside the download loop, so we use
-        // blocking_send on a bounded channel to avoid requiring the closures
-        // to be async.
-        let (header_tx, mut header_rx) = tokio::sync::mpsc::channel::<serde_json::Value>(1);
-        let (data_tx, mut data_rx) = tokio::sync::mpsc::channel::<serde_json::Value>(128);
-
-        let tx_header = tx.clone();
-        let tx_data = tx.clone();
+        // Progress channel: worker pushes header + data messages here
+        let (progress_tx, mut progress_rx) = mpsc::channel::<serde_json::Value>(128);
+        let tx_forward = tx.clone();
         let tx_done = tx.clone();
 
-        // Run the download. The closures push messages into local channels,
-        // and a forwarding task relays them to the WS handler's channel.
+        // Forward progress messages to the WS handler channel
         let forward_handle = tokio::spawn(async move {
-            loop {
-                tokio::select! {
-                    Some(msg) = header_rx.recv() => {
-                        let _ = tx_header.send(msg).await;
-                    }
-                    Some(msg) = data_rx.recv() => {
-                        let _ = tx_data.send(msg).await;
-                    }
-                    else => break,
-                }
+            while let Some(msg) = progress_rx.recv().await {
+                let _ = tx_forward.send(msg).await;
             }
         });
 
-        // The closures need to send synchronously. Use try_send to avoid
-        // blocking the SCSI poll loop.
-        let header_sender = header_tx;
-        let data_sender = data_tx;
-
-        let result = scsi_midi::download_sample(
-            &*s2p,
+        // Submit download work item
+        let (reply_tx, reply_rx) = oneshot::channel();
+        let send_result = scsi_tx.send(ScsiWork::SdsDownload {
             target_id,
             sample_number,
             channel,
-            |header| {
-                let msg = serde_json::json!({
-                    "type": "sample-header",
-                    "name": header.name,
-                    "sampleRate": header.sample_rate,
-                    "sampleCount": header.sample_count,
-                });
-                let _ = header_sender.try_send(msg);
-            },
-            |pcm_chunk, transferred, total| {
-                let samples: Vec<i16> = pcm_chunk.to_vec();
-                let msg = serde_json::json!({
-                    "type": "sample-data",
-                    "samples": samples,
-                    "transferred": transferred,
-                    "total": total,
-                });
-                let _ = data_sender.try_send(msg);
-            },
-        ).await;
+            progress: progress_tx,
+            reply: reply_tx,
+        }).await;
 
-        // Drop senders so the forward task exits
-        drop(header_sender);
-        drop(data_sender);
+        if send_result.is_err() {
+            let _ = tx_done.send(serde_json::json!({"type": "sample-error", "error": "SCSI worker not running"})).await;
+            return;
+        }
+
+        // Wait for the download to complete (60s timeout)
+        let result = match tokio::time::timeout(Duration::from_secs(60), reply_rx).await {
+            Ok(Ok(r)) => r,
+            Ok(Err(_)) => Err("worker channel closed".to_string()),
+            Err(_) => Err("download timed out (60s)".to_string()),
+        };
+
+        // Wait for all progress messages to be forwarded
         let _ = forward_handle.await;
 
-        // Send completion or error
         match result {
             Ok(total) => {
                 let msg = serde_json::json!({
@@ -452,7 +413,7 @@ async fn handle_ws_sample_download(
 async fn handle_ws_sample_upload(
     state: &Arc<AppState>,
     parsed: &serde_json::Value,
-    tx: tokio::sync::mpsc::Sender<serde_json::Value>,
+    tx: mpsc::Sender<serde_json::Value>,
 ) {
     let target_id = parsed["target_id"].as_u64().unwrap_or(6) as u8;
     let sample_number = parsed["sample_number"].as_u64().unwrap_or(0) as u16;
@@ -470,44 +431,48 @@ async fn handle_ws_sample_upload(
         return;
     }
 
-    let state = Arc::clone(state);
+    let scsi_tx = state.scsi_tx.clone();
 
     tokio::spawn(async move {
         let total = samples.len() as u32;
         info!(target_id, sample_number, total, sample_rate, "starting sample upload task");
 
-        let s2p = state.s2p.lock().await;
-
-        let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel::<serde_json::Value>(128);
-        let tx_progress = tx.clone();
+        // Progress channel: worker pushes upload-progress messages here
+        let (progress_tx, mut progress_rx) = mpsc::channel::<serde_json::Value>(128);
+        let tx_forward = tx.clone();
         let tx_done = tx.clone();
 
         let forward_handle = tokio::spawn(async move {
             while let Some(msg) = progress_rx.recv().await {
-                let _ = tx_progress.send(msg).await;
+                let _ = tx_forward.send(msg).await;
             }
         });
 
-        let progress_sender = progress_tx;
-
-        let result = scsi_midi::upload_sample(
-            &*s2p,
+        // Submit upload work item
+        let (reply_tx, reply_rx) = oneshot::channel();
+        let send_result = scsi_tx.send(ScsiWork::SdsUpload {
             target_id,
             sample_number,
             channel,
             sample_rate,
-            &samples,
-            |sent, total| {
-                let msg = serde_json::json!({
-                    "type": "upload-progress",
-                    "transferred": sent,
-                    "total": total,
-                });
-                let _ = progress_sender.try_send(msg);
-            },
-        ).await;
+            samples,
+            progress: progress_tx,
+            reply: reply_tx,
+        }).await;
 
-        drop(progress_sender);
+        if send_result.is_err() {
+            let _ = tx_done.send(serde_json::json!({"type": "sample-error", "error": "SCSI worker not running"})).await;
+            return;
+        }
+
+        // Wait for the upload to complete (120s timeout)
+        let result = match tokio::time::timeout(Duration::from_secs(120), reply_rx).await {
+            Ok(Ok(r)) => r,
+            Ok(Err(_)) => Err("worker channel closed".to_string()),
+            Err(_) => Err("upload timed out (120s)".to_string()),
+        };
+
+        // Wait for all progress messages to be forwarded
         let _ = forward_handle.await;
 
         match result {
@@ -535,18 +500,22 @@ pub async fn scsi_exec(
     State(state): State<Arc<AppState>>,
     Json(body): Json<ScsiExecRequest>,
 ) -> Result<Json<ScsiExecResponse>, (StatusCode, String)> {
-    let s2p = state.s2p.lock().await;
-    let result = s2p
-        .execute_scsi(
-            body.target_id,
-            body.lun,
-            &body.cdb,
-            &body.data_out,
-            body.expected_data_in,
-            3,
-        )
-        .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+    // Use caller's implicit 3s SCSI timeout + 2s buffer for the request timeout
+    let timeout = Duration::from_secs(3 + 2);
+    let result = submit_and_await(
+        &state.scsi_tx,
+        timeout,
+        |reply| ScsiWork::ScsiExec {
+            target_id: body.target_id,
+            lun: body.lun,
+            cdb: body.cdb,
+            data_out: body.data_out,
+            expected_data_in: body.expected_data_in,
+            timeout_seconds: 3,
+            reply,
+        },
+    ).await?
+    .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
 
     Ok(Json(ScsiExecResponse {
         status: result.status,
@@ -560,13 +529,22 @@ pub async fn scsi_inquiry(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(target_id): axum::extract::Path<u8>,
 ) -> Result<Json<ScsiInquiryResponse>, (StatusCode, String)> {
-    let s2p = state.s2p.lock().await;
     // INQUIRY CDB: 12 00 00 00 24 00 (request 36 bytes)
     let cdb = vec![0x12, 0x00, 0x00, 0x00, 0x24, 0x00];
-    let result = s2p
-        .execute_scsi(target_id, 0, &cdb, &[], 36, 3)
-        .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+    let result = submit_and_await(
+        &state.scsi_tx,
+        Duration::from_secs(5),
+        |reply| ScsiWork::ScsiExec {
+            target_id,
+            lun: 0,
+            cdb,
+            data_out: Vec::new(),
+            expected_data_in: 36,
+            timeout_seconds: 3,
+            reply,
+        },
+    ).await?
+    .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
 
     if result.status != 0 {
         return Err((
@@ -609,13 +587,22 @@ pub async fn scsi_capacity(
     State(state): State<Arc<AppState>>,
     axum::extract::Path(target_id): axum::extract::Path<u8>,
 ) -> Result<Json<ScsiCapacityResponse>, (StatusCode, String)> {
-    let s2p = state.s2p.lock().await;
     // READ CAPACITY(10) CDB: 25 00 00 00 00 00 00 00 00 00
     let cdb = vec![0x25, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00];
-    let result = s2p
-        .execute_scsi(target_id, 0, &cdb, &[], 8, 3)
-        .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+    let result = submit_and_await(
+        &state.scsi_tx,
+        Duration::from_secs(5),
+        |reply| ScsiWork::ScsiExec {
+            target_id,
+            lun: 0,
+            cdb,
+            data_out: Vec::new(),
+            expected_data_in: 8,
+            timeout_seconds: 3,
+            reply,
+        },
+    ).await?
+    .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
 
     if result.status != 0 {
         return Err((
@@ -645,7 +632,6 @@ pub async fn scsi_read(
     State(state): State<Arc<AppState>>,
     Json(body): Json<ScsiReadRequest>,
 ) -> Result<Json<ScsiExecResponse>, (StatusCode, String)> {
-    let s2p = state.s2p.lock().await;
     // READ(10) CDB: 28 00 [LBA 4 bytes BE] 00 [count 2 bytes BE] 00
     let lba_bytes = body.lba.to_be_bytes();
     let count_bytes = body.count.to_be_bytes();
@@ -658,10 +644,20 @@ pub async fn scsi_read(
     ];
     // Assume 512-byte blocks (can be refined after READ CAPACITY)
     let expected = (body.count as u32) * 512;
-    let result = s2p
-        .execute_scsi(body.target_id, 0, &cdb, &[], expected, 10)
-        .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+    let result = submit_and_await(
+        &state.scsi_tx,
+        Duration::from_secs(12),
+        |reply| ScsiWork::ScsiExec {
+            target_id: body.target_id,
+            lun: 0,
+            cdb,
+            data_out: Vec::new(),
+            expected_data_in: expected,
+            timeout_seconds: 10,
+            reply,
+        },
+    ).await?
+    .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
 
     Ok(Json(ScsiExecResponse {
         status: result.status,
@@ -675,7 +671,6 @@ pub async fn scsi_write(
     State(state): State<Arc<AppState>>,
     Json(body): Json<ScsiWriteRequest>,
 ) -> Result<Json<ScsiExecResponse>, (StatusCode, String)> {
-    let s2p = state.s2p.lock().await;
     let block_size: u32 = 512;
     let block_count = (body.data.len() as u32 + block_size - 1) / block_size;
     let lba_bytes = body.lba.to_be_bytes();
@@ -687,10 +682,20 @@ pub async fn scsi_write(
         count_bytes[0], count_bytes[1],
         0x00,
     ];
-    let result = s2p
-        .execute_scsi(body.target_id, 0, &cdb, &body.data, 0, 10)
-        .await
-        .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
+    let result = submit_and_await(
+        &state.scsi_tx,
+        Duration::from_secs(12),
+        |reply| ScsiWork::ScsiExec {
+            target_id: body.target_id,
+            lun: 0,
+            cdb,
+            data_out: body.data,
+            expected_data_in: 0,
+            timeout_seconds: 10,
+            reply,
+        },
+    ).await?
+    .map_err(|e| (StatusCode::BAD_GATEWAY, e))?;
 
     Ok(Json(ScsiExecResponse {
         status: result.status,

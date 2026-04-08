@@ -2,6 +2,7 @@ mod config;
 mod routes;
 mod s2p_client;
 mod scsi_midi;
+mod worker;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -9,13 +10,13 @@ use std::sync::Arc;
 use axum::routing::{get, post};
 use axum::Router;
 use clap::Parser;
-use tokio::sync::{broadcast, Mutex};
+use tokio::sync::broadcast;
 use tower_http::cors::CorsLayer;
 use tracing_subscriber::EnvFilter;
 
 use config::Config;
-use routes::AppState;
 use s2p_client::{MidiStreamClient, S2pClient};
+use worker::{AppState, ScsiWork};
 
 #[tokio::main]
 async fn main() {
@@ -43,12 +44,15 @@ async fn main() {
     );
 
     let (ws_tx, _) = broadcast::channel::<Vec<u8>>(64);
+    let (scsi_tx, scsi_rx) = tokio::sync::mpsc::channel::<ScsiWork>(16);
 
     let state = Arc::new(AppState {
-        s2p: Mutex::new(s2p),
-        midi_stream: Mutex::new(midi_stream),
-        ws_tx,
+        scsi_tx,
+        ws_tx: ws_tx.clone(),
     });
+
+    // Spawn the single SCSI worker — owns s2p and midi_stream exclusively
+    tokio::spawn(worker::scsi_worker(scsi_rx, s2p, midi_stream, ws_tx));
 
     let app = Router::new()
         .route("/health", get(|| async { axum::Json(serde_json::json!({"ok": true})) }))
