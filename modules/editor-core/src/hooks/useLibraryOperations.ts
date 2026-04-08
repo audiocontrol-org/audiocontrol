@@ -51,7 +51,7 @@ export interface LibraryOperationsResult {
 // Helpers
 // =========================================================================
 
-function getNodeName(node: TreeNode): string {
+export function getNodeName(node: TreeNode): string {
   const meta = node.meta;
   if (!meta) return node.name;
   const candidate = meta['fileName'] ?? meta['directoryName'] ?? meta['dirName'];
@@ -59,7 +59,7 @@ function getNodeName(node: TreeNode): string {
   return node.name;
 }
 
-function getNodePath(node: TreeNode): string[] {
+export function getNodePath(node: TreeNode): string[] {
   const meta = node.meta;
   if (!meta) return [];
   const path = meta['path'];

@@ -7,7 +7,7 @@
  */
 
 import { useMemo, useCallback } from 'react';
-import type { LibraryOperationsStrategy } from '@audiocontrol/editor-core';
+import { type LibraryOperationsStrategy, getNodePath, getNodeName } from '@audiocontrol/editor-core';
 import type { TreeNode } from '@audiocontrol/editor-core';
 import type { StorageDirectoryHandle, LibraryCategory } from '@audiocontrol/sampler-library/browser';
 import {
@@ -28,24 +28,6 @@ import type { ItemSelection } from '@/pages/LibraryPage';
 // =========================================================================
 // Helpers
 // =========================================================================
-
-function getNodePath(node: TreeNode): string[] {
-  const meta = node.meta;
-  if (!meta) return [];
-  const path = meta['path'];
-  if (Array.isArray(path) && path.every((p): p is string => typeof p === 'string')) {
-    return path;
-  }
-  return [];
-}
-
-function getNodeFileName(node: TreeNode): string {
-  const meta = node.meta;
-  if (!meta) return node.name;
-  const candidate = meta['fileName'] ?? meta['directoryName'];
-  if (typeof candidate === 'string') return candidate;
-  return node.name;
-}
 
 /** Map plugin categoryId to the LibraryCategory type used by filesystem operations */
 function toLibraryCategory(categoryId: string): LibraryCategory {
@@ -105,7 +87,7 @@ export function useRolandLibraryStrategy({
       if (!libraryHandle) return false;
 
       const path = getNodePath(node);
-      const name = getNodeFileName(node);
+      const name = getNodeName(node);
 
       // Common-area categories are not device-specific — let shared hook handle them
       if (categoryId === 'commonSamples' || categoryId === 'commonPrograms') {
@@ -139,7 +121,7 @@ export function useRolandLibraryStrategy({
       if (!libraryHandle) return false;
 
       const path = getNodePath(node);
-      const oldName = getNodeFileName(node);
+      const oldName = getNodeName(node);
 
       // Common-area categories are not device-specific — let shared hook handle them
       if (categoryId === 'commonSamples' || categoryId === 'commonPrograms') {

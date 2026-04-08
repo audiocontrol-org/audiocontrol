@@ -158,6 +158,12 @@ export interface EditorDialogsCoreResult {
   handleOpenInChopper: (name: string, nodeType: string, path?: string[]) => void;
   handleOpenDrumKitEditor: (name: string, path?: string[]) => void;
 
+  /**
+   * Create a callback that dispatches editor action IDs to the appropriate
+   * open handler. Use as the `onEditorAction` argument to `useLibraryOperations`.
+   */
+  createEditorActionHandler: () => (actionId: string, name: string, nodeType: string, path?: string[]) => void;
+
   // Save handlers
   handleLoopEditorSave: (loopStart: number, loopEnd: number) => Promise<void>;
   handleSampleEditorSave: (samples: Int16Array, sampleRate: number) => Promise<void>;
@@ -404,10 +410,20 @@ export function useEditorDialogsCore(
   const closeSliceEditDialog = useCallback(() => setSliceEditDialog(null), []);
   const closeDrumKitEditor = useCallback(() => setDrumKitEditor(null), []);
 
+  const createEditorActionHandler = useCallback(
+    () => (actionId: string, name: string, nodeType: string, path?: string[]) => {
+      if (actionId === 'open-loop-editor') handleOpenInLoopEditor(name, nodeType, path);
+      else if (actionId === 'open-chopper') handleOpenInChopper(name, nodeType, path);
+      else if (actionId === 'open-sample-editor') handleOpenInSampleEditor(name, nodeType, path);
+    },
+    [handleOpenInLoopEditor, handleOpenInChopper, handleOpenInSampleEditor],
+  );
+
   return {
     loopEditor, sampleEditor, chopper, sliceEditDialog, drumKitEditor,
     handleOpenInLoopEditor, handleOpenInSampleEditor, handleOpenInChopper,
     handleOpenDrumKitEditor,
+    createEditorActionHandler,
     handleLoopEditorSave, handleSampleEditorSave, handleChopperSave,
     setSliceEditDialog, setSampleEditor,
     closeLoopEditor, closeSampleEditor, closeChopper,

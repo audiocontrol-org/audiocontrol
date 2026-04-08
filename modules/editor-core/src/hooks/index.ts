@@ -27,6 +27,8 @@ export {
 } from './useLibraryConnection';
 export {
   useLibraryOperations,
+  getNodePath,
+  getNodeName,
   type LibraryOperationsStrategy,
   type LibraryOperationsResult,
 } from './useLibraryOperations';

@@ -198,11 +198,7 @@ export function LibraryPage(): JSX.Element {
     libraryStrategy,
     refreshLibrary,
     (msg) => setError(msg),
-    (actionId, name, nodeType, path) => {
-      if (actionId === 'open-loop-editor') editorDialogs.handleOpenInLoopEditor(name, nodeType, path);
-      else if (actionId === 'open-chopper') editorDialogs.handleOpenInChopper(name, nodeType, path);
-      else if (actionId === 'open-sample-editor') editorDialogs.handleOpenInSampleEditor(name, nodeType, path);
-    },
+    editorDialogs.createEditorActionHandler(),
   );
 
   const hasInitiatedScan = useRef(false);
