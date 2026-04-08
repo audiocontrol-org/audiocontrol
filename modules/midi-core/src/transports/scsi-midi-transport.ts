@@ -171,20 +171,23 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
 
   const adapter: MidiIO = {
     send(message: number[]): void {
+      const msgType = message[0] === 0xf0 ? `F0..${message.slice(1, 4).map(b => b.toString(16)).join(' ')}` : 'non-sysex';
+      console.log(`[ScsiMidi] send queued: ${message.length} bytes (${msgType}), wsOpen=${ws?.readyState === WebSocket.OPEN}`);
       sendQueue = sendQueue.then(async () => {
         sendInFlight = true;
         try {
           if (ws && ws.readyState === WebSocket.OPEN) {
-            // Send via WebSocket — response arrives through handleWsMessage
+            console.log(`[ScsiMidi] sending via WebSocket`);
             ws.send(JSON.stringify({ type: 'send', message }));
           } else {
-            // Fallback to HTTP POST
+            console.log(`[ScsiMidi] sending via HTTP POST to ${bridgeUrl}/sds/send`);
             const res = await fetch(`${bridgeUrl}/sds/send`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ message }),
             });
             const body = await res.json() as { ok: boolean; response: number[] };
+            console.log(`[ScsiMidi] HTTP response: ok=${body.ok}, response=${body.response?.length ?? 0} bytes`);
             if (body.response && body.response.length > 0) {
               dispatchResponses(body.response);
             }
@@ -198,6 +201,7 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
     },
 
     onSysEx(callback: SysExCallback): void {
+      console.log(`[ScsiMidi] onSysEx registered, listeners: ${listeners.size + 1}, polling: ${!!pollInterval}`);
       listeners.add(callback);
       startPolling();
     },
