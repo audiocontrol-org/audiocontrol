@@ -359,6 +359,38 @@ Add "Promote to Common Area" button to `S3kItemPreviewPanel.tsx` for S3K library
 
 ---
 
+## Phase 8: Library UI E2E Tests
+
+**Goal:** Write UI-interaction e2e tests for library operations in both editors. Tests exercise bugs found during manual testing and prevent regression.
+
+### Task 8.1: Add test IDs to shared components
+
+Add `data-testid` attributes to PluginLibraryBrowser (preview panel) and TreeSection (section headers) in editor-core so e2e tests can find UI elements reliably.
+
+### Task 8.2: Create shared library UI test helpers
+
+Create `modules/e2e-infra/helpers/library-ui-helpers.ts` with:
+- `clickLibraryItem(page, itemName)` — click a tree node
+- `waitForPreviewContent(page)` — wait for preview panel to show item details
+- `clickNewFolderButton(page, sectionTitle)` — click "+" on section header
+- `verifyFolderInOPFS(page, path)` — verify folder was created
+
+### Task 8.3: Write failing tests for both editors
+
+Tests exercise the three bugs found during manual testing:
+1. Selecting a library item shows preview (bug: preview stays empty)
+2. Selecting a drum kit does not crash (bug: undefined meta in renderTrailing)
+3. Create folder in common area persists (bug: folder not created)
+4. Create folder in device-specific category persists
+
+### Task 8.4: Fix bugs and verify tests pass
+
+Fix the root causes and run tests to verify.
+
+**Phase 8 Verification:** `make test-e2e-roland-library` and `make test-e2e-s3k-library` pass.
+
+---
+
 ## Dependency Graph
 
 ```
@@ -382,6 +414,9 @@ Phase 6 (shared useEditorDialogs) — COMPLETE
 
 Phase 7 (unify library operations, after Phase 6)
   7.1 (shared hook) -> 7.2 (wire both editors) -> 7.3 (S3K LibraryPage extraction)
+
+Phase 8 (library UI e2e tests, after Phase 7)
+  8.1 (test IDs) -> 8.2 (test helpers) -> 8.3 (failing tests) -> 8.4 (fix bugs)
 ```
 
 ---
