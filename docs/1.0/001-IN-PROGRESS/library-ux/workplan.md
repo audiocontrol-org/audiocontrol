@@ -374,12 +374,60 @@ Phase 3 (Roland migration) — COMPLETE
 Phase 4 (UX polish, tasks independent) — 4.1-4.4 COMPLETE, 4.5 deferred
   4.1, 4.2, 4.3, 4.4 (done), 4.5 (deferred: keyboard nav)
 
-Phase 5 (S3K Zone 3→4 promotion, no deps on Phase 4)
+Phase 5 (S3K Zone 3→4 promotion) — COMPLETE
   5.1 -> 5.2
 
-Phase 6 (shared useEditorDialogs, after Phase 5)
-  Stub — not started
+Phase 6 (shared useEditorDialogs) — COMPLETE
+  6.1 -> 6.2 -> 6.3
+
+Phase 7 (unify library operations, after Phase 6)
+  7.1 (shared hook) -> 7.2 (wire both editors) -> 7.3 (S3K LibraryPage extraction)
 ```
+
+---
+
+## Phase 7: Unify Library Operations
+
+**Goal:** Extract all library operations (create folder, delete, rename, move, file drop, context menu routing) into a shared `useLibraryOperations` hook in editor-core. Both editors use the same hook with device-specific strategies. Eliminates the `toLibraryCategory` bug and gives both editors feature parity.
+
+**Problem discovered during testing:** Both editors wire the same PluginLibraryBrowser callbacks differently, causing feature gaps (S3K has no rename, no context menu; Roland has no file drop), duplicate logic, and bugs (`toLibraryCategory` defaulting common-area operations to 'tones').
+
+### Task 7.1: Create shared useLibraryOperations hook
+
+Create `modules/editor-core/src/hooks/useLibraryOperations.ts` with:
+- Create folder (prompt + `createFolder()`)
+- Delete item (confirm + `deleteItem()` or device-specific delete via strategy)
+- Rename item (inline rename via TreeView, save via strategy)
+- Move item (direct API call)
+- File drop (import WAV to common area)
+- Context menu action routing (move, open editors)
+- Toggle expand state management
+- Refresh callback
+
+Strategy interface for device-specific operations:
+```typescript
+interface LibraryOperationsStrategy {
+  deleteItem?(categoryId: string, node: TreeNode): Promise<boolean>;
+  handleContextMenuAction?(categoryId: string, actionId: string, node: TreeNode): boolean;
+}
+```
+
+### Task 7.2: Wire both editors to shared hook
+
+- Roland: replace `useDirectoryOperations` + inline callbacks with shared hook + Roland strategy
+- S3K: replace inline callbacks with shared hook + S3K strategy
+- Remove `toLibraryCategory` function
+- Delete `modules/roland-sxx0-editor/src/hooks/useDirectoryOperations.ts`
+
+**Result:** Both editors gain feature parity:
+- S3K gains: rename, context menu, directory operation dialogs
+- Roland gains: file drop (WAV import)
+
+### Task 7.3: Extract S3K LibraryPage hooks
+
+S3K LibraryPage at 648 lines — extract data loading and selection hooks (same treatment Roland got in Phase 1).
+
+**Phase 7 Verification:** Build passes. Manual test all operations in both editors. No feature regression.
 
 ---
 
