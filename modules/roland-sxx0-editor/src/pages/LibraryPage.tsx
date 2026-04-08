@@ -15,14 +15,13 @@ import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useLibraryStore } from '@/stores/libraryStore';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
-import { useLibraryConnection, LibraryConnectionUI } from '@audiocontrol/editor-core';
-import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
-import { PluginLibraryTreePanel } from '@/components/library/PluginLibraryTreePanel';
-import { ItemPreviewPanel } from '@/components/library/ItemPreviewPanel';
+import {
+  useLibraryConnection, LibraryConnectionUI, PluginLibraryBrowser,
+} from '@audiocontrol/editor-core';
 import { s330LibraryPlugin } from '@/plugins/s330-library-plugin';
 import { s550LibraryPlugin } from '@/plugins/s550-library-plugin';
-import { SampleBundlePreviewPanel } from '@/components/library/SampleBundlePreviewPanel';
-import { CommonSamplePreviewPanel } from '@/components/library/CommonSamplePreviewPanel';
+import type { DeviceMemoryCustomState, PreviewPanelCustomState } from '@/plugins/shared/plugin-state-types';
+import { SetsSection } from '@/components/library/SetsSection';
 import { SaveSetDialog } from '@/components/library/SaveSetDialog';
 import { LoadSetDialog } from '@/components/library/LoadSetDialog';
 import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneDialog';
@@ -51,6 +50,13 @@ import { useRolandLibraryData } from '@/hooks/useRolandLibraryData';
 import { useRolandSelectionMapping } from '@/hooks/useRolandSelectionMapping';
 import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
+
+/** Map plugin categoryId to the LibraryCategory type used by filesystem operations */
+function toLibraryCategory(categoryId: string): 'tones' | 'patches' | 'drum-kits' {
+  if (categoryId === 'drumKits') return 'drum-kits';
+  if (categoryId === 'tones' || categoryId === 'patches') return categoryId;
+  return 'tones'; // fallback for commonSamples/commonPrograms — not used for directory ops
+}
 
 /** Selection state for items in either panel */
 export interface ItemSelection {
@@ -95,7 +101,7 @@ export function LibraryPage() {
 
   const libraryData = useRolandLibraryData(libraryHandle);
   const {
-    categoryData, drumKits, tonesTree, patchesTree, drumKitsTree,
+    categoryData, tonesTree, patchesTree, drumKitsTree,
     selectedDrumKitBundle, setSelectedDrumKitBundle,
     setIndividualTones, setIndividualPatches,
     setTonesTree, setPatchesTree, setDrumKits, setDrumKitsTree,
@@ -188,7 +194,63 @@ export function LibraryPage() {
     }
   }, [selection, selectedDrumKitBundle, openImportSamplesDialog]);
 
-  // Kit editing and editor dialog handlers are in editorDialogs hook
+  // -----------------------------------------------------------------------
+  // Computed state for PluginLibraryBrowser
+  // -----------------------------------------------------------------------
+
+  const pluginSelection = useMemo(() => {
+    if (!selection || selection.source !== 'library') return null;
+    return {
+      categoryId: selection.type === 'individualTone' ? 'tones'
+        : selection.type === 'individualPatch' ? 'patches'
+        : selection.type === 'drumKit' ? 'drumKits'
+        : selection.type === 'sample' || selection.type === 'program' ? 'commonSamples'
+        : selection.type === 'set' ? 'sets'
+        : 'tones',
+      node: { id: selection.name ?? '', name: selection.name ?? '', type: selection.type },
+      meta: { path: selection.path },
+    };
+  }, [selection]);
+
+  const deviceMemoryState = useMemo<DeviceMemoryCustomState>(() => ({
+    tones, patches, loadedToneBanks, loadedPatchBanks,
+    selectedIndex: selection?.source === 'device' ? selection.index : undefined,
+    selectedType: selection?.source === 'device' && (selection.type === 'tone' || selection.type === 'patch') ? selection.type : undefined,
+    onSelectTone: (index: number) => handleSelectDevice('tone', index),
+    onSelectPatch: (index: number) => handleSelectDevice('patch', index),
+    onDropLibraryTone: importDialogs.handleDropLibraryTone,
+    onDropLibraryPatch: importDialogs.handleDropLibraryPatch,
+  }), [tones, patches, loadedToneBanks, loadedPatchBanks, selection, handleSelectDevice, importDialogs.handleDropLibraryTone, importDialogs.handleDropLibraryPatch]);
+
+  const previewState = useMemo<PreviewPanelCustomState>(() => ({
+    pageSelection: selection,
+    deviceTones: tones,
+    devicePatches: patches,
+    libraryHandle,
+    selectedDrumKitBundle,
+    onImportTone: importDialogs.handleOpenImportToneDialog,
+    onImportPatch: importDialogs.handleOpenImportPatchDialog,
+    onImportIndividualTone: importDialogs.handleOpenImportIndividualToneDialog,
+    onImportIndividualPatch: importDialogs.handleOpenImportIndividualPatchDialog,
+    onLoadSet: importDialogs.handleOpenLoadDialog,
+    onImportDrumKit: handleOpenSamplesImport,
+    onEditDrumKit: editorDialogs.handleEditKit,
+    onOpenInLoopEditor: (name: string, path?: string[]) => editorDialogs.handleOpenInLoopEditor(name, 'sample', path),
+    onOpenInChopper: (name: string, path?: string[]) => editorDialogs.handleOpenInChopper(name, 'sample', path),
+    onOpenInSampleEditor: (name: string, path?: string[]) => editorDialogs.handleOpenInSampleEditor(name, 'sample', path),
+  }), [selection, tones, patches, libraryHandle, selectedDrumKitBundle, importDialogs, handleOpenSamplesImport, editorDialogs]);
+
+  const connectionSlot = (
+    <LibraryConnectionUI
+      activeBackend={library.activeBackend}
+      isConnected={library.isConnected}
+      hasLocalFS={library.hasLocalFS}
+      hasGoogleDrive={library.hasGoogleDrive}
+      hasOPFS={library.hasOPFS}
+      onConnect={library.connect}
+      onDisconnect={library.disconnect}
+    />
+  );
 
   if (!isConnected) {
     return (
@@ -209,15 +271,6 @@ export function LibraryPage() {
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-s330-text">Library</h2>
             <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 cursor-help" title="This feature is still being designed and not all the wrinkles have been smoothed out yet.">Experimental</span>
-            <LibraryConnectionUI
-              activeBackend={library.activeBackend}
-              isConnected={library.isConnected}
-              hasLocalFS={library.hasLocalFS}
-              hasGoogleDrive={library.hasGoogleDrive}
-              hasOPFS={library.hasOPFS}
-              onConnect={library.connect}
-              onDisconnect={library.disconnect}
-            />
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleLoadDeviceData} disabled={isLoading} className={cn('ac-btn ac-btn-sm ac-btn-secondary', isLoading && 'opacity-50')}>Refresh Device</button>
@@ -229,95 +282,73 @@ export function LibraryPage() {
 
       {error && (<div className="ac-alert ac-alert-error"><p className="ac-text-error text-sm">{error}</p></div>)}
 
-      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-12rem)]">
-        <div className="card p-0 overflow-hidden h-full">
-          <DeviceMemoryPanel
-            tones={tones} patches={patches} loadedToneBanks={loadedToneBanks} loadedPatchBanks={loadedPatchBanks}
-            selectedIndex={selection?.source === 'device' ? selection.index : undefined}
-            selectedType={selection?.source === 'device' && (selection.type === 'tone' || selection.type === 'patch') ? selection.type : undefined}
-            onSelectTone={(index) => handleSelectDevice('tone', index)}
-            onSelectPatch={(index) => handleSelectDevice('patch', index)}
-            onDropLibraryTone={importDialogs.handleDropLibraryTone}
-            onDropLibraryPatch={importDialogs.handleDropLibraryPatch}
-          />
-        </div>
-        <div className="card p-0 overflow-hidden h-full">
-          <PluginLibraryTreePanel
-            plugin={plugin}
-            libraryHandle={libraryHandle}
-            sets={sets}
-            categoryData={categoryData}
-            expandedPaths={expandedPaths as unknown as Record<string, Set<string>>}
-            selection={selection?.source === 'library' ? {
-              categoryId: selection.type === 'individualTone' ? 'tones'
-                : selection.type === 'individualPatch' ? 'patches'
-                : selection.type === 'drumKit' ? 'drumKits'
-                : selection.type === 'sample' || selection.type === 'program' ? 'commonSamples'
-                : 'tones',
-              node: { id: selection.name ?? '', name: selection.name ?? '', type: selection.type },
-              meta: { path: selection.path },
-            } : null}
-            onSelectionChange={handlePluginSelectionChange}
-            onToggleExpand={(categoryId, nodeId) => {
-              const expandKey = categoryId === 'tones' ? 'tones'
-                : categoryId === 'patches' ? 'patches'
-                : categoryId === 'drumKits' ? 'drumKits'
-                : 'commonSamples';
-              toggleDirectoryExpanded(expandKey, nodeId);
-            }}
-            onRefresh={handleRefreshLibrary}
-            isLoading={isLoading || exportOps.isExporting}
-            onSelectSet={(name) => handleSelectLibrary('set', name)}
-            onSelectTone={(name, setName) => handleSelectLibrary('tone', name, setName)}
-            onSelectPatch={(name, setName) => handleSelectLibrary('patch', name, setName)}
-            onDeleteSet={directoryOps.handleDeleteSet}
-            onRenameSet={directoryOps.handleRenameSet}
-            onDropDeviceTone={exportOps.handleDropDeviceTone}
-            onDropDevicePatch={exportOps.handleDropDevicePatch}
-            onCreateDirectory={directoryOps.handleOpenCreateDirectory}
-            onDeleteDirectory={directoryOps.handleOpenDeleteDirectory}
-            onMoveItem={directoryOps.handleOpenMoveItem}
-            onDropMoveItem={directoryOps.handleDropMoveItem}
-            onRenameItem={directoryOps.handleRenameItem}
-            onDeleteIndividualTone={directoryOps.handleDeleteIndividualTone}
-            onDeleteIndividualPatch={directoryOps.handleDeleteIndividualPatch}
-            onDeleteDrumKit={directoryOps.handleDeleteDrumKit}
-            onOpenInLoopEditor={editorDialogs.handleOpenInLoopEditor}
-            onOpenInChopper={editorDialogs.handleOpenInChopper}
-            onOpenInSampleEditor={editorDialogs.handleOpenInSampleEditor}
-          />
-        </div>
-        <div className="card p-0 overflow-hidden h-full">
-          {selection?.type === 'drumKit' ? (
-            <SampleBundlePreviewPanel
-              kitInfo={drumKits.find((k) => k.directoryName === selection.name) ?? null}
+      <div className="h-[calc(100vh-12rem)]">
+        <PluginLibraryBrowser
+          plugin={plugin}
+          libraryHandle={libraryHandle}
+          categoryData={categoryData}
+          expandedPaths={expandedPaths as unknown as Record<string, Set<string>>}
+          selection={pluginSelection}
+          onSelectionChange={handlePluginSelectionChange}
+          onToggleExpand={(categoryId, nodeId) => toggleDirectoryExpanded(categoryId as 'tones' | 'patches' | 'drumKits' | 'commonSamples', nodeId)}
+          onRefresh={handleRefreshLibrary}
+          onCreateFolder={(categoryId, parentPath) => {
+            directoryOps.handleOpenCreateDirectory(toLibraryCategory(categoryId), parentPath);
+            return Promise.resolve();
+          }}
+          onDelete={(categoryId, node) => {
+            const meta = node.meta as { fileName?: string; directoryName?: string; path?: string[] } | undefined;
+            if (node.type === 'directory') {
+              directoryOps.handleOpenDeleteDirectory(toLibraryCategory(categoryId), meta?.path ?? []);
+            } else if (node.type === 'tone') {
+              directoryOps.handleDeleteIndividualTone(meta?.fileName ?? node.name, meta?.path);
+            } else if (node.type === 'patch') {
+              directoryOps.handleDeleteIndividualPatch(meta?.directoryName ?? node.name, meta?.path);
+            } else if (node.type === 'drum-kit') {
+              directoryOps.handleDeleteDrumKit(meta?.directoryName ?? node.name, meta?.path);
+            }
+            return Promise.resolve();
+          }}
+          onMove={(_categoryId, node) => {
+            const meta = node.meta as { path?: string[] } | undefined;
+            directoryOps.handleOpenMoveItem(toLibraryCategory(_categoryId), meta?.path ?? [], node.name);
+            return Promise.resolve();
+          }}
+          onRename={(categoryId, node, newName) => {
+            const meta = node.meta as { path?: string[] } | undefined;
+            return directoryOps.handleRenameItem(toLibraryCategory(categoryId), meta?.path ?? [], node.name, newName, node.type === 'directory');
+          }}
+          onContextMenuAction={(categoryId, actionId, node) => {
+            const meta = node.meta as { fileName?: string; directoryName?: string; path?: string[] } | undefined;
+            const name = meta?.fileName ?? meta?.directoryName ?? node.name;
+            if (actionId === 'move') {
+              directoryOps.handleOpenMoveItem(toLibraryCategory(categoryId), meta?.path ?? [], name);
+            } else if (actionId === 'open-loop-editor') {
+              editorDialogs.handleOpenInLoopEditor(name, node.type, meta?.path);
+            } else if (actionId === 'open-chopper') {
+              editorDialogs.handleOpenInChopper(name, node.type, meta?.path);
+            } else if (actionId === 'open-sample-editor') {
+              editorDialogs.handleOpenInSampleEditor(name, node.type, meta?.path);
+            }
+          }}
+          deviceMemoryState={deviceMemoryState}
+          previewState={previewState}
+          loading={isLoading || exportOps.isExporting}
+          error={error ?? undefined}
+          connectionSlot={connectionSlot}
+          headerSections={
+            <SetsSection
+              sets={sets}
               libraryHandle={libraryHandle}
-              preloadedBundle={selectedDrumKitBundle}
-              onImport={handleOpenSamplesImport}
-              onEditKit={editorDialogs.handleEditKit}
-              onOpenSampleEditor={editorDialogs.handleOpenDrumKitInSampleEditor}
+              selection={pluginSelection}
+              onSelectSet={(name) => handleSelectLibrary('set', name)}
+              onSelectTone={(name, setName) => handleSelectLibrary('tone', name, setName)}
+              onSelectPatch={(name, setName) => handleSelectLibrary('patch', name, setName)}
+              onDeleteSet={directoryOps.handleDeleteSet}
+              onRenameSet={directoryOps.handleRenameSet}
             />
-          ) : selection?.type === 'sample' || selection?.type === 'program' ? (
-            <CommonSamplePreviewPanel
-              selection={selection ? { type: selection.type as 'sample' | 'program', name: selection.name!, path: selection.path } : null}
-              libraryHandle={libraryHandle}
-              onPromoteToDevice={() => handleRefreshLibrary()}
-              onOpenInLoopEditor={(name, path) => editorDialogs.handleOpenInLoopEditor(name, 'sample', path)}
-              onOpenInChopper={(name, path) => editorDialogs.handleOpenInChopper(name, 'sample', path)}
-              onOpenInSampleEditor={(name, path) => editorDialogs.handleOpenInSampleEditor(name, 'sample', path)}
-            />
-          ) : (
-            <ItemPreviewPanel
-              selection={selection} deviceTones={tones} devicePatches={patches} libraryHandle={libraryHandle}
-              onImportTone={importDialogs.handleOpenImportToneDialog} onImportPatch={importDialogs.handleOpenImportPatchDialog}
-              onImportIndividualTone={importDialogs.handleOpenImportIndividualToneDialog}
-              onImportIndividualPatch={importDialogs.handleOpenImportIndividualPatchDialog}
-              onLoadSet={importDialogs.handleOpenLoadDialog}
-              onOpenInLoopEditor={editorDialogs.handleOpenInLoopEditor}
-              onOpenInSampleEditor={editorDialogs.handleOpenInSampleEditor}
-            />
-          )}
-        </div>
+          }
+        />
       </div>
 
       <SaveSetDialog
