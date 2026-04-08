@@ -49,6 +49,8 @@ interface SampleBundlePreviewPanelProps {
   preloadedManifest?: SampleYaml | null;
   onImport?: () => void;
   onEditKit?: () => void;
+  /** Callback to open the sample editor on the kit's source audio */
+  onOpenSampleEditor?: () => void;
 }
 
 // =========================================================================
@@ -160,6 +162,7 @@ export function SampleBundlePreviewPanel({
   preloadedManifest,
   onImport,
   onEditKit,
+  onOpenSampleEditor,
 }: SampleBundlePreviewPanelProps): JSX.Element {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -415,6 +418,15 @@ export function SampleBundlePreviewPanel({
           {onEditKit && bundle && bundle.source && bundle.slices && (
             <button onClick={onEditKit} className="w-full ac-btn ac-btn-secondary">
               Edit Kit
+            </button>
+          )}
+          {onOpenSampleEditor && bundle && bundle.source && (
+            <button
+              onClick={onOpenSampleEditor}
+              className="w-full ac-btn ac-btn-ghost"
+              data-testid="edit-sample-button"
+            >
+              Edit Sample
             </button>
           )}
           {onImport && (
