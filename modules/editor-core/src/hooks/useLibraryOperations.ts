@@ -22,6 +22,8 @@ import type { TreeNode } from '@/components/library/TreeView';
 // =========================================================================
 
 export interface LibraryOperationsStrategy {
+  /** Create a folder in a device-specific category. Return true if handled, false to use common-area create. */
+  createFolder?(categoryId: string, parentPath: string[], name: string): Promise<boolean>;
   /** Delete a device-specific item. Return true if handled, false to use common-area delete. */
   deleteItem?(categoryId: string, node: TreeNode): Promise<boolean>;
   /** Rename a device-specific item. Return true if handled, false to use common-area rename. */
@@ -98,18 +100,21 @@ export function useLibraryOperations(
         onError('Library is not connected');
         return;
       }
-      const name = window.prompt(`Create folder in "${categoryId}":`);
+      const name = window.prompt('Folder name:');
       if (!name) return;
       try {
-        console.log('[useLibraryOperations] createFolder', { categoryId, parentPath, name });
-        await createFolder(libraryRoot, parentPath, name);
-        console.log('[useLibraryOperations] createFolder success, calling onRefresh');
+        // Try device-specific strategy first
+        const handled = await strategy?.createFolder?.(categoryId, parentPath, name);
+        if (!handled) {
+          // Fallback to common-area create
+          await createFolder(libraryRoot, parentPath, name);
+        }
         onRefresh();
       } catch (err) {
         onError(`Failed to create folder: ${err instanceof Error ? err.message : String(err)}`);
       }
     },
-    [libraryRoot, onRefresh, onError],
+    [libraryRoot, strategy, onRefresh, onError],
   );
 
   const onDelete = useCallback(

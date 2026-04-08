@@ -25,7 +25,7 @@ import {
   waitForPreviewContent,
   isPreviewEmpty,
   verifyDirectoryInOPFS,
-} from '../../../e2e-infra/helpers/library-ui-helpers';
+} from '../../e2e-infra/helpers/library-ui-helpers';
 
 import {
   createMinimalWavBase64,
@@ -171,10 +171,8 @@ test.describe('Library UI Operations', () => {
       await dialog.accept('NewFolder');
     });
 
-    // Click the "+" button on the Samples section header.
-    // The section header contains the text "Samples" and has a "+" button.
-    const samplesHeader = page.locator('.ac-tree-node').filter({ hasText: 'Samples' }).first();
-    const addButton = samplesHeader.getByRole('button', { name: '+' });
+    // Click the "+" button on the Samples section header using data-testid
+    const addButton = page.locator('[data-testid="library-commonSamples-section-actions"] button');
     await expect(addButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await addButton.click();
 
@@ -202,9 +200,8 @@ test.describe('Library UI Operations', () => {
       await dialog.accept('DrumSounds');
     });
 
-    // Click the "+" button on the Tones section header
-    const tonesHeader = page.locator('.ac-tree-node').filter({ hasText: 'Tones' }).first();
-    const addButton = tonesHeader.getByRole('button', { name: '+' });
+    // Click the "+" button on the Tones section header using data-testid
+    const addButton = page.locator('[data-testid="library-tones-section-actions"] button');
     await expect(addButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await addButton.click();
 

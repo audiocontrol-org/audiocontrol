@@ -63,9 +63,8 @@ test.describe('S3K Library UI Operations', () => {
     // Set up dialog handler BEFORE triggering the action
     page.on('dialog', (dialog) => dialog.accept('NewFolder'));
 
-    // Click the "+" button on the Samples section header to create a folder
-    const samplesHeader = page.locator('.ac-tree-node').filter({ hasText: 'samples' }).first();
-    const addButton = samplesHeader.locator('button', { hasText: '+' });
+    // Click the "+" button on the Samples section header using data-testid
+    const addButton = page.locator('[data-testid="library-samples-section-actions"] button');
     await addButton.click({ timeout: 5_000 });
 
     // Verify the directory was actually created in OPFS

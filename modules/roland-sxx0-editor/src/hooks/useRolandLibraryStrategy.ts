@@ -11,6 +11,7 @@ import type { LibraryOperationsStrategy } from '@audiocontrol/editor-core';
 import type { TreeNode } from '@audiocontrol/editor-core';
 import type { StorageDirectoryHandle, LibraryCategory } from '@audiocontrol/sampler-library/browser';
 import {
+  createDirectory,
   deleteIndividualTone,
   deleteIndividualPatch,
   deleteDrumKit,
@@ -92,6 +93,14 @@ export function useRolandLibraryStrategy({
   }, [libraryHandle]);
 
   const strategy = useMemo<LibraryOperationsStrategy>(() => ({
+    async createFolder(categoryId: string, parentPath: string[], name: string): Promise<boolean> {
+      if (!libraryHandle) return false;
+      // Common-area categories use the shared hook's fallback
+      if (categoryId === 'commonSamples' || categoryId === 'commonPrograms') return false;
+      await createDirectory(libraryHandle, toLibraryCategory(categoryId), parentPath, name);
+      return true;
+    },
+
     async deleteItem(categoryId: string, node: TreeNode): Promise<boolean> {
       if (!libraryHandle) return false;
 
