@@ -216,9 +216,25 @@ E2E_DEVICE_TYPE=s550 make test-e2e-roland-device-library
 make test-e2e-s3k-device-library
 ```
 
+## Per-Tranche Deliverables
+
+Each tranche of tests (Tier 1, 2, 3) must produce:
+
+1. **Tests** — passing e2e tests for both editors
+2. **Parity report** — document in feature docs comparing behavior across editors for every operation tested in that tranche. Explicitly note: what's identical, what diverges, what's missing in one editor
+3. **Code duplication audit** — review the code paths exercised by the tranche's tests. Identify any duplicated logic between the two editors that should be shared. Document findings in the parity report. If duplication is found, file it as a follow-up task or fix it before moving to the next tranche.
+
+Parity reports go in `docs/1.0/001-IN-PROGRESS/library-ux/parity-report-tier-{N}.md`.
+
 ## Implementation Order
 
 1. Extend Tier 1 tests in existing `library-ui-operations.spec.ts` files (both editors)
+   - Write parity report for Tier 1 operations
+   - Audit code paths for duplication
 2. Create device-library configs and make targets for Tier 2 and 3
 3. Write Tier 2 Roland tests (S-550 + library)
+   - Write parity report for device transfer operations
+   - Audit transfer code for duplication
 4. Write Tier 3 S3K tests (SCSI + library)
+   - Write parity report for SCSI/disk operations
+   - Audit conversion boundary code for duplication
