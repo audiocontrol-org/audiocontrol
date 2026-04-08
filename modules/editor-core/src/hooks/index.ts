@@ -25,3 +25,8 @@ export {
   type UseLibraryConnectionConfig,
   type UseLibraryConnectionResult,
 } from './useLibraryConnection';
+export {
+  useLibraryOperations,
+  type LibraryOperationsStrategy,
+  type LibraryOperationsResult,
+} from './useLibraryOperations';
