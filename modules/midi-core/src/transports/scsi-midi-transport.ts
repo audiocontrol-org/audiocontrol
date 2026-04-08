@@ -282,7 +282,10 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
   // SDS Channel — dedicated WebSocket path for sample transfers
   // -------------------------------------------------------------------------
 
-  const sdsChannel = createScsiSdsChannel(bridgeUrl);
+  // The SDS channel needs to wait for pending SysEx operations to complete
+  // before starting, because the bridge holds a single SCSI mutex.
+  const waitForSendQueueIdle = () => sendQueue;
+  const sdsChannel = createScsiSdsChannel(bridgeUrl, waitForSendQueueIdle);
 
   return { adapter, sdsChannel, connect, disconnect, scanDevices };
 }
@@ -294,15 +297,23 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
 /** Default SCSI target ID for S3000XL. */
 const DEFAULT_SCSI_TARGET_ID = 6;
 
-function createScsiSdsChannel(bridgeUrl: string): SdsChannel {
+function createScsiSdsChannel(
+  bridgeUrl: string,
+  waitForIdle: () => Promise<void>,
+): SdsChannel {
   return {
-    uploadSample(
+    async uploadSample(
       sampleNumber: number,
       channel: number,
       sampleRate: number,
       samples: Int16Array,
       onProgress?: (progress: SdsTransferProgress) => void,
     ): Promise<void> {
+      // Wait for all pending SysEx operations to complete — the bridge
+      // holds a single SCSI mutex, so we can't start SDS while SysEx is in flight.
+      await waitForIdle();
+      console.log(`[SdsChannel] send queue idle, starting upload`);
+
       const wsUrl = wsUrlFromHttp(bridgeUrl, '/sds/stream');
 
       return new Promise<void>((resolve, reject) => {
@@ -362,11 +373,14 @@ function createScsiSdsChannel(bridgeUrl: string): SdsChannel {
       });
     },
 
-    downloadSample(
+    async downloadSample(
       sampleNumber: number,
       channel: number,
       onProgress?: (progress: SdsTransferProgress) => void,
     ): Promise<{ header: SdsDumpHeader; samples: Int16Array }> {
+      await waitForIdle();
+      console.log(`[SdsChannel] send queue idle, starting download`);
+
       const wsUrl = wsUrlFromHttp(bridgeUrl, '/sds/stream');
 
       return new Promise<{ header: SdsDumpHeader; samples: Int16Array }>((resolve, reject) => {
