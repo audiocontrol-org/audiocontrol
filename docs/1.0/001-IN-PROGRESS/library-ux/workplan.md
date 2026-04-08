@@ -5,6 +5,28 @@
 
 ---
 
+## GitHub Tracking
+
+| Item | Link |
+|------|------|
+| **Milestone** | [Backlog](https://github.com/audiocontrol-org/audiocontrol/milestone/8) |
+| **Parent Issue** | [#165 - [roland-sxx0-editor] Library page UX improvements](https://github.com/audiocontrol-org/audiocontrol/issues/165) |
+| **Labels** | `s330-editor`, `enhancement`, `refactor` |
+
+### Implementation Issues
+
+| Phase | Issue | Description |
+|-------|-------|-------------|
+| Phase 1 | [#166](https://github.com/audiocontrol-org/audiocontrol/issues/166) | Panel focus indicators and empty states |
+| Phase 1 | [#167](https://github.com/audiocontrol-org/audiocontrol/issues/167) | Loading states and progress indicators |
+| Phase 2 | [#168](https://github.com/audiocontrol-org/audiocontrol/issues/168) | Drag-drop affordances and context menus |
+| Phase 2 | [#169](https://github.com/audiocontrol-org/audiocontrol/issues/169) | Keyboard and breadcrumb navigation |
+| Phase 3 | [#170](https://github.com/audiocontrol-org/audiocontrol/issues/170) | Extract dialog and panel hooks |
+| Phase 3 | [#171](https://github.com/audiocontrol-org/audiocontrol/issues/171) | Consolidate preview panels |
+| Phase 4 | [#172](https://github.com/audiocontrol-org/audiocontrol/issues/172) | Tests and documentation |
+
+---
+
 ## Overview
 
 Align both editors on `PluginLibraryBrowser`, then polish the shared components. The Roland editor is the UX reference standard; `PluginLibraryBrowser` must match it before Roland migrates onto it.
