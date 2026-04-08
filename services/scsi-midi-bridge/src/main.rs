@@ -1,6 +1,7 @@
 mod config;
 mod routes;
 mod s2p_client;
+mod scsi_midi;
 
 use std::net::SocketAddr;
 use std::sync::Arc;
@@ -56,12 +57,19 @@ async fn main() {
         .route("/sds/send", post(routes::sds_send))
         .route("/sds/poll", get(routes::sds_poll))
         .route("/sds/stream", get(routes::sds_stream))
+        .route("/scsi/exec", post(routes::scsi_exec))
+        .route("/scsi/inquiry/:target_id", get(routes::scsi_inquiry))
+        .route("/scsi/capacity/:target_id", get(routes::scsi_capacity))
+        .route("/scsi/read", post(routes::scsi_read))
+        .route("/scsi/write", post(routes::scsi_write))
         .with_state(state)
         .layer(CorsLayer::permissive());
 
     let addr = SocketAddr::from(([0, 0, 0, 0], config.port));
+    let build_id = format!("{}@{}", env!("BUILD_GIT_HASH"), env!("BUILD_TIMESTAMP"));
     tracing::info!(
         version = env!("CARGO_PKG_VERSION"),
+        build_id = %build_id,
         addr = %addr,
         s2p_host = %config.s2p_host,
         s2p_port = config.s2p_port,

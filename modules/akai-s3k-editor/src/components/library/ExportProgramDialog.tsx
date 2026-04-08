@@ -185,7 +185,8 @@ export function ExportProgramDialog({
               },
             );
 
-            const wavData = buildWavFile(result.samples, result.header.sampleRate);
+            const sampleRate = Math.round(1_000_000_000 / result.header.samplePeriodNs);
+            const wavData = buildWavFile(result.samples, sampleRate);
             await saveProgramSample(libraryRoot, trimmedName, sampleName, wavData);
           }
         }
