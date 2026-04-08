@@ -1,11 +1,11 @@
 /**
- * Playwright config for device-library e2e tests.
+ * Playwright config for device+library e2e tests.
  *
- * These tests require both:
- * - HTTP MIDI transport (for device communication)
- * - OPFS access (for library storage)
+ * These tests require both a connected Roland S-330/S-550 via midi-server
+ * AND OPFS library access. They verify round-trip flows: export from device
+ * to library, import from library to device, etc.
  *
- * Tests verify importing tones/patches from OPFS library to connected device.
+ * Servers are started by scripts/run-device-library-e2e.sh on OS-assigned ports.
  *
  * Environment variables (set by runner):
  *   E2E_VITE_PORT - Vite dev server port
@@ -13,8 +13,7 @@
  *   E2E_MIDI_INPUT_PORT - Discovered MIDI input port name
  *   E2E_MIDI_OUTPUT_PORT - Discovered MIDI output port name
  *   E2E_DEVICE_ID - Roland device ID (usually 0)
- *
- * Run via: ./scripts/run-device-library-e2e.sh
+ *   E2E_DEVICE_TYPE - Device type (s330 or s550)
  */
 
 import { defineConfig, devices } from '@playwright/test';
@@ -36,16 +35,16 @@ if (!midiServerPort) {
 
 export default defineConfig({
   testDir: './e2e',
-  testMatch: 'device-*.spec.ts',
-  fullyParallel: false, // Sequential for hardware tests
+  testMatch: 'device-library-*.spec.ts',
+  fullyParallel: false, // Sequential for hardware + OPFS isolation
   forbidOnly: !!process.env.CI,
-  retries: 0, // No retries for hardware tests
-  workers: 1, // Single worker for hardware tests
+  retries: 0, // No retries - hardware tests must be deterministic
+  workers: 1, // Single worker for hardware + OPFS isolation
   reporter: [
     ['line'],
     ['./e2e/reporters/heartbeat-reporter.ts'],
   ],
-  timeout: 15_000, // 15s max per test - fail fast
+  timeout: 60_000, // 60s max per test - device transfers are slow
   use: {
     baseURL: `https://localhost:${vitePort}`,
     ignoreHTTPSErrors: true, // Vite uses self-signed certs

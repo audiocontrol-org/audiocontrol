@@ -79,7 +79,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi check-scsi-bridge test-scsi-write-validation dev-scsi
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi check-scsi-bridge test-scsi-write-validation dev-scsi
 
 build: $(ALL_STAMPS)
 
@@ -138,6 +138,10 @@ test-e2e-roland-device: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwrigh
 # Roland library tests (OPFS, no device required)
 test-e2e-roland-library: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-library-e2e.sh $(ARGS)"
+
+# Roland device+library tests (requires connected S-330/S-550 + midi-server + OPFS)
+test-e2e-roland-device-library: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwright
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-device-library-e2e.sh $(ARGS)"
 
 # Roland UI navigation tests (no device required)
 test-e2e-roland-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
