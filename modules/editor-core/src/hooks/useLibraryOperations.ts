@@ -101,7 +101,9 @@ export function useLibraryOperations(
       const name = window.prompt(`Create folder in "${categoryId}":`);
       if (!name) return;
       try {
+        console.log('[useLibraryOperations] createFolder', { categoryId, parentPath, name });
         await createFolder(libraryRoot, parentPath, name);
+        console.log('[useLibraryOperations] createFolder success, calling onRefresh');
         onRefresh();
       } catch (err) {
         onError(`Failed to create folder: ${err instanceof Error ? err.message : String(err)}`);

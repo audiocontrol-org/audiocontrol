@@ -366,6 +366,7 @@ export function PluginLibraryBrowser({
             {plugin.categories.map((category) => (
               <TreeSection
                 key={category.categoryId}
+                data-testid={`library-${category.categoryId}-section`}
                 title={category.title}
                 nodes={categoryData[category.categoryId] ?? []}
                 category={category.categoryId}
@@ -429,7 +430,7 @@ export function PluginLibraryBrowser({
       </div>
 
       {/* Preview panel */}
-      <div className="ac-plugin-library-browser-preview">
+      <div className="ac-plugin-library-browser-preview" data-testid="library-preview-panel">
         {plugin.previewPanel.renderPreview(selection, {
           isLoading: loading ?? false,
           error: error,

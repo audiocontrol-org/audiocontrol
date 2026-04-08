@@ -42,7 +42,7 @@ export function useRolandSelectionMapping(
     }
 
     const { categoryId, node, meta } = pluginSelection;
-    const nodeMeta = meta as { fileName?: string; directoryName?: string; path?: string[] };
+    const nodeMeta = (meta ?? {}) as { fileName?: string; directoryName?: string; path?: string[] };
 
     let pageSelection: ItemSelection;
 

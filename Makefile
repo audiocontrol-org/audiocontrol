@@ -79,7 +79,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-scsi check-scsi-bridge test-scsi-write-validation dev-scsi
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi check-scsi-bridge test-scsi-write-validation dev-scsi
 
 build: $(ALL_STAMPS)
 
@@ -150,6 +150,10 @@ test-e2e-roland-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
 # S3000XL device tests (requires connected S3000XL + midi-server)
 test-e2e-s3k-device: $(AKAI_S3K_EDITOR) check-midi-server ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh $(ARGS)"
+
+# S3K library tests (OPFS, no device required)
+test-e2e-s3k-library: $(AKAI_S3K_EDITOR) ensure-playwright
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && ./scripts/run-library-e2e.sh $(ARGS)"
 
 # ---------------------------------------------------------------------------
 # SCSI MIDI Bridge E2E Tests

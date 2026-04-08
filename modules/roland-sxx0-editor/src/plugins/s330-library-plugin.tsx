@@ -106,6 +106,7 @@ function S330PreviewPanelAdapter({
   }
 
   // No selection or no custom state - show empty state
+  console.log('[S330PreviewPanelAdapter]', { selection, state: !!state, pageSelection: state?.pageSelection });
   if (!selection || !state) {
     return (
       <div className="h-full flex flex-col">
