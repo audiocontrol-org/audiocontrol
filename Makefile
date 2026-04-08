@@ -79,7 +79,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi check-scsi-bridge test-scsi-write-validation dev-scsi
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi
 
 build: $(ALL_STAMPS)
 
@@ -262,6 +262,20 @@ test-e2e-s3k-scsi: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
 		SCSI_PI_USER='$(SCSI_PI_USER)' \
 		S2P_BIN='$(S2P_BIN)' \
 		SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+		./scripts/run-scsi-midi-e2e.sh $(ARGS)"
+
+# S3000XL device+library tests (requires Pi with S3000XL via SCSI + OPFS)
+# Uses the shared SCSI runner with device-library Playwright config.
+# Usage: make test-e2e-s3k-device-library
+# Usage: make test-e2e-s3k-device-library ARGS="--grep 'round trip'"
+test-e2e-s3k-device-library: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
+	$(DEVENV) shell --quiet -- bash -c "\
+		cd $(MODULES_DIR)/akai-s3k-editor && \
+		SCSI_PI_HOST='$(SCSI_PI_HOST)' \
+		SCSI_PI_USER='$(SCSI_PI_USER)' \
+		S2P_BIN='$(S2P_BIN)' \
+		SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+		E2E_PLAYWRIGHT_CONFIG='playwright.device-library.config.ts' \
 		./scripts/run-scsi-midi-e2e.sh $(ARGS)"
 
 # ---------------------------------------------------------------------------
