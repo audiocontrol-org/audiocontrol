@@ -161,7 +161,28 @@ async function selectPort(
  * @throws Error if no ports available or connection fails
  */
 export async function connectToDevice(page: Page, storeKey: string = DEFAULT_STORE_KEY): Promise<void> {
-  // Wait for port selectors to have options loaded
+  // HTTP MIDI and SCSI transports auto-connect when URL has transport params.
+  // Wait for auto-connection before falling back to manual port selection.
+  try {
+    await page.waitForFunction(
+      (key) => {
+        const store = (window as unknown as Record<string, unknown>)[key] as
+          | { getState: () => { status: string } }
+          | undefined;
+        return store?.getState().status === 'connected';
+      },
+      storeKey,
+      { timeout: CONNECTION_TIMEOUT_MS },
+    );
+    console.log('Device connected (auto-connect transport)');
+    return;
+  } catch {
+    // Auto-connect didn't happen within timeout — fall back to manual port selection
+    console.log('Auto-connect did not complete, trying manual port selection...');
+  }
+
+  // Manual port selection (WebMIDI path — not usable in automated tests
+  // but kept for completeness)
   const inputSelect = page.locator('[data-testid="midi-input-select"]');
   await inputSelect.waitFor({ state: 'visible', timeout: UI_TIMEOUT_MS });
 

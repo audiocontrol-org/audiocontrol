@@ -56,6 +56,7 @@ function NameList({
             <li key={index}>
               <button
                 type="button"
+                data-testid={`device-${type}-${index}`}
                 className={`w-full text-left px-2 py-1 text-sm rounded transition-colors ${
                   isSelected
                     ? 'bg-blue-600 text-white'
