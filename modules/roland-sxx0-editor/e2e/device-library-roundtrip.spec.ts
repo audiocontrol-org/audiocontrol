@@ -15,7 +15,7 @@
  * Run via: make test-e2e-device-library
  */
 
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 
 // Deviation: Using relative imports because e2e/ is outside src/ and the @/
 // path alias only applies to src/. This should not be copied to app code.
@@ -71,6 +71,33 @@ function buildUrl(subpath = ''): string {
     : EDITOR_BASE_PATH;
   const separator = fullPath.includes('?') ? '&' : '?';
   return `${fullPath}${separator}midi=http&midiServerPort=${MIDI_SERVER_PORT}`;
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Wait for a MIDI transfer to complete by polling progress.
+ * Each poll iteration emits a Playwright test step (expect assertion)
+ * that feeds the heartbeat reporter, keeping the watchdog alive.
+ */
+async function waitForTransferWithHeartbeat(
+  page: Page,
+  successTestId: string,
+  progressTestId: string,
+  timeoutMs: number,
+): Promise<void> {
+  const success = page.locator(`[data-testid="${successTestId}"]`);
+  const progress = page.locator(`[data-testid="${progressTestId}"]`);
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await success.isVisible()) break;
+    // Each assertion is a test step that produces a heartbeat event
+    await expect(progress.or(success)).toBeVisible({ timeout: 3_000 });
+    await page.waitForTimeout(500);
+  }
+  await expect(success).toBeVisible({ timeout: 3_000 });
 }
 
 // ---------------------------------------------------------------------------
@@ -237,10 +264,10 @@ test.describe('Device Library Round Trip', () => {
     await expect(confirmImport).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await confirmImport.click();
 
-    // Step 7: Wait for import success, then close the dialog
-    await expect(
-      page.locator('[data-testid="import-success"]')
-    ).toBeVisible({ timeout: MIDI_TRANSFER_TIMEOUT_MS });
+    // Step 7: Wait for import success, polling progress to feed the watchdog
+    await waitForTransferWithHeartbeat(
+      page, 'import-success', 'import-progress', MIDI_TRANSFER_TIMEOUT_MS,
+    );
 
     // Click "Done" to dismiss the success dialog
     const doneButton = page.locator('button', { hasText: 'Done' });
@@ -274,11 +301,23 @@ test.describe('Device Library Round Trip', () => {
       '[data-testid="export-confirm"]'
     );
     await expect(confirmExport).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await expect(confirmExport).toBeEnabled({ timeout: UI_TIMEOUT_MS });
+    console.log('Clicking export-confirm button');
     await confirmExport.click();
+    console.log('export-confirm clicked');
 
     // Step 11: Wait for export success, then close the dialog
+    // Wait for export success — poll the dialog to feed the watchdog
     const exportSuccess = exportDialog.locator('text=exported successfully');
-    await expect(exportSuccess).toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
+    {
+      const deadline = Date.now() + EXPORT_TIMEOUT_MS;
+      while (Date.now() < deadline) {
+        if (await exportSuccess.isVisible()) break;
+        await expect(exportDialog).toBeVisible({ timeout: 3_000 });
+        await page.waitForTimeout(500);
+      }
+      await expect(exportSuccess).toBeVisible({ timeout: 3_000 });
+    }
 
     const exportDone = exportDialog.locator('button', { hasText: 'Done' });
     await exportDone.click();
@@ -460,10 +499,10 @@ s330:
     await expect(confirmImport).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await confirmImport.click();
 
-    // Step 7: Wait for import success, then close the dialog
-    await expect(
-      page.locator('[data-testid="import-success"]')
-    ).toBeVisible({ timeout: MIDI_TRANSFER_TIMEOUT_MS });
+    // Step 7: Wait for import success, polling progress to feed the watchdog
+    await waitForTransferWithHeartbeat(
+      page, 'import-success', 'import-progress', MIDI_TRANSFER_TIMEOUT_MS,
+    );
 
     const doneButton = page.locator('button', { hasText: 'Done' });
     await doneButton.click();
@@ -498,11 +537,23 @@ s330:
       '[data-testid="export-confirm"]'
     );
     await expect(confirmExport).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await expect(confirmExport).toBeEnabled({ timeout: UI_TIMEOUT_MS });
+    console.log('Clicking export-confirm button');
     await confirmExport.click();
+    console.log('export-confirm clicked');
 
     // Step 11: Wait for export success, then close the dialog
+    // Wait for export success — poll the dialog to feed the watchdog
     const exportSuccess = exportDialog.locator('text=exported successfully');
-    await expect(exportSuccess).toBeVisible({ timeout: EXPORT_TIMEOUT_MS });
+    {
+      const deadline = Date.now() + EXPORT_TIMEOUT_MS;
+      while (Date.now() < deadline) {
+        if (await exportSuccess.isVisible()) break;
+        await expect(exportDialog).toBeVisible({ timeout: 3_000 });
+        await page.waitForTimeout(500);
+      }
+      await expect(exportSuccess).toBeVisible({ timeout: 3_000 });
+    }
 
     const exportDone = exportDialog.locator('button', { hasText: 'Done' });
     await exportDone.click();
