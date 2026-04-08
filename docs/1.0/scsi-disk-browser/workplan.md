@@ -460,8 +460,8 @@ Extend disk browser and library UI with translation-aware transfer actions:
 | 19 | Akai → common library translation | 6.1 | DONE (12 unit tests) |
 | 20 | Common library → Akai translation | 6.2 | DONE |
 | 21 | Translation-aware transfer UI | 6.3 | DONE (destination selector in DiskToLibraryDialog) |
-| 22 | Disk write round-trip e2e tests | 7.1 | PLANNING |
-| 23 | Library transfer round-trip e2e tests | 7.2 | PLANNING |
+| 22 | Disk write round-trip e2e tests | 7.1 | DONE (hardware verified) |
+| 23 | Library transfer round-trip e2e tests | 7.2 | DEFERRED (requires UI integration test) |
 
 ## Dependencies
 
