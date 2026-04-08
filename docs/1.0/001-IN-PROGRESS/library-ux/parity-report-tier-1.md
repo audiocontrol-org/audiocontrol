@@ -220,3 +220,15 @@ The S3K `LibraryPage.tsx` is 605 lines vs Roland's 431. The difference (174 line
 
 - Extracting `LibraryConnectionUI` slot construction -- too little duplication to justify a shared component.
 - Unifying `libraryStrategy` implementations -- the device-specific logic is genuinely different and should stay in each editor.
+
+---
+
+## Resolution Status
+
+| # | Duplication | Status | Reference |
+|---|------------|--------|-----------|
+| 1 | `onEditorAction` callback | **Fixed** — `createEditorActionHandler()` added to `useEditorDialogsCore` |
+| 2 | `getNodePath`/`getNodeName` helpers | **Fixed** — exported from `useLibraryOperations`, removed from Roland strategy |
+| 3 | Editor dialog rendering (~40 lines) | **Deferred** — can't extract to editor-core without adding package deps. Filed as [#175](https://github.com/audiocontrol-org/audiocontrol/issues/175) |
+| 4 | S3K LibraryPage hook extraction (605 lines) | **Deferred** — filed as [#174](https://github.com/audiocontrol-org/audiocontrol/issues/174) |
+| 5 | Roland parallel `ItemSelection` type | **Deferred** — medium effort, tracked in recommendations above |
