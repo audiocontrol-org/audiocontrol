@@ -13,7 +13,7 @@
  * Device-agnostic — all device-specific behavior comes from the plugin.
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { TreeSection } from './TreeSection';
 import type { TreeNode } from './TreeView';
 import type {
@@ -21,7 +21,9 @@ import type {
   DeviceMemoryAction,
   ItemSelection,
   CategoryCallbacks,
+  PluginMenuAction,
 } from './plugins';
+import { ContextMenu, type ContextMenuAction } from './ContextMenu';
 import type { OperationProgress } from '@/types/operation-progress';
 
 // =========================================================================
@@ -67,8 +69,11 @@ export interface PluginLibraryBrowserProps {
   /** Called when a node is renamed */
   onRename: (categoryId: string, node: TreeNode, newName: string) => Promise<void>;
 
-  /** Called when context menu is requested */
-  onContextMenu?: (categoryId: string, e: React.MouseEvent, node: TreeNode) => void;
+  /** Called when a context menu action is selected. Action IDs are defined
+   * by the plugin's ItemTypePlugin.getContextMenuActions(). Built-in actions
+   * handled by PluginLibraryBrowser: 'rename', 'delete', 'move'. All others
+   * are dispatched to this callback for the consumer to handle. */
+  onContextMenuAction?: (categoryId: string, actionId: string, node: TreeNode) => void;
 
   /** Called when a file is dropped on a category */
   onFileDrop?: (categoryId: string, files: File[], targetPath: string[]) => Promise<void>;
@@ -111,7 +116,7 @@ export function PluginLibraryBrowser({
   onCreateFolder,
   onDelete,
   onRename,
-  onContextMenu,
+  onContextMenuAction,
   deviceMemoryState,
   onDeviceMemoryAction,
   previewState,
@@ -159,13 +164,59 @@ export function PluginLibraryBrowser({
     [onDelete],
   );
 
-  // Handle context menu with category context
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    categoryId: string;
+    node: TreeNode;
+  } | null>(null);
+
+  // Handle context menu with category context — opens the plugin-driven menu
   const handleContextMenu = useCallback(
     (categoryId: string) => (e: React.MouseEvent, node: TreeNode) => {
-      onContextMenu?.(categoryId, e, node);
+      e.preventDefault();
+      const category = plugin.categories.find((c) => c.categoryId === categoryId);
+      if (!category) return;
+      const itemTypePlugin = category.itemTypes[node.type];
+      if (!itemTypePlugin?.getContextMenuActions) return;
+      const actions = itemTypePlugin.getContextMenuActions(node.meta, node);
+      if (actions.length === 0) return;
+      setContextMenu({ x: e.clientX, y: e.clientY, categoryId, node });
     },
-    [onContextMenu],
+    [plugin.categories],
   );
+
+  // Build ContextMenuAction[] from plugin actions for the currently open menu
+  const contextMenuActions: ContextMenuAction[] = (() => {
+    if (!contextMenu) return [];
+    const category = plugin.categories.find((c) => c.categoryId === contextMenu.categoryId);
+    if (!category) return [];
+    const itemTypePlugin = category.itemTypes[contextMenu.node.type];
+    if (!itemTypePlugin?.getContextMenuActions) return [];
+    const pluginActions = itemTypePlugin.getContextMenuActions(contextMenu.node.meta, contextMenu.node);
+
+    return pluginActions.map((action) => {
+      if ('separator' in action) {
+        return { label: '---', separator: true, onClick: () => {} };
+      }
+      const menuAction = action as PluginMenuAction;
+      return {
+        label: menuAction.label,
+        icon: menuAction.icon,
+        disabled: menuAction.disabled,
+        danger: menuAction.danger,
+        onClick: () => {
+          const { categoryId, node } = contextMenu;
+          if (menuAction.id === 'delete') {
+            onDelete(categoryId, node);
+          } else {
+            onContextMenuAction?.(categoryId, menuAction.id, node);
+          }
+        },
+      };
+    });
+  })();
 
   // Render icon for a node using the appropriate item type plugin
   const renderIcon = useCallback(
@@ -352,6 +403,16 @@ export function PluginLibraryBrowser({
           customState: previewState,
         })}
       </div>
+
+      {/* Context menu (portal-like, positioned absolutely) */}
+      {contextMenu && contextMenuActions.length > 0 && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          actions={contextMenuActions}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 }
