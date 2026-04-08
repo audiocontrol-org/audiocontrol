@@ -451,40 +451,40 @@ export function LibraryPage() {
         currentPath={directoryOps.moveItemDialog?.sourcePath ?? []}
         category={directoryOps.moveItemDialog?.category ?? 'tones'} categoryTree={directoryOps.getMoveDialogTree()}
       />
-      {editorDialogs.loopEditorDialog && (
+      {editorDialogs.loopEditor && (
         <LoopEditorDialog
-          open={editorDialogs.loopEditorDialog.open}
+          open={editorDialogs.loopEditor.open}
           onOpenChange={(open) => { if (!open) editorDialogs.closeLoopEditor(); }}
-          samples={editorDialogs.loopEditorDialog.samples}
-          sampleRate={editorDialogs.loopEditorDialog.sampleRate}
-          sampleName={editorDialogs.loopEditorDialog.sampleName}
-          loopStart={editorDialogs.loopEditorDialog.loopStart}
-          loopEnd={editorDialogs.loopEditorDialog.loopEnd}
-          rootKey={editorDialogs.loopEditorDialog.rootKey}
+          samples={editorDialogs.loopEditor.samples}
+          sampleRate={editorDialogs.loopEditor.sampleRate}
+          sampleName={editorDialogs.loopEditor.sampleName}
+          loopStart={editorDialogs.loopEditor.loopStart}
+          loopEnd={editorDialogs.loopEditor.loopEnd}
+          rootKey={editorDialogs.loopEditor.rootKey}
           onSave={editorDialogs.handleLoopEditorSave}
         />
       )}
-      {editorDialogs.chopperDialog && (
+      {editorDialogs.chopper && (
         <SampleChopperDialog
-          open={editorDialogs.chopperDialog.open}
+          open={editorDialogs.chopper.open}
           onOpenChange={(open) => { if (!open) editorDialogs.closeChopper(); }}
-          samples={editorDialogs.chopperDialog.samples}
-          sampleRate={editorDialogs.chopperDialog.sampleRate}
-          sourceName={editorDialogs.chopperDialog.sampleName}
-          editMode={!!editorDialogs.chopperDialog.initialSlices}
-          initialSlices={editorDialogs.chopperDialog.initialSlices}
-          initialLabels={editorDialogs.chopperDialog.initialLabels}
+          samples={editorDialogs.chopper.samples}
+          sampleRate={editorDialogs.chopper.sampleRate}
+          sourceName={editorDialogs.chopper.sampleName}
+          editMode={!!editorDialogs.chopper.initialSlices}
+          initialSlices={editorDialogs.chopper.initialSlices}
+          initialLabels={editorDialogs.chopper.initialLabels}
           onConfirm={() => { editorDialogs.closeChopper(); }}
           onSave={libraryHandle ? editorDialogs.handleChopperSave : undefined}
         />
       )}
-      {editorDialogs.sampleEditorDialog && (
+      {editorDialogs.sampleEditor && (
         <SampleEditorDialog
-          open={editorDialogs.sampleEditorDialog.open}
+          open={editorDialogs.sampleEditor.open}
           onOpenChange={(open) => { if (!open) editorDialogs.closeSampleEditor(); }}
-          samples={editorDialogs.sampleEditorDialog.samples}
-          sampleRate={editorDialogs.sampleEditorDialog.sampleRate}
-          sampleName={editorDialogs.sampleEditorDialog.sampleName}
+          samples={editorDialogs.sampleEditor.samples}
+          sampleRate={editorDialogs.sampleEditor.sampleRate}
+          sampleName={editorDialogs.sampleEditor.sampleName}
           onSave={libraryHandle ? editorDialogs.handleSampleEditorSave : undefined}
         />
       )}

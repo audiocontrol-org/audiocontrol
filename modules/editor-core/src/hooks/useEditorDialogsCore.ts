@@ -28,6 +28,8 @@ import {
   getNestedDirectory,
   sanitizeForFilename,
   type SampleYaml,
+  type TriggerMapping,
+  type PlaybackConfig,
 } from '@audiocontrol/sampler-library/browser';
 
 // Types from sample-chopper/ui — declared locally to avoid adding
@@ -43,8 +45,8 @@ export interface ChopperSavePayload {
   name: string;
   sourceAudio: { samples: Int16Array; sampleRate: number };
   slices: Array<{ label: string; startSample: number; endSample: number }>;
-  triggers?: unknown;
-  playbackConfig?: unknown;
+  triggers?: TriggerMapping[];
+  playbackConfig?: PlaybackConfig;
 }
 
 // =========================================================================

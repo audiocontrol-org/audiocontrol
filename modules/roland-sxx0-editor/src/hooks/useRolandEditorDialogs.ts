@@ -1,96 +1,56 @@
 /**
- * Hook managing state and handlers for the editor dialogs on the Library page:
- * Slice Edit (drum kit), Loop Editor, Sample Chopper, and Sample Editor.
+ * Roland editor dialog hook — wraps the shared useEditorDialogsCore
+ * with Roland-specific WAV loading for tones and drum kit sources.
  *
- * Loads audio from both device-specific (tones) and common-area (samples)
- * library sections, opens dialogs with parsed WAV data, and saves results back.
+ * The shared hook provides the full complement of common-area editing
+ * tools. This wrapper adds:
+ * - Tone WAV loading from library/s330/tones/ (device-specific Zone 3)
+ * - Drum kit slice editing (source loading + slice update)
+ * - Drum kit source → sample editor transition
  *
- * Roland-specific: supports tone/individualTone and drumKit node types in
- * addition to common-area samples.
+ * All editing operations save to the common area (Zone 4).
+ * Editing a Roland tone promotes the result to the common area.
  */
 
-import { useState, useCallback } from 'react';
-import type { StorageDirectoryHandle } from '@/lib/library-service';
+import { useCallback, useMemo } from 'react';
+import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import {
-  loadDrumKitBundle, loadDrumKitSource, saveDrumKitSource, updateDrumKitSlices,
+  useEditorDialogsCore,
+  type EditorDialogStrategy,
+  type WavData,
+  type EditorDialogsCoreResult,
+} from '@audiocontrol/editor-core';
+import {
+  loadDrumKitBundle, loadDrumKitSource, updateDrumKitSlices,
   loadIndividualTone, loadIndividualToneWavSamples,
 } from '@/lib/library-service';
-import { parseWav } from '@/core/midi/S330Client';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
-import {
-  loadSample, loadSampleMeta, saveSample, createWav,
-  getNestedDirectory, sanitizeForFilename,
-  type SampleYaml,
-} from '@audiocontrol/sampler-library/browser';
-import { parseYaml, stringifyYaml } from '@/lib/library-io';
-import type { InitialSliceDefinition, SliceDefinitionOutput, ChopperSavePayload } from '@audiocontrol/sample-chopper/ui';
+import type { SliceDefinitionOutput } from '@audiocontrol/sample-chopper/ui';
 
 // =========================================================================
-// State types
+// Re-export types from shared hook for backward compatibility
 // =========================================================================
 
-export interface SliceEditDialogState {
-  open: boolean;
-  kitName: string;
-  path?: string[];
-  samples: Int16Array | null;
-  sampleRate: number;
-  slices: InitialSliceDefinition[];
-  kitConfig: {
-    name: string;
-    sampleRate: 15000 | 30000;
-    baseNote: number;
-    transpose?: number;
-    velocitySensitivity?: number;
-  };
-}
-
-interface EditorDialogBase {
-  open: boolean;
-  samples: Int16Array | null;
-  sampleRate: number;
-  sampleName: string;
-  origin: { name: string; type: string; path?: string[] } | null;
-}
-
-export interface LoopEditorDialogState extends EditorDialogBase {
-  loopStart?: number;
-  loopEnd?: number;
-  rootKey?: number;
-}
-
-export type ChopperDialogState = EditorDialogBase & {
-  initialSlices?: InitialSliceDefinition[];
-  initialLabels?: string;
-};
-
-export type SampleEditorDialogState = EditorDialogBase;
+export type {
+  LoopEditorDialogState,
+  SampleEditorDialogState,
+  ChopperDialogState,
+  SliceEditDialogState,
+  DrumKitEditorDialogState,
+} from '@audiocontrol/editor-core';
 
 // =========================================================================
 // Result interface
 // =========================================================================
 
-export interface RolandEditorDialogsResult {
-  sliceEditDialog: SliceEditDialogState | null;
-  loopEditorDialog: LoopEditorDialogState | null;
-  chopperDialog: ChopperDialogState | null;
-  sampleEditorDialog: SampleEditorDialogState | null;
-
+export interface RolandEditorDialogsResult extends EditorDialogsCoreResult {
   handleEditKit: () => Promise<void>;
   handleOpenDrumKitInSampleEditor: () => Promise<void>;
-  handleSlicesUpdated: (slices: SliceDefinitionOutput[], kitConfig: { transpose?: number; velocitySensitivity?: number }) => Promise<void>;
-  handleOpenInLoopEditor: (name: string, nodeType: string, path?: string[]) => Promise<void>;
-  handleOpenInChopper: (name: string, nodeType: string, path?: string[]) => Promise<void>;
-  handleChopperSave: (payload: ChopperSavePayload) => Promise<void>;
-  handleOpenInSampleEditor: (name: string, nodeType: string, path?: string[]) => Promise<void>;
-  handleSampleEditorSave: (samples: Int16Array, sampleRate: number) => Promise<void>;
-  handleLoopEditorSave: (loopStart: number, loopEnd: number) => Promise<void>;
+  handleSlicesUpdated: (
+    slices: SliceDefinitionOutput[],
+    kitConfig: { transpose?: number; velocitySensitivity?: number },
+  ) => Promise<void>;
   handleOpenSliceEditorFromSampleEditor: () => void;
-
-  closeSliceEditDialog: () => void;
-  closeLoopEditor: () => void;
-  closeChopper: () => void;
-  closeSampleEditor: () => void;
 }
 
 // =========================================================================
@@ -116,26 +76,49 @@ export function useRolandEditorDialogs({
   onError,
   onRefresh,
 }: UseRolandEditorDialogsOptions): RolandEditorDialogsResult {
-  const [sliceEditDialog, setSliceEditDialog] = useState<SliceEditDialogState | null>(null);
-  const [loopEditorDialog, setLoopEditorDialog] = useState<LoopEditorDialogState | null>(null);
-  const [chopperDialog, setChopperDialog] = useState<ChopperDialogState | null>(null);
-  const [sampleEditorDialog, setSampleEditorDialog] = useState<SampleEditorDialogState | null>(null);
+
+  // Roland strategy: loads tone WAV from device-specific library
+  const strategy = useMemo<EditorDialogStrategy>(() => ({
+    loadWav: async (
+      root: StorageDirectoryHandle,
+      name: string,
+      nodeType: string,
+      path?: string[],
+    ): Promise<WavData | null> => {
+      if (nodeType === 'tone' || nodeType === 'individualTone') {
+        const [wavResult, toneResult] = await Promise.all([
+          loadIndividualToneWavSamples(root, name, path ?? []),
+          loadIndividualTone(root, name, path ?? []),
+        ]);
+        return {
+          samples: wavResult.samples,
+          sampleRate: wavResult.sampleRate,
+          loopStart: toneResult.yaml.wave.loopPoint,
+          loopEnd: toneResult.yaml.wave.endPoint,
+          rootKey: toneResult.yaml.s330?.originalKey ?? toneResult.yaml.s550?.originalKey,
+        };
+      }
+      return null; // common-area fallback
+    },
+  }), []);
+
+  const core = useEditorDialogsCore(libraryHandle, strategy, onRefresh, onError);
 
   // ---------------------------------------------------------------------------
-  // Drum kit slice editing
+  // Drum kit slice editing (Roland-specific — uses device-specific kit paths)
   // ---------------------------------------------------------------------------
 
   const handleEditKit = useCallback(async () => {
     if (!libraryHandle || !selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) return;
     const bundle = selectedDrumKitBundle;
     if (!bundle.source || !bundle.slices) {
-      console.error('[useRolandEditorDialogs] Cannot edit kit: not v2 format');
+      onError('Cannot edit kit: not v2 format');
       return;
     }
     setLoading(true, 'Loading source audio...');
     try {
       const sourceWav = await loadDrumKitSource(libraryHandle, selection.name!, bundle.source, selection.path);
-      setSliceEditDialog({
+      core.setSliceEditDialog({
         open: true, kitName: selection.name!, path: selection.path,
         samples: sourceWav.samples, sampleRate: sourceWav.sampleRate,
         slices: bundle.slices.map((s) => ({ label: s.label, startSample: s.startSample, endSample: s.endSample })),
@@ -145,22 +128,20 @@ export function useRolandEditorDialogs({
         },
       });
     } catch (err) {
-      console.error('[useRolandEditorDialogs] Failed to load source audio:', err);
       onError(err instanceof Error ? err.message : 'Failed to load source audio');
     } finally {
       setLoading(false);
     }
-  }, [libraryHandle, selection, selectedDrumKitBundle, setLoading, onError]);
+  }, [libraryHandle, selection, selectedDrumKitBundle, setLoading, onError, core]);
 
   const handleOpenDrumKitInSampleEditor = useCallback(async () => {
     if (!libraryHandle || !selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) return;
     const bundle = selectedDrumKitBundle;
     if (!bundle.source) return;
-
     setLoading(true, 'Loading source audio...');
     try {
       const sourceWav = await loadDrumKitSource(libraryHandle, selection.name!, bundle.source, selection.path);
-      setSampleEditorDialog({
+      core.setSampleEditor({
         open: true,
         samples: sourceWav.samples,
         sampleRate: sourceWav.sampleRate,
@@ -168,303 +149,49 @@ export function useRolandEditorDialogs({
         origin: { name: selection.name!, type: 'drumKit', path: selection.path },
       });
     } catch (err) {
-      console.error('[useRolandEditorDialogs] Failed to load source audio for sample editor:', err);
       onError(err instanceof Error ? err.message : 'Failed to load source audio');
     } finally {
       setLoading(false);
     }
-  }, [libraryHandle, selection, selectedDrumKitBundle, setLoading, onError]);
+  }, [libraryHandle, selection, selectedDrumKitBundle, setLoading, onError, core]);
 
   const handleSlicesUpdated = useCallback(async (
     slices: SliceDefinitionOutput[],
     kitConfig: { transpose?: number; velocitySensitivity?: number },
   ) => {
-    if (!libraryHandle || !sliceEditDialog) return;
+    if (!libraryHandle || !core.sliceEditDialog) return;
     setLoading(true, 'Saving slice changes...');
     try {
-      await updateDrumKitSlices(libraryHandle, sliceEditDialog.kitName, slices, kitConfig, sliceEditDialog.path);
-      setSelectedDrumKitBundle(await loadDrumKitBundle(libraryHandle, sliceEditDialog.kitName, sliceEditDialog.path));
+      await updateDrumKitSlices(libraryHandle, core.sliceEditDialog.kitName, slices, kitConfig, core.sliceEditDialog.path);
+      setSelectedDrumKitBundle(
+        await loadDrumKitBundle(libraryHandle, core.sliceEditDialog.kitName, core.sliceEditDialog.path),
+      );
     } catch (err) {
-      console.error('[useRolandEditorDialogs] Failed to update slices:', err);
       onError(err instanceof Error ? err.message : 'Failed to save slices');
     } finally {
       setLoading(false);
-      setSliceEditDialog(null);
+      core.setSliceEditDialog(null);
     }
-  }, [libraryHandle, sliceEditDialog, setLoading, onError, setSelectedDrumKitBundle]);
+  }, [libraryHandle, core, setLoading, onError, setSelectedDrumKitBundle]);
 
-  // Transition from slice editor to sample editor (keeping the audio data)
   const handleOpenSliceEditorFromSampleEditor = useCallback(() => {
-    const dialog = sliceEditDialog;
+    const dialog = core.sliceEditDialog;
     if (!dialog) return;
-    setSliceEditDialog(null);
-    setSampleEditorDialog({
+    core.setSliceEditDialog(null);
+    core.setSampleEditor({
       open: true,
       samples: dialog.samples,
       sampleRate: dialog.sampleRate,
       sampleName: dialog.kitName,
       origin: { name: dialog.kitName, type: 'drumKit', path: dialog.path },
     });
-  }, [sliceEditDialog]);
-
-  // ---------------------------------------------------------------------------
-  // Loop editor
-  // ---------------------------------------------------------------------------
-
-  const handleOpenInLoopEditor = useCallback(async (name: string, nodeType: string, path?: string[]) => {
-    if (!libraryHandle) return;
-    try {
-      let samples: Int16Array;
-      let sampleRate: number;
-      let loopStart: number | undefined;
-      let loopEnd: number | undefined;
-      let rootKey: number | undefined;
-
-      if (nodeType === 'tone' || nodeType === 'individualTone') {
-        const [wavResult, toneResult] = await Promise.all([
-          loadIndividualToneWavSamples(libraryHandle, name, path ?? []),
-          loadIndividualTone(libraryHandle, name, path ?? []),
-        ]);
-        samples = wavResult.samples;
-        sampleRate = wavResult.sampleRate;
-        loopStart = toneResult.yaml.wave.loopPoint;
-        loopEnd = toneResult.yaml.wave.endPoint;
-        rootKey = toneResult.yaml.s330?.originalKey ?? toneResult.yaml.s550?.originalKey;
-      } else if (nodeType === 'sample') {
-        const result = await loadSample(libraryHandle, name, path);
-        const wav = parseWav(result.wavData);
-        samples = wav.samples;
-        sampleRate = wav.sampleRate;
-        loopStart = result.yaml.loopStart;
-        loopEnd = result.yaml.loopEnd;
-        rootKey = typeof result.yaml.rootKey === 'number' ? result.yaml.rootKey : undefined;
-      } else {
-        throw new Error(`Unsupported node type for loop editor: ${nodeType}`);
-      }
-
-      setLoopEditorDialog({
-        open: true, samples, sampleRate, sampleName: name,
-        loopStart, loopEnd, rootKey,
-        origin: { name, type: nodeType, path },
-      });
-    } catch (err) {
-      console.error('[useRolandEditorDialogs] Failed to load WAV for loop editor:', err);
-      onError(err instanceof Error ? err.message : 'Failed to load sample');
-    }
-  }, [libraryHandle, onError]);
-
-  const handleLoopEditorSave = useCallback(async (loopStart: number, loopEnd: number) => {
-    if (!loopEditorDialog?.origin || !libraryHandle) return;
-    const { name, type: nodeType, path } = loopEditorDialog.origin;
-
-    try {
-      if (nodeType === 'sample') {
-        const yaml = await loadSampleMeta(libraryHandle, name, path ?? []);
-        yaml.loopStart = loopStart;
-        yaml.loopEnd = loopEnd;
-        yaml.loopMode = 'forward';
-        yaml.modifiedAt = new Date().toISOString();
-
-        const fullPath = ['library', 'common', 'samples', ...(path ?? [])];
-        const safeName = sanitizeForFilename(name);
-        const samplesDir = await getNestedDirectory(libraryHandle, fullPath);
-        const sampleDir = await samplesDir.getDirectoryHandle(safeName);
-        const yamlHandle = await sampleDir.getFileHandle('sample.yaml', { create: true });
-        const writable = await yamlHandle.createWritable();
-        await writable.write(stringifyYaml(yaml, { indent: 2, lineWidth: 120 }));
-        await writable.close();
-      } else if (nodeType === 'tone') {
-        // Individual tone: update tone YAML's wave.loopPoint
-        // All S-series devices share the s330 library section
-        const fullPath = ['library', 's330', 'tones', ...(path ?? [])];
-        const tonesDir = await getNestedDirectory(libraryHandle, fullPath);
-        const toneHandle = await tonesDir.getFileHandle(`${name}.yaml`);
-        const toneFile = await toneHandle.getFile();
-        const yaml = parseYaml(await toneFile.text());
-        if (yaml.wave) {
-          yaml.wave.loopPoint = loopStart;
-          yaml.wave.endPoint = loopEnd;
-          yaml.wave.loopMode = 'forward';
-        }
-        const writable = await toneHandle.createWritable();
-        await writable.write(stringifyYaml(yaml, { indent: 2, lineWidth: 120 }));
-        await writable.close();
-      }
-    } catch (err) {
-      console.error('[useRolandEditorDialogs] Failed to save loop points:', err);
-      onError(err instanceof Error ? err.message : 'Failed to save loop points');
-    }
-  }, [loopEditorDialog, libraryHandle, onError]);
-
-  // ---------------------------------------------------------------------------
-  // Sample chopper
-  // ---------------------------------------------------------------------------
-
-  const handleOpenInChopper = useCallback(async (name: string, nodeType: string, path?: string[]) => {
-    if (!libraryHandle) return;
-    try {
-      let samples: Int16Array;
-      let sampleRate: number;
-
-      if (nodeType === 'tone' || nodeType === 'individualTone') {
-        const result = await loadIndividualToneWavSamples(libraryHandle, name, path ?? []);
-        samples = result.samples;
-        sampleRate = result.sampleRate;
-      } else if (nodeType === 'sample') {
-        const result = await loadSample(libraryHandle, name, path);
-        const wav = parseWav(result.wavData);
-        samples = wav.samples;
-        sampleRate = wav.sampleRate;
-      } else {
-        throw new Error(`Unsupported node type for chopper: ${nodeType}`);
-      }
-
-      // Load existing slice definitions from sample metadata (if any)
-      let initialSlices: InitialSliceDefinition[] | undefined;
-      let initialLabels: string | undefined;
-      if (nodeType === 'sample') {
-        const meta = await loadSampleMeta(libraryHandle, name, path);
-        if (meta.slices && meta.slices.length > 0) {
-          initialSlices = meta.slices.map((s) => ({
-            label: s.label,
-            startSample: s.startSample,
-            endSample: s.endSample,
-          }));
-          initialLabels = meta.slices.map((s) => s.label).join(',');
-        }
-      }
-
-      setChopperDialog({
-        open: true, samples, sampleRate, sampleName: name,
-        origin: { name, type: nodeType, path },
-        initialSlices,
-        initialLabels,
-      });
-    } catch (err) {
-      console.error('[useRolandEditorDialogs] Failed to load WAV for chopper:', err);
-      onError(err instanceof Error ? err.message : 'Failed to load sample');
-    }
-  }, [libraryHandle, onError]);
-
-  const handleChopperSave = useCallback(async (payload: ChopperSavePayload) => {
-    if (!libraryHandle || !chopperDialog?.origin) return;
-
-    const yaml: SampleYaml = {
-      format: 'sample',
-      version: 1,
-      name: payload.name,
-      file: 'sample.wav',
-      sampleRate: payload.sourceAudio.sampleRate,
-      slices: payload.slices.map((s) => ({ label: s.label, startSample: s.startSample, endSample: s.endSample })),
-      triggers: payload.triggers,
-      playback: payload.playbackConfig,
-      modifiedAt: new Date().toISOString(),
-    };
-
-    const wavData = createWav(payload.sourceAudio.samples, payload.sourceAudio.sampleRate);
-    const savePath = chopperDialog.origin.path ?? [];
-
-    try {
-      await saveSample(libraryHandle, { name: payload.name, yaml, wavData }, savePath);
-      await onRefresh();
-    } catch (err) {
-      console.error('[useRolandEditorDialogs] Failed to save chopped sample:', err);
-      onError(err instanceof Error ? err.message : 'Failed to save chopped sample');
-    }
-  }, [libraryHandle, chopperDialog, onRefresh, onError]);
-
-  // ---------------------------------------------------------------------------
-  // Sample editor
-  // ---------------------------------------------------------------------------
-
-  const handleOpenInSampleEditor = useCallback(async (name: string, nodeType: string, path?: string[]) => {
-    if (!libraryHandle) return;
-    try {
-      let samples: Int16Array;
-      let sampleRate: number;
-
-      if (nodeType === 'tone' || nodeType === 'individualTone') {
-        const result = await loadIndividualToneWavSamples(libraryHandle, name, path ?? []);
-        samples = result.samples;
-        sampleRate = result.sampleRate;
-      } else if (nodeType === 'sample') {
-        const result = await loadSample(libraryHandle, name, path);
-        const wav = parseWav(result.wavData);
-        samples = wav.samples;
-        sampleRate = wav.sampleRate;
-      } else {
-        throw new Error(`Unsupported node type for sample editor: ${nodeType}`);
-      }
-
-      setSampleEditorDialog({
-        open: true, samples, sampleRate, sampleName: name,
-        origin: { name, type: nodeType, path },
-      });
-    } catch (err) {
-      console.error('[useRolandEditorDialogs] Failed to load WAV for sample editor:', err);
-      onError(err instanceof Error ? err.message : 'Failed to load sample');
-    }
-  }, [libraryHandle, onError]);
-
-  const handleSampleEditorSave = useCallback(async (samples: Int16Array, sampleRate: number) => {
-    if (!libraryHandle || !sampleEditorDialog?.origin) return;
-    const { name, type: nodeType, path } = sampleEditorDialog.origin;
-
-    try {
-      if (nodeType === 'sample') {
-        const existingMeta = await loadSampleMeta(libraryHandle, name, path ?? []);
-        existingMeta.sampleRate = sampleRate;
-        existingMeta.modifiedAt = new Date().toISOString();
-
-        const wavData = createWav(samples, sampleRate);
-        await saveSample(libraryHandle, { name, yaml: existingMeta, wavData }, path ?? []);
-      } else if (nodeType === 'tone' || nodeType === 'individualTone') {
-        const wavData = createWav(samples, sampleRate);
-        const fullPath = ['library', 's330', 'tones', ...(path ?? [])];
-        const tonesDir = await getNestedDirectory(libraryHandle, fullPath);
-        const wavHandle = await tonesDir.getFileHandle(`${name}.wav`, { create: true });
-        const writable = await wavHandle.createWritable();
-        await writable.write(wavData);
-        await writable.close();
-      } else if (nodeType === 'drumKit') {
-        const bundle = selectedDrumKitBundle;
-        if (!bundle?.source) throw new Error('Cannot save: drum kit has no source file');
-        await saveDrumKitSource(libraryHandle, name, bundle.source, samples, sampleRate, path);
-      }
-      await onRefresh();
-    } catch (err) {
-      console.error('[useRolandEditorDialogs] Failed to save edited sample:', err);
-      onError(err instanceof Error ? err.message : 'Failed to save edited sample');
-    }
-  }, [libraryHandle, sampleEditorDialog, selectedDrumKitBundle, onRefresh, onError]);
-
-  // ---------------------------------------------------------------------------
-  // Close handlers
-  // ---------------------------------------------------------------------------
-
-  const closeSliceEditDialog = useCallback(() => setSliceEditDialog(null), []);
-  const closeLoopEditor = useCallback(() => setLoopEditorDialog(null), []);
-  const closeChopper = useCallback(() => setChopperDialog(null), []);
-  const closeSampleEditor = useCallback(() => setSampleEditorDialog(null), []);
+  }, [core]);
 
   return {
-    sliceEditDialog,
-    loopEditorDialog,
-    chopperDialog,
-    sampleEditorDialog,
+    ...core,
     handleEditKit,
     handleOpenDrumKitInSampleEditor,
     handleSlicesUpdated,
-    handleOpenInLoopEditor,
-    handleOpenInChopper,
-    handleChopperSave,
-    handleOpenInSampleEditor,
-    handleSampleEditorSave,
-    handleLoopEditorSave,
     handleOpenSliceEditorFromSampleEditor,
-    closeSliceEditDialog,
-    closeLoopEditor,
-    closeChopper,
-    closeSampleEditor,
   };
 }
