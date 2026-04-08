@@ -61,6 +61,37 @@ const UI_TIMEOUT_MS = 10_000;
 const TRANSFER_TIMEOUT_MS = 90_000; // SDS over SCSI is slow
 
 // ---------------------------------------------------------------------------
+// Direct device query (side channel via S3K client + SCSI bridge)
+// ---------------------------------------------------------------------------
+
+import { createScsiMidiTransport } from '@audiocontrol/midi-core';
+import { createS3000xlClient } from '@audiocontrol/sampler-devices/s3k';
+
+/**
+ * Query device state directly via the S3K client over SCSI bridge.
+ * This bypasses the browser UI to verify what's actually on the device.
+ */
+async function queryDeviceSamples(): Promise<string[]> {
+  const scsi = createScsiMidiTransport({ bridgeUrl: BRIDGE_URL! });
+  const client = createS3000xlClient(scsi.adapter, { noCache: true });
+  try {
+    return await client.fetchSampleNames();
+  } finally {
+    scsi.disconnect();
+  }
+}
+
+async function queryDevicePrograms(): Promise<string[]> {
+  const scsi = createScsiMidiTransport({ bridgeUrl: BRIDGE_URL! });
+  const client = createS3000xlClient(scsi.adapter, { noCache: true });
+  try {
+    return await client.fetchProgramNames();
+  } finally {
+    scsi.disconnect();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // URL Builder
 // ---------------------------------------------------------------------------
 
@@ -296,17 +327,68 @@ test.describe('S3K Device+Library Round Trip', () => {
     // Step 8: Click done to dismiss the send dialog
     const sendDone = page.locator('[data-testid="send-sample-done"]');
     await sendDone.click();
+    console.log('SDS send dialog dismissed');
 
-    // Step 9: Wait for device panel to refresh, then select the sample we sent
-    // The sample we just sent should appear as the last sample on the device.
-    const deviceSamples = page.locator('[data-testid^="device-sample-"]');
-    await expect(deviceSamples.first()).toBeVisible({ timeout: 15_000 });
+    // Step 8b: Verify device state via side channel (direct S3K client query)
+    const samplesAfterSend = await queryDeviceSamples();
+    console.log('Device samples after send (via side channel):', samplesAfterSend);
+    const sampleOnDevice = samplesAfterSend.some(
+      (name) => name.trim().toLowerCase().includes(FIXTURE_NAME.toLowerCase()),
+    );
+    if (!sampleOnDevice) {
+      throw new Error(
+        `SDS send reported success but sample "${FIXTURE_NAME}" not found on device. ` +
+        `Device samples: [${samplesAfterSend.map((s) => s.trim()).join(', ')}]. ` +
+        `This indicates the SDS transfer did not persist to device memory.`,
+      );
+    }
+    console.log(`Verified: "${FIXTURE_NAME}" is on the device`);
 
-    // Click the first device sample (the one we just sent -- S3000XL may
-    // place it at index 0 if memory was empty, or at the end otherwise).
-    // We click device-sample-0 since we cleaned the device via the fixture.
-    const deviceSample = page.locator('[data-testid="device-sample-0"]');
-    await expect(deviceSample).toBeVisible({ timeout: 15_000 });
+    // Step 9: Refresh device panel and find the sample we just sent by name.
+    // E2E tenet: adapt to device state — the sample may be at any index.
+    const devicePanel = page.locator('.ac-plugin-library-browser-device');
+    const refreshButton = devicePanel.locator('button').filter({ hasText: '↻' });
+    if (await refreshButton.isVisible()) {
+      await refreshButton.click();
+      await page.waitForTimeout(2_000); // Wait for device to respond
+    }
+
+    // Find our sample in the device panel by name.
+    // SDS sample names may be truncated, uppercased, or padded by the S3000XL.
+    // Use case-insensitive regex to find any button containing our fixture name.
+    const samplePattern = new RegExp(FIXTURE_NAME.substring(0, 12), 'i');
+    const deviceSample = devicePanel.locator('button').filter({ hasText: samplePattern });
+
+    // Poll for the sample to appear, feeding the watchdog each iteration
+    const findDeadline = Date.now() + 30_000;
+    while (Date.now() < findDeadline) {
+      if (await deviceSample.count() > 0) break;
+      // Each assertion feeds the heartbeat
+      await expect(devicePanel).toBeVisible({ timeout: 3_000 });
+      // Try refreshing the device panel
+      if (await refreshButton.isVisible()) {
+        await refreshButton.click();
+      }
+      await page.waitForTimeout(2_000);
+    }
+    // The sample may be scrolled out of view — scroll it into view first
+    const count = await deviceSample.count();
+    console.log(`Found ${count} device sample(s) matching "${FIXTURE_NAME}"`);
+    if (count === 0) {
+      // Log all device panel button texts for debugging
+      const allButtons = devicePanel.locator('button');
+      const buttonCount = await allButtons.count();
+      const texts: string[] = [];
+      for (let i = 0; i < buttonCount; i++) {
+        texts.push(await allButtons.nth(i).textContent() ?? '');
+      }
+      console.log('Device panel buttons:', texts);
+      throw new Error(
+        `Sample "${FIXTURE_NAME}" not found in device panel after SDS send. ` +
+        `Available: [${texts.join(', ')}]`,
+      );
+    }
+    await deviceSample.scrollIntoViewIfNeeded();
     await deviceSample.click();
 
     // Step 10: Click "Save to Library" in preview panel to receive back
