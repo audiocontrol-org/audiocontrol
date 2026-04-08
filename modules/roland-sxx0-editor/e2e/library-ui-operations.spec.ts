@@ -217,4 +217,144 @@ test.describe('Library UI Operations', () => {
       'DrumSounds should exist in OPFS at library/s330/tones/DrumSounds',
     ).toBe(true);
   });
+
+  // -------------------------------------------------------------------------
+  // Delete sample from library
+  // -------------------------------------------------------------------------
+
+  test('delete sample from library removes it from OPFS', async ({ page }) => {
+    // Navigate fresh, write fixture BEFORE connecting
+    await page.goto(LIBRARY_URL);
+    await page.waitForLoadState('networkidle');
+
+    await writeSampleFixture(page, 'DeleteMe');
+
+    await connectToOPFS(page);
+
+    // Verify the sample appears in the tree
+    const sampleNode = page.locator('.ac-tree-node').filter({ hasText: 'DeleteMe' }).first();
+    await expect(sampleNode).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Set up confirmation dialog handler BEFORE triggering delete
+    page.on('dialog', async (dialog) => {
+      await dialog.accept();
+    });
+
+    // Right-click the sample to open context menu
+    await sampleNode.click({ button: 'right' });
+
+    // Click "Delete" in the context menu
+    const deleteItem = page.locator('.ac-context-menu-item').filter({ hasText: 'Delete' }).first();
+    await expect(deleteItem).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await deleteItem.click();
+
+    // Wait for OPFS deletion to complete
+    await page.waitForTimeout(1_000);
+
+    // Verify: sample directory no longer exists in OPFS
+    const exists = await verifyDirectoryInOPFS(page, [
+      'library', 'common', 'samples', 'DeleteMe',
+    ]);
+    expect(
+      exists,
+      'DeleteMe should be removed from OPFS after deletion',
+    ).toBe(false);
+  });
+
+  // -------------------------------------------------------------------------
+  // Connect/disconnect lifecycle
+  // -------------------------------------------------------------------------
+
+  test('connect to OPFS loads tree, disconnect clears it', async ({ page }) => {
+    // Navigate fresh, write fixture BEFORE connecting
+    await page.goto(LIBRARY_URL);
+    await page.waitForLoadState('networkidle');
+
+    await writeSampleFixture(page, 'TreeCheck');
+
+    // Connect to OPFS
+    await connectToOPFS(page);
+
+    // Verify tree has content -- at least one tree node should be visible
+    const treeNodes = page.locator('.ac-tree-node');
+    await expect(treeNodes.first()).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    const countWhileConnected = await treeNodes.count();
+    expect(
+      countWhileConnected,
+      'Tree should have at least one node when connected',
+    ).toBeGreaterThan(0);
+
+    // Disconnect by clicking the "Change" button in the connection status area
+    const changeButton = page.locator('.ac-library-connection-btn').filter({ hasText: 'Change' });
+    await expect(changeButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await changeButton.click();
+
+    // After disconnect, the OPFS connect button should reappear (back to unconnected state)
+    const opfsButton = page.locator('[data-testid="library-backend-opfs"]');
+    await expect(opfsButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
+  });
+
+  // -------------------------------------------------------------------------
+  // Sample fixture appears in tree
+  // -------------------------------------------------------------------------
+
+  test('sample fixture written to OPFS appears in library tree', async ({ page }) => {
+    // Navigate fresh, write fixture BEFORE connecting
+    await page.goto(LIBRARY_URL);
+    await page.waitForLoadState('networkidle');
+
+    await writeSampleFixture(page, 'VisibleSample');
+
+    await connectToOPFS(page);
+
+    // Verify the sample appears as a tree node with the correct name
+    const sampleNode = page.locator('.ac-tree-node').filter({ hasText: 'VisibleSample' }).first();
+    await expect(sampleNode).toBeVisible({ timeout: UI_TIMEOUT_MS });
+  });
+
+  // -------------------------------------------------------------------------
+  // Context menu opens on right-click
+  // -------------------------------------------------------------------------
+
+  test('context menu opens on right-click with expected actions', async ({ page }) => {
+    // Navigate fresh, write fixture BEFORE connecting
+    await page.goto(LIBRARY_URL);
+    await page.waitForLoadState('networkidle');
+
+    await writeSampleFixture(page, 'ContextTarget');
+
+    await connectToOPFS(page);
+
+    // Verify the sample appears in the tree
+    const sampleNode = page.locator('.ac-tree-node').filter({ hasText: 'ContextTarget' }).first();
+    await expect(sampleNode).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Right-click to open context menu
+    await sampleNode.click({ button: 'right' });
+
+    // Verify context menu is visible
+    const contextMenu = page.locator('.ac-context-menu');
+    await expect(contextMenu).toBeVisible({ timeout: UI_TIMEOUT_MS });
+
+    // Verify menu contains at minimum Rename and Delete actions
+    const menuItems = page.locator('.ac-context-menu-item');
+    const menuTexts: string[] = [];
+    const count = await menuItems.count();
+    for (let i = 0; i < count; i++) {
+      const text = await menuItems.nth(i).textContent();
+      if (text) {
+        menuTexts.push(text.trim());
+      }
+    }
+
+    expect(
+      menuTexts.some((t) => t.includes('Rename')),
+      `Context menu should contain "Rename" action. Found: ${menuTexts.join(', ')}`,
+    ).toBe(true);
+
+    expect(
+      menuTexts.some((t) => t.includes('Delete')),
+      `Context menu should contain "Delete" action. Found: ${menuTexts.join(', ')}`,
+    ).toBe(true);
+  });
 });
