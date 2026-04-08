@@ -297,20 +297,66 @@ Progress bar component for import/export operations. Inline progress in preview 
 
 ---
 
+## Phase 5: Zone 3 → Zone 4 Promotion (S3K)
+
+**Goal:** Enable promoting S3K device-specific programs to the common area, crossing the conversion boundary defined in [SAMPLER-LIBRARY.md](/SAMPLER-LIBRARY.md).
+
+### Task 5.1: Promotion function
+
+Create `modules/akai-s3k-editor/src/lib/program-promotion.ts` with:
+- Adapter mapping serialized keygroup fields (`lowNote`, `highNote`, `sampleNames`) to `AkaiDiskKeygroup` format
+- `promoteToCommonArea()` function that loads an S3K library program, converts via `akaiProgramToCommon()`, copies sample WAVs, and saves a `ProgramYaml` bundle to `library/common/samples/`
+- Handles both SysEx-origin (`s3000xl-program`) and disk-origin (`s3000xl-disk-program`) formats
+
+**Reuses:**
+- `akaiProgramToCommon()` from `sampler-devices/src/devices/s3000xl/akai-to-common.ts`
+- `deserializeProgram()` / `deserializeDiskProgram()` from `akai-s3k-editor/src/lib/program-serialization.ts`
+- `loadStoredProgram()` from `akai-s3k-editor/src/lib/program-storage.ts`
+
+### Task 5.2: Promotion UI
+
+Add "Promote to Common Area" button to `S3kItemPreviewPanel.tsx` for S3K library programs. Wire callback through `LibraryPage.tsx` preview state.
+
+**Files:**
+- Modify: `modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx`
+- Modify: `modules/akai-s3k-editor/src/pages/LibraryPage.tsx`
+
+**Phase 5 Verification:** Build passes. Manual test: export S3K program → promote to common area → verify program.yaml + WAVs in common area → reimport via ImportInstrumentDialog.
+
+---
+
+## Phase 6: Shared Editor Dialogs (Stub)
+
+**Goal:** Extract shared `useEditorDialogs` hook to editor-core, eliminating duplicate dialog management between Roland (`useRolandEditorDialogs`) and S3K (`useEditorDialogs`).
+
+**Status:** Not started. This is the next priority after Phase 5.
+
+**Approach:** Create a shared hook in `modules/editor-core/src/hooks/useEditorDialogs.ts` with a `WavLoaderStrategy` interface. Each editor provides a device-specific strategy for loading/saving WAV data. The hook manages dialog state (open/close, loading, saving) identically in both cases.
+
+**Why deferred:** Both editors already have working hooks. The shared extraction reduces duplication but doesn't unblock new functionality. Phase 5 (promotion) enables new workflows that users can't do today.
+
+---
+
 ## Dependency Graph
 
 ```
-Phase 1 (pure Roland refactor, no deps)
+Phase 1 (pure Roland refactor, no deps) — COMPLETE
   1.1 -> 1.2 -> 1.3 -> 1.4
 
-Phase 2 (editor-core changes, depends on Phase 1)
-  2.1 (audit) -> 2.2, 2.3, 2.4, 2.5 (can parallelize after audit)
+Phase 2 (editor-core changes) — COMPLETE
+  2.1 (audit) -> 2.2, 2.3, 2.4 (2.5 deferred to Phase 6)
 
-Phase 3 (depends on Phase 1 + Phase 2)
-  3.1 -> 3.2 -> 3.3 + 3.4
+Phase 3 (Roland migration) — COMPLETE
+  3.1 -> 3.2 -> 3.3
 
-Phase 4 (depends on Phase 3, tasks independent)
-  4.1, 4.2, 4.3, 4.4, 4.5 (parallel)
+Phase 4 (UX polish, tasks independent) — 4.1-4.4 COMPLETE, 4.5 deferred
+  4.1, 4.2, 4.3, 4.4 (done), 4.5 (deferred: keyboard nav)
+
+Phase 5 (S3K Zone 3→4 promotion, no deps on Phase 4)
+  5.1 -> 5.2
+
+Phase 6 (shared useEditorDialogs, after Phase 5)
+  Stub — not started
 ```
 
 ---

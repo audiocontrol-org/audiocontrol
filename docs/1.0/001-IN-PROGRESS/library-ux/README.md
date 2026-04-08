@@ -30,11 +30,14 @@ Align and improve library page UX across both the Roland S-330/S-550 editor and 
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 1: Extract Roland hooks | Not started | Pure refactor, no rendering changes |
-| Phase 2: Upstream to editor-core | Not started | Depends on Phase 1 |
-| Phase 3: Migrate Roland to PluginLibraryBrowser | Not started | Highest risk phase |
-| Phase 4: UX polish on shared components | Not started | Benefits both editors |
+| Phase 1: Extract Roland hooks | Complete | LibraryPage 908 → 462 lines, 3 new hooks |
+| Phase 2: Upstream to editor-core | Complete | Context menu routing, headerSections, widened libraryHandle |
+| Phase 3: Migrate Roland to PluginLibraryBrowser | Complete | Both editors use same component, deleted 579-line bespoke |
+| Phase 4: UX polish on shared components | Mostly complete | 4.1-4.4 done; 4.5 keyboard nav deferred |
+| Phase 5: S3K Zone 3→4 promotion | In progress | Promote S3K programs to common area |
+| Phase 6: Shared useEditorDialogs | Stub | Next priority after Phase 5 |
 
 ## Related Documentation
 
-- [S3K Library Page Conformance](../../s3k-library-page/) - Prior effort that brought S3K to three-column layout (largely complete)
+- [SAMPLER-LIBRARY.md](/SAMPLER-LIBRARY.md) - Four-zone storage model and conversion boundaries
+- [S3K Library Page Conformance](../../s3k-library-page/) - Prior effort (superseded by this feature)
