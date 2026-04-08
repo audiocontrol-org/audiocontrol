@@ -326,19 +326,37 @@ export function PluginLibraryBrowser({
 
         {loading && (
           <div className="ac-plugin-library-browser-loading">
-            Loading library...
+            <div className="ac-plugin-library-browser-skeleton">
+              {plugin.categories.slice(0, 3).map((cat) => (
+                <div key={cat.categoryId} className="ac-plugin-library-browser-skeleton-section">
+                  <div className="ac-skeleton ac-skeleton-text--short" style={{ marginBottom: '0.5rem' }} />
+                  <div className="ac-skeleton ac-skeleton-text--medium" style={{ marginBottom: '0.25rem' }} />
+                  <div className="ac-skeleton ac-skeleton-text" style={{ marginBottom: '0.25rem' }} />
+                  <div className="ac-skeleton ac-skeleton-text--short" />
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
-        {error && (
-          <div className="ac-plugin-library-browser-error">
-            {error}
+        {!loading && error && (
+          <div className="ac-plugin-library-browser-error-state">
+            <svg className="ac-plugin-library-browser-error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="8" x2="12" y2="12" />
+              <line x1="12" y1="16" x2="12.01" y2="16" />
+            </svg>
+            <p className="ac-plugin-library-browser-error-message">{error}</p>
+            <button className="ac-library-connection-btn" onClick={onRefresh}>Retry</button>
           </div>
         )}
 
         {!loading && !error && !libraryHandle && (
-          <div className="ac-plugin-library-browser-empty">
-            Connect to a library folder to get started.
+          <div className="ac-plugin-library-browser-empty-state">
+            <svg className="ac-plugin-library-browser-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
+              <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+            </svg>
+            <p className="ac-plugin-library-browser-empty-text">Connect to a library folder to get started</p>
           </div>
         )}
 
@@ -397,7 +415,15 @@ export function PluginLibraryBrowser({
 
         {operationProgress && (
           <div className="ac-plugin-library-browser-progress">
-            {operationProgress.stepLabel}
+            <span>{operationProgress.stepLabel}</span>
+            {operationProgress.bytesTotalAllSteps > 0 && (
+              <div className="ac-progress-bar">
+                <div
+                  className="ac-progress-bar-fill"
+                  style={{ width: `${Math.min(100, (operationProgress.bytesSentAllSteps / operationProgress.bytesTotalAllSteps) * 100)}%` }}
+                />
+              </div>
+            )}
           </div>
         )}
       </div>
