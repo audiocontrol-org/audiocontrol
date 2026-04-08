@@ -369,6 +369,28 @@ Library (fixture) ──import──► Device ──export──► Library (re
        └──────────── compare for equality ────────────┘
 ```
 
+### 5. E2E Test Output and Observability
+
+When running e2e tests, **always redirect output to a log file** so you can interrogate it while the test is still running and perform post-facto analysis:
+
+```bash
+make test-e2e-s3k-device-library ARGS="--grep 'round trip'" > /tmp/e2e-test.log 2>&1 &
+tail -f /tmp/e2e-test.log
+```
+
+Never wait blindly for a long-running test to complete before looking at output. Stream it.
+
+### 6. Timeouts and Retries
+
+Timeouts should **start small with exponential backoff** and a hard maximum:
+
+- **Initial timeout:** Short (e.g., 500ms–1s)
+- **Backoff:** Double each retry (1s → 2s → 4s → 8s)
+- **Hard maximum:** Absolute ceiling (e.g., 30s for UI, 90s for device transfers)
+- **Retry count:** Bounded (e.g., max 5 retries)
+
+Never use a single large timeout as the first attempt. A 60-second timeout that could have failed at 2 seconds wastes 58 seconds of feedback time. Start fast, back off if needed.
+
 ## Hardware E2E Testing (roland-sxx0-editor)
 
 The `roland-sxx0-editor` module includes hardware e2e tests that run against real Roland S-series samplers. These tests use a heartbeat/watchdog system to detect stuck tests quickly.
