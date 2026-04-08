@@ -249,10 +249,13 @@ echo ""
 # Step 7: Start Vite dev server locally
 # ---------------------------------------------------------------------------
 
-echo "Step 7: Starting preview server (serves production build from dist/)..."
+echo "Step 7: Starting dev server (clearing dependency cache first)..."
 VITE_LOG=$(mktemp)
 
-pnpm vite preview --port 0 > "$VITE_LOG" 2>&1 &
+# Clear Vite dep pre-bundle cache to ensure fresh code is served
+rm -rf node_modules/.vite 2>/dev/null
+
+pnpm vite --port 0 > "$VITE_LOG" 2>&1 &
 VITE_PID=$!
 
 MAX_WAIT=20

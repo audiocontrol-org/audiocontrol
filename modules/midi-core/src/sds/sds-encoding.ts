@@ -72,19 +72,22 @@ export function encodeSampleWord(
   validateBitsPerWord(bitsPerWord);
 
   const numBytes = bytesPerWord(bitsPerWord);
-  const totalBits = numBytes * 7;
-  const shiftAmount = totalBits - bitsPerWord;
 
-  // Left-justify: shift the sample value into the top bitsPerWord bits
-  // of the totalBits-wide field.
-  const shifted = value << shiftAmount;
-
-  // Extract 7 bits at a time from MSB to LSB.
-  // Bit position: the most significant 7 bits are in byte 0.
+  // Extract 7 bits at a time from the MSB of the original value.
+  // Byte 0 gets the top 7 bits, byte 1 gets the next 7, etc.
+  // Unused low bits in the last byte are zeroed.
+  //
+  // For 16-bit: byte[0] = bits[15..9], byte[1] = bits[8..2], byte[2] = bits[1..0] << 5
   const result: number[] = new Array(numBytes);
   for (let i = 0; i < numBytes; i++) {
-    const bitOffset = totalBits - 7 * (i + 1);
-    result[i] = (shifted >>> bitOffset) & 0x7f;
+    const bitsFromTop = 7 * (i + 1);
+    const shift = bitsPerWord - bitsFromTop;
+    if (shift >= 0) {
+      result[i] = (value >>> shift) & 0x7f;
+    } else {
+      // Last byte: remaining bits shifted to the MSB of the 7-bit byte
+      result[i] = (value << (-shift)) & 0x7f;
+    }
   }
 
   return result;
@@ -113,20 +116,21 @@ export function decodeSampleWord(
     );
   }
 
-  const totalBits = numBytes * 7;
-  const shiftAmount = totalBits - bitsPerWord;
-
-  // Reassemble the left-justified value from 7-bit chunks.
-  // Loop bounds guarantee i < numBytes <= midiBytes.length, so indices are safe.
+  // Reassemble from 7-bit chunks. Byte 0 has the top 7 bits of the
+  // original value, byte 1 the next 7, etc. Inverse of encodeSampleWord.
   let assembled = 0;
   for (let i = 0; i < numBytes; i++) {
     validateMidiByte(midiBytes[i]!, i);
-    const bitOffset = totalBits - 7 * (i + 1);
-    assembled |= midiBytes[i]! << bitOffset;
+    const bitsFromTop = 7 * (i + 1);
+    const shift = bitsPerWord - bitsFromTop;
+    if (shift >= 0) {
+      assembled |= (midiBytes[i]! & 0x7f) << shift;
+    } else {
+      assembled |= (midiBytes[i]! & 0x7f) >>> (-shift);
+    }
   }
 
-  // Right-shift to recover the original value.
-  return assembled >>> shiftAmount;
+  return assembled;
 }
 
 // ---------------------------------------------------------------------------

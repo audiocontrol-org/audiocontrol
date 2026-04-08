@@ -83,30 +83,36 @@ export function SendSampleDialog({
   const [phase, setPhase] = useState<DialogPhase>('loading');
   const [wavInfo, setWavInfo] = useState<WavFileInfo | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [targetSampleNumber, setTargetSampleNumber] = useState(deviceSampleCount);
 
   const { transferState, sendToDevice, clearError } = useSampleTransfer(client);
 
-  // The SDS sample number for a new sample is the next unused index
-  const targetSampleNumber = deviceSampleCount;
-
-  // Load sample from library when dialog opens
+  // Load sample from library AND query device for current sample count
   useEffect(() => {
     if (!open) return;
 
     setPhase('loading');
     setWavInfo(null);
     setLoadError(null);
+    setTargetSampleNumber(deviceSampleCount);
     clearError();
 
     let cancelled = false;
 
     async function load() {
       try {
-        const result = await loadSample(libraryRoot, sampleName, samplePath);
+        // Fetch WAV and fresh device sample count in parallel.
+        // refreshSampleNames bypasses the cache to get the authoritative count.
+        const [result, sampleNames] = await Promise.all([
+          loadSample(libraryRoot, sampleName, samplePath),
+          client.refreshSampleNames(),
+        ]);
         if (cancelled) return;
 
         const info = parseWavFile(result.wavData);
         setWavInfo(info);
+        // Use the authoritative device count, not the stale prop
+        setTargetSampleNumber(sampleNames.length);
         setPhase('ready');
       } catch (err: unknown) {
         if (cancelled) return;
@@ -118,7 +124,7 @@ export function SendSampleDialog({
 
     void load();
     return () => { cancelled = true; };
-  }, [open, libraryRoot, sampleName, samplePath, clearError]);
+  }, [open, libraryRoot, sampleName, samplePath, client, deviceSampleCount, clearError]);
 
   const handleSend = useCallback(async () => {
     if (!wavInfo) return;

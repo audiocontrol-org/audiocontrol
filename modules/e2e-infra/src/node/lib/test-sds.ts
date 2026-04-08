@@ -31,11 +31,22 @@ async function testSdsRoundTrip(ctx: TestContext): Promise<TestResult> {
     await ctx.client.sendSampleViaSds(sampleNumber, testSamples, sampleRate, {
       onProgress: (progress) => {
         if (ctx.verbose) {
-          ctx.log(`    SDS send: packet ${progress.currentPacket}/${progress.totalPackets}`);
+          ctx.log(`    SDS send: packet ${progress.packetsSent}/${progress.packetsTotal}`);
         }
       },
     });
     ctx.log(`  Send complete`);
+
+    // Verify sample was created on device (count should increase by 1)
+    const namesAfterSend = await ctx.client.refreshSampleNames();
+    ctx.log(`  Sample count after send: ${namesAfterSend.length} (was ${sampleNames.length})`);
+    if (namesAfterSend.length <= sampleNames.length) {
+      return {
+        name,
+        status: 'FAIL',
+        detail: `Sample count did not increase after send: before=${sampleNames.length}, after=${namesAfterSend.length}`,
+      };
+    }
 
     ctx.log(`  Receiving sample via SDS...`);
     const received = await ctx.client.receiveSampleViaSds(sampleNumber, (progress) => {

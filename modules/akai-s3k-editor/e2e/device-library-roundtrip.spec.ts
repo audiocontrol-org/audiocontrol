@@ -309,8 +309,8 @@ test.describe('S3K Device+Library Round Trip', () => {
       await yw.write(yaml);
       await yw.close();
 
-      // Write WAV with 1000 samples of silence at 44100 Hz
-      const numSamples = 1000;
+      // Write WAV with 256 samples at 44100 Hz (matches working Node test)
+      const numSamples = 256;
       const dataSize = numSamples * 2; // 16-bit mono
       const headerSize = 44;
       const buf = new ArrayBuffer(headerSize + dataSize);
@@ -331,7 +331,10 @@ test.describe('S3K Device+Library Round Trip', () => {
       // data chunk
       v.setUint32(36, 0x64617461, false); // "data"
       v.setUint32(40, dataSize, true);
-      // Samples: silence (all zeros — already initialized)
+      // Samples: 440 Hz sine wave (not silence — S3000XL may reject all-zero samples)
+      for (let i = 0; i < numSamples; i++) {
+        v.setInt16(headerSize + i * 2, Math.round(32767 * Math.sin(2 * Math.PI * 440 * i / 44100)), true);
+      }
 
       const wh = await sampleDir.getFileHandle('sample.wav', { create: true });
       const ww = await wh.createWritable();
@@ -359,11 +362,24 @@ test.describe('S3K Device+Library Round Trip', () => {
     // Step 4: Select the sample in the library tree
     await clickLibraryItem(page, FIXTURE_NAME);
 
-    // Step 4b: Wait for device memory panel to load (so deviceSampleCount is accurate)
-    await expect(
-      page.locator('.ac-plugin-library-browser-device button').filter({ hasNotText: '↻' }).first(),
-    ).toBeVisible({ timeout: 15_000 });
-    console.log('Device panel populated');
+    // Step 4b: Wait for device memory panel to fully load samples.
+    // The panel fetches programs first, then samples. We need samples
+    // loaded so deviceSampleCount is correct for the SDS target slot.
+    // Use the side-channel count as the target: wait until the UI shows
+    // at least that many items.
+    {
+      const expectedCount = samplesBeforeSend.length;
+      const deadline = Date.now() + 30_000;
+      while (Date.now() < deadline) {
+        const uiCount = await page.locator('.ac-plugin-library-browser-device button')
+          .filter({ hasNotText: '↻' }).count();
+        // Programs + samples should be >= expectedCount
+        if (uiCount >= expectedCount) break;
+        await expect(page.locator('.ac-plugin-library-browser-device')).toBeVisible({ timeout: 3_000 });
+        await page.waitForTimeout(500);
+      }
+      console.log('Device panel populated, expected samples:', expectedCount);
+    }
 
     // Step 5: Click "Send to Device" in preview panel
     const sendButton = page.locator(

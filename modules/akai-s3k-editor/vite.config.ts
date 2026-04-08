@@ -41,6 +41,16 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    proxy: {
+      '/scsi-bridge': {
+        target: 'http://s3k.local:7033',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/scsi-bridge/, ''),
+        ws: true,
+      },
+    },
+  },
   build: {
     outDir: 'dist',
     sourcemap: true,
