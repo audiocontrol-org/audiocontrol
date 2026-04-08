@@ -359,31 +359,11 @@ test.describe('S3K Device+Library Round Trip', () => {
     // Step 4: Select the sample in the library tree
     await clickLibraryItem(page, FIXTURE_NAME);
 
-    // DIAGNOSTIC: Call sendSampleViaSds directly from page context
-    const directCallResult = await page.evaluate(async () => {
-      const store = (window as unknown as Record<string, unknown>).__midiStore as
-        | { getState: () => { adapter: unknown } }
-        | undefined;
-      if (!store) return 'no store';
-      const adapter = store.getState().adapter;
-      if (!adapter) return 'no adapter';
-
-      // Try calling console.log from the function
-      const testData = new Int16Array(100);
-      try {
-        console.log('[DIAGNOSTIC] About to call sendSampleViaSds directly');
-        // Access the client through the store — how does the app create it?
-        // Actually we can't easily get the client from here.
-        // Instead, just verify the adapter's send function exists and works.
-        const adapterAny = adapter as { send?: (msg: number[]) => void };
-        console.log('[DIAGNOSTIC] adapter.send type:', typeof adapterAny.send);
-        console.log('[DIAGNOSTIC] adapter keys:', Object.keys(adapter as object).join(', '));
-        return `adapter exists, send type: ${typeof adapterAny.send}`;
-      } catch (err) {
-        return `error: ${err}`;
-      }
-    });
-    console.log('Direct call diagnostic:', directCallResult);
+    // Step 4b: Wait for device memory panel to load (so deviceSampleCount is accurate)
+    await expect(
+      page.locator('.ac-plugin-library-browser-device button').filter({ hasNotText: '↻' }).first(),
+    ).toBeVisible({ timeout: 15_000 });
+    console.log('Device panel populated');
 
     // Step 5: Click "Send to Device" in preview panel
     const sendButton = page.locator(
