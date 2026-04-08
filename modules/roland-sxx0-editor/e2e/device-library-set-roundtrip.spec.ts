@@ -42,12 +42,18 @@ import {
 test.setTimeout(300_000); // 5 minutes -- set operations are slow
 
 const MIDI_SERVER_PORT = process.env.E2E_MIDI_SERVER_PORT;
+if (!MIDI_SERVER_PORT) {
+  throw new Error(
+    'E2E_MIDI_SERVER_PORT must be set. WebMIDI cannot be used in automated tests ' +
+    '(browser permission prompt blocks automation). Run via: make test-e2e-roland-device-library',
+  );
+}
 const DEVICE_TYPE = process.env.E2E_DEVICE_TYPE ?? 's330';
 const EDITOR_BASE_PATH = `/roland/${DEVICE_TYPE}/editor`;
 // Library paths are hardcoded to 's330' in LibraryPage.tsx (lines 513, 558)
 const LIBRARY_DEVICE = 's330';
 
-const UI_TIMEOUT_MS = 2_000;
+const UI_TIMEOUT_MS = 10_000;
 const MIDI_TRANSFER_TIMEOUT_MS = 60_000;
 const SAVE_SET_TIMEOUT_MS = 180_000; // 3 minutes for wave data fetch
 const LOAD_SET_TIMEOUT_MS = 180_000; // 3 minutes for wave data upload
@@ -61,7 +67,6 @@ function buildUrl(subpath = ''): string {
   const fullPath = normalized
     ? `${EDITOR_BASE_PATH}/${normalized}`
     : EDITOR_BASE_PATH;
-  if (!MIDI_SERVER_PORT) return fullPath;
   const separator = fullPath.includes('?') ? '&' : '?';
   return `${fullPath}${separator}midi=http&midiServerPort=${MIDI_SERVER_PORT}`;
 }
@@ -252,14 +257,6 @@ function assertDeviceStatesMatch(
 // ===========================================================================
 
 test.describe('Device Set Round Trip', () => {
-  test.beforeAll(async () => {
-    if (!MIDI_SERVER_PORT) {
-      throw new Error(
-        'E2E_MIDI_SERVER_PORT must be set. Run via: make test-e2e-device-library'
-      );
-    }
-  });
-
   test.beforeEach(async ({ page }) => {
     // 1. Load app and connect to MIDI device
     await page.goto(buildUrl(), { timeout: UI_TIMEOUT_MS });

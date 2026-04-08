@@ -98,7 +98,7 @@ export async function writeToneFixtureToOPFS(
     }) => {
       const root = await navigator.storage.getDirectory();
       const lib = await root.getDirectoryHandle('library', { create: true });
-      const deviceDir = await lib.getDirectoryHandle(device, { create: true });
+      const deviceDir = await lib.getDirectoryHandle('s330', { create: true });
       const tones = await deviceDir.getDirectoryHandle('tones', {
         create: true,
       });
@@ -155,11 +155,15 @@ export async function initializeCleanOPFS(
     }
 
     // Create clean structure
+    // All S-series devices share the s330 library section (per CLAUDE.md)
     const lib = await root.getDirectoryHandle('library', { create: true });
-    const deviceDir = await lib.getDirectoryHandle(device, { create: true });
+    const common = await lib.getDirectoryHandle('common', { create: true });
+    await common.getDirectoryHandle('samples', { create: true });
+    const deviceDir = await lib.getDirectoryHandle('s330', { create: true });
     await deviceDir.getDirectoryHandle('tones', { create: true });
     await deviceDir.getDirectoryHandle('patches', { create: true });
     await deviceDir.getDirectoryHandle('sets', { create: true });
+    await deviceDir.getDirectoryHandle('drum-kits', { create: true });
   }, deviceType);
 }
 
@@ -195,7 +199,7 @@ export async function listExportedTones(
   return page.evaluate(async (device: string) => {
     const root = await navigator.storage.getDirectory();
     const lib = await root.getDirectoryHandle('library');
-    const deviceDir = await lib.getDirectoryHandle(device);
+    const deviceDir = await lib.getDirectoryHandle('s330');
     const tones = await deviceDir.getDirectoryHandle('tones');
 
     const yamlFiles: string[] = [];
@@ -224,7 +228,7 @@ export async function readExportedToneYaml(
     async ({ device, name }: { device: string; name: string }) => {
       const root = await navigator.storage.getDirectory();
       const lib = await root.getDirectoryHandle('library');
-      const deviceDir = await lib.getDirectoryHandle(device);
+      const deviceDir = await lib.getDirectoryHandle('s330');
       const tones = await deviceDir.getDirectoryHandle('tones');
       const handle = await tones.getFileHandle(`${name}.yaml`);
       const file = await handle.getFile();
@@ -247,7 +251,7 @@ export async function exportedToneHasWav(
       const root = await navigator.storage.getDirectory();
       try {
         const lib = await root.getDirectoryHandle('library');
-        const deviceDir = await lib.getDirectoryHandle(device);
+        const deviceDir = await lib.getDirectoryHandle('s330');
         const tones = await deviceDir.getDirectoryHandle('tones');
         await tones.getFileHandle(`${name}.wav`);
         return true;
@@ -295,7 +299,7 @@ export async function writePatchFixtureToOPFS(
     }) => {
       const root = await navigator.storage.getDirectory();
       const lib = await root.getDirectoryHandle('library', { create: true });
-      const deviceDir = await lib.getDirectoryHandle(device, { create: true });
+      const deviceDir = await lib.getDirectoryHandle('s330', { create: true });
       const patches = await deviceDir.getDirectoryHandle('patches', {
         create: true,
       });
@@ -352,7 +356,7 @@ export async function listExportedPatches(
   return page.evaluate(async (device: string) => {
     const root = await navigator.storage.getDirectory();
     const lib = await root.getDirectoryHandle('library');
-    const deviceDir = await lib.getDirectoryHandle(device);
+    const deviceDir = await lib.getDirectoryHandle('s330');
     const patches = await deviceDir.getDirectoryHandle('patches');
 
     const dirs: string[] = [];
@@ -381,7 +385,7 @@ export async function readExportedPatchYaml(
     async ({ device, name }: { device: string; name: string }) => {
       const root = await navigator.storage.getDirectory();
       const lib = await root.getDirectoryHandle('library');
-      const deviceDir = await lib.getDirectoryHandle(device);
+      const deviceDir = await lib.getDirectoryHandle('s330');
       const patches = await deviceDir.getDirectoryHandle('patches');
       const patchDir = await patches.getDirectoryHandle(name);
       const handle = await patchDir.getFileHandle('patch.yaml');

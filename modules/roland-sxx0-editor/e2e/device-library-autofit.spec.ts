@@ -57,10 +57,16 @@ import {
 test.setTimeout(120_000);
 
 const MIDI_SERVER_PORT = process.env.E2E_MIDI_SERVER_PORT;
+if (!MIDI_SERVER_PORT) {
+  throw new Error(
+    'E2E_MIDI_SERVER_PORT must be set. WebMIDI cannot be used in automated tests ' +
+    '(browser permission prompt blocks automation). Run via: make test-e2e-roland-device-library',
+  );
+}
 const DEVICE_TYPE = process.env.E2E_DEVICE_TYPE ?? 's330';
 const EDITOR_BASE_PATH = `/roland/${DEVICE_TYPE}/editor`;
 
-const UI_TIMEOUT_MS = 2_000;
+const UI_TIMEOUT_MS = 10_000;
 const MIDI_TRANSFER_TIMEOUT_MS = 60_000;
 const EXPORT_TIMEOUT_MS = 60_000;
 
@@ -75,7 +81,6 @@ function buildUrl(subpath = ''): string {
   const fullPath = normalized
     ? `${EDITOR_BASE_PATH}/${normalized}`
     : EDITOR_BASE_PATH;
-  if (!MIDI_SERVER_PORT) return fullPath;
   const separator = fullPath.includes('?') ? '&' : '?';
   return `${fullPath}${separator}midi=http&midiServerPort=${MIDI_SERVER_PORT}`;
 }
@@ -144,14 +149,6 @@ function assertNoWaveSegmentOverlap(
 // ===========================================================================
 
 test.describe('Device Library Auto-Fit Round Trip', () => {
-  test.beforeAll(async () => {
-    if (!MIDI_SERVER_PORT) {
-      throw new Error(
-        'E2E_MIDI_SERVER_PORT must be set. Run via: make test-e2e-device-library'
-      );
-    }
-  });
-
   test.beforeEach(async ({ page }) => {
     await page.goto(buildUrl(), { timeout: UI_TIMEOUT_MS });
     await waitForAppReady(page);

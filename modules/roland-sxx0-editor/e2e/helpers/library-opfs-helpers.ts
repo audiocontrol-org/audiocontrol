@@ -116,10 +116,12 @@ export async function initializeCleanOPFS(page: Page, device: string): Promise<v
     }
 
     // Create clean structure
+    // All S-series devices share the s330 library section (per CLAUDE.md)
+    console.log('[initializeCleanOPFS] Creating s330 directory structure (device param was:', device, ')');
     const lib = await root.getDirectoryHandle('library', { create: true });
     const common = await lib.getDirectoryHandle('common', { create: true });
     await common.getDirectoryHandle('samples', { create: true });
-    const deviceDir = await lib.getDirectoryHandle(device, { create: true });
+    const deviceDir = await lib.getDirectoryHandle('s330', { create: true });
     await deviceDir.getDirectoryHandle('tones', { create: true });
     await deviceDir.getDirectoryHandle('patches', { create: true });
     await deviceDir.getDirectoryHandle('sets', { create: true });
@@ -214,9 +216,10 @@ export async function writeToneFixtureToOPFS(
       device: string;
       fixtureName: string;
     }) => {
+      // All S-series devices share the s330 library section (per CLAUDE.md)
       const root = await navigator.storage.getDirectory();
       const lib = await root.getDirectoryHandle('library', { create: true });
-      const deviceDir = await lib.getDirectoryHandle(device, { create: true });
+      const deviceDir = await lib.getDirectoryHandle('s330', { create: true });
       const tones = await deviceDir.getDirectoryHandle('tones', { create: true });
 
       // Write YAML

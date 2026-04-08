@@ -47,10 +47,16 @@ import {
 test.setTimeout(120_000);
 
 const MIDI_SERVER_PORT = process.env.E2E_MIDI_SERVER_PORT;
+if (!MIDI_SERVER_PORT) {
+  throw new Error(
+    'E2E_MIDI_SERVER_PORT must be set. WebMIDI cannot be used in automated tests ' +
+    '(browser permission prompt blocks automation). Run via: make test-e2e-roland-device-library',
+  );
+}
 const DEVICE_TYPE = process.env.E2E_DEVICE_TYPE ?? 's330';
 const EDITOR_BASE_PATH = `/roland/${DEVICE_TYPE}/editor`;
 
-const UI_TIMEOUT_MS = 2_000;
+const UI_TIMEOUT_MS = 10_000;
 const MIDI_TRANSFER_TIMEOUT_MS = 60_000; // MIDI SysEx transfers to 1987 hardware are slow
 const EXPORT_TIMEOUT_MS = 60_000;
 
@@ -63,7 +69,6 @@ function buildUrl(subpath = ''): string {
   const fullPath = normalized
     ? `${EDITOR_BASE_PATH}/${normalized}`
     : EDITOR_BASE_PATH;
-  if (!MIDI_SERVER_PORT) return fullPath;
   const separator = fullPath.includes('?') ? '&' : '?';
   return `${fullPath}${separator}midi=http&midiServerPort=${MIDI_SERVER_PORT}`;
 }
@@ -74,8 +79,9 @@ function buildUrl(subpath = ''): string {
 
 const TONE_FIXTURE_NAME = 'rt-tone';
 
+// All S-series tones use device: s330 in the library (shared section)
 const TONE_YAML = `format: sampler-tone
-device: ${DEVICE_TYPE}
+device: s330
 version: 1
 name: "RT Tone"
 wave:
@@ -85,7 +91,7 @@ wave:
   startPoint: 0
   endPoint: 30000
   loopPoint: 0
-${DEVICE_TYPE}:
+s330:
   originalKey: 60
   outputAssign: 0
 `;
@@ -151,6 +157,29 @@ test.describe('Device Library Round Trip', () => {
   }) => {
     attachConsoleDebugListener(page);
 
+    // Debug: check OPFS state before writing
+    const beforeWrite = await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const entries: string[] = [];
+      for await (const entry of root.values()) {
+        entries.push(`${entry.kind}:${entry.name}`);
+        if (entry.kind === 'directory') {
+          const sub = await root.getDirectoryHandle(entry.name);
+          for await (const e2 of sub.values()) {
+            entries.push(`  ${e2.kind}:${e2.name}`);
+            if (e2.kind === 'directory') {
+              const sub2 = await sub.getDirectoryHandle(e2.name);
+              for await (const e3 of sub2.values()) {
+                entries.push(`    ${e3.kind}:${e3.name}`);
+              }
+            }
+          }
+        }
+      }
+      return entries;
+    });
+    console.log('OPFS before write:', beforeWrite);
+
     // Step 1: Create tone fixture in OPFS BEFORE connecting to library
     await writeToneFixtureToOPFS(
       page,
@@ -159,6 +188,24 @@ test.describe('Device Library Round Trip', () => {
       TONE_YAML,
       TONE_WAV_BASE64
     );
+
+    // Verify fixture was written to the contract path
+    const fixtureExists = await page.evaluate(async (name: string) => {
+      const root = await navigator.storage.getDirectory();
+      try {
+        const lib = await root.getDirectoryHandle('library');
+        const s330 = await lib.getDirectoryHandle('s330');
+        const tones = await s330.getDirectoryHandle('tones');
+        await tones.getFileHandle(`${name}.yaml`);
+        return true;
+      } catch { return false; }
+    }, TONE_FIXTURE_NAME);
+    if (!fixtureExists) {
+      throw new Error(
+        `Contract violation: tone fixture "${TONE_FIXTURE_NAME}" not found at ` +
+        `library/s330/tones/${TONE_FIXTURE_NAME}.yaml after writing.`
+      );
+    }
 
     // Step 2: Connect to OPFS -- app reads library contents on connect
     await connectToOPFS(page);
@@ -314,7 +361,7 @@ test.describe('Device Library Round Trip', () => {
       );
     } else {
       throw new Error(
-        `Expected ${DEVICE_TYPE} sections in both original and exported YAML`
+        `Expected s330 sections in both original and exported YAML`
       );
     }
   });
@@ -333,11 +380,11 @@ test.describe('Device Library Round Trip', () => {
     const PATCH_FIXTURE_NAME = 'rt-patch';
 
     const PATCH_YAML = `format: sampler-patch
-device: ${DEVICE_TYPE}
+device: s330
 version: 1
 name: "RT Patch"
 level: 100
-${DEVICE_TYPE}:
+s330:
   keyMode: normal
   benderRange: 2
   toneLayer1: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
@@ -346,7 +393,7 @@ ${DEVICE_TYPE}:
 
     // Reuse the same tone fixture as the tone round trip test
     const DEPENDENT_TONE_YAML = `format: sampler-tone
-device: ${DEVICE_TYPE}
+device: s330
 version: 1
 name: "RT Tone"
 wave:
@@ -356,7 +403,7 @@ wave:
   startPoint: 0
   endPoint: 30000
   loopPoint: 0
-${DEVICE_TYPE}:
+s330:
   originalKey: 60
   outputAssign: 0
 `;
@@ -518,7 +565,7 @@ ${DEVICE_TYPE}:
       );
     } else {
       throw new Error(
-        `Expected ${DEVICE_TYPE} sections in both original and exported YAML`
+        `Expected s330 sections in both original and exported YAML`
       );
     }
   });

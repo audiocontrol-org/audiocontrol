@@ -13,9 +13,10 @@ import { type Page, expect } from '@playwright/test';
 const MIDI_INPUT_PORT = process.env.E2E_MIDI_INPUT_PORT;
 const MIDI_OUTPUT_PORT = process.env.E2E_MIDI_OUTPUT_PORT;
 
-// Timeouts
-const UI_TIMEOUT_MS = 2000;
-const CONNECTION_TIMEOUT_MS = 5000;
+// Timeouts — HTTP MIDI transport needs time to query the midi-server
+// for available ports before dropdowns populate
+const UI_TIMEOUT_MS = 10_000;
+const CONNECTION_TIMEOUT_MS = 10_000;
 
 /**
  * Result of port selection attempt.
@@ -132,11 +133,32 @@ async function selectPort(
  * @throws Error if no ports available or connection fails
  */
 export async function connectToDevice(page: Page): Promise<void> {
-  // Wait for port selectors to have options loaded
+  const midiServerPort = process.env.E2E_MIDI_SERVER_PORT;
+
+  if (midiServerPort) {
+    // HTTP MIDI transport: the app auto-connects when loaded with
+    // ?midi=http&midiServerPort=... query params. No port selection UI needed.
+    // Just wait for the connection to be established.
+    console.log(`HTTP MIDI transport: waiting for auto-connection to midi-server on port ${midiServerPort}`);
+    await page.waitForFunction(
+      () => {
+        const store = (window as unknown as Record<string, unknown>).__midiStore as
+          | { getState: () => { status: string } }
+          | undefined;
+        return store?.getState().status === 'connected';
+      },
+      { timeout: CONNECTION_TIMEOUT_MS },
+    );
+    console.log('Successfully connected to device via HTTP MIDI');
+    return;
+  }
+
+  // WebMIDI transport: select ports manually via dropdowns.
+  // This path is not usable in automated tests (browser permission prompt
+  // blocks automation), but kept for completeness.
   const inputSelect = page.locator('[data-testid="midi-input-select"]');
   await inputSelect.waitFor({ state: 'visible', timeout: UI_TIMEOUT_MS });
 
-  // Wait for options to be populated (more than just the placeholder)
   await page.waitForFunction(
     () => {
       const select = document.querySelector(
@@ -147,37 +169,21 @@ export async function connectToDevice(page: Page): Promise<void> {
     { timeout: UI_TIMEOUT_MS }
   );
 
-  // Select input port
   const inputResult = await selectPort(page, 'midi-input-select', MIDI_INPUT_PORT, 'input');
-
-  // Select output port
   const outputResult = await selectPort(page, 'midi-output-select', MIDI_OUTPUT_PORT, 'output');
 
-  // Log selection summary
   console.log('Port selection complete:', {
-    input: {
-      selected: inputResult.selectedValue,
-      requested: inputResult.requestedPort,
-      fallbackUsed: inputResult.fallbackUsed,
-    },
-    output: {
-      selected: outputResult.selectedValue,
-      requested: outputResult.requestedPort,
-      fallbackUsed: outputResult.fallbackUsed,
-    },
+    input: { selected: inputResult.selectedValue, requested: inputResult.requestedPort },
+    output: { selected: outputResult.selectedValue, requested: outputResult.requestedPort },
   });
 
-  // Click connect button
   const connectButton = page.locator('[data-testid="connect-button"]');
   await connectButton.click();
 
-  // Wait for connection to complete
   await page.waitForFunction(
     () => {
       const store = (window as unknown as Record<string, unknown>).__midiStore as
-        | {
-            getState: () => { status: string };
-          }
+        | { getState: () => { status: string } }
         | undefined;
       return store?.getState().status === 'connected';
     },
