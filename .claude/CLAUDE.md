@@ -29,6 +29,10 @@ audiocontrol/
 └── package.json
 ```
 
+## Sampler Library Architecture
+
+See [SAMPLER-LIBRARY.md](/SAMPLER-LIBRARY.md) for the four-zone storage model (sampler disk, device memory, device-specific library, common area), conversion boundaries between zones, and the theory of higher-order library objects (drum kits, chopped samples, multi-sampled instruments).
+
 ## Core Requirements
 
 ### Import Pattern
