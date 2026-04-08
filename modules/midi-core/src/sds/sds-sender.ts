@@ -76,6 +76,7 @@ export function createSdsSender(
     const packets = samplesToPackets(samples, header.sampleFormat);
     const totalPackets = packets.length;
     const totalBytes = samples.length * Math.ceil(header.sampleFormat / 7);
+    console.log(`[sds-sender] start(): mode=${mode}, packets=${totalPackets}, samples=${samples.length}, format=${header.sampleFormat}`);
 
     if (mode === 'open-loop') {
       return sendOpenLoop(packets, totalPackets, totalBytes);
@@ -144,11 +145,13 @@ export function createSdsSender(
       }
 
       function fail(error: Error): void {
+        console.log(`[sds-sender] FAIL: ${error.message}`);
         cleanup();
         reject(error);
       }
 
       function succeed(): void {
+        console.log(`[sds-sender] SUCCEED: all ${totalPackets} packets sent`);
         cleanup();
         resolve();
       }
@@ -314,8 +317,11 @@ export function createSdsSender(
       }
 
       // Kick off: register listener, send dump header, start timeout
+      console.log(`[sds-sender] closed-loop: registering listener, sending header, starting timeout (${ackTimeoutMs}ms)`);
       midiOut.onSysEx(listener);
-      midiOut.send(buildDumpHeader(channel, header));
+      const headerMsg = buildDumpHeader(channel, header);
+      console.log(`[sds-sender] dump header: ${headerMsg.length} bytes`);
+      midiOut.send(headerMsg);
       startTimeout();
     });
   }

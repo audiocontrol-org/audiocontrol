@@ -91,9 +91,16 @@ export function createS3000xlClient(
   // Request queue for serializing MIDI operations
   let requestQueue: Promise<unknown> = Promise.resolve();
 
+  let serializeId = 0;
   function serialize<T>(fn: () => Promise<T>): Promise<T> {
+    const id = ++serializeId;
+    console.log(`[serialize#${id}] queueing`);
     const result = requestQueue.then(fn, fn);
     requestQueue = result.catch(() => {});
+    result.then(
+      () => console.log(`[serialize#${id}] RESOLVED`),
+      (err) => console.log(`[serialize#${id}] REJECTED: ${err}`),
+    );
     return result;
   }
 
