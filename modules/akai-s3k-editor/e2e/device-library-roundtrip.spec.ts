@@ -217,6 +217,24 @@ test.describe('S3K Device+Library Round Trip', () => {
     await page.goto(url(), { timeout: UI_TIMEOUT_MS });
     await waitForAppReady(page);
 
+    // Preflight: verify the Vite proxy can reach the SCSI bridge
+    const proxyCheck = await page.evaluate(async () => {
+      try {
+        const res = await fetch('/scsi-bridge/status');
+        const text = await res.text();
+        return { ok: res.ok, status: res.status, body: text.substring(0, 200) };
+      } catch (err) {
+        return { ok: false, status: 0, body: String(err) };
+      }
+    });
+    console.log('Vite proxy → SCSI bridge preflight:', proxyCheck);
+    if (!proxyCheck.ok) {
+      throw new Error(
+        `Vite proxy cannot reach SCSI bridge at /scsi-bridge/status. ` +
+        `Status: ${proxyCheck.status}, Body: ${proxyCheck.body}`,
+      );
+    }
+
     // 2. Connect to device via SCSI bridge (auto-connects like HTTP MIDI)
     await connectToDevice(page);
 

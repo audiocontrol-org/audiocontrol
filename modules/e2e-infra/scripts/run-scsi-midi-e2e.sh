@@ -97,37 +97,72 @@ echo "   SSH OK"
 echo ""
 
 # ---------------------------------------------------------------------------
-# Step 2: Pre-flight cleanup
+# Step 2: Check if correct binaries are already deployed and running
 # ---------------------------------------------------------------------------
 
-echo "Step 2: Pre-flight cleanup on Pi..."
-ssh "$PI_SSH" "sudo killall s2p-midi 2>/dev/null; true" || true
-ssh "$PI_SSH" "killall e2e-scsi-midi-bridge 2>/dev/null; true" || true
-ssh "$PI_SSH" "killall scsi-midi-bridge 2>/dev/null; true" || true
-sleep 1
-echo "   Done"
+echo "Step 2: Checking deployment state on Pi..."
+
+LOCAL_S2P_HASH=$(md5 -q "$S2P_BIN" 2>/dev/null || md5sum "$S2P_BIN" 2>/dev/null | cut -d' ' -f1)
+LOCAL_BRIDGE_HASH=$(md5 -q "$SCSI_BRIDGE_BIN" 2>/dev/null || md5sum "$SCSI_BRIDGE_BIN" 2>/dev/null | cut -d' ' -f1)
+
+REMOTE_S2P_HASH=$(ssh "$PI_SSH" "md5sum /tmp/s2p-midi 2>/dev/null | cut -d' ' -f1" || echo "none")
+REMOTE_BRIDGE_HASH=$(ssh "$PI_SSH" "md5sum /tmp/e2e-scsi-midi-bridge 2>/dev/null | cut -d' ' -f1" || echo "none")
+
+S2P_RUNNING=$(ssh "$PI_SSH" "pgrep -x s2p-midi >/dev/null 2>&1 && echo yes || echo no")
+BRIDGE_RUNNING=$(ssh "$PI_SSH" "pgrep -x e2e-scsi-midi-bridge >/dev/null 2>&1 && echo yes || echo no")
+
+NEED_DEPLOY=false
+NEED_RESTART=false
+
+if [ "$LOCAL_S2P_HASH" != "$REMOTE_S2P_HASH" ] || [ "$LOCAL_BRIDGE_HASH" != "$REMOTE_BRIDGE_HASH" ]; then
+  echo "   Binaries changed — need redeploy"
+  NEED_DEPLOY=true
+  NEED_RESTART=true
+elif [ "$S2P_RUNNING" != "yes" ] || [ "$BRIDGE_RUNNING" != "yes" ]; then
+  echo "   Binaries match but daemons not running — need restart"
+  NEED_RESTART=true
+else
+  echo "   Binaries match and daemons running — skipping deploy"
+fi
 echo ""
 
 # ---------------------------------------------------------------------------
-# Step 3: Deploy binaries
+# Step 3: Deploy binaries (only if changed)
 # ---------------------------------------------------------------------------
 
-echo "Step 3: Deploying binaries to Pi..."
-# Deploy as /tmp/s2p-midi (matches existing sudoers NOPASSWD rule)
-scp -q "$S2P_BIN" "$PI_SSH:/tmp/s2p-midi"
-scp -q "$SCSI_BRIDGE_BIN" "$PI_SSH:/tmp/e2e-scsi-midi-bridge"
-ssh "$PI_SSH" "chmod +x /tmp/s2p-midi /tmp/e2e-scsi-midi-bridge"
-echo "   s2p → /tmp/s2p-midi"
-echo "   bridge → /tmp/e2e-scsi-midi-bridge"
-echo ""
+if [ "$NEED_DEPLOY" = "true" ]; then
+  echo "Step 3: Deploying binaries to Pi..."
+  # Kill old processes first
+  ssh "$PI_SSH" "sudo killall s2p-midi 2>/dev/null; true" || true
+  ssh "$PI_SSH" "killall e2e-scsi-midi-bridge 2>/dev/null; true" || true
+  sleep 1
+  scp -q "$S2P_BIN" "$PI_SSH:/tmp/s2p-midi"
+  scp -q "$SCSI_BRIDGE_BIN" "$PI_SSH:/tmp/e2e-scsi-midi-bridge"
+  ssh "$PI_SSH" "chmod +x /tmp/s2p-midi /tmp/e2e-scsi-midi-bridge"
+  echo "   s2p → /tmp/s2p-midi"
+  echo "   bridge → /tmp/e2e-scsi-midi-bridge"
+  echo ""
+elif [ "$NEED_RESTART" = "true" ]; then
+  echo "Step 3: Binaries already deployed, killing stale processes..."
+  ssh "$PI_SSH" "sudo killall s2p-midi 2>/dev/null; true" || true
+  ssh "$PI_SSH" "killall e2e-scsi-midi-bridge 2>/dev/null; true" || true
+  sleep 1
+  echo "   Done"
+  echo ""
+else
+  echo "Step 3: Skipped (already deployed and running)"
+  echo ""
+fi
 
 # ---------------------------------------------------------------------------
 # Step 4: Start s2p on Pi
 # ---------------------------------------------------------------------------
 
+if [ "$NEED_RESTART" = "false" ]; then
+  echo "Step 4: s2p already running — skipped"
+  echo ""
+else
 echo "Step 4: Starting s2p on Pi..."
-# sudo /tmp/s2p-midi is NOPASSWD in sudoers. Background from shell, not nohup
-# (nohup changes the command string and breaks sudoers matching).
 ssh "$PI_SSH" "sudo -n /tmp/s2p-midi --port 6868 > /tmp/e2e-s2p.log 2>&1 &"
 
 # Wait for port 6868
@@ -151,11 +186,16 @@ if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
 fi
 echo "   s2p running on port 6868"
 echo ""
+fi
 
 # ---------------------------------------------------------------------------
 # Step 5: Start scsi-midi-bridge on Pi
 # ---------------------------------------------------------------------------
 
+if [ "$NEED_RESTART" = "false" ]; then
+  echo "Step 5: scsi-midi-bridge already running — skipped"
+  echo ""
+else
 echo "Step 5: Starting scsi-midi-bridge on Pi..."
 ssh "$PI_SSH" "nohup /tmp/e2e-scsi-midi-bridge --port 7033 --target-id 6 > /tmp/e2e-bridge.log 2>&1 &"
 
@@ -179,6 +219,7 @@ if [ "$ELAPSED" -ge "$MAX_WAIT" ]; then
 fi
 echo "   Bridge running on port 7033"
 echo ""
+fi
 
 # ---------------------------------------------------------------------------
 # Step 6: Validate S3000XL is reachable
