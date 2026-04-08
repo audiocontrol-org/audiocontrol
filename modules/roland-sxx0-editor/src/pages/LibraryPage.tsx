@@ -292,9 +292,18 @@ export function LibraryPage() {
           onSelectionChange={handlePluginSelectionChange}
           onToggleExpand={(categoryId, nodeId) => toggleDirectoryExpanded(categoryId as 'tones' | 'patches' | 'drumKits' | 'commonSamples', nodeId)}
           onRefresh={handleRefreshLibrary}
-          onCreateFolder={(categoryId, parentPath) => {
-            directoryOps.handleOpenCreateDirectory(toLibraryCategory(categoryId), parentPath);
-            return Promise.resolve();
+          onCreateFolder={async (categoryId, parentPath) => {
+            if (categoryId === 'commonSamples' || categoryId === 'commonPrograms') {
+              // Common area: create folder directly in library/common/samples/
+              if (!libraryHandle) return;
+              const name = window.prompt('Folder name:');
+              if (!name) return;
+              const { createFolder } = await import('@audiocontrol/sampler-library/browser');
+              await createFolder(libraryHandle, parentPath, name);
+              handleRefreshLibrary();
+            } else {
+              directoryOps.handleOpenCreateDirectory(toLibraryCategory(categoryId), parentPath);
+            }
           }}
           onDelete={(categoryId, node) => {
             const meta = node.meta as { fileName?: string; directoryName?: string; path?: string[] } | undefined;

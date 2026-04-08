@@ -104,7 +104,7 @@ export const patchItemType: ItemTypePlugin<PatchMeta> = {
   renderIcon: () => <PatchIcon />,
 
   renderTrailing: (meta) => {
-    if (meta.toneCount === undefined) return null;
+    if (!meta || meta.toneCount === undefined) return null;
     return (
       <span className="text-xs text-s330-muted">
         {meta.toneCount} tone{meta.toneCount !== 1 ? 's' : ''}
@@ -148,7 +148,7 @@ export const drumKitItemType: ItemTypePlugin<DrumKitMeta> = {
   renderIcon: () => <DrumKitIcon />,
 
   renderTrailing: (meta) => {
-    if (meta.kitCount === undefined && meta.sampleCount === undefined) {
+    if (!meta || (meta.kitCount === undefined && meta.sampleCount === undefined)) {
       return null;
     }
     const parts: string[] = [];

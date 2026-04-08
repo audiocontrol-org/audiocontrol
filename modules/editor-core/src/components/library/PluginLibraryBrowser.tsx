@@ -237,7 +237,7 @@ export function PluginLibraryBrowser({
       if (!itemTypePlugin) return null;
 
       const isSelected = selection?.node.id === node.id;
-      return itemTypePlugin.renderIcon(node.meta, isSelected);
+      return itemTypePlugin.renderIcon(node.meta ?? {}, isSelected);
     },
     [plugin.categories, selection],
   );
@@ -249,7 +249,7 @@ export function PluginLibraryBrowser({
       if (!category || node.type === 'directory') return null;
 
       const itemTypePlugin = category.itemTypes[node.type];
-      return itemTypePlugin?.renderTrailing?.(node.meta) ?? null;
+      return itemTypePlugin?.renderTrailing?.(node.meta ?? {}) ?? null;
     },
     [plugin.categories],
   );
