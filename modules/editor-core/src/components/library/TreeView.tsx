@@ -269,7 +269,7 @@ function TreeNodeRow({
   return (
     <div>
       <div
-        className={`ac-tree-node ${stateClass}${isEditing ? ' ac-tree-node--editing' : ''}`}
+        className={`ac-tree-node ${stateClass}${isEditing ? ' ac-tree-node--editing' : ''}${isDraggable && !isEditing ? ' ac-tree-node--draggable' : ''}`}
         style={{ paddingLeft }}
         data-testid={testId}
         onClick={handleClick}

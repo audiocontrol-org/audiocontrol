@@ -34,6 +34,14 @@
   background: color-mix(in srgb, var(--ac-color-accent) 12%, transparent);
 }
 
+.ac-tree-node--draggable {
+  cursor: grab;
+}
+
+.ac-tree-node--draggable:active {
+  cursor: grabbing;
+}
+
 .ac-tree-node:focus-visible {
   outline: 2px solid var(--ac-color-accent);
   outline-offset: -2px;
@@ -256,6 +264,12 @@
   text-align: center;
   font-size: var(--ac-text-sm);
   color: var(--ac-color-accent);
+  animation: ac-dropzone-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes ac-dropzone-pulse {
+  0%, 100% { border-color: color-mix(in srgb, var(--ac-color-accent) 30%, transparent); }
+  50% { border-color: var(--ac-color-accent); }
 }
 
 /* =========================================================================
