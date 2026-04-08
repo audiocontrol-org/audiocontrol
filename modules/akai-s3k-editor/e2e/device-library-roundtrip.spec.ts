@@ -278,8 +278,58 @@ test.describe('S3K Device+Library Round Trip', () => {
   }) => {
     const FIXTURE_NAME = 'RoundTrip';
 
-    // Step 1: Write sample fixture to OPFS common area BEFORE connecting
-    await writeSampleFixture(page, FIXTURE_NAME);
+    // Record device state before sending (side channel)
+    const samplesBeforeSend = await queryDeviceSamples();
+    console.log(`Device samples before send: ${samplesBeforeSend.length}`);
+
+    // Step 1: Write a realistic sample fixture to OPFS.
+    // The S3000XL needs a minimum sample length — a 1-sample WAV won't work.
+    // Create a 1000-sample WAV at 44100 Hz (~23ms of audio).
+    await page.evaluate(async (name: string) => {
+      // Contract path: library/common/samples/{name}/
+      const root = await navigator.storage.getDirectory();
+      let dir = root;
+      for (const seg of ['library', 'common', 'samples']) {
+        dir = await dir.getDirectoryHandle(seg, { create: true });
+      }
+      const sampleDir = await dir.getDirectoryHandle(name, { create: true });
+
+      // Write sample.yaml
+      const yaml = `format: sample\nversion: 1\nname: ${name}\nfile: sample.wav\nsampleRate: 44100\n`;
+      const yh = await sampleDir.getFileHandle('sample.yaml', { create: true });
+      const yw = await yh.createWritable();
+      await yw.write(yaml);
+      await yw.close();
+
+      // Write WAV with 1000 samples of silence at 44100 Hz
+      const numSamples = 1000;
+      const dataSize = numSamples * 2; // 16-bit mono
+      const headerSize = 44;
+      const buf = new ArrayBuffer(headerSize + dataSize);
+      const v = new DataView(buf);
+      // RIFF header
+      v.setUint32(0, 0x52494646, false); // "RIFF"
+      v.setUint32(4, headerSize + dataSize - 8, true);
+      v.setUint32(8, 0x57415645, false); // "WAVE"
+      // fmt chunk
+      v.setUint32(12, 0x666d7420, false); // "fmt "
+      v.setUint32(16, 16, true);
+      v.setUint16(20, 1, true); // PCM
+      v.setUint16(22, 1, true); // mono
+      v.setUint32(24, 44100, true); // sample rate
+      v.setUint32(28, 88200, true); // byte rate
+      v.setUint16(32, 2, true); // block align
+      v.setUint16(34, 16, true); // bits per sample
+      // data chunk
+      v.setUint32(36, 0x64617461, false); // "data"
+      v.setUint32(40, dataSize, true);
+      // Samples: silence (all zeros — already initialized)
+
+      const wh = await sampleDir.getFileHandle('sample.wav', { create: true });
+      const ww = await wh.createWritable();
+      await ww.write(new Uint8Array(buf));
+      await ww.close();
+    }, FIXTURE_NAME);
 
     // Verify fixture was written to the contract path
     const fixtureDir = await verifyDirectoryInOPFS(page, [
@@ -329,22 +379,27 @@ test.describe('S3K Device+Library Round Trip', () => {
     await sendDone.click();
     console.log('SDS send dialog dismissed');
 
-    // Step 8b: Verify device state via side channel (direct S3K client query)
+    // Step 8b: Verify device state via side channel.
+    // S3000XL auto-names SDS-received samples, so check count increased, not name.
     const samplesAfterSend = await queryDeviceSamples();
-    console.log('Device samples after send (via side channel):', samplesAfterSend);
-    const sampleOnDevice = samplesAfterSend.some(
-      (name) => name.trim().toLowerCase().includes(FIXTURE_NAME.toLowerCase()),
+    console.log(
+      `Device samples after send: ${samplesAfterSend.length} ` +
+      `(was ${samplesBeforeSend.length}). Names: [${samplesAfterSend.map((s) => s.trim()).join(', ')}]`,
     );
-    if (!sampleOnDevice) {
-      throw new Error(
-        `SDS send reported success but sample "${FIXTURE_NAME}" not found on device. ` +
-        `Device samples: [${samplesAfterSend.map((s) => s.trim()).join(', ')}]. ` +
-        `This indicates the SDS transfer did not persist to device memory.`,
-      );
-    }
-    console.log(`Verified: "${FIXTURE_NAME}" is on the device`);
+    expect(
+      samplesAfterSend.length,
+      `SDS send reported success but sample count did not increase. ` +
+      `Before: ${samplesBeforeSend.length}, After: ${samplesAfterSend.length}. ` +
+      `The S3000XL did not accept the sample.`,
+    ).toBeGreaterThan(samplesBeforeSend.length);
 
-    // Step 9: Refresh device panel and find the sample we just sent by name.
+    // The new sample is the one that wasn't in the previous list
+    const newSampleName = samplesAfterSend
+      .map((s) => s.trim())
+      .find((name) => !samplesBeforeSend.map((s) => s.trim()).includes(name));
+    console.log(`New sample on device: "${newSampleName}"`);
+
+    // Step 9: Refresh device panel and find the new sample.
     // E2E tenet: adapt to device state — the sample may be at any index.
     const devicePanel = page.locator('.ac-plugin-library-browser-device');
     const refreshButton = devicePanel.locator('button').filter({ hasText: '↻' });
@@ -353,10 +408,10 @@ test.describe('S3K Device+Library Round Trip', () => {
       await page.waitForTimeout(2_000); // Wait for device to respond
     }
 
-    // Find our sample in the device panel by name.
-    // SDS sample names may be truncated, uppercased, or padded by the S3000XL.
-    // Use case-insensitive regex to find any button containing our fixture name.
-    const samplePattern = new RegExp(FIXTURE_NAME.substring(0, 12), 'i');
+    // Find the new sample in the device panel by the name the S3000XL assigned.
+    // S3000XL auto-names SDS samples, so use the name from the side channel query.
+    const searchName = newSampleName ?? FIXTURE_NAME.substring(0, 12);
+    const samplePattern = new RegExp(searchName.trim(), 'i');
     const deviceSample = devicePanel.locator('button').filter({ hasText: samplePattern });
 
     // Poll for the sample to appear, feeding the watchdog each iteration
