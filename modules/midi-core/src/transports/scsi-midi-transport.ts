@@ -176,10 +176,11 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
       sendQueue = sendQueue.then(async () => {
         sendInFlight = true;
         try {
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            console.log(`[ScsiMidi] sending via WebSocket`);
-            ws.send(JSON.stringify({ type: 'send', message }));
-          } else {
+          // Always use HTTP POST for sending — the response (ACK/NAK) is
+          // returned inline in the POST response body. The WebSocket path
+          // sends but doesn't reliably receive responses through the Vite
+          // proxy, causing SDS closed-loop transfers to time out.
+          {
             console.log(`[ScsiMidi] sending via HTTP POST to ${bridgeUrl}/sds/send`);
             const res = await fetch(`${bridgeUrl}/sds/send`, {
               method: 'POST',
