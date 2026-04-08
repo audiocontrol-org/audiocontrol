@@ -30,13 +30,11 @@ import {
   PluginLibraryBrowser,
   type TreeNode,
   type ItemSelection,
+  useLibraryOperations,
+  type LibraryOperationsStrategy,
 } from '@audiocontrol/editor-core';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import {
-  deleteItem,
-  createFolder,
-  moveItem,
-  importWavToCommonArea,
   listCommonSamplesTree,
 } from '@audiocontrol/sampler-library/browser';
 import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
@@ -165,7 +163,6 @@ export function LibraryPage(): JSX.Element {
   const setSelectedDevice = useLibraryStore((s) => s.setSelectedDevice);
 
   const [selection, setSelection] = useState<ItemSelection | null>(null);
-  const [expandedPaths, setExpandedPaths] = useState<Record<string, Set<string>>>({});
   const [sendDialog, setSendDialog] = useState<SendDialogState>(SEND_DIALOG_CLOSED);
   const [receiveDialog, setReceiveDialog] = useState<ReceiveDialogState>(RECEIVE_DIALOG_CLOSED);
   const [diskToLibrary, setDiskToLibrary] = useState<DiskToLibraryDialogState>(DISK_TO_LIBRARY_CLOSED);
@@ -179,6 +176,34 @@ export function LibraryPage(): JSX.Element {
     [setError],
   );
   const editorDialogs = useEditorDialogs(root, refreshLibrary, handleEditorError);
+
+  // -----------------------------------------------------------------------
+  // Shared library operations (create, delete, move, rename, drop, expand)
+  // -----------------------------------------------------------------------
+
+  const libraryStrategy = useMemo<LibraryOperationsStrategy>(() => ({
+    deleteItem: async (categoryId, node) => {
+      if (categoryId !== 'programs') return false;
+      if (!root) return false;
+      const meta = node.meta as { dirName?: string } | undefined;
+      const dirName = meta?.dirName ?? node.name;
+      await deleteStoredProgram(root, dirName);
+      void refreshPrograms();
+      return true;
+    },
+  }), [root, refreshPrograms]);
+
+  const libraryOps = useLibraryOperations(
+    root,
+    libraryStrategy,
+    refreshLibrary,
+    (msg) => setError(msg),
+    (actionId, name, nodeType, path) => {
+      if (actionId === 'open-loop-editor') editorDialogs.handleOpenInLoopEditor(name, nodeType, path);
+      else if (actionId === 'open-chopper') editorDialogs.handleOpenInChopper(name, nodeType, path);
+      else if (actionId === 'open-sample-editor') editorDialogs.handleOpenInSampleEditor(name, nodeType, path);
+    },
+  );
 
   const hasInitiatedScan = useRef(false);
 
@@ -196,7 +221,6 @@ export function LibraryPage(): JSX.Element {
       hasInitiatedScan.current = false;
       clear();
       setSelection(null);
-      setExpandedPaths({});
     }
   }, [isLibraryConnected, clear]);
 
@@ -387,74 +411,6 @@ export function LibraryPage(): JSX.Element {
     [connect],
   );
 
-  const handleToggleExpand = useCallback(
-    (categoryId: string, nodeId: string) => {
-      setExpandedPaths((prev) => {
-        const set = new Set(prev[categoryId] ?? []);
-        if (set.has(nodeId)) set.delete(nodeId); else set.add(nodeId);
-        return { ...prev, [categoryId]: set };
-      });
-    },
-    [],
-  );
-
-  const handleCreateFolder = useCallback(
-    async (_catId: string, parentPath: string[]) => {
-      if (!root) return;
-      const name = window.prompt('Folder name:');
-      if (!name) return;
-      await createFolder(root, parentPath, name);
-      void refreshLibrary();
-    },
-    [root, refreshLibrary],
-  );
-
-  const handleDelete = useCallback(
-    async (catId: string, node: TreeNode) => {
-      if (!root) return;
-      if (catId === 'programs') {
-        const meta = node.meta as { dirName?: string } | undefined;
-        const dirName = meta?.dirName ?? node.name;
-        await deleteStoredProgram(root, dirName);
-        void refreshPrograms();
-      } else {
-        const meta = node.meta as { path?: string[] } | undefined;
-        await deleteItem(root, node.name, meta?.path ?? []);
-        void refreshLibrary();
-      }
-    },
-    [root, refreshLibrary, refreshPrograms],
-  );
-
-  const handleMove = useCallback(
-    async (_catId: string, node: TreeNode, targetPath: string[]) => {
-      if (!root) return;
-      const meta = node.meta as { path?: string[] } | undefined;
-      await moveItem(root, node.name, meta?.path ?? [], targetPath);
-      void refreshLibrary();
-    },
-    [root, refreshLibrary],
-  );
-
-  const handleRename = useCallback(
-    async (_catId: string, _node: TreeNode, _newName: string) => {
-      throw new Error('Rename not yet implemented');
-    },
-    [],
-  );
-
-  const handleFileDrop = useCallback(
-    async (_catId: string, files: File[], targetPath: string[]) => {
-      if (!root) return;
-      for (const file of files) {
-        const buf = await file.arrayBuffer();
-        await importWavToCommonArea(root, file.name, new Uint8Array(buf), { targetPath });
-      }
-      void refreshLibrary();
-    },
-    [root, refreshLibrary],
-  );
-
   // -----------------------------------------------------------------------
   // Render
   // -----------------------------------------------------------------------
@@ -486,16 +442,17 @@ export function LibraryPage(): JSX.Element {
             plugin={s3kLibraryPlugin}
             libraryHandle={libraryHandle}
             categoryData={categoryData}
-            expandedPaths={expandedPaths}
+            expandedPaths={libraryOps.expandedPaths}
             selection={selection}
             onSelectionChange={setSelection}
-            onToggleExpand={handleToggleExpand}
+            onToggleExpand={libraryOps.onToggleExpand}
             onRefresh={refreshLibrary}
-            onCreateFolder={handleCreateFolder}
-            onDelete={handleDelete}
-            onMove={handleMove}
-            onRename={handleRename}
-            onFileDrop={handleFileDrop}
+            onCreateFolder={libraryOps.onCreateFolder}
+            onDelete={libraryOps.onDelete}
+            onMove={libraryOps.onMove}
+            onRename={libraryOps.onRename}
+            onFileDrop={libraryOps.onFileDrop}
+            onContextMenuAction={libraryOps.onContextMenuAction}
             deviceMemoryState={deviceMemoryState}
             previewState={previewState}
             loading={loading}

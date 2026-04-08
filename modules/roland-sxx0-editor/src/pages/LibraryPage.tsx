@@ -16,7 +16,7 @@ import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useLibraryStore } from '@/stores/libraryStore';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import {
-  useLibraryConnection, LibraryConnectionUI, PluginLibraryBrowser,
+  useLibraryConnection, useLibraryOperations, LibraryConnectionUI, PluginLibraryBrowser,
 } from '@audiocontrol/editor-core';
 import { s330LibraryPlugin } from '@/plugins/s330-library-plugin';
 import { s550LibraryPlugin } from '@/plugins/s550-library-plugin';
@@ -36,27 +36,16 @@ import {
   useImportSamples,
   drumKitBundleToImportBundle,
 } from '@/hooks/useImportSamples';
-import { useDirectoryOperations } from '@/hooks/useDirectoryOperations';
 import { useLibraryExport } from '@/hooks/useLibraryExport';
 import { useLibraryImportDialogs } from '@/hooks/useLibraryImportDialogs';
+import { useRolandLibraryStrategy } from '@/hooks/useRolandLibraryStrategy';
 
-import { CreateDirectoryDialog } from '@/components/library/CreateDirectoryDialog';
-import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialog';
-import { DeleteDirectoryDialog } from '@/components/library/DeleteDirectoryDialog';
-import { MoveItemDialog } from '@/components/library/MoveItemDialog';
 import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 import { useRolandEditorDialogs } from '@/hooks/useRolandEditorDialogs';
 import { useRolandLibraryData } from '@/hooks/useRolandLibraryData';
 import { useRolandSelectionMapping } from '@/hooks/useRolandSelectionMapping';
 import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
-
-/** Map plugin categoryId to the LibraryCategory type used by filesystem operations */
-function toLibraryCategory(categoryId: string): 'tones' | 'patches' | 'drum-kits' {
-  if (categoryId === 'drumKits') return 'drum-kits';
-  if (categoryId === 'tones' || categoryId === 'patches') return categoryId;
-  return 'tones'; // fallback for commonSamples/commonPrograms — not used for directory ops
-}
 
 /** Selection state for items in either panel */
 export interface ItemSelection {
@@ -87,7 +76,6 @@ export function LibraryPage() {
 
   const {
     sets, isLoading, setLoading, setError, error,
-    expandedPaths, toggleDirectoryExpanded,
   } = useLibraryStore();
 
   const library = useLibraryConnection({
@@ -101,10 +89,9 @@ export function LibraryPage() {
 
   const libraryData = useRolandLibraryData(libraryHandle);
   const {
-    categoryData, tonesTree, patchesTree, drumKitsTree,
+    categoryData,
     selectedDrumKitBundle, setSelectedDrumKitBundle,
     setIndividualTones, setIndividualPatches,
-    setTonesTree, setPatchesTree, setDrumKits, setDrumKitsTree,
     handleRefreshLibrary,
   } = libraryData;
 
@@ -137,12 +124,25 @@ export function LibraryPage() {
     onRefresh: handleRefreshLibrary,
   });
 
-  // Extracted hooks
-  const directoryOps = useDirectoryOperations({
-    libraryHandle, handleRefreshLibrary, setError, tonesTree, patchesTree, drumKitsTree,
-    selection, setSelection, setIndividualTones, setIndividualPatches,
-    setTonesTree, setPatchesTree, setDrumKits, setDrumKitsTree, setSelectedDrumKitBundle,
+  // Roland-specific library strategy for delete/rename
+  const { strategy: rolandStrategy, handleDeleteSet, handleRenameSet } = useRolandLibraryStrategy({
+    libraryHandle,
+    selection,
+    setSelection,
   });
+
+  // Shared library operations hook
+  const libraryOps = useLibraryOperations(
+    libraryHandle,
+    rolandStrategy,
+    handleRefreshLibrary,
+    (msg) => setError(msg),
+    (actionId, name, nodeType, path) => {
+      if (actionId === 'open-loop-editor') editorDialogs.handleOpenInLoopEditor(name, nodeType, path);
+      else if (actionId === 'open-chopper') editorDialogs.handleOpenInChopper(name, nodeType, path);
+      else if (actionId === 'open-sample-editor') editorDialogs.handleOpenInSampleEditor(name, nodeType, path);
+    },
+  );
 
   const exportOps = useLibraryExport({
     clientRef, libraryHandle, tones, patches, setIndividualTones, setIndividualPatches,
@@ -287,59 +287,17 @@ export function LibraryPage() {
           plugin={plugin}
           libraryHandle={libraryHandle}
           categoryData={categoryData}
-          expandedPaths={expandedPaths as unknown as Record<string, Set<string>>}
+          expandedPaths={libraryOps.expandedPaths}
           selection={pluginSelection}
           onSelectionChange={handlePluginSelectionChange}
-          onToggleExpand={(categoryId, nodeId) => toggleDirectoryExpanded(categoryId as 'tones' | 'patches' | 'drumKits' | 'commonSamples', nodeId)}
+          onToggleExpand={libraryOps.onToggleExpand}
           onRefresh={handleRefreshLibrary}
-          onCreateFolder={async (categoryId, parentPath) => {
-            if (categoryId === 'commonSamples' || categoryId === 'commonPrograms') {
-              // Common area: create folder directly in library/common/samples/
-              if (!libraryHandle) return;
-              const name = window.prompt('Folder name:');
-              if (!name) return;
-              const { createFolder } = await import('@audiocontrol/sampler-library/browser');
-              await createFolder(libraryHandle, parentPath, name);
-              handleRefreshLibrary();
-            } else {
-              directoryOps.handleOpenCreateDirectory(toLibraryCategory(categoryId), parentPath);
-            }
-          }}
-          onDelete={(categoryId, node) => {
-            const meta = node.meta as { fileName?: string; directoryName?: string; path?: string[] } | undefined;
-            if (node.type === 'directory') {
-              directoryOps.handleOpenDeleteDirectory(toLibraryCategory(categoryId), meta?.path ?? []);
-            } else if (node.type === 'tone') {
-              directoryOps.handleDeleteIndividualTone(meta?.fileName ?? node.name, meta?.path);
-            } else if (node.type === 'patch') {
-              directoryOps.handleDeleteIndividualPatch(meta?.directoryName ?? node.name, meta?.path);
-            } else if (node.type === 'drum-kit') {
-              directoryOps.handleDeleteDrumKit(meta?.directoryName ?? node.name, meta?.path);
-            }
-            return Promise.resolve();
-          }}
-          onMove={(_categoryId, node) => {
-            const meta = node.meta as { path?: string[] } | undefined;
-            directoryOps.handleOpenMoveItem(toLibraryCategory(_categoryId), meta?.path ?? [], node.name);
-            return Promise.resolve();
-          }}
-          onRename={(categoryId, node, newName) => {
-            const meta = node.meta as { path?: string[] } | undefined;
-            return directoryOps.handleRenameItem(toLibraryCategory(categoryId), meta?.path ?? [], node.name, newName, node.type === 'directory');
-          }}
-          onContextMenuAction={(categoryId, actionId, node) => {
-            const meta = node.meta as { fileName?: string; directoryName?: string; path?: string[] } | undefined;
-            const name = meta?.fileName ?? meta?.directoryName ?? node.name;
-            if (actionId === 'move') {
-              directoryOps.handleOpenMoveItem(toLibraryCategory(categoryId), meta?.path ?? [], name);
-            } else if (actionId === 'open-loop-editor') {
-              editorDialogs.handleOpenInLoopEditor(name, node.type, meta?.path);
-            } else if (actionId === 'open-chopper') {
-              editorDialogs.handleOpenInChopper(name, node.type, meta?.path);
-            } else if (actionId === 'open-sample-editor') {
-              editorDialogs.handleOpenInSampleEditor(name, node.type, meta?.path);
-            }
-          }}
+          onCreateFolder={libraryOps.onCreateFolder}
+          onDelete={libraryOps.onDelete}
+          onMove={libraryOps.onMove}
+          onRename={libraryOps.onRename}
+          onContextMenuAction={libraryOps.onContextMenuAction}
+          onFileDrop={libraryOps.onFileDrop}
           deviceMemoryState={deviceMemoryState}
           previewState={previewState}
           loading={isLoading || exportOps.isExporting}
@@ -353,8 +311,8 @@ export function LibraryPage() {
               onSelectSet={(name) => handleSelectLibrary('set', name)}
               onSelectTone={(name, setName) => handleSelectLibrary('tone', name, setName)}
               onSelectPatch={(name, setName) => handleSelectLibrary('patch', name, setName)}
-              onDeleteSet={directoryOps.handleDeleteSet}
-              onRenameSet={directoryOps.handleRenameSet}
+              onDeleteSet={handleDeleteSet}
+              onRenameSet={handleRenameSet}
             />
           }
         />
@@ -429,36 +387,6 @@ export function LibraryPage() {
         patch={exportOps.exportPatchDialog?.patch ?? null} patchIndex={exportOps.exportPatchDialog?.patchIndex ?? 0}
         onExport={exportOps.handleExportPatch} isOperating={exportOps.isExporting}
         progress={exportOps.exportPatchProgress} error={exportOps.exportPatchError}
-      />
-      <CreateDirectoryDialog
-        open={!!directoryOps.createDirectoryDialog}
-        onOpenChange={(open) => { if (!open) directoryOps.closeCreateDirectoryDialog(); }}
-        onConfirm={directoryOps.handleCreateDirectory}
-        parentPath={directoryOps.createDirectoryDialog?.parentPath ?? []}
-        category={directoryOps.createDirectoryDialog?.category ?? 'tones'}
-      />
-      <RenameDirectoryDialog
-        open={!!directoryOps.renameDirectoryDialog}
-        onOpenChange={(open) => { if (!open) directoryOps.closeRenameDirectoryDialog(); }}
-        onConfirm={directoryOps.handleRenameDirectory}
-        currentName={directoryOps.renameDirectoryDialog?.currentName ?? ''}
-        path={directoryOps.renameDirectoryDialog?.path ?? []} category={directoryOps.renameDirectoryDialog?.category ?? 'tones'}
-      />
-      <DeleteDirectoryDialog
-        open={!!directoryOps.deleteDirectoryDialog}
-        onOpenChange={(open) => { if (!open) directoryOps.closeDeleteDirectoryDialog(); }}
-        onConfirm={directoryOps.handleDeleteDirectory}
-        directoryName={directoryOps.deleteDirectoryDialog?.directoryName ?? ''}
-        path={directoryOps.deleteDirectoryDialog?.path ?? []} category={directoryOps.deleteDirectoryDialog?.category ?? 'tones'}
-        libraryHandle={libraryHandle}
-      />
-      <MoveItemDialog
-        open={!!directoryOps.moveItemDialog}
-        onOpenChange={(open) => { if (!open) directoryOps.closeMoveItemDialog(); }}
-        onConfirm={directoryOps.handleMoveItem}
-        itemName={directoryOps.moveItemDialog?.itemName ?? ''} itemType={directoryOps.moveItemDialog?.itemType ?? 'tone'}
-        currentPath={directoryOps.moveItemDialog?.sourcePath ?? []}
-        category={directoryOps.moveItemDialog?.category ?? 'tones'} categoryTree={directoryOps.getMoveDialogTree()}
       />
       {editorDialogs.loopEditor && (
         <LoopEditorDialog
