@@ -98,6 +98,11 @@ export interface PluginLibraryBrowserProps {
 
   /** Connection status slot (rendered at top of library column) */
   connectionSlot?: React.ReactNode;
+
+  /** Optional sections rendered above plugin categories in the library column.
+   * Used for device-specific content that doesn't fit the CategoryPlugin model
+   * (e.g., Roland Sets with their two-level selection and lazy manifest loading). */
+  headerSections?: React.ReactNode;
 }
 
 // =========================================================================
@@ -124,6 +129,7 @@ export function PluginLibraryBrowser({
   error,
   operationProgress,
   connectionSlot,
+  headerSections,
 }: PluginLibraryBrowserProps): JSX.Element {
   const hasDeviceMemory = !!plugin.deviceMemory;
 
@@ -338,6 +344,7 @@ export function PluginLibraryBrowser({
 
         {!loading && !error && libraryHandle && (
           <div className="ac-plugin-library-browser-sections">
+            {headerSections}
             {plugin.categories.map((category) => (
               <TreeSection
                 key={category.categoryId}
