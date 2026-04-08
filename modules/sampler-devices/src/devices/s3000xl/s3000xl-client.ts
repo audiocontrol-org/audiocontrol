@@ -364,7 +364,7 @@ export function createS3000xlClient(
       await bufferWrite(key, AkaiOpcode.MDATA, data.raw.slice(5, -1));
     },
 
-    async sendSampleViaSds(
+    sendSampleViaSds(
       sampleNumber: number,
       sampleData: Int16Array,
       sampleRate: number,
@@ -375,7 +375,10 @@ export function createS3000xlClient(
         onProgress?: (progress: SdsTransferProgress) => void;
       },
     ): Promise<void> {
+      // NON-ASYNC entry point — logs synchronously before entering async
+      console.log(`[s3000xl-client] SYNC ENTRY sendSampleViaSds: num=${sampleNumber} len=${sampleData.length}`);
       const header = buildSdsHeader(sampleNumber, sampleData, sampleRate, sdsOptions);
+      console.log(`[s3000xl-client] header built, entering serialize`);
 
       return serialize(async () => {
         const sender = createSdsSender(midiIO, {
@@ -383,13 +386,19 @@ export function createS3000xlClient(
           header,
           samples: sampleData,
           mode: 'closed-loop',
-          onProgress: sdsOptions?.onProgress,
+          onProgress: (progress) => {
+            console.log(`[s3000xl-client] SDS packet ${progress.packetsSent}/${progress.packetsTotal}`);
+            sdsOptions?.onProgress?.(progress);
+          },
         });
+        console.log(`[s3000xl-client] sender created, calling start()`);
         await sender.start();
+        console.log(`[s3000xl-client] sender.start() resolved, waiting 3s for device commit`);
         // The S3000XL needs time to commit the sample to memory after
         // the last ACK. Sending Akai SysEx (e.g., RSLIST) too soon can
         // cause the device to discard the sample.
         await new Promise((r) => setTimeout(r, 3000));
+        console.log(`[s3000xl-client] sendSampleViaSds complete`);
       });
     },
 

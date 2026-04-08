@@ -249,10 +249,10 @@ echo ""
 # Step 7: Start Vite dev server locally
 # ---------------------------------------------------------------------------
 
-echo "Step 7: Starting dev server..."
+echo "Step 7: Starting preview server (serves production build from dist/)..."
 VITE_LOG=$(mktemp)
 
-pnpm vite --port 0 > "$VITE_LOG" 2>&1 &
+pnpm vite preview --port 0 > "$VITE_LOG" 2>&1 &
 VITE_PID=$!
 
 MAX_WAIT=20

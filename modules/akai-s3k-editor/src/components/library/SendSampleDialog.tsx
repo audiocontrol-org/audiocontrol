@@ -123,10 +123,12 @@ export function SendSampleDialog({
   const handleSend = useCallback(async () => {
     if (!wavInfo) return;
 
+    console.log(`[SendSampleDialog] handleSend: target=${targetSampleNumber}, samples=${wavInfo.samples.length}, rate=${wavInfo.sampleRate}`);
     setPhase('transferring');
 
     try {
       await sendToDevice(targetSampleNumber, wavInfo.samples, wavInfo.sampleRate);
+      console.log(`[SendSampleDialog] sendToDevice resolved — setting phase to success`);
       setPhase('success');
       // Give device time to commit the sample before refreshing
       await new Promise((r) => setTimeout(r, 1500));
