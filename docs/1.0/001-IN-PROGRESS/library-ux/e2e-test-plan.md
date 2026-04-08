@@ -226,6 +226,8 @@ Each tranche of tests (Tier 1, 2, 3) must produce:
 
 Parity reports go in `docs/1.0/001-IN-PROGRESS/library-ux/parity-report-tier-{N}.md`.
 
+**Fix-as-you-go:** Duplications found during each tranche's audit should be fixed immediately, before moving to the next tranche. Since fixing requires re-testing, it's most efficient to fix while the test infrastructure is already set up and the tests are fresh. Re-run the tranche's tests after fixing to confirm no regressions.
+
 ## Implementation Order
 
 1. Extend Tier 1 tests in existing `library-ui-operations.spec.ts` files (both editors)
