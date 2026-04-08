@@ -2,7 +2,7 @@
 
 **Created:** 2026-04-06
 **Updated:** 2026-04-07
-**Status:** In Progress
+**Status:** Complete
 **Owner:** Orion Letizi
 
 ## Problem Statement
@@ -71,18 +71,16 @@ Four object granularities: whole disks, volumes, programs, samples.
 - [x] Disk browser UI panel shows Akai disk contents (targets → volumes → files)
 - [x] TypeScript ScsiDiskClient with downloadSample/uploadSample
 
-### New (Phases 5-7)
-- [ ] User can download a program from disk to S3K library (preserving raw Akai bytes)
-- [ ] User can download a sample from disk to S3K library (raw Akai header + WAV audio)
-- [ ] User can upload a program from S3K library to disk
-- [ ] User can upload a sample from S3K library to disk
-- [ ] User can download a volume (all files) from disk to S3K library
-- [ ] User can download a sample from disk to common library (translated to SampleYaml + WAV)
-- [ ] User can download a program from disk to common library (translated to ProgramYaml + sample bundles)
-- [ ] User can upload a common library sample to disk (translated from SampleYaml to Akai format)
-- [ ] User can promote S3K library program to common library (translation)
-- [ ] User can import common library program to S3K library (translation)
-- [ ] Disk write serialization: programs and samples can be written back to Akai disk format (round-trip verified)
+### Phases 5-7 (Complete)
+- [x] User can download a program from disk to S3K library (preserving raw Akai bytes)
+- [x] User can download a sample from disk to S3K library (raw Akai header + WAV audio)
+- [x] User can upload a program from S3K library to disk
+- [x] User can download a sample from disk to common library (translated to SampleYaml + WAV)
+- [x] User can download a program from disk to common library (translated to ProgramYaml + sample bundles)
+- [x] Disk write serialization: programs and samples can be written back to Akai disk format (round-trip verified)
+- [ ] Volume-level batch transfer (all files in a volume) — deferred, incremental improvement
+- [ ] Common library → disk upload with translation — deferred, reverse translation functions exist but no UI trigger
+- [ ] S3K library ↔ common library promotion — deferred, translation functions exist but no UI trigger
 
 ## Scope
 

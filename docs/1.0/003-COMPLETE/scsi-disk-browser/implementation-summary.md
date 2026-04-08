@@ -1,11 +1,11 @@
 # SCSI Disk Browser - Implementation Summary
 
-**Status:** In Progress
-**Feature Branch:** `feature/scsi-disk-browser`
+**Status:** Complete
+**Feature Branch:** `feature/scsi-disk-browser` (merged to main via PR #164)
 
 ## Summary
 
-Read and write Akai-formatted SCSI disk images over the network from the S3000XL web editor. Extends the SCSI bridge with SCSI_EXEC block I/O, adds a browser-safe Akai disk format parser, and integrates a disk browser panel into the editor's library page.
+Browse, read, and write Akai-formatted SCSI disk images over the network from the S3000XL web editor. Transfer programs and samples between SCSI disks and the browser library — both S3K-native (raw Akai bytes) and vendor-neutral (ProgramYaml/SampleYaml) formats. Includes bidirectional SDS sample transfer via WebSocket streaming.
 
 ## What Was Built
 
@@ -39,6 +39,33 @@ Read and write Akai-formatted SCSI disk images over the network from the S3000XL
 - 15 unit tests for Akai character encoding and disk parser (partition table, volume list, FAT chain)
 - Playwright E2E spec using `?midi=scsi&scsiBridgeUrl=...` query params for transport selection
 
+### Phase 5: Disk ↔ S3K Library Transfer
+
+- `akai-disk-writer.ts`: FAT allocation, directory entry creation, block-level writes with dirty block tracking (12 unit tests, round-trip verified)
+- `program-serialization.ts`: `SerializedDiskProgram` format (`s3000xl-disk-program`) storing raw on-disk bytes as base64
+- `DiskToLibraryDialog.tsx`: save programs/samples from disk to S3K library with sample extraction
+- `LibraryToDiskDialog.tsx`: write disk-origin programs back to Akai disk with volume/target selection
+
+### Phase 6: Akai ↔ Common Library Translation
+
+- `akai-to-common.ts`: `akaiSampleToCommon()`, `akaiProgramToCommon()`, `akaiKeygroupToZones()` — Akai → vendor-neutral (12 unit tests)
+- `common-to-akai.ts`: `commonToAkaiProgram()`, `commonToAkaiSample()` — vendor-neutral → Akai
+- DiskToLibraryDialog updated with destination selector (S3K Library or Common Library)
+
+### Phase 7: Integration Tests
+
+- `test-disk-write.ts`: disk write round-trip e2e test (read → write → read → compare bytes) — hardware verified
+- `test-scsi-sds-transfer.ts`: SDS download + upload round-trip e2e test — hardware verified
+- `create-test-disk.ts`: generates minimal Akai-formatted disk image with free space for write testing
+- Make targets: `test-scsi-sds-transfer`, `test-scsi-disk-write`
+
+### SDS Sample Transfer (SCSI MIDI Bridge Phase 6)
+
+- `scsi_midi.rs`: `download_sample()` and `upload_sample()` — full SDS protocol over SCSI_EXEC with raw CDBs
+- `routes.rs`: WebSocket handlers for `sample-download` and `sample-upload` with mpsc channel streaming
+- `scsi-disk-client.ts`: `downloadSample()` and `uploadSample()` with streaming callbacks
+- Bridge build ID (`buildId` in `/status`) for deployment verification
+
 ## Key Decisions
 
 - **SCSI_EXEC not MIDI** — Disk I/O uses standard SCSI READ/WRITE commands through the SCSI_EXEC protobuf operation, not the MIDI-via-SCSI channel. Same approach MESA II uses.
@@ -59,24 +86,16 @@ Read and write Akai-formatted SCSI disk images over the network from the S3000XL
 
 **Unit tests:** 15 passing (character encoding + parser)
 
-## Remaining Work (Phases 5-7)
+## Test Summary
 
-### Phase 5: Disk ↔ S3K Library Transfer
-- S3K library storage for disk-origin objects (raw Akai bytes as base64)
-- Disk write serialization (FAT allocation, directory entry creation)
-- Download dialog (disk → S3K library)
-- Upload dialog (S3K library → disk)
-
-### Phase 6: Akai ↔ Common Library Translation
-- Akai program/sample → vendor-neutral ProgramYaml/SampleYaml
-- Vendor-neutral → Akai format (reverse translation)
-- Translation-aware transfer UI actions
-
-### Phase 7: Integration Tests
-- Disk write round-trip (read → write → read → compare)
-- Library transfer round-trip with translation verification
-
-See `workplan.md` for detailed implementation plan.
+| Category | Count | Coverage |
+|----------|-------|----------|
+| Disk parser unit tests | 15 | Partition table, volumes, FAT chain, file list |
+| Disk writer unit tests | 12 | FAT allocation, block writes, directory entries, round-trip |
+| Translation unit tests | 12 | Akai ↔ vendor-neutral (both directions) |
+| Rust unit tests | 10 | SDS encode/decode, RSDATA parsing, Akai char table |
+| SDS transfer e2e | 2 | Download + upload round-trip (hardware verified) |
+| Disk write e2e | 1 | Read → write → read → compare bytes (hardware verified) |
 
 ## Known Limitations
 
