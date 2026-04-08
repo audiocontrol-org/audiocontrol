@@ -64,6 +64,8 @@ export interface S3kPreviewCustomState {
   onDeleteDeviceProgram?: (index: number, name: string) => void;
   /** Callback for "Delete" action (device sample) */
   onDeleteDeviceSample?: (index: number, name: string) => void;
+  /** Callback for "Promote to Common Area" action (S3K library program) */
+  onPromoteToCommonArea?: (dirName: string) => void;
 }
 
 // =========================================================================
@@ -323,18 +325,29 @@ function S3kProgramPreview({
       <MetaRow label="Keygroups" value={meta.keygroupCount} />
       <MetaRow label="Samples" value={meta.sampleReferences?.join(', ')} />
 
-      {customState?.onSendProgramToDevice && meta.dirName && (
-        <div className="mt-4">
-          <button
-            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
-            onClick={() => customState.onSendProgramToDevice!(
-              meta.dirName!,
-              selection.node.name,
-            )}
-            data-testid="preview-send-program-to-device"
-          >
-            Send to Device
-          </button>
+      {meta.dirName && (
+        <div className="mt-4 flex flex-col gap-2">
+          {customState?.onSendProgramToDevice && (
+            <button
+              className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
+              onClick={() => customState.onSendProgramToDevice!(
+                meta.dirName!,
+                selection.node.name,
+              )}
+              data-testid="preview-send-program-to-device"
+            >
+              Send to Device
+            </button>
+          )}
+          {customState?.onPromoteToCommonArea && (
+            <button
+              className="px-3 py-1.5 text-sm bg-green-700 hover:bg-green-600 text-white rounded transition-colors"
+              onClick={() => customState.onPromoteToCommonArea!(meta.dirName!)}
+              data-testid="preview-promote-to-common"
+            >
+              Promote to Common Area
+            </button>
+          )}
         </div>
       )}
     </div>

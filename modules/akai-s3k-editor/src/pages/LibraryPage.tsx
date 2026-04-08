@@ -54,6 +54,7 @@ import { useDrumKitTransfer } from '@/hooks/useDrumKitTransfer';
 import { useInstrumentTransfer } from '@/hooks/useInstrumentTransfer';
 import { useEditorDialogs } from '@/hooks/useEditorDialogs';
 import { deleteStoredProgram } from '@/lib/program-storage';
+import { promoteToCommonArea } from '@/lib/program-promotion';
 import { DiskBrowserPanel } from '@/components/library/DiskBrowserPanel';
 import { DiskToLibraryDialog } from '@/components/library/DiskToLibraryDialog';
 import { getActiveScsiUrl } from '@audiocontrol/editor-core';
@@ -320,6 +321,19 @@ export function LibraryPage(): JSX.Element {
   const canTransfer = isDeviceConnected && !!root;
   const hasLibrary = !!root;
 
+  const handlePromoteToCommonArea = useCallback(
+    async (dirName: string) => {
+      if (!root) return;
+      try {
+        await promoteToCommonArea(root, dirName);
+        void refreshLibrary();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to promote program to common area');
+      }
+    },
+    [root, refreshLibrary, setError],
+  );
+
   const previewState = useMemo<S3kPreviewCustomState>(() => ({
     onSendSampleToDevice: canTransfer ? handleSendSampleToDevice : undefined,
     onSaveDeviceSampleToLibrary: canTransfer ? handleSaveDeviceSampleToLibrary : undefined,
@@ -333,6 +347,7 @@ export function LibraryPage(): JSX.Element {
     onOpenInSampleEditor: hasLibrary ? editorDialogs.handleOpenInSampleEditor : undefined,
     onOpenInChopper: hasLibrary ? editorDialogs.handleOpenInChopper : undefined,
     onEditDrumKit: hasLibrary ? editorDialogs.handleOpenDrumKitEditor : undefined,
+    onPromoteToCommonArea: hasLibrary ? handlePromoteToCommonArea : undefined,
   }), [
     canTransfer, hasLibrary, isDeviceConnected,
     handleSendSampleToDevice, handleSaveDeviceSampleToLibrary,
@@ -343,6 +358,7 @@ export function LibraryPage(): JSX.Element {
     editorDialogs.handleOpenInSampleEditor,
     editorDialogs.handleOpenInChopper,
     editorDialogs.handleOpenDrumKitEditor,
+    handlePromoteToCommonArea,
   ]);
 
   const deviceMemoryState = useMemo<S3kMemoryPanelState>(() => ({
