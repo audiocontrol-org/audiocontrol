@@ -187,6 +187,7 @@ async function main(): Promise<void> {
     channel: args.channel,
     noCache: true,
     writeFlushDelayMs: 0, // Flush immediately — we manage timing ourselves
+    sdsChannel: scsi.sdsChannel, // Use dedicated WebSocket SDS channel
   });
 
   const ctx: TestContext = {

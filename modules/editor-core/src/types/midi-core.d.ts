@@ -33,6 +33,40 @@ declare module '@audiocontrol/midi-core' {
   export function requestMidiAccess(): Promise<WebMidiAccess>;
   export function createWebMidiAdapter(input: MIDIInput, output: MIDIOutput): MidiIO;
 
+  // SDS channel types
+  export interface SdsTransferProgress {
+    packetsSent: number;
+    packetsTotal: number;
+    bytesSent: number;
+    bytesTotal: number;
+  }
+
+  export interface SdsDumpHeader {
+    sampleNumber: number;
+    sampleFormat: number;
+    samplePeriodNs: number;
+    sampleLength: number;
+    loopStart: number;
+    loopEnd: number;
+    loopType: number;
+  }
+
+  export interface SdsChannel {
+    uploadSample(
+      sampleNumber: number,
+      channel: number,
+      sampleRate: number,
+      samples: Int16Array,
+      onProgress?: (progress: SdsTransferProgress) => void,
+    ): Promise<void>;
+
+    downloadSample(
+      sampleNumber: number,
+      channel: number,
+      onProgress?: (progress: SdsTransferProgress) => void,
+    ): Promise<{ header: SdsDumpHeader; samples: Int16Array }>;
+  }
+
   // SCSI MIDI transport types
   export interface ScsiMidiBridgeStatus {
     version: string;
@@ -54,6 +88,7 @@ declare module '@audiocontrol/midi-core' {
 
   export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
     adapter: MidiIO;
+    sdsChannel: SdsChannel;
     connect: () => Promise<ScsiMidiBridgeStatus>;
     disconnect: () => void;
     scanDevices: () => Promise<ScsiDevice[]>;

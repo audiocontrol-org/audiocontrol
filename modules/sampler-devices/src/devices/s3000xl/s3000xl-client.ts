@@ -14,7 +14,7 @@
  * Protocol reference: https://lakai.sourceforge.net/docs/s2800_sysex.html
  */
 
-import type { MidiIO, SdsDumpHeader, SdsLoopType, SdsTransferProgress } from '@audiocontrol/midi-core';
+import type { MidiIO, SdsChannel, SdsDumpHeader, SdsLoopType, SdsTransferProgress } from '@audiocontrol/midi-core';
 import { withRetry, createSdsSender, requestSample, LOOP_OFF } from '@audiocontrol/midi-core';
 import {
   parseProgramHeader,
@@ -80,6 +80,7 @@ export function createS3000xlClient(
   const writeFlushDelayMs = options?.writeFlushDelayMs ?? DEFAULT_TIMING.WRITE_FLUSH_DELAY_MS;
   const maxRetries = options?.maxRetries ?? DEFAULT_TIMING.MAX_RETRIES;
   const noCache = options?.noCache ?? false;
+  const sdsChannel: SdsChannel | undefined = options?.sdsChannel;
 
   // Caches
   let programNamesCache: string[] | undefined;
@@ -371,7 +372,7 @@ export function createS3000xlClient(
       await bufferWrite(key, AkaiOpcode.MDATA, data.raw.slice(5, -1));
     },
 
-    sendSampleViaSds(
+    async sendSampleViaSds(
       sampleNumber: number,
       sampleData: Int16Array,
       sampleRate: number,
@@ -382,10 +383,31 @@ export function createS3000xlClient(
         onProgress?: (progress: SdsTransferProgress) => void;
       },
     ): Promise<void> {
-      // NON-ASYNC entry point — logs synchronously before entering async
       console.log(`[s3000xl-client] SYNC ENTRY sendSampleViaSds: num=${sampleNumber} len=${sampleData.length}`);
+
+      // Use dedicated SDS channel when available (SCSI transport). This
+      // bypasses the MidiIO send queue entirely, avoiding the timeout that
+      // occurs when SDS packets wait behind queued SysEx commands.
+      if (sdsChannel) {
+        console.log(`[s3000xl-client] using SdsChannel for upload (bypassing serialize queue)`);
+        // Do NOT use serialize() here — the SDS channel has its own WebSocket
+        // connection and must not wait behind queued SysEx operations, which
+        // hold the bridge's SCSI mutex and would cause a deadlock.
+        await sdsChannel.uploadSample(
+          sampleNumber,
+          channel,
+          sampleRate,
+          sampleData,
+          sdsOptions?.onProgress,
+        );
+        console.log(`[s3000xl-client] SdsChannel upload complete, waiting 3s for device commit`);
+        await new Promise((r) => setTimeout(r, 3000));
+        console.log(`[s3000xl-client] sendSampleViaSds complete (SdsChannel)`);
+        return;
+      }
+
       const header = buildSdsHeader(sampleNumber, sampleData, sampleRate, sdsOptions);
-      console.log(`[s3000xl-client] header built, entering serialize`);
+      console.log(`[s3000xl-client] header built, entering serialize (MidiIO path)`);
 
       return serialize(async () => {
         const sender = createSdsSender(midiIO, {
@@ -413,6 +435,13 @@ export function createS3000xlClient(
       sampleNumber: number,
       onProgress?: (progress: SdsTransferProgress) => void,
     ): Promise<{ header: SdsDumpHeader; samples: Int16Array }> {
+      // Use dedicated SDS channel when available (SCSI transport).
+      // Do NOT use serialize() — same deadlock risk as upload (see above).
+      if (sdsChannel) {
+        console.log(`[s3000xl-client] using SdsChannel for download (bypassing serialize queue)`);
+        return sdsChannel.downloadSample(sampleNumber, channel, onProgress);
+      }
+
       return serialize(() => {
         return new Promise<{ header: SdsDumpHeader; samples: Int16Array }>((resolve, reject) => {
           let receivedHeader: SdsDumpHeader | undefined;

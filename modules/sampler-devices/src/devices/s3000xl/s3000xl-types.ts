@@ -1,4 +1,4 @@
-import type { MidiIO, SdsLoopType, SdsTransferProgress, SdsDumpHeader } from '@audiocontrol/midi-core';
+import type { MidiIO, SdsChannel, SdsLoopType, SdsTransferProgress, SdsDumpHeader } from '@audiocontrol/midi-core';
 import type { ProgramHeader, KeygroupHeader, SampleHeader, MiscellaneousData } from '@/devices/s3000xl.js';
 
 export type { ProgramHeader, KeygroupHeader, SampleHeader, MiscellaneousData };
@@ -27,6 +27,9 @@ export interface S3000xlClientOptions {
 
   /** Bypass all caching — every read fetches fresh from the device. Default: false */
   readonly noCache: boolean;
+
+  /** Dedicated SDS channel for sample transfers (bypasses MidiIO queue). */
+  readonly sdsChannel: SdsChannel;
 }
 
 /**

@@ -20,15 +20,22 @@ interface UseS3000xlClientResult {
  */
 export function useS3000xlClient(): UseS3000xlClientResult {
   const adapter = useMidiStore((s) => s.adapter);
+  const sdsChannel = useMidiStore((s) => s.sdsChannel);
   const deviceId = useMidiStore((s) => s.deviceId);
   const status = useMidiStore((s) => s.status);
 
   const prevAdapterRef = useRef<unknown>(undefined);
+  const prevSdsChannelRef = useRef<unknown>(undefined);
   const prevDeviceIdRef = useRef<number | undefined>(undefined);
   const clientRef = useRef<S3000xlClientInterface | null>(null);
 
-  if (prevAdapterRef.current !== adapter || prevDeviceIdRef.current !== deviceId) {
+  if (
+    prevAdapterRef.current !== adapter ||
+    prevSdsChannelRef.current !== sdsChannel ||
+    prevDeviceIdRef.current !== deviceId
+  ) {
     prevAdapterRef.current = adapter;
+    prevSdsChannelRef.current = sdsChannel;
     prevDeviceIdRef.current = deviceId;
 
     if (adapter) {
@@ -40,6 +47,7 @@ export function useS3000xlClient(): UseS3000xlClientResult {
         channel: 0,
         deviceId,
         writeFlushDelayMs: 0,
+        ...(sdsChannel ? { sdsChannel } : {}),
       });
     } else {
       clientRef.current = null;

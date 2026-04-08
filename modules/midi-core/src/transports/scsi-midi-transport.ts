@@ -7,7 +7,8 @@
  * (e.g., Akai S3000XL) connected via a Raspberry Pi running scsi2pi.
  */
 
-import type { MidiIO, SysExCallback } from '../types';
+import type { MidiIO, SysExCallback, SdsChannel } from '../types';
+import type { SdsTransferProgress, SdsDumpHeader } from '../sds/sds-types';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -91,6 +92,7 @@ async function fetchJson<T>(baseUrl: string, path: string, options?: RequestInit
  */
 export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
   adapter: MidiIO;
+  sdsChannel: SdsChannel;
   connect: () => Promise<ScsiMidiBridgeStatus>;
   disconnect: () => void;
   scanDevices: () => Promise<ScsiDevice[]>;
@@ -276,5 +278,190 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
     return fetchJson<ScsiDevice[]>(bridgeUrl, '/scsi/scan');
   }
 
-  return { adapter, connect, disconnect, scanDevices };
+  // -------------------------------------------------------------------------
+  // SDS Channel — dedicated WebSocket path for sample transfers
+  // -------------------------------------------------------------------------
+
+  const sdsChannel = createScsiSdsChannel(bridgeUrl);
+
+  return { adapter, sdsChannel, connect, disconnect, scanDevices };
+}
+
+// ---------------------------------------------------------------------------
+// SCSI SDS Channel implementation
+// ---------------------------------------------------------------------------
+
+/** Default SCSI target ID for S3000XL. */
+const DEFAULT_SCSI_TARGET_ID = 6;
+
+function createScsiSdsChannel(bridgeUrl: string): SdsChannel {
+  return {
+    uploadSample(
+      sampleNumber: number,
+      channel: number,
+      sampleRate: number,
+      samples: Int16Array,
+      onProgress?: (progress: SdsTransferProgress) => void,
+    ): Promise<void> {
+      const wsUrl = wsUrlFromHttp(bridgeUrl, '/sds/stream');
+
+      return new Promise<void>((resolve, reject) => {
+        const sdsWs = new WebSocket(wsUrl);
+        const timeoutMs = 120_000;
+        const timeout = setTimeout(() => {
+          sdsWs.close();
+          reject(new Error(`SDS upload timed out after ${timeoutMs / 1000}s`));
+        }, timeoutMs);
+
+        const totalPackets = Math.ceil(samples.length / 120);
+
+        sdsWs.addEventListener('open', () => {
+          sdsWs.send(JSON.stringify({
+            type: 'sample-upload',
+            target_id: DEFAULT_SCSI_TARGET_ID,
+            sample_number: sampleNumber,
+            channel,
+            sample_rate: sampleRate,
+            samples: Array.from(samples),
+          }));
+        });
+
+        sdsWs.addEventListener('message', (event) => {
+          const msg = JSON.parse(String(event.data));
+
+          switch (msg.type) {
+            case 'upload-progress':
+              if (onProgress) {
+                onProgress({
+                  packetsSent: msg.transferred ?? 0,
+                  packetsTotal: msg.total ?? totalPackets,
+                  bytesSent: (msg.transferred ?? 0) * 2,
+                  bytesTotal: samples.length * 2,
+                });
+              }
+              break;
+
+            case 'upload-complete':
+              clearTimeout(timeout);
+              sdsWs.close();
+              resolve();
+              break;
+
+            case 'sample-error':
+              clearTimeout(timeout);
+              sdsWs.close();
+              reject(new Error(`SDS upload error: ${msg.error}`));
+              break;
+          }
+        });
+
+        sdsWs.addEventListener('error', (event) => {
+          clearTimeout(timeout);
+          reject(new Error(`SDS upload WebSocket error: ${event}`));
+        });
+      });
+    },
+
+    downloadSample(
+      sampleNumber: number,
+      channel: number,
+      onProgress?: (progress: SdsTransferProgress) => void,
+    ): Promise<{ header: SdsDumpHeader; samples: Int16Array }> {
+      const wsUrl = wsUrlFromHttp(bridgeUrl, '/sds/stream');
+
+      return new Promise<{ header: SdsDumpHeader; samples: Int16Array }>((resolve, reject) => {
+        const sdsWs = new WebSocket(wsUrl);
+        const timeoutMs = 60_000;
+        const timeout = setTimeout(() => {
+          sdsWs.close();
+          reject(new Error(`SDS download timed out after ${timeoutMs / 1000}s`));
+        }, timeoutMs);
+
+        let header: SdsDumpHeader | undefined;
+        const sampleChunks: number[][] = [];
+        let totalSamples = 0;
+
+        sdsWs.addEventListener('open', () => {
+          sdsWs.send(JSON.stringify({
+            type: 'sample-download',
+            targetId: DEFAULT_SCSI_TARGET_ID,
+            sampleNumber,
+            channel,
+          }));
+        });
+
+        sdsWs.addEventListener('message', (event) => {
+          const msg = JSON.parse(String(event.data));
+
+          switch (msg.type) {
+            case 'sample-header':
+              header = {
+                sampleNumber,
+                sampleFormat: msg.bitsPerSample ?? 16,
+                samplePeriodNs: msg.sampleRate ? Math.round(1_000_000_000 / msg.sampleRate) : 0,
+                sampleLength: msg.sampleCount ?? 0,
+                loopStart: msg.loopStart ?? 0,
+                loopEnd: msg.loopEnd ?? 0,
+                loopType: msg.loopType ?? 0x7f,
+              };
+              break;
+
+            case 'sample-data':
+              if (Array.isArray(msg.samples)) {
+                sampleChunks.push(msg.samples);
+              }
+              totalSamples = msg.transferred ?? totalSamples;
+              if (onProgress && header) {
+                onProgress({
+                  packetsSent: totalSamples,
+                  packetsTotal: header.sampleLength,
+                  bytesSent: totalSamples * 2,
+                  bytesTotal: header.sampleLength * 2,
+                });
+              }
+              break;
+
+            case 'sample-complete': {
+              clearTimeout(timeout);
+              sdsWs.close();
+              if (!header) {
+                reject(new Error('SDS download completed without receiving a dump header'));
+                return;
+              }
+              const finalCount = msg.totalSamples ?? totalSamples;
+              const allSamples = new Int16Array(finalCount);
+              let offset = 0;
+              for (const chunk of sampleChunks) {
+                for (const s of chunk) {
+                  if (offset < allSamples.length) {
+                    allSamples[offset++] = s;
+                  }
+                }
+              }
+              resolve({ header, samples: allSamples });
+              break;
+            }
+
+            case 'sample-error':
+              clearTimeout(timeout);
+              sdsWs.close();
+              reject(new Error(`SDS download error: ${msg.error}`));
+              break;
+          }
+        });
+
+        sdsWs.addEventListener('error', (event) => {
+          clearTimeout(timeout);
+          reject(new Error(`SDS download WebSocket error: ${event}`));
+        });
+
+        sdsWs.addEventListener('close', () => {
+          clearTimeout(timeout);
+          if (!header) {
+            reject(new Error('SDS download WebSocket closed before receiving header'));
+          }
+        });
+      });
+    },
+  };
 }
