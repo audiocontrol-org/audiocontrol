@@ -197,14 +197,12 @@ endif
 		cp cpp/bin/s2p .docker-build/s2p
 	@touch $@
 
-$(SCSI_BRIDGE_STAMP): $(shell find $(SCSI_BRIDGE_SRC_DIR)/src -name '*.rs' 2>/dev/null) $(SCSI_BRIDGE_SRC_DIR)/Cargo.toml
+$(SCSI_BRIDGE_STAMP): $(shell find $(SCSI_BRIDGE_SRC_DIR)/src -name '*.rs' 2>/dev/null) $(SCSI_BRIDGE_SRC_DIR)/Cargo.toml $(SCSI_BRIDGE_SRC_DIR)/build.rs
 	cd $(SCSI_BRIDGE_SRC_DIR) && \
 		docker build --platform linux/arm64 -t scsi-midi-bridge-build -f Dockerfile.arm64 . && \
-		docker rm -f bridge-extract 2>/dev/null; \
-		docker create --name bridge-extract scsi-midi-bridge-build true && \
+		docker run --rm --platform linux/arm64 -v "$$(pwd):/src" -e "BUILD_GIT_HASH=$$(git rev-parse --short HEAD)" scsi-midi-bridge-build cargo build --release && \
 		mkdir -p .docker-build && \
-		docker cp bridge-extract:/src/target/release/scsi-midi-bridge .docker-build/scsi-midi-bridge ; \
-		docker rm bridge-extract
+		cp target/release/scsi-midi-bridge .docker-build/scsi-midi-bridge
 	@touch $@
 
 .PHONY: check-scsi-bridge
@@ -226,6 +224,28 @@ test-scsi-write-validation: $(SAMPLER_DEVICES) $(MIDI_CORE) check-scsi-bridge
 	E2E_NODE_SCRIPT=src/node/scsi-write-test.ts \
 	$(MODULES_DIR)/e2e-infra/scripts/run-scsi-node-e2e.sh $(ARGS)
 
+# SCSI SDS sample transfer (Node.js CLI — WebSocket, no browser)
+# Usage: make test-scsi-sds-transfer
+# Usage: make test-scsi-sds-transfer ARGS="--verbose"
+test-scsi-sds-transfer: $(SAMPLER_DEVICES) $(MIDI_CORE) check-scsi-bridge
+	SCSI_PI_HOST='$(SCSI_PI_HOST)' \
+	SCSI_PI_USER='$(SCSI_PI_USER)' \
+	S2P_BIN='$(S2P_BIN)' \
+	SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+	E2E_NODE_SCRIPT=src/node/scsi-write-test.ts \
+	$(MODULES_DIR)/e2e-infra/scripts/run-scsi-node-e2e.sh --test scsi-sds-transfer $(ARGS)
+
+# SCSI disk write round-trip (Node.js CLI — block I/O, no browser)
+# Usage: make test-scsi-disk-write
+# Usage: make test-scsi-disk-write ARGS="--verbose"
+test-scsi-disk-write: $(SAMPLER_DEVICES) $(MIDI_CORE) check-scsi-bridge
+	SCSI_PI_HOST='$(SCSI_PI_HOST)' \
+	SCSI_PI_USER='$(SCSI_PI_USER)' \
+	S2P_BIN='$(S2P_BIN)' \
+	SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+	E2E_NODE_SCRIPT=src/node/scsi-write-test.ts \
+	$(MODULES_DIR)/e2e-infra/scripts/run-scsi-node-e2e.sh --test disk-write $(ARGS)
+
 # S3000XL SCSI tests (requires Pi with S3000XL connected via SCSI)
 test-e2e-s3k-scsi: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "\
@@ -235,6 +255,21 @@ test-e2e-s3k-scsi: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
 		S2P_BIN='$(S2P_BIN)' \
 		SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
 		./scripts/run-scsi-midi-e2e.sh $(ARGS)"
+
+# ---------------------------------------------------------------------------
+# Deploy: build and deploy SCSI bridge (and s2p) to Pi
+# ---------------------------------------------------------------------------
+
+# Build ARM64 binaries, deploy to Pi, restart daemons, validate.
+# Usage: make deploy-scsi-bridge
+# Usage: make deploy-scsi-bridge SCSI_PI_HOST=10.0.0.57
+.PHONY: deploy-scsi-bridge
+deploy-scsi-bridge: check-scsi-bridge
+	SCSI_PI_HOST='$(SCSI_PI_HOST)' \
+	SCSI_PI_USER='$(SCSI_PI_USER)' \
+	S2P_BIN='$(S2P_BIN)' \
+	SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+	$(MODULES_DIR)/e2e-infra/scripts/deploy-scsi-bridge.sh
 
 # ---------------------------------------------------------------------------
 # Dev Environment: S3K with SCSI bridge

@@ -226,6 +226,7 @@ pnpm --filter <module> test          # Test specific module
 - Never add Claude attribution to git commits or pull requests
 - Never use `ts-node` — use `tsx`
 - Never call builds "production-ready"
+- Never build ad-hoc infrastructure to test against hardware — use the e2e test infra (see "Quick Check vs. Test Infrastructure" below)
 
 ## E2E Testing Tenets
 
@@ -290,6 +291,38 @@ SCSI-based e2e tests (both Playwright and Node.js CLI) use a shared provisioning
 - `SCSI_PI_USER` — Pi SSH user (default: `orion`)
 
 **When adding new SCSI e2e tests:** Create a Make target that depends on `check-scsi-bridge`, sets the environment variables above, and delegates to one of the shared runner scripts. Do not build, deploy, or start daemons manually.
+
+### Quick Check vs. Test Infrastructure
+
+A single, simple command to verify something against hardware is fine — no ceremony needed:
+
+```bash
+# These are quick checks — OK to run ad-hoc
+curl http://s3k.local:7033/status
+ssh orion@s3k.local "cat /tmp/e2e-bridge.log | tail -5"
+```
+
+**The moment you need to do ANY of the following, stop. You are no longer doing a quick check — you are building infrastructure. Use the e2e test infra instead:**
+
+- Install a tool (brew install, npm install, pip install)
+- Write a throwaway script or temp file
+- Chain multiple SSH commands to start/stop daemons
+- SCP binaries to the Pi manually
+- Wrestle with shell quoting or background process management
+- Write more than one command to set up the test conditions
+
+**Decision matrix:**
+
+| What you're doing | Approach |
+|---|---|
+| Check if a service is up | `curl` one-liner — fine |
+| Read a log file | `ssh ... cat/tail` — fine |
+| Verify a code change against hardware | Create a test in `modules/e2e-infra/`, wire via Make target |
+| Test a new protocol feature | Create a test in `modules/e2e-infra/`, wire via Make target |
+| Deploy and restart daemons | `make deploy-scsi-bridge` |
+| Run any multi-step hardware interaction | `make test-*` target delegating to a runner script |
+
+The test infrastructure exists precisely so you don't reinvent it per-session. If a test doesn't exist yet, **create it** — that's the deliverable, not a throwaway script.
 
 ### 2. No Mocking
 

@@ -89,6 +89,7 @@ const MIDI_INIT: u64 = 200;
 const MIDI_SEND: u64 = 201;
 const MIDI_POLL: u64 = 202;
 const MIDI_READ: u64 = 203;
+const SCSI_EXEC: u64 = 210;
 
 fn op_name(op: u64) -> &'static str {
     match op {
@@ -96,6 +97,7 @@ fn op_name(op: u64) -> &'static str {
         201 => "MIDI_SEND",
         202 => "MIDI_POLL",
         203 => "MIDI_READ",
+        210 => "SCSI_EXEC",
         _ => "UNKNOWN",
     }
 }
@@ -143,6 +145,72 @@ fn build_midi_read(target_id: u8, length: u32) -> Vec<u8> {
     req.push(0x18);
     req.extend(encode_varint(length as u64));
     build_command(MIDI_READ, &req)
+}
+
+// -- SCSI_EXEC message builders -----------------------------------------------
+
+pub struct ScsiExecResult {
+    pub status: u8,
+    pub sense_data: Vec<u8>,
+    pub data_in: Vec<u8>,
+    pub bytes_transferred: u32,
+}
+
+pub struct SampleDownloadHeader {
+    pub name: String,
+    pub sample_rate: u32,
+    pub sample_count: u32,
+}
+
+fn build_scsi_request(
+    target_id: u8,
+    lun: u8,
+    cdb: &[u8],
+    data_out: &[u8],
+    expected_data_in: u32,
+    timeout_seconds: u32,
+) -> Vec<u8> {
+    let mut buf = Vec::new();
+    // field 1 (target_id), varint, tag 0x08
+    buf.push(0x08);
+    buf.extend(encode_varint(target_id as u64));
+    // field 2 (target_lun), varint, tag 0x10
+    buf.push(0x10);
+    buf.extend(encode_varint(lun as u64));
+    // field 3 (cdb), length-delimited, tag 0x1a
+    buf.push(0x1a);
+    buf.extend(encode_varint(cdb.len() as u64));
+    buf.extend(cdb);
+    // field 4 (data_out), length-delimited, tag 0x22 — only if non-empty
+    if !data_out.is_empty() {
+        buf.push(0x22);
+        buf.extend(encode_varint(data_out.len() as u64));
+        buf.extend(data_out);
+    }
+    // field 5 (expected_data_in), varint, tag 0x28 — only if > 0
+    if expected_data_in > 0 {
+        buf.push(0x28);
+        buf.extend(encode_varint(expected_data_in as u64));
+    }
+    // field 6 (timeout_seconds), varint, tag 0x30 — only if > 0
+    if timeout_seconds > 0 {
+        buf.push(0x30);
+        buf.extend(encode_varint(timeout_seconds as u64));
+    }
+    buf
+}
+
+fn build_scsi_command(scsi_req: &[u8]) -> Vec<u8> {
+    let mut cmd = Vec::new();
+    // field 1 (operation), varint
+    cmd.push(0x08);
+    cmd.extend(encode_varint(SCSI_EXEC));
+    // field 21 (scsi_request), length-delimited: tag = (21 << 3) | 2 = 170 → varint 0xaa 0x01
+    cmd.push(0xaa);
+    cmd.push(0x01);
+    cmd.extend(encode_varint(scsi_req.len() as u64));
+    cmd.extend(scsi_req);
+    cmd
 }
 
 // -- TCP client ---------------------------------------------------------------
@@ -235,6 +303,90 @@ impl S2pClient {
         } else {
             Err("MIDI_INIT failed".to_string())
         }
+    }
+
+    pub async fn execute_scsi(
+        &self,
+        target_id: u8,
+        lun: u8,
+        cdb: &[u8],
+        data_out: &[u8],
+        expected_data_in: u32,
+        timeout: u32,
+    ) -> Result<ScsiExecResult, String> {
+        let req = build_scsi_request(target_id, lun, cdb, data_out, expected_data_in, timeout);
+        let cmd = build_scsi_command(&req);
+        let result = self.send_command(SCSI_EXEC, &cmd).await?;
+
+        // Parse ScsiResponse from field 102 in PbResult
+        let scsi_resp = match result.bytes.get(&102) {
+            Some(data) => Fields::parse(data),
+            None => return Err("No SCSI response in result".to_string()),
+        };
+
+        Ok(ScsiExecResult {
+            status: scsi_resp.varints.get(&1).copied().unwrap_or(0) as u8,
+            sense_data: scsi_resp.bytes.get(&2).cloned().unwrap_or_default(),
+            data_in: scsi_resp.bytes.get(&3).cloned().unwrap_or_default(),
+            bytes_transferred: scsi_resp.varints.get(&4).copied().unwrap_or(0) as u32,
+        })
+    }
+
+    // -- SCSI MIDI transport (vendor-specific CDBs) ----------------------------
+
+    /// Enable MIDI mode on the SCSI device (CDB 0x09).
+    pub async fn scsi_midi_enable(&self, target_id: u8) -> Result<(), String> {
+        let cdb = vec![0x09, 0x00, 0x01, 0x00, 0x00, 0x00];
+        let _result = self.execute_scsi(target_id, 0, &cdb, &[], 0, 10).await?;
+        // Status may be non-zero but device still accepts — don't fail
+        Ok(())
+    }
+
+    /// Disable MIDI mode (CDB 0x09).
+    pub async fn scsi_midi_disable(&self, target_id: u8) -> Result<(), String> {
+        let cdb = vec![0x09, 0x00, 0x00, 0x00, 0x00, 0x00];
+        self.execute_scsi(target_id, 0, &cdb, &[], 0, 10).await?;
+        Ok(())
+    }
+
+    /// Send MIDI SysEx data to device (CDB 0x0C). Flag byte is always 0x00.
+    pub async fn scsi_midi_send(&self, target_id: u8, data: &[u8]) -> Result<(), String> {
+        let len = data.len();
+        let cdb = vec![
+            0x0C, 0x00,
+            ((len >> 16) & 0xFF) as u8,
+            ((len >> 8) & 0xFF) as u8,
+            (len & 0xFF) as u8,
+            0x00, // flag=0x00, NOT 0x80 — S3000XL rejects 0x80
+        ];
+        // Send may return CHECK CONDITION but data is still accepted — ignore status
+        let _ = self.execute_scsi(target_id, 0, &cdb, data, 0, 10).await;
+        Ok(())
+    }
+
+    /// Poll for available MIDI bytes (CDB 0x0D). Returns 24-bit byte count.
+    pub async fn scsi_midi_poll(&self, target_id: u8) -> Result<u32, String> {
+        let cdb = vec![0x0D, 0x00, 0x00, 0x00, 0x00, 0x00];
+        let result = self.execute_scsi(target_id, 0, &cdb, &[], 3, 10).await?;
+        let d = &result.data_in;
+        if d.len() >= 3 {
+            Ok(((d[0] as u32) << 16) | ((d[1] as u32) << 8) | (d[2] as u32))
+        } else {
+            Ok(0)
+        }
+    }
+
+    /// Read MIDI bytes from device (CDB 0x0E). Returns raw bytes.
+    pub async fn scsi_midi_read(&self, target_id: u8, length: u32) -> Result<Vec<u8>, String> {
+        let cdb = vec![
+            0x0E, 0x00,
+            ((length >> 16) & 0xFF) as u8,
+            ((length >> 8) & 0xFF) as u8,
+            (length & 0xFF) as u8,
+            0x00,
+        ];
+        let result = self.execute_scsi(target_id, 0, &cdb, &[], length, 10).await?;
+        Ok(result.data_in)
     }
 
     pub async fn send_sysex(&mut self, sysex: &[u8]) -> Result<(), String> {

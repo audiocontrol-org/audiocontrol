@@ -86,10 +86,32 @@ echo ""
 # ---------------------------------------------------------------------------
 
 echo "Step 2: Pre-flight cleanup on Pi..."
-ssh "$PI_SSH" "sudo killall s2p-midi 2>/dev/null; true" || true
-ssh "$PI_SSH" "killall e2e-scsi-midi-bridge 2>/dev/null; true" || true
-ssh "$PI_SSH" "killall scsi-midi-bridge 2>/dev/null; true" || true
-sleep 1
+ssh "$PI_SSH" "sudo killall -9 s2p-midi 2>/dev/null; sudo killall -9 s2p 2>/dev/null; killall e2e-scsi-midi-bridge 2>/dev/null; killall scsi-midi-bridge 2>/dev/null; true"
+
+# Wait for processes to actually exit — exponential backoff, 10s hard timeout
+wait_for_exit() {
+  local proc_name="$1"
+  local delay=0.1
+  local total=0
+  while ssh "$PI_SSH" "pgrep -x $proc_name >/dev/null 2>&1"; do
+    total=$(echo "$total + $delay" | bc)
+    if [ "$(echo "$total >= 10" | bc)" -eq 1 ]; then
+      echo "ERROR: $proc_name still running after 10s — aborting"
+      exit 1
+    fi
+    sleep "$delay"
+    delay=$(echo "$delay * 2" | bc)
+    if [ "$(echo "$delay > 2" | bc)" -eq 1 ]; then delay=2; fi
+  done
+}
+
+wait_for_exit s2p-midi
+wait_for_exit s2p
+wait_for_exit e2e-scsi-midi-bridge
+
+# Remove stale files that may be root-owned (s2p runs via sudo)
+ssh "$PI_SSH" "rm -f /tmp/s2p-midi /tmp/e2e-scsi-midi-bridge 2>/dev/null; true" || true
+
 echo "   Done"
 echo ""
 
