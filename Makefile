@@ -235,6 +235,17 @@ test-scsi-sds-transfer: $(SAMPLER_DEVICES) $(MIDI_CORE) check-scsi-bridge
 	E2E_NODE_SCRIPT=src/node/scsi-write-test.ts \
 	$(MODULES_DIR)/e2e-infra/scripts/run-scsi-node-e2e.sh --test scsi-sds-transfer $(ARGS)
 
+# SCSI disk write round-trip (Node.js CLI — block I/O, no browser)
+# Usage: make test-scsi-disk-write
+# Usage: make test-scsi-disk-write ARGS="--verbose"
+test-scsi-disk-write: $(SAMPLER_DEVICES) $(MIDI_CORE) check-scsi-bridge
+	SCSI_PI_HOST='$(SCSI_PI_HOST)' \
+	SCSI_PI_USER='$(SCSI_PI_USER)' \
+	S2P_BIN='$(S2P_BIN)' \
+	SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+	E2E_NODE_SCRIPT=src/node/scsi-write-test.ts \
+	$(MODULES_DIR)/e2e-infra/scripts/run-scsi-node-e2e.sh --test disk-write $(ARGS)
+
 # S3000XL SCSI tests (requires Pi with S3000XL connected via SCSI)
 test-e2e-s3k-scsi: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "\
