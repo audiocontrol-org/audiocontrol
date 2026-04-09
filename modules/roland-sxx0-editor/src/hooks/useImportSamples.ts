@@ -19,10 +19,9 @@ import {
   resample,
   importMonolithicDrumKit,
 } from '@audiocontrol/sampler-devices/s330';
-import {
-  loadChoppedSampleSource,
-  prepareWavForS330,
-} from '@/lib/library-service';
+import { loadSample } from '@audiocontrol/sampler-library/browser';
+import { parseWav } from '@/core/midi/S330Client';
+import { prepareWavForS330 } from '@/lib/library-service';
 
 // =========================================================================
 // SampleImportBundle — unified import type
@@ -296,14 +295,13 @@ function createSingleDrumPatch(
 async function loadSourceWav(
   libraryHandle: StorageDirectoryHandle,
   name: string,
-  sourceFilename: string,
-  sourceLocation: ImportSourceLocation,
+  _sourceFilename: string,
+  _sourceLocation: ImportSourceLocation,
   path: string[]
 ): Promise<{ samples: Int16Array; sampleRate: number }> {
-  if (sourceLocation === 'drumKit') {
-    throw new Error('Device-specific drum kit storage has been removed. Drum kits are now common-area objects.');
-  }
-  return loadChoppedSampleSource(libraryHandle, name, sourceFilename, path);
+  const result = await loadSample(libraryHandle, name, path);
+  const wav = parseWav(result.wavData);
+  return { samples: wav.samples, sampleRate: wav.sampleRate };
 }
 
 // =========================================================================

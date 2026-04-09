@@ -13,8 +13,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  loadChoppedSampleManifest,
-} from '@/lib/library-service';
+  loadSampleMeta,
+} from '@audiocontrol/sampler-library/browser';
 import { DrumKitPadList } from '@/components/library/DrumKitPadList';
 import {
   midiNoteToName,
@@ -234,7 +234,7 @@ export function SampleBundlePreviewPanel({
       const loadManifest = async () => {
         setLoading(true);
         try {
-          const loaded = await loadChoppedSampleManifest(
+          const loaded = await loadSampleMeta(
             libraryHandle,
             sampleNode.directoryName || sampleNode.name,
             sampleNode.path

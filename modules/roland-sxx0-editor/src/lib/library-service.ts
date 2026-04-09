@@ -11,5 +11,4 @@ export * from './library-fs';
 export * from './library-tones';
 export * from './library-patches';
 export * from './library-sets';
-export * from './library-chopped-samples';
 export * from './library-common-samples';
