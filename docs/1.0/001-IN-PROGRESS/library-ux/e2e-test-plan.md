@@ -341,10 +341,11 @@ Parity reports go in `docs/1.0/001-IN-PROGRESS/library-ux/parity-report-tier-{N}
 | Phase | Status | Notes |
 |-------|--------|-------|
 | Roland Tier 1 (library OPFS) | **Done** | ~104 tests, 9 spec files |
-| S3K Tier 1 (library OPFS) | **Gap** | 6 tests vs Roland's 104 |
+| S3K Tier 1 (library OPFS) | **Done** | 43 shared + 4 chopper = 47 tests |
+| Shared common-area tests | **Done** | 43 tests in e2e-infra/specs/, run against both editors |
 | Roland Tier 2 (device) | **Done** | ~80 tests, 17 spec files |
 | S3K Tier 3 node tests | **Done** | 16 tests (SDS, reads, writes, multi-sds, drumkit, program-export, disk-browser×3) |
 | S3K Tier 3 browser (device) | **Done** | ~50 tests, 7 spec files |
-| S3K Tier 3 browser (library round trip) | **Partial** | 5 tests + drum kit import; chopper WIP (dialog doesn't open) |
+| S3K Tier 3 browser (library round trip) | **Partial** | 5 tests + drum kit import |
 | Tier 1 parity report | **Done** | See `parity-report-tier-1.md` — 2 fixes applied, 3 deferred (#174, #175) |
 | Tier 2/3 parity reports | **Not started** | Required before closing out |
