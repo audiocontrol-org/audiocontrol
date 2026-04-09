@@ -407,6 +407,9 @@ importers:
       '@audiocontrol/midi-core':
         specifier: workspace:*
         version: link:../midi-core
+      '@audiocontrol/sample-chopper':
+        specifier: workspace:*
+        version: link:../sample-chopper
       '@audiocontrol/sampler-library':
         specifier: workspace:*
         version: link:../sampler-library

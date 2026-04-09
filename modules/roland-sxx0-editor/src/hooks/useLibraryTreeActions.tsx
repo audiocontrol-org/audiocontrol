@@ -27,7 +27,7 @@ export interface UseLibraryTreeActionsParams {
   onSelectChoppedSample?: (name: string, path?: string[]) => void;
   onSelectSample?: (name: string, path?: string[]) => void;
   onSelectProgram?: (name: string, path?: string[]) => void;
-  onToggleDirectoryExpanded?: (category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples' | 'commonSamples', path: string) => void;
+  onToggleDirectoryExpanded?: (category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples' | 'samples', path: string) => void;
   onDeleteIndividualTone?: (fileName: string, path?: string[]) => void;
   onDeleteIndividualPatch?: (fileName: string, path?: string[]) => void;
   onDeleteDrumKit?: (directoryName: string, path?: string[]) => void;
@@ -44,16 +44,16 @@ export interface LibraryTreeActionsResult {
     x: number;
     y: number;
     node: LibraryTreeNode;
-    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples';
+    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples';
   } | null;
-  handleTreeContextMenu: (e: React.MouseEvent, node: LibraryTreeNode, category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples') => void;
+  handleTreeContextMenu: (e: React.MouseEvent, node: LibraryTreeNode, category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples') => void;
   closeContextMenu: () => void;
   getContextMenuActions: () => ContextMenuAction[];
-  handleTreeNodeSelect: (node: LibraryTreeNode, category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples') => void;
-  handleTreeNodeDelete: (node: LibraryTreeNode, category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples') => void;
-  computeSelectedId: (category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples') => string | undefined;
-  handleDropOnDirectory: (category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples', targetPath: string[], dragData: LibraryDragData) => void;
-  handleRename: (category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples', node: LibraryTreeNode, newName: string) => Promise<void>;
+  handleTreeNodeSelect: (node: LibraryTreeNode, category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples') => void;
+  handleTreeNodeDelete: (node: LibraryTreeNode, category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples') => void;
+  computeSelectedId: (category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples') => string | undefined;
+  handleDropOnDirectory: (category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples', targetPath: string[], dragData: LibraryDragData) => void;
+  handleRename: (category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples', node: LibraryTreeNode, newName: string) => Promise<void>;
 }
 
 export function useLibraryTreeActions({
@@ -81,14 +81,14 @@ export function useLibraryTreeActions({
     x: number;
     y: number;
     node: LibraryTreeNode;
-    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples';
+    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples';
   } | null>(null);
 
   // Handle context menu for tree items
   const handleTreeContextMenu = useCallback((
     e: React.MouseEvent,
     node: LibraryTreeNode,
-    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples'
+    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples'
   ) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY, node, category });
@@ -104,7 +104,7 @@ export function useLibraryTreeActions({
 
     const { node, category } = contextMenu;
     // Common-area items are read-only for now — no context menu actions
-    if (category === 'choppedSamples' || category === 'commonSamples') return [];
+    if (category === 'choppedSamples' || category === 'samples') return [];
 
     const actions: ContextMenuAction[] = [];
     const categoryForService: LibraryCategory = category === 'drumKits' ? 'drum-kits' : category;
@@ -158,7 +158,7 @@ export function useLibraryTreeActions({
   // Handle tree node selection
   const handleTreeNodeSelect = useCallback((
     node: LibraryTreeNode,
-    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples'
+    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples'
   ) => {
     if (node.type === 'directory') {
       // Toggle directory expansion
@@ -179,10 +179,10 @@ export function useLibraryTreeActions({
   // Handle tree node delete
   const handleTreeNodeDelete = useCallback((
     node: LibraryTreeNode,
-    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples'
+    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples'
   ) => {
     // Common-area items are read-only for now
-    if (category === 'choppedSamples' || category === 'commonSamples') return;
+    if (category === 'choppedSamples' || category === 'samples') return;
 
     if (node.type === 'directory') {
       const categoryForService: LibraryCategory = category === 'drumKits' ? 'drum-kits' : category;
@@ -197,7 +197,7 @@ export function useLibraryTreeActions({
   }, [onDeleteDirectory, onDeleteIndividualTone, onDeleteIndividualPatch, onDeleteDrumKit]);
 
   // Compute selected ID for tree rendering
-  const computeSelectedId = useCallback((category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples'): string | undefined => {
+  const computeSelectedId = useCallback((category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples'): string | undefined => {
     if (!selectedPath || !selectedName) return undefined;
     if (category === 'tones' && selectedType === 'individualTone') {
       return [...selectedPath, selectedName].join('/');
@@ -211,7 +211,7 @@ export function useLibraryTreeActions({
     if (category === 'choppedSamples' && selectedType === 'choppedSample') {
       return [...selectedPath, selectedName].join('/');
     }
-    if (category === 'commonSamples' && (selectedType === 'sample' || selectedType === 'program' || selectedType === 'choppedSample')) {
+    if (category === 'samples' && (selectedType === 'sample' || selectedType === 'program' || selectedType === 'choppedSample')) {
       return [...selectedPath, selectedName].join('/');
     }
     return undefined;
@@ -219,11 +219,11 @@ export function useLibraryTreeActions({
 
   // Handle drag-drop move onto directory
   const handleDropOnDirectory = useCallback((
-    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples',
+    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples',
     targetPath: string[],
     dragData: LibraryDragData
   ) => {
-    if (!onDropMoveItem || category === 'choppedSamples' || category === 'commonSamples') return;
+    if (!onDropMoveItem || category === 'choppedSamples' || category === 'samples') return;
 
     const libCategory: LibraryCategory = category === 'drumKits' ? 'drum-kits' : category;
     const sourcePath = dragData.path || [];
@@ -234,11 +234,11 @@ export function useLibraryTreeActions({
 
   // Handle rename via double-click
   const handleRename = useCallback(async (
-    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples',
+    category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples',
     node: LibraryTreeNode,
     newName: string
   ) => {
-    if (!onRenameItem || category === 'choppedSamples' || category === 'commonSamples') return;
+    if (!onRenameItem || category === 'choppedSamples' || category === 'samples') return;
 
     const libCategory: LibraryCategory = category === 'drumKits' ? 'drum-kits' : category;
     const oldName = node.fileName || node.directoryName || node.name;

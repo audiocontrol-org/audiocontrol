@@ -33,7 +33,7 @@ import type { ItemSelection } from '@/pages/LibraryPage';
 function toLibraryCategory(categoryId: string): LibraryCategory {
   if (categoryId === 'drumKits') return 'drum-kits';
   if (categoryId === 'tones' || categoryId === 'patches') return categoryId;
-  // commonSamples/commonPrograms are handled by the shared hook's common-area path
+  // samples/programs are handled by the shared hook's common-area path
   return 'tones';
 }
 
@@ -78,7 +78,7 @@ export function useRolandLibraryStrategy({
     async createFolder(categoryId: string, parentPath: string[], name: string): Promise<boolean> {
       if (!libraryHandle) return false;
       // Common-area categories use the shared hook's fallback
-      if (categoryId === 'commonSamples' || categoryId === 'commonPrograms') return false;
+      if (categoryId === 'samples' || categoryId === 'programs') return false;
       await createDirectory(libraryHandle, toLibraryCategory(categoryId), parentPath, name);
       return true;
     },
@@ -90,7 +90,7 @@ export function useRolandLibraryStrategy({
       const name = getNodeName(node);
 
       // Common-area categories are not device-specific — let shared hook handle them
-      if (categoryId === 'commonSamples' || categoryId === 'commonPrograms') {
+      if (categoryId === 'samples' || categoryId === 'programs') {
         return false;
       }
 
@@ -124,7 +124,7 @@ export function useRolandLibraryStrategy({
       const oldName = getNodeName(node);
 
       // Common-area categories are not device-specific — let shared hook handle them
-      if (categoryId === 'commonSamples' || categoryId === 'commonPrograms') {
+      if (categoryId === 'samples' || categoryId === 'programs') {
         return false;
       }
 

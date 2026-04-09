@@ -119,7 +119,7 @@ export function useRolandLibraryData(
     tones: tonesTree,
     patches: patchesTree,
     drumKits: drumKitsTree,
-    commonSamples: commonSamplesTree,
+    samples: commonSamplesTree,
   }), [tonesTree, patchesTree, drumKitsTree, commonSamplesTree]);
 
   return {

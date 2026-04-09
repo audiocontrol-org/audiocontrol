@@ -185,8 +185,8 @@ export const s330LibraryPlugin: DeviceLibraryPlugin = {
     createTonesCategory(),
     createPatchesCategory(),
     createDrumKitsCategory(),
-    createCommonSamplesCategory('commonSamples'),
-    createCommonProgramsCategory('commonPrograms'),
+    createCommonSamplesCategory(),
+    createCommonProgramsCategory(),
   ],
 
   // Translators would be implemented when the common library format is finalized

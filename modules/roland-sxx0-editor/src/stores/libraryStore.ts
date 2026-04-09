@@ -62,7 +62,7 @@ export interface ExpandedPaths {
   tones: Set<string>;
   patches: Set<string>;
   drumKits: Set<string>;
-  commonSamples: Set<string>;
+  samples: Set<string>;
 }
 
 interface LibraryState {
@@ -161,10 +161,10 @@ interface LibraryActions {
   setLoadSetComplete: () => void;
 
   // Directory expansion
-  toggleDirectoryExpanded: (category: 'tones' | 'patches' | 'drumKits' | 'commonSamples', path: string) => void;
-  setDirectoryExpanded: (category: 'tones' | 'patches' | 'drumKits' | 'commonSamples', path: string, expanded: boolean) => void;
-  setExpandedPaths: (category: 'tones' | 'patches' | 'drumKits' | 'commonSamples', paths: Set<string>) => void;
-  collapseAllDirectories: (category?: 'tones' | 'patches' | 'drumKits' | 'commonSamples') => void;
+  toggleDirectoryExpanded: (category: 'tones' | 'patches' | 'drumKits' | 'samples', path: string) => void;
+  setDirectoryExpanded: (category: 'tones' | 'patches' | 'drumKits' | 'samples', path: string, expanded: boolean) => void;
+  setExpandedPaths: (category: 'tones' | 'patches' | 'drumKits' | 'samples', paths: Set<string>) => void;
+  collapseAllDirectories: (category?: 'tones' | 'patches' | 'drumKits' | 'samples') => void;
 
   // Reset
   clear: () => void;
@@ -197,7 +197,7 @@ const initialExpandedPaths: ExpandedPaths = {
   tones: new Set(),
   patches: new Set(),
   drumKits: new Set(),
-  commonSamples: new Set(),
+  samples: new Set(),
 };
 
 export const useLibraryStore = create<LibraryStore>((set, get) => ({

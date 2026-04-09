@@ -200,7 +200,7 @@ export function LibraryPage() {
       categoryId: selection.type === 'individualTone' ? 'tones'
         : selection.type === 'individualPatch' ? 'patches'
         : selection.type === 'drumKit' ? 'drumKits'
-        : selection.type === 'sample' || selection.type === 'program' ? 'commonSamples'
+        : selection.type === 'sample' || selection.type === 'program' ? 'samples'
         : selection.type === 'set' ? 'sets'
         : 'tones',
       node: { id: selection.name ?? '', name: selection.name ?? '', type: selection.type },

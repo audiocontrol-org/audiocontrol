@@ -2,9 +2,8 @@
  * Shared category factory functions for common-area library sections.
  *
  * Creates CategoryPlugin instances for samples and programs that live
- * in the common library area. The `categoryId` parameter allows each
- * editor to use its own identifier (e.g., S3K uses 'samples', Roland
- * uses 'commonSamples').
+ * in the common library area. Both editors use the default category IDs
+ * ('samples' and 'programs').
  */
 
 import type { CategoryPlugin, CategoryCallbacks } from '@/components/library/plugins/types';

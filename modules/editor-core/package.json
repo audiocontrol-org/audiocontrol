@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@audiocontrol/midi-core": "workspace:*",
+    "@audiocontrol/sample-chopper": "workspace:*",
     "@audiocontrol/sampler-library": "workspace:*",
     "@radix-ui/react-slider": "^1.1.2",
     "yaml": "^2.8.3",

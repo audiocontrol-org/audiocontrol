@@ -48,6 +48,7 @@ export {
   MoveDialog,
   CacheMetricsModal,
   LibraryConnectionUI,
+  DrumKitPadList,
   FolderIcon,
   ChevronIcon,
   AudioFileIcon,

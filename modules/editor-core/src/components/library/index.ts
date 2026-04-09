@@ -72,6 +72,8 @@ export {
   type LibraryConnectionUIProps,
 } from './LibraryConnectionUI';
 
+export { DrumKitPadList } from './DrumKitPadList';
+
 // Plugin interfaces
 export type {
   PluginContextMenuAction,

@@ -72,7 +72,7 @@ export function useRolandSelectionMapping(
           .then(setSelectedDrumKitBundle)
           .catch((err) => console.error('[useRolandSelectionMapping] Failed to load drum kit bundle:', err));
       }
-    } else if (categoryId === 'commonSamples') {
+    } else if (categoryId === 'samples') {
       if (node.type === 'program') {
         pageSelection = {
           source: 'library',
