@@ -19,17 +19,17 @@ import { test, expect } from '@playwright/test';
 import {
   cleanupOPFS,
   initializeRolandOPFS,
-  writeSampleFixture,
   connectToOPFS,
   clickLibraryItem,
   waitForPreviewContent,
   isPreviewEmpty,
   verifyDirectoryInOPFS,
+  createMinimalWavBase64,
 } from '../../e2e-infra/helpers/library-ui-helpers';
 
 import {
-  createMinimalWavBase64,
-} from './helpers/library-opfs-helpers';
+  writeSampleFixture,
+} from '../../e2e-infra/helpers/library-fixtures';
 
 // ---------------------------------------------------------------------------
 // Configuration

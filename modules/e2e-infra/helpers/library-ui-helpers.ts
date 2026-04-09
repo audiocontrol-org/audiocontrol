@@ -8,6 +8,8 @@
  * These helpers have NO dependency on device test infrastructure (MIDI,
  * device-state, connection-helper). They are safe to use from library-only
  * test specs that run without hardware.
+ *
+ * Fixture writers live in library-fixtures.ts.
  */
 
 import type { Page } from '@playwright/test';
@@ -26,6 +28,9 @@ export const COMMON_SAMPLES_PATH = ['library', 'common', 'samples'];
 export const ROLAND_TONES_PATH = ['library', 's330', 'tones'];
 export const ROLAND_PATCHES_PATH = ['library', 's330', 'patches'];
 export const ROLAND_SETS_PATH = ['library', 's330', 'sets'];
+// STORAGE VIOLATION (https://github.com/audiocontrol-org/audiocontrol/issues/182):
+// Drum kits are common-area objects, not device-specific. This path should be
+// COMMON_SAMPLES_PATH once Roland drum kit storage is migrated. Do not copy.
 export const ROLAND_DRUM_KITS_PATH = ['library', 's330', 'drum-kits'];
 
 /** Akai S3000XL device-specific library */
@@ -36,6 +41,58 @@ export const S3K_PROGRAMS_PATH = ['library', 's3k', 'programs'];
 // ---------------------------------------------------------------------------
 
 const UI_TIMEOUT_MS = 5000;
+
+// ---------------------------------------------------------------------------
+// WAV generation
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a minimal mono PCM WAV file as a base64-encoded string.
+ * Shared across all editors for fixture generation.
+ */
+export function createMinimalWavBase64(
+  sampleRate: number,
+  durationSeconds: number,
+): string {
+  const samples = Math.floor(sampleRate * durationSeconds);
+  const channels = 1;
+  const bitsPerSample = 16;
+  const bytesPerSample = bitsPerSample / 8;
+  const byteRate = sampleRate * channels * bytesPerSample;
+  const blockAlign = channels * bytesPerSample;
+  const dataSize = samples * channels * bytesPerSample;
+
+  const buffer = new ArrayBuffer(44 + dataSize);
+  const view = new DataView(buffer);
+
+  const writeString = (offset: number, str: string): void => {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
+  };
+
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + dataSize, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, channels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, byteRate, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitsPerSample, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataSize, true);
+  // Data bytes already zeroed (silence)
+
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
+}
 
 // ---------------------------------------------------------------------------
 // Navigation
@@ -183,6 +240,61 @@ export async function verifyFileInOPFS(
   }, { segments: pathSegments, fileName });
 }
 
+// ---------------------------------------------------------------------------
+// OPFS Readers (common area)
+// ---------------------------------------------------------------------------
+
+/**
+ * Read sample.yaml from a common-area sample directory in OPFS.
+ * Path: library/common/samples/{sampleName}/sample.yaml
+ */
+export async function readSampleYaml(
+  page: Page,
+  sampleName: string,
+): Promise<string> {
+  return page.evaluate(
+    async (name: string) => {
+      const root = await navigator.storage.getDirectory();
+      const lib = await root.getDirectoryHandle('library');
+      const common = await lib.getDirectoryHandle('common');
+      const samples = await common.getDirectoryHandle('samples');
+      const sampleDir = await samples.getDirectoryHandle(name);
+      const handle = await sampleDir.getFileHandle('sample.yaml');
+      const file = await handle.getFile();
+      return file.text();
+    },
+    sampleName,
+  );
+}
+
+/**
+ * List sample directory names in the common-area samples directory.
+ * Returns directory names under library/common/samples/.
+ */
+export async function listCommonSamples(page: Page): Promise<string[]> {
+  return page.evaluate(async () => {
+    const root = await navigator.storage.getDirectory();
+    try {
+      const lib = await root.getDirectoryHandle('library');
+      const common = await lib.getDirectoryHandle('common');
+      const samples = await common.getDirectoryHandle('samples');
+      const names: string[] = [];
+      for await (const entry of (samples as unknown as { values(): AsyncIterableIterator<FileSystemHandle> }).values()) {
+        if (entry.kind === 'directory') {
+          names.push(entry.name);
+        }
+      }
+      return names;
+    } catch {
+      return [];
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------
+// OPFS Initialization
+// ---------------------------------------------------------------------------
+
 /** Initialize OPFS with common-area directory structure: library/common/samples/ */
 export async function initializeCommonAreaOPFS(page: Page): Promise<void> {
   await page.evaluate(async () => {
@@ -196,7 +308,6 @@ export async function initializeCommonAreaOPFS(page: Page): Promise<void> {
 /**
  * Initialize OPFS with Roland S-series directory structure.
  * Creates: library/common/samples/, library/s330/{tones,patches,sets,drum-kits}
- * No device parameter — always s330 per the storage contract.
  */
 export async function initializeRolandOPFS(page: Page): Promise<void> {
   await initializeCommonAreaOPFS(page);
@@ -214,7 +325,6 @@ export async function initializeRolandOPFS(page: Page): Promise<void> {
 /**
  * Initialize OPFS with Akai S3000XL directory structure.
  * Creates: library/common/samples/, library/s3k/programs/
- * No device parameter — always s3k per the storage contract.
  */
 export async function initializeS3kOPFS(page: Page): Promise<void> {
   await initializeCommonAreaOPFS(page);
@@ -224,152 +334,4 @@ export async function initializeS3kOPFS(page: Page): Promise<void> {
     const s3k = await library.getDirectoryHandle('s3k', { create: true });
     await s3k.getDirectoryHandle('programs', { create: true });
   });
-}
-
-// ---------------------------------------------------------------------------
-// Fixture Writers
-// ---------------------------------------------------------------------------
-
-/**
- * Write a minimal sample fixture to OPFS common area.
- * Writes to: library/common/samples/{path...}/{name}/sample.yaml + sample.wav
- */
-export async function writeSampleFixture(
-  page: Page,
-  name: string,
-  path: string[] = [],
-): Promise<void> {
-  await page.evaluate(async ({ name, path }: { name: string; path: string[] }) => {
-    const root = await navigator.storage.getDirectory();
-    // Contract path: library/common/samples/
-    let dir = root;
-    for (const segment of ['library', 'common', 'samples', ...path]) {
-      dir = await dir.getDirectoryHandle(segment, { create: true });
-    }
-    const sampleDir = await dir.getDirectoryHandle(name, { create: true });
-
-    // Write sample.yaml
-    const yaml = `format: sample\nversion: 1\nname: ${name}\nfile: sample.wav\nsampleRate: 44100\n`;
-    const yamlHandle = await sampleDir.getFileHandle('sample.yaml', { create: true });
-    const yamlWritable = await yamlHandle.createWritable();
-    await yamlWritable.write(yaml);
-    await yamlWritable.close();
-
-    // Write minimal WAV (44 bytes header + 2 bytes data)
-    const wavHeader = new ArrayBuffer(46);
-    const view = new DataView(wavHeader);
-    view.setUint32(0, 0x52494646, false); // "RIFF"
-    view.setUint32(4, 38, true);          // file size - 8
-    view.setUint32(8, 0x57415645, false); // "WAVE"
-    view.setUint32(12, 0x666d7420, false); // "fmt "
-    view.setUint32(16, 16, true);          // chunk size
-    view.setUint16(20, 1, true);           // PCM
-    view.setUint16(22, 1, true);           // mono
-    view.setUint32(24, 44100, true);       // sample rate
-    view.setUint32(28, 88200, true);       // byte rate
-    view.setUint16(32, 2, true);           // block align
-    view.setUint16(34, 16, true);          // bits per sample
-    view.setUint32(36, 0x64617461, false); // "data"
-    view.setUint32(40, 2, true);           // data size
-    view.setInt16(44, 0, true);            // one silent sample
-
-    const wavHandle = await sampleDir.getFileHandle('sample.wav', { create: true });
-    const wavWritable = await wavHandle.createWritable();
-    await wavWritable.write(new Uint8Array(wavHeader));
-    await wavWritable.close();
-  }, { name, path });
-}
-
-/**
- * Write a tone fixture (YAML + WAV) to OPFS.
- * Writes to: library/s330/tones/{name}.yaml + {name}.wav
- * No device parameter — always s330 per the storage contract.
- */
-export async function writeToneFixture(
-  page: Page,
-  name: string,
-  yaml: string,
-  wavBase64: string,
-): Promise<void> {
-  await page.evaluate(
-    async ({ name, yaml, wavBase64 }: { name: string; yaml: string; wavBase64: string }) => {
-      // Contract path: library/s330/tones/
-      const root = await navigator.storage.getDirectory();
-      const lib = await root.getDirectoryHandle('library', { create: true });
-      const s330 = await lib.getDirectoryHandle('s330', { create: true });
-      const tones = await s330.getDirectoryHandle('tones', { create: true });
-
-      const yamlHandle = await tones.getFileHandle(`${name}.yaml`, { create: true });
-      const yamlWriter = await yamlHandle.createWritable();
-      await yamlWriter.write(yaml);
-      await yamlWriter.close();
-
-      const binaryString = atob(wavBase64);
-      const wavBytes = new Uint8Array(binaryString.length);
-      for (let i = 0; i < binaryString.length; i++) {
-        wavBytes[i] = binaryString.charCodeAt(i);
-      }
-      const wavHandle = await tones.getFileHandle(`${name}.wav`, { create: true });
-      const wavWriter = await wavHandle.createWritable();
-      await wavWriter.write(wavBytes);
-      await wavWriter.close();
-    },
-    { name, yaml, wavBase64 },
-  );
-}
-
-/**
- * Write a patch fixture (YAML) to OPFS.
- * Writes to: library/s330/patches/{name}/ (directory with patch files)
- * No device parameter — always s330 per the storage contract.
- */
-export async function writePatchFixture(
-  page: Page,
-  name: string,
-  yaml: string,
-): Promise<void> {
-  await page.evaluate(
-    async ({ name, yaml }: { name: string; yaml: string }) => {
-      // Contract path: library/s330/patches/
-      const root = await navigator.storage.getDirectory();
-      const lib = await root.getDirectoryHandle('library', { create: true });
-      const s330 = await lib.getDirectoryHandle('s330', { create: true });
-      const patches = await s330.getDirectoryHandle('patches', { create: true });
-      const patchDir = await patches.getDirectoryHandle(name, { create: true });
-
-      const yamlHandle = await patchDir.getFileHandle(`${name}.yaml`, { create: true });
-      const yamlWriter = await yamlHandle.createWritable();
-      await yamlWriter.write(yaml);
-      await yamlWriter.close();
-    },
-    { name, yaml },
-  );
-}
-
-/**
- * Write an S3K program fixture (YAML) to OPFS.
- * Writes to: library/s3k/programs/{name}/program.s3k.yaml
- * No device parameter — always s3k per the storage contract.
- */
-export async function writeS3kProgramFixture(
-  page: Page,
-  name: string,
-  yaml: string,
-): Promise<void> {
-  await page.evaluate(
-    async ({ name, yaml }: { name: string; yaml: string }) => {
-      // Contract path: library/s3k/programs/
-      const root = await navigator.storage.getDirectory();
-      const lib = await root.getDirectoryHandle('library', { create: true });
-      const s3k = await lib.getDirectoryHandle('s3k', { create: true });
-      const programs = await s3k.getDirectoryHandle('programs', { create: true });
-      const programDir = await programs.getDirectoryHandle(name, { create: true });
-
-      const yamlHandle = await programDir.getFileHandle('program.s3k.yaml', { create: true });
-      const yamlWriter = await yamlHandle.createWritable();
-      await yamlWriter.write(yaml);
-      await yamlWriter.close();
-    },
-    { name, yaml },
-  );
 }

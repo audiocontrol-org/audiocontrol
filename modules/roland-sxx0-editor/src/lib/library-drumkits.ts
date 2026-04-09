@@ -1,6 +1,13 @@
 /**
  * Drum kit operations — listing, loading, saving, updating,
  * and deleting drum kits in the library.
+ *
+ * STORAGE VIOLATION (https://github.com/audiocontrol-org/audiocontrol/issues/182):
+ * This module stores drum kits at library/s330/drum-kits/ (device-specific zone).
+ * Per SAMPLER-LIBRARY.md, drum kits are higher-order common-area objects that belong
+ * in library/common/samples/ as chopped samples with slice definitions in sample.yaml.
+ * The S3K editor correctly reads from the common area. This module needs to be migrated.
+ * Do not copy this pattern to other editors.
  */
 
 import { parseWav } from '@/core/midi/S330Client';

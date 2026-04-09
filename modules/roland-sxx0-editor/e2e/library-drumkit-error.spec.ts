@@ -18,9 +18,9 @@ import type { Page } from '@playwright/test';
 // path alias only applies to src/. This should not be copied to app code.
 import {
   cleanupOPFS,
-  initializeCleanOPFS,
-  connectToOPFSBackend,
-} from './helpers/library-opfs-helpers';
+  initializeRolandOPFS,
+  connectToOPFS,
+} from '../../e2e-infra/helpers/library-ui-helpers';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -99,7 +99,7 @@ test.describe('Drum Kit Error Handling (12.6)', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/roland/s330/editor/library?midi=mock');
     await page.waitForLoadState('networkidle');
-    await initializeCleanOPFS(page, LIBRARY_DEVICE);
+    await initializeRolandOPFS(page, LIBRARY_DEVICE);
   });
 
   test.afterEach(async ({ page }) => {
@@ -111,7 +111,7 @@ test.describe('Drum Kit Error Handling (12.6)', () => {
     page.on('pageerror', (err) => pageErrors.push(err.message));
 
     await writeDrumKitYamlOnlyToOPFS(page, V2_FIXTURE_NAME, V2_KIT_YAML_MISSING_SOURCE, LIBRARY_DEVICE);
-    await connectToOPFSBackend(page);
+    await connectToOPFS(page);
 
     // Find the broken kit in the tree and click it
     const kitNameSpan = page.locator('.ac-tree-node-name', { hasText: new RegExp(`^${V2_FIXTURE_NAME}$`) }).first();
@@ -135,7 +135,7 @@ test.describe('Drum Kit Error Handling (12.6)', () => {
     page.on('pageerror', (err) => pageErrors.push(err.message));
 
     await writeDrumKitYamlOnlyToOPFS(page, V1_FIXTURE_NAME, V1_KIT_YAML_NO_WAVS, LIBRARY_DEVICE);
-    await connectToOPFSBackend(page);
+    await connectToOPFS(page);
 
     // V1 kit with no WAVs may or may not appear in the tree (parser might filter it).
     // Either way, the app must not crash.

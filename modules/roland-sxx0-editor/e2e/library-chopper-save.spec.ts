@@ -30,14 +30,16 @@ import { test, expect } from '@playwright/test';
 import {
   createMinimalWavBase64,
   cleanupOPFS,
-  initializeCleanOPFS,
-  writeSampleFixtureToOPFS,
-  writeToneFixtureToOPFS,
+  initializeRolandOPFS,
   readSampleYaml,
-  readDrumKitYaml,
-  listDrumKitDirectories,
-  connectToOPFSBackend,
-} from './helpers/library-opfs-helpers';
+  connectToOPFS,
+} from '../../e2e-infra/helpers/library-ui-helpers';
+import {
+  writeSampleFixture,
+  writeToneFixture,
+} from '../../e2e-infra/helpers/library-fixtures';
+// TODO(#182): readDrumKitYaml / listDrumKitDirectories removed — drum kits must move to common area
+// import { readDrumKitYaml, listDrumKitDirectories } from './helpers/library-opfs-helpers';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -101,8 +103,8 @@ test.describe('Chopper Save -- save slices to library', () => {
     await page.waitForLoadState('networkidle');
 
     // Clean OPFS and write sample fixture BEFORE connecting
-    await initializeCleanOPFS(page, LIBRARY_DEVICE);
-    await writeSampleFixtureToOPFS(
+    await initializeRolandOPFS(page, LIBRARY_DEVICE);
+    await writeSampleFixture(
       page,
       SAMPLE_FIXTURE_NAME,
       30000,
@@ -110,7 +112,7 @@ test.describe('Chopper Save -- save slices to library', () => {
     );
 
     // Connect to OPFS library backend via UI button
-    await connectToOPFSBackend(page);
+    await connectToOPFS(page);
   });
 
   test.afterEach(async ({ page }) => {
@@ -331,8 +333,8 @@ test.describe('Chopper Save -- chop into drum kit', () => {
     await page.waitForLoadState('networkidle');
 
     // Clean OPFS and write tone fixture BEFORE connecting
-    await initializeCleanOPFS(page, LIBRARY_DEVICE);
-    await writeToneFixtureToOPFS(
+    await initializeRolandOPFS(page, LIBRARY_DEVICE);
+    await writeToneFixture(
       page,
       LIBRARY_DEVICE,
       TONE_FIXTURE_NAME,
@@ -341,7 +343,7 @@ test.describe('Chopper Save -- chop into drum kit', () => {
     );
 
     // Connect to OPFS library backend via UI button
-    await connectToOPFSBackend(page);
+    await connectToOPFS(page);
   });
 
   test.afterEach(async ({ page }) => {

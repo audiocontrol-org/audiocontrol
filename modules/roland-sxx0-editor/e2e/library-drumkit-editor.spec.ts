@@ -19,9 +19,9 @@ import type { Page } from '@playwright/test';
 import {
   createMinimalWavBase64,
   cleanupOPFS,
-  initializeCleanOPFS,
-  connectToOPFSBackend,
-} from './helpers/library-opfs-helpers';
+  initializeRolandOPFS,
+  connectToOPFS,
+} from '../../e2e-infra/helpers/library-ui-helpers';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -171,9 +171,9 @@ test.describe('Drum Kit Editor (13.x)', () => {
     await page.goto('/roland/s330/editor/library?midi=mock');
     await page.waitForLoadState('networkidle');
 
-    await initializeCleanOPFS(page, LIBRARY_DEVICE);
+    await initializeRolandOPFS(page, LIBRARY_DEVICE);
     await writeDrumKitV2FixtureToOPFS(page, KIT_DIR_NAME, KIT_YAML, KIT_WAV_BASE64);
-    await connectToOPFSBackend(page);
+    await connectToOPFS(page);
   });
 
   test.afterEach(async ({ page }) => {
@@ -286,10 +286,10 @@ test.describe('Drum Kit Editor (13.x)', () => {
     await page.goto('/roland/s330/editor/library?midi=mock');
     await page.waitForLoadState('networkidle');
 
-    await initializeCleanOPFS(page, LIBRARY_DEVICE);
+    await initializeRolandOPFS(page, LIBRARY_DEVICE);
     await writeDrumKitV2FixtureToOPFS(page, KIT_DIR_NAME, KIT_YAML, KIT_WAV_BASE64);
     await writeDrumKitV2FixtureToOPFS(page, KIT_60_DIR_NAME, KIT_60_YAML, KIT_60_WAV_BASE64);
-    await connectToOPFSBackend(page);
+    await connectToOPFS(page);
 
     // Read note names from the base-36 kit
     await selectKitInTree(page, KIT_DISPLAY_NAME);
