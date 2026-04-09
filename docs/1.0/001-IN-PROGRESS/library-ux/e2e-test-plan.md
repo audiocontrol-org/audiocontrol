@@ -174,10 +174,12 @@ Run via: `modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARG
 #### `test-program-export.ts` (1 test)
 - [x] Program export to common area: fetch program + keygroups → akaiProgramToCommon → write ProgramYaml to filesystem → verify zones
 
-#### `test-disk-browser.ts` (3 tests)
+#### `test-disk-browser.ts` (5 tests)
 - [x] Disk enumerate: probe all SCSI IDs, parse Akai partitions/volumes/files
 - [x] Disk read sample: read sample from disk, parse header, extract audio, convert to WAV
 - [x] Disk read program: read program from disk, parse keygroups, convert to common area ("MOOGB" → 11 keygroups → 22 zones)
+- [x] Disk save sample: read sample → convert to WAV → save to common area via NodeDirectoryHandle → verify YAML + WAV
+- [x] Disk save program: read program + referenced samples → save all to common area → verify program.yaml + sample WAVs
 
 ### Browser-based tests (Playwright) — DONE
 
@@ -228,7 +230,7 @@ Run via: `modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARG
 - [x] Disk browser: read disk sample, convert to WAV (node test)
 - [x] Disk browser: read disk program, convert to common area (node test — fixed parser to use 192-byte records)
 - [x] Disk browser: save disk sample to library — read from disk, convert to WAV, write to common area (node test)
-- [x] Disk browser: save disk program to library — read program + referenced samples, write to common area (node test). Note: keygroup sample name offsets may be wrong — names are truncated, causing 0 samples saved. Pipeline works but needs ZONE_SNAME_BASE offset investigation.
+- [x] Disk browser: save disk program to library — read program + referenced samples, write to common area (node test, 3 samples saved with correct names)
 - [ ] Conversion boundary: disk ↔ device-specific library
 - [ ] Conversion boundary: disk ↔ common area
 
@@ -337,7 +339,7 @@ modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-device-library
 | Roland device-specific library | **Done** | ~72 tests (tones, patches, sets, chopper, UI ops) |
 | Roland Tier 2 (device) | **Done** | ~80 tests, 17 spec files |
 | S3K device-specific library | **Done** | 4 chopper tests |
-| S3K Tier 3 node tests | **Done** | 16 tests (SDS, reads, writes, multi-sds, drumkit, program-export, disk-browser) |
+| S3K Tier 3 node tests | **Done** | 18 tests (SDS, reads, writes, multi-sds, drumkit, program-export, disk-browser×5) |
 | S3K Tier 3 browser (device) | **Done** | ~50 tests, 7 spec files |
 | S3K Tier 3 browser (library round trip) | **Done** | 5 tests + drum kit import |
 | Tier 1 parity report | **Done** | See `parity-report-tier-1.md` — all items resolved (#174, #175, #182 fixed) |
@@ -354,4 +356,4 @@ modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-device-library
 | — | Common-area extraction | Item types, categories, icons, DrumKitPadList in editor-core |
 | — | Category ID standardization | commonSamples/commonPrograms → samples/programs |
 | — | Duplicate code removal | library-chopped-samples.ts, library-drumkits.ts, choppedSamples category |
-| — | Disk program parser fix | 192-byte record size (not 8192), GROUPS offset 0x2A (not 0x23) per akaitools |
+| — | Disk program parser fix | 192-byte record size (not 8192), GROUPS offset 0x2A, ZONE_SNAME 0x22, zone stride 0x18 per akaitools |
