@@ -147,11 +147,17 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
       sendQueue = sendQueue.then(async () => {
         try {
           console.log(`[ScsiMidi] sending via HTTP POST to ${bridgeUrl}/sds/send`);
+          const jsonBody = JSON.stringify({ message });
           const res = await fetch(`${bridgeUrl}/sds/send`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message }),
+            body: jsonBody,
           });
+          if (!res.ok) {
+            const errText = await res.text();
+            console.error(`[ScsiMidi] HTTP ${res.status}: ${errText} (sent ${message.length} bytes, body ${jsonBody.length} chars)`);
+            return;
+          }
           const body = await res.json() as { ok: boolean; response: number[] };
           console.log(`[ScsiMidi] HTTP response: ok=${body.ok}, response=${body.response?.length ?? 0} bytes`);
           if (body.response && body.response.length > 0) {

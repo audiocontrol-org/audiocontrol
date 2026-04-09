@@ -178,10 +178,18 @@ export function createS3000xlClient(
         if (response.length < 6 || response[1] !== AKAI_MANUFACTURER_ID) return;
 
         const responseOpcode = response[3];
-        // Match: response opcode is sentOpcode+1 (data response) or REPLY (0x16).
-        // e.g., RSLIST (0x04) → SLIST (0x05), RSDATA (0x0A) → SDATA (0x0B),
-        // write commands (PDATA/KDATA/SDATA/MDATA) → REPLY (0x16).
-        if (responseOpcode === sentOpcode + 1 || responseOpcode === AkaiOpcode.REPLY) {
+        // Write and delete opcodes expect REPLY (0x16).
+        // Read opcodes expect data response (sentOpcode+1).
+        const expectsReply =
+          sentOpcode === AkaiOpcode.PDATA ||
+          sentOpcode === AkaiOpcode.KDATA ||
+          sentOpcode === AkaiOpcode.SDATA ||
+          sentOpcode === AkaiOpcode.MDATA ||
+          sentOpcode === AkaiOpcode.DELP ||
+          sentOpcode === AkaiOpcode.DELK ||
+          sentOpcode === AkaiOpcode.DELS;
+        const expectedOpcode = expectsReply ? AkaiOpcode.REPLY : sentOpcode + 1;
+        if (responseOpcode === expectedOpcode) {
           clearTimeout(timeout);
           midiIO.removeSysExListener(listener);
           resolve(response);
