@@ -63,10 +63,10 @@ modules/e2e-infra/scripts/run-and-watch.sh test-e2e-roland-library
 #### `library-ui-operations.spec.ts` (6 tests)
 - [x] Select sample → preview, create folder, fixture appears, connect/disconnect, context menu, delete
 
-#### `library-chopper-save.spec.ts` (4 tests, 3 passing)
+#### `library-chopper-save.spec.ts` (4 tests)
 - [x] Fixed slicing → save writes sample.yaml with slice definitions
 - [x] Fixed slicing with 8 slices saves correct count
-- [ ] Saved slice boundaries persist when chopper is reopened — fails: chopper doesn't load initial slices for drum-kit node type
+- [x] Saved slice boundaries persist when chopper is reopened
 - [x] Save writes sample.yaml with correct slice labels
 
 **S3K Tier 1 gaps:** No directory CRUD, sample/program YAML CRUD, drum kit editor, OPFS infra, or edge case tests.
