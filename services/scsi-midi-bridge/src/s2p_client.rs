@@ -337,17 +337,6 @@ impl S2pClient {
         // when they finish, so we must re-enable before every SysEx exchange.
         // Disable when done so serial MIDI ports remain functional.
         self.scsi_midi_enable(self.target_id).await?;
-
-        // Flush any stale MIDI data left in the device's buffer from a
-        // previous session. Without this, re-enabling MIDI mode can surface
-        // leftover bytes that get prepended to the next response.
-        loop {
-            let pending = self.scsi_midi_poll(self.target_id).await?;
-            if pending == 0 { break; }
-            info!(pending, "flushing stale MIDI data before send");
-            let _ = self.scsi_midi_read(self.target_id, pending).await?;
-        }
-
         let result = self.send_and_receive_inner(sysex).await;
         let _ = self.scsi_midi_disable(self.target_id).await;
         result

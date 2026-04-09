@@ -183,9 +183,12 @@ pub async fn sds_send(
             return Err((StatusCode::BAD_REQUEST, "message is empty".to_string()));
         }
 
+        // 10s timeout: send_and_receive does enable + send + up to 30 polls
+        // (100ms each) + disable. The enable/disable overhead per request
+        // means 5s was too tight.
         let response = submit_and_await(
             &state.scsi_tx,
-            Duration::from_secs(5),
+            Duration::from_secs(10),
             |reply| ScsiWork::SysExSendReceive {
                 message: body.message,
                 expect_response: body.expect_response,

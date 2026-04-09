@@ -104,40 +104,9 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
   // Serialize sends -- same pattern as httpMidiTransport.
   let sendQueue: Promise<void> = Promise.resolve();
 
-  // Background poll loop for incoming SysEx (SDS data packets, etc.)
-  // When WebSocket is unavailable, this polls GET /sds/poll periodically
-  // to receive data the device sends autonomously.
-  let pollInterval: ReturnType<typeof setInterval> | null = null;
-  let pollInFlight = false;
-  let sendInFlight = false;
-
-  function startPolling(): void {
-    if (pollInterval || ws) return; // Don't poll if WebSocket is working
-    pollInterval = setInterval(async () => {
-      // Don't poll while a send is in flight — avoids race condition where
-      // the poll loop reads a response meant for the send's callback chain.
-      if (pollInFlight || sendInFlight || listeners.size === 0) return;
-      pollInFlight = true;
-      try {
-        const res = await fetch(`${bridgeUrl}/sds/poll`);
-        const body = await res.json() as { ok: boolean; response: number[] };
-        if (body.response && body.response.length > 0) {
-          dispatchResponses(body.response);
-        }
-      } catch {
-        // Ignore poll errors — bridge may be temporarily busy
-      } finally {
-        pollInFlight = false;
-      }
-    }, 50); // Poll every 50ms for responsive SDS handshake
-  }
-
-  function stopPolling(): void {
-    if (pollInterval) {
-      clearInterval(pollInterval);
-      pollInterval = null;
-    }
-  }
+  // SDS transfers use a dedicated WebSocket channel (/sds/stream).
+  // SysEx request/response gets its response inline in the HTTP POST body.
+  // No background polling needed.
 
   /** Split concatenated SysEx on F7 boundaries and dispatch each message. */
   function dispatchResponses(data: number[]): void {
@@ -176,44 +145,31 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
       const msgType = message[0] === 0xf0 ? `F0..${message.slice(1, 4).map(b => b.toString(16)).join(' ')}` : 'non-sysex';
       console.log(`[ScsiMidi] send queued: ${message.length} bytes (${msgType}), wsOpen=${ws?.readyState === WebSocket.OPEN}`);
       sendQueue = sendQueue.then(async () => {
-        sendInFlight = true;
         try {
-          // Always use HTTP POST for sending — the response (ACK/NAK) is
-          // returned inline in the POST response body. The WebSocket path
-          // sends but doesn't reliably receive responses through the Vite
-          // proxy, causing SDS closed-loop transfers to time out.
-          {
-            console.log(`[ScsiMidi] sending via HTTP POST to ${bridgeUrl}/sds/send`);
-            const res = await fetch(`${bridgeUrl}/sds/send`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ message }),
-            });
-            const body = await res.json() as { ok: boolean; response: number[] };
-            console.log(`[ScsiMidi] HTTP response: ok=${body.ok}, response=${body.response?.length ?? 0} bytes`);
-            if (body.response && body.response.length > 0) {
-              dispatchResponses(body.response);
-            }
+          console.log(`[ScsiMidi] sending via HTTP POST to ${bridgeUrl}/sds/send`);
+          const res = await fetch(`${bridgeUrl}/sds/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message }),
+          });
+          const body = await res.json() as { ok: boolean; response: number[] };
+          console.log(`[ScsiMidi] HTTP response: ok=${body.ok}, response=${body.response?.length ?? 0} bytes`);
+          if (body.response && body.response.length > 0) {
+            dispatchResponses(body.response);
           }
         } catch (err) {
           console.error('[ScsiMidiTransport] Send error:', err);
-        } finally {
-          sendInFlight = false;
         }
       });
     },
 
     onSysEx(callback: SysExCallback): void {
-      console.log(`[ScsiMidi] onSysEx registered, listeners: ${listeners.size + 1}, polling: ${!!pollInterval}`);
+      console.log(`[ScsiMidi] onSysEx registered, listeners: ${listeners.size + 1}`);
       listeners.add(callback);
-      startPolling();
     },
 
     removeSysExListener(callback: SysExCallback): void {
       listeners.delete(callback);
-      if (listeners.size === 0) {
-        stopPolling();
-      }
     },
   };
 
@@ -265,7 +221,6 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
   }
 
   function disconnect(): void {
-    stopPolling();
     if (ws) {
       ws.removeEventListener('message', handleWsMessage);
       ws.close();

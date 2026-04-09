@@ -165,6 +165,9 @@ export function createS3000xlClient(
   // =========================================================================
 
   function sendAndReceive(message: number[]): Promise<number[]> {
+    // The sent opcode is at index 3 in Akai SysEx: F0 47 ch OPCODE 48 ...
+    const sentOpcode = message[3];
+
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         midiIO.removeSysExListener(listener);
@@ -172,10 +175,13 @@ export function createS3000xlClient(
       }, timeoutMs);
 
       function listener(response: number[]) {
-        if (
-          response.length >= 6 &&
-          response[1] === AKAI_MANUFACTURER_ID
-        ) {
+        if (response.length < 6 || response[1] !== AKAI_MANUFACTURER_ID) return;
+
+        const responseOpcode = response[3];
+        // Match: response opcode is sentOpcode+1 (data response) or REPLY (0x16).
+        // e.g., RSLIST (0x04) → SLIST (0x05), RSDATA (0x0A) → SDATA (0x0B),
+        // write commands (PDATA/KDATA/SDATA/MDATA) → REPLY (0x16).
+        if (responseOpcode === sentOpcode + 1 || responseOpcode === AkaiOpcode.REPLY) {
           clearTimeout(timeout);
           midiIO.removeSysExListener(listener);
           resolve(response);
