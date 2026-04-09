@@ -84,6 +84,13 @@ build: $(ALL_STAMPS)
 # ---------------------------------------------------------------------------
 # E2E Test Infrastructure
 # ---------------------------------------------------------------------------
+#
+# !! AGENTS: DO NOT run e2e make targets directly. !!
+# !! ALWAYS use: modules/e2e-infra/scripts/run-and-watch.sh <target>       !!
+# !! Example: modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-library !!
+# !! The run-and-watch script provides log capture, progress polling,       !!
+# !! and completion detection. Running make directly loses all of this.     !!
+#
 
 # devenv binary location (falls back to nix-profile path)
 DEVENV := $(shell command -v devenv 2>/dev/null || echo $(HOME)/.nix-profile/bin/devenv)
