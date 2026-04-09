@@ -62,20 +62,16 @@ const LONOTE_OFFSET = 3;
 const HINOTE_OFFSET = 4;
 
 /**
- * Velocity zone sample name offsets within a keygroup block.
+ * Velocity zone sample name offsets within a keygroup record.
  *
- * The S1000 keygroup layout places sample names for up to 4 velocity zones
- * at fixed offsets. Each name is 12 bytes in Akai character encoding.
+ * Zone 1 SNAME starts at offset 0x22 (34) per akaitools reference.
+ * Each velocity zone block is 0x18 (24) bytes: 12-byte SNAME + control fields.
+ * Subsequent zones follow at +24 byte intervals.
  *
- * These offsets are derived from the S1000 SysEx spec keygroup block layout:
- * after the keygroup header fields, envelope parameters, filter params, and
- * zone definitions, each velocity zone contains a 12-byte SNAME field.
- *
- * Zone 1 SNAME starts at offset 36 (after header + envelope + filter fields).
- * Each velocity zone block is 86 bytes, so subsequent zones follow at +86.
+ * Reference: akaitools-1.5 Synth/AkaiSample.pm — substr($keygroup, 0x22, 12)
  */
-const ZONE_SNAME_BASE = 36;
-const ZONE_BLOCK_SIZE = 86;
+const ZONE_SNAME_BASE = 0x22;
+const ZONE_BLOCK_SIZE = 0x18;
 const ZONE_COUNT = 4;
 const SNAME_LENGTH = 12;
 
