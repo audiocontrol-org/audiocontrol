@@ -1,14 +1,13 @@
 /**
- * Roland library UI operations e2e tests.
+ * Roland-specific library UI operations e2e tests.
  *
- * Common tests delegate to the shared factory in e2e-infra.
- * Roland-specific tests (drum kit crash, tones folder) remain here.
+ * Common-area tests have been moved to e2e-infra/specs/library-ui-operations.spec.ts.
+ * This file contains only Roland-specific tests (drum kit crash, tones folder).
  */
 
 import { test, expect } from '@playwright/test';
 
 // Deviation: relative imports because e2e/ is outside src/ and @/ only applies to src/
-import { registerUIOperationsTests } from '../../e2e-infra/specs/library-ui-operations.spec-factory';
 import {
   cleanupOPFS,
   initializeRolandOPFS,
@@ -17,17 +16,6 @@ import {
   verifyDirectoryInOPFS,
   createMinimalWavBase64,
 } from '../../e2e-infra/helpers/library-ui-helpers';
-
-// ---------------------------------------------------------------------------
-// Shared common-area tests
-// ---------------------------------------------------------------------------
-
-registerUIOperationsTests({
-  libraryUrl: '/roland/s330/editor/library?midi=mock',
-  baseUrl: '/',
-  initializeOPFS: initializeRolandOPFS,
-  editorName: 'Roland',
-});
 
 // ---------------------------------------------------------------------------
 // Roland-specific tests

@@ -77,7 +77,7 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland
 
 build: $(ALL_STAMPS)
 
@@ -156,6 +156,30 @@ test-e2e-s3k-device: $(AKAI_S3K_EDITOR) check-midi-server ensure-playwright
 # S3K library tests (OPFS, no device required)
 test-e2e-s3k-library: $(AKAI_S3K_EDITOR) ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && ./scripts/run-library-e2e.sh $(ARGS)"
+
+# ---------------------------------------------------------------------------
+# Common-Area Library Tests (shared specs, parameterized by env)
+# ---------------------------------------------------------------------------
+
+# Common-area library tests against S3K editor
+test-e2e-common-library-s3k: $(AKAI_S3K_EDITOR) ensure-playwright
+	$(DEVENV) shell --quiet -- bash -c "\
+		E2E_EDITOR_DIR=$(MODULES_DIR)/akai-s3k-editor \
+		E2E_LIBRARY_URL='/akai/s3000xl/editor/library' \
+		E2E_BASE_URL='/akai/s3000xl/editor' \
+		E2E_EDITOR_NAME='S3K' \
+		E2E_OPFS_INIT='s3k' \
+		$(MODULES_DIR)/e2e-infra/scripts/run-common-library-e2e.sh $(ARGS)"
+
+# Common-area library tests against Roland editor
+test-e2e-common-library-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
+	$(DEVENV) shell --quiet -- bash -c "\
+		E2E_EDITOR_DIR=$(MODULES_DIR)/roland-sxx0-editor \
+		E2E_LIBRARY_URL='/roland/s330/editor/library' \
+		E2E_BASE_URL='/roland/s330/editor' \
+		E2E_EDITOR_NAME='Roland' \
+		E2E_OPFS_INIT='roland' \
+		$(MODULES_DIR)/e2e-infra/scripts/run-common-library-e2e.sh $(ARGS)"
 
 # ---------------------------------------------------------------------------
 # SCSI MIDI Bridge E2E Tests

@@ -27,87 +27,57 @@ Already in S3K (keep as-is):
 
 ## Approach
 
-### Parameterized test factory
+### Env-parameterized shared specs (no per-editor wrappers)
 
-Create shared test factories in `e2e-infra/specs/` that accept an editor config:
+Shared specs live in `e2e-infra/specs/` and are run directly via a shared Playwright config. Editor-specific config is passed as environment variables from Make targets. No per-editor wrapper files — they're a maintenance trap that future agents will bloat with inline tests.
 
+Each spec reads config from `process.env`:
 ```typescript
-interface LibraryTestConfig {
-  /** Base URL for the editor's library page */
-  libraryUrl: string;
-  /** OPFS init function (creates device-specific + common directories) */
-  initializeOPFS: (page: Page) => Promise<void>;
-  /** Editor name for test descriptions */
-  editorName: string;
-}
+// e2e-infra/specs/library-opfs.spec.ts
+const LIBRARY_URL = process.env.E2E_LIBRARY_URL!;
+const EDITOR_NAME = process.env.E2E_EDITOR_NAME!;
+const OPFS_INIT = process.env.E2E_OPFS_INIT!; // 's3k' or 'roland'
+const initializeOPFS = OPFS_INIT === 's3k' ? initializeS3kOPFS : initializeRolandOPFS;
+
+test.describe(`${EDITOR_NAME} OPFS Operations`, () => { ... });
 ```
 
-Each test factory exports a function that registers tests:
+Make targets parameterize the run:
+```makefile
+test-e2e-common-library-s3k:
+    E2E_LIBRARY_URL=... E2E_EDITOR_NAME=S3K E2E_OPFS_INIT=s3k \
+    playwright test --config=modules/e2e-infra/playwright.library.config.ts
 
-```typescript
-// e2e-infra/specs/library-opfs.spec-factory.ts
-export function registerOPFSTests(config: LibraryTestConfig) {
-  test.describe(`${config.editorName} OPFS Operations`, () => {
-    test.beforeEach(async ({ page }) => {
-      await page.goto(config.libraryUrl);
-      await cleanupOPFS(page);
-      await config.initializeOPFS(page);
-    });
-    // ... 8 tests
-  });
-}
-```
-
-Each editor creates a thin spec file that calls the factory:
-
-```typescript
-// akai-s3k-editor/e2e/library-opfs.spec.ts
-import { registerOPFSTests } from '../../e2e-infra/specs/library-opfs.spec-factory';
-registerOPFSTests({
-  libraryUrl: `https://localhost:${port}/akai/s3000xl/editor/library`,
-  initializeOPFS: initializeS3kOPFS,
-  editorName: 'S3K',
-});
+test-e2e-common-library-roland:
+    E2E_LIBRARY_URL=... E2E_EDITOR_NAME=Roland E2E_OPFS_INIT=roland \
+    playwright test --config=modules/e2e-infra/playwright.library.config.ts
 ```
 
 ### File organization
 
 ```
-modules/e2e-infra/specs/
-  library-opfs.spec-factory.ts          # 8 tests
-  library-directories.spec-factory.ts   # 19 tests
-  library-ui-operations.spec-factory.ts # 8 tests
-  library-drumkit-editor.spec-factory.ts # 5 tests
-  library-drumkit-error.spec-factory.ts  # 2 tests
+modules/e2e-infra/
+  playwright.library.config.ts           # Shared Playwright config
+  specs/
+    library-opfs.spec.ts                  # 8 tests (env-parameterized)
+    library-directories.spec.ts           # 19 tests
+    library-ui-operations.spec.ts         # 7 tests
+    library-drumkit-editor.spec.ts        # 5 tests
+    library-drumkit-error.spec.ts         # 2 tests
 
 modules/akai-s3k-editor/e2e/
-  library-opfs.spec.ts                  # imports + calls factory
-  library-directories.spec.ts           # imports + calls factory
-  library-ui-operations.spec.ts         # imports + calls factory (replace current 6-test file)
-  library-drumkit-editor.spec.ts        # imports + calls factory
-  library-drumkit-error.spec.ts         # imports + calls factory
-  library-chopper-save.spec.ts          # stays S3K-specific (already done)
+  library-chopper-save.spec.ts            # S3K-specific (already done)
+  device-*.spec.ts                        # Device-specific tests
 
 modules/roland-sxx0-editor/e2e/
-  library-opfs.spec.ts                  # replace current with factory call
-  library-directories.spec.ts           # replace current with factory call
-  library-ui-operations.spec.ts         # replace current with factory call
-  library-drumkit-editor.spec.ts        # replace current with factory call
-  library-drumkit-error.spec.ts         # replace current with factory call
-  library-tones.spec.ts                 # stays Roland-specific
-  library-patches.spec.ts               # stays Roland-specific
-  library-sets.spec.ts                  # stays Roland-specific
-  library-chopper-save.spec.ts          # stays Roland-specific
+  library-tones.spec.ts                   # Roland-specific
+  library-patches.spec.ts                 # Roland-specific
+  library-sets.spec.ts                    # Roland-specific
+  library-chopper-save.spec.ts            # Roland-specific
+  device-*.spec.ts                        # Device-specific tests
 ```
 
-### Implementation order
-
-1. Create the `LibraryTestConfig` interface and shared helpers in `e2e-infra`
-2. Extract `library-opfs.spec-factory.ts` from Roland's `library-opfs.spec.ts` — simplest, no fixture dependencies
-3. Create S3K's `library-opfs.spec.ts` calling the factory — verify it passes
-4. Repeat for `library-directories`, `library-ui-operations`, `library-drumkit-editor`, `library-drumkit-error`
-5. After each factory extraction, verify both editors pass
-6. Delete the duplicated inline test code from both editors
+No common-area spec files in editor e2e/ directories.
 
 ## Verification
 
