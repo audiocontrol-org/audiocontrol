@@ -1,0 +1,69 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - heading "S-330 Editor" [level=1] [ref=e7]
+        - navigation [ref=e8]:
+          - list [ref=e9]:
+            - listitem [ref=e10]:
+              - link "Connect" [ref=e11] [cursor=pointer]:
+                - /url: /roland/s330/editor
+            - listitem [ref=e12]:
+              - link "Play" [ref=e13] [cursor=pointer]:
+                - /url: /roland/s330/editor/play
+            - listitem [ref=e14]:
+              - link "Patches" [ref=e15] [cursor=pointer]:
+                - /url: /roland/s330/editor/patches
+            - listitem [ref=e16]:
+              - link "Tones" [ref=e17] [cursor=pointer]:
+                - /url: /roland/s330/editor/tones
+            - listitem [ref=e18]:
+              - link "Library" [ref=e19] [cursor=pointer]:
+                - /url: /roland/s330/editor/library
+      - generic [ref=e20]:
+        - generic [ref=e23]: Disconnected
+        - button "PANIC" [disabled] [ref=e24]
+        - button "7320c356*" [ref=e25] [cursor=pointer]
+  - main [ref=e26]:
+    - complementary [ref=e27]:
+      - generic [ref=e28]:
+        - button "Enable Camera Access" [ref=e32] [cursor=pointer]
+        - generic [ref=e33]:
+          - generic [ref=e34]:
+            - button "MODE" [disabled] [ref=e35]
+            - button "MENU" [disabled] [ref=e36]
+            - button "SUB" [disabled] [ref=e37]
+            - button "COM" [disabled] [ref=e38]
+            - button "EXEC" [disabled] [ref=e39]
+          - generic [ref=e40]:
+            - generic [ref=e41]:
+              - button [disabled] [ref=e43]:
+                - img [ref=e45]
+              - button [disabled] [ref=e48]:
+                - img [ref=e50]
+              - button [disabled] [ref=e53]:
+                - img [ref=e55]
+              - button [disabled] [ref=e58]:
+                - img [ref=e60]
+            - generic [ref=e63]:
+              - button [disabled] [ref=e64]:
+                - img [ref=e66]
+              - button [disabled] [ref=e67]:
+                - img [ref=e69]
+          - generic [ref=e71]:
+            - generic [ref=e72]: "Arrow category:"
+            - button "01" [ref=e73] [cursor=pointer]
+          - generic [ref=e74]: "Keys: Arrows, +/-, Enter, F1-F5"
+          - generic [ref=e75]: Connect MIDI to use controls
+    - button "Close S-330 display" [ref=e77] [cursor=pointer]:
+      - img [ref=e78]
+      - img [ref=e80]
+    - generic [ref=e84]:
+      - heading "Not Connected" [level=2] [ref=e85]
+      - paragraph [ref=e86]: Connect to your S-330 to manage the library.
+      - link "Go to Connection" [ref=e87] [cursor=pointer]:
+        - /url: /
+```
