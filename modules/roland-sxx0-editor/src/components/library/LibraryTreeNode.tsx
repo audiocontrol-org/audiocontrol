@@ -24,7 +24,7 @@ export const LIBRARY_MOVE_MIME = 'application/x-s330-library-move';
 
 export interface LibraryTreeNodeProps {
   node: TreeNodeType;
-  category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples';
+  category: 'tones' | 'patches' | 'drumKits' | 'samples';
   depth: number;
   isExpanded: boolean;
   isSelected: boolean;
@@ -374,7 +374,7 @@ export function LibraryTreeNodeComponent({
 export interface TreeSectionProps {
   title: string;
   nodes: TreeNodeType[];
-  category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples';
+  category: 'tones' | 'patches' | 'drumKits' | 'samples';
   expandedPaths: Set<string>;
   selectedId?: string;
   onToggleExpand: (nodeId: string) => void;

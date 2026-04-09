@@ -42,20 +42,17 @@ interface LibraryTreePanelProps {
   patchesTree?: LibraryTreeNode[];
   /** Hierarchical tree for drum kits (optional, falls back to flat list) */
   drumKitsTree?: LibraryTreeNode[];
-  /** Hierarchical tree for chopped samples from common/samples/ */
-  choppedSamplesTree?: LibraryTreeNode[];
-  /** Hierarchical tree for common-area content (samples, programs, legacy chopped) */
+  /** Hierarchical tree for common-area content (samples, programs) */
   commonSamplesTree?: LibraryTreeNode[];
   /** Expanded directory paths per category */
   expandedPaths?: {
     tones: Set<string>;
     patches: Set<string>;
     drumKits: Set<string>;
-    choppedSamples: Set<string>;
     samples: Set<string>;
   };
   selectedName?: string;
-  selectedType?: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch' | 'choppedSample' | 'sample' | 'program';
+  selectedType?: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch' | 'sample' | 'program';
   selectedSetName?: string;
   /** Selected path for hierarchical items */
   selectedPath?: string[];
@@ -65,7 +62,6 @@ interface LibraryTreePanelProps {
   onSelectDrumKit: (name: string, path?: string[]) => void;
   onSelectIndividualTone: (name: string, path?: string[]) => void;
   onSelectIndividualPatch: (name: string, path?: string[]) => void;
-  onSelectChoppedSample?: (name: string, path?: string[]) => void;
   onSelectSample?: (name: string, path?: string[]) => void;
   onSelectProgram?: (name: string, path?: string[]) => void;
   onRefresh: () => void;
@@ -83,7 +79,7 @@ interface LibraryTreePanelProps {
   /** Callback to delete a drum kit */
   onDeleteDrumKit?: (directoryName: string, path?: string[]) => void;
   /** Callback to toggle directory expansion */
-  onToggleDirectoryExpanded?: (category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'samples', path: string) => void;
+  onToggleDirectoryExpanded?: (category: 'tones' | 'patches' | 'drumKits' | 'samples', path: string) => void;
   /** Callback to create a new directory */
   onCreateDirectory?: (category: LibraryCategory, parentPath: string[]) => void;
   /** Callback to rename a directory */
@@ -109,7 +105,6 @@ export function LibraryTreePanel({
   tonesTree,
   patchesTree,
   drumKitsTree,
-  choppedSamplesTree,
   commonSamplesTree,
   expandedPaths,
   selectedName,
@@ -122,7 +117,6 @@ export function LibraryTreePanel({
   onSelectDrumKit,
   onSelectIndividualTone,
   onSelectIndividualPatch,
-  onSelectChoppedSample,
   onSelectSample,
   onSelectProgram,
   onRefresh,
@@ -183,7 +177,6 @@ export function LibraryTreePanel({
     onSelectDrumKit,
     onSelectIndividualTone,
     onSelectIndividualPatch,
-    onSelectChoppedSample,
     onSelectSample,
     onSelectProgram,
     onToggleDirectoryExpanded,
@@ -307,7 +300,7 @@ export function LibraryTreePanel({
                   isSelected={selectedType === 'set' && selectedName === setInfo.name}
                   isExpanded={expandedSets.has(setInfo.name)}
                   selectedItemName={selectedSetName === setInfo.name ? selectedName : undefined}
-                  selectedItemType={selectedSetName === setInfo.name && selectedType !== 'drumKit' && selectedType !== 'individualTone' && selectedType !== 'individualPatch' && selectedType !== 'choppedSample' && selectedType !== 'sample' && selectedType !== 'program' ? selectedType : undefined}
+                  selectedItemType={selectedSetName === setInfo.name && selectedType !== 'drumKit' && selectedType !== 'individualTone' && selectedType !== 'individualPatch' && selectedType !== 'sample' && selectedType !== 'program' ? selectedType : undefined}
                   onToggle={() => toggleSet(setInfo.name)}
                   onSelect={() => onSelectSet(setInfo.name)}
                   onSelectTone={(toneFile) => onSelectTone(toneFile, setInfo.name)}
@@ -593,7 +586,7 @@ export function LibraryTreePanel({
             )}
           </div>
         )}
-        {/* Common Samples Section (common/samples/ — samples, programs, legacy chopped) */}
+        {/* Common Samples Section (common/samples/ — samples, programs) */}
         {commonSamplesTree && commonSamplesTree.length > 0 && (
           <TreeSection
             title="Samples"
@@ -603,19 +596,6 @@ export function LibraryTreePanel({
             selectedId={computeSelectedId('samples')}
             onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('samples', nodeId)}
             onSelect={(node) => handleTreeNodeSelect(node, 'samples')}
-            emptyMessage="No samples in common library"
-          />
-        )}
-        {/* Legacy Chopped Samples Section — hidden when commonSamplesTree is provided */}
-        {!commonSamplesTree && choppedSamplesTree && choppedSamplesTree.length > 0 && (
-          <TreeSection
-            title="Samples"
-            nodes={choppedSamplesTree}
-            category="choppedSamples"
-            expandedPaths={expandedPaths?.choppedSamples ?? new Set()}
-            selectedId={computeSelectedId('choppedSamples')}
-            onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('choppedSamples', nodeId)}
-            onSelect={(node) => handleTreeNodeSelect(node, 'choppedSamples')}
             emptyMessage="No samples in common library"
           />
         )}

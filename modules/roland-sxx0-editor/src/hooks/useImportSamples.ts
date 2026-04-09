@@ -2,7 +2,7 @@
  * useImportSamples Hook
  *
  * Handles importing sample bundles to the device.
- * Supports drum kit bundles (v1/v2) and chopped samples from common library.
+ * Supports drum kit bundles (v1/v2) and samples from common library.
  *
  * Creates tones with one-shot loop mode and a patch with correct MIDI mappings.
  */
@@ -51,7 +51,7 @@ export interface SampleImportBundle {
   kitCount?: number;
 }
 
-export type ImportSourceLocation = 'drumKit' | 'choppedSample';
+export type ImportSourceLocation = 'drumKit' | 'sample';
 
 // =========================================================================
 // Converter functions
@@ -119,12 +119,12 @@ export function drumKitBundleToImportBundle(bundle: ResolvedDrumKitBundle): Samp
 }
 
 /**
- * Convert a ChoppedSample manifest to a SampleImportBundle.
+ * Convert a sample manifest (ChoppedSample) to a SampleImportBundle.
  *
  * Uses midi: trigger mappings from manifest when present.
  * Slices without a midi: trigger get consecutive notes from baseNote.
  */
-export function choppedSampleToImportBundle(
+export function sampleManifestToImportBundle(
   manifest: ChoppedSample,
   targetSampleRate: 15000 | 30000,
   baseNote: number
