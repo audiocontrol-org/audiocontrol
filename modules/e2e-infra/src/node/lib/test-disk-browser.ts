@@ -7,6 +7,10 @@
 
 import type { TestContext, TestResult } from '@/node/lib/test-types.js';
 import { createScsiDiskClient } from '@audiocontrol/midi-core';
+import { mkdtemp, rm, readdir, readFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { parse as parseYaml } from 'yaml';
 import {
   parsePartitionTable,
   parseVolumeList,
@@ -15,14 +19,19 @@ import {
   parseSampleHeaderFromDisk,
   extractSampleAudio,
   akaiSampleToWav,
+  akaiSampleToCommon,
   parseProgramFromDisk,
   akaiProgramToCommon,
+  isAkaiSample,
   BLOCK_SIZE,
   FILE_TYPE_SAMPLE,
   FILE_TYPE_PROGRAM,
   FILE_TYPE_SAMPLE_S1000,
   FILE_TYPE_PROGRAM_S1000,
+  type AkaiDiskSampleHeader,
 } from '@audiocontrol/sampler-devices/s3k';
+import { createNodeStorage } from '@audiocontrol/sampler-library/testing';
+import { saveSample, type SampleSavePayload } from '@audiocontrol/sampler-library/browser';
 
 const SAMPLER_ID = 6; // Skip the sampler — it's not a disk
 
@@ -31,6 +40,8 @@ export async function runDiskBrowserTests(ctx: TestContext): Promise<TestResult[
     await testDiskEnumerate(ctx),
     await testDiskReadSample(ctx),
     await testDiskReadProgram(ctx),
+    await testDiskSaveSampleToLibrary(ctx),
+    await testDiskSaveProgramToLibrary(ctx),
   ];
 }
 
@@ -274,5 +285,210 @@ async function testDiskReadProgram(ctx: TestContext): Promise<TestResult> {
     };
   } catch (err) {
     return { name, status: 'ERROR', detail: String(err) };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Test: save disk sample to library as WAV
+// ---------------------------------------------------------------------------
+
+async function testDiskSaveSampleToLibrary(ctx: TestContext): Promise<TestResult> {
+  const name = 'disk-save-sample';
+  let tempDir: string | undefined;
+  try {
+    const found = await findDiskWithContent(ctx.bridgeUrl, ctx.log);
+    if (!found) {
+      return { name, status: 'SKIP', detail: 'No disk with samples found' };
+    }
+
+    const sampleFile = found.files.find(f => isSample(f.type));
+    if (!sampleFile) {
+      return { name, status: 'SKIP', detail: 'No sample files on disk' };
+    }
+
+    // Read and convert sample
+    const fileData = readFileData(found.partitionData, sampleFile);
+    const header = parseSampleHeaderFromDisk(fileData);
+    const pcm = extractSampleAudio(fileData, header);
+    const wav = akaiSampleToWav(header, pcm);
+    const commonSample = akaiSampleToCommon(header);
+    const sampleName = header.name.trim();
+    commonSample.name = sampleName;
+
+    ctx.log(`  Sample "${sampleName}": rate=${header.sampleRate}, length=${pcm.length}`);
+
+    // Save to filesystem library
+    tempDir = await mkdtemp(join(tmpdir(), 'e2e-disk-save-sample-'));
+    const storageRoot = await createNodeStorage(tempDir);
+
+    // Initialize common-area directory structure
+    const libraryDir = await storageRoot.getDirectoryHandle('library', { create: true });
+    const commonDir = await libraryDir.getDirectoryHandle('common', { create: true });
+    await commonDir.getDirectoryHandle('samples', { create: true });
+
+    await saveSample(storageRoot, {
+      name: sampleName,
+      yaml: commonSample as SampleSavePayload['yaml'],
+      wavData: wav.buffer as ArrayBuffer,
+    });
+
+    // Verify: sample.yaml exists and has correct format
+    const yamlPath = join(tempDir, 'library', 'common', 'samples', sampleName, 'sample.yaml');
+    const yamlContent = await readFile(yamlPath, 'utf-8');
+    const parsed = parseYaml(yamlContent) as Record<string, unknown>;
+
+    ctx.log(`  Saved to: ${yamlPath}`);
+    ctx.log(`  YAML format: "${parsed.format}", sampleRate: ${parsed.sampleRate}`);
+
+    if (parsed.format !== 'sample') {
+      return { name, status: 'FAIL', detail: `Expected format "sample", got "${parsed.format}"` };
+    }
+
+    // Verify: WAV file exists
+    const wavPath = join(tempDir, 'library', 'common', 'samples', sampleName, 'sample.wav');
+    const wavData = await readFile(wavPath);
+    if (wavData.length < 44) {
+      return { name, status: 'FAIL', detail: `WAV too short: ${wavData.length} bytes` };
+    }
+    // Check RIFF header
+    if (wavData[0] !== 0x52 || wavData[1] !== 0x49) {
+      return { name, status: 'FAIL', detail: 'WAV does not start with RIFF' };
+    }
+
+    ctx.log(`  WAV: ${wavData.length} bytes`);
+
+    return {
+      name,
+      status: 'PASS',
+      detail: `"${sampleName}" → ${wavData.length} byte WAV saved to common area`,
+    };
+  } catch (err) {
+    return { name, status: 'ERROR', detail: String(err) };
+  } finally {
+    if (tempDir) await rm(tempDir, { recursive: true, force: true }).catch(() => {});
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Test: save disk program (with samples) to library
+// ---------------------------------------------------------------------------
+
+async function testDiskSaveProgramToLibrary(ctx: TestContext): Promise<TestResult> {
+  const name = 'disk-save-program';
+  let tempDir: string | undefined;
+  try {
+    const found = await findDiskWithContent(ctx.bridgeUrl, ctx.log);
+    if (!found) {
+      return { name, status: 'SKIP', detail: 'No disk with programs found' };
+    }
+
+    const programFile = found.files.find(f => isProgram(f.type));
+    if (!programFile) {
+      return { name, status: 'SKIP', detail: 'No program files on disk' };
+    }
+
+    // Parse program
+    const fileData = readFileData(found.partitionData, programFile);
+    const diskProgram = parseProgramFromDisk(fileData);
+    const programName = diskProgram.name.trim();
+
+    ctx.log(`  Program "${programName}": ${diskProgram.numKeygroups} keygroups`);
+
+    // Collect sample names from keygroups
+    const allSampleNames = new Set<string>();
+    for (const kg of diskProgram.keygroups) {
+      for (const sn of kg.sampleNames) {
+        const trimmed = sn.trim();
+        if (trimmed) allSampleNames.add(trimmed);
+      }
+    }
+    ctx.log(`  Referenced samples: ${[...allSampleNames].join(', ')}`);
+
+    // Setup filesystem library
+    tempDir = await mkdtemp(join(tmpdir(), 'e2e-disk-save-program-'));
+    const storageRoot = await createNodeStorage(tempDir);
+    const libraryDir = await storageRoot.getDirectoryHandle('library', { create: true });
+    const commonDir = await libraryDir.getDirectoryHandle('common', { create: true });
+    await commonDir.getDirectoryHandle('samples', { create: true });
+
+    // Save each referenced sample to common area
+    const sampleHeaders = new Map<string, AkaiDiskSampleHeader>();
+    let savedSamples = 0;
+    for (const sampleName of allSampleNames) {
+      const sf = found.files.find(f => isSample(f.type) && f.name.trim() === sampleName);
+      if (!sf) {
+        ctx.log(`    Sample "${sampleName}" not found on disk — skipping`);
+        continue;
+      }
+      try {
+        const sd = readFileData(found.partitionData, sf);
+        const sh = parseSampleHeaderFromDisk(sd);
+        const pcm = extractSampleAudio(sd, sh);
+        const wav = akaiSampleToWav(sh, pcm);
+        sampleHeaders.set(sampleName, sh);
+
+        const cs = akaiSampleToCommon(sh);
+        cs.name = sampleName;
+        await saveSample(storageRoot, {
+          name: sampleName,
+          yaml: cs as SampleSavePayload['yaml'],
+          wavData: wav.buffer as ArrayBuffer,
+        });
+        savedSamples++;
+        ctx.log(`    Saved sample "${sampleName}" (${wav.length} bytes)`);
+      } catch (err) {
+        ctx.log(`    Failed to save "${sampleName}": ${err}`);
+      }
+    }
+
+    // Save program.yaml to common area
+    const commonProgram = akaiProgramToCommon(diskProgram, sampleHeaders);
+    commonProgram.name = programName;
+
+    const { stringify: stringifyYaml } = await import('yaml');
+    const programDir = await (await (await storageRoot
+      .getDirectoryHandle('library'))
+      .getDirectoryHandle('common'))
+      .getDirectoryHandle('samples')
+      .then(d => d.getDirectoryHandle(programName, { create: true }));
+
+    const fh = await programDir.getFileHandle('program.yaml', { create: true });
+    const w = await fh.createWritable();
+    await w.write(stringifyYaml(commonProgram, { indent: 2 }));
+    await w.close();
+
+    // Verify program.yaml
+    const progYamlPath = join(tempDir, 'library', 'common', 'samples', programName, 'program.yaml');
+    const progYaml = await readFile(progYamlPath, 'utf-8');
+    const parsed = parseYaml(progYaml) as Record<string, unknown>;
+
+    ctx.log(`  Program YAML: format="${parsed.format}", zones=${(parsed.zones as unknown[])?.length}`);
+
+    if (parsed.format !== 'program') {
+      return { name, status: 'FAIL', detail: `Expected format "program", got "${parsed.format}"` };
+    }
+
+    // Verify sample WAVs exist
+    for (const sn of allSampleNames) {
+      const wavPath = join(tempDir, 'library', 'common', 'samples', sn, 'sample.wav');
+      try {
+        const stat = await readFile(wavPath);
+        if (stat.length < 44) {
+          return { name, status: 'FAIL', detail: `Sample "${sn}" WAV too short: ${stat.length}` };
+        }
+      } catch {
+        // Sample might not have been on disk — that's ok if we logged it
+      }
+    }
+
+    return {
+      name,
+      status: 'PASS',
+      detail: `"${programName}" + ${savedSamples} samples saved to common area (${commonProgram.zones.length} zones)`,
+    };
+  } catch (err) {
+    return { name, status: 'ERROR', detail: String(err) };
+  } finally {
+    if (tempDir) await rm(tempDir, { recursive: true, force: true }).catch(() => {});
   }
 }

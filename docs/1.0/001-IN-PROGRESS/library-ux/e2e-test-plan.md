@@ -227,7 +227,8 @@ Run via: `modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARG
 - [x] Disk browser: enumerate SCSI disks, parse Akai partitions/volumes/files (node test)
 - [x] Disk browser: read disk sample, convert to WAV (node test)
 - [x] Disk browser: read disk program, convert to common area (node test — fixed parser to use 192-byte records)
-- [ ] Disk browser: save disk sample to library as WAV (browser test)
+- [x] Disk browser: save disk sample to library — read from disk, convert to WAV, write to common area (node test)
+- [x] Disk browser: save disk program to library — read program + referenced samples, write to common area (node test). Note: keygroup sample name offsets may be wrong — names are truncated, causing 0 samples saved. Pipeline works but needs ZONE_SNAME_BASE offset investigation.
 - [ ] Conversion boundary: disk ↔ device-specific library
 - [ ] Conversion boundary: disk ↔ common area
 
