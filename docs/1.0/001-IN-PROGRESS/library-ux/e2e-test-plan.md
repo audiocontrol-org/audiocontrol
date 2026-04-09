@@ -168,8 +168,10 @@ Run via: `modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARG
 #### `test-program-export.ts` (1 test)
 - [x] Program export to common area: fetch program + keygroups → akaiProgramToCommon → write ProgramYaml to filesystem → verify zones
 
-#### `test-disk-browser.ts` (1 test)
+#### `test-disk-browser.ts` (3 tests)
 - [x] Disk enumerate: probe all SCSI IDs, parse Akai partitions/volumes/files
+- [x] Disk read sample: read sample from disk, parse header, extract audio, convert to WAV
+- [x] Disk read program: read program from disk, parse keygroups, convert to common area (skipped — no S3000-format programs on test disks, only S1000)
 
 ### Browser-based tests (Playwright) — DONE
 
@@ -217,8 +219,9 @@ Run via: `modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARG
 - [x] Promote S3K program to common area → verify ProgramYaml (node test: fetch from device, convert via akaiProgramToCommon, write to filesystem, verify)
 - [ ] Import common-area program to S3K → verify keygroups match zones — **blocked: multi-sample instruments not yet implemented**
 - [x] Disk browser: enumerate SCSI disks, parse Akai partitions/volumes/files (node test)
-- [ ] Disk browser: save disk program to S3K library
-- [ ] Disk browser: save disk sample to library as WAV
+- [x] Disk browser: read disk sample, convert to WAV (node test)
+- [ ] Disk browser: save disk program to S3K library (skipped — no S3000-format programs on test disks)
+- [ ] Disk browser: save disk sample to library as WAV (browser test)
 - [ ] Conversion boundary: disk ↔ device-specific library
 - [ ] Conversion boundary: disk ↔ common area
 
@@ -334,7 +337,7 @@ Parity reports go in `docs/1.0/001-IN-PROGRESS/library-ux/parity-report-tier-{N}
 | Roland Tier 1 (library OPFS) | **Done** | ~104 tests, 9 spec files |
 | S3K Tier 1 (library OPFS) | **Gap** | 6 tests vs Roland's 104 |
 | Roland Tier 2 (device) | **Done** | ~80 tests, 17 spec files |
-| S3K Tier 3 node tests | **Done** | 14 tests (SDS, reads, writes, multi-sds, drumkit, program-export, disk-browser) |
+| S3K Tier 3 node tests | **Done** | 16 tests (SDS, reads, writes, multi-sds, drumkit, program-export, disk-browser×3) |
 | S3K Tier 3 browser (device) | **Done** | ~50 tests, 7 spec files |
 | S3K Tier 3 browser (library round trip) | **Partial** | 5 tests + drum kit import; disk browser, promotion missing |
 | Tier 1 parity report | **Done** | See `parity-report-tier-1.md` — 2 fixes applied, 3 deferred (#174, #175) |
