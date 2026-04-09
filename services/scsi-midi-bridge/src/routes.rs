@@ -343,8 +343,13 @@ async fn handle_ws_sample_download(
     parsed: &serde_json::Value,
     tx: mpsc::Sender<serde_json::Value>,
 ) {
-    let target_id = parsed["target_id"].as_u64().unwrap_or(6) as u8;
-    let sample_number = parsed["sample_number"].as_u64().unwrap_or(0) as u16;
+    // Accept both snake_case and camelCase field names for compatibility
+    let target_id = parsed["target_id"].as_u64()
+        .or_else(|| parsed["targetId"].as_u64())
+        .unwrap_or(6) as u8;
+    let sample_number = parsed["sample_number"].as_u64()
+        .or_else(|| parsed["sampleNumber"].as_u64())
+        .unwrap_or(0) as u16;
     let channel = parsed["channel"].as_u64().unwrap_or(0) as u8;
     let scsi_tx = state.scsi_tx.clone();
 

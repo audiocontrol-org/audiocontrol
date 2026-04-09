@@ -73,6 +73,9 @@ async function testSdsRoundTrip(ctx: TestContext): Promise<TestResult> {
       if (diff > 1) diffCount++;
     }
 
+    // Log first few samples for debugging
+    ctx.log(`  First 5 sent:     [${Array.from(testSamples.slice(0, 5)).join(', ')}]`);
+    ctx.log(`  First 5 received: [${Array.from(received.samples.slice(0, 5)).join(', ')}]`);
     ctx.log(`  Max sample diff: ${maxDiff}, samples with diff > 1: ${diffCount}/${testSamples.length}`);
 
     if (!ctx.noRestore) {
