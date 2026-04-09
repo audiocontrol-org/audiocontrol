@@ -4,6 +4,19 @@ import { akaiByte2String } from '@/utils/akai-utils.js';
  * Akai S3000XL SysEx opcodes.
  *
  * Reference: https://lakai.sourceforge.net/docs/s2800_sysex.html
+ *
+ * ENCODING NOTE: The S1000 SysEx spec defines two different encodings:
+ *
+ * 1. **Request item numbers** (RPDATA, RKDATA, RSDATA, DELP, DELK, DELS):
+ *    Item numbers are encoded as two 7-bit bytes, LSB first.
+ *    Example: sample 22 → [22 & 0x7F, (22 >> 7) & 0x7F] → [0x16, 0x00]
+ *
+ * 2. **Header data fields** (within PDATA, KDATA, SDATA responses):
+ *    Parameter values are encoded as nibble pairs (4-bit), low nibble first.
+ *    Example: byte 0xAB → [0x0B, 0x0A]
+ *
+ * Confusing these two encodings causes failures for item numbers >= 16,
+ * where 4-bit nibble encoding diverges from 7-bit encoding.
  */
 export enum AkaiOpcode {
   /** Request S1000 status */

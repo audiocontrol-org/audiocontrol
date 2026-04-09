@@ -78,6 +78,7 @@ export interface S3000xlClientInterface {
     sampleData: Int16Array,
     sampleRate: number,
     options?: {
+      name?: string;
       loopStart?: number;
       loopEnd?: number;
       loopType?: SdsLoopType;

@@ -9,6 +9,7 @@
 - [Workplan](./workplan.md) - Implementation plan
 - [Phase 6: Shared Editor Dialogs](./phase-6-shared-editor-dialogs.md) - Detailed design for shared editor dialog extraction
 - [E2E Test Plan](./e2e-test-plan.md) - Comprehensive library e2e test plan (Tiers 1-3)
+- [SDS Sample Rename](./sds-sample-rename.md) - Post-upload sample rename for correct program references
 
 ## Overview
 

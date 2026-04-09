@@ -95,7 +95,6 @@
   },
   "devDependencies": {
     "@audiocontrol/sampler-library": "workspace:*",
-    "@audiocontrol/sampler-midi": "workspace:*",
     "@tsconfig/recommended": "^1.0.8",
     "@types/node": "^22.13.1",
     "@vitest/coverage-v8": "^1.2.0",

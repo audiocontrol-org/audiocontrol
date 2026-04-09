@@ -142,6 +142,16 @@ The `cc` byte in Akai SysEx messages (`F0 47 cc ...`) is the **exclusive channel
 - **Do not write EXCHAN via SysEx without immediate restore** — changing it mid-session causes the device to stop responding on the original channel
 - The `--channel` CLI argument sets this exclusive channel, not the MIDI playback channel
 
+## S3000XL SysEx Encoding
+
+The S1000/S3000XL SysEx protocol uses **two different encodings** that must not be confused:
+
+1. **Request item numbers** (RPDATA, RKDATA, RSDATA, DELP, DELK, DELS): encoded as two **7-bit bytes**, LSB first. Example: sample 22 → `[22 & 0x7F, (22 >> 7) & 0x7F]` → `[0x16, 0x00]`.
+
+2. **Header data fields** (within PDATA, KDATA, SDATA payloads): encoded as **nibble pairs** (4-bit), low nibble first. Example: byte 0xAB → `[0x0B, 0x0A]`.
+
+Using nibble encoding for item numbers works for indices 0-15 (where both encodings produce identical bytes) but silently fails for index 16+. Reference: https://lakai.sourceforge.net/docs/s1000_sysex.html — "groups of bytes in messages represent concatenated 7-bit sections of a data word, LSB first."
+
 ## S3000XL SDS Storage Behavior
 
 The S3000XL uses the SDS sample number in the Dump Header to determine overwrite vs create: if the number matches an existing sample's RSLIST index, the device overwrites that sample in place. If the number doesn't match, a new sample is created at the end of the RSLIST. To replace a sample, send with its RSLIST index. To add a new sample, send with an unused number (e.g., current sample count). Confirmed via hardware testing.

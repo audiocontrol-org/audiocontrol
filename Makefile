@@ -22,7 +22,6 @@ EDITOR_CORE        := $(MODULES_DIR)/editor-core/.build-stamp
 LIB_DEVICE_UUID    := $(MODULES_DIR)/lib-device-uuid/.build-stamp
 SAMPLER_DEVICES    := $(MODULES_DIR)/sampler-devices/.build-stamp
 
-SAMPLER_MIDI       := $(MODULES_DIR)/sampler-midi/.build-stamp
 SAMPLER_LIBRARY    := $(MODULES_DIR)/sampler-library/.build-stamp
 SAMPLER_TRANSLATE  := $(MODULES_DIR)/sampler-translate/.build-stamp
 SAMPLER_BACKUP     := $(MODULES_DIR)/sampler-backup/.build-stamp
@@ -40,7 +39,7 @@ ALL_STAMPS := \
 	$(MIDI_CORE) $(SAMPLER_LIB) $(AUDIOTOOLS_CONFIG) $(CANONICAL_MIDI) \
 	$(ARDOUR_MIDI) $(LAUNCH_CONTROL) $(LAUNCH_CONTROL_ED) $(LIB_RUNTIME) \
 	$(SAMPLER_ATTIC) $(SAMPLE_CHOPPER) $(EDITOR_CORE) $(LIB_DEVICE_UUID) \
-	$(SAMPLER_DEVICES) $(SAMPLER_MIDI) $(SAMPLER_LIBRARY) \
+	$(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) \
 	$(SAMPLER_TRANSLATE) $(SAMPLER_BACKUP) $(SAMPLER_EXPORT) $(LOOP_EDITOR) \
 	$(D110_EDITOR) $(JV1080_EDITOR) $(ROLAND_SXX0_EDITOR) $(AUDIOTOOLS_CLI) \
 	$(SYNTH_CORE) $(SAMPLE_EDITOR_MOD) $(AKAI_S3K_EDITOR)
@@ -65,7 +64,6 @@ EDITOR_CORE_SRC        := $(shell find $(MODULES_DIR)/editor-core/src -name '*.t
 LIB_DEVICE_UUID_SRC    := $(shell find $(MODULES_DIR)/lib-device-uuid/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLER_DEVICES_SRC    := $(shell find $(MODULES_DIR)/sampler-devices/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-SAMPLER_MIDI_SRC       := $(shell find $(MODULES_DIR)/sampler-midi/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLER_LIBRARY_SRC    := $(shell find $(MODULES_DIR)/sampler-library/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLER_TRANSLATE_SRC  := $(shell find $(MODULES_DIR)/sampler-translate/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLER_BACKUP_SRC     := $(shell find $(MODULES_DIR)/sampler-backup/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
@@ -389,10 +387,6 @@ $(SAMPLER_DEVICES): $(SAMPLER_LIB) $(MIDI_CORE) $(SAMPLER_DEVICES_SRC)
 # ---------------------------------------------------------------------------
 # Layer 2
 # ---------------------------------------------------------------------------
-
-$(SAMPLER_MIDI): $(SAMPLER_DEVICES) $(SAMPLER_LIB) $(SAMPLER_MIDI_SRC)
-	cd $(MODULES_DIR)/sampler-midi && pnpm build
-	@touch $@
 
 $(SAMPLER_LIBRARY): $(SAMPLER_DEVICES) $(SAMPLE_CHOPPER) $(SAMPLER_LIBRARY_SRC)
 	cd $(MODULES_DIR)/sampler-library && pnpm build

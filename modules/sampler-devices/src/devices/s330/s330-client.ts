@@ -341,13 +341,11 @@ export interface S330ClientInterface {
  * @param options - Client configuration options
  * @returns S330ClientInterface instance
  *
- * @example Node.js with easymidi
+ * @example
  * ```typescript
  * import { createS330Client } from '@audiocontrol/sampler-devices/s330';
- * import { createEasymidiAdapter } from '@audiocontrol/sampler-midi';
  *
- * const adapter = createEasymidiAdapter('S-330');
- * const client = createS330Client(adapter, { deviceId: 0 });
+ * const client = createS330Client(midiIO, { deviceId: 0 });
  * await client.connect();
  * const patches = await client.requestAllPatchNames();
  * ```

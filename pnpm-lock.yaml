@@ -1181,9 +1181,6 @@ importers:
       '@audiocontrol/sampler-library':
         specifier: workspace:*
         version: link:../sampler-library
-      '@audiocontrol/sampler-midi':
-        specifier: workspace:*
-        version: link:../sampler-midi
       '@tsconfig/recommended':
         specifier: ^1.0.8
         version: 1.0.13
@@ -1364,43 +1361,6 @@ importers:
       vite-tsconfig-paths:
         specifier: ^6.1.1
         version: 6.1.1(typescript@5.9.2)(vite@5.4.20)
-      vitest:
-        specifier: ^1.2.0
-        version: 1.6.1(@types/node@22.19.8)(jsdom@29.0.1)
-
-  modules/sampler-midi:
-    dependencies:
-      '@audiocontrol/sampler-devices':
-        specifier: workspace:*
-        version: link:../sampler-devices
-      '@audiocontrol/sampler-lib':
-        specifier: workspace:*
-        version: link:../sampler-lib
-      easymidi:
-        specifier: ^3.1.0
-        version: 3.1.0
-      pathe:
-        specifier: ^2.0.2
-        version: 2.0.3
-    devDependencies:
-      '@types/node':
-        specifier: ^22.13.1
-        version: 22.19.8
-      '@vitest/coverage-v8':
-        specifier: ^1.2.0
-        version: 1.6.1(vitest@1.6.1)
-      tsx:
-        specifier: ^4.19.2
-        version: 4.20.5
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.2
-      vite:
-        specifier: ^5.0.0
-        version: 5.4.20(@types/node@22.19.8)
-      vite-plugin-dts:
-        specifier: ^4.5.4
-        version: 4.5.4(@types/node@22.19.8)(typescript@5.9.2)(vite@5.4.20)
       vitest:
         specifier: ^1.2.0
         version: 1.6.1(@types/node@22.19.8)(jsdom@29.0.1)
