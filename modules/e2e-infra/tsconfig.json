@@ -16,6 +16,7 @@
     "./src/**/*",
     "./helpers/**/*",
     "./reporters/**/*",
-    "./scripts/**/*"
+    "./scripts/**/*",
+    "./specs/**/*"
   ]
 }
