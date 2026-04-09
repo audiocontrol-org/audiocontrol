@@ -371,14 +371,26 @@ Library (fixture) ──import──► Device ──export──► Library (re
 
 ### 5. E2E Test Output and Observability
 
-When running e2e tests, **always redirect output to a log file** so you can interrogate it while the test is still running and perform post-facto analysis:
+**Always use `run-and-watch.sh`** to run e2e tests. Never run make targets directly with ad-hoc sleep/tail patterns.
 
 ```bash
-make test-e2e-s3k-device-library ARGS="--grep 'round trip'" > /tmp/e2e-test.log 2>&1 &
-tail -f /tmp/e2e-test.log
+# Run any e2e make target with proper log management and completion detection
+modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARGS=--test sds --verbose'
+modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-device-library 'ARGS=--grep "sample round trip"'
+modules/e2e-infra/scripts/run-and-watch.sh test-e2e-roland-library
 ```
 
-Never wait blindly for a long-running test to complete before looking at output. Stream it.
+`run-and-watch.sh` provides:
+- Timestamped log file in `/tmp/e2e-logs/` for post-facto analysis
+- Exponential backoff polling for process completion (1s, 2s, 4s, 8s, 16s, 30s)
+- Filtered progress output (PASS/FAIL/ERROR/SUCCEED/Step lines) on each poll
+- Immediate exit when the test finishes — no wasted wait time
+- Hard timeout kill if the test runs too long
+
+**Never:**
+- Use `sleep N` with a fixed duration to wait for tests
+- Use `tail -f` without a completion check
+- Run tests without capturing output to a log file
 
 ### 6. Timeouts and Retries
 

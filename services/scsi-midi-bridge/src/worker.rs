@@ -77,9 +77,14 @@ pub async fn scsi_worker(
                 let _ = reply.send(s2p.is_reachable().await);
             }
             ScsiWork::SysExSendReceive { message, expect_response, reply } => {
-                // Try streaming client first
+                // Try streaming client first. If it returns empty data
+                // when we expect a response, fall back to protobuf.
                 let result = match stream.send_and_receive(&message).await {
-                    Ok(data) => Ok(data),
+                    Ok(data) if !data.is_empty() || !expect_response => Ok(data),
+                    Ok(_) => {
+                        warn!("Streaming client returned empty response, falling back to protobuf");
+                        s2p.send_and_receive(&message).await
+                    }
                     Err(e) => {
                         warn!("Streaming client failed ({e}), falling back to protobuf");
                         if expect_response {
