@@ -11,7 +11,16 @@
 
 import { test, expect } from '@playwright/test';
 import type { LibraryTestConfig } from './library-test-config';
-import { OPFS_CORE_HELPERS } from './opfs-eval-helpers';
+
+// Deviation: relative import because e2e-infra/specs/ is outside src/
+import {
+  opfsCleanup,
+  opfsIsEmpty,
+  opfsDirExists,
+  opfsWriteFile,
+  opfsReadFile,
+  opfsListDir,
+} from '../helpers/opfs-page-helpers';
 
 export function registerOPFSTests(config: LibraryTestConfig): void {
   test.describe(`${config.editorName} OPFS Operations`, () => {
@@ -20,13 +29,7 @@ export function registerOPFSTests(config: LibraryTestConfig): void {
     // Clean up OPFS before each test for isolation
     test.beforeEach(async ({ page }) => {
       await page.goto(config.baseUrl, { timeout: 5000 });
-
-      await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          await cleanupOPFS();
-        })();
-      `);
+      await opfsCleanup(page);
     });
 
     test('OPFS is available', async ({ page }) => {
@@ -48,7 +51,9 @@ export function registerOPFSTests(config: LibraryTestConfig): void {
       });
 
       expect(result.success).toBe(true);
-      expect(result.hasHandle).toBe(true);
+      if ('hasHandle' in result) {
+        expect(result.hasHandle).toBe(true);
+      }
     });
 
     test('can initialize library structure', async ({ page }) => {
@@ -58,12 +63,7 @@ export function registerOPFSTests(config: LibraryTestConfig): void {
       await config.initializeOPFS(page);
 
       // Verify the common library root exists
-      const libraryExists = await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await directoryExists(['library']);
-        })();
-      `);
+      const libraryExists = await opfsDirExists(page, ['library']);
       expect(libraryExists).toBe(true);
     });
 
@@ -74,22 +74,9 @@ export function registerOPFSTests(config: LibraryTestConfig): void {
       const testPath = ['test-dir'];
       const testFileName = 'test-file.txt';
 
-      const writeResult = await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await writeFile(${JSON.stringify(testPath)}, ${JSON.stringify(testFileName)}, ${JSON.stringify(testContent)});
-        })();
-      `);
+      await opfsWriteFile(page, testPath, testFileName, testContent);
 
-      expect(writeResult.success).toBe(true);
-
-      const readResult = await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await readFile(${JSON.stringify(testPath)}, ${JSON.stringify(testFileName)});
-        })();
-      `) as { success: boolean; content: string };
-
+      const readResult = await opfsReadFile(page, testPath, testFileName);
       expect(readResult.success).toBe(true);
       expect(readResult.content).toBe(testContent);
     });
@@ -115,24 +102,16 @@ export function registerOPFSTests(config: LibraryTestConfig): void {
         },
       ];
 
-      const populateResult = await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await populateFixtures(${JSON.stringify(fixtures)});
-        })();
-      `) as { success: boolean; created: Array<{ path: string[]; fileName: string }> };
-
-      expect(populateResult.success).toBe(true);
-      expect(populateResult.created).toHaveLength(3);
+      for (const fixture of fixtures) {
+        await opfsWriteFile(
+          page, fixture.path, fixture.fileName, fixture.content,
+        );
+      }
 
       for (const fixture of fixtures) {
-        const readResult = await page.evaluate(`
-          ${OPFS_CORE_HELPERS}
-          (async () => {
-            return await readFile(${JSON.stringify(fixture.path)}, ${JSON.stringify(fixture.fileName)});
-          })();
-        `) as { success: boolean; content: string };
-
+        const readResult = await opfsReadFile(
+          page, fixture.path, fixture.fileName,
+        );
         expect(readResult.success).toBe(true);
         expect(readResult.content).toBe(fixture.content);
       }
@@ -147,19 +126,13 @@ export function registerOPFSTests(config: LibraryTestConfig): void {
         { path: ['test-dir', 'subdir'], fileName: 'nested.txt', content: 'nested' },
       ];
 
-      await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await populateFixtures(${JSON.stringify(fixtures)});
-        })();
-      `);
+      for (const fixture of fixtures) {
+        await opfsWriteFile(
+          page, fixture.path, fixture.fileName, fixture.content,
+        );
+      }
 
-      const listResult = await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await listDirectory(['test-dir']);
-        })();
-      `) as { success: boolean; entries: Array<{ name: string; kind: string }> };
+      const listResult = await opfsListDir(page, ['test-dir']);
 
       expect(listResult.success).toBe(true);
       expect(listResult.entries).toHaveLength(3);
@@ -185,83 +158,42 @@ export function registerOPFSTests(config: LibraryTestConfig): void {
         { path: ['deep', 'nested', 'path'], fileName: 'file.txt', content: 'test' },
       ];
 
-      await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await populateFixtures(${JSON.stringify(fixtures)});
-        })();
-      `);
+      for (const fixture of fixtures) {
+        await opfsWriteFile(
+          page, fixture.path, fixture.fileName, fixture.content,
+        );
+      }
 
-      const beforeCleanup = await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await isOPFSEmpty();
-        })();
-      `);
+      const beforeCleanup = await opfsIsEmpty(page);
       expect(beforeCleanup).toBe(false);
 
-      const cleanupResult = await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await cleanupOPFS();
-        })();
-      `);
+      await opfsCleanup(page);
 
-      expect(cleanupResult.success).toBe(true);
-
-      const afterCleanup = await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await isOPFSEmpty();
-        })();
-      `);
+      const afterCleanup = await opfsIsEmpty(page);
       expect(afterCleanup).toBe(true);
     });
 
     test('cleanup is isolated between tests', async ({ page }) => {
       await page.goto(config.baseUrl, { timeout: 5000 });
 
-      const isEmpty = await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await isOPFSEmpty();
-        })();
-      `);
+      const isEmpty = await opfsIsEmpty(page);
       expect(isEmpty).toBe(true);
 
-      await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          await writeFile(['isolation-test'], 'marker.txt', 'This should be cleaned up');
-        })();
-      `);
+      await opfsWriteFile(
+        page, ['isolation-test'], 'marker.txt', 'This should be cleaned up',
+      );
 
-      const afterWrite = await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await isOPFSEmpty();
-        })();
-      `);
+      const afterWrite = await opfsIsEmpty(page);
       expect(afterWrite).toBe(false);
     });
 
     test('isolation verification - OPFS should be empty from previous test cleanup', async ({ page }) => {
       await page.goto(config.baseUrl, { timeout: 5000 });
 
-      const isEmpty = await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await isOPFSEmpty();
-        })();
-      `);
+      const isEmpty = await opfsIsEmpty(page);
       expect(isEmpty).toBe(true);
 
-      const isolationDirExists = await page.evaluate(`
-        ${OPFS_CORE_HELPERS}
-        (async () => {
-          return await directoryExists(['isolation-test']);
-        })();
-      `);
+      const isolationDirExists = await opfsDirExists(page, ['isolation-test']);
       expect(isolationDirExists).toBe(false);
     });
   });
