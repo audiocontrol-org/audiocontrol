@@ -84,6 +84,21 @@ Never use conditionals in UI components to switch behavior based on device confi
 - All code must be unit testable via dependency injection
 - **Guideline deviations must be documented in situ** — if a technical constraint forces you to break a project convention (e.g., a relative import where `@/` is the rule), add a comment at the deviation site explaining *what* rule is being broken, *why* it's necessary, and that it should not be copied elsewhere. Unexplained deviations are nucleation sites for bad practices.
 
+### Nucleation Site Prevention
+
+Bad code actively attracts more bad code. Agents and humans learn patterns from what they see in the codebase. If they see a duplicated function, they'll call it instead of the canonical one. If they see a backward-compatibility shim, they'll build on top of it. Bad patterns must be **removed**, not just documented — documentation gets ignored, but code gets copied.
+
+**Eliminate these on sight:**
+
+- **Duplicate code** — If the same logic exists in two places, one must go. Move it to the lowest common ancestor (e.g., editor-core for cross-editor code, sampler-library for cross-module code). Don't create a third copy "for now."
+- **Dead code** — Unused functions, deprecated modules, commented-out blocks, and backward-compatibility re-exports are honey pots. Future agents will find them, assume they're load-bearing, and build on top of them. Delete them. Git history preserves anything you need to recover.
+- **Backward compatibility shims** — Re-exporting old names, keeping deprecated type aliases, leaving old API surfaces "in case something uses them." These are the worst nucleation sites because they look intentional. Remove them and fix the callers.
+- **Poorly structured code** — A 600-line file with inline functions that should be hooks, a preview panel that handles 5 node types with conditionals instead of the plugin pattern, a test that writes fixtures inline instead of using the shared helper. These patterns get copied verbatim by agents working on similar features.
+
+**The test for removal:** If an agent reading this code would be confused, misled, or tempted to duplicate it — the code is a nucleation site. Fix the code, don't add a comment warning against copying it.
+
+**When adding new code:** Before implementing, check if the same concept already exists elsewhere in the codebase. If it does, use it. If it's close but not quite right, extend it. The only valid reason to create a new implementation is that no existing implementation covers the use case — and even then, consider whether the existing code should be generalized rather than duplicated.
+
 ### Repository Hygiene
 
 - Build artifacts only in `dist/`
