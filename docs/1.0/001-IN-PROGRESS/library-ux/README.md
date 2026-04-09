@@ -14,6 +14,7 @@
 - [Staged SDS Batch](./staged-sds-batch.md) - Batch SDS uploads for drum kit import (all SDS first, then all SysEx)
 - [Unified Sample Slicing](./unified-sample-slicing.md) - Merge chopped-sample/drum-kit into single sample node type
 - [Common Area Extraction](./common-area-extraction.md) - Extract duplicated common-area UI to editor-core
+- [Shared Library Tests](./shared-library-tests.md) - Generalize 42 common-area e2e tests to run against all editors
 
 ## Overview
 
