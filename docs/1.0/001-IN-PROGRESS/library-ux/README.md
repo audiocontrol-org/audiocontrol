@@ -15,6 +15,7 @@
 - [Unified Sample Slicing](./unified-sample-slicing.md) - Merge chopped-sample/drum-kit into single sample node type
 - [Common Area Extraction](./common-area-extraction.md) - Extract duplicated common-area UI to editor-core
 - [Drum Kit Storage Migration](./drum-kit-storage-migration.md) - Move Roland drum kits from device-specific to common area (#182)
+- [Editor Dialog Plugins](./editor-dialog-plugins.md) - Shared dialog rendering via plugin pattern (#175)
 - [Shared Library Tests](./shared-library-tests.md) - Generalize 42 common-area e2e tests to run against all editors
 
 ## Overview
