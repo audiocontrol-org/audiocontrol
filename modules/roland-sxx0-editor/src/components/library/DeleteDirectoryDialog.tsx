@@ -73,9 +73,7 @@ export function DeleteDirectoryDialog({
     ? contents.files.length + contents.directories.length
     : 0;
 
-  const categoryLabel = category === 'drum-kits'
-    ? 'Drum Kits'
-    : category.charAt(0).toUpperCase() + category.slice(1);
+  const categoryLabel = category.charAt(0).toUpperCase() + category.slice(1);
   const fullPath = path.join('/');
 
   const message = buildMessage({

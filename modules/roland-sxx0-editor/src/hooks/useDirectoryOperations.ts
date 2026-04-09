@@ -14,27 +14,21 @@ import {
   moveItem,
   renameIndividualTone,
   renameIndividualPatch,
-  renameDrumKit,
   renameSet,
   deleteSet,
   deleteIndividualTone,
   deleteIndividualPatch,
-  deleteDrumKit,
   listIndividualTones,
   listIndividualPatches,
   listIndividualTonesTree,
   listIndividualPatchesTree,
-  listDrumKits,
-  listDrumKitsTree,
   type LibraryTreeNode,
   type LibraryCategory,
   type LibraryToneInfo,
   type LibraryPatchInfo,
-  type DrumKitInfo,
   type StorageDirectoryHandle,
 } from '@/lib/library-service';
 import type { ItemSelection } from '@/pages/LibraryPage';
-import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 
 interface CreateDirectoryDialogState {
   category: LibraryCategory;
@@ -57,7 +51,7 @@ interface MoveItemDialogState {
   category: LibraryCategory;
   sourcePath: string[];
   itemName: string;
-  itemType: 'tone' | 'patch' | 'drum-kit' | 'directory';
+  itemType: 'tone' | 'patch' | 'directory';
 }
 
 interface UseDirectoryOperationsOptions {
@@ -66,7 +60,6 @@ interface UseDirectoryOperationsOptions {
   setError: (error: string) => void;
   tonesTree: LibraryTreeNode[];
   patchesTree: LibraryTreeNode[];
-  drumKitsTree: LibraryTreeNode[];
   // Delete-related deps
   selection: ItemSelection | null;
   setSelection: (selection: ItemSelection | null) => void;
@@ -74,9 +67,6 @@ interface UseDirectoryOperationsOptions {
   setIndividualPatches: (patches: LibraryPatchInfo[]) => void;
   setTonesTree: (tree: LibraryTreeNode[]) => void;
   setPatchesTree: (tree: LibraryTreeNode[]) => void;
-  setDrumKits: (kits: DrumKitInfo[]) => void;
-  setDrumKitsTree: (tree: LibraryTreeNode[]) => void;
-  setSelectedDrumKitBundle: (bundle: ResolvedDrumKitBundle | null) => void;
 }
 
 export function useDirectoryOperations({
@@ -85,16 +75,12 @@ export function useDirectoryOperations({
   setError,
   tonesTree,
   patchesTree,
-  drumKitsTree,
   selection,
   setSelection,
   setIndividualTones,
   setIndividualPatches,
   setTonesTree,
   setPatchesTree,
-  setDrumKits,
-  setDrumKitsTree,
-  setSelectedDrumKitBundle,
 }: UseDirectoryOperationsOptions) {
   // Dialog state
   const [createDirectoryDialog, setCreateDirectoryDialog] = useState<CreateDirectoryDialogState | null>(null);
@@ -118,10 +104,9 @@ export function useDirectoryOperations({
   }, []);
 
   const handleOpenMoveItem = useCallback((category: LibraryCategory, sourcePath: string[], itemName: string) => {
-    let itemType: 'tone' | 'patch' | 'drum-kit' | 'directory' = 'directory';
+    let itemType: 'tone' | 'patch' | 'directory' = 'directory';
     if (category === 'tones') itemType = 'tone';
     else if (category === 'patches') itemType = 'patch';
-    else if (category === 'drum-kits') itemType = 'drum-kit';
     setMoveItemDialog({ category, sourcePath, itemName, itemType });
   }, []);
 
@@ -206,7 +191,6 @@ export function useDirectoryOperations({
       if (isDirectory) await renameDirectory(libraryHandle, category, [...path, oldName], newName);
       else if (category === 'tones') await renameIndividualTone(libraryHandle, oldName, newName, path);
       else if (category === 'patches') await renameIndividualPatch(libraryHandle, oldName, newName, path);
-      else if (category === 'drum-kits') await renameDrumKit(libraryHandle, oldName, newName, path);
       await handleRefreshLibrary();
     } catch (err) {
       console.error('[LibraryPage] Failed to rename item:', err);
@@ -272,30 +256,15 @@ export function useDirectoryOperations({
     }
   }, [libraryHandle, selection, setSelection, setIndividualPatches, setPatchesTree, setError]);
 
-  const handleDeleteDrumKit = useCallback(async (directoryName: string, path?: string[]) => {
-    if (!libraryHandle || !window.confirm(`Delete drum kit "${directoryName}"? This cannot be undone.`)) return;
-    try {
-      await deleteDrumKit(libraryHandle, directoryName, path);
-      if (selection?.type === 'drumKit' && selection.name === directoryName) { setSelection(null); setSelectedDrumKitBundle(null); }
-      const [updatedKits, updatedTree] = await Promise.all([listDrumKits(libraryHandle), listDrumKitsTree(libraryHandle)]);
-      setDrumKits(updatedKits);
-      setDrumKitsTree(updatedTree);
-    } catch (err) {
-      console.error('[LibraryPage] Failed to delete drum kit:', err);
-      setError(err instanceof Error ? err.message : 'Failed to delete drum kit');
-    }
-  }, [libraryHandle, selection, setSelection, setSelectedDrumKitBundle, setDrumKits, setDrumKitsTree, setError]);
-
   // Get tree for move dialog
   const getMoveDialogTree = useCallback((): LibraryTreeNode[] => {
     if (!moveItemDialog) return [];
     switch (moveItemDialog.category) {
       case 'tones': return tonesTree;
       case 'patches': return patchesTree;
-      case 'drum-kits': return drumKitsTree;
       default: return [];
     }
-  }, [moveItemDialog, tonesTree, patchesTree, drumKitsTree]);
+  }, [moveItemDialog, tonesTree, patchesTree]);
 
   return {
     createDirectoryDialog, renameDirectoryDialog, deleteDirectoryDialog, moveItemDialog,
@@ -303,7 +272,7 @@ export function useDirectoryOperations({
     closeCreateDirectoryDialog, closeRenameDirectoryDialog, closeDeleteDirectoryDialog, closeMoveItemDialog,
     handleCreateDirectory, handleRenameDirectory, handleDeleteDirectory, handleMoveItem,
     handleDropMoveItem, handleRenameItem, handleRenameSet,
-    handleDeleteSet, handleDeleteIndividualTone, handleDeleteIndividualPatch, handleDeleteDrumKit,
+    handleDeleteSet, handleDeleteIndividualTone, handleDeleteIndividualPatch,
     getMoveDialogTree,
   };
 }

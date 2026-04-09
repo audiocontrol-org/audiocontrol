@@ -15,7 +15,6 @@ import {
 import {
   toneItemType,
   patchItemType,
-  drumKitItemType,
 } from './item-types';
 
 // Re-export common-area category factories from editor-core
@@ -74,27 +73,6 @@ export function createPatchesCategory(): CategoryPlugin {
       const data = dragData as { type?: string };
       return data?.type === 'patch';
     },
-
-    renderHeaderActions: (callbacks: CategoryCallbacks) => (
-      <NewFolderButton onClick={callbacks.createFolder} />
-    ),
-  };
-}
-
-// =========================================================================
-// Drum Kits Category
-// =========================================================================
-
-export function createDrumKitsCategory(): CategoryPlugin {
-  return {
-    categoryId: 'drumKits',
-    title: 'Drum Kits',
-    itemTypes: {
-      'drum-kit': drumKitItemType,
-    },
-    emptyMessage: 'No drum kits in library',
-    dropMessage: 'Drop to save drum kit',
-    acceptsExternalDrop: false,
 
     renderHeaderActions: (callbacks: CategoryCallbacks) => (
       <NewFolderButton onClick={callbacks.createFolder} />

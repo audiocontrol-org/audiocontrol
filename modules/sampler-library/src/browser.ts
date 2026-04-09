@@ -418,8 +418,6 @@ export {
   scanLibraryDirectory,
   scanTonesDirectory,
   listTonesTree,
-  scanDrumKitsDirectory,
-  listDrumKitsTree,
   scanPatchesDirectory,
   listPatchesTree,
   scanCommonSamplesDirectory,

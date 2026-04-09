@@ -5,28 +5,21 @@
  * with action buttons for import/export.
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
-import type { SetYaml, ResolvedDrumKitBundle, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
-import { slicesToDrumKit } from '@audiocontrol/sampler-library/browser';
-import { SampleChopperDialog, type ChopperResult } from '@audiocontrol/sample-chopper/ui';
+import type { SetYaml, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import type { ItemSelection } from '@/pages/LibraryPage';
 import {
   loadToneFromSet,
   loadPatchFromSet,
   loadSetManifest,
   loadIndividualTone,
-  loadIndividualToneWavSamples,
   loadIndividualPatch,
-  loadDrumKitBundle,
   convertYamlToS330Tone,
   convertYamlToS330Patch,
-  loadToneWavSamples,
-  saveDrumKitToLibrary,
   getPatchToneDependencies,
 } from '@/lib/library-service';
 import { formatToneSlot, formatPatchSlot } from '@/lib/s330-format';
-import { S330KitOutputConfig, type S330KitConfig } from './S330KitOutputConfig';
 
 interface ItemPreviewPanelProps {
   selection: ItemSelection | null;
@@ -378,122 +371,14 @@ export function ItemPreviewPanel({
   const [loadingLibraryItem, setLoadingLibraryItem] = useState(false);
   const [libraryTone, setLibraryTone] = useState<SamplerTone | null>(null);
   const [libraryPatch, setLibraryPatch] = useState<SamplerPatch | null>(null);
-  const [libraryDrumKit, setLibraryDrumKit] = useState<ResolvedDrumKitBundle | null>(null);
   const [libraryManifest, setLibraryManifest] = useState<SetYaml | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
-
-  // State for sample chopper
-  const [chopperOpen, setChopperOpen] = useState(false);
-  const [chopperSamples, setChopperSamples] = useState<Int16Array | null>(null);
-  const [chopperSampleRate, setChopperSampleRate] = useState(44100);
-  const [loadingWavForChopper, setLoadingWavForChopper] = useState(false);
-
-  // Handle opening the sample chopper
-  const handleChopSample = useCallback(async () => {
-    if (!libraryHandle || !selection?.name) return;
-
-    setLoadingWavForChopper(true);
-    try {
-      let samples: Int16Array;
-      let sampleRate: number;
-
-      if (selection.type === 'individualTone') {
-        // Load from individual tones directory
-        const result = await loadIndividualToneWavSamples(libraryHandle, selection.name, selection.path ?? []);
-        samples = result.samples;
-        sampleRate = result.sampleRate;
-      } else if (selection.setName) {
-        // Load from set
-        const result = await loadToneWavSamples(libraryHandle, selection.setName, selection.name);
-        samples = result.samples;
-        sampleRate = result.sampleRate;
-      } else {
-        throw new Error('No set name provided for tone');
-      }
-
-      setChopperSamples(samples);
-      setChopperSampleRate(sampleRate);
-      setChopperOpen(true);
-    } catch (err) {
-      console.error('[ItemPreviewPanel] Failed to load WAV for chopping:', err);
-      setLoadError(err instanceof Error ? err.message : 'Failed to load WAV');
-    } finally {
-      setLoadingWavForChopper(false);
-    }
-  }, [libraryHandle, selection?.setName, selection?.name, selection?.type]);
-
-  // S-330-specific kit output config state
-  const [kitConfig, setKitConfig] = useState<S330KitConfig>({
-    name: '',
-    sampleRate: 15000,
-    baseNote: 36,
-    transpose: 0,
-    velocitySensitivity: 2,
-  });
-
-  // Initialize kit name from selection when chopper opens
-  useEffect(() => {
-    if (chopperOpen && selection?.name) {
-      setKitConfig((prev) => ({
-        ...prev,
-        name: prev.name || selection.name!.replace(/\.wav$/i, '').toUpperCase().slice(0, 12),
-      }));
-    }
-  }, [chopperOpen, selection?.name]);
-
-  // Handle when chopper confirms slices
-  const handleChopperConfirm = useCallback(
-    async (result: ChopperResult) => {
-      if (!libraryHandle) return;
-
-      try {
-        const kit = slicesToDrumKit(
-          {
-            slices: result.sliceDefinitions.map((s, i) => ({
-              index: i,
-              startSample: s.startSample,
-              endSample: s.endSample,
-              samples: result.sourceAudio.samples.slice(s.startSample, s.endSample),
-              durationMs: ((s.endSample - s.startSample) / result.sourceAudio.sampleRate) * 1000,
-            })),
-            sampleRate: result.sourceAudio.sampleRate,
-            totalDurationMs: (result.sourceAudio.samples.length / result.sourceAudio.sampleRate) * 1000,
-          },
-          {
-            name: kitConfig.name || 'DRUM-KIT',
-            sampleRate: kitConfig.sampleRate,
-            baseNote: kitConfig.baseNote,
-            transpose: kitConfig.transpose !== 0 ? kitConfig.transpose : undefined,
-            velocitySensitivity: kitConfig.velocitySensitivity,
-          }
-        );
-
-        await saveDrumKitToLibrary(
-          libraryHandle,
-          kit.name,
-          result.sourceAudio,
-          result.sliceDefinitions,
-          {
-            name: kit.name,
-            sampleRate: kit.sampleRate,
-            baseNote: kit.baseNote,
-            transpose: kit.transpose,
-            velocitySensitivity: kit.velocitySensitivity,
-          }
-        );
-      } catch (err) {
-        console.error('[ItemPreviewPanel] Failed to save drum kit:', err);
-      }
-    },
-    [libraryHandle, kitConfig]
-  );
 
   // Load library item when selection changes
   useEffect(() => {
     // Reset state
     setLibraryTone(null);
     setLibraryPatch(null);
-    setLibraryDrumKit(null);
     setLibraryManifest(null);
     setLoadError(null);
 
@@ -541,24 +426,6 @@ export function ItemPreviewPanel({
         }
       };
       loadIndividual();
-      return;
-    }
-
-    // Handle drum kits
-    if (selection.type === 'drumKit' && selection.name) {
-      const loadKit = async () => {
-        setLoadingLibraryItem(true);
-        try {
-          const kit = await loadDrumKitBundle(libraryHandle, selection.name!, selection.path ?? []);
-          setLibraryDrumKit(kit);
-        } catch (err) {
-          console.error('[ItemPreviewPanel] Failed to load drum kit:', err);
-          setLoadError(err instanceof Error ? err.message : 'Failed to load drum kit');
-        } finally {
-          setLoadingLibraryItem(false);
-        }
-      };
-      loadKit();
       return;
     }
 
@@ -687,23 +554,6 @@ export function ItemPreviewPanel({
                 onImport={onImportIndividualTone ? () => onImportIndividualTone(selection.name!) : undefined}
                 onOpenInLoopEditor={onOpenInLoopEditor ? () => onOpenInLoopEditor(selection.name!, 'tone', selection.path) : undefined}
                 onOpenInSampleEditor={onOpenInSampleEditor ? () => onOpenInSampleEditor(selection.name!, 'tone', selection.path) : undefined}
-                onChopSample={libraryHandle ? handleChopSample : undefined}
-                isLoadingWav={loadingWavForChopper}
-              />
-              <SampleChopperDialog
-                open={chopperOpen}
-                onOpenChange={setChopperOpen}
-                samples={chopperSamples}
-                sampleRate={chopperSampleRate}
-                sourceName={selection.name}
-                onConfirm={handleChopperConfirm}
-                renderOutputConfig={(state) => (
-                  <S330KitOutputConfig
-                    state={state}
-                    config={kitConfig}
-                    onConfigChange={setKitConfig}
-                  />
-                )}
               />
             </>
           ) : (
@@ -746,61 +596,6 @@ export function ItemPreviewPanel({
     );
   }
 
-  // Drum kit selected
-  if (selection.source === 'library' && selection.type === 'drumKit' && selection.name) {
-    return (
-      <div className="h-full flex flex-col">
-        <div className="p-3 border-b border-s330-accent">
-          <h3 className="font-bold text-s330-text">Drum Kit</h3>
-        </div>
-        <div className="flex-1 overflow-y-auto p-4">
-          {loadingLibraryItem ? (
-            <LoadingState />
-          ) : loadError ? (
-            <ErrorState message={loadError} />
-          ) : libraryDrumKit ? (
-            <div className="space-y-4">
-              <div>
-                <div className="text-xs text-s330-muted uppercase tracking-wide mb-1">
-                  Library Drum Kit
-                </div>
-                <h4 className="text-lg font-bold text-s330-text">{libraryDrumKit.name}</h4>
-                {libraryDrumKit.description && (
-                  <p className="text-sm text-s330-muted mt-1">{libraryDrumKit.description}</p>
-                )}
-              </div>
-
-              <div className="bg-s330-bg rounded p-3 text-sm space-y-3">
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <span className="text-s330-muted text-xs">Sample Rate</span>
-                    <div className="text-s330-text">{libraryDrumKit.sampleRate} Hz</div>
-                  </div>
-                  <div>
-                    <span className="text-s330-muted text-xs">Base Note</span>
-                    <div className="text-s330-text">{libraryDrumKit.baseNote}</div>
-                  </div>
-                  <div>
-                    <span className="text-s330-muted text-xs">Kits</span>
-                    <div className="text-s330-text">{libraryDrumKit.kits.length}</div>
-                  </div>
-                  <div>
-                    <span className="text-s330-muted text-xs">Total Samples</span>
-                    <div className="text-s330-text">{libraryDrumKit.totalSamples}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center text-s330-muted text-sm py-8">
-              <p>Could not load drum kit</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
   // Library tone selected (within a set)
   if (selection.source === 'library' && selection.type === 'tone' && selection.setName && selection.name) {
     return (
@@ -822,23 +617,6 @@ export function ItemPreviewPanel({
                 onImport={onImportTone ? () => onImportTone(selection.setName!, selection.name!) : undefined}
                 onOpenInLoopEditor={onOpenInLoopEditor ? () => onOpenInLoopEditor(selection.name!, 'tone', selection.path) : undefined}
                 onOpenInSampleEditor={onOpenInSampleEditor ? () => onOpenInSampleEditor(selection.name!, 'tone', selection.path) : undefined}
-                onChopSample={libraryHandle ? handleChopSample : undefined}
-                isLoadingWav={loadingWavForChopper}
-              />
-              <SampleChopperDialog
-                open={chopperOpen}
-                onOpenChange={setChopperOpen}
-                samples={chopperSamples}
-                sampleRate={chopperSampleRate}
-                sourceName={selection.name}
-                onConfirm={handleChopperConfirm}
-                renderOutputConfig={(state) => (
-                  <S330KitOutputConfig
-                    state={state}
-                    config={kitConfig}
-                    onConfigChange={setKitConfig}
-                  />
-                )}
               />
             </>
           ) : (

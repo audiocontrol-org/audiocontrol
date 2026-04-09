@@ -9,7 +9,6 @@
 
 import { useState, useCallback } from 'react';
 import type {
-  DrumKitInfo,
   LibraryToneInfo,
   LibraryPatchInfo,
 } from '@/lib/library-service';
@@ -38,7 +37,6 @@ export interface LibraryTreeDragDropHandlers {
   handlePatchDrop: (e: React.DragEvent) => void;
   handleIndividualToneDragStart: (e: React.DragEvent, toneInfo: LibraryToneInfo) => void;
   handleIndividualPatchDragStart: (e: React.DragEvent, patchInfo: LibraryPatchInfo) => void;
-  handleDrumKitDragStart: (e: React.DragEvent, kitInfo: DrumKitInfo) => void;
   handleSetToneDragStart: (e: React.DragEvent, toneFile: string, setName: string) => void;
   handleSetPatchDragStart: (e: React.DragEvent, patchFile: string, setName: string) => void;
 }
@@ -144,17 +142,6 @@ export function useLibraryTreeDragDrop({
     e.dataTransfer.effectAllowed = 'copy';
   }, []);
 
-  // Handle drag start for drum kits (library -> device)
-  const handleDrumKitDragStart = useCallback((e: React.DragEvent, kitInfo: DrumKitInfo) => {
-    const dragData: LibraryDragData = {
-      source: 'library',
-      type: 'drumKit',
-      name: kitInfo.directoryName,
-    };
-    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
-    e.dataTransfer.effectAllowed = 'copy';
-  }, []);
-
   // Handle drag start for tones within sets (library -> device)
   const handleSetToneDragStart = useCallback((e: React.DragEvent, toneFile: string, setName: string) => {
     const dragData: LibraryDragData = {
@@ -194,7 +181,6 @@ export function useLibraryTreeDragDrop({
     handlePatchDrop,
     handleIndividualToneDragStart,
     handleIndividualPatchDragStart,
-    handleDrumKitDragStart,
     handleSetToneDragStart,
     handleSetPatchDragStart,
   };

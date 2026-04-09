@@ -34,13 +34,11 @@ import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
 import {
   useImportSamples,
-  drumKitBundleToImportBundle,
 } from '@/hooks/useImportSamples';
 import { useLibraryExport } from '@/hooks/useLibraryExport';
 import { useLibraryImportDialogs } from '@/hooks/useLibraryImportDialogs';
 import { useRolandLibraryStrategy } from '@/hooks/useRolandLibraryStrategy';
 
-import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 import { useRolandEditorDialogs } from '@/hooks/useRolandEditorDialogs';
 import { useRolandLibraryData } from '@/hooks/useRolandLibraryData';
 import { useRolandSelectionMapping } from '@/hooks/useRolandSelectionMapping';
@@ -50,7 +48,7 @@ import { cn } from '@/lib/utils';
 /** Selection state for items in either panel */
 export interface ItemSelection {
   source: 'device' | 'library';
-  type: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch' | 'sample' | 'program';
+  type: 'tone' | 'patch' | 'set' | 'individualTone' | 'individualPatch' | 'sample' | 'program';
   index?: number;
   name?: string;
   setName?: string;
@@ -90,7 +88,6 @@ export function LibraryPage() {
   const libraryData = useRolandLibraryData(libraryHandle);
   const {
     categoryData,
-    selectedDrumKitBundle, setSelectedDrumKitBundle,
     setIndividualTones, setIndividualPatches,
     handleRefreshLibrary,
   } = libraryData;
@@ -98,7 +95,7 @@ export function LibraryPage() {
   const {
     selection, setSelection,
     handlePluginSelectionChange, handleSelectDevice, handleSelectLibrary,
-  } = useRolandSelectionMapping(libraryHandle, setSelectedDrumKitBundle);
+  } = useRolandSelectionMapping(libraryHandle);
 
   useEffect(() => {
     if (!adapter) { clientRef.current = null; return; }
@@ -111,14 +108,12 @@ export function LibraryPage() {
   const {
     importSamplesDialog, isOperating: isSamplesOperating,
     progress: samplesProgress, error: samplesError,
-    openImportSamplesDialog, closeImportSamplesDialog, handleImportSamples,
+    closeImportSamplesDialog, handleImportSamples,
   } = useImportSamples({ clientRef, libraryHandle, setTone: setToneForHook, setPatch: setPatchForHook });
 
   const editorDialogs = useRolandEditorDialogs({
     libraryHandle,
     selection,
-    selectedDrumKitBundle,
-    setSelectedDrumKitBundle,
     setLoading: (loading: boolean, message?: string) => setLoading(loading, message),
     onError: (message: string) => setError(message),
     onRefresh: handleRefreshLibrary,
@@ -144,15 +139,9 @@ export function LibraryPage() {
     clientRef, libraryHandle, tones, patches, setIndividualTones, setIndividualPatches,
   });
 
-  // Wrapper to provide openImportSamplesDialog with drum kit conversion
-  const openImportDrumKitDialogCompat = useCallback((kitName: string, bundle: ResolvedDrumKitBundle, path?: string[]) => {
-    const importBundle = drumKitBundleToImportBundle(bundle);
-    openImportSamplesDialog(kitName, importBundle, 'drumKit', path);
-  }, [openImportSamplesDialog]);
-
   const importDialogs = useLibraryImportDialogs({
     clientRef, libraryHandle, setTone, setPatch, totalTones, totalPatches,
-    openImportDrumKitDialog: openImportDrumKitDialogCompat, selection, handleRefreshLibrary,
+    selection, handleRefreshLibrary,
   });
 
   const handleLoadDeviceData = useCallback(async () => {
@@ -180,16 +169,6 @@ export function LibraryPage() {
     } finally { setLoading(false); }
   }, [setLoading, setError, setTone, setPatch, ensureToneArraySize, ensurePatchArraySize, markToneBankLoaded, markPatchBankLoaded, totalTones, tonesPerBank, totalPatches, patchesPerBank]);
 
-  // Import handlers
-  const handleOpenSamplesImport = useCallback(() => {
-    if (!selection) return;
-
-    if (selection.type === 'drumKit' && selectedDrumKitBundle) {
-      const importBundle = drumKitBundleToImportBundle(selectedDrumKitBundle);
-      openImportSamplesDialog(selection.name!, importBundle, 'drumKit', selection.path);
-    }
-  }, [selection, selectedDrumKitBundle, openImportSamplesDialog]);
-
   // -----------------------------------------------------------------------
   // Computed state for PluginLibraryBrowser
   // -----------------------------------------------------------------------
@@ -199,7 +178,6 @@ export function LibraryPage() {
     return {
       categoryId: selection.type === 'individualTone' ? 'tones'
         : selection.type === 'individualPatch' ? 'patches'
-        : selection.type === 'drumKit' ? 'drumKits'
         : selection.type === 'sample' || selection.type === 'program' ? 'samples'
         : selection.type === 'set' ? 'sets'
         : 'tones',
@@ -223,18 +201,15 @@ export function LibraryPage() {
     deviceTones: tones,
     devicePatches: patches,
     libraryHandle,
-    selectedDrumKitBundle,
     onImportTone: importDialogs.handleOpenImportToneDialog,
     onImportPatch: importDialogs.handleOpenImportPatchDialog,
     onImportIndividualTone: importDialogs.handleOpenImportIndividualToneDialog,
     onImportIndividualPatch: importDialogs.handleOpenImportIndividualPatchDialog,
     onLoadSet: importDialogs.handleOpenLoadDialog,
-    onImportDrumKit: handleOpenSamplesImport,
-    onEditDrumKit: editorDialogs.handleEditKit,
     onOpenInLoopEditor: (name: string, path?: string[]) => editorDialogs.handleOpenInLoopEditor(name, 'sample', path),
     onOpenInChopper: (name: string, path?: string[]) => editorDialogs.handleOpenInChopper(name, 'sample', path),
     onOpenInSampleEditor: (name: string, path?: string[]) => editorDialogs.handleOpenInSampleEditor(name, 'sample', path),
-  }), [selection, tones, patches, libraryHandle, selectedDrumKitBundle, importDialogs, handleOpenSamplesImport, editorDialogs]);
+  }), [selection, tones, patches, libraryHandle, importDialogs, editorDialogs]);
 
   const connectionSlot = (
     <LibraryConnectionUI
@@ -359,17 +334,6 @@ export function LibraryPage() {
           bundle={importSamplesDialog.bundle} deviceTones={tones} devicePatches={patches}
           onImport={handleImportSamples} isOperating={isSamplesOperating}
           progress={samplesProgress} error={samplesError}
-        />
-      )}
-      {editorDialogs.sliceEditDialog && (
-        <SampleChopperDialog
-          open={editorDialogs.sliceEditDialog.open} onOpenChange={(open) => { if (!open) editorDialogs.closeSliceEditDialog(); }}
-          samples={editorDialogs.sliceEditDialog.samples} sampleRate={editorDialogs.sliceEditDialog.sampleRate}
-          sourceName={editorDialogs.sliceEditDialog.kitName} onConfirm={() => {}} editMode={true}
-          initialSlices={editorDialogs.sliceEditDialog.slices}
-          initialLabels={editorDialogs.sliceEditDialog.slices?.map((s) => s.label).join(',')}
-          onSlicesUpdated={(slices) => editorDialogs.handleSlicesUpdated(slices, {})}
-          onOpenSampleEditor={editorDialogs.handleOpenSliceEditorFromSampleEditor}
         />
       )}
       <ExportToneDialog

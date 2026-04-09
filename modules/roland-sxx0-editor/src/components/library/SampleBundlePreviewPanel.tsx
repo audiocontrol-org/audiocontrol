@@ -13,10 +13,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  loadDrumKitBundle,
-  loadDrumKitSource,
   loadChoppedSampleManifest,
-  type DrumKitInfo,
 } from '@/lib/library-service';
 import { DrumKitPadList } from '@/components/library/DrumKitPadList';
 import {
@@ -36,6 +33,14 @@ import type { LibraryTreeNode } from '@/lib/library-service';
 // =========================================================================
 // Props
 // =========================================================================
+
+/** Information about a drum kit in the library (now only used by this legacy panel). */
+interface DrumKitInfo {
+  name: string;
+  directoryName: string;
+  kitCount: number;
+  sampleCount: number;
+}
 
 interface SampleBundlePreviewPanelProps {
   /** For drum kit items */
@@ -182,8 +187,7 @@ export function SampleBundlePreviewPanel({
 
     setIsLoadingAudio(true);
     try {
-      const result = await loadDrumKitSource(libraryHandle, kitName, bundle.source);
-      setAudioSamples(result.samples);
+      throw new Error('Device-specific drum kit storage has been removed. Drum kits are now common-area objects.');
     } catch (err) {
       console.error('[SampleBundlePreviewPanel] Failed to load audio:', err);
     } finally {
@@ -214,8 +218,7 @@ export function SampleBundlePreviewPanel({
       const loadBundle = async () => {
         setLoading(true);
         try {
-          const resolved = await loadDrumKitBundle(libraryHandle, kitInfo.directoryName);
-          setBundle(resolved);
+          throw new Error('Device-specific drum kit storage has been removed. Drum kits are now common-area objects.');
         } catch (err) {
           console.error('[SampleBundlePreviewPanel] Failed to load drum kit:', err);
           setError(err instanceof Error ? err.message : 'Failed to load drum kit');

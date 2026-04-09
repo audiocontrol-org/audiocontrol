@@ -20,8 +20,6 @@ import {
   importMonolithicDrumKit,
 } from '@audiocontrol/sampler-devices/s330';
 import {
-  loadDrumKitSample,
-  loadDrumKitSource,
   loadChoppedSampleSource,
   prepareWavForS330,
 } from '@/lib/library-service';
@@ -303,7 +301,7 @@ async function loadSourceWav(
   path: string[]
 ): Promise<{ samples: Int16Array; sampleRate: number }> {
   if (sourceLocation === 'drumKit') {
-    return loadDrumKitSource(libraryHandle, name, sourceFilename, path);
+    throw new Error('Device-specific drum kit storage has been removed. Drum kits are now common-area objects.');
   }
   return loadChoppedSampleSource(libraryHandle, name, sourceFilename, path);
 }
@@ -494,9 +492,8 @@ export function useImportSamples({
             bundle.sampleRate
           );
         } else if (slice.filename) {
-          // v1 individual WAV files
-          const wavBytes = await loadDrumKitSample(libraryHandle, name, slice.filename, path);
-          prepared = prepareWavForS330(wavBytes.buffer as ArrayBuffer, bundle.sampleRate);
+          // v1 individual WAV files — device-specific drum kit storage has been removed
+          throw new Error(`Device-specific drum kit storage has been removed. Slice "${slice.label}" cannot be loaded from the old format.`);
         } else {
           throw new Error(`Slice "${slice.label}" has no source or filename`);
         }

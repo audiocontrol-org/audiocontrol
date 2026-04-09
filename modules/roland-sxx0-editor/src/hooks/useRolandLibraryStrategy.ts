@@ -14,11 +14,9 @@ import {
   createDirectory,
   deleteIndividualTone,
   deleteIndividualPatch,
-  deleteDrumKit,
   deleteDirectory,
   renameIndividualTone,
   renameIndividualPatch,
-  renameDrumKit,
   renameDirectory,
   deleteSet,
   renameSet,
@@ -31,7 +29,6 @@ import type { ItemSelection } from '@/pages/LibraryPage';
 
 /** Map plugin categoryId to the LibraryCategory type used by filesystem operations */
 function toLibraryCategory(categoryId: string): LibraryCategory {
-  if (categoryId === 'drumKits') return 'drum-kits';
   if (categoryId === 'tones' || categoryId === 'patches') return categoryId;
   // samples/programs are handled by the shared hook's common-area path
   return 'tones';
@@ -108,12 +105,6 @@ export function useRolandLibraryStrategy({
         if (selection?.type === 'individualPatch' && selection.name === name) setSelection(null);
         return true;
       }
-      if (node.type === 'drum-kit') {
-        await deleteDrumKit(libraryHandle, name, path);
-        if (selection?.type === 'drumKit' && selection.name === name) setSelection(null);
-        return true;
-      }
-
       return false;
     },
 
@@ -140,11 +131,6 @@ export function useRolandLibraryStrategy({
         await renameIndividualPatch(libraryHandle, oldName, newName, path);
         return true;
       }
-      if (node.type === 'drum-kit') {
-        await renameDrumKit(libraryHandle, oldName, newName, path);
-        return true;
-      }
-
       return false;
     },
   }), [libraryHandle, selection, setSelection]);

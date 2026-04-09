@@ -5,7 +5,6 @@
  * any consumer of the library layout:
  *
  *   {root}/library/{device}/tones/
- *   {root}/library/{device}/drum-kits/
  *   {root}/library/{device}/patches/
  *   {root}/library/{device}/sets/{name}/tones/
  *   {root}/library/common/samples/
@@ -22,18 +21,17 @@
 import { parse as parseYaml } from 'yaml';
 
 import type { StorageDirectoryHandle, StorageEntry } from './storage-handles.js';
-import { DrumKitBundleSchema, type DrumKitBundle, SampleYamlSchema, ProgramYamlSchema } from './schemas/index.js';
-import { loadDrumKitBundle as parseDrumKitBundle } from './drum-kits/index.js';
+import { SampleYamlSchema, ProgramYamlSchema } from './schemas/index.js';
 
 // =========================================================================
 // Types
 // =========================================================================
 
 /** Library item category types that support subdirectories. */
-export type LibraryCategory = 'tones' | 'patches' | 'drum-kits';
+export type LibraryCategory = 'tones' | 'patches';
 
 /** All category types. */
-export const LIBRARY_CATEGORIES: LibraryCategory[] = ['tones', 'patches', 'drum-kits'];
+export const LIBRARY_CATEGORIES: LibraryCategory[] = ['tones', 'patches'];
 
 /**
  * Tree node for rendering hierarchical library contents.
@@ -45,9 +43,8 @@ export interface LibraryTreeNode {
   /** Display name */
   name: string;
   /** Node type. Common-area samples are always 'sample' — slice/drum-kit state
-   *  is in metadata (sliceCount, hasDrumKit). The 'drum-kit' type is only used
-   *  by Roland device-specific drum kits (kit.yaml format — see #182). */
-  type: 'directory' | 'tone' | 'patch' | 'sample' | 'program' | 'drum-kit';
+   *  is in metadata (sliceCount, hasDrumKit). */
+  type: 'directory' | 'tone' | 'patch' | 'sample' | 'program';
   /** Path segments from category root (empty for root items) */
   path: string[];
   /** Child nodes (only for directories) */
@@ -60,9 +57,8 @@ export interface LibraryTreeNode {
   directoryName?: string;
   /** Additional metadata for patches */
   toneCount?: number;
-  /** Additional metadata for drum kits */
+  /** Additional metadata for programs */
   kitCount?: number;
-  sampleCount?: number;
   description?: string;
   /** Number of slices (if sample has slice definitions) */
   sliceCount?: number;
@@ -276,45 +272,6 @@ const detectTone: ItemDetector = async (entry, _parentDir, path) => {
   };
 };
 
-/** Detect a drum kit: a directory containing `.wav` files. */
-const detectDrumKit: ItemDetector = async (entry, parentDir, path) => {
-  if (entry.kind !== 'directory') return null;
-
-  const subDir = await parentDir.getDirectoryHandle(entry.name);
-  const wavFiles: string[] = [];
-  let kitYaml: DrumKitBundle | null = null;
-
-  for await (const file of subDir.values()) {
-    if (file.kind !== 'file') continue;
-    if (file.name.toLowerCase().endsWith('.wav')) {
-      wavFiles.push(file.name);
-    } else if (file.name === 'kit.yaml') {
-      try {
-        const fileHandle = await subDir.getFileHandle('kit.yaml');
-        const yamlFile = await fileHandle.getFile();
-        const yamlContent = await yamlFile.text();
-        kitYaml = DrumKitBundleSchema.parse(parseYaml(yamlContent));
-      } catch {
-        // Invalid kit.yaml
-      }
-    }
-  }
-
-  if (wavFiles.length === 0) return null;
-
-  const resolved = parseDrumKitBundle(kitYaml, wavFiles, entry.name);
-  return {
-    id: [...path, entry.name].join('/'),
-    name: resolved.name,
-    type: 'drum-kit',
-    path,
-    directoryName: entry.name,
-    description: resolved.description,
-    kitCount: resolved.kits.length,
-    sampleCount: resolved.totalSamples,
-  };
-};
-
 /** Detect a patch: a directory containing `patch.yaml`. */
 const detectPatch: ItemDetector = async (entry, parentDir, path) => {
   if (entry.kind !== 'directory') return null;
@@ -384,33 +341,6 @@ export async function listTonesTree(
   const tonesDir = await getNestedDirectoryIfExists(root, ['library', device, 'tones']);
   if (!tonesDir) return [];
   return scanTonesDirectory(tonesDir, []);
-}
-
-// =========================================================================
-// Drum kit scanning (wrapper over generic scanner)
-// =========================================================================
-
-/**
- * Recursively scan a directory for drum kits and build a tree structure.
- * A drum kit is a directory containing .wav files (and optionally kit.yaml).
- */
-export async function scanDrumKitsDirectory(
-  dir: StorageDirectoryHandle,
-  path: string[],
-): Promise<LibraryTreeNode[]> {
-  return scanLibraryDirectory(dir, path, detectDrumKit);
-}
-
-/**
- * List all drum kits for a device as a hierarchical tree.
- */
-export async function listDrumKitsTree(
-  root: StorageDirectoryHandle,
-  device: string,
-): Promise<LibraryTreeNode[]> {
-  const kitsDir = await getNestedDirectoryIfExists(root, ['library', device, 'drum-kits']);
-  if (!kitsDir) return [];
-  return scanDrumKitsDirectory(kitsDir, []);
 }
 
 // =========================================================================

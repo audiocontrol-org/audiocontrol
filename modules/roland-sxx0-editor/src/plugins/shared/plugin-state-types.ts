@@ -9,7 +9,7 @@
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { LibraryDragData } from '@/components/library/DeviceMemoryPanel';
 import type { ItemSelection } from '@/pages/LibraryPage';
-import type { ResolvedDrumKitBundle, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
+import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 
 // =========================================================================
 // Device Memory Panel Custom State
@@ -59,17 +59,12 @@ export interface PreviewPanelCustomState {
   devicePatches: (SamplerPatch | undefined)[];
   /** File system handle for the library */
   libraryHandle: StorageDirectoryHandle | null;
-  /** Preloaded drum kit bundle (if selection is a drum kit) */
-  selectedDrumKitBundle?: ResolvedDrumKitBundle | null;
-
   // Import callbacks
   onImportTone?: (setName: string, toneFile: string) => void;
   onImportPatch?: (setName: string, patchFile: string) => void;
   onImportIndividualTone?: (toneFile: string) => void;
   onImportIndividualPatch?: (patchDirectoryName: string, path?: string[]) => void;
   onLoadSet?: () => void;
-  onImportDrumKit?: () => void;
-  onEditDrumKit?: () => void;
 
   // Tool action callbacks
   onOpenInLoopEditor?: (name: string, path?: string[]) => void;

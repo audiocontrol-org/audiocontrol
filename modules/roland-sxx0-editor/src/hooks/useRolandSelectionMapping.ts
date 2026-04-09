@@ -8,8 +8,7 @@
 
 import { useState, useCallback } from 'react';
 import type { ItemSelection as PluginItemSelection } from '@audiocontrol/editor-core';
-import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
-import { loadDrumKitBundle, type StorageDirectoryHandle } from '@/lib/library-service';
+import type { StorageDirectoryHandle } from '@/lib/library-service';
 import type { ItemSelection } from '@/pages/LibraryPage';
 
 // =========================================================================
@@ -29,15 +28,13 @@ export interface RolandSelectionMappingResult {
 // =========================================================================
 
 export function useRolandSelectionMapping(
-  libraryHandle: StorageDirectoryHandle | null,
-  setSelectedDrumKitBundle: (bundle: ResolvedDrumKitBundle | null) => void,
+  _libraryHandle: StorageDirectoryHandle | null,
 ): RolandSelectionMappingResult {
   const [selection, setSelection] = useState<ItemSelection | null>(null);
 
   const handlePluginSelectionChange = useCallback((pluginSelection: PluginItemSelection | null) => {
     if (!pluginSelection) {
       setSelection(null);
-      setSelectedDrumKitBundle(null);
       return;
     }
 
@@ -60,18 +57,6 @@ export function useRolandSelectionMapping(
         name: nodeMeta.directoryName ?? node.name,
         path: nodeMeta.path,
       };
-    } else if (categoryId === 'drumKits') {
-      pageSelection = {
-        source: 'library',
-        type: 'drumKit',
-        name: nodeMeta.directoryName ?? node.name,
-        path: nodeMeta.path,
-      };
-      if (libraryHandle) {
-        loadDrumKitBundle(libraryHandle, nodeMeta.directoryName ?? node.name, nodeMeta.path)
-          .then(setSelectedDrumKitBundle)
-          .catch((err) => console.error('[useRolandSelectionMapping] Failed to load drum kit bundle:', err));
-      }
     } else if (categoryId === 'samples') {
       if (node.type === 'program') {
         pageSelection = {
@@ -98,8 +83,7 @@ export function useRolandSelectionMapping(
     }
 
     setSelection(pageSelection);
-    if (categoryId !== 'drumKits') setSelectedDrumKitBundle(null);
-  }, [libraryHandle, setSelectedDrumKitBundle]);
+  }, []);
 
   const handleSelectDevice = useCallback(
     (type: 'tone' | 'patch', index: number) => setSelection({ source: 'device', type, index }),
@@ -109,9 +93,8 @@ export function useRolandSelectionMapping(
   const handleSelectLibrary = useCallback(
     (type: 'tone' | 'patch' | 'set', name: string, setName?: string) => {
       setSelection({ source: 'library', type, name, setName });
-      setSelectedDrumKitBundle(null);
     },
-    [setSelectedDrumKitBundle],
+    [],
   );
 
   return {

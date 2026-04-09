@@ -8,26 +8,25 @@
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import {
-  listSets, listDrumKits, listIndividualTones, listIndividualPatches,
-  listIndividualTonesTree, listIndividualPatchesTree, listDrumKitsTree,
+  listSets, listIndividualTones, listIndividualPatches,
+  listIndividualTonesTree, listIndividualPatchesTree,
   listCommonSamplesTree,
-  type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo, type LibraryTreeNode,
+  type LibraryToneInfo, type LibraryPatchInfo, type LibraryTreeNode,
   type StorageDirectoryHandle,
 } from '@/lib/library-service';
 import { useLibraryStore } from '@/stores/libraryStore';
-import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
 
 // =========================================================================
 // Data loading
 // =========================================================================
 
 async function loadAllLibraryData(handle: StorageDirectoryHandle) {
-  const [setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, commonSamplesTreeData] = await Promise.all([
-    listSets(handle), listDrumKits(handle), listIndividualTones(handle), listIndividualPatches(handle),
-    listIndividualTonesTree(handle), listIndividualPatchesTree(handle), listDrumKitsTree(handle),
+  const [setList, toneList, patchList, tonesTreeData, patchesTreeData, commonSamplesTreeData] = await Promise.all([
+    listSets(handle), listIndividualTones(handle), listIndividualPatches(handle),
+    listIndividualTonesTree(handle), listIndividualPatchesTree(handle),
     listCommonSamplesTree(handle),
   ]);
-  return { setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, commonSamplesTreeData };
+  return { setList, toneList, patchList, tonesTreeData, patchesTreeData, commonSamplesTreeData };
 }
 
 // =========================================================================
@@ -38,22 +37,14 @@ export interface RolandLibraryDataResult {
   // Tree data for plugin categories
   tonesTree: LibraryTreeNode[];
   patchesTree: LibraryTreeNode[];
-  drumKitsTree: LibraryTreeNode[];
   commonSamplesTree: LibraryTreeNode[];
   categoryData: Record<string, LibraryTreeNode[]>;
 
   // Flat lists (used by legacy hooks)
-  drumKits: DrumKitInfo[];
   setIndividualTones: React.Dispatch<React.SetStateAction<LibraryToneInfo[]>>;
   setIndividualPatches: React.Dispatch<React.SetStateAction<LibraryPatchInfo[]>>;
   setTonesTree: React.Dispatch<React.SetStateAction<LibraryTreeNode[]>>;
   setPatchesTree: React.Dispatch<React.SetStateAction<LibraryTreeNode[]>>;
-  setDrumKits: React.Dispatch<React.SetStateAction<DrumKitInfo[]>>;
-  setDrumKitsTree: React.Dispatch<React.SetStateAction<LibraryTreeNode[]>>;
-
-  // Drum kit bundle selection
-  selectedDrumKitBundle: ResolvedDrumKitBundle | null;
-  setSelectedDrumKitBundle: (bundle: ResolvedDrumKitBundle | null) => void;
 
   // Refresh
   handleRefreshLibrary: () => Promise<void>;
@@ -68,24 +59,19 @@ export function useRolandLibraryData(
 ): RolandLibraryDataResult {
   const { setSets, setLoading, setError } = useLibraryStore();
 
-  const [drumKits, setDrumKits] = useState<DrumKitInfo[]>([]);
-  const [selectedDrumKitBundle, setSelectedDrumKitBundle] = useState<ResolvedDrumKitBundle | null>(null);
   // Flat lists used for legacy hooks but not read directly (trees used for display)
   const [, setIndividualTones] = useState<LibraryToneInfo[]>([]);
   const [, setIndividualPatches] = useState<LibraryPatchInfo[]>([]);
   const [tonesTree, setTonesTree] = useState<LibraryTreeNode[]>([]);
   const [patchesTree, setPatchesTree] = useState<LibraryTreeNode[]>([]);
-  const [drumKitsTree, setDrumKitsTree] = useState<LibraryTreeNode[]>([]);
   const [commonSamplesTree, setCommonSamplesTree] = useState<LibraryTreeNode[]>([]);
 
   const applyLibraryData = useCallback((data: Awaited<ReturnType<typeof loadAllLibraryData>>) => {
     setSets(data.setList);
-    setDrumKits(data.kitList);
     setIndividualTones(data.toneList);
     setIndividualPatches(data.patchList);
     setTonesTree(data.tonesTreeData);
     setPatchesTree(data.patchesTreeData);
-    setDrumKitsTree(data.drumKitsTreeData);
     setCommonSamplesTree(data.commonSamplesTreeData);
   }, [setSets]);
 
@@ -118,25 +104,18 @@ export function useRolandLibraryData(
   const categoryData = useMemo(() => ({
     tones: tonesTree,
     patches: patchesTree,
-    drumKits: drumKitsTree,
     samples: commonSamplesTree,
-  }), [tonesTree, patchesTree, drumKitsTree, commonSamplesTree]);
+  }), [tonesTree, patchesTree, commonSamplesTree]);
 
   return {
     tonesTree,
     patchesTree,
-    drumKitsTree,
     commonSamplesTree,
     categoryData,
-    drumKits,
     setIndividualTones,
     setIndividualPatches,
     setTonesTree,
     setPatchesTree,
-    setDrumKits,
-    setDrumKitsTree,
-    selectedDrumKitBundle,
-    setSelectedDrumKitBundle,
     handleRefreshLibrary,
   };
 }

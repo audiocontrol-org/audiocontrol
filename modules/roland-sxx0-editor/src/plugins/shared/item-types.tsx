@@ -13,7 +13,7 @@ import {
   type CommonSampleMeta,
   type CommonProgramMeta,
 } from '@audiocontrol/editor-core';
-import { WaveIcon, PatchIcon, DrumKitIcon } from '@/components/library/LibraryTreeIcons';
+import { WaveIcon, PatchIcon } from '@/components/library/LibraryTreeIcons';
 
 // Re-export common-area types from editor-core
 export { commonSampleItemType, commonProgramItemType };
@@ -31,13 +31,6 @@ export interface ToneMeta {
 export interface PatchMeta {
   directoryName?: string;
   toneCount?: number;
-  path?: string[];
-}
-
-export interface DrumKitMeta {
-  directoryName?: string;
-  kitCount?: number;
-  sampleCount?: number;
   path?: string[];
 }
 
@@ -138,55 +131,3 @@ export const patchItemType: ItemTypePlugin<PatchMeta> = {
   ],
 };
 
-// =========================================================================
-// Drum Kit Item Type Plugin
-// =========================================================================
-
-export const drumKitItemType: ItemTypePlugin<DrumKitMeta> = {
-  typeId: 'drum-kit',
-  displayName: 'Drum Kit',
-
-  renderIcon: () => <DrumKitIcon />,
-
-  renderTrailing: (meta) => {
-    if (!meta || (meta.kitCount === undefined && meta.sampleCount === undefined)) {
-      return null;
-    }
-    const parts: string[] = [];
-    if (meta.kitCount !== undefined) {
-      parts.push(`${meta.kitCount} kit${meta.kitCount !== 1 ? 's' : ''}`);
-    }
-    if (meta.sampleCount !== undefined) {
-      parts.push(`${meta.sampleCount} samples`);
-    }
-    return (
-      <span className="text-xs text-s330-muted">
-        {parts.join(' / ')}
-      </span>
-    );
-  },
-
-  isDraggable: () => true,
-
-  supportsRename: true,
-
-  getContextMenuActions: () => [
-    {
-      id: 'rename',
-      label: 'Rename',
-      icon: null,
-    },
-    {
-      id: 'move',
-      label: 'Move to...',
-      icon: null,
-    },
-    { separator: true },
-    {
-      id: 'delete',
-      label: 'Delete',
-      icon: null,
-      danger: true,
-    },
-  ],
-};

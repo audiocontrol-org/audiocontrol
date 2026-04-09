@@ -28,11 +28,6 @@ export const COMMON_SAMPLES_PATH = ['library', 'common', 'samples'];
 export const ROLAND_TONES_PATH = ['library', 's330', 'tones'];
 export const ROLAND_PATCHES_PATH = ['library', 's330', 'patches'];
 export const ROLAND_SETS_PATH = ['library', 's330', 'sets'];
-// STORAGE VIOLATION (https://github.com/audiocontrol-org/audiocontrol/issues/182):
-// Drum kits are common-area objects, not device-specific. This path should be
-// COMMON_SAMPLES_PATH once Roland drum kit storage is migrated. Do not copy.
-export const ROLAND_DRUM_KITS_PATH = ['library', 's330', 'drum-kits'];
-
 /** Akai S3000XL device-specific library */
 export const S3K_PROGRAMS_PATH = ['library', 's3k', 'programs'];
 
@@ -318,7 +313,6 @@ export async function initializeRolandOPFS(page: Page): Promise<void> {
     await s330.getDirectoryHandle('tones', { create: true });
     await s330.getDirectoryHandle('patches', { create: true });
     await s330.getDirectoryHandle('sets', { create: true });
-    await s330.getDirectoryHandle('drum-kits', { create: true });
   });
 }
 
