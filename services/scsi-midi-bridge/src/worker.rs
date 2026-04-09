@@ -77,22 +77,13 @@ pub async fn scsi_worker(
                 let _ = reply.send(s2p.is_reachable().await);
             }
             ScsiWork::SysExSendReceive { message, expect_response, reply } => {
-                // Try streaming client first. If it returns empty data
-                // when we expect a response, fall back to protobuf.
-                let result = match stream.send_and_receive(&message).await {
-                    Ok(data) if !data.is_empty() || !expect_response => Ok(data),
-                    Ok(_) => {
-                        warn!("Streaming client returned empty response, falling back to protobuf");
-                        s2p.send_and_receive(&message).await
-                    }
-                    Err(e) => {
-                        warn!("Streaming client failed ({e}), falling back to protobuf");
-                        if expect_response {
-                            s2p.send_and_receive(&message).await
-                        } else {
-                            s2p.scsi_midi_send(s2p.target_id, &message).await.map(|_| Vec::new())
-                        }
-                    }
+                // Use the raw CDB path directly. The streaming client (port
+                // 6870) can return stale or incorrectly formatted data after
+                // SDS transfers, causing parse errors in the TypeScript client.
+                let result = if expect_response {
+                    s2p.send_and_receive(&message).await
+                } else {
+                    s2p.scsi_midi_send(s2p.target_id, &message).await.map(|_| Vec::new())
                 };
                 // Broadcast to WebSocket clients on success
                 if let Ok(ref data) = result {

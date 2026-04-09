@@ -316,6 +316,15 @@ impl S2pClient {
             0x00,
         ];
         let result = self.execute_scsi(target_id, 0, &cdb, &[], length, 10).await?;
+        let data = &result.data_in;
+        let preview: Vec<String> = data.iter().take(20).map(|b| format!("{:02X}", b)).collect();
+        info!(
+            requested = length,
+            received = data.len(),
+            status = result.status,
+            first_bytes = %preview.join(" "),
+            "scsi_midi_read"
+        );
         Ok(result.data_in)
     }
 
@@ -328,6 +337,17 @@ impl S2pClient {
         // when they finish, so we must re-enable before every SysEx exchange.
         // Disable when done so serial MIDI ports remain functional.
         self.scsi_midi_enable(self.target_id).await?;
+
+        // Flush any stale MIDI data left in the device's buffer from a
+        // previous session. Without this, re-enabling MIDI mode can surface
+        // leftover bytes that get prepended to the next response.
+        loop {
+            let pending = self.scsi_midi_poll(self.target_id).await?;
+            if pending == 0 { break; }
+            info!(pending, "flushing stale MIDI data before send");
+            let _ = self.scsi_midi_read(self.target_id, pending).await?;
+        }
+
         let result = self.send_and_receive_inner(sysex).await;
         let _ = self.scsi_midi_disable(self.target_id).await;
         result
@@ -371,29 +391,29 @@ impl S2pClient {
             } else if !result.is_empty() {
                 empty_polls += 1;
                 if empty_polls >= 2 {
-                    let t_total = t_start.elapsed();
-                    info!(
-                        total_ms = t_total.as_millis() as u64,
-                        send_ms = t_after_send.as_millis() as u64,
-                        poll_sleep_ms = total_poll_sleep_ms,
-                        s2p_io_ms = total_s2p_io_ms,
-                        poll_count = poll_count,
-                        response_bytes = result.len(),
-                        "send_and_receive complete"
-                    );
-                    return Ok(result);
+                    break;
                 }
             } else {
                 debug!(attempt = attempt + 1, "poll: no data yet");
             }
         }
 
+        // Trim to SysEx boundary: scsi_midi_read returns the full SCSI
+        // data-in buffer which may include padding beyond the F7 end byte.
+        // The parser expects exactly F0...F7 with no trailing garbage.
+        if let Some(end) = result.iter().rposition(|&b| b == 0xF7) {
+            result.truncate(end + 1);
+        }
+
         let t_total = t_start.elapsed();
-        warn!(
+        info!(
             total_ms = t_total.as_millis() as u64,
+            send_ms = t_after_send.as_millis() as u64,
+            poll_sleep_ms = total_poll_sleep_ms,
+            s2p_io_ms = total_s2p_io_ms,
             poll_count = poll_count,
             response_bytes = result.len(),
-            "send_and_receive: max attempts reached"
+            "send_and_receive complete"
         );
 
         Ok(result)
