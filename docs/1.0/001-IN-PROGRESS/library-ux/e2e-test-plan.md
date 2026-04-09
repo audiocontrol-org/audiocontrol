@@ -177,7 +177,7 @@ Run via: `modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARG
 #### `test-disk-browser.ts` (3 tests)
 - [x] Disk enumerate: probe all SCSI IDs, parse Akai partitions/volumes/files
 - [x] Disk read sample: read sample from disk, parse header, extract audio, convert to WAV
-- [x] Disk read program: read program from disk, parse keygroups, convert to common area (skipped — no S3000-format programs on test disks, only S1000)
+- [x] Disk read program: read program from disk, parse keygroups, convert to common area ("MOOGB" → 11 keygroups → 22 zones)
 
 ### Browser-based tests (Playwright) — DONE
 
@@ -226,7 +226,7 @@ Run via: `modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARG
 - [ ] Import common-area program to S3K → verify keygroups match zones — **blocked: multi-sample instruments not yet implemented**
 - [x] Disk browser: enumerate SCSI disks, parse Akai partitions/volumes/files (node test)
 - [x] Disk browser: read disk sample, convert to WAV (node test)
-- [ ] Disk browser: save disk program to S3K library (skipped — no S3000-format programs on test disks)
+- [x] Disk browser: read disk program, convert to common area (node test — fixed parser to use 192-byte records)
 - [ ] Disk browser: save disk sample to library as WAV (browser test)
 - [ ] Conversion boundary: disk ↔ device-specific library
 - [ ] Conversion boundary: disk ↔ common area
@@ -353,3 +353,4 @@ modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-device-library
 | — | Common-area extraction | Item types, categories, icons, DrumKitPadList in editor-core |
 | — | Category ID standardization | commonSamples/commonPrograms → samples/programs |
 | — | Duplicate code removal | library-chopped-samples.ts, library-drumkits.ts, choppedSamples category |
+| — | Disk program parser fix | 192-byte record size (not 8192), GROUPS offset 0x2A (not 0x23) per akaitools |
