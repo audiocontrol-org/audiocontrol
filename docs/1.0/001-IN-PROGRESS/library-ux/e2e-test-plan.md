@@ -159,6 +159,12 @@ Run via: `modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARG
 #### `test-writes.ts` (4 tests)
 - [x] Write program name, polyphony, filter frequency, sample name (all round-trip with restore)
 
+#### `test-multi-sds.ts` (1 test)
+- [x] Send 4 SDS samples back-to-back (no SysEx between), verify all arrive via RSLIST
+
+#### `test-drumkit.ts` (1 test)
+- [x] Staged drum kit import: 4 SDS uploads → RSLIST verify → 4 renames → program creation → 4 keygroups → readback verify → cleanup
+
 ### Browser-based tests (Playwright) — DONE
 
 #### `device-connected.spec.ts` (4 tests)
@@ -200,7 +206,7 @@ Run via: `modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARG
 
 ### Remaining Tier 3 gaps (browser)
 
-- [ ] Import drum kit → program + samples created on device
+- [ ] Import drum kit via browser UI → program + samples created on device (node test passes, browser test needs `importDrumKitToDevice` to use staged SDS approach)
 - [ ] Import instrument (common-area program) → keygroups created
 - [ ] Promote S3K program to common area → verify ProgramYaml
 - [ ] Import common-area program to S3K → verify keygroups match zones

@@ -282,6 +282,45 @@ export function createS3000xlClient(
   }
 
   // =========================================================================
+  // SDS Upload (internal — no RSLIST, no rename)
+  // =========================================================================
+
+  async function uploadRaw(
+    sampleNumber: number,
+    sampleData: Int16Array,
+    sampleRate: number,
+    onProgress?: (progress: SdsTransferProgress) => void,
+  ): Promise<void> {
+    console.log(`[s3000xl-client] uploadRaw: num=${sampleNumber} len=${sampleData.length}`);
+
+    if (sdsChannel) {
+      await sdsChannel.uploadSample(
+        sampleNumber,
+        channel,
+        sampleRate,
+        sampleData,
+        onProgress,
+      );
+    } else {
+      const header = buildSdsHeader(sampleNumber, sampleData, sampleRate, {});
+      await serialize(async () => {
+        const sender = createSdsSender(midiIO, {
+          channel,
+          header,
+          samples: sampleData,
+          mode: 'closed-loop',
+          onProgress: (progress) => {
+            onProgress?.(progress);
+          },
+        });
+        await sender.start();
+      });
+    }
+
+    console.log(`[s3000xl-client] uploadRaw complete`);
+  }
+
+  // =========================================================================
   // Public Interface
   // =========================================================================
 
@@ -385,6 +424,15 @@ export function createS3000xlClient(
       await bufferWrite(key, AkaiOpcode.MDATA, data.raw.slice(5, -1));
     },
 
+    async uploadSampleRaw(
+      sampleNumber: number,
+      sampleData: Int16Array,
+      sampleRate: number,
+      onProgress?: (progress: SdsTransferProgress) => void,
+    ): Promise<void> {
+      await uploadRaw(sampleNumber, sampleData, sampleRate, onProgress);
+    },
+
     async sendSampleViaSds(
       sampleNumber: number,
       sampleData: Int16Array,
@@ -404,39 +452,10 @@ export function createS3000xlClient(
       const countBefore = preNames.length;
       console.log(`[s3000xl-client] sendSampleViaSds: num=${sampleNumber} len=${sampleData.length} countBefore=${countBefore}`);
 
-      // Use dedicated SDS channel when available (SCSI transport). This
-      // bypasses the MidiIO send queue entirely, avoiding the timeout that
-      // occurs when SDS packets wait behind queued SysEx commands.
-      if (sdsChannel) {
-        console.log(`[s3000xl-client] using SdsChannel for upload (bypassing serialize queue)`);
-        await sdsChannel.uploadSample(
-          sampleNumber,
-          channel,
-          sampleRate,
-          sampleData,
-          sdsOptions?.onProgress,
-        );
-        console.log(`[s3000xl-client] SdsChannel upload complete`);
-      } else {
-        const header = buildSdsHeader(sampleNumber, sampleData, sampleRate, sdsOptions);
-        console.log(`[s3000xl-client] header built, entering serialize (MidiIO path)`);
-
-        await serialize(async () => {
-          const sender = createSdsSender(midiIO, {
-            channel,
-            header,
-            samples: sampleData,
-            mode: 'closed-loop',
-            onProgress: (progress) => {
-              console.log(`[s3000xl-client] SDS packet ${progress.packetsSent}/${progress.packetsTotal}`);
-              sdsOptions?.onProgress?.(progress);
-            },
-          });
-          console.log(`[s3000xl-client] sender created, calling start()`);
-          await sender.start();
-          console.log(`[s3000xl-client] sender.start() resolved`);
-        });
-      }
+      // Upload via the raw SDS path (no RSLIST or rename).
+      // Can't call client.uploadSampleRaw here because we're inside the
+      // object literal — call the internal uploadRaw helper directly.
+      await uploadRaw(sampleNumber, sampleData, sampleRate, sdsOptions?.onProgress);
 
       // Wait for the device to commit the sample. Poll RSLIST until the
       // count increases, with exponential backoff up to a hard timeout.
@@ -461,8 +480,6 @@ export function createS3000xlClient(
       sampleNamesCache = postNames;
 
       // Post-upload rename: the device auto-assigns a name (e.g., "MIDI 18").
-      // Read back the sample header, update the name, and write it back so
-      // programs that reference samples by name find the correct sample.
       if (sdsOptions?.name) {
         console.log(`[s3000xl-client] renaming sample ${rslistIndex} to "${sdsOptions.name}"`);
         const response = await sendCommandWithRetry(

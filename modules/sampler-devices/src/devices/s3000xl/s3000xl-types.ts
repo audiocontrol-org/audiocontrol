@@ -72,6 +72,17 @@ export interface S3000xlClientInterface {
   /** Write modified miscellaneous data back to the device */
   writeMiscData(data: MiscellaneousData): Promise<void>;
 
+  /**
+   * Upload a sample via SDS without RSLIST polling or renaming.
+   * For batch uploads — caller is responsible for verification and renaming.
+   */
+  uploadSampleRaw(
+    sampleNumber: number,
+    sampleData: Int16Array,
+    sampleRate: number,
+    onProgress?: (progress: SdsTransferProgress) => void,
+  ): Promise<void>;
+
   /** Send a sample to the device via MIDI Sample Dump Standard */
   sendSampleViaSds(
     sampleNumber: number,
