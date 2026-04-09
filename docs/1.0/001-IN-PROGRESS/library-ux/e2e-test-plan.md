@@ -262,90 +262,94 @@ Run via: `modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARG
 ## Test File Organization
 
 ```
+modules/e2e-infra/
+  specs/                                 # Shared common-area tests (env-parameterized)
+    library-opfs.spec.ts                 #   8 tests — OPFS infrastructure
+    library-directories.spec.ts          #   19 tests — directory CRUD
+    library-ui-operations.spec.ts        #   7 tests — sample preview, folder, delete, connect
+    library-drumkit-editor.spec.ts       #   5 tests — drum kit pad preview, MIDI notes
+    library-drumkit-error.spec.ts        #   2 tests — missing WAV error handling
+  playwright.library.config.ts           # Shared Playwright config for common-area tests
+  scripts/run-common-library-e2e.sh      # Dev server + Playwright + watchdog runner
+  src/node/lib/                          # Node-based S3K device tests
+    test-sds.ts                          #   3 tests — SDS round trip + rename
+    test-multi-sds.ts                    #   1 test — 4 back-to-back SDS uploads
+    test-drumkit.ts                      #   1 test — staged drum kit import
+    test-program-export.ts               #   1 test — program → common area
+    test-disk-browser.ts                 #   3 tests — enumerate, read sample, read program
+    test-reads.ts                        #   3 tests — header reads
+    test-writes.ts                       #   4 tests — header writes
+  helpers/
+    library-ui-helpers.ts                # Shared OPFS + UI helpers
+    library-fixtures.ts                  # Shared OPFS fixture writers
+    opfs-page-helpers.ts                 # page.evaluate OPFS helpers
+    connection-helper.ts                 # Device connection helpers
+
 modules/roland-sxx0-editor/e2e/
-  library-*.spec.ts (9 files)          # Tier 1 — OPFS library ops (~104 tests)
-  device-connected.spec.ts             # Tier 2 — connection (15 tests)
-  device-state.spec.ts                 # Tier 2 — HTTP MIDI transport (5 tests)
-  device-error-recovery.spec.ts        # Tier 2 — error handling (4 tests)
-  device-tone-controls.spec.ts         # Tier 2 — tone params (13 tests)
-  device-tone-envelope-controls.spec.ts # Tier 2 — envelopes (7 tests)
-  device-tone-edge-cases.spec.ts       # Tier 2 — edge cases (3 tests)
-  device-tone-chopper.spec.ts          # Tier 2 — chopper (2 tests)
-  device-patch-controls.spec.ts        # Tier 2 — patch params (11 tests)
-  device-play-controls.spec.ts         # Tier 2 — play page (4 tests)
-  device-loop-editor.spec.ts           # Tier 2 — loop editor (3 tests)
-  device-sample-operations.spec.ts     # Tier 2 — sample import/export (3 tests)
-  device-drumkit.spec.ts               # Tier 2 — drum kit import (2 tests)
-  device-sets.spec.ts                  # Tier 2 — set save/load (9 tests)
-  device-set-individual-load.spec.ts   # Tier 2 — individual load (2 tests)
-  device-library-roundtrip.spec.ts     # Tier 2 — round trips (2 tests)
-  device-library-set-roundtrip.spec.ts # Tier 2 — set round trip (1 test)
-  device-library-autofit.spec.ts       # Tier 2 — autofit (2 tests)
+  library-tones.spec.ts                  # Roland-specific — tone CRUD (20 tests)
+  library-patches.spec.ts                # Roland-specific — patch CRUD (21 tests)
+  library-sets.spec.ts                   # Roland-specific — set operations (23 tests)
+  library-chopper-save.spec.ts           # Roland-specific — chopper save (7 tests)
+  library-ui-operations.spec.ts          # Roland-specific — tones folder test (1 test)
+  device-*.spec.ts (17 files)            # Tier 2 — device tests (~80 tests)
 
 modules/akai-s3k-editor/e2e/
-  library-ui-operations.spec.ts        # Tier 1 — OPFS library ops (6 tests)
-  device-connected.spec.ts             # Tier 3 — connection (4 tests)
-  device-programs.spec.ts              # Tier 3 — program editing (17 tests)
-  device-keygroups.spec.ts             # Tier 3 — keygroup editing (11 tests)
-  device-velocity-zones.spec.ts        # Tier 3 — velocity zones (6 tests)
-  device-sample-headers.spec.ts        # Tier 3 — sample headers (2 tests)
-  device-sds-transfer.spec.ts          # Tier 3 — SDS transfer (5 tests)
-  device-library-roundtrip.spec.ts     # Tier 3 — library round trips (5 tests)
-
-modules/e2e-infra/
-  src/node/lib/test-sds.ts             # Tier 3 node — SDS round trip (3 tests)
-  src/node/lib/test-reads.ts           # Tier 3 node — header reads (3 tests)
-  src/node/lib/test-writes.ts          # Tier 3 node — header writes (4 tests)
-  src/node/lib/test-all-fields.ts      # Tier 3 node — field round trips
-  helpers/library-ui-helpers.ts        # Shared OPFS + UI helpers
-  helpers/connection-helper.ts         # Shared device connection helpers
+  library-chopper-save.spec.ts           # S3K-specific — chopper save (4 tests)
+  device-*.spec.ts (7 files)             # Tier 3 — device tests (~50 tests)
+  device-library-*.spec.ts (2 files)     # Tier 3 — device+library round trips
 ```
+
+No common-area test files in editor e2e/ directories. Common-area tests run from
+e2e-infra/specs/ via env-parameterized make targets. Editor directories contain
+ONLY device-specific tests.
 
 ## Verification
 
 Always use run-and-watch.sh:
 ```bash
-# Tier 1 (no hardware needed)
-modules/e2e-infra/scripts/run-and-watch.sh test-e2e-roland-library
-modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-library
+# Common-area library tests (shared specs, no hardware)
+modules/e2e-infra/scripts/run-and-watch.sh test-e2e-common-library-s3k
+modules/e2e-infra/scripts/run-and-watch.sh test-e2e-common-library-roland
 
-# Tier 2 (requires S-550 connected via midi-server)
+# Editor-specific library tests (no hardware)
+modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-library
+modules/e2e-infra/scripts/run-and-watch.sh test-e2e-roland-library
+
+# Tier 2 Roland device tests (requires S-550 via midi-server)
 modules/e2e-infra/scripts/run-and-watch.sh test-e2e-roland-device
 modules/e2e-infra/scripts/run-and-watch.sh test-e2e-roland-device-library
 
-# Tier 3 Node tests (requires S3000XL via SCSI)
+# Tier 3 S3K node tests (requires S3000XL via SCSI)
 modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARGS=--test sds --verbose'
-modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARGS=--test writes --verbose'
+modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARGS=--test drumkit --verbose'
 
-# Tier 3 browser tests (requires S3000XL via SCSI)
+# Tier 3 S3K browser tests (requires S3000XL via SCSI)
 modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-device
 modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-device-library
 ```
-
-## Per-Tranche Deliverables
-
-Each tranche of tests (Tier 1, 2, 3) must produce:
-
-1. **Tests** — passing e2e tests for both editors
-2. **Parity report** — document in feature docs comparing behavior across editors for every operation tested in that tranche. Explicitly note: what's identical, what diverges, what's missing in one editor
-3. **Code duplication audit** — review the code paths exercised by the tranche's tests. Identify any duplicated logic between the two editors that should be shared. Document findings in the parity report. If duplication is found, file it as a follow-up task or fix it before moving to the next tranche.
-
-Parity reports go in `docs/1.0/001-IN-PROGRESS/library-ux/parity-report-tier-{N}.md`.
-
-**Fix-as-you-go:** Duplications found during each tranche's audit should be fixed immediately, before moving to the next tranche. Since fixing requires re-testing, it's most efficient to fix while the test infrastructure is already set up and the tests are fresh. Re-run the tranche's tests after fixing to confirm no regressions.
-
-**Deferred fixes:** Any fix that can't be done immediately (too large, blocked, or out of scope) must be filed as a GitHub issue before moving on. The issue should reference the parity report and describe what's duplicated and where.
 
 ## Implementation Status
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Roland Tier 1 (library OPFS) | **Done** | ~104 tests, 9 spec files |
-| S3K Tier 1 (library OPFS) | **Done** | 43 shared + 4 chopper = 47 tests |
-| Shared common-area tests | **Done** | 43 tests in e2e-infra/specs/, run against both editors |
+| Shared common-area tests | **Done** | 43 tests in e2e-infra/specs/, env-parameterized, run against both editors |
+| Roland device-specific library | **Done** | ~72 tests (tones, patches, sets, chopper, UI ops) |
 | Roland Tier 2 (device) | **Done** | ~80 tests, 17 spec files |
-| S3K Tier 3 node tests | **Done** | 16 tests (SDS, reads, writes, multi-sds, drumkit, program-export, disk-browser×3) |
+| S3K device-specific library | **Done** | 4 chopper tests |
+| S3K Tier 3 node tests | **Done** | 16 tests (SDS, reads, writes, multi-sds, drumkit, program-export, disk-browser) |
 | S3K Tier 3 browser (device) | **Done** | ~50 tests, 7 spec files |
-| S3K Tier 3 browser (library round trip) | **Partial** | 5 tests + drum kit import |
-| Tier 1 parity report | **Done** | See `parity-report-tier-1.md` — 2 fixes applied, 3 deferred (#174, #175) |
+| S3K Tier 3 browser (library round trip) | **Done** | 5 tests + drum kit import |
+| Tier 1 parity report | **Done** | See `parity-report-tier-1.md` — all items resolved (#174, #175, #182 fixed) |
 | Tier 2/3 parity reports | **Not started** | Required before closing out |
+
+## Structural Refactors Completed
+
+| Issue | What | Result |
+|-------|------|--------|
+| #174 | S3K LibraryPage hook extraction | 604→479 lines, 4 hooks extracted |
+| #175 | Shared EditorDialogGroup | Dialogs rendered from editor-core, device config via render props |
+| #182 | Roland drum kit storage violation | Deleted library/s330/drum-kits/, -1,329 lines |
+| — | Unified sample node type | chopped-sample + drum-kit → sample with metadata |
+| — | Common-area extraction | Item types, categories, icons, DrumKitPadList in editor-core |
+| — | Category ID standardization | commonSamples/commonPrograms → samples/programs |
+| — | Duplicate code removal | library-chopped-samples.ts, library-drumkits.ts, choppedSamples category |
