@@ -343,7 +343,7 @@ modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-device-library
 | S3K Tier 3 browser (device) | **Done** | ~50 tests, 7 spec files |
 | S3K Tier 3 browser (library round trip) | **Done** | 5 tests + drum kit import |
 | Tier 1 parity report | **Done** | See `parity-report-tier-1.md` — all items resolved (#174, #175, #182 fixed) |
-| Tier 2/3 parity reports | **Not started** | Required before closing out |
+| Tier 2/3 parity report | **Done** | See `parity-report-tier-2-3.md` — all duplications fixed, remaining gaps documented |
 
 ## Structural Refactors Completed
 
