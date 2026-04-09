@@ -48,3 +48,33 @@ modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARGS=--test s
 # SysEx writes
 modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARGS=--test writes --verbose'
 ```
+
+## Additional fixes discovered during browser testing
+
+### SysEx response dispatch: opcode matching
+
+The `sendAndReceive` listener accepted any response with Akai manufacturer ID (F0 47). When two SysEx requests were in the transport's send queue, the second request's listener consumed the first request's response, causing parse errors ("Both nibbles must be between 0 and 15").
+
+Fixed: listeners now match on expected response opcode (sentOpcode+1 for data responses, 0x16 for REPLY).
+
+**File:** `modules/sampler-devices/src/devices/s3000xl/s3000xl-client.ts` — `sendAndReceive` function
+
+### Vestigial poll loop removed
+
+The SCSI transport had a 50ms background poll loop calling `GET /sds/poll`. This was designed for SDS data packets before the dedicated WebSocket SDS channel existed. It raced with `send_and_receive` — the poll could steal response bytes from the bridge's MIDI buffer, leaving `send_and_receive` with incomplete data.
+
+Removed entirely. SDS uses `/sds/stream` WebSocket; SysEx responses come inline in the HTTP POST response body.
+
+**File:** `modules/midi-core/src/transports/scsi-midi-transport.ts`
+
+### SysEx HTTP timeout increased
+
+The `sds_send` route timeout increased from 5s to 10s. The `send_and_receive` function now does enable → send → poll → read → disable MIDI mode per call, adding ~200ms of SCSI overhead. With 30 poll attempts at 100ms each, the worst case exceeds 5s.
+
+**File:** `services/scsi-midi-bridge/src/routes.rs`
+
+## Remaining issue: Vite proxy 422
+
+The browser drum kit import test consistently gets a 422 (Unprocessable Entity) from the Vite dev server proxy on the third `writeSampleHeader` call. The bridge never receives the request — the proxy rejects it. The body size (~2KB JSON) is well within normal limits. Cause unknown; may be a Vite dev server rate or connection limit.
+
+Node-based drum kit test passes all stages. The 422 is specific to the Vite proxy path.

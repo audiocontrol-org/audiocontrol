@@ -206,7 +206,7 @@ Run via: `modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARG
 
 ### Remaining Tier 3 gaps (browser)
 
-- [ ] Import drum kit via browser UI → program + samples created on device (node test passes, browser test needs `importDrumKitToDevice` to use staged SDS approach)
+- [ ] Import drum kit via browser UI → program + samples created on device. Node test passes. Browser test: staged SDS + opcode-matched listeners implemented, but Vite proxy returns 422 on third writeSampleHeader. See scsi-bridge-retry.md for details.
 - [ ] Import instrument (common-area program) → keygroups created
 - [ ] Promote S3K program to common area → verify ProgramYaml
 - [ ] Import common-area program to S3K → verify keygroups match zones
@@ -326,8 +326,8 @@ Parity reports go in `docs/1.0/001-IN-PROGRESS/library-ux/parity-report-tier-{N}
 | Roland Tier 1 (library OPFS) | **Done** | ~104 tests, 9 spec files |
 | S3K Tier 1 (library OPFS) | **Gap** | 6 tests vs Roland's 104 |
 | Roland Tier 2 (device) | **Done** | ~80 tests, 17 spec files |
-| S3K Tier 3 node tests | **Done** | 10 tests (SDS, reads, writes) |
+| S3K Tier 3 node tests | **Done** | 12 tests (SDS, reads, writes, multi-sds, drumkit) |
 | S3K Tier 3 browser (device) | **Done** | ~50 tests, 7 spec files |
-| S3K Tier 3 browser (library round trip) | **Partial** | 5 tests; drum kit, disk browser, promotion missing |
+| S3K Tier 3 browser (library round trip) | **Partial** | 5 tests; drum kit blocked by Vite proxy 422; disk browser, promotion missing |
 | Tier 1 parity report | **Done** | See `parity-report-tier-1.md` — 2 fixes applied, 3 deferred (#174, #175) |
 | Tier 2/3 parity reports | **Not started** | Required before closing out |
