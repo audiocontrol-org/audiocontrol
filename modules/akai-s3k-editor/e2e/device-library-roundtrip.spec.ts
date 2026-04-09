@@ -29,7 +29,6 @@ import {
 import {
   cleanupOPFS,
   initializeS3kOPFS,
-  writeSampleFixture,
   assertLibraryItemVisible,
   clickLibraryItem,
   verifyDirectoryInOPFS,
@@ -37,6 +36,10 @@ import {
   COMMON_SAMPLES_PATH,
   S3K_PROGRAMS_PATH,
 } from '../../e2e-infra/helpers/library-ui-helpers';
+
+import {
+  writeSampleFixture,
+} from '../../e2e-infra/helpers/library-fixtures';
 
 // ---------------------------------------------------------------------------
 // Environment guard

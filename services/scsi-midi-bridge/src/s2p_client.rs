@@ -77,18 +77,11 @@ impl Fields {
         f
     }
 
-    pub fn status(&self) -> bool {
-        self.varints.get(&1).copied().unwrap_or(0) != 0
-    }
 }
 
 // -- Protobuf message builders ------------------------------------------------
 
 // PbOperation enum values
-const MIDI_INIT: u64 = 200;
-const MIDI_SEND: u64 = 201;
-const MIDI_POLL: u64 = 202;
-const MIDI_READ: u64 = 203;
 const SCSI_EXEC: u64 = 210;
 
 fn op_name(op: u64) -> &'static str {
@@ -100,51 +93,6 @@ fn op_name(op: u64) -> &'static str {
         210 => "SCSI_EXEC",
         _ => "UNKNOWN",
     }
-}
-
-fn build_midi_request(target_id: u8) -> Vec<u8> {
-    let mut buf = Vec::new();
-    buf.push(0x08); // field 1, varint
-    buf.extend(encode_varint(target_id as u64));
-    buf
-}
-
-fn build_command(operation: u64, midi_req: &[u8]) -> Vec<u8> {
-    let mut cmd = Vec::new();
-    // field 1 (operation), varint
-    cmd.push(0x08);
-    cmd.extend(encode_varint(operation));
-    // field 20 (midi_request), length-delimited: tag = (20 << 3) | 2 = 162 → varint 0xa2 0x01
-    cmd.push(0xa2);
-    cmd.push(0x01);
-    cmd.extend(encode_varint(midi_req.len() as u64));
-    cmd.extend(midi_req);
-    cmd
-}
-
-fn build_midi_init(target_id: u8) -> Vec<u8> {
-    build_command(MIDI_INIT, &build_midi_request(target_id))
-}
-
-fn build_midi_send(target_id: u8, sysex: &[u8]) -> Vec<u8> {
-    let mut req = build_midi_request(target_id);
-    // field 2 (sysex_data), length-delimited
-    req.push(0x12);
-    req.extend(encode_varint(sysex.len() as u64));
-    req.extend(sysex);
-    build_command(MIDI_SEND, &req)
-}
-
-fn build_midi_poll(target_id: u8) -> Vec<u8> {
-    build_command(MIDI_POLL, &build_midi_request(target_id))
-}
-
-fn build_midi_read(target_id: u8, length: u32) -> Vec<u8> {
-    let mut req = build_midi_request(target_id);
-    // field 3 (read_length), varint
-    req.push(0x18);
-    req.extend(encode_varint(length as u64));
-    build_command(MIDI_READ, &req)
 }
 
 // -- SCSI_EXEC message builders -----------------------------------------------
@@ -218,8 +166,7 @@ fn build_scsi_command(scsi_req: &[u8]) -> Vec<u8> {
 pub struct S2pClient {
     host: String,
     port: u16,
-    target_id: u8,
-    initialized: bool,
+    pub target_id: u8,
 }
 
 impl S2pClient {
@@ -228,7 +175,6 @@ impl S2pClient {
             host,
             port,
             target_id,
-            initialized: false,
         }
     }
 
@@ -287,22 +233,6 @@ impl S2pClient {
     pub async fn is_reachable(&self) -> bool {
         let addr = format!("{}:{}", self.host, self.port);
         TcpStream::connect(&addr).await.is_ok()
-    }
-
-    pub async fn ensure_init(&mut self) -> Result<(), String> {
-        if self.initialized {
-            debug!("MIDI_INIT: already initialized, skip");
-            return Ok(());
-        }
-        let cmd = build_midi_init(self.target_id);
-        let result = self.send_command(MIDI_INIT, &cmd).await?;
-        if result.status() {
-            self.initialized = true;
-            info!("MIDI_INIT: success");
-            Ok(())
-        } else {
-            Err("MIDI_INIT failed".to_string())
-        }
     }
 
     pub async fn execute_scsi(
@@ -389,56 +319,24 @@ impl S2pClient {
         Ok(result.data_in)
     }
 
-    pub async fn send_sysex(&mut self, sysex: &[u8]) -> Result<(), String> {
-        self.ensure_init().await?;
-        let cmd = build_midi_send(self.target_id, sysex);
-        let result = self.send_command(MIDI_SEND, &cmd).await?;
-        if result.status() {
-            Ok(())
-        } else {
-            Err("MIDI_SEND failed".to_string())
-        }
-    }
-
-    /// Poll for pending response bytes. Returns the byte count.
-    pub async fn poll(&self) -> Result<u32, String> {
-        let cmd = build_midi_poll(self.target_id);
-        let result = self.send_command(MIDI_POLL, &cmd).await?;
-        if !result.status() {
-            return Err("MIDI_POLL failed".to_string());
-        }
-        // midi_response is field 101 in PbResult
-        let midi_resp = match result.bytes.get(&101) {
-            Some(data) => Fields::parse(data),
-            None => return Ok(0),
-        };
-        // pending_bytes is field 2 in PbMidiResponse
-        Ok(midi_resp.varints.get(&2).copied().unwrap_or(0) as u32)
-    }
-
-    /// Read pending SysEx data.
-    pub async fn read(&self, length: u32) -> Result<Vec<u8>, String> {
-        let cmd = build_midi_read(self.target_id, length);
-        let result = self.send_command(MIDI_READ, &cmd).await?;
-        if !result.status() {
-            return Err("MIDI_READ failed".to_string());
-        }
-        let midi_resp = match result.bytes.get(&101) {
-            Some(data) => Fields::parse(data),
-            None => return Ok(Vec::new()),
-        };
-        // data is field 1 in PbMidiResponse
-        Ok(midi_resp.bytes.get(&1).cloned().unwrap_or_default())
-    }
-
     /// Send SysEx, then poll+read ALL available response data. The S3000XL
     /// may send multiple SysEx messages (e.g., WAIT + Dump Header for SDS)
     /// or split large messages across poll cycles (e.g., 392-byte program
     /// header as 240 + 152 bytes). Read until no more data is pending.
     pub async fn send_and_receive(&mut self, sysex: &[u8]) -> Result<Vec<u8>, String> {
+        // Enable MIDI-over-SCSI for this request. SDS transfers disable it
+        // when they finish, so we must re-enable before every SysEx exchange.
+        // Disable when done so serial MIDI ports remain functional.
+        self.scsi_midi_enable(self.target_id).await?;
+        let result = self.send_and_receive_inner(sysex).await;
+        let _ = self.scsi_midi_disable(self.target_id).await;
+        result
+    }
+
+    async fn send_and_receive_inner(&self, sysex: &[u8]) -> Result<Vec<u8>, String> {
         let t_start = Instant::now();
 
-        self.send_sysex(sysex).await?;
+        self.scsi_midi_send(self.target_id, sysex).await?;
         let t_after_send = t_start.elapsed();
 
         let mut result = Vec::new();
@@ -453,7 +351,7 @@ impl S2pClient {
             total_poll_sleep_ms += t_sleep_start.elapsed().as_millis() as u64;
 
             let t_poll_start = Instant::now();
-            let pending = self.poll().await?;
+            let pending = self.scsi_midi_poll(self.target_id).await?;
             total_s2p_io_ms += t_poll_start.elapsed().as_millis() as u64;
             poll_count += 1;
 
@@ -465,15 +363,12 @@ impl S2pClient {
                 );
 
                 let t_read_start = Instant::now();
-                let chunk = self.read(pending).await?;
+                let chunk = self.scsi_midi_read(self.target_id, pending).await?;
                 total_s2p_io_ms += t_read_start.elapsed().as_millis() as u64;
 
                 result.extend_from_slice(&chunk);
                 empty_polls = 0;
-                // Keep reading — more data may follow in the next poll cycle
             } else if !result.is_empty() {
-                // Had data but nothing pending now. Wait one more cycle in case
-                // the device is still preparing the next chunk (e.g., WAIT → ACK).
                 empty_polls += 1;
                 if empty_polls >= 2 {
                     let t_total = t_start.elapsed();

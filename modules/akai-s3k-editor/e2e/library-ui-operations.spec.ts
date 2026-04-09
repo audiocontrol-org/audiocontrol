@@ -13,13 +13,14 @@ import { test, expect } from '@playwright/test';
 import {
   cleanupOPFS,
   initializeCommonAreaOPFS,
-  writeSampleFixture,
   connectToOPFS,
   clickLibraryItem,
   waitForPreviewContent,
   isPreviewEmpty,
   verifyDirectoryInOPFS,
 } from '../../e2e-infra/helpers/library-ui-helpers';
+
+import { writeSampleFixture } from '../../e2e-infra/helpers/library-fixtures';
 
 const port = process.env.E2E_PORT;
 

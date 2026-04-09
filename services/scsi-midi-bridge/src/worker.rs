@@ -90,7 +90,7 @@ pub async fn scsi_worker(
                         if expect_response {
                             s2p.send_and_receive(&message).await
                         } else {
-                            s2p.send_sysex(&message).await.map(|_| Vec::new())
+                            s2p.scsi_midi_send(s2p.target_id, &message).await.map(|_| Vec::new())
                         }
                     }
                 };
@@ -104,9 +104,9 @@ pub async fn scsi_worker(
             }
             ScsiWork::Poll { reply } => {
                 let result = async {
-                    let count = s2p.poll().await?;
+                    let count = s2p.scsi_midi_poll(s2p.target_id).await?;
                     if count > 0 {
-                        s2p.read(count).await
+                        s2p.scsi_midi_read(s2p.target_id, count).await
                     } else {
                         Ok(Vec::new())
                     }
