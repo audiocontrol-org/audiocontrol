@@ -4,10 +4,8 @@
  * Creates category plugins for the two common-area sections the S3000XL
  * library currently supports: samples (WAV) and programs (YAML).
  *
- * The Samples category recognizes three item types:
- * - sample: regular WAV sample
- * - chopped-sample: sample with slice definitions
- * - drum-kit: sample with slice definitions + drum kit metadata
+ * The Samples category recognizes one item type:
+ * - sample: WAV sample (with optional slice/drum-kit metadata)
  *
  * The Programs category recognizes one item type:
  * - program: S3000XL program YAML bundle
@@ -16,8 +14,6 @@
 import type { CategoryPlugin, CategoryCallbacks } from '@audiocontrol/editor-core';
 import {
   sampleItemType,
-  choppedSampleItemType,
-  drumKitItemType,
   programItemType,
 } from '@/plugins/item-types';
 
@@ -50,7 +46,7 @@ function NewFolderButton({ onClick }: { onClick: () => void }): JSX.Element {
 }
 
 // =========================================================================
-// Samples category (common-area: samples, chopped samples, drum kits)
+// Samples category (common-area samples with optional slice/drum-kit metadata)
 // =========================================================================
 
 export function createSamplesCategory(): CategoryPlugin {
@@ -59,8 +55,6 @@ export function createSamplesCategory(): CategoryPlugin {
     title: 'Samples',
     itemTypes: {
       sample: sampleItemType,
-      'chopped-sample': choppedSampleItemType,
-      'drum-kit': drumKitItemType,
     },
     emptyMessage: 'No samples in library. Import WAV files to get started.',
     dropMessage: 'Drop to add sample',

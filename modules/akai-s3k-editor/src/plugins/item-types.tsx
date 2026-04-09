@@ -1,16 +1,14 @@
 /**
  * Item type plugins for S3000XL library categories.
  *
- * Defines rendering and behavior for samples, chopped samples, drum kits,
- * and programs in the library browser. Uses dedicated SVG icon components
- * from LibraryIcons to distinguish item types visually.
+ * Defines rendering and behavior for samples and programs in the library
+ * browser. Samples carry optional slice/drum-kit metadata that drives
+ * badge rendering and context-menu actions.
  */
 
 import type { ItemTypePlugin } from '@audiocontrol/editor-core';
 import {
   SampleIcon,
-  ChoppedSampleIcon,
-  DrumKitIcon,
   ProgramIcon,
 } from '@/components/library/LibraryIcons';
 
@@ -19,26 +17,10 @@ import {
 // =========================================================================
 
 export interface SampleMeta {
-  fileName?: string;
-  directoryName?: string;
-  path?: string[];
-  description?: string;
-}
-
-export interface ChoppedSampleMeta {
-  directoryName?: string;
   path?: string[];
   description?: string;
   sliceCount?: number;
-  variant?: string;
-}
-
-export interface DrumKitSampleMeta {
-  directoryName?: string;
-  path?: string[];
-  description?: string;
-  sliceCount?: number;
-  variant?: string;
+  hasDrumKit?: boolean;
 }
 
 export interface ProgramMeta {
@@ -62,39 +44,12 @@ export const sampleItemType: ItemTypePlugin<SampleMeta> = {
 
   renderIcon: () => <SampleIcon />,
 
-  renderTrailing: () => null,
-
-  isDraggable: () => true,
-
-  supportsRename: true,
-
-  getContextMenuActions: () => [
-    { id: 'open-loop-editor', label: 'Loop Editor', icon: null },
-    { id: 'open-sample-editor', label: 'Edit Sample', icon: null },
-    { id: 'open-chopper', label: 'Chop', icon: null },
-    { separator: true },
-    { id: 'rename', label: 'Rename', icon: null },
-    { id: 'move', label: 'Move to...', icon: null },
-    { separator: true },
-    { id: 'delete', label: 'Delete', icon: null, danger: true },
-  ],
-};
-
-// =========================================================================
-// Chopped sample item type
-// =========================================================================
-
-export const choppedSampleItemType: ItemTypePlugin<ChoppedSampleMeta> = {
-  typeId: 'chopped-sample',
-  displayName: 'Chopped Sample',
-
-  renderIcon: () => <ChoppedSampleIcon />,
-
   renderTrailing: (meta) => {
-    if (meta.sliceCount === undefined) return null;
+    if (!meta.sliceCount || meta.sliceCount <= 0) return null;
+    const unit = meta.hasDrumKit ? 'pad' : 'slice';
     return (
       <span className="text-xs text-gray-400">
-        {meta.sliceCount} slice{meta.sliceCount !== 1 ? 's' : ''}
+        {meta.sliceCount} {unit}{meta.sliceCount !== 1 ? 's' : ''}
       </span>
     );
   },
@@ -108,37 +63,6 @@ export const choppedSampleItemType: ItemTypePlugin<ChoppedSampleMeta> = {
     { id: 'open-sample-editor', label: 'Edit Sample', icon: null },
     { id: 'open-chopper', label: 'Chop', icon: null },
     { separator: true },
-    { id: 'rename', label: 'Rename', icon: null },
-    { id: 'move', label: 'Move to...', icon: null },
-    { separator: true },
-    { id: 'delete', label: 'Delete', icon: null, danger: true },
-  ],
-};
-
-// =========================================================================
-// Drum kit item type (sample with slices + drumKit metadata)
-// =========================================================================
-
-export const drumKitItemType: ItemTypePlugin<DrumKitSampleMeta> = {
-  typeId: 'drum-kit',
-  displayName: 'Drum Kit',
-
-  renderIcon: () => <DrumKitIcon />,
-
-  renderTrailing: (meta) => {
-    if (meta.sliceCount === undefined) return null;
-    return (
-      <span className="text-xs text-gray-400">
-        {meta.sliceCount} pad{meta.sliceCount !== 1 ? 's' : ''}
-      </span>
-    );
-  },
-
-  isDraggable: () => true,
-
-  supportsRename: true,
-
-  getContextMenuActions: () => [
     { id: 'rename', label: 'Rename', icon: null },
     { id: 'move', label: 'Move to...', icon: null },
     { separator: true },

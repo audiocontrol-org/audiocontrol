@@ -169,8 +169,6 @@ export function useLibraryTreeActions({
       onSelectIndividualPatch(node.directoryName || node.name, node.path);
     } else if (node.type === 'drum-kit') {
       onSelectDrumKit(node.directoryName || node.name, node.path);
-    } else if (node.type === 'chopped-sample') {
-      onSelectChoppedSample?.(node.directoryName || node.name, node.path);
     } else if (node.type === 'sample') {
       onSelectSample?.(node.fileName || node.name, node.path);
     } else if (node.type === 'program') {

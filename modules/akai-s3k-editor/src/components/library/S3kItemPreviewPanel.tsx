@@ -2,9 +2,9 @@
  * S3K preview panel for the library browser.
  *
  * Context-aware panel that displays details and actions based on the
- * currently selected item. Supports library samples, chopped samples,
- * drum kits, common-area programs, S3K programs, device programs,
- * device samples, and directories.
+ * currently selected item. Supports library samples (with optional
+ * slice/drum-kit metadata), common-area programs, S3K programs,
+ * device programs, device samples, and directories.
  *
  * Action buttons:
  * - "Send to Device" — triggers SDS transfer from library to device (samples)
@@ -21,8 +21,6 @@
 import type { ItemSelection, PreviewContext } from '@audiocontrol/editor-core';
 import type {
   SampleMeta,
-  ChoppedSampleMeta,
-  DrumKitSampleMeta,
   ProgramMeta,
 } from '@/plugins/item-types';
 
@@ -168,101 +166,28 @@ function SamplePreview({
   const meta = selection.meta as SampleMeta;
   const pathDisplay = meta.path?.join('/') || '/';
 
+  const hasSlices = meta.sliceCount !== undefined && meta.sliceCount > 0;
+  const typeLabel = meta.hasDrumKit
+    ? 'Drum Kit'
+    : hasSlices
+      ? 'Chopped Sample'
+      : 'Sample';
+
   return (
     <div className="p-4">
       <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
-      <MetaRow label="Type" value="Sample" />
-      <MetaRow label="Path" value={pathDisplay} />
-      <MetaRow label="Description" value={meta.description} />
-
-      {customState?.onSendSampleToDevice && (
-        <div className="mt-4">
-          <button
-            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
-            onClick={() => customState.onSendSampleToDevice!(
-              selection.node.name,
-              meta.path,
-            )}
-            data-testid="preview-send-to-device"
-          >
-            Send to Device
-          </button>
-        </div>
+      <MetaRow label="Type" value={typeLabel} />
+      {hasSlices && (
+        <MetaRow
+          label={meta.hasDrumKit ? 'Pads' : 'Slices'}
+          value={meta.sliceCount}
+        />
       )}
-
-      <EditorActions
-        name={selection.node.name}
-        nodeType={selection.node.type}
-        path={meta.path}
-        customState={customState}
-      />
-    </div>
-  );
-}
-
-function ChoppedSamplePreview({
-  selection,
-  customState,
-}: {
-  selection: ItemSelection;
-  customState: S3kPreviewCustomState | undefined;
-}): JSX.Element {
-  const meta = selection.meta as ChoppedSampleMeta;
-  const pathDisplay = meta.path?.join('/') || '/';
-
-  return (
-    <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
-      <MetaRow label="Type" value="Chopped Sample" />
-      <MetaRow label="Slices" value={meta.sliceCount} />
-      <MetaRow label="Path" value={pathDisplay} />
-      <MetaRow label="Description" value={meta.description} />
-
-      {customState?.onSendSampleToDevice && (
-        <div className="mt-4">
-          <button
-            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
-            onClick={() => customState.onSendSampleToDevice!(
-              selection.node.name,
-              meta.path,
-            )}
-            data-testid="preview-send-to-device"
-          >
-            Send to Device
-          </button>
-        </div>
-      )}
-
-      <EditorActions
-        name={selection.node.name}
-        nodeType={selection.node.type}
-        path={meta.path}
-        customState={customState}
-      />
-    </div>
-  );
-}
-
-function DrumKitPreview({
-  selection,
-  customState,
-}: {
-  selection: ItemSelection;
-  customState: S3kPreviewCustomState | undefined;
-}): JSX.Element {
-  const meta = selection.meta as DrumKitSampleMeta;
-  const pathDisplay = meta.path?.join('/') || '/';
-
-  return (
-    <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
-      <MetaRow label="Type" value="Drum Kit" />
-      <MetaRow label="Pads" value={meta.sliceCount} />
       <MetaRow label="Path" value={pathDisplay} />
       <MetaRow label="Description" value={meta.description} />
 
       <div className="mt-4 flex gap-2 flex-wrap">
-        {customState?.onEditDrumKit && (
+        {meta.hasDrumKit && customState?.onEditDrumKit && (
           <button
             className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
             onClick={() => customState.onEditDrumKit!(
@@ -288,7 +213,7 @@ function DrumKitPreview({
           </button>
         )}
 
-        {customState?.onImportDrumKit && (
+        {meta.hasDrumKit && customState?.onImportDrumKit && (
           <button
             className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded transition-colors"
             onClick={() => customState.onImportDrumKit!(
@@ -551,14 +476,6 @@ export function S3kPreviewPanelAdapter({
 
   if (selection.node.type === 'sample') {
     return <SamplePreview selection={selection} customState={customState} />;
-  }
-
-  if (selection.node.type === 'chopped-sample') {
-    return <ChoppedSamplePreview selection={selection} customState={customState} />;
-  }
-
-  if (selection.node.type === 'drum-kit') {
-    return <DrumKitPreview selection={selection} customState={customState} />;
   }
 
   if (selection.node.type === 'program') {

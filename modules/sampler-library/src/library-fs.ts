@@ -44,8 +44,10 @@ export interface LibraryTreeNode {
   id: string;
   /** Display name */
   name: string;
-  /** Node type */
-  type: 'directory' | 'tone' | 'patch' | 'drum-kit' | 'chopped-sample' | 'sample' | 'program';
+  /** Node type. Common-area samples are always 'sample' — slice/drum-kit state
+   *  is in metadata (sliceCount, hasDrumKit). The 'drum-kit' type is only used
+   *  by Roland device-specific drum kits (kit.yaml format — see #182). */
+  type: 'directory' | 'tone' | 'patch' | 'sample' | 'program' | 'drum-kit';
   /** Path segments from category root (empty for root items) */
   path: string[];
   /** Child nodes (only for directories) */
@@ -62,9 +64,10 @@ export interface LibraryTreeNode {
   kitCount?: number;
   sampleCount?: number;
   description?: string;
-  /** Additional metadata for chopped samples */
+  /** Number of slices (if sample has slice definitions) */
   sliceCount?: number;
-  variant?: string;
+  /** Whether sample has drum kit config (base note, pad mapping) */
+  hasDrumKit?: boolean;
 }
 
 // =========================================================================
@@ -466,29 +469,19 @@ const detectSample: ItemDetector = async (entry, parentDir, path) => {
     if (!result.success) return null;
 
     const data = result.data;
-    const hasSlices = data.slices !== undefined && data.slices.length > 0;
-    const hasDrumKit = data.drumKit !== undefined;
 
-    // Discriminate node type: drum-kit > chopped-sample > sample
-    let type: LibraryTreeNode['type'] = 'sample';
-    let variant: string | undefined;
-    if (hasSlices && hasDrumKit) {
-      type = 'drum-kit';
-      variant = 'drum-kit';
-    } else if (hasSlices) {
-      type = 'chopped-sample';
-      variant = 'generic';
-    }
-
+    // All samples are type 'sample'. Slice and drum kit metadata are
+    // communicated via the node's metadata fields, not the type.
+    // See SAMPLER-LIBRARY.md "Sample Slicing" for the theory.
     return {
       id: [...path, entry.name].join('/'),
       name: data.name,
-      type,
+      type: 'sample' as LibraryTreeNode['type'],
       path,
       directoryName: entry.name,
       description: data.description,
       sliceCount: data.slices?.length,
-      variant,
+      hasDrumKit: data.drumKit !== undefined,
     };
   } catch {
     return null;
