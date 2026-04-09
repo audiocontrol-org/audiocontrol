@@ -233,19 +233,13 @@ async function testDiskReadSample(ctx: TestContext): Promise<TestResult> {
 async function testDiskReadProgram(ctx: TestContext): Promise<TestResult> {
   const name = 'disk-read-program';
   try {
-    // Try all disks to find one with an S3000-format program
     const found = await findDiskWithContent(ctx.bridgeUrl, ctx.log);
     if (!found) {
       return { name, status: 'SKIP', detail: 'No disk with programs found' };
     }
 
-    const programFile = found.files.find(f => isProgram(f.type) && f.size >= BLOCK_SIZE);
+    const programFile = found.files.find(f => isProgram(f.type));
     if (!programFile) {
-      // Try any program file
-      const anyProgram = found.files.find(f => isProgram(f.type));
-      if (anyProgram) {
-        return { name, status: 'SKIP', detail: `Program "${anyProgram.name}" is ${anyProgram.size} bytes (S1000 format, parser needs S3000)` };
-      }
       return { name, status: 'SKIP', detail: 'No program files on disk' };
     }
 
