@@ -565,6 +565,9 @@ export function LibraryPage(): JSX.Element {
           samples={editorDialogs.chopper.samples}
           sampleRate={editorDialogs.chopper.sampleRate}
           sourceName={editorDialogs.chopper.sampleName}
+          editMode={!!editorDialogs.chopper.initialSlices}
+          initialSlices={editorDialogs.chopper.initialSlices}
+          initialLabels={editorDialogs.chopper.initialLabels}
           onConfirm={() => { editorDialogs.closeChopper(); }}
           onSave={root ? editorDialogs.handleChopperSave : undefined}
           renderOutputConfig={(state) => (
