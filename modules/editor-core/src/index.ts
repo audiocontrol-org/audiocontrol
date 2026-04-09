@@ -5,3 +5,4 @@ export * from './utils';
 export * from './transports';
 export * from './environments';
 export * from './testing';
+export * from './plugins/common-area/index.js';

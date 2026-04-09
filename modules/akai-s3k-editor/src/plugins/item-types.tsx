@@ -1,31 +1,30 @@
 /**
  * Item type plugins for S3000XL library categories.
  *
- * Defines rendering and behavior for samples and programs in the library
- * browser. Samples carry optional slice/drum-kit metadata that drives
- * badge rendering and context-menu actions.
+ * Re-exports common-area item types from editor-core and defines
+ * S3K-specific metadata extensions for backward compatibility.
  */
 
-import type { ItemTypePlugin } from '@audiocontrol/editor-core';
-import {
-  SampleIcon,
-  ProgramIcon,
-} from '@/components/library/LibraryIcons';
+import type { CommonSampleMeta, CommonProgramMeta } from '@audiocontrol/editor-core';
+
+export {
+  commonSampleItemType as sampleItemType,
+  commonProgramItemType as programItemType,
+} from '@audiocontrol/editor-core';
 
 // =========================================================================
-// Metadata types
+// Metadata types — backward-compatible aliases
 // =========================================================================
 
-export interface SampleMeta {
-  path?: string[];
-  description?: string;
-  sliceCount?: number;
-  hasDrumKit?: boolean;
-}
+/** S3K sample metadata is identical to common-area sample metadata. */
+export type SampleMeta = CommonSampleMeta;
 
-export interface ProgramMeta {
+/**
+ * S3K program metadata extends common-area program metadata with
+ * device-specific fields used by S3kItemPreviewPanel.
+ */
+export interface ProgramMeta extends CommonProgramMeta {
   directoryName?: string;
-  path?: string[];
   /** Filesystem directory name (sanitized, used for storage lookup) */
   dirName?: string;
   /** Number of keygroups in the program */
@@ -33,63 +32,3 @@ export interface ProgramMeta {
   /** Sample names referenced by the program's zones */
   sampleReferences?: string[];
 }
-
-// =========================================================================
-// Sample item type
-// =========================================================================
-
-export const sampleItemType: ItemTypePlugin<SampleMeta> = {
-  typeId: 'sample',
-  displayName: 'Sample',
-
-  renderIcon: () => <SampleIcon />,
-
-  renderTrailing: (meta) => {
-    if (!meta.sliceCount || meta.sliceCount <= 0) return null;
-    const unit = meta.hasDrumKit ? 'pad' : 'slice';
-    return (
-      <span className="text-xs text-gray-400">
-        {meta.sliceCount} {unit}{meta.sliceCount !== 1 ? 's' : ''}
-      </span>
-    );
-  },
-
-  isDraggable: () => true,
-
-  supportsRename: true,
-
-  getContextMenuActions: () => [
-    { id: 'open-loop-editor', label: 'Loop Editor', icon: null },
-    { id: 'open-sample-editor', label: 'Edit Sample', icon: null },
-    { id: 'open-chopper', label: 'Chop', icon: null },
-    { separator: true },
-    { id: 'rename', label: 'Rename', icon: null },
-    { id: 'move', label: 'Move to...', icon: null },
-    { separator: true },
-    { id: 'delete', label: 'Delete', icon: null, danger: true },
-  ],
-};
-
-// =========================================================================
-// Program item type
-// =========================================================================
-
-export const programItemType: ItemTypePlugin<ProgramMeta> = {
-  typeId: 'program',
-  displayName: 'Program',
-
-  renderIcon: () => <ProgramIcon />,
-
-  renderTrailing: () => null,
-
-  isDraggable: () => true,
-
-  supportsRename: true,
-
-  getContextMenuActions: () => [
-    { id: 'rename', label: 'Rename', icon: null },
-    { id: 'move', label: 'Move to...', icon: null },
-    { separator: true },
-    { id: 'delete', label: 'Delete', icon: null, danger: true },
-  ],
-};

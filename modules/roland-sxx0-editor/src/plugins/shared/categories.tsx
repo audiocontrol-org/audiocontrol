@@ -1,50 +1,25 @@
 /**
  * Shared category plugin factories for Roland S-series samplers.
  *
- * Creates category plugins for library sections: tones, patches,
- * drum kits, samples (common), and programs (common).
+ * Creates device-specific category plugins for tones, patches, and
+ * drum kits. Common-area categories (samples, programs) are imported
+ * from @audiocontrol/editor-core and re-exported.
  */
 
 import type { CategoryPlugin, CategoryCallbacks } from '@audiocontrol/editor-core';
 import {
+  NewFolderButton,
+  createCommonSamplesCategory,
+  createCommonProgramsCategory,
+} from '@audiocontrol/editor-core';
+import {
   toneItemType,
   patchItemType,
   drumKitItemType,
-  sampleItemType,
-  programItemType,
 } from './item-types';
 
-// =========================================================================
-// New Folder Button Component
-// =========================================================================
-
-function NewFolderButton({
-  onClick,
-}: {
-  onClick: () => void;
-}): JSX.Element {
-  return (
-    <button
-      onClick={onClick}
-      className="text-xs text-s330-muted hover:text-s330-highlight transition-colors"
-      title="New folder"
-    >
-      <svg
-        className="w-3.5 h-3.5"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"
-        />
-      </svg>
-    </button>
-  );
-}
+// Re-export common-area category factories from editor-core
+export { createCommonSamplesCategory, createCommonProgramsCategory };
 
 // =========================================================================
 // Tones Category
@@ -127,44 +102,3 @@ export function createDrumKitsCategory(): CategoryPlugin {
   };
 }
 
-// =========================================================================
-// Common Samples Category
-// =========================================================================
-
-export function createCommonSamplesCategory(): CategoryPlugin {
-  return {
-    categoryId: 'commonSamples',
-    title: 'Samples',
-    itemTypes: {
-      sample: sampleItemType,
-    },
-    emptyMessage: 'No samples in common library',
-    dropMessage: 'Drop to add sample',
-    acceptsExternalDrop: true,
-    acceptedDropMimeTypes: ['Files'],
-
-    renderHeaderActions: (callbacks: CategoryCallbacks) => (
-      <NewFolderButton onClick={callbacks.createFolder} />
-    ),
-  };
-}
-
-// =========================================================================
-// Common Programs Category
-// =========================================================================
-
-export function createCommonProgramsCategory(): CategoryPlugin {
-  return {
-    categoryId: 'commonPrograms',
-    title: 'Programs',
-    itemTypes: {
-      program: programItemType,
-    },
-    emptyMessage: 'No programs in common library',
-    acceptsExternalDrop: false,
-
-    renderHeaderActions: (callbacks: CategoryCallbacks) => (
-      <NewFolderButton onClick={callbacks.createFolder} />
-    ),
-  };
-}

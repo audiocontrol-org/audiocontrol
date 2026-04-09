@@ -13,11 +13,13 @@ import type {
   DeviceMemoryRenderProps,
 } from '@audiocontrol/editor-core';
 import {
+  createCommonSamplesCategory,
+  createCommonProgramsCategory,
+} from '@audiocontrol/editor-core';
+import {
   createTonesCategory,
   createPatchesCategory,
   createDrumKitsCategory,
-  createCommonSamplesCategory,
-  createCommonProgramsCategory,
 } from './shared/categories';
 import { s330Config } from '@/configs/s330';
 import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
@@ -183,8 +185,8 @@ export const s330LibraryPlugin: DeviceLibraryPlugin = {
     createTonesCategory(),
     createPatchesCategory(),
     createDrumKitsCategory(),
-    createCommonSamplesCategory(),
-    createCommonProgramsCategory(),
+    createCommonSamplesCategory('commonSamples'),
+    createCommonProgramsCategory('commonPrograms'),
   ],
 
   // Translators would be implemented when the common library format is finalized

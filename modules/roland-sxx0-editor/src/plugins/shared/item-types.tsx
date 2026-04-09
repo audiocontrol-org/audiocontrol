@@ -1,15 +1,26 @@
 /**
  * Shared item type plugins for Roland S-series samplers.
  *
- * Defines rendering and behavior for tones, patches, drum kits,
- * samples, and programs. These are used by both S-330 and S-550 plugins.
+ * Defines rendering and behavior for device-specific item types:
+ * tones, patches, and drum kits. Common-area item types (samples,
+ * programs) are imported from @audiocontrol/editor-core.
  */
 
 import type { ItemTypePlugin } from '@audiocontrol/editor-core';
+import {
+  commonSampleItemType,
+  commonProgramItemType,
+  type CommonSampleMeta,
+  type CommonProgramMeta,
+} from '@audiocontrol/editor-core';
 import { WaveIcon, PatchIcon, DrumKitIcon } from '@/components/library/LibraryTreeIcons';
 
+// Re-export common-area types from editor-core
+export { commonSampleItemType, commonProgramItemType };
+export type { CommonSampleMeta, CommonProgramMeta };
+
 // =========================================================================
-// Metadata Types
+// Metadata Types (device-specific)
 // =========================================================================
 
 export interface ToneMeta {
@@ -27,16 +38,6 @@ export interface DrumKitMeta {
   directoryName?: string;
   kitCount?: number;
   sampleCount?: number;
-  path?: string[];
-}
-
-export interface SampleMeta {
-  fileName?: string;
-  path?: string[];
-}
-
-export interface ProgramMeta {
-  directoryName?: string;
   path?: string[];
 }
 
@@ -189,94 +190,3 @@ export const drumKitItemType: ItemTypePlugin<DrumKitMeta> = {
     },
   ],
 };
-
-// =========================================================================
-// Sample Item Type Plugin (common library samples)
-// =========================================================================
-
-export const sampleItemType: ItemTypePlugin<SampleMeta> = {
-  typeId: 'sample',
-  displayName: 'Sample',
-
-  renderIcon: () => <WaveIcon />,
-
-  renderTrailing: () => null,
-
-  isDraggable: () => true,
-
-  supportsRename: true,
-
-  getContextMenuActions: () => [
-    {
-      id: 'rename',
-      label: 'Rename',
-      icon: null,
-    },
-    {
-      id: 'move',
-      label: 'Move to...',
-      icon: null,
-    },
-    { separator: true },
-    {
-      id: 'open-loop-editor',
-      label: 'Open in Loop Editor',
-      icon: null,
-    },
-    {
-      id: 'open-chopper',
-      label: 'Open in Chopper',
-      icon: null,
-    },
-    {
-      id: 'open-sample-editor',
-      label: 'Open in Sample Editor',
-      icon: null,
-    },
-    { separator: true },
-    {
-      id: 'delete',
-      label: 'Delete',
-      icon: null,
-      danger: true,
-    },
-  ],
-};
-
-// =========================================================================
-// Program Item Type Plugin (common library programs)
-// =========================================================================
-
-export const programItemType: ItemTypePlugin<ProgramMeta> = {
-  typeId: 'program',
-  displayName: 'Program',
-
-  renderIcon: () => <PatchIcon />,
-
-  renderTrailing: () => null,
-
-  isDraggable: () => true,
-
-  supportsRename: true,
-
-  getContextMenuActions: () => [
-    {
-      id: 'rename',
-      label: 'Rename',
-      icon: null,
-    },
-    {
-      id: 'move',
-      label: 'Move to...',
-      icon: null,
-    },
-    { separator: true },
-    {
-      id: 'delete',
-      label: 'Delete',
-      icon: null,
-      danger: true,
-    },
-  ],
-};
-
