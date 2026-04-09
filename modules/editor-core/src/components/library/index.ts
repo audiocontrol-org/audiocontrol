@@ -73,6 +73,7 @@ export {
 } from './LibraryConnectionUI';
 
 export { DrumKitPadList } from './DrumKitPadList';
+export { EditorDialogGroup } from './EditorDialogGroup';
 
 // Plugin interfaces
 export type {

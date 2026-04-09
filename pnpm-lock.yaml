@@ -404,12 +404,18 @@ importers:
 
   modules/editor-core:
     dependencies:
+      '@audiocontrol/loop-editor':
+        specifier: workspace:*
+        version: link:../loop-editor
       '@audiocontrol/midi-core':
         specifier: workspace:*
         version: link:../midi-core
       '@audiocontrol/sample-chopper':
         specifier: workspace:*
         version: link:../sample-chopper
+      '@audiocontrol/sample-editor':
+        specifier: workspace:*
+        version: link:../sample-editor
       '@audiocontrol/sampler-library':
         specifier: workspace:*
         version: link:../sampler-library
