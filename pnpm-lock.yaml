@@ -373,6 +373,9 @@ importers:
       '@audiocontrol/sampler-devices':
         specifier: workspace:*
         version: link:../sampler-devices
+      '@audiocontrol/sampler-library':
+        specifier: workspace:^
+        version: link:../sampler-library
       '@playwright/test':
         specifier: ^1.57.0
         version: 1.58.1
@@ -385,6 +388,9 @@ importers:
       ws:
         specifier: ^8.20.0
         version: 8.20.0
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
     devDependencies:
       '@tsconfig/recommended':
         specifier: ^1.0.7
