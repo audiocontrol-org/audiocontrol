@@ -130,6 +130,41 @@ library/
     └── sets/
 ```
 
+## Sample Slicing
+
+Slicing is the general operation of dividing a sample into logical segments. All slicing workflows produce the same underlying data: an array of slice boundaries (`startSample`, `endSample`, `label`) stored in `SampleYaml.slices`. Slicing is something you DO to a sample — it adds metadata. It does not change what the item IS.
+
+### Slicing Workflows
+
+Three workflows exist for defining slices:
+
+1. **Algorithmic slicing** — Fixed interval (divide evenly into N slices), transient detection (find drum hits by amplitude), or silence detection. Automated, non-performative.
+
+2. **Chopping** — Real-time performative slicing. The sample plays and the user taps keys or drum pads to mark chop points as the audio passes. The timing of the taps defines slice boundaries. Pioneered by hip hop producers on Akai MPC samplers. Chopping typically involves chromatic MIDI note mapping for the chop sequence, but this is optional.
+
+3. **Manual slicing** — The user places slice markers by clicking on the waveform. Precise, visual editing.
+
+### Drum Kit Configuration
+
+Drum kit config is an optional metadata layer ON TOP of slices. When present, it specifies:
+- **Base note**: the MIDI note assigned to the first slice
+- **Sequential note mapping**: slice N maps to base note + N
+
+A sample with drum kit config is still a sample with slices. The drum kit metadata just adds playback semantics. In `SampleYaml`, this is `drumKit.baseNote`.
+
+### Node Type
+
+In the library tree, all samples are the same node type regardless of whether they have slices or drum kit config. Visual indicators (badges, slice counts) communicate what metadata is present:
+- No slices: plain sample
+- Has slices: shows slice count
+- Has drum kit config: shows pad count
+
+There is no separate "chopped-sample" or "drum-kit" node type. These are metadata states of the same underlying sample.
+
+### Re-editability
+
+All sliced samples are re-editable. Regardless of how slices were created (algorithmic, chopping, manual, or drum kit), the user can always reopen the slice editor and adjust boundaries, add/remove slices, change labels, or modify drum kit config.
+
 ## Key Principles
 
 1. **No information loss in device-specific storage** — round-trip through Zone 3 must be lossless

@@ -12,6 +12,7 @@
 - [SDS Sample Rename](./sds-sample-rename.md) - Post-upload sample rename for correct program references
 - [SCSI Bridge Retry](./scsi-bridge-retry.md) - Eliminate duplicate SCSI MIDI paths, fix MIDI mode lifecycle
 - [Staged SDS Batch](./staged-sds-batch.md) - Batch SDS uploads for drum kit import (all SDS first, then all SysEx)
+- [Unified Sample Slicing](./unified-sample-slicing.md) - Merge chopped-sample/drum-kit into single sample node type
 
 ## Overview
 
