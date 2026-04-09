@@ -7,6 +7,11 @@ export {
 export { seedMockLibrary } from './seed-mock-library.js';
 
 export {
+  NodeDirectoryHandle,
+  createNodeStorage,
+} from './node-fs-storage.js';
+
+export {
   generatePureSustain,
   generateLeadingSilence,
   generateTrailingSilence,
