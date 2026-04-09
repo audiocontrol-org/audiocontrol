@@ -63,11 +63,11 @@ modules/e2e-infra/scripts/run-and-watch.sh test-e2e-roland-library
 #### `library-ui-operations.spec.ts` (6 tests)
 - [x] Select sample → preview, create folder, fixture appears, connect/disconnect, context menu, delete
 
-#### `library-chopper-save.spec.ts` (4 tests, WIP)
-- [ ] Fixed slicing → save writes sample.yaml with slice definitions — test written, chopper dialog doesn't open (investigating UI interaction)
-- [ ] Fixed slicing with 8 slices saves correct count
-- [ ] Saved slice boundaries persist when chopper is reopened
-- [ ] Save writes sample.yaml with correct slice labels
+#### `library-chopper-save.spec.ts` (4 tests, 3 passing)
+- [x] Fixed slicing → save writes sample.yaml with slice definitions
+- [x] Fixed slicing with 8 slices saves correct count
+- [ ] Saved slice boundaries persist when chopper is reopened — fails: chopper doesn't load initial slices for drum-kit node type
+- [x] Save writes sample.yaml with correct slice labels
 
 **S3K Tier 1 gaps:** No directory CRUD, sample/program YAML CRUD, drum kit editor, OPFS infra, or edge case tests.
 
@@ -345,6 +345,6 @@ Parity reports go in `docs/1.0/001-IN-PROGRESS/library-ux/parity-report-tier-{N}
 | Roland Tier 2 (device) | **Done** | ~80 tests, 17 spec files |
 | S3K Tier 3 node tests | **Done** | 16 tests (SDS, reads, writes, multi-sds, drumkit, program-export, disk-browser×3) |
 | S3K Tier 3 browser (device) | **Done** | ~50 tests, 7 spec files |
-| S3K Tier 3 browser (library round trip) | **Partial** | 5 tests + drum kit import; disk browser, promotion missing |
+| S3K Tier 3 browser (library round trip) | **Partial** | 5 tests + drum kit import; chopper WIP (dialog doesn't open) |
 | Tier 1 parity report | **Done** | See `parity-report-tier-1.md` — 2 fixes applied, 3 deferred (#174, #175) |
 | Tier 2/3 parity reports | **Not started** | Required before closing out |

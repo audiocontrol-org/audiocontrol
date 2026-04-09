@@ -56,6 +56,10 @@ const SAMPLE_FIXTURE_NAME = 'e2e-chop-source';
 
 test.describe('Chopper Save -- save slices to library', () => {
   test.beforeEach(async ({ page }) => {
+    // Capture browser console for debugging
+    page.on('console', (msg) => console.log(`BROWSER [${msg.type()}]:`, msg.text()));
+    page.on('pageerror', (err) => console.log('PAGE ERROR:', err.message));
+
     await page.goto(LIBRARY_URL);
     await page.waitForLoadState('networkidle');
 
@@ -103,13 +107,13 @@ test.describe('Chopper Save -- save slices to library', () => {
     await treeNode.click();
 
     // Open chopper
-    const chopButton = page.getByRole('button', { name: 'Chop' }).first();
+    const chopButton = page.locator('[data-testid="preview-open-chopper"]');
     await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await chopButton.click();
 
     // Wait for chopper dialog
     const dialog = page.locator('[data-slice-editor-open="true"]');
-    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await expect(dialog).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
     // Fixed slicing with 4 slices
     await page.getByRole('tab', { name: 'Fixed' }).click();
@@ -143,12 +147,12 @@ test.describe('Chopper Save -- save slices to library', () => {
     const treeNode = sampleNode.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
     await treeNode.click();
 
-    const chopButton = page.getByRole('button', { name: 'Chop' }).first();
+    const chopButton = page.locator('[data-testid="preview-open-chopper"]');
     await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await chopButton.click();
 
     const dialog = page.locator('[data-slice-editor-open="true"]');
-    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await expect(dialog).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
     await page.getByRole('tab', { name: 'Fixed' }).click();
     const sliceCountInput = dialog.locator('input[type="number"]').first();
@@ -169,11 +173,24 @@ test.describe('Chopper Save -- save slices to library', () => {
     }
     await expect(dialog).not.toBeVisible({ timeout: UI_TIMEOUT_MS });
 
-    // Second pass: reopen and verify slices loaded
-    await treeNode.click();
-    await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
-    await chopButton.click();
-    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    // Wait for tree refresh after save, then re-select
+    // The save triggers onRefresh which reloads the tree — item type may
+    // change from "sample" to "chopped-sample" but the name stays the same.
+    await page.waitForTimeout(1_000);
+    const sampleNode2 = page.locator('.ac-tree-node-name', {
+      hasText: new RegExp(`^${SAMPLE_FIXTURE_NAME}$`),
+    }).first();
+    await expect(sampleNode2).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    const treeNode2 = sampleNode2.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
+    await treeNode2.click();
+
+    // The chopped-sample preview includes EditorActions with the Chop button
+    const chopButton2 = page.locator('[data-testid="preview-open-chopper"]');
+    await expect(chopButton2).toBeVisible({ timeout: UI_TIMEOUT_MS });
+    await chopButton2.click();
+
+    const dialog2 = page.locator('[data-slice-editor-open="true"]');
+    await expect(dialog2).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
     // Verify 4 slices are shown (persisted from first save)
     await expect(page.getByText('4 slices')).toBeVisible({ timeout: UI_TIMEOUT_MS });
@@ -187,12 +204,12 @@ test.describe('Chopper Save -- save slices to library', () => {
     const treeNode = sampleNode.locator('xpath=ancestor::div[contains(@class, "ac-tree-node")]');
     await treeNode.click();
 
-    const chopButton = page.getByRole('button', { name: 'Chop' }).first();
+    const chopButton = page.locator('[data-testid="preview-open-chopper"]');
     await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await chopButton.click();
 
     const dialog = page.locator('[data-slice-editor-open="true"]');
-    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await expect(dialog).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
     await page.getByRole('tab', { name: 'Fixed' }).click();
     const sliceCountInput = dialog.locator('input[type="number"]').first();
@@ -219,12 +236,12 @@ test.describe('Chopper Save -- save slices to library', () => {
     await treeNode.click();
 
     // Open chopper
-    const chopButton = page.getByRole('button', { name: 'Chop' }).first();
+    const chopButton = page.locator('[data-testid="preview-open-chopper"]');
     await expect(chopButton).toBeVisible({ timeout: UI_TIMEOUT_MS });
     await chopButton.click();
 
     const dialog = page.locator('[data-slice-editor-open="true"]');
-    await expect(dialog).toBeVisible({ timeout: 10_000 });
+    await expect(dialog).toBeVisible({ timeout: UI_TIMEOUT_MS });
 
     // Fixed slicing with 4 slices
     await page.getByRole('tab', { name: 'Fixed' }).click();

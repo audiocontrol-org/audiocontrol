@@ -220,8 +220,8 @@ export function useEditorDialogsCore(
     const strategyResult = await strategy.loadWav(libraryRoot, name, nodeType, path);
     if (strategyResult) return strategyResult;
 
-    // Common-area fallback for sample/chopped-sample
-    if (nodeType === 'sample' || nodeType === 'chopped-sample') {
+    // Common-area fallback for sample types (all share sample.yaml + sample.wav)
+    if (nodeType === 'sample' || nodeType === 'chopped-sample' || nodeType === 'drum-kit') {
       const result = await loadSample(libraryRoot, name, path);
       const wav = parseWav(result.wavData);
       return {
@@ -329,7 +329,7 @@ export function useEditorDialogsCore(
         // Load existing slice definitions from sample metadata (if available)
         let initialSlices: InitialSliceDefinition[] | undefined;
         let initialLabels: string | undefined;
-        if (libraryRoot && (nodeType === 'sample' || nodeType === 'chopped-sample')) {
+        if (libraryRoot && (nodeType === 'sample' || nodeType === 'chopped-sample' || nodeType === 'drum-kit')) {
           try {
             const meta = await loadSampleMeta(libraryRoot, name, path);
             if (meta.slices && meta.slices.length > 0) {

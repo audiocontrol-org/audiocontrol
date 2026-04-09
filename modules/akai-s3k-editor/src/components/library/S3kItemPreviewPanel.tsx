@@ -301,6 +301,13 @@ function DrumKitPreview({
           </button>
         )}
       </div>
+
+      <EditorActions
+        name={selection.node.name}
+        nodeType={selection.node.type}
+        path={meta.path}
+        customState={customState}
+      />
     </div>
   );
 }
