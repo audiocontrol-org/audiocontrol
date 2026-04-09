@@ -1,12 +1,20 @@
 /**
- * Drum kit import test — send slices via SDS, create program + keygroups, verify.
+ * Drum kit import test — send slices via SDS, rename, create program + keygroups.
  *
  * Exercises the same device operations as importDrumKitToDevice() from the
  * S3K editor, but directly against the client API without browser/OPFS.
- * This isolates device communication issues from UI issues.
+ *
+ * The transfer is staged to avoid SDS↔SysEx interleaving:
+ *   1. Send all slices via SDS (back-to-back, no SysEx between them)
+ *   2. Verify all arrived via RSLIST
+ *   3. Rename each slice via SysEx (RSDATA + SDATA)
+ *   4. Create program via SysEx
+ *   5. Create keygroups via SysEx
+ *   6. Verify everything by reading back
  */
 
 import type { TestContext, TestResult } from '@/node/lib/test-types.js';
+import WebSocket from 'ws';
 import {
   ProgramHeader_writePRNAME,
   KeygroupHeader_writeLONOTE,
@@ -16,6 +24,7 @@ import {
   KeygroupHeader_writeHIVEL1,
   KeygroupHeader_writeZPLAY1,
   ProgramHeader_writeGROUPS,
+  SampleHeader_writeSHNAME,
 } from '@audiocontrol/sampler-devices/s3k';
 
 function generateSliceAudio(sliceIndex: number, samplesPerSlice: number, sampleRate: number): Int16Array {
@@ -25,6 +34,53 @@ function generateSliceAudio(sliceIndex: number, samplesPerSlice: number, sampleR
     samples[i] = Math.round(amplitude * Math.sin((2 * Math.PI * 440 * i) / sampleRate));
   }
   return samples;
+}
+
+function sendRawSds(
+  bridgeUrl: string,
+  sampleNumber: number,
+  sampleRate: number,
+  samples: Int16Array,
+  log: (msg: string) => void,
+): Promise<void> {
+  const wsUrl = bridgeUrl.replace(/^http/, 'ws') + '/sds/stream';
+  return new Promise<void>((resolve, reject) => {
+    const ws = new WebSocket(wsUrl);
+    const timeout = setTimeout(() => {
+      ws.close();
+      reject(new Error(`SDS upload timed out for sample ${sampleNumber}`));
+    }, 60_000);
+
+    ws.on('open', () => {
+      ws.send(JSON.stringify({
+        type: 'sample-upload',
+        target_id: 6,
+        sample_number: sampleNumber,
+        channel: 0,
+        sample_rate: sampleRate,
+        samples: Array.from(samples),
+      }));
+    });
+
+    ws.on('message', (data: Buffer) => {
+      const msg = JSON.parse(data.toString());
+      if (msg.type === 'upload-complete') {
+        clearTimeout(timeout);
+        ws.close();
+        log(`    Sample ${sampleNumber} upload complete`);
+        resolve();
+      } else if (msg.type === 'upload-error') {
+        clearTimeout(timeout);
+        ws.close();
+        reject(new Error(`SDS error for sample ${sampleNumber}: ${msg.error}`));
+      }
+    });
+
+    ws.on('error', (err: Error) => {
+      clearTimeout(timeout);
+      reject(new Error(`WS error for sample ${sampleNumber}: ${err.message}`));
+    });
+  });
 }
 
 export async function runDrumKitTests(ctx: TestContext): Promise<TestResult[]> {
@@ -46,55 +102,6 @@ async function testDrumKitImport(ctx: TestContext): Promise<TestResult> {
     const programsBefore = await ctx.client.fetchProgramNames();
     ctx.log(`  Before: ${samplesBefore.length} samples, ${programsBefore.length} programs`);
 
-    // Phase 1: Send each slice via SDS
-    const sampleSlots: number[] = [];
-    let nextSlot = samplesBefore.length;
-
-    for (let i = 0; i < SLICE_COUNT; i++) {
-      const sliceAudio = generateSliceAudio(i, SAMPLES_PER_SLICE, SAMPLE_RATE);
-      const slotNumber = nextSlot;
-      sampleSlots.push(slotNumber);
-
-      ctx.log(`  Sending slice ${i + 1}/${SLICE_COUNT} "${SLICE_NAMES[i]}" to slot ${slotNumber}...`);
-      await ctx.client.sendSampleViaSds(slotNumber, sliceAudio, SAMPLE_RATE, {
-        name: SLICE_NAMES[i],
-        onProgress: (progress) => {
-          if (ctx.verbose) {
-            ctx.log(`    SDS: ${progress.packetsSent}/${progress.packetsTotal}`);
-          }
-        },
-      });
-      nextSlot += 1;
-    }
-
-    // Verify all slices arrived
-    const samplesAfterSds = await ctx.client.refreshSampleNames();
-    ctx.log(`  After SDS: ${samplesAfterSds.length} samples (expected ${samplesBefore.length + SLICE_COUNT})`);
-    if (samplesAfterSds.length !== samplesBefore.length + SLICE_COUNT) {
-      return {
-        name,
-        status: 'FAIL',
-        detail: `Expected ${samplesBefore.length + SLICE_COUNT} samples, got ${samplesAfterSds.length}`,
-      };
-    }
-
-    // Verify slice names
-    for (let i = 0; i < SLICE_COUNT; i++) {
-      const actualName = samplesAfterSds[sampleSlots[i]]?.trim();
-      ctx.log(`  Slice ${i} name: "${actualName}" (expected "${SLICE_NAMES[i]}")`);
-      if (actualName !== SLICE_NAMES[i]) {
-        return {
-          name,
-          status: 'FAIL',
-          detail: `Slice ${i} name mismatch: expected "${SLICE_NAMES[i]}", got "${actualName}"`,
-        };
-      }
-    }
-
-    // Phase 2: Create program
-    ctx.log(`  Creating program "${KIT_NAME}" at index ${programsBefore.length}...`);
-    const programIndex = programsBefore.length;
-
     if (programsBefore.length === 0) {
       return {
         name,
@@ -103,16 +110,72 @@ async function testDrumKitImport(ctx: TestContext): Promise<TestResult> {
       };
     }
 
+    // ---------------------------------------------------------------
+    // Stage 1: Send all slices via SDS (no SysEx between them)
+    // ---------------------------------------------------------------
+    const startSlot = samplesBefore.length;
+    for (let i = 0; i < SLICE_COUNT; i++) {
+      const sliceAudio = generateSliceAudio(i, SAMPLES_PER_SLICE, SAMPLE_RATE);
+      ctx.log(`  SDS ${i + 1}/${SLICE_COUNT}: slot ${startSlot + i}`);
+      await sendRawSds(ctx.bridgeUrl, startSlot + i, SAMPLE_RATE, sliceAudio, ctx.log);
+    }
+    ctx.log(`  All ${SLICE_COUNT} SDS uploads complete`);
+
+    // ---------------------------------------------------------------
+    // Stage 2: Verify all arrived via RSLIST
+    // ---------------------------------------------------------------
+    const samplesAfterSds = await ctx.client.refreshSampleNames();
+    ctx.log(`  RSLIST: ${samplesAfterSds.length} samples (expected ${startSlot + SLICE_COUNT})`);
+    if (samplesAfterSds.length < startSlot + SLICE_COUNT) {
+      return {
+        name,
+        status: 'FAIL',
+        detail: `Expected ${startSlot + SLICE_COUNT} samples, got ${samplesAfterSds.length}`,
+      };
+    }
+
+    // ---------------------------------------------------------------
+    // Stage 3: Rename each slice via SysEx
+    // ---------------------------------------------------------------
+    for (let i = 0; i < SLICE_COUNT; i++) {
+      const idx = startSlot + i;
+      ctx.log(`  Renaming sample ${idx} to "${SLICE_NAMES[i]}"...`);
+      const header = await ctx.client.fetchSampleHeader(idx);
+      header.SHNAME = SLICE_NAMES[i];
+      SampleHeader_writeSHNAME(header, SLICE_NAMES[i]);
+      await ctx.client.writeSampleHeader(header);
+    }
+
+    // Verify names
+    ctx.client.invalidateSampleCache();
+    const namesAfterRename = await ctx.client.fetchSampleNames();
+    for (let i = 0; i < SLICE_COUNT; i++) {
+      const actual = namesAfterRename[startSlot + i]?.trim();
+      ctx.log(`  Slot ${startSlot + i}: "${actual}" (expected "${SLICE_NAMES[i]}")`);
+      if (actual !== SLICE_NAMES[i]) {
+        return {
+          name,
+          status: 'FAIL',
+          detail: `Slice ${i} name mismatch: expected "${SLICE_NAMES[i]}", got "${actual}"`,
+        };
+      }
+    }
+
+    // ---------------------------------------------------------------
+    // Stage 4: Create program
+    // ---------------------------------------------------------------
+    const programIndex = programsBefore.length;
+    ctx.log(`  Creating program "${KIT_NAME}" at index ${programIndex}...`);
+
     const templateProgram = await ctx.client.fetchProgramHeader(0);
     const programHeader = { ...templateProgram, raw: [...templateProgram.raw] };
     ProgramHeader_writePRNAME(programHeader, KIT_NAME);
     ProgramHeader_writeGROUPS(programHeader, SLICE_COUNT);
     await ctx.client.createProgram(programIndex, programHeader);
 
-    // Verify program was created
     ctx.client.invalidateProgramCache();
     const programsAfter = await ctx.client.fetchProgramNames();
-    ctx.log(`  After createProgram: ${programsAfter.length} programs (expected ${programsBefore.length + 1})`);
+    ctx.log(`  Programs: ${programsAfter.length} (expected ${programsBefore.length + 1})`);
     if (programsAfter.length !== programsBefore.length + 1) {
       return {
         name,
@@ -120,17 +183,17 @@ async function testDrumKitImport(ctx: TestContext): Promise<TestResult> {
         detail: `Expected ${programsBefore.length + 1} programs, got ${programsAfter.length}`,
       };
     }
-    const createdProgramName = programsAfter[programIndex]?.trim();
-    ctx.log(`  Program name: "${createdProgramName}"`);
 
-    // Phase 3: Create keygroups
+    // ---------------------------------------------------------------
+    // Stage 5: Create keygroups
+    // ---------------------------------------------------------------
     const templateKeygroup = await ctx.client.fetchKeygroupHeader(programIndex, 0);
 
     for (let i = 0; i < SLICE_COUNT; i++) {
       const midiNote = Math.max(21, Math.min(127, BASE_NOTE + i));
-      const sampleName = samplesAfterSds[sampleSlots[i]];
+      const sampleName = namesAfterRename[startSlot + i];
 
-      ctx.log(`  Keygroup ${i}: note=${midiNote}, sample="${sampleName?.trim()}"`);
+      ctx.log(`  KG ${i}: note=${midiNote}, sample="${sampleName?.trim()}"`);
 
       const kgHeader = { ...templateKeygroup, raw: [...templateKeygroup.raw] };
       KeygroupHeader_writeLONOTE(kgHeader, midiNote);
@@ -138,7 +201,7 @@ async function testDrumKitImport(ctx: TestContext): Promise<TestResult> {
       KeygroupHeader_writeSNAME1(kgHeader, sampleName);
       KeygroupHeader_writeLOVEL1(kgHeader, 0);
       KeygroupHeader_writeHIVEL1(kgHeader, 127);
-      KeygroupHeader_writeZPLAY1(kgHeader, 4); // play to end (one-shot)
+      KeygroupHeader_writeZPLAY1(kgHeader, 4);
 
       if (i === 0) {
         await ctx.client.writeKeygroupHeader(kgHeader);
@@ -147,7 +210,10 @@ async function testDrumKitImport(ctx: TestContext): Promise<TestResult> {
       }
     }
 
-    // Phase 4: Verify keygroups by reading them back
+    // ---------------------------------------------------------------
+    // Stage 6: Verify keygroups by reading back
+    // ---------------------------------------------------------------
+    ctx.client.invalidateKeygroupCache();
     for (let i = 0; i < SLICE_COUNT; i++) {
       const readback = await ctx.client.fetchKeygroupHeader(programIndex, i);
       const expectedNote = Math.max(21, Math.min(127, BASE_NOTE + i));
@@ -162,9 +228,9 @@ async function testDrumKitImport(ctx: TestContext): Promise<TestResult> {
       }
     }
 
-    // Cleanup: delete the test program and samples
+    // Cleanup
     if (!ctx.noRestore) {
-      ctx.log(`  Cleaning up: deleting program ${programIndex}...`);
+      ctx.log(`  Cleaning up...`);
       try {
         await ctx.client.deleteProgram(programIndex);
       } catch (err) {
@@ -172,10 +238,9 @@ async function testDrumKitImport(ctx: TestContext): Promise<TestResult> {
       }
       for (let i = SLICE_COUNT - 1; i >= 0; i--) {
         try {
-          await ctx.client.deleteSample(sampleSlots[i]);
-          ctx.log(`  Deleted sample ${sampleSlots[i]}`);
+          await ctx.client.deleteSample(startSlot + i);
         } catch (err) {
-          ctx.log(`  Warning: could not delete sample ${sampleSlots[i]}: ${err}`);
+          ctx.log(`  Warning: could not delete sample ${startSlot + i}: ${err}`);
         }
       }
     }
@@ -183,7 +248,7 @@ async function testDrumKitImport(ctx: TestContext): Promise<TestResult> {
     return {
       name,
       status: 'PASS',
-      detail: `${SLICE_COUNT} slices sent, program + ${SLICE_COUNT} keygroups created and verified`,
+      detail: `${SLICE_COUNT} slices sent + renamed, program + ${SLICE_COUNT} keygroups created and verified`,
     };
   } catch (err) {
     return { name, status: 'ERROR', detail: String(err) };
