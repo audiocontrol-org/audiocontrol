@@ -92,7 +92,10 @@ F0 47 cc 0D 48 [sample_num 4 nibbles] [offset 8 nibbles] [count 8 nibbles] [data
 - Each 16-bit PCM sample is 4 nibbles (LE nibble pairs)
 - Device returns REPLY (opcode 0x16, status 0x01) on success
 - **Cannot create new samples** — only overwrites data in existing sample slots
-- **Multi-chunk writes fail** — writing at offset > 0 returns empty reply. Only offset=0 works reliably with a single large chunk.
+- **Multi-chunk writes work** but only within the sample's allocated memory. Writing beyond the allocated length returns empty reply. Failure occurs consistently at the allocation boundary (e.g., offset 8448 for a sample created with ~8000 samples).
+- **Single-chunk writes can exceed allocated length** — sending the entire sample in one ASPACK appears to trigger reallocation. A 44100-sample single-chunk write succeeds even on a sample originally allocated smaller.
+- **CDB poll flag must be 0x00** — using flag `$80` on CDB 0x0D (Data Byte Enquiry) returns 0 bytes. This was the cause of the original "multi-chunk fails" bug. The S3000XL only reports pending bytes with flag `$00`.
+- **CDB send flag must be 0x00** — using flag `$80` on CDB 0x0C (Send MIDI Data) causes the device to not generate a REPLY at all. MESA documentation says `$80` means "reply expected" but the S3000XL behaves opposite — `$00` is required for ASPACK.
 
 Throughput (via raw SCSI CDBs, MIDI mode kept enabled):
 
