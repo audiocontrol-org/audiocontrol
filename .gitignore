@@ -54,3 +54,4 @@ devenv.lock
 
 # Session analyzer (cloned tool, not tracked)
 tools/session-analyzer/
+.analyzer-data/

@@ -3,16 +3,19 @@
 # No Python installation required on the host.
 #
 # Usage:
-#   tools/analyze-session.sh              # Analyze local sessions
+#   tools/analyze-session.sh              # Extract agents + show stats
 #   tools/analyze-session.sh --remote     # Include orion-m1 sessions
-#   tools/analyze-session.sh stats        # Run arc stats (needs prior extract)
 #   tools/analyze-session.sh extract      # Extract arcs (needs GEMINI_API_KEY)
+#   tools/analyze-session.sh stats        # Show stats only
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 IMAGE_NAME="audiocontrol-session-analyzer"
 CLAUDE_DIR="$HOME/.claude"
+# Persist analyzer DB on host
+DB_DIR="$SCRIPT_DIR/.analyzer-data"
+mkdir -p "$DB_DIR"
 
 # Build the Docker image if needed
 if ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
@@ -20,7 +23,20 @@ if ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
   docker build -t "$IMAGE_NAME" -f "$SCRIPT_DIR/Dockerfile.analyzer" "$SCRIPT_DIR"
 fi
 
-# Handle --remote flag: rsync from orion-m1 first
+# The analyzer writes arc_analytics.db to its script directory (/analyzer/).
+# We bind-mount the DB file from the host so it persists across runs.
+# On first run, it creates a new DB.
+run_analyzer() {
+  local db_file="$DB_DIR/arc_analytics.db"
+  touch "$db_file"
+  docker run --rm \
+    -v "$CLAUDE_DIR:/root/.claude:ro" \
+    -v "$db_file:/analyzer/arc_analytics.db:rw" \
+    ${GEMINI_API_KEY:+-e GEMINI_API_KEY="$GEMINI_API_KEY"} \
+    "$IMAGE_NAME" "$@"
+}
+
+# Handle --remote flag
 if [ "${1:-}" = "--remote" ]; then
   shift
   echo "Syncing session logs from orion-m1..."
@@ -29,18 +45,27 @@ if [ "${1:-}" = "--remote" ]; then
   rsync -az orion@orion-m1.local:~/.claude/projects/*audiocontrol* "$REMOTE_DIR/" 2>/dev/null || echo "Warning: could not reach orion-m1"
   echo ""
   echo "=== Remote sessions (orion-m1) ==="
+  local db_file="$DB_DIR/arc_analytics.db"
+  touch "$db_file"
   docker run --rm \
-    -v "$REMOTE_DIR:/data:ro" \
-    ${GEMINI_API_KEY:+-e GEMINI_API_KEY="$GEMINI_API_KEY"} \
-    "$IMAGE_NAME" arc_analyzer.py agents --data-dir /data
+    -v "$REMOTE_DIR:/root/.claude/projects:ro" \
+    -v "$db_file:/analyzer/arc_analytics.db:rw" \
+    "$IMAGE_NAME" arc_analyzer.py agents
   echo ""
   echo "=== Local sessions ==="
 fi
 
-# Default command: agents
-CMD="${1:-agents}"
+CMD="${1:-all}"
 
-docker run --rm \
-  -v "$CLAUDE_DIR:/root/.claude:ro" \
-  ${GEMINI_API_KEY:+-e GEMINI_API_KEY="$GEMINI_API_KEY"} \
-  "$IMAGE_NAME" arc_analyzer.py "$CMD"
+case "$CMD" in
+  all)
+    echo "Extracting agent sessions..."
+    run_analyzer arc_analyzer.py agents
+    echo ""
+    echo "=== Statistics ==="
+    run_analyzer arc_analyzer.py stats
+    ;;
+  *)
+    run_analyzer arc_analyzer.py "$CMD"
+    ;;
+esac
