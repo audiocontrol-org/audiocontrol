@@ -102,6 +102,9 @@ Install MESA II v1.2 (Akai's official Mac OS 9 SCSI editor) in SheepShaver to an
 
 ## 2026-04-04 17:54 PDT: SheepShaver SCSI Bridge — Mac OS 9 Over Network SCSI
 
+### Original motivation
+SysEx parameter writes to the S3000XL via the bridge didn't persist — data could be read but writes didn't stick. MESA II presumably handles writes correctly, so the plan was to capture MESA's traffic to find the difference. (Spoiler: the write persistence issue turned out to be an encoding bug, not a protocol issue — but the investigation produced invaluable protocol knowledge.)
+
 ### Strategy
 Run MESA II (Akai's official editor) inside SheepShaver (Mac OS 9 emulator) on a modern Mac, connecting to the real S3000XL via network SCSI bridge to the Pi. Goals: observe how MESA communicates and provide a working MESA setup.
 
@@ -115,6 +118,20 @@ Run MESA II (Akai's official editor) inside SheepShaver (Mac OS 9 emulator) on a
 - 18:08 — Writes persist across reboots — Phase 2 complete
 - 20:07 — **MIDI-over-SCSI works from the SheepShaver driver** — CDB 0x09 init + 0x0D poll succeed
 
+### Architecture
+SheepShaver runs in Docker (linux/amd64 via QEMU on Apple Silicon) with `--privileged` for `vm.mmap_min_addr=0`. Two containers: full fork (port 16080) for OS 9 + MESA II, minimal fork (port 16082) for debugging. The `scsi_s2p.cpp` backend forwards raw SCSI CDBs over TCP to s2p on the Pi.
+
+### The Gestalt gauntlet
+MESA II's SCSI Plug has prerequisite checks that must pass before it issues any SCSI calls:
+1. **`Gestalt('scsi')`** — must return `gestaltAsyncSCSI` flags. Fixed by registering in `InstallDrivers`.
+2. **ROM+0x12** — must equal `0x2AF2` (identifies specific Mac models). Patched in `patch_68k`.
+3. **`Gestalt('mach')`** — must be ≤ `0x7E` (built-in SCSI Macs). This one was the killer.
+
+Mac OS 9 checks `Gestalt('mach')` during boot. Replace too early → "This startup disk will not work on this Macintosh model." Replace too late → MESA's SCSI Plug has already cached its "no SCSI" decision during Startup Items execution.
+
+### MESA II "Find Sampler" generates zero SCSI calls
+Despite the S3000XL being found during boot INQUIRY scan, clicking Sampler > Find Sampler produces zero SCSI calls on any API path. The Plug's internal state check fails due to the Gestalt timing problem.
+
 ### The Mixed Mode rabbit hole (April 5)
 Attempted to intercept MESA II's SCSIAction calls to capture the exact CDB bytes:
 - Mac OS 9 uses "Mixed Mode" to bridge 68k and PPC code
@@ -122,8 +139,11 @@ Attempted to intercept MESA II's SCSIAction calls to capture the exact CDB bytes
 - Tried patching opcode tables, `.EDisk` driver installation, PPC stub injection — none reached from MESA's Plug code
 - Concluded that SheepShaver's emulation architecture fundamentally prevents A-line trap interception from Mixed Mode code
 
+### Bisect finding
+Commit `25848e89` (SCSIAction handler with ROM patches) breaks OS 7 boot. Last good commit for OS 7: `8f67ef4e`. The PPC SCSIAction thunk rewriting at ROM 0x150000-0x170000 hits wrong code in the OS 7 boot path.
+
 ### Outcome
-SheepShaver SCSI bridge works for disk access but MESA II's SCSI Plug traffic could not be intercepted. Led to building the mesa-plug-harness (standalone 68k emulator) as the alternative approach.
+SheepShaver SCSI bridge works for disk access but MESA II's SCSI Plug traffic could not be intercepted due to Mixed Mode architecture. Led to building the mesa-plug-harness (standalone 68k emulator) as the alternative approach. The Gestalt timing problem and MESA's startup caching remain unsolved — possible future approach: remove MESA from Startup Items and launch manually after Gestalt patches take effect.
 
 ---
 
