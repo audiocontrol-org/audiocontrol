@@ -97,6 +97,20 @@ F0 47 cc 0D 48 [sample_num 4 nibbles] [offset 8 nibbles] [count 8 nibbles] [data
 - **CDB poll flag must be 0x00** — using flag `$80` on CDB 0x0D (Data Byte Enquiry) returns 0 bytes. This was the cause of the original "multi-chunk fails" bug. The S3000XL only reports pending bytes with flag `$00`.
 - **CDB send flag must be 0x00** — using flag `$80` on CDB 0x0C (Send MIDI Data) causes the device to not generate a REPLY at all. MESA documentation says `$80` means "reply expected" but the S3000XL behaves opposite — `$00` is required for ASPACK.
 
+### Maximum Message Size
+
+The maximum single-chunk ASPACK message is **~262 KB SysEx** (67,000 samples = 131 KB PCM). Messages larger than ~264 KB cause s2p SCSI timeout.
+
+This allows single-chunk transfer of samples up to:
+- 44.1kHz: ~1.52 seconds (67,000 samples)
+- 22.05kHz: ~3.04 seconds (67,000 samples)
+
+For longer samples, multi-chunk writes work if the sample's memory is pre-allocated to the correct size (via SDS or other mechanism).
+
+The 262 KB limit is likely a buffer constraint in s2p's SCSI CDB 0x0C handler or the S3000XL's MIDI-over-SCSI receive buffer.
+
+### Throughput
+
 Throughput (via raw SCSI CDBs, MIDI mode kept enabled):
 
 | Chunk size | Per-chunk | Throughput |
