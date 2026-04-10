@@ -303,8 +303,12 @@ where
     wait_for_ack(s2p, target_id, 30).await
         .map_err(|e| format!("no ACK for dump header: {e}"))?;
 
-    // 2. Send data packets: 40 samples per packet
+    // 2. Send data packets in batches for throughput.
+    // Batching multiple SDS packets into a single SCSI MIDI send + read
+    // amortizes the ~113ms per-SCSI-command overhead. Batch of 20 gives ~9x
+    // speedup (25ms/pkt vs 227ms/pkt).
     let samples_per_packet = 40usize;
+    let batch_size = 20usize;
     let mut pkt_num: u8 = 0;
     let mut offset = 0usize;
 
@@ -314,31 +318,51 @@ where
             return Err("upload cancelled".to_string());
         }
 
-        let pkt = encode_sds_data_packet(channel, pkt_num, samples, offset, samples_per_packet);
+        // Build a batch of packets
+        let mut batch_data: Vec<u8> = Vec::new();
+        let mut packets_in_batch = 0usize;
+        let batch_start_offset = offset;
 
+        while packets_in_batch < batch_size && offset < samples.len() {
+            let pkt = encode_sds_data_packet(channel, pkt_num, samples, offset, samples_per_packet);
+            batch_data.extend_from_slice(&pkt);
+            offset += samples_per_packet;
+            pkt_num = (pkt_num + 1) & 0x7F;
+            packets_in_batch += 1;
+        }
+
+        // Send entire batch in one SCSI MIDI send
         let t0 = std::time::Instant::now();
-        s2p.scsi_midi_send(target_id, &pkt).await?;
-        let t_send = t0.elapsed();
+        s2p.scsi_midi_send(target_id, &batch_data).await?;
 
-        let t1 = std::time::Instant::now();
-        wait_for_ack(s2p, target_id, 30).await
-            .map_err(|e| format!("no ACK for packet {pkt_num}: {e}"))?;
-        let t_ack = t1.elapsed();
+        // Read all ACKs in one SCSI MIDI read (6 bytes per ACK)
+        let ack_data = s2p.scsi_midi_read(target_id, (packets_in_batch * 6) as u32).await?;
+        let t_batch = t0.elapsed();
 
-        offset += samples_per_packet;
-        pkt_num = (pkt_num + 1) & 0x7F;
+        // Verify ACKs
+        let (messages, _) = extract_sysex_messages(&ack_data);
+        for msg in &messages {
+            if msg.len() >= 6 && msg[1] == 0x7E {
+                match msg[3] {
+                    0x7F => {} // ACK — continue
+                    0x7E => return Err("NAK received during batch upload".to_string()),
+                    0x7D => return Err("transfer cancelled by device".to_string()),
+                    0x7C => {} // Wait — device is processing, ACK should follow
+                    _ => {}
+                }
+            }
+        }
 
         let sent = (offset as u32).min(total);
         on_progress(sent, total);
 
-        if offset <= 200 || offset % 4000 == 0 {
+        if batch_start_offset == 0 || offset % (batch_size * samples_per_packet * 10) < batch_size * samples_per_packet {
             info!(
-                pkt_num,
-                send_ms = t_send.as_millis() as u64,
-                ack_ms = t_ack.as_millis() as u64,
-                total_ms = (t_send + t_ack).as_millis() as u64,
+                batch_packets = packets_in_batch,
+                batch_ms = t_batch.as_millis() as u64,
+                per_pkt_ms = (t_batch.as_millis() as u64) / (packets_in_batch as u64),
                 progress = format!("{}/{}", sent, total),
-                "SDS packet timing"
+                "SDS batch timing"
             );
         }
     }
