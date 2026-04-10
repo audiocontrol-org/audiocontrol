@@ -429,6 +429,24 @@ Byte-based progress is the only meaningful primary measure.
 
 **Consistency:** All progress indicators across the application must use the same layout, formatting, and fields. Define a shared progress component or type rather than ad-hoc progress UI per dialog.
 
+## Development Journal
+
+At least once per session, write a journal entry in `DEVELOPMENT-NOTES.md` (project root). Each entry must include:
+
+1. **Date and session summary** — what was the goal of the session
+2. **What we tried** — approaches attempted, experiments run
+3. **What we accomplished** — concrete outcomes, commits, features shipped
+4. **What worked well** — successful strategies, good instincts
+5. **What didn't work** — blind alleys, incorrect assumptions, wasted effort
+6. **Course corrections** — how the user asked you to do things differently than you initially tried. This is the most important part. Document the specific feedback, what you were doing wrong, and what the user wanted instead.
+
+The journal serves as:
+- A record of how the audiocontrol project is built
+- A source of insight into patterns of what works and what doesn't
+- A basis for continuous improvement in how we interact, the assumptions agents make, and user preferences
+
+Write entries in chronological order. Be honest about mistakes — the value is in the pattern recognition, not in looking good. Use the same frank, specific tone as `SCSI-NOTES.md`.
+
 ## Critical Don'ts
 
 - Never implement fallbacks or mock data outside test code
