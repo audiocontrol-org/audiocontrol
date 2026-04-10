@@ -454,15 +454,15 @@ export function LibraryPage(): JSX.Element {
             loading={loading}
             error={error ?? undefined}
             connectionSlot={connectionSlot}
-          />
-        </div>
-        <div className="w-[36rem] border-l border-neutral-700 overflow-y-auto">
-          <DiskBrowserPanel
-            browserRef={diskBrowserRef}
-            bridgeUrl={getActiveScsiUrl()}
-            onSaveToLibrary={root ? (file, _targetId, partitionData, volumeStartBlock, ensureFileBlocks) => {
-              setDiskToLibrary({ open: true, file, partitionData, volumeStartBlock, ensureFileBlocks });
-            } : undefined}
+            devicePanelLeft={
+              <DiskBrowserPanel
+                browserRef={diskBrowserRef}
+                bridgeUrl={getActiveScsiUrl()}
+                onSaveToLibrary={root ? (file, _targetId, partitionData, volumeStartBlock, ensureFileBlocks) => {
+                  setDiskToLibrary({ open: true, file, partitionData, volumeStartBlock, ensureFileBlocks });
+                } : undefined}
+              />
+            }
           />
         </div>
       </div>

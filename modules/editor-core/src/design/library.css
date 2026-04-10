@@ -781,6 +781,16 @@
   /* Device | Library | Preview */
 }
 
+.ac-plugin-library-browser-device-left {
+  flex: 0 0 auto;
+  min-width: 200px;
+  max-width: 320px;
+  overflow-y: auto;
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
+  border: 1px solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-lg);
+}
+
 .ac-plugin-library-browser-device {
   flex: 0 0 auto;
   min-width: 200px;

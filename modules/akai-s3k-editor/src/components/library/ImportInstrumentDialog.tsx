@@ -197,7 +197,8 @@ export function ImportInstrumentDialog({
         const { resolved, missing } = resolveZoneSamples(meta.zones, deviceSampleNames);
         setProgramMeta(meta);
         setResolvedCount(resolved.size);
-        setMissingSamples(missing);
+        // Deduplicate and strip .wav — multiple zones can reference the same sample
+        setMissingSamples([...new Set(missing.map(s => s.replace(/\.wav$/i, '')))]);
         setPhase('confirm');
       } catch (err: unknown) {
         if (cancelledRef.current) return;
@@ -233,8 +234,7 @@ export function ImportInstrumentDialog({
             return;
           }
 
-          const rawName = missingSamples[i];
-          const baseName = rawName.replace(/\.wav$/i, '');
+          const baseName = missingSamples[i];
           setSampleSendProgress({
             currentSample: baseName,
             currentIndex: i + 1,

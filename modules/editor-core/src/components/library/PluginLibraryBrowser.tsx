@@ -120,6 +120,10 @@ export interface PluginLibraryBrowserProps {
    * Used for device-specific content that doesn't fit the CategoryPlugin model
    * (e.g., Roland Sets with their two-level selection and lazy manifest loading). */
   headerSections?: React.ReactNode;
+
+  /** Content rendered in its own column to the left of the device memory panel.
+   * Use for device-adjacent UI like SCSI disk browsers. */
+  devicePanelLeft?: React.ReactNode;
 }
 
 // =========================================================================
@@ -148,6 +152,7 @@ export function PluginLibraryBrowser({
   operationProgress,
   connectionSlot,
   headerSections,
+  devicePanelLeft,
 }: PluginLibraryBrowserProps): JSX.Element {
   const hasDeviceMemory = !!plugin.deviceMemory;
 
@@ -340,6 +345,13 @@ export function PluginLibraryBrowser({
 
   return (
     <div className={layoutClass}>
+      {/* Device-adjacent panel (e.g., SCSI disk browser) */}
+      {devicePanelLeft && (
+        <div className="ac-plugin-library-browser-device-left">
+          {devicePanelLeft}
+        </div>
+      )}
+
       {/* Device memory panel (if configured) */}
       {hasDeviceMemory && plugin.deviceMemory && (
         <div className="ac-plugin-library-browser-device">
