@@ -11,6 +11,50 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-10: Session Data Extraction, Analysis, and Encryption
+
+### Feature: continuous-improvement
+### Worktree: audiocontrol-continuous-improvement
+
+### Goal
+Implement Phases 6 and 7: build TypeScript tools to extract, persist, encrypt, and analyze Claude Code session logs.
+
+### Accomplished
+- Session metrics extractor (`tools/extract-sessions.ts`) — 37 sessions extracted from orion-m4 into `data/sessions/sessions.jsonl` with 16 fields per session (`df0e591f`)
+- Session content extractor (`tools/extract-session-content.ts`) — extracts user messages, assistant text, thinking blocks, and tool calls into age-encrypted per-session files (`00615efb`)
+- Session analyzer (`tools/analyze-sessions.ts`) — markdown/JSON reports with project, machine, token, duration, tool distribution, correction detection (`eb49a690`, `5dcfe079`)
+- Removed Python/Docker analyzer infrastructure (`df0e591f`)
+- age encryption with passphrase-protected recovery key for content files
+- Bakeoff script for comparing Haiku/Sonnet/Opus on LLM-powered analysis (`5dcfe079`)
+- Updated CLAUDE.md analytics section, session-end skill, analyze-session skill
+- Closed issues #188, #189, #190, #191, #192
+
+### Didn't Work
+- LLM-powered analysis bakeoff — API credits not available, deferred
+- Regex-based correction detection has high false positive rate (~12% flagged but many are normal conversation containing "no" or "don't")
+- `require()` calls in ESM context — had to fix twice (appendFileSync, statSync)
+
+### Course Corrections
+- **[PROCESS]** Agent initially proposed separate approaches for key-loss recovery and was over-thinking encryption design. User: "use whatever the cool kids are using" — went with age, simple and correct.
+- **[PROCESS]** Agent tried to read code to answer "what happens if we run on one machine" instead of just trying it. User: "Why don't you just try it and see what happens?"
+- **[PROCESS]** Agent claimed data extraction was complete without re-running after adding content extraction. User caught this: "after we augmented our data extraction... did we actually run that augmented extraction?"
+- **[PROCESS]** Agent proposed regex for correction detection. User correctly identified LLM as better tool: "I feel like this kind of analysis is better done with an LLM than regex"
+- **[PROCESS]** Agent proposed sending only corrections to LLM. User: "let's give the LLM as much information as we can instead of just corrections"
+
+### Quantitative
+- User messages: ~50
+- Commits: 5
+- User corrections: 5
+- Data extracted: 37 sessions, 36 encrypted content files
+
+### Insights
+1. "Try it and see" is almost always faster than reading code to predict behavior
+2. Don't claim work is done until you've verified the output exists and is correct
+3. Regex pattern matching for natural language intent classification is a dead end — LLM is the right tool
+4. When the user says to give the LLM more data, they're right — the marginal cost of more context is low compared to the value of better analysis
+
+---
+
 ## 2026-04-09 / 2026-04-10: Library UX, Disk Browser, SDS Speed
 
 ### Feature: library-ux

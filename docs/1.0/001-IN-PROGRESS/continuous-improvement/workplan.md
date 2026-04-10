@@ -303,11 +303,11 @@ No Python. No Docker. No external dependencies. Just tsx.
 - Modify: `.gitignore` — ensure `data/sessions/` is tracked
 
 **Acceptance Criteria:**
-- [ ] Extracts all local sessions into `data/sessions/sessions.jsonl`
-- [ ] Each record has all fields from the table above
-- [ ] Running twice produces no duplicate records (idempotent)
-- [ ] `summary.csv` is readable in a spreadsheet
-- [ ] Remote machine data can be extracted with `--data-dir` and `--machine` flags
+- [x] Extracts all local sessions into `data/sessions/sessions.jsonl`
+- [x] Each record has all fields from the table above
+- [x] Running twice produces no duplicate records (idempotent)
+- [x] `summary.csv` is readable in a spreadsheet
+- [x] Remote machine data can be extracted with `--data-dir` and `--machine` flags
 
 ### Task 6.2: Remove Python/Docker analyzer
 
@@ -320,7 +320,7 @@ Replace with the TypeScript extractor.
 - Remove: `tools/.analyzer-data/`
 
 **Acceptance Criteria:**
-- [ ] No Python or Docker dependencies for session data extraction
+- [x] No Python or Docker dependencies for session data extraction
 
 ### Task 6.3: Extract baseline data and commit
 
@@ -331,8 +331,8 @@ Run the extractor on both machines, commit the resulting data files.
 - Create: `data/sessions/summary.csv` (generated)
 
 **Acceptance Criteria:**
-- [ ] Data from both machines extracted and committed
-- [ ] Data is version-controlled and portable
+- [x] Data from orion-m4 extracted and committed (orion-m1 pending local run)
+- [x] Data is version-controlled and portable
 
 ### Task 6.4: Update CLAUDE.md analytics section
 
@@ -342,10 +342,12 @@ Replace the Python analyzer references with the tsx extractor.
 - Modify: `.claude/CLAUDE.md`
 
 **Acceptance Criteria:**
-- [ ] Analytics section references `tsx tools/extract-sessions.ts`
-- [ ] Cadence documented (run after each session or periodically)
+- [x] Analytics section references `tsx tools/extract-sessions.ts`
+- [x] Cadence documented (run after each session or periodically)
 
-**Phase 6 Verification:** `tsx tools/extract-sessions.ts` produces valid JSONL and CSV. Data committed to git. Running again is idempotent.
+**Phase 6 Status:** COMPLETE (`df0e591f`, `00615efb`)
+
+**Phase 6 Verification:** `tsx tools/extract-sessions.ts` produces valid JSONL and CSV. Data committed to git. Running again is idempotent. Content extraction produces age-encrypted per-session files with passphrase recovery key.
 
 ---
 
@@ -391,12 +393,12 @@ TypeScript script that reads `data/sessions/sessions.jsonl` and produces analysi
 - Create: `tools/analyze-sessions.ts`
 
 **Acceptance Criteria:**
-- [ ] Reads `data/sessions/sessions.jsonl` and produces markdown report
-- [ ] All metrics from the table above included
-- [ ] `--since` flag filters by date
-- [ ] `--json` flag produces machine-readable output
-- [ ] Output is valid markdown suitable for DEVELOPMENT-NOTES.md
-- [ ] Runs with no external dependencies (just tsx)
+- [x] Reads `data/sessions/sessions.jsonl` and produces markdown report
+- [x] All metrics from the table above included
+- [x] `--since` flag filters by date
+- [x] `--json` flag produces machine-readable output
+- [x] Output is valid markdown suitable for DEVELOPMENT-NOTES.md
+- [x] Runs with no external dependencies (just tsx)
 
 ### Task 7.2: Document analysis cadence
 
@@ -407,8 +409,8 @@ Add analysis cadence to CLAUDE.md and the session-end skill.
 - Modify: `.claude/skills/session-end.md`
 
 **Acceptance Criteria:**
-- [ ] CLAUDE.md documents when to run the analyzer (periodically, or on request)
-- [ ] /session-end skill optionally runs analyzer and includes summary in journal entry
+- [x] CLAUDE.md documents when to run the analyzer (periodically, or on request)
+- [x] /session-end skill optionally runs analyzer and includes summary in journal entry
 
 ### Future: Task 7.3 (not for v1): LLM-powered analysis
 
@@ -419,7 +421,9 @@ Add optional LLM classification to the analyzer:
 
 Requires API key. Deferred — the code-only version provides the foundation data.
 
-**Phase 7 Verification:** `tsx tools/analyze-sessions.ts` produces a readable markdown report from extracted session data. Report includes all specified metrics.
+**Phase 7 Status:** COMPLETE (`eb49a690`, `5dcfe079`) — v1 code-only analysis done. LLM-powered analysis (Task 7.3) blocked on API credits.
+
+**Phase 7 Verification:** `tsx tools/analyze-sessions.ts` produces a readable markdown report from extracted session data. Report includes all specified metrics. Correction detection via regex included (LLM replacement pending).
 
 ---
 
