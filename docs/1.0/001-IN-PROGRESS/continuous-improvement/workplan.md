@@ -211,7 +211,7 @@ Task-to-agent mapping table and delegation guidance.
 - [ ] "When NOT to use agents" section included
 - [ ] Pre-commit review includes delegation check
 
-**Phase 4 Status:** PARTIAL — hardware-protocol-engineer agent and 3 skills created (`a027645f`). library-ux-engineer agent and /analyze-session skill pending.
+**Phase 4 Status:** COMPLETE (`a027645f`, `f0d86060`)
 
 **Phase 4 Verification:** Agents and skills are loadable by Claude Code. `/session-start` produces useful output.
 
