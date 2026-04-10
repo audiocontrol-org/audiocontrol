@@ -85,6 +85,8 @@ Document the two-machine setup and how to maintain continuity.
 - [ ] Session log locations documented
 - [ ] Guidance on picking up context across machines
 
+**Phase 1 Status:** COMPLETE (`3e302fff`)
+
 **Phase 1 Verification:** Read CLAUDE.md end-to-end and verify all sections are present and internally consistent.
 
 ---
@@ -103,6 +105,8 @@ Add correction categories, quantitative section, feature/worktree fields.
 - [ ] Quantitative section with message counts, commit counts, correction counts
 - [ ] Feature and worktree fields
 - [ ] Existing first entry updated to new format
+
+**Phase 2 Status:** COMPLETE (`fa09a31f`)
 
 **Phase 2 Verification:** Journal entry template is clear and actionable.
 
@@ -147,6 +151,8 @@ Document how to run analysis, what metrics to track, cadence.
 - [ ] Per-session metrics documented
 - [ ] Weekly/monthly analysis cadence documented
 - [ ] Metrics table with target directions
+
+**Phase 3 Status:** PARTIAL — analyzer cloned and wrapper created (`5adb8270`). Baseline metrics pending (needs venv setup + Gemini API key for arc analysis).
 
 **Phase 3 Verification:** `tools/analyze-session.sh` produces output. Baseline documented.
 
@@ -204,6 +210,8 @@ Task-to-agent mapping table and delegation guidance.
 - [ ] Table maps task patterns to specific agents
 - [ ] "When NOT to use agents" section included
 - [ ] Pre-commit review includes delegation check
+
+**Phase 4 Status:** PARTIAL — hardware-protocol-engineer agent and 3 skills created (`a027645f`). library-ux-engineer agent and /analyze-session skill pending.
 
 **Phase 4 Verification:** Agents and skills are loadable by Claude Code. `/session-start` produces useful output.
 
