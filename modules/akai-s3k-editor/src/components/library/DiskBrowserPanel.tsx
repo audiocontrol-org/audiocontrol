@@ -48,6 +48,7 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
   } = useDiskBrowser(bridgeUrl);
 
   const [expandedTarget, setExpandedTarget] = useState<number | null>(null);
+  const [loadingTarget, setLoadingTarget] = useState<number | null>(null);
   const [selectedFile, setSelectedFile] = useState<AkaiDiskFileEntry | null>(null);
   const [volumes, setVolumes] = useState<Map<number, VolumeWithFiles[]>>(
     new Map(),
@@ -68,7 +69,12 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
 
     let data = partitionData.get(target.id);
     if (!data) {
-      data = (await loadDiskData(target.id)) ?? undefined;
+      setLoadingTarget(target.id);
+      try {
+        data = (await loadDiskData(target.id)) ?? undefined;
+      } finally {
+        setLoadingTarget(null);
+      }
     }
     if (!data) return;
 
@@ -86,8 +92,10 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
         }
         const partData = data.subarray(partStart);
         const vols: AkaiDiskVolumeEntry[] = parseVolumeList(partData);
+        console.log(`[DiskBrowser] Found ${vols.length} volumes in partition`);
         for (const vol of vols) {
           const files = parseFileList(partData, vol.startBlock);
+          console.log(`[DiskBrowser] Volume "${vol.name}": ${files.length} files`);
           allVolumes.push({ name: vol.name, startBlock: vol.startBlock, files });
         }
       }
@@ -164,6 +172,10 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
         <p className="text-sm text-red-400 mb-2">{error}</p>
       )}
 
+      {loading && targets.length === 0 && (
+        <p className="text-sm text-gray-400 animate-pulse">Scanning SCSI bus...</p>
+      )}
+
       {targets.length === 0 && !loading && (
         <p className="text-sm text-gray-500 italic">No SCSI disks found</p>
       )}
@@ -174,6 +186,7 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
             key={target.id}
             target={target}
             expanded={expandedTarget === target.id}
+            loading={loadingTarget === target.id}
             volumes={volumes.get(target.id) ?? []}
             selectedFile={selectedFile}
             onToggle={() => handleExpandTarget(target)}
@@ -211,6 +224,7 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
 interface TargetNodeProps {
   target: DiskTarget;
   expanded: boolean;
+  loading: boolean;
   volumes: VolumeWithFiles[];
   selectedFile: AkaiDiskFileEntry | null;
   onToggle: () => void;
@@ -222,6 +236,7 @@ interface TargetNodeProps {
 function TargetNode({
   target,
   expanded,
+  loading,
   volumes,
   selectedFile,
   onToggle,
@@ -247,7 +262,13 @@ function TargetNode({
         <span className="text-gray-500 ml-auto tabular-nums">{sizeMB} MB</span>
       </button>
 
-      {expanded &&
+      {expanded && loading && (
+        <div className="ml-6 py-2 text-sm text-gray-400 animate-pulse">
+          Reading disk...
+        </div>
+      )}
+
+      {expanded && !loading &&
         volumes.map((vol, vi) => (
           <VolumeNode
             key={vi}
@@ -258,6 +279,10 @@ function TargetNode({
             onSaveToLibrary={onSaveToLibrary ? (file) => onSaveToLibrary(file, vol) : undefined}
           />
         ))}
+
+      {expanded && !loading && volumes.length === 0 && (
+        <p className="ml-6 py-1 text-xs text-gray-600 italic">No volumes found</p>
+      )}
     </div>
   );
 }
