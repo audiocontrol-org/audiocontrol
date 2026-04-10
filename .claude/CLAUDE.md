@@ -29,6 +29,10 @@ audiocontrol/
 └── package.json
 ```
 
+## Sampler Library Architecture
+
+See [SAMPLER-LIBRARY.md](/SAMPLER-LIBRARY.md) for the four-zone storage model (sampler disk, device memory, device-specific library, common area), conversion boundaries between zones, and the theory of higher-order library objects (drum kits, chopped samples, multi-sampled instruments).
+
 ## Core Requirements
 
 ### Import Pattern
@@ -79,6 +83,21 @@ Never use conditionals in UI components to switch behavior based on device confi
 - High test coverage — aim for 80%+
 - All code must be unit testable via dependency injection
 - **Guideline deviations must be documented in situ** — if a technical constraint forces you to break a project convention (e.g., a relative import where `@/` is the rule), add a comment at the deviation site explaining *what* rule is being broken, *why* it's necessary, and that it should not be copied elsewhere. Unexplained deviations are nucleation sites for bad practices.
+
+### Nucleation Site Prevention
+
+Bad code actively attracts more bad code. Agents and humans learn patterns from what they see in the codebase. If they see a duplicated function, they'll call it instead of the canonical one. If they see a backward-compatibility shim, they'll build on top of it. Bad patterns must be **removed**, not just documented — documentation gets ignored, but code gets copied.
+
+**Eliminate these on sight:**
+
+- **Duplicate code** — If the same logic exists in two places, one must go. Move it to the lowest common ancestor (e.g., editor-core for cross-editor code, sampler-library for cross-module code). Don't create a third copy "for now."
+- **Dead code** — Unused functions, deprecated modules, commented-out blocks, and backward-compatibility re-exports are honey pots. Future agents will find them, assume they're load-bearing, and build on top of them. Delete them. Git history preserves anything you need to recover.
+- **Backward compatibility shims** — Re-exporting old names, keeping deprecated type aliases, leaving old API surfaces "in case something uses them." These are the worst nucleation sites because they look intentional. Remove them and fix the callers.
+- **Poorly structured code** — A 600-line file with inline functions that should be hooks, a preview panel that handles 5 node types with conditionals instead of the plugin pattern, a test that writes fixtures inline instead of using the shared helper. These patterns get copied verbatim by agents working on similar features.
+
+**The test for removal:** If an agent reading this code would be confused, misled, or tempted to duplicate it — the code is a nucleation site. Fix the code, don't add a comment warning against copying it.
+
+**When adding new code:** Before implementing, check if the same concept already exists elsewhere in the codebase. If it does, use it. If it's close but not quite right, extend it. The only valid reason to create a new implementation is that no existing implementation covers the use case — and even then, consider whether the existing code should be generalized rather than duplicated.
 
 ### Repository Hygiene
 
@@ -137,6 +156,16 @@ The `cc` byte in Akai SysEx messages (`F0 47 cc ...`) is the **exclusive channel
 - Default: 0 (displayed as "1" on the device)
 - **Do not write EXCHAN via SysEx without immediate restore** — changing it mid-session causes the device to stop responding on the original channel
 - The `--channel` CLI argument sets this exclusive channel, not the MIDI playback channel
+
+## S3000XL SysEx Encoding
+
+The S1000/S3000XL SysEx protocol uses **two different encodings** that must not be confused:
+
+1. **Request item numbers** (RPDATA, RKDATA, RSDATA, DELP, DELK, DELS): encoded as two **7-bit bytes**, LSB first. Example: sample 22 → `[22 & 0x7F, (22 >> 7) & 0x7F]` → `[0x16, 0x00]`.
+
+2. **Header data fields** (within PDATA, KDATA, SDATA payloads): encoded as **nibble pairs** (4-bit), low nibble first. Example: byte 0xAB → `[0x0B, 0x0A]`.
+
+Using nibble encoding for item numbers works for indices 0-15 (where both encodings produce identical bytes) but silently fails for index 16+. Reference: https://lakai.sourceforge.net/docs/s1000_sysex.html — "groups of bytes in messages represent concatenated 7-bit sections of a data word, LSB first."
 
 ## S3000XL SDS Storage Behavior
 
@@ -214,6 +243,21 @@ pnpm --filter <module> test          # Test specific module
 - Never offer baseless projection statistics
 - Use GitHub links (not file paths) in issue descriptions
 - See [PROJECT-MANAGEMENT.md](./PROJECT-MANAGEMENT.md) for project management standards
+
+## Progress Indicators
+
+All long-running operations must show consistent, rich progress indicators. Progress UI must include:
+
+1. **Progress bar** — visual percentage of total bytes transferred
+2. **Data transferred** — bytes sent / total bytes (e.g., "2.4 MB / 5.1 MB")
+3. **Elapsed time** — time since operation started
+4. **Estimated time remaining** — based on current transfer rate
+5. **Current item name** — what's being processed right now
+6. **Item count** (secondary) — items completed / total items (e.g., "3 / 10 samples") is useful context but must not be the primary progress metric since items vary wildly in size
+
+Byte-based progress is the only meaningful primary measure.
+
+**Consistency:** All progress indicators across the application must use the same layout, formatting, and fields. Define a shared progress component or type rather than ad-hoc progress UI per dialog.
 
 ## Critical Don'ts
 
@@ -364,6 +408,40 @@ Library (fixture) ──import──► Device ──export──► Library (re
        │                                              │
        └──────────── compare for equality ────────────┘
 ```
+
+### 5. E2E Test Output and Observability
+
+**Always use `run-and-watch.sh`** to run e2e tests. Never run make targets directly with ad-hoc sleep/tail patterns.
+
+```bash
+# Run any e2e make target with proper log management and completion detection
+modules/e2e-infra/scripts/run-and-watch.sh test-scsi-sds-transfer 'ARGS=--test sds --verbose'
+modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-device-library 'ARGS=--grep "sample round trip"'
+modules/e2e-infra/scripts/run-and-watch.sh test-e2e-roland-library
+```
+
+`run-and-watch.sh` provides:
+- Timestamped log file in `/tmp/e2e-logs/` for post-facto analysis
+- Exponential backoff polling for process completion (1s, 2s, 4s, 8s, 16s, 30s)
+- Filtered progress output (PASS/FAIL/ERROR/SUCCEED/Step lines) on each poll
+- Immediate exit when the test finishes — no wasted wait time
+- Hard timeout kill if the test runs too long
+
+**Never:**
+- Use `sleep N` with a fixed duration to wait for tests
+- Use `tail -f` without a completion check
+- Run tests without capturing output to a log file
+
+### 6. Timeouts and Retries
+
+Timeouts should **start small with exponential backoff** and a hard maximum:
+
+- **Initial timeout:** Short (e.g., 500ms–1s)
+- **Backoff:** Double each retry (1s → 2s → 4s → 8s)
+- **Hard maximum:** Absolute ceiling (e.g., 30s for UI, 90s for device transfers)
+- **Retry count:** Bounded (e.g., max 5 retries)
+
+Never use a single large timeout as the first attempt. A 60-second timeout that could have failed at 2 seconds wastes 58 seconds of feedback time. Start fast, back off if needed.
 
 ## Hardware E2E Testing (roland-sxx0-editor)
 

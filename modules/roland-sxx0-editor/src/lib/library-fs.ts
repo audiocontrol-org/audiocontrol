@@ -151,18 +151,6 @@ export async function renameIndividualPatch(
 }
 
 /**
- * Rename a drum kit (directory).
- */
-export async function renameDrumKit(
-  libraryDir: StorageDirectoryHandle,
-  oldName: string,
-  newName: string,
-  path: string[] = []
-): Promise<void> {
-  await renameDirectory(libraryDir, 'drum-kits', [...path, oldName], newName);
-}
-
-/**
  * Delete a directory from a library category.
  */
 export async function deleteDirectory(

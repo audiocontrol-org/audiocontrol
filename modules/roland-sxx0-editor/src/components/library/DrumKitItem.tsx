@@ -6,7 +6,13 @@
  */
 
 import { useCallback } from 'react';
-import type { DrumKitInfo } from '@/lib/library-service';
+/** Legacy drum kit info — this component is dead code. */
+interface DrumKitInfo {
+  name: string;
+  directoryName: string;
+  kitCount: number;
+  sampleCount: number;
+}
 import { cn } from '@/lib/utils';
 import { DrumKitIcon } from './LibraryTreeIcons';
 import { DeleteButton } from './LibraryTreeIcons';

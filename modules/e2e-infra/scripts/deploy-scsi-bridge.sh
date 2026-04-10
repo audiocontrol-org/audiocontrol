@@ -37,6 +37,9 @@ echo ""
 
 echo "Step 1: Stopping existing daemons..."
 
+# Stop the stock s2p systemd service if it's running — it conflicts with our custom s2p
+ssh "$PI_SSH" "sudo systemctl stop s2p 2>/dev/null; sudo systemctl disable s2p 2>/dev/null; true"
+
 # Kill bridge processes (not root-owned)
 ssh "$PI_SSH" "killall e2e-scsi-midi-bridge 2>/dev/null; killall scsi-midi-bridge 2>/dev/null; true"
 

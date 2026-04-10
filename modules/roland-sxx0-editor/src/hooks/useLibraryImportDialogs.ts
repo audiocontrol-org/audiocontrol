@@ -10,7 +10,7 @@ import { useState, useCallback, type MutableRefObject } from 'react';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { LibraryDragData } from '@/components/library/DeviceMemoryPanel';
 import type { OperationProgress } from '@/types/import-operation';
-import { loadDrumKitBundle, saveDeviceToSetIncremental, loadSetToDevice, type StorageDirectoryHandle } from '@/lib/library-service';
+import { saveDeviceToSetIncremental, loadSetToDevice, type StorageDirectoryHandle } from '@/lib/library-service';
 import type { ItemSelection } from '@/pages/LibraryPage';
 
 export interface ImportToneDialogState {
@@ -46,18 +46,13 @@ interface Options {
   setPatch: (index: number, patch: SamplerPatch, totalPatches: number) => void;
   totalTones: number;
   totalPatches: number;
-  openImportDrumKitDialog: (
-    kitName: string,
-    bundle: import('@audiocontrol/sampler-library/browser').ResolvedDrumKitBundle,
-    path?: string[]
-  ) => void;
   selection: ItemSelection | null;
   handleRefreshLibrary: () => Promise<void>;
 }
 
 export function useLibraryImportDialogs({
   clientRef, libraryHandle, setTone, setPatch, totalTones, totalPatches,
-  openImportDrumKitDialog, selection, handleRefreshLibrary,
+  selection, handleRefreshLibrary,
 }: Options) {
   const [importToneDialog, setImportToneDialog] = useState<ImportToneDialogState | null>(null);
   const [importPatchDialog, setImportPatchDialog] = useState<ImportPatchDialogState | null>(null);
@@ -109,17 +104,11 @@ export function useLibraryImportDialogs({
 
   const handleDropLibraryPatch = useCallback((data: LibraryDragData, targetSlot: number) => {
     if (!libraryHandle || !clientRef.current) { window.alert('Library or device not connected'); return; }
-    if (data.type === 'drumKit') {
-      loadDrumKitBundle(libraryHandle, data.name, data.path)
-        .then(bundle => openImportDrumKitDialog(data.name, bundle, data.path))
-        .catch(err => { console.error('[LibraryPage] Failed to load drum kit for import:', err); window.alert('Failed to load drum kit'); });
-      return;
-    }
-    if (data.type !== 'patch') { window.alert('Can only drop patches or drum kits on patch slots'); return; }
+    if (data.type !== 'patch') { window.alert('Can only drop patches on patch slots'); return; }
     resetProgress();
     if (data.setName && data.patchFile) setImportPatchDialog({ setName: data.setName, patchFile: data.patchFile, initialTargetSlot: targetSlot });
     else setImportPatchDialog({ setName: '__individual__', patchFile: data.name, patchPath: data.path, initialTargetSlot: targetSlot });
-  }, [libraryHandle, clientRef, openImportDrumKitDialog, resetProgress]);
+  }, [libraryHandle, clientRef, resetProgress]);
 
   const handleImportLibraryTone = useCallback(async (params: ImportToneParams) => {
     if (!clientRef.current) return;

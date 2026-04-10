@@ -27,6 +27,10 @@ import { runStreamingTests } from '@/node/lib/test-streaming.js';
 import { runSdsTests } from '@/node/lib/test-sds.js';
 import { runScsiSdsTransferTests } from '@/node/lib/test-scsi-sds-transfer.js';
 import { runDiskWriteTests } from '@/node/lib/test-disk-write.js';
+import { runDrumKitTests } from '@/node/lib/test-drumkit.js';
+import { runMultiSdsTests } from '@/node/lib/test-multi-sds.js';
+import { runProgramExportTests } from '@/node/lib/test-program-export.js';
+import { runDiskBrowserTests } from '@/node/lib/test-disk-browser.js';
 import type { TestContext, TestResult } from '@/node/lib/test-types.js';
 
 // ---------------------------------------------------------------------------
@@ -140,6 +144,10 @@ const TEST_GROUPS: TestGroup[] = [
   { name: 'sds', run: runSdsTests },
   { name: 'scsi-sds-transfer', run: runScsiSdsTransferTests },
   { name: 'disk-write', run: runDiskWriteTests },
+  { name: 'drumkit', run: runDrumKitTests },
+  { name: 'multi-sds', run: runMultiSdsTests },
+  { name: 'program-export', run: runProgramExportTests },
+  { name: 'disk-browser', run: runDiskBrowserTests },
 ];
 
 const TEST_NAME_TO_GROUP: Record<string, string> = {
@@ -187,6 +195,7 @@ async function main(): Promise<void> {
     channel: args.channel,
     noCache: true,
     writeFlushDelayMs: 0, // Flush immediately — we manage timing ourselves
+    sdsChannel: scsi.sdsChannel, // Use dedicated WebSocket SDS channel
   });
 
   const ctx: TestContext = {

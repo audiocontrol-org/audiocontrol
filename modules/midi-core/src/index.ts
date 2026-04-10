@@ -3,6 +3,7 @@ export type {
   MidiPortInfo,
   SysExCallback,
   MidiIO,
+  SdsChannel,
   ConnectionStatus,
   MidiConnectionState,
   WebMidiAccess,

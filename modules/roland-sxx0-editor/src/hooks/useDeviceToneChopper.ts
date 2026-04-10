@@ -9,7 +9,7 @@ import { saveSample, createWav, type SampleYaml } from '@audiocontrol/sampler-li
 import type { SamplerClientInterface, SamplerTone } from '@/core/midi/SamplerClient';
 import type { S330KitConfig } from '@/components/library/S330KitOutputConfig';
 import { unpack12BitTo16Bit } from '@/lib/wave-export';
-import { saveDrumKitToLibrary, type StorageDirectoryHandle } from '@/lib/library-service';
+import type { StorageDirectoryHandle } from '@/lib/library-service';
 
 interface UseDeviceToneChopperOptions {
   clientRef: RefObject<SamplerClientInterface | null>;
@@ -57,28 +57,11 @@ export function useDeviceToneChopper({ clientRef, libraryDirectoryHandle }: UseD
     setChopperSamples(null);
   }, []);
 
-  const handleConfirm = useCallback(async (result: ChopperResult) => {
-    if (!libraryDirectoryHandle) return;
-
-    try {
-      await saveDrumKitToLibrary(
-        libraryDirectoryHandle,
-        kitConfig.name || 'DRUM-KIT',
-        result.sourceAudio,
-        result.sliceDefinitions,
-        {
-          name: kitConfig.name || 'DRUM-KIT',
-          sampleRate: kitConfig.sampleRate,
-          baseNote: kitConfig.baseNote,
-          transpose: kitConfig.transpose !== 0 ? kitConfig.transpose : undefined,
-          velocitySensitivity: kitConfig.velocitySensitivity,
-        },
-      );
-      closeChopper();
-    } catch (err) {
-      console.error('[useDeviceToneChopper] Failed to save drum kit:', err);
-    }
-  }, [libraryDirectoryHandle, kitConfig, closeChopper]);
+  const handleConfirm = useCallback(async (_result: ChopperResult) => {
+    // Device-specific drum kit storage has been removed.
+    // Use handleSave (which saves to the common area) instead.
+    throw new Error('Device-specific drum kit storage has been removed. Use Save to Library instead.');
+  }, []);
 
   const handleSave = useCallback(async (payload: ChopperSavePayload) => {
     if (!libraryDirectoryHandle) return;

@@ -15,12 +15,14 @@ export interface InstrumentDialogState {
   open: boolean;
   programDirName: string;
   programPath: string[];
+  fromProgramsDir: boolean;
 }
 
 const DIALOG_CLOSED: InstrumentDialogState = {
   open: false,
   programDirName: '',
   programPath: [],
+  fromProgramsDir: false,
 };
 
 // =========================================================================
@@ -31,7 +33,7 @@ export interface UseInstrumentTransferResult {
   /** Current dialog state */
   dialog: InstrumentDialogState;
   /** Open the import dialog for a common-area program */
-  openDialog: (dirName: string, path: string[]) => void;
+  openDialog: (dirName: string, path: string[], fromProgramsDir?: boolean) => void;
   /** Close the import dialog */
   closeDialog: () => void;
 }
@@ -49,9 +51,9 @@ export function useInstrumentTransfer(
   const [dialog, setDialog] = useState(DIALOG_CLOSED);
 
   const openDialog = useCallback(
-    (dirName: string, path: string[]) => {
+    (dirName: string, path: string[], fromProgramsDir = false) => {
       if (!isDeviceConnected || !hasLibraryRoot) return;
-      setDialog({ open: true, programDirName: dirName, programPath: path });
+      setDialog({ open: true, programDirName: dirName, programPath: path, fromProgramsDir });
     },
     [isDeviceConnected, hasLibraryRoot],
   );

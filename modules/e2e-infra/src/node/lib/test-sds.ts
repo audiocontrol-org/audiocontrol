@@ -13,7 +13,31 @@ function generateSineWave(length: number, sampleRate: number, freqHz: number): I
 }
 
 export async function runSdsTests(ctx: TestContext): Promise<TestResult[]> {
-  return [await testSdsRoundTrip(ctx)];
+  return [await testFetchAllSampleHeaders(ctx), await testSdsRoundTrip(ctx)];
+}
+
+async function testFetchAllSampleHeaders(ctx: TestContext): Promise<TestResult> {
+  const name = 'fetch-all-sample-headers';
+  try {
+    const sampleNames = await ctx.client.fetchSampleNames();
+    ctx.log(`  ${sampleNames.length} samples on device`);
+    const failures: string[] = [];
+    for (let i = 0; i < sampleNames.length; i++) {
+      try {
+        const header = await ctx.client.fetchSampleHeader(i);
+        ctx.log(`  [${i}] "${header.SHNAME}" — OK`);
+      } catch (err) {
+        ctx.log(`  [${i}] "${sampleNames[i]}" — RSDATA FAILED: ${err}`);
+        failures.push(`${i}:"${sampleNames[i].trim()}"`);
+      }
+    }
+    if (failures.length > 0) {
+      return { name, status: 'FAIL', detail: `RSDATA failed for: ${failures.join(', ')}` };
+    }
+    return { name, status: 'PASS', detail: `All ${sampleNames.length} headers fetched` };
+  } catch (err) {
+    return { name, status: 'ERROR', detail: String(err) };
+  }
 }
 
 async function testSdsRoundTrip(ctx: TestContext): Promise<TestResult> {
@@ -27,15 +51,41 @@ async function testSdsRoundTrip(ctx: TestContext): Promise<TestResult> {
     const testSamples = generateSineWave(256, sampleRate, 440);
     ctx.log(`  Generated ${testSamples.length}-sample sine wave (440Hz @ ${sampleRate}Hz)`);
 
-    ctx.log(`  Sending sample via SDS...`);
+    const expectedName = 'SDSTEST';
+    ctx.log(`  Sending sample via SDS (name: "${expectedName}")...`);
     await ctx.client.sendSampleViaSds(sampleNumber, testSamples, sampleRate, {
+      name: expectedName,
       onProgress: (progress) => {
         if (ctx.verbose) {
-          ctx.log(`    SDS send: packet ${progress.currentPacket}/${progress.totalPackets}`);
+          ctx.log(`    SDS send: packet ${progress.packetsSent}/${progress.packetsTotal}`);
         }
       },
     });
     ctx.log(`  Send complete`);
+
+    // Verify sample was created on device (count should increase by 1)
+    const namesAfterSend = await ctx.client.refreshSampleNames();
+    ctx.log(`  Sample count after send: ${namesAfterSend.length} (was ${sampleNames.length})`);
+    if (namesAfterSend.length <= sampleNames.length) {
+      return {
+        name,
+        status: 'FAIL',
+        detail: `Sample count did not increase after send: before=${sampleNames.length}, after=${namesAfterSend.length}`,
+      };
+    }
+
+    // Verify post-SDS rename: the sample should have our expected name, not the
+    // device-assigned default (e.g., "MIDI 18")
+    const actualName = namesAfterSend[sampleNumber]?.trim();
+    ctx.log(`  Sample name at slot ${sampleNumber}: "${actualName}" (expected: "${expectedName}")`);
+    if (actualName !== expectedName) {
+      return {
+        name,
+        status: 'FAIL',
+        detail: `Sample name mismatch: expected "${expectedName}", got "${actualName}"`,
+      };
+    }
+
 
     ctx.log(`  Receiving sample via SDS...`);
     const received = await ctx.client.receiveSampleViaSds(sampleNumber, (progress) => {
@@ -45,11 +95,12 @@ async function testSdsRoundTrip(ctx: TestContext): Promise<TestResult> {
     });
     ctx.log(`  Receive complete: ${received.samples.length} samples`);
 
-    if (received.samples.length !== testSamples.length) {
+    // The S3000XL pads samples to a multiple of 40. Accept if received >= sent.
+    if (received.samples.length < testSamples.length) {
       return {
         name,
         status: 'FAIL',
-        detail: `Length mismatch: sent ${testSamples.length}, received ${received.samples.length}`,
+        detail: `Received fewer samples than sent: sent ${testSamples.length}, received ${received.samples.length}`,
       };
     }
 
@@ -61,6 +112,9 @@ async function testSdsRoundTrip(ctx: TestContext): Promise<TestResult> {
       if (diff > 1) diffCount++;
     }
 
+    // Log first few samples for debugging
+    ctx.log(`  First 5 sent:     [${Array.from(testSamples.slice(0, 5)).join(', ')}]`);
+    ctx.log(`  First 5 received: [${Array.from(received.samples.slice(0, 5)).join(', ')}]`);
     ctx.log(`  Max sample diff: ${maxDiff}, samples with diff > 1: ${diffCount}/${testSamples.length}`);
 
     if (!ctx.noRestore) {

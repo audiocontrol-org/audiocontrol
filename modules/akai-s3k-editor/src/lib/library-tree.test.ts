@@ -24,10 +24,9 @@ describe('toTreeNode', () => {
       path: ['drums'],
       toneCount: undefined,
       kitCount: undefined,
-      sampleCount: undefined,
       sliceCount: undefined,
+      hasDrumKit: undefined,
       description: undefined,
-      variant: undefined,
     });
   });
 
@@ -56,18 +55,17 @@ describe('toTreeNode', () => {
     expect(result.children?.[0].type).toBe('sample');
   });
 
-  it('preserves all metadata fields', () => {
+  it('preserves all metadata fields including hasDrumKit', () => {
     const input: LibraryTreeNode = {
       id: 'kit1',
       name: 'Kit 1',
-      type: 'drum-kit',
+      type: 'sample',
       path: [],
       directoryName: 'kit-1',
       kitCount: 8,
-      sampleCount: 16,
       description: 'A drum kit',
       sliceCount: 4,
-      variant: 'drum-kit',
+      hasDrumKit: true,
     };
 
     const result = toTreeNode(input);
@@ -78,37 +76,34 @@ describe('toTreeNode', () => {
       path: [],
       toneCount: undefined,
       kitCount: 8,
-      sampleCount: 16,
       sliceCount: 4,
+      hasDrumKit: true,
       description: 'A drum kit',
-      variant: 'drum-kit',
     });
   });
 
-  it('converts a chopped-sample node with variant', () => {
+  it('converts a sample with slices', () => {
     const input: LibraryTreeNode = {
       id: 'break',
       name: 'Amen Break',
-      type: 'chopped-sample',
+      type: 'sample',
       path: ['breaks'],
       directoryName: 'amen-break',
       sliceCount: 8,
-      variant: 'generic',
     };
 
     const result = toTreeNode(input);
 
-    expect(result.type).toBe('chopped-sample');
+    expect(result.type).toBe('sample');
     expect(result.meta).toEqual({
       fileName: undefined,
       directoryName: 'amen-break',
       path: ['breaks'],
       toneCount: undefined,
       kitCount: undefined,
-      sampleCount: undefined,
       sliceCount: 8,
+      hasDrumKit: undefined,
       description: undefined,
-      variant: 'generic',
     });
   });
 });

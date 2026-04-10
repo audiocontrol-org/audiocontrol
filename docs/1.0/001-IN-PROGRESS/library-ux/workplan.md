@@ -5,6 +5,28 @@
 
 ---
 
+## GitHub Tracking
+
+| Item | Link |
+|------|------|
+| **Milestone** | [Backlog](https://github.com/audiocontrol-org/audiocontrol/milestone/8) |
+| **Parent Issue** | [#165 - [roland-sxx0-editor] Library page UX improvements](https://github.com/audiocontrol-org/audiocontrol/issues/165) |
+| **Labels** | `s330-editor`, `enhancement`, `refactor` |
+
+### Implementation Issues
+
+| Phase | Issue | Description |
+|-------|-------|-------------|
+| Phase 1 | [#166](https://github.com/audiocontrol-org/audiocontrol/issues/166) | Panel focus indicators and empty states |
+| Phase 1 | [#167](https://github.com/audiocontrol-org/audiocontrol/issues/167) | Loading states and progress indicators |
+| Phase 2 | [#168](https://github.com/audiocontrol-org/audiocontrol/issues/168) | Drag-drop affordances and context menus |
+| Phase 2 | [#169](https://github.com/audiocontrol-org/audiocontrol/issues/169) | Keyboard and breadcrumb navigation |
+| Phase 3 | [#170](https://github.com/audiocontrol-org/audiocontrol/issues/170) | Extract dialog and panel hooks |
+| Phase 3 | [#171](https://github.com/audiocontrol-org/audiocontrol/issues/171) | Consolidate preview panels |
+| Phase 4 | [#172](https://github.com/audiocontrol-org/audiocontrol/issues/172) | Tests and documentation |
+
+---
+
 ## Overview
 
 Align both editors on `PluginLibraryBrowser`, then polish the shared components. The Roland editor is the UX reference standard; `PluginLibraryBrowser` must match it before Roland migrates onto it.
@@ -297,21 +319,150 @@ Progress bar component for import/export operations. Inline progress in preview 
 
 ---
 
+## Phase 5: Zone 3 → Zone 4 Promotion (S3K)
+
+**Goal:** Enable promoting S3K device-specific programs to the common area, crossing the conversion boundary defined in [SAMPLER-LIBRARY.md](/SAMPLER-LIBRARY.md).
+
+### Task 5.1: Promotion function
+
+Create `modules/akai-s3k-editor/src/lib/program-promotion.ts` with:
+- Adapter mapping serialized keygroup fields (`lowNote`, `highNote`, `sampleNames`) to `AkaiDiskKeygroup` format
+- `promoteToCommonArea()` function that loads an S3K library program, converts via `akaiProgramToCommon()`, copies sample WAVs, and saves a `ProgramYaml` bundle to `library/common/samples/`
+- Handles both SysEx-origin (`s3000xl-program`) and disk-origin (`s3000xl-disk-program`) formats
+
+**Reuses:**
+- `akaiProgramToCommon()` from `sampler-devices/src/devices/s3000xl/akai-to-common.ts`
+- `deserializeProgram()` / `deserializeDiskProgram()` from `akai-s3k-editor/src/lib/program-serialization.ts`
+- `loadStoredProgram()` from `akai-s3k-editor/src/lib/program-storage.ts`
+
+### Task 5.2: Promotion UI
+
+Add "Promote to Common Area" button to `S3kItemPreviewPanel.tsx` for S3K library programs. Wire callback through `LibraryPage.tsx` preview state.
+
+**Files:**
+- Modify: `modules/akai-s3k-editor/src/components/library/S3kItemPreviewPanel.tsx`
+- Modify: `modules/akai-s3k-editor/src/pages/LibraryPage.tsx`
+
+**Phase 5 Verification:** Build passes. Manual test: export S3K program → promote to common area → verify program.yaml + WAVs in common area → reimport via ImportInstrumentDialog.
+
+---
+
+## Phase 6: Shared Editor Dialogs (Stub)
+
+**Goal:** Extract shared `useEditorDialogs` hook to editor-core, eliminating duplicate dialog management between Roland (`useRolandEditorDialogs`) and S3K (`useEditorDialogs`).
+
+**Status:** Not started. This is the next priority after Phase 5.
+
+**Approach:** Create a shared hook in `modules/editor-core/src/hooks/useEditorDialogs.ts` with a `WavLoaderStrategy` interface. Each editor provides a device-specific strategy for loading/saving WAV data. The hook manages dialog state (open/close, loading, saving) identically in both cases.
+
+**Why deferred:** Both editors already have working hooks. The shared extraction reduces duplication but doesn't unblock new functionality. Phase 5 (promotion) enables new workflows that users can't do today.
+
+---
+
+## Phase 8: Library UI E2E Tests
+
+**Goal:** Write UI-interaction e2e tests for library operations in both editors. Tests exercise bugs found during manual testing and prevent regression.
+
+### Task 8.1: Add test IDs to shared components
+
+Add `data-testid` attributes to PluginLibraryBrowser (preview panel) and TreeSection (section headers) in editor-core so e2e tests can find UI elements reliably.
+
+### Task 8.2: Create shared library UI test helpers
+
+Create `modules/e2e-infra/helpers/library-ui-helpers.ts` with:
+- `clickLibraryItem(page, itemName)` — click a tree node
+- `waitForPreviewContent(page)` — wait for preview panel to show item details
+- `clickNewFolderButton(page, sectionTitle)` — click "+" on section header
+- `verifyFolderInOPFS(page, path)` — verify folder was created
+
+### Task 8.3: Write failing tests for both editors
+
+Tests exercise the three bugs found during manual testing:
+1. Selecting a library item shows preview (bug: preview stays empty)
+2. Selecting a drum kit does not crash (bug: undefined meta in renderTrailing)
+3. Create folder in common area persists (bug: folder not created)
+4. Create folder in device-specific category persists
+
+### Task 8.4: Fix bugs and verify tests pass
+
+Fix the root causes and run tests to verify.
+
+**Phase 8 Verification:** `make test-e2e-roland-library` and `make test-e2e-s3k-library` pass.
+
+---
+
 ## Dependency Graph
 
 ```
-Phase 1 (pure Roland refactor, no deps)
+Phase 1 (pure Roland refactor, no deps) — COMPLETE
   1.1 -> 1.2 -> 1.3 -> 1.4
 
-Phase 2 (editor-core changes, depends on Phase 1)
-  2.1 (audit) -> 2.2, 2.3, 2.4, 2.5 (can parallelize after audit)
+Phase 2 (editor-core changes) — COMPLETE
+  2.1 (audit) -> 2.2, 2.3, 2.4 (2.5 deferred to Phase 6)
 
-Phase 3 (depends on Phase 1 + Phase 2)
-  3.1 -> 3.2 -> 3.3 + 3.4
+Phase 3 (Roland migration) — COMPLETE
+  3.1 -> 3.2 -> 3.3
 
-Phase 4 (depends on Phase 3, tasks independent)
-  4.1, 4.2, 4.3, 4.4, 4.5 (parallel)
+Phase 4 (UX polish, tasks independent) — 4.1-4.4 COMPLETE, 4.5 deferred
+  4.1, 4.2, 4.3, 4.4 (done), 4.5 (deferred: keyboard nav)
+
+Phase 5 (S3K Zone 3→4 promotion) — COMPLETE
+  5.1 -> 5.2
+
+Phase 6 (shared useEditorDialogs) — COMPLETE
+  6.1 -> 6.2 -> 6.3
+
+Phase 7 (unify library operations, after Phase 6)
+  7.1 (shared hook) -> 7.2 (wire both editors) -> 7.3 (S3K LibraryPage extraction)
+
+Phase 8 (library UI e2e tests, after Phase 7)
+  8.1 (test IDs) -> 8.2 (test helpers) -> 8.3 (failing tests) -> 8.4 (fix bugs)
 ```
+
+---
+
+## Phase 7: Unify Library Operations
+
+**Goal:** Extract all library operations (create folder, delete, rename, move, file drop, context menu routing) into a shared `useLibraryOperations` hook in editor-core. Both editors use the same hook with device-specific strategies. Eliminates the `toLibraryCategory` bug and gives both editors feature parity.
+
+**Problem discovered during testing:** Both editors wire the same PluginLibraryBrowser callbacks differently, causing feature gaps (S3K has no rename, no context menu; Roland has no file drop), duplicate logic, and bugs (`toLibraryCategory` defaulting common-area operations to 'tones').
+
+### Task 7.1: Create shared useLibraryOperations hook
+
+Create `modules/editor-core/src/hooks/useLibraryOperations.ts` with:
+- Create folder (prompt + `createFolder()`)
+- Delete item (confirm + `deleteItem()` or device-specific delete via strategy)
+- Rename item (inline rename via TreeView, save via strategy)
+- Move item (direct API call)
+- File drop (import WAV to common area)
+- Context menu action routing (move, open editors)
+- Toggle expand state management
+- Refresh callback
+
+Strategy interface for device-specific operations:
+```typescript
+interface LibraryOperationsStrategy {
+  deleteItem?(categoryId: string, node: TreeNode): Promise<boolean>;
+  handleContextMenuAction?(categoryId: string, actionId: string, node: TreeNode): boolean;
+}
+```
+
+### Task 7.2: Wire both editors to shared hook
+
+- Roland: replace `useDirectoryOperations` + inline callbacks with shared hook + Roland strategy
+- S3K: replace inline callbacks with shared hook + S3K strategy
+- Remove `toLibraryCategory` function
+- Delete `modules/roland-sxx0-editor/src/hooks/useDirectoryOperations.ts`
+
+**Result:** Both editors gain feature parity:
+- S3K gains: rename, context menu, directory operation dialogs
+- Roland gains: file drop (WAV import)
+
+### Task 7.3: Extract S3K LibraryPage hooks
+
+S3K LibraryPage at 648 lines — extract data loading and selection hooks (same treatment Roland got in Phase 1).
+
+**Phase 7 Verification:** Build passes. Manual test all operations in both editors. No feature regression.
 
 ---
 

@@ -45,36 +45,77 @@ import {
 export interface DiskToLibraryDialogProps {
   open: boolean;
   onClose: () => void;
-  /** The file entry selected in the disk browser. */
   file: AkaiDiskFileEntry | null;
-  /** Raw partition data containing the file. */
   partitionData: Uint8Array | null;
-  /** Volume's start block (needed to find sibling sample files). */
   volumeStartBlock: number;
-  /** Library root storage handle. */
   libraryRoot: StorageDirectoryHandle;
-  /** Called on success to refresh the library tree. */
   onTransferComplete: () => Promise<void>;
+  ensureFileBlocks?: (fileEntry: AkaiDiskFileEntry) => Promise<void>;
 }
 
 type DialogPhase = 'confirm' | 'saving' | 'success' | 'error';
 type SaveTarget = 's3k' | 'common';
+
+interface SaveProgress {
+  currentItem: string;
+  currentIndex: number;
+  totalItems: number;
+  bytesTransferred: number;
+  totalBytes: number;
+  startTime: number;
+}
+
+// =========================================================================
+// File write helper (works with both FSAA and OPFS handles)
+// =========================================================================
+
+async function writeFile(
+  dir: StorageDirectoryHandle,
+  name: string,
+  data: string | ArrayBuffer,
+): Promise<void> {
+  const handle = await dir.getFileHandle(name, { create: true });
+  const writable = await handle.createWritable();
+  await writable.write(data);
+  await writable.close();
+}
+
+// =========================================================================
+// Progress helpers
+// =========================================================================
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${minutes}m ${secs}s`;
+}
 
 // =========================================================================
 // Save helpers
 // =========================================================================
 
 /** Extract a sample's WAV and header from partition data. */
-function extractSample(
+async function extractSample(
   partitionData: Uint8Array,
   volumeStartBlock: number,
   sampleName: string,
-): { wav: Uint8Array; header: AkaiDiskSampleHeader } | null {
+  ensureBlocks?: (fileEntry: AkaiDiskFileEntry) => Promise<void>,
+): Promise<{ wav: Uint8Array; header: AkaiDiskSampleHeader } | null> {
   const files = parseFileList(partitionData, volumeStartBlock);
   const sampleFile = files.find(
     (f) => isAkaiSample(f.type) && f.name.trim() === sampleName,
   );
   if (!sampleFile) return null;
+
+  if (ensureBlocks) await ensureBlocks(sampleFile);
 
   const sampleData = readFileData(partitionData, sampleFile);
   const header = parseSampleHeaderFromDisk(sampleData);
@@ -83,38 +124,76 @@ function extractSample(
   return { wav, header };
 }
 
+/** Collect unique sample names referenced by a program. */
+export function collectSampleNames(fileData: Uint8Array): string[] {
+  const program = parseProgramFromDisk(fileData);
+  const names = new Set<string>();
+  for (const kg of program.keygroups) {
+    for (const sn of kg.sampleNames) {
+      const trimmed = sn.trim();
+      if (trimmed) names.add(trimmed);
+    }
+  }
+  return [...names];
+}
+
+/** Estimate total bytes for a set of files. */
+export function estimateTotalBytes(
+  file: AkaiDiskFileEntry,
+  sampleNames: string[],
+  partitionData: Uint8Array,
+  volumeStartBlock: number,
+): number {
+  let total = file.size;
+  if (isAkaiProgram(file.type)) {
+    const files = parseFileList(partitionData, volumeStartBlock);
+    for (const name of sampleNames) {
+      const sampleFile = files.find(
+        (f) => isAkaiSample(f.type) && f.name.trim() === name,
+      );
+      if (sampleFile) total += sampleFile.size;
+    }
+  }
+  return total;
+}
+
+export type { SaveProgress };
+
 /** Save to S3K library section (raw Akai bytes, no translation). */
-async function saveToS3kLibrary(
+export async function saveToS3kLibrary(
   file: AkaiDiskFileEntry,
   fileData: Uint8Array,
   partitionData: Uint8Array,
   volumeStartBlock: number,
   name: string,
   libraryRoot: StorageDirectoryHandle,
-  setSavedSampleCount: (n: number) => void,
-) {
+  onProgress: (update: Partial<SaveProgress>) => void,
+  ensureBlocks?: (fileEntry: AkaiDiskFileEntry) => Promise<void>,
+): Promise<number> {
   if (isAkaiProgram(file.type)) {
     const program = parseProgramFromDisk(fileData);
     const yaml = serializeDiskProgram(program, fileData);
     await saveProgramToLibrary(libraryRoot, name, yaml);
+    onProgress({ bytesTransferred: file.size, currentItem: name });
 
     let samplesFound = 0;
-    for (const kg of program.keygroups) {
-      for (const sampleName of kg.sampleNames) {
-        const trimmed = sampleName.trim();
-        if (!trimmed) continue;
-        try {
-          const result = extractSample(partitionData, volumeStartBlock, trimmed);
-          if (result) {
-            await saveProgramSample(libraryRoot, name, trimmed, result.wav.buffer as ArrayBuffer);
-            samplesFound++;
-          }
-        } catch (err) {
-          console.warn(`Failed to save sample "${trimmed}":`, err);
+    const sampleNames = collectSampleNames(fileData);
+
+    for (let i = 0; i < sampleNames.length; i++) {
+      const trimmed = sampleNames[i];
+      onProgress({ currentItem: trimmed, currentIndex: i + 1 });
+      try {
+        const result = await extractSample(partitionData, volumeStartBlock, trimmed, ensureBlocks);
+        if (result) {
+          await saveProgramSample(libraryRoot, name, trimmed, result.wav.buffer as ArrayBuffer);
+          samplesFound++;
+          onProgress({ bytesTransferred: file.size + result.wav.length });
         }
+      } catch (err) {
+        console.warn(`Failed to save sample "${trimmed}":`, err);
       }
     }
-    setSavedSampleCount(samplesFound);
+    return samplesFound;
   } else if (isAkaiSample(file.type)) {
     const header = parseSampleHeaderFromDisk(fileData);
     const pcm = extractSampleAudio(fileData, header);
@@ -130,19 +209,24 @@ async function saveToS3kLibrary(
 
     await saveProgramToLibrary(libraryRoot, name, yaml);
     await saveProgramSample(libraryRoot, name, name, wav.buffer as ArrayBuffer);
-    setSavedSampleCount(1);
+    onProgress({ bytesTransferred: file.size, currentIndex: 1 });
+    return 1;
   }
+  return 0;
 }
 
 /** Save to common library section (translated to vendor-neutral format). */
-async function saveToCommonLibrary(
+export async function saveToCommonLibrary(
   file: AkaiDiskFileEntry,
   fileData: Uint8Array,
   partitionData: Uint8Array,
   volumeStartBlock: number,
   name: string,
   libraryRoot: StorageDirectoryHandle,
-) {
+  onProgress: (update: Partial<SaveProgress>) => void,
+  ensureBlocks?: (fileEntry: AkaiDiskFileEntry) => Promise<void>,
+  targetPath: string[] = [],
+): Promise<number> {
   if (isAkaiSample(file.type)) {
     const header = parseSampleHeaderFromDisk(fileData);
     const pcm = extractSampleAudio(fileData, header);
@@ -154,68 +238,69 @@ async function saveToCommonLibrary(
       name,
       yaml: commonSample as SampleSavePayload['yaml'],
       wavData: wav.buffer as ArrayBuffer,
-    });
+    }, targetPath);
+    onProgress({ bytesTransferred: file.size, currentIndex: 1 });
+    return 1;
   } else if (isAkaiProgram(file.type)) {
     const program = parseProgramFromDisk(fileData);
     const volumeFiles = parseFileList(partitionData, volumeStartBlock);
+    const sampleNames = collectSampleNames(fileData);
 
-    // Collect sample headers for root key info
+    const { stringify: stringifyYaml } = await import('yaml');
+    const { getNestedDirectory } = await import('@audiocontrol/sampler-library/browser');
+
+    // Create program directory first — samples go inside it.
+    const programDir = await getNestedDirectory(libraryRoot, [
+      'library', 'common', 'programs', name,
+    ]);
+    const samplesDir = await programDir.getDirectoryHandle('samples', { create: true });
+
     const sampleHeaders = new Map<string, AkaiDiskSampleHeader>();
-    const allSampleNames = new Set<string>();
-    for (const kg of program.keygroups) {
-      for (const sn of kg.sampleNames) {
-        const trimmed = sn.trim();
-        if (trimmed) allSampleNames.add(trimmed);
-      }
-    }
+    let bytesTransferred = file.size;
 
-    // Save each referenced sample to common library
-    for (const sampleName of allSampleNames) {
+    for (let i = 0; i < sampleNames.length; i++) {
+      const sampleName = sampleNames[i];
+      onProgress({ currentItem: sampleName, currentIndex: i + 1 });
+
       const sampleFile = volumeFiles.find(
         (f) => isAkaiSample(f.type) && f.name.trim() === sampleName,
       );
       if (!sampleFile) continue;
 
       try {
+        if (ensureBlocks) await ensureBlocks(sampleFile);
         const sampleData = readFileData(partitionData, sampleFile);
         const header = parseSampleHeaderFromDisk(sampleData);
         const pcm = extractSampleAudio(sampleData, header);
         const wav = akaiSampleToWav(header, pcm);
         sampleHeaders.set(sampleName, header);
 
+        // Save sample WAV inside the program's samples/ directory
+        await writeFile(samplesDir, `${sampleName.trim()}.wav`, wav.buffer as ArrayBuffer);
+
+        // Save sample metadata YAML alongside the WAV
         const commonSample = akaiSampleToCommon(header);
         commonSample.name = sampleName;
+        const sampleYaml = stringifyYaml(commonSample, { indent: 2 });
+        await writeFile(samplesDir, `${sampleName.trim()}.yaml`, sampleYaml);
 
-        await saveSample(libraryRoot, {
-          name: sampleName,
-          yaml: commonSample as SampleSavePayload['yaml'],
-          wavData: wav.buffer as ArrayBuffer,
-        });
+        bytesTransferred += sampleFile.size;
+        onProgress({ bytesTransferred });
       } catch (err) {
-        console.warn(`Failed to save sample "${sampleName}" to common library:`, err);
+        console.warn(`Failed to save sample "${sampleName}" to program:`, err);
       }
     }
 
-    // Save program metadata to common library
-    // (programs are stored as directory bundles under library/common/samples/)
+    // Save program metadata
     const commonProgram = akaiProgramToCommon(program, sampleHeaders);
     commonProgram.name = name;
-
-    // Write program.yaml to a program bundle directory
-    const { stringify: stringifyYaml } = await import('yaml');
     const programYaml = stringifyYaml(commonProgram, { indent: 2 });
 
-    // Use saveProgramToLibrary to create the directory structure,
-    // then write program.yaml into it
-    const { getNestedDirectory } = await import('@audiocontrol/sampler-library/browser');
-    const programDir = await getNestedDirectory(libraryRoot, [
-      'library', 'common', 'samples', name,
-    ]);
-    const fileHandle = await programDir.getFileHandle('program.yaml', { create: true });
-    const writable = await fileHandle.createWritable();
-    await writable.write(programYaml);
-    await writable.close();
+    await writeFile(programDir, 'program.yaml', programYaml);
+
+    return sampleHeaders.size;
   }
+  return 0;
 }
 
 // =========================================================================
@@ -230,12 +315,21 @@ export function DiskToLibraryDialog({
   volumeStartBlock,
   libraryRoot,
   onTransferComplete,
+  ensureFileBlocks,
 }: DiskToLibraryDialogProps) {
   const [phase, setPhase] = useState<DialogPhase>('confirm');
   const [saveName, setSaveName] = useState('');
   const [saveTarget, setSaveTarget] = useState<SaveTarget>('s3k');
   const [errorMessage, setErrorMessage] = useState('');
   const [savedSampleCount, setSavedSampleCount] = useState(0);
+  const [progress, setProgress] = useState<SaveProgress>({
+    currentItem: '',
+    currentIndex: 0,
+    totalItems: 0,
+    bytesTransferred: 0,
+    totalBytes: 0,
+    startTime: 0,
+  });
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -245,6 +339,14 @@ export function DiskToLibraryDialog({
       setSaveTarget('s3k');
       setErrorMessage('');
       setSavedSampleCount(0);
+      setProgress({
+        currentItem: '',
+        currentIndex: 0,
+        totalItems: 0,
+        bytesTransferred: 0,
+        totalBytes: 0,
+        startTime: 0,
+      });
     }
   }, [open, file]);
 
@@ -258,27 +360,77 @@ export function DiskToLibraryDialog({
     const name = saveName.trim();
     if (!name) return;
 
+    // Calculate total items and bytes before starting
+    const sampleNames = isAkaiProgram(file.type)
+      ? (() => {
+          try {
+            if (ensureFileBlocks) {
+              // File blocks should already be loaded from the click handler
+            }
+            const fileData = readFileData(partitionData, file);
+            return collectSampleNames(fileData);
+          } catch {
+            return [];
+          }
+        })()
+      : [];
+
+    const totalItems = 1 + sampleNames.length; // program/sample + referenced samples
+    const totalBytes = estimateTotalBytes(file, sampleNames, partitionData, volumeStartBlock);
+    const startTime = Date.now();
+
+    setProgress({
+      currentItem: file.name.trim(),
+      currentIndex: 0,
+      totalItems,
+      bytesTransferred: 0,
+      totalBytes,
+      startTime,
+    });
     setPhase('saving');
+
     try {
+      if (ensureFileBlocks) await ensureFileBlocks(file);
       const fileData = readFileData(partitionData, file);
 
+      const onProgress = (update: Partial<SaveProgress>) => {
+        setProgress((prev) => ({ ...prev, ...update }));
+      };
+
+      let samplesCount: number;
       if (saveTarget === 'common') {
-        await saveToCommonLibrary(file, fileData, partitionData, volumeStartBlock, name, libraryRoot);
+        samplesCount = await saveToCommonLibrary(
+          file, fileData, partitionData, volumeStartBlock,
+          name, libraryRoot, onProgress, ensureFileBlocks,
+        );
       } else {
-        await saveToS3kLibrary(file, fileData, partitionData, volumeStartBlock, name, libraryRoot, setSavedSampleCount);
+        samplesCount = await saveToS3kLibrary(
+          file, fileData, partitionData, volumeStartBlock,
+          name, libraryRoot, onProgress, ensureFileBlocks,
+        );
       }
 
+      setSavedSampleCount(samplesCount);
       setPhase('success');
       await onTransferComplete();
     } catch (err) {
       setErrorMessage(err instanceof Error ? err.message : String(err));
       setPhase('error');
     }
-  }, [file, partitionData, volumeStartBlock, saveName, saveTarget, libraryRoot, onTransferComplete]);
+  }, [file, partitionData, volumeStartBlock, saveName, saveTarget, libraryRoot, onTransferComplete, ensureFileBlocks]);
 
   if (!file) return null;
 
   const fileTypeLabel = isAkaiProgram(file.type) ? 'Program' : 'Sample';
+
+  // Progress calculations
+  const elapsed = phase === 'saving' ? Date.now() - progress.startTime : 0;
+  const percent = progress.totalBytes > 0
+    ? Math.round((progress.bytesTransferred / progress.totalBytes) * 100)
+    : 0;
+  const bytesPerMs = elapsed > 0 ? progress.bytesTransferred / elapsed : 0;
+  const remainingBytes = progress.totalBytes - progress.bytesTransferred;
+  const etaMs = bytesPerMs > 0 ? remainingBytes / bytesPerMs : 0;
 
   return (
     <Dialog open={open} onClose={handleClose}>
@@ -340,9 +492,37 @@ export function DiskToLibraryDialog({
       )}
 
       {phase === 'saving' && (
-        <DialogDescription>
-          Saving to library...
-        </DialogDescription>
+        <div className="my-4 space-y-3">
+          {/* Progress bar */}
+          <div className="w-full bg-gray-700 rounded-full h-2">
+            <div
+              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${Math.max(percent, 2)}%` }}
+            />
+          </div>
+
+          {/* Stats */}
+          <div className="text-sm text-gray-300 space-y-1">
+            <div className="flex justify-between">
+              <span>
+                {progress.currentIndex} / {progress.totalItems} items
+              </span>
+              <span>{percent}%</span>
+            </div>
+            <div className="flex justify-between text-gray-400">
+              <span>
+                {formatBytes(progress.bytesTransferred)} / {formatBytes(progress.totalBytes)}
+              </span>
+              <span>
+                {elapsed > 1000 && `${formatDuration(elapsed)} elapsed`}
+                {etaMs > 1000 && ` \u2022 ~${formatDuration(etaMs)} remaining`}
+              </span>
+            </div>
+            <div className="text-gray-500 truncate">
+              {progress.currentItem}
+            </div>
+          </div>
+        </div>
       )}
 
       {phase === 'success' && (

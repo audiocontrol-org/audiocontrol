@@ -2,6 +2,8 @@
  * Shared Web MIDI types for AudioControl editors
  */
 
+import type { SdsTransferProgress, SdsDumpHeader } from './sds/sds-types';
+
 /**
  * MIDI port information
  */
@@ -57,6 +59,28 @@ export interface WebMidiAccess {
   inputs: MidiPortInfo[];
   outputs: MidiPortInfo[];
   sysExEnabled: boolean;
+}
+
+/**
+ * Dedicated channel for SDS (Sample Dump Standard) transfers.
+ *
+ * Separate from MidiIO because SDS requires tight send-ACK handshaking
+ * that cannot share a queue with SysEx parameter commands.
+ */
+export interface SdsChannel {
+  uploadSample(
+    sampleNumber: number,
+    channel: number,
+    sampleRate: number,
+    samples: Int16Array,
+    onProgress?: (progress: SdsTransferProgress) => void,
+  ): Promise<void>;
+
+  downloadSample(
+    sampleNumber: number,
+    channel: number,
+    onProgress?: (progress: SdsTransferProgress) => void,
+  ): Promise<{ header: SdsDumpHeader; samples: Int16Array }>;
 }
 
 /**

@@ -6,7 +6,7 @@
  * Programs display their keygroup structure on selection.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useImperativeHandle, type MouseEvent } from 'react';
 import type { AkaiDiskFileEntry, AkaiDiskVolumeEntry } from '@audiocontrol/sampler-devices/s3k';
 import {
   useDiskBrowser,
@@ -18,11 +18,30 @@ import {
   type DiskTarget,
 } from '@/hooks/useDiskBrowser';
 import { BLOCK_SIZE } from '@audiocontrol/sampler-devices/s3k';
+import { ContextMenu, ChevronIcon, type ContextMenuAction } from '@audiocontrol/editor-core';
+
+/** Custom MIME type for dragging disk browser items to the library. */
+export const DISK_ITEM_MIME = 'application/x-akai-disk-item';
+
+/** Serializable drag payload for disk browser items. */
+export interface DiskDragPayload {
+  file: AkaiDiskFileEntry;
+  targetId: number;
+  volumeStartBlock: number;
+}
 
 interface VolumeWithFiles {
   name: string;
   startBlock: number;
   files: AkaiDiskFileEntry[];
+}
+
+/** Imperative handle for resolving disk drag payloads to save context. */
+export interface DiskBrowserHandle {
+  resolveDragPayload(payload: DiskDragPayload): {
+    partitionData: Uint8Array;
+    ensureFileBlocks: (fileEntry: AkaiDiskFileEntry) => Promise<void>;
+  } | null;
 }
 
 interface Props {
@@ -33,10 +52,13 @@ interface Props {
     targetId: number,
     partitionData: Uint8Array,
     volumeStartBlock: number,
+    ensureFileBlocks: (fileEntry: AkaiDiskFileEntry) => Promise<void>,
   ) => void;
+  /** Ref for imperative access to disk browser state (for drag-drop). */
+  browserRef?: React.Ref<DiskBrowserHandle>;
 }
 
-export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
+export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Props) {
   const {
     loading,
     error,
@@ -44,10 +66,31 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
     scanTargets,
     loadDiskData,
     partitionData,
-    downloadSample,
+    ensureFileBlocks,
   } = useDiskBrowser(bridgeUrl);
 
+  // Expose imperative handle for drag-drop resolution
+  useImperativeHandle(browserRef, () => ({
+    resolveDragPayload(payload: DiskDragPayload) {
+      const data = partitionData.get(payload.targetId);
+      if (!data) return null;
+      const partitions = parsePartitionTable(data);
+      for (const partition of partitions) {
+        const partStart = partition.offsetInBlocks * BLOCK_SIZE;
+        if (partStart + BLOCK_SIZE > data.length) continue;
+        const partData = data.subarray(partStart);
+        const vols = parseVolumeList(partData);
+        if (vols.some(v => v.startBlock === payload.volumeStartBlock)) {
+          const boundEnsure = (f: AkaiDiskFileEntry) => ensureFileBlocks(payload.targetId, f);
+          return { partitionData: partData, ensureFileBlocks: boundEnsure };
+        }
+      }
+      return null;
+    },
+  }), [partitionData, ensureFileBlocks]);
+
   const [expandedTarget, setExpandedTarget] = useState<number | null>(null);
+  const [loadingTarget, setLoadingTarget] = useState<number | null>(null);
   const [selectedFile, setSelectedFile] = useState<AkaiDiskFileEntry | null>(null);
   const [volumes, setVolumes] = useState<Map<number, VolumeWithFiles[]>>(
     new Map(),
@@ -68,24 +111,33 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
 
     let data = partitionData.get(target.id);
     if (!data) {
-      data = (await loadDiskData(target.id)) ?? undefined;
+      setLoadingTarget(target.id);
+      try {
+        data = (await loadDiskData(target.id)) ?? undefined;
+      } finally {
+        setLoadingTarget(null);
+      }
     }
     if (!data) return;
 
     try {
       const partitions = parsePartitionTable(data);
+      console.log(`[DiskBrowser] Loaded ${data.length} bytes, ${partitions.length} partitions`);
       const allVolumes: VolumeWithFiles[] = [];
 
       for (const partition of partitions) {
         const partStart = partition.offsetInBlocks * BLOCK_SIZE;
+        console.log(`[DiskBrowser] Partition: offset=${partition.offsetInBlocks} blocks, start=${partStart} bytes, data.length=${data.length}`);
         if (partStart + BLOCK_SIZE > data.length) {
-          // Partition extends beyond loaded data; skip for now.
+          console.log(`[DiskBrowser] Skipping partition — extends beyond loaded data`);
           continue;
         }
         const partData = data.subarray(partStart);
         const vols: AkaiDiskVolumeEntry[] = parseVolumeList(partData);
+        console.log(`[DiskBrowser] Found ${vols.length} volumes in partition`);
         for (const vol of vols) {
           const files = parseFileList(partData, vol.startBlock);
+          console.log(`[DiskBrowser] Volume "${vol.name}": ${files.length} files`);
           allVolumes.push({ name: vol.name, startBlock: vol.startBlock, files });
         }
       }
@@ -100,35 +152,6 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
     }
   };
 
-  const handleDownload = async (
-    targetId: number,
-    file: AkaiDiskFileEntry,
-  ) => {
-    const data = partitionData.get(targetId);
-    if (!data) return;
-
-    // Find the partition that contains this file. The file's startBlock is
-    // relative to the partition, so we need the partition-level subarray.
-    const partitions = parsePartitionTable(data);
-    for (const partition of partitions) {
-      const partStart = partition.offsetInBlocks * BLOCK_SIZE;
-      if (partStart + BLOCK_SIZE > data.length) continue;
-      const partData = data.subarray(partStart);
-
-      try {
-        const blob = await downloadSample(partData, file);
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${file.name.trim()}.wav`;
-        a.click();
-        URL.revokeObjectURL(url);
-        return;
-      } catch {
-        // File might not be in this partition; try the next one.
-      }
-    }
-  };
 
   if (!bridgeUrl) {
     return (
@@ -162,6 +185,10 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
         <p className="text-sm text-red-400 mb-2">{error}</p>
       )}
 
+      {loading && targets.length === 0 && (
+        <p className="text-sm text-gray-400 animate-pulse">Scanning SCSI bus...</p>
+      )}
+
       {targets.length === 0 && !loading && (
         <p className="text-sm text-gray-500 italic">No SCSI disks found</p>
       )}
@@ -172,27 +199,33 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
             key={target.id}
             target={target}
             expanded={expandedTarget === target.id}
+            loading={loadingTarget === target.id}
             volumes={volumes.get(target.id) ?? []}
             selectedFile={selectedFile}
             onToggle={() => handleExpandTarget(target)}
             onSelectFile={setSelectedFile}
-            onDownloadSample={(file) => handleDownload(target.id, file)}
-            onSaveToLibrary={onSaveToLibrary ? (file, vol) => {
-              const data = partitionData.get(target.id);
-              if (data) {
-                // Find partition-level data for this volume
+            onSaveToLibrary={onSaveToLibrary ? async (file, vol) => {
+              try {
+                const data = partitionData.get(target.id);
+                if (!data) return;
+
+                // Only load the clicked file's blocks — not the entire volume.
+                await ensureFileBlocks(target.id, file);
+
                 const partitions = parsePartitionTable(data);
                 for (const partition of partitions) {
                   const partStart = partition.offsetInBlocks * BLOCK_SIZE;
                   if (partStart + BLOCK_SIZE > data.length) continue;
                   const partData = data.subarray(partStart);
-                  // Check if this partition contains the volume
                   const vols = parseVolumeList(partData);
                   if (vols.some(v => v.startBlock === vol.startBlock)) {
-                    onSaveToLibrary(file, target.id, partData, vol.startBlock);
+                    const boundEnsure = (f: AkaiDiskFileEntry) => ensureFileBlocks(target.id, f);
+                    onSaveToLibrary(file, target.id, partData, vol.startBlock, boundEnsure);
                     return;
                   }
                 }
+              } catch (err) {
+                console.error('[DiskBrowser] Save to library failed:', err);
               }
             } : undefined}
           />
@@ -209,22 +242,22 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
 interface TargetNodeProps {
   target: DiskTarget;
   expanded: boolean;
+  loading: boolean;
   volumes: VolumeWithFiles[];
   selectedFile: AkaiDiskFileEntry | null;
   onToggle: () => void;
   onSelectFile: (file: AkaiDiskFileEntry) => void;
-  onDownloadSample: (file: AkaiDiskFileEntry) => void;
   onSaveToLibrary?: (file: AkaiDiskFileEntry, volume: VolumeWithFiles) => void;
 }
 
 function TargetNode({
   target,
   expanded,
+  loading,
   volumes,
   selectedFile,
   onToggle,
   onSelectFile,
-  onDownloadSample,
   onSaveToLibrary,
 }: TargetNodeProps) {
   const sizeMB = Math.round(
@@ -238,62 +271,77 @@ function TargetNode({
         onClick={onToggle}
         className="w-full text-left px-2 py-1 text-sm rounded transition-colors text-gray-300 hover:bg-gray-700 flex items-center gap-1"
       >
-        <span className="text-gray-500">{expanded ? '\u25BE' : '\u25B8'}</span>
+        <ChevronIcon isExpanded={expanded} />
         <span>
           ID {target.id}: {target.vendor.trim()} {target.product.trim()}
         </span>
         <span className="text-gray-500 ml-auto tabular-nums">{sizeMB} MB</span>
       </button>
 
-      {expanded &&
+      {expanded && loading && (
+        <div className="ml-6 py-2 text-sm text-gray-400 animate-pulse">
+          Reading disk...
+        </div>
+      )}
+
+      {expanded && !loading &&
         volumes.map((vol, vi) => (
           <VolumeNode
             key={vi}
             volume={vol}
+            targetId={target.id}
             selectedFile={selectedFile}
             onSelectFile={onSelectFile}
-            onDownloadSample={onDownloadSample}
             onSaveToLibrary={onSaveToLibrary ? (file) => onSaveToLibrary(file, vol) : undefined}
           />
         ))}
+
+      {expanded && !loading && volumes.length === 0 && (
+        <p className="ml-6 py-1 text-xs text-gray-600 italic">No volumes found</p>
+      )}
     </div>
   );
 }
 
 interface VolumeNodeProps {
   volume: VolumeWithFiles;
+  targetId: number;
   selectedFile: AkaiDiskFileEntry | null;
   onSelectFile: (file: AkaiDiskFileEntry) => void;
-  onDownloadSample: (file: AkaiDiskFileEntry) => void;
   onSaveToLibrary?: (file: AkaiDiskFileEntry) => void;
 }
 
 function VolumeNode({
   volume,
+  targetId,
   selectedFile,
   onSelectFile,
-  onDownloadSample,
   onSaveToLibrary,
 }: VolumeNodeProps) {
+  const [expanded, setExpanded] = useState(false);
+
   return (
     <div className="ml-4">
-      <div className="text-sm font-medium text-gray-400 py-1 px-2">
-        {volume.name}
-      </div>
-      {volume.files.length === 0 && (
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="w-full text-left text-sm font-medium text-gray-400 py-1 px-2 rounded hover:bg-gray-700 flex items-center gap-1"
+      >
+        <ChevronIcon isExpanded={expanded} />
+        <span>{volume.name}</span>
+        <span className="text-gray-500 ml-auto text-xs">{volume.files.length} files</span>
+      </button>
+      {expanded && volume.files.length === 0 && (
         <p className="text-xs text-gray-600 italic pl-6">Empty</p>
       )}
-      {volume.files.map((file, fi) => (
+      {expanded && volume.files.map((file, fi) => (
         <FileNode
           key={fi}
           file={file}
+          targetId={targetId}
+          volumeStartBlock={volume.startBlock}
           isSelected={selectedFile === file}
           onSelect={() => onSelectFile(file)}
-          onDoubleClick={() => {
-            if (file.type === FILE_TYPE_SAMPLE) {
-              onDownloadSample(file);
-            }
-          }}
           onSaveToLibrary={onSaveToLibrary ? () => onSaveToLibrary(file) : undefined}
         />
       ))}
@@ -303,13 +351,16 @@ function VolumeNode({
 
 interface FileNodeProps {
   file: AkaiDiskFileEntry;
+  targetId: number;
+  volumeStartBlock: number;
   isSelected: boolean;
   onSelect: () => void;
-  onDoubleClick: () => void;
   onSaveToLibrary?: () => void;
 }
 
-function FileNode({ file, isSelected, onSelect, onDoubleClick, onSaveToLibrary }: FileNodeProps) {
+function FileNode({ file, targetId, volumeStartBlock, isSelected, onSelect, onSaveToLibrary }: FileNodeProps) {
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
   const typeLabel =
     file.type === FILE_TYPE_SAMPLE
       ? 'Sample'
@@ -319,17 +370,40 @@ function FileNode({ file, isSelected, onSelect, onDoubleClick, onSaveToLibrary }
 
   const sizeKB = file.size > 0 ? `${Math.round(file.size / 1024)} KB` : '';
 
+  const handleContextMenu = (e: MouseEvent) => {
+    e.preventDefault();
+    onSelect();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleDragStart = (e: React.DragEvent) => {
+    const payload: DiskDragPayload = { file, targetId, volumeStartBlock };
+    e.dataTransfer.setData(DISK_ITEM_MIME, JSON.stringify(payload));
+    e.dataTransfer.effectAllowed = 'copy';
+    console.log('[DiskBrowser] drag started:', file.name);
+  };
+
+  const actions: ContextMenuAction[] = [];
+  if (onSaveToLibrary) {
+    actions.push({
+      label: 'Save to Library',
+      onClick: () => { Promise.resolve(onSaveToLibrary()).catch(err => console.error('[DiskBrowser] save failed:', err)); },
+    });
+  }
+
   return (
-    <div className="flex items-center">
+    <>
       <button
         type="button"
-        className={`flex-1 text-left flex items-center gap-1 px-6 py-0.5 text-sm rounded transition-colors cursor-pointer ${
+        draggable
+        className={`w-full text-left flex items-center gap-1 px-6 py-0.5 text-sm rounded transition-colors cursor-pointer ${
           isSelected
             ? 'bg-blue-600 text-white'
             : 'text-gray-300 hover:bg-gray-700'
         }`}
         onClick={onSelect}
-        onDoubleClick={onDoubleClick}
+        onDragStart={handleDragStart}
+        onContextMenu={handleContextMenu}
       >
         <span>{file.name}</span>
         <span
@@ -340,17 +414,29 @@ function FileNode({ file, isSelected, onSelect, onDoubleClick, onSaveToLibrary }
           {typeLabel}
           {sizeKB && ` (${sizeKB})`}
         </span>
+        {isSelected && onSaveToLibrary && (
+          <span
+            role="button"
+            tabIndex={0}
+            onClick={(e) => { e.stopPropagation(); Promise.resolve(onSaveToLibrary()).catch(err => console.error('[DiskBrowser] save failed:', err)); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); Promise.resolve(onSaveToLibrary()).catch(err => console.error('[DiskBrowser] save failed:', err)); } }}
+            className="ml-1 text-blue-200 hover:text-white"
+            title="Save to Library"
+          >
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v12m0 0l-4-4m4 4l4-4M4 18h16" />
+            </svg>
+          </span>
+        )}
       </button>
-      {isSelected && onSaveToLibrary && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onSaveToLibrary(); }}
-          className="px-1.5 py-0.5 text-xs text-blue-300 hover:text-white"
-          title="Save to Library"
-        >
-          +Lib
-        </button>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          actions={actions}
+          onClose={() => setContextMenu(null)}
+        />
       )}
-    </div>
+    </>
   );
 }

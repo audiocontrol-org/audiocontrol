@@ -5,7 +5,6 @@
  * - Directories (expandable with children)
  * - Tones (draggable items)
  * - Patches (draggable items)
- * - Drum kits (draggable items)
  */
 
 import { useCallback, useState, useRef, useEffect } from 'react';
@@ -13,7 +12,7 @@ import type { LibraryTreeNode as TreeNodeType } from '@/lib/library-service';
 import { cn } from '@/lib/utils';
 import { isValidMoveTarget } from '@audiocontrol/sampler-library/browser';
 import { LIBRARY_DRAG_MIME, type LibraryDragData } from '@/components/library/DeviceMemoryPanel';
-import { FolderIcon, ChevronIcon, WaveIcon, PatchIcon, DrumKitIcon, DeleteButton } from './LibraryTreeIcons';
+import { FolderIcon, ChevronIcon, WaveIcon, PatchIcon, DeleteButton } from './LibraryTreeIcons';
 
 /** Internal MIME type for library-to-library drag operations (moving items) */
 export const LIBRARY_MOVE_MIME = 'application/x-s330-library-move';
@@ -24,7 +23,7 @@ export const LIBRARY_MOVE_MIME = 'application/x-s330-library-move';
 
 export interface LibraryTreeNodeProps {
   node: TreeNodeType;
-  category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples';
+  category: 'tones' | 'patches' | 'samples';
   depth: number;
   isExpanded: boolean;
   isSelected: boolean;
@@ -142,13 +141,6 @@ export function LibraryTreeNodeComponent({
       dragData = {
         source: 'library',
         type: 'patch',
-        name: node.directoryName || node.name,
-        path: node.path,
-      };
-    } else if (node.type === 'drum-kit') {
-      dragData = {
-        source: 'library',
-        type: 'drumKit',
         name: node.directoryName || node.name,
         path: node.path,
       };
@@ -285,7 +277,6 @@ export function LibraryTreeNodeComponent({
         {isDirectory && <FolderIcon isOpen={isExpanded} />}
         {node.type === 'tone' && <WaveIcon />}
         {node.type === 'patch' && <PatchIcon />}
-        {node.type === 'drum-kit' && <DrumKitIcon />}
 
         {/* Name (editable on double-click) */}
         {isEditing ? (
@@ -315,12 +306,6 @@ export function LibraryTreeNodeComponent({
             {node.toneCount} tone{node.toneCount !== 1 ? 's' : ''}
           </span>
         )}
-        {node.type === 'drum-kit' && (
-          <span className="text-xs text-s330-muted">
-            {node.kitCount} kit{node.kitCount !== 1 ? 's' : ''} / {node.sampleCount} samples
-          </span>
-        )}
-
         {/* Delete button */}
         {onDelete && !isDirectory && (
           <DeleteButton
@@ -374,7 +359,7 @@ export function LibraryTreeNodeComponent({
 export interface TreeSectionProps {
   title: string;
   nodes: TreeNodeType[];
-  category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples';
+  category: 'tones' | 'patches' | 'samples';
   expandedPaths: Set<string>;
   selectedId?: string;
   onToggleExpand: (nodeId: string) => void;

@@ -14,7 +14,7 @@
  */
 
 import { z } from 'zod';
-import { LoopModeSchema, MidiNoteSchema, DeviceTypeSchema } from './common-schema.js';
+import { LoopModeSchema, MidiNoteSchema } from './common-schema.js';
 import { SliceDefinitionSchema } from './drum-kit-bundle-schema.js';
 import {
   TriggerMappingSchema,
@@ -51,8 +51,8 @@ export const SampleYamlSchema = z.object({
   tags: z.array(z.string()).optional(),
   /** Human-readable description */
   description: z.string().optional(),
-  /** Breadcrumb set when a device tone is demoted to the common area */
-  sourceDevice: DeviceTypeSchema.optional(),
+  /** Breadcrumb set when a device item is demoted to the common area */
+  sourceDevice: z.string().optional(),
   /** ISO 8601 creation timestamp */
   createdAt: z.string().optional(),
   /** ISO 8601 last modification timestamp */

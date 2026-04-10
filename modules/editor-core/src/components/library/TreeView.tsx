@@ -121,6 +121,7 @@ function TreeNodeRow({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const isDirectory = node.type === 'directory';
+  const hasChildren = !!node.children?.length;
   // Both directories and non-directories can be dragged
   const isDraggable = draggable ?? false;
   const paddingLeft = depth * indentPx + 8;
@@ -139,6 +140,9 @@ function TreeNodeRow({
     if (isEditing) return; // Don't handle clicks while editing
     if (isDirectory) {
       onToggleExpand(node.id);
+    } else if (hasChildren) {
+      onToggleExpand(node.id);
+      onSelect?.(node);
     } else {
       onSelect?.(node);
     }
@@ -208,7 +212,9 @@ function TreeNodeRow({
     if (allowed) {
       e.preventDefault();
       e.stopPropagation();
-      e.dataTransfer.dropEffect = 'move';
+      // Use 'copy' if the source only allows copy (e.g., disk browser items)
+      e.dataTransfer.dropEffect =
+        e.dataTransfer.effectAllowed === 'copy' ? 'copy' : 'move';
     }
   }, [node, isDirectory, onDragOver]);
 
@@ -269,7 +275,7 @@ function TreeNodeRow({
   return (
     <div>
       <div
-        className={`ac-tree-node ${stateClass}${isEditing ? ' ac-tree-node--editing' : ''}`}
+        className={`ac-tree-node ${stateClass}${isEditing ? ' ac-tree-node--editing' : ''}${isDraggable && !isEditing ? ' ac-tree-node--draggable' : ''}`}
         style={{ paddingLeft }}
         data-testid={testId}
         onClick={handleClick}
@@ -284,9 +290,9 @@ function TreeNodeRow({
         onDrop={isDirectory ? handleDrop : undefined}
         role="treeitem"
         tabIndex={isEditing ? -1 : 0}
-        aria-expanded={isDirectory ? isExpanded : undefined}
+        aria-expanded={(isDirectory || hasChildren) ? isExpanded : undefined}
       >
-        {isDirectory && (
+        {(isDirectory || hasChildren) && (
           <span
             className="ac-tree-chevron-btn"
             onClick={(e) => { e.stopPropagation(); onToggleExpand(node.id); }}
@@ -336,8 +342,8 @@ function TreeNodeRow({
         )}
       </div>
 
-      {/* Children for expanded directories */}
-      {isDirectory && isExpanded && node.children && node.children.length > 0 && (
+      {/* Children for expanded nodes */}
+      {(isDirectory || hasChildren) && isExpanded && node.children && node.children.length > 0 && (
         <div className="ac-tree-children">
           {node.children.map((child) => (
             <TreeNodeRow

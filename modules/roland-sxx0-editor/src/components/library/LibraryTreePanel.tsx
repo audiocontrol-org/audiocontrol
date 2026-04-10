@@ -14,7 +14,6 @@ import { useState, useCallback, useEffect } from 'react';
 import type { SetInfo, SetYaml, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import {
   loadSetManifest,
-  type DrumKitInfo,
   type LibraryToneInfo,
   type LibraryPatchInfo,
   type LibraryTreeNode,
@@ -27,45 +26,35 @@ import { type DeviceDragData } from './DeviceMemoryPanel';
 import { TreeSection } from './LibraryTreeNode';
 import { ContextMenu } from '@audiocontrol/editor-core';
 import { WaveIcon, PatchIcon, DeleteButton } from './LibraryTreeIcons';
-import { DrumKitItem } from './DrumKitItem';
 import { SetItem } from './SetItem';
 
 interface LibraryTreePanelProps {
   libraryHandle: StorageDirectoryHandle | null;
   sets: SetInfo[];
-  drumKits: DrumKitInfo[];
   individualTones: LibraryToneInfo[];
   individualPatches: LibraryPatchInfo[];
   /** Hierarchical tree for tones (optional, falls back to flat list) */
   tonesTree?: LibraryTreeNode[];
   /** Hierarchical tree for patches (optional, falls back to flat list) */
   patchesTree?: LibraryTreeNode[];
-  /** Hierarchical tree for drum kits (optional, falls back to flat list) */
-  drumKitsTree?: LibraryTreeNode[];
-  /** Hierarchical tree for chopped samples from common/samples/ */
-  choppedSamplesTree?: LibraryTreeNode[];
-  /** Hierarchical tree for common-area content (samples, programs, legacy chopped) */
+  /** Hierarchical tree for common-area content (samples, programs) */
   commonSamplesTree?: LibraryTreeNode[];
   /** Expanded directory paths per category */
   expandedPaths?: {
     tones: Set<string>;
     patches: Set<string>;
-    drumKits: Set<string>;
-    choppedSamples: Set<string>;
-    commonSamples: Set<string>;
+    samples: Set<string>;
   };
   selectedName?: string;
-  selectedType?: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch' | 'choppedSample' | 'sample' | 'program';
+  selectedType?: 'tone' | 'patch' | 'set' | 'individualTone' | 'individualPatch' | 'sample' | 'program';
   selectedSetName?: string;
   /** Selected path for hierarchical items */
   selectedPath?: string[];
   onSelectSet: (name: string) => void;
   onSelectTone: (name: string, setName: string) => void;
   onSelectPatch: (name: string, setName: string) => void;
-  onSelectDrumKit: (name: string, path?: string[]) => void;
   onSelectIndividualTone: (name: string, path?: string[]) => void;
   onSelectIndividualPatch: (name: string, path?: string[]) => void;
-  onSelectChoppedSample?: (name: string, path?: string[]) => void;
   onSelectSample?: (name: string, path?: string[]) => void;
   onSelectProgram?: (name: string, path?: string[]) => void;
   onRefresh: () => void;
@@ -80,10 +69,8 @@ interface LibraryTreePanelProps {
   onDeleteIndividualTone?: (fileName: string, path?: string[]) => void;
   /** Callback to delete an individual patch */
   onDeleteIndividualPatch?: (fileName: string, path?: string[]) => void;
-  /** Callback to delete a drum kit */
-  onDeleteDrumKit?: (directoryName: string, path?: string[]) => void;
   /** Callback to toggle directory expansion */
-  onToggleDirectoryExpanded?: (category: 'tones' | 'patches' | 'drumKits' | 'choppedSamples' | 'commonSamples', path: string) => void;
+  onToggleDirectoryExpanded?: (category: 'tones' | 'patches' | 'drumKits' | 'samples', path: string) => void;
   /** Callback to create a new directory */
   onCreateDirectory?: (category: LibraryCategory, parentPath: string[]) => void;
   /** Callback to rename a directory */
@@ -103,13 +90,10 @@ interface LibraryTreePanelProps {
 export function LibraryTreePanel({
   libraryHandle,
   sets,
-  drumKits,
   individualTones,
   individualPatches,
   tonesTree,
   patchesTree,
-  drumKitsTree,
-  choppedSamplesTree,
   commonSamplesTree,
   expandedPaths,
   selectedName,
@@ -119,10 +103,8 @@ export function LibraryTreePanel({
   onSelectSet,
   onSelectTone,
   onSelectPatch,
-  onSelectDrumKit,
   onSelectIndividualTone,
   onSelectIndividualPatch,
-  onSelectChoppedSample,
   onSelectSample,
   onSelectProgram,
   onRefresh,
@@ -132,7 +114,6 @@ export function LibraryTreePanel({
   onDeleteSet,
   onDeleteIndividualTone,
   onDeleteIndividualPatch,
-  onDeleteDrumKit,
   onToggleDirectoryExpanded,
   onCreateDirectory,
   onRenameDirectory,
@@ -160,7 +141,6 @@ export function LibraryTreePanel({
     handlePatchDrop,
     handleIndividualToneDragStart,
     handleIndividualPatchDragStart,
-    handleDrumKitDragStart,
     handleSetToneDragStart,
     handleSetPatchDragStart,
   } = useLibraryTreeDragDrop({ onDropDeviceTone, onDropDevicePatch });
@@ -180,16 +160,13 @@ export function LibraryTreePanel({
     selectedName,
     selectedType,
     selectedPath,
-    onSelectDrumKit,
     onSelectIndividualTone,
     onSelectIndividualPatch,
-    onSelectChoppedSample,
     onSelectSample,
     onSelectProgram,
     onToggleDirectoryExpanded,
     onDeleteIndividualTone,
     onDeleteIndividualPatch,
-    onDeleteDrumKit,
     onDeleteDirectory,
     onCreateDirectory,
     onRenameDirectory,
@@ -281,7 +258,6 @@ export function LibraryTreePanel({
         </div>
         <p className="text-xs text-s330-muted mt-1">
           {sets.length} set{sets.length !== 1 ? 's' : ''}
-          {drumKits.length > 0 && ` / ${drumKits.length} drum kit${drumKits.length !== 1 ? 's' : ''}`}
         </p>
       </div>
 
@@ -307,7 +283,7 @@ export function LibraryTreePanel({
                   isSelected={selectedType === 'set' && selectedName === setInfo.name}
                   isExpanded={expandedSets.has(setInfo.name)}
                   selectedItemName={selectedSetName === setInfo.name ? selectedName : undefined}
-                  selectedItemType={selectedSetName === setInfo.name && selectedType !== 'drumKit' && selectedType !== 'individualTone' && selectedType !== 'individualPatch' && selectedType !== 'choppedSample' && selectedType !== 'sample' && selectedType !== 'program' ? selectedType : undefined}
+                  selectedItemType={selectedSetName === setInfo.name && selectedType !== 'individualTone' && selectedType !== 'individualPatch' && selectedType !== 'sample' && selectedType !== 'program' ? selectedType : undefined}
                   onToggle={() => toggleSet(setInfo.name)}
                   onSelect={() => onSelectSet(setInfo.name)}
                   onSelectTone={(toneFile) => onSelectTone(toneFile, setInfo.name)}
@@ -536,86 +512,16 @@ export function LibraryTreePanel({
           </div>
         )}
 
-        {/* Drum Kits Section */}
-        {drumKitsTree ? (
-          // Hierarchical tree view
-          <TreeSection
-            title="Drum Kits"
-            nodes={drumKitsTree}
-            category="drumKits"
-            expandedPaths={expandedPaths?.drumKits ?? new Set()}
-            selectedId={computeSelectedId('drumKits')}
-            onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('drumKits', nodeId)}
-            onSelect={(node) => handleTreeNodeSelect(node, 'drumKits')}
-            onDelete={(node) => handleTreeNodeDelete(node, 'drumKits')}
-            onContextMenu={(e, node) => handleTreeContextMenu(e, node, 'drumKits')}
-            onDropOnDirectory={(targetPath, dragData) => handleDropOnDirectory('drumKits', targetPath, dragData)}
-            onRename={(node, newName) => handleRename('drumKits', node, newName)}
-            emptyMessage="No drum kits in library"
-            headerActions={
-              onCreateDirectory && (
-                <button
-                  onClick={() => onCreateDirectory('drum-kits', [])}
-                  className="text-s330-muted hover:text-s330-text p-0.5"
-                  title="New folder"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
-                  </svg>
-                </button>
-              )
-            }
-          />
-        ) : (
-          // Flat list view (legacy)
-          <div className="p-2 border-t border-s330-accent/30">
-            <div className="text-xs font-medium text-s330-muted uppercase tracking-wide px-2 py-1">
-              Drum Kits
-            </div>
-
-            {drumKits.length === 0 ? (
-              <div className="text-sm text-s330-muted/70 px-2 py-4 text-center italic">
-                No drum kits in library
-              </div>
-            ) : (
-              <div className="space-y-0.5">
-                {drumKits.map((kitInfo) => (
-                  <DrumKitItem
-                    key={kitInfo.directoryName}
-                    kitInfo={kitInfo}
-                    isSelected={selectedType === 'drumKit' && selectedName === kitInfo.directoryName}
-                    onSelect={() => onSelectDrumKit(kitInfo.directoryName)}
-                    onDelete={onDeleteDrumKit ? () => onDeleteDrumKit(kitInfo.directoryName) : undefined}
-                    onDragStart={(e) => handleDrumKitDragStart(e, kitInfo)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-        {/* Common Samples Section (common/samples/ — samples, programs, legacy chopped) */}
+        {/* Common Samples Section (common/samples/ — samples, programs) */}
         {commonSamplesTree && commonSamplesTree.length > 0 && (
           <TreeSection
             title="Samples"
             nodes={commonSamplesTree}
-            category="commonSamples"
-            expandedPaths={expandedPaths?.commonSamples ?? new Set()}
-            selectedId={computeSelectedId('commonSamples')}
-            onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('commonSamples', nodeId)}
-            onSelect={(node) => handleTreeNodeSelect(node, 'commonSamples')}
-            emptyMessage="No samples in common library"
-          />
-        )}
-        {/* Legacy Chopped Samples Section — hidden when commonSamplesTree is provided */}
-        {!commonSamplesTree && choppedSamplesTree && choppedSamplesTree.length > 0 && (
-          <TreeSection
-            title="Samples"
-            nodes={choppedSamplesTree}
-            category="choppedSamples"
-            expandedPaths={expandedPaths?.choppedSamples ?? new Set()}
-            selectedId={computeSelectedId('choppedSamples')}
-            onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('choppedSamples', nodeId)}
-            onSelect={(node) => handleTreeNodeSelect(node, 'choppedSamples')}
+            category="samples"
+            expandedPaths={expandedPaths?.samples ?? new Set()}
+            selectedId={computeSelectedId('samples')}
+            onToggleExpand={(nodeId) => onToggleDirectoryExpanded?.('samples', nodeId)}
+            onSelect={(node) => handleTreeNodeSelect(node, 'samples')}
             emptyMessage="No samples in common library"
           />
         )}

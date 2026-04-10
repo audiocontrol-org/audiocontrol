@@ -6,7 +6,7 @@
  */
 
 import { type ReactNode, type CSSProperties } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { BuildInfo, getBuildInfo, type BuildInfoConfig } from './BuildInfo';
 
 export interface NavItem {
@@ -50,6 +50,7 @@ export function EditorLayout({
   contentStyle,
 }: EditorLayoutProps): JSX.Element {
   const { navItems, editorName, buildInfoConfig, footerText } = config;
+  const location = useLocation();
 
   return (
     <div className={`ac-site-shell ${className}`}>
@@ -75,7 +76,7 @@ export function EditorLayout({
                   return (
                     <li key={item.to}>
                       <NavLink
-                        to={item.to}
+                        to={`${item.to}${location.search}`}
                         className="ac-site-nav-link"
                         data-active={undefined}
                         data-testid={testId}

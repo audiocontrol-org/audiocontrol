@@ -30,32 +30,36 @@ import {
   PluginLibraryBrowser,
   type TreeNode,
   type ItemSelection,
+  useLibraryOperations,
 } from '@audiocontrol/editor-core';
-import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
-import {
-  deleteItem,
-  createFolder,
-  moveItem,
-  importWavToCommonArea,
-  listCommonSamplesTree,
-} from '@audiocontrol/sampler-library/browser';
 import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
 import { SampleEditorDialog } from '@audiocontrol/sample-editor/ui';
 import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
 import { useLibraryStore } from '@/stores/libraryStore';
-import { toTreeNode } from '@/lib/library-tree';
 import { s3kLibraryPlugin } from '@/plugins/s3k-library-plugin';
 import type { S3kMemoryPanelState } from '@/plugins/s3k-library-plugin';
 import { useS3000xlClient } from '@/hooks/useS3000xlClient';
 import { useDeviceLibraryData } from '@/hooks/useDeviceLibraryData';
-import { useLibraryPrograms } from '@/hooks/useLibraryPrograms';
 import { useProgramTransfer } from '@/hooks/useProgramTransfer';
 import { useDrumKitTransfer } from '@/hooks/useDrumKitTransfer';
 import { useInstrumentTransfer } from '@/hooks/useInstrumentTransfer';
 import { useEditorDialogs } from '@/hooks/useEditorDialogs';
-import { deleteStoredProgram } from '@/lib/program-storage';
-import { DiskBrowserPanel } from '@/components/library/DiskBrowserPanel';
-import { DiskToLibraryDialog } from '@/components/library/DiskToLibraryDialog';
+import { useS3kLibraryData } from '@/hooks/useS3kLibraryData';
+import { useS3kSelectionHandlers } from '@/hooks/useS3kSelectionHandlers';
+import { useS3kLibraryStrategy } from '@/hooks/useS3kLibraryStrategy';
+import { useS3kTransferCallbacks } from '@/hooks/useS3kTransferCallbacks';
+import { promoteToCommonArea } from '@/lib/program-promotion';
+import { DiskBrowserPanel, DISK_ITEM_MIME, type DiskDragPayload, type DiskBrowserHandle } from '@/components/library/DiskBrowserPanel';
+import { isAkaiSample, isAkaiProgram } from '@audiocontrol/sampler-devices/s3k';
+import {
+  DiskToLibraryDialog,
+  saveToCommonLibrary,
+  saveToS3kLibrary,
+  collectSampleNames,
+  estimateTotalBytes,
+  type SaveProgress,
+} from '@/components/library/DiskToLibraryDialog';
+import { readFileData } from '@audiocontrol/sampler-devices/s3k';
 import { getActiveScsiUrl } from '@audiocontrol/editor-core';
 import type { AkaiDiskFileEntry } from '@audiocontrol/sampler-devices/s3k';
 import { SendSampleDialog } from '@/components/library/SendSampleDialog';
@@ -98,41 +102,23 @@ interface DiskToLibraryDialogState {
   file: AkaiDiskFileEntry | null;
   partitionData: Uint8Array | null;
   volumeStartBlock: number;
+  ensureFileBlocks?: (fileEntry: AkaiDiskFileEntry) => Promise<void>;
 }
+
+interface DropTransferState {
+  active: boolean;
+  fileName: string;
+  progress: SaveProgress | null;
+  error: string | null;
+}
+
+const DROP_TRANSFER_IDLE: DropTransferState = {
+  active: false, fileName: '', progress: null, error: null,
+};
 
 const DISK_TO_LIBRARY_CLOSED: DiskToLibraryDialogState = {
   open: false, file: null, partitionData: null, volumeStartBlock: 0,
 };
-
-// =========================================================================
-// Data loading hook
-// =========================================================================
-
-function useLibraryTreeData(root: StorageDirectoryHandle | null) {
-  const setSampleNodes = useLibraryStore((s) => s.setSampleNodes);
-  const setLoading = useLibraryStore((s) => s.setLoading);
-  const setError = useLibraryStore((s) => s.setError);
-  const clear = useLibraryStore((s) => s.clear);
-  const { refreshPrograms } = useLibraryPrograms(root);
-
-  const refresh = useCallback(async () => {
-    if (!root) { clear(); return; }
-    setLoading(true);
-    setError(null);
-    try {
-      const sampleTreeNodes = await listCommonSamplesTree(root);
-      setSampleNodes(sampleTreeNodes.map(toTreeNode));
-      await refreshPrograms();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to scan library';
-      setError(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [root, setSampleNodes, setLoading, setError, clear, refreshPrograms]);
-
-  return { refresh, refreshPrograms };
-}
 
 // =========================================================================
 // LibraryPage component
@@ -146,12 +132,13 @@ export function LibraryPage(): JSX.Element {
     hasLocalFS, hasGoogleDrive, hasOPFS,
   } = useLibraryConnection({ pickerId: PICKER_ID });
 
-  const { refresh: refreshLibrary, refreshPrograms } = useLibraryTreeData(root);
+  const { refresh: refreshLibrary, refreshPrograms } = useS3kLibraryData(root);
   const { client, isConnected: isDeviceConnected } = useS3000xlClient();
   const { refresh: refreshDevice, isLoading: isDeviceLoading } =
     useDeviceLibraryData(client, isDeviceConnected);
 
   const sampleNodes = useLibraryStore((s) => s.sampleNodes);
+  const commonProgramNodes = useLibraryStore((s) => s.commonProgramNodes);
   const programNodes = useLibraryStore((s) => s.programNodes);
   const loading = useLibraryStore((s) => s.loading);
   const error = useLibraryStore((s) => s.error);
@@ -164,10 +151,98 @@ export function LibraryPage(): JSX.Element {
   const setSelectedDevice = useLibraryStore((s) => s.setSelectedDevice);
 
   const [selection, setSelection] = useState<ItemSelection | null>(null);
-  const [expandedPaths, setExpandedPaths] = useState<Record<string, Set<string>>>({});
   const [sendDialog, setSendDialog] = useState<SendDialogState>(SEND_DIALOG_CLOSED);
   const [receiveDialog, setReceiveDialog] = useState<ReceiveDialogState>(RECEIVE_DIALOG_CLOSED);
   const [diskToLibrary, setDiskToLibrary] = useState<DiskToLibraryDialogState>(DISK_TO_LIBRARY_CLOSED);
+  const diskBrowserRef = useRef<DiskBrowserHandle>(null);
+  const [dropTransfer, setDropTransfer] = useState<DropTransferState>(DROP_TRANSFER_IDLE);
+
+  const handleExternalDrop = useCallback((categoryId: string, dataTransfer: DataTransfer, targetPath: string[] = []): boolean => {
+    console.log('[LibraryPage] handleExternalDrop:', categoryId, 'types:', Array.from(dataTransfer.types));
+    if (!root) return false;
+    const raw = dataTransfer.getData(DISK_ITEM_MIME);
+    if (!raw) { console.log('[LibraryPage] no DISK_ITEM_MIME data'); return false; }
+
+    const payload = JSON.parse(raw) as DiskDragPayload;
+
+    // Validate: samples only on sample categories, programs only on program categories.
+    const isSample = isAkaiSample(payload.file.type);
+    const isProgram = isAkaiProgram(payload.file.type);
+    const sampleCategories = new Set(['samples']);
+    const programCategories = new Set(['common-programs', 's3k-programs']);
+
+    if (isSample && !sampleCategories.has(categoryId)) return false;
+    if (isProgram && !programCategories.has(categoryId)) return false;
+
+    const resolved = diskBrowserRef.current?.resolveDragPayload(payload);
+    if (!resolved) return false;
+
+    // Determine save target from drop category
+    const saveTarget = categoryId === 's3k-programs' ? 's3k' : 'common';
+    const name = payload.file.name.trim();
+    const libraryRoot = root;
+
+    // Save directly — no confirmation dialog
+    setDropTransfer({ active: true, fileName: name, progress: null, error: null });
+
+    (async () => {
+      try {
+        await resolved.ensureFileBlocks(payload.file);
+        const fileData = readFileData(resolved.partitionData, payload.file);
+
+        const sampleNames = isProgram ? collectSampleNames(fileData) : [];
+        const totalItems = 1 + sampleNames.length;
+        const totalBytes = estimateTotalBytes(
+          payload.file, sampleNames, resolved.partitionData, payload.volumeStartBlock,
+        );
+
+        setDropTransfer((prev) => ({
+          ...prev,
+          progress: {
+            currentItem: name,
+            currentIndex: 0,
+            totalItems,
+            bytesTransferred: 0,
+            totalBytes,
+            startTime: Date.now(),
+          },
+        }));
+
+        const onProgress = (update: Partial<SaveProgress>) => {
+          setDropTransfer((prev) => ({
+            ...prev,
+            progress: prev.progress ? { ...prev.progress, ...update } : null,
+          }));
+        };
+
+        if (saveTarget === 'common') {
+          await saveToCommonLibrary(
+            payload.file, fileData, resolved.partitionData,
+            payload.volumeStartBlock, name, libraryRoot, onProgress,
+            resolved.ensureFileBlocks, targetPath,
+          );
+        } else {
+          await saveToS3kLibrary(
+            payload.file, fileData, resolved.partitionData,
+            payload.volumeStartBlock, name, libraryRoot, onProgress,
+            resolved.ensureFileBlocks,
+          );
+        }
+
+        await refreshLibrary();
+        // Auto-dismiss after a brief success display
+        setTimeout(() => setDropTransfer(DROP_TRANSFER_IDLE), 2000);
+      } catch (err) {
+        setDropTransfer((prev) => ({
+          ...prev,
+          error: err instanceof Error ? err.message : String(err),
+        }));
+        setTimeout(() => setDropTransfer(DROP_TRANSFER_IDLE), 5000);
+      }
+    })();
+
+    return true;
+  }, [root, refreshLibrary]);
 
   const programTransfer = useProgramTransfer(isDeviceConnected, !!root);
   const drumKitTransfer = useDrumKitTransfer(isDeviceConnected, !!root);
@@ -178,6 +253,20 @@ export function LibraryPage(): JSX.Element {
     [setError],
   );
   const editorDialogs = useEditorDialogs(root, refreshLibrary, handleEditorError);
+
+  // -----------------------------------------------------------------------
+  // Shared library operations (create, delete, move, rename, drop, expand)
+  // -----------------------------------------------------------------------
+
+  const libraryStrategy = useS3kLibraryStrategy({ root, refreshPrograms });
+
+  const libraryOps = useLibraryOperations(
+    root,
+    libraryStrategy,
+    refreshLibrary,
+    (msg) => setError(msg),
+    editorDialogs.createEditorActionHandler(),
+  );
 
   const hasInitiatedScan = useRef(false);
 
@@ -195,123 +284,45 @@ export function LibraryPage(): JSX.Element {
       hasInitiatedScan.current = false;
       clear();
       setSelection(null);
-      setExpandedPaths({});
     }
   }, [isLibraryConnected, clear]);
 
   const categoryData = useMemo<Record<string, TreeNode[]>>(() => ({
     samples: sampleNodes,
-    programs: programNodes,
-  }), [sampleNodes, programNodes]);
+    'common-programs': commonProgramNodes,
+    's3k-programs': programNodes,
+  }), [sampleNodes, commonProgramNodes, programNodes]);
 
   // -----------------------------------------------------------------------
   // Device memory selection
   // -----------------------------------------------------------------------
 
-  const handleDeviceSelectProgram = useCallback(
-    (index: number) => {
-      setSelectedDevice('program', index);
-      setSelection({
-        categoryId: 'device',
-        node: {
-          id: `device-program:${index}`,
-          name: deviceProgramNames[index] ?? `Program ${index}`,
-          type: 'device-program',
-        },
-        meta: { deviceIndex: index },
-      });
-    },
-    [setSelectedDevice, deviceProgramNames],
-  );
-
-  const handleDeviceSelectSample = useCallback(
-    (index: number) => {
-      setSelectedDevice('sample', index);
-      setSelection({
-        categoryId: 'device',
-        node: {
-          id: `device-sample:${index}`,
-          name: deviceSampleNames[index] ?? `Sample ${index}`,
-          type: 'device-sample',
-        },
-        meta: { deviceIndex: index },
-      });
-    },
-    [setSelectedDevice, deviceSampleNames],
-  );
+  const { handleDeviceSelectProgram, handleDeviceSelectSample } = useS3kSelectionHandlers({
+    deviceProgramNames,
+    deviceSampleNames,
+    setSelectedDevice,
+    setSelection,
+  });
 
   // -----------------------------------------------------------------------
-  // Dialog callbacks
+  // Transfer callbacks
   // -----------------------------------------------------------------------
 
-  const handleSendSampleToDevice = useCallback(
-    (name: string, path?: string[]) => {
-      if (!client || !root) return;
-      setSendDialog({ open: true, sampleName: name, samplePath: path ?? [] });
-    },
-    [client, root],
-  );
-
-  const handleSaveDeviceSampleToLibrary = useCallback(
-    (index: number, name: string) => {
-      if (!client || !root) return;
-      setReceiveDialog({ open: true, sampleIndex: index, sampleName: name });
-    },
-    [client, root],
-  );
-
-  const handleSaveDeviceProgramToLibrary = useCallback(
-    (index: number, name: string) => { programTransfer.openExportDialog(index, name); },
-    [programTransfer],
-  );
-
-  const handleSendProgramToDevice = useCallback(
-    (dirName: string, name: string) => {
-      const targetSlot = selectedDeviceType === 'program' && selectedDeviceIndex !== null
-        ? selectedDeviceIndex
-        : deviceProgramNames.length;
-      programTransfer.openImportDialog(dirName, name, targetSlot);
-    },
-    [programTransfer, selectedDeviceType, selectedDeviceIndex, deviceProgramNames.length],
-  );
-
-  const handleImportInstrument = useCallback(
-    (dirName: string, path: string[]) => { instrumentTransfer.openDialog(dirName, path); },
-    [instrumentTransfer],
-  );
-
-  const handleDeleteDeviceProgram = useCallback(
-    async (index: number, name: string) => {
-      if (!client) return;
-      if (!window.confirm(`Delete program "${name.trim()}" (#${index}) from device?`)) return;
-      try {
-        await client.deleteProgram(index);
-        await refreshDevice();
-        setSelection(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete program');
-      }
-    },
-    [client, refreshDevice, setError],
-  );
-
-  const handleDeleteDeviceSample = useCallback(
-    async (index: number, name: string) => {
-      if (!client) return;
-      if (!window.confirm(`Delete sample "${name.trim()}" (#${index}) from device?`)) return;
-      try {
-        await client.deleteSample(index);
-        await refreshDevice();
-        setSelection(null);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to delete sample');
-      }
-    },
-    [client, refreshDevice, setError],
-  );
-
-  const handleExportComplete = useCallback(async () => { await refreshPrograms(); }, [refreshPrograms]);
-  const handleImportComplete = useCallback(async () => { await refreshDevice(); }, [refreshDevice]);
+  const transferCallbacks = useS3kTransferCallbacks({
+    client,
+    root,
+    deviceProgramNames,
+    selectedDeviceType,
+    selectedDeviceIndex,
+    programTransfer,
+    instrumentTransfer,
+    refreshDevice,
+    refreshPrograms,
+    setError,
+    setSelection,
+    setSendDialog,
+    setReceiveDialog,
+  });
 
   // -----------------------------------------------------------------------
   // Preview state
@@ -320,29 +331,41 @@ export function LibraryPage(): JSX.Element {
   const canTransfer = isDeviceConnected && !!root;
   const hasLibrary = !!root;
 
+  const handlePromoteToCommonArea = useCallback(
+    async (dirName: string) => {
+      if (!root) return;
+      try {
+        await promoteToCommonArea(root, dirName);
+        void refreshLibrary();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to promote program to common area');
+      }
+    },
+    [root, refreshLibrary, setError],
+  );
+
   const previewState = useMemo<S3kPreviewCustomState>(() => ({
-    onSendSampleToDevice: canTransfer ? handleSendSampleToDevice : undefined,
-    onSaveDeviceSampleToLibrary: canTransfer ? handleSaveDeviceSampleToLibrary : undefined,
-    onSaveDeviceProgramToLibrary: canTransfer ? handleSaveDeviceProgramToLibrary : undefined,
-    onSendProgramToDevice: canTransfer ? handleSendProgramToDevice : undefined,
+    onSendSampleToDevice: canTransfer ? transferCallbacks.handleSendSampleToDevice : undefined,
+    onSaveDeviceSampleToLibrary: canTransfer ? transferCallbacks.handleSaveDeviceSampleToLibrary : undefined,
+    onSaveDeviceProgramToLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToLibrary : undefined,
+    onSendProgramToDevice: canTransfer ? transferCallbacks.handleSendProgramToDevice : undefined,
     onImportDrumKit: canTransfer ? drumKitTransfer.openDialog : undefined,
-    onImportInstrument: canTransfer ? handleImportInstrument : undefined,
-    onDeleteDeviceProgram: isDeviceConnected ? handleDeleteDeviceProgram : undefined,
-    onDeleteDeviceSample: isDeviceConnected ? handleDeleteDeviceSample : undefined,
+    onImportInstrument: canTransfer ? transferCallbacks.handleImportInstrument : undefined,
+    onDeleteDeviceProgram: isDeviceConnected ? transferCallbacks.handleDeleteDeviceProgram : undefined,
+    onDeleteDeviceSample: isDeviceConnected ? transferCallbacks.handleDeleteDeviceSample : undefined,
     onOpenInLoopEditor: hasLibrary ? editorDialogs.handleOpenInLoopEditor : undefined,
     onOpenInSampleEditor: hasLibrary ? editorDialogs.handleOpenInSampleEditor : undefined,
     onOpenInChopper: hasLibrary ? editorDialogs.handleOpenInChopper : undefined,
     onEditDrumKit: hasLibrary ? editorDialogs.handleOpenDrumKitEditor : undefined,
+    onPromoteToCommonArea: hasLibrary ? handlePromoteToCommonArea : undefined,
   }), [
     canTransfer, hasLibrary, isDeviceConnected,
-    handleSendSampleToDevice, handleSaveDeviceSampleToLibrary,
-    handleSaveDeviceProgramToLibrary, handleSendProgramToDevice,
-    drumKitTransfer.openDialog, handleImportInstrument,
-    handleDeleteDeviceProgram, handleDeleteDeviceSample,
+    transferCallbacks, drumKitTransfer.openDialog,
     editorDialogs.handleOpenInLoopEditor,
     editorDialogs.handleOpenInSampleEditor,
     editorDialogs.handleOpenInChopper,
     editorDialogs.handleOpenDrumKitEditor,
+    handlePromoteToCommonArea,
   ]);
 
   const deviceMemoryState = useMemo<S3kMemoryPanelState>(() => ({
@@ -353,6 +376,58 @@ export function LibraryPage(): JSX.Element {
     onSelectProgram: handleDeviceSelectProgram,
     onSelectSample: handleDeviceSelectSample,
     onRefresh: () => void refreshDevice(),
+    onImportSample: canTransfer ? transferCallbacks.handleSendSampleToDevice : undefined,
+    onImportProgram: canTransfer ? (dirName: string, displayName: string, categoryId: string) => {
+      if (categoryId === 's3k-programs') {
+        transferCallbacks.handleSendProgramToDevice(dirName, displayName);
+      } else {
+        instrumentTransfer.openDialog(dirName, [], true);
+      }
+    } : undefined,
+    onDiskItemDrop: canTransfer ? (payload: DiskDragPayload) => {
+      const resolved = diskBrowserRef.current?.resolveDragPayload(payload);
+      if (!resolved) return;
+      const name = payload.file.name.trim();
+
+      if (isAkaiSample(payload.file.type)) {
+        // Save sample to common library, then open send-to-device dialog
+        (async () => {
+          try {
+            await resolved.ensureFileBlocks(payload.file);
+            const fileData = readFileData(resolved.partitionData, payload.file);
+            const noop = () => { /* progress not shown for background save */ };
+            await saveToCommonLibrary(
+              payload.file, fileData, resolved.partitionData,
+              payload.volumeStartBlock, name, root!, noop,
+              resolved.ensureFileBlocks,
+            );
+            await refreshLibrary();
+            transferCallbacks.handleSendSampleToDevice(name, []);
+          } catch (err) {
+            console.error('[LibraryPage] disk-to-device sample failed:', err);
+          }
+        })();
+      } else if (isAkaiProgram(payload.file.type)) {
+        // Save program to common library, then open ImportInstrumentDialog
+        // which auto-sends samples and creates the program on device
+        (async () => {
+          try {
+            await resolved.ensureFileBlocks(payload.file);
+            const fileData = readFileData(resolved.partitionData, payload.file);
+            const noop = () => { /* progress not shown for background save */ };
+            await saveToCommonLibrary(
+              payload.file, fileData, resolved.partitionData,
+              payload.volumeStartBlock, name, root!, noop,
+              resolved.ensureFileBlocks,
+            );
+            await refreshLibrary();
+            instrumentTransfer.openDialog(name, [], true);
+          } catch (err) {
+            console.error('[LibraryPage] disk-to-device program failed:', err);
+          }
+        })();
+      }
+    } : undefined,
     isConnected: isDeviceConnected,
     isLoading: isDeviceLoading,
   }), [
@@ -360,6 +435,9 @@ export function LibraryPage(): JSX.Element {
     selectedDeviceIndex, selectedDeviceType,
     handleDeviceSelectProgram, handleDeviceSelectSample,
     refreshDevice, isDeviceConnected, isDeviceLoading,
+    canTransfer, transferCallbacks.handleSendSampleToDevice,
+    transferCallbacks.handleSendProgramToDevice,
+    instrumentTransfer,
   ]);
 
   // -----------------------------------------------------------------------
@@ -369,74 +447,6 @@ export function LibraryPage(): JSX.Element {
   const handleConnect = useCallback(
     (backend: 'local' | 'google-drive' | 'opfs') => { void connect(backend); },
     [connect],
-  );
-
-  const handleToggleExpand = useCallback(
-    (categoryId: string, nodeId: string) => {
-      setExpandedPaths((prev) => {
-        const set = new Set(prev[categoryId] ?? []);
-        if (set.has(nodeId)) set.delete(nodeId); else set.add(nodeId);
-        return { ...prev, [categoryId]: set };
-      });
-    },
-    [],
-  );
-
-  const handleCreateFolder = useCallback(
-    async (_catId: string, parentPath: string[]) => {
-      if (!root) return;
-      const name = window.prompt('Folder name:');
-      if (!name) return;
-      await createFolder(root, parentPath, name);
-      void refreshLibrary();
-    },
-    [root, refreshLibrary],
-  );
-
-  const handleDelete = useCallback(
-    async (catId: string, node: TreeNode) => {
-      if (!root) return;
-      if (catId === 'programs') {
-        const meta = node.meta as { dirName?: string } | undefined;
-        const dirName = meta?.dirName ?? node.name;
-        await deleteStoredProgram(root, dirName);
-        void refreshPrograms();
-      } else {
-        const meta = node.meta as { path?: string[] } | undefined;
-        await deleteItem(root, node.name, meta?.path ?? []);
-        void refreshLibrary();
-      }
-    },
-    [root, refreshLibrary, refreshPrograms],
-  );
-
-  const handleMove = useCallback(
-    async (_catId: string, node: TreeNode, targetPath: string[]) => {
-      if (!root) return;
-      const meta = node.meta as { path?: string[] } | undefined;
-      await moveItem(root, node.name, meta?.path ?? [], targetPath);
-      void refreshLibrary();
-    },
-    [root, refreshLibrary],
-  );
-
-  const handleRename = useCallback(
-    async (_catId: string, _node: TreeNode, _newName: string) => {
-      throw new Error('Rename not yet implemented');
-    },
-    [],
-  );
-
-  const handleFileDrop = useCallback(
-    async (_catId: string, files: File[], targetPath: string[]) => {
-      if (!root) return;
-      for (const file of files) {
-        const buf = await file.arrayBuffer();
-        await importWavToCommonArea(root, file.name, new Uint8Array(buf), { targetPath });
-      }
-      void refreshLibrary();
-    },
-    [root, refreshLibrary],
   );
 
   // -----------------------------------------------------------------------
@@ -455,10 +465,7 @@ export function LibraryPage(): JSX.Element {
     />
   );
 
-  // Guideline deviation: casting StorageDirectoryHandle to
-  // FileSystemDirectoryHandle because PluginLibraryBrowser only checks
-  // truthiness. The prop type should be widened in editor-core.
-  const libraryHandle = root as unknown as FileSystemDirectoryHandle | null;
+  const libraryHandle = root;
 
   return (
     <div className="ac-page">
@@ -473,29 +480,32 @@ export function LibraryPage(): JSX.Element {
             plugin={s3kLibraryPlugin}
             libraryHandle={libraryHandle}
             categoryData={categoryData}
-            expandedPaths={expandedPaths}
+            expandedPaths={libraryOps.expandedPaths}
             selection={selection}
             onSelectionChange={setSelection}
-            onToggleExpand={handleToggleExpand}
+            onToggleExpand={libraryOps.onToggleExpand}
             onRefresh={refreshLibrary}
-            onCreateFolder={handleCreateFolder}
-            onDelete={handleDelete}
-            onMove={handleMove}
-            onRename={handleRename}
-            onFileDrop={handleFileDrop}
+            onCreateFolder={libraryOps.onCreateFolder}
+            onDelete={libraryOps.onDelete}
+            onMove={libraryOps.onMove}
+            onRename={libraryOps.onRename}
+            onFileDrop={libraryOps.onFileDrop}
+            onExternalDrop={handleExternalDrop}
+            onContextMenuAction={libraryOps.onContextMenuAction}
             deviceMemoryState={deviceMemoryState}
             previewState={previewState}
             loading={loading}
             error={error ?? undefined}
             connectionSlot={connectionSlot}
-          />
-        </div>
-        <div className="w-72 border-l border-neutral-700 overflow-y-auto">
-          <DiskBrowserPanel
-            bridgeUrl={getActiveScsiUrl()}
-            onSaveToLibrary={root ? (file, _targetId, partitionData, volumeStartBlock) => {
-              setDiskToLibrary({ open: true, file, partitionData, volumeStartBlock });
-            } : undefined}
+            devicePanelLeft={
+              <DiskBrowserPanel
+                browserRef={diskBrowserRef}
+                bridgeUrl={getActiveScsiUrl()}
+                onSaveToLibrary={root ? (file, _targetId, partitionData, volumeStartBlock, ensureFileBlocks) => {
+                  setDiskToLibrary({ open: true, file, partitionData, volumeStartBlock, ensureFileBlocks });
+                } : undefined}
+              />
+            }
           />
         </div>
       </div>
@@ -536,10 +546,11 @@ export function LibraryPage(): JSX.Element {
             onClose={instrumentTransfer.closeDialog}
             programDirName={instrumentTransfer.dialog.programDirName}
             programPath={instrumentTransfer.dialog.programPath}
+            fromProgramsDir={instrumentTransfer.dialog.fromProgramsDir}
             client={client}
             libraryRoot={root}
             deviceSampleNames={deviceSampleNames}
-            onImportComplete={handleImportComplete}
+            onImportComplete={transferCallbacks.handleImportComplete}
           />
           <ExportProgramDialog
             open={programTransfer.exportDialog.open}
@@ -549,7 +560,7 @@ export function LibraryPage(): JSX.Element {
             client={client}
             libraryRoot={root}
             deviceSampleNames={deviceSampleNames}
-            onExportComplete={handleExportComplete}
+            onExportComplete={transferCallbacks.handleExportComplete}
           />
           <ImportProgramDialog
             open={programTransfer.importDialog.open}
@@ -560,7 +571,7 @@ export function LibraryPage(): JSX.Element {
             client={client}
             libraryRoot={root}
             deviceSampleNames={deviceSampleNames}
-            onImportComplete={handleImportComplete}
+            onImportComplete={transferCallbacks.handleImportComplete}
           />
         </>
       )}
@@ -575,10 +586,11 @@ export function LibraryPage(): JSX.Element {
           volumeStartBlock={diskToLibrary.volumeStartBlock}
           libraryRoot={root}
           onTransferComplete={() => refreshLibrary()}
+          ensureFileBlocks={diskToLibrary.ensureFileBlocks}
         />
       )}
 
-      {/* Editor Dialogs (require library root only, no device) */}
+      {/* Editor Dialogs */}
       {editorDialogs.loopEditor && (
         <LoopEditorDialog
           open={editorDialogs.loopEditor.open}
@@ -599,6 +611,9 @@ export function LibraryPage(): JSX.Element {
           samples={editorDialogs.chopper.samples}
           sampleRate={editorDialogs.chopper.sampleRate}
           sourceName={editorDialogs.chopper.sampleName}
+          editMode={!!editorDialogs.chopper.initialSlices}
+          initialSlices={editorDialogs.chopper.initialSlices}
+          initialLabels={editorDialogs.chopper.initialLabels}
           onConfirm={() => { editorDialogs.closeChopper(); }}
           onSave={root ? editorDialogs.handleChopperSave : undefined}
           renderOutputConfig={(state) => (
@@ -629,6 +644,41 @@ export function LibraryPage(): JSX.Element {
           libraryRoot={root}
           onSave={refreshLibrary}
         />
+      )}
+
+      {/* Drop transfer progress toast */}
+      {dropTransfer.active && (
+        <div className="fixed bottom-4 right-4 w-80 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-4 z-50">
+          <div className="text-sm font-medium text-gray-100 mb-2">
+            {dropTransfer.error
+              ? 'Transfer failed'
+              : dropTransfer.progress && dropTransfer.progress.currentIndex >= dropTransfer.progress.totalItems
+                ? `Saved ${dropTransfer.fileName}`
+                : `Saving ${dropTransfer.fileName}...`
+            }
+          </div>
+          {dropTransfer.error && (
+            <div className="text-xs text-red-400">{dropTransfer.error}</div>
+          )}
+          {dropTransfer.progress && !dropTransfer.error && (
+            <>
+              <div className="w-full bg-gray-700 rounded-full h-1.5 mb-1">
+                <div
+                  className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${dropTransfer.progress.totalBytes > 0
+                      ? Math.max(2, Math.round((dropTransfer.progress.bytesTransferred / dropTransfer.progress.totalBytes) * 100))
+                      : 2}%`,
+                  }}
+                />
+              </div>
+              <div className="text-xs text-gray-400 flex justify-between">
+                <span>{dropTransfer.progress.currentIndex} / {dropTransfer.progress.totalItems} items</span>
+                <span className="truncate ml-2">{dropTransfer.progress.currentItem}</span>
+              </div>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

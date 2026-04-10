@@ -5,7 +5,6 @@
  * any consumer of the library layout:
  *
  *   {root}/library/{device}/tones/
- *   {root}/library/{device}/drum-kits/
  *   {root}/library/{device}/patches/
  *   {root}/library/{device}/sets/{name}/tones/
  *   {root}/library/common/samples/
@@ -22,18 +21,17 @@
 import { parse as parseYaml } from 'yaml';
 
 import type { StorageDirectoryHandle, StorageEntry } from './storage-handles.js';
-import { DrumKitBundleSchema, type DrumKitBundle, SampleYamlSchema, ProgramYamlSchema } from './schemas/index.js';
-import { loadDrumKitBundle as parseDrumKitBundle } from './drum-kits/index.js';
+import { SampleYamlSchema, ProgramYamlSchema } from './schemas/index.js';
 
 // =========================================================================
 // Types
 // =========================================================================
 
 /** Library item category types that support subdirectories. */
-export type LibraryCategory = 'tones' | 'patches' | 'drum-kits';
+export type LibraryCategory = 'tones' | 'patches';
 
 /** All category types. */
-export const LIBRARY_CATEGORIES: LibraryCategory[] = ['tones', 'patches', 'drum-kits'];
+export const LIBRARY_CATEGORIES: LibraryCategory[] = ['tones', 'patches'];
 
 /**
  * Tree node for rendering hierarchical library contents.
@@ -44,8 +42,9 @@ export interface LibraryTreeNode {
   id: string;
   /** Display name */
   name: string;
-  /** Node type */
-  type: 'directory' | 'tone' | 'patch' | 'drum-kit' | 'chopped-sample' | 'sample' | 'program';
+  /** Node type. Common-area samples are always 'sample' — slice/drum-kit state
+   *  is in metadata (sliceCount, hasDrumKit). */
+  type: 'directory' | 'tone' | 'patch' | 'sample' | 'program';
   /** Path segments from category root (empty for root items) */
   path: string[];
   /** Child nodes (only for directories) */
@@ -58,13 +57,13 @@ export interface LibraryTreeNode {
   directoryName?: string;
   /** Additional metadata for patches */
   toneCount?: number;
-  /** Additional metadata for drum kits */
+  /** Additional metadata for programs */
   kitCount?: number;
-  sampleCount?: number;
   description?: string;
-  /** Additional metadata for chopped samples */
+  /** Number of slices (if sample has slice definitions) */
   sliceCount?: number;
-  variant?: string;
+  /** Whether sample has drum kit config (base note, pad mapping) */
+  hasDrumKit?: boolean;
 }
 
 // =========================================================================
@@ -273,45 +272,6 @@ const detectTone: ItemDetector = async (entry, _parentDir, path) => {
   };
 };
 
-/** Detect a drum kit: a directory containing `.wav` files. */
-const detectDrumKit: ItemDetector = async (entry, parentDir, path) => {
-  if (entry.kind !== 'directory') return null;
-
-  const subDir = await parentDir.getDirectoryHandle(entry.name);
-  const wavFiles: string[] = [];
-  let kitYaml: DrumKitBundle | null = null;
-
-  for await (const file of subDir.values()) {
-    if (file.kind !== 'file') continue;
-    if (file.name.toLowerCase().endsWith('.wav')) {
-      wavFiles.push(file.name);
-    } else if (file.name === 'kit.yaml') {
-      try {
-        const fileHandle = await subDir.getFileHandle('kit.yaml');
-        const yamlFile = await fileHandle.getFile();
-        const yamlContent = await yamlFile.text();
-        kitYaml = DrumKitBundleSchema.parse(parseYaml(yamlContent));
-      } catch {
-        // Invalid kit.yaml
-      }
-    }
-  }
-
-  if (wavFiles.length === 0) return null;
-
-  const resolved = parseDrumKitBundle(kitYaml, wavFiles, entry.name);
-  return {
-    id: [...path, entry.name].join('/'),
-    name: resolved.name,
-    type: 'drum-kit',
-    path,
-    directoryName: entry.name,
-    description: resolved.description,
-    kitCount: resolved.kits.length,
-    sampleCount: resolved.totalSamples,
-  };
-};
-
 /** Detect a patch: a directory containing `patch.yaml`. */
 const detectPatch: ItemDetector = async (entry, parentDir, path) => {
   if (entry.kind !== 'directory') return null;
@@ -384,33 +344,6 @@ export async function listTonesTree(
 }
 
 // =========================================================================
-// Drum kit scanning (wrapper over generic scanner)
-// =========================================================================
-
-/**
- * Recursively scan a directory for drum kits and build a tree structure.
- * A drum kit is a directory containing .wav files (and optionally kit.yaml).
- */
-export async function scanDrumKitsDirectory(
-  dir: StorageDirectoryHandle,
-  path: string[],
-): Promise<LibraryTreeNode[]> {
-  return scanLibraryDirectory(dir, path, detectDrumKit);
-}
-
-/**
- * List all drum kits for a device as a hierarchical tree.
- */
-export async function listDrumKitsTree(
-  root: StorageDirectoryHandle,
-  device: string,
-): Promise<LibraryTreeNode[]> {
-  const kitsDir = await getNestedDirectoryIfExists(root, ['library', device, 'drum-kits']);
-  if (!kitsDir) return [];
-  return scanDrumKitsDirectory(kitsDir, []);
-}
-
-// =========================================================================
 // Patch scanning (wrapper over generic scanner)
 // =========================================================================
 
@@ -466,29 +399,19 @@ const detectSample: ItemDetector = async (entry, parentDir, path) => {
     if (!result.success) return null;
 
     const data = result.data;
-    const hasSlices = data.slices !== undefined && data.slices.length > 0;
-    const hasDrumKit = data.drumKit !== undefined;
 
-    // Discriminate node type: drum-kit > chopped-sample > sample
-    let type: LibraryTreeNode['type'] = 'sample';
-    let variant: string | undefined;
-    if (hasSlices && hasDrumKit) {
-      type = 'drum-kit';
-      variant = 'drum-kit';
-    } else if (hasSlices) {
-      type = 'chopped-sample';
-      variant = 'generic';
-    }
-
+    // All samples are type 'sample'. Slice and drum kit metadata are
+    // communicated via the node's metadata fields, not the type.
+    // See SAMPLER-LIBRARY.md "Sample Slicing" for the theory.
     return {
       id: [...path, entry.name].join('/'),
       name: data.name,
-      type,
+      type: 'sample' as LibraryTreeNode['type'],
       path,
       directoryName: entry.name,
       description: data.description,
       sliceCount: data.slices?.length,
-      variant,
+      hasDrumKit: data.drumKit !== undefined,
     };
   } catch {
     return null;
@@ -497,7 +420,8 @@ const detectSample: ItemDetector = async (entry, parentDir, path) => {
 
 /**
  * Detect a common-area program: a directory containing `program.yaml`
- * with `format: 'program'`.
+ * with `format: 'program'`. Enumerates the `samples/` subdirectory to
+ * populate child sample nodes.
  */
 const detectProgram: ItemDetector = async (entry, parentDir, path) => {
   if (entry.kind !== 'directory') return null;
@@ -512,14 +436,38 @@ const detectProgram: ItemDetector = async (entry, parentDir, path) => {
     const result = ProgramYamlSchema.safeParse(parsed);
     if (!result.success) return null;
 
+    const programPath = [...path, entry.name];
+
+    // Enumerate samples/ subdirectory for child nodes
+    const children: LibraryTreeNode[] = [];
+    try {
+      const samplesDir = await subDir.getDirectoryHandle('samples');
+      for await (const sampleEntry of samplesDir.values()) {
+        if (sampleEntry.kind !== 'file') continue;
+        if (!sampleEntry.name.endsWith('.wav')) continue;
+        const sampleName = sampleEntry.name.replace(/\.wav$/, '');
+        children.push({
+          id: [...programPath, 'samples', sampleName].join('/'),
+          name: sampleName,
+          type: 'sample',
+          path: programPath,
+          fileName: sampleName,
+        });
+      }
+      children.sort((a, b) => a.name.localeCompare(b.name));
+    } catch {
+      // No samples/ directory — that's fine
+    }
+
     return {
-      id: [...path, entry.name].join('/'),
+      id: programPath.join('/'),
       name: result.data.name,
       type: 'program',
       path,
       directoryName: entry.name,
       description: result.data.description,
       kitCount: result.data.zones.length,
+      children: children.length > 0 ? children : undefined,
     };
   } catch {
     return null;
@@ -568,6 +516,18 @@ export async function listCommonSamplesTree(
   const samplesDir = await getNestedDirectoryIfExists(root, ['library', 'common', 'samples']);
   if (!samplesDir) return [];
   return scanCommonSamplesDirectory(samplesDir, []);
+}
+
+/**
+ * List common-area programs from `library/common/programs/` as a tree.
+ * Each program is a directory containing `program.yaml`.
+ */
+export async function listCommonProgramsTree(
+  root: StorageDirectoryHandle,
+): Promise<LibraryTreeNode[]> {
+  const programsDir = await getNestedDirectoryIfExists(root, ['library', 'common', 'programs']);
+  if (!programsDir) return [];
+  return scanLibraryDirectory(programsDir, [], detectProgram);
 }
 
 // =========================================================================

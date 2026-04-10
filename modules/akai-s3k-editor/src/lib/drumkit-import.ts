@@ -17,6 +17,7 @@ import type {
   S3000xlClientInterface,
   KeygroupHeader,
 } from '@audiocontrol/sampler-devices/s3k';
+import { SampleHeader_writeSHNAME } from '@audiocontrol/sampler-devices/s3k';
 import type { SdsTransferProgress } from '@audiocontrol/midi-core';
 import type { ChoppedSample, DrumKitChoppedSample } from '@audiocontrol/sampler-library/browser';
 import { parseWavFile } from '@/lib/wav-reader';
@@ -204,13 +205,13 @@ export async function importDrumKitToDevice(
   );
 
   // -----------------------------------------------------------------------
-  // Phase 2: Send each slice as an SDS sample
+  // Phase 2: Send all slices via SDS (no SysEx between uploads)
   // -----------------------------------------------------------------------
-  // Determine device sample count to know where new samples will land
+  // The S3000XL can't handle SysEx interleaved with SDS transfers —
+  // SDS disables MIDI-over-SCSI mode. Send all audio first, then do
+  // all SysEx (verification, renames, program, keygroups) afterward.
   const existingSampleNames = await client.fetchSampleNames();
-  let nextSampleSlot = existingSampleNames.length;
-
-  const sampleSlots: number[] = [];
+  const startSlot = existingSampleNames.length;
 
   for (let i = 0; i < slices.length; i++) {
     const slice = slices[i];
@@ -225,26 +226,37 @@ export async function importDrumKitToDevice(
       sdsProgress: null,
     });
 
-    const sampleSlot = nextSampleSlot;
-    sampleSlots.push(sampleSlot);
-
-    await client.sendSampleViaSds(sampleSlot, sliceAudio, sampleRate, {
-      onProgress: (sdsProgress) => {
-        onProgress({
-          phase: 'sending-samples',
-          stepLabel: `Sending sample ${i + 1}/${slices.length}: ${sliceName.trim()}`,
-          currentStep: i + 1,
-          totalSteps: slices.length,
-          sdsProgress,
-        });
-      },
+    await client.uploadSampleRaw(startSlot + i, sliceAudio, sampleRate, (sdsProgress) => {
+      onProgress({
+        phase: 'sending-samples',
+        stepLabel: `Sending sample ${i + 1}/${slices.length}: ${sliceName.trim()}`,
+        currentStep: i + 1,
+        totalSteps: slices.length,
+        sdsProgress,
+      });
     });
-
-    nextSampleSlot += 1;
   }
 
-  // Refresh sample names so the device has the latest list
+  // -----------------------------------------------------------------------
+  // Phase 2b: Verify all samples arrived and rename them
+  // -----------------------------------------------------------------------
   const refreshedSampleNames = await client.refreshSampleNames();
+  if (refreshedSampleNames.length < startSlot + slices.length) {
+    throw new Error(
+      `Expected ${startSlot + slices.length} samples after SDS, got ${refreshedSampleNames.length}`,
+    );
+  }
+
+  for (let i = 0; i < slices.length; i++) {
+    const idx = startSlot + i;
+    const header = await client.fetchSampleHeader(idx);
+    header.SHNAME = sliceSampleNames[i];
+    SampleHeader_writeSHNAME(header, sliceSampleNames[i]);
+    await client.writeSampleHeader(header);
+  }
+
+  // Re-fetch names after rename so keygroup sample assignment uses correct names
+  const renamedSampleNames = await client.refreshSampleNames();
 
   // -----------------------------------------------------------------------
   // Phase 3: Create program
@@ -282,8 +294,8 @@ export async function importDrumKitToDevice(
     // Clamp to valid MIDI note range (21-127 for Akai, per LONOTE spec)
     const clampedNote = Math.max(21, Math.min(127, midiNote));
 
-    // Look up the actual name the device assigned to this sample
-    const deviceSampleName = refreshedSampleNames[sampleSlots[i]] ?? sliceSampleNames[i];
+    // Use the renamed sample name
+    const deviceSampleName = renamedSampleNames[startSlot + i] ?? sliceSampleNames[i];
 
     onProgress({
       phase: 'creating-keygroups',

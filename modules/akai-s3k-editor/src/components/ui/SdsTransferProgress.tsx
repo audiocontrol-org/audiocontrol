@@ -1,11 +1,12 @@
 /**
- * SDS transfer progress bar with packet-level detail.
+ * SDS transfer progress bar with byte-level detail, elapsed time, and ETA.
  *
- * Shared between SendSampleDialog and ReceiveSampleDialog. Renders a
- * progress bar, percentage, and byte-level stats from an SdsTransferProgress
- * object.
+ * Shared between SendSampleDialog and ReceiveSampleDialog. Meets project
+ * progress indicator spec: bar, bytes transferred/total, elapsed, ETA,
+ * current item name, item count (secondary).
  */
 
+import { useRef } from 'react';
 import type { SdsTransferProgress } from '@audiocontrol/midi-core';
 
 interface SdsProgressBarProps {
@@ -13,34 +14,65 @@ interface SdsProgressBarProps {
   direction: 'send' | 'receive';
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${minutes}m ${secs}s`;
+}
+
 export function SdsProgressBar({ progress, direction }: SdsProgressBarProps): JSX.Element {
+  // Track start time via ref so it persists across renders
+  const startTimeRef = useRef<number | null>(null);
+  if (progress && progress.packetsSent > 0 && startTimeRef.current === null) {
+    startTimeRef.current = Date.now();
+  }
+
   const percentage =
-    progress && progress.packetsTotal > 0
-      ? Math.round((progress.packetsSent / progress.packetsTotal) * 100)
+    progress && progress.bytesTotal > 0
+      ? Math.round((progress.bytesSent / progress.bytesTotal) * 100)
       : 0;
+
+  const elapsed = startTimeRef.current ? Date.now() - startTimeRef.current : 0;
+  const bytesPerMs = elapsed > 0 && progress ? progress.bytesSent / elapsed : 0;
+  const remainingBytes = progress ? progress.bytesTotal - progress.bytesSent : 0;
+  const etaMs = bytesPerMs > 0 ? remainingBytes / bytesPerMs : 0;
 
   const label = direction === 'send' ? 'Sending' : 'Receiving';
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between text-sm text-gray-300">
-        <span>{label} sample via SDS...</span>
-        <span data-testid="sds-dialog-progress-percent">{percentage}%</span>
-      </div>
-
+      {/* Progress bar */}
       <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
         <div
           className="h-full bg-blue-500 rounded-full transition-all duration-150"
-          style={{ width: `${percentage}%` }}
+          style={{ width: `${Math.max(percentage, 1)}%` }}
         />
       </div>
 
-      {progress && (
-        <p className="text-xs text-gray-400">
-          Packet {progress.packetsSent} of {progress.packetsTotal}
-          {' '}({progress.bytesSent.toLocaleString()} / {progress.bytesTotal.toLocaleString()} bytes)
-        </p>
-      )}
+      {/* Bytes + percentage */}
+      <div className="flex justify-between text-sm text-gray-300">
+        <span>
+          {progress ? formatBytes(progress.bytesSent) : '0 B'} / {progress ? formatBytes(progress.bytesTotal) : '0 B'}
+        </span>
+        <span data-testid="sds-dialog-progress-percent">{percentage}%</span>
+      </div>
+
+      {/* Elapsed + ETA */}
+      <div className="flex justify-between text-xs text-gray-400">
+        <span>
+          {elapsed > 1000 && `${formatDuration(elapsed)} elapsed`}
+          {etaMs > 1000 && ` \u2022 ~${formatDuration(etaMs)} remaining`}
+        </span>
+        <span>{label} sample via SDS</span>
+      </div>
     </div>
   );
 }

@@ -29,7 +29,9 @@ export function useSampleTransfer(client: S3000xlClientInterface | null) {
       sampleNumber: number,
       sampleData: Int16Array,
       sampleRate: number,
+      name?: string,
     ): Promise<void> => {
+      console.log(`[useSampleTransfer] sendToDevice called: sampleNumber=${sampleNumber}, samples=${sampleData.length}, rate=${sampleRate}, name=${name ?? '(none)'}`);
       if (!client) {
         throw new Error('Cannot send sample: client is not connected');
       }
@@ -42,21 +44,25 @@ export function useSampleTransfer(client: S3000xlClientInterface | null) {
       });
 
       try {
+        console.log(`[useSampleTransfer] calling client.sendSampleViaSds...`);
         await client.sendSampleViaSds(sampleNumber, sampleData, sampleRate, {
+          name,
           onProgress: (progress) => {
-            console.log(`[S3000XL SDS] send ${progress.packetsSent}/${progress.packetsTotal}`);
             setTransferState((prev) => ({ ...prev, progress }));
           },
         });
+        console.log(`[useSampleTransfer] sendSampleViaSds completed successfully`);
         setTransferState(INITIAL_STATE);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
+        console.error(`[useSampleTransfer] send failed:`, message);
         setTransferState({
           isTransferring: false,
           direction: null,
           progress: null,
           error: `Send failed: ${message}`,
         });
+        throw err;
       }
     },
     [client],
@@ -87,13 +93,14 @@ export function useSampleTransfer(client: S3000xlClientInterface | null) {
         return result;
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
+        console.error(`[useSampleTransfer] receive failed:`, message);
         setTransferState({
           isTransferring: false,
           direction: null,
           progress: null,
           error: `Receive failed: ${message}`,
         });
-        return null;
+        throw err;
       }
     },
     [client],

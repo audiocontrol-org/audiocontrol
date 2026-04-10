@@ -373,6 +373,9 @@ importers:
       '@audiocontrol/sampler-devices':
         specifier: workspace:*
         version: link:../sampler-devices
+      '@audiocontrol/sampler-library':
+        specifier: workspace:^
+        version: link:../sampler-library
       '@playwright/test':
         specifier: ^1.57.0
         version: 1.58.1
@@ -382,10 +385,19 @@ importers:
       tsx:
         specifier: ^4.7.0
         version: 4.20.5
+      ws:
+        specifier: ^8.20.0
+        version: 8.20.0
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
     devDependencies:
       '@tsconfig/recommended':
         specifier: ^1.0.7
         version: 1.0.13
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       typescript:
         specifier: ^5.3.0
         version: 5.9.2
@@ -395,12 +407,18 @@ importers:
       '@audiocontrol/midi-core':
         specifier: workspace:*
         version: link:../midi-core
+      '@audiocontrol/sample-chopper':
+        specifier: workspace:*
+        version: link:../sample-chopper
       '@audiocontrol/sampler-library':
         specifier: workspace:*
         version: link:../sampler-library
       '@radix-ui/react-slider':
         specifier: ^1.1.2
         version: 1.3.6(@types/react-dom@18.3.7)(@types/react@18.3.27)(react-dom@18.3.1)(react@18.3.1)
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
       zustand:
         specifier: ^4.4.7
         version: 4.5.7(@types/react@18.3.27)(react@18.3.1)
@@ -437,7 +455,7 @@ importers:
         version: 6.30.3(react-dom@18.3.1)(react@18.3.1)
       tailwindcss:
         specifier: ^3.4.0
-        version: 3.4.19(tsx@4.20.5)(yaml@2.8.2)
+        version: 3.4.19(tsx@4.20.5)(yaml@2.8.3)
       tsc-alias:
         specifier: ^1.8.16
         version: 1.8.16
@@ -1178,9 +1196,6 @@ importers:
       '@audiocontrol/sampler-library':
         specifier: workspace:*
         version: link:../sampler-library
-      '@audiocontrol/sampler-midi':
-        specifier: workspace:*
-        version: link:../sampler-midi
       '@tsconfig/recommended':
         specifier: ^1.0.8
         version: 1.0.13
@@ -1361,43 +1376,6 @@ importers:
       vite-tsconfig-paths:
         specifier: ^6.1.1
         version: 6.1.1(typescript@5.9.2)(vite@5.4.20)
-      vitest:
-        specifier: ^1.2.0
-        version: 1.6.1(@types/node@22.19.8)(jsdom@29.0.1)
-
-  modules/sampler-midi:
-    dependencies:
-      '@audiocontrol/sampler-devices':
-        specifier: workspace:*
-        version: link:../sampler-devices
-      '@audiocontrol/sampler-lib':
-        specifier: workspace:*
-        version: link:../sampler-lib
-      easymidi:
-        specifier: ^3.1.0
-        version: 3.1.0
-      pathe:
-        specifier: ^2.0.2
-        version: 2.0.3
-    devDependencies:
-      '@types/node':
-        specifier: ^22.13.1
-        version: 22.19.8
-      '@vitest/coverage-v8':
-        specifier: ^1.2.0
-        version: 1.6.1(vitest@1.6.1)
-      tsx:
-        specifier: ^4.19.2
-        version: 4.20.5
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.2
-      vite:
-        specifier: ^5.0.0
-        version: 5.4.20(@types/node@22.19.8)
-      vite-plugin-dts:
-        specifier: ^4.5.4
-        version: 4.5.4(@types/node@22.19.8)(typescript@5.9.2)(vite@5.4.20)
       vitest:
         specifier: ^1.2.0
         version: 1.6.1(@types/node@22.19.8)(jsdom@29.0.1)
@@ -4401,6 +4379,12 @@ packages:
 
   /@types/webmidi@2.1.0:
     resolution: {integrity: sha512-k898MjEUSHB+6rSeCPQk/kLgie0wgWZ2t78GlWj86HbTQ+XmtbBafYg5LNjn8bVHfItEhPGZPf579Xfc6keV6w==}
+    dev: true
+
+  /@types/ws@8.18.1:
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
+    dependencies:
+      '@types/node': 20.19.17
     dev: true
 
   /@typescript-eslint/eslint-plugin@6.21.0(@typescript-eslint/parser@6.21.0)(eslint@8.57.1)(typescript@5.9.2):
@@ -9894,6 +9878,19 @@ packages:
   /wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
     dev: true
+
+  /ws@8.20.0:
+    resolution: {integrity: sha512-sAt8BhgNbzCtgGbt2OxmpuryO63ZoDk/sqaB/znQm94T4fCEsy/yV+7CdC1kJhOU9lboAEU7R3kquuycDoibVA==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+    dev: false
 
   /xml-name-validator@5.0.0:
     resolution: {integrity: sha512-EvGK8EJ3DhaHfbRlETOWAS5pO9MZITeauHKJyb8wyajUfQUenkIg2MvLDTZ4T/TgIcm3HU0TFBgWWboAZ30UHg==}

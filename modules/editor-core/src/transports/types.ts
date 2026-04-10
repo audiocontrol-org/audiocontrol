@@ -1,4 +1,4 @@
-import type { MidiIO, MidiPortInfo } from '@audiocontrol/midi-core';
+import type { MidiIO, MidiPortInfo, SdsChannel } from '@audiocontrol/midi-core';
 
 export interface MidiTransportBrowserInfo {
   supported: boolean;
@@ -15,6 +15,7 @@ export interface MidiTransportPorts {
 
 export interface MidiTransportConnection {
   adapter: MidiIO;
+  sdsChannel?: SdsChannel;
   inputInfo: MidiPortInfo;
   outputInfo: MidiPortInfo;
   nativeInput?: MIDIInput | null;

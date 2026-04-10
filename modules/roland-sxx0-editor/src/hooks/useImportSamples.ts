@@ -2,7 +2,7 @@
  * useImportSamples Hook
  *
  * Handles importing sample bundles to the device.
- * Supports drum kit bundles (v1/v2) and chopped samples from common library.
+ * Supports drum kit bundles (v1/v2) and samples from common library.
  *
  * Creates tones with one-shot loop mode and a patch with correct MIDI mappings.
  */
@@ -19,12 +19,9 @@ import {
   resample,
   importMonolithicDrumKit,
 } from '@audiocontrol/sampler-devices/s330';
-import {
-  loadDrumKitSample,
-  loadDrumKitSource,
-  loadChoppedSampleSource,
-  prepareWavForS330,
-} from '@/lib/library-service';
+import { loadSample } from '@audiocontrol/sampler-library/browser';
+import { parseWav } from '@/core/midi/S330Client';
+import { prepareWavForS330 } from '@/lib/library-service';
 
 // =========================================================================
 // SampleImportBundle — unified import type
@@ -51,7 +48,7 @@ export interface SampleImportBundle {
   kitCount?: number;
 }
 
-export type ImportSourceLocation = 'drumKit' | 'choppedSample';
+export type ImportSourceLocation = 'drumKit' | 'sample';
 
 // =========================================================================
 // Converter functions
@@ -119,12 +116,12 @@ export function drumKitBundleToImportBundle(bundle: ResolvedDrumKitBundle): Samp
 }
 
 /**
- * Convert a ChoppedSample manifest to a SampleImportBundle.
+ * Convert a sample manifest (ChoppedSample) to a SampleImportBundle.
  *
  * Uses midi: trigger mappings from manifest when present.
  * Slices without a midi: trigger get consecutive notes from baseNote.
  */
-export function choppedSampleToImportBundle(
+export function sampleManifestToImportBundle(
   manifest: ChoppedSample,
   targetSampleRate: 15000 | 30000,
   baseNote: number
@@ -298,14 +295,13 @@ function createSingleDrumPatch(
 async function loadSourceWav(
   libraryHandle: StorageDirectoryHandle,
   name: string,
-  sourceFilename: string,
-  sourceLocation: ImportSourceLocation,
+  _sourceFilename: string,
+  _sourceLocation: ImportSourceLocation,
   path: string[]
 ): Promise<{ samples: Int16Array; sampleRate: number }> {
-  if (sourceLocation === 'drumKit') {
-    return loadDrumKitSource(libraryHandle, name, sourceFilename, path);
-  }
-  return loadChoppedSampleSource(libraryHandle, name, sourceFilename, path);
+  const result = await loadSample(libraryHandle, name, path);
+  const wav = parseWav(result.wavData);
+  return { samples: wav.samples, sampleRate: wav.sampleRate };
 }
 
 // =========================================================================
@@ -494,9 +490,8 @@ export function useImportSamples({
             bundle.sampleRate
           );
         } else if (slice.filename) {
-          // v1 individual WAV files
-          const wavBytes = await loadDrumKitSample(libraryHandle, name, slice.filename, path);
-          prepared = prepareWavForS330(wavBytes.buffer as ArrayBuffer, bundle.sampleRate);
+          // v1 individual WAV files — device-specific drum kit storage has been removed
+          throw new Error(`Device-specific drum kit storage has been removed. Slice "${slice.label}" cannot be loaded from the old format.`);
         } else {
           throw new Error(`Slice "${slice.label}" has no source or filename`);
         }

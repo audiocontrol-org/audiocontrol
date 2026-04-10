@@ -19,7 +19,11 @@ import type {
   ItemSelection,
   PreviewContext,
 } from '@audiocontrol/editor-core';
-import { createSamplesCategory, createProgramsCategory } from '@/plugins/categories';
+import {
+  createSamplesCategory,
+  createCommonProgramsCategoryForS3k,
+  createS3kProgramsCategory,
+} from '@/plugins/categories';
 import { S3kPreviewPanelAdapter } from '@/components/library/S3kItemPreviewPanel';
 import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
 
@@ -36,6 +40,9 @@ export interface S3kMemoryPanelState {
   onSelectProgram: (index: number) => void;
   onSelectSample: (index: number) => void;
   onRefresh: () => void;
+  onImportSample?: (sampleName: string, samplePath: string[]) => void;
+  onImportProgram?: (dirName: string, displayName: string, categoryId: string) => void;
+  onDiskItemDrop?: (payload: import('@/components/library/DiskBrowserPanel').DiskDragPayload) => void;
   isConnected: boolean;
   isLoading: boolean;
 }
@@ -72,6 +79,9 @@ function S3kMemoryPanelAdapter({
       onSelectProgram={state.onSelectProgram}
       onSelectSample={state.onSelectSample}
       onRefresh={state.onRefresh}
+      onImportSample={state.onImportSample}
+      onImportProgram={state.onImportProgram}
+      onDiskItemDrop={state.onDiskItemDrop}
       isConnected={state.isConnected}
       isLoading={state.isLoading}
     />
@@ -88,7 +98,8 @@ export const s3kLibraryPlugin: DeviceLibraryPlugin = {
 
   categories: [
     createSamplesCategory(),
-    createProgramsCategory(),
+    createCommonProgramsCategoryForS3k(),
+    createS3kProgramsCategory(),
   ],
 
   translators: [],

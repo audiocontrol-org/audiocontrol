@@ -125,7 +125,7 @@ export function TreeSection({
       data-testid={testId}
     >
       {/* Section header */}
-      <div className="ac-tree-section-header">
+      <div className="ac-tree-section-header" data-testid={testId ? `${testId}-header` : undefined}>
         <span className="ac-tree-section-title">{title}</span>
         {isDragOver && dropMessage && (
           <span className="ac-tree-section-drop-hint">
@@ -133,7 +133,7 @@ export function TreeSection({
           </span>
         )}
         {headerActions && (
-          <span className="ac-tree-section-actions">{headerActions}</span>
+          <span className="ac-tree-section-actions" data-testid={testId ? `${testId}-actions` : undefined}>{headerActions}</span>
         )}
       </div>
 

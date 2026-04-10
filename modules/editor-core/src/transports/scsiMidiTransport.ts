@@ -82,6 +82,7 @@ export function createScsiMidiTransport(config: ScsiMidiTransportConfig): MidiTr
 
       return {
         adapter: scsi.adapter,
+        sdsChannel: scsi.sdsChannel,
         inputInfo: portInfo,
         outputInfo: portInfo,
         disconnect: async () => {

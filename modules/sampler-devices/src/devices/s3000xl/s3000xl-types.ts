@@ -1,4 +1,4 @@
-import type { MidiIO, SdsLoopType, SdsTransferProgress, SdsDumpHeader } from '@audiocontrol/midi-core';
+import type { MidiIO, SdsChannel, SdsLoopType, SdsTransferProgress, SdsDumpHeader } from '@audiocontrol/midi-core';
 import type { ProgramHeader, KeygroupHeader, SampleHeader, MiscellaneousData } from '@/devices/s3000xl.js';
 
 export type { ProgramHeader, KeygroupHeader, SampleHeader, MiscellaneousData };
@@ -27,6 +27,9 @@ export interface S3000xlClientOptions {
 
   /** Bypass all caching — every read fetches fresh from the device. Default: false */
   readonly noCache: boolean;
+
+  /** Dedicated SDS channel for sample transfers (bypasses MidiIO queue). */
+  readonly sdsChannel: SdsChannel;
 }
 
 /**
@@ -69,12 +72,24 @@ export interface S3000xlClientInterface {
   /** Write modified miscellaneous data back to the device */
   writeMiscData(data: MiscellaneousData): Promise<void>;
 
+  /**
+   * Upload a sample via SDS without RSLIST polling or renaming.
+   * For batch uploads — caller is responsible for verification and renaming.
+   */
+  uploadSampleRaw(
+    sampleNumber: number,
+    sampleData: Int16Array,
+    sampleRate: number,
+    onProgress?: (progress: SdsTransferProgress) => void,
+  ): Promise<void>;
+
   /** Send a sample to the device via MIDI Sample Dump Standard */
   sendSampleViaSds(
     sampleNumber: number,
     sampleData: Int16Array,
     sampleRate: number,
     options?: {
+      name?: string;
       loopStart?: number;
       loopEnd?: number;
       loopType?: SdsLoopType;

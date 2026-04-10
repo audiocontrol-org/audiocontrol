@@ -25,11 +25,11 @@ import {
   connectToOPFS,
 } from './helpers/connection-helper';
 import {
-  initializeCleanOPFS,
+  initializeRolandOPFS,
   cleanupOPFS,
-  listDrumKitDirectories,
-  readDrumKitYaml,
-} from './helpers/library-opfs-helpers';
+} from '../../e2e-infra/helpers/library-ui-helpers';
+// TODO(#182): readDrumKitYaml / listDrumKitDirectories removed — drum kits must move to common area
+// import { readDrumKitYaml, listDrumKitDirectories } from './helpers/library-opfs-helpers';
 
 // ---------------------------------------------------------------------------
 // Configuration
@@ -169,7 +169,7 @@ test.describe('Device Tone Chopper', () => {
     await selectTone(page, testToneIndex);
 
     // 4. Initialize clean OPFS for drum kit output
-    await initializeCleanOPFS(page, LIBRARY_DEVICE);
+    await initializeRolandOPFS(page, LIBRARY_DEVICE);
   });
 
   test.afterEach(async ({ page }) => {

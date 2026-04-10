@@ -1,0 +1,306 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - heading "S-330 Editor" [level=1] [ref=e7]
+        - navigation [ref=e8]:
+          - list [ref=e9]:
+            - listitem [ref=e10]:
+              - link "Connect" [ref=e11] [cursor=pointer]:
+                - /url: /roland/s330/editor
+            - listitem [ref=e12]:
+              - link "Play" [ref=e13] [cursor=pointer]:
+                - /url: /roland/s330/editor/play
+            - listitem [ref=e14]:
+              - link "Patches" [ref=e15] [cursor=pointer]:
+                - /url: /roland/s330/editor/patches
+            - listitem [ref=e16]:
+              - link "Tones" [ref=e17] [cursor=pointer]:
+                - /url: /roland/s330/editor/tones
+            - listitem [ref=e18]:
+              - link "Library" [ref=e19] [cursor=pointer]:
+                - /url: /roland/s330/editor/library
+      - generic [ref=e20]:
+        - generic [ref=e21]:
+          - generic [ref=e23]: Connected
+          - generic [ref=e24]: Mock S330 In ↔ Mock S330 Out
+        - button "PANIC" [ref=e25] [cursor=pointer]
+        - button "7320c356*" [ref=e26] [cursor=pointer]
+  - main [ref=e27]:
+    - complementary [ref=e28]:
+      - generic [ref=e29]:
+        - button "Enable Camera Access" [ref=e33] [cursor=pointer]
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - button "MODE" [ref=e36] [cursor=pointer]
+            - button "MENU" [ref=e37] [cursor=pointer]
+            - button "SUB" [ref=e38] [cursor=pointer]
+            - button "COM" [ref=e39] [cursor=pointer]
+            - button "EXEC" [ref=e40] [cursor=pointer]
+          - generic [ref=e41]:
+            - generic [ref=e42]:
+              - button [ref=e44] [cursor=pointer]:
+                - img [ref=e46]
+              - button [ref=e49] [cursor=pointer]:
+                - img [ref=e51]
+              - button [ref=e54] [cursor=pointer]:
+                - img [ref=e56]
+              - button [ref=e59] [cursor=pointer]:
+                - img [ref=e61]
+            - generic [ref=e64]:
+              - button [ref=e65] [cursor=pointer]:
+                - img [ref=e67]
+              - button [ref=e68] [cursor=pointer]:
+                - img [ref=e70]
+          - generic [ref=e72]:
+            - generic [ref=e73]: "Arrow category:"
+            - button "01" [ref=e74] [cursor=pointer]
+          - generic [ref=e75]: "Keys: Arrows, +/-, Enter, F1-F5"
+    - button "Close S-330 display" [ref=e77] [cursor=pointer]:
+      - img [ref=e78]
+      - img [ref=e80]
+    - generic [ref=e83]:
+      - generic [ref=e85]:
+        - generic [ref=e86]:
+          - heading "Library" [level=2] [ref=e87]
+          - generic "This feature is still being designed and not all the wrinkles have been smoothed out yet." [ref=e88]: Experimental
+        - generic [ref=e89]:
+          - button "Refresh Device" [ref=e90] [cursor=pointer]
+          - button "Save to Library..." [ref=e91] [cursor=pointer]
+          - button "Load Selected Set" [disabled] [ref=e92]
+      - generic [ref=e94]:
+        - generic [ref=e96]:
+          - generic [ref=e97]:
+            - heading "Device Memory" [level=3] [ref=e98]
+            - paragraph [ref=e99]: 8 tones, 8 patches
+          - generic [ref=e100]:
+            - generic [ref=e103]:
+              - generic [ref=e104]: Tones (32 slots)
+              - generic [ref=e106]:
+                - button "T11 MINI" [ref=e107]:
+                  - generic [ref=e108]: T11
+                  - generic [ref=e109]: MINI
+                - button "T12 MINI LESLIE" [ref=e110]:
+                  - generic [ref=e111]: T12
+                  - generic [ref=e112]: MINI LESLIE
+                - button "T13 KIT" [ref=e113]:
+                  - generic [ref=e114]: T13
+                  - generic [ref=e115]: KIT
+                - button "T14 KICK" [ref=e116]:
+                  - generic [ref=e117]: T14
+                  - generic [ref=e118]: KICK
+                - button "T15 SNARE" [ref=e119]:
+                  - generic [ref=e120]: T15
+                  - generic [ref=e121]: SNARE
+                - button "T16 HHC" [ref=e122]:
+                  - generic [ref=e123]: T16
+                  - generic [ref=e124]: HHC
+                - button "T17 HHO" [ref=e125]:
+                  - generic [ref=e126]: T17
+                  - generic [ref=e127]: HHO
+                - button "T18 SINE" [ref=e128]:
+                  - generic [ref=e129]: T18
+                  - generic [ref=e130]: SINE
+                - button "T21 (not loaded)" [ref=e131] [cursor=pointer]:
+                  - generic [ref=e132]: T21
+                  - generic [ref=e133]: (not loaded)
+                - button "T22 (not loaded)" [ref=e134] [cursor=pointer]:
+                  - generic [ref=e135]: T22
+                  - generic [ref=e136]: (not loaded)
+                - button "T23 (not loaded)" [ref=e137] [cursor=pointer]:
+                  - generic [ref=e138]: T23
+                  - generic [ref=e139]: (not loaded)
+                - button "T24 (not loaded)" [ref=e140] [cursor=pointer]:
+                  - generic [ref=e141]: T24
+                  - generic [ref=e142]: (not loaded)
+                - button "T25 (not loaded)" [ref=e143] [cursor=pointer]:
+                  - generic [ref=e144]: T25
+                  - generic [ref=e145]: (not loaded)
+                - button "T26 (not loaded)" [ref=e146] [cursor=pointer]:
+                  - generic [ref=e147]: T26
+                  - generic [ref=e148]: (not loaded)
+                - button "T27 (not loaded)" [ref=e149] [cursor=pointer]:
+                  - generic [ref=e150]: T27
+                  - generic [ref=e151]: (not loaded)
+                - button "T28 (not loaded)" [ref=e152] [cursor=pointer]:
+                  - generic [ref=e153]: T28
+                  - generic [ref=e154]: (not loaded)
+                - button "T31 (not loaded)" [ref=e155] [cursor=pointer]:
+                  - generic [ref=e156]: T31
+                  - generic [ref=e157]: (not loaded)
+                - button "T32 (not loaded)" [ref=e158] [cursor=pointer]:
+                  - generic [ref=e159]: T32
+                  - generic [ref=e160]: (not loaded)
+                - button "T33 (not loaded)" [ref=e161] [cursor=pointer]:
+                  - generic [ref=e162]: T33
+                  - generic [ref=e163]: (not loaded)
+                - button "T34 (not loaded)" [ref=e164] [cursor=pointer]:
+                  - generic [ref=e165]: T34
+                  - generic [ref=e166]: (not loaded)
+                - button "T35 (not loaded)" [ref=e167] [cursor=pointer]:
+                  - generic [ref=e168]: T35
+                  - generic [ref=e169]: (not loaded)
+                - button "T36 (not loaded)" [ref=e170] [cursor=pointer]:
+                  - generic [ref=e171]: T36
+                  - generic [ref=e172]: (not loaded)
+                - button "T37 (not loaded)" [ref=e173] [cursor=pointer]:
+                  - generic [ref=e174]: T37
+                  - generic [ref=e175]: (not loaded)
+                - button "T38 (not loaded)" [ref=e176] [cursor=pointer]:
+                  - generic [ref=e177]: T38
+                  - generic [ref=e178]: (not loaded)
+                - button "T41 (not loaded)" [ref=e179] [cursor=pointer]:
+                  - generic [ref=e180]: T41
+                  - generic [ref=e181]: (not loaded)
+                - button "T42 (not loaded)" [ref=e182] [cursor=pointer]:
+                  - generic [ref=e183]: T42
+                  - generic [ref=e184]: (not loaded)
+                - button "T43 (not loaded)" [ref=e185] [cursor=pointer]:
+                  - generic [ref=e186]: T43
+                  - generic [ref=e187]: (not loaded)
+                - button "T44 (not loaded)" [ref=e188] [cursor=pointer]:
+                  - generic [ref=e189]: T44
+                  - generic [ref=e190]: (not loaded)
+                - button "T45 (not loaded)" [ref=e191] [cursor=pointer]:
+                  - generic [ref=e192]: T45
+                  - generic [ref=e193]: (not loaded)
+                - button "T46 (not loaded)" [ref=e194] [cursor=pointer]:
+                  - generic [ref=e195]: T46
+                  - generic [ref=e196]: (not loaded)
+                - button "T47 (not loaded)" [ref=e197] [cursor=pointer]:
+                  - generic [ref=e198]: T47
+                  - generic [ref=e199]: (not loaded)
+                - button "T48 (not loaded)" [ref=e200] [cursor=pointer]:
+                  - generic [ref=e201]: T48
+                  - generic [ref=e202]: (not loaded)
+            - generic [ref=e203]:
+              - generic [ref=e204]: Patches (16 slots)
+              - generic [ref=e206]:
+                - button "P11 MINI" [ref=e207]:
+                  - generic [ref=e208]: P11
+                  - generic [ref=e209]: MINI
+                - button "P12 MINI LESLIE" [ref=e210]:
+                  - generic [ref=e211]: P12
+                  - generic [ref=e212]: MINI LESLIE
+                - button "P13 KIT" [ref=e213]:
+                  - generic [ref=e214]: P13
+                  - generic [ref=e215]: KIT
+                - button "P14 KICK" [ref=e216]:
+                  - generic [ref=e217]: P14
+                  - generic [ref=e218]: KICK
+                - button "P15 SNARE" [ref=e219]:
+                  - generic [ref=e220]: P15
+                  - generic [ref=e221]: SNARE
+                - button "P16 HHC" [ref=e222]:
+                  - generic [ref=e223]: P16
+                  - generic [ref=e224]: HHC
+                - button "P17 HHO" [ref=e225]:
+                  - generic [ref=e226]: P17
+                  - generic [ref=e227]: HHO
+                - button "P18 SINE" [ref=e228]:
+                  - generic [ref=e229]: P18
+                  - generic [ref=e230]: SINE
+                - button "P21 (not loaded)" [ref=e231] [cursor=pointer]:
+                  - generic [ref=e232]: P21
+                  - generic [ref=e233]: (not loaded)
+                - button "P22 (not loaded)" [ref=e234] [cursor=pointer]:
+                  - generic [ref=e235]: P22
+                  - generic [ref=e236]: (not loaded)
+                - button "P23 (not loaded)" [ref=e237] [cursor=pointer]:
+                  - generic [ref=e238]: P23
+                  - generic [ref=e239]: (not loaded)
+                - button "P24 (not loaded)" [ref=e240] [cursor=pointer]:
+                  - generic [ref=e241]: P24
+                  - generic [ref=e242]: (not loaded)
+                - button "P25 (not loaded)" [ref=e243] [cursor=pointer]:
+                  - generic [ref=e244]: P25
+                  - generic [ref=e245]: (not loaded)
+                - button "P26 (not loaded)" [ref=e246] [cursor=pointer]:
+                  - generic [ref=e247]: P26
+                  - generic [ref=e248]: (not loaded)
+                - button "P27 (not loaded)" [ref=e249] [cursor=pointer]:
+                  - generic [ref=e250]: P27
+                  - generic [ref=e251]: (not loaded)
+                - button "P28 (not loaded)" [ref=e252] [cursor=pointer]:
+                  - generic [ref=e253]: P28
+                  - generic [ref=e254]: (not loaded)
+        - generic [ref=e255]:
+          - generic [ref=e257]:
+            - generic [ref=e258]: Browser Storage
+            - button "Change" [ref=e260] [cursor=pointer]
+          - generic [ref=e261]:
+            - generic [ref=e262]:
+              - generic [ref=e263]: Sets
+              - generic [ref=e264]: No sets in library
+            - generic [ref=e265]:
+              - generic [ref=e266]:
+                - generic [ref=e267]: Tones
+                - button "New folder" [ref=e269] [cursor=pointer]:
+                  - img [ref=e270]
+              - generic [ref=e272]: No tones in library
+            - generic [ref=e273]:
+              - generic [ref=e274]:
+                - generic [ref=e275]: Patches
+                - button "New folder" [ref=e277] [cursor=pointer]:
+                  - img [ref=e278]
+              - generic [ref=e280]: No patches in library
+            - generic [ref=e281]:
+              - generic [ref=e282]:
+                - generic [ref=e283]: Drum Kits
+                - button "New folder" [ref=e285] [cursor=pointer]:
+                  - img [ref=e286]
+              - generic [ref=e288]: No drum kits in library
+            - generic [ref=e289]:
+              - generic [ref=e290]:
+                - generic [ref=e291]: Samples
+                - button "New folder" [ref=e293] [cursor=pointer]:
+                  - img [ref=e294]
+              - tree [ref=e297]:
+                - treeitem "E2E Editor Kit" [active] [ref=e299]:
+                  - img [ref=e300]
+                  - generic [ref=e302]: E2E Editor Kit
+                  - button "Delete E2E Editor Kit" [ref=e303] [cursor=pointer]:
+                    - img [ref=e304]
+            - generic [ref=e306]:
+              - generic [ref=e307]:
+                - generic [ref=e308]: Programs
+                - button "New folder" [ref=e310] [cursor=pointer]:
+                  - img [ref=e311]
+              - generic [ref=e313]: No programs in library.
+        - generic [ref=e315]:
+          - generic [ref=e316]:
+            - heading "Common Sample" [level=3] [ref=e317]
+            - paragraph [ref=e318]: E2E Editor Kit
+          - generic [ref=e320]:
+            - generic [ref=e321]:
+              - heading "E2E Editor Kit" [level=4] [ref=e323]
+              - generic [ref=e325]:
+                - generic [ref=e326]:
+                  - text: Sample Rate
+                  - generic [ref=e327]: 30000 Hz
+                - generic [ref=e328]:
+                  - text: Root Key
+                  - generic [ref=e329]: "--"
+                - generic [ref=e330]:
+                  - text: Loop Mode
+                  - generic [ref=e331]: oneShot
+                - generic [ref=e332]:
+                  - text: File
+                  - generic [ref=e333]: sample.wav
+            - generic [ref=e334]:
+              - button "Open in Loop Editor" [ref=e335] [cursor=pointer]
+              - button "Open in Chopper" [ref=e336] [cursor=pointer]
+              - button "Open in Editor" [ref=e337] [cursor=pointer]
+            - separator [ref=e338]
+            - generic [ref=e340]:
+              - generic [ref=e341]: Promote to Tone
+              - generic [ref=e342]:
+                - generic [ref=e343]: Original Key (MIDI 11-108)
+                - generic [ref=e344]:
+                  - spinbutton [ref=e345]: "60"
+                  - generic [ref=e346]: C4
+              - button "Promote" [ref=e347] [cursor=pointer]
+```

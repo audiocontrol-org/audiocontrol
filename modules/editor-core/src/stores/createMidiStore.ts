@@ -3,6 +3,7 @@ import {
   type ConnectionStatus,
   type MidiIO,
   type MidiPortInfo,
+  type SdsChannel,
 } from '@audiocontrol/midi-core';
 import { createWebMidiTransport } from '../transports/webMidiTransport';
 import type { MidiTransport, MidiTransportConnection, MidiTransportPorts } from '../transports/types';
@@ -29,6 +30,7 @@ export interface MidiStoreState<TClient> {
   selectedInput: MidiPortInfo | null;
   selectedOutput: MidiPortInfo | null;
   adapter: MidiIO | null;
+  sdsChannel: SdsChannel | null;
   client: TClient | null;
   deviceId: number;
   midiAccess: MIDIAccess | null;
@@ -108,6 +110,7 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
     selectedInput: null,
     selectedOutput: null,
     adapter: null,
+    sdsChannel: null,
     client: null,
     deviceId: config.defaultDeviceId,
     midiAccess: null,
@@ -201,6 +204,7 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
         set({
           openPorts: { input: connection.nativeInput ?? null, output: connection.nativeOutput ?? null },
           adapter: connection.adapter,
+          sdsChannel: connection.sdsChannel ?? null,
           client,
           selectedInputId: inputId,
           selectedOutputId: outputId,
@@ -233,6 +237,7 @@ export function createMidiStore<TClient>(config: MidiStoreConfig<TClient>) {
         set({
           openPorts: { input: null, output: null },
           adapter: null,
+          sdsChannel: null,
           client: null,
           selectedInputId: null,
           selectedOutputId: null,

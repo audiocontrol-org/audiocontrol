@@ -7,7 +7,8 @@
  * (e.g., Akai S3000XL) connected via a Raspberry Pi running scsi2pi.
  */
 
-import type { MidiIO, SysExCallback } from '../types';
+import type { MidiIO, SysExCallback, SdsChannel } from '../types';
+import type { SdsTransferProgress, SdsDumpHeader } from '../sds/sds-types';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -91,6 +92,7 @@ async function fetchJson<T>(baseUrl: string, path: string, options?: RequestInit
  */
 export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
   adapter: MidiIO;
+  sdsChannel: SdsChannel;
   connect: () => Promise<ScsiMidiBridgeStatus>;
   disconnect: () => void;
   scanDevices: () => Promise<ScsiDevice[]>;
@@ -102,40 +104,9 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
   // Serialize sends -- same pattern as httpMidiTransport.
   let sendQueue: Promise<void> = Promise.resolve();
 
-  // Background poll loop for incoming SysEx (SDS data packets, etc.)
-  // When WebSocket is unavailable, this polls GET /sds/poll periodically
-  // to receive data the device sends autonomously.
-  let pollInterval: ReturnType<typeof setInterval> | null = null;
-  let pollInFlight = false;
-  let sendInFlight = false;
-
-  function startPolling(): void {
-    if (pollInterval || ws) return; // Don't poll if WebSocket is working
-    pollInterval = setInterval(async () => {
-      // Don't poll while a send is in flight — avoids race condition where
-      // the poll loop reads a response meant for the send's callback chain.
-      if (pollInFlight || sendInFlight || listeners.size === 0) return;
-      pollInFlight = true;
-      try {
-        const res = await fetch(`${bridgeUrl}/sds/poll`);
-        const body = await res.json() as { ok: boolean; response: number[] };
-        if (body.response && body.response.length > 0) {
-          dispatchResponses(body.response);
-        }
-      } catch {
-        // Ignore poll errors — bridge may be temporarily busy
-      } finally {
-        pollInFlight = false;
-      }
-    }, 50); // Poll every 50ms for responsive SDS handshake
-  }
-
-  function stopPolling(): void {
-    if (pollInterval) {
-      clearInterval(pollInterval);
-      pollInterval = null;
-    }
-  }
+  // SDS transfers use a dedicated WebSocket channel (/sds/stream).
+  // SysEx request/response gets its response inline in the HTTP POST body.
+  // No background polling needed.
 
   /** Split concatenated SysEx on F7 boundaries and dispatch each message. */
   function dispatchResponses(data: number[]): void {
@@ -171,42 +142,40 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
 
   const adapter: MidiIO = {
     send(message: number[]): void {
+      const msgType = message[0] === 0xf0 ? `F0..${message.slice(1, 4).map(b => b.toString(16)).join(' ')}` : 'non-sysex';
+      console.log(`[ScsiMidi] send queued: ${message.length} bytes (${msgType}), wsOpen=${ws?.readyState === WebSocket.OPEN}`);
       sendQueue = sendQueue.then(async () => {
-        sendInFlight = true;
         try {
-          if (ws && ws.readyState === WebSocket.OPEN) {
-            // Send via WebSocket — response arrives through handleWsMessage
-            ws.send(JSON.stringify({ type: 'send', message }));
-          } else {
-            // Fallback to HTTP POST
-            const res = await fetch(`${bridgeUrl}/sds/send`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ message }),
-            });
-            const body = await res.json() as { ok: boolean; response: number[] };
-            if (body.response && body.response.length > 0) {
-              dispatchResponses(body.response);
-            }
+          console.log(`[ScsiMidi] sending via HTTP POST to ${bridgeUrl}/sds/send`);
+          const jsonBody = JSON.stringify({ message });
+          const res = await fetch(`${bridgeUrl}/sds/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: jsonBody,
+          });
+          if (!res.ok) {
+            const errText = await res.text();
+            console.error(`[ScsiMidi] HTTP ${res.status}: ${errText} (sent ${message.length} bytes, body ${jsonBody.length} chars)`);
+            return;
+          }
+          const body = await res.json() as { ok: boolean; response: number[] };
+          console.log(`[ScsiMidi] HTTP response: ok=${body.ok}, response=${body.response?.length ?? 0} bytes`);
+          if (body.response && body.response.length > 0) {
+            dispatchResponses(body.response);
           }
         } catch (err) {
           console.error('[ScsiMidiTransport] Send error:', err);
-        } finally {
-          sendInFlight = false;
         }
       });
     },
 
     onSysEx(callback: SysExCallback): void {
+      console.log(`[ScsiMidi] onSysEx registered, listeners: ${listeners.size + 1}`);
       listeners.add(callback);
-      startPolling();
     },
 
     removeSysExListener(callback: SysExCallback): void {
       listeners.delete(callback);
-      if (listeners.size === 0) {
-        stopPolling();
-      }
     },
   };
 
@@ -258,7 +227,6 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
   }
 
   function disconnect(): void {
-    stopPolling();
     if (ws) {
       ws.removeEventListener('message', handleWsMessage);
       ws.close();
@@ -271,5 +239,207 @@ export function createScsiMidiTransport(options: ScsiMidiTransportOptions): {
     return fetchJson<ScsiDevice[]>(bridgeUrl, '/scsi/scan');
   }
 
-  return { adapter, connect, disconnect, scanDevices };
+  // -------------------------------------------------------------------------
+  // SDS Channel — dedicated WebSocket path for sample transfers
+  // -------------------------------------------------------------------------
+
+  // The SDS channel needs to wait for pending SysEx operations to complete
+  // before starting, because the bridge holds a single SCSI mutex.
+  const waitForSendQueueIdle = () => sendQueue;
+  const sdsChannel = createScsiSdsChannel(bridgeUrl, waitForSendQueueIdle);
+
+  return { adapter, sdsChannel, connect, disconnect, scanDevices };
+}
+
+// ---------------------------------------------------------------------------
+// SCSI SDS Channel implementation
+// ---------------------------------------------------------------------------
+
+/** Default SCSI target ID for S3000XL. */
+const DEFAULT_SCSI_TARGET_ID = 6;
+
+function createScsiSdsChannel(
+  bridgeUrl: string,
+  waitForIdle: () => Promise<void>,
+): SdsChannel {
+  return {
+    async uploadSample(
+      sampleNumber: number,
+      channel: number,
+      sampleRate: number,
+      samples: Int16Array,
+      onProgress?: (progress: SdsTransferProgress) => void,
+    ): Promise<void> {
+      // Wait for all pending SysEx operations to complete — the bridge
+      // holds a single SCSI mutex, so we can't start SDS while SysEx is in flight.
+      await waitForIdle();
+      console.log(`[SdsChannel] send queue idle, starting upload`);
+
+      const wsUrl = wsUrlFromHttp(bridgeUrl, '/sds/stream');
+
+      return new Promise<void>((resolve, reject) => {
+        const sdsWs = new WebSocket(wsUrl);
+        // Timeout scales with sample count: ~350ms per 40-sample packet + margin.
+        // Minimum 60s for small samples, no cap for large ones.
+        const packets = Math.ceil(samples.length / 40);
+        const timeoutMs = Math.max(60_000, packets * 400 + 30_000);
+        const timeout = setTimeout(() => {
+          sdsWs.close();
+          reject(new Error(`SDS upload timed out after ${Math.round(timeoutMs / 1000)}s`));
+        }, timeoutMs);
+
+        const totalPackets = Math.ceil(samples.length / 120);
+
+        sdsWs.addEventListener('open', () => {
+          sdsWs.send(JSON.stringify({
+            type: 'sample-upload',
+            target_id: DEFAULT_SCSI_TARGET_ID,
+            sample_number: sampleNumber,
+            channel,
+            sample_rate: sampleRate,
+            samples: Array.from(samples),
+          }));
+        });
+
+        sdsWs.addEventListener('message', (event) => {
+          const msg = JSON.parse(String(event.data));
+
+          switch (msg.type) {
+            case 'upload-progress':
+              if (onProgress) {
+                onProgress({
+                  packetsSent: msg.transferred ?? 0,
+                  packetsTotal: msg.total ?? totalPackets,
+                  bytesSent: (msg.transferred ?? 0) * 2,
+                  bytesTotal: samples.length * 2,
+                });
+              }
+              break;
+
+            case 'upload-complete':
+              clearTimeout(timeout);
+              sdsWs.close();
+              resolve();
+              break;
+
+            case 'sample-error':
+              clearTimeout(timeout);
+              sdsWs.close();
+              reject(new Error(`SDS upload error: ${msg.error}`));
+              break;
+          }
+        });
+
+        sdsWs.addEventListener('error', (event) => {
+          clearTimeout(timeout);
+          reject(new Error(`SDS upload WebSocket error: ${event}`));
+        });
+      });
+    },
+
+    async downloadSample(
+      sampleNumber: number,
+      channel: number,
+      onProgress?: (progress: SdsTransferProgress) => void,
+    ): Promise<{ header: SdsDumpHeader; samples: Int16Array }> {
+      await waitForIdle();
+      console.log(`[SdsChannel] send queue idle, starting download`);
+
+      const wsUrl = wsUrlFromHttp(bridgeUrl, '/sds/stream');
+
+      return new Promise<{ header: SdsDumpHeader; samples: Int16Array }>((resolve, reject) => {
+        const sdsWs = new WebSocket(wsUrl);
+        const timeoutMs = 60_000;
+        const timeout = setTimeout(() => {
+          sdsWs.close();
+          reject(new Error(`SDS download timed out after ${timeoutMs / 1000}s`));
+        }, timeoutMs);
+
+        let header: SdsDumpHeader | undefined;
+        const sampleChunks: number[][] = [];
+        let totalSamples = 0;
+
+        sdsWs.addEventListener('open', () => {
+          sdsWs.send(JSON.stringify({
+            type: 'sample-download',
+            targetId: DEFAULT_SCSI_TARGET_ID,
+            sampleNumber,
+            channel,
+          }));
+        });
+
+        sdsWs.addEventListener('message', (event) => {
+          const msg = JSON.parse(String(event.data));
+
+          switch (msg.type) {
+            case 'sample-header':
+              header = {
+                sampleNumber,
+                sampleFormat: msg.bitsPerSample ?? 16,
+                samplePeriodNs: msg.sampleRate ? Math.round(1_000_000_000 / msg.sampleRate) : 0,
+                sampleLength: msg.sampleCount ?? 0,
+                loopStart: msg.loopStart ?? 0,
+                loopEnd: msg.loopEnd ?? 0,
+                loopType: msg.loopType ?? 0x7f,
+              };
+              break;
+
+            case 'sample-data':
+              if (Array.isArray(msg.samples)) {
+                sampleChunks.push(msg.samples);
+              }
+              totalSamples = msg.transferred ?? totalSamples;
+              if (onProgress && header) {
+                onProgress({
+                  packetsSent: totalSamples,
+                  packetsTotal: header.sampleLength,
+                  bytesSent: totalSamples * 2,
+                  bytesTotal: header.sampleLength * 2,
+                });
+              }
+              break;
+
+            case 'sample-complete': {
+              clearTimeout(timeout);
+              sdsWs.close();
+              if (!header) {
+                reject(new Error('SDS download completed without receiving a dump header'));
+                return;
+              }
+              const finalCount = msg.totalSamples ?? totalSamples;
+              const allSamples = new Int16Array(finalCount);
+              let offset = 0;
+              for (const chunk of sampleChunks) {
+                for (const s of chunk) {
+                  if (offset < allSamples.length) {
+                    allSamples[offset++] = s;
+                  }
+                }
+              }
+              resolve({ header, samples: allSamples });
+              break;
+            }
+
+            case 'sample-error':
+              clearTimeout(timeout);
+              sdsWs.close();
+              reject(new Error(`SDS download error: ${msg.error}`));
+              break;
+          }
+        });
+
+        sdsWs.addEventListener('error', (event) => {
+          clearTimeout(timeout);
+          reject(new Error(`SDS download WebSocket error: ${event}`));
+        });
+
+        sdsWs.addEventListener('close', () => {
+          clearTimeout(timeout);
+          if (!header) {
+            reject(new Error('SDS download WebSocket closed before receiving header'));
+          }
+        });
+      });
+    },
+  };
 }

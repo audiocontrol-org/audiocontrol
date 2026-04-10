@@ -1,23 +1,20 @@
 /**
  * Sample Bundle Preview Panel
  *
- * Shows preview of a selected sample bundle (drum kit or chopped sample):
+ * Shows preview of a selected sample bundle (drum kit or sample):
  * - Name and description
  * - Slice count and sample rate
  * - MIDI note mappings
  * - Import to Device / Edit buttons
  *
  * For drum kits, also loads and displays kit-specific info (kits, detected samples).
- * For chopped samples, shows slice list with trigger mappings.
+ * For samples, shows slice list with trigger mappings.
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  loadDrumKitBundle,
-  loadDrumKitSource,
-  loadChoppedSampleManifest,
-  type DrumKitInfo,
-} from '@/lib/library-service';
+  loadSampleMeta,
+} from '@audiocontrol/sampler-library/browser';
 import { DrumKitPadList } from '@/components/library/DrumKitPadList';
 import {
   midiNoteToName,
@@ -37,15 +34,23 @@ import type { LibraryTreeNode } from '@/lib/library-service';
 // Props
 // =========================================================================
 
+/** Information about a drum kit in the library (now only used by this legacy panel). */
+interface DrumKitInfo {
+  name: string;
+  directoryName: string;
+  kitCount: number;
+  sampleCount: number;
+}
+
 interface SampleBundlePreviewPanelProps {
   /** For drum kit items */
   kitInfo?: DrumKitInfo | null;
-  /** For chopped sample items from tree */
-  choppedSampleNode?: LibraryTreeNode | null;
+  /** For sample items from tree */
+  sampleNode?: LibraryTreeNode | null;
   libraryHandle: StorageDirectoryHandle | null;
   /** Pre-loaded drum kit bundle (for kits in subdirectories) */
   preloadedBundle?: ResolvedDrumKitBundle | null;
-  /** Pre-loaded chopped sample manifest */
+  /** Pre-loaded sample manifest */
   preloadedManifest?: SampleYaml | null;
   onImport?: () => void;
   onEditKit?: () => void;
@@ -88,10 +93,10 @@ function MidiRangeVisualization({ bundle }: { bundle: ResolvedDrumKitBundle }): 
 }
 
 // =========================================================================
-// Chopped Sample sub-components
+// Sample sub-components
 // =========================================================================
 
-function ChoppedSampleSliceList({ manifest }: { manifest: SampleYaml }): JSX.Element {
+function SampleSliceList({ manifest }: { manifest: SampleYaml }): JSX.Element {
   // Build trigger map for display
   const triggerMap = new Map<number, string>();
   if (manifest.triggers) {
@@ -156,7 +161,7 @@ function ErrorState({ message }: { message: string }): JSX.Element {
 
 export function SampleBundlePreviewPanel({
   kitInfo,
-  choppedSampleNode,
+  sampleNode,
   libraryHandle,
   preloadedBundle,
   preloadedManifest,
@@ -182,8 +187,7 @@ export function SampleBundlePreviewPanel({
 
     setIsLoadingAudio(true);
     try {
-      const result = await loadDrumKitSource(libraryHandle, kitName, bundle.source);
-      setAudioSamples(result.samples);
+      throw new Error('Device-specific drum kit storage has been removed. Drum kits are now common-area objects.');
     } catch (err) {
       console.error('[SampleBundlePreviewPanel] Failed to load audio:', err);
     } finally {
@@ -214,8 +218,7 @@ export function SampleBundlePreviewPanel({
       const loadBundle = async () => {
         setLoading(true);
         try {
-          const resolved = await loadDrumKitBundle(libraryHandle, kitInfo.directoryName);
-          setBundle(resolved);
+          throw new Error('Device-specific drum kit storage has been removed. Drum kits are now common-area objects.');
         } catch (err) {
           console.error('[SampleBundlePreviewPanel] Failed to load drum kit:', err);
           setError(err instanceof Error ? err.message : 'Failed to load drum kit');
@@ -227,29 +230,29 @@ export function SampleBundlePreviewPanel({
       return;
     }
 
-    if (choppedSampleNode) {
+    if (sampleNode) {
       const loadManifest = async () => {
         setLoading(true);
         try {
-          const loaded = await loadChoppedSampleManifest(
+          const loaded = await loadSampleMeta(
             libraryHandle,
-            choppedSampleNode.directoryName || choppedSampleNode.name,
-            choppedSampleNode.path
+            sampleNode.directoryName || sampleNode.name,
+            sampleNode.path
           );
           setManifest(loaded);
         } catch (err) {
-          console.error('[SampleBundlePreviewPanel] Failed to load chopped sample:', err);
-          setError(err instanceof Error ? err.message : 'Failed to load chopped sample');
+          console.error('[SampleBundlePreviewPanel] Failed to load sample:', err);
+          setError(err instanceof Error ? err.message : 'Failed to load sample');
         } finally {
           setLoading(false);
         }
       };
       loadManifest();
     }
-  }, [kitInfo, choppedSampleNode, libraryHandle, preloadedBundle, preloadedManifest]);
+  }, [kitInfo, sampleNode, libraryHandle, preloadedBundle, preloadedManifest]);
 
   // Empty state
-  if (!kitInfo && !preloadedBundle && !choppedSampleNode && !preloadedManifest) {
+  if (!kitInfo && !preloadedBundle && !sampleNode && !preloadedManifest) {
     return (
       <div className="h-full flex flex-col">
         <div className="p-3 border-b border-s330-accent">
@@ -266,9 +269,9 @@ export function SampleBundlePreviewPanel({
 
   const displayName = isDrumKit
     ? (kitInfo?.directoryName ?? bundle?.name ?? 'Drum Kit')
-    : (choppedSampleNode?.name ?? manifest?.name ?? 'Sample');
+    : (sampleNode?.name ?? manifest?.name ?? 'Sample');
 
-  const headerTitle = isDrumKit ? 'Drum Kit' : 'Chopped Sample';
+  const headerTitle = isDrumKit ? 'Drum Kit' : 'Sample';
 
   return (
     <div className="h-full flex flex-col">
@@ -337,7 +340,7 @@ export function SampleBundlePreviewPanel({
             )}
           </div>
         ) : manifest ? (
-          /* Chopped Sample Preview */
+          /* Sample Preview */
           <div className="space-y-4">
             <div>
               <h4 className="text-lg font-bold text-s330-text">{manifest.name}</h4>
@@ -403,7 +406,7 @@ export function SampleBundlePreviewPanel({
               </div>
             )}
 
-            <ChoppedSampleSliceList manifest={manifest} />
+            <SampleSliceList manifest={manifest} />
           </div>
         ) : (
           <div className="text-center text-s330-muted text-sm py-8">

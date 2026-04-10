@@ -22,7 +22,6 @@ EDITOR_CORE        := $(MODULES_DIR)/editor-core/.build-stamp
 LIB_DEVICE_UUID    := $(MODULES_DIR)/lib-device-uuid/.build-stamp
 SAMPLER_DEVICES    := $(MODULES_DIR)/sampler-devices/.build-stamp
 
-SAMPLER_MIDI       := $(MODULES_DIR)/sampler-midi/.build-stamp
 SAMPLER_LIBRARY    := $(MODULES_DIR)/sampler-library/.build-stamp
 SAMPLER_TRANSLATE  := $(MODULES_DIR)/sampler-translate/.build-stamp
 SAMPLER_BACKUP     := $(MODULES_DIR)/sampler-backup/.build-stamp
@@ -40,7 +39,7 @@ ALL_STAMPS := \
 	$(MIDI_CORE) $(SAMPLER_LIB) $(AUDIOTOOLS_CONFIG) $(CANONICAL_MIDI) \
 	$(ARDOUR_MIDI) $(LAUNCH_CONTROL) $(LAUNCH_CONTROL_ED) $(LIB_RUNTIME) \
 	$(SAMPLER_ATTIC) $(SAMPLE_CHOPPER) $(EDITOR_CORE) $(LIB_DEVICE_UUID) \
-	$(SAMPLER_DEVICES) $(SAMPLER_MIDI) $(SAMPLER_LIBRARY) \
+	$(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) \
 	$(SAMPLER_TRANSLATE) $(SAMPLER_BACKUP) $(SAMPLER_EXPORT) $(LOOP_EDITOR) \
 	$(D110_EDITOR) $(JV1080_EDITOR) $(ROLAND_SXX0_EDITOR) $(AUDIOTOOLS_CLI) \
 	$(SYNTH_CORE) $(SAMPLE_EDITOR_MOD) $(AKAI_S3K_EDITOR)
@@ -65,7 +64,6 @@ EDITOR_CORE_SRC        := $(shell find $(MODULES_DIR)/editor-core/src -name '*.t
 LIB_DEVICE_UUID_SRC    := $(shell find $(MODULES_DIR)/lib-device-uuid/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLER_DEVICES_SRC    := $(shell find $(MODULES_DIR)/sampler-devices/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-SAMPLER_MIDI_SRC       := $(shell find $(MODULES_DIR)/sampler-midi/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLER_LIBRARY_SRC    := $(shell find $(MODULES_DIR)/sampler-library/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLER_TRANSLATE_SRC  := $(shell find $(MODULES_DIR)/sampler-translate/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 SAMPLER_BACKUP_SRC     := $(shell find $(MODULES_DIR)/sampler-backup/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
@@ -79,13 +77,20 @@ SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
-.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-scsi check-scsi-bridge test-scsi-write-validation dev-scsi
+.PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland
 
 build: $(ALL_STAMPS)
 
 # ---------------------------------------------------------------------------
 # E2E Test Infrastructure
 # ---------------------------------------------------------------------------
+#
+# !! AGENTS: DO NOT run e2e make targets directly. !!
+# !! ALWAYS use: modules/e2e-infra/scripts/run-and-watch.sh <target>       !!
+# !! Example: modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-library !!
+# !! The run-and-watch script provides log capture, progress polling,       !!
+# !! and completion detection. Running make directly loses all of this.     !!
+#
 
 # devenv binary location (falls back to nix-profile path)
 DEVENV := $(shell command -v devenv 2>/dev/null || echo $(HOME)/.nix-profile/bin/devenv)
@@ -139,6 +144,10 @@ test-e2e-roland-device: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwrigh
 test-e2e-roland-library: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && ./scripts/run-library-e2e.sh $(ARGS)"
 
+# Roland device+library tests (requires connected S-330/S-550 + midi-server + OPFS)
+test-e2e-roland-device-library: $(ROLAND_SXX0_EDITOR) check-midi-server ensure-playwright
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-device-library-e2e.sh $(ARGS)"
+
 # Roland UI navigation tests (no device required)
 test-e2e-roland-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/roland-sxx0-editor && pnpm test:e2e $(ARGS)"
@@ -150,6 +159,34 @@ test-e2e-roland-ui: $(ROLAND_SXX0_EDITOR) ensure-playwright
 # S3000XL device tests (requires connected S3000XL + midi-server)
 test-e2e-s3k-device: $(AKAI_S3K_EDITOR) check-midi-server ensure-playwright
 	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && MIDI_SERVER_BIN='$(MIDI_SERVER_BIN)' ./scripts/run-http-midi-e2e.sh $(ARGS)"
+
+# S3K library tests (OPFS, no device required)
+test-e2e-s3k-library: $(AKAI_S3K_EDITOR) ensure-playwright
+	$(DEVENV) shell --quiet -- bash -c "cd $(MODULES_DIR)/akai-s3k-editor && ./scripts/run-library-e2e.sh $(ARGS)"
+
+# ---------------------------------------------------------------------------
+# Common-Area Library Tests (shared specs, parameterized by env)
+# ---------------------------------------------------------------------------
+
+# Common-area library tests against S3K editor
+test-e2e-common-library-s3k: $(AKAI_S3K_EDITOR) ensure-playwright
+	$(DEVENV) shell --quiet -- bash -c "\
+		E2E_EDITOR_DIR=$(MODULES_DIR)/akai-s3k-editor \
+		E2E_LIBRARY_URL='/akai/s3000xl/editor/library' \
+		E2E_BASE_URL='/akai/s3000xl/editor' \
+		E2E_EDITOR_NAME='S3K' \
+		E2E_OPFS_INIT='s3k' \
+		$(MODULES_DIR)/e2e-infra/scripts/run-common-library-e2e.sh $(ARGS)"
+
+# Common-area library tests against Roland editor
+test-e2e-common-library-roland: $(ROLAND_SXX0_EDITOR) ensure-playwright
+	$(DEVENV) shell --quiet -- bash -c "\
+		E2E_EDITOR_DIR=$(MODULES_DIR)/roland-sxx0-editor \
+		E2E_LIBRARY_URL='/roland/s330/editor/library' \
+		E2E_BASE_URL='/roland/s330/editor' \
+		E2E_EDITOR_NAME='Roland' \
+		E2E_OPFS_INIT='roland' \
+		$(MODULES_DIR)/e2e-infra/scripts/run-common-library-e2e.sh $(ARGS)"
 
 # ---------------------------------------------------------------------------
 # SCSI MIDI Bridge E2E Tests
@@ -254,6 +291,20 @@ test-e2e-s3k-scsi: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
 		SCSI_PI_USER='$(SCSI_PI_USER)' \
 		S2P_BIN='$(S2P_BIN)' \
 		SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+		./scripts/run-scsi-midi-e2e.sh $(ARGS)"
+
+# S3000XL device+library tests (requires Pi with S3000XL via SCSI + OPFS)
+# Uses the shared SCSI runner with device-library Playwright config.
+# Usage: make test-e2e-s3k-device-library
+# Usage: make test-e2e-s3k-device-library ARGS="--grep 'round trip'"
+test-e2e-s3k-device-library: $(AKAI_S3K_EDITOR) check-scsi-bridge ensure-playwright
+	$(DEVENV) shell --quiet -- bash -c "\
+		cd $(MODULES_DIR)/akai-s3k-editor && \
+		SCSI_PI_HOST='$(SCSI_PI_HOST)' \
+		SCSI_PI_USER='$(SCSI_PI_USER)' \
+		S2P_BIN='$(S2P_BIN)' \
+		SCSI_BRIDGE_BIN='$(SCSI_BRIDGE_BIN)' \
+		E2E_PLAYWRIGHT_CONFIG='playwright.device-library.config.ts' \
 		./scripts/run-scsi-midi-e2e.sh $(ARGS)"
 
 # ---------------------------------------------------------------------------
@@ -367,10 +418,6 @@ $(SAMPLER_DEVICES): $(SAMPLER_LIB) $(MIDI_CORE) $(SAMPLER_DEVICES_SRC)
 # ---------------------------------------------------------------------------
 # Layer 2
 # ---------------------------------------------------------------------------
-
-$(SAMPLER_MIDI): $(SAMPLER_DEVICES) $(SAMPLER_LIB) $(SAMPLER_MIDI_SRC)
-	cd $(MODULES_DIR)/sampler-midi && pnpm build
-	@touch $@
 
 $(SAMPLER_LIBRARY): $(SAMPLER_DEVICES) $(SAMPLE_CHOPPER) $(SAMPLER_LIBRARY_SRC)
 	cd $(MODULES_DIR)/sampler-library && pnpm build

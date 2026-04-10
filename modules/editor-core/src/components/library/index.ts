@@ -9,7 +9,9 @@ export {
 } from './TreeSection';
 export {
   PluginLibraryBrowser,
+  LIBRARY_ITEM_MIME,
   type PluginLibraryBrowserProps,
+  type LibraryDragPayload,
 } from './PluginLibraryBrowser';
 export {
   ContextMenu,
@@ -71,6 +73,8 @@ export {
   LibraryConnectionUI,
   type LibraryConnectionUIProps,
 } from './LibraryConnectionUI';
+
+export { DrumKitPadList } from './DrumKitPadList';
 
 // Plugin interfaces
 export type {

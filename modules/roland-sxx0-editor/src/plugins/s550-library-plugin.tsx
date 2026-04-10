@@ -13,19 +13,18 @@ import type {
   DeviceMemoryRenderProps,
 } from '@audiocontrol/editor-core';
 import {
-  createTonesCategory,
-  createPatchesCategory,
-  createDrumKitsCategory,
   createCommonSamplesCategory,
   createCommonProgramsCategory,
+} from '@audiocontrol/editor-core';
+import {
+  createTonesCategory,
+  createPatchesCategory,
 } from './shared/categories';
 import { s550Config } from '@/configs/s550';
 import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
 import { ItemPreviewPanel } from '@/components/library/ItemPreviewPanel';
-import { SampleBundlePreviewPanel } from '@/components/library/SampleBundlePreviewPanel';
 import { CommonSamplePreviewPanel } from '@/components/library/CommonSamplePreviewPanel';
 import type { DeviceMemoryCustomState, PreviewPanelCustomState } from './shared/plugin-state-types';
-import type { DrumKitInfo } from '@/lib/library-service';
 
 // =========================================================================
 // S-550 Memory Panel Adapter
@@ -146,22 +145,6 @@ function S550PreviewPanelAdapter({
   const pageSelection = state.pageSelection;
 
   // Route to appropriate preview panel based on selection type
-  if (pageSelection?.type === 'drumKit') {
-    const kitInfo: DrumKitInfo | null = {
-      directoryName: pageSelection.name!, name: pageSelection.name!, kitCount: 0, sampleCount: 0,
-    };
-
-    return (
-      <SampleBundlePreviewPanel
-        kitInfo={kitInfo}
-        libraryHandle={state.libraryHandle}
-        preloadedBundle={state.selectedDrumKitBundle}
-        onImport={state.onImportDrumKit}
-        onEditKit={state.onEditDrumKit}
-      />
-    );
-  }
-
   if (pageSelection?.type === 'sample' || pageSelection?.type === 'program') {
     return (
       <CommonSamplePreviewPanel
@@ -204,7 +187,6 @@ export const s550LibraryPlugin: DeviceLibraryPlugin = {
   categories: [
     createTonesCategory(),
     createPatchesCategory(),
-    createDrumKitsCategory(),
     createCommonSamplesCategory(),
     createCommonProgramsCategory(),
   ],

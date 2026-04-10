@@ -9,76 +9,50 @@
  * Uses the plugin architecture for device-agnostic library browsing.
  */
 
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useCallback, useEffect, useRef, useMemo } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
 import { useDeviceConfig } from '@/context/DeviceConfigContext';
 import { useLibraryStore } from '@/stores/libraryStore';
 import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
-import type { ItemSelection as PluginItemSelection } from '@audiocontrol/editor-core';
-import { useLibraryConnection, LibraryConnectionUI } from '@audiocontrol/editor-core';
-import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
-import { PluginLibraryTreePanel } from '@/components/library/PluginLibraryTreePanel';
-import { ItemPreviewPanel } from '@/components/library/ItemPreviewPanel';
+import {
+  useLibraryConnection, useLibraryOperations, LibraryConnectionUI, PluginLibraryBrowser,
+} from '@audiocontrol/editor-core';
 import { s330LibraryPlugin } from '@/plugins/s330-library-plugin';
 import { s550LibraryPlugin } from '@/plugins/s550-library-plugin';
-import { SampleBundlePreviewPanel } from '@/components/library/SampleBundlePreviewPanel';
-import { CommonSamplePreviewPanel } from '@/components/library/CommonSamplePreviewPanel';
+import type { DeviceMemoryCustomState, PreviewPanelCustomState } from '@/plugins/shared/plugin-state-types';
+import { SetsSection } from '@/components/library/SetsSection';
 import { SaveSetDialog } from '@/components/library/SaveSetDialog';
 import { LoadSetDialog } from '@/components/library/LoadSetDialog';
 import { ImportLibraryToneDialog } from '@/components/library/ImportLibraryToneDialog';
 import { ImportLibraryPatchDialog } from '@/components/library/ImportLibraryPatchDialog';
 import { ImportSamplesDialog } from '@/components/library/ImportSamplesDialog';
-import { SampleChopperDialog, type SliceDefinitionOutput, type InitialSliceDefinition, type ChopperSavePayload } from '@audiocontrol/sample-chopper/ui';
 import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
 import { SampleEditorDialog } from '@audiocontrol/sample-editor/ui';
+import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
 import { ExportToneDialog } from '@/components/library/ExportToneDialog';
 import { ExportPatchDialog } from '@/components/library/ExportPatchDialog';
 import {
   useImportSamples,
-  drumKitBundleToImportBundle,
 } from '@/hooks/useImportSamples';
-import { useDirectoryOperations } from '@/hooks/useDirectoryOperations';
 import { useLibraryExport } from '@/hooks/useLibraryExport';
 import { useLibraryImportDialogs } from '@/hooks/useLibraryImportDialogs';
-import {
-  listSets, listDrumKits, listIndividualTones, listIndividualPatches,
-  listIndividualTonesTree, listIndividualPatchesTree, listDrumKitsTree,
-  listCommonSamplesTree,
-  loadDrumKitBundle, loadDrumKitSource, saveDrumKitSource, updateDrumKitSlices,
-  loadIndividualTone, loadIndividualToneWavSamples,
-  type DrumKitInfo, type LibraryToneInfo, type LibraryPatchInfo, type LibraryTreeNode,
-  type StorageDirectoryHandle,
-} from '@/lib/library-service';
-import { parseWav } from '@/core/midi/S330Client';
-import { CreateDirectoryDialog } from '@/components/library/CreateDirectoryDialog';
-import { RenameDirectoryDialog } from '@/components/library/RenameDirectoryDialog';
-import { DeleteDirectoryDialog } from '@/components/library/DeleteDirectoryDialog';
-import { MoveItemDialog } from '@/components/library/MoveItemDialog';
-import type { ResolvedDrumKitBundle } from '@audiocontrol/sampler-library/browser';
-import { loadSample, loadSampleMeta, saveSample, createWav, getNestedDirectory, sanitizeForFilename, type SampleYaml } from '@audiocontrol/sampler-library/browser';
-import { parseYaml, stringifyYaml } from '@/lib/library-io';
+import { useRolandLibraryStrategy } from '@/hooks/useRolandLibraryStrategy';
+
+import { useRolandEditorDialogs } from '@/hooks/useRolandEditorDialogs';
+import { useRolandLibraryData } from '@/hooks/useRolandLibraryData';
+import { useRolandSelectionMapping } from '@/hooks/useRolandSelectionMapping';
 import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 
 /** Selection state for items in either panel */
 export interface ItemSelection {
   source: 'device' | 'library';
-  type: 'tone' | 'patch' | 'set' | 'drumKit' | 'individualTone' | 'individualPatch' | 'sample' | 'program';
+  type: 'tone' | 'patch' | 'set' | 'individualTone' | 'individualPatch' | 'sample' | 'program';
   index?: number;
   name?: string;
   setName?: string;
   path?: string[];
-}
-
-/** Load all library data from a directory handle */
-async function loadAllLibraryData(handle: StorageDirectoryHandle) {
-  const [setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, commonSamplesTreeData] = await Promise.all([
-    listSets(handle), listDrumKits(handle), listIndividualTones(handle), listIndividualPatches(handle),
-    listIndividualTonesTree(handle), listIndividualPatchesTree(handle), listDrumKitsTree(handle),
-    listCommonSamplesTree(handle),
-  ]);
-  return { setList, kitList, toneList, patchList, tonesTreeData, patchesTreeData, drumKitsTreeData, commonSamplesTreeData };
 }
 
 export function LibraryPage() {
@@ -99,40 +73,9 @@ export function LibraryPage() {
   } = useDeviceDataStore();
 
   const {
-    sets, setSets, isLoading, setLoading, setError, error,
-    expandedPaths, toggleDirectoryExpanded,
+    sets, isLoading, setLoading, setError, error,
   } = useLibraryStore();
 
-  const [drumKits, setDrumKits] = useState<DrumKitInfo[]>([]);
-  const [selectedDrumKitBundle, setSelectedDrumKitBundle] = useState<ResolvedDrumKitBundle | null>(null);
-  // Flat lists used for legacy hooks but not read directly (trees used for display)
-  const [, setIndividualTones] = useState<LibraryToneInfo[]>([]);
-  const [, setIndividualPatches] = useState<LibraryPatchInfo[]>([]);
-  const [tonesTree, setTonesTree] = useState<LibraryTreeNode[]>([]);
-  const [patchesTree, setPatchesTree] = useState<LibraryTreeNode[]>([]);
-  const [drumKitsTree, setDrumKitsTree] = useState<LibraryTreeNode[]>([]);
-  const [commonSamplesTree, setCommonSamplesTree] = useState<LibraryTreeNode[]>([]);
-  const [sliceEditDialog, setSliceEditDialog] = useState<{
-    open: boolean; kitName: string; path?: string[];
-    samples: Int16Array | null; sampleRate: number; slices: InitialSliceDefinition[];
-    kitConfig: { name: string; sampleRate: 15000 | 30000; baseNote: number; transpose?: number; velocitySensitivity?: number };
-  } | null>(null);
-  const [loopEditorDialog, setLoopEditorDialog] = useState<{
-    open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
-    loopStart?: number; loopEnd?: number; rootKey?: number;
-    origin: { name: string; type: string; path?: string[] } | null;
-  } | null>(null);
-  const [chopperDialog, setChopperDialog] = useState<{
-    open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
-    origin: { name: string; type: string; path?: string[] } | null;
-    initialSlices?: InitialSliceDefinition[];
-    initialLabels?: string;
-  } | null>(null);
-  const [sampleEditorDialog, setSampleEditorDialog] = useState<{
-    open: boolean; samples: Int16Array | null; sampleRate: number; sampleName: string;
-    origin: { name: string; type: string; path?: string[] } | null;
-  } | null>(null);
-  const [selection, setSelection] = useState<ItemSelection | null>(null);
   const library = useLibraryConnection({
     pickerId: 'sampler-library',
     googleDrive: import.meta.env.VITE_GOOGLE_CLIENT_ID
@@ -142,87 +85,17 @@ export function LibraryPage() {
   const libraryHandle = library.root;
   const clientRef = useRef<SamplerClientInterface | null>(null);
 
-  // Map library data to plugin category format
-  const categoryData = useMemo(() => ({
-    tones: tonesTree,
-    patches: patchesTree,
-    drumKits: drumKitsTree,
-    commonSamples: commonSamplesTree,
-  }), [tonesTree, patchesTree, drumKitsTree, commonSamplesTree]);
+  const libraryData = useRolandLibraryData(libraryHandle);
+  const {
+    categoryData,
+    setIndividualTones, setIndividualPatches,
+    handleRefreshLibrary,
+  } = libraryData;
 
-  // Handle plugin selection change
-  const handlePluginSelectionChange = useCallback((pluginSelection: PluginItemSelection | null) => {
-    if (!pluginSelection) {
-      setSelection(null);
-      setSelectedDrumKitBundle(null);
-      return;
-    }
-
-    const { categoryId, node, meta } = pluginSelection;
-    const nodeMeta = meta as { fileName?: string; directoryName?: string; path?: string[] };
-
-    // Map plugin selection to page selection
-    let pageSelection: ItemSelection;
-
-    if (categoryId === 'tones') {
-      pageSelection = {
-        source: 'library',
-        type: 'individualTone',
-        name: nodeMeta.fileName ?? node.name,
-        path: nodeMeta.path,
-      };
-    } else if (categoryId === 'patches') {
-      pageSelection = {
-        source: 'library',
-        type: 'individualPatch',
-        name: nodeMeta.directoryName ?? node.name,
-        path: nodeMeta.path,
-      };
-    } else if (categoryId === 'drumKits') {
-      pageSelection = {
-        source: 'library',
-        type: 'drumKit',
-        name: nodeMeta.directoryName ?? node.name,
-        path: nodeMeta.path,
-      };
-      // Load drum kit bundle
-      if (libraryHandle) {
-        loadDrumKitBundle(libraryHandle, nodeMeta.directoryName ?? node.name, nodeMeta.path)
-          .then(setSelectedDrumKitBundle)
-          .catch((err) => console.error('[LibraryPage] Failed to load drum kit bundle:', err));
-      }
-    } else if (categoryId === 'commonSamples') {
-      // Determine type from node type
-      if (node.type === 'program') {
-        pageSelection = {
-          source: 'library',
-          type: 'program',
-          name: nodeMeta.directoryName ?? node.name,
-          path: nodeMeta.path,
-        };
-      } else {
-        // sample (including samples with slices, formerly "chopped samples")
-        pageSelection = {
-          source: 'library',
-          type: 'sample',
-          name: nodeMeta.directoryName ?? node.name,
-          path: nodeMeta.path,
-        };
-      }
-    } else {
-      // Unknown category, default to tone
-      pageSelection = {
-        source: 'library',
-        type: 'individualTone',
-        name: node.name,
-        path: nodeMeta.path,
-      };
-    }
-
-    setSelection(pageSelection);
-    // Clear other selection state when not relevant
-    if (categoryId !== 'drumKits') setSelectedDrumKitBundle(null);
-  }, [libraryHandle]);
+  const {
+    selection, setSelection,
+    handlePluginSelectionChange, handleSelectDevice, handleSelectLibrary,
+  } = useRolandSelectionMapping(libraryHandle);
 
   useEffect(() => {
     if (!adapter) { clientRef.current = null; return; }
@@ -235,60 +108,41 @@ export function LibraryPage() {
   const {
     importSamplesDialog, isOperating: isSamplesOperating,
     progress: samplesProgress, error: samplesError,
-    openImportSamplesDialog, closeImportSamplesDialog, handleImportSamples,
+    closeImportSamplesDialog, handleImportSamples,
   } = useImportSamples({ clientRef, libraryHandle, setTone: setToneForHook, setPatch: setPatchForHook });
 
-  const applyLibraryData = useCallback((data: Awaited<ReturnType<typeof loadAllLibraryData>>) => {
-    setSets(data.setList); setDrumKits(data.kitList); setIndividualTones(data.toneList);
-    setIndividualPatches(data.patchList); setTonesTree(data.tonesTreeData);
-    setPatchesTree(data.patchesTreeData); setDrumKitsTree(data.drumKitsTreeData);
-    setCommonSamplesTree(data.commonSamplesTreeData);
-  }, [setSets]);
-
-  const handleRefreshLibrary = useCallback(async () => {
-    if (!libraryHandle) return;
-    setLoading(true, 'Refreshing library...');
-    try { applyLibraryData(await loadAllLibraryData(libraryHandle)); }
-    catch (err) {
-      console.error('[LibraryPage] Failed to refresh library:', err);
-      setError(err instanceof Error ? err.message : 'Failed to refresh library');
-    } finally { setLoading(false); }
-  }, [libraryHandle, applyLibraryData, setLoading, setError]);
-
-  // Extracted hooks
-  const directoryOps = useDirectoryOperations({
-    libraryHandle, handleRefreshLibrary, setError, tonesTree, patchesTree, drumKitsTree,
-    selection, setSelection, setIndividualTones, setIndividualPatches,
-    setTonesTree, setPatchesTree, setDrumKits, setDrumKitsTree, setSelectedDrumKitBundle,
+  const editorDialogs = useRolandEditorDialogs({
+    libraryHandle,
+    selection,
+    setLoading: (loading: boolean, message?: string) => setLoading(loading, message),
+    onError: (message: string) => setError(message),
+    onRefresh: handleRefreshLibrary,
   });
+
+  // Roland-specific library strategy for delete/rename
+  const { strategy: rolandStrategy, handleDeleteSet, handleRenameSet } = useRolandLibraryStrategy({
+    libraryHandle,
+    selection,
+    setSelection,
+  });
+
+  // Shared library operations hook
+  const libraryOps = useLibraryOperations(
+    libraryHandle,
+    rolandStrategy,
+    handleRefreshLibrary,
+    (msg) => setError(msg),
+    editorDialogs.createEditorActionHandler(),
+  );
 
   const exportOps = useLibraryExport({
     clientRef, libraryHandle, tones, patches, setIndividualTones, setIndividualPatches,
   });
 
-  // Wrapper to provide openImportSamplesDialog with drum kit conversion
-  const openImportDrumKitDialogCompat = useCallback((kitName: string, bundle: ResolvedDrumKitBundle, path?: string[]) => {
-    const importBundle = drumKitBundleToImportBundle(bundle);
-    openImportSamplesDialog(kitName, importBundle, 'drumKit', path);
-  }, [openImportSamplesDialog]);
-
   const importDialogs = useLibraryImportDialogs({
     clientRef, libraryHandle, setTone, setPatch, totalTones, totalPatches,
-    openImportDrumKitDialog: openImportDrumKitDialogCompat, selection, handleRefreshLibrary,
+    selection, handleRefreshLibrary,
   });
-
-  // Load library data when connection becomes available
-  useEffect(() => {
-    if (!libraryHandle) return;
-    setLoading(true, 'Loading library...');
-    loadAllLibraryData(libraryHandle)
-      .then(applyLibraryData)
-      .catch((err) => {
-        console.error('[LibraryPage] Failed to load library:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load library');
-      })
-      .finally(() => setLoading(false));
-  }, [libraryHandle, applyLibraryData, setLoading, setError]);
 
   const handleLoadDeviceData = useCallback(async () => {
     if (!clientRef.current) return;
@@ -315,314 +169,59 @@ export function LibraryPage() {
     } finally { setLoading(false); }
   }, [setLoading, setError, setTone, setPatch, ensureToneArraySize, ensurePatchArraySize, markToneBankLoaded, markPatchBankLoaded, totalTones, tonesPerBank, totalPatches, patchesPerBank]);
 
-  // Selection handlers
-  const handleSelectDevice = useCallback((type: 'tone' | 'patch', index: number) => setSelection({ source: 'device', type, index }), []);
-  const handleSelectLibrary = useCallback((type: 'tone' | 'patch' | 'set', name: string, setName?: string) => {
-    setSelection({ source: 'library', type, name, setName });
-    setSelectedDrumKitBundle(null);
-  }, []);
+  // -----------------------------------------------------------------------
+  // Computed state for PluginLibraryBrowser
+  // -----------------------------------------------------------------------
 
-  // Import handlers
-  const handleOpenSamplesImport = useCallback(() => {
-    if (!selection) return;
-
-    if (selection.type === 'drumKit' && selectedDrumKitBundle) {
-      const importBundle = drumKitBundleToImportBundle(selectedDrumKitBundle);
-      openImportSamplesDialog(selection.name!, importBundle, 'drumKit', selection.path);
-    }
-  }, [selection, selectedDrumKitBundle, openImportSamplesDialog]);
-
-  // Kit editing handlers
-  const handleEditKit = useCallback(async () => {
-    if (!libraryHandle || !selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) return;
-    const bundle = selectedDrumKitBundle;
-    if (!bundle.source || !bundle.slices) { console.error('[LibraryPage] Cannot edit kit: not v2 format'); return; }
-    setLoading(true, 'Loading source audio...');
-    try {
-      const sourceWav = await loadDrumKitSource(libraryHandle, selection.name!, bundle.source, selection.path);
-      setSliceEditDialog({
-        open: true, kitName: selection.name!, path: selection.path,
-        samples: sourceWav.samples, sampleRate: sourceWav.sampleRate,
-        slices: bundle.slices.map((s) => ({ label: s.label, startSample: s.startSample, endSample: s.endSample })),
-        kitConfig: { name: bundle.name, sampleRate: bundle.sampleRate, baseNote: bundle.baseNote, transpose: bundle.transpose, velocitySensitivity: bundle.velocitySensitivity },
-      });
-    } catch (err) {
-      console.error('[LibraryPage] Failed to load source audio:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load source audio');
-    } finally { setLoading(false); }
-  }, [libraryHandle, selection, selectedDrumKitBundle, setLoading, setError]);
-
-  // Open the sample editor on a drum kit's source audio
-  const handleOpenDrumKitInSampleEditor = useCallback(async () => {
-    if (!libraryHandle || !selection || selection.type !== 'drumKit' || !selectedDrumKitBundle) return;
-    const bundle = selectedDrumKitBundle;
-    if (!bundle.source) return;
-
-    setLoading(true, 'Loading source audio...');
-    try {
-      const sourceWav = await loadDrumKitSource(libraryHandle, selection.name!, bundle.source, selection.path);
-      setSampleEditorDialog({
-        open: true,
-        samples: sourceWav.samples,
-        sampleRate: sourceWav.sampleRate,
-        sampleName: bundle.name || selection.name!,
-        origin: { name: selection.name!, type: 'drumKit', path: selection.path },
-      });
-    } catch (err) {
-      console.error('[LibraryPage] Failed to load source audio for sample editor:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load source audio');
-    } finally {
-      setLoading(false);
-    }
-  }, [libraryHandle, selection, selectedDrumKitBundle, setLoading, setError]);
-
-  const handleSlicesUpdated = useCallback(async (slices: SliceDefinitionOutput[], kitConfig: { transpose?: number; velocitySensitivity?: number }) => {
-    if (!libraryHandle || !sliceEditDialog) return;
-    setLoading(true, 'Saving slice changes...');
-    try {
-      await updateDrumKitSlices(libraryHandle, sliceEditDialog.kitName, slices, kitConfig, sliceEditDialog.path);
-      setSelectedDrumKitBundle(await loadDrumKitBundle(libraryHandle, sliceEditDialog.kitName, sliceEditDialog.path));
-    } catch (err) {
-      console.error('[LibraryPage] Failed to update slices:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save slices');
-    } finally { setLoading(false); setSliceEditDialog(null); }
-  }, [libraryHandle, sliceEditDialog, setLoading, setError]);
-
-  // Open in Loop Editor: loads WAV samples and opens the LoopEditorDialog
-  const handleOpenInLoopEditor = useCallback(async (name: string, nodeType: string, path?: string[]) => {
-    if (!libraryHandle) return;
-    try {
-      let samples: Int16Array;
-      let sampleRate: number;
-      let loopStart: number | undefined;
-      let loopEnd: number | undefined;
-      let rootKey: number | undefined;
-
-      if (nodeType === 'tone' || nodeType === 'individualTone') {
-        // Load raw WAV for audio, and YAML separately for loop points
-        const [wavResult, toneResult] = await Promise.all([
-          loadIndividualToneWavSamples(libraryHandle, name, path ?? []),
-          loadIndividualTone(libraryHandle, name, path ?? []),
-        ]);
-        samples = wavResult.samples;
-        sampleRate = wavResult.sampleRate;
-        loopStart = toneResult.yaml.wave.loopPoint;
-        loopEnd = toneResult.yaml.wave.endPoint;
-        rootKey = toneResult.yaml.s330?.originalKey ?? toneResult.yaml.s550?.originalKey;
-      } else if (nodeType === 'sample') {
-        const result = await loadSample(libraryHandle, name, path);
-        const wav = parseWav(result.wavData);
-        samples = wav.samples;
-        sampleRate = wav.sampleRate;
-        loopStart = result.yaml.loopStart;
-        loopEnd = result.yaml.loopEnd;
-        rootKey = typeof result.yaml.rootKey === 'number' ? result.yaml.rootKey : undefined;
-      } else {
-        throw new Error(`Unsupported node type for loop editor: ${nodeType}`);
-      }
-
-      setLoopEditorDialog({
-        open: true, samples, sampleRate, sampleName: name,
-        loopStart, loopEnd, rootKey,
-        origin: { name, type: nodeType, path },
-      });
-    } catch (err) {
-      console.error('[LibraryPage] Failed to load WAV for loop editor:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load sample');
-    }
-  }, [libraryHandle, setError]);
-
-  // Open in Chopper: loads WAV samples and opens the SampleChopperDialog
-  const handleOpenInChopper = useCallback(async (name: string, nodeType: string, path?: string[]) => {
-    if (!libraryHandle) return;
-    try {
-      let samples: Int16Array;
-      let sampleRate: number;
-
-      if (nodeType === 'tone' || nodeType === 'individualTone') {
-        const result = await loadIndividualToneWavSamples(libraryHandle, name, path ?? []);
-        samples = result.samples;
-        sampleRate = result.sampleRate;
-      } else if (nodeType === 'sample') {
-        const result = await loadSample(libraryHandle, name, path);
-        const wav = parseWav(result.wavData);
-        samples = wav.samples;
-        sampleRate = wav.sampleRate;
-      } else {
-        throw new Error(`Unsupported node type for chopper: ${nodeType}`);
-      }
-
-      // Load existing slice definitions from sample metadata (if any)
-      let initialSlices: InitialSliceDefinition[] | undefined;
-      let initialLabels: string | undefined;
-      if (nodeType === 'sample') {
-        const meta = await loadSampleMeta(libraryHandle, name, path);
-        if (meta.slices && meta.slices.length > 0) {
-          initialSlices = meta.slices.map((s) => ({
-            label: s.label,
-            startSample: s.startSample,
-            endSample: s.endSample,
-          }));
-          initialLabels = meta.slices.map((s) => s.label).join(',');
-        }
-      }
-
-      setChopperDialog({
-        open: true, samples, sampleRate, sampleName: name,
-        origin: { name, type: nodeType, path },
-        initialSlices,
-        initialLabels,
-      });
-    } catch (err) {
-      console.error('[LibraryPage] Failed to load WAV for chopper:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load sample');
-    }
-  }, [libraryHandle, setError]);
-
-  // Handle chopper save — write sliced sample back to library as sample.yaml
-  const handleChopperSave = useCallback(async (payload: ChopperSavePayload) => {
-    if (!libraryHandle || !chopperDialog?.origin) return;
-
-    const yaml: SampleYaml = {
-      format: 'sample',
-      version: 1,
-      name: payload.name,
-      file: 'sample.wav',
-      sampleRate: payload.sourceAudio.sampleRate,
-      slices: payload.slices.map((s) => ({ label: s.label, startSample: s.startSample, endSample: s.endSample })),
-      triggers: payload.triggers,
-      playback: payload.playbackConfig,
-      modifiedAt: new Date().toISOString(),
+  const pluginSelection = useMemo(() => {
+    if (!selection || selection.source !== 'library') return null;
+    return {
+      categoryId: selection.type === 'individualTone' ? 'tones'
+        : selection.type === 'individualPatch' ? 'patches'
+        : selection.type === 'sample' || selection.type === 'program' ? 'samples'
+        : selection.type === 'set' ? 'sets'
+        : 'tones',
+      node: { id: selection.name ?? '', name: selection.name ?? '', type: selection.type },
+      meta: { path: selection.path },
     };
+  }, [selection]);
 
-    const wavData = createWav(payload.sourceAudio.samples, payload.sourceAudio.sampleRate);
-    const savePath = chopperDialog.origin.path ?? [];
+  const deviceMemoryState = useMemo<DeviceMemoryCustomState>(() => ({
+    tones, patches, loadedToneBanks, loadedPatchBanks,
+    selectedIndex: selection?.source === 'device' ? selection.index : undefined,
+    selectedType: selection?.source === 'device' && (selection.type === 'tone' || selection.type === 'patch') ? selection.type : undefined,
+    onSelectTone: (index: number) => handleSelectDevice('tone', index),
+    onSelectPatch: (index: number) => handleSelectDevice('patch', index),
+    onDropLibraryTone: importDialogs.handleDropLibraryTone,
+    onDropLibraryPatch: importDialogs.handleDropLibraryPatch,
+  }), [tones, patches, loadedToneBanks, loadedPatchBanks, selection, handleSelectDevice, importDialogs.handleDropLibraryTone, importDialogs.handleDropLibraryPatch]);
 
-    try {
-      await saveSample(libraryHandle, { name: payload.name, yaml, wavData }, savePath);
-      await handleRefreshLibrary();
-    } catch (err) {
-      console.error('[LibraryPage] Failed to save chopped sample:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save chopped sample');
-    }
-  }, [libraryHandle, chopperDialog, handleRefreshLibrary, setError]);
+  const previewState = useMemo<PreviewPanelCustomState>(() => ({
+    pageSelection: selection,
+    deviceTones: tones,
+    devicePatches: patches,
+    libraryHandle,
+    onImportTone: importDialogs.handleOpenImportToneDialog,
+    onImportPatch: importDialogs.handleOpenImportPatchDialog,
+    onImportIndividualTone: importDialogs.handleOpenImportIndividualToneDialog,
+    onImportIndividualPatch: importDialogs.handleOpenImportIndividualPatchDialog,
+    onLoadSet: importDialogs.handleOpenLoadDialog,
+    onOpenInLoopEditor: (name: string, path?: string[]) => editorDialogs.handleOpenInLoopEditor(name, 'sample', path),
+    onOpenInChopper: (name: string, path?: string[]) => editorDialogs.handleOpenInChopper(name, 'sample', path),
+    onOpenInSampleEditor: (name: string, path?: string[]) => editorDialogs.handleOpenInSampleEditor(name, 'sample', path),
+  }), [selection, tones, patches, libraryHandle, importDialogs, editorDialogs]);
 
-  // Open in Sample Editor: loads WAV samples and opens the SampleEditorDialog
-  const handleOpenInSampleEditor = useCallback(async (name: string, nodeType: string, path?: string[]) => {
-    if (!libraryHandle) return;
-    try {
-      let samples: Int16Array;
-      let sampleRate: number;
-
-      if (nodeType === 'tone' || nodeType === 'individualTone') {
-        const result = await loadIndividualToneWavSamples(libraryHandle, name, path ?? []);
-        samples = result.samples;
-        sampleRate = result.sampleRate;
-      } else if (nodeType === 'sample') {
-        const result = await loadSample(libraryHandle, name, path);
-        const wav = parseWav(result.wavData);
-        samples = wav.samples;
-        sampleRate = wav.sampleRate;
-      } else {
-        throw new Error(`Unsupported node type for sample editor: ${nodeType}`);
-      }
-
-      setSampleEditorDialog({
-        open: true, samples, sampleRate, sampleName: name,
-        origin: { name, type: nodeType, path },
-      });
-    } catch (err) {
-      console.error('[LibraryPage] Failed to load WAV for sample editor:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load sample');
-    }
-  }, [libraryHandle, setError]);
-
-  // Handle sample editor save — write modified audio back to library
-  const handleSampleEditorSave = useCallback(async (samples: Int16Array, sampleRate: number) => {
-    if (!libraryHandle || !sampleEditorDialog?.origin) return;
-    const { name, type: nodeType, path } = sampleEditorDialog.origin;
-
-    try {
-      if (nodeType === 'sample') {
-        const existingMeta = await loadSampleMeta(libraryHandle, name, path ?? []);
-        existingMeta.sampleRate = sampleRate;
-        existingMeta.modifiedAt = new Date().toISOString();
-
-        const wavData = createWav(samples, sampleRate);
-        await saveSample(libraryHandle, { name, yaml: existingMeta, wavData }, path ?? []);
-      } else if (nodeType === 'tone' || nodeType === 'individualTone') {
-        // Write updated WAV back to the tone's directory
-        const wavData = createWav(samples, sampleRate);
-        const fullPath = ['library', 's330', 'tones', ...(path ?? [])];
-        const tonesDir = await getNestedDirectory(libraryHandle, fullPath);
-        const wavHandle = await tonesDir.getFileHandle(`${name}.wav`, { create: true });
-        const writable = await wavHandle.createWritable();
-        await writable.write(wavData);
-        await writable.close();
-      } else if (nodeType === 'drumKit') {
-        // Write updated source WAV back to the drum kit directory
-        const bundle = selectedDrumKitBundle;
-        if (!bundle?.source) throw new Error('Cannot save: drum kit has no source file');
-        await saveDrumKitSource(libraryHandle, name, bundle.source, samples, sampleRate, path);
-      }
-      await handleRefreshLibrary();
-    } catch (err) {
-      console.error('[LibraryPage] Failed to save edited sample:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save edited sample');
-    }
-  }, [libraryHandle, sampleEditorDialog, selectedDrumKitBundle, handleRefreshLibrary, setError]);
-
-  // Handle loop editor save (loop points saved back to library)
-  const handleLoopEditorSave = useCallback(async (loopStart: number, loopEnd: number) => {
-    if (!loopEditorDialog?.origin || !libraryHandle) return;
-    const { name, type: nodeType, path } = loopEditorDialog.origin;
-
-    console.log('[LibraryPage] handleLoopEditorSave:', { name, nodeType, path, loopStart, loopEnd });
-    try {
-      if (nodeType === 'sample') {
-        // Common sample: update sample.yaml loopStart/loopEnd
-        console.log('[LibraryPage] Loading sample meta:', { name, path: path ?? [] });
-        const yaml = await loadSampleMeta(libraryHandle, name, path ?? []);
-        yaml.loopStart = loopStart;
-        yaml.loopEnd = loopEnd;
-        yaml.loopMode = 'forward';
-        yaml.modifiedAt = new Date().toISOString();
-
-        const fullPath = ['library', 'common', 'samples', ...(path ?? [])];
-        const safeName = sanitizeForFilename(name);
-        console.log('[LibraryPage] Navigating to:', { fullPath, safeName });
-        const samplesDir = await getNestedDirectory(libraryHandle, fullPath);
-        console.log('[LibraryPage] Got samplesDir, getting sampleDir:', safeName);
-        const sampleDir = await samplesDir.getDirectoryHandle(safeName);
-        console.log('[LibraryPage] Got sampleDir, writing sample.yaml');
-        const yamlHandle = await sampleDir.getFileHandle('sample.yaml', { create: true });
-        const writable = await yamlHandle.createWritable();
-        await writable.write(stringifyYaml(yaml, { indent: 2, lineWidth: 120 }));
-        await writable.close();
-        console.log('[LibraryPage] Sample YAML saved successfully');
-      } else if (nodeType === 'tone') {
-        // Individual tone: update tone YAML's wave.loopPoint
-        // All S-series devices share the s330 library section
-        const fullPath = ['library', 's330', 'tones', ...(path ?? [])];
-        console.log('[LibraryPage] Navigating to tone dir:', { fullPath, name });
-        const tonesDir = await getNestedDirectory(libraryHandle, fullPath);
-        const toneHandle = await tonesDir.getFileHandle(`${name}.yaml`);
-        const toneFile = await toneHandle.getFile();
-        const yaml = parseYaml(await toneFile.text());
-        if (yaml.wave) {
-          yaml.wave.loopPoint = loopStart;
-          yaml.wave.endPoint = loopEnd;
-          yaml.wave.loopMode = 'forward';
-        }
-        const writable = await toneHandle.createWritable();
-        await writable.write(stringifyYaml(yaml, { indent: 2, lineWidth: 120 }));
-        await writable.close();
-      }
-    } catch (err) {
-      console.error('[LibraryPage] Failed to save loop points:', err);
-      setError(err instanceof Error ? err.message : 'Failed to save loop points');
-    }
-  }, [loopEditorDialog, libraryHandle, setError]);
+  const connectionSlot = (
+    <LibraryConnectionUI
+      activeBackend={library.activeBackend}
+      isConnected={library.isConnected}
+      hasLocalFS={library.hasLocalFS}
+      hasGoogleDrive={library.hasGoogleDrive}
+      hasOPFS={library.hasOPFS}
+      onConnect={library.connect}
+      onDisconnect={library.disconnect}
+    />
+  );
 
   if (!isConnected) {
     return (
@@ -643,15 +242,6 @@ export function LibraryPage() {
           <div className="flex items-center gap-4">
             <h2 className="text-xl font-bold text-s330-text">Library</h2>
             <span className="text-xs px-2 py-0.5 rounded bg-yellow-500/15 text-yellow-400 border border-yellow-500/30 cursor-help" title="This feature is still being designed and not all the wrinkles have been smoothed out yet.">Experimental</span>
-            <LibraryConnectionUI
-              activeBackend={library.activeBackend}
-              isConnected={library.isConnected}
-              hasLocalFS={library.hasLocalFS}
-              hasGoogleDrive={library.hasGoogleDrive}
-              hasOPFS={library.hasOPFS}
-              onConnect={library.connect}
-              onDisconnect={library.disconnect}
-            />
           </div>
           <div className="flex items-center gap-2">
             <button onClick={handleLoadDeviceData} disabled={isLoading} className={cn('ac-btn ac-btn-sm ac-btn-secondary', isLoading && 'opacity-50')}>Refresh Device</button>
@@ -663,95 +253,40 @@ export function LibraryPage() {
 
       {error && (<div className="ac-alert ac-alert-error"><p className="ac-text-error text-sm">{error}</p></div>)}
 
-      <div className="grid grid-cols-3 gap-4 h-[calc(100vh-12rem)]">
-        <div className="card p-0 overflow-hidden h-full">
-          <DeviceMemoryPanel
-            tones={tones} patches={patches} loadedToneBanks={loadedToneBanks} loadedPatchBanks={loadedPatchBanks}
-            selectedIndex={selection?.source === 'device' ? selection.index : undefined}
-            selectedType={selection?.source === 'device' && (selection.type === 'tone' || selection.type === 'patch') ? selection.type : undefined}
-            onSelectTone={(index) => handleSelectDevice('tone', index)}
-            onSelectPatch={(index) => handleSelectDevice('patch', index)}
-            onDropLibraryTone={importDialogs.handleDropLibraryTone}
-            onDropLibraryPatch={importDialogs.handleDropLibraryPatch}
-          />
-        </div>
-        <div className="card p-0 overflow-hidden h-full">
-          <PluginLibraryTreePanel
-            plugin={plugin}
-            libraryHandle={libraryHandle}
-            sets={sets}
-            categoryData={categoryData}
-            expandedPaths={expandedPaths as unknown as Record<string, Set<string>>}
-            selection={selection?.source === 'library' ? {
-              categoryId: selection.type === 'individualTone' ? 'tones'
-                : selection.type === 'individualPatch' ? 'patches'
-                : selection.type === 'drumKit' ? 'drumKits'
-                : selection.type === 'sample' || selection.type === 'program' ? 'commonSamples'
-                : 'tones',
-              node: { id: selection.name ?? '', name: selection.name ?? '', type: selection.type },
-              meta: { path: selection.path },
-            } : null}
-            onSelectionChange={handlePluginSelectionChange}
-            onToggleExpand={(categoryId, nodeId) => {
-              const expandKey = categoryId === 'tones' ? 'tones'
-                : categoryId === 'patches' ? 'patches'
-                : categoryId === 'drumKits' ? 'drumKits'
-                : 'commonSamples';
-              toggleDirectoryExpanded(expandKey, nodeId);
-            }}
-            onRefresh={handleRefreshLibrary}
-            isLoading={isLoading || exportOps.isExporting}
-            onSelectSet={(name) => handleSelectLibrary('set', name)}
-            onSelectTone={(name, setName) => handleSelectLibrary('tone', name, setName)}
-            onSelectPatch={(name, setName) => handleSelectLibrary('patch', name, setName)}
-            onDeleteSet={directoryOps.handleDeleteSet}
-            onRenameSet={directoryOps.handleRenameSet}
-            onDropDeviceTone={exportOps.handleDropDeviceTone}
-            onDropDevicePatch={exportOps.handleDropDevicePatch}
-            onCreateDirectory={directoryOps.handleOpenCreateDirectory}
-            onDeleteDirectory={directoryOps.handleOpenDeleteDirectory}
-            onMoveItem={directoryOps.handleOpenMoveItem}
-            onDropMoveItem={directoryOps.handleDropMoveItem}
-            onRenameItem={directoryOps.handleRenameItem}
-            onDeleteIndividualTone={directoryOps.handleDeleteIndividualTone}
-            onDeleteIndividualPatch={directoryOps.handleDeleteIndividualPatch}
-            onDeleteDrumKit={directoryOps.handleDeleteDrumKit}
-            onOpenInLoopEditor={handleOpenInLoopEditor}
-            onOpenInChopper={handleOpenInChopper}
-            onOpenInSampleEditor={handleOpenInSampleEditor}
-          />
-        </div>
-        <div className="card p-0 overflow-hidden h-full">
-          {selection?.type === 'drumKit' ? (
-            <SampleBundlePreviewPanel
-              kitInfo={drumKits.find((k) => k.directoryName === selection.name) ?? null}
+      <div className="h-[calc(100vh-12rem)]">
+        <PluginLibraryBrowser
+          plugin={plugin}
+          libraryHandle={libraryHandle}
+          categoryData={categoryData}
+          expandedPaths={libraryOps.expandedPaths}
+          selection={pluginSelection}
+          onSelectionChange={handlePluginSelectionChange}
+          onToggleExpand={libraryOps.onToggleExpand}
+          onRefresh={handleRefreshLibrary}
+          onCreateFolder={libraryOps.onCreateFolder}
+          onDelete={libraryOps.onDelete}
+          onMove={libraryOps.onMove}
+          onRename={libraryOps.onRename}
+          onContextMenuAction={libraryOps.onContextMenuAction}
+          onFileDrop={libraryOps.onFileDrop}
+          deviceMemoryState={deviceMemoryState}
+          previewState={previewState}
+          loading={isLoading || exportOps.isExporting}
+          error={error ?? undefined}
+          connectionSlot={connectionSlot}
+          headerSections={
+            <SetsSection
+              sets={sets}
               libraryHandle={libraryHandle}
-              preloadedBundle={selectedDrumKitBundle}
-              onImport={handleOpenSamplesImport}
-              onEditKit={handleEditKit}
-              onOpenSampleEditor={handleOpenDrumKitInSampleEditor}
+              selection={pluginSelection}
+              onSelectSet={(name) => handleSelectLibrary('set', name)}
+              onSelectTone={(name, setName) => handleSelectLibrary('tone', name, setName)}
+              onSelectPatch={(name, setName) => handleSelectLibrary('patch', name, setName)}
+              onDeleteSet={handleDeleteSet}
+              onRenameSet={handleRenameSet}
             />
-          ) : selection?.type === 'sample' || selection?.type === 'program' ? (
-            <CommonSamplePreviewPanel
-              selection={selection ? { type: selection.type as 'sample' | 'program', name: selection.name!, path: selection.path } : null}
-              libraryHandle={libraryHandle}
-              onPromoteToDevice={() => handleRefreshLibrary()}
-              onOpenInLoopEditor={(name, path) => handleOpenInLoopEditor(name, 'sample', path)}
-              onOpenInChopper={(name, path) => handleOpenInChopper(name, 'sample', path)}
-              onOpenInSampleEditor={(name, path) => handleOpenInSampleEditor(name, 'sample', path)}
-            />
-          ) : (
-            <ItemPreviewPanel
-              selection={selection} deviceTones={tones} devicePatches={patches} libraryHandle={libraryHandle}
-              onImportTone={importDialogs.handleOpenImportToneDialog} onImportPatch={importDialogs.handleOpenImportPatchDialog}
-              onImportIndividualTone={importDialogs.handleOpenImportIndividualToneDialog}
-              onImportIndividualPatch={importDialogs.handleOpenImportIndividualPatchDialog}
-              onLoadSet={importDialogs.handleOpenLoadDialog}
-              onOpenInLoopEditor={handleOpenInLoopEditor}
-              onOpenInSampleEditor={handleOpenInSampleEditor}
-            />
-          )}
-        </div>
+          }
+        />
       </div>
 
       <SaveSetDialog
@@ -801,29 +336,6 @@ export function LibraryPage() {
           progress={samplesProgress} error={samplesError}
         />
       )}
-      {sliceEditDialog && (
-        <SampleChopperDialog
-          open={sliceEditDialog.open} onOpenChange={(open) => { if (!open) setSliceEditDialog(null); }}
-          samples={sliceEditDialog.samples} sampleRate={sliceEditDialog.sampleRate}
-          sourceName={sliceEditDialog.kitName} onConfirm={() => {}} editMode={true}
-          initialSlices={sliceEditDialog.slices}
-          initialLabels={sliceEditDialog.slices?.map((s) => s.label).join(',')}
-          onSlicesUpdated={(slices) => handleSlicesUpdated(slices, {})}
-          onOpenSampleEditor={() => {
-            const dialog = sliceEditDialog;
-            if (dialog) {
-              setSliceEditDialog(null);
-              setSampleEditorDialog({
-                open: true,
-                samples: dialog.samples,
-                sampleRate: dialog.sampleRate,
-                sampleName: dialog.kitName,
-                origin: { name: dialog.kitName, type: 'drumKit', path: dialog.path },
-              });
-            }
-          }}
-        />
-      )}
       <ExportToneDialog
         open={!!exportOps.exportToneDialog} onOpenChange={(open) => { if (!open) exportOps.closeExportToneDialog(); }}
         tone={exportOps.exportToneDialog?.tone ?? null} toneIndex={exportOps.exportToneDialog?.toneIndex ?? 0}
@@ -836,71 +348,41 @@ export function LibraryPage() {
         onExport={exportOps.handleExportPatch} isOperating={exportOps.isExporting}
         progress={exportOps.exportPatchProgress} error={exportOps.exportPatchError}
       />
-      <CreateDirectoryDialog
-        open={!!directoryOps.createDirectoryDialog}
-        onOpenChange={(open) => { if (!open) directoryOps.closeCreateDirectoryDialog(); }}
-        onConfirm={directoryOps.handleCreateDirectory}
-        parentPath={directoryOps.createDirectoryDialog?.parentPath ?? []}
-        category={directoryOps.createDirectoryDialog?.category ?? 'tones'}
-      />
-      <RenameDirectoryDialog
-        open={!!directoryOps.renameDirectoryDialog}
-        onOpenChange={(open) => { if (!open) directoryOps.closeRenameDirectoryDialog(); }}
-        onConfirm={directoryOps.handleRenameDirectory}
-        currentName={directoryOps.renameDirectoryDialog?.currentName ?? ''}
-        path={directoryOps.renameDirectoryDialog?.path ?? []} category={directoryOps.renameDirectoryDialog?.category ?? 'tones'}
-      />
-      <DeleteDirectoryDialog
-        open={!!directoryOps.deleteDirectoryDialog}
-        onOpenChange={(open) => { if (!open) directoryOps.closeDeleteDirectoryDialog(); }}
-        onConfirm={directoryOps.handleDeleteDirectory}
-        directoryName={directoryOps.deleteDirectoryDialog?.directoryName ?? ''}
-        path={directoryOps.deleteDirectoryDialog?.path ?? []} category={directoryOps.deleteDirectoryDialog?.category ?? 'tones'}
-        libraryHandle={libraryHandle}
-      />
-      <MoveItemDialog
-        open={!!directoryOps.moveItemDialog}
-        onOpenChange={(open) => { if (!open) directoryOps.closeMoveItemDialog(); }}
-        onConfirm={directoryOps.handleMoveItem}
-        itemName={directoryOps.moveItemDialog?.itemName ?? ''} itemType={directoryOps.moveItemDialog?.itemType ?? 'tone'}
-        currentPath={directoryOps.moveItemDialog?.sourcePath ?? []}
-        category={directoryOps.moveItemDialog?.category ?? 'tones'} categoryTree={directoryOps.getMoveDialogTree()}
-      />
-      {loopEditorDialog && (
+      {editorDialogs.loopEditor && (
         <LoopEditorDialog
-          open={loopEditorDialog.open}
-          onOpenChange={(open) => { if (!open) setLoopEditorDialog(null); }}
-          samples={loopEditorDialog.samples}
-          sampleRate={loopEditorDialog.sampleRate}
-          sampleName={loopEditorDialog.sampleName}
-          loopStart={loopEditorDialog.loopStart}
-          loopEnd={loopEditorDialog.loopEnd}
-          rootKey={loopEditorDialog.rootKey}
-          onSave={handleLoopEditorSave}
+          open={editorDialogs.loopEditor.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeLoopEditor(); }}
+          samples={editorDialogs.loopEditor.samples}
+          sampleRate={editorDialogs.loopEditor.sampleRate}
+          sampleName={editorDialogs.loopEditor.sampleName}
+          loopStart={editorDialogs.loopEditor.loopStart}
+          loopEnd={editorDialogs.loopEditor.loopEnd}
+          rootKey={editorDialogs.loopEditor.rootKey}
+          onSave={editorDialogs.handleLoopEditorSave}
         />
       )}
-      {chopperDialog && (
+      {editorDialogs.chopper && (
         <SampleChopperDialog
-          open={chopperDialog.open}
-          onOpenChange={(open) => { if (!open) setChopperDialog(null); }}
-          samples={chopperDialog.samples}
-          sampleRate={chopperDialog.sampleRate}
-          sourceName={chopperDialog.sampleName}
-          editMode={!!chopperDialog.initialSlices}
-          initialSlices={chopperDialog.initialSlices}
-          initialLabels={chopperDialog.initialLabels}
-          onConfirm={() => { setChopperDialog(null); }}
-          onSave={libraryHandle ? handleChopperSave : undefined}
+          open={editorDialogs.chopper.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeChopper(); }}
+          samples={editorDialogs.chopper.samples}
+          sampleRate={editorDialogs.chopper.sampleRate}
+          sourceName={editorDialogs.chopper.sampleName}
+          editMode={!!editorDialogs.chopper.initialSlices}
+          initialSlices={editorDialogs.chopper.initialSlices}
+          initialLabels={editorDialogs.chopper.initialLabels}
+          onConfirm={() => { editorDialogs.closeChopper(); }}
+          onSave={libraryHandle ? editorDialogs.handleChopperSave : undefined}
         />
       )}
-      {sampleEditorDialog && (
+      {editorDialogs.sampleEditor && (
         <SampleEditorDialog
-          open={sampleEditorDialog.open}
-          onOpenChange={(open) => { if (!open) setSampleEditorDialog(null); }}
-          samples={sampleEditorDialog.samples}
-          sampleRate={sampleEditorDialog.sampleRate}
-          sampleName={sampleEditorDialog.sampleName}
-          onSave={libraryHandle ? handleSampleEditorSave : undefined}
+          open={editorDialogs.sampleEditor.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeSampleEditor(); }}
+          samples={editorDialogs.sampleEditor.samples}
+          sampleRate={editorDialogs.sampleEditor.sampleRate}
+          sampleName={editorDialogs.sampleEditor.sampleName}
+          onSave={libraryHandle ? editorDialogs.handleSampleEditorSave : undefined}
         />
       )}
     </div>

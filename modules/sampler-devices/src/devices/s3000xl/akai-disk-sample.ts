@@ -157,11 +157,12 @@ export function parseSampleHeaderFromDisk(
   const playStart = readU32LE(fileData, SSTART_OFFSET);
   const playEnd = readU32LE(fileData, SMPEND_OFFSET);
 
-  // Determine sample rate: use SSRATE if the validity flag is set,
-  // otherwise fall back to the bandwidth-derived default.
+  // Determine sample rate: use SSRATE if the validity flag is set and
+  // the value is non-zero, otherwise fall back to bandwidth-derived default.
   const sampleRateValid = fileData[SSRVLD_OFFSET] === SSRVLD_VALID;
-  const sampleRate = sampleRateValid
-    ? readU16LE(fileData, SSRATE_OFFSET)
+  const ssrate = sampleRateValid ? readU16LE(fileData, SSRATE_OFFSET) : 0;
+  const sampleRate = ssrate > 0
+    ? ssrate
     : (BANDWIDTH_SAMPLE_RATES[bandwidth] ?? 44100);
 
   const rawHeader = fileData.slice(0, SAMPLE_HEADER_SIZE);

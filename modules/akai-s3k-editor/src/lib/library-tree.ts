@@ -21,10 +21,9 @@ export function toTreeNode(node: LibraryTreeNode): TreeNode {
       path: node.path,
       toneCount: node.toneCount,
       kitCount: node.kitCount,
-      sampleCount: node.sampleCount,
       sliceCount: node.sliceCount,
+      hasDrumKit: node.hasDrumKit,
       description: node.description,
-      variant: node.variant,
     },
   };
 }
