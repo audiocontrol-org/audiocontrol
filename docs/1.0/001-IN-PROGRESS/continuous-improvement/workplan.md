@@ -9,8 +9,17 @@
 
 | Item | Link |
 |------|------|
-| **Milestone** | TBD |
-| **Parent Issue** | TBD |
+| **Parent Issue** | [#187 — Continuous improvement: session lifecycle, analytics, agents](https://github.com/audiocontrol-org/audiocontrol/issues/187) |
+
+### Implementation Issues
+
+| Phase | Issue | Description |
+|-------|-------|-------------|
+| Phase 1 | [#188](https://github.com/audiocontrol-org/audiocontrol/issues/188) | Session lifecycle checklists in CLAUDE.md |
+| Phase 2 | [#189](https://github.com/audiocontrol-org/audiocontrol/issues/189) | Restructure DEVELOPMENT-NOTES.md |
+| Phase 3 | [#190](https://github.com/audiocontrol-org/audiocontrol/issues/190) | Session log analyzer and baseline |
+| Phase 4 | [#191](https://github.com/audiocontrol-org/audiocontrol/issues/191) | Agents and workflow skills |
+| Phase 5 | [#192](https://github.com/audiocontrol-org/audiocontrol/issues/192) | Library-ux feature docs and roadmap |
 
 ---
 
