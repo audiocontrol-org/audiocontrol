@@ -8,8 +8,9 @@
  *   tsx tools/analyze-sessions.ts --json
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { execSync } from "node:child_process";
+import { join, resolve } from "node:path";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -32,6 +33,22 @@ interface SessionRecord {
   commits: number;
   branch: string;
   model: string;
+}
+
+interface CorrectionMatch {
+  session_file: string;
+  timestamp: string;
+  text: string;
+  signals: string[];
+}
+
+interface ContentAnalysis {
+  total_user_text_messages: number;
+  correction_count: number;
+  correction_rate: string;
+  corrections_by_signal: Record<string, number>;
+  corrections_by_session: Record<string, number>;
+  sample_corrections: CorrectionMatch[];
 }
 
 interface AnalysisReport {
@@ -255,6 +272,119 @@ function sortByValue(obj: Record<string, number>): Record<string, number> {
 }
 
 // ---------------------------------------------------------------------------
+// Content analysis (correction detection from encrypted session content)
+// ---------------------------------------------------------------------------
+
+const AGE_KEY_PATH = join(
+  process.env.HOME ?? "~",
+  ".config",
+  "age",
+  "audiocontrol.key"
+);
+
+// Patterns that signal user corrections — case-insensitive, word-boundary-aware
+const CORRECTION_PATTERNS: Array<{ signal: string; pattern: RegExp }> = [
+  { signal: "no/stop", pattern: /\b(no[,.]?\s|stop\b|don't\b|do not\b)/i },
+  { signal: "wrong", pattern: /\b(wrong|incorrect|that's not|that is not)\b/i },
+  { signal: "why", pattern: /\bwhy (did you|are you|would you|is there|isn't)\b/i },
+  { signal: "undo", pattern: /\b(revert|undo|roll back|put it back|remove that)\b/i },
+  { signal: "not what I", pattern: /\bnot what I (asked|wanted|meant|said)\b/i },
+  { signal: "too complex", pattern: /\b(too complex|over.?engineer|unnecessary|simpl)/i },
+  { signal: "fabrication", pattern: /\b(made.?up|fabricat|you just|where did you get)\b/i },
+];
+
+function analyzeContent(since: string | null): ContentAnalysis | null {
+  const contentDir = resolve(
+    import.meta.dirname ?? process.cwd(),
+    "..",
+    "data",
+    "sessions",
+    "content"
+  );
+
+  if (!existsSync(contentDir) || !existsSync(AGE_KEY_PATH)) {
+    return null;
+  }
+
+  const files = readdirSync(contentDir).filter((f) => f.endsWith(".jsonl.age"));
+  if (files.length === 0) return null;
+
+  let totalUserTexts = 0;
+  let correctionCount = 0;
+  const bySignal: Record<string, number> = {};
+  const bySession: Record<string, number> = {};
+  const samples: CorrectionMatch[] = [];
+
+  for (const file of files) {
+    // Filter by date if --since provided
+    const fileDate = file.slice(0, 10);
+    if (since && fileDate < since) continue;
+
+    const filePath = join(contentDir, file);
+    let plaintext: string;
+    try {
+      plaintext = execSync(
+        `age -d -i "${AGE_KEY_PATH}" "${filePath}"`,
+        { encoding: "utf8", maxBuffer: 50 * 1024 * 1024 }
+      );
+    } catch {
+      continue;
+    }
+
+    for (const line of plaintext.split("\n")) {
+      if (!line.trim()) continue;
+
+      let entry: { type: string; timestamp: string; content: Array<{ type: string; text?: string }> };
+      try {
+        entry = JSON.parse(line);
+      } catch {
+        continue;
+      }
+
+      if (entry.type !== "user") continue;
+
+      for (const block of entry.content) {
+        if (block.type !== "text" || !block.text) continue;
+        totalUserTexts++;
+
+        const matched: string[] = [];
+        for (const { signal, pattern } of CORRECTION_PATTERNS) {
+          if (pattern.test(block.text)) {
+            matched.push(signal);
+            bySignal[signal] = (bySignal[signal] ?? 0) + 1;
+          }
+        }
+
+        if (matched.length > 0) {
+          correctionCount++;
+          bySession[file] = (bySession[file] ?? 0) + 1;
+
+          if (samples.length < 20) {
+            samples.push({
+              session_file: file,
+              timestamp: entry.timestamp,
+              text: block.text.slice(0, 200),
+              signals: matched,
+            });
+          }
+        }
+      }
+    }
+  }
+
+  return {
+    total_user_text_messages: totalUserTexts,
+    correction_count: correctionCount,
+    correction_rate: totalUserTexts
+      ? `${((correctionCount / totalUserTexts) * 100).toFixed(1)}%`
+      : "0%",
+    corrections_by_signal: sortByValue(bySignal),
+    corrections_by_session: sortByValue(bySession),
+    sample_corrections: samples,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Markdown output
 // ---------------------------------------------------------------------------
 
@@ -269,7 +399,57 @@ function formatTokens(n: number): string {
   return String(n);
 }
 
-function renderMarkdown(report: AnalysisReport, since: string | null): string {
+function renderContentAnalysis(content: ContentAnalysis): string {
+  const lines: string[] = [];
+
+  lines.push("### User Corrections");
+  lines.push("");
+  lines.push("| Metric | Value |");
+  lines.push("|--------|-------|");
+  lines.push(`| User text messages analyzed | ${formatNumber(content.total_user_text_messages)} |`);
+  lines.push(`| Corrections detected | ${formatNumber(content.correction_count)} |`);
+  lines.push(`| Correction rate | ${content.correction_rate} |`);
+  lines.push("");
+
+  if (Object.keys(content.corrections_by_signal).length > 0) {
+    lines.push("**By signal type:**");
+    lines.push("");
+    lines.push("| Signal | Count |");
+    lines.push("|--------|-------|");
+    for (const [signal, count] of Object.entries(content.corrections_by_signal)) {
+      lines.push(`| ${signal} | ${count} |`);
+    }
+    lines.push("");
+  }
+
+  if (Object.keys(content.corrections_by_session).length > 0) {
+    lines.push("**Sessions with most corrections:**");
+    lines.push("");
+    lines.push("| Session | Corrections |");
+    lines.push("|---------|-------------|");
+    const top = Object.entries(content.corrections_by_session).slice(0, 10);
+    for (const [session, count] of top) {
+      lines.push(`| ${session.replace(".jsonl.age", "")} | ${count} |`);
+    }
+    lines.push("");
+  }
+
+  if (content.sample_corrections.length > 0) {
+    lines.push("**Sample corrections (first 20):**");
+    lines.push("");
+    for (const c of content.sample_corrections) {
+      const date = c.timestamp.slice(0, 10);
+      const signals = c.signals.join(", ");
+      const text = c.text.replace(/\n/g, " ").replace(/\|/g, "\\|");
+      lines.push(`- **[${signals}]** (${date}): ${text}`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}
+
+function renderMarkdown(report: AnalysisReport, since: string | null, content: ContentAnalysis | null): string {
   const lines: string[] = [];
 
   lines.push("## Session Analytics Report");
@@ -391,6 +571,11 @@ function renderMarkdown(report: AnalysisReport, since: string | null): string {
   }
   lines.push("");
 
+  // Content analysis (corrections)
+  if (content) {
+    lines.push(renderContentAnalysis(content));
+  }
+
   return lines.join("\n");
 }
 
@@ -408,11 +593,12 @@ function main(): void {
   }
 
   const report = analyze(sessions);
+  const content = analyzeContent(since);
 
   if (json) {
-    console.log(JSON.stringify(report, null, 2));
+    console.log(JSON.stringify({ ...report, content }, null, 2));
   } else {
-    console.log(renderMarkdown(report, since));
+    console.log(renderMarkdown(report, since, content));
   }
 }
 
