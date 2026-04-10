@@ -782,8 +782,8 @@
 }
 
 .ac-plugin-library-browser-device-left {
-  flex: 1 1 240px;
-  min-width: 180px;
+  flex: 2 1 0;
+  min-width: 0;
   overflow-y: auto;
   background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
   border: 1px solid var(--ac-color-border-subtle);
@@ -791,8 +791,8 @@
 }
 
 .ac-plugin-library-browser-device {
-  flex: 0 0 auto;
-  width: 230px;
+  flex: 2 1 0;
+  min-width: 0;
   overflow-y: auto;
   background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
   border: 1px solid var(--ac-color-border-subtle);
@@ -800,7 +800,7 @@
 }
 
 .ac-plugin-library-browser-library {
-  flex: 1 1 300px;
+  flex: 3 1 0;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -936,8 +936,8 @@
 }
 
 .ac-plugin-library-browser-preview {
-  flex: 0 0 auto;
-  width: 240px;
+  flex: 2 1 0;
+  min-width: 0;
   overflow-y: auto;
 }
 
