@@ -55,6 +55,8 @@ export interface DiskToLibraryDialogProps {
   libraryRoot: StorageDirectoryHandle;
   /** Called on success to refresh the library tree. */
   onTransferComplete: () => Promise<void>;
+  /** Lazily load a file's data blocks from disk into the partition buffer. */
+  ensureFileBlocks?: (fileEntry: AkaiDiskFileEntry) => Promise<void>;
 }
 
 type DialogPhase = 'confirm' | 'saving' | 'success' | 'error';
@@ -65,16 +67,19 @@ type SaveTarget = 's3k' | 'common';
 // =========================================================================
 
 /** Extract a sample's WAV and header from partition data. */
-function extractSample(
+async function extractSample(
   partitionData: Uint8Array,
   volumeStartBlock: number,
   sampleName: string,
-): { wav: Uint8Array; header: AkaiDiskSampleHeader } | null {
+  ensureBlocks?: (fileEntry: AkaiDiskFileEntry) => Promise<void>,
+): Promise<{ wav: Uint8Array; header: AkaiDiskSampleHeader } | null> {
   const files = parseFileList(partitionData, volumeStartBlock);
   const sampleFile = files.find(
     (f) => isAkaiSample(f.type) && f.name.trim() === sampleName,
   );
   if (!sampleFile) return null;
+
+  if (ensureBlocks) await ensureBlocks(sampleFile);
 
   const sampleData = readFileData(partitionData, sampleFile);
   const header = parseSampleHeaderFromDisk(sampleData);
@@ -92,6 +97,7 @@ async function saveToS3kLibrary(
   name: string,
   libraryRoot: StorageDirectoryHandle,
   setSavedSampleCount: (n: number) => void,
+  ensureBlocks?: (fileEntry: AkaiDiskFileEntry) => Promise<void>,
 ) {
   if (isAkaiProgram(file.type)) {
     const program = parseProgramFromDisk(fileData);
@@ -104,7 +110,7 @@ async function saveToS3kLibrary(
         const trimmed = sampleName.trim();
         if (!trimmed) continue;
         try {
-          const result = extractSample(partitionData, volumeStartBlock, trimmed);
+          const result = await extractSample(partitionData, volumeStartBlock, trimmed, ensureBlocks);
           if (result) {
             await saveProgramSample(libraryRoot, name, trimmed, result.wav.buffer as ArrayBuffer);
             samplesFound++;
@@ -142,6 +148,7 @@ async function saveToCommonLibrary(
   volumeStartBlock: number,
   name: string,
   libraryRoot: StorageDirectoryHandle,
+  ensureBlocks?: (fileEntry: AkaiDiskFileEntry) => Promise<void>,
 ) {
   if (isAkaiSample(file.type)) {
     const header = parseSampleHeaderFromDisk(fileData);
@@ -177,6 +184,7 @@ async function saveToCommonLibrary(
       if (!sampleFile) continue;
 
       try {
+        if (ensureBlocks) await ensureBlocks(sampleFile);
         const sampleData = readFileData(partitionData, sampleFile);
         const header = parseSampleHeaderFromDisk(sampleData);
         const pcm = extractSampleAudio(sampleData, header);
@@ -197,19 +205,15 @@ async function saveToCommonLibrary(
     }
 
     // Save program metadata to common library
-    // (programs are stored as directory bundles under library/common/samples/)
     const commonProgram = akaiProgramToCommon(program, sampleHeaders);
     commonProgram.name = name;
 
-    // Write program.yaml to a program bundle directory
     const { stringify: stringifyYaml } = await import('yaml');
     const programYaml = stringifyYaml(commonProgram, { indent: 2 });
 
-    // Use saveProgramToLibrary to create the directory structure,
-    // then write program.yaml into it
     const { getNestedDirectory } = await import('@audiocontrol/sampler-library/browser');
     const programDir = await getNestedDirectory(libraryRoot, [
-      'library', 'common', 'samples', name,
+      'library', 'common', 'programs', name,
     ]);
     const fileHandle = await programDir.getFileHandle('program.yaml', { create: true });
     const writable = await fileHandle.createWritable();
@@ -230,6 +234,7 @@ export function DiskToLibraryDialog({
   volumeStartBlock,
   libraryRoot,
   onTransferComplete,
+  ensureFileBlocks,
 }: DiskToLibraryDialogProps) {
   const [phase, setPhase] = useState<DialogPhase>('confirm');
   const [saveName, setSaveName] = useState('');
@@ -260,12 +265,13 @@ export function DiskToLibraryDialog({
 
     setPhase('saving');
     try {
+      if (ensureFileBlocks) await ensureFileBlocks(file);
       const fileData = readFileData(partitionData, file);
 
       if (saveTarget === 'common') {
-        await saveToCommonLibrary(file, fileData, partitionData, volumeStartBlock, name, libraryRoot);
+        await saveToCommonLibrary(file, fileData, partitionData, volumeStartBlock, name, libraryRoot, ensureFileBlocks);
       } else {
-        await saveToS3kLibrary(file, fileData, partitionData, volumeStartBlock, name, libraryRoot, setSavedSampleCount);
+        await saveToS3kLibrary(file, fileData, partitionData, volumeStartBlock, name, libraryRoot, setSavedSampleCount, ensureFileBlocks);
       }
 
       setPhase('success');
@@ -274,7 +280,7 @@ export function DiskToLibraryDialog({
       setErrorMessage(err instanceof Error ? err.message : String(err));
       setPhase('error');
     }
-  }, [file, partitionData, volumeStartBlock, saveName, saveTarget, libraryRoot, onTransferComplete]);
+  }, [file, partitionData, volumeStartBlock, saveName, saveTarget, libraryRoot, onTransferComplete, ensureFileBlocks]);
 
   if (!file) return null;
 

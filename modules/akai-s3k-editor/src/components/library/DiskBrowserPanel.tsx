@@ -34,6 +34,7 @@ interface Props {
     targetId: number,
     partitionData: Uint8Array,
     volumeStartBlock: number,
+    ensureFileBlocks: (fileEntry: AkaiDiskFileEntry) => Promise<void>,
   ) => void;
 }
 
@@ -178,7 +179,8 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
                   const partData = data.subarray(partStart);
                   const vols = parseVolumeList(partData);
                   if (vols.some(v => v.startBlock === vol.startBlock)) {
-                    onSaveToLibrary(file, target.id, partData, vol.startBlock);
+                    const boundEnsure = (f: AkaiDiskFileEntry) => ensureFileBlocks(target.id, f);
+                    onSaveToLibrary(file, target.id, partData, vol.startBlock, boundEnsure);
                     return;
                   }
                 }

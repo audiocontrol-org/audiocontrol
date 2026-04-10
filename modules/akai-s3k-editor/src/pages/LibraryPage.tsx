@@ -93,6 +93,7 @@ interface DiskToLibraryDialogState {
   file: AkaiDiskFileEntry | null;
   partitionData: Uint8Array | null;
   volumeStartBlock: number;
+  ensureFileBlocks?: (fileEntry: AkaiDiskFileEntry) => Promise<void>;
 }
 
 const DISK_TO_LIBRARY_CLOSED: DiskToLibraryDialogState = {
@@ -334,8 +335,8 @@ export function LibraryPage(): JSX.Element {
         <div className="w-[36rem] border-l border-neutral-700 overflow-y-auto">
           <DiskBrowserPanel
             bridgeUrl={getActiveScsiUrl()}
-            onSaveToLibrary={root ? (file, _targetId, partitionData, volumeStartBlock) => {
-              setDiskToLibrary({ open: true, file, partitionData, volumeStartBlock });
+            onSaveToLibrary={root ? (file, _targetId, partitionData, volumeStartBlock, ensureFileBlocks) => {
+              setDiskToLibrary({ open: true, file, partitionData, volumeStartBlock, ensureFileBlocks });
             } : undefined}
           />
         </div>
@@ -416,6 +417,7 @@ export function LibraryPage(): JSX.Element {
           volumeStartBlock={diskToLibrary.volumeStartBlock}
           libraryRoot={root}
           onTransferComplete={() => refreshLibrary()}
+          ensureFileBlocks={diskToLibrary.ensureFileBlocks}
         />
       )}
 
