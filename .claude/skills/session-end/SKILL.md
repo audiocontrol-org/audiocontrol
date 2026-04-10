@@ -35,7 +35,12 @@ Perform all end-of-session documentation updates:
    - Comment on issues that had progress
    - Close issues that are complete
 
-6. **Commit all documentation changes**:
+6. **Extract and analyze session data** (optional, on request):
+   - Run: `tsx tools/extract-sessions.ts` to capture this session's metrics
+   - Run: `tsx tools/analyze-sessions.ts --since <session-start-date>` for a summary
+   - Include key metrics in the DEVELOPMENT-NOTES.md entry
+
+7. **Commit all documentation changes**:
    - Stage: README.md, workplan.md, DEVELOPMENT-NOTES.md, SCSI-NOTES.md
    - Commit message: `docs: session end — [brief summary]`
    - Push to feature branch

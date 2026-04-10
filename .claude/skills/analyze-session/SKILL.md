@@ -1,38 +1,34 @@
 ---
 name: analyze-session
-description: "Run quantitative analysis on Claude Code session logs. Reports agent session counts, autonomous hours, and arc distributions."
+description: "Extract session metrics and run analysis on Claude Code session logs. Reports sessions by project, corrections, token usage, and trends."
 user_invocable: true
 ---
 
 # Analyze Session
 
-Run the session log analyzer and report results:
+Extract session data and run analysis:
 
-1. **Check if analyzer is set up**:
+1. **Extract latest session data**:
    ```bash
-   ls tools/session-analyzer/.venv/bin/python 2>/dev/null || echo "Run: cd tools/session-analyzer && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt"
+   tsx tools/extract-sessions.ts
+   tsx tools/extract-session-content.ts
    ```
 
-2. **Run agent analysis** (no API key needed):
+2. **Run analysis**:
    ```bash
-   cd tools/session-analyzer && source .venv/bin/activate
-   python arc_analyzer.py agents
+   tsx tools/analyze-sessions.ts
+   ```
+   Optional filters:
+   ```bash
+   tsx tools/analyze-sessions.ts --since 2026-04-01
+   tsx tools/analyze-sessions.ts --json
    ```
 
-3. **Report key metrics**:
-   - Total sessions
-   - Total autonomous agent hours
-   - Sessions by project
+3. **Report key metrics to the user**:
+   - Total sessions, commits, tool calls
+   - Sessions by project and machine
+   - Correction rate and top correction signals
+   - Sessions with most corrections
+   - Token-heaviest and longest sessions
 
-4. **If Gemini API key is available**, run arc analysis:
-   ```bash
-   python arc_analyzer.py extract
-   python arc_analyzer.py stats
-   ```
-
-5. **For cross-machine analysis** (if orion-m1 is reachable):
-   ```bash
-   tools/analyze-session.sh --remote
-   ```
-
-6. **Summarize findings** for the user, noting trends vs any previous baseline in `docs/1.0/001-IN-PROGRESS/continuous-improvement/baseline-metrics.md`
+4. **Note trends** compared to previous runs or baselines in DEVELOPMENT-NOTES.md

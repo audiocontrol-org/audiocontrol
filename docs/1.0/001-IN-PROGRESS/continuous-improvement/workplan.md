@@ -17,8 +17,10 @@
 |-------|-------|-------------|
 | Phase 1 | [#188](https://github.com/audiocontrol-org/audiocontrol/issues/188) | Session lifecycle checklists in CLAUDE.md |
 | Phase 2 | [#189](https://github.com/audiocontrol-org/audiocontrol/issues/189) | Restructure DEVELOPMENT-NOTES.md |
-| Phase 3 | [#190](https://github.com/audiocontrol-org/audiocontrol/issues/190) | Session log analyzer and baseline |
+| Phase 3 | [#190](https://github.com/audiocontrol-org/audiocontrol/issues/190) | ~~Session log analyzer~~ (superseded by Phase 6) |
 | Phase 4 | [#191](https://github.com/audiocontrol-org/audiocontrol/issues/191) | Agents and workflow skills |
+| Phase 6 | [#195](https://github.com/audiocontrol-org/audiocontrol/issues/195) | Session data extraction (TypeScript, replaces Phase 3) |
+| Phase 7 | [#196](https://github.com/audiocontrol-org/audiocontrol/issues/196) | Session data analyzer (local, code-only, future LLM) |
 | Phase 5 | [#192](https://github.com/audiocontrol-org/audiocontrol/issues/192) | Library-ux feature docs and roadmap |
 
 ---
@@ -247,6 +249,184 @@ Reflect library-ux progress and ASPACK as blocked/future.
 
 ---
 
+## Phase 6: Session Data Extraction
+
+### Context
+
+1,771 Claude Code session logs (544MB) across two machines contain valuable data about how the project is built — but they're ephemeral, stored in `~/.claude/projects/` on developer laptops, vulnerable to deletion, and not portable. Extract structured records into a committed, version-controlled format that survives laptop failures and enables analysis over time.
+
+This is data extraction and persistence, not analysis. Analysis can happen later from anyone with the data.
+
+### Task 6.1: Create session data extractor
+
+TypeScript script that parses Claude Code JSONL session logs and extracts one structured record per session.
+
+**Fields to extract per session:**
+
+| Field | Source | Description |
+|-------|--------|-------------|
+| session_id | JSONL filename | Session UUID |
+| project | parent directory name | e.g., `audiocontrol-library-ux` |
+| machine | hostname at extract time | `orion-m4` or `orion-m1` |
+| start_time | first entry timestamp | ISO 8601 |
+| end_time | last entry timestamp | ISO 8601 |
+| duration_minutes | computed | end - start |
+| user_messages | count type=user | Total user prompts |
+| assistant_messages | count type=assistant | Total assistant responses |
+| tool_calls | count tool_use in assistant content | Total tool invocations |
+| tool_types | distinct tool names | e.g., `["Read","Edit","Bash","Agent"]` |
+| agent_spawns | count of Agent tool uses | Sub-agent delegations |
+| input_tokens | sum from usage.input_tokens | Total input tokens |
+| output_tokens | sum from usage.output_tokens | Total output tokens |
+| commits | count of Bash calls containing "git commit" | Approximate commits |
+| branch | from gitBranch field | Feature branch name |
+| model | from assistant message.model | Model used |
+
+**Output:**
+- `data/sessions/sessions.jsonl` — one JSON line per session, append-only, committed to git
+- `data/sessions/summary.csv` — regenerated from JSONL on each run, for spreadsheet import
+
+**Implementation:**
+- Single file: `tools/extract-sessions.ts`
+- Uses `node:fs` and `node:readline` to stream-parse JSONL (some files are 100MB+)
+- Reads from `~/.claude/projects/` by default, `--data-dir` flag for remote data
+- `--machine` flag to tag records from remote machine
+- Skips sessions already in output (by session_id) — idempotent
+- Run: `tsx tools/extract-sessions.ts`
+- Remote: `rsync -az orion@orion-m1.local:~/.claude/projects/*audiocontrol* /tmp/m1-data/ && tsx tools/extract-sessions.ts --data-dir /tmp/m1-data --machine orion-m1`
+
+No Python. No Docker. No external dependencies. Just tsx.
+
+**Files:**
+- Create: `tools/extract-sessions.ts`
+- Create: `data/sessions/.gitkeep`
+- Modify: `.gitignore` — ensure `data/sessions/` is tracked
+
+**Acceptance Criteria:**
+- [x] Extracts all local sessions into `data/sessions/sessions.jsonl`
+- [x] Each record has all fields from the table above
+- [x] Running twice produces no duplicate records (idempotent)
+- [x] `summary.csv` is readable in a spreadsheet
+- [x] Remote machine data can be extracted with `--data-dir` and `--machine` flags
+
+### Task 6.2: Remove Python/Docker analyzer
+
+Replace with the TypeScript extractor.
+
+**Files:**
+- Remove: `tools/Dockerfile.analyzer`
+- Remove: `tools/analyze-session.sh`
+- Remove: `tools/session-analyzer/` (git-cloned, not tracked)
+- Remove: `tools/.analyzer-data/`
+
+**Acceptance Criteria:**
+- [x] No Python or Docker dependencies for session data extraction
+
+### Task 6.3: Extract baseline data and commit
+
+Run the extractor on both machines, commit the resulting data files.
+
+**Files:**
+- Create: `data/sessions/sessions.jsonl` (extracted data)
+- Create: `data/sessions/summary.csv` (generated)
+
+**Acceptance Criteria:**
+- [x] Data from orion-m4 extracted and committed (orion-m1 pending local run)
+- [x] Data is version-controlled and portable
+
+### Task 6.4: Update CLAUDE.md analytics section
+
+Replace the Python analyzer references with the tsx extractor.
+
+**Files:**
+- Modify: `.claude/CLAUDE.md`
+
+**Acceptance Criteria:**
+- [x] Analytics section references `tsx tools/extract-sessions.ts`
+- [x] Cadence documented (run after each session or periodically)
+
+**Phase 6 Status:** COMPLETE (`df0e591f`, `00615efb`)
+
+**Phase 6 Verification:** `tsx tools/extract-sessions.ts` produces valid JSONL and CSV. Data committed to git. Running again is idempotent. Content extraction produces age-encrypted per-session files with passphrase recovery key.
+
+---
+
+## Phase 7: Session Data Analyzer
+
+### Context
+
+Phase 6 extracts raw session data into `data/sessions/sessions.jsonl`. Phase 7 analyzes that data and produces human-readable reports suitable for appending to DEVELOPMENT-NOTES.md. The first implementation uses pure TypeScript (no LLM). Future iterations can add LLM-powered classification (e.g., arc type detection, correction pattern recognition).
+
+### Task 7.1: Create session data analyzer
+
+TypeScript script that reads `data/sessions/sessions.jsonl` and produces analysis reports.
+
+**Analysis (v1 — code only, no LLM):**
+
+| Metric | Computation | Purpose |
+|--------|------------|---------|
+| Sessions by project | group by project, count | Where is effort concentrated |
+| Sessions by machine | group by machine, count | Cross-machine distribution |
+| Total tokens consumed | sum input_tokens + output_tokens | Cost proxy |
+| Average session duration | mean of duration_minutes | Session length trends |
+| Average user messages per session | mean of user_messages | Interaction intensity |
+| Agent spawn rate | agent_spawns / sessions | Are we delegating enough |
+| Tool distribution | aggregate tool_types across sessions | What tools are used most |
+| Sessions over time | group by week/month | Activity trends |
+| Longest sessions | top 10 by duration | Where did we spend the most time |
+| Token-heaviest sessions | top 10 by total tokens | Most expensive sessions |
+
+**Output formats:**
+- Markdown report to stdout (can be piped or appended to DEVELOPMENT-NOTES.md)
+- Optional `--json` flag for machine-readable output
+- Optional `--since YYYY-MM-DD` flag to limit analysis window
+
+**Implementation:**
+- Single file: `tools/analyze-sessions.ts`
+- Reads from `data/sessions/sessions.jsonl`
+- Pure computation — no network, no API keys, no external dependencies
+- Run: `tsx tools/analyze-sessions.ts`
+- Append to journal: `tsx tools/analyze-sessions.ts >> DEVELOPMENT-NOTES.md`
+- Recent only: `tsx tools/analyze-sessions.ts --since 2026-04-01`
+
+**Files:**
+- Create: `tools/analyze-sessions.ts`
+
+**Acceptance Criteria:**
+- [x] Reads `data/sessions/sessions.jsonl` and produces markdown report
+- [x] All metrics from the table above included
+- [x] `--since` flag filters by date
+- [x] `--json` flag produces machine-readable output
+- [x] Output is valid markdown suitable for DEVELOPMENT-NOTES.md
+- [x] Runs with no external dependencies (just tsx)
+
+### Task 7.2: Document analysis cadence
+
+Add analysis cadence to CLAUDE.md and the session-end skill.
+
+**Files:**
+- Modify: `.claude/CLAUDE.md` (analytics section)
+- Modify: `.claude/skills/session-end.md`
+
+**Acceptance Criteria:**
+- [x] CLAUDE.md documents when to run the analyzer (periodically, or on request)
+- [x] /session-end skill optionally runs analyzer and includes summary in journal entry
+
+### Future: Task 7.3 (not for v1): LLM-powered analysis
+
+Add optional LLM classification to the analyzer:
+- Arc type detection (feature, debug, review, exploration)
+- Correction pattern recognition from DEVELOPMENT-NOTES.md entries
+- Trend narrative generation ("corrections are decreasing in [UX] category")
+
+Requires API key. Deferred — the code-only version provides the foundation data.
+
+**Phase 7 Status:** COMPLETE (`eb49a690`, `5dcfe079`) — v1 code-only analysis done. LLM-powered analysis (Task 7.3) blocked on API credits.
+
+**Phase 7 Verification:** `tsx tools/analyze-sessions.ts` produces a readable markdown report from extracted session data. Report includes all specified metrics. Correction detection via regex included (LLM replacement pending).
+
+---
+
 ## Dependency Graph
 
 ```
@@ -264,7 +444,15 @@ Phase 4 (agents/skills) — benefits from Phase 1 playbooks
 
 Phase 5 (feature docs) — no deps, can be done anytime
   5.1, 5.2 (parallel)
+
+Phase 6 (session data extraction) — replaces Phase 3 analyzer
+  6.1 → 6.2 → 6.3 → 6.4
+
+Phase 7 (session data analysis) — depends on Phase 6
+  7.1 → 7.2 → (future: 7.3 LLM analysis)
 ```
 
-Phases 1, 2, 3, 5 are independent and can be worked in parallel.
+Phases 1, 2, 5 are independent and can be worked in parallel.
 Phase 4 benefits from Phase 1 (playbooks inform skill design).
+Phase 6 replaces Phase 3 (Python/Docker analyzer → TypeScript extractor).
+Phase 7 depends on Phase 6 (needs extracted data to analyze).

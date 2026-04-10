@@ -117,10 +117,19 @@ Session logs: `~/.claude/projects/<project-dir>/<session-id>.jsonl`
 - User corrections count
 - Tool call count (approximate work volume)
 
-### Periodic (run analyzer)
+### Extract session data
 ```bash
-cd tools/session-analyzer && source .venv/bin/activate
-python arc_analyzer.py agents && python arc_analyzer.py stats
+tsx tools/extract-sessions.ts
+```
+Output: `data/sessions/sessions.jsonl` (one JSON line per session), `data/sessions/summary.csv`
+
+Run on the local machine only — each machine extracts its own sessions. Data merges via git. The `--data-dir` and `--machine` flags exist for ad-hoc cross-machine extraction but are not part of the standard workflow.
+
+### Analyze session data
+```bash
+tsx tools/analyze-sessions.ts
+tsx tools/analyze-sessions.ts --since 2026-04-01
+tsx tools/analyze-sessions.ts --json
 ```
 
 | Metric | What It Tells Us | Target |
