@@ -13,6 +13,42 @@ Each correction is tagged by category for pattern analysis:
 
 ## 2026-04-10: Session Data Extraction, Analysis, and LLM Integration
 
+### Feature: library-ux
+### Worktree: audiocontrol-library-ux
+
+### Goal
+Integrate ASPACK fast upload end-to-end: bridge WebSocket endpoint, web editor wiring, bug fixes for timeouts and UI issues.
+
+### Accomplished
+- ASPACK bridge endpoint (`sample-upload-fast`) with stall-based timeout (99a23b6c)
+- Web editor wired to use ASPACK fast path instead of SDS (676c9b0b)
+- Stall-based timeout replaces fixed overall timeout — resets on every progress message, works for any sample size (99a23b6c)
+- Fixed ghost SendSampleDialog caused by `deviceSampleCount` in useEffect deps (99a23b6c)
+- Fixed device memory panel scroll cap — removed `max-h-48` (99a23b6c)
+- Fixed progress label, IPv6 proxy, drop event propagation, removed defensive sleep (c03dfe96)
+- Phase 13 (ASPACK fast upload) marked complete
+
+### Didn't Work
+- Initial ASPACK bridge timeout of 57s was too short for 573K-sample uploads (67s actual transfer time). The transfer completed on the device but the bridge killed the WebSocket connection. Root cause: throughput estimate (20 KB/s) was too optimistic vs actual (17.2 KB/s).
+
+### Course Corrections
+- [COMPLEXITY] User asked "why does the bridge set a single timeout for the entire transfer?" — prompted redesign from fixed timeout to stall-based timeout that resets on progress. Better design that works for any sample size.
+- [UX] User reported ghost dialog appearing after successful transfer — traced to `deviceSampleCount` dependency triggering effect re-run.
+- [UX] User reported device memory scroll pane artificially small — `max-h-48` was capping lists unnecessarily.
+
+### Quantitative
+- User messages: ~8
+- Commits: 4 (on feature branch, post-rebase)
+- User corrections: 3
+
+### Insights
+- Stall-based timeouts are universally better than estimated-duration timeouts for hardware transfers. The per-chunk progress messages are the natural heartbeat — if they stop, something is wrong.
+- useEffect dependency arrays need careful thought about what SHOULD vs SHOULDN'T re-trigger the effect. `deviceSampleCount` was logically relevant (initial value) but operationally destructive (re-triggers after transfer).
+
+---
+
+## 2026-04-10: Session Data Extraction, Analysis, and LLM Integration
+
 ### Feature: continuous-improvement
 ### Worktree: audiocontrol-continuous-improvement
 

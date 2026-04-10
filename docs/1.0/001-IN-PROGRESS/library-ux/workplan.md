@@ -430,8 +430,9 @@ Phase 11 (drag-drop workflows) — COMPLETE
 Phase 12 (common-area programs) — COMPLETE
   Three library sections, expandable programs, sourceDevice schema fix
 
-Phase 13 (ASPACK bulk transfer) — BLOCKED on #184
-  23.4 KB/s proven but multi-chunk writes + sample creation unsolved
+Phase 13 (ASPACK fast upload) — COMPLETE
+  Multi-chunk solved (poll flag 0x00 not 0x80), sample creation via minimal SDS,
+  bridge WebSocket endpoint, web editor integrated, stall-based timeouts
 ```
 
 ---
