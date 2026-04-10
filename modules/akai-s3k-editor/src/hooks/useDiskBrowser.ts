@@ -101,7 +101,7 @@ export function useDiskBrowser(bridgeUrl: string | null) {
 
   /**
    * Read specific Akai blocks from disk into a buffer at their correct
-   * offsets. Converts from Akai block numbers to SCSI LBA sectors.
+   * offsets. Groups contiguous blocks into single SCSI reads for efficiency.
    */
   async function readAkaiBlocksInto(
     scsiClient: ScsiDiskClient,
@@ -113,10 +113,30 @@ export function useDiskBrowser(bridgeUrl: string | null) {
   ): Promise<void> {
     if (akaiBlocks.length === 0) return;
     const sectorsPerAkaiBlock = BLOCK_SIZE / sectorSize;
-    for (const block of akaiBlocks) {
-      const byteOffset = partitionByteOffset + block * BLOCK_SIZE;
+    const MAX_SECTORS_PER_READ = 4096;
+
+    // Sort blocks and group contiguous runs for batch reads.
+    const sorted = [...akaiBlocks].sort((a, b) => a - b);
+    const runs: { start: number; count: number }[] = [];
+    let runStart = sorted[0];
+    let runCount = 1;
+    for (let i = 1; i < sorted.length; i++) {
+      if (sorted[i] === sorted[i - 1] + 1 &&
+          runCount * sectorsPerAkaiBlock < MAX_SECTORS_PER_READ) {
+        runCount++;
+      } else {
+        runs.push({ start: runStart, count: runCount });
+        runStart = sorted[i];
+        runCount = 1;
+      }
+    }
+    runs.push({ start: runStart, count: runCount });
+
+    for (const run of runs) {
+      const byteOffset = partitionByteOffset + run.start * BLOCK_SIZE;
       const lba = byteOffset / sectorSize;
-      const chunk = await scsiClient.readBlocks(targetId, lba, sectorsPerAkaiBlock);
+      const totalSectors = run.count * sectorsPerAkaiBlock;
+      const chunk = await scsiClient.readBlocks(targetId, lba, totalSectors);
       buffer.set(chunk, byteOffset);
     }
   }
