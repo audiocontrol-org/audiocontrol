@@ -66,6 +66,21 @@ interface SaveProgress {
 }
 
 // =========================================================================
+// File write helper (works with both FSAA and OPFS handles)
+// =========================================================================
+
+async function writeFile(
+  dir: StorageDirectoryHandle,
+  name: string,
+  data: string | ArrayBuffer,
+): Promise<void> {
+  const handle = await dir.getFileHandle(name, { create: true });
+  const writable = await handle.createWritable();
+  await writable.write(data);
+  await writable.close();
+}
+
+// =========================================================================
 // Progress helpers
 // =========================================================================
 
@@ -261,23 +276,13 @@ export async function saveToCommonLibrary(
         sampleHeaders.set(sampleName, header);
 
         // Save sample WAV inside the program's samples/ directory
-        const wavHandle = await samplesDir.getFileHandle(
-          `${sampleName.trim()}.wav`, { create: true },
-        );
-        const wavWritable = await wavHandle.createWritable();
-        await wavWritable.write(wav.buffer as ArrayBuffer);
-        await wavWritable.close();
+        await writeFile(samplesDir, `${sampleName.trim()}.wav`, wav.buffer as ArrayBuffer);
 
         // Save sample metadata YAML alongside the WAV
         const commonSample = akaiSampleToCommon(header);
         commonSample.name = sampleName;
         const sampleYaml = stringifyYaml(commonSample, { indent: 2 });
-        const yamlHandle = await samplesDir.getFileHandle(
-          `${sampleName.trim()}.yaml`, { create: true },
-        );
-        const yamlWritable = await yamlHandle.createWritable();
-        await yamlWritable.write(sampleYaml);
-        await yamlWritable.close();
+        await writeFile(samplesDir, `${sampleName.trim()}.yaml`, sampleYaml);
 
         bytesTransferred += sampleFile.size;
         onProgress({ bytesTransferred });
@@ -291,10 +296,7 @@ export async function saveToCommonLibrary(
     commonProgram.name = name;
     const programYaml = stringifyYaml(commonProgram, { indent: 2 });
 
-    const fileHandle = await programDir.getFileHandle('program.yaml', { create: true });
-    const writable = await fileHandle.createWritable();
-    await writable.write(programYaml);
-    await writable.close();
+    await writeFile(programDir, 'program.yaml', programYaml);
 
     return sampleHeaders.size;
   }
