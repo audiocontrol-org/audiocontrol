@@ -2,6 +2,134 @@
 
 TypeScript monorepo for audio device control, MIDI communication, and web-based editors for vintage samplers and synthesizers. Uses pnpm workspaces with Vitest for testing.
 
+## Session Lifecycle
+
+### Starting a Session
+
+Before writing any code:
+1. **Identify the feature**: check the worktree name, branch name, or ask the user
+2. **Read the feature docs**: `docs/<version>/<feature-slug>/README.md` and `workplan.md` — know the current phase, what's done, what's next
+3. **Read DEVELOPMENT-NOTES.md** — the latest entry has what the last session accomplished, what failed, and what the user corrected. This is critical context for avoiding repeat mistakes.
+4. **Check open GitHub issues**: `gh issue list` for the feature's issues
+5. **If hardware/device work**: read `SCSI-NOTES.md` or relevant device notes
+6. **Tell the user** what you found and confirm the session goal
+
+### Ending a Session
+
+Before the session ends:
+1. **Update feature README.md** status table
+2. **Update workplan.md** — check off completed tasks, note new tasks discovered
+3. **Write a DEVELOPMENT-NOTES.md entry** (see Development Journal section below)
+4. **Update/close relevant GitHub issues**
+5. If hardware work: **update SCSI-NOTES.md** with dated entry
+6. **Commit all documentation changes**
+
+## Project Management
+
+Features follow the workflow in [PROJECT-MANAGEMENT.md](~/work/PROJECT-MANAGEMENT.md):
+
+```
+PRD → workplan.md → GitHub issues → implementation → implementation-summary.md
+```
+
+**Feature docs:** `docs/<version>/<feature-slug>/` containing prd.md, workplan.md, README.md
+
+**Roadmap:** `docs/1.0/ROADMAP.md` — dependency graph, feature states, phase tracking
+
+**Worktrees:** `~/work/audiocontrol-work/audiocontrol-<feature-slug>/` on branch `feature/<feature-slug>`
+
+**Multi-machine:** Work happens on orion-m4 (Mac Studio, SCSI hardware access) and orion-m1 (MacBook). Session logs are machine-local at `~/.claude/projects/`. Feature branches sync via git; session context does NOT sync — always read the workplan and latest DEVELOPMENT-NOTES.md to pick up context.
+
+## Workflow Playbooks
+
+### Start a new feature
+1. Read `docs/1.0/ROADMAP.md` for prerequisites and dependencies
+2. Create feature directory: `docs/<version>/<feature-slug>/`
+3. Write prd.md, workplan.md, README.md
+4. Create GitHub issues linked to workplan
+5. Create worktree: `git worktree add ~/work/audiocontrol-work/audiocontrol-<slug> -b feature/<slug>`
+
+### Investigate a hardware protocol question
+1. Identify the transport: serial MIDI, HTTP MIDI, SCSI MIDI, SDS, or device-specific (e.g., Akai ASPACK)
+2. Write a test script appropriate to the transport:
+   - Serial/HTTP MIDI: browser e2e test or Node.js via midi-server
+   - SCSI MIDI: Node.js script in `modules/e2e-infra/src/node/lib/` via bridge HTTP API
+   - SDS: Node.js via bridge WebSocket `/sds/stream`
+3. Run against real hardware, capture results with timing
+4. Document findings in the relevant protocol/findings doc (create one if it doesn't exist)
+5. Update the device's notes file (e.g., `SCSI-NOTES.md`) with a dated entry
+6. Commit test script + docs before moving on
+
+### Ship a bridge change
+1. Edit Rust source in `services/scsi-midi-bridge/src/`
+2. Deploy: `make deploy-scsi-bridge`
+3. Verify: `curl http://s3k.local:7033/status`
+4. Test from Node.js first, then web app if applicable
+5. Check logs: `ssh orion@s3k.local 'tail -20 /tmp/e2e-bridge.log'`
+6. Commit only after hardware verification
+
+### Add a UI feature
+1. Read feature workplan for current phase and next task
+2. Implement with loading states and progress indicators from the start
+3. Use proportional flex layouts, not pixel values
+4. Build: `make`
+5. Update workplan acceptance criteria
+6. Commit with GitHub issue reference
+
+## Before Committing
+
+Review changes against project standards:
+- [ ] Progress indicators show bytes, elapsed time, ETA (not just item counts)
+- [ ] No hardcoded pixel values in layouts (use flex ratios)
+- [ ] No defensive sleeps added (ACK/response is definitive)
+- [ ] No fabricated claims about device behavior (test it or cite docs)
+- [ ] Error messages are actionable
+- [ ] Feature workplan.md updated with completed tasks
+- [ ] Could any of this work have been delegated to a sub-agent?
+
+## When to Use Sub-Agents
+
+Use agents proactively — don't wait for the user to ask.
+
+| Task Pattern | Agent | Why |
+|-------------|-------|-----|
+| Investigate protocol/encoding question | hardware-protocol-engineer | Knows SCSI CDBs, SDS, ASPACK, Roland SysEx, serial MIDI, Web MIDI |
+| Review code changes before commit | code-reviewer or codebase-auditor | Catches guideline violations |
+| Research codebase for existing patterns | Explore (built-in) | Fast file/pattern search |
+| Design implementation approach | Plan (built-in) | Considers alternatives |
+| Build/modify UI components | ui-engineer or library-ux-engineer | Knows design system, accessibility |
+| Write or update documentation | documentation-engineer | Consistent style, complete coverage |
+| Debug SysEx/MIDI/device issues | hardware-protocol-engineer | All device transports |
+| Multiple independent tasks | Launch agents in parallel | Maximizes throughput |
+
+### When NOT to use agents
+- Simple single-file reads or grep searches — use tools directly
+- Git operations — do these directly
+- Decisions that need user input — ask the user directly
+
+## Session Analytics
+
+Session logs: `~/.claude/projects/<project-dir>/<session-id>.jsonl`
+
+### Per-Session (in DEVELOPMENT-NOTES.md entry)
+- Total user messages / assistant messages (approximate)
+- Number of commits
+- User corrections count
+- Tool call count (approximate work volume)
+
+### Periodic (run analyzer)
+```bash
+cd tools/session-analyzer && source .venv/bin/activate
+python arc_analyzer.py agents && python arc_analyzer.py stats
+```
+
+| Metric | What It Tells Us | Target |
+|--------|-----------------|--------|
+| Corrections per session | How often user redirects agent | ↓ Decreasing |
+| Same-category corrections | Unfixed process gaps | ↓ Decreasing |
+| Time to first commit | Bootstrap efficiency | ↓ Decreasing |
+| Arc distribution | Where time goes | More feature, less debug |
+
 ## Project Structure
 
 ```text
@@ -235,6 +363,48 @@ pnpm install                         # Install dependencies (make does this auto
 pnpm test                            # Run all tests
 pnpm --filter <module> test          # Test specific module
 ```
+
+## Development Journal
+
+At least once per session, write a journal entry in `DEVELOPMENT-NOTES.md` (project root). Use this template:
+
+```markdown
+## YYYY-MM-DD: [Session Title]
+
+### Feature: [feature-slug]
+### Worktree: audiocontrol-<slug>
+
+### Goal
+[What was the session trying to accomplish]
+
+### Accomplished
+- [Concrete outcome with commit hash]
+
+### Didn't Work
+- [What failed and root cause]
+
+### Course Corrections
+- [COMPLEXITY] [description — agent defaulted to complex solution, user wanted simpler]
+- [UX] [description — agent neglected user-facing feedback]
+- [FABRICATION] [description — agent stated something without evidence]
+- [DOCUMENTATION] [description — agent didn't document or read existing docs]
+- [PROCESS] [description — agent didn't follow established workflow]
+
+### Quantitative
+- User messages: ~N
+- Commits: N
+- User corrections: N
+
+### Insights
+[What would make the next session better]
+```
+
+The journal serves as:
+- A record of how the audiocontrol project is built
+- A source of insight into patterns (when the same category appears repeatedly, add a specific CLAUDE.md rule)
+- A basis for continuous improvement — corrections → rules → playbooks → templates → autonomy
+
+Be honest about mistakes. The value is in pattern recognition, not looking good.
 
 ## Documentation Standards
 

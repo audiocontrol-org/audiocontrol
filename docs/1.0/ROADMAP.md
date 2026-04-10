@@ -35,6 +35,8 @@ No blockers, can be worked independently.
 | trigger-chopping | Partial | #100 | Verify implementation |
 | chopper-testing-infra | Partial | #98 | E2E test infrastructure |
 | edit-workflow-architecture | ~95% | #61 | Final polish |
+| library-ux | Phase 5+ | #186 | Disk browser, drag-drop, SDS batching done. ASPACK blocked (#184) |
+| continuous-improvement | Phase 1-4 | #187 | Session lifecycle, journal, analyzer, agents/skills |
 
 **Not Started (Ready):**
 
