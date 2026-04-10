@@ -22,6 +22,54 @@ Browser ──HTTP/WS──► scsi-midi-bridge (Pi:7033)
 
 ---
 
+## 2026-04-01 20:44 PDT: SCMP — First Attempt at SCSI MIDI
+
+### Strategy
+Add a "SCSI MIDI Processor" (SCMP) device type to s2p that presents itself as a target device on the SCSI bus, accepting MIDI data from the S3000XL.
+
+### What happened
+- s2p fork modified to register as SCSI device type `$03` (Processor)
+- S3000XL sends a 63-byte config block via `SET_IFACE_MODE` (CDB 0x0C with flag byte)
+- But `MESSAGE IN` phase times out after `STATUS GOOD` — the S3000XL expects target-mode behavior that s2p can't provide in time
+
+### Blind alley
+Target-mode SCMP was abandoned. The S3000XL's MIDI-over-SCSI protocol requires s2p to act as an **initiator** sending CDBs to the sampler, not as a target receiving them.
+
+---
+
+## 2026-04-01 23:48 PDT: Breakthrough — CDB 0x0D Is a Poll
+
+### Discovery
+CDB 0x0D is not a "set interface mode" variant — it's **Data Byte Enquiry**, a poll that returns 3 bytes indicating how many MIDI bytes are buffered on the device. This was the Rosetta Stone for the protocol.
+
+```
+0x0D returns: [HH MM LL] = 24-bit big-endian byte count
+```
+
+---
+
+## 2026-04-02 08:48 PDT: Breakthrough — MIDI SDS Over SCSI Works
+
+### Milestone
+CDB 0x0C successfully carried a MIDI SDS Dump Header (`F0 7E ...`) to the S3000XL over the SCSI bus. The device responded with a SDS ACK. First proof that MIDI-over-SCSI works with s2p as initiator.
+
+### Rapid progress (April 2)
+- 08:48 — CDB 0x0C carries MIDI data
+- 09:01 — Full protocol decoded (0x09 init, 0x0C send, 0x0D poll, 0x0E read)
+- 09:25 — Socket-based SCMP with SDS ACK generation
+- 09:36 — Bidirectional initiator/target mode
+- 10:05 — MIDI-over-SCSI protobuf API in s2p
+- 10:50 — MIDI API works for INIT, bus contention for SEND
+- 11:13 — MIDI queue + bus mode switch
+- 13:07 — Dual target/initiator GPIO fix
+- 19:05 — Direct protobuf write test
+- 19:16 — Protocol probe and write variant tests
+- 19:22 — SDS sample transfer over SCSI works!
+- 19:29 — Fix CDB transfer length for >255 bytes
+- 22:51 — SCSI_EXEC generic command execution
+
+---
+
 ## 2026-04-02: MESA II Binary Analysis
 
 ### Strategy
@@ -49,6 +97,51 @@ Install MESA II v1.2 (Akai's official Mac OS 9 SCSI editor) in SheepShaver to an
 ### Documentation produced
 - `docs/1.0/scsi-midi-bridge/mesa-ii-analysis.md` — full binary analysis
 - `mesa-plug-harness` repo — 68k emulator harness for running SCSI Plug code
+
+---
+
+## 2026-04-04 17:54 PDT: SheepShaver SCSI Bridge — Mac OS 9 Over Network SCSI
+
+### Strategy
+Run MESA II (Akai's official editor) inside SheepShaver (Mac OS 9 emulator) on a modern Mac, connecting to the real S3000XL via network SCSI bridge to the Pi. Goals: observe how MESA communicates and provide a working MESA setup.
+
+### What we built (macemu fork)
+- SheepShaver with custom SCSI backend (`scsi_s2p.cpp`) that forwards CDBs over TCP to s2p on the Pi
+- Hand-rolled protobuf client (same wire format as the Rust bridge)
+- HFS volume mounting over SCSI bridge — Mac OS 9 can access disk images served by s2p
+
+### Milestones
+- 17:54 — HFS volume mounts over SCSI bridge
+- 18:08 — Writes persist across reboots — Phase 2 complete
+- 20:07 — **MIDI-over-SCSI works from the SheepShaver driver** — CDB 0x09 init + 0x0D poll succeed
+
+### The Mixed Mode rabbit hole (April 5)
+Attempted to intercept MESA II's SCSIAction calls to capture the exact CDB bytes:
+- Mac OS 9 uses "Mixed Mode" to bridge 68k and PPC code
+- The A-line trap handler (`$A089` = `_SCSIDispatch`) is unreachable from Mixed Mode because the ROM patches disable the 68k exception table
+- Tried patching opcode tables, `.EDisk` driver installation, PPC stub injection — none reached from MESA's Plug code
+- Concluded that SheepShaver's emulation architecture fundamentally prevents A-line trap interception from Mixed Mode code
+
+### Outcome
+SheepShaver SCSI bridge works for disk access but MESA II's SCSI Plug traffic could not be intercepted. Led to building the mesa-plug-harness (standalone 68k emulator) as the alternative approach.
+
+---
+
+## 2026-04-05 23:24 PDT: s2p Streaming MIDI Server
+
+### Strategy
+Add a persistent TCP streaming server to s2p (port 6870) for low-latency MIDI communication, bypassing the per-command protobuf overhead.
+
+### What we built
+- MSG_INIT/MSG_SEND/MSG_DATA/MSG_ERROR frame protocol
+- Persistent TCP connection with TCP_NODELAY
+- MSG_SAMPLE_READ for SDS sample download (sends Dump Request, handles ACK loop internally)
+
+### Outcome
+The streaming server worked for SysEx request/response but had issues with SDS:
+- MSG_SAMPLE_READ could send the Dump Request but the ACK timing was still too slow
+- The event queue architecture couldn't service ACKs fast enough
+- Later testing (April 10) confirmed the streaming port doesn't relay device responses for SDS uploads — dead end for that use case
 
 ---
 
