@@ -156,7 +156,7 @@ export function akaiKeygroupToZones(
     const velHigh = i === activeSamples.length - 1 ? 127 : (i + 1) * velocityStep;
 
     const zone: CommonZone = {
-      sample: `${sampleName}.wav`,
+      sample: sampleName,
       keyRange: [kg.lowNote, kg.highNote],
     };
 
