@@ -8,7 +8,7 @@
  *   tsx tools/analyze-sessions.ts --json
  */
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { join, resolve } from "node:path";
 
@@ -607,11 +607,17 @@ function main(): void {
   const report = analyze(sessions);
   const content = loadLlmAnalysis(since);
 
-  if (json) {
-    console.log(JSON.stringify({ ...report, content }, null, 2));
-  } else {
-    console.log(renderMarkdown(report, since, content));
-  }
+  const outputDir = resolve(import.meta.dirname ?? process.cwd(), "..", "data", "sessions");
+  const ext = json ? "json" : "md";
+  const dateSuffix = since ?? "all";
+  const outputPath = join(outputDir, `report-${dateSuffix}.${ext}`);
+
+  const output = json
+    ? JSON.stringify({ ...report, content }, null, 2)
+    : renderMarkdown(report, since, content);
+
+  writeFileSync(outputPath, output + "\n", "utf8");
+  console.log(`Report written to ${outputPath}`);
 }
 
 main();
