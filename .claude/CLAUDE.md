@@ -117,11 +117,13 @@ Session logs: `~/.claude/projects/<project-dir>/<session-id>.jsonl`
 - User corrections count
 - Tool call count (approximate work volume)
 
-### Periodic (run analyzer)
+### Extract session data
 ```bash
-cd tools/session-analyzer && source .venv/bin/activate
-python arc_analyzer.py agents && python arc_analyzer.py stats
+tsx tools/extract-sessions.ts
 ```
+Output: `data/sessions/sessions.jsonl` (one JSON line per session), `data/sessions/summary.csv`
+
+Remote machine: `tsx tools/extract-sessions.ts --data-dir /tmp/m1-data --machine orion-m1`
 
 | Metric | What It Tells Us | Target |
 |--------|-----------------|--------|
