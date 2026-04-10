@@ -276,6 +276,9 @@ where
     let sn_hi = ((sample_number >> 7) & 0x7F) as u8;
 
     // 1. Build and send SDS Dump Header
+    if sample_rate == 0 {
+        return Err("sample_rate must be > 0".to_string());
+    }
     let period_ns = 1_000_000_000u32 / sample_rate;
     let dump_header = vec![
         0xF0, 0x7E, channel, 0x01,       // SDS Dump Header
