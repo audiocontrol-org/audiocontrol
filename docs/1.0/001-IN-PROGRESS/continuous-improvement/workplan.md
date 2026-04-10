@@ -20,6 +20,7 @@
 | Phase 3 | [#190](https://github.com/audiocontrol-org/audiocontrol/issues/190) | ~~Session log analyzer~~ (superseded by Phase 6) |
 | Phase 4 | [#191](https://github.com/audiocontrol-org/audiocontrol/issues/191) | Agents and workflow skills |
 | Phase 6 | [#195](https://github.com/audiocontrol-org/audiocontrol/issues/195) | Session data extraction (TypeScript, replaces Phase 3) |
+| Phase 7 | [#196](https://github.com/audiocontrol-org/audiocontrol/issues/196) | Session data analyzer (local, code-only, future LLM) |
 | Phase 5 | [#192](https://github.com/audiocontrol-org/audiocontrol/issues/192) | Library-ux feature docs and roadmap |
 
 ---
@@ -348,6 +349,80 @@ Replace the Python analyzer references with the tsx extractor.
 
 ---
 
+## Phase 7: Session Data Analyzer
+
+### Context
+
+Phase 6 extracts raw session data into `data/sessions/sessions.jsonl`. Phase 7 analyzes that data and produces human-readable reports suitable for appending to DEVELOPMENT-NOTES.md. The first implementation uses pure TypeScript (no LLM). Future iterations can add LLM-powered classification (e.g., arc type detection, correction pattern recognition).
+
+### Task 7.1: Create session data analyzer
+
+TypeScript script that reads `data/sessions/sessions.jsonl` and produces analysis reports.
+
+**Analysis (v1 — code only, no LLM):**
+
+| Metric | Computation | Purpose |
+|--------|------------|---------|
+| Sessions by project | group by project, count | Where is effort concentrated |
+| Sessions by machine | group by machine, count | Cross-machine distribution |
+| Total tokens consumed | sum input_tokens + output_tokens | Cost proxy |
+| Average session duration | mean of duration_minutes | Session length trends |
+| Average user messages per session | mean of user_messages | Interaction intensity |
+| Agent spawn rate | agent_spawns / sessions | Are we delegating enough |
+| Tool distribution | aggregate tool_types across sessions | What tools are used most |
+| Sessions over time | group by week/month | Activity trends |
+| Longest sessions | top 10 by duration | Where did we spend the most time |
+| Token-heaviest sessions | top 10 by total tokens | Most expensive sessions |
+
+**Output formats:**
+- Markdown report to stdout (can be piped or appended to DEVELOPMENT-NOTES.md)
+- Optional `--json` flag for machine-readable output
+- Optional `--since YYYY-MM-DD` flag to limit analysis window
+
+**Implementation:**
+- Single file: `tools/analyze-sessions.ts`
+- Reads from `data/sessions/sessions.jsonl`
+- Pure computation — no network, no API keys, no external dependencies
+- Run: `tsx tools/analyze-sessions.ts`
+- Append to journal: `tsx tools/analyze-sessions.ts >> DEVELOPMENT-NOTES.md`
+- Recent only: `tsx tools/analyze-sessions.ts --since 2026-04-01`
+
+**Files:**
+- Create: `tools/analyze-sessions.ts`
+
+**Acceptance Criteria:**
+- [ ] Reads `data/sessions/sessions.jsonl` and produces markdown report
+- [ ] All metrics from the table above included
+- [ ] `--since` flag filters by date
+- [ ] `--json` flag produces machine-readable output
+- [ ] Output is valid markdown suitable for DEVELOPMENT-NOTES.md
+- [ ] Runs with no external dependencies (just tsx)
+
+### Task 7.2: Document analysis cadence
+
+Add analysis cadence to CLAUDE.md and the session-end skill.
+
+**Files:**
+- Modify: `.claude/CLAUDE.md` (analytics section)
+- Modify: `.claude/skills/session-end.md`
+
+**Acceptance Criteria:**
+- [ ] CLAUDE.md documents when to run the analyzer (periodically, or on request)
+- [ ] /session-end skill optionally runs analyzer and includes summary in journal entry
+
+### Future: Task 7.3 (not for v1): LLM-powered analysis
+
+Add optional LLM classification to the analyzer:
+- Arc type detection (feature, debug, review, exploration)
+- Correction pattern recognition from DEVELOPMENT-NOTES.md entries
+- Trend narrative generation ("corrections are decreasing in [UX] category")
+
+Requires API key. Deferred — the code-only version provides the foundation data.
+
+**Phase 7 Verification:** `tsx tools/analyze-sessions.ts` produces a readable markdown report from extracted session data. Report includes all specified metrics.
+
+---
+
 ## Dependency Graph
 
 ```
@@ -368,8 +443,12 @@ Phase 5 (feature docs) — no deps, can be done anytime
 
 Phase 6 (session data extraction) — replaces Phase 3 analyzer
   6.1 → 6.2 → 6.3 → 6.4
+
+Phase 7 (session data analysis) — depends on Phase 6
+  7.1 → 7.2 → (future: 7.3 LLM analysis)
 ```
 
 Phases 1, 2, 5 are independent and can be worked in parallel.
 Phase 4 benefits from Phase 1 (playbooks inform skill design).
 Phase 6 replaces Phase 3 (Python/Docker analyzer → TypeScript extractor).
+Phase 7 depends on Phase 6 (needs extracted data to analyze).
