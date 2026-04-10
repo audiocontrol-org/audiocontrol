@@ -18,7 +18,7 @@ import {
   type DiskTarget,
 } from '@/hooks/useDiskBrowser';
 import { BLOCK_SIZE } from '@audiocontrol/sampler-devices/s3k';
-import { ContextMenu, type ContextMenuAction } from '@audiocontrol/editor-core';
+import { ContextMenu, ChevronIcon, type ContextMenuAction } from '@audiocontrol/editor-core';
 
 interface VolumeWithFiles {
   name: string;
@@ -231,7 +231,7 @@ function TargetNode({
         onClick={onToggle}
         className="w-full text-left px-2 py-1 text-sm rounded transition-colors text-gray-300 hover:bg-gray-700 flex items-center gap-1"
       >
-        <span className="text-gray-500">{expanded ? '\u25BE' : '\u25B8'}</span>
+        <ChevronIcon isExpanded={expanded} />
         <span>
           ID {target.id}: {target.vendor.trim()} {target.product.trim()}
         </span>
@@ -284,7 +284,7 @@ function VolumeNode({
         onClick={() => setExpanded(!expanded)}
         className="w-full text-left text-sm font-medium text-gray-400 py-1 px-2 rounded hover:bg-gray-700 flex items-center gap-1"
       >
-        <span className="text-gray-500">{expanded ? '\u25BE' : '\u25B8'}</span>
+        <ChevronIcon isExpanded={expanded} />
         <span>{volume.name}</span>
         <span className="text-gray-500 ml-auto text-xs">{volume.files.length} files</span>
       </button>

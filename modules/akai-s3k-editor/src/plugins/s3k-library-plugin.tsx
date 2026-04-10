@@ -19,7 +19,11 @@ import type {
   ItemSelection,
   PreviewContext,
 } from '@audiocontrol/editor-core';
-import { createSamplesCategory, createProgramsCategory } from '@/plugins/categories';
+import {
+  createSamplesCategory,
+  createCommonProgramsCategoryForS3k,
+  createS3kProgramsCategory,
+} from '@/plugins/categories';
 import { S3kPreviewPanelAdapter } from '@/components/library/S3kItemPreviewPanel';
 import { DeviceMemoryPanel } from '@/components/library/DeviceMemoryPanel';
 
@@ -88,7 +92,8 @@ export const s3kLibraryPlugin: DeviceLibraryPlugin = {
 
   categories: [
     createSamplesCategory(),
-    createProgramsCategory(),
+    createCommonProgramsCategoryForS3k(),
+    createS3kProgramsCategory(),
   ],
 
   translators: [],

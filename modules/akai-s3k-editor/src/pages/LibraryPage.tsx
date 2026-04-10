@@ -118,6 +118,7 @@ export function LibraryPage(): JSX.Element {
     useDeviceLibraryData(client, isDeviceConnected);
 
   const sampleNodes = useLibraryStore((s) => s.sampleNodes);
+  const commonProgramNodes = useLibraryStore((s) => s.commonProgramNodes);
   const programNodes = useLibraryStore((s) => s.programNodes);
   const loading = useLibraryStore((s) => s.loading);
   const error = useLibraryStore((s) => s.error);
@@ -179,8 +180,9 @@ export function LibraryPage(): JSX.Element {
 
   const categoryData = useMemo<Record<string, TreeNode[]>>(() => ({
     samples: sampleNodes,
-    programs: programNodes,
-  }), [sampleNodes, programNodes]);
+    'common-programs': commonProgramNodes,
+    's3k-programs': programNodes,
+  }), [sampleNodes, commonProgramNodes, programNodes]);
 
   // -----------------------------------------------------------------------
   // Device memory selection

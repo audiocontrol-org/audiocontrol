@@ -422,6 +422,7 @@ export {
   listPatchesTree,
   scanCommonSamplesDirectory,
   listCommonSamplesTree,
+  listCommonProgramsTree,
   listSets,
   listSetTonesTree,
 } from './library-fs.js';

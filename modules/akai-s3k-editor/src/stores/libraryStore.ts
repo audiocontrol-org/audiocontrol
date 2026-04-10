@@ -17,6 +17,7 @@ export interface LibraryStoreState {
   /** Scanned library tree nodes (samples, programs, etc.) */
   sampleNodes: TreeNode[];
   programNodes: TreeNode[];
+  commonProgramNodes: TreeNode[];
 
   /** Currently selected tree node */
   selectedNode: TreeNode | null;
@@ -63,6 +64,9 @@ export interface LibraryStoreActions {
 
   /** Replace program tree data after a scan */
   setProgramNodes(nodes: TreeNode[]): void;
+
+  /** Replace common-area program tree data after a scan */
+  setCommonProgramNodes(nodes: TreeNode[]): void;
 
   /** Update the selected node */
   setSelectedNode(node: TreeNode | null): void;
@@ -112,6 +116,7 @@ export const useLibraryStore = create<LibraryStore>((set) => ({
   // Library state
   sampleNodes: [],
   programNodes: [],
+  commonProgramNodes: [],
   selectedNode: null,
   loading: false,
   error: null,
@@ -137,6 +142,10 @@ export const useLibraryStore = create<LibraryStore>((set) => ({
     set({ programNodes: nodes });
   },
 
+  setCommonProgramNodes(nodes: TreeNode[]) {
+    set({ commonProgramNodes: nodes });
+  },
+
   setSelectedNode(node: TreeNode | null) {
     set({ selectedNode: node });
   },
@@ -153,6 +162,7 @@ export const useLibraryStore = create<LibraryStore>((set) => ({
     set({
       sampleNodes: [],
       programNodes: [],
+      commonProgramNodes: [],
       selectedNode: null,
       loading: false,
       error: null,

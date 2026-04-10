@@ -420,7 +420,8 @@ const detectSample: ItemDetector = async (entry, parentDir, path) => {
 
 /**
  * Detect a common-area program: a directory containing `program.yaml`
- * with `format: 'program'`.
+ * with `format: 'program'`. Enumerates the `samples/` subdirectory to
+ * populate child sample nodes.
  */
 const detectProgram: ItemDetector = async (entry, parentDir, path) => {
   if (entry.kind !== 'directory') return null;
@@ -435,14 +436,38 @@ const detectProgram: ItemDetector = async (entry, parentDir, path) => {
     const result = ProgramYamlSchema.safeParse(parsed);
     if (!result.success) return null;
 
+    const programPath = [...path, entry.name];
+
+    // Enumerate samples/ subdirectory for child nodes
+    const children: LibraryTreeNode[] = [];
+    try {
+      const samplesDir = await subDir.getDirectoryHandle('samples');
+      for await (const sampleEntry of samplesDir.values()) {
+        if (sampleEntry.kind !== 'file') continue;
+        if (!sampleEntry.name.endsWith('.wav')) continue;
+        const sampleName = sampleEntry.name.replace(/\.wav$/, '');
+        children.push({
+          id: [...programPath, 'samples', sampleName].join('/'),
+          name: sampleName,
+          type: 'sample',
+          path: programPath,
+          fileName: sampleName,
+        });
+      }
+      children.sort((a, b) => a.name.localeCompare(b.name));
+    } catch {
+      // No samples/ directory — that's fine
+    }
+
     return {
-      id: [...path, entry.name].join('/'),
+      id: programPath.join('/'),
       name: result.data.name,
       type: 'program',
       path,
       directoryName: entry.name,
       description: result.data.description,
       kitCount: result.data.zones.length,
+      children: children.length > 0 ? children : undefined,
     };
   } catch {
     return null;
@@ -491,6 +516,18 @@ export async function listCommonSamplesTree(
   const samplesDir = await getNestedDirectoryIfExists(root, ['library', 'common', 'samples']);
   if (!samplesDir) return [];
   return scanCommonSamplesDirectory(samplesDir, []);
+}
+
+/**
+ * List common-area programs from `library/common/programs/` as a tree.
+ * Each program is a directory containing `program.yaml`.
+ */
+export async function listCommonProgramsTree(
+  root: StorageDirectoryHandle,
+): Promise<LibraryTreeNode[]> {
+  const programsDir = await getNestedDirectoryIfExists(root, ['library', 'common', 'programs']);
+  if (!programsDir) return [];
+  return scanLibraryDirectory(programsDir, [], detectProgram);
 }
 
 // =========================================================================

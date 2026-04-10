@@ -21,7 +21,7 @@ export function useS3kLibraryStrategy({
 }: UseS3kLibraryStrategyArgs): LibraryOperationsStrategy {
   return useMemo<LibraryOperationsStrategy>(() => ({
     deleteItem: async (categoryId, node) => {
-      if (categoryId !== 'programs') return false;
+      if (categoryId !== 's3k-programs') return false;
       if (!root) return false;
       const meta = node.meta as { dirName?: string } | undefined;
       const dirName = meta?.dirName ?? node.name;
