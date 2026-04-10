@@ -217,7 +217,8 @@ impl S2pClient {
             .map_err(|e| format!("read payload: {e}"))?;
         let t_total = t0.elapsed();
 
-        debug!(
+        // Temporarily at info level to diagnose SDS performance
+        info!(
             op = op_name(operation),
             tcp_connect_ms = t_connect.as_millis() as u64,
             send_ms = (t_send - t_connect).as_millis() as u64,

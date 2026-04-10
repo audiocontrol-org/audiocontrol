@@ -316,9 +316,14 @@ where
 
         let pkt = encode_sds_data_packet(channel, pkt_num, samples, offset, samples_per_packet);
 
+        let t0 = std::time::Instant::now();
         s2p.scsi_midi_send(target_id, &pkt).await?;
+        let t_send = t0.elapsed();
+
+        let t1 = std::time::Instant::now();
         wait_for_ack(s2p, target_id, 30).await
             .map_err(|e| format!("no ACK for packet {pkt_num}: {e}"))?;
+        let t_ack = t1.elapsed();
 
         offset += samples_per_packet;
         pkt_num = (pkt_num + 1) & 0x7F;
@@ -326,11 +331,16 @@ where
         let sent = (offset as u32).min(total);
         on_progress(sent, total);
 
-        debug!(
-            pkt_num,
-            progress = format!("{}/{}", sent, total),
-            "SDS upload packet sent"
-        );
+        if offset <= 200 || offset % 4000 == 0 {
+            info!(
+                pkt_num,
+                send_ms = t_send.as_millis() as u64,
+                ack_ms = t_ack.as_millis() as u64,
+                total_ms = (t_send + t_ack).as_millis() as u64,
+                progress = format!("{}/{}", sent, total),
+                "SDS packet timing"
+            );
+        }
     }
 
     info!(total, "sample upload complete");
@@ -385,24 +395,18 @@ fn encode_sds_data_packet(
 /// Poll+read until we get an ACK (F0 7E ch 7F pp F7).
 /// Returns Ok on ACK, Err on timeout or NAK.
 async fn wait_for_ack(s2p: &S2pClient, target_id: u8, max_retries: u32) -> Result<(), String> {
-    let mut delay_ms: u64 = 1;
-    let max_delay_ms: u64 = 50;
-    let mut total_ms: u64 = 0;
-    let hard_timeout_ms: u64 = 5000;
-
-    for _ in 0..max_retries {
-        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
-        total_ms += delay_ms;
-        if total_ms > hard_timeout_ms {
-            return Err(format!("timeout waiting for ACK after {total_ms}ms"));
-        }
-
-        let pending = s2p.scsi_midi_poll(target_id).await?;
-        if pending == 0 {
-            delay_ms = (delay_ms * 2).min(max_delay_ms);
+    // Try reading the ACK directly — skip the poll. The sampler should have
+    // the 6-byte ACK ready by the time the SCSI read arrives. This saves one
+    // SCSI round trip (~110ms) per packet.
+    for attempt in 0..max_retries {
+        let data = s2p.scsi_midi_read(target_id, 6).await?;
+        if data.is_empty() || data.iter().all(|&b| b == 0) {
+            // No data yet — brief pause then retry
+            tokio::time::sleep(std::time::Duration::from_millis(
+                if attempt < 3 { 1 } else { 10 }
+            )).await;
             continue;
         }
-        let data = s2p.scsi_midi_read(target_id, pending).await?;
         let (messages, _) = extract_sysex_messages(&data);
         for msg in &messages {
             if msg.len() >= 6 && msg[1] == 0x7E {
@@ -410,15 +414,11 @@ async fn wait_for_ack(s2p: &S2pClient, target_id: u8, max_retries: u32) -> Resul
                     0x7F => return Ok(()),                          // ACK
                     0x7E => return Err("NAK received".to_string()), // NAK
                     0x7D => return Err("transfer cancelled by device".to_string()), // Cancel
-                    0x7C => {                                       // Wait — reset backoff
-                        delay_ms = 1;
-                        continue;
-                    }
+                    0x7C => continue,                               // Wait — retry
                     _ => {}
                 }
             }
         }
-        delay_ms = (delay_ms * 2).min(max_delay_ms);
     }
     Err("timeout waiting for ACK: max retries exceeded".to_string())
 }
