@@ -158,9 +158,10 @@ export function LibraryPage(): JSX.Element {
   const [dropTransfer, setDropTransfer] = useState<DropTransferState>(DROP_TRANSFER_IDLE);
 
   const handleExternalDrop = useCallback((categoryId: string, dataTransfer: DataTransfer, targetPath: string[] = []): boolean => {
+    console.log('[LibraryPage] handleExternalDrop:', categoryId, 'types:', Array.from(dataTransfer.types));
     if (!root) return false;
     const raw = dataTransfer.getData(DISK_ITEM_MIME);
-    if (!raw) return false;
+    if (!raw) { console.log('[LibraryPage] no DISK_ITEM_MIME data'); return false; }
 
     const payload = JSON.parse(raw) as DiskDragPayload;
 
@@ -378,12 +379,22 @@ export function LibraryPage(): JSX.Element {
     onImportSample: canTransfer ? transferCallbacks.handleSendSampleToDevice : undefined,
     onImportProgram: canTransfer ? (dirName: string, displayName: string, categoryId: string) => {
       if (categoryId === 's3k-programs') {
-        // S3K native programs — use ImportProgramDialog
         transferCallbacks.handleSendProgramToDevice(dirName, displayName);
       } else {
-        // Common-area programs — use ImportInstrumentDialog
         instrumentTransfer.openDialog(dirName, [], true);
       }
+    } : undefined,
+    onDiskItemDrop: canTransfer ? (payload: DiskDragPayload) => {
+      // Resolve disk item and open save-to-library dialog
+      const resolved = diskBrowserRef.current?.resolveDragPayload(payload);
+      if (!resolved) return;
+      setDiskToLibrary({
+        open: true,
+        file: payload.file,
+        partitionData: resolved.partitionData,
+        volumeStartBlock: payload.volumeStartBlock,
+        ensureFileBlocks: resolved.ensureFileBlocks,
+      });
     } : undefined,
     isConnected: isDeviceConnected,
     isLoading: isDeviceLoading,

@@ -380,6 +380,7 @@ function FileNode({ file, targetId, volumeStartBlock, isSelected, onSelect, onSa
     const payload: DiskDragPayload = { file, targetId, volumeStartBlock };
     e.dataTransfer.setData(DISK_ITEM_MIME, JSON.stringify(payload));
     e.dataTransfer.effectAllowed = 'copy';
+    console.log('[DiskBrowser] drag started:', file.name);
   };
 
   const actions: ContextMenuAction[] = [];

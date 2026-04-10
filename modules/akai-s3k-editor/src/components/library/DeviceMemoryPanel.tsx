@@ -8,6 +8,7 @@
 
 import { useState } from 'react';
 import { LIBRARY_ITEM_MIME, type LibraryDragPayload } from '@audiocontrol/editor-core';
+import { DISK_ITEM_MIME, type DiskDragPayload } from '@/components/library/DiskBrowserPanel';
 
 interface DeviceMemoryPanelProps {
   programNames: string[];
@@ -19,6 +20,8 @@ interface DeviceMemoryPanelProps {
   onRefresh: () => void;
   onImportSample?: (sampleName: string, samplePath: string[]) => void;
   onImportProgram?: (dirName: string, displayName: string, categoryId: string) => void;
+  /** Called when a disk browser item is dropped on the device memory panel. */
+  onDiskItemDrop?: (payload: DiskDragPayload) => void;
   isConnected: boolean;
   isLoading: boolean;
 }
@@ -90,6 +93,7 @@ export function DeviceMemoryPanel({
   onRefresh,
   onImportSample,
   onImportProgram,
+  onDiskItemDrop,
   isConnected,
   isLoading,
 }: DeviceMemoryPanelProps): JSX.Element {
@@ -124,8 +128,11 @@ export function DeviceMemoryPanel({
       <div
         className={`rounded transition-colors ${programDropOver ? 'bg-blue-900/30 ring-1 ring-blue-500/50' : ''}`}
         onDragOver={(e) => {
-          if (!onImportProgram) return;
-          if (!e.dataTransfer.types.includes(`${LIBRARY_ITEM_MIME}/program`)) return;
+          const hasLibraryProgram = e.dataTransfer.types.includes(`${LIBRARY_ITEM_MIME}/program`);
+          const hasDiskItem = e.dataTransfer.types.includes(DISK_ITEM_MIME);
+          if (!hasLibraryProgram && !hasDiskItem) return;
+          if (hasLibraryProgram && !onImportProgram) return;
+          if (hasDiskItem && !onDiskItemDrop) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = 'copy';
           setProgramDropOver(true);
@@ -138,13 +145,22 @@ export function DeviceMemoryPanel({
         onDrop={(e) => {
           e.preventDefault();
           setProgramDropOver(false);
-          if (!onImportProgram) return;
-          const raw = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
-          if (!raw) return;
-          const payload = JSON.parse(raw) as LibraryDragPayload;
-          if (payload.nodeType !== 'program') return;
-          const dirName = (payload.meta.dirName as string | undefined) ?? payload.nodeName;
-          onImportProgram(dirName, payload.nodeName, payload.categoryId);
+          // Handle library item drops
+          const libRaw = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
+          if (libRaw && onImportProgram) {
+            const payload = JSON.parse(libRaw) as LibraryDragPayload;
+            if (payload.nodeType === 'program') {
+              const dirName = (payload.meta.dirName as string | undefined) ?? payload.nodeName;
+              onImportProgram(dirName, payload.nodeName, payload.categoryId);
+              return;
+            }
+          }
+          // Handle disk item drops
+          const diskRaw = e.dataTransfer.getData(DISK_ITEM_MIME);
+          if (diskRaw && onDiskItemDrop) {
+            const payload = JSON.parse(diskRaw) as DiskDragPayload;
+            onDiskItemDrop(payload);
+          }
         }}
       >
         <NameList
@@ -165,8 +181,11 @@ export function DeviceMemoryPanel({
       <div
         className={`rounded transition-colors ${sampleDropOver ? 'bg-blue-900/30 ring-1 ring-blue-500/50' : ''}`}
         onDragOver={(e) => {
-          if (!onImportSample) return;
-          if (!e.dataTransfer.types.includes(`${LIBRARY_ITEM_MIME}/sample`)) return;
+          const hasLibrarySample = e.dataTransfer.types.includes(`${LIBRARY_ITEM_MIME}/sample`);
+          const hasDiskItem = e.dataTransfer.types.includes(DISK_ITEM_MIME);
+          if (!hasLibrarySample && !hasDiskItem) return;
+          if (hasLibrarySample && !onImportSample) return;
+          if (hasDiskItem && !onDiskItemDrop) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = 'copy';
           setSampleDropOver(true);
@@ -179,13 +198,22 @@ export function DeviceMemoryPanel({
         onDrop={(e) => {
           e.preventDefault();
           setSampleDropOver(false);
-          if (!onImportSample) return;
-          const raw = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
-          if (!raw) return;
-          const payload = JSON.parse(raw) as LibraryDragPayload;
-          if (payload.nodeType !== 'sample') return;
-          const path = (payload.meta.path as string[] | undefined) ?? [];
-          onImportSample(payload.nodeName, path);
+          // Handle library item drops
+          const libRaw = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
+          if (libRaw && onImportSample) {
+            const payload = JSON.parse(libRaw) as LibraryDragPayload;
+            if (payload.nodeType === 'sample') {
+              const path = (payload.meta.path as string[] | undefined) ?? [];
+              onImportSample(payload.nodeName, path);
+              return;
+            }
+          }
+          // Handle disk item drops
+          const diskRaw = e.dataTransfer.getData(DISK_ITEM_MIME);
+          if (diskRaw && onDiskItemDrop) {
+            const payload = JSON.parse(diskRaw) as DiskDragPayload;
+            onDiskItemDrop(payload);
+          }
         }}
       >
         <NameList

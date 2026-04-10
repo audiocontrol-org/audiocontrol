@@ -42,6 +42,7 @@ export interface S3kMemoryPanelState {
   onRefresh: () => void;
   onImportSample?: (sampleName: string, samplePath: string[]) => void;
   onImportProgram?: (dirName: string, displayName: string, categoryId: string) => void;
+  onDiskItemDrop?: (payload: import('@/components/library/DiskBrowserPanel').DiskDragPayload) => void;
   isConnected: boolean;
   isLoading: boolean;
 }
@@ -80,6 +81,7 @@ function S3kMemoryPanelAdapter({
       onRefresh={state.onRefresh}
       onImportSample={state.onImportSample}
       onImportProgram={state.onImportProgram}
+      onDiskItemDrop={state.onDiskItemDrop}
       isConnected={state.isConnected}
       isLoading={state.isLoading}
     />
