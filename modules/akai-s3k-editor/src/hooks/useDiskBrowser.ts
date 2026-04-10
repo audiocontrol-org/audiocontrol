@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useRef } from 'react';
 import {
   createScsiDiskClient,
   type ScsiDiskClient,
@@ -7,12 +7,14 @@ import {
   parsePartitionTable,
   parseVolumeList,
   parseFileList,
+  readFatChain,
   readFileData,
   parseSampleHeaderFromDisk,
   extractSampleAudio,
   parseProgramFromDisk,
   akaiSampleToWav,
   BLOCK_SIZE,
+  FAT_OFFSET,
   type AkaiDiskFileEntry,
   type AkaiDiskProgram,
 } from '@audiocontrol/sampler-devices/s3k';
@@ -29,18 +31,20 @@ export interface DiskBrowserState {
   loading: boolean;
   error: string | null;
   targets: DiskTarget[];
-  /** Cached raw disk data per SCSI target ID. */
+  /**
+   * Cached partition metadata per SCSI target ID.
+   * Contains partition table + volume dir + FAT + file directory blocks.
+   * File data blocks are read on demand into this buffer.
+   */
   partitionData: Map<number, Uint8Array>;
 }
 
 /**
  * Hook that manages SCSI disk browser state.
  *
- * Creates an ScsiDiskClient from the bridge URL and provides functions for
- * scanning targets, loading disk data, and downloading samples/programs from
- * Akai-formatted SCSI disks.
- *
- * @param bridgeUrl - The SCSI bridge HTTP URL, or null if SCSI is inactive.
+ * Disk reads are lazy: only metadata (partition table, FAT, volume/file
+ * directories) is read upfront. File content is read on demand when the
+ * user downloads a sample or program.
  */
 export function useDiskBrowser(bridgeUrl: string | null) {
   const [state, setState] = useState<DiskBrowserState>({
@@ -49,6 +53,10 @@ export function useDiskBrowser(bridgeUrl: string | null) {
     targets: [],
     partitionData: new Map(),
   });
+
+  // Ref to access current state from stable callbacks without stale closures.
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   const client = useMemo<ScsiDiskClient | null>(
     () => (bridgeUrl ? createScsiDiskClient(bridgeUrl) : null),
@@ -92,87 +100,199 @@ export function useDiskBrowser(bridgeUrl: string | null) {
   }, [client]);
 
   /**
-   * Load the raw disk data for a target. Reads enough blocks from LBA 0 to
-   * cover the partition table (at 0x4500) and the first partition's volume
-   * and file entries.
+   * Read specific Akai blocks from disk into a buffer at their correct
+   * offsets. Converts from Akai block numbers to SCSI LBA sectors.
+   */
+  async function readAkaiBlocksInto(
+    scsiClient: ScsiDiskClient,
+    targetId: number,
+    sectorSize: number,
+    akaiBlocks: number[],
+    buffer: Uint8Array,
+    partitionByteOffset: number,
+  ): Promise<void> {
+    if (akaiBlocks.length === 0) return;
+    const sectorsPerAkaiBlock = BLOCK_SIZE / sectorSize;
+    for (const block of akaiBlocks) {
+      const byteOffset = partitionByteOffset + block * BLOCK_SIZE;
+      const lba = byteOffset / sectorSize;
+      const chunk = await scsiClient.readBlocks(targetId, lba, sectorsPerAkaiBlock);
+      buffer.set(chunk, byteOffset);
+    }
+  }
+
+  /**
+   * Load disk metadata for a target — partition table, FAT, volume directory,
+   * and file directory blocks. Does NOT read file content.
    *
-   * For large partitions that extend beyond the initial read, the caller
-   * would need to issue additional reads. This initial load covers the
-   * metadata needed to enumerate volumes and files.
+   * Allocates a full-partition-sized buffer but only populates the metadata
+   * blocks. This lets the existing parsers (which index by block * BLOCK_SIZE)
+   * work without modification.
    */
   const loadDiskData = useCallback(
     async (targetId: number): Promise<Uint8Array | null> => {
       if (!client) return null;
 
-      // Two-phase read:
-      // 1. Read enough to get the partition table (at offset 0x4500)
-      // 2. Then read the first partition in chunks (bridge limits to 65535 sectors per READ)
       const target = state.targets.find(t => t.id === targetId);
       const sectorSize = target?.blockSize || 512;
-      const MAX_SECTORS_PER_READ = 4096; // Conservative — well under u16 max
 
-      // Phase 1: read partition table
+      // Phase 1: read partition table (0x4600 bytes from disk start)
       const ptSectors = Math.ceil(0x4600 / sectorSize);
       const ptData = await client.readBlocks(targetId, 0, ptSectors);
 
       const partitions = parsePartitionTable(ptData);
       if (partitions.length === 0) return ptData;
 
-      // Phase 2: read through end of first partition in chunks
-      const part0End = (partitions[0].offsetInBlocks + partitions[0].sizeInBlocks) * BLOCK_SIZE;
-      const totalSectors = Math.ceil(part0End / sectorSize);
-      const totalBytes = totalSectors * sectorSize;
-      const buffer = new Uint8Array(totalBytes);
+      const part0 = partitions[0];
+      const partitionByteOffset = part0.offsetInBlocks * BLOCK_SIZE;
 
-      for (let offset = 0; offset < totalSectors; offset += MAX_SECTORS_PER_READ) {
-        const count = Math.min(MAX_SECTORS_PER_READ, totalSectors - offset);
-        const chunk = await client.readBlocks(targetId, offset, count);
-        buffer.set(chunk, offset * sectorSize);
+      // Allocate full-partition-sized buffer. Only metadata blocks are
+      // populated; file data blocks are read on demand during download.
+      const partitionBytes = part0.sizeInBlocks * BLOCK_SIZE;
+      const totalBytes = partitionByteOffset + partitionBytes;
+      const buffer = new Uint8Array(totalBytes);
+      buffer.set(ptData, 0);
+
+      // Phase 2: read metadata blocks (volume directory + FAT).
+      // Volume dir starts at 0xca (block 0). FAT starts at 0x70a and has
+      // 2 bytes per block in the partition.
+      const fatEndByte = FAT_OFFSET + part0.sizeInBlocks * 2;
+      const metadataBlockCount = Math.ceil(fatEndByte / BLOCK_SIZE);
+      const metadataBlockList = Array.from(
+        { length: metadataBlockCount },
+        (_, i) => i,
+      );
+      await readAkaiBlocksInto(
+        client, targetId, sectorSize,
+        metadataBlockList, buffer, partitionByteOffset,
+      );
+
+      // Phase 3: parse volumes and read file directory blocks that lie
+      // beyond the metadata range.
+      const partView = buffer.subarray(partitionByteOffset);
+      const volumes = parseVolumeList(partView);
+      const dirBlocksToRead = new Set<number>();
+      for (const vol of volumes) {
+        const chain = readFatChain(partView, vol.startBlock);
+        for (const block of chain) {
+          if (block >= metadataBlockCount) {
+            dirBlocksToRead.add(block);
+          }
+        }
       }
-      const data = buffer;
+
+      if (dirBlocksToRead.size > 0) {
+        await readAkaiBlocksInto(
+          client, targetId, sectorSize,
+          [...dirBlocksToRead], buffer, partitionByteOffset,
+        );
+      }
 
       setState((s) => {
         const newMap = new Map(s.partitionData);
-        newMap.set(targetId, data);
+        newMap.set(targetId, buffer);
         return { ...s, partitionData: newMap };
       });
 
-      return data;
+      return buffer;
     },
     [client],
   );
 
   /**
-   * Read file data from a partition and convert an Akai sample to a WAV blob
-   * suitable for browser download.
+   * Ensure that a file's data blocks are present in the cached buffer.
+   * Reads only the missing blocks from disk via SCSI.
    */
-  const downloadSample = useCallback(
-    async (
-      partitionData: Uint8Array,
-      fileEntry: AkaiDiskFileEntry,
-    ): Promise<Blob> => {
-      const fileData = readFileData(partitionData, fileEntry);
-      const header = parseSampleHeaderFromDisk(fileData);
-      const pcm = extractSampleAudio(fileData, header);
-      const wav = akaiSampleToWav(header, pcm);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      return new Blob([wav as any], { type: 'audio/wav' });
+  const ensureFileBlocks = useCallback(
+    async (targetId: number, fileEntry: AkaiDiskFileEntry): Promise<void> => {
+      if (!client) return;
+
+      // Read state snapshot inside the callback to avoid stale closures.
+      const currentState = stateRef.current;
+      const buffer = currentState.partitionData.get(targetId);
+      if (!buffer) return;
+
+      const target = currentState.targets.find(t => t.id === targetId);
+      const sectorSize = target?.blockSize || 512;
+
+      const partitions = parsePartitionTable(buffer);
+      if (partitions.length === 0) return;
+      const partitionByteOffset = partitions[0].offsetInBlocks * BLOCK_SIZE;
+      const partView = buffer.subarray(partitionByteOffset);
+
+      const chain = readFatChain(partView, fileEntry.startBlock);
+      console.log(`[ensureFileBlocks] ${fileEntry.name}: chain=${chain.length} blocks`);
+
+      // Find blocks that haven't been read yet (all-zero first 16 bytes).
+      const missingBlocks: number[] = [];
+      for (const block of chain) {
+        const offset = block * BLOCK_SIZE;
+        if (offset + BLOCK_SIZE > partView.length) continue;
+        let allZero = true;
+        for (let i = 0; i < 16; i++) {
+          if (partView[offset + i] !== 0) {
+            allZero = false;
+            break;
+          }
+        }
+        if (allZero) missingBlocks.push(block);
+      }
+
+      console.log(`[ensureFileBlocks] ${fileEntry.name}: ${missingBlocks.length} missing blocks to read`);
+
+      if (missingBlocks.length > 0) {
+        await readAkaiBlocksInto(
+          client, targetId, sectorSize,
+          missingBlocks, buffer, partitionByteOffset,
+        );
+      }
     },
-    [],
+    [client],
   );
 
   /**
-   * Read file data from a partition and parse an Akai program.
+   * Read file data on demand and convert an Akai sample to WAV.
+   */
+  const downloadSample = useCallback(
+    async (
+      targetId: number,
+      partitionData: Uint8Array,
+      fileEntry: AkaiDiskFileEntry,
+    ): Promise<Blob> => {
+      await ensureFileBlocks(targetId, fileEntry);
+      const partitions = parsePartitionTable(partitionData);
+      const partStart = partitions.length > 0
+        ? partitions[0].offsetInBlocks * BLOCK_SIZE
+        : 0;
+      const partView = partitionData.subarray(partStart);
+      const fileData = readFileData(partView, fileEntry);
+      const header = parseSampleHeaderFromDisk(fileData);
+      const pcm = extractSampleAudio(fileData, header);
+      const wav = akaiSampleToWav(header, pcm);
+      return new Blob([new Uint8Array(wav)], { type: 'audio/wav' });
+    },
+    [ensureFileBlocks],
+  );
+
+  /**
+   * Read file data on demand and parse an Akai program.
    */
   const downloadProgram = useCallback(
     async (
+      targetId: number,
       partitionData: Uint8Array,
       fileEntry: AkaiDiskFileEntry,
     ): Promise<AkaiDiskProgram> => {
-      const fileData = readFileData(partitionData, fileEntry);
+      await ensureFileBlocks(targetId, fileEntry);
+      const partitions = parsePartitionTable(partitionData);
+      const partStart = partitions.length > 0
+        ? partitions[0].offsetInBlocks * BLOCK_SIZE
+        : 0;
+      const partView = partitionData.subarray(partStart);
+      const fileData = readFileData(partView, fileEntry);
       return parseProgramFromDisk(fileData);
     },
-    [],
+    [ensureFileBlocks],
   );
 
   return {
@@ -181,6 +301,7 @@ export function useDiskBrowser(bridgeUrl: string | null) {
     loadDiskData,
     downloadSample,
     downloadProgram,
+    ensureFileBlocks,
     client,
   };
 }

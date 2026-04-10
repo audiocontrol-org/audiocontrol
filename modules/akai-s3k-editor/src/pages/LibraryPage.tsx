@@ -331,7 +331,7 @@ export function LibraryPage(): JSX.Element {
             connectionSlot={connectionSlot}
           />
         </div>
-        <div className="w-72 border-l border-neutral-700 overflow-y-auto">
+        <div className="w-[36rem] border-l border-neutral-700 overflow-y-auto">
           <DiskBrowserPanel
             bridgeUrl={getActiveScsiUrl()}
             onSaveToLibrary={root ? (file, _targetId, partitionData, volumeStartBlock) => {
