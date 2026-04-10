@@ -298,7 +298,7 @@ where
 
     info!("sending SDS Dump Header");
     s2p.scsi_midi_send(target_id, &dump_header).await?;
-    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
 
     // Wait for ACK
     wait_for_ack(s2p, target_id, 30).await
@@ -313,9 +313,9 @@ where
         let pkt = encode_sds_data_packet(channel, pkt_num, samples, offset, samples_per_packet);
 
         s2p.scsi_midi_send(target_id, &pkt).await?;
-        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
 
-        wait_for_ack(s2p, target_id, 15).await
+        wait_for_ack(s2p, target_id, 30).await
             .map_err(|e| format!("no ACK for packet {pkt_num}: {e}"))?;
 
         offset += samples_per_packet;
@@ -331,8 +331,8 @@ where
         );
     }
 
-    // Wait for device to commit the sample
-    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    // Brief pause for device to commit the sample
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
     info!(total, "sample upload complete");
     Ok(total)
@@ -387,7 +387,7 @@ fn encode_sds_data_packet(
 /// Returns Ok on ACK, Err on timeout or NAK.
 async fn wait_for_ack(s2p: &S2pClient, target_id: u8, max_retries: u32) -> Result<(), String> {
     for _ in 0..max_retries {
-        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
         let pending = s2p.scsi_midi_poll(target_id).await?;
         if pending == 0 {
             continue;
@@ -395,11 +395,14 @@ async fn wait_for_ack(s2p: &S2pClient, target_id: u8, max_retries: u32) -> Resul
         let data = s2p.scsi_midi_read(target_id, pending).await?;
         let (messages, _) = extract_sysex_messages(&data);
         for msg in &messages {
-            if msg.len() >= 6 && msg[1] == 0x7E && msg[3] == 0x7F {
-                return Ok(()); // ACK
-            }
-            if msg.len() >= 6 && msg[1] == 0x7E && msg[3] == 0x7E {
-                return Err("NAK received".to_string());
+            if msg.len() >= 6 && msg[1] == 0x7E {
+                match msg[3] {
+                    0x7F => return Ok(()),                          // ACK
+                    0x7E => return Err("NAK received".to_string()), // NAK
+                    0x7D => return Err("transfer cancelled by device".to_string()), // Cancel
+                    0x7C => continue,                               // Wait — keep polling
+                    _ => {}
+                }
             }
         }
     }

@@ -473,8 +473,13 @@ async fn handle_ws_sample_upload(
             return;
         }
 
-        // Wait for the upload to complete (120s timeout)
-        let result = match tokio::time::timeout(Duration::from_secs(120), reply_rx).await {
+        // Timeout scales with sample count: ~200ms per 40-sample packet + margin.
+        // Minimum 60s, no upper cap — large samples can take many minutes.
+        let packets = (total as u64 + 39) / 40;
+        let timeout_secs = (packets / 4).max(60);
+        info!(total, packets, timeout_secs, "SDS upload timeout");
+
+        let result = match tokio::time::timeout(Duration::from_secs(timeout_secs), reply_rx).await {
             Ok(Ok(r)) => r,
             Ok(Err(_)) => Err("worker channel closed".to_string()),
             Err(_) => Err("upload timed out (120s)".to_string()),
