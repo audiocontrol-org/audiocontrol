@@ -58,6 +58,23 @@ interface SampleSendProgress {
   currentSample: string;
   currentIndex: number;
   totalSamples: number;
+  bytesTransferred: number;
+  totalBytes: number;
+  startTime: number;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${minutes}m ${secs}s`;
 }
 
 // =========================================================================
@@ -228,36 +245,66 @@ export function ImportInstrumentDialog({
         const samplesDir = await programDir.getDirectoryHandle('samples');
         let nextSampleNumber = updatedDeviceSampleNames.length;
 
-        for (let i = 0; i < missingSamples.length; i++) {
-          if (cancelledRef.current) {
-            setPhase('confirm');
-            return;
-          }
-
-          const baseName = missingSamples[i];
-          setSampleSendProgress({
-            currentSample: baseName,
-            currentIndex: i + 1,
-            totalSamples: missingSamples.length,
-          });
-
-          const wavFileName = `${baseName}.wav`;
+        // Pre-scan WAV sizes to calculate total bytes
+        const wavInfos: Array<{ baseName: string; wavInfo: ReturnType<typeof parseWavFile> }> = [];
+        let totalBytes = 0;
+        for (const baseName of missingSamples) {
           try {
-            const wavHandle = await samplesDir.getFileHandle(wavFileName);
+            const wavHandle = await samplesDir.getFileHandle(`${baseName}.wav`);
             const wavFile = await wavHandle.getFile();
             const wavBuffer = await wavFile.arrayBuffer();
             const wavInfo = parseWavFile(wavBuffer);
-
             if (wavInfo.sampleRate <= 0) {
               throw new Error(
                 `Sample "${baseName}" has invalid sample rate (${wavInfo.sampleRate}). ` +
                 `Re-import the program from the SCSI disk to fix.`,
               );
             }
+            totalBytes += wavInfo.samples.length * 2; // 16-bit = 2 bytes per sample
+            wavInfos.push({ baseName, wavInfo });
+          } catch (err) {
+            console.warn(`[ImportInstrument] Failed to load sample "${baseName}":`, err);
+          }
+        }
+
+        const startTime = Date.now();
+        let cumulativeBytes = 0;
+
+        for (let i = 0; i < wavInfos.length; i++) {
+          if (cancelledRef.current) {
+            setPhase('confirm');
+            return;
+          }
+
+          const { baseName, wavInfo } = wavInfos[i];
+          const sampleBytes = wavInfo.samples.length * 2;
+
+          setSampleSendProgress({
+            currentSample: baseName,
+            currentIndex: i + 1,
+            totalSamples: wavInfos.length,
+            bytesTransferred: cumulativeBytes,
+            totalBytes,
+            startTime,
+          });
+
+          try {
             await client.sendSampleViaSds(
               nextSampleNumber, wavInfo.samples, wavInfo.sampleRate,
-              { name: baseName },
+              {
+                name: baseName,
+                onProgress: (progress) => {
+                  const packetBytes = progress.packetsSent
+                    ? (progress.packetsSent / (progress.packetsTotal || 1)) * sampleBytes
+                    : 0;
+                  setSampleSendProgress((prev) => prev ? {
+                    ...prev,
+                    bytesTransferred: cumulativeBytes + packetBytes,
+                  } : prev);
+                },
+              },
             );
+            cumulativeBytes += sampleBytes;
             updatedDeviceSampleNames.push(baseName);
             nextSampleNumber++;
           } catch (err) {
@@ -363,34 +410,48 @@ export function ImportInstrumentDialog({
         </div>
       )}
 
-      {phase === 'sending-samples' && sampleSendProgress && (
-        <div className="space-y-4">
-          <DialogDescription>
-            Sending samples to device before importing program...
-          </DialogDescription>
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-sm text-gray-300">
-              <span>Sending sample {sampleSendProgress.currentIndex} / {sampleSendProgress.totalSamples}</span>
-              <span>{Math.round((sampleSendProgress.currentIndex / sampleSendProgress.totalSamples) * 100)}%</span>
+      {phase === 'sending-samples' && sampleSendProgress && (() => {
+        const pct = sampleSendProgress.totalBytes > 0
+          ? Math.round((sampleSendProgress.bytesTransferred / sampleSendProgress.totalBytes) * 100)
+          : 0;
+        const elapsed = Date.now() - sampleSendProgress.startTime;
+        const bytesPerMs = elapsed > 0 ? sampleSendProgress.bytesTransferred / elapsed : 0;
+        const remaining = sampleSendProgress.totalBytes - sampleSendProgress.bytesTransferred;
+        const etaMs = bytesPerMs > 0 ? remaining / bytesPerMs : 0;
+
+        return (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-blue-500 rounded-full transition-all duration-150"
+                  style={{ width: `${Math.max(pct, 1)}%` }}
+                />
+              </div>
+              <div className="flex justify-between text-sm text-gray-300">
+                <span>{formatBytes(sampleSendProgress.bytesTransferred)} / {formatBytes(sampleSendProgress.totalBytes)}</span>
+                <span>{pct}%</span>
+              </div>
+              <div className="flex justify-between text-xs text-gray-400">
+                <span>
+                  {elapsed > 1000 && `${formatDuration(elapsed)} elapsed`}
+                  {etaMs > 1000 && ` \u2022 ~${formatDuration(etaMs)} remaining`}
+                </span>
+                <span>{sampleSendProgress.currentIndex} / {sampleSendProgress.totalSamples} samples</span>
+              </div>
+              <p className="text-xs text-gray-500 truncate">{sampleSendProgress.currentSample}</p>
             </div>
-            <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-500 rounded-full transition-all duration-150"
-                style={{ width: `${Math.round((sampleSendProgress.currentIndex / sampleSendProgress.totalSamples) * 100)}%` }}
-              />
-            </div>
-            <p className="text-xs text-gray-400 truncate">{sampleSendProgress.currentSample}</p>
+            <DialogActions>
+              <button
+                className="ac-btn ac-btn-sm ac-btn-secondary"
+                onClick={() => { cancelledRef.current = true; }}
+              >
+                Cancel
+              </button>
+            </DialogActions>
           </div>
-          <DialogActions>
-            <button
-              className="ac-btn ac-btn-sm ac-btn-secondary"
-              onClick={() => { cancelledRef.current = true; }}
-            >
-              Cancel
-            </button>
-          </DialogActions>
-        </div>
-      )}
+        );
+      })()}
 
       {phase === 'importing' && importProgress && (
         <div className="space-y-4">

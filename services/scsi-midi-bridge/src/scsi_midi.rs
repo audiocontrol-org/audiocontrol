@@ -244,6 +244,7 @@ pub async fn upload_sample<F>(
     sample_rate: u32,
     samples: &[i16],
     mut on_progress: F,
+    cancelled: &std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<u32, String>
 where
     F: FnMut(u32, u32),
@@ -253,7 +254,7 @@ where
 
     s2p.scsi_midi_enable(target_id).await?;
     let result = upload_sample_inner(
-        s2p, target_id, sample_number, channel, sample_rate, samples, &mut on_progress,
+        s2p, target_id, sample_number, channel, sample_rate, samples, &mut on_progress, cancelled,
     ).await;
     let _ = s2p.scsi_midi_disable(target_id).await;
     result
@@ -267,6 +268,7 @@ async fn upload_sample_inner<F>(
     sample_rate: u32,
     samples: &[i16],
     on_progress: &mut F,
+    cancelled: &std::sync::Arc<std::sync::atomic::AtomicBool>,
 ) -> Result<u32, String>
 where
     F: FnMut(u32, u32),
@@ -298,9 +300,6 @@ where
 
     info!("sending SDS Dump Header");
     s2p.scsi_midi_send(target_id, &dump_header).await?;
-    tokio::time::sleep(std::time::Duration::from_millis(50)).await;
-
-    // Wait for ACK
     wait_for_ack(s2p, target_id, 30).await
         .map_err(|e| format!("no ACK for dump header: {e}"))?;
 
@@ -310,11 +309,14 @@ where
     let mut offset = 0usize;
 
     while offset < samples.len() {
+        if cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+            info!("SDS upload cancelled by client disconnect");
+            return Err("upload cancelled".to_string());
+        }
+
         let pkt = encode_sds_data_packet(channel, pkt_num, samples, offset, samples_per_packet);
 
         s2p.scsi_midi_send(target_id, &pkt).await?;
-        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
-
         wait_for_ack(s2p, target_id, 30).await
             .map_err(|e| format!("no ACK for packet {pkt_num}: {e}"))?;
 
@@ -330,9 +332,6 @@ where
             "SDS upload packet sent"
         );
     }
-
-    // Brief pause for device to commit the sample
-    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
     info!(total, "sample upload complete");
     Ok(total)
@@ -386,10 +385,21 @@ fn encode_sds_data_packet(
 /// Poll+read until we get an ACK (F0 7E ch 7F pp F7).
 /// Returns Ok on ACK, Err on timeout or NAK.
 async fn wait_for_ack(s2p: &S2pClient, target_id: u8, max_retries: u32) -> Result<(), String> {
+    let mut delay_ms: u64 = 1;
+    let max_delay_ms: u64 = 50;
+    let mut total_ms: u64 = 0;
+    let hard_timeout_ms: u64 = 5000;
+
     for _ in 0..max_retries {
-        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        tokio::time::sleep(std::time::Duration::from_millis(delay_ms)).await;
+        total_ms += delay_ms;
+        if total_ms > hard_timeout_ms {
+            return Err(format!("timeout waiting for ACK after {total_ms}ms"));
+        }
+
         let pending = s2p.scsi_midi_poll(target_id).await?;
         if pending == 0 {
+            delay_ms = (delay_ms * 2).min(max_delay_ms);
             continue;
         }
         let data = s2p.scsi_midi_read(target_id, pending).await?;
@@ -400,13 +410,17 @@ async fn wait_for_ack(s2p: &S2pClient, target_id: u8, max_retries: u32) -> Resul
                     0x7F => return Ok(()),                          // ACK
                     0x7E => return Err("NAK received".to_string()), // NAK
                     0x7D => return Err("transfer cancelled by device".to_string()), // Cancel
-                    0x7C => continue,                               // Wait — keep polling
+                    0x7C => {                                       // Wait — reset backoff
+                        delay_ms = 1;
+                        continue;
+                    }
                     _ => {}
                 }
             }
         }
+        delay_ms = (delay_ms * 2).min(max_delay_ms);
     }
-    Err("timeout waiting for ACK".to_string())
+    Err("timeout waiting for ACK: max retries exceeded".to_string())
 }
 
 // ==========================================================================
