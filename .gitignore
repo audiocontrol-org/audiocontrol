@@ -51,3 +51,6 @@ modules/*/LICENSE
 .devenv/
 .devenv.flake.nix
 devenv.lock
+
+# Session analyzer (cloned tool, not tracked)
+tools/session-analyzer/
