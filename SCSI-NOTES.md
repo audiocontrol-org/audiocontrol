@@ -22,6 +22,96 @@ Browser ──HTTP/WS──► scsi-midi-bridge (Pi:7033)
 
 ---
 
+## 2026-04-02: MESA II Binary Analysis
+
+### Strategy
+Install MESA II v1.2 (Akai's official Mac OS 9 SCSI editor) in SheepShaver to analyze how Akai's own software communicates with the S3000XL over SCSI.
+
+### What we found
+- MESA II is a plugin architecture: main app + Sampler Editor 2.3 + SCSI Plug 2.1.2
+- All code in Mac OS 9 resource forks (68k/PPC code resources)
+- Extracted resource forks and analyzed with `strings` and manual 68k disassembly
+
+### Key discoveries from Sampler Editor 2.3
+- `GetSampleData` uses opcode `0x0B` (SDATA) with `'BULK'` transfer mode and 192-byte chunks
+- `BuildSampleDataRequest(buf, opcode=0x0B, channel, sampleNum, offset, length)` — sample data transfer uses SDATA, not RSPACK
+- `SendAudioFileToSampler` and `SendAudioBufferToSampler` — dedicated sample upload methods
+- Critical string: "Sample data can only be transferred if you are using SCSI to communicate with the sampler. You are currently using MIDI."
+- `NewProgram(name, short)` exists — suggests programmatic sample/program creation
+
+### Key discoveries from SCSI Plug 2.1.2
+- `SetSCSIMIDIMode(short scsiId, uchar midiMode, uchar thruMode)` — CDB 0x09 with both MIDI and thru flags
+- `SMSendData` — CDB 0x0C with flag byte `$80` (reply expected) or `$00` (fire-and-forget)
+- `SMDataByteEnquiry` — CDB 0x0D with flag byte `$80`
+- `SMDispatchReply` — CDB 0x0E, terminates on `$F7` (SysEx end)
+- Complete MIDI transaction flow: enable → drain → send (flag $80) → poll → read → disable
+
+### Documentation produced
+- `docs/1.0/scsi-midi-bridge/mesa-ii-analysis.md` — full binary analysis
+- `mesa-plug-harness` repo — 68k emulator harness for running SCSI Plug code
+
+---
+
+## 2026-04-06 19:40 PDT: Mesa Plug Harness — 68k Emulation
+
+### Strategy
+Build a standalone 68k CPU emulator (using Musashi) that can execute the SCSI Plug's code resources directly, intercepting SCSIAction calls to observe the exact CDB bytes MESA sends.
+
+### What we built
+- Standalone C harness loading the SCSI Plug binary into Musashi 68k emulator
+- SCSIAction trap interception to capture CDBs
+- Extracted complete SCSI protocol reference from the binary
+
+### Documentation produced
+- `mesa-plug-harness/SCSI-PROTOCOL.md` — definitive CDB reference with flag bytes, timeout values, error handling
+
+---
+
+## 2026-04-06 20:31 PDT: First S3000XL Communication via SCSI
+
+### Milestone
+First successful MIDI-over-SCSI conversation with a real S3000XL using our own code (not MESA). The mesa-plug-harness `s3k-client` sent RSLIST and received the sample name list.
+
+### Rapid progress (20:31 - 23:31)
+- 20:31 — First SCSI communication
+- 20:34 — Bridge working
+- 20:46 — Read sample and program names
+- 21:19 — Standalone S3K client
+- 21:56 — Fixed sample header parser
+- 22:18 — Download sample audio via RSPACK/SDS
+- 22:37 — Program header, keygroup header, status, drain
+- 22:42 — Write/upload/delete operations
+- 22:49 — CLI for upload, delete, verified round-trip
+- 23:02 — Clone program
+- 23:26 — Read-modify-write + misc data
+- 23:31 — Program creation works
+
+---
+
+## 2026-04-06: SCSI Sample Data Transfer Investigation
+
+### Strategy
+Systematically test every possible way to read/write sample audio data over the SCSI MIDI channel.
+
+### What works
+- All metadata (RPLIST, RSLIST, RPDATA, RKDATA, RSDATA, RMDATA)
+- All parameter writes (PDATA, KDATA, SDATA, MDATA)
+- SDS sample upload (client → device)
+- SDS Dump Header response (Dump Request → device returns header)
+- Front panel dump (device-initiated SDS data packets arrive)
+
+### What doesn't work
+- RSPACK (opcode 0x0C) — device accepts but returns 0 bytes via MIDI_POLL
+- SDS Data Packets after Dump Request — header arrives but data packets don't (ACK timing too slow over network)
+
+### Key insight
+The ACK handshake must happen at SCSI bus speed, not network speed. Each ACK goes through: Node.js → HTTP → bridge → s2p → SCSI bus. The solution (later implemented) was batching.
+
+### Documentation produced
+- `docs/1.0/scsi-sample-transfer/scsi-sample-data-findings.md`
+
+---
+
 ## 2026-04-09 ~16:00 PDT: SDS Upload — First Working Transfer
 
 ### Strategy
