@@ -110,7 +110,7 @@ async function extractSample(
 }
 
 /** Collect unique sample names referenced by a program. */
-function collectSampleNames(fileData: Uint8Array): string[] {
+export function collectSampleNames(fileData: Uint8Array): string[] {
   const program = parseProgramFromDisk(fileData);
   const names = new Set<string>();
   for (const kg of program.keygroups) {
@@ -123,7 +123,7 @@ function collectSampleNames(fileData: Uint8Array): string[] {
 }
 
 /** Estimate total bytes for a set of files. */
-function estimateTotalBytes(
+export function estimateTotalBytes(
   file: AkaiDiskFileEntry,
   sampleNames: string[],
   partitionData: Uint8Array,
@@ -142,8 +142,10 @@ function estimateTotalBytes(
   return total;
 }
 
+export type { SaveProgress };
+
 /** Save to S3K library section (raw Akai bytes, no translation). */
-async function saveToS3kLibrary(
+export async function saveToS3kLibrary(
   file: AkaiDiskFileEntry,
   fileData: Uint8Array,
   partitionData: Uint8Array,
@@ -199,7 +201,7 @@ async function saveToS3kLibrary(
 }
 
 /** Save to common library section (translated to vendor-neutral format). */
-async function saveToCommonLibrary(
+export async function saveToCommonLibrary(
   file: AkaiDiskFileEntry,
   fileData: Uint8Array,
   partitionData: Uint8Array,
@@ -208,6 +210,7 @@ async function saveToCommonLibrary(
   libraryRoot: StorageDirectoryHandle,
   onProgress: (update: Partial<SaveProgress>) => void,
   ensureBlocks?: (fileEntry: AkaiDiskFileEntry) => Promise<void>,
+  targetPath: string[] = [],
 ): Promise<number> {
   if (isAkaiSample(file.type)) {
     const header = parseSampleHeaderFromDisk(fileData);
@@ -220,7 +223,7 @@ async function saveToCommonLibrary(
       name,
       yaml: commonSample as SampleSavePayload['yaml'],
       wavData: wav.buffer as ArrayBuffer,
-    });
+    }, targetPath);
     onProgress({ bytesTransferred: file.size, currentIndex: 1 });
     return 1;
   } else if (isAkaiProgram(file.type)) {

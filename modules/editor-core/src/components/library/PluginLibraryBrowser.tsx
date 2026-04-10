@@ -79,8 +79,9 @@ export interface PluginLibraryBrowserProps {
   onFileDrop?: (categoryId: string, files: File[], targetPath: string[]) => Promise<void>;
 
   /** Called when a custom data item is dropped on a category.
+   * targetPath is the directory path within the category (empty for root).
    * Returns true if the drop was handled. */
-  onExternalDrop?: (categoryId: string, dataTransfer: DataTransfer) => boolean;
+  onExternalDrop?: (categoryId: string, dataTransfer: DataTransfer, targetPath: string[]) => boolean;
 
   /** Device memory state (plugin-defined structure, opaque to framework) */
   deviceMemoryState?: unknown;
@@ -291,6 +292,9 @@ export function PluginLibraryBrowser({
   const handleSectionDragOver = useCallback(
     (categoryId: string) => (e: React.DragEvent) => {
       if (!onExternalDrop) return;
+      // Only accept drags that have custom data types (not plain OS file drags
+      // unless we specifically handle those elsewhere)
+      if (e.dataTransfer.types.length === 0) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
       setDropTargetCategory(categoryId);
@@ -312,7 +316,7 @@ export function PluginLibraryBrowser({
     (categoryId: string) => (e: React.DragEvent) => {
       e.preventDefault();
       setDropTargetCategory(null);
-      onExternalDrop?.(categoryId, e.dataTransfer);
+      onExternalDrop?.(categoryId, e.dataTransfer, []);
     },
     [onExternalDrop],
   );
@@ -445,6 +449,19 @@ export function PluginLibraryBrowser({
                 onDragOver={handleSectionDragOver(category.categoryId)}
                 onDragLeave={handleSectionDragLeave()}
                 onDrop={handleSectionDrop(category.categoryId)}
+                onTreeDragOver={onExternalDrop ? (_node, e) => {
+                  if (e.dataTransfer.types.length > 0) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'copy';
+                    return true;
+                  }
+                  return false;
+                } : undefined}
+                onTreeDrop={onExternalDrop ? (node, e) => {
+                  const nodePath = (node.meta?.path as string[] | undefined) ?? [];
+                  const targetPath = [...nodePath, node.name];
+                  onExternalDrop(category.categoryId, e.dataTransfer, targetPath);
+                } : undefined}
                 headerActions={category.renderHeaderActions?.(
                   createCategoryCallbacks(category.categoryId),
                 )}

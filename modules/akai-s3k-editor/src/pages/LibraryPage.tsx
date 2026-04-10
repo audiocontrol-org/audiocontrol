@@ -50,7 +50,16 @@ import { useS3kLibraryStrategy } from '@/hooks/useS3kLibraryStrategy';
 import { useS3kTransferCallbacks } from '@/hooks/useS3kTransferCallbacks';
 import { promoteToCommonArea } from '@/lib/program-promotion';
 import { DiskBrowserPanel, DISK_ITEM_MIME, type DiskDragPayload, type DiskBrowserHandle } from '@/components/library/DiskBrowserPanel';
-import { DiskToLibraryDialog } from '@/components/library/DiskToLibraryDialog';
+import { isAkaiSample, isAkaiProgram } from '@audiocontrol/sampler-devices/s3k';
+import {
+  DiskToLibraryDialog,
+  saveToCommonLibrary,
+  saveToS3kLibrary,
+  collectSampleNames,
+  estimateTotalBytes,
+  type SaveProgress,
+} from '@/components/library/DiskToLibraryDialog';
+import { readFileData } from '@audiocontrol/sampler-devices/s3k';
 import { getActiveScsiUrl } from '@audiocontrol/editor-core';
 import type { AkaiDiskFileEntry } from '@audiocontrol/sampler-devices/s3k';
 import { SendSampleDialog } from '@/components/library/SendSampleDialog';
@@ -96,6 +105,17 @@ interface DiskToLibraryDialogState {
   ensureFileBlocks?: (fileEntry: AkaiDiskFileEntry) => Promise<void>;
 }
 
+interface DropTransferState {
+  active: boolean;
+  fileName: string;
+  progress: SaveProgress | null;
+  error: string | null;
+}
+
+const DROP_TRANSFER_IDLE: DropTransferState = {
+  active: false, fileName: '', progress: null, error: null,
+};
+
 const DISK_TO_LIBRARY_CLOSED: DiskToLibraryDialogState = {
   open: false, file: null, partitionData: null, volumeStartBlock: 0,
 };
@@ -135,25 +155,93 @@ export function LibraryPage(): JSX.Element {
   const [receiveDialog, setReceiveDialog] = useState<ReceiveDialogState>(RECEIVE_DIALOG_CLOSED);
   const [diskToLibrary, setDiskToLibrary] = useState<DiskToLibraryDialogState>(DISK_TO_LIBRARY_CLOSED);
   const diskBrowserRef = useRef<DiskBrowserHandle>(null);
+  const [dropTransfer, setDropTransfer] = useState<DropTransferState>(DROP_TRANSFER_IDLE);
 
-  const handleExternalDrop = useCallback((_categoryId: string, dataTransfer: DataTransfer): boolean => {
+  const handleExternalDrop = useCallback((categoryId: string, dataTransfer: DataTransfer, targetPath: string[] = []): boolean => {
     if (!root) return false;
     const raw = dataTransfer.getData(DISK_ITEM_MIME);
     if (!raw) return false;
 
     const payload = JSON.parse(raw) as DiskDragPayload;
+
+    // Validate: samples only on sample categories, programs only on program categories.
+    const isSample = isAkaiSample(payload.file.type);
+    const isProgram = isAkaiProgram(payload.file.type);
+    const sampleCategories = new Set(['samples']);
+    const programCategories = new Set(['common-programs', 's3k-programs']);
+
+    if (isSample && !sampleCategories.has(categoryId)) return false;
+    if (isProgram && !programCategories.has(categoryId)) return false;
+
     const resolved = diskBrowserRef.current?.resolveDragPayload(payload);
     if (!resolved) return false;
 
-    setDiskToLibrary({
-      open: true,
-      file: payload.file,
-      partitionData: resolved.partitionData,
-      volumeStartBlock: payload.volumeStartBlock,
-      ensureFileBlocks: resolved.ensureFileBlocks,
-    });
+    // Determine save target from drop category
+    const saveTarget = categoryId === 's3k-programs' ? 's3k' : 'common';
+    const name = payload.file.name.trim();
+    const libraryRoot = root;
+
+    // Save directly — no confirmation dialog
+    setDropTransfer({ active: true, fileName: name, progress: null, error: null });
+
+    (async () => {
+      try {
+        await resolved.ensureFileBlocks(payload.file);
+        const fileData = readFileData(resolved.partitionData, payload.file);
+
+        const sampleNames = isProgram ? collectSampleNames(fileData) : [];
+        const totalItems = 1 + sampleNames.length;
+        const totalBytes = estimateTotalBytes(
+          payload.file, sampleNames, resolved.partitionData, payload.volumeStartBlock,
+        );
+
+        setDropTransfer((prev) => ({
+          ...prev,
+          progress: {
+            currentItem: name,
+            currentIndex: 0,
+            totalItems,
+            bytesTransferred: 0,
+            totalBytes,
+            startTime: Date.now(),
+          },
+        }));
+
+        const onProgress = (update: Partial<SaveProgress>) => {
+          setDropTransfer((prev) => ({
+            ...prev,
+            progress: prev.progress ? { ...prev.progress, ...update } : null,
+          }));
+        };
+
+        if (saveTarget === 'common') {
+          await saveToCommonLibrary(
+            payload.file, fileData, resolved.partitionData,
+            payload.volumeStartBlock, name, libraryRoot, onProgress,
+            resolved.ensureFileBlocks, targetPath,
+          );
+        } else {
+          await saveToS3kLibrary(
+            payload.file, fileData, resolved.partitionData,
+            payload.volumeStartBlock, name, libraryRoot, onProgress,
+            resolved.ensureFileBlocks,
+          );
+        }
+
+        await refreshLibrary();
+        // Auto-dismiss after a brief success display
+        setTimeout(() => setDropTransfer(DROP_TRANSFER_IDLE), 2000);
+      } catch (err) {
+        setDropTransfer((prev) => ({
+          ...prev,
+          error: err instanceof Error ? err.message : String(err),
+        }));
+        setTimeout(() => setDropTransfer(DROP_TRANSFER_IDLE), 5000);
+      }
+    })();
+
     return true;
-  }, [root]);
+  }, [root, refreshLibrary]);
 
   const programTransfer = useProgramTransfer(isDeviceConnected, !!root);
   const drumKitTransfer = useDrumKitTransfer(isDeviceConnected, !!root);
@@ -499,6 +587,41 @@ export function LibraryPage(): JSX.Element {
           libraryRoot={root}
           onSave={refreshLibrary}
         />
+      )}
+
+      {/* Drop transfer progress toast */}
+      {dropTransfer.active && (
+        <div className="fixed bottom-4 right-4 w-80 bg-gray-800 border border-gray-600 rounded-lg shadow-xl p-4 z-50">
+          <div className="text-sm font-medium text-gray-100 mb-2">
+            {dropTransfer.error
+              ? 'Transfer failed'
+              : dropTransfer.progress && dropTransfer.progress.currentIndex >= dropTransfer.progress.totalItems
+                ? `Saved ${dropTransfer.fileName}`
+                : `Saving ${dropTransfer.fileName}...`
+            }
+          </div>
+          {dropTransfer.error && (
+            <div className="text-xs text-red-400">{dropTransfer.error}</div>
+          )}
+          {dropTransfer.progress && !dropTransfer.error && (
+            <>
+              <div className="w-full bg-gray-700 rounded-full h-1.5 mb-1">
+                <div
+                  className="bg-blue-500 h-1.5 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${dropTransfer.progress.totalBytes > 0
+                      ? Math.max(2, Math.round((dropTransfer.progress.bytesTransferred / dropTransfer.progress.totalBytes) * 100))
+                      : 2}%`,
+                  }}
+                />
+              </div>
+              <div className="text-xs text-gray-400 flex justify-between">
+                <span>{dropTransfer.progress.currentIndex} / {dropTransfer.progress.totalItems} items</span>
+                <span className="truncate ml-2">{dropTransfer.progress.currentItem}</span>
+              </div>
+            </>
+          )}
+        </div>
       )}
     </div>
   );

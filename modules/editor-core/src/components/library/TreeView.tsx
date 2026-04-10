@@ -212,7 +212,9 @@ function TreeNodeRow({
     if (allowed) {
       e.preventDefault();
       e.stopPropagation();
-      e.dataTransfer.dropEffect = 'move';
+      // Use 'copy' if the source only allows copy (e.g., disk browser items)
+      e.dataTransfer.dropEffect =
+        e.dataTransfer.effectAllowed === 'copy' ? 'copy' : 'move';
     }
   }, [node, isDirectory, onDragOver]);
 
