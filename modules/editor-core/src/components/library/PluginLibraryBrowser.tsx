@@ -78,6 +78,10 @@ export interface PluginLibraryBrowserProps {
   /** Called when a file is dropped on a category */
   onFileDrop?: (categoryId: string, files: File[], targetPath: string[]) => Promise<void>;
 
+  /** Called when a custom data item is dropped on a category.
+   * Returns true if the drop was handled. */
+  onExternalDrop?: (categoryId: string, dataTransfer: DataTransfer) => boolean;
+
   /** Device memory state (plugin-defined structure, opaque to framework) */
   deviceMemoryState?: unknown;
 
@@ -122,6 +126,7 @@ export function PluginLibraryBrowser({
   onDelete,
   onRename,
   onContextMenuAction,
+  onExternalDrop,
   deviceMemoryState,
   onDeviceMemoryAction,
   previewState,
@@ -280,6 +285,38 @@ export function PluginLibraryBrowser({
     [plugin.categories],
   );
 
+  // External drop handling (e.g., disk browser items)
+  const [dropTargetCategory, setDropTargetCategory] = useState<string | null>(null);
+
+  const handleSectionDragOver = useCallback(
+    (categoryId: string) => (e: React.DragEvent) => {
+      if (!onExternalDrop) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+      setDropTargetCategory(categoryId);
+    },
+    [onExternalDrop],
+  );
+
+  const handleSectionDragLeave = useCallback(
+    () => (e: React.DragEvent) => {
+      // Only clear if leaving the section entirely (not entering a child)
+      if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+        setDropTargetCategory(null);
+      }
+    },
+    [],
+  );
+
+  const handleSectionDrop = useCallback(
+    (categoryId: string) => (e: React.DragEvent) => {
+      e.preventDefault();
+      setDropTargetCategory(null);
+      onExternalDrop?.(categoryId, e.dataTransfer);
+    },
+    [onExternalDrop],
+  );
+
   // Layout classes
   const layoutClass = hasDeviceMemory
     ? 'ac-plugin-library-browser ac-plugin-library-browser--three-column'
@@ -403,7 +440,11 @@ export function PluginLibraryBrowser({
                 }
                 enableInlineRename={supportsRename(category.categoryId)}
                 emptyMessage={category.emptyMessage}
-                dropMessage={category.dropMessage}
+                dropMessage={category.dropMessage ?? 'Drop to add'}
+                isDragOver={dropTargetCategory === category.categoryId}
+                onDragOver={handleSectionDragOver(category.categoryId)}
+                onDragLeave={handleSectionDragLeave()}
+                onDrop={handleSectionDrop(category.categoryId)}
                 headerActions={category.renderHeaderActions?.(
                   createCategoryCallbacks(category.categoryId),
                 )}

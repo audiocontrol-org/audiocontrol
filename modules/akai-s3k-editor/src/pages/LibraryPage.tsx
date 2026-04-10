@@ -49,7 +49,7 @@ import { useS3kSelectionHandlers } from '@/hooks/useS3kSelectionHandlers';
 import { useS3kLibraryStrategy } from '@/hooks/useS3kLibraryStrategy';
 import { useS3kTransferCallbacks } from '@/hooks/useS3kTransferCallbacks';
 import { promoteToCommonArea } from '@/lib/program-promotion';
-import { DiskBrowserPanel } from '@/components/library/DiskBrowserPanel';
+import { DiskBrowserPanel, DISK_ITEM_MIME, type DiskDragPayload, type DiskBrowserHandle } from '@/components/library/DiskBrowserPanel';
 import { DiskToLibraryDialog } from '@/components/library/DiskToLibraryDialog';
 import { getActiveScsiUrl } from '@audiocontrol/editor-core';
 import type { AkaiDiskFileEntry } from '@audiocontrol/sampler-devices/s3k';
@@ -134,6 +134,26 @@ export function LibraryPage(): JSX.Element {
   const [sendDialog, setSendDialog] = useState<SendDialogState>(SEND_DIALOG_CLOSED);
   const [receiveDialog, setReceiveDialog] = useState<ReceiveDialogState>(RECEIVE_DIALOG_CLOSED);
   const [diskToLibrary, setDiskToLibrary] = useState<DiskToLibraryDialogState>(DISK_TO_LIBRARY_CLOSED);
+  const diskBrowserRef = useRef<DiskBrowserHandle>(null);
+
+  const handleExternalDrop = useCallback((_categoryId: string, dataTransfer: DataTransfer): boolean => {
+    if (!root) return false;
+    const raw = dataTransfer.getData(DISK_ITEM_MIME);
+    if (!raw) return false;
+
+    const payload = JSON.parse(raw) as DiskDragPayload;
+    const resolved = diskBrowserRef.current?.resolveDragPayload(payload);
+    if (!resolved) return false;
+
+    setDiskToLibrary({
+      open: true,
+      file: payload.file,
+      partitionData: resolved.partitionData,
+      volumeStartBlock: payload.volumeStartBlock,
+      ensureFileBlocks: resolved.ensureFileBlocks,
+    });
+    return true;
+  }, [root]);
 
   const programTransfer = useProgramTransfer(isDeviceConnected, !!root);
   const drumKitTransfer = useDrumKitTransfer(isDeviceConnected, !!root);
@@ -326,6 +346,7 @@ export function LibraryPage(): JSX.Element {
             onMove={libraryOps.onMove}
             onRename={libraryOps.onRename}
             onFileDrop={libraryOps.onFileDrop}
+            onExternalDrop={handleExternalDrop}
             onContextMenuAction={libraryOps.onContextMenuAction}
             deviceMemoryState={deviceMemoryState}
             previewState={previewState}
@@ -336,6 +357,7 @@ export function LibraryPage(): JSX.Element {
         </div>
         <div className="w-[36rem] border-l border-neutral-700 overflow-y-auto">
           <DiskBrowserPanel
+            browserRef={diskBrowserRef}
             bridgeUrl={getActiveScsiUrl()}
             onSaveToLibrary={root ? (file, _targetId, partitionData, volumeStartBlock, ensureFileBlocks) => {
               setDiskToLibrary({ open: true, file, partitionData, volumeStartBlock, ensureFileBlocks });

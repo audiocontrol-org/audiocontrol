@@ -6,7 +6,7 @@
  * Programs display their keygroup structure on selection.
  */
 
-import { useEffect, useState, type MouseEvent } from 'react';
+import { useEffect, useState, useImperativeHandle, type MouseEvent } from 'react';
 import type { AkaiDiskFileEntry, AkaiDiskVolumeEntry } from '@audiocontrol/sampler-devices/s3k';
 import {
   useDiskBrowser,
@@ -20,10 +20,28 @@ import {
 import { BLOCK_SIZE } from '@audiocontrol/sampler-devices/s3k';
 import { ContextMenu, ChevronIcon, type ContextMenuAction } from '@audiocontrol/editor-core';
 
+/** Custom MIME type for dragging disk browser items to the library. */
+export const DISK_ITEM_MIME = 'application/x-akai-disk-item';
+
+/** Serializable drag payload for disk browser items. */
+export interface DiskDragPayload {
+  file: AkaiDiskFileEntry;
+  targetId: number;
+  volumeStartBlock: number;
+}
+
 interface VolumeWithFiles {
   name: string;
   startBlock: number;
   files: AkaiDiskFileEntry[];
+}
+
+/** Imperative handle for resolving disk drag payloads to save context. */
+export interface DiskBrowserHandle {
+  resolveDragPayload(payload: DiskDragPayload): {
+    partitionData: Uint8Array;
+    ensureFileBlocks: (fileEntry: AkaiDiskFileEntry) => Promise<void>;
+  } | null;
 }
 
 interface Props {
@@ -36,9 +54,11 @@ interface Props {
     volumeStartBlock: number,
     ensureFileBlocks: (fileEntry: AkaiDiskFileEntry) => Promise<void>,
   ) => void;
+  /** Ref for imperative access to disk browser state (for drag-drop). */
+  browserRef?: React.Ref<DiskBrowserHandle>;
 }
 
-export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
+export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Props) {
   const {
     loading,
     error,
@@ -48,6 +68,26 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
     partitionData,
     ensureFileBlocks,
   } = useDiskBrowser(bridgeUrl);
+
+  // Expose imperative handle for drag-drop resolution
+  useImperativeHandle(browserRef, () => ({
+    resolveDragPayload(payload: DiskDragPayload) {
+      const data = partitionData.get(payload.targetId);
+      if (!data) return null;
+      const partitions = parsePartitionTable(data);
+      for (const partition of partitions) {
+        const partStart = partition.offsetInBlocks * BLOCK_SIZE;
+        if (partStart + BLOCK_SIZE > data.length) continue;
+        const partData = data.subarray(partStart);
+        const vols = parseVolumeList(partData);
+        if (vols.some(v => v.startBlock === payload.volumeStartBlock)) {
+          const boundEnsure = (f: AkaiDiskFileEntry) => ensureFileBlocks(payload.targetId, f);
+          return { partitionData: partData, ensureFileBlocks: boundEnsure };
+        }
+      }
+      return null;
+    },
+  }), [partitionData, ensureFileBlocks]);
 
   const [expandedTarget, setExpandedTarget] = useState<number | null>(null);
   const [loadingTarget, setLoadingTarget] = useState<number | null>(null);
@@ -249,6 +289,7 @@ function TargetNode({
           <VolumeNode
             key={vi}
             volume={vol}
+            targetId={target.id}
             selectedFile={selectedFile}
             onSelectFile={onSelectFile}
             onSaveToLibrary={onSaveToLibrary ? (file) => onSaveToLibrary(file, vol) : undefined}
@@ -264,6 +305,7 @@ function TargetNode({
 
 interface VolumeNodeProps {
   volume: VolumeWithFiles;
+  targetId: number;
   selectedFile: AkaiDiskFileEntry | null;
   onSelectFile: (file: AkaiDiskFileEntry) => void;
   onSaveToLibrary?: (file: AkaiDiskFileEntry) => void;
@@ -271,6 +313,7 @@ interface VolumeNodeProps {
 
 function VolumeNode({
   volume,
+  targetId,
   selectedFile,
   onSelectFile,
   onSaveToLibrary,
@@ -295,6 +338,8 @@ function VolumeNode({
         <FileNode
           key={fi}
           file={file}
+          targetId={targetId}
+          volumeStartBlock={volume.startBlock}
           isSelected={selectedFile === file}
           onSelect={() => onSelectFile(file)}
           onSaveToLibrary={onSaveToLibrary ? () => onSaveToLibrary(file) : undefined}
@@ -306,12 +351,14 @@ function VolumeNode({
 
 interface FileNodeProps {
   file: AkaiDiskFileEntry;
+  targetId: number;
+  volumeStartBlock: number;
   isSelected: boolean;
   onSelect: () => void;
   onSaveToLibrary?: () => void;
 }
 
-function FileNode({ file, isSelected, onSelect, onSaveToLibrary }: FileNodeProps) {
+function FileNode({ file, targetId, volumeStartBlock, isSelected, onSelect, onSaveToLibrary }: FileNodeProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const typeLabel =
@@ -329,6 +376,12 @@ function FileNode({ file, isSelected, onSelect, onSaveToLibrary }: FileNodeProps
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    const payload: DiskDragPayload = { file, targetId, volumeStartBlock };
+    e.dataTransfer.setData(DISK_ITEM_MIME, JSON.stringify(payload));
+    e.dataTransfer.effectAllowed = 'copy';
+  };
+
   const actions: ContextMenuAction[] = [];
   if (onSaveToLibrary) {
     actions.push({
@@ -341,12 +394,14 @@ function FileNode({ file, isSelected, onSelect, onSaveToLibrary }: FileNodeProps
     <>
       <button
         type="button"
+        draggable
         className={`w-full text-left flex items-center gap-1 px-6 py-0.5 text-sm rounded transition-colors cursor-pointer ${
           isSelected
             ? 'bg-blue-600 text-white'
             : 'text-gray-300 hover:bg-gray-700'
         }`}
         onClick={onSelect}
+        onDragStart={handleDragStart}
         onContextMenu={handleContextMenu}
       >
         <span>{file.name}</span>
