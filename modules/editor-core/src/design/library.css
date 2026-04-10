@@ -782,8 +782,8 @@
 }
 
 .ac-plugin-library-browser-device-left {
-  flex: 1 1 280px;
-  min-width: 200px;
+  flex: 1 1 240px;
+  min-width: 180px;
   overflow-y: auto;
   background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
   border: 1px solid var(--ac-color-border-subtle);
@@ -792,7 +792,7 @@
 
 .ac-plugin-library-browser-device {
   flex: 0 0 auto;
-  width: 200px;
+  width: 230px;
   overflow-y: auto;
   background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
   border: 1px solid var(--ac-color-border-subtle);
