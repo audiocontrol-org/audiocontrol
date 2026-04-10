@@ -15,10 +15,15 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
-import { loadProgramMeta, loadProgramFromProgramsDir } from '@audiocontrol/sampler-library/browser';
+import {
+  loadProgramMeta,
+  loadProgramFromProgramsDir,
+  getProgramDirFromProgramsDir,
+} from '@audiocontrol/sampler-library/browser';
 import type { ProgramYaml } from '@audiocontrol/sampler-library/browser';
 import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
 import { Dialog, DialogTitle, DialogDescription, DialogActions } from '@/components/ui/Dialog';
+import { parseWavFile } from '@/lib/wav-reader';
 import {
   importInstrumentToDevice,
   resolveZoneSamples,
@@ -47,7 +52,13 @@ export interface ImportInstrumentDialogProps {
   onImportComplete: () => Promise<void>;
 }
 
-type DialogPhase = 'loading' | 'confirm' | 'importing' | 'success' | 'error';
+type DialogPhase = 'loading' | 'confirm' | 'sending-samples' | 'importing' | 'success' | 'error';
+
+interface SampleSendProgress {
+  currentSample: string;
+  currentIndex: number;
+  totalSamples: number;
+}
 
 // =========================================================================
 // Progress display
@@ -156,6 +167,7 @@ export function ImportInstrumentDialog({
   const [programMeta, setProgramMeta] = useState<ProgramYaml | null>(null);
   const [missingSamples, setMissingSamples] = useState<string[]>([]);
   const [resolvedCount, setResolvedCount] = useState(0);
+  const [sampleSendProgress, setSampleSendProgress] = useState<SampleSendProgress | null>(null);
   const [importProgress, setImportProgress] = useState<InstrumentImportProgress | null>(null);
   const [result, setResult] = useState<InstrumentImportResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -203,14 +215,60 @@ export function ImportInstrumentDialog({
   const handleImport = useCallback(async () => {
     if (!programMeta) return;
 
-    setPhase('importing');
     setErrorMessage(null);
+    let updatedDeviceSampleNames = [...deviceSampleNames];
 
+    // Phase 1: Send missing samples to device (if any and program dir available)
+    if (missingSamples.length > 0 && fromProgramsDir) {
+      setPhase('sending-samples');
+      try {
+        const programDir = await getProgramDirFromProgramsDir(libraryRoot, programDirName);
+        const samplesDir = await programDir.getDirectoryHandle('samples');
+        let nextSampleNumber = updatedDeviceSampleNames.length;
+
+        for (let i = 0; i < missingSamples.length; i++) {
+          const rawName = missingSamples[i];
+          // Strip .wav extension — zone references include it but device
+          // names and WAV filenames in the samples/ dir may vary.
+          const baseName = rawName.replace(/\.wav$/i, '');
+          setSampleSendProgress({
+            currentSample: baseName,
+            currentIndex: i + 1,
+            totalSamples: missingSamples.length,
+          });
+
+          // Try to find the WAV file in the program's samples/ directory.
+          // The file might be stored as "NAME.wav" (baseName + .wav).
+          const wavFileName = `${baseName}.wav`;
+          try {
+            const wavHandle = await samplesDir.getFileHandle(wavFileName);
+            const wavFile = await wavHandle.getFile();
+            const wavBuffer = await wavFile.arrayBuffer();
+            const wavInfo = parseWavFile(wavBuffer);
+
+            await client.sendSampleViaSds(
+              nextSampleNumber, wavInfo.samples, wavInfo.sampleRate,
+              { name: baseName },
+            );
+            updatedDeviceSampleNames.push(baseName);
+            nextSampleNumber++;
+          } catch (err) {
+            console.warn(`[ImportInstrument] Failed to send sample "${baseName}":`, err);
+            // Continue with remaining samples — some zones will be unresolved
+          }
+        }
+      } catch (err) {
+        console.warn('[ImportInstrument] Could not read program samples directory:', err);
+      }
+    }
+
+    // Phase 2: Import the program with the updated sample list
+    setPhase('importing');
     try {
       const importResult = await importInstrumentToDevice({
         client,
         program: programMeta,
-        deviceSampleNames,
+        deviceSampleNames: updatedDeviceSampleNames,
         onProgress: (progress) => {
           setImportProgress(progress);
         },
@@ -224,7 +282,7 @@ export function ImportInstrumentDialog({
       setErrorMessage(message);
       setPhase('error');
     }
-  }, [client, programMeta, deviceSampleNames, onImportComplete]);
+  }, [client, programMeta, deviceSampleNames, missingSamples, fromProgramsDir, libraryRoot, programDirName, onImportComplete]);
 
   const handleClose = useCallback(() => {
     if (phase === 'importing') return;
@@ -257,15 +315,20 @@ export function ImportInstrumentDialog({
             missingCount={missingSamples.length}
           />
 
-          {missingSamples.length > 0 && (
+          {missingSamples.length > 0 && fromProgramsDir && (
+            <div className="p-3 bg-blue-900/20 border border-blue-800/50 rounded text-xs text-blue-300">
+              {missingSamples.length} sample{missingSamples.length !== 1 ? 's' : ''} will
+              be sent to the device before importing the program.
+            </div>
+          )}
+
+          {missingSamples.length > 0 && !fromProgramsDir && (
             <MissingSamplesWarning missing={missingSamples} />
           )}
 
-          {resolvedCount > 0 && (
-            <div className="p-3 bg-orange-900/20 border border-orange-800/50 rounded text-xs text-orange-300">
-              This will create 1 new program with {resolvedCount} keygroup{resolvedCount !== 1 ? 's' : ''} on the device.
-            </div>
-          )}
+          <div className="p-3 bg-orange-900/20 border border-orange-800/50 rounded text-xs text-orange-300">
+            This will create 1 new program with {programMeta.zones.length} keygroup{programMeta.zones.length !== 1 ? 's' : ''} on the device.
+          </div>
 
           <DialogActions>
             <button
@@ -277,12 +340,38 @@ export function ImportInstrumentDialog({
             <button
               className="ac-btn ac-btn-sm ac-btn-primary"
               onClick={handleImport}
-              disabled={resolvedCount === 0}
               data-testid="import-instrument-confirm"
             >
-              Import ({resolvedCount} zone{resolvedCount !== 1 ? 's' : ''})
+              {missingSamples.length > 0 && fromProgramsDir
+                ? `Send ${missingSamples.length} samples + Import`
+                : `Import (${programMeta.zones.length} zone${programMeta.zones.length !== 1 ? 's' : ''})`
+              }
             </button>
           </DialogActions>
+        </div>
+      )}
+
+      {phase === 'sending-samples' && sampleSendProgress && (
+        <div className="space-y-4">
+          <DialogDescription>
+            Sending samples to device before importing program...
+          </DialogDescription>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm text-gray-300">
+              <span>Sending sample {sampleSendProgress.currentIndex} / {sampleSendProgress.totalSamples}</span>
+              <span>{Math.round((sampleSendProgress.currentIndex / sampleSendProgress.totalSamples) * 100)}%</span>
+            </div>
+            <div className="w-full h-3 bg-gray-700 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-500 rounded-full transition-all duration-150"
+                style={{ width: `${Math.round((sampleSendProgress.currentIndex / sampleSendProgress.totalSamples) * 100)}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-400 truncate">{sampleSendProgress.currentSample}</p>
+          </div>
+          <p className="text-xs text-gray-500">
+            Do not disconnect the device during transfer.
+          </p>
         </div>
       )}
 
