@@ -161,9 +161,10 @@ export async function importInstrumentToDevice(
   }
 
   if (validZones.length === 0) {
+    const uniqueMissing = [...new Set(missing.map(s => s.replace(/\.wav$/i, '')))];
     throw new Error(
       `Cannot import "${program.name}": none of the ${program.zones.length} zone sample(s) were found on the device. ` +
-      `Missing: ${missing.join(', ')}`,
+      `Missing: ${uniqueMissing.join(', ')}`,
     );
   }
 

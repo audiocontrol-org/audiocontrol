@@ -244,6 +244,21 @@ pnpm --filter <module> test          # Test specific module
 - Use GitHub links (not file paths) in issue descriptions
 - See [PROJECT-MANAGEMENT.md](./PROJECT-MANAGEMENT.md) for project management standards
 
+## Progress Indicators
+
+All long-running operations must show consistent, rich progress indicators. Progress UI must include:
+
+1. **Progress bar** — visual percentage of total bytes transferred
+2. **Data transferred** — bytes sent / total bytes (e.g., "2.4 MB / 5.1 MB")
+3. **Elapsed time** — time since operation started
+4. **Estimated time remaining** — based on current transfer rate
+5. **Current item name** — what's being processed right now
+6. **Item count** (secondary) — items completed / total items (e.g., "3 / 10 samples") is useful context but must not be the primary progress metric since items vary wildly in size
+
+Byte-based progress is the only meaningful primary measure.
+
+**Consistency:** All progress indicators across the application must use the same layout, formatting, and fields. Define a shared progress component or type rather than ad-hoc progress UI per dialog.
+
 ## Critical Don'ts
 
 - Never implement fallbacks or mock data outside test code
