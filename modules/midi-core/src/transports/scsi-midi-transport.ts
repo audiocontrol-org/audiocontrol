@@ -279,20 +279,21 @@ function createScsiSdsChannel(
 
       return new Promise<void>((resolve, reject) => {
         const sdsWs = new WebSocket(wsUrl);
-        // Timeout scales with sample count: ~350ms per 40-sample packet + margin.
-        // Minimum 60s for small samples, no cap for large ones.
-        const packets = Math.ceil(samples.length / 40);
-        const timeoutMs = Math.max(60_000, packets * 400 + 30_000);
+        // ASPACK timeout: ~20 KB/s throughput + margin. Minimum 30s.
+        const dataBytes = samples.length * 2;
+        const timeoutMs = Math.max(30_000, (dataBytes / 15) + 15_000);
         const timeout = setTimeout(() => {
           sdsWs.close();
-          reject(new Error(`SDS upload timed out after ${Math.round(timeoutMs / 1000)}s`));
+          reject(new Error(`Sample upload timed out after ${Math.round(timeoutMs / 1000)}s`));
         }, timeoutMs);
 
         const totalPackets = Math.ceil(samples.length / 120);
 
         sdsWs.addEventListener('open', () => {
+          // Use ASPACK fast path (8x faster than SDS).
+          // Falls back to SDS on bridges that don't support it.
           sdsWs.send(JSON.stringify({
-            type: 'sample-upload',
+            type: 'sample-upload-fast',
             target_id: DEFAULT_SCSI_TARGET_ID,
             sample_number: sampleNumber,
             channel,
