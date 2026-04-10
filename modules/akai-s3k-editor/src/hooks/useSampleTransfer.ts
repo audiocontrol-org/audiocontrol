@@ -29,9 +29,9 @@ export function useSampleTransfer(client: S3000xlClientInterface | null) {
       sampleNumber: number,
       sampleData: Int16Array,
       sampleRate: number,
+      name?: string,
     ): Promise<void> => {
-      console.log(`[useSampleTransfer] sendToDevice called: sampleNumber=${sampleNumber}, samples=${sampleData.length}, rate=${sampleRate}, clientConnected=${!!client}`);
-      console.log(`[useSampleTransfer] fn body:`, String(client?.sendSampleViaSds));
+      console.log(`[useSampleTransfer] sendToDevice called: sampleNumber=${sampleNumber}, samples=${sampleData.length}, rate=${sampleRate}, name=${name ?? '(none)'}`);
       if (!client) {
         throw new Error('Cannot send sample: client is not connected');
       }
@@ -46,8 +46,8 @@ export function useSampleTransfer(client: S3000xlClientInterface | null) {
       try {
         console.log(`[useSampleTransfer] calling client.sendSampleViaSds...`);
         await client.sendSampleViaSds(sampleNumber, sampleData, sampleRate, {
+          name,
           onProgress: (progress) => {
-            console.log(`[useSampleTransfer] SDS progress: ${progress.packetsSent}/${progress.packetsTotal}`);
             setTransferState((prev) => ({ ...prev, progress }));
           },
         });

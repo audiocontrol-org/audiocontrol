@@ -133,7 +133,7 @@ export function SendSampleDialog({
     setPhase('transferring');
 
     try {
-      await sendToDevice(targetSampleNumber, wavInfo.samples, wavInfo.sampleRate);
+      await sendToDevice(targetSampleNumber, wavInfo.samples, wavInfo.sampleRate, sampleName);
       console.log(`[SendSampleDialog] sendToDevice resolved — setting phase to success`);
       setPhase('success');
       // Give device time to commit the sample before refreshing
