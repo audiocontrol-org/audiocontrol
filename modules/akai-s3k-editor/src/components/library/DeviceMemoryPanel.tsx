@@ -2,9 +2,12 @@
  * DeviceMemoryPanel — displays programs and samples resident in device memory.
  *
  * Renders two scrollable lists (programs and samples) fetched from the
- * S3000XL. Supports item selection and manual refresh. Shows a placeholder
- * message when the device is not connected.
+ * S3000XL. Supports item selection, manual refresh, and drag-and-drop
+ * import from the library tree.
  */
+
+import { useState } from 'react';
+import { LIBRARY_ITEM_MIME, type LibraryDragPayload } from '@audiocontrol/editor-core';
 
 interface DeviceMemoryPanelProps {
   programNames: string[];
@@ -14,6 +17,8 @@ interface DeviceMemoryPanelProps {
   onSelectProgram: (index: number) => void;
   onSelectSample: (index: number) => void;
   onRefresh: () => void;
+  onImportSample?: (sampleName: string, samplePath: string[]) => void;
+  onImportProgram?: (dirName: string, displayName: string) => void;
   isConnected: boolean;
   isLoading: boolean;
 }
@@ -83,9 +88,13 @@ export function DeviceMemoryPanel({
   onSelectProgram,
   onSelectSample,
   onRefresh,
+  onImportSample,
+  onImportProgram,
   isConnected,
   isLoading,
 }: DeviceMemoryPanelProps): JSX.Element {
+  const [programDropOver, setProgramDropOver] = useState(false);
+  const [sampleDropOver, setSampleDropOver] = useState(false);
   if (!isConnected) {
     return (
       <div className="p-4">
@@ -112,23 +121,87 @@ export function DeviceMemoryPanel({
         </button>
       </div>
 
-      <NameList
-        title="Programs"
-        names={programNames}
-        type="program"
-        selectedIndex={selectedIndex}
-        selectedType={selectedType}
-        onSelect={onSelectProgram}
-      />
+      <div
+        className={`rounded transition-colors ${programDropOver ? 'bg-blue-900/30 ring-1 ring-blue-500/50' : ''}`}
+        onDragOver={(e) => {
+          if (!onImportProgram) return;
+          if (!e.dataTransfer.types.includes(`${LIBRARY_ITEM_MIME}/program`)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+          setProgramDropOver(true);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setProgramDropOver(false);
+          }
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setProgramDropOver(false);
+          if (!onImportProgram) return;
+          const raw = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
+          if (!raw) return;
+          const payload = JSON.parse(raw) as LibraryDragPayload;
+          if (payload.nodeType !== 'program') return;
+          const dirName = (payload.meta.dirName as string | undefined) ?? payload.nodeName;
+          onImportProgram(dirName, payload.nodeName);
+        }}
+      >
+        <NameList
+          title="Programs"
+          names={programNames}
+          type="program"
+          selectedIndex={selectedIndex}
+          selectedType={selectedType}
+          onSelect={onSelectProgram}
+        />
+        {programDropOver && (
+          <div className="text-xs text-blue-400 text-center py-2 border border-dashed border-blue-500/50 rounded mx-1 mb-2">
+            Drop to send to device
+          </div>
+        )}
+      </div>
 
-      <NameList
-        title="Samples"
-        names={sampleNames}
-        type="sample"
-        selectedIndex={selectedIndex}
-        selectedType={selectedType}
-        onSelect={onSelectSample}
-      />
+      <div
+        className={`rounded transition-colors ${sampleDropOver ? 'bg-blue-900/30 ring-1 ring-blue-500/50' : ''}`}
+        onDragOver={(e) => {
+          if (!onImportSample) return;
+          if (!e.dataTransfer.types.includes(`${LIBRARY_ITEM_MIME}/sample`)) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'copy';
+          setSampleDropOver(true);
+        }}
+        onDragLeave={(e) => {
+          if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+            setSampleDropOver(false);
+          }
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setSampleDropOver(false);
+          if (!onImportSample) return;
+          const raw = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
+          if (!raw) return;
+          const payload = JSON.parse(raw) as LibraryDragPayload;
+          if (payload.nodeType !== 'sample') return;
+          const path = (payload.meta.path as string[] | undefined) ?? [];
+          onImportSample(payload.nodeName, path);
+        }}
+      >
+        <NameList
+          title="Samples"
+          names={sampleNames}
+          type="sample"
+          selectedIndex={selectedIndex}
+          selectedType={selectedType}
+          onSelect={onSelectSample}
+        />
+        {sampleDropOver && (
+          <div className="text-xs text-blue-400 text-center py-2 border border-dashed border-blue-500/50 rounded mx-1 mb-2">
+            Drop to send to device
+          </div>
+        )}
+      </div>
     </div>
   );
 }

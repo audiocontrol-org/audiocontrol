@@ -375,6 +375,8 @@ export function LibraryPage(): JSX.Element {
     onSelectProgram: handleDeviceSelectProgram,
     onSelectSample: handleDeviceSelectSample,
     onRefresh: () => void refreshDevice(),
+    onImportSample: canTransfer ? transferCallbacks.handleSendSampleToDevice : undefined,
+    onImportProgram: canTransfer ? transferCallbacks.handleSendProgramToDevice : undefined,
     isConnected: isDeviceConnected,
     isLoading: isDeviceLoading,
   }), [
@@ -382,6 +384,8 @@ export function LibraryPage(): JSX.Element {
     selectedDeviceIndex, selectedDeviceType,
     handleDeviceSelectProgram, handleDeviceSelectSample,
     refreshDevice, isDeviceConnected, isDeviceLoading,
+    canTransfer, transferCallbacks.handleSendSampleToDevice,
+    transferCallbacks.handleSendProgramToDevice,
   ]);
 
   // -----------------------------------------------------------------------

@@ -9,7 +9,9 @@ export {
 } from './TreeSection';
 export {
   PluginLibraryBrowser,
+  LIBRARY_ITEM_MIME,
   type PluginLibraryBrowserProps,
+  type LibraryDragPayload,
 } from './PluginLibraryBrowser';
 export {
   ContextMenu,

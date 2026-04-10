@@ -16,6 +16,18 @@
 import React, { useCallback, useState } from 'react';
 import { TreeSection } from './TreeSection';
 import type { TreeNode } from './TreeView';
+
+/** Custom MIME type for dragging library items. */
+export const LIBRARY_ITEM_MIME = 'application/x-library-item';
+
+/** Serializable drag payload for library tree items. */
+export interface LibraryDragPayload {
+  categoryId: string;
+  nodeId: string;
+  nodeName: string;
+  nodeType: string;
+  meta: Record<string, unknown>;
+}
 import type {
   DeviceLibraryPlugin,
   DeviceMemoryAction,
@@ -468,6 +480,20 @@ export function PluginLibraryBrowser({
                 renderIcon={renderIcon(category.categoryId)}
                 renderTrailing={renderTrailing(category.categoryId)}
                 draggable={isDraggable(category.categoryId)}
+                onDragStart={(node, e) => {
+                  const payload: LibraryDragPayload = {
+                    categoryId: category.categoryId,
+                    nodeId: node.id,
+                    nodeName: node.name,
+                    nodeType: node.type,
+                    meta: node.meta ?? {},
+                  };
+                  e.dataTransfer.setData(LIBRARY_ITEM_MIME, JSON.stringify(payload));
+                  // Set a type-specific hint so drop zones can filter during
+                  // dragover (browsers allow reading types but not data).
+                  e.dataTransfer.setData(`${LIBRARY_ITEM_MIME}/${node.type}`, '');
+                  e.dataTransfer.effectAllowed = 'copyMove';
+                }}
                 onCreateFolder={
                   category.isReadOnly
                     ? undefined

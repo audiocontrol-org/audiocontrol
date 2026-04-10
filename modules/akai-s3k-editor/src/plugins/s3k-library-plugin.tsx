@@ -40,6 +40,8 @@ export interface S3kMemoryPanelState {
   onSelectProgram: (index: number) => void;
   onSelectSample: (index: number) => void;
   onRefresh: () => void;
+  onImportSample?: (sampleName: string, samplePath: string[]) => void;
+  onImportProgram?: (dirName: string, displayName: string) => void;
   isConnected: boolean;
   isLoading: boolean;
 }
@@ -76,6 +78,8 @@ function S3kMemoryPanelAdapter({
       onSelectProgram={state.onSelectProgram}
       onSelectSample={state.onSelectSample}
       onRefresh={state.onRefresh}
+      onImportSample={state.onImportSample}
+      onImportProgram={state.onImportProgram}
       isConnected={state.isConnected}
       isLoading={state.isLoading}
     />
