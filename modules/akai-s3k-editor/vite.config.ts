@@ -34,7 +34,8 @@ export default defineConfig({
     allowedHosts: ['orion-m1', 'orion-m4'],
     proxy: {
       '/scsi-bridge': {
-        target: 'http://s3k.local:7033',
+        // Use IPv4 explicitly — s3k.local resolves to IPv6 which times out
+        target: 'http://10.0.0.57:7033',
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/scsi-bridge/, ''),
         ws: true,
@@ -44,7 +45,8 @@ export default defineConfig({
   preview: {
     proxy: {
       '/scsi-bridge': {
-        target: 'http://s3k.local:7033',
+        // Use IPv4 explicitly — s3k.local resolves to IPv6 which times out
+        target: 'http://10.0.0.57:7033',
         changeOrigin: true,
         rewrite: (p) => p.replace(/^\/scsi-bridge/, ''),
         ws: true,

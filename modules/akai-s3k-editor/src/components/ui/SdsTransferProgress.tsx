@@ -45,7 +45,7 @@ export function SdsProgressBar({ progress, direction }: SdsProgressBarProps): JS
   const remainingBytes = progress ? progress.bytesTotal - progress.bytesSent : 0;
   const etaMs = bytesPerMs > 0 ? remainingBytes / bytesPerMs : 0;
 
-  const label = direction === 'send' ? 'Sending' : 'Receiving';
+  const label = direction === 'send' ? 'Sending sample to device' : 'Receiving sample from device';
 
   return (
     <div className="space-y-2">
@@ -71,7 +71,7 @@ export function SdsProgressBar({ progress, direction }: SdsProgressBarProps): JS
           {elapsed > 1000 && `${formatDuration(elapsed)} elapsed`}
           {etaMs > 1000 && ` \u2022 ~${formatDuration(etaMs)} remaining`}
         </span>
-        <span>{label} sample via SDS</span>
+        <span>{label}</span>
       </div>
     </div>
   );
