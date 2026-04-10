@@ -28,11 +28,13 @@ import {
   useLibraryConnection,
   LibraryConnectionUI,
   PluginLibraryBrowser,
-  EditorDialogGroup,
   type TreeNode,
   type ItemSelection,
   useLibraryOperations,
 } from '@audiocontrol/editor-core';
+import { LoopEditorDialog } from '@audiocontrol/loop-editor/ui';
+import { SampleEditorDialog } from '@audiocontrol/sample-editor/ui';
+import { SampleChopperDialog } from '@audiocontrol/sample-chopper/ui';
 import { useLibraryStore } from '@/stores/libraryStore';
 import { s3kLibraryPlugin } from '@/plugins/s3k-library-plugin';
 import type { S3kMemoryPanelState } from '@/plugins/s3k-library-plugin';
@@ -417,18 +419,51 @@ export function LibraryPage(): JSX.Element {
         />
       )}
 
-      {/* Editor Dialogs (require library root only, no device) */}
-      <EditorDialogGroup
-        editorDialogs={editorDialogs}
-        libraryRoot={root}
-        renderChopperOutputConfig={(state) => (
-          <S3kKitOutputConfig
-            state={state}
-            config={editorDialogs.kitConfig}
-            onConfigChange={editorDialogs.setKitConfig}
-          />
-        )}
-      />
+      {/* Editor Dialogs */}
+      {editorDialogs.loopEditor && (
+        <LoopEditorDialog
+          open={editorDialogs.loopEditor.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeLoopEditor(); }}
+          samples={editorDialogs.loopEditor.samples}
+          sampleRate={editorDialogs.loopEditor.sampleRate}
+          sampleName={editorDialogs.loopEditor.sampleName}
+          loopStart={editorDialogs.loopEditor.loopStart}
+          loopEnd={editorDialogs.loopEditor.loopEnd}
+          rootKey={editorDialogs.loopEditor.rootKey}
+          onSave={editorDialogs.handleLoopEditorSave}
+        />
+      )}
+      {editorDialogs.chopper && (
+        <SampleChopperDialog
+          open={editorDialogs.chopper.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeChopper(); }}
+          samples={editorDialogs.chopper.samples}
+          sampleRate={editorDialogs.chopper.sampleRate}
+          sourceName={editorDialogs.chopper.sampleName}
+          editMode={!!editorDialogs.chopper.initialSlices}
+          initialSlices={editorDialogs.chopper.initialSlices}
+          initialLabels={editorDialogs.chopper.initialLabels}
+          onConfirm={() => { editorDialogs.closeChopper(); }}
+          onSave={root ? editorDialogs.handleChopperSave : undefined}
+          renderOutputConfig={(state) => (
+            <S3kKitOutputConfig
+              state={state}
+              config={editorDialogs.kitConfig}
+              onConfigChange={editorDialogs.setKitConfig}
+            />
+          )}
+        />
+      )}
+      {editorDialogs.sampleEditor && (
+        <SampleEditorDialog
+          open={editorDialogs.sampleEditor.open}
+          onOpenChange={(open) => { if (!open) editorDialogs.closeSampleEditor(); }}
+          samples={editorDialogs.sampleEditor.samples}
+          sampleRate={editorDialogs.sampleEditor.sampleRate}
+          sampleName={editorDialogs.sampleEditor.sampleName}
+          onSave={root ? editorDialogs.handleSampleEditorSave : undefined}
+        />
+      )}
       {editorDialogs.drumKitEditor && root && (
         <DrumKitEditorDialog
           open={editorDialogs.drumKitEditor.open}

@@ -74,12 +74,14 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary }: Props) {
 
     try {
       const partitions = parsePartitionTable(data);
+      console.log(`[DiskBrowser] Loaded ${data.length} bytes, ${partitions.length} partitions`);
       const allVolumes: VolumeWithFiles[] = [];
 
       for (const partition of partitions) {
         const partStart = partition.offsetInBlocks * BLOCK_SIZE;
+        console.log(`[DiskBrowser] Partition: offset=${partition.offsetInBlocks} blocks, start=${partStart} bytes, data.length=${data.length}`);
         if (partStart + BLOCK_SIZE > data.length) {
-          // Partition extends beyond loaded data; skip for now.
+          console.log(`[DiskBrowser] Skipping partition — extends beyond loaded data`);
           continue;
         }
         const partData = data.subarray(partStart);

@@ -49,7 +49,6 @@ export {
   CacheMetricsModal,
   LibraryConnectionUI,
   DrumKitPadList,
-  EditorDialogGroup,
   FolderIcon,
   ChevronIcon,
   AudioFileIcon,

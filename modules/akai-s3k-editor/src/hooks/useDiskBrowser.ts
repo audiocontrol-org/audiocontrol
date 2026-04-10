@@ -104,12 +104,32 @@ export function useDiskBrowser(bridgeUrl: string | null) {
     async (targetId: number): Promise<Uint8Array | null> => {
       if (!client) return null;
 
-      // Read enough 512-byte sectors to cover 64KB (0x10000 bytes).
-      // This includes the partition table at 0x4500 and the first partition's
-      // volume directory and FAT, which start at the beginning of the partition.
-      const bytesNeeded = 0x10000;
-      const blocksNeeded = Math.ceil(bytesNeeded / BLOCK_SIZE);
-      const data = await client.readBlocks(targetId, 0, blocksNeeded);
+      // Two-phase read:
+      // 1. Read enough to get the partition table (at offset 0x4500)
+      // 2. Then read the first partition in chunks (bridge limits to 65535 sectors per READ)
+      const target = state.targets.find(t => t.id === targetId);
+      const sectorSize = target?.blockSize || 512;
+      const MAX_SECTORS_PER_READ = 4096; // Conservative — well under u16 max
+
+      // Phase 1: read partition table
+      const ptSectors = Math.ceil(0x4600 / sectorSize);
+      const ptData = await client.readBlocks(targetId, 0, ptSectors);
+
+      const partitions = parsePartitionTable(ptData);
+      if (partitions.length === 0) return ptData;
+
+      // Phase 2: read through end of first partition in chunks
+      const part0End = (partitions[0].offsetInBlocks + partitions[0].sizeInBlocks) * BLOCK_SIZE;
+      const totalSectors = Math.ceil(part0End / sectorSize);
+      const totalBytes = totalSectors * sectorSize;
+      const buffer = new Uint8Array(totalBytes);
+
+      for (let offset = 0; offset < totalSectors; offset += MAX_SECTORS_PER_READ) {
+        const count = Math.min(MAX_SECTORS_PER_READ, totalSectors - offset);
+        const chunk = await client.readBlocks(targetId, offset, count);
+        buffer.set(chunk, offset * sectorSize);
+      }
+      const data = buffer;
 
       setState((s) => {
         const newMap = new Map(s.partitionData);
