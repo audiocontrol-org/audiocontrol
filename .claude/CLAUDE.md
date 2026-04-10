@@ -125,6 +125,13 @@ Output: `data/sessions/sessions.jsonl` (one JSON line per session), `data/sessio
 
 Remote machine: `tsx tools/extract-sessions.ts --data-dir /tmp/m1-data --machine orion-m1`
 
+### Analyze session data
+```bash
+tsx tools/analyze-sessions.ts
+tsx tools/analyze-sessions.ts --since 2026-04-01
+tsx tools/analyze-sessions.ts --json
+```
+
 | Metric | What It Tells Us | Target |
 |--------|-----------------|--------|
 | Corrections per session | How often user redirects agent | ↓ Decreasing |
