@@ -92,10 +92,19 @@ F0 47 cc 0D 48 [sample_num 4 nibbles] [offset 8 nibbles] [count 8 nibbles] [data
 - Each 16-bit PCM sample is 4 nibbles (LE nibble pairs)
 - Device returns REPLY (opcode 0x16, status 0x01) on success
 - **Cannot create new samples** — only overwrites data in existing sample slots
-- **Multi-chunk writes work** but only within the sample's allocated memory. Writing beyond the allocated length returns empty reply. Failure occurs consistently at the allocation boundary (e.g., offset 8448 for a sample created with ~8000 samples).
-- **Single-chunk writes can exceed allocated length** — sending the entire sample in one ASPACK appears to trigger reallocation. A 44100-sample single-chunk write succeeds even on a sample originally allocated smaller.
-- **CDB poll flag must be 0x00** — using flag `$80` on CDB 0x0D (Data Byte Enquiry) returns 0 bytes. This was the cause of the original "multi-chunk fails" bug. The S3000XL only reports pending bytes with flag `$00`.
-- **CDB send flag must be 0x00** — using flag `$80` on CDB 0x0C (Send MIDI Data) causes the device to not generate a REPLY at all. MESA documentation says `$80` means "reply expected" but the S3000XL behaves opposite — `$00` is required for ASPACK.
+- **Multi-chunk writes work** — use chunk sizes that avoid exact Akai block boundaries (multiples of 8192 samples). The device rejects ASPACK writes starting at offset N×8192 (for N≥1). Offset 0 works, offset 8191 works, offset 8193 works, but offset 8192 fails. Use chunk size 8191 or any size coprime with 8192.
+- **Block boundary bug:** The S3000XL rejects ASPACK at exact block boundaries (8192, 16384, 24576, ...) but accepts offset ±1. This is consistent across all block multiples tested (1-5). Offset 0 is the exception — it always works.
+- **Single-chunk writes can exceed allocated length** — sending the entire sample in one ASPACK appears to trigger reallocation.
+- **CDB poll flag must be 0x00** — using flag `$80` on CDB 0x0D (Data Byte Enquiry) returns 0 bytes. This was the cause of the original "multi-chunk fails" bug.
+- **CDB send flag must be 0x00** — using flag `$80` on CDB 0x0C (Send MIDI Data) causes the device to not generate a REPLY at all.
+
+### Multi-Chunk Throughput (block-boundary-aware)
+
+| Chunk size | Chunks for 44100 | Time | Throughput |
+|-----------|-----------------|------|-----------|
+| 193 (coprime) | 229 | 83s | 1.0 KB/s |
+| 8191 (block-1) | 6 | 5.4s | **16.1 KB/s** |
+| 44100 (single) | 1 | 3.7s | **23.3 KB/s** |
 
 ### Maximum Message Size
 
