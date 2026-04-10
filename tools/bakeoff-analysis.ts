@@ -19,8 +19,9 @@ const AGE_KEY_PATH = join(
 
 const MODELS = [
   { id: "claude-haiku-4-5-20251001", label: "haiku" },
-  { id: "claude-sonnet-4-5-20250514", label: "sonnet" },
-  { id: "claude-opus-4-5-20250918", label: "opus" },
+  // Sonnet and Opus require higher API tier — add back when available:
+  // { id: "claude-sonnet-4-5-20250514", label: "sonnet" },
+  // { id: "claude-opus-4-5-20250918", label: "opus" },
 ];
 
 const SYSTEM_PROMPT = `You are analyzing a Claude Code session log. The log contains user messages, assistant text responses, assistant thinking blocks, and tool calls (name + input).
@@ -142,7 +143,12 @@ async function main(): Promise<void> {
       // Parse and pretty-print
       let parsed: unknown;
       try {
-        parsed = JSON.parse(result.response);
+        // Strip markdown fencing if present
+        let jsonText = result.response.trim();
+        if (jsonText.startsWith("```")) {
+          jsonText = jsonText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+        }
+        parsed = JSON.parse(jsonText);
       } catch {
         parsed = { raw: result.response, parse_error: true };
       }

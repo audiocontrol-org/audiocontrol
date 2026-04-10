@@ -11,47 +11,54 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
-## 2026-04-10: Session Data Extraction, Analysis, and Encryption
+## 2026-04-10: Session Data Extraction, Analysis, and LLM Integration
 
 ### Feature: continuous-improvement
 ### Worktree: audiocontrol-continuous-improvement
 
 ### Goal
-Implement Phases 6 and 7: build TypeScript tools to extract, persist, encrypt, and analyze Claude Code session logs.
+Implement Phases 6 and 7: build TypeScript tools to extract, persist, encrypt, and analyze Claude Code session logs. Add LLM-powered analysis via Claude Haiku API.
 
 ### Accomplished
 - Session metrics extractor (`tools/extract-sessions.ts`) — 37 sessions extracted from orion-m4 into `data/sessions/sessions.jsonl` with 16 fields per session (`df0e591f`)
 - Session content extractor (`tools/extract-session-content.ts`) — extracts user messages, assistant text, thinking blocks, and tool calls into age-encrypted per-session files (`00615efb`)
-- Session analyzer (`tools/analyze-sessions.ts`) — markdown/JSON reports with project, machine, token, duration, tool distribution, correction detection (`eb49a690`, `5dcfe079`)
+- Session analyzer (`tools/analyze-sessions.ts`) — markdown/JSON reports with project, machine, token, duration, tool distribution (`eb49a690`, `5dcfe079`)
+- LLM session analyzer (`tools/analyze-session-llm.ts`) — sends encrypted content to Claude Haiku for arc classification, correction detection, and improvement suggestions. Results cached encrypted in `data/sessions/analysis/`
 - Removed Python/Docker analyzer infrastructure (`df0e591f`)
 - age encryption with passphrase-protected recovery key for content files
-- Bakeoff script for comparing Haiku/Sonnet/Opus on LLM-powered analysis (`5dcfe079`)
+- Bakeoff script validated Haiku produces quality analysis (~$0.002/session)
 - Updated CLAUDE.md analytics section, session-end skill, analyze-session skill
-- Closed issues #188, #189, #190, #191, #192
+- Closed issues #188, #189, #190, #191, #192, #195, #196
+- Opened PR #198
 
 ### Didn't Work
-- LLM-powered analysis bakeoff — API credits not available, deferred
-- Regex-based correction detection has high false positive rate (~12% flagged but many are normal conversation containing "no" or "don't")
+- Sonnet/Opus API access — account tier only supports Haiku. Bakeoff ran Haiku only.
+- Regex-based correction detection — high false positive rate (~12% flagged but most were normal conversation). Replaced with LLM analysis.
 - `require()` calls in ESM context — had to fix twice (appendFileSync, statSync)
+- API credits initially not active — took multiple retries across the session
 
 ### Course Corrections
-- **[PROCESS]** Agent initially proposed separate approaches for key-loss recovery and was over-thinking encryption design. User: "use whatever the cool kids are using" — went with age, simple and correct.
 - **[PROCESS]** Agent tried to read code to answer "what happens if we run on one machine" instead of just trying it. User: "Why don't you just try it and see what happens?"
 - **[PROCESS]** Agent claimed data extraction was complete without re-running after adding content extraction. User caught this: "after we augmented our data extraction... did we actually run that augmented extraction?"
 - **[PROCESS]** Agent proposed regex for correction detection. User correctly identified LLM as better tool: "I feel like this kind of analysis is better done with an LLM than regex"
 - **[PROCESS]** Agent proposed sending only corrections to LLM. User: "let's give the LLM as much information as we can instead of just corrections"
+- **[PROCESS]** Agent didn't test whether the analyzer could read encrypted data. User: "did we test the analyzer to make sure it can read the encrypted data?"
+- **[PROCESS]** Agent needed to be told "we need the analyzer to be a one-click operation" — should have designed for that from the start
 
 ### Quantitative
-- User messages: ~50
-- Commits: 5
-- User corrections: 5
+- User messages: ~70
+- Commits: 6
+- User corrections: 6
 - Data extracted: 37 sessions, 36 encrypted content files
+- PR opened: #198
 
 ### Insights
 1. "Try it and see" is almost always faster than reading code to predict behavior
 2. Don't claim work is done until you've verified the output exists and is correct
 3. Regex pattern matching for natural language intent classification is a dead end — LLM is the right tool
 4. When the user says to give the LLM more data, they're right — the marginal cost of more context is low compared to the value of better analysis
+5. Design for one-click operation from the start — if the user has to run multiple commands or know about intermediate steps, the tool isn't finished
+6. Haiku is surprisingly good at session analysis — quality sufficient for production use at ~$0.002/session
 
 ---
 
