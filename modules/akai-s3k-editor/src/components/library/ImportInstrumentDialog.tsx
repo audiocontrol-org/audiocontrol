@@ -248,6 +248,12 @@ export function ImportInstrumentDialog({
             const wavBuffer = await wavFile.arrayBuffer();
             const wavInfo = parseWavFile(wavBuffer);
 
+            if (wavInfo.sampleRate <= 0) {
+              throw new Error(
+                `Sample "${baseName}" has invalid sample rate (${wavInfo.sampleRate}). ` +
+                `Re-import the program from the SCSI disk to fix.`,
+              );
+            }
             await client.sendSampleViaSds(
               nextSampleNumber, wavInfo.samples, wavInfo.sampleRate,
               { name: baseName },
