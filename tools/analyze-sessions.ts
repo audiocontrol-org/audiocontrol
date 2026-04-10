@@ -8,7 +8,7 @@
  *   tsx tools/analyze-sessions.ts --json
  */
 
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { execSync } from "node:child_process";
 import { join, resolve } from "node:path";
 
@@ -35,20 +35,32 @@ interface SessionRecord {
   model: string;
 }
 
-interface CorrectionMatch {
-  session_file: string;
-  timestamp: string;
-  text: string;
-  signals: string[];
+interface LlmCorrection {
+  category: string;
+  description: string;
+  user_quote: string;
+}
+
+interface SessionAnalysis {
+  session: string;
+  arc_type: string;
+  arc_description: string;
+  summary: string;
+  correction_count: number;
+  corrections: LlmCorrection[];
+  patterns: string[];
+  improvement_suggestions: string[];
 }
 
 interface ContentAnalysis {
-  total_user_text_messages: number;
-  correction_count: number;
-  correction_rate: string;
-  corrections_by_signal: Record<string, number>;
-  corrections_by_session: Record<string, number>;
-  sample_corrections: CorrectionMatch[];
+  sessions_analyzed: number;
+  arc_distribution: Record<string, number>;
+  total_corrections: number;
+  corrections_by_category: Record<string, number>;
+  sessions_with_most_corrections: Array<{ session: string; count: number; arc_type: string }>;
+  all_corrections: LlmCorrection[];
+  all_patterns: string[];
+  all_suggestions: string[];
 }
 
 interface AnalysisReport {
@@ -272,7 +284,7 @@ function sortByValue(obj: Record<string, number>): Record<string, number> {
 }
 
 // ---------------------------------------------------------------------------
-// Content analysis (correction detection from encrypted session content)
+// Content analysis (reads LLM analysis results from data/sessions/analysis/)
 // ---------------------------------------------------------------------------
 
 const AGE_KEY_PATH = join(
@@ -282,105 +294,82 @@ const AGE_KEY_PATH = join(
   "audiocontrol.key"
 );
 
-// Patterns that signal user corrections — case-insensitive, word-boundary-aware
-const CORRECTION_PATTERNS: Array<{ signal: string; pattern: RegExp }> = [
-  { signal: "no/stop", pattern: /\b(no[,.]?\s|stop\b|don't\b|do not\b)/i },
-  { signal: "wrong", pattern: /\b(wrong|incorrect|that's not|that is not)\b/i },
-  { signal: "why", pattern: /\bwhy (did you|are you|would you|is there|isn't)\b/i },
-  { signal: "undo", pattern: /\b(revert|undo|roll back|put it back|remove that)\b/i },
-  { signal: "not what I", pattern: /\bnot what I (asked|wanted|meant|said)\b/i },
-  { signal: "too complex", pattern: /\b(too complex|over.?engineer|unnecessary|simpl)/i },
-  { signal: "fabrication", pattern: /\b(made.?up|fabricat|you just|where did you get)\b/i },
-];
-
-function analyzeContent(since: string | null): ContentAnalysis | null {
-  const contentDir = resolve(
+function loadLlmAnalysis(since: string | null): ContentAnalysis | null {
+  const analysisDir = resolve(
     import.meta.dirname ?? process.cwd(),
     "..",
     "data",
     "sessions",
-    "content"
+    "analysis"
   );
 
-  if (!existsSync(contentDir) || !existsSync(AGE_KEY_PATH)) {
-    return null;
-  }
+  if (!existsSync(analysisDir) || !existsSync(AGE_KEY_PATH)) return null;
 
-  const files = readdirSync(contentDir).filter((f) => f.endsWith(".jsonl.age"));
+  const files = readdirSync(analysisDir).filter((f) => f.endsWith(".json.age"));
   if (files.length === 0) return null;
 
-  let totalUserTexts = 0;
-  let correctionCount = 0;
-  const bySignal: Record<string, number> = {};
-  const bySession: Record<string, number> = {};
-  const samples: CorrectionMatch[] = [];
+  const arcDist: Record<string, number> = {};
+  const byCategory: Record<string, number> = {};
+  const sessionCorrections: Array<{ session: string; count: number; arc_type: string }> = [];
+  const allCorrections: LlmCorrection[] = [];
+  const allPatterns: string[] = [];
+  const allSuggestions: string[] = [];
+  let totalCorrections = 0;
 
   for (const file of files) {
-    // Filter by date if --since provided
     const fileDate = file.slice(0, 10);
     if (since && fileDate < since) continue;
 
-    const filePath = join(contentDir, file);
+    const filePath = join(analysisDir, file);
     let plaintext: string;
     try {
-      plaintext = execSync(
-        `age -d -i "${AGE_KEY_PATH}" "${filePath}"`,
-        { encoding: "utf8", maxBuffer: 50 * 1024 * 1024 }
-      );
+      plaintext = execSync(`age -d -i "${AGE_KEY_PATH}" "${filePath}"`, {
+        encoding: "utf8",
+        maxBuffer: 10 * 1024 * 1024,
+      });
     } catch {
       continue;
     }
 
-    for (const line of plaintext.split("\n")) {
-      if (!line.trim()) continue;
-
-      let entry: { type: string; timestamp: string; content: Array<{ type: string; text?: string }> };
-      try {
-        entry = JSON.parse(line);
-      } catch {
-        continue;
-      }
-
-      if (entry.type !== "user") continue;
-
-      for (const block of entry.content) {
-        if (block.type !== "text" || !block.text) continue;
-        totalUserTexts++;
-
-        const matched: string[] = [];
-        for (const { signal, pattern } of CORRECTION_PATTERNS) {
-          if (pattern.test(block.text)) {
-            matched.push(signal);
-            bySignal[signal] = (bySignal[signal] ?? 0) + 1;
-          }
-        }
-
-        if (matched.length > 0) {
-          correctionCount++;
-          bySession[file] = (bySession[file] ?? 0) + 1;
-
-          if (samples.length < 20) {
-            samples.push({
-              session_file: file,
-              timestamp: entry.timestamp,
-              text: block.text.slice(0, 200),
-              signals: matched,
-            });
-          }
-        }
-      }
+    let record: { session: string; analysis: Record<string, unknown> };
+    try {
+      record = JSON.parse(plaintext);
+    } catch {
+      continue;
     }
+
+    const a = record.analysis;
+    const arcType = (a.arc_type as string) ?? "unknown";
+    const corrections = (a.corrections as LlmCorrection[]) ?? [];
+    const corrCount = (a.correction_count as number) ?? corrections.length;
+
+    arcDist[arcType] = (arcDist[arcType] ?? 0) + 1;
+    totalCorrections += corrCount;
+
+    if (corrCount > 0) {
+      sessionCorrections.push({ session: record.session, count: corrCount, arc_type: arcType });
+    }
+
+    for (const c of corrections) {
+      allCorrections.push(c);
+      byCategory[c.category] = (byCategory[c.category] ?? 0) + 1;
+    }
+
+    for (const p of (a.patterns as string[]) ?? []) allPatterns.push(p);
+    for (const s of (a.improvement_suggestions as string[]) ?? []) allSuggestions.push(s);
   }
 
+  sessionCorrections.sort((a, b) => b.count - a.count);
+
   return {
-    total_user_text_messages: totalUserTexts,
-    correction_count: correctionCount,
-    correction_rate: totalUserTexts
-      ? `${((correctionCount / totalUserTexts) * 100).toFixed(1)}%`
-      : "0%",
-    corrections_by_signal: sortByValue(bySignal),
-    corrections_by_session: sortByValue(bySession),
-    sample_corrections: samples,
+    sessions_analyzed: files.filter((f) => !since || f.slice(0, 10) >= since).length,
+    arc_distribution: sortByValue(arcDist),
+    total_corrections: totalCorrections,
+    corrections_by_category: sortByValue(byCategory),
+    sessions_with_most_corrections: sessionCorrections.slice(0, 10),
+    all_corrections: allCorrections,
+    all_patterns: allPatterns,
+    all_suggestions: allSuggestions,
   };
 }
 
@@ -402,46 +391,69 @@ function formatTokens(n: number): string {
 function renderContentAnalysis(content: ContentAnalysis): string {
   const lines: string[] = [];
 
-  lines.push("### User Corrections");
+  lines.push("### LLM Session Analysis");
   lines.push("");
-  lines.push("| Metric | Value |");
-  lines.push("|--------|-------|");
-  lines.push(`| User text messages analyzed | ${formatNumber(content.total_user_text_messages)} |`);
-  lines.push(`| Corrections detected | ${formatNumber(content.correction_count)} |`);
-  lines.push(`| Correction rate | ${content.correction_rate} |`);
+  lines.push(`*${content.sessions_analyzed} sessions analyzed via Claude Haiku*`);
   lines.push("");
 
-  if (Object.keys(content.corrections_by_signal).length > 0) {
-    lines.push("**By signal type:**");
+  // Arc distribution
+  if (Object.keys(content.arc_distribution).length > 0) {
+    lines.push("**Arc types:**");
     lines.push("");
-    lines.push("| Signal | Count |");
-    lines.push("|--------|-------|");
-    for (const [signal, count] of Object.entries(content.corrections_by_signal)) {
-      lines.push(`| ${signal} | ${count} |`);
+    lines.push("| Type | Sessions |");
+    lines.push("|------|----------|");
+    for (const [arc, count] of Object.entries(content.arc_distribution)) {
+      lines.push(`| ${arc} | ${count} |`);
     }
     lines.push("");
   }
 
-  if (Object.keys(content.corrections_by_session).length > 0) {
+  // Corrections summary
+  lines.push("**Corrections:**");
+  lines.push("");
+  lines.push(`Total: ${content.total_corrections} across ${content.sessions_analyzed} sessions`);
+  lines.push("");
+
+  if (Object.keys(content.corrections_by_category).length > 0) {
+    lines.push("| Category | Count |");
+    lines.push("|----------|-------|");
+    for (const [cat, count] of Object.entries(content.corrections_by_category)) {
+      lines.push(`| ${cat} | ${count} |`);
+    }
+    lines.push("");
+  }
+
+  // Sessions with most corrections
+  if (content.sessions_with_most_corrections.length > 0) {
     lines.push("**Sessions with most corrections:**");
     lines.push("");
-    lines.push("| Session | Corrections |");
-    lines.push("|---------|-------------|");
-    const top = Object.entries(content.corrections_by_session).slice(0, 10);
-    for (const [session, count] of top) {
-      lines.push(`| ${session.replace(".jsonl.age", "")} | ${count} |`);
+    lines.push("| Session | Arc | Corrections |");
+    lines.push("|---------|-----|-------------|");
+    for (const s of content.sessions_with_most_corrections) {
+      lines.push(`| ${s.session} | ${s.arc_type} | ${s.count} |`);
     }
     lines.push("");
   }
 
-  if (content.sample_corrections.length > 0) {
-    lines.push("**Sample corrections (first 20):**");
+  // Correction details
+  if (content.all_corrections.length > 0) {
+    lines.push("**Correction details:**");
     lines.push("");
-    for (const c of content.sample_corrections) {
-      const date = c.timestamp.slice(0, 10);
-      const signals = c.signals.join(", ");
-      const text = c.text.replace(/\n/g, " ").replace(/\|/g, "\\|");
-      lines.push(`- **[${signals}]** (${date}): ${text}`);
+    for (const c of content.all_corrections.slice(0, 30)) {
+      const quote = c.user_quote.replace(/\n/g, " ").slice(0, 150);
+      lines.push(`- **[${c.category}]** ${c.description}`);
+      lines.push(`  > "${quote}"`);
+    }
+    lines.push("");
+  }
+
+  // Improvement suggestions (deduplicated)
+  const uniqueSuggestions = [...new Set(content.all_suggestions)];
+  if (uniqueSuggestions.length > 0) {
+    lines.push("**Improvement suggestions:**");
+    lines.push("");
+    for (const s of uniqueSuggestions.slice(0, 15)) {
+      lines.push(`- ${s}`);
     }
     lines.push("");
   }
@@ -593,13 +605,19 @@ function main(): void {
   }
 
   const report = analyze(sessions);
-  const content = analyzeContent(since);
+  const content = loadLlmAnalysis(since);
 
-  if (json) {
-    console.log(JSON.stringify({ ...report, content }, null, 2));
-  } else {
-    console.log(renderMarkdown(report, since, content));
-  }
+  const outputDir = resolve(import.meta.dirname ?? process.cwd(), "..", "data", "sessions");
+  const ext = json ? "json" : "md";
+  const dateSuffix = since ?? "all";
+  const outputPath = join(outputDir, `report-${dateSuffix}.${ext}`);
+
+  const output = json
+    ? JSON.stringify({ ...report, content }, null, 2)
+    : renderMarkdown(report, since, content);
+
+  writeFileSync(outputPath, output + "\n", "utf8");
+  console.log(`Report written to ${outputPath}`);
 }
 
 main();
