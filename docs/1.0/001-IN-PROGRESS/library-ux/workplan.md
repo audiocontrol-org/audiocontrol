@@ -412,11 +412,26 @@ Phase 5 (S3K Zone 3→4 promotion) — COMPLETE
 Phase 6 (shared useEditorDialogs) — COMPLETE
   6.1 -> 6.2 -> 6.3
 
-Phase 7 (unify library operations, after Phase 6)
+Phase 7 (unify library operations) — COMPLETE
   7.1 (shared hook) -> 7.2 (wire both editors) -> 7.3 (S3K LibraryPage extraction)
 
-Phase 8 (library UI e2e tests, after Phase 7)
+Phase 8 (library UI e2e tests) — COMPLETE
   8.1 (test IDs) -> 8.2 (test helpers) -> 8.3 (failing tests) -> 8.4 (fix bugs)
+
+Phase 9 (SCSI disk browser) — COMPLETE
+  Lazy metadata loading, context menus, drag-drop to library, loading indicators
+
+Phase 10 (SDS optimization) — COMPLETE
+  Batched SDS (20 packets, 9x speedup), bridge hardening, dynamic timeouts
+
+Phase 11 (drag-drop workflows) — COMPLETE
+  Disk→library, disk→device, library→device with type filtering, auto-send missing samples
+
+Phase 12 (common-area programs) — COMPLETE
+  Three library sections, expandable programs, sourceDevice schema fix
+
+Phase 13 (ASPACK bulk transfer) — BLOCKED on #184
+  23.4 KB/s proven but multi-chunk writes + sample creation unsolved
 ```
 
 ---

@@ -44,10 +44,29 @@ Align and improve library page UX across both the Roland S-330/S-550 editor and 
 | Phase 2: Upstream to editor-core | Complete | Context menu routing, headerSections, widened libraryHandle |
 | Phase 3: Migrate Roland to PluginLibraryBrowser | Complete | Both editors use same component, deleted 579-line bespoke |
 | Phase 4: UX polish on shared components | Mostly complete | 4.1-4.4 done; 4.5 keyboard nav deferred |
-| Phase 5: S3K Zone 3→4 promotion | In progress | Promote S3K programs to common area |
-| Phase 6: Shared useEditorDialogs | Stub | Next priority after Phase 5 |
+| Phase 5: S3K Zone 3→4 promotion | Complete | Promote S3K programs to common area |
+| Phase 6: Shared useEditorDialogs | Complete | Shared hook with WavLoaderStrategy |
+| Phase 7: Unify library operations | Complete | Shared useLibraryOperations hook |
+| Phase 8: Library UI e2e tests | Complete | Test IDs, helpers, bug fixes |
+| Phase 9: SCSI disk browser | Complete | Lazy metadata, context menus, drag-drop, loading indicators |
+| Phase 10: SDS optimization | Complete | Batched SDS 9x speedup (2.2 KB/s), bridge hardening |
+| Phase 11: Drag-drop workflows | Complete | Disk→library, disk→device, library→device with type filtering |
+| Phase 12: Common-area programs | Complete | Three library sections, expandable programs, sourceDevice schema |
+| Phase 13: ASPACK investigation | Blocked | 23.4 KB/s proven but multi-chunk + sample creation unsolved (#184) |
+
+## Related Issues
+
+- [#183](https://github.com/audiocontrol-org/audiocontrol/issues/183) — Delete dead MidiStreamClient (streaming port 6870)
+- [#184](https://github.com/audiocontrol-org/audiocontrol/issues/184) — ASPACK bulk sample transfer (10x faster than SDS)
+- [#185](https://github.com/audiocontrol-org/audiocontrol/issues/185) — Safari/iOS createWritable compatibility
+- [#186](https://github.com/audiocontrol-org/audiocontrol/pull/186) — PR: Library UX, SCSI disk browser, drag-drop, SDS batching
 
 ## Related Documentation
 
-- [SAMPLER-LIBRARY.md](/SAMPLER-LIBRARY.md) - Four-zone storage model and conversion boundaries
+- [SAMPLER-LIBRARY.md](/SAMPLER-LIBRARY.md) — Four-zone storage model and conversion boundaries
+- [S3000XL SysEx Protocol](../../s3000xl-editor/s3000xl-sysex-protocol.md) — Canonical protocol reference
+- [SCSI Sample Transfer Findings](../../scsi-sample-transfer/scsi-sample-data-findings.md) — ASPACK/RSPACK/SDS findings
+- [ASPACK Exploration Plan](../../scsi-sample-transfer/bulk-transfer-exploration-plan.md) — Systematic investigation plan
+- [SCSI-NOTES.md](/SCSI-NOTES.md) — Travel log of SCSI reverse engineering
+- [DEVELOPMENT-NOTES.md](/DEVELOPMENT-NOTES.md) — Session journal
 - [S3K Library Page Conformance](../../s3k-library-page/) - Prior effort (superseded by this feature)
