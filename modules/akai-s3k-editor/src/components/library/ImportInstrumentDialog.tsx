@@ -216,6 +216,7 @@ export function ImportInstrumentDialog({
     if (!programMeta) return;
 
     setErrorMessage(null);
+    cancelledRef.current = false;
     let updatedDeviceSampleNames = [...deviceSampleNames];
 
     // Phase 1: Send missing samples to device (if any and program dir available)
@@ -227,9 +228,12 @@ export function ImportInstrumentDialog({
         let nextSampleNumber = updatedDeviceSampleNames.length;
 
         for (let i = 0; i < missingSamples.length; i++) {
+          if (cancelledRef.current) {
+            setPhase('confirm');
+            return;
+          }
+
           const rawName = missingSamples[i];
-          // Strip .wav extension — zone references include it but device
-          // names and WAV filenames in the samples/ dir may vary.
           const baseName = rawName.replace(/\.wav$/i, '');
           setSampleSendProgress({
             currentSample: baseName,
@@ -237,8 +241,6 @@ export function ImportInstrumentDialog({
             totalSamples: missingSamples.length,
           });
 
-          // Try to find the WAV file in the program's samples/ directory.
-          // The file might be stored as "NAME.wav" (baseName + .wav).
           const wavFileName = `${baseName}.wav`;
           try {
             const wavHandle = await samplesDir.getFileHandle(wavFileName);
@@ -254,12 +256,16 @@ export function ImportInstrumentDialog({
             nextSampleNumber++;
           } catch (err) {
             console.warn(`[ImportInstrument] Failed to send sample "${baseName}":`, err);
-            // Continue with remaining samples — some zones will be unresolved
           }
         }
       } catch (err) {
         console.warn('[ImportInstrument] Could not read program samples directory:', err);
       }
+    }
+
+    if (cancelledRef.current) {
+      setPhase('confirm');
+      return;
     }
 
     // Phase 2: Import the program with the updated sample list
@@ -369,18 +375,28 @@ export function ImportInstrumentDialog({
             </div>
             <p className="text-xs text-gray-400 truncate">{sampleSendProgress.currentSample}</p>
           </div>
-          <p className="text-xs text-gray-500">
-            Do not disconnect the device during transfer.
-          </p>
+          <DialogActions>
+            <button
+              className="ac-btn ac-btn-sm ac-btn-secondary"
+              onClick={() => { cancelledRef.current = true; }}
+            >
+              Cancel
+            </button>
+          </DialogActions>
         </div>
       )}
 
       {phase === 'importing' && importProgress && (
         <div className="space-y-4">
           <ProgressBar progress={importProgress} />
-          <p className="text-xs text-gray-500">
-            Do not disconnect the device during transfer.
-          </p>
+          <DialogActions>
+            <button
+              className="ac-btn ac-btn-sm ac-btn-secondary"
+              onClick={() => { cancelledRef.current = true; }}
+            >
+              Cancel
+            </button>
+          </DialogActions>
         </div>
       )}
 
