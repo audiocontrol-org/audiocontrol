@@ -123,7 +123,7 @@ tsx tools/extract-sessions.ts
 ```
 Output: `data/sessions/sessions.jsonl` (one JSON line per session), `data/sessions/summary.csv`
 
-Remote machine: `tsx tools/extract-sessions.ts --data-dir /tmp/m1-data --machine orion-m1`
+Run on the local machine only — each machine extracts its own sessions. Data merges via git. The `--data-dir` and `--machine` flags exist for ad-hoc cross-machine extraction but are not part of the standard workflow.
 
 ### Analyze session data
 ```bash
