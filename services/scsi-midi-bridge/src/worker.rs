@@ -47,6 +47,16 @@ pub enum ScsiWork {
         progress: mpsc::Sender<serde_json::Value>,
         reply: oneshot::Sender<Result<u32, String>>,
     },
+    /// ASPACK fast sample upload via scsi_midi::upload_sample_aspack
+    AspackUpload {
+        target_id: u8,
+        sample_number: u16,
+        channel: u8,
+        sample_rate: u32,
+        samples: Vec<i16>,
+        progress: mpsc::Sender<serde_json::Value>,
+        reply: oneshot::Sender<Result<u32, String>>,
+    },
     /// SDS sample download via scsi_midi::download_sample
     SdsDownload {
         target_id: u8,
@@ -123,6 +133,25 @@ pub async fn scsi_worker(
                         });
                         // If the progress receiver is gone (WebSocket disconnected),
                         // signal cancellation so upload_sample stops sending packets.
+                        if progress.try_send(msg).is_err() {
+                            cancelled_clone.store(true, std::sync::atomic::Ordering::Relaxed);
+                        }
+                    },
+                    &cancelled,
+                ).await;
+                let _ = reply.send(result);
+            }
+            ScsiWork::AspackUpload { target_id, sample_number, channel, sample_rate, samples, progress, reply } => {
+                let cancelled = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+                let cancelled_clone = cancelled.clone();
+                let result = scsi_midi::upload_sample_aspack(
+                    &s2p, target_id, sample_number, channel, sample_rate, &samples,
+                    |sent, total| {
+                        let msg = serde_json::json!({
+                            "type": "upload-progress",
+                            "transferred": sent,
+                            "total": total,
+                        });
                         if progress.try_send(msg).is_err() {
                             cancelled_clone.store(true, std::sync::atomic::Ordering::Relaxed);
                         }

@@ -289,6 +289,11 @@ async fn handle_ws(
                                         &state, &parsed, dl_tx.clone(),
                                     ).await;
                                 }
+                                "sample-upload-fast" => {
+                                    handle_ws_sample_upload_fast(
+                                        &state, &parsed, dl_tx.clone(),
+                                    ).await;
+                                }
                                 _ => {}
                             }
                         }
@@ -492,6 +497,97 @@ async fn handle_ws_sample_upload(
         };
 
         // Wait for all progress messages to be forwarded
+        let _ = forward_handle.await;
+
+        match result {
+            Ok(total) => {
+                let msg = serde_json::json!({
+                    "type": "upload-complete",
+                    "totalSamples": total,
+                });
+                let _ = tx_done.send(msg).await;
+            }
+            Err(e) => {
+                let msg = serde_json::json!({
+                    "type": "sample-error",
+                    "error": e,
+                });
+                let _ = tx_done.send(msg).await;
+            }
+        }
+    });
+}
+
+/// Handle a "sample-upload-fast" WebSocket message.
+/// Uses ASPACK (Akai proprietary) for ~10x faster upload than SDS.
+/// Creates sample slot via minimal SDS, writes data via ASPACK chunks.
+async fn handle_ws_sample_upload_fast(
+    state: &Arc<AppState>,
+    parsed: &serde_json::Value,
+    tx: mpsc::Sender<serde_json::Value>,
+) {
+    let target_id = parsed["target_id"].as_u64().unwrap_or(6) as u8;
+    let sample_number = parsed["sample_number"].as_u64().unwrap_or(0) as u16;
+    let channel = parsed["channel"].as_u64().unwrap_or(0) as u8;
+    let sample_rate = parsed["sample_rate"].as_u64().unwrap_or(44100) as u32;
+
+    let samples: Vec<i16> = parsed["samples"]
+        .as_array()
+        .map(|arr| arr.iter().filter_map(|v| v.as_i64().map(|n| n as i16)).collect())
+        .unwrap_or_default();
+
+    if samples.is_empty() {
+        let msg = serde_json::json!({"type": "sample-error", "error": "no samples provided"});
+        let _ = tx.send(msg).await;
+        return;
+    }
+
+    let scsi_tx = state.scsi_tx.clone();
+
+    tokio::spawn(async move {
+        let total = samples.len() as u32;
+        info!(target_id, sample_number, total, sample_rate, "starting ASPACK upload task");
+
+        let (progress_tx, mut progress_rx) = mpsc::channel::<serde_json::Value>(128);
+        let tx_forward = tx.clone();
+        let tx_done = tx.clone();
+
+        let forward_handle = tokio::spawn(async move {
+            while let Some(msg) = progress_rx.recv().await {
+                if tx_forward.send(msg).await.is_err() {
+                    info!("WebSocket closed — stopping ASPACK upload progress forwarding");
+                    break;
+                }
+            }
+        });
+
+        let (reply_tx, reply_rx) = oneshot::channel();
+        let send_result = scsi_tx.send(ScsiWork::AspackUpload {
+            target_id,
+            sample_number,
+            channel,
+            sample_rate,
+            samples,
+            progress: progress_tx,
+            reply: reply_tx,
+        }).await;
+
+        if send_result.is_err() {
+            let _ = tx_done.send(serde_json::json!({"type": "sample-error", "error": "SCSI worker not running"})).await;
+            return;
+        }
+
+        // ASPACK is much faster — timeout based on ~25 KB/s throughput + margin
+        let data_bytes = total as u64 * 2;
+        let timeout_secs = (data_bytes / 20_000).max(30);
+        info!(total, timeout_secs, "ASPACK upload timeout");
+
+        let result = match tokio::time::timeout(Duration::from_secs(timeout_secs), reply_rx).await {
+            Ok(Ok(r)) => r,
+            Ok(Err(_)) => Err("worker channel closed".to_string()),
+            Err(_) => Err(format!("ASPACK upload timed out after {timeout_secs}s")),
+        };
+
         let _ = forward_handle.await;
 
         match result {

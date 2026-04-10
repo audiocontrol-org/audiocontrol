@@ -371,6 +371,218 @@ where
     Ok(total)
 }
 
+// =========================================================================
+// ASPACK fast upload (10x faster than SDS)
+// =========================================================================
+
+/// Upload a sample using ASPACK (Akai proprietary protocol).
+///
+/// Algorithm:
+/// 1. Create sample slot via minimal SDS (dump header + 1 silence packet)
+/// 2. Write real PCM data via ASPACK chunks (avoids block boundaries)
+/// 3. Progress reported per chunk
+///
+/// Throughput: ~16-23 KB/s vs ~2.2 KB/s for batched SDS.
+pub async fn upload_sample_aspack<F>(
+    s2p: &S2pClient,
+    target_id: u8,
+    sample_number: u16,
+    channel: u8,
+    sample_rate: u32,
+    samples: &[i16],
+    mut on_progress: F,
+    cancelled: &std::sync::Arc<std::sync::atomic::AtomicBool>,
+) -> Result<u32, String>
+where
+    F: FnMut(u32, u32),
+{
+    let total = samples.len() as u32;
+    if sample_rate == 0 {
+        return Err("sample_rate must be > 0".to_string());
+    }
+
+    info!(target_id, sample_number, total, sample_rate, "starting ASPACK upload");
+
+    s2p.scsi_midi_enable(target_id).await?;
+    let result = upload_sample_aspack_inner(
+        s2p, target_id, sample_number, channel, sample_rate, samples, &mut on_progress, cancelled,
+    ).await;
+    let _ = s2p.scsi_midi_disable(target_id).await;
+    result
+}
+
+async fn upload_sample_aspack_inner<F>(
+    s2p: &S2pClient,
+    target_id: u8,
+    sample_number: u16,
+    channel: u8,
+    sample_rate: u32,
+    samples: &[i16],
+    on_progress: &mut F,
+    cancelled: &std::sync::Arc<std::sync::atomic::AtomicBool>,
+) -> Result<u32, String>
+where
+    F: FnMut(u32, u32),
+{
+    let total = samples.len() as u32;
+
+    // Phase 1: Create sample slot via minimal SDS (dump header + 1 data packet)
+    info!("ASPACK phase 1: creating sample slot via minimal SDS");
+    let period_ns = 1_000_000_000u32 / sample_rate;
+    let sn_lo = (sample_number & 0x7F) as u8;
+    let sn_hi = ((sample_number >> 7) & 0x7F) as u8;
+
+    // Declare 40 samples (1 packet's worth) — we'll overwrite with ASPACK
+    let dump_header = vec![
+        0xF0, 0x7E, channel, 0x01,
+        sn_lo, sn_hi, 16,
+        (period_ns & 0x7F) as u8,
+        ((period_ns >> 7) & 0x7F) as u8,
+        ((period_ns >> 14) & 0x7F) as u8,
+        40u8 & 0x7F, 0, 0,             // length = 40 samples
+        0, 0, 0, 0, 0, 0, 0,           // loop start/end/type = 0
+        0xF7,
+    ];
+
+    s2p.scsi_midi_send(target_id, &dump_header).await?;
+    wait_for_ack(s2p, target_id, 30).await
+        .map_err(|e| format!("no ACK for dump header: {e}"))?;
+
+    // Send 1 data packet of silence to register the sample
+    let silence_pkt = encode_sds_data_packet(channel, 0, &[0i16; 40], 0, 40);
+    s2p.scsi_midi_send(target_id, &silence_pkt).await?;
+    wait_for_ack(s2p, target_id, 30).await
+        .map_err(|e| format!("no ACK for silence packet: {e}"))?;
+
+    info!("ASPACK phase 1 complete: sample slot created");
+
+    // Brief pause for device to commit
+    tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+
+    // Phase 2: Write real PCM data via ASPACK chunks
+    // Use chunk size 8191 to avoid Akai block boundaries (N×8192 rejected).
+    // Max single chunk is ~67000 samples (262 KB SysEx).
+    let chunk_size = if total <= 60000 { total as usize } else { 8191usize };
+    let mut offset = 0usize;
+
+    info!(total, chunk_size, "ASPACK phase 2: writing PCM data");
+
+    // Find the RSLIST index of the newly created sample.
+    // Query via raw CDBs (send RSLIST request, poll, read response).
+    let rslist_msg = vec![0xF0, 0x47, channel, 0x04, 0x48, 0xF7];
+    s2p.scsi_midi_send(target_id, &rslist_msg).await?;
+
+    // Poll for response
+    let mut rslist_resp = Vec::new();
+    for _ in 0..30 {
+        let pending = s2p.scsi_midi_poll(target_id).await?;
+        if pending > 0 {
+            rslist_resp = s2p.scsi_midi_read(target_id, pending).await?;
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+    }
+
+    let sample_count = if rslist_resp.len() > 6 { (rslist_resp.len() - 6) / 24 } else { 0 };
+    let rslist_index = if sample_count > 0 { sample_count - 1 } else {
+        return Err("sample not found in RSLIST after SDS creation".to_string());
+    };
+
+    info!(rslist_index, sample_count, "found sample in RSLIST");
+
+    while offset < samples.len() {
+        if cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+            info!("ASPACK upload cancelled");
+            return Err("upload cancelled".to_string());
+        }
+
+        let count = std::cmp::min(chunk_size, samples.len() - offset);
+
+        // Build ASPACK message: F0 47 cc 0D 48 [idx 4n] [offset 8n] [count 8n] [data 4n*count] F7
+        let mut msg = Vec::with_capacity(5 + 4 + 8 + 8 + count * 4 + 1);
+        msg.push(0xF0);
+        msg.push(0x47);
+        msg.push(channel);
+        msg.push(0x0D); // ASPACK opcode
+        msg.push(0x48); // S3000XL device ID
+
+        // Sample index (nibble-encoded, 2 bytes = 4 nibbles)
+        let idx = rslist_index as u16;
+        msg.push((idx & 0x0F) as u8);
+        msg.push(((idx >> 4) & 0x0F) as u8);
+        msg.push(((idx >> 8) & 0x0F) as u8);
+        msg.push(((idx >> 12) & 0x0F) as u8);
+
+        // Offset (nibble-encoded, 4 bytes = 8 nibbles)
+        let off = offset as u32;
+        for i in 0..4 {
+            let byte = ((off >> (i * 8)) & 0xFF) as u8;
+            msg.push(byte & 0x0F);
+            msg.push((byte >> 4) & 0x0F);
+        }
+
+        // Count (nibble-encoded, 4 bytes = 8 nibbles)
+        let cnt = count as u32;
+        for i in 0..4 {
+            let byte = ((cnt >> (i * 8)) & 0xFF) as u8;
+            msg.push(byte & 0x0F);
+            msg.push((byte >> 4) & 0x0F);
+        }
+
+        // PCM data (nibble-encoded, 4 nibbles per 16-bit sample)
+        for i in 0..count {
+            let s = if offset + i < samples.len() { samples[offset + i] as u16 } else { 0u16 };
+            msg.push((s & 0x0F) as u8);
+            msg.push(((s >> 4) & 0x0F) as u8);
+            msg.push(((s >> 8) & 0x0F) as u8);
+            msg.push(((s >> 12) & 0x0F) as u8);
+        }
+
+        msg.push(0xF7);
+
+        let t0 = std::time::Instant::now();
+        s2p.scsi_midi_send(target_id, &msg).await?;
+
+        // Poll for REPLY (flag 0x00 required)
+        let mut got_reply = false;
+        for _ in 0..30 {
+            let pending = s2p.scsi_midi_poll(target_id).await?;
+            if pending > 0 {
+                let reply = s2p.scsi_midi_read(target_id, pending).await?;
+                if reply.len() >= 4 && reply[3] == 0x16 {
+                    got_reply = true;
+                    break;
+                }
+            }
+        }
+
+        if !got_reply {
+            return Err(format!("no REPLY for ASPACK chunk at offset {offset}"));
+        }
+
+        let chunk_ms = t0.elapsed().as_millis() as u64;
+        offset += count;
+        let sent = (offset as u32).min(total);
+        on_progress(sent, total);
+
+        if offset <= chunk_size || offset % (chunk_size * 5) < chunk_size {
+            info!(
+                offset,
+                chunk_ms,
+                progress = format!("{}/{}", sent, total),
+                "ASPACK chunk"
+            );
+        }
+    }
+
+    info!(total, "ASPACK upload complete");
+    Ok(total)
+}
+
+// =========================================================================
+// SDS encoding helpers
+// =========================================================================
+
 /// Encode a 16-bit PCM sample into 3 SDS bytes (7-bit encoding, MSB first).
 fn encode_sds_sample(sample: i16) -> [u8; 3] {
     let raw = sample as u16;
