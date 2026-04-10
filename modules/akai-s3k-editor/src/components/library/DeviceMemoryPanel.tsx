@@ -144,6 +144,7 @@ export function DeviceMemoryPanel({
         }}
         onDrop={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           setProgramDropOver(false);
           // Handle library item drops
           const libRaw = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
@@ -197,6 +198,7 @@ export function DeviceMemoryPanel({
         }}
         onDrop={(e) => {
           e.preventDefault();
+          e.stopPropagation();
           setSampleDropOver(false);
           // Handle library item drops
           const libRaw = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
