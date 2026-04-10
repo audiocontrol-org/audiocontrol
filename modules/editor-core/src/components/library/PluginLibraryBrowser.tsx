@@ -362,6 +362,16 @@ export function PluginLibraryBrowser({
 
         {!loading && !error && libraryHandle && (
           <div className="ac-plugin-library-browser-sections">
+            <div className="ac-plugin-library-browser-toolbar">
+              <button
+                type="button"
+                className="ac-plugin-library-browser-refresh-btn"
+                onClick={onRefresh}
+                title="Refresh library"
+              >
+                &#x21BB;
+              </button>
+            </div>
             {headerSections}
             {plugin.categories.map((category) => (
               <TreeSection

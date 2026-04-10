@@ -228,6 +228,15 @@ async function saveToCommonLibrary(
     const volumeFiles = parseFileList(partitionData, volumeStartBlock);
     const sampleNames = collectSampleNames(fileData);
 
+    const { stringify: stringifyYaml } = await import('yaml');
+    const { getNestedDirectory } = await import('@audiocontrol/sampler-library/browser');
+
+    // Create program directory first — samples go inside it.
+    const programDir = await getNestedDirectory(libraryRoot, [
+      'library', 'common', 'programs', name,
+    ]);
+    const samplesDir = await programDir.getDirectoryHandle('samples', { create: true });
+
     const sampleHeaders = new Map<string, AkaiDiskSampleHeader>();
     let bytesTransferred = file.size;
 
@@ -248,32 +257,37 @@ async function saveToCommonLibrary(
         const wav = akaiSampleToWav(header, pcm);
         sampleHeaders.set(sampleName, header);
 
+        // Save sample WAV inside the program's samples/ directory
+        const wavHandle = await samplesDir.getFileHandle(
+          `${sampleName.trim()}.wav`, { create: true },
+        );
+        const wavWritable = await wavHandle.createWritable();
+        await wavWritable.write(wav.buffer as ArrayBuffer);
+        await wavWritable.close();
+
+        // Save sample metadata YAML alongside the WAV
         const commonSample = akaiSampleToCommon(header);
         commonSample.name = sampleName;
+        const sampleYaml = stringifyYaml(commonSample, { indent: 2 });
+        const yamlHandle = await samplesDir.getFileHandle(
+          `${sampleName.trim()}.yaml`, { create: true },
+        );
+        const yamlWritable = await yamlHandle.createWritable();
+        await yamlWritable.write(sampleYaml);
+        await yamlWritable.close();
 
-        await saveSample(libraryRoot, {
-          name: sampleName,
-          yaml: commonSample as SampleSavePayload['yaml'],
-          wavData: wav.buffer as ArrayBuffer,
-        });
         bytesTransferred += sampleFile.size;
         onProgress({ bytesTransferred });
       } catch (err) {
-        console.warn(`Failed to save sample "${sampleName}" to common library:`, err);
+        console.warn(`Failed to save sample "${sampleName}" to program:`, err);
       }
     }
 
     // Save program metadata
     const commonProgram = akaiProgramToCommon(program, sampleHeaders);
     commonProgram.name = name;
-
-    const { stringify: stringifyYaml } = await import('yaml');
     const programYaml = stringifyYaml(commonProgram, { indent: 2 });
 
-    const { getNestedDirectory } = await import('@audiocontrol/sampler-library/browser');
-    const programDir = await getNestedDirectory(libraryRoot, [
-      'library', 'common', 'programs', name,
-    ]);
     const fileHandle = await programDir.getFileHandle('program.yaml', { create: true });
     const writable = await fileHandle.createWritable();
     await writable.write(programYaml);
