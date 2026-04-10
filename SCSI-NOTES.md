@@ -22,7 +22,7 @@ Browser ──HTTP/WS──► scsi-midi-bridge (Pi:7033)
 
 ---
 
-## 2026-04-09: SDS Upload — First Working Transfer
+## 2026-04-09 ~16:00 PDT: SDS Upload — First Working Transfer
 
 ### Strategy
 Use MIDI Sample Dump Standard (SDS) over the SCSI MIDI channel (CDB 0x0C send, 0x0D poll, 0x0E read) to upload samples to the S3000XL.
@@ -48,7 +48,7 @@ The 113ms per SCSI command was initially attributed to TCP connection overhead. 
 
 ---
 
-## 2026-04-09: Defensive Sleeps — A Pattern of Wrong Instincts
+## 2026-04-09 ~19:30 PDT: Defensive Sleeps — A Pattern of Wrong Instincts
 
 ### Blind alley
 Added 50ms sleep between packet send and ACK poll, 100ms sleep in ACK poll loop, 200ms post-header sleep, 3-second post-upload "commit" sleep. Each added "just in case" the device needed time.
@@ -61,7 +61,7 @@ Removed all defensive sleeps. Implemented exponential backoff for ACK polling pe
 
 ---
 
-## 2026-04-09: Client-Side Timeout — The Silent Killer
+## 2026-04-09 ~22:30 PDT: Client-Side Timeout — The Silent Killer
 
 ### Bug
 SDS uploads for samples > ~1 second (44100+ samples) silently failed. The `ImportInstrumentDialog` reported "none of the zone samples were found on the device" even though the SDS transfer appeared to complete.
@@ -74,7 +74,7 @@ Dynamic timeout based on sample count: `packets * 400ms + 30s margin`, minimum 6
 
 ---
 
-## 2026-04-10: Batched SDS — 9x Speedup
+## 2026-04-10 00:58 PDT: Batched SDS — 9x Speedup
 
 ### Strategy
 Send multiple SDS data packets concatenated in a single CDB 0x0C call, read all ACKs in a single CDB 0x0E call. This amortizes the ~113ms per-SCSI-command overhead across the batch.
@@ -97,7 +97,7 @@ Changed `upload_sample_inner` in `scsi_midi.rs` to build batches of 20 packets, 
 
 ---
 
-## 2026-04-10: Streaming Port 6870 — Dead End
+## 2026-04-10 00:37 PDT: Streaming Port 6870 — Dead End
 
 ### Strategy
 s2p has a streaming MIDI port (6870) with persistent TCP and simple frame protocol (MSG_SEND/MSG_DATA). Hypothesis: bypass the per-command protobuf overhead for massive speedup.
@@ -113,7 +113,7 @@ Filed issue #183 for deletion. The `MidiStreamClient` code is dead — no code p
 
 ---
 
-## 2026-04-10: Bridge Spamming — WebSocket Disconnect Doesn't Stop Upload
+## 2026-04-10 00:01 PDT: Bridge Spamming — WebSocket Disconnect Doesn't Stop Upload
 
 ### Bug
 When the browser page reloaded during an SDS transfer, the bridge continued sending packets to the sampler indefinitely. The sampler's SCSI LED flashed continuously. Only killing the bridge process stopped it.
@@ -126,7 +126,7 @@ Changed the forwarding task to break its loop when `tx_forward.send()` fails (We
 
 ---
 
-## 2026-04-10: S3000 Protocol Mode — ASPACK Discovery
+## 2026-04-10 01:30 PDT: S3000 Protocol Mode — ASPACK Discovery
 
 ### Context
 The S3000XL front panel has a "Sample Protocol" setting: Standard (SDS) vs S3000. MESA II (Akai's Mac OS 9 editor) uses a proprietary protocol for sample transfer, not SDS.
@@ -162,7 +162,7 @@ Filed as issue #184 with exploration plan.
 
 ---
 
-## 2026-04-10: MESA SCSI Plug Protocol — CDB Flag Byte
+## 2026-04-10 02:00 PDT: MESA SCSI Plug Protocol — CDB Flag Byte
 
 ### Finding
 The `mesa-plug-harness` repo (`SCSI-PROTOCOL.md`) reveals MESA uses flag byte `$80` on CDB 0x0C when a reply is expected, and `$00` for fire-and-forget. Our bridge always uses `0x00`.
@@ -178,7 +178,7 @@ Untested — the multi-chunk ASPACK test failed even with flag `$80` and drain, 
 
 ---
 
-## 2026-04-10: MiscellaneousData Diff — Protocol Mode Not Stored
+## 2026-04-10 01:45 PDT: MiscellaneousData Diff — Protocol Mode Not Stored
 
 ### Strategy
 Read RMDATA with sampler in "Standard" mode, switch to "S3000" on front panel, read again, diff to find the protocol mode byte.
@@ -188,7 +188,7 @@ Read RMDATA with sampler in "Standard" mode, switch to "S3000" on front panel, r
 
 ---
 
-## 2026-04-10: SDS in S3000 Mode — Accidental Dump Flood
+## 2026-04-10 01:50 PDT: SDS in S3000 Mode — Accidental Dump Flood
 
 ### Bug
 Running the SDS batch test while the sampler was in S3000 protocol mode caused the device to start sending SDS data packets back. The bridge's `send_and_receive` kept reading data packets instead of the expected SysEx response, flooding the MIDI buffer.
@@ -218,6 +218,21 @@ Always verify the sampler's protocol mode before running SDS operations. S3000 m
 - "Don't guess, test" — write a Node.js script and try it
 - "Don't make things up" — every claim needs evidence from hardware testing
 - "Why is X so slow?" — always measure, never assume
+
+---
+
+## 2026-04-10 11:00 PDT: Concretizing Batched SDS in Web Editor
+
+### What we verified
+- Batched SDS (20 packets/batch) works end-to-end through the bridge WebSocket → web app
+- Node.js speed test: 2.4 KB/s (6.9x speedup confirmed)
+- Web editor Send Sample dialog shows proper byte-level progress with elapsed time and ETA
+- Post-upload rename works — samples appear with correct names instead of "MIDI XX"
+
+### Bugs fixed during integration
+- SDS progress bar didn't meet project spec — added bytes, elapsed, ETA
+- `SendSampleDialog` didn't pass sample name to `sendSampleViaSds` — samples appeared as "MIDI 98" etc.
+- `DiskToLibraryDialog.saveToCommonLibrary` used `createWritable()` which fails on Safari/iOS (#185)
 
 ---
 
