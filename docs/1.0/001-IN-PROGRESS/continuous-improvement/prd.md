@@ -46,14 +46,16 @@ With 1,771 session logs totaling 544MB across two machines, 11 features in progr
 ### In Scope
 - CLAUDE.md additions (session lifecycle, playbooks, agent guidance, pre-commit review)
 - DEVELOPMENT-NOTES.md template restructuring
-- Session log analyzer setup (clone existing tool)
+- Session data extractor (TypeScript, extracts structured records from JSONL logs, commits to git)
 - Custom agent creation (hardware-protocol-engineer, library-ux-engineer)
-- Custom skill creation (/session-start, /session-end, /deploy-bridge, /analyze-session)
+- Custom skill creation (/session-start, /session-end, /deploy-bridge)
 - Feature doc updates for library-ux (this session's work)
 - Virtuous cycle memory entry
 
 ### Out of Scope
 - MCP servers or databases
+- Python or Docker dependencies
+- LLM-powered analysis (Gemini API) — extract data first, analyze later
 - Autonomous multi-hour execution (Tier 3)
 - Cross-project automation beyond ~/work/CLAUDE.md
 - Changes to completed features
@@ -61,8 +63,8 @@ With 1,771 session logs totaling 544MB across two machines, 11 features in progr
 
 ## Dependencies
 
-- claude-code-log-analyzer (external: github.com/mrothroc/claude-code-log-analyzer)
-- Gemini API key (for arc analysis — optional, agent analysis works without it)
+- tsx (already installed — used for running TypeScript scripts)
+- SSH access to orion-m1.local (for remote session data extraction)
 
 ## Open Questions
 
