@@ -171,19 +171,20 @@ function analyze(sessions: SessionRecord[]): AnalysisReport {
       toolCounts[tool] = (toolCounts[tool] ?? 0) + 1;
     }
 
-    // Sessions by week
+    // Sessions by week (Monday-start, using local date to avoid UTC shift)
     if (s.start_time) {
       const date = new Date(s.start_time);
+      const day = date.getDay();
+      const mondayOffset = day === 0 ? 6 : day - 1; // Sunday=6 back, Mon=0, Tue=1...
       const weekStart = new Date(date);
-      weekStart.setDate(date.getDate() - date.getDay());
-      const weekKey = weekStart.toISOString().slice(0, 10);
+      weekStart.setDate(date.getDate() - mondayOffset);
+      const weekKey = `${weekStart.getFullYear()}-${String(weekStart.getMonth() + 1).padStart(2, "0")}-${String(weekStart.getDate()).padStart(2, "0")}`;
       byPeriod[weekKey] = (byPeriod[weekKey] ?? 0) + 1;
     }
 
     // Models
-    if (s.model) {
-      modelCounts[s.model] = (modelCounts[s.model] ?? 0) + 1;
-    }
+    const modelKey = s.model || "(no assistant messages)";
+    modelCounts[modelKey] = (modelCounts[modelKey] ?? 0) + 1;
 
     // Date range
     if (!earliest || s.start_time < earliest) earliest = s.start_time;
@@ -297,7 +298,7 @@ function renderMarkdown(report: AnalysisReport, since: string | null): string {
   lines.push(
     `| Total tokens (output) | ${formatTokens(report.total_tokens.output)} |`
   );
-  lines.push(`| Avg session duration | ${report.avg_duration_minutes} min |`);
+  lines.push(`| Avg session duration (wall clock) | ${report.avg_duration_minutes} min |`);
   lines.push(`| Avg user messages/session | ${report.avg_user_messages} |`);
   lines.push(`| Agent spawns/session | ${report.agent_spawn_rate} |`);
   lines.push("");
@@ -358,13 +359,13 @@ function renderMarkdown(report: AnalysisReport, since: string | null): string {
   }
 
   // Longest sessions
-  lines.push("### Longest Sessions (top 10)");
+  lines.push("### Longest Sessions by Wall Clock (top 10)");
   lines.push("");
   lines.push(
-    "| Project | Date | Duration | User Msgs | Commits |"
+    "| Project | Date | Wall Clock | User Msgs | Commits |"
   );
   lines.push(
-    "|---------|------|----------|-----------|---------|"
+    "|---------|------|------------|-----------|---------|"
   );
   for (const s of report.longest_sessions) {
     const hrs = Math.round(s.duration_minutes / 60);
