@@ -408,19 +408,20 @@ export function LibraryPage(): JSX.Element {
           }
         })();
       } else if (isAkaiProgram(payload.file.type)) {
-        // Save program to S3K library, then open import-to-device dialog
+        // Save program to common library, then open ImportInstrumentDialog
+        // which auto-sends samples and creates the program on device
         (async () => {
           try {
             await resolved.ensureFileBlocks(payload.file);
             const fileData = readFileData(resolved.partitionData, payload.file);
             const noop = () => { /* progress not shown for background save */ };
-            await saveToS3kLibrary(
+            await saveToCommonLibrary(
               payload.file, fileData, resolved.partitionData,
               payload.volumeStartBlock, name, root!, noop,
               resolved.ensureFileBlocks,
             );
             await refreshLibrary();
-            transferCallbacks.handleSendProgramToDevice(name, name);
+            instrumentTransfer.openDialog(name, [], true);
           } catch (err) {
             console.error('[LibraryPage] disk-to-device program failed:', err);
           }
