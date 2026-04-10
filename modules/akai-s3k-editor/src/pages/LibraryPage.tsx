@@ -385,16 +385,47 @@ export function LibraryPage(): JSX.Element {
       }
     } : undefined,
     onDiskItemDrop: canTransfer ? (payload: DiskDragPayload) => {
-      // Resolve disk item and open save-to-library dialog
       const resolved = diskBrowserRef.current?.resolveDragPayload(payload);
       if (!resolved) return;
-      setDiskToLibrary({
-        open: true,
-        file: payload.file,
-        partitionData: resolved.partitionData,
-        volumeStartBlock: payload.volumeStartBlock,
-        ensureFileBlocks: resolved.ensureFileBlocks,
-      });
+      const name = payload.file.name.trim();
+
+      if (isAkaiSample(payload.file.type)) {
+        // Save sample to common library, then open send-to-device dialog
+        (async () => {
+          try {
+            await resolved.ensureFileBlocks(payload.file);
+            const fileData = readFileData(resolved.partitionData, payload.file);
+            const noop = () => { /* progress not shown for background save */ };
+            await saveToCommonLibrary(
+              payload.file, fileData, resolved.partitionData,
+              payload.volumeStartBlock, name, root!, noop,
+              resolved.ensureFileBlocks,
+            );
+            await refreshLibrary();
+            transferCallbacks.handleSendSampleToDevice(name, []);
+          } catch (err) {
+            console.error('[LibraryPage] disk-to-device sample failed:', err);
+          }
+        })();
+      } else if (isAkaiProgram(payload.file.type)) {
+        // Save program to S3K library, then open import-to-device dialog
+        (async () => {
+          try {
+            await resolved.ensureFileBlocks(payload.file);
+            const fileData = readFileData(resolved.partitionData, payload.file);
+            const noop = () => { /* progress not shown for background save */ };
+            await saveToS3kLibrary(
+              payload.file, fileData, resolved.partitionData,
+              payload.volumeStartBlock, name, root!, noop,
+              resolved.ensureFileBlocks,
+            );
+            await refreshLibrary();
+            transferCallbacks.handleSendProgramToDevice(name, name);
+          } catch (err) {
+            console.error('[LibraryPage] disk-to-device program failed:', err);
+          }
+        })();
+      }
     } : undefined,
     isConnected: isDeviceConnected,
     isLoading: isDeviceLoading,
