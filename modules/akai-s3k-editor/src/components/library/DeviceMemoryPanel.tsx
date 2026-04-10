@@ -57,7 +57,7 @@ function NameList({
       <h4 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-1">
         {title} ({names.length})
       </h4>
-      <ul className="max-h-48 overflow-y-auto space-y-px">
+      <ul className="overflow-y-auto space-y-px">
         {names.map((name, index) => {
           const isSelected = selectedType === type && selectedIndex === index;
           return (

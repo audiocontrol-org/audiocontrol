@@ -94,7 +94,6 @@ export function SendSampleDialog({
     setPhase('loading');
     setWavInfo(null);
     setLoadError(null);
-    setTargetSampleNumber(deviceSampleCount);
     clearError();
 
     let cancelled = false;
@@ -124,7 +123,11 @@ export function SendSampleDialog({
 
     void load();
     return () => { cancelled = true; };
-  }, [open, libraryRoot, sampleName, samplePath, client, deviceSampleCount, clearError]);
+    // Note: deviceSampleCount intentionally excluded — the effect queries the
+    // authoritative count from the device. Including it would re-trigger the
+    // effect after a successful transfer (which refreshes device state).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, libraryRoot, sampleName, samplePath, client, clearError]);
 
   const handleSend = useCallback(async () => {
     if (!wavInfo) return;

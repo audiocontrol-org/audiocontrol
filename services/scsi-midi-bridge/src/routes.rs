@@ -450,24 +450,8 @@ async fn handle_ws_sample_upload(
         let total = samples.len() as u32;
         info!(target_id, sample_number, total, sample_rate, "starting sample upload task");
 
-        // Progress channel: worker pushes upload-progress messages here
         let (progress_tx, mut progress_rx) = mpsc::channel::<serde_json::Value>(128);
-        let tx_forward = tx.clone();
-        let tx_done = tx.clone();
 
-        let forward_handle = tokio::spawn(async move {
-            while let Some(msg) = progress_rx.recv().await {
-                // If the WebSocket is closed, stop forwarding. This drops
-                // progress_rx, causing the worker's try_send to fail and
-                // triggering the cancellation flag.
-                if tx_forward.send(msg).await.is_err() {
-                    info!("WebSocket closed — stopping SDS upload progress forwarding");
-                    break;
-                }
-            }
-        });
-
-        // Submit upload work item
         let (reply_tx, reply_rx) = oneshot::channel();
         let send_result = scsi_tx.send(ScsiWork::SdsUpload {
             target_id,
@@ -480,24 +464,48 @@ async fn handle_ws_sample_upload(
         }).await;
 
         if send_result.is_err() {
-            let _ = tx_done.send(serde_json::json!({"type": "sample-error", "error": "SCSI worker not running"})).await;
+            let _ = tx.send(serde_json::json!({"type": "sample-error", "error": "SCSI worker not running"})).await;
             return;
         }
 
-        // Timeout scales with sample count: ~200ms per 40-sample packet + margin.
-        // Minimum 60s, no upper cap — large samples can take many minutes.
-        let packets = (total as u64 + 39) / 40;
-        let timeout_secs = (packets / 4).max(60);
-        info!(total, packets, timeout_secs, "SDS upload timeout");
+        // Stall detection: timeout resets on every progress message.
+        // SDS is slower (~200ms/packet) but packets are frequent.
+        let stall_timeout = Duration::from_secs(30);
+        let stall_deadline = tokio::time::sleep(stall_timeout);
+        tokio::pin!(stall_deadline);
 
-        let result = match tokio::time::timeout(Duration::from_secs(timeout_secs), reply_rx).await {
-            Ok(Ok(r)) => r,
-            Ok(Err(_)) => Err("worker channel closed".to_string()),
-            Err(_) => Err("upload timed out (120s)".to_string()),
+        let mut stalled = false;
+
+        loop {
+            tokio::select! {
+                msg = progress_rx.recv() => {
+                    match msg {
+                        Some(progress_msg) => {
+                            stall_deadline.as_mut().reset(tokio::time::Instant::now() + stall_timeout);
+                            if tx.send(progress_msg).await.is_err() {
+                                info!("WebSocket closed during SDS upload");
+                                break;
+                            }
+                        }
+                        None => break, // Worker done, reply coming
+                    }
+                }
+                _ = &mut stall_deadline => {
+                    stalled = true;
+                    break;
+                }
+            }
+        }
+
+        let result = if stalled {
+            Err("SDS upload stalled — no progress for 30s".to_string())
+        } else {
+            match tokio::time::timeout(Duration::from_secs(5), reply_rx).await {
+                Ok(Ok(r)) => r,
+                Ok(Err(_)) => Err("worker channel closed".to_string()),
+                Err(_) => Err("worker did not send reply after completing".to_string()),
+            }
         };
-
-        // Wait for all progress messages to be forwarded
-        let _ = forward_handle.await;
 
         match result {
             Ok(total) => {
@@ -505,14 +513,14 @@ async fn handle_ws_sample_upload(
                     "type": "upload-complete",
                     "totalSamples": total,
                 });
-                let _ = tx_done.send(msg).await;
+                let _ = tx.send(msg).await;
             }
             Err(e) => {
                 let msg = serde_json::json!({
                     "type": "sample-error",
                     "error": e,
                 });
-                let _ = tx_done.send(msg).await;
+                let _ = tx.send(msg).await;
             }
         }
     });
@@ -549,17 +557,6 @@ async fn handle_ws_sample_upload_fast(
         info!(target_id, sample_number, total, sample_rate, "starting ASPACK upload task");
 
         let (progress_tx, mut progress_rx) = mpsc::channel::<serde_json::Value>(128);
-        let tx_forward = tx.clone();
-        let tx_done = tx.clone();
-
-        let forward_handle = tokio::spawn(async move {
-            while let Some(msg) = progress_rx.recv().await {
-                if tx_forward.send(msg).await.is_err() {
-                    info!("WebSocket closed — stopping ASPACK upload progress forwarding");
-                    break;
-                }
-            }
-        });
 
         let (reply_tx, reply_rx) = oneshot::channel();
         let send_result = scsi_tx.send(ScsiWork::AspackUpload {
@@ -573,22 +570,48 @@ async fn handle_ws_sample_upload_fast(
         }).await;
 
         if send_result.is_err() {
-            let _ = tx_done.send(serde_json::json!({"type": "sample-error", "error": "SCSI worker not running"})).await;
+            let _ = tx.send(serde_json::json!({"type": "sample-error", "error": "SCSI worker not running"})).await;
             return;
         }
 
-        // ASPACK is much faster — timeout based on ~25 KB/s throughput + margin
-        let data_bytes = total as u64 * 2;
-        let timeout_secs = (data_bytes / 20_000).max(30);
-        info!(total, timeout_secs, "ASPACK upload timeout");
+        // Stall detection: timeout resets on every progress message.
+        // Transfers of any size succeed as long as chunks keep arriving.
+        let stall_timeout = Duration::from_secs(30);
+        let stall_deadline = tokio::time::sleep(stall_timeout);
+        tokio::pin!(stall_deadline);
 
-        let result = match tokio::time::timeout(Duration::from_secs(timeout_secs), reply_rx).await {
-            Ok(Ok(r)) => r,
-            Ok(Err(_)) => Err("worker channel closed".to_string()),
-            Err(_) => Err(format!("ASPACK upload timed out after {timeout_secs}s")),
+        let mut stalled = false;
+
+        loop {
+            tokio::select! {
+                msg = progress_rx.recv() => {
+                    match msg {
+                        Some(progress_msg) => {
+                            stall_deadline.as_mut().reset(tokio::time::Instant::now() + stall_timeout);
+                            if tx.send(progress_msg).await.is_err() {
+                                info!("WebSocket closed during ASPACK upload");
+                                break;
+                            }
+                        }
+                        None => break, // Worker done, reply coming
+                    }
+                }
+                _ = &mut stall_deadline => {
+                    stalled = true;
+                    break;
+                }
+            }
+        }
+
+        let result = if stalled {
+            Err("ASPACK upload stalled — no progress for 30s".to_string())
+        } else {
+            match tokio::time::timeout(Duration::from_secs(5), reply_rx).await {
+                Ok(Ok(r)) => r,
+                Ok(Err(_)) => Err("worker channel closed".to_string()),
+                Err(_) => Err("worker did not send reply after completing".to_string()),
+            }
         };
-
-        let _ = forward_handle.await;
 
         match result {
             Ok(total) => {
@@ -596,14 +619,14 @@ async fn handle_ws_sample_upload_fast(
                     "type": "upload-complete",
                     "totalSamples": total,
                 });
-                let _ = tx_done.send(msg).await;
+                let _ = tx.send(msg).await;
             }
             Err(e) => {
                 let msg = serde_json::json!({
                     "type": "sample-error",
                     "error": e,
                 });
-                let _ = tx_done.send(msg).await;
+                let _ = tx.send(msg).await;
             }
         }
     });

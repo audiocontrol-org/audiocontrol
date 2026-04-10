@@ -279,19 +279,26 @@ function createScsiSdsChannel(
 
       return new Promise<void>((resolve, reject) => {
         const sdsWs = new WebSocket(wsUrl);
-        // ASPACK timeout: ~20 KB/s throughput + margin. Minimum 30s.
-        const dataBytes = samples.length * 2;
-        const timeoutMs = Math.max(30_000, (dataBytes / 15) + 15_000);
-        const timeout = setTimeout(() => {
+
+        // Stall-based timeout: resets on every progress message.
+        // Fires only if no progress arrives for 30s (transfer genuinely stuck).
+        const STALL_MS = 30_000;
+        let stallTimer = setTimeout(onStall, STALL_MS);
+
+        function resetStallTimer(): void {
+          clearTimeout(stallTimer);
+          stallTimer = setTimeout(onStall, STALL_MS);
+        }
+
+        function onStall(): void {
           sdsWs.close();
-          reject(new Error(`Sample upload timed out after ${Math.round(timeoutMs / 1000)}s`));
-        }, timeoutMs);
+          reject(new Error('Sample upload stalled — no progress for 30s'));
+        }
 
         const totalPackets = Math.ceil(samples.length / 120);
 
         sdsWs.addEventListener('open', () => {
           // Use ASPACK fast path (8x faster than SDS).
-          // Falls back to SDS on bridges that don't support it.
           sdsWs.send(JSON.stringify({
             type: 'sample-upload-fast',
             target_id: DEFAULT_SCSI_TARGET_ID,
@@ -307,6 +314,7 @@ function createScsiSdsChannel(
 
           switch (msg.type) {
             case 'upload-progress':
+              resetStallTimer();
               if (onProgress) {
                 onProgress({
                   packetsSent: msg.transferred ?? 0,
@@ -318,13 +326,13 @@ function createScsiSdsChannel(
               break;
 
             case 'upload-complete':
-              clearTimeout(timeout);
+              clearTimeout(stallTimer);
               sdsWs.close();
               resolve();
               break;
 
             case 'sample-error':
-              clearTimeout(timeout);
+              clearTimeout(stallTimer);
               sdsWs.close();
               reject(new Error(`SDS upload error: ${msg.error}`));
               break;
@@ -332,7 +340,7 @@ function createScsiSdsChannel(
         });
 
         sdsWs.addEventListener('error', (event) => {
-          clearTimeout(timeout);
+          clearTimeout(stallTimer);
           reject(new Error(`SDS upload WebSocket error: ${event}`));
         });
       });
