@@ -41,7 +41,7 @@ export interface S3kMemoryPanelState {
   onSelectSample: (index: number) => void;
   onRefresh: () => void;
   onImportSample?: (sampleName: string, samplePath: string[]) => void;
-  onImportProgram?: (dirName: string, displayName: string) => void;
+  onImportProgram?: (dirName: string, displayName: string, categoryId: string) => void;
   isConnected: boolean;
   isLoading: boolean;
 }

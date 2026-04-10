@@ -15,7 +15,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
-import { loadProgramMeta } from '@audiocontrol/sampler-library/browser';
+import { loadProgramMeta, loadProgramFromProgramsDir } from '@audiocontrol/sampler-library/browser';
 import type { ProgramYaml } from '@audiocontrol/sampler-library/browser';
 import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
 import { Dialog, DialogTitle, DialogDescription, DialogActions } from '@/components/ui/Dialog';
@@ -37,6 +37,8 @@ export interface ImportInstrumentDialogProps {
   programDirName: string;
   /** Path within the samples directory */
   programPath: string[];
+  /** If true, load from library/common/programs/ instead of library/common/samples/ */
+  fromProgramsDir?: boolean;
   client: S3000xlClientInterface;
   libraryRoot: StorageDirectoryHandle;
   /** Current sample names on the device */
@@ -144,6 +146,7 @@ export function ImportInstrumentDialog({
   onClose,
   programDirName,
   programPath,
+  fromProgramsDir,
   client,
   libraryRoot,
   deviceSampleNames,
@@ -173,7 +176,9 @@ export function ImportInstrumentDialog({
 
     void (async () => {
       try {
-        const meta = await loadProgramMeta(libraryRoot, programDirName, programPath);
+        const meta = fromProgramsDir
+          ? await loadProgramFromProgramsDir(libraryRoot, programDirName)
+          : await loadProgramMeta(libraryRoot, programDirName, programPath);
         if (cancelledRef.current) return;
 
         // Pre-resolve to show the user what will happen

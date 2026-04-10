@@ -21,6 +21,7 @@ import { getNestedDirectoryReadOnly } from '@/library-fs.js';
 import { sanitizeForFilename } from './import.js';
 
 const SAMPLES_ROOT = ['library', 'common', 'samples'];
+const PROGRAMS_ROOT = ['library', 'common', 'programs'];
 
 /** Get samples directory for read-only access (cacheable). */
 async function getSamplesDirReadOnly(
@@ -61,4 +62,41 @@ export async function loadProgramMeta(
   }
 
   return result.data;
+}
+
+/**
+ * Load a program's metadata from `library/common/programs/`.
+ *
+ * This is the dedicated programs directory (separate from samples).
+ * Programs saved via disk-to-library use this path.
+ */
+export async function loadProgramFromProgramsDir(
+  root: StorageDirectoryHandle,
+  name: string,
+): Promise<ProgramYaml> {
+  const programsDir = await getNestedDirectoryReadOnly(root, PROGRAMS_ROOT);
+  const safeName = sanitizeForFilename(name);
+  const programDir = await programsDir.getDirectoryHandle(safeName);
+
+  const yamlHandle = await programDir.getFileHandle('program.yaml');
+  const yamlFile = await yamlHandle.getFile();
+  const yamlText = await yamlFile.text();
+  const parsed = parseYaml(yamlText);
+  const result = ProgramYamlSchema.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(`Invalid program YAML for "${name}": ${result.error.message}`);
+  }
+  return result.data;
+}
+
+/**
+ * Get the program's directory handle from `library/common/programs/`.
+ */
+export async function getProgramDirFromProgramsDir(
+  root: StorageDirectoryHandle,
+  name: string,
+): Promise<StorageDirectoryHandle> {
+  const programsDir = await getNestedDirectoryReadOnly(root, PROGRAMS_ROOT);
+  const safeName = sanitizeForFilename(name);
+  return programsDir.getDirectoryHandle(safeName);
 }

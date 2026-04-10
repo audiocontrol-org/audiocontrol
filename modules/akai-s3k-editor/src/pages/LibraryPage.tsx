@@ -376,7 +376,15 @@ export function LibraryPage(): JSX.Element {
     onSelectSample: handleDeviceSelectSample,
     onRefresh: () => void refreshDevice(),
     onImportSample: canTransfer ? transferCallbacks.handleSendSampleToDevice : undefined,
-    onImportProgram: canTransfer ? transferCallbacks.handleSendProgramToDevice : undefined,
+    onImportProgram: canTransfer ? (dirName: string, displayName: string, categoryId: string) => {
+      if (categoryId === 's3k-programs') {
+        // S3K native programs — use ImportProgramDialog
+        transferCallbacks.handleSendProgramToDevice(dirName, displayName);
+      } else {
+        // Common-area programs — use ImportInstrumentDialog
+        instrumentTransfer.openDialog(dirName, [], true);
+      }
+    } : undefined,
     isConnected: isDeviceConnected,
     isLoading: isDeviceLoading,
   }), [
@@ -386,6 +394,7 @@ export function LibraryPage(): JSX.Element {
     refreshDevice, isDeviceConnected, isDeviceLoading,
     canTransfer, transferCallbacks.handleSendSampleToDevice,
     transferCallbacks.handleSendProgramToDevice,
+    instrumentTransfer,
   ]);
 
   // -----------------------------------------------------------------------
@@ -494,6 +503,7 @@ export function LibraryPage(): JSX.Element {
             onClose={instrumentTransfer.closeDialog}
             programDirName={instrumentTransfer.dialog.programDirName}
             programPath={instrumentTransfer.dialog.programPath}
+            fromProgramsDir={instrumentTransfer.dialog.fromProgramsDir}
             client={client}
             libraryRoot={root}
             deviceSampleNames={deviceSampleNames}

@@ -447,7 +447,11 @@ export {
 } from './common-area/samples.js';
 
 // Common-area CRUD operations for programs
-export { loadProgramMeta } from './common-area/programs.js';
+export {
+  loadProgramMeta,
+  loadProgramFromProgramsDir,
+  getProgramDirFromProgramsDir,
+} from './common-area/programs.js';
 
 export type {
   SampleSavePayload,

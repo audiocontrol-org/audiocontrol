@@ -18,7 +18,7 @@ interface DeviceMemoryPanelProps {
   onSelectSample: (index: number) => void;
   onRefresh: () => void;
   onImportSample?: (sampleName: string, samplePath: string[]) => void;
-  onImportProgram?: (dirName: string, displayName: string) => void;
+  onImportProgram?: (dirName: string, displayName: string, categoryId: string) => void;
   isConnected: boolean;
   isLoading: boolean;
 }
@@ -144,7 +144,7 @@ export function DeviceMemoryPanel({
           const payload = JSON.parse(raw) as LibraryDragPayload;
           if (payload.nodeType !== 'program') return;
           const dirName = (payload.meta.dirName as string | undefined) ?? payload.nodeName;
-          onImportProgram(dirName, payload.nodeName);
+          onImportProgram(dirName, payload.nodeName, payload.categoryId);
         }}
       >
         <NameList
