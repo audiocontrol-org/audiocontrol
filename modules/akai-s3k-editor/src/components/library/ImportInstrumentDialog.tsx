@@ -294,12 +294,14 @@ export function ImportInstrumentDialog({
               {
                 name: baseName,
                 onProgress: (progress) => {
-                  const packetBytes = progress.packetsSent
-                    ? (progress.packetsSent / (progress.packetsTotal || 1)) * sampleBytes
+                  const ratio = progress.packetsTotal > 0
+                    ? progress.packetsSent / progress.packetsTotal
                     : 0;
+                  const currentBytes = ratio * sampleBytes;
+                  console.log(`[SDS progress] ${baseName}: ${progress.packetsSent}/${progress.packetsTotal} samples, ${Math.round(currentBytes)}/${sampleBytes} bytes, cumulative=${cumulativeBytes}`);
                   setSampleSendProgress((prev) => prev ? {
                     ...prev,
-                    bytesTransferred: cumulativeBytes + packetBytes,
+                    bytesTransferred: cumulativeBytes + currentBytes,
                   } : prev);
                 },
               },

@@ -452,7 +452,13 @@ async fn handle_ws_sample_upload(
 
         let forward_handle = tokio::spawn(async move {
             while let Some(msg) = progress_rx.recv().await {
-                let _ = tx_forward.send(msg).await;
+                // If the WebSocket is closed, stop forwarding. This drops
+                // progress_rx, causing the worker's try_send to fail and
+                // triggering the cancellation flag.
+                if tx_forward.send(msg).await.is_err() {
+                    info!("WebSocket closed — stopping SDS upload progress forwarding");
+                    break;
+                }
             }
         });
 
