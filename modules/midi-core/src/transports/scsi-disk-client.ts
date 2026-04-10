@@ -166,7 +166,9 @@ function sampleTransfer(
 
   return new Promise<void>((resolve, reject) => {
     const ws = new WebSocket(wsUrl);
-    const timeoutMs = 120_000;
+    // SDS transfers over SCSI can take several minutes for large samples.
+    // Use a generous timeout — the bridge has its own per-transfer timeout.
+    const timeoutMs = 600_000;
     const timeout = setTimeout(() => {
       ws.close();
       reject(new Error('sample transfer timed out'));

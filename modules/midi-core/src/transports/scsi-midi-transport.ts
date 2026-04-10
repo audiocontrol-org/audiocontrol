@@ -279,10 +279,13 @@ function createScsiSdsChannel(
 
       return new Promise<void>((resolve, reject) => {
         const sdsWs = new WebSocket(wsUrl);
-        const timeoutMs = 120_000;
+        // Timeout scales with sample count: ~350ms per 40-sample packet + margin.
+        // Minimum 60s for small samples, no cap for large ones.
+        const packets = Math.ceil(samples.length / 40);
+        const timeoutMs = Math.max(60_000, packets * 400 + 30_000);
         const timeout = setTimeout(() => {
           sdsWs.close();
-          reject(new Error(`SDS upload timed out after ${timeoutMs / 1000}s`));
+          reject(new Error(`SDS upload timed out after ${Math.round(timeoutMs / 1000)}s`));
         }, timeoutMs);
 
         const totalPackets = Math.ceil(samples.length / 120);

@@ -298,7 +298,6 @@ export function ImportInstrumentDialog({
                     ? progress.packetsSent / progress.packetsTotal
                     : 0;
                   const currentBytes = ratio * sampleBytes;
-                  console.log(`[SDS progress] ${baseName}: ${progress.packetsSent}/${progress.packetsTotal} samples, ${Math.round(currentBytes)}/${sampleBytes} bytes, cumulative=${cumulativeBytes}`);
                   setSampleSendProgress((prev) => prev ? {
                     ...prev,
                     bytesTransferred: cumulativeBytes + currentBytes,
@@ -306,12 +305,14 @@ export function ImportInstrumentDialog({
                 },
               },
             );
-            cumulativeBytes += sampleBytes;
             updatedDeviceSampleNames.push(baseName);
             nextSampleNumber++;
           } catch (err) {
-            console.warn(`[ImportInstrument] Failed to send sample "${baseName}":`, err);
+            console.error(`[ImportInstrument] Failed to send sample "${baseName}":`, err);
           }
+          // Always advance cumulative bytes — SDS data was transferred
+          // even if post-upload rename/polling failed.
+          cumulativeBytes += sampleBytes;
         }
       } catch (err) {
         console.warn('[ImportInstrument] Could not read program samples directory:', err);
