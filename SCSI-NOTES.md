@@ -149,19 +149,50 @@ SheepShaver SCSI bridge works for disk access but MESA II's SCSI Plug traffic co
 
 ## 2026-04-05 23:24 PDT: s2p Streaming MIDI Server
 
-### Strategy
-Add a persistent TCP streaming server to s2p (port 6870) for low-latency MIDI communication, bypassing the per-command protobuf overhead.
+### Motivation
+The protobuf API (port 6868) creates a new TCP connection per SCSI command. Each SysEx request/response requires multiple SCSI commands (enable MIDI → send → poll → read → disable MIDI), each as a separate TCP connection. Hypothesis: a persistent connection with internal SCSI polling could eliminate network round trips.
 
-### What we built
-- MSG_INIT/MSG_SEND/MSG_DATA/MSG_ERROR frame protocol
-- Persistent TCP connection with TCP_NODELAY
-- MSG_SAMPLE_READ for SDS sample download (sends Dump Request, handles ACK loop internally)
+### What we built in s2p (C++)
+- `midi_streaming_server.cpp` — TCP server on port 6870
+- Frame protocol: `[4-byte LE length][1-byte type][payload]`
+- MSG_INIT (0x01): set target SCSI ID, establish session
+- MSG_SEND (0x02): send SysEx, server polls SCSI bus internally at 500µs intervals, pushes response
+- MSG_DATA (0x03): server pushes response/unsolicited data
+- MSG_ERROR (0x04): server pushes error
+- MSG_SAMPLE_READ (0x05): send SDS Dump Request, handle ACK loop internally
 
-### Outcome
-The streaming server worked for SysEx request/response but had issues with SDS:
-- MSG_SAMPLE_READ could send the Dump Request but the ACK timing was still too slow
-- The event queue architecture couldn't service ACKs fast enough
-- Later testing (April 10) confirmed the streaming port doesn't relay device responses for SDS uploads — dead end for that use case
+### Hardware results (April 5)
+Verified 34% improvement for SysEx request/response:
+- RPLIST: 565ms (was 865ms)
+- RPDATA: 794ms (was 1196ms)
+- Write: 572ms (was 874ms)
+
+### Rust bridge integration (April 5-6)
+- `MidiStreamClient` in `s2p_client.rs` — persistent TCP with lazy reconnect, TCP_NODELAY
+- Bridge tries streaming first, falls back to protobuf
+- Bug: connection was torn down on timeout/unexpected responses, causing reconnection overhead. Fixed by preserving connection on non-I/O errors.
+
+### MSG_SAMPLE_READ — SDS download attempt (April 6)
+1. First tried RSPACK (Akai opcode 0x0C) — device accepts but returns 0 bytes via MIDI_POLL
+2. Switched to standard SDS Dump Request — Dump Header arrives, ACK sent successfully
+3. **Data Packets do NOT arrive** via MIDI_POLL after ACK — the device sends them as device-initiated SCSI writes (target mode) which s2p can't process while servicing initiator-mode MIDI commands
+4. Added event queue with condvar to MidiProcessor for async data delivery — infrastructure correct but SDS Data Packets never arrive through the SCSI MIDI channel
+
+### Death of the streaming path (April 8)
+Two commits killed it:
+
+**`77b419e2` (April 8 21:49):** "eliminate duplicate SCSI MIDI paths" — the bridge had two MIDI paths: protobuf wrappers and raw CDB functions. The protobuf path treated CHECK CONDITION as fatal; the raw CDB path correctly ignored it. Multi-sample workflows broke because the protobuf path failed on status bytes. Also: SDS transfers disabled MIDI mode but the SysEx path never re-enabled it. Fix: delete entire protobuf MIDI layer, use raw CDBs exclusively.
+
+**`3ec5daa8` (April 8 22:57):** "use raw CDB path exclusively" — removed `MidiStreamClient` from the SysEx worker path. The streaming client returned stale or incorrectly formatted data after SDS transfers, causing nibble parse errors in the TypeScript client. Root cause never fully diagnosed — possibly leftover SDS data packets in the streaming server's buffer contaminated subsequent SysEx responses.
+
+### What remains (April 10)
+The `MidiStreamClient` code is still in `s2p_client.rs` (lines 413-623) but nothing calls it. The s2p streaming server is still compiled and runs on port 6870 but serves no purpose. Testing on April 10 confirmed the streaming port doesn't relay device ACK responses for SDS uploads — it only forwards client→device data. Filed for deletion as issue #183.
+
+### Lessons
+1. The 34% SysEx improvement was real but insufficient to justify the complexity
+2. The streaming server couldn't handle SDS because SDS data packets arrive as device-initiated SCSI operations (target mode), not as responses to initiator commands
+3. Stale data after SDS transfers was a persistent bug that was never root-caused — the workaround (use raw CDBs exclusively) was the right call
+4. The batching approach (April 10) achieved 9x speedup with far less complexity by staying on the CDB path
 
 ---
 
