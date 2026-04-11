@@ -83,7 +83,7 @@ Add a brief note to the Build System section of `.claude/CLAUDE.md` reinforcing 
 After all changes are committed and verified, close the parent GitHub issue.
 
 **Acceptance Criteria:**
-- [ ] Issue #173 is closed with a comment referencing the implementing commits
+- [x] Issue #173 is closed with a comment referencing the implementing commits
 
 ---
 
