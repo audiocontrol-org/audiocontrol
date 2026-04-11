@@ -358,17 +358,25 @@ export function PluginLibraryBrowser({
 
   // External drop handling (e.g., disk browser items)
   const [dropTargetCategory, setDropTargetCategory] = useState<string | null>(null);
+  const [dropIsMove, setDropIsMove] = useState(false);
 
   const handleSectionDragOver = useCallback(
     (categoryId: string) => (e: React.DragEvent) => {
-      if (!onExternalDrop) return;
-      // Ignore library-item drags — those are moves handled by tree drop zones
-      if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) return;
-      // Only accept external file drops (OS files)
-      if (!e.dataTransfer.types.includes('Files')) return;
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'copy';
-      setDropTargetCategory(categoryId);
+      // Library-item drag = move to category root
+      if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        setDropTargetCategory(categoryId);
+        setDropIsMove(true);
+        return;
+      }
+      // External file drops (OS files)
+      if (onExternalDrop && e.dataTransfer.types.includes('Files')) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        setDropTargetCategory(categoryId);
+        setDropIsMove(false);
+      }
     },
     [onExternalDrop],
   );
@@ -377,6 +385,7 @@ export function PluginLibraryBrowser({
     () => (e: React.DragEvent) => {
       if (!e.currentTarget.contains(e.relatedTarget as Node)) {
         setDropTargetCategory(null);
+        setDropIsMove(false);
       }
     },
     [],
@@ -386,11 +395,28 @@ export function PluginLibraryBrowser({
     (categoryId: string) => (e: React.DragEvent) => {
       e.preventDefault();
       setDropTargetCategory(null);
-      // Ignore library-item drops — handled by tree drop zones
-      if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) return;
+      setDropIsMove(false);
+
+      // Library-item drop = move to category root
+      const raw = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
+      if (raw) {
+        const payload = JSON.parse(raw) as LibraryDragPayload;
+        if (payload.categoryId === categoryId) {
+          void onMove(categoryId, {
+            id: payload.nodeId,
+            name: payload.nodeName,
+            type: payload.nodeType,
+            children: [],
+            meta: { path: payload.sourcePath },
+          }, []);
+        }
+        return;
+      }
+
+      // External drop
       onExternalDrop?.(categoryId, e.dataTransfer, []);
     },
-    [onExternalDrop],
+    [onExternalDrop, onMove],
   );
 
   // Layout classes
@@ -535,7 +561,7 @@ export function PluginLibraryBrowser({
                 }
                 enableInlineRename={supportsRename(category.categoryId)}
                 emptyMessage={category.emptyMessage}
-                dropMessage={category.dropMessage ?? 'Drop to add'}
+                dropMessage={dropIsMove ? 'Move to top level' : (category.dropMessage ?? 'Drop to add')}
                 isDragOver={dropTargetCategory === category.categoryId}
                 onDragOver={handleSectionDragOver(category.categoryId)}
                 onDragLeave={handleSectionDragLeave()}
@@ -557,6 +583,7 @@ export function PluginLibraryBrowser({
                 }}
                 onTreeDrop={(node, e) => {
                   setDropTargetCategory(null);
+                  setDropIsMove(false);
                   const nodePath = (node.meta?.path as string[] | undefined) ?? [];
                   const targetPath = [...nodePath, node.name];
 
