@@ -255,18 +255,8 @@ export function LibraryPage(): JSX.Element {
   const editorDialogs = useEditorDialogs(root, refreshLibrary, handleEditorError);
 
   // -----------------------------------------------------------------------
-  // Shared library operations (create, delete, move, rename, drop, expand)
+  // Shared library operations — must be after transfer callbacks
   // -----------------------------------------------------------------------
-
-  const libraryStrategy = useS3kLibraryStrategy({ root, refreshPrograms });
-
-  const libraryOps = useLibraryOperations(
-    root,
-    libraryStrategy,
-    refreshLibrary,
-    (msg) => setError(msg),
-    editorDialogs.createEditorActionHandler(),
-  );
 
   const hasInitiatedScan = useRef(false);
 
@@ -368,6 +358,31 @@ export function LibraryPage(): JSX.Element {
     handlePromoteToCommonArea,
   ]);
 
+  // -----------------------------------------------------------------------
+  // Shared library operations (create, delete, move, rename, drop, expand)
+  // -----------------------------------------------------------------------
+
+  const libraryStrategy = useS3kLibraryStrategy({
+    root,
+    refreshPrograms,
+    transfers: {
+      onSendSampleToDevice: canTransfer ? transferCallbacks.handleSendSampleToDevice : undefined,
+      onSendProgramToDevice: canTransfer ? transferCallbacks.handleSendProgramToDevice : undefined,
+      onImportDrumKit: canTransfer ? drumKitTransfer.openDialog : undefined,
+      onEditDrumKit: hasLibrary ? editorDialogs.handleOpenDrumKitEditor : undefined,
+      onImportInstrument: canTransfer ? transferCallbacks.handleImportInstrument : undefined,
+      onPromoteToCommonArea: hasLibrary ? handlePromoteToCommonArea : undefined,
+    },
+  });
+
+  const libraryOps = useLibraryOperations(
+    root,
+    libraryStrategy,
+    refreshLibrary,
+    (msg) => setError(msg),
+    editorDialogs.createEditorActionHandler(),
+  );
+
   const deviceMemoryState = useMemo<S3kMemoryPanelState>(() => ({
     programNames: deviceProgramNames,
     sampleNames: deviceSampleNames,
@@ -428,6 +443,12 @@ export function LibraryPage(): JSX.Element {
         })();
       }
     } : undefined,
+    onSaveSampleToCommonLibrary: canTransfer ? transferCallbacks.handleSaveDeviceSampleToLibrary : undefined,
+    onSaveSampleToDeviceLibrary: canTransfer ? transferCallbacks.handleSaveDeviceSampleToLibrary : undefined,
+    onSaveProgramToCommonLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToLibrary : undefined,
+    onSaveProgramToDeviceLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToLibrary : undefined,
+    onDeleteSample: isDeviceConnected ? transferCallbacks.handleDeleteDeviceSample : undefined,
+    onDeleteProgram: isDeviceConnected ? transferCallbacks.handleDeleteDeviceProgram : undefined,
     isConnected: isDeviceConnected,
     isLoading: isDeviceLoading,
   }), [
@@ -435,8 +456,7 @@ export function LibraryPage(): JSX.Element {
     selectedDeviceIndex, selectedDeviceType,
     handleDeviceSelectProgram, handleDeviceSelectSample,
     refreshDevice, isDeviceConnected, isDeviceLoading,
-    canTransfer, transferCallbacks.handleSendSampleToDevice,
-    transferCallbacks.handleSendProgramToDevice,
+    canTransfer, transferCallbacks,
     instrumentTransfer,
   ]);
 
@@ -503,6 +523,28 @@ export function LibraryPage(): JSX.Element {
                 bridgeUrl={getActiveScsiUrl()}
                 onSaveToLibrary={root ? (file, _targetId, partitionData, volumeStartBlock, ensureFileBlocks) => {
                   setDiskToLibrary({ open: true, file, partitionData, volumeStartBlock, ensureFileBlocks });
+                } : undefined}
+                onSendToDevice={canTransfer ? (file, _targetId, partitionData, volumeStartBlock, ensureFileBlocks) => {
+                  const name = file.name.trim();
+                  (async () => {
+                    try {
+                      const fileData = readFileData(partitionData, file);
+                      const noop = () => {};
+                      await saveToCommonLibrary(
+                        file, fileData, partitionData,
+                        volumeStartBlock, name, root!, noop,
+                        ensureFileBlocks,
+                      );
+                      await refreshLibrary();
+                      if (isAkaiSample(file.type)) {
+                        transferCallbacks.handleSendSampleToDevice(name, []);
+                      } else if (isAkaiProgram(file.type)) {
+                        instrumentTransfer.openDialog(name, [], true);
+                      }
+                    } catch (err) {
+                      console.error('[LibraryPage] disk-to-device failed:', err);
+                    }
+                  })();
                 } : undefined}
               />
             }

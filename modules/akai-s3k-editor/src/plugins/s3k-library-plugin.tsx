@@ -43,6 +43,12 @@ export interface S3kMemoryPanelState {
   onImportSample?: (sampleName: string, samplePath: string[]) => void;
   onImportProgram?: (dirName: string, displayName: string, categoryId: string) => void;
   onDiskItemDrop?: (payload: import('@/components/library/DiskBrowserPanel').DiskDragPayload) => void;
+  onSaveSampleToCommonLibrary?: (index: number, name: string) => void;
+  onSaveSampleToDeviceLibrary?: (index: number, name: string) => void;
+  onSaveProgramToCommonLibrary?: (index: number, name: string) => void;
+  onSaveProgramToDeviceLibrary?: (index: number, name: string) => void;
+  onDeleteSample?: (index: number, name: string) => void;
+  onDeleteProgram?: (index: number, name: string) => void;
   isConnected: boolean;
   isLoading: boolean;
 }
@@ -82,6 +88,12 @@ function S3kMemoryPanelAdapter({
       onImportSample={state.onImportSample}
       onImportProgram={state.onImportProgram}
       onDiskItemDrop={state.onDiskItemDrop}
+      onSaveSampleToCommonLibrary={state.onSaveSampleToCommonLibrary}
+      onSaveSampleToDeviceLibrary={state.onSaveSampleToDeviceLibrary}
+      onSaveProgramToCommonLibrary={state.onSaveProgramToCommonLibrary}
+      onSaveProgramToDeviceLibrary={state.onSaveProgramToDeviceLibrary}
+      onDeleteSample={state.onDeleteSample}
+      onDeleteProgram={state.onDeleteProgram}
       isConnected={state.isConnected}
       isLoading={state.isLoading}
     />

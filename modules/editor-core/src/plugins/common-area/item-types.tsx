@@ -52,10 +52,14 @@ export const commonSampleItemType: ItemTypePlugin<CommonSampleMeta> = {
 
   supportsRename: true,
 
-  getContextMenuActions: () => [
+  getContextMenuActions: (meta) => [
+    { id: 'send-sample-to-device', label: 'Send to Device', icon: null },
+    ...(meta.hasDrumKit ? [{ id: 'import-drum-kit', label: 'Import as Drum Program', icon: null }] : []),
+    { separator: true },
     { id: 'open-loop-editor', label: 'Open in Loop Editor', icon: null },
     { id: 'open-sample-editor', label: 'Open in Sample Editor', icon: null },
     { id: 'open-chopper', label: 'Open in Chopper', icon: null },
+    ...(meta.hasDrumKit ? [{ id: 'edit-drum-kit', label: 'Edit Kit', icon: null }] : []),
     { separator: true },
     { id: 'rename', label: 'Rename', icon: null },
     { id: 'move', label: 'Move to...', icon: null },
@@ -81,6 +85,10 @@ export const commonProgramItemType: ItemTypePlugin<CommonProgramMeta> = {
   supportsRename: true,
 
   getContextMenuActions: () => [
+    { id: 'send-program-to-device', label: 'Send to Device', icon: null },
+    { id: 'promote-to-common-area', label: 'Promote to Common Area', icon: null },
+    { id: 'import-instrument', label: 'Import to Device', icon: null },
+    { separator: true },
     { id: 'rename', label: 'Rename', icon: null },
     { id: 'move', label: 'Move to...', icon: null },
     { separator: true },

@@ -89,11 +89,19 @@ interface Props {
     volumeStartBlock: number,
     ensureFileBlocks: (fileEntry: AkaiDiskFileEntry) => Promise<void>,
   ) => void;
+  /** Called when the user wants to send a file directly to the device. */
+  onSendToDevice?: (
+    file: AkaiDiskFileEntry,
+    targetId: number,
+    partitionData: Uint8Array,
+    volumeStartBlock: number,
+    ensureFileBlocks: (fileEntry: AkaiDiskFileEntry) => Promise<void>,
+  ) => void;
   /** Ref for imperative access to disk browser state (for drag-drop). */
   browserRef?: React.Ref<DiskBrowserHandle>;
 }
 
-export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Props) {
+export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, onSendToDevice, browserRef }: Props) {
   const {
     loading,
     error,
@@ -203,6 +211,43 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Pro
   };
 
 
+  /** Resolve disk file blocks and find its volume, then invoke the callback. */
+  async function resolveDiskFile(
+    targetId: number,
+    file: AkaiDiskFileEntry,
+    vol: VolumeWithFiles,
+    callback: Props['onSaveToLibrary'] & {},
+  ) {
+    setSaveError(null);
+    setSavingFile(file.name);
+    try {
+      const data = partitionData.get(targetId);
+      if (!data) {
+        throw new Error('Disk data not loaded — try collapsing and re-expanding the target');
+      }
+      await ensureFileBlocks(targetId, file);
+      const partitions = parsePartitionTable(data);
+      for (const partition of partitions) {
+        const partStart = partition.offsetInBlocks * BLOCK_SIZE;
+        if (partStart + BLOCK_SIZE > data.length) continue;
+        const partData = data.subarray(partStart);
+        const vols = parseVolumeList(partData);
+        if (vols.some(v => v.startBlock === vol.startBlock)) {
+          const boundEnsure = (f: AkaiDiskFileEntry) => ensureFileBlocks(targetId, f);
+          callback(file, targetId, partData, vol.startBlock, boundEnsure);
+          return;
+        }
+      }
+      throw new Error('Could not find volume for file — try re-scanning the disk');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[DiskBrowser] Operation failed:', message);
+      setSaveError(`Failed: "${file.name}": ${message}`);
+    } finally {
+      setSavingFile(null);
+    }
+  }
+
   if (!bridgeUrl) {
     return (
       <div className="p-4">
@@ -270,38 +315,11 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Pro
             onToggle={() => handleExpandTarget(target)}
             onSelectFile={setSelectedFile}
             savingFile={savingFile}
-            onSaveToLibrary={onSaveToLibrary ? async (file, vol) => {
-              setSaveError(null);
-              setSavingFile(file.name);
-              try {
-                const data = partitionData.get(target.id);
-                if (!data) {
-                  throw new Error('Disk data not loaded — try collapsing and re-expanding the target');
-                }
-
-                // Only load the clicked file's blocks — not the entire volume.
-                await ensureFileBlocks(target.id, file);
-
-                const partitions = parsePartitionTable(data);
-                for (const partition of partitions) {
-                  const partStart = partition.offsetInBlocks * BLOCK_SIZE;
-                  if (partStart + BLOCK_SIZE > data.length) continue;
-                  const partData = data.subarray(partStart);
-                  const vols = parseVolumeList(partData);
-                  if (vols.some(v => v.startBlock === vol.startBlock)) {
-                    const boundEnsure = (f: AkaiDiskFileEntry) => ensureFileBlocks(target.id, f);
-                    onSaveToLibrary(file, target.id, partData, vol.startBlock, boundEnsure);
-                    return;
-                  }
-                }
-                throw new Error('Could not find volume for file — try re-scanning the disk');
-              } catch (err) {
-                const message = err instanceof Error ? err.message : String(err);
-                console.error('[DiskBrowser] Save to library failed:', message);
-                setSaveError(`Failed to save "${file.name}": ${message}`);
-              } finally {
-                setSavingFile(null);
-              }
+            onSaveToLibrary={onSaveToLibrary ? (file, vol) => {
+              void resolveDiskFile(target.id, file, vol, onSaveToLibrary);
+            } : undefined}
+            onSendToDevice={onSendToDevice ? (file, vol) => {
+              void resolveDiskFile(target.id, file, vol, onSendToDevice);
             } : undefined}
           />
         ))}
@@ -324,6 +342,7 @@ interface TargetNodeProps {
   onToggle: () => void;
   onSelectFile: (file: AkaiDiskFileEntry) => void;
   onSaveToLibrary?: (file: AkaiDiskFileEntry, volume: VolumeWithFiles) => void;
+  onSendToDevice?: (file: AkaiDiskFileEntry, volume: VolumeWithFiles) => void;
 }
 
 function TargetNode({
@@ -336,6 +355,7 @@ function TargetNode({
   onToggle,
   onSelectFile,
   onSaveToLibrary,
+  onSendToDevice,
 }: TargetNodeProps) {
   const sizeMB = Math.round(
     (target.blockCount * target.blockSize) / 1024 / 1024,
@@ -371,6 +391,7 @@ function TargetNode({
             savingFile={savingFile}
             onSelectFile={onSelectFile}
             onSaveToLibrary={onSaveToLibrary ? (file) => onSaveToLibrary(file, vol) : undefined}
+            onSendToDevice={onSendToDevice ? (file) => onSendToDevice(file, vol) : undefined}
           />
         ))}
 
@@ -388,6 +409,7 @@ interface VolumeNodeProps {
   savingFile: string | null;
   onSelectFile: (file: AkaiDiskFileEntry) => void;
   onSaveToLibrary?: (file: AkaiDiskFileEntry) => void;
+  onSendToDevice?: (file: AkaiDiskFileEntry) => void;
 }
 
 function VolumeNode({
@@ -397,6 +419,7 @@ function VolumeNode({
   savingFile,
   onSelectFile,
   onSaveToLibrary,
+  onSendToDevice,
 }: VolumeNodeProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -424,6 +447,7 @@ function VolumeNode({
           isSaving={savingFile === file.name}
           onSelect={() => onSelectFile(file)}
           onSaveToLibrary={onSaveToLibrary ? () => onSaveToLibrary(file) : undefined}
+          onSendToDevice={onSendToDevice ? () => onSendToDevice(file) : undefined}
         />
       ))}
     </div>
@@ -438,9 +462,10 @@ interface FileNodeProps {
   isSaving: boolean;
   onSelect: () => void;
   onSaveToLibrary?: () => void;
+  onSendToDevice?: () => void;
 }
 
-function FileNode({ file, targetId, volumeStartBlock, isSelected, isSaving, onSelect, onSaveToLibrary }: FileNodeProps) {
+function FileNode({ file, targetId, volumeStartBlock, isSelected, isSaving, onSelect, onSaveToLibrary, onSendToDevice }: FileNodeProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const typeLabel =
@@ -470,6 +495,12 @@ function FileNode({ file, targetId, volumeStartBlock, isSelected, isSaving, onSe
     actions.push({
       label: 'Save to Library',
       onClick: () => { onSaveToLibrary(); },
+    });
+  }
+  if (onSendToDevice && !isSaving) {
+    actions.push({
+      label: 'Send to Device',
+      onClick: () => { onSendToDevice(); },
     });
   }
 

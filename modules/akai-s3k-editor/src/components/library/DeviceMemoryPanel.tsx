@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { LIBRARY_ITEM_MIME, LoadingBar, type LibraryDragPayload } from '@audiocontrol/editor-core';
+import { LIBRARY_ITEM_MIME, LoadingBar, ContextMenu, type LibraryDragPayload, type ContextMenuAction } from '@audiocontrol/editor-core';
 import { DISK_ITEM_MIME, type DiskDragPayload } from '@/components/library/DiskBrowserPanel';
 
 interface DeviceMemoryPanelProps {
@@ -22,6 +22,18 @@ interface DeviceMemoryPanelProps {
   onImportProgram?: (dirName: string, displayName: string, categoryId: string) => void;
   /** Called when a disk browser item is dropped on the device memory panel. */
   onDiskItemDrop?: (payload: DiskDragPayload) => void;
+  /** Save a device sample to the common library area. */
+  onSaveSampleToCommonLibrary?: (index: number, name: string) => void;
+  /** Save a device sample to the Akai device-specific library area. */
+  onSaveSampleToDeviceLibrary?: (index: number, name: string) => void;
+  /** Save a device program to the common library area. */
+  onSaveProgramToCommonLibrary?: (index: number, name: string) => void;
+  /** Save a device program to the Akai device-specific library area. */
+  onSaveProgramToDeviceLibrary?: (index: number, name: string) => void;
+  /** Delete a sample from device memory. */
+  onDeleteSample?: (index: number, name: string) => void;
+  /** Delete a program from device memory. */
+  onDeleteProgram?: (index: number, name: string) => void;
   isConnected: boolean;
   isLoading: boolean;
 }
@@ -33,6 +45,9 @@ function NameList({
   selectedIndex,
   selectedType,
   onSelect,
+  onSaveToCommonLibrary,
+  onSaveToDeviceLibrary,
+  onDelete,
 }: {
   title: string;
   names: string[];
@@ -40,7 +55,12 @@ function NameList({
   selectedIndex: number | null;
   selectedType: 'program' | 'sample' | null;
   onSelect: (index: number) => void;
+  onSaveToCommonLibrary?: (index: number, name: string) => void;
+  onSaveToDeviceLibrary?: (index: number, name: string) => void;
+  onDelete?: (index: number, name: string) => void;
 }) {
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; index: number } | null>(null);
+
   if (names.length === 0) {
     return (
       <div className="mb-4">
@@ -71,6 +91,11 @@ function NameList({
                     : 'text-gray-300 hover:bg-gray-700'
                 }`}
                 onClick={() => onSelect(index)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  onSelect(index);
+                  setContextMenu({ x: e.clientX, y: e.clientY, index });
+                }}
               >
                 <span className="text-gray-500 mr-2 tabular-nums">{index}:</span>
                 {name}
@@ -79,6 +104,28 @@ function NameList({
           );
         })}
       </ul>
+      {contextMenu && (() => {
+        const name = names[contextMenu.index];
+        const actions: ContextMenuAction[] = [];
+        if (onSaveToCommonLibrary) {
+          actions.push({ label: 'Save to Common Samples', onClick: () => onSaveToCommonLibrary(contextMenu.index, name) });
+        }
+        if (onSaveToDeviceLibrary) {
+          actions.push({ label: 'Save to Akai Library', onClick: () => onSaveToDeviceLibrary(contextMenu.index, name) });
+        }
+        if (onDelete) {
+          actions.push({ label: 'Delete from Device', onClick: () => onDelete(contextMenu.index, name), danger: true, separator: actions.length > 0 });
+        }
+        if (actions.length === 0) return null;
+        return (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            actions={actions}
+            onClose={() => setContextMenu(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
@@ -94,6 +141,12 @@ export function DeviceMemoryPanel({
   onImportSample,
   onImportProgram,
   onDiskItemDrop,
+  onSaveSampleToCommonLibrary,
+  onSaveSampleToDeviceLibrary,
+  onSaveProgramToCommonLibrary,
+  onSaveProgramToDeviceLibrary,
+  onDeleteSample,
+  onDeleteProgram,
   isConnected,
   isLoading,
 }: DeviceMemoryPanelProps): JSX.Element {
@@ -126,7 +179,6 @@ export function DeviceMemoryPanel({
         </button>
       </div>
       <LoadingBar active={isLoading || (!isConnected && hasData)} />
-      <div className="mt-2" />
 
       <div
         className={`rounded transition-colors ${programDropOver ? 'bg-blue-900/30 ring-1 ring-blue-500/50' : ''}`}
@@ -174,6 +226,9 @@ export function DeviceMemoryPanel({
           selectedIndex={selectedIndex}
           selectedType={selectedType}
           onSelect={onSelectProgram}
+          onSaveToCommonLibrary={onSaveProgramToCommonLibrary}
+          onSaveToDeviceLibrary={onSaveProgramToDeviceLibrary}
+          onDelete={onDeleteProgram}
         />
         {programDropOver && (
           <div className="text-xs text-blue-400 text-center py-2 border border-dashed border-blue-500/50 rounded mx-1 mb-2">
@@ -228,6 +283,9 @@ export function DeviceMemoryPanel({
           selectedIndex={selectedIndex}
           selectedType={selectedType}
           onSelect={onSelectSample}
+          onSaveToCommonLibrary={onSaveSampleToCommonLibrary}
+          onSaveToDeviceLibrary={onSaveSampleToDeviceLibrary}
+          onDelete={onDeleteSample}
         />
         {sampleDropOver && (
           <div className="text-xs text-blue-400 text-center py-2 border border-dashed border-blue-500/50 rounded mx-1 mb-2">

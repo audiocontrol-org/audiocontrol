@@ -18,6 +18,91 @@ import {
 import type { TreeNode } from '@/components/library/TreeView';
 
 // =========================================================================
+// Transfer callbacks — shared interface for context menu transfer actions
+// =========================================================================
+
+/**
+ * Callbacks for library context menu transfer actions.
+ *
+ * These are the same across all editors — the action IDs in item-types.tsx
+ * map to these callbacks. Each editor provides its own implementations
+ * (wired to its transfer dialogs/hooks), but the routing is shared.
+ *
+ * Omit a callback to hide the corresponding context menu action.
+ */
+export interface LibraryTransferCallbacks {
+  onSendSampleToDevice?: (name: string, path?: string[]) => void;
+  onSendProgramToDevice?: (dirName: string, name: string) => void;
+  onImportDrumKit?: (name: string, path?: string[]) => void;
+  onEditDrumKit?: (name: string, path?: string[]) => void;
+  onImportInstrument?: (dirName: string, path: string[]) => void;
+  onPromoteToCommonArea?: (dirName: string) => void;
+}
+
+/**
+ * Create a handleContextMenuAction function from transfer callbacks.
+ *
+ * Maps standardized context menu action IDs (from item-types.tsx) to the
+ * editor's transfer callbacks. Used by all editors — no per-editor strategy
+ * needed for transfer actions.
+ */
+export function createTransferActionHandler(
+  transfers: LibraryTransferCallbacks,
+  /** Category IDs that contain device-specific programs (e.g., 's3k-programs'). */
+  deviceProgramCategories: string[] = [],
+): (categoryId: string, actionId: string, node: TreeNode) => boolean {
+  return (categoryId, actionId, node) => {
+    const meta = (node.meta ?? {}) as Record<string, unknown>;
+    const name = node.name;
+
+    switch (actionId) {
+      case 'send-sample-to-device': {
+        if (!transfers.onSendSampleToDevice) return false;
+        const path = (meta.path as string[] | undefined) ?? [];
+        transfers.onSendSampleToDevice(name, path);
+        return true;
+      }
+      case 'import-drum-kit': {
+        if (!transfers.onImportDrumKit) return false;
+        const path = (meta.path as string[] | undefined) ?? [];
+        transfers.onImportDrumKit(name, path);
+        return true;
+      }
+      case 'edit-drum-kit': {
+        if (!transfers.onEditDrumKit) return false;
+        const path = (meta.path as string[] | undefined) ?? [];
+        transfers.onEditDrumKit(name, path);
+        return true;
+      }
+      case 'send-program-to-device': {
+        if (!transfers.onSendProgramToDevice) return false;
+        if (!deviceProgramCategories.includes(categoryId)) return false;
+        const dirName = (meta.dirName as string | undefined) ?? name;
+        transfers.onSendProgramToDevice(dirName, name);
+        return true;
+      }
+      case 'promote-to-common-area': {
+        if (!transfers.onPromoteToCommonArea) return false;
+        if (!deviceProgramCategories.includes(categoryId)) return false;
+        const dirName = (meta.dirName as string | undefined) ?? name;
+        transfers.onPromoteToCommonArea(dirName);
+        return true;
+      }
+      case 'import-instrument': {
+        if (!transfers.onImportInstrument) return false;
+        if (deviceProgramCategories.includes(categoryId)) return false;
+        const dirName = (meta.directoryName as string | undefined) ?? name;
+        const path = (meta.path as string[] | undefined) ?? [];
+        transfers.onImportInstrument(dirName, path);
+        return true;
+      }
+      default:
+        return false;
+    }
+  };
+}
+
+// =========================================================================
 // Strategy interface
 // =========================================================================
 

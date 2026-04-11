@@ -1,23 +1,30 @@
 /**
- * Hook for building the library operations strategy.
+ * Hook for building the S3K library operations strategy.
  *
- * Returns a LibraryOperationsStrategy that handles common-area operations
- * such as deleting stored programs from the library.
+ * Composes:
+ * - Device-specific deleteItem for s3k-programs
+ * - Shared transfer action handler from editor-core
  */
 
 import { useMemo } from 'react';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
-import type { LibraryOperationsStrategy } from '@audiocontrol/editor-core';
+import {
+  type LibraryOperationsStrategy,
+  type LibraryTransferCallbacks,
+  createTransferActionHandler,
+} from '@audiocontrol/editor-core';
 import { deleteStoredProgram } from '@/lib/program-storage';
 
 interface UseS3kLibraryStrategyArgs {
   root: StorageDirectoryHandle | null;
   refreshPrograms: () => Promise<void>;
+  transfers: LibraryTransferCallbacks;
 }
 
 export function useS3kLibraryStrategy({
   root,
   refreshPrograms,
+  transfers,
 }: UseS3kLibraryStrategyArgs): LibraryOperationsStrategy {
   return useMemo<LibraryOperationsStrategy>(() => ({
     deleteItem: async (categoryId, node) => {
@@ -29,5 +36,7 @@ export function useS3kLibraryStrategy({
       void refreshPrograms();
       return true;
     },
-  }), [root, refreshPrograms]);
+
+    handleContextMenuAction: createTransferActionHandler(transfers, ['s3k-programs']),
+  }), [root, refreshPrograms, transfers]);
 }
