@@ -113,29 +113,45 @@
 
 ### LLM Session Analysis
 
-*5 sessions analyzed via Claude Haiku*
+*35 sessions analyzed via Claude Haiku*
 
 **Arc types:**
 
 | Type | Sessions |
 |------|----------|
-| feature | 3 |
-| quick-task | 1 |
-| exploration | 1 |
+| feature | 19 |
+| mixed | 6 |
+| quick-task | 5 |
+| exploration | 3 |
+| debug | 2 |
 
 **Corrections:**
 
-Total: 3 across 5 sessions
+Total: 54 across 35 sessions
 
 | Category | Count |
 |----------|-------|
-| PROCESS | 3 |
+| PROCESS | 32 |
+| FABRICATION | 6 |
+| UX | 5 |
+| DOCUMENTATION | 5 |
+| COMPLEXITY | 3 |
+| ARCHITECTURE | 3 |
 
 **Sessions with most corrections:**
 
 | Session | Arc | Corrections |
 |---------|-----|-------------|
+| 2026-03-29_3db928d3 | mixed | 6 |
+| 2026-03-28_36d312ce | feature | 5 |
+| 2026-03-28_de5bea43 | feature | 5 |
+| 2026-03-30_81e7c13f | mixed | 5 |
+| 2026-03-30_f6329a25 | mixed | 5 |
+| 2026-03-21_27263c0e | feature | 4 |
+| 2026-03-29_593e17b4 | feature | 4 |
 | 2026-02-19_8db89009 | quick-task | 3 |
+| 2026-03-28_a2ec33b7 | exploration | 3 |
+| 2026-03-20_5ced7864 | feature | 2 |
 
 **Correction details:**
 
@@ -145,6 +161,60 @@ Total: 3 across 5 sessions
   > "Don't create the docs in the local-midi-routing worktree. Do you understand how features and worktrees interact based on the PROJECT-MANAGEMENT.md doc"
 - **[PROCESS]** During linux-installer feature work, assistant again started creating implementation tasks instead of just project management assets. User corrected to reinforce the guidelines.
   > "you are NOT to implement the feature. You must only generate feature documentation and assets per PROJECT-MANAGEMENT.md guidelines."
+- **[PROCESS]** User correctly rejected the approach of creating backward compatibility aliases. Creating type aliases (S330MidiAdapter -> SSeriesMidiAdapter) adds technical debt and confusion. Types should directly use shared names.
+  > "Don't build backward compatibility. That's just technical debt for no reason and a guaranteed source of future confusion and bugs."
+- **[FABRICATION]** Claude assumed Google Drive credentials would be missing and needed configuration; user didn't actually ask for that, and the topic shift made it moot.
+  > "there's a plan to build a cache for the backend library store described here: ./docs/1.0/gdrive-library-perf/"
+- **[PROCESS]** Claude attempted to run `pnpm install` and `make` commands directly instead of asking user; user interrupted and handled the build themselves.
+  > "[Request interrupted by user for tool use]"
+- **[FABRICATION]** Agent assumed loop-editor would automatically use updated tree node structure with directoryName field instead of fileName. Required explicit code updates in three locations.
+  > "Getting this error trying to load a sample into the loop editor: Load failed: Directory "60_Fisherman'sFriend_SH101_C3-PUKN" not found"
+- **[PROCESS]** Agent initially placed program loading logic in samples.ts (wrong module) instead of creating a separate programs.ts file. User pointed out programs are a higher-order concept separate from samples.
+  > "programs are a higher-order concept to samples. You shouldn't use loadProgram* to load samples"
+- **[UX]** Agent fixed loop-editor's handleLoadSelectedIntoEditor to require libraryOrigin, which broke the ability to load a freshly selected sample without first having loaded it. Required adding selectedNodeInfo state to track selected tree node separately from loaded sample.
+  > "Now, the Load into Editor button has no progress feedback, no error reporting, and fails to load the sample."
+- **[PROCESS]** Agent didn't recognize that sampler-editor had its own duplicate implementation of loadCommonSample() that wasn't automatically updated when sampler-library functions changed.
+  > "It's also still using the old flat-file pattern to *import* samples. Why didn't that automatically get updated?"
+- **[FABRICATION]** Agent incorrectly assumed the file path worked and kept trying variations instead of asking user for help or checking if the file existed. User pointed out the escaping issue.
+  > "you almost certainly didn't escape the spaces in the filename properly."
+- **[UX]** Agent added sustain end detection but it was placing loop endpoints in the decay tail (87% into sample) instead of at the end of the sustain region (75%). The algorithm was correct in principle but the decay tail wasn't being properly bounded.
+  > "It doesn't actually find a suitable loop point. The end point is the same for all of the candidates and it's at the end of the tail instead of at the "
+- **[COMPLEXITY]** Agent started with Playwright e2e tests requiring dev server, then overcomplicated with React/Zustand integration. User pointed out simple SysEx ping would be better.
+  > "why can't you send a SysEx ping and see if the device responds?"
+- **[PROCESS]** Agent ran blocking commands without timeout protection, causing hangs. User had to interrupt multiple times.
+  > "Something failed. Why didn't you protect yourself against halts and deadlocks?"
+- **[PROCESS]** Agent didn't check saved output files immediately when tests completed. User had to ask why failures weren't noticed.
+  > "the test failed. why didn't you notice?"
+- **[COMPLEXITY]** Agent created unnecessary abstraction layers (accessing midiStore through Zustand, starting servers, serving HTML files). User pushed back multiple times for simpler approaches.
+  > "why do you need the dev server running to find out if the device is connected?"
+- **[PROCESS]** Agent used 90-second timeout and ran tests in blocking mode. User called out the slowness when MIDI operations should be milliseconds.
+  > "The ping should take milliseconds, not seconds."
+- **[PROCESS]** User pointed out that working on features and refactoring is not appropriate for a docs-roadmap repository. The assistant was about to suggest medium/low priority work (completing features, refactoring code) which belongs in the main audiocontrol repo, not the documentation repo.
+  > "working on features and refactoring is not part of a docs roadmap cleanup. We need to structure this work properly"
+- **[PROCESS]** User interrupted initial audit agent launches to point out that latest code from main branch should be pulled first before exploring codebase
+  > "you should make sure you have the latest code from main before you start exploring"
+- **[PROCESS]** User corrected file organization for audit output - should use a datestamped directory under docs/1.0/ rather than writing directly to docs/1.0/
+  > "You should put the audits in a datestamped directory under docs/1.0/"
+- **[DOCUMENTATION]** User pointed out that TYPESCRIPT-ARCHITECTURE.md should not be stored in ~/.claude since that directory is not version controlled and won't be accessible across development environments or via GitHub
+  > "the typescript architecture document should not be in ~/.claude, since that's not in version control. It should be in @work-meta-work/work-meta"
+- **[PROCESS]** User pointed out that the agent didn't check existing git branches before deciding which branch to push to, making incorrect assumptions about the deploy branch naming
+  > "did you look to see what branches already exist?"
+- **[DOCUMENTATION]** User requested feature documentation before implementation, requiring the agent to create PRD, workplan, and README files per PROJECT-MANAGEMENT.md structure
+  > "Write your plan as feature documentation per PROJECT-MANAGEMENT.md so we have a record of it first. Then implement"
+- **[PROCESS]** User clarified that the netlify CLI should be used to investigate deployment instead of making assumptions, and to update CLAUDE.md accordingly
+  > "Use the netlify cli to investigate how the project is deployed and update the ## Deployment section in .claude/CLAUDE.md"
+- **[PROCESS]** User indicated the build system was recently changed to use Make, so Netlify should use 'make' command from repo root, not .build-stamp targets
+  > "The build system was changed recently to use make--pnpm doesn't handle module build order properly. So, the netlify build should use make"
+- **[FABRICATION]** User corrected the agent's assumption about Netlify site naming - there was already an `audiocontrol.org` site and the agent should have investigated existing sites first
+  > "We will ultimately have multiple netlify sites configured in this mono repo, so we need to establish a per-site netlify configuration"
+- **[PROCESS]** Switched between Python, Ruby, and Node.js to validate YAML syntax when simple file inspection would have sufficed or validation wasn't necessary
+  > "why are you rapidly switching between python and ruby?"
+- **[PROCESS]** Agent suggested sticking to the project tech stack (Node.js, TypeScript, C++) instead of introducing external tools
+  > "I would prefer you stick with the technology stack(s) at hand. At the moment, that's node, typescript, an C++/JUCE so far"
+- **[UX]** Tests were silently falling back to Web MIDI when HTTP MIDI wasn't properly configured, instead of failing loudly when device couldn't be reached
+  > "The hardware e2e tests should fail fast and loud if it can't talk to the attached device. 'Graceful' failover is misleading and bad in this case."
+- **[ARCHITECTURE]** Agent suggested URL parameters for transport selection when app should have a proper connection UI for transport selection with localStorage persistence
+  > "Shouldn't the selection of midi server or web midi transport be done on the set connection screen and remembered by the app thereafter?"
 
 **Improvement suggestions:**
 
@@ -162,5 +232,5 @@ Total: 3 across 5 sessions
 - Enforce consistency in naming conventions for versioned formats
 - Document version migration paths explicitly in code comments
 - Add logging for format detection to help with debugging
-- Consider establishing a CLAUDE.md rule about when to ask clarifying questions on architectural decisions before extensive planning (was done well here, but could be more prominent in guidelines)
+- Add rule to estimate complexity upfront and break into smaller PRs/sessions for features with 20+ files
 

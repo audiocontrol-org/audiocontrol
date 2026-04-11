@@ -127,11 +127,19 @@ async function callHaiku(
 }
 
 function parseResponse(raw: string): Record<string, unknown> {
-  // The assistant prefill starts with "{", so prepend it
-  let text = "{" + raw.trim();
-  if (text.startsWith("{```")) {
-    text = text.slice(1).replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
+  let text = raw.trim();
+
+  // Strip markdown fencing
+  if (text.startsWith("```")) {
+    text = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
   }
+
+  // The assistant prefill starts with "{", so prepend it
+  // But if the model repeated the "{", don't double it
+  if (!text.startsWith("{")) {
+    text = "{" + text;
+  }
+
   return JSON.parse(text);
 }
 
