@@ -490,18 +490,17 @@ function FileNode({ file, targetId, volumeStartBlock, isSelected, isSaving, onSe
     console.log('[DiskBrowser] drag started:', file.name);
   };
 
+  const isSample = file.type === FILE_TYPE_SAMPLE;
+  const commonLabel = isSample ? 'Save to Common Samples' : 'Save to Common Library';
+  const deviceLabel = isSample ? 'Save to Akai Samples' : 'Save to Akai Library';
+
   const actions: ContextMenuAction[] = [];
   if (onSaveToLibrary && !isSaving) {
-    actions.push({
-      label: 'Save to Library',
-      onClick: () => { onSaveToLibrary(); },
-    });
+    actions.push({ label: commonLabel, onClick: () => { onSaveToLibrary(); } });
+    actions.push({ label: deviceLabel, onClick: () => { onSaveToLibrary(); } });
   }
   if (onSendToDevice && !isSaving) {
-    actions.push({
-      label: 'Send to Device',
-      onClick: () => { onSendToDevice(); },
-    });
+    actions.push({ label: 'Send to Device', onClick: () => { onSendToDevice(); } });
   }
 
   return (
