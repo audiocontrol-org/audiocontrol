@@ -353,6 +353,8 @@ make modules/sampler-devices/.build-stamp  # Build one module (and its deps)
 
 `pnpm -r build` still works but does **not** enforce build order — use `make` instead.
 
+**Source change detection is automatic.** The Makefile tracks `.ts`, `.tsx`, and `.css` files in each module's `src/` directory. When any tracked file changes, `make` rebuilds that module and its dependents. Do **not** delete `.build-stamp` files for routine development — `make` alone is sufficient. See the "HOW SOURCE CHANGE DETECTION WORKS" comment block in the Makefile for details.
+
 ## Deployment
 
 Web editors are deployed on Netlify. Each editor has its own Netlify site with per-site configuration.
