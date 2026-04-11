@@ -17,6 +17,7 @@
 - [Drum Kit Storage Migration](./drum-kit-storage-migration.md) - Move Roland drum kits from device-specific to common area (#182)
 - [Editor Dialog Plugins](./editor-dialog-plugins.md) - Shared dialog rendering via plugin pattern (#175)
 - [Shared Library Tests](./shared-library-tests.md) - Generalize 42 common-area e2e tests to run against all editors
+- [Contract Enforcement](./contract-enforcement.md) - Capability-declared context menus, compiler-enforced contracts across editors
 
 ## Overview
 
@@ -53,6 +54,9 @@ Align and improve library page UX across both the Roland S-330/S-550 editor and 
 | Phase 11: Drag-drop workflows | Complete | Disk→library, disk→device, library→device with type filtering |
 | Phase 12: Common-area programs | Complete | Three library sections, expandable programs, sourceDevice schema |
 | Phase 13: ASPACK fast upload | Complete | Multi-chunk solved (poll flag 0x00), sample creation via minimal SDS, bridge + web editor integrated (#184) |
+| Phase 14: Reload resilience | Complete | Library auto-reconnect, device/disk state caching, shared vite config, loading bars |
+| Phase 15: Context menu parity | In Progress | Transfer actions in context menus, device memory context menus, disk browser Send to Device |
+| Phase 16: Contract enforcement | Planned | Capability-declared context menus, compiler-enforced contracts, deduplicate types |
 
 ## Related Issues
 

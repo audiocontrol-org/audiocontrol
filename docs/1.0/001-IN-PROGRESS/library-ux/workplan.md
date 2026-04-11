@@ -433,6 +433,20 @@ Phase 12 (common-area programs) — COMPLETE
 Phase 13 (ASPACK fast upload) — COMPLETE
   Multi-chunk solved (poll flag 0x00 not 0x80), sample creation via minimal SDS,
   bridge WebSocket endpoint, web editor integrated, stall-based timeouts
+
+Phase 14 (reload resilience) — COMPLETE
+  Library auto-reconnect from localStorage, device/disk state cached in sessionStorage,
+  stale-while-revalidate pattern, shared LoadingBar, shared vite config
+
+Phase 15 (context menu parity) — IN PROGRESS (stashed)
+  Transfer actions in library context menus, device memory context menus,
+  disk browser Send to Device. Shared createTransferActionHandler in editor-core.
+  BLOCKED: phantom menu items in Roland, silent action drops — see Phase 16.
+
+Phase 16 (contract enforcement) — PLANNED
+  Capability-declared context menus, compiler-enforced transfer contracts,
+  deduplicate types, exhaustive action guard.
+  See: docs/1.0/001-IN-PROGRESS/library-ux/contract-enforcement.md
 ```
 
 ---
