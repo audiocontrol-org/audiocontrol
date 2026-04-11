@@ -51,6 +51,7 @@ export {
   LibraryConnectionUI,
   DrumKitPadList,
   LoadingBar,
+  SlideDrawer,
   FolderIcon,
   ChevronIcon,
   AudioFileIcon,

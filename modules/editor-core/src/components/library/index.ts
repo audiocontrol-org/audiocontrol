@@ -76,6 +76,7 @@ export {
 
 export { DrumKitPadList } from './DrumKitPadList';
 export { LoadingBar } from './LoadingBar';
+export { SlideDrawer, type SlideDrawerProps } from './SlideDrawer';
 
 // Plugin interfaces
 export type {
