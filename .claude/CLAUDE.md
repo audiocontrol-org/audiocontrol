@@ -236,6 +236,28 @@ Bad code actively attracts more bad code. Agents and humans learn patterns from 
 
 **When adding new code:** Before implementing, check if the same concept already exists elsewhere in the codebase. If it does, use it. If it's close but not quite right, extend it. The only valid reason to create a new implementation is that no existing implementation covers the use case — and even then, consider whether the existing code should be generalized rather than duplicated.
 
+### Contract Enforcement
+
+**The whole point of a strongly typed language is that the compiler catches contract violations.** If a contract can change without the compiler complaining, the type system isn't doing its job — either the contract is too loose (optional fields, `any`, duplicated types) or the architecture is wrong (parallel implementations instead of shared interfaces). Every shared contract must be structured so that a breaking change produces a compile error in every consumer.
+
+**Compiler-enforced contracts:**
+
+- When a shared interface changes in editor-core, **every editor that implements it must fail to compile** until updated. If you add a required field to a shared type and no editor breaks, the type isn't actually shared — it's duplicated or optional. Fix the architecture.
+- **No optional bags of callbacks.** An interface with all-optional methods (`handleX?`, `onY?`) is a contract that enforces nothing. If an editor shows a UI element, the handler for that element must be required. Use discriminated unions or capability declarations instead of optional fields when the presence of a callback determines whether UI appears.
+- **Types exist once.** If the same type is defined in two files, one must go. Move it to the lowest common ancestor and import it everywhere. A "local copy" of a shared type is a ticking divergence bomb — when one changes, the other silently disagrees.
+
+**Loud failure over silent no-ops:**
+
+- If a context menu shows an action, clicking it **must** do something. An action that silently does nothing is a bug. Either the action should not appear (filter based on declared capabilities), or it should throw an error explaining what's not implemented.
+- If a shared component adds a new callback prop, editors that use the component must wire it or the compiler must complain. Don't make new props optional just to avoid breaking other editors — break them, then fix them.
+- Never swallow errors to avoid disrupting the UI. A red error banner the user can see is infinitely better than a `console.error` the user never checks.
+
+**Cross-editor contract changes:**
+
+- When changing shared code in editor-core, **build all editors before committing** (`make`). If only one editor builds, you broke a contract. Fix all consumers before committing.
+- When adding a feature to one editor's library page, ask: "Does this feature's absence in other editors represent a bug?" If yes, the feature belongs in the shared layer with a required contract. If no, it's genuinely device-specific.
+- Test the contract: if you remove the feature from the editor you just added it to, does the shared layer still compile? If yes, the contract is too loose.
+
 ### Repository Hygiene
 
 - Build artifacts only in `dist/`
