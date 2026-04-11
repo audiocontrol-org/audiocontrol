@@ -63,7 +63,7 @@ Be precise about corrections. A correction is when the user redirects the agent'
 
 Do NOT count normal conversation as corrections. "No, I mean X" when clarifying a requirement is not a correction — it's clarification. "No, stop doing that, do X instead" IS a correction.
 
-Return ONLY valid JSON, no markdown fencing.`;
+CRITICAL: Your entire response must be a single valid JSON object. No prose, no explanation, no markdown fencing, no preamble. Start with { and end with }.`;
 
 // ---------------------------------------------------------------------------
 // CLI
@@ -102,7 +102,10 @@ async function callHaiku(
       model: MODEL,
       max_tokens: 4096,
       system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: `Here is the session log to analyze:\n\n${content}` }],
+      messages: [
+        { role: "user", content: `Here is the session log to analyze:\n\n${content}` },
+        { role: "assistant", content: "{" },
+      ],
     }),
   });
 
@@ -125,9 +128,18 @@ async function callHaiku(
 
 function parseResponse(raw: string): Record<string, unknown> {
   let text = raw.trim();
+
+  // Strip markdown fencing
   if (text.startsWith("```")) {
     text = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "");
   }
+
+  // The assistant prefill starts with "{", so prepend it
+  // But if the model repeated the "{", don't double it
+  if (!text.startsWith("{")) {
+    text = "{" + text;
+  }
+
   return JSON.parse(text);
 }
 

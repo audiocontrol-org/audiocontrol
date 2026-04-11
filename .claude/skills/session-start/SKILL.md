@@ -24,12 +24,18 @@ Read the following and report a concise summary to the user:
 4. **Read device notes if applicable**:
    - If the feature involves SCSI/device work: read `SCSI-NOTES.md` (last 2-3 entries)
 
-5. **Check open GitHub issues**:
+5. **Read the session analysis report** (if it exists):
+   - Read: `data/sessions/report-all.md` — look for the "LLM Session Analysis" section
+   - Note: top correction categories, most common patterns, improvement suggestions
+   - These are mistakes from previous sessions — actively avoid repeating them
+
+6. **Check open GitHub issues**:
    - Run: `gh issue list --label <relevant-label> --state open`
 
-6. **Report to the user**:
+7. **Report to the user**:
    - Feature name and current phase
    - Last session's key accomplishments and failures
+   - Top correction patterns to watch for (from analysis report)
    - Top unresolved issues
    - Proposed goal for this session
 
