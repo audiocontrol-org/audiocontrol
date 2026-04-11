@@ -107,6 +107,8 @@ export interface CategoryCallbacks {
   refresh: () => void;
   /** Create a new folder at the root of this category */
   createFolder: () => void;
+  /** Import files from the local filesystem via file picker */
+  importFiles: () => void;
 }
 
 /**

@@ -13,7 +13,7 @@
  * Device-agnostic — all device-specific behavior comes from the plugin.
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { LoadingBar } from './LoadingBar';
 import { TreeSection } from './TreeSection';
 import type { TreeNode } from './TreeView';
@@ -145,6 +145,7 @@ export function PluginLibraryBrowser({
   onRename,
   onContextMenuAction,
   onExternalDrop,
+  onFileDrop,
   deviceMemoryState,
   onDeviceMemoryAction,
   previewState,
@@ -156,12 +157,27 @@ export function PluginLibraryBrowser({
   devicePanelLeft,
 }: PluginLibraryBrowserProps): JSX.Element {
   const hasDeviceMemory = !!plugin.deviceMemory;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputCategoryRef = useRef<string>('');
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !onFileDrop) return;
+    const categoryId = fileInputCategoryRef.current;
+    void onFileDrop(categoryId, Array.from(files), []);
+    // Reset so the same file can be selected again
+    e.target.value = '';
+  }, [onFileDrop]);
 
   // Create category callbacks factory
   const createCategoryCallbacks = useCallback(
     (categoryId: string): CategoryCallbacks => ({
       refresh: onRefresh,
       createFolder: () => onCreateFolder(categoryId, []),
+      importFiles: () => {
+        fileInputCategoryRef.current = categoryId;
+        fileInputRef.current?.click();
+      },
     }),
     [onRefresh, onCreateFolder],
   );
@@ -346,6 +362,16 @@ export function PluginLibraryBrowser({
 
   return (
     <div className={layoutClass}>
+      {/* Hidden file input for import button */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="audio/wav,audio/x-wav,.wav"
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleFileInputChange}
+      />
+
       {/* Device-adjacent panel (e.g., SCSI disk browser) */}
       {devicePanelLeft && (
         <div className="ac-plugin-library-browser-device-left">
