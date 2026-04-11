@@ -183,6 +183,108 @@ function isValidMoveTarget(sourceNode: TreeNode, sourcePath: string[], targetPat
   return true;
 }
 
+// =========================================================================
+// Multi-select preview panel
+// =========================================================================
+
+function MultiSelectPreview({
+  count,
+  categoryId,
+  selectedIds,
+  categoryData,
+  plugin,
+  onContextMenuAction,
+  onBatchMove,
+  onBatchDelete,
+  clearSelection,
+  openMoveDialog,
+}: {
+  count: number;
+  categoryId: string;
+  selectedIds: ReadonlySet<string>;
+  categoryData: Record<string, TreeNode[]>;
+  plugin: DeviceLibraryPlugin;
+  onContextMenuAction?: (categoryId: string, actionId: string, node: TreeNode) => void;
+  onBatchMove?: (categoryId: string, nodes: TreeNode[], targetPath: string[]) => Promise<void>;
+  onBatchDelete?: (categoryId: string, nodes: TreeNode[]) => Promise<void>;
+  clearSelection: () => void;
+  openMoveDialog: (categoryId: string, node: TreeNode) => void;
+}): JSX.Element {
+  // Determine item type label from the first selected node
+  const data = categoryData[categoryId] ?? [];
+  const allNodes = flattenAllNodes(data);
+  const selected = allNodes.filter((n) => selectedIds.has(n.id));
+  const firstNode = selected[0];
+
+  const category = plugin.categories.find((c) => c.categoryId === categoryId);
+  const itemTypePlugin = firstNode && category ? category.itemTypes[firstNode.type] : undefined;
+  const typeName = itemTypePlugin?.displayName ?? 'Item';
+  const typeLabel = count === 1 ? typeName : `${typeName}s`;
+
+  // Get batchable actions from the item type
+  const batchActions: PluginMenuAction[] = [];
+  if (itemTypePlugin?.getContextMenuActions && firstNode) {
+    const actions = itemTypePlugin.getContextMenuActions(firstNode.meta, firstNode);
+    const fileOps = new Set(['rename', 'delete', 'move']);
+    for (const action of actions) {
+      if ('separator' in action) continue;
+      const a = action as PluginMenuAction;
+      if (!a.batchable || fileOps.has(a.id)) continue;
+      batchActions.push(a);
+    }
+  }
+
+  return (
+    <div className="p-4">
+      <h3 className="text-lg font-semibold text-gray-100 mb-3">
+        {count} {typeLabel} Selected
+      </h3>
+
+      <div className="flex gap-2 flex-wrap">
+        {batchActions.map((action) => (
+          <button
+            key={action.id}
+            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
+            onClick={() => {
+              for (const node of selected) {
+                onContextMenuAction?.(categoryId, action.id, node);
+              }
+              clearSelection();
+            }}
+          >
+            {action.label}
+          </button>
+        ))}
+
+        {onBatchMove && (
+          <button
+            className="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors"
+            onClick={() => {
+              if (firstNode) openMoveDialog(categoryId, firstNode);
+            }}
+          >
+            Move...
+          </button>
+        )}
+
+        {onBatchDelete && (
+          <button
+            className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
+            onClick={() => {
+              const confirmed = window.confirm(`Delete ${count} items? This cannot be undone.`);
+              if (!confirmed) return;
+              void onBatchDelete(categoryId, selected);
+              clearSelection();
+            }}
+          >
+            Delete
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function PluginLibraryBrowser({
   plugin,
   libraryHandle,
@@ -853,11 +955,29 @@ export function PluginLibraryBrowser({
 
       {/* Preview panel */}
       <div className="ac-plugin-library-browser-preview" data-testid="library-preview-panel">
-        {plugin.previewPanel.renderPreview(selection, {
-          isLoading: loading ?? false,
-          error: error,
-          customState: previewState,
-        })}
+        {multiSelectedIds.size > 1 && multiSelectCategoryId ? (
+          <MultiSelectPreview
+            count={multiSelectedIds.size}
+            categoryId={multiSelectCategoryId}
+            selectedIds={multiSelectedIds}
+            categoryData={categoryData}
+            plugin={plugin}
+            onContextMenuAction={onContextMenuAction}
+            onBatchMove={onBatchMove}
+            onBatchDelete={onBatchDelete}
+            clearSelection={() => {
+              setMultiSelectedIds(new Set());
+              setMultiSelectCategoryId(null);
+            }}
+            openMoveDialog={(categoryId, node) => setMoveDialog({ open: true, categoryId, node })}
+          />
+        ) : (
+          plugin.previewPanel.renderPreview(selection, {
+            isLoading: loading ?? false,
+            error: error,
+            customState: previewState,
+          })
+        )}
       </div>
 
       {/* Context menu (portal-like, positioned absolutely) */}
