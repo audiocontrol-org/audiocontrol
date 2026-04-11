@@ -24,16 +24,14 @@ export function useDeviceLibraryData(
 ): UseDeviceLibraryDataResult {
   const setDeviceProgramNames = useLibraryStore((s) => s.setDeviceProgramNames);
   const setDeviceSampleNames = useLibraryStore((s) => s.setDeviceSampleNames);
-  const clearSelectedDevice = useLibraryStore((s) => s.clearSelectedDevice);
 
   const [isLoading, setIsLoading] = useState(false);
   const hasFetched = useRef(false);
-  const wasConnected = useRef(false);
 
-  const fetchNames = useCallback(async () => {
+  const fetchNames = useCallback(async (showLoading: boolean) => {
     if (!client) return;
 
-    setIsLoading(true);
+    if (showLoading) setIsLoading(true);
     try {
       const [programs, samples] = await Promise.all([
         client.fetchProgramNames(),
@@ -45,31 +43,25 @@ export function useDeviceLibraryData(
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(`Failed to fetch device names: ${message}`);
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, [client, setDeviceProgramNames, setDeviceSampleNames]);
 
-  // Fetch on connect, clear on real disconnect (not initial mount)
+  // Fetch on connect, allow re-fetch on reconnect
   useEffect(() => {
     if (isConnected && client && !hasFetched.current) {
-      wasConnected.current = true;
       hasFetched.current = true;
-      void fetchNames();
+      // Silent fetch — cached data stays visible, replaced when results arrive
+      void fetchNames(false);
     }
 
     if (!isConnected) {
+      // Reset fetch guard so we re-fetch on next connect.
+      // Don't clear names — cached data stays visible with a
+      // "reconnecting" indicator. The next fetch will replace them.
       hasFetched.current = false;
-      // Only clear names on a real disconnect, not on initial mount.
-      // On mount, isConnected starts false — clearing would wipe the
-      // session cache before the transport has a chance to reconnect.
-      if (wasConnected.current) {
-        wasConnected.current = false;
-        setDeviceProgramNames([]);
-        setDeviceSampleNames([]);
-        clearSelectedDevice();
-      }
     }
-  }, [isConnected, client, fetchNames, setDeviceProgramNames, setDeviceSampleNames, clearSelectedDevice]);
+  }, [isConnected, client, fetchNames]);
 
   const refresh = useCallback(async () => {
     if (!client) return;
@@ -77,7 +69,7 @@ export function useDeviceLibraryData(
     // Invalidate caches so the client re-fetches from the device
     client.invalidateProgramCache();
     client.invalidateSampleCache();
-    await fetchNames();
+    await fetchNames(true);
   }, [client, fetchNames]);
 
   return { refresh, isLoading };
