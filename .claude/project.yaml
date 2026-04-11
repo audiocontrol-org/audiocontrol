@@ -29,9 +29,25 @@ technology_stack:
     - json
 
 agents:
-  - id: orchestrator
-    role: Workflow Coordinator
+  - id: project-orchestrator
+    role: Project Planning and Feature Infrastructure
     priority: essential
+    focus:
+      - Feature planning and PRD creation
+      - Workplan creation and task decomposition
+      - GitHub issue management
+      - Branch, worktree, and docs directory setup
+      - Delegation to documentation-engineer and Explore agents
+
+  - id: feature-orchestrator
+    role: Implementation Delegation and Phase Management
+    priority: essential
+    focus:
+      - Implementation delegation to sub-agents
+      - Sub-agent coordination and output review
+      - Workplan progress tracking
+      - GitHub issue closure
+      - PR delivery
 
   - id: typescript-pro
     role: TypeScript Expert
