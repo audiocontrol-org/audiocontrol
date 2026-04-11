@@ -11,6 +11,45 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-11: Build Source Dependency Planning and Investigation
+
+### Feature: build-source-deps
+### Worktree: audiocontrol-build-source-deps
+
+### Goal
+Investigate GitHub issue #173 ("Build stamps should be sensitive to source code changes"), create a plan, feature branch/worktree, and feature documentation.
+
+### Accomplished
+- Root cause analysis: issue filed from library-ux worktree that branched before e4f4ee05 (the fix). Source deps already work on main.
+- Session transcript forensics: decrypted and searched 15 sessions' content, found 20+ instances of unnecessary stamp deletion in a single session. Identified the cargo-cult pattern: agents learn `rm -f .build-stamp && make` from the Makefile and never test whether `make` alone works.
+- Identified remaining gap: CSS files (9 across 5 modules) not tracked in find patterns.
+- Created feature branch `feature/build-source-deps` and worktree.
+- Created feature docs (prd.md, workplan.md, README.md) via documentation agent.
+- Created GitHub issues: #203 (parent), #204, #205, #206 (implementation tasks).
+- Updated workplan with issue links.
+- User implemented all tasks in a separate session, merged PR #207, closed all issues.
+
+### Didn't Work
+- Initially tried to jump into implementation instead of staying in orchestrator role. User corrected twice.
+- First investigation attempt (launching Explore agent) was rejected — user wanted me to look at session transcripts instead.
+
+### Course Corrections
+- [PROCESS] User said "you are the orchestrator, not the implementation team" — I tried to start implementing instead of delegating.
+- [PROCESS] User said "look in tools/ to find out how to decrypt the session files" — I was trying alternative search approaches instead of checking the obvious place for instructions.
+- [PROCESS] User pointed out that agents learn the wrong pattern from examining the Makefile itself, not from CLAUDE.md — documentation needs to be at the source of confusion.
+
+### Quantitative
+- User messages: ~15
+- Commits: 0 (planning session on main; implementation done in separate session)
+- User corrections: 3
+
+### Insights
+1. Session transcript forensics (decrypting and searching content files) is a powerful investigation tool — it revealed the true root cause (stale worktree + cargo-cult pattern) that code inspection alone missed.
+2. Documentation belongs at the source of confusion, not in a separate guide. Agents read the Makefile, so the Makefile must teach them the right pattern.
+3. The orchestrator role means creating plans and docs, then handing off — not doing the implementation yourself.
+
+---
+
 ## 2026-04-10: Session Data Extraction, Analysis, and LLM Integration
 
 ### Feature: library-ux
