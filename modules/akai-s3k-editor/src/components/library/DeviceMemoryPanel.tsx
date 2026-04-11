@@ -106,12 +106,14 @@ function NameList({
       </ul>
       {contextMenu && (() => {
         const name = names[contextMenu.index];
+        const commonLabel = type === 'program' ? 'Save to Common Library' : 'Save to Common Samples';
+        const deviceLabel = type === 'program' ? 'Save to Akai Library' : 'Save to Akai Samples';
         const actions: ContextMenuAction[] = [];
         if (onSaveToCommonLibrary) {
-          actions.push({ label: 'Save to Common Samples', onClick: () => onSaveToCommonLibrary(contextMenu.index, name) });
+          actions.push({ label: commonLabel, onClick: () => onSaveToCommonLibrary(contextMenu.index, name) });
         }
         if (onSaveToDeviceLibrary) {
-          actions.push({ label: 'Save to Akai Library', onClick: () => onSaveToDeviceLibrary(contextMenu.index, name) });
+          actions.push({ label: deviceLabel, onClick: () => onSaveToDeviceLibrary(contextMenu.index, name) });
         }
         if (onDelete) {
           actions.push({ label: 'Delete from Device', onClick: () => onDelete(contextMenu.index, name), danger: true, separator: actions.length > 0 });

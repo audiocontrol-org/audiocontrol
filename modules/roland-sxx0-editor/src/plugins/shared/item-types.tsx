@@ -7,16 +7,9 @@
  */
 
 import type { ItemTypePlugin } from '@audiocontrol/editor-core';
-import {
-  commonSampleItemType,
-  commonProgramItemType,
-  type CommonSampleMeta,
-  type CommonProgramMeta,
-} from '@audiocontrol/editor-core';
+import type { CommonSampleMeta, CommonProgramMeta } from '@audiocontrol/editor-core';
 import { WaveIcon, PatchIcon } from '@/components/library/LibraryTreeIcons';
 
-// Re-export common-area types from editor-core
-export { commonSampleItemType, commonProgramItemType };
 export type { CommonSampleMeta, CommonProgramMeta };
 
 // =========================================================================

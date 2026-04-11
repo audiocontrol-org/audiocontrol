@@ -1,6 +1,6 @@
 /**
  * Hook managing selection state and mapping between editor-core's
- * ItemSelection and Roland's page-level ItemSelection type.
+ * ItemSelection and Roland's page-level RolandPageSelection type.
  *
  * Handles plugin selection changes, device/library item selection,
  * and drum kit bundle loading on selection.
@@ -9,15 +9,15 @@
 import { useState, useCallback } from 'react';
 import type { ItemSelection as PluginItemSelection } from '@audiocontrol/editor-core';
 import type { StorageDirectoryHandle } from '@/lib/library-service';
-import type { ItemSelection } from '@/pages/LibraryPage';
+import type { RolandPageSelection } from '@/pages/LibraryPage';
 
 // =========================================================================
 // Result interface
 // =========================================================================
 
 export interface RolandSelectionMappingResult {
-  selection: ItemSelection | null;
-  setSelection: (selection: ItemSelection | null) => void;
+  selection: RolandPageSelection | null;
+  setSelection: (selection: RolandPageSelection | null) => void;
   handlePluginSelectionChange: (pluginSelection: PluginItemSelection | null) => void;
   handleSelectDevice: (type: 'tone' | 'patch', index: number) => void;
   handleSelectLibrary: (type: 'tone' | 'patch' | 'set', name: string, setName?: string) => void;
@@ -30,7 +30,7 @@ export interface RolandSelectionMappingResult {
 export function useRolandSelectionMapping(
   _libraryHandle: StorageDirectoryHandle | null,
 ): RolandSelectionMappingResult {
-  const [selection, setSelection] = useState<ItemSelection | null>(null);
+  const [selection, setSelection] = useState<RolandPageSelection | null>(null);
 
   const handlePluginSelectionChange = useCallback((pluginSelection: PluginItemSelection | null) => {
     if (!pluginSelection) {
@@ -41,7 +41,7 @@ export function useRolandSelectionMapping(
     const { categoryId, node, meta } = pluginSelection;
     const nodeMeta = (meta ?? {}) as { fileName?: string; directoryName?: string; path?: string[] };
 
-    let pageSelection: ItemSelection;
+    let pageSelection: RolandPageSelection;
 
     if (categoryId === 'tones') {
       pageSelection = {

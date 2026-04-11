@@ -48,6 +48,10 @@ import { useS3kLibraryData } from '@/hooks/useS3kLibraryData';
 import { useS3kSelectionHandlers } from '@/hooks/useS3kSelectionHandlers';
 import { useS3kLibraryStrategy } from '@/hooks/useS3kLibraryStrategy';
 import { useS3kTransferCallbacks } from '@/hooks/useS3kTransferCallbacks';
+import {
+  SAVE_DIALOG_CLOSED, SEND_DIALOG_CLOSED,
+  type SaveToLibraryDialogState, type SendToDeviceDialogState,
+} from '@audiocontrol/editor-core';
 import { promoteToCommonArea } from '@/lib/program-promotion';
 import { DiskBrowserPanel, DISK_ITEM_MIME, type DiskDragPayload, type DiskBrowserHandle } from '@/components/library/DiskBrowserPanel';
 import { isAkaiSample, isAkaiProgram } from '@audiocontrol/sampler-devices/s3k';
@@ -73,29 +77,6 @@ import { S3kKitOutputConfig } from '@/components/library/S3kKitOutputConfig';
 import type { S3kPreviewCustomState } from '@/components/library/S3kItemPreviewPanel';
 
 const PICKER_ID = 'akai-s3k-library';
-
-// =========================================================================
-// Sample dialog state
-// =========================================================================
-
-interface SendDialogState {
-  open: boolean;
-  sampleName: string;
-  samplePath: string[];
-}
-
-interface ReceiveDialogState {
-  open: boolean;
-  sampleIndex: number;
-  sampleName: string;
-}
-
-const SEND_DIALOG_CLOSED: SendDialogState = {
-  open: false, sampleName: '', samplePath: [],
-};
-const RECEIVE_DIALOG_CLOSED: ReceiveDialogState = {
-  open: false, sampleIndex: 0, sampleName: '',
-};
 
 interface DiskToLibraryDialogState {
   open: boolean;
@@ -151,8 +132,8 @@ export function LibraryPage(): JSX.Element {
   const setSelectedDevice = useLibraryStore((s) => s.setSelectedDevice);
 
   const [selection, setSelection] = useState<ItemSelection | null>(null);
-  const [sendDialog, setSendDialog] = useState<SendDialogState>(SEND_DIALOG_CLOSED);
-  const [receiveDialog, setReceiveDialog] = useState<ReceiveDialogState>(RECEIVE_DIALOG_CLOSED);
+  const [sendDialog, setSendDialog] = useState<SendToDeviceDialogState>(SEND_DIALOG_CLOSED);
+  const [receiveDialog, setReceiveDialog] = useState<SaveToLibraryDialogState>(SAVE_DIALOG_CLOSED);
   const [diskToLibrary, setDiskToLibrary] = useState<DiskToLibraryDialogState>(DISK_TO_LIBRARY_CLOSED);
   const diskBrowserRef = useRef<DiskBrowserHandle>(null);
   const [dropTransfer, setDropTransfer] = useState<DropTransferState>(DROP_TRANSFER_IDLE);
@@ -366,12 +347,30 @@ export function LibraryPage(): JSX.Element {
     root,
     refreshPrograms,
     transfers: {
-      onSendSampleToDevice: canTransfer ? transferCallbacks.handleSendSampleToDevice : undefined,
-      onSendProgramToDevice: canTransfer ? transferCallbacks.handleSendProgramToDevice : undefined,
-      onImportDrumKit: canTransfer ? drumKitTransfer.openDialog : undefined,
-      onEditDrumKit: hasLibrary ? editorDialogs.handleOpenDrumKitEditor : undefined,
-      onImportInstrument: canTransfer ? transferCallbacks.handleImportInstrument : undefined,
-      onPromoteToCommonArea: hasLibrary ? handlePromoteToCommonArea : undefined,
+      'send-sample-to-device': (name, path) => {
+        if (!canTransfer) throw new Error('Connect to device and library to send samples');
+        transferCallbacks.handleSendSampleToDevice(name, path);
+      },
+      'send-program-to-device': (dirName, name) => {
+        if (!canTransfer) throw new Error('Connect to device and library to send programs');
+        transferCallbacks.handleSendProgramToDevice(dirName, name);
+      },
+      'import-drum-kit': (name, path) => {
+        if (!canTransfer) throw new Error('Connect to device and library to import drum kits');
+        drumKitTransfer.openDialog(name, path);
+      },
+      'edit-drum-kit': (name, path) => {
+        if (!hasLibrary) throw new Error('Connect to library to edit drum kits');
+        editorDialogs.handleOpenDrumKitEditor(name, path);
+      },
+      'import-instrument': (dirName, path) => {
+        if (!canTransfer) throw new Error('Connect to device and library to import instruments');
+        transferCallbacks.handleImportInstrument(dirName, path);
+      },
+      'promote-to-common-area': (dirName) => {
+        if (!hasLibrary) throw new Error('Connect to library to promote programs');
+        void handlePromoteToCommonArea(dirName);
+      },
     },
   });
 
@@ -443,10 +442,10 @@ export function LibraryPage(): JSX.Element {
         })();
       }
     } : undefined,
-    onSaveSampleToCommonLibrary: canTransfer ? transferCallbacks.handleSaveDeviceSampleToLibrary : undefined,
-    onSaveSampleToDeviceLibrary: canTransfer ? transferCallbacks.handleSaveDeviceSampleToLibrary : undefined,
-    onSaveProgramToCommonLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToLibrary : undefined,
-    onSaveProgramToDeviceLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToLibrary : undefined,
+    onSaveSampleToCommonLibrary: canTransfer ? transferCallbacks.handleSaveDeviceSampleToLibraryDirect : undefined,
+    onSaveSampleToDeviceLibrary: canTransfer ? transferCallbacks.handleSaveDeviceSampleToLibraryDirect : undefined,
+    onSaveProgramToCommonLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToLibraryDirect : undefined,
+    onSaveProgramToDeviceLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToLibraryDirect : undefined,
     onDeleteSample: isDeviceConnected ? transferCallbacks.handleDeleteDeviceSample : undefined,
     onDeleteProgram: isDeviceConnected ? transferCallbacks.handleDeleteDeviceProgram : undefined,
     isConnected: isDeviceConnected,
@@ -558,8 +557,8 @@ export function LibraryPage(): JSX.Element {
           <SendSampleDialog
             open={sendDialog.open}
             onClose={() => setSendDialog(SEND_DIALOG_CLOSED)}
-            sampleName={sendDialog.sampleName}
-            samplePath={sendDialog.samplePath}
+            sampleName={sendDialog.itemName}
+            samplePath={sendDialog.itemPath}
             client={client}
             libraryRoot={root}
             deviceSampleCount={deviceSampleNames.length}
@@ -567,12 +566,13 @@ export function LibraryPage(): JSX.Element {
           />
           <ReceiveSampleDialog
             open={receiveDialog.open}
-            onClose={() => setReceiveDialog(RECEIVE_DIALOG_CLOSED)}
-            sampleIndex={receiveDialog.sampleIndex}
-            sampleName={receiveDialog.sampleName}
+            onClose={() => setReceiveDialog(SAVE_DIALOG_CLOSED)}
+            sampleIndex={receiveDialog.itemIndex}
+            sampleName={receiveDialog.itemName}
             client={client}
             libraryRoot={root}
             onTransferComplete={() => refreshLibrary()}
+            autoStart={receiveDialog.autoStart}
           />
           <ImportDrumKitDialog
             open={drumKitTransfer.dialog.open}
@@ -597,12 +597,13 @@ export function LibraryPage(): JSX.Element {
           <ExportProgramDialog
             open={programTransfer.exportDialog.open}
             onClose={programTransfer.closeExportDialog}
-            programIndex={programTransfer.exportDialog.programIndex}
-            programName={programTransfer.exportDialog.programName}
+            programIndex={programTransfer.exportDialog.itemIndex}
+            programName={programTransfer.exportDialog.itemName}
             client={client}
             libraryRoot={root}
             deviceSampleNames={deviceSampleNames}
             onExportComplete={transferCallbacks.handleExportComplete}
+            autoStart={programTransfer.exportDialog.autoStart}
           />
           <ImportProgramDialog
             open={programTransfer.importDialog.open}

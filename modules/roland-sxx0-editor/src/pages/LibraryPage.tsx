@@ -46,7 +46,7 @@ import { getOverallPercent } from '@/types/import-operation';
 import { cn } from '@/lib/utils';
 
 /** Selection state for items in either panel */
-export interface ItemSelection {
+export interface RolandPageSelection {
   source: 'device' | 'library';
   type: 'tone' | 'patch' | 'set' | 'individualTone' | 'individualPatch' | 'sample' | 'program';
   index?: number;

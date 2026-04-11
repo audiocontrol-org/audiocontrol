@@ -12,7 +12,7 @@
  * 5. Refresh library tree on success
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import { saveSample, type SampleYaml } from '@audiocontrol/sampler-library/browser';
 import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
@@ -37,6 +37,8 @@ export interface ReceiveSampleDialogProps {
   libraryRoot: StorageDirectoryHandle;
   /** Called after successful save to refresh the library tree */
   onTransferComplete: () => Promise<void>;
+  /** Skip the confirm phase and start the transfer immediately. */
+  autoStart?: boolean;
 }
 
 type DialogPhase = 'confirm' | 'receiving' | 'saving' | 'success' | 'error';
@@ -111,24 +113,27 @@ export function ReceiveSampleDialog({
   client,
   libraryRoot,
   onTransferComplete,
+  autoStart,
 }: ReceiveSampleDialogProps): JSX.Element {
   const [phase, setPhase] = useState<DialogPhase>('confirm');
   const [saveName, setSaveName] = useState(sampleName);
   const [receiveResult, setReceiveResult] = useState<SdsReceiveResult | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const autoStarted = useRef(false);
 
   const { transferState, receiveFromDevice, clearError } = useSampleTransfer(client);
 
   // Reset state when dialog opens
   useEffect(() => {
     if (open) {
-      setPhase('confirm');
+      setPhase(autoStart ? 'receiving' : 'confirm');
       setSaveName(sampleName);
       setReceiveResult(null);
       setErrorMessage(null);
       clearError();
+      autoStarted.current = false;
     }
-  }, [open, sampleName, clearError]);
+  }, [open, sampleName, clearError, autoStart]);
 
   const handleReceive = useCallback(async () => {
     if (!saveName.trim()) {
@@ -177,6 +182,14 @@ export function ReceiveSampleDialog({
     onTransferComplete,
     transferState.error,
   ]);
+
+  // Auto-start transfer when opened with autoStart
+  useEffect(() => {
+    if (open && autoStart && !autoStarted.current) {
+      autoStarted.current = true;
+      void handleReceive();
+    }
+  }, [open, autoStart, handleReceive]);
 
   const handleClose = useCallback(() => {
     if (phase === 'receiving' || phase === 'saving') return;

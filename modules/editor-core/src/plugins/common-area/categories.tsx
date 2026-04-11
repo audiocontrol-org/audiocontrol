@@ -7,7 +7,8 @@
  */
 
 import type { CategoryPlugin, CategoryCallbacks } from '@/components/library/plugins/types';
-import { commonSampleItemType, commonProgramItemType } from '@/plugins/common-area/item-types';
+import type { TransferActionId } from '@/hooks/useLibraryOperations';
+import { createCommonSampleItemType, createCommonProgramItemType } from '@/plugins/common-area/item-types';
 
 // =========================================================================
 // Header action component
@@ -56,12 +57,13 @@ export function NewFolderButton({
  */
 export function createCommonSamplesCategory(
   categoryId = 'samples',
+  supportedActions: ReadonlySet<TransferActionId> = new Set(),
 ): CategoryPlugin {
   return {
     categoryId,
     title: 'Samples',
     itemTypes: {
-      sample: commonSampleItemType,
+      sample: createCommonSampleItemType(supportedActions),
     },
     emptyMessage: 'No samples in library. Import WAV files to get started.',
     dropMessage: 'Drop to add sample',
@@ -85,12 +87,13 @@ export function createCommonSamplesCategory(
  */
 export function createCommonProgramsCategory(
   categoryId = 'programs',
+  supportedActions: ReadonlySet<TransferActionId> = new Set(),
 ): CategoryPlugin {
   return {
     categoryId,
     title: 'Programs',
     itemTypes: {
-      program: commonProgramItemType,
+      program: createCommonProgramItemType(supportedActions),
     },
     emptyMessage: 'No programs in library.',
     acceptsExternalDrop: false,

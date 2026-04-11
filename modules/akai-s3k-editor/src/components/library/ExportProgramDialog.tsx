@@ -14,7 +14,7 @@
  * 7. Report success/error
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
 import { Dialog, DialogTitle, DialogDescription, DialogActions } from '@/components/ui/Dialog';
@@ -40,6 +40,8 @@ export interface ExportProgramDialogProps {
   deviceSampleNames: string[];
   /** Called after successful save to refresh the library tree */
   onExportComplete: () => Promise<void>;
+  /** Skip the confirm phase and start the export immediately. */
+  autoStart?: boolean;
 }
 
 type DialogPhase = 'confirm' | 'fetching' | 'receiving-samples' | 'saving' | 'success' | 'error';
@@ -82,6 +84,7 @@ export function ExportProgramDialog({
   libraryRoot,
   deviceSampleNames,
   onExportComplete,
+  autoStart,
 }: ExportProgramDialogProps): JSX.Element {
   const [phase, setPhase] = useState<DialogPhase>('confirm');
   const [saveName, setSaveName] = useState(programName.trim());
@@ -91,11 +94,12 @@ export function ExportProgramDialog({
   const [sampleCount, setSampleCount] = useState<number | null>(null);
   const [missingSamples, setMissingSamples] = useState<string[]>([]);
   const [includeSamples, setIncludeSamples] = useState(true);
+  const autoStarted = useRef(false);
 
   // Reset state when dialog opens
   useEffect(() => {
     if (open) {
-      setPhase('confirm');
+      setPhase(autoStart ? 'fetching' : 'confirm');
       setSaveName(programName.trim());
       setProgress({ current: 0, total: 0, label: '' });
       setErrorMessage(null);
@@ -103,8 +107,9 @@ export function ExportProgramDialog({
       setSampleCount(null);
       setMissingSamples([]);
       setIncludeSamples(true);
+      autoStarted.current = false;
     }
-  }, [open, programName]);
+  }, [open, programName, autoStart]);
 
   const handleExport = useCallback(async () => {
     const trimmedName = saveName.trim();
@@ -200,6 +205,14 @@ export function ExportProgramDialog({
       setPhase('error');
     }
   }, [saveName, programIndex, client, libraryRoot, deviceSampleNames, includeSamples, onExportComplete]);
+
+  // Auto-start export when opened with autoStart
+  useEffect(() => {
+    if (open && autoStart && !autoStarted.current) {
+      autoStarted.current = true;
+      void handleExport();
+    }
+  }, [open, autoStart, handleExport]);
 
   const handleClose = useCallback(() => {
     if (phase === 'fetching' || phase === 'saving' || phase === 'receiving-samples') return;

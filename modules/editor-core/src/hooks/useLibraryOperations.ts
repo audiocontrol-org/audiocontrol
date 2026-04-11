@@ -18,82 +18,128 @@ import {
 import type { TreeNode } from '@/components/library/TreeView';
 
 // =========================================================================
-// Transfer callbacks — shared interface for context menu transfer actions
+// Transfer dialog state — shared across all editors
 // =========================================================================
 
 /**
- * Callbacks for library context menu transfer actions.
+ * State for a "save device item to library" dialog.
  *
- * These are the same across all editors — the action IDs in item-types.tsx
- * map to these callbacks. Each editor provides its own implementations
- * (wired to its transfer dialogs/hooks), but the routing is shared.
- *
- * Omit a callback to hide the corresponding context menu action.
+ * Used for both samples and programs being saved from device memory
+ * to library storage. The dialog shows transfer progress.
  */
-export interface LibraryTransferCallbacks {
-  onSendSampleToDevice?: (name: string, path?: string[]) => void;
-  onSendProgramToDevice?: (dirName: string, name: string) => void;
-  onImportDrumKit?: (name: string, path?: string[]) => void;
-  onEditDrumKit?: (name: string, path?: string[]) => void;
-  onImportInstrument?: (dirName: string, path: string[]) => void;
-  onPromoteToCommonArea?: (dirName: string) => void;
+export interface SaveToLibraryDialogState {
+  open: boolean;
+  /** Device slot index of the item to save. */
+  itemIndex: number;
+  /** Display name of the item. */
+  itemName: string;
+  /** Skip the confirm phase and start the transfer immediately (context menu path). */
+  autoStart?: boolean;
 }
 
 /**
- * Create a handleContextMenuAction function from transfer callbacks.
+ * State for a "send library item to device" dialog.
  *
- * Maps standardized context menu action IDs (from item-types.tsx) to the
- * editor's transfer callbacks. Used by all editors — no per-editor strategy
- * needed for transfer actions.
+ * Used for both samples and programs being sent from the library
+ * to device memory. The dialog shows transfer progress.
  */
-export function createTransferActionHandler(
-  transfers: LibraryTransferCallbacks,
+export interface SendToDeviceDialogState {
+  open: boolean;
+  /** Display name of the item. */
+  itemName: string;
+  /** Path within the library (for locating the item). */
+  itemPath: string[];
+}
+
+export const SAVE_DIALOG_CLOSED: SaveToLibraryDialogState = {
+  open: false, itemIndex: 0, itemName: '',
+};
+
+export const SEND_DIALOG_CLOSED: SendToDeviceDialogState = {
+  open: false, itemName: '', itemPath: [],
+};
+
+// =========================================================================
+// Transfer action types — capability declaration system
+// =========================================================================
+
+/** All transfer action IDs that can appear in shared item type context menus. */
+export type TransferActionId =
+  | 'send-sample-to-device'
+  | 'send-program-to-device'
+  | 'import-drum-kit'
+  | 'edit-drum-kit'
+  | 'import-instrument'
+  | 'promote-to-common-area';
+
+/**
+ * Handler signatures for each transfer action.
+ * Used with Required<Pick<...>> to enforce that declared actions have handlers.
+ */
+export interface TransferHandlerMap {
+  'send-sample-to-device': (name: string, path?: string[]) => void;
+  'send-program-to-device': (dirName: string, name: string) => void;
+  'import-drum-kit': (name: string, path?: string[]) => void;
+  'edit-drum-kit': (name: string, path?: string[]) => void;
+  'import-instrument': (dirName: string, path: string[]) => void;
+  'promote-to-common-area': (dirName: string) => void;
+}
+
+/**
+ * Create a handleContextMenuAction function from declared transfer capabilities.
+ *
+ * The handlers parameter uses Required<Pick<...>> so the compiler enforces
+ * that every declared action has a corresponding handler.
+ */
+export function createTransferActionHandler<T extends TransferActionId>(
+  handlers: Required<Pick<TransferHandlerMap, T>>,
   /** Category IDs that contain device-specific programs (e.g., 's3k-programs'). */
   deviceProgramCategories: string[] = [],
 ): (categoryId: string, actionId: string, node: TreeNode) => boolean {
+  const handlerMap = handlers as Partial<TransferHandlerMap>;
   return (categoryId, actionId, node) => {
     const meta = (node.meta ?? {}) as Record<string, unknown>;
     const name = node.name;
 
     switch (actionId) {
       case 'send-sample-to-device': {
-        if (!transfers.onSendSampleToDevice) return false;
+        if (!handlerMap['send-sample-to-device']) return false;
         const path = (meta.path as string[] | undefined) ?? [];
-        transfers.onSendSampleToDevice(name, path);
+        handlerMap['send-sample-to-device'](name, path);
         return true;
       }
       case 'import-drum-kit': {
-        if (!transfers.onImportDrumKit) return false;
+        if (!handlerMap['import-drum-kit']) return false;
         const path = (meta.path as string[] | undefined) ?? [];
-        transfers.onImportDrumKit(name, path);
+        handlerMap['import-drum-kit'](name, path);
         return true;
       }
       case 'edit-drum-kit': {
-        if (!transfers.onEditDrumKit) return false;
+        if (!handlerMap['edit-drum-kit']) return false;
         const path = (meta.path as string[] | undefined) ?? [];
-        transfers.onEditDrumKit(name, path);
+        handlerMap['edit-drum-kit'](name, path);
         return true;
       }
       case 'send-program-to-device': {
-        if (!transfers.onSendProgramToDevice) return false;
+        if (!handlerMap['send-program-to-device']) return false;
         if (!deviceProgramCategories.includes(categoryId)) return false;
         const dirName = (meta.dirName as string | undefined) ?? name;
-        transfers.onSendProgramToDevice(dirName, name);
+        handlerMap['send-program-to-device'](dirName, name);
         return true;
       }
       case 'promote-to-common-area': {
-        if (!transfers.onPromoteToCommonArea) return false;
+        if (!handlerMap['promote-to-common-area']) return false;
         if (!deviceProgramCategories.includes(categoryId)) return false;
         const dirName = (meta.dirName as string | undefined) ?? name;
-        transfers.onPromoteToCommonArea(dirName);
+        handlerMap['promote-to-common-area'](dirName);
         return true;
       }
       case 'import-instrument': {
-        if (!transfers.onImportInstrument) return false;
+        if (!handlerMap['import-instrument']) return false;
         if (deviceProgramCategories.includes(categoryId)) return false;
         const dirName = (meta.directoryName as string | undefined) ?? name;
         const path = (meta.path as string[] | undefined) ?? [];
-        transfers.onImportInstrument(dirName, path);
+        handlerMap['import-instrument'](dirName, path);
         return true;
       }
       default:
@@ -113,8 +159,8 @@ export interface LibraryOperationsStrategy {
   deleteItem?(categoryId: string, node: TreeNode): Promise<boolean>;
   /** Rename a device-specific item. Return true if handled, false to use common-area rename. */
   renameItem?(categoryId: string, node: TreeNode, newName: string): Promise<boolean>;
-  /** Handle a device-specific context menu action. Return true if handled. */
-  handleContextMenuAction?(categoryId: string, actionId: string, node: TreeNode): boolean;
+  /** Handle a context menu action. Required — every editor must route actions. */
+  handleContextMenuAction(categoryId: string, actionId: string, node: TreeNode): boolean;
 }
 
 // =========================================================================
@@ -292,8 +338,8 @@ export function useLibraryOperations(
 
   const onContextMenuAction = useCallback(
     (categoryId: string, actionId: string, node: TreeNode) => {
-      // Let strategy handle device-specific actions first
-      if (strategy?.handleContextMenuAction) {
+      // Let strategy handle transfer actions first
+      if (strategy) {
         const handled = strategy.handleContextMenuAction(categoryId, actionId, node);
         if (handled) return;
       }
@@ -301,17 +347,24 @@ export function useLibraryOperations(
       // Editor actions — delegate to consumer callback
       const editorActions = ['open-loop-editor', 'open-chopper', 'open-sample-editor'];
       if (editorActions.includes(actionId)) {
-        if (onEditorAction) {
-          const name = getNodeName(node);
-          const path = getNodePath(node);
-          onEditorAction(actionId, name, node.type, path.length > 0 ? path : undefined);
+        if (!onEditorAction) {
+          throw new Error(`Editor action "${actionId}" has no handler — onEditorAction callback is missing`);
         }
+        const name = getNodeName(node);
+        const path = getNodePath(node);
+        onEditorAction(actionId, name, node.type, path.length > 0 ? path : undefined);
         return;
       }
 
-      // 'move' action — requires target path from the move dialog, which is handled
-      // by the PluginLibraryBrowser's move flow. The hook's onMove is called directly
-      // by the component when the user completes the move dialog.
+      // 'move' opens a target picker in PluginLibraryBrowser — handled at the component level
+      if (actionId === 'move') return;
+
+      // If we reach here, no one handled the action — this is a bug
+      throw new Error(
+        `Unhandled context menu action "${actionId}" for category "${categoryId}", ` +
+        `node type "${node.type}". Either the action should not appear in the menu, ` +
+        `or a handler is missing.`,
+      );
     },
     [strategy, onEditorAction],
   );

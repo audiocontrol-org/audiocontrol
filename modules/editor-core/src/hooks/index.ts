@@ -30,7 +30,12 @@ export {
   createTransferActionHandler,
   getNodePath,
   getNodeName,
+  SAVE_DIALOG_CLOSED,
+  SEND_DIALOG_CLOSED,
   type LibraryOperationsStrategy,
   type LibraryOperationsResult,
-  type LibraryTransferCallbacks,
+  type TransferActionId,
+  type TransferHandlerMap,
+  type SaveToLibraryDialogState,
+  type SendToDeviceDialogState,
 } from './useLibraryOperations';
