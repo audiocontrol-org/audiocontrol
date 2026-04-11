@@ -35,6 +35,9 @@ export interface PluginMenuAction {
   disabled?: boolean;
   /** Whether the action is dangerous (red styling) */
   danger?: boolean;
+  /** Whether this action can be applied to multiple items at once.
+   *  Required — forces every action to explicitly declare batch behavior. */
+  batchable: boolean;
 }
 
 /** A separator in the context menu */

@@ -65,29 +65,29 @@ export function createCommonSampleItemType(
     getContextMenuActions: (meta) => {
       const actions: PluginContextMenuAction[] = [];
 
-      // Transfer actions — only shown if the editor declared support
+      // Transfer actions — batchable (send multiple samples to device)
       if (supportedActions.has('send-sample-to-device')) {
-        actions.push({ id: 'send-sample-to-device', label: 'Send to Device', icon: null });
+        actions.push({ id: 'send-sample-to-device', label: 'Send to Device', icon: null, batchable: true });
       }
       if (meta.hasDrumKit && supportedActions.has('import-drum-kit')) {
-        actions.push({ id: 'import-drum-kit', label: 'Import as Drum Program', icon: null });
+        actions.push({ id: 'import-drum-kit', label: 'Import as Drum Program', icon: null, batchable: false });
       }
 
-      // Editor actions — always available (handled by useLibraryOperations)
+      // Editor actions — single-item only (one editor window at a time)
       if (actions.length > 0) actions.push({ separator: true });
-      actions.push({ id: 'open-loop-editor', label: 'Open in Loop Editor', icon: null });
-      actions.push({ id: 'open-sample-editor', label: 'Open in Sample Editor', icon: null });
-      actions.push({ id: 'open-chopper', label: 'Open in Chopper', icon: null });
+      actions.push({ id: 'open-loop-editor', label: 'Open in Loop Editor', icon: null, batchable: false });
+      actions.push({ id: 'open-sample-editor', label: 'Open in Sample Editor', icon: null, batchable: false });
+      actions.push({ id: 'open-chopper', label: 'Open in Chopper', icon: null, batchable: false });
       if (meta.hasDrumKit && supportedActions.has('edit-drum-kit')) {
-        actions.push({ id: 'edit-drum-kit', label: 'Edit Kit', icon: null });
+        actions.push({ id: 'edit-drum-kit', label: 'Edit Kit', icon: null, batchable: false });
       }
 
-      // File operations — always available
+      // File operations
       actions.push({ separator: true });
-      actions.push({ id: 'rename', label: 'Rename', icon: null });
-      actions.push({ id: 'move', label: 'Move to...', icon: null });
+      actions.push({ id: 'rename', label: 'Rename', icon: null, batchable: false });
+      actions.push({ id: 'move', label: 'Move to...', icon: null, batchable: true });
       actions.push({ separator: true });
-      actions.push({ id: 'delete', label: 'Delete', icon: null, danger: true });
+      actions.push({ id: 'delete', label: 'Delete', icon: null, danger: true, batchable: true });
 
       return actions;
     },
@@ -122,23 +122,23 @@ export function createCommonProgramItemType(
     getContextMenuActions: () => {
       const actions: PluginContextMenuAction[] = [];
 
-      // Transfer actions — only shown if the editor declared support
+      // Transfer actions
       if (supportedActions.has('send-program-to-device')) {
-        actions.push({ id: 'send-program-to-device', label: 'Send to Device', icon: null });
+        actions.push({ id: 'send-program-to-device', label: 'Send to Device', icon: null, batchable: true });
       }
       if (supportedActions.has('promote-to-common-area')) {
-        actions.push({ id: 'promote-to-common-area', label: 'Promote to Common Area', icon: null });
+        actions.push({ id: 'promote-to-common-area', label: 'Promote to Common Area', icon: null, batchable: true });
       }
       if (supportedActions.has('import-instrument')) {
-        actions.push({ id: 'import-instrument', label: 'Import to Device', icon: null });
+        actions.push({ id: 'import-instrument', label: 'Import to Device', icon: null, batchable: true });
       }
 
-      // File operations — always available
+      // File operations
       if (actions.length > 0) actions.push({ separator: true });
-      actions.push({ id: 'rename', label: 'Rename', icon: null });
-      actions.push({ id: 'move', label: 'Move to...', icon: null });
+      actions.push({ id: 'rename', label: 'Rename', icon: null, batchable: false });
+      actions.push({ id: 'move', label: 'Move to...', icon: null, batchable: true });
       actions.push({ separator: true });
-      actions.push({ id: 'delete', label: 'Delete', icon: null, danger: true });
+      actions.push({ id: 'delete', label: 'Delete', icon: null, danger: true, batchable: true });
 
       return actions;
     },

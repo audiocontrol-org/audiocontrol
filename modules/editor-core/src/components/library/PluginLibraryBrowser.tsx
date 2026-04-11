@@ -364,12 +364,13 @@ export function PluginLibraryBrowser({
         const itemTypePlugin = category.itemTypes[node.type];
         if (itemTypePlugin?.getContextMenuActions) {
           const pluginActions = itemTypePlugin.getContextMenuActions(node.meta, node);
-          // Non-file-management actions that have handlers (transfer + editor actions)
+          // Only include batchable actions (not file ops — those are handled below)
           const fileOps = new Set(['rename', 'delete', 'move']);
           for (const action of pluginActions) {
             if ('separator' in action) continue;
             const a = action as PluginMenuAction;
             if (fileOps.has(a.id)) continue;
+            if (!a.batchable) continue;
             actions.push({
               label: a.label,
               icon: a.icon,
