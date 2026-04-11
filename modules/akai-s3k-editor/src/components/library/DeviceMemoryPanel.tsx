@@ -66,6 +66,7 @@ function NameList({
   onDelete?: (index: number, name: string) => void;
 }) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; index: number } | null>(null);
+  const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
 
   if (names.length === 0) {
     return (
@@ -86,33 +87,48 @@ function NameList({
       <ul className="overflow-y-auto space-y-px">
         {names.map((name, index) => {
           const isSelected = selectedType === type && selectedIndex === index;
+          const isDeleting = deletingIndex === index;
           return (
             <li key={index}>
               <button
                 type="button"
                 data-testid={`device-${type}-${index}`}
+                disabled={isDeleting}
                 className={`group w-full text-left flex items-center px-2 py-1 text-sm rounded transition-colors ${
-                  isSelected
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-300 hover:bg-gray-700'
+                  isDeleting
+                    ? 'opacity-50 animate-pulse text-gray-500'
+                    : isSelected
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-300 hover:bg-gray-700'
                 }`}
-                onClick={() => onSelect(index)}
+                onClick={() => !isDeleting && onSelect(index)}
                 onContextMenu={(e) => {
                   e.preventDefault();
+                  if (isDeleting) return;
                   onSelect(index);
                   setContextMenu({ x: e.clientX, y: e.clientY, index });
                 }}
               >
-                <span className={`mr-2 tabular-nums ${isSelected ? 'text-blue-200' : 'text-gray-500'}`}>{index}:</span>
-                <span className="flex-1 truncate">{name}</span>
-                {onDelete && (
+                <span className={`mr-2 tabular-nums ${isDeleting ? 'text-gray-600' : isSelected ? 'text-blue-200' : 'text-gray-500'}`}>{index}:</span>
+                <span className="flex-1 truncate">{isDeleting ? `Deleting ${name}...` : name}</span>
+                {onDelete && !isDeleting && (
                   <span
                     role="button"
                     tabIndex={0}
                     className={`ml-1 opacity-0 group-hover:opacity-100 transition-opacity ${isSelected ? 'text-blue-200 hover:text-red-300' : 'text-gray-500 hover:text-red-400'}`}
                     title="Delete from device"
-                    onClick={(e) => { e.stopPropagation(); onDelete(index, name); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onDelete(index, name); } }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDeletingIndex(index);
+                      Promise.resolve(onDelete(index, name)).finally(() => setDeletingIndex(null));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.stopPropagation();
+                        setDeletingIndex(index);
+                        Promise.resolve(onDelete(index, name)).finally(() => setDeletingIndex(null));
+                      }
+                    }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
                       <path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H8a2 2 0 01-2-2V6h12" />
