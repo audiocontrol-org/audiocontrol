@@ -14,6 +14,7 @@ import {
   deleteItem,
   moveItem,
   importWavToCommonArea,
+  getNestedDirectory,
 } from '@audiocontrol/sampler-library/browser';
 import type { TreeNode } from '@/components/library/TreeView';
 
@@ -238,7 +239,13 @@ export function useLibraryOperations(
       try {
         const handled = await strategy?.createFolder?.(categoryId, parentPath, folderName);
         if (!handled) {
-          await createFolder(libraryRoot, parentPath, folderName);
+          // Common-area categories: route to the correct root directory
+          if (categoryId === 'programs' || categoryId === 'common-programs') {
+            const programsDir = await getNestedDirectory(libraryRoot, ['library', 'common', 'programs', ...parentPath]);
+            await programsDir.getDirectoryHandle(folderName, { create: true });
+          } else {
+            await createFolder(libraryRoot, parentPath, folderName);
+          }
         }
         onRefresh();
       } catch (err) {
