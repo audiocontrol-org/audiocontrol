@@ -3,7 +3,6 @@ use clap::Parser;
 pub const DEFAULT_PORT: u16 = 7033;
 const DEFAULT_S2P_HOST: &str = "localhost";
 const DEFAULT_S2P_PORT: u16 = 6868;
-const DEFAULT_MIDI_PORT: u16 = 6870;
 const DEFAULT_SCSI_TARGET_ID: u8 = 6;
 
 #[derive(Parser, Clone)]
@@ -20,10 +19,6 @@ pub struct Config {
     /// s2p protobuf API port
     #[arg(long, default_value_t = DEFAULT_S2P_PORT)]
     pub s2p_port: u16,
-
-    /// s2p MIDI streaming server port
-    #[arg(long, default_value_t = DEFAULT_MIDI_PORT)]
-    pub midi_port: u16,
 
     /// SCSI target ID of the sampler
     #[arg(long, default_value_t = DEFAULT_SCSI_TARGET_ID)]

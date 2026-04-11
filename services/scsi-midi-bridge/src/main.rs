@@ -15,7 +15,7 @@ use tower_http::cors::CorsLayer;
 use tracing_subscriber::EnvFilter;
 
 use config::Config;
-use s2p_client::{MidiStreamClient, S2pClient};
+use s2p_client::S2pClient;
 use worker::{AppState, ScsiWork};
 
 #[tokio::main]
@@ -37,12 +37,6 @@ async fn main() {
         config.target_id,
     );
 
-    let midi_stream = MidiStreamClient::new(
-        config.s2p_host.clone(),
-        config.midi_port,
-        config.target_id,
-    );
-
     let (ws_tx, _) = broadcast::channel::<Vec<u8>>(64);
     let (scsi_tx, scsi_rx) = tokio::sync::mpsc::channel::<ScsiWork>(16);
 
@@ -51,8 +45,8 @@ async fn main() {
         ws_tx: ws_tx.clone(),
     });
 
-    // Spawn the single SCSI worker — owns s2p and midi_stream exclusively
-    tokio::spawn(worker::scsi_worker(scsi_rx, s2p, midi_stream, ws_tx));
+    // Spawn the single SCSI worker — owns s2p exclusively
+    tokio::spawn(worker::scsi_worker(scsi_rx, s2p, ws_tx));
 
     let app = Router::new()
         .route("/health", get(|| async { axum::Json(serde_json::json!({"ok": true})) }))
@@ -77,7 +71,6 @@ async fn main() {
         addr = %addr,
         s2p_host = %config.s2p_host,
         s2p_port = config.s2p_port,
-        midi_port = config.midi_port,
         target_id = config.target_id,
         "scsi-midi-bridge starting"
     );
