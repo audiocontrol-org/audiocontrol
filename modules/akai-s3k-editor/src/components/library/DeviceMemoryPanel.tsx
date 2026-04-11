@@ -204,22 +204,26 @@ export function DeviceMemoryPanel({
   const hasData = programNames.length > 0 || sampleNames.length > 0;
   if (!isConnected && !hasData) {
     return (
-      <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-100 mb-2">Device Memory</h3>
-        <p className="text-sm text-gray-400 italic">
-          Connect to S3000XL first.
-        </p>
+      <div>
+        <div className="ac-panel-header">
+          <span className="ac-panel-header-title">Device Memory</span>
+        </div>
+        <div className="p-3">
+          <p className="text-sm text-gray-400 italic">
+            Connect to S3000XL first.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-1">
-        <h3 className="text-lg font-semibold text-gray-100">Device Memory</h3>
+    <div>
+      <div className="ac-panel-header">
+        <span className="ac-panel-header-title">Device Memory</span>
         <button
           type="button"
-          className="text-gray-400 hover:text-gray-200 text-lg px-1 disabled:opacity-50"
+          className="ac-panel-refresh-btn"
           onClick={onRefresh}
           disabled={isLoading || !isConnected}
           title="Refresh device memory"
@@ -228,6 +232,7 @@ export function DeviceMemoryPanel({
         </button>
       </div>
       <LoadingBar active={isLoading || (!isConnected && hasData)} />
+      <div className="p-3">
 
       <div
         className={`rounded transition-colors ${programDropOver ? 'bg-blue-900/30 ring-1 ring-blue-500/50' : ''}`}
@@ -343,6 +348,7 @@ export function DeviceMemoryPanel({
             Drop to send to device
           </div>
         )}
+      </div>
       </div>
     </div>
   );

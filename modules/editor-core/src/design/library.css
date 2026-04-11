@@ -957,10 +957,60 @@
   100% { transform: translateX(400%); }
 }
 
+/* Panel header — consistent header bar across all library columns */
+.ac-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-bottom: 1px solid var(--ac-color-border-subtle);
+  flex-shrink: 0;
+}
+
+.ac-panel-header-title {
+  font-size: var(--ac-text-sm);
+  font-weight: var(--ac-font-weight-semibold);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-1);
+}
+
+.ac-panel-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  border-radius: var(--ac-radius-sm);
+  background: transparent;
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  transition: color var(--ac-duration-fast) var(--ac-easing-default),
+              background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-panel-refresh-btn:hover {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-text-muted) 12%, transparent);
+}
+
+.ac-panel-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .ac-plugin-library-browser-preview {
   flex: 2 1 0;
   min-width: 0;
   overflow-y: auto;
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
+  border: 1px solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-lg);
 }
 
 /* =========================================================================

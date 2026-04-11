@@ -273,21 +273,21 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, onSendToDevice, b
   }
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-1">
-        <h3 className="text-lg font-semibold text-gray-100">SCSI Disks</h3>
+    <div>
+      <div className="ac-panel-header">
+        <span className="ac-panel-header-title">SCSI Disks</span>
         <button
           type="button"
-          className="text-gray-400 hover:text-gray-200 text-lg px-1 disabled:opacity-50"
+          className="ac-panel-refresh-btn"
           onClick={() => scanTargets()}
           disabled={loading}
           title="Scan SCSI bus"
         >
-          {loading ? '...' : '\u21BB'}
+          &#x21BB;
         </button>
       </div>
       <LoadingBar active={loading || loadingTarget !== null} />
-      <div className="mt-2" />
+      <div className="p-3">
 
       {error && (
         <p className="text-sm text-red-400 mb-2">{error}</p>
@@ -334,6 +334,7 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, onSendToDevice, b
             } : undefined}
           />
         ))}
+      </div>
       </div>
     </div>
   );

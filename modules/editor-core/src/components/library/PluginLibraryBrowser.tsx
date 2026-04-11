@@ -747,12 +747,20 @@ export function PluginLibraryBrowser({
 
       {/* Library sections */}
       <div className="ac-plugin-library-browser-library">
-        {connectionSlot && (
-          <div className="ac-plugin-library-browser-connection">
+        <div className="ac-panel-header">
+          <span className="ac-panel-header-title">Library</span>
+          <div className="ac-panel-header-actions">
             {connectionSlot}
+            <button
+              type="button"
+              className="ac-panel-refresh-btn"
+              onClick={onRefresh}
+              title="Refresh library"
+            >
+              &#x21BB;
+            </button>
           </div>
-        )}
-
+        </div>
         <LoadingBar active={loading ?? false} />
 
         {loading && (
@@ -793,16 +801,6 @@ export function PluginLibraryBrowser({
 
         {!loading && !error && libraryHandle && (
           <div className="ac-plugin-library-browser-sections">
-            <div className="ac-plugin-library-browser-toolbar">
-              <button
-                type="button"
-                className="ac-plugin-library-browser-refresh-btn"
-                onClick={onRefresh}
-                title="Refresh library"
-              >
-                &#x21BB;
-              </button>
-            </div>
             {headerSections}
             {plugin.categories.map((category) => (
               <TreeSection
