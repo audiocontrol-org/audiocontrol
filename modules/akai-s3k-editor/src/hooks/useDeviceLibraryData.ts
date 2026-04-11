@@ -28,6 +28,7 @@ export function useDeviceLibraryData(
 
   const [isLoading, setIsLoading] = useState(false);
   const hasFetched = useRef(false);
+  const wasConnected = useRef(false);
 
   const fetchNames = useCallback(async () => {
     if (!client) return;
@@ -48,18 +49,25 @@ export function useDeviceLibraryData(
     }
   }, [client, setDeviceProgramNames, setDeviceSampleNames]);
 
-  // Fetch on connect, clear on disconnect
+  // Fetch on connect, clear on real disconnect (not initial mount)
   useEffect(() => {
     if (isConnected && client && !hasFetched.current) {
+      wasConnected.current = true;
       hasFetched.current = true;
       void fetchNames();
     }
 
     if (!isConnected) {
       hasFetched.current = false;
-      setDeviceProgramNames([]);
-      setDeviceSampleNames([]);
-      clearSelectedDevice();
+      // Only clear names on a real disconnect, not on initial mount.
+      // On mount, isConnected starts false — clearing would wipe the
+      // session cache before the transport has a chance to reconnect.
+      if (wasConnected.current) {
+        wasConnected.current = false;
+        setDeviceProgramNames([]);
+        setDeviceSampleNames([]);
+        clearSelectedDevice();
+      }
     }
   }, [isConnected, client, fetchNames, setDeviceProgramNames, setDeviceSampleNames, clearSelectedDevice]);
 

@@ -99,7 +99,8 @@ export function DeviceMemoryPanel({
 }: DeviceMemoryPanelProps): JSX.Element {
   const [programDropOver, setProgramDropOver] = useState(false);
   const [sampleDropOver, setSampleDropOver] = useState(false);
-  if (!isConnected) {
+  const hasData = programNames.length > 0 || sampleNames.length > 0;
+  if (!isConnected && !hasData) {
     return (
       <div className="p-4">
         <h3 className="text-lg font-semibold text-gray-100 mb-2">Device Memory</h3>
@@ -118,12 +119,16 @@ export function DeviceMemoryPanel({
           type="button"
           className="text-gray-400 hover:text-gray-200 text-lg px-1 disabled:opacity-50"
           onClick={onRefresh}
-          disabled={isLoading}
+          disabled={isLoading || !isConnected}
           title="Refresh device memory"
         >
           {isLoading ? '...' : '\u21BB'}
         </button>
       </div>
+
+      {!isConnected && hasData && (
+        <p className="text-xs text-yellow-500 mb-2 animate-pulse">Reconnecting...</p>
+      )}
 
       <div
         className={`rounded transition-colors ${programDropOver ? 'bg-blue-900/30 ring-1 ring-blue-500/50' : ''}`}
