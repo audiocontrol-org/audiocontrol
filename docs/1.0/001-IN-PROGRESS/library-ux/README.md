@@ -19,6 +19,7 @@
 - [Shared Library Tests](./shared-library-tests.md) - Generalize 42 common-area e2e tests to run against all editors
 - [Contract Enforcement](./contract-enforcement.md) - Capability-declared context menus, compiler-enforced contracts across editors
 - [Phase 17: Drag-to-Move and Multi-Select](./phase-17-drag-move-multiselect.md) - Move items into folders, multi-select for batch operations
+- [Phase 18: Visual Polish and Slide-Over Drawers](./phase-18-visual-polish-drawers.md) - Column separation, consistent headers, drawer dialogs
 
 ## Overview
 
@@ -58,7 +59,8 @@ Align and improve library page UX across both the Roland S-330/S-550 editor and 
 | Phase 14: Reload resilience | Complete | Library auto-reconnect, device/disk state caching, shared vite config, loading bars |
 | Phase 15: Context menu parity | Complete | Transfer actions, device memory context menus, disk browser Send to Device |
 | Phase 16: Contract enforcement | Complete | Capability-declared menus, compiler-enforced contracts, 12 unit tests |
-| Phase 17: Drag-to-move & multi-select | Planned | Move to folders, multi-select, batch delete/move |
+| Phase 17: Drag-to-move & multi-select | Complete | Move to folders, multi-select, batch delete/move |
+| Phase 18: Visual polish & drawers | Planned | Column separation, headers, slide-over drawers |
 
 ## Related Issues
 
