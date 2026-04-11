@@ -67,7 +67,7 @@ export function createCommonSampleItemType(
 
       // Transfer actions — batchable (send multiple samples to device)
       if (supportedActions.has('send-sample-to-device')) {
-        actions.push({ id: 'send-sample-to-device', label: 'Send to Device', icon: null, batchable: true });
+        actions.push({ id: 'send-sample-to-device', label: 'Send to Device', icon: null, batchable: false });
       }
       if (meta.hasDrumKit && supportedActions.has('import-drum-kit')) {
         actions.push({ id: 'import-drum-kit', label: 'Import as Drum Program', icon: null, batchable: false });
@@ -124,13 +124,13 @@ export function createCommonProgramItemType(
 
       // Transfer actions
       if (supportedActions.has('send-program-to-device')) {
-        actions.push({ id: 'send-program-to-device', label: 'Send to Device', icon: null, batchable: true });
+        actions.push({ id: 'send-program-to-device', label: 'Send to Device', icon: null, batchable: false });
       }
       if (supportedActions.has('promote-to-common-area')) {
-        actions.push({ id: 'promote-to-common-area', label: 'Promote to Common Area', icon: null, batchable: true });
+        actions.push({ id: 'promote-to-common-area', label: 'Promote to Common Area', icon: null, batchable: false });
       }
       if (supportedActions.has('import-instrument')) {
-        actions.push({ id: 'import-instrument', label: 'Import to Device', icon: null, batchable: true });
+        actions.push({ id: 'import-instrument', label: 'Import to Device', icon: null, batchable: false });
       }
 
       // File operations
