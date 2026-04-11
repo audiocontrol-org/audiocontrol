@@ -103,13 +103,13 @@ function NameList({
                   setContextMenu({ x: e.clientX, y: e.clientY, index });
                 }}
               >
-                <span className="text-gray-500 mr-2 tabular-nums">{index}:</span>
+                <span className={`mr-2 tabular-nums ${isSelected ? 'text-blue-200' : 'text-gray-500'}`}>{index}:</span>
                 <span className="flex-1 truncate">{name}</span>
                 {onDelete && (
                   <span
                     role="button"
                     tabIndex={0}
-                    className="ml-1 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-opacity"
+                    className={`ml-1 opacity-0 group-hover:opacity-100 transition-opacity ${isSelected ? 'text-blue-200 hover:text-red-300' : 'text-gray-500 hover:text-red-400'}`}
                     title="Delete from device"
                     onClick={(e) => { e.stopPropagation(); onDelete(index, name); }}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onDelete(index, name); } }}
