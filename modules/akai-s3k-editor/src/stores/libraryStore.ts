@@ -10,6 +10,40 @@ import { create } from 'zustand';
 import type { TreeNode } from '@audiocontrol/editor-core';
 
 // ---------------------------------------------------------------------------
+// Session cache — survive page reloads with stale-while-revalidate
+// ---------------------------------------------------------------------------
+
+const DEVICE_CACHE_KEY = 's3k-device-memory-cache';
+
+interface DeviceMemoryCache {
+  programNames: string[];
+  sampleNames: string[];
+}
+
+function loadDeviceCache(): DeviceMemoryCache | null {
+  try {
+    const raw = sessionStorage.getItem(DEVICE_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as DeviceMemoryCache;
+  } catch {
+    return null;
+  }
+}
+
+function saveDeviceCache(programNames: string[], sampleNames: string[]): void {
+  // Don't overwrite cache with empty data (e.g., on disconnect).
+  // Cache is only updated when we have real data from the device.
+  if (programNames.length === 0 && sampleNames.length === 0) return;
+  try {
+    sessionStorage.setItem(DEVICE_CACHE_KEY, JSON.stringify({ programNames, sampleNames }));
+  } catch {
+    // sessionStorage full or unavailable
+  }
+}
+
+const cachedDevice = loadDeviceCache();
+
+// ---------------------------------------------------------------------------
 // State
 // ---------------------------------------------------------------------------
 
@@ -121,9 +155,9 @@ export const useLibraryStore = create<LibraryStore>((set) => ({
   loading: false,
   error: null,
 
-  // Device memory state
-  deviceProgramNames: [],
-  deviceSampleNames: [],
+  // Device memory state — hydrate from session cache
+  deviceProgramNames: cachedDevice?.programNames ?? [],
+  deviceSampleNames: cachedDevice?.sampleNames ?? [],
   selectedDeviceIndex: null,
   selectedDeviceType: null,
 
@@ -172,11 +206,17 @@ export const useLibraryStore = create<LibraryStore>((set) => ({
   // -- Device memory actions ------------------------------------------------
 
   setDeviceProgramNames(names: string[]) {
-    set({ deviceProgramNames: names });
+    set((s) => {
+      saveDeviceCache(names, s.deviceSampleNames);
+      return { deviceProgramNames: names };
+    });
   },
 
   setDeviceSampleNames(names: string[]) {
-    set({ deviceSampleNames: names });
+    set((s) => {
+      saveDeviceCache(s.deviceProgramNames, names);
+      return { deviceSampleNames: names };
+    });
   },
 
   setSelectedDevice(type: 'program' | 'sample', index: number) {

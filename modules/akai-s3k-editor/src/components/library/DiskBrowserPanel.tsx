@@ -20,6 +20,41 @@ import {
 import { BLOCK_SIZE } from '@audiocontrol/sampler-devices/s3k';
 import { ContextMenu, ChevronIcon, type ContextMenuAction } from '@audiocontrol/editor-core';
 
+// ---------------------------------------------------------------------------
+// Session cache — show previous disk tree instantly on reload
+// ---------------------------------------------------------------------------
+
+const DISK_CACHE_KEY = 's3k-disk-browser-cache';
+
+interface DiskBrowserCache {
+  targets: DiskTarget[];
+  volumes: Record<number, VolumeWithFiles[]>;
+  expandedTarget: number | null;
+}
+
+function loadDiskCache(): DiskBrowserCache | null {
+  try {
+    const raw = sessionStorage.getItem(DISK_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as DiskBrowserCache;
+  } catch {
+    return null;
+  }
+}
+
+function saveDiskCache(targets: DiskTarget[], volumes: Map<number, VolumeWithFiles[]>, expandedTarget: number | null): void {
+  if (targets.length === 0) return;
+  try {
+    const volumeObj: Record<number, VolumeWithFiles[]> = {};
+    volumes.forEach((v, k) => { volumeObj[k] = v; });
+    sessionStorage.setItem(DISK_CACHE_KEY, JSON.stringify({ targets, volumes: volumeObj, expandedTarget }));
+  } catch {
+    // sessionStorage full or unavailable
+  }
+}
+
+const cachedDisk = loadDiskCache();
+
 /** Custom MIME type for dragging disk browser items to the library. */
 export const DISK_ITEM_MIME = 'application/x-akai-disk-item';
 
@@ -67,7 +102,7 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Pro
     loadDiskData,
     partitionData,
     ensureFileBlocks,
-  } = useDiskBrowser(bridgeUrl);
+  } = useDiskBrowser(bridgeUrl, cachedDisk?.targets);
 
   // Expose imperative handle for drag-drop resolution
   useImperativeHandle(browserRef, () => ({
@@ -89,20 +124,32 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Pro
     },
   }), [partitionData, ensureFileBlocks]);
 
-  const [expandedTarget, setExpandedTarget] = useState<number | null>(null);
+  const [expandedTarget, setExpandedTarget] = useState<number | null>(cachedDisk?.expandedTarget ?? null);
   const [loadingTarget, setLoadingTarget] = useState<number | null>(null);
   const [selectedFile, setSelectedFile] = useState<AkaiDiskFileEntry | null>(null);
   const [savingFile, setSavingFile] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [volumes, setVolumes] = useState<Map<number, VolumeWithFiles[]>>(
-    new Map(),
-  );
+  const [volumes, setVolumes] = useState<Map<number, VolumeWithFiles[]>>(() => {
+    if (!cachedDisk) return new Map();
+    const map = new Map<number, VolumeWithFiles[]>();
+    for (const [k, v] of Object.entries(cachedDisk.volumes)) {
+      map.set(Number(k), v);
+    }
+    return map;
+  });
 
   useEffect(() => {
     if (bridgeUrl) {
       scanTargets();
     }
   }, [bridgeUrl, scanTargets]);
+
+  // Write-through: cache targets when they arrive from scan
+  useEffect(() => {
+    if (targets.length > 0) {
+      saveDiskCache(targets, volumes, expandedTarget);
+    }
+  }, [targets]);
 
   const handleExpandTarget = async (target: DiskTarget) => {
     if (expandedTarget === target.id) {
@@ -147,6 +194,7 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Pro
       setVolumes((prev) => {
         const next = new Map(prev);
         next.set(target.id, allVolumes);
+        saveDiskCache(targets, next, target.id);
         return next;
       });
     } catch (err) {
