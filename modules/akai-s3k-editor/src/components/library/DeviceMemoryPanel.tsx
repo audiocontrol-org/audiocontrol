@@ -30,6 +30,10 @@ interface DeviceMemoryPanelProps {
   onSaveProgramToCommonLibrary?: (index: number, name: string) => void;
   /** Save a device program to the Akai device-specific library area. */
   onSaveProgramToDeviceLibrary?: (index: number, name: string) => void;
+  /** Rename a device sample. */
+  onRenameSample?: (index: number, name: string) => void;
+  /** Rename a device program. */
+  onRenameProgram?: (index: number, name: string) => void;
   /** Delete a sample from device memory. */
   onDeleteSample?: (index: number, name: string) => void;
   /** Delete a program from device memory. */
@@ -47,6 +51,7 @@ function NameList({
   onSelect,
   onSaveToCommonLibrary,
   onSaveToDeviceLibrary,
+  onRename,
   onDelete,
 }: {
   title: string;
@@ -57,6 +62,7 @@ function NameList({
   onSelect: (index: number) => void;
   onSaveToCommonLibrary?: (index: number, name: string) => void;
   onSaveToDeviceLibrary?: (index: number, name: string) => void;
+  onRename?: (index: number, name: string) => void;
   onDelete?: (index: number, name: string) => void;
 }) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; index: number } | null>(null);
@@ -115,8 +121,14 @@ function NameList({
         if (onSaveToDeviceLibrary) {
           actions.push({ label: deviceLabel, onClick: () => onSaveToDeviceLibrary(contextMenu.index, name) });
         }
-        if (onDelete) {
+        if (onRename) {
           if (actions.length > 0) {
+            actions.push({ label: '', onClick: () => {}, separator: true });
+          }
+          actions.push({ label: 'Rename', onClick: () => onRename(contextMenu.index, name) });
+        }
+        if (onDelete) {
+          if (actions.length > 0 && !onRename) {
             actions.push({ label: '', onClick: () => {}, separator: true });
           }
           actions.push({ label: 'Delete from Device', onClick: () => onDelete(contextMenu.index, name), danger: true });
@@ -150,6 +162,8 @@ export function DeviceMemoryPanel({
   onSaveSampleToDeviceLibrary,
   onSaveProgramToCommonLibrary,
   onSaveProgramToDeviceLibrary,
+  onRenameSample,
+  onRenameProgram,
   onDeleteSample,
   onDeleteProgram,
   isConnected,
@@ -233,6 +247,7 @@ export function DeviceMemoryPanel({
           onSelect={onSelectProgram}
           onSaveToCommonLibrary={onSaveProgramToCommonLibrary}
           onSaveToDeviceLibrary={onSaveProgramToDeviceLibrary}
+          onRename={onRenameProgram}
           onDelete={onDeleteProgram}
         />
         {programDropOver && (
@@ -290,6 +305,7 @@ export function DeviceMemoryPanel({
           onSelect={onSelectSample}
           onSaveToCommonLibrary={onSaveSampleToCommonLibrary}
           onSaveToDeviceLibrary={onSaveSampleToDeviceLibrary}
+          onRename={onRenameSample}
           onDelete={onDeleteSample}
         />
         {sampleDropOver && (

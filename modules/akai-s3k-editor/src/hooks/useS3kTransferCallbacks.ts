@@ -97,6 +97,36 @@ export function useS3kTransferCallbacks({
     [instrumentTransfer],
   );
 
+  const handleRenameDeviceSample = useCallback(
+    async (index: number, currentName: string) => {
+      if (!client) return;
+      const newName = window.prompt('Rename sample:', currentName.trim());
+      if (!newName || newName.trim() === currentName.trim()) return;
+      try {
+        await client.renameSample(index, newName.trim());
+        await refreshDevice();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to rename sample');
+      }
+    },
+    [client, refreshDevice, setError],
+  );
+
+  const handleRenameDeviceProgram = useCallback(
+    async (index: number, currentName: string) => {
+      if (!client) return;
+      const newName = window.prompt('Rename program:', currentName.trim());
+      if (!newName || newName.trim() === currentName.trim()) return;
+      try {
+        await client.renameProgram(index, newName.trim());
+        await refreshDevice();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to rename program');
+      }
+    },
+    [client, refreshDevice, setError],
+  );
+
   const handleDeleteDeviceProgram = useCallback(
     async (index: number, name: string) => {
       if (!client) return;
@@ -145,6 +175,8 @@ export function useS3kTransferCallbacks({
     handleSaveDeviceProgramToLibraryDirect,
     handleSendProgramToDevice,
     handleImportInstrument,
+    handleRenameDeviceSample,
+    handleRenameDeviceProgram,
     handleDeleteDeviceProgram,
     handleDeleteDeviceSample,
     handleExportComplete,

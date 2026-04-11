@@ -446,6 +446,8 @@ export function LibraryPage(): JSX.Element {
     onSaveSampleToDeviceLibrary: canTransfer ? transferCallbacks.handleSaveDeviceSampleToLibraryDirect : undefined,
     onSaveProgramToCommonLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToLibraryDirect : undefined,
     onSaveProgramToDeviceLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToLibraryDirect : undefined,
+    onRenameSample: isDeviceConnected ? transferCallbacks.handleRenameDeviceSample : undefined,
+    onRenameProgram: isDeviceConnected ? transferCallbacks.handleRenameDeviceProgram : undefined,
     onDeleteSample: isDeviceConnected ? transferCallbacks.handleDeleteDeviceSample : undefined,
     onDeleteProgram: isDeviceConnected ? transferCallbacks.handleDeleteDeviceProgram : undefined,
     isConnected: isDeviceConnected,

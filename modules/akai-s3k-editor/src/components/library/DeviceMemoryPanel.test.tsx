@@ -16,17 +16,14 @@ describe('DeviceMemoryPanel context menus', () => {
     isLoading: false,
   };
 
-  it('sample context menu shows save and delete when all callbacks provided', () => {
-    const onSaveCommon = vi.fn();
-    const onSaveDevice = vi.fn();
-    const onDelete = vi.fn();
-
+  it('sample context menu shows all actions when all callbacks provided', () => {
     render(
       <DeviceMemoryPanel
         {...baseProps}
-        onSaveSampleToCommonLibrary={onSaveCommon}
-        onSaveSampleToDeviceLibrary={onSaveDevice}
-        onDeleteSample={onDelete}
+        onSaveSampleToCommonLibrary={vi.fn()}
+        onSaveSampleToDeviceLibrary={vi.fn()}
+        onRenameSample={vi.fn()}
+        onDeleteSample={vi.fn()}
       />,
     );
 
@@ -35,20 +32,18 @@ describe('DeviceMemoryPanel context menus', () => {
 
     expect(screen.getByText('Save to Common Samples')).toBeInTheDocument();
     expect(screen.getByText('Save to Akai Samples')).toBeInTheDocument();
+    expect(screen.getByText('Rename')).toBeInTheDocument();
     expect(screen.getByText('Delete from Device')).toBeInTheDocument();
   });
 
-  it('program context menu shows save and delete when all callbacks provided', () => {
-    const onSaveCommon = vi.fn();
-    const onSaveDevice = vi.fn();
-    const onDelete = vi.fn();
-
+  it('program context menu shows all actions when all callbacks provided', () => {
     render(
       <DeviceMemoryPanel
         {...baseProps}
-        onSaveProgramToCommonLibrary={onSaveCommon}
-        onSaveProgramToDeviceLibrary={onSaveDevice}
-        onDeleteProgram={onDelete}
+        onSaveProgramToCommonLibrary={vi.fn()}
+        onSaveProgramToDeviceLibrary={vi.fn()}
+        onRenameProgram={vi.fn()}
+        onDeleteProgram={vi.fn()}
       />,
     );
 
@@ -57,6 +52,7 @@ describe('DeviceMemoryPanel context menus', () => {
 
     expect(screen.getByText('Save to Common Library')).toBeInTheDocument();
     expect(screen.getByText('Save to Akai Library')).toBeInTheDocument();
+    expect(screen.getByText('Rename')).toBeInTheDocument();
     expect(screen.getByText('Delete from Device')).toBeInTheDocument();
   });
 
@@ -67,6 +63,7 @@ describe('DeviceMemoryPanel context menus', () => {
     fireEvent.contextMenu(sampleButton);
 
     expect(screen.queryByText('Save to Common Samples')).not.toBeInTheDocument();
+    expect(screen.queryByText('Rename')).not.toBeInTheDocument();
     expect(screen.queryByText('Delete from Device')).not.toBeInTheDocument();
   });
 
@@ -82,6 +79,7 @@ describe('DeviceMemoryPanel context menus', () => {
     fireEvent.contextMenu(sampleButton);
 
     expect(screen.queryByText('Save to Common Samples')).not.toBeInTheDocument();
+    expect(screen.queryByText('Rename')).not.toBeInTheDocument();
     expect(screen.getByText('Delete from Device')).toBeInTheDocument();
   });
 });

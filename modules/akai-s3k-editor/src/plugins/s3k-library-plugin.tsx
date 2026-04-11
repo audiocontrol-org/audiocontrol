@@ -47,6 +47,8 @@ export interface S3kMemoryPanelState {
   onSaveSampleToDeviceLibrary?: (index: number, name: string) => void;
   onSaveProgramToCommonLibrary?: (index: number, name: string) => void;
   onSaveProgramToDeviceLibrary?: (index: number, name: string) => void;
+  onRenameSample?: (index: number, name: string) => void;
+  onRenameProgram?: (index: number, name: string) => void;
   onDeleteSample?: (index: number, name: string) => void;
   onDeleteProgram?: (index: number, name: string) => void;
   isConnected: boolean;
@@ -92,6 +94,8 @@ function S3kMemoryPanelAdapter({
       onSaveSampleToDeviceLibrary={state.onSaveSampleToDeviceLibrary}
       onSaveProgramToCommonLibrary={state.onSaveProgramToCommonLibrary}
       onSaveProgramToDeviceLibrary={state.onSaveProgramToDeviceLibrary}
+      onRenameSample={state.onRenameSample}
+      onRenameProgram={state.onRenameProgram}
       onDeleteSample={state.onDeleteSample}
       onDeleteProgram={state.onDeleteProgram}
       isConnected={state.isConnected}
