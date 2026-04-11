@@ -52,7 +52,7 @@ Align and improve library page UX across both the Roland S-330/S-550 editor and 
 | Phase 10: SDS optimization | Complete | Batched SDS 9x speedup (2.2 KB/s), bridge hardening |
 | Phase 11: Drag-drop workflows | Complete | Disk→library, disk→device, library→device with type filtering |
 | Phase 12: Common-area programs | Complete | Three library sections, expandable programs, sourceDevice schema |
-| Phase 13: ASPACK investigation | Blocked | 23.4 KB/s proven but multi-chunk + sample creation unsolved (#184) |
+| Phase 13: ASPACK fast upload | Complete | Multi-chunk solved (poll flag 0x00), sample creation via minimal SDS, bridge + web editor integrated (#184) |
 
 ## Related Issues
 

@@ -470,10 +470,43 @@ Always verify the sampler's protocol mode before running SDS operations. S3000 m
 
 ---
 
+## 2026-04-10 16:00 PDT: ASPACK End-to-End — Multi-Chunk, Bridge, Web Editor
+
+### Multi-chunk solved
+
+The multi-chunk ASPACK bug from the previous session was **the poll flag**. CDB 0x0D (poll) with flag 0x80 returns 0 bytes on the S3000XL. Flag 0x00 works. This was the opposite of what MESA II documentation suggested. Same applies to CDB 0x0C (send) — flag 0x00 required.
+
+### Sample creation
+
+ASPACK alone cannot create new samples. The minimum viable creation: 1 SDS dump header + 1 SDS data packet (40 samples of silence). This registers the sample in the RSLIST in ~700ms. Then ASPACK overwrites the data at any size.
+
+### Block boundary bug
+
+ASPACK rejects writes starting at exact multiples of 8192 samples (for N≥1). Chunk size 8191 avoids all boundaries. Single-chunk works for samples ≤60,000 (below any boundary).
+
+### Bridge integration
+
+New WebSocket endpoint `sample-upload-fast`: creates sample slot via minimal SDS, queries RSLIST for index, writes PCM via ASPACK chunks. Stall-based timeout replaces fixed overall timeout — resets 30s deadline on every progress message.
+
+### Throughput
+
+- Single chunk (≤60K samples): 23.4 KB/s
+- Multi-chunk (8191-sample chunks): ~17.2 KB/s (944ms per chunk including poll+ACK overhead)
+- vs SDS batched: 2.2 KB/s
+- Speedup: 8-10x over SDS
+
+### Bug fixes this session
+
+- **ASPACK timeout**: 573K-sample upload took 67s but bridge timeout was 57s. Transfer completed on device but bridge killed the connection. Fixed with stall-based timeout.
+- **Ghost dialog**: `deviceSampleCount` in SendSampleDialog's useEffect deps caused the effect to re-fire after `onTransferComplete` refreshed device state, resetting the dialog to "ready" phase.
+- **Device memory scroll**: `max-h-48` capped name lists at 192px regardless of available space.
+
+---
+
 ## Open Questions
 
-- Can ASPACK write at offset > 0? MESA II does it with 192-byte chunks. What's different about our encoding?
-- Is there an undocumented SysEx opcode for creating empty sample slots?
+- ~~Can ASPACK write at offset > 0?~~ **Yes** — poll flag 0x00 was the bug, not the offset.
+- ~~Is there an undocumented SysEx opcode for creating empty sample slots?~~ **No** — use minimal SDS (1 header + 1 data packet).
 - Can the S3000 protocol mode be toggled via SysEx?
 - Why does s2p take 113ms per SCSI CDB? Is there internal locking, logging, or device emulation overhead?
 - What does MESA's `SetSCSIMIDIMode` 84-byte config block contain?
