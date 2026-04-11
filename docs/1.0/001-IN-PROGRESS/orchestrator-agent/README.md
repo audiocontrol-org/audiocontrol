@@ -30,10 +30,10 @@ Additionally, create reusable skills for the project-orchestrator's feature life
 
 | Phase | Status |
 |-------|--------|
-| 1. Rewrite project-orchestrator agent definition | Not started |
-| 2. Create project-orchestrator skills (feature-setup, feature-issues, feature-complete, feature-teardown) | Not started |
-| 3. Create feature-orchestrator agent definition | Not started |
-| 4. Update project.yaml orchestrator entries | Not started |
+| 1. Rewrite project-orchestrator agent definition | Complete |
+| 2. Create project-orchestrator skills (feature-setup, feature-issues, feature-complete, feature-teardown) | Complete |
+| 3. Create feature-orchestrator agent definition + skills (feature-implement, feature-pickup, feature-review, feature-ship) | Complete |
+| 4. Update project.yaml orchestrator entries | Complete |
 
 ## Deliverables
 

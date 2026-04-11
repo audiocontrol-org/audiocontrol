@@ -11,6 +11,41 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-11: Orchestrator Agent Implementation
+
+### Feature: orchestrator-agent
+### Worktree: audiocontrol-orchestrator-agent
+
+### Goal
+Replace the generic boilerplate orchestrator with two purpose-built roles (project-orchestrator and feature-orchestrator) and a full set of lifecycle skills.
+
+### Accomplished
+- Split orchestrator into project-orchestrator (plans, investigates, creates infrastructure) and feature-orchestrator (delegates implementation) — two distinct agent definitions (31681531)
+- Created 8 lifecycle skills: feature-setup, feature-issues, feature-complete, feature-teardown, feature-implement, feature-pickup, feature-review, feature-ship (31681531)
+- Updated project.yaml with both orchestrator entries and fixed workflow references (61dd7999)
+- Ran code review via `/feature-review` skill, found 2 critical + 8 warning issues, fixed all (61dd7999)
+- All phases of the workplan complete in a single session
+
+### Didn't Work
+- Agent initially tried to implement Phase 1 directly instead of delegating — user caught this twice before any code was written.
+
+### Course Corrections
+- [PROCESS] Agent started reading PROJECT-MANAGEMENT.md and gathering context to write code itself. User asked "did you delegate?" — agent had not. This is the same correction as the previous session (3 out of 3 orchestrator sessions have had this correction).
+- [PROCESS] User asked "Why didn't you delegate?" — forcing explicit acknowledgment of the pattern. The honest answer: the agent has capability and context, so the path of least resistance is to "just do it."
+- [PROCESS] User identified a missing architectural distinction: the single "orchestrator" concept needed splitting into project-level (infrastructure) and feature-level (implementation delegation). Agent had not considered this separation on its own.
+
+### Quantitative
+- User messages: ~12
+- Commits: 2
+- User corrections: 3 (all PROCESS — delegation and architectural distinction)
+
+### Insights
+1. The "orchestrator tries to implement" pattern has occurred in 3/3 orchestrator sessions. The fix is structural: restrict tools in the agent definition so it literally cannot write code files. Soft instructions are insufficient — the agent needs mechanical constraints.
+2. The project/feature orchestrator split is a key insight: the project-orchestrator's session ends when infrastructure is ready; the feature-orchestrator's session ends when code is PR-ready. Different scopes, different tools, different delegation targets.
+3. Running `/feature-review` as a self-check before merge caught real issues (stale references, missing tool permissions). The skill paid for itself immediately.
+
+---
+
 ## 2026-04-11: Build Source Dependency Planning and Investigation
 
 ### Feature: build-source-deps
