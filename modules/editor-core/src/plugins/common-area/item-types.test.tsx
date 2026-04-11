@@ -1,9 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import { createCommonSampleItemType, createCommonProgramItemType } from './item-types';
 import type { TransferActionId } from '@/hooks/useLibraryOperations';
+import type { PluginContextMenuAction, PluginMenuAction } from '@/components/library/plugins/types';
 
-function actionIds(actions: { id?: string }[]): string[] {
-  return actions.filter((a) => a.id).map((a) => a.id!);
+function isAction(a: PluginContextMenuAction): a is PluginMenuAction {
+  return !('separator' in a);
+}
+
+function actionIds(actions: PluginContextMenuAction[]): string[] {
+  return actions.filter(isAction).map((a) => a.id);
 }
 
 describe('createCommonSampleItemType', () => {
