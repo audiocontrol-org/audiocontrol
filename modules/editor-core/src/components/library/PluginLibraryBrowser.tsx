@@ -362,9 +362,10 @@ export function PluginLibraryBrowser({
   const handleSectionDragOver = useCallback(
     (categoryId: string) => (e: React.DragEvent) => {
       if (!onExternalDrop) return;
-      // Only accept drags that have custom data types (not plain OS file drags
-      // unless we specifically handle those elsewhere)
-      if (e.dataTransfer.types.length === 0) return;
+      // Ignore library-item drags — those are moves handled by tree drop zones
+      if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) return;
+      // Only accept external file drops (OS files)
+      if (!e.dataTransfer.types.includes('Files')) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = 'copy';
       setDropTargetCategory(categoryId);
@@ -374,7 +375,6 @@ export function PluginLibraryBrowser({
 
   const handleSectionDragLeave = useCallback(
     () => (e: React.DragEvent) => {
-      // Only clear if leaving the section entirely (not entering a child)
       if (!e.currentTarget.contains(e.relatedTarget as Node)) {
         setDropTargetCategory(null);
       }
@@ -386,6 +386,8 @@ export function PluginLibraryBrowser({
     (categoryId: string) => (e: React.DragEvent) => {
       e.preventDefault();
       setDropTargetCategory(null);
+      // Ignore library-item drops — handled by tree drop zones
+      if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) return;
       onExternalDrop?.(categoryId, e.dataTransfer, []);
     },
     [onExternalDrop],
@@ -554,6 +556,7 @@ export function PluginLibraryBrowser({
                   return false;
                 }}
                 onTreeDrop={(node, e) => {
+                  setDropTargetCategory(null);
                   const nodePath = (node.meta?.path as string[] | undefined) ?? [];
                   const targetPath = [...nodePath, node.name];
 
