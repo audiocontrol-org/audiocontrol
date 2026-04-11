@@ -116,7 +116,10 @@ function NameList({
           actions.push({ label: deviceLabel, onClick: () => onSaveToDeviceLibrary(contextMenu.index, name) });
         }
         if (onDelete) {
-          actions.push({ label: 'Delete from Device', onClick: () => onDelete(contextMenu.index, name), danger: true, separator: actions.length > 0 });
+          if (actions.length > 0) {
+            actions.push({ label: '', onClick: () => {}, separator: true });
+          }
+          actions.push({ label: 'Delete from Device', onClick: () => onDelete(contextMenu.index, name), danger: true });
         }
         if (actions.length === 0) return null;
         return (
