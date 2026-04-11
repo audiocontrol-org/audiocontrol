@@ -1,6 +1,6 @@
 # Build Source Dependencies
 
-**Status:** In Progress
+**Status:** Complete
 **Branch:** `feature/build-source-deps`
 
 ## Documentation
@@ -16,7 +16,7 @@ Make the Makefile build system track CSS file changes (in addition to existing `
 
 | Phase | Status | Commit |
 |-------|--------|--------|
-| 1. CSS tracking + Makefile docs + CLAUDE.md note | Complete | — |
+| 1. CSS tracking + Makefile docs + CLAUDE.md note | Complete | `2e2e30a9` |
 
 ## Motivation
 

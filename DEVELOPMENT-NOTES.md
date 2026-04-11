@@ -160,3 +160,36 @@ Improve the S3000XL editor's library UX: SCSI disk browser, drag-and-drop workfl
 3. Progress indicators should be implemented at the same time as the feature, not retrofitted
 4. Documentation (protocol ref, travel log) was ultimately more valuable than some of the code
 5. The user's instinct to "just try it" was right every time — the ASPACK discovery, the batch SDS test, the larger packet size test all happened because the user pushed past theorizing
+
+---
+
+## 2026-04-11: Build Source Dependency Tracking
+
+### Feature: build-source-deps
+### Worktree: audiocontrol-build-source-deps
+
+### Goal
+Add CSS file tracking to Makefile source dependencies and add inline documentation to prevent agents from cargo-culting `rm -f .build-stamp && make`.
+
+### Accomplished
+- Added `*.css` to all 26 `$(shell find ...)` source file lists in Makefile (`2e2e30a9`)
+- Removed duplicate `SYNTH_CORE_SRC` declaration that was misplaced at line 391
+- Added "HOW SOURCE CHANGE DETECTION WORKS" comment block before stamp targets
+- Added reinforcement note to `.claude/CLAUDE.md` Build System section
+- Verified CSS changes trigger rebuilds via `make -n` dry runs
+- PR #207 merged, issues #173, #203, #204, #205, #206 closed
+
+### Didn't Work
+- Nothing — clean session with well-scoped tasks
+
+### Course Corrections
+- None
+
+### Quantitative
+- User messages: ~3
+- Commits: 1
+- User corrections: 0
+
+### Insights
+1. Well-scoped features with clear workplans and pre-created issues make sessions fast and frictionless
+2. Small features benefit from doing all tasks in a single commit rather than splitting artificially
