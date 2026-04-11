@@ -18,7 +18,7 @@ import {
   type DiskTarget,
 } from '@/hooks/useDiskBrowser';
 import { BLOCK_SIZE } from '@audiocontrol/sampler-devices/s3k';
-import { ContextMenu, ChevronIcon, LoadingBar, type ContextMenuAction } from '@audiocontrol/editor-core';
+import { ContextMenu, ChevronIcon, LoadingBar, SampleIcon, ProgramIcon, type ContextMenuAction } from '@audiocontrol/editor-core';
 
 // ---------------------------------------------------------------------------
 // Session cache — show previous disk tree instantly on reload
@@ -486,14 +486,13 @@ interface FileNodeProps {
 function FileNode({ file, targetId, volumeStartBlock, isSelected, isSaving, onSelect, onSaveToLibrary, onSendToDevice }: FileNodeProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
-  const typeLabel =
-    file.type === FILE_TYPE_SAMPLE
-      ? 'Sample'
-      : file.type === FILE_TYPE_PROGRAM
-        ? 'Program'
-        : `Type ${file.type}`;
+  const typeIcon = file.type === FILE_TYPE_SAMPLE
+    ? <SampleIcon className="w-3 h-3 flex-shrink-0" />
+    : file.type === FILE_TYPE_PROGRAM
+      ? <ProgramIcon className="w-3 h-3 flex-shrink-0" />
+      : null;
 
-  const sizeKB = file.size > 0 ? `${Math.round(file.size / 1024)} KB` : '';
+  const sizeKB = file.size > 0 ? `${Math.round(file.size / 1024)}K` : '';
 
   const handleContextMenu = (e: MouseEvent) => {
     e.preventDefault();
@@ -535,14 +534,14 @@ function FileNode({ file, targetId, volumeStartBlock, isSelected, isSaving, onSe
         onDragStart={handleDragStart}
         onContextMenu={handleContextMenu}
       >
-        <span>{file.name}</span>
+        <span className={isSelected ? 'text-blue-200' : 'text-gray-500'}>{typeIcon}</span>
+        <span className="truncate">{file.name}</span>
         <span
-          className={`ml-auto tabular-nums ${
+          className={`ml-auto whitespace-nowrap tabular-nums ${
             isSelected ? 'text-blue-200' : 'text-gray-500'
           }`}
         >
-          {typeLabel}
-          {sizeKB && ` (${sizeKB})`}
+          {sizeKB}
         </span>
         {isSelected && onSaveToLibrary && (
           <span
