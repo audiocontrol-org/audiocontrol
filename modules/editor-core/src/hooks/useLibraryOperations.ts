@@ -176,6 +176,8 @@ export interface LibraryOperationsResult {
   onRename: (categoryId: string, node: TreeNode, newName: string) => Promise<void>;
   onFileDrop: (categoryId: string, files: File[], targetPath: string[]) => Promise<void>;
   onContextMenuAction: (categoryId: string, actionId: string, node: TreeNode) => void;
+  onBatchDelete: (categoryId: string, nodes: TreeNode[]) => Promise<void>;
+  onBatchMove: (categoryId: string, nodes: TreeNode[], targetPath: string[]) => Promise<void>;
 }
 
 // =========================================================================
@@ -372,6 +374,58 @@ export function useLibraryOperations(
     [strategy, onEditorAction],
   );
 
+  const onBatchDelete = useCallback(
+    async (categoryId: string, nodes: TreeNode[]) => {
+      if (!libraryRoot) {
+        onError('Library is not connected');
+        return;
+      }
+      const errors: string[] = [];
+      for (const node of nodes) {
+        try {
+          const name = getNodeName(node);
+          if (strategy?.deleteItem) {
+            const handled = await strategy.deleteItem(categoryId, node);
+            if (handled) continue;
+          }
+          const path = getNodePath(node);
+          await deleteItem(libraryRoot, name, path);
+        } catch (err) {
+          errors.push(`${node.name}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+      onRefresh();
+      if (errors.length > 0) {
+        onError(`Failed to delete ${errors.length} item(s):\n${errors.join('\n')}`);
+      }
+    },
+    [libraryRoot, strategy, onRefresh, onError],
+  );
+
+  const onBatchMove = useCallback(
+    async (categoryId: string, nodes: TreeNode[], targetPath: string[]) => {
+      if (!libraryRoot) {
+        onError('Library is not connected');
+        return;
+      }
+      const errors: string[] = [];
+      for (const node of nodes) {
+        try {
+          const name = getNodeName(node);
+          const sourcePath = getNodePath(node);
+          await moveItem(libraryRoot, name, sourcePath, targetPath);
+        } catch (err) {
+          errors.push(`${node.name}: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
+      onRefresh();
+      if (errors.length > 0) {
+        onError(`Failed to move ${errors.length} item(s):\n${errors.join('\n')}`);
+      }
+    },
+    [libraryRoot, onRefresh, onError],
+  );
+
   return {
     expandedPaths,
     onToggleExpand,
@@ -381,5 +435,7 @@ export function useLibraryOperations(
     onRename,
     onFileDrop,
     onContextMenuAction,
+    onBatchDelete,
+    onBatchMove,
   };
 }

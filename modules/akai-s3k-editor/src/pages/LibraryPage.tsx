@@ -511,6 +511,8 @@ export function LibraryPage(): JSX.Element {
             onMove={libraryOps.onMove}
             onRename={libraryOps.onRename}
             onFileDrop={libraryOps.onFileDrop}
+            onBatchDelete={libraryOps.onBatchDelete}
+            onBatchMove={libraryOps.onBatchMove}
             onExternalDrop={handleExternalDrop}
             onContextMenuAction={libraryOps.onContextMenuAction}
             deviceMemoryState={deviceMemoryState}

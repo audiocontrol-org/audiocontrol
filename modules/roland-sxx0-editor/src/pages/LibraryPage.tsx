@@ -269,6 +269,8 @@ export function LibraryPage() {
           onRename={libraryOps.onRename}
           onContextMenuAction={libraryOps.onContextMenuAction}
           onFileDrop={libraryOps.onFileDrop}
+          onBatchDelete={libraryOps.onBatchDelete}
+          onBatchMove={libraryOps.onBatchMove}
           deviceMemoryState={deviceMemoryState}
           previewState={previewState}
           loading={isLoading || exportOps.isExporting}

@@ -93,6 +93,12 @@ export interface PluginLibraryBrowserProps {
   /** Called when a file is dropped on a category */
   onFileDrop?: (categoryId: string, files: File[], targetPath: string[]) => Promise<void>;
 
+  /** Called to delete multiple selected nodes at once */
+  onBatchDelete?: (categoryId: string, nodes: TreeNode[]) => Promise<void>;
+
+  /** Called to move multiple selected nodes at once */
+  onBatchMove?: (categoryId: string, nodes: TreeNode[], targetPath: string[]) => Promise<void>;
+
   /** Called when a custom data item is dropped on a category.
    * targetPath is the directory path within the category (empty for root).
    * Returns true if the drop was handled. */
@@ -132,6 +138,16 @@ export interface PluginLibraryBrowserProps {
 // =========================================================================
 // PluginLibraryBrowser Component
 // =========================================================================
+
+/** Flatten a tree into all nodes (for resolving selected IDs to TreeNode objects). */
+function flattenAllNodes(nodes: TreeNode[]): TreeNode[] {
+  const result: TreeNode[] = [];
+  for (const node of nodes) {
+    result.push(node);
+    if (node.children) result.push(...flattenAllNodes(node.children));
+  }
+  return result;
+}
 
 /** Flatten a tree of nodes into a list of IDs in tree order (for shift-click range). */
 function flattenNodeIds(nodes: TreeNode[]): string[] {
@@ -183,6 +199,8 @@ export function PluginLibraryBrowser({
   onMove,
   onExternalDrop,
   onFileDrop,
+  onBatchDelete,
+  onBatchMove,
   deviceMemoryState,
   onDeviceMemoryAction,
   previewState,
@@ -324,9 +342,64 @@ export function PluginLibraryBrowser({
     [plugin.categories],
   );
 
+  // Is the context menu target part of a multi-selection?
+  const isBatchContext = contextMenu
+    && multiSelectedIds.size > 1
+    && multiSelectedIds.has(contextMenu.node.id)
+    && multiSelectCategoryId === contextMenu.categoryId;
+
   // Build ContextMenuAction[] from plugin actions for the currently open menu
   const contextMenuActions: ContextMenuAction[] = (() => {
     if (!contextMenu) return [];
+
+    // Batch context menu — simplified actions for multiple items
+    if (isBatchContext) {
+      const count = multiSelectedIds.size;
+      const { categoryId } = contextMenu;
+      const actions: ContextMenuAction[] = [];
+
+      if (onBatchMove) {
+        actions.push({
+          label: `Move ${count} items...`,
+          onClick: () => {
+            // Use first selected node for the dialog (category is the same for all)
+            setMoveDialog({ open: true, categoryId, node: contextMenu.node });
+          },
+        });
+      }
+      if (onBatchDelete) {
+        actions.push({
+          label: `Delete ${count} items`,
+          danger: true,
+          separator: actions.length > 0,
+          onClick: () => {
+            // Don't use separator as action — push separate separator entry
+          },
+        });
+        // Fix: replace the last action with correct pattern
+        actions.pop();
+        if (actions.length > 0) {
+          actions.push({ label: '', onClick: () => {}, separator: true });
+        }
+        actions.push({
+          label: `Delete ${count} items`,
+          danger: true,
+          onClick: () => {
+            const confirmed = window.confirm(`Delete ${count} items? This cannot be undone.`);
+            if (!confirmed) return;
+            const data = categoryData[categoryId] ?? [];
+            const allNodes = flattenAllNodes(data);
+            const selected = allNodes.filter((n) => multiSelectedIds.has(n.id));
+            void onBatchDelete(categoryId, selected);
+            setMultiSelectedIds(new Set());
+            setMultiSelectCategoryId(null);
+          },
+        });
+      }
+      return actions;
+    }
+
+    // Single-item context menu
     const category = plugin.categories.find((c) => c.categoryId === contextMenu.categoryId);
     if (!category) return [];
     const itemTypePlugin = category.itemTypes[contextMenu.node.type];
@@ -752,17 +825,28 @@ export function PluginLibraryBrowser({
 
       {/* Move dialog */}
       {moveDialog && (() => {
-        const data = categoryData[moveDialog.categoryId] ?? [];
+        const { categoryId } = moveDialog;
+        const data = categoryData[categoryId] ?? [];
         const dirs = flattenDirectories(data);
+        const isBatchMove = multiSelectedIds.size > 1 && multiSelectCategoryId === categoryId;
+        const itemName = isBatchMove ? `${multiSelectedIds.size} items` : moveDialog.node.name;
         const sourcePath = (moveDialog.node.meta as Record<string, unknown>)?.path as string[] ?? [];
         return (
           <MoveDialog
             open={moveDialog.open}
-            itemName={moveDialog.node.name}
+            itemName={itemName}
             directories={dirs}
-            isValidTarget={(targetPath) => isValidMoveTarget(moveDialog.node, sourcePath, targetPath)}
+            isValidTarget={isBatchMove ? undefined : (targetPath) => isValidMoveTarget(moveDialog.node, sourcePath, targetPath)}
             onMove={(targetPath) => {
-              void onMove(moveDialog.categoryId, moveDialog.node, targetPath);
+              if (isBatchMove && onBatchMove) {
+                const allNodes = flattenAllNodes(data);
+                const selected = allNodes.filter((n) => multiSelectedIds.has(n.id));
+                void onBatchMove(categoryId, selected, targetPath);
+                setMultiSelectedIds(new Set());
+                setMultiSelectCategoryId(null);
+              } else {
+                void onMove(categoryId, moveDialog.node, targetPath);
+              }
               setMoveDialog(null);
             }}
             onCancel={() => setMoveDialog(null)}
