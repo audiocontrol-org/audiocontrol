@@ -455,19 +455,68 @@ function VolumeNode({
       {expanded && volume.files.length === 0 && (
         <p className="text-xs text-gray-600 italic pl-6">Empty</p>
       )}
-      {expanded && volume.files.map((file, fi) => (
-        <FileNode
-          key={fi}
-          file={file}
-          targetId={targetId}
-          volumeStartBlock={volume.startBlock}
-          isSelected={selectedFile === file}
-          isSaving={savingFile === file.name}
-          onSelect={() => onSelectFile(file)}
-          onSaveToLibrary={onSaveToLibrary ? () => onSaveToLibrary(file) : undefined}
-          onSendToDevice={onSendToDevice ? () => onSendToDevice(file) : undefined}
-        />
-      ))}
+      {expanded && volume.files.length > 0 && (() => {
+        const programs = volume.files.filter((f) => f.type === FILE_TYPE_PROGRAM);
+        const samples = volume.files.filter((f) => f.type === FILE_TYPE_SAMPLE);
+        const other = volume.files.filter((f) => f.type !== FILE_TYPE_PROGRAM && f.type !== FILE_TYPE_SAMPLE);
+        return (
+          <>
+            {programs.length > 0 && (
+              <div className="ml-4">
+                <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 pt-2 pb-0.5">
+                  Programs ({programs.length})
+                </h5>
+                {programs.map((file, fi) => (
+                  <FileNode
+                    key={`p-${fi}`}
+                    file={file}
+                    targetId={targetId}
+                    volumeStartBlock={volume.startBlock}
+                    isSelected={selectedFile === file}
+                    isSaving={savingFile === file.name}
+                    onSelect={() => onSelectFile(file)}
+                    onSaveToLibrary={onSaveToLibrary ? () => onSaveToLibrary(file) : undefined}
+                    onSendToDevice={onSendToDevice ? () => onSendToDevice(file) : undefined}
+                  />
+                ))}
+              </div>
+            )}
+            {samples.length > 0 && (
+              <div className="ml-4">
+                <h5 className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-2 pt-2 pb-0.5">
+                  Samples ({samples.length})
+                </h5>
+                {samples.map((file, fi) => (
+                  <FileNode
+                    key={`s-${fi}`}
+                    file={file}
+                    targetId={targetId}
+                    volumeStartBlock={volume.startBlock}
+                    isSelected={selectedFile === file}
+                    isSaving={savingFile === file.name}
+                    onSelect={() => onSelectFile(file)}
+                    onSaveToLibrary={onSaveToLibrary ? () => onSaveToLibrary(file) : undefined}
+                    onSendToDevice={onSendToDevice ? () => onSendToDevice(file) : undefined}
+                  />
+                ))}
+              </div>
+            )}
+            {other.map((file, fi) => (
+              <FileNode
+                key={`o-${fi}`}
+                file={file}
+                targetId={targetId}
+                volumeStartBlock={volume.startBlock}
+                isSelected={selectedFile === file}
+                isSaving={savingFile === file.name}
+                onSelect={() => onSelectFile(file)}
+                onSaveToLibrary={onSaveToLibrary ? () => onSaveToLibrary(file) : undefined}
+                onSendToDevice={onSendToDevice ? () => onSendToDevice(file) : undefined}
+              />
+            ))}
+          </>
+        );
+      })()}
     </div>
   );
 }
