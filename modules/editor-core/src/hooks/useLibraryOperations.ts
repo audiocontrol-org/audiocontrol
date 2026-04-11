@@ -356,8 +356,11 @@ export function useLibraryOperations(
         return;
       }
 
-      // 'move' opens a target picker in PluginLibraryBrowser — handled at the component level
-      if (actionId === 'move') return;
+      // 'move' is intercepted by PluginLibraryBrowser before reaching here.
+      // If it arrives, the component didn't handle it — that's a bug.
+      if (actionId === 'move') {
+        throw new Error('Move action should be handled by PluginLibraryBrowser, not useLibraryOperations');
+      }
 
       // If we reach here, no one handled the action — this is a bug
       throw new Error(

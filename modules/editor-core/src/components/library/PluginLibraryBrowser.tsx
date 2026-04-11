@@ -13,8 +13,9 @@
  * Device-agnostic — all device-specific behavior comes from the plugin.
  */
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { LoadingBar } from './LoadingBar';
+import { MoveDialog, type MoveDialogDirectory } from './MoveDialog';
 import { TreeSection } from './TreeSection';
 import type { TreeNode } from './TreeView';
 
@@ -27,6 +28,7 @@ export interface LibraryDragPayload {
   nodeId: string;
   nodeName: string;
   nodeType: string;
+  sourcePath: string[];
   meta: Record<string, unknown>;
 }
 import type {
@@ -131,6 +133,30 @@ export interface PluginLibraryBrowserProps {
 // PluginLibraryBrowser Component
 // =========================================================================
 
+/** Flatten a tree of nodes into a list of directories for MoveDialog. */
+function flattenDirectories(nodes: TreeNode[], path: string[] = [], depth = 0): MoveDialogDirectory[] {
+  const result: MoveDialogDirectory[] = [];
+  for (const node of nodes) {
+    if (node.type !== 'directory') continue;
+    result.push({ id: node.id, name: node.name, path, depth });
+    if (node.children) {
+      result.push(...flattenDirectories(node.children, [...path, node.name], depth + 1));
+    }
+  }
+  return result;
+}
+
+/** Returns true if targetPath is NOT inside the source node's subtree. */
+function isValidMoveTarget(sourceNode: TreeNode, sourcePath: string[], targetPath: string[]): boolean {
+  const sourceFullPath = [...sourcePath, sourceNode.name].join('/');
+  const targetFullPathStr = targetPath.join('/');
+  // Can't move to same parent
+  if (sourcePath.join('/') === targetFullPathStr) return false;
+  // Can't move into self or descendants
+  if (targetFullPathStr.startsWith(sourceFullPath + '/') || targetFullPathStr === sourceFullPath) return false;
+  return true;
+}
+
 export function PluginLibraryBrowser({
   plugin,
   libraryHandle,
@@ -144,6 +170,7 @@ export function PluginLibraryBrowser({
   onDelete,
   onRename,
   onContextMenuAction,
+  onMove,
   onExternalDrop,
   onFileDrop,
   deviceMemoryState,
@@ -159,6 +186,13 @@ export function PluginLibraryBrowser({
   const hasDeviceMemory = !!plugin.deviceMemory;
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileInputCategoryRef = useRef<string>('');
+
+  // Move dialog state
+  const [moveDialog, setMoveDialog] = useState<{
+    open: boolean;
+    categoryId: string;
+    node: TreeNode;
+  } | null>(null);
 
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -256,6 +290,8 @@ export function PluginLibraryBrowser({
           const { categoryId, node } = contextMenu;
           if (menuAction.id === 'delete') {
             onDelete(categoryId, node);
+          } else if (menuAction.id === 'move') {
+            setMoveDialog({ open: true, categoryId, node });
           } else {
             onContextMenuAction?.(categoryId, menuAction.id, node);
           }
@@ -502,19 +538,46 @@ export function PluginLibraryBrowser({
                 onDragOver={handleSectionDragOver(category.categoryId)}
                 onDragLeave={handleSectionDragLeave()}
                 onDrop={handleSectionDrop(category.categoryId)}
-                onTreeDragOver={onExternalDrop ? (_node, e) => {
-                  if (e.dataTransfer.types.length > 0) {
+                onTreeDragOver={(_node, e) => {
+                  // Accept library-item drags for same-category move
+                  if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    return true;
+                  }
+                  // Accept external drops (disk items, OS files)
+                  if (onExternalDrop && e.dataTransfer.types.length > 0) {
                     e.preventDefault();
                     e.dataTransfer.dropEffect = 'copy';
                     return true;
                   }
                   return false;
-                } : undefined}
-                onTreeDrop={onExternalDrop ? (node, e) => {
+                }}
+                onTreeDrop={(node, e) => {
                   const nodePath = (node.meta?.path as string[] | undefined) ?? [];
                   const targetPath = [...nodePath, node.name];
-                  onExternalDrop(category.categoryId, e.dataTransfer, targetPath);
-                } : undefined}
+
+                  // Library item move within same category
+                  const raw = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
+                  if (raw) {
+                    const payload = JSON.parse(raw) as LibraryDragPayload;
+                    if (payload.categoryId === category.categoryId) {
+                      void onMove(category.categoryId, {
+                        id: payload.nodeId,
+                        name: payload.nodeName,
+                        type: payload.nodeType,
+                        children: [],
+                        meta: { path: payload.sourcePath },
+                      }, targetPath);
+                    }
+                    return;
+                  }
+
+                  // External drop
+                  if (onExternalDrop) {
+                    onExternalDrop(category.categoryId, e.dataTransfer, targetPath);
+                  }
+                }}
                 headerActions={category.renderHeaderActions?.(
                   createCategoryCallbacks(category.categoryId),
                 )}
@@ -522,11 +585,13 @@ export function PluginLibraryBrowser({
                 renderTrailing={renderTrailing(category.categoryId)}
                 draggable={isDraggable(category.categoryId)}
                 onDragStart={(node, e) => {
+                  const nodePath = (node.meta as Record<string, unknown>)?.path as string[] ?? [];
                   const payload: LibraryDragPayload = {
                     categoryId: category.categoryId,
                     nodeId: node.id,
                     nodeName: node.name,
                     nodeType: node.type,
+                    sourcePath: nodePath,
                     meta: node.meta ?? {},
                   };
                   e.dataTransfer.setData(LIBRARY_ITEM_MIME, JSON.stringify(payload));
@@ -582,6 +647,26 @@ export function PluginLibraryBrowser({
           onClose={() => setContextMenu(null)}
         />
       )}
+
+      {/* Move dialog */}
+      {moveDialog && (() => {
+        const data = categoryData[moveDialog.categoryId] ?? [];
+        const dirs = flattenDirectories(data);
+        const sourcePath = (moveDialog.node.meta as Record<string, unknown>)?.path as string[] ?? [];
+        return (
+          <MoveDialog
+            open={moveDialog.open}
+            itemName={moveDialog.node.name}
+            directories={dirs}
+            isValidTarget={(targetPath) => isValidMoveTarget(moveDialog.node, sourcePath, targetPath)}
+            onMove={(targetPath) => {
+              void onMove(moveDialog.categoryId, moveDialog.node, targetPath);
+              setMoveDialog(null);
+            }}
+            onCancel={() => setMoveDialog(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
