@@ -50,6 +50,7 @@ export {
   CacheMetricsModal,
   LibraryConnectionUI,
   DrumKitPadList,
+  LoadingBar,
   FolderIcon,
   ChevronIcon,
   AudioFileIcon,

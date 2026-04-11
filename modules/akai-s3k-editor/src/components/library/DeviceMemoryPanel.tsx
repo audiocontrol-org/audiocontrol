@@ -7,7 +7,7 @@
  */
 
 import { useState } from 'react';
-import { LIBRARY_ITEM_MIME, type LibraryDragPayload } from '@audiocontrol/editor-core';
+import { LIBRARY_ITEM_MIME, LoadingBar, type LibraryDragPayload } from '@audiocontrol/editor-core';
 import { DISK_ITEM_MIME, type DiskDragPayload } from '@/components/library/DiskBrowserPanel';
 
 interface DeviceMemoryPanelProps {
@@ -113,7 +113,7 @@ export function DeviceMemoryPanel({
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-1">
         <h3 className="text-lg font-semibold text-gray-100">Device Memory</h3>
         <button
           type="button"
@@ -125,10 +125,8 @@ export function DeviceMemoryPanel({
           {isLoading ? '...' : '\u21BB'}
         </button>
       </div>
-
-      {!isConnected && hasData && (
-        <p className="text-xs text-yellow-500 mb-2 animate-pulse">Reconnecting...</p>
-      )}
+      <LoadingBar active={isLoading || (!isConnected && hasData)} />
+      <div className="mt-2" />
 
       <div
         className={`rounded transition-colors ${programDropOver ? 'bg-blue-900/30 ring-1 ring-blue-500/50' : ''}`}
@@ -240,3 +238,4 @@ export function DeviceMemoryPanel({
     </div>
   );
 }
+

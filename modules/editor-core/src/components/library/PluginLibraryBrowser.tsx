@@ -14,6 +14,7 @@
  */
 
 import React, { useCallback, useState } from 'react';
+import { LoadingBar } from './LoadingBar';
 import { TreeSection } from './TreeSection';
 import type { TreeNode } from './TreeView';
 
@@ -388,6 +389,8 @@ export function PluginLibraryBrowser({
             {connectionSlot}
           </div>
         )}
+
+        <LoadingBar active={loading ?? false} />
 
         {loading && (
           <div className="ac-plugin-library-browser-loading">

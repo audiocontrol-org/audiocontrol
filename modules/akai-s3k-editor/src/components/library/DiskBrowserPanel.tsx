@@ -18,7 +18,7 @@ import {
   type DiskTarget,
 } from '@/hooks/useDiskBrowser';
 import { BLOCK_SIZE } from '@audiocontrol/sampler-devices/s3k';
-import { ContextMenu, ChevronIcon, type ContextMenuAction } from '@audiocontrol/editor-core';
+import { ContextMenu, ChevronIcon, LoadingBar, type ContextMenuAction } from '@audiocontrol/editor-core';
 
 // ---------------------------------------------------------------------------
 // Session cache — show previous disk tree instantly on reload
@@ -218,7 +218,7 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Pro
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-1">
         <h3 className="text-lg font-semibold text-gray-100">SCSI Disks</h3>
         <button
           type="button"
@@ -230,6 +230,8 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Pro
           {loading ? '...' : '\u21BB'}
         </button>
       </div>
+      <LoadingBar active={loading || loadingTarget !== null} />
+      <div className="mt-2" />
 
       {error && (
         <p className="text-sm text-red-400 mb-2">{error}</p>

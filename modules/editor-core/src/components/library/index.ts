@@ -75,6 +75,7 @@ export {
 } from './LibraryConnectionUI';
 
 export { DrumKitPadList } from './DrumKitPadList';
+export { LoadingBar } from './LoadingBar';
 
 // Plugin interfaces
 export type {
