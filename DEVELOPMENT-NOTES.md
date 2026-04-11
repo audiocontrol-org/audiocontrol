@@ -11,6 +11,80 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-11: Orchestrator Agent Implementation
+
+### Feature: orchestrator-agent
+### Worktree: audiocontrol-orchestrator-agent
+
+### Goal
+Replace the generic boilerplate orchestrator with two purpose-built roles (project-orchestrator and feature-orchestrator) and a full set of lifecycle skills.
+
+### Accomplished
+- Split orchestrator into project-orchestrator (plans, investigates, creates infrastructure) and feature-orchestrator (delegates implementation) — two distinct agent definitions (31681531)
+- Created 8 lifecycle skills: feature-setup, feature-issues, feature-complete, feature-teardown, feature-implement, feature-pickup, feature-review, feature-ship (31681531)
+- Updated project.yaml with both orchestrator entries and fixed workflow references (61dd7999)
+- Ran code review via `/feature-review` skill, found 2 critical + 8 warning issues, fixed all (61dd7999)
+- All phases of the workplan complete in a single session
+
+### Didn't Work
+- Agent initially tried to implement Phase 1 directly instead of delegating — user caught this twice before any code was written.
+
+### Course Corrections
+- [PROCESS] Agent started reading PROJECT-MANAGEMENT.md and gathering context to write code itself. User asked "did you delegate?" — agent had not. This is the same correction as the previous session (3 out of 3 orchestrator sessions have had this correction).
+- [PROCESS] User asked "Why didn't you delegate?" — forcing explicit acknowledgment of the pattern. The honest answer: the agent has capability and context, so the path of least resistance is to "just do it."
+- [PROCESS] User identified a missing architectural distinction: the single "orchestrator" concept needed splitting into project-level (infrastructure) and feature-level (implementation delegation). Agent had not considered this separation on its own.
+
+### Quantitative
+- User messages: ~12
+- Commits: 2
+- User corrections: 3 (all PROCESS — delegation and architectural distinction)
+
+### Insights
+1. The "orchestrator tries to implement" pattern has occurred in 3/3 orchestrator sessions. The fix is structural: restrict tools in the agent definition so it literally cannot write code files. Soft instructions are insufficient — the agent needs mechanical constraints.
+2. The project/feature orchestrator split is a key insight: the project-orchestrator's session ends when infrastructure is ready; the feature-orchestrator's session ends when code is PR-ready. Different scopes, different tools, different delegation targets.
+3. Running `/feature-review` as a self-check before merge caught real issues (stale references, missing tool permissions). The skill paid for itself immediately.
+
+---
+
+## 2026-04-11: Build Source Dependency Planning and Investigation
+
+### Feature: build-source-deps
+### Worktree: audiocontrol-build-source-deps
+
+### Goal
+Investigate GitHub issue #173 ("Build stamps should be sensitive to source code changes"), create a plan, feature branch/worktree, and feature documentation.
+
+### Accomplished
+- Root cause analysis: issue filed from library-ux worktree that branched before e4f4ee05 (the fix). Source deps already work on main.
+- Session transcript forensics: decrypted and searched 15 sessions' content, found 20+ instances of unnecessary stamp deletion in a single session. Identified the cargo-cult pattern: agents learn `rm -f .build-stamp && make` from the Makefile and never test whether `make` alone works.
+- Identified remaining gap: CSS files (9 across 5 modules) not tracked in find patterns.
+- Created feature branch `feature/build-source-deps` and worktree.
+- Created feature docs (prd.md, workplan.md, README.md) via documentation agent.
+- Created GitHub issues: #203 (parent), #204, #205, #206 (implementation tasks).
+- Updated workplan with issue links.
+- User implemented all tasks in a separate session, merged PR #207, closed all issues.
+
+### Didn't Work
+- Initially tried to jump into implementation instead of staying in orchestrator role. User corrected twice.
+- First investigation attempt (launching Explore agent) was rejected — user wanted me to look at session transcripts instead.
+
+### Course Corrections
+- [PROCESS] User said "you are the orchestrator, not the implementation team" — I tried to start implementing instead of delegating.
+- [PROCESS] User said "look in tools/ to find out how to decrypt the session files" — I was trying alternative search approaches instead of checking the obvious place for instructions.
+- [PROCESS] User pointed out that agents learn the wrong pattern from examining the Makefile itself, not from CLAUDE.md — documentation needs to be at the source of confusion.
+
+### Quantitative
+- User messages: ~15
+- Commits: 0 (planning session on main; implementation done in separate session)
+- User corrections: 3
+
+### Insights
+1. Session transcript forensics (decrypting and searching content files) is a powerful investigation tool — it revealed the true root cause (stale worktree + cargo-cult pattern) that code inspection alone missed.
+2. Documentation belongs at the source of confusion, not in a separate guide. Agents read the Makefile, so the Makefile must teach them the right pattern.
+3. The orchestrator role means creating plans and docs, then handing off — not doing the implementation yourself.
+
+---
+
 ## 2026-04-10: Session Data Extraction, Analysis, and LLM Integration
 
 ### Feature: library-ux
