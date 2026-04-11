@@ -11,6 +11,69 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-11: Move, Multi-Select, UX Polish (Session 3)
+
+### Feature: library-ux
+### Worktree: audiocontrol-library-ux
+
+### Goal
+Implement Phase 17 (drag-to-move, multi-select, batch operations) and address UX issues found during iPad testing.
+
+### Accomplished
+- Move to... context menu wired — opens MoveDialog with category directory tree (51a2cb78)
+- Drag-to-folder within same category — validates targets, prevents no-op moves (51a2cb78, b4eaf431)
+- Drag to section root to move items out of folders (1c00112d)
+- Multi-select: Ctrl/Cmd+click toggle, Shift+click range (5108c756)
+- Batch context menu: Move N items, Delete N items (7710d00c)
+- Multi-select drag moves all selected items (87140e4f)
+- Batch context menu includes batchable transfer actions (5c1f0a1b)
+- Required `batchable: boolean` on PluginMenuAction — compiler enforces batch declaration (3d0836fe)
+- Multi-select preview panel with count and action buttons (74af8349)
+- Transfer actions marked not-batchable until queue exists (46c1aefd)
+- On-hover delete icons for device memory items with delete-in-progress indicator (2d37c826, 93d27ecc)
+- Selected item contrast fix in device memory panel (0626eed2)
+- FSAA library auto-reconnect fix (dec35b3c)
+- Disk browser: explicit save destinations, file type icons, grouped by type (765a61eb, d5bc4607, eac9c14f)
+- Disk browser: clean target display — stripped vendor/size, disk icon (b2045039)
+- Import WAV button on Samples section header (b2953831)
+- Preview panel redesign with labeled action groups and visual hierarchy (d769d15d)
+- Phase 18 plan documented — visual polish and slide-over drawers (2dcbbabd)
+- Filed #214 for batch transfer queue
+
+### Didn't Work
+- Batch "Send to Device" silently dropped all but the last item — `setSendDialog` called N times, React batches, only last wins. Marked as `batchable: false` until queue system exists.
+- Section drop zone activated for all drag types — had to filter to only OS file drops + library-item moves
+- Delete from Device was missing from device memory context menu — ContextMenu's `separator: true` property means "render as separator divider" not "add separator before this action"
+
+### Course Corrections
+- [PROCESS] Agent marked transfer actions as `batchable: true` without testing if batch actually worked. User tested, found only first sample sent. Reverted to `batchable: false`.
+- [PROCESS] Agent didn't document Phase 17 plan to feature docs before implementing. User: "document your plan to the feature documentation before implementing."
+- [PROCESS] Agent tried to exit plan mode without documenting Phase 18 to feature docs. User: "Document your plan to the feature documentation before you implement."
+- [UX] Batch context menu initially only had Move and Delete. User: "Why doesn't it have a Send to Device option?" — needed to include batchable transfer actions.
+- [UX] Multi-select preview panel was missing. User: "What should the preview pane show for a multi-select?" — added count and batchable action buttons.
+- [UX] Section drop zone showed "Drop to add sample" during library-item moves. Should only activate for OS file imports.
+- [UX] "Move to top level" drop zone appeared even for items already at root.
+- [UX] Preview panel buttons were a messy soup of colored buttons. User asked for best-practices approach — redesigned with labeled action groups.
+- [UX] Disk browser had crowded, repetitive text. User asked for icons and type grouping.
+- [UX] Modal dialogs described as "so 1995" — user prefers slide-over drawers.
+- [FABRICATION] Agent claimed device memory context menu labels were correct without reading code. User: "Are you *sure*? I think you made that up."
+- [DOCUMENTATION] Agent tried to implement Phase 18 without documenting plan first.
+
+### Quantitative
+- User messages: ~60
+- Commits: 20
+- User corrections: 12
+- Issues filed: 1 (#214)
+
+### Insights
+1. **Document plans before implementing.** The user corrected this twice. The feature docs are the source of truth — if the plan isn't there, the next session has no context.
+2. **Test batch operations end-to-end before marking as batchable.** The `batchable` contract exists to prevent exactly the kind of silent failure we hit with batch Send to Device.
+3. **The `separator` property on ContextMenu is a footgun.** `separator: true` on an action turns it into a divider — it should be a separate entry. A failing test caught this.
+4. **UX feedback is gold.** The user found ~10 visual/interaction issues that code review wouldn't catch: crowded text, missing icons, invisible buttons on blue backgrounds, jarring modals. Testing on the actual device matters.
+5. **"Are you sure?" means read the code.** Never assert code state from memory.
+
+---
+
 ## 2026-04-11: Contract Enforcement Refactor (Session 2)
 
 ### Feature: library-ux

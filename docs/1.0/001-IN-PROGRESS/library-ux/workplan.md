@@ -447,10 +447,15 @@ Phase 16 (contract enforcement) — COMPLETE
   handleContextMenuAction required on strategy, exhaustive action guard,
   deduplicated types, RolandPageSelection rename, 12 unit tests.
 
-Phase 17 (drag-to-move & multi-select) — PLANNED
-  Wire broken Move to... action, drag-to-folder within category,
-  multi-select with Ctrl/Shift/long-press, batch delete/move.
-  See: docs/1.0/001-IN-PROGRESS/library-ux/phase-17-drag-move-multiselect.md
+Phase 17 (drag-to-move & multi-select) — COMPLETE
+  Move to... context menu, drag-to-folder, drag to root, multi-select
+  with Ctrl/Shift, batch delete/move, batch context menu, multi-select
+  preview panel. Touch long-press deferred.
+
+Phase 18 (visual polish & drawers) — PLANNED
+  Column separation, consistent headers, slide-over drawers replacing
+  modal dialogs, preview panel layout, connection bar integration.
+  See: docs/1.0/001-IN-PROGRESS/library-ux/phase-18-visual-polish-drawers.md
 ```
 
 ---
