@@ -438,15 +438,14 @@ Phase 14 (reload resilience) — COMPLETE
   Library auto-reconnect from localStorage, device/disk state cached in sessionStorage,
   stale-while-revalidate pattern, shared LoadingBar, shared vite config
 
-Phase 15 (context menu parity) — IN PROGRESS (stashed)
+Phase 15 (context menu parity) — COMPLETE
   Transfer actions in library context menus, device memory context menus,
   disk browser Send to Device. Shared createTransferActionHandler in editor-core.
-  BLOCKED: phantom menu items in Roland, silent action drops — see Phase 16.
 
-Phase 16 (contract enforcement) — PLANNED
-  Capability-declared context menus, compiler-enforced transfer contracts,
-  deduplicate types, exhaustive action guard.
-  See: docs/1.0/001-IN-PROGRESS/library-ux/contract-enforcement.md
+Phase 16 (contract enforcement) — COMPLETE
+  TransferActionId union, item type factories with capability param,
+  handleContextMenuAction required on strategy, exhaustive action guard,
+  deduplicated types, RolandPageSelection rename, 12 unit tests.
 ```
 
 ---

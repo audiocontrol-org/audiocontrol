@@ -11,6 +11,46 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-11: Contract Enforcement Refactor (Session 2)
+
+### Feature: library-ux
+### Worktree: audiocontrol-library-ux
+
+### Goal
+Implement the contract enforcement plan from Session 1: capability-declared context menus, compiler-enforced transfer contracts, eliminate duplicated types and silent failures.
+
+### Accomplished
+- `TransferActionId` union and `TransferHandlerMap` in editor-core — single source of truth for transfer action shapes (3d69a637)
+- Item type factories (`createCommonSampleItemType`, `createCommonProgramItemType`) replace const exports — accept `supportedActions: Set<TransferActionId>` to filter context menus (3d69a637)
+- S3K declares all 6 transfer actions; Roland declares none — phantom menu items eliminated (3d69a637)
+- `handleContextMenuAction` now required on `LibraryOperationsStrategy` — Roland broke at compile time until fixed (3d69a637)
+- Exhaustive action guard — throws on unhandled context menu actions (3d69a637)
+- `createTransferActionHandler` uses `Required<Pick<TransferHandlerMap, T>>` — compiler enforces handlers for declared actions (3d69a637)
+- Deduplicated dialog state types — `SaveToLibraryDialogState` and `SendToDeviceDialogState` in editor-core (3d69a637)
+- Renamed Roland's `ItemSelection` to `RolandPageSelection` — eliminated name collision (3d69a637)
+- Removed dead re-exports from both editors (nucleation sites) (3d69a637)
+- 12 unit tests for item type factories and transfer action handler (3d69a637)
+
+### Didn't Work
+- Nothing significant — the plan from Session 1 was thorough enough that implementation was straightforward.
+
+### Course Corrections
+- [PROCESS] Agent wrote handlers that silently returned when device not connected (`if (canTransfer) return;`). User: "what are you doing 'for now'?" Changed to throw with actionable error message.
+
+### Quantitative
+- User messages: ~15
+- Commits: 1 (plus 1 docs commit from Session 1 wrap-up)
+- User corrections: 1
+- Files changed: 24
+- Tests added: 12
+
+### Insights
+1. A good plan makes implementation fast. The 10-step plan with explicit "breaks Roland?" columns meant no surprises.
+2. `Required<Pick<TransferHandlerMap, T>>` is the key type trick — it ties the declared capability set to the required handler signatures at compile time.
+3. The `createTransferActionHandler<never>({})` pattern is how an editor explicitly opts out of all transfer actions. The compiler accepts it because `Required<Pick<Map, never>>` is `{}`.
+
+---
+
 ## 2026-04-11: Reload Resilience, Context Menu Parity, Contract Enforcement
 
 ### Feature: library-ux
