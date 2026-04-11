@@ -352,32 +352,58 @@ export function PluginLibraryBrowser({
   const contextMenuActions: ContextMenuAction[] = (() => {
     if (!contextMenu) return [];
 
-    // Batch context menu — simplified actions for multiple items
+    // Batch context menu — transfer actions + move + delete for multiple items
     if (isBatchContext) {
       const count = multiSelectedIds.size;
-      const { categoryId } = contextMenu;
+      const { categoryId, node } = contextMenu;
       const actions: ContextMenuAction[] = [];
 
+      // Include transfer actions from the item type plugin (Send to Device, etc.)
+      const category = plugin.categories.find((c) => c.categoryId === categoryId);
+      if (category) {
+        const itemTypePlugin = category.itemTypes[node.type];
+        if (itemTypePlugin?.getContextMenuActions) {
+          const pluginActions = itemTypePlugin.getContextMenuActions(node.meta, node);
+          // Non-file-management actions that have handlers (transfer + editor actions)
+          const fileOps = new Set(['rename', 'delete', 'move']);
+          for (const action of pluginActions) {
+            if ('separator' in action) continue;
+            const a = action as PluginMenuAction;
+            if (fileOps.has(a.id)) continue;
+            actions.push({
+              label: a.label,
+              icon: a.icon,
+              onClick: () => {
+                // Fire the action for each selected node
+                const data = categoryData[categoryId] ?? [];
+                const allNodes = flattenAllNodes(data);
+                const selected = allNodes.filter((n) => multiSelectedIds.has(n.id));
+                for (const n of selected) {
+                  onContextMenuAction?.(categoryId, a.id, n);
+                }
+                setMultiSelectedIds(new Set());
+                setMultiSelectCategoryId(null);
+              },
+            });
+          }
+        }
+      }
+
+      // Move
       if (onBatchMove) {
+        if (actions.length > 0) {
+          actions.push({ label: '', onClick: () => {}, separator: true });
+        }
         actions.push({
           label: `Move ${count} items...`,
           onClick: () => {
-            // Use first selected node for the dialog (category is the same for all)
-            setMoveDialog({ open: true, categoryId, node: contextMenu.node });
+            setMoveDialog({ open: true, categoryId, node });
           },
         });
       }
+
+      // Delete
       if (onBatchDelete) {
-        actions.push({
-          label: `Delete ${count} items`,
-          danger: true,
-          separator: actions.length > 0,
-          onClick: () => {
-            // Don't use separator as action — push separate separator entry
-          },
-        });
-        // Fix: replace the last action with correct pattern
-        actions.pop();
         if (actions.length > 0) {
           actions.push({ label: '', onClick: () => {}, separator: true });
         }
