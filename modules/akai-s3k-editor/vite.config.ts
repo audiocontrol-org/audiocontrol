@@ -3,10 +3,11 @@ import react from '@vitejs/plugin-react';
 import mkcert from 'vite-plugin-mkcert';
 import path from 'path';
 
-// Prevent Vite dev server from crashing on TLS connection resets
-// (common with mobile Safari dropping connections)
+// Prevent Vite dev server from crashing on connection drops
+// (common with mobile browsers dropping WebSocket/TLS connections)
+const IGNORABLE_ERRORS = new Set(['ECONNRESET', 'EPIPE', 'ECONNABORTED', 'ERR_STREAM_WRITE_AFTER_END']);
 process.on('uncaughtException', (err) => {
-  if ('code' in err && err.code === 'ECONNRESET') return;
+  if ('code' in err && IGNORABLE_ERRORS.has(err.code as string)) return;
   console.error('Uncaught exception:', err);
   process.exit(1);
 });

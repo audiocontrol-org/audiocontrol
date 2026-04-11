@@ -92,6 +92,8 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Pro
   const [expandedTarget, setExpandedTarget] = useState<number | null>(null);
   const [loadingTarget, setLoadingTarget] = useState<number | null>(null);
   const [selectedFile, setSelectedFile] = useState<AkaiDiskFileEntry | null>(null);
+  const [savingFile, setSavingFile] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [volumes, setVolumes] = useState<Map<number, VolumeWithFiles[]>>(
     new Map(),
   );
@@ -193,6 +195,19 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Pro
         <p className="text-sm text-gray-500 italic">No SCSI disks found</p>
       )}
 
+      {saveError && (
+        <div className="mb-2 px-2 py-1.5 bg-red-900/50 border border-red-700 rounded text-sm text-red-300">
+          {saveError}
+          <button
+            type="button"
+            className="ml-2 text-red-400 hover:text-red-200 underline"
+            onClick={() => setSaveError(null)}
+          >
+            dismiss
+          </button>
+        </div>
+      )}
+
       <div className="space-y-1">
         {targets.map((target) => (
           <TargetNode
@@ -204,10 +219,15 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Pro
             selectedFile={selectedFile}
             onToggle={() => handleExpandTarget(target)}
             onSelectFile={setSelectedFile}
+            savingFile={savingFile}
             onSaveToLibrary={onSaveToLibrary ? async (file, vol) => {
+              setSaveError(null);
+              setSavingFile(file.name);
               try {
                 const data = partitionData.get(target.id);
-                if (!data) return;
+                if (!data) {
+                  throw new Error('Disk data not loaded — try collapsing and re-expanding the target');
+                }
 
                 // Only load the clicked file's blocks — not the entire volume.
                 await ensureFileBlocks(target.id, file);
@@ -224,8 +244,13 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, browserRef }: Pro
                     return;
                   }
                 }
+                throw new Error('Could not find volume for file — try re-scanning the disk');
               } catch (err) {
-                console.error('[DiskBrowser] Save to library failed:', err);
+                const message = err instanceof Error ? err.message : String(err);
+                console.error('[DiskBrowser] Save to library failed:', message);
+                setSaveError(`Failed to save "${file.name}": ${message}`);
+              } finally {
+                setSavingFile(null);
               }
             } : undefined}
           />
@@ -245,6 +270,7 @@ interface TargetNodeProps {
   loading: boolean;
   volumes: VolumeWithFiles[];
   selectedFile: AkaiDiskFileEntry | null;
+  savingFile: string | null;
   onToggle: () => void;
   onSelectFile: (file: AkaiDiskFileEntry) => void;
   onSaveToLibrary?: (file: AkaiDiskFileEntry, volume: VolumeWithFiles) => void;
@@ -256,6 +282,7 @@ function TargetNode({
   loading,
   volumes,
   selectedFile,
+  savingFile,
   onToggle,
   onSelectFile,
   onSaveToLibrary,
@@ -291,6 +318,7 @@ function TargetNode({
             volume={vol}
             targetId={target.id}
             selectedFile={selectedFile}
+            savingFile={savingFile}
             onSelectFile={onSelectFile}
             onSaveToLibrary={onSaveToLibrary ? (file) => onSaveToLibrary(file, vol) : undefined}
           />
@@ -307,6 +335,7 @@ interface VolumeNodeProps {
   volume: VolumeWithFiles;
   targetId: number;
   selectedFile: AkaiDiskFileEntry | null;
+  savingFile: string | null;
   onSelectFile: (file: AkaiDiskFileEntry) => void;
   onSaveToLibrary?: (file: AkaiDiskFileEntry) => void;
 }
@@ -315,6 +344,7 @@ function VolumeNode({
   volume,
   targetId,
   selectedFile,
+  savingFile,
   onSelectFile,
   onSaveToLibrary,
 }: VolumeNodeProps) {
@@ -341,6 +371,7 @@ function VolumeNode({
           targetId={targetId}
           volumeStartBlock={volume.startBlock}
           isSelected={selectedFile === file}
+          isSaving={savingFile === file.name}
           onSelect={() => onSelectFile(file)}
           onSaveToLibrary={onSaveToLibrary ? () => onSaveToLibrary(file) : undefined}
         />
@@ -354,11 +385,12 @@ interface FileNodeProps {
   targetId: number;
   volumeStartBlock: number;
   isSelected: boolean;
+  isSaving: boolean;
   onSelect: () => void;
   onSaveToLibrary?: () => void;
 }
 
-function FileNode({ file, targetId, volumeStartBlock, isSelected, onSelect, onSaveToLibrary }: FileNodeProps) {
+function FileNode({ file, targetId, volumeStartBlock, isSelected, isSaving, onSelect, onSaveToLibrary }: FileNodeProps) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
   const typeLabel =
@@ -384,10 +416,10 @@ function FileNode({ file, targetId, volumeStartBlock, isSelected, onSelect, onSa
   };
 
   const actions: ContextMenuAction[] = [];
-  if (onSaveToLibrary) {
+  if (onSaveToLibrary && !isSaving) {
     actions.push({
       label: 'Save to Library',
-      onClick: () => { Promise.resolve(onSaveToLibrary()).catch(err => console.error('[DiskBrowser] save failed:', err)); },
+      onClick: () => { onSaveToLibrary(); },
     });
   }
 
@@ -418,9 +450,10 @@ function FileNode({ file, targetId, volumeStartBlock, isSelected, onSelect, onSa
           <span
             role="button"
             tabIndex={0}
-            onClick={(e) => { e.stopPropagation(); Promise.resolve(onSaveToLibrary()).catch(err => console.error('[DiskBrowser] save failed:', err)); }}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); Promise.resolve(onSaveToLibrary()).catch(err => console.error('[DiskBrowser] save failed:', err)); } }}
-            className="ml-1 text-blue-200 hover:text-white"
+            aria-disabled={isSaving}
+            onClick={(e) => { e.stopPropagation(); if (!isSaving) onSaveToLibrary(); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !isSaving) { e.stopPropagation(); onSaveToLibrary(); } }}
+            className={`ml-1 ${isSaving ? 'text-gray-500 animate-pulse' : 'text-blue-200 hover:text-white'}`}
             title="Save to Library"
           >
             <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
