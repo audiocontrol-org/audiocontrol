@@ -26,9 +26,12 @@ This skill creates GitHub issues from a completed workplan. When invoked:
    - Workplan link: same pattern with `workplan.md`
 
 4. **Create parent feature issue:**
+   - Determine the module prefix from the dominant module being modified (e.g., `[sampler-devices]`, `[s330-editor]`, `[build]`)
+   - Check for existing milestone: `gh milestone list`
+   - If no appropriate milestone exists, create one or omit (milestone assignment is optional — can be added later)
    ```bash
    gh issue create \
-     --title "[build] Feature Name" \
+     --title "[module] Feature Name" \
      --body "$(cat <<'EOF'
    ## Overview
    [Problem statement from PRD, first paragraph]
@@ -45,6 +48,7 @@ This skill creates GitHub issues from a completed workplan. When invoked:
    )" \
      --label "enhancement"
    ```
+   - If a milestone was identified, add it: `gh issue edit <number> --milestone "<milestone>"`
    - Capture the issue number from output
 
 5. **Create implementation issues:**

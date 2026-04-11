@@ -30,6 +30,7 @@ This skill automates creating the infrastructure for a new feature. When invoked
      - `docs/1.0/001-IN-PROGRESS/<slug>/prd.md` — PRD template with feature slug pre-filled
      - `docs/1.0/001-IN-PROGRESS/<slug>/workplan.md` — workplan template with GitHub Tracking section
      - `docs/1.0/001-IN-PROGRESS/<slug>/README.md` — status table template
+     - `docs/1.0/001-IN-PROGRESS/<slug>/implementation-summary.md` — draft template for post-completion report
    - Instruct the agent to use the Write tool for each file
    - Provide the templates from PROJECT-MANAGEMENT.md as reference
 

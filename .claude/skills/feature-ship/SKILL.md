@@ -42,6 +42,7 @@ This skill prepares a completed feature for merge by verifying completeness, run
      ## Test plan
      - [ ] [acceptance criteria from workplan, reformatted as test checklist]
      ```
+   - PR body must not include Claude attribution or "Generated with Claude" text
    - Create PR:
      ```bash
      gh pr create --title "<title>" --body "<body>"

@@ -90,13 +90,7 @@ Additionally, repeatable sub-workflows (feature infrastructure setup, GitHub iss
 
 ### Future Scope
 
-Feature-orchestrator skills are noted as follow-on work, not part of this feature:
-
-- **feature-pickup** — read workplan, determine current state, report next phase
-- **feature-review** — delegate code review on recent changes
-- **feature-ship** — create PR, run final checks
-
-These skills will be designed and implemented separately once the project-orchestrator skills are validated.
+None — all orchestrator skills are in scope for this feature.
 
 ## Role Distinction
 
@@ -105,7 +99,7 @@ These skills will be designed and implemented separately once the project-orches
 | Operates on | `main` branch | Feature worktree (`audiocontrol-<slug>`) |
 | Outputs | Branches, worktrees, docs, issues | Implemented code (via agents) |
 | Delegates to | documentation-engineer, Explore | typescript-pro, ui-engineer, hardware-protocol-engineer, code-reviewer |
-| Tools | Read, Write (.md only), Bash (gh/git), Agent | Read, Bash, Agent — no Edit/Write on code |
+| Tools | Read, Write (.md only), Bash (gh/git), Agent | Read, Write (.md only), Bash, Agent — no Write on code |
 | Session ends when | Feature is ready for implementation team | Feature is implemented and PR-ready |
 
 ## Dependencies

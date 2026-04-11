@@ -121,7 +121,8 @@ workflows:
   feature_development:
     trigger: new_feature
     agents:
-      - orchestrator
+      - project-orchestrator
+      - feature-orchestrator
       - typescript-pro
       - api-designer
       - test-automator
