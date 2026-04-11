@@ -359,11 +359,14 @@ export function PluginLibraryBrowser({
   // External drop handling (e.g., disk browser items)
   const [dropTargetCategory, setDropTargetCategory] = useState<string | null>(null);
   const [dropIsMove, setDropIsMove] = useState(false);
+  const activeDragRef = useRef<LibraryDragPayload | null>(null);
 
   const handleSectionDragOver = useCallback(
     (categoryId: string) => (e: React.DragEvent) => {
-      // Library-item drag = move to category root
+      // Library-item drag = move to category root (skip if already at root)
       if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) {
+        const drag = activeDragRef.current;
+        if (drag && drag.sourcePath.length === 0) return;
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
         setDropTargetCategory(categoryId);
@@ -396,6 +399,7 @@ export function PluginLibraryBrowser({
       e.preventDefault();
       setDropTargetCategory(null);
       setDropIsMove(false);
+      activeDragRef.current = null;
 
       // Library-item drop = move to category root
       const raw = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
@@ -566,9 +570,18 @@ export function PluginLibraryBrowser({
                 onDragOver={handleSectionDragOver(category.categoryId)}
                 onDragLeave={handleSectionDragLeave()}
                 onDrop={handleSectionDrop(category.categoryId)}
-                onTreeDragOver={(_node, e) => {
+                onTreeDragOver={(targetNode, e) => {
                   // Accept library-item drags for same-category move
                   if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) {
+                    const drag = activeDragRef.current;
+                    if (drag) {
+                      // Don't accept if dropping onto the item's current parent
+                      const targetPath = [...((targetNode.meta as Record<string, unknown>)?.path as string[] ?? []), targetNode.name];
+                      if (drag.sourcePath.join('/') === targetPath.join('/')) return false;
+                      // Don't accept if dropping onto itself or a descendant
+                      const sourceFullPath = [...drag.sourcePath, drag.nodeName].join('/');
+                      if (targetPath.join('/').startsWith(sourceFullPath)) return false;
+                    }
                     e.preventDefault();
                     e.dataTransfer.dropEffect = 'move';
                     return true;
@@ -584,6 +597,7 @@ export function PluginLibraryBrowser({
                 onTreeDrop={(node, e) => {
                   setDropTargetCategory(null);
                   setDropIsMove(false);
+                  activeDragRef.current = null;
                   const nodePath = (node.meta?.path as string[] | undefined) ?? [];
                   const targetPath = [...nodePath, node.name];
 
@@ -624,9 +638,8 @@ export function PluginLibraryBrowser({
                     sourcePath: nodePath,
                     meta: node.meta ?? {},
                   };
+                  activeDragRef.current = payload;
                   e.dataTransfer.setData(LIBRARY_ITEM_MIME, JSON.stringify(payload));
-                  // Set a type-specific hint so drop zones can filter during
-                  // dragover (browsers allow reading types but not data).
                   e.dataTransfer.setData(`${LIBRARY_ITEM_MIME}/${node.type}`, '');
                   e.dataTransfer.effectAllowed = 'copyMove';
                 }}
