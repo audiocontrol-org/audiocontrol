@@ -55,6 +55,17 @@ function saveDiskCache(targets: DiskTarget[], volumes: Map<number, VolumeWithFil
 
 const cachedDisk = loadDiskCache();
 
+/** SCSI disk icon */
+function DiskIcon(): JSX.Element {
+  return (
+    <svg className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <line x1="2" y1="14" x2="22" y2="14" />
+      <circle cx="18" cy="18" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
 /** Custom MIME type for dragging disk browser items to the library. */
 export const DISK_ITEM_MIME = 'application/x-akai-disk-item';
 
@@ -361,18 +372,25 @@ function TargetNode({
     (target.blockCount * target.blockSize) / 1024 / 1024,
   );
 
+  // Clean up SCSI inquiry strings for display.
+  // s2p product strings look like "SCSI HD 540 MiB" — extract just the type.
+  const product = target.product.trim();
+  const diskLabel = product
+    .replace(/\s*\d+\s*MiB\s*$/i, '')  // strip trailing size (e.g., "540 MiB")
+    .trim() || product;
+
   return (
     <div>
       <button
         type="button"
         onClick={onToggle}
-        className="w-full text-left px-2 py-1 text-sm rounded transition-colors text-gray-300 hover:bg-gray-700 flex items-center gap-1"
+        className="w-full text-left px-2 py-1 text-sm rounded transition-colors text-gray-300 hover:bg-gray-700 flex items-center gap-1.5"
       >
         <ChevronIcon isExpanded={expanded} />
-        <span>
-          ID {target.id}: {target.vendor.trim()} {target.product.trim()}
-        </span>
-        <span className="text-gray-500 ml-auto tabular-nums">{sizeMB} MB</span>
+        <DiskIcon />
+        <span className="text-gray-400 tabular-nums">{target.id}</span>
+        <span className="truncate">{diskLabel}</span>
+        <span className="text-gray-500 ml-auto tabular-nums whitespace-nowrap">{sizeMB} MB</span>
       </button>
 
       {expanded && loading && (
