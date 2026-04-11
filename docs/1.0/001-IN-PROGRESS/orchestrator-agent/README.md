@@ -1,6 +1,7 @@
 # Orchestrator Agents
 
-**Status:** In Progress
+**Status:** PR Open
+**PR:** https://github.com/audiocontrol-org/audiocontrol/pull/215
 **Branch:** `feature/orchestrator-agent`
 
 ## Documentation
