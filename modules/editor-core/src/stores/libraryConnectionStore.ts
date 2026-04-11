@@ -188,6 +188,14 @@ export async function connectToBackend(
 
   if (backend === 'local') {
     const conn = getLocalConnection(config);
+    // Try to restore from IndexedDB first (no user gesture needed).
+    // Falls back to showDirectoryPicker if restore fails.
+    const restored = await conn.tryRestore();
+    if (restored) {
+      activeConnection = conn;
+      setConnected('local', conn.getRoot());
+      return true;
+    }
     const ok = await conn.connect();
     if (ok) {
       activeConnection = conn;
