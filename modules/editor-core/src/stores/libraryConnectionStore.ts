@@ -59,14 +59,46 @@ let activeConnection: LibraryConnection | null = null;
 // Store
 // =========================================================================
 
+const BACKEND_STORAGE_KEY = 'audiocontrol-library-backend';
+
+function saveBackendPreference(backend: LibraryBackend): void {
+  try {
+    if (backend === 'none') {
+      localStorage.removeItem(BACKEND_STORAGE_KEY);
+    } else {
+      localStorage.setItem(BACKEND_STORAGE_KEY, backend);
+    }
+  } catch {
+    // localStorage may be unavailable in some contexts
+  }
+}
+
+export function getSavedBackendPreference(): LibraryBackend {
+  try {
+    const saved = localStorage.getItem(BACKEND_STORAGE_KEY);
+    if (saved === 'local' || saved === 'google-drive' || saved === 'opfs') {
+      return saved;
+    }
+  } catch {
+    // localStorage may be unavailable
+  }
+  return 'none';
+}
+
 export const useLibraryConnectionStore = create<LibraryConnectionStore>((set) => ({
   // Initial state
   activeBackend: 'none',
   root: null,
 
   // Actions
-  setConnected: (backend, root) => set({ activeBackend: backend, root }),
-  setDisconnected: () => set({ activeBackend: 'none', root: null }),
+  setConnected: (backend, root) => {
+    saveBackendPreference(backend);
+    set({ activeBackend: backend, root });
+  },
+  setDisconnected: () => {
+    saveBackendPreference('none');
+    set({ activeBackend: 'none', root: null });
+  },
 }));
 
 // =========================================================================
