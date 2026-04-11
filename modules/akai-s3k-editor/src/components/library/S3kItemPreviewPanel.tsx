@@ -107,6 +107,55 @@ function DirectoryPreview({ selection }: { selection: ItemSelection }): JSX.Elem
 }
 
 /** Shared editor action buttons for samples and chopped samples. */
+/** Labeled group of action buttons in the preview panel. */
+function ActionGroup({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
+  return (
+    <div className="mt-4">
+      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">{label}</h4>
+      <div className="flex gap-1.5 flex-wrap">{children}</div>
+    </div>
+  );
+}
+
+/** Primary action button (e.g., Send to Device). */
+function PrimaryAction({ label, onClick, testId }: { label: string; onClick: () => void; testId?: string }): JSX.Element {
+  return (
+    <button
+      className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
+      onClick={onClick}
+      data-testid={testId}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** Secondary action button (e.g., editor tools). */
+function SecondaryAction({ label, onClick, testId }: { label: string; onClick: () => void; testId?: string }): JSX.Element {
+  return (
+    <button
+      className="px-3 py-1.5 text-sm bg-gray-700 hover:bg-gray-600 text-gray-200 rounded transition-colors"
+      onClick={onClick}
+      data-testid={testId}
+    >
+      {label}
+    </button>
+  );
+}
+
+/** Danger action button (e.g., Delete). */
+function DangerAction({ label, onClick, testId }: { label: string; onClick: () => void; testId?: string }): JSX.Element {
+  return (
+    <button
+      className="px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-gray-700/50 rounded transition-colors"
+      onClick={onClick}
+      data-testid={testId}
+    >
+      {label}
+    </button>
+  );
+}
+
 function EditorActions({
   name,
   nodeType,
@@ -124,35 +173,29 @@ function EditorActions({
   if (!hasActions) return null;
 
   return (
-    <div className="mt-3 flex gap-2 flex-wrap">
+    <ActionGroup label="Edit">
       {customState.onOpenInLoopEditor && (
-        <button
-          className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
+        <SecondaryAction
+          label="Loop Editor"
           onClick={() => customState.onOpenInLoopEditor!(name, nodeType, path)}
-          data-testid="preview-open-loop-editor"
-        >
-          Loop Editor
-        </button>
+          testId="preview-open-loop-editor"
+        />
       )}
       {customState.onOpenInSampleEditor && (
-        <button
-          className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
+        <SecondaryAction
+          label="Edit Sample"
           onClick={() => customState.onOpenInSampleEditor!(name, nodeType, path)}
-          data-testid="preview-open-sample-editor"
-        >
-          Edit Sample
-        </button>
+          testId="preview-open-sample-editor"
+        />
       )}
       {customState.onOpenInChopper && (
-        <button
-          className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
+        <SecondaryAction
+          label="Chop"
           onClick={() => customState.onOpenInChopper!(name, nodeType, path)}
-          data-testid="preview-open-chopper"
-        >
-          Chop
-        </button>
+          testId="preview-open-chopper"
+        />
       )}
-    </div>
+    </ActionGroup>
   );
 }
 
@@ -186,46 +229,24 @@ function SamplePreview({
       <MetaRow label="Path" value={pathDisplay} />
       <MetaRow label="Description" value={meta.description} />
 
-      <div className="mt-4 flex gap-2 flex-wrap">
-        {meta.hasDrumKit && customState?.onEditDrumKit && (
-          <button
-            className="px-3 py-1.5 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded transition-colors"
-            onClick={() => customState.onEditDrumKit!(
-              selection.node.name,
-              meta.path,
-            )}
-            data-testid="preview-edit-drum-kit"
-          >
-            Edit Kit
-          </button>
-        )}
-
-        {customState?.onSendSampleToDevice && (
-          <button
-            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
-            onClick={() => customState.onSendSampleToDevice!(
-              selection.node.name,
-              meta.path,
-            )}
-            data-testid="preview-send-to-device"
-          >
-            Send to Device
-          </button>
-        )}
-
-        {meta.hasDrumKit && customState?.onImportDrumKit && (
-          <button
-            className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded transition-colors"
-            onClick={() => customState.onImportDrumKit!(
-              selection.node.name,
-              meta.path,
-            )}
-            data-testid="preview-import-drum-kit"
-          >
-            Import as Drum Program
-          </button>
-        )}
-      </div>
+      {(customState?.onSendSampleToDevice || (meta.hasDrumKit && customState?.onImportDrumKit)) && (
+        <ActionGroup label="Device">
+          {customState?.onSendSampleToDevice && (
+            <PrimaryAction
+              label="Send to Device"
+              onClick={() => customState.onSendSampleToDevice!(selection.node.name, meta.path)}
+              testId="preview-send-to-device"
+            />
+          )}
+          {meta.hasDrumKit && customState?.onImportDrumKit && (
+            <SecondaryAction
+              label="Import as Drum Program"
+              onClick={() => customState.onImportDrumKit!(selection.node.name, meta.path)}
+              testId="preview-import-drum-kit"
+            />
+          )}
+        </ActionGroup>
+      )}
 
       <EditorActions
         name={selection.node.name}
@@ -233,6 +254,16 @@ function SamplePreview({
         path={meta.path}
         customState={customState}
       />
+
+      {meta.hasDrumKit && customState?.onEditDrumKit && (
+        <ActionGroup label="Kit">
+          <SecondaryAction
+            label="Edit Kit"
+            onClick={() => customState.onEditDrumKit!(selection.node.name, meta.path)}
+            testId="preview-edit-drum-kit"
+          />
+        </ActionGroup>
+      )}
     </div>
   );
 }
@@ -257,30 +288,23 @@ function S3kProgramPreview({
       <MetaRow label="Keygroups" value={meta.keygroupCount} />
       <MetaRow label="Samples" value={meta.sampleReferences?.join(', ')} />
 
-      {meta.dirName && (
-        <div className="mt-4 flex flex-col gap-2">
+      {meta.dirName && (customState?.onSendProgramToDevice || customState?.onPromoteToCommonArea) && (
+        <ActionGroup label="Device">
           {customState?.onSendProgramToDevice && (
-            <button
-              className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors"
-              onClick={() => customState.onSendProgramToDevice!(
-                meta.dirName!,
-                selection.node.name,
-              )}
-              data-testid="preview-send-program-to-device"
-            >
-              Send to Device
-            </button>
+            <PrimaryAction
+              label="Send to Device"
+              onClick={() => customState.onSendProgramToDevice!(meta.dirName!, selection.node.name)}
+              testId="preview-send-program-to-device"
+            />
           )}
           {customState?.onPromoteToCommonArea && (
-            <button
-              className="px-3 py-1.5 text-sm bg-green-700 hover:bg-green-600 text-white rounded transition-colors"
+            <SecondaryAction
+              label="Promote to Common Area"
               onClick={() => customState.onPromoteToCommonArea!(meta.dirName!)}
-              data-testid="preview-promote-to-common"
-            >
-              Promote to Common Area
-            </button>
+              testId="preview-promote-to-common"
+            />
           )}
-        </div>
+        </ActionGroup>
       )}
     </div>
   );
@@ -309,18 +333,13 @@ function CommonProgramPreview({
       <MetaRow label="Description" value={meta.description} />
 
       {customState?.onImportInstrument && meta.directoryName && (
-        <div className="mt-4">
-          <button
-            className="px-3 py-1.5 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded transition-colors"
-            onClick={() => customState.onImportInstrument!(
-              meta.directoryName!,
-              meta.path ?? [],
-            )}
-            data-testid="preview-import-instrument"
-          >
-            Import to Device
-          </button>
-        </div>
+        <ActionGroup label="Device">
+          <PrimaryAction
+            label="Import to Device"
+            onClick={() => customState.onImportInstrument!(meta.directoryName!, meta.path ?? [])}
+            testId="preview-import-instrument"
+          />
+        </ActionGroup>
       )}
     </div>
   );
@@ -342,32 +361,25 @@ function DeviceSamplePreview({
       <MetaRow label="Type" value="Device Sample" />
       <MetaRow label="Slot" value={`#${meta.deviceIndex}`} />
 
-      <div className="mt-4 flex gap-2 flex-wrap">
-        {customState?.onSaveDeviceSampleToLibrary && (
-          <button
-            className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 text-white rounded transition-colors"
-            onClick={() => customState.onSaveDeviceSampleToLibrary!(
-              meta.deviceIndex,
-              selection.node.name,
-            )}
-            data-testid="preview-save-to-library"
-          >
-            Save to Library
-          </button>
-        )}
-        {customState?.onDeleteDeviceSample && (
-          <button
-            className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
-            onClick={() => customState.onDeleteDeviceSample!(
-              meta.deviceIndex,
-              selection.node.name,
-            )}
-            data-testid="preview-delete-device-sample"
-          >
-            Delete from Device
-          </button>
-        )}
-      </div>
+      {customState?.onSaveDeviceSampleToLibrary && (
+        <ActionGroup label="Library">
+          <PrimaryAction
+            label="Save to Library"
+            onClick={() => customState.onSaveDeviceSampleToLibrary!(meta.deviceIndex, selection.node.name)}
+            testId="preview-save-to-library"
+          />
+        </ActionGroup>
+      )}
+
+      {customState?.onDeleteDeviceSample && (
+        <ActionGroup label="Manage">
+          <DangerAction
+            label="Delete from Device"
+            onClick={() => customState.onDeleteDeviceSample!(meta.deviceIndex, selection.node.name)}
+            testId="preview-delete-device-sample"
+          />
+        </ActionGroup>
+      )}
     </div>
   );
 }
@@ -388,32 +400,25 @@ function DeviceProgramPreview({
       <MetaRow label="Type" value="Device Program" />
       <MetaRow label="Slot" value={`#${meta.deviceIndex}`} />
 
-      <div className="mt-4 flex gap-2 flex-wrap">
-        {customState?.onSaveDeviceProgramToLibrary && (
-          <button
-            className="px-3 py-1.5 text-sm bg-green-600 hover:bg-green-500 text-white rounded transition-colors"
-            onClick={() => customState.onSaveDeviceProgramToLibrary!(
-              meta.deviceIndex,
-              selection.node.name,
-            )}
-            data-testid="preview-save-program-to-library"
-          >
-            Save to Library
-          </button>
-        )}
-        {customState?.onDeleteDeviceProgram && (
-          <button
-            className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
-            onClick={() => customState.onDeleteDeviceProgram!(
-              meta.deviceIndex,
-              selection.node.name,
-            )}
-            data-testid="preview-delete-device-program"
-          >
-            Delete from Device
-          </button>
-        )}
-      </div>
+      {customState?.onSaveDeviceProgramToLibrary && (
+        <ActionGroup label="Library">
+          <PrimaryAction
+            label="Save to Library"
+            onClick={() => customState.onSaveDeviceProgramToLibrary!(meta.deviceIndex, selection.node.name)}
+            testId="preview-save-program-to-library"
+          />
+        </ActionGroup>
+      )}
+
+      {customState?.onDeleteDeviceProgram && (
+        <ActionGroup label="Manage">
+          <DangerAction
+            label="Delete from Device"
+            onClick={() => customState.onDeleteDeviceProgram!(meta.deviceIndex, selection.node.name)}
+            testId="preview-delete-device-program"
+          />
+        </ActionGroup>
+      )}
     </div>
   );
 }
