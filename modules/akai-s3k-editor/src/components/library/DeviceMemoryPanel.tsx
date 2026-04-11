@@ -91,7 +91,7 @@ function NameList({
               <button
                 type="button"
                 data-testid={`device-${type}-${index}`}
-                className={`w-full text-left px-2 py-1 text-sm rounded transition-colors ${
+                className={`group w-full text-left flex items-center px-2 py-1 text-sm rounded transition-colors ${
                   isSelected
                     ? 'bg-blue-600 text-white'
                     : 'text-gray-300 hover:bg-gray-700'
@@ -104,7 +104,21 @@ function NameList({
                 }}
               >
                 <span className="text-gray-500 mr-2 tabular-nums">{index}:</span>
-                {name}
+                <span className="flex-1 truncate">{name}</span>
+                {onDelete && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    className="ml-1 opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-opacity"
+                    title="Delete from device"
+                    onClick={(e) => { e.stopPropagation(); onDelete(index, name); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); onDelete(index, name); } }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                      <path d="M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m2 0v14a2 2 0 01-2 2H8a2 2 0 01-2-2V6h12" />
+                    </svg>
+                  </span>
+                )}
               </button>
             </li>
           );
