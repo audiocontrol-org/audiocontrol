@@ -15,6 +15,7 @@
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { LoadingBar } from './LoadingBar';
+import { CreateFolderDialog } from './CreateFolderDialog';
 import { MoveDialog, type MoveDialogDirectory } from './MoveDialog';
 import { TreeSection } from './TreeSection';
 import type { TreeNode } from './TreeView';
@@ -73,7 +74,7 @@ export interface PluginLibraryBrowserProps {
   onRefresh: () => void;
 
   /** Called when a folder is created */
-  onCreateFolder: (categoryId: string, parentPath: string[]) => Promise<void>;
+  onCreateFolder: (categoryId: string, parentPath: string[], name?: string) => Promise<void>;
 
   /** Called when a node is deleted */
   onDelete: (categoryId: string, node: TreeNode) => Promise<void>;
@@ -324,6 +325,13 @@ export function PluginLibraryBrowser({
     node: TreeNode;
   } | null>(null);
 
+  // Create folder drawer state
+  const [createFolderDrawer, setCreateFolderDrawer] = useState<{
+    open: boolean;
+    categoryId: string;
+    parentPath: string[];
+  } | null>(null);
+
   // Multi-select state
   const [multiSelectedIds, setMultiSelectedIds] = useState<Set<string>>(new Set());
   const [multiSelectCategoryId, setMultiSelectCategoryId] = useState<string | null>(null);
@@ -396,7 +404,7 @@ export function PluginLibraryBrowser({
   const createCategoryCallbacks = useCallback(
     (categoryId: string): CategoryCallbacks => ({
       refresh: onRefresh,
-      createFolder: () => onCreateFolder(categoryId, []),
+      createFolder: () => setCreateFolderDrawer({ open: true, categoryId, parentPath: [] }),
       importFiles: () => {
         fileInputCategoryRef.current = categoryId;
         fileInputRef.current?.click();
@@ -926,10 +934,11 @@ export function PluginLibraryBrowser({
                   category.isReadOnly
                     ? undefined
                     : (parentNode) =>
-                        onCreateFolder(
-                          category.categoryId,
-                          [...(parentNode.meta?.path as string[] ?? []), parentNode.name],
-                        )
+                        setCreateFolderDrawer({
+                          open: true,
+                          categoryId: category.categoryId,
+                          parentPath: [...(parentNode.meta?.path as string[] ?? []), parentNode.name],
+                        })
                 }
               />
             ))}
@@ -1018,6 +1027,19 @@ export function PluginLibraryBrowser({
           />
         );
       })()}
+
+      {/* Create folder drawer */}
+      <CreateFolderDialog
+        open={createFolderDrawer?.open ?? false}
+        parentPath={createFolderDrawer?.parentPath ?? []}
+        onConfirm={(name) => {
+          if (createFolderDrawer) {
+            void onCreateFolder(createFolderDrawer.categoryId, createFolderDrawer.parentPath, name);
+          }
+          setCreateFolderDrawer(null);
+        }}
+        onCancel={() => setCreateFolderDrawer(null)}
+      />
     </div>
   );
 }

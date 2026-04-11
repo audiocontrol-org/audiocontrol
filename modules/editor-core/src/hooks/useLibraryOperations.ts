@@ -170,7 +170,7 @@ export interface LibraryOperationsStrategy {
 export interface LibraryOperationsResult {
   expandedPaths: Record<string, Set<string>>;
   onToggleExpand: (categoryId: string, nodeId: string) => void;
-  onCreateFolder: (categoryId: string, parentPath: string[]) => Promise<void>;
+  onCreateFolder: (categoryId: string, parentPath: string[], name?: string) => Promise<void>;
   onDelete: (categoryId: string, node: TreeNode) => Promise<void>;
   onMove: (categoryId: string, node: TreeNode, targetPath: string[]) => Promise<void>;
   onRename: (categoryId: string, node: TreeNode, newName: string) => Promise<void>;
@@ -228,19 +228,17 @@ export function useLibraryOperations(
   }, []);
 
   const onCreateFolder = useCallback(
-    async (categoryId: string, parentPath: string[]) => {
+    async (categoryId: string, parentPath: string[], name?: string) => {
       if (!libraryRoot) {
         onError('Library is not connected');
         return;
       }
-      const name = window.prompt('Folder name:');
-      if (!name) return;
+      const folderName = name?.trim();
+      if (!folderName) return;
       try {
-        // Try device-specific strategy first
-        const handled = await strategy?.createFolder?.(categoryId, parentPath, name);
+        const handled = await strategy?.createFolder?.(categoryId, parentPath, folderName);
         if (!handled) {
-          // Fallback to common-area create
-          await createFolder(libraryRoot, parentPath, name);
+          await createFolder(libraryRoot, parentPath, folderName);
         }
         onRefresh();
       } catch (err) {
