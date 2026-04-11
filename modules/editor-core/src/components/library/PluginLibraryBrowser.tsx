@@ -536,13 +536,23 @@ export function PluginLibraryBrowser({
       if (raw) {
         const payload = JSON.parse(raw) as LibraryDragPayload;
         if (payload.categoryId === categoryId) {
-          void onMove(categoryId, {
-            id: payload.nodeId,
-            name: payload.nodeName,
-            type: payload.nodeType,
-            children: [],
-            meta: { path: payload.sourcePath },
-          }, []);
+          // Batch move if dragged item is part of a multi-selection
+          if (multiSelectedIds.size > 1 && multiSelectedIds.has(payload.nodeId) && onBatchMove) {
+            const data = categoryData[categoryId] ?? [];
+            const allNodes = flattenAllNodes(data);
+            const selected = allNodes.filter((n) => multiSelectedIds.has(n.id));
+            void onBatchMove(categoryId, selected, []);
+            setMultiSelectedIds(new Set());
+            setMultiSelectCategoryId(null);
+          } else {
+            void onMove(categoryId, {
+              id: payload.nodeId,
+              name: payload.nodeName,
+              type: payload.nodeType,
+              children: [],
+              meta: { path: payload.sourcePath },
+            }, []);
+          }
         }
         return;
       }
@@ -550,7 +560,7 @@ export function PluginLibraryBrowser({
       // External drop
       onExternalDrop?.(categoryId, e.dataTransfer, []);
     },
-    [onExternalDrop, onMove],
+    [onExternalDrop, onMove, onBatchMove, multiSelectedIds, multiSelectCategoryId, categoryData],
   );
 
   // Layout classes
@@ -738,13 +748,23 @@ export function PluginLibraryBrowser({
                   if (raw) {
                     const payload = JSON.parse(raw) as LibraryDragPayload;
                     if (payload.categoryId === category.categoryId) {
-                      void onMove(category.categoryId, {
-                        id: payload.nodeId,
-                        name: payload.nodeName,
-                        type: payload.nodeType,
-                        children: [],
-                        meta: { path: payload.sourcePath },
-                      }, targetPath);
+                      // Batch move if the dragged item is part of a multi-selection
+                      if (multiSelectedIds.size > 1 && multiSelectedIds.has(payload.nodeId) && onBatchMove) {
+                        const data = categoryData[category.categoryId] ?? [];
+                        const allNodes = flattenAllNodes(data);
+                        const selected = allNodes.filter((n) => multiSelectedIds.has(n.id));
+                        void onBatchMove(category.categoryId, selected, targetPath);
+                        setMultiSelectedIds(new Set());
+                        setMultiSelectCategoryId(null);
+                      } else {
+                        void onMove(category.categoryId, {
+                          id: payload.nodeId,
+                          name: payload.nodeName,
+                          type: payload.nodeType,
+                          children: [],
+                          meta: { path: payload.sourcePath },
+                        }, targetPath);
+                      }
                     }
                     return;
                   }
