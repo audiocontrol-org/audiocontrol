@@ -11,6 +11,58 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-11: Reload Resilience, Context Menu Parity, Contract Enforcement
+
+### Feature: library-ux
+### Worktree: audiocontrol-library-ux
+
+### Goal
+UX bug-hunting session on iPad — fix quirks found by using the library in the browser.
+
+### Accomplished
+- Disk browser error visibility — save errors shown inline instead of silent console.error (d4fad551)
+- Dev server crash resilience — widened uncaught exception handler to survive WebSocket drops (d4fad551)
+- Shared vite config — `createEditorConfig` in editor-core, both editors use it (b10a227a)
+- Library auto-reconnect on reload — persist active backend to localStorage, OPFS/FSAA reconnect without user interaction (b10a227a)
+- Device memory and disk browser cached in sessionStorage — stale-while-revalidate pattern (8bf5fac7)
+- Fixed device memory flash on reload — disconnect effect was clearing cached names during transport double-init (63391dc2, 1eca517a)
+- Shared LoadingBar component in editor-core for all panel titles (6fc1e93b)
+- Context menu parity with preview panels — transfer actions, device memory context menus, disk browser Send to Device (3c015c51, stashed)
+- Shared `createTransferActionHandler` and `LibraryTransferCallbacks` in editor-core (3c015c51, stashed)
+- Contract enforcement directive added to CLAUDE.md (28906033)
+- Contract enforcement design doc with capability-declaration approach (cd923334)
+- SDS WebSocket error messages improved — was "[object Event]" (d4fad551)
+
+### Didn't Work
+- Context menu parity introduced phantom menu items in Roland — shared item types now define transfer actions that Roland can't handle, silently dropped
+- Device memory "Save to Library" opened confirmation dialog — user wanted direct execution from context menu
+- Multiple iterations of trying to prevent device memory flash on reload — `wasConnected` ref, `isLoading` suppression — root cause was transport double-initialization triggering the disconnect clear branch
+- Stashed work has duplicated dialog state types and all-optional callback interfaces that violate the new contract enforcement directive
+
+### Course Corrections
+- [PROCESS] Agent added context menu actions to shared item types without checking whether Roland would handle them. Roland shows phantom menu items that silently do nothing. User: "I want broken things to break loudly, not silently hidden away in corners and under the bed."
+- [PROCESS] Agent made all transfer callbacks optional, allowing `{}` to satisfy the compiler. User: "The whole point of a strongly typed language is that the compiler catches contract violations."
+- [PROCESS] Agent duplicated `SendDialogState`/`ReceiveDialogState` in two files. User: "Why is there a duplicate?"
+- [PROCESS] Agent added crash protection to S3K vite config but not Roland. User: "Instead of duplicating the code, can you think of a way to make the common config actually common?" Then corrected: "a shared config that *all* editors import from."
+- [PROCESS] Agent proposed manual testing for verification. User: "You should automate the verification testing instead of relying on manual testing."
+- [UX] Device memory "Save to Library" context menu opened a confirmation dialog. User: "Why does it need further confirmation? Why doesn't it just do it?"
+- [UX] Context menu had single "Save to Library" instead of explicit destination choices. User: "there should be separate options instead of asking the user to fill out a form"
+- [FABRICATION] Agent claimed device memory context menu labels were correct without reading the code. User: "Are you *sure*? I think you made that up."
+
+### Quantitative
+- User messages: ~50
+- Commits: 8 (6 pushed, 1 stashed batch)
+- User corrections: 8
+
+### Insights
+1. The contract enforcement directive is the most important outcome of this session. Adding features to shared code without compiler-enforced contracts creates silent failures that are worse than crashes.
+2. The capability-declaration pattern (editors declare which actions they support, menu filters accordingly) is the right approach. Optional bags of callbacks are not contracts.
+3. When the user asks "how much will need to be duplicated in other editors?" — that's the signal to stop and redesign, not to proceed and hope.
+4. "Are you sure?" means "go read the code" — never answer from memory about code state.
+5. Transport details should not affect UI. "Save to library" is a storage operation regardless of whether the device talks SDS or SysEx.
+
+---
+
 ## 2026-04-10: Session Data Extraction, Analysis, and LLM Integration
 
 ### Feature: library-ux
