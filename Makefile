@@ -50,32 +50,32 @@ INSTALL_STAMP := node_modules/.install-stamp
 # Source file lists — enables Make to detect actual file changes
 # ---------------------------------------------------------------------------
 
-MIDI_CORE_SRC       := $(shell find $(MODULES_DIR)/midi-core/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-SAMPLER_LIB_SRC       := $(shell find $(MODULES_DIR)/sampler-lib/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-AUDIOTOOLS_CONFIG_SRC  := $(shell find $(MODULES_DIR)/audiotools-config/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-CANONICAL_MIDI_SRC     := $(shell find $(MODULES_DIR)/canonical-midi-maps/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-ARDOUR_MIDI_SRC        := $(shell find $(MODULES_DIR)/ardour-midi-maps/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-LAUNCH_CONTROL_SRC     := $(shell find $(MODULES_DIR)/launch-control-xl3/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-LAUNCH_CONTROL_ED_SRC  := $(shell find $(MODULES_DIR)/launch-control-xl3-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-LIB_RUNTIME_SRC        := $(shell find $(MODULES_DIR)/lib-runtime/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-SAMPLER_ATTIC_SRC      := $(shell find $(MODULES_DIR)/sampler-attic/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-SAMPLE_CHOPPER_SRC     := $(shell find $(MODULES_DIR)/sample-chopper/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-EDITOR_CORE_SRC        := $(shell find $(MODULES_DIR)/editor-core/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-LIB_DEVICE_UUID_SRC    := $(shell find $(MODULES_DIR)/lib-device-uuid/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-SAMPLER_DEVICES_SRC    := $(shell find $(MODULES_DIR)/sampler-devices/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
+MIDI_CORE_SRC       := $(shell find $(MODULES_DIR)/midi-core/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+SAMPLER_LIB_SRC       := $(shell find $(MODULES_DIR)/sampler-lib/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+AUDIOTOOLS_CONFIG_SRC  := $(shell find $(MODULES_DIR)/audiotools-config/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+CANONICAL_MIDI_SRC     := $(shell find $(MODULES_DIR)/canonical-midi-maps/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+ARDOUR_MIDI_SRC        := $(shell find $(MODULES_DIR)/ardour-midi-maps/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+LAUNCH_CONTROL_SRC     := $(shell find $(MODULES_DIR)/launch-control-xl3/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+LAUNCH_CONTROL_ED_SRC  := $(shell find $(MODULES_DIR)/launch-control-xl3-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+LIB_RUNTIME_SRC        := $(shell find $(MODULES_DIR)/lib-runtime/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+SAMPLER_ATTIC_SRC      := $(shell find $(MODULES_DIR)/sampler-attic/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+SAMPLE_CHOPPER_SRC     := $(shell find $(MODULES_DIR)/sample-chopper/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+EDITOR_CORE_SRC        := $(shell find $(MODULES_DIR)/editor-core/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+LIB_DEVICE_UUID_SRC    := $(shell find $(MODULES_DIR)/lib-device-uuid/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+SAMPLER_DEVICES_SRC    := $(shell find $(MODULES_DIR)/sampler-devices/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
-SAMPLER_LIBRARY_SRC    := $(shell find $(MODULES_DIR)/sampler-library/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-SAMPLER_TRANSLATE_SRC  := $(shell find $(MODULES_DIR)/sampler-translate/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-SAMPLER_BACKUP_SRC     := $(shell find $(MODULES_DIR)/sampler-backup/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-SAMPLER_EXPORT_SRC     := $(shell find $(MODULES_DIR)/sampler-export/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-LOOP_EDITOR_SRC        := $(shell find $(MODULES_DIR)/loop-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-D110_EDITOR_SRC        := $(shell find $(MODULES_DIR)/d110-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-JV1080_EDITOR_SRC      := $(shell find $(MODULES_DIR)/jv1080-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-ROLAND_SXX0_EDITOR_SRC := $(shell find $(MODULES_DIR)/roland-sxx0-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-AUDIOTOOLS_CLI_SRC     := $(shell find $(MODULES_DIR)/audiotools-cli/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
-AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
+SAMPLER_LIBRARY_SRC    := $(shell find $(MODULES_DIR)/sampler-library/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+SAMPLER_TRANSLATE_SRC  := $(shell find $(MODULES_DIR)/sampler-translate/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+SAMPLER_BACKUP_SRC     := $(shell find $(MODULES_DIR)/sampler-backup/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+SAMPLER_EXPORT_SRC     := $(shell find $(MODULES_DIR)/sampler-export/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+LOOP_EDITOR_SRC        := $(shell find $(MODULES_DIR)/loop-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+D110_EDITOR_SRC        := $(shell find $(MODULES_DIR)/d110-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+JV1080_EDITOR_SRC      := $(shell find $(MODULES_DIR)/jv1080-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+ROLAND_SXX0_EDITOR_SRC := $(shell find $(MODULES_DIR)/roland-sxx0-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+AUDIOTOOLS_CLI_SRC     := $(shell find $(MODULES_DIR)/audiotools-cli/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
 .PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland
 
@@ -342,6 +342,25 @@ $(INSTALL_STAMP): pnpm-lock.yaml
 	@touch $@
 
 # ---------------------------------------------------------------------------
+# HOW SOURCE CHANGE DETECTION WORKS
+# ---------------------------------------------------------------------------
+#
+# Each stamp target (e.g., $(EDITOR_CORE)) depends on its module's source
+# files via the *_SRC variables defined above. Make compares the timestamp
+# of every .ts, .tsx, and .css file against the stamp file. If ANY source
+# file is newer, Make rebuilds that module automatically.
+#
+# This means:
+#   - `make` alone is sufficient for routine development.
+#   - Do NOT delete .build-stamp files to force a rebuild — Make already
+#     detects source changes. Deleting stamps is unnecessary and wasteful.
+#   - `make clean && make` exists for full rebuilds from scratch (e.g.,
+#     after changing tsconfig, upgrading dependencies, or switching branches).
+#     It is NOT needed for routine source file edits.
+#
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
 # Layer 0 — no workspace dependencies
 # ---------------------------------------------------------------------------
 
@@ -387,8 +406,6 @@ $(SAMPLER_ATTIC): $(INSTALL_STAMP) $(SAMPLER_ATTIC_SRC)
 $(SAMPLE_CHOPPER): $(INSTALL_STAMP) $(SAMPLE_CHOPPER_SRC) $(SYNTH_CORE)
 	cd $(MODULES_DIR)/sample-chopper && pnpm build
 	@touch $@
-
-SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts' -o -name '*.tsx' 2>/dev/null)
 
 $(SYNTH_CORE): $(INSTALL_STAMP) $(SYNTH_CORE_SRC)
 	cd $(MODULES_DIR)/synth-core && pnpm build
