@@ -133,6 +133,16 @@ export interface PluginLibraryBrowserProps {
 // PluginLibraryBrowser Component
 // =========================================================================
 
+/** Flatten a tree of nodes into a list of IDs in tree order (for shift-click range). */
+function flattenNodeIds(nodes: TreeNode[]): string[] {
+  const result: string[] = [];
+  for (const node of nodes) {
+    if (node.type !== 'directory') result.push(node.id);
+    if (node.children) result.push(...flattenNodeIds(node.children));
+  }
+  return result;
+}
+
 /** Flatten a tree of nodes into a list of directories for MoveDialog. */
 function flattenDirectories(nodes: TreeNode[], path: string[] = [], depth = 0): MoveDialogDirectory[] {
   const result: MoveDialogDirectory[] = [];
@@ -194,6 +204,65 @@ export function PluginLibraryBrowser({
     node: TreeNode;
   } | null>(null);
 
+  // Multi-select state
+  const [multiSelectedIds, setMultiSelectedIds] = useState<Set<string>>(new Set());
+  const [multiSelectCategoryId, setMultiSelectCategoryId] = useState<string | null>(null);
+  const lastSelectedIdRef = useRef<string | null>(null);
+
+  const handleMultiSelect = useCallback(
+    (categoryId: string, node: TreeNode, modifiers: { ctrlKey: boolean; shiftKey: boolean }) => {
+      // Multi-select only works within a single category
+      if (multiSelectCategoryId && multiSelectCategoryId !== categoryId) {
+        // Switching categories — reset
+        setMultiSelectedIds(new Set([node.id]));
+        setMultiSelectCategoryId(categoryId);
+        lastSelectedIdRef.current = node.id;
+        return;
+      }
+
+      if (modifiers.shiftKey && lastSelectedIdRef.current) {
+        // Range select: find all nodes between last selected and current
+        const nodes = categoryData[categoryId] ?? [];
+        const flatIds = flattenNodeIds(nodes);
+        const lastIdx = flatIds.indexOf(lastSelectedIdRef.current);
+        const currIdx = flatIds.indexOf(node.id);
+        if (lastIdx >= 0 && currIdx >= 0) {
+          const start = Math.min(lastIdx, currIdx);
+          const end = Math.max(lastIdx, currIdx);
+          const rangeIds = flatIds.slice(start, end + 1);
+          setMultiSelectedIds(new Set([...multiSelectedIds, ...rangeIds]));
+        }
+      } else {
+        // Toggle select (Ctrl/Cmd)
+        const next = new Set(multiSelectedIds);
+        if (next.has(node.id)) {
+          next.delete(node.id);
+        } else {
+          next.add(node.id);
+        }
+        setMultiSelectedIds(next);
+        lastSelectedIdRef.current = node.id;
+      }
+      setMultiSelectCategoryId(categoryId);
+    },
+    [categoryData, multiSelectedIds, multiSelectCategoryId],
+  );
+
+  // Plain click clears multi-selection
+  const handleSelect = useCallback(
+    (categoryId: string, node: TreeNode) => {
+      setMultiSelectedIds(new Set());
+      setMultiSelectCategoryId(null);
+      lastSelectedIdRef.current = node.id;
+      onSelectionChange({
+        categoryId,
+        node,
+        meta: node.meta ?? {},
+      });
+    },
+    [onSelectionChange],
+  );
+
   const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0 || !onFileDrop) return;
@@ -214,18 +283,6 @@ export function PluginLibraryBrowser({
       },
     }),
     [onRefresh, onCreateFolder],
-  );
-
-  // Handle node selection
-  const handleSelect = useCallback(
-    (categoryId: string, node: TreeNode) => {
-      onSelectionChange({
-        categoryId,
-        node,
-        meta: node.meta,
-      });
-    },
-    [onSelectionChange],
   );
 
   // Handle rename with category context
@@ -551,7 +608,9 @@ export function PluginLibraryBrowser({
                 onToggleExpand={(nodeId) =>
                   onToggleExpand(category.categoryId, nodeId)
                 }
+                selectedIds={multiSelectCategoryId === category.categoryId ? multiSelectedIds : undefined}
                 onSelect={(node) => handleSelect(category.categoryId, node)}
+                onMultiSelect={(node, mods) => handleMultiSelect(category.categoryId, node, mods)}
                 onDelete={
                   category.isReadOnly
                     ? undefined

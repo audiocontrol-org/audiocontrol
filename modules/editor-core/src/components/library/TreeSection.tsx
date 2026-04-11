@@ -30,10 +30,14 @@ export interface TreeSectionProps {
   expandedIds: Set<string>;
   /** Currently selected node ID */
   selectedId?: string;
+  /** Set of selected node IDs (multi-selection) */
+  selectedIds?: ReadonlySet<string>;
   /** Called when a directory is toggled */
   onToggleExpand: (nodeId: string) => void;
   /** Called when a node is selected */
   onSelect: (node: TreeNode) => void;
+  /** Called when a node is clicked with Ctrl/Cmd or Shift for multi-select */
+  onMultiSelect?: (node: TreeNode, modifiers: { ctrlKey: boolean; shiftKey: boolean }) => void;
   /** Called when a node's delete button is clicked */
   onDelete?: (node: TreeNode) => void;
   /** Called on right-click with screen position */
@@ -87,8 +91,10 @@ export function TreeSection({
   'data-testid': testId,
   expandedIds,
   selectedId,
+  selectedIds,
   onToggleExpand,
   onSelect,
+  onMultiSelect,
   onDelete,
   onContextMenu,
   onRename,
@@ -147,7 +153,9 @@ export function TreeSection({
             expandedIds={expandedIds}
             onToggleExpand={onToggleExpand}
             selectedId={selectedId}
+            selectedIds={selectedIds}
             onSelect={onSelect}
+            onMultiSelect={onMultiSelect}
             onContextMenu={onContextMenu}
             onDrop={onTreeDrop}
             onDragOver={onTreeDragOver}
