@@ -12,7 +12,6 @@ import { loadSample } from '@audiocontrol/sampler-library/browser';
 import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
 import { SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';
 import { parseWavFile } from '@/lib/wav-reader';
-import { useSampleTransfer } from '@/hooks/useSampleTransfer';
 
 // =========================================================================
 // Types
@@ -53,8 +52,6 @@ export function SendSampleDialog({
   const [hasError, setHasError] = useState(false);
   const [summary, setSummary] = useState<string | undefined>();
   const cancelledRef = useRef(false);
-
-  const { sendToDevice } = useSampleTransfer(client);
 
   const updateStep = useCallback((id: string, update: Partial<ProgressStep>) => {
     setSteps((prev) => prev.map((s) => s.id === id ? { ...s, ...update } : s));
@@ -97,7 +94,16 @@ export function SendSampleDialog({
         // Step 2: Send via SDS
         updateStep('send', { status: 'active', label: `Send to device (slot #${targetSlot})` });
 
-        await sendToDevice(targetSlot, wavInfo.samples, wavInfo.sampleRate, sampleName);
+        await client.sendSampleViaSds(targetSlot, wavInfo.samples, wavInfo.sampleRate, {
+          name: sampleName,
+          onProgress: (sdsProgress) => {
+            const pct = sdsProgress.packetsTotal > 0
+              ? Math.round((sdsProgress.packetsSent / sdsProgress.packetsTotal) * 100)
+              : 0;
+            const transferred = sdsProgress.packetsSent * 120 * 2; // approximate bytes
+            updateStep('send', { progress: pct, detail: `${formatBytes(transferred)} sent` });
+          },
+        });
 
         if (cancelledRef.current) return;
 
