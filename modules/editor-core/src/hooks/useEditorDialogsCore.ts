@@ -23,11 +23,14 @@ import {
   loadSample,
   loadSampleMeta,
   saveSample,
+  saveProgram,
   parseWav,
   createWav,
   getNestedDirectory,
   sanitizeForFilename,
   type SampleYaml,
+  type ProgramYaml,
+  type Zone,
   type TriggerMapping,
   type PlaybackConfig,
 } from '@audiocontrol/sampler-library/browser';
@@ -86,11 +89,17 @@ export interface EditorDialogStrategy {
   ): Promise<WavData | null>;
 
   /**
+   * @deprecated Use transformChopperProgram instead.
    * Transform chopper save YAML before writing to common area.
-   * Use to inject device-specific metadata (e.g., S3K drum kit config).
-   * If not provided, the YAML is saved as-is.
    */
   transformChopperYaml?(yaml: SampleYaml): SampleYaml;
+
+  /**
+   * Transform the program built from chopper output before saving.
+   * Use to inject device-specific zone metadata (e.g., S3K drum kit
+   * key mappings, mute groups). If not provided, the program is saved as-is.
+   */
+  transformChopperProgram?(program: ProgramYaml): ProgramYaml;
 }
 
 // =========================================================================
@@ -359,33 +368,53 @@ export function useEditorDialogsCore(
   const handleChopperSave = useCallback(async (payload: ChopperSavePayload) => {
     if (!libraryRoot || !chopper?.origin) return;
 
-    let yaml: SampleYaml = {
-      format: 'sample',
+    const sampleFilename = 'sample.wav';
+
+    // Build zones from slices — all zones reference the same WAV file
+    const zones: Zone[] = payload.slices.map((s, i) => {
+      const zone: Zone = {
+        sample: sampleFilename,
+        label: s.label,
+      };
+      // Assign mute groups from playback config if present
+      if (payload.playbackConfig?.muteGroups) {
+        const muteGroupValue = payload.playbackConfig.muteGroups[i];
+        if (muteGroupValue !== undefined && muteGroupValue !== 0) {
+          zone.muteGroup = muteGroupValue;
+        }
+      }
+      return zone;
+    });
+
+    let program: ProgramYaml = {
+      format: 'program',
       version: 1,
       name: payload.name,
-      file: 'sample.wav',
-      sampleRate: payload.sourceAudio.sampleRate,
-      slices: payload.slices.map((s) => ({
-        label: s.label, startSample: s.startSample, endSample: s.endSample,
-      })),
-      triggers: payload.triggers,
-      playback: payload.playbackConfig,
+      zones,
+      polyphony: payload.playbackConfig?.polyphony,
+      playbackMode: payload.playbackConfig?.playbackMode,
+      sourceInfo: {
+        sampleName: chopper.origin.name,
+      },
       modifiedAt: new Date().toISOString(),
     };
 
-    // Let strategy add device-specific metadata (e.g., S3K drum kit config)
-    if (strategy.transformChopperYaml) {
-      yaml = strategy.transformChopperYaml(yaml);
+    // Let strategy add device-specific metadata (e.g., S3K drum kit key mappings)
+    if (strategy.transformChopperProgram) {
+      program = strategy.transformChopperProgram(program);
     }
 
     const wavData = createWav(payload.sourceAudio.samples, payload.sourceAudio.sampleRate);
-    const savePath = chopper.origin.path ?? [];
 
     try {
-      await saveSample(libraryRoot, { name: payload.name, yaml, wavData }, savePath);
+      await saveProgram(libraryRoot, {
+        name: payload.name,
+        yaml: program,
+        wavFiles: [{ filename: sampleFilename, data: wavData }],
+      });
       onRefresh();
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'Failed to save chopped sample');
+      onError(err instanceof Error ? err.message : 'Failed to save chopped program');
     }
   }, [libraryRoot, chopper, strategy, onRefresh, onError]);
 
