@@ -293,10 +293,10 @@ export async function loadProgram(
 
   const programDir = await resolveProgramDir(programsDir, name);
 
-  // Load and validate program.yaml
+  // Load and validate program.yaml (single read)
   const yamlHandle = await programDir.getFileHandle('program.yaml');
   const yamlFile = await yamlHandle.getFile();
-  const result = { data: await readProgramYaml(programDir, name) };
+  const programYaml = await readProgramYaml(programDir, name);
 
   // Enumerate WAV files in samples/ subdirectory
   const wavFiles: ProgramWavFile[] = [];
@@ -305,7 +305,7 @@ export async function loadProgram(
     samplesDir = await programDir.getDirectoryHandle('samples');
   } catch {
     // No samples directory — return yaml only
-    return { yaml: result.data, wavFiles: [] };
+    return { yaml: programYaml, wavFiles: [] };
   }
 
   // Collect WAV file handles first to calculate total bytes
@@ -367,7 +367,7 @@ export async function loadProgram(
     });
   }
 
-  return { yaml: result.data, wavFiles };
+  return { yaml: programYaml, wavFiles };
 }
 
 /**
@@ -378,10 +378,5 @@ export async function getProgramDirFromProgramsDir(
   name: string,
 ): Promise<StorageDirectoryHandle> {
   const programsDir = await getProgramsDirReadOnly(root);
-  const safeName = sanitizeForFilename(name);
-  try {
-    return await programsDir.getDirectoryHandle(safeName);
-  } catch {
-    return programsDir.getDirectoryHandle(name.trim());
-  }
+  return resolveProgramDir(programsDir, name);
 }

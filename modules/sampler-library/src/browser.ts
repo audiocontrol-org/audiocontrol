@@ -208,11 +208,13 @@ export type {
 
 // Program schema exports (common area, browser-compatible)
 export {
+  SourceInfoSchema,
   ZoneSchema,
   ProgramYamlSchema,
 } from './schemas/index.js';
 
 export type {
+  SourceInfo,
   Zone,
   ProgramYaml,
   ProgramInfo,
