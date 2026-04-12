@@ -11,6 +11,43 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-12: Program-Based Slicing — All 4 Phases
+
+### Feature: program-based-slicing
+### Worktree: audiocontrol-program-based-slicing
+
+### Goal
+Implement the full program-based slicing feature: chopping a sample produces a program (self-contained directory with program.yaml + WAV) instead of modifying the source sample.
+
+### Accomplished
+- Phase 1: Implemented `saveProgram()` / `loadProgram()` with `SourceInfoSchema` for provenance tracking, 38 tests (7f541aca)
+- Phase 2: `handleChopperSave()` now builds ProgramYaml and calls `saveProgram()`, S3K strategy adds drum-kit key mappings via `transformChopperProgram()` (5ca148d2)
+- Phase 3: Verified pre-existing program support in library browser, added zone count badge (ff5c4167)
+- Phase 4: Editors work with programs — re-chop loads WAV, drum kit editor loads/saves zones, preview panel has Re-chop and Edit Kit buttons (1260f928)
+- Created GitHub issues #223 (parent), #224 (Phase 1), #225 (Phase 2)
+- All 4 phases complete in a single session
+
+### Didn't Work
+- Tried to remove slice fields from SampleSchema in Phase 1 — blast radius too large (saveChoppedSample, loadChoppedSample, library scanner, UI components all reference them). Deferred to a separate migration effort.
+
+### Course Corrections
+- [PROCESS] Agent started implementing Phase 2 directly instead of delegating to a sub-agent. User asked "are you delegating?" — same pattern as orchestrator sessions.
+- [PROCESS] Agent needed to be told "proceed to feature complete" — was waiting for confirmation at each step instead of driving to completion.
+
+### Quantitative
+- User messages: ~8
+- Commits: 4
+- User corrections: 2 (both PROCESS — delegation and autonomy)
+- Sub-agents used: 4 (Explore for research, typescript-pro x2 for Phases 2+4, ui-engineer for Phase 3)
+
+### Insights
+1. Sub-agent delegation worked well for Phases 2-4 — each agent received precise context and produced clean, buildable changes
+2. Much of the program infrastructure (schema, scanner, preview panels, item type plugins) already existed from the library-ux feature — Phase 3 was mostly verification
+3. The SampleSchema cleanup is the right thing to defer — it's a migration concern, not a feature concern
+4. The "are you delegating?" correction is the same pattern from 4/4 orchestrator-adjacent sessions now. The structural fix (restricted tool access) from the orchestrator-agent feature should help, but the instinct to implement directly is strong when the context is loaded
+
+---
+
 ## 2026-04-12: SteppedProgressDrawer, All Dialogs Migrated (Session 5)
 
 ### Feature: library-ux

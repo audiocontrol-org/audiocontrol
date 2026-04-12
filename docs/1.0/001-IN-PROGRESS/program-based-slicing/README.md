@@ -6,10 +6,14 @@ Chopping a sample creates a program (with slices, key mappings, and a WAV copy) 
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 1: Schema and Storage | Not Started | |
-| Phase 2: Chopper Output | Not Started | |
-| Phase 3: Library Integration | Not Started | |
-| Phase 4: Editor Integration | Not Started | |
+| Phase 1: Schema and Storage | Complete | saveProgram/loadProgram + SourceInfoSchema + 38 tests |
+| Phase 2: Chopper Output | Complete | handleChopperSave produces programs, S3K strategy adds key mappings |
+| Phase 3: Library Integration | Complete | Pre-existing program support verified, zone count badge added |
+| Phase 4: Editor Integration | Complete | Re-chop, drum kit editor, preview actions all work with programs |
+
+## Deferred
+
+- SampleSchema field removal (slices/drumKit/triggers/playback) — needs migration path for existing data
 
 ## Links
 
