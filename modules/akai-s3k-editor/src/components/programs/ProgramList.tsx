@@ -19,20 +19,21 @@ function ActionButton({
   title,
   children,
   danger,
+  selected,
 }: {
   onClick: (e: React.MouseEvent) => void;
   title: string;
   children: React.ReactNode;
   danger?: boolean;
+  selected?: boolean;
 }): JSX.Element {
   return (
     <button
       onClick={onClick}
       className={cn(
-        'p-0.5 rounded transition-colors',
-        danger
-          ? 'text-gray-500 hover:text-red-400'
-          : 'text-gray-500 hover:text-gray-200',
+        'ac-list-action-btn',
+        selected && 'ac-list-action-btn--selected',
+        danger && 'ac-list-action-btn--danger',
       )}
       title={title}
     >
@@ -141,8 +142,18 @@ export function ProgramList({
 
   return (
     <div className="card p-2">
-      <div className="px-2 py-1 mb-2">
+      <div className="px-2 py-1 mb-2 flex items-center justify-between">
         <span className="text-sm font-medium text-gray-300">Programs</span>
+        {onRefreshAll && (
+          <button
+            onClick={onRefreshAll}
+            disabled={isLoading}
+            className="text-gray-500 hover:text-gray-200 disabled:opacity-50 transition-colors p-0.5 rounded"
+            title="Reload all programs from device"
+          >
+            <RefreshIcon />
+          </button>
+        )}
       </div>
       <div className="ac-scroll-list space-y-1">
         {programNames.map((name, index) => {
@@ -212,6 +223,7 @@ export function ProgramList({
                     <ActionButton
                       onClick={(e) => { e.stopPropagation(); onRefresh(index); }}
                       title="Reload from device"
+                      selected={isSelected}
                     >
                       <RefreshIcon />
                     </ActionButton>
@@ -220,6 +232,7 @@ export function ProgramList({
                     <ActionButton
                       onClick={(e) => { e.stopPropagation(); onClone(index); }}
                       title="Clone program"
+                      selected={isSelected}
                     >
                       <CloneIcon />
                     </ActionButton>
@@ -227,6 +240,7 @@ export function ProgramList({
                   {onDelete && (
                     <ActionButton
                       onClick={(e) => { e.stopPropagation(); onDelete(index); }}
+                      selected={isSelected}
                       title="Delete program"
                       danger
                     >

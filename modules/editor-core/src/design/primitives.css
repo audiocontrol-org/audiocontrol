@@ -17,6 +17,14 @@
   --ac-page-list-sticky-top: calc(var(--ac-site-header-height) + var(--ac-page-header-height));
   --ac-page-list-scroll-bottom: 2.25rem;
   --ac-container-md: 42rem;
+
+  /* List item action icons — must be visible on both default and selected backgrounds */
+  --ac-action-color: rgba(255, 255, 255, 0.4);
+  --ac-action-hover: rgba(255, 255, 255, 0.85);
+  --ac-action-danger-hover: #f87171;
+  --ac-action-selected-color: rgba(255, 255, 255, 0.85);
+  --ac-action-selected-hover: #fff;
+  --ac-action-selected-danger-hover: #fca5a5;
 }
 
 .ac-page {
@@ -489,6 +497,39 @@
   display: flex;
   align-items: center;
   gap: var(--ac-space-3);
+}
+
+/* List item action buttons — uses --ac-action-* variables for selected/unselected states */
+.ac-list-action-btn {
+  display: flex;
+  align-items: center;
+  padding: 0.375rem;
+  border: none;
+  border-radius: var(--ac-radius-sm);
+  background: transparent;
+  color: var(--ac-action-color);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.ac-list-action-btn:hover {
+  color: var(--ac-action-hover);
+}
+
+.ac-list-action-btn--danger:hover {
+  color: var(--ac-action-danger-hover);
+}
+
+.ac-list-action-btn--selected {
+  color: var(--ac-action-selected-color);
+}
+
+.ac-list-action-btn--selected:hover {
+  color: var(--ac-action-selected-hover);
+}
+
+.ac-list-action-btn--selected.ac-list-action-btn--danger:hover {
+  color: var(--ac-action-selected-danger-hover);
 }
 
 /* Responsive visibility — header text collapses to icons */

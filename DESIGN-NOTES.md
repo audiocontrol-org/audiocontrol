@@ -93,6 +93,42 @@ All editors use the shared icon library at `editor-core/src/components/library/T
 
 Never use text characters (✕, ✓, ↻) or emoji for actions when an icon exists in the shared library.
 
+### Action Icon Colors on List Items
+
+Action icons on list items must be visible on both default (dark) and selected (blue) backgrounds. Use design system variables, not hardcoded Tailwind grays:
+
+| Variable | Purpose | Value |
+|----------|---------|-------|
+| `--ac-action-color` | Default state, unselected item | `rgba(255,255,255,0.4)` |
+| `--ac-action-hover` | Hover state, unselected item | `rgba(255,255,255,0.85)` |
+| `--ac-action-danger-hover` | Destructive hover, unselected | `#f87171` |
+| `--ac-action-selected-color` | Default state, selected item | `rgba(255,255,255,0.6)` |
+| `--ac-action-selected-hover` | Hover state, selected item | `#fff` |
+| `--ac-action-selected-danger-hover` | Destructive hover, selected | `#fca5a5` |
+
+Action buttons must receive a `selected` prop and switch to the selected color set when the parent item is highlighted. Never use `text-gray-500` for action icons -- it's invisible on blue backgrounds.
+
+### Action Button CSS Class
+
+Use `ac-list-action-btn` from the design system for all list item action buttons. Modifiers:
+- `ac-list-action-btn--selected` — high-contrast colors for selected (blue) backgrounds
+- `ac-list-action-btn--danger` — red hover for destructive actions
+
+The class handles color transitions via CSS variables. Never use inline `style` or JS `onMouseEnter`/`onMouseLeave` for hover colors.
+
+### Icon Color Inheritance
+
+`ac-tree-icon` sets `color: var(--ac-color-text-muted)` by default for tree node icons (folders, files). When icons are inside action buttons, they must inherit color from the button so the button's state (default/hover/selected) controls the icon color. This is handled by:
+
+```css
+.ac-list-action-btn .ac-tree-icon,
+.ac-tree-delete-btn .ac-tree-icon {
+  color: inherit;
+}
+```
+
+Never set icon color directly in a component when the icon is inside an action button. The button owns the color; the icon inherits.
+
 ---
 
 ## Connection UI
@@ -137,7 +173,7 @@ Always use CSS classes for icon sizing, never inline `style` attributes. Sizes a
 |---------|-------|------|-------|
 | Inline with text (buttons, labels) | `ac-icon` | `1.25rem` | Default. Includes `inline-block`, `vertical-align: middle`, `flex-shrink: 0` |
 | Standalone icon button (header, toolbar) | `ac-icon-lg` | `1.5rem` | Same layout properties as `ac-icon` |
-| Tree view / list item hover actions | `ac-tree-icon` | `1rem` | Compact context, always accompanied by text |
+| Tree view / list item hover actions | `ac-tree-icon` | `1.125rem` | Slightly smaller than inline, always accompanied by text |
 
 The icon classes handle alignment (`inline-block`, `vertical-align: middle`, `flex-shrink: 0`). Never override these with inline styles -- if an icon doesn't align, the fix belongs in the class, not on the element.
 
