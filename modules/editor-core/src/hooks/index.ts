@@ -1,4 +1,6 @@
 export { useErrorReporter, type ErrorReporter } from './useErrorReporter';
+export { useRefreshNotifier, type RefreshNotifier } from './useRefreshNotifier';
+export { useProgressReporter, type ProgressReporter } from './useProgressReporter';
 export { useHomePageStore, type HomePageMidiStore } from './useHomePageStore';
 export {
   useNotifications,
@@ -33,6 +35,7 @@ export {
   getNodeName,
   SAVE_DIALOG_CLOSED,
   SEND_DIALOG_CLOSED,
+  type StrategyResult,
   type LibraryOperationsStrategy,
   type LibraryOperationsResult,
   type TransferActionId,

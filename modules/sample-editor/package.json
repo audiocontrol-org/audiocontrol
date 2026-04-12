@@ -37,6 +37,7 @@
     "directory": "modules/sample-editor"
   },
   "dependencies": {
+    "@audiocontrol/editor-core": "workspace:*",
     "@audiocontrol/synth-core": "workspace:*",
     "@audiocontrol/sampler-library": "workspace:*",
     "clsx": "^2.1.0",
@@ -63,7 +64,6 @@
     }
   },
   "devDependencies": {
-    "@audiocontrol/editor-core": "workspace:^",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-tabs": "^1.0.4",
     "@testing-library/react": "^16.3.2",

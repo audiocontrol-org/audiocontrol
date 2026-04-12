@@ -460,7 +460,7 @@
 }
 
 .ac-library-browser--split {
-  min-width: 560px;
+  min-width: 35rem;
 }
 
 .ac-library-browser--split .ac-library-browser-tree {

@@ -7,11 +7,18 @@
  * - Empty state display when no nodes
  * - Wraps TreeView with section-specific callbacks
  *
- * Device-agnostic — consumers provide node data and callbacks.
+ * Device-agnostic — consumers provide node data and capability objects.
  */
 
 import React from 'react';
 import { TreeView, type TreeNode } from './TreeView';
+import type {
+  TreeSelectionCapability,
+  TreeEditCapability,
+  TreeContextMenuCapability,
+  TreeDragCapability,
+  TreeRenderCapability,
+} from '@/components/library/tree-capabilities';
 
 // =========================================================================
 // Types
@@ -34,50 +41,34 @@ export interface TreeSectionProps {
   selectedIds?: ReadonlySet<string>;
   /** Called when a directory is toggled */
   onToggleExpand: (nodeId: string) => void;
-  /** Called when a node is selected */
-  onSelect: (node: TreeNode) => void;
-  /** Called when a node is clicked with Ctrl/Cmd or Shift for multi-select */
-  onMultiSelect?: (node: TreeNode, modifiers: { ctrlKey: boolean; shiftKey: boolean }) => void;
-  /** Called when a node's delete button is clicked */
-  onDelete?: (node: TreeNode) => void;
-  /** Called on right-click with screen position */
-  onContextMenu?: (e: React.MouseEvent, node: TreeNode) => void;
+  /** Selection capabilities (select, multi-select) */
+  selection?: TreeSelectionCapability;
+  /** Editing capabilities (delete, rename, create folder) */
+  edit?: TreeEditCapability;
+  /** Context menu capability */
+  contextMenu?: TreeContextMenuCapability;
+  /** Drag-and-drop capabilities for tree nodes */
+  drag?: TreeDragCapability;
+  /** Custom rendering capabilities */
+  render?: TreeRenderCapability;
   /** Called when something is dropped on a directory node */
   onDropOnDirectory?: (targetPath: string[], dragData: unknown) => void;
-  /** Called when a node is renamed via inline editing */
-  onRename?: (node: TreeNode, newName: string) => Promise<void>;
   /** Message shown when section has no nodes */
   emptyMessage?: string;
   /** Whether the section is currently a drag target */
   isDragOver?: boolean;
-  /** Drag-over handler for the section */
+  /** Drag-over handler for the section container */
   onDragOver?: (e: React.DragEvent) => void;
-  /** Drag-enter handler for the section */
+  /** Drag-enter handler for the section container */
   onDragEnter?: (e: React.DragEvent) => void;
-  /** Drag-leave handler for the section */
+  /** Drag-leave handler for the section container */
   onDragLeave?: (e: React.DragEvent) => void;
-  /** Drop handler for the section */
+  /** Drop handler for the section container */
   onDrop?: (e: React.DragEvent) => void;
   /** Message shown in drop zone during drag */
   dropMessage?: string;
   /** Optional actions to render in the header */
   headerActions?: React.ReactNode;
-  /** Custom icon renderer for nodes */
-  renderIcon?: (node: TreeNode, isExpanded: boolean) => React.ReactNode;
-  /** Custom trailing content renderer for nodes */
-  renderTrailing?: (node: TreeNode) => React.ReactNode;
-  /** Whether inline renaming is enabled */
-  enableInlineRename?: boolean;
-  /** Called when the add-folder button is clicked on a directory */
-  onCreateFolder?: (parentNode: TreeNode) => void;
-  /** Whether nodes are draggable */
-  draggable?: boolean;
-  /** Called when drag starts on a node */
-  onDragStart?: (node: TreeNode, e: React.DragEvent) => void;
-  /** Called when something is dropped on a directory (TreeView level) */
-  onTreeDrop?: (targetNode: TreeNode, e: React.DragEvent) => void;
-  /** Called during drag-over on a directory (TreeView level) */
-  onTreeDragOver?: (targetNode: TreeNode, e: React.DragEvent) => boolean;
 }
 
 // =========================================================================
@@ -93,11 +84,11 @@ export function TreeSection({
   selectedId,
   selectedIds,
   onToggleExpand,
-  onSelect,
-  onMultiSelect,
-  onDelete,
-  onContextMenu,
-  onRename,
+  selection,
+  edit,
+  contextMenu,
+  drag,
+  render,
   emptyMessage = 'No items',
   isDragOver,
   onDragOver,
@@ -106,14 +97,6 @@ export function TreeSection({
   onDrop,
   dropMessage,
   headerActions,
-  renderIcon,
-  renderTrailing,
-  enableInlineRename,
-  onCreateFolder,
-  draggable,
-  onDragStart,
-  onTreeDrop,
-  onTreeDragOver,
 }: TreeSectionProps): JSX.Element {
   const sectionClasses = [
     'ac-tree-section',
@@ -135,7 +118,7 @@ export function TreeSection({
         <span className="ac-tree-section-title">{title}</span>
         {isDragOver && dropMessage && (
           <span className="ac-tree-section-drop-hint">
-            — {dropMessage}
+            &mdash; {dropMessage}
           </span>
         )}
         {headerActions && (
@@ -154,19 +137,11 @@ export function TreeSection({
             onToggleExpand={onToggleExpand}
             selectedId={selectedId}
             selectedIds={selectedIds}
-            onSelect={onSelect}
-            onMultiSelect={onMultiSelect}
-            onContextMenu={onContextMenu}
-            onDrop={onTreeDrop}
-            onDragOver={onTreeDragOver}
-            renderIcon={renderIcon}
-            renderTrailing={renderTrailing}
-            onDelete={onDelete}
-            onCreateFolder={onCreateFolder}
-            draggable={draggable}
-            onDragStart={onDragStart}
-            onRename={onRename}
-            enableInlineRename={enableInlineRename}
+            selection={selection}
+            edit={edit}
+            contextMenu={contextMenu}
+            drag={drag}
+            render={render}
           />
         </div>
       )}

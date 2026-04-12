@@ -454,16 +454,26 @@ export function LibraryBrowser({
           <TreeView
             nodes={nodes}
             selectedId={selectedId}
-            onSelect={handleSelect}
-            onDelete={handleDeleteClick}
-            onCreateFolder={handleCreateFolderInDirectory}
-            onContextMenu={onContextMenu}
-            renderIcon={renderIcon}
-            renderTrailing={renderTrailing}
-            draggable
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
+            selection={{
+              onSelect: handleSelect,
+            }}
+            edit={{
+              onDelete: handleDeleteClick,
+              onCreateFolder: handleCreateFolderInDirectory,
+            }}
+            contextMenu={onContextMenu ? {
+              onContextMenu,
+            } : undefined}
+            render={{
+              renderIcon,
+              renderTrailing,
+            }}
+            drag={{
+              draggable: true,
+              onDragStart: handleDragStart,
+              onTreeDragOver: handleDragOver,
+              onTreeDrop: handleDrop,
+            }}
           />
         </LibraryPanel>
       </div>

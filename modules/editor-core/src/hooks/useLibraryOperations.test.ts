@@ -15,7 +15,7 @@ describe('createTransferActionHandler', () => {
     );
 
     const result = actionHandler('samples', 'send-sample-to-device', makeNode('test', { path: ['a'] }));
-    expect(result).toBe(true);
+    expect(result).toEqual({ handled: true });
     expect(handler).toHaveBeenCalledWith('test', ['a']);
   });
 
@@ -26,13 +26,13 @@ describe('createTransferActionHandler', () => {
     );
 
     const result = actionHandler('samples', 'promote-to-common-area', makeNode('test'));
-    expect(result).toBe(false);
+    expect(result).toEqual({ handled: false });
   });
 
   it('returns false for completely unknown action IDs', () => {
     const actionHandler = createTransferActionHandler<never>({});
     const result = actionHandler('samples', 'nonexistent-action', makeNode('test'));
-    expect(result).toBe(false);
+    expect(result).toEqual({ handled: false });
   });
 
   it('restricts send-program-to-device to device-specific categories', () => {
@@ -43,12 +43,12 @@ describe('createTransferActionHandler', () => {
     );
 
     // Should handle for device-specific category
-    expect(actionHandler('s3k-programs', 'send-program-to-device', makeNode('test', { dirName: 'd' }))).toBe(true);
+    expect(actionHandler('s3k-programs', 'send-program-to-device', makeNode('test', { dirName: 'd' }))).toEqual({ handled: true });
     expect(handler).toHaveBeenCalledWith('d', 'test');
 
     // Should NOT handle for common-area category
     handler.mockClear();
-    expect(actionHandler('common-programs', 'send-program-to-device', makeNode('test'))).toBe(false);
+    expect(actionHandler('common-programs', 'send-program-to-device', makeNode('test'))).toEqual({ handled: false });
     expect(handler).not.toHaveBeenCalled();
   });
 
@@ -60,18 +60,18 @@ describe('createTransferActionHandler', () => {
     );
 
     // Should handle for common-area
-    expect(actionHandler('common-programs', 'import-instrument', makeNode('test', { directoryName: 'd' }))).toBe(true);
+    expect(actionHandler('common-programs', 'import-instrument', makeNode('test', { directoryName: 'd' }))).toEqual({ handled: true });
 
     // Should NOT handle for device-specific
     handler.mockClear();
-    expect(actionHandler('s3k-programs', 'import-instrument', makeNode('test'))).toBe(false);
+    expect(actionHandler('s3k-programs', 'import-instrument', makeNode('test'))).toEqual({ handled: false });
     expect(handler).not.toHaveBeenCalled();
   });
 
   it('empty handler map returns false for all actions', () => {
     const actionHandler = createTransferActionHandler<never>({});
-    expect(actionHandler('samples', 'send-sample-to-device', makeNode('test'))).toBe(false);
-    expect(actionHandler('samples', 'import-drum-kit', makeNode('test'))).toBe(false);
-    expect(actionHandler('samples', 'promote-to-common-area', makeNode('test'))).toBe(false);
+    expect(actionHandler('samples', 'send-sample-to-device', makeNode('test'))).toEqual({ handled: false });
+    expect(actionHandler('samples', 'import-drum-kit', makeNode('test'))).toEqual({ handled: false });
+    expect(actionHandler('samples', 'promote-to-common-area', makeNode('test'))).toEqual({ handled: false });
   });
 });

@@ -133,9 +133,3 @@ export const useEditorStore = create<EditorStore>((set) => ({
       lastHardwareChange: { type: null, index: null, timestamp: 0 },
     }),
 }));
-
-/**
- * Legacy alias for backward compatibility.
- * @deprecated Use useEditorStore instead.
- */
-export const useS330Store = useEditorStore;

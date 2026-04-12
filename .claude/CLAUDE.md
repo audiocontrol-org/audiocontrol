@@ -266,6 +266,16 @@ Bad code actively attracts more bad code. Agents and humans learn patterns from 
 - Use `pnpm` for all package operations
 - Use `tsx` for running TypeScript (not `ts-node`)
 
+## Design System
+
+**Read [DESIGN-SYSTEM.md](/DESIGN-SYSTEM.md) before building or modifying any UI component, dialog, layout, or shared interface.** It is the single source of truth for:
+
+- **Typed capability contracts** — ErrorReporter, RefreshNotifier, ProgressReporter, StrategyResult. No bare `onError?` callbacks; use the typed interfaces.
+- **Dialog components** — which component to use for confirmations, progress, forms, renames. Never use `window.confirm`, `window.alert`, or `window.prompt`.
+- **Tree capability interfaces** — TreeSelectionCapability, TreeEditCapability, TreeContextMenuCapability, TreeDragCapability, TreeRenderCapability. No bare callback bags on tree components.
+- **Layout conventions** — flex ratios and design tokens only, no hardcoded pixel widths.
+- **Contract enforcement rules** — compiler-enforced contracts, no optional callback bags, no duplicated types, loud failure over silent no-ops.
+
 ## Sub-Agent Delegation
 
 Delegate to sub-agents proactively — don't wait for the user to ask. The main agent should orchestrate; sub-agents should do the work.

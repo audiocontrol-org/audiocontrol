@@ -106,10 +106,8 @@ export function useS3kTransferCallbacks({
   );
 
   const handleRenameDeviceSample = useCallback(
-    async (index: number, currentName: string) => {
+    async (index: number, newName: string) => {
       if (!client) return;
-      const newName = window.prompt('Rename sample:', currentName.trim());
-      if (!newName || newName.trim() === currentName.trim()) return;
       try {
         await client.renameSample(index, newName.trim());
         await refreshDevice();
@@ -121,10 +119,8 @@ export function useS3kTransferCallbacks({
   );
 
   const handleRenameDeviceProgram = useCallback(
-    async (index: number, currentName: string) => {
+    async (index: number, newName: string) => {
       if (!client) return;
-      const newName = window.prompt('Rename program:', currentName.trim());
-      if (!newName || newName.trim() === currentName.trim()) return;
       try {
         await client.renameProgram(index, newName.trim());
         await refreshDevice();

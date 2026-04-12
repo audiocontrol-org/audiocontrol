@@ -6,6 +6,7 @@
 import { createReadStream, createWriteStream } from 'fs';
 import { stat, mkdir, unlink, utimes } from 'fs/promises';
 import { dirname, join } from 'pathe';
+import type { BackupProgress } from '@/lib/types';
 
 /**
  * Options for local backup operations
@@ -19,22 +20,6 @@ export interface LocalBackupOptions {
   incremental?: boolean;
   /** Progress callback invoked during backup */
   onProgress?: (progress: BackupProgress) => void;
-}
-
-/**
- * Progress information during backup
- */
-export interface BackupProgress {
-  /** Current file being processed */
-  currentFile: string;
-  /** Bytes processed so far */
-  bytesProcessed: number;
-  /** Total bytes to process */
-  totalBytes: number;
-  /** Files processed so far */
-  filesProcessed: number;
-  /** Total files to process */
-  totalFiles: number;
 }
 
 /**

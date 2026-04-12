@@ -6,8 +6,8 @@
  */
 
 import type { SVGProps } from 'react';
-
-export type VfdGlowVariant = 'default' | 'subtle' | 'intense';
+import type { VfdGlowVariant } from '@/components/svg/vfd-types';
+export type { VfdGlowVariant } from '@/components/svg/vfd-types';
 
 interface VfdGlowPathProps extends SVGProps<SVGPathElement> {
   /** Glow intensity variant */

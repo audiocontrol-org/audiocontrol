@@ -8,7 +8,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useMidiStore } from '@/stores/midiStore';
-import { useS330Store } from '@/stores/editorStore';
+import { useEditorStore } from '@/stores/editorStore';
 import {
   isDT1Message,
   parseDT1Message,
@@ -25,7 +25,7 @@ export function useParameterListener(
 ): void {
   const adapter = useMidiStore((state) => state.adapter);
   const deviceId = useMidiStore((state) => state.deviceId);
-  const notifyHardwareChange = useS330Store((state) => state.notifyHardwareChange);
+  const notifyHardwareChange = useEditorStore((state) => state.notifyHardwareChange);
 
   // Use ref for callback to avoid re-registering listener on every render
   const callbackRef = useRef(onParameterChange);

@@ -36,6 +36,8 @@
     "@audiocontrol/sample-chopper": "workspace:*",
     "@audiocontrol/sampler-library": "workspace:*",
     "@radix-ui/react-slider": "^1.1.2",
+    "clsx": "^2.1.0",
+    "tailwind-merge": "^2.2.0",
     "yaml": "^2.8.3",
     "zustand": "^4.4.7"
   },

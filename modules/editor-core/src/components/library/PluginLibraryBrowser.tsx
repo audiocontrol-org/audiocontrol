@@ -520,8 +520,8 @@ export function PluginLibraryBrowser({
           label: `Delete ${count} items`,
           danger: true,
           onClick: () => {
-            const confirmed = window.confirm(`Delete ${count} items? This cannot be undone.`);
-            if (!confirmed) return;
+            // Batch delete is triggered from a context menu — the user already
+            // chose "Delete N items" deliberately. No second confirmation needed.
             const data = categoryData[categoryId] ?? [];
             const allNodes = flattenAllNodes(data);
             const selected = allNodes.filter((n) => multiSelectedIds.has(n.id));
@@ -835,119 +835,119 @@ export function PluginLibraryBrowser({
                   onToggleExpand(category.categoryId, nodeId)
                 }
                 selectedIds={multiSelectCategoryId === category.categoryId ? multiSelectedIds : undefined}
-                onSelect={(node) => handleSelect(category.categoryId, node)}
-                onMultiSelect={(node, mods) => handleMultiSelect(category.categoryId, node, mods)}
-                onDelete={
-                  category.isReadOnly
-                    ? undefined
-                    : handleDelete(category.categoryId)
-                }
-                onContextMenu={handleContextMenu(category.categoryId)}
-                onRename={
-                  supportsRename(category.categoryId)
+                selection={{
+                  onSelect: (node) => handleSelect(category.categoryId, node),
+                  onMultiSelect: (node, mods) => handleMultiSelect(category.categoryId, node, mods),
+                }}
+                edit={category.isReadOnly ? undefined : {
+                  onDelete: handleDelete(category.categoryId),
+                  onRename: supportsRename(category.categoryId)
                     ? handleRename(category.categoryId)
-                    : undefined
-                }
-                enableInlineRename={supportsRename(category.categoryId)}
+                    : undefined,
+                  onCreateFolder: (parentNode) =>
+                    setCreateFolderDrawer({
+                      open: true,
+                      categoryId: category.categoryId,
+                      parentPath: [...(parentNode.meta?.path as string[] ?? []), parentNode.name],
+                    }),
+                  enableInlineRename: supportsRename(category.categoryId),
+                }}
+                contextMenu={{
+                  onContextMenu: handleContextMenu(category.categoryId),
+                }}
+                drag={{
+                  draggable: isDraggable(category.categoryId),
+                  onDragStart: (node, e) => {
+                    const nodePath = (node.meta as Record<string, unknown>)?.path as string[] ?? [];
+                    const payload: LibraryDragPayload = {
+                      categoryId: category.categoryId,
+                      nodeId: node.id,
+                      nodeName: node.name,
+                      nodeType: node.type,
+                      sourcePath: nodePath,
+                      meta: node.meta ?? {},
+                    };
+                    activeDragRef.current = payload;
+                    e.dataTransfer.setData(LIBRARY_ITEM_MIME, JSON.stringify(payload));
+                    e.dataTransfer.setData(`${LIBRARY_ITEM_MIME}/${node.type}`, '');
+                    e.dataTransfer.effectAllowed = 'copyMove';
+                  },
+                  onTreeDragOver: (targetNode, e) => {
+                    // Accept library-item drags for same-category move
+                    if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) {
+                      const drag = activeDragRef.current;
+                      if (drag) {
+                        // Don't accept if dropping onto the item's current parent
+                        const targetPath = [...((targetNode.meta as Record<string, unknown>)?.path as string[] ?? []), targetNode.name];
+                        if (drag.sourcePath.join('/') === targetPath.join('/')) return false;
+                        // Don't accept if dropping onto itself or a descendant
+                        const sourceFullPath = [...drag.sourcePath, drag.nodeName].join('/');
+                        if (targetPath.join('/').startsWith(sourceFullPath)) return false;
+                      }
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      return true;
+                    }
+                    // Accept external drops (disk items, OS files)
+                    if (onExternalDrop && e.dataTransfer.types.length > 0) {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'copy';
+                      return true;
+                    }
+                    return false;
+                  },
+                  onTreeDrop: (node, e) => {
+                    setDropTargetCategory(null);
+                    setDropIsMove(false);
+                    activeDragRef.current = null;
+                    const nodePath = (node.meta?.path as string[] | undefined) ?? [];
+                    const targetPath = [...nodePath, node.name];
+
+                    // Library item move within same category
+                    const raw = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
+                    if (raw) {
+                      const payload = JSON.parse(raw) as LibraryDragPayload;
+                      if (payload.categoryId === category.categoryId) {
+                        // Batch move if the dragged item is part of a multi-selection
+                        if (multiSelectedIds.size > 1 && multiSelectedIds.has(payload.nodeId) && onBatchMove) {
+                          const data = categoryData[category.categoryId] ?? [];
+                          const allNodes = flattenAllNodes(data);
+                          const selected = allNodes.filter((n) => multiSelectedIds.has(n.id));
+                          void onBatchMove(category.categoryId, selected, targetPath);
+                          setMultiSelectedIds(new Set());
+                          setMultiSelectCategoryId(null);
+                        } else {
+                          void onMove(category.categoryId, {
+                            id: payload.nodeId,
+                            name: payload.nodeName,
+                            type: payload.nodeType,
+                            children: [],
+                            meta: { path: payload.sourcePath },
+                          }, targetPath);
+                        }
+                      }
+                      return;
+                    }
+
+                    // External drop
+                    if (onExternalDrop) {
+                      onExternalDrop(category.categoryId, e.dataTransfer, targetPath);
+                    }
+                  },
+                }}
+                render={{
+                  renderIcon: renderIcon(category.categoryId),
+                  renderTrailing: renderTrailing(category.categoryId),
+                }}
                 emptyMessage={category.emptyMessage}
                 dropMessage={dropIsMove ? 'Move to top level' : (category.dropMessage ?? 'Drop to add')}
                 isDragOver={dropTargetCategory === category.categoryId}
                 onDragOver={handleSectionDragOver(category.categoryId)}
                 onDragLeave={handleSectionDragLeave()}
                 onDrop={handleSectionDrop(category.categoryId)}
-                onTreeDragOver={(targetNode, e) => {
-                  // Accept library-item drags for same-category move
-                  if (e.dataTransfer.types.includes(LIBRARY_ITEM_MIME)) {
-                    const drag = activeDragRef.current;
-                    if (drag) {
-                      // Don't accept if dropping onto the item's current parent
-                      const targetPath = [...((targetNode.meta as Record<string, unknown>)?.path as string[] ?? []), targetNode.name];
-                      if (drag.sourcePath.join('/') === targetPath.join('/')) return false;
-                      // Don't accept if dropping onto itself or a descendant
-                      const sourceFullPath = [...drag.sourcePath, drag.nodeName].join('/');
-                      if (targetPath.join('/').startsWith(sourceFullPath)) return false;
-                    }
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'move';
-                    return true;
-                  }
-                  // Accept external drops (disk items, OS files)
-                  if (onExternalDrop && e.dataTransfer.types.length > 0) {
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = 'copy';
-                    return true;
-                  }
-                  return false;
-                }}
-                onTreeDrop={(node, e) => {
-                  setDropTargetCategory(null);
-                  setDropIsMove(false);
-                  activeDragRef.current = null;
-                  const nodePath = (node.meta?.path as string[] | undefined) ?? [];
-                  const targetPath = [...nodePath, node.name];
-
-                  // Library item move within same category
-                  const raw = e.dataTransfer.getData(LIBRARY_ITEM_MIME);
-                  if (raw) {
-                    const payload = JSON.parse(raw) as LibraryDragPayload;
-                    if (payload.categoryId === category.categoryId) {
-                      // Batch move if the dragged item is part of a multi-selection
-                      if (multiSelectedIds.size > 1 && multiSelectedIds.has(payload.nodeId) && onBatchMove) {
-                        const data = categoryData[category.categoryId] ?? [];
-                        const allNodes = flattenAllNodes(data);
-                        const selected = allNodes.filter((n) => multiSelectedIds.has(n.id));
-                        void onBatchMove(category.categoryId, selected, targetPath);
-                        setMultiSelectedIds(new Set());
-                        setMultiSelectCategoryId(null);
-                      } else {
-                        void onMove(category.categoryId, {
-                          id: payload.nodeId,
-                          name: payload.nodeName,
-                          type: payload.nodeType,
-                          children: [],
-                          meta: { path: payload.sourcePath },
-                        }, targetPath);
-                      }
-                    }
-                    return;
-                  }
-
-                  // External drop
-                  if (onExternalDrop) {
-                    onExternalDrop(category.categoryId, e.dataTransfer, targetPath);
-                  }
-                }}
                 headerActions={category.renderHeaderActions?.(
                   createCategoryCallbacks(category.categoryId),
                 )}
-                renderIcon={renderIcon(category.categoryId)}
-                renderTrailing={renderTrailing(category.categoryId)}
-                draggable={isDraggable(category.categoryId)}
-                onDragStart={(node, e) => {
-                  const nodePath = (node.meta as Record<string, unknown>)?.path as string[] ?? [];
-                  const payload: LibraryDragPayload = {
-                    categoryId: category.categoryId,
-                    nodeId: node.id,
-                    nodeName: node.name,
-                    nodeType: node.type,
-                    sourcePath: nodePath,
-                    meta: node.meta ?? {},
-                  };
-                  activeDragRef.current = payload;
-                  e.dataTransfer.setData(LIBRARY_ITEM_MIME, JSON.stringify(payload));
-                  e.dataTransfer.setData(`${LIBRARY_ITEM_MIME}/${node.type}`, '');
-                  e.dataTransfer.effectAllowed = 'copyMove';
-                }}
-                onCreateFolder={
-                  category.isReadOnly
-                    ? undefined
-                    : (parentNode) =>
-                        setCreateFolderDrawer({
-                          open: true,
-                          categoryId: category.categoryId,
-                          parentPath: [...(parentNode.meta?.path as string[] ?? []), parentNode.name],
-                        })
-                }
               />
             ))}
           </div>
