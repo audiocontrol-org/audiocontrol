@@ -7,15 +7,15 @@
  * device programs, device samples, and directories.
  *
  * Action buttons:
- * - "Send to Device" — triggers SDS transfer from library to device (samples)
- * - "Save to Library" — triggers export from device to library (samples, programs)
- * - "Send to Device" — triggers import from library to device (S3K programs)
- * - "Import as Drum Program" — imports drum kit slices as program + samples
- * - "Import to Device" — converts common-area program zones to S3K keygroups
- * - "Open in Loop Editor" — opens loop point editor for samples
- * - "Open in Editor" — opens sample editor for destructive editing
- * - "Chop into Drum Kit" — opens sample chopper for slicing into drum kit
- * - "Edit Kit" — opens standalone drum kit editor for metadata/pad editing
+ * - "Send to Device" -- triggers SDS transfer from library to device (samples)
+ * - "Save to Library" -- triggers export from device to library (samples, programs)
+ * - "Send to Device" -- triggers import from library to device (S3K programs)
+ * - "Import as Drum Program" -- imports drum kit slices as program + samples
+ * - "Import to Device" -- converts common-area program zones to S3K keygroups
+ * - "Open in Loop Editor" -- opens loop point editor for samples
+ * - "Open in Editor" -- opens sample editor for destructive editing
+ * - "Chop into Drum Kit" -- opens sample chopper for slicing into drum kit
+ * - "Edit Kit" -- opens standalone drum kit editor for metadata/pad editing
  */
 
 import type { ItemSelection, PreviewContext } from '@audiocontrol/editor-core';
@@ -56,8 +56,8 @@ export interface S3kPreviewCustomState {
   onOpenInSampleEditor?: (name: string, type: string, path?: string[]) => void;
   /** Callback for "Chop into Drum Kit" action (sample) */
   onOpenInChopper?: (name: string, type: string, path?: string[]) => void;
-  /** Callback for "Edit Kit" action (drum kit) */
-  onEditDrumKit?: (name: string, path?: string[]) => void;
+  /** Callback for "Edit Kit" action (drum kit or program) */
+  onEditDrumKit?: (name: string, nodeType: string, path?: string[]) => void;
   /** Callback for "Delete" action (device program) */
   onDeleteDeviceProgram?: (index: number, name: string) => void;
   /** Callback for "Delete" action (device sample) */
@@ -106,7 +106,6 @@ function DirectoryPreview({ selection }: { selection: ItemSelection }): JSX.Elem
   );
 }
 
-/** Shared editor action buttons for samples and chopped samples. */
 /** Labeled group of action buttons in the preview panel. */
 function ActionGroup({ label, children }: { label: string; children: React.ReactNode }): JSX.Element {
   return (
@@ -213,7 +212,7 @@ function SamplePreview({
   const typeLabel = meta.hasDrumKit
     ? 'Drum Kit'
     : hasSlices
-      ? 'Chopped Sample'
+      ? 'Sliced Sample'
       : 'Sample';
 
   return (
@@ -259,7 +258,7 @@ function SamplePreview({
         <ActionGroup label="Kit">
           <SecondaryAction
             label="Edit Kit"
-            onClick={() => customState.onEditDrumKit!(selection.node.name, meta.path)}
+            onClick={() => customState.onEditDrumKit!(selection.node.name, selection.node.type, meta.path)}
             testId="preview-edit-drum-kit"
           />
         </ActionGroup>
@@ -327,7 +326,7 @@ function CommonProgramPreview({
   return (
     <div className="p-4">
       <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
-      <MetaRow label="Type" value="Instrument" />
+      <MetaRow label="Type" value="Program" />
       <MetaRow label="Zones" value={meta.kitCount} />
       <MetaRow label="Path" value={pathDisplay} />
       <MetaRow label="Description" value={meta.description} />
@@ -343,6 +342,26 @@ function CommonProgramPreview({
               customState.onImportInstrument!(meta.directoryName!, meta.path ?? [], fromProgramsDir);
             }}
             testId="preview-import-instrument"
+          />
+        </ActionGroup>
+      )}
+
+      {customState?.onOpenInChopper && (
+        <ActionGroup label="Edit">
+          <SecondaryAction
+            label="Re-chop"
+            onClick={() => customState.onOpenInChopper!(selection.node.name, selection.node.type)}
+            testId="preview-open-chopper"
+          />
+        </ActionGroup>
+      )}
+
+      {customState?.onEditDrumKit && (
+        <ActionGroup label="Kit">
+          <SecondaryAction
+            label="Edit Kit"
+            onClick={() => customState.onEditDrumKit!(selection.node.name, selection.node.type)}
+            testId="preview-edit-drum-kit"
           />
         </ActionGroup>
       )}
