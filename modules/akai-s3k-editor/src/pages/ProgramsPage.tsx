@@ -150,18 +150,35 @@ export function ProgramsPage(): JSX.Element {
     setDeleteInProgress(true);
     try {
       await client.deleteProgram(indexToDelete);
+
+      // Optimistic update: remove deleted program from local state
+      const names = useProgramStore.getState().programNames.filter((_, i) => i !== indexToDelete);
+      useProgramStore.getState().setProgramNames(names);
+
+      // Clear cached header for deleted program and shift higher indices
+      const progs = [...useProgramStore.getState().programs];
+      progs.splice(indexToDelete, 1);
+      for (let i = 0; i < progs.length; i++) {
+        useProgramStore.getState().setProgram(i, progs[i]!);
+      }
+
       client.invalidateProgramCache();
-      useProgramStore.getState().invalidateCache();
       lastLoadedKeygroupProgram.current = null;
       invalidateKeygroupCache();
-      await loadProgramNames();
+
       if (selectedProgramIndex === indexToDelete) {
         selectProgram(null);
+      } else if (selectedProgramIndex !== null && selectedProgramIndex > indexToDelete) {
+        selectProgram(selectedProgramIndex - 1);
       }
       setDeletingProgramIndex(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete program';
       useEditorStore.getState().setError(message);
+      // Revert: reload from device
+      client.invalidateProgramCache();
+      useProgramStore.getState().invalidateCache();
+      await loadProgramNames();
       setDeletingProgramIndex(null);
     } finally {
       setDeleteInProgress(false);
@@ -221,6 +238,10 @@ export function ProgramsPage(): JSX.Element {
         } else if (current === 2) {
           updateStep('read', { status: 'complete' });
           updateStep('create', { status: 'active' });
+
+          // Optimistic: add clone name to list immediately
+          const names = [...useProgramStore.getState().programNames, cloneName];
+          useProgramStore.getState().setProgramNames(names);
         } else if (current === 3) {
           updateStep('create', { status: 'complete' });
           updateStep('keygroups', { status: 'active', detail: step });
@@ -228,8 +249,11 @@ export function ProgramsPage(): JSX.Element {
       });
       updateStep('keygroups', { status: 'complete' });
       setCloneComplete(true);
-      useProgramStore.getState().invalidateCache();
-      await loadProgramNames();
+
+      // Fetch the actual header for the new program
+      client.invalidateProgramCache();
+      const freshHeader = await client.fetchProgramHeader(newIndex);
+      useProgramStore.getState().setProgram(newIndex, freshHeader);
       selectProgram(newIndex);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to clone program';
@@ -237,6 +261,10 @@ export function ProgramsPage(): JSX.Element {
         s.status === 'active' ? { ...s, status: 'failed', error: message } : s,
       ));
       setCloneError(true);
+      // Revert optimistic add: reload from device
+      client.invalidateProgramCache();
+      useProgramStore.getState().invalidateCache();
+      await loadProgramNames();
     }
   }, [client, programNames, loadProgramNames, selectProgram]);
 
