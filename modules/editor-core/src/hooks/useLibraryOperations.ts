@@ -100,7 +100,7 @@ export function createTransferActionHandler<T extends TransferActionId>(
   handlers: Required<Pick<TransferHandlerMap, T>>,
   /** Category IDs that contain device-specific programs (e.g., 's3k-programs'). */
   deviceProgramCategories: string[] = [],
-): (categoryId: string, actionId: string, node: TreeNode) => boolean {
+): (categoryId: string, actionId: string, node: TreeNode) => StrategyResult {
   const handlerMap = handlers as Partial<TransferHandlerMap>;
   return (categoryId, actionId, node) => {
     const meta = (node.meta ?? {}) as Record<string, unknown>;
@@ -108,49 +108,49 @@ export function createTransferActionHandler<T extends TransferActionId>(
 
     switch (actionId) {
       case 'send-sample-to-device': {
-        if (!handlerMap['send-sample-to-device']) return false;
+        if (!handlerMap['send-sample-to-device']) return { handled: false };
         const path = (meta.path as string[] | undefined) ?? [];
         handlerMap['send-sample-to-device'](name, path);
-        return true;
+        return { handled: true };
       }
       case 'import-drum-kit': {
-        if (!handlerMap['import-drum-kit']) return false;
+        if (!handlerMap['import-drum-kit']) return { handled: false };
         const path = (meta.path as string[] | undefined) ?? [];
         handlerMap['import-drum-kit'](name, path);
-        return true;
+        return { handled: true };
       }
       case 'edit-drum-kit': {
-        if (!handlerMap['edit-drum-kit']) return false;
+        if (!handlerMap['edit-drum-kit']) return { handled: false };
         const path = (meta.path as string[] | undefined) ?? [];
         handlerMap['edit-drum-kit'](name, node.type, path);
-        return true;
+        return { handled: true };
       }
       case 'send-program-to-device': {
-        if (!handlerMap['send-program-to-device']) return false;
-        if (!deviceProgramCategories.includes(categoryId)) return false;
+        if (!handlerMap['send-program-to-device']) return { handled: false };
+        if (!deviceProgramCategories.includes(categoryId)) return { handled: false };
         const dirName = (meta.dirName as string | undefined) ?? name;
         handlerMap['send-program-to-device'](dirName, name);
-        return true;
+        return { handled: true };
       }
       case 'promote-to-common-area': {
-        if (!handlerMap['promote-to-common-area']) return false;
-        if (!deviceProgramCategories.includes(categoryId)) return false;
+        if (!handlerMap['promote-to-common-area']) return { handled: false };
+        if (!deviceProgramCategories.includes(categoryId)) return { handled: false };
         const dirName = (meta.dirName as string | undefined) ?? name;
         handlerMap['promote-to-common-area'](dirName);
-        return true;
+        return { handled: true };
       }
       case 'import-instrument': {
-        if (!handlerMap['import-instrument']) return false;
-        if (deviceProgramCategories.includes(categoryId)) return false;
+        if (!handlerMap['import-instrument']) return { handled: false };
+        if (deviceProgramCategories.includes(categoryId)) return { handled: false };
         const dirName = (meta.directoryName as string | undefined) ?? name;
         const path = (meta.path as string[] | undefined) ?? [];
         // Programs in 'programs' or 'common-programs' categories live in the programs root
         const fromProgramsDir = categoryId === 'programs' || categoryId === 'common-programs';
         handlerMap['import-instrument'](dirName, path, fromProgramsDir);
-        return true;
+        return { handled: true };
       }
       default:
-        return false;
+        return { handled: false };
     }
   };
 }
@@ -159,15 +159,23 @@ export function createTransferActionHandler<T extends TransferActionId>(
 // Strategy interface
 // =========================================================================
 
+/**
+ * Result of a strategy method: either the strategy handled the operation,
+ * or it didn't (fall through to default behavior).
+ *
+ * Replaces bare `boolean` returns which conflated "not applicable" with "failed silently."
+ */
+export type StrategyResult = { handled: true } | { handled: false };
+
 export interface LibraryOperationsStrategy {
-  /** Create a folder in a device-specific category. Return true if handled, false to use common-area create. */
-  createFolder(categoryId: string, parentPath: string[], name: string): Promise<boolean>;
-  /** Delete a device-specific item. Return true if handled, false to use common-area delete. */
-  deleteItem(categoryId: string, node: TreeNode): Promise<boolean>;
-  /** Rename a device-specific item. Return true if handled, false to use common-area rename. */
-  renameItem(categoryId: string, node: TreeNode, newName: string): Promise<boolean>;
+  /** Create a folder in a device-specific category. Return handled:true if handled, handled:false to use common-area create. */
+  createFolder(categoryId: string, parentPath: string[], name: string): Promise<StrategyResult>;
+  /** Delete a device-specific item. Return handled:true if handled, handled:false to use common-area delete. */
+  deleteItem(categoryId: string, node: TreeNode): Promise<StrategyResult>;
+  /** Rename a device-specific item. Return handled:true if handled, handled:false to use common-area rename. */
+  renameItem(categoryId: string, node: TreeNode, newName: string): Promise<StrategyResult>;
   /** Handle a context menu action. Required -- every editor must route actions. */
-  handleContextMenuAction(categoryId: string, actionId: string, node: TreeNode): boolean;
+  handleContextMenuAction(categoryId: string, actionId: string, node: TreeNode): StrategyResult;
 }
 
 // =========================================================================
@@ -261,8 +269,8 @@ export function useLibraryOperations(
       const folderName = name?.trim();
       if (!folderName) return;
       try {
-        const handled = await strategy?.createFolder?.(categoryId, parentPath, folderName);
-        if (!handled) {
+        const result = await strategy?.createFolder?.(categoryId, parentPath, folderName);
+        if (!result?.handled) {
           if (PROGRAM_CATEGORIES.has(categoryId)) {
             const dir = await getCategoryDir(libraryRoot, categoryId, parentPath);
             await dir.getDirectoryHandle(folderName, { create: true });
@@ -287,8 +295,8 @@ export function useLibraryOperations(
       const name = getNodeName(node);
       try {
         if (strategy?.deleteItem) {
-          const handled = await strategy.deleteItem(categoryId, node);
-          if (handled) {
+          const result = await strategy.deleteItem(categoryId, node);
+          if (result.handled) {
             onRefresh();
             return;
           }
@@ -341,8 +349,8 @@ export function useLibraryOperations(
       const oldDirName = getNodeName(node);
       const path = getNodePath(node);
       try {
-        const handled = await strategy?.renameItem(categoryId, node, newName);
-        if (handled) {
+        const result = await strategy?.renameItem(categoryId, node, newName);
+        if (result?.handled) {
           onRefresh();
           return;
         }
@@ -404,8 +412,8 @@ export function useLibraryOperations(
     (categoryId: string, actionId: string, node: TreeNode) => {
       // Let strategy handle transfer actions first
       if (strategy) {
-        const handled = strategy.handleContextMenuAction(categoryId, actionId, node);
-        if (handled) return;
+        const result = strategy.handleContextMenuAction(categoryId, actionId, node);
+        if (result.handled) return;
       }
 
       // Editor actions -- delegate to consumer callback
@@ -447,8 +455,8 @@ export function useLibraryOperations(
         try {
           const name = getNodeName(node);
           if (strategy?.deleteItem) {
-            const handled = await strategy.deleteItem(categoryId, node);
-            if (handled) continue;
+            const result = await strategy.deleteItem(categoryId, node);
+            if (result.handled) continue;
           }
           const path = getNodePath(node);
           if (PROGRAM_CATEGORIES.has(categoryId)) {

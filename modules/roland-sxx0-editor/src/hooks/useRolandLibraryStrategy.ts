@@ -7,7 +7,7 @@
  */
 
 import { useMemo, useCallback } from 'react';
-import { type LibraryOperationsStrategy, createTransferActionHandler, getNodePath, getNodeName } from '@audiocontrol/editor-core';
+import { type LibraryOperationsStrategy, type StrategyResult, createTransferActionHandler, getNodePath, getNodeName } from '@audiocontrol/editor-core';
 import type { TreeNode } from '@audiocontrol/editor-core';
 import type { StorageDirectoryHandle, LibraryCategory } from '@audiocontrol/sampler-library/browser';
 import {
@@ -61,7 +61,7 @@ export function useRolandLibraryStrategy({
 }: UseRolandLibraryStrategyOptions): UseRolandLibraryStrategyResult {
 
   const handleDeleteSet = useCallback(async (setName: string) => {
-    if (!libraryHandle || !window.confirm(`Delete set "${setName}"? This cannot be undone.`)) return;
+    if (!libraryHandle) return;
     await deleteSet(libraryHandle, setName);
     if (selection?.type === 'set' && selection.name === setName) setSelection(null);
   }, [libraryHandle, selection, setSelection]);
@@ -72,66 +72,66 @@ export function useRolandLibraryStrategy({
   }, [libraryHandle]);
 
   const strategy = useMemo<LibraryOperationsStrategy>(() => ({
-    async createFolder(categoryId: string, parentPath: string[], name: string): Promise<boolean> {
-      if (!libraryHandle) return false;
+    async createFolder(categoryId: string, parentPath: string[], name: string): Promise<StrategyResult> {
+      if (!libraryHandle) return { handled: false };
       // Common-area categories use the shared hook's fallback
-      if (categoryId === 'samples' || categoryId === 'programs') return false;
+      if (categoryId === 'samples' || categoryId === 'programs') return { handled: false };
       await createDirectory(libraryHandle, toLibraryCategory(categoryId), parentPath, name);
-      return true;
+      return { handled: true };
     },
 
-    async deleteItem(categoryId: string, node: TreeNode): Promise<boolean> {
-      if (!libraryHandle) return false;
+    async deleteItem(categoryId: string, node: TreeNode): Promise<StrategyResult> {
+      if (!libraryHandle) return { handled: false };
 
       const path = getNodePath(node);
       const name = getNodeName(node);
 
       // Common-area categories are not device-specific — let shared hook handle them
       if (categoryId === 'samples' || categoryId === 'programs') {
-        return false;
+        return { handled: false };
       }
 
       if (node.type === 'directory') {
         await deleteDirectory(libraryHandle, toLibraryCategory(categoryId), path, true);
-        return true;
+        return { handled: true };
       }
       if (node.type === 'tone') {
         await deleteIndividualTone(libraryHandle, name, path);
         if (selection?.type === 'individualTone' && selection.name === name) setSelection(null);
-        return true;
+        return { handled: true };
       }
       if (node.type === 'patch') {
         await deleteIndividualPatch(libraryHandle, name, path);
         if (selection?.type === 'individualPatch' && selection.name === name) setSelection(null);
-        return true;
+        return { handled: true };
       }
-      return false;
+      return { handled: false };
     },
 
-    async renameItem(categoryId: string, node: TreeNode, newName: string): Promise<boolean> {
-      if (!libraryHandle) return false;
+    async renameItem(categoryId: string, node: TreeNode, newName: string): Promise<StrategyResult> {
+      if (!libraryHandle) return { handled: false };
 
       const path = getNodePath(node);
       const oldName = getNodeName(node);
 
       // Common-area categories are not device-specific — let shared hook handle them
       if (categoryId === 'samples' || categoryId === 'programs') {
-        return false;
+        return { handled: false };
       }
 
       if (node.type === 'directory') {
         await renameDirectory(libraryHandle, toLibraryCategory(categoryId), [...path, oldName], newName);
-        return true;
+        return { handled: true };
       }
       if (node.type === 'tone') {
         await renameIndividualTone(libraryHandle, oldName, newName, path);
-        return true;
+        return { handled: true };
       }
       if (node.type === 'patch') {
         await renameIndividualPatch(libraryHandle, oldName, newName, path);
-        return true;
+        return { handled: true };
       }
-      return false;
+      return { handled: false };
     },
 
     // Roland declares no transfer actions (empty handler map).

@@ -26,7 +26,7 @@ describe('TreeSection', () => {
         category="samples"
         expandedIds={new Set()}
         onToggleExpand={() => {}}
-        onSelect={() => {}}
+        selection={{ onSelect: () => {} }}
       />,
     );
     expect(html).toContain('My Section');
@@ -42,7 +42,7 @@ describe('TreeSection', () => {
         category="samples"
         expandedIds={new Set()}
         onToggleExpand={() => {}}
-        onSelect={() => {}}
+        selection={{ onSelect: () => {} }}
       />,
     );
     expect(html).toContain('Samples');
@@ -57,7 +57,7 @@ describe('TreeSection', () => {
         category="samples"
         expandedIds={new Set()}
         onToggleExpand={() => {}}
-        onSelect={() => {}}
+        selection={{ onSelect: () => {} }}
         emptyMessage="Nothing here yet"
       />,
     );
@@ -73,7 +73,7 @@ describe('TreeSection', () => {
         category="samples"
         expandedIds={new Set()}
         onToggleExpand={() => {}}
-        onSelect={() => {}}
+        selection={{ onSelect: () => {} }}
       />,
     );
     expect(html).toContain('No items');
@@ -87,7 +87,7 @@ describe('TreeSection', () => {
         category="samples"
         expandedIds={new Set()}
         onToggleExpand={() => {}}
-        onSelect={() => {}}
+        selection={{ onSelect: () => {} }}
         headerActions={<button>Add</button>}
       />,
     );
@@ -103,7 +103,7 @@ describe('TreeSection', () => {
         category="samples"
         expandedIds={new Set()}
         onToggleExpand={() => {}}
-        onSelect={() => {}}
+        selection={{ onSelect: () => {} }}
         isDragOver={true}
         dropMessage="Drop to import"
       />,
@@ -121,7 +121,7 @@ describe('TreeSection', () => {
         category="samples"
         expandedIds={new Set()}
         onToggleExpand={() => {}}
-        onSelect={() => {}}
+        selection={{ onSelect: () => {} }}
         isDragOver={true}
         dropMessage="Drop here"
       />,
@@ -137,7 +137,7 @@ describe('TreeSection', () => {
         category="samples"
         expandedIds={new Set()}
         onToggleExpand={() => {}}
-        onSelect={() => {}}
+        selection={{ onSelect: () => {} }}
         dropMessage="Drop here"
       />,
     );
@@ -153,13 +153,13 @@ describe('TreeSection', () => {
         category="my-category"
         expandedIds={new Set()}
         onToggleExpand={() => {}}
-        onSelect={() => {}}
+        selection={{ onSelect: () => {} }}
       />,
     );
     expect(html).toContain('data-category="my-category"');
   });
 
-  it('passes enableInlineRename to TreeView', () => {
+  it('passes enableInlineRename to TreeView via edit capability', () => {
     const onRename = vi.fn();
     render(
       <TreeSection
@@ -168,9 +168,12 @@ describe('TreeSection', () => {
         category="samples"
         expandedIds={new Set(['dir-1'])}
         onToggleExpand={() => {}}
-        onSelect={() => {}}
-        onRename={onRename}
-        enableInlineRename={true}
+        selection={{ onSelect: () => {} }}
+        edit={{
+          onDelete: () => {},
+          onRename,
+          enableInlineRename: true,
+        }}
       />,
     );
 
@@ -186,7 +189,7 @@ describe('TreeSection', () => {
         category="samples"
         expandedIds={new Set(['dir-1'])}
         onToggleExpand={() => {}}
-        onSelect={() => {}}
+        selection={{ onSelect: () => {} }}
       />,
     );
     expect(html).toContain('kick.wav');

@@ -6,8 +6,7 @@
  */
 
 import type { SVGProps } from 'react';
-
-export type VfdGlowVariant = 'default' | 'subtle' | 'intense';
+import type { VfdGlowVariant } from '@/components/svg/vfd-types';
 
 interface VfdGlowCircleProps extends SVGProps<SVGCircleElement> {
   /** Glow intensity variant */

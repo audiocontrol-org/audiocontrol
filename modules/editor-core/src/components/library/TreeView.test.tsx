@@ -129,22 +129,22 @@ describe('TreeView', () => {
     expect(html).toContain('Deep File');
   });
 
-  it('renders add-folder button on directory nodes when onCreateFolder is provided', () => {
+  it('renders add-folder button on directory nodes when edit.onCreateFolder is provided', () => {
     const html = renderToStaticMarkup(
-      <TreeView nodes={sampleTree} onCreateFolder={() => {}} />,
+      <TreeView nodes={sampleTree} edit={{ onDelete: () => {}, onCreateFolder: () => {} }} />,
     );
     expect(html).toContain('ac-tree-add-btn');
     expect(html).toContain('New folder in Samples');
   });
 
-  it('does not render add-folder button when onCreateFolder is omitted', () => {
+  it('does not render add-folder button when edit is omitted', () => {
     const html = renderToStaticMarkup(<TreeView nodes={sampleTree} />);
     expect(html).not.toContain('ac-tree-add-btn');
   });
 
   it('does not render add-folder button on non-directory nodes', () => {
     const html = renderToStaticMarkup(
-      <TreeView nodes={sampleTree} onCreateFolder={() => {}} />,
+      <TreeView nodes={sampleTree} edit={{ onDelete: () => {}, onCreateFolder: () => {} }} />,
     );
     // hihat.wav is a file, should not have add button
     expect(html).not.toContain('New folder in hihat.wav');
@@ -153,14 +153,14 @@ describe('TreeView', () => {
   describe('inline rename', () => {
     it('does not render rename input when enableInlineRename is false', () => {
       const html = renderToStaticMarkup(
-        <TreeView nodes={sampleTree} onRename={async () => {}} />,
+        <TreeView nodes={sampleTree} edit={{ onDelete: () => {}, onRename: async () => {} }} />,
       );
       expect(html).not.toContain('ac-tree-rename-input');
     });
 
     it('does not render rename input when onRename is not provided', () => {
       const html = renderToStaticMarkup(
-        <TreeView nodes={sampleTree} enableInlineRename />,
+        <TreeView nodes={sampleTree} edit={{ onDelete: () => {}, enableInlineRename: true }} />,
       );
       expect(html).not.toContain('ac-tree-rename-input');
     });
@@ -170,8 +170,7 @@ describe('TreeView', () => {
       render(
         <TreeView
           nodes={sampleTree}
-          onRename={onRename}
-          enableInlineRename
+          edit={{ onDelete: () => {}, onRename, enableInlineRename: true }}
         />,
       );
 
@@ -188,8 +187,7 @@ describe('TreeView', () => {
       render(
         <TreeView
           nodes={sampleTree}
-          onRename={onRename}
-          enableInlineRename
+          edit={{ onDelete: () => {}, onRename, enableInlineRename: true }}
         />,
       );
 
@@ -208,8 +206,7 @@ describe('TreeView', () => {
       render(
         <TreeView
           nodes={sampleTree}
-          onRename={onRename}
-          enableInlineRename
+          edit={{ onDelete: () => {}, onRename, enableInlineRename: true }}
         />,
       );
 
@@ -233,8 +230,7 @@ describe('TreeView', () => {
       render(
         <TreeView
           nodes={sampleTree}
-          onRename={onRename}
-          enableInlineRename
+          edit={{ onDelete: () => {}, onRename, enableInlineRename: true }}
         />,
       );
 
@@ -252,8 +248,7 @@ describe('TreeView', () => {
       render(
         <TreeView
           nodes={sampleTree}
-          onRename={onRename}
-          enableInlineRename
+          edit={{ onDelete: () => {}, onRename, enableInlineRename: true }}
         />,
       );
 
@@ -274,8 +269,7 @@ describe('TreeView', () => {
       render(
         <TreeView
           nodes={sampleTree}
-          onRename={onRename}
-          enableInlineRename
+          edit={{ onDelete: () => {}, onRename, enableInlineRename: true }}
         />,
       );
 
@@ -301,8 +295,7 @@ describe('TreeView', () => {
       render(
         <TreeView
           nodes={sampleTree}
-          onRename={onRename}
-          enableInlineRename
+          edit={{ onDelete: () => {}, onRename, enableInlineRename: true }}
         />,
       );
 

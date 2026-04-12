@@ -2,25 +2,11 @@
  * Utility functions
  */
 
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+export { cn } from '@audiocontrol/editor-core';
 
-/**
- * Merge Tailwind classes with clsx
- */
-export function cn(...inputs: ClassValue[]): string {
-  return twMerge(clsx(inputs));
-}
-
-/**
- * Format MIDI note number as note name
- */
-export function midiNoteToName(note: number): string {
-  const noteNames = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-  const octave = Math.floor(note / 12) - 1;
-  const noteName = noteNames[note % 12];
-  return `${noteName}${octave}`;
-}
+// Re-export midiNoteToName from canonical location for consumers
+// that import it from this module.
+export { midiNoteToName } from '@audiocontrol/editor-core';
 
 /**
  * Debounce function
@@ -47,8 +33,8 @@ export function clamp(value: number, min: number, max: number): number {
  * Format S-330 patch/tone index as display number
  *
  * S-330 uses bank+slot numbering in groups of 8:
- * - Index 0-7 → 11-18 (bank 1)
- * - Index 8-15 → 21-28 (bank 2)
+ * - Index 0-7 -> 11-18 (bank 1)
+ * - Index 8-15 -> 21-28 (bank 2)
  * - etc.
  */
 export function formatS330Number(index: number): string {

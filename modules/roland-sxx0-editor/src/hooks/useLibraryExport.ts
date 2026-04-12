@@ -112,7 +112,7 @@ export function useLibraryExport({
 
     const tone = tones[data.index];
     if (!tone) {
-      window.alert('Tone not loaded from device. Try refreshing device data first.');
+      throw new Error('Tone not loaded from device. Try refreshing device data first.');
       return;
     }
 
@@ -130,7 +130,7 @@ export function useLibraryExport({
 
     const patch = patches[data.index];
     if (!patch) {
-      window.alert('Patch not loaded from device. Try refreshing device data first.');
+      throw new Error('Patch not loaded from device. Try refreshing device data first.');
       return;
     }
 
