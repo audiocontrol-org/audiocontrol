@@ -206,7 +206,6 @@ export function ImportInstrumentDialog({
 
     void (async () => {
       try {
-        console.log(`[ImportInstrument] loading: dirName=${programDirName}, path=${JSON.stringify(programPath)}, fromProgramsDir=${fromProgramsDir}`);
         const meta = fromProgramsDir
           ? await loadProgramFromProgramsDir(libraryRoot, programDirName)
           : await loadProgramMeta(libraryRoot, programDirName, programPath);
