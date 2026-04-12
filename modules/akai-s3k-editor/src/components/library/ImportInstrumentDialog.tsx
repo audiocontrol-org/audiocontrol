@@ -221,7 +221,12 @@ export function ImportInstrumentDialog({
       } catch (err: unknown) {
         if (cancelledRef.current) return;
         const message = err instanceof Error ? err.message : String(err);
-        setErrorMessage(message);
+        console.error(`[ImportInstrument] Failed to load "${programDirName}" (fromProgramsDir=${fromProgramsDir}, path=${JSON.stringify(programPath)}):`, err);
+        const isNotFound = err instanceof DOMException && err.name === 'NotFoundError';
+        const userMessage = isNotFound
+          ? `Program "${programDirName.trim()}" not found in library. It may have been saved in a different format or location.`
+          : message;
+        setErrorMessage(userMessage);
         setPhase('error');
       }
     })();
