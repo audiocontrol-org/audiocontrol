@@ -42,7 +42,7 @@ export function KeygroupsPage(): JSX.Element {
 
     lastLoadedProgram.current = selectedProgramIndex;
     invalidateCache();
-    selectKeygroup(null);
+    selectKeygroup(0);
     loadKeygroups(selectedProgramIndex, selectedProgram.GROUPS);
   }, [isConnected, selectedProgramIndex, selectedProgram, invalidateCache, selectKeygroup, loadKeygroups]);
 
