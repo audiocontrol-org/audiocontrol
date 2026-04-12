@@ -8,12 +8,12 @@
  * - Drum Kit Editor (edit kit metadata and per-pad config)
  * - Slice Edit Dialog (edit existing drum kit slices)
  *
- * Device-agnostic — loads WAV data from the common area by default.
+ * Device-agnostic -- loads WAV data from the common area by default.
  * Device-specific loading is handled by the EditorDialogStrategy
  * (e.g., loading Roland tones or S3K program samples).
  *
  * Editing a device-specific object saves to the common area (Zone 4).
- * This is an implicit promotion — editors produce vendor-agnostic output.
+ * This is an implicit promotion -- editors produce vendor-agnostic output.
  */
 
 import { useState, useCallback } from 'react';
@@ -22,17 +22,22 @@ import { stringify as stringifyYaml } from 'yaml';
 import {
   loadSample,
   loadSampleMeta,
+  loadProgram,
+  loadProgramMeta,
   saveSample,
+  saveProgram,
   parseWav,
   createWav,
   getNestedDirectory,
   sanitizeForFilename,
   type SampleYaml,
+  type ProgramYaml,
+  type Zone,
   type TriggerMapping,
   type PlaybackConfig,
 } from '@audiocontrol/sampler-library/browser';
 
-// Types from sample-chopper/ui — declared locally to avoid adding
+// Types from sample-chopper/ui -- declared locally to avoid adding
 // sample-chopper as a dependency of editor-core.
 
 export interface InitialSliceDefinition {
@@ -75,7 +80,7 @@ export interface WavData {
 export interface EditorDialogStrategy {
   /**
    * Load WAV data for a device-specific node type.
-   * Return null if this strategy doesn't handle the given nodeType —
+   * Return null if this strategy doesn't handle the given nodeType --
    * the shared hook will fall back to common-area loading.
    */
   loadWav(
@@ -86,11 +91,17 @@ export interface EditorDialogStrategy {
   ): Promise<WavData | null>;
 
   /**
+   * @deprecated Use transformChopperProgram instead.
    * Transform chopper save YAML before writing to common area.
-   * Use to inject device-specific metadata (e.g., S3K drum kit config).
-   * If not provided, the YAML is saved as-is.
    */
   transformChopperYaml?(yaml: SampleYaml): SampleYaml;
+
+  /**
+   * Transform the program built from chopper output before saving.
+   * Use to inject device-specific zone metadata (e.g., S3K drum kit
+   * key mappings, mute groups). If not provided, the program is saved as-is.
+   */
+  transformChopperProgram?(program: ProgramYaml): ProgramYaml;
 }
 
 // =========================================================================
@@ -138,6 +149,8 @@ export interface DrumKitEditorDialogState {
   open: boolean;
   kitName: string;
   kitPath: string[];
+  /** Node type being edited: 'sample' (legacy) or 'program'. */
+  nodeType: string;
 }
 
 // =========================================================================
@@ -156,7 +169,7 @@ export interface EditorDialogsCoreResult {
   handleOpenInLoopEditor: (name: string, nodeType: string, path?: string[]) => void;
   handleOpenInSampleEditor: (name: string, nodeType: string, path?: string[]) => void;
   handleOpenInChopper: (name: string, nodeType: string, path?: string[]) => void;
-  handleOpenDrumKitEditor: (name: string, path?: string[]) => void;
+  handleOpenDrumKitEditor: (name: string, nodeType: string, path?: string[]) => void;
 
   /**
    * Create a callback that dispatches editor action IDs to the appropriate
@@ -220,7 +233,7 @@ export function useEditorDialogsCore(
     const strategyResult = await strategy.loadWav(libraryRoot, name, nodeType, path);
     if (strategyResult) return strategyResult;
 
-    // Common-area samples all share sample.yaml + sample.wav
+    // Common-area samples: sample.yaml + sample.wav
     if (nodeType === 'sample') {
       const result = await loadSample(libraryRoot, name, path);
       const wav = parseWav(result.wavData);
@@ -230,6 +243,20 @@ export function useEditorDialogsCore(
         loopStart: result.yaml.loopStart ?? undefined,
         loopEnd: result.yaml.loopEnd ?? undefined,
         rootKey: typeof result.yaml.rootKey === 'number' ? result.yaml.rootKey : undefined,
+      };
+    }
+
+    // Common-area programs: program.yaml + samples/*.wav
+    if (nodeType === 'program') {
+      const programResult = await loadProgram(libraryRoot, name);
+      if (programResult.wavFiles.length === 0) {
+        throw new Error(`Program "${name}" has no WAV files`);
+      }
+      const firstWav = programResult.wavFiles[0];
+      const wav = parseWav(firstWav.data);
+      return {
+        samples: wav.samples,
+        sampleRate: wav.sampleRate,
       };
     }
 
@@ -326,10 +353,12 @@ export function useEditorDialogsCore(
       try {
         const wav = await loadWavData(name, nodeType, path);
 
-        // Load existing slice definitions from sample metadata (if available)
         let initialSlices: InitialSliceDefinition[] | undefined;
         let initialLabels: string | undefined;
+        let chopperSampleName = name;
+
         if (libraryRoot && nodeType === 'sample') {
+          // Load existing slice definitions from sample metadata (if available)
           try {
             const meta = await loadSampleMeta(libraryRoot, name, path);
             if (meta.slices && meta.slices.length > 0) {
@@ -339,13 +368,24 @@ export function useEditorDialogsCore(
               initialLabels = meta.slices.map((s) => s.label).join(',');
             }
           } catch {
-            // No existing slices — that's fine
+            // No existing slices -- that's fine
+          }
+        } else if (libraryRoot && nodeType === 'program') {
+          // Programs: load zone labels but no slice boundaries (zones don't
+          // store startSample/endSample). The chopper shows the waveform
+          // and the user re-slices from scratch.
+          try {
+            const programMeta = await loadProgramMeta(libraryRoot, name);
+            initialLabels = programMeta.zones.map((z) => z.label ?? '').filter(Boolean).join(',');
+            chopperSampleName = programMeta.sourceInfo?.sampleName ?? name;
+          } catch {
+            // Failed to load program metadata -- open chopper without labels
           }
         }
 
         setChopper({
           open: true, samples: wav.samples, sampleRate: wav.sampleRate,
-          sampleName: name,
+          sampleName: chopperSampleName,
           origin: { name, type: nodeType, path },
           initialSlices, initialLabels,
         });
@@ -359,33 +399,59 @@ export function useEditorDialogsCore(
   const handleChopperSave = useCallback(async (payload: ChopperSavePayload) => {
     if (!libraryRoot || !chopper?.origin) return;
 
-    let yaml: SampleYaml = {
-      format: 'sample',
+    const sampleFilename = 'sample.wav';
+
+    // Build zones from slices -- all zones reference the same WAV file
+    const zones: Zone[] = payload.slices.map((s, i) => {
+      const zone: Zone = {
+        sample: sampleFilename,
+        label: s.label,
+      };
+      // Assign mute groups from playback config if present
+      if (payload.playbackConfig?.muteGroups) {
+        const muteGroupValue = payload.playbackConfig.muteGroups[i];
+        if (muteGroupValue !== undefined && muteGroupValue !== 0) {
+          zone.muteGroup = muteGroupValue;
+        }
+      }
+      return zone;
+    });
+
+    // Resolve source sample name: for programs, use the original source
+    // sample name from the program's metadata; otherwise use the origin name.
+    const sourceSampleName = chopper.origin.type === 'program'
+      ? chopper.sampleName
+      : chopper.origin.name;
+
+    let program: ProgramYaml = {
+      format: 'program',
       version: 1,
       name: payload.name,
-      file: 'sample.wav',
-      sampleRate: payload.sourceAudio.sampleRate,
-      slices: payload.slices.map((s) => ({
-        label: s.label, startSample: s.startSample, endSample: s.endSample,
-      })),
-      triggers: payload.triggers,
-      playback: payload.playbackConfig,
+      zones,
+      polyphony: payload.playbackConfig?.polyphony,
+      playbackMode: payload.playbackConfig?.playbackMode,
+      sourceInfo: {
+        sampleName: sourceSampleName,
+      },
       modifiedAt: new Date().toISOString(),
     };
 
-    // Let strategy add device-specific metadata (e.g., S3K drum kit config)
-    if (strategy.transformChopperYaml) {
-      yaml = strategy.transformChopperYaml(yaml);
+    // Let strategy add device-specific metadata (e.g., S3K drum kit key mappings)
+    if (strategy.transformChopperProgram) {
+      program = strategy.transformChopperProgram(program);
     }
 
     const wavData = createWav(payload.sourceAudio.samples, payload.sourceAudio.sampleRate);
-    const savePath = chopper.origin.path ?? [];
 
     try {
-      await saveSample(libraryRoot, { name: payload.name, yaml, wavData }, savePath);
+      await saveProgram(libraryRoot, {
+        name: payload.name,
+        yaml: program,
+        wavFiles: [{ filename: sampleFilename, data: wavData }],
+      });
       onRefresh();
     } catch (err) {
-      onError(err instanceof Error ? err.message : 'Failed to save chopped sample');
+      onError(err instanceof Error ? err.message : 'Failed to save chopped program');
     }
   }, [libraryRoot, chopper, strategy, onRefresh, onError]);
 
@@ -394,8 +460,8 @@ export function useEditorDialogsCore(
   // ---------------------------------------------------------------------------
 
   const handleOpenDrumKitEditor = useCallback(
-    (name: string, path?: string[]) => {
-      setDrumKitEditor({ open: true, kitName: name, kitPath: path ?? [] });
+    (name: string, nodeType: string, path?: string[]) => {
+      setDrumKitEditor({ open: true, kitName: name, kitPath: path ?? [], nodeType });
     },
     [],
   );

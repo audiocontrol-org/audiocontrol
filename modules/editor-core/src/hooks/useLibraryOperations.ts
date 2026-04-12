@@ -20,7 +20,7 @@ import {
 import type { TreeNode } from '@/components/library/TreeView';
 
 // =========================================================================
-// Transfer dialog state — shared across all editors
+// Transfer dialog state -- shared across all editors
 // =========================================================================
 
 /**
@@ -62,7 +62,7 @@ export const SEND_DIALOG_CLOSED: SendToDeviceDialogState = {
 };
 
 // =========================================================================
-// Transfer action types — capability declaration system
+// Transfer action types -- capability declaration system
 // =========================================================================
 
 /** All transfer action IDs that can appear in shared item type context menus. */
@@ -82,7 +82,7 @@ export interface TransferHandlerMap {
   'send-sample-to-device': (name: string, path?: string[]) => void;
   'send-program-to-device': (dirName: string, name: string) => void;
   'import-drum-kit': (name: string, path?: string[]) => void;
-  'edit-drum-kit': (name: string, path?: string[]) => void;
+  'edit-drum-kit': (name: string, nodeType: string, path?: string[]) => void;
   'import-instrument': (dirName: string, path: string[], fromProgramsDir: boolean) => void;
   'promote-to-common-area': (dirName: string) => void;
 }
@@ -119,7 +119,7 @@ export function createTransferActionHandler<T extends TransferActionId>(
       case 'edit-drum-kit': {
         if (!handlerMap['edit-drum-kit']) return false;
         const path = (meta.path as string[] | undefined) ?? [];
-        handlerMap['edit-drum-kit'](name, path);
+        handlerMap['edit-drum-kit'](name, node.type, path);
         return true;
       }
       case 'send-program-to-device': {
@@ -163,7 +163,7 @@ export interface LibraryOperationsStrategy {
   deleteItem?(categoryId: string, node: TreeNode): Promise<boolean>;
   /** Rename a device-specific item. Return true if handled, false to use common-area rename. */
   renameItem?(categoryId: string, node: TreeNode, newName: string): Promise<boolean>;
-  /** Handle a context menu action. Required — every editor must route actions. */
+  /** Handle a context menu action. Required -- every editor must route actions. */
   handleContextMenuAction(categoryId: string, actionId: string, node: TreeNode): boolean;
 }
 
@@ -379,11 +379,11 @@ export function useLibraryOperations(
         if (handled) return;
       }
 
-      // Editor actions — delegate to consumer callback
+      // Editor actions -- delegate to consumer callback
       const editorActions = ['open-loop-editor', 'open-chopper', 'open-sample-editor'];
       if (editorActions.includes(actionId)) {
         if (!onEditorAction) {
-          throw new Error(`Editor action "${actionId}" has no handler — onEditorAction callback is missing`);
+          throw new Error(`Editor action "${actionId}" has no handler -- onEditorAction callback is missing`);
         }
         const name = getNodeName(node);
         const path = getNodePath(node);
@@ -392,12 +392,12 @@ export function useLibraryOperations(
       }
 
       // 'move' is intercepted by PluginLibraryBrowser before reaching here.
-      // If it arrives, the component didn't handle it — that's a bug.
+      // If it arrives, the component didn't handle it -- that's a bug.
       if (actionId === 'move') {
         throw new Error('Move action should be handled by PluginLibraryBrowser, not useLibraryOperations');
       }
 
-      // If we reach here, no one handled the action — this is a bug
+      // If we reach here, no one handled the action -- this is a bug
       throw new Error(
         `Unhandled context menu action "${actionId}" for category "${categoryId}", ` +
         `node type "${node.type}". Either the action should not appear in the menu, ` +

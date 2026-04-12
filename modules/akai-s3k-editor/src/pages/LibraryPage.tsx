@@ -1,5 +1,5 @@
 /**
- * Library Page — browse and manage the S3000XL sampler library.
+ * Library Page -- browse and manage the S3000XL sampler library.
  *
  * Three-column layout via PluginLibraryBrowser:
  * - Left: Device memory (programs and samples on device)
@@ -163,7 +163,7 @@ export function LibraryPage(): JSX.Element {
     const name = payload.file.name.trim();
     const libraryRoot = root;
 
-    // Save directly — no confirmation dialog
+    // Save directly -- no confirmation dialog
     setDropTransfer({ active: true, fileName: name, progress: null, error: null });
 
     (async () => {
@@ -236,7 +236,7 @@ export function LibraryPage(): JSX.Element {
   const editorDialogs = useEditorDialogs(root, refreshLibrary, handleEditorError);
 
   // -----------------------------------------------------------------------
-  // Shared library operations — must be after transfer callbacks
+  // Shared library operations -- must be after transfer callbacks
   // -----------------------------------------------------------------------
 
   const hasInitiatedScan = useRef(false);
@@ -359,9 +359,9 @@ export function LibraryPage(): JSX.Element {
         if (!canTransfer) throw new Error('Connect to device and library to import drum kits');
         drumKitTransfer.openDialog(name, path);
       },
-      'edit-drum-kit': (name, path) => {
+      'edit-drum-kit': (name, nodeType, path) => {
         if (!hasLibrary) throw new Error('Connect to library to edit drum kits');
-        editorDialogs.handleOpenDrumKitEditor(name, path);
+        editorDialogs.handleOpenDrumKitEditor(name, nodeType, path);
       },
       'import-instrument': (dirName, path, fromProgramsDir) => {
         if (!canTransfer) throw new Error('Connect to device and library to import instruments');
@@ -691,6 +691,7 @@ export function LibraryPage(): JSX.Element {
           onClose={editorDialogs.closeDrumKitEditor}
           kitName={editorDialogs.drumKitEditor.kitName}
           kitPath={editorDialogs.drumKitEditor.kitPath}
+          nodeType={editorDialogs.drumKitEditor.nodeType}
           libraryRoot={root}
           onSave={refreshLibrary}
         />

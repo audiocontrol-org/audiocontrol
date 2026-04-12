@@ -34,6 +34,7 @@ AUDIOTOOLS_CLI     := $(MODULES_DIR)/audiotools-cli/.build-stamp
 SYNTH_CORE         := $(MODULES_DIR)/synth-core/.build-stamp
 SAMPLE_EDITOR_MOD  := $(MODULES_DIR)/sample-editor/.build-stamp
 AKAI_S3K_EDITOR    := $(MODULES_DIR)/akai-s3k-editor/.build-stamp
+STANDALONE_SAMPLER := $(MODULES_DIR)/standalone-sampler/.build-stamp
 
 ALL_STAMPS := \
 	$(MIDI_CORE) $(SAMPLER_LIB) $(AUDIOTOOLS_CONFIG) $(CANONICAL_MIDI) \
@@ -42,7 +43,7 @@ ALL_STAMPS := \
 	$(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) \
 	$(SAMPLER_TRANSLATE) $(SAMPLER_BACKUP) $(SAMPLER_EXPORT) $(LOOP_EDITOR) \
 	$(D110_EDITOR) $(JV1080_EDITOR) $(ROLAND_SXX0_EDITOR) $(AUDIOTOOLS_CLI) \
-	$(SYNTH_CORE) $(SAMPLE_EDITOR_MOD) $(AKAI_S3K_EDITOR)
+	$(SYNTH_CORE) $(SAMPLE_EDITOR_MOD) $(AKAI_S3K_EDITOR) $(STANDALONE_SAMPLER)
 
 INSTALL_STAMP := node_modules/.install-stamp
 
@@ -76,6 +77,7 @@ AUDIOTOOLS_CLI_SRC     := $(shell find $(MODULES_DIR)/audiotools-cli/src -name '
 SYNTH_CORE_SRC         := $(shell find $(MODULES_DIR)/synth-core/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 SAMPLE_EDITOR_SRC      := $(shell find $(MODULES_DIR)/sample-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 AKAI_S3K_EDITOR_SRC    := $(shell find $(MODULES_DIR)/akai-s3k-editor/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
+STANDALONE_SAMPLER_SRC := $(shell find $(MODULES_DIR)/standalone-sampler/src -name '*.ts' -o -name '*.tsx' -o -name '*.css' 2>/dev/null)
 
 .PHONY: build clean clean-deps ensure-devenv ensure-playwright check-midi-server test-e2e-roland test-e2e-roland-device test-e2e-roland-library test-e2e-roland-device-library test-e2e-roland-ui test-e2e-s3k-device test-e2e-s3k-library test-e2e-s3k-scsi test-e2e-s3k-device-library check-scsi-bridge test-scsi-write-validation dev-scsi test-e2e-common-library-s3k test-e2e-common-library-roland
 
@@ -482,6 +484,10 @@ $(AKAI_S3K_EDITOR): $(EDITOR_CORE) $(LOOP_EDITOR) $(SAMPLE_CHOPPER) $(SAMPLE_EDI
 
 $(ROLAND_SXX0_EDITOR): $(EDITOR_CORE) $(LOOP_EDITOR) $(SAMPLE_CHOPPER) $(SAMPLE_EDITOR_MOD) $(SAMPLER_DEVICES) $(SAMPLER_LIBRARY) $(MIDI_CORE) $(SYNTH_CORE) $(ROLAND_SXX0_EDITOR_SRC)
 	cd $(MODULES_DIR)/roland-sxx0-editor && pnpm build
+	@touch $@
+
+$(STANDALONE_SAMPLER): $(EDITOR_CORE) $(SYNTH_CORE) $(SAMPLER_LIBRARY) $(STANDALONE_SAMPLER_SRC)
+	cd $(MODULES_DIR)/standalone-sampler && pnpm build
 	@touch $@
 
 $(AUDIOTOOLS_CLI): $(AUDIOTOOLS_CONFIG) $(LIB_DEVICE_UUID) $(SAMPLER_BACKUP) $(SAMPLER_EXPORT) $(AUDIOTOOLS_CLI_SRC)

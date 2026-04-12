@@ -11,6 +11,43 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-12: Program-Based Slicing — All 4 Phases
+
+### Feature: program-based-slicing
+### Worktree: audiocontrol-program-based-slicing
+
+### Goal
+Implement the full program-based slicing feature: chopping a sample produces a program (self-contained directory with program.yaml + WAV) instead of modifying the source sample.
+
+### Accomplished
+- Phase 1: Implemented `saveProgram()` / `loadProgram()` with `SourceInfoSchema` for provenance tracking, 38 tests (7f541aca)
+- Phase 2: `handleChopperSave()` now builds ProgramYaml and calls `saveProgram()`, S3K strategy adds drum-kit key mappings via `transformChopperProgram()` (5ca148d2)
+- Phase 3: Verified pre-existing program support in library browser, added zone count badge (ff5c4167)
+- Phase 4: Editors work with programs — re-chop loads WAV, drum kit editor loads/saves zones, preview panel has Re-chop and Edit Kit buttons (1260f928)
+- Created GitHub issues #223 (parent), #224 (Phase 1), #225 (Phase 2)
+- All 4 phases complete in a single session
+
+### Didn't Work
+- Tried to remove slice fields from SampleSchema in Phase 1 — blast radius too large (saveChoppedSample, loadChoppedSample, library scanner, UI components all reference them). Deferred to a separate migration effort.
+
+### Course Corrections
+- [PROCESS] Agent started implementing Phase 2 directly instead of delegating to a sub-agent. User asked "are you delegating?" — same pattern as orchestrator sessions.
+- [PROCESS] Agent needed to be told "proceed to feature complete" — was waiting for confirmation at each step instead of driving to completion.
+
+### Quantitative
+- User messages: ~8
+- Commits: 4
+- User corrections: 2 (both PROCESS — delegation and autonomy)
+- Sub-agents used: 4 (Explore for research, typescript-pro x2 for Phases 2+4, ui-engineer for Phase 3)
+
+### Insights
+1. Sub-agent delegation worked well for Phases 2-4 — each agent received precise context and produced clean, buildable changes
+2. Much of the program infrastructure (schema, scanner, preview panels, item type plugins) already existed from the library-ux feature — Phase 3 was mostly verification
+3. The SampleSchema cleanup is the right thing to defer — it's a migration concern, not a feature concern
+4. The "are you delegating?" correction is the same pattern from 4/4 orchestrator-adjacent sessions now. The structural fix (restricted tool access) from the orchestrator-agent feature should help, but the instinct to implement directly is strong when the context is loaded
+
+---
+
 ## 2026-04-12: SteppedProgressDrawer, All Dialogs Migrated (Session 5)
 
 ### Feature: library-ux
@@ -529,3 +566,43 @@ Add CSS file tracking to Makefile source dependencies and add inline documentati
 ### Insights
 1. Well-scoped features with clear workplans and pre-created issues make sessions fast and frictionless
 2. Small features benefit from doing all tasks in a single commit rather than splitting artificially
+
+---
+
+## 2026-04-11 / 2026-04-12: Standalone Sampler — All 4 Phases
+
+### Feature: standalone-sampler
+### Worktree: audiocontrol-standalone-sampler
+
+### Goal
+Implement the web-based software sampler from scratch: synth-core program engine, standalone-sampler module, program editor, effects, and MIDI learn.
+
+### Accomplished
+- Phase 1: Multi-keygroup program engine in synth-core — zone matcher, ADSR amp envelope, filter with envelope modulation, voice allocation with polyphony/mute groups, 27 unit tests (`481d0b70`)
+- Phase 2: New standalone-sampler Vite+React module — routing, on-screen keyboard, Web MIDI input, library browser via PluginLibraryBrowser, program load from common area (`04aa52af`, `ca459740`)
+- Phase 3: Program editor page — Zustand store for zone CRUD, parameter sections (pitch/amp/filter/range) using editor-core ParameterSlider, zone map visualization, save to library via program.yaml + WAV (`ccf4136d`)
+- Phase 4: Effects chain (reverb/delay/chorus via Web Audio), multi-timbral engine, MIDI learn store with CC routing, effects panel UI (`5f3037d9`)
+- Merged program-based-slicing branch (2x) for shared program format and late-breaking fix
+- Code review via code-reviewer agent: 2 critical, 8 warnings, 10 info findings
+- Fixed all critical/warning findings: double-cleanup race, feedback clamp, type assertions, impulse regeneration cache, zone index returns, polling removal, formatTime dedup (`cde15f5f`)
+- 73 synth-core tests pass, standalone-sampler typechecks and builds clean
+
+### Didn't Work
+- Nothing major — clean session with well-scoped workplan and pre-created issues
+
+### Course Corrections
+- None from the user this session
+
+### Quantitative
+- User messages: ~8
+- Commits: 7 (on this branch, excluding merges)
+- User corrections: 0
+- Tool calls: ~200+
+- Sub-agents launched: 7 (3 Explore, 1 code-reviewer, 1 typescript-pro, 2 other)
+
+### Insights
+1. Having a complete workplan with phased tasks and GitHub issues made the session extremely efficient — each phase was a clear deliverable
+2. Merging program-based-slicing early was the right call — the ProgramYaml schema was the foundation for everything
+3. The code review found real bugs (double-cleanup race, infinite feedback) that would have been hard to catch manually
+4. Delegating the review fixes to a typescript-pro agent worked well — 11 fixes applied correctly in one pass
+5. The user's directive to model after the S3K library page (most polished) was valuable context for the library browser integration
