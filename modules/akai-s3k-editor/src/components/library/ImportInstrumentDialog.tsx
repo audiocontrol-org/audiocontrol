@@ -206,6 +206,7 @@ export function ImportInstrumentDialog({
 
     void (async () => {
       try {
+        console.log(`[ImportInstrument] loading: dirName=${programDirName}, path=${JSON.stringify(programPath)}, fromProgramsDir=${fromProgramsDir}`);
         const meta = fromProgramsDir
           ? await loadProgramFromProgramsDir(libraryRoot, programDirName)
           : await loadProgramMeta(libraryRoot, programDirName, programPath);
@@ -229,7 +230,7 @@ export function ImportInstrumentDialog({
     return () => {
       cancelledRef.current = true;
     };
-  }, [open, libraryRoot, programDirName, programPath, deviceSampleNames]);
+  }, [open, libraryRoot, programDirName, programPath, fromProgramsDir, deviceSampleNames]);
 
   const handleImport = useCallback(async () => {
     if (!programMeta) return;

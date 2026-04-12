@@ -128,7 +128,7 @@ export function extractWavSampleRate(data: Uint8Array): number {
  * with underscores.
  */
 export function sanitizeForFilename(input: string): string {
-  return input.replace(UNSAFE_FILENAME_CHARS, '_');
+  return input.trim().replace(UNSAFE_FILENAME_CHARS, '_');
 }
 
 /**
