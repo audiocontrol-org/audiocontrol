@@ -22,7 +22,8 @@ import {
 } from '@audiocontrol/sampler-library/browser';
 import type { ProgramYaml } from '@audiocontrol/sampler-library/browser';
 import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
-import { Dialog, DialogTitle, DialogDescription, DialogActions } from '@/components/ui/Dialog';
+import { SlideDrawer } from '@audiocontrol/editor-core';
+import { DialogDescription, DialogActions } from '@/components/ui/Dialog';
 import { parseWavFile } from '@/lib/wav-reader';
 import {
   importInstrumentToDevice,
@@ -354,8 +355,7 @@ export function ImportInstrumentDialog({
   const displayName = programMeta?.name ?? programDirName;
 
   return (
-    <Dialog open={open} onClose={handleClose}>
-      <DialogTitle>Import Instrument to Device</DialogTitle>
+    <SlideDrawer open={open} title="Import Instrument to Device" onClose={handleClose}>
 
       {phase === 'loading' && (
         <DialogDescription>
@@ -513,6 +513,6 @@ export function ImportInstrumentDialog({
           </DialogActions>
         </div>
       )}
-    </Dialog>
+    </SlideDrawer>
   );
 }

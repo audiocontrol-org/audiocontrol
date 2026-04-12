@@ -363,9 +363,9 @@ export function LibraryPage(): JSX.Element {
         if (!hasLibrary) throw new Error('Connect to library to edit drum kits');
         editorDialogs.handleOpenDrumKitEditor(name, path);
       },
-      'import-instrument': (dirName, path) => {
+      'import-instrument': (dirName, path, fromProgramsDir) => {
         if (!canTransfer) throw new Error('Connect to device and library to import instruments');
-        transferCallbacks.handleImportInstrument(dirName, path);
+        transferCallbacks.handleImportInstrument(dirName, path, fromProgramsDir);
       },
       'promote-to-common-area': (dirName) => {
         if (!hasLibrary) throw new Error('Connect to library to promote programs');

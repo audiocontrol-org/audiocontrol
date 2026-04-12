@@ -93,7 +93,9 @@ export function useS3kTransferCallbacks({
   );
 
   const handleImportInstrument = useCallback(
-    (dirName: string, path: string[]) => { instrumentTransfer.openDialog(dirName, path); },
+    (dirName: string, path: string[], fromProgramsDir: boolean) => {
+      instrumentTransfer.openDialog(dirName, path, fromProgramsDir);
+    },
     [instrumentTransfer],
   );
 

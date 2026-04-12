@@ -83,7 +83,7 @@ export interface TransferHandlerMap {
   'send-program-to-device': (dirName: string, name: string) => void;
   'import-drum-kit': (name: string, path?: string[]) => void;
   'edit-drum-kit': (name: string, path?: string[]) => void;
-  'import-instrument': (dirName: string, path: string[]) => void;
+  'import-instrument': (dirName: string, path: string[], fromProgramsDir: boolean) => void;
   'promote-to-common-area': (dirName: string) => void;
 }
 
@@ -141,7 +141,9 @@ export function createTransferActionHandler<T extends TransferActionId>(
         if (deviceProgramCategories.includes(categoryId)) return false;
         const dirName = (meta.directoryName as string | undefined) ?? name;
         const path = (meta.path as string[] | undefined) ?? [];
-        handlerMap['import-instrument'](dirName, path);
+        // Programs in 'programs' or 'common-programs' categories live in the programs root
+        const fromProgramsDir = categoryId === 'programs' || categoryId === 'common-programs';
+        handlerMap['import-instrument'](dirName, path, fromProgramsDir);
         return true;
       }
       default:

@@ -49,7 +49,7 @@ export interface S3kPreviewCustomState {
   /** Callback for "Import as Drum Program" action (drum kit) */
   onImportDrumKit?: (name: string, path?: string[]) => void;
   /** Callback for "Import to Device" action (common-area program) */
-  onImportInstrument?: (dirName: string, path: string[]) => void;
+  onImportInstrument?: (dirName: string, path: string[], fromProgramsDir: boolean) => void;
   /** Callback for "Open in Loop Editor" action (sample) */
   onOpenInLoopEditor?: (name: string, type: string, path?: string[]) => void;
   /** Callback for "Open in Editor" action (sample) */
@@ -336,7 +336,7 @@ function CommonProgramPreview({
         <ActionGroup label="Device">
           <PrimaryAction
             label="Import to Device"
-            onClick={() => customState.onImportInstrument!(meta.directoryName!, meta.path ?? [])}
+            onClick={() => customState.onImportInstrument!(meta.directoryName!, meta.path ?? [], false)}
             testId="preview-import-instrument"
           />
         </ActionGroup>
