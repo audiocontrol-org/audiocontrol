@@ -102,20 +102,17 @@ export function KeygroupsPage(): JSX.Element {
     }
   }, [selectedProgramIndex, client, selectedProgram, refreshFromDevice, setError]);
 
-  const handleDeleteKeygroup = useCallback(async () => {
-    if (selectedProgramIndex === null || selectedKeygroupIndex === null || !client) return;
+  const handleDeleteKeygroup = useCallback(async (index: number) => {
+    if (selectedProgramIndex === null || !client) return;
 
     try {
-      await client.deleteKeygroup(selectedProgramIndex, selectedKeygroupIndex);
+      await client.deleteKeygroup(selectedProgramIndex, index);
       await refreshFromDevice();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete keygroup';
       setError(message);
     }
-  }, [selectedProgramIndex, selectedKeygroupIndex, client, refreshFromDevice, setError]);
-
-  const canDelete =
-    selectedKeygroupIndex !== null && keygroupCount > 1 && !isLoading;
+  }, [selectedProgramIndex, client, refreshFromDevice, setError]);
 
   const selectedHeader =
     selectedKeygroupIndex !== null ? keygroups[selectedKeygroupIndex] : undefined;
@@ -157,37 +154,12 @@ export function KeygroupsPage(): JSX.Element {
           <h2 className="text-xl font-bold">
             Keygroups — {selectedProgram.PRNAME.trim() || '(unnamed)'}
           </h2>
-          <div className="flex items-center gap-2">
-            {isLoading && (
-              <span className="text-sm text-gray-400">
-                {loadingMessage}
-                {loadingProgress !== null && ` (${loadingProgress}%)`}
-              </span>
-            )}
-            <button
-              className="ac-btn ac-btn-sm ac-btn-secondary"
-              onClick={handleAddKeygroup}
-              disabled={isLoading}
-              data-testid="add-keygroup-btn"
-            >
-              Add Keygroup
-            </button>
-            <button
-              className="ac-btn ac-btn-sm ac-btn-secondary"
-              onClick={handleDeleteKeygroup}
-              disabled={!canDelete}
-              data-testid="delete-keygroup-btn"
-            >
-              Delete Keygroup
-            </button>
-            <button
-              className="ac-btn ac-btn-sm ac-btn-secondary"
-              onClick={handleRefresh}
-              disabled={isLoading}
-            >
-              Refresh
-            </button>
-          </div>
+          {isLoading && (
+            <span className="text-sm text-gray-400">
+              {loadingMessage}
+              {loadingProgress !== null && ` (${loadingProgress}%)`}
+            </span>
+          )}
         </div>
       </div>
 
@@ -207,6 +179,9 @@ export function KeygroupsPage(): JSX.Element {
             keygroupCount={keygroupCount}
             selectedIndex={selectedKeygroupIndex}
             onSelect={selectKeygroup}
+            onAdd={handleAddKeygroup}
+            onDelete={handleDeleteKeygroup}
+            onRefresh={handleRefresh}
             isLoading={isLoading}
           />
         </div>
