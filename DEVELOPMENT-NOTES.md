@@ -11,6 +11,56 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-12: SteppedProgressDrawer, All Dialogs Migrated (Session 5)
+
+### Feature: library-ux
+### Worktree: audiocontrol-library-ux
+
+### Goal
+Complete Phase 18: build SteppedProgressDrawer, migrate all remaining transfer dialogs, eliminate all modal dialogs from the library page.
+
+### Accomplished
+- SteppedProgressDrawer component in editor-core — standard for all multi-step operations (6d94e6df)
+- ImportInstrumentDialog → stepped flow, no second approval, 520→220 lines (5ed3822d)
+- ExportProgramDialog → stepped flow, auto-start (5652c069)
+- SendSampleDialog → stepped flow with SDS progress bar (5652c069)
+- ReceiveSampleDialog → stepped flow (5652c069)
+- ImportProgramDialog → stepped flow, 350→180 lines (3a7c26ba)
+- DiskToLibraryDialog → stepped flow with per-sample progress (93ca9322)
+- ImportDrumKitDialog → stepped flow with per-slice progress (2f1d5611)
+- Cancel button on SteppedProgressDrawer (0d0eab67)
+- Device memory refreshes after each sample upload (0d0eab67)
+- Consistent no-confirm deletes everywhere — removed window.confirm from device delete (7f91e70f)
+- Fixed DiskToLibrary infinite re-render loop from unstable callback deps (0a1656dd)
+- Fixed SendSample progress byte calculation (7812317e)
+- Filed #222 — chopped samples should be programs, not modified samples
+- Total: ~3,000 lines of modal code → ~1,500 lines of stepped drawer code
+
+### Didn't Work
+- DiskToLibraryDialog had infinite re-render loop — `onTransferComplete` and `ensureFileBlocks` in effect deps got new references each render. Fixed with refs.
+- SendSample progress showed inflated byte counts — used made-up formula (`packetsSent * 120 * 2`) instead of deriving from known total size and percentage.
+
+### Course Corrections
+- [UX] User pointed out second approval dialog in import flow — "It's all a single operation that doesn't need a second approval step." Led to SteppedProgressDrawer design.
+- [UX] User requested stepped progress be the standard for ALL multi-step operations, not just transfers.
+- [UX] User noted delete inconsistency — library objects had no confirm, device objects had window.confirm.
+- [UX] User noted missing progress bar on sample upload.
+- [UX] User noted inflated byte count in progress display.
+- [UX] User clarified chopped sample/drum kit conceptual model — slicing should be tied to programs, not samples. Filed #222.
+
+### Quantitative
+- User messages: ~20
+- Commits: 12
+- User corrections: 6
+
+### Insights
+1. **SteppedProgressDrawer is a major UX improvement.** Multi-step operations are now transparent — the user sees exactly what's happening, what's done, what's next. No modal popups, no second approvals.
+2. **Callback stability in React effects is critical.** Three separate dialogs had to use refs for callbacks to avoid infinite re-render loops. This is a recurring pattern — every dialog migration hit it.
+3. **~1,500 lines removed** across 7 dialog migrations. The stepped pattern is more concise because it eliminates per-phase UI (separate JSX for confirm, progress, success, error states).
+4. **The chopped-sample-as-program insight (#222)** is architecturally significant — it resolves the fuzzy distinction between samples, chopped samples, and drum kits by making slicing a property of programs, not samples.
+
+---
+
 ## 2026-04-11: Visual Polish, SlideDrawer, Program Save Fixes (Session 4)
 
 ### Feature: library-ux
