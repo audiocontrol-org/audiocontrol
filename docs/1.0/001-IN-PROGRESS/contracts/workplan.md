@@ -94,12 +94,12 @@ Document patterns and anti-patterns in CLAUDE.md so agents use correct approache
 
 ### Tasks
 
-- [ ] Add Design System section to `.claude/CLAUDE.md`
-- [ ] Document dialog standards: ConfirmDialog for confirmations, SlideDrawer for complex forms, SteppedProgressDrawer for multi-step operations, inline editing for simple value changes
-- [ ] Document layout conventions: flex ratios and grid fractions only, no pixel-based widths, proportional panel sizing
-- [ ] Document anti-patterns with corrections: `window.prompt` -> inline editing or SlideDrawer, `window.confirm` -> ConfirmDialog, `window.alert` -> toast notification, pixel widths -> flex/grid
-- [ ] Document typed contract patterns with `@/` import examples for ErrorReporter, RefreshNotifier, ProgressReporter
-- [ ] Document discriminated union pattern with example usage showing exhaustive handling
+- [x] Add Design System section to `.claude/CLAUDE.md` (points to DESIGN-SYSTEM.md as single source of truth)
+- [x] Document dialog standards in `DESIGN-SYSTEM.md`: ConfirmDialog, SlideDrawer, SteppedProgressDrawer, SaveDialog, MoveDialog
+- [x] Document layout conventions in `DESIGN-SYSTEM.md`: flex ratios, grid fractions, design tokens, no pixel widths
+- [x] Document anti-patterns with corrections in `DESIGN-SYSTEM.md`: window.prompt/confirm/alert replacements
+- [x] Document typed contract patterns in `DESIGN-SYSTEM.md` with import examples for ErrorReporter, RefreshNotifier, ProgressReporter
+- [x] Document discriminated union pattern in `DESIGN-SYSTEM.md` (StrategyResult with usage example)
 
 ### Acceptance Criteria
 

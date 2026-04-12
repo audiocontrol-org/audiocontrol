@@ -8,7 +8,7 @@ Compiler-enforced contracts and design system documentation to reduce agent corr
 |-------|--------|-------|
 | Phase 1: Audit | Complete | 55 violations found — see [phase1-audit.md](./phase1-audit.md) |
 | Phase 2: Compiler Contracts | Complete | StrategyResult, capability interfaces, tree callback refactor |
-| Phase 3: Design System Documentation | Not Started | |
+| Phase 3: Design System Documentation | Complete | DESIGN-SYSTEM.md + CLAUDE.md pointer |
 | Phase 4: Fix Violations | Not Started | |
 
 ## Links
