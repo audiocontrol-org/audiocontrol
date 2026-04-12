@@ -1,0 +1,23 @@
+# akai-ux-improvement
+
+Restructure the Akai S3000XL editor from memory-oriented pages to workflow-oriented editing with full CRUD, zone mapping, and visual polish.
+
+## Status
+
+| Phase | Status | Notes |
+|-------|--------|-------|
+| Phase 1: Audit and Plan | Complete | See [phase1-audit.md](./phase1-audit.md) |
+| Phase 2: Program Editor Workflow | Complete | |
+| Phase 3: Keygroup and Zone Mapping | Complete | |
+| Phase 4: Multi-Editor | Complete | Extraction deferred until Roland needs it |
+| Phase 5: Visual Polish | Complete | Hardware testing remaining |
+
+## Links
+
+| Item | Link |
+|------|------|
+| Branch | `feature/akai-ux-improvement` |
+| Worktree | `~/work/audiocontrol-work/audiocontrol-akai-ux-improvement` |
+| PRD | [prd.md](./prd.md) |
+| Workplan | [workplan.md](./workplan.md) |
+| Parent Issue | [#216](https://github.com/audiocontrol-org/audiocontrol/issues/216) |

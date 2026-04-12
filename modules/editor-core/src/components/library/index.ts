@@ -61,6 +61,8 @@ export {
   ImportIcon,
   RenameIcon,
   MoveIcon,
+  CloneIcon,
+  RefreshIcon,
 } from './TreeIcons';
 export {
   CacheMetricsModal,

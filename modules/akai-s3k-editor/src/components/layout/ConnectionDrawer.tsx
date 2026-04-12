@@ -1,12 +1,13 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MidiConnectionPage, useHomePageStore, type MidiConnectionPageConfig } from '@audiocontrol/editor-core';
+import { SlideDrawer, MidiConnectionPage, useHomePageStore, type MidiConnectionPageConfig } from '@audiocontrol/editor-core';
 import { useMidiStore } from '@/stores/midiStore';
 
-const BASE_PATH = '/akai/s3000xl/editor';
+interface ConnectionDrawerProps {
+  open: boolean;
+  onClose: () => void;
+}
 
-export function HomePage(): JSX.Element {
-  const navigate = useNavigate();
+export function ConnectionDrawer({ open, onClose }: ConnectionDrawerProps): JSX.Element {
   const midi = useMidiStore();
   const pageStore = useHomePageStore('s3000xl', midi);
 
@@ -16,7 +17,7 @@ export function HomePage(): JSX.Element {
     outputLabel: 'MIDI Output (to S3000XL)',
     deviceIdLabel: 'Device ID',
     deviceIdHelpText: 'Enter the Exclusive Channel shown on your S3000XL (MIDI -> Sys Ex -> Exclusive Channel).',
-    continueLabel: 'Continue to Programs',
+    continueLabel: 'Done',
     helpItems: [
       'Connect your S3000XL using a MIDI interface.',
       'Choose MIDI ports matching your interface.',
@@ -31,18 +32,13 @@ export function HomePage(): JSX.Element {
   }), []);
 
   return (
-    <div className="ac-page ac-page-shell">
-      <div className="ac-page-sticky-header">
-        <div className="ac-page-header">
-          <h2 className="text-xl font-bold">Connect</h2>
-        </div>
-      </div>
+    <SlideDrawer open={open} title="MIDI Connection" onClose={onClose}>
       <MidiConnectionPage
         config={config}
         store={pageStore}
         deviceIdRange={{ min: 0, max: 127 }}
-        onContinue={() => navigate(`${BASE_PATH}/programs`)}
+        onContinue={onClose}
       />
-    </div>
+    </SlideDrawer>
   );
 }

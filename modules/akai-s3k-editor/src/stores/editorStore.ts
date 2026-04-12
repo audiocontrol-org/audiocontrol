@@ -1,50 +1,70 @@
 import { create } from 'zustand';
 
+const SESSION_KEY = 's3k-editor-selection';
+
+interface PersistedSelection {
+  programIndex: number | null;
+  keygroupIndex: number | null;
+}
+
+function loadSelection(): PersistedSelection {
+  try {
+    const stored = sessionStorage.getItem(SESSION_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored) as PersistedSelection;
+      return {
+        programIndex: typeof parsed.programIndex === 'number' ? parsed.programIndex : null,
+        keygroupIndex: typeof parsed.keygroupIndex === 'number' ? parsed.keygroupIndex : null,
+      };
+    }
+  } catch { /* ignore */ }
+  return { programIndex: null, keygroupIndex: null };
+}
+
+function saveSelection(programIndex: number | null, keygroupIndex: number | null): void {
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ programIndex, keygroupIndex }));
+  } catch { /* ignore */ }
+}
+
 export interface EditorStoreState {
-  /** Index of the currently selected program, or null if none selected */
   selectedProgramIndex: number | null;
-  /** Index of the currently selected keygroup, or null if none selected */
   selectedKeygroupIndex: number | null;
-  /** Whether a loading operation is in progress */
   isLoading: boolean;
-  /** Human-readable message describing the current loading operation */
   loadingMessage: string | null;
-  /** Loading progress percentage (0-100), or null when indeterminate */
   loadingProgress: number | null;
-  /** Error message from the most recent failed operation, or null */
   error: string | null;
 }
 
 export interface EditorStoreActions {
-  /** Select a program by index, or deselect with null */
   selectProgram(index: number | null): void;
-  /** Select a keygroup by index, or deselect with null */
   selectKeygroup(index: number | null): void;
-  /** Set loading state with an optional message */
   setLoading(isLoading: boolean, message?: string): void;
-  /** Update progress based on current item and total count */
   setProgress(current: number, total: number): void;
-  /** Clear progress indicator */
   clearProgress(): void;
-  /** Set or clear the error message */
   setError(error: string | null): void;
 }
 
 export type EditorStore = EditorStoreState & EditorStoreActions;
 
+const initial = loadSelection();
+
 export const useEditorStore = create<EditorStore>((set) => ({
-  selectedProgramIndex: null,
-  selectedKeygroupIndex: null,
+  selectedProgramIndex: initial.programIndex,
+  selectedKeygroupIndex: initial.keygroupIndex,
   isLoading: false,
   loadingMessage: null,
   loadingProgress: null,
   error: null,
 
   selectProgram(index: number | null) {
+    saveSelection(index, null);
     set({ selectedProgramIndex: index, selectedKeygroupIndex: null, error: null });
   },
 
   selectKeygroup(index: number | null) {
+    const programIndex = useEditorStore.getState().selectedProgramIndex;
+    saveSelection(programIndex, index);
     set({ selectedKeygroupIndex: index, error: null });
   },
 

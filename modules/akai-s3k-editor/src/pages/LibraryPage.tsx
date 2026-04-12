@@ -488,7 +488,7 @@ export function LibraryPage(): JSX.Element {
   const libraryHandle = root;
 
   return (
-    <div className="ac-page">
+    <div className="ac-page ac-page-shell">
       <div className="ac-page-sticky-header">
         <div className="ac-page-header">
           <h2 className="text-xl font-bold">Library</h2>

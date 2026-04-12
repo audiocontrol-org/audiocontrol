@@ -65,6 +65,8 @@ export {
   ImportIcon,
   RenameIcon,
   MoveIcon,
+  CloneIcon,
+  RefreshIcon,
   type TreeNode,
   type TreeViewProps,
   type TreeSectionProps,

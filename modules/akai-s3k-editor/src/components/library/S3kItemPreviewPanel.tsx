@@ -84,7 +84,7 @@ function EmptyState(): JSX.Element {
   return (
     <div className="h-full flex flex-col">
       <div className="p-3 border-b border-gray-700">
-        <h3 className="font-bold text-gray-100">Preview</h3>
+        <h3 className="font-semibold text-gray-200">Preview</h3>
       </div>
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="text-center text-gray-400 text-sm">
@@ -99,7 +99,7 @@ function DirectoryPreview({ selection }: { selection: ItemSelection }): JSX.Elem
   const childCount = selection.node.children?.length ?? 0;
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value="Folder" />
       <MetaRow label="Items" value={childCount} />
     </div>
@@ -217,7 +217,7 @@ function SamplePreview({
 
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value={typeLabel} />
       {hasSlices && (
         <MetaRow
@@ -282,7 +282,7 @@ function S3kProgramPreview({
 
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value="S3000XL Program" />
       <MetaRow label="Keygroups" value={meta.keygroupCount} />
       <MetaRow label="Samples" value={meta.sampleReferences?.join(', ')} />
@@ -325,7 +325,7 @@ function CommonProgramPreview({
 
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value="Program" />
       <MetaRow label="Zones" value={meta.kitCount} />
       <MetaRow label="Path" value={pathDisplay} />
@@ -381,7 +381,7 @@ function DeviceSamplePreview({
 
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value="Device Sample" />
       <MetaRow label="Slot" value={`#${meta.deviceIndex}`} />
 
@@ -420,7 +420,7 @@ function DeviceProgramPreview({
 
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value="Device Program" />
       <MetaRow label="Slot" value={`#${meta.deviceIndex}`} />
 
@@ -518,7 +518,7 @@ export function S3kPreviewPanelAdapter({
   // Fallback for unknown types
   return (
     <div className="p-4">
-      <h3 className="text-lg font-semibold text-gray-100 mb-3">{selection.node.name}</h3>
+      <h3 className="text-lg font-semibold text-gray-200 mb-3">{selection.node.name}</h3>
       <MetaRow label="Type" value={selection.node.type} />
     </div>
   );

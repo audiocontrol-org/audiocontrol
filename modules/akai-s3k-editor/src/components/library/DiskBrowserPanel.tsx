@@ -267,7 +267,7 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, onSendToDevice, b
   if (!bridgeUrl) {
     return (
       <div className="p-4">
-        <h3 className="text-lg font-semibold text-gray-100 mb-2">
+        <h3 className="text-lg font-semibold text-gray-200 mb-2">
           SCSI Disks
         </h3>
         <p className="text-sm text-gray-400 italic">

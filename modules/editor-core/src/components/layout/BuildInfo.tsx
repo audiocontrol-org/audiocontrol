@@ -119,13 +119,15 @@ export function BuildInfo({ buildInfo, config }: BuildInfoProps) {
 
   return (
     <>
-      {/* Compact display - clickable to open modal */}
+      {/* Info & Logs trigger */}
       <button
         onClick={openModal}
         className={`ac-build-info-trigger ${errorCount > 0 ? 'ac-build-info-trigger--error' : ''}`}
-        title={errorCount > 0 ? `${errorCount} errors - click for details` : 'Click for build details'}
+        title={errorCount > 0 ? `${errorCount} errors — click for logs & issue reporting` : 'Build info, logs & issue reporting'}
       >
-        {shortLabel}
+        <svg className="ac-icon-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
         {errorCount > 0 && <span className="ac-build-info-badge">{errorCount}</span>}
       </button>
 
