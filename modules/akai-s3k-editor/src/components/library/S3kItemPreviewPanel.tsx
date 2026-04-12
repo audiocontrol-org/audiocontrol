@@ -336,7 +336,12 @@ function CommonProgramPreview({
         <ActionGroup label="Device">
           <PrimaryAction
             label="Import to Device"
-            onClick={() => customState.onImportInstrument!(meta.directoryName!, meta.path ?? [], false)}
+            onClick={() => {
+              // Programs at root of common-programs category live in library/common/programs/
+              // Programs inside a samples folder have a non-empty path
+              const fromProgramsDir = !meta.path || meta.path.length === 0;
+              customState.onImportInstrument!(meta.directoryName!, meta.path ?? [], fromProgramsDir);
+            }}
             testId="preview-import-instrument"
           />
         </ActionGroup>
