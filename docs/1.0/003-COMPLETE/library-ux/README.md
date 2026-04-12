@@ -1,6 +1,6 @@
 # Library UX Improvements
 
-**Status:** In Progress
+**Status:** Complete
 **Branch:** `feature/library-ux`
 
 ## Documentation
