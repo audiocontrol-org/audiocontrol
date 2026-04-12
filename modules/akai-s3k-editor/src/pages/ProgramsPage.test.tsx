@@ -88,75 +88,35 @@ describe('ProgramsPage delete flow', () => {
     expect(screen.getByText('Connect to your S3000XL first.')).toBeInTheDocument();
   });
 
-  it('Delete button is disabled when no program is selected', () => {
+  it('delete button appears on non-empty program list items', () => {
     useProgramStore.setState({
-      programNames: ['PROGRAM1', 'PROGRAM2'],
+      programNames: ['PROGRAM1', ''],
       namesLoaded: true,
     });
 
     render(<ProgramsPage />);
 
-    const deleteButton = screen.getByRole('button', { name: 'Delete' });
-    expect(deleteButton).toBeDisabled();
+    // Non-empty program has a delete button
+    const deleteButtons = screen.getAllByTitle('Delete program');
+    expect(deleteButtons).toHaveLength(1);
   });
 
-  it('Delete button is disabled when loading', () => {
-    useProgramStore.setState({
-      programNames: ['PROGRAM1'],
-      namesLoaded: true,
-    });
-    useEditorStore.setState({
-      selectedProgramIndex: 0,
-      isLoading: true,
-      loadingMessage: 'Loading...',
-    });
-
-    render(<ProgramsPage />);
-
-    const deleteButton = screen.getByRole('button', { name: 'Delete' });
-    expect(deleteButton).toBeDisabled();
-  });
-
-  it('Delete button is enabled when a program is selected and not loading', () => {
-    useProgramStore.setState({
-      programNames: ['PROGRAM1'],
-      namesLoaded: true,
-    });
-    useEditorStore.setState({
-      selectedProgramIndex: 0,
-      isLoading: false,
-    });
-
-    render(<ProgramsPage />);
-
-    const deleteButton = screen.getByRole('button', { name: 'Delete' });
-    expect(deleteButton).toBeEnabled();
-  });
-
-  it('clicking Delete shows the ConfirmDialog', () => {
+  it('clicking list item delete shows ConfirmDialog with program name', () => {
     useProgramStore.setState({
       programNames: ['MY PROGRAM'],
       namesLoaded: true,
     });
-    useEditorStore.setState({
-      selectedProgramIndex: 0,
-      isLoading: false,
-    });
 
     render(<ProgramsPage />);
 
-    const deleteButton = screen.getByRole('button', { name: 'Delete' });
+    const deleteButton = screen.getByTitle('Delete program');
     fireEvent.click(deleteButton);
 
-    // ConfirmDialog should now be visible with the program name
     expect(screen.getByText('Delete Program')).toBeInTheDocument();
     expect(
       screen.getByText(/Delete program 'MY PROGRAM'\?/),
     ).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeInTheDocument();
-    // The confirm button inside the dialog also says "Delete"
-    const dialogRegion = screen.getByRole('alertdialog');
-    expect(dialogRegion).toBeInTheDocument();
   });
 
   it('clicking Cancel in ConfirmDialog hides it', () => {
@@ -164,18 +124,12 @@ describe('ProgramsPage delete flow', () => {
       programNames: ['TEST PROG'],
       namesLoaded: true,
     });
-    useEditorStore.setState({
-      selectedProgramIndex: 0,
-      isLoading: false,
-    });
 
     render(<ProgramsPage />);
 
-    // Open the confirm dialog
-    fireEvent.click(screen.getByRole('button', { name: 'Delete' }));
+    fireEvent.click(screen.getByTitle('Delete program'));
     expect(screen.getByText('Delete Program')).toBeInTheDocument();
 
-    // Cancel it
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
     expect(screen.queryByText('Delete Program')).not.toBeInTheDocument();
   });

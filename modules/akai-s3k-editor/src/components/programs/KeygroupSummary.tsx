@@ -1,4 +1,5 @@
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
+import { DeleteIcon } from '@audiocontrol/editor-core';
 import { formatMidiNote } from '@/lib/midi-note-parser';
 
 interface KeygroupSummaryProps {
@@ -43,10 +44,10 @@ function KeygroupRow({
         <button
           type="button"
           onClick={() => onDelete(index)}
-          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-opacity shrink-0 text-xs leading-none"
+          className="opacity-0 group-hover:opacity-100 text-gray-500 hover:text-red-400 transition-opacity shrink-0 p-0.5 rounded"
           title={`Delete keygroup ${index + 1}`}
         >
-          &#x2715;
+          <DeleteIcon />
         </button>
       )}
     </div>

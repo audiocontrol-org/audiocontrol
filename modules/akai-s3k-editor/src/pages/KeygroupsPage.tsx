@@ -6,6 +6,7 @@ import { useSampleNames } from '@/hooks/useSampleNames';
 import { useKeygroupStore } from '@/stores/keygroupStore';
 import { useProgramStore } from '@/stores/programStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { useConnectionDrawerStore } from '@/stores/connectionDrawerStore';
 import { writeKeygroupField } from '@/lib/keygroup-writers';
 import { ErrorBanner } from '@/components/ui';
 
@@ -126,7 +127,7 @@ export function KeygroupsPage(): JSX.Element {
           <div className="card text-center py-12 px-8 max-w-md">
             <p className="text-gray-400">Connect to your S3000XL first.</p>
             <p className="text-sm text-gray-500 mt-2">
-              Go to the <a href="/akai/s3000xl/editor" className="text-blue-400 hover:underline">Connect</a> page to set up your MIDI connection.
+              <button onClick={() => useConnectionDrawerStore.getState().open()} className="text-blue-400 hover:underline">Connect</button> to set up your MIDI connection.
             </p>
           </div>
         </div>

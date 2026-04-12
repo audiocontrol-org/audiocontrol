@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef, useState } from 'react';
-import { ConfirmDialog } from '@audiocontrol/editor-core';
+import { ConfirmDialog, SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';
 import { ProgramList, ProgramEditor, KeygroupSummary } from '@/components/programs';
 import { useS3000xlClient } from '@/hooks/useS3000xlClient';
 import { useProgramLoader } from '@/hooks/useProgramLoader';
@@ -7,6 +7,7 @@ import { useKeygroupLoader } from '@/hooks/useKeygroupLoader';
 import { useProgramStore } from '@/stores/programStore';
 import { useKeygroupStore } from '@/stores/keygroupStore';
 import { useEditorStore } from '@/stores/editorStore';
+import { useConnectionDrawerStore } from '@/stores/connectionDrawerStore';
 import { writeProgramField } from '@/lib/program-writers';
 import { ErrorBanner } from '@/components/ui';
 
@@ -32,7 +33,12 @@ export function ProgramsPage(): JSX.Element {
 
   const hasInitiatedLoad = useRef(false);
   const lastLoadedKeygroupProgram = useRef<number | null>(null);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deletingProgramIndex, setDeletingProgramIndex] = useState<number | null>(null);
+  const [deleteInProgress, setDeleteInProgress] = useState(false);
+  const [cloneSteps, setCloneSteps] = useState<ProgressStep[]>([]);
+  const [cloneDrawerOpen, setCloneDrawerOpen] = useState(false);
+  const [cloneComplete, setCloneComplete] = useState(false);
+  const [cloneError, setCloneError] = useState(false);
 
   // Load program names on first connect
   useEffect(() => {
@@ -132,24 +138,107 @@ export function ProgramsPage(): JSX.Element {
   }, [selectedProgramIndex, client, refreshKeygroupsFromDevice]);
 
   const handleDeleteProgram = useCallback(async () => {
-    if (selectedProgramIndex === null || !client) return;
-    setShowDeleteConfirm(false);
+    if (deletingProgramIndex === null || !client) return;
+    const indexToDelete = deletingProgramIndex;
+    setDeleteInProgress(true);
     try {
-      await client.deleteProgram(selectedProgramIndex);
+      await client.deleteProgram(indexToDelete);
       client.invalidateProgramCache();
       useProgramStore.getState().invalidateCache();
       lastLoadedKeygroupProgram.current = null;
       invalidateKeygroupCache();
       await loadProgramNames();
-      selectProgram(null);
+      if (selectedProgramIndex === indexToDelete) {
+        selectProgram(null);
+      }
+      setDeletingProgramIndex(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to delete program';
       useEditorStore.getState().setError(message);
+      setDeletingProgramIndex(null);
+    } finally {
+      setDeleteInProgress(false);
     }
-  }, [selectedProgramIndex, client, loadProgramNames, selectProgram, invalidateKeygroupCache]);
+  }, [deletingProgramIndex, selectedProgramIndex, client, loadProgramNames, selectProgram, invalidateKeygroupCache]);
 
-  const selectedProgramName =
-    selectedProgramIndex !== null ? programNames[selectedProgramIndex] : undefined;
+  const handleRenameProgram = useCallback(async (index: number, newName: string) => {
+    if (!client) return;
+    try {
+      await client.renameProgram(index, newName);
+      client.invalidateProgramCache();
+      useProgramStore.getState().invalidateCache();
+      await loadProgramNames();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to rename program';
+      useEditorStore.getState().setError(message);
+    }
+  }, [client, loadProgramNames]);
+
+
+  const handleCloneProgram = useCallback(async (sourceIndex: number) => {
+    if (!client) return;
+    const sourceName = programNames[sourceIndex]?.trim() ?? '';
+    const cloneName = `${sourceName.substring(0, 8)} CPY`.padEnd(12);
+
+    setCloneComplete(false);
+    setCloneError(false);
+    setCloneSteps([
+      { id: 'read', label: 'Reading source program', status: 'active' },
+      { id: 'create', label: 'Creating program', status: 'pending' },
+      { id: 'keygroups', label: 'Cloning keygroups', status: 'pending' },
+    ]);
+    setCloneDrawerOpen(true);
+
+    const updateStep = (id: string, update: Partial<ProgressStep>) => {
+      setCloneSteps((prev) => prev.map((s) => s.id === id ? { ...s, ...update } : s));
+    };
+
+    try {
+      const newIndex = await client.cloneProgram(sourceIndex, cloneName, (step, current) => {
+        if (current === 1) {
+          updateStep('read', { status: 'active' });
+        } else if (current === 2) {
+          updateStep('read', { status: 'complete' });
+          updateStep('create', { status: 'active' });
+        } else if (current === 3) {
+          updateStep('create', { status: 'complete' });
+          updateStep('keygroups', { status: 'active', detail: step });
+        }
+      });
+      updateStep('keygroups', { status: 'complete' });
+      setCloneComplete(true);
+      useProgramStore.getState().invalidateCache();
+      await loadProgramNames();
+      selectProgram(newIndex);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to clone program';
+      setCloneSteps((prev) => prev.map((s) =>
+        s.status === 'active' ? { ...s, status: 'failed', error: message } : s,
+      ));
+      setCloneError(true);
+    }
+  }, [client, programNames, loadProgramNames, selectProgram]);
+
+  const handleRefreshProgram = useCallback(async (index: number) => {
+    if (!client) return;
+    try {
+      client.invalidateProgramCache();
+      const fresh = await client.fetchProgramHeader(index);
+      useProgramStore.getState().setProgram(index, fresh);
+      if (index === selectedProgramIndex) {
+        lastLoadedKeygroupProgram.current = null;
+        invalidateKeygroupCache();
+        client.invalidateKeygroupCache();
+        await loadKeygroups(index, fresh.GROUPS);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to refresh program';
+      useEditorStore.getState().setError(message);
+    }
+  }, [client, selectedProgramIndex, invalidateKeygroupCache, loadKeygroups]);
+
+  const deletingProgramName =
+    deletingProgramIndex !== null ? programNames[deletingProgramIndex] : undefined;
 
   if (!isConnected) {
     return (
@@ -158,7 +247,7 @@ export function ProgramsPage(): JSX.Element {
           <div className="card text-center py-12 px-8 max-w-md">
             <p className="text-gray-400">Connect to your S3000XL first.</p>
             <p className="text-sm text-gray-500 mt-2">
-              Go to the <a href="/akai/s3000xl/editor" className="text-blue-400 hover:underline">Connect</a> page to set up your MIDI connection.
+              <button onClick={() => useConnectionDrawerStore.getState().open()} className="text-blue-400 hover:underline">Connect</button> to set up your MIDI connection.
             </p>
           </div>
         </div>
@@ -198,13 +287,6 @@ export function ProgramsPage(): JSX.Element {
             >
               Load All
             </button>
-            <button
-              className="ac-btn ac-btn-sm ac-btn-danger"
-              onClick={() => setShowDeleteConfirm(true)}
-              disabled={isLoading || selectedProgramIndex === null}
-            >
-              Delete
-            </button>
           </div>
         </div>
       </div>
@@ -217,6 +299,10 @@ export function ProgramsPage(): JSX.Element {
             programNames={programNames}
             selectedIndex={selectedProgramIndex}
             onSelect={selectProgram}
+            onDelete={(index) => setDeletingProgramIndex(index)}
+            onRename={(index, newName) => void handleRenameProgram(index, newName)}
+            onClone={(index) => void handleCloneProgram(index)}
+            onRefresh={(index) => void handleRefreshProgram(index)}
             isLoading={isLoading && !namesLoaded}
           />
         </div>
@@ -251,13 +337,25 @@ export function ProgramsPage(): JSX.Element {
       </div>
 
       <ConfirmDialog
-        open={showDeleteConfirm}
+        open={deletingProgramIndex !== null}
         title="Delete Program"
-        message={`Delete program '${selectedProgramName ?? ''}'? This will remove the program and all its keygroups from the device.`}
-        confirmLabel="Delete"
+        message={deleteInProgress
+          ? 'Deleting program from device...'
+          : `Delete program '${deletingProgramName ?? ''}'? This will remove the program and all its keygroups from the device.`}
+        confirmLabel={deleteInProgress ? 'Deleting...' : 'Delete'}
+        cancelLabel={deleteInProgress ? 'Cancel' : 'Cancel'}
         danger
-        onConfirm={() => void handleDeleteProgram()}
-        onCancel={() => setShowDeleteConfirm(false)}
+        onConfirm={deleteInProgress ? () => {} : () => void handleDeleteProgram()}
+        onCancel={() => setDeletingProgramIndex(null)}
+      />
+
+      <SteppedProgressDrawer
+        open={cloneDrawerOpen}
+        title="Clone Program"
+        steps={cloneSteps}
+        isComplete={cloneComplete}
+        hasError={cloneError}
+        onClose={() => setCloneDrawerOpen(false)}
       />
     </div>
   );

@@ -1,3 +1,4 @@
+export { useErrorReporter, type ErrorReporter } from './useErrorReporter';
 export { useHomePageStore, type HomePageMidiStore } from './useHomePageStore';
 export {
   useNotifications,

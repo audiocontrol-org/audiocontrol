@@ -9,6 +9,8 @@
 
 import { useCallback, useState } from 'react';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
+import type { ErrorReporter } from '@/hooks/useErrorReporter';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import {
   createFolder,
   deleteItem,
@@ -16,11 +18,12 @@ import {
   importWavToCommonArea,
   getNestedDirectory,
   moveDirectory,
+  sanitizeForFilename,
 } from '@audiocontrol/sampler-library/browser';
 import type { TreeNode } from '@/components/library/TreeView';
 
 // =========================================================================
-// Transfer dialog state — shared across all editors
+// Transfer dialog state -- shared across all editors
 // =========================================================================
 
 /**
@@ -62,7 +65,7 @@ export const SEND_DIALOG_CLOSED: SendToDeviceDialogState = {
 };
 
 // =========================================================================
-// Transfer action types — capability declaration system
+// Transfer action types -- capability declaration system
 // =========================================================================
 
 /** All transfer action IDs that can appear in shared item type context menus. */
@@ -82,7 +85,7 @@ export interface TransferHandlerMap {
   'send-sample-to-device': (name: string, path?: string[]) => void;
   'send-program-to-device': (dirName: string, name: string) => void;
   'import-drum-kit': (name: string, path?: string[]) => void;
-  'edit-drum-kit': (name: string, path?: string[]) => void;
+  'edit-drum-kit': (name: string, nodeType: string, path?: string[]) => void;
   'import-instrument': (dirName: string, path: string[], fromProgramsDir: boolean) => void;
   'promote-to-common-area': (dirName: string) => void;
 }
@@ -119,7 +122,7 @@ export function createTransferActionHandler<T extends TransferActionId>(
       case 'edit-drum-kit': {
         if (!handlerMap['edit-drum-kit']) return false;
         const path = (meta.path as string[] | undefined) ?? [];
-        handlerMap['edit-drum-kit'](name, path);
+        handlerMap['edit-drum-kit'](name, node.type, path);
         return true;
       }
       case 'send-program-to-device': {
@@ -158,12 +161,12 @@ export function createTransferActionHandler<T extends TransferActionId>(
 
 export interface LibraryOperationsStrategy {
   /** Create a folder in a device-specific category. Return true if handled, false to use common-area create. */
-  createFolder?(categoryId: string, parentPath: string[], name: string): Promise<boolean>;
+  createFolder(categoryId: string, parentPath: string[], name: string): Promise<boolean>;
   /** Delete a device-specific item. Return true if handled, false to use common-area delete. */
-  deleteItem?(categoryId: string, node: TreeNode): Promise<boolean>;
+  deleteItem(categoryId: string, node: TreeNode): Promise<boolean>;
   /** Rename a device-specific item. Return true if handled, false to use common-area rename. */
-  renameItem?(categoryId: string, node: TreeNode, newName: string): Promise<boolean>;
-  /** Handle a context menu action. Required — every editor must route actions. */
+  renameItem(categoryId: string, node: TreeNode, newName: string): Promise<boolean>;
+  /** Handle a context menu action. Required -- every editor must route actions. */
   handleContextMenuAction(categoryId: string, actionId: string, node: TreeNode): boolean;
 }
 
@@ -231,9 +234,10 @@ export function useLibraryOperations(
   libraryRoot: StorageDirectoryHandle | null,
   strategy: LibraryOperationsStrategy | undefined,
   onRefresh: () => void,
-  onError: (message: string) => void,
+  errorReporter: ErrorReporter,
   onEditorAction?: (actionId: string, name: string, nodeType: string, path?: string[]) => void,
 ): LibraryOperationsResult {
+  const onError = errorReporter.report;
   const [expandedPaths, setExpandedPaths] = useState<Record<string, Set<string>>>({});
 
   const onToggleExpand = useCallback((categoryId: string, nodeId: string) => {
@@ -330,25 +334,50 @@ export function useLibraryOperations(
 
   const onRename = useCallback(
     async (categoryId: string, node: TreeNode, newName: string) => {
+      if (!libraryRoot) {
+        onError('Library is not connected');
+        return;
+      }
+      const oldDirName = getNodeName(node);
+      const path = getNodePath(node);
       try {
-        if (strategy?.renameItem) {
-          const handled = await strategy.renameItem(categoryId, node, newName);
-          if (handled) {
-            onRefresh();
-            return;
-          }
+        const handled = await strategy?.renameItem(categoryId, node, newName);
+        if (handled) {
+          onRefresh();
+          return;
         }
-        throw new Error(
-          `Rename is not supported for item type "${node.type}" in category "${categoryId}". ` +
-            'A LibraryOperationsStrategy.renameItem implementation is required.',
-        );
+        // Common-area fallback: rename directory bundle
+        // 1. Resolve the parent directory and old item directory
+        const isProgram = PROGRAM_CATEGORIES.has(categoryId);
+        const parentDir = isProgram
+          ? await getCategoryDir(libraryRoot, categoryId, path)
+          : await getNestedDirectory(libraryRoot, ['library', 'common', 'samples', ...path]);
+        const oldDir = await parentDir.getDirectoryHandle(oldDirName);
+
+        // 2. Update the name field inside the YAML metadata
+        const yamlFilename = isProgram ? 'program.yaml' : 'sample.yaml';
+        const yamlHandle = await oldDir.getFileHandle(yamlFilename);
+        const yamlFile = await yamlHandle.getFile();
+        const yamlText = await yamlFile.text();
+        const parsed = parseYaml(yamlText);
+        parsed.name = newName;
+        const writable = await yamlHandle.createWritable();
+        await writable.write(stringifyYaml(parsed, { indent: 2, lineWidth: 120 }));
+        await writable.close();
+
+        // 3. Rename the directory (copy to new name, delete old)
+        const safeName = sanitizeForFilename(newName);
+        if (safeName !== oldDirName) {
+          await moveDirectory(parentDir, oldDirName, parentDir, safeName);
+        }
+        onRefresh();
       } catch (err) {
         onError(
           `Failed to rename "${node.name}": ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     },
-    [strategy, onRefresh, onError],
+    [libraryRoot, strategy, onRefresh, onError],
   );
 
   const onFileDrop = useCallback(
@@ -379,11 +408,11 @@ export function useLibraryOperations(
         if (handled) return;
       }
 
-      // Editor actions — delegate to consumer callback
+      // Editor actions -- delegate to consumer callback
       const editorActions = ['open-loop-editor', 'open-chopper', 'open-sample-editor'];
       if (editorActions.includes(actionId)) {
         if (!onEditorAction) {
-          throw new Error(`Editor action "${actionId}" has no handler — onEditorAction callback is missing`);
+          throw new Error(`Editor action "${actionId}" has no handler -- onEditorAction callback is missing`);
         }
         const name = getNodeName(node);
         const path = getNodePath(node);
@@ -392,12 +421,12 @@ export function useLibraryOperations(
       }
 
       // 'move' is intercepted by PluginLibraryBrowser before reaching here.
-      // If it arrives, the component didn't handle it — that's a bug.
+      // If it arrives, the component didn't handle it -- that's a bug.
       if (actionId === 'move') {
         throw new Error('Move action should be handled by PluginLibraryBrowser, not useLibraryOperations');
       }
 
-      // If we reach here, no one handled the action — this is a bug
+      // If we reach here, no one handled the action -- this is a bug
       throw new Error(
         `Unhandled context menu action "${actionId}" for category "${categoryId}", ` +
         `node type "${node.type}". Either the action should not appear in the menu, ` +

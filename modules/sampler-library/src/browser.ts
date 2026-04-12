@@ -208,11 +208,13 @@ export type {
 
 // Program schema exports (common area, browser-compatible)
 export {
+  SourceInfoSchema,
   ZoneSchema,
   ProgramYamlSchema,
 } from './schemas/index.js';
 
 export type {
+  SourceInfo,
   Zone,
   ProgramYaml,
   ProgramInfo,
@@ -448,9 +450,19 @@ export {
 
 // Common-area CRUD operations for programs
 export {
+  saveProgram,
   loadProgramMeta,
   loadProgramFromProgramsDir,
+  loadProgram,
   getProgramDirFromProgramsDir,
+} from './common-area/programs.js';
+
+export type {
+  ProgramWavFile,
+  ProgramSavePayload,
+  ProgramLoadResult,
+  ProgramSaveOptions,
+  ProgramLoadOptions,
 } from './common-area/programs.js';
 
 export type {

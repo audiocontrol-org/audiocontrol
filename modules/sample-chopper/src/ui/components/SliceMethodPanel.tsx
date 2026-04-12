@@ -196,6 +196,10 @@ export interface SliceMethodPanelProps {
   triggerProps?: TriggerMethodContentProps;
   // Auto-map callback: assigns triggers to slices
   onAutoMap?: (mappings: Array<{ sliceIndex: number; triggerId: TriggerId }>) => void;
+  // Apply auto-detected slices to manual mode
+  onApplyAutoSlice?: () => void;
+  /** Number of slices in the current auto-detection result */
+  autoSliceCount?: number;
 }
 
 export function SliceMethodPanel({
@@ -220,6 +224,8 @@ export function SliceMethodPanel({
   manualSlices,
   triggerProps,
   onAutoMap,
+  onApplyAutoSlice,
+  autoSliceCount,
 }: SliceMethodPanelProps): JSX.Element {
   const [activeTool, setActiveTool] = useState<ManualTool>(null);
   const [autoMapStartNote, setAutoMapStartNote] = useState(36); // C2
@@ -459,6 +465,20 @@ export function SliceMethodPanel({
             />
           </div>
         </div>
+        {onApplyAutoSlice && (
+          <button
+            onClick={onApplyAutoSlice}
+            disabled={!autoSliceCount}
+            className={cn(
+              'w-full px-3 py-2 text-sm rounded border font-medium transition-colors',
+              autoSliceCount
+                ? 'bg-ac-highlight/20 text-ac-highlight border-ac-highlight/30 hover:bg-ac-highlight/30 cursor-pointer'
+                : 'bg-ac-bg text-ac-muted border-ac-accent/30 opacity-50 cursor-not-allowed'
+            )}
+          >
+            Apply {autoSliceCount ? `${autoSliceCount} slice${autoSliceCount !== 1 ? 's' : ''}` : 'detection'}
+          </button>
+        )}
       </Tabs.Content>
 
       {/* Fixed Count Controls */}
@@ -480,6 +500,20 @@ export function SliceMethodPanel({
             className="w-full bg-ac-bg border border-ac-accent/50 rounded px-2 py-1 text-sm text-ac-text"
           />
         </div>
+        {onApplyAutoSlice && (
+          <button
+            onClick={onApplyAutoSlice}
+            disabled={!autoSliceCount}
+            className={cn(
+              'w-full px-3 py-2 text-sm rounded border font-medium transition-colors',
+              autoSliceCount
+                ? 'bg-ac-highlight/20 text-ac-highlight border-ac-highlight/30 hover:bg-ac-highlight/30 cursor-pointer'
+                : 'bg-ac-bg text-ac-muted border-ac-accent/30 opacity-50 cursor-not-allowed'
+            )}
+          >
+            Apply {autoSliceCount ? `${autoSliceCount} slice${autoSliceCount !== 1 ? 's' : ''}` : 'detection'}
+          </button>
+        )}
       </Tabs.Content>
     </Tabs.Root>
   );

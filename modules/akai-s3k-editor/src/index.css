@@ -46,4 +46,23 @@
   .compare-pane {
     max-height: calc(100vh - var(--ac-site-header-height, 3.75rem) - var(--ac-page-header-height, 3.5rem) - 4rem);
   }
+
+  /* Transparent button wrapper for MidiStatusDisplay so it remains clickable
+     without adding visible button chrome */
+  .ac-midi-status-btn {
+    all: unset;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    border-radius: var(--ac-radius-md, 0.375rem);
+  }
+
+  .ac-midi-status-btn:hover {
+    opacity: 0.8;
+  }
+
+  .ac-midi-status-btn:focus-visible {
+    outline: 2px solid var(--ac-color-focus, #60a5fa);
+    outline-offset: 2px;
+  }
 }

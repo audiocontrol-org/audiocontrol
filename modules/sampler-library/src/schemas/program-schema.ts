@@ -20,6 +20,16 @@ import {
 import { PolyphonyModeSchema, PlaybackModeSchema } from './chopped-sample-schema.js';
 
 /**
+ * Provenance information linking a program back to its source sample.
+ */
+export const SourceInfoSchema = z.object({
+  /** Name of the source sample this program was created from */
+  sampleName: z.string().min(1),
+  /** Directory name of the source sample in the library (for lookup) */
+  sampleDirectory: z.string().min(1).optional(),
+});
+
+/**
  * A zone maps one sample to a region of the keyboard/velocity space.
  * Analogous to SFZ `<region>`.
  */
@@ -62,6 +72,8 @@ export const ProgramYamlSchema = z.object({
   polyphony: PolyphonyModeSchema.optional(),
   /** How zones respond to note-on/off (one-shot/gate) */
   playbackMode: PlaybackModeSchema.optional(),
+  /** Provenance: which source sample this program was created from */
+  sourceInfo: SourceInfoSchema.optional(),
   /** Human-readable description */
   description: z.string().optional(),
   /** Freeform tags for organization */
@@ -75,6 +87,7 @@ export const ProgramYamlSchema = z.object({
 /**
  * Inferred types from schemas.
  */
+export type SourceInfo = z.infer<typeof SourceInfoSchema>;
 export type Zone = z.infer<typeof ZoneSchema>;
 export type ProgramYaml = z.infer<typeof ProgramYamlSchema>;
 
