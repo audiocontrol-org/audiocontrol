@@ -42,7 +42,7 @@ async function loadZone(
   const wavBuffer = await wavFile.arrayBuffer();
   const wavData = parseWav(wavBuffer);
 
-  const rootKey = resolveRootKey(zone, wavData.sampleRate);
+  const rootKey = resolveRootKey(zone);
 
   return {
     samples: wavData.samples,
@@ -64,7 +64,7 @@ async function loadZone(
  * Resolve root key: zone.rootKey takes precedence,
  * otherwise default to middle C (60).
  */
-function resolveRootKey(zone: Zone, _sampleRate: number): number {
+function resolveRootKey(zone: Zone): number {
   if (zone.rootKey !== undefined) {
     // rootKey can be a number or a note name string — the schema resolves it to a number
     return typeof zone.rootKey === 'number' ? zone.rootKey : 60;

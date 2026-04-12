@@ -20,7 +20,7 @@ describe('findMatchingZones', () => {
   it('matches a zone that covers the full range', () => {
     const zone = makeZone();
     const result = findMatchingZones([zone], 60, 100);
-    expect(result).toEqual([zone]);
+    expect(result).toEqual([{ zone, index: 0 }]);
   });
 
   it('returns empty array when note is below key range', () => {
@@ -35,8 +35,8 @@ describe('findMatchingZones', () => {
 
   it('matches at key range boundaries (inclusive)', () => {
     const zone = makeZone({ keyRange: [48, 72] });
-    expect(findMatchingZones([zone], 48, 100)).toEqual([zone]);
-    expect(findMatchingZones([zone], 72, 100)).toEqual([zone]);
+    expect(findMatchingZones([zone], 48, 100)).toEqual([{ zone, index: 0 }]);
+    expect(findMatchingZones([zone], 72, 100)).toEqual([{ zone, index: 0 }]);
   });
 
   it('returns empty array when velocity is below range', () => {
@@ -59,15 +59,15 @@ describe('findMatchingZones', () => {
     const zone1 = makeZone({ keyRange: [36, 72], label: 'low' });
     const zone2 = makeZone({ keyRange: [60, 96], label: 'high' });
     const result = findMatchingZones([zone1, zone2], 66, 100);
-    expect(result).toEqual([zone1, zone2]);
+    expect(result).toEqual([{ zone: zone1, index: 0 }, { zone: zone2, index: 1 }]);
   });
 
   it('matches velocity layers — same key range, split velocity', () => {
     const soft = makeZone({ velocityRange: [1, 63], label: 'soft' });
     const loud = makeZone({ velocityRange: [64, 127], label: 'loud' });
 
-    expect(findMatchingZones([soft, loud], 60, 50)).toEqual([soft]);
-    expect(findMatchingZones([soft, loud], 60, 100)).toEqual([loud]);
+    expect(findMatchingZones([soft, loud], 60, 50)).toEqual([{ zone: soft, index: 0 }]);
+    expect(findMatchingZones([soft, loud], 60, 100)).toEqual([{ zone: loud, index: 1 }]);
   });
 
   it('returns empty array for empty zone list', () => {
@@ -76,8 +76,16 @@ describe('findMatchingZones', () => {
 
   it('handles single-note zone (keyRange low === high)', () => {
     const zone = makeZone({ keyRange: [60, 60] });
-    expect(findMatchingZones([zone], 60, 100)).toEqual([zone]);
+    expect(findMatchingZones([zone], 60, 100)).toEqual([{ zone, index: 0 }]);
     expect(findMatchingZones([zone], 59, 100)).toEqual([]);
     expect(findMatchingZones([zone], 61, 100)).toEqual([]);
+  });
+
+  it('preserves correct indices when only some zones match', () => {
+    const zone0 = makeZone({ keyRange: [0, 30], label: 'low' });
+    const zone1 = makeZone({ keyRange: [31, 60], label: 'mid' });
+    const zone2 = makeZone({ keyRange: [61, 127], label: 'high' });
+    const result = findMatchingZones([zone0, zone1, zone2], 65, 100);
+    expect(result).toEqual([{ zone: zone2, index: 2 }]);
   });
 });

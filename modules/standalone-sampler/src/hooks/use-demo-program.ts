@@ -33,8 +33,8 @@ export function useDemoProgram(): ProgramPlayback {
         {
           samples,
           sampleRate,
-          keyRange: [0, 127] as [number, number],
-          velocityRange: [1, 127] as [number, number],
+          keyRange: [0, 127] satisfies [number, number],
+          velocityRange: [1, 127] satisfies [number, number],
           pitch: { rootKey: 60, transpose: 0, fineTune: 0 },
           ampEnvelope: { ...DEFAULT_AMP_ENVELOPE, attack: 0.01, decay: 0.1, sustain: 0.6, release: 0.3 },
           muteGroup: 0,

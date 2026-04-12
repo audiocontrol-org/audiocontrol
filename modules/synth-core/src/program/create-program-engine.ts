@@ -1,4 +1,4 @@
-import type { ProgramPlayback, ZonePlayback } from '@/types/program-playback';
+import type { ProgramPlayback } from '@/types/program-playback';
 import { findMatchingZones } from '@/program/zone-matcher';
 import { createAmpEnvelope } from '@/program/amp-envelope';
 import type { AmpEnvelope } from '@/program/amp-envelope';
@@ -13,6 +13,7 @@ interface ActiveVoice {
   ampEnvelope: AmpEnvelope;
   zoneFilter: ZoneFilter | null;
   muteGroup: number;
+  disposed: boolean;
 }
 
 /** Program engine — multi-zone voice allocation and playback. */
@@ -31,7 +32,7 @@ const STOP_ALL_FADE_SEC = 0.01;
  *
  * Each zone gets its own AudioBuffer. On noteOn, the engine finds
  * matching zones, creates voices with per-zone DSP chains
- * (source → filter → ampEnvelope → destination), and manages
+ * (source -> filter -> ampEnvelope -> destination), and manages
  * polyphony and mute groups.
  */
 export function createProgramEngine(
@@ -93,6 +94,27 @@ export function createProgramEngine(
     }
   }
 
+  function disposeVoiceNodes(voice: ActiveVoice): void {
+    if (voice.disposed) return;
+    voice.disposed = true;
+    voice.ampEnvelope.dispose();
+    voice.zoneFilter?.dispose();
+    try { voice.source.disconnect(); } catch { /* ok */ }
+  }
+
+  function removeVoiceFromMap(voice: ActiveVoice): void {
+    const voices = voicesByNote.get(voice.note);
+    if (voices) {
+      const idx = voices.findIndex((v) => v.source === voice.source);
+      if (idx !== -1) {
+        voices.splice(idx, 1);
+        if (voices.length === 0) {
+          voicesByNote.delete(voice.note);
+        }
+      }
+    }
+  }
+
   function releaseVoice(voice: ActiveVoice, fadeSec?: number): void {
     const release = fadeSec ?? voice.ampEnvelope.triggerRelease();
     if (fadeSec !== undefined) {
@@ -115,18 +137,16 @@ export function createProgramEngine(
       /* already stopped */
     }
 
-    // Schedule cleanup
+    // Schedule cleanup — guarded by disposed flag to prevent double-dispose
     setTimeout(() => {
-      voice.ampEnvelope.dispose();
-      voice.zoneFilter?.dispose();
-      try { voice.source.disconnect(); } catch { /* ok */ }
+      disposeVoiceNodes(voice);
     }, (release + 0.05) * 1000);
   }
 
   function createVoice(
     note: number,
     velocity: number,
-    zone: ZonePlayback,
+    zone: ProgramPlayback['zones'][number],
     zoneIndex: number,
   ): ActiveVoice {
     const buf = zoneBuffers[zoneIndex]!;
@@ -148,11 +168,11 @@ export function createProgramEngine(
 
     if (zone.filter) {
       zoneFilter = createZoneFilter(ctx, zone.filter, zone.ampEnvelope);
-      // Chain: source → filter → ampEnvelope → destination
+      // Chain: source -> filter -> ampEnvelope -> destination
       source.connect(zoneFilter.filterNode);
       zoneFilter.filterNode.connect(ampEnv.gainNode);
     } else {
-      // Chain: source → ampEnvelope → destination
+      // Chain: source -> ampEnvelope -> destination
       source.connect(ampEnv.gainNode);
     }
 
@@ -165,39 +185,30 @@ export function createProgramEngine(
     // Start playback
     source.start();
 
-    // Clean up when source naturally ends (one-shot samples)
-    source.onended = () => {
-      ampEnv.dispose();
-      zoneFilter?.dispose();
-      try { source.disconnect(); } catch { /* ok */ }
-
-      // Remove from active voices
-      const voices = voicesByNote.get(note);
-      if (voices) {
-        const idx = voices.findIndex((v) => v.source === source);
-        if (idx !== -1) {
-          voices.splice(idx, 1);
-          if (voices.length === 0) {
-            voicesByNote.delete(note);
-          }
-        }
-      }
-    };
-
-    return {
+    const voice: ActiveVoice = {
       note,
       zoneIndex,
       source,
       ampEnvelope: ampEnv,
       zoneFilter,
       muteGroup: zone.muteGroup,
+      disposed: false,
     };
+
+    // Clean up when source naturally ends (one-shot samples)
+    // Guarded by disposed flag to prevent double-dispose with releaseVoice
+    source.onended = () => {
+      disposeVoiceNodes(voice);
+      removeVoiceFromMap(voice);
+    };
+
+    return voice;
   }
 
   return {
     noteOn(note: number, velocity: number): void {
-      const matchingZones = findMatchingZones(program.zones, note, velocity);
-      if (matchingZones.length === 0) return;
+      const matches = findMatchingZones(program.zones, note, velocity);
+      if (matches.length === 0) return;
 
       // Mono mode: stop any existing voices for this note
       if (program.polyphony === 'mono') {
@@ -212,9 +223,7 @@ export function createProgramEngine(
 
       const newVoices: ActiveVoice[] = [];
 
-      for (const zone of matchingZones) {
-        const zoneIndex = program.zones.indexOf(zone);
-
+      for (const { zone, index: zoneIndex } of matches) {
         // Enforce mute groups
         if (zone.muteGroup !== 0) {
           stopVoicesInMuteGroup(zone.muteGroup);

@@ -20,8 +20,6 @@ export interface UseProgramPlayerReturn {
   latencyMs: number;
 }
 
-const ACTIVE_POLL_INTERVAL_MS = 50;
-
 /**
  * React hook for program-based playback.
  *
@@ -67,22 +65,6 @@ export function useProgramPlayer(params: UseProgramPlayerParams): UseProgramPlay
       effectsRef.current.update(effects);
     }
   }, [effects]);
-
-  // Poll active notes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!engineRef.current) return;
-      const current = engineRef.current.getActiveNotes();
-      setActiveNotes((prev) => {
-        if (prev.size === current.size && [...prev].every((v) => current.has(v))) {
-          return prev;
-        }
-        return current;
-      });
-    }, ACTIVE_POLL_INTERVAL_MS);
-
-    return () => clearInterval(interval);
-  }, []);
 
   // Cleanup on unmount
   useEffect(() => {

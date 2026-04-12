@@ -1,22 +1,18 @@
 import { ParameterSlider, CollapsibleSection } from '@audiocontrol/editor-core';
 import type { AmpEnvelopeParams } from '@audiocontrol/synth-core';
 import { sliderTheme, sectionTheme } from '@/components/program-editor/theme';
+import { formatTime } from '@/lib/format-utils';
 
 interface AmpEnvelopeSectionProps {
   envelope: AmpEnvelopeParams;
   onChange: (envelope: Partial<AmpEnvelopeParams>) => void;
 }
 
-function formatTime(value: number): string {
-  if (value < 1) return `${Math.round(value * 1000)}ms`;
-  return `${value.toFixed(1)}s`;
-}
-
 function formatLevel(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
-// Map slider 0–127 to time 0–5s (exponential curve for finer low-end control)
+// Map slider 0-127 to time 0-5s (exponential curve for finer low-end control)
 function sliderToTime(v: number): number {
   return Math.pow(v / 127, 2) * 5;
 }

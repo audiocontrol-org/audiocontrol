@@ -53,8 +53,8 @@ export function useWebMidiInput({
         attachListeners(access);
         access.onstatechange = () => attachListeners(access);
       },
-      () => {
-        // Web MIDI not available — silently ignore
+      (err) => {
+        console.warn('Web MIDI not available:', err);
       },
     );
 

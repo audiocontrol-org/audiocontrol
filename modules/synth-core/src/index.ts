@@ -34,6 +34,7 @@ export { createKeyboardNoteInput } from '@/input/keyboard-note-input';
 // Program engine
 export type { ProgramEngine } from '@/program/create-program-engine';
 export { createProgramEngine } from '@/program/create-program-engine';
+export type { ZoneMatch } from '@/program/zone-matcher';
 export { findMatchingZones } from '@/program/zone-matcher';
 export type { AmpEnvelope } from '@/program/amp-envelope';
 export { createAmpEnvelope } from '@/program/amp-envelope';

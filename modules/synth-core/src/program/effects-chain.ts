@@ -4,7 +4,7 @@ import type { EffectsChainParams, ReverbParams, DelayParams, ChorusParams } from
  * An active effects chain that sits between the program engine
  * output and the AudioContext destination.
  *
- * Signal flow: input → chorus → delay → reverb → output
+ * Signal flow: input -> chorus -> delay -> reverb -> output
  * Each effect has a parallel dry path mixed with the wet signal.
  */
 export interface EffectsChain {
@@ -15,6 +15,9 @@ export interface EffectsChain {
   /** Disconnect and clean up. */
   dispose(): void;
 }
+
+/** Maximum feedback to prevent infinite delay loops. */
+const MAX_FEEDBACK = 0.95;
 
 /**
  * Create a Web Audio effects chain.
@@ -34,16 +37,16 @@ export function createEffectsChain(
   // Build nodes for each effect
   const chorusNodes = createChorusNodes(ctx, params.chorus);
   const delayNodes = createDelayNodes(ctx, params.delay);
-  const reverbNodes = createReverbNodes(ctx, params.reverb);
+  const reverbState = createReverbState(ctx, params.reverb);
 
-  // Wire the chain: input → chorus → delay → reverb → destination
+  // Wire the chain: input -> chorus -> delay -> reverb -> destination
   const input = ctx.createGain();
   input.gain.value = 1;
 
   connectEffect(input, chorusNodes);
   connectEffect(chorusNodes.output, delayNodes);
-  connectEffect(delayNodes.output, reverbNodes);
-  reverbNodes.output.connect(dest);
+  connectEffect(delayNodes.output, reverbState.nodes);
+  reverbState.nodes.output.connect(dest);
 
   return {
     get input() { return input; },
@@ -51,7 +54,7 @@ export function createEffectsChain(
     update(newParams: EffectsChainParams): void {
       updateChorus(chorusNodes, newParams.chorus);
       updateDelay(delayNodes, newParams.delay);
-      updateReverb(ctx, reverbNodes, newParams.reverb);
+      updateReverb(ctx, reverbState, newParams.reverb);
     },
 
     dispose(): void {
@@ -59,7 +62,7 @@ export function createEffectsChain(
       try { input.disconnect(); } catch { /* ok */ }
       try { chorusNodes.output.disconnect(); } catch { /* ok */ }
       try { delayNodes.output.disconnect(); } catch { /* ok */ }
-      try { reverbNodes.output.disconnect(); } catch { /* ok */ }
+      try { reverbState.nodes.output.disconnect(); } catch { /* ok */ }
     },
   };
 }
@@ -89,6 +92,11 @@ interface ReverbNodes extends EffectNodes {
   convolver: ConvolverNode;
 }
 
+interface ReverbState {
+  nodes: ReverbNodes;
+  currentDecay: number;
+}
+
 function connectEffect(source: AudioNode, effect: EffectNodes): void {
   source.connect(effect.dry);
   source.connect(effect.wet);
@@ -98,7 +106,7 @@ function connectEffect(source: AudioNode, effect: EffectNodes): void {
 // Reverb
 // ---------------------------------------------------------------------------
 
-function createReverbNodes(ctx: AudioContext, params: ReverbParams): ReverbNodes {
+function createReverbState(ctx: AudioContext, params: ReverbParams): ReverbState {
   const dry = ctx.createGain();
   const wet = ctx.createGain();
   const output = ctx.createGain();
@@ -113,13 +121,21 @@ function createReverbNodes(ctx: AudioContext, params: ReverbParams): ReverbNodes
   convolver.connect(output);
   dry.connect(output);
 
-  return { dry, wet, output, convolver };
+  return {
+    nodes: { dry, wet, output, convolver },
+    currentDecay: params.decay,
+  };
 }
 
-function updateReverb(ctx: AudioContext, nodes: ReverbNodes, params: ReverbParams): void {
+function updateReverb(ctx: AudioContext, state: ReverbState, params: ReverbParams): void {
+  const { nodes } = state;
   nodes.dry.gain.value = params.enabled ? 1 - params.mix : 1;
   nodes.wet.gain.value = params.enabled ? params.mix : 0;
-  nodes.convolver.buffer = generateImpulseResponse(ctx, params.decay);
+
+  if (params.decay !== state.currentDecay) {
+    nodes.convolver.buffer = generateImpulseResponse(ctx, params.decay);
+    state.currentDecay = params.decay;
+  }
 }
 
 function generateImpulseResponse(ctx: AudioContext, decay: number): AudioBuffer {
@@ -149,7 +165,7 @@ function createDelayNodes(ctx: AudioContext, params: DelayParams): DelayEffectNo
   const feedback = ctx.createGain();
 
   delay.delayTime.value = params.time;
-  feedback.gain.value = params.feedback;
+  feedback.gain.value = Math.min(params.feedback, MAX_FEEDBACK);
 
   dry.gain.value = params.enabled ? 1 - params.mix : 1;
   wet.gain.value = params.enabled ? params.mix : 0;
@@ -167,7 +183,7 @@ function updateDelay(nodes: DelayEffectNodes, params: DelayParams): void {
   nodes.dry.gain.value = params.enabled ? 1 - params.mix : 1;
   nodes.wet.gain.value = params.enabled ? params.mix : 0;
   nodes.delay.delayTime.value = params.time;
-  nodes.feedback.gain.value = params.feedback;
+  nodes.feedback.gain.value = Math.min(params.feedback, MAX_FEEDBACK);
 }
 
 // ---------------------------------------------------------------------------

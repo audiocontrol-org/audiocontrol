@@ -1,12 +1,8 @@
 import { ParameterSlider, CollapsibleSection } from '@audiocontrol/editor-core';
 import { sliderTheme, sectionTheme } from '@/components/program-editor/theme';
 import { useEffectsStore } from '@/stores/effectsStore';
+import { formatTime } from '@/lib/format-utils';
 import { clsx } from 'clsx';
-
-function formatTime(ms: number): string {
-  if (ms < 1) return `${Math.round(ms * 1000)}ms`;
-  return `${ms.toFixed(2)}s`;
-}
 
 function formatPercent(v: number): string {
   return `${Math.round(v * 100)}%`;

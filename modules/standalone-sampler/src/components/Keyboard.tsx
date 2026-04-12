@@ -8,7 +8,7 @@ interface KeyboardProps {
   highNote?: number;
   /** Currently active (playing) MIDI notes. */
   activeNotes?: Set<number>;
-  /** Called on mouse/touch down. Velocity 1–127 based on vertical position. */
+  /** Called on mouse/touch down. Velocity 1-127 based on vertical position. */
   onNoteOn: (note: number, velocity: number) => void;
   /** Called on mouse/touch up. */
   onNoteOff: (note: number) => void;
@@ -91,8 +91,7 @@ export function Keyboard({
 
   return (
     <div
-      className="relative select-none"
-      style={{ height: '160px' }}
+      className="relative select-none h-40"
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
     >

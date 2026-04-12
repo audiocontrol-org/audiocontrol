@@ -48,6 +48,8 @@ function createMockBiquadFilterNode() {
   };
 }
 
+// Guideline deviation: `as unknown as AudioContext` casts are required for Web Audio
+// mocks in unit tests — jsdom has no AudioContext. Do not copy this pattern outside tests.
 function createMockAudioContext() {
   const sources: ReturnType<typeof createMockSourceNode>[] = [];
   const gains: ReturnType<typeof createMockGainNode>[] = [];
