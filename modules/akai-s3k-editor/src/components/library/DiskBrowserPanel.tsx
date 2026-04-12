@@ -232,9 +232,14 @@ export function DiskBrowserPanel({ bridgeUrl, onSaveToLibrary, onSendToDevice, b
     setSaveError(null);
     setSavingFile(file.name);
     try {
-      const data = partitionData.get(targetId);
+      let data = partitionData.get(targetId);
       if (!data) {
-        throw new Error('Disk data not loaded — try collapsing and re-expanding the target');
+        // Partition data missing (e.g., after page reload with cached tree).
+        // Reload from disk automatically.
+        data = (await loadDiskData(targetId)) ?? undefined;
+        if (!data) {
+          throw new Error('Failed to load disk data — check SCSI connection');
+        }
       }
       await ensureFileBlocks(targetId, file);
       const partitions = parsePartitionTable(data);
