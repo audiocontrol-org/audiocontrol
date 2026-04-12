@@ -1,0 +1,117 @@
+# Workplan: standalone-sampler
+
+## GitHub Tracking
+
+| Item | Link |
+|------|------|
+| Parent Issue | TBD |
+| Milestone | TBD |
+
+## Technical Approach
+
+### Modules Affected
+
+| Module | Change |
+|--------|--------|
+| `standalone-sampler` (new) | The editor/player web app -- Vite + React |
+| `synth-core` | Extend with keygroup/zone-aware multi-sample playback, per-zone filter/amp/pitch |
+| `editor-core` | Reuse library browser, parameter sections, shared UI components |
+| `sampler-library` | Reuse common-area storage for programs and samples |
+
+### Strategy
+
+Extend synth-core first (engine), then build the app module, then the program editor UI, then performance features. The synth-core engine IS the "device" -- there is no hardware protocol layer. Reuse editor-core patterns and the `program.yaml` format from program-based-slicing.
+
+### Dependencies
+
+- synth-core extension must be complete before Phase 2 (app module needs the engine)
+- akai-ux-improvement patterns should be available before Phase 3 (program editor UI reuse)
+- program-based-slicing schema defines the program format
+- library-ux browser patterns provide the sample/program browsing UI
+
+## Phase 1: Synth-Core Program Engine
+
+Extend synth-core from single-sample playback to multi-keygroup program playback.
+
+### Tasks
+
+- [ ] Define program playback interface (program, keygroup, zone types consumed by the engine)
+- [ ] Implement multi-keygroup voice allocation -- route incoming MIDI note-on to the correct keygroup(s) by key range and velocity range
+- [ ] Add per-zone pitch parameters: root key, transpose, fine tune
+- [ ] Add per-zone amplitude envelope: ADSR with configurable attack, decay, sustain, release
+- [ ] Add per-zone filter: type selection (lowpass, highpass, bandpass), cutoff, resonance, envelope amount
+- [ ] Complete `useSlicePlayer` integration with multi-keygroup engine
+- [ ] Unit tests for voice allocation, zone matching, parameter application
+
+### Acceptance Criteria
+
+- A program with multiple keygroups plays the correct sample for each key/velocity combination
+- Per-zone pitch, amp envelope, and filter parameters audibly affect playback
+- Voice allocation handles polyphony (multiple simultaneous notes across keygroups)
+- All public interfaces have unit test coverage
+
+## Phase 2: Sampler Module Scaffold
+
+Create the standalone-sampler web app module and wire it to the synth-core engine.
+
+### Tasks
+
+- [ ] Create `standalone-sampler` module (Vite + React, standard monorepo structure)
+- [ ] Set up page routing (program editor, library browser, performance view)
+- [ ] Wire synth-core as the "device" -- no hardware protocol, direct engine calls
+- [ ] Integrate library browser via editor-core plugins for sample and program browsing
+- [ ] Implement program load from common area (deserialize program.yaml, load samples into engine)
+- [ ] Build on-screen keyboard component with note-on/note-off events
+- [ ] Wire MIDI input routing -- Web MIDI API for external controllers, on-screen keyboard for mouse/touch
+
+### Acceptance Criteria
+
+- App loads in browser with working navigation between pages
+- Programs load from common-area library and play through synth-core
+- On-screen keyboard triggers notes that play through the loaded program
+- External MIDI controller input triggers notes that play through the loaded program
+- Library browser shows available programs and samples from common area
+
+## Phase 3: Program Editor
+
+Build the program editor UI for creating and modifying programs.
+
+### Tasks
+
+- [ ] Program editor page with keygroup list and parameter sections
+- [ ] Keygroup CRUD -- add, remove, reorder keygroups within a program
+- [ ] Zone mapping UI -- key range and velocity range selection, sample assignment from library
+- [ ] Zone overview visualization -- keyboard-style view showing all keygroup mappings
+- [ ] Per-zone parameter sections: filter (type, cutoff, resonance, envelope), amp (ADSR), pitch (root, transpose, fine tune)
+- [ ] Real-time parameter updates -- editing a parameter immediately affects synth-core playback
+- [ ] Program save to common-area library (serialize to program.yaml format)
+- [ ] Reuse editor-core shared components (parameter knobs, section panels, value displays)
+
+### Acceptance Criteria
+
+- Users can create a program from scratch: add keygroups, assign samples, set key/velocity ranges
+- Editing a zone parameter (e.g., filter cutoff) is immediately audible during playback
+- Programs round-trip through save/load without data loss
+- UI follows the same visual patterns as the Akai and Roland editors
+- Zone overview visualization accurately reflects all keygroup mappings
+
+## Phase 4: Performance Features
+
+Add effects, multi-timbral support, and performance polish.
+
+### Tasks
+
+- [ ] Effects chain using Web Audio nodes: reverb, delay, chorus
+- [ ] Effects routing -- per-program vs per-keygroup effects sends
+- [ ] Multi-timbral support -- multiple programs on different MIDI channels
+- [ ] On-screen keyboard polish: velocity sensitivity (vertical position), pitch bend, mod wheel
+- [ ] MIDI learn -- assign MIDI CC to any parameter by clicking the parameter and moving a knob
+- [ ] Performance optimization -- voice stealing, sample preloading, AudioWorklet efficiency
+
+### Acceptance Criteria
+
+- Effects (reverb, delay, chorus) are audible and configurable per program
+- Multiple programs can play simultaneously on different MIDI channels
+- On-screen keyboard supports velocity via vertical click position
+- MIDI learn allows mapping any CC to any exposed parameter
+- Playback remains glitch-free with 16+ simultaneous voices
