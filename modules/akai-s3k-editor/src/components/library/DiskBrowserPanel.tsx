@@ -563,13 +563,17 @@ function FileNode({ file, targetId, volumeStartBlock, isSelected, isSaving, onSe
   };
 
   const isSample = file.type === FILE_TYPE_SAMPLE;
-  const commonLabel = isSample ? 'Save to Common Samples' : 'Save to Common Library';
-  const deviceLabel = isSample ? 'Save to Akai Samples' : 'Save to Akai Library';
 
   const actions: ContextMenuAction[] = [];
   if (onSaveToLibrary && !isSaving) {
-    actions.push({ label: commonLabel, onClick: () => { onSaveToLibrary(); } });
-    actions.push({ label: deviceLabel, onClick: () => { onSaveToLibrary(); } });
+    if (isSample) {
+      // Samples can go to either common or device-specific library
+      actions.push({ label: 'Save to Common Samples', onClick: () => { onSaveToLibrary(); } });
+      actions.push({ label: 'Save to Akai Samples', onClick: () => { onSaveToLibrary(); } });
+    } else {
+      // Programs are saved in S3K format only (common-area conversion not implemented)
+      actions.push({ label: 'Save to Akai Library', onClick: () => { onSaveToLibrary(); } });
+    }
   }
   if (onSendToDevice && !isSaving) {
     actions.push({ label: 'Send to Device', onClick: () => { onSendToDevice(); } });
