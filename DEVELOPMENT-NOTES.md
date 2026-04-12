@@ -11,7 +11,67 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
-## 2026-04-12: Akai S3000XL Editor UX Improvement — All 5 Phases
+## 2026-04-12: Akai S3000XL Editor UX — Design Review and Interactive Editors (Session 2)
+
+### Feature: akai-ux-improvement
+### Worktree: audiocontrol-akai-ux-improvement
+
+### Goal
+Review the implemented UI in the browser, fix design issues, and make parameter editing compelling.
+
+### Accomplished
+- Connection drawer: converted standalone Connect page to SlideDrawer accessible from any page via MIDI status indicator
+- Program CRUD on list items: delete (trash icon), clone (SteppedProgressDrawer), rename (inline double-click), refresh — all with optimistic updates
+- Redesigned ProgramEditor: dense multi-column grid with ParamKnob (visual value bars, draggable tracks, click-to-edit numbers)
+- Redesigned KeygroupEditor: same dense grid, removed CollapsibleSection, paired sections (Filter+Filter Env, Amp Env+Pitch)
+- Interactive ADSR and filter envelope editors with draggable points — fixed layout (sustain end at 75%), working decay drag
+- Header controls: "All Notes Off" replaces "PANIC", gear icon on MIDI status, info icon replaces git hash, responsive collapsing at narrow widths
+- Design system: ac-list-action-btn with --selected/--danger modifiers, ac-icon/ac-icon-lg classes, --ac-action-* CSS variables, ac-hide-narrow utility
+- Narrowed program list column to 18rem (was 33% via 1fr/2fr)
+- Selection persisted in sessionStorage (survives page reload)
+- Auto-select first program/keygroup when list loads
+- Created DESIGN-NOTES.md as working design scratchpad
+- Filed issues: #239 (design system docs), #245 (delete stack overflow), #246 (skeleton loading), #247 (envelope drag refinement)
+- Pinned Rust 1.91 in Dockerfile.arm64, deployed bridge to Pi
+- Merged PR #248
+
+### Didn't Work
+- Envelope drag interaction: 4 attempts with broken math before finding the stale-closure bug (two onChange calls in same tick, second overwrites first). Should have studied the Roland EnvelopeEditor code from the start instead of building from first principles.
+- Proportional envelope layout (from adsr-envelope-graph reference) caused whole graph to shift when dragging one point. Fixed by using fixed-scale layout with sustain end anchored at 75%.
+- Icon sizes: started at 14px, went through 18px, 20px, and multiple rem values before settling on design system classes. Each iteration required the user to point out it was still wrong.
+
+### Course Corrections
+- [PROCESS] User flagged that I hadn't reviewed the library-ux drawer/dialog patterns before delegating implementations.
+- [PROCESS] User clarified ConfirmDialog is for destructive confirmation only — not general operations.
+- [PROCESS] User said "use existing code" — I kept building envelope drag from scratch instead of studying the Roland EnvelopeEditor.
+- [PROCESS] User had to remind me to add design notes to DESIGN-NOTES.md after establishing a pattern.
+- [PROCESS] User asked "why didn't you follow the standard?" when I set icon sizes with inline px instead of the rem-based classes I had just created.
+- [PROCESS] User asked "why didn't you update the library?" when I only fixed the S3K consumer but not the editor-core source.
+- [UX] User pointed out fire-and-forget delete dialog — should stay open during async operation.
+- [UX] User pointed out fire-and-forget rename — should show saving state.
+- [UX] User pointed out full-list-reload after rename nukes the UI — should use optimistic update.
+- [UX] User pointed out non-responsive header — text labels should collapse at narrow widths.
+- [UX] User pointed out affordance colors invisible on blue selection background.
+- [UX] User pointed out icon sizes too small, specified in px not rem.
+- [UX] User said "make the sliders draggable" — obvious interaction I missed.
+- [FABRICATION] Agent attempted to implement clone without checking if createProgram works — it does, via the import pattern.
+
+### Quantitative
+- User messages: ~80
+- Commits: ~20
+- User corrections: 14 (7 PROCESS, 6 UX, 1 FABRICATION)
+- Sub-agents spawned: ~5
+
+### Insights
+1. **Design system first**: every visual value should come from the design system. I repeatedly created variables/classes then used hardcoded values in components. The cardinal rule: if a value appears in a component, it's wrong.
+2. **Study existing code before building**: the Roland EnvelopeEditor has working, debugged drag interaction. I wasted 4 iterations building broken drag math from scratch instead of adapting proven code.
+3. **Stale closures in React drag handlers**: when onChange is called multiple times in the same tick, each call reads from the same stale closure. Fix: read from getState() instead of closure variables, or merge multi-field changes into a single onChange call.
+4. **Optimistic updates prevent UI flicker**: never invalidateCache() + reload after a mutation. Update the known state in place; only reload from device on failure.
+5. **DESIGN-NOTES.md as working scratchpad**: capture design decisions as they happen. A separate effort will formalize them into CLAUDE.md guidelines.
+
+---
+
+## 2026-04-12: Akai S3000XL Editor UX Improvement — All 5 Phases (Session 1)
 
 ### Feature: akai-ux-improvement
 ### Worktree: audiocontrol-akai-ux-improvement
