@@ -7,16 +7,9 @@
  */
 
 import type { ItemTypePlugin } from '@audiocontrol/editor-core';
-import {
-  commonSampleItemType,
-  commonProgramItemType,
-  type CommonSampleMeta,
-  type CommonProgramMeta,
-} from '@audiocontrol/editor-core';
+import type { CommonSampleMeta, CommonProgramMeta } from '@audiocontrol/editor-core';
 import { WaveIcon, PatchIcon } from '@/components/library/LibraryTreeIcons';
 
-// Re-export common-area types from editor-core
-export { commonSampleItemType, commonProgramItemType };
 export type { CommonSampleMeta, CommonProgramMeta };
 
 // =========================================================================
@@ -55,27 +48,32 @@ export const toneItemType: ItemTypePlugin<ToneMeta> = {
       id: 'rename',
       label: 'Rename',
       icon: null,
+      batchable: false,
     },
     {
       id: 'move',
       label: 'Move to...',
       icon: null,
+      batchable: true,
     },
     { separator: true },
     {
       id: 'open-loop-editor',
       label: 'Open in Loop Editor',
       icon: null,
+      batchable: false,
     },
     {
       id: 'open-chopper',
       label: 'Open in Chopper',
       icon: null,
+      batchable: false,
     },
     {
       id: 'open-sample-editor',
       label: 'Open in Sample Editor',
       icon: null,
+      batchable: false,
     },
     { separator: true },
     {
@@ -83,6 +81,7 @@ export const toneItemType: ItemTypePlugin<ToneMeta> = {
       label: 'Delete',
       icon: null,
       danger: true,
+      batchable: true,
     },
   ],
 };
@@ -115,11 +114,13 @@ export const patchItemType: ItemTypePlugin<PatchMeta> = {
       id: 'rename',
       label: 'Rename',
       icon: null,
+      batchable: false,
     },
     {
       id: 'move',
       label: 'Move to...',
       icon: null,
+      batchable: true,
     },
     { separator: true },
     {
@@ -127,6 +128,7 @@ export const patchItemType: ItemTypePlugin<PatchMeta> = {
       label: 'Delete',
       icon: null,
       danger: true,
+      batchable: true,
     },
   ],
 };

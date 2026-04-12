@@ -13,10 +13,10 @@ export {
   DrumKitIcon,
 } from './icons';
 
-// Item types and metadata
+// Item type factories and metadata
 export {
-  commonSampleItemType,
-  commonProgramItemType,
+  createCommonSampleItemType,
+  createCommonProgramItemType,
   type CommonSampleMeta,
   type CommonProgramMeta,
 } from './item-types';

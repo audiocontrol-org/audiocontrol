@@ -1,13 +1,13 @@
 //! Single-threaded SCSI work queue.
 //!
 //! All SCSI and MIDI operations are serialized through a single worker task
-//! that owns the S2pClient and MidiStreamClient. Handlers submit work items
-//! via an mpsc channel and receive results via oneshot channels.
+//! that owns the S2pClient. Handlers submit work items via an mpsc channel
+//! and receive results via oneshot channels.
 
 use tokio::sync::{mpsc, oneshot};
-use tracing::{info, warn};
+use tracing::info;
 
-use crate::s2p_client::{MidiStreamClient, S2pClient, ScsiExecResult};
+use crate::s2p_client::{S2pClient, ScsiExecResult};
 use crate::scsi_midi;
 
 /// Work item for the SCSI worker queue.
@@ -16,7 +16,7 @@ pub enum ScsiWork {
     IsReachable {
         reply: oneshot::Sender<bool>,
     },
-    /// Send SysEx and receive response (tries streaming first, falls back to protobuf).
+    /// Send SysEx via SCSI CDB and receive response.
     /// When `expect_response` is false, sends fire-and-forget (no poll).
     SysExSendReceive {
         message: Vec<u8>,
@@ -74,11 +74,10 @@ pub struct AppState {
 }
 
 /// Single SCSI worker task that processes operations sequentially.
-/// Owns both s2p and midi_stream — no mutexes needed.
+/// Owns s2p exclusively — no mutexes needed.
 pub async fn scsi_worker(
     mut rx: mpsc::Receiver<ScsiWork>,
     mut s2p: S2pClient,
-    mut stream: MidiStreamClient,
     ws_tx: tokio::sync::broadcast::Sender<Vec<u8>>,
 ) {
     while let Some(work) = rx.recv().await {
@@ -87,9 +86,6 @@ pub async fn scsi_worker(
                 let _ = reply.send(s2p.is_reachable().await);
             }
             ScsiWork::SysExSendReceive { message, expect_response, reply } => {
-                // Use the raw CDB path directly. The streaming client (port
-                // 6870) can return stale or incorrectly formatted data after
-                // SDS transfers, causing parse errors in the TypeScript client.
                 let result = if expect_response {
                     s2p.send_and_receive(&message).await
                 } else {

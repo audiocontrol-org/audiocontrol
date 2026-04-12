@@ -1,60 +1,15 @@
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-import mkcert from 'vite-plugin-mkcert';
-import path from 'path';
+import { createEditorConfig } from '@audiocontrol/editor-core/vite';
 
-// Prevent Vite dev server from crashing on TLS connection resets
-// (common with mobile Safari dropping connections)
-process.on('uncaughtException', (err) => {
-  if ('code' in err && err.code === 'ECONNRESET') return;
-  console.error('Uncaught exception:', err);
-  process.exit(1);
-});
-
-const useMkcert = process.env.VISUAL_HTTP !== '1';
-
-export default defineConfig({
-  base: process.env.VITE_BASE_PATH || '/',
-  plugins: [
-    react(),
-    ...(useMkcert
-      ? [mkcert({
-          hosts: ['localhost', 'orion-m1', 'orion-m4'],
-        })]
-      : []),
-  ],
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
+export default createEditorConfig({
+  port: 3300,
+  dirname: __dirname,
+  proxy: {
+    '/scsi-bridge': {
+      // Use IPv4 explicitly — s3k.local resolves to IPv6 which times out
+      target: 'http://10.0.0.57:7033',
+      changeOrigin: true,
+      rewrite: (p) => p.replace(/^\/scsi-bridge/, ''),
+      ws: true,
     },
-  },
-  server: {
-    port: 3300,
-    host: true,
-    allowedHosts: ['orion-m1', 'orion-m4'],
-    proxy: {
-      '/scsi-bridge': {
-        // Use IPv4 explicitly — s3k.local resolves to IPv6 which times out
-        target: 'http://10.0.0.57:7033',
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/scsi-bridge/, ''),
-        ws: true,
-      },
-    },
-  },
-  preview: {
-    proxy: {
-      '/scsi-bridge': {
-        // Use IPv4 explicitly — s3k.local resolves to IPv6 which times out
-        target: 'http://10.0.0.57:7033',
-        changeOrigin: true,
-        rewrite: (p) => p.replace(/^\/scsi-bridge/, ''),
-        ws: true,
-      },
-    },
-  },
-  build: {
-    outDir: 'dist',
-    sourcemap: true,
   },
 });
