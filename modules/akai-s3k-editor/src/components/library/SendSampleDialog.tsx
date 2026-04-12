@@ -94,14 +94,15 @@ export function SendSampleDialog({
         // Step 2: Send via SDS
         updateStep('send', { status: 'active', label: `Send to device (slot #${targetSlot})` });
 
+        const totalSampleBytes = wavInfo.samples.length * 2;
         await client.sendSampleViaSds(targetSlot, wavInfo.samples, wavInfo.sampleRate, {
           name: sampleName,
           onProgress: (sdsProgress) => {
             const pct = sdsProgress.packetsTotal > 0
               ? Math.round((sdsProgress.packetsSent / sdsProgress.packetsTotal) * 100)
               : 0;
-            const transferred = sdsProgress.packetsSent * 120 * 2; // approximate bytes
-            updateStep('send', { progress: pct, detail: `${formatBytes(transferred)} sent` });
+            const transferred = Math.round(totalSampleBytes * pct / 100);
+            updateStep('send', { progress: pct, detail: `${formatBytes(transferred)} / ${formatBytes(totalSampleBytes)}` });
           },
         });
 
