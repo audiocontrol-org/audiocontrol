@@ -1,6 +1,31 @@
 # Design System
 
-Living documentation of the audiocontrol design system. Updated as contracts and patterns are established.
+Living documentation of the audiocontrol design system. Updated as contracts and patterns are established. This is the single source of truth -- CLAUDE.md directs agents here.
+
+### 8. Restore user context across navigation
+
+When the user navigates or reloads, they should land back where they were, not at a blank "Select something" prompt.
+
+- **Selection state** persists in `sessionStorage` — survives reload, clears on tab close
+- **Device memory cache** persists in `sessionStorage` — avoids re-fetch on page navigation
+- **MIDI port selection** persists in `localStorage` — survives browser restart
+- **Large data** (program headers) stays in-memory — re-fetched on demand
+
+When a page loads with a restored selection but no cached data, show a loading state while fetching — not a "select something" prompt.
+
+### 9. Never show empty state when data exists or is loading
+
+If data is loading, show a loading indicator (skeleton placeholders preferred, "Loading..." acceptable). If a list has items, auto-select the first one — don't show "Select an item to edit" when items are available.
+
+**Example — programs page:** After names load, auto-select program 0. The user sees the editor immediately, not a prompt.
+
+**Example — skeleton placeholders:** Pages render skeleton placeholders that mirror the loaded layout structure (matching grid/section structure, subtle pulse animation, design system colors) instead of blank screens. Sections replace individually as data arrives — not all-or-nothing.
+
+### 10. Progressive disclosure at narrow viewports
+
+At narrow widths, hide supplementary text and keep essential icons. Controls never wrap.
+
+**Example — header:** Port names truncate at 1600px, hide at 1400px. "All Notes Off" text hides but icon remains. "Connected" label hides but status dot remains. Use `ac-hide-narrow` for viewport-dependent visibility.
 
 ---
 
@@ -90,19 +115,84 @@ All dialogs live in `editor-core/src/components/library/`.
 | Component | When to Use |
 |-----------|-------------|
 | **ConfirmDialog** | Destructive actions: delete, overwrite, discard changes |
-| **SlideDrawer** | Complex forms, multi-field input, configuration panels |
+| **SlideDrawer** | Complex forms, connection settings, single-step operations |
 | **SteppedProgressDrawer** | Multi-step operations: device transfers, batch imports/exports |
 | **SaveDialog** | Save-to-library with directory picker and name input |
 | **MoveDialog** | Relocate items within the library tree |
+
+### ConfirmDialog Behavior
+
+- Must stay open during the async operation with progress indication (e.g., "Deleting..." label on confirm button)
+- Cancel must remain available throughout the operation
+- Dialog closes only when the operation completes or fails
+- Never fire-and-forget
+
+### SteppedProgressDrawer Behavior
+
+- Shows a live step log: pending, active (with optional progress bar), complete, failed
+- Stays open on completion with a Done button
+- Cancel available during operation
+
+### SlideDrawer Behavior
+
+- Slides in from the right edge; content behind stays visible and interactive
+- Use for operations needing more UI than a confirm but aren't multi-step
+
+### Inline Editing
+
+- **Use for:** Rename operations on list items
+- **Gesture:** Double-click on the item name (matching TreeView convention)
+- Name becomes an editable input in place. Enter to confirm, Escape to cancel, blur to confirm.
+- Input shows saving state (read-only, dimmed) while the device write is in progress
+- Input stays visible until the operation completes -- no fire-and-forget
 
 ### Anti-Patterns
 
 | Don't | Do Instead |
 |-------|------------|
 | `window.confirm()` | `ConfirmDialog` |
-| `window.alert()` | Toast notification via `useNotifications` |
+| `window.alert()` | Toast notification via `useNotifications` or `ErrorBanner` |
 | `window.prompt()` | Inline editing or `SlideDrawer` |
+| Custom centered modal dialogs | `SlideDrawer` |
 | Custom modal for progress | `SteppedProgressDrawer` |
+
+---
+
+## Optimistic Updates
+
+All CRUD operations on device data follow this pattern:
+
+1. **Update local state immediately** -- the UI reflects the change before the device confirms
+2. **Send to device** in the background
+3. **On success:** invalidate the device-side cache (so next explicit refresh fetches fresh data), but do NOT reload the full list
+4. **On failure:** revert local state by reloading from device, show error via ErrorBanner
+
+This avoids the flash-blank-reload cycle where the entire list disappears and repopulates after every operation.
+
+### What NOT to do after a mutation
+
+- Don't call `invalidateCache()` (which clears the store to empty) followed by a full reload. This nukes the UI.
+- Don't refetch data you already know. If you renamed index 3 to "NEW NAME", just update index 3 in the store.
+
+---
+
+## CRUD Affordances on List Items
+
+CRUD operations belong on the items they affect, not in a global toolbar.
+
+### Hover Actions
+- Non-destructive actions (refresh, clone) appear as icon buttons on hover, right-aligned within the list item
+- Destructive actions (delete) appear last with danger styling (red on hover)
+- Icons use the shared icon library from `editor-core/TreeIcons`
+- Actions are hidden when the item is in edit mode (inline rename)
+
+### Gestures
+- **Single click:** Select the item
+- **Double-click:** Initiate inline rename (if rename is supported)
+
+### List-Level Actions
+- A refresh icon on the list title header reloads the full list from the device
+- This replaces toolbar-level "Refresh" and "Load All" buttons
 
 ---
 
@@ -123,11 +213,21 @@ Render with `NotificationArea` component (`editor-core/src/components/Notificati
 
 ---
 
-## Progress Indicators
+## Progress and Feedback
+
+Every user-initiated operation must have visible feedback:
+
+| Duration | Feedback |
+|----------|----------|
+| Instant (< 100ms) | Optimistic UI update is sufficient |
+| Short (100ms - 2s) | Saving/loading state on the control that initiated it (dimmed input, spinner, "Deleting..." label) |
+| Long (> 2s) | `SteppedProgressDrawer` with step-by-step progress |
+
+**Never fire-and-forget.** The user must always be able to tell that something is happening and when it's done.
+
+### OperationProgress
 
 **File:** `editor-core/src/types/operation-progress.ts`
-
-All long-running operations use `OperationProgress` for byte-weighted progress:
 
 ```typescript
 interface OperationProgress {
@@ -144,6 +244,36 @@ interface OperationProgress {
 Helpers: `getOverallPercent(progress)`, `isOperationComplete(state)`, `formatBytes(bytes)`.
 
 **Rule:** Byte-based progress is the primary measure. Item counts are secondary context.
+
+---
+
+## Icon Consistency
+
+All editors use the shared icon library at `editor-core/src/components/library/TreeIcons.tsx`:
+
+| Icon | Component | Usage |
+|------|-----------|-------|
+| Trash can | `DeleteIcon` | Delete / remove |
+| Pencil | `RenameIcon` | Rename / edit name |
+| Two overlapping squares | `CloneIcon` | Clone / duplicate |
+| Circular arrows | `RefreshIcon` | Reload from device |
+| Folder | `FolderIcon` | Directory / container |
+| Music note | `AudioFileIcon` | Audio sample file |
+| Arrow up from tray | `ImportIcon` | Import / upload |
+| Bidirectional arrows | `MoveIcon` | Move / reorganize |
+| Folder with plus | `NewFolderIcon` | Create folder |
+
+Never use text characters or emoji for actions when an icon exists in the shared library.
+
+---
+
+## Connection UI
+
+The MIDI connection interface is a `SlideDrawer`, not a standalone page. Accessible from any page via the MIDI status indicator in the header.
+
+- The connection drawer opens over the current page content
+- Not-connected states on all pages show a button that opens the connection drawer (not a link to a separate page)
+- After connection, the user stays on whatever page they were on
 
 ---
 
@@ -167,13 +297,81 @@ All tokens use the `--ac-` prefix. Defined in `editor-core/src/design/tokens.css
 | `rem` for minimum constraints | `px` for layout dimensions |
 | CSS custom properties | Magic numbers |
 | `--ac-space-*` tokens for spacing | Arbitrary pixel padding |
+| `ac-page-shell` on all pages | Custom page wrappers |
+| `ac-list-detail-grid` for list + editor splits | Ad-hoc split layouts |
 
 ### Component CSS
 
 All components use `.ac-` prefixed class names. Defined in `editor-core/src/design/`:
-- `tokens.css` — design tokens
-- `primitives.css` — page layouts, sticky headers, grid patterns
-- `library.css` — tree view, modals, drawers, forms, buttons
+- `tokens.css` -- design tokens
+- `primitives.css` -- page layouts, sticky headers, grid patterns
+- `library.css` -- tree view, modals, drawers, forms, buttons
+
+### Typography
+
+- `text-gray-200` for primary content
+- `text-gray-400` for labels
+- `text-gray-500` for secondary/muted
+- `text-lg font-semibold text-gray-200` for detail panel titles (consistent across all panels)
+
+---
+
+## Accessibility
+
+### Icon Sizes
+
+Always use CSS classes for icon sizing, never inline `style` attributes. Sizes are in `rem` so they scale with user font preferences.
+
+| Context | Class | Size | Notes |
+|---------|-------|------|-------|
+| Inline with text (buttons, labels) | `ac-icon` | `1.25rem` | Default. Includes `inline-block`, `vertical-align: middle`, `flex-shrink: 0` |
+| Standalone icon button (header, toolbar) | `ac-icon-lg` | `1.5rem` | Same layout properties as `ac-icon` |
+| Tree view / list item hover actions | `ac-tree-icon` | `1rem` | Compact context, always accompanied by text |
+
+Never use icons smaller than `1rem`. For clickable areas, the button padding provides the touch target, not the icon itself.
+
+### Interactive Elements
+
+- All clickable elements must have visible hover/focus states
+- Buttons that look like plain text must have a visual cue (icon, underline, cursor change)
+- `title` attributes on icon-only buttons for tooltip context
+- `aria-label` on buttons with no visible text label
+- `role="switch"` and `aria-checked` on toggle controls
+- Keyboard-navigable: all interactive elements reachable via Tab, activatable via Enter/Space
+
+### Labels and Affordances
+
+- Buttons must clearly communicate what they do. "PANIC" is jargon; "All Notes Off" is descriptive.
+- Status indicators that are also controls must have a visual affordance (e.g., gear icon)
+- Cryptic triggers (git hashes, abbreviated codes) should use recognizable icons instead
+
+---
+
+## Parameter Editors
+
+### Dense Grid Layout
+
+Parameter editors use a multi-column grid (`s3k-section` / `s3k-section-grid`) instead of one-parameter-per-row forms. Each parameter shows:
+- Label (uppercase, small)
+- Visual value bar showing position in range (accent color fill)
+- Numeric value (click to edit precisely)
+- Bipolar parameters fill from center for center-zero values (pan, tuning)
+
+Components: `ParamKnob`, `ParamSelect`, `ParamToggle`.
+
+### Section Pairing
+
+Related sections sit side by side in two-column grids. Size list columns for their content (e.g., `18rem` for 12-character program names), not a proportion of the page.
+
+### Envelope Visualizations
+
+Envelope displays are interactive — drag points to edit values:
+- **Fixed horizontal scale** — each segment gets a budget of max time units; dragging one point does not shift others
+- **Invisible hit areas** (r=14) around visible dots (r=4) for easier grabbing
+- **Separate `onDrag` / `onCommit`** — continuous UI updates during drag, device write only on mouse up
+- **Values always clamped** — impossible to produce out-of-range values
+
+Shared `EnvelopeEditor` renders any polyline envelope. Device-specific wrappers compute points from their parameter formats.
 
 ---
 
