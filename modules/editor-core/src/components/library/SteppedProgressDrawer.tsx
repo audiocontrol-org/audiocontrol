@@ -54,6 +54,8 @@ export interface SteppedProgressDrawerProps {
   hasError: boolean;
   /** Optional summary shown below all steps when complete */
   summary?: string;
+  /** Called when the user clicks Cancel during an in-progress operation */
+  onCancel?: () => void;
 }
 
 // =========================================================================
@@ -147,8 +149,10 @@ export function SteppedProgressDrawer({
   isComplete,
   hasError,
   summary,
+  onCancel,
 }: SteppedProgressDrawerProps): JSX.Element {
   const canClose = isComplete || hasError;
+  const isRunning = !canClose;
 
   return (
     <SlideDrawer
@@ -161,6 +165,13 @@ export function SteppedProgressDrawer({
           onClick={onClose}
         >
           {hasError ? 'Close' : 'Done'}
+        </button>
+      ) : isRunning && onCancel ? (
+        <button
+          className="ac-btn ac-btn-sm"
+          onClick={onCancel}
+        >
+          Cancel
         </button>
       ) : undefined}
     >

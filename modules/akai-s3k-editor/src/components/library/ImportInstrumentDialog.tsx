@@ -175,6 +175,8 @@ export function ImportInstrumentDialog({
                 updatedDeviceSampleNames.push(baseName);
                 nextSampleNumber++;
                 updateStep(stepId, { status: 'complete', detail: formatBytes(totalBytes), progress: undefined });
+                // Refresh device memory view so the new sample appears immediately
+                void onImportComplete();
               } catch (err) {
                 const msg = err instanceof Error ? err.message : String(err);
                 console.error(`[ImportInstrument] Failed to send sample "${baseName}":`, err);
@@ -245,6 +247,7 @@ export function ImportInstrumentDialog({
       open={open}
       title={`Import "${programDirName.trim()}" to Device`}
       onClose={onClose}
+      onCancel={() => { cancelledRef.current = true; }}
       steps={steps}
       isComplete={isComplete}
       hasError={hasError}
