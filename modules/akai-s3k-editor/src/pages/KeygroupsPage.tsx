@@ -35,6 +35,16 @@ export function KeygroupsPage(): JSX.Element {
   const selectedProgram =
     selectedProgramIndex !== null ? programs[selectedProgramIndex] : undefined;
 
+  // Fetch program header if selection is restored but data isn't cached
+  useEffect(() => {
+    if (!isConnected || selectedProgramIndex === null || !client) return;
+    if (programs[selectedProgramIndex]) return;
+    client.fetchProgramHeader(selectedProgramIndex).then(
+      (header) => setProgram(selectedProgramIndex, header),
+      () => { /* will show error via selectedProgram remaining undefined */ },
+    );
+  }, [isConnected, selectedProgramIndex, client, programs, setProgram]);
+
   // Load keygroups when selected program changes
   useEffect(() => {
     if (!isConnected || selectedProgramIndex === null || !selectedProgram) return;
@@ -132,7 +142,7 @@ export function KeygroupsPage(): JSX.Element {
     );
   }
 
-  if (selectedProgramIndex === null || !selectedProgram) {
+  if (selectedProgramIndex === null) {
     return (
       <div className="ac-page ac-page-shell">
         <div className="ac-page-content flex items-center justify-center">
@@ -142,6 +152,16 @@ export function KeygroupsPage(): JSX.Element {
               Go to the <a href="/akai/s3000xl/editor/programs" className="text-blue-400 hover:underline">Programs</a> page and select a program to edit its keygroups.
             </p>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!selectedProgram) {
+    return (
+      <div className="ac-page ac-page-shell">
+        <div className="ac-page-content flex items-center justify-center">
+          <p className="text-gray-400">Loading program...</p>
         </div>
       </div>
     );

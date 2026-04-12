@@ -208,3 +208,92 @@ Never use icons smaller than `1rem`. The WCAG 2.1 minimum touch target is 44x44p
 - Buttons must clearly communicate what they do. "PANIC" is jargon; "All Notes Off" is descriptive.
 - Status indicators that are also controls must have a visual affordance (e.g., gear icon) showing they're interactive
 - Cryptic triggers (git hashes, abbreviated codes) should use recognizable icons instead
+
+---
+
+## Parameter Editor Design
+
+### Dense Grid Layout
+
+Parameter editors use a multi-column grid (`s3k-section` / `s3k-section-grid`) instead of one-parameter-per-row forms. Parameters show:
+- Label (uppercase, small)
+- Visual value bar showing position in range (accent color fill)
+- Numeric value (click to edit precisely)
+- Bipolar parameters fill from center for center-zero values (pan, tuning)
+
+Components: `ParamKnob`, `ParamSelect`, `ParamToggle` in `@/components/ui/ParamKnob.tsx`.
+
+### Section Pairing
+
+Related sections sit side by side in two-column grids:
+- MIDI + Output
+- Filter + Filter Envelope
+- Amp Envelope + Pitch & Crossfade
+
+### Envelope Visualizations
+
+Envelope displays are interactive — drag points to edit values. Follow the Roland `EnvelopeEditor` pattern:
+- **Fixed horizontal scale**: each segment gets a budget of max time units. Dragging one point does not shift other points.
+- **Rate from segment width**: `rate = maxRate - (segmentWidth / drawWidth) * totalBudget`
+- **Invisible hit areas** (r=14) around visible dots (r=4) for easier grabbing
+- **Separate `onDrag` / `onCommit`**: continuous UI updates during drag, device write only on mouse up
+- **Values always clamped**: impossible to produce out-of-range values
+
+Shared `EnvelopeEditor` renders any polyline envelope. `AdsrDisplay` and `MultiPointEnvelopeDisplay` are thin wrappers that compute points from their parameter formats.
+
+### List Column Width
+
+S3K program names are max 12 characters. The list column should be sized for its content (`18rem`), not a proportion of the page (`1fr`). Don't give a narrow list 33% of the viewport.
+
+---
+
+## State Persistence
+
+### Selection State
+
+The selected program and keygroup indices persist in `sessionStorage` so page reloads restore the user's position. The `editorStore` reads from sessionStorage on init and writes on every selection change.
+
+When a page loads with a restored selection but no cached data, it must fetch the data from the device — not show a "select something" prompt. Show a loading state while fetching.
+
+### What to Persist
+
+| State | Storage | Rationale |
+|-------|---------|-----------|
+| Selected program/keygroup index | `sessionStorage` | Survives reload, clears on tab close |
+| Device memory cache (names) | `sessionStorage` | Avoids re-fetch on page navigation |
+| Program headers | In-memory (Zustand) | Re-fetched on demand, too large for sessionStorage |
+| MIDI port selection | `localStorage` | Survives browser restart |
+
+---
+
+## Loading States
+
+### Skeleton Placeholders (planned — see #246)
+
+Pages should render skeleton placeholders that mirror the loaded layout structure, not blank screens with "Loading..." text. Skeletons:
+- Match the grid/section structure of the loaded state
+- Use subtle pulse animation
+- Use design system colors
+- Replace individual sections as their data arrives (not all-or-nothing)
+
+### Current Minimum
+
+Until skeletons are implemented, pages with a restored selection must show "Loading..." (not "Select a program"). The "select something" prompt is only for when there is genuinely no selection.
+
+---
+
+## Responsive Header
+
+Header controls collapse at narrow viewports using `ac-hide-narrow` (hidden below 1400px):
+- Port names: truncate at 1600px, hide at 1400px
+- "All Notes Off" text label hides, icon remains
+- "Connected" / "Disconnected" text hides, status dot remains
+- Buttons never wrap (`white-space: nowrap`)
+
+---
+
+## Auto-Selection
+
+When a list loads, auto-select the first item. Don't show "Select an item to edit" when there are items available. This applies to:
+- Programs page: select program 0 after names load
+- Keygroups page: select keygroup 0 after keygroups load

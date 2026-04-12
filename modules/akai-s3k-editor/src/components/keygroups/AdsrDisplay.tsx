@@ -1,73 +1,86 @@
 /**
  * Interactive envelope editor for S3K keygroup editor.
  *
- * Single EnvelopeEditor component renders a draggable polyline envelope.
- * AdsrDisplay and MultiPointEnvelopeDisplay are thin wrappers that
- * compute points and map drag positions back to parameter values.
+ * Follows the same drag interaction pattern as the Roland EnvelopeEditor:
+ * - Fixed horizontal scale (each segment has a budget of 99 time units)
+ * - Rate derived from segment width: rate = 99 - timeUnits
+ * - Separate onChange (continuous) and onCommit (drag end) callbacks
+ * - Invisible hit areas larger than visible dots
+ * - Level from Y position, rate from X distance to previous point
  */
 
-import { useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 
 // =========================================================================
-// Shared renderer with drag support
+// Shared envelope renderer with drag support
 // =========================================================================
 
 interface EnvelopePoint {
   x: number;
   y: number;
-  /** Whether this point can be dragged */
-  draggable?: boolean;
+  draggable: boolean;
 }
 
 interface EnvelopeEditorProps {
   points: EnvelopePoint[];
   labels: { text: string; x: number }[];
   ariaLabel: string;
-  /** Called when a draggable point is moved. Receives point index and new SVG coordinates. */
-  onDrag?: (pointIndex: number, x: number, y: number) => void;
+  onDrag?: (pointIndex: number, svgX: number, svgY: number) => void;
+  onDragEnd?: () => void;
 }
 
-const PADDING = 12;
+const PADDING = 16;
 const VIEW_WIDTH = 400;
-const VIEW_HEIGHT = 80;
-const LABEL_HEIGHT = 16;
+const VIEW_HEIGHT = 100;
+const LABEL_HEIGHT = 18;
 const DRAW_WIDTH = VIEW_WIDTH - PADDING * 2;
 const DRAW_HEIGHT = VIEW_HEIGHT - PADDING * 2;
 const BOTTOM = PADDING + DRAW_HEIGHT;
 const TOP = PADDING;
 
-function EnvelopeEditor({ points, labels, ariaLabel, onDrag }: EnvelopeEditorProps): JSX.Element {
+function EnvelopeEditor({ points, labels, ariaLabel, onDrag, onDragEnd }: EnvelopeEditorProps): JSX.Element {
   const svgRef = useRef<SVGSVGElement>(null);
+  const [dragging, setDragging] = useState<number | null>(null);
 
-  const getSvgCoords = useCallback((clientX: number, clientY: number): { x: number; y: number } => {
+  const getSvgCoords = useCallback((e: MouseEvent): { x: number; y: number } => {
     const svg = svgRef.current;
     if (!svg) return { x: 0, y: 0 };
     const rect = svg.getBoundingClientRect();
-    const scaleX = VIEW_WIDTH / rect.width;
-    const scaleY = (VIEW_HEIGHT + LABEL_HEIGHT) / rect.height;
     return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
+      x: (e.clientX - rect.left) * (VIEW_WIDTH / rect.width),
+      y: (e.clientY - rect.top) * ((VIEW_HEIGHT + LABEL_HEIGHT) / rect.height),
     };
   }, []);
 
-  const handleMouseDown = useCallback((pointIndex: number) => (e: React.MouseEvent) => {
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (dragging === null || !onDrag) return;
+    const coords = getSvgCoords(e);
+    onDrag(dragging, coords.x, coords.y);
+  }, [dragging, onDrag, getSvgCoords]);
+
+  const handleMouseUp = useCallback(() => {
+    if (dragging !== null) {
+      onDragEnd?.();
+    }
+    setDragging(null);
+  }, [dragging, onDragEnd]);
+
+  useEffect(() => {
+    if (dragging !== null) {
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [dragging, handleMouseMove, handleMouseUp]);
+
+  const handleMouseDown = useCallback((index: number) => (e: React.MouseEvent) => {
     if (!onDrag) return;
     e.preventDefault();
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const coords = getSvgCoords(moveEvent.clientX, moveEvent.clientY);
-      onDrag(pointIndex, coords.x, coords.y);
-    };
-
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  }, [onDrag, getSvgCoords]);
+    setDragging(index);
+  }, [onDrag]);
 
   const pathD = points.map((pt, i) => `${i === 0 ? 'M' : 'L'} ${pt.x} ${pt.y}`).join(' ');
   const lastPt = points[points.length - 1];
@@ -84,20 +97,43 @@ function EnvelopeEditor({ points, labels, ariaLabel, onDrag }: EnvelopeEditorPro
       preserveAspectRatio="xMidYMid meet"
     >
       <rect x={0} y={0} width={VIEW_WIDTH} height={VIEW_HEIGHT} rx={4} className="s3k-adsr-bg" />
-      <path d={fillD} className="s3k-adsr-fill" />
-      <path d={pathD} className="s3k-adsr-line" />
-      {points.map((pt, i) => (
-        <circle
-          key={i}
-          cx={pt.x}
-          cy={pt.y}
-          r={pt.draggable ? 5 : 3}
-          className={pt.draggable ? 's3k-adsr-dot s3k-adsr-dot--draggable' : 's3k-adsr-dot'}
-          onMouseDown={pt.draggable ? handleMouseDown(i) : undefined}
+
+      {/* Grid lines at 25%, 50%, 75% */}
+      {[0.25, 0.5, 0.75].map((pct) => (
+        <line
+          key={pct}
+          x1={PADDING} y1={TOP + pct * DRAW_HEIGHT}
+          x2={PADDING + DRAW_WIDTH} y2={TOP + pct * DRAW_HEIGHT}
+          stroke="currentColor" strokeOpacity={0.08} strokeWidth={1}
         />
       ))}
+
+      <path d={fillD} className="s3k-adsr-fill" />
+      <path d={pathD} className="s3k-adsr-line" />
+
+      {/* Points with hit areas */}
+      {points.map((pt, i) => (
+        <g key={i}>
+          {pt.draggable && (
+            <circle
+              cx={pt.x} cy={pt.y} r={14}
+              fill="transparent"
+              className={dragging === i ? 's3k-adsr-hit--dragging' : 's3k-adsr-hit'}
+              onMouseDown={handleMouseDown(i)}
+            />
+          )}
+          <circle
+            cx={pt.x} cy={pt.y}
+            r={pt.draggable ? (dragging === i ? 6 : 4) : 3}
+            className={pt.draggable ? 's3k-adsr-dot s3k-adsr-dot--draggable' : 's3k-adsr-dot'}
+            onMouseDown={pt.draggable ? handleMouseDown(i) : undefined}
+          />
+        </g>
+      ))}
+
+      {/* Labels */}
       {labels.map((l) => (
-        <text key={l.text} x={l.x} y={VIEW_HEIGHT + 12} className="s3k-adsr-label">{l.text}</text>
+        <text key={l.text} x={l.x} y={VIEW_HEIGHT + 14} className="s3k-adsr-label">{l.text}</text>
       ))}
     </svg>
   );
@@ -111,33 +147,31 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, Math.round(v)));
 }
 
-/** Map a 0-99 rate to a visual width fraction. Higher rate = faster = shorter. */
-function rateFraction(rate: number): number {
-  const minFraction = 0.08;
-  return minFraction + (1 - minFraction) * ((99 - rate) / 99);
-}
-
-/** Inverse of rateFraction: SVG x-distance back to 0-99 rate */
-function xToRate(xFraction: number): number {
-  const minFraction = 0.08;
-  const normalized = (xFraction - minFraction) / (1 - minFraction);
-  return clamp(99 - normalized * 99, 0, 99);
-}
-
-/** Map SVG y to 0-99 level */
-function yToLevel(y: number): number {
-  return clamp(((BOTTOM - y) / DRAW_HEIGHT) * 99, 0, 99);
-}
-
-function segmentXPositions(widths: number[]): number[] {
-  const totalW = widths.reduce((a, b) => a + b, 0);
+/**
+ * Fixed-scale X positions for envelope segments.
+ *
+ * Each segment has a budget of 99 time units (max rate value).
+ * Rate determines how much of that budget is used:
+ *   time = 99 - rate (rate 0 = slowest = 99 units, rate 99 = fastest = 0 units)
+ *
+ * This matches the Roland pattern: fixed scale prevents dragging one point
+ * from shifting all other points.
+ */
+function segmentXPositions(rates: number[], segCount: number): number[] {
+  const maxTime = segCount * 99;
   const xs = [PADDING];
   let cumulative = 0;
-  for (const w of widths) {
-    cumulative += w;
-    xs.push(PADDING + (cumulative / totalW) * DRAW_WIDTH);
+  for (let i = 0; i < rates.length; i++) {
+    const rate = clamp(rates[i], 0, 99);
+    cumulative += 99 - rate;
+    xs.push(PADDING + (cumulative / maxTime) * DRAW_WIDTH);
   }
   return xs;
+}
+
+/** Map SVG Y to 0-99 level */
+function yToLevel(y: number): number {
+  return clamp(((BOTTOM - y) / DRAW_HEIGHT) * 99, 0, 99);
 }
 
 // =========================================================================
@@ -150,25 +184,22 @@ interface AdsrDisplayProps {
   sustain: number;
   release: number;
   onChange?: (field: string, value: number) => void;
+  onCommit?: () => void;
 }
 
-export function AdsrDisplay({ attack, decay, sustain, release, onChange }: AdsrDisplayProps): JSX.Element {
-  const segWidths = [
-    rateFraction(attack),
-    rateFraction(decay),
-    0.25,
-    rateFraction(release),
-  ];
-  const xs = segmentXPositions(segWidths);
-  const totalW = segWidths.reduce((a, b) => a + b, 0);
+export function AdsrDisplay({ attack, decay, sustain, release, onChange, onCommit }: AdsrDisplayProps): JSX.Element {
+  // 4 segments: attack, decay, sustain (fixed time), release
+  // Sustain segment uses a fixed "rate" of 50 for visual width
+  const segRates = [attack, decay, 50, release];
+  const xs = segmentXPositions(segRates, 4);
   const susY = BOTTOM - (sustain / 99) * DRAW_HEIGHT;
 
   const points: EnvelopePoint[] = [
-    { x: xs[0], y: BOTTOM },                          // origin (fixed)
-    { x: xs[1], y: TOP, draggable: !!onChange },       // attack peak: drag X = attack rate
-    { x: xs[2], y: susY, draggable: !!onChange },      // decay end: drag X = decay rate, drag Y = sustain level
-    { x: xs[3], y: susY },                             // sustain end (fixed X, follows sustain level)
-    { x: xs[4], y: BOTTOM, draggable: !!onChange },    // release end: drag X = release rate
+    { x: xs[0], y: BOTTOM, draggable: false },
+    { x: xs[1], y: TOP, draggable: !!onChange },
+    { x: xs[2], y: susY, draggable: !!onChange },
+    { x: xs[3], y: susY, draggable: false },
+    { x: xs[4], y: BOTTOM, draggable: !!onChange },
   ];
 
   const labels = [
@@ -181,29 +212,24 @@ export function AdsrDisplay({ attack, decay, sustain, release, onChange }: AdsrD
   const handleDrag = useCallback((pointIndex: number, svgX: number, svgY: number) => {
     if (!onChange) return;
 
-    // Clamp X to drawing area
-    const clampedX = Math.max(PADDING, Math.min(PADDING + DRAW_WIDTH, svgX));
-
     if (pointIndex === 1) {
-      // Attack peak: X position determines attack rate
-      const attackFraction = (clampedX - xs[0]) / DRAW_WIDTH;
-      const newRate = xToRate(attackFraction * totalW);
-      onChange('ATTAK1', newRate);
+      // Attack peak: X distance from origin → attack rate
+      const segWidth = Math.max(2, svgX - xs[0]);
+      const timeUnits = (segWidth / DRAW_WIDTH) * (4 * 99);
+      onChange('ATTAK1', clamp(99 - timeUnits, 0, 99));
     } else if (pointIndex === 2) {
-      // Decay end: X = decay rate, Y = sustain level
-      const decayFraction = (clampedX - xs[1]) / DRAW_WIDTH;
-      if (decayFraction > 0.01) {
-        onChange('DECAY1', xToRate(decayFraction * totalW));
-      }
+      // Decay/sustain point: X distance from attack → decay rate, Y → sustain level
+      const segWidth = Math.max(2, svgX - xs[1]);
+      const timeUnits = (segWidth / DRAW_WIDTH) * (4 * 99);
+      onChange('DECAY1', clamp(99 - timeUnits, 0, 99));
       onChange('SUSTN1', yToLevel(svgY));
     } else if (pointIndex === 4) {
-      // Release end: X = release rate
-      const relFraction = (clampedX - xs[3]) / DRAW_WIDTH;
-      if (relFraction > 0.01) {
-        onChange('RELSE1', xToRate(relFraction * totalW));
-      }
+      // Release end: X distance from sustain end → release rate
+      const segWidth = Math.max(2, svgX - xs[3]);
+      const timeUnits = (segWidth / DRAW_WIDTH) * (4 * 99);
+      onChange('RELSE1', clamp(99 - timeUnits, 0, 99));
     }
-  }, [onChange, xs, totalW]);
+  }, [onChange, xs]);
 
   return (
     <EnvelopeEditor
@@ -211,6 +237,7 @@ export function AdsrDisplay({ attack, decay, sustain, release, onChange }: AdsrD
       labels={labels}
       ariaLabel={`ADSR: A=${attack} D=${decay} S=${sustain} R=${release}`}
       onDrag={onChange ? handleDrag : undefined}
+      onDragEnd={onCommit}
     />
   );
 }
@@ -223,13 +250,14 @@ interface MultiPointEnvelopeDisplayProps {
   rates: [number, number, number, number];
   levels: [number, number, number, number];
   onChange?: (field: string, value: number) => void;
+  onCommit?: () => void;
 }
 
-export function MultiPointEnvelopeDisplay({ rates, levels, onChange }: MultiPointEnvelopeDisplayProps): JSX.Element {
-  const xs = segmentXPositions(rates.map(rateFraction));
+export function MultiPointEnvelopeDisplay({ rates, levels, onChange, onCommit }: MultiPointEnvelopeDisplayProps): JSX.Element {
+  const xs = segmentXPositions([...rates], 4);
 
   const points: EnvelopePoint[] = [
-    { x: xs[0], y: BOTTOM },
+    { x: xs[0], y: BOTTOM, draggable: false },
     ...levels.map((level, i) => ({
       x: xs[i + 1],
       y: PADDING + DRAW_HEIGHT - (level / 99) * DRAW_HEIGHT,
@@ -242,17 +270,23 @@ export function MultiPointEnvelopeDisplay({ rates, levels, onChange }: MultiPoin
     x: (xs[i] + xs[i + 1]) / 2,
   }));
 
-  // Field name mapping: index 1-4 in points array → ENV2L1-4
+  const rateFields = ['ENV2R1', 'ENV2R2', 'ENV2R3', 'ENV2R4'];
   const levelFields = ['ENV2L1', 'ENV2L2', 'ENV2L3', 'ENV2L4'];
 
-  const handleDrag = useCallback((_pointIndex: number, _svgX: number, svgY: number) => {
+  const handleDrag = useCallback((pointIndex: number, svgX: number, svgY: number) => {
     if (!onChange) return;
-    // Points 1-4 are the draggable level points
-    const levelIndex = _pointIndex - 1;
-    if (levelIndex >= 0 && levelIndex < 4) {
-      onChange(levelFields[levelIndex], yToLevel(svgY));
-    }
-  }, [onChange]);
+    const segIndex = pointIndex - 1;
+    if (segIndex < 0 || segIndex >= 4) return;
+
+    // Y → level
+    onChange(levelFields[segIndex], yToLevel(svgY));
+
+    // X distance from previous point → rate
+    const prevX = xs[segIndex];
+    const segWidth = Math.max(2, svgX - prevX);
+    const timeUnits = (segWidth / DRAW_WIDTH) * (4 * 99);
+    onChange(rateFields[segIndex], clamp(99 - timeUnits, 0, 99));
+  }, [onChange, xs]);
 
   return (
     <EnvelopeEditor
@@ -260,6 +294,7 @@ export function MultiPointEnvelopeDisplay({ rates, levels, onChange }: MultiPoin
       labels={labels}
       ariaLabel={`Filter envelope: ${rates.map((r, i) => `R${i + 1}=${r} L${i + 1}=${levels[i]}`).join(' ')}`}
       onDrag={onChange ? handleDrag : undefined}
+      onDragEnd={onCommit}
     />
   );
 }
