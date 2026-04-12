@@ -12,12 +12,14 @@ import { AmpEnvelopeSection } from '@/components/program-editor/AmpEnvelopeSecti
 import { FilterSection } from '@/components/program-editor/FilterSection';
 import { RangeSection } from '@/components/program-editor/RangeSection';
 import { saveProgramToLibrary } from '@/lib/save-program';
+import { useEffectsStore } from '@/stores/effectsStore';
 
 export function ProgramPage(): JSX.Element {
   const demoProgram = useDemoProgram();
   const store = useProgramEditorStore();
   const program = store.program;
   const selectedIndex = store.selectedZoneIndex;
+  const effects = useEffectsStore((s) => s.effects);
   const { root } = useLibraryConnection({ pickerId: 'standalone-sampler-library' });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -32,6 +34,7 @@ export function ProgramPage(): JSX.Element {
   // Wire synth engine to the current program state
   const { noteOn, noteOff, stopAll, activeNotes } = useProgramPlayer({
     program: program,
+    effects,
   });
 
   const handleNoteOn = useCallback(

@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 interface UseWebMidiInputParams {
   onNoteOn: (note: number, velocity: number) => void;
   onNoteOff: (note: number) => void;
+  onCc?: (cc: number, value: number) => void;
   enabled?: boolean;
 }
 
@@ -13,10 +14,11 @@ interface UseWebMidiInputParams {
 export function useWebMidiInput({
   onNoteOn,
   onNoteOff,
+  onCc,
   enabled = true,
 }: UseWebMidiInputParams): void {
-  const callbacksRef = useRef({ onNoteOn, onNoteOff });
-  callbacksRef.current = { onNoteOn, onNoteOff };
+  const callbacksRef = useRef({ onNoteOn, onNoteOff, onCc });
+  callbacksRef.current = { onNoteOn, onNoteOff, onCc };
 
   useEffect(() => {
     if (!enabled || !navigator.requestMIDIAccess) return;
@@ -33,6 +35,8 @@ export function useWebMidiInput({
         callbacksRef.current.onNoteOn(note, velocity);
       } else if (command === 0x80 || (command === 0x90 && velocity === 0)) {
         callbacksRef.current.onNoteOff(note);
+      } else if (command === 0xb0 && velocity !== undefined) {
+        callbacksRef.current.onCc?.(note, velocity);
       }
     }
 

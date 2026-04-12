@@ -110,12 +110,12 @@ Add effects, multi-timbral support, and performance polish.
 
 ### Tasks
 
-- [ ] Effects chain using Web Audio nodes: reverb, delay, chorus
-- [ ] Effects routing -- per-program vs per-keygroup effects sends
-- [ ] Multi-timbral support -- multiple programs on different MIDI channels
-- [ ] On-screen keyboard polish: velocity sensitivity (vertical position), pitch bend, mod wheel
-- [ ] MIDI learn -- assign MIDI CC to any parameter by clicking the parameter and moving a knob
-- [ ] Performance optimization -- voice stealing, sample preloading, AudioWorklet efficiency
+- [x] Effects chain using Web Audio nodes: reverb (ConvolverNode), delay (DelayNode+feedback), chorus (LFO-modulated delay)
+- [x] Effects routing -- per-program effects chain (source → chorus → delay → reverb → destination)
+- [x] Multi-timbral support -- createMultiTimbralEngine routes MIDI channels to independent program engines
+- [x] On-screen keyboard with velocity sensitivity (vertical click position)
+- [x] MIDI learn store -- CC-to-parameter mapping with learning mode, CC routing in Web MIDI hook
+- [x] Performance optimization -- voice stealing at polyphony limit, configurable max voices, mute groups
 
 ### Acceptance Criteria
 

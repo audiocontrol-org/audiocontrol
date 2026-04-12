@@ -1,12 +1,16 @@
 import { useCallback } from 'react';
 import { useProgramPlayer } from '@audiocontrol/synth-core';
 import { Keyboard } from '@/components/Keyboard';
+import { EffectsPanel } from '@/components/EffectsPanel';
 import { useWebMidiInput } from '@/hooks/use-web-midi-input';
 import { useDemoProgram } from '@/hooks/use-demo-program';
+import { useEffectsStore } from '@/stores/effectsStore';
+import { useMidiLearnStore } from '@/stores/midiLearnStore';
 
 export function PlayPage(): JSX.Element {
   const program = useDemoProgram();
-  const { noteOn, noteOff, stopAll, activeNotes } = useProgramPlayer({ program });
+  const effects = useEffectsStore((s) => s.effects);
+  const { noteOn, noteOff, stopAll, activeNotes } = useProgramPlayer({ program, effects });
 
   const handleNoteOn = useCallback(
     (note: number, velocity: number) => {
@@ -22,10 +26,12 @@ export function PlayPage(): JSX.Element {
     [noteOff],
   );
 
-  // Wire external MIDI controller input
+  const handleCc = useMidiLearnStore((s) => s.handleCc);
+
   useWebMidiInput({
     onNoteOn: handleNoteOn,
     onNoteOff: handleNoteOff,
+    onCc: handleCc,
   });
 
   return (
@@ -45,6 +51,8 @@ export function PlayPage(): JSX.Element {
           Stop All
         </button>
       </div>
+
+      <EffectsPanel />
 
       <div className="mt-auto">
         <Keyboard
