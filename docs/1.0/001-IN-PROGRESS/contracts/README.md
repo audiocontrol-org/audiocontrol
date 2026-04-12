@@ -6,7 +6,7 @@ Compiler-enforced contracts and design system documentation to reduce agent corr
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 1: Audit | Not Started | |
+| Phase 1: Audit | Complete | 55 violations found — see [phase1-audit.md](./phase1-audit.md) |
 | Phase 2: Compiler Contracts | Not Started | |
 | Phase 3: Design System Documentation | Not Started | |
 | Phase 4: Fix Violations | Not Started | |

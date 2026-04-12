@@ -41,19 +41,19 @@ export function useS3kLibraryStrategy({
   transfers,
 }: UseS3kLibraryStrategyArgs): LibraryOperationsStrategy {
   return useMemo<LibraryOperationsStrategy>(() => ({
-    createFolder: async () => false,
+    createFolder: async () => ({ handled: false }),
 
     deleteItem: async (categoryId, node) => {
-      if (categoryId !== 's3k-programs') return false;
-      if (!root) return false;
+      if (categoryId !== 's3k-programs') return { handled: false };
+      if (!root) return { handled: false };
       const meta = node.meta as { dirName?: string } | undefined;
       const dirName = meta?.dirName ?? node.name;
       await deleteStoredProgram(root, dirName);
       void refreshPrograms();
-      return true;
+      return { handled: true };
     },
 
-    renameItem: async () => false,
+    renameItem: async () => ({ handled: false }),
 
     handleContextMenuAction: createTransferActionHandler(transfers, ['s3k-programs']),
   }), [root, refreshPrograms, transfers]);

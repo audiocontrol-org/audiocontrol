@@ -47,12 +47,12 @@ Catalog all violations and document findings.
 
 ### Tasks
 
-- [ ] Audit all shared hooks in `editor-core` for bare callback parameters (e.g., `onError?: (e: Error) => void`, `onSuccess?: () => void`)
-- [ ] Audit `LibraryOperationsStrategy` interface for boolean return values
-- [ ] Scan both editors for `window.prompt`, `window.confirm`, `window.alert` calls
-- [ ] Scan both editors for hardcoded pixel widths in layout code (e.g., `width: 200px`, `min-width: 300px`)
-- [ ] Scan for duplicated type definitions across editor-core, roland-sxx0-editor, and akai-s3k-editor
-- [ ] Document all findings in `phase1-audit.md` with file paths, line numbers, and categorization
+- [x] Audit all shared hooks in `editor-core` for bare callback parameters (18 findings)
+- [x] Audit `LibraryOperationsStrategy` interface for boolean return values (6 findings)
+- [x] Scan both editors for `window.prompt`, `window.confirm`, `window.alert` calls (13 findings)
+- [x] Scan both editors for hardcoded pixel widths in layout code (2 findings)
+- [x] Scan for duplicated type definitions across editor-core, roland-sxx0-editor, and akai-s3k-editor (16 findings)
+- [x] Document all findings in `phase1-audit.md` with file paths, line numbers, and categorization
 
 ### Acceptance Criteria
 
@@ -68,15 +68,15 @@ Replace implicit conventions with typed interfaces that the compiler enforces.
 
 ### Tasks
 
-- [ ] Define `ErrorReporter` interface (if not already from library-ux) with required error reporting method
-- [ ] Define `RefreshNotifier` interface for notifying callers when data has changed
-- [ ] Define `ProgressReporter` interface for long-running operations
+- [x] Define `ErrorReporter` interface (already exists from library-ux)
+- [x] Define `RefreshNotifier` interface for notifying callers when data has changed
+- [x] Define `ProgressReporter` interface for long-running operations
 - [ ] Update all shared hooks in editor-core to accept typed capability objects instead of bare callbacks
-- [ ] Replace boolean return values in `LibraryOperationsStrategy` with discriminated unions: `{ ok: true; value: T } | { ok: false; error: string }`
-- [ ] Update all callers in `roland-sxx0-editor` to provide capability objects and handle discriminated unions
-- [ ] Update all callers in `akai-s3k-editor` to provide capability objects and handle discriminated unions
-- [ ] Verify both editors compile with `make`
-- [ ] Verify both editors pass all tests with `pnpm test`
+- [x] Replace boolean return values in `LibraryOperationsStrategy` with `StrategyResult` discriminated union
+- [x] Update all callers in `roland-sxx0-editor` to handle `StrategyResult`
+- [x] Update all callers in `akai-s3k-editor` to handle `StrategyResult`
+- [x] Verify both editors compile with `make`
+- [x] Verify both editors pass all tests with `pnpm test` (6 pre-existing failures in sampler-library, no regressions)
 
 ### Acceptance Criteria
 
