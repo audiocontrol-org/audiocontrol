@@ -8,16 +8,11 @@
 
 import { useRef } from 'react';
 import type { SdsTransferProgress } from '@audiocontrol/midi-core';
+import { formatBytes } from '@audiocontrol/editor-core';
 
 interface SdsProgressBarProps {
   progress: SdsTransferProgress | null;
   direction: 'send' | 'receive';
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function formatDuration(ms: number): string {

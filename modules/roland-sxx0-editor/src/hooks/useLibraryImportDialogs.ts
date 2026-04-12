@@ -11,7 +11,8 @@ import type { SamplerClientInterface, SamplerTone, SamplerPatch } from '@/core/m
 import type { LibraryDragData } from '@/components/library/DeviceMemoryPanel';
 import type { OperationProgress } from '@/types/import-operation';
 import { saveDeviceToSetIncremental, loadSetToDevice, type StorageDirectoryHandle } from '@/lib/library-service';
-import type { ItemSelection } from '@/pages/LibraryPage';
+import type { RolandPageSelection } from '@/pages/LibraryPage';
+
 
 export interface ImportToneDialogState {
   setName: string;
@@ -46,7 +47,7 @@ interface Options {
   setPatch: (index: number, patch: SamplerPatch, totalPatches: number) => void;
   totalTones: number;
   totalPatches: number;
-  selection: ItemSelection | null;
+  selection: RolandPageSelection | null;
   handleRefreshLibrary: () => Promise<void>;
 }
 

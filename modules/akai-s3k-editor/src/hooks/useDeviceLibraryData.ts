@@ -24,15 +24,14 @@ export function useDeviceLibraryData(
 ): UseDeviceLibraryDataResult {
   const setDeviceProgramNames = useLibraryStore((s) => s.setDeviceProgramNames);
   const setDeviceSampleNames = useLibraryStore((s) => s.setDeviceSampleNames);
-  const clearSelectedDevice = useLibraryStore((s) => s.clearSelectedDevice);
 
   const [isLoading, setIsLoading] = useState(false);
   const hasFetched = useRef(false);
 
-  const fetchNames = useCallback(async () => {
+  const fetchNames = useCallback(async (showLoading: boolean) => {
     if (!client) return;
 
-    setIsLoading(true);
+    if (showLoading) setIsLoading(true);
     try {
       const [programs, samples] = await Promise.all([
         client.fetchProgramNames(),
@@ -44,24 +43,25 @@ export function useDeviceLibraryData(
       const message = err instanceof Error ? err.message : String(err);
       throw new Error(`Failed to fetch device names: ${message}`);
     } finally {
-      setIsLoading(false);
+      if (showLoading) setIsLoading(false);
     }
   }, [client, setDeviceProgramNames, setDeviceSampleNames]);
 
-  // Fetch on connect, clear on disconnect
+  // Fetch on connect, allow re-fetch on reconnect
   useEffect(() => {
     if (isConnected && client && !hasFetched.current) {
       hasFetched.current = true;
-      void fetchNames();
+      // Silent fetch — cached data stays visible, replaced when results arrive
+      void fetchNames(false);
     }
 
     if (!isConnected) {
+      // Reset fetch guard so we re-fetch on next connect.
+      // Don't clear names — cached data stays visible with a
+      // "reconnecting" indicator. The next fetch will replace them.
       hasFetched.current = false;
-      setDeviceProgramNames([]);
-      setDeviceSampleNames([]);
-      clearSelectedDevice();
     }
-  }, [isConnected, client, fetchNames, setDeviceProgramNames, setDeviceSampleNames, clearSelectedDevice]);
+  }, [isConnected, client, fetchNames]);
 
   const refresh = useCallback(async () => {
     if (!client) return;
@@ -69,7 +69,7 @@ export function useDeviceLibraryData(
     // Invalidate caches so the client re-fetches from the device
     client.invalidateProgramCache();
     client.invalidateSampleCache();
-    await fetchNames();
+    await fetchNames(true);
   }, [client, fetchNames]);
 
   return { refresh, isLoading };

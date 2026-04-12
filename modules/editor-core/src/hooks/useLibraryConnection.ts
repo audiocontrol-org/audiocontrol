@@ -20,8 +20,7 @@ import {
   getConnectionMetrics,
   resetConnectionMetrics,
   handleGoogleDriveRedirect,
-  getLocalConnection,
-  setActiveConnection,
+  getSavedBackendPreference,
   type LibraryConnectionConfig,
   type LibraryBackend,
   type GoogleDriveCredentials,
@@ -115,7 +114,7 @@ export function useLibraryConnection(
     resetConnectionMetrics();
   }, []);
 
-  // On mount: try to restore previous connections
+  // On mount: try to restore the previously active backend
   useEffect(() => {
     if (initRef.current) return;
     initRef.current = true;
@@ -124,17 +123,20 @@ export function useLibraryConnection(
       void handleGoogleDriveRedirect(storeConfig);
     }
 
-    // Try to restore a previously selected local directory
-    if (hasLocalFS && activeBackend === 'none') {
-      const conn = getLocalConnection(storeConfig);
-      void conn.tryRestore().then((restored) => {
-        if (restored) {
-          setActiveConnection(conn);
-          useLibraryConnectionStore.getState().setConnected('local', conn.getRoot());
-        }
-      });
-    }
-  }, [config.googleDrive, storeConfig, hasLocalFS, activeBackend]);
+    // If already connected (e.g., navigating between pages), nothing to do
+    if (activeBackend !== 'none') return;
+
+    const savedBackend = getSavedBackendPreference();
+    if (savedBackend === 'none') return;
+
+    // Auto-reconnect to the previously active backend.
+    // OPFS and FSAA can both restore without user interaction.
+    void connectToBackend(savedBackend, storeConfig).then((restored) => {
+      if (!restored) {
+        console.warn(`[useLibraryConnection] Failed to restore ${savedBackend} backend`);
+      }
+    });
+  }, [config.googleDrive, storeConfig, activeBackend]);
 
   return {
     activeBackend,

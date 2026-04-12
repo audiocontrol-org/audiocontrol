@@ -11,6 +11,113 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-12: SteppedProgressDrawer, All Dialogs Migrated (Session 5)
+
+### Feature: library-ux
+### Worktree: audiocontrol-library-ux
+
+### Goal
+Complete Phase 18: build SteppedProgressDrawer, migrate all remaining transfer dialogs, eliminate all modal dialogs from the library page.
+
+### Accomplished
+- SteppedProgressDrawer component in editor-core — standard for all multi-step operations (6d94e6df)
+- ImportInstrumentDialog → stepped flow, no second approval, 520→220 lines (5ed3822d)
+- ExportProgramDialog → stepped flow, auto-start (5652c069)
+- SendSampleDialog → stepped flow with SDS progress bar (5652c069)
+- ReceiveSampleDialog → stepped flow (5652c069)
+- ImportProgramDialog → stepped flow, 350→180 lines (3a7c26ba)
+- DiskToLibraryDialog → stepped flow with per-sample progress (93ca9322)
+- ImportDrumKitDialog → stepped flow with per-slice progress (2f1d5611)
+- Cancel button on SteppedProgressDrawer (0d0eab67)
+- Device memory refreshes after each sample upload (0d0eab67)
+- Consistent no-confirm deletes everywhere — removed window.confirm from device delete (7f91e70f)
+- Fixed DiskToLibrary infinite re-render loop from unstable callback deps (0a1656dd)
+- Fixed SendSample progress byte calculation (7812317e)
+- Filed #222 — chopped samples should be programs, not modified samples
+- Total: ~3,000 lines of modal code → ~1,500 lines of stepped drawer code
+
+### Didn't Work
+- DiskToLibraryDialog had infinite re-render loop — `onTransferComplete` and `ensureFileBlocks` in effect deps got new references each render. Fixed with refs.
+- SendSample progress showed inflated byte counts — used made-up formula (`packetsSent * 120 * 2`) instead of deriving from known total size and percentage.
+
+### Course Corrections
+- [UX] User pointed out second approval dialog in import flow — "It's all a single operation that doesn't need a second approval step." Led to SteppedProgressDrawer design.
+- [UX] User requested stepped progress be the standard for ALL multi-step operations, not just transfers.
+- [UX] User noted delete inconsistency — library objects had no confirm, device objects had window.confirm.
+- [UX] User noted missing progress bar on sample upload.
+- [UX] User noted inflated byte count in progress display.
+- [UX] User clarified chopped sample/drum kit conceptual model — slicing should be tied to programs, not samples. Filed #222.
+
+### Quantitative
+- User messages: ~20
+- Commits: 12
+- User corrections: 6
+
+### Insights
+1. **SteppedProgressDrawer is a major UX improvement.** Multi-step operations are now transparent — the user sees exactly what's happening, what's done, what's next. No modal popups, no second approvals.
+2. **Callback stability in React effects is critical.** Three separate dialogs had to use refs for callbacks to avoid infinite re-render loops. This is a recurring pattern — every dialog migration hit it.
+3. **~1,500 lines removed** across 7 dialog migrations. The stepped pattern is more concise because it eliminates per-phase UI (separate JSX for confirm, progress, success, error states).
+4. **The chopped-sample-as-program insight (#222)** is architecturally significant — it resolves the fuzzy distinction between samples, chopped samples, and drum kits by making slicing a property of programs, not samples.
+
+---
+
+## 2026-04-11: Visual Polish, SlideDrawer, Program Save Fixes (Session 4)
+
+### Feature: library-ux
+### Worktree: audiocontrol-library-ux
+
+### Goal
+Implement Phase 18 (visual polish, slide-over drawers) and fix program save/import bugs found during testing.
+
+### Accomplished
+- Merged latest main into feature branch, resolved conflicts (a4ba63bb)
+- Consistent panel headers across all four columns — new `ac-panel-header` CSS class (e6c1a5cf)
+- Preview panel gets background/border matching other columns (e6c1a5cf)
+- Library column header integrates connection status + refresh button (e6c1a5cf)
+- SlideDrawer component in editor-core — slides from right with backdrop and transition (626f658d)
+- MoveDialog migrated to SlideDrawer (4a20fc9d)
+- CreateFolderDialog migrated to SlideDrawer, replaced window.prompt (3a7f3091)
+- ImportInstrumentDialog migrated to SlideDrawer (ff5c5426)
+- Category-aware filesystem routing — create/move/delete/batch ops route to correct root based on categoryId (56f7217d)
+- Inline error banner replaces full-page error takeover (56f7217d)
+- Removed window.confirm from library delete (8b15f2b7)
+- Import-instrument passes fromProgramsDir based on category (ff5c5426)
+- Save device programs to common area — converts S3K keygroups to zones (1815ceb6)
+- sanitizeForFilename converts spaces to underscores (akaitools convention) with backward-compatible fallback (380afbab, 48e119c3)
+- Auto-reload disk data when partition cache is missing after page reload (b74e12c6)
+- Actionable error messages for NotFoundError (db912448)
+- Disk browser restores both common and Akai library save options for programs (a5107a0b)
+
+### Didn't Work
+- sanitizeForFilename space→underscore change broke lookups for existing directories. Had to add fallback to raw trimmed name for backward compatibility.
+- Removed "Save to Common Library" from disk browser programs when the capability existed — just wasn't wired correctly. Removed the option instead of fixing the code.
+- Multiple rounds of debugging fromProgramsDir: preview panel hardcoded `false`, context menu handler didn't pass it through, effect deps didn't include it.
+
+### Course Corrections
+- [PROCESS] Agent removed "Save to Common Library" from disk browser instead of fixing the save path. User: "Why can't I save a program from the Akai device to the common area?" The code existed — agent just hadn't traced the full flow.
+- [PROCESS] Agent assumed "stale data" caused the import error without reading the code. User: "Why do you think the error is from stale data?" — forced proper investigation.
+- [UX] Error message "The object can not be found here" was the raw browser NotFoundError. User: "Did you make the user-facing error more informative?" — needed explicit prompt to fix.
+- [UX] No console logging for import errors — user reported "there's no error in the log". Errors were caught and displayed but never logged.
+- [UX] Modal dialogs throughout — user: "so 1995 to have modal dialogs popping up all over the place." Shifted to slide-over drawer pattern.
+- [UX] Delete used window.confirm — user showed screenshot of native browser dialog.
+- [UX] Create folder used window.prompt — user showed screenshot of native browser dialog.
+- [UX] Error display took over entire library view — user: "this is a weird way to present errors."
+- [DOCUMENTATION] Agent tried to implement Phase 18 without documenting plan first (corrected in Session 3, repeated pattern awareness needed).
+
+### Quantitative
+- User messages: ~40
+- Commits: 18
+- User corrections: 9
+
+### Insights
+1. **Trace the full data flow before claiming a fix.** The `fromProgramsDir` flag had to be passed through 5 layers (context menu → strategy → transfer callback → dialog state → dialog component → library function). Missing it at any layer caused silent failure.
+2. **sanitizeForFilename changes are migration events.** Changing how filenames are generated breaks all existing lookups. Always add a fallback for the old naming convention.
+3. **The `saveToCommonLibrary` function already existed** — the disk browser had a working common-area save for programs. The agent removed the menu option instead of checking the code. "The code exists — I just hadn't traced the full flow" is a pattern to watch for.
+4. **Every catch block should log.** The import error was caught and displayed to the user but never logged to console. The user had to report "nothing in the log" before the agent added logging.
+5. **Slide-over drawers are a clear UX win** over centered modals for library operations — the tree stays visible and interactive.
+
+---
+
 ## 2026-04-11: Orchestrator Agent Implementation
 
 ### Feature: orchestrator-agent
@@ -82,6 +189,161 @@ Investigate GitHub issue #173 ("Build stamps should be sensitive to source code 
 1. Session transcript forensics (decrypting and searching content files) is a powerful investigation tool — it revealed the true root cause (stale worktree + cargo-cult pattern) that code inspection alone missed.
 2. Documentation belongs at the source of confusion, not in a separate guide. Agents read the Makefile, so the Makefile must teach them the right pattern.
 3. The orchestrator role means creating plans and docs, then handing off — not doing the implementation yourself.
+
+---
+
+## 2026-04-11: Move, Multi-Select, UX Polish (Session 3)
+
+### Feature: library-ux
+### Worktree: audiocontrol-library-ux
+
+### Goal
+Implement Phase 17 (drag-to-move, multi-select, batch operations) and address UX issues found during iPad testing.
+
+### Accomplished
+- Move to... context menu wired — opens MoveDialog with category directory tree (51a2cb78)
+- Drag-to-folder within same category — validates targets, prevents no-op moves (51a2cb78, b4eaf431)
+- Drag to section root to move items out of folders (1c00112d)
+- Multi-select: Ctrl/Cmd+click toggle, Shift+click range (5108c756)
+- Batch context menu: Move N items, Delete N items (7710d00c)
+- Multi-select drag moves all selected items (87140e4f)
+- Batch context menu includes batchable transfer actions (5c1f0a1b)
+- Required `batchable: boolean` on PluginMenuAction — compiler enforces batch declaration (3d0836fe)
+- Multi-select preview panel with count and action buttons (74af8349)
+- Transfer actions marked not-batchable until queue exists (46c1aefd)
+- On-hover delete icons for device memory items with delete-in-progress indicator (2d37c826, 93d27ecc)
+- Selected item contrast fix in device memory panel (0626eed2)
+- FSAA library auto-reconnect fix (dec35b3c)
+- Disk browser: explicit save destinations, file type icons, grouped by type (765a61eb, d5bc4607, eac9c14f)
+- Disk browser: clean target display — stripped vendor/size, disk icon (b2045039)
+- Import WAV button on Samples section header (b2953831)
+- Preview panel redesign with labeled action groups and visual hierarchy (d769d15d)
+- Phase 18 plan documented — visual polish and slide-over drawers (2dcbbabd)
+- Filed #214 for batch transfer queue
+
+### Didn't Work
+- Batch "Send to Device" silently dropped all but the last item — `setSendDialog` called N times, React batches, only last wins. Marked as `batchable: false` until queue system exists.
+- Section drop zone activated for all drag types — had to filter to only OS file drops + library-item moves
+- Delete from Device was missing from device memory context menu — ContextMenu's `separator: true` property means "render as separator divider" not "add separator before this action"
+
+### Course Corrections
+- [PROCESS] Agent marked transfer actions as `batchable: true` without testing if batch actually worked. User tested, found only first sample sent. Reverted to `batchable: false`.
+- [PROCESS] Agent didn't document Phase 17 plan to feature docs before implementing. User: "document your plan to the feature documentation before implementing."
+- [PROCESS] Agent tried to exit plan mode without documenting Phase 18 to feature docs. User: "Document your plan to the feature documentation before you implement."
+- [UX] Batch context menu initially only had Move and Delete. User: "Why doesn't it have a Send to Device option?" — needed to include batchable transfer actions.
+- [UX] Multi-select preview panel was missing. User: "What should the preview pane show for a multi-select?" — added count and batchable action buttons.
+- [UX] Section drop zone showed "Drop to add sample" during library-item moves. Should only activate for OS file imports.
+- [UX] "Move to top level" drop zone appeared even for items already at root.
+- [UX] Preview panel buttons were a messy soup of colored buttons. User asked for best-practices approach — redesigned with labeled action groups.
+- [UX] Disk browser had crowded, repetitive text. User asked for icons and type grouping.
+- [UX] Modal dialogs described as "so 1995" — user prefers slide-over drawers.
+- [FABRICATION] Agent claimed device memory context menu labels were correct without reading code. User: "Are you *sure*? I think you made that up."
+- [DOCUMENTATION] Agent tried to implement Phase 18 without documenting plan first.
+
+### Quantitative
+- User messages: ~60
+- Commits: 20
+- User corrections: 12
+- Issues filed: 1 (#214)
+
+### Insights
+1. **Document plans before implementing.** The user corrected this twice. The feature docs are the source of truth — if the plan isn't there, the next session has no context.
+2. **Test batch operations end-to-end before marking as batchable.** The `batchable` contract exists to prevent exactly the kind of silent failure we hit with batch Send to Device.
+3. **The `separator` property on ContextMenu is a footgun.** `separator: true` on an action turns it into a divider — it should be a separate entry. A failing test caught this.
+4. **UX feedback is gold.** The user found ~10 visual/interaction issues that code review wouldn't catch: crowded text, missing icons, invisible buttons on blue backgrounds, jarring modals. Testing on the actual device matters.
+5. **"Are you sure?" means read the code.** Never assert code state from memory.
+
+---
+
+## 2026-04-11: Contract Enforcement Refactor (Session 2)
+
+### Feature: library-ux
+### Worktree: audiocontrol-library-ux
+
+### Goal
+Implement the contract enforcement plan from Session 1: capability-declared context menus, compiler-enforced transfer contracts, eliminate duplicated types and silent failures.
+
+### Accomplished
+- `TransferActionId` union and `TransferHandlerMap` in editor-core — single source of truth for transfer action shapes (3d69a637)
+- Item type factories (`createCommonSampleItemType`, `createCommonProgramItemType`) replace const exports — accept `supportedActions: Set<TransferActionId>` to filter context menus (3d69a637)
+- S3K declares all 6 transfer actions; Roland declares none — phantom menu items eliminated (3d69a637)
+- `handleContextMenuAction` now required on `LibraryOperationsStrategy` — Roland broke at compile time until fixed (3d69a637)
+- Exhaustive action guard — throws on unhandled context menu actions (3d69a637)
+- `createTransferActionHandler` uses `Required<Pick<TransferHandlerMap, T>>` — compiler enforces handlers for declared actions (3d69a637)
+- Deduplicated dialog state types — `SaveToLibraryDialogState` and `SendToDeviceDialogState` in editor-core (3d69a637)
+- Renamed Roland's `ItemSelection` to `RolandPageSelection` — eliminated name collision (3d69a637)
+- Removed dead re-exports from both editors (nucleation sites) (3d69a637)
+- 12 unit tests for item type factories and transfer action handler (3d69a637)
+
+### Didn't Work
+- Nothing significant — the plan from Session 1 was thorough enough that implementation was straightforward.
+
+### Course Corrections
+- [PROCESS] Agent wrote handlers that silently returned when device not connected (`if (canTransfer) return;`). User: "what are you doing 'for now'?" Changed to throw with actionable error message.
+
+### Quantitative
+- User messages: ~15
+- Commits: 1 (plus 1 docs commit from Session 1 wrap-up)
+- User corrections: 1
+- Files changed: 24
+- Tests added: 12
+
+### Insights
+1. A good plan makes implementation fast. The 10-step plan with explicit "breaks Roland?" columns meant no surprises.
+2. `Required<Pick<TransferHandlerMap, T>>` is the key type trick — it ties the declared capability set to the required handler signatures at compile time.
+3. The `createTransferActionHandler<never>({})` pattern is how an editor explicitly opts out of all transfer actions. The compiler accepts it because `Required<Pick<Map, never>>` is `{}`.
+
+---
+
+## 2026-04-11: Reload Resilience, Context Menu Parity, Contract Enforcement
+
+### Feature: library-ux
+### Worktree: audiocontrol-library-ux
+
+### Goal
+UX bug-hunting session on iPad — fix quirks found by using the library in the browser.
+
+### Accomplished
+- Disk browser error visibility — save errors shown inline instead of silent console.error (d4fad551)
+- Dev server crash resilience — widened uncaught exception handler to survive WebSocket drops (d4fad551)
+- Shared vite config — `createEditorConfig` in editor-core, both editors use it (b10a227a)
+- Library auto-reconnect on reload — persist active backend to localStorage, OPFS/FSAA reconnect without user interaction (b10a227a)
+- Device memory and disk browser cached in sessionStorage — stale-while-revalidate pattern (8bf5fac7)
+- Fixed device memory flash on reload — disconnect effect was clearing cached names during transport double-init (63391dc2, 1eca517a)
+- Shared LoadingBar component in editor-core for all panel titles (6fc1e93b)
+- Context menu parity with preview panels — transfer actions, device memory context menus, disk browser Send to Device (3c015c51, stashed)
+- Shared `createTransferActionHandler` and `LibraryTransferCallbacks` in editor-core (3c015c51, stashed)
+- Contract enforcement directive added to CLAUDE.md (28906033)
+- Contract enforcement design doc with capability-declaration approach (cd923334)
+- SDS WebSocket error messages improved — was "[object Event]" (d4fad551)
+
+### Didn't Work
+- Context menu parity introduced phantom menu items in Roland — shared item types now define transfer actions that Roland can't handle, silently dropped
+- Device memory "Save to Library" opened confirmation dialog — user wanted direct execution from context menu
+- Multiple iterations of trying to prevent device memory flash on reload — `wasConnected` ref, `isLoading` suppression — root cause was transport double-initialization triggering the disconnect clear branch
+- Stashed work has duplicated dialog state types and all-optional callback interfaces that violate the new contract enforcement directive
+
+### Course Corrections
+- [PROCESS] Agent added context menu actions to shared item types without checking whether Roland would handle them. Roland shows phantom menu items that silently do nothing. User: "I want broken things to break loudly, not silently hidden away in corners and under the bed."
+- [PROCESS] Agent made all transfer callbacks optional, allowing `{}` to satisfy the compiler. User: "The whole point of a strongly typed language is that the compiler catches contract violations."
+- [PROCESS] Agent duplicated `SendDialogState`/`ReceiveDialogState` in two files. User: "Why is there a duplicate?"
+- [PROCESS] Agent added crash protection to S3K vite config but not Roland. User: "Instead of duplicating the code, can you think of a way to make the common config actually common?" Then corrected: "a shared config that *all* editors import from."
+- [PROCESS] Agent proposed manual testing for verification. User: "You should automate the verification testing instead of relying on manual testing."
+- [UX] Device memory "Save to Library" context menu opened a confirmation dialog. User: "Why does it need further confirmation? Why doesn't it just do it?"
+- [UX] Context menu had single "Save to Library" instead of explicit destination choices. User: "there should be separate options instead of asking the user to fill out a form"
+- [FABRICATION] Agent claimed device memory context menu labels were correct without reading the code. User: "Are you *sure*? I think you made that up."
+
+### Quantitative
+- User messages: ~50
+- Commits: 8 (6 pushed, 1 stashed batch)
+- User corrections: 8
+
+### Insights
+1. The contract enforcement directive is the most important outcome of this session. Adding features to shared code without compiler-enforced contracts creates silent failures that are worse than crashes.
+2. The capability-declaration pattern (editors declare which actions they support, menu filters accordingly) is the right approach. Optional bags of callbacks are not contracts.
+3. When the user asks "how much will need to be duplicated in other editors?" — that's the signal to stop and redesign, not to proceed and hope.
+4. "Are you sure?" means "go read the code" — never answer from memory about code state.
+5. Transport details should not affect UI. "Save to library" is a storage operation regardless of whether the device talks SDS or SysEx.
 
 ---
 

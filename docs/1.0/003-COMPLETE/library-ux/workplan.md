@@ -433,6 +433,31 @@ Phase 12 (common-area programs) — COMPLETE
 Phase 13 (ASPACK fast upload) — COMPLETE
   Multi-chunk solved (poll flag 0x00 not 0x80), sample creation via minimal SDS,
   bridge WebSocket endpoint, web editor integrated, stall-based timeouts
+
+Phase 14 (reload resilience) — COMPLETE
+  Library auto-reconnect from localStorage, device/disk state cached in sessionStorage,
+  stale-while-revalidate pattern, shared LoadingBar, shared vite config
+
+Phase 15 (context menu parity) — COMPLETE
+  Transfer actions in library context menus, device memory context menus,
+  disk browser Send to Device. Shared createTransferActionHandler in editor-core.
+
+Phase 16 (contract enforcement) — COMPLETE
+  TransferActionId union, item type factories with capability param,
+  handleContextMenuAction required on strategy, exhaustive action guard,
+  deduplicated types, RolandPageSelection rename, 12 unit tests.
+
+Phase 17 (drag-to-move & multi-select) — COMPLETE
+  Move to... context menu, drag-to-folder, drag to root, multi-select
+  with Ctrl/Shift, batch delete/move, batch context menu, multi-select
+  preview panel. Touch long-press deferred.
+
+Phase 18 (visual polish & drawers) — COMPLETE
+  Panel headers, preview column styling, SlideDrawer, SteppedProgressDrawer.
+  All 7 transfer dialogs migrated to stepped flow (no modals remain).
+  Category-aware routing, save-to-common-area, sanitizeForFilename,
+  inline errors, consistent no-confirm deletes, progress bars.
+  See: docs/1.0/001-IN-PROGRESS/library-ux/phase-18-visual-polish-drawers.md
 ```
 
 ---

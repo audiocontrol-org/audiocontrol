@@ -1,20 +1,8 @@
 /**
- * Item type plugins for S3000XL library categories.
- *
- * Re-exports common-area item types from editor-core and defines
- * S3K-specific metadata extensions for backward compatibility.
+ * Item type metadata for S3000XL library categories.
  */
 
 import type { CommonSampleMeta, CommonProgramMeta } from '@audiocontrol/editor-core';
-
-export {
-  commonSampleItemType as sampleItemType,
-  commonProgramItemType as programItemType,
-} from '@audiocontrol/editor-core';
-
-// =========================================================================
-// Metadata types — backward-compatible aliases
-// =========================================================================
 
 /** S3K sample metadata is identical to common-area sample metadata. */
 export type SampleMeta = CommonSampleMeta;

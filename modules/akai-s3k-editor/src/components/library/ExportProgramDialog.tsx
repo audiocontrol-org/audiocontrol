@@ -1,27 +1,21 @@
 /**
  * Export Program Dialog — saves a complete program from the device to the library.
  *
- * Fetches the program header, all keygroup headers, and all referenced
- * samples from the S3000XL, then saves them as a program bundle.
- *
- * Flow:
- * 1. Show program name, confirm export
- * 2. Fetch program header from device
- * 3. Fetch each keygroup header (with progress)
- * 4. Serialize program + keygroups to YAML
- * 5. Receive each referenced sample via SDS (with progress)
- * 6. Save program YAML + sample WAVs to library
- * 7. Report success/error
+ * Uses SteppedProgressDrawer for a continuous flow:
+ * 1. Read program header from device
+ * 2. Read keygroup headers
+ * 3. Save program to library (S3K or common area)
+ * 4. Receive each referenced sample via SDS
  */
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
-import { Dialog, DialogTitle, DialogDescription, DialogActions } from '@/components/ui/Dialog';
+import { SteppedProgressDrawer, type ProgressStep, formatBytes } from '@audiocontrol/editor-core';
 import { serializeProgram, extractSampleReferences } from '@/lib/program-serialization';
 import { saveProgramToLibrary, saveProgramSample } from '@/lib/program-storage';
+import { saveDeviceProgramToCommonArea } from '@/lib/program-promotion';
 import { buildWavFile } from '@/lib/wav-writer';
-import { cn } from '@/lib/utils';
 
 // =========================================================================
 // Types
@@ -30,47 +24,18 @@ import { cn } from '@/lib/utils';
 export interface ExportProgramDialogProps {
   open: boolean;
   onClose: () => void;
-  /** Device program index to export */
   programIndex: number;
-  /** Device program name (for display and default save name) */
   programName: string;
   client: S3000xlClientInterface;
   libraryRoot: StorageDirectoryHandle;
-  /** Device sample names (RSLIST) for resolving sample indices */
   deviceSampleNames: string[];
-  /** Called after successful save to refresh the library tree */
   onExportComplete: () => Promise<void>;
-}
-
-type DialogPhase = 'confirm' | 'fetching' | 'receiving-samples' | 'saving' | 'success' | 'error';
-
-// =========================================================================
-// Progress display
-// =========================================================================
-
-function ProgressBar({ current, total, label }: {
-  current: number;
-  total: number;
-  label: string;
-}): JSX.Element {
-  const pct = total > 0 ? Math.round((current / total) * 100) : 0;
-
-  return (
-    <div className="space-y-2">
-      <p className="text-sm text-gray-300">{label}</p>
-      <div className="w-full bg-gray-700 rounded-full h-2">
-        <div
-          className="bg-blue-500 h-2 rounded-full transition-all duration-200"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <p className="text-xs text-gray-500 text-right">{pct}%</p>
-    </div>
-  );
+  autoStart?: boolean;
+  saveToCommonArea?: boolean;
 }
 
 // =========================================================================
-// Dialog
+// Component
 // =========================================================================
 
 export function ExportProgramDialog({
@@ -82,267 +47,182 @@ export function ExportProgramDialog({
   libraryRoot,
   deviceSampleNames,
   onExportComplete,
+  saveToCommonArea,
 }: ExportProgramDialogProps): JSX.Element {
-  const [phase, setPhase] = useState<DialogPhase>('confirm');
-  const [saveName, setSaveName] = useState(programName.trim());
-  const [progress, setProgress] = useState({ current: 0, total: 0, label: '' });
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [keygroupCount, setKeygroupCount] = useState<number | null>(null);
-  const [sampleCount, setSampleCount] = useState<number | null>(null);
-  const [missingSamples, setMissingSamples] = useState<string[]>([]);
-  const [includeSamples, setIncludeSamples] = useState(true);
+  const [steps, setSteps] = useState<ProgressStep[]>([]);
+  const [isComplete, setIsComplete] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [summary, setSummary] = useState<string | undefined>();
+  const cancelledRef = useRef(false);
 
-  // Reset state when dialog opens
+  const updateStep = useCallback((id: string, update: Partial<ProgressStep>) => {
+    setSteps((prev) => prev.map((s) => s.id === id ? { ...s, ...update } : s));
+  }, []);
+
   useEffect(() => {
-    if (open) {
-      setPhase('confirm');
-      setSaveName(programName.trim());
-      setProgress({ current: 0, total: 0, label: '' });
-      setErrorMessage(null);
-      setKeygroupCount(null);
-      setSampleCount(null);
-      setMissingSamples([]);
-      setIncludeSamples(true);
-    }
-  }, [open, programName]);
+    if (!open) return;
 
-  const handleExport = useCallback(async () => {
-    const trimmedName = saveName.trim();
-    if (!trimmedName) {
-      setErrorMessage('Program name is required');
-      return;
-    }
+    cancelledRef.current = false;
+    setIsComplete(false);
+    setHasError(false);
+    setSummary(undefined);
 
-    setPhase('fetching');
-    setErrorMessage(null);
+    const trimmedName = programName.trim();
+    const target = saveToCommonArea ? 'common library' : 'Akai library';
 
-    try {
-      // Step 1: Fetch program header
-      setProgress({ current: 0, total: 1, label: 'Reading program header...' });
-      const programHeader = await client.fetchProgramHeader(programIndex);
-      const groups = programHeader.GROUPS;
-      setKeygroupCount(groups);
+    setSteps([
+      { id: 'header', label: 'Read program header', status: 'active' },
+    ]);
 
-      // Step 2: Fetch all keygroup headers
-      const keygroupHeaders = [];
-      for (let i = 0; i < groups; i++) {
-        setProgress({
-          current: i,
-          total: groups,
-          label: `Reading keygroup ${i + 1} of ${groups}...`,
-        });
-        const kg = await client.fetchKeygroupHeader(programIndex, i);
-        keygroupHeaders.push(kg);
-      }
+    void (async () => {
+      try {
+        // Step 1: Fetch program header
+        const programHeader = await client.fetchProgramHeader(programIndex);
+        const groups = programHeader.GROUPS;
 
-      setProgress({ current: groups, total: groups, label: 'Serializing...' });
+        updateStep('header', { status: 'complete', detail: `${groups} keygroups` });
 
-      // Step 3: Serialize program + keygroups
-      const yamlContent = serializeProgram(programHeader, keygroupHeaders);
+        // Step 2: Fetch keygroup headers
+        setSteps((prev) => [
+          ...prev,
+          { id: 'keygroups', label: `Read ${groups} keygroup headers`, status: 'active' },
+        ]);
 
-      // Step 4: Save YAML to library
-      setPhase('saving');
-      await saveProgramToLibrary(libraryRoot, trimmedName, yamlContent);
+        const keygroupHeaders = [];
+        for (let i = 0; i < groups; i++) {
+          if (cancelledRef.current) return;
+          updateStep('keygroups', { detail: `${i + 1} / ${groups}`, progress: Math.round(((i + 1) / groups) * 100) });
+          const kg = await client.fetchKeygroupHeader(programIndex, i);
+          keygroupHeaders.push(kg);
+        }
 
-      // Step 5: Receive and save referenced samples via SDS
-      if (includeSamples) {
+        updateStep('keygroups', { status: 'complete', detail: `${groups} keygroups read`, progress: undefined });
+
+        // Step 3: Save program to library
+        setSteps((prev) => [
+          ...prev,
+          { id: 'save', label: `Save program to ${target}`, status: 'active' },
+        ]);
+
+        let programDir: StorageDirectoryHandle | undefined;
+        if (saveToCommonArea) {
+          const poly = (programHeader as unknown as Record<string, unknown>).POLY;
+          const result = await saveDeviceProgramToCommonArea(
+            libraryRoot, trimmedName,
+            keygroupHeaders as unknown as Record<string, unknown>[],
+            typeof poly === 'number' ? poly : 15,
+          );
+          programDir = result.programDir;
+        } else {
+          const yamlContent = serializeProgram(programHeader, keygroupHeaders);
+          await saveProgramToLibrary(libraryRoot, trimmedName, yamlContent);
+        }
+
+        updateStep('save', { status: 'complete', detail: `Saved as "${trimmedName}"` });
+
+        if (cancelledRef.current) return;
+
+        // Step 4: Receive referenced samples via SDS
         const sampleRefs = extractSampleReferences(keygroupHeaders);
         const uniqueSamples = sampleRefs.filter((name) =>
           deviceSampleNames.some((dn) => dn.trim() === name),
         );
-        const missing = sampleRefs.filter((name) =>
-          !deviceSampleNames.some((dn) => dn.trim() === name),
-        );
-        setMissingSamples(missing);
 
-        if (uniqueSamples.length > 0) {
-          setPhase('receiving-samples');
-          setSampleCount(uniqueSamples.length);
+        // Add sample steps
+        const sampleSteps: ProgressStep[] = uniqueSamples.map((name) => ({
+          id: `sample-${name}`,
+          label: `Receive sample "${name}"`,
+          status: 'pending' as const,
+        }));
+        if (sampleSteps.length > 0) {
+          setSteps((prev) => [...prev, ...sampleSteps]);
+        }
 
-          for (let i = 0; i < uniqueSamples.length; i++) {
-            const sampleName = uniqueSamples[i];
-            const sampleIndex = deviceSampleNames.findIndex(
-              (dn) => dn.trim() === sampleName,
-            );
+        for (let i = 0; i < uniqueSamples.length; i++) {
+          if (cancelledRef.current) return;
 
-            setProgress({
-              current: i,
-              total: uniqueSamples.length,
-              label: `Receiving sample ${i + 1}/${uniqueSamples.length}: ${sampleName}`,
-            });
+          const sampleName = uniqueSamples[i];
+          const stepId = `sample-${sampleName}`;
+          const sampleIndex = deviceSampleNames.findIndex((dn) => dn.trim() === sampleName);
 
+          updateStep(stepId, { status: 'active' });
+
+          try {
             const result = await client.receiveSampleViaSds(
               sampleIndex,
               (sdsProgress) => {
-                const pctStr = sdsProgress.packetsTotal > 0
-                  ? ` (${Math.round((sdsProgress.packetsSent / sdsProgress.packetsTotal) * 100)}%)`
-                  : '';
-                setProgress({
-                  current: i,
-                  total: uniqueSamples.length,
-                  label: `Receiving sample ${i + 1}/${uniqueSamples.length}: ${sampleName}${pctStr}`,
-                });
+                const pct = sdsProgress.packetsTotal > 0
+                  ? Math.round((sdsProgress.packetsSent / sdsProgress.packetsTotal) * 100)
+                  : 0;
+                updateStep(stepId, { progress: pct });
               },
             );
 
             const sampleRate = Math.round(1_000_000_000 / result.header.samplePeriodNs);
             const wavData = buildWavFile(result.samples, sampleRate);
-            await saveProgramSample(libraryRoot, trimmedName, sampleName, wavData);
+
+            if (saveToCommonArea && programDir) {
+              const safeSampleName = `${sampleName.trim().replace(/\s+/g, '_')}.wav`;
+              const wavHandle = await programDir.getFileHandle(safeSampleName, { create: true });
+              const writable = await wavHandle.createWritable();
+              await writable.write(wavData);
+              await writable.close();
+            } else {
+              await saveProgramSample(libraryRoot, trimmedName, sampleName, wavData);
+            }
+
+            updateStep(stepId, {
+              status: 'complete',
+              detail: formatBytes(wavData.byteLength),
+              progress: undefined,
+            });
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[ExportProgram] Failed to receive sample "${sampleName}":`, err);
+            updateStep(stepId, { status: 'failed', error: msg, progress: undefined });
           }
         }
+
+        const missing = sampleRefs.filter((name) =>
+          !deviceSampleNames.some((dn) => dn.trim() === name),
+        );
+
+        setSummary(
+          missing.length > 0
+            ? `Saved to ${target}. ${missing.length} referenced sample${missing.length !== 1 ? 's' : ''} not found on device.`
+            : `Saved to ${target}.`,
+        );
+        setIsComplete(true);
+        await onExportComplete();
+
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error('[ExportProgram] Failed:', err);
+        setSteps((prev) => {
+          const updated = [...prev];
+          const idx = updated.findIndex((s) => s.status === 'active' || s.status === 'pending');
+          if (idx >= 0) {
+            updated[idx] = { ...updated[idx], status: 'failed', error: message };
+          }
+          return updated;
+        });
+        setHasError(true);
       }
+    })();
 
-      setPhase('success');
-      await onExportComplete();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      setErrorMessage(message);
-      setPhase('error');
-    }
-  }, [saveName, programIndex, client, libraryRoot, deviceSampleNames, includeSamples, onExportComplete]);
-
-  const handleClose = useCallback(() => {
-    if (phase === 'fetching' || phase === 'saving' || phase === 'receiving-samples') return;
-    onClose();
-  }, [phase, onClose]);
+    return () => { cancelledRef.current = true; };
+  }, [open, programIndex, programName, client, libraryRoot, deviceSampleNames, saveToCommonArea, onExportComplete, updateStep]);
 
   return (
-    <Dialog open={open} onClose={handleClose}>
-      <DialogTitle>Save Program to Library</DialogTitle>
-
-      {phase === 'confirm' && (
-        <div className="space-y-4">
-          <DialogDescription>
-            Export program #{programIndex} (&ldquo;{programName.trim()}&rdquo;)
-            from the device to your library.
-          </DialogDescription>
-
-          <div>
-            <label
-              htmlFor="export-program-name"
-              className="block text-sm text-gray-400 mb-1"
-            >
-              Save as
-            </label>
-            <input
-              id="export-program-name"
-              type="text"
-              value={saveName}
-              onChange={(e) => setSaveName(e.target.value)}
-              maxLength={128}
-              className={cn(
-                'w-full bg-gray-700 border rounded px-3 py-2 text-gray-200 text-sm',
-                'focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'border-gray-600',
-              )}
-              placeholder="Enter program name"
-              data-testid="export-program-name-input"
-            />
-          </div>
-
-          <label className="flex items-center gap-2 text-sm text-gray-300 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={includeSamples}
-              onChange={(e) => setIncludeSamples(e.target.checked)}
-              className="ac-radio"
-            />
-            Include sample audio data (via SDS — may be slow)
-          </label>
-
-          {errorMessage && (
-            <div className="p-3 bg-red-900/30 border border-red-700 rounded text-red-300 text-sm">
-              {errorMessage}
-            </div>
-          )}
-
-          <DialogActions>
-            <button
-              className="ac-btn ac-btn-sm ac-btn-secondary"
-              onClick={handleClose}
-            >
-              Cancel
-            </button>
-            <button
-              className="ac-btn ac-btn-sm ac-btn-primary"
-              onClick={handleExport}
-              disabled={!saveName.trim()}
-              data-testid="export-program-confirm"
-            >
-              Export
-            </button>
-          </DialogActions>
-        </div>
-      )}
-
-      {(phase === 'fetching' || phase === 'receiving-samples') && (
-        <div className="space-y-4">
-          <ProgressBar
-            current={progress.current}
-            total={progress.total}
-            label={progress.label}
-          />
-          <p className="text-xs text-gray-500">
-            Do not disconnect the device during transfer.
-          </p>
-        </div>
-      )}
-
-      {phase === 'saving' && (
-        <div className="space-y-3">
-          <p className="text-sm text-gray-400">Saving to library...</p>
-        </div>
-      )}
-
-      {phase === 'error' && (
-        <div className="space-y-3">
-          <div className="p-3 bg-red-900/30 border border-red-700 rounded text-red-300 text-sm">
-            {errorMessage || 'An unknown error occurred'}
-          </div>
-          <DialogActions>
-            <button
-              className="ac-btn ac-btn-sm ac-btn-secondary"
-              onClick={handleClose}
-            >
-              Close
-            </button>
-          </DialogActions>
-        </div>
-      )}
-
-      {phase === 'success' && (
-        <div className="space-y-4">
-          <div className="p-3 bg-green-900/30 border border-green-700 rounded text-green-300 text-sm">
-            Program saved to library as &ldquo;{saveName.trim()}&rdquo;
-            ({keygroupCount} keygroup{keygroupCount !== 1 ? 's' : ''}
-            {sampleCount != null && sampleCount > 0
-              ? `, ${sampleCount} sample${sampleCount !== 1 ? 's' : ''}`
-              : ''}).
-          </div>
-          {missingSamples.length > 0 && (
-            <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded text-yellow-300 text-sm">
-              <p className="font-medium">
-                {missingSamples.length} referenced sample{missingSamples.length !== 1 ? 's' : ''} not
-                found on device:
-              </p>
-              <ul className="mt-1 list-disc list-inside text-yellow-400">
-                {missingSamples.map((name) => (
-                  <li key={name}>{name}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-          <DialogActions>
-            <button
-              className="ac-btn ac-btn-sm ac-btn-primary"
-              onClick={handleClose}
-              data-testid="export-program-done"
-            >
-              Done
-            </button>
-          </DialogActions>
-        </div>
-      )}
-    </Dialog>
+    <SteppedProgressDrawer
+      open={open}
+      title={`Save "${programName.trim()}" to Library`}
+      onClose={onClose}
+      onCancel={() => { cancelledRef.current = true; }}
+      steps={steps}
+      isComplete={isComplete}
+      hasError={hasError}
+      summary={summary}
+    />
   );
 }

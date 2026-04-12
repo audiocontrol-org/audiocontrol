@@ -7,7 +7,7 @@
  */
 
 import { useMemo, useCallback } from 'react';
-import { type LibraryOperationsStrategy, getNodePath, getNodeName } from '@audiocontrol/editor-core';
+import { type LibraryOperationsStrategy, createTransferActionHandler, getNodePath, getNodeName } from '@audiocontrol/editor-core';
 import type { TreeNode } from '@audiocontrol/editor-core';
 import type { StorageDirectoryHandle, LibraryCategory } from '@audiocontrol/sampler-library/browser';
 import {
@@ -21,7 +21,7 @@ import {
   deleteSet,
   renameSet,
 } from '@/lib/library-service';
-import type { ItemSelection } from '@/pages/LibraryPage';
+import type { RolandPageSelection } from '@/pages/LibraryPage';
 
 // =========================================================================
 // Helpers
@@ -40,8 +40,8 @@ function toLibraryCategory(categoryId: string): LibraryCategory {
 
 interface UseRolandLibraryStrategyOptions {
   libraryHandle: StorageDirectoryHandle | null;
-  selection: ItemSelection | null;
-  setSelection: (selection: ItemSelection | null) => void;
+  selection: RolandPageSelection | null;
+  setSelection: (selection: RolandPageSelection | null) => void;
 }
 
 interface UseRolandLibraryStrategyResult {
@@ -133,6 +133,11 @@ export function useRolandLibraryStrategy({
       }
       return false;
     },
+
+    // Roland declares no transfer actions (empty handler map).
+    // When Roland adds device transfer support, add handlers here
+    // and declare the actions in the category factories.
+    handleContextMenuAction: createTransferActionHandler<never>({}),
   }), [libraryHandle, selection, setSelection]);
 
   return { strategy, handleDeleteSet, handleRenameSet };

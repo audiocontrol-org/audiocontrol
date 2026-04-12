@@ -49,8 +49,13 @@ export async function loadProgramMeta(
   const parentDir = await getSamplesDirReadOnly(root, path);
   const safeName = sanitizeForFilename(name);
 
-  // Navigate into program directory bundle
-  const programDir = await parentDir.getDirectoryHandle(safeName);
+  // Navigate into program directory bundle (fallback to raw name for pre-migration dirs)
+  let programDir: StorageDirectoryHandle;
+  try {
+    programDir = await parentDir.getDirectoryHandle(safeName);
+  } catch {
+    programDir = await parentDir.getDirectoryHandle(name.trim());
+  }
 
   const yamlHandle = await programDir.getFileHandle('program.yaml');
   const yamlFile = await yamlHandle.getFile();
@@ -76,7 +81,13 @@ export async function loadProgramFromProgramsDir(
 ): Promise<ProgramYaml> {
   const programsDir = await getNestedDirectoryReadOnly(root, PROGRAMS_ROOT);
   const safeName = sanitizeForFilename(name);
-  const programDir = await programsDir.getDirectoryHandle(safeName);
+  let programDir: StorageDirectoryHandle;
+  try {
+    programDir = await programsDir.getDirectoryHandle(safeName);
+  } catch {
+    // Fallback: try the raw name (for directories created before space→underscore migration)
+    programDir = await programsDir.getDirectoryHandle(name.trim());
+  }
 
   const yamlHandle = await programDir.getFileHandle('program.yaml');
   const yamlFile = await yamlHandle.getFile();
@@ -98,5 +109,9 @@ export async function getProgramDirFromProgramsDir(
 ): Promise<StorageDirectoryHandle> {
   const programsDir = await getNestedDirectoryReadOnly(root, PROGRAMS_ROOT);
   const safeName = sanitizeForFilename(name);
-  return programsDir.getDirectoryHandle(safeName);
+  try {
+    return await programsDir.getDirectoryHandle(safeName);
+  } catch {
+    return programsDir.getDirectoryHandle(name.trim());
+  }
 }

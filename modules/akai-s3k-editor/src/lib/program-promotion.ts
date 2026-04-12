@@ -144,6 +144,42 @@ function extractProgramData(yamlContent: string): {
  * @param targetName - Name for the common-area program (defaults to program name)
  * @returns The CommonProgram that was saved
  */
+/**
+ * Save a program from device SysEx headers directly to the common area.
+ *
+ * Converts keygroup headers to the device-agnostic zone format and
+ * saves as program.yaml in library/common/programs/. Caller is responsible
+ * for receiving and saving sample WAVs into the program directory.
+ */
+export async function saveDeviceProgramToCommonArea(
+  libraryRoot: StorageDirectoryHandle,
+  programName: string,
+  keygroupHeaders: Record<string, unknown>[],
+  polyphony: number,
+): Promise<{ programDir: StorageDirectoryHandle; sampleRefs: string[] }> {
+  // Convert device headers to common format
+  const akaiProgram = buildAkaiDiskProgram(programName, keygroupHeaders, polyphony);
+  const commonProgram = akaiProgramToCommon(akaiProgram);
+
+  const outputName = programName.trim();
+  const safeName = sanitizeForFilename(outputName);
+
+  // Create common-area program directory
+  const programsDir = await getNestedDirectory(libraryRoot, ['library', 'common', 'programs']);
+  const programDir = await programsDir.getDirectoryHandle(safeName, { create: true });
+
+  // Save program.yaml
+  const programYaml = { ...commonProgram, name: outputName };
+  const yamlHandle = await programDir.getFileHandle('program.yaml', { create: true });
+  const yamlWritable = await yamlHandle.createWritable();
+  await yamlWritable.write(stringifyYaml(programYaml, { indent: 2, lineWidth: 120 }));
+  await yamlWritable.close();
+
+  // Return the dir handle and sample references so caller can save WAVs
+  const sampleRefs = akaiProgram.keygroups.flatMap((kg) => kg.sampleNames.filter((n) => n.length > 0));
+  return { programDir, sampleRefs: [...new Set(sampleRefs)] };
+}
+
 export async function promoteToCommonArea(
   libraryRoot: StorageDirectoryHandle,
   programDirName: string,
@@ -162,8 +198,8 @@ export async function promoteToCommonArea(
   const safeName = sanitizeForFilename(outputName);
 
   // 3. Create the common-area program directory
-  const commonSamplesDir = await getNestedDirectory(libraryRoot, ['library', 'common', 'samples']);
-  const programDir = await commonSamplesDir.getDirectoryHandle(safeName, { create: true });
+  const commonProgramsDir = await getNestedDirectory(libraryRoot, ['library', 'common', 'programs']);
+  const programDir = await commonProgramsDir.getDirectoryHandle(safeName, { create: true });
 
   // 4. Save program.yaml
   const programYaml = {

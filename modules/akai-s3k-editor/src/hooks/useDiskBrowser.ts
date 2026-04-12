@@ -46,11 +46,11 @@ export interface DiskBrowserState {
  * directories) is read upfront. File content is read on demand when the
  * user downloads a sample or program.
  */
-export function useDiskBrowser(bridgeUrl: string | null) {
+export function useDiskBrowser(bridgeUrl: string | null, cachedTargets?: DiskTarget[]) {
   const [state, setState] = useState<DiskBrowserState>({
     loading: false,
     error: null,
-    targets: [],
+    targets: cachedTargets ?? [],
     partitionData: new Map(),
   });
 
