@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useState } from 'react';
 import type { S3000xlClientInterface, ProgramHeader } from '@audiocontrol/sampler-devices/s3k';
 import { ProgramEditor } from '@/components/programs/ProgramEditor';
 import { KeygroupSummary } from '@/components/programs/KeygroupSummary';
@@ -33,6 +33,7 @@ export function ComparePane({
     usePaneKeygroups(client);
 
   const lastLoadedKeygroupProgram = useRef<number | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const selectedHeader: ProgramHeader | undefined =
     selectedIndex !== null ? programs[selectedIndex] : undefined;
@@ -40,14 +41,16 @@ export function ComparePane({
   // Load program header when selection changes
   useEffect(() => {
     if (selectedIndex === null || !client) return;
+    setFetchError(null);
     const existing = programs[selectedIndex];
     if (!existing) {
       client.fetchProgramHeader(selectedIndex).then(
         (header) => {
           useProgramStore.getState().setProgram(selectedIndex, header);
         },
-        () => {
-          // Fetch failure is not critical here -- user can reselect
+        (err) => {
+          const message = err instanceof Error ? err.message : 'Failed to load program';
+          setFetchError(message);
         },
       );
     }
@@ -113,6 +116,8 @@ export function ComparePane({
               isLoading={isLoading}
             />
           </>
+        ) : selectedIndex !== null && fetchError ? (
+          <p className="text-red-400 text-sm">{fetchError} — select again to retry.</p>
         ) : selectedIndex !== null ? (
           <p className="text-gray-400 text-sm">Loading program...</p>
         ) : (

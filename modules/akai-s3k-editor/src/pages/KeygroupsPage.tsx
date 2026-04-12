@@ -7,7 +7,7 @@ import { useKeygroupStore } from '@/stores/keygroupStore';
 import { useProgramStore } from '@/stores/programStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { writeKeygroupField } from '@/lib/keygroup-writers';
-import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { ErrorBanner } from '@/components/ui';
 
 export function KeygroupsPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();

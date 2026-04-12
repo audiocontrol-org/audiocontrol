@@ -8,7 +8,7 @@ import { useProgramStore } from '@/stores/programStore';
 import { useKeygroupStore } from '@/stores/keygroupStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { writeProgramField } from '@/lib/program-writers';
-import { ErrorBanner } from '@/components/ui/ErrorBanner';
+import { ErrorBanner } from '@/components/ui';
 
 export function ProgramsPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
@@ -134,13 +134,18 @@ export function ProgramsPage(): JSX.Element {
   const handleDeleteProgram = useCallback(async () => {
     if (selectedProgramIndex === null || !client) return;
     setShowDeleteConfirm(false);
-    await client.deleteProgram(selectedProgramIndex);
-    client.invalidateProgramCache();
-    useProgramStore.getState().invalidateCache();
-    lastLoadedKeygroupProgram.current = null;
-    invalidateKeygroupCache();
-    await loadProgramNames();
-    selectProgram(null);
+    try {
+      await client.deleteProgram(selectedProgramIndex);
+      client.invalidateProgramCache();
+      useProgramStore.getState().invalidateCache();
+      lastLoadedKeygroupProgram.current = null;
+      invalidateKeygroupCache();
+      await loadProgramNames();
+      selectProgram(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to delete program';
+      useEditorStore.getState().setError(message);
+    }
   }, [selectedProgramIndex, client, loadProgramNames, selectProgram, invalidateKeygroupCache]);
 
   const selectedProgramName =
