@@ -444,7 +444,7 @@ export function LibraryPage(): JSX.Element {
     } : undefined,
     onSaveSampleToCommonLibrary: canTransfer ? transferCallbacks.handleSaveDeviceSampleToLibraryDirect : undefined,
     onSaveSampleToDeviceLibrary: canTransfer ? transferCallbacks.handleSaveDeviceSampleToLibraryDirect : undefined,
-    onSaveProgramToCommonLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToLibraryDirect : undefined,
+    onSaveProgramToCommonLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToCommonArea : undefined,
     onSaveProgramToDeviceLibrary: canTransfer ? transferCallbacks.handleSaveDeviceProgramToLibraryDirect : undefined,
     onRenameSample: isDeviceConnected ? transferCallbacks.handleRenameDeviceSample : undefined,
     onRenameProgram: isDeviceConnected ? transferCallbacks.handleRenameDeviceProgram : undefined,
@@ -608,6 +608,7 @@ export function LibraryPage(): JSX.Element {
             deviceSampleNames={deviceSampleNames}
             onExportComplete={transferCallbacks.handleExportComplete}
             autoStart={programTransfer.exportDialog.autoStart}
+            saveToCommonArea={programTransfer.exportDialog.saveToCommonArea}
           />
           <ImportProgramDialog
             open={programTransfer.importDialog.open}

@@ -20,6 +20,7 @@ import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
 import { Dialog, DialogTitle, DialogDescription, DialogActions } from '@/components/ui/Dialog';
 import { serializeProgram, extractSampleReferences } from '@/lib/program-serialization';
 import { saveProgramToLibrary, saveProgramSample } from '@/lib/program-storage';
+import { saveDeviceProgramToCommonArea } from '@/lib/program-promotion';
 import { buildWavFile } from '@/lib/wav-writer';
 import { cn } from '@/lib/utils';
 
@@ -42,6 +43,8 @@ export interface ExportProgramDialogProps {
   onExportComplete: () => Promise<void>;
   /** Skip the confirm phase and start the export immediately. */
   autoStart?: boolean;
+  /** Save to common area (program.yaml) instead of S3K area (program.s3k.yaml). */
+  saveToCommonArea?: boolean;
 }
 
 type DialogPhase = 'confirm' | 'fetching' | 'receiving-samples' | 'saving' | 'success' | 'error';
@@ -85,6 +88,7 @@ export function ExportProgramDialog({
   deviceSampleNames,
   onExportComplete,
   autoStart,
+  saveToCommonArea,
 }: ExportProgramDialogProps): JSX.Element {
   const [phase, setPhase] = useState<DialogPhase>('confirm');
   const [saveName, setSaveName] = useState(programName.trim());
@@ -140,14 +144,23 @@ export function ExportProgramDialog({
         keygroupHeaders.push(kg);
       }
 
-      setProgress({ current: groups, total: groups, label: 'Serializing...' });
-
-      // Step 3: Serialize program + keygroups
-      const yamlContent = serializeProgram(programHeader, keygroupHeaders);
-
-      // Step 4: Save YAML to library
+      setProgress({ current: groups, total: groups, label: 'Saving...' });
       setPhase('saving');
-      await saveProgramToLibrary(libraryRoot, trimmedName, yamlContent);
+
+      // Step 3: Save to library (common area or S3K area)
+      let programDir: StorageDirectoryHandle | undefined;
+      if (saveToCommonArea) {
+        const poly = (programHeader as unknown as Record<string, unknown>).POLY;
+        const result = await saveDeviceProgramToCommonArea(
+          libraryRoot, trimmedName,
+          keygroupHeaders as unknown as Record<string, unknown>[],
+          typeof poly === 'number' ? poly : 15,
+        );
+        programDir = result.programDir;
+      } else {
+        const yamlContent = serializeProgram(programHeader, keygroupHeaders);
+        await saveProgramToLibrary(libraryRoot, trimmedName, yamlContent);
+      }
 
       // Step 5: Receive and save referenced samples via SDS
       if (includeSamples) {
@@ -192,7 +205,16 @@ export function ExportProgramDialog({
 
             const sampleRate = Math.round(1_000_000_000 / result.header.samplePeriodNs);
             const wavData = buildWavFile(result.samples, sampleRate);
-            await saveProgramSample(libraryRoot, trimmedName, sampleName, wavData);
+            if (saveToCommonArea && programDir) {
+              // Save WAV directly into the common-area program directory
+              const safeSampleName = `${sampleName.trim().replace(/\s+/g, '_')}.wav`;
+              const wavHandle = await programDir.getFileHandle(safeSampleName, { create: true });
+              const writable = await wavHandle.createWritable();
+              await writable.write(wavData);
+              await writable.close();
+            } else {
+              await saveProgramSample(libraryRoot, trimmedName, sampleName, wavData);
+            }
           }
         }
       }
@@ -204,7 +226,7 @@ export function ExportProgramDialog({
       setErrorMessage(message);
       setPhase('error');
     }
-  }, [saveName, programIndex, client, libraryRoot, deviceSampleNames, includeSamples, onExportComplete]);
+  }, [saveName, programIndex, client, libraryRoot, deviceSampleNames, includeSamples, saveToCommonArea, onExportComplete]);
 
   // Auto-start export when opened with autoStart
   useEffect(() => {

@@ -82,6 +82,12 @@ export function useS3kTransferCallbacks({
     [programTransfer],
   );
 
+  /** Save device program to common area (converts to program.yaml with zones). */
+  const handleSaveDeviceProgramToCommonArea = useCallback(
+    (index: number, name: string) => { programTransfer.openExportDialogToCommonArea(index, name); },
+    [programTransfer],
+  );
+
   const handleSendProgramToDevice = useCallback(
     (dirName: string, name: string) => {
       const targetSlot = selectedDeviceType === 'program' && selectedDeviceIndex !== null
@@ -175,6 +181,7 @@ export function useS3kTransferCallbacks({
     handleSaveDeviceSampleToLibraryDirect,
     handleSaveDeviceProgramToLibrary,
     handleSaveDeviceProgramToLibraryDirect,
+    handleSaveDeviceProgramToCommonArea,
     handleSendProgramToDevice,
     handleImportInstrument,
     handleRenameDeviceSample,

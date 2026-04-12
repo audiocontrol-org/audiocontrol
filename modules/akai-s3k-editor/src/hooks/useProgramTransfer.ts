@@ -13,7 +13,9 @@ import { SAVE_DIALOG_CLOSED, type SaveToLibraryDialogState } from '@audiocontrol
 // Dialog state types
 // =========================================================================
 
-export type ExportDialogState = SaveToLibraryDialogState;
+export interface ExportDialogState extends SaveToLibraryDialogState {
+  saveToCommonArea?: boolean;
+}
 
 export interface ImportDialogState {
   open: boolean;
@@ -45,6 +47,8 @@ export interface UseProgramTransferResult {
   openExportDialog: (programIndex: number, programName: string) => void;
   /** Open the export dialog and start immediately (no confirm phase) */
   openExportDialogDirect: (programIndex: number, programName: string) => void;
+  /** Open export dialog and save to common area (auto-starts) */
+  openExportDialogToCommonArea: (programIndex: number, programName: string) => void;
   /** Close the export dialog */
   closeExportDialog: () => void;
 
@@ -87,6 +91,14 @@ export function useProgramTransfer(
     [isDeviceConnected, hasLibraryRoot],
   );
 
+  const openExportDialogToCommonArea = useCallback(
+    (programIndex: number, programName: string) => {
+      if (!isDeviceConnected || !hasLibraryRoot) return;
+      setExportDialog({ open: true, itemIndex: programIndex, itemName: programName, autoStart: true, saveToCommonArea: true });
+    },
+    [isDeviceConnected, hasLibraryRoot],
+  );
+
   const closeExportDialog = useCallback(() => {
     setExportDialog(EXPORT_DIALOG_CLOSED);
   }, []);
@@ -113,6 +125,7 @@ export function useProgramTransfer(
     importDialog,
     openExportDialog,
     openExportDialogDirect,
+    openExportDialogToCommonArea,
     closeExportDialog,
     openImportDialog,
     closeImportDialog,
