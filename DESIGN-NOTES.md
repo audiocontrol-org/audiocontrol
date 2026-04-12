@@ -1,6 +1,21 @@
 # Design Notes
 
-Design decisions and UI patterns for the audiocontrol editor suite. These are established conventions -- follow them for consistency across editors.
+Design decisions and UI patterns for the audiocontrol editor suite. Working scratchpad -- captured as we discover them.
+
+---
+
+## The Cardinal Rule
+
+**If a visual value appears in a component, it's wrong.**
+
+Every visual property -- color, size, spacing, font, transition -- must come from the design system (`primitives.css`, `library.css`). Components should contain only class names and variable references, never literal values.
+
+If the design system doesn't have what you need:
+1. Add the class or variable to the design system first
+2. Use it in your component
+3. Grep for every existing instance of the hardcoded pattern and replace all of them
+
+A design system variable that isn't universally used is just documentation -- it doesn't enforce consistency.
 
 ---
 
