@@ -92,33 +92,77 @@ Standardize the refresh/scan buttons across panels — same size, same icon, sam
 
 **File:** `modules/editor-core/src/design/library.css` — add `ac-panel-refresh-btn`
 
+### 8. Stepped Progress Drawer — Standard for All Multi-Step Operations
+
+Replace the multi-phase dialog pattern (confirm → transfer → second confirm → import → success) with a single continuous flow in a SlideDrawer. All sub-operations are presaged as a step list, progress updates in-place, and completed steps stay visible.
+
+This is the standard pattern for ANY operation with multiple steps — not just device transfers. Batch operations, disk-to-library saves, program promotion, and any future multi-step workflow should use this component.
+
+**Pattern:**
+```
+Import "ARP M" to Device
+
+✓ Loaded program metadata (3 zones, 2 samples)
+✓ Sent sample "ARP C1" (11 KB)
+● Sending sample "ARP C2" (11 KB)... 45%
+○ Create program with 3 keygroups
+○ Verify program on device
+```
+
+Step states: pending `○`, active `●` (with progress), complete `✓`, failed `✗`
+
+**Design:**
+- Create a shared `SteppedProgressDrawer` component in editor-core that accepts a list of steps with status/progress
+- Each transfer dialog (ImportInstrument, ImportProgram, ExportProgram, SendSample, ReceiveSample) defines its step list upfront
+- No intermediate approval dialogs — the initial confirm starts the entire flow
+- On error, the failed step shows the error message inline; preceding steps stay ✓; subsequent steps stay ○
+- Drawer stays open on completion showing all ✓ with a Done button
+
+**Applies to all multi-step operations:**
+- `ImportInstrumentDialog` — loading → confirm → sending-samples → importing → success (currently has second approval before program creation)
+- `ImportProgramDialog` — similar multi-phase with intermediate confirm
+- `ExportProgramDialog` — fetching → saving → receiving-samples → success
+- `SendSampleDialog` — load WAV → send via SDS → rename on device
+- `ReceiveSampleDialog` — receive via SDS → build WAV → save to library
+- `DiskToLibraryDialog` — save program + samples with per-sample progress
+- Batch delete — delete item 1 → delete item 2 → ... → refresh
+- Batch move — move item 1 → move item 2 → ... → refresh
+- Program promotion — load S3K program → convert to zones → copy samples → save program.yaml
+
+**Files:**
+- `modules/editor-core/src/components/library/SteppedProgressDrawer.tsx` (new)
+- All S3K transfer dialog files (refactor to use stepped pattern)
+
 ## Implementation Order
 
 | Step | Description | Checkpoint |
 |------|-------------|-----------|
-| 1 | Preview panel background + border | `make` passes, visual check |
-| 2 | Panel header class + apply to all columns | `make` passes, visual check |
-| 3 | Connection bar into header | `make` passes |
-| 4 | Preview panel layout tightening | `make` passes |
-| 5 | SlideDrawer component + CSS | `make` passes |
-| 6 | Migrate MoveDialog to drawer | `make` passes, test Move to... |
-| 7 | Migrate remaining shared dialogs | `make` passes |
-| 8 | Migrate S3K transfer dialogs | `make` passes, test transfers |
-| 9 | Refresh button consistency | `make` passes |
+| 1 | Preview panel background + border | DONE |
+| 2 | Panel header class + apply to all columns | DONE |
+| 3 | Connection bar into header | DONE |
+| 4 | Preview panel layout tightening | DONE (action groups from earlier) |
+| 5 | SlideDrawer component + CSS | DONE |
+| 6 | Migrate MoveDialog/CreateFolder to drawer | DONE |
+| 7 | Migrate ImportInstrumentDialog to drawer | DONE |
+| 8 | SteppedProgressDrawer component | Pending |
+| 9 | Refactor ImportInstrumentDialog to stepped flow | Pending |
+| 10 | Refactor remaining transfer dialogs to stepped flow | Pending |
+| 11 | Refresh button consistency | Pending |
 
 ## Verification
 
 - `make` after each step — all editors build
-- Visual check on iPad after steps 1-4 (layout polish)
-- Test Move to... after step 6 (drawer works)
-- Test Send/Receive sample after step 8 (transfer dialogs work in drawer)
+- Test Import Instrument after step 9 — single continuous flow, no second confirm
+- Test Send/Receive sample after step 10 — stepped progress in drawer
+- Visual check on iPad for all drawer flows
 
 ## Critical Files
 
 - `modules/editor-core/src/design/library.css`
 - `modules/editor-core/src/design/primitives.css`
 - `modules/editor-core/src/components/library/PluginLibraryBrowser.tsx`
-- `modules/editor-core/src/components/library/SlideDrawer.tsx` (new)
+- `modules/editor-core/src/components/library/SlideDrawer.tsx`
+- `modules/editor-core/src/components/library/SteppedProgressDrawer.tsx` (new)
 - `modules/editor-core/src/components/library/MoveDialog.tsx`
 - `modules/editor-core/src/components/library/CreateFolderDialog.tsx`
 - `modules/editor-core/src/components/library/SaveDialog.tsx`
@@ -129,3 +173,5 @@ Standardize the refresh/scan buttons across panels — same size, same icon, sam
 - `modules/akai-s3k-editor/src/components/library/ReceiveSampleDialog.tsx`
 - `modules/akai-s3k-editor/src/components/library/ExportProgramDialog.tsx`
 - `modules/akai-s3k-editor/src/components/library/ImportProgramDialog.tsx`
+- `modules/akai-s3k-editor/src/components/library/ImportInstrumentDialog.tsx`
+- `modules/akai-s3k-editor/src/components/library/DiskToLibraryDialog.tsx`
