@@ -86,9 +86,7 @@ export function useSampleChopper({
   const [originalSliceBoundaries, setOriginalSliceBoundaries] = useState<
     Array<{ startSample: number; endSample: number }>
   >([]);
-  const [selectedMethod, setSelectedMethod] = useState<SliceMethodTab>(
-    editMode ? 'manual' : 'transient'
-  );
+  const [selectedMethod, setSelectedMethod] = useState<SliceMethodTab>('manual');
   const [useInitialSlices, setUseInitialSlices] = useState(editMode && !!initialSlices);
   const [transientThreshold, setTransientThreshold] = useState(0.3);
   const [transientMinGap, setTransientMinGap] = useState(100);
@@ -158,31 +156,21 @@ export function useSampleChopper({
     }
   }, [selectedMethod, transientThreshold, transientMinGap, transientPrePad, fixedCount]);
 
-  // Perform auto-slicing when config changes
+  // Perform auto-slicing when config changes (preview only — does not overwrite manualSlices)
   useEffect(() => {
     if (!samples || samples.length === 0) { setAutoSliceResult(null); return; }
     if (selectedMethod === 'manual') { setAutoSliceResult(null); return; }
-    // Skip auto-slicing when initial slices are being used — the user hasn't
-    // switched away from manual mode yet
     if (useInitialSlices) { return; }
     try {
       const result = sliceAudio(samples, sampleRate, sliceConfig);
       setAutoSliceResult(result);
       setSliceError(null);
       setSelectedSlice(undefined);
-      const labels = kitLabels.split(',').map((s) => s.trim());
-      const detected = result.slices.map((slice, i) => ({
-        label: labels[i % labels.length] ?? `S${i + 1}`,
-        startSample: slice.startSample, endSample: slice.endSample,
-      }));
-      setManualSlices(detected);
-      history.push(detected, `Detect ${selectedMethod}`);
-      setUseInitialSlices(false);
     } catch (err) {
       setSliceError(err instanceof Error ? err.message : 'Slicing failed');
       setAutoSliceResult(null);
     }
-  }, [samples, sampleRate, sliceConfig, selectedMethod, kitLabels, useInitialSlices]);
+  }, [samples, sampleRate, sliceConfig, selectedMethod, useInitialSlices]);
 
   const currentSliceResult = useMemo((): SliceResult | null => {
     if (!samples || samples.length === 0) return null;
@@ -349,19 +337,24 @@ export function useSampleChopper({
   const handleZoomOut = useCallback(() => { setZoom((prev) => Math.max(MIN_ZOOM, prev / ZOOM_STEP)); }, []);
   const handleZoomReset = useCallback(() => { setZoom(1); }, []);
 
-  const handleSwitchToManual = useCallback(() => {
-    if (autoSliceResult && autoSliceResult.slices.length > 0) {
-      const labels = kitLabels.split(',').map((s) => s.trim());
-      const slices = autoSliceResult.slices.map((slice, i) => ({
-        label: labels[i % labels.length] ?? `S${i + 1}`,
-        startSample: slice.startSample, endSample: slice.endSample,
-      }));
-      setManualSlices(slices);
-      history.push(slices, 'Edit manually');
-    }
+  /** Apply auto-detected slices to manual slices and switch to manual mode. */
+  const handleApplyAutoSlice = useCallback(() => {
+    if (!autoSliceResult || autoSliceResult.slices.length === 0) return;
+    const labels = kitLabels.split(',').map((s) => s.trim());
+    const slices = autoSliceResult.slices.map((slice, i) => ({
+      label: labels[i % labels.length] ?? `S${i + 1}`,
+      startSample: slice.startSample, endSample: slice.endSample,
+    }));
+    setManualSlices(slices);
+    history.push(slices, `Apply ${selectedMethod}`);
     setSelectedMethod('manual');
     setUseInitialSlices(false);
-  }, [autoSliceResult, kitLabels, history.push]);
+  }, [autoSliceResult, kitLabels, selectedMethod, history.push]);
+
+  const handleSwitchToManual = useCallback(() => {
+    setSelectedMethod('manual');
+    setUseInitialSlices(false);
+  }, []);
 
   const handleMethodChange = useCallback((newMethod: SliceMethodTab) => {
     setSelectedMethod(newMethod);
@@ -417,7 +410,7 @@ export function useSampleChopper({
     autoSliceResult, currentSliceResult,
     selectedSlice, setSelectedSlice, sliceError, sliceMarkers, manualSlices, setManualSlices,
     handleSliceChange, handleSlicesChange, handleSliceAdd, handleSliceDelete,
-    handleSwitchToManual,
+    handleApplyAutoSlice, handleSwitchToManual,
     durationMs, isManualMode, useInitialSlices,
     handleUndo, handleRedo, handleRestoreHistory,
     canUndo: history.canUndo, canRedo: history.canRedo,

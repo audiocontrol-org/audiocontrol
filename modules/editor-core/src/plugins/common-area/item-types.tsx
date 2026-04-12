@@ -27,6 +27,8 @@ export interface CommonSampleMeta {
 export interface CommonProgramMeta {
   path?: string[];
   description?: string;
+  /** Number of zones in the program (from kitCount in tree node) */
+  kitCount?: number;
 }
 
 // =========================================================================
@@ -113,7 +115,14 @@ export function createCommonProgramItemType(
 
     renderIcon: () => <ProgramIcon />,
 
-    renderTrailing: () => null,
+    renderTrailing: (meta) => {
+      if (!meta.kitCount || meta.kitCount <= 0) return null;
+      return (
+        <span className="text-xs text-gray-400">
+          {meta.kitCount} zone{meta.kitCount !== 1 ? 's' : ''}
+        </span>
+      );
+    },
 
     isDraggable: () => true,
 

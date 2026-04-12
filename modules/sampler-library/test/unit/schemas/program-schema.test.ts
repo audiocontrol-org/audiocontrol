@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ZoneSchema, ProgramYamlSchema } from '@/schemas/program-schema.js';
+import { ZoneSchema, ProgramYamlSchema, SourceInfoSchema } from '@/schemas/program-schema.js';
 
 const validZone = {
   sample: 'kick.wav',
@@ -226,6 +226,51 @@ describe('ProgramYamlSchema', () => {
       ...validProgram,
       playbackMode: 'looping',
     });
+    expect(result.success).toBe(false);
+  });
+
+  it('should accept sourceInfo with sampleName', () => {
+    const result = ProgramYamlSchema.safeParse({
+      ...validProgram,
+      sourceInfo: { sampleName: 'Amen Break' },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.sourceInfo?.sampleName).toBe('Amen Break');
+    }
+  });
+
+  it('should accept sourceInfo with sampleName and sampleDirectory', () => {
+    const result = ProgramYamlSchema.safeParse({
+      ...validProgram,
+      sourceInfo: {
+        sampleName: 'Amen Break',
+        sampleDirectory: 'Amen_Break',
+      },
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.sourceInfo?.sampleDirectory).toBe('Amen_Break');
+    }
+  });
+
+  it('should reject sourceInfo with empty sampleName', () => {
+    const result = ProgramYamlSchema.safeParse({
+      ...validProgram,
+      sourceInfo: { sampleName: '' },
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('SourceInfoSchema', () => {
+  it('should accept minimal sourceInfo', () => {
+    const result = SourceInfoSchema.safeParse({ sampleName: 'Test' });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject empty object', () => {
+    const result = SourceInfoSchema.safeParse({});
     expect(result.success).toBe(false);
   });
 });
