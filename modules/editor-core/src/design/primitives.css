@@ -919,8 +919,19 @@
 /* Icon */
 
 .ac-icon {
-  width: 1rem;
-  height: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.ac-icon-lg {
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
 }
 
 /* Scrollbar styling for dark theme */

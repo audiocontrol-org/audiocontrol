@@ -124,3 +124,36 @@ Every user-initiated operation must have visible feedback:
 - **`space-y-4`** between parameter sections (not `space-y-1` which is too cramped)
 - **Dark theme** with `text-gray-200` for primary content, `text-gray-400` for labels, `text-gray-500` for secondary/muted
 - **`text-lg font-semibold text-gray-200`** for detail panel titles (consistent across all panels)
+
+---
+
+## Accessibility
+
+### Icon Sizes
+
+Always use CSS classes for icon sizing, never inline `style` attributes. Sizes are in `rem` so they scale with user font preferences.
+
+| Context | Class | Size | Notes |
+|---------|-------|------|-------|
+| Inline with text (buttons, labels) | `ac-icon` | `1.25rem` | Default. Includes `inline-block`, `vertical-align: middle`, `flex-shrink: 0` |
+| Standalone icon button (header, toolbar) | `ac-icon-lg` | `1.5rem` | Same layout properties as `ac-icon` |
+| Tree view / list item hover actions | `ac-tree-icon` | `1rem` | Compact context, always accompanied by text |
+
+The icon classes handle alignment (`inline-block`, `vertical-align: middle`, `flex-shrink: 0`). Never override these with inline styles -- if an icon doesn't align, the fix belongs in the class, not on the element.
+
+Never use icons smaller than `1rem`. The WCAG 2.1 minimum touch target is 44x44px for mobile; for desktop applications, `2rem` square is the practical minimum for clickable areas (the button padding provides the touch target, not the icon itself).
+
+### Interactive Elements
+
+- All clickable elements must have visible hover/focus states
+- Buttons that look like plain text or indicators must have a visual cue that they're interactive (icon, underline, cursor change)
+- `title` attributes on icon-only buttons for tooltip context
+- `aria-label` on buttons that have no visible text label
+- `role="switch"` and `aria-checked` on toggle controls
+- Keyboard-navigable: all interactive elements reachable via Tab, activatable via Enter/Space
+
+### Labels and Affordances
+
+- Buttons must clearly communicate what they do. "PANIC" is jargon; "All Notes Off" is descriptive.
+- Status indicators that are also controls must have a visual affordance (e.g., gear icon) showing they're interactive
+- Cryptic triggers (git hashes, abbreviated codes) should use recognizable icons instead
