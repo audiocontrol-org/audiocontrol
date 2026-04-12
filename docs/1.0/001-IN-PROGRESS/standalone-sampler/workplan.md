@@ -44,13 +44,13 @@ Extend synth-core from single-sample playback to multi-keygroup program playback
 
 ### Tasks
 
-- [ ] Define program playback interface (program, keygroup, zone types consumed by the engine)
-- [ ] Implement multi-keygroup voice allocation -- route incoming MIDI note-on to the correct keygroup(s) by key range and velocity range
-- [ ] Add per-zone pitch parameters: root key, transpose, fine tune
-- [ ] Add per-zone amplitude envelope: ADSR with configurable attack, decay, sustain, release
-- [ ] Add per-zone filter: type selection (lowpass, highpass, bandpass), cutoff, resonance, envelope amount
-- [ ] Complete `useSlicePlayer` integration with multi-keygroup engine
-- [ ] Unit tests for voice allocation, zone matching, parameter application
+- [x] Define program playback interface (program, keygroup, zone types consumed by the engine)
+- [x] Implement multi-keygroup voice allocation -- route incoming MIDI note-on to the correct keygroup(s) by key range and velocity range
+- [x] Add per-zone pitch parameters: root key, transpose, fine tune
+- [x] Add per-zone amplitude envelope: ADSR with configurable attack, decay, sustain, release
+- [x] Add per-zone filter: type selection (lowpass, highpass, bandpass), cutoff, resonance, envelope amount
+- [x] Create `useProgramPlayer` React hook (replaces `useSlicePlayer` integration -- program engine is its own architecture)
+- [x] Unit tests for voice allocation, zone matching, parameter application (27 new tests)
 
 ### Acceptance Criteria
 
@@ -65,13 +65,13 @@ Create the standalone-sampler web app module and wire it to the synth-core engin
 
 ### Tasks
 
-- [ ] Create `standalone-sampler` module (Vite + React, standard monorepo structure)
-- [ ] Set up page routing (program editor, library browser, performance view)
-- [ ] Wire synth-core as the "device" -- no hardware protocol, direct engine calls
-- [ ] Integrate library browser via editor-core plugins for sample and program browsing
-- [ ] Implement program load from common area (deserialize program.yaml, load samples into engine)
-- [ ] Build on-screen keyboard component with note-on/note-off events
-- [ ] Wire MIDI input routing -- Web MIDI API for external controllers, on-screen keyboard for mouse/touch
+- [x] Create `standalone-sampler` module (Vite + React, standard monorepo structure)
+- [x] Set up page routing (program editor, library browser, performance view)
+- [x] Wire synth-core as the "device" -- no hardware protocol, direct engine calls
+- [x] Integrate library browser via editor-core plugins for sample and program browsing
+- [x] Implement program load from common area (deserialize program.yaml, load samples into engine)
+- [x] Build on-screen keyboard component with note-on/note-off events
+- [x] Wire MIDI input routing -- Web MIDI API for external controllers, on-screen keyboard for mouse/touch
 
 ### Acceptance Criteria
 

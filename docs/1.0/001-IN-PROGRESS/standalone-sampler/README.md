@@ -6,8 +6,8 @@ Web-based software sampler using synth-core as the sound engine. Load samples, b
 
 | Phase | Status | Notes |
 |-------|--------|-------|
-| Phase 1: Synth-Core Program Engine | Not Started | |
-| Phase 2: Sampler Module Scaffold | Not Started | |
+| Phase 1: Synth-Core Program Engine | Complete | 481d0b70 |
+| Phase 2: Sampler Module Scaffold | Complete | 04aa52af, library browser, program loading |
 | Phase 3: Program Editor | Not Started | |
 | Phase 4: Performance Features | Not Started | |
 
