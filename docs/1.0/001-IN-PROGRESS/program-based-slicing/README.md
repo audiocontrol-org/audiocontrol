@@ -10,6 +10,7 @@ Chopping a sample creates a program (with slices, key mappings, and a WAV copy) 
 | Phase 2: Chopper Output | Complete | handleChopperSave produces programs, S3K strategy adds key mappings |
 | Phase 3: Library Integration | Complete | Pre-existing program support verified, zone count badge added |
 | Phase 4: Editor Integration | Complete | Re-chop, drum kit editor, preview actions all work with programs |
+| PR | Open | [#236](https://github.com/audiocontrol-org/audiocontrol/pull/236) |
 
 ## Deferred
 
