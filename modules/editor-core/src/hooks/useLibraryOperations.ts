@@ -279,8 +279,6 @@ export function useLibraryOperations(
         return;
       }
       const name = getNodeName(node);
-      const confirmed = window.confirm(`Delete "${name}"?`);
-      if (!confirmed) return;
       try {
         if (strategy?.deleteItem) {
           const handled = await strategy.deleteItem(categoryId, node);
