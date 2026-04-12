@@ -706,6 +706,8 @@ export function SampleChopperDialog({
                     mappings.learnTrigger(sliceIndex, triggerId);
                   }
                 }}
+                onApplyAutoSlice={chopper.handleApplyAutoSlice}
+                autoSliceCount={chopper.autoSliceResult?.slices.length}
               />
 
               {/* Slice list — shown in all modes for consistent preview */}

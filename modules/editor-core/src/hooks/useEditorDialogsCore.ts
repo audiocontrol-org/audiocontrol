@@ -18,6 +18,7 @@
 
 import { useState, useCallback } from 'react';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
+import type { ErrorReporter } from '@/hooks/useErrorReporter';
 import { stringify as stringifyYaml } from 'yaml';
 import {
   loadSample,
@@ -202,8 +203,9 @@ export function useEditorDialogsCore(
   libraryRoot: StorageDirectoryHandle | null,
   strategy: EditorDialogStrategy = EMPTY_STRATEGY,
   onRefresh: () => void,
-  onError: (message: string) => void,
+  errorReporter: ErrorReporter,
 ): EditorDialogsCoreResult {
+  const onError = errorReporter.report;
   const [loopEditor, setLoopEditor] = useState<LoopEditorDialogState | null>(null);
   const [sampleEditor, setSampleEditor] = useState<SampleEditorDialogState | null>(null);
   const [chopper, setChopper] = useState<ChopperDialogState | null>(null);

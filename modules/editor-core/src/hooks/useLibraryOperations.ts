@@ -9,6 +9,8 @@
 
 import { useCallback, useState } from 'react';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
+import type { ErrorReporter } from '@/hooks/useErrorReporter';
+import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 import {
   createFolder,
   deleteItem,
@@ -16,6 +18,7 @@ import {
   importWavToCommonArea,
   getNestedDirectory,
   moveDirectory,
+  sanitizeForFilename,
 } from '@audiocontrol/sampler-library/browser';
 import type { TreeNode } from '@/components/library/TreeView';
 
@@ -158,11 +161,11 @@ export function createTransferActionHandler<T extends TransferActionId>(
 
 export interface LibraryOperationsStrategy {
   /** Create a folder in a device-specific category. Return true if handled, false to use common-area create. */
-  createFolder?(categoryId: string, parentPath: string[], name: string): Promise<boolean>;
+  createFolder(categoryId: string, parentPath: string[], name: string): Promise<boolean>;
   /** Delete a device-specific item. Return true if handled, false to use common-area delete. */
-  deleteItem?(categoryId: string, node: TreeNode): Promise<boolean>;
+  deleteItem(categoryId: string, node: TreeNode): Promise<boolean>;
   /** Rename a device-specific item. Return true if handled, false to use common-area rename. */
-  renameItem?(categoryId: string, node: TreeNode, newName: string): Promise<boolean>;
+  renameItem(categoryId: string, node: TreeNode, newName: string): Promise<boolean>;
   /** Handle a context menu action. Required -- every editor must route actions. */
   handleContextMenuAction(categoryId: string, actionId: string, node: TreeNode): boolean;
 }
@@ -231,9 +234,10 @@ export function useLibraryOperations(
   libraryRoot: StorageDirectoryHandle | null,
   strategy: LibraryOperationsStrategy | undefined,
   onRefresh: () => void,
-  onError: (message: string) => void,
+  errorReporter: ErrorReporter,
   onEditorAction?: (actionId: string, name: string, nodeType: string, path?: string[]) => void,
 ): LibraryOperationsResult {
+  const onError = errorReporter.report;
   const [expandedPaths, setExpandedPaths] = useState<Record<string, Set<string>>>({});
 
   const onToggleExpand = useCallback((categoryId: string, nodeId: string) => {
@@ -330,25 +334,50 @@ export function useLibraryOperations(
 
   const onRename = useCallback(
     async (categoryId: string, node: TreeNode, newName: string) => {
+      if (!libraryRoot) {
+        onError('Library is not connected');
+        return;
+      }
+      const oldDirName = getNodeName(node);
+      const path = getNodePath(node);
       try {
-        if (strategy?.renameItem) {
-          const handled = await strategy.renameItem(categoryId, node, newName);
-          if (handled) {
-            onRefresh();
-            return;
-          }
+        const handled = await strategy?.renameItem(categoryId, node, newName);
+        if (handled) {
+          onRefresh();
+          return;
         }
-        throw new Error(
-          `Rename is not supported for item type "${node.type}" in category "${categoryId}". ` +
-            'A LibraryOperationsStrategy.renameItem implementation is required.',
-        );
+        // Common-area fallback: rename directory bundle
+        // 1. Resolve the parent directory and old item directory
+        const isProgram = PROGRAM_CATEGORIES.has(categoryId);
+        const parentDir = isProgram
+          ? await getCategoryDir(libraryRoot, categoryId, path)
+          : await getNestedDirectory(libraryRoot, ['library', 'common', 'samples', ...path]);
+        const oldDir = await parentDir.getDirectoryHandle(oldDirName);
+
+        // 2. Update the name field inside the YAML metadata
+        const yamlFilename = isProgram ? 'program.yaml' : 'sample.yaml';
+        const yamlHandle = await oldDir.getFileHandle(yamlFilename);
+        const yamlFile = await yamlHandle.getFile();
+        const yamlText = await yamlFile.text();
+        const parsed = parseYaml(yamlText);
+        parsed.name = newName;
+        const writable = await yamlHandle.createWritable();
+        await writable.write(stringifyYaml(parsed, { indent: 2, lineWidth: 120 }));
+        await writable.close();
+
+        // 3. Rename the directory (copy to new name, delete old)
+        const safeName = sanitizeForFilename(newName);
+        if (safeName !== oldDirName) {
+          await moveDirectory(parentDir, oldDirName, parentDir, safeName);
+        }
+        onRefresh();
       } catch (err) {
         onError(
           `Failed to rename "${node.name}": ${err instanceof Error ? err.message : String(err)}`,
         );
       }
     },
-    [strategy, onRefresh, onError],
+    [libraryRoot, strategy, onRefresh, onError],
   );
 
   const onFileDrop = useCallback(

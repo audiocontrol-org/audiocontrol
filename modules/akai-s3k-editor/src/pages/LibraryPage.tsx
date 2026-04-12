@@ -26,6 +26,7 @@
 import { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import {
   useLibraryConnection,
+  useErrorReporter,
   LibraryConnectionUI,
   PluginLibraryBrowser,
   type TreeNode,
@@ -229,11 +230,8 @@ export function LibraryPage(): JSX.Element {
   const drumKitTransfer = useDrumKitTransfer(isDeviceConnected, !!root);
   const instrumentTransfer = useInstrumentTransfer(isDeviceConnected, !!root);
 
-  const handleEditorError = useCallback(
-    (message: string) => setError(message),
-    [setError],
-  );
-  const editorDialogs = useEditorDialogs(root, refreshLibrary, handleEditorError);
+  const errorReporter = useErrorReporter(setError);
+  const editorDialogs = useEditorDialogs(root, refreshLibrary, errorReporter);
 
   // -----------------------------------------------------------------------
   // Shared library operations -- must be after transfer callbacks
@@ -378,7 +376,7 @@ export function LibraryPage(): JSX.Element {
     root,
     libraryStrategy,
     refreshLibrary,
-    (msg) => setError(msg),
+    errorReporter,
     editorDialogs.createEditorActionHandler(),
   );
 

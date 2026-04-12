@@ -41,6 +41,8 @@ export function useS3kLibraryStrategy({
   transfers,
 }: UseS3kLibraryStrategyArgs): LibraryOperationsStrategy {
   return useMemo<LibraryOperationsStrategy>(() => ({
+    createFolder: async () => false,
+
     deleteItem: async (categoryId, node) => {
       if (categoryId !== 's3k-programs') return false;
       if (!root) return false;
@@ -50,6 +52,8 @@ export function useS3kLibraryStrategy({
       void refreshPrograms();
       return true;
     },
+
+    renameItem: async () => false,
 
     handleContextMenuAction: createTransferActionHandler(transfers, ['s3k-programs']),
   }), [root, refreshPrograms, transfers]);

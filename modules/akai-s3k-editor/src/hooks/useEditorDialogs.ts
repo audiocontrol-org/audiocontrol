@@ -16,6 +16,7 @@ import {
   useEditorDialogsCore,
   type EditorDialogStrategy,
   type EditorDialogsCoreResult,
+  type ErrorReporter,
 } from '@audiocontrol/editor-core';
 import {
   DEFAULT_S3K_KIT_CONFIG,
@@ -50,7 +51,7 @@ export interface EditorDialogsResult extends EditorDialogsCoreResult {
 export function useEditorDialogs(
   libraryRoot: StorageDirectoryHandle | null,
   onRefresh: () => void,
-  onError: (message: string) => void,
+  errorReporter: ErrorReporter,
 ): EditorDialogsResult {
   const [kitConfig, setKitConfig] = useState<S3kKitConfig>(DEFAULT_S3K_KIT_CONFIG);
 
@@ -69,7 +70,7 @@ export function useEditorDialogs(
     }),
   }), [kitConfig]);
 
-  const core = useEditorDialogsCore(libraryRoot, strategy, onRefresh, onError);
+  const core = useEditorDialogsCore(libraryRoot, strategy, onRefresh, errorReporter);
 
   return {
     ...core,
