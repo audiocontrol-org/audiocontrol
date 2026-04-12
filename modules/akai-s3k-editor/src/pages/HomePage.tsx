@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MidiConnectionPage, useHomePageStore, type MidiConnectionPageConfig } from '@audiocontrol/editor-core';
 import { useMidiStore } from '@/stores/midiStore';
@@ -9,6 +9,18 @@ export function HomePage(): JSX.Element {
   const navigate = useNavigate();
   const midi = useMidiStore();
   const pageStore = useHomePageStore('s3000xl', midi);
+  const hasAutoNavigated = useRef(false);
+
+  // Auto-redirect to Programs page after successful connection
+  useEffect(() => {
+    if (midi.status === 'connected' && !hasAutoNavigated.current) {
+      hasAutoNavigated.current = true;
+      navigate(`${BASE_PATH}/programs`);
+    }
+    if (midi.status !== 'connected') {
+      hasAutoNavigated.current = false;
+    }
+  }, [midi.status, navigate]);
 
   const config: MidiConnectionPageConfig = useMemo(() => ({
     deviceName: 'Akai S3000XL',

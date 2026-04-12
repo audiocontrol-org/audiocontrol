@@ -1,99 +1,10 @@
-import type { ReactNode } from 'react';
 import type { ProgramHeader } from '@audiocontrol/sampler-devices/s3k';
+import { ParameterRow, Section, NumberInput, SelectInput, Toggle } from '@/components/ui';
 
 interface ProgramEditorProps {
   header: ProgramHeader;
   programIndex: number;
   onParameterChange: (field: string, value: number | string) => void;
-}
-
-function ParameterRow({ label, children }: { label: string; children: ReactNode }): JSX.Element {
-  return (
-    <div className="flex items-center justify-between py-1.5 px-3">
-      <span className="text-sm text-gray-400">{label}</span>
-      <div className="flex items-center gap-2">{children}</div>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }): JSX.Element {
-  return (
-    <div className="border border-gray-700 rounded-lg overflow-hidden mb-3">
-      <div className="bg-gray-800 px-3 py-2 text-sm font-medium">{title}</div>
-      <div className="divide-y divide-gray-800">{children}</div>
-    </div>
-  );
-}
-
-function NumberInput({
-  value,
-  min,
-  max,
-  onChange,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  onChange: (v: number) => void;
-}): JSX.Element {
-  return (
-    <input
-      type="number"
-      value={value}
-      min={min}
-      max={max}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="w-20 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200 text-right"
-    />
-  );
-}
-
-function SelectInput({
-  value,
-  options,
-  onChange,
-}: {
-  value: number;
-  options: { value: number; label: string }[];
-  onChange: (v: number) => void;
-}): JSX.Element {
-  return (
-    <select
-      value={value}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200"
-    >
-      {options.map((opt) => (
-        <option key={opt.value} value={opt.value}>
-          {opt.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function Toggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}): JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      className={`w-10 h-5 rounded-full transition-colors ${
-        checked ? 'bg-blue-600' : 'bg-gray-600'
-      }`}
-    >
-      <div
-        className={`w-4 h-4 rounded-full bg-white transition-transform mx-0.5 ${
-          checked ? 'translate-x-5' : 'translate-x-0'
-        }`}
-      />
-    </button>
-  );
 }
 
 const PRIORITY_OPTIONS = [
@@ -139,7 +50,7 @@ export function ProgramEditor({
     onParameterChange(field, value ? 1 : 0);
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-4">
       <div className="px-3 py-2 text-lg font-semibold text-gray-200">
         Program {programIndex + 1}: {header.PRNAME.trim() || '(unnamed)'}
       </div>

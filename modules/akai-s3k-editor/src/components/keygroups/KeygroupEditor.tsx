@@ -1,6 +1,9 @@
-import type { ReactNode } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
+import { CollapsibleSection } from '@audiocontrol/editor-core';
+import { ParameterRow, Section, NumberInput, Toggle } from '@/components/ui';
+import { formatMidiNote } from '@/lib/midi-note-parser';
 import { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
+import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
 
 interface KeygroupEditorProps {
   header: KeygroupHeader;
@@ -9,94 +12,31 @@ interface KeygroupEditorProps {
   onParameterChange: (field: string, value: number | string) => void;
 }
 
-const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-
-function midiNoteToName(note: number): string {
-  const octave = Math.floor(note / 12) - 1;
-  const name = NOTE_NAMES[note % 12];
-  return `${name}${octave}`;
-}
-
-function ParameterRow({ label, children }: { label: string; children: ReactNode }): JSX.Element {
-  return (
-    <div className="flex items-center justify-between py-1.5 px-3">
-      <span className="text-sm text-gray-400">{label}</span>
-      <div className="flex items-center gap-2">{children}</div>
-    </div>
-  );
-}
-
-function Section({ title, children }: { title: string; children: ReactNode }): JSX.Element {
-  return (
-    <div className="border border-gray-700 rounded-lg overflow-hidden mb-3">
-      <div className="bg-gray-800 px-3 py-2 text-sm font-medium">{title}</div>
-      <div className="divide-y divide-gray-800">{children}</div>
-    </div>
-  );
-}
-
-function NumberInput({
-  value,
-  min,
-  max,
-  onChange,
-}: {
-  value: number;
-  min: number;
-  max: number;
-  onChange: (v: number) => void;
-}): JSX.Element {
-  return (
-    <input
-      type="number"
-      value={value}
-      min={min}
-      max={max}
-      onChange={(e) => onChange(Number(e.target.value))}
-      className="w-20 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200 text-right"
-    />
-  );
-}
-
-function Toggle({
-  checked,
-  onChange,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}): JSX.Element {
-  return (
-    <button
-      type="button"
-      onClick={() => onChange(!checked)}
-      className={`w-10 h-5 rounded-full transition-colors ${
-        checked ? 'bg-blue-600' : 'bg-gray-600'
-      }`}
-    >
-      <div
-        className={`w-4 h-4 rounded-full bg-white transition-transform mx-0.5 ${
-          checked ? 'translate-x-5' : 'translate-x-0'
-        }`}
-      />
-    </button>
-  );
-}
+const collapsibleTheme = {
+  container: 'border border-gray-700 rounded-lg overflow-hidden mb-3',
+  headerButton:
+    'w-full flex items-center justify-between bg-gray-800 px-3 py-2 text-sm font-medium cursor-pointer hover:bg-gray-750 transition-colors',
+  title: 'text-sm font-medium text-gray-200',
+  icon: 'text-gray-400 text-xs',
+  body: 'divide-y divide-gray-800',
+};
 
 function NoteRangeSection({
   header,
   changeNum,
+  onParameterChange,
 }: {
   header: KeygroupHeader;
   changeNum: (field: string) => (v: number) => void;
+  onParameterChange: (field: string, value: number | string) => void;
 }): JSX.Element {
   return (
     <Section title="Note Range">
-      <ParameterRow label={`Low Note (${midiNoteToName(header.LONOTE)})`}>
-        <NumberInput value={header.LONOTE} min={21} max={127} onChange={changeNum('LONOTE')} />
-      </ParameterRow>
-      <ParameterRow label={`High Note (${midiNoteToName(header.HINOTE)})`}>
-        <NumberInput value={header.HINOTE} min={21} max={127} onChange={changeNum('HINOTE')} />
-      </ParameterRow>
+      <KeyRangeEditor
+        lowNote={header.LONOTE}
+        highNote={header.HINOTE}
+        onChange={(field, value) => onParameterChange(field, value)}
+      />
       <ParameterRow label="Tuning Offset">
         <NumberInput value={header.KGTUNO} min={-50} max={50} onChange={changeNum('KGTUNO')} />
       </ParameterRow>
@@ -112,7 +52,7 @@ function AmplitudeEnvelopeSection({
   changeNum: (field: string) => (v: number) => void;
 }): JSX.Element {
   return (
-    <Section title="Amplitude Envelope (Env 1)">
+    <CollapsibleSection title="Amp Envelope" defaultOpen={false} theme={collapsibleTheme}>
       <ParameterRow label="Attack">
         <NumberInput value={header.ATTAK1} min={0} max={99} onChange={changeNum('ATTAK1')} />
       </ParameterRow>
@@ -137,7 +77,7 @@ function AmplitudeEnvelopeSection({
       <ParameterRow label="Key -> Decay/Release">
         <NumberInput value={header.K_DAR1} min={-50} max={50} onChange={changeNum('K_DAR1')} />
       </ParameterRow>
-    </Section>
+    </CollapsibleSection>
   );
 }
 
@@ -149,7 +89,7 @@ function FilterSection({
   changeNum: (field: string) => (v: number) => void;
 }): JSX.Element {
   return (
-    <Section title="Filter">
+    <CollapsibleSection title="Filter" defaultOpen={false} theme={collapsibleTheme}>
       <ParameterRow label="Frequency">
         <NumberInput value={header.FILFRQ} min={0} max={99} onChange={changeNum('FILFRQ')} />
       </ParameterRow>
@@ -168,7 +108,7 @@ function FilterSection({
       <ParameterRow label="Env -> Filter">
         <NumberInput value={header.E_FREQ} min={-50} max={50} onChange={changeNum('E_FREQ')} />
       </ParameterRow>
-    </Section>
+    </CollapsibleSection>
   );
 }
 
@@ -180,7 +120,7 @@ function FilterEnvelopeSection({
   changeNum: (field: string) => (v: number) => void;
 }): JSX.Element {
   return (
-    <Section title="Filter Envelope (Env 2)">
+    <CollapsibleSection title="Filter Envelope" defaultOpen={false} theme={collapsibleTheme}>
       <ParameterRow label="Rate 1 (Attack)">
         <NumberInput value={header.ENV2R1} min={0} max={99} onChange={changeNum('ENV2R1')} />
       </ParameterRow>
@@ -220,7 +160,7 @@ function FilterEnvelopeSection({
       <ParameterRow label="Vel -> Env 2 Level">
         <NumberInput value={header.V_ENV2} min={-50} max={50} onChange={changeNum('V_ENV2')} />
       </ParameterRow>
-    </Section>
+    </CollapsibleSection>
   );
 }
 
@@ -234,7 +174,7 @@ function CrossfadeSection({
   changeBool: (field: string) => (v: boolean) => void;
 }): JSX.Element {
   return (
-    <Section title="Crossfade">
+    <CollapsibleSection title="Crossfade" defaultOpen={false} theme={collapsibleTheme}>
       <ParameterRow label="Velocity Crossfade">
         <Toggle checked={header.VXFADE === 1} onChange={changeBool('VXFADE')} />
       </ParameterRow>
@@ -244,7 +184,7 @@ function CrossfadeSection({
       <ParameterRow label="Right Key Crossfade">
         <NumberInput value={header.RKXF} min={0} max={99} onChange={changeNum('RKXF')} />
       </ParameterRow>
-    </Section>
+    </CollapsibleSection>
   );
 }
 
@@ -256,11 +196,11 @@ function PitchSection({
   changeNum: (field: string) => (v: number) => void;
 }): JSX.Element {
   return (
-    <Section title="Pitch">
+    <CollapsibleSection title="Pitch" defaultOpen={false} theme={collapsibleTheme}>
       <ParameterRow label="LFO -> Pitch">
         <NumberInput value={header.L_PTCH} min={-50} max={50} onChange={changeNum('L_PTCH')} />
       </ParameterRow>
-    </Section>
+    </CollapsibleSection>
   );
 }
 
@@ -277,17 +217,19 @@ export function KeygroupEditor({
     onParameterChange(field, value ? 1 : 0);
 
   return (
-    <div className="space-y-1">
+    <div className="space-y-4">
       <div className="px-3 py-2 text-lg font-semibold text-gray-200">
-        Keygroup {keygroupIndex + 1}: {midiNoteToName(header.LONOTE)}–{midiNoteToName(header.HINOTE)}
+        Keygroup {keygroupIndex + 1}: {formatMidiNote(header.LONOTE)}–{formatMidiNote(header.HINOTE)}
       </div>
 
-      <NoteRangeSection header={header} changeNum={changeNum} />
-      <VelocityZoneEditor
-        header={header}
-        sampleNames={sampleNames}
-        onParameterChange={onParameterChange}
-      />
+      <NoteRangeSection header={header} changeNum={changeNum} onParameterChange={onParameterChange} />
+      <CollapsibleSection title="Velocity Zones" defaultOpen={true} theme={collapsibleTheme}>
+        <VelocityZoneEditor
+          header={header}
+          sampleNames={sampleNames}
+          onParameterChange={onParameterChange}
+        />
+      </CollapsibleSection>
       <AmplitudeEnvelopeSection header={header} changeNum={changeNum} />
       <FilterSection header={header} changeNum={changeNum} />
       <FilterEnvelopeSection header={header} changeNum={changeNum} />

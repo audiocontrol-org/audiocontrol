@@ -11,6 +11,43 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-12: Akai S3000XL Editor UX Improvement — All 5 Phases
+
+### Feature: akai-ux-improvement
+### Worktree: audiocontrol-akai-ux-improvement
+
+### Goal
+Restructure the Akai S3000XL editor from memory-oriented pages to workflow-oriented editing with full CRUD, zone mapping, multi-editor, and visual polish.
+
+### Accomplished
+- Phase 1: Audit — delegated 4 parallel research agents to audit CRUD coverage, map all parameters, review Roland editor patterns, identify editor-core extraction candidates. Wrote phase1-audit.md.
+- Phase 2: Program Editor — delete with ConfirmDialog, inline KeygroupSummary, post-connect redirect to Programs page, 16 unit tests.
+- Phase 3: Keygroup & Zone Mapping — ZoneOverview 2D visualization (keyboard x velocity), KeyRangeEditor (draggable bar), VelocityRangeBar (colored zone segments), CollapsibleSection for keygroup parameters, interactive KeygroupSummary (add/delete from program editor), 32 unit tests.
+- Phase 4: Multi-Editor — ComparePane split view, ProgramSelector dropdown, usePaneKeygroups hook for per-pane state, responsive stacking below 1024px. Extraction deferred until Roland needs it. 12 unit tests.
+- Phase 5: Visual Polish — extracted 5 duplicated UI primitives to @/components/ui/, fixed midiNoteToName duplication, added ac-page-shell to all pages, increased section spacing (space-y-1 → space-y-4), normalized typography (text-gray-200/font-semibold), polished not-connected states, ErrorBanner extraction. Wrote phase5-audit.md.
+- Total: 98 unit tests passing, 14 test files, build clean.
+
+### Didn't Work
+- Phase 5 parallel agents both modified overlapping files (ProgramsPage, KeygroupEditor) — the P1 agent added ErrorBanner imports before P0 created the file. P0 agent resolved this by creating the file. Lesson: overlapping file edits in parallel agents need sequencing or conflict resolution.
+
+### Course Corrections
+- [PROCESS] User flagged that I hadn't reviewed the library-ux drawer patterns (SlideDrawer, SteppedProgressDrawer) before delegating dialog implementations. The recent merge introduced new UI patterns that I should have read first.
+- [PROCESS] User clarified that ConfirmDialog is specifically for destructive action confirmation only — not for general operations.
+
+### Quantitative
+- User messages: ~12
+- Commits: 0 (uncommitted — awaiting user review)
+- User corrections: 2 (both PROCESS)
+- Sub-agents spawned: ~18
+
+### Insights
+1. Parallel research agents (Phase 1) were highly effective — 4 audit agents completed in ~2.5 minutes total, producing comprehensive findings that informed all subsequent phases.
+2. The orchestrator pattern works well when the main agent has enough context to write precise implementation prompts. The key is reading the actual source files before delegating, not just relying on descriptions.
+3. Phase 5 audit-then-fix pattern (codebase-auditor agent produces findings report, then implementation agents fix) is more reliable than delegating "audit and fix" in one pass.
+4. Pre-existing test failures in sampler-library (6 tests) should be investigated separately — they're on main.
+
+---
+
 ## 2026-04-12: SteppedProgressDrawer, All Dialogs Migrated (Session 5)
 
 ### Feature: library-ux

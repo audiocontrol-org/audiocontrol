@@ -360,7 +360,7 @@ export function SampleTransferPanel({
 
   return (
     <div className="rounded-lg border border-gray-700 bg-gray-800 p-4">
-      <h2 className="text-lg font-semibold text-gray-100 mb-4">
+      <h2 className="text-lg font-semibold text-gray-200 mb-4">
         Sample Transfer (SDS)
       </h2>
 

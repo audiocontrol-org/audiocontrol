@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useRef } from 'react';
-import { KeygroupList, KeygroupEditor } from '@/components/keygroups';
+import { KeygroupList, KeygroupEditor, ZoneOverview } from '@/components/keygroups';
 import { useS3000xlClient } from '@/hooks/useS3000xlClient';
 import { useKeygroupLoader } from '@/hooks/useKeygroupLoader';
 import { useSampleNames } from '@/hooks/useSampleNames';
@@ -7,6 +7,7 @@ import { useKeygroupStore } from '@/stores/keygroupStore';
 import { useProgramStore } from '@/stores/programStore';
 import { useEditorStore } from '@/stores/editorStore';
 import { writeKeygroupField } from '@/lib/keygroup-writers';
+import { ErrorBanner } from '@/components/ui/ErrorBanner';
 
 export function KeygroupsPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
@@ -120,9 +121,14 @@ export function KeygroupsPage(): JSX.Element {
 
   if (!isConnected) {
     return (
-      <div className="ac-page">
-        <div className="ac-page-content">
-          <p className="text-gray-400">Connect to your S3000XL first.</p>
+      <div className="ac-page ac-page-shell">
+        <div className="ac-page-content flex items-center justify-center">
+          <div className="card text-center py-12 px-8 max-w-md">
+            <p className="text-gray-400">Connect to your S3000XL first.</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Go to the <a href="/akai/s3000xl/editor" className="text-blue-400 hover:underline">Connect</a> page to set up your MIDI connection.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -130,16 +136,21 @@ export function KeygroupsPage(): JSX.Element {
 
   if (selectedProgramIndex === null || !selectedProgram) {
     return (
-      <div className="ac-page">
-        <div className="ac-page-content">
-          <p className="text-gray-400">Select a program on the Programs page first.</p>
+      <div className="ac-page ac-page-shell">
+        <div className="ac-page-content flex items-center justify-center">
+          <div className="card text-center py-12 px-8 max-w-md">
+            <p className="text-gray-400">Select a program on the Programs page first.</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Go to the <a href="/akai/s3000xl/editor/programs" className="text-blue-400 hover:underline">Programs</a> page and select a program to edit its keygroups.
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="ac-page">
+    <div className="ac-page ac-page-shell">
       <div className="ac-page-sticky-header">
         <div className="ac-page-header flex items-center justify-between">
           <h2 className="text-xl font-bold">
@@ -179,11 +190,14 @@ export function KeygroupsPage(): JSX.Element {
         </div>
       </div>
 
-      {error && (
-        <div className="mx-4 mb-3 p-3 bg-red-900/30 border border-red-700 rounded text-red-300 text-sm">
-          {error}
-        </div>
-      )}
+      {error && <ErrorBanner message={error} />}
+
+      <ZoneOverview
+        keygroups={keygroups}
+        keygroupCount={keygroupCount}
+        selectedKeygroupIndex={selectedKeygroupIndex}
+        onSelectKeygroup={selectKeygroup}
+      />
 
       <div className="ac-list-detail-grid">
         <div className="ac-list-column-sticky">

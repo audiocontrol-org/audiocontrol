@@ -1,4 +1,5 @@
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
+import { formatMidiNote } from '@/lib/midi-note-parser';
 
 interface KeygroupListProps {
   keygroups: (KeygroupHeader | undefined)[];
@@ -6,15 +7,6 @@ interface KeygroupListProps {
   selectedIndex: number | null;
   onSelect: (index: number) => void;
   isLoading: boolean;
-}
-
-const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-
-/** Convert a MIDI note number (0-127) to a human-readable note name (e.g. 60 -> "C4") */
-function midiNoteToName(note: number): string {
-  const octave = Math.floor(note / 12) - 1;
-  const name = NOTE_NAMES[note % 12];
-  return `${name}${octave}`;
 }
 
 export function KeygroupList({
@@ -53,7 +45,7 @@ export function KeygroupList({
               <span className="font-mono">KG {i + 1}</span>
               {kg ? (
                 <span className="text-xs text-gray-400">
-                  {midiNoteToName(kg.LONOTE)}–{midiNoteToName(kg.HINOTE)}
+                  {formatMidiNote(kg.LONOTE)}–{formatMidiNote(kg.HINOTE)}
                 </span>
               ) : (
                 <span className="text-xs text-gray-600">...</span>

@@ -13,16 +13,21 @@ export function SamplesPage(): JSX.Element {
 
   if (!isConnected) {
     return (
-      <div className="ac-page">
-        <div className="ac-page-content">
-          <p className="text-gray-400">Connect to your S3000XL first.</p>
+      <div className="ac-page ac-page-shell">
+        <div className="ac-page-content flex items-center justify-center">
+          <div className="card text-center py-12 px-8 max-w-md">
+            <p className="text-gray-400">Connect to your S3000XL first.</p>
+            <p className="text-sm text-gray-500 mt-2">
+              Go to the <a href="/akai/s3000xl/editor" className="text-blue-400 hover:underline">Connect</a> page to set up your MIDI connection.
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="ac-page">
+    <div className="ac-page ac-page-shell">
       <div className="ac-page-sticky-header">
         <div className="ac-page-header flex items-center justify-between">
           <h2 className="text-xl font-bold">Samples</h2>
@@ -32,7 +37,7 @@ export function SamplesPage(): JSX.Element {
         </div>
       </div>
 
-      <div className="ac-page-content p-4">
+      <div className="ac-page-content">
         {client && (
           <SampleTransferPanel
             client={client}

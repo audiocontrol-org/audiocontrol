@@ -45,13 +45,13 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Audit the S3K SysEx device client for program CRUD support (create, delete, rename program)
-- [ ] Audit the S3K SysEx device client for keygroup CRUD support (create, delete keygroup within program)
-- [ ] Map all S3K program and keygroup parameters against the Akai SysEx spec; identify which are exposed in the current UI and which are missing
-- [ ] Review the Roland editor's parameter grouping UI -- identify components, patterns, and layout conventions
-- [ ] Review the Roland editor's multi-editor implementation (if any)
-- [ ] Identify editor-core components that could be shared (parameter sections, navigation patterns, layout primitives)
-- [ ] Document findings in a Phase 1 audit report within this feature's docs directory
+- [x] Audit the S3K SysEx device client for program CRUD support (create, delete, rename program)
+- [x] Audit the S3K SysEx device client for keygroup CRUD support (create, delete keygroup within program)
+- [x] Map all S3K program and keygroup parameters against the Akai SysEx spec; identify which are exposed in the current UI and which are missing
+- [x] Review the Roland editor's parameter grouping UI -- identify components, patterns, and layout conventions
+- [x] Review the Roland editor's multi-editor implementation (if any)
+- [x] Identify editor-core components that could be shared (parameter sections, navigation patterns, layout primitives)
+- [x] Document findings in a Phase 1 audit report within this feature's docs directory
 
 ### Acceptance Criteria
 
@@ -68,13 +68,13 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Restructure page routing so the program editor is the primary workspace (not a flat list of programs)
-- [ ] Implement program CRUD in the editor UI (create, rename, delete)
-- [ ] Display keygroups inline within the program editor (read-only in this phase)
-- [ ] Group program parameters into logical sections: output/MIDI, effects, tuning
-- [ ] Add program navigation (list/selector to switch between programs)
-- [ ] Wire program CRUD operations to the device client
-- [ ] Write unit tests for program CRUD operations and parameter grouping logic
+- [x] Restructure page routing so the program editor is the primary workspace (not a flat list of programs)
+- [x] Implement program CRUD in the editor UI (create, rename, delete)
+- [x] Display keygroups inline within the program editor (read-only in this phase)
+- [x] Group program parameters into logical sections: output/MIDI, effects, tuning
+- [x] Add program navigation (list/selector to switch between programs)
+- [x] Wire program CRUD operations to the device client
+- [x] Write unit tests for program CRUD operations and parameter grouping logic
 
 ### Acceptance Criteria
 
@@ -92,14 +92,14 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Implement keygroup CRUD within the program editor (create, delete)
-- [ ] Build sample-to-zone assignment UI (sample selection, key range, velocity range per zone)
-- [ ] Build key range editor (visual or numeric input for low/high key)
-- [ ] Build velocity range editor (visual or numeric input for low/high velocity)
-- [ ] Build zone overview visualization showing all keygroups mapped across keyboard and velocity
-- [ ] Group keygroup parameters into logical sections: filter, amp, pitch
-- [ ] Wire keygroup CRUD and zone changes to the device client
-- [ ] Write unit tests for keygroup CRUD, zone assignment, and parameter grouping
+- [x] Implement keygroup CRUD within the program editor (create, delete)
+- [x] Build sample-to-zone assignment UI (sample selection, key range, velocity range per zone)
+- [x] Build key range editor (visual or numeric input for low/high key)
+- [x] Build velocity range editor (visual or numeric input for low/high velocity)
+- [x] Build zone overview visualization showing all keygroups mapped across keyboard and velocity
+- [x] Group keygroup parameters into logical sections: filter, amp, pitch
+- [x] Wire keygroup CRUD and zone changes to the device client
+- [x] Write unit tests for keygroup CRUD, zone assignment, and parameter grouping
 
 ### Acceptance Criteria
 
@@ -117,13 +117,13 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Investigate the Roland editor's multi-editor pattern (if any) and document findings
-- [ ] Design multi-editor layout (split panes, tabs, or other approach)
-- [ ] Implement split view with independent program selection per pane
-- [ ] Ensure each pane maintains its own scroll position and edit state
-- [ ] Evaluate whether the multi-editor shell can be extracted to editor-core
-- [ ] If extractable, move the shell to editor-core and wire both S3K and Roland editors to use it
-- [ ] Write tests for multi-editor state management
+- [x] Investigate the Roland editor's multi-editor pattern (if any) and document findings
+- [x] Design multi-editor layout (split panes, tabs, or other approach)
+- [x] Implement split view with independent program selection per pane
+- [x] Ensure each pane maintains its own scroll position and edit state
+- [x] Evaluate whether the multi-editor shell can be extracted to editor-core
+- [x] If extractable, move the shell to editor-core and wire both S3K and Roland editors to use it
+- [x] Write tests for multi-editor state management
 
 ### Acceptance Criteria
 
@@ -140,12 +140,12 @@ The approach is incremental -- each phase delivers a working editor state. Phase
 
 ### Tasks
 
-- [ ] Audit all editor pages for pixel-based widths and replace with proportional flex
-- [ ] Apply consistent spacing, padding, and typography following editor-core patterns
-- [ ] Extract shared components to editor-core where they converge with Roland editor needs
-- [ ] Verify responsive layout at common viewport sizes
-- [ ] Cross-editor review: compare S3K and Roland editors for visual consistency
-- [ ] Fix any inconsistencies found in the cross-editor review
+- [x] Audit all editor pages for pixel-based widths and replace with proportional flex
+- [x] Apply consistent spacing, padding, and typography following editor-core patterns
+- [x] Extract shared components to editor-core where they converge with Roland editor needs
+- [x] Verify responsive layout at common viewport sizes
+- [x] Cross-editor review: compare S3K and Roland editors for visual consistency
+- [x] Fix any inconsistencies found in the cross-editor review
 - [ ] Final round of manual testing against hardware
 
 ### Acceptance Criteria

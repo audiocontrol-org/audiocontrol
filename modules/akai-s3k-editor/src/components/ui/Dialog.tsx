@@ -83,7 +83,7 @@ export function Dialog({ open, onClose, children, className }: DialogProps): JSX
 
 export function DialogTitle({ children }: { children: ReactNode }): JSX.Element {
   return (
-    <h2 className="text-lg font-bold text-gray-100 mb-4">{children}</h2>
+    <h2 className="text-lg font-semibold text-gray-200 mb-4">{children}</h2>
   );
 }
 

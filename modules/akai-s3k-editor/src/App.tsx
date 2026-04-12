@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { HomePage } from '@/pages/HomePage';
 import { ProgramsPage } from '@/pages/ProgramsPage';
+import { MultiProgramPage } from '@/pages/MultiProgramPage';
 import { KeygroupsPage } from '@/pages/KeygroupsPage';
 import { LibraryPage } from '@/pages/LibraryPage';
 import { SamplesPage } from '@/pages/SamplesPage';
@@ -12,6 +13,7 @@ export function App() {
       <Routes>
         <Route path="/akai/s3000xl/editor" element={<HomePage />} />
         <Route path="/akai/s3000xl/editor/programs" element={<ProgramsPage />} />
+        <Route path="/akai/s3000xl/editor/compare" element={<MultiProgramPage />} />
         <Route path="/akai/s3000xl/editor/keygroups" element={<KeygroupsPage />} />
         <Route path="/akai/s3000xl/editor/samples" element={<SamplesPage />} />
         <Route path="/akai/s3000xl/editor/library" element={<LibraryPage />} />
