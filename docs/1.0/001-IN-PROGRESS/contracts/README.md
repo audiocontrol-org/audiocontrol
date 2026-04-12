@@ -19,6 +19,6 @@ Compiler-enforced contracts and design system documentation to reduce agent corr
 | Worktree | `~/work/audiocontrol-work/audiocontrol-contracts` |
 | PRD | [prd.md](./prd.md) |
 | Workplan | [workplan.md](./workplan.md) |
-| Parent Issue | TBD |
+| Parent Issue | [#240](https://github.com/audiocontrol-org/audiocontrol/issues/240) |
 | Related | [#238](https://github.com/audiocontrol-org/audiocontrol/issues/238) -- Compiler-checked contracts |
 | Related | [#239](https://github.com/audiocontrol-org/audiocontrol/issues/239) -- Design system dialog standards |

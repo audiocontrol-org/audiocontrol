@@ -4,8 +4,17 @@
 
 | Item | Link |
 |------|------|
-| Parent Issue | TBD |
+| Parent Issue | #240 |
 | Milestone | TBD |
+
+### Implementation Issues
+
+| Phase | Issue | Description |
+|-------|-------|-------------|
+| Phase 1 | #241 | Audit shared hooks, browser API usage, pixel widths, and duplicated types |
+| Phase 2 | #242 | Define typed capability contracts and update all shared hooks and callers |
+| Phase 3 | #243 | Add Design System section to CLAUDE.md with dialog, layout, and contract standards |
+| Phase 4 | #244 | Fix all audit violations: browser dialogs, pixel widths, duplicated types |
 
 ## Technical Approach
 
