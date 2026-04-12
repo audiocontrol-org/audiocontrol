@@ -120,7 +120,7 @@ Eliminate all violations found in the Phase 1 audit.
 - [x] Replace every `window.confirm()` call (5 calls removed — context menu "Delete" is the confirmation)
 - [x] Replace every `window.alert()` call with thrown errors (6 calls in Roland)
 - [x] Replace every hardcoded pixel width with rem (1 CSS fix: 560px → 35rem)
-- [ ] Deduplicate shared types: move to canonical location, update all imports
+- [x] Deduplicate shared types: VfdGlowVariant, BackupProgress, useS330Store, cn(), MIDI note parsing (5/16 resolved; 11 architectural items deferred)
 - [x] Verify both editors compile with `make`
 - [x] Verify both editors pass all tests with `pnpm test` (pre-existing failures only, no regressions)
 - [ ] Manual smoke test of both editors in browser
