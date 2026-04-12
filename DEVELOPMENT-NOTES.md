@@ -566,3 +566,43 @@ Add CSS file tracking to Makefile source dependencies and add inline documentati
 ### Insights
 1. Well-scoped features with clear workplans and pre-created issues make sessions fast and frictionless
 2. Small features benefit from doing all tasks in a single commit rather than splitting artificially
+
+---
+
+## 2026-04-11 / 2026-04-12: Standalone Sampler — All 4 Phases
+
+### Feature: standalone-sampler
+### Worktree: audiocontrol-standalone-sampler
+
+### Goal
+Implement the web-based software sampler from scratch: synth-core program engine, standalone-sampler module, program editor, effects, and MIDI learn.
+
+### Accomplished
+- Phase 1: Multi-keygroup program engine in synth-core — zone matcher, ADSR amp envelope, filter with envelope modulation, voice allocation with polyphony/mute groups, 27 unit tests (`481d0b70`)
+- Phase 2: New standalone-sampler Vite+React module — routing, on-screen keyboard, Web MIDI input, library browser via PluginLibraryBrowser, program load from common area (`04aa52af`, `ca459740`)
+- Phase 3: Program editor page — Zustand store for zone CRUD, parameter sections (pitch/amp/filter/range) using editor-core ParameterSlider, zone map visualization, save to library via program.yaml + WAV (`ccf4136d`)
+- Phase 4: Effects chain (reverb/delay/chorus via Web Audio), multi-timbral engine, MIDI learn store with CC routing, effects panel UI (`5f3037d9`)
+- Merged program-based-slicing branch (2x) for shared program format and late-breaking fix
+- Code review via code-reviewer agent: 2 critical, 8 warnings, 10 info findings
+- Fixed all critical/warning findings: double-cleanup race, feedback clamp, type assertions, impulse regeneration cache, zone index returns, polling removal, formatTime dedup (`cde15f5f`)
+- 73 synth-core tests pass, standalone-sampler typechecks and builds clean
+
+### Didn't Work
+- Nothing major — clean session with well-scoped workplan and pre-created issues
+
+### Course Corrections
+- None from the user this session
+
+### Quantitative
+- User messages: ~8
+- Commits: 7 (on this branch, excluding merges)
+- User corrections: 0
+- Tool calls: ~200+
+- Sub-agents launched: 7 (3 Explore, 1 code-reviewer, 1 typescript-pro, 2 other)
+
+### Insights
+1. Having a complete workplan with phased tasks and GitHub issues made the session extremely efficient — each phase was a clear deliverable
+2. Merging program-based-slicing early was the right call — the ProgramYaml schema was the foundation for everything
+3. The code review found real bugs (double-cleanup race, infinite feedback) that would have been hard to catch manually
+4. Delegating the review fixes to a typescript-pro agent worked well — 11 fixes applied correctly in one pass
+5. The user's directive to model after the S3K library page (most polished) was valuable context for the library browser integration
