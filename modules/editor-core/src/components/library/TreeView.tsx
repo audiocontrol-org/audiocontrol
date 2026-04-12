@@ -3,11 +3,18 @@
  *
  * Renders a tree of nodes with expand/collapse, selection,
  * optional drag-drop zones, and optional context menu trigger.
- * Device-agnostic — consumers provide node data and callbacks.
+ * Device-agnostic — consumers provide node data and capability objects.
  */
 
 import React, { useCallback, useState, useRef, useEffect } from 'react';
 import { ChevronIcon, FolderIcon, DeleteIcon, NewFolderIcon } from './TreeIcons';
+import type {
+  TreeSelectionCapability,
+  TreeEditCapability,
+  TreeContextMenuCapability,
+  TreeDragCapability,
+  TreeRenderCapability,
+} from '@/components/library/tree-capabilities';
 
 // =========================================================================
 // Types
@@ -32,39 +39,20 @@ export interface TreeViewProps {
   selectedId?: string;
   /** Set of selected node IDs (multi-selection). Takes precedence over selectedId for highlighting. */
   selectedIds?: ReadonlySet<string>;
-  /** Called when a non-directory node is clicked (plain click, no modifiers) */
-  onSelect?: (node: TreeNode) => void;
-  /** Called when a node is clicked with Ctrl/Cmd or Shift for multi-select */
-  onMultiSelect?: (node: TreeNode, modifiers: { ctrlKey: boolean; shiftKey: boolean }) => void;
-  /** Called on right-click with screen position */
-  onContextMenu?: (e: React.MouseEvent, node: TreeNode) => void;
-  /** Called when something is dropped on a directory node */
-  onDrop?: (targetNode: TreeNode, e: React.DragEvent) => void;
-  /** Called during drag-over on a directory to determine if drop is allowed.
-   *  Return true (or omit) to allow, false to prevent. */
-  onDragOver?: (targetNode: TreeNode, e: React.DragEvent) => boolean;
-  /** Render a custom icon for a node. Falls back to FolderIcon for directories. */
-  renderIcon?: (node: TreeNode, isExpanded: boolean) => React.ReactNode;
-  /** Render trailing content (metadata, action buttons) after the node name */
-  renderTrailing?: (node: TreeNode) => React.ReactNode;
-  /** Whether nodes (non-directory) are draggable */
-  draggable?: boolean;
-  /** Called when drag starts on a non-directory node */
-  onDragStart?: (node: TreeNode, e: React.DragEvent) => void;
-  /** Called when a node's delete button is clicked. When provided, renders a
-   *  delete button on hover for each node. */
-  onDelete?: (node: TreeNode) => void;
-  /** Called when the add-folder button is clicked on a directory. When provided,
-   *  renders an add-folder button on hover for each directory node. */
-  onCreateFolder?: (parentNode: TreeNode) => void;
+  /** Selection capabilities (select, multi-select) */
+  selection?: TreeSelectionCapability;
+  /** Editing capabilities (delete, rename, create folder) */
+  edit?: TreeEditCapability;
+  /** Context menu capability */
+  contextMenu?: TreeContextMenuCapability;
+  /** Drag-and-drop capabilities */
+  drag?: TreeDragCapability;
+  /** Custom rendering capabilities */
+  render?: TreeRenderCapability;
   /** Depth indentation in pixels per level. Default: 16. */
   indentPx?: number;
   /** Message shown for empty directories. Default: 'Empty folder'. */
   emptyDirectoryMessage?: string;
-  /** Called when a node is renamed via inline editing (double-click to edit) */
-  onRename?: (node: TreeNode, newName: string) => Promise<void>;
-  /** Whether inline renaming is enabled. Requires onRename to be provided. */
-  enableInlineRename?: boolean;
 }
 
 // =========================================================================
@@ -77,24 +65,16 @@ interface TreeNodeRowProps {
   isExpanded: boolean;
   isSelected: boolean;
   onToggleExpand: (nodeId: string) => void;
-  onSelect?: (node: TreeNode) => void;
-  onContextMenu?: (e: React.MouseEvent, node: TreeNode) => void;
-  onDrop?: (targetNode: TreeNode, e: React.DragEvent) => void;
-  onDragOver?: (targetNode: TreeNode, e: React.DragEvent) => boolean;
-  renderIcon?: (node: TreeNode, isExpanded: boolean) => React.ReactNode;
-  renderTrailing?: (node: TreeNode) => React.ReactNode;
-  draggable?: boolean;
-  onDragStart?: (node: TreeNode, e: React.DragEvent) => void;
-  onDelete?: (node: TreeNode) => void;
-  onCreateFolder?: (parentNode: TreeNode) => void;
+  selection?: TreeSelectionCapability;
+  edit?: TreeEditCapability;
+  contextMenu?: TreeContextMenuCapability;
+  drag?: TreeDragCapability;
+  render?: TreeRenderCapability;
   indentPx: number;
   emptyDirectoryMessage: string;
   expandedIds: Set<string>;
   selectedId?: string;
   selectedIds?: ReadonlySet<string>;
-  onMultiSelect?: (node: TreeNode, modifiers: { ctrlKey: boolean; shiftKey: boolean }) => void;
-  onRename?: (node: TreeNode, newName: string) => Promise<void>;
-  enableInlineRename?: boolean;
 }
 
 function TreeNodeRow({
@@ -103,24 +83,16 @@ function TreeNodeRow({
   isExpanded,
   isSelected,
   onToggleExpand,
-  onSelect,
-  onContextMenu,
-  onDrop,
-  onDragOver,
-  renderIcon,
-  renderTrailing,
-  draggable,
-  onDragStart,
-  onDelete,
-  onCreateFolder,
+  selection,
+  edit,
+  contextMenu,
+  drag,
+  render,
   indentPx,
   emptyDirectoryMessage,
   expandedIds,
   selectedId,
   selectedIds,
-  onMultiSelect,
-  onRename,
-  enableInlineRename,
 }: TreeNodeRowProps): JSX.Element {
   const [isDragOver, setIsDragOver] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -131,9 +103,9 @@ function TreeNodeRow({
   const isDirectory = node.type === 'directory';
   const hasChildren = !!node.children?.length;
   // Both directories and non-directories can be dragged
-  const isDraggable = draggable ?? false;
+  const isDraggable = drag?.draggable ?? false;
   const paddingLeft = depth * indentPx + 8;
-  const canRename = enableInlineRename && onRename;
+  const canRename = edit?.enableInlineRename && edit.onRename;
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -148,8 +120,8 @@ function TreeNodeRow({
     if (isEditing) return;
 
     // Multi-select with Ctrl/Cmd or Shift (non-directory items only)
-    if (!isDirectory && onMultiSelect && (e.ctrlKey || e.metaKey || e.shiftKey)) {
-      onMultiSelect(node, { ctrlKey: e.ctrlKey || e.metaKey, shiftKey: e.shiftKey });
+    if (!isDirectory && selection?.onMultiSelect && (e.ctrlKey || e.metaKey || e.shiftKey)) {
+      selection.onMultiSelect(node, { ctrlKey: e.ctrlKey || e.metaKey, shiftKey: e.shiftKey });
       return;
     }
 
@@ -157,11 +129,11 @@ function TreeNodeRow({
       onToggleExpand(node.id);
     } else if (hasChildren) {
       onToggleExpand(node.id);
-      onSelect?.(node);
+      selection?.onSelect(node);
     } else {
-      onSelect?.(node);
+      selection?.onSelect(node);
     }
-  }, [node, isDirectory, onToggleExpand, onSelect, onMultiSelect, isEditing]);
+  }, [node, isDirectory, onToggleExpand, selection, isEditing]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -173,14 +145,14 @@ function TreeNodeRow({
 
   const handleRenameSubmit = useCallback(async () => {
     const trimmedValue = editValue.trim();
-    if (!trimmedValue || trimmedValue === node.name || !onRename) {
+    if (!trimmedValue || trimmedValue === node.name || !edit?.onRename) {
       setIsEditing(false);
       return;
     }
 
     setIsRenaming(true);
     try {
-      await onRename(node, trimmedValue);
+      await edit.onRename(node, trimmedValue);
       setIsEditing(false);
     } catch (err) {
       // Keep editing mode open on error so user can try again
@@ -188,7 +160,7 @@ function TreeNodeRow({
     } finally {
       setIsRenaming(false);
     }
-  }, [editValue, node, onRename]);
+  }, [editValue, node, edit]);
 
   const handleRenameKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -210,20 +182,20 @@ function TreeNodeRow({
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    onContextMenu?.(e, node);
-  }, [node, onContextMenu]);
+    contextMenu?.onContextMenu(e, node);
+  }, [node, contextMenu]);
 
   const handleDragStart = useCallback((e: React.DragEvent) => {
     if (!isDraggable) {
       e.preventDefault();
       return;
     }
-    onDragStart?.(node, e);
-  }, [node, isDraggable, onDragStart]);
+    drag?.onDragStart(node, e);
+  }, [node, isDraggable, drag]);
 
   const handleDragOverEvent = useCallback((e: React.DragEvent) => {
     if (!isDirectory) return;
-    const allowed = onDragOver ? onDragOver(node, e) : true;
+    const allowed = drag?.onTreeDragOver ? drag.onTreeDragOver(node, e) : true;
     if (allowed) {
       e.preventDefault();
       e.stopPropagation();
@@ -231,7 +203,7 @@ function TreeNodeRow({
       e.dataTransfer.dropEffect =
         e.dataTransfer.effectAllowed === 'copy' ? 'copy' : 'move';
     }
-  }, [node, isDirectory, onDragOver]);
+  }, [node, isDirectory, drag]);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     if (!isDirectory) return;
@@ -254,8 +226,8 @@ function TreeNodeRow({
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(false);
-    onDrop?.(node, e);
-  }, [node, isDirectory, onDrop]);
+    drag?.onTreeDrop(node, e);
+  }, [node, isDirectory, drag]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (isEditing) return; // Don't handle while editing
@@ -264,13 +236,13 @@ function TreeNodeRow({
       if (isDirectory) {
         onToggleExpand(node.id);
       } else {
-        onSelect?.(node);
+        selection?.onSelect(node);
       }
     }
-  }, [node, isDirectory, onToggleExpand, onSelect, isEditing]);
+  }, [node, isDirectory, onToggleExpand, selection, isEditing]);
 
-  const icon = renderIcon
-    ? renderIcon(node, isExpanded)
+  const icon = render?.renderIcon
+    ? render.renderIcon(node, isExpanded)
     : isDirectory
       ? <FolderIcon isOpen={isExpanded} />
       : null;
@@ -295,7 +267,7 @@ function TreeNodeRow({
         data-testid={testId}
         onClick={handleClick}
         onDoubleClick={canRename ? handleDoubleClick : undefined}
-        onContextMenu={onContextMenu ? handleContextMenu : undefined}
+        onContextMenu={contextMenu ? handleContextMenu : undefined}
         onKeyDown={handleKeyDown}
         draggable={isDraggable && !isEditing}
         onDragStart={isDraggable && !isEditing ? handleDragStart : undefined}
@@ -334,22 +306,22 @@ function TreeNodeRow({
           <span className="ac-tree-node-name">{node.name}</span>
         )}
 
-        {renderTrailing?.(node)}
+        {render?.renderTrailing?.(node)}
 
-        {isDirectory && onCreateFolder && (
+        {isDirectory && edit?.onCreateFolder && (
           <button
             className="ac-tree-add-btn"
-            onClick={(e) => { e.stopPropagation(); onCreateFolder(node); }}
+            onClick={(e) => { e.stopPropagation(); edit.onCreateFolder?.(node); }}
             title={`New folder in ${node.name}`}
           >
             <NewFolderIcon />
           </button>
         )}
 
-        {onDelete && (
+        {edit?.onDelete && (
           <button
             className="ac-tree-delete-btn"
-            onClick={(e) => { e.stopPropagation(); onDelete(node); }}
+            onClick={(e) => { e.stopPropagation(); edit.onDelete(node); }}
             title={`Delete ${node.name}`}
           >
             <DeleteIcon />
@@ -368,24 +340,16 @@ function TreeNodeRow({
               isExpanded={expandedIds.has(child.id)}
               isSelected={selectedIds ? selectedIds.has(child.id) : selectedId === child.id}
               onToggleExpand={onToggleExpand}
-              onSelect={onSelect}
-              onContextMenu={onContextMenu}
-              onDrop={onDrop}
-              onDragOver={onDragOver}
-              renderIcon={renderIcon}
-              renderTrailing={renderTrailing}
-              draggable={draggable}
-              onDragStart={onDragStart}
-              onDelete={onDelete}
-              onCreateFolder={onCreateFolder}
+              selection={selection}
+              edit={edit}
+              contextMenu={contextMenu}
+              drag={drag}
+              render={render}
               indentPx={indentPx}
               emptyDirectoryMessage={emptyDirectoryMessage}
               expandedIds={expandedIds}
               selectedId={selectedId}
               selectedIds={selectedIds}
-              onMultiSelect={onMultiSelect}
-              onRename={onRename}
-              enableInlineRename={enableInlineRename}
             />
           ))}
         </div>
@@ -414,21 +378,13 @@ export function TreeView({
   onToggleExpand: controlledOnToggle,
   selectedId,
   selectedIds,
-  onSelect,
-  onMultiSelect,
-  onContextMenu,
-  onDrop,
-  onDragOver,
-  renderIcon,
-  renderTrailing,
-  onDelete,
-  onCreateFolder,
-  draggable,
-  onDragStart,
+  selection,
+  edit,
+  contextMenu,
+  drag,
+  render,
   indentPx = 16,
   emptyDirectoryMessage = 'Empty folder',
-  onRename,
-  enableInlineRename,
 }: TreeViewProps): JSX.Element {
   // Uncontrolled expand state fallback
   const [internalExpandedIds, setInternalExpandedIds] = useState<Set<string>>(new Set());
@@ -460,24 +416,16 @@ export function TreeView({
           isExpanded={expandedIds.has(node.id)}
           isSelected={selectedIds ? selectedIds.has(node.id) : selectedId === node.id}
           onToggleExpand={onToggleExpand}
-          onSelect={onSelect}
-          onContextMenu={onContextMenu}
-          onDrop={onDrop}
-          onDragOver={onDragOver}
-          renderIcon={renderIcon}
-          renderTrailing={renderTrailing}
-          draggable={draggable}
-          onDragStart={onDragStart}
-          onDelete={onDelete}
-          onCreateFolder={onCreateFolder}
+          selection={selection}
+          edit={edit}
+          contextMenu={contextMenu}
+          drag={drag}
+          render={render}
           indentPx={indentPx}
           emptyDirectoryMessage={emptyDirectoryMessage}
           expandedIds={expandedIds}
           selectedId={selectedId}
           selectedIds={selectedIds}
-          onMultiSelect={onMultiSelect}
-          onRename={onRename}
-          enableInlineRename={enableInlineRename}
         />
       ))}
     </div>

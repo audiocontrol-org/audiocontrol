@@ -71,7 +71,7 @@ Replace implicit conventions with typed interfaces that the compiler enforces.
 - [x] Define `ErrorReporter` interface (already exists from library-ux)
 - [x] Define `RefreshNotifier` interface for notifying callers when data has changed
 - [x] Define `ProgressReporter` interface for long-running operations
-- [ ] Update all shared hooks in editor-core to accept typed capability objects instead of bare callbacks
+- [x] Update all shared hooks in editor-core to accept typed capability objects instead of bare callbacks
 - [x] Replace boolean return values in `LibraryOperationsStrategy` with `StrategyResult` discriminated union
 - [x] Update all callers in `roland-sxx0-editor` to handle `StrategyResult`
 - [x] Update all callers in `akai-s3k-editor` to handle `StrategyResult`

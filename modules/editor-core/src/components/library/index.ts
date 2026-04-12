@@ -7,6 +7,13 @@ export {
   TreeSection,
   type TreeSectionProps,
 } from './TreeSection';
+export type {
+  TreeSelectionCapability,
+  TreeEditCapability,
+  TreeContextMenuCapability,
+  TreeDragCapability,
+  TreeRenderCapability,
+} from './tree-capabilities';
 export {
   PluginLibraryBrowser,
   LIBRARY_ITEM_MIME,
