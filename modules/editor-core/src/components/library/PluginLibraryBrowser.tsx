@@ -786,19 +786,29 @@ export function PluginLibraryBrowser({
           </div>
         )}
 
-        {!loading && error && (
-          <div className="ac-plugin-library-browser-error-state">
-            <svg className="ac-plugin-library-browser-error-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <p className="ac-plugin-library-browser-error-message">{error}</p>
-            <button className="ac-library-connection-btn" onClick={onRefresh}>Retry</button>
+        {error && (
+          <div style={{
+            margin: 'var(--ac-space-2) var(--ac-space-3)',
+            padding: 'var(--ac-space-2) var(--ac-space-3)',
+            background: 'color-mix(in srgb, var(--ac-color-danger) 12%, transparent)',
+            border: '1px solid color-mix(in srgb, var(--ac-color-danger) 30%, transparent)',
+            borderRadius: 'var(--ac-radius-sm)',
+            fontSize: 'var(--ac-text-sm)',
+            color: 'var(--ac-color-danger)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            gap: 'var(--ac-space-2)',
+          }}>
+            <span style={{ flex: 1 }}>{error}</span>
+            <button
+              style={{ background: 'none', border: 'none', color: 'var(--ac-color-danger)', cursor: 'pointer', padding: 0, fontSize: '1rem' }}
+              onClick={onRefresh}
+              title="Dismiss"
+            >&times;</button>
           </div>
         )}
 
-        {!loading && !error && !libraryHandle && (
+        {!loading && !libraryHandle && (
           <div className="ac-plugin-library-browser-empty-state">
             <svg className="ac-plugin-library-browser-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
               <path d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
@@ -807,7 +817,7 @@ export function PluginLibraryBrowser({
           </div>
         )}
 
-        {!loading && !error && libraryHandle && (
+        {!loading && libraryHandle && (
           <div className="ac-plugin-library-browser-sections">
             {headerSections}
             {plugin.categories.map((category) => (

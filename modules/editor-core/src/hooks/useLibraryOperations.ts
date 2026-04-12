@@ -15,6 +15,7 @@ import {
   moveItem,
   importWavToCommonArea,
   getNestedDirectory,
+  moveDirectory,
 } from '@audiocontrol/sampler-library/browser';
 import type { TreeNode } from '@/components/library/TreeView';
 
@@ -203,6 +204,23 @@ export function getNodePath(node: TreeNode): string[] {
   return [];
 }
 
+/** Programs categories use a different root directory than samples. */
+const PROGRAM_CATEGORIES = new Set(['programs', 'common-programs']);
+const PROGRAMS_ROOT = ['library', 'common', 'programs'];
+
+/** Get the root directory for a category's filesystem operations. */
+async function getCategoryDir(
+  root: StorageDirectoryHandle,
+  categoryId: string,
+  subPath: string[],
+): Promise<StorageDirectoryHandle> {
+  if (PROGRAM_CATEGORIES.has(categoryId)) {
+    return getNestedDirectory(root, [...PROGRAMS_ROOT, ...subPath]);
+  }
+  // Default: samples root (handled by the sampler-library createFolder/moveItem/deleteItem)
+  throw new Error('USE_DEFAULT');
+}
+
 // =========================================================================
 // Hook
 // =========================================================================
@@ -239,10 +257,9 @@ export function useLibraryOperations(
       try {
         const handled = await strategy?.createFolder?.(categoryId, parentPath, folderName);
         if (!handled) {
-          // Common-area categories: route to the correct root directory
-          if (categoryId === 'programs' || categoryId === 'common-programs') {
-            const programsDir = await getNestedDirectory(libraryRoot, ['library', 'common', 'programs', ...parentPath]);
-            await programsDir.getDirectoryHandle(folderName, { create: true });
+          if (PROGRAM_CATEGORIES.has(categoryId)) {
+            const dir = await getCategoryDir(libraryRoot, categoryId, parentPath);
+            await dir.getDirectoryHandle(folderName, { create: true });
           } else {
             await createFolder(libraryRoot, parentPath, folderName);
           }
@@ -273,7 +290,12 @@ export function useLibraryOperations(
           }
         }
         const path = getNodePath(node);
-        await deleteItem(libraryRoot, name, path);
+        if (PROGRAM_CATEGORIES.has(categoryId)) {
+          const dir = await getCategoryDir(libraryRoot, categoryId, path);
+          await dir.removeEntry(name, { recursive: true });
+        } else {
+          await deleteItem(libraryRoot, name, path);
+        }
         onRefresh();
       } catch (err) {
         onError(`Failed to delete "${name}": ${err instanceof Error ? err.message : String(err)}`);
@@ -291,7 +313,13 @@ export function useLibraryOperations(
       const name = getNodeName(node);
       const sourcePath = getNodePath(node);
       try {
-        await moveItem(libraryRoot, name, sourcePath, targetPath);
+        if (PROGRAM_CATEGORIES.has(categoryId)) {
+          const srcParent = await getCategoryDir(libraryRoot, categoryId, sourcePath);
+          const destParent = await getCategoryDir(libraryRoot, categoryId, targetPath);
+          await moveDirectory(srcParent, name, destParent);
+        } else {
+          await moveItem(libraryRoot, name, sourcePath, targetPath);
+        }
         onRefresh();
       } catch (err) {
         onError(`Failed to move "${name}": ${err instanceof Error ? err.message : String(err)}`);
@@ -394,7 +422,12 @@ export function useLibraryOperations(
             if (handled) continue;
           }
           const path = getNodePath(node);
-          await deleteItem(libraryRoot, name, path);
+          if (PROGRAM_CATEGORIES.has(categoryId)) {
+            const dir = await getCategoryDir(libraryRoot, categoryId, path);
+            await dir.removeEntry(name, { recursive: true });
+          } else {
+            await deleteItem(libraryRoot, name, path);
+          }
         } catch (err) {
           errors.push(`${node.name}: ${err instanceof Error ? err.message : String(err)}`);
         }
@@ -418,7 +451,13 @@ export function useLibraryOperations(
         try {
           const name = getNodeName(node);
           const sourcePath = getNodePath(node);
-          await moveItem(libraryRoot, name, sourcePath, targetPath);
+          if (PROGRAM_CATEGORIES.has(categoryId)) {
+            const srcParent = await getCategoryDir(libraryRoot, categoryId, sourcePath);
+            const destParent = await getCategoryDir(libraryRoot, categoryId, targetPath);
+            await moveDirectory(srcParent, name, destParent);
+          } else {
+            await moveItem(libraryRoot, name, sourcePath, targetPath);
+          }
         } catch (err) {
           errors.push(`${node.name}: ${err instanceof Error ? err.message : String(err)}`);
         }
