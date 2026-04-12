@@ -87,14 +87,14 @@ Build the program editor UI for creating and modifying programs.
 
 ### Tasks
 
-- [ ] Program editor page with keygroup list and parameter sections
-- [ ] Keygroup CRUD -- add, remove, reorder keygroups within a program
-- [ ] Zone mapping UI -- key range and velocity range selection, sample assignment from library
-- [ ] Zone overview visualization -- keyboard-style view showing all keygroup mappings
-- [ ] Per-zone parameter sections: filter (type, cutoff, resonance, envelope), amp (ADSR), pitch (root, transpose, fine tune)
-- [ ] Real-time parameter updates -- editing a parameter immediately affects synth-core playback
-- [ ] Program save to common-area library (serialize to program.yaml format)
-- [ ] Reuse editor-core shared components (parameter knobs, section panels, value displays)
+- [x] Program editor page with zone list and parameter sections
+- [x] Zone CRUD -- add, remove, reorder zones within a program (via Zustand store)
+- [x] Zone mapping UI -- key range and velocity range selection via ParameterSlider
+- [x] Zone overview visualization -- keyboard-style bar view showing all zone key mappings
+- [x] Per-zone parameter sections: filter (type, cutoff, resonance, envelope), amp (ADSR), pitch (root, transpose, fine tune)
+- [x] Real-time parameter updates -- editing a parameter rebuilds ProgramPlayback for synth-core
+- [x] Program save to common-area library (serialize to program.yaml + WAV files)
+- [x] Reuse editor-core shared components (ParameterSlider, CollapsibleSection, formatPitch, formatSigned)
 
 ### Acceptance Criteria
 

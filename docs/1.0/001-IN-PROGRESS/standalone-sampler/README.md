@@ -8,7 +8,7 @@ Web-based software sampler using synth-core as the sound engine. Load samples, b
 |-------|--------|-------|
 | Phase 1: Synth-Core Program Engine | Complete | 481d0b70 |
 | Phase 2: Sampler Module Scaffold | Complete | 04aa52af, library browser, program loading |
-| Phase 3: Program Editor | Not Started | |
+| Phase 3: Program Editor | Complete | Zone list, parameter sections, zone map, save to library |
 | Phase 4: Performance Features | Not Started | |
 
 ## Links
