@@ -348,14 +348,15 @@ export function ProgramsPage(): JSX.Element {
                 header={selectedHeader}
                 programIndex={selectedProgramIndex!}
                 onParameterChange={handleParameterChange}
-              />
-              <KeygroupSummary
-                keygroups={keygroups}
-                keygroupCount={keygroupCount}
-                isLoading={isLoading}
-                onAddKeygroup={() => void handleAddKeygroup()}
-                onDeleteKeygroup={(index) => void handleDeleteKeygroup(index)}
-              />
+              >
+                <KeygroupSummary
+                  keygroups={keygroups}
+                  keygroupCount={keygroupCount}
+                  isLoading={isLoading}
+                  onAddKeygroup={() => void handleAddKeygroup()}
+                  onDeleteKeygroup={(index) => void handleDeleteKeygroup(index)}
+                />
+              </ProgramEditor>
             </>
           ) : selectedProgramIndex !== null ? (
             <p className="text-gray-400">Loading program...</p>

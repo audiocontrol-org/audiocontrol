@@ -5,6 +5,7 @@ interface ProgramEditorProps {
   header: ProgramHeader;
   programIndex: number;
   onParameterChange: (field: string, value: number | string) => void;
+  children?: React.ReactNode;
 }
 
 const PRIORITY_OPTIONS = [
@@ -57,6 +58,7 @@ function Section({
 export function ProgramEditor({
   header,
   onParameterChange,
+  children,
 }: ProgramEditorProps): JSX.Element {
   const num = (field: string) => (value: number) => onParameterChange(field, value);
   const bool = (field: string) => (checked: boolean) => onParameterChange(field, checked ? 1 : 0);
@@ -73,6 +75,8 @@ export function ProgramEditor({
           className="flex-1 bg-transparent border-b border-gray-600 focus:border-amber-500 px-1 py-1 text-lg text-gray-100 font-mono uppercase outline-none transition-colors"
         />
       </div>
+
+      {children}
 
       {/* Two-column layout for related sections */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
