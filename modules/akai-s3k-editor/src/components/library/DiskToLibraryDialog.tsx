@@ -298,6 +298,11 @@ export function DiskToLibraryDialog({
   const [hasError, setHasError] = useState(false);
   const [summary, setSummary] = useState<string | undefined>();
   const cancelledRef = useRef(false);
+  // Stable refs for callbacks to avoid re-triggering the effect
+  const onTransferCompleteRef = useRef(onTransferComplete);
+  onTransferCompleteRef.current = onTransferComplete;
+  const ensureFileBlocksRef = useRef(ensureFileBlocks);
+  ensureFileBlocksRef.current = ensureFileBlocks;
 
   const updateStep = useCallback((id: string, update: Partial<ProgressStep>) => {
     setSteps((prev) => prev.map((s) => s.id === id ? { ...s, ...update } : s));
@@ -322,7 +327,7 @@ export function DiskToLibraryDialog({
     void (async () => {
       try {
         // Step 1: Read file data
-        if (ensureFileBlocks) await ensureFileBlocks(file);
+        if (ensureFileBlocksRef.current) await ensureFileBlocksRef.current(file);
         const fileData = readFileData(partitionData, file);
 
         const sampleNames = isProgram ? collectSampleNames(fileData) : [];
@@ -360,7 +365,7 @@ export function DiskToLibraryDialog({
           if (isAkaiSample(file.type)) {
             samplesCount = await saveToCommonLibrary(
               file, fileData, partitionData, volumeStartBlock,
-              name, libraryRoot, () => {}, ensureFileBlocks,
+              name, libraryRoot, () => {}, ensureFileBlocksRef.current,
             );
             updateStep('save', { status: 'complete', detail: 'Saved as WAV' });
           } else {
@@ -398,7 +403,7 @@ export function DiskToLibraryDialog({
               }
 
               try {
-                if (ensureFileBlocks) await ensureFileBlocks(sampleFile);
+                if (ensureFileBlocksRef.current) await ensureFileBlocksRef.current(sampleFile);
                 const sampleData = readFileData(partitionData, sampleFile);
                 const header = parseSampleHeaderFromDisk(sampleData);
                 const pcm = extractSampleAudio(sampleData, header);
@@ -436,7 +441,7 @@ export function DiskToLibraryDialog({
             : `Saved "${name}" to library.`,
         );
         setIsComplete(true);
-        await onTransferComplete();
+        await onTransferCompleteRef.current();
 
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : String(err);
@@ -454,7 +459,8 @@ export function DiskToLibraryDialog({
     })();
 
     return () => { cancelledRef.current = true; };
-  }, [open, file, partitionData, volumeStartBlock, libraryRoot, onTransferComplete, ensureFileBlocks, updateStep]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, file, partitionData, volumeStartBlock, libraryRoot]);
 
   const displayName = file?.name.trim() ?? 'item';
 
