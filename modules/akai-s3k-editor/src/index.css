@@ -103,6 +103,14 @@
     overflow: hidden;
   }
 
+  .s3k-param-track--interactive {
+    cursor: pointer;
+  }
+
+  .s3k-param-track--interactive:active {
+    cursor: grabbing;
+  }
+
   .s3k-param-fill {
     position: absolute;
     top: 0;

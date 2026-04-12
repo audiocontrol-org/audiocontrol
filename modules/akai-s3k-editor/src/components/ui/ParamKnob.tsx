@@ -39,6 +39,7 @@ export function ParamKnob({
   const [editing, setEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (editing && inputRef.current) {
@@ -54,6 +55,29 @@ export function ParamKnob({
     }
     setEditing(false);
   }, [editValue, min, max, onChange]);
+
+  const xToValue = useCallback((clientX: number): number => {
+    const track = trackRef.current;
+    if (!track) return value;
+    const rect = track.getBoundingClientRect();
+    const fraction = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    return clamp(min + fraction * (max - min), min, max);
+  }, [min, max, value]);
+
+  const handleTrackMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    onChange(xToValue(e.clientX));
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      onChange(xToValue(moveEvent.clientX));
+    };
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [onChange, xToValue]);
 
   const range = max - min || 1;
   const fraction = (value - min) / range;
@@ -75,7 +99,11 @@ export function ParamKnob({
   return (
     <div className="s3k-param">
       <span className="s3k-param-label">{label}</span>
-      <div className="s3k-param-track">
+      <div
+        ref={trackRef}
+        className="s3k-param-track s3k-param-track--interactive"
+        onMouseDown={handleTrackMouseDown}
+      >
         <div className="s3k-param-fill" style={barStyle} />
         {bipolar && (
           <div className="s3k-param-center" style={{ left: `${((-min) / range) * 100}%` }} />
