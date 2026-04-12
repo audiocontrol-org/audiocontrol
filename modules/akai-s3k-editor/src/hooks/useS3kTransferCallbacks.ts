@@ -136,9 +136,8 @@ export function useS3kTransferCallbacks({
   );
 
   const handleDeleteDeviceProgram = useCallback(
-    async (index: number, name: string) => {
+    async (index: number, _name: string) => {
       if (!client) return;
-      if (!window.confirm(`Delete program "${name.trim()}" (#${index}) from device?`)) return;
       try {
         await client.deleteProgram(index);
         await refreshDevice();
@@ -151,9 +150,8 @@ export function useS3kTransferCallbacks({
   );
 
   const handleDeleteDeviceSample = useCallback(
-    async (index: number, name: string) => {
+    async (index: number, _name: string) => {
       if (!client) return;
-      if (!window.confirm(`Delete sample "${name.trim()}" (#${index}) from device?`)) return;
       try {
         await client.deleteSample(index);
         await refreshDevice();

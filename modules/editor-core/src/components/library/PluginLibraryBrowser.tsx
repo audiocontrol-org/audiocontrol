@@ -272,8 +272,6 @@ function MultiSelectPreview({
           <button
             className="px-3 py-1.5 text-sm bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
             onClick={() => {
-              const confirmed = window.confirm(`Delete ${count} items? This cannot be undone.`);
-              if (!confirmed) return;
               void onBatchDelete(categoryId, selected);
               clearSelection();
             }}
