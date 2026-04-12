@@ -4,8 +4,17 @@
 
 | Item | Link |
 |------|------|
-| Parent Issue | TBD |
+| Parent Issue | #226 |
 | Milestone | TBD |
+
+### Implementation Issues
+
+| Phase | Issue | Description |
+|-------|-------|-------------|
+| Phase 1 | #227 | Extend synth-core with multi-keygroup program playback engine |
+| Phase 2 | #228 | Create standalone-sampler module with library and synth-core integration |
+| Phase 3 | #229 | Build program editor with keygroups, zone mapping, and real-time parameter control |
+| Phase 4 | #230 | Add effects chain, multi-timbral support, and performance polish |
 
 ## Technical Approach
 

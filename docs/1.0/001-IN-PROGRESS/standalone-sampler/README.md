@@ -19,4 +19,4 @@ Web-based software sampler using synth-core as the sound engine. Load samples, b
 | Worktree | `~/work/audiocontrol-work/audiocontrol-standalone-sampler` |
 | PRD | [prd.md](./prd.md) |
 | Workplan | [workplan.md](./workplan.md) |
-| Parent Issue | TBD |
+| Parent Issue | [#226](https://github.com/audiocontrol-org/audiocontrol/issues/226) |
