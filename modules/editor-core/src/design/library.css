@@ -935,10 +935,171 @@
   transition: width 0.3s ease-out;
 }
 
+/* Indeterminate progress — thin bar under panel titles during loading */
+.ac-loading-bar {
+  width: 100%;
+  height: 2px;
+  background: color-mix(in srgb, var(--ac-color-text-muted) 15%, transparent);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.ac-loading-bar-fill {
+  height: 100%;
+  width: 33%;
+  background: var(--ac-color-accent);
+  border-radius: 1px;
+  animation: ac-indeterminate 1.2s ease-in-out infinite;
+}
+
+@keyframes ac-indeterminate {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+/* Panel header — consistent header bar across all library columns */
+.ac-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--ac-space-2) var(--ac-space-3);
+  border-bottom: 1px solid var(--ac-color-border-subtle);
+  flex-shrink: 0;
+}
+
+.ac-panel-header-title {
+  font-size: var(--ac-text-sm);
+  font-weight: var(--ac-font-weight-semibold);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-panel-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-1);
+}
+
+.ac-panel-refresh-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  border-radius: var(--ac-radius-sm);
+  background: transparent;
+  color: var(--ac-color-text-muted);
+  cursor: pointer;
+  transition: color var(--ac-duration-fast) var(--ac-easing-default),
+              background-color var(--ac-duration-fast) var(--ac-easing-default);
+}
+
+.ac-panel-refresh-btn:hover {
+  color: var(--ac-color-text-primary);
+  background: color-mix(in srgb, var(--ac-color-text-muted) 12%, transparent);
+}
+
+.ac-panel-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* =========================================================================
+   Stepped Progress — multi-step operation progress log
+   ========================================================================= */
+
+.ac-stepped-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ac-step-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ac-space-2);
+  padding: var(--ac-space-2) 0;
+}
+
+.ac-step-icon {
+  flex-shrink: 0;
+  width: 1rem;
+  height: 1rem;
+  margin-top: 1px;
+}
+
+.ac-step-icon--pending { color: var(--ac-color-text-muted); }
+.ac-step-icon--active { color: var(--ac-color-accent); }
+.ac-step-icon--complete { color: var(--ac-color-success); }
+.ac-step-icon--failed { color: var(--ac-color-danger); }
+
+.ac-step-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.ac-step-label {
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-primary);
+}
+
+.ac-step-row--pending .ac-step-label {
+  color: var(--ac-color-text-muted);
+}
+
+.ac-step-row--complete .ac-step-label {
+  color: var(--ac-color-text-muted);
+}
+
+.ac-step-progress {
+  margin-top: var(--ac-space-1);
+  display: flex;
+  align-items: center;
+  gap: var(--ac-space-2);
+}
+
+.ac-step-progress-bar {
+  flex: 1;
+  height: 3px;
+  background: color-mix(in srgb, var(--ac-color-text-muted) 20%, transparent);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.ac-step-progress-fill {
+  height: 100%;
+  background: var(--ac-color-accent);
+  border-radius: 2px;
+  transition: width 0.2s ease-out;
+}
+
+.ac-step-detail {
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-text-muted);
+  margin-top: 2px;
+}
+
+.ac-step-error {
+  font-size: var(--ac-text-xs);
+  color: var(--ac-color-danger);
+  margin-top: 2px;
+}
+
+.ac-step-summary {
+  margin-top: var(--ac-space-4);
+  padding-top: var(--ac-space-3);
+  border-top: 1px solid var(--ac-color-border-subtle);
+  font-size: var(--ac-text-sm);
+  color: var(--ac-color-text-muted);
+}
+
 .ac-plugin-library-browser-preview {
   flex: 2 1 0;
   min-width: 0;
   overflow-y: auto;
+  background: color-mix(in srgb, var(--ac-color-surface-panel) 88%, transparent);
+  border: 1px solid var(--ac-color-border-subtle);
+  border-radius: var(--ac-radius-lg);
 }
 
 /* =========================================================================

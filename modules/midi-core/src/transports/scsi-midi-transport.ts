@@ -341,7 +341,7 @@ function createScsiSdsChannel(
 
         sdsWs.addEventListener('error', (event) => {
           clearTimeout(stallTimer);
-          reject(new Error(`SDS upload WebSocket error: ${event}`));
+          reject(new Error('SDS upload failed: WebSocket connection lost'));
         });
       });
     },
@@ -439,7 +439,7 @@ function createScsiSdsChannel(
 
         sdsWs.addEventListener('error', (event) => {
           clearTimeout(timeout);
-          reject(new Error(`SDS download WebSocket error: ${event}`));
+          reject(new Error('SDS download failed: WebSocket connection lost'));
         });
 
         sdsWs.addEventListener('close', () => {

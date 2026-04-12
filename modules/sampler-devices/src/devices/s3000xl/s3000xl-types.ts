@@ -162,6 +162,12 @@ export interface S3000xlClientInterface {
   /** Delete a sample from the device by its RSLIST index */
   deleteSample(sampleNumber: number): Promise<void>;
 
+  /** Rename a sample on the device */
+  renameSample(sampleNumber: number, newName: string): Promise<void>;
+
+  /** Rename a program on the device */
+  renameProgram(programNumber: number, newName: string): Promise<void>;
+
   /** Force refresh of sample names from device (invalidates cache and re-fetches) */
   refreshSampleNames(): Promise<string[]>;
 

@@ -7,15 +7,14 @@
  */
 
 import { useState, useCallback } from 'react';
+import { SAVE_DIALOG_CLOSED, type SaveToLibraryDialogState } from '@audiocontrol/editor-core';
 
 // =========================================================================
 // Dialog state types
 // =========================================================================
 
-export interface ExportDialogState {
-  open: boolean;
-  programIndex: number;
-  programName: string;
+export interface ExportDialogState extends SaveToLibraryDialogState {
+  saveToCommonArea?: boolean;
 }
 
 export interface ImportDialogState {
@@ -25,11 +24,7 @@ export interface ImportDialogState {
   targetProgramIndex: number;
 }
 
-const EXPORT_DIALOG_CLOSED: ExportDialogState = {
-  open: false,
-  programIndex: 0,
-  programName: '',
-};
+const EXPORT_DIALOG_CLOSED: ExportDialogState = SAVE_DIALOG_CLOSED;
 
 const IMPORT_DIALOG_CLOSED: ImportDialogState = {
   open: false,
@@ -48,8 +43,12 @@ export interface UseProgramTransferResult {
   /** Current import dialog state */
   importDialog: ImportDialogState;
 
-  /** Open the export dialog for a device program */
+  /** Open the export dialog for a device program (shows confirm phase) */
   openExportDialog: (programIndex: number, programName: string) => void;
+  /** Open the export dialog and start immediately (no confirm phase) */
+  openExportDialogDirect: (programIndex: number, programName: string) => void;
+  /** Open export dialog and save to common area (auto-starts) */
+  openExportDialogToCommonArea: (programIndex: number, programName: string) => void;
   /** Close the export dialog */
   closeExportDialog: () => void;
 
@@ -79,7 +78,23 @@ export function useProgramTransfer(
   const openExportDialog = useCallback(
     (programIndex: number, programName: string) => {
       if (!isDeviceConnected || !hasLibraryRoot) return;
-      setExportDialog({ open: true, programIndex, programName });
+      setExportDialog({ open: true, itemIndex: programIndex, itemName: programName });
+    },
+    [isDeviceConnected, hasLibraryRoot],
+  );
+
+  const openExportDialogDirect = useCallback(
+    (programIndex: number, programName: string) => {
+      if (!isDeviceConnected || !hasLibraryRoot) return;
+      setExportDialog({ open: true, itemIndex: programIndex, itemName: programName, autoStart: true });
+    },
+    [isDeviceConnected, hasLibraryRoot],
+  );
+
+  const openExportDialogToCommonArea = useCallback(
+    (programIndex: number, programName: string) => {
+      if (!isDeviceConnected || !hasLibraryRoot) return;
+      setExportDialog({ open: true, itemIndex: programIndex, itemName: programName, autoStart: true, saveToCommonArea: true });
     },
     [isDeviceConnected, hasLibraryRoot],
   );
@@ -109,6 +124,8 @@ export function useProgramTransfer(
     exportDialog,
     importDialog,
     openExportDialog,
+    openExportDialogDirect,
+    openExportDialogToCommonArea,
     closeExportDialog,
     openImportDialog,
     closeImportDialog,

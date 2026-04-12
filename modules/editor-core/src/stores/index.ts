@@ -19,6 +19,7 @@ export {
   getConnectionMetrics,
   resetConnectionMetrics,
   handleGoogleDriveRedirect,
+  getSavedBackendPreference,
   type LibraryBackend,
   type GoogleDriveCredentials,
   type LibraryConnectionConfig,

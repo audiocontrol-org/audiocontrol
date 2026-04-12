@@ -8,7 +8,7 @@
 import { useState, useEffect } from 'react';
 import type { SamplerTone, SamplerPatch } from '@/core/midi/SamplerClient';
 import type { SetYaml, StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
-import type { ItemSelection } from '@/pages/LibraryPage';
+import type { RolandPageSelection } from '@/pages/LibraryPage';
 import {
   loadToneFromSet,
   loadPatchFromSet,
@@ -22,7 +22,7 @@ import {
 import { formatToneSlot, formatPatchSlot } from '@/lib/s330-format';
 
 interface ItemPreviewPanelProps {
-  selection: ItemSelection | null;
+  selection: RolandPageSelection | null;
   deviceTones: (SamplerTone | undefined)[];
   devicePatches: (SamplerPatch | undefined)[];
   libraryHandle: StorageDirectoryHandle | null;

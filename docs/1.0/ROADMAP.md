@@ -8,9 +8,9 @@ Feature documentation is organized by implementation state:
 |-----------|---------|-------|
 | `0000-INBOUND/` | Feature ideas not yet accepted | 0 |
 | `000-PENDING/` | Accepted, not started | 1 |
-| `001-IN-PROGRESS/` | Active development | 8 |
+| `001-IN-PROGRESS/` | Active development | 7 |
 | `002-BLOCKED/` | Blocked on dependencies | 1 |
-| `003-COMPLETE/` | Implemented | 15 |
+| `003-COMPLETE/` | Implemented | 16 |
 | `004-ARCHIVE/` | Superseded/abandoned | 1 |
 
 ---
@@ -35,7 +35,6 @@ No blockers, can be worked independently.
 | trigger-chopping | Partial | #100 | Verify implementation |
 | chopper-testing-infra | Partial | #98 | E2E test infrastructure |
 | edit-workflow-architecture | ~95% | #61 | Final polish |
-| library-ux | Phase 5+ | #186 | Disk browser, drag-drop, SDS batching done. ASPACK blocked (#184) |
 | continuous-improvement | Phase 1-4 | #187 | Session lifecycle, journal, analyzer, agents/skills |
 
 **Not Started (Ready):**
@@ -77,7 +76,7 @@ Must be completed in order:
 
 Features organized by state. See `docs/1.0/<state>/<slug>/` for details.
 
-### 001-IN-PROGRESS (8)
+### 001-IN-PROGRESS (7)
 
 | Feature | Phase | GitHub | Status |
 |---------|-------|--------|--------|
@@ -90,10 +89,11 @@ Features organized by state. See `docs/1.0/<state>/<slug>/` for details.
 | trigger-chopping | — | #100 | Partial |
 | chopper-testing-infra | — | #98 | Partial |
 
-### 003-COMPLETE (15)
+### 003-COMPLETE (16)
 
 | Feature | Phase | Summary |
 |---------|-------|---------|
+| library-ux | 18 | Library UX alignment, shared components, SCSI disk browser, drag-drop, SDS/ASPACK, visual polish |
 | library-common-area | 1 | Device-agnostic storage |
 | loop-editor | 2 | Loop detection + editing |
 | drum-kit-templates | 3 | Kit creation workflow |

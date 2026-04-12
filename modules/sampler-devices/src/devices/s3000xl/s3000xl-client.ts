@@ -22,6 +22,7 @@ import {
   parseSampleHeader,
   parseMiscellaneousData,
   SampleHeader_writeSHNAME,
+  ProgramHeader_writePRNAME,
 } from '@/devices/s3000xl.js';
 import type { ProgramHeader, KeygroupHeader, SampleHeader, MiscellaneousData } from '@/devices/s3000xl.js';
 import type { S3000xlClientOptions, S3000xlClientInterface } from '@/devices/s3000xl/s3000xl-types.js';
@@ -626,6 +627,22 @@ export function createS3000xlClient(
       await sendCommandWithRetry(AkaiOpcode.DELS, numberTo7bitPair(sampleNumber));
       sampleNamesCache = undefined;
       sampleHeaderCache.clear();
+    },
+
+    async renameSample(sampleNumber: number, newName: string): Promise<void> {
+      const header = await client.fetchSampleHeader(sampleNumber);
+      SampleHeader_writeSHNAME(header, newName);
+      await client.writeSampleHeader(header);
+      sampleNamesCache = undefined;
+      sampleHeaderCache.delete(sampleNumber);
+    },
+
+    async renameProgram(programNumber: number, newName: string): Promise<void> {
+      const header = await client.fetchProgramHeader(programNumber);
+      ProgramHeader_writePRNAME(header, newName);
+      await client.writeProgramHeader(header);
+      programNamesCache = undefined;
+      programHeaderCache.delete(programNumber);
     },
 
     async refreshSampleNames(): Promise<string[]> {

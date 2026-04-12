@@ -28,7 +28,7 @@ import {
   type LibraryPatchInfo,
   type StorageDirectoryHandle,
 } from '@/lib/library-service';
-import type { ItemSelection } from '@/pages/LibraryPage';
+import type { RolandPageSelection } from '@/pages/LibraryPage';
 
 interface CreateDirectoryDialogState {
   category: LibraryCategory;
@@ -61,8 +61,8 @@ interface UseDirectoryOperationsOptions {
   tonesTree: LibraryTreeNode[];
   patchesTree: LibraryTreeNode[];
   // Delete-related deps
-  selection: ItemSelection | null;
-  setSelection: (selection: ItemSelection | null) => void;
+  selection: RolandPageSelection | null;
+  setSelection: (selection: RolandPageSelection | null) => void;
   setIndividualTones: (tones: LibraryToneInfo[]) => void;
   setIndividualPatches: (patches: LibraryPatchInfo[]) => void;
   setTonesTree: (tree: LibraryTreeNode[]) => void;

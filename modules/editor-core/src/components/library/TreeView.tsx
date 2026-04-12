@@ -28,10 +28,14 @@ export interface TreeViewProps {
   expandedIds?: Set<string>;
   /** Called when a directory is toggled. Required if expandedIds is controlled. */
   onToggleExpand?: (nodeId: string) => void;
-  /** Currently selected node ID */
+  /** Currently selected node ID (single selection) */
   selectedId?: string;
-  /** Called when a non-directory node is clicked */
+  /** Set of selected node IDs (multi-selection). Takes precedence over selectedId for highlighting. */
+  selectedIds?: ReadonlySet<string>;
+  /** Called when a non-directory node is clicked (plain click, no modifiers) */
   onSelect?: (node: TreeNode) => void;
+  /** Called when a node is clicked with Ctrl/Cmd or Shift for multi-select */
+  onMultiSelect?: (node: TreeNode, modifiers: { ctrlKey: boolean; shiftKey: boolean }) => void;
   /** Called on right-click with screen position */
   onContextMenu?: (e: React.MouseEvent, node: TreeNode) => void;
   /** Called when something is dropped on a directory node */
@@ -87,6 +91,8 @@ interface TreeNodeRowProps {
   emptyDirectoryMessage: string;
   expandedIds: Set<string>;
   selectedId?: string;
+  selectedIds?: ReadonlySet<string>;
+  onMultiSelect?: (node: TreeNode, modifiers: { ctrlKey: boolean; shiftKey: boolean }) => void;
   onRename?: (node: TreeNode, newName: string) => Promise<void>;
   enableInlineRename?: boolean;
 }
@@ -111,6 +117,8 @@ function TreeNodeRow({
   emptyDirectoryMessage,
   expandedIds,
   selectedId,
+  selectedIds,
+  onMultiSelect,
   onRename,
   enableInlineRename,
 }: TreeNodeRowProps): JSX.Element {
@@ -137,7 +145,14 @@ function TreeNodeRow({
 
   const handleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isEditing) return; // Don't handle clicks while editing
+    if (isEditing) return;
+
+    // Multi-select with Ctrl/Cmd or Shift (non-directory items only)
+    if (!isDirectory && onMultiSelect && (e.ctrlKey || e.metaKey || e.shiftKey)) {
+      onMultiSelect(node, { ctrlKey: e.ctrlKey || e.metaKey, shiftKey: e.shiftKey });
+      return;
+    }
+
     if (isDirectory) {
       onToggleExpand(node.id);
     } else if (hasChildren) {
@@ -146,7 +161,7 @@ function TreeNodeRow({
     } else {
       onSelect?.(node);
     }
-  }, [node, isDirectory, onToggleExpand, onSelect, isEditing]);
+  }, [node, isDirectory, onToggleExpand, onSelect, onMultiSelect, isEditing]);
 
   const handleDoubleClick = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -351,7 +366,7 @@ function TreeNodeRow({
               node={child}
               depth={depth + 1}
               isExpanded={expandedIds.has(child.id)}
-              isSelected={selectedId === child.id}
+              isSelected={selectedIds ? selectedIds.has(child.id) : selectedId === child.id}
               onToggleExpand={onToggleExpand}
               onSelect={onSelect}
               onContextMenu={onContextMenu}
@@ -367,6 +382,8 @@ function TreeNodeRow({
               emptyDirectoryMessage={emptyDirectoryMessage}
               expandedIds={expandedIds}
               selectedId={selectedId}
+              selectedIds={selectedIds}
+              onMultiSelect={onMultiSelect}
               onRename={onRename}
               enableInlineRename={enableInlineRename}
             />
@@ -396,7 +413,9 @@ export function TreeView({
   expandedIds: controlledExpandedIds,
   onToggleExpand: controlledOnToggle,
   selectedId,
+  selectedIds,
   onSelect,
+  onMultiSelect,
   onContextMenu,
   onDrop,
   onDragOver,
@@ -439,7 +458,7 @@ export function TreeView({
           node={node}
           depth={0}
           isExpanded={expandedIds.has(node.id)}
-          isSelected={selectedId === node.id}
+          isSelected={selectedIds ? selectedIds.has(node.id) : selectedId === node.id}
           onToggleExpand={onToggleExpand}
           onSelect={onSelect}
           onContextMenu={onContextMenu}
@@ -455,6 +474,8 @@ export function TreeView({
           emptyDirectoryMessage={emptyDirectoryMessage}
           expandedIds={expandedIds}
           selectedId={selectedId}
+          selectedIds={selectedIds}
+          onMultiSelect={onMultiSelect}
           onRename={onRename}
           enableInlineRename={enableInlineRename}
         />
