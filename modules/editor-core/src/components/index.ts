@@ -52,6 +52,7 @@ export {
   DrumKitPadList,
   LoadingBar,
   SlideDrawer,
+  SteppedProgressDrawer,
   FolderIcon,
   ChevronIcon,
   AudioFileIcon,

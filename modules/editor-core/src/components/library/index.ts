@@ -77,6 +77,12 @@ export {
 export { DrumKitPadList } from './DrumKitPadList';
 export { LoadingBar } from './LoadingBar';
 export { SlideDrawer, type SlideDrawerProps } from './SlideDrawer';
+export {
+  SteppedProgressDrawer,
+  type SteppedProgressDrawerProps,
+  type ProgressStep,
+  type StepStatus,
+} from './SteppedProgressDrawer';
 
 // Plugin interfaces
 export type {
