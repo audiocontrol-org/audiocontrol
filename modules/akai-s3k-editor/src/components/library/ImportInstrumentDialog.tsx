@@ -20,7 +20,7 @@ import {
 } from '@audiocontrol/sampler-library/browser';
 // ProgramYaml used internally by loadProgramMeta return type
 import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
-import { SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';
+import { SteppedProgressDrawer, type ProgressStep, formatBytes } from '@audiocontrol/editor-core';
 import { parseWavFile } from '@/lib/wav-reader';
 import {
   importInstrumentToDevice,
@@ -41,16 +41,6 @@ export interface ImportInstrumentDialogProps {
   libraryRoot: StorageDirectoryHandle;
   deviceSampleNames: string[];
   onImportComplete: () => Promise<void>;
-}
-
-// =========================================================================
-// Helpers
-// =========================================================================
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 // =========================================================================

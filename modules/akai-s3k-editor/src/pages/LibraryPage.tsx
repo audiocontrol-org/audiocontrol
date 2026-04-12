@@ -400,7 +400,8 @@ export function LibraryPage(): JSX.Element {
     } : undefined,
     onDiskItemDrop: canTransfer ? (payload: DiskDragPayload) => {
       const resolved = diskBrowserRef.current?.resolveDragPayload(payload);
-      if (!resolved) return;
+      if (!resolved || !root) return;
+      const libraryRoot = root;
       const name = payload.file.name.trim();
 
       if (isAkaiSample(payload.file.type)) {
@@ -412,7 +413,7 @@ export function LibraryPage(): JSX.Element {
             const noop = () => { /* progress not shown for background save */ };
             await saveToCommonLibrary(
               payload.file, fileData, resolved.partitionData,
-              payload.volumeStartBlock, name, root!, noop,
+              payload.volumeStartBlock, name, libraryRoot, noop,
               resolved.ensureFileBlocks,
             );
             await refreshLibrary();
@@ -431,7 +432,7 @@ export function LibraryPage(): JSX.Element {
             const noop = () => { /* progress not shown for background save */ };
             await saveToCommonLibrary(
               payload.file, fileData, resolved.partitionData,
-              payload.volumeStartBlock, name, root!, noop,
+              payload.volumeStartBlock, name, libraryRoot, noop,
               resolved.ensureFileBlocks,
             );
             await refreshLibrary();
@@ -527,7 +528,8 @@ export function LibraryPage(): JSX.Element {
                 onSaveToLibrary={root ? (file, _targetId, partitionData, volumeStartBlock, ensureFileBlocks) => {
                   setDiskToLibrary({ open: true, file, partitionData, volumeStartBlock, ensureFileBlocks });
                 } : undefined}
-                onSendToDevice={canTransfer ? (file, _targetId, partitionData, volumeStartBlock, ensureFileBlocks) => {
+                onSendToDevice={canTransfer && root ? (file, _targetId, partitionData, volumeStartBlock, ensureFileBlocks) => {
+                  const libraryRoot = root;
                   const name = file.name.trim();
                   (async () => {
                     try {
@@ -535,7 +537,7 @@ export function LibraryPage(): JSX.Element {
                       const noop = () => {};
                       await saveToCommonLibrary(
                         file, fileData, partitionData,
-                        volumeStartBlock, name, root!, noop,
+                        volumeStartBlock, name, libraryRoot, noop,
                         ensureFileBlocks,
                       );
                       await refreshLibrary();

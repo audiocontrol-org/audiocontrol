@@ -26,7 +26,7 @@ import {
 } from '@audiocontrol/sampler-devices/s3k';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import { saveSample, type SampleSavePayload } from '@audiocontrol/sampler-library/browser';
-import { SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';
+import { SteppedProgressDrawer, type ProgressStep, formatBytes } from '@audiocontrol/editor-core';
 import {
   serializeDiskProgram,
 } from '@/lib/program-serialization';
@@ -64,12 +64,6 @@ export interface SaveProgress {
 // =========================================================================
 // Helpers
 // =========================================================================
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
 
 async function writeFile(dir: StorageDirectoryHandle, name: string, data: ArrayBuffer | string): Promise<void> {
   const handle = await dir.getFileHandle(name, { create: true });

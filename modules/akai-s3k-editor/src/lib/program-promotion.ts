@@ -198,8 +198,8 @@ export async function promoteToCommonArea(
   const safeName = sanitizeForFilename(outputName);
 
   // 3. Create the common-area program directory
-  const commonSamplesDir = await getNestedDirectory(libraryRoot, ['library', 'common', 'samples']);
-  const programDir = await commonSamplesDir.getDirectoryHandle(safeName, { create: true });
+  const commonProgramsDir = await getNestedDirectory(libraryRoot, ['library', 'common', 'programs']);
+  const programDir = await commonProgramsDir.getDirectoryHandle(safeName, { create: true });
 
   // 4. Save program.yaml
   const programYaml = {

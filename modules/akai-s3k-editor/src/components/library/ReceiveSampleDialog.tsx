@@ -11,7 +11,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import type { StorageDirectoryHandle } from '@audiocontrol/sampler-library/browser';
 import { saveSample, type SampleYaml } from '@audiocontrol/sampler-library/browser';
 import type { S3000xlClientInterface } from '@audiocontrol/sampler-devices/s3k';
-import { SteppedProgressDrawer, type ProgressStep } from '@audiocontrol/editor-core';
+import { SteppedProgressDrawer, type ProgressStep, formatBytes } from '@audiocontrol/editor-core';
 import { useSampleTransfer, type SdsReceiveResult } from '@/hooks/useSampleTransfer';
 import { buildWavFile } from '@/lib/wav-writer';
 
@@ -61,12 +61,6 @@ function makeSampleYaml(
   }
 
   return yaml;
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 // =========================================================================
