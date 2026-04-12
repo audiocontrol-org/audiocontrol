@@ -452,9 +452,14 @@ Phase 17 (drag-to-move & multi-select) — COMPLETE
   with Ctrl/Shift, batch delete/move, batch context menu, multi-select
   preview panel. Touch long-press deferred.
 
-Phase 18 (visual polish & drawers) — PLANNED
-  Column separation, consistent headers, slide-over drawers replacing
-  modal dialogs, preview panel layout, connection bar integration.
+Phase 18 (visual polish & drawers) — IN PROGRESS
+  Done: panel headers, preview column styling, SlideDrawer component,
+  MoveDialog/CreateFolder migrated to drawers, ImportInstrumentDialog
+  migrated, inline error banner, category-aware filesystem routing,
+  save device programs to common area, sanitizeForFilename underscore
+  convention with backward-compatible fallback.
+  Remaining: migrate SendSample/ReceiveSample/ExportProgram/ImportProgram
+  dialogs to drawers.
   See: docs/1.0/001-IN-PROGRESS/library-ux/phase-18-visual-polish-drawers.md
 ```
 

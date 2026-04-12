@@ -11,6 +11,63 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-11: Visual Polish, SlideDrawer, Program Save Fixes (Session 4)
+
+### Feature: library-ux
+### Worktree: audiocontrol-library-ux
+
+### Goal
+Implement Phase 18 (visual polish, slide-over drawers) and fix program save/import bugs found during testing.
+
+### Accomplished
+- Merged latest main into feature branch, resolved conflicts (a4ba63bb)
+- Consistent panel headers across all four columns — new `ac-panel-header` CSS class (e6c1a5cf)
+- Preview panel gets background/border matching other columns (e6c1a5cf)
+- Library column header integrates connection status + refresh button (e6c1a5cf)
+- SlideDrawer component in editor-core — slides from right with backdrop and transition (626f658d)
+- MoveDialog migrated to SlideDrawer (4a20fc9d)
+- CreateFolderDialog migrated to SlideDrawer, replaced window.prompt (3a7f3091)
+- ImportInstrumentDialog migrated to SlideDrawer (ff5c5426)
+- Category-aware filesystem routing — create/move/delete/batch ops route to correct root based on categoryId (56f7217d)
+- Inline error banner replaces full-page error takeover (56f7217d)
+- Removed window.confirm from library delete (8b15f2b7)
+- Import-instrument passes fromProgramsDir based on category (ff5c5426)
+- Save device programs to common area — converts S3K keygroups to zones (1815ceb6)
+- sanitizeForFilename converts spaces to underscores (akaitools convention) with backward-compatible fallback (380afbab, 48e119c3)
+- Auto-reload disk data when partition cache is missing after page reload (b74e12c6)
+- Actionable error messages for NotFoundError (db912448)
+- Disk browser restores both common and Akai library save options for programs (a5107a0b)
+
+### Didn't Work
+- sanitizeForFilename space→underscore change broke lookups for existing directories. Had to add fallback to raw trimmed name for backward compatibility.
+- Removed "Save to Common Library" from disk browser programs when the capability existed — just wasn't wired correctly. Removed the option instead of fixing the code.
+- Multiple rounds of debugging fromProgramsDir: preview panel hardcoded `false`, context menu handler didn't pass it through, effect deps didn't include it.
+
+### Course Corrections
+- [PROCESS] Agent removed "Save to Common Library" from disk browser instead of fixing the save path. User: "Why can't I save a program from the Akai device to the common area?" The code existed — agent just hadn't traced the full flow.
+- [PROCESS] Agent assumed "stale data" caused the import error without reading the code. User: "Why do you think the error is from stale data?" — forced proper investigation.
+- [UX] Error message "The object can not be found here" was the raw browser NotFoundError. User: "Did you make the user-facing error more informative?" — needed explicit prompt to fix.
+- [UX] No console logging for import errors — user reported "there's no error in the log". Errors were caught and displayed but never logged.
+- [UX] Modal dialogs throughout — user: "so 1995 to have modal dialogs popping up all over the place." Shifted to slide-over drawer pattern.
+- [UX] Delete used window.confirm — user showed screenshot of native browser dialog.
+- [UX] Create folder used window.prompt — user showed screenshot of native browser dialog.
+- [UX] Error display took over entire library view — user: "this is a weird way to present errors."
+- [DOCUMENTATION] Agent tried to implement Phase 18 without documenting plan first (corrected in Session 3, repeated pattern awareness needed).
+
+### Quantitative
+- User messages: ~40
+- Commits: 18
+- User corrections: 9
+
+### Insights
+1. **Trace the full data flow before claiming a fix.** The `fromProgramsDir` flag had to be passed through 5 layers (context menu → strategy → transfer callback → dialog state → dialog component → library function). Missing it at any layer caused silent failure.
+2. **sanitizeForFilename changes are migration events.** Changing how filenames are generated breaks all existing lookups. Always add a fallback for the old naming convention.
+3. **The `saveToCommonLibrary` function already existed** — the disk browser had a working common-area save for programs. The agent removed the menu option instead of checking the code. "The code exists — I just hadn't traced the full flow" is a pattern to watch for.
+4. **Every catch block should log.** The import error was caught and displayed to the user but never logged to console. The user had to report "nothing in the log" before the agent added logging.
+5. **Slide-over drawers are a clear UX win** over centered modals for library operations — the tree stays visible and interactive.
+
+---
+
 ## 2026-04-11: Orchestrator Agent Implementation
 
 ### Feature: orchestrator-agent

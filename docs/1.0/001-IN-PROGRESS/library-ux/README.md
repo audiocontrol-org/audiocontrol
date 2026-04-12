@@ -60,7 +60,7 @@ Align and improve library page UX across both the Roland S-330/S-550 editor and 
 | Phase 15: Context menu parity | Complete | Transfer actions, device memory context menus, disk browser Send to Device |
 | Phase 16: Contract enforcement | Complete | Capability-declared menus, compiler-enforced contracts, 12 unit tests |
 | Phase 17: Drag-to-move & multi-select | Complete | Move to folders, multi-select, batch delete/move |
-| Phase 18: Visual polish & drawers | Planned | Column separation, headers, slide-over drawers |
+| Phase 18: Visual polish & drawers | In Progress | Panel headers, SlideDrawer, MoveDialog/CreateFolder migrated, program save-to-common |
 
 ## Related Issues
 
