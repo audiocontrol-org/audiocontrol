@@ -10,6 +10,7 @@ interface ProgramListProps {
   onRename?: (index: number, newName: string) => Promise<void>;
   onClone?: (index: number) => void;
   onRefresh?: (index: number) => void;
+  onRefreshAll?: () => void;
   isLoading: boolean;
 }
 
@@ -48,6 +49,7 @@ export function ProgramList({
   onRename,
   onClone,
   onRefresh,
+  onRefreshAll,
   isLoading,
 }: ProgramListProps): JSX.Element {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
@@ -92,8 +94,18 @@ export function ProgramList({
   if (isLoading) {
     return (
       <div className="card p-2">
-        <div className="px-2 py-1 mb-2">
+        <div className="px-2 py-1 mb-2 flex items-center justify-between">
           <span className="text-sm font-medium text-gray-300">Programs</span>
+          {onRefreshAll && (
+            <button
+              onClick={onRefreshAll}
+              disabled={isLoading}
+              className="text-gray-500 hover:text-gray-200 disabled:opacity-50 transition-colors p-0.5 rounded"
+              title="Reload all programs from device"
+            >
+              <RefreshIcon />
+            </button>
+          )}
         </div>
         <div className="ac-scroll-list flex items-center justify-center py-8">
           <span className="text-sm text-gray-500">Loading programs...</span>
@@ -105,8 +117,18 @@ export function ProgramList({
   if (programNames.length === 0) {
     return (
       <div className="card p-2">
-        <div className="px-2 py-1 mb-2">
+        <div className="px-2 py-1 mb-2 flex items-center justify-between">
           <span className="text-sm font-medium text-gray-300">Programs</span>
+          {onRefreshAll && (
+            <button
+              onClick={onRefreshAll}
+              disabled={isLoading}
+              className="text-gray-500 hover:text-gray-200 disabled:opacity-50 transition-colors p-0.5 rounded"
+              title="Reload all programs from device"
+            >
+              <RefreshIcon />
+            </button>
+          )}
         </div>
         <div className="ac-scroll-list flex items-center justify-center py-8">
           <span className="text-sm text-gray-500">No programs loaded</span>

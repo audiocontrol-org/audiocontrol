@@ -13,7 +13,7 @@ import { ErrorBanner } from '@/components/ui';
 
 export function ProgramsPage(): JSX.Element {
   const { client, isConnected } = useS3000xlClient();
-  const { loadProgramNames, loadProgram, loadAllPrograms } = useProgramLoader(client);
+  const { loadProgramNames, loadProgram } = useProgramLoader(client);
   const { loadKeygroups } = useKeygroupLoader(client);
 
   const programNames = useProgramStore((s) => s.programNames);
@@ -309,34 +309,12 @@ export function ProgramsPage(): JSX.Element {
       <div className="ac-page-sticky-header">
         <div className="ac-page-header flex items-center justify-between">
           <h2 className="text-xl font-bold">Programs</h2>
-          <div className="flex items-center gap-2">
-            {isLoading && (
-              <span className="text-sm text-gray-400" data-testid="loading-status">
-                {loadingMessage}
-                {loadingProgress !== null && ` (${loadingProgress}%)`}
-              </span>
-            )}
-            <button
-              className="ac-btn ac-btn-sm ac-btn-secondary"
-              onClick={() => {
-                useProgramStore.getState().invalidateCache();
-                if (client) client.invalidateProgramCache();
-                lastLoadedKeygroupProgram.current = null;
-                invalidateKeygroupCache();
-                loadProgramNames();
-              }}
-              disabled={isLoading}
-            >
-              Refresh
-            </button>
-            <button
-              className="ac-btn ac-btn-sm ac-btn-primary"
-              onClick={loadAllPrograms}
-              disabled={isLoading || programNames.length === 0}
-            >
-              Load All
-            </button>
-          </div>
+          {isLoading && (
+            <span className="text-sm text-gray-400" data-testid="loading-status">
+              {loadingMessage}
+              {loadingProgress !== null && ` (${loadingProgress}%)`}
+            </span>
+          )}
         </div>
       </div>
 
@@ -352,6 +330,13 @@ export function ProgramsPage(): JSX.Element {
             onRename={(index, newName) => handleRenameProgram(index, newName)}
             onClone={(index) => void handleCloneProgram(index)}
             onRefresh={(index) => void handleRefreshProgram(index)}
+            onRefreshAll={() => {
+              useProgramStore.getState().invalidateCache();
+              if (client) client.invalidateProgramCache();
+              lastLoadedKeygroupProgram.current = null;
+              invalidateKeygroupCache();
+              loadProgramNames();
+            }}
             isLoading={isLoading && !namesLoaded}
           />
         </div>
