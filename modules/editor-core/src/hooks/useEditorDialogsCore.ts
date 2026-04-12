@@ -30,7 +30,6 @@ import {
   createWav,
   getNestedDirectory,
   sanitizeForFilename,
-  type SampleYaml,
   type ProgramYaml,
   type Zone,
   type TriggerMapping,
@@ -89,13 +88,6 @@ export interface EditorDialogStrategy {
     nodeType: string,
     path?: string[],
   ): Promise<WavData | null>;
-
-  /**
-   * @deprecated Use transformChopperProgram instead.
-   * Transform chopper save YAML before writing to common area.
-   */
-  transformChopperYaml?(yaml: SampleYaml): SampleYaml;
-
   /**
    * Transform the program built from chopper output before saving.
    * Use to inject device-specific zone metadata (e.g., S3K drum kit
