@@ -238,6 +238,7 @@
 
   .s3k-envelope-display {
     width: 100%;
+    height: auto;
     display: block;
   }
 

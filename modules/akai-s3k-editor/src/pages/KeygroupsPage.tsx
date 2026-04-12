@@ -60,7 +60,9 @@ export function KeygroupsPage(): JSX.Element {
     async (field: string, value: number | string) => {
       if (selectedKeygroupIndex === null || !client) return;
 
-      const header = keygroups[selectedKeygroupIndex];
+      // Read from getState() not the closure — multiple calls in the same
+      // tick must each see the previous call's update.
+      const header = useKeygroupStore.getState().keygroups[selectedKeygroupIndex];
       if (!header) return;
 
       // Update local store optimistically

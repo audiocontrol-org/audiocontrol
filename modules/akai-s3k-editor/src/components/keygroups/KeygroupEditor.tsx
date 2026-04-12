@@ -102,7 +102,7 @@ export function KeygroupEditor({
             <MultiPointEnvelopeDisplay
               rates={[header.ENV2R1, header.ENV2R2, header.ENV2R3, header.ENV2R4]}
               levels={[header.ENV2L1, header.ENV2L2, header.ENV2L3, header.ENV2L4]}
-              onChange={(field, value) => onParameterChange(field, value)}
+              onChange={(changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
             />
           }
         >
@@ -132,7 +132,7 @@ export function KeygroupEditor({
               decay={header.DECAY1}
               sustain={header.SUSTN1}
               release={header.RELSE1}
-              onChange={(field, value) => onParameterChange(field, value)}
+              onChange={(changes) => { for (const [f, v] of Object.entries(changes)) onParameterChange(f, v); }}
             />
           }
         >
