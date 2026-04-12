@@ -9,7 +9,8 @@ Compiler-enforced contracts and design system documentation to reduce agent corr
 | Phase 1: Audit | Complete | 55 violations found — see [phase1-audit.md](./phase1-audit.md) |
 | Phase 2: Compiler Contracts | Complete | StrategyResult, capability interfaces, tree callback refactor |
 | Phase 3: Design System Documentation | Complete | DESIGN-SYSTEM.md + CLAUDE.md pointer |
-| Phase 4: Fix Violations | Complete | Merged to main via PR #249. 11 architectural dedup items deferred. |
+| Phase 4: Fix Violations | Complete | Merged to main via PR #249 |
+| Phase 5: Architectural Type Dedup | Not Started | 11 items: 5 high, 6 medium severity |
 
 ## Links
 
