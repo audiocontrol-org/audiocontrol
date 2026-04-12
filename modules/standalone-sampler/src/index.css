@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root[data-editor='standalone-sampler'] {
+  --ac-bg-primary: #1a1a2e;
+  --ac-bg-panel: #16213e;
+  --ac-text-primary: #e0e0e0;
+  --ac-text-muted: #8a8a9a;
+  --ac-highlight: #0f3460;
+  --ac-status-selected: #e94560;
+  --ac-border: #2a2a4a;
+}
