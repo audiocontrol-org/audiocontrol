@@ -520,8 +520,8 @@ export function PluginLibraryBrowser({
           label: `Delete ${count} items`,
           danger: true,
           onClick: () => {
-            const confirmed = window.confirm(`Delete ${count} items? This cannot be undone.`);
-            if (!confirmed) return;
+            // Batch delete is triggered from a context menu — the user already
+            // chose "Delete N items" deliberately. No second confirmation needed.
             const data = categoryData[categoryId] ?? [];
             const allNodes = flattenAllNodes(data);
             const selected = allNodes.filter((n) => multiSelectedIds.has(n.id));

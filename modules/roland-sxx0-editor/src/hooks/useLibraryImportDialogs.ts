@@ -96,16 +96,16 @@ export function useLibraryImportDialogs({
   }, [selection, resetProgress]);
 
   const handleDropLibraryTone = useCallback((data: LibraryDragData, targetSlot: number) => {
-    if (!libraryHandle || !clientRef.current) { window.alert('Library or device not connected'); return; }
-    if (data.type !== 'tone') { window.alert('Can only drop tones on tone slots'); return; }
+    if (!libraryHandle || !clientRef.current) { throw new Error('Library or device not connected'); }
+    if (data.type !== 'tone') { throw new Error('Can only drop tones on tone slots'); }
     resetProgress();
     if (data.setName && data.toneFile) setImportToneDialog({ setName: data.setName, toneFile: data.toneFile, initialTargetSlot: targetSlot });
     else setImportToneDialog({ setName: '__individual__', toneFile: data.name, initialTargetSlot: targetSlot });
   }, [libraryHandle, clientRef, resetProgress]);
 
   const handleDropLibraryPatch = useCallback((data: LibraryDragData, targetSlot: number) => {
-    if (!libraryHandle || !clientRef.current) { window.alert('Library or device not connected'); return; }
-    if (data.type !== 'patch') { window.alert('Can only drop patches on patch slots'); return; }
+    if (!libraryHandle || !clientRef.current) { throw new Error('Library or device not connected'); }
+    if (data.type !== 'patch') { throw new Error('Can only drop patches on patch slots'); }
     resetProgress();
     if (data.setName && data.patchFile) setImportPatchDialog({ setName: data.setName, patchFile: data.patchFile, initialTargetSlot: targetSlot });
     else setImportPatchDialog({ setName: '__individual__', patchFile: data.name, patchPath: data.path, initialTargetSlot: targetSlot });

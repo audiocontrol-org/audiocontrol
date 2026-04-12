@@ -61,7 +61,7 @@ export function useRolandLibraryStrategy({
 }: UseRolandLibraryStrategyOptions): UseRolandLibraryStrategyResult {
 
   const handleDeleteSet = useCallback(async (setName: string) => {
-    if (!libraryHandle || !window.confirm(`Delete set "${setName}"? This cannot be undone.`)) return;
+    if (!libraryHandle) return;
     await deleteSet(libraryHandle, setName);
     if (selection?.type === 'set' && selection.name === setName) setSelection(null);
   }, [libraryHandle, selection, setSelection]);

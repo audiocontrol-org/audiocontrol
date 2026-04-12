@@ -6,7 +6,7 @@
  * import from the library tree.
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { LIBRARY_ITEM_MIME, LoadingBar, ContextMenu, type LibraryDragPayload, type ContextMenuAction } from '@audiocontrol/editor-core';
 import { DISK_ITEM_MIME, type DiskDragPayload } from '@/components/library/DiskBrowserPanel';
 
@@ -42,6 +42,49 @@ interface DeviceMemoryPanelProps {
   isLoading: boolean;
 }
 
+/** Inline text input for renaming device memory items. */
+function InlineRenameInput({
+  value,
+  onChange,
+  onSubmit,
+  onCancel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onSubmit: (value: string) => void;
+  onCancel: () => void;
+}) {
+  const handleRef = useCallback((el: HTMLInputElement | null) => {
+    if (el) {
+      el.focus();
+      el.select();
+    }
+  }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      onSubmit(value);
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      onCancel();
+    }
+  }, [value, onSubmit, onCancel]);
+
+  return (
+    <input
+      ref={handleRef}
+      type="text"
+      className="flex-1 bg-gray-800 text-gray-100 text-sm px-1 py-0 border border-blue-500 rounded outline-none"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={handleKeyDown}
+      onBlur={() => onSubmit(value)}
+      onClick={(e) => e.stopPropagation()}
+    />
+  );
+}
+
 function NameList({
   title,
   names,
@@ -67,6 +110,8 @@ function NameList({
 }) {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; index: number } | null>(null);
   const [deletingIndex, setDeletingIndex] = useState<number | null>(null);
+  const [renamingIndex, setRenamingIndex] = useState<number | null>(null);
+  const [renameValue, setRenameValue] = useState('');
 
   if (names.length === 0) {
     return (
@@ -110,7 +155,21 @@ function NameList({
                 }}
               >
                 <span className={`mr-2 tabular-nums ${isDeleting ? 'text-gray-600' : isSelected ? 'text-blue-200' : 'text-gray-500'}`}>{index}:</span>
-                <span className="flex-1 truncate">{isDeleting ? `Deleting ${name}...` : name}</span>
+                {renamingIndex === index && onRename ? (
+                  <InlineRenameInput
+                    value={renameValue}
+                    onChange={setRenameValue}
+                    onSubmit={(newName) => {
+                      if (newName.trim() && newName.trim() !== name) {
+                        onRename(index, newName.trim());
+                      }
+                      setRenamingIndex(null);
+                    }}
+                    onCancel={() => setRenamingIndex(null)}
+                  />
+                ) : (
+                  <span className="flex-1 truncate">{isDeleting ? `Deleting ${name}...` : name}</span>
+                )}
                 {onDelete && !isDeleting && (
                   <span
                     role="button"
@@ -155,7 +214,10 @@ function NameList({
           if (actions.length > 0) {
             actions.push({ label: '', onClick: () => {}, separator: true });
           }
-          actions.push({ label: 'Rename', onClick: () => onRename(contextMenu.index, name) });
+          actions.push({ label: 'Rename', onClick: () => {
+            setRenamingIndex(contextMenu.index);
+            setRenameValue(name);
+          } });
         }
         if (onDelete) {
           if (actions.length > 0 && !onRename) {
