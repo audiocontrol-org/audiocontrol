@@ -4,8 +4,18 @@
 
 | Item | Link |
 |------|------|
-| Parent Issue | TBD |
+| Parent Issue | #216 |
 | Milestone | TBD |
+
+### Implementation Issues
+
+| Phase | Issue | Description |
+|-------|-------|-------------|
+| Phase 1 | #217 | Audit S3K SysEx CRUD support and Roland editor patterns |
+| Phase 2 | #218 | Implement unified program editor with CRUD and parameter grouping |
+| Phase 3 | #219 | Build keygroup CRUD and visual zone mapping UI |
+| Phase 4 | #220 | Add multi-editor for side-by-side program editing |
+| Phase 5 | #221 | Polish layout and extract shared components to editor-core |
 
 ## Technical Approach
 

@@ -20,4 +20,4 @@ Restructure the Akai S3000XL editor from memory-oriented pages to workflow-orien
 | Worktree | `~/work/audiocontrol-work/audiocontrol-akai-ux-improvement` |
 | PRD | [prd.md](./prd.md) |
 | Workplan | [workplan.md](./workplan.md) |
-| Parent Issue | TBD |
+| Parent Issue | [#216](https://github.com/audiocontrol-org/audiocontrol/issues/216) |
