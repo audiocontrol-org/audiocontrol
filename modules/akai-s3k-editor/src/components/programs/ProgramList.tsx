@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { DeleteIcon, RenameIcon, CloneIcon, RefreshIcon } from '@audiocontrol/editor-core';
+import { DeleteIcon, CloneIcon, RefreshIcon } from '@audiocontrol/editor-core';
 import { cn } from '@/lib/utils';
 
 interface ProgramListProps {
@@ -7,7 +7,7 @@ interface ProgramListProps {
   selectedIndex: number | null;
   onSelect: (index: number) => void;
   onDelete?: (index: number) => void;
-  onRename?: (index: number, newName: string) => void;
+  onRename?: (index: number, newName: string) => Promise<void>;
   onClone?: (index: number) => void;
   onRefresh?: (index: number) => void;
   isLoading: boolean;
@@ -52,32 +52,42 @@ export function ProgramList({
 }: ProgramListProps): JSX.Element {
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValue, setEditValue] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (editingIndex !== null && inputRef.current) {
+    if (editingIndex !== null && !isSaving && inputRef.current) {
       inputRef.current.focus();
       inputRef.current.select();
     }
-  }, [editingIndex]);
+  }, [editingIndex, isSaving]);
 
   const startRename = useCallback((index: number) => {
+    if (isSaving) return;
     setEditingIndex(index);
     setEditValue(programNames[index] ?? '');
-  }, [programNames]);
+  }, [programNames, isSaving]);
 
-  const commitRename = useCallback(() => {
-    if (editingIndex === null) return;
+  const commitRename = useCallback(async () => {
+    if (editingIndex === null || isSaving) return;
     const trimmed = editValue.trim();
-    if (trimmed && trimmed !== programNames[editingIndex]?.trim() && onRename) {
-      onRename(editingIndex, trimmed);
+    if (!trimmed || trimmed === programNames[editingIndex]?.trim() || !onRename) {
+      setEditingIndex(null);
+      return;
     }
-    setEditingIndex(null);
-  }, [editingIndex, editValue, programNames, onRename]);
+    setIsSaving(true);
+    try {
+      await onRename(editingIndex, trimmed);
+    } finally {
+      setIsSaving(false);
+      setEditingIndex(null);
+    }
+  }, [editingIndex, editValue, programNames, onRename, isSaving]);
 
   const cancelRename = useCallback(() => {
+    if (isSaving) return;
     setEditingIndex(null);
-  }, []);
+  }, [isSaving]);
 
   if (isLoading) {
     return (
@@ -127,6 +137,7 @@ export function ProgramList({
               <button
                 data-testid={`program-item-${index}`}
                 onClick={() => onSelect(index)}
+                onDoubleClick={() => { if (onRename && !isEmpty) startRename(index); }}
                 className={cn(
                   'w-full px-3 py-2 rounded text-left text-sm transition-colors',
                   'hover:bg-gray-700/50',
@@ -145,17 +156,23 @@ export function ProgramList({
                     <input
                       ref={inputRef}
                       type="text"
-                      value={editValue}
+                      value={isSaving ? `${editValue.trim()}…` : editValue}
                       maxLength={12}
+                      readOnly={isSaving}
                       onChange={(e) => setEditValue(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') commitRename();
+                        if (e.key === 'Enter') void commitRename();
                         if (e.key === 'Escape') cancelRename();
                         e.stopPropagation();
                       }}
-                      onBlur={commitRename}
+                      onBlur={() => void commitRename()}
                       onClick={(e) => e.stopPropagation()}
-                      className="flex-1 min-w-0 bg-gray-900 border border-blue-500 rounded px-1.5 py-0.5 text-sm text-gray-200 font-mono uppercase outline-none"
+                      className={cn(
+                        'flex-1 min-w-0 rounded px-1.5 py-0.5 text-sm font-mono uppercase outline-none',
+                        isSaving
+                          ? 'bg-gray-800 border border-gray-600 text-gray-400'
+                          : 'bg-gray-900 border border-blue-500 text-gray-200',
+                      )}
                     />
                   ) : (
                     <span
@@ -175,14 +192,6 @@ export function ProgramList({
                       title="Reload from device"
                     >
                       <RefreshIcon />
-                    </ActionButton>
-                  )}
-                  {onRename && (
-                    <ActionButton
-                      onClick={(e) => { e.stopPropagation(); startRename(index); }}
-                      title="Rename program"
-                    >
-                      <RenameIcon />
                     </ActionButton>
                   )}
                   {onClone && (

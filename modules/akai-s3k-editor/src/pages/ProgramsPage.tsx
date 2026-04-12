@@ -48,6 +48,13 @@ export function ProgramsPage(): JSX.Element {
     }
   }, [isConnected, namesLoaded, loadProgramNames]);
 
+  // Auto-select first program once names are loaded
+  useEffect(() => {
+    if (namesLoaded && selectedProgramIndex === null && programNames.length > 0) {
+      selectProgram(0);
+    }
+  }, [namesLoaded, selectedProgramIndex, programNames.length, selectProgram]);
+
   // Load selected program header when selection changes
   useEffect(() => {
     if (selectedProgramIndex === null || !client) return;
@@ -164,13 +171,27 @@ export function ProgramsPage(): JSX.Element {
   const handleRenameProgram = useCallback(async (index: number, newName: string) => {
     if (!client) return;
     try {
+      // Optimistic update: show new name immediately
+      const names = [...useProgramStore.getState().programNames];
+      names[index] = newName.padEnd(12);
+      useProgramStore.getState().setProgramNames(names);
+
+      // Update the cached header if loaded
+      const header = useProgramStore.getState().programs[index];
+      if (header) {
+        useProgramStore.getState().setProgram(index, { ...header, PRNAME: newName.padEnd(12), raw: [...header.raw] });
+      }
+
+      // Send to device
       await client.renameProgram(index, newName);
       client.invalidateProgramCache();
-      useProgramStore.getState().invalidateCache();
-      await loadProgramNames();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to rename program';
       useEditorStore.getState().setError(message);
+      // Revert: reload from device
+      client.invalidateProgramCache();
+      useProgramStore.getState().invalidateCache();
+      await loadProgramNames();
     }
   }, [client, loadProgramNames]);
 
@@ -300,7 +321,7 @@ export function ProgramsPage(): JSX.Element {
             selectedIndex={selectedProgramIndex}
             onSelect={selectProgram}
             onDelete={(index) => setDeletingProgramIndex(index)}
-            onRename={(index, newName) => void handleRenameProgram(index, newName)}
+            onRename={(index, newName) => handleRenameProgram(index, newName)}
             onClone={(index) => void handleCloneProgram(index)}
             onRefresh={(index) => void handleRefreshProgram(index)}
             isLoading={isLoading && !namesLoaded}
