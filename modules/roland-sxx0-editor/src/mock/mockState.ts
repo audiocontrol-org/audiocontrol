@@ -1,6 +1,6 @@
 import type { S330Patch, S330Tone } from '@/core/midi/S330Client';
 import { useDeviceDataStore } from '@/stores/deviceDataStore';
-import { useS330Store } from '@/stores/editorStore';
+import { useEditorStore } from '@/stores/editorStore';
 
 const MOCK_PATCH_NAMES = [
   'MINI',
@@ -45,7 +45,7 @@ function createMockTone(name: string): S330Tone {
 
 export function seedS330MockState(): void {
   const deviceData = useDeviceDataStore.getState();
-  const ui = useS330Store.getState();
+  const ui = useEditorStore.getState();
 
   // Avoid clobbering after initial seed.
   if (deviceData.patches.length > 0 || deviceData.tones.length > 0) return;
