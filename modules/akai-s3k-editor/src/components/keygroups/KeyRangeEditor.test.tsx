@@ -111,4 +111,23 @@ describe('KeyRangeEditor', () => {
     expect(highSlider).toHaveAttribute('aria-valuemin', '0');
     expect(highSlider).toHaveAttribute('aria-valuemax', '127');
   });
+
+  it('uses the shared visible range when provided', () => {
+    const onChange = vi.fn();
+
+    render(
+      <KeyRangeEditor
+        lowNote={36}
+        highNote={72}
+        onChange={onChange}
+        visibleRange={{ min: 32, max: 88 }}
+      />,
+    );
+
+    const fill = screen.getByTestId('key-range-fill');
+    expect(fill).toHaveStyle({
+      left: '7.017543859649122%',
+      width: '64.91228070175438%',
+    });
+  });
 });

@@ -5,6 +5,7 @@ import { MultiProgramPage } from '@/pages/MultiProgramPage';
 import { KeygroupsPage } from '@/pages/KeygroupsPage';
 import { LibraryPage } from '@/pages/LibraryPage';
 import { SamplesPage } from '@/pages/SamplesPage';
+import { DraggableZonesHarnessPage } from '@/pages/harness/DraggableZonesHarnessPage';
 
 export function App() {
   return (
@@ -16,6 +17,10 @@ export function App() {
         <Route path="/akai/s3000xl/editor/keygroups" element={<KeygroupsPage />} />
         <Route path="/akai/s3000xl/editor/samples" element={<SamplesPage />} />
         <Route path="/akai/s3000xl/editor/library" element={<LibraryPage />} />
+        <Route
+          path="/akai/s3000xl/editor/harness/draggable-zones"
+          element={<DraggableZonesHarnessPage />}
+        />
         <Route path="*" element={<Navigate to="/akai/s3000xl/editor/programs" replace />} />
       </Routes>
     </Layout>

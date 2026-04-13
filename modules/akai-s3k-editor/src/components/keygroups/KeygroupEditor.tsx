@@ -3,6 +3,7 @@ import { ParamKnob, ParamToggle } from '@/components/ui/ParamKnob';
 import { formatMidiNote } from '@/lib/midi-note-parser';
 import { VelocityZoneEditor } from '@/components/keygroups/VelocityZoneEditor';
 import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
+import type { NoteCoordinateRange } from '@/components/keygroups/note-coordinate';
 import { AdsrDisplay, MultiPointEnvelopeDisplay } from '@/components/keygroups/AdsrDisplay';
 
 interface KeygroupEditorProps {
@@ -10,6 +11,7 @@ interface KeygroupEditorProps {
   keygroupIndex: number;
   sampleNames: string[];
   onParameterChange: (field: string, value: number | string) => void;
+  visibleRange?: NoteCoordinateRange;
 }
 
 function Section({
@@ -37,6 +39,7 @@ export function KeygroupEditor({
   keygroupIndex,
   sampleNames,
   onParameterChange,
+  visibleRange,
 }: KeygroupEditorProps): JSX.Element {
   const num = (field: string) => (value: number) =>
     onParameterChange(field, value);
@@ -60,6 +63,7 @@ export function KeygroupEditor({
               lowNote={header.LONOTE}
               highNote={header.HINOTE}
               onChange={(field, value) => onParameterChange(field, value)}
+              visibleRange={visibleRange}
             />
           </div>
           <ParamKnob

@@ -49,6 +49,9 @@ This feature extends the current Akai S3000XL keygroup editing surfaces with dir
 | `modules/akai-s3k-editor/src/components/keygroups/note-coordinate.ts` | Shared note mapping utility |
 | `modules/akai-s3k-editor/src/components/keygroups/useZoneDrag.ts` | Shared drag interaction helper |
 | `modules/akai-s3k-editor/src/components/keygroups/zone-constraints.ts` | Centralized clamping and overlap rules |
+| `modules/akai-s3k-editor/src/pages/harness/DraggableZonesHarnessPage.tsx` | Browser-only feature harness for isolated UI iteration |
+| `modules/akai-s3k-editor/src/pages/harness/draggable-zone-fixtures.ts` | Realistic local fixtures for harness scenarios |
+| `modules/akai-s3k-editor/e2e/library-draggable-zones-harness.spec.ts` | Playwright coverage for the isolated browser harness |
 
 ## Implementation Phases
 
@@ -57,10 +60,12 @@ This feature extends the current Akai S3000XL keygroup editing surfaces with dir
 **Goal:** Align `ZoneOverview` and `KeyRangeEditor` horizontally using one note mapping model.
 
 **Tasks:**
-- [ ] Extract shared note coordinate logic from the existing components
-- [ ] Update `ZoneOverview` to use the shared mapping
-- [ ] Update `KeyRangeEditor` to use the shared mapping
-- [ ] Add tests proving alignment behavior
+- [x] Extract shared note coordinate logic from the existing components
+- [x] Update `ZoneOverview` to use the shared mapping
+- [x] Update `KeyRangeEditor` to use the shared mapping
+- [x] Add tests proving alignment behavior
+- [x] Add a browser-only harness route and fixtures for isolated UI iteration
+- [x] Add a Playwright harness spec that exercises the feature without hardware
 
 **Acceptance:** Both components use identical note-position calculations, and the same note values line up visually between the overview and detail editor.
 
@@ -102,7 +107,13 @@ This feature extends the current Akai S3000XL keygroup editing surfaces with dir
 
 ## Verification
 
-- Relevant Akai keygroup component tests pass
+- Relevant Akai keygroup component tests and browser harness tests pass
 - New unit tests cover coordinate mapping, drag constraints, and creation paths
 - Manual verification confirms that direct manipulation and numeric inputs stay synchronized
 - Any device-rule assumptions are documented with evidence
+
+## Session Status
+
+- Phase 1 is complete.
+- Next implementation target is Phase 2: draggable `ZoneOverview` boundaries.
+- The browser-only harness is now available for rapid UI iteration before hardware or transport e2e.

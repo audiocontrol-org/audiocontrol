@@ -13,9 +13,10 @@ Before writing code:
 1. Identify the active feature from the worktree name, branch, or the user request.
 2. Read `docs/<version>/<feature-slug>/README.md` and `workplan.md`.
 3. Read the latest relevant entry in `DEVELOPMENT-NOTES.md`.
-4. If the work touches hardware or transport behavior, read the relevant notes file first, such as `SCSI-NOTES.md`.
-5. Check related GitHub issues when the task depends on issue state.
-6. Tell the user what you found and what you plan to do next.
+4. If the work is UI-heavy or frontend-focused, read `TESTING-UI-CODEX.md` before implementation so you understand the browser-only harness pattern and isolated UI testing workflow.
+5. If the work touches hardware or transport behavior, read the relevant notes file first, such as `SCSI-NOTES.md`.
+6. Check related GitHub issues when the task depends on issue state.
+7. Tell the user what you found and what you plan to do next.
 
 ## Session End
 
@@ -68,6 +69,19 @@ Prefer these skills when the user asks for that workflow explicitly.
 - Keep files under roughly 300-500 lines. Refactor before they become gravity wells.
 - All public logic should be unit testable.
 - If a convention must be broken, document the deviation at the point of use.
+
+## UI Testing
+
+When building or modifying isolated UI behavior, prefer the browser-only feature harness pattern documented in [TESTING-UI-CODEX.md](/Users/orion/work/audiocontrol-work/audiocontrol-codex-draggable-zones/TESTING-UI-CODEX.md:1) before jumping to full hardware or transport e2e.
+
+Use it for:
+
+- drag interactions
+- visual state transitions
+- layout/alignment work
+- feature slices that can run against seeded local fixture state
+
+Do not treat harness coverage as a substitute for full e2e or hardware validation.
 
 ## Multi-Device UI Rule
 

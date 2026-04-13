@@ -498,6 +498,47 @@ UX bug-hunting session on iPad — fix quirks found by using the library in the 
 4. "Are you sure?" means "go read the code" — never answer from memory about code state.
 5. Transport details should not affect UI. "Save to library" is a storage operation regardless of whether the device talks SDS or SysEx.
 
+## 2026-04-13: Codex Draggable Zones - Phase 1 + Browser Harness
+
+### Feature: codex-draggable-zones
+### Worktree: audiocontrol-codex-draggable-zones
+
+### Goal
+Complete Phase 1 of the clean-room draggable-zones implementation by aligning `ZoneOverview` and `KeyRangeEditor` on one shared note coordinate model, and establish a browser-only harness for isolated UI iteration without hardware.
+
+### Accomplished
+- Added shared note mapping utility `note-coordinate.ts` for Akai keygroup surfaces
+- Updated `ZoneOverview` and `KeyRangeEditor` to consume the same visible note range
+- Threaded the shared visible range through `KeygroupsPage` and `KeygroupEditor`
+- Added focused unit coverage for coordinate mapping and alignment behavior
+- Added browser-only harness route: `/akai/s3000xl/editor/harness/draggable-zones`
+- Added local fixture scenarios for isolated keygroup/zone testing
+- Added Playwright spec `library-draggable-zones-harness.spec.ts` to exercise the harness through the existing browser-only Akai test path
+- Added `TESTING-UI-CODEX.md` documenting the feature-harness methodology
+- Updated `AGENTS.md` and the Codex `session-start` skill to point UI-heavy work at the harness/testing doc
+- Verified repo build via `make`
+- Verified isolated browser harness via `modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-library 'ARGS=--grep "Draggable Zones Harness"'` (`3 passed`)
+
+### Didn't Work
+- Initial targeted test attempt failed because this worktree had no installed dependencies (`vitest: command not found`)
+- First browser harness Playwright run failed on an assertion bug in the new spec; corrected and reran successfully
+
+### Course Corrections
+- [PROCESS] I initially proposed ad hoc test execution instead of following the repo's `make`-based build guidance. User correctly pushed back. Verification was redone through the project build system before proceeding.
+- [PROCESS] I inferred the feature from stale nearby docs before re-checking for local `codex-draggable-zones` feature docs. User corrected this; later session work used the local feature docs as source of truth.
+
+### Quantitative
+- New browser harness routes: 1
+- New browser-only Playwright specs: 1
+- New coordinate utility files: 2 (`note-coordinate.ts` + test)
+- Build verification: `make` passed
+- Harness verification: `3` Playwright tests passed
+
+### Insights
+1. The repo already had enough mock/browser infrastructure to support isolated UI harnesses; the missing piece was wiring feature-specific routes and realistic local fixtures into the app.
+2. For UI-heavy work, the best order is harness first, feature implementation second, broader e2e last.
+3. Shared coordinate systems need to be threaded from the owning page, not retrofitted independently in sibling components, if visual alignment is the acceptance criterion.
+
 ---
 
 ## 2026-04-10: Session Data Extraction, Analysis, and LLM Integration

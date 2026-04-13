@@ -1,13 +1,20 @@
 import { useCallback, useRef, useState } from 'react';
 import { formatMidiNote } from '@/lib/midi-note-parser';
+import {
+  clampMidiNote,
+  clientXToNote,
+  MIDI_NOTE_MAX,
+  MIDI_NOTE_MIN,
+  type NoteCoordinateRange,
+  noteToPercent,
+} from '@/components/keygroups/note-coordinate';
 
 interface KeyRangeEditorProps {
   lowNote: number;
   highNote: number;
   onChange: (field: 'LONOTE' | 'HINOTE', value: number) => void;
+  visibleRange?: NoteCoordinateRange;
 }
-
-const TOTAL_NOTES = 128;
 
 /** Octave boundary labels shown below the bar */
 const OCTAVE_LABELS = Array.from({ length: 11 }, (_, i) => ({
@@ -15,20 +22,17 @@ const OCTAVE_LABELS = Array.from({ length: 11 }, (_, i) => ({
   label: `C${i - 1}`,
 })).filter((o) => o.note <= 127);
 
-// Add C-1 at position 0
+// Add C-1 at position 0.
 const ALL_LABELS = [{ note: 0, label: 'C-1' }, ...OCTAVE_LABELS];
-
-function clampNote(value: number): number {
-  return Math.max(0, Math.min(127, Math.round(value)));
-}
-
-function noteToPercent(note: number): number {
-  return (note / (TOTAL_NOTES - 1)) * 100;
-}
 
 type DragTarget = 'low' | 'high' | null;
 
-export function KeyRangeEditor({ lowNote, highNote, onChange }: KeyRangeEditorProps): JSX.Element {
+export function KeyRangeEditor({
+  lowNote,
+  highNote,
+  onChange,
+  visibleRange,
+}: KeyRangeEditorProps): JSX.Element {
   const barRef = useRef<HTMLDivElement>(null);
   const [dragTarget, setDragTarget] = useState<DragTarget>(null);
   const [dragLow, setDragLow] = useState(lowNote);
@@ -41,9 +45,8 @@ export function KeyRangeEditor({ lowNote, highNote, onChange }: KeyRangeEditorPr
     const bar = barRef.current;
     if (!bar) return 0;
     const rect = bar.getBoundingClientRect();
-    const fraction = (clientX - rect.left) / rect.width;
-    return clampNote(fraction * (TOTAL_NOTES - 1));
-  }, []);
+    return clientXToNote(clientX, rect.left, rect.width, visibleRange);
+  }, [visibleRange]);
 
   const handleMouseDown = useCallback(
     (edge: 'low' | 'high') => (e: React.MouseEvent) => {
@@ -79,9 +82,13 @@ export function KeyRangeEditor({ lowNote, highNote, onChange }: KeyRangeEditorPr
     [lowNote, highNote, onChange, getNoteFromClientX],
   );
 
-  const leftPercent = noteToPercent(displayLow);
-  const rightPercent = noteToPercent(displayHigh);
+  const leftPercent = noteToPercent(displayLow, visibleRange);
+  const rightPercent = noteToPercent(displayHigh + 1, visibleRange);
   const widthPercent = rightPercent - leftPercent;
+  const visibleLabels = ALL_LABELS.filter((label) => {
+    if (!visibleRange) return true;
+    return label.note >= visibleRange.min && label.note <= visibleRange.max;
+  });
 
   return (
     <div className="px-3 py-2">
@@ -98,6 +105,7 @@ export function KeyRangeEditor({ lowNote, highNote, onChange }: KeyRangeEditorPr
         {/* Selected range fill */}
         <div
           className="absolute top-0 bottom-0 bg-blue-700 opacity-60 rounded-sm"
+          data-testid="key-range-fill"
           style={{
             left: `${leftPercent}%`,
             width: `${Math.max(widthPercent, 0.5)}%`,
@@ -133,11 +141,11 @@ export function KeyRangeEditor({ lowNote, highNote, onChange }: KeyRangeEditorPr
 
       {/* Octave labels */}
       <div className="relative h-4 mt-1">
-        {ALL_LABELS.map((o) => (
+        {visibleLabels.map((o) => (
           <span
             key={o.note}
             className="absolute text-[10px] text-gray-500 -translate-x-1/2"
-            style={{ left: `${noteToPercent(o.note)}%` }}
+            style={{ left: `${noteToPercent(o.note, visibleRange)}%` }}
           >
             {o.label}
           </span>
@@ -151,9 +159,9 @@ export function KeyRangeEditor({ lowNote, highNote, onChange }: KeyRangeEditorPr
           <input
             type="number"
             value={lowNote}
-            min={0}
-            max={127}
-            onChange={(e) => onChange('LONOTE', clampNote(Number(e.target.value)))}
+            min={MIDI_NOTE_MIN}
+            max={MIDI_NOTE_MAX}
+            onChange={(e) => onChange('LONOTE', clampMidiNote(Number(e.target.value)))}
             className="w-16 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200 text-right"
           />
         </label>
@@ -162,9 +170,9 @@ export function KeyRangeEditor({ lowNote, highNote, onChange }: KeyRangeEditorPr
           <input
             type="number"
             value={highNote}
-            min={0}
-            max={127}
-            onChange={(e) => onChange('HINOTE', clampNote(Number(e.target.value)))}
+            min={MIDI_NOTE_MIN}
+            max={MIDI_NOTE_MAX}
+            onChange={(e) => onChange('HINOTE', clampMidiNote(Number(e.target.value)))}
             className="w-16 bg-gray-900 border border-gray-600 rounded px-2 py-1 text-sm text-gray-200 text-right"
           />
         </label>

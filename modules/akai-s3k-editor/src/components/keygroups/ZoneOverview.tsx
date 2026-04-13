@@ -1,11 +1,17 @@
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import { formatMidiNote } from '@/lib/midi-note-parser';
+import {
+  computeVisibleKeyRange,
+  type NoteCoordinateRange,
+  noteToPercent,
+} from '@/components/keygroups/note-coordinate';
 
 interface ZoneOverviewProps {
   keygroups: (KeygroupHeader | undefined)[];
   keygroupCount: number;
   selectedKeygroupIndex: number | null;
   onSelectKeygroup: (index: number) => void;
+  visibleRange?: NoteCoordinateRange;
 }
 
 /**
@@ -63,40 +69,12 @@ for (let octave = -1; octave <= 9; octave++) {
   }
 }
 
-/**
- * Compute the used key range across all loaded keygroups, with some padding.
- * Falls back to full range if no keygroups are loaded.
- */
-function computeKeyRange(
-  keygroups: (KeygroupHeader | undefined)[],
-  keygroupCount: number,
-): { min: number; max: number } {
-  let min = 127;
-  let max = 0;
-
-  for (let i = 0; i < keygroupCount; i++) {
-    const kg = keygroups[i];
-    if (!kg) continue;
-    if (kg.LONOTE < min) min = kg.LONOTE;
-    if (kg.HINOTE > max) max = kg.HINOTE;
-  }
-
-  if (min > max) {
-    return { min: 0, max: 127 };
-  }
-
-  // Add padding of a few notes on each side for context
-  return {
-    min: Math.max(0, min - 4),
-    max: Math.min(127, max + 4),
-  };
-}
-
 export function ZoneOverview({
   keygroups,
   keygroupCount,
   selectedKeygroupIndex,
   onSelectKeygroup,
+  visibleRange,
 }: ZoneOverviewProps): JSX.Element {
   if (keygroupCount === 0) {
     return (
@@ -106,8 +84,7 @@ export function ZoneOverview({
     );
   }
 
-  const range = computeKeyRange(keygroups, keygroupCount);
-  const keySpan = range.max - range.min + 1;
+  const range = visibleRange ?? computeVisibleKeyRange(keygroups, keygroupCount);
 
   // Collect all loaded keygroups for rendering
   const loadedKeygroups: { index: number; header: KeygroupHeader }[] = [];
@@ -158,7 +135,7 @@ export function ZoneOverview({
         >
           {/* Background grid lines for octave markers */}
           {visibleMarkers.map((marker) => {
-            const xPercent = ((marker.note - range.min) / keySpan) * 100;
+            const xPercent = noteToPercent(marker.note, range);
             return (
               <div
                 key={`grid-${marker.note}`}
@@ -181,9 +158,9 @@ export function ZoneOverview({
 
             // Key range as percentage of visible range
             const xStart =
-              ((Math.max(header.LONOTE, range.min) - range.min) / keySpan) * 100;
+              noteToPercent(Math.max(header.LONOTE, range.min), range);
             const xEnd =
-              ((Math.min(header.HINOTE, range.max) - range.min + 1) / keySpan) * 100;
+              noteToPercent(Math.min(header.HINOTE, range.max) + 1, range);
             const width = xEnd - xStart;
 
             if (width <= 0) return null;
@@ -235,6 +212,7 @@ export function ZoneOverview({
                 <button
                   key={`kg-${index}-z${zone.zoneIndex}`}
                   className="absolute cursor-pointer border transition-all overflow-hidden"
+                  data-testid={`zone-overview-zone-${index}-${zone.zoneIndex}`}
                   onClick={() => onSelectKeygroup(index)}
                   title={`KG ${index + 1} Zone ${zone.zoneIndex}: ${formatMidiNote(header.LONOTE)}-${formatMidiNote(header.HINOTE)}, vel ${zone.lovel}-${zone.hivel}${zone.sampleName ? ` [${zone.sampleName}]` : ''}`}
                   style={{
@@ -272,7 +250,7 @@ export function ZoneOverview({
         >
           <div className="relative w-full h-full">
             {visibleMarkers.map((marker) => {
-              const xPercent = ((marker.note - range.min) / keySpan) * 100;
+              const xPercent = noteToPercent(marker.note, range);
               return (
                 <span
                   key={`label-${marker.note}`}

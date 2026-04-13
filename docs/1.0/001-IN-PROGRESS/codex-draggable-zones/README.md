@@ -1,6 +1,6 @@
 # Codex Draggable Zones
 
-**Status:** Planning
+**Status:** In Progress
 **Branch:** `feature/codex-draggable-zones`
 **Milestone:** TBD
 
@@ -31,7 +31,7 @@ Clean-room Codex implementation of draggable zone editing for the Akai S3000XL e
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | Shared coordinate system | Pending |
+| 1 | Shared coordinate system | Complete |
 | 2 | Draggable ZoneOverview boundaries | Pending |
 | 3 | Draggable VelocityRangeBar | Pending |
 | 4 | Zone creation via drag | Pending |

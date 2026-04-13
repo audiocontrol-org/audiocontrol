@@ -206,4 +206,30 @@ describe('ZoneOverview', () => {
     // When no velocity zones are active, it renders "KG 1" as label
     expect(screen.getByText('KG 1')).toBeInTheDocument();
   });
+
+  it('uses the shared visible range for zone positioning when provided', () => {
+    const kg = makeKeygroupHeader({
+      LONOTE: 36,
+      HINOTE: 72,
+      SNAME1: 'ALIGNED     ',
+      LOVEL1: 0,
+      HIVEL1: 127,
+    });
+
+    render(
+      <ZoneOverview
+        keygroups={[kg]}
+        keygroupCount={1}
+        selectedKeygroupIndex={null}
+        onSelectKeygroup={vi.fn()}
+        visibleRange={{ min: 32, max: 88 }}
+      />,
+    );
+
+    const zone = screen.getByTestId('zone-overview-zone-0-1');
+    expect(zone).toHaveStyle({
+      left: '7.017543859649122%',
+      width: '64.91228070175438%',
+    });
+  });
 });
