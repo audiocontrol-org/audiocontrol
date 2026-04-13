@@ -105,4 +105,74 @@ test.describe('Draggable Zones Harness', () => {
 
     expect(harnessState).toMatchObject({ LONOTE: 40, HINOTE: 72 });
   });
+
+  test('supports draggable velocity split editing in the isolated harness', async ({ page }) => {
+    await page.goto(harnessUrl('stacked-layers'));
+
+    const splitHandle = page.getByTestId('velocity-split-handle-0');
+    const surface = page.getByTestId('velocity-range-bar-surface');
+    await expect(splitHandle).toBeVisible();
+    await expect(surface).toBeVisible();
+
+    const handleBox = await splitHandle.boundingBox();
+    const surfaceBox = await surface.boundingBox();
+    if (!handleBox || !surfaceBox) {
+      throw new Error('Expected velocity split drag handle bounding box');
+    }
+
+    const targetBoundary = 80;
+    const targetX =
+      surfaceBox.x + surfaceBox.width * ((targetBoundary + 1) / 128);
+    const targetY = handleBox.y + handleBox.height / 2;
+
+    await page.evaluate(
+      ({ startX, targetX: nextX, targetY: nextY }) => {
+        const handle = document.querySelector('[data-testid="velocity-split-handle-0"]');
+        if (!(handle instanceof HTMLElement)) {
+          throw new Error('Velocity split handle not found');
+        }
+
+        handle.dispatchEvent(
+          new MouseEvent('mousedown', {
+            bubbles: true,
+            clientX: startX,
+            clientY: nextY,
+          }),
+        );
+        document.dispatchEvent(
+          new MouseEvent('mousemove', {
+            bubbles: true,
+            clientX: nextX,
+            clientY: nextY,
+          }),
+        );
+        document.dispatchEvent(
+          new MouseEvent('mouseup', {
+            bubbles: true,
+            clientX: nextX,
+            clientY: nextY,
+          }),
+        );
+      },
+      {
+        startX: handleBox.x + handleBox.width / 2,
+        targetX,
+        targetY,
+      },
+    );
+
+    await expect
+      .poll(async () =>
+        page.evaluate(() => {
+          const state = (
+            window as unknown as {
+              __draggableZonesHarness?: {
+                keygroups: Array<{ HIVEL1: number; LOVEL2: number }>;
+              };
+            }
+          ).__draggableZonesHarness;
+          return state?.keygroups[0];
+        }))
+      .toMatchObject({ HIVEL1: 80, LOVEL2: 81 });
+  });
 });

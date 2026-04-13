@@ -790,3 +790,38 @@ Close Phase 2 after resolving the last boundary-rule uncertainty and aligning no
 ### Insights
 1. The right constraint model here is asymmetric: enforce verified per-field bounds, but do not invent cross-keygroup exclusivity
 2. The harness and targeted unit tests are sufficient to close UI interaction phases when the remaining question is a rule clarification rather than a rendering bug
+
+---
+
+## 2026-04-13: Codex Draggable Zones Phase 3
+
+### Feature: codex-draggable-zones
+### Worktree: audiocontrol-codex-draggable-zones
+
+### Goal
+Complete Phase 3 by adding draggable split-point editing to `VelocityRangeBar` and keeping it synchronized with numeric velocity-zone editing and the existing overview surfaces.
+
+### Accomplished
+- Reworked `VelocityRangeBar` from a static segmented display into an interactive split-handle editor
+- Added live preview plus commit-on-release behavior for adjacent velocity-zone split dragging
+- Routed split-handle commits through `VelocityZoneEditor` as paired `HIVELn` / `LOVELn+1` updates
+- Added numeric clamping in `VelocityZoneEditor` so low/high velocity edits respect each zone’s current bounds
+- Added unit coverage for split-handle rendering, drag commits, and numeric clamping
+- Extended the browser-only draggable-zones harness to verify a real velocity split drag in the browser
+
+### Didn't Work
+- The first Playwright version used low-level mouse movement on the tiny split handle and never committed the change reliably in the browser harness
+- Velocity-zone number inputs are not currently labeled accessibly, so unit tests could not target them by role+name
+
+### Course Corrections
+- Switched the harness split-drag test to dispatch DOM mouse events directly in-page, which still exercises the real React drag path without Playwright pointer flake
+- Kept the UI work scoped to the split interaction itself instead of widening the task into a broader accessibility refactor
+
+### Quantitative
+- Targeted component tests: 35 passed
+- Browser harness tests: 5 passed
+- Module build: passed
+
+### Insights
+1. The browser-only harness is now covering both note-boundary and velocity-split dragging, which makes it a credible end-to-end loop for Phase 4 as well
+2. Split-point dragging is a better fit for paired field commits than for independent per-zone writes, because the UI concept is one shared boundary

@@ -86,10 +86,10 @@ This feature extends the current Akai S3000XL keygroup editing surfaces with dir
 **Goal:** Let users reshape velocity-layer boundaries directly in the velocity bar.
 
 **Tasks:**
-- [ ] Add draggable split-point handles to `VelocityRangeBar`
-- [ ] Reuse the drag interaction model from Phase 2
-- [ ] Keep `VelocityRangeBar`, numeric inputs, and `ZoneOverview` synchronized
-- [ ] Add tests for boundary movement and adjacent-zone interactions
+- [x] Add draggable split-point handles to `VelocityRangeBar`
+- [x] Reuse the drag interaction model from Phase 2
+- [x] Keep `VelocityRangeBar`, numeric inputs, and `ZoneOverview` synchronized
+- [x] Add tests for boundary movement and adjacent-zone interactions
 
 **Acceptance:** Users can drag velocity split points, with changes reflected consistently across the editor and committed on release.
 
@@ -116,5 +116,6 @@ This feature extends the current Akai S3000XL keygroup editing surfaces with dir
 
 - Phase 1 is complete.
 - Phase 2 is complete: ZoneOverview boundaries are draggable, overlapping keyspans are allowed, and keygroup note fields now clamp to the documented S3000XL `21-127` range.
-- Next implementation target is Phase 3: draggable `VelocityRangeBar` split handles synchronized with numeric zone editing and ZoneOverview.
+- Phase 3 is complete: `VelocityRangeBar` split handles now drive adjacent velocity-zone updates and stay synchronized with numeric editing and ZoneOverview.
+- Next implementation target is Phase 4: zone creation via drag in empty `ZoneOverview` space.
 - The browser-only harness is now available for rapid UI iteration before hardware or transport e2e.

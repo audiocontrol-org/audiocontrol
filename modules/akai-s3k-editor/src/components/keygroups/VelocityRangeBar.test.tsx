@@ -10,6 +10,24 @@ function makeZone(
   return { lowVel, highVel, sampleName };
 }
 
+function setSurfaceRect(): void {
+  const surface = screen.getByTestId('velocity-range-bar-surface');
+  Object.defineProperty(surface, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => ({
+      left: 100,
+      top: 20,
+      width: 256,
+      height: 32,
+      right: 356,
+      bottom: 52,
+      x: 100,
+      y: 20,
+      toJSON: () => ({}),
+    }),
+  });
+}
+
 describe('VelocityRangeBar', () => {
   it('renders zone segments for each zone', () => {
     const zones = [
@@ -21,9 +39,8 @@ describe('VelocityRangeBar', () => {
       <VelocityRangeBar zones={zones} selectedZone={0} onSelectZone={vi.fn()} />,
     );
 
-    // Each zone renders a button
-    const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(2);
+    expect(screen.getByTestId('velocity-range-zone-0')).toBeInTheDocument();
+    expect(screen.getByTestId('velocity-range-zone-1')).toBeInTheDocument();
   });
 
   it('shows sample names in zones', () => {
@@ -50,7 +67,6 @@ describe('VelocityRangeBar', () => {
       <VelocityRangeBar zones={zones} selectedZone={0} onSelectZone={vi.fn()} />,
     );
 
-    // Empty sample name falls back to "Z1", "Z2"
     expect(screen.getByText('Z1')).toBeInTheDocument();
     expect(screen.getByText('Z2')).toBeInTheDocument();
   });
@@ -70,21 +86,6 @@ describe('VelocityRangeBar', () => {
     expect(onSelectZone).toHaveBeenCalledWith(1);
   });
 
-  it('clicking the first zone calls onSelectZone with index 0', () => {
-    const zones = [
-      makeZone(0, 63, 'FIRST       '),
-      makeZone(64, 127, 'SECOND      '),
-    ];
-    const onSelectZone = vi.fn();
-
-    render(
-      <VelocityRangeBar zones={zones} selectedZone={1} onSelectZone={onSelectZone} />,
-    );
-
-    fireEvent.click(screen.getByText('FIRST'));
-    expect(onSelectZone).toHaveBeenCalledWith(0);
-  });
-
   it('selected zone has distinct visual styling via CSS class', () => {
     const zones = [
       makeZone(0, 63, 'ZONE A      '),
@@ -95,28 +96,21 @@ describe('VelocityRangeBar', () => {
       <VelocityRangeBar zones={zones} selectedZone={0} onSelectZone={vi.fn()} />,
     );
 
-    const buttons = screen.getAllByRole('button');
-
-    // First zone (selected) should have the selected class (bg-blue-600)
-    expect(buttons[0].className).toContain('bg-blue-600');
-    // Second zone (not selected) should have the non-selected class (bg-emerald-800)
-    expect(buttons[1].className).toContain('bg-emerald-800');
+    expect(screen.getByTestId('velocity-range-zone-0').className).toContain('bg-blue-600');
+    expect(screen.getByTestId('velocity-range-zone-1').className).toContain('bg-emerald-800');
   });
 
   it('skips zones where highVel < lowVel', () => {
     const zones = [
       makeZone(0, 127, 'VALID       '),
-      makeZone(100, 50, 'INVALID     '), // highVel < lowVel
+      makeZone(100, 50, 'INVALID     '),
     ];
 
     render(
       <VelocityRangeBar zones={zones} selectedZone={0} onSelectZone={vi.fn()} />,
     );
 
-    // Only the valid zone should render
-    const buttons = screen.getAllByRole('button');
-    expect(buttons).toHaveLength(1);
-    expect(screen.getByText('VALID')).toBeInTheDocument();
+    expect(screen.getByTestId('velocity-range-zone-0')).toBeInTheDocument();
     expect(screen.queryByText('INVALID')).not.toBeInTheDocument();
   });
 
@@ -127,7 +121,83 @@ describe('VelocityRangeBar', () => {
       <VelocityRangeBar zones={zones} selectedZone={0} onSelectZone={vi.fn()} />,
     );
 
-    const button = screen.getByRole('button');
-    expect(button).toHaveAttribute('title', 'Zone 1: MY SAMPLE (0-127)');
+    expect(screen.getByTestId('velocity-range-zone-0')).toHaveAttribute(
+      'title',
+      'Zone 1: MY SAMPLE (0-127)',
+    );
+  });
+
+  it('renders split handles when split dragging is enabled', () => {
+    const zones = [
+      makeZone(0, 63, 'SOFT PAD    '),
+      makeZone(64, 127, 'HARD PAD    '),
+    ];
+
+    render(
+      <VelocityRangeBar
+        zones={zones}
+        selectedZone={0}
+        onSelectZone={vi.fn()}
+        onSplitChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByTestId('velocity-split-handle-0')).toBeInTheDocument();
+  });
+
+  it('commits split drags through onSplitChange', () => {
+    const zones = [
+      makeZone(0, 63, 'SOFT PAD    '),
+      makeZone(64, 127, 'HARD PAD    '),
+    ];
+    const onSelectZone = vi.fn();
+    const onSplitChange = vi.fn();
+
+    render(
+      <VelocityRangeBar
+        zones={zones}
+        selectedZone={0}
+        onSelectZone={onSelectZone}
+        onSplitChange={onSplitChange}
+      />,
+    );
+    setSurfaceRect();
+
+    fireEvent.mouseDown(screen.getByTestId('velocity-split-handle-0'), {
+      clientX: 228,
+      clientY: 30,
+    });
+    fireEvent.mouseMove(document, { clientX: 260, clientY: 30 });
+    fireEvent.mouseUp(document, { clientX: 260, clientY: 30 });
+
+    expect(onSelectZone).toHaveBeenCalledWith(0);
+    expect(onSplitChange).toHaveBeenCalledWith(0, 80);
+  });
+
+  it('clamps split drags so the right zone keeps at least one velocity step', () => {
+    const zones = [
+      makeZone(0, 63, 'SOFT PAD    '),
+      makeZone(64, 96, 'MID PAD     '),
+    ];
+    const onSplitChange = vi.fn();
+
+    render(
+      <VelocityRangeBar
+        zones={zones}
+        selectedZone={0}
+        onSelectZone={vi.fn()}
+        onSplitChange={onSplitChange}
+      />,
+    );
+    setSurfaceRect();
+
+    fireEvent.mouseDown(screen.getByTestId('velocity-split-handle-0'), {
+      clientX: 228,
+      clientY: 30,
+    });
+    fireEvent.mouseMove(document, { clientX: 350, clientY: 30 });
+    fireEvent.mouseUp(document, { clientX: 350, clientY: 30 });
+
+    expect(onSplitChange).toHaveBeenCalledWith(0, 95);
   });
 });

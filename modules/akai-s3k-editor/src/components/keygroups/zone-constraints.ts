@@ -21,3 +21,14 @@ export function clampLowVelocity(nextLow: number, highVelocity: number): number 
 export function clampHighVelocity(nextHigh: number, lowVelocity: number): number {
   return Math.max(clampMidiNote(nextHigh), clampMidiNote(lowVelocity));
 }
+
+export function clampVelocitySplit(
+  nextBoundary: number,
+  lowVelocity: number,
+  highVelocity: number,
+): number {
+  return Math.max(
+    clampMidiNote(lowVelocity),
+    Math.min(clampMidiNote(nextBoundary), clampMidiNote(highVelocity) - 1),
+  );
+}

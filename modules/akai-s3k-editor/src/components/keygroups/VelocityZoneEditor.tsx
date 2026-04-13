@@ -2,6 +2,10 @@ import { useState } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import { ParameterRow, NumberInput, SelectInput } from '@/components/ui';
 import { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
+import {
+  clampHighVelocity,
+  clampLowVelocity,
+} from '@/components/keygroups/zone-constraints';
 
 interface VelocityZoneEditorProps {
   header: KeygroupHeader;
@@ -73,8 +77,25 @@ function SingleZoneEditor({
   sampleNames: string[];
   onParameterChange: (field: string, value: number | string) => void;
 }): JSX.Element {
-  const changeNum = (base: string) => (v: number) =>
+  const changeNum = (base: string) => (v: number) => {
+    if (base === 'LOVEL') {
+      onParameterChange(
+        zoneField(base, zone),
+        clampLowVelocity(v, getZoneValue(header, 'HIVEL', zone)),
+      );
+      return;
+    }
+
+    if (base === 'HIVEL') {
+      onParameterChange(
+        zoneField(base, zone),
+        clampHighVelocity(v, getZoneValue(header, 'LOVEL', zone)),
+      );
+      return;
+    }
+
     onParameterChange(zoneField(base, zone), v);
+  };
 
   const sampleName = getZoneString(header, 'SNAME', zone);
 
@@ -153,6 +174,15 @@ export function VelocityZoneEditor({
 }: VelocityZoneEditorProps): JSX.Element {
   const [activeZone, setActiveZone] = useState<ZoneIndex>(1);
 
+  const handleSplitChange = (leftZoneIndex: number, boundary: number) => {
+    const leftZone = ZONE_INDICES[leftZoneIndex];
+    const rightZone = ZONE_INDICES[leftZoneIndex + 1];
+    if (!leftZone || !rightZone) return;
+
+    onParameterChange(zoneField('HIVEL', leftZone), boundary);
+    onParameterChange(zoneField('LOVEL', rightZone), boundary + 1);
+  };
+
   const velocityZones = ZONE_INDICES.map((zone) => ({
     lowVel: getZoneValue(header, 'LOVEL', zone),
     highVel: getZoneValue(header, 'HIVEL', zone),
@@ -167,6 +197,7 @@ export function VelocityZoneEditor({
         zones={velocityZones}
         selectedZone={activeZone - 1}
         onSelectZone={(index) => setActiveZone(ZONE_INDICES[index])}
+        onSplitChange={handleSplitChange}
       />
 
       <div className="flex border-b border-gray-700">
