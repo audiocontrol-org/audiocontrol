@@ -20,6 +20,7 @@ import {
   getNestedDirectory,
 } from '@audiocontrol/sampler-library/browser';
 import { createWavBlobFromSamples, unpack12BitTo16Bit } from '@/lib/wave-export';
+import type { WavFileMetadata } from '@audiocontrol/editor-core';
 /** Check if the File System Access API (file picker dialogs) is available. */
 function hasFileSystemAccess(): boolean {
   return 'showSaveFilePicker' in window && 'showDirectoryPicker' in window;
@@ -43,11 +44,7 @@ export { prepareWavForS330 };
 /**
  * Parse WAV file and return metadata for display purposes.
  */
-export interface WavFileInfo {
-  sampleRate: number;
-  channels: number;
-  bitsPerSample: number;
-  sampleCount: number;
+export interface WavFileInfo extends WavFileMetadata {
   duration: number;
 }
 

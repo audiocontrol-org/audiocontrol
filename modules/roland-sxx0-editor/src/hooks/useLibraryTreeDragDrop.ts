@@ -15,9 +15,11 @@ import type {
 import {
   DEVICE_DRAG_MIME,
   type DeviceDragData,
-  LIBRARY_DRAG_MIME,
-  type LibraryDragData,
 } from '@/components/library/DeviceMemoryPanel';
+import {
+  LIBRARY_ITEM_MIME,
+  buildRolandDragPayload,
+} from '@/lib/library-drag-types';
 
 export interface UseLibraryTreeDragDropParams {
   onDropDeviceTone?: (data: DeviceDragData, targetPath?: string[]) => void;
@@ -122,49 +124,57 @@ export function useLibraryTreeDragDrop({
 
   // Handle drag start for individual tones (library -> device)
   const handleIndividualToneDragStart = useCallback((e: React.DragEvent, toneInfo: LibraryToneInfo) => {
-    const dragData: LibraryDragData = {
-      source: 'library',
-      type: 'tone',
-      name: toneInfo.fileName,
-    };
-    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
+    const payload = buildRolandDragPayload({
+      categoryId: 'tones',
+      nodeId: toneInfo.fileName,
+      nodeName: toneInfo.fileName,
+      nodeType: 'tone',
+      sourcePath: [],
+    });
+    e.dataTransfer.setData(LIBRARY_ITEM_MIME, JSON.stringify(payload));
     e.dataTransfer.effectAllowed = 'copy';
   }, []);
 
   // Handle drag start for individual patches (library -> device)
   const handleIndividualPatchDragStart = useCallback((e: React.DragEvent, patchInfo: LibraryPatchInfo) => {
-    const dragData: LibraryDragData = {
-      source: 'library',
-      type: 'patch',
-      name: patchInfo.directoryName,
-    };
-    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
+    const payload = buildRolandDragPayload({
+      categoryId: 'patches',
+      nodeId: patchInfo.directoryName,
+      nodeName: patchInfo.directoryName,
+      nodeType: 'patch',
+      sourcePath: [],
+    });
+    e.dataTransfer.setData(LIBRARY_ITEM_MIME, JSON.stringify(payload));
     e.dataTransfer.effectAllowed = 'copy';
   }, []);
 
   // Handle drag start for tones within sets (library -> device)
   const handleSetToneDragStart = useCallback((e: React.DragEvent, toneFile: string, setName: string) => {
-    const dragData: LibraryDragData = {
-      source: 'library',
-      type: 'tone',
-      name: toneFile,
+    const payload = buildRolandDragPayload({
+      categoryId: 'tones',
+      nodeId: `${setName}/${toneFile}`,
+      nodeName: toneFile,
+      nodeType: 'tone',
+      sourcePath: [],
       setName,
       toneFile,
-    };
-    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
+    });
+    e.dataTransfer.setData(LIBRARY_ITEM_MIME, JSON.stringify(payload));
     e.dataTransfer.effectAllowed = 'copy';
   }, []);
 
   // Handle drag start for patches within sets (library -> device)
   const handleSetPatchDragStart = useCallback((e: React.DragEvent, patchFile: string, setName: string) => {
-    const dragData: LibraryDragData = {
-      source: 'library',
-      type: 'patch',
-      name: patchFile,
+    const payload = buildRolandDragPayload({
+      categoryId: 'patches',
+      nodeId: `${setName}/${patchFile}`,
+      nodeName: patchFile,
+      nodeType: 'patch',
+      sourcePath: [],
       setName,
       patchFile,
-    };
-    e.dataTransfer.setData(LIBRARY_DRAG_MIME, JSON.stringify(dragData));
+    });
+    e.dataTransfer.setData(LIBRARY_ITEM_MIME, JSON.stringify(payload));
     e.dataTransfer.effectAllowed = 'copy';
   }, []);
 

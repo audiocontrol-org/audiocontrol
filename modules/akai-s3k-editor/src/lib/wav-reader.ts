@@ -1,8 +1,6 @@
-export interface WavFileInfo {
-  sampleRate: number;
-  bitsPerSample: number;
-  numChannels: number;
-  numSamples: number; // per channel
+import type { WavFileMetadata } from '@audiocontrol/editor-core';
+
+export interface WavFileInfo extends WavFileMetadata {
   samples: Int16Array; // mono, 16-bit
 }
 
@@ -42,13 +40,13 @@ export function parseWavFile(buffer: ArrayBuffer): WavFileInfo {
     );
   }
 
-  const numChannels = view.getUint16(fmtChunk.dataOffset + 2, true);
+  const channels = view.getUint16(fmtChunk.dataOffset + 2, true);
   const sampleRate = view.getUint32(fmtChunk.dataOffset + 4, true);
   const bitsPerSample = view.getUint16(fmtChunk.dataOffset + 14, true);
 
-  if (numChannels < 1 || numChannels > 2) {
+  if (channels < 1 || channels > 2) {
     throw new Error(
-      `Unsupported channel count: ${numChannels}. Only mono and stereo WAV files are supported.`,
+      `Unsupported channel count: ${channels}. Only mono and stereo WAV files are supported.`,
     );
   }
 
@@ -64,29 +62,29 @@ export function parseWavFile(buffer: ArrayBuffer): WavFileInfo {
   }
 
   const bytesPerSample = bitsPerSample / 8;
-  const bytesPerFrame = bytesPerSample * numChannels;
-  const numSamples = Math.floor(dataChunk.size / bytesPerFrame);
+  const bytesPerFrame = bytesPerSample * channels;
+  const sampleCount = Math.floor(dataChunk.size / bytesPerFrame);
 
-  if (numSamples === 0) {
+  if (sampleCount === 0) {
     throw new Error('WAV file contains no sample data');
   }
 
   const rawSamples = readRawSamples(
     view,
     dataChunk.dataOffset,
-    numSamples,
-    numChannels,
+    sampleCount,
+    channels,
     bitsPerSample,
   );
 
   const monoSamples =
-    numChannels === 2 ? downmixToMono(rawSamples, numSamples) : rawSamples;
+    channels === 2 ? downmixToMono(rawSamples, sampleCount) : rawSamples;
 
   return {
     sampleRate,
     bitsPerSample,
-    numChannels,
-    numSamples,
+    channels,
+    sampleCount,
     samples: monoSamples,
   };
 }
@@ -135,11 +133,11 @@ function findChunk(view: DataView, id: string): ChunkInfo | null {
 function readRawSamples(
   view: DataView,
   dataOffset: number,
-  numSamples: number,
-  numChannels: number,
+  sampleCount: number,
+  channels: number,
   bitsPerSample: number,
 ): Int16Array {
-  const totalSampleValues = numSamples * numChannels;
+  const totalSampleValues = sampleCount * channels;
   const result = new Int16Array(totalSampleValues);
   const bytesPerSample = bitsPerSample / 8;
 
@@ -177,9 +175,9 @@ function readRawSamples(
 }
 
 /** Downmix interleaved stereo [L, R, L, R, ...] to mono by averaging pairs. */
-function downmixToMono(stereo: Int16Array, numSamples: number): Int16Array {
-  const mono = new Int16Array(numSamples);
-  for (let i = 0; i < numSamples; i++) {
+function downmixToMono(stereo: Int16Array, sampleCount: number): Int16Array {
+  const mono = new Int16Array(sampleCount);
+  for (let i = 0; i < sampleCount; i++) {
     const left = stereo[i * 2];
     const right = stereo[i * 2 + 1];
     mono[i] = Math.round((left + right) / 2);

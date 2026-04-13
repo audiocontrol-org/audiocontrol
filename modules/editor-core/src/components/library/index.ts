@@ -31,6 +31,13 @@ export {
   type LibraryPanelProps,
 } from './LibraryPanel';
 export {
+  Dialog,
+  DialogTitle,
+  DialogDescription,
+  DialogActions,
+  type DialogProps,
+} from './Dialog';
+export {
   ConfirmDialog,
   type ConfirmDialogProps,
 } from './ConfirmDialog';
