@@ -14,5 +14,5 @@
 - PRD: [prd.md](prd.md)
 - Workplan: [workplan.md](workplan.md)
 - Branch: `feature/draggable-zones`
+- PR: [#264](https://github.com/audiocontrol-org/audiocontrol/pull/264)
 - Worktree: `~/work/audiocontrol-work/audiocontrol-draggable-zones`
-- GitHub Milestone: TBD
