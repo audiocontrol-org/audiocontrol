@@ -1,0 +1,108 @@
+# Codex Draggable Zones - Workplan
+
+## GitHub Tracking
+
+**GitHub Milestone:** TBD
+
+| Item | Link |
+|------|------|
+| Parent | [#257](https://github.com/audiocontrol-org/audiocontrol/issues/257) |
+| Phase 1 | [#258](https://github.com/audiocontrol-org/audiocontrol/issues/258) |
+| Phase 2 | [#261](https://github.com/audiocontrol-org/audiocontrol/issues/261) |
+| Phase 3 | [#260](https://github.com/audiocontrol-org/audiocontrol/issues/260) |
+| Phase 4 | [#259](https://github.com/audiocontrol-org/audiocontrol/issues/259) |
+
+## Comparison Context
+
+- Parallel Claude-track feature request: [#252](https://github.com/audiocontrol-org/audiocontrol/issues/252)
+
+## Technical Approach
+
+Keep the work scoped to `modules/akai-s3k-editor/src/components/keygroups/` unless code inspection proves a shared utility belongs elsewhere.
+
+This feature extends the current Akai S3000XL keygroup editing surfaces with direct manipulation. The implementation should replace duplicated coordinate logic in `ZoneOverview` and `KeyRangeEditor` with a shared mapping utility, introduce a drag interaction model that supports continuous local updates with commit on pointer release, and centralize constraint handling so S3000XL rules are enforced consistently.
+
+**Key design decisions:**
+
+1. **Shared coordinate model** — `ZoneOverview` and `KeyRangeEditor` should compute note positions from the same utility.
+2. **Direct manipulation augments numeric editing** — drag is additive, not a replacement.
+3. **Commit on release** — drag updates local UI continuously and defers device writes until pointer release.
+4. **Constraints are verified, not guessed** — overlap and creation defaults should come from inspected code, notes, or hardware evidence.
+
+## Likely Files
+
+### Modified Files
+
+| File | Change |
+|------|--------|
+| `modules/akai-s3k-editor/src/components/keygroups/ZoneOverview.tsx` | Add shared coordinate mapping, drag handles, previews, and zone-creation gesture |
+| `modules/akai-s3k-editor/src/components/keygroups/KeyRangeEditor.tsx` | Consume shared coordinate mapping |
+| `modules/akai-s3k-editor/src/components/keygroups/VelocityRangeBar.tsx` | Add draggable split points and synchronized preview behavior |
+| `modules/akai-s3k-editor/src/components/keygroups/VelocityZoneEditor.tsx` | Integrate drag-driven updates with numeric editing |
+| `modules/akai-s3k-editor/src/components/keygroups/KeygroupEditor.tsx` | Wire any necessary commit or state plumbing |
+| `modules/akai-s3k-editor/src/components/keygroups/*.test.tsx` | Add coverage for coordinate, drag, and creation behavior |
+
+### Likely New Files
+
+| File | Purpose |
+|------|---------|
+| `modules/akai-s3k-editor/src/components/keygroups/note-coordinate.ts` | Shared note mapping utility |
+| `modules/akai-s3k-editor/src/components/keygroups/useZoneDrag.ts` | Shared drag interaction helper |
+| `modules/akai-s3k-editor/src/components/keygroups/zone-constraints.ts` | Centralized clamping and overlap rules |
+
+## Implementation Phases
+
+### Phase 1: Shared Coordinate System
+
+**Goal:** Align `ZoneOverview` and `KeyRangeEditor` horizontally using one note mapping model.
+
+**Tasks:**
+- [ ] Extract shared note coordinate logic from the existing components
+- [ ] Update `ZoneOverview` to use the shared mapping
+- [ ] Update `KeyRangeEditor` to use the shared mapping
+- [ ] Add tests proving alignment behavior
+
+**Acceptance:** Both components use identical note-position calculations, and the same note values line up visually between the overview and detail editor.
+
+### Phase 2: Draggable ZoneOverview Boundaries
+
+**Goal:** Make note and velocity bounds directly editable in the overview.
+
+**Tasks:**
+- [ ] Verify S3000XL boundary and overlap rules before encoding them
+- [ ] Add drag handles and hit areas for left, right, top, and bottom zone edges
+- [ ] Add continuous drag preview state and commit-on-release behavior
+- [ ] Add tests for clamping, selection behavior, and field commits
+
+**Acceptance:** Users can drag zone edges to change `LONOTE`, `HINOTE`, `LOVEL`, and `HIVEL`, with live UI updates and commit on release.
+
+### Phase 3: Draggable VelocityRangeBar
+
+**Goal:** Let users reshape velocity-layer boundaries directly in the velocity bar.
+
+**Tasks:**
+- [ ] Add draggable split-point handles to `VelocityRangeBar`
+- [ ] Reuse the drag interaction model from Phase 2
+- [ ] Keep `VelocityRangeBar`, numeric inputs, and `ZoneOverview` synchronized
+- [ ] Add tests for boundary movement and adjacent-zone interactions
+
+**Acceptance:** Users can drag velocity split points, with changes reflected consistently across the editor and committed on release.
+
+### Phase 4: Zone Creation via Drag
+
+**Goal:** Let users create keygroups spatially from empty overview space.
+
+**Tasks:**
+- [ ] Detect drag initiation in unoccupied `ZoneOverview` regions
+- [ ] Show preview feedback for the pending new zone
+- [ ] Create the keygroup with sensible verified defaults on commit
+- [ ] Add tests for creation gesture handling and resulting editor state
+
+**Acceptance:** Dragging in empty overview space creates a new keygroup covering the dragged note and velocity range, and the new keygroup is reflected in the UI and committed correctly.
+
+## Verification
+
+- Relevant Akai keygroup component tests pass
+- New unit tests cover coordinate mapping, drag constraints, and creation paths
+- Manual verification confirms that direct manipulation and numeric inputs stay synchronized
+- Any device-rule assumptions are documented with evidence
