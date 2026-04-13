@@ -32,11 +32,13 @@ Read the following and report a concise summary to the user:
 6. **Check open GitHub issues**:
    - Run: `gh issue list --label <relevant-label> --state open`
 
-7. **Check UI test harness** (if the feature involves UI work):
-   - Read: `TESTING-UI.md` for the methodology
-   - Check if a test harness page already exists for this feature (look for `Test<Feature>Page.tsx` files in the relevant editor's `src/pages/`)
-   - If one exists: note the route and how to screenshot it
-   - If none exists: flag that a harness should be created before implementation begins
+7. **Check testing infrastructure** (if the feature involves UI work):
+   - Read: `TESTING.md` for the overall test architecture (unit/ui/e2e categories)
+   - Read: `TESTING-UI.md` for the UI test methodology
+   - Check if a test harness page exists: `src/pages/Test<Feature>Page.tsx`
+   - Check if UI test specs exist: `test/ui/<feature>.spec.ts`
+   - If harness missing: flag that it should be created before implementation
+   - If specs missing: flag that every manually verified interaction needs a spec
 
 8. **Report to the user**:
    - Feature name and current phase

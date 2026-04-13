@@ -75,19 +75,29 @@ PRD → workplan.md → GitHub issues → implementation → implementation-summ
 4. Use proportional flex layouts, not pixel values
 5. Build: `make`
 6. Verify visually using the test harness (screenshot with Playwright, inspect the result)
-7. Iterate: fix issues found visually, screenshot again
-8. Update workplan acceptance criteria
-9. Commit with GitHub issue reference
+7. **Write a Playwright test spec for every interaction you verified manually** — specs live in `e2e/test-harness-<feature>.spec.ts`. Ad-hoc screenshots without corresponding specs are throwaway work.
+8. Iterate: fix issues found visually, update specs, screenshot again
+9. Update workplan acceptance criteria
+10. Commit with GitHub issue reference
 
-## Targeted UI Testing
+## Testing Architecture
 
-See [TESTING-UI.md](/TESTING-UI.md) for the full methodology.
+See [TESTING.md](/TESTING.md) for the overall testing architecture. Three test categories:
 
-When developing visual UI features, create a **test harness page** that renders the components under development with hardcoded factory data — no device, no store, no transport. Use the Playwright CLI to screenshot the harness and visually verify rendering. This creates a tight dev→test→fix→test loop without requiring hardware.
+| Category | Location | Tooling | Hardware |
+|----------|----------|---------|----------|
+| Unit | `test/unit/` | vitest + jsdom | No |
+| UI | `test/ui/` | Playwright + test harness | No |
+| E2E | `test/e2e/` | Playwright + real app | Yes |
 
-- Test harness pages: `src/pages/Test<Feature>Page.tsx`
-- Route convention: `/<editor-base>/test/<feature>`
-- Screenshot: `modules/<editor>/node_modules/.bin/playwright screenshot --ignore-https-errors --full-page "https://localhost:<port>/<route>" /tmp/<name>.png`
+Detailed methodology: [TESTING-UNIT.md](/TESTING-UNIT.md) | [TESTING-UI.md](/TESTING-UI.md) | [TESTING-E2E.md](/TESTING-E2E.md)
+
+**Migration in progress:** Unit tests currently live as `src/**/*.test.tsx`, E2E tests in `e2e/`. New tests go in `test/<category>/`. See GitHub issue for migration tracking.
+
+When developing UI features:
+1. Create a test harness page (`src/pages/Test<Feature>Page.tsx`) with factory data
+2. Write Playwright specs in `test/ui/<feature>.spec.ts` **as you build, not after**
+3. Every manually verified interaction must become a test spec — ad-hoc screenshots without specs are throwaway work
 
 ## Before Committing
 
