@@ -11,6 +11,44 @@ Each correction is tagged by category for pattern analysis:
 
 ---
 
+## 2026-04-13: Architectural Type Deduplication (Phase 5)
+
+### Feature: contracts
+### Worktree: audiocontrol-contracts
+
+### Goal
+Resolve all 11 deferred architectural type duplication findings from the Phase 1 audit.
+
+### Accomplished
+- Batch 1 (6 items): OperationProgress canonical in sampler-library, SdsTransferProgress ambient .d.ts deleted, DrumKitImportProgress/InstrumentImportProgress extend OperationProgress, SaveProgress aligned to OperationProgress, BaseKitConfig + KitOutputConfigProps<T> generics in editor-core (5eba3af5)
+- Batch 2 (5 items): WavFileMetadata shared in editor-core, LibraryDragData eliminated (converged on LibraryDragPayload), Dialog promoted to editor-core (ConfirmDialog composes it), TreeSectionProps converged (deleted 460-line LibraryTreeNode.tsx, adapter hook bridges), EditorStore shared factory (9746916d)
+- Integrated latest DESIGN-NOTES.md from feature/akai-ux-improvement — added 3 new foundational principles (restore user context, never show empty state, progressive disclosure) and parameter editor patterns
+- PR #251 merged to main
+- All 16 original type duplication findings now resolved (5 from Phase 4 + 11 from Phase 5)
+
+### Didn't Work
+- d110-editor build failed after MIDI note dedup (previous session) — editor-core re-exported from `@audiocontrol/sampler-library` (Node entry) instead of `/browser`. Fixed by switching to browser subpath.
+- EditorStore agent reported Roland build failure from LibraryDragData — was actually from the concurrent LibraryDrag convergence agent's in-progress work, not the store changes. Resolved when both agents completed.
+
+### Course Corrections
+- [PROCESS] Agent started fixing all type dedup items directly. User: "Are you fixing everything yourself?" — prompted delegation of 4 parallel agents for Batch 1. Applied lesson immediately for Batch 2 (5 parallel agents).
+- [DOCUMENTATION] Agent tried to `git rm DESIGN-NOTES.md` during rebase conflict without reading latest content. User: "you should review and integrate the latest design notes before deleting." Read the file, found 3 new sections (parameter editors, state persistence, loading states, responsive header, auto-selection) not yet in DESIGN-SYSTEM.md.
+- [DOCUMENTATION] Agent incorporated new DESIGN-NOTES.md content literally. User pushed for generalization: found 3 new foundational principles (restore user context, never show empty state, progressive disclosure) behind the specific patterns.
+
+### Quantitative
+- User messages: ~15
+- Commits: 4 (Phase 5 workplan, batch 1, batch 2, workplan update)
+- User corrections: 3 (1 PROCESS — delegation, 2 DOCUMENTATION — read before delete, generalize)
+- Sub-agents used: 10 (1 research, 4 batch 1, 5 batch 2)
+
+### Insights
+1. **Two-batch approach worked well** for the 11 items. Batch 1 (mechanical fixes) validated the pattern; Batch 2 (architectural changes) was higher risk but agents handled it cleanly. Only one cross-agent conflict (LibraryDrag + EditorStore both touching Roland build).
+2. **The "read before delete" correction** is the same pattern from the previous session. This should be a firm rule: when resolving a delete/modify conflict, always read the modified version first.
+3. **All 16 type duplication findings resolved** across the feature. The codebase went from 16 duplicated types to zero. The compiler now catches divergence — adding a field to WavFileMetadata, OperationProgress, BaseKitConfig, or EditorStoreBase breaks all consumers at compile time.
+4. **460-line LibraryTreeNode.tsx deletion** was the biggest single win. The adapter hook pattern (useLibraryTreeCapabilities) bridges device-specific callbacks to generic capabilities cleanly.
+
+---
+
 ## 2026-04-12: Compiler-Enforced Contracts and Design System
 
 ### Feature: contracts
