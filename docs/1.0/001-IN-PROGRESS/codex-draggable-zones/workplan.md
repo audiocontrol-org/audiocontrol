@@ -75,9 +75,9 @@ This feature extends the current Akai S3000XL keygroup editing surfaces with dir
 
 **Tasks:**
 - [ ] Verify S3000XL boundary and overlap rules before encoding them
-- [ ] Add drag handles and hit areas for left, right, top, and bottom zone edges
-- [ ] Add continuous drag preview state and commit-on-release behavior
-- [ ] Add tests for clamping, selection behavior, and field commits
+- [x] Add drag handles and hit areas for left, right, top, and bottom zone edges
+- [x] Add continuous drag preview state and commit-on-release behavior
+- [x] Add tests for clamping, selection behavior, and field commits
 
 **Acceptance:** Users can drag zone edges to change `LONOTE`, `HINOTE`, `LOVEL`, and `HIVEL`, with live UI updates and commit on release.
 
@@ -115,5 +115,6 @@ This feature extends the current Akai S3000XL keygroup editing surfaces with dir
 ## Session Status
 
 - Phase 1 is complete.
-- Next implementation target is Phase 2: draggable `ZoneOverview` boundaries.
+- Phase 2 is in progress: drag handles, preview, and isolated-browser verification are implemented; verified adjacent-keygroup overlap rules are still outstanding.
+- Next implementation target is to verify S3000XL boundary/overlap behavior before tightening note-edge constraints or closing Phase 2.
 - The browser-only harness is now available for rapid UI iteration before hardware or transport e2e.

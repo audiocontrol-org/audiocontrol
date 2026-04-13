@@ -4,6 +4,24 @@ import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import { ZoneOverview } from '@/components/keygroups/ZoneOverview';
 import { makeKeygroupHeader } from '@/test-helpers/keygroup-factory';
 
+function setSurfaceRect(): void {
+  const surface = screen.getByTestId('zone-overview-surface');
+  Object.defineProperty(surface, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => ({
+      left: 100,
+      top: 20,
+      width: 560,
+      height: 220,
+      right: 660,
+      bottom: 240,
+      x: 100,
+      y: 20,
+      toJSON: () => ({}),
+    }),
+  });
+}
+
 describe('ZoneOverview', () => {
   it('renders empty state when keygroupCount is 0', () => {
     const onSelect = vi.fn();
@@ -130,7 +148,7 @@ describe('ZoneOverview', () => {
     );
 
     // The button exists with the zone label
-    const button = screen.getByText('SELECTED').closest('button');
+    const button = screen.getByText('SELECTED').closest('[role="button"]') as HTMLElement | null;
     expect(button).toBeTruthy();
 
     // When not selected, borderWidth should be 1px
@@ -146,7 +164,7 @@ describe('ZoneOverview', () => {
       />,
     );
 
-    const selectedButton = screen.getByText('SELECTED').closest('button');
+    const selectedButton = screen.getByText('SELECTED').closest('[role="button"]') as HTMLElement | null;
     expect(selectedButton?.style.borderWidth).toBe('2px');
     // jsdom normalizes hex colors to rgb format
     expect(selectedButton?.style.borderColor).toBe('rgb(147, 197, 253)');
@@ -231,5 +249,99 @@ describe('ZoneOverview', () => {
       left: '7.017543859649122%',
       width: '64.91228070175438%',
     });
+  });
+
+  it('renders note drag handles once for the selected keygroup', () => {
+    const kg = makeKeygroupHeader({
+      LONOTE: 36,
+      HINOTE: 72,
+      SNAME1: 'SOFT        ',
+      LOVEL1: 0,
+      HIVEL1: 63,
+      SNAME2: 'LOUD        ',
+      LOVEL2: 64,
+      HIVEL2: 127,
+    });
+
+    render(
+      <ZoneOverview
+        keygroups={[kg]}
+        keygroupCount={1}
+        selectedKeygroupIndex={0}
+        onSelectKeygroup={vi.fn()}
+        onParameterChange={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByTestId('zone-handle-note-low-0')).toHaveLength(1);
+    expect(screen.getAllByTestId('zone-handle-note-high-0')).toHaveLength(1);
+  });
+
+  it('commits note boundary drags through onParameterChange', () => {
+    const kg = makeKeygroupHeader({
+      LONOTE: 36,
+      HINOTE: 72,
+      SNAME1: 'DRAG NOTE   ',
+      LOVEL1: 0,
+      HIVEL1: 127,
+    });
+    const onSelect = vi.fn();
+    const onParameterChange = vi.fn();
+
+    render(
+      <ZoneOverview
+        keygroups={[kg]}
+        keygroupCount={1}
+        selectedKeygroupIndex={0}
+        onSelectKeygroup={onSelect}
+        onParameterChange={onParameterChange}
+        visibleRange={{ min: 32, max: 88 }}
+      />,
+    );
+    setSurfaceRect();
+
+    fireEvent.mouseDown(screen.getByTestId('zone-handle-note-low-0'), {
+      clientX: 139,
+      clientY: 60,
+    });
+    fireEvent.mouseMove(document, { clientX: 178.6, clientY: 60 });
+    fireEvent.mouseUp(document, { clientX: 178.6, clientY: 60 });
+
+    expect(onSelect).toHaveBeenCalledWith(0);
+    expect(onParameterChange).toHaveBeenCalledWith('LONOTE', 40);
+  });
+
+  it('commits velocity boundary drags through onParameterChange', () => {
+    const kg = makeKeygroupHeader({
+      LONOTE: 36,
+      HINOTE: 72,
+      SNAME1: 'SOFT        ',
+      LOVEL1: 0,
+      HIVEL1: 63,
+      SNAME2: 'LOUD        ',
+      LOVEL2: 64,
+      HIVEL2: 127,
+    });
+    const onParameterChange = vi.fn();
+
+    render(
+      <ZoneOverview
+        keygroups={[kg]}
+        keygroupCount={1}
+        selectedKeygroupIndex={0}
+        onSelectKeygroup={vi.fn()}
+        onParameterChange={onParameterChange}
+      />,
+    );
+    setSurfaceRect();
+
+    fireEvent.mouseDown(screen.getByTestId('zone-handle-velocity-high-0-1'), {
+      clientX: 180,
+      clientY: 128,
+    });
+    fireEvent.mouseMove(document, { clientX: 180, clientY: 66.4 });
+    fireEvent.mouseUp(document, { clientX: 180, clientY: 66.4 });
+
+    expect(onParameterChange).toHaveBeenCalledWith('HIVEL1', 100);
   });
 });

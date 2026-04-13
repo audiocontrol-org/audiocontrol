@@ -194,6 +194,7 @@ export function KeygroupsPage(): JSX.Element {
         keygroupCount={keygroupCount}
         selectedKeygroupIndex={selectedKeygroupIndex}
         onSelectKeygroup={selectKeygroup}
+        onParameterChange={handleParameterChange}
         visibleRange={visibleRange}
       />
 

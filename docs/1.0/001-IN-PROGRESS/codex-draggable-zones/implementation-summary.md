@@ -2,11 +2,11 @@
 
 ## Status
 
-Phase 1 complete. Browser-only UI harness added.
+Phase 1 complete. Phase 2 in progress. Browser-only UI harness added.
 
 ## Overview
 
-This session completed the shared coordinate-system foundation for draggable zone editing and added an isolated browser harness so subsequent drag work can iterate without hardware.
+The feature now has the shared coordinate-system foundation plus the first interactive `ZoneOverview` boundary editing pass, all verified through an isolated browser harness without hardware.
 
 ## What Changed
 
@@ -18,17 +18,24 @@ This session completed the shared coordinate-system foundation for draggable zon
 - Added local fixture scenarios for isolated keygroup-zone iteration.
 - Added a Playwright spec that exercises the harness through the existing browser-only Akai test path.
 - Added repo-local documentation for the Codex browser harness methodology in `TESTING-UI-CODEX.md`, plus agent guidance pointers.
+- Added conservative note and velocity edge dragging in `ZoneOverview` with live preview and commit on release.
+- Centralized simple note/velocity clamping in `zone-constraints.ts`.
+- Wired `ZoneOverview` parameter commits through both the real keygroups page and the browser-only harness.
+- Added focused unit coverage for `ZoneOverview` drag-handle rendering and boundary commit behavior.
+- Extended the harness Playwright spec to drag a note boundary and assert local state changes.
 
 ## Verification
 
 - `make` passed at the repo root after dependency bootstrap, including `modules/akai-s3k-editor`.
 - `make modules/akai-s3k-editor/.build-stamp` passed.
-- `modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-library 'ARGS=--grep "Draggable Zones Harness"'` passed with `3 passed`.
+- `pnpm --filter @audiocontrol/akai-s3k-editor exec vitest run src/components/keygroups/ZoneOverview.test.tsx src/components/keygroups/note-coordinate.test.ts src/components/keygroups/KeyRangeEditor.test.tsx` passed.
+- `modules/e2e-infra/scripts/run-and-watch.sh test-e2e-s3k-library 'ARGS=--grep "Draggable Zones Harness"'` passed with `4 passed`.
 
 ## Deviations
 
-- No drag interactions were implemented yet. This session stopped at the Phase 1 foundation plus the isolated browser harness needed to support a fast UI iteration loop for Phases 2-4.
+- Adjacent-keygroup overlap rules are still not encoded beyond conservative local clamping (`low <= high`, MIDI `0-127`).
+- Phase 2 should not be marked complete until S3000XL boundary behavior is verified from hardware or a primary source and reflected in the drag constraints.
 
 ## Next Step
 
-Implement Phase 2 in the new harness first: draggable `ZoneOverview` boundaries with live preview and commit on release.
+Verify S3000XL note-boundary and overlap behavior, then tighten `ZoneOverview` constraints and decide whether Phase 2 can be closed or needs additional adjacent-zone handling.

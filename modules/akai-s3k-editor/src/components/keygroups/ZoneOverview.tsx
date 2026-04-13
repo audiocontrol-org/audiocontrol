@@ -1,16 +1,32 @@
+import {
+  useCallback,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import { formatMidiNote } from '@/lib/midi-note-parser';
 import {
+  clampMidiNote,
+  clientXToNote,
   computeVisibleKeyRange,
   type NoteCoordinateRange,
   noteToPercent,
 } from '@/components/keygroups/note-coordinate';
+import {
+  clampHighNote,
+  clampHighVelocity,
+  clampLowNote,
+  clampLowVelocity,
+} from '@/components/keygroups/zone-constraints';
 
 interface ZoneOverviewProps {
   keygroups: (KeygroupHeader | undefined)[];
   keygroupCount: number;
   selectedKeygroupIndex: number | null;
   onSelectKeygroup: (index: number) => void;
+  onParameterChange?: (field: string, value: number) => void;
   visibleRange?: NoteCoordinateRange;
 }
 
@@ -34,6 +50,17 @@ interface VelocityZone {
   sampleName: string;
   zoneIndex: number;
 }
+
+type ZoneEdgeField = 'LONOTE' | 'HINOTE' | `LOVEL${1 | 2 | 3 | 4}` | `HIVEL${1 | 2 | 3 | 4}`;
+
+interface DragState {
+  keygroupIndex: number;
+  field: ZoneEdgeField;
+  value: number;
+}
+
+type VelocityLowField = `LOVEL${1 | 2 | 3 | 4}`;
+type VelocityHighField = `HIVEL${1 | 2 | 3 | 4}`;
 
 function getVelocityZones(kg: KeygroupHeader): VelocityZone[] {
   const zones: VelocityZone[] = [];
@@ -60,6 +87,17 @@ function getVelocityZones(kg: KeygroupHeader): VelocityZone[] {
   return zones;
 }
 
+function handleZoneKeyDown(
+  event: ReactKeyboardEvent<HTMLElement>,
+  index: number,
+  onSelectKeygroup: (index: number) => void,
+): void {
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault();
+    onSelectKeygroup(index);
+  }
+}
+
 /** C octave markers across the MIDI range for the X-axis labels */
 const OCTAVE_MARKERS: { note: number; label: string }[] = [];
 for (let octave = -1; octave <= 9; octave++) {
@@ -74,8 +112,12 @@ export function ZoneOverview({
   keygroupCount,
   selectedKeygroupIndex,
   onSelectKeygroup,
+  onParameterChange,
   visibleRange,
 }: ZoneOverviewProps): JSX.Element {
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const [dragState, setDragState] = useState<DragState | null>(null);
+
   if (keygroupCount === 0) {
     return (
       <div className="mx-4 mb-3 p-4 rounded bg-gray-800/50 text-gray-500 text-sm text-center">
@@ -104,6 +146,56 @@ export function ZoneOverview({
     (m) => m.note >= range.min && m.note <= range.max,
   );
 
+  const getSurfaceRect = useCallback(() => surfaceRef.current?.getBoundingClientRect() ?? null, []);
+
+  const getNoteFromClientX = useCallback((clientX: number): number => {
+    const rect = getSurfaceRect();
+    return clientXToNote(clientX, rect?.left ?? 0, rect?.width ?? 0, range);
+  }, [getSurfaceRect, range]);
+
+  const getVelocityFromClientY = useCallback((clientY: number): number => {
+    const surface = surfaceRef.current;
+    if (!surface) return 127;
+    const rect = surface.getBoundingClientRect();
+    if (rect.height <= 0) return 127;
+    const fraction = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+    return clampMidiNote(127 - fraction * 128);
+  }, []);
+
+  const commitDrag = useCallback((field: ZoneEdgeField, value: number) => {
+    onParameterChange?.(field, value);
+  }, [onParameterChange]);
+
+  const startDrag = useCallback((
+    keygroupIndex: number,
+    field: ZoneEdgeField,
+    computeValue: (moveEvent: MouseEvent) => number,
+  ) => (event: ReactMouseEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    onSelectKeygroup(keygroupIndex);
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      setDragState({
+        keygroupIndex,
+        field,
+        value: computeValue(moveEvent),
+      });
+    };
+
+    const handleMouseUp = (upEvent: MouseEvent) => {
+      const committedValue = computeValue(upEvent);
+      setDragState(null);
+      commitDrag(field, committedValue);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    handleMouseMove(event.nativeEvent);
+  }, [commitDrag, onSelectKeygroup]);
+
   return (
     <div className="mx-4 mb-3">
       <div
@@ -126,6 +218,8 @@ export function ZoneOverview({
 
         {/* Main visualization area */}
         <div
+          ref={surfaceRef}
+          data-testid="zone-overview-surface"
           className="absolute top-0"
           style={{
             left: `${LEFT_LABEL_WIDTH}px`,
@@ -154,13 +248,17 @@ export function ZoneOverview({
           {/* Keygroup zones */}
           {loadedKeygroups.map(({ index, header }) => {
             const isSelected = selectedKeygroupIndex === index;
-            const zones = getVelocityZones(header);
+            const displayHeader =
+              dragState?.keygroupIndex === index
+                ? { ...header, [dragState.field]: dragState.value }
+                : header;
+            const zones = getVelocityZones(displayHeader);
 
             // Key range as percentage of visible range
             const xStart =
-              noteToPercent(Math.max(header.LONOTE, range.min), range);
+              noteToPercent(Math.max(displayHeader.LONOTE, range.min), range);
             const xEnd =
-              noteToPercent(Math.min(header.HINOTE, range.max) + 1, range);
+              noteToPercent(Math.min(displayHeader.HINOTE, range.max) + 1, range);
             const width = xEnd - xStart;
 
             if (width <= 0) return null;
@@ -168,11 +266,14 @@ export function ZoneOverview({
             if (zones.length === 0) {
               // Render the keygroup as a single band spanning full velocity
               return (
-                <button
+                <div
                   key={`kg-${index}`}
                   className="absolute cursor-pointer border transition-all"
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onSelectKeygroup(index)}
-                  title={`KG ${index + 1}: ${formatMidiNote(header.LONOTE)}-${formatMidiNote(header.HINOTE)}`}
+                  onKeyDown={(event) => handleZoneKeyDown(event, index, onSelectKeygroup)}
+                  title={`KG ${index + 1}: ${formatMidiNote(displayHeader.LONOTE)}-${formatMidiNote(displayHeader.HINOTE)}`}
                   style={{
                     left: `${xStart}%`,
                     width: `${width}%`,
@@ -190,7 +291,7 @@ export function ZoneOverview({
                   <span className="absolute inset-0 flex items-center justify-center text-xs text-gray-300 truncate px-1">
                     KG {index + 1}
                   </span>
-                </button>
+                </div>
               );
             }
 
@@ -209,12 +310,15 @@ export function ZoneOverview({
                   : `KG ${index + 1} Z${zone.zoneIndex}`;
 
               return (
-                <button
+                <div
                   key={`kg-${index}-z${zone.zoneIndex}`}
                   className="absolute cursor-pointer border transition-all overflow-hidden"
                   data-testid={`zone-overview-zone-${index}-${zone.zoneIndex}`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => onSelectKeygroup(index)}
-                  title={`KG ${index + 1} Zone ${zone.zoneIndex}: ${formatMidiNote(header.LONOTE)}-${formatMidiNote(header.HINOTE)}, vel ${zone.lovel}-${zone.hivel}${zone.sampleName ? ` [${zone.sampleName}]` : ''}`}
+                  onKeyDown={(event) => handleZoneKeyDown(event, index, onSelectKeygroup)}
+                  title={`KG ${index + 1} Zone ${zone.zoneIndex}: ${formatMidiNote(displayHeader.LONOTE)}-${formatMidiNote(displayHeader.HINOTE)}, vel ${zone.lovel}-${zone.hivel}${zone.sampleName ? ` [${zone.sampleName}]` : ''}`}
                   style={{
                     left: `${xStart}%`,
                     width: `${width}%`,
@@ -234,9 +338,98 @@ export function ZoneOverview({
                   <span className="block text-xs text-gray-200 truncate px-1 leading-tight mt-0.5">
                     {label}
                   </span>
-                </button>
+                  {isSelected && onParameterChange && (
+                    <>
+                      <button
+                        type="button"
+                        className="absolute left-0 right-0 h-3 -top-1.5 cursor-ns-resize z-20"
+                        data-testid={`zone-handle-velocity-high-${index}-${zone.zoneIndex}`}
+                        onMouseDown={startDrag(
+                          index,
+                          `HIVEL${zone.zoneIndex}` as ZoneEdgeField,
+                          (moveEvent) => clampHighVelocity(
+                            getVelocityFromClientY(moveEvent.clientY),
+                            displayHeader[`LOVEL${zone.zoneIndex}` as VelocityLowField],
+                          ),
+                        )}
+                      />
+                      <button
+                        type="button"
+                        className="absolute left-0 right-0 h-3 -bottom-1.5 cursor-ns-resize z-20"
+                        data-testid={`zone-handle-velocity-low-${index}-${zone.zoneIndex}`}
+                        onMouseDown={startDrag(
+                          index,
+                          `LOVEL${zone.zoneIndex}` as ZoneEdgeField,
+                          (moveEvent) => clampLowVelocity(
+                            getVelocityFromClientY(moveEvent.clientY),
+                            displayHeader[`HIVEL${zone.zoneIndex}` as VelocityHighField],
+                          ),
+                        )}
+                      />
+                    </>
+                  )}
+                </div>
               );
             });
+          })}
+
+          {loadedKeygroups.map(({ index, header }) => {
+            if (!onParameterChange || selectedKeygroupIndex !== index) {
+              return null;
+            }
+
+            const displayHeader =
+              dragState?.keygroupIndex === index
+                ? { ...header, [dragState.field]: dragState.value }
+                : header;
+            const xStart =
+              noteToPercent(Math.max(displayHeader.LONOTE, range.min), range);
+            const xEnd =
+              noteToPercent(Math.min(displayHeader.HINOTE, range.max) + 1, range);
+            const width = xEnd - xStart;
+
+            if (width <= 0) {
+              return null;
+            }
+
+            return (
+              <div
+                key={`kg-note-handles-${index}`}
+                className="absolute top-0 bottom-0 pointer-events-none"
+                style={{
+                  left: `${xStart}%`,
+                  width: `${width}%`,
+                  zIndex: 30,
+                }}
+              >
+                <button
+                  type="button"
+                  className="absolute top-0 bottom-0 w-3 -left-1.5 cursor-ew-resize pointer-events-auto"
+                  data-testid={`zone-handle-note-low-${index}`}
+                  onMouseDown={startDrag(
+                    index,
+                    'LONOTE',
+                    (moveEvent) => clampLowNote(
+                      getNoteFromClientX(moveEvent.clientX),
+                      displayHeader.HINOTE,
+                    ),
+                  )}
+                />
+                <button
+                  type="button"
+                  className="absolute top-0 bottom-0 w-3 -right-1.5 cursor-ew-resize pointer-events-auto"
+                  data-testid={`zone-handle-note-high-${index}`}
+                  onMouseDown={startDrag(
+                    index,
+                    'HINOTE',
+                    (moveEvent) => clampHighNote(
+                      getNoteFromClientX(moveEvent.clientX),
+                      displayHeader.LONOTE,
+                    ),
+                  )}
+                />
+              </div>
+            );
           })}
         </div>
 

@@ -723,3 +723,40 @@ Add CSS file tracking to Makefile source dependencies and add inline documentati
 ### Insights
 1. Well-scoped features with clear workplans and pre-created issues make sessions fast and frictionless
 2. Small features benefit from doing all tasks in a single commit rather than splitting artificially
+
+---
+
+## 2026-04-13: Codex Draggable Zones Phase 2 Start
+
+### Feature: codex-draggable-zones
+### Worktree: audiocontrol-codex-draggable-zones
+
+### Goal
+Start Phase 2 by making `ZoneOverview` boundaries directly draggable in the real page and in the browser-only harness, without depending on hardware.
+
+### Accomplished
+- Added note-edge and velocity-edge drag handles to `ZoneOverview`
+- Implemented local drag preview with commit on pointer release
+- Routed `ZoneOverview` parameter writes through both `KeygroupsPage` and the draggable-zones harness
+- Added `zone-constraints.ts` for conservative shared clamping helpers
+- Added unit coverage for note-handle rendering and note/velocity boundary commits
+- Extended the Playwright harness spec to drag a note boundary and assert isolated browser state changes
+- Verified the changes with targeted Vitest coverage, `make modules/akai-s3k-editor/.build-stamp`, and the filtered draggable-zones Playwright harness run
+
+### Didn't Work
+- The first browser-spec version used a fixed pixel drag distance and landed on the wrong note because the harness uses the shared padded visible range
+- Rendering resize handles inside clickable zone buttons caused invalid nested-button DOM warnings
+
+### Course Corrections
+- Reworked the browser spec to compute the drag target from the actual harness surface bounds instead of assuming a pixel-to-note mapping
+- Changed zone surfaces from nested `<button>` elements to keyboard-accessible `div[role="button"]` containers so resize handles can remain real buttons without invalid DOM nesting
+- Kept constraints intentionally conservative until adjacent-keygroup overlap rules are verified from hardware or a primary source
+
+### Quantitative
+- Component tests: 26 passed
+- Browser harness tests: 4 passed
+
+### Insights
+1. The isolated browser harness is now good enough for real UI interaction work, not just static rendering checks
+2. Shared coordinate math needs geometry-based assertions in browser tests; fixed pixel drags are too brittle
+3. Phase 2 can advance in the harness without guessing hardware-specific overlap behavior, as long as constraint scope is documented honestly

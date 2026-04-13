@@ -134,6 +134,7 @@ export function DraggableZonesHarnessPage(): JSX.Element {
           keygroupCount={keygroups.length}
           selectedKeygroupIndex={selectedKeygroupIndex}
           onSelectKeygroup={setSelectedKeygroupIndex}
+          onParameterChange={handleParameterChange}
           visibleRange={visibleRange}
         />
 

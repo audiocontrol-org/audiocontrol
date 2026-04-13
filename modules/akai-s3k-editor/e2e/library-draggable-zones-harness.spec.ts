@@ -60,4 +60,49 @@ test.describe('Draggable Zones Harness', () => {
     const zoneOverview = page.getByTestId('zone-overview-zone-0-1');
     await expect(zoneOverview).toBeVisible();
   });
+
+  test('supports draggable note-boundary editing in the isolated harness', async ({ page }) => {
+    await page.goto(harnessUrl('stacked-layers'));
+
+    const lowHandle = page.getByTestId('zone-handle-note-low-0');
+    const surface = page.getByTestId('zone-overview-surface');
+    await expect(lowHandle).toBeVisible();
+    await expect(surface).toBeVisible();
+
+    const handleBox = await lowHandle.boundingBox();
+    const surfaceBox = await surface.boundingBox();
+    if (!handleBox || !surfaceBox) {
+      throw new Error('Expected note-low drag handle bounding box');
+    }
+
+    const targetNote = 40;
+    const visibleRangeMin = 32;
+    const visibleRangeMax = 100;
+    const visibleSpan = visibleRangeMax - visibleRangeMin + 1;
+    const targetX =
+      surfaceBox.x + surfaceBox.width * ((targetNote - visibleRangeMin) / visibleSpan);
+    const targetY = handleBox.y + handleBox.height / 2;
+
+    await page.mouse.move(handleBox.x + handleBox.width / 2, targetY);
+    await page.mouse.down();
+    await page.mouse.move(targetX, targetY, {
+      steps: 8,
+    });
+    await page.mouse.up();
+
+    await expect(page.getByTestId('harness-keygroup-0')).toContainText('40 - 72');
+
+    const harnessState = await page.evaluate(() => {
+      const state = (
+        window as unknown as {
+          __draggableZonesHarness?: {
+            keygroups: Array<{ LONOTE: number; HINOTE: number }>;
+          };
+        }
+      ).__draggableZonesHarness;
+      return state?.keygroups[0];
+    });
+
+    expect(harnessState).toMatchObject({ LONOTE: 40, HINOTE: 72 });
+  });
 });
