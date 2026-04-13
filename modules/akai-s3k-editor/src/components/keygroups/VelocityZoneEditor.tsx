@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import type { KeygroupHeader } from '@audiocontrol/sampler-devices/s3k';
 import { ParamKnob, ParamSelect } from '@/components/ui/ParamKnob';
-import { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
 
 interface VelocityZoneEditorProps {
   header: KeygroupHeader;
@@ -124,20 +123,8 @@ export function VelocityZoneEditor({
 }: VelocityZoneEditorProps): JSX.Element {
   const [activeZone, setActiveZone] = useState<ZoneIndex>(1);
 
-  const velocityZones = ZONE_INDICES.map((zone) => ({
-    lowVel: getZoneValue(header, 'LOVEL', zone),
-    highVel: getZoneValue(header, 'HIVEL', zone),
-    sampleName: getZoneString(header, 'SNAME', zone),
-  }));
-
   return (
     <div>
-      <VelocityRangeBar
-        zones={velocityZones}
-        selectedZone={activeZone - 1}
-        onSelectZone={(index) => setActiveZone(ZONE_INDICES[index])}
-      />
-
       <div className="s3k-zone-tabs">
         {ZONE_INDICES.map((zone) => {
           const sname = getZoneString(header, 'SNAME', zone).trim();

@@ -187,12 +187,14 @@ export function KeygroupsPage(): JSX.Element {
 
       {error && <ErrorBanner message={error} />}
 
-      <ZoneOverview
-        keygroups={keygroups}
-        keygroupCount={keygroupCount}
-        selectedKeygroupIndex={selectedKeygroupIndex}
-        onSelectKeygroup={selectKeygroup}
-      />
+      {keygroupCount > 1 && (
+        <ZoneOverview
+          keygroups={keygroups}
+          keygroupCount={keygroupCount}
+          selectedKeygroupIndex={selectedKeygroupIndex}
+          onSelectKeygroup={selectKeygroup}
+        />
+      )}
 
       <div className="ac-list-detail-grid">
         <div className="ac-list-column-sticky">
