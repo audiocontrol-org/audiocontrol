@@ -6,6 +6,8 @@ import { KeyRangeEditor } from '@/components/keygroups/KeyRangeEditor';
 import { VelocityRangeBar } from '@/components/keygroups/VelocityRangeBar';
 import { computeKeyRange } from '@/components/keygroups/note-coordinate-utils';
 
+const VELOCITY_MAX = 127;
+
 function buildInitialKeygroups(): KeygroupHeader[] {
   return [
     makeKeygroupHeader({
@@ -97,6 +99,32 @@ export function TestKeygroupsPage(): JSX.Element {
       setKeygroups((prev) => {
         const next = [...prev];
         next[kgIndex] = { ...next[kgIndex], [field]: value };
+        return next;
+      });
+    },
+    [],
+  );
+
+  const handleSplitDrag = useCallback(
+    (kgIndex: number, splitIndex: number, velocity: number) => {
+      setKeygroups((prev) => {
+        const next = [...prev];
+        const kg = { ...next[kgIndex] };
+        // splitIndex 0 = boundary between velocity zone 1 and zone 2
+        // Velocity zone fields are 1-indexed (LOVEL1, HIVEL1, etc.)
+        const leftZone = splitIndex + 1;
+        const rightZone = splitIndex + 2;
+        const hivelField = `HIVEL${leftZone}`;
+        const lovelField = `LOVEL${rightZone}`;
+        // Guideline deviation: using `as unknown as Record` for dynamic field access
+        // on KeygroupHeader. The field names are computed at runtime via string
+        // concatenation but are valid KeygroupHeader fields (HIVEL1-4, LOVEL1-4).
+        // Same pattern as VelocityZoneEditor.tsx. Should not be copied elsewhere.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const record = kg as unknown as Record<string, number>;
+        record[hivelField] = velocity;
+        record[lovelField] = Math.min(velocity + 1, VELOCITY_MAX);
+        next[kgIndex] = kg;
         return next;
       });
     },
@@ -219,6 +247,12 @@ export function TestKeygroupsPage(): JSX.Element {
                       selectedZone={selectedVelZone}
                       onSelectZone={(zoneIdx) =>
                         handleSelectVelocityZone(index, zoneIdx)
+                      }
+                      onSplitDrag={(splitIdx, vel) =>
+                        handleSplitDrag(index, splitIdx, vel)
+                      }
+                      onSplitCommit={(splitIdx, vel) =>
+                        handleSplitDrag(index, splitIdx, vel)
                       }
                     />
                   </div>

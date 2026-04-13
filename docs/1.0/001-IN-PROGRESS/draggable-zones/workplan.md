@@ -55,9 +55,9 @@ A shared coordinate mapping utility will replace the independent note-to-pixel c
 **Goal:** Enable direct manipulation of velocity zone split points in the VelocityRangeBar.
 
 **Tasks:**
-- [ ] Add draggable split point handles to VelocityRangeBar
-- [ ] Reuse drag interaction hook from Phase 2
-- [ ] Add visual feedback during drag
+- [x] Add draggable split point handles to VelocityRangeBar
+- [x] Reuse drag interaction hook from Phase 2
+- [x] Add visual feedback during drag
 
 **Acceptance:** Can drag velocity zone boundaries. Changes reflect in ZoneOverview and numeric inputs. Device write occurs on mouseup.
 
