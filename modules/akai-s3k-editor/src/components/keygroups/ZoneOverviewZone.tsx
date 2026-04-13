@@ -120,6 +120,7 @@ export interface ZoneRectProps {
   noteRange: NoteRange;
   isSelected: boolean;
   isDraggingThis: boolean;
+  isTranslating: boolean;
   hasDragCallbacks: boolean;
   onSelectKeygroup: (index: number) => void;
   startDrag: (
@@ -127,6 +128,7 @@ export interface ZoneRectProps {
     field: ZoneDragField,
     getValueFromEvent: (e: MouseEvent) => number,
   ) => (e: React.MouseEvent) => void;
+  onStartTranslate?: (keygroupIndex: number, e: React.MouseEvent) => void;
   getNoteFromEvent: (e: MouseEvent) => number;
   getVelocityFromEvent: (e: MouseEvent) => number;
 }
@@ -138,9 +140,11 @@ export function ZoneRect({
   noteRange,
   isSelected,
   isDraggingThis,
+  isTranslating,
   hasDragCallbacks,
   onSelectKeygroup,
   startDrag,
+  onStartTranslate,
   getNoteFromEvent,
   getVelocityFromEvent,
 }: ZoneRectProps): JSX.Element | null {
@@ -174,8 +178,15 @@ export function ZoneRect({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') onSelectKeygroup(keygroupIndex);
   };
-  // Stop mousedown from reaching the viz div so it doesn't trigger zone creation
-  const handleMouseDown = (e: React.MouseEvent) => e.stopPropagation();
+  // Interior mousedown: stop propagation (prevents zone creation) and start translate
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onStartTranslate && e.button === 0) {
+      onStartTranslate(keygroupIndex, e);
+    }
+  };
+
+  const interiorCursor = isTranslating ? 'grabbing' : (onStartTranslate ? 'grab' : 'pointer');
 
   if (zones.length === 0) {
     // Render the keygroup as a single band spanning full velocity
@@ -184,17 +195,18 @@ export function ZoneRect({
         key={`kg-${keygroupIndex}`}
         role="button"
         tabIndex={0}
-        className="absolute cursor-pointer border transition-all"
+        className="absolute border transition-all"
         onClick={handleClick}
         onMouseDown={handleMouseDown}
         onKeyDown={handleKeyDown}
         title={`KG ${keygroupIndex + 1}: ${formatMidiNote(header.LONOTE)}-${formatMidiNote(header.HINOTE)}`}
         style={{
+          cursor: interiorCursor,
           left: `${xStart}%`,
           width: `${width}%`,
           top: 0,
           bottom: 0,
-          background: keygroupColor(keygroupIndex, keygroupCount, 0.35),
+          background: keygroupColor(keygroupIndex, keygroupCount, isSelected ? 0.85 : 0.35),
           borderColor,
           borderWidth,
           boxShadow,
@@ -243,17 +255,18 @@ export function ZoneRect({
             key={`kg-${keygroupIndex}-z${zone.zoneIndex}`}
             role="button"
             tabIndex={0}
-            className="absolute cursor-pointer border transition-all overflow-hidden"
+            className="absolute border transition-all overflow-hidden"
             onClick={handleClick}
             onMouseDown={handleMouseDown}
             onKeyDown={handleKeyDown}
             title={`KG ${keygroupIndex + 1} Zone ${zone.zoneIndex}: ${formatMidiNote(header.LONOTE)}-${formatMidiNote(header.HINOTE)}, vel ${zone.lovel}-${zone.hivel}${zone.sampleName ? ` [${zone.sampleName}]` : ''}`}
             style={{
+              cursor: interiorCursor,
               left: `${xStart}%`,
               width: `${width}%`,
               top: `${yTop}%`,
               height: `${height}%`,
-              background: keygroupColor(keygroupIndex, keygroupCount, 0.4),
+              background: keygroupColor(keygroupIndex, keygroupCount, isSelected ? 0.85 : 0.4),
               borderColor,
               borderWidth,
               boxShadow,

@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useRef } from 'react';
 import { KeygroupList, KeygroupEditor, ZoneOverview } from '@/components/keygroups';
+import type { ZoneDragField, NewZoneRange } from '@/components/keygroups';
 import { useS3000xlClient } from '@/hooks/useS3000xlClient';
 import { useKeygroupLoader } from '@/hooks/useKeygroupLoader';
 import { useSampleNames } from '@/hooks/useSampleNames';
@@ -77,6 +78,33 @@ export function KeygroupsPage(): JSX.Element {
     [selectedKeygroupIndex, client, keygroups],
   );
 
+  // --- Zone drag callbacks for ZoneOverview ---
+
+  /** Optimistic local update during drag (no device write). */
+  const handleZoneDrag = useCallback(
+    (keygroupIndex: number, field: ZoneDragField, value: number) => {
+      const header = useKeygroupStore.getState().keygroups[keygroupIndex];
+      if (!header) return;
+      const updated = { ...header, [field]: value };
+      useKeygroupStore.getState().setKeygroup(keygroupIndex, updated);
+    },
+    [],
+  );
+
+  /** Write to device on mouseup after drag. */
+  const handleZoneCommit = useCallback(
+    async (keygroupIndex: number, field: ZoneDragField, value: number) => {
+      if (!client) return;
+      const header = useKeygroupStore.getState().keygroups[keygroupIndex];
+      if (!header) return;
+      const updated = { ...header, [field]: value, raw: [...header.raw] };
+      useKeygroupStore.getState().setKeygroup(keygroupIndex, updated);
+      writeKeygroupField(updated, field, value);
+      await client.writeKeygroupHeader(updated);
+    },
+    [client],
+  );
+
   /**
    * Refresh keygroups from device: invalidate caches, re-fetch the program
    * header (to get updated GROUPS count), then reload all keygroups.
@@ -126,6 +154,40 @@ export function KeygroupsPage(): JSX.Element {
       setError(message);
     }
   }, [selectedProgramIndex, client, refreshFromDevice, setError]);
+
+  /** Create a new keygroup from a drag-to-create gesture. */
+  const handleCreateZone = useCallback(
+    async (range: NewZoneRange) => {
+      if (selectedProgramIndex === null || !client || !selectedProgram) return;
+      try {
+        await client.createKeygroup(selectedProgramIndex, selectedProgram.GROUPS);
+        await refreshFromDevice();
+        const newIndex = useKeygroupStore.getState().keygroupCount - 1;
+        const newHeader = useKeygroupStore.getState().keygroups[newIndex];
+        if (newHeader) {
+          const updated = {
+            ...newHeader,
+            LONOTE: range.lowNote,
+            HINOTE: range.highNote,
+            LOVEL1: range.lowVel,
+            HIVEL1: range.highVel,
+            raw: [...newHeader.raw],
+          };
+          useKeygroupStore.getState().setKeygroup(newIndex, updated);
+          writeKeygroupField(updated, 'LONOTE', range.lowNote);
+          writeKeygroupField(updated, 'HINOTE', range.highNote);
+          writeKeygroupField(updated, 'LOVEL1', range.lowVel);
+          writeKeygroupField(updated, 'HIVEL1', range.highVel);
+          await client.writeKeygroupHeader(updated);
+          selectKeygroup(newIndex);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Failed to create keygroup';
+        setError(message);
+      }
+    },
+    [selectedProgramIndex, client, selectedProgram, refreshFromDevice, selectKeygroup, setError],
+  );
 
   const selectedHeader =
     selectedKeygroupIndex !== null ? keygroups[selectedKeygroupIndex] : undefined;
@@ -196,6 +258,9 @@ export function KeygroupsPage(): JSX.Element {
         selectedKeygroupIndex={selectedKeygroupIndex}
         onSelectKeygroup={selectKeygroup}
         noteRange={noteRange}
+        onZoneDrag={handleZoneDrag}
+        onZoneCommit={handleZoneCommit}
+        onCreateZone={handleCreateZone}
       />
 
       <div className="ac-list-detail-grid">
